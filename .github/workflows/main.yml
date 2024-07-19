@@ -39,5 +39,6 @@ jobs:
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SCADMINAPIS }}
           port: 22
+          
           source: "dist/*"  # Ruta de origen de la construcción, ajustar si es necesario
           target: "/var/www/crmReact"  # Ruta de destino en el servidor, ajustar si es necesario
