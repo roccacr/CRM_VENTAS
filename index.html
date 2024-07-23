@@ -1,13 +1,67 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Vite + React</title>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.jsx"></script>
-  </body>
+
+<head>
+  <!-- 1. Título de la página -->
+  <title>STUDIO CINEMAS APP</title>
+  <!-- 2. Metadatos para la configuración de la página -->
+  <meta charset="utf-8" /> <!-- Configuración de caracteres para soporte UTF-8 -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=0, minimal-ui" />
+  <!-- Configuración para vistas responsivas -->
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" /> <!-- Compatibilidad con Internet Explorer -->
+  <meta name="description" content="studiocinemas" /> <!-- Descripción de la página -->
+  <meta name="author" content="roccacr.com" /> <!-- Autor de la página -->
+  <!-- 3. Favicon de la página -->
+  <link rel="icon" href="/assets/logo2.jpg" type="image/x-icon" />
+  <!-- 4. Hojas de estilo CSS -->
+  <link rel="stylesheet" href="/assets/css/plugins/jsvectormap.min.css" /> <!-- Estilos para vectormap -->
+  <link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700&amp;display=swap"
+    rel="stylesheet" /> <!-- Fuente personalizada -->
+  <link rel="stylesheet" href="/assets/fonts/tabler-icons.min.css" /> <!-- Iconos Tabler -->
+  <link rel="stylesheet" href="/assets/fonts/feather.css" /> <!-- Iconos Feather -->
+  <link rel="stylesheet" href="/assets/fonts/fontawesome.css" /> <!-- Iconos FontAwesome -->
+  <link rel="stylesheet" href="/assets/fonts/material.css" /> <!-- Iconos Material -->
+  <link rel="stylesheet" href="/assets/css/style.css" id="main-style-link" />
+  <!-- Estilos principales de la aplicación -->
+  <link rel="stylesheet" href="/assets/css/style-preset.css" /> <!-- Estilos predefinidos -->
+  <!-- 5. Implementaciones adicionales de CSS -->
+  <!-- [Page specific CSS] start -->
+  <!-- data tables css -->
+  <link rel="stylesheet" href="/assets/css/plugins/dataTables.bootstrap5.min.css">
+  <link rel="stylesheet" href="/assets/css/plugins/select.bootstrap5.min.css">
+</head>
+
+<body data-pc-preset="preset-1" data-pc-sidebar-theme="light" data-pc-sidebar-caption="true" data-pc-direction="ltr"
+  data-pc-theme="light">
+  <!-- 6. Fondo de carga inicial -->
+  <div class="loader-bg">
+    <div class="loader-track">
+      <div class="loader-fill"></div>
+    </div>
+  </div>
+  <!-- 7. Contenedor principal de la aplicación -->
+  <div id="root"></div> <!-- Este div es donde se montará la aplicación React -->
+  <!-- 8. Scripts de la aplicación -->
+  <script type="module" src="/src/main.jsx"></script> <!-- Script principal de React -->
+  <script src="/assets/js/plugins/jsvectormap.min.js"></script> <!-- Plugin de vectormap -->
+  <script src="/assets/js/plugins/world.js"></script> <!-- Mapa del mundo -->
+  <script src="/assets/js/plugins/world-merc.js"></script> <!-- Mapa del mundo en proyección Mercator -->
+  <script src="/assets/js/pages/dashboard-default.js"></script> <!-- Script del dashboard por defecto -->
+  <script src="/assets/js/plugins/popper.min.js"></script> <!-- Plugin de Popper.js -->
+  <script src="/assets/js/plugins/simplebar.min.js"></script> <!-- Plugin de Simplebar para scrollbars -->
+  <script src="/assets/js/plugins/bootstrap.min.js"></script> <!-- Plugin de Bootstrap -->
+  <script src="/assets/js/fonts/custom-font.js"></script> <!-- Script de fuentes personalizadas -->
+  <script src="/assets/js/pcoded.js"></script> <!-- Script principal de la plantilla -->
+  <script src="/assets/js/plugins/feather.min.js"></script> <!-- Plugin de iconos Feather -->
+  <!-- 9. Implementaciones adicionales de JavaScript -->
+  <!-- [Page Specific JS] start -->
+  <!-- datatable Js -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+  <script src="/assets/js/plugins/dataTables.min.js"></script>
+  <script src="/assets/js/plugins/dataTables.bootstrap5.min.js"></script>
+  <script src="/assets/js/plugins/dataTables.select.min.js"></script>
+  <script src="/assets/js/plugins/choices.min.js"></script>
+  <!-- Plugin de DataTables para manejo de fechas -->
+</body>
+
 </html>
