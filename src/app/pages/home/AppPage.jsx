@@ -1,7 +1,10 @@
+import { AppLayout } from "../../layout/AppLayout"
 
 
 export const AppPage = () => {
   return (
-    <div>AppPage</div>
+    <AppLayout>
+      AppPage
+    </AppLayout>
   )
 }
