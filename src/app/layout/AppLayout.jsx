@@ -1,8 +1,6 @@
-import { NavBar } from "../components/NavBar"
-import { SideBar } from "../components/SideBar"
+import { NavBar } from "../components/NavBar";
+import { SideBar } from "../components/SideBar";
 import { useState, useEffect } from "react";
-
-
 
 const dimension = 1080;
 
@@ -17,10 +15,10 @@ export const AppLayout = ({ children }) => {
   const [sidebarStatus, setSidebarStatus] = useState("default");
 
   // Función para alternar la visibilidad de la barra lateral
-//   const toggleSidebar = (status) => {
-//     setSidebarVisible(!sidebarVisible);
-//     setSidebarStatus(status);
-//   };
+  const toggleSidebar = (status) => {
+    setSidebarVisible(!sidebarVisible);
+    setSidebarStatus(status);
+  };
 
   // Función para cerrar la barra lateral
   const closeSidebar = () => {
@@ -60,8 +58,11 @@ export const AppLayout = ({ children }) => {
         sidebarStatus={sidebarStatus}
         closeSidebar={closeSidebar}
       />
-      <SideBar />
+      <SideBar toggleSidebar={toggleSidebar} />
       {children}
+      {sidebarVisible && sidebarStatus === "mobile-active" && (
+        <div className="pc-menu-overlay" onClick={closeSidebar}></div>
+      )}
     </>
   );
 };
