@@ -104,6 +104,9 @@ export const NavBar = ({ sidebarVisible, sidebarStatus, closeSidebar }) => {
                 width: "100%",
               }}
             >
+              <br />
+              <br />
+              <br />
               <img
                 src="/assets/logo2.jpg"
                 style={{ width: "165px", height: "60px" }}
