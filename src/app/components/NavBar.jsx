@@ -1,12 +1,8 @@
 import { useEffect } from "react";
-import {
-  Drawer,
-
-  Divider,
-} from "@mui/material";
+import { Drawer, Divider } from "@mui/material";
 import { styled } from "@mui/material/styles";
 // import { startLogout } from "../../store/auth";
-import {  NavLink } from "react-router-dom";
+import { NavLink } from "react-router-dom";
 // import { useDispatch, useSelector } from "react-redux";
 
 const DrawerHeader = styled("div")(({ theme }) => ({
@@ -38,9 +34,9 @@ export const NavBar = ({ sidebarVisible, sidebarStatus, closeSidebar }) => {
     : "pc-sidebar pc-sidebar-hide";
 
   // Obtiene la función dispatch del hook useDispatch de Redux
-//   const dispatch = useDispatch();
+  //   const dispatch = useDispatch();
   //obtenesmos la informacion del usuario
-//   const { name_user, rol_user } = useSelector((state) => state.auth);
+  //   const { name_user, rol_user } = useSelector((state) => state.auth);
 
   // Utiliza el hook useEffect para manejar clics fuera de la barra lateral
   useEffect(() => {
@@ -73,8 +69,8 @@ export const NavBar = ({ sidebarVisible, sidebarStatus, closeSidebar }) => {
     // Despacha la acción startLogout para iniciar el proceso de cierre de sesión
     // dispatch(startLogout());
   };
-    // 5. Renderiza el componente NavBar.
-    
+  // 5. Renderiza el componente NavBar.
+
   const rol_user = 1;
   return (
     <>
