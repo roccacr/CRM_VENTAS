@@ -58,10 +58,11 @@ export const LoginPage = () => {
             src="/assets/logo2.jpg"
             alt="images"
             className="mb-1"
-            style={{ maxWidth: "100%", height: "108px" }}
+            style={{ maxWidth: "100%", height: "92px" }}
           />
           {/* Descripción debajo del logotipo */}
-          <br/>
+          <br />
+          <br />
           <p className="mb-3">Ingreso al sistema administrativo</p>
         </div>
         {/* {isLoading && (
