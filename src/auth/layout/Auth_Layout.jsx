@@ -17,7 +17,7 @@ export const Auth_Layout = ({ children, title = "" }) => {
                 {/* Separador con el nombre del grupo de desarrollo */}
                 <center>
                   <div className="separator my-3">
-                    <span>© ROCCA DEVELOPMENT GROUP </span>
+                    <span>© CRM VENTAS ROCCA DEVELOPMENT GROUP </span>
                   </div>
                 </center>
               </div>
