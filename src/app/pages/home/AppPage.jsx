@@ -1,3 +1,5 @@
+import { GraficoKpi } from "../../components/TableroHome/GraficoKpi";
+import { GraficoMensual } from "../../components/TableroHome/GraficoMensual";
 import { TableroHome } from "../../components/TableroHome/TableroHome";
 import { AppLayout } from "../../layout/AppLayout";
 
@@ -21,6 +23,10 @@ export const AppPage = () => {
                         {dashboardItems.map((item, index) => (
                             <TableroHome key={index} image={`/assets/panel/${item.image}`} icons={item.icon} nombre={item.name} cantidad={item.quantity} />
                         ))}
+                    </div>
+                    <div className="row">
+                        <GraficoMensual />
+                        <GraficoKpi/>a
                     </div>
                 </div>
             </div>
