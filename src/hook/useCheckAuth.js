@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { setUserAuthentication, setUserLogout } from "../store/auth"; // Asegúrate de que la ruta al archivo auth.js sea correcta
+import { setUserAuthentication, setUserLogout } from "../store/auth/authSlice"; // Asegúrate de que la ruta al archivo auth.js sea correcta
 import CryptoJS from "crypto-js";
 
 /* Clave secreta para el descifrado (debe ser la misma clave utilizada para cifrar los datos) */
