@@ -2,10 +2,10 @@ import axios from "axios";
 
 /********************************************** BASE API URL DEFINITION **********************************************/
 // Define la URL base de la API
-const apiUrl = window.location.hostname === "localhost" ? "http://localhost:7000/api/v2.0/" : "https://showtime.rdghub.com/api/v2.0/";
+const apiUrl = window.location.hostname === "localhost" ? "http://localhost:7000/api/v2.0/" : "http://e050-186-4-2-178.ngrok-free.app/api/v2.0/";
 
 // Define la URL base de la API para imágenes
-const apiUrlImg = window.location.hostname === "localhost" ? "http://localhost:7000/api/v2.0/" : "https://showtime.rdghub.com";
+const apiUrlImg = window.location.hostname === "localhost" ? "http://localhost:7000/api/v2.0/" : "http://e050-186-4-2-178.ngrok-free.app/api/v2.0/";
 
 
 
