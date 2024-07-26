@@ -158,6 +158,9 @@ export const GraficoMensual = () => {
                         <div className="col">
                             <h4 className="m-0 text-dark">{data[4].RESERVA}</h4>
                             <span>RESERVA</span>
+
+
+                            
                         </div>
                     </div>
                 </div>
