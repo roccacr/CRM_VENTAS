@@ -11,7 +11,7 @@ export const RouterApp = () => {
           <Route path="/" element={<AppPage />} />
 
           {/* lista de leas */}
-          <Route path="/leads" element={<LeadsPage />} />
+          <Route path="/leads/*" element={<LeadsPage />} />
 
           {/** Cualquier ruta*/}
           <Route path="/*" element={<Navigate to="/" />} />
