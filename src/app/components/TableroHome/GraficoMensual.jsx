@@ -8,7 +8,7 @@ import am5themes_Animated from "@amcharts/amcharts5/themes/Animated";
 const data = [
     { year: "LEADS", LEADS: 50 },
     { year: "VISITAS", VISITAS: 2.6 },
-    { year: "OPORTUNIDADES", OPORTUNIDADES: 2 },
+    { year: "OPORTUN", OPORTUN: 2 },
     { year: "VENTAS", VENTAS: 120 }, // Combines pre-reservations, reservations, and sales
 ];
 
@@ -16,7 +16,7 @@ const data = [
 const series = [
     { name: "LEADS", field: "LEADS" },
     { name: "VISITAS", field: "VISITAS" },
-    { name: "OPORTUNIDADES", field: "OPORTUNIDADES" },
+    { name: "OPORTUN", field: "OPORTUN" },
     { name: "VENTAS", field: "VENTAS" },
 ];
 
@@ -143,9 +143,37 @@ export const GraficoMensual = () => {
     return (
         <div className="col-md-6">
             <div className="card table-card">
-                <div className="card-header">
-                    <h5>MONTHLY REPORT</h5>
+                <div className="card-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <h5 style={{ margin: 0 }}>INFORME MENSUAL</h5>
+                    <button className="btn btn-dark" type="button" data-bs-toggle="collapse" data-bs-target="#collapseExample" aria-expanded="false" aria-controls="collapseExample" style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                        <i className="ti ti-search"></i> FILTROS
+                    </button>
                 </div>
+
+                <div className="collapse" id="collapseExample">
+                    <div className="card-body border-top">
+                        <div className="card-header">
+                            <div className="row">
+                                <div className="col-md-6">
+                                    <div className="mb-3">
+                                        <label className="form-label">Fecha de inicio </label>
+                                        <input type="date" className="form-control" id="exampleInputEmail1" aria-describedby="emailHelp" placeholder="Enter email" />
+                                    </div>
+                                </div>
+                                <div className="col-md-6">
+                                    <div className="mb-3">
+                                        <label className="form-label">Fecha final</label>
+                                        <input type="date" className="form-control" placeholder="Text" />
+                                    </div>
+                                </div>
+                            </div>
+                            <button type="submit" className="btn btn-dark">
+                                Generar gráfico
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
                 <div className="card-body py-3 px-0">
                     {/* Container for the amCharts chart */}
                     <div id="chartdiv" style={{ width: "100%", height: "350px" }}></div>
@@ -163,8 +191,8 @@ export const GraficoMensual = () => {
                             <span>VISITAS</span>
                         </div>
                         <div className="col">
-                            <h4 className="m-0 text-dark">{data[2].OPORTUNIDADES}</h4>
-                            <span>OPORTUNIDADES</span>
+                            <h4 className="m-0 text-dark">{data[2].OPORTUN}</h4>
+                            <span>OPORTUN</span>
                         </div>
                     </div>
                 </div>

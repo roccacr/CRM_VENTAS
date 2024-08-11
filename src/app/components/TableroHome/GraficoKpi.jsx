@@ -133,9 +133,37 @@ export const GraficoKpi = () => {
     return (
         <div className="col-md-6">
             <div className="card table-card">
-                <div className="card-header">
-                    <h5>KPI REPORT</h5>
+                <div className="card-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <h5 style={{ margin: 0 }}>KPI EVENTOS CITAS</h5>
+                    <button className="btn btn-dark" type="button" data-bs-toggle="collapse" data-bs-target="#collapseExample2" aria-expanded="false" aria-controls="collapseExample" style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                        <i className="ti ti-search"></i> FILTROS
+                    </button>
                 </div>
+
+                <div className="collapse" id="collapseExample2">
+                    <div className="card-body border-top">
+                        <div className="card-header">
+                            <div className="row">
+                                <div className="col-md-6">
+                                    <div className="mb-3">
+                                        <label className="form-label">Fecha de inicio </label>
+                                        <input type="date" className="form-control" id="exampleInputEmail1" aria-describedby="emailHelp" placeholder="Enter email" />
+                                    </div>
+                                </div>
+                                <div className="col-md-6">
+                                    <div className="mb-3">
+                                        <label className="form-label">Fecha final</label>
+                                        <input type="date" className="form-control" placeholder="Text" />
+                                    </div>
+                                </div>
+                            </div>
+                            <button type="submit" className="btn btn-dark">
+                                Generar gráfico
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
                 <div className="card-body py-3 px-0">
                     {/* Container for the amCharts chart */}
                     <div id="chartdivkpi" style={{ width: "100%", height: "350px" }}></div>
