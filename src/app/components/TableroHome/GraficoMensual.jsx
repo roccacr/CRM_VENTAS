@@ -6,19 +6,15 @@ import am5themes_Animated from "@amcharts/amcharts5/themes/Animated";
 const data = [
     { year: "LEADS", LEADS: 50 },
     { year: "VISITAS", VISITAS: 2.6 },
-    { year: "OPORTUNIDAD", OPORTUNIDAD: 2 },
-    { year: "PRE RESREVA", "PRE RESREVA": 10 },
-    { year: "RESERVA", RESERVA: 3 },
-    { year: "RESERVA CAIDA", "RESERVA CAIDA": 1 },
+    { year: "OPORTUNIDADES", OPORTUNIDADES: 2 },
+    { year: "VENTAS", VENTAS: 13 }, // Combinamos pre-reservas, reservas y ventas
 ];
 
 const series = [
     { name: "LEADS", field: "LEADS" },
     { name: "VISITAS", field: "VISITAS" },
-    { name: "OPORTUNIDAD", field: "OPORTUNIDAD" },
-    { name: "PRE RESREVA", field: "PRE RESREVA" },
-    { name: "RESERVA", field: "RESERVA" },
-    { name: "RESERVA CAIDA", field: "RESERVA CAIDA" },
+    { name: "OPORTUNIDADES", field: "OPORTUNIDADES" },
+    { name: "VENTAS", field: "VENTAS" },
 ];
 
 export const GraficoMensual = () => {
@@ -126,7 +122,7 @@ export const GraficoMensual = () => {
                     <h5>REPORTE MENSUAL</h5>
                 </div>
                 <div className="card-body py-3 px-0">
-                    <div id="chartdiv" style={{ width: "100%", height: "500px" }}></div>
+                    <div id="chartdiv" style={{ width: "100%", height: "350px" }}></div>
                 </div>
 
                 <div className="card-footer bg-white text-dark">
@@ -140,27 +136,16 @@ export const GraficoMensual = () => {
                             <span>VISITAS</span>
                         </div>
                         <div className="col">
-                            <h4 className="m-0 text-dark">{data[2].OPORTUNIDAD}</h4>
+                            <h4 className="m-0 text-dark">{data[2].OPORTUNIDADES}</h4>
                             <span>OPORTUNIDADES</span>
                         </div>
                     </div>
                 </div>
                 <div className="card-footer bg-white text-dark">
                     <div className="row text-center">
-                        <div className="col border-end">
-                            <h4 className="m-0 text-dark">{data[3]["PRE RESREVA"]}</h4>
-                            <span>PRE-RESERVA</span>
-                        </div>
-                        <div className="col border-end">
-                            <h4 className="m-0 text-dark">{data[5]["RESERVA CAIDA"]}</h4>
-                            <span>RESERVA CAIDA</span>
-                        </div>
                         <div className="col">
-                            <h4 className="m-0 text-dark">{data[4].RESERVA}</h4>
-                            <span>RESERVA</span>
-
-
-                            
+                            <h4 className="m-0 text-dark">{data[3].VENTAS}</h4>
+                            <span>VENTAS</span>
                         </div>
                     </div>
                 </div>
