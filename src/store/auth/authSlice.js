@@ -13,6 +13,7 @@ export const authSlice = createSlice({
     token_admin: null, // Token de autenticación
     status_admin: null, // Estado de usuario
     errorMessage: null, // Mensaje de error, si lo hay
+    idnetsuite_admin : null,
   },
   reducers: {
     // Reducer para establecer la autenticación del usuario

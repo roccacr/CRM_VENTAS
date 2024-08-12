@@ -1,4 +1,6 @@
 import { createSlice, createSelector } from "@reduxjs/toolkit";
+import { useSelector } from "react-redux";
+
 
 // ===============================
 // Slice de Redux para gestionar leads
@@ -55,12 +57,10 @@ export const { setLeads, addLead, updateLead, deleteLead, setCurrentLead, clearC
 
 // Selector para obtener la lista de leads desde el estado
 const selectLeads = (state) => state.lead.list;
+const selectAuth = (state) => state.auth;
 
 // Selector para contar los leads filtrados según ciertos criterios
-export const selectFilteredLeadsCount = createSelector(
-    [selectLeads],
-    (leads) =>
-        leads.filter(
+export const selectFilteredLeadsCount = createSelector([selectLeads],(leads) =>leads.filter(
             (lead) =>
                 (lead.accion_lead === 0 || lead.accion_lead === 2) && // Verifica si 'accion_lead' es 0 o 2
                 lead.estado_lead === 1 && // Verifica si 'estado_lead' es 1
