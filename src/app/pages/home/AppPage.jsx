@@ -4,7 +4,7 @@ import { GraficoKpi } from "../../components/TableroHome/GraficoKpi";
 import { GraficoMensual } from "../../components/TableroHome/GraficoMensual";
 import { TableroHome } from "../../components/TableroHome/TableroHome";
 import { AppLayout } from "../../layout/AppLayout";
-import { selectFilteredLeadsCount, selectFilteredLeadsAttentionCount } from "../../../store/leads/LeadsSlice";
+import { selectFilteredLeadsCount, selectFilteredLeadsAttentionCount, selectFilteredEventsCount } from "../../../store/leads/LeadsSlice";
 import { startLoadingAllLeads } from "../../../store/leads/thunksLeads";
 
 export const AppPage = () => {
@@ -20,6 +20,8 @@ export const AppPage = () => {
     const dispatch = useDispatch();
     const filteredLeadsCount = useSelector(selectFilteredLeadsCount);
     const filteredLeadsAttentionCount = useSelector(selectFilteredLeadsAttentionCount);
+    const filteredEventsCount = useSelector(selectFilteredEventsCount);
+
 
     // Cargar leads al montar el componente
     useEffect(() => {
@@ -29,8 +31,8 @@ export const AppPage = () => {
 
     // Actualizar elementos del dashboard cuando cambian los datos
     useEffect(() => {
-        setDashboardItems((prevItems) => prevItems.map((item) => (item.id === 1 ? { ...item, quantity: filteredLeadsCount } : item.id === 2 ? { ...item, quantity: filteredLeadsAttentionCount } : item)));
-    }, [filteredLeadsCount, filteredLeadsAttentionCount]);
+        setDashboardItems((prevItems) => prevItems.map((item) => (item.id === 1 ? { ...item, quantity: filteredLeadsCount } : item.id === 2 ? { ...item, quantity: filteredLeadsAttentionCount } : item.id === 3 ? { ...item, quantity: filteredEventsCount } : item)));
+    }, [filteredLeadsCount, filteredLeadsAttentionCount, filteredEventsCount]);
 
     return (
         <AppLayout>

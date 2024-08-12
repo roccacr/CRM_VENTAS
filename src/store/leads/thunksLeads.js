@@ -1,23 +1,38 @@
 /********************************************** MODULE IMPORTS ****************************************************/
 // import { errorMessages, secretKey } from "../../api";
-import { fetchLeadsAsyncAttention, fetchLeadsAsyncNew } from "./Api_leads_Providers";
-import { setError, setLeadsNew, setLeadsAttention } from "./LeadsSlice";
+import { fetchEventsAsync, fetchLeadsAsyncAttention, fetchLeadsAsyncNew } from "./Api_leads_Providers";
+import { setError, setLeadsNew, setLeadsAttention, setEventsAttention } from "./LeadsSlice";
 
 
 
 
+/**
+ * Inicia la carga asincrónica de todos los leads y eventos relacionados.
+ * Esta función utiliza Redux Thunk para manejar operaciones asíncronas.
+ *
+ * @returns {Function} Una función thunk que puede ser despachada a Redux.
+ */
 export const startLoadingAllLeads = () => {
     return async (dispatch, getState) => {
+        // Extraemos los datos necesarios del estado de autenticación
         const { idnetsuite_admin, rol_admin } = getState().auth;
 
         try {
-            const [newLeadsResponse, attentionLeadsResponse] = await Promise.all([fetchLeadsAsyncNew({ idnetsuite_admin, rol_admin }), fetchLeadsAsyncAttention({ idnetsuite_admin, rol_admin })]);
+            // Realizamos múltiples solicitudes asincrónicas en paralelo
+            const [newLeads, attentionLeads, events] = await Promise.all([
+                fetchLeadsAsyncNew({ idnetsuite_admin, rol_admin }),
+                fetchLeadsAsyncAttention({ idnetsuite_admin, rol_admin }),
+                fetchEventsAsync({ idnetsuite_admin, rol_admin })]);
 
-            dispatch(setLeadsNew(newLeadsResponse.data.data));
-            dispatch(setLeadsAttention(attentionLeadsResponse.data.data));
+            // Actualizamos el estado de Redux con los datos obtenidos
+            dispatch(setLeadsNew(newLeads.data.data));
+            dispatch(setLeadsAttention(attentionLeads.data.data));
+            dispatch(setEventsAttention(events.data.data));
+
         } catch (error) {
+            // Manejamos cualquier error que ocurra durante las solicitudes
             console.error("Error al cargar los leads:", error);
-            dispatch(setError("Error al cargar la lista de leads"));
+            dispatch(setError("No se pudo cargar la lista de leads. Por favor, intente nuevamente."));
         }
     };
 };

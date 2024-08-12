@@ -7,6 +7,7 @@ export const leadsSlice = createSlice({
     initialState: {
         listNew: [], // Lista de leads nuevos
         listAttention: [], // Lista de leads que requieren atención
+        listEvents: [], // Lista de los eventos pendientes para hoy
         status: "idle", // Estado de la operación (idle, loading, succeeded, failed)
         error: null, // Mensaje de error, si lo hay
         currentLead: null, // Lead actualmente seleccionado
@@ -20,6 +21,10 @@ export const leadsSlice = createSlice({
             state.listAttention = action.payload; // Actualiza la lista de leads que requieren atención
             state.status = "succeeded"; // Indica que la operación fue exitosa
         },
+        setEventsAttention: (state, action) => {
+            state.listEvents = action.payload; // Actualiza la lista de eventos pendientes para hoy
+            state.status = "succeeded"; // Indica que la operación fue exitosa
+        },
         setLoading: (state) => {
             state.status = "loading"; // Indica que la información se está cargando
         },
@@ -31,11 +36,12 @@ export const leadsSlice = createSlice({
 });
 
 // Exportación de acciones
-export const { setLeadsNew, setLeadsAttention, setLoading, setError } = leadsSlice.actions;
+export const { setLeadsNew, setLeadsAttention,setEventsAttention, setLoading, setError } = leadsSlice.actions;
 
 // Selectores
 const selectLeadsNew = (state) => state.lead.listNew;
 const selectLeadsAttention = (state) => state.lead.listAttention;
+const selectEvents = (state) => state.lead.listEvents;
 
 // Selector para contar los leads nuevos
 export const selectFilteredLeadsCount = createSelector([selectLeadsNew], (leads) => leads.length);
@@ -57,5 +63,9 @@ export const selectFilteredLeadsAttentionCount = createSelector([selectLeadsAtte
     // Retornar la cantidad de leads que cumplen con las condiciones
     return filteredLeads.length;
 });
+
+
+// Selector para contar los eventos pendientes para hoy
+export const selectFilteredEventsCount = createSelector([selectEvents], (events) => events.length);
 // Exportación del reducer del slice
 export default leadsSlice.reducer;
