@@ -1,4 +1,5 @@
 import { createSlice, createSelector } from "@reduxjs/toolkit";
+import { subDays } from "date-fns";
 
 // Slice de Redux para gestionar leads
 export const leadsSlice = createSlice({
@@ -40,7 +41,21 @@ const selectLeadsAttention = (state) => state.lead.listAttention;
 export const selectFilteredLeadsCount = createSelector([selectLeadsNew], (leads) => leads.length);
 
 // Selector para contar los leads que requieren atención
-export const selectFilteredLeadsAttentionCount = createSelector([selectLeadsAttention], (leads) => leads.length);
+export const selectFilteredLeadsAttentionCount = createSelector([selectLeadsAttention], (leads) => {
+    // Obtener la fecha límite de hace 4 días
+    const dateLimit = subDays(new Date(), 4);
 
+    // Filtrar los leads que cumplan con las condiciones especificadas
+    const filteredLeads = leads.filter((lead) => {
+        // Eliminar el timestamp "T06:00:00.000Z" del campo actualizadaaccion_lead
+        const actualizadaaccion_lead = new Date(lead.actualizadaaccion_lead.split("T")[0]);
+
+        // Verificar si el lead cumple con todas las condiciones
+        return lead.accion_lead === 3 && lead.estado_lead === 1 && lead.seguimiento_calendar === 0 && actualizadaaccion_lead <= dateLimit && !["02-LEAD-OPORTUNIDAD", "03-LEAD-PRE-RESERVA", "04-LEAD-RESERVA", "05-LEAD-CONTRATO", "06-LEAD-ENTREGADO"].includes(lead.seguimiento_lead);
+    });
+
+    // Retornar la cantidad de leads que cumplen con las condiciones
+    return filteredLeads.length;
+});
 // Exportación del reducer del slice
 export default leadsSlice.reducer;

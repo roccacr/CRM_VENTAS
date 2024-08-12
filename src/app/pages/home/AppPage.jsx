@@ -25,7 +25,6 @@ export const AppPage = () => {
     useEffect(() => {
         // Despachar ambas acciones al mismo tiempo
         dispatch(startLoadingAllLeads());
-  
     }, [dispatch]);
 
     // Actualizar elementos del dashboard cuando cambian los datos
