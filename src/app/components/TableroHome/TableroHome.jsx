@@ -15,7 +15,7 @@ export const TableroHome = ({ image, icons, nombre, cantidad, url }) => {
                                 <p className="text-muted mb-0">{nombre}</p>
                                 <div className="d-flex align-items-end">
                                     {/* Si la cantidad es null o undefined, muestra el loader */}
-                                    {cantidad !== undefined && cantidad !== null ? <h2 className="mb-0 f-w-500">{cantidad}</h2> : <div className="custom-loader"></div>}
+                                    {cantidad !== undefined && cantidad !== null ? <h2 className="mb-0 f-w-500">{cantidad}</h2> : "..."}
                                 </div>
                             </div>
                         </div>
