@@ -1,4 +1,4 @@
 # Environment variables
 .env
 src/.env
-.node_modules/
+.node_modules
