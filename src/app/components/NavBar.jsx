@@ -117,7 +117,7 @@ export const NavBar = ({ sidebarVisible, sidebarStatus, closeSidebar }) => {
                             <label>Modulos</label>
                         </li>
                         <li className="pc-item">
-                            <NavLink to="/Movies/list" className="pc-link active">
+                            <NavLink to="/leads" className="pc-link active">
                                 <span className="pc-micon">
                                     <i className="ti ti-users"></i>
                                 </span>
@@ -125,7 +125,7 @@ export const NavBar = ({ sidebarVisible, sidebarStatus, closeSidebar }) => {
                             </NavLink>
                         </li>
                         <li className="pc-item">
-                            <NavLink to="/Movies/list" className="pc-link active">
+                            <NavLink to="/leads" className="pc-link active">
                                 <span className="pc-micon">
                                     <i className="ti ti-calendar"></i>
                                 </span>

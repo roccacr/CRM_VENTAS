@@ -4,9 +4,10 @@ import { useForm } from "../../hook";
 import { useDispatch, useSelector } from "react-redux";
 // import { startAuthentication } from "@ThunksL";
 import { TextField } from "@mui/material";
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { Auth_Layout } from "../layout/Auth_Layout";
 import { startAuthentication } from "../../store/auth/thunks";
+import { startLoadingLeads } from "../../store/leads/thunksLeads";
 
 /* Definimos nuestras variables vacías */
 const loginFormData = {
@@ -17,6 +18,10 @@ const loginFormData = {
 
 export const LoginPage = () => {
     const dispatch = useDispatch();
+
+    useEffect(() => {
+        dispatch(startLoadingLeads());
+    }, [dispatch]);
 
     // Obtiene el estado de autenticación del store
     const { status, errorMessage } = useSelector((state) => state.auth);
