@@ -1,6 +1,8 @@
 const mysql = require("mysql2/promise");
 const config = require("../../config/config");
 
+const leads = {};
+
 /**
  * @module leads
  * @description Módulo para manejar operaciones relacionadas con leads en la base de datos.
@@ -36,21 +38,20 @@ const handleDatabaseOperation = async (operation, database) => {
     }
 };
 
-const leads = {
-    /**
-     * Obtiene información de leads desde la base de datos.
-     * @async
-     * @param {Object} dataParams - Parámetros para la consulta.
-     * @param {string} dataParams.database - Nombre de la base de datos a consultar.
-     * @returns {Promise<Object>} Resultado de la consulta.
-     */
-    fetchLeadsAsyncNew: async (dataParams) => {
-        console.log(dataParams.idnetsuite_admin);
-        return handleDatabaseOperation(async (connection) => {
-            const [result] = await connection.execute("SELECT * FROM leads WHERE  accion_lead in (0,2) and estado_lead=1 and segimineto_lead in ('01-LEAD-INTERESADO') and id_empleado_lead=?", [dataParams.idnetsuite_admin]);
-            return { statusCode: result.length > 0 ? 200 : 210, data: result };
-        }, dataParams.database);
-    },
+leads.fetchLeadsAsyncNew = async (dataParams) => {
+    console.log(dataParams.idnetsuite_admin);
+    return handleDatabaseOperation(async (connection) => {
+        const [result] = await connection.execute("SELECT * FROM leads WHERE  accion_lead in (0,2) and estado_lead=1 and segimineto_lead in ('01-LEAD-INTERESADO') and id_empleado_lead=?", [dataParams.idnetsuite_admin]);
+        return { statusCode: result.length > 0 ? 200 : 210, data: result };
+    }, dataParams.database);
+};
+
+leads.fetchLeadsAsyncattention = async (dataParams) => {
+    console.log(dataParams.idnetsuite_admin);
+    return handleDatabaseOperation(async (connection) => {
+        const [result] = await connection.execute("SELECT * FROM leads WHERE  accion_lead = 3 and estado_lead=1 and seguimiento_calendar=0 and segimineto_lead NOT IN ('02-LEAD-OPORTUNIDAD', '03-LEAD-PRE-RESERVA', '04-LEAD-RESERVA', '05-LEAD-CONTRATO', '06-LEAD-ENTREGADO') and  id_empleado_lead=?", [dataParams.idnetsuite_admin]);
+        return { statusCode: result.length > 0 ? 200 : 210, data: result };
+    }, dataParams.database);
 };
 
 module.exports = leads;

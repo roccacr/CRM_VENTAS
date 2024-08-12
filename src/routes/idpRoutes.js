@@ -63,10 +63,18 @@ module.exports = function (app) {
     });
 
     /**
-     * Ruta para extraer la lista de todos los clientes
+     * Ruta para extraer la lista de todos los clientes nuevos
      * Primero valida el token de acceso y luego maneja la solicitud a la base de datos
      */
     app.post("/api/v2.0/leads/home/new", validateAccessToken, (req, res) => {
         handleRequest(leads, "fetchLeadsAsyncNew", req, res);
+    });
+
+    /**
+     * Ruta para extraer la lista de todos los clientes nuevos
+     * Primero valida el token de acceso y luego maneja la solicitud a la base de datos
+     */
+    app.post("/api/v2.0/leads/home/attention", validateAccessToken, (req, res) => {
+        handleRequest(leads, "fetchLeadsAsyncattention", req, res);
     });
 };
