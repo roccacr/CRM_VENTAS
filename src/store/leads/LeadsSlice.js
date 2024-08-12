@@ -16,6 +16,8 @@ export const leadsSlice = createSlice({
         setLeadsNew: (state, action) => {
             state.listNew = action.payload; // Actualiza la lista de leads nuevos
             state.status = "succeeded"; // Indica que la operación fue exitosa
+            state.listAttention = []; // Actualiza la lista de leads que requieren atención
+            state.listEvents = []; // Actualiza la lista de leads que requieren atención
         },
         setLeadsAttention: (state, action) => {
             state.listAttention = action.payload; // Actualiza la lista de leads que requieren atención
@@ -89,29 +91,31 @@ export const selectFilteredEventsCount = createSelector([selectEvents], (events)
 });
 
 // Selector para obtener los eventos para hoy y mañana
+// Selector para obtener los eventos para hoy y mañana
 export const selectEventsForTodayAndTomorrow = createSelector([selectEvents], (events) => {
     // Obtener la fecha de hoy ajustada a la hora de Costa Rica
     const now = new Date();
     now.setHours(now.getHours() - 6); // Ajuste para GMT-6
-    const today = now.toISOString().split("T")[0];
 
     // Obtener la fecha de mañana ajustada a la hora de Costa Rica
     const tomorrow = new Date(now);
     tomorrow.setDate(tomorrow.getDate() + 1);
     const tomorrowDate = tomorrow.toISOString().split("T")[0];
 
-    // Filtrar los eventos que coinciden con la fecha de hoy o mañana
+    // Filtrar los eventos que son anteriores o iguales a mañana
     const filteredEvents = events.filter((event) => {
-        // Extraer solo la fecha de "fechaIni_calendar"
-        const eventDate = event.fechaIni_calendar.split("T")[0];
+        // Usar una expresión regular para extraer la fecha, ignorando la parte de la hora si está presente
+        const eventDate = event.fechaIni_calendar.match(/^\d{4}-\d{2}-\d{2}/)[0];
+        console.log(eventDate);
 
-        // Comparar si la fecha del evento es igual a hoy o mañana
-        return eventDate === today || eventDate === tomorrowDate;
+        // Comparar si la fecha del evento es menor o igual a mañana
+        return eventDate <= tomorrowDate;
     });
 
     // Retornar los eventos filtrados
     return filteredEvents;
 });
+
 
 
 
