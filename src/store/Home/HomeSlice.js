@@ -8,6 +8,7 @@ export const HomeSlice = createSlice({
         listNew: [], // Lista de leads nuevos
         listAttention: [], // Lista de leads que requieren atención
         listEvents: [], // Lista de los eventos pendientes para hoy
+        listOportunity: [], // Lista de los eventos pendientes para hoy
         status: "idle", // Estado de la operación (idle, loading, succeeded, failed)
         error: null, // Mensaje de error, si lo hay
         currentLead: null, // Lead actualmente seleccionado
@@ -16,8 +17,6 @@ export const HomeSlice = createSlice({
         setLeadsNew: (state, action) => {
             state.listNew = action.payload; // Actualiza la lista de leads nuevos
             state.status = "succeeded"; // Indica que la operación fue exitosa
-            state.listAttention = []; // Actualiza la lista de leads que requieren atención
-            state.listEvents = []; // Actualiza la lista de leads que requieren atención
         },
         setLeadsAttention: (state, action) => {
             state.listAttention = action.payload; // Actualiza la lista de leads que requieren atención
@@ -34,11 +33,18 @@ export const HomeSlice = createSlice({
             state.status = "failed"; // Indica que la operación falló
             state.error = action.payload; // Almacena el mensaje de error
         },
+        setClearList: (state) => {
+            state.listNew = []; // Lista de leads nuevos
+            state.listAttention = []; // Lista de leads que requieren atención
+            state.listEvents = []; // Lista de los eventos pendientes para hoy
+            state.listOportunity = []; // Lista de los eventos pendientes para hoy
+        },
+
     },
 });
 
 // Exportación de acciones
-export const { setLeadsNew, setLeadsAttention,setEventsAttention, setLoading, setError } = HomeSlice.actions;
+export const { setLeadsNew, setLeadsAttention,setEventsAttention, setLoading, setError,setClearList } = HomeSlice.actions;
 
 // Selectores
 const selectLeadsNew = (state) => state.lead.listNew;

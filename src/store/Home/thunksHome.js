@@ -1,7 +1,7 @@
 /********************************************** MODULE IMPORTS ****************************************************/
 // import { errorMessages, secretKey } from "../../api";
 import { fetchEventsAsync, fetchLeadsAsyncAttention, fetchLeadsAsyncNew } from "./Api_Home_Providers";
-import { setError, setLeadsNew, setLeadsAttention, setEventsAttention } from "./HomeSlice";
+import { setError, setLeadsNew, setLeadsAttention, setEventsAttention, setClearList } from "./HomeSlice";
 
 
 
@@ -16,6 +16,7 @@ export const startLoadingAllLeads = () => {
     return async (dispatch, getState) => {
         // Extraemos los datos necesarios del estado de autenticación
         const { idnetsuite_admin, rol_admin } = getState().auth;
+        dispatch(setClearList());
 
         try {
             // Realizamos múltiples solicitudes asincrónicas en paralelo
