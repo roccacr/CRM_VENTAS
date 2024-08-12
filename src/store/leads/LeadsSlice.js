@@ -67,24 +67,58 @@ export const selectFilteredLeadsAttentionCount = createSelector([selectLeadsAtte
 
 // Selector para contar los eventos pendientes para hoy
 // Selector para obtener los eventos filtrados por fecha
-export const selectFilteredEventsCount = createSelector(
-  [selectEvents],
-  (events) => {
-    // Obtener la fecha de hoy en el formato "YYYY-MM-DD"
-    const today = new Date().toISOString().split('T')[0];
+export const selectFilteredEventsCount = createSelector([selectEvents], (events) => {
+    // Obtener la fecha de hoy ajustada a la hora de Costa Rica
+    const now = new Date();
+    now.setHours(now.getHours() - 6); // Ajuste para GMT-6
+    const today = now.toISOString().split("T")[0];
 
     // Filtrar los eventos que coinciden con la fecha de hoy
     const filteredEvents = events.filter((event) => {
-      // Extraer solo la fecha de "fechaIni_calendar"
-      const eventDate = event.fechaIni_calendar.split('T')[0];
+        // Extraer solo la fecha de "fechaIni_calendar"
+        const eventDate = event.fechaIni_calendar.split("T")[0];
 
-      // Comparar si la fecha del evento es igual a hoy
-      return eventDate === today;
+        console.log(today);
+
+        // Comparar si la fecha del evento es igual a hoy
+        return eventDate === today;
     });
 
     // Retornar la cantidad de eventos filtrados
     return filteredEvents.length;
-  }
-);
+});
+
+// Selector para obtener los eventos para hoy y mañana
+export const selectEventsForTodayAndTomorrow = createSelector([selectEvents], (events) => {
+    // Obtener la fecha de hoy ajustada a la hora de Costa Rica
+    const now = new Date();
+    now.setHours(now.getHours() - 6); // Ajuste para GMT-6
+    const today = now.toISOString().split("T")[0];
+
+    // Obtener la fecha de mañana ajustada a la hora de Costa Rica
+    const tomorrow = new Date(now);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const tomorrowDate = tomorrow.toISOString().split("T")[0];
+
+    // Filtrar los eventos que coinciden con la fecha de hoy o mañana
+    const filteredEvents = events.filter((event) => {
+        // Extraer solo la fecha de "fechaIni_calendar"
+        const eventDate = event.fechaIni_calendar.split("T")[0];
+
+        // Comparar si la fecha del evento es igual a hoy o mañana
+        return eventDate === today || eventDate === tomorrowDate;
+    });
+
+    // Retornar los eventos filtrados
+    return filteredEvents;
+});
+
+
+
+
+
+
+
+
 // Exportación del reducer del slice
 export default leadsSlice.reducer;

@@ -1,4 +1,14 @@
+import { useSelector } from "react-redux";
+import { selectEventsForTodayAndTomorrow } from "../../../store/leads/LeadsSlice";
+
 export const EventosPendientes = () => {
+    const selectEvents = useSelector(selectEventsForTodayAndTomorrow);
+
+    // Verifica si selectEvents tiene elementos
+    if (!selectEvents || selectEvents.length === 0) {
+        return null; // No mostrar nada si selectEvents está vacío
+    }
+
     return (
         <>
             <div className="col-12">
@@ -11,11 +21,11 @@ export const EventosPendientes = () => {
                             <table className="table table-hover" id="pc-dt-simple">
                                 <thead>
                                     <tr>
-                                        <th>Nombre del evento</th>
-                                        <th>Leads </th>
+                                        <th>Evento</th>
+                                        <th>Cliente</th>
                                         <th>Fecha Inicial</th>
                                         <th>Hora Inicial</th>
-                                        <th>Estado </th>
+                                        <th>Estado</th>
                                         <th>Tipo</th>
                                         <th>Cita</th>
                                         <th>Proyecto</th>
@@ -23,40 +33,30 @@ export const EventosPendientes = () => {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    <tr>
-                                        <td>
-                                            <div className="d-flex align-items-center">
-                                                <div className="flex-shrink-0">
-                                                    <img src="../assets/images/user/avatar-1.jpg" alt="user image" className="img-radius wid-40" />
-                                                </div>
-                                                <div className="flex-grow-1 ms-3">
-                                                    <h6 className="mb-0">Airi Satou</h6>
-                                                </div>
-                                            </div>
-                                        </td>
-                                        <td>Salary Payment</td>
-                                        <td>Salary Payment</td>
-                                        <td>Salary Payment</td>
-                                        <td>Salary Payment</td>
-                                        <td>
-                                            2023/02/07 <span className="text-muted text-sm d-block">09:05 PM</span>
-                                        </td>
-                                        <td>$950.54</td>
-                                        <td>
-                                            <span className="badge text-bg-success">Completed</span>
-                                        </td>
-                                        <td>
-                                            <a href="#" className="avtar avtar-xs btn-link-secondary">
-                                                <i className="ti ti-eye f-20"></i>
-                                            </a>
-                                            <a href="#" className="avtar avtar-xs btn-link-secondary">
-                                                <i className="ti ti-edit f-20"></i>
-                                            </a>
-                                            <a href="#" className="avtar avtar-xs btn-link-secondary">
-                                                <i className="ti ti-trash f-20"></i>
-                                            </a>
-                                        </td>
-                                    </tr>
+                                    {selectEvents.map((event, index) => (
+                                        <tr key={index}>
+                                            <td>{event.nombre_calendar}</td>
+                                            <td>{event.cliente}</td>
+                                            <td>{event.fechaInicial}</td>
+                                            <td>{event.horaInicial}</td>
+                                            <td>{event.estado}</td>
+                                            <td>{event.tipo}</td>
+                                            <td>{event.cita}</td>
+                                            <td>{event.proyecto}</td>
+                                            <td>{event.campaña}</td>
+                                            <td>
+                                                <a href="#" className="avtar avtar-xs btn-link-secondary">
+                                                    <i className="ti ti-eye f-20"></i>
+                                                </a>
+                                                <a href="#" className="avtar avtar-xs btn-link-secondary">
+                                                    <i className="ti ti-edit f-20"></i>
+                                                </a>
+                                                <a href="#" className="avtar avtar-xs btn-link-secondary">
+                                                    <i className="ti ti-trash f-20"></i>
+                                                </a>
+                                            </td>
+                                        </tr>
+                                    ))}
                                 </tbody>
                             </table>
                         </div>
