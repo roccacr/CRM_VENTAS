@@ -1,80 +1,78 @@
-// Importación de módulos necesarios
 const dotenv = require("dotenv");
 const helpers = require("../utils/helpers");
-const multer = require("multer");
 const authenticated = require("../models/authenticated/authenticated");
-const leads = require("../models/leads/leads");
+const home = require("../models/home/home");
 
-// Cargar variables de entorno
+// Load environment variables
 dotenv.config();
 
+// Global API prefix
+const API_PREFIX = "/api/v2.0";
+
 /**
- * Middleware para validar el token de acceso
- * @param {Object} req - Objeto de solicitud
- * @param {Object} res - Objeto de respuesta
- * @param {Function} next - Función para pasar al siguiente middleware
+ * Middleware to validate the access token
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ * @param {Function} next - Express next middleware function
  */
 const validateAccessToken = (req, res, next) => {
-    const { token_access } = req.body;
-
-    const expectedToken = process.env.TOKEN_ACCESS;
-
-    if (expectedToken === token_access) {
-        console.log("Token de acceso válido");
+    if (process.env.TOKEN_ACCESS === req.body.token_access) {
         next();
     } else {
-        console.log("Token de acceso inválido");
         res.status(401).json({
             statusCode: 401,
-            message: "Acceso no autorizado. Token inválido.",
+            message: "Unauthorized access. Invalid token.",
         });
     }
 };
 
 /**
- * Configuración de rutas de la aplicación
- * @param {Object} app - Instancia de la aplicación Express
+ * Generic request handler for model operations
+ * @param {Object} model - The model object containing the method to be called
+ * @param {string} method - The name of the method to be called on the model
+ * @returns {Function} Express middleware function to handle the request
+ */
+const handleRequest = (model, method) => (req, res) => {
+    model[method](req.body)
+        .then((resp) => helpers.manageResponse(res, resp, null))
+        .catch((err) => helpers.manageResponse(res, null, err));
+};
+
+/**
+ * Configure application routes
+ * @param {Object} app - Express application instance
  */
 module.exports = function (app) {
-    // Ruta general para verificar el estado de la API
-    app.get("/", (req, res) => {
-        res.status(200).json({ message: "API SHOWTIME ACTIVA", status: "OK" });
+    // API health check route
+    app.get("/", (_, res) => res.status(200).json({ message: "SHOWTIME API ACTIVE", status: "OK" }));
+
+    // Authentication Routes
+    // These routes handle user authentication processes
+    const authRoutes = [{ path: "/login", method: "startSession" }];
+
+    // Set up authentication routes
+    authRoutes.forEach(({ path, method }) => {
+        app.post(`${API_PREFIX}${path}`, validateAccessToken, handleRequest(authenticated, method));
     });
 
-    /**
-     * Función para manejar solicitudes y respuestas
-     * @param {Object} model - Modelo de datos
-     * @param {string} method - Método a ejecutar en el modelo
-     * @param {Object} req - Objeto de solicitud
-     * @param {Object} res - Objeto de respuesta
-     */
-    function handleRequest(model, method, req, res) {
-        model[method](req.body)
-            .then((resp) => helpers.manageResponse(res, resp, null))
-            .catch((err) => helpers.manageResponse(res, null, err));
-    }
+    // Lead Routes
+    // These routes manage lead-related operations
+    const leadRoutes = [
+        { path: "/home/new", method: "fetchLeadsAsyncNew" },
+        { path: "/home/attention", method: "fetchLeadsAsyncattention" },
+    ];
 
-    /**
-     * Ruta para iniciar sesión
-     * Primero valida el token de acceso y luego maneja la solicitud de inicio de sesión
-     */
-    app.post("/api/v2.0/login", validateAccessToken, (req, res) => {
-        handleRequest(authenticated, "startSession", req, res);
+    // Set up lead routes
+    leadRoutes.forEach(({ path, method }) => {
+        app.post(`${API_PREFIX}${path}`, validateAccessToken, handleRequest(home, method));
     });
 
-    /**
-     * Ruta para extraer la lista de todos los clientes nuevos
-     * Primero valida el token de acceso y luego maneja la solicitud a la base de datos
-     */
-    app.post("/api/v2.0/leads/home/new", validateAccessToken, (req, res) => {
-        handleRequest(leads, "fetchLeadsAsyncNew", req, res);
-    });
+    // Event Routes
+    // These routes handle event-related operations
+    const eventRoutes = [{ path: "/events/home/events", method: "fetchEventsAsync" }];
 
-    /**
-     * Ruta para extraer la lista de todos los clientes nuevos
-     * Primero valida el token de acceso y luego maneja la solicitud a la base de datos
-     */
-    app.post("/api/v2.0/leads/home/attention", validateAccessToken, (req, res) => {
-        handleRequest(leads, "fetchLeadsAsyncattention", req, res);
+    // Set up event routes
+    eventRoutes.forEach(({ path, method }) => {
+        app.post(`${API_PREFIX}${path}`, validateAccessToken, handleRequest(home, method));
     });
 };

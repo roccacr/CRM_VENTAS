@@ -1,11 +1,11 @@
 const mysql = require("mysql2/promise");
 const config = require("../../config/config");
 
-const leads = {};
+const home = {};
 
 /**
- * @module leads
- * @description Módulo para manejar operaciones relacionadas con leads en la base de datos.
+ * @module home
+ * @description Módulo para manejar operaciones relacionadas con home en la base de datos.
  */
 
 /**
@@ -38,20 +38,50 @@ const handleDatabaseOperation = async (operation, database) => {
     }
 };
 
-leads.fetchLeadsAsyncNew = async (dataParams) => {
-    console.log(dataParams.idnetsuite_admin);
+home.fetchLeadsAsyncNew = async (dataParams) => {
+
     return handleDatabaseOperation(async (connection) => {
-        const [result] = await connection.execute("SELECT * FROM leads WHERE  accion_lead in (0,2) and estado_lead=1 and segimineto_lead in ('01-LEAD-INTERESADO') and id_empleado_lead=?", [dataParams.idnetsuite_admin]);
+        const [result] = await connection.execute(
+            `SELECT * FROM leads
+             WHERE
+             accion_lead in (0, 2)
+             and estado_lead = 1
+             and segimineto_lead in ('01-LEAD-INTERESADO')
+             and id_empleado_lead =? `,
+            [dataParams.idnetsuite_admin]);
         return { statusCode: result.length > 0 ? 200 : 210, data: result };
     }, dataParams.database);
 };
 
-leads.fetchLeadsAsyncattention = async (dataParams) => {
-    console.log(dataParams.idnetsuite_admin);
+home.fetchLeadsAsyncattention = async (dataParams) => {
+
     return handleDatabaseOperation(async (connection) => {
-        const [result] = await connection.execute("SELECT * FROM leads WHERE  accion_lead = 3 and estado_lead=1 and seguimiento_calendar=0 and segimineto_lead NOT IN ('02-LEAD-OPORTUNIDAD', '03-LEAD-PRE-RESERVA', '04-LEAD-RESERVA', '05-LEAD-CONTRATO', '06-LEAD-ENTREGADO') and  id_empleado_lead=?", [dataParams.idnetsuite_admin]);
+        const [result] = await connection.execute(
+            `SELECT * FROM leads
+            WHERE
+            accion_lead = 3
+            and estado_lead=1
+            and seguimiento_calendar=0
+            and segimineto_lead NOT IN ('02-LEAD-OPORTUNIDAD', '03-LEAD-PRE-RESERVA', '04-LEAD-RESERVA', '05-LEAD-CONTRATO', '06-LEAD-ENTREGADO')
+            and  id_empleado_lead=?`,
+            [dataParams.idnetsuite_admin]);
         return { statusCode: result.length > 0 ? 200 : 210, data: result };
     }, dataParams.database);
 };
 
-module.exports = leads;
+
+home.fetchEventsAsync = async (dataParams) => {
+
+    return handleDatabaseOperation(async (connection) => {
+        const [result] = await connection.execute(
+            `SELECT * FROM calendars
+            WHERE
+            estado_calendar=1
+            and accion_calendar='Pendiente'
+            and id_admin=?`,
+            [dataParams.idnetsuite_admin]);
+        return { statusCode: result.length > 0 ? 200 : 210, data: result };
+    }, dataParams.database);
+};
+
+module.exports = home;
