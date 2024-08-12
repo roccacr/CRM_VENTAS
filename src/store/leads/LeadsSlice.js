@@ -66,6 +66,25 @@ export const selectFilteredLeadsAttentionCount = createSelector([selectLeadsAtte
 
 
 // Selector para contar los eventos pendientes para hoy
-export const selectFilteredEventsCount = createSelector([selectEvents], (events) => events.length);
+// Selector para obtener los eventos filtrados por fecha
+export const selectFilteredEventsCount = createSelector(
+  [selectEvents],
+  (events) => {
+    // Obtener la fecha de hoy en el formato "YYYY-MM-DD"
+    const today = new Date().toISOString().split('T')[0];
+
+    // Filtrar los eventos que coinciden con la fecha de hoy
+    const filteredEvents = events.filter((event) => {
+      // Extraer solo la fecha de "fechaIni_calendar"
+      const eventDate = event.fechaIni_calendar.split('T')[0];
+
+      // Comparar si la fecha del evento es igual a hoy
+      return eventDate === today;
+    });
+
+    // Retornar la cantidad de eventos filtrados
+    return filteredEvents.length;
+  }
+);
 // Exportación del reducer del slice
 export default leadsSlice.reducer;

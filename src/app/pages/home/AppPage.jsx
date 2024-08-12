@@ -6,15 +6,16 @@ import { TableroHome } from "../../components/TableroHome/TableroHome";
 import { AppLayout } from "../../layout/AppLayout";
 import { selectFilteredLeadsCount, selectFilteredLeadsAttentionCount, selectFilteredEventsCount } from "../../../store/leads/LeadsSlice";
 import { startLoadingAllLeads } from "../../../store/leads/thunksLeads";
+import { EventosPendientes } from "../../components/TableroHome/EventosPendientes";
 
 export const AppPage = () => {
     const [dashboardItems, setDashboardItems] = useState([
         { id: 1, image: "1.svg", icon: "ti ti-user", name: "LEADS NUEVOS", quantity: null, url: "/leads/lista?data=2" },
         { id: 2, image: "2.svg", icon: "ti ti-user-x", name: "LEADS REQUIEREN ATENCIÓN", quantity: null, url: "/leads/lista?data=3" },
-        { id: 3, image: "3.svg", icon: "ti ti-calendar", name: "EVENTOS PARA HOY", quantity: 1, url: "/evento/lista?data=1" },
-        { id: 4, image: "1.svg", icon: "ti ti-trending-up", name: "OPORTUNIDADES", quantity: 20, url: "/oportunidad/list?data=1&data2=0" },
-        { id: 5, image: "2.svg", icon: "ti ti-download", name: "ORDENES DE VENTA", quantity: 5, url: "/orden/lista?data=1" },
-        { id: 6, image: "3.svg", icon: "ti ti-download", name: "CONTRATOS FIRMADOS", quantity: 3, url: "/orden/lista?data=2" },
+        { id: 3, image: "3.svg", icon: "ti ti-calendar", name: "EVENTOS PARA HOY", quantity: null, url: "/evento/lista?data=1" },
+        { id: 4, image: "1.svg", icon: "ti ti-trending-up", name: "OPORTUNIDADES", quantity: null, url: "/oportunidad/list?data=1&data2=0" },
+        { id: 5, image: "2.svg", icon: "ti ti-download", name: "ORDENES DE VENTA", quantity: null, url: "/orden/lista?data=1" },
+        { id: 6, image: "3.svg", icon: "ti ti-download", name: "CONTRATOS FIRMADOS", quantity: null, url: "/orden/lista?data=2" },
     ]);
 
     const dispatch = useDispatch();
@@ -42,6 +43,7 @@ export const AppPage = () => {
                         {dashboardItems.map((item) => (
                             <TableroHome key={item.id} image={`/assets/panel/${item.image}`} icons={item.icon} nombre={item.name} cantidad={item.quantity} url={item.url} />
                         ))}
+                        <EventosPendientes />
                     </div>
                     <div className="row">
                         <GraficoMensual />
