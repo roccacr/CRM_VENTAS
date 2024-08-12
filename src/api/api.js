@@ -9,6 +9,7 @@ const apiUrl = window.location.hostname === "localhost" ? "http://localhost:7000
 // Define la URL base de la API para imágenes
 const apiUrlImg = window.location.hostname === "localhost" ? "http://localhost:7000/api/v2.0/" : "https://api-node-v2.roccacr.com/api/v2.0/";
 
+const databaseuse = window.location.hostname === "localhost" ? "pruebas" : "produccion";
 
 
 /********************************************** TOKEN DE ACCESO         **********************************************/
@@ -32,7 +33,7 @@ const secretKey = "9e-@5Y4cHdQ)5wT!uL*BzR#e^T@6f2X!";
 */
 const commonRequestData = {
     token_access: "4jH6k-3m.b@s_T8",
-    database: "pruebas",
+    database: databaseuse,
     sqlQuery: "",
     type: "",
 };
