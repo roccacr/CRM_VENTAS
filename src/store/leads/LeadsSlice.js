@@ -1,5 +1,5 @@
 import { createSlice, createSelector } from "@reduxjs/toolkit";
-import { useSelector } from "react-redux";
+
 
 
 // ===============================
@@ -57,43 +57,15 @@ export const { setLeads, addLead, updateLead, deleteLead, setCurrentLead, clearC
 
 // Selector para obtener la lista de leads desde el estado
 const selectLeads = (state) => state.lead.listHome;
-const selectAuth = (state) => state.auth;
+
+
 
 // Selector para contar los leads filtrados según ciertos criterios
-export const selectFilteredLeadsCount = createSelector([selectLeads],(leads) =>leads.filter(
-            (lead) =>
-                (lead.accion_lead === 0 || lead.accion_lead === 2) && // Verifica si 'accion_lead' es 0 o 2
-                lead.estado_lead === 1 && // Verifica si 'estado_lead' es 1
-                lead.segimineto_lead === "01-LEAD-INTERESADO", // Verifica si 'segimineto_lead' es '01-LEAD-INTERESADO'
-        ).length,
-);
+export const selectFilteredLeadsCount = createSelector([selectLeads], (leads) => leads.filter((lead) => lead.segimineto_lead === "01-LEAD-INTERESADO").length);
 
-// Selector para contar los leads que necesitan atención según criterios de tiempo
-export const selectFilteredLeadsAttentionCount = createSelector([selectLeads], (leads) => {
-    const fourDaysAgo = new Date(); // Crea una nueva fecha para representar 4 días atrás desde hoy
-    fourDaysAgo.setDate(fourDaysAgo.getDate() - 4); // Ajusta la fecha para restar 4 días
 
-    const formatDate = (date) => date.toISOString().split("T")[0]; // Función para formatear la fecha en 'YYYY-MM-DD'
+export const selectFilteredLeadsAttentionCount = createSelector([selectLeads], (leads) => leads.filter((lead) => lead.segimineto_lead === "01-LEAD-INTERESADO").length);
 
-    const formattedFourDaysAgo = formatDate(fourDaysAgo); // Formatea la fecha de 4 días atrás
-
-    // Filtra los leads que cumplen con los criterios de atención
-    return leads.filter((lead) => {
-        const formattedActualizadaAccion = formatDate(new Date(lead.actualizadaaccion_lead)); // Formatea la fecha 'actualizadaaccion_lead'
-
-        // Imprime ambas fechas para validar en la consola
-        console.log(`Lead Date: ${formattedActualizadaAccion}, Four Days Ago: ${formattedFourDaysAgo}`);
-
-        // Verifica si el lead cumple con todas las condiciones
-        return (
-            lead.accion_lead === 3 && // Verifica si 'accion_lead' es igual a 3
-            lead.estado_lead === 1 && // Verifica si 'estado_lead' es igual a 1
-            lead.seguimiento_calendar === 0 && // Verifica si 'seguimiento_calendar' es igual a 0
-            formattedActualizadaAccion <= formattedFourDaysAgo && // Verifica si la fecha 'actualizadaaccion_lead' es anterior o igual a 4 días atrás
-            !["02-LEAD-OPORTUNIDAD", "03-LEAD-PRE-RESERVA", "04-LEAD-RESERVA", "05-LEAD-CONTRATO", "06-LEAD-ENTREGADO"].includes(lead.segimineto_lead) // Verifica que 'segimineto_lead' no esté en la lista excluida
-        );
-    }).length; // Devuelve la cantidad de leads que cumplen con todas las condiciones
-});
 
 // ===============================
 // Exportación del reducer del slice

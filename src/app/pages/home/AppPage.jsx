@@ -1,15 +1,13 @@
 import { useState, useEffect } from "react";
-import { useSelector } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import { GraficoKpi } from "../../components/TableroHome/GraficoKpi";
 import { GraficoMensual } from "../../components/TableroHome/GraficoMensual";
 import { TableroHome } from "../../components/TableroHome/TableroHome";
 import { AppLayout } from "../../layout/AppLayout";
 import { selectFilteredLeadsCount, selectFilteredLeadsAttentionCount } from "../../../store/leads/LeadsSlice";
-import { useLoadLeads } from "../../../hook/useLoadLeads";
-export const AppPage = () => {
-    // Usar el hook para cargar los leads si es necesario
-    useLoadLeads();
+import { startLoadingLeadsNew } from "../../../store/leads/thunksLeads";
 
+export const AppPage = () => {
     // Estado local para gestionar los elementos del dashboard
     const [dashboardItems, setDashboardItems] = useState([
         { id: 1, image: "1.svg", icon: "ti ti-user", name: "LEADS NUEVOS", quantity: null, url: "/leads/lista?data=2" },
@@ -23,10 +21,15 @@ export const AppPage = () => {
     // Obtención de datos filtrados desde el estado global utilizando useSelector
     const filteredLeadsCount = useSelector(selectFilteredLeadsCount);
     const filteredLeadsAttentionCount = useSelector(selectFilteredLeadsAttentionCount);
+    const dispatch = useDispatch();
 
-    // useEffect se ejecuta al montar el componente o cuando cambian las dependencias
+    // useEffect para cargar leads solo una vez al montar el componente
     useEffect(() => {
-        // Actualización del estado de los elementos del dashboard según los datos obtenidos
+        dispatch(startLoadingLeadsNew());
+    }, [dispatch]); // Solo se ejecuta una vez al montar
+
+    // useEffect para actualizar los elementos del dashboard cuando cambian los datos
+    useEffect(() => {
         setDashboardItems((prevItems) =>
             prevItems.map((item) => {
                 if (item.id === 1) {
@@ -38,7 +41,7 @@ export const AppPage = () => {
                 return item;
             }),
         );
-    }, [filteredLeadsCount, filteredLeadsAttentionCount]);
+    }, [filteredLeadsCount, filteredLeadsAttentionCount]); // Se ejecuta cuando cambian los datos
 
     return (
         <AppLayout>
@@ -58,4 +61,3 @@ export const AppPage = () => {
         </AppLayout>
     );
 };
-
