@@ -5,7 +5,7 @@ import { GraficoMensual } from "../../components/TableroHome/GraficoMensual";
 import { TableroHome } from "../../components/TableroHome/TableroHome";
 import { AppLayout } from "../../layout/AppLayout";
 import { selectFilteredLeadsCount, selectFilteredLeadsAttentionCount } from "../../../store/leads/LeadsSlice";
-import { startLoadingAttentionCount, startLoadingLeadsNew } from "../../../store/leads/thunksLeads";
+import { startLoadingAllLeads } from "../../../store/leads/thunksLeads";
 
 export const AppPage = () => {
     const [dashboardItems, setDashboardItems] = useState([
@@ -23,8 +23,9 @@ export const AppPage = () => {
 
     // Cargar leads al montar el componente
     useEffect(() => {
-        dispatch(startLoadingLeadsNew());
-        dispatch(startLoadingAttentionCount());
+        // Despachar ambas acciones al mismo tiempo
+        dispatch(startLoadingAllLeads());
+  
     }, [dispatch]);
 
     // Actualizar elementos del dashboard cuando cambian los datos
