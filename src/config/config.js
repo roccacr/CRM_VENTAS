@@ -17,10 +17,10 @@ var configParams = {
     },
     database: {
         produccion: {
-            host: process.env.HOST_LOCALNEW,
-            user: process.env.AUTH_LOCALNEW,
-            password: process.env.PASS_LOCALNEW,
-            database: process.env.NAMENEW,
+            host: "localhost",
+            user: "root",
+            password: "!Roccacrm",
+            database: "crmdatabase-api",
             port: 3306,
         },
         pruebas: {
