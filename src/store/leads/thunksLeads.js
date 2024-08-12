@@ -13,6 +13,7 @@ export const startLoadingLeads = () => {
         try {
 
             const response = await fetchLeadsAsync();
+            console.log("response", response);
             dispatch(setLeads(response.data.data));
            // dispatch(setLeads(leads));
         } catch (error) {
