@@ -75,14 +75,18 @@ home.fetchEventsAsync = async (dataParams) => {
     return handleDatabaseOperation(async (connection) => {
         const [result] = await connection.execute(
             `SELECT
-               IFNULL(leads.nombre_lead, '--') AS nombre_lead,
+                IFNULL(leads.nombre_lead, '--') AS nombre_lead,
+                IFNULL(leads.proyecto_lead, '--') AS proyecto,
+                IFNULL(leads.campana_lead, '--') AS campana,
                calendars.*
             FROM calendars
                LEFT JOIN leads ON leads.idinterno_lead = calendars.id_lead
             WHERE
                estado_calendar = 1
                AND accion_calendar = 'Pendiente'
-               AND id_admin = ?`, [dataParams.idnetsuite_admin]);
+               AND id_admin = ?`,
+            [dataParams.idnetsuite_admin],
+        );
         return { statusCode: result.length > 0 ? 200 : 210, data: result };
     }, dataParams.database);
 };
