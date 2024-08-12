@@ -85,6 +85,7 @@ home.fetchEventsAsync = async (dataParams) => {
                estado_calendar = 1
                AND accion_calendar = 'Pendiente'
                AND id_admin = ?`,
+            
             [dataParams.idnetsuite_admin],
         );
         return { statusCode: result.length > 0 ? 200 : 210, data: result };
