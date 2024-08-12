@@ -66,7 +66,7 @@ module.exports = function (app) {
      * Ruta para extraer la lista de todos los clientes
      * Primero valida el token de acceso y luego maneja la solicitud a la base de datos
      */
-    app.post("/api/v2.0/leads/home", validateAccessToken, (req, res) => {
-        handleRequest(leads, "fetchLeadsAsync", req, res);
+    app.post("/api/v2.0/leads/home/new", validateAccessToken, (req, res) => {
+        handleRequest(leads, "fetchLeadsAsyncNew", req, res);
     });
 };

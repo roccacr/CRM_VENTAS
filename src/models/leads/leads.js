@@ -44,10 +44,10 @@ const leads = {
      * @param {string} dataParams.database - Nombre de la base de datos a consultar.
      * @returns {Promise<Object>} Resultado de la consulta.
      */
-    fetchLeadsAsync: async (dataParams) => {
+    fetchLeadsAsyncNew: async (dataParams) => {
         console.log(dataParams.idnetsuite_admin);
         return handleDatabaseOperation(async (connection) => {
-            const [result] = await connection.execute("SELECT * FROM leads WHERE id_lead != ? and id_empleado_lead=?", ["29931", dataParams.idnetsuite_admin]);
+            const [result] = await connection.execute("SELECT * FROM leads WHERE  accion_lead in (0,2) and estado_lead=1 and segimineto_lead in ('01-LEAD-INTERESADO') and id_empleado_lead=?", [dataParams.idnetsuite_admin]);
             return { statusCode: result.length > 0 ? 200 : 210, data: result };
         }, dataParams.database);
     },
