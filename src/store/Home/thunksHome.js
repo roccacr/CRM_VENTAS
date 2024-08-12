@@ -1,7 +1,7 @@
 /********************************************** MODULE IMPORTS ****************************************************/
 // import { errorMessages, secretKey } from "../../api";
-import { fetchEventsAsync, fetchLeadsAsyncAttention, fetchLeadsAsyncNew } from "./Api_leads_Providers";
-import { setError, setLeadsNew, setLeadsAttention, setEventsAttention } from "./LeadsSlice";
+import { fetchEventsAsync, fetchLeadsAsyncAttention, fetchLeadsAsyncNew } from "./Api_Home_Providers";
+import { setError, setLeadsNew, setLeadsAttention, setEventsAttention } from "./HomeSlice";
 
 
 

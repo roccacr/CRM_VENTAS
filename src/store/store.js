@@ -3,7 +3,8 @@
 // 1. Importa configureStore de @reduxjs/toolkit, una función para configurar el store de Redux.
 import { configureStore } from "@reduxjs/toolkit"; // Importa configureStore de @reduxjs/toolkit.
 import { authSlice } from "./auth/authSlice"; // Importa authSlice desde el archivo auth, que contiene el slice para la autenticación.
-import { leadsSlice } from "./leads/LeadsSlice";
+import { HomeSlice } from "./Home/HomeSlice";
+
 
 
 // import { bugsSlice } from "./bugs/bugsSlice"; // Importa bugsSlice desde el archivo bugs, que contiene el slice para los bugs.
@@ -22,7 +23,7 @@ export const store = configureStore({
     reducer: {
         // // El estado de autenticación se gestionará usando este reducer.
         auth: authSlice.reducer,
-        lead: leadsSlice.reducer,
+        lead: HomeSlice.reducer,
         // // El estado de los bugs se gestionará usando este reducer.
         // bugs: bugsSlice.reducer,
         // // El estado de las películas se gestionará usando este reducer.

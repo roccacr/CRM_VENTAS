@@ -2,8 +2,8 @@ import { createSlice, createSelector } from "@reduxjs/toolkit";
 import { subDays } from "date-fns";
 
 // Slice de Redux para gestionar leads
-export const leadsSlice = createSlice({
-    name: "lead",
+export const HomeSlice = createSlice({
+    name: "Home",
     initialState: {
         listNew: [], // Lista de leads nuevos
         listAttention: [], // Lista de leads que requieren atención
@@ -38,7 +38,7 @@ export const leadsSlice = createSlice({
 });
 
 // Exportación de acciones
-export const { setLeadsNew, setLeadsAttention,setEventsAttention, setLoading, setError } = leadsSlice.actions;
+export const { setLeadsNew, setLeadsAttention,setEventsAttention, setLoading, setError } = HomeSlice.actions;
 
 // Selectores
 const selectLeadsNew = (state) => state.lead.listNew;
@@ -46,10 +46,12 @@ const selectLeadsAttention = (state) => state.lead.listAttention;
 const selectEvents = (state) => state.lead.listEvents;
 
 // Selector para contar los leads nuevos
-export const selectFilteredLeadsCount = createSelector([selectLeadsNew], (leads) => leads.length);
+export const selectFilteredLeadsCount = createSelector([selectLeadsNew], (leads) => (leads ? leads.length : 0));
 
 // Selector para contar los leads que requieren atención
 export const selectFilteredLeadsAttentionCount = createSelector([selectLeadsAttention], (leads) => {
+    if (!leads) return 0;
+
     // Obtener la fecha límite de hace 4 días
     const dateLimit = subDays(new Date(), 4);
 
@@ -67,9 +69,12 @@ export const selectFilteredLeadsAttentionCount = createSelector([selectLeadsAtte
 });
 
 
+
 // Selector para contar los eventos pendientes para hoy
 // Selector para obtener los eventos filtrados por fecha
 export const selectFilteredEventsCount = createSelector([selectEvents], (events) => {
+    if (!events) return 0;
+
     // Obtener la fecha de hoy ajustada a la hora de Costa Rica
     const now = new Date();
     now.setHours(now.getHours() - 6); // Ajuste para GMT-6
@@ -80,8 +85,6 @@ export const selectFilteredEventsCount = createSelector([selectEvents], (events)
         // Extraer solo la fecha de "fechaIni_calendar"
         const eventDate = event.fechaIni_calendar.split("T")[0];
 
-        console.log(today);
-
         // Comparar si la fecha del evento es igual a hoy
         return eventDate === today;
     });
@@ -90,7 +93,7 @@ export const selectFilteredEventsCount = createSelector([selectEvents], (events)
     return filteredEvents.length;
 });
 
-// Selector para obtener los eventos para hoy y mañana
+
 // Selector para obtener los eventos para hoy y mañana
 export const selectEventsForTodayAndTomorrow = createSelector([selectEvents], (events) => {
     // Obtener la fecha de hoy ajustada a la hora de Costa Rica
@@ -106,7 +109,7 @@ export const selectEventsForTodayAndTomorrow = createSelector([selectEvents], (e
     const filteredEvents = events.filter((event) => {
         // Usar una expresión regular para extraer la fecha, ignorando la parte de la hora si está presente
         const eventDate = event.fechaIni_calendar.match(/^\d{4}-\d{2}-\d{2}/)[0];
-        console.log(eventDate);
+        //console.log(eventDate);
 
         // Comparar si la fecha del evento es menor o igual a mañana
         return eventDate <= tomorrowDate;
@@ -125,4 +128,4 @@ export const selectEventsForTodayAndTomorrow = createSelector([selectEvents], (e
 
 
 // Exportación del reducer del slice
-export default leadsSlice.reducer;
+export default HomeSlice.reducer;

@@ -4,8 +4,8 @@ import { GraficoKpi } from "../../components/TableroHome/GraficoKpi";
 import { GraficoMensual } from "../../components/TableroHome/GraficoMensual";
 import { TableroHome } from "../../components/TableroHome/TableroHome";
 import { AppLayout } from "../../layout/AppLayout";
-import { selectFilteredLeadsCount, selectFilteredLeadsAttentionCount, selectFilteredEventsCount } from "../../../store/leads/LeadsSlice";
-import { startLoadingAllLeads } from "../../../store/leads/thunksLeads";
+import { selectFilteredLeadsCount, selectFilteredLeadsAttentionCount, selectFilteredEventsCount } from "../../../store/Home/HomeSlice";
+import { startLoadingAllLeads } from "../../../store/Home/thunksHome";
 import { EventosPendientes } from "../../components/TableroHome/EventosPendientes";
 
 export const AppPage = () => {
