@@ -7,7 +7,7 @@ import { TextField } from "@mui/material";
 import { useEffect, useMemo } from "react";
 import { Auth_Layout } from "../layout/Auth_Layout";
 import { startAuthentication } from "../../store/auth/thunks";
-import { startLoadingLeads } from "../../store/leads/thunksLeads";
+//import { startLoadingLeads } from "../../store/leads/thunksLeads";
 
 /* Definimos nuestras variables vacías */
 const loginFormData = {
@@ -20,7 +20,7 @@ export const LoginPage = () => {
     const dispatch = useDispatch();
 
     useEffect(() => {
-        dispatch(startLoadingLeads());
+        // dispatch(startLoadingLeads());
     }, [dispatch]);
 
     // Obtiene el estado de autenticación del store

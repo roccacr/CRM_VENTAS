@@ -5,13 +5,13 @@ import { startLoadingLeads } from "../store/leads/thunksLeads";
 
 export const useLoadLeads = () => {
     const dispatch = useDispatch();
-    const list = useSelector((state) => state.lead.list);
+    const listHome = useSelector((state) => state.lead.listHome);
 
     useEffect(() => {
-        if (list.length === 0) {
+        if (listHome.length === 0) {
             dispatch(startLoadingLeads());
         }
-    }, [list, dispatch]);
+    }, [listHome, dispatch]);
 
-    return list;
+    return listHome;
 };

@@ -8,27 +8,27 @@ import { useSelector } from "react-redux";
 export const leadsSlice = createSlice({
     name: "lead", // El nombre del slice es "lead" para evitar confusión con otros slices
     initialState: {
-        list: [], // Array para almacenar todos los leads
+        listHome: [], // Array para almacenar todos los leads
         status: "idle", // Estado actual de las operaciones sobre leads (idle, loading, succeeded, failed)
         error: null, // Almacena cualquier mensaje de error
         currentLead: null, // Almacena el lead actualmente seleccionado
     },
     reducers: {
         setLeads: (state, action) => {
-            state.list = action.payload; // Actualiza la lista de leads con los datos proporcionados en la acción
+            state.listHome = action.payload; // Actualiza la lista de leads con los datos proporcionados en la acción
             state.status = "succeeded"; // Cambia el estado a "succeeded" indicando que la operación fue exitosa
         },
         addLead: (state, action) => {
-            state.list.push(action.payload); // Añade un nuevo lead a la lista
+            state.listHome.push(action.payload); // Añade un nuevo lead a la lista
         },
         updateLead: (state, action) => {
-            const index = state.list.findIndex((lead) => lead.id === action.payload.id); // Busca el índice del lead a actualizar
+            const index = state.listHome.findIndex((lead) => lead.id === action.payload.id); // Busca el índice del lead a actualizar
             if (index !== -1) {
-                state.list[index] = action.payload; // Actualiza el lead en la posición encontrada
+                state.listHome[index] = action.payload; // Actualiza el lead en la posición encontrada
             }
         },
         deleteLead: (state, action) => {
-            state.list = state.list.filter((lead) => lead.id !== action.payload); // Elimina el lead que coincide con el ID proporcionado
+            state.listHome = state.listHome.filter((lead) => lead.id !== action.payload); // Elimina el lead que coincide con el ID proporcionado
         },
         setCurrentLead: (state, action) => {
             state.currentLead = action.payload; // Establece el lead actualmente seleccionado
@@ -56,7 +56,7 @@ export const { setLeads, addLead, updateLead, deleteLead, setCurrentLead, clearC
 // ===============================
 
 // Selector para obtener la lista de leads desde el estado
-const selectLeads = (state) => state.lead.list;
+const selectLeads = (state) => state.lead.listHome;
 const selectAuth = (state) => state.auth;
 
 // Selector para contar los leads filtrados según ciertos criterios
