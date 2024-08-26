@@ -2,14 +2,14 @@ import axios from "axios";
 
 /********************************************** BASE API URL DEFINITION **********************************************/
 // Define la URL base de la API
-const apiUrl = window.location.hostname === "localhost" ? "https://api-node-v2.roccacr.com/api/v2.0/" : "https://api-node-v2.roccacr.com/api/v2.0/";
+const apiUrl = window.location.hostname === "localhost" ? "http://localhost:7000/api/v2.0/" : "https://api-node-v2.roccacr.com/api/v2.0/";
 
 
 
 // Define la URL base de la API para imágenes
 const apiUrlImg = window.location.hostname === "localhost" ? "http://localhost:7000/api/v2.0/" : "https://api-node-v2.roccacr.com/api/v2.0/";
 
-const databaseuse = window.location.hostname === "localhost" ? "produccion" : "produccion";
+const databaseuse = window.location.hostname === "localhost" ? "pruebas" : "produccion";
 
 
 /********************************************** TOKEN DE ACCESO         **********************************************/
