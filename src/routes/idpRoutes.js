@@ -70,7 +70,11 @@ module.exports = function (app) {
         {
             category: "OrderSales",
             model: home,
-            routes: [{ path: "/home/fetchAllOrderSale", method: "fetchAllOrderSale" }],
+            routes: [
+                { path: "/home/fetchAllOrderSale", method: "fetchAllOrderSale" },
+                { path: "/home/fetchAllOrderSale_pending", method: "fetchAllOrderSale_pending" }
+            ],
+
         },
     ];
 

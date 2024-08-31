@@ -135,6 +135,19 @@ home.fetchAllOrderSale = (dataParams) =>
     );
 
 
+    /**
+ * Obtiene todas las ordenes De venta con pago pendiente al endedot basadas en el rol del usuario y su ID.
+ * @async
+ * @param {Object} dataParams - Parámetros para la consulta.
+ * @returns {Promise<Object>} Resultado de la operación.
+ */
+home.fetchAllOrderSale_pending = (dataParams) =>
+    executeStoredProcedure(
+        "banner_Home_OrdenSale_complete", // Nombre del procedimiento almacenado.
+        [dataParams.rol_admin, dataParams.idnetsuite_admin], // Parámetros para el procedimiento.
+        dataParams.database, // Base de datos a utilizar.
+    );
+
 
 /**
  * Actualiza el estado de un evento en la tabla de calendarios.
