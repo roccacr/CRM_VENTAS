@@ -1,7 +1,7 @@
-const mysql = require("mysql2/promise");
-const config = require("../../config/config");
+const mysql = require("mysql2/promise"); // Importa el módulo 'mysql2/promise' para manejar conexiones a la base de datos de manera asincrónica.
+const config = require("../../config/config"); // Importa la configuración de la base de datos desde un archivo externo.
 
-const home = {};
+const home = {}; // Define un objeto vacío que contendrá todas las funciones relacionadas con 'home'.
 
 /**
  * @module home
@@ -15,7 +15,15 @@ const home = {};
  * @returns {Promise<mysql.Connection>} Conexión a la base de datos.
  */
 const createConnection = async (database) => {
-    return await mysql.createConnection(config.database[database]);
+    try {
+        // Intenta establecer una conexión con la base de datos especificada.
+        const connection = await mysql.createConnection(config.database[database]);
+        return connection; // Retorna la conexión si se establece correctamente.
+    } catch (error) {
+        // Manejo de errores en caso de que falle la conexión.
+        console.error(`Error al crear la conexión a la base de datos: ${error.message}`);
+        throw new Error("No se pudo establecer la conexión a la base de datos"); // Lanza un nuevo error si la conexión falla.
+    }
 };
 
 /**
@@ -26,70 +34,112 @@ const createConnection = async (database) => {
  * @returns {Promise<Object>} Resultado de la operación.
  */
 const handleDatabaseOperation = async (operation, database) => {
-    let connection;
+    let connection; // Declaración de la variable que contendrá la conexión a la base de datos.
     try {
-        connection = await createConnection(database);
-        return await operation(connection);
+        connection = await createConnection(database); // Establece la conexión utilizando la función 'createConnection'.
+        return await operation(connection); // Ejecuta la operación de base de datos pasada como argumento.
     } catch (error) {
+        // Manejo de errores durante la operación de la base de datos.
         console.error(`Error en la operación de base de datos: ${error.message}`);
-        return { statusCode: 500, error: "Error interno del servidor" };
+        return { statusCode: 500, error: "Error interno del servidor" }; // Retorna un código de error 500 si algo sale mal.
     } finally {
+        // Cierra la conexión a la base de datos si se ha establecido.
         if (connection) await connection.end();
     }
 };
 
-home.fetchLeadsAsyncNew = async (dataParams) => {
-
+/**
+ * Ejecuta un procedimiento almacenado y maneja la respuesta.
+ * @async
+ * @param {string} procedureName - Nombre del procedimiento almacenado.
+ * @param {Array} params - Parámetros para el procedimiento almacenado.
+ * @param {string} database - Nombre de la base de datos a utilizar.
+ * @returns {Promise<Object>} Resultado de la operación.
+ */
+const executeStoredProcedure = async (procedureName, params, database) => {
     return handleDatabaseOperation(async (connection) => {
-        const [result] = await connection.execute(
-            `SELECT * FROM leads
-             WHERE
-             accion_lead in (0, 2)
-             and estado_lead = 1
-             and segimineto_lead in ('01-LEAD-INTERESADO')
-             and id_empleado_lead =? `,
-            [dataParams.idnetsuite_admin]);
-        return { statusCode: result.length > 0 ? 200 : 210, data: result };
-    }, dataParams.database);
+        // Ajusta la consulta para asegurarte de que todos los parámetros están en sus posiciones correctas.
+        const [rows] = await connection.execute(`CALL ${procedureName}(${params.map(() => "?").join(", ")})`, params);
+
+        // Retorna el resultado con un código de estado dependiendo si se encontraron datos.
+        return {
+            statusCode: rows.length > 0 && rows[0].length > 0 ? 200 : 210, // 200 si hay resultados, 210 si no.
+            data: rows[0], // Los datos obtenidos del procedimiento almacenado.
+        };
+    }, database);
 };
 
-home.fetchLeadsAsyncattention = async (dataParams) => {
+/**
+ * Obtiene los leads basados en el rol del usuario y su ID.
+ * @async
+ * @param {Object} dataParams - Parámetros para la consulta.
+ * @returns {Promise<Object>} Resultado de la operación.
+ */
+home.fetchLeadsAsyncNew = (dataParams) =>
+    executeStoredProcedure(
+        "banner_home_leadsNew", // Nombre del procedimiento almacenado.
+        [dataParams.rol_admin, dataParams.idnetsuite_admin], // Parámetros para el procedimiento.
+        dataParams.database, // Base de datos a utilizar.
+    );
 
-    return handleDatabaseOperation(async (connection) => {
+/**
+ * Obtiene los leads que requieren atención.
+ * @async
+ * @param {Object} dataParams - Parámetros para la consulta.
+ * @returns {Promise<Object>} Resultado de la operación.
+ */
+home.fetchLeadsAsyncattention = (dataParams) =>
+    executeStoredProcedure(
+        "banner_home_leadsAttention", // Nombre del procedimiento almacenado.
+        [dataParams.rol_admin, dataParams.idnetsuite_admin], // Parámetros para el procedimiento.
+        dataParams.database, // Base de datos a utilizar.
+    );
+
+/**
+ * Obtiene los eventos basados en el rol del usuario y su ID.
+ * @async
+ * @param {Object} dataParams - Parámetros para la consulta.
+ * @returns {Promise<Object>} Resultado de la operación.
+ */
+home.fetchEventsAsync = (dataParams) =>
+    executeStoredProcedure(
+        "banner_home_events", // Nombre del procedimiento almacenado.
+        [dataParams.rol_admin, dataParams.idnetsuite_admin], // Parámetros para el procedimiento.
+        dataParams.database, // Base de datos a utilizar.
+    );
+
+/**
+ * Obtiene todas las oportunidades basadas en el rol del usuario y su ID.
+ * @async
+ * @param {Object} dataParams - Parámetros para la consulta.
+ * @returns {Promise<Object>} Resultado de la operación.
+ */
+home.fetchOportunityAsync = (dataParams) =>
+    executeStoredProcedure(
+        "banner_home_count_opportunities", // Nombre del procedimiento almacenado.
+        [dataParams.rol_admin, dataParams.idnetsuite_admin], // Parámetros para el procedimiento.
+        dataParams.database, // Base de datos a utilizar.
+    );
+
+/**
+ * Actualiza el estado de un evento en la tabla de calendarios.
+ * @async
+ * @param {Object} dataParams - Parámetros para la actualización.
+ * @returns {Promise<Object>} Resultado de la operación.
+ */
+home.updateEventsStatusAsync = (dataParams) =>
+    handleDatabaseOperation(async (connection) => {
+        // Ejecuta el procedimiento almacenado para actualizar el estado de un evento.
         const [result] = await connection.execute(
-            `SELECT * FROM leads
-            WHERE
-            accion_lead = 3
-            and estado_lead=1
-            and seguimiento_calendar=0
-            and segimineto_lead NOT IN ('02-LEAD-OPORTUNIDAD', '03-LEAD-PRE-RESERVA', '04-LEAD-RESERVA', '05-LEAD-CONTRATO', '06-LEAD-ENTREGADO')
-            and  id_empleado_lead=?`,
-            [dataParams.idnetsuite_admin]);
-        return { statusCode: result.length > 0 ? 200 : 210, data: result };
-    }, dataParams.database);
-};
-
-
-home.fetchEventsAsync = async (dataParams) => {
-
-    return handleDatabaseOperation(async (connection) => {
-        const [result] = await connection.execute(
-            `SELECT
-                IFNULL(leads.nombre_lead, '--') AS nombre_lead,
-                IFNULL(leads.proyecto_lead, '--') AS proyecto,
-                IFNULL(leads.campana_lead, '--') AS campana,
-               calendars.*
-            FROM calendars
-               LEFT JOIN leads ON leads.idinterno_lead = calendars.id_lead
-            WHERE
-               estado_calendar = 1
-               AND accion_calendar = 'Pendiente'
-               AND id_admin = ?`,
-            
-            [dataParams.idnetsuite_admin],
+            `CALL update_event_status(?, ?)`, // Llamada al procedimiento almacenado.
+            [dataParams.newStatus, dataParams.id_calendar], // Parámetros para la actualización: nuevo estado e ID del calendario.
         );
-        return { statusCode: result.length > 0 ? 200 : 210, data: result };
-    }, dataParams.database);
-};
 
-module.exports = home;
+        // Retorna el resultado con un código de estado dependiendo si se afectó alguna fila.
+        return {
+            statusCode: result.affectedRows > 0 ? 200 : 210, // 200 si se actualizó el evento, 210 si no.
+            data: result, // Resultado de la operación de actualización.
+        };
+    }, dataParams.database);
+
+module.exports = home; // Exporta el módulo 'home' para que pueda ser utilizado en otros archivos.

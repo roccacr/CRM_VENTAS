@@ -3,20 +3,18 @@ const helpers = require("../utils/helpers");
 const authenticated = require("../models/authenticated/authenticated");
 const home = require("../models/home/home");
 
-// Load environment variables
+// Cargar variables de entorno
 dotenv.config();
 
-// Global API prefix
+// Prefijo global para la API
 const API_PREFIX = "/api/v2.0";
 
-/**
- * Middleware to validate the access token
- * @param {Object} req - Express request object
- * @param {Object} res - Express response object
- * @param {Function} next - Express next middleware function
- */
+// Middleware para validar el token de acceso
 const validateAccessToken = (req, res, next) => {
-    if (process.env.TOKEN_ACCESS === req.body.token_access) {
+    const { TOKEN_ACCESS } = process.env;
+    const { token_access } = req.body;
+
+    if (TOKEN_ACCESS === token_access) {
         next();
     } else {
         res.status(401).json({
@@ -26,53 +24,55 @@ const validateAccessToken = (req, res, next) => {
     }
 };
 
-/**
- * Generic request handler for model operations
- * @param {Object} model - The model object containing the method to be called
- * @param {string} method - The name of the method to be called on the model
- * @returns {Function} Express middleware function to handle the request
- */
-const handleRequest = (model, method) => (req, res) => {
-    model[method](req.body)
-        .then((resp) => helpers.manageResponse(res, resp, null))
-        .catch((err) => helpers.manageResponse(res, null, err));
+// Manejador genérico de solicitudes para operaciones de modelos
+const handleRequest = (model, method) => async (req, res) => {
+    try {
+        const response = await model[method](req.body);
+        helpers.manageResponse(res, response, null);
+    } catch (error) {
+        helpers.manageResponse(res, null, error);
+    }
 };
 
-/**
- * Configure application routes
- * @param {Object} app - Express application instance
- */
+// Configurar rutas de la aplicación
 module.exports = function (app) {
-    // API health check route
+    // Ruta de verificación de salud de la API
     app.get("/", (_, res) => res.status(200).json({ message: "SHOWTIME API ACTIVE", status: "OK" }));
 
-    // Authentication Routes
-    // These routes handle user authentication processes
-    const authRoutes = [{ path: "/login", method: "startSession" }];
-
-    // Set up authentication routes
-    authRoutes.forEach(({ path, method }) => {
-        app.post(`${API_PREFIX}${path}`, validateAccessToken, handleRequest(authenticated, method));
-    });
-
-    // Lead Routes
-    // These routes manage lead-related operations
-    const leadRoutes = [
-        { path: "/home/new", method: "fetchLeadsAsyncNew" },
-        { path: "/home/attention", method: "fetchLeadsAsyncattention" },
+    // Configuración de rutas y métodos
+    const routesConfig = [
+        {
+            category: "Autenticación",
+            model: authenticated,
+            routes: [{ path: "/login", method: "startSession" }],
+        },
+        {
+            category: "Leads",
+            model: home,
+            routes: [
+                { path: "/home/new", method: "fetchLeadsAsyncNew" },
+                { path: "/home/attention", method: "fetchLeadsAsyncattention" },
+            ],
+        },
+        {
+            category: "Eventos",
+            model: home,
+            routes: [
+                { path: "/events/home/events", method: "fetchEventsAsync" },
+                { path: "/events/home/updateEventsStatusAsync", method: "updateEventsStatusAsync" },
+            ],
+        },
+        {
+            category: "Oportunidades",
+            model: home,
+            routes: [{ path: "/home/fetchOportunityAsync", method: "fetchOportunityAsync" }],
+        },
     ];
 
-    // Set up lead routes
-    leadRoutes.forEach(({ path, method }) => {
-        app.post(`${API_PREFIX}${path}`, validateAccessToken, handleRequest(home, method));
-    });
-
-    // Event Routes
-    // These routes handle event-related operations
-    const eventRoutes = [{ path: "/events/home/events", method: "fetchEventsAsync" }];
-
-    // Set up event routes
-    eventRoutes.forEach(({ path, method }) => {
-        app.post(`${API_PREFIX}${path}`, validateAccessToken, handleRequest(home, method));
+    // Configuración y asignación de rutas
+    routesConfig.forEach(({ category, model, routes }) => {
+        routes.forEach(({ path, method }) => {
+            app.post(`${API_PREFIX}${path}`, validateAccessToken, handleRequest(model, method));
+        });
     });
 };
