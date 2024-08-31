@@ -67,6 +67,11 @@ module.exports = function (app) {
             model: home,
             routes: [{ path: "/home/fetchOportunityAsync", method: "fetchOportunityAsync" }],
         },
+        {
+            category: "OrderSales",
+            model: home,
+            routes: [{ path: "/home/fetchAllOrderSale", method: "fetchAllOrderSale" }],
+        },
     ];
 
     // Configuración y asignación de rutas
