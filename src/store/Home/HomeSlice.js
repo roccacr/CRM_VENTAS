@@ -9,6 +9,7 @@ export const HomeSlice = createSlice({
         listAttention: [], // Lista de leads que requieren atención
         listEvents: [], // Lista de eventos programados para hoy
         listOportunity: [], // Lista de oportunidades de lead
+        listOrderSale: [], // Lista de oportunidades de lead
         status: "idle", // Estado de la operación: puede ser 'idle', 'loading', 'succeeded', o 'failed'
         error: null, // Mensaje de error en caso de fallo
         currentLead: null, // Lead actualmente seleccionado
@@ -32,6 +33,10 @@ export const HomeSlice = createSlice({
         // Acción para actualizar la lista de oportunidades
         setOportunityAttention: (state, action) => {
             state.listOportunity = action.payload; // Establece la lista de oportunidades
+            state.status = "succeeded"; // Indica que la operación fue exitosa
+        },
+        setOrderSaleAttention: (state, action) => {
+            state.listOrderSale = action.payload; // Establece la lista de oportunidades
             state.status = "succeeded"; // Indica que la operación fue exitosa
         },
         // Acción para establecer el estado de carga
@@ -62,7 +67,7 @@ export const HomeSlice = createSlice({
 });
 
 // Exportación de las acciones para ser usadas en el componente
-export const { setLeadsNew, setLeadsAttention, setEventsAttention, setOportunityAttention, setLoading, setError, setClearList, updateEventStatus } = HomeSlice.actions;
+export const { setLeadsNew, setLeadsAttention, setEventsAttention, setOportunityAttention,setOrderSaleAttention, setLoading, setError, setClearList, updateEventStatus } = HomeSlice.actions;
 
 // Selectores para acceder a partes específicas del estado
 
@@ -77,6 +82,10 @@ const selectEvents = (state) => state.lead.listEvents;
 
 // Selector para obtener la lista de oportunidades de leads
 const selectLeadOpportunities = (state) => state.lead.listOportunity;
+
+
+// Selector para obtener la lista de Ordenes de venta de leads
+const selectLeadOrderSale = (state) => state.lead.listOrderSale;
 
 // Selector para contar el número de leads nuevos
 export const selectFilteredLeadsCount = createSelector(
@@ -151,6 +160,13 @@ export const selectEventsForTodayAndTomorrow = createSelector([selectEvents], (e
 export const selectFilteredOpportunityCount = createSelector(
     [selectLeadOpportunities],
     (opportunities) => (opportunities ? opportunities.length : 0), // Retorna la cantidad de oportunidades o 0 si no hay
+);
+
+
+// Selector para contar las ordenes de venta de leads
+export const selectFilteredOrderSaleCount = createSelector(
+    [selectLeadOrderSale],
+    (orderSale) => (orderSale ? orderSale.length : 0), // Retorna la cantidad de oportunidades o 0 si no hay
 );
 
 // Exportación del reducer del slice para usar en el store

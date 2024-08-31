@@ -1,7 +1,7 @@
 /********************************************** MODULE IMPORTS ****************************************************/
 // import { errorMessages, secretKey } from "../../api";
-import { fetchAllEvents, fetchLeadsUnderAttention, fetchNewLeads, fetchOpportunities, updateEventStatus } from "./Api_Home_Providers";
-import { setError, setLeadsNew, setLeadsAttention, setEventsAttention, setClearList, setOportunityAttention } from "./HomeSlice";
+import { fetchAllEvents, fetchAllOrderSale, fetchLeadsUnderAttention, fetchNewLeads, fetchOpportunities, updateEventStatus } from "./Api_Home_Providers";
+import { setError, setLeadsNew, setLeadsAttention, setEventsAttention, setClearList, setOportunityAttention, setOrderSaleAttention } from "./HomeSlice";
 
 
 
@@ -14,32 +14,26 @@ import { setError, setLeadsNew, setLeadsAttention, setEventsAttention, setClearL
  */
 export const startLoadingAllLeads = () => {
     return async (dispatch, getState) => {
-        // Extraemos los datos necesarios del estado de autenticación
         const { idnetsuite_admin, rol_admin } = getState().auth;
         dispatch(setClearList());
 
         try {
-            // Realizamos múltiples solicitudes asincrónicas en paralelo
-            const [newLeads, attentionLeads, events, oportunity] = await Promise.all([
-                fetchNewLeads({ idnetsuite_admin, rol_admin }),
-                fetchLeadsUnderAttention({ idnetsuite_admin, rol_admin }),
-                fetchAllEvents({ idnetsuite_admin, rol_admin }),
-                fetchOpportunities({ idnetsuite_admin, rol_admin })]);
+            // Hacemos las solicitudes en paralelo con Promise.all
+            const [newLeads, attentionLeads, events, oportunity, orderSale] = await Promise.all([fetchNewLeads({ idnetsuite_admin, rol_admin }), fetchLeadsUnderAttention({ idnetsuite_admin, rol_admin }), fetchAllEvents({ idnetsuite_admin, rol_admin }), fetchOpportunities({ idnetsuite_admin, rol_admin }), fetchAllOrderSale({ idnetsuite_admin, rol_admin })]);
 
-            console.log(oportunity.data.data);
-            // Actualizamos el estado de Redux con los datos obtenidos
-            dispatch(setLeadsNew(newLeads.data.data));
-            dispatch(setLeadsAttention(attentionLeads.data.data));
-            dispatch(setEventsAttention(events.data.data));
-            dispatch(setOportunityAttention(oportunity.data.data));
-
+            // Solo actualizamos el estado si hay datos válidos
+            if (newLeads?.data?.data) dispatch(setLeadsNew(newLeads.data.data));
+            if (attentionLeads?.data?.data) dispatch(setLeadsAttention(attentionLeads.data.data));
+            if (events?.data?.data) dispatch(setEventsAttention(events.data.data));
+            if (oportunity?.data?.data) dispatch(setOportunityAttention(oportunity.data.data));
+            if (orderSale?.data?.data) dispatch(setOrderSaleAttention(orderSale.data.data));
         } catch (error) {
-            // Manejamos cualquier error que ocurra durante las solicitudes
             console.error("Error al cargar los leads:", error);
             dispatch(setError("No se pudo cargar la lista de leads. Por favor, intente nuevamente."));
         }
     };
 };
+
 
 
 

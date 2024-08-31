@@ -4,7 +4,7 @@ import { GraficoKpi } from "../../components/TableroHome/GraficoKpi";
 import { GraficoMensual } from "../../components/TableroHome/GraficoMensual";
 import { TableroHome } from "../../components/TableroHome/TableroHome";
 import { AppLayout } from "../../layout/AppLayout";
-import { selectFilteredLeadsCount, selectFilteredLeadsAttentionCount, selectFilteredEventsCount, selectFilteredOpportunityCount } from "../../../store/Home/HomeSlice";
+import { selectFilteredLeadsCount, selectFilteredLeadsAttentionCount, selectFilteredEventsCount, selectFilteredOpportunityCount, selectFilteredOrderSaleCount } from "../../../store/Home/HomeSlice";
 import { startLoadingAllLeads } from "../../../store/Home/thunksHome";
 import { EventosPendientes } from "../../components/TableroHome/EventosPendientes";
 
@@ -23,6 +23,8 @@ export const AppPage = () => {
     const filteredLeadsAttentionCount = useSelector(selectFilteredLeadsAttentionCount);
     const filteredEventsCount = useSelector(selectFilteredEventsCount);
     const filteredOpportunity = useSelector(selectFilteredOpportunityCount);
+    const filteredOorderSale = useSelector(selectFilteredOrderSaleCount);
+
 
 
     // Cargar leads al montar el componente
@@ -38,6 +40,7 @@ export const AppPage = () => {
               2: filteredLeadsAttentionCount,
               3: filteredEventsCount,
               4: filteredOpportunity,
+              5: filteredOorderSale,
           };
 
           setDashboardItems((prevItems) =>
@@ -46,7 +49,7 @@ export const AppPage = () => {
                   quantity: quantities[item.id] !== undefined ? quantities[item.id] : item.quantity,
               })),
           );
-      }, [filteredLeadsCount, filteredLeadsAttentionCount, filteredEventsCount, filteredOpportunity]);
+      }, [filteredLeadsCount, filteredLeadsAttentionCount, filteredEventsCount, filteredOpportunity, filteredOorderSale]);
     return (
         <AppLayout>
             <div className="pc-container">
