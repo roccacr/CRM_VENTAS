@@ -98,3 +98,20 @@ export const fetchAllOrderSale = async ({ idnetsuite_admin, rol_admin }) => {
     };
     return await fetchData("home/fetchAllOrderSale", requestData); // Llama a la API para obtener todas las órdenes de venta.
 };
+
+
+/**
+ * Función para obtener todas las órdenes de venta pendiente de firma disponibles.
+ * @param {Object} params - Los parámetros de la función.
+ * @param {number} params.idnetsuite_admin - El ID del administrador de Netsuite que realiza la solicitud.
+ * @param {number} params.rol_admin - El rol del administrador para validar permisos.
+ * @returns {Promise<Object>} - Retorna una promesa con los datos de todas las órdenes de venta.
+ */
+export const fetchAllOrderSale_pending = async ({ idnetsuite_admin, rol_admin }) => {
+    const requestData = {
+        ...commonRequestData,
+        idnetsuite_admin,
+        rol_admin,
+    };
+    return await fetchData("home/fetchAllOrderSale_pending", requestData); // Llama a la API para obtener todas las órdenes de venta.
+};

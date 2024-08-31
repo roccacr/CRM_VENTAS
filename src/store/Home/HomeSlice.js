@@ -10,6 +10,7 @@ export const HomeSlice = createSlice({
         listEvents: [], // Lista de eventos programados para hoy
         listOportunity: [], // Lista de oportunidades de lead
         listOrderSale: [], // Lista de oportunidades de lead
+        listOrderSalePending: [], // Lista de oportunidades de lead
         status: "idle", // Estado de la operación: puede ser 'idle', 'loading', 'succeeded', o 'failed'
         error: null, // Mensaje de error en caso de fallo
         currentLead: null, // Lead actualmente seleccionado
@@ -37,6 +38,10 @@ export const HomeSlice = createSlice({
         },
         setOrderSaleAttention: (state, action) => {
             state.listOrderSale = action.payload; // Establece la lista de oportunidades
+            state.status = "succeeded"; // Indica que la operación fue exitosa
+        },
+        setOrderSalePendingAttention: (state, action) => {
+            state.listOrderSalePending = action.payload; // Establece la lista de oportunidades
             state.status = "succeeded"; // Indica que la operación fue exitosa
         },
         // Acción para establecer el estado de carga
@@ -67,7 +72,7 @@ export const HomeSlice = createSlice({
 });
 
 // Exportación de las acciones para ser usadas en el componente
-export const { setLeadsNew, setLeadsAttention, setEventsAttention, setOportunityAttention,setOrderSaleAttention, setLoading, setError, setClearList, updateEventStatus } = HomeSlice.actions;
+export const { setLeadsNew, setLeadsAttention, setEventsAttention, setOportunityAttention, setOrderSaleAttention, setOrderSalePendingAttention, setLoading, setError, setClearList, updateEventStatus } = HomeSlice.actions;
 
 // Selectores para acceder a partes específicas del estado
 
@@ -86,6 +91,9 @@ const selectLeadOpportunities = (state) => state.lead.listOportunity;
 
 // Selector para obtener la lista de Ordenes de venta de leads
 const selectLeadOrderSale = (state) => state.lead.listOrderSale;
+
+// Selector para obtener la lista de Ordenes de venta pendientes de cheks de leads
+const selectLeadOrderSale_pending = (state) => state.lead.listOrderSalePending;
 
 // Selector para contar el número de leads nuevos
 export const selectFilteredLeadsCount = createSelector(
@@ -168,6 +176,13 @@ export const selectFilteredOrderSaleCount = createSelector(
     [selectLeadOrderSale],
     (orderSale) => (orderSale ? orderSale.length : 0), // Retorna la cantidad de oportunidades o 0 si no hay
 );
+
+// Selector para contar las ordenes de venta pendeinte de chek de leads
+export const selectLeadOrderSale_pendingCount = createSelector(
+    [selectLeadOrderSale_pending],
+    (orderSal) => (orderSal ? orderSal.length : 0), // Retorna la cantidad de oportunidades o 0 si no hay
+);
+
 
 // Exportación del reducer del slice para usar en el store
 export default HomeSlice.reducer;

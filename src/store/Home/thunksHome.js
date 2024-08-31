@@ -1,7 +1,7 @@
 /********************************************** MODULE IMPORTS ****************************************************/
 // import { errorMessages, secretKey } from "../../api";
-import { fetchAllEvents, fetchAllOrderSale, fetchLeadsUnderAttention, fetchNewLeads, fetchOpportunities, updateEventStatus } from "./Api_Home_Providers";
-import { setError, setLeadsNew, setLeadsAttention, setEventsAttention, setClearList, setOportunityAttention, setOrderSaleAttention } from "./HomeSlice";
+import { fetchAllEvents, fetchAllOrderSale, fetchAllOrderSale_pending, fetchLeadsUnderAttention, fetchNewLeads, fetchOpportunities, updateEventStatus } from "./Api_Home_Providers";
+import { setError, setLeadsNew, setLeadsAttention, setEventsAttention, setClearList, setOportunityAttention, setOrderSaleAttention, setOrderSalePendingAttention } from "./HomeSlice";
 
 
 
@@ -19,7 +19,13 @@ export const startLoadingAllLeads = () => {
 
         try {
             // Hacemos las solicitudes en paralelo con Promise.all
-            const [newLeads, attentionLeads, events, oportunity, orderSale] = await Promise.all([fetchNewLeads({ idnetsuite_admin, rol_admin }), fetchLeadsUnderAttention({ idnetsuite_admin, rol_admin }), fetchAllEvents({ idnetsuite_admin, rol_admin }), fetchOpportunities({ idnetsuite_admin, rol_admin }), fetchAllOrderSale({ idnetsuite_admin, rol_admin })]);
+            const [newLeads, attentionLeads, events, oportunity, orderSale, orderSalePending] = await Promise.all(
+                [fetchNewLeads({ idnetsuite_admin, rol_admin }),
+                fetchLeadsUnderAttention({ idnetsuite_admin, rol_admin }),
+                fetchAllEvents({ idnetsuite_admin, rol_admin }),
+                fetchOpportunities({ idnetsuite_admin, rol_admin }),
+                fetchAllOrderSale({ idnetsuite_admin, rol_admin }),
+                fetchAllOrderSale_pending({ idnetsuite_admin, rol_admin })]);
 
             // Solo actualizamos el estado si hay datos válidos
             if (newLeads?.data?.data) dispatch(setLeadsNew(newLeads.data.data));
@@ -27,6 +33,7 @@ export const startLoadingAllLeads = () => {
             if (events?.data?.data) dispatch(setEventsAttention(events.data.data));
             if (oportunity?.data?.data) dispatch(setOportunityAttention(oportunity.data.data));
             if (orderSale?.data?.data) dispatch(setOrderSaleAttention(orderSale.data.data));
+            if (orderSalePending?.data?.data) dispatch(setOrderSalePendingAttention(orderSalePending.data.data));
         } catch (error) {
             console.error("Error al cargar los leads:", error);
             dispatch(setError("No se pudo cargar la lista de leads. Por favor, intente nuevamente."));
