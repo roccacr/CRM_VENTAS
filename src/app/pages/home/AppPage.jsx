@@ -4,7 +4,7 @@ import { GraficoKpi } from "../../components/TableroHome/GraficoKpi";
 import { GraficoMensual } from "../../components/TableroHome/GraficoMensual";
 import { TableroHome } from "../../components/TableroHome/TableroHome";
 import { AppLayout } from "../../layout/AppLayout";
-import { selectFilteredLeadsCount, selectFilteredLeadsAttentionCount, selectFilteredEventsCount } from "../../../store/Home/HomeSlice";
+import { selectFilteredLeadsCount, selectFilteredLeadsAttentionCount, selectFilteredEventsCount, selectFilteredOpportunityCount } from "../../../store/Home/HomeSlice";
 import { startLoadingAllLeads } from "../../../store/Home/thunksHome";
 import { EventosPendientes } from "../../components/TableroHome/EventosPendientes";
 
@@ -22,6 +22,7 @@ export const AppPage = () => {
     const filteredLeadsCount = useSelector(selectFilteredLeadsCount);
     const filteredLeadsAttentionCount = useSelector(selectFilteredLeadsAttentionCount);
     const filteredEventsCount = useSelector(selectFilteredEventsCount);
+    const filteredOpportunity = useSelector(selectFilteredOpportunityCount);
 
 
     // Cargar leads al montar el componente
@@ -30,11 +31,22 @@ export const AppPage = () => {
         dispatch(startLoadingAllLeads());
     }, [dispatch]);
 
-    // Actualizar elementos del dashboard cuando cambian los datos
-    useEffect(() => {
-        setDashboardItems((prevItems) => prevItems.map((item) => (item.id === 1 ? { ...item, quantity: filteredLeadsCount } : item.id === 2 ? { ...item, quantity: filteredLeadsAttentionCount } : item.id === 3 ? { ...item, quantity: filteredEventsCount } : item)));
-    }, [filteredLeadsCount, filteredLeadsAttentionCount, filteredEventsCount]);
 
+      useEffect(() => {
+          const quantities = {
+              1: filteredLeadsCount,
+              2: filteredLeadsAttentionCount,
+              3: filteredEventsCount,
+              4: filteredOpportunity,
+          };
+
+          setDashboardItems((prevItems) =>
+              prevItems.map((item) => ({
+                  ...item,
+                  quantity: quantities[item.id] !== undefined ? quantities[item.id] : item.quantity,
+              })),
+          );
+      }, [filteredLeadsCount, filteredLeadsAttentionCount, filteredEventsCount, filteredOpportunity]);
     return (
         <AppLayout>
             <div className="pc-container">

@@ -1,13 +1,14 @@
 import React, { useState } from "react";
-import { useSelector } from "react-redux";
-import { selectEventsForTodayAndTomorrow } from "../../../store/Home/HomeSlice";
+import { useDispatch, useSelector } from "react-redux";
+import { selectEventsForTodayAndTomorrow, updateEventStatus } from "../../../store/Home/HomeSlice";
 import { useNavigate } from "react-router-dom";
+import { updateEventsStatusThunksHome } from "../../../store/Home/thunksHome";
 
 // Define styles outside of the component
 const styles = {
     statusPending: {
-        backgroundColor: "#dc3545",
-        color: "#ffffff",
+        backgroundColor: "#ffffff",
+        color: "#000",
     },
     statusCompleted: {
         backgroundColor: "#28a745",
@@ -21,6 +22,7 @@ const styles = {
 
 export const EventosPendientes = () => {
     const navigate = useNavigate();
+     const dispatch = useDispatch();
     const events = useSelector(selectEventsForTodayAndTomorrow);
     const [selectedStatus, setSelectedStatus] = useState({});
     const [selectedDates, setSelectedDates] = useState({});
@@ -36,7 +38,8 @@ export const EventosPendientes = () => {
 
     const handleStatusChange = (id_calendar, newStatus) => {
         setSelectedStatus((prev) => ({ ...prev, [id_calendar]: newStatus }));
-        alert(`Event ID: ${id_calendar}, New Status: ${newStatus}`);
+        dispatch(updateEventStatus({ id_calendar, accion_calendar: newStatus }));
+        dispatch(updateEventsStatusThunksHome(id_calendar, newStatus));
     };
 
     const handleDateChange = (id_calendar, newDate) => {

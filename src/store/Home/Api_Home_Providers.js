@@ -1,38 +1,47 @@
 import { commonRequestData, fetchData } from "../../api";
 
-
-export const fetchLeadsAsyncNew = async ({ idnetsuite_admin, rol_admin }) => {
-    // Crea un objeto requestData combinando commonRequestData con el email y la contraseña proporcionados
+export const fetchNewLeads = async ({ idnetsuite_admin, rol_admin }) => {
     const requestData = {
         ...commonRequestData,
         idnetsuite_admin,
         rol_admin,
     };
-
-    // Realiza una solicitud utilizando fetchData y retorna la respuesta
     return await fetchData("home/new", requestData);
 };
 
-export const fetchLeadsAsyncAttention = async ({ idnetsuite_admin, rol_admin }) => {
-    // Crea un objeto requestData combinando commonRequestData con el email y la contraseña proporcionados
+export const fetchLeadsUnderAttention = async ({ idnetsuite_admin, rol_admin }) => {
     const requestData = {
         ...commonRequestData,
         idnetsuite_admin,
         rol_admin,
     };
-
-    // Realiza una solicitud utilizando fetchData y retorna la respuesta
     return await fetchData("home/attention", requestData);
 };
 
-
-export const fetchEventsAsync = async ({ idnetsuite_admin }) => {
-    // Crea un objeto requestData combinando commonRequestData con el email y la contraseña proporcionados
+export const fetchAllEvents = async ({ idnetsuite_admin, rol_admin }) => {
     const requestData = {
         ...commonRequestData,
         idnetsuite_admin,
+        rol_admin,
     };
-
-    // Realiza una solicitud utilizando fetchData y retorna la respuesta
     return await fetchData("events/home/events", requestData);
+};
+
+export const updateEventStatus = async ({ idnetsuite_admin, id_calendar, newStatus }) => {
+    const requestData = {
+        ...commonRequestData,
+        idnetsuite_admin,
+        id_calendar,
+        newStatus,
+    };
+    return await fetchData("events/home/updateEventsStatusAsync", requestData);
+};
+
+export const fetchOpportunities = async ({ idnetsuite_admin, rol_admin }) => {
+    const requestData = {
+        ...commonRequestData,
+        idnetsuite_admin,
+        rol_admin,
+    };
+    return await fetchData("home/fetchOportunityAsync", requestData);
 };
