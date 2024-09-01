@@ -35,6 +35,13 @@ app.use(morgan(process.env.NODE_ENV === "production" ? "combined" : "dev"));
 // Se define como una constante para mayor seguridad y claridad
 const allowedOrigins = ["http://localhost:5173", "https://crm.roccacr.com", "https://test.roccacr.com", "https://4552704-sb1.app.netsuite.com", "https://crmtest.roccacr.com"];
 
+
+app.use((req, res, next) => {
+    // Captura la IP del cliente
+    const clientIp = req.headers["x-forwarded-for"] || req.socket.remoteAddress;
+    console.log("Client IP: ", clientIp); // Imprime la IP del cliente
+    next();
+});
 // Configuración de CORS
 app.use(
     cors({
