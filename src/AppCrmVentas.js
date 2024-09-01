@@ -9,15 +9,11 @@ require("dotenv").config(); // Carga variables de entorno desde un archivo .env
 const app = express();
 
 // Definición del puerto del servidor
-// Usa la variable de entorno PORT si está disponible, de lo contrario usa 7000
+// Usa la variable de entorno PORT si está disponible, de lo contrario usa 6000
 const port = process.env.PORT || 7000;
 
 // Configuración del puerto en la aplicación
 app.set("port", port);
-
-// Configuración para confiar en el proxy
-// Esto permite a Express confiar en la cabecera X-Forwarded-For para capturar la IP del cliente real
-app.set("trust proxy", true);
 
 // Middleware de seguridad
 // Helmet ayuda a proteger la aplicación configurando varios encabezados HTTP
@@ -35,28 +31,23 @@ app.use(express.urlencoded({ extended: true, limit: "1mb" }));
 // Usa el formato 'combined' en producción para más detalles, 'dev' en desarrollo para claridad
 app.use(morgan(process.env.NODE_ENV === "production" ? "combined" : "dev"));
 
-// Middleware para capturar y mostrar la IP del cliente real
-app.use((req, res, next) => {
-    // Captura la IP del cliente confiando en el proxy
-    const clientIp = req.ip; // Express ahora utiliza la cabecera X-Forwarded-For
-    console.log("Client IP: ", clientIp); // Imprime la IP del cliente real
-    next();
-});
-
 // Lista de orígenes permitidos para CORS
 // Se define como una constante para mayor seguridad y claridad
 const allowedOrigins = ["http://localhost:5173", "https://crm.roccacr.com", "https://test.roccacr.com", "https://4552704-sb1.app.netsuite.com", "https://crmtest.roccacr.com"];
 
+
+app.use((req, res, next) => {
+    const clientIp = req.headers["x-forwarded-for"] || req.headers["x-real-ip"] || req.socket.remoteAddress;
+    console.log("Client IP: ", clientIp);
+    next();
+});
 // Configuración de CORS
 app.use(
     cors({
         // Función para verificar si el origen de la solicitud está permitido
         origin: function (origin, callback) {
-            console.log("Request origin: ", origin);
-
             // Rechaza solicitudes sin origen (por ejemplo, solicitudes directas al servidor)
             if (!origin) return callback(null, false);
-
             // Permite el origen si está en la lista de orígenes permitidos
             if (allowedOrigins.includes(origin)) {
                 return callback(null, true);
