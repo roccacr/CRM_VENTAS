@@ -36,10 +36,13 @@ app.use(morgan(process.env.NODE_ENV === "production" ? "combined" : "dev"));
 const allowedOrigins = ["http://localhost:5173", "https://crm.roccacr.com", "https://test.roccacr.com", "https://4552704-sb1.app.netsuite.com", "https://crmtest.roccacr.com"];
 
 
+// Configuración para confiar en el proxy
+// Esto permite a Express confiar en la cabecera X-Forwarded-For para capturar la IP del cliente real
+app.set('trust proxy', true);
 app.use((req, res, next) => {
-    // Captura la IP del cliente
-    const clientIp = req.headers["x-forwarded-for"] || req.socket.remoteAddress;
-    console.log("Client IP: ", clientIp); // Imprime la IP del cliente
+    // Captura la IP del cliente confiando en el proxy
+    const clientIp = req.ip; // Express ahora utiliza la cabecera X-Forwarded-For
+    console.log("Client IP: ", clientIp); // Imprime la IP del cliente real
     next();
 });
 // Configuración de CORS
