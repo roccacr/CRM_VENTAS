@@ -1,8 +1,9 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { selectEventsForTodayAndTomorrow, updateEventStatus } from "../../../store/Home/HomeSlice";
 import { useNavigate } from "react-router-dom";
 import { updateEventsStatusThunksHome } from "../../../store/Home/thunksHome";
+import Swal from "sweetalert2";
 
 // Define styles outside of the component
 const styles = {
@@ -21,16 +22,21 @@ const styles = {
 };
 
 export const EventosPendientes = () => {
+
+    const { rol_admin } = useSelector((state) => state.auth);
     const navigate = useNavigate();
-     const dispatch = useDispatch();
+    const dispatch = useDispatch();
     const events = useSelector(selectEventsForTodayAndTomorrow);
     const [selectedStatus, setSelectedStatus] = useState({});
     const [selectedDates, setSelectedDates] = useState({});
-    const [selectedTimes, setSelectedTimes] = useState({});
+    const [selectedAdmin, setSelectedAdmin] = useState("");
 
     if (!events || events.length === 0) {
         return null;
     }
+
+    // Filtrar eventos por nombreAdmin si hay un nombre seleccionado
+    const filteredEvents = selectedAdmin ? events.filter((event) => event.nombreAdmin === selectedAdmin) : events;
 
     const handleRowClick = (id_calendar) => {
         navigate(`/detalle-evento/${id_calendar}`);
@@ -42,14 +48,16 @@ export const EventosPendientes = () => {
         dispatch(updateEventsStatusThunksHome(id_calendar, newStatus));
     };
 
-    const handleDateChange = (id_calendar, newDate) => {
+    const handleDateChange = (id_calendar, newDate, nameEvent) => {
         setSelectedDates((prev) => ({ ...prev, [id_calendar]: newDate }));
-        alert(`Event ID: ${id_calendar}, New Date: ${newDate}`);
-    };
 
-    const handleTimeChange = (id_calendar, newTime) => {
-        setSelectedTimes((prev) => ({ ...prev, [id_calendar]: newTime }));
-        alert(`Event ID: ${id_calendar}, New Time: ${newTime}`);
+        Swal.fire({
+            position: "top-end",
+            icon: "success",
+            title: `Se cambió la fecha con éxito para el evento: ${nameEvent}`,
+            showConfirmButton: false,
+            timer: 2500,
+        });
     };
 
     const formatDateForInput = (dateString) => {
@@ -58,19 +66,6 @@ export const EventosPendientes = () => {
         return date.toISOString().split("T")[0];
     };
 
-    const formatTimeForInput = (timeString) => {
-        if (!timeString) return "";
-        const [time, modifier] = timeString.split(" ");
-        let [hours, minutes] = time.split(":");
-        if (modifier === "PM" && hours !== "12") {
-            hours = String(parseInt(hours, 10) + 12);
-        } else if (modifier === "AM" && hours === "12") {
-            hours = "00";
-        }
-        return `${hours.padStart(2, "0")}:${minutes}`;
-    };
-
-    // Add the missing getStatusStyle function
     const getStatusStyle = (status) => {
         switch (status) {
             case "Pendiente":
@@ -86,13 +81,11 @@ export const EventosPendientes = () => {
 
     const renderEventRow = (event) => (
         <tr key={`${event.id_calendar}-${event.horaInicio_calendar}`}>
+            <td onClick={() => handleRowClick(event.id_calendar)}>{event.nombreAdmin.length > 12 ? `${event.nombreAdmin.substring(0, 12)}...` : event.nombreAdmin}</td>
             <td onClick={() => handleRowClick(event.id_calendar)}>{event.nombre_calendar}</td>
             <td onClick={() => handleRowClick(event.id_calendar)}>{event.nombre_lead && event.nombre_lead !== "0" ? event.nombre_lead : "--"}</td>
             <td>
-                <input className="form-control" type="date" value={selectedDates[event.id_calendar] || formatDateForInput(event.fechaIni_calendar)} onChange={(e) => handleDateChange(event.id_calendar, e.target.value)} onClick={(e) => e.stopPropagation()} />
-            </td>
-            <td>
-                <input className="form-control" type="time" value={selectedTimes[event.id_calendar] || formatTimeForInput(event.horaInicio_calendar)} onChange={(e) => handleTimeChange(event.id_calendar, e.target.value)} onClick={(e) => e.stopPropagation()} />
+                <input className="form-control" type="date" value={selectedDates[event.id_calendar] || formatDateForInput(event.fechaIni_calendar)} onChange={(e) => handleDateChange(event.id_calendar, e.target.value, event.nombre_calendar)} onClick={(e) => e.stopPropagation()} />
             </td>
             <td>
                 {event.accion_calendar === "Pendiente" ? (
@@ -108,9 +101,10 @@ export const EventosPendientes = () => {
                             backgroundPosition: "right 0.7em top 50%",
                             backgroundSize: "0.65em auto",
                             paddingRight: "1.5em",
+                            width: "101px",
                         }}
                         value={selectedStatus[event.id_calendar] || "Pendiente"}
-                        onChange={(e) => handleStatusChange(event.id_calendar, e.target.value)}
+                        onChange={(e) => handleStatusChange(event.id_calendar, e.target.value, event.nombre_calendar)}
                         onClick={(e) => e.stopPropagation()}
                     >
                         <option value="Pendiente">Pendiente</option>
@@ -128,21 +122,34 @@ export const EventosPendientes = () => {
         </tr>
     );
 
+    // Obtener lista de nombres de asesores únicos
+    const uniqueAdmins = Array.from(new Set(events.map((event) => event.nombreAdmin)));
+
     return (
         <div className="col-12">
             <div className="card table-card">
                 <div className="card-header d-flex align-items-center justify-content-between py-3">
                     <h5 className="mb-0">Eventos pendientes de acción</h5>
+                    {rol_admin == 1 && (
+                        <select className="form-select" value={selectedAdmin} onChange={(e) => setSelectedAdmin(e.target.value)} style={{ width: "200px" }}>
+                            <option value="">Todos los Asesores</option>
+                            {uniqueAdmins.map((admin) => (
+                                <option key={admin} value={admin}>
+                                    {admin}
+                                </option>
+                            ))}
+                        </select>
+                    )}
                 </div>
                 <div className="card-body">
                     <div className="table-responsive">
                         <table className="table table-hover" id="pc-dt-simple">
                             <thead>
                                 <tr>
+                                    <th>Asesor</th>
                                     <th>Evento</th>
                                     <th>Cliente</th>
                                     <th>Fecha Inicial</th>
-                                    <th>Hora Inicial</th>
                                     <th>Estado</th>
                                     <th>Tipo</th>
                                     <th>Cita</th>
@@ -150,7 +157,7 @@ export const EventosPendientes = () => {
                                     <th>Campaña</th>
                                 </tr>
                             </thead>
-                            <tbody>{events.map(renderEventRow)}</tbody>
+                            <tbody>{filteredEvents.map(renderEventRow)}</tbody>
                         </table>
                     </div>
                 </div>

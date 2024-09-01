@@ -155,12 +155,19 @@ export const selectEventsForTodayAndTomorrow = createSelector([selectEvents], (e
     const tomorrowDate = tomorrow.toISOString().split("T")[0]; // Obtener solo la fecha de mañana
 
     // Filtrar eventos con acción pendiente para hoy y mañana
-    const filteredEvents = events.filter((event) => {
-        const eventDate = event.fechaIni_calendar.match(/^\d{4}-\d{2}-\d{2}/)[0]; // Extraer solo la fecha
-        return eventDate <= tomorrowDate && event.accion_calendar === "Pendiente"; // Comparar fechas y acción pendiente
-    });
+    const filteredEvents = events
+        .filter((event) => {
+            const eventDate = event.fechaIni_calendar.match(/^\d{4}-\d{2}-\d{2}/)[0]; // Extraer solo la fecha
+            return eventDate <= tomorrowDate && event.accion_calendar === "Pendiente"; // Comparar fechas y acción pendiente
+        })
+        .sort((a, b) => {
+            // Ordenar de fecha mayor a fecha menor
+            const dateA = new Date(a.fechaIni_calendar);
+            const dateB = new Date(b.fechaIni_calendar);
+            return dateB - dateA;
+        });
 
-    // Retornar los eventos filtrados
+    // Retornar los eventos filtrados y ordenados
     return filteredEvents;
 });
 
