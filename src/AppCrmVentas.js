@@ -4,7 +4,7 @@ const morgan = require("morgan"); // Middleware de registro HTTP
 const cors = require("cors"); // Middleware para habilitar CORS
 const helmet = require("helmet"); // Middleware para mejorar la seguridad de la aplicación
 require("dotenv").config(); // Carga variables de entorno desde un archivo .env
-
+const UAParser = require("ua-parser-js");
 // Creación de la instancia de la aplicación Express
 const app = express();
 
@@ -37,8 +37,16 @@ const allowedOrigins = ["http://localhost:5173", "https://crm.roccacr.com", "htt
 
 
 app.use((req, res, next) => {
+    const parser = new UAParser();
+    const userAgent = req.headers["user-agent"];
     const clientIp = req.headers["x-forwarded-for"] || req.headers["x-real-ip"] || req.socket.remoteAddress;
+
+    const uaResult = parser.setUA(userAgent).getResult();
+
     console.log("Client IP: ", clientIp);
+    console.log("User-Agent: ", userAgent);
+    console.log("Parsed User-Agent Data: ", uaResult);
+
     next();
 });
 // Configuración de CORS

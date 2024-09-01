@@ -30,6 +30,7 @@
     "nodemailer": "^6.9.1",
     "nsrestlet": "^2.0.1",
     "serve-index": "^1.9.1",
+    "ua-parser-js": "^1.0.38",
     "uuid": "^8.3.2"
   },
   "devDependencies": {
