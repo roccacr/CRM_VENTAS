@@ -49,3 +49,4 @@ export const Views_list_leads = () => {
         </>
     );
 };
+
