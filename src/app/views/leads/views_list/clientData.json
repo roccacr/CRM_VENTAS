@@ -44,58 +44,49 @@
     "status": "Inactive",
     "lastContact": "2024-06-30"
   },
-    {
-    "id": 5,
-    "name": "Charlie Wilson",
-    "email": "charlie.wilson@example.com",
-    "phone": "+1 (555) 147-2589",
-    "company": "Data Dynamics",
-    "status": "Inactive",
-    "lastContact": "2024-06-30"
+  {
+    "id": 6,
+    "name": "Emma Davis",
+    "email": "emma.davis@example.com",
+    "phone": "+1 (555) 741-8529",
+    "company": "Tech Innovators",
+    "status": "Active",
+    "lastContact": "2024-08-22"
   },
-    {
-    "id": 5,
-    "name": "Charlie Wilson",
-    "email": "charlie.wilson@example.com",
-    "phone": "+1 (555) 147-2589",
-    "company": "Data Dynamics",
+  {
+    "id": 7,
+    "name": "Michael Lee",
+    "email": "michael.lee@example.com",
+    "phone": "+1 (555) 963-8520",
+    "company": "NextGen Solutions",
     "status": "Inactive",
-    "lastContact": "2024-06-30"
+    "lastContact": "2024-07-15"
   },
-    {
-    "id": 5,
-    "name": "Charlie Wilson",
-    "email": "charlie.wilson@example.com",
-    "phone": "+1 (555) 147-2589",
-    "company": "Data Dynamics",
-    "status": "Inactive",
-    "lastContact": "2024-06-30"
+  {
+    "id": 8,
+    "name": "Olivia Taylor",
+    "email": "olivia.taylor@example.com",
+    "phone": "+1 (555) 369-7418",
+    "company": "Creative Minds",
+    "status": "Active",
+    "lastContact": "2024-08-05"
   },
-    {
-    "id": 5,
-    "name": "Charlie Wilson",
-    "email": "charlie.wilson@example.com",
-    "phone": "+1 (555) 147-2589",
-    "company": "Data Dynamics",
+  {
+    "id": 9,
+    "name": "William Brown",
+    "email": "william.brown@example.com",
+    "phone": "+1 (555) 852-3697",
+    "company": "Global Ventures",
     "status": "Inactive",
-    "lastContact": "2024-06-30"
+    "lastContact": "2024-07-01"
   },
-    {
-    "id": 5,
-    "name": "Charlie Wilson",
-    "email": "charlie.wilson@example.com",
-    "phone": "+1 (555) 147-2589",
-    "company": "Data Dynamics",
-    "status": "Inactive",
-    "lastContact": "2024-06-30"
-  },
-    {
-    "id": 5,
-    "name": "Charlie Wilson",
-    "email": "charlie.wilson@example.com",
-    "phone": "+1 (555) 147-2589",
-    "company": "Data Dynamics",
-    "status": "Inactive",
-    "lastContact": "2024-06-30"
+  {
+    "id": 10,
+    "name": "Sophia Wilson",
+    "email": "sophia.wilson@example.com",
+    "phone": "+1 (555) 147-3698",
+    "company": "Data Solutions",
+    "status": "Active",
+    "lastContact": "2024-08-18"
   }
 ]
