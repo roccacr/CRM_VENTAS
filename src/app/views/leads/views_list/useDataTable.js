@@ -2,13 +2,13 @@ import { useEffect } from "react";
 import $ from "jquery";
 import "datatables.net-bs4";
 import "datatables.net-select";
-import "datatables.net-select-bs4";
+import "datatables.net-select-bs5";
 import "datatables.net-buttons";
-import "datatables.net-buttons-bs4";
+import "datatables.net-buttons-bs5";
 import "datatables.net-buttons/js/buttons.html5";
 import "datatables.net-buttons/js/buttons.print";
 import "datatables.net-searchpanes";
-import "datatables.net-searchpanes-bs4";
+import "datatables.net-searchpanes-bs5";
 
 export const useDataTable = (clientData, columns, onRowClick) => {
     useEffect(() => {
@@ -20,10 +20,14 @@ export const useDataTable = (clientData, columns, onRowClick) => {
                     select: {
                         style: "multi",
                     },
+                    count: {
+                        show: false,
+                    },
                     order: [[0, "asc"]],
                 },
                 viewTotal: true,
                 collapsed: true,
+                layout: "columns-3",
             },
             dom: 'P<"clear">Bfrtip',
             buttons: [
@@ -33,7 +37,7 @@ export const useDataTable = (clientData, columns, onRowClick) => {
                     titleAttr: "Exportar a excel",
                     className: "btn btn-success",
                     exportOptions: {
-                        columns: [0], // Aquí defines qué columnas se exportan
+                        columns: [0],
                     },
                 },
             ],
@@ -43,6 +47,7 @@ export const useDataTable = (clientData, columns, onRowClick) => {
                 {
                     searchPanes: {
                         show: true,
+                        initCollapsed: true,
                     },
                     targets: [0, 1, 2],
                 },
@@ -74,14 +79,13 @@ export const useDataTable = (clientData, columns, onRowClick) => {
 
         $("#single-select tbody").on("click", "tr", function () {
             const rowData = table.row(this).data();
-            console.log(rowData);
             if (onRowClick) {
                 onRowClick(rowData); // Llama a la función callback con los datos de la fila
             }
         });
 
         return () => {
-            table.destroy(); // Destruir la tabla cuando el componente se desmonte
+            table.destroy();
         };
     }, [clientData, columns, onRowClick]);
 };

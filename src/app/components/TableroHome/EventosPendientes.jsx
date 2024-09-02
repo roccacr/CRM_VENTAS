@@ -143,7 +143,7 @@ export const EventosPendientes = () => {
                 </div>
                 <div className="card-body">
                     <div className="table-responsive">
-                        <table className="table table-hover" id="pc-dt-simple">
+                        <table className="table table-striped table dt-responsive w-100 display" id="pc-dt-simple">
                             <thead>
                                 <tr>
                                     <th>Asesor</th>
