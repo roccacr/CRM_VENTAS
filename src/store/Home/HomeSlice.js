@@ -191,5 +191,12 @@ export const selectLeadOrderSale_pendingCount = createSelector(
 );
 
 
+
+// Selector para obtener la lista completa de leads nuevos
+export const selectAllNewLeads = createSelector(
+    [selectLeadsNew], // Usamos el selector existente
+    (listNew) => listNew, // Retornamos la lista completa de leads nuevos
+);
+
 // Exportación del reducer del slice para usar en el store
 export default HomeSlice.reducer;

@@ -14,6 +14,7 @@ export const useDataTable = (clientData, columns, onRowClick) => {
     useEffect(() => {
         const table = $("#single-select").DataTable({
             processing: true,
+            responsive: true,
             searchPanes: {
                 cascadePanes: true,
                 viewTotal: true,
@@ -28,7 +29,7 @@ export const useDataTable = (clientData, columns, onRowClick) => {
                     },
                     order: [[0, "asc"]],
                 },
-                columns: [0,1,2], // Especifica que solo la primera columna estará disponible en el filtro
+                columns: [0], // Especifica que solo la primera columna estará disponible en el filtro
             },
             dom: 'P<"clear">Bfrtip',
             buttons: [
@@ -50,7 +51,7 @@ export const useDataTable = (clientData, columns, onRowClick) => {
                         show: true,
                         initCollapsed: true,
                     },
-                    targets: [0,1,2], // Especifica que solo la primera columna tendrá el filtro activo
+                    targets: [0], // Especifica que solo la primera columna tendrá el filtro activo
                 },
                 {
                     targets: "_all",
