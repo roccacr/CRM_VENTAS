@@ -1,8 +1,9 @@
 import React, { useState } from "react";
-import { useDataTable } from "./useDataTable";
+
 import { columns } from "./columns";
 import clientData from "./clientData.json";
 import { ModalLeads } from "../../../pages/modal/modalLeads";
+import { useDataTable } from "../../../../hook/useDataTable";
 
 export const Views_list_leads = () => {
     const [showModal, setShowModal] = useState(false);
