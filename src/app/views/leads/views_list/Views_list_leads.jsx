@@ -15,7 +15,13 @@ export const Views_list_leads = () => {
 
     useDataTable(clientData, columns, handleRowClick);
 
-    const handleCloseModal = () => setShowModal(false);
+    const handleCloseModal = () => {
+        setShowModal(false);
+        // Restablecer selectedLead después de un pequeño retraso para permitir que el modal se cierre correctamente
+        setTimeout(() => {
+            setSelectedLead(null);
+        }, 300); // Ajusta el tiempo si es necesario
+    };
 
     return (
         <>
