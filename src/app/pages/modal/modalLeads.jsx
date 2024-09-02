@@ -4,12 +4,18 @@ export const ModalLeads = ({ leadData, onClose }) => {
     const [showModal, setShowModal] = useState(false);
 
     useEffect(() => {
-        setShowModal(true); // Mostrar el modal cuando los datos de leadData estén disponibles
+        // Usar setTimeout para evitar el retraso en el renderizado inicial
+        const timer = setTimeout(() => {
+            setShowModal(true);
+        }, 100); // Solo 10ms para permitir que se monte y luego mostrarlo rápidamente
+        return () => clearTimeout(timer);
     }, [leadData]);
 
     const handleClose = () => {
         setShowModal(false);
-        if (onClose) onClose(); // Ejecutar la función de cierre si se proporciona
+        setTimeout(() => {
+            if (onClose) onClose(); // Ejecutar la función de cierre si se proporciona
+        }, 100); // Dar tiempo para la animación de cierre
     };
 
     return (
