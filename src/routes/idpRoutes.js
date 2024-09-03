@@ -72,9 +72,16 @@ module.exports = function (app) {
             model: home,
             routes: [
                 { path: "/home/fetchAllOrderSale", method: "fetchAllOrderSale" },
-                { path: "/home/fetchAllOrderSale_pending", method: "fetchAllOrderSale_pending" }
+                { path: "/home/fetchAllOrderSale_pending", method: "fetchAllOrderSale_pending" },
             ],
-
+        },
+        {
+            category: "graphic",
+            model: home,
+            routes: [
+                { path: "/home/getMonthlyData", method: "getMonthlyData" },
+                { path: "/home/getMonthlyDatakpi", method: "fetchGetMonthlyDataKpi" },
+            ],
         },
     ];
 
