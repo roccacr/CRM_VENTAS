@@ -1,48 +1,122 @@
-// Import necessary React hooks and amCharts 5 libraries
-import { useState, useLayoutEffect } from "react";
+import { useLayoutEffect, useState, useEffect } from "react";
+import { useDispatch } from "react-redux"; // Importar useDispatch
 import * as am5 from "@amcharts/amcharts5";
 import * as am5xy from "@amcharts/amcharts5/xy";
 import am5themes_Animated from "@amcharts/amcharts5/themes/Animated";
+import { setgetMonthlyData } from "../../../store/Home/thunksHome";
 
-// Define the data for the chart
-const data = [
-    { year: "LEADS", LEADS: 50 },
-    { year: "VISITAS", VISITAS: 2.6 },
-    { year: "OPORTUN", OPORTUN: 2 },
-    { year: "VENTAS", VENTAS: 120 }, // Combines pre-reservations, reservations, and sales
-];
+// Función para obtener el primer y último día del mes actual
+const getDefaultDates = () => {
+    const now = new Date();
+    const firstDay = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split("T")[0];
+    const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split("T")[0];
+    return { firstDay, lastDay };
+};
 
-// Define the series configuration
-const series = [
-    { name: "LEADS", field: "LEADS" },
-    { name: "VISITAS", field: "VISITAS" },
-    { name: "OPORTUN", field: "OPORTUN" },
-    { name: "VENTAS", field: "VENTAS" },
-];
+// Función para obtener los nuevos datos y ejecutar una acción usando dispatch
+const fetchNewData = (startDate, endDate, dispatch) => {
 
-// Define the GraficoMensual (Monthly Chart) component
+
+    return new Promise((resolve) => {
+        // Ejecutar la acción usando dispatch
+        dispatch(setgetMonthlyData(startDate, endDate))
+            .then((result) => {
+                // Simulación de obtención de datos
+                const newData = [
+                    { year: "LEADS", LEADS: result.data.data.total_lead || 0 },
+                    { year: "VISITAS", VISITAS: result.data.data.total_calendars || 0 },
+                    { year: "OPORTUN", OPORTUN: result.data.data.total_oport || 0 },
+                    { year: "VENTAS", VENTAS: result.ventas || 0 },
+                ];
+                resolve(newData);
+            })
+            .catch((error) => {
+                console.error("Error al obtener los datos del gráfico:", error);
+                resolve([
+                    { year: "LEADS", LEADS: 0 },
+                    { year: "VISITAS", VISITAS: 0 },
+                    { year: "OPORTUN", OPORTUN: 0 },
+                    { year: "VENTAS", VENTAS: 0 },
+                ]);
+            });
+    });
+};
+
 export const GraficoMensual = () => {
-    // State to hold the chart instance
+    const { firstDay, lastDay } = getDefaultDates();
     const [chart, setChart] = useState(null);
+    const [data, setData] = useState([
+        { year: "LEADS", LEADS: 50 },
+        { year: "VISITAS", VISITAS: 2.6 },
+        { year: "OPORTUN", OPORTUN: 2 },
+        { year: "VENTAS", VENTAS: 120 },
+    ]);
+    const [loading, setLoading] = useState(false);
+    const [startDate, setStartDate] = useState(firstDay);
+    const [endDate, setEndDate] = useState(lastDay);
 
-    // Use useLayoutEffect to ensure DOM manipulation happens before browser paint
+    const dispatch = useDispatch(); // Obtener el dispatch
+
+    useEffect(() => {
+        const loadInitialData = async () => {
+            setData([
+                { year: "LEADS", LEADS: 0 },
+                { year: "VISITAS", VISITAS: 0 },
+                { year: "OPORTUN", OPORTUN: 0 },
+                { year: "VENTAS", VENTAS: 0 },
+            ]);
+            setLoading(true);
+
+            // Obtener nuevos datos usando fetchNewData y dispatch
+            const newData = await fetchNewData(firstDay, lastDay, dispatch);
+            setData(newData);
+            setLoading(false);
+        };
+
+        loadInitialData();
+    }, [firstDay, lastDay, dispatch]);
+
+    const handleGenerateChart = async () => {
+        setData([
+            { year: "LEADS", LEADS: 0 },
+            { year: "VISITAS", VISITAS: 0 },
+            { year: "OPORTUN", OPORTUN: 0 },
+            { year: "VENTAS", VENTAS: 0 },
+        ]);
+        setLoading(true);
+
+        // Obtener nuevos datos usando fetchNewData y dispatch
+        const newData = await fetchNewData(startDate, endDate, dispatch);
+        setData(newData);
+        setLoading(false);
+    };
+
     useLayoutEffect(() => {
-        // Create the root element for the chart
-        const root = am5.Root.new("chartdiv");
-        // Create the chart and store it in state
-        const chart = createChart(root);
-        setChart(chart);
+        if (!loading) {
+            const root = am5.Root.new("chartdiv");
+            const chart = createChart(root);
+            setChart(chart);
 
-        // Cleanup function to dispose of the chart when component unmounts
-        return () => root.dispose();
-    }, []); // Empty dependency array means this effect runs once on mount
+            return () => root.dispose();
+        }
+    }, [loading]);
 
-    // Function to create and configure the chart
+    useEffect(() => {
+        if (chart) {
+            const yAxis = chart.yAxes.getIndex(0);
+            const seriesList = chart.series.values;
+
+            yAxis.data.setAll(data);
+
+            seriesList.forEach((series) => {
+                series.data.setAll(data);
+            });
+        }
+    }, [data, chart]);
+
     const createChart = (root) => {
-        // Set themes for the chart
         root.setThemes([am5themes_Animated.new(root), createCustomTheme(root)]);
 
-        // Create the chart instance
         const chart = root.container.children.push(
             am5xy.XYChart.new(root, {
                 panX: false,
@@ -53,10 +127,8 @@ export const GraficoMensual = () => {
             }),
         );
 
-        // Add vertical scrollbar
         chart.set("scrollbarY", am5.Scrollbar.new(root, { orientation: "vertical" }));
 
-        // Create Y-axis
         const yAxis = chart.yAxes.push(
             am5xy.CategoryAxis.new(root, {
                 categoryField: "year",
@@ -65,10 +137,8 @@ export const GraficoMensual = () => {
             }),
         );
 
-        // Set data for Y-axis
         yAxis.data.setAll(data);
 
-        // Create X-axis
         const xAxis = chart.xAxes.push(
             am5xy.ValueAxis.new(root, {
                 min: 0,
@@ -76,7 +146,6 @@ export const GraficoMensual = () => {
             }),
         );
 
-        // Create legend
         const legend = chart.children.push(
             am5.Legend.new(root, {
                 centerX: am5.p50,
@@ -84,8 +153,14 @@ export const GraficoMensual = () => {
             }),
         );
 
-        // Create series for each data field
-        series.forEach(({ name, field }) => {
+        const seriesConfig = [
+            { name: "LEADS", field: "LEADS" },
+            { name: "VISITAS", field: "VISITAS" },
+            { name: "OPORTUN", field: "OPORTUN" },
+            { name: "VENTAS", field: "VENTAS" },
+        ];
+
+        seriesConfig.forEach(({ name, field }) => {
             const series = chart.series.push(
                 am5xy.ColumnSeries.new(root, {
                     name,
@@ -97,17 +172,14 @@ export const GraficoMensual = () => {
                 }),
             );
 
-            // Configure tooltip for series
             series.columns.template.setAll({
                 tooltipText: "{name}, {categoryY}: {valueX}",
                 tooltipY: am5.percent(90),
             });
 
-            // Set data for series
             series.data.setAll(data);
             series.appear();
 
-            // Add value labels to the series
             series.bullets.push(() => {
                 return am5.Bullet.new(root, {
                     sprite: am5.Label.new(root, {
@@ -120,17 +192,14 @@ export const GraficoMensual = () => {
                 });
             });
 
-            // Add series to legend
             legend.data.push(series);
         });
 
-        // Animate chart appearance
         chart.appear(1000, 100);
 
         return chart;
     };
 
-    // Function to create a custom theme
     const createCustomTheme = (root) => {
         const theme = am5.Theme.new(root);
         theme.rule("Grid", ["base"]).setAll({
@@ -139,7 +208,6 @@ export const GraficoMensual = () => {
         return theme;
     };
 
-    // Render the component
     return (
         <div className="col-md-6">
             <div className="card table-card">
@@ -156,18 +224,18 @@ export const GraficoMensual = () => {
                             <div className="row">
                                 <div className="col-md-6">
                                     <div className="mb-3">
-                                        <label className="form-label">Fecha de inicio </label>
-                                        <input type="date" className="form-control" id="exampleInputEmail1" aria-describedby="emailHelp" placeholder="Enter email" />
+                                        <label className="form-label">Fecha de inicio</label>
+                                        <input type="date" className="form-control" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
                                     </div>
                                 </div>
                                 <div className="col-md-6">
                                     <div className="mb-3">
                                         <label className="form-label">Fecha final</label>
-                                        <input type="date" className="form-control" placeholder="Text" />
+                                        <input type="date" className="form-control" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
                                     </div>
                                 </div>
                             </div>
-                            <button type="submit" className="btn btn-dark">
+                            <button type="button" className="btn btn-dark" onClick={handleGenerateChart}>
                                 Generar gráfico
                             </button>
                         </div>
@@ -175,8 +243,17 @@ export const GraficoMensual = () => {
                 </div>
 
                 <div className="card-body py-3 px-0">
-                    {/* Container for the amCharts chart */}
-                    <div id="chartdiv" style={{ width: "100%", height: "350px" }}></div>
+                    {/* Display loader while data is being fetched */}
+                    {loading ? (
+                        <div style={{ textAlign: "center", padding: "20px" }}>
+                            <div className="spinner-border" role="status">
+                                <span className="visually-hidden">Loading...</span>
+                            </div>
+                            <p>Cargando datos...</p>
+                        </div>
+                    ) : (
+                        <div id="chartdiv" style={{ width: "100%", height: "350px" }}></div>
+                    )}
                 </div>
 
                 {/* Footer displaying individual category values */}

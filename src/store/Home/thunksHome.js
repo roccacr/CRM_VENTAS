@@ -1,6 +1,6 @@
 /********************************************** MODULE IMPORTS ****************************************************/
 // import { errorMessages, secretKey } from "../../api";
-import { fetchAllEvents, fetchAllOrderSale, fetchAllOrderSale_pending, fetchLeadsUnderAttention, fetchNewLeads, fetchOpportunities, updateEventStatus } from "./Api_Home_Providers";
+import { fetchAllEvents, fetchAllOrderSale, fetchAllOrderSale_pending, fetchGetMonthlyData, fetchGetMonthlyDataKpi, fetchLeadsUnderAttention, fetchNewLeads, fetchOpportunities, updateEventStatus } from "./Api_Home_Providers";
 import { setError, setLeadsNew, setLeadsAttention, setEventsAttention, setClearList, setOportunityAttention, setOrderSaleAttention, setOrderSalePendingAttention } from "./HomeSlice";
 
 
@@ -58,6 +58,63 @@ export const updateEventsStatusThunksHome = (id_calendar, newStatus) => {
 
             // Disparamos una acción para establecer un mensaje de error en el estado de la aplicación
             dispatch(setError("No se pudo cargar la lista de leads. Por favor, intente nuevamente."));
+        }
+    };
+};
+
+
+/**
+ * Acción para obtener los datos del gráfico mensual y despachar los resultados.
+ * @param {string} startDate - Fecha de inicio para filtrar los datos del gráfico.
+ * @param {string} endDate - Fecha de fin para filtrar los datos del gráfico.
+ * @returns {Function} - Retorna una función asíncrona que se ejecuta con `dispatch` y `getState`.
+ */
+export const setgetMonthlyData = (startDate, endDate) => {
+    return async (dispatch, getState) => {
+        // Extraemos el ID del administrador de Netsuite y el rol desde el estado de autenticación
+        const { idnetsuite_admin, rol_admin } = getState().auth;
+
+        try {
+            // Realizamos la solicitud asincrónica para obtener los datos del gráfico mensual con los datos proporcionados
+            const result = await fetchGetMonthlyData({ idnetsuite_admin, rol_admin, startDate, endDate });
+            return result;
+        } catch (error) {
+            // En caso de error durante la solicitud, lo mostramos en la consola
+            console.error("Error al cargar los datos del gráfico mensual:", error);
+
+            // Disparamos una acción para establecer un mensaje de error en el estado de la aplicación
+            dispatch(setError("No se pudo cargar los datos del gráfico mensual. Por favor, intente nuevamente."));
+        }
+    };
+};
+
+
+
+/**
+ * Acción para obtener los datos del gráfico mensual de KPIs y despachar los resultados.
+ * @param {string} startDate - Fecha de inicio para filtrar los datos del gráfico de KPIs.
+ * @param {string} endDate - Fecha de fin para filtrar los datos del gráfico de KPIs.
+ * @param {Array} campaigns - Lista de campañas para filtrar los datos del gráfico.
+ * @param {Array} projects - Lista de proyectos para filtrar los datos del gráfico.
+ * @returns {Function} - Retorna una función asíncrona que se ejecuta con `dispatch` y `getState`.
+ */
+export const setgetMonthlyDataKpi = (startDate, endDate, campaigns, projects) => {
+    return async (dispatch, getState) => {
+        // Extraemos el ID del administrador de Netsuite y el rol desde el estado de autenticación
+        const { idnetsuite_admin, rol_admin } = getState().auth;
+
+        try {
+            // Realizamos la solicitud asincrónica para obtener los datos del gráfico mensual de KPIs con los datos proporcionados
+            const result = await fetchGetMonthlyDataKpi({ idnetsuite_admin, rol_admin, startDate, endDate, campaigns, projects });
+
+            console.log("setgetMonthlyDataKpi",result);
+            return result;
+        } catch (error) {
+            // En caso de error durante la solicitud, lo mostramos en la consola
+            console.error("Error al cargar los datos del gráfico mensual de KPIs:", error);
+
+            // Disparamos una acción para establecer un mensaje de error en el estado de la aplicación
+            dispatch(setError("No se pudo cargar los datos del gráfico mensual de KPIs. Por favor, intente nuevamente."));
         }
     };
 };

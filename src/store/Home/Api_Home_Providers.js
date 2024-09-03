@@ -115,3 +115,51 @@ export const fetchAllOrderSale_pending = async ({ idnetsuite_admin, rol_admin })
     };
     return await fetchData("home/fetchAllOrderSale_pending", requestData); // Llama a la API para obtener todas las órdenes de venta.
 };
+
+
+/**
+ * Función para obtener los datos del gráfico mensual.
+ * @param {Object} params - Los parámetros de la función.
+ * @param {number} params.idnetsuite_admin - El ID del administrador de Netsuite que realiza la solicitud.
+ * @param {number} params.rol_admin - El rol del administrador para validar permisos.
+ * @param {string} params.startDate - Fecha de inicio para filtrar los datos del gráfico.
+ * @param {string} params.endDate - Fecha de fin para filtrar los datos del gráfico.
+ * @returns {Promise<Object>} - Retorna una promesa con los datos del gráfico mensual, incluyendo el total de leads y oportunidades.
+ */
+export const fetchGetMonthlyData = async ({ idnetsuite_admin, rol_admin, startDate, endDate }) => {
+    console.log("fetchGetMonthlyData", idnetsuite_admin, rol_admin, startDate   , endDate);
+    const requestData = {
+        ...commonRequestData,
+        idnetsuite_admin,
+        rol_admin,
+        startDate,
+        endDate
+    };
+    return await fetchData("home/getMonthlyData", requestData); // Llama a la API para obtener los datos del gráfico mensual.
+};
+
+
+
+/**
+ * Función para obtener los datos del gráfico mensual de KPIs.
+ * @param {Object} params - Los parámetros de la función.
+ * @param {number} params.idnetsuite_admin - El ID del administrador de Netsuite que realiza la solicitud.
+ * @param {number} params.rol_admin - El rol del administrador para validar permisos.
+ * @param {string} params.startDate - Fecha de inicio para filtrar los datos del gráfico de KPIs.
+ * @param {string} params.endDate - Fecha de fin para filtrar los datos del gráfico de KPIs.
+ * @param {Array} params.campaigns - Lista de campañas para filtrar los datos del gráfico.
+ * @param {Array} params.projects - Lista de proyectos para filtrar los datos del gráfico.
+ * @returns {Promise<Object>} - Retorna una promesa con los datos del gráfico mensual de KPIs, incluyendo el total de leads y oportunidades.
+ */
+export const fetchGetMonthlyDataKpi = async ({ idnetsuite_admin, rol_admin, startDate, endDate, campaigns, projects }) => {
+    const requestData = {
+        ...commonRequestData,
+        idnetsuite_admin,
+        rol_admin,
+        startDate,
+        endDate,
+        campaigns,
+        projects,
+    };
+    return await fetchData("home/getMonthlyDatakpi", requestData); // Llama a la API para obtener los datos del gráfico mensual de KPIs.
+};
