@@ -184,13 +184,12 @@ home.updateEventsStatusAsync = (dataParams) =>
  */
 home.getMonthlyData = async (dataParams) =>
     handleDatabaseOperation(async (connection) => {
-        console.log(dataParams);
         // Ejecuta el procedimiento almacenado para obtener los datos del gráfico mensual.
         const [results] = await connection.query(
             `CALL monthly_graphics(?, ?, ?, ?)`, // Llamada al procedimiento almacenado.
-            [dataParams.rol_admin, dataParams.idAdmin, dataParams.startDate, dataParams.endDate], // Parámetros para la consulta.
+            [dataParams.rol_admin, dataParams.idnetsuite_admin, dataParams.startDate, dataParams.endDate], // Parámetros para la consulta.
         );
-        console.log(results);
+
 
         // Aplanar los resultados en un solo objeto.
         const formattedResults = {
@@ -226,7 +225,7 @@ home.fetchGetMonthlyDataKpi = async (dataParams) =>
         // Ejecuta el procedimiento almacenado para obtener los datos del gráfico mensual de KPIs.
         const [results] = await connection.query(
             `CALL monthly_graphicsKpi(?, ?, ?, ?, ?, ?)`, // Llamada al procedimiento almacenado para obtener los datos de KPIs.
-            [dataParams.idnetsuite_admin, dataParams.rol_admin, dataParams.startDate, dataParams.endDate, dataParams.campaigns, dataParams.projects], // Parámetros para la consulta.
+            [dataParams.rol_admin, dataParams.idnetsuite_admin, dataParams.startDate, dataParams.endDate, dataParams.campaigns, dataParams.projects], // Parámetros para la consulta.
         );
 
         console.log(results);
