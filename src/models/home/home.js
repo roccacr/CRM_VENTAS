@@ -184,6 +184,7 @@ home.updateEventsStatusAsync = (dataParams) =>
  */
 home.getMonthlyData = async (dataParams) =>
     handleDatabaseOperation(async (connection) => {
+        console.log(dataParams);
         // Ejecuta el procedimiento almacenado para obtener los datos del gráfico mensual.
         const [results] = await connection.query(
             `CALL monthly_graphics(?, ?, ?, ?)`, // Llamada al procedimiento almacenado.
