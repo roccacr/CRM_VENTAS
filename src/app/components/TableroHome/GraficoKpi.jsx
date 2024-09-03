@@ -38,9 +38,9 @@ const fetchNewChartData = (startDate, endDate, campaigns, projects, dispatch) =>
             .then((result) => {
                 // Simulación de obtención de datos
                 const newData = [
-                    { value: result.data.total_pend || 0, category: "PEND" },
-                    { value: result.data.total_comp || 0, category: "COMP" },
-                    { value: result.data.total_canc || 0, category: "CANC" },
+                    { value: result.data.data.total_pending || 0, category: "PEND" },
+                    { value: result.data.data.total_complete || 0, category: "COMP" },
+                    { value: result.data.data.total_cancel || 0, category: "CANC" },
                 ];
                 resolve(newData);
             })
