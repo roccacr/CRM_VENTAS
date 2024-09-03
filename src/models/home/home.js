@@ -189,6 +189,7 @@ home.getMonthlyData = async (dataParams) =>
             `CALL monthly_graphics(?, ?, ?, ?)`, // Llamada al procedimiento almacenado.
             [dataParams.rol_admin, dataParams.idAdmin, dataParams.startDate, dataParams.endDate], // Parámetros para la consulta.
         );
+        console.log(results);
 
         // Aplanar los resultados en un solo objeto.
         const formattedResults = {
