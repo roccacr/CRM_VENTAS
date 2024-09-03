@@ -232,9 +232,9 @@ home.fetchGetMonthlyDataKpi = async (dataParams) =>
 
         // Aplanar los resultados en un solo objeto.
         const formattedResults = {
-            total_complete: results[0][0]?.total_lead || 0,
-            total_pending: results[1][0]?.total_oport || 0,
-            total_cancel: results[2][0]?.total_calendars || 0,
+            total_complete: results[0][0]?.total_complete || 0,
+            total_pending: results[1][0]?.total_pending || 0,
+            total_cancel: results[2][0]?.total_cancel || 0,
         };
 
         // Retorna el resultado combinado con un código de estado 200.
