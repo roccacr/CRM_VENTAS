@@ -77,6 +77,7 @@ export const setgetMonthlyData = (startDate, endDate) => {
         try {
             // Realizamos la solicitud asincrónica para obtener los datos del gráfico mensual con los datos proporcionados
             const result = await fetchGetMonthlyData({ idnetsuite_admin, rol_admin, startDate, endDate });
+            console.log("setgetMonthlyData",result);
             return result;
         } catch (error) {
             // En caso de error durante la solicitud, lo mostramos en la consola
@@ -106,8 +107,6 @@ export const setgetMonthlyDataKpi = (startDate, endDate, campaigns, projects) =>
         try {
             // Realizamos la solicitud asincrónica para obtener los datos del gráfico mensual de KPIs con los datos proporcionados
             const result = await fetchGetMonthlyDataKpi({ idnetsuite_admin, rol_admin, startDate, endDate, campaigns, projects });
-
-            console.log("setgetMonthlyDataKpi",result);
             return result;
         } catch (error) {
             // En caso de error durante la solicitud, lo mostramos en la consola
