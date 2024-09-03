@@ -24,13 +24,13 @@ export const ModalLeads = ({ leadData, onClose }) => {
                 <div className="modal-content">
                     <div className="modal-header">
                         <h5 className="modal-title h4" id="myLargeModalLabel">
-                            {leadData?.nombre_lead || "Detalle del Lead"}
+                            {leadData?.nombre_lead || "No cuenta con nombre de cliente"}
                         </h5>
                         <button type="button" className="btn-close" data-bs-dismiss="modal" aria-label="Close" onClick={handleClose}></button>
                     </div>
                     <div className="modal-body">
                         {/* Aquí iría el contenido del modal, por ejemplo, los detalles de leadData */}
-                        <p>{leadData?.nombre_lead || "No hay detalles disponibles"}</p>
+                        <p>{leadData?.email_lead || "No cuenta con correo electronico"}</p>
                     </div>
                 </div>
             </div>

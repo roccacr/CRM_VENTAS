@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from "react";
+// Views_list_leads.js
+import React, { useState, useEffect } from "react";
 import { columns } from "./columns";
-import clientData from "./clientData.json";
 import { ModalLeads } from "../../../pages/modal/modalLeads";
 import { useDataTable } from "../../../../hook/useDataTable";
 import { useLocation } from "react-router-dom";
@@ -13,29 +13,30 @@ export const Views_list_leads = () => {
     const idUrl = searchParams.get("data");
 
     const leads = useSelector(selectAllNewLeads);
-
-    // Estado para almacenar los datos que se mostrarán en la tabla
     const [tableData, setTableData] = useState([]);
-
+    const [isLoading, setIsLoading] = useState(true);
     const [showModal, setShowModal] = useState(false);
     const [selectedLead, setSelectedLead] = useState(null);
+
+    useEffect(() => {
+        setIsLoading(true);
+        if (idUrl === "2") {
+            setTableData(leads);
+        } else {
+            // Aquí deberías cargar los datos de clientData.json
+            // Por ejemplo:
+            // import clientData from "./clientData.json";
+            // setTableData(clientData);
+        }
+        setIsLoading(false);
+    }, [idUrl, leads]);
 
     const handleRowClick = (data) => {
         setSelectedLead(data);
         setShowModal(true);
     };
 
-    // Validación antes de llenar la tabla
-    useEffect(() => {
-        if (idUrl === "2") {
-            setTableData(leads);
-        } else {
-            setTableData(clientData);
-        }
-    }, [idUrl, leads]);
-
-    // Llama a useDataTable solo si tableData no está vacío
-    useDataTable(tableData.length > 0 ? tableData : [], columns, handleRowClick);
+    useDataTable(tableData, columns, handleRowClick);
 
     const handleCloseModal = () => {
         setShowModal(false);
@@ -52,17 +53,24 @@ export const Views_list_leads = () => {
                 </div>
                 <div className="card-body">
                     <div className="dt-responsive table-responsive">
-                        <table id="single-select" className="table table-striped table dt-responsive w-100 display" style={{ fontSize: "15px", width: "100%" }}>
-                            <thead>
-                                <tr>
-                                    {columns.map((column, index) => (
-                                        <th key={index}>{column.title}</th>
-                                    ))}
-                                </tr>
-                            </thead>
-                            <tbody />
-                        </table>
-                        {/* Modal para mostrar detalles del lead */}
+                        {isLoading ? (
+                            <div className="text-center">
+                                <div className="spinner-border" role="status">
+                                    <span className="sr-only">Cargando...</span>
+                                </div>
+                            </div>
+                        ) : (
+                            <table id="single-select" className="table table-striped table dt-responsive w-100 display" style={{ fontSize: "15px", width: "100%" }}>
+                                <thead>
+                                    <tr>
+                                        {columns.map((column, index) => (
+                                            <th key={index}>{column.title}</th>
+                                        ))}
+                                    </tr>
+                                </thead>
+                                <tbody />
+                            </table>
+                        )}
                         {selectedLead && <ModalLeads leadData={selectedLead} onClose={handleCloseModal} />}
                     </div>
                 </div>
