@@ -146,6 +146,9 @@ export const setgetMonthlyData = (startDate, endDate) => {
             // Solicita los datos del gráfico mensual
             const result = await fetchGetMonthlyData({ idnetsuite_admin, rol_admin, startDate, endDate });
             console.log("result", result);
+
+
+            
             return result;
         } catch (error) {
             // Manejo de errores durante la solicitud
