@@ -43,7 +43,13 @@ export const ModalLeads = ({ leadData, onClose }) => {
 
     const renderButtons = (forDropdown = false) =>
         buttonData.map((btn, idx) => (
-            <li key={idx} className={forDropdown ? "dropdown-item" : "btn btn-shadow"} style={{ borderColor: btn.color, marginBottom: forDropdown ? "5px" : "0px" }}>
+            <li
+                key={idx}
+                className={forDropdown ? "dropdown-item" : "btn btn-shadow"}
+                style={
+                    !forDropdown ? { backgroundColor: btn.color, color: "#fff", borderColor: btn.color, marginBottom: "0px" } : { marginBottom: "5px" } // Estilos sin color para el dropdown
+                }
+            >
                 <i className={btn.icon}></i> {btn.text}
             </li>
         ));
@@ -73,7 +79,7 @@ export const ModalLeads = ({ leadData, onClose }) => {
                         {/* Botones visibles en pantallas grandes */}
                         <div className="d-none d-lg-flex justify-content-center text-center flex-wrap gap-2">{renderButtons()}</div>
 
-                        {/* Menú desplegable para pantallas pequeñas */}
+                        {/* Menú desplegable para pantallas pequeñas sin colores */}
                         <div className="d-lg-none d-flex justify-content-center">
                             <div className="btn-group" onClick={(e) => e.stopPropagation()}>
                                 <button type="button" className="btn btn-secondary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
@@ -86,6 +92,8 @@ export const ModalLeads = ({ leadData, onClose }) => {
                         </div>
                     </div>
                 </div>
+
+                {/* Acciones recientes */}
                 <div className="card latest-activity-card">
                     <div className="card-header">
                         <h5>
@@ -155,21 +163,7 @@ export const ModalLeads = ({ leadData, onClose }) => {
                                     <p className="text-muted m-b-0">Free courses for all our customers at A1 Conference Room - 9:00 am tomorrow!</p>
                                 </div>
                             </div>
-                            <div className="row p-b-30">
-                                <div className="col-auto text-end update-meta">
-                                    <p className="text-muted m-b-0 d-inline-flex">08:20 AM</p>
-                                    <div className="border border-2 border-warning text-warning update-icon">
-                                        <i className="ph-duotone ph-hand-palm"></i>
-                                    </div>
-                                </div>
-                                <div className="col">
-                                    <a href="#!" className="d-inline-flex align-items-center">
-                                        <h6 className="mb-0 me-2">Create report</h6>
-                                        <span className="badge bg-warning">Pending</span>
-                                    </a>
-                                    <p className="text-muted m-b-0">Free courses for all our customers at A1 Conference Room - 9:00 am tomorrow!</p>
-                                </div>
-                            </div>
+
                             <div className="row">
                                 <div className="col-auto text-end update-meta">
                                     <p className="text-muted m-b-0 d-inline-flex">09:15 AM</p>
