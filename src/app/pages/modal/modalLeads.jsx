@@ -5,18 +5,17 @@ export const ModalLeads = ({ leadData, onClose }) => {
     const [showModal, setShowModal] = useState(false);
 
     useEffect(() => {
-        // Usar setTimeout para evitar el retraso en el renderizado inicial
         const timer = setTimeout(() => {
             setShowModal(true);
-        }, 100); // Solo 10ms para permitir que se monte y luego mostrarlo rápidamente
+        }, 100);
         return () => clearTimeout(timer);
     }, [leadData]);
 
     const handleClose = () => {
         setShowModal(false);
         setTimeout(() => {
-            if (onClose) onClose(); // Ejecutar la función de cierre si se proporciona
-        }, 100); // Dar tiempo para la animación de cierre
+            if (onClose) onClose();
+        }, 100);
     };
 
     const handleCopy = () => {
@@ -32,7 +31,7 @@ export const ModalLeads = ({ leadData, onClose }) => {
                     width: "20em",
                     timer: 1500,
                     customClass: {
-                        popup: "smaller-swal", // Añadir clase personalizada
+                        popup: "smaller-swal",
                     },
                 });
             })
@@ -43,7 +42,11 @@ export const ModalLeads = ({ leadData, onClose }) => {
 
     return (
         <div className={`modal fade bd-example-modal-lg ${showModal ? "show" : ""}`} tabIndex="-1" aria-labelledby="myLargeModalLabel" style={{ display: showModal ? "block" : "none" }} aria-modal="true" role="dialog" onClick={handleClose}>
-            <div className="modal-dialog modal-lg" onClick={(e) => e.stopPropagation()} style={{ maxWidth: "65%", margin: "2.75rem auto" }}>
+            <div
+                className="modal-dialog modal-lg"
+                onClick={(e) => e.stopPropagation()}
+                style={{ maxWidth: "90%", margin: "2.75rem auto" }} // Ajuste de ancho del modal en dispositivos móviles
+            >
                 <div className="modal-content">
                     <div className="modal-header">
                         <div className="d-inline-block">
@@ -63,7 +66,9 @@ export const ModalLeads = ({ leadData, onClose }) => {
 
                     <div className="modal-body">
                         <p style={{ textAlign: "center" }}>¿Qué deseas hacer con este lead?</p>
-                        <div className="d-flex flex-wrap gap-2">
+
+                        {/* Botones visibles solo en pantallas grandes */}
+                        <div className="d-none d-lg-flex flex-wrap gap-2">
                             <button type="button" className="btn btn-shadow" style={{ backgroundColor: "#25d366", color: "#fff", borderColor: "#25d366" }}>
                                 <i className="fab fa-whatsapp"></i> Ir a Whatsapp
                             </button>
@@ -91,31 +96,63 @@ export const ModalLeads = ({ leadData, onClose }) => {
                             <button type="button" className="btn btn-shadow btn-link">
                                 Link
                             </button>
+                        </div>
 
+                        {/* Menú desplegable para pantallas pequeñas */}
+                        <div className="d-lg-none">
                             <div className="btn-group">
                                 <button type="button" className="btn btn-secondary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
-                                    Right-aligned menu example
+                                    Opciones de Lead
                                 </button>
-                                <ul className="dropdown-menu dropdown-menu-end" >
+                                <ul className="dropdown-menu dropdown-menu-end">
                                     <li>
                                         <button className="dropdown-item" type="button">
-                                            Action
+                                            <i className="fab fa-whatsapp"></i> Ir a Whatsapp
                                         </button>
                                     </li>
                                     <li>
                                         <button className="dropdown-item" type="button">
-                                            Another action
+                                            <i className="fab fa-whatsapp"></i> Whatsapp y Contacto
                                         </button>
                                     </li>
                                     <li>
                                         <button className="dropdown-item" type="button">
-                                            Something else here
+                                            <i className="fab fa-wpforms"></i> Nota de Contacto
+                                        </button>
+                                    </li>
+                                    <li>
+                                        <button className="dropdown-item" type="button">
+                                            <i className="fas fa-calendar-check"></i> Crear un evento
+                                        </button>
+                                    </li>
+                                    <li>
+                                        <button className="dropdown-item" type="button">
+                                            <i className="fas fa-window-close"></i> Dar como perdido
+                                        </button>
+                                    </li>
+                                    <li>
+                                        <button className="dropdown-item" type="button">
+                                            Info
+                                        </button>
+                                    </li>
+                                    <li>
+                                        <button className="dropdown-item" type="button">
+                                            Light
+                                        </button>
+                                    </li>
+                                    <li>
+                                        <button className="dropdown-item" type="button">
+                                            Dark
+                                        </button>
+                                    </li>
+                                    <li>
+                                        <button className="dropdown-item" type="button">
+                                            Link
                                         </button>
                                     </li>
                                 </ul>
                             </div>
                         </div>
-                        {/* Aquí iría el contenido del modal, por ejemplo, los detalles de leadData */}
                     </div>
                 </div>
             </div>
