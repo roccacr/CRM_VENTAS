@@ -127,52 +127,52 @@ export const ModalLeads = ({ leadData, onClose }) => {
                                 </button>
                                 <ul className="dropdown-menu dropdown-menu-end">
                                     <li>
-                                        <button className="dropdown-item" type="button" style={{ backgroundColor: "#25d366", color: "#fff", borderColor: "#25d366" }}>
+                                        <button className="dropdown-item" type="button" style={{ backgroundColor: "#25d366", color: "#fff", borderColor: "#25d366", marginBottom: "5px" }}>
                                             <i className="fab fa-whatsapp"></i> Ir a Whatsapp
                                         </button>
                                     </li>
                                     <li>
-                                        <button className="dropdown-item" type="button" style={{ backgroundColor: "#25d366", color: "#fff", borderColor: "#25d366" }}>
+                                        <button className="dropdown-item" type="button" style={{ backgroundColor: "#25d366", color: "#fff", borderColor: "#25d366", marginBottom: "5px" }}>
                                             <i className="fab fa-whatsapp"></i> Whatsapp y Contacto
                                         </button>
                                     </li>
                                     <li>
-                                        <button className="dropdown-item" type="button" style={{ backgroundColor: "#c0392b", color: "#fff", borderColor: "#c0392b" }}>
+                                        <button className="dropdown-item" type="button" style={{ backgroundColor: "#c0392b", color: "#fff", borderColor: "#c0392b", marginBottom: "5px" }}>
                                             <i className="fab fa-wpforms"></i> Nota de Contacto
                                         </button>
                                     </li>
                                     <li>
-                                        <button className="dropdown-item" type="button" style={{ backgroundColor: "#2c3e50", color: "#fff", borderColor: "#2c3e50" }}>
+                                        <button className="dropdown-item" type="button" style={{ backgroundColor: "#2c3e50", color: "#fff", borderColor: "#2c3e50", marginBottom: "5px" }}>
                                             <i className="fas fa-calendar-check"></i> Crear un evento
                                         </button>
                                     </li>
                                     <li>
-                                        <button className="dropdown-item" type="button" style={{ backgroundColor: "#78281f", color: "#fff", borderColor: "#78281f" }}>
+                                        <button className="dropdown-item" type="button" style={{ backgroundColor: "#78281f", color: "#fff", borderColor: "#78281f", marginBottom: "5px" }}>
                                             <i className="fas fa-window-close"></i> Dar como perdido
                                         </button>
                                     </li>
                                     <li>
-                                        <button className="dropdown-item" type="button" style={{ backgroundColor: "#f1c40f", color: "#fff", borderColor: "#f1c40f" }}>
+                                        <button className="dropdown-item" type="button" style={{ backgroundColor: "#f1c40f", color: "#fff", borderColor: "#f1c40f", marginBottom: "5px" }}>
                                             <i className="fas fa-location-arrow"></i> Colocar en seguimiento
                                         </button>
                                     </li>
                                     <li>
-                                        <button className="dropdown-item" type="button" style={{ backgroundColor: "#af7ac5", color: "#fff", borderColor: "#af7ac5" }}>
+                                        <button className="dropdown-item" type="button" style={{ backgroundColor: "#af7ac5", color: "#fff", borderColor: "#af7ac5", marginBottom: "5px" }}>
                                             <i className="fas fa-level-up-alt"></i> Crear Oportunidad
                                         </button>
                                     </li>
                                     <li>
-                                        <button className="dropdown-item" type="button" style={{ backgroundColor: "#2471a3", color: "#fff", borderColor: "#2471a3" }}>
+                                        <button className="dropdown-item" type="button" style={{ backgroundColor: "#2471a3", color: "#fff", borderColor: "#2471a3", marginBottom: "5px" }}>
                                             <i className="fas fa-stream"></i> Lista Oportunidades
                                         </button>
                                     </li>
                                     <li>
-                                        <button className="dropdown-item" type="button" style={{ backgroundColor: "#2e86c1", color: "#fff", borderColor: "#2e86c1" }}>
+                                        <button className="dropdown-item" type="button" style={{ backgroundColor: "#2e86c1", color: "#fff", borderColor: "#2e86c1", marginBottom: "5px" }}>
                                             <i className="fas fa-phone"></i> Llamar cliente
                                         </button>
                                     </li>
                                     <li>
-                                        <button className="dropdown-item" type="button" style={{ backgroundColor: "#7b7d7d", color: "#fff", borderColor: "#7b7d7d" }}>
+                                        <button className="dropdown-item" type="button" style={{ backgroundColor: "#7b7d7d", color: "#fff", borderColor: "#7b7d7d", marginBottom: "5px" }}>
                                             <i className="fas fa-user-circle"></i> Ver Perfil
                                         </button>
                                     </li>
