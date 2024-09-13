@@ -5,7 +5,7 @@ import makeAnimated from "react-select/animated";
 import { getLeadsAttention } from "../../../../../store/leads/thunksLeads";
 import { ModalLeads } from "../../../../pages/modal/modalLeads";
 import { columnsConfig } from "./columnsConfig";
-import "./styles.css"; // Añadir un archivo CSS para manejar estilos personalizados
+import "./styles.css"; // Importar los estilos responsivos
 
 // Función para obtener fechas por defecto (inicio y fin del mes actual)
 const getDefaultDates = () => {
@@ -85,6 +85,9 @@ export default function View_list_leads_attention() {
     const [currentPage, setCurrentPage] = useState(1);
     const rowsPerPage = 10;
 
+    // Estado para los checkboxes de filtrado
+    const [filterOption, setFilterOption] = useState(0); // 0: ninguno, 1: fecha creación, 2: última acción
+
     // Función para manejar el clic en una fila de la tabla
     const handleRowClick = (data) => {
         setSelectedLead(data);
@@ -98,20 +101,19 @@ export default function View_list_leads_attention() {
     // Calcular los datos de la tabla con paginación
     const paginatedData = filteredData.slice((currentPage - 1) * rowsPerPage, currentPage * rowsPerPage);
 
-    // Función para traer los datos de acuerdo a las fechas seleccionadas
-    const fetchData = async () => {
+    // Función para traer los datos de acuerdo a las fechas seleccionadas y el filtro
+    const fetchData = async (startDate, endDate, filterOption) => {
         setIsLoading(true); // Activa el preloader al inicio
-
-        const result = await dispatch(getLeadsAttention(inputStartDate, inputEndDate, 0));
+        const result = await dispatch(getLeadsAttention(startDate, endDate, filterOption));
         setTableData(result);
         setFilteredData(result); // Inicializar datos filtrados con todos los datos
         setIsLoading(false); // Desactiva el preloader cuando se carguen los datos
     };
 
-    // Obtener datos cuando se cambian las fechas
+    // Obtener datos cuando se cambian las fechas o el filtro de los checkboxes
     useEffect(() => {
-        fetchData(); // Llamar a la función para obtener los datos con las fechas actuales
-    }, [inputStartDate, inputEndDate]);
+        fetchData(inputStartDate, inputEndDate, filterOption);
+    }, [inputStartDate, inputEndDate, filterOption]);
 
     // Obtener valores únicos para los campos select
     const uniqueProjects = createSelectOptions(getUniqueValues(tableData, "proyecto_lead"));
@@ -141,37 +143,40 @@ export default function View_list_leads_attention() {
         filterData();
     }, [searchFilters, tableData]);
 
+    // Función para manejar los checkboxes
+    const handleCheckboxChange = (option) => {
+        setFilterOption(option);
+    };
+
     // Función para renderizar la tabla
     const renderTable = () => {
         return (
-            <div className="table-responsive">
-                <table className="table table-striped">
-                    <thead>
-                        <tr>
-                            {columnsConfig.map((column, index) =>
+            <table className="table table-striped table-responsive">
+                <thead>
+                    <tr>
+                        {columnsConfig.map((column, index) =>
+                            column.data !== "name_admin" && column.data !== "idinterno_lead" && column.data !== "proyecto_lead" && column.data !== "campana_lead" && column.data !== "segimineto_lead" && column.data !== "creado_lead" && column.data !== "subsidiaria_lead" && column.data !== "estado_lead" ? (
+                                <th key={index} className={column.className}>
+                                    {column.title}
+                                </th>
+                            ) : null,
+                        )}
+                    </tr>
+                </thead>
+                <tbody>
+                    {paginatedData.map((row, rowIndex) => (
+                        <tr key={rowIndex} onClick={() => handleRowClick(row)}>
+                            {columnsConfig.map((column, colIndex) =>
                                 column.data !== "name_admin" && column.data !== "idinterno_lead" && column.data !== "proyecto_lead" && column.data !== "campana_lead" && column.data !== "segimineto_lead" && column.data !== "creado_lead" && column.data !== "subsidiaria_lead" && column.data !== "estado_lead" ? (
-                                    <th key={index} className={column.className}>
-                                        {column.title}
-                                    </th>
+                                    <td key={colIndex} className={column.className}>
+                                        {column.render ? column.render(row[column.data]) : row[column.data]}
+                                    </td>
                                 ) : null,
                             )}
                         </tr>
-                    </thead>
-                    <tbody>
-                        {paginatedData.map((row, rowIndex) => (
-                            <tr key={rowIndex} onClick={() => handleRowClick(row)}>
-                                {columnsConfig.map((column, colIndex) =>
-                                    column.data !== "name_admin" && column.data !== "idinterno_lead" && column.data !== "proyecto_lead" && column.data !== "campana_lead" && column.data !== "segimineto_lead" && column.data !== "creado_lead" && column.data !== "subsidiaria_lead" && column.data !== "estado_lead" ? (
-                                        <td key={colIndex} className={column.className}>
-                                            {column.render ? column.render(row[column.data]) : row[column.data]}
-                                        </td>
-                                    ) : null,
-                                )}
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
-            </div>
+                    ))}
+                </tbody>
+            </table>
         );
     };
 
@@ -244,6 +249,22 @@ export default function View_list_leads_attention() {
                                     <label>Subsidiarias</label>
                                     <Select components={animatedComponents} isMulti closeMenuOnSelect={false} options={uniqueSubsidiaries} value={searchFilters.subsidiaria_lead} onChange={(selected) => setSearchFilters({ ...searchFilters, subsidiaria_lead: selected })} />
                                 </div>
+
+                                {/* Checkboxes para fecha de creación o última acción */}
+                                <div className="col-md-12 mt-3">
+                                    <div className="form-check">
+                                        <input className="form-check-input" type="checkbox" id="creationDate" checked={filterOption === 1} onChange={() => handleCheckboxChange(1)} />
+                                        <label className="form-check-label" htmlFor="creationDate">
+                                            Filtrar por Fecha de Creación
+                                        </label>
+                                    </div>
+                                    <div className="form-check">
+                                        <input className="form-check-input" type="checkbox" id="lastActionDate" checked={filterOption === 2} onChange={() => handleCheckboxChange(2)} />
+                                        <label className="form-check-label" htmlFor="lastActionDate">
+                                            Filtrar por Última Acción
+                                        </label>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     )}
@@ -294,6 +315,22 @@ export default function View_list_leads_attention() {
                         <div className="col-md-4 mt-3">
                             <label>Subsidiarias</label>
                             <Select components={animatedComponents} isMulti closeMenuOnSelect={false} options={uniqueSubsidiaries} value={searchFilters.subsidiaria_lead} onChange={(selected) => setSearchFilters({ ...searchFilters, subsidiaria_lead: selected })} />
+                        </div>
+
+                        {/* Checkboxes para fecha de creación o última acción */}
+                        <div className="col-md-12 mt-3">
+                            <div className="form-check">
+                                <input className="form-check-input" type="checkbox" id="creationDate" checked={filterOption === 1} onChange={() => handleCheckboxChange(1)} />
+                                <label className="form-check-label" htmlFor="creationDate">
+                                    Filtrar por Fecha de Creación
+                                </label>
+                            </div>
+                            <div className="form-check">
+                                <input className="form-check-input" type="checkbox" id="lastActionDate" checked={filterOption === 2} onChange={() => handleCheckboxChange(2)} />
+                                <label className="form-check-label" htmlFor="lastActionDate">
+                                    Filtrar por Última Acción
+                                </label>
+                            </div>
                         </div>
                     </div>
                 </div>
