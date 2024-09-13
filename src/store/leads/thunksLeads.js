@@ -43,6 +43,7 @@ export const getLeadsNew = () => {
 export const getLeadsAttention = (startDate, endDate, filterOption) => {
 
 
+
     return async (dispatch, getState) => {
         // Extrae el idnetsuite_admin y rol_admin del estado de autenticación almacenado en Redux.
         const { idnetsuite_admin, rol_admin } = getState().auth;
@@ -51,7 +52,8 @@ export const getLeadsAttention = (startDate, endDate, filterOption) => {
             // Llama a la función getAllLeadsAttention para obtener los leads que requieren atención
             // basados en el rol y el ID del administrador.
             const result = await getAllLeadsAttention({ idnetsuite_admin, rol_admin, startDate, endDate, filterOption });
-
+console.log(result)
+           
             // Si la API responde con éxito, despacha una acción para actualizar el estado de Redux.
             dispatch(setLeadsNew(result.data["0"])); // Actualiza el estado con la lista de leads obtenida.
 

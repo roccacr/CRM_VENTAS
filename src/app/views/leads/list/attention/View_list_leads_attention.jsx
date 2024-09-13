@@ -65,7 +65,7 @@ export default function View_list_leads_attention() {
 
     // Estado para los filtros de búsqueda y select (inicializados vacíos)
     const [searchFilters, setSearchFilters] = useState({
-        name_admin: "",
+        name_admin: [],
         nombre_lead: "",
         email_lead: "",
         telefono_lead: "",
@@ -76,8 +76,8 @@ export default function View_list_leads_attention() {
     });
 
     // Estado para los datos de la tabla
-    const [tableData, setTableData] = useState([]);
-    const [filteredData, setFilteredData] = useState([]); // Datos filtrados para la tabla
+    const [tableData, setTableData] = useState([]); // Contiene todos los registros
+    const [filteredData, setFilteredData] = useState([]); // Contiene los registros filtrados
     const [selectedLead, setSelectedLead] = useState(null); // Para el modal
     const [showModal, setShowModal] = useState(false); // Mostrar modal
     const [isLoading, setIsLoading] = useState(false); // Preloader activado/desactivado
@@ -106,8 +106,8 @@ export default function View_list_leads_attention() {
     const fetchData = async (startDate, endDate, filterOption) => {
         setIsLoading(true); // Activa el preloader al inicio
         const result = await dispatch(getLeadsAttention(startDate, endDate, filterOption));
-        setTableData(result);
-        setFilteredData(result); // Inicializar datos filtrados con todos los datos
+        setTableData(result); // Guardamos todos los registros en tableData
+        setFilteredData(result); // Inicializamos filteredData con todos los registros al inicio
         setIsLoading(false); // Desactiva el preloader cuando se carguen los datos
     };
 
@@ -116,7 +116,7 @@ export default function View_list_leads_attention() {
         fetchData(inputStartDate, inputEndDate, filterOption);
     }, [inputStartDate, inputEndDate, filterOption]);
 
-    // Obtener valores únicos para los campos select
+    const uniqueAdmins = createSelectOptions(getUniqueValues(tableData, "name_admin"));
     const uniqueProjects = createSelectOptions(getUniqueValues(tableData, "proyecto_lead"));
     const uniqueCampaigns = createSelectOptions(getUniqueValues(tableData, "campana_lead"));
     const uniqueStatuses = createSelectOptions(getUniqueValues(tableData, "segimineto_lead"));
@@ -127,7 +127,7 @@ export default function View_list_leads_attention() {
         const filterData = () => {
             let filtered = tableData.filter((row) => {
                 return (
-                    row.name_admin.toLowerCase().includes(searchFilters.name_admin.toLowerCase()) &&
+                    (searchFilters.name_admin.length === 0 || searchFilters.name_admin.map((p) => p.value).includes(row.name_admin)) &&
                     row.nombre_lead.toLowerCase().includes(searchFilters.nombre_lead.toLowerCase()) &&
                     row.email_lead.toLowerCase().includes(searchFilters.email_lead.toLowerCase()) &&
                     row.telefono_lead.toLowerCase().includes(searchFilters.telefono_lead.toLowerCase()) &&
@@ -141,8 +141,11 @@ export default function View_list_leads_attention() {
             setFilteredData(filtered);
         };
 
-        filterData();
-    }, [searchFilters, tableData]);
+        // Si hay datos en tableData, aplicamos el filtro
+        if (tableData.length > 0) {
+            filterData();
+        }
+    }, [searchFilters, tableData]); // Cuando cambian los filtros o los datos originales
 
     // Función para manejar los checkboxes
     const handleCheckboxChange = (option) => {
@@ -150,9 +153,7 @@ export default function View_list_leads_attention() {
     };
 
     // Función para exportar los datos a Excel
-    // Función para exportar los datos a Excel
     const handleExportToExcel = () => {
-        // Extraemos las columnas que queremos exportar basadas en columnsConfig
         const columnsToExport = [
             "name_admin", // ASESOR
             "nombre_lead", // Nombre Cliente
@@ -169,20 +170,18 @@ export default function View_list_leads_attention() {
             "estado_lead", // Estado Lead
         ];
 
-        // Mapeamos los datos filtrados para incluir solo las columnas seleccionadas
         const dataToExport = filteredData.map((row) => {
             let filteredRow = {};
             columnsToExport.forEach((col) => {
-                filteredRow[col] = row[col]; // Solo incluimos los campos necesarios
+                filteredRow[col] = row[col];
             });
             return filteredRow;
         });
 
-        // Convertimos los datos filtrados a una hoja de cálculo
         const ws = XLSX.utils.json_to_sheet(dataToExport);
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, "Leads");
-        XLSX.writeFile(wb, "Leads_Attention.xlsx"); // Descargamos el archivo Excel
+        XLSX.writeFile(wb, "Leads_Attention.xlsx");
     };
 
     // Función para renderizar la tabla
@@ -262,172 +261,116 @@ export default function View_list_leads_attention() {
                 <h5>MÓDULO DE LEADS REQUIEREN ATENCIÓN</h5>
             </div>
 
-            {/* Acordeón solo en modo móvil */}
-            {isMobile ? (
-                <div className="card-header">
-                    <button className="btn btn-link" onClick={() => setAccordionOpen(!accordionOpen)}>
-                        {accordionOpen ? "Ocultar Filtros" : "Mostrar Filtros"}
+            <div className="card-header border-bottom-0">
+                <div className="d-flex">
+                    <a className="btn btn-dark m-t-5" data-bs-toggle="collapse" href="#collapseExample" role="button" aria-expanded="true" aria-controls="collapseExample">
+                        Expandir filtros
+                    </a>
+
+                    <button className="btn btn-success ms-2" onClick={handleExportToExcel}>
+                        Exportar a Excel
                     </button>
-                    {accordionOpen && (
-                        <div className="accordion-filters">
-                            {/* Filtros */}
-                            <div className="row">
-                                <div className="col-md-6">
-                                    <label>Fecha de Inicio</label>
-                                    <input type="date" className="form-control" value={inputStartDate} onChange={(e) => setInputStartDate(e.target.value)} />
-                                </div>
-
-                                <div className="col-md-6">
-                                    <label>Fecha Final</label>
-                                    <input type="date" className="form-control" value={inputEndDate} onChange={(e) => setInputEndDate(e.target.value)} />
-                                </div>
-
-                                {/* Filtros de texto */}
-                                <div className="col-md-6 mt-3">
-                                    <input type="text" placeholder="Buscar Asesor" className="form-control" value={searchFilters.name_admin} onChange={(e) => setSearchFilters({ ...searchFilters, name_admin: e.target.value })} />
-                                </div>
-
-                                <div className="col-md-6 mt-3">
-                                    <input type="text" placeholder="Buscar Cliente" className="form-control" value={searchFilters.nombre_lead} onChange={(e) => setSearchFilters({ ...searchFilters, nombre_lead: e.target.value })} />
-                                </div>
-
-                                {/* Select múltiple para "Proyecto" */}
-                                <div className="col-md-6 mt-3">
-                                    <label>Proyecto</label>
-                                    <Select components={animatedComponents} isMulti closeMenuOnSelect={false} options={uniqueProjects} value={searchFilters.proyecto_lead} onChange={(selected) => setSearchFilters({ ...searchFilters, proyecto_lead: selected })} />
-                                </div>
-
-                                {/* Select múltiple para "Campaña" */}
-                                <div className="col-md-6 mt-3">
-                                    <label>Campaña</label>
-                                    <Select components={animatedComponents} isMulti closeMenuOnSelect={false} options={uniqueCampaigns} value={searchFilters.campana_lead} onChange={(selected) => setSearchFilters({ ...searchFilters, campana_lead: selected })} />
-                                </div>
-
-                                {/* Select múltiple para "Estado" */}
-                                <div className="col-md-6 mt-3">
-                                    <label>Estado</label>
-                                    <Select components={animatedComponents} isMulti closeMenuOnSelect={false} options={uniqueStatuses} value={searchFilters.segimineto_lead} onChange={(selected) => setSearchFilters({ ...searchFilters, segimineto_lead: selected })} />
-                                </div>
-
-                                {/* Select múltiple para "Subsidiarias" */}
-                                <div className="col-md-6 mt-3">
-                                    <label>Subsidiarias</label>
-                                    <Select components={animatedComponents} isMulti closeMenuOnSelect={false} options={uniqueSubsidiaries} value={searchFilters.subsidiaria_lead} onChange={(selected) => setSearchFilters({ ...searchFilters, subsidiaria_lead: selected })} />
-                                </div>
-
-                                {/* Checkboxes para fecha de creación o última acción */}
-                                <div className="col-md-12 mt-3">
-                                    <div className="form-check">
-                                        <input className="form-check-input" type="checkbox" id="creationDate" checked={filterOption === 1} onChange={() => handleCheckboxChange(1)} />
-                                        <label className="form-check-label" htmlFor="creationDate">
-                                            Filtrar por Fecha de Creación
-                                        </label>
-                                    </div>
-                                    <div className="form-check">
-                                        <input className="form-check-input" type="checkbox" id="lastActionDate" checked={filterOption === 2} onChange={() => handleCheckboxChange(2)} />
-                                        <label className="form-check-label" htmlFor="lastActionDate">
-                                            Filtrar por Última Acción
-                                        </label>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    )}
                 </div>
-            ) : (
-                <div className="card-header">
-                    {/* Mostrar los filtros normalmente cuando no es móvil */}
-                    <div className="row">
-                        {/* Filtros de rango de fecha */}
-                        <div className="col-md-4">
-                            <label>Fecha de Inicio</label>
-                            <input type="date" className="form-control" value={inputStartDate} onChange={(e) => setInputStartDate(e.target.value)} />
-                        </div>
-
-                        <div className="col-md-4">
-                            <label>Fecha Final</label>
-                            <input type="date" className="form-control" value={inputEndDate} onChange={(e) => setInputEndDate(e.target.value)} />
-                        </div>
-
-                        {/* Filtros de texto */}
-                        <div className="col-md-4">
-                            <input type="text" placeholder="Buscar Asesor" className="form-control" value={searchFilters.name_admin} onChange={(e) => setSearchFilters({ ...searchFilters, name_admin: e.target.value })} />
-                        </div>
-
-                        <div className="col-md-4 mt-3">
-                            <input type="text" placeholder="Buscar Cliente" className="form-control" value={searchFilters.nombre_lead} onChange={(e) => setSearchFilters({ ...searchFilters, nombre_lead: e.target.value })} />
-                        </div>
-
-                        {/* Select múltiple para "Proyecto" */}
-                        <div className="col-md-4 mt-3">
-                            <label>Proyecto</label>
-                            <Select components={animatedComponents} isMulti closeMenuOnSelect={false} options={uniqueProjects} value={searchFilters.proyecto_lead} onChange={(selected) => setSearchFilters({ ...searchFilters, proyecto_lead: selected })} />
-                        </div>
-
-                        {/* Select múltiple para "Campaña" */}
-                        <div className="col-md-4 mt-3">
-                            <label>Campaña</label>
-                            <Select components={animatedComponents} isMulti closeMenuOnSelect={false} options={uniqueCampaigns} value={searchFilters.campana_lead} onChange={(selected) => setSearchFilters({ ...searchFilters, campana_lead: selected })} />
-                        </div>
-
-                        {/* Select múltiple para "Estado" */}
-                        <div className="col-md-4 mt-3">
-                            <label>Estado</label>
-                            <Select components={animatedComponents} isMulti closeMenuOnSelect={false} options={uniqueStatuses} value={searchFilters.segimineto_lead} onChange={(selected) => setSearchFilters({ ...searchFilters, segimineto_lead: selected })} />
-                        </div>
-
-                        {/* Select múltiple para "Subsidiarias" */}
-                        <div className="col-md-4 mt-3">
-                            <label>Subsidiarias</label>
-                            <Select components={animatedComponents} isMulti closeMenuOnSelect={false} options={uniqueSubsidiaries} value={searchFilters.subsidiaria_lead} onChange={(selected) => setSearchFilters({ ...searchFilters, subsidiaria_lead: selected })} />
-                        </div>
-
-                        {/* Checkboxes para fecha de creación o última acción */}
-                        <div className="col-md-12 mt-3">
-                            <div className="form-check">
-                                <input className="form-check-input" type="checkbox" id="creationDate" checked={filterOption === 1} onChange={() => handleCheckboxChange(1)} />
-                                <label className="form-check-label" htmlFor="creationDate">
-                                    Filtrar por Fecha de Creación
-                                </label>
+            </div>
+            <div className="collapse" id="collapseExample">
+                <div className="card-body border-top">
+                    <div className="row g-4">
+                        <div className="col-md-6">
+                            <div className="form-floating mb-0">
+                                <input type="date" className="form-control" value={inputStartDate} onChange={(e) => setInputStartDate(e.target.value)} />
+                                <label htmlFor="k1">Fecha de inicio de filtro</label>
                             </div>
-                            <div className="form-check">
-                                <input className="form-check-input" type="checkbox" id="lastActionDate" checked={filterOption === 2} onChange={() => handleCheckboxChange(2)} />
-                                <label className="form-check-label" htmlFor="lastActionDate">
-                                    Filtrar por Última Acción
-                                </label>
+                        </div>
+                        <div className="col-md-6">
+                            <div className="form-floating mb-0">
+                                <input type="date" className="form-control" value={inputEndDate} onChange={(e) => setInputEndDate(e.target.value)} />
+                                <label htmlFor="k2">Fecha de final de filtro</label>
                             </div>
+                        </div>
+                    </div>
 
-                            <div className="form-check">
-                                <input className="form-check-input" type="checkbox" id="lastActionDate" checked={filterOption === 2} onChange={() => handleCheckboxChange(2)} />
-                                <label className="form-check-label" htmlFor="lastActionDate">
-                                    Filtrar por Última Acción
-                                </label>
+                    <div className="row g-4">
+                        <div className="col-md-6">
+                            <div className="form-floating mb-0">
+                                <Select components={animatedComponents} isMulti closeMenuOnSelect={false} options={uniqueAdmins} value={searchFilters.name_admin} onChange={(selected) => setSearchFilters({ ...searchFilters, name_admin: selected })} />
                             </div>
-
-                            {/* Selector de filas por página y botón de exportación */}
-                            <div className="row mb-3">
-                                <div className="col-md-4">
-                                    <label>Filas por página</label>
-                                    <select className="form-control" value={rowsPerPage} onChange={handleRowsPerPageChange}>
-                                        <option value="10">10</option>
-                                        <option value="20">20</option>
-                                        <option value="30">30</option>
-                                        <option value="40">40</option>
-                                        <option value="50">50</option>
-                                        <option value="100">100</option>
-                                    </select>
+                        </div>
+                        <div className="col-md-6">
+                            <div className="form-floating mb-0">
+                                <input type="text" className="form-control" value={searchFilters.nombre_lead} onChange={(e) => setSearchFilters({ ...searchFilters, nombre_lead: e.target.value })} />
+                                <label htmlFor="k2">Buscar por nombre de cliente</label>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="row g-4">
+                        <div className="col-md-6">
+                            <div className="form-floating mb-0">
+                                <Select components={animatedComponents} isMulti closeMenuOnSelect={false} options={uniqueProjects} value={searchFilters.proyecto_lead} onChange={(selected) => setSearchFilters({ ...searchFilters, proyecto_lead: selected })} />
+                                <br />
+                            </div>
+                        </div>
+                        <div className="col-md-6">
+                            <div className="form-floating mb-0">
+                                <Select components={animatedComponents} isMulti closeMenuOnSelect={false} options={uniqueCampaigns} value={searchFilters.campana_lead} onChange={(selected) => setSearchFilters({ ...searchFilters, campana_lead: selected })} />
+                            </div>
+                        </div>
+                    </div>
+                    <div className="row g-4">
+                        <div className="col-md-6">
+                            <div className="form-floating mb-0">
+                                <Select components={animatedComponents} isMulti closeMenuOnSelect={false} options={uniqueStatuses} value={searchFilters.segimineto_lead} onChange={(selected) => setSearchFilters({ ...searchFilters, segimineto_lead: selected })} />
+                            </div>
+                        </div>
+                        <div className="col-md-6">
+                            <div className="form-floating mb-0">
+                                <Select components={animatedComponents} isMulti closeMenuOnSelect={false} options={uniqueSubsidiaries} value={searchFilters.subsidiaria_lead} onChange={(selected) => setSearchFilters({ ...searchFilters, subsidiaria_lead: selected })} />
+                            </div>
+                        </div>
+                    </div>
+                    <br />
+                    <div className="row g-4">
+                        <div className="col-md-6">
+                            <div className="form-floating mb-0">
+                                <div className="form-check">
+                                    <input className="form-check-input" type="checkbox" id="creationDate" checked={filterOption === 1} onChange={() => handleCheckboxChange(1)} />
+                                    <label className="form-check-label" htmlFor="creationDate">
+                                        Filtrar por Fecha de Creación
+                                    </label>
+                                </div>
+                                <div className="form-check">
+                                    <input className="form-check-input" type="checkbox" id="lastActionDate" checked={filterOption === 2} onChange={() => handleCheckboxChange(2)} />
+                                    <label className="form-check-label" htmlFor="lastActionDate">
+                                        Filtrar por Última Acción
+                                    </label>
                                 </div>
                             </div>
                         </div>
                     </div>
-                    <div className="col-md-4">
-                        <label>&nbsp;</label>
-                        <button className="btn btn-success" onClick={handleExportToExcel}>
-                            Exportar a Excel
-                        </button>
+                    <br />
+                    <div className="row g-4">
+                        <div className="col-md-6">
+                            <label className="form-check-label" htmlFor="lastActionDate">
+                                Cantidad de registros
+                            </label>
+                            <div className="form-floating mb-0">
+                                <select
+                                    className="form-control"
+                                    value={rowsPerPage}
+                                    onChange={handleRowsPerPageChange}
+                                    style={{ width: "60px" }} // Ajusta el ancho como necesites
+                                >
+                                    <option value="10">10</option>
+                                    <option value="20">20</option>
+                                    <option value="30">30</option>
+                                    <option value="40">40</option>
+                                    <option value="50">50</option>
+                                    <option value="100">100</option>
+                                </select>
+                            </div>
+                        </div>
                     </div>
                 </div>
-            )}
+            </div>
 
             {/* Tabla y preloader */}
             <div className="card-body" style={{ width: "100%", padding: "0" }}>
