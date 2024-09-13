@@ -99,5 +99,26 @@ leads.getBitacora = (dataParams) =>
     );
 
 
+/**
+ * Obtiene la lista de leads que requieren atención desde la base de datos.
+ *
+ * Esta función ejecuta un procedimiento almacenado para recuperar la lista de leads
+ * que requieren atención, basada en el rol y el ID del administrador de Netsuite.
+ *
+ * @async
+ * @param {Object} dataParams - Objeto que contiene los parámetros necesarios para la consulta.
+ * @param {string} dataParams.rol_admin - Rol del administrador, utilizado para filtrar los leads según permisos.
+ * @param {number} dataParams.idnetsuite_admin - ID del administrador de Netsuite, utilizado para identificar al solicitante.
+ * @param {string} dataParams.database - Nombre de la base de datos donde se ejecutará la consulta.
+ * @returns {Promise<Object>} - Promesa que resuelve con el resultado de la consulta de leads que requieren atención.
+ */
+leads.getAll_LeadsAttention = (dataParams) =>
+    executeStoredProcedure(
+        "getAll_LeadsAttention", // Nombre del procedimiento almacenado que recupera los leads que requieren atención.
+        [dataParams.rol_admin, dataParams.idnetsuite_admin, dataParams.startDate, dataParams.endDate, dataParams.filterOption], // Parámetros necesarios: rol y ID del administrador.
+        dataParams.database, // Nombre de la base de datos donde se ejecutará el procedimiento almacenado.
+    );
+
+
 
 module.exports = leads; // Exporta el objeto 'leads' que contiene todas las funciones definidas.
