@@ -22,6 +22,7 @@ var configParams = {
             password: "!Roccacrm",
             database: "crmdatabase-api",
             port: 3306,
+            multipleStatements: true, // Asegúrate de habilitar esta opción
         },
         pruebas: {
             host: "localhost",
@@ -29,6 +30,7 @@ var configParams = {
             password: "",
             database: "crmdatabase-api",
             port: 3306,
+            multipleStatements: true, // Asegúrate de habilitar esta opción
         },
     },
     jwtSecret: jwtSecret,

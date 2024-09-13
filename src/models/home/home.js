@@ -1,250 +1,154 @@
-const mysql = require("mysql2/promise"); // Importa el módulo 'mysql2/promise' para manejar conexiones a la base de datos de manera asincrónica.
-const config = require("../../config/config"); // Importa la configuración de la base de datos desde un archivo externo.
+const mysql = require("mysql2/promise"); // Módulo para manejar conexiones a la base de datos de manera asincrónica.
+const config = require("../../config/config"); // Importa la configuración de la base de datos.
 
-const home = {}; // Define un objeto vacío que contendrá todas las funciones relacionadas con 'home'.
-
-/**
- * @module home
- * @description Módulo para manejar operaciones relacionadas con home en la base de datos.
- */
+const home = {}; // Objeto para agrupar todas las funciones relacionadas con 'home'.
 
 /**
- * Crea una conexión a la base de datos especificada.
+ * Establece una conexión asincrónica a la base de datos especificada.
  * @async
- * @param {string} database - Nombre de la base de datos a conectar.
- * @returns {Promise<mysql.Connection>} Conexión a la base de datos.
+ * @param {string} database - El nombre de la base de datos a la que se va a conectar.
+ * @returns {Promise<mysql.Connection>} - Retorna una conexión a la base de datos.
+ * @throws {Error} - Lanza un error si la conexión no se puede establecer.
  */
 const createConnection = async (database) => {
     try {
-        // Intenta establecer una conexión con la base de datos especificada.
+        // Crea una conexión a la base de datos utilizando la configuración definida.
         const connection = await mysql.createConnection(config.database[database]);
-        return connection; // Retorna la conexión si se establece correctamente.
+        return connection; // Retorna la conexión establecida.
     } catch (error) {
-        // Manejo de errores en caso de que falle la conexión.
-        console.error(`Error al crear la conexión a la base de datos: ${error.message}`);
-        throw new Error("No se pudo establecer la conexión a la base de datos"); // Lanza un nuevo error si la conexión falla.
+        // Registra el error y lanza una nueva excepción si la conexión falla.
+        console.error(`Error al conectar a la base de datos: ${error.message}`);
+        throw new Error("No se pudo establecer la conexión a la base de datos");
     }
 };
 
 /**
- * Maneja operaciones de base de datos de forma segura.
+ * Maneja una operación en la base de datos de manera segura, incluyendo la conexión y desconexión.
  * @async
- * @param {Function} operation - Función que realiza la operación de base de datos.
+ * @param {Function} operation - Función que define la operación a realizar en la base de datos.
  * @param {string} database - Nombre de la base de datos a utilizar.
- * @returns {Promise<Object>} Resultado de la operación.
+ * @returns {Promise<Object>} - El resultado de la operación de base de datos.
+ * @throws {Error} - Lanza un error si ocurre un problema durante la operación.
  */
 const handleDatabaseOperation = async (operation, database) => {
-    let connection; // Declaración de la variable que contendrá la conexión a la base de datos.
+    let connection;
     try {
-        connection = await createConnection(database); // Establece la conexión utilizando la función 'createConnection'.
-        return await operation(connection); // Ejecuta la operación de base de datos pasada como argumento.
+        // Establece la conexión a la base de datos y ejecuta la operación.
+        connection = await createConnection(database);
+        return await operation(connection);
     } catch (error) {
-        // Manejo de errores durante la operación de la base de datos.
+        // Captura cualquier error que ocurra durante la operación de la base de datos.
         console.error(`Error en la operación de base de datos: ${error.message}`);
-        return { statusCode: 500, error: "Error interno del servidor" }; // Retorna un código de error 500 si algo sale mal.
+        return { statusCode: 500, error: "Error interno del servidor" };
     } finally {
-        // Cierra la conexión a la base de datos si se ha establecido.
+        // Asegura que la conexión a la base de datos se cierre si se estableció.
         if (connection) await connection.end();
     }
 };
 
 /**
- * Ejecuta un procedimiento almacenado y maneja la respuesta.
+ * Ejecuta un procedimiento almacenado con parámetros proporcionados y retorna el resultado.
  * @async
- * @param {string} procedureName - Nombre del procedimiento almacenado.
- * @param {Array} params - Parámetros para el procedimiento almacenado.
+ * @param {string} procedureName - Nombre del procedimiento almacenado a ejecutar.
+ * @param {Array} params - Array de parámetros a pasar al procedimiento almacenado.
  * @param {string} database - Nombre de la base de datos a utilizar.
- * @returns {Promise<Object>} Resultado de la operación.
+ * @returns {Promise<Object>} - Resultado de la ejecución del procedimiento almacenado.
  */
 const executeStoredProcedure = async (procedureName, params, database) => {
     return handleDatabaseOperation(async (connection) => {
-        // Ajusta la consulta para asegurarte de que todos los parámetros están en sus posiciones correctas.
+        // Ejecuta el procedimiento almacenado con los parámetros usando placeholders para evitar inyecciones SQL.
         const [rows] = await connection.execute(`CALL ${procedureName}(${params.map(() => "?").join(", ")})`, params);
-
-        // Retorna el resultado con un código de estado dependiendo si se encontraron datos.
         return {
-            statusCode: rows.length > 0 && rows[0].length > 0 ? 200 : 210, // 200 si hay resultados, 210 si no.
-            data: rows[0], // Los datos obtenidos del procedimiento almacenado.
+            ok: true,
+            statusCode: 200,
+            ...rows, // Devuelve los resultados del procedimiento almacenado.
         };
     }, database);
 };
 
 /**
- * Obtiene los leads basados en el rol del usuario y su ID.
+ * Obtiene todos los banners relevantes según el rol del usuario y su ID en la base de datos.
  * @async
- * @param {Object} dataParams - Parámetros para la consulta.
- * @returns {Promise<Object>} Resultado de la operación.
+ * @param {Object} dataParams - Objeto que contiene los parámetros necesarios para la consulta.
+ * @returns {Promise<Object>} - Resultado de la consulta de banners.
  */
-home.fetchLeadsAsyncNew = (dataParams) =>
+home.getAllBanners = (dataParams) =>
     executeStoredProcedure(
-        "banner_home_leadsNew", // Nombre del procedimiento almacenado.
-        [dataParams.rol_admin, dataParams.idnetsuite_admin], // Parámetros para el procedimiento.
-        dataParams.database, // Base de datos a utilizar.
+        "getAllBanners", // Nombre del procedimiento almacenado que recupera los banners.
+        [dataParams.rol_admin, dataParams.idnetsuite_admin], // Parámetros que identifican el rol y el ID del usuario.
+        dataParams.database, // Nombre de la base de datos a utilizar.
     );
 
 /**
- * Obtiene los leads que requieren atención.
+ * Obtiene los eventos pendientes del home basados en el rol del usuario y su ID.
  * @async
- * @param {Object} dataParams - Parámetros para la consulta.
- * @returns {Promise<Object>} Resultado de la operación.
+ * @param {Object} dataParams - Objeto que contiene los parámetros necesarios para la consulta.
+ * @returns {Promise<Object>} - Resultado de la consulta de eventos pendientes.
  */
-home.fetchLeadsAsyncattention = (dataParams) =>
+home.getAllEventsHome = (dataParams) =>
     executeStoredProcedure(
-        "banner_home_leadsAttention", // Nombre del procedimiento almacenado.
-        [dataParams.rol_admin, dataParams.idnetsuite_admin], // Parámetros para el procedimiento.
-        dataParams.database, // Base de datos a utilizar.
+        "home_events_pending", // Nombre del procedimiento almacenado que recupera eventos pendientes.
+        [dataParams.rol_admin, dataParams.idnetsuite_admin], // Parámetros que identifican el rol y el ID del usuario.
+        dataParams.database, // Nombre de la base de datos a utilizar.
     );
 
 /**
- * Obtiene los eventos basados en el rol del usuario y su ID.
+ * Actualiza el estado de un evento específico en la base de datos.
  * @async
- * @param {Object} dataParams - Parámetros para la consulta.
- * @returns {Promise<Object>} Resultado de la operación.
+ * @param {Object} dataParams - Objeto que contiene los parámetros para la actualización.
+ * @returns {Promise<Object>} - Resultado de la operación de actualización.
  */
-home.fetchEventsAsync = (dataParams) =>
-    executeStoredProcedure(
-        "banner_home_events", // Nombre del procedimiento almacenado.
-        [dataParams.rol_admin, dataParams.idnetsuite_admin], // Parámetros para el procedimiento.
-        dataParams.database, // Base de datos a utilizar.
-    );
-
-/**
- * Obtiene todas las oportunidades basadas en el rol del usuario y su ID.
- * @async
- * @param {Object} dataParams - Parámetros para la consulta.
- * @returns {Promise<Object>} Resultado de la operación.
- */
-home.fetchOportunityAsync = (dataParams) =>
-    executeStoredProcedure(
-        "banner_home_count_opportunities", // Nombre del procedimiento almacenado.
-        [dataParams.rol_admin, dataParams.idnetsuite_admin], // Parámetros para el procedimiento.
-        dataParams.database, // Base de datos a utilizar.
-    );
-
-/**
- * Obtiene todas las ordenes De venta basadas en el rol del usuario y su ID.
- * @async
- * @param {Object} dataParams - Parámetros para la consulta.
- * @returns {Promise<Object>} Resultado de la operación.
- */
-home.fetchAllOrderSale = (dataParams) =>
-    executeStoredProcedure(
-        "banner_Home_OrdenSale", // Nombre del procedimiento almacenado.
-        [dataParams.rol_admin, dataParams.idnetsuite_admin], // Parámetros para el procedimiento.
-        dataParams.database, // Base de datos a utilizar.
-    );
-
-
-    /**
- * Obtiene todas las ordenes De venta con pago pendiente al endedot basadas en el rol del usuario y su ID.
- * @async
- * @param {Object} dataParams - Parámetros para la consulta.
- * @returns {Promise<Object>} Resultado de la operación.
- */
-home.fetchAllOrderSale_pending = (dataParams) =>
-    executeStoredProcedure(
-        "banner_Home_OrdenSale_complete", // Nombre del procedimiento almacenado.
-        [dataParams.rol_admin, dataParams.idnetsuite_admin], // Parámetros para el procedimiento.
-        dataParams.database, // Base de datos a utilizar.
-    );
-
-
-/**
- * Actualiza el estado de un evento en la tabla de calendarios.
- * @async
- * @param {Object} dataParams - Parámetros para la actualización.
- * @returns {Promise<Object>} Resultado de la operación.
- */
-home.updateEventsStatusAsync = (dataParams) =>
+home.updateEventStatus = (dataParams) =>
     handleDatabaseOperation(async (connection) => {
-        // Ejecuta el procedimiento almacenado para actualizar el estado de un evento.
+        console.log(dataParams);
+        // Ejecuta el procedimiento almacenado para actualizar el estado del evento.
         const [result] = await connection.execute(
-            `CALL update_event_status(?, ?)`, // Llamada al procedimiento almacenado.
-            [dataParams.newStatus, dataParams.id_calendar], // Parámetros para la actualización: nuevo estado e ID del calendario.
+            `CALL home_update_event_status(?, ?)`, // Procedimiento almacenado para actualizar el estado del evento.
+            [dataParams.newStatus, dataParams.id_calendar], // Parámetros: nuevo estado e ID del evento.
         );
-
-        // Retorna el resultado con un código de estado dependiendo si se afectó alguna fila.
         return {
-            statusCode: result.affectedRows > 0 ? 200 : 210, // 200 si se actualizó el evento, 210 si no.
-            data: result, // Resultado de la operación de actualización.
+            statusCode: result.affectedRows > 0 ? 200 : 210, // Si se afectaron filas, retorna 200, sino 210.
+            data: result, // Devuelve el resultado de la operación.
         };
     }, dataParams.database);
-
 
 /**
- * Extrae los resultados del gráfico mensual basado en el rol del usuario y actualiza el estado de un evento.
+ * Obtiene los datos mensuales de KPI basados en el rol y el ID del administrador, así como un rango de fechas.
  * @async
- * @param {Object} dataParams - Parámetros para la actualización y filtro de datos.
- * @param {number} dataParams.typeRol - Tipo de rol del usuario (1 para administrador).
- * @param {number} dataParams.idAdmin - ID del administrador para filtrar los eventos.
- * @param {string} dataParams.dateStart - Fecha de inicio para el filtrado.
- * @param {string} dataParams.dateEnd - Fecha de fin para el filtrado.
- * @param {string} [dataParams.database] - Nombre de la base de datos (opcional).
- * @returns {Promise<Object>} Resultado de la operación.
+ * @param {Object} dataParams - Objeto que contiene los parámetros necesarios para la consulta.
+ * @returns {Promise<Object>} - Resultado de la consulta de datos mensuales para KPI.
  */
-home.getMonthlyData = async (dataParams) =>
-    handleDatabaseOperation(async (connection) => {
-        // Ejecuta el procedimiento almacenado para obtener los datos del gráfico mensual.
-        const [results] = await connection.query(
-            `CALL monthly_graphics(?, ?, ?, ?)`, // Llamada al procedimiento almacenado.
-            [dataParams.rol_admin, dataParams.idnetsuite_admin, dataParams.startDate, dataParams.endDate], // Parámetros para la consulta.
-        );
+home.fetchGetMonthlyDataKpi = (dataParams) =>
+    executeStoredProcedure(
+        "monthly_graphicsKpi", // Procedimiento almacenado para obtener los datos de KPI mensuales.
+        [dataParams.rol_admin, dataParams.idnetsuite_admin, dataParams.startDate, dataParams.endDate], // Parámetros para el procedimiento: rol, ID, rango de fechas.
+        dataParams.database, // Base de datos a utilizar.
+    );
 
-
-        // Aplanar los resultados en un solo objeto.
-        const formattedResults = {
-            total_lead: results[0][0]?.total_lead || 0,
-            total_oport: results[1][0]?.total_oport || 0,
-            total_calendars: results[2][0]?.total_calendars || 0,
-        };
-
-        // Retorna el resultado combinado con un código de estado 200.
-        return {
-            statusCode: 200,
-            data: formattedResults, // Resultado de la consulta del gráfico mensual aplanado.
-        };
-    }, dataParams.database);
-
-
-
-    /**
- * Extrae los resultados del gráfico mensual de KPIs basado en el rol del usuario y los filtros proporcionados.
+/**
+ * Obtiene los datos gráficos mensuales basados en el rol del administrador y un rango de fechas.
  * @async
- * @param {Object} dataParams - Parámetros para la actualización y filtrado de datos.
- * @param {number} dataParams.idnetsuite_admin - ID del administrador de Netsuite que realiza la solicitud.
- * @param {number} dataParams.rol_admin - Tipo de rol del usuario (1 para administrador).
- * @param {string} dataParams.startDate - Fecha de inicio para el filtrado.
- * @param {string} dataParams.endDate - Fecha de fin para el filtrado.
- * @param {Array} dataParams.campaigns - Lista de campañas para filtrar los datos del gráfico.
- * @param {Array} dataParams.projects - Lista de proyectos para filtrar los datos del gráfico.
- * @param {string} [dataParams.database] - Nombre de la base de datos (opcional).
- * @returns {Promise<Object>} Resultado de la operación con los datos del gráfico mensual de KPIs.
+ * @param {Object} dataParams - Objeto que contiene los parámetros necesarios para la consulta.
+ * @returns {Promise<Object>} - Resultado de la consulta de gráficos mensuales.
  */
-home.fetchGetMonthlyDataKpi = async (dataParams) =>
-    handleDatabaseOperation(async (connection) => {
-        // Ejecuta el procedimiento almacenado para obtener los datos del gráfico mensual de KPIs.
-        const [results] = await connection.query(
-            `CALL monthly_graphicsKpi(?, ?, ?, ?, ?, ?)`, // Llamada al procedimiento almacenado para obtener los datos de KPIs.
-            [dataParams.rol_admin, dataParams.idnetsuite_admin, dataParams.startDate, dataParams.endDate, dataParams.campaigns, dataParams.projects], // Parámetros para la consulta.
-        );
+home.getMonthlyData = (dataParams) =>
+    executeStoredProcedure(
+        "monthly_graphics", // Procedimiento almacenado para obtener los datos mensuales.
+        [dataParams.rol_admin, dataParams.idnetsuite_admin, dataParams.startDate, dataParams.endDate], // Parámetros para el procedimiento: rol, ID, rango de fechas.
+        dataParams.database, // Base de datos a utilizar.
+    );
 
-        console.log(results);
+/**
+ * Actualiza la fecha de un evento específico en la base de datos.
+ * @async
+ * @param {Object} dataParams - Objeto que contiene los parámetros necesarios para la actualización.
+ * @returns {Promise<Object>} - Resultado de la operación de actualización.
+ */
+home.fetchupdateEventDate = (dataParams) =>
+    executeStoredProcedure(
+        "home_update_date_event", // Procedimiento almacenado que actualiza la fecha de un evento.
+        [dataParams.eventId, dataParams.selectedValue], // Parámetros: fecha de inicio y de fin del evento.
+        dataParams.database, // Base de datos a utilizar.
+    );
 
-        // Aplanar los resultados en un solo objeto.
-        const formattedResults = {
-            total_complete: results[0][0]?.total_complete || 0,
-            total_pending: results[1][0]?.total_pending || 0,
-            total_cancel: results[2][0]?.total_cancel || 0,
-        };
-
-        // Retorna el resultado combinado con un código de estado 200.
-        return {
-            statusCode: 200,
-            data: formattedResults, // Resultado de la consulta del gráfico mensual de KPIs aplanado.
-        };
-    }, dataParams.database);
-
-
-
-
-module.exports = home; // Exporta el módulo 'home' para que pueda ser utilizado en otros archivos.
+module.exports = home; // Exporta el objeto 'home' que contiene todas las funciones definidas.
