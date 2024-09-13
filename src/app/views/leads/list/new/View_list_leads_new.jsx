@@ -56,16 +56,10 @@ export default function View_list_leads_new() {
             setdataExecel([0, 1, 2, 3, 4]);
             setDisguise([0, 2, 5, 6, 7, 8]); // Columnas que se ocultarán en la tabla.
 
-            // Verifica si ya hay leads disponibles en el store.
-            if (leadsNew && leadsNew.length > 0) {
-                setTableData(leadsNew); // Establece los datos de los leads en el estado de la tabla.
-            } else if (!hasFetched) {
-                // Si no se han obtenido datos aún, se realiza la llamada a la acción para obtenerlos.
-                const result = await dispatch(getLeadsNew());
-                setTableData(result); // Actualiza el estado de la tabla con los datos obtenidos.
-                setHasFetched(true); // Indica que los datos ya han sido obtenidos para evitar múltiples peticiones.
-            }
-
+            // Si no se han obtenido datos aún, se realiza la llamada a la acción para obtenerlos.
+            const result = await dispatch(getLeadsNew());
+            setTableData(result); // Actualiza el estado de la tabla con los datos obtenidos.
+            setHasFetched(true); // Indica que los datos ya han sido obtenidos para evitar múltiples peticiones.
             setIsLoading(false); // Cambia el estado de carga para indicar que ya se obtuvieron los datos.
         };
 
