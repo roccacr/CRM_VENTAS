@@ -102,7 +102,7 @@ export default function View_list_leads_attention() {
     const fetchData = async () => {
         setIsLoading(true); // Activa el preloader al inicio
 
-        const result = await dispatch(getLeadsAttention(inputStartDate, inputEndDate, ""));
+        const result = await dispatch(getLeadsAttention(inputStartDate, inputEndDate, 0));
         setTableData(result);
         setFilteredData(result); // Inicializar datos filtrados con todos los datos
         setIsLoading(false); // Desactiva el preloader cuando se carguen los datos
