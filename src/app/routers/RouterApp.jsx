@@ -1,6 +1,7 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 import { AppPage } from "../pages/home/AppPage";
 import { LeadsPage } from "../pages/leads/LeadsPage";
+// import { LeadsPage } from "../pages/leads/LeadsPage";
 
 
 

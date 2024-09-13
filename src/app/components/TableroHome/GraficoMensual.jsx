@@ -23,9 +23,9 @@ const fetchNewData = (startDate, endDate, dispatch) => {
             .then((result) => {
                 // Simulación de obtención de datos
                 const newData = [
-                    { year: "LEADS", LEADS: result.data.data.total_lead || 0 },
-                    { year: "VISITAS", VISITAS: result.data.data.total_calendars || 0 },
-                    { year: "OPORTUN", OPORTUN: result.data.data.total_oport || 0 },
+                    { year: "LEADS", LEADS: result.data["0"]?.[0]?.total_lead || 0 },
+                    { year: "VISITAS", VISITAS: result.data["2"]?.[0]?.total_calendars || 0 },
+                    { year: "OPORTUN", OPORTUN: result.data["1"]?.[0]?.total_oport || 0 },
                     { year: "VENTAS", VENTAS: result.ventas || 0 },
                 ];
                 resolve(newData);

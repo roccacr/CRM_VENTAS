@@ -1,119 +1,191 @@
 /********************************************** MODULE IMPORTS ****************************************************/
-// import { errorMessages, secretKey } from "../../api";
-import { fetchAllEvents, fetchAllOrderSale, fetchAllOrderSale_pending, fetchGetMonthlyData, fetchGetMonthlyDataKpi, fetchLeadsUnderAttention, fetchNewLeads, fetchOpportunities, updateEventStatus } from "./Api_Home_Providers";
-import { setError, setLeadsNew, setLeadsAttention, setEventsAttention, setClearList, setOportunityAttention, setOrderSaleAttention, setOrderSalePendingAttention } from "./HomeSlice";
+// Importación de las funciones necesarias para interactuar con los servicios de API y los slices de Redux.
+import { fetchGetMonthlyData, fetchGetMonthlyDataKpi, fetchupdateEventDate, getAllBanners, getAllEventsHome, updateEventStatus } from "./Api_Home_Providers";
 
-
-
+import { setLeadsNew, setListEvents, setListOportunity, setListOrderSale, setListOrderSalePending, setlistAttentions, setlistEventsPending, setlistGraficoKpi, updateDateCalendar } from "./HomeSlice";
 
 /**
  * Inicia la carga asincrónica de todos los leads y eventos relacionados.
- * Esta función utiliza Redux Thunk para manejar operaciones asíncronas.
  *
- * @returns {Function} Una función thunk que puede ser despachada a Redux.
+ * Esta función realiza una solicitud al backend para obtener datos agregados
+ * como leads, eventos, oportunidades, y más, luego actualiza el estado de Redux
+ * con los datos obtenidos.
+ *
+ * @returns {Function} Thunk - Una función que puede ser despachada por Redux Thunk.
  */
 export const startLoadingAllLeads = () => {
     return async (dispatch, getState) => {
+        // Extrae el id y rol del administrador desde el estado actual de autenticación en Redux
         const { idnetsuite_admin, rol_admin } = getState().auth;
-        dispatch(setClearList());
 
         try {
-            // Hacemos las solicitudes en paralelo con Promise.all
-            const [newLeads, attentionLeads, events, oportunity, orderSale, orderSalePending] = await Promise.all(
-                [fetchNewLeads({ idnetsuite_admin, rol_admin }),
-                fetchLeadsUnderAttention({ idnetsuite_admin, rol_admin }),
-                fetchAllEvents({ idnetsuite_admin, rol_admin }),
-                fetchOpportunities({ idnetsuite_admin, rol_admin }),
-                fetchAllOrderSale({ idnetsuite_admin, rol_admin }),
-                fetchAllOrderSale_pending({ idnetsuite_admin, rol_admin })]);
+            // Realiza la llamada a la API para obtener los datos de banners
+            const result = await getAllBanners({ idnetsuite_admin, rol_admin });
+            const data = result.data;
 
-            // Solo actualizamos el estado si hay datos válidos
-            if (newLeads?.data?.data) dispatch(setLeadsNew(newLeads.data.data));
-            if (attentionLeads?.data?.data) dispatch(setLeadsAttention(attentionLeads.data.data));
-            if (events?.data?.data) dispatch(setEventsAttention(events.data.data));
-            if (oportunity?.data?.data) dispatch(setOportunityAttention(oportunity.data.data));
-            if (orderSale?.data?.data) dispatch(setOrderSaleAttention(orderSale.data.data));
-            if (orderSalePending?.data?.data) dispatch(setOrderSalePendingAttention(orderSalePending.data.data));
+            // Extrae los datos necesarios y maneja los posibles valores nulos
+            const resultData = {
+                total_new: data["0"]?.[0]?.total_new || 0,
+                total_attention: data["1"]?.[0]?.total_attention || 0,
+                total_events: data["2"]?.[0]?.total_events || 0,
+                total_oport: data["3"]?.[0]?.total_oport || 0,
+                total_orders: data["4"]?.[0]?.total_orders || 0,
+                total_orders_pending: data["5"]?.[0]?.total_orders_pending || 0,
+            };
+
+            // Actualiza el estado de Redux con los datos obtenidos
+            dispatch(setLeadsNew(resultData.total_new));
+            dispatch(setlistAttentions(resultData.total_attention));
+            dispatch(setListEvents(resultData.total_events));
+            dispatch(setListOportunity(resultData.total_oport));
+            dispatch(setListOrderSale(resultData.total_orders));
+            dispatch(setListOrderSalePending(resultData.total_orders_pending));
         } catch (error) {
-            console.error("Error al cargar los leads:", error);
-            dispatch(setError("No se pudo cargar la lista de leads. Por favor, intente nuevamente."));
+            // Muestra el error en la consola en caso de fallo en la API
+            console.error("Error al cargar los leads y eventos:", error);
         }
     };
 };
 
+/**
+ * Carga asincrónicamente los eventos pendientes del home.
+ *
+ * Hace una solicitud al backend para obtener la lista de eventos pendientes y
+ * luego actualiza el estado de Redux con los datos obtenidos.
+ *
+ * @returns {Function} Thunk - Una función que puede ser despachada por Redux Thunk.
+ */
+export const setGetEventsHome = () => {
+    return async (dispatch, getState) => {
+        // Extrae el id y rol del administrador desde el estado actual de autenticación en Redux
+        const { idnetsuite_admin, rol_admin } = getState().auth;
 
+        try {
+            // Llamada a la API para obtener los eventos del home
+            const result = await getAllEventsHome({ idnetsuite_admin, rol_admin });
 
+            // Actualiza el estado de Redux con los eventos pendientes
+            dispatch(setlistEventsPending(result.data["0"]));
+        } catch (error) {
+            // Maneja errores de la API y los muestra en la consola
+            console.error("Error al cargar los eventos pendientes del home:", error);
+        }
+    };
+};
 
+/**
+ * Actualiza el estado de un evento en la tabla `calendars`.
+ *
+ * Esta función realiza una solicitud asincrónica para actualizar el estado de un evento
+ * basado en el `id_calendar` y el nuevo estado proporcionado.
+ *
+ * @param {Number} id_calendar - El ID del evento en el calendario a actualizar.
+ * @param {String} newStatus - El nuevo estado que debe ser asignado al evento.
+ * @returns {Function} Thunk - Una función que puede ser despachada por Redux Thunk.
+ */
 export const updateEventsStatusThunksHome = (id_calendar, newStatus) => {
     return async (dispatch, getState) => {
-        // Extraemos el ID del administrador de Netsuite del estado de autenticación
+        // Extrae el ID del administrador de Netsuite del estado de autenticación
         const { idnetsuite_admin } = getState().auth;
 
         try {
-            // Realizamos la solicitud asincrónica para actualizar los eventos con los datos proporcionados
+            // Realiza la solicitud para actualizar el estado del evento
             await updateEventStatus({ idnetsuite_admin, id_calendar, newStatus });
         } catch (error) {
-            // En caso de error durante la solicitud, lo mostramos en la consola
-            console.error("Error al cargar los leads:", error);
-
-            // Disparamos una acción para establecer un mensaje de error en el estado de la aplicación
-            dispatch(setError("No se pudo cargar la lista de leads. Por favor, intente nuevamente."));
+            // Manejo de errores durante la solicitud
+            console.error("Error al actualizar el estado del evento:", error);
         }
     };
 };
 
+/**
+ * Solicita los datos del gráfico mensual de KPIs.
+ *
+ * Esta función realiza una solicitud asincrónica para obtener los datos del gráfico mensual de KPIs
+ * entre un rango de fechas, y actualiza el estado de Redux con los datos obtenidos.
+ *
+ * @param {String} startDate - La fecha de inicio del rango de búsqueda.
+ * @param {String} endDate - La fecha de fin del rango de búsqueda.
+ * @returns {Function} Thunk - Una función que puede ser despachada por Redux Thunk.
+ */
+export const setgetMonthlyDataKpi = (startDate, endDate) => {
+    return async (dispatch, getState) => {
+        // Extrae el id y rol del administrador desde el estado actual de autenticación en Redux
+        const { idnetsuite_admin, rol_admin } = getState().auth;
+
+        try {
+            // Solicita los datos del gráfico mensual de KPIs
+            const result = await fetchGetMonthlyDataKpi({ idnetsuite_admin, rol_admin, startDate, endDate });
+
+            // Actualiza el estado de Redux con los datos obtenidos
+            dispatch(setlistGraficoKpi(result.data["0"]));
+        } catch (error) {
+            // Manejo de errores durante la solicitud
+            console.error("Error al cargar los datos del gráfico mensual de KPIs:", error);
+        }
+    };
+};
 
 /**
- * Acción para obtener los datos del gráfico mensual y despachar los resultados.
- * @param {string} startDate - Fecha de inicio para filtrar los datos del gráfico.
- * @param {string} endDate - Fecha de fin para filtrar los datos del gráfico.
- * @returns {Function} - Retorna una función asíncrona que se ejecuta con `dispatch` y `getState`.
+ * Solicita los datos del gráfico mensual.
+ *
+ * Esta función realiza una solicitud asincrónica para obtener los datos del gráfico mensual entre
+ * un rango de fechas. A diferencia de la función `setgetMonthlyDataKpi`, esta función solo devuelve
+ * los datos sin actualizar el estado de Redux.
+ *
+ * @param {String} startDate - La fecha de inicio del rango de búsqueda.
+ * @param {String} endDate - La fecha de fin del rango de búsqueda.
+ * @returns {Promise} - Devuelve una promesa con los datos solicitados.
  */
 export const setgetMonthlyData = (startDate, endDate) => {
     return async (dispatch, getState) => {
-        // Extraemos el ID del administrador de Netsuite y el rol desde el estado de autenticación
+        // Extrae el id y rol del administrador desde el estado actual de autenticación en Redux
         const { idnetsuite_admin, rol_admin } = getState().auth;
 
         try {
-            // Realizamos la solicitud asincrónica para obtener los datos del gráfico mensual con los datos proporcionados
+            // Solicita los datos del gráfico mensual
             const result = await fetchGetMonthlyData({ idnetsuite_admin, rol_admin, startDate, endDate });
-            console.log("setgetMonthlyData",result);
             return result;
         } catch (error) {
-            // En caso de error durante la solicitud, lo mostramos en la consola
+            // Manejo de errores durante la solicitud
             console.error("Error al cargar los datos del gráfico mensual:", error);
-
-            // Disparamos una acción para establecer un mensaje de error en el estado de la aplicación
-            dispatch(setError("No se pudo cargar los datos del gráfico mensual. Por favor, intente nuevamente."));
         }
     };
 };
 
-
-
 /**
- * Acción para obtener los datos del gráfico mensual de KPIs y despachar los resultados.
- * @param {string} startDate - Fecha de inicio para filtrar los datos del gráfico de KPIs.
- * @param {string} endDate - Fecha de fin para filtrar los datos del gráfico de KPIs.
- * @param {Array} campaigns - Lista de campañas para filtrar los datos del gráfico.
- * @param {Array} projects - Lista de proyectos para filtrar los datos del gráfico.
- * @returns {Function} - Retorna una función asíncrona que se ejecuta con `dispatch` y `getState`.
+ * Actualiza la fecha de un evento en el calendario.
+ *
+ * Esta función se encarga de actualizar la fecha de un evento, conservando la parte de la hora
+ * de la fecha anterior si existe. Se realiza una llamada a la API para persistir este cambio
+ * en el servidor. También actualiza el estado en Redux para reflejar el cambio localmente.
+ *
+ * @param {String} eventId - El ID del evento que se va a actualizar.
+ * @param {String} newDate - La nueva fecha para el evento en formato YYYY-MM-DD.
+ * @param {String} oldDate - La fecha anterior del evento, de la cual se extraerá la hora (si existe).
+ * @returns {Promise<String>} - Devuelve una promesa que resuelve con "ok" si la operación fue exitosa.
  */
-export const setgetMonthlyDataKpi = (startDate, endDate, campaigns, projects) => {
-    return async (dispatch, getState) => {
-        // Extraemos el ID del administrador de Netsuite y el rol desde el estado de autenticación
-        const { idnetsuite_admin, rol_admin } = getState().auth;
-
+export const updateEventDate = (eventId, newDate, oldDate) => {
+    return async (dispatch) => {
         try {
-            // Realizamos la solicitud asincrónica para obtener los datos del gráfico mensual de KPIs con los datos proporcionados
-            const result = await fetchGetMonthlyDataKpi({ idnetsuite_admin, rol_admin, startDate, endDate, campaigns, projects });
-            return result;
-        } catch (error) {
-            // En caso de error durante la solicitud, lo mostramos en la consola
-            console.error("Error al cargar los datos del gráfico mensual de KPIs:", error);
 
-            // Disparamos una acción para establecer un mensaje de error en el estado de la aplicación
-            dispatch(setError("No se pudo cargar los datos del gráfico mensual de KPIs. Por favor, intente nuevamente."));
+            const extractDatePart = (dateString) => (dateString ? (dateString.includes("T") ? "T" + dateString.split("T")[1] : dateString.includes(":") ? dateString.slice(dateString.indexOf(":")) : "") : "");
+
+            // Extraer la parte de la hora de oldDate
+            const oldDateResult = extractDatePart(oldDate);
+
+            // Actualizar el estado local en Redux con la nueva fecha y la hora extraída
+            dispatch(updateDateCalendar({ id: eventId, selectedValue: newDate + oldDateResult }));
+
+            // Realizar una llamada a la API para actualizar la fecha del evento en el servidor
+            const result = await fetchupdateEventDate({ eventId: eventId, selectedValue: newDate + oldDateResult });
+            console.log("result", result);
+
+            // Devolver "ok" si la operación fue exitosa
+            return "ok";
+        } catch (error) {
+            // Manejo de errores: registrar cualquier error en la consola
+            console.error("Error al actualizar la fecha del evento:", error);
         }
     };
 };

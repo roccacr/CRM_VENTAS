@@ -1,73 +1,71 @@
 import { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { GraficoKpi } from "../../components/TableroHome/GraficoKpi";
-import { GraficoMensual } from "../../components/TableroHome/GraficoMensual";
 import { TableroHome } from "../../components/TableroHome/TableroHome";
 import { AppLayout } from "../../layout/AppLayout";
-import { selectFilteredLeadsCount, selectFilteredLeadsAttentionCount, selectFilteredEventsCount, selectFilteredOpportunityCount, selectFilteredOrderSaleCount, selectLeadOrderSale_pendingCount } from "../../../store/Home/HomeSlice";
 import { startLoadingAllLeads } from "../../../store/Home/thunksHome";
 import { EventosPendientes } from "../../components/TableroHome/EventosPendientes";
 
+// Importar los selectores memoizados
+import { selectListNew, selectListAttention, selectListEvents, selectListOportunity, selectListOrderSale, selectListOrderSalePending } from "../../../store/Home/selectorsHome";
+import { GraficoKpi } from "../../components/TableroHome/GraficoKpi";
+import { GraficoMensual } from "../../components/TableroHome/GraficoMensual";
+
+// Constante para los elementos del tablero (no es necesario que estén en el estado)
+const initialDashboardItems = [
+    { id: 1, image: "1.svg", icon: "ti ti-user", name: "LEADS NUEVOS", url: "/leads/lista?data=2" },
+    { id: 2, image: "2.svg", icon: "ti ti-user-x", name: "LEADS REQUIEREN ATENCIÓN", url: "/leads/lista?data=3" },
+    { id: 3, image: "3.svg", icon: "ti ti-calendar", name: "EVENTOS PARA HOY", url: "/evento/lista?data=1" },
+    { id: 4, image: "1.svg", icon: "ti ti-trending-up", name: "OPORTUNIDADES", url: "/oportunidad/list?data=1&data2=0" },
+    { id: 5, image: "2.svg", icon: "ti ti-download", name: "ORDENES DE VENTA", url: "/orden/lista?data=1" },
+    { id: 6, image: "3.svg", icon: "ti ti-download", name: "CONTRATOS FIRMADOS", url: "/orden/lista?data=2" },
+];
+
 // Componente principal de la página del tablero
 export const AppPage = () => {
-    // Estado local para almacenar los elementos del tablero
-    const [dashboardItems, setDashboardItems] = useState([
-        // Cada objeto en este array representa un ítem del tablero, con su ícono, nombre y cantidad
-        { id: 1, image: "1.svg", icon: "ti ti-user", name: "LEADS NUEVOS", quantity: null, url: "/leads/lista?data=2" },
-        { id: 2, image: "2.svg", icon: "ti ti-user-x", name: "LEADS REQUIEREN ATENCIÓN", quantity: null, url: "/leads/lista?data=3" },
-        { id: 3, image: "3.svg", icon: "ti ti-calendar", name: "EVENTOS PARA HOY", quantity: null, url: "/evento/lista?data=1" },
-        { id: 4, image: "1.svg", icon: "ti ti-trending-up", name: "OPORTUNIDADES", quantity: null, url: "/oportunidad/list?data=1&data2=0" },
-        { id: 5, image: "2.svg", icon: "ti ti-download", name: "ORDENES DE VENTA", quantity: null, url: "/orden/lista?data=1" },
-        { id: 6, image: "3.svg", icon: "ti ti-download", name: "CONTRATOS FIRMADOS", quantity: null, url: "/orden/lista?data=2" },
-    ]);
+    const [dashboardItems, setDashboardItems] = useState(initialDashboardItems);
 
-    // useDispatch es un hook de Redux para despachar acciones
     const dispatch = useDispatch();
 
-    // useSelector es un hook de Redux para seleccionar partes del estado global
-    // Aquí estamos seleccionando diferentes contadores desde el slice 'HomeSlice'
-    const filteredLeadsCount = useSelector(selectFilteredLeadsCount);
-    const filteredLeadsAttentionCount = useSelector(selectFilteredLeadsAttentionCount);
-    const filteredEventsCount = useSelector(selectFilteredEventsCount);
-    const filteredOpportunity = useSelector(selectFilteredOpportunityCount);
-    const filteredOorderSale = useSelector(selectFilteredOrderSaleCount);
-    const filteredOorderSale_pending = useSelector(selectLeadOrderSale_pendingCount);
 
-    // useEffect para cargar los leads cuando el componente se monta por primera vez
+
+    // Usar los selectores memoizados en lugar de acceder al estado directamente
+    const listNew = useSelector(selectListNew);
+    const listAttention = useSelector(selectListAttention);
+    const listEvents = useSelector(selectListEvents);
+    const listOportunity = useSelector(selectListOportunity);
+    const listOrderSale = useSelector(selectListOrderSale);
+    const listOrderSalePending = useSelector(selectListOrderSalePending);
+
+    // Cargar leads al montar el componente
     useEffect(() => {
-        // Despachar la acción que carga todos los leads desde el thunk 'startLoadingAllLeads'
         dispatch(startLoadingAllLeads());
-    }, [dispatch]); // El array de dependencias contiene 'dispatch' para evitar advertencias de dependencias faltantes
+    }, [dispatch]);
 
-    // useEffect para actualizar los elementos del tablero cuando cambian los contadores
+    // Actualizar los elementos del tablero cuando cambien los valores de los leads
     useEffect(() => {
-        // Crear un objeto que mapea el id del ítem del tablero con la cantidad correspondiente
-        const quantities = {
-            1: filteredLeadsCount,
-            2: filteredLeadsAttentionCount,
-            3: filteredEventsCount,
-            4: filteredOpportunity,
-            5: filteredOorderSale,
-            6: filteredOorderSale_pending,
-        };
+        const updatedItems = initialDashboardItems.map((item) => {
+            const quantities = {
+                1: listNew,
+                2: listAttention,
+                3: listEvents,
+                4: listOportunity,
+                5: listOrderSale,
+                6: listOrderSalePending,
+            };
+            return {
+                ...item,
+                quantity: quantities[item.id] ?? item.quantity, // Si no hay cantidad, mantener la anterior
+            };
+        });
+        setDashboardItems(updatedItems);
+    }, [listNew, listAttention, listEvents, listOportunity, listOrderSale, listOrderSalePending]);
 
-        // Actualizar los elementos del tablero con las nuevas cantidades
-        setDashboardItems((prevItems) =>
-            prevItems.map((item) => ({
-                ...item, // Mantener las propiedades actuales
-                quantity: quantities[item.id] !== undefined ? quantities[item.id] : item.quantity, // Actualizar la cantidad si existe, de lo contrario, mantener la anterior
-            })),
-        );
-    }, [filteredLeadsCount, filteredLeadsAttentionCount, filteredEventsCount, filteredOpportunity, filteredOorderSale, filteredOorderSale_pending]); // Array de dependencias asegura que el efecto se ejecute cuando cambie cualquier contador
-
-    // Renderizado del layout de la aplicación y los elementos del tablero
     return (
         <AppLayout>
             <div className="pc-container">
                 <div className="pc-content">
                     <div className="row">
                         {dashboardItems.map((item) => (
-                            // Renderizar cada elemento del tablero utilizando el componente TableroHome
                             <TableroHome key={item.id} image={`/assets/panel/${item.image}`} icons={item.icon} nombre={item.name} cantidad={item.quantity} url={item.url} />
                         ))}
                         <EventosPendientes /> {/* Componente adicional que muestra eventos pendientes */}
