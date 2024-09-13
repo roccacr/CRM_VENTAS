@@ -3,6 +3,19 @@ import Swal from "sweetalert2";
 
 export const ModalLeads = ({ leadData, onClose }) => {
     const [showModal, setShowModal] = useState(false);
+    const [isMobile, setIsMobile] = useState(window.matchMedia("(max-width: 768px)").matches);
+
+    useEffect(() => {
+        // Detect if the screen width changes and update isMobile state
+        const mediaQuery = window.matchMedia("(max-width: 768px)");
+        const handleMediaQueryChange = (e) => setIsMobile(e.matches);
+
+        mediaQuery.addEventListener("change", handleMediaQueryChange);
+
+        return () => {
+            mediaQuery.removeEventListener("change", handleMediaQueryChange);
+        };
+    }, []);
 
     useEffect(() => {
         const timer = setTimeout(() => {
@@ -45,7 +58,7 @@ export const ModalLeads = ({ leadData, onClose }) => {
             <div
                 className="modal-dialog modal-lg"
                 onClick={(e) => e.stopPropagation()}
-                style={{ maxWidth: "68%", margin: "2.75rem auto", width: "98%" }} // Modal al 98% en modo móvil
+                style={{ maxWidth: isMobile ? "98%" : "68%", margin: "2.75rem auto" }} // Adjusts maxWidth based on device
             >
                 <div className="modal-content">
                     <div className="modal-header">
@@ -112,7 +125,7 @@ export const ModalLeads = ({ leadData, onClose }) => {
                                 </button>
                                 <ul className="dropdown-menu dropdown-menu-end">
                                     <li>
-                                        <button className="dropdown-item" type="button" style={{ backgroundColor: "#25d366", color: "#fff", borderColor: "#25d366" }}>
+                                        <button className="dropdown-item" type="button">
                                             <i className="fab fa-whatsapp"></i> Ir a Whatsapp
                                         </button>
                                     </li>
