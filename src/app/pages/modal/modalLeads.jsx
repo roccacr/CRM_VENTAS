@@ -108,7 +108,7 @@ export const ModalLeads = ({ leadData, onClose }) => {
 
     return (
         <div className={`modal fade bd-example-modal-lg ${showModal ? "show" : ""}`} tabIndex="-1" aria-labelledby="myLargeModalLabel" style={{ display: showModal ? "block" : "none" }} aria-modal="true" role="dialog" onClick={handleClose}>
-            <div className="modal-dialog modal-lg" style={{ maxWidth: isMobile ? "98%" : "68%", margin: "2.75rem auto" }} onClick={(e) => e.stopPropagation()}>
+            <div className="modal-dialog modal-lg" style={{ maxWidth: isMobile ? "98%" : "68%", margin: "4.99rem auto" }} onClick={(e) => e.stopPropagation()}>
                 <div className="modal-content">
                     <div className="modal-header">
                         <div className="d-inline-block">

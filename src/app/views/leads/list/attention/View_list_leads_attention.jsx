@@ -33,31 +33,6 @@ export default function View_list_leads_attention() {
     // Fechas por defecto (inicio y fin del mes)
     const { firstDay, lastDay } = getDefaultDates();
 
-    // Estado para detectar si es móvil
-    const [isMobile, setIsMobile] = useState(false);
-
-    // Estado para manejar la apertura del acordeón en modo móvil
-    const [accordionOpen, setAccordionOpen] = useState(false);
-
-    // Detectar si el modo es móvil o no
-    useEffect(() => {
-        const handleResize = () => {
-            if (window.matchMedia("(max-width: 768px)").matches) {
-                setIsMobile(true);
-            } else {
-                setIsMobile(false);
-            }
-        };
-
-        // Comprobar la pantalla en el inicio y cada vez que cambie su tamaño
-        handleResize();
-        window.addEventListener("resize", handleResize);
-
-        // Cleanup
-        return () => {
-            window.removeEventListener("resize", handleResize);
-        };
-    }, []);
 
     // Estado para los filtros de fecha
     const [inputStartDate, setInputStartDate] = useState(firstDay);
@@ -168,6 +143,7 @@ export default function View_list_leads_attention() {
             "actualizadaaccion_lead", // Última Acción
             "nombre_caida", // Seguimiento
             "estado_lead", // Estado Lead
+
         ];
 
         const dataToExport = filteredData.map((row) => {
@@ -194,6 +170,7 @@ export default function View_list_leads_attention() {
             "segimineto_lead", // Estado
             "nombre_caida", // Seguimiento
             "estado_lead", // Estado Lead
+            "subsidiaria_lead", // Estado Lead
         ];
 
         return (
@@ -291,6 +268,9 @@ export default function View_list_leads_attention() {
 
                     <div className="row g-4">
                         <div className="col-md-6">
+                            <label className="form-check-label" htmlFor="a1">
+                                Filtrar por Asesor
+                            </label>
                             <div className="form-floating mb-0">
                                 <Select components={animatedComponents} isMulti closeMenuOnSelect={false} options={uniqueAdmins} value={searchFilters.name_admin} onChange={(selected) => setSearchFilters({ ...searchFilters, name_admin: selected })} />
                             </div>
@@ -304,12 +284,18 @@ export default function View_list_leads_attention() {
                     </div>
                     <div className="row g-4">
                         <div className="col-md-6">
+                            <label className="form-check-label" htmlFor="a1">
+                                Filtrar por Proyecto
+                            </label>
                             <div className="form-floating mb-0">
                                 <Select components={animatedComponents} isMulti closeMenuOnSelect={false} options={uniqueProjects} value={searchFilters.proyecto_lead} onChange={(selected) => setSearchFilters({ ...searchFilters, proyecto_lead: selected })} />
                                 <br />
                             </div>
                         </div>
                         <div className="col-md-6">
+                            <label className="form-check-label" htmlFor="a1">
+                                Filtrar por Campaña
+                            </label>
                             <div className="form-floating mb-0">
                                 <Select components={animatedComponents} isMulti closeMenuOnSelect={false} options={uniqueCampaigns} value={searchFilters.campana_lead} onChange={(selected) => setSearchFilters({ ...searchFilters, campana_lead: selected })} />
                             </div>
@@ -317,11 +303,17 @@ export default function View_list_leads_attention() {
                     </div>
                     <div className="row g-4">
                         <div className="col-md-6">
+                            <label className="form-check-label" htmlFor="a1">
+                                Filtrar por Estado
+                            </label>
                             <div className="form-floating mb-0">
                                 <Select components={animatedComponents} isMulti closeMenuOnSelect={false} options={uniqueStatuses} value={searchFilters.segimineto_lead} onChange={(selected) => setSearchFilters({ ...searchFilters, segimineto_lead: selected })} />
                             </div>
                         </div>
                         <div className="col-md-6">
+                            <label className="form-check-label" htmlFor="a1">
+                                Filtrar por Subsidirias
+                            </label>
                             <div className="form-floating mb-0">
                                 <Select components={animatedComponents} isMulti closeMenuOnSelect={false} options={uniqueSubsidiaries} value={searchFilters.subsidiaria_lead} onChange={(selected) => setSearchFilters({ ...searchFilters, subsidiaria_lead: selected })} />
                             </div>
