@@ -150,8 +150,36 @@ export default function View_list_leads_attention() {
     };
 
     // Función para exportar los datos a Excel
+    // Función para exportar los datos a Excel
     const handleExportToExcel = () => {
-        const ws = XLSX.utils.json_to_sheet(filteredData); // Convertimos los datos filtrados a una hoja de cálculo
+        // Extraemos las columnas que queremos exportar basadas en columnsConfig
+        const columnsToExport = [
+            "name_admin", // ASESOR
+            "nombre_lead", // Nombre Cliente
+            "idinterno_lead", // # NETSUITE
+            "email_lead", // Correo Cliente
+            "telefono_lead", // Teléfono
+            "proyecto_lead", // Proyecto
+            "campana_lead", // Campaña
+            "segimineto_lead", // Estado
+            "creado_lead", // Creado
+            "subsidiaria_lead", // Subsidiarias
+            "actualizadaaccion_lead", // Última Acción
+            "nombre_caida", // Seguimiento
+            "estado_lead", // Estado Lead
+        ];
+
+        // Mapeamos los datos filtrados para incluir solo las columnas seleccionadas
+        const dataToExport = filteredData.map((row) => {
+            let filteredRow = {};
+            columnsToExport.forEach((col) => {
+                filteredRow[col] = row[col]; // Solo incluimos los campos necesarios
+            });
+            return filteredRow;
+        });
+
+        // Convertimos los datos filtrados a una hoja de cálculo
+        const ws = XLSX.utils.json_to_sheet(dataToExport);
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, "Leads");
         XLSX.writeFile(wb, "Leads_Attention.xlsx"); // Descargamos el archivo Excel
