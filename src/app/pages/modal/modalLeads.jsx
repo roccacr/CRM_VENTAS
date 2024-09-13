@@ -5,18 +5,17 @@ export const ModalLeads = ({ leadData, onClose }) => {
     const [showModal, setShowModal] = useState(false);
 
     useEffect(() => {
-        // Usar setTimeout para evitar el retraso en el renderizado inicial
         const timer = setTimeout(() => {
             setShowModal(true);
-        }, 100); // Solo 10ms para permitir que se monte y luego mostrarlo rápidamente
+        }, 100);
         return () => clearTimeout(timer);
     }, [leadData]);
 
     const handleClose = () => {
         setShowModal(false);
         setTimeout(() => {
-            if (onClose) onClose(); // Ejecutar la función de cierre si se proporciona
-        }, 100); // Dar tiempo para la animación de cierre
+            if (onClose) onClose();
+        }, 100);
     };
 
     const handleCopy = () => {
@@ -32,7 +31,7 @@ export const ModalLeads = ({ leadData, onClose }) => {
                     width: "20em",
                     timer: 1500,
                     customClass: {
-                        popup: "smaller-swal", // Añadir clase personalizada
+                        popup: "smaller-swal",
                     },
                 });
             })
@@ -63,36 +62,59 @@ export const ModalLeads = ({ leadData, onClose }) => {
 
                     <div className="modal-body">
                         <p style={{ textAlign: "center" }}>¿Qué deseas hacer con este lead?</p>
-                        <div className="d-flex flex-wrap gap-2">
-                            <button type="button" className="btn btn-shadow" style={{ backgroundColor: "#25d366", color: "#fff", borderColor: "#25d366" }}>
+                        {/* Hacemos uso de clases de Bootstrap para mejorar el responsive */}
+                        <div className="d-flex flex-wrap gap-2 justify-content-center">
+                            <button type="button" className="btn btn-shadow w-100 w-md-auto" style={{ backgroundColor: "#25d366", color: "#fff", borderColor: "#25d366" }}>
                                 <i className="fab fa-whatsapp"></i> Ir a Whatsapp
                             </button>
-                            <button type="button" className="btn btn-shadow" style={{ backgroundColor: "#25d366", color: "#fff", borderColor: "#25d366" }}>
+                            <button type="button" className="btn btn-shadow w-100 w-md-auto" style={{ backgroundColor: "#25d366", color: "#fff", borderColor: "#25d366" }}>
                                 <i className="fab fa-whatsapp"></i> Whatsapp y Contacto
                             </button>
-                            <button type="button" className="btn btn-shadow" style={{ backgroundColor: "#c0392b", color: "#fff", borderColor: "#c0392b" }}>
+                            <button type="button" className="btn btn-shadow w-100 w-md-auto" style={{ backgroundColor: "#c0392b", color: "#fff", borderColor: "#c0392b" }}>
                                 <i className="fab fa-wpforms"></i> Nota de Contacto
                             </button>
-                            <button type="button" className="btn btn-shadow btn-danger" style={{ backgroundColor: "#2c3e50 ", color: "#fff", borderColor: "#2c3e50" }}>
+                            <button type="button" className="btn btn-shadow w-100 w-md-auto" style={{ backgroundColor: "#2c3e50", color: "#fff", borderColor: "#2c3e50" }}>
                                 <i className="fas fa-calendar-check"></i> Crear un evento
                             </button>
-                            <button type="button" className="btn btn-shadow btn-warning" style={{ backgroundColor: "#78281f ", color: "#fff", borderColor: "#78281f" }}>
+                            <button type="button" className="btn btn-shadow w-100 w-md-auto" style={{ backgroundColor: "#78281f", color: "#fff", borderColor: "#78281f" }}>
                                 <i className="fas fa-window-close"></i> Dar como perdido
                             </button>
-                            <button type="button" className="btn btn-shadow btn-info">
+                            <button type="button" className="btn btn-shadow w-100 w-md-auto btn-info">
                                 Info
                             </button>
-                            <button type="button" className="btn btn-shadow btn-light">
+                            <button type="button" className="btn btn-shadow w-100 w-md-auto btn-light">
                                 Light
                             </button>
-                            <button type="button" className="btn btn-shadow btn-dark">
+                            <button type="button" className="btn btn-shadow w-100 w-md-auto btn-dark">
                                 Dark
                             </button>
-                            <button type="button" className="btn btn-shadow btn-link">
+                            <button type="button" className="btn btn-shadow w-100 w-md-auto btn-link">
                                 Link
                             </button>
+
+                            <div className="btn-group">
+                                <button type="button" className="btn btn-secondary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                                    Right-aligned menu example
+                                </button>
+                                <ul className="dropdown-menu dropdown-menu-end" style="">
+                                    <li>
+                                        <button className="dropdown-item" type="button">
+                                            Action
+                                        </button>
+                                    </li>
+                                    <li>
+                                        <button className="dropdown-item" type="button">
+                                            Another action
+                                        </button>
+                                    </li>
+                                    <li>
+                                        <button className="dropdown-item" type="button">
+                                            Something else here
+                                        </button>
+                                    </li>
+                                </ul>
+                            </div>
                         </div>
-                        {/* Aquí iría el contenido del modal, por ejemplo, los detalles de leadData */}
                     </div>
                 </div>
             </div>
