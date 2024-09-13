@@ -5,6 +5,7 @@ import makeAnimated from "react-select/animated";
 import { getLeadsAttention } from "../../../../../store/leads/thunksLeads";
 import { ModalLeads } from "../../../../pages/modal/modalLeads";
 import { columnsConfig } from "./columnsConfig";
+import * as XLSX from "xlsx"; // Importamos la librería para generar el archivo Excel
 import "./styles.css"; // Importar los estilos responsivos
 
 // Función para obtener fechas por defecto (inicio y fin del mes actual)
@@ -83,7 +84,7 @@ export default function View_list_leads_attention() {
 
     // Estado para la paginación
     const [currentPage, setCurrentPage] = useState(1);
-    const rowsPerPage = 10;
+    const [rowsPerPage, setRowsPerPage] = useState(10); // Estado para el número de filas por página
 
     // Estado para los checkboxes de filtrado
     const [filterOption, setFilterOption] = useState(0); // 0: ninguno, 1: fecha creación, 2: última acción
@@ -148,35 +149,65 @@ export default function View_list_leads_attention() {
         setFilterOption(option);
     };
 
+    // Función para exportar los datos a Excel
+    const handleExportToExcel = () => {
+        const ws = XLSX.utils.json_to_sheet(filteredData); // Convertimos los datos filtrados a una hoja de cálculo
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Leads");
+        XLSX.writeFile(wb, "Leads_Attention.xlsx"); // Descargamos el archivo Excel
+    };
+
     // Función para renderizar la tabla
     const renderTable = () => {
+        const columnsToHide = [
+            "name_admin", // Asesor
+            "idinterno_lead", // # Netsuite
+            "proyecto_lead", // Proyecto
+            "campana_lead", // Campaña
+            "segimineto_lead", // Estado
+            "nombre_caida", // Seguimiento
+            "estado_lead", // Estado Lead
+        ];
+
         return (
-            <table className="table table-striped table-responsive">
-                <thead>
-                    <tr>
-                        {columnsConfig.map((column, index) =>
-                            column.data !== "name_admin" && column.data !== "idinterno_lead" && column.data !== "proyecto_lead" && column.data !== "campana_lead" && column.data !== "segimineto_lead" && column.data !== "creado_lead" && column.data !== "subsidiaria_lead" && column.data !== "estado_lead" ? (
-                                <th key={index} className={column.className}>
-                                    {column.title}
-                                </th>
-                            ) : null,
-                        )}
-                    </tr>
-                </thead>
-                <tbody>
-                    {paginatedData.map((row, rowIndex) => (
-                        <tr key={rowIndex} onClick={() => handleRowClick(row)}>
-                            {columnsConfig.map((column, colIndex) =>
-                                column.data !== "name_admin" && column.data !== "idinterno_lead" && column.data !== "proyecto_lead" && column.data !== "campana_lead" && column.data !== "segimineto_lead" && column.data !== "creado_lead" && column.data !== "subsidiaria_lead" && column.data !== "estado_lead" ? (
-                                    <td key={colIndex} className={column.className}>
-                                        {column.render ? column.render(row[column.data]) : row[column.data]}
-                                    </td>
-                                ) : null,
-                            )}
+            <div className="table-responsive">
+                <table className="table table-striped">
+                    <thead>
+                        <tr>
+                            {columnsConfig.map((column, index) => {
+                                if (!columnsToHide.includes(column.data)) {
+                                    if ((filterOption === 1 && column.data === "creado_lead") || (filterOption === 2 && column.data === "actualizadaaccion_lead") || (column.data !== "creado_lead" && column.data !== "actualizadaaccion_lead")) {
+                                        return (
+                                            <th key={index} className={column.className}>
+                                                {column.title}
+                                            </th>
+                                        );
+                                    }
+                                }
+                                return null;
+                            })}
                         </tr>
-                    ))}
-                </tbody>
-            </table>
+                    </thead>
+                    <tbody>
+                        {paginatedData.map((row, rowIndex) => (
+                            <tr key={rowIndex} onClick={() => handleRowClick(row)}>
+                                {columnsConfig.map((column, colIndex) => {
+                                    if (!columnsToHide.includes(column.data)) {
+                                        if ((filterOption === 1 && column.data === "creado_lead") || (filterOption === 2 && column.data === "actualizadaaccion_lead") || (column.data !== "creado_lead" && column.data !== "actualizadaaccion_lead")) {
+                                            return (
+                                                <td key={colIndex} className={column.className}>
+                                                    {column.render ? column.render(row[column.data]) : row[column.data]}
+                                                </td>
+                                            );
+                                        }
+                                    }
+                                    return null;
+                                })}
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
         );
     };
 
@@ -189,6 +220,12 @@ export default function View_list_leads_attention() {
 
     const handleNextPage = () => {
         if (currentPage < totalPages) setCurrentPage(currentPage + 1);
+    };
+
+    // Función para cambiar el número de filas por página
+    const handleRowsPerPageChange = (e) => {
+        setRowsPerPage(Number(e.target.value));
+        setCurrentPage(1); // Resetear la página actual a la primera al cambiar el número de filas
     };
 
     return (
