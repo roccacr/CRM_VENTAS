@@ -35,7 +35,6 @@ export const ModalLeads = ({ leadData, onClose }) => {
                         popup: "smaller-swal", // Añadir clase personalizada
                     },
                 });
-
             })
             .catch((err) => {
                 console.error("Error al copiar al portapapeles: ", err);
@@ -44,7 +43,7 @@ export const ModalLeads = ({ leadData, onClose }) => {
 
     return (
         <div className={`modal fade bd-example-modal-lg ${showModal ? "show" : ""}`} tabIndex="-1" aria-labelledby="myLargeModalLabel" style={{ display: showModal ? "block" : "none" }} aria-modal="true" role="dialog" onClick={handleClose}>
-            <div className="modal-dialog modal-lg" onClick={(e) => e.stopPropagation()} style={{ maxWidth: "80%", margin: "1.75rem auto" }}>
+            <div className="modal-dialog modal-lg" onClick={(e) => e.stopPropagation()} style={{ maxWidth: "65%", margin: "2.75rem auto" }}>
                 <div className="modal-content">
                     <div className="modal-header">
                         <div className="d-inline-block">
@@ -63,8 +62,37 @@ export const ModalLeads = ({ leadData, onClose }) => {
                     </div>
 
                     <div className="modal-body">
+                        <p style={{ textAlign: "center" }}>¿Qué deseas hacer con este lead?</p>
+                        <div className="d-flex flex-wrap gap-2">
+                            <button type="button" className="btn btn-shadow" style={{ backgroundColor: "#25d366", color: "#fff", borderColor: "#25d366" }}>
+                                <i className="fab fa-whatsapp"></i> Ir a Whatsapp
+                            </button>
+                            <button type="button" className="btn btn-shadow" style={{ backgroundColor: "#25d366", color: "#fff", borderColor: "#25d366" }}>
+                                <i className="fab fa-whatsapp"></i> Whatsapp y Contacto
+                            </button>
+                            <button type="button" className="btn btn-shadow" style={{ backgroundColor: "#c0392b", color: "#fff", borderColor: "#c0392b" }}>
+                                <i className="fab fa-wpforms"></i> Nota de Contacto
+                            </button>
+                            <button type="button" className="btn btn-shadow btn-danger" style={{ backgroundColor: "#2c3e50 ", color: "#fff", borderColor: "#2c3e50" }}>
+                                <i className="fas fa-calendar-check"></i> Crear un evento
+                            </button>
+                            <button type="button" className="btn btn-shadow btn-warning" style={{ backgroundColor: "#78281f ", color: "#fff", borderColor: "#78281f" }}>
+                                <i className="fas fa-window-close"></i> Dar como perdido
+                            </button>
+                            <button type="button" className="btn btn-shadow btn-info">
+                                Info
+                            </button>
+                            <button type="button" className="btn btn-shadow btn-light">
+                                Light
+                            </button>
+                            <button type="button" className="btn btn-shadow btn-dark">
+                                Dark
+                            </button>
+                            <button type="button" className="btn btn-shadow btn-link">
+                                Link
+                            </button>
+                        </div>
                         {/* Aquí iría el contenido del modal, por ejemplo, los detalles de leadData */}
-                        <p>{leadData?.email_lead || "No cuenta con correo electronico"}</p>
                     </div>
                 </div>
             </div>
