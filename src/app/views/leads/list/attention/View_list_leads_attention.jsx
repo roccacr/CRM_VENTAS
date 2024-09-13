@@ -33,7 +33,6 @@ export default function View_list_leads_attention() {
     // Fechas por defecto (inicio y fin del mes)
     const { firstDay, lastDay } = getDefaultDates();
 
-
     // Estado para los filtros de fecha
     const [inputStartDate, setInputStartDate] = useState(firstDay);
     const [inputEndDate, setInputEndDate] = useState(lastDay);
@@ -63,6 +62,9 @@ export default function View_list_leads_attention() {
 
     // Estado para los checkboxes de filtrado
     const [filterOption, setFilterOption] = useState(0); // 0: ninguno, 1: fecha creación, 2: última acción
+
+    // Estado para el ordenamiento
+    const [sortConfig, setSortConfig] = useState({ key: null, direction: "asc" });
 
     // Función para manejar el clic en una fila de la tabla
     const handleRowClick = (data) => {
@@ -127,6 +129,32 @@ export default function View_list_leads_attention() {
         setFilterOption(option);
     };
 
+    // Función para manejar el ordenamiento al hacer clic en los encabezados
+    const handleSort = (columnKey) => {
+        let direction = "asc";
+        if (sortConfig.key === columnKey && sortConfig.direction === "asc") {
+            direction = "desc";
+        }
+        setSortConfig({ key: columnKey, direction });
+    };
+
+    // Ordenar los datos según el estado de sortConfig
+    useEffect(() => {
+        let sortedData = [...tableData];
+        if (sortConfig.key) {
+            sortedData.sort((a, b) => {
+                if (a[sortConfig.key] < b[sortConfig.key]) {
+                    return sortConfig.direction === "asc" ? -1 : 1;
+                }
+                if (a[sortConfig.key] > b[sortConfig.key]) {
+                    return sortConfig.direction === "asc" ? 1 : -1;
+                }
+                return 0;
+            });
+        }
+        setFilteredData(sortedData);
+    }, [sortConfig, tableData]);
+
     // Función para exportar los datos a Excel
     const handleExportToExcel = () => {
         const columnsToExport = [
@@ -143,7 +171,6 @@ export default function View_list_leads_attention() {
             "actualizadaaccion_lead", // Última Acción
             "nombre_caida", // Seguimiento
             "estado_lead", // Estado Lead
-
         ];
 
         const dataToExport = filteredData.map((row) => {
@@ -175,18 +202,19 @@ export default function View_list_leads_attention() {
 
         return (
             <div className="table-responsive">
-                <table className="table table-striped">
+                <table className="table table-striped table dt-responsive w-100 display text-left" style={{ fontSize: "15px", width: "100%", textAlign: "left" }}>
                     <thead>
                         <tr>
                             {columnsConfig.map((column, index) => {
                                 if (!columnsToHide.includes(column.data)) {
-                                    if ((filterOption === 1 && column.data === "creado_lead") || (filterOption === 2 && column.data === "actualizadaaccion_lead") || (column.data !== "creado_lead" && column.data !== "actualizadaaccion_lead")) {
-                                        return (
-                                            <th key={index} className={column.className}>
-                                                {column.title}
-                                            </th>
-                                        );
-                                    }
+                                    return (
+                                        <th key={index} className={column.className} onClick={() => handleSort(column.data)}>
+                                            {column.title}
+                                            {sortConfig.key === column.data ? (
+                                                sortConfig.direction === "asc" ? " 🔼" : " 🔽"
+                                            ) : null}
+                                        </th>
+                                    );
                                 }
                                 return null;
                             })}
@@ -197,13 +225,11 @@ export default function View_list_leads_attention() {
                             <tr key={rowIndex} onClick={() => handleRowClick(row)}>
                                 {columnsConfig.map((column, colIndex) => {
                                     if (!columnsToHide.includes(column.data)) {
-                                        if ((filterOption === 1 && column.data === "creado_lead") || (filterOption === 2 && column.data === "actualizadaaccion_lead") || (column.data !== "creado_lead" && column.data !== "actualizadaaccion_lead")) {
-                                            return (
-                                                <td key={colIndex} className={column.className}>
-                                                    {column.render ? column.render(row[column.data]) : row[column.data]}
-                                                </td>
-                                            );
-                                        }
+                                        return (
+                                            <td key={colIndex} className={column.className}>
+                                                {column.render ? column.render(row[column.data]) : row[column.data]}
+                                            </td>
+                                        );
                                     }
                                     return null;
                                 })}
@@ -251,6 +277,7 @@ export default function View_list_leads_attention() {
             </div>
             <div className="collapse" id="collapseExample">
                 <div className="card-body border-top">
+                    {/* Filtros */}
                     <div className="row g-4">
                         <div className="col-md-6">
                             <div className="form-floating mb-0">
