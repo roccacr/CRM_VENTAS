@@ -5,7 +5,7 @@ import makeAnimated from "react-select/animated";
 import { getLeadsAttention } from "../../../../../store/leads/thunksLeads";
 import { ModalLeads } from "../../../../pages/modal/modalLeads";
 import { columnsConfig } from "./columnsConfig";
-import './styles.css'; // Añadir un archivo CSS para manejar estilos personalizados
+import "./styles.css"; // Añadir un archivo CSS para manejar estilos personalizados
 
 // Función para obtener fechas por defecto (inicio y fin del mes actual)
 const getDefaultDates = () => {
