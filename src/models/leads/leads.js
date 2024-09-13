@@ -79,5 +79,25 @@ leads.getAll_LeadsNew = (dataParams) =>
         dataParams.database, // Nombre de la base de datos a utilizar.
     );
 
+/**
+ * Obtiene la bitácora de un lead específico desde la base de datos.
+ *
+ * Esta función ejecuta un procedimiento almacenado para recuperar la bitácora del lead,
+ * identificada por el ID proporcionado.
+ *
+ * @async
+ * @param {Object} dataParams - Objeto que contiene los parámetros necesarios para la consulta.
+ * @param {number} dataParams.idLeads - ID del lead cuya bitácora se desea obtener.
+ * @param {string} dataParams.database - Nombre de la base de datos donde se ejecutará la consulta.
+ * @returns {Promise<Object>} - Promesa que resuelve con el resultado de la consulta de la bitácora.
+ */
+leads.getBitacora = (dataParams) =>
+    executeStoredProcedure(
+        "getBitacoraLead", // Nombre del procedimiento almacenado que recupera la bitácora del lead.
+        [dataParams.idLeads], // Parámetro que identifica el ID del lead.
+        dataParams.database, // Base de datos donde se ejecutará el procedimiento.
+    );
+
+
 
 module.exports = leads; // Exporta el objeto 'leads' que contiene todas las funciones definidas.

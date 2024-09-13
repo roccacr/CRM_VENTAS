@@ -98,6 +98,7 @@ module.exports = function (app) {
             model: leads, // Modelo asociado a 'leads'
             routes: [
                 { path: "/leads/getAll_LeadsNew", method: "getAll_LeadsNew" }, // Ruta para obtener todos los nuevos leads
+                { path: "/leads/getBitacora", method: "getBitacora" }, // Ruta para obtener la bitacora del lead
             ],
         },
     ];
