@@ -21,6 +21,7 @@ const fetchNewData = (startDate, endDate, dispatch) => {
         // Ejecutar la acción usando dispatch
         dispatch(setgetMonthlyData(startDate, endDate))
             .then((result) => {
+                console.log("Datos del gráfico:", result);
                 // Simulación de obtención de datos
                 const newData = [
                     { year: "LEADS", LEADS: result.data["0"]?.[0]?.total_lead || 0 },

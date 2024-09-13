@@ -49,7 +49,7 @@ export const ModalLeads = ({ leadData, onClose }) => {
                     <div className="modal-header">
                         <div className="d-inline-block">
                             <h4 className="m-b-0" onClick={handleCopy} style={{ cursor: "pointer" }}>
-                                {leadData?.nombre_lead || "No cuenta con nombre de cliente"}{" "}
+                                {leadData?.nombre_lead || "..."}{" "}
                                 <i className="material-icons-two-tone" onClick={handleCopy} style={{ cursor: "pointer" }}>
                                     content_copy
                                 </i>
