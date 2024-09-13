@@ -44,7 +44,7 @@ export const ModalLeads = ({ leadData, onClose }) => {
 
     return (
         <div className={`modal fade bd-example-modal-lg ${showModal ? "show" : ""}`} tabIndex="-1" aria-labelledby="myLargeModalLabel" style={{ display: showModal ? "block" : "none" }} aria-modal="true" role="dialog" onClick={handleClose}>
-            <div className="modal-dialog modal-lg" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-dialog modal-lg" onClick={(e) => e.stopPropagation()} style={{ maxWidth: "80%", margin: "1.75rem auto" }}>
                 <div className="modal-content">
                     <div className="modal-header">
                         <div className="d-inline-block">
