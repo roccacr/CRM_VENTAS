@@ -368,7 +368,35 @@ export default function View_list_leads_attention() {
                                     Filtrar por Última Acción
                                 </label>
                             </div>
+
+                            <div className="form-check">
+                                <input className="form-check-input" type="checkbox" id="lastActionDate" checked={filterOption === 2} onChange={() => handleCheckboxChange(2)} />
+                                <label className="form-check-label" htmlFor="lastActionDate">
+                                    Filtrar por Última Acción
+                                </label>
+                            </div>
+
+                            {/* Selector de filas por página y botón de exportación */}
+                            <div className="row mb-3">
+                                <div className="col-md-4">
+                                    <label>Filas por página</label>
+                                    <select className="form-control" value={rowsPerPage} onChange={handleRowsPerPageChange}>
+                                        <option value="10">10</option>
+                                        <option value="20">20</option>
+                                        <option value="30">30</option>
+                                        <option value="40">40</option>
+                                        <option value="50">50</option>
+                                        <option value="100">100</option>
+                                    </select>
+                                </div>
+                            </div>
                         </div>
+                    </div>
+                    <div className="col-md-4">
+                        <label>&nbsp;</label>
+                        <button className="btn btn-success" onClick={handleExportToExcel}>
+                            Exportar a Excel
+                        </button>
                     </div>
                 </div>
             )}
