@@ -45,7 +45,7 @@ export const ModalLeads = ({ leadData, onClose }) => {
             <div
                 className="modal-dialog modal-lg"
                 onClick={(e) => e.stopPropagation()}
-                style={{ maxWidth: "90%", margin: "2.75rem auto" }} // Ajuste de ancho del modal en dispositivos móviles
+                style={{ maxWidth: "68%", margin: "2.75rem auto", width: "98%" }} // Modal al 98% en modo móvil
             >
                 <div className="modal-content">
                     <div className="modal-header">
@@ -67,8 +67,8 @@ export const ModalLeads = ({ leadData, onClose }) => {
                     <div className="modal-body">
                         <p style={{ textAlign: "center" }}>¿Qué deseas hacer con este lead?</p>
 
-                        {/* Botones visibles solo en pantallas grandes */}
-                        <div className="d-none d-lg-flex flex-wrap gap-2">
+                        {/* Botones visibles solo en pantallas grandes y centrados */}
+                        <div className="d-none d-lg-flex justify-content-center text-center flex-wrap gap-2">
                             <button type="button" className="btn btn-shadow" style={{ backgroundColor: "#25d366", color: "#fff", borderColor: "#25d366" }}>
                                 <i className="fab fa-whatsapp"></i> Ir a Whatsapp
                             </button>
@@ -78,23 +78,29 @@ export const ModalLeads = ({ leadData, onClose }) => {
                             <button type="button" className="btn btn-shadow" style={{ backgroundColor: "#c0392b", color: "#fff", borderColor: "#c0392b" }}>
                                 <i className="fab fa-wpforms"></i> Nota de Contacto
                             </button>
-                            <button type="button" className="btn btn-shadow btn-danger" style={{ backgroundColor: "#2c3e50 ", color: "#fff", borderColor: "#2c3e50" }}>
+                            <button type="button" className="btn btn-shadow btn-danger" style={{ backgroundColor: "#2c3e50", color: "#fff", borderColor: "#2c3e50" }}>
                                 <i className="fas fa-calendar-check"></i> Crear un evento
                             </button>
-                            <button type="button" className="btn btn-shadow btn-warning" style={{ backgroundColor: "#2c3e50 ", color: "#fff", borderColor: "#2c3e50" }}>
+                            <button type="button" className="btn btn-shadow btn-warning" style={{ backgroundColor: "#78281f", color: "#fff", borderColor: "#78281f" }}>
                                 <i className="fas fa-window-close"></i> Dar como perdido
                             </button>
-                            <button type="button" className="btn btn-shadow btn-info">
-                                Info
+                        </div>
+                        <br />
+                        <div className="d-none d-lg-flex justify-content-center text-center flex-wrap gap-2">
+                            <button type="button" className="btn btn-shadow btn-warning" style={{ backgroundColor: "#f1c40f", color: "#fff", borderColor: "#f1c40f" }}>
+                                <i className="fas fa-location-arrow"></i> Colocar en seguimiento
                             </button>
-                            <button type="button" className="btn btn-shadow btn-light">
-                                Light
+                            <button type="button" className="btn btn-shadow btn-light" style={{ backgroundColor: "#af7ac5", color: "#fff", borderColor: "#af7ac5" }}>
+                                <i className="fas fa-level-up-alt"></i> Crear Oportunidad
                             </button>
-                            <button type="button" className="btn btn-shadow btn-dark">
-                                Dark
+                            <button type="button" className="btn btn-shadow btn-dark" style={{ backgroundColor: "#2471a3", color: "#fff", borderColor: "#2471a3" }}>
+                                <i className="fas fa-stream"></i> Lista Oportunidades
                             </button>
-                            <button type="button" className="btn btn-shadow btn-link">
-                                Link
+                            <button type="button" className="btn btn-shadow btn-link" style={{ backgroundColor: "#2e86c1", color: "#fff", borderColor: "#2e86c1" }}>
+                                <i className="fas fa-phone"></i> Llamar cliente
+                            </button>
+                            <button type="button" className="btn btn-shadow btn-link" style={{ backgroundColor: "#7b7d7d", color: "#fff", borderColor: "#7b7d7d" }}>
+                                <i className="fas fa-user-circle"></i> Ver Perfil
                             </button>
                         </div>
 
@@ -106,7 +112,7 @@ export const ModalLeads = ({ leadData, onClose }) => {
                                 </button>
                                 <ul className="dropdown-menu dropdown-menu-end">
                                     <li>
-                                        <button className="dropdown-item" type="button">
+                                        <button className="dropdown-item" type="button" style={{ backgroundColor: "#25d366", color: "#fff", borderColor: "#25d366" }}>
                                             <i className="fab fa-whatsapp"></i> Ir a Whatsapp
                                         </button>
                                     </li>
@@ -132,22 +138,27 @@ export const ModalLeads = ({ leadData, onClose }) => {
                                     </li>
                                     <li>
                                         <button className="dropdown-item" type="button">
-                                            Info
+                                            <i className="fas fa-location-arrow"></i> Colocar en seguimiento
                                         </button>
                                     </li>
                                     <li>
                                         <button className="dropdown-item" type="button">
-                                            Light
+                                            <i className="fas fa-level-up-alt"></i> Crear Oportunidad
                                         </button>
                                     </li>
                                     <li>
                                         <button className="dropdown-item" type="button">
-                                            Dark
+                                            <i className="fas fa-stream"></i> Lista Oportunidades
                                         </button>
                                     </li>
                                     <li>
                                         <button className="dropdown-item" type="button">
-                                            Link
+                                            <i className="fas fa-phone"></i> Llamar cliente
+                                        </button>
+                                    </li>
+                                    <li>
+                                        <button className="dropdown-item" type="button">
+                                            <i className="fas fa-user-circle"></i> Ver Perfil
                                         </button>
                                     </li>
                                 </ul>
