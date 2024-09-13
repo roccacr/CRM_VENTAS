@@ -98,7 +98,9 @@ export const ModalLeads = ({ leadData, onClose }) => {
                             <div className="row p-t-20 p-b-30">
                                 <div className="col-auto text-end update-meta">
                                     <p className="text-muted m-b-0 d-inline-flex">08:00 AM</p>
-                                    <div className="border border-2 border-success text-success update-icon">20</div>
+                                    <div className="border border-2 border-success text-success update-icon">
+                                        <i className="ph-duotone ph-rocket"></i>
+                                    </div>
                                 </div>
                                 <div className="col">
                                     <a href="#!" className="d-inline-flex align-items-center">
@@ -119,6 +121,36 @@ export const ModalLeads = ({ leadData, onClose }) => {
                                     <a href="#!" className="d-inline-flex align-items-center">
                                         <h6 className="mb-0 me-2">Create report</h6>
                                         <span className="badge bg-primary">Running</span>
+                                    </a>
+                                    <p className="text-muted m-b-0">Free courses for all our customers at A1 Conference Room - 9:00 am tomorrow!</p>
+                                </div>
+                            </div>
+                            <div className="row p-b-30">
+                                <div className="col-auto text-end update-meta">
+                                    <p className="text-muted m-b-0 d-inline-flex">08:20 AM</p>
+                                    <div className="border border-2 border-warning text-warning update-icon">
+                                        <i className="ph-duotone ph-hand-palm"></i>
+                                    </div>
+                                </div>
+                                <div className="col">
+                                    <a href="#!" className="d-inline-flex align-items-center">
+                                        <h6 className="mb-0 me-2">Create report</h6>
+                                        <span className="badge bg-warning">Pending</span>
+                                    </a>
+                                    <p className="text-muted m-b-0">Free courses for all our customers at A1 Conference Room - 9:00 am tomorrow!</p>
+                                </div>
+                            </div>
+                            <div className="row p-b-30">
+                                <div className="col-auto text-end update-meta">
+                                    <p className="text-muted m-b-0 d-inline-flex">08:20 AM</p>
+                                    <div className="border border-2 border-warning text-warning update-icon">
+                                        <i className="ph-duotone ph-hand-palm"></i>
+                                    </div>
+                                </div>
+                                <div className="col">
+                                    <a href="#!" className="d-inline-flex align-items-center">
+                                        <h6 className="mb-0 me-2">Create report</h6>
+                                        <span className="badge bg-warning">Pending</span>
                                     </a>
                                     <p className="text-muted m-b-0">Free courses for all our customers at A1 Conference Room - 9:00 am tomorrow!</p>
                                 </div>
