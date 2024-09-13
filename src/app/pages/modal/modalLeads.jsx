@@ -43,7 +43,7 @@ export const ModalLeads = ({ leadData, onClose }) => {
 
     const renderButtons = (forDropdown = false) =>
         buttonData.map((btn, idx) => (
-            <li key={idx} className={forDropdown ? "dropdown-item" : "btn btn-shadow"} style={{ backgroundColor: btn.color, color: "#fff", borderColor: btn.color, marginBottom: forDropdown ? "5px" : "0px" }}>
+            <li key={idx} className={forDropdown ? "dropdown-item" : "btn btn-shadow"} style={{ borderColor: btn.color, marginBottom: forDropdown ? "5px" : "0px" }}>
                 <i className={btn.icon}></i> {btn.text}
             </li>
         ));
