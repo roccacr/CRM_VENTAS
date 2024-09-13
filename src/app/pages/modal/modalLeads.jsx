@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from "react";
-import Swal from "sweetalert2";
 
 export const ModalLeads = ({ leadData, onClose }) => {
     const [showModal, setShowModal] = useState(false);
@@ -25,15 +24,7 @@ export const ModalLeads = ({ leadData, onClose }) => {
     const handleCopy = () => {
         const leadName = leadData?.nombre_lead || "No cuenta con nombre de cliente";
         navigator.clipboard.writeText(leadName).then(() => {
-            Swal.fire({
-                position: "top-end",
-                icon: "success",
-                title: "Nombre copiado",
-                showConfirmButton: false,
-                width: "20em",
-                timer: 1500,
-                customClass: { popup: "smaller-swal" },
-            });
+            console.log("Texto copiado al portapapeles:", leadName);
         });
     };
 
@@ -59,7 +50,7 @@ export const ModalLeads = ({ leadData, onClose }) => {
 
     return (
         <div className={`modal fade bd-example-modal-lg ${showModal ? "show" : ""}`} tabIndex="-1" aria-labelledby="myLargeModalLabel" style={{ display: showModal ? "block" : "none" }} aria-modal="true" role="dialog" onClick={handleClose}>
-            <div className="modal-dialog modal-lg" style={{ maxWidth: isMobile ? "98%" : "68%", margin: "2.75rem auto" }}>
+            <div className="modal-dialog modal-lg" style={{ maxWidth: isMobile ? "98%" : "68%", margin: "2.75rem auto" }} onClick={(e) => e.stopPropagation()}>
                 <div className="modal-content">
                     <div className="modal-header">
                         <div className="d-inline-block">
@@ -84,11 +75,13 @@ export const ModalLeads = ({ leadData, onClose }) => {
 
                         {/* Menú desplegable para pantallas pequeñas */}
                         <div className="d-lg-none d-flex justify-content-center">
-                            <div className="btn-group">
+                            <div className="btn-group" onClick={(e) => e.stopPropagation()}>
                                 <button type="button" className="btn btn-secondary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
                                     Opciones de Lead
                                 </button>
-                                <ul className="dropdown-menu dropdown-menu-end">{renderButtons(true)}</ul>
+                                <ul className="dropdown-menu dropdown-menu-end" onClick={(e) => e.stopPropagation()}>
+                                    {renderButtons(true)}
+                                </ul>
                             </div>
                         </div>
                     </div>
