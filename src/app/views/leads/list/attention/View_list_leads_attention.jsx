@@ -210,9 +210,7 @@ export default function View_list_leads_attention() {
                                     return (
                                         <th key={index} className={column.className} onClick={() => handleSort(column.data)}>
                                             {column.title}
-                                            {sortConfig.key === column.data ? (
-                                                sortConfig.direction === "asc" ? " 🔼" : " 🔽"
-                                            ) : null}
+                                            {sortConfig.key === column.data ? (sortConfig.direction === "asc" ? " 🔼" : " 🔽") : null}
                                         </th>
                                     );
                                 }

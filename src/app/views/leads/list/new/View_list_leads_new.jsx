@@ -1,84 +1,342 @@
 import React, { useState, useEffect } from "react";
-import { columnsConfig } from "./columnsConfig"; // Configuración de las columnas para la tabla DataTable.
-import { useDispatch, useSelector } from "react-redux"; // useDispatch para despachar acciones, useSelector para acceder al store.
-import { getLeadsNew } from "../../../../../store/leads/thunksLeads"; // Acción asincrónica para obtener los nuevos leads.
-import { useDataTable } from "../../../../../hook/useDataTable"; // Hook personalizado para inicializar la tabla con DataTable.
-import { selectListNewLeads } from "../../../../../store/leads/selectorsLeads"; // Selector que obtiene los nuevos leads del store.
-import { ModalLeads } from "../../../../pages/modal/modalLeads"; // Componente del modal para mostrar los detalles del lead seleccionado.
+import { useDispatch } from "react-redux";
+import Select from "react-select";
+import makeAnimated from "react-select/animated";
+import { getLeadsAttention, getLeadsNew } from "../../../../../store/leads/thunksLeads";
+import { ModalLeads } from "../../../../pages/modal/modalLeads";
+import { columnsConfig } from "./columnsConfig";
+import * as XLSX from "xlsx"; // Importamos la librería para generar el archivo Excel
+import "./styles.css"; // Importar los estilos responsivos
 
-// Componente principal para la vista de la lista de nuevos leads.
+// Función para obtener fechas por defecto (inicio y fin del mes actual)
+const getDefaultDates = () => {
+    const now = new Date();
+    const firstDay = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split("T")[0];
+    const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split("T")[0];
+    return { firstDay, lastDay };
+};
+
+// Función para obtener valores únicos de una columna
+const getUniqueValues = (data, key) => {
+    return [...new Set(data.map((item) => item[key]))];
+};
+
+// Para crear las opciones del select
+const createSelectOptions = (items) => {
+    return items.map((item) => ({ label: item, value: item }));
+};
+
 export default function View_list_leads_new() {
-    const dispatch = useDispatch(); // Hook para despachar acciones a Redux.
+    const dispatch = useDispatch();
+    const animatedComponents = makeAnimated();
 
-    // Estado que almacena los datos que se mostrarán en la tabla.
-    const [tableData, setTableData] = useState([]);
+    // Fechas por defecto (inicio y fin del mes)
+    const { firstDay, lastDay } = getDefaultDates();
 
-    // Estado que almacena la fila seleccionada en la tabla.
-    const [selectedLead, setSelectedLead] = useState(null);
+    // Estado para los filtros de fecha
 
-    // Estado que controla la visibilidad del modal.
-    const [showModal, setShowModal] = useState(false);
+    // Estado para los filtros de búsqueda y select (inicializados vacíos)
+    const [searchFilters, setSearchFilters] = useState({
+        name_admin: [],
+        nombre_lead: "",
+        email_lead: "",
+        telefono_lead: "",
+        proyecto_lead: [],
+        campana_lead: [],
+        segimineto_lead: [],
+        subsidiaria_lead: [],
+    });
 
-    // Estado que define las columnas que serán usadas para la búsqueda.
-    const [searchColumns, setarchColumns] = useState([]);
+    // Estado para los datos de la tabla
+    const [tableData, setTableData] = useState([]); // Contiene todos los registros
+    const [filteredData, setFilteredData] = useState([]); // Contiene los registros filtrados
+    const [selectedLead, setSelectedLead] = useState(null); // Para el modal
+    const [showModal, setShowModal] = useState(false); // Mostrar modal
+    const [isLoading, setIsLoading] = useState(false); // Preloader activado/desactivado
 
-    // Estado que define las columnas que serán exportadas a Excel.
-    const [dataExecel, setdataExecel] = useState([]);
+    // Estado para la paginación
+    const [currentPage, setCurrentPage] = useState(1);
+    const [rowsPerPage, setRowsPerPage] = useState(10); // Estado para el número de filas por página
 
-    // Estado que controla qué columnas se ocultarán en la tabla.
-    const [disguise, setDisguise] = useState([]);
+    // Estado para el ordenamiento
+    const [sortConfig, setSortConfig] = useState({ key: null, direction: "asc" });
 
-    // Estado para manejar la indicación de carga de datos (preload).
-    const [isLoading, setIsLoading] = useState(true);
-
-    // Estado para asegurarnos de que solo se haga la petición de leads una vez.
-    const [hasFetched, setHasFetched] = useState(false);
-
-    // Obtenemos el estado de los leads nuevos desde el store utilizando el selector.
-    const leadsNew = useSelector(selectListNewLeads);
-
-    // Función para manejar el evento cuando se selecciona una fila en la tabla.
+    // Función para manejar el clic en una fila de la tabla
     const handleRowClick = (data) => {
-        setSelectedLead(data); // Establece la fila seleccionada en el estado.
-        setShowModal(true); // Muestra el modal de detalles del lead.
+        setSelectedLead(data);
+        setShowModal(true);
     };
 
-    // Función para cerrar el modal.
     const handleCloseModal = () => {
-        setShowModal(false); // Oculta el modal.
+        setShowModal(false);
     };
 
-    // useEffect para simular la carga de datos desde una API o desde el store.
-    useEffect(() => {
-        const fetchData = async () => {
-            // Configuramos las columnas que serán usadas para la búsqueda y la exportación.
-            setarchColumns([0, 1, 3, 4, 5, 8]);
-            setdataExecel([0, 1, 2, 3, 4, 5, 6, 7, 8]);
-            setDisguise([0, 2, 5, 6, 7, 8]); // Columnas que se ocultarán en la tabla.
+    // Calcular los datos de la tabla con paginación
+    const paginatedData = filteredData.slice((currentPage - 1) * rowsPerPage, currentPage * rowsPerPage);
 
-            // Si no se han obtenido datos aún, se realiza la llamada a la acción para obtenerlos.
-            const result = await dispatch(getLeadsNew());
-            setTableData(result); // Actualiza el estado de la tabla con los datos obtenidos.
-            setHasFetched(true); // Indica que los datos ya han sido obtenidos para evitar múltiples peticiones.
-            setIsLoading(false); // Cambia el estado de carga para indicar que ya se obtuvieron los datos.
+    // Función para traer los datos de acuerdo a las fechas seleccionadas y el filtro
+    const fetchData = async () => {
+        setIsLoading(true); // Activa el preloader al inicio
+        const result = await dispatch(getLeadsNew());
+        setTableData(result); // Guardamos todos los registros en tableData
+        setFilteredData(result); // Inicializamos filteredData con todos los registros al inicio
+        setIsLoading(false); // Desactiva el preloader cuando se carguen los datos
+    };
+
+    // Obtener datos cuando se cambian las fechas o el filtro de los checkboxes
+    useEffect(() => {
+        fetchData();
+    }, []);
+
+    const uniqueAdmins = createSelectOptions(getUniqueValues(tableData, "name_admin"));
+    const uniqueProjects = createSelectOptions(getUniqueValues(tableData, "proyecto_lead"));
+    const uniqueCampaigns = createSelectOptions(getUniqueValues(tableData, "campana_lead"));
+    const uniqueSubsidiaries = createSelectOptions(getUniqueValues(tableData, "subsidiaria_lead"));
+
+    // Filtrar datos basados en los filtros de búsqueda y select
+    useEffect(() => {
+        const filterData = () => {
+            let filtered = tableData.filter((row) => {
+                return (
+                    (searchFilters.name_admin.length === 0 || searchFilters.name_admin.map((p) => p.value).includes(row.name_admin)) &&
+                    row.nombre_lead.toLowerCase().includes(searchFilters.nombre_lead.toLowerCase()) &&
+                    row.email_lead.toLowerCase().includes(searchFilters.email_lead.toLowerCase()) &&
+                    row.telefono_lead.toLowerCase().includes(searchFilters.telefono_lead.toLowerCase()) &&
+                    (searchFilters.proyecto_lead.length === 0 || searchFilters.proyecto_lead.map((p) => p.value).includes(row.proyecto_lead)) &&
+                    (searchFilters.campana_lead.length === 0 || searchFilters.campana_lead.map((p) => p.value).includes(row.campana_lead)) &&
+                    (searchFilters.segimineto_lead.length === 0 || searchFilters.segimineto_lead.map((p) => p.value).includes(row.segimineto_lead)) &&
+                    (searchFilters.subsidiaria_lead.length === 0 || searchFilters.subsidiaria_lead.map((p) => p.value).includes(row.subsidiaria_lead))
+                );
+            });
+
+            setFilteredData(filtered);
         };
 
-        if (!hasFetched) {
-            fetchData(); // Llama a la función de carga de datos si aún no se ha hecho.
+        // Si hay datos en tableData, aplicamos el filtro
+        if (tableData.length > 0) {
+            filterData();
         }
-    }, [dispatch, leadsNew, hasFetched]);
+    }, [searchFilters, tableData]); // Cuando cambian los filtros o los datos originales
 
-    // Llamada al hook personalizado para inicializar la tabla con DataTable.
-    useDataTable(tableData, columnsConfig, handleRowClick, searchColumns, dataExecel, disguise);
+    // Función para manejar el ordenamiento al hacer clic en los encabezados
+    const handleSort = (columnKey) => {
+        let direction = "asc";
+        if (sortConfig.key === columnKey && sortConfig.direction === "asc") {
+            direction = "desc";
+        }
+        setSortConfig({ key: columnKey, direction });
+    };
+
+    // Ordenar los datos según el estado de sortConfig
+    useEffect(() => {
+        let sortedData = [...tableData];
+        if (sortConfig.key) {
+            sortedData.sort((a, b) => {
+                if (a[sortConfig.key] < b[sortConfig.key]) {
+                    return sortConfig.direction === "asc" ? -1 : 1;
+                }
+                if (a[sortConfig.key] > b[sortConfig.key]) {
+                    return sortConfig.direction === "asc" ? 1 : -1;
+                }
+                return 0;
+            });
+        }
+        setFilteredData(sortedData);
+    }, [sortConfig, tableData]);
+
+    // Función para exportar los datos a Excel
+    const handleExportToExcel = () => {
+        const columnsToExport = [
+            "name_admin", // ASESOR
+            "nombre_lead", // Nombre Cliente
+            "idinterno_lead", // # NETSUITE
+            "email_lead", // Correo Cliente
+            "telefono_lead", // Teléfono
+            "proyecto_lead", // Proyecto
+            "campana_lead", // Campaña
+            "segimineto_lead", // Estado
+            "creado_lead", // Creado
+            "subsidiaria_lead", // Subsidiarias
+            "actualizadaaccion_lead", // Última Acción
+            "nombre_caida", // Seguimiento
+            "estado_lead", // Estado Lead
+        ];
+
+        const dataToExport = filteredData.map((row) => {
+            let filteredRow = {};
+            columnsToExport.forEach((col) => {
+                filteredRow[col] = row[col];
+            });
+            return filteredRow;
+        });
+
+        const ws = XLSX.utils.json_to_sheet(dataToExport);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Leads");
+        XLSX.writeFile(wb, "Leads_Attention.xlsx");
+    };
+
+    // Función para renderizar la tabla
+    const renderTable = () => {
+        const columnsToHide = [
+            "name_admin", // Asesor
+            "idinterno_lead", // # Netsuite
+            "proyecto_lead", // Proyecto
+            "campana_lead", // Campaña
+            "segimineto_lead", // Estado
+            "nombre_caida", // Seguimiento
+            "estado_lead", // Estado Lead
+            "subsidiaria_lead", // Estado Lead
+        ];
+
+        return (
+            <div className="table-responsive">
+                <table className="table table-striped table dt-responsive w-100 display text-left" style={{ fontSize: "15px", width: "100%", textAlign: "left" }}>
+                    <thead>
+                        <tr>
+                            {columnsConfig.map((column, index) => {
+                                if (!columnsToHide.includes(column.data)) {
+                                    return (
+                                        <th key={index} className={column.className} onClick={() => handleSort(column.data)}>
+                                            {column.title}
+                                            {sortConfig.key === column.data ? (sortConfig.direction === "asc" ? " 🔼" : " 🔽") : null}
+                                        </th>
+                                    );
+                                }
+                                return null;
+                            })}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {paginatedData.map((row, rowIndex) => (
+                            <tr key={rowIndex} onClick={() => handleRowClick(row)}>
+                                {columnsConfig.map((column, colIndex) => {
+                                    if (!columnsToHide.includes(column.data)) {
+                                        return (
+                                            <td key={colIndex} className={column.className}>
+                                                {column.render ? column.render(row[column.data]) : row[column.data]}
+                                            </td>
+                                        );
+                                    }
+                                    return null;
+                                })}
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+        );
+    };
+
+    // Manejo de la paginación
+    const totalPages = Math.ceil(filteredData.length / rowsPerPage);
+
+    const handlePrevPage = () => {
+        if (currentPage > 1) setCurrentPage(currentPage - 1);
+    };
+
+    const handleNextPage = () => {
+        if (currentPage < totalPages) setCurrentPage(currentPage + 1);
+    };
+
+    // Función para cambiar el número de filas por página
+    const handleRowsPerPageChange = (e) => {
+        setRowsPerPage(Number(e.target.value));
+        setCurrentPage(1); // Resetear la página actual a la primera al cambiar el número de filas
+    };
 
     return (
         <div className="card" style={{ width: "100%" }}>
-            {/* Encabezado del módulo */}
             <div className="card-header table-card-header">
                 <h5>MÓDULO DE LEADS NUEVOS</h5>
             </div>
+
+            <div className="card-header border-bottom-0">
+                <div className="d-flex">
+                    <a className="btn btn-dark m-t-5" data-bs-toggle="collapse" href="#collapseExample" role="button" aria-expanded="true" aria-controls="collapseExample">
+                        Expandir filtros
+                    </a>
+
+                    <button className="btn btn-success ms-2" onClick={handleExportToExcel}>
+                        Exportar a Excel
+                    </button>
+                </div>
+            </div>
+            <div className="collapse" id="collapseExample">
+                <div className="card-body border-top">
+                    <div className="row g-4">
+                        <div className="col-md-6">
+                            <label className="form-check-label" htmlFor="a1">
+                                Filtrar por Asesor
+                            </label>
+                            <div className="form-floating mb-0">
+                                <Select components={animatedComponents} isMulti closeMenuOnSelect={false} options={uniqueAdmins} value={searchFilters.name_admin} onChange={(selected) => setSearchFilters({ ...searchFilters, name_admin: selected })} />
+                            </div>
+                        </div>
+                        <div className="col-md-6">
+                            <div className="form-floating mb-0">
+                                <input type="text" className="form-control" value={searchFilters.nombre_lead} onChange={(e) => setSearchFilters({ ...searchFilters, nombre_lead: e.target.value })} />
+                                <label htmlFor="k2">Buscar por nombre de cliente</label>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="row g-4">
+                        <div className="col-md-6">
+                            <label className="form-check-label" htmlFor="a1">
+                                Filtrar por Proyecto
+                            </label>
+                            <div className="form-floating mb-0">
+                                <Select components={animatedComponents} isMulti closeMenuOnSelect={false} options={uniqueProjects} value={searchFilters.proyecto_lead} onChange={(selected) => setSearchFilters({ ...searchFilters, proyecto_lead: selected })} />
+                                <br />
+                            </div>
+                        </div>
+                        <div className="col-md-6">
+                            <label className="form-check-label" htmlFor="a1">
+                                Filtrar por Campaña
+                            </label>
+                            <div className="form-floating mb-0">
+                                <Select components={animatedComponents} isMulti closeMenuOnSelect={false} options={uniqueCampaigns} value={searchFilters.campana_lead} onChange={(selected) => setSearchFilters({ ...searchFilters, campana_lead: selected })} />
+                            </div>
+                        </div>
+                    </div>
+                    <div className="row g-4">
+                        <div className="col-md-6">
+                            <label className="form-check-label" htmlFor="a1">
+                                Filtrar por Subsidirias
+                            </label>
+                            <div className="form-floating mb-0">
+                                <Select components={animatedComponents} isMulti closeMenuOnSelect={false} options={uniqueSubsidiaries} value={searchFilters.subsidiaria_lead} onChange={(selected) => setSearchFilters({ ...searchFilters, subsidiaria_lead: selected })} />
+                            </div>
+                        </div>
+                    </div>
+                    <br />
+                    <div className="row g-4">
+                        <div className="col-md-6">
+                            <label className="form-check-label" htmlFor="lastActionDate">
+                                Cantidad de registros
+                            </label>
+                            <div className="form-floating mb-0">
+                                <select
+                                    className="form-control"
+                                    value={rowsPerPage}
+                                    onChange={handleRowsPerPageChange}
+                                    style={{ width: "60px" }} // Ajusta el ancho como necesites
+                                >
+                                    <option value="10">10</option>
+                                    <option value="20">20</option>
+                                    <option value="30">30</option>
+                                    <option value="40">40</option>
+                                    <option value="50">50</option>
+                                    <option value="100">100</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {/* Tabla y preloader */}
             <div className="card-body" style={{ width: "100%", padding: "0" }}>
-                {/* Muestra un mensaje y spinner de carga mientras los datos están cargando */}
                 {isLoading ? (
                     <div style={{ textAlign: "center", padding: "50px" }}>
                         <div className="spinner-border" role="status">
@@ -87,17 +345,27 @@ export default function View_list_leads_new() {
                         <p>Cargando datos, por favor espera...</p>
                     </div>
                 ) : (
-                    // Tabla donde DataTable se inicializa dinámicamente una vez que los datos se cargan.
-                    <div className="dt-responsive table-responsive" style={{ width: "100%", overflowX: "auto" }}>
-                        <table id="tableDinamic" className="table table-striped table dt-responsive w-100 display text-left" style={{ fontSize: "15px", width: "100%", textAlign: "center" }}></table>
-                    </div>
+                    <>
+                        {renderTable()}
+
+                        {/* Controles de paginación */}
+                        <div className="pagination-controls" style={{ textAlign: "center", marginTop: "20px" }}>
+                            <button onClick={handlePrevPage} disabled={currentPage === 1} className="btn btn-light">
+                                Anterior
+                            </button>
+                            <span style={{ margin: "0 10px" }}>
+                                Página {currentPage} de {totalPages}
+                            </span>
+                            <button onClick={handleNextPage} disabled={currentPage === totalPages} className="btn btn-light">
+                                Siguiente
+                            </button>
+                        </div>
+                    </>
                 )}
             </div>
 
-            {/* Modal que muestra los detalles del lead seleccionado */}
-            {showModal && selectedLead && (
-                <ModalLeads leadData={selectedLead} onClose={handleCloseModal} /> // Muestra el modal si se ha seleccionado un lead y el modal está visible.
-            )}
+            {/* Modal que se abre al hacer clic en una fila */}
+            {showModal && selectedLead && <ModalLeads leadData={selectedLead} onClose={handleCloseModal} />}
         </div>
     );
 }
