@@ -1,9 +1,13 @@
 import React, { useState, useEffect } from "react";
+import { useDispatch } from "react-redux";
+import { getBitacoraLeads } from "../../../store/leads/thunksLeads";
 
 export const ModalLeads = ({ leadData, onClose }) => {
+    const dispatch = useDispatch(); // Hook para despachar acciones a Redux.
     const [showModal, setShowModal] = useState(false);
     const [isMobile, setIsMobile] = useState(window.matchMedia("(max-width: 768px)").matches);
     const [showPreload, setShowPreload] = useState(true); // Estado para manejar el preload
+    const [bitacora, setBitacora] = useState([]); // Estado para almacenar los datos de la bitácora
 
     useEffect(() => {
         const mediaQuery = window.matchMedia("(max-width: 768px)");
@@ -18,12 +22,18 @@ export const ModalLeads = ({ leadData, onClose }) => {
     }, [leadData]);
 
     useEffect(() => {
-        // Timer de 6 segundos para mostrar el preload
-        const preloadTimer = setTimeout(() => {
-            setShowPreload(false); // Después de 6 segundos, ocultar el preload
-        }, 6000);
-        return () => clearTimeout(preloadTimer);
-    }, []);
+        const fetchBitacora = async () => {
+            try {
+                const result = await dispatch(getBitacoraLeads(leadData?.idinterno_lead));
+                setBitacora(result); // Guardamos los resultados en el estado
+                setShowPreload(false); // Ocultamos el preload después de que los datos son cargados
+            } catch (error) {
+                console.error("Error fetching bitacora:", error);
+                setShowPreload(false); // Aseguramos que se oculte el preload en caso de error
+            }
+        };
+        fetchBitacora();
+    }, [dispatch, leadData]);
 
     const handleClose = () => {
         setShowModal(false);
@@ -63,6 +73,39 @@ export const ModalLeads = ({ leadData, onClose }) => {
             </li>
         ));
 
+    const formatDate = (dateString) => {
+        const date = new Date(dateString);
+
+        // Ajustar la fecha a la zona horaria de Costa Rica (UTC-6)
+        const localDate = new Date(date.getTime() - 6 * 60 * 60 * 1000);
+
+        // Extraer año, mes y día
+        const year = localDate.getFullYear();
+        const month = String(localDate.getMonth() + 1).padStart(2, "0");
+        const day = String(localDate.getDate()).padStart(2, "0");
+
+        // Extraer horas, minutos y segundos, ajustando al formato de 12 horas
+        let hours = localDate.getHours();
+        const minutes = String(localDate.getMinutes()).padStart(2, "0");
+        const seconds = String(localDate.getSeconds()).padStart(2, "0");
+        const ampm = hours >= 12 ? "PM" : "AM";
+        hours = hours % 12;
+        hours = hours ? hours : 12; // Si la hora es '0', que sea '12'
+        hours = String(hours).padStart(2, "0");
+
+        // Formato de la fecha
+        const formattedDate = `${year}-${month}-${day}`;
+
+        // Formato de la hora
+        const formattedTime = `${hours}:${minutes}:${seconds} ${ampm}`;
+
+        // Retornar ambos valores por separado
+        return { formattedDate, formattedTime };
+    };
+
+    // Ordenar la bitácora por fecha más reciente antes de mapearla
+    const sortedBitacora = [...bitacora].sort((a, b) => new Date(b.fecha_creado_bit) - new Date(a.fecha_creado_bit));
+
     return (
         <div className={`modal fade bd-example-modal-lg ${showModal ? "show" : ""}`} tabIndex="-1" aria-labelledby="myLargeModalLabel" style={{ display: showModal ? "block" : "none" }} aria-modal="true" role="dialog" onClick={handleClose}>
             <div className="modal-dialog modal-lg" style={{ maxWidth: isMobile ? "98%" : "68%", margin: "2.75rem auto" }} onClick={(e) => e.stopPropagation()}>
@@ -101,6 +144,7 @@ export const ModalLeads = ({ leadData, onClose }) => {
                         </div>
                     </div>
                 </div>
+
                 <div className="card latest-activity-card">
                     <div className="card-header">
                         <h5>
@@ -114,23 +158,37 @@ export const ModalLeads = ({ leadData, onClose }) => {
                         </div>
                     ) : (
                         <div className="card-body">
-                            <div className="latest-update-box">
-                                <div className="row p-t-20 p-b-30">
-                                    <div className="col-auto text-end update-meta">
-                                        <p className="text-muted m-b-0 d-inline-flex">08:00 AM</p>
-                                        <div className="border border-2 border-success text-success update-icon">
-                                            <i className="ph-duotone ph-rocket"></i>
+                            {/* Recorremos los datos de la bitácora ya ordenados */}
+                            {sortedBitacora.length > 0 ? (
+                                sortedBitacora.map((entry, idx) => {
+                                    const { formattedDate, formattedTime } = formatDate(entry.fecha_creado_bit);
+                                    return (
+                                        <div className="latest-update-box" key={idx}>
+                                            <div className="row p-t-20 p-b-30">
+                                                <div className="col-auto text-end update-meta">
+                                                    {/* Mostramos la fecha y la hora formateadas por separado */}
+                                                    <p className="text-muted m-b-0 d-inline-flex">{formattedTime}</p>
+                                                    <div className="border border-2 border-success text-success update-icon">
+                                                        <i className="ph-duotone ph-rocket"></i>
+                                                    </div>
+                                                </div>
+                                                <div className="col">
+                                                    <span className="badge bg-dark m-b-0" style={{ marginBottom: "10px" }}>
+                                                        {" "}
+                                                        {entry.estado_bit}
+                                                    </span>
+
+                                                    <p className="text-muted m-b-0">Accion: {entry.detalle_bit}</p>
+                                                    <p className="text-muted m-b-0">Motivo: {entry.nombre_caida}</p>
+                                                    <h6 className="mb-0 me-2"> {formattedDate} </h6>
+                                                </div>
+                                            </div>
                                         </div>
-                                    </div>
-                                    <div className="col">
-                                        <a href="#!" className="d-inline-flex align-items-center">
-                                            <h6 className="mb-0 me-2">Create report</h6>
-                                            <span className="badge bg-success">Done</span>
-                                        </a>
-                                        <p className="text-muted m-b-0">The trip was an amazing and a life changing experience!!</p>
-                                    </div>
-                                </div>
-                            </div>
+                                    );
+                                })
+                            ) : (
+                                <p>No hay acciones recientes para este lead.</p>
+                            )}
                         </div>
                     )}
                 </div>

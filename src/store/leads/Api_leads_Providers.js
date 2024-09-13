@@ -22,3 +22,26 @@ export const getAllLeadsNew = async ({ idnetsuite_admin, rol_admin }) => {
     // requestData contiene todos los parámetros necesarios para ejecutar la solicitud.
     return await fetchData("leads/getAll_LeadsNew", requestData); // Extrae toda la lista de clientes nuevos.
 };
+
+
+
+/**
+ * Función para obtener la bitácora de un lead específico.
+ *
+ * @param {Object} params - Parámetros requeridos para la solicitud.
+ * @param {number} params.idLeads - ID del lead cuya bitácora se va a obtener.
+ * @returns {Promise} - Devuelve una promesa que resuelve con los datos de la respuesta de la API.
+ */
+export const getBitacora = async ({ idLeads }) => {
+    // Construcción del objeto de datos para la solicitud, combinando los datos comunes con los parámetros específicos.
+    const requestData = {
+        ...commonRequestData, // Datos comunes requeridos para cada solicitud (ej. tokens, configuraciones generales).
+        idLeads, // ID del lead que se va a utilizar en la solicitud.
+    };
+
+    // Realiza la solicitud a la API para obtener la bitácora del lead especificado.
+    // La URL "leads/getAll_LeadsNew" apunta al endpoint que maneja esta petición en el servidor.
+    // requestData contiene todos los parámetros necesarios para ejecutar la solicitud.
+    return await fetchData("leads/getBitacora", requestData); // Extrae la bitácora del lead específico.
+};
+

@@ -1,5 +1,5 @@
 import { setLeadsNew } from "./leadSlice"; // Acción para actualizar el estado de leads en Redux.
-import { getAllLeadsNew } from "./Api_leads_Providers"; // Función que hace la solicitud API para obtener nuevos leads.
+import { getAllLeadsNew, getBitacora } from "./Api_leads_Providers"; // Función que hace la solicitud API para obtener nuevos leads.
 
 /**
  * Acción asincrónica para obtener la lista de nuevos leads.
@@ -28,3 +28,30 @@ export const getLeadsNew = () => {
         }
     };
 };
+
+
+/**
+ * Acción asincrónica para obtener la bitácora de un lead específico.
+ *
+ * Realiza una solicitud al backend para obtener la bitácora de un lead 
+ * basado en el id del lead proporcionado, y luego devuelve los datos obtenidos.
+ *
+ * @param {number} idLeads - ID del lead cuya bitácora se va a obtener.
+ * @returns {Promise<Object>} - Promesa que resuelve con los datos de la bitácora.
+ */
+export const getBitacoraLeads = (idLeads) => {
+    return async (dispatch, getState) => {
+        try {
+            // Llamada a la API para obtener la bitácora del lead basado en su ID.
+            const result = await getBitacora({ idLeads });
+            console.log(result)
+
+            return result.data["0"]; // Devuelve los datos de la bitácora obtenidos.
+        } catch (error) {
+            // Manejo de errores: muestra el mensaje de error en la consola.
+            console.error("Error al cargar la bitácora del lead:", error);
+        }
+    };
+};
+
+
