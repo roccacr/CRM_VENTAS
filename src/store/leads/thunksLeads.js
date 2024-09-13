@@ -1,5 +1,5 @@
 import { setLeadsNew } from "./leadSlice"; // Acción para actualizar el estado de leads en Redux.
-import { getAllLeadsNew, getBitacora } from "./Api_leads_Providers"; // Función que hace la solicitud API para obtener nuevos leads.
+import { getAllLeadsAttention, getAllLeadsNew, getBitacora } from "./Api_leads_Providers"; // Función que hace la solicitud API para obtener nuevos leads.
 
 /**
  * Acción asincrónica para obtener la lista de nuevos leads.
@@ -28,6 +28,43 @@ export const getLeadsNew = () => {
         }
     };
 };
+
+
+
+/**
+ * Acción asincrónica para obtener la lista de leads que requieren atención.
+ *
+ * Realiza una solicitud al backend para obtener los leads que requieren atención,
+ * basados en el ID y rol del administrador, y luego despacha una acción para
+ * actualizar el estado de Redux con los datos obtenidos.
+ *
+ * @returns {Function} Thunk - Función que puede ser despachada gracias a Redux Thunk.
+ */
+export const getLeadsAttention = (startDate, endDate, filterOption) => {
+
+
+    return async (dispatch, getState) => {
+        // Extrae el idnetsuite_admin y rol_admin del estado de autenticación almacenado en Redux.
+        const { idnetsuite_admin, rol_admin } = getState().auth;
+
+        try {
+            // Llama a la función getAllLeadsAttention para obtener los leads que requieren atención
+            // basados en el rol y el ID del administrador.
+            const result = await getAllLeadsAttention({ idnetsuite_admin, rol_admin, startDate, endDate, filterOption });
+            console.log(result);
+
+            // Si la API responde con éxito, despacha una acción para actualizar el estado de Redux.
+            dispatch(setLeadsNew(result.data["0"])); // Actualiza el estado con la lista de leads obtenida.
+
+            return result.data["0"]; // Devuelve los datos obtenidos para posibles usos adicionales.
+        } catch (error) {
+            // En caso de error, muestra el error en la consola para diagnóstico.
+            console.error("Error al cargar los leads que requieren atención:", error);
+        }
+    };
+};
+
+
 
 
 /**

@@ -52,8 +52,8 @@ export default function View_list_leads_new() {
     useEffect(() => {
         const fetchData = async () => {
             // Configuramos las columnas que serán usadas para la búsqueda y la exportación.
-            setarchColumns([0, 1, 2]);
-            setdataExecel([0, 1, 2, 3, 4]);
+            setarchColumns([0, 1, 3, 4, 5, 8]);
+            setdataExecel([0, 1, 2, 3, 4, 5, 6, 7, 8]);
             setDisguise([0, 2, 5, 6, 7, 8]); // Columnas que se ocultarán en la tabla.
 
             // Si no se han obtenido datos aún, se realiza la llamada a la acción para obtenerlos.
@@ -75,7 +75,7 @@ export default function View_list_leads_new() {
         <div className="card" style={{ width: "100%" }}>
             {/* Encabezado del módulo */}
             <div className="card-header table-card-header">
-                <h5>MODULO DE LEADS</h5>
+                <h5>MÓDULO DE LEADS NUEVOS</h5>
             </div>
             <div className="card-body" style={{ width: "100%", padding: "0" }}>
                 {/* Muestra un mensaje y spinner de carga mientras los datos están cargando */}
