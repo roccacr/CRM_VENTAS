@@ -86,6 +86,83 @@ export const ModalLeads = ({ leadData, onClose }) => {
                         </div>
                     </div>
                 </div>
+                <div className="card latest-activity-card">
+                    <div className="card-header">
+                        <h5>
+                            {" "}
+                            <i className="fas fa-drafting-compass"></i> Últimas Acciones Realizadas a este lead{" "}
+                        </h5>
+                    </div>
+                    <div className="card-body">
+                        <div className="latest-update-box">
+                            <div className="row p-t-20 p-b-30">
+                                <div className="col-auto text-end update-meta">
+                                    <p className="text-muted m-b-0 d-inline-flex">08:00 AM</p>
+                                    <div className="border border-2 border-success text-success update-icon">20</div>
+                                </div>
+                                <div className="col">
+                                    <a href="#!" className="d-inline-flex align-items-center">
+                                        <h6 className="mb-0 me-2">Create report</h6>
+                                        <span className="badge bg-success">Done</span>
+                                    </a>
+                                    <p className="text-muted m-b-0">The trip was an amazing and a life changing experience!!</p>
+                                </div>
+                            </div>
+                            <div className="row p-b-30">
+                                <div className="col-auto text-end update-meta">
+                                    <p className="text-muted m-b-0 d-inline-flex">08:20 AM</p>
+                                    <div className="border border-2 border-primary text-primary update-icon">
+                                        <i className="ph-duotone ph-rocket"></i>
+                                    </div>
+                                </div>
+                                <div className="col">
+                                    <a href="#!" className="d-inline-flex align-items-center">
+                                        <h6 className="mb-0 me-2">Create report</h6>
+                                        <span className="badge bg-primary">Running</span>
+                                    </a>
+                                    <p className="text-muted m-b-0">Free courses for all our customers at A1 Conference Room - 9:00 am tomorrow!</p>
+                                </div>
+                            </div>
+                            <div className="row p-b-30">
+                                <div className="col-auto text-end update-meta">
+                                    <p className="text-muted m-b-0 d-inline-flex">08:20 AM</p>
+                                    <div className="border border-2 border-warning text-warning update-icon">
+                                        <i className="ph-duotone ph-hand-palm"></i>
+                                    </div>
+                                </div>
+                                <div className="col">
+                                    <a href="#!" className="d-inline-flex align-items-center">
+                                        <h6 className="mb-0 me-2">Create report</h6>
+                                        <span className="badge bg-warning">Pending</span>
+                                    </a>
+                                    <p className="text-muted m-b-0">Free courses for all our customers at A1 Conference Room - 9:00 am tomorrow!</p>
+                                </div>
+                            </div>
+                            <div className="row">
+                                <div className="col-auto text-end update-meta">
+                                    <p className="text-muted m-b-0 d-inline-flex">09:15 AM</p>
+                                    <div className="border border-2 border-danger text-danger update-icon">N</div>
+                                </div>
+                                <div className="col">
+                                    <a href="#!" className="d-inline-flex align-items-center">
+                                        <h6 className="mb-0 me-2">Create report</h6>
+                                        <span className="badge bg-danger">Not Start</span>
+                                    </a>
+                                    <p className="text-muted m-b-0">
+                                        Happy Hour! Free drinks at{" "}
+                                        <span>
+                                            {" "}
+                                            <a href="#!" className="text-primary">
+                                                Cafe-Bar all{" "}
+                                            </a>{" "}
+                                        </span>
+                                        day long!
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     );
