@@ -3,6 +3,7 @@ import React, { useState, useEffect } from "react";
 export const ModalLeads = ({ leadData, onClose }) => {
     const [showModal, setShowModal] = useState(false);
     const [isMobile, setIsMobile] = useState(window.matchMedia("(max-width: 768px)").matches);
+    const [showPreload, setShowPreload] = useState(true); // Estado para manejar el preload
 
     useEffect(() => {
         const mediaQuery = window.matchMedia("(max-width: 768px)");
@@ -15,6 +16,14 @@ export const ModalLeads = ({ leadData, onClose }) => {
         const timer = setTimeout(() => setShowModal(true), 100);
         return () => clearTimeout(timer);
     }, [leadData]);
+
+    useEffect(() => {
+        // Timer de 6 segundos para mostrar el preload
+        const preloadTimer = setTimeout(() => {
+            setShowPreload(false); // Después de 6 segundos, ocultar el preload
+        }, 6000);
+        return () => clearTimeout(preloadTimer);
+    }, []);
 
     const handleClose = () => {
         setShowModal(false);
@@ -92,8 +101,6 @@ export const ModalLeads = ({ leadData, onClose }) => {
                         </div>
                     </div>
                 </div>
-
-                {/* Acciones recientes */}
                 <div className="card latest-activity-card">
                     <div className="card-header">
                         <h5>
@@ -101,93 +108,31 @@ export const ModalLeads = ({ leadData, onClose }) => {
                             <i className="fas fa-drafting-compass"></i> Últimas Acciones Realizadas a este lead{" "}
                         </h5>
                     </div>
-                    <div className="card-body">
-                        <div className="latest-update-box">
-                            <div className="row p-t-20 p-b-30">
-                                <div className="col-auto text-end update-meta">
-                                    <p className="text-muted m-b-0 d-inline-flex">08:00 AM</p>
-                                    <div className="border border-2 border-success text-success update-icon">
-                                        <i className="ph-duotone ph-rocket"></i>
+                    {showPreload ? (
+                        <div className="preload-content" style={{ textAlign: "center", padding: "20px" }}>
+                            <p>Cargando últimas acciones...</p>
+                        </div>
+                    ) : (
+                        <div className="card-body">
+                            <div className="latest-update-box">
+                                <div className="row p-t-20 p-b-30">
+                                    <div className="col-auto text-end update-meta">
+                                        <p className="text-muted m-b-0 d-inline-flex">08:00 AM</p>
+                                        <div className="border border-2 border-success text-success update-icon">
+                                            <i className="ph-duotone ph-rocket"></i>
+                                        </div>
                                     </div>
-                                </div>
-                                <div className="col">
-                                    <a href="#!" className="d-inline-flex align-items-center">
-                                        <h6 className="mb-0 me-2">Create report</h6>
-                                        <span className="badge bg-success">Done</span>
-                                    </a>
-                                    <p className="text-muted m-b-0">The trip was an amazing and a life changing experience!!</p>
-                                </div>
-                            </div>
-                            <div className="row p-b-30">
-                                <div className="col-auto text-end update-meta">
-                                    <p className="text-muted m-b-0 d-inline-flex">08:20 AM</p>
-                                    <div className="border border-2 border-primary text-primary update-icon">
-                                        <i className="ph-duotone ph-rocket"></i>
+                                    <div className="col">
+                                        <a href="#!" className="d-inline-flex align-items-center">
+                                            <h6 className="mb-0 me-2">Create report</h6>
+                                            <span className="badge bg-success">Done</span>
+                                        </a>
+                                        <p className="text-muted m-b-0">The trip was an amazing and a life changing experience!!</p>
                                     </div>
-                                </div>
-                                <div className="col">
-                                    <a href="#!" className="d-inline-flex align-items-center">
-                                        <h6 className="mb-0 me-2">Create report</h6>
-                                        <span className="badge bg-primary">Running</span>
-                                    </a>
-                                    <p className="text-muted m-b-0">Free courses for all our customers at A1 Conference Room - 9:00 am tomorrow!</p>
-                                </div>
-                            </div>
-                            <div className="row p-b-30">
-                                <div className="col-auto text-end update-meta">
-                                    <p className="text-muted m-b-0 d-inline-flex">08:20 AM</p>
-                                    <div className="border border-2 border-warning text-warning update-icon">
-                                        <i className="ph-duotone ph-hand-palm"></i>
-                                    </div>
-                                </div>
-                                <div className="col">
-                                    <a href="#!" className="d-inline-flex align-items-center">
-                                        <h6 className="mb-0 me-2">Create report</h6>
-                                        <span className="badge bg-warning">Pending</span>
-                                    </a>
-                                    <p className="text-muted m-b-0">Free courses for all our customers at A1 Conference Room - 9:00 am tomorrow!</p>
-                                </div>
-                            </div>
-                            <div className="row p-b-30">
-                                <div className="col-auto text-end update-meta">
-                                    <p className="text-muted m-b-0 d-inline-flex">08:20 AM</p>
-                                    <div className="border border-2 border-warning text-warning update-icon">
-                                        <i className="ph-duotone ph-hand-palm"></i>
-                                    </div>
-                                </div>
-                                <div className="col">
-                                    <a href="#!" className="d-inline-flex align-items-center">
-                                        <h6 className="mb-0 me-2">Create report</h6>
-                                        <span className="badge bg-warning">Pending</span>
-                                    </a>
-                                    <p className="text-muted m-b-0">Free courses for all our customers at A1 Conference Room - 9:00 am tomorrow!</p>
-                                </div>
-                            </div>
-
-                            <div className="row">
-                                <div className="col-auto text-end update-meta">
-                                    <p className="text-muted m-b-0 d-inline-flex">09:15 AM</p>
-                                    <div className="border border-2 border-danger text-danger update-icon">N</div>
-                                </div>
-                                <div className="col">
-                                    <a href="#!" className="d-inline-flex align-items-center">
-                                        <h6 className="mb-0 me-2">Create report</h6>
-                                        <span className="badge bg-danger">Not Start</span>
-                                    </a>
-                                    <p className="text-muted m-b-0">
-                                        Happy Hour! Free drinks at{" "}
-                                        <span>
-                                            {" "}
-                                            <a href="#!" className="text-primary">
-                                                Cafe-Bar all{" "}
-                                            </a>{" "}
-                                        </span>
-                                        day long!
-                                    </p>
                                 </div>
                             </div>
                         </div>
-                    </div>
+                    )}
                 </div>
             </div>
         </div>
