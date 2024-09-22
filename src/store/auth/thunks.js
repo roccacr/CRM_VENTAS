@@ -26,6 +26,7 @@ export const startAuthentication = ({ loginEmail, loginPassword }) => {
         try {
             // Realiza la autenticación del usuario con las credenciales proporcionadas
             const result = await singAuth({ email, password });
+            console.log("result: ", result);
 
             // Obtiene el código de estado y los datos del usuario del resultado de la autenticación
             const statusCode = result.data.statusCode;

@@ -2,38 +2,25 @@ import React, { useState, useEffect } from "react";
 import { useDispatch } from "react-redux";
 import Select from "react-select";
 import makeAnimated from "react-select/animated";
-import { getLeadsAttention, getLeadsNew } from "../../../../../store/leads/thunksLeads";
+import { getLeadsNew } from "../../../../../store/leads/thunksLeads";
 import { ModalLeads } from "../../../../pages/modal/modalLeads";
 import { columnsConfig } from "./columnsConfig";
 import * as XLSX from "xlsx"; // Importamos la librería para generar el archivo Excel
 import "./styles.css"; // Importar los estilos responsivos
 
-// Función para obtener fechas por defecto (inicio y fin del mes actual)
-const getDefaultDates = () => {
-    const now = new Date();
-    const firstDay = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split("T")[0];
-    const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split("T")[0];
-    return { firstDay, lastDay };
-};
-
-// Función para obtener valores únicos de una columna
-const getUniqueValues = (data, key) => {
-    return [...new Set(data.map((item) => item[key]))];
-};
-
-// Para crear las opciones del select
-const createSelectOptions = (items) => {
-    return items.map((item) => ({ label: item, value: item }));
+// Función para obtener valores únicos con sus conteos
+const getUniqueValuesWithCounts = (data, key) => {
+    const counts = {};
+    data.forEach((item) => {
+        const value = item[key] || "Sin especificar";
+        counts[value] = (counts[value] || 0) + 1;
+    });
+    return Object.entries(counts).map(([value, count]) => ({ value, label: `${value} (${count})` }));
 };
 
 export default function View_list_leads_new() {
     const dispatch = useDispatch();
     const animatedComponents = makeAnimated();
-
-    // Fechas por defecto (inicio y fin del mes)
-    const { firstDay, lastDay } = getDefaultDates();
-
-    // Estado para los filtros de fecha
 
     // Estado para los filtros de búsqueda y select (inicializados vacíos)
     const [searchFilters, setSearchFilters] = useState({
@@ -44,7 +31,6 @@ export default function View_list_leads_new() {
         proyecto_lead: [],
         campana_lead: [],
         segimineto_lead: [],
-        subsidiaria_lead: [],
     });
 
     // Estado para los datos de la tabla
@@ -61,6 +47,10 @@ export default function View_list_leads_new() {
     // Estado para el ordenamiento
     const [sortConfig, setSortConfig] = useState({ key: null, direction: "asc" });
 
+    // Estados para las opciones dinámicas
+    const [projectOptions, setProjectOptions] = useState([]);
+    const [campaignOptions, setCampaignOptions] = useState([]);
+
     // Función para manejar el clic en una fila de la tabla
     const handleRowClick = (data) => {
         setSelectedLead(data);
@@ -74,7 +64,7 @@ export default function View_list_leads_new() {
     // Calcular los datos de la tabla con paginación
     const paginatedData = filteredData.slice((currentPage - 1) * rowsPerPage, currentPage * rowsPerPage);
 
-    // Función para traer los datos de acuerdo a las fechas seleccionadas y el filtro
+    // Función para traer los datos
     const fetchData = async () => {
         setIsLoading(true); // Activa el preloader al inicio
         const result = await dispatch(getLeadsNew());
@@ -83,15 +73,92 @@ export default function View_list_leads_new() {
         setIsLoading(false); // Desactiva el preloader cuando se carguen los datos
     };
 
-    // Obtener datos cuando se cambian las fechas o el filtro de los checkboxes
+    // Obtener datos al montar el componente
     useEffect(() => {
         fetchData();
     }, []);
 
-    const uniqueAdmins = createSelectOptions(getUniqueValues(tableData, "name_admin"));
-    const uniqueProjects = createSelectOptions(getUniqueValues(tableData, "proyecto_lead"));
-    const uniqueCampaigns = createSelectOptions(getUniqueValues(tableData, "campana_lead"));
-    const uniqueSubsidiaries = createSelectOptions(getUniqueValues(tableData, "subsidiaria_lead"));
+    // Generar opciones únicas con conteos basadas en tableData
+    const uniqueAdmins = getUniqueValuesWithCounts(tableData, "name_admin");
+
+    // Generar opciones de proyectos basadas en los asesores seleccionados
+    useEffect(() => {
+        let projectsData = [];
+
+        if (searchFilters.name_admin.length === 0) {
+            // Si no hay asesores seleccionados, mostramos todos los proyectos
+            projectsData = tableData;
+        } else {
+            // Filtrar los datos según los asesores seleccionados
+            const selectedAdmins = searchFilters.name_admin.map((p) => p.value);
+            projectsData = tableData.filter((item) => selectedAdmins.includes(item.name_admin));
+        }
+
+        const uniqueProjects = getUniqueValuesWithCounts(projectsData, "proyecto_lead");
+        setProjectOptions(uniqueProjects);
+    }, [searchFilters.name_admin, tableData]);
+
+    // Generar opciones de campañas basadas en los proyectos seleccionados y filtradas según el asesor
+    useEffect(() => {
+        let campaignsData = [];
+
+        if (searchFilters.proyecto_lead.length === 0) {
+            // Si no hay proyectos seleccionados, mostrar todas las campañas
+            campaignsData = tableData;
+        } else {
+            // Filtrar los datos según los proyectos y asesores seleccionados
+            const selectedProjects = searchFilters.proyecto_lead.map((p) => p.value);
+            const selectedAdmins = searchFilters.name_admin.map((p) => p.value);
+
+            campaignsData = tableData.filter((item) => selectedProjects.includes(item.proyecto_lead) && (selectedAdmins.length === 0 || selectedAdmins.includes(item.name_admin)));
+        }
+
+        const uniqueCampaigns = getUniqueValuesWithCounts(campaignsData, "campana_lead");
+        setCampaignOptions(uniqueCampaigns);
+    }, [searchFilters.proyecto_lead, searchFilters.name_admin, tableData]);
+
+    // NUEVA FUNCIÓN: Para verificar y actualizar proyectos y campañas seleccionados
+    const updateProjectAndCampaignFilters = (selectedAdmins) => {
+        // Obtener proyectos válidos basados en los asesores seleccionados
+        let projectsData = [];
+        if (selectedAdmins.length === 0) {
+            projectsData = tableData;
+        } else {
+            projectsData = tableData.filter((item) => selectedAdmins.includes(item.name_admin));
+        }
+        const uniqueProjects = getUniqueValuesWithCounts(projectsData, "proyecto_lead");
+        const validProjectValues = uniqueProjects.map((p) => p.value);
+
+        // Verificar si los proyectos seleccionados actualmente son válidos
+        const currentSelectedProjects = searchFilters.proyecto_lead.map((p) => p.value);
+        const newSelectedProjects = currentSelectedProjects.filter((project) => validProjectValues.includes(project));
+
+        // Si algún proyecto seleccionado ya no es válido, lo eliminamos
+        const updatedProjectFilters = uniqueProjects.filter((project) => newSelectedProjects.includes(project.value));
+
+        // Actualizar campañas basadas en los proyectos actualizados
+        const selectedProjects = updatedProjectFilters.map((p) => p.value);
+        let campaignsData = [];
+        if (selectedProjects.length === 0) {
+            campaignsData = projectsData;
+        } else {
+            campaignsData = projectsData.filter((item) => selectedProjects.includes(item.proyecto_lead));
+        }
+        const uniqueCampaigns = getUniqueValuesWithCounts(campaignsData, "campana_lead");
+        const validCampaignValues = uniqueCampaigns.map((c) => c.value);
+
+        // Verificar si las campañas seleccionadas actualmente son válidas
+        const currentSelectedCampaigns = searchFilters.campana_lead.map((c) => c.value);
+        const newSelectedCampaigns = currentSelectedCampaigns.filter((campaign) => validCampaignValues.includes(campaign));
+
+        // Actualizar los filtros en el estado
+        setSearchFilters((prevFilters) => ({
+            ...prevFilters,
+            name_admin: selectedAdmins.map((admin) => ({ value: admin, label: admin })),
+            proyecto_lead: updatedProjectFilters,
+            campana_lead: uniqueCampaigns.filter((campaign) => newSelectedCampaigns.includes(campaign.value)),
+        }));
+    };
 
     // Filtrar datos basados en los filtros de búsqueda y select
     useEffect(() => {
@@ -104,8 +171,7 @@ export default function View_list_leads_new() {
                     row.telefono_lead.toLowerCase().includes(searchFilters.telefono_lead.toLowerCase()) &&
                     (searchFilters.proyecto_lead.length === 0 || searchFilters.proyecto_lead.map((p) => p.value).includes(row.proyecto_lead)) &&
                     (searchFilters.campana_lead.length === 0 || searchFilters.campana_lead.map((p) => p.value).includes(row.campana_lead)) &&
-                    (searchFilters.segimineto_lead.length === 0 || searchFilters.segimineto_lead.map((p) => p.value).includes(row.segimineto_lead)) &&
-                    (searchFilters.subsidiaria_lead.length === 0 || searchFilters.subsidiaria_lead.map((p) => p.value).includes(row.subsidiaria_lead))
+                    (searchFilters.segimineto_lead.length === 0 || searchFilters.segimineto_lead.map((p) => p.value).includes(row.segimineto_lead))
                 );
             });
 
@@ -181,12 +247,12 @@ export default function View_list_leads_new() {
         const columnsToHide = [
             "name_admin", // Asesor
             "idinterno_lead", // # Netsuite
-            "proyecto_lead", // Proyecto
-            "campana_lead", // Campaña
+            // "proyecto_lead", // Proyecto
+            // "campana_lead", // Campaña
             "segimineto_lead", // Estado
             "nombre_caida", // Seguimiento
             "estado_lead", // Estado Lead
-            "subsidiaria_lead", // Estado Lead
+            "subsidiaria_lead", // Subsidiarias
         ];
 
         return (
@@ -266,17 +332,43 @@ export default function View_list_leads_new() {
                 <div className="card-body border-top">
                     <div className="row g-4">
                         <div className="col-md-6">
-                            <label className="form-check-label" htmlFor="a1">
-                                Filtrar por Asesor
-                            </label>
                             <div className="form-floating mb-0">
-                                <Select components={animatedComponents} isMulti closeMenuOnSelect={false} options={uniqueAdmins} value={searchFilters.name_admin} onChange={(selected) => setSearchFilters({ ...searchFilters, name_admin: selected })} />
+                                <input type="text" className="form-control" value={searchFilters.nombre_lead} onChange={(e) => setSearchFilters({ ...searchFilters, nombre_lead: e.target.value })} />
+                                <label htmlFor="k2">Buscar por nombre de cliente</label>
                             </div>
                         </div>
                         <div className="col-md-6">
                             <div className="form-floating mb-0">
-                                <input type="text" className="form-control" value={searchFilters.nombre_lead} onChange={(e) => setSearchFilters({ ...searchFilters, nombre_lead: e.target.value })} />
-                                <label htmlFor="k2">Buscar por nombre de cliente</label>
+                                <input type="text" className="form-control" value={searchFilters.email_lead} onChange={(e) => setSearchFilters({ ...searchFilters, email_lead: e.target.value })} />
+                                <label htmlFor="emailInput">Buscar por correo electrónico</label>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="row g-4">
+                        <div className="col-md-6">
+                            <div className="form-floating mb-0">
+                                <input type="text" className="form-control" value={searchFilters.telefono_lead} onChange={(e) => setSearchFilters({ ...searchFilters, telefono_lead: e.target.value })} />
+                                <label htmlFor="phoneInput">Buscar por teléfono</label>
+                            </div>
+                        </div>
+                        <div className="col-md-6">
+                            <label className="form-check-label" htmlFor="a1">
+                                Filtrar por Asesor
+                            </label>
+                            <div className="mb-0">
+                                <Select
+                                    components={animatedComponents}
+                                    isMulti
+                                    closeMenuOnSelect={false}
+                                    options={uniqueAdmins}
+                                    value={searchFilters.name_admin}
+                                    onChange={(selected) => {
+                                        const selectedAdmins = selected ? selected.map((p) => p.value) : [];
+
+                                        // Actualizar proyectos y campañas basados en los asesores seleccionados
+                                        updateProjectAndCampaignFilters(selectedAdmins);
+                                    }}
+                                />
                             </div>
                         </div>
                     </div>
@@ -285,8 +377,37 @@ export default function View_list_leads_new() {
                             <label className="form-check-label" htmlFor="a1">
                                 Filtrar por Proyecto
                             </label>
-                            <div className="form-floating mb-0">
-                                <Select components={animatedComponents} isMulti closeMenuOnSelect={false} options={uniqueProjects} value={searchFilters.proyecto_lead} onChange={(selected) => setSearchFilters({ ...searchFilters, proyecto_lead: selected })} />
+                            <div className="mb-0">
+                                <Select
+                                    components={animatedComponents}
+                                    isMulti
+                                    closeMenuOnSelect={false}
+                                    options={projectOptions}
+                                    value={searchFilters.proyecto_lead}
+                                    onChange={(selected) => {
+                                        const selectedProjects = selected ? selected.map((p) => p.value) : [];
+
+                                        // Obtener campañas válidas basadas en los proyectos seleccionados y asesor
+                                        let campaignsData = [];
+                                        if (selectedProjects.length === 0) {
+                                            campaignsData = tableData.filter((item) => searchFilters.name_admin.length === 0 || searchFilters.name_admin.map((p) => p.value).includes(item.name_admin));
+                                        } else {
+                                            campaignsData = tableData.filter((item) => selectedProjects.includes(item.proyecto_lead) && (searchFilters.name_admin.length === 0 || searchFilters.name_admin.map((p) => p.value).includes(item.name_admin)));
+                                        }
+                                        const uniqueCampaigns = getUniqueValuesWithCounts(campaignsData, "campana_lead");
+                                        const validCampaignValues = uniqueCampaigns.map((c) => c.value);
+
+                                        // Verificar si las campañas seleccionadas actualmente son válidas
+                                        const currentSelectedCampaigns = searchFilters.campana_lead.map((c) => c.value);
+                                        const newSelectedCampaigns = currentSelectedCampaigns.filter((campaign) => validCampaignValues.includes(campaign));
+
+                                        setSearchFilters({
+                                            ...searchFilters,
+                                            proyecto_lead: selected,
+                                            campana_lead: uniqueCampaigns.filter((campaign) => newSelectedCampaigns.includes(campaign.value)),
+                                        });
+                                    }}
+                                />
                                 <br />
                             </div>
                         </div>
@@ -294,18 +415,8 @@ export default function View_list_leads_new() {
                             <label className="form-check-label" htmlFor="a1">
                                 Filtrar por Campaña
                             </label>
-                            <div className="form-floating mb-0">
-                                <Select components={animatedComponents} isMulti closeMenuOnSelect={false} options={uniqueCampaigns} value={searchFilters.campana_lead} onChange={(selected) => setSearchFilters({ ...searchFilters, campana_lead: selected })} />
-                            </div>
-                        </div>
-                    </div>
-                    <div className="row g-4">
-                        <div className="col-md-6">
-                            <label className="form-check-label" htmlFor="a1">
-                                Filtrar por Subsidirias
-                            </label>
-                            <div className="form-floating mb-0">
-                                <Select components={animatedComponents} isMulti closeMenuOnSelect={false} options={uniqueSubsidiaries} value={searchFilters.subsidiaria_lead} onChange={(selected) => setSearchFilters({ ...searchFilters, subsidiaria_lead: selected })} />
+                            <div className="mb-0">
+                                <Select components={animatedComponents} isMulti closeMenuOnSelect={false} options={campaignOptions} value={searchFilters.campana_lead} onChange={(selected) => setSearchFilters({ ...searchFilters, campana_lead: selected })} />
                             </div>
                         </div>
                     </div>
@@ -316,12 +427,7 @@ export default function View_list_leads_new() {
                                 Cantidad de registros
                             </label>
                             <div className="form-floating mb-0">
-                                <select
-                                    className="form-control"
-                                    value={rowsPerPage}
-                                    onChange={handleRowsPerPageChange}
-                                    style={{ width: "60px" }} // Ajusta el ancho como necesites
-                                >
+                                <select className="form-control" value={rowsPerPage} onChange={handleRowsPerPageChange} style={{ width: "60px" }}>
                                     <option value="10">10</option>
                                     <option value="20">20</option>
                                     <option value="30">30</option>

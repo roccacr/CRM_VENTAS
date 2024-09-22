@@ -58,3 +58,24 @@
         font-size: 14px;
     }
 }
+
+.custom-select-asesor {
+    background-color: white;
+    /* Establece el fondo blanco */
+    z-index: 2;
+    /* Asegura que el select se superponga correctamente a otros elementos */
+    position: relative;
+    /* Controla su posicionamiento en la página */
+}
+
+.custom-select-asesor .select__control {
+    background-color: white !important;
+    /* Establece el fondo blanco del control */
+    border-color: #ced4da !important;
+    /* Asegura que el borde sea visible */
+}
+
+.custom-select-asesor .select__menu {
+    background-color: white !important;
+    /* Asegura que el menú desplegable también tenga fondo blanco */
+}
