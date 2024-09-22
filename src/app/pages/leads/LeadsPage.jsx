@@ -3,6 +3,7 @@ import { AppLayout } from "../../layout/AppLayout";
 import { useLocation } from "react-router-dom";
 import View_list_leads_new from "../../views/leads/list/new/View_list_leads_new";
 import View_list_leads_attention from "../../views/leads/list/attention/View_list_leads_attention";
+import View_list_leads_complete from "../../views/leads/list/complete/View_list_leads_complete";
 
 export const LeadsPage = () => {
     const location = useLocation();
@@ -22,6 +23,7 @@ export const LeadsPage = () => {
                         {/* Mostrar la página de lista de leads si path coincide y data === "2" */}
                         {path[1] === "leads" && path[2] === "lista" && dataValue === "2" && <View_list_leads_new />}
                         {path[1] === "leads" && path[2] === "lista" && dataValue === "3" && <View_list_leads_attention />}
+                        {path[1] === "leads" && path[2] === "lista" && dataValue === "1" && <View_list_leads_complete />}
                     </div>
                 </div>
             </div>

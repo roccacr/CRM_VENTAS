@@ -8,7 +8,18 @@ export const columnsConfig = [
     { title: "Teléfono", data: "telefono_lead", className: "text-left" }, // 4
     { title: "Proyecto", data: "proyecto_lead", className: "text-left" }, // 5
     { title: "Campaña", data: "campana_lead", className: "text-left" }, // 6
-    { title: "Estado", data: "segimineto_lead", className: "text-left" }, // 7
+    {
+        title: "Estado",
+        data: "segimineto_lead",
+        className: "text-left",
+        render: function (data) {
+            // Quitamos el prefijo antes del primer guion
+            if (data && data.includes("-")) {
+                return data.split("-")[2]; // Retorna todo lo que está después del primer guion
+            }
+            return data; // Si no tiene guion, retorna el dato tal como está
+        },
+    }, // 7
     {
         title: "Creado",
         data: "creado_lead",

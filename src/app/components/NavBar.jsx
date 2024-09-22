@@ -117,7 +117,7 @@ export const NavBar = ({ sidebarVisible, sidebarStatus, closeSidebar }) => {
                             <label>Modulos</label>
                         </li>
                         <li className="pc-item">
-                            <NavLink to="/leads" className="pc-link active">
+                            <NavLink to="/leads/lista?data=1" className="pc-link active">
                                 <span className="pc-micon">
                                     <i className="ti ti-users"></i>
                                 </span>
