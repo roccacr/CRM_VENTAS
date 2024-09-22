@@ -47,8 +47,35 @@ export const ModalLeads = ({ leadData, onClose }) => {
         });
     };
 
+    const handleCopyPhone = () => {
+        const leadPhone = leadData?.telefono_lead || "No cuenta con teléfono";
+        navigator.clipboard.writeText(leadPhone).then(() => {
+            console.log("Texto copiado al portapapeles:", leadPhone);
+        });
+    };
+
+    const handleWhatsappClick = () => {
+        const telefono = leadData?.telefono_lead;
+        if (telefono) {
+            const whatsappUrl = `https://wa.me/${telefono}`;
+            window.open(whatsappUrl, "_blank");
+        } else {
+            alert("Este lead no tiene un número de teléfono.");
+        }
+    };
+
+    const handleCallClient = () => {
+        const leadPhone = leadData?.telefono_lead;
+        if (leadPhone) {
+            const callUrl = `tel:${leadPhone}`;
+            window.open(callUrl, "_self"); // Realiza la llamada
+        } else {
+            alert("Este lead no tiene un número de teléfono.");
+        }
+    };
+
     const buttonData = [
-        { text: "Ir a Whatsapp", icon: "fab fa-whatsapp", color: "#25d366" },
+        { text: "Ir a Whatsapp", icon: "fab fa-whatsapp", color: "#25d366", action: handleWhatsappClick },
         { text: "Whatsapp y Contacto", icon: "fab fa-whatsapp", color: "#25d366" },
         { text: "Nota de Contacto", icon: "fab fa-wpforms", color: "#c0392b" },
         { text: "Crear un evento", icon: "fas fa-calendar-check", color: "#2c3e50" },
@@ -56,7 +83,7 @@ export const ModalLeads = ({ leadData, onClose }) => {
         { text: "Colocar en seguimiento", icon: "fas fa-location-arrow", color: "#f1c40f" },
         { text: "Crear Oportunidad", icon: "fas fa-level-up-alt", color: "#af7ac5" },
         { text: "Lista Oportunidades", icon: "fas fa-stream", color: "#2471a3" },
-        { text: "Llamar cliente", icon: "fas fa-phone", color: "#2e86c1" },
+        { text: "Llamar cliente", icon: "fas fa-phone", color: "#2e86c1", action: handleCallClient }, // Añadimos la acción de llamada
         { text: "Ver Perfil", icon: "fas fa-user-circle", color: "#7b7d7d" },
     ];
 
@@ -65,9 +92,8 @@ export const ModalLeads = ({ leadData, onClose }) => {
             <li
                 key={idx}
                 className={forDropdown ? "dropdown-item" : "btn btn-shadow"}
-                style={
-                    !forDropdown ? { backgroundColor: btn.color, color: "#fff", borderColor: btn.color, marginBottom: "0px" } : { marginBottom: "5px" } // Estilos sin color para el dropdown
-                }
+                style={!forDropdown ? { backgroundColor: btn.color, color: "#fff", borderColor: btn.color, marginBottom: "0px" } : { marginBottom: "5px" }}
+                onClick={btn.action || (() => {})} // Si tiene una acción asignada, la ejecuta.
             >
                 <i className={btn.icon}></i> {btn.text}
             </li>
@@ -93,17 +119,12 @@ export const ModalLeads = ({ leadData, onClose }) => {
         hours = hours ? hours : 12; // Si la hora es '0', que sea '12'
         hours = String(hours).padStart(2, "0");
 
-        // Formato de la fecha
         const formattedDate = `${year}-${month}-${day}`;
-
-        // Formato de la hora
         const formattedTime = `${hours}:${minutes}:${seconds} ${ampm}`;
 
-        // Retornar ambos valores por separado
         return { formattedDate, formattedTime };
     };
 
-    // Ordenar la bitácora por fecha más reciente antes de mapearla
     const sortedBitacora = [...bitacora].sort((a, b) => new Date(b.fecha_creado_bit) - new Date(a.fecha_creado_bit));
 
     return (
@@ -118,6 +139,12 @@ export const ModalLeads = ({ leadData, onClose }) => {
                                     content_copy
                                 </i>
                             </h4>
+                            <h5 onClick={handleCopyPhone} style={{ cursor: "pointer" }}>
+                                Telefono: {leadData?.telefono_lead || "..."}{" "}
+                                <i className="material-icons-two-tone" onClick={handleCopyPhone} style={{ cursor: "pointer" }}>
+                                    content_copy
+                                </i>
+                            </h5>
                             <p className="m-b-0">Proyecto: {leadData?.proyecto_lead}</p>
                             <p className="m-b-0">Campaña: {leadData?.campana_lead}</p>
                             <p className="m-b-0">Asesor: {leadData?.name_admin}</p>
@@ -128,10 +155,8 @@ export const ModalLeads = ({ leadData, onClose }) => {
                     <div className="modal-body">
                         <p style={{ textAlign: "center" }}>¿Qué deseas hacer con este lead?</p>
 
-                        {/* Botones visibles en pantallas grandes */}
                         <div className="d-none d-lg-flex justify-content-center text-center flex-wrap gap-2">{renderButtons()}</div>
 
-                        {/* Menú desplegable para pantallas pequeñas sin colores */}
                         <div className="d-lg-none d-flex justify-content-center">
                             <div className="btn-group" onClick={(e) => e.stopPropagation()}>
                                 <button type="button" className="btn btn-secondary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
@@ -158,7 +183,6 @@ export const ModalLeads = ({ leadData, onClose }) => {
                         </div>
                     ) : (
                         <div className="card-body">
-                            {/* Recorremos los datos de la bitácora ya ordenados */}
                             {sortedBitacora.length > 0 ? (
                                 sortedBitacora.map((entry, idx) => {
                                     const { formattedDate, formattedTime } = formatDate(entry.fecha_creado_bit);
@@ -166,7 +190,6 @@ export const ModalLeads = ({ leadData, onClose }) => {
                                         <div className="latest-update-box" key={idx}>
                                             <div className="row p-t-20 p-b-30">
                                                 <div className="col-auto text-end update-meta">
-                                                    {/* Mostramos la fecha y la hora formateadas por separado */}
                                                     <p className="text-muted m-b-0 d-inline-flex">{formattedTime}</p>
                                                     <div className="border border-2 border-success text-success update-icon">
                                                         <i className="ph-duotone ph-rocket"></i>
