@@ -120,5 +120,30 @@ leads.getAll_LeadsAttention = (dataParams) =>
     );
 
 
+/**
+ * Obtiene la lista completa de leads desde la base de datos, sin importar si son nuevos o requieren atención.
+ *
+ * Esta función ejecuta un procedimiento almacenado para recuperar la lista de leads
+ * basada en el rol y el ID del administrador de Netsuite, junto con un rango de fechas
+ * y una opción de filtro específica.
+ *
+ * @async
+ * @param {Object} dataParams - Objeto que contiene los parámetros necesarios para la consulta.
+ * @param {string} dataParams.rol_admin - Rol del administrador, utilizado para filtrar los leads según permisos.
+ * @param {number} dataParams.idnetsuite_admin - ID del administrador de Netsuite, utilizado para identificar al solicitante.
+ * @param {string} dataParams.startDate - Fecha de inicio del filtro.
+ * @param {string} dataParams.endDate - Fecha de fin del filtro.
+ * @param {string} dataParams.filterOption - Opción de filtro aplicada para segmentar los leads.
+ * @param {string} dataParams.database - Nombre de la base de datos donde se ejecutará la consulta.
+ * @returns {Promise<Object>} - Promesa que resuelve con el resultado de la consulta de leads.
+ */
+leads.getAll_LeadsComplete = (dataParams) =>
+    executeStoredProcedure(
+        "getAll_LeadsComplete", // Nombre del procedimiento almacenado que recupera los leads.
+        [dataParams.rol_admin, dataParams.idnetsuite_admin, dataParams.startDate, dataParams.endDate, dataParams.filterOption], // Parámetros necesarios: rol, ID del administrador, fechas y opción de filtro.
+        dataParams.database, // Nombre de la base de datos donde se ejecutará el procedimiento almacenado.
+    );
+
+
 
 module.exports = leads; // Exporta el objeto 'leads' que contiene todas las funciones definidas.

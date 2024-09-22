@@ -100,6 +100,7 @@ module.exports = function (app) {
                 { path: "/leads/getAll_LeadsNew", method: "getAll_LeadsNew" }, // Ruta para obtener todos los nuevos leads
                 { path: "/leads/getAll_LeadsAttention", method: "getAll_LeadsAttention" }, // Ruta para obtener la bitacora del lead
                 { path: "/leads/getBitacora", method: "getBitacora" }, // Ruta para obtener la bitacora del lead
+                { path: "/leads/getAll_LeadsComplete", method: "getAll_LeadsComplete" }, // Ruta para obtener la bitacora del lead
             ],
         },
     ];
