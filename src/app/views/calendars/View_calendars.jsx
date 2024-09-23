@@ -55,7 +55,7 @@ export const View_calendars = () => {
     return (
         <div className="card" style={{ width: "100%" }}>
             <div className="card-header table-card-header">
-                <h5>MÓDULO DE LEADS NUEVOS</h5>
+                <h5>CALENADRIO</h5>
             </div>
 
             <FullCalendar
