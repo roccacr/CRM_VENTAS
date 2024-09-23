@@ -9,6 +9,7 @@ import { configureStore } from "@reduxjs/toolkit";
 import { authSlice } from "./auth/authSlice";
 import { HomeSlice } from "./Home/HomeSlice";
 import { LeadSlice } from "./leads/leadSlice";
+import {calendarSlice} from "./calendar/calendarSlice";
 
 /********************************************** CONFIGURACIÓN DEL STORE ****************************************************/
 
@@ -28,7 +29,9 @@ export const store = configureStore({
         // `HomeSlice.reducer` maneja las acciones y el estado relacionado con la lógica de la página home.
         home: HomeSlice.reducer,
 
-        // `LeadSlice.reducer` maneja las acciones y el estado relacionado con la lógica de la página de leads.
+        // `LeadSlice.reducer` maneja las acciones y el estado relacionado con la lógica de la página de calendario.
         leads: LeadSlice.reducer,
+
+        calendar: calendarSlice.reducer,
     },
 });
