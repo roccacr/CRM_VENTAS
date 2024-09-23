@@ -3,7 +3,7 @@ import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid"; // Vista mensual
 import listPlugin from "@fullcalendar/list"; // Vista de lista
 import esLocale from "@fullcalendar/core/locales/es"; // Localización en español
-import "./calendario.css"; // Importa tu CSS personalizado aquí
+import "./calendario.css"; // Asegúrate de crear y enlazar este archivo CSS
 
 // Definir los colores para los diferentes tipos de eventos
 const colores = {
@@ -29,36 +29,32 @@ export const View_calendars = () => {
     // Añadir los colores según el tipo de evento
     const coloredEvents = events.map((event) => ({
         ...event,
-        backgroundColor: colores[event.type],
-        borderColor: colores[event.type],
+        backgroundColor: colores[event.type], // Asignar el color según el tipo
+        borderColor: colores[event.type], // Asignar el color del borde
     }));
 
     return (
-        <div className="calendar-container">
+        <div className="card calendar-card" style={{ width: "100%" }}>
             <div className="card-header table-card-header">
                 <h5>MÓDULO DE LEADS NUEVOS</h5>
             </div>
 
-            <div className="calendar-scroll">
-                {" "}
-                {/* Contenedor con scroll horizontal */}
-                <FullCalendar
-                    plugins={[dayGridPlugin, listPlugin]}
-                    initialView="dayGridMonth"
-                    locale={esLocale}
-                    headerToolbar={{
-                        left: "prev,next today",
-                        center: "title",
-                        right: "dayGridMonth,listWeek",
-                    }}
-                    events={coloredEvents}
-                    eventContent={renderEventContent}
-                    height="auto"
-                    dayMaxEventRows={true}
-                    moreLinkText="más"
-                    eventDisplay="block"
-                />
-            </div>
+            <FullCalendar
+                plugins={[dayGridPlugin, listPlugin]} // Agregar el plugin de vista de lista
+                initialView="dayGridMonth" // La vista por defecto es la mensual
+                locale={esLocale} // Configurar el calendario en español
+                headerToolbar={{
+                    left: "prev,next today",
+                    center: "title",
+                    right: "dayGridMonth,listWeek", // Habilitar cambio entre mes y lista semanal
+                }}
+                events={coloredEvents} // Lista de eventos con colores
+                eventContent={renderEventContent} // Renderizado personalizado de eventos
+                height="auto" // Hacer que el calendario se ajuste automáticamente
+                dayMaxEventRows={true} // Limitar la cantidad de eventos visibles por día en la vista mensual
+                moreLinkText="más" // Cambiar el texto para los eventos adicionales
+                eventDisplay="block" // Mostrar eventos como bloques en dispositivos móviles
+            />
         </div>
     );
 };

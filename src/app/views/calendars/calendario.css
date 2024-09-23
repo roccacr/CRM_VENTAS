@@ -1,50 +1,60 @@
-.calendar-container {
-    max-width: 100%;
-    /* Asegura que use todo el ancho de la pantalla */
-    overflow-x: auto;
-    /* Habilita el scroll horizontal */
-    padding: 10px;
+/* Ajustar el tamaño del número del día */
+.fc .fc-daygrid-day-number {
+    font-size: 10px;
+    /* Reducir el tamaño del número del día */
 }
 
-.calendar-scroll {
-    width: 1200px;
-    /* Aumentar el ancho del calendario */
-    overflow-x: scroll;
-    /* Habilitar scroll horizontal dentro del contenedor */
+/* Reducir el tamaño de la celda de cada día */
+.fc .fc-daygrid-day-frame {
+    padding: 2px;
+    /* Reducir el padding en las celdas */
+    min-height: 30px;
+    /* Altura mínima para las celdas del calendario */
 }
 
-.fc-daygrid-event {
-    white-space: nowrap;
-    /* Asegura que el texto del evento no se divida en líneas */
+/* Ajustar el tamaño del texto en los eventos */
+.fc .fc-daygrid-event {
+    font-size: 9px;
+    /* Reducir el tamaño de los títulos de eventos */
+    padding: 2px;
+    /* Reducir el padding en los eventos */
 }
 
-@media (max-width: 768px) {
-    .fc-header-toolbar {
-        flex-direction: column;
-        align-items: center;
+/* Estilizar el encabezado del calendario */
+.fc .fc-toolbar-title {
+    font-size: 16px;
+    /* Ajustar el tamaño del título del mes */
+}
+
+/* Ajustar el botón de 'Mes' y 'Agenda' para que sean más compactos */
+.fc .fc-button-group .fc-button {
+    font-size: 12px;
+    /* Reducir el tamaño de las letras en los botones */
+    padding: 5px 10px;
+    /* Hacer los botones más pequeños */
+}
+
+/* Media query para pantallas pequeñas (móviles) */
+@media (max-width: 480px) {
+    .fc .fc-daygrid-day-frame {
+        padding: 1px;
+        /* Reducir el padding aún más en pantallas pequeñas */
+        min-height: 25px;
+        /* Reducir la altura de las celdas */
     }
 
-    .fc-daygrid-event {
-        font-size: 0.75rem;
+    .fc .fc-daygrid-day-number {
+        font-size: 8px;
+        /* Reducir el tamaño del número en pantallas pequeñas */
     }
 
-    .fc-toolbar-title {
-        font-size: 1.2rem;
+    .fc .fc-toolbar-title {
+        font-size: 14px;
+        /* Reducir el tamaño del título en pantallas pequeñas */
     }
 
-    .fc-button {
-        font-size: 0.85rem;
-    }
-
-    .fc-col-header-cell-cushion {
-        padding: 5px;
-    }
-
-    .fc-daygrid-day {
-        padding: 5px;
-    }
-
-    .fc-event {
-        padding: 2px;
+    .fc .fc-daygrid-event {
+        font-size: 8px;
+        /* Reducir aún más el tamaño del texto de los eventos */
     }
 }
