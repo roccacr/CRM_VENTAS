@@ -55,14 +55,30 @@ export const ModalLeads = ({ leadData, onClose }) => {
     };
 
     const handleWhatsappClick = () => {
-        const telefono = leadData?.telefono_lead;
+        let telefono = leadData?.telefono_lead;
+
         if (telefono) {
-            const whatsappUrl = `https://wa.me/${telefono}`;
-            window.open(whatsappUrl, "_blank");
+            // Eliminar caracteres no numéricos, pero mantener el '+' inicial si lo tiene
+            telefono = telefono.trim().replace(/[^0-9+]/g, "");
+
+            // Si no comienza con '+', lo añadimos para asumir que es internacional
+            if (!telefono.startsWith("+")) {
+                telefono = `+${telefono}`;
+            }
+
+            // Validamos que tenga al menos 8 dígitos (números válidos a nivel internacional)
+            if (telefono.length > 8) {
+                const whatsappUrl = `https://wa.me/${telefono}`;
+                window.open(whatsappUrl, "_blank");
+            } else {
+                alert("El número de teléfono no es válido para WhatsApp.");
+            }
         } else {
             alert("Este lead no tiene un número de teléfono.");
         }
     };
+
+
 
     const handleCallClient = () => {
         const leadPhone = leadData?.telefono_lead;
