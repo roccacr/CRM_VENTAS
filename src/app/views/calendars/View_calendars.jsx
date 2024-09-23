@@ -1,9 +1,8 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid"; // Vista mensual
 import listPlugin from "@fullcalendar/list"; // Vista de lista
 import esLocale from "@fullcalendar/core/locales/es"; // Localización en español
-import "./calendario.css"; // Asegúrate de crear y enlazar este archivo CSS
 
 // Definir los colores para los diferentes tipos de eventos
 const colores = {
@@ -25,6 +24,7 @@ const initialEvents = [
 
 export const View_calendars = () => {
     const [events, setEvents] = useState(initialEvents);
+    const [currentView, setCurrentView] = useState(window.innerWidth < 768 ? "listWeek" : "dayGridMonth");
 
     // Añadir los colores según el tipo de evento
     const coloredEvents = events.map((event) => ({
@@ -33,27 +33,44 @@ export const View_calendars = () => {
         borderColor: colores[event.type], // Asignar el color del borde
     }));
 
+    // Manejar el cambio de vista al cambiar el tamaño de la pantalla
+    const handleResize = () => {
+        if (window.innerWidth < 768) {
+            setCurrentView("listWeek");
+        } else {
+            setCurrentView("dayGridMonth");
+        }
+    };
+
+    // Añadir un listener para el evento de redimensionar la ventana
+    useEffect(() => {
+        window.addEventListener("resize", handleResize);
+
+        // Cleanup el listener cuando el componente se desmonte
+        return () => {
+            window.removeEventListener("resize", handleResize);
+        };
+    }, []);
+
     return (
-        <div className="card calendar-card" style={{ width: "100%" }}>
+        <div className="card" style={{ width: "100%" }}>
             <div className="card-header table-card-header">
                 <h5>MÓDULO DE LEADS NUEVOS</h5>
             </div>
 
             <FullCalendar
                 plugins={[dayGridPlugin, listPlugin]} // Agregar el plugin de vista de lista
-                initialView="dayGridMonth" // La vista por defecto es la mensual
+                initialView={currentView} // La vista inicial es dinámica dependiendo del tamaño de la ventana
                 locale={esLocale} // Configurar el calendario en español
                 headerToolbar={{
                     left: "prev,next today",
                     center: "title",
-                    right: "dayGridMonth,listWeek", // Habilitar cambio entre mes y lista semanal
+                    right: currentView === "dayGridMonth" ? "dayGridMonth,listWeek" : "listWeek", // Mostrar solo listWeek si es responsive
                 }}
                 events={coloredEvents} // Lista de eventos con colores
                 eventContent={renderEventContent} // Renderizado personalizado de eventos
-                height="auto" // Hacer que el calendario se ajuste automáticamente
-                dayMaxEventRows={true} // Limitar la cantidad de eventos visibles por día en la vista mensual
-                moreLinkText="más" // Cambiar el texto para los eventos adicionales
-                eventDisplay="block" // Mostrar eventos como bloques en dispositivos móviles
+                height={1000} // Fijar la altura a 1500px
+                contentHeight={800} // Ajusta este valor para hacer el calendario más alto o más bajo
             />
         </div>
     );
