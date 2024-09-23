@@ -17,6 +17,11 @@ const colores = {
 // Lista de eventos con tipos
 const initialEvents = [
     { title: "Llamada con cliente", start: "2024-09-24T10:30:00", end: "2024-09-24T12:30:00", type: "Llamada" },
+    { title: "Llamada con cliente", start: "2024-09-24T10:30:00", end: "2024-09-24T12:30:00", type: "Llamada" },
+    { title: "Llamada con cliente", start: "2024-09-24T10:30:00", end: "2024-09-24T12:30:00", type: "Llamada" },
+    { title: "Llamada con cliente", start: "2024-09-24T10:30:00", end: "2024-09-24T12:30:00", type: "Llamada" },
+    { title: "Llamada con cliente", start: "2024-09-24T10:30:00", end: "2024-09-24T12:30:00", type: "Llamada" },
+    { title: "Llamada con cliente", start: "2024-09-24T10:30:00", end: "2024-09-24T12:30:00", type: "Llamada" },
     { title: "Reunion con equipo", start: "2024-09-25T09:00:00", end: "2024-09-25T11:00:00", type: "Reunion" },
     { title: "Enviar Correo", start: "2024-09-26T12:00:00", end: "2024-09-26T13:00:00", type: "Correo" },
     { title: "Seguimiento", start: "2024-09-27", allDay: true, type: "Seguimientos" },
