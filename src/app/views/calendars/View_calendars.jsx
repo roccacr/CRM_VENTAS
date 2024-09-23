@@ -6,26 +6,40 @@ import esLocale from "@fullcalendar/core/locales/es"; // Localización en españ
 import Select from "react-select";
 import makeAnimated from "react-select/animated"; // Para la animación de selección
 
-// Definir los colores para los diferentes tipos de eventos
-const colores = {
-    Contactos: "#556ee6",
-    Tareas: "#343a40",
-    Reunion: "#34c38f",
-    Seguimientos: "#f46a6a",
-    "Primeras Citas": "#f39c12",
-};
-
-// Lista inicial de eventos con tipos
+// Lista inicial de eventos con los campos adicionales y el color
 const initialEvents = [
-    { title: "Llamada de Contacto", start: "2024-09-24T10:30:00", end: "2024-09-24T12:30:00", type: "Contactos" },
-    { title: "Llamada de Contacto", start: "2024-09-24T10:30:00", end: "2024-09-24T12:30:00", type: "Contactos" },
-    { title: "Llamada de Contacto", start: "2024-09-24T10:30:00", end: "2024-09-24T12:30:00", type: "Contactos" },
-    { title: "Llamada de Contacto", start: "2024-09-24T10:30:00", end: "2024-09-24T12:30:00", type: "Contactos" },
-    { title: "Llamada de Contacto", start: "2024-09-24T10:30:00", end: "2024-09-24T12:30:00", type: "Seguimientos" },
-    { title: "Reunión con equipo", start: "2024-09-25T09:00:00", end: "2024-09-25T11:00:00", type: "Reunion" },
-    { title: "Enviar Tarea", start: "2024-09-26T12:00:00", end: "2024-09-26T13:00:00", type: "Tareas" },
-    { title: "Seguimiento", start: "2024-09-27", allDay: true, type: "Seguimientos" },
-    { title: "Primera Cita con Cliente", start: "2024-09-28", allDay: true, type: "Primeras Citas" },
+    {
+        _id: "1",
+        title: "Llamada de Contacto",
+        start: "2024-09-24T10:30:00",
+        end: "2024-09-24T12:30:00",
+        timeUno: "10:30",
+        timeDos: "12:30",
+        color: "#556ee6",
+        descs: "Descripción de la llamada",
+        lead: "123",
+        cita: "456",
+        category: "Contactos",
+        name_admin: "Admin 1",
+        className: "evento-especial",
+        eventColor: "#556ee6",
+    },
+    {
+        _id: "2",
+        title: "Reunión con equipo",
+        start: "2024-09-25T09:00:00",
+        end: "2024-09-25T11:00:00",
+        timeUno: "09:00",
+        timeDos: "11:00",
+        color: "#34c38f",
+        descs: "Reunión importante",
+        lead: "124",
+        cita: "457",
+        category: "Reunion",
+        name_admin: "Admin 2",
+        className: "evento-especial",
+        eventColor: "#34c38f",
+    },
 ];
 
 // Filtros iniciales (opciones del select)
@@ -50,14 +64,7 @@ export const View_calendars = () => {
     };
 
     // Filtrar los eventos basados en los filtros activos
-    const filteredEvents = selectedFilters.length > 0 ? events.filter((event) => selectedFilters.some((filter) => filter.value === event.type)) : events; // Mostrar todos los eventos si no hay filtros seleccionados
-
-    // Añadir los colores según el tipo de evento
-    const coloredEvents = filteredEvents.map((event) => ({
-        ...event,
-        backgroundColor: colores[event.type], // Asignar el color según el tipo
-        borderColor: colores[event.type], // Asignar el color del borde
-    }));
+    const filteredEvents = selectedFilters.length > 0 ? events.filter((event) => selectedFilters.some((filter) => filter.value === event.category)) : events; // Mostrar todos los eventos si no hay filtros seleccionados
 
     // Manejar el cambio de vista al cambiar el tamaño de la pantalla y si es móvil
     const handleResize = () => {
@@ -81,7 +88,7 @@ export const View_calendars = () => {
                 <h5>CALENDARIO</h5>
             </div>
             <div className="row">
-                <div className="col-xxl-3 col-md-6">
+                <div className="col-xxl-2 col-md-6">
                     <div className="price-card card">
                         <div className="price-head bg-light-primary card-body">
                             <h5 className="text-primary">FILTRO</h5>
@@ -115,7 +122,7 @@ export const View_calendars = () => {
                                 // Mostrar checkboxes solo en modo PC
                                 <ul className="list-unstyled product-list">
                                     {filterOptions.map((option) => (
-                                        <li key={option.value}>
+                                        <li key={option.value} style={{ fontSize: "18px", padding: "10px 0" }}>
                                             <label>
                                                 <input
                                                     type="checkbox"
@@ -148,7 +155,23 @@ export const View_calendars = () => {
                             center: "title",
                             right: currentView === "dayGridMonth" ? "dayGridMonth,listWeek" : "listWeek", // Mostrar solo listWeek si es responsive
                         }}
-                        events={coloredEvents} // Lista de eventos con colores filtrados
+                        events={filteredEvents} // Lista de eventos con colores filtrados
+                        eventDidMount={(info) => {
+                            // Asegurar que los colores se apliquen también en la vista de mes
+                            info.el.style.backgroundColor = info.event.extendedProps.eventColor;
+                            info.el.style.borderColor = info.event.extendedProps.eventColor;
+                            info.el.style.color = "white"; // Cambiar el color del texto a blanco
+
+                            // Agregar eventos de mouseover y mouseout para cambiar color al pasar el mouse
+                            info.el.addEventListener("mouseenter", () => {
+                                info.el.style.backgroundColor = "#d3d3d3"; // Color gris
+                                info.el.style.color = "black"; // Texto negro
+                            });
+                            info.el.addEventListener("mouseleave", () => {
+                                info.el.style.backgroundColor = info.event.extendedProps.eventColor; // Restaurar color original
+                                info.el.style.color = "white"; // Restaurar texto blanco
+                            });
+                        }}
                         eventContent={renderEventContent} // Renderizado personalizado de eventos
                         height={1000} // Fijar la altura a 1000px
                         contentHeight={800} // Ajusta este valor para hacer el calendario más alto o más bajo
