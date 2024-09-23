@@ -9,6 +9,10 @@ const home = require("../models/home/home");
 // Importa el modelo para las operaciones relacionadas con 'leads'
 const leads = require("../models/leads/leads");
 
+
+// Importa el modelo para las operaciones relacionadas con 'calendars'
+const calendars = require("../models/calendars/calendars");
+
 // Cargar variables de entorno al iniciar la aplicación
 dotenv.config();
 
@@ -101,6 +105,14 @@ module.exports = function (app) {
                 { path: "/leads/getAll_LeadsAttention", method: "getAll_LeadsAttention" }, // Ruta para obtener la bitacora del lead
                 { path: "/leads/getBitacora", method: "getBitacora" }, // Ruta para obtener la bitacora del lead
                 { path: "/leads/getAll_LeadsComplete", method: "getAll_LeadsComplete" }, // Ruta para obtener la bitacora del lead
+            ],
+        },
+
+        {
+            category: "calendars", // Categoría: calendars
+            model: calendars, // Modelo asociado a 'calendars'
+            routes: [
+                { path: "/calendars/get_Calendars", method: "get_Calendars" }, // Ruta para obtener todos los eventos del calendars
             ],
         },
     ];
