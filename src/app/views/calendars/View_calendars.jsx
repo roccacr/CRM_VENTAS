@@ -8,44 +8,49 @@ import makeAnimated from "react-select/animated"; // Para la animación de selec
 
 // Definir los colores para los diferentes tipos de eventos
 const colores = {
-    Llamada: "#556ee6",
-    Whatsapp: "#556ee6",
-    Correo: "#f39c12",
-    Tarea: "#343a40",
+    Contactos: "#556ee6",
+    Tareas: "#343a40",
     Reunion: "#34c38f",
     Seguimientos: "#f46a6a",
+    "Primeras Citas": "#f39c12",
 };
 
 // Lista inicial de eventos con tipos
 const initialEvents = [
-    { title: "Llamada con cliente", start: "2024-09-24T10:30:00", end: "2024-09-24T12:30:00", type: "Llamada" },
-    { title: "Reunion con equipo", start: "2024-09-25T09:00:00", end: "2024-09-25T11:00:00", type: "Reunion" },
-    { title: "Enviar Correo", start: "2024-09-26T12:00:00", end: "2024-09-26T13:00:00", type: "Correo" },
+    { title: "Llamada de Contacto", start: "2024-09-24T10:30:00", end: "2024-09-24T12:30:00", type: "Contactos" },
+    { title: "Llamada de Contacto", start: "2024-09-24T10:30:00", end: "2024-09-24T12:30:00", type: "Contactos" },
+    { title: "Llamada de Contacto", start: "2024-09-24T10:30:00", end: "2024-09-24T12:30:00", type: "Contactos" },
+    { title: "Llamada de Contacto", start: "2024-09-24T10:30:00", end: "2024-09-24T12:30:00", type: "Contactos" },
+    { title: "Llamada de Contacto", start: "2024-09-24T10:30:00", end: "2024-09-24T12:30:00", type: "Seguimientos" },
+    { title: "Reunión con equipo", start: "2024-09-25T09:00:00", end: "2024-09-25T11:00:00", type: "Reunion" },
+    { title: "Enviar Tarea", start: "2024-09-26T12:00:00", end: "2024-09-26T13:00:00", type: "Tareas" },
     { title: "Seguimiento", start: "2024-09-27", allDay: true, type: "Seguimientos" },
+    { title: "Primera Cita con Cliente", start: "2024-09-28", allDay: true, type: "Primeras Citas" },
 ];
 
 // Filtros iniciales (opciones del select)
 const filterOptions = [
-    { value: "Llamada", label: "Llamada" },
+    { value: "Contactos", label: "Contactos" },
+    { value: "Tareas", label: "Tareas" },
     { value: "Reunion", label: "Reunion" },
-    { value: "Correo", label: "Correo" },
     { value: "Seguimientos", label: "Seguimientos" },
+    { value: "Primeras Citas", label: "Primeras Citas" },
 ];
 
 // Componente principal
 export const View_calendars = () => {
     const [events, setEvents] = useState(initialEvents);
-    const [selectedFilters, setSelectedFilters] = useState(filterOptions); // Mantiene las opciones seleccionadas
+    const [selectedFilters, setSelectedFilters] = useState([]); // Inicialmente vacío
     const [isMobile, setIsMobile] = useState(window.innerWidth < 768); // Estado para manejar si es móvil
     const [currentView, setCurrentView] = useState(window.innerWidth < 768 ? "listWeek" : "dayGridMonth");
 
     // Manejar el cambio de selección de filtros
     const handleFilterChange = (selected) => {
-        setSelectedFilters(selected || []);
+        setSelectedFilters(selected || []); // Guardar las selecciones en el estado
     };
 
     // Filtrar los eventos basados en los filtros activos
-    const filteredEvents = events.filter((event) => selectedFilters.some((filter) => filter.value === event.type));
+    const filteredEvents = selectedFilters.length > 0 ? events.filter((event) => selectedFilters.some((filter) => filter.value === event.type)) : events; // Mostrar todos los eventos si no hay filtros seleccionados
 
     // Añadir los colores según el tipo de evento
     const coloredEvents = filteredEvents.map((event) => ({
