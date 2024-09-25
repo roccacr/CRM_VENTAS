@@ -101,10 +101,11 @@ module.exports = function (app) {
             category: "Leads", // Categoría: Leads
             model: leads, // Modelo asociado a 'leads'
             routes: [
-                { path: "/leads/getAll_LeadsNew", method: "getAll_LeadsNew" }, // Ruta para obtener todos los nuevos leads
-                { path: "/leads/getAll_LeadsAttention", method: "getAll_LeadsAttention" }, // Ruta para obtener la bitacora del lead
-                { path: "/leads/getBitacora", method: "getBitacora" }, // Ruta para obtener la bitacora del lead
-                { path: "/leads/getAll_LeadsComplete", method: "getAll_LeadsComplete" }, // Ruta para obtener la bitacora del lead
+                { path: "/leads/getAll_LeadsNew", method: "getAll_LeadsNew" }, // Ruta para obtener todos los leads nuevos
+                { path: "/leads/getAll_LeadsAttention", method: "getAll_LeadsAttention" }, // Ruta para obtener los leads que requieren atención
+                { path: "/leads/getBitacora", method: "getBitacora" }, // Ruta para obtener la bitácora de un lead específico
+                { path: "/leads/getAll_LeadsComplete", method: "getAll_LeadsComplete" }, // Ruta para obtener todos los leads (completos)
+                { path: "/leads/getAll_LeadsRepit", method: "getAll_LeadsRepit" }, // Ruta para obtener todos los leads repetidos
             ],
         },
 

@@ -145,5 +145,26 @@ leads.getAll_LeadsComplete = (dataParams) =>
     );
 
 
+/**
+ * Obtiene la lista completa de leads repetidos desde la base de datos.
+ *
+ * Esta función ejecuta un procedimiento almacenado para recuperar la lista de leads
+ * que tienen correos electrónicos duplicados, basada en el rol y el ID del administrador
+ * de Netsuite.
+ *
+ * @async
+ * @param {Object} dataParams - Objeto que contiene los parámetros necesarios para la consulta.
+ * @param {string} dataParams.rol_admin - Rol del administrador, utilizado para filtrar los leads según permisos.
+ * @param {number} dataParams.idnetsuite_admin - ID del administrador de Netsuite, utilizado para identificar al solicitante.
+ * @param {string} dataParams.database - Nombre de la base de datos donde se ejecutará la consulta.
+ * @returns {Promise<Object>} - Promesa que resuelve con el resultado de la consulta de leads repetidos.
+ */
+leads.getAll_LeadsRepit = (dataParams) =>
+    executeStoredProcedure(
+        "get_Leads_With_Duplicate_Emails", // Nombre del procedimiento almacenado que recupera los leads repetidos.
+        [dataParams.rol_admin, dataParams.idnetsuite_admin], // Parámetros necesarios: rol y ID del administrador.
+        dataParams.database, // Nombre de la base de datos donde se ejecutará el procedimiento almacenado.
+    );
+
 
 module.exports = leads; // Exporta el objeto 'leads' que contiene todas las funciones definidas.
