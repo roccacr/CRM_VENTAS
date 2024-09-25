@@ -8,6 +8,7 @@ export const SideBar = ({ toggleSidebar }) => {
   const dispatch = useDispatch();
     const { name_admin } = useSelector((state) => state.auth);
     const [leadItems, setLeadItems] = useState([]);
+    const [leadCount, setLeadCount] = useState(0);
 
   const onLogout = () => {
     dispatch(startLogout());
@@ -32,6 +33,7 @@ const fetchData = async () => {
         }
         return acc;
     }, {});
+
 
     // Convertimos el objeto agrupado en una lista de elementos <li>
     const leadListItems = Object.values(groupedLeads).map((lead, index) => (
@@ -60,6 +62,8 @@ const fetchData = async () => {
     ));
 
     setLeadItems(leadListItems);
+
+    setLeadCount(leadListItems.length);
 };
 
 
@@ -98,7 +102,7 @@ const fetchData = async () => {
                           <li className="pc-h-item dropdown">
                               <a className="pc-head-link arrow-none me-0 dropdown-toggle" id="react-aria-:Rr56:" aria-expanded="true" data-bs-toggle="dropdown" href="#" aria-haspopup="false">
                                   <i className="ph-duotone ph-bell"></i>
-                                  <span className="badge bg-success pc-h-badge">3</span>
+                                  <span className="badge bg-success pc-h-badge">{leadCount}</span>
                               </a>
                               <div
                                   aria-labelledby="react-aria-:Rr56:"
