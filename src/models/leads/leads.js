@@ -167,4 +167,25 @@ leads.getAll_LeadsRepit = (dataParams) =>
     );
 
 
+
+/**
+ * Obtiene la información de un lead específico desde la base de datos.
+ *
+ * Esta función ejecuta un procedimiento almacenado para recuperar los detalles 
+ * de un lead específico basado en su ID.
+ *
+ * @async
+ * @param {Object} dataParams - Objeto que contiene los parámetros necesarios para la consulta.
+ * @param {number} dataParams.idLead - ID del lead que se desea recuperar.
+ * @param {string} dataParams.database - Nombre de la base de datos donde se ejecutará la consulta.
+ * @returns {Promise<Object>} - Promesa que resuelve con el resultado de la consulta del lead específico.
+ */
+leads.get_Specific_Lead = (dataParams) =>
+    executeStoredProcedure(
+        "get_Specific_Lead", // Nombre del procedimiento almacenado que recupera la información del lead específico.
+        [dataParams.idLead], // Parámetros necesarios: ID del lead.
+        dataParams.database, // Nombre de la base de datos donde se ejecutará el procedimiento almacenado.
+    );
+
+
 module.exports = leads; // Exporta el objeto 'leads' que contiene todas las funciones definidas.
