@@ -106,3 +106,29 @@ export const getAllLeadsComplete = async ({ idnetsuite_admin, rol_admin, startDa
     // La URL "leads/getAll_LeadsComplete" corresponde al endpoint que maneja esta petición.
     return await fetchData("leads/getAll_LeadsComplete", requestData); // Devuelve la lista completa de leads.
 };
+
+
+
+/**
+ * Función para obtener todos los leads repetidos.
+ *
+ * Esta función realiza una solicitud al backend para obtener la lista de leads 
+ * repetidos, basados en el ID y rol del administrador.
+ *
+ * @param {Object} params - Parámetros necesarios para la solicitud.
+ * @param {number} params.idnetsuite_admin - ID del administrador en Netsuite, utilizado para la autenticación.
+ * @param {string} params.rol_admin - Rol del administrador, necesario para determinar permisos de acceso.
+ * @returns {Promise} - Devuelve una promesa que resuelve con los datos de la respuesta de la API.
+ */
+export const getAll_LeadsRepit = async ({ idnetsuite_admin, rol_admin }) => {
+    // Construcción del objeto requestData combinando los datos comunes con los parámetros específicos recibidos.
+    const requestData = {
+        ...commonRequestData, // Datos comunes requeridos para cada solicitud, como tokens o configuraciones generales.
+        idnetsuite_admin, // ID del administrador de Netsuite utilizado para la autenticación e identificación.
+        rol_admin, // Rol del administrador utilizado para verificar permisos y acceso.
+    };
+
+    // Realiza la solicitud a la API para obtener la lista de leads repetidos.
+    // La URL "leads/getAll_LeadsRepit" corresponde al endpoint que maneja esta petición.
+    return await fetchData("leads/getAll_LeadsRepit", requestData); // Devuelve la lista de leads repetidos.
+};

@@ -133,7 +133,7 @@ export const NavBar = ({ sidebarVisible, sidebarStatus, closeSidebar }) => {
                             </NavLink>
                         </li>
                         <li className="pc-item">
-                            <NavLink to="/Movies/list" className="pc-link active">
+                            <NavLink to="/events" className="pc-link active">
                                 <span className="pc-micon">
                                     <i className="ti ti-calendar-event"></i>
                                 </span>

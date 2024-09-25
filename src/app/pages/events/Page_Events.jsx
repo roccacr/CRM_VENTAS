@@ -1,9 +1,11 @@
+
+
 import { AppLayout } from "../../layout/AppLayout";
 import { useLocation } from "react-router-dom";
-import { View_calendars } from "../../views/calendars/View_calendars";
+import { View_events } from "../../views/events/crear/View_events";
 
 
-export const Page_calendars = () => {
+export const Page_Events = () => {
     const location = useLocation();
 
     // Este código divide la URL en partes (los segmentos de la ruta)
@@ -15,7 +17,7 @@ export const Page_calendars = () => {
                 <div className="pc-content">
                     <div className="row">
                         {/* Mostrar la página de lista de leads si path coincide y data === "2" */}
-                        {path[1] === "calendar" && <View_calendars />}
+                        {path[1] === "events" && <View_events />}
                     </div>
                 </div>
             </div>

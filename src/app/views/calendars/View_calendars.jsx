@@ -44,12 +44,16 @@ export const View_calendars = () => {
     const [isLoading, setIsLoading] = useState(true);
 
     const transformEvents = (apiData) => {
+
+
         return apiData.map((item) => {
             return {
                 _id: item.id_calendar,
                 title: item.nombre_calendar,
                 start: item.fechaIni_calendar,
                 end: item.fechaFin_calendar,
+                start_one: item.fechaIni_calendar,
+                end_two: item.fechaFin_calendar,
                 timeUno: item.horaInicio_calendar,
                 timeDos: item.horaFinal_calendar,
                 descs: item.decrip_calendar,
