@@ -1,8 +1,11 @@
 import React, { useState, useEffect } from "react";
 import { useDispatch } from "react-redux";
 import { getBitacoraLeads } from "../../../store/leads/thunksLeads";
+import { useNavigate } from "react-router-dom";
+import { setleadActive } from "../../../store/leads/leadSlice";
 
 export const ModalLeads = ({ leadData, onClose }) => {
+    const navigate = useNavigate();
     const dispatch = useDispatch(); // Hook para despachar acciones a Redux.
     const [showModal, setShowModal] = useState(false);
     const [isMobile, setIsMobile] = useState(window.matchMedia("(max-width: 768px)").matches);
@@ -90,11 +93,24 @@ export const ModalLeads = ({ leadData, onClose }) => {
         }
     };
 
+
+    const handleNote = (leadData) => {
+        const idLead = leadData?.idinterno_lead;
+        dispatch(setleadActive(leadData));
+        navigate(`/leads/note?id=${idLead}`);
+    };
+
+     const handleEvents = (leadData) => {
+         const idLead = leadData?.idinterno_lead;
+         dispatch(setleadActive(leadData));
+         navigate(`/events/lead?id=${idLead}`);
+     };
+
     const buttonData = [
         { text: "Ir a Whatsapp", icon: "fab fa-whatsapp", color: "#25d366", action: handleWhatsappClick },
         { text: "Whatsapp y Contacto", icon: "fab fa-whatsapp", color: "#25d366" },
-        { text: "Nota de Contacto", icon: "fab fa-wpforms", color: "#c0392b" },
-        { text: "Crear un evento", icon: "fas fa-calendar-check", color: "#2c3e50" },
+        { text: "Nota de Contacto", icon: "fab fa-wpforms", color: "#c0392b", action: () => handleNote(leadData) },
+        { text: "Crear un evento", icon: "fas fa-calendar-check", color: "#2c3e50", action: () => handleEvents(leadData) },
         { text: "Dar como perdido", icon: "fas fa-window-close", color: "#78281f" },
         { text: "Colocar en seguimiento", icon: "fas fa-location-arrow", color: "#f1c40f" },
         { text: "Crear Oportunidad", icon: "fas fa-level-up-alt", color: "#af7ac5" },

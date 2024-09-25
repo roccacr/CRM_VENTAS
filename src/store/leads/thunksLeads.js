@@ -1,5 +1,5 @@
 import { setLeadsNew } from "./leadSlice"; // Acción para actualizar el estado de leads en Redux.
-import { getAll_LeadsRepit, getAllLeadsAttention, getAllLeadsComplete, getAllLeadsNew, getBitacora } from "./Api_leads_Providers"; // Función que hace la solicitud API para obtener nuevos leads.
+import { get_Specific_Lead, getAll_LeadsRepit, getAllLeadsAttention, getAllLeadsComplete, getAllLeadsNew, getBitacora } from "./Api_leads_Providers"; // Función que hace la solicitud API para obtener nuevos leads.
 
 /**
  * Acción asincrónica para obtener la lista de nuevos leads.
@@ -80,7 +80,6 @@ export const getBitacoraLeads = (idLeads) => {
         try {
             // Llamada a la API para obtener la bitácora del lead basado en su ID.
             const result = await getBitacora({ idLeads });
-            console.log(result)
 
             return result.data["0"]; // Devuelve los datos de la bitácora obtenidos.
         } catch (error) {
@@ -159,3 +158,27 @@ export const getLeadsRepit = () => {
     };
 };
 
+
+
+/**
+ * Acción asincrónica para obtener la información de un lead específico.
+ *
+ * Realiza una solicitud al backend para obtener los detalles de un lead
+ * basados en su ID, y luego despacha una acción para actualizar el estado 
+ * de Redux con los datos obtenidos.
+ *
+ * @param {number} idLead - ID del lead específico que se desea obtener.
+ * @returns {Function} Thunk - Función que puede ser despachada gracias a Redux Thunk.
+ */
+export const getSpecificLead = (idLead) => {
+    return async () => {
+        try {
+            // Llama a la función get_Specific_Lead para obtener la información del lead específico.
+            const result = await get_Specific_Lead({ idLead });
+            return result.data["0"]["0"]; // Devuelve los datos obtenidos para posibles usos adicionales.
+        } catch (error) {
+            // En caso de error, muestra el error en la consola para diagnóstico.
+            console.error("Error al cargar el lead", error);
+        }
+    };
+};

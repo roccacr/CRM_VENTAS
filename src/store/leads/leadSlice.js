@@ -5,6 +5,7 @@ export const LeadSlice = createSlice({
     name: "leads", // Nombre del slice
     initialState: {
         listNew: [], // Cantidad de leads nuevos
+        leadActive: [],
     },
     reducers: {
         /**
@@ -15,12 +16,14 @@ export const LeadSlice = createSlice({
         setLeadsNew: (state, action) => {
             state.listNew = action.payload;
         },
-
+        setleadActive: (state, action) => {
+            state.leadActive = action.payload;
+        },
     },
 });
 
 // Exportar acciones generadas por el slice
-export const { setLeadsNew } = LeadSlice.actions;
+export const { setLeadsNew, setleadActive } = LeadSlice.actions;
 
 // Exportar el reducer del slice para que pueda ser utilizado en el store de Redux
 export default LeadSlice.reducer;

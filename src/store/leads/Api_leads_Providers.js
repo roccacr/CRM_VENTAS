@@ -132,3 +132,28 @@ export const getAll_LeadsRepit = async ({ idnetsuite_admin, rol_admin }) => {
     // La URL "leads/getAll_LeadsRepit" corresponde al endpoint que maneja esta petición.
     return await fetchData("leads/getAll_LeadsRepit", requestData); // Devuelve la lista de leads repetidos.
 };
+
+
+
+/**
+ * Función para obtener la información de un lead específico.
+ *
+ * Esta función realiza una solicitud al backend para obtener los detalles 
+ * de un lead basado en su ID.
+ *
+ * @param {Object} params - Parámetros necesarios para la solicitud.
+ * @param {number} params.idLead - ID del lead específico que se desea obtener.
+ * @returns {Promise} - Devuelve una promesa que resuelve con los datos del lead obtenido desde la API.
+ */
+export const get_Specific_Lead = async ({idLead }) => {
+    // Construcción del objeto requestData combinando los datos comunes con los parámetros específicos recibidos.
+    const requestData = {
+        ...commonRequestData, // Datos comunes requeridos para cada solicitud, como tokens o configuraciones generales.
+        idLead, // ID del lead específico que se quiere obtener.
+    };
+
+    // Realiza la solicitud a la API para obtener la información del lead específico.
+    // La URL "leads/get_Specific_Lead" corresponde al endpoint que maneja esta petición.
+    return await fetchData("leads/get_Specific_Lead", requestData); // Devuelve la información del lead específico.
+};
+
