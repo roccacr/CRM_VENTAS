@@ -48,6 +48,32 @@ export const getAllLeadsAttention = async ({ idnetsuite_admin, rol_admin, startD
     return await fetchData("leads/getAll_LeadsAttention", requestData); // Devuelve la lista de leads que requieren atención.
 };
 
+
+/**
+ * Función para obtener todos los leads que requieren atención.
+ *
+ * @param {Object} params - Parámetros necesarios para la solicitud.
+ * @param {number} params.idnetsuite_admin - ID del administrador en Netsuite, utilizado para la autenticación.
+ * @param {string} params.rol_admin - Rol del administrador, necesario para determinar permisos de acceso.
+ * @returns {Promise} - Devuelve una promesa que resuelve con los datos de la respuesta de la API.
+ */
+export const getAllStragglers = async ({ idnetsuite_admin, rol_admin, startDate, endDate, filterOption }) => {
+    // Construcción del objeto requestData combinando los datos comunes con los parámetros específicos recibidos.
+    const requestData = {
+        ...commonRequestData, // Datos comunes requeridos para cada solicitud, como tokens o configuraciones generales.
+        idnetsuite_admin, // ID del administrador de Netsuite utilizado para la autenticación e identificación.
+        rol_admin, // Rol del administrador utilizado para verificar permisos y accesos.
+        startDate,
+        endDate,
+        filterOption,
+    };
+
+    // Realiza la solicitud a la API para obtener la lista de leads que requieren atención.
+    // La URL "leads/getAll_LeadsAttention" corresponde al endpoint que maneja esta petición.
+    // requestData contiene todos los parámetros necesarios para ejecutar correctamente la solicitud.
+    return await fetchData("leads/getAllStragglers", requestData); // Devuelve la lista de leads que requieren atención.
+};
+
 /**
  * Función para obtener la bitácora de un lead específico.
  *

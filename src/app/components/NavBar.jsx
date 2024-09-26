@@ -1,7 +1,6 @@
-import { useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { Drawer, Divider } from "@mui/material";
 import { styled } from "@mui/material/styles";
-
 import { NavLink } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { startLogout } from "../../store/auth/thunks";
@@ -25,70 +24,49 @@ const NavbarContent = styled("div")({
     scrollbarWidth: "none",
 });
 
-// 9. Define el componente NavBar.
 export const NavBar = ({ sidebarVisible, sidebarStatus, closeSidebar }) => {
-    // Determina la clase CSS para la barra lateral (sidebar) en función de su visibilidad y estado
-    const className = sidebarVisible ? (sidebarStatus === "mobile-active" ? "pc-sidebar pc-trigger mob-sidebar-active" : "pc-sidebar pc-trigger") : "pc-sidebar pc-sidebar-hide";
-
-    // Obtiene la función dispatch del hook useDispatch de Redux
     const dispatch = useDispatch();
-    //obtenesmos la informacion del usuario
-    const { name_admin, rol_admin } = useSelector((state) => state.auth);
+    const { name_admin } = useSelector((state) => state.auth);
 
-    // Utiliza el hook useEffect para manejar clics fuera de la barra lateral
+    // Estado para manejar el menú desplegable de Leads
+    const [isLeadsMenuOpen, setIsLeadsMenuOpen] = useState(false);
+
     useEffect(() => {
-        // Función para manejar los clics fuera de la barra lateral
         const handleOutsideClick = (event) => {
             const nav = document.querySelector(".pc-sidebar");
-            // Verifica si el clic se hizo fuera de la barra lateral y si la barra lateral está visible en modo móvil
             if (nav && !nav.contains(event.target) && sidebarVisible && (sidebarStatus === "mobile-active" || window.innerWidth <= 1024)) {
-                // Llama a la función closeSidebar para cerrar la barra lateral
                 closeSidebar();
             }
         };
 
-        // Agrega un event listener para manejar los clics fuera de la barra lateral
         document.addEventListener("mousedown", handleOutsideClick);
 
-        // Elimina el event listener cuando el componente se desmonta o cambian las dependencias
         return () => {
             document.removeEventListener("mousedown", handleOutsideClick);
         };
-    }, [sidebarVisible, sidebarStatus, closeSidebar]); // Dependencias del useEffect
+    }, [sidebarVisible, sidebarStatus, closeSidebar]);
 
-    // Función para manejar el evento de cierre de sesión
     const onLogout = () => {
-        // Despacha la acción startLogout para iniciar el proceso de cierre de sesión
         dispatch(startLogout());
     };
-    // 5. Renderiza el componente NavBar.
+
+    // Función para alternar el menú Leads
+    const toggleLeadsMenu = () => {
+        setIsLeadsMenuOpen((prev) => !prev);
+    };
 
     return (
         <>
-            {/* 15. Loader que se muestra mientras se carga la página */}
             <div className="loader-bg">
                 <div className="loader-track">
                     <div className="loader-fill"></div>
                 </div>
             </div>
 
-            {/* 16. Drawer que contiene el menú lateral */}
-            <Drawer variant="persistent" anchor="left" open={sidebarVisible} onClose={closeSidebar} className={className} PaperProps={{ className: className }}>
+            <Drawer variant="persistent" anchor="left" open={sidebarVisible} onClose={closeSidebar} className={sidebarVisible ? (sidebarStatus === "mobile-active" ? "pc-sidebar pc-trigger mob-sidebar-active" : "pc-sidebar pc-trigger") : "pc-sidebar pc-sidebar-hide"}>
                 <DrawerHeader>
-                    <a href="" className="b-brand text-dark">
-                        <div
-                            style={{
-                                display: "flex",
-                                justifyContent: "center",
-                                alignItems: "center",
-                                width: "100%",
-                            }}
-                        >
-                            <br />
-                            <br />
-                            <br />
-                            <img src="/assets/logo2.jpg" style={{ width: "165px", height: "60px" }} alt="StudioCinemas" className="logo-lg" />
-                        </div>
+                    <a href="/" className="b-brand text-dark">
+                        <img src="/assets/logo2.jpg" style={{ width: "165px", height: "60px" }} alt="StudioCinemas" className="logo-lg" />
                     </a>
                 </DrawerHeader>
                 <Divider />
@@ -97,6 +75,7 @@ export const NavBar = ({ sidebarVisible, sidebarStatus, closeSidebar }) => {
                         <li className="pc-item pc-caption">
                             <label>Menú Principal</label>
                         </li>
+
                         <li className="pc-item">
                             <NavLink to="/" className="pc-link active">
                                 <span className="pc-micon">
@@ -105,6 +84,7 @@ export const NavBar = ({ sidebarVisible, sidebarStatus, closeSidebar }) => {
                                 <span className="pc-mtext">Inicio</span>
                             </NavLink>
                         </li>
+
                         <li className="pc-item">
                             <NavLink to="/Movies/list" className="pc-link active">
                                 <span className="pc-micon">
@@ -113,17 +93,42 @@ export const NavBar = ({ sidebarVisible, sidebarStatus, closeSidebar }) => {
                                 <span className="pc-mtext">Buscador General</span>
                             </NavLink>
                         </li>
+
                         <li className="pc-item pc-caption">
                             <label>Modulos</label>
                         </li>
-                        <li className="pc-item">
-                            <NavLink to="/leads/lista?data=1" className="pc-link active">
+
+                        <li className={`pc-item pc-hashmenu pc-trigger ${isLeadsMenuOpen ? "active" : ""}`}>
+                            <a className="pc-link" onClick={toggleLeadsMenu}>
                                 <span className="pc-micon">
                                     <i className="ti ti-users"></i>
                                 </span>
                                 <span className="pc-mtext">Leads</span>
-                            </NavLink>
+                            </a>
+                            <ul className={`pc-submenu ${isLeadsMenuOpen ? "open" : ""}`} style={{ display: isLeadsMenuOpen ? "block" : "none" }}>
+                                <li className="pc-item">
+                                    <NavLink to="/leads/lista?data=1" className="pc-link">
+                                        <span className="pc-mtext">Leads</span>
+                                    </NavLink>
+                                </li>
+                                <li className="pc-item">
+                                    <NavLink to="/leads/lista?data=2" className="pc-link">
+                                        <span className="pc-mtext">Leads Nuevos</span>
+                                    </NavLink>
+                                </li>
+                                <li className="pc-item">
+                                    <NavLink to="/leads/lista?data=3" className="pc-link">
+                                        <span className="pc-mtext">Leads Requieren Atención</span>
+                                    </NavLink>
+                                </li>
+                                <li className="pc-item">
+                                    <NavLink to="/leads/lista?data=4" className="pc-link">
+                                        <span className="pc-mtext">Leads Rezagados</span>
+                                    </NavLink>
+                                </li>
+                            </ul>
                         </li>
+
                         <li className="pc-item">
                             <NavLink to="/calendar" className="pc-link active">
                                 <span className="pc-micon">
@@ -132,6 +137,7 @@ export const NavBar = ({ sidebarVisible, sidebarStatus, closeSidebar }) => {
                                 <span className="pc-mtext">Calendario</span>
                             </NavLink>
                         </li>
+
                         <li className="pc-item">
                             <NavLink to="/events" className="pc-link active">
                                 <span className="pc-micon">
@@ -140,6 +146,7 @@ export const NavBar = ({ sidebarVisible, sidebarStatus, closeSidebar }) => {
                                 <span className="pc-mtext">Lista Eventos</span>
                             </NavLink>
                         </li>
+
                         <li className="pc-item">
                             <NavLink to="/Movies/list" className="pc-link active">
                                 <span className="pc-micon">
@@ -148,6 +155,7 @@ export const NavBar = ({ sidebarVisible, sidebarStatus, closeSidebar }) => {
                                 <span className="pc-mtext">Oportunidades</span>
                             </NavLink>
                         </li>
+
                         <li className="pc-item">
                             <NavLink to="/Movies/list" className="pc-link active">
                                 <span className="pc-micon">
@@ -156,6 +164,7 @@ export const NavBar = ({ sidebarVisible, sidebarStatus, closeSidebar }) => {
                                 <span className="pc-mtext">Expedientes</span>
                             </NavLink>
                         </li>
+
                         <li className="pc-item">
                             <NavLink to="/Movies/list" className="pc-link active">
                                 <span className="pc-micon">
@@ -165,6 +174,7 @@ export const NavBar = ({ sidebarVisible, sidebarStatus, closeSidebar }) => {
                             </NavLink>
                         </li>
                     </ul>
+
                     <div className="card pc-user-card">
                         <div className="card-body">
                             <div className="d-flex align-items-center">
