@@ -120,6 +120,27 @@ leads.getAll_LeadsAttention = (dataParams) =>
     );
 
 
+    
+/**
+ * Obtiene la lista de leads que requieren atención desde la base de datos.
+ *
+ * Esta función ejecuta un procedimiento almacenado para recuperar la lista de leads
+ * que requieren atención, basada en el rol y el ID del administrador de Netsuite.
+ *
+ * @async
+ * @param {Object} dataParams - Objeto que contiene los parámetros necesarios para la consulta.
+ * @param {string} dataParams.rol_admin - Rol del administrador, utilizado para filtrar los leads según permisos.
+ * @param {number} dataParams.idnetsuite_admin - ID del administrador de Netsuite, utilizado para identificar al solicitante.
+ * @param {string} dataParams.database - Nombre de la base de datos donde se ejecutará la consulta.
+ * @returns {Promise<Object>} - Promesa que resuelve con el resultado de la consulta de leads que requieren atención.
+ */
+leads.getAllStragglers = (dataParams) =>
+    executeStoredProcedure(
+        "getAll_LeadStragglers", // Nombre del procedimiento almacenado que recupera los leads que requieren atención.
+        [dataParams.rol_admin, dataParams.idnetsuite_admin, dataParams.startDate, dataParams.endDate, dataParams.filterOption], // Parámetros necesarios: rol y ID del administrador.
+        dataParams.database, // Nombre de la base de datos donde se ejecutará el procedimiento almacenado.
+    );
+
 /**
  * Obtiene la lista completa de leads desde la base de datos, sin importar si son nuevos o requieren atención.
  *

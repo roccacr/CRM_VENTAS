@@ -8,7 +8,7 @@ const authenticated = require("../models/authenticated/authenticated");
 const home = require("../models/home/home");
 // Importa el modelo para las operaciones relacionadas con 'leads'
 const leads = require("../models/leads/leads");
-
+require("../models/leads/cronsLeads.js");
 
 // Importa el modelo para las operaciones relacionadas con 'calendars'
 const calendars = require("../models/calendars/calendars");
@@ -109,6 +109,7 @@ module.exports = function (app) {
                 { path: "/leads/get_Specific_Lead", method: "get_Specific_Lead" }, // Ruta para obtener todos los datos de un lead específico
                 { path: "/leads/insertBitcoraLead", method: "insertBitcoraLead" }, // ruta para insertar un registro en la bitácora de un lead
                 { path: "/leads/updateLeadActionApi", method: "updateLeadActionApi" }, // ruta para insertar un registro en la bitácora de un lead
+                { path: "/leads/getAllStragglers", method: "getAllStragglers" }, // ruta para insertar un registro en la bitácora de un lead
             ],
         },
 
