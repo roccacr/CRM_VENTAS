@@ -158,28 +158,59 @@ export const View_crear_event_lead = () => {
         const { fechaInicio, fechaFinal, horaInicio, horaFinal } = formData;
 
         // Mostrar un mensaje de confirmación antes de generar el evento
-        Swal.fire({
-            title: "¿Está seguro?",
-            text: "¿Confirma que desea generar este evento?",
-            icon: "warning",
-            iconHtml: "؟",
-            width: "55em",
-            padding: "0 0 1.30em",
-            showCancelButton: true,
-            confirmButtonColor: "#3085d6",
-            cancelButtonColor: "#d33",
-            confirmButtonText: "Si, crear",
-        }).then(async (result) => {
-            if (result.isConfirmed) {
-                // Llamar a la función para crear el evento con los datos del formulario
-             const result = await dispatch(createEventForLead(nombreEvento, tipoEvento, descripcionEvento, fechaInicio, fechaFinal, horaInicio, horaFinal, leadId, valueStatus));
+      Swal.fire({
+          title: "¿Está seguro?",
+          text: "¿Confirma que desea generar este evento?",
+          icon: "warning",
+          iconHtml: "؟",
+          width: "55em",
+          padding: "0 0 1.30em",
+          showCancelButton: true,
+          confirmButtonColor: "#3085d6",
+          cancelButtonColor: "#d33",
+          confirmButtonText: "Sí, crear",
+      }).then(async (result) => {
+          if (result.isConfirmed) {
+              try {
+                  // Llamar a la función para crear el evento con los datos del formulario
+                  await dispatch(createEventForLead(nombreEvento, tipoEvento, descripcionEvento, fechaInicio, fechaFinal, horaInicio, horaFinal, leadId, valueStatus));
 
-             console.log("🚀 --------------------------------------------------------------------------------🚀");
-             console.log("🚀 ~ file: View_crear_event_lead.jsx:177 ~ handleGenerateEvent ~ result:", result);
-             console.log("🚀 --------------------------------------------------------------------------------🚀");
+                  // Mostrar mensaje de éxito
+                  Swal.fire({
+                      title: "¡Evento creado con éxito!",
+                      text: "¿Qué desea hacer a continuación?",
+                      icon: "question",
+                      iconHtml: "✔️",
+                      width: "40em",
+                      padding: "0 0 1.20em",
+                      showDenyButton: true,
+                      showCancelButton: true,
+                      confirmButtonText: "Volver a la vista anterior",
+                      denyButtonText: "Ir al perfil del cliente",
+                  }).then((result) => {
+                      if (result.isConfirmed) {
+                          // Vuelve a la vista anterior en la navegación.
+                          history.go(-1);
+                      } else if (result.isDenied) {
+                          // Redirige a la página de perfil del cliente.
+                          window.location.href = "leads/perfil?data=" + leadId; // Reemplazar `id_le` por `leadId` si corresponde
+                      } else {
+                          // Recarga la página actual.
+                          location.reload();
+                      }
+                  });
+              } catch (error) {
+                  console.error("Error al crear el evento:", error);
+                  Swal.fire({
+                      title: "Error",
+                      text: "No se pudo crear el evento. Inténtelo nuevamente.",
+                      icon: "error",
+                      confirmButtonText: "Aceptar",
+                  });
+              }
+          }
+      });
 
-            }
-        });
     };
 
     return (

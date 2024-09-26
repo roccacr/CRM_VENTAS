@@ -9,6 +9,7 @@ import makeAnimated from "react-select/animated";
 import { get_Calendar } from "../../../store/calendar/thunkscalendar";
 import { useDispatch } from "react-redux";
 import { handleEventDrop } from "./eventActions"; // Importa las funciones de eventos
+import { useNavigate } from "react-router-dom";
 
 const filterOptions = [
     { value: "categoria1", label: "Contactos" },
@@ -36,6 +37,8 @@ const getColor = (category) => {
 };
 
 export const View_calendars = () => {
+
+    const navigate = useNavigate();
     const dispatch = useDispatch();
     const [events, setEvents] = useState([]);
     const [selectedFilters, setSelectedFilters] = useState(filterOptions);
@@ -102,9 +105,16 @@ export const View_calendars = () => {
 
     const handleEventClick = (info) => {
         const eventDetails = info.event.extendedProps;
-        console.log("🚀 ~ start one:", eventDetails._id);
-    };
 
+        // Verifica si el tooltip existe y elimínalo
+        if (info.el.tooltip) {
+            document.body.removeChild(info.el.tooltip);
+            delete info.el.tooltip; // Limpiar referencia
+        }
+
+        // Redirigir a la página de edición del evento
+        navigate(`/events/edit?id=${eventDetails._id}`);
+    };
     return (
         <div className="card" style={{ width: "100%" }}>
             <div className="card-header table-card-header">

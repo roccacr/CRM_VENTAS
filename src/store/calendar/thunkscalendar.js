@@ -1,3 +1,4 @@
+import { generateLeadBitacora } from "../leads/thunksLeads";
 import { createCalendarEvent, get_CalendarFetch } from "./Api_calendar_Providers";
 
 /**
@@ -84,10 +85,11 @@ export const createEventForLead = (nombreEvento, tipoEvento, descripcionEvento, 
 
         try {
             // Envío de solicitud al backend para crear el evento
-            const response = await createCalendarEvent(eventParams);
+            await createCalendarEvent(eventParams);
+            await dispatch(generateLeadBitacora(idnetsuite_admin, leadId, additionalValues, descripcionEvento, valueStatus));
 
             // Retorno de la respuesta de la API si es necesario
-            return response.data[0];
+            return "ok";
         } catch (error) {
             // Manejo de errores en caso de fallo
             console.error("Error al crear el evento para el lead:", error);
