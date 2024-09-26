@@ -1,16 +1,20 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { useDispatch } from "react-redux";
-import { getSpecificLead } from "../../../../store/leads/thunksLeads";
+import { createNote, getSpecificLead } from "../../../../store/leads/thunksLeads";
 import { useLocation } from "react-router-dom";
 import { ButtonActions } from "../../../components/buttonAccions/buttonAccions";
-
+import Swal from "sweetalert2"; // Asegúrate de tener SweetAlert instalado
 
 export const View_note = () => {
     const dispatch = useDispatch();
     const [leadData, setLeadData] = useState(null); // Almacena los datos del lead
     const [leadName, setLeadName] = useState(null); // Almacena el nombre del lead
+    const [note, setNote] = useState(""); // Almacena el valor del textarea
     const [isLoading, setIsLoading] = useState(true); // Estado para controlar el indicador de carga
+    const [isTextareaError, setIsTextareaError] = useState(false); // Para el borde rojo
     const location = useLocation(); // Hook para obtener la URL actual y sus parámetros
+    const [valueStatus, setValueStatus] = useState(null);
+    const [leadId, setLeadId] = useState(null);
 
     /**
      * Extrae el parámetro 'id' de la URL.
@@ -31,8 +35,82 @@ export const View_note = () => {
         const result = await dispatch(getSpecificLead(id)); // Llamar al thunk para obtener los datos del lead
 
         setLeadName(result.nombre_lead); // Almacenar el nombre del lead
+        setValueStatus(result.segimineto_lead);
+        setLeadId(result.idinterno_lead);
         setLeadData(result); // Almacenar los datos completos del lead
         setIsLoading(false); // Ocultar el indicador de carga una vez que los datos están disponibles
+    };
+
+    /**
+     * Maneja el cambio en el textarea.
+     */
+    const handleNoteChange = (event) => {
+        setNote(event.target.value);
+        if (event.target.value.trim() !== "") {
+            setIsTextareaError(false); // Si hay texto, quitar el borde rojo
+        }
+    };
+
+    /**
+     * Función para manejar el clic en "Generar Nota".
+     * Valida si el textarea está vacío y muestra el alert.
+     */
+    const handleGenerateNote = () => {
+        if (note.trim() === "") {
+            // Si la nota está vacía, muestra el borde rojo y no permite continuar
+            setIsTextareaError(true);
+        } else {
+            // Muestra el alert de confirmación
+            Swal.fire({
+                title: "¿Estás seguro?",
+                text: "¿Deseas generar la nota?",
+                icon: "warning",
+                showCancelButton: true,
+                confirmButtonText: "Sí, crear nota",
+                cancelButtonText: "Cancelar",
+            }).then(async (result) => {
+                if (result.isConfirmed) {
+                    // Si se confirma, loguea la nota en la consol
+                     try {
+                         // Llamar a la función para crear el evento con los datos del formulario
+                          await dispatch(createNote(note, leadId, valueStatus));
+
+                         // Mostrar mensaje de éxito
+                         Swal.fire({
+                             title: "¡Nota creada con éxito!",
+                             text: "¿Qué desea hacer a continuación?",
+                             icon: "question",
+                             iconHtml: "✔️",
+                             width: "40em",
+                             padding: "0 0 1.20em",
+                             showDenyButton: true,
+                             showCancelButton: true,
+                             confirmButtonText: "Volver a la vista anterior",
+                             denyButtonText: "Ir al perfil del cliente",
+                         }).then((result) => {
+                             if (result.isConfirmed) {
+                                 // Vuelve a la vista anterior en la navegación.
+                                 history.go(-1);
+                             } else if (result.isDenied) {
+                                 // Redirige a la página de perfil del cliente.
+                                 window.location.href = "leads/perfil?data=" + leadId; // Reemplazar `id_le` por `leadId` si corresponde
+                             } else {
+                                 // Recarga la página actual.
+                                 location.reload();
+                             }
+                         });
+                     } catch (error) {
+                         console.error("Error al crear el evento:", error);
+                         Swal.fire({
+                             title: "Error",
+                             text: "No se pudo crear el evento. Inténtelo nuevamente.",
+                             icon: "error",
+                             confirmButtonText: "Aceptar",
+                         });
+                     }
+                }
+            });
+        }
     };
 
     /**
@@ -70,10 +148,19 @@ export const View_note = () => {
                             <label className="form-label" htmlFor="exampleFormControlTextarea1">
                                 Ingresa una nota :
                             </label>
-                            <textarea rows="3" id="exampleFormControlTextarea1" className="form-control"></textarea>
+                            <textarea
+                                rows="3"
+                                id="exampleFormControlTextarea1"
+                                className={`form-control ${isTextareaError ? "is-invalid" : ""}`} // Agregar borde rojo si hay error
+                                value={note}
+                                onChange={handleNoteChange}
+                            ></textarea>
+                            {isTextareaError && <div className="invalid-feedback">La nota no puede estar vacía.</div>}
                         </div>
-                        <button className="btn btn-success">Generar Nota</button>
                     </div>
+                    <button className="btn btn-dark" onClick={handleGenerateNote}>
+                        Generar Nota
+                    </button>
                 </>
             )}
         </div>

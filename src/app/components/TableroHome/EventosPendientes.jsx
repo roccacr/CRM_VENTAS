@@ -3,6 +3,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { setGetEventsHome, updateEventDate, updateEventsStatusThunksHome } from "../../../store/Home/thunksHome";
 import { selectListEventsPending } from "../../../store/Home/selectorsHome";
 import { updateActionCalendar } from "../../../store/Home/HomeSlice";
+import { ButtonActions } from "../buttonAccions/buttonAccions";
 
 export const EventosPendientes = () => {
     const dispatch = useDispatch();
@@ -100,6 +101,7 @@ export const EventosPendientes = () => {
                                         <th>Cita</th>
                                         <th>Proyecto</th>
                                         <th>Campaña</th>
+                                        <th>Accion</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -112,7 +114,7 @@ export const EventosPendientes = () => {
                                                     <td>{event.nombre_calendar}</td>
                                                     <td>{event.nombre_lead.substring(0, 15)}</td>
                                                     <td>
-                                                        <input  className="form-control" type="date" value={formatDate(event.fechaIni_calendar)} onChange={(e) => handleDateChange(e, event.id_calendar, event.fechaIni_calendar)} />
+                                                        <input className="form-control" type="date" value={formatDate(event.fechaIni_calendar)} onChange={(e) => handleDateChange(e, event.id_calendar, event.fechaIni_calendar)} />
                                                     </td>
                                                     <td>
                                                         <select value={event.accion_calendar} onChange={(e) => handleSelectChange(e, event.id_calendar, event.idinterno_lead, event.segimineto_lead)} className="form-select">
@@ -123,8 +125,12 @@ export const EventosPendientes = () => {
                                                     </td>
                                                     <td>{event.tipo_calendar}</td>
                                                     <td>{event.cita_lead === 1 ? "Cita" : "-"}</td>
-                                                    <td>{event.proyecto}</td>
-                                                    <td>{event.campana}</td>
+                                                    <td>{event.proyecto_lead}</td>
+                                                    <td>{event.campana_lead}</td>
+                                                    <td>
+                                                        {" "}
+                                                        <ButtonActions leadData={event} />
+                                                    </td>
                                                 </tr>
                                             ))
                                     ) : (

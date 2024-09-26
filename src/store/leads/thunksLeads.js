@@ -305,3 +305,32 @@ export const updateLeadAction = (leadId, additionalValues, valueStatus) => {
 
 
 
+export const createNote = (nota, leadId, valueStatus) => {
+    return async (dispatch, getState) => {
+        // Variables comunes
+        const { idnetsuite_admin } = getState().auth; // ID del administrador de Netsuite
+
+
+        const descripcionEvento = nota; // Descripción del evento
+        // Valores adicionales para la solicitud
+        const additionalValues = {
+            valorDeCaida: 50,
+            tipo: "Se generó una nota",
+            estado_lead: 1,
+            accion_lead: 6,
+            seguimiento_calendar: 0,
+            valor_segimineto_lead: 3,
+        };
+        try {
+            await dispatch(generateLeadBitacora(idnetsuite_admin, leadId, additionalValues, descripcionEvento, valueStatus));
+            // Retorno de la respuesta de la API si es necesario
+            return "ok";
+        } catch (error) {
+            // Manejo de errores en caso de fallo
+            console.error("Error al crear el evento para el lead:", error);
+        }
+    };
+};
+
+
+
