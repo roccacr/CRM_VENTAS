@@ -107,6 +107,8 @@ module.exports = function (app) {
                 { path: "/leads/getAll_LeadsComplete", method: "getAll_LeadsComplete" }, // Ruta para obtener todos los leads (completos)
                 { path: "/leads/getAll_LeadsRepit", method: "getAll_LeadsRepit" }, // Ruta para obtener todos los leads repetidos
                 { path: "/leads/get_Specific_Lead", method: "get_Specific_Lead" }, // Ruta para obtener todos los datos de un lead específico
+                { path: "/leads/insertBitcoraLead", method: "insertBitcoraLead" }, // ruta para insertar un registro en la bitácora de un lead
+                { path: "/leads/updateLeadActionApi", method: "updateLeadActionApi" }, // ruta para insertar un registro en la bitácora de un lead
             ],
         },
 

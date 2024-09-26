@@ -188,4 +188,74 @@ leads.get_Specific_Lead = (dataParams) =>
     );
 
 
+/**
+ * Inserta una bitácora de acciones para un lead específico en la base de datos.
+ *
+ * Esta función ejecuta un procedimiento almacenado para registrar una bitácora 
+ * de las acciones realizadas sobre un lead en la base de datos, proporcionando
+ * detalles como el ID del lead, la descripción del evento, el tipo de acción y el estado actual.
+ *
+ * @async
+ * @param {Object} dataParams - Objeto que contiene los parámetros necesarios para la inserción de la bitácora.
+ * @param {number} dataParams.leadId - ID del lead para el cual se está registrando la bitácora.
+ * @param {number} dataParams.idnetsuite_admin - ID del administrador de NetSuite que está realizando la acción.
+ * @param {string} dataParams.valorDeCaida - Valor relacionado con la caída o progreso del lead.
+ * @param {string} dataParams.descripcionEvento - Descripción del evento o acción realizada.
+ * @param {string} dataParams.tipo - Tipo de evento o acción que se está registrando (por ejemplo, seguimiento, reserva, etc.).
+ * @param {string} dataParams.estadoActual - Estado actual del lead, validado previamente para asegurar su consistencia.
+ * @param {string} dataParams.database - Nombre de la base de datos donde se ejecutará el procedimiento almacenado.
+ * @returns {Promise<Object>} - Promesa que resuelve con el resultado de la inserción de la bitácora.
+ */
+leads.insertBitcoraLead = (dataParams) => 
+    executeStoredProcedure(
+        "insertBitcoraLead", // Nombre del procedimiento almacenado que gestiona la inserción de la bitácora.
+        [
+            dataParams.leadId,            // ID del lead que se está manejando.
+            dataParams.idnetsuite_admin,  // ID del administrador que realiza la acción.
+            dataParams.valorDeCaida,      // Valor asociado al progreso o caída del lead.
+            dataParams.descripcionEvento, // Descripción del evento o acción realizada.
+            dataParams.tipo,              // Tipo de evento (ejemplo: seguimiento, reserva, etc.).
+            dataParams.estadoActual       // Estado actual del lead, validado previamente.
+        ], 
+        dataParams.database // Nombre de la base de datos donde se ejecutará el procedimiento almacenado.
+    );
+
+
+/**
+ * Actualiza la información de un lead y registra una bitácora de las acciones realizadas en la base de datos.
+ *
+ * Esta función ejecuta un procedimiento almacenado para actualizar el estado del lead y registrar una bitácora
+ * con los detalles de la acción realizada, como el ID del lead, el estado actual, la acción tomada, el seguimiento
+ * en el calendario y otros valores relacionados.
+ *
+ * @async
+ * @param {Object} dataParams - Objeto que contiene los parámetros necesarios para la actualización y registro de la bitácora.
+ * @param {number} dataParams.leadId - ID del lead que se está actualizando y para el cual se registrará la bitácora.
+ * @param {string} dataParams.estadoActual - Estado actual del lead, previamente validado para asegurar consistencia de datos.
+ * @param {string} dataParams.valor_segimineto_lead - Valor asociado al seguimiento actual del lead.
+ * @param {string} dataParams.estado_lead - Estado nuevo del lead que se actualizará en el sistema.
+ * @param {string} dataParams.accion_lead - Acción que se ha realizado sobre el lead, como seguimiento, reserva, etc.
+ * @param {string} dataParams.seguimiento_calendar - Información de seguimiento relacionada con el calendario del lead.
+ * @param {string} dataParams.valorDeCaida - Motivo o valor relacionado con la caída del lead, si aplica.
+ * @param {string} dataParams.formattedDate - Fecha formateada en la que se realizó la acción (YYYY-MM-DD).
+ * @param {string} dataParams.database - Nombre de la base de datos en la que se ejecutará el procedimiento almacenado.
+ * @returns {Promise<Object>} - Devuelve una promesa que resuelve con el resultado de la ejecución del procedimiento almacenado.
+ */
+leads.updateLeadActionApi = (dataParams) =>
+    executeStoredProcedure(
+        "updateLeadActionApi", // Nombre del procedimiento almacenado que gestiona la actualización y registro de la bitácora.
+        [
+            dataParams.estadoActual,            // Estado actual del lead.
+            dataParams.valor_segimineto_lead,   // Valor del seguimiento asociado al lead.
+            dataParams.estado_lead,             // Nuevo estado del lead a actualizar.
+            dataParams.accion_lead,             // Acción realizada sobre el lead.
+            dataParams.seguimiento_calendar,    // Información de seguimiento en el calendario.
+            dataParams.valorDeCaida,            // Valor relacionado con la caída del lead, si corresponde.
+            dataParams.formattedDate,           // Fecha formateada de la acción realizada (YYYY-MM-DD).
+            dataParams.leadId                   // ID del lead que se está actualizando.
+        ],
+        dataParams.database, // Nombre de la base de datos donde se ejecutará el procedimiento almacenado.
+    );
+
+
 module.exports = leads; // Exporta el objeto 'leads' que contiene todas las funciones definidas.
