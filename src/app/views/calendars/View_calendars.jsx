@@ -8,7 +8,7 @@ import Select from "react-select";
 import makeAnimated from "react-select/animated";
 import { get_Calendar } from "../../../store/calendar/thunkscalendar";
 import { useDispatch } from "react-redux";
-import {handleEventDrop } from "./eventActions"; // Importa las funciones de eventos
+import { handleEventDrop } from "./eventActions"; // Importa las funciones de eventos
 
 const filterOptions = [
     { value: "categoria1", label: "Contactos" },
@@ -70,7 +70,6 @@ export const View_calendars = () => {
         setIsLoading(true);
         try {
             const result = await dispatch(get_Calendar());
-
             const transformedEvents = transformEvents(result);
             setEvents(transformedEvents);
         } catch (error) {
@@ -220,7 +219,7 @@ export const View_calendars = () => {
 
                                     const rect = info.el.getBoundingClientRect();
                                     tooltip.style.left = `${rect.left + window.scrollX}px`;
-                                    tooltip.style.top = `${rect.bottom + window.scrollY}px`;
+                                    tooltip.style.top = `${rect.top + window.scrollY - tooltip.offsetHeight}px`; // Cambiar la posición para que esté arriba
 
                                     info.el.tooltip = tooltip; // Guardar referencia del tooltip en el evento
                                 });
