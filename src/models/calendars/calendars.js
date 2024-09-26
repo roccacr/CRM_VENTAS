@@ -79,4 +79,34 @@ calendars.get_Calendars = (dataParams) =>
         dataParams.database, // Nombre de la base de datos a utilizar.
     );
 
+
+
+    /**
+ * Obtiene todos los eventos del calendario.
+ * @async
+ * @param {Object} dataParams - Objeto que contiene los parámetros necesarios para la consulta.
+ * @returns {Promise<Object>} - Resultado de la consulta de eventos del calendario.
+ */
+calendars.createEvent = (dataParams) =>
+    executeStoredProcedure(
+        "create_Event", // Nombre del procedimiento almacenado que recupera los eventos del calendario.
+        [
+            dataParams.nombreEvento, // Nombre descriptivo del evento
+            dataParams.colorEvento, // Color visual que se asigna al evento
+            dataParams.leadId, // ID del lead relacionado con el evento
+            dataParams.idnetsuite_admin, // ID del administrador que está creando el evento
+            dataParams.formatdateIni, // Fecha y hora de inicio en formato ISO
+            dataParams.formatdateFin, // Fecha y hora de finalización en formato ISO
+            dataParams.horaInicio, // Hora de inicio del evento
+            dataParams.horaFinal, // Hora de finalización del evento
+            dataParams.descripcionEvento, // Detalle adicional sobre el evento
+            dataParams.tipoEvento, // Tipo o categoría del evento (llamada, reunión, etc.)
+            dataParams.citaValue, // Color visual que se asigna al evento campo cita_lead
+            dataParams.citaValue, // Color visual que se asigna al evento campo citas_chek
+            dataParams.citaValue, // Color visual que se asigna al evento campo masDeUnaCita_calendar
+        ], // Parámetros que identifican el rol y el ID del administrador.
+        dataParams.database, // Nombre de la base de datos a utilizar.
+    );
+
+
 module.exports = calendars; // Exporta el objeto 'calendars' que contiene todas las funciones relacionadas con eventos del calendario.

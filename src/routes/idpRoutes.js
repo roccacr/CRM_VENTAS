@@ -115,6 +115,7 @@ module.exports = function (app) {
             model: calendars, // Modelo asociado a 'calendars'
             routes: [
                 { path: "/calendars/get_Calendars", method: "get_Calendars" }, // Ruta para obtener todos los eventos del calendars
+                { path: "/calendars/createEvent", method: "createEvent" }, // Ruta para obtener todos los eventos del calendars
             ],
         },
     ];
