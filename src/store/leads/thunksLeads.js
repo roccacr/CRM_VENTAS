@@ -305,32 +305,79 @@ export const updateLeadAction = (leadId, additionalValues, valueStatus) => {
 
 
 
+/**
+ * Crea una nota asociada a un lead en la bitácora de eventos.
+ *
+ * @param {string} nota - La descripción o contenido de la nota que se va a registrar.
+ * @param {number} leadId - El ID del lead al que se le asignará la nota.
+ * @param {number} valueStatus - El estado actual del lead.
+ * @returns {Promise<string>} - Devuelve "ok" si el proceso se completa exitosamente, o lanza un error en caso de fallo.
+ */
 export const createNote = (nota, leadId, valueStatus) => {
     return async (dispatch, getState) => {
-        // Variables comunes
-        const { idnetsuite_admin } = getState().auth; // ID del administrador de Netsuite
+        // Extrae el ID del administrador desde el estado de autenticación
+        const { idnetsuite_admin } = getState().auth;
 
+        // Define la descripción del evento, en este caso es la nota proporcionada
+        const descripcionEvento = nota;
 
-        const descripcionEvento = nota; // Descripción del evento
-        // Valores adicionales para la solicitud
+        // Valores adicionales que serán enviados al generar la bitácora del lead
         const additionalValues = {
-            valorDeCaida: 50,
-            tipo: "Se generó una nota",
-            estado_lead: 1,
-            accion_lead: 6,
-            seguimiento_calendar: 0,
-            valor_segimineto_lead: 3,
+            valorDeCaida: 50, // Valor estándar para caídas (causa de la nota)
+            tipo: "Se generó una nota", // Tipo de evento
+            estado_lead: 1, // Estado del lead (1: activo, por ejemplo)
+            accion_lead: 6, // Acción específica relacionada con la nota (6: nota creada)
+            seguimiento_calendar: 0, // Indica que no requiere seguimiento en calendario
+            valor_segimineto_lead: 3, // Valor de seguimiento del lead (3: seguimiento intermedio)
         };
+
         try {
+            // Despacha la acción para generar la bitácora del lead con los valores adicionales
             await dispatch(generateLeadBitacora(idnetsuite_admin, leadId, additionalValues, descripcionEvento, valueStatus));
-            // Retorno de la respuesta de la API si es necesario
+            // Retorna "ok" si todo salió correctamente
             return "ok";
         } catch (error) {
-            // Manejo de errores en caso de fallo
+            // Manejo de errores: captura y muestra en consola cualquier problema al generar el evento
             console.error("Error al crear el evento para el lead:", error);
         }
     };
 };
 
+/**
+ * Crea un evento de WhatsApp asociado a un lead en la bitácora de eventos.
+ *
+ * @param {string} nota - La descripción o contenido del evento para el lead.
+ * @param {number} leadId - El ID del lead al que se le asignará el evento.
+ * @param {number} valueStatus - El estado actual del lead.
+ * @returns {Promise<string>} - Devuelve "ok" si el proceso se completa exitosamente, o lanza un error en caso de fallo.
+ */
+export const WhatsappAndNote = (nota, leadId, valueStatus) => {
 
+    return async (dispatch, getState) => {
+        // Extrae el ID del administrador desde el estado de autenticación
+        const { idnetsuite_admin } = getState().auth;
 
+        // Define la descripción del evento, en este caso es la nota proporcionada
+        const descripcionEvento = nota;
+
+        // Valores adicionales que serán enviados al generar la bitácora del lead
+        const additionalValues = {
+            valorDeCaida: 51, // Valor estándar para caídas (causa del evento relacionado con el cliente)
+            tipo: "Se generó un evento para el cliente", // Tipo de evento
+            estado_lead: 1, // Estado del lead (1: activo, por ejemplo)
+            accion_lead: 6, // Acción específica relacionada con el evento (6: evento generado)
+            seguimiento_calendar: 0, // Indica que no requiere seguimiento en calendario
+            valor_segimineto_lead: 3, // Valor de seguimiento del lead (3: seguimiento intermedio)
+        };
+
+        try {
+            // Despacha la acción para generar la bitácora del lead con los valores adicionales
+            await dispatch(generateLeadBitacora(idnetsuite_admin, leadId, additionalValues, descripcionEvento, valueStatus));
+            // Retorna "ok" si todo salió correctamente
+            return "ok";
+        } catch (error) {
+            // Manejo de errores: captura y muestra en consola cualquier problema al generar el evento
+            console.error("Error al crear el evento para el lead:", error);
+        }
+    };
+};

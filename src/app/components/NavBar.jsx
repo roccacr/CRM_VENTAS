@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { Drawer, Divider } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import { NavLink } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { startLogout } from "../../store/auth/thunks";
 
+// Estilos para el Drawer Header
 const DrawerHeader = styled("div")(({ theme }) => ({
     display: "flex",
     alignItems: "center",
@@ -25,11 +26,26 @@ const NavbarContent = styled("div")({
 });
 
 export const NavBar = ({ sidebarVisible, sidebarStatus, closeSidebar }) => {
+    const className = sidebarVisible ? (sidebarStatus === "mobile-active" ? "pc-sidebar pc-trigger mob-sidebar-active" : "pc-sidebar pc-trigger") : "pc-sidebar pc-sidebar-hide";
+
     const dispatch = useDispatch();
     const { name_admin } = useSelector((state) => state.auth);
 
-    // Estado para manejar el menú desplegable de Leads
-    const [isLeadsMenuOpen, setIsLeadsMenuOpen] = useState(false);
+    // Estado para gestionar la apertura y cierre de menús
+    const [openMenu, setOpenMenu] = useState({
+        mainMenu: false,
+        leadsMenu: false,
+        opportunitiesMenu: false,
+        expedientesMenu: false,
+    });
+
+    // Función para alternar el estado del menú
+    const toggleMenu = (menu) => {
+        setOpenMenu((prevState) => ({
+            ...prevState,
+            [menu]: !prevState[menu],
+        }));
+    };
 
     useEffect(() => {
         const handleOutsideClick = (event) => {
@@ -40,7 +56,6 @@ export const NavBar = ({ sidebarVisible, sidebarStatus, closeSidebar }) => {
         };
 
         document.addEventListener("mousedown", handleOutsideClick);
-
         return () => {
             document.removeEventListener("mousedown", handleOutsideClick);
         };
@@ -50,22 +65,11 @@ export const NavBar = ({ sidebarVisible, sidebarStatus, closeSidebar }) => {
         dispatch(startLogout());
     };
 
-    // Función para alternar el menú Leads
-    const toggleLeadsMenu = () => {
-        setIsLeadsMenuOpen((prev) => !prev);
-    };
-
     return (
         <>
-            <div className="loader-bg">
-                <div className="loader-track">
-                    <div className="loader-fill"></div>
-                </div>
-            </div>
-
-            <Drawer variant="persistent" anchor="left" open={sidebarVisible} onClose={closeSidebar} className={sidebarVisible ? (sidebarStatus === "mobile-active" ? "pc-sidebar pc-trigger mob-sidebar-active" : "pc-sidebar pc-trigger") : "pc-sidebar pc-sidebar-hide"}>
+            <Drawer variant="persistent" anchor="left" open={sidebarVisible} onClose={closeSidebar} className={className} PaperProps={{ className: className }}>
                 <DrawerHeader>
-                    <a href="/" className="b-brand text-dark">
+                    <a href="" className="b-brand text-dark">
                         <img src="/assets/logo2.jpg" style={{ width: "165px", height: "60px" }} alt="StudioCinemas" className="logo-lg" />
                     </a>
                 </DrawerHeader>
@@ -98,37 +102,98 @@ export const NavBar = ({ sidebarVisible, sidebarStatus, closeSidebar }) => {
                             <label>Modulos</label>
                         </li>
 
-                        <li className={`pc-item pc-hashmenu pc-trigger ${isLeadsMenuOpen ? "active" : ""}`}>
-                            <a className="pc-link" onClick={toggleLeadsMenu}>
+                        {/* Leads con submenú */}
+                        <li className="pc-item" onClick={() => toggleMenu("leadsMenu")}>
+                            <a className="pc-link">
                                 <span className="pc-micon">
                                     <i className="ti ti-users"></i>
                                 </span>
                                 <span className="pc-mtext">Leads</span>
+                                <span className="pc-arrow">
+                                    <i className={openMenu.leadsMenu ? "ti ti-angle-up" : "ti ti-angle-down"}></i>
+                                </span>
                             </a>
-                            <ul className={`pc-submenu ${isLeadsMenuOpen ? "open" : ""}`} style={{ display: isLeadsMenuOpen ? "block" : "none" }}>
-                                <li className="pc-item">
-                                    <NavLink to="/leads/lista?data=1" className="pc-link">
-                                        <span className="pc-mtext">Leads</span>
-                                    </NavLink>
-                                </li>
-                                <li className="pc-item">
-                                    <NavLink to="/leads/lista?data=2" className="pc-link">
-                                        <span className="pc-mtext">Leads Nuevos</span>
-                                    </NavLink>
-                                </li>
-                                <li className="pc-item">
-                                    <NavLink to="/leads/lista?data=3" className="pc-link">
-                                        <span className="pc-mtext">Leads Requieren Atención</span>
-                                    </NavLink>
-                                </li>
-                                <li className="pc-item">
-                                    <NavLink to="/leads/lista?data=4" className="pc-link">
-                                        <span className="pc-mtext">Leads Rezagados</span>
-                                    </NavLink>
-                                </li>
-                            </ul>
+                            {openMenu.leadsMenu && (
+                                <ul className="pc-submenu">
+                                    <li className="pc-item">
+                                        <NavLink to="/leads/lista?data=1" className="pc-link active">
+                                            <span className="pc-mtext">Leads</span>
+                                        </NavLink>
+                                    </li>
+                                    <li className="pc-item">
+                                        <NavLink to="/leads/lista?data=2" className="pc-link active">
+                                            <span className="pc-mtext">Leads Nuevos </span>
+                                        </NavLink>
+                                    </li>
+                                    <li className="pc-item">
+                                        <NavLink to="/leads/lista?data=3" className="pc-link active">
+                                            <span className="pc-mtext">Leads Requieren Atencion </span>
+                                        </NavLink>
+                                    </li>
+                                    <li className="pc-item">
+                                        <NavLink to="/leads/lista?data=4" className="pc-link active">
+                                            <span className="pc-mtext">Leads Rezagados </span>
+                                        </NavLink>
+                                    </li>
+                                </ul>
+                            )}
                         </li>
 
+                        {/* Oportunidades con submenú */}
+                        <li className="pc-item" onClick={() => toggleMenu("opportunitiesMenu")}>
+                            <a className="pc-link">
+                                <span className="pc-micon">
+                                    <i className="ti ti-trending-up"></i>
+                                </span>
+                                <span className="pc-mtext">Oportunidades</span>
+                                <span className="pc-arrow">
+                                    <i className={openMenu.opportunitiesMenu ? "ti ti-angle-up" : "ti ti-angle-down"}></i>
+                                </span>
+                            </a>
+                            {openMenu.opportunitiesMenu && (
+                                <ul className="pc-submenu">
+                                    <li className="pc-item">
+                                        <NavLink to="/opportunities/list" className="pc-link active">
+                                            <span className="pc-mtext">Lista de Oportunidades</span>
+                                        </NavLink>
+                                    </li>
+                                    <li className="pc-item">
+                                        <NavLink to="/opportunities/create" className="pc-link active">
+                                            <span className="pc-mtext">Crear Oportunidad</span>
+                                        </NavLink>
+                                    </li>
+                                </ul>
+                            )}
+                        </li>
+
+                        {/* Expedientes con submenú */}
+                        <li className="pc-item" onClick={() => toggleMenu("expedientesMenu")}>
+                            <a className="pc-link">
+                                <span className="pc-micon">
+                                    <i className="ti ti-file-text"></i>
+                                </span>
+                                <span className="pc-mtext">Expedientes</span>
+                                <span className="pc-arrow">
+                                    <i className={openMenu.expedientesMenu ? "ti ti-angle-up" : "ti ti-angle-down"}></i>
+                                </span>
+                            </a>
+                            {openMenu.expedientesMenu && (
+                                <ul className="pc-submenu">
+                                    <li className="pc-item">
+                                        <NavLink to="/expedientes/list" className="pc-link active">
+                                            <span className="pc-mtext">Lista de Expedientes</span>
+                                        </NavLink>
+                                    </li>
+                                    <li className="pc-item">
+                                        <NavLink to="/expedientes/create" className="pc-link active">
+                                            <span className="pc-mtext">Crear Expediente</span>
+                                        </NavLink>
+                                    </li>
+                                </ul>
+                            )}
+                        </li>
+
+                        {/* Otras opciones de menú */}
                         <li className="pc-item">
                             <NavLink to="/calendar" className="pc-link active">
                                 <span className="pc-micon">
@@ -143,30 +208,12 @@ export const NavBar = ({ sidebarVisible, sidebarStatus, closeSidebar }) => {
                                 <span className="pc-micon">
                                     <i className="ti ti-calendar-event"></i>
                                 </span>
-                                <span className="pc-mtext">Lista Eventos</span>
+                                <span className="pc-mtext">Lista de Eventos</span>
                             </NavLink>
                         </li>
 
                         <li className="pc-item">
-                            <NavLink to="/Movies/list" className="pc-link active">
-                                <span className="pc-micon">
-                                    <i className="ti ti-trending-up"></i>
-                                </span>
-                                <span className="pc-mtext">Oportunidades</span>
-                            </NavLink>
-                        </li>
-
-                        <li className="pc-item">
-                            <NavLink to="/Movies/list" className="pc-link active">
-                                <span className="pc-micon">
-                                    <i className="ti ti-file-text"></i>
-                                </span>
-                                <span className="pc-mtext">Expedientes</span>
-                            </NavLink>
-                        </li>
-
-                        <li className="pc-item">
-                            <NavLink to="/Movies/list" className="pc-link active">
+                            <NavLink to="/cotizaciones" className="pc-link active">
                                 <span className="pc-micon">
                                     <i className="ti ti-chart-infographic"></i>
                                 </span>
@@ -192,22 +239,10 @@ export const NavBar = ({ sidebarVisible, sidebarStatus, closeSidebar }) => {
                                     <div className="dropdown-menu">
                                         <ul>
                                             <li>
-                                                <NavLink to="/Movies/list" className="pc-user-links">
+                                                <NavLink to="/profile" className="pc-user-links">
                                                     <i className="ph-duotone ph-user"></i>
                                                     <span>Mi perfil</span>
                                                 </NavLink>
-                                            </li>
-                                            <li>
-                                                <a className="pc-user-links">
-                                                    <i className="ph-duotone ph-gear"></i>
-                                                    <span>Settings</span>
-                                                </a>
-                                            </li>
-                                            <li>
-                                                <a className="pc-user-links">
-                                                    <i className="ph-duotone ph-lock-key"></i>
-                                                    <span>Lock Screen</span>
-                                                </a>
                                             </li>
                                             <li>
                                                 <a onClick={onLogout} className="pc-user-links">

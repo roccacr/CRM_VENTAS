@@ -5,6 +5,7 @@ import { selectListEventsPending } from "../../../store/Home/selectorsHome";
 import { updateActionCalendar } from "../../../store/Home/HomeSlice";
 import { ButtonActions } from "../buttonAccions/buttonAccions";
 
+
 export const EventosPendientes = () => {
     const dispatch = useDispatch();
     const { rol_admin } = useSelector((state) => state.auth);
@@ -127,10 +128,7 @@ export const EventosPendientes = () => {
                                                     <td>{event.cita_lead === 1 ? "Cita" : "-"}</td>
                                                     <td>{event.proyecto_lead}</td>
                                                     <td>{event.campana_lead}</td>
-                                                    <td>
-                                                        {" "}
-                                                        <ButtonActions leadData={event} />
-                                                    </td>
+                                                    <td>{event.id_lead > 0 ? <ButtonActions leadData={event} /> : "No aplica"}</td>
                                                 </tr>
                                             ))
                                     ) : (

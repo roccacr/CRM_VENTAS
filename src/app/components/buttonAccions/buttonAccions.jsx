@@ -18,7 +18,8 @@ export const ButtonActions = ({ leadData }) => {
     return (
         <>
             <button className="btn btn-dark" onClick={handleOpenModal}>
-                Nueva Acción Lead
+                Nueva Acción 
+                
             </button>
 
             {/* Mostrar el modal solo si está abierto */}
