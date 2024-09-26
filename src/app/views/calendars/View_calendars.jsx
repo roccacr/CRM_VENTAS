@@ -8,7 +8,7 @@ import Select from "react-select";
 import makeAnimated from "react-select/animated";
 import { get_Calendar } from "../../../store/calendar/thunkscalendar";
 import { useDispatch } from "react-redux";
-import { handleEventClick, handleEventDrop } from "./eventActions"; // Importa las funciones de eventos
+import {handleEventDrop } from "./eventActions"; // Importa las funciones de eventos
 
 const filterOptions = [
     { value: "categoria1", label: "Contactos" },
@@ -44,8 +44,6 @@ export const View_calendars = () => {
     const [isLoading, setIsLoading] = useState(true);
 
     const transformEvents = (apiData) => {
-
-
         return apiData.map((item) => {
             return {
                 _id: item.id_calendar,
@@ -63,6 +61,7 @@ export const View_calendars = () => {
                 name_admin: item.name_admin,
                 className: "evento-especial",
                 eventColor: item.color_calendar,
+                nombre_lead: item.nombre_lead,
             };
         });
     };
@@ -71,6 +70,7 @@ export const View_calendars = () => {
         setIsLoading(true);
         try {
             const result = await dispatch(get_Calendar());
+
             const transformedEvents = transformEvents(result);
             setEvents(transformedEvents);
         } catch (error) {
@@ -100,6 +100,11 @@ export const View_calendars = () => {
             window.removeEventListener("resize", handleResize);
         };
     }, []);
+
+    const handleEventClick = (info) => {
+        const eventDetails = info.event.extendedProps;
+        console.log("🚀 ~ start one:", eventDetails._id);
+    };
 
     return (
         <div className="card" style={{ width: "100%" }}>
@@ -194,10 +199,40 @@ export const View_calendars = () => {
                                 info.el.addEventListener("mouseenter", () => {
                                     info.el.style.backgroundColor = "#d3d3d3";
                                     info.el.style.color = "black";
+
+                                    // Crear tooltip
+                                    const tooltip = document.createElement("div");
+                                    tooltip.innerHTML = `
+                                        <strong>Administrador:</strong> ${info.event.extendedProps.name_admin} <br>
+                                        <strong>Evento:</strong> ${info.event.title} <br>
+                                        <strong>Descripción:</strong> ${info.event.extendedProps.descs}<br>
+                                        <strong>Cliente:</strong> ${info.event.extendedProps.nombre_lead}
+                                    `;
+                                    tooltip.style.position = "absolute";
+                                    tooltip.style.backgroundColor = "white";
+                                    tooltip.style.color = "black";
+                                    tooltip.style.border = "1px solid #ccc";
+                                    tooltip.style.padding = "5px";
+                                    tooltip.style.borderRadius = "5px";
+                                    tooltip.style.zIndex = 1000;
+
+                                    document.body.appendChild(tooltip);
+
+                                    const rect = info.el.getBoundingClientRect();
+                                    tooltip.style.left = `${rect.left + window.scrollX}px`;
+                                    tooltip.style.top = `${rect.bottom + window.scrollY}px`;
+
+                                    info.el.tooltip = tooltip; // Guardar referencia del tooltip en el evento
                                 });
+
                                 info.el.addEventListener("mouseleave", () => {
                                     info.el.style.backgroundColor = info.event.extendedProps.eventColor;
                                     info.el.style.color = "white";
+                                    // Remover tooltip
+                                    if (info.el.tooltip) {
+                                        document.body.removeChild(info.el.tooltip);
+                                        delete info.el.tooltip; // Limpiar referencia
+                                    }
                                 });
                             }}
                             eventClick={handleEventClick} // Llama la función al hacer clic en un evento
