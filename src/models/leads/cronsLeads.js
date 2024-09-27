@@ -169,8 +169,8 @@ cron.schedule("*/5 * * * * *", async () => {
         const dataParams = {
             rol_admin: 1, // Rol de administrador
             idnetsuite_admin: 0, // ID de Netsuite del administrador
-            startDate: "0", // Fecha de inicio de búsqueda (valor por defecto)
-            endDate: " ", // Fecha de fin de búsqueda (valor por defecto)
+            startDate: "2024-01-01", // Fecha de inicio de búsqueda (valor por defecto)
+            endDate: "2024-01-01", // Fecha de fin de búsqueda (valor por defecto)
             filterOption: 0, // Opción de filtro (por defecto)
             database, // Base de datos a utilizar
         };
@@ -178,9 +178,7 @@ cron.schedule("*/5 * * * * *", async () => {
         // Obtener los leads que requieren atención
         const result = await cronsLeads.getAll_LeadsAttention(dataParams);
 
-        console.log("🚀 --------------------------------------------------------------🚀");
-        console.log("🚀 ~ file: cronsLeads.js:181 ~ cron.schedule ~ result:", result);
-        console.log("🚀 --------------------------------------------------------------🚀");
+
 
         // Valores adicionales que se usarán en el procesamiento de leads inactivos
         const additionalValues = {
