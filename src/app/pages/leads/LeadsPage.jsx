@@ -8,6 +8,7 @@ import { View_note } from "../../views/leads/note/View_note";
 import View_list_leads_Stragglers from "../../views/leads/list/Stragglers/View_list_leads_Stragglers";
 import { View_loss_lead } from "../../views/leads/loss/View_loss_lead";
 import { View_follow_up } from "../../views/leads/follow-up/View_follow_up";
+import ChatGPTComponent from "../../views/leads/gpt/ChatGPTComponent";
 
 export const LeadsPage = () => {
     const location = useLocation();
@@ -32,6 +33,7 @@ export const LeadsPage = () => {
                         {path[1] === "leads" && path[2] === "note" && <View_note />}
                         {path[1] === "leads" && path[2] === "loss" && <View_loss_lead />}
                         {path[1] === "leads" && path[2] === "follow_up" && <View_follow_up />}
+                        {path[1] === "leads" && path[2] === "gpt" && <ChatGPTComponent />}
                     </div>
                 </div>
             </div>
