@@ -17,6 +17,11 @@ export const SideBar = ({ toggleSidebar }) => {
 const fetchData = async () => {
     const result = await dispatch(getLeadsRepit());
 
+    console.log("🚀 -------------------------------------------------------🚀");
+    console.log("🚀 ~ file: SideBar.jsx:20 ~ fetchData ~ result:", result);
+    console.log("🚀 -------------------------------------------------------🚀");
+
+
     // Agrupamos los leads por email
     const groupedLeads = result.reduce((acc, lead) => {
         // Si el email aún no existe en el acumulador, lo agregamos
