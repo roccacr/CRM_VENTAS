@@ -11,7 +11,7 @@ export const EventosPendientes = () => {
     const { rol_admin } = useSelector((state) => state.auth);
     const listEventsPending = useSelector(selectListEventsPending);
 
-    // Estado para almacenar el nombreAdmin seleccionado
+    // Estado para almacenar el name_admin seleccionado
     const [selectedAdmin, setSelectedAdmin] = useState("");
 
     // Estado para almacenar los valores de fecha editados
@@ -37,11 +37,11 @@ export const EventosPendientes = () => {
         dispatch(setGetEventsHome());
     }, [dispatch]);
 
-    // Extraer los nombres únicos de los asesores (nombreAdmin)
-    const uniqueAdmins = [...new Set(listEventsPending?.map((event) => event.nombreAdmin))];
+    // Extraer los nombres únicos de los asesores (name_admin)
+    const uniqueAdmins = [...new Set(listEventsPending?.map((event) => event.name_admin))];
 
     // Filtrar los eventos según el asesor seleccionado
-    const filteredEvents = selectedAdmin ? listEventsPending.filter((event) => event.nombreAdmin === selectedAdmin) : listEventsPending;
+    const filteredEvents = selectedAdmin ? listEventsPending.filter((event) => event.name_admin === selectedAdmin) : listEventsPending;
 
     // Ordenar los eventos filtrados por fecha (descendente: más reciente a más antigua)
     const sortedEvents = [...filteredEvents].sort((a, b) => {
@@ -76,7 +76,7 @@ export const EventosPendientes = () => {
                     <div className="card-header d-flex align-items-center justify-content-between py-3">
                         <h5 className="mb-0">Eventos pendientes de acción</h5>
 
-                        {/* Select para filtrar por nombreAdmin */}
+                        {/* Select para filtrar por name_admin */}
                         {rol_admin === 1 && (
                             <select className="form-select" value={selectedAdmin} onChange={(e) => setSelectedAdmin(e.target.value)} style={{ width: "200px" }}>
                                 <option value="">Todos los Asesores</option>
@@ -111,7 +111,7 @@ export const EventosPendientes = () => {
                                             .filter((event) => event.accion_calendar === "Pendiente")
                                             .map((event) => (
                                                 <tr key={event.id_calendar}>
-                                                    <td>{event.nombreAdmin.substring(0, 12)}</td>
+                                                    <td>{event.name_admin.substring(0, 12)}</td>
                                                     <td>{event.nombre_calendar}</td>
                                                     <td>{event.nombre_lead.substring(0, 15)}</td>
                                                     <td>

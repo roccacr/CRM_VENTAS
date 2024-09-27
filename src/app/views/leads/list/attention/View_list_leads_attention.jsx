@@ -301,10 +301,11 @@ export default function View_list_leads_attention() {
             // "proyecto_lead", // Proyecto
             // "campana_lead", // Campaña
             "segimineto_lead", // Estado
-            "nombre_caida", // Seguimiento
+            // "nombre_caida", // Seguimiento
             "estado_lead", // Estado Lead
             "creado_lead", // Subsidiarias
             "subsidiaria_lead", // Subsidiarias
+
         ];
 
         return (
