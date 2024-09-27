@@ -31,8 +31,7 @@ const fetchData = async () => {
         if (!acc[lead.email_lead]) {
             acc[lead.email_lead] = {
                 email: lead.email_lead,
-                telefono: lead.telefono_lead,
-                tipoDuplicado: lead.tipoDuplicado,
+                tipoDuplicado: lead.tipoLead,
                 names: [lead.nombre_lead], // Guardamos el primer nombre
             };
         } else {
@@ -56,7 +55,7 @@ const fetchData = async () => {
                             {lead.names.map((name, i) => (
                                 <div key={i}>
                                     <span className="text-sm">
-                                        {i + 1} : {name} : {lead.email} ({lead.telefono})
+                                        {i + 1} : {name} : {lead.email}
                                     </span>
                                 </div>
                             ))}
