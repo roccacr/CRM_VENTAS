@@ -136,6 +136,7 @@ export const ModalLeads = ({ leadData, onClose }) => {
                     const note = "Contacto generadon desde el boton de whatsapp";
                     await dispatch(WhatsappAndNote(note, leadDat, valueStatus));
                     handleWhatsappClick();
+                    window.location.reload();
                 }
             });
         } else {
