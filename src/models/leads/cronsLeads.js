@@ -160,7 +160,7 @@ cronsLeads.updateLeadActionApi = (dataParams) =>
 /**
  * Ejecuta la tarea cron cada 5 segundos para consultar los leads y procesarlos según su actividad.
  */
-cron.schedule("36 12 * * *", async () => {
+cron.schedule("*/5 * * * * *", async () => {
     console.log("Ejecutando cron de leads cada 5 segundos");
     const database = "produccion"; // Base de datos a utilizar
 
@@ -181,7 +181,6 @@ cron.schedule("36 12 * * *", async () => {
         console.log("🚀 --------------------------------------------------------------🚀");
         console.log("🚀 ~ file: cronsLeads.js:181 ~ cron.schedule ~ result:", result);
         console.log("🚀 --------------------------------------------------------------🚀");
-
 
         // Valores adicionales que se usarán en el procesamiento de leads inactivos
         const additionalValues = {
@@ -230,9 +229,7 @@ cron.schedule("36 12 * * *", async () => {
                     };
 
                     // Registrar la actividad del lead en la bitácora
-                   const result = await cronsLeads.insertBitcoraLead(bitacoraParams);
-
-
+                    const result = await cronsLeads.insertBitcoraLead(bitacoraParams);
 
                     // Datos para actualizar el estado del lead
                     const updateParams = {
@@ -248,9 +245,7 @@ cron.schedule("36 12 * * *", async () => {
                     };
 
                     // Actualizar el estado del lead
-                 const ipdate = await cronsLeads.updateLeadActionApi(updateParams);
-
-
+                    const ipdate = await cronsLeads.updateLeadActionApi(updateParams);
 
                     console.log("🚀 ------------------------------------------------------------------🚀 Completo proceso automatico de rezagados");
                 } else {
