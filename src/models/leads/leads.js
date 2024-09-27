@@ -279,4 +279,53 @@ leads.updateLeadActionApi = (dataParams) =>
     );
 
 
+/**
+ * Obtiene las razones de pérdida (caídas) de leads desde la base de datos.
+ *
+ * Esta función ejecuta un procedimiento almacenado que recupera las razones por las que un lead 
+ * ha sido clasificado como perdido. El procedimiento utiliza un parámetro de estado específico para filtrar los resultados,
+ * lo que permite consultar diferentes tipos de caídas según el valor proporcionado.
+ *
+ * @param {Object} dataParams - Objeto que contiene los parámetros necesarios para la consulta.
+ * @param {number} dataParams.valueID - Valor que representa el estado específico de las caídas a filtrar.
+ * @param {string} dataParams.database - Nombre de la base de datos en la que se ejecutará el procedimiento almacenado.
+ * @returns {Promise<Object>} - Devuelve una promesa que resuelve con los resultados obtenidos del procedimiento almacenado.
+ */
+leads.loss_reasons = (dataParams) =>
+    executeStoredProcedure(
+        "loss_reasons", // Nombre del procedimiento almacenado que obtiene las razones de pérdida de leads.
+        [
+            dataParams.valueID, // Estado específico del lead para filtrar las razones de pérdida.
+        ],
+        dataParams.database, // Nombre de la base de datos en la que se ejecutará el procedimiento almacenado.
+    );
+
+
+/**
+ * Ejecuta el procedimiento almacenado 'loss_transactions' para marcar todas las transacciones de un lead como perdidas.
+ *
+ * Esta función envía una solicitud para ejecutar el procedimiento almacenado en la base de datos proporcionada,
+ * marcando todas las transacciones asociadas al lead como perdidas, utilizando el ID del lead como filtro.
+ *
+ * @param {Object} dataParams - Contiene los parámetros necesarios para ejecutar el procedimiento almacenado.
+ * @param {number} dataParams.leadId - El ID del lead cuyas transacciones serán marcadas como perdidas.
+ * @param {string} dataParams.database - El nombre de la base de datos donde se ejecutará el procedimiento almacenado.
+ *
+ * @returns {Promise<Object>} - Devuelve una promesa que resuelve con los resultados de la operación.
+ */
+leads.loss_transactions = (dataParams) =>
+    executeStoredProcedure(
+        "loss_transactions", // Procedimiento almacenado que marca todas las transacciones de un lead como perdidas.
+        [
+            dataParams.leadId, // El ID del lead cuyas transacciones serán actualizadas.
+            dataParams.descripcionEvento,
+        ],
+        dataParams.database, // Base de datos donde se ejecutará el procedimiento almacenado.
+    );
+
+
+
+
+
+
 module.exports = leads; // Exporta el objeto 'leads' que contiene todas las funciones definidas.

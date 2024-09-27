@@ -104,12 +104,14 @@ module.exports = function (app) {
                 { path: "/leads/getAll_LeadsNew", method: "getAll_LeadsNew" }, // Ruta para obtener todos los leads nuevos
                 { path: "/leads/getAll_LeadsAttention", method: "getAll_LeadsAttention" }, // Ruta para obtener los leads que requieren atención
                 { path: "/leads/getBitacora", method: "getBitacora" }, // Ruta para obtener la bitácora de un lead específico
-                { path: "/leads/getAll_LeadsComplete", method: "getAll_LeadsComplete" }, // Ruta para obtener todos los leads (completos)
-                { path: "/leads/getAll_LeadsRepit", method: "getAll_LeadsRepit" }, // Ruta para obtener todos los leads repetidos
-                { path: "/leads/get_Specific_Lead", method: "get_Specific_Lead" }, // Ruta para obtener todos los datos de un lead específico
-                { path: "/leads/insertBitcoraLead", method: "insertBitcoraLead" }, // ruta para insertar un registro en la bitácora de un lead
-                { path: "/leads/updateLeadActionApi", method: "updateLeadActionApi" }, // ruta para insertar un registro en la bitácora de un lead
-                { path: "/leads/getAllStragglers", method: "getAllStragglers" }, // ruta para insertar un registro en la bitácora de un lead
+                { path: "/leads/getAll_LeadsComplete", method: "getAll_LeadsComplete" }, // Ruta para obtener todos los leads completos
+                { path: "/leads/getAll_LeadsRepit", method: "getAll_LeadsRepit" }, // Ruta para obtener todos los leads duplicados
+                { path: "/leads/get_Specific_Lead", method: "get_Specific_Lead" }, // Ruta para obtener los datos de un lead específico
+                { path: "/leads/insertBitcoraLead", method: "insertBitcoraLead" }, // Ruta para insertar un registro en la bitácora de un lead
+                { path: "/leads/updateLeadActionApi", method: "updateLeadActionApi" }, // Ruta para actualizar una acción de un lead a través de la API
+                { path: "/leads/getAllStragglers", method: "getAllStragglers" }, // Ruta para obtener todos los leads rezagados o inactivos
+                { path: "/leads/loss_reasons", method: "loss_reasons" }, // Ruta para obtener las razones de pérdida de leads
+                { path: "/leads/setLostStatusForLeadTransactions", method: "loss_transactions" }, // Ruta para colcoar todas las trnasacciones de un lead en estado de perdido
             ],
         },
 
