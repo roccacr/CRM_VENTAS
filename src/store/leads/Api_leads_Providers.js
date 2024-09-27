@@ -242,3 +242,53 @@ export const updateLeadActionApi = async (estadoActual, valor_segimineto_lead, e
     // La URL "leads/updateLeadActionApi" es el endpoint donde se procesará esta actualización.
     return await fetchData("leads/updateLeadActionApi", requestData);
 };
+
+
+
+
+
+
+/**
+ * Obtiene la lista de opciones de pérdida de leads (motivos por los que un lead fue perdido) desde el backend.
+ *
+ * Esta función construye una solicitud utilizando datos comunes necesarios para todas las operaciones,
+ * como tokens de autenticación o configuraciones específicas de la API. Luego envía la solicitud al
+ * endpoint correspondiente para obtener las opciones disponibles para la clasificación de leads perdidos.
+ *
+ * @returns {Promise<Object>} - Devuelve una promesa que resuelve con los datos de las opciones de pérdida
+ * una vez que la solicitud es procesada por el backend.
+ */
+export const get_optionLoss = async (valueID) => {
+    // Preparación del objeto requestData con los parámetros de autenticación y configuración global necesarios.
+    const requestData = {
+        ...commonRequestData, // Datos comunes requeridos para todas las solicitudes, como tokens o configuración de API.
+        valueID,
+    };
+
+    // Envía la solicitud al endpoint específico para obtener las opciones de pérdida de leads.
+    return await fetchData("leads/loss_reasons", requestData);
+};
+
+
+
+
+/**
+ * Marca un lead como perdido y envía la transacción al backend.
+ *
+ * Esta función construye una solicitud con datos comunes necesarios para la autenticación y configuración de la API,
+ * y luego envía la solicitud al endpoint correspondiente para actualizar el estado de un lead como perdido.
+ *
+ * @param {number} leadId - El ID del lead que se marcará como perdido.
+ * @returns {Promise<Object>} - Devuelve una promesa que resuelve con los datos de la transacción procesada por el backend.
+ */
+export const setLostStatusForLeadTransactions = async (leadId, descripcionEvento) => {
+    // Prepara el objeto requestData con los datos comunes de autenticación y configuración global necesarios.
+    const requestData = {
+        ...commonRequestData, // Datos comunes como tokens de autenticación o configuraciones de API.
+        leadId, // ID del lead a marcar como perdido.
+        descripcionEvento,
+    };
+
+    // Envía la solicitud al endpoint específico para marcar el lead como perdido.
+    return await fetchData("leads/setLostStatusForLeadTransactions", requestData);
+};

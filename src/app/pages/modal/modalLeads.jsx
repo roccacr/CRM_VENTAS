@@ -146,15 +146,26 @@ export const ModalLeads = ({ leadData, onClose }) => {
         navigate(-1); // Esto regresa a la página anterior
     };
 
+    // ir a la vista de perdidos
+    const handleLoss = (leadData) => {
+        const idLead = leadData?.idinterno_lead; // Obtiene el ID del lead.
 
+        navigate(`/leads/loss?id=${idLead}`); // Navega a la ruta de eventos del lead.
+    };
+
+    const handfollow_up = (leadData) => {
+        const idLead = leadData?.idinterno_lead; // Obtiene el ID del lead.
+
+        navigate(`/leads/follow_up?id=${idLead}`); // Navega a la ruta de eventos del lead.
+    };
 
     let buttonData = [
         { text: "Ir a Whatsapp", icon: "fab fa-whatsapp", color: "#25d366", action: handleWhatsappClick },
         { text: "Whatsapp y Contacto", icon: "fab fa-whatsapp", color: "#25d366", action: () => handleWhatsappAndNote() },
         { text: "Nota de Contacto", icon: "fab fa-wpforms", color: "#c0392b", action: () => handleNote(leadData) },
         { text: "Crear un evento", icon: "fas fa-calendar-check", color: "#2c3e50", action: () => handleEvents(leadData) },
-        { text: "Dar como perdido", icon: "fas fa-window-close", color: "#78281f" },
-        { text: "Colocar en seguimiento", icon: "fas fa-location-arrow", color: "#f1c40f" },
+        { text: "Dar como perdido", icon: "fas fa-window-close", color: "#78281f", action: () => handleLoss(leadData) },
+        { text: "Colocar en seguimiento", icon: "fas fa-location-arrow", color: "#f1c40f", action: () => handfollow_up(leadData) },
         { text: "Crear Oportunidad", icon: "fas fa-level-up-alt", color: "#af7ac5" },
         { text: "Lista Oportunidades", icon: "fas fa-stream", color: "#2471a3" },
         { text: "Llamar cliente", icon: "fas fa-phone", color: "#2e86c1", action: handleCallClient }, // Añadimos la acción de llamada

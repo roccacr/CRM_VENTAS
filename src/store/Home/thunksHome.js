@@ -1,5 +1,6 @@
 /********************************************** MODULE IMPORTS ****************************************************/
 // Importación de las funciones necesarias para interactuar con los servicios de API y los slices de Redux.
+import { generateLeadBitacora } from "../leads/thunksLeads";
 import { fetchGetMonthlyData, fetchGetMonthlyDataKpi, fetchupdateEventDate, getAllBanners, getAllEventsHome, updateEventStatus } from "./Api_Home_Providers";
 
 import { setLeadsNew, setListEvents, setListOportunity, setListOrderSale, setListOrderSalePending, setlistAttentions, setlistEventsPending, setlistGraficoKpi, updateDateCalendar } from "./HomeSlice";
@@ -83,7 +84,7 @@ export const setGetEventsHome = () => {
  * @param {String} newStatus - El nuevo estado que debe ser asignado al evento.
  * @returns {Function} Thunk - Una función que puede ser despachada por Redux Thunk.
  */
-export const updateEventsStatusThunksHome = (id_calendar, newStatus) => {
+export const updateEventsStatusThunksHome = (id_calendar, newStatus, leadId, valueStatus) => {
     return async (dispatch, getState) => {
         // Extrae el ID del administrador de Netsuite del estado de autenticación
         const { idnetsuite_admin } = getState().auth;
@@ -91,6 +92,21 @@ export const updateEventsStatusThunksHome = (id_calendar, newStatus) => {
         try {
             // Realiza la solicitud para actualizar el estado del evento
             await updateEventStatus({ idnetsuite_admin, id_calendar, newStatus });
+
+            // Define la descripción del evento, en este caso es la nota proporcionada
+            const descripcionEvento = "Se ha realizado un cambio de estado en el evento. : " + newStatus;
+
+            // Valores adicionales que serán enviados al generar la bitácora del lead
+            const additionalValues = {
+                valorDeCaida: 51,
+                tipo: descripcionEvento,
+                estado_lead: 1,
+                accion_lead: 6,
+                seguimiento_calendar: 0,
+                valor_segimineto_lead: 3,
+            };
+
+            await dispatch(generateLeadBitacora(idnetsuite_admin, leadId, additionalValues, descripcionEvento, valueStatus));
         } catch (error) {
             // Manejo de errores durante la solicitud
             console.error("Error al actualizar el estado del evento:", error);

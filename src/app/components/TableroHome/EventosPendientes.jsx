@@ -51,10 +51,10 @@ export const EventosPendientes = () => {
     });
 
     // Manejador de cambio para el select
-    const handleSelectChange = (event, id) => {
-       const selectedValue = event.target.value;
+    const handleSelectChange = (event, id, lead, estado) => {
+         const selectedValue = event.target.value;
         dispatch(updateActionCalendar({ id, selectedValue }));
-        dispatch(updateEventsStatusThunksHome(id, selectedValue));
+        dispatch(updateEventsStatusThunksHome(id, selectedValue,lead, estado));
         // dispatch(updateLeadActions(idLeds, status));
     };
 

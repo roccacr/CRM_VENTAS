@@ -1,6 +1,6 @@
 import { setLeadsNew } from "./leadSlice"; // Acción para actualizar el estado de leads en Redux.
-import { get_Specific_Lead, getAll_LeadsRepit, getAllLeadsAttention, getAllLeadsComplete, getAllLeadsNew, getAllStragglers, getBitacora, insertBitcoraLead, updateLeadActionApi } from "./Api_leads_Providers"; // Función que hace la solicitud API para obtener nuevos leads.
-
+import { get_optionLoss, get_Specific_Lead, getAll_LeadsRepit, getAllLeadsAttention, getAllLeadsComplete, getAllLeadsNew, getAllStragglers, getBitacora, insertBitcoraLead, setLostStatusForLeadTransactions, updateLeadActionApi } from "./Api_leads_Providers"; // Función que hace la solicitud API para obtener nuevos leads.
+import { createCalendarEvent } from "../calendar/Api_calendar_Providers";
 
 /**
  * Acción asincrónica para obtener la lista de nuevos leads.
@@ -30,8 +30,6 @@ export const getLeadsNew = () => {
     };
 };
 
-
-
 /**
  * Acción asincrónica para obtener la lista de leads que requieren atención.
  *
@@ -42,9 +40,6 @@ export const getLeadsNew = () => {
  * @returns {Function} Thunk - Función que puede ser despachada gracias a Redux Thunk.
  */
 export const getLeadsAttention = (startDate, endDate, filterOption) => {
-
-
-
     return async (dispatch, getState) => {
         // Extrae el idnetsuite_admin y rol_admin del estado de autenticación almacenado en Redux.
         const { idnetsuite_admin, rol_admin } = getState().auth;
@@ -64,9 +59,6 @@ export const getLeadsAttention = (startDate, endDate, filterOption) => {
     };
 };
 
-
-
-
 /**
  * Acción asincrónica para obtener la lista de leads que requieren atención. y resagados
  *
@@ -79,7 +71,7 @@ export const getLeadsAttention = (startDate, endDate, filterOption) => {
 export const getLeadStragglers = (startDate, endDate, filterOption) => {
     return async (dispatch, getState) => {
         // Extrae el idnetsuite_admin y rol_admin del estado de autenticación almacenado en Redux.
-         const { idnetsuite_admin, rol_admin } = getState().auth;
+        const { idnetsuite_admin, rol_admin } = getState().auth;
 
         try {
             // Llama a la función getAllLeadsAttention para obtener los leads que requieren atención
@@ -94,13 +86,10 @@ export const getLeadStragglers = (startDate, endDate, filterOption) => {
     };
 };
 
-
-
-
 /**
  * Acción asincrónica para obtener la bitácora de un lead específico.
  *
- * Realiza una solicitud al backend para obtener la bitácora de un lead 
+ * Realiza una solicitud al backend para obtener la bitácora de un lead
  * basado en el id del lead proporcionado, y luego devuelve los datos obtenidos.
  *
  * @param {number} idLeads - ID del lead cuya bitácora se va a obtener.
@@ -119,9 +108,6 @@ export const getBitacoraLeads = (idLeads) => {
         }
     };
 };
-
-
-
 
 /**
  * Acción asincrónica para obtener la lista completa de los leads, sin importar su estado.
@@ -156,12 +142,10 @@ export const getLeadsComplete = (startDate, endDate, filterOption) => {
     };
 };
 
-
-
 /**
  * Acción asincrónica para obtener la lista completa de los leads repetidos.
  *
- * Realiza una solicitud al backend para obtener la lista completa de los leads 
+ * Realiza una solicitud al backend para obtener la lista completa de los leads
  * repetidos basados en el ID y rol del administrador, y luego despacha una acción
  * para actualizar el estado de Redux con los datos obtenidos.
  *
@@ -177,7 +161,6 @@ export const getLeadsRepit = () => {
             // basados en el rol y el ID del administrador.
             const result = await getAll_LeadsRepit({ idnetsuite_admin, rol_admin });
 
-
             // Si la API responde con éxito, despacha una acción para actualizar el estado de Redux.
             // dispatch(setLeadsNew(result.data["0"])); // Actualiza el estado con la lista de leads repetidos obtenida.
 
@@ -189,13 +172,11 @@ export const getLeadsRepit = () => {
     };
 };
 
-
-
 /**
  * Acción asincrónica para obtener la información de un lead específico.
  *
  * Realiza una solicitud al backend para obtener los detalles de un lead
- * basados en su ID, y luego despacha una acción para actualizar el estado 
+ * basados en su ID, y luego despacha una acción para actualizar el estado
  * de Redux con los datos obtenidos.
  *
  * @param {number} idLead - ID del lead específico que se desea obtener.
@@ -214,14 +195,12 @@ export const getSpecificLead = (idLead) => {
     };
 };
 
-
-
 /**
  * Acción asincrónica para generar una bitácora para un lead específico.
  *
- * Esta función realiza una solicitud al backend para registrar una bitácora 
+ * Esta función realiza una solicitud al backend para registrar una bitácora
  * de las acciones realizadas sobre un lead basado en su ID, junto con información adicional
- * como el estado actual del lead, su descripción y otros valores relevantes. 
+ * como el estado actual del lead, su descripción y otros valores relevantes.
  * El estado del lead se valida y ajusta en base a un conjunto de estados permitidos.
  *
  * @param {number} idnetsuite_admin - ID del administrador de NetSuite que está realizando la acción.
@@ -236,17 +215,27 @@ export const getSpecificLead = (idLead) => {
 export const generateLeadBitacora = (idnetsuite_admin, leadId, additionalValues, descripcionEvento, valueStatus) => {
     return async (dispatch) => {
         try {
-            // Lista de estados permitidos para validar el estado actual del lead.
-            const estadosPermitidos = ["LEAD-OPORTUNIDAD", "LEAD-PRE-RESERVA", "LEAD-RESERVA", "LEAD-CONTRATO", "LEAD-ENTREGADO"];
+            let estadoActual;
 
-            // Validación del estado actual: si no coincide con uno de los estados permitidos,
-            // se asigna el estado por defecto "08-LEAD-SEGUIMIENTO".
-            const estadoActual = estadosPermitidos.includes(valueStatus.substring(3, 53)) ? valueStatus : "08-LEAD-SEGUIMIENTO";
+            // Si el valueStatus es 0, se asigna directamente "07-LEAD-PERDIDO"
+            if (valueStatus === 0) {
+                estadoActual = "07-LEAD-PERDIDO";
+            } else {
+                // Lista de estados permitidos para validar el estado actual del lead.
+                const estadosPermitidos = ["LEAD-OPORTUNIDAD", "LEAD-PRE-RESERVA", "LEAD-RESERVA", "LEAD-CONTRATO", "LEAD-ENTREGADO"];
+
+                // Validamos que valueStatus no sea 0 y que su valor (después de un substring) esté en la lista de estados permitidos
+                // Asumimos que el valueStatus tiene una longitud suficiente para el substring.
+                const estadoExtraido = valueStatus.length >= 53 ? valueStatus.substring(3, 53).trim() : "";
+
+                // Si el estado extraído está en la lista de permitidos, se utiliza; de lo contrario, se asigna "08-LEAD-SEGUIMIENTO".
+                estadoActual = estadosPermitidos.includes(estadoExtraido) ? valueStatus : "08-LEAD-SEGUIMIENTO";
+            }
 
             // Inserción de la bitácora en el sistema.
             // Se pasa el ID del lead, el ID del administrador de NetSuite, el valor de caída,
             // la descripción del evento, el tipo de evento y el estado actual validado.
-             await insertBitcoraLead(leadId, idnetsuite_admin, additionalValues.valorDeCaida, descripcionEvento, additionalValues.tipo, estadoActual);
+            await insertBitcoraLead(leadId, idnetsuite_admin, additionalValues.valorDeCaida, descripcionEvento, additionalValues.tipo, estadoActual);
 
             await dispatch(updateLeadAction(leadId, additionalValues, valueStatus));
         } catch (error) {
@@ -277,12 +266,22 @@ export const generateLeadBitacora = (idnetsuite_admin, leadId, additionalValues,
 export const updateLeadAction = (leadId, additionalValues, valueStatus) => {
     return async () => {
         try {
-            // Lista de estados permitidos para validar el estado actual del lead.
-            const estadosPermitidos = ["LEAD-OPORTUNIDAD", "LEAD-PRE-RESERVA", "LEAD-RESERVA", "LEAD-CONTRATO", "LEAD-ENTREGADO"];
+            let estadoActual;
 
-            // Validación del estado actual: si el estado del lead no coincide con uno de los estados permitidos,
-            // se asigna el estado por defecto "08-LEAD-SEGUIMIENTO" para mantener la consistencia de datos.
-            const estadoActual = estadosPermitidos.includes(valueStatus.substring(3, 53)) ? valueStatus : "08-LEAD-SEGUIMIENTO";
+            // Si el valueStatus es 0, se asigna directamente "07-LEAD-PERDIDO"
+            if (valueStatus === 0) {
+                estadoActual = "07-LEAD-PERDIDO";
+            } else {
+                // Lista de estados permitidos para validar el estado actual del lead.
+                const estadosPermitidos = ["LEAD-OPORTUNIDAD", "LEAD-PRE-RESERVA", "LEAD-RESERVA", "LEAD-CONTRATO", "LEAD-ENTREGADO"];
+
+                // Validamos que valueStatus no sea 0 y que su valor (después de un substring) esté en la lista de estados permitidos
+                // Asumimos que el valueStatus tiene una longitud suficiente para el substring.
+                const estadoExtraido = valueStatus.length >= 53 ? valueStatus.substring(3, 53).trim() : "";
+
+                // Si el estado extraído está en la lista de permitidos, se utiliza; de lo contrario, se asigna "08-LEAD-SEGUIMIENTO".
+                estadoActual = estadosPermitidos.includes(estadoExtraido) ? valueStatus : "08-LEAD-SEGUIMIENTO";
+            }
 
             // Obtener la fecha actual en formato YYYY-MM-DD, para registrar la fecha de actualización.
             const now = new Date();
@@ -294,7 +293,6 @@ export const updateLeadAction = (leadId, additionalValues, valueStatus) => {
             // Llama a la API para actualizar el lead con el estado validado, los valores adicionales,
             // y la fecha actual formateada. La función updateLeadActionApi es responsable de enviar los datos al backend.
             await updateLeadActionApi(estadoActual, valor_segimineto_lead, estado_lead, accion_lead, seguimiento_calendar, valorDeCaida, formattedDate, leadId);
-
         } catch (error) {
             // Manejo de errores: captura cualquier excepción o fallo ocurrido durante la actualización del lead.
             console.error("Error al generar la bitácora para el lead", error);
@@ -302,8 +300,6 @@ export const updateLeadAction = (leadId, additionalValues, valueStatus) => {
         }
     };
 };
-
-
 
 /**
  * Crea una nota asociada a un lead en la bitácora de eventos.
@@ -352,7 +348,6 @@ export const createNote = (nota, leadId, valueStatus) => {
  * @returns {Promise<string>} - Devuelve "ok" si el proceso se completa exitosamente, o lanza un error en caso de fallo.
  */
 export const WhatsappAndNote = (nota, leadId, valueStatus) => {
-
     return async (dispatch, getState) => {
         // Extrae el ID del administrador desde el estado de autenticación
         const { idnetsuite_admin } = getState().auth;
@@ -377,6 +372,118 @@ export const WhatsappAndNote = (nota, leadId, valueStatus) => {
             return "ok";
         } catch (error) {
             // Manejo de errores: captura y muestra en consola cualquier problema al generar el evento
+            console.error("Error al crear el evento para el lead:", error);
+        }
+    };
+};
+
+/**
+ * Acción asincrónica para obtener la lista de opciones de pérdida de leads desde el backend.
+ *
+ * Esta función realiza una solicitud para recuperar los motivos por los que un lead puede ser clasificado
+ * como "perdido". Utiliza una acción Thunk de Redux para manejar la lógica asincrónica. Los datos obtenidos
+ * se pueden despachar para actualizar el estado global en Redux o utilizarse en otros procesos.
+ *
+ * @returns {Function} Thunk - Función compatible con Redux Thunk, que puede ser despachada para ejecutar la acción.
+ */
+export const getoptionLoss = (valueID) => {
+    return async () => {
+        try {
+            // Llama a la función get_optionLoss para obtener las opciones de pérdida desde el backend.
+            const result = await get_optionLoss(valueID);
+
+            // Devuelve los datos obtenidos para su posterior procesamiento.
+            return result.data["0"];
+        } catch (error) {
+            // Captura y registra cualquier error que ocurra durante la solicitud para fines de depuración.
+            console.error("Error al cargar la lista de opciones de pérdida", error);
+        }
+    };
+};
+
+/**
+ * Crea una nota asociada a un lead perdido
+*/
+export const createNoteLoss = (nota, leadId, selectedLossOption) => {
+    return async (dispatch, getState) => {
+        // Extrae el ID del administrador desde el estado de autenticación
+        const { idnetsuite_admin } = getState().auth;
+
+        // Define la descripción del    07-LEAD-ACTION evento, en este caso es la nota proporcionada
+        const descripcionEvento = nota;
+        const valueStatus = 0;
+
+        // Valores adicionales que serán enviados al generar la bitácora del lead
+        const additionalValues = {
+            valorDeCaida: selectedLossOption,
+            tipo: "Se Coloco este cliente como perdido",
+            estado_lead: 0,
+            accion_lead: 6,
+            seguimiento_calendar: 0,
+            valor_segimineto_lead: 3,
+        };
+
+        try {
+            // Despacha la acción para generar la bitácora del lead con los valores adicionales
+            await dispatch(generateLeadBitacora(idnetsuite_admin, leadId, additionalValues, descripcionEvento, valueStatus));
+            await setLostStatusForLeadTransactions(leadId, descripcionEvento);
+            // Retorna "ok" si todo salió correctamente
+            return "ok";
+        } catch (error) {
+            // Manejo de errores: captura y muestra en consola cualquier problema al generar el evento
+            console.error("Error al crear el evento para el lead:", error);
+        }
+    };
+};
+
+
+
+
+/**
+ * Crea una nota asociada a un lead perdido
+*/
+export const createNoteFollow_up = (nota, leadId, selectedLossOption, followUpDate, leadStatus) => {
+    return async (dispatch, getState) => {
+        // Variables comunes
+        const { idnetsuite_admin } = getState().auth; // ID del administrador de Netsuite
+        const nombreEvento = "Seguimiento programado"; // Nombre del evento
+        const tipoEvento = "Seguimientos"; // Tipo de evento
+        const descripcionEvento = nota; // Descripción del evento
+        const valueStatus = "08-LEAD-SEGUIMIENTO"; // Estado actual del lead
+
+        // Variables de formato de fecha y hora
+        const fechaHoraInicio = `${followUpDate}T08:00:00`;
+        const fechaHoraFin = `${followUpDate}T11:00:00`;
+
+        const horaInicio = "08:00:00"; // Hora de inicio
+        const horaFinal = "08:00:00"; // Hora de finalización
+
+        // Asignación de variables adicionales
+        const colorEvento = "#f46a6a"; // Color basado en el tipo de evento
+        const citaValue = 0; // Valor específico si es una cita
+
+        // Valores adicionales para la solicitud
+        const additionalValues = {
+            valorDeCaida: selectedLossOption,
+            tipo: "Se generó un seguimiento programado para el dia " + followUpDate,
+            estado_lead: leadStatus,
+            accion_lead: 6,
+            seguimiento_calendar: 0,
+            valor_segimineto_lead: 3,
+        };
+
+        // Construcción del objeto con los parámetros para enviar a la API
+        const eventParams = { idnetsuite_admin, nombreEvento, tipoEvento, descripcionEvento, formatdateIni: fechaHoraInicio, formatdateFin: fechaHoraFin, horaInicio, horaFinal, leadId, colorEvento, citaValue };
+
+        try {
+            // Envío de solicitud al backend para crear el evento
+            await createCalendarEvent(eventParams);
+            await dispatch(generateLeadBitacora(idnetsuite_admin, leadId, additionalValues, descripcionEvento, valueStatus));
+
+            // Retorno de la respuesta de la API si es necesario
+            return "ok";
+        } catch (error) {
+            // Manejo de errores en caso de fallo
             console.error("Error al crear el evento para el lead:", error);
         }
     };

@@ -1,29 +1,23 @@
 // La función formatDate que formatea la fecha y hora
 export const formatDate = (dateString) => {
+ 
+
     const date = new Date(dateString);
 
-    // Ajustar la fecha a la zona horaria de Costa Rica (UTC-6)
-    const localDate = new Date(date.getTime() - 6 * 60 * 60 * 1000);
+    // Convertir la fecha a la zona horaria de Costa Rica (UTC-6) usando toLocaleString
+    const options = { timeZone: "America/Costa_Rica", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: true };
+    const localDateString = date.toLocaleString("en-US", options);
 
-    // Extraer año, mes y día
-    const year = localDate.getFullYear();
-    const month = String(localDate.getMonth() + 1).padStart(2, "0");
-    const day = String(localDate.getDate()).padStart(2, "0");
-
-    // Extraer horas, minutos y segundos, ajustando al formato de 12 horas
-    let hours = localDate.getHours();
-    const minutes = String(localDate.getMinutes()).padStart(2, "0");
-    const seconds = String(localDate.getSeconds()).padStart(2, "0");
-    const ampm = hours >= 12 ? "PM" : "AM";
-    hours = hours % 12;
-    hours = hours ? hours : 12; // Si la hora es '0', que sea '12'
-    hours = String(hours).padStart(2, "0");
+    // Extraer partes de la fecha formateada
+    const [month, day, year, time] = localDateString.match(/(\d{2})\/(\d{2})\/(\d{4}), (\d{2}:\d{2}:\d{2} [AP]M)/).slice(1);
 
     // Formato de la fecha
     const formattedDate = `${year}-${month}-${day}`;
 
-    // Formato de la hora
-    const formattedTime = `${hours}:${minutes}:${seconds} ${ampm}`;
+    // Formato de la hora (ya incluye AM/PM)
+    const formattedTime = "";
+
+
 
     // Retornar ambos valores por separado
     return { formattedDate, formattedTime };
