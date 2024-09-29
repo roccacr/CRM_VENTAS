@@ -79,7 +79,7 @@ const executeStoredProcedure = async (procedureName, params, database) => {
  * @param {string} dataParams.database - Nombre de la base de datos donde se ejecutará la consulta.
  * @returns {Promise<Object>} - Promesa que resuelve con el resultado de la consulta de leads que requieren atención.
  */
-cronsLeads.getAll_LeadsAttention = (dataParams) =>
+cronsLeads.getAll_LeadsAttention = async (dataParams) =>
     executeStoredProcedure(
         "getAll_LeadsAttention", // Nombre del procedimiento almacenado que recupera los leads que requieren atención.
         [dataParams.rol_admin, dataParams.idnetsuite_admin, dataParams.startDate, dataParams.endDate, dataParams.filterOption], // Parámetros necesarios: rol y ID del administrador.
@@ -104,7 +104,7 @@ cronsLeads.getAll_LeadsAttention = (dataParams) =>
  * @param {string} dataParams.database - Nombre de la base de datos donde se ejecutará el procedimiento almacenado.
  * @returns {Promise<Object>} - Promesa que resuelve con el resultado de la inserción de la bitácora.
  */
-cronsLeads.insertBitcoraLead = (dataParams) =>
+cronsLeads.insertBitcoraLead = async  (dataParams) =>
     executeStoredProcedure(
         "insertBitcoraLead", // Nombre del procedimiento almacenado que gestiona la inserción de la bitácora.
         [
@@ -139,7 +139,7 @@ cronsLeads.insertBitcoraLead = (dataParams) =>
  * @param {string} dataParams.database - Nombre de la base de datos en la que se ejecutará el procedimiento almacenado.
  * @returns {Promise<Object>} - Devuelve una promesa que resuelve con el resultado de la ejecución del procedimiento almacenado.
  */
-cronsLeads.updateLeadActionApi = (dataParams) =>
+cronsLeads.updateLeadActionApi = async (dataParams) =>
     executeStoredProcedure(
         "updateLeadActionApi", // Nombre del procedimiento almacenado que gestiona la actualización y registro de la bitácora.
         [
@@ -160,8 +160,9 @@ cronsLeads.updateLeadActionApi = (dataParams) =>
 /**
  * Ejecuta la tarea cron cada 5 segundos para consultar los leads y procesarlos según su actividad.
  */
-cron.schedule("0 6 * * *", async () => {
-    console.log("Ejecutando cron de leads cada 5 segundos");
+cron.schedule("6 15 * * *", async () => {
+    console.log("Ejecutando cron de leads cada día a las 6 am");
+
     const database = "produccion"; // Base de datos a utilizar
 
     try {
@@ -181,14 +182,14 @@ cron.schedule("0 6 * * *", async () => {
         // Valores adicionales que se usarán en el procesamiento de leads inactivos
         const additionalValues = {
             valorDeCaida: 60, // Valor de referencia de "caída" del lead
-            tipo: "Sin actividad registrada en los últimos 7 días", // Tipo de evento
+            tipo: "01 Sin actividad registrada en los últimos 7 días", // Tipo de evento
             estado_lead: 1, // Estado del lead a actualizar
             accion_lead: 7, // Acción tomada en el lead
             seguimiento_calendar: 0, // Indica si hay seguimiento en calendario
             valor_segimineto_lead: 3, // Valor del seguimiento asociado al lead
         };
 
-        // Procesar cada lead individualmente
+        // Procesar cada lead individualmente con un retraso de 5 segundos
         for (const lead of result["0"]) {
             try {
                 // Verificar y formatear la fecha de la última acción en el lead
@@ -213,6 +214,7 @@ cron.schedule("0 6 * * *", async () => {
                 // Si el lead no ha sido actualizado en más de 7 días
                 if (differenceInDays > 7) {
                     console.log(lead.idinterno_lead);
+
                     // Datos para registrar en la bitácora
                     const bitacoraParams = {
                         leadId: lead.idinterno_lead,
@@ -225,7 +227,9 @@ cron.schedule("0 6 * * *", async () => {
                     };
 
                     // Registrar la actividad del lead en la bitácora
-                    const result = await cronsLeads.insertBitcoraLead(bitacoraParams);
+                    const rs = await cronsLeads.insertBitacoraLead(bitacoraParams);
+                    console.log("🚀 Bitácora registrada para lead:", lead.idinterno_lead);
+                    console.log(rs);
 
                     // Datos para actualizar el estado del lead
                     const updateParams = {
@@ -241,15 +245,17 @@ cron.schedule("0 6 * * *", async () => {
                     };
 
                     // Actualizar el estado del lead
-                    const ipdate = await cronsLeads.updateLeadActionApi(updateParams);
+                    const result = await cronsLeads.updateLeadActionApi(updateParams);
+                    console.log("🚀 Lead actualizado:", lead.idinterno_lead);
+                    console.log(result);
 
-                    console.log("🚀 ------------------------------------------------------------------🚀 Completo proceso automatico de rezagados");
-                } else {
-                    // console.log("🚀 ------------------------------------------------------------------🚀");
-                    // console.log("🚀 ~ Lead con ID:", lead.idinterno_lead);
-                    // console.log(`🚀 ~ No ha pasado más de una semana. Última actualización fue el ${leadDateFormatted}`);
-                    // console.log("🚀 ------------------------------------------------------------------🚀");
+                    console.log("🚀 Completo proceso automático de rezagados para lead:", lead.idinterno_lead);
+
+                     console.log("🚀 ****************************************************************************************", lead.idinterno_lead);
                 }
+
+                // Esperar 5 segundos antes de procesar el siguiente lead
+                await new Promise((resolve) => setTimeout(resolve, 5000));
             } catch (error) {
                 console.error(`Error procesando el lead con ID ${lead.idinterno_lead}:`, error.message);
             }
@@ -258,6 +264,7 @@ cron.schedule("0 6 * * *", async () => {
         console.error("Error al ejecutar el cron de leads:", error.message);
     }
 });
+
 
 
 module.exports = cronsLeads; // Exporta el objeto 'cronsLeads' que contiene todas las funciones definidas.
