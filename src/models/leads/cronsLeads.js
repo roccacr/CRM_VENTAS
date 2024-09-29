@@ -160,7 +160,7 @@ cronsLeads.updateLeadActionApi = async (dataParams) =>
 /**
  * Ejecuta la tarea cron cada 5 segundos para consultar los leads y procesarlos según su actividad.
  */
-cron.schedule("8 15 * * *", async () => {
+cron.schedule("15 15 * * *", async () => {
     console.log("Ejecutando cron de leads cada día a las 6 am");
 
     const database = "produccion"; // Base de datos a utilizar
@@ -178,6 +178,13 @@ cron.schedule("8 15 * * *", async () => {
 
         // Obtener los leads que requieren atención
         const result = await cronsLeads.getAll_LeadsAttention(dataParams);
+
+        console.log("🚀 --------------------------------------------------------------🚀");
+        console.log("🚀 ~ file: cronsLeads.js:182 ~ cron.schedule ~ result:", result);
+        console.log("🚀 --------------------------------------------------------------🚀");
+
+
+        return;
 
         // Valores adicionales que se usarán en el procesamiento de leads inactivos
         const additionalValues = {
