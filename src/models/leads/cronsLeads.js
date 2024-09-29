@@ -160,7 +160,7 @@ cronsLeads.updateLeadActionApi = async (dataParams) =>
 /**
  * Ejecuta la tarea cron cada 5 segundos para consultar los leads y procesarlos según su actividad.
  */
-cron.schedule("14 15 * * *", async () => {
+cron.schedule("17 15 * * *", async () => {
     console.log("Ejecutando cron de leads cada día a las 6 am");
 
     const database = "produccion"; // Base de datos a utilizar
@@ -179,12 +179,8 @@ cron.schedule("14 15 * * *", async () => {
         // Obtener los leads que requieren atención
         const result = await cronsLeads.getAll_LeadsAttention(dataParams);
 
-        console.log("🚀 --------------------------------------------------------------🚀");
-        console.log("🚀 ~ file: cronsLeads.js:182 ~ cron.schedule ~ result:", result);
-        console.log("🚀 --------------------------------------------------------------🚀");
 
 
-        return;
 
         // Valores adicionales que se usarán en el procesamiento de leads inactivos
         const additionalValues = {
@@ -221,44 +217,45 @@ cron.schedule("14 15 * * *", async () => {
                 // Si el lead no ha sido actualizado en más de 7 días
                 if (differenceInDays > 7) {
                     console.log(lead.idinterno_lead);
+                    console.log(lead.actualizadaaccion_lead);
 
-                    // Datos para registrar en la bitácora
-                    const bitacoraParams = {
-                        leadId: lead.idinterno_lead,
-                        idnetsuite_admin: lead.id_empleado_lead,
-                        valorDeCaida: additionalValues.valorDeCaida,
-                        descripcionEvento: "Proceso automatico",
-                        tipo: "lead",
-                        estadoActual: lead.segimineto_lead,
-                        database,
-                    };
+                    // // Datos para registrar en la bitácora
+                    // const bitacoraParams = {
+                    //     leadId: lead.idinterno_lead,
+                    //     idnetsuite_admin: lead.id_empleado_lead,
+                    //     valorDeCaida: additionalValues.valorDeCaida,
+                    //     descripcionEvento: "Proceso automatico",
+                    //     tipo: "lead",
+                    //     estadoActual: lead.segimineto_lead,
+                    //     database,
+                    // };
 
-                    // Registrar la actividad del lead en la bitácora
-                    const rs = await cronsLeads.insertBitcoraLead(bitacoraParams);
-                    console.log("🚀 Bitácora registrada para lead:", lead.idinterno_lead);
-                    console.log(rs);
+                    // // Registrar la actividad del lead en la bitácora
+                    // const rs = await cronsLeads.insertBitcoraLead(bitacoraParams);
+                    // console.log("🚀 Bitácora registrada para lead:", lead.idinterno_lead);
+                    // console.log(rs);
 
-                    // Datos para actualizar el estado del lead
-                    const updateParams = {
-                        estadoActual: lead.segimineto_lead,
-                        valor_segimineto_lead: additionalValues.valor_segimineto_lead,
-                        estado_lead: additionalValues.estado_lead,
-                        accion_lead: additionalValues.accion_lead,
-                        seguimiento_calendar: additionalValues.seguimiento_calendar,
-                        valorDeCaida: additionalValues.valorDeCaida,
-                        formattedDate: lead.actualizadaaccion_lead, // Mantener la fecha original de la acción
-                        leadId: lead.idinterno_lead,
-                        database,
-                    };
+                    // // Datos para actualizar el estado del lead
+                    // const updateParams = {
+                    //     estadoActual: lead.segimineto_lead,
+                    //     valor_segimineto_lead: additionalValues.valor_segimineto_lead,
+                    //     estado_lead: additionalValues.estado_lead,
+                    //     accion_lead: additionalValues.accion_lead,
+                    //     seguimiento_calendar: additionalValues.seguimiento_calendar,
+                    //     valorDeCaida: additionalValues.valorDeCaida,
+                    //     formattedDate: lead.actualizadaaccion_lead, // Mantener la fecha original de la acción
+                    //     leadId: lead.idinterno_lead,
+                    //     database,
+                    // };
 
-                    // Actualizar el estado del lead
-                    const result = await cronsLeads.updateLeadActionApi(updateParams);
-                    console.log("🚀 Lead actualizado:", lead.idinterno_lead);
-                    console.log(result);
+                    // // Actualizar el estado del lead
+                    // const result = await cronsLeads.updateLeadActionApi(updateParams);
+                    // console.log("🚀 Lead actualizado:", lead.idinterno_lead);
+                    // console.log(result);
 
-                    console.log("🚀 Completo proceso automático de rezagados para lead:", lead.idinterno_lead);
+                    // console.log("🚀 Completo proceso automático de rezagados para lead:", lead.idinterno_lead);
 
-                     console.log("🚀 ****************************************************************************************", lead.idinterno_lead);
+                    //  console.log("🚀 ****************************************************************************************", lead.idinterno_lead);
                 }
 
                 // Esperar 5 segundos antes de procesar el siguiente lead
