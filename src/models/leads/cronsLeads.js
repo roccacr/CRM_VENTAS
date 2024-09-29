@@ -160,7 +160,7 @@ cronsLeads.updateLeadActionApi = async (dataParams) =>
 /**
  * Ejecuta la tarea cron cada 5 segundos para consultar los leads y procesarlos según su actividad.
  */
-cron.schedule("20 15 * * *", async () => {
+cron.schedule("22 15 * * *", async () => {
     console.log("Ejecutando cron de leads cada día a las 6 am");
 
     const database = "produccion"; // Base de datos a utilizar
@@ -170,8 +170,8 @@ cron.schedule("20 15 * * *", async () => {
         const dataParams = {
             rol_admin: 1, // Rol de administrador
             idnetsuite_admin: 0, // ID de Netsuite del administrador
-            startDate: "2024-01-01", // Fecha de inicio de búsqueda (valor por defecto)
-            endDate: "2024-01-01", // Fecha de fin de búsqueda (valor por defecto)
+            startDate: "2024-01-01", // Fecha de inicio de búsqueda (valor por defecto) esto se ingora su filterOption=0
+            endDate: "2024-01-01", // Fecha de fin de búsqueda (valor por defecto)filterOption=0
             filterOption: 0, // Opción de filtro (por defecto)
             database, // Base de datos a utilizar
         };
