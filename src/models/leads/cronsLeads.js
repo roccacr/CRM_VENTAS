@@ -160,7 +160,7 @@ cronsLeads.updateLeadActionApi = async (dataParams) =>
 /**
  * Ejecuta la tarea cron cada 5 segundos para consultar los leads y procesarlos según su actividad.
  */
-cron.schedule("6 15 * * *", async () => {
+cron.schedule("8 15 * * *", async () => {
     console.log("Ejecutando cron de leads cada día a las 6 am");
 
     const database = "produccion"; // Base de datos a utilizar
@@ -227,7 +227,7 @@ cron.schedule("6 15 * * *", async () => {
                     };
 
                     // Registrar la actividad del lead en la bitácora
-                    const rs = await cronsLeads.insertBitacoraLead(bitacoraParams);
+                    const rs = await cronsLeads.insertBitcoraLead(bitacoraParams);
                     console.log("🚀 Bitácora registrada para lead:", lead.idinterno_lead);
                     console.log(rs);
 
