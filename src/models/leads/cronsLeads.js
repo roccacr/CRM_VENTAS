@@ -264,6 +264,8 @@ cron.schedule("18 15 * * *", async () => {
                 console.error(`Error procesando el lead con ID ${lead.idinterno_lead}:`, error.message);
             }
         }
+
+        console.log("🚀 02 Proceso automático de leads rezagados completado.");
     } catch (error) {
         console.error("Error al ejecutar el cron de leads:", error.message);
     }
