@@ -229,30 +229,43 @@ cron.schedule("15 9 * * *", async () => {
                 const diferenciaMilisegundos = hoy - fechaLead;
                 const diasDiferencia = Math.floor(diferenciaMilisegundos / (1000 * 60 * 60 * 24)); // Convertir milisegundos a días
 
-                // Si han pasado más de 7 días, procesar el lead como inactivo
-                if (diasDiferencia >= 7) {
-                    // console.log(`Han pasado ${diasDiferencia} días desde la última actualización del lead con ID ${lead.idinterno_lead}.`);
 
-                   const updateParams = {
-                       estadoActual: lead.segimineto_lead,
-                       valor_segimineto_lead: additionalValues.valor_segimineto_lead,
-                       estado_lead: additionalValues.estado_lead,
-                       accion_lead: additionalValues.accion_lead,
-                       seguimiento_calendar: additionalValues.seguimiento_calendar,
-                       valorDeCaida: additionalValues.valorDeCaida,
-                       formattedDate: lead.actualizadaaccion_lead, // Mantener la fecha original de la acción
-                       leadId: lead.idinterno_lead,
-                       database,
-                   };
+                if (lead.idinterno_lead === 3156856) {
 
-                    // Actualizar el estado del lead
-                    const result = await cronsLeads.updateLeadActionApi(updateParams);
+                    console.log("🚀 ----------------------------------------------------------------------------------------🚀");
+                    console.log("🚀 ~ file: cronsLeads.js:235 ~ cron.schedule ~ lead.idinterno_lead:", lead.idinterno_lead);
+                    console.log("🚀 ----------------------------------------------------------------------------------------🚀");
 
-                    console.log("🚀 --------------------------------------------------------------🚀");
-                    console.log("🚀 ~ file: cronsLeads.js:251 ~ cron.schedule ~ result:", result);
-                    console.log("🚀 --------------------------------------------------------------🚀");
+                    console.log("🚀 --------------------------------------------------------------------------------------------------------🚀");
+                    console.log("🚀 ~ file: cronsLeads.js:242 ~ cron.schedule ~ lead.actualizadaaccion_lead:", lead.actualizadaaccion_lead);
+                    console.log("🚀 --------------------------------------------------------------------------------------------------------🚀");
 
                 }
+
+
+                    if (diasDiferencia >= 7) {
+                        // Si han pasado más de 7 días, procesar el lead como inactivo
+                        // console.log(`Han pasado ${diasDiferencia} días desde la última actualización del lead con ID ${lead.idinterno_lead}.`);
+
+                        const updateParams = {
+                            estadoActual: lead.segimineto_lead,
+                            valor_segimineto_lead: additionalValues.valor_segimineto_lead,
+                            estado_lead: additionalValues.estado_lead,
+                            accion_lead: additionalValues.accion_lead,
+                            seguimiento_calendar: additionalValues.seguimiento_calendar,
+                            valorDeCaida: additionalValues.valorDeCaida,
+                            formattedDate: lead.actualizadaaccion_lead, // Mantener la fecha original de la acción
+                            leadId: lead.idinterno_lead,
+                            database,
+                        };
+
+                        // Actualizar el estado del lead
+                        const result = await cronsLeads.updateLeadActionApi(updateParams);
+
+                        console.log("🚀 --------------------------------------------------------------🚀");
+                        console.log("🚀 ~ file: cronsLeads.js:251 ~ cron.schedule ~ result:", result);
+                        console.log("🚀 --------------------------------------------------------------🚀");
+                    }
 
             } else {
                 // Si no se pudo obtener una fecha válida, se muestra un mensaje
