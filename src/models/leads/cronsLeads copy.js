@@ -160,65 +160,111 @@ cronsLeads.updateLeadActionApi = async (dataParams) =>
 /**
  * Ejecuta la tarea cron cada 5 segundos para consultar los leads y procesarlos según su actividad.
  */
-cron.schedule("30 8 * * *", async () => {
-    console.log("Ejecutando cron de leads cada día a las 8:20 am");
-
-    // Obtener la fecha de hoy en formato YYYY-MM-DD
-    const hoy = new Date();
-    const fechaHoyFormateada = hoy.toISOString().split("T")[0];
-   
+cron.schedule("41 7 * * *", async () => {
+    console.log("Ejecutando cron de leads cada día a las 6 am");
 
     const database = "pruebas"; // Base de datos a utilizar
 
     try {
         // Parámetros iniciales para consultar leads
         const dataParams = {
-            rol_admin: 1,
-            idnetsuite_admin: 0,
-            startDate: "2024-01-01",
-            endDate: "2024-01-01",
-            filterOption: 0,
-            database,
+            rol_admin: 1, // Rol de administrador
+            idnetsuite_admin: 0, // ID de Netsuite del administrador
+            startDate: "2024-01-01", // Fecha de inicio de búsqueda (valor por defecto) esto se ingora su filterOption=0
+            endDate: "2024-01-01", // Fecha de fin de búsqueda (valor por defecto)filterOption=0
+            filterOption: 0, // Opción de filtro (por defecto)
+            database, // Base de datos a utilizar
         };
 
         // Obtener los leads que requieren atención
         const result = await cronsLeads.getAll_LeadsAttention(dataParams);
 
-        // Valores adicionales para el procesamiento de leads inactivos
+
+
+
+        // Valores adicionales que se usarán en el procesamiento de leads inactivos
         const additionalValues = {
-            valorDeCaida: 60,
-            tipo: "01 Sin actividad registrada en los últimos 7 días",
-            estado_lead: 1,
-            accion_lead: 7,
-            seguimiento_calendar: 0,
-            valor_segimineto_lead: 3,
+            valorDeCaida: 60, // Valor de referencia de "caída" del lead
+            tipo: "01 Sin actividad registrada en los últimos 7 días", // Tipo de evento
+            estado_lead: 1, // Estado del lead a actualizar
+            accion_lead: 7, // Acción tomada en el lead
+            seguimiento_calendar: 0, // Indica si hay seguimiento en calendario
+            valor_segimineto_lead: 3, // Valor del seguimiento asociado al lead
         };
 
-        // Procesar cada lead individualmente
+        // Procesar cada lead individualmente con un retraso de 5 segundos
         for (const lead of result["0"]) {
-            console.log("Procesando lead con ID", lead.idinterno_lead);
+            try {
+                // Verificar y formatear la fecha de la última acción en el lead
+                const leadDateValue = typeof lead.actualizadaaccion_lead === "string" ? lead.actualizadaaccion_lead : lead.actualizadaaccion_lead instanceof Date ? lead.actualizadaaccion_lead.toISOString() : null;
 
-            let fechaFormateada = null;
-            const { actualizadaaccion_lead } = lead;
+                // Continuar si no hay una fecha válida
+                if (!leadDateValue) {
+                    console.warn(`Lead ID ${lead.idinterno_lead} no tiene una fecha de actualización válida.`);
+                    continue;
+                }
 
-            // Formatear la fecha según su tipo
-            if (actualizadaaccion_lead instanceof Date) {
-                fechaFormateada = actualizadaaccion_lead.toISOString().split("T")[0];
-            } else if (typeof actualizadaaccion_lead === "string") {
-                fechaFormateada = actualizadaaccion_lead.split("T")[0];
-            } else {
-                console.log(`El valor de actualizadaaccion_lead para el lead con ID ${lead.idinterno_lead} no es ni una cadena ni una fecha válida.`);
+                // Convertir la fecha en formato YYYY-MM-DD y calcular la diferencia en días
+                const leadDate = new Date(leadDateValue.split("T")[0]);
+                const currentDate = new Date();
+                const differenceInDays = (currentDate - leadDate) / (1000 * 3600 * 24);
+
+                if (lead.idinterno_lead === 3664225) {
+                    console.log("Lead ID:", lead.idinterno_lead);
+                    console.log("Fecha de última actualización:", lead.actualizadaaccion_lead);
+                }
+
+                // Si el lead no ha sido actualizado en más de 7 días
+                if (differenceInDays > 7) {
+                    console.log(lead.idinterno_lead);
+                    
+                    const soloFecha = lead.actualizadaaccion_lead.split("T")[0];
+                    console.log(soloFecha);
+
+                    // // Datos para registrar en la bitácora
+                    // const bitacoraParams = {
+                    //     leadId: lead.idinterno_lead,
+                    //     idnetsuite_admin: lead.id_empleado_lead,
+                    //     valorDeCaida: additionalValues.valorDeCaida,
+                    //     descripcionEvento: "Proceso automatico",
+                    //     tipo: "lead",
+                    //     estadoActual: lead.segimineto_lead,
+                    //     database,
+                    // };
+
+                    // // Registrar la actividad del lead en la bitácora
+                    // const rs = await cronsLeads.insertBitcoraLead(bitacoraParams);
+                    // console.log("🚀 Bitácora registrada para lead:", lead.idinterno_lead);
+                    // console.log(rs);
+
+                    // // Datos para actualizar el estado del lead
+                    // const updateParams = {
+                    //     estadoActual: lead.segimineto_lead,
+                    //     valor_segimineto_lead: additionalValues.valor_segimineto_lead,
+                    //     estado_lead: additionalValues.estado_lead,
+                    //     accion_lead: additionalValues.accion_lead,
+                    //     seguimiento_calendar: additionalValues.seguimiento_calendar,
+                    //     valorDeCaida: additionalValues.valorDeCaida,
+                    //     formattedDate: lead.actualizadaaccion_lead, // Mantener la fecha original de la acción
+                    //     leadId: lead.idinterno_lead,
+                    //     database,
+                    // };
+
+                    // // Actualizar el estado del lead
+                    // const result = await cronsLeads.updateLeadActionApi(updateParams);
+                    // console.log("🚀 Lead actualizado:", lead.idinterno_lead);
+                    // console.log(result);
+
+                    // console.log("🚀 Completo proceso automático de rezagados para lead:", lead.idinterno_lead);
+
+                    //  console.log("🚀 ****************************************************************************************", lead.idinterno_lead);
+                }
+
+                // Esperar 5 segundos antes de procesar el siguiente lead
+                await new Promise((resolve) => setTimeout(resolve, 5000));
+            } catch (error) {
+                console.error(`Error procesando el lead con ID ${lead.idinterno_lead}:`, error.message);
             }
-
-            if (fechaFormateada) {
-                console.log("La fecha formateada es:", fechaFormateada);
-                console.log("La fecha de hoy es:", fechaHoyFormateada);
-                console.log("*****************************************************")
-            } else {
-                console.log("No se pudo obtener una fecha válida para este lead.");
-            }
-
-            console.log("------");
         }
 
         console.log("🚀 02 Proceso automático de leads rezagados completado.");
@@ -226,8 +272,6 @@ cron.schedule("30 8 * * *", async () => {
         console.error("Error al ejecutar el cron de leads:", error.message);
     }
 });
-
-
 
 
 
