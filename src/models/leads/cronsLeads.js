@@ -160,7 +160,7 @@ cronsLeads.updateLeadActionApi = async (dataParams) =>
 /**
  * Ejecuta la tarea cron cada 5 segundos para consultar los leads y procesarlos según su actividad.
  */
-cron.schedule("52 8 * * *", async () => {
+cron.schedule("54 8 * * *", async () => {
     console.log("Ejecutando cron de leads cada día a las 44 8 am");
 
     // Obtener la fecha de hoy en formato YYYY-MM-DD
@@ -219,7 +219,7 @@ cron.schedule("52 8 * * *", async () => {
 
             if (fechaFormateada) {
                 console.log("La fecha formateada es:", fechaFormateada);
-                const fechaLead = fechaFormateada;
+                const fechaLead = new Date(fechaFormateada + "T00:00:00-06:00"); // Convertir al huso horario de Costa Rica
 
                 console.log("🚀 --------------------------------------------------------------------🚀");
                 console.log("🚀 ~ file: cronsLeads.js:229 ~ cron.schedule ~ fechaLead:", fechaLead);
@@ -231,8 +231,6 @@ cron.schedule("52 8 * * *", async () => {
                 console.log("🚀 ------------------------------------------------------------------------------🚀");
                 console.log("🚀 ~ file: cronsLeads.js:231 ~ cron.schedule ~ diasDiferencia:", diasDiferencia);
                 console.log("🚀 ------------------------------------------------------------------------------🚀");
-
-
             } else {
                 console.log("No se pudo obtener una fecha válida para este lead.");
             }
