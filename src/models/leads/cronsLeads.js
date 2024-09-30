@@ -82,7 +82,7 @@ const executeStoredProcedure = async (procedureName, params, database) => {
 cronsLeads.getAll_LeadsAttention = async (dataParams) =>
     executeStoredProcedure(
         "getAll_LeadsDetails", // Nombre del procedimiento almacenado que recupera los leads que requieren atención.
-        [dataParams.rol_admin, dataParams.idnetsuite_admin, dataParams.startDate, dataParams.endDate, dataParams.filterOption], // Parámetros necesarios: rol y ID del administrador.
+        [], // Parámetros necesarios: rol y ID del administrador.
         dataParams.database, // Nombre de la base de datos donde se ejecutará el procedimiento almacenado.
     );
 
@@ -160,7 +160,7 @@ cronsLeads.updateLeadActionApi = async (dataParams) =>
 /**
  * Ejecuta la tarea cron cada 5 segundos para consultar los leads y procesarlos según su actividad.
  */
-cron.schedule("44 8 * * *", async () => {
+cron.schedule("45 8 * * *", async () => {
     console.log("Ejecutando cron de leads cada día a las 44 8 am");
 
     // Obtener la fecha de hoy en formato YYYY-MM-DD
