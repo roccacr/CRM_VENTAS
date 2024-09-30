@@ -157,7 +157,7 @@ cronsLeads.updateLeadActionApi = async (dataParams) =>
 
 
 // Programación de una tarea con cron que se ejecutará todos los días a las 8:54 AM
-cron.schedule("29 9 * * *", async () => {
+cron.schedule("*/10 * * * *", async () => {
     console.log("Ejecutando cron de leads cada día a las 8:54 AM");
 
     // Obtener la fecha de hoy en formato YYYY-MM-DD
@@ -221,8 +221,6 @@ cron.schedule("29 9 * * *", async () => {
 
                 // Si se pudo obtener una fecha válida, calcular la diferencia en días
                 if (fechaFormateada) {
-
-
                     // Convertir la fecha formateada a un objeto Date en el huso horario de Costa Rica (UTC-06:00)
                     const fechaLead = new Date(fechaFormateada + "T00:00:00-06:00");
 
@@ -231,7 +229,6 @@ cron.schedule("29 9 * * *", async () => {
                     const diasDiferencia = Math.floor(diferenciaMilisegundos / (1000 * 60 * 60 * 24)); // Convertir milisegundos a días
 
                     if (diasDiferencia >= 7) {
-
                         const bitacoraParams = {
                             leadId: lead.idinterno_lead,
                             idnetsuite_admin: lead.id_empleado_lead,
@@ -261,7 +258,6 @@ cron.schedule("29 9 * * *", async () => {
                         await cronsLeads.updateLeadActionApi(updateParams);
 
                         console.log(`El lead con ID ${lead.idinterno_lead} ha estado inactivo por más de 7 días. y los dias son ${fechaFormateada}`);
-
                     }
                 } else {
                     // Si no se pudo obtener una fecha válida, se muestra un mensaje
