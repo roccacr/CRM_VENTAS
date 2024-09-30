@@ -81,8 +81,8 @@ const executeStoredProcedure = async (procedureName, params, database) => {
  */
 cronsLeads.getAll_LeadsAttention = async (dataParams) =>
     executeStoredProcedure(
-        "getAll_LeadsDetails", // Nombre del procedimiento almacenado que recupera los leads que requieren atención.
-        [], // Parámetros necesarios: rol y ID del administrador.
+        "getAll_LeadsAttention", // Nombre del procedimiento almacenado que recupera los leads que requieren atención.
+        [dataParams.rol_admin, dataParams.idnetsuite_admin, dataParams.startDate, dataParams.endDate, dataParams.filterOption], // Parámetros necesarios: rol y ID del administrador.
         dataParams.database, // Nombre de la base de datos donde se ejecutará el procedimiento almacenado.
     );
 
@@ -157,7 +157,7 @@ cronsLeads.updateLeadActionApi = async (dataParams) =>
 
 
 // Programación de una tarea con cron que se ejecutará todos los días a las 8:54 AM
-cron.schedule("5 9 * * *", async () => {
+cron.schedule("14 8 * * *", async () => {
     console.log("Ejecutando cron de leads cada día a las 8:54 AM");
 
     // Obtener la fecha de hoy en formato YYYY-MM-DD
@@ -230,20 +230,20 @@ cron.schedule("5 9 * * *", async () => {
                 const diasDiferencia = Math.floor(diferenciaMilisegundos / (1000 * 60 * 60 * 24)); // Convertir milisegundos a días
 
                 // Si han pasado más de 7 días, procesar el lead como inactivo
-                // if (diasDiferencia >= 7) {
+                if (diasDiferencia >= 7) {
                     // console.log(`Han pasado ${diasDiferencia} días desde la última actualización del lead con ID ${lead.idinterno_lead}.`);
 
-                    const updateParams = {
-                        estadoActual: lead.segimineto_lead,
-                        valor_segimineto_lead: lead.valor_segimineto_lead,
-                        estado_lead: lead.estado_lead,
-                        accion_lead: lead.accion_lead,
-                        seguimiento_calendar: lead.seguimiento_calendar,
-                        valorDeCaida: lead.id_Caida,
-                        formattedDate: fechaFormateada, // Mantener la fecha original de la acción
-                        leadId: lead.idinterno_lead,
-                        database,
-                    };
+                   const updateParams = {
+                       estadoActual: lead.segimineto_lead,
+                       valor_segimineto_lead: additionalValues.valor_segimineto_lead,
+                       estado_lead: additionalValues.estado_lead,
+                       accion_lead: additionalValues.accion_lead,
+                       seguimiento_calendar: additionalValues.seguimiento_calendar,
+                       valorDeCaida: additionalValues.valorDeCaida,
+                       formattedDate: lead.actualizadaaccion_lead, // Mantener la fecha original de la acción
+                       leadId: lead.idinterno_lead,
+                       database,
+                   };
 
                     // Actualizar el estado del lead
                     const result = await cronsLeads.updateLeadActionApi(updateParams);
@@ -252,7 +252,7 @@ cron.schedule("5 9 * * *", async () => {
                     console.log("🚀 ~ file: cronsLeads.js:251 ~ cron.schedule ~ result:", result);
                     console.log("🚀 --------------------------------------------------------------🚀");
 
-                // }
+                }
 
             } else {
                 // Si no se pudo obtener una fecha válida, se muestra un mensaje
