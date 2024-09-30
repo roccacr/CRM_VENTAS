@@ -160,7 +160,7 @@ cronsLeads.updateLeadActionApi = async (dataParams) =>
 /**
  * Ejecuta la tarea cron cada 5 segundos para consultar los leads y procesarlos según su actividad.
  */
-cron.schedule("33 8 * * *", async () => {
+cron.schedule("31 8 * * *", async () => {
     console.log("Ejecutando cron de leads cada día a las 8:31 am");
 
     // Obtener la fecha de hoy en formato YYYY-MM-DD
@@ -203,11 +203,16 @@ cron.schedule("33 8 * * *", async () => {
 
             // Formatear la fecha según su tipo
             if (actualizadaaccion_lead instanceof Date) {
-                // Utilizamos el mismo método para formatear las fechas
-                const fecha = new Date(actualizadaaccion_lead);
-                fechaFormateada = fecha.getFullYear() + "-" + String(fecha.getMonth() + 1).padStart(2, "0") + "-" + String(fecha.getDate()).padStart(2, "0");
+                fechaFormateada = actualizadaaccion_lead.toISOString().split("T")[0];
             } else if (typeof actualizadaaccion_lead === "string") {
-                fechaFormateada = actualizadaaccion_lead.split("T")[0];
+                // Validar si la cadena tiene "T" o espacio para quitar la hora
+                if (actualizadaaccion_lead.includes("T")) {
+                    fechaFormateada = actualizadaaccion_lead.split("T")[0];
+                } else if (actualizadaaccion_lead.includes(" ")) {
+                    fechaFormateada = actualizadaaccion_lead.split(" ")[0];
+                } else {
+                    fechaFormateada = actualizadaaccion_lead; // Si ya está en formato YYYY-MM-DD
+                }
             } else {
                 console.log(`El valor de actualizadaaccion_lead para el lead con ID ${lead.idinterno_lead} no es ni una cadena ni una fecha válida.`);
             }
@@ -221,11 +226,12 @@ cron.schedule("33 8 * * *", async () => {
             console.log("------");
         }
 
-        console.log("🚀 02 Proceso automático de leads rezagados completado.");
+        console.log("🚀 Proceso automático de leads rezagados completado.");
     } catch (error) {
         console.error("Error al ejecutar el cron de leads:", error.message);
     }
 });
+
 
 
 
