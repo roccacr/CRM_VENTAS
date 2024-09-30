@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useDispatch } from "react-redux";
 import Select from "react-select";
 import makeAnimated from "react-select/animated";
-import { getLeadsComplete } from "../../../../../store/leads/thunksLeads";
+import { getLeadsComplete, getLeadsTotal } from "../../../../../store/leads/thunksLeads";
 import { ModalLeads } from "../../../../pages/modal/modalLeads";
 import { columnsConfig } from "./columnsConfig";
 import * as XLSX from "xlsx"; // Importamos la librería para generar el archivo Excel
@@ -89,7 +89,7 @@ export default function View_total_leads() {
     // Función para traer los datos de acuerdo a las fechas seleccionadas y el filtro
     const fetchData = async (startDate, endDate, filterOption) => {
         setIsLoading(true); // Activa el preloader al inicio
-        const result = await dispatch(getLeadsComplete(startDate, endDate, filterOption));
+        const result = await dispatch(getLeadsTotal(startDate, endDate, filterOption));
         setTableData(result); // Guardamos todos los registros en tableData
         setFilteredData(result); // Inicializamos filteredData con todos los registros al inicio
         setIsLoading(false); // Desactiva el preloader cuando se carguen los datos
@@ -366,7 +366,7 @@ export default function View_total_leads() {
     return (
         <div className="card" style={{ width: "100%" }}>
             <div className="card-header table-card-header">
-                <h5>MÓDULO DE LEADS : LISTA COMPLETA</h5>
+                <h5>MÓDULO DE LEADS : LISTA DE LEADS TOTALES</h5>
             </div>
 
             <div className="card-header border-bottom-0">

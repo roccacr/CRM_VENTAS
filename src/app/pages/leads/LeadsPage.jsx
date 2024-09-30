@@ -7,6 +7,8 @@ import View_list_leads_complete from "../../views/leads/list/complete/View_list_
 import { View_note } from "../../views/leads/note/View_note";
 import View_list_leads_Stragglers from "../../views/leads/list/Stragglers/View_list_leads_Stragglers";
 import { View_loss_lead } from "../../views/leads/loss/View_loss_lead";
+import { View_follow_up } from "../../views/leads/follow-up/View_follow_up";
+import View_total_leads from "../../views/leads/list/total/View_total_leads";
 
 export const LeadsPage = () => {
     const location = useLocation();
@@ -28,6 +30,7 @@ export const LeadsPage = () => {
                         {path[1] === "leads" && path[2] === "lista" && dataValue === "3" && <View_list_leads_attention />}
                         {path[1] === "leads" && path[2] === "lista" && dataValue === "4" && <View_list_leads_Stragglers />}
                         {path[1] === "leads" && path[2] === "lista" && dataValue === "1" && <View_list_leads_complete />}
+                        {path[1] === "leads" && path[2] === "lista" && dataValue === "5" && <View_total_leads />}
                         {path[1] === "leads" && path[2] === "note" && <View_note />}
                         {path[1] === "leads" && path[2] === "loss" && <View_loss_lead />}
                         {path[1] === "leads" && path[2] === "follow_up" && <View_follow_up />}

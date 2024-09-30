@@ -135,6 +135,11 @@ export const NavBar = ({ sidebarVisible, sidebarStatus, closeSidebar }) => {
                                             <span className="pc-mtext">Leads Rezagados </span>
                                         </NavLink>
                                     </li>
+                                    <li className="pc-item">
+                                        <NavLink to="/leads/lista?data=5" className="pc-link active">
+                                            <span className="pc-mtext">Leads Totales </span>
+                                        </NavLink>
+                                    </li>
                                 </ul>
                             )}
                         </li>
