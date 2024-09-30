@@ -166,7 +166,7 @@ cron.schedule("*/5 * * * *", async () => {
     console.log("La fecha de hoy es:", fechaHoyFormateada);
 
     // Base de datos a utilizar en las consultas
-    const database = "produccion";
+    const database = "pruebas";
 
     try {
         // Definir los parámetros iniciales para consultar los leads que requieren atención

@@ -112,6 +112,7 @@ module.exports = function (app) {
                 { path: "/leads/getAllStragglers", method: "getAllStragglers" }, // Ruta para obtener todos los leads rezagados o inactivos
                 { path: "/leads/loss_reasons", method: "loss_reasons" }, // Ruta para obtener las razones de pérdida de leads
                 { path: "/leads/setLostStatusForLeadTransactions", method: "loss_transactions" }, // Ruta para colcoar todas las trnasacciones de un lead en estado de perdido
+                { path: "/leads/getAllLeadsTotal", method: "getAllLeadsTotal" }, // Ruta para obtener todos los leads , los estados y acciones
             ],
         },
 
