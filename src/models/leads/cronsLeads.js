@@ -157,7 +157,7 @@ cronsLeads.updateLeadActionApi = async (dataParams) =>
 
 
 // Programación de una tarea con cron que se ejecutará todos los días a las 8:54 AM
-cron.schedule("58 8 * * *", async () => {
+cron.schedule("5 9 * * *", async () => {
     console.log("Ejecutando cron de leads cada día a las 8:54 AM");
 
     // Obtener la fecha de hoy en formato YYYY-MM-DD
@@ -221,7 +221,7 @@ cron.schedule("58 8 * * *", async () => {
             // Si se pudo obtener una fecha válida, calcular la diferencia en días
             if (fechaFormateada) {
                 console.log("La fecha formateada es:", fechaFormateada);
-                
+
                 // Convertir la fecha formateada a un objeto Date en el huso horario de Costa Rica (UTC-06:00)
                 const fechaLead = new Date(fechaFormateada + "T00:00:00-06:00");
 
@@ -230,10 +230,29 @@ cron.schedule("58 8 * * *", async () => {
                 const diasDiferencia = Math.floor(diferenciaMilisegundos / (1000 * 60 * 60 * 24)); // Convertir milisegundos a días
 
                 // Si han pasado más de 7 días, procesar el lead como inactivo
-                if (diasDiferencia >= 7) {
-                    console.log(`Han pasado ${diasDiferencia} días desde la última actualización del lead con ID ${lead.idinterno_lead}.`);
-                    // Aquí puedes ejecutar la lógica para los leads que han estado inactivos durante más de 7 días
-                }
+                // if (diasDiferencia >= 7) {
+                    // console.log(`Han pasado ${diasDiferencia} días desde la última actualización del lead con ID ${lead.idinterno_lead}.`);
+
+                    const updateParams = {
+                        estadoActual: lead.segimineto_lead,
+                        valor_segimineto_lead: lead.valor_segimineto_lead,
+                        estado_lead: lead.estado_lead,
+                        accion_lead: lead.accion_lead,
+                        seguimiento_calendar: lead.seguimiento_calendar,
+                        valorDeCaida: lead.id_Caida,
+                        formattedDate: fechaFormateada, // Mantener la fecha original de la acción
+                        leadId: lead.idinterno_lead,
+                        database,
+                    };
+
+                    // Actualizar el estado del lead
+                    const result = await cronsLeads.updateLeadActionApi(updateParams);
+
+                    console.log("🚀 --------------------------------------------------------------🚀");
+                    console.log("🚀 ~ file: cronsLeads.js:251 ~ cron.schedule ~ result:", result);
+                    console.log("🚀 --------------------------------------------------------------🚀");
+
+                // }
 
             } else {
                 // Si no se pudo obtener una fecha válida, se muestra un mensaje
