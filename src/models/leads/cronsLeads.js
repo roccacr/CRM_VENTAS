@@ -160,13 +160,13 @@ cronsLeads.updateLeadActionApi = async (dataParams) =>
 /**
  * Ejecuta la tarea cron cada 5 segundos para consultar los leads y procesarlos según su actividad.
  */
-cron.schedule("31 8 * * *", async () => {
-    console.log("Ejecutando cron de leads cada día a las 8:20 am");
+cron.schedule("33 8 * * *", async () => {
+    console.log("Ejecutando cron de leads cada día a las 8:31 am");
 
     // Obtener la fecha de hoy en formato YYYY-MM-DD
     const hoy = new Date();
-    const fechaHoyFormateada = hoy.toISOString().split("T")[0];
-   
+    const fechaHoyFormateada = hoy.getFullYear() + "-" + String(hoy.getMonth() + 1).padStart(2, "0") + "-" + String(hoy.getDate()).padStart(2, "0");
+    console.log("La fecha de hoy es:", fechaHoyFormateada);
 
     const database = "produccion"; // Base de datos a utilizar
 
@@ -203,7 +203,9 @@ cron.schedule("31 8 * * *", async () => {
 
             // Formatear la fecha según su tipo
             if (actualizadaaccion_lead instanceof Date) {
-                fechaFormateada = actualizadaaccion_lead.toISOString().split("T")[0];
+                // Utilizamos el mismo método para formatear las fechas
+                const fecha = new Date(actualizadaaccion_lead);
+                fechaFormateada = fecha.getFullYear() + "-" + String(fecha.getMonth() + 1).padStart(2, "0") + "-" + String(fecha.getDate()).padStart(2, "0");
             } else if (typeof actualizadaaccion_lead === "string") {
                 fechaFormateada = actualizadaaccion_lead.split("T")[0];
             } else {
@@ -212,8 +214,6 @@ cron.schedule("31 8 * * *", async () => {
 
             if (fechaFormateada) {
                 console.log("La fecha formateada es:", fechaFormateada);
-                console.log("La fecha de hoy es:", fechaHoyFormateada);
-                console.log("*****************************************************")
             } else {
                 console.log("No se pudo obtener una fecha válida para este lead.");
             }
@@ -226,6 +226,7 @@ cron.schedule("31 8 * * *", async () => {
         console.error("Error al ejecutar el cron de leads:", error.message);
     }
 });
+
 
 
 
