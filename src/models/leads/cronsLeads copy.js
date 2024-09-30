@@ -221,43 +221,43 @@ cron.schedule("41 7 * * *", async () => {
                     const soloFecha = lead.actualizadaaccion_lead.split("T")[0];
                     console.log(soloFecha);
 
-                    // // Datos para registrar en la bitácora
-                    // const bitacoraParams = {
-                    //     leadId: lead.idinterno_lead,
-                    //     idnetsuite_admin: lead.id_empleado_lead,
-                    //     valorDeCaida: additionalValues.valorDeCaida,
-                    //     descripcionEvento: "Proceso automatico",
-                    //     tipo: "lead",
-                    //     estadoActual: lead.segimineto_lead,
-                    //     database,
-                    // };
+                    // Datos para registrar en la bitácora
+                    const bitacoraParams = {
+                        leadId: lead.idinterno_lead,
+                        idnetsuite_admin: lead.id_empleado_lead,
+                        valorDeCaida: additionalValues.valorDeCaida,
+                        descripcionEvento: "Proceso automatico",
+                        tipo: "lead",
+                        estadoActual: lead.segimineto_lead,
+                        database,
+                    };
 
-                    // // Registrar la actividad del lead en la bitácora
-                    // const rs = await cronsLeads.insertBitcoraLead(bitacoraParams);
-                    // console.log("🚀 Bitácora registrada para lead:", lead.idinterno_lead);
-                    // console.log(rs);
+                    // Registrar la actividad del lead en la bitácora
+                    const rs = await cronsLeads.insertBitcoraLead(bitacoraParams);
+                    console.log("🚀 Bitácora registrada para lead:", lead.idinterno_lead);
+                    console.log(rs);
 
-                    // // Datos para actualizar el estado del lead
-                    // const updateParams = {
-                    //     estadoActual: lead.segimineto_lead,
-                    //     valor_segimineto_lead: additionalValues.valor_segimineto_lead,
-                    //     estado_lead: additionalValues.estado_lead,
-                    //     accion_lead: additionalValues.accion_lead,
-                    //     seguimiento_calendar: additionalValues.seguimiento_calendar,
-                    //     valorDeCaida: additionalValues.valorDeCaida,
-                    //     formattedDate: lead.actualizadaaccion_lead, // Mantener la fecha original de la acción
-                    //     leadId: lead.idinterno_lead,
-                    //     database,
-                    // };
+                    // Datos para actualizar el estado del lead
+                    const updateParams = {
+                        estadoActual: lead.segimineto_lead,
+                        valor_segimineto_lead: additionalValues.valor_segimineto_lead,
+                        estado_lead: additionalValues.estado_lead,
+                        accion_lead: additionalValues.accion_lead,
+                        seguimiento_calendar: additionalValues.seguimiento_calendar,
+                        valorDeCaida: additionalValues.valorDeCaida,
+                        formattedDate: lead.actualizadaaccion_lead, // Mantener la fecha original de la acción
+                        leadId: lead.idinterno_lead,
+                        database,
+                    };
 
-                    // // Actualizar el estado del lead
-                    // const result = await cronsLeads.updateLeadActionApi(updateParams);
-                    // console.log("🚀 Lead actualizado:", lead.idinterno_lead);
-                    // console.log(result);
+                    // Actualizar el estado del lead
+                    const result = await cronsLeads.updateLeadActionApi(updateParams);
+                    console.log("🚀 Lead actualizado:", lead.idinterno_lead);
+                    console.log(result);
 
-                    // console.log("🚀 Completo proceso automático de rezagados para lead:", lead.idinterno_lead);
+                    console.log("🚀 Completo proceso automático de rezagados para lead:", lead.idinterno_lead);
 
-                    //  console.log("🚀 ****************************************************************************************", lead.idinterno_lead);
+                     console.log("🚀 ****************************************************************************************", lead.idinterno_lead);
                 }
 
                 // Esperar 5 segundos antes de procesar el siguiente lead
