@@ -181,4 +181,30 @@ calendars.editEvent = (dataParams) =>
         dataParams.database, // Nombre de la base de datos a utilizar.
     );
 
+
+
+/**
+ * Ejecuta el procedimiento almacenado para actualizar la fecha de un evento en el calendario.
+ *
+ * @param {object} dataParams - Parámetros necesarios para la ejecución del procedimiento almacenado.
+ * @param {number} dataParams.id - ID del evento que se va a mover.
+ * @param {string} dataParams.newDateSart - Nueva fecha de inicio para el evento (en formato YYYY-MM-DD).
+ * @param {string} dataParams.newDateEnd - Nueva fecha de finalización para el evento (en formato YYYY-MM-DD).
+ * @param {string} dataParams.database - Nombre de la base de datos en la que se va a ejecutar el procedimiento.
+ *
+ * @returns {Promise<object>} - Retorna el resultado de la ejecución del procedimiento almacenado.
+ */
+calendars.update_event_MoveDate = (dataParams) =>
+    executeStoredProcedure(
+        "update_event_MoveDate", // Nombre del procedimiento almacenado que se ejecuta en la base de datos.
+        [
+            dataParams.id, // ID del evento que se va a actualizar.
+            dataParams.newDateStart, // Nueva fecha de inicio del evento.
+            dataParams.newDateEnd, // Nueva fecha de finalización del evento.
+        ],
+        dataParams.database, // Nombre de la base de datos en la que se realiza la operación.
+    );
+
+
+
 module.exports = calendars; // Exporta el objeto 'calendars' que contiene todas las funciones relacionadas con eventos del calendario.
