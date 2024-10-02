@@ -163,7 +163,7 @@ cronsLeads.updateLeadActionApi = async (dataParams) =>
 cron.schedule("41 7 * * *", async () => {
     console.log("Ejecutando cron de leads cada día a las 6 am");
 
-    const database = "pruebas"; // Base de datos a utilizar
+    const database = "produccion"; // Base de datos a utilizar
 
     try {
         // Parámetros iniciales para consultar leads
