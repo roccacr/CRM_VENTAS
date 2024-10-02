@@ -79,9 +79,7 @@ calendars.get_Calendars = (dataParams) =>
         dataParams.database, // Nombre de la base de datos a utilizar.
     );
 
-
-
-    /**
+/**
  * Obtiene todos los eventos del calendario.
  * @async
  * @param {Object} dataParams - Objeto que contiene los parámetros necesarios para la consulta.
@@ -108,23 +106,22 @@ calendars.createEvent = (dataParams) =>
         dataParams.database, // Nombre de la base de datos a utilizar.
     );
 
-
 /**
  * Obtiene todos los eventos del calendario desde una base de datos específica.
- * 
+ *
  * @function calendars.getDataEevent
  * @async
  * @param {Object} dataParams - Objeto que contiene los parámetros necesarios para la consulta.
  * @param {number|string} dataParams.id - El ID del evento que se desea obtener.
  * @param {string} dataParams.database - El nombre de la base de datos en la que se realizará la consulta.
  * @returns {Promise<Object>} - Promesa que se resuelve con el resultado de la consulta de eventos del calendario.
- * 
+ *
  * @description
  * Esta función ejecuta un procedimiento almacenado llamado `getDataEevent` para obtener los eventos del calendario,
  * utilizando los parámetros proporcionados, como el ID del evento y el nombre de la base de datos.
  * El resultado de la consulta es retornado como una promesa que puede ser utilizada para manejar los datos en otras
  * partes de la aplicación.
- * 
+ *
  * @example
  * const eventData = await calendars.getDataEevent({ id: 123, database: 'production_db' });
  * console.log(eventData);
@@ -136,10 +133,9 @@ calendars.getDataEevent = (dataParams) =>
         dataParams.database, // Nombre de la base de datos a utilizar para la consulta.
     );
 
-
 /**
  * Llama al procedimiento almacenado 'get_event_Citas' para obtener las citas de un lead específico.
- * 
+ *
  * @param {object} dataParams - Objeto que contiene los parámetros necesarios para la consulta.
  * @param {number} dataParams.id - El ID del evento para el cual se deben obtener las citas.
  * @param {string} dataParams.database - El nombre de la base de datos en la que se ejecutará la consulta.
@@ -152,8 +148,7 @@ calendars.get_event_Citas = (dataParams) =>
         dataParams.database, // Nombre de la
     );
 
-
-    /**
+/**
  * Editar eventos del calendario.
  * @async
  * @param {Object} dataParams - Objeto que contiene los parámetros necesarios para la consulta.
@@ -181,8 +176,6 @@ calendars.editEvent = (dataParams) =>
         dataParams.database, // Nombre de la base de datos a utilizar.
     );
 
-
-
 /**
  * Ejecuta el procedimiento almacenado para actualizar la fecha de un evento en el calendario.
  *
@@ -205,6 +198,18 @@ calendars.update_event_MoveDate = (dataParams) =>
         dataParams.database, // Nombre de la base de datos en la que se realiza la operación.
     );
 
+calendars.update_Status_Event = (dataParams) => {
+    console.log(dataParams);
 
+    // Llamada al procedimiento almacenado
+    executeStoredProcedure(
+        "update_Status_Event", // Nombre del procedimiento almacenado
+        [
+            dataParams.id, // ID del evento
+            dataParams.NewStatus, // Nuevo estado
+        ],
+        dataParams.database, // Nombre de la base de datos
+    );
+};
 
 module.exports = calendars; // Exporta el objeto 'calendars' que contiene todas las funciones relacionadas con eventos del calendario.
