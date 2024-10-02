@@ -122,6 +122,9 @@ module.exports = function (app) {
             routes: [
                 { path: "/calendars/get_Calendars", method: "get_Calendars" }, // Ruta para obtener todos los eventos del calendars
                 { path: "/calendars/createEvent", method: "createEvent" }, // Ruta para obtener todos los eventos del calendars
+                { path: "/calendars/getDataEevent", method: "getDataEevent" }, // Ruta para obtener todos los eventos del calendars
+                { path: "/calendars/get_event_Citas", method: "get_event_Citas" }, // Ruta para obtener todos los eventos de un cliente pra ver si tiene citas o no
+                { path: "/calendars/editEvent", method: "editEvent" }, // modificar eventos del calendario
             ],
         },
     ];
