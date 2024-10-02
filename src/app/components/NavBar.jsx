@@ -143,6 +143,23 @@ export const NavBar = ({ sidebarVisible, sidebarStatus, closeSidebar }) => {
                                 </ul>
                             )}
                         </li>
+                        {/* Otras opciones de menú */}
+                        <li className="pc-item">
+                            <NavLink to="/calendar" className="pc-link active">
+                                <span className="pc-micon">
+                                    <i className="ti ti-calendar"></i>
+                                </span>
+                                <span className="pc-mtext">Calendario</span>
+                            </NavLink>
+                        </li>
+                        <li className="pc-item">
+                            <NavLink to="/expedientes" className="pc-link active">
+                                <span className="pc-micon">
+                                    <i className="ti ti-file-text"></i>
+                                </span>
+                                <span className="pc-mtext">Expedientes</span>
+                            </NavLink>
+                        </li>
 
                         {/* Oportunidades con submenú */}
                         <li className="pc-item" onClick={() => toggleMenu("opportunitiesMenu")}>
@@ -169,43 +186,6 @@ export const NavBar = ({ sidebarVisible, sidebarStatus, closeSidebar }) => {
                                     </li>
                                 </ul>
                             )}
-                        </li>
-
-                        {/* Expedientes con submenú */}
-                        <li className="pc-item" onClick={() => toggleMenu("expedientesMenu")}>
-                            <a className="pc-link">
-                                <span className="pc-micon">
-                                    <i className="ti ti-file-text"></i>
-                                </span>
-                                <span className="pc-mtext">Expedientes</span>
-                                <span className="pc-arrow">
-                                    <i className={openMenu.expedientesMenu ? "ti ti-angle-up" : "ti ti-angle-down"}></i>
-                                </span>
-                            </a>
-                            {openMenu.expedientesMenu && (
-                                <ul className="pc-submenu">
-                                    <li className="pc-item">
-                                        <NavLink to="/expedientes/list" className="pc-link active">
-                                            <span className="pc-mtext">Lista de Expedientes</span>
-                                        </NavLink>
-                                    </li>
-                                    <li className="pc-item">
-                                        <NavLink to="/expedientes/create" className="pc-link active">
-                                            <span className="pc-mtext">Crear Expediente</span>
-                                        </NavLink>
-                                    </li>
-                                </ul>
-                            )}
-                        </li>
-
-                        {/* Otras opciones de menú */}
-                        <li className="pc-item">
-                            <NavLink to="/calendar" className="pc-link active">
-                                <span className="pc-micon">
-                                    <i className="ti ti-calendar"></i>
-                                </span>
-                                <span className="pc-mtext">Calendario</span>
-                            </NavLink>
                         </li>
 
                         <li className="pc-item">

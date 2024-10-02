@@ -113,7 +113,7 @@ export const View_follow_up = () => {
                             } else if (result.isDenied) {
                                 window.location.href = "leads/perfil?data=" + leadId;
                             } else {
-                                location.reload();
+                                window.location.reload();
                             }
                         });
                     } catch (error) {

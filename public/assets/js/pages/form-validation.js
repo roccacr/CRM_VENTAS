@@ -32,7 +32,7 @@ document.addEventListener(
   'bouncerFormValid',
   function () {
     alert('Form submitted successfully!');
-    window.location.reload();
+    window.window.location.reload();
   },
   false
 );

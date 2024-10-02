@@ -63,3 +63,78 @@ export const createCalendarEvent = async ({ idnetsuite_admin, nombreEvento, tipo
     // La URL 'calendars/createEvent' gestiona la creación de nuevos eventos en el calendario.
     return await fetchData("calendars/createEvent", requestData);
 };
+
+
+/**
+ * Función asíncrona para obtener los datos de eventos específicos.
+ * 
+ * @function get_dataEvents
+ * @param {Object} params - Objeto que contiene los parámetros requeridos para la solicitud.
+ * @param {number|string} params.id - El ID del evento que se desea obtener.
+ * @returns {Promise<Object>} - Retorna una promesa que se resuelve con los datos del evento obtenidos.
+ * 
+ * @description
+ * Esta función construye un objeto de solicitud `requestData` combinando los datos comunes (como autenticación y otros metadatos generales)
+ * con el `id` específico del evento, que se pasa como parámetro. Luego utiliza la función `fetchData` para enviar la solicitud al endpoint
+ * `calendars/getEvents` y obtener los datos del evento desde el servidor.
+ * 
+ * @example
+ * const eventData = await get_dataEvents({ id: 123 });
+ * console.log(eventData);
+ */
+
+export const get_dataEvents = async ({ id }) => {
+    // Construye el objeto de datos para la solicitud, combinando datos comunes y específicos del evento
+    const requestData = {
+        ...commonRequestData, // Datos comunes requeridos para todas las solicitudes (ej. tokens de autenticación, claves de API, etc.).
+        id, // ID del evento a obtener, pasado como parámetro
+    };
+
+    // Llama a la función fetchData para enviar la solicitud al backend con el endpoint y los datos correspondientes
+    return await fetchData("calendars/getDataEevent", requestData);
+};
+
+
+
+/**
+ * Obtiene las citas de un evento específico en base al ID proporcionado.
+ *
+ * @param {object} param0 - Objeto que contiene el ID del evento a consultar.
+ * @param {number} param0.id - El ID del evento para el cual se deben obtener las citas.
+ * @returns {Promise<object>} - Retorna los datos de las citas obtenidas desde el backend.
+ */
+export const get_event_Citas = async ({ id }) => {
+    // Construye el objeto de datos para la solicitud, combinando datos comunes y específicos del evento.
+    const requestData = {
+        ...commonRequestData, // Datos comunes requeridos para todas las solicitudes (ej. tokens de autenticación, claves de API, etc.).
+        id, // ID del evento a obtener, pasado como parámetro.
+    };
+
+    // Envía la solicitud al backend utilizando la función fetchData con el endpoint y los datos correspondientes.
+    return await fetchData("calendars/get_event_Citas", requestData);
+};
+
+
+export const editCalendarEvent = async ({ idnetsuite_admin,id_calendar,  nombreEvento, tipoEvento, descripcionEvento, formatdateIni, formatdateFin, horaInicio, horaFinal, leadId, colorEvento, citaValue }) => {
+    // Construye el objeto de datos para la solicitud, combinando datos comunes y específicos del evento
+    const requestData = {
+        ...commonRequestData, // Datos comunes requeridos para todas las solicitudes (ej. tokens de autenticación).
+        idnetsuite_admin, // ID del administrador que está creando el evento
+        id_calendar,
+        nombreEvento, // Nombre descriptivo del evento
+        tipoEvento, // Tipo o categoría del evento (llamada, reunión, etc.)
+        descripcionEvento, // Detalle adicional sobre el evento
+        formatdateIni, // Fecha y hora de inicio en formato ISO
+        formatdateFin, // Fecha y hora de finalización en formato ISO
+        horaInicio, // Hora de inicio del evento
+        horaFinal, // Hora de finalización del evento
+        leadId, // ID del lead relacionado con el evento
+        colorEvento, // Color visual que se asigna al evento
+        citaValue, // sabemos si es cita o no
+    };
+
+    // Realiza la solicitud al endpoint adecuado en el servidor para crear el evento en el calendario.
+    // La URL 'calendars/createEvent' gestiona la creación de nuevos eventos en el calendario.
+    return await fetchData("calendars/editEvent", requestData);
+};
+

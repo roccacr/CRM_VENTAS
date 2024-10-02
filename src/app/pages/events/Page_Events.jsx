@@ -2,9 +2,7 @@
 
 import { AppLayout } from "../../layout/AppLayout";
 import { useLocation } from "react-router-dom";
-import { View_events } from "../../views/events/crear/View_events";
-import { View_crear_event_lead } from "../../views/events/crearLead/View_crear_event_lead";
-import { View_edit_event } from "../../views/events/editEvent/View_edit_event";
+import { View_events_Actions } from "../../views/events/actions/View_events_Actions";
 
 
 export const Page_Events = () => {
@@ -18,9 +16,7 @@ export const Page_Events = () => {
             <div className="pc-container">
                 <div className="pc-content">
                     <div className="row">
-                        {/* Mostrar la página de lista de leads si path coincide y data === "2" */}
-                        {path[1] === "events" && path[2] === "lead" && <View_crear_event_lead />}
-                        {path[1] === "events" && path[2] === "edit" && <View_edit_event />}
+                        {path[1] === "events" && path[2] === "actions" && <View_events_Actions />}
                     </div>
                 </div>
             </div>

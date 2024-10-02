@@ -112,7 +112,7 @@ export const ModalLeads = ({ leadData, onClose }) => {
     const handleEvents = (leadData) => {
         const idLead = leadData?.idinterno_lead; // Obtiene el ID del lead.
         dispatch(setleadActive(leadData)); // Despacha una acción para marcar el lead como activo.
-        navigate(`/events/lead?id=${idLead}`); // Navega a la ruta de eventos del lead.
+        navigate(`/events/actions?idCalendar=0&idLead=${idLead}&idDate=0`); // Navega a la ruta de eventos del lead.
     };
 
     const handleWhatsappAndNote = () => {

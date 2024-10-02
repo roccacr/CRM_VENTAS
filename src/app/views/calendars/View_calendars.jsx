@@ -37,7 +37,6 @@ const getColor = (category) => {
 };
 
 export const View_calendars = () => {
-
     const navigate = useNavigate();
     const dispatch = useDispatch();
     const [events, setEvents] = useState([]);
@@ -113,8 +112,14 @@ export const View_calendars = () => {
         }
 
         // Redirigir a la página de edición del evento
-        navigate(`/events/edit?id=${eventDetails._id}`);
+        navigate(`/events/actions?idCalendar=${eventDetails._id}&idLead=${eventDetails.lead}&idDate=0`);
     };
+
+    const handleDateClick = (arg) => {
+        // Redirigir a la página de creación de eventos con la fecha seleccionada
+        navigate(`/events/actions?idCalendar=0&idLead=0&idDate=${arg.dateStr}`);
+    };
+
     return (
         <div className="card" style={{ width: "100%" }}>
             <div className="card-header table-card-header">
@@ -200,6 +205,7 @@ export const View_calendars = () => {
                                 right: currentView === "dayGridMonth" ? "dayGridMonth,listWeek" : "listWeek",
                             }}
                             events={filteredEvents}
+                            dateClick={handleDateClick} // Agrega la función para manejar el click en una fecha
                             eventDidMount={(info) => {
                                 info.el.style.backgroundColor = info.event.extendedProps.eventColor;
                                 info.el.style.borderColor = info.event.extendedProps.eventColor;

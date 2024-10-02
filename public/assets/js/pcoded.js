@@ -381,7 +381,7 @@ document.addEventListener('DOMContentLoaded', function () {
   var layout_reset = document.querySelector('#layoutreset');
   if (layout_reset) {
     layout_reset.addEventListener('click', function (e) {
-      location.reload();
+      window.location.reload();
     });
   }
 });

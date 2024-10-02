@@ -111,9 +111,9 @@ export const EventosPendientes = () => {
                                             .filter((event) => event.accion_calendar === "Pendiente")
                                             .map((event) => (
                                                 <tr key={event.id_calendar}>
-                                                    <td>{event.name_admin.substring(0, 12)}</td>
+                                                    <td>{event.name_admin}</td>
                                                     <td>{event.nombre_calendar}</td>
-                                                    <td>{event.nombre_lead.substring(0, 15)}</td>
+                                                    <td>{event.nombre_lead}</td>
                                                     <td>
                                                         <input className="form-control" type="date" value={formatDate(event.fechaIni_calendar)} onChange={(e) => handleDateChange(e, event.id_calendar, event.fechaIni_calendar)} />
                                                     </td>

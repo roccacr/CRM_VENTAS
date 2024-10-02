@@ -118,7 +118,7 @@ export const View_loss_lead = () => {
                                  window.location.href = "leads/perfil?data=" + leadId; // Reemplazar `id_le` por `leadId` si corresponde
                              } else {
                                  // Recarga la página actual.
-                                 location.reload();
+                                 window.location.reload();
                              }
                          });
                      } catch (error) {
