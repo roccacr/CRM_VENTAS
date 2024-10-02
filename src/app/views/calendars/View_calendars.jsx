@@ -137,8 +137,9 @@ const handleEventDrop = async (info) => {
     const eventDate = `${year}-${month}-${day}`;
 
     // Actualizar las horas de inicio y fin manteniendo el formato original de las horas
-    const start = `${eventDate}T${eventDetails.start_one.split("T")[1]}`;
-    const end = `${eventDate}T${eventDetails.end_two.split("T")[1]}`;
+    const start = `${eventDate}T${eventDetails.timeUno}`;
+
+    const end = `${eventDate}T${eventDetails.timeDos}`;
 
     // Actualizar la fecha del evento en la base de datos utilizando la función moveEvenOtherDate
     await dispatch(moveEvenOtherDate(eventDetails._id, start, end));
