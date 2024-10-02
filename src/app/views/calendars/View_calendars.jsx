@@ -141,6 +141,10 @@ const handleEventDrop = async (info) => {
 
     const end = `${eventDate}T${eventDetails.timeDos}`;
 
+
+    alert(start);
+    alert(end);
+
     // Actualizar la fecha del evento en la base de datos utilizando la función moveEvenOtherDate
     await dispatch(moveEvenOtherDate(eventDetails._id, start, end));
 };
