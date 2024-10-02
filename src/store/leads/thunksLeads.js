@@ -131,9 +131,6 @@ export const getLeadsComplete = (startDate, endDate, filterOption) => {
             // basados en el rol y el ID del administrador, así como en el rango de fechas y la opción de filtro.
             const result = await getAllLeadsComplete({ idnetsuite_admin, rol_admin, startDate, endDate, filterOption });
 
-            console.log("🚀 --------------------------------------------------------🚀");
-            console.log("🚀 ~ file: thunksLeads.js:134 ~ return ~ result:", result);
-            console.log("🚀 --------------------------------------------------------🚀");
 
 
             // Si la API responde con éxito, despacha una acción para actualizar el estado de Redux.

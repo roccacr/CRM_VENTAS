@@ -6,9 +6,8 @@ import interactionPlugin from "@fullcalendar/interaction"; // Asegúrate de tene
 import esLocale from "@fullcalendar/core/locales/es";
 import Select from "react-select";
 import makeAnimated from "react-select/animated";
-import { get_Calendar } from "../../../store/calendar/thunkscalendar";
+import { get_Calendar, moveEvenOtherDate } from "../../../store/calendar/thunkscalendar";
 import { useDispatch } from "react-redux";
-import { handleEventDrop } from "./eventActions"; // Importa las funciones de eventos
 import { useNavigate } from "react-router-dom";
 
 const filterOptions = [
@@ -125,6 +124,25 @@ export const View_calendars = () => {
         // Redirigir a la página de creación de eventos con la fecha seleccionada
         navigate(`/events/actions?idCalendar=0&idLead=0&idDate=${today}`);
     };
+
+const handleEventDrop = async (info) => {
+    const eventDetails = info.event.extendedProps;
+
+    // Crear una instancia de la fecha y extraer año, mes y día sin convertir a UTC
+    const year = info.event.start.getFullYear();
+    const month = String(info.event.start.getMonth() + 1).padStart(2, "0"); // El mes comienza desde 0
+    const day = String(info.event.start.getDate()).padStart(2, "0");
+
+    // Formatear la fecha del evento en formato AAAA-MM-DD
+    const eventDate = `${year}-${month}-${day}`;
+
+    // Actualizar las horas de inicio y fin manteniendo el formato original de las horas
+    const start = `${eventDate}T${eventDetails.start_one.split("T")[1]}`;
+    const end = `${eventDate}T${eventDetails.end_two.split("T")[1]}`;
+
+    // Actualizar la fecha del evento en la base de datos utilizando la función moveEvenOtherDate
+    await dispatch(moveEvenOtherDate(eventDetails._id, start, end));
+};
 
     return (
         <div className="card" style={{ width: "100%" }}>
