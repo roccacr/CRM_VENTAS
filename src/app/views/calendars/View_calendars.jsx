@@ -120,6 +120,12 @@ export const View_calendars = () => {
         navigate(`/events/actions?idCalendar=0&idLead=0&idDate=${arg.dateStr}`);
     };
 
+    const CreatedEvents = () => {
+        const today = new Date().toISOString().split("T")[0];
+        // Redirigir a la página de creación de eventos con la fecha seleccionada
+        navigate(`/events/actions?idCalendar=0&idLead=0&idDate=${today}`);
+    };
+
     return (
         <div className="card" style={{ width: "100%" }}>
             <div className="card-header table-card-header">
@@ -184,7 +190,9 @@ export const View_calendars = () => {
                                 ))
                             )}
                             <div className="d-grid">
-                                <button className="btn btn-dark">crear evento</button>
+                                <button className="btn btn-dark" onClick={() => CreatedEvents()}>
+                                    Crear evento
+                                </button>
                             </div>
                         </div>
                     </div>
