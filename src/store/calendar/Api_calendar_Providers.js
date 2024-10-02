@@ -180,3 +180,28 @@ export const update_event_MoveDate = async ({ id, newDateStart, newDateEnd }) =>
     return await fetchData("calendars/update_event_MoveDate", requestData);
 };
 
+
+
+/**
+ * Actualiza el estado de un evento en el calendario.
+ * @param {Object} params - Parámetros necesarios para la actualización.
+ * @param {number} params.id - El ID del evento que se va a actualizar.
+ * @param {string} params.NewStatus - El nuevo estado que se asignará al evento.
+ * @returns {Promise<Object>} - Promesa que resuelve los datos de la respuesta del backend.
+ */
+export const update_Status_Event = async ({ id, NewStatus }) => {
+    // Mezcla los datos comunes del sistema con los parámetros específicos del evento.
+    // Esto puede incluir tokens de autenticación, claves API, entre otros valores globales.
+    const requestData = {
+        ...commonRequestData, // Datos comunes para todas las solicitudes del sistema.
+        id, // ID del evento a actualizar.
+        NewStatus, // Nuevo estado para el evento.
+    };
+
+    // Envía la solicitud al backend a través de la función `fetchData`, que está encargada
+    // de manejar la lógica de las solicitudes HTTP (GET, POST, etc.). La ruta del backend
+    // se encarga de procesar la actualización de estado.
+    return await fetchData("calendars/update_Status_Event", requestData);
+};
+
+

@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react"; // Hooks de React para manejar el ciclo de vida y el estado del componente
-import { useLocation } from "react-router-dom"; // Hook de React Router para obtener la ubicación actual (URL)
+import { useLocation, useNavigate } from "react-router-dom"; // Hook de React Router para obtener la ubicación actual (URL)
 import { ButtonActions } from "../../../components/buttonAccions/buttonAccions"; // Componente personalizado para botones de acciones
 import { useDispatch } from "react-redux"; // Hook de Redux para despachar acciones
 import { getLeadsComplete, getSpecificLead } from "../../../../store/leads/thunksLeads"; // Acción asíncrona para obtener un lead específico
-import { createEventForLead, editeEventForLead, getDataEevent, getSpecificLeadCitas } from "../../../../store/calendar/thunkscalendar"; // Acción asíncrona para obtener un evento específico
+import { createEventForLead, editeEventForLead, getDataEevent, getSpecificLeadCitas, updateStatusEvent } from "../../../../store/calendar/thunkscalendar"; // Acción asíncrona para obtener un evento específico
 import Accordion from "@mui/material/Accordion"; // Acordion de Material UI
 import AccordionSummary from "@mui/material/AccordionSummary";
 import Typography from "@mui/material/Typography";
@@ -23,6 +23,7 @@ const getDefaultDateTime = () => {
 };
 
 export const View_events_Actions = () => {
+    const navigate = useNavigate();
     const { currentDate, nextDate, currentTime, nextTime } = getDefaultDateTime();
     const location = useLocation(); // Obtiene la ubicación actual (incluye los parámetros de la URL)
     const dispatch = useDispatch(); // Inicializa el dispatch para enviar acciones a Redux
@@ -37,6 +38,7 @@ export const View_events_Actions = () => {
         endDate: nextDate,
         startTime: currentTime,
         endTime: nextTime,
+        estado: "",
     });
 
     const [isCheckboxChecked, setIsCheckboxChecked] = useState(false); // Estado para manejar el checkbox
@@ -83,12 +85,13 @@ export const View_events_Actions = () => {
             endDate: eventData.fechaFin_calendar.split("T")[0],
             startTime: formatTime(eventData.horaInicio_calendar.split(" ")[0].slice(0, 5)),
             endTime: formatTime(eventData.horaFinal_calendar.split(" ")[0].slice(0, 5)),
+            estado: eventData.accion_calendar,
         }));
     };
 
     // Nueva función para obtener la lista de leads y formatearlos
     const fetchLeadsOptions = async () => {
-        const leads = await dispatch(getLeadsComplete("2024-01-01", "2024-01-01", 0)); // solo enviamos foramto de fecha este no tiene valor a la hora de traer los datos 
+        const leads = await dispatch(getLeadsComplete("2024-01-01", "2024-01-01", 0)); // solo enviamos foramto de fecha este no tiene valor a la hora de traer los datos
 
         const formattedLeads = leads.map((lead) => ({
             value: lead.idinterno_lead,
@@ -127,7 +130,6 @@ export const View_events_Actions = () => {
         setEventDetails({ ...eventDetails, type: selectedType });
 
         if (selectedType === "Cita") {
-
             setIsCheckboxChecked(true);
             setIsAccordionOpen(true);
         }
@@ -188,7 +190,6 @@ export const View_events_Actions = () => {
 
         const calendarId = getQueryParam("idCalendar");
 
-
         Swal.fire({
             title: "¿Está seguro?",
             text: "¿Confirma que desea generar esta accion al evento?",
@@ -204,12 +205,11 @@ export const View_events_Actions = () => {
             if (result.isConfirmed) {
                 try {
                     if (calendarId === 0) {
-
                         await dispatch(createEventForLead(name, type, description, startDate, endDate, startTime, endTime, leadDetails.idinterno_lead, leadDetails.segimineto_lead));
                     }
 
                     if (calendarId > 0) {
-                        await dispatch(editeEventForLead(calendarId,name, type, description, startDate, endDate, startTime, endTime, leadDetails.idinterno_lead, leadDetails.segimineto_lead));
+                        await dispatch(editeEventForLead(calendarId, name, type, description, startDate, endDate, startTime, endTime, leadDetails.idinterno_lead, leadDetails.segimineto_lead));
                     }
 
                     // Mostrar mensaje de éxito
@@ -249,16 +249,63 @@ export const View_events_Actions = () => {
         });
     };
 
+    const openCalendar = () => {
+        navigate("/calendar");
+    };
+
+    const completeEvent = async () => {
+        const idCalendar = getQueryParam("idCalendar");
+        await dispatch(updateStatusEvent(idCalendar, 1));
+        window.location.reload();
+    };
+
+    const cancelEvent = async () => {
+        const idCalendar = getQueryParam("idCalendar");
+        dispatch(updateStatusEvent(idCalendar, 0));
+        window.location.reload();
+    };
+
     return (
         <div className="card" style={{ width: "100%" }}>
             <div className="card-header table-card-header">
                 <h5>Manage Event</h5>
             </div>
-            {Object.keys(leadDetails).length > 0 && (
-                <div className="card-body">
-                    <ButtonActions leadData={leadDetails} />
-                </div>
-            )}
+
+            <div className="d-flex flex-wrap gap-2">
+                {Object.keys(leadDetails).length > 0 && <ButtonActions leadData={leadDetails} className="mb-4" />}
+                {getQueryParam("idCalendar") > 0 && (
+                    <>
+                        {eventDetails.estado === "Completado" && (
+                            <>
+                                <button type="button" className="btn btn-outline-danger" onClick={() => cancelEvent()}>
+                                    Cancelar Evento
+                                </button>
+                            </>
+                        )}
+
+                        {eventDetails.estado === "Cancelado" && (
+                            <>
+                                <button type="button" className="btn btn-outline-success" onClick={() => completeEvent()}>
+                                    Completar Evento
+                                </button>
+                            </>
+                        )}
+                        {eventDetails.estado === "Pendiente" && (
+                            <>
+                                <button type="button" className="btn btn-outline-danger" onClick={() => cancelEvent()}>
+                                    Cancelar Evento
+                                </button>
+                                <button type="button" className="btn btn-outline-success" onClick={() => completeEvent()}>
+                                    Completar Evento
+                                </button>
+                            </>
+                        )}
+                    </>
+                )}
+                <button type="button" className="btn btn-outline-primary" onClick={() => openCalendar()}>
+                    Calendario
+                </button>
+            </div>
 
             <div className="card-body">
                 <p>

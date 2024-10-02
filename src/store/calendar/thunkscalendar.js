@@ -1,5 +1,5 @@
 import { generateLeadBitacora } from "../leads/thunksLeads";
-import { createCalendarEvent, editCalendarEvent, get_CalendarFetch, get_dataEvents, get_event_Citas, update_event_MoveDate } from "./Api_calendar_Providers";
+import { createCalendarEvent, editCalendarEvent, get_CalendarFetch, get_dataEvents, get_event_Citas, update_event_MoveDate, update_Status_Event } from "./Api_calendar_Providers";
 
 /**
  * Acción asincrónica para obtener la lista de nuevos calendarios.
@@ -268,9 +268,15 @@ export const editeEventForLead = (
 
 
 
-
+/**
+ * Función para mover la fecha de un evento a una nueva fecha de inicio y fin.
+ *
+ * @param {number} id - ID del evento a modificar.
+ * @param {string} newDateStart - Nueva fecha de inicio para el evento en formato de fecha (ej. 'YYYY-MM-DD').
+ * @param {string} newDateEnd - Nueva fecha de finalización para el evento en formato de fecha (ej. 'YYYY-MM-DD').
+ * @returns {function} - Retorna una función asíncrona que realiza la actualización de la fecha.
+ */
 export const moveEvenOtherDate = (id, newDateStart, newDateEnd) => {
-
     return async () => {
         try {
             // Llama a la API para actualizar la fecha de un evento específico, basado en el ID del evento y la nueva fecha proporcionada.
@@ -283,3 +289,20 @@ export const moveEvenOtherDate = (id, newDateStart, newDateEnd) => {
         }
     };
 };
+
+
+
+export const updateStatusEvent = (id, NewStatus) => {
+    return async () => {
+        try {
+            // Llama a la API para actualizar la fecha de un evento específico, basado en el ID del evento y la nueva fecha proporcionada.
+            const result = await update_Status_Event({ id, NewStatus });
+            // Retorna el primer conjunto de datos de la respuesta de la API, que contiene los datos actualizados del evento.
+            return result.data["0"];
+        } catch (error) {
+            // Si ocurre un error durante la llamada a la API, se captura y se muestra en la consola para facilitar la depuración.
+            console.error("Error al mover la fecha del evento:", error);
+        }
+    };
+};
+
