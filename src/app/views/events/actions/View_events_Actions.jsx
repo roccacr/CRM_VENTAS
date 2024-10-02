@@ -588,6 +588,7 @@ export const View_events_Actions = () => {
                     </div>
                 </div>
             </div>
+            
 
             <button className="btn btn-dark" onClick={handleGenerateEvent}>
                 Generar Accion
