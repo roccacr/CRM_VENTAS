@@ -88,7 +88,7 @@ export const View_events_Actions = () => {
 
     // Nueva función para obtener la lista de leads y formatearlos
     const fetchLeadsOptions = async () => {
-        const leads = await dispatch(getLeadsComplete("ini", "fin", 0));
+        const leads = await dispatch(getLeadsComplete("2024-01-01", "2024-01-01", 0)); // solo enviamos foramto de fecha este no tiene valor a la hora de traer los datos 
 
         const formattedLeads = leads.map((lead) => ({
             value: lead.idinterno_lead,
