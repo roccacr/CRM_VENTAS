@@ -130,7 +130,7 @@ export const setgetMonthlyDataKpi = (startDate, endDate) => {
         const { idnetsuite_admin, rol_admin } = getState().auth;
 
         try {
-             dispatch(setlistGraficoKpi());
+             dispatch(setlistGraficoKpi([]));
             // Solicita los datos del gráfico mensual de KPIs
             const result = await fetchGetMonthlyDataKpi({ idnetsuite_admin, rol_admin, startDate, endDate });
 
