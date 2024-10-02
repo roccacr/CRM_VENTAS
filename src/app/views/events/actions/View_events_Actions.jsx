@@ -11,138 +11,216 @@ import ArrowDownwardIcon from "@mui/icons-material/ArrowDownward";
 import Select from "react-select"; // Librería react-select para dropdown con búsqueda
 import Swal from "sweetalert2";
 
+// Función para obtener las fechas y horas actuales por defecto
+// Esta función devuelve un objeto con las siguientes propiedades:
+// - currentDate: La fecha actual en formato "YYYY-MM-DD".
+// - nextDate: La fecha del día siguiente en formato "YYYY-MM-DD".
+// - currentTime: La hora actual en formato "HH:MM".
+// - nextTime: La hora una hora después de la hora actual en formato "HH:MM".
 const getDefaultDateTime = () => {
-    const now = new Date();
+    const now = new Date(); // Obtiene la fecha y hora actuales.
 
+    // Convierte la fecha actual a formato ISO y toma solo la parte de la fecha (YYYY-MM-DD).
     const currentDate = now.toISOString().slice(0, 10);
+
+    // Calcula la fecha del día siguiente, añade 24 horas a la fecha actual y convierte a formato ISO.
     const nextDate = new Date(now.getTime() + 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+
+    // Obtiene la hora actual en formato "HH:MM".
     const currentTime = now.toTimeString().slice(0, 5);
+
+    // Calcula la hora una hora después de la actual, añade 60 minutos y obtiene el formato "HH:MM".
     const nextTime = new Date(now.getTime() + 60 * 60 * 1000).toTimeString().slice(0, 5);
 
+    // Retorna un objeto con la fecha y hora actuales y la fecha y hora siguientes.
     return { currentDate, nextDate, currentTime, nextTime };
 };
 
-export const View_events_Actions = () => {
-    const navigate = useNavigate();
-    const { currentDate, nextDate, currentTime, nextTime } = getDefaultDateTime();
-    const location = useLocation(); // Obtiene la ubicación actual (incluye los parámetros de la URL)
-    const dispatch = useDispatch(); // Inicializa el dispatch para enviar acciones a Redux
 
-    const [leadDetails, setLeadDetails] = useState({});
-    const [leadDetailsCitas, setLeadDetailsCitas] = useState({});
+export const View_events_Actions = () => {
+    // Inicializa el hook 'useNavigate' para realizar la navegación programática entre rutas.
+    const navigate = useNavigate();
+
+    // Obtiene las fechas y horas por defecto para el evento (como la fecha y hora actuales y la siguiente).
+    // Estas fechas y horas se inicializan en el estado de 'eventDetails'.
+    const { currentDate, nextDate, currentTime, nextTime } = getDefaultDateTime();
+
+    // Inicializa el hook 'useLocation' para obtener la ubicación actual del navegador, incluyendo los parámetros de la URL.
+    const location = useLocation();
+
+    // Inicializa el hook 'useDispatch' para permitir el envío de acciones a Redux desde este componente.
+    const dispatch = useDispatch();
+
+    // Estados locales para almacenar los detalles del lead y citas relacionadas.
+    const [leadDetails, setLeadDetails] = useState({}); // Almacena los detalles generales del lead.
+    const [leadDetailsCitas, setLeadDetailsCitas] = useState({}); // Almacena los detalles de citas del lead.
+
+    // Estado local 'eventDetails' que almacena los detalles del evento.
+    // Los valores por defecto se inicializan con la fecha y hora actuales y próximas.
     const [eventDetails, setEventDetails] = useState({
-        name: "",
-        type: "",
-        description: "",
-        startDate: currentDate,
-        endDate: nextDate,
-        startTime: currentTime,
-        endTime: nextTime,
-        estado: "",
+        name: "", // Nombre del evento.
+        type: "", // Tipo de evento.
+        description: "", // Descripción del evento.
+        startDate: currentDate, // Fecha de inicio (inicializada con la fecha actual).
+        endDate: nextDate, // Fecha de fin (inicializada con la siguiente fecha).
+        startTime: currentTime, // Hora de inicio (inicializada con la hora actual).
+        endTime: nextTime, // Hora de fin (inicializada con la próxima hora).
+        estado: "", // Estado del evento (completado, cancelado, etc.).
     });
 
-    const [isCheckboxChecked, setIsCheckboxChecked] = useState(false); // Estado para manejar el checkbox
-    const [isAccordionOpen, setIsAccordionOpen] = useState(false); // Estado para manejar el estado del Accordion
-    const [leadsOptions, setLeadsOptions] = useState([]); // Estado para almacenar la lista de leads obtenidos
-    const [selectedLead, setSelectedLead] = useState(null); // Estado para manejar el lead seleccionado
+    // Estado para manejar si el checkbox está marcado o no.
+    const [isCheckboxChecked, setIsCheckboxChecked] = useState(false);
 
+    // Estado para manejar si el Accordion (sección desplegable) está abierto o cerrado.
+    const [isAccordionOpen, setIsAccordionOpen] = useState(false);
+
+    // Estado para almacenar la lista de leads obtenidos, que se utilizan como opciones en un selector.
+    const [leadsOptions, setLeadsOptions] = useState([]);
+
+    // Estado para manejar el lead seleccionado del selector de leads.
+    const [selectedLead, setSelectedLead] = useState(null);
+
+    // Función para obtener los parámetros de la URL.
+    // Extrae el valor del parámetro proporcionado desde la URL utilizando 'location.search'.
+    // Si el valor es un número válido, lo convierte a número; de lo contrario, retorna el valor tal cual.
     const getQueryParam = (param) => {
-        const value = new URLSearchParams(location.search).get(param);
+        const value = new URLSearchParams(location.search).get(param); // Obtiene el valor del parámetro de la URL.
         if (value && !isNaN(value) && !isNaN(parseFloat(value))) {
-            return Number(value);
+            return Number(value); // Si el valor es un número válido, lo retorna como número.
         }
-        return value;
+        return value; // Si no es un número, retorna el valor tal cual (cadena de texto).
     };
 
+    // Función para obtener los detalles de un lead específico
+    // Esta función asíncrona se encarga de hacer una solicitud para obtener los detalles de un lead basado en el ID del evento.
+    // Primero, obtiene los detalles generales del lead y actualiza el estado con la información obtenida.
+    // Luego, obtiene los detalles relacionados con las citas del lead y también actualiza el estado correspondiente.
+    // Finalmente, activa el checkbox y abre el acordeón de opciones adicionales automáticamente.
     const fetchLeadDetails = async (idEvent) => {
+        // Solicita los detalles específicos del lead y actualiza el estado 'leadDetails'.
         const leadData = await dispatch(getSpecificLead(idEvent));
-        setLeadDetails(leadData);
+        setLeadDetails(leadData); // Guarda los detalles del lead en el estado.
 
+        // Solicita los detalles específicos de las citas del lead y actualiza el estado 'leadDetailsCitas'.
         const leadDataCitas = await dispatch(getSpecificLeadCitas(idEvent));
+        setLeadDetailsCitas(leadDataCitas); // Guarda los detalles de las citas del lead en el estado.
 
-        setLeadDetailsCitas(leadDataCitas);
-
+        // Activa el checkbox y abre el acordeón de opciones adicionales.
         setIsCheckboxChecked(true);
         setIsAccordionOpen(true);
     };
 
+    // Función para obtener los detalles de un evento específico
+    // Esta función asíncrona se encarga de hacer una solicitud para obtener los detalles de un evento basado en su ID.
+    // Luego, formatea y actualiza el estado 'eventDetails' con los detalles obtenidos, incluyendo el nombre, tipo,
+    // descripción, fechas y horas de inicio y fin, y el estado del evento.
     const fetchEventDetails = async (eventId) => {
+        // Solicita los detalles específicos del evento y guarda los datos en 'eventData'.
         const eventData = await dispatch(getDataEevent(eventId));
 
+        // Función auxiliar para formatear la hora en el formato HH:MM.
         function formatTime(time) {
-            if (!time) return "";
-            const [hours, minutes] = time.split(":");
-            const formattedHours = hours.length === 1 ? `0${hours}` : hours;
-            return `${formattedHours}:${minutes}`;
+            if (!time) return ""; // Retorna una cadena vacía si no hay hora.
+            const [hours, minutes] = time.split(":"); // Divide la hora en horas y minutos.
+            const formattedHours = hours.length === 1 ? `0${hours}` : hours; // Asegura que las horas tengan 2 dígitos.
+            return `${formattedHours}:${minutes}`; // Retorna la hora formateada.
         }
 
+        // Actualiza el estado 'eventDetails' con los detalles obtenidos del evento.
         setEventDetails((prevDetails) => ({
-            ...prevDetails,
-            name: eventData.nombre_calendar,
-            type: eventData.tipo_calendar,
-            description: eventData.decrip_calendar,
-            startDate: eventData.fechaIni_calendar.split("T")[0],
-            endDate: eventData.fechaFin_calendar.split("T")[0],
-            startTime: formatTime(eventData.horaInicio_calendar.split(" ")[0].slice(0, 5)),
-            endTime: formatTime(eventData.horaFinal_calendar.split(" ")[0].slice(0, 5)),
-            estado: eventData.accion_calendar,
+            ...prevDetails, // Mantiene los detalles anteriores y actualiza solo los siguientes campos.
+            name: eventData.nombre_calendar, // Actualiza el nombre del evento.
+            type: eventData.tipo_calendar, // Actualiza el tipo de evento.
+            description: eventData.decrip_calendar, // Actualiza la descripción del evento.
+            startDate: eventData.fechaIni_calendar.split("T")[0], // Extrae y actualiza la fecha de inicio.
+            endDate: eventData.fechaFin_calendar.split("T")[0], // Extrae y actualiza la fecha de fin.
+            startTime: formatTime(eventData.horaInicio_calendar.split(" ")[0].slice(0, 5)), // Formatea y actualiza la hora de inicio.
+            endTime: formatTime(eventData.horaFinal_calendar.split(" ")[0].slice(0, 5)), // Formatea y actualiza la hora de fin.
+            estado: eventData.accion_calendar, // Actualiza el estado del evento.
         }));
     };
 
-    // Nueva función para obtener la lista de leads y formatearlos
+    // Función para obtener la lista de leads y formatearlos
+    // Esta función se encarga de hacer una solicitud para obtener la lista completa de leads utilizando la acción 'getLeadsComplete'.
+    // Los leads obtenidos son formateados en un arreglo con el formato adecuado para ser utilizados como opciones en un select,
+    // donde cada lead tiene un 'value' que corresponde a su 'idinterno_lead' y un 'label' que muestra el 'nombre_lead'.
     const fetchLeadsOptions = async () => {
-        const leads = await dispatch(getLeadsComplete("2024-01-01", "2024-01-01", 0)); // solo enviamos foramto de fecha este no tiene valor a la hora de traer los datos
+        // Realiza la solicitud para obtener los leads. Se utilizan fechas de ejemplo, pero no tienen impacto en la obtención de los datos.
+        const leads = await dispatch(getLeadsComplete("2024-01-01", "2024-01-01", 0));
 
+        // Formatea los leads obtenidos en un arreglo con los campos 'value' y 'label'.
         const formattedLeads = leads.map((lead) => ({
-            value: lead.idinterno_lead,
-            label: lead.nombre_lead,
+            value: lead.idinterno_lead, // 'value' será el ID interno del lead.
+            label: lead.nombre_lead, // 'label' será el nombre del lead.
         }));
+
+        // Actualiza el estado 'leadsOptions' con los leads formateados.
         setLeadsOptions(formattedLeads);
     };
 
+    // Hook useEffect para ejecutar lógica cuando cambia la URL o cuando se monta el componente
+    // Este hook maneja la lógica inicial cuando el componente se carga o cuando la búsqueda en la URL cambia (location.search).
     useEffect(() => {
-        const leadId = getQueryParam("idLead");
-        const calendarId = getQueryParam("idCalendar");
-        const idDate = getQueryParam("idDate");
+        // Obtiene los parámetros de 'idLead', 'idCalendar' y 'idDate' de la URL.
+        const leadId = getQueryParam("idLead"); // Obtiene el ID del lead de los parámetros de la URL.
+        const calendarId = getQueryParam("idCalendar"); // Obtiene el ID del calendario de los parámetros de la URL.
+        const idDate = getQueryParam("idDate"); // Obtiene la fecha del evento de los parámetros de la URL.
 
+        // Si existe un 'leadId' válido, ejecuta la función para obtener los detalles del lead.
         if (leadId && leadId > 0) {
-            fetchLeadDetails(leadId);
+            fetchLeadDetails(leadId); // Obtiene los detalles del lead específico.
         }
 
+        // Si existe un 'calendarId' válido, ejecuta la función para obtener los detalles del evento.
         if (calendarId && calendarId > 0) {
-            fetchEventDetails(calendarId);
+            fetchEventDetails(calendarId); // Obtiene los detalles del evento específico.
         }
 
+        // Si se ha proporcionado un 'idDate' válido, actualiza las fechas de inicio y fin en los detalles del evento.
         if (idDate != 0) {
             setEventDetails((prevDetails) => ({
                 ...prevDetails,
-                startDate: idDate,
-                endDate: idDate,
+                startDate: idDate, // Establece la fecha de inicio con 'idDate'.
+                endDate: idDate, // Establece la fecha de fin con 'idDate'.
             }));
         }
 
-        // Ejecuta la función para obtener los leads al cargar el componente
+        // Llama a la función para obtener y formatear los leads al cargar el componente.
         fetchLeadsOptions();
-    }, [location.search]);
+    }, [location.search]); // Vuelve a ejecutar el efecto cuando 'location.search' cambia.
 
+    // Función para manejar el cambio de tipo de evento
+    // Esta función se activa cuando el usuario selecciona un tipo de evento desde un menú desplegable.
+    // Actualiza el estado de 'eventDetails' con el tipo de evento seleccionado y, si el tipo seleccionado es "Cita",
+    // también ajusta otros estados que controlan la visualización de opciones adicionales.
     const handleEventTypeChange = (e) => {
-        const selectedType = e.target.value;
+        const selectedType = e.target.value; // Obtiene el valor seleccionado del evento.
+
+        // Actualiza el estado de 'eventDetails' con el nuevo tipo de evento seleccionado.
         setEventDetails({ ...eventDetails, type: selectedType });
 
+        // Si el tipo seleccionado es "Cita", activa automáticamente el checkbox y abre el acordeón de opciones adicionales.
         if (selectedType === "Cita") {
-            setIsCheckboxChecked(true);
-            setIsAccordionOpen(true);
+            setIsCheckboxChecked(true); // Activa el checkbox automáticamente.
+            setIsAccordionOpen(true); // Abre el acordeón de opciones adicionales.
         }
     };
 
+    // Función para manejar el cambio del estado del checkbox
+    // Esta función se activa cuando el usuario marca o desmarca el checkbox que indica si desea asignar un lead al evento.
+    // Actualiza el estado que controla si el checkbox está activado y, en función de si está activado o no,
+    // controla la apertura o cierre del acordeón de opciones adicionales.
     const handleCheckboxChange = (e) => {
-        const isChecked = e.target.checked;
+        const isChecked = e.target.checked; // Obtiene el estado actual del checkbox (marcado o no).
+
+        // Actualiza el estado 'isCheckboxChecked' con el valor del checkbox (true o false).
         setIsCheckboxChecked(isChecked);
 
+        // Si el checkbox está activado, abre el acordeón de opciones adicionales; de lo contrario, lo cierra.
         if (isChecked) {
-            setIsAccordionOpen(true);
+            setIsAccordionOpen(true); // Abre el acordeón si el checkbox está marcado.
         } else {
-            setIsAccordionOpen(false);
+            setIsAccordionOpen(false); // Cierra el acordeón si el checkbox está desmarcado.
         }
     };
 
@@ -153,9 +231,15 @@ export const View_events_Actions = () => {
         setSelectedLead(selectedLeadId); // Actualiza el estado con el lead seleccionado
     };
 
+    // Función para generar o editar un evento
+    // Esta función maneja la lógica de validación y creación/edición de eventos en base a los detalles proporcionados.
+    // Verifica que todos los campos obligatorios estén completos y, si es necesario, que un lead esté asignado.
+    // Luego, muestra una confirmación para proceder con la acción.
     const handleGenerateEvent = () => {
+        // Extrae los detalles del evento desde la variable eventDetails.
         const { type, startTime, startDate, name, endTime, endDate, description } = eventDetails;
 
+        // Crea un objeto que contiene los campos obligatorios con sus etiquetas correspondientes.
         const fields = {
             "Tipo de evento": type,
             "Fecha de inicio": startDate,
@@ -166,8 +250,10 @@ export const View_events_Actions = () => {
             Descripción: description,
         };
 
+        // Verifica si algún campo obligatorio está vacío.
         const emptyField = Object.entries(fields).find(([key, value]) => !value);
 
+        // Si hay un campo vacío, muestra una alerta de error indicando el campo que falta y detiene la ejecución.
         if (emptyField) {
             Swal.fire({
                 icon: "error",
@@ -177,7 +263,9 @@ export const View_events_Actions = () => {
             return;
         }
 
+        // Verifica si es necesario asignar un lead (si el checkbox está marcado o el tipo de evento es "Cita").
         if (isCheckboxChecked || type === "Cita") {
+            // Si no hay un lead asignado, muestra una alerta de error y detiene la ejecución.
             if (leadDetails.nombre_lead === undefined) {
                 Swal.fire({
                     icon: "error",
@@ -188,8 +276,10 @@ export const View_events_Actions = () => {
             }
         }
 
+        // Obtiene el ID del calendario desde los parámetros de la URL.
         const calendarId = getQueryParam("idCalendar");
 
+        // Muestra una alerta de confirmación antes de proceder con la acción de crear o editar el evento.
         Swal.fire({
             title: "¿Está seguro?",
             text: "¿Confirma que desea generar esta accion al evento?",
@@ -202,19 +292,22 @@ export const View_events_Actions = () => {
             cancelButtonColor: "#d33",
             confirmButtonText: "Sí, realizar acción",
         }).then(async (result) => {
+            // Si el usuario confirma la acción.
             if (result.isConfirmed) {
                 try {
+                    // Si no hay un ID de calendario, crea un nuevo evento.
                     if (calendarId === 0) {
                         await dispatch(createEventForLead(name, type, description, startDate, endDate, startTime, endTime, leadDetails.idinterno_lead, leadDetails.segimineto_lead));
                     }
 
+                    // Si existe un ID de calendario, edita el evento existente.
                     if (calendarId > 0) {
                         await dispatch(editeEventForLead(calendarId, name, type, description, startDate, endDate, startTime, endTime, leadDetails.idinterno_lead, leadDetails.segimineto_lead));
                     }
 
-                    // Mostrar mensaje de éxito
+                    // Muestra una alerta de éxito y ofrece opciones al usuario sobre qué hacer a continuación.
                     Swal.fire({
-                        title: "¡Accion realizada con exito!",
+                        title: "¡Acción realizada con éxito!",
                         text: "¿Qué desea hacer a continuación?",
                         icon: "question",
                         iconHtml: "✔️",
@@ -237,6 +330,7 @@ export const View_events_Actions = () => {
                         }
                     });
                 } catch (error) {
+                    // Si ocurre un error al crear o editar el evento, muestra una alerta de error.
                     console.error("Error al crear el evento:", error);
                     Swal.fire({
                         title: "Error",
@@ -249,22 +343,40 @@ export const View_events_Actions = () => {
         });
     };
 
+    // Función para navegar a la página del calendario
+    // Esta función se activa cuando un usuario desea ver o acceder al calendario.
+    // Utiliza la función navigate de la librería de enrutamiento para cambiar la URL actual a "/calendar".
     const openCalendar = () => {
-        navigate("/calendar");
+        navigate("/calendar"); // Redirige al usuario a la página del calendario.
     };
 
+    // Función para marcar un evento como completado
+    // Esta función asíncrona recupera los IDs del evento (idCalendar) y del lead (leadId) de los parámetros de la URL.
+    // Luego, despacha la acción 'updateStatusEvent', pasando el ID del evento, un estado de 1 (indicando completado),
+    // el ID del lead y los detalles del seguimiento del lead (segimineto_lead).
+    // Después de actualizar el estado del evento correctamente, recarga la página para reflejar los cambios.
     const completeEvent = async () => {
-        const idCalendar = getQueryParam("idCalendar");
-        const leadId = getQueryParam("idLead");
+        const idCalendar = getQueryParam("idCalendar"); // Extrae el ID del evento de los parámetros de la URL.
+        const leadId = getQueryParam("idLead"); // Extrae el ID del lead de los parámetros de la URL.
+
+        // Despacha la acción para actualizar el estado del evento con el estado "1" (completado),
+        // pasando también el ID del lead y los detalles de seguimiento del lead.
         await dispatch(updateStatusEvent(idCalendar, 1, leadId, leadDetails.segimineto_lead));
-        window.location.reload();
+        window.location.reload(); // Recarga la página para actualizar la vista después de la actualización.
     };
 
+    // Función para cancelar un evento
+    // Similar a completeEvent, esta función asíncrona recupera los IDs del evento (idCalendar) y del lead (leadId)
+    // desde los parámetros de la URL. Luego despacha la acción 'updateStatusEvent', pero con un estado de 0 (indicando cancelado).
+    // Finalmente, recarga la página para reflejar los cambios.
     const cancelEvent = async () => {
-        const idCalendar = getQueryParam("idCalendar");
-        const leadId = getQueryParam("idLead");
+        const idCalendar = getQueryParam("idCalendar"); // Extrae el ID del evento de los parámetros de la URL.
+        const leadId = getQueryParam("idLead"); // Extrae el ID del lead de los parámetros de la URL.
+
+        // Despacha la acción para actualizar el estado del evento con el estado "0" (cancelado),
+        // pasando también el ID del lead y los detalles de seguimiento del lead.
         await dispatch(updateStatusEvent(idCalendar, 0, leadId, leadDetails.segimineto_lead));
-        window.location.reload();
+        window.location.reload(); // Recarga la página para actualizar la vista después de la actualización.
     };
 
     return (
