@@ -133,6 +133,11 @@ export const setgetMonthlyDataKpi = (startDate, endDate) => {
             // Solicita los datos del gráfico mensual de KPIs
             const result = await fetchGetMonthlyDataKpi({ idnetsuite_admin, rol_admin, startDate, endDate });
 
+            console.log("🚀 -------------------------------------------------------🚀");
+            console.log("🚀 ~ file: thunksHome.js:136 ~ return ~ result:", result);
+            console.log("🚀 -------------------------------------------------------🚀");
+
+
             // Actualiza el estado de Redux con los datos obtenidos
             dispatch(setlistGraficoKpi(result.data["0"]));
         } catch (error) {
