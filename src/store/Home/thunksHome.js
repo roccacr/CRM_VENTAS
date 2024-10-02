@@ -141,7 +141,7 @@ export const setgetMonthlyDataKpi = (startDate, endDate) => {
             console.log("🚀 -------------------------------------------------------🚀");
 
             // Verifica si result.data["0"] tiene datos, si no, despacha un array vacío
-            const dataToDispatch = result.data && result.data["0"] ? result.data["0"] : [];
+           const dataToDispatch = result.data && Array.isArray(result.data["0"]) && result.data["0"].length > 0 ? result.data["0"] : [];
 
             // Actualiza el estado de Redux con los datos obtenidos o un array vacío
             dispatch(setlistGraficoKpi(dataToDispatch));
