@@ -117,7 +117,7 @@ export const NavBar = ({ sidebarVisible, sidebarStatus, closeSidebar }) => {
                                 <ul className="pc-submenu">
                                     <li className="pc-item">
                                         <NavLink to="/leads/lista?data=1" className="pc-link active">
-                                            <span className="pc-mtext">Leads</span>
+                                            <span className="pc-mtext">Leads Activos</span>
                                         </NavLink>
                                     </li>
                                     <li className="pc-item">
@@ -153,7 +153,7 @@ export const NavBar = ({ sidebarVisible, sidebarStatus, closeSidebar }) => {
                             </NavLink>
                         </li>
                         <li className="pc-item">
-                            <NavLink to="/expedientes" className="pc-link active">
+                            <NavLink to="/expedientes/list" className="pc-link active">
                                 <span className="pc-micon">
                                     <i className="ti ti-file-text"></i>
                                 </span>

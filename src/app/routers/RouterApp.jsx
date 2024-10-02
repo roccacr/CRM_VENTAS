@@ -3,6 +3,7 @@ import { AppPage } from "../pages/home/AppPage";
 import { LeadsPage } from "../pages/leads/LeadsPage";
 import { Page_calendars } from "../pages/calendar/Page_calendars";
 import { Page_Events } from "../pages/events/Page_Events";
+import { Page_Expediente } from "../pages/expediente/Page_Expediente";
 // import { LeadsPage } from "../pages/leads/LeadsPage";
 
 
@@ -21,6 +22,8 @@ export const RouterApp = () => {
 
           {/* eventos*/}
           <Route path="/events/*" element={<Page_Events />} />
+
+          <Route path="/expedientes/*" element={<Page_Expediente />} />
 
           {/** Cualquier ruta*/}
           <Route path="/*" element={<Navigate to="/" />} />
