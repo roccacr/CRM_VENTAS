@@ -292,12 +292,29 @@ export const moveEvenOtherDate = (id, newDateStart, newDateEnd) => {
 
 
 
-export const updateStatusEvent = (id, NewStatus) => {
-    return async () => {
+export const updateStatusEvent = (id, NewStatus, idinterno_lead, valueStatus) => {
+    return async (dispatch, getState) => {
+        // Obtiene el ID del administrador Netsuite desde el estado de autenticación
+        const { idnetsuite_admin } = getState().auth;
         try {
             // Llama a la API para actualizar la fecha de un evento específico, basado en el ID del evento y la nueva fecha proporcionada.
             const result = await update_Status_Event({ id, NewStatus });
             // Retorna el primer conjunto de datos de la respuesta de la API, que contiene los datos actualizados del evento.
+
+            const estadoEvento = NewStatus === 1 ? "Completado" : "Cancelado";
+            if (idinterno_lead > 0) {
+                const descripcionEvento = "Modificaion de evento : " + estadoEvento;
+                const additionalValues = {
+                    valorDeCaida: 51, // Valor genérico asignado para la caída de un evento
+                    tipo: "Se Edito un evento para el cliente", // Descripción del tipo de acción que se realizó
+                    estado_lead: 1, // Estado del lead (1 significa activo)
+                    accion_lead: 6, // Código de acción para el lead
+                    seguimiento_calendar: 0, // Valor de seguimiento (0 por defecto)
+                    valor_segimineto_lead: 3, // Valor relacionado al seguimiento del lead
+                };
+
+                await dispatch(generateLeadBitacora(idnetsuite_admin, idinterno_lead, additionalValues, descripcionEvento, valueStatus));
+            }
             return result.data["0"];
         } catch (error) {
             // Si ocurre un error durante la llamada a la API, se captura y se muestra en la consola para facilitar la depuración.

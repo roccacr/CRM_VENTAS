@@ -255,13 +255,15 @@ export const View_events_Actions = () => {
 
     const completeEvent = async () => {
         const idCalendar = getQueryParam("idCalendar");
-        await dispatch(updateStatusEvent(idCalendar, 1));
+        const leadId = getQueryParam("idLead");
+        await dispatch(updateStatusEvent(idCalendar, 1, leadId, leadDetails.segimineto_lead));
         window.location.reload();
     };
 
     const cancelEvent = async () => {
         const idCalendar = getQueryParam("idCalendar");
-        dispatch(updateStatusEvent(idCalendar, 0));
+        const leadId = getQueryParam("idLead");
+        await dispatch(updateStatusEvent(idCalendar, 0, leadId, leadDetails.segimineto_lead));
         window.location.reload();
     };
 
