@@ -136,16 +136,14 @@ export const setgetMonthlyDataKpi = (startDate, endDate) => {
             // Realiza la solicitud de datos del gráfico mensual de KPIs
             const result = await fetchGetMonthlyDataKpi({ idnetsuite_admin, rol_admin, startDate, endDate });
 
-            // Verifica si result.data["0"] es un array no vacío, de lo contrario, deja listGraficoKpi vacío
-            const dataToDispatch = result.data?.[0] && Array.isArray(result.data[0]) && result.data[0].length > 0 ? result.data[0] : [];
+            // Verifica si result.data["0"] es un array no vacío
+            const dataToDispatch = result.data?.[0] && Array.isArray(result.data[0]) && result.data[0].length > 0 ? result.data[0] : null;
 
-            console.log("🚀 -----------------------------------------------------------------------🚀");
-            console.log("🚀 ~ file: thunksHome.js:142 ~ return ~ dataToDispatch:", dataToDispatch);
-            console.log("🚀 -----------------------------------------------------------------------🚀");
-
-
-            // Actualiza el estado de Redux con los datos obtenidos o un array vacío
-            dispatch(setlistGraficoKpi(dataToDispatch));
+            // Actualiza el estado de Redux solo si dataToDispatch tiene datos
+            if (dataToDispatch) {
+                console.log("dataToDispatch", dataToDispatch);
+                dispatch(setlistGraficoKpi(dataToDispatch));
+            }
         } catch (error) {
             // Manejo de errores durante la solicitud
             console.error("Error al cargar los datos del gráfico mensual de KPIs:", error);
