@@ -42,6 +42,6 @@ export const selectListOrderSalePending = createSelector(
 
 export const selectlistGraficoKpi = createSelector(
     [selectHomeState],
-    (home) => home.listGraficoKpi
+    (home) => home.listGraficoKpi || []
 );
 
