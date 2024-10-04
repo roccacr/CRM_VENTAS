@@ -85,6 +85,8 @@ export const GraficoKpi = () => {
                 { value: cancelados, category: "CANC" },
             ]);
             setIsLoading(false);
+        } else {
+             setIsLoading(false);
         }
     }, [selectlis, selectedProjects, selectedCampaigns, selectedAdmins]);
 
