@@ -4,7 +4,6 @@ import * as am5 from "@amcharts/amcharts5";
 import * as am5percent from "@amcharts/amcharts5/percent";
 import am5themes_Animated from "@amcharts/amcharts5/themes/Animated";
 import { setgetMonthlyDataKpi } from "../../../store/Home/thunksHome";
-import { selectlistGraficoKpi } from "../../../store/Home/selectorsHome";
 import Select from "react-select";
 import makeAnimated from "react-select/animated";
 import jsPDF from "jspdf";
@@ -46,7 +45,9 @@ export const GraficoKpi = () => {
     const [selectedCampaigns, setSelectedCampaigns] = useState([]);
     const [selectedAdmins, setSelectedAdmins] = useState([]); // Nueva variable para seleccionar administradores
 
-    const selectlis = useSelector(selectlistGraficoKpi);
+    const [selectlis, setselectlis] = useState([]); // Nueva variable para seleccionar administradores
+
+
 
     const animatedComponents = makeAnimated();
 
@@ -64,9 +65,14 @@ export const GraficoKpi = () => {
 
     // useEffect para disparar setgetMonthlyDataKpi cuando startDate y endDate ya tengan valor
     useEffect(() => {
-        if (startDate && endDate) {
-            dispatch(setgetMonthlyDataKpi(startDate, endDate));
-        }
+        const fetchData = async () => {
+            if (startDate && endDate) {
+                const data = await dispatch(setgetMonthlyDataKpi(startDate, endDate));
+                setselectlis(data);
+            }
+        };
+
+        fetchData();
     }, [startDate, endDate, dispatch]);
 
     useEffect(() => {
@@ -86,7 +92,7 @@ export const GraficoKpi = () => {
             ]);
             setIsLoading(false);
         } else {
-             setIsLoading(false);
+            setIsLoading(false);
         }
     }, [selectlis, selectedProjects, selectedCampaigns, selectedAdmins]);
 
