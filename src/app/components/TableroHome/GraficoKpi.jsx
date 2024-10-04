@@ -76,25 +76,23 @@ export const GraficoKpi = () => {
     }, [startDate, endDate, dispatch]);
 
     useEffect(() => {
-        if (selectlis.length > 0) {
-            console.log("Datos cargados: ", selectlis.length);
+        // Verificar si hay datos en selectlis
+        const hasData = selectlis.length > 0;
 
-            // Contar los eventos filtrados
-            const cancelados = filteredEvents.filter((event) => event.accion_calendar === "Cancelado").length;
-            const completados = filteredEvents.filter((event) => event.accion_calendar === "Completado").length;
-            const pendientes = filteredEvents.filter((event) => event.accion_calendar === "Pendiente").length;
+        // Contar los eventos filtrados o asignar valores por defecto
+        const cancelados = hasData ? filteredEvents.filter((event) => event.accion_calendar === "Cancelado").length : 0;
+        const completados = hasData ? filteredEvents.filter((event) => event.accion_calendar === "Completado").length : 0;
+        const pendientes = hasData ? filteredEvents.filter((event) => event.accion_calendar === "Pendiente").length : 0;
 
-            // Actualizar chartData con los valores contados
-            setChartData([
-                { value: pendientes, category: "PEND" },
-                { value: completados, category: "COMP" },
-                { value: cancelados, category: "CANC" },
-            ]);
-            setIsLoading(false);
-        } else {
-            setselectlis([]);
-            setIsLoading(false);
-        }
+        // Actualizar chartData y selectlis según corresponda
+        setChartData([
+            { value: pendientes, category: "PEND" },
+            { value: completados, category: "COMP" },
+            { value: cancelados, category: "CANC" },
+        ]);
+
+        if (!hasData) setselectlis([]);
+        setIsLoading(false);
     }, [selectlis, selectedProjects, selectedCampaigns, selectedAdmins]);
 
     // Función para agrupar campañas bajo proyectos seleccionados y contar eventos
