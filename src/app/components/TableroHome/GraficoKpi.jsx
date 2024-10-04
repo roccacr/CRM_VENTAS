@@ -76,9 +76,6 @@ export const GraficoKpi = () => {
     }, [startDate, endDate, dispatch]);
 
     useEffect(() => {
-        if (selectlis.length > 0) {
-            console.log("Datos cargados: ", selectlis.length);
-
             // Contar los eventos filtrados
             const cancelados = filteredEvents.filter((event) => event.accion_calendar === "Cancelado").length;
             const completados = filteredEvents.filter((event) => event.accion_calendar === "Completado").length;
@@ -91,16 +88,6 @@ export const GraficoKpi = () => {
                 { value: cancelados, category: "CANC" },
             ]);
             setIsLoading(false);
-        } else {
-
-             setChartData([
-                 { value: 0, category: "PEND" },
-                 { value: 0, category: "COMP" },
-                 { value: 0, category: "CANC" },
-             ]);
-            setselectlis([]);
-            setIsLoading(false);
-        }
     }, [selectlis, selectedProjects, selectedCampaigns, selectedAdmins]);
 
     // Función para agrupar campañas bajo proyectos seleccionados y contar eventos
