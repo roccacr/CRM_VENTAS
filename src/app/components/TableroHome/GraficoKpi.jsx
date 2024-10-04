@@ -68,11 +68,6 @@ export const GraficoKpi = () => {
         const fetchData = async () => {
             if (startDate && endDate) {
                 const data = await dispatch(setgetMonthlyDataKpi(startDate, endDate));
-
-                console.log("🚀 ------------------------------------------------------🚀");
-                console.log("🚀 ~ file: GraficoKpi.jsx:72 ~ fetchData ~ data:", data);
-                console.log("🚀 ------------------------------------------------------🚀");
-
                 setselectlis(data);
             }
         };
@@ -97,6 +92,7 @@ export const GraficoKpi = () => {
             ]);
             setIsLoading(false);
         } else {
+            setselectlis([]);
             setIsLoading(false);
         }
     }, [selectlis, selectedProjects, selectedCampaigns, selectedAdmins]);
