@@ -46,7 +46,7 @@ export const GraficoKpi = () => {
     const [selectedCampaigns, setSelectedCampaigns] = useState([]);
     const [selectedAdmins, setSelectedAdmins] = useState([]); // Nueva variable para seleccionar administradores
 
-    const selectlis = useSelector(selectlistGraficoKpi) || [];
+    const selectlis = useSelector(selectlistGraficoKpi);
 
     const animatedComponents = makeAnimated();
 
