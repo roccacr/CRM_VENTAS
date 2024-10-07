@@ -177,21 +177,37 @@ export default function ViewListExpedientes() {
                             <table className="table table-striped">
                                 <thead>
                                     <tr>
-                                        <th>ID</th>
-                                        <th>Código</th>
-                                        <th>Proyecto</th>
-                                        <th>Modelo</th>
-                                        <th>Estado</th>
+                                        <th>NOMBRE</th>
+                                        <th>PROYECTO</th>
+                                        <th>MODELO/ TIPO</th>
+                                        <th>PRECIO V-UNICO</th>
+                                        <th>ESTADO</th>
+                                        <th>FECHA ENTREGA</th>
+                                        <th>TOTAL DE M2</th>
+                                        <th>LOTE</th>
+                                        <th>AREA PARK M2</th>
+                                        <th>AREA BODE M2</th>
+                                        <th>AREA MEZZA M2</th>
+                                        <th>ASL ASIGNADA</th>
+                                        <th>PRRECIO V-MINIMO</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {paginatedData.map((row, rowIndex) => (
                                         <tr key={rowIndex} onClick={() => handleOpenModal(row)}>
-                                            <td>{row.ID_interno_expediente}</td>
                                             <td>{row.codigo_exp}</td>
                                             <td>{row.proyectoPrincipal_exp}</td>
                                             <td>{row.tipoDeVivienda_exp}</td>
+                                            <td>{row.precioVentaUncio_exp}</td>
                                             <td>{row.estado_exp}</td>
+                                            <td>{row.entregaEstimada}</td>
+                                            <td>{row.areaTotalM2_exp}</td>
+                                            <td>{row.loteM2_exp}</td>
+                                            <td>{row.areaDeParqueoAprox}</td>
+                                            <td>{row.areaDeBodegaM2_exp}</td>
+                                            <td>{row.areaDeMezzanieM2_exp}</td>
+                                            <td>{row.areacomunLibe_exp}</td>
+                                            <td>{row.precioDeVentaMinimo}</td>
                                         </tr>
                                     ))}
                                 </tbody>
@@ -413,6 +429,7 @@ export default function ViewListExpedientes() {
                                         </Box>
                                     </>
                                 )}
+                                <button className="btn btn-dark">Sincronizar expediente de unidad</button>
                             </Box>
                         </Modal>
                     </>
