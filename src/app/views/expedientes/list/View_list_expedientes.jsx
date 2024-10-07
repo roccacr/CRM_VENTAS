@@ -184,6 +184,7 @@ export default function ViewListExpedientes() {
                                         <th>ESTADO</th>
                                         <th>FECHA ENTREGA</th>
                                         <th>TOTAL DE M2</th>
+                                        <th>AREA HABITABLE M2</th>
                                         <th>LOTE</th>
                                         <th>AREA PARK M2</th>
                                         <th>AREA BODE M2</th>
@@ -202,7 +203,9 @@ export default function ViewListExpedientes() {
                                             <td>{row.estado_exp}</td>
                                             <td>{row.entregaEstimada}</td>
                                             <td>{row.areaTotalM2_exp}</td>
+                                            <td>{row.m2Habitables_exp}</td>
                                             <td>{row.loteM2_exp}</td>
+
                                             <td>{row.areaDeParqueoAprox}</td>
                                             <td>{row.areaDeBodegaM2_exp}</td>
                                             <td>{row.areaDeMezzanieM2_exp}</td>
