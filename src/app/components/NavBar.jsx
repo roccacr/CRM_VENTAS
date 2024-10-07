@@ -152,14 +152,14 @@ export const NavBar = ({ sidebarVisible, sidebarStatus, closeSidebar }) => {
                                 <span className="pc-mtext">Calendario</span>
                             </NavLink>
                         </li>
-                        {/* <li className="pc-item">
+                        <li className="pc-item">
                             <NavLink to="/expedientes/list" className="pc-link active">
                                 <span className="pc-micon">
                                     <i className="ti ti-file-text"></i>
                                 </span>
                                 <span className="pc-mtext">Expedientes</span>
                             </NavLink>
-                        </li> */}
+                        </li>
 
                         {/* Oportunidades con submenú */}
                         <li className="pc-item" onClick={() => toggleMenu("opportunitiesMenu")}>

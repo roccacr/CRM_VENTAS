@@ -1,513 +1,423 @@
-import axios from "axios";
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
+import Select from "react-select";
+import makeAnimated from "react-select/animated";
+import * as XLSX from "xlsx"; // Importamos la librería para generar el archivo Excel
+import { useDispatch } from "react-redux"; // Importar useDispatch para llamar al thunk
+import { getFileList } from "../../../../store/expedientes/thunksExpedientes"; // Asegúrate de que esta función está disponible
+import { Modal, Box, Button, Typography } from "@mui/material"; // Importamos Modal de Material UI
 
-// Componente para mostrar el modal
-const Modal = ({ show, onClose, mediaType, mediaSrc }) => {
-    if (!show) return null;
-
-    // Función para cerrar el modal si se hace clic fuera de él
-    const handleOverlayClick = (e) => {
-        if (e.target === e.currentTarget) {
-            onClose(); // Cierra el modal si se hace clic fuera del contenido
-        }
-    };
-
-    const renderMedia = () => {
-        switch (mediaType) {
-            case "image":
-                return <img src={mediaSrc} alt="Preview" style={{ maxWidth: "100%", maxHeight: "80vh" }} />;
-            case "video":
-                return <video controls src={mediaSrc} style={{ maxWidth: "100%", maxHeight: "80vh" }} />;
-            case "audio":
-                return <audio controls src={mediaSrc} style={{ width: "100%" }} />;
-            case "document":
-                return (
-                    <iframe src={mediaSrc} title="Document" style={{ width: "100%", height: "80vh" }}>
-                        Tu navegador no soporta iframes.
-                    </iframe>
-                );
-            default:
-                return <span>Tipo de medio no soportado</span>;
-        }
-    };
-
-    return (
-        <div style={styles.overlay} onClick={handleOverlayClick}>
-            <div style={styles.modal}>
-                <button onClick={onClose} style={styles.closeButton}>
-                    X
-                </button>
-                {renderMedia()}
-            </div>
-        </div>
-    );
+const getUniqueValuesWithCounts = (data, key) => {
+    const counts = {};
+    data.forEach((item) => {
+        const value = item[key] || "Sin especificar";
+        counts[value] = (counts[value] || 0) + 1;
+    });
+    return Object.entries(counts).map(([value, count]) => ({
+        value,
+        label: `${value} (${count})`,
+    }));
 };
 
-const styles = {
-    overlay: {
-        position: "fixed",
-        top: 0,
-        left: 0,
-        width: "100vw",
-        height: "100vh",
-        backgroundColor: "rgba(0, 0, 0, 0.8)",
-        display: "flex",
-        justifyContent: "center",
-        alignItems: "center",
-        zIndex: 1000,
-    },
-    modal: {
-        position: "relative",
-        backgroundColor: "#fff",
-        padding: "20px",
-        borderRadius: "8px",
-        maxWidth: "90vw",
-        maxHeight: "90vh",
-        overflow: "auto",
-    },
-    closeButton: {
-        position: "absolute",
-        top: "10px",
-        right: "10px",
-        backgroundColor: "transparent",
-        border: "none",
-        fontSize: "20px",
-        cursor: "pointer",
-    },
-};
+export default function ViewListExpedientes() {
+    const animatedComponents = makeAnimated();
+    const dispatch = useDispatch(); // Instanciar el dispatch para llamar al thunk
 
-// Componente memoizado para mostrar cada mensaje
-const Message = React.memo(({ msg, openModal, apiBaseUrl }) => {
-    const renderMessageContent = (msg) => {
-        if (msg.mediaPath) {
-            // Reemplazar la ruta del sistema de archivos por la URL relativa a /media
-            const relativeMediaPath = msg.mediaPath.replace(
-                "C:\\Users\\RobertoCarlosZuñigaA\\Desktop\\Api Whatsapp\\media\\", // Ruta absoluta del sistema de archivos
-                "/media/", // Ruta relativa para acceder desde el servidor
-            );
+    // Estado para los datos cargados y el estado de carga
+    const [expedientes, setExpedientes] = useState([]); // Guardar los expedientes cargados
+    const [isLoading, setIsLoading] = useState(true); // Controlar el preloader
+    const [modalIsOpen, setModalIsOpen] = useState(false); // Controlar si el modal está abierto o cerrado
+    const [selectedExpediente, setSelectedExpediente] = useState(null); // Guardar el expediente seleccionado
 
-            const extension = relativeMediaPath.split(".").pop().toLowerCase();
-            switch (extension) {
-                case "jpg":
-                case "jpeg":
-                case "png":
-                    return <img src={`${apiBaseUrl}${relativeMediaPath}`} alt="Imagen" style={{ maxWidth: "150px", maxHeight: "150px", cursor: "pointer" }} onClick={() => openModal("image", `${apiBaseUrl}${relativeMediaPath}`)} />;
-                case "mp4":
-                    return <video controls src={`${apiBaseUrl}${relativeMediaPath}`} style={{ maxWidth: "150px", maxHeight: "150px", cursor: "pointer" }} onClick={() => openModal("video", `${apiBaseUrl}${relativeMediaPath}`)} />;
-                case "ogg":
-                    return (
-                        <div style={{ cursor: "pointer" }} onClick={() => openModal("audio", `${apiBaseUrl}${relativeMediaPath}`)}>
-                            <audio controls src={`${apiBaseUrl}${relativeMediaPath}`} style={{ maxWidth: "150px" }} />
-                        </div>
-                    );
-                case "pdf":
-                    return (
-                        <a
-                            href={`${apiBaseUrl}${relativeMediaPath}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            onClick={(e) => {
-                                e.preventDefault();
-                                openModal("document", `${apiBaseUrl}${relativeMediaPath}`);
-                            }}
-                        >
-                            Ver documento
-                        </a>
-                    );
-                default:
-                    return <span>Formato no soportado</span>;
-            }
-        } else {
-            return <span>{msg.message || "Mensaje vacío"}</span>;
-        }
-    };
+    const [searchFilters, setSearchFilters] = useState({
+        proyectoPrincipal_exp: [],
+        modelo_exp: [],
+        estado_exp: [],
+    });
 
-    return (
-        <div
-            style={{
-                textAlign: msg.sender === "Yo" ? "left" : "right",
-                margin: "10px 0",
-                display: "flex",
-                flexDirection: msg.sender === "Yo" ? "row" : "row-reverse",
-                alignItems: "center",
-            }}
-        >
-            <div style={{ maxWidth: "60%" }}>
-                <div
-                    style={{
-                        backgroundColor: msg.sender === "Yo" ? "#e0e0e0" : "#007bff",
-                        color: msg.sender === "Yo" ? "#000" : "#fff",
-                        padding: "10px",
-                        borderRadius: "10px",
-                        wordWrap: "break-word",
-                        display: "inline-block",
-                    }}
-                >
-                    {renderMessageContent(msg)}
-                </div>
-                <small style={{ display: "block", marginTop: "5px" }}>{new Date(msg.timestamp).toLocaleString()}</small>
-            </div>
-        </div>
-    );
-});
+    const [filteredData, setFilteredData] = useState([]);
+    const [projectOptions, setProjectOptions] = useState([]);
+    const [modelOptions, setModelOptions] = useState([]);
+    const [stateOptions, setStateOptions] = useState([]);
 
-export const View_list_expedientes = () => {
-    const [to, setTo] = useState(""); // Número de teléfono seleccionado
-    const [message, setMessage] = useState(""); // Mensaje a enviar
-    const [conversations, setConversations] = useState([]); // Mensajes de la conversación actual
-    const [contacts, setContacts] = useState([]); // Lista de contactos
-    const [loading, setLoading] = useState(false); // Estado de carga
-    const [showModal, setShowModal] = useState(false); // Estado del modal
-    const [mediaType, setMediaType] = useState(""); // Tipo de media para el modal
-    const [mediaSrc, setMediaSrc] = useState(""); // Fuente de media para el modal
-    const messagesContainerRef = useRef(null); // Referencia al contenedor de mensajes
-    const [allConversations, setAllConversations] = useState({}); // Todas las conversaciones
-    const [prevAllConversations, setPrevAllConversations] = useState({}); // Estado anterior de todas las conversaciones
-    const [unreadMessages, setUnreadMessages] = useState({}); // Mensajes no leídos por chat
-
-    // Base URL para la API que corre en el puerto 3000
-    const apiBaseUrl = "http://localhost:3000"; // Cambia localhost por el dominio si estás en producción
-
-    // URL del sonido de notificación
-    const notificationSoundUrl = "/notification.mp3";
-
-    // Sonido de notificación
-    const notificationSound = useRef(null);
-
-    // Bandera para saber si el usuario ha interactuado con la página
-    const [userInteracted, setUserInteracted] = useState(false);
-
-    // Función para manejar la interacción del usuario
-    const handleUserInteraction = () => {
-        if (!userInteracted) {
-            setUserInteracted(true);
-            // Inicializar el objeto Audio después de la interacción del usuario
-            notificationSound.current = new Audio(notificationSoundUrl);
-        }
-    };
-
-    // Añadir el listener de interacción al montar el componente
     useEffect(() => {
-        window.addEventListener("click", handleUserInteraction);
-        window.addEventListener("keydown", handleUserInteraction);
-
-        return () => {
-            window.removeEventListener("click", handleUserInteraction);
-            window.removeEventListener("keydown", handleUserInteraction);
+        const fetchData = async () => {
+            try {
+                const result = await dispatch(getFileList());
+                setExpedientes(Array.isArray(result) ? result : []);
+                setFilteredData(Array.isArray(result) ? result : []);
+                const uniqueProjects = getUniqueValuesWithCounts(result, "proyectoPrincipal_exp");
+                setProjectOptions(uniqueProjects);
+            } catch (error) {
+                console.error("Error al cargar los expedientes", error);
+            } finally {
+                setIsLoading(false);
+            }
         };
-    }, [userInteracted]);
 
-    // Función para obtener todas las conversaciones
-    const fetchAllConversations = async () => {
-        try {
-            const res = await axios.get(`${apiBaseUrl}/conversations/all`);
-            if (res.data.success) {
-                const newConversations = res.data.conversations;
+        fetchData();
+    }, [dispatch]);
 
-                // Detectar nuevos mensajes
-                detectNewMessages(prevAllConversations, newConversations);
-
-                setAllConversations(newConversations);
-                setPrevAllConversations(newConversations);
-            }
-        } catch (error) {
-            console.error("Error al obtener todas las conversaciones:", error.response?.data || error.message);
+    // Filtro dinámico de Modelos basado en el Proyecto seleccionado
+    useEffect(() => {
+        if (searchFilters.proyectoPrincipal_exp.length > 0) {
+            const selectedProjects = searchFilters.proyectoPrincipal_exp.map((p) => p.value);
+            const filteredByProject = expedientes.filter((item) => selectedProjects.includes(item.proyectoPrincipal_exp));
+            const uniqueModels = getUniqueValuesWithCounts(filteredByProject, "tipoDeVivienda_exp");
+            setModelOptions(uniqueModels);
+        } else {
+            setModelOptions([]);
         }
-    };
+    }, [searchFilters.proyectoPrincipal_exp, expedientes]);
 
-    // Función para detectar nuevos mensajes y reproducir sonido
-    const detectNewMessages = (prevConvs, newConvs) => {
-        const updatedUnreadMessages = { ...unreadMessages };
+    // Filtro dinámico de Estados basado en el Proyecto y Modelo seleccionados
+    useEffect(() => {
+        let filteredByModelAndProject = expedientes;
 
-        for (const phoneNumber in newConvs) {
-            const prevMessages = prevConvs[phoneNumber] || [];
-            const newMessages = newConvs[phoneNumber];
-
-            // Obtener los IDs de los mensajes anteriores y nuevos
-            const prevMessageIds = prevMessages.map((msg) => msg.id);
-            const newReceivedMessages = newMessages.filter((msg) => msg.type === "received" && !prevMessageIds.includes(msg.id));
-
-            if (newReceivedMessages.length > 0) {
-                // Hay nuevos mensajes recibidos que antes no teníamos
-                // Si el chat no está abierto, reproducir sonido y actualizar los mensajes no leídos
-                if (to !== phoneNumber) {
-                    if (notificationSound.current) {
-                        notificationSound.current.play().catch((error) => {
-                            console.error("Error al reproducir el sonido:", error);
-                        });
-                    }
-                    if (!updatedUnreadMessages[phoneNumber]) {
-                        updatedUnreadMessages[phoneNumber] = 0;
-                    }
-                    updatedUnreadMessages[phoneNumber] += newReceivedMessages.length;
-                } else {
-                    // Si el chat está abierto, no hay mensajes no leídos
-                    updatedUnreadMessages[phoneNumber] = 0;
-                }
-            }
+        if (searchFilters.proyectoPrincipal_exp.length > 0) {
+            const selectedProjects = searchFilters.proyectoPrincipal_exp.map((p) => p.value);
+            filteredByModelAndProject = filteredByModelAndProject.filter((item) => selectedProjects.includes(item.proyectoPrincipal_exp));
         }
 
-        setUnreadMessages(updatedUnreadMessages);
-    };
-
-    // Función para obtener la lista de contactos
-    const fetchContacts = async () => {
-        try {
-            const res = await axios.get(`${apiBaseUrl}/conversations`);
-            if (res.data.success) {
-                setContacts(res.data.phoneNumbers); // Guardar los contactos obtenidos
-            }
-        } catch (error) {
-            console.error("Error al obtener los contactos:", error.response?.data || error.message);
+        if (searchFilters.modelo_exp.length > 0) {
+            const selectedModels = searchFilters.modelo_exp.map((m) => m.value);
+            filteredByModelAndProject = filteredByModelAndProject.filter((item) => selectedModels.includes(item.tipoDeVivienda_exp));
         }
-    };
 
-    // Función para obtener los mensajes según el número de teléfono
-    const fetchConversation = async (phoneNumber) => {
-        if (!phoneNumber) return;
-
-        try {
-            const res = await axios.get(`${apiBaseUrl}/conversation/${phoneNumber}/messages`);
-            if (res.data.success) {
-                const newMessages = res.data.messages;
-
-                // Ordenar los mensajes del más antiguo al más reciente
-                newMessages.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
-
-                setConversations(newMessages);
-
-                // Marcar los mensajes como leídos
-                setUnreadMessages((prevUnread) => ({
-                    ...prevUnread,
-                    [phoneNumber]: 0,
-                }));
-            }
-        } catch (error) {
-            console.error("Error al obtener conversación:", error.response?.data || error.message);
-        }
-    };
+        const uniqueStates = getUniqueValuesWithCounts(filteredByModelAndProject, "estado_exp");
+        setStateOptions(uniqueStates);
+    }, [searchFilters.modelo_exp, searchFilters.proyectoPrincipal_exp, expedientes]);
 
     useEffect(() => {
-        fetchContacts(); // Obtener la lista de contactos al montar el componente
-    }, []);
+        const filterData = () => {
+            let filtered = expedientes.filter((row) => {
+                return (searchFilters.proyectoPrincipal_exp.length === 0 || searchFilters.proyectoPrincipal_exp.map((p) => p.value).includes(row.proyectoPrincipal_exp)) && (searchFilters.modelo_exp.length === 0 || searchFilters.modelo_exp.map((m) => m.value).includes(row.tipoDeVivienda_exp)) && (searchFilters.estado_exp.length === 0 || searchFilters.estado_exp.map((e) => e.value).includes(row.estado_exp));
+            });
+            setFilteredData(filtered);
+        };
 
-    useEffect(() => {
-        if (messagesContainerRef.current) {
-            // Establece la posición de desplazamiento al final (abajo)
-            messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
-        }
-    }, [conversations]);
+        filterData();
+    }, [searchFilters, expedientes]);
 
-    // Función para enviar un mensaje personalizado
-    const sendCustomMessage = async () => {
-        if (!to || !message.trim()) {
-            alert("Por favor, completa ambos campos: número y mensaje");
-            return;
-        }
-
-        setLoading(true);
-        try {
-            const res = await axios.post(`${apiBaseUrl}/send-custom-message`, { to: `whatsapp:${to}`, message });
-            if (res.data.success) {
-                // Añade el nuevo mensaje directamente al estado sin volver a obtener toda la conversación
-                const newMsg = {
-                    id: res.data.messageId || Date.now(), // Asume que tu API devuelve el ID del mensaje
-                    sender: "Yo",
-                    message: message,
-                    timestamp: new Date().toISOString(),
-                };
-                setConversations((prevConversations) => [...prevConversations, newMsg]);
-                setMessage(""); // Reinicia el campo de mensaje
-            }
-        } catch (error) {
-            console.error("Error al enviar mensaje:", error.response?.data || error.message);
-        } finally {
-            setLoading(false);
-        }
+    const handleOpenModal = (expediente) => {
+        setSelectedExpediente(expediente); // Guardar el expediente seleccionado
+        setModalIsOpen(true); // Abrir el modal
     };
 
-    // Función para abrir el modal con la media seleccionada
-    const openModal = (mediaType, mediaSrc) => {
-        setMediaType(mediaType);
-        setMediaSrc(mediaSrc);
-        setShowModal(true);
+    const handleCloseModal = () => {
+        setModalIsOpen(false); // Cerrar el modal
+        setSelectedExpediente(null); // Limpiar el expediente seleccionado
     };
 
-    // Función para cerrar el modal
-    const closeModal = () => {
-        setShowModal(false);
-        setMediaType("");
-        setMediaSrc("");
+    const [currentPage, setCurrentPage] = useState(1);
+    const [rowsPerPage, setRowsPerPage] = useState(10);
+
+    const paginatedData = Array.isArray(filteredData) ? filteredData.slice((currentPage - 1) * rowsPerPage, currentPage * rowsPerPage) : [];
+
+    const handlePageChange = (newPage) => {
+        setCurrentPage(newPage);
     };
 
-    // Polling para actualizar todas las conversaciones y detectar nuevos mensajes
-    useEffect(() => {
-        fetchAllConversations(); // Obtener todas las conversaciones al montar el componente
+    const handleRowsPerPageChange = (event) => {
+        setRowsPerPage(Number(event.target.value));
+        setCurrentPage(1);
+    };
 
-        const interval = setInterval(() => {
-            fetchAllConversations();
-        }, 5000); // Actualiza cada 5 segundos
+    const handleExportToExcel = () => {
+        const dataToExport = filteredData.map((row) => ({
+            "ID Interno": row.ID_interno_expediente,
+            Código: row.codigo_exp,
+            Proyecto: row.proyectoPrincipal_exp,
+            Modelo: row.tipoDeVivienda_exp,
+            Estado: row.estado_exp,
+        }));
 
-        return () => clearInterval(interval);
-    }, []);
-
-    // Polling para actualizar la conversación actual
-    useEffect(() => {
-        if (to) {
-            fetchConversation(to); // Cargar la conversación al seleccionar un contacto
-            const interval = setInterval(() => {
-                fetchConversation(to);
-            }, 1000); // Actualiza cada 5 segundos
-            return () => clearInterval(interval);
-        }
-    }, [to]);
+        const ws = XLSX.utils.json_to_sheet(dataToExport);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Expedientes");
+        XLSX.writeFile(wb, "Expedientes.xlsx");
+    };
 
     return (
-        <div style={{ padding: "20px", display: "flex", flexDirection: "row", height: "90vh" }}>
-            {/* Lista de contactos a la izquierda */}
-            <div style={{ width: "25%", borderRight: "1px solid #ccc", paddingRight: "20px" }}>
-                <h3>Contactos:</h3>
-                <div style={{ display: "flex", flexDirection: "column" }}>
-                    {contacts.length > 0 ? (
-                        contacts.map((phoneNumber, index) => (
-                            <button
-                                key={index}
-                                onClick={() => {
-                                    setTo(phoneNumber); // Establecer el número de teléfono seleccionado
-                                    fetchConversation(phoneNumber); // Cargar la conversación al hacer clic
-                                    // Marcar mensajes como leídos
-                                    setUnreadMessages((prevUnread) => ({
-                                        ...prevUnread,
-                                        [phoneNumber]: 0,
-                                    }));
-                                }}
-                                style={{
-                                    margin: "5px 0",
-                                    padding: "10px",
-                                    textAlign: "left",
-                                    backgroundColor: to === phoneNumber ? "#007bff" : "#f1f1f1",
-                                    color: to === phoneNumber ? "#fff" : "#000",
-                                    border: "none",
-                                    cursor: "pointer",
-                                    position: "relative",
-                                }}
-                            >
-                                {phoneNumber}
-                                {/* Indicador de nuevos mensajes */}
-                                {unreadMessages[phoneNumber] > 0 && to !== phoneNumber && (
-                                    <span
-                                        style={{
-                                            position: "absolute",
-                                            right: "10px",
-                                            top: "50%",
-                                            transform: "translateY(-50%)",
-                                            backgroundColor: "red",
-                                            color: "#fff",
-                                            borderRadius: "50%",
-                                            width: "20px",
-                                            height: "20px",
-                                            display: "flex",
-                                            justifyContent: "center",
-                                            alignItems: "center",
-                                            fontSize: "12px",
-                                        }}
-                                    >
-                                        {unreadMessages[phoneNumber]}
-                                    </span>
-                                )}
-                            </button>
-                        ))
-                    ) : (
-                        <p>No hay contactos disponibles.</p>
-                    )}
-                </div>
+        <div className="card" style={{ width: "100%" }}>
+            <div className="card-header table-card-header">
+                <h5>LISTADO DE EXPEDIENTES</h5>
             </div>
 
-            {/* Conversación a la derecha */}
-            <div style={{ flex: 1, paddingLeft: "20px", display: "flex", flexDirection: "column" }}>
-                <div
-                    ref={messagesContainerRef}
-                    style={{
-                        flex: 1,
-                        overflowY: "auto",
-                        border: "1px solid #ccc",
-                        padding: "10px",
-                        marginBottom: "20px",
-                        display: "flex",
-                        flexDirection: "column",
-                    }}
-                >
-                    {loading && conversations.length === 0 ? <p>Cargando conversación...</p> : conversations.length > 0 ? conversations.map((msg, index) => <Message key={msg.id || index} msg={msg} openModal={openModal} apiBaseUrl={apiBaseUrl} />) : <p>No se encontraron mensajes para este número.</p>}
-                </div>
-
-                {/* Campo para escribir y enviar mensaje */}
-                <div style={{ display: "flex", alignItems: "center" }}>
-                    <input
-                        type="text"
-                        placeholder="Escribe tu mensaje"
-                        value={message}
-                        onChange={(e) => setMessage(e.target.value)}
-                        onKeyDown={(e) => {
-                            if (e.key === "Enter") {
-                                e.preventDefault();
-                                sendCustomMessage();
-                            }
-                        }}
-                        style={{ flex: 1, marginRight: "10px", padding: "10px", borderRadius: "5px", border: "1px solid #ccc" }}
-                    />
-                    <button
-                        onClick={sendCustomMessage}
-                        disabled={loading || !to}
-                        style={{
-                            backgroundColor: "#28a745",
-                            color: "#fff",
-                            padding: "10px 20px",
-                            border: "none",
-                            borderRadius: "5px",
-                            cursor: loading || !to ? "not-allowed" : "pointer",
-                            position: "relative",
-                        }}
-                    >
-                        {loading ? "Enviando..." : "Enviar"}
-                        {loading && (
-                            <span
-                                style={{
-                                    position: "absolute",
-                                    right: "-30px",
-                                    top: "50%",
-                                    transform: "translateY(-50%)",
-                                }}
-                            >
-                                {/* Indicador de carga simple */}
-                                <div
-                                    className="spinner"
-                                    style={{
-                                        width: "20px",
-                                        height: "20px",
-                                        border: "3px solid #f3f3f3",
-                                        borderTop: "3px solid #fff",
-                                        borderRadius: "50%",
-                                        animation: "spin 1s linear infinite",
-                                    }}
-                                ></div>
-                            </span>
-                        )}
+            <div className="card-header border-bottom-0">
+                <div className="d-flex">
+                    <button className="btn btn-success ms-2" onClick={handleExportToExcel}>
+                        Exportar a Excel
                     </button>
                 </div>
             </div>
 
-            {/* Modal para previsualizar medios */}
-            <Modal show={showModal} onClose={closeModal} mediaType={mediaType} mediaSrc={mediaSrc} />
+            <div className="card-body">
+                {isLoading ? (
+                    <div>Cargando datos...</div>
+                ) : filteredData.length === 0 ? (
+                    <div>No hay datos para mostrar</div>
+                ) : (
+                    <>
+                        <div className="row">
+                            <div className="col-md-4">
+                                <label>Filtrar por Proyecto</label>
+                                <Select components={animatedComponents} isMulti closeMenuOnSelect={false} options={projectOptions} value={searchFilters.proyectoPrincipal_exp} onChange={(selected) => setSearchFilters({ ...searchFilters, proyectoPrincipal_exp: selected })} placeholder="Proyecto" />
+                            </div>
+                            <div className="col-md-4">
+                                <label>Filtrar por Modelo</label>
+                                <Select components={animatedComponents} isMulti closeMenuOnSelect={false} options={modelOptions} value={searchFilters.modelo_exp} onChange={(selected) => setSearchFilters({ ...searchFilters, modelo_exp: selected })} placeholder="Modelo" isDisabled={modelOptions.length === 0} />
+                            </div>
+                            <div className="col-md-4">
+                                <label>Filtrar por Estado</label>
+                                <Select components={animatedComponents} isMulti closeMenuOnSelect={false} options={stateOptions} value={searchFilters.estado_exp} onChange={(selected) => setSearchFilters({ ...searchFilters, estado_exp: selected })} placeholder="Estado" isDisabled={stateOptions.length === 0} />
+                            </div>
+                        </div>
+
+                        <div className="table-responsive">
+                            <table className="table table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Código</th>
+                                        <th>Proyecto</th>
+                                        <th>Modelo</th>
+                                        <th>Estado</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {paginatedData.map((row, rowIndex) => (
+                                        <tr key={rowIndex} onClick={() => handleOpenModal(row)}>
+                                            <td>{row.ID_interno_expediente}</td>
+                                            <td>{row.codigo_exp}</td>
+                                            <td>{row.proyectoPrincipal_exp}</td>
+                                            <td>{row.tipoDeVivienda_exp}</td>
+                                            <td>{row.estado_exp}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div className="pagination-controls" style={{ marginTop: "20px", textAlign: "center" }}>
+                            <div>
+                                <label htmlFor="rowsPerPage">Filas por página:</label>
+                                <select id="rowsPerPage" value={rowsPerPage} onChange={handleRowsPerPageChange} style={{ marginLeft: "10px" }}>
+                                    <option value={10}>10</option>
+                                    <option value={20}>20</option>
+                                    <option value={50}>50</option>
+                                    <option value={100}>100</option>
+                                </select>
+                            </div>
+                            <button onClick={() => handlePageChange(currentPage - 1)} disabled={currentPage === 1} className="btn btn-light">
+                                Anterior
+                            </button>
+                            <span style={{ margin: "0 10px" }}>
+                                Página {currentPage} de {Math.ceil(filteredData.length / rowsPerPage)}
+                            </span>
+                            <button onClick={() => handlePageChange(currentPage + 1)} disabled={currentPage >= Math.ceil(filteredData.length / rowsPerPage)} className="btn btn-light">
+                                Siguiente
+                            </button>
+                        </div>
+
+                        {/* Modal para mostrar los detalles del expediente */}
+                        <Modal
+                            open={modalIsOpen}
+                            onClose={handleCloseModal}
+                            sx={{
+                                display: "flex",
+                                alignItems: "flex-start", // Para que aparezca en la parte superior
+                                justifyContent: "center",
+                            }}
+                        >
+                            <Box
+                                sx={{
+                                    position: "absolute",
+                                    top: "10px", // Ajustar la distancia desde la parte superior
+                                    width: "70%",
+                                    height: "95vh",
+                                    bgcolor: "background.paper",
+                                    boxShadow: 50,
+                                    p: 2,
+                                    overflowY: "auto", // Para hacer scroll si el contenido es demasiado largo
+                                }}
+                            >
+                                <Typography variant="h6" component="h2">
+                                    Detalles del Expediente
+                                </Typography>
+                                {selectedExpediente && (
+                                    <>
+                                        {/* First Group */}
+                                        <Box sx={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", borderBottom: "1px solid #ccc", pb: 2, mb: 2, gap: window.innerWidth < 600 ? "16px" : "0" }}>
+                                            <Box sx={{ flex: { xs: "1 0 45%", sm: "1 0 30%" } }}>
+                                                <p>ID Expediente</p>
+                                                <strong>{selectedExpediente.id_expediente || "N"}</strong>
+                                            </Box>
+                                            <Box sx={{ flex: { xs: "1 0 45%", sm: "1 0 30%" } }}>
+                                                <p>ID Interno Expediente</p>
+                                                <strong>{selectedExpediente.ID_interno_expediente || "N"}</strong>
+                                            </Box>
+                                            <Box sx={{ flex: { xs: "1 0 45%", sm: "1 0 30%" } }}>
+                                                <p>Código Expediente</p>
+                                                <strong>{selectedExpediente.codigo_exp || "N"}</strong>
+                                            </Box>
+                                        </Box>
+
+                                        {/* Second Group */}
+                                        <Box sx={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", borderBottom: "1px solid #ccc", pb: 2, mb: 2, gap: window.innerWidth < 600 ? "16px" : "0" }}>
+                                            <Box sx={{ flex: { xs: "1 0 45%", sm: "1 0 30%" } }}>
+                                                <p>Proyecto Principal</p>
+                                                <strong>{selectedExpediente.proyectoPrincipal_exp || "N"}</strong>
+                                            </Box>
+                                            <Box sx={{ flex: { xs: "1 0 45%", sm: "1 0 30%" } }}>
+                                                <p>ID Proyecto Principal</p>
+                                                <strong>{selectedExpediente.idProyectoPrincipal_exp || "N"}</strong>
+                                            </Box>
+                                            <Box sx={{ flex: { xs: "1 0 45%", sm: "1 0 30%" } }}>
+                                                <p>Tipo de Vivienda</p>
+                                                <strong>{selectedExpediente.tipoDeVivienda_exp || "N"}</strong>
+                                            </Box>
+                                        </Box>
+
+                                        {/* Third Group */}
+                                        <Box sx={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", borderBottom: "1px solid #ccc", pb: 2, mb: 2, gap: window.innerWidth < 600 ? "16px" : "0" }}>
+                                            <Box sx={{ flex: { xs: "1 0 45%", sm: "1 0 30%" } }}>
+                                                <p>Lote M²</p>
+                                                <strong>{selectedExpediente.loteM2_exp || "N"}</strong>
+                                            </Box>
+                                            <Box sx={{ flex: { xs: "1 0 45%", sm: "1 0 30%" } }}>
+                                                <p>Estado</p>
+                                                <strong>{selectedExpediente.estado_exp || "N"}</strong>
+                                            </Box>
+                                            <Box sx={{ flex: { xs: "1 0 45%", sm: "1 0 30%" } }}>
+                                                <p>Precio Venta Único</p>
+                                                <strong>{selectedExpediente.precioVentaUncio_exp || "N"}</strong>
+                                            </Box>
+                                        </Box>
+
+                                        {/* Fourth Group */}
+                                        <Box sx={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", borderBottom: "1px solid #ccc", pb: 2, mb: 2, gap: window.innerWidth < 600 ? "16px" : "0" }}>
+                                            <Box sx={{ flex: { xs: "1 0 45%", sm: "1 0 30%" } }}>
+                                                <p>M² Habitables</p>
+                                                <strong>{selectedExpediente.m2Habitables_exp || "N"}</strong>
+                                            </Box>
+                                            <Box sx={{ flex: { xs: "1 0 45%", sm: "1 0 30%" } }}>
+                                                <p>Área Total M²</p>
+                                                <strong>{selectedExpediente.areaTotalM2_exp || "N"}</strong>
+                                            </Box>
+                                            <Box sx={{ flex: { xs: "1 0 45%", sm: "1 0 30%" } }}>
+                                                <p>Cuota Mantenimiento Aproximada</p>
+                                                <strong>{selectedExpediente.cuotaMantenimientoAprox_exp || "N"}</strong>
+                                            </Box>
+                                        </Box>
+
+                                        {/* Fifth Group */}
+                                        <Box sx={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", borderBottom: "1px solid #ccc", pb: 2, mb: 2, gap: window.innerWidth < 600 ? "16px" : "0" }}>
+                                            <Box sx={{ flex: { xs: "1 0 45%", sm: "1 0 30%" } }}>
+                                                <p>Planos de Unidad</p>
+                                                {selectedExpediente.planosDeUnidad_exp ? (
+                                                    <a href={selectedExpediente.planosDeUnidad_exp} target="_blank" rel="noopener noreferrer">
+                                                        Ver Planos
+                                                    </a>
+                                                ) : (
+                                                    <strong>N</strong>
+                                                )}
+                                            </Box>
+                                            <Box sx={{ flex: { xs: "1 0 45%", sm: "1 0 30%" } }}>
+                                                <p>Entrega Estimada</p>
+                                                <strong>{selectedExpediente.entregaEstimada || "N"}</strong>
+                                            </Box>
+                                            <Box sx={{ flex: { xs: "1 0 45%", sm: "1 0 30%" } }}>
+                                                <p>Área de Bodega M²</p>
+                                                <strong>{selectedExpediente.areaDeBodegaM2_exp || "N"}</strong>
+                                            </Box>
+                                        </Box>
+
+                                        {/* Sixth Group */}
+                                        <Box sx={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", borderBottom: "1px solid #ccc", pb: 2, mb: 2, gap: window.innerWidth < 600 ? "16px" : "0" }}>
+                                            <Box sx={{ flex: { xs: "1 0 45%", sm: "1 0 30%" } }}>
+                                                <p>Área de Mezzanine M²</p>
+                                                <strong>{selectedExpediente.areaDeMezzanieM2_exp || "N"}</strong>
+                                            </Box>
+                                            <Box sx={{ flex: { xs: "1 0 45%", sm: "1 0 30%" } }}>
+                                                <p>Área de Balcón M²</p>
+                                                <strong>{selectedExpediente.areaDeBalconM2_exp || "N"}</strong>
+                                            </Box>
+                                            <Box sx={{ flex: { xs: "1 0 45%", sm: "1 0 30%" } }}>
+                                                <p>Área de Planta Baja</p>
+                                                <strong>{selectedExpediente.areaDePlantaBaja_exp || "N"}</strong>
+                                            </Box>
+                                        </Box>
+
+                                        {/* Seventh Group */}
+                                        <Box sx={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", borderBottom: "1px solid #ccc", pb: 2, mb: 2, gap: window.innerWidth < 600 ? "16px" : "0" }}>
+                                            <Box sx={{ flex: { xs: "1 0 45%", sm: "1 0 30%" } }}>
+                                                <p>Área de Planta Alta</p>
+                                                <strong>{selectedExpediente.areaDePlantaAlta_exp || "N"}</strong>
+                                            </Box>
+                                            <Box sx={{ flex: { xs: "1 0 45%", sm: "1 0 30%" } }}>
+                                                <p>Área de Ampliación</p>
+                                                <strong>{selectedExpediente.areaDeAmpliacion_exp || "N"}</strong>
+                                            </Box>
+                                            <Box sx={{ flex: { xs: "1 0 45%", sm: "1 0 30%" } }}>
+                                                <p>Área de Terraza</p>
+                                                <strong>{selectedExpediente.areaDeTerraza_exp || "N"}</strong>
+                                            </Box>
+                                        </Box>
+
+                                        {/* Eighth Group */}
+                                        <Box sx={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", borderBottom: "1px solid #ccc", pb: 2, mb: 2, gap: window.innerWidth < 600 ? "16px" : "0" }}>
+                                            <Box sx={{ flex: { xs: "1 0 45%", sm: "1 0 30%" } }}>
+                                                <p>Precio por M²</p>
+                                                <strong>{selectedExpediente.precioPorM2_exp || "N"}</strong>
+                                            </Box>
+                                            <Box sx={{ flex: { xs: "1 0 45%", sm: "1 0 30%" } }}>
+                                                <p>Tercer Nivel Sótano</p>
+                                                <strong>{selectedExpediente.tercerNivelSotano_exp || "N"}</strong>
+                                            </Box>
+                                            <Box sx={{ flex: { xs: "1 0 45%", sm: "1 0 30%" } }}>
+                                                <p>Área de Parqueo Aproximada</p>
+                                                <strong>{selectedExpediente.areaDeParqueoAprox || "N"}</strong>
+                                            </Box>
+                                        </Box>
+
+                                        {/* Ninth Group */}
+                                        <Box sx={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", borderBottom: "1px solid #ccc", pb: 2, mb: 2, gap: window.innerWidth < 600 ? "16px" : "0" }}>
+                                            <Box sx={{ flex: { xs: "1 0 45%", sm: "1 0 30%" } }}>
+                                                <p>Área Externa Jardín</p>
+                                                <strong>{selectedExpediente.areaExternaJardin_exp || "N"}</strong>
+                                            </Box>
+                                            <Box sx={{ flex: { xs: "1 0 45%", sm: "1 0 30%" } }}>
+                                                <p>Jardín con Talud</p>
+                                                <strong>{selectedExpediente.jardinConTalud_exp || "N"}</strong>
+                                            </Box>
+                                            <Box sx={{ flex: { xs: "1 0 45%", sm: "1 0 30%" } }}>
+                                                <p>Área Común Libre</p>
+                                                <strong>{selectedExpediente.areacomunLibe_exp || "N"}</strong>
+                                            </Box>
+                                        </Box>
+
+                                        {/* Tenth Group */}
+                                        <Box sx={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", pb: 2, mb: 2, gap: window.innerWidth < 600 ? "16px" : "0" }}>
+                                            <Box sx={{ flex: { xs: "1 0 45%", sm: "1 0 30%" } }}>
+                                                <p>Precio de Venta Mínimo</p>
+                                                <strong>{selectedExpediente.precioDeVentaMinimo || "N"}</strong>
+                                            </Box>
+                                            <Box sx={{ flex: { xs: "1 0 45%", sm: "1 0 30%" } }}>
+                                                <p>Fecha de Modificación</p>
+                                                <strong>{selectedExpediente.fecha_mod || "N"}</strong>
+                                            </Box>
+                                            <Box sx={{ flex: { xs: "1 0 45%", sm: "1 0 30%" } }}>
+                                                <p>Valor Cron</p>
+                                                <strong>{selectedExpediente.cron_value || "N"}</strong>
+                                            </Box>
+                                        </Box>
+                                    </>
+                                )}
+                            </Box>
+                        </Modal>
+                    </>
+                )}
+            </div>
         </div>
     );
-};
-
-// Añade este estilo global para el spinner
-const globalStyle = document.createElement("style");
-globalStyle.innerHTML = `
-    @keyframes spin {
-        0% { transform: rotate(0deg); }
-        100% { transform: rotate(360deg); }
-    }
-`;
-document.head.appendChild(globalStyle);
+}

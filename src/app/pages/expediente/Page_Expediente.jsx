@@ -4,7 +4,8 @@
 
 import { AppLayout } from "../../layout/AppLayout";
 import { useLocation } from "react-router-dom";
-import { View_list_expedientes } from "../../views/expedientes/list/View_list_expedientes";
+import View_list_expedientes from "../../views/expedientes/list/View_list_expedientes";
+
 
 
 export const Page_Expediente = () => {
