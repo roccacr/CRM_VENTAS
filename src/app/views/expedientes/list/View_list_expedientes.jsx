@@ -39,6 +39,9 @@ export default function ViewListExpedientes() {
     const [modelOptions, setModelOptions] = useState([]);
     const [stateOptions, setStateOptions] = useState([]);
 
+    // Estado para controlar la ordenación
+    const [sortConfig, setSortConfig] = useState({ key: null, direction: "asc" });
+
     useEffect(() => {
         const fetchData = async () => {
             try {
@@ -111,8 +114,6 @@ export default function ViewListExpedientes() {
     const [currentPage, setCurrentPage] = useState(1);
     const [rowsPerPage, setRowsPerPage] = useState(10);
 
-    const paginatedData = Array.isArray(filteredData) ? filteredData.slice((currentPage - 1) * rowsPerPage, currentPage * rowsPerPage) : [];
-
     const handlePageChange = (newPage) => {
         setCurrentPage(newPage);
     };
@@ -121,6 +122,28 @@ export default function ViewListExpedientes() {
         setRowsPerPage(Number(event.target.value));
         setCurrentPage(1);
     };
+
+    // Función para ordenar los datos
+    const handleSort = (key) => {
+        let direction = "asc";
+        if (sortConfig.key === key && sortConfig.direction === "asc") {
+            direction = "desc";
+        }
+        setSortConfig({ key, direction });
+    };
+
+    // Ordenar los datos en base al estado de ordenación
+    const sortedData = [...filteredData].sort((a, b) => {
+        if (a[sortConfig.key] < b[sortConfig.key]) {
+            return sortConfig.direction === "asc" ? -1 : 1;
+        }
+        if (a[sortConfig.key] > b[sortConfig.key]) {
+            return sortConfig.direction === "asc" ? 1 : -1;
+        }
+        return 0;
+    });
+
+    const paginatedData = Array.isArray(sortedData) ? sortedData.slice((currentPage - 1) * rowsPerPage, currentPage * rowsPerPage) : [];
 
     const handleExportToExcel = () => {
         const dataToExport = filteredData.map((row) => ({
@@ -174,23 +197,23 @@ export default function ViewListExpedientes() {
                         </div>
 
                         <div className="table-responsive">
-                            <table className="table table-striped">
+                            <table className="table table-striped table dt-responsive w-100 display text-left" style={{ fontSize: "15px", width: "100%", textAlign: "left" }}>
                                 <thead>
                                     <tr>
-                                        <th>NOMBRE</th>
-                                        <th>PROYECTO</th>
-                                        <th>MODELO/ TIPO</th>
-                                        <th>PRECIO V-UNICO</th>
-                                        <th>ESTADO</th>
-                                        <th>FECHA ENTREGA</th>
-                                        <th>TOTAL DE M2</th>
-                                        <th>AREA HABITABLE M2</th>
-                                        <th>LOTE</th>
-                                        <th>AREA PARK M2</th>
-                                        <th>AREA BODE M2</th>
-                                        <th>AREA MEZZA M2</th>
-                                        <th>ASL ASIGNADA</th>
-                                        <th>PRRECIO V-MINIMO</th>
+                                        <th onClick={() => handleSort("codigo_exp")}>NOMBRE</th>
+                                        <th onClick={() => handleSort("proyectoPrincipal_exp")}>PROYECTO</th>
+                                        <th onClick={() => handleSort("tipoDeVivienda_exp")}>MODELO/ TIPO</th>
+                                        <th onClick={() => handleSort("precioVentaUncio_exp")}>PRECIO V-UNICO</th>
+                                        <th onClick={() => handleSort("estado_exp")}>ESTADO</th>
+                                        <th onClick={() => handleSort("entregaEstimada")}>FECHA ENTREGA</th>
+                                        <th onClick={() => handleSort("areaTotalM2_exp")}>TOTAL DE M2</th>
+                                        <th onClick={() => handleSort("m2Habitables_exp")}>AREA HABITABLE M2</th>
+                                        <th onClick={() => handleSort("loteM2_exp")}>LOTE</th>
+                                        <th onClick={() => handleSort("areaDeParqueoAprox")}>AREA PARK M2</th>
+                                        <th onClick={() => handleSort("areaDeBodegaM2_exp")}>AREA BODE M2</th>
+                                        <th onClick={() => handleSort("areaDeMezzanieM2_exp")}>AREA MEZZA M2</th>
+                                        <th onClick={() => handleSort("areacomunLibe_exp")}>ASL ASIGNADA</th>
+                                        <th onClick={() => handleSort("precioDeVentaMinimo")}>PRECIO V-MINIMO</th>
                                     </tr>
                                 </thead>
                                 <tbody>
