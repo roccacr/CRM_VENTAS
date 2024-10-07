@@ -12,6 +12,7 @@ require("../models/leads/cronsLeads.js");
 
 // Importa el modelo para las operaciones relacionadas con 'calendars'
 const calendars = require("../models/calendars/calendars");
+const expedientes = require("../models/expedientes/expedientes");
 
 // Cargar variables de entorno al iniciar la aplicación
 dotenv.config();
@@ -127,6 +128,13 @@ module.exports = function (app) {
                 { path: "/calendars/editEvent", method: "editEvent" }, // modificar eventos del calendario
                 { path: "/calendars/update_event_MoveDate", method: "update_event_MoveDate" }, // modificar eventos del calendario\
                 { path: "/calendars/update_Status_Event", method: "update_Status_Event" }, // modificar eventos del calendario
+            ],
+        },
+        {
+            category: "expedientes", // Categoría: calendars
+            model: expedientes, // Modelo asociado a 'calendars'
+            routes: [
+                { path: "/expedientes/getAllExpedientes", method: "getFileList" }, // Ruta para obtener todos los eventos del calendars
             ],
         },
     ];
