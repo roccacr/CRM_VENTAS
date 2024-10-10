@@ -239,9 +239,9 @@ export const NavBar = ({ sidebarVisible, sidebarStatus, closeSidebar }) => {
                                     <div className="dropdown-menu">
                                         <ul>
                                             <li>
-                                                <NavLink to="/profile" className="pc-user-links">
+                                                <NavLink to="/leads/consultar" className="pc-user-links">
                                                     <i className="ph-duotone ph-user"></i>
-                                                    <span>Mi perfil</span>
+                                                    <span>Consultar Lead</span>
                                                 </NavLink>
                                             </li>
                                             <li>
@@ -251,13 +251,12 @@ export const NavBar = ({ sidebarVisible, sidebarStatus, closeSidebar }) => {
                                                 </a>
                                             </li>
                                             <li>
-                                                <a onClick={() => CreatedEvents()} className="pc-user-links">
-                                                    <i className="ti ti-calendar"></i>
-                                                    <span>Crear lead</span>
-                                                </a>
+                                                <NavLink to="/leads/crear" className="pc-user-links">
+                                                    <i className="ph-duotone ph-user"></i>
+                                                    <span>Crear Lead</span>
+                                                </NavLink>
                                             </li>
                                             <li>
-
                                                 <NavLink to="/" className="pc-user-links">
                                                     <i className="ph-duotone ph-user"></i>
                                                     <span>Inicio</span>

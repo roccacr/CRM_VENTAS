@@ -321,3 +321,16 @@ export const getAllLeadsTotal = async ({ idnetsuite_admin, rol_admin, startDate,
     // La URL "leads/getAll_LeadsComplete" corresponde al endpoint que maneja esta petición.
     return await fetchData("leads/getAllLeadsTotal", requestData); // Devuelve la lista completa de leads.
 };
+
+
+export const getDataLead_Netsuite = async ({ idLead }) => {
+    // Construcción del objeto requestData combinando los datos comunes con los parámetros específicos recibidos.
+    const requestData = {
+        ...commonRequestData, // Datos comunes requeridos para cada solicitud, como tokens o configuraciones generales.
+        idLead,
+    };
+
+    // Realiza la solicitud a la API para obtener la lista completa de leads.
+    // La URL "leads/getAll_LeadsComplete" corresponde al endpoint que maneja esta petición.
+    return await fetchData("leads/getDataLead_Netsuite", requestData); // Devuelve la lista completa de leads.
+};

@@ -1,5 +1,5 @@
 import { setLeadsNew } from "./leadSlice"; // Acción para actualizar el estado de leads en Redux.
-import { get_optionLoss, get_Specific_Lead, getAll_LeadsRepit, getAllLeadsAttention, getAllLeadsComplete, getAllLeadsNew, getAllLeadsTotal, getAllStragglers, getBitacora, insertBitcoraLead, setLostStatusForLeadTransactions, updateLeadActionApi } from "./Api_leads_Providers"; // Función que hace la solicitud API para obtener nuevos leads.
+import { get_optionLoss, get_Specific_Lead, getAll_LeadsRepit, getAllLeadsAttention, getAllLeadsComplete, getAllLeadsNew, getAllLeadsTotal, getAllStragglers, getBitacora, getDataLead_Netsuite, insertBitcoraLead, setLostStatusForLeadTransactions, updateLeadActionApi } from "./Api_leads_Providers"; // Función que hace la solicitud API para obtener nuevos leads.
 import { createCalendarEvent } from "../calendar/Api_calendar_Providers";
 
 /**
@@ -521,6 +521,23 @@ export const getLeadsTotal = (startDate, endDate, filterOption) => {
         } catch (error) {
             // En caso de error, muestra el error en la consola para diagnóstico.
             console.error("Error al cargar la lista completa de leads", error);
+        }
+    };
+};
+
+
+
+export const getDataLeadNetsuite = (idLead) => {
+    return async () => {
+        try {
+            // Llama a la función get_Specific_Lead para obtener la información del lead específico.
+            const result = await getDataLead_Netsuite({ idLead });
+
+
+            return result; // Devuelve los datos obtenidos para posibles usos adicionales.
+        } catch (error) {
+            // En caso de error, muestra el error en la consola para diagnóstico.
+            console.error("Error al cargar el lead", error);
         }
     };
 };
