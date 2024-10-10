@@ -190,26 +190,6 @@ export const View_events_list = () => {
 
     return (
         <div>
-            <div className="date-filters" style={{ marginBottom: "20px" }}>
-                <label>
-                    Fecha Inicio:
-                    <input type="date" value={dateStart} onChange={(e) => setDateStart(e.target.value)} className="form-control" style={{ marginRight: "20px", marginLeft: "10px" }} />
-                </label>
-                <label>
-                    Fecha Fin:
-                    <input type="date" value={dateEnd} onChange={(e) => setDateEnd(e.target.value)} className="form-control" style={{ marginLeft: "10px" }} />
-                </label>
-                <label style={{ marginLeft: "20px" }}>
-                    Items por página:
-                    <select value={itemsPerPage} onChange={handleItemsPerPageChange} className="form-control" style={{ marginLeft: "10px" }}>
-                        <option value={10}>10</option>
-                        <option value={30}>30</option>
-                        <option value={50}>50</option>
-                        <option value={100}>100</option>
-                    </select>
-                </label>
-            </div>
-
             {/* Export to Excel Button */}
             <button onClick={handleExportToExcel} className="btn btn-primary mb-3">
                 Exportar a Excel
@@ -217,6 +197,14 @@ export const View_events_list = () => {
 
             {/* Filter Inputs */}
             <div className="row" style={{ marginBottom: "20px" }}>
+                <div className="col-md-4">
+                    <label>Fecha inicio</label>
+                    <input type="date" value={dateStart} onChange={(e) => setDateStart(e.target.value)} className="form-control" style={{ marginRight: "20px", marginLeft: "10px" }} />
+                </div>
+                <div className="col-md-4">
+                    <label>Fecha Fin:</label>
+                    <input type="date" value={dateEnd} onChange={(e) => setDateEnd(e.target.value)} className="form-control" style={{ marginLeft: "10px" }} />
+                </div>
                 <div className="col-md-4">
                     <label>Buscar por Nombre de Evento</label>
                     <input type="text" value={eventName} onChange={(e) => setEventName(e.target.value)} placeholder="Nombre de Evento" className="form-control" style={{ width: "100%", padding: "8px", marginTop: "5px" }} />
@@ -308,6 +296,17 @@ export const View_events_list = () => {
                                 {number}
                             </button>
                         ))}
+                        <div className="date-filters" style={{ marginBottom: "20px" }}>
+                            <label style={{ marginLeft: "20px" }}>
+                                Items por página:
+                                <select value={itemsPerPage} onChange={handleItemsPerPageChange} className="form-control" style={{ marginLeft: "10px" }}>
+                                    <option value={10}>10</option>
+                                    <option value={30}>30</option>
+                                    <option value={50}>50</option>
+                                    <option value={100}>100</option>
+                                </select>
+                            </label>
+                        </div>
                     </div>
                 </div>
             )}
