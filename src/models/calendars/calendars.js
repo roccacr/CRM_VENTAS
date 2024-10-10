@@ -212,4 +212,21 @@ calendars.update_Status_Event = (dataParams) => {
     );
 };
 
+/**
+ * Obtiene todos los eventos del calendario.
+ * @async
+ * @param {Object} dataParams - Objeto que contiene los parámetros necesarios para la consulta.
+ * @returns {Promise<Object>} - Resultado de la consulta de eventos del calendario.
+ */
+calendars.getAll_ListEvent = (dataParams) =>
+    executeStoredProcedure(
+        "getAll_ListEvent", // Nombre del procedimiento almacenado que recupera los eventos del calendario.
+        [dataParams.rol_admin, dataParams.idnetsuite_admin, // Parámetros que identifican el rol y el ID del administrador.
+        dataParams.dateStart,
+        dataParams.dateEnd],
+        dataParams.database,
+    );
+
+
+
 module.exports = calendars; // Exporta el objeto 'calendars' que contiene todas las funciones relacionadas con eventos del calendario.

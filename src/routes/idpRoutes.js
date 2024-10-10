@@ -128,6 +128,7 @@ module.exports = function (app) {
                 { path: "/calendars/editEvent", method: "editEvent" }, // modificar eventos del calendario
                 { path: "/calendars/update_event_MoveDate", method: "update_event_MoveDate" }, // modificar eventos del calendario\
                 { path: "/calendars/update_Status_Event", method: "update_Status_Event" }, // modificar eventos del calendario
+                { path: "/calendars/getAll_ListEvent", method: "getAll_ListEvent" }, // extarer todos los eventos
             ],
         },
         {
