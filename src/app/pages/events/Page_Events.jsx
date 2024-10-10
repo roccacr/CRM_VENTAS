@@ -3,6 +3,7 @@
 import { AppLayout } from "../../layout/AppLayout";
 import { useLocation } from "react-router-dom";
 import { View_events_Actions } from "../../views/events/actions/View_events_Actions";
+import { View_events_list } from "../../views/events/list/View_events_list";
 
 
 export const Page_Events = () => {
@@ -17,6 +18,7 @@ export const Page_Events = () => {
                 <div className="pc-content">
                     <div className="row">
                         {path[1] === "events" && path[2] === "actions" && <View_events_Actions />}
+                        {path[1] === "events" && path[2] === "list" && <View_events_list />}
                     </div>
                 </div>
             </div>

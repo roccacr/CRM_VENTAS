@@ -205,3 +205,20 @@ export const update_Status_Event = async ({ id, NewStatus }) => {
 };
 
 
+export const getAll_ListEvent = async ({ idnetsuite_admin, rol_admin, dateStart, dateEnd }) => {
+    // Construye el objeto de datos para la solicitud, combinando los datos comunes con los parámetros específicos.
+    const requestData = {
+        ...commonRequestData, // Datos comunes requeridos para todas las solicitudes (ej. tokens, configuraciones generales).
+        idnetsuite_admin, // ID del administrador de Netsuite, necesario para la autenticación/identificación.
+        rol_admin, // Rol del administrador, utilizado para verificar permisos de acceso.
+        dateStart,
+        dateEnd,
+    };
+
+    // Realiza la solicitud a la API para obtener la lista de nuevos calendarios.
+    // La URL "calendar/get_Calendars" apunta al endpoint que maneja esta petición en el servidor.
+    // requestData contiene todos los parámetros necesarios para ejecutar la solicitud.
+    return await fetchData("calendars/getAll_ListEvent", requestData); // Retorna la lista de nuevos calendarios desde la API.
+};
+
+

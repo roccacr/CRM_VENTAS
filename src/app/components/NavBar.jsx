@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Drawer, Divider } from "@mui/material";
 import { styled } from "@mui/material/styles";
-import { NavLink } from "react-router-dom";
+import { NavLink, useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { startLogout } from "../../store/auth/thunks";
 
@@ -63,6 +63,13 @@ export const NavBar = ({ sidebarVisible, sidebarStatus, closeSidebar }) => {
 
     const onLogout = () => {
         dispatch(startLogout());
+    };
+
+    const navigate = useNavigate();
+    const CreatedEvents = () => {
+        const today = new Date().toISOString().split("T")[0];
+        // Redirigir a la página de creación de eventos con la fecha seleccionada
+        navigate(`/events/actions?idCalendar=0&idLead=0&idDate=${today}`);
     };
 
     return (
@@ -160,6 +167,14 @@ export const NavBar = ({ sidebarVisible, sidebarStatus, closeSidebar }) => {
                                 <span className="pc-mtext">Expedientes</span>
                             </NavLink>
                         </li>
+                        <li className="pc-item">
+                            <NavLink to="/events/list" className="pc-link active">
+                                <span className="pc-micon">
+                                    <i className="ti ti-calendar"></i>
+                                </span>
+                                <span className="pc-mtext">Lista de eventos</span>
+                            </NavLink>
+                        </li>
 
                         {/* Oportunidades con submenú */}
                         <li className="pc-item" onClick={() => toggleMenu("opportunitiesMenu")}>
@@ -230,10 +245,23 @@ export const NavBar = ({ sidebarVisible, sidebarStatus, closeSidebar }) => {
                                                 </NavLink>
                                             </li>
                                             <li>
-                                                <a onClick={onLogout} className="pc-user-links">
-                                                    <i className="ph-duotone ph-power"></i>
-                                                    <span>Logout</span>
+                                                <a onClick={() => CreatedEvents()} className="pc-user-links">
+                                                    <i className="ti ti-calendar"></i>
+                                                    <span>Crear evento</span>
                                                 </a>
+                                            </li>
+                                            <li>
+                                                <a onClick={() => CreatedEvents()} className="pc-user-links">
+                                                    <i className="ti ti-calendar"></i>
+                                                    <span>Crear lead</span>
+                                                </a>
+                                            </li>
+                                            <li>
+
+                                                <NavLink to="/" className="pc-user-links">
+                                                    <i className="ph-duotone ph-user"></i>
+                                                    <span>Inicio</span>
+                                                </NavLink>
                                             </li>
                                         </ul>
                                     </div>

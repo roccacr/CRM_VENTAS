@@ -1,5 +1,5 @@
 import { generateLeadBitacora } from "../leads/thunksLeads";
-import { createCalendarEvent, editCalendarEvent, get_CalendarFetch, get_dataEvents, get_event_Citas, update_event_MoveDate, update_Status_Event } from "./Api_calendar_Providers";
+import { createCalendarEvent, editCalendarEvent, get_CalendarFetch, get_dataEvents, get_event_Citas, getAll_ListEvent, update_event_MoveDate, update_Status_Event } from "./Api_calendar_Providers";
 
 /**
  * Acción asincrónica para obtener la lista de nuevos calendarios.
@@ -322,4 +322,26 @@ export const updateStatusEvent = (id, NewStatus, idinterno_lead, valueStatus) =>
         }
     };
 };
+ 
 
+
+export const getAllListEvent = (dateStart, dateEnd) => {
+
+
+    return async (dispatch, getState) => {
+        // Extrae idnetsuite_admin y rol_admin del estado de autenticación en Redux.
+        const { idnetsuite_admin, rol_admin } = getState().auth;
+
+        try {
+            // Llama a la API para obtener los calendarios nuevos, basados en el rol y el ID del administrador.
+            const result = await getAll_ListEvent({ idnetsuite_admin, rol_admin, dateStart, dateEnd });
+
+
+            // Retorna el primer conjunto de datos de la respuesta para su uso posterior.
+            return result.data["0"];
+        } catch (error) {
+            // En caso de error, registra el mensaje en la consola.
+            console.error("Error al cargar los nuevos calendarios:", error);
+        }
+    };
+};

@@ -46,7 +46,7 @@ export default function View_list_leads_attention() {
         proyecto_lead: [],
         campana_lead: [],
         segimineto_lead: [],
-        subsidiaria_lead: [],
+        // Eliminado: subsidiaria_lead
     });
 
     // Estado para los datos de la tabla
@@ -71,7 +71,7 @@ export default function View_list_leads_attention() {
     const [projectOptions, setProjectOptions] = useState([]);
     const [campaignOptions, setCampaignOptions] = useState([]);
     const [statusOptions, setStatusOptions] = useState([]);
-    const [subsidiaryOptions, setSubsidiaryOptions] = useState([]);
+    // Eliminado: subsidiaryOptions
 
     // Función para manejar el clic en una fila de la tabla
     const handleRowClick = (data) => {
@@ -199,11 +199,7 @@ export default function View_list_leads_attention() {
         setStatusOptions(uniqueStatuses);
     }, [tableData]);
 
-    // Generar opciones de subsidiarias basadas en los datos filtrados
-    useEffect(() => {
-        const uniqueSubsidiaries = getUniqueValuesWithCounts(tableData, "subsidiaria_lead");
-        setSubsidiaryOptions(uniqueSubsidiaries);
-    }, [tableData]);
+    // Eliminado: useEffect para subsidiarias
 
     // Filtrar datos basados en los filtros de búsqueda y select
     useEffect(() => {
@@ -216,8 +212,8 @@ export default function View_list_leads_attention() {
                     row.telefono_lead.toLowerCase().includes(searchFilters.telefono_lead.toLowerCase()) &&
                     (searchFilters.proyecto_lead.length === 0 || searchFilters.proyecto_lead.map((p) => p.value).includes(row.proyecto_lead)) &&
                     (searchFilters.campana_lead.length === 0 || searchFilters.campana_lead.map((p) => p.value).includes(row.campana_lead)) &&
-                    (searchFilters.segimineto_lead.length === 0 || searchFilters.segimineto_lead.map((p) => p.value).includes(row.segimineto_lead)) &&
-                    (searchFilters.subsidiaria_lead.length === 0 || searchFilters.subsidiaria_lead.map((p) => p.value).includes(row.subsidiaria_lead))
+                    (searchFilters.segimineto_lead.length === 0 || searchFilters.segimineto_lead.map((p) => p.value).includes(row.segimineto_lead))
+                    // Eliminado: filtro por subsidiaria
                 );
             });
 
@@ -273,7 +269,7 @@ export default function View_list_leads_attention() {
             "campana_lead", // Campaña
             "segimineto_lead", // Estado
             "creado_lead", // Creado
-            "subsidiaria_lead", // Subsidiarias
+            // Eliminado: "subsidiaria_lead", // Subsidiarias
             "actualizadaaccion_lead", // Última Acción
             "nombre_caida", // Seguimiento
             "estado_lead", // Estado Lead
@@ -303,9 +299,8 @@ export default function View_list_leads_attention() {
             "segimineto_lead", // Estado
             // "nombre_caida", // Seguimiento
             "estado_lead", // Estado Lead
-            "creado_lead", // Subsidiarias
-            "subsidiaria_lead", // Subsidiarias
-
+            "creado_lead", // Creado
+            // Eliminado: "subsidiaria_lead", // Subsidiarias
         ];
 
         return (
@@ -402,13 +397,33 @@ export default function View_list_leads_attention() {
                     <div className="row g-4">
                         <div className="col-md-6">
                             <div className="form-floating mb-0">
-                                <input type="text" className="form-control" value={searchFilters.nombre_lead} onChange={(e) => setSearchFilters({ ...searchFilters, nombre_lead: e.target.value })} />
+                                <input
+                                    type="text"
+                                    className="form-control"
+                                    value={searchFilters.nombre_lead}
+                                    onChange={(e) =>
+                                        setSearchFilters({
+                                            ...searchFilters,
+                                            nombre_lead: e.target.value,
+                                        })
+                                    }
+                                />
                                 <label htmlFor="k2">Buscar por nombre de cliente</label>
                             </div>
                         </div>
                         <div className="col-md-6">
                             <div className="form-floating mb-0">
-                                <input type="text" className="form-control" value={searchFilters.email_lead} onChange={(e) => setSearchFilters({ ...searchFilters, email_lead: e.target.value })} />
+                                <input
+                                    type="text"
+                                    className="form-control"
+                                    value={searchFilters.email_lead}
+                                    onChange={(e) =>
+                                        setSearchFilters({
+                                            ...searchFilters,
+                                            email_lead: e.target.value,
+                                        })
+                                    }
+                                />
                                 <label htmlFor="emailInput">Buscar por correo electrónico</label>
                             </div>
                         </div>
@@ -416,7 +431,17 @@ export default function View_list_leads_attention() {
                     <div className="row g-4">
                         <div className="col-md-6">
                             <div className="form-floating mb-0">
-                                <input type="text" className="form-control" value={searchFilters.telefono_lead} onChange={(e) => setSearchFilters({ ...searchFilters, telefono_lead: e.target.value })} />
+                                <input
+                                    type="text"
+                                    className="form-control"
+                                    value={searchFilters.telefono_lead}
+                                    onChange={(e) =>
+                                        setSearchFilters({
+                                            ...searchFilters,
+                                            telefono_lead: e.target.value,
+                                        })
+                                    }
+                                />
                                 <label htmlFor="phoneInput">Buscar por teléfono</label>
                             </div>
                         </div>
@@ -475,14 +500,7 @@ export default function View_list_leads_attention() {
                                 <Select components={animatedComponents} isMulti closeMenuOnSelect={false} options={statusOptions} value={searchFilters.segimineto_lead} onChange={(selected) => setSearchFilters({ ...searchFilters, segimineto_lead: selected })} />
                             </div>
                         </div>
-                        <div className="col-md-6">
-                            <label className="form-check-label" htmlFor="a1">
-                                Filtrar por Subsidiarias
-                            </label>
-                            <div className="form-floating mb-0">
-                                <Select components={animatedComponents} isMulti closeMenuOnSelect={false} options={subsidiaryOptions} value={searchFilters.subsidiaria_lead} onChange={(selected) => setSearchFilters({ ...searchFilters, subsidiaria_lead: selected })} />
-                            </div>
-                        </div>
+                        {/* Eliminado: filtro por subsidiarias */}
                     </div>
                     <br />
                     <div className="row g-4">
