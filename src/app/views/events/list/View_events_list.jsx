@@ -172,7 +172,21 @@ export const View_events_list = () => {
     const pageNumbers = [];
     for (let i = 1; i <= totalPages; i++) {
         pageNumbers.push(i);
-    }
+  }
+  
+   const formatDate = (dateString) => {
+       if (dateString) {
+           // Verificar si la fecha contiene 'T' (formato ISO)
+           if (dateString.includes("T")) {
+               // Extraer la parte antes de 'T'
+               return dateString.split("T")[0];
+           } else {
+               // Si no contiene 'T', extraer la parte antes de ':'
+               return dateString.split(":")[0];
+           }
+       }
+       return "";
+   };
 
     return (
         <div>
@@ -259,10 +273,10 @@ export const View_events_list = () => {
                             <tbody>
                                 {currentEvents &&
                                     currentEvents.map((event, index) => (
-                                        <tr key={index}  style={{ cursor: "pointer" }}>
+                                        <tr key={index} style={{ cursor: "pointer" }}>
                                             <td onClick={() => handleEventClick(event.id_calendar, event.id_lead)}>{event.nombre_calendar}</td>
                                             <td onClick={() => handleEventClick(event.id_calendar, event.id_lead)}>{event.nombre_lead}</td>
-                                            <td onClick={() => handleEventClick(event.id_calendar, event.id_lead)}>{event.fechaIni_calendar}</td>
+                                            <td onClick={() => handleEventClick(event.id_calendar, event.id_lead)}>{formatDate(event.fechaIni_calendar)}</td>
                                             <td onClick={() => handleEventClick(event.id_calendar, event.id_lead)}>{event.horaInicio_calendar}</td>
                                             <td onClick={() => handleEventClick(event.id_calendar, event.id_lead)}>{event.accion_calendar}</td>
                                             <td onClick={() => handleEventClick(event.id_calendar, event.id_lead)}>{event.tipo_calendar}</td>
