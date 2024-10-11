@@ -372,11 +372,11 @@ leads.getDataSelect_Corredor = (dataParams) =>
         dataParams.database, // Base de datos específica donde se ejecutará el procedimiento almacenado.
     );
 
-leads.insertInfo_extraLead = (dataParams, corredor_value) => {
-    insertInfo_extraLead(
-        "insertInfo_extraLead", // Nombre del procedimiento almacenado que recupera la información de administradores.
-        [dataParams.id, corredor_value], // Se pasa el parámetro p_estado al procedimiento.
-        dataParams.database, // Base de datos específica donde se ejecutará el procedimiento almacenado.
+leads.insertInfo_extraLead = (idLead, corredor_value, database) => {
+    return executeStoredProcedure(
+        "insertInfo_extraLead", // Nombre del procedimiento almacenado.
+        [idLead, corredor_value], // Parámetros necesarios.
+        database, // Base de datos donde se ejecutará el procedimiento.
     );
 };
 

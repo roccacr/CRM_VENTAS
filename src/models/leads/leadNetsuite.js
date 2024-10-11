@@ -55,17 +55,17 @@ leadNetsuite.getDataLead_Netsuite = async ({ idLead }) => {
 
 
 // Función para crear un nuevo lead en Netsuite utilizando los datos del formulario y el id del administrador de Netsuite
-leadNetsuite.createdNewLead_Netsuite = async ({ formData, idnetsuite_admin }) => {
+leadNetsuite.createdNewLead_Netsuite = async ({ formData, idnetsuite_admin, database }) => {
     // Extraer y validar los campos del formulario, proporcionando valores por defecto si son null o undefined
     const {
-        firstname_new = "",   // Nombre del cliente, vacío por defecto
-        email_new = "",       // Correo electrónico del cliente, vacío por defecto
-        phone_new = "",       // Teléfono del cliente, vacío por defecto
-        comentario_cliente_new = "" // Comentarios del cliente, vacío por defecto
+        firstname_new = "", // Nombre del cliente, vacío por defecto
+        email_new = "", // Correo electrónico del cliente, vacío por defecto
+        phone_new = "", // Teléfono del cliente, vacío por defecto
+        comentario_cliente_new = "", // Comentarios del cliente, vacío por defecto
     } = formData;
 
     // Valores por defecto para campos que no siempre están presentes
-    const lastname_new = "-";  // Apellido por defecto
+    const lastname_new = "-"; // Apellido por defecto
     const middlename_new = "-"; // Segundo nombre por defecto
 
     // Validar y extraer los valores de los objetos select si no son null o undefined
@@ -101,14 +101,12 @@ leadNetsuite.createdNewLead_Netsuite = async ({ formData, idnetsuite_admin }) =>
             corredor_lead: corredor_value,
         });
 
-
-        if (body.status===200) {
+        if (body.status === 200) {
             if ((typeof corredor_value === "number" && corredor_value > 0) || (typeof corredor_value === "string" && corredor_value !== "")) {
-                await leads.insertInfo_extraLead(body, corredor_value);
+                await leads.insertInfo_extraLead(body, corredor_value, database);
             }
         }
         return { msg: "Crear Cliente desde Crm Netsuite", Detalle: body, status: 200 };
-
     } catch (error) {
         // Manejo de errores y logging
         console.error("Error al crear lead en Netsuite:", error);
