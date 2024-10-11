@@ -53,66 +53,73 @@ leadNetsuite.getDataLead_Netsuite = async ({ idLead }) => {
     }
 };
 
-
 // Función para crear un nuevo lead en Netsuite utilizando los datos del formulario y el id del administrador de Netsuite
 leadNetsuite.createdNewLead_Netsuite = async ({ formData, idnetsuite_admin, database }) => {
-    // Extraer y validar los campos del formulario, proporcionando valores por defecto si son null o undefined
+    // Extraer y validar los campos del formulario, proporcionando valores por defecto si son null o undefined.
+    // En este caso, si algún campo no está presente o es null/undefined, se asigna un valor por defecto adecuado.
     const {
-        firstname_new = "", // Nombre del cliente, vacío por defecto
-        email_new = "", // Correo electrónico del cliente, vacío por defecto
-        phone_new = "", // Teléfono del cliente, vacío por defecto
-        comentario_cliente_new = "", // Comentarios del cliente, vacío por defecto
+        firstname_new = "", // Nombre del cliente, vacío por defecto para evitar errores al procesar
+        email_new = "", // Correo electrónico del cliente, vacío por defecto, se sugiere una validación más adelante
+        phone_new = "", // Teléfono del cliente, vacío por defecto, se podría validar el formato en otra etapa
+        comentario_cliente_new = "", // Comentarios del cliente, vacío por defecto si no se proporciona
     } = formData;
 
-    // Valores por defecto para campos que no siempre están presentes
-    const lastname_new = "-"; // Apellido por defecto
-    const middlename_new = "-"; // Segundo nombre por defecto
+    // Valores por defecto para campos opcionales que no siempre estarán presentes en el formulario
+    const lastname_new = "-"; // Apellido, se deja como un guion en caso de ser requerido en la integración de Netsuite
+    const middlename_new = "-"; // Segundo nombre, igual se deja con un valor por defecto para cumplir con requisitos de Netsuite
 
-    // Validar y extraer los valores de los objetos select si no son null o undefined
-    const campana_value = formData.campana_new?.value || null;
-    const proyecto_value = formData.proyecto_new?.value || null;
-    const subsidiary_value = formData.subsidiary_new?.value || null;
-    const vendedor_value = formData.vendedor_new?.value || idnetsuite_admin;
-    const corredor_value = formData.corredor_lead_new?.value || "";
+    // Validar y extraer los valores de los objetos select si no son null o undefined.
+    // Estos campos provienen de selects dinámicos en el formulario, como campañas, proyectos, y subsidiarias.
+    const campana_value = formData.campana_new?.value || null; // Validación para obtener el id de la campaña seleccionada
+    const proyecto_value = formData.proyecto_new?.value || null; // Id del proyecto, si fue seleccionado
+    const subsidiary_value = formData.subsidiary_new?.value || null; // Id de la subsidiaria seleccionada, null si no existe
+    const vendedor_value = formData.vendedor_new?.value || idnetsuite_admin; // Asignar el vendedor o usar el id del administrador por defecto
+    const corredor_value = formData.corredor_lead_new?.value || ""; // Validar el valor del corredor, por defecto se asigna una cadena vacía
 
-    // URL para la solicitud POST al servicio RESTlet de Netsuite
+    // Configuración de la URL para la solicitud POST al servicio RESTlet de Netsuite
     const urlSettings = {
-        url: "https://4552704.restlets.api.netsuite.com/app/site/hosting/restlet.nl?script=1763&deploy=1",
+        url: "https://4552704.restlets.api.netsuite.com/app/site/hosting/restlet.nl?script=1763&deploy=1", // URL de la API en Netsuite
     };
 
     try {
-        // Crear el enlace RESTlet
+        // Crear el enlace RESTlet utilizando la configuración de la cuenta y la URL proporcionada
         const rest = nsrestlet.createLink(accountSettings, urlSettings);
 
         // Hacer la solicitud POST al RESTlet con los datos del nuevo lead
         const body = await rest.post({
-            rType: "lead",
-            firstname: firstname_new,
-            lastname: lastname_new,
-            middlename: middlename_new,
-            phone: phone_new,
-            comentario_cliente: comentario_cliente_new,
-            email: email_new,
-            campana: campana_value,
-            subsidiary: subsidiary_value,
-            proyecto: proyecto_value,
-            employee: vendedor_value,
-            currency: 1, // Moneda fija (1 = dólar, depende del contexto)
-            corredor_lead: corredor_value,
+            rType: "lead", // Tipo de registro en Netsuite, en este caso, es un lead
+            firstname: firstname_new, // Nombre del cliente
+            lastname: lastname_new, // Apellido, usando el valor por defecto si no fue proporcionado
+            middlename: middlename_new, // Segundo nombre del cliente
+            phone: phone_new, // Teléfono del cliente
+            comentario_cliente: comentario_cliente_new, // Comentarios proporcionados por el cliente
+            email: email_new, // Correo electrónico del cliente, se sugiere validar el formato antes de esta etapa
+            campana: campana_value, // Id de la campaña de marketing asociada
+            subsidiary: subsidiary_value, // Subsidiaria del lead
+            proyecto: proyecto_value, // Proyecto al que está asociado el lead
+            employee: vendedor_value, // Vendedor asignado, que puede ser el administrador por defecto
+            currency: 1, // Moneda, en este caso es 1 (dólares), verificar si es siempre aplicable
+            corredor_lead: corredor_value, // Información del corredor asignado, si existe
         });
 
+        // Verificar si la respuesta de Netsuite fue exitosa
         if (body.status === 200) {
+            // Si el corredor está definido (numérico o string), se almacena la información adicional
             if ((typeof corredor_value === "number" && corredor_value > 0) || (typeof corredor_value === "string" && corredor_value !== "")) {
-                let idLead = body.id;
+                let idLead = body.id; // Obtener el id del lead creado
+                // Insertar información adicional sobre el lead en la base de datos local
                 await leads.insertInfo_extraLead(idLead, corredor_value, database);
             }
         }
-        return { msg: "Crear Cliente desde Crm Netsuite", Detalle: body, status: 200 };
+
+        // Retornar el mensaje de éxito y el detalle del lead creado
+        return { msg: "Lead creado exitosamente desde CRM Netsuite", Detalle: body, status: 200 };
     } catch (error) {
-        // Manejo de errores y logging
+        // Captura y manejo de errores al realizar la solicitud
         console.error("Error al crear lead en Netsuite:", error);
-        throw error;
+        throw error; // Lanzar el error para manejarlo en niveles superiores si es necesario
     }
 };
+
 // Exportamos el módulo 'leadNetsuite' para que pueda ser utilizado en otras partes del proyecto.
 module.exports = leadNetsuite;
