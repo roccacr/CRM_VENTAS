@@ -337,46 +337,61 @@ leads.getAllLeadsTotal = (dataParams) =>
         dataParams.database, // Nombre de la base de datos donde se ejecutará el procedimiento almacenado.
     );
 
+// Función para obtener la información de campañas desde la base de datos.
 leads.getDataSelect_Campaing = (dataParams) =>
     executeStoredProcedure(
-        "getDataSelect_Campaing", // Nombre del procedimiento almacenado que recupera la información de campañas.
-        [dataParams.p_estado], // No se pasan parámetros adicionales al procedimiento.
-        dataParams.database, // Base de datos específica donde se ejecutará el procedimiento almacenado.
+        "getDataSelect_Campaing", // Nombre del procedimiento almacenado encargado de recuperar los datos de campañas disponibles.
+        [dataParams.p_estado], // Parámetro utilizado para filtrar las campañas según su estado (activo/inactivo).
+        dataParams.database, // Nombre de la base de datos específica donde se ejecutará el procedimiento.
     );
 
+// Función para obtener la información de proyectos desde la base de datos.
 leads.getDataSelect_Proyect = (dataParams) =>
     executeStoredProcedure(
-        "getDataSelect_Proyect", // Nombre del procedimiento almacenado que recupera la información de proyectos.
-        [dataParams.p_estado], // No se pasan parámetros adicionales al procedimiento.
-        dataParams.database, // Base de datos específica donde se ejecutará el procedimiento almacenado.
+        "getDataSelect_Proyect", // Nombre del procedimiento almacenado encargado de recuperar los datos de los proyectos.
+        [dataParams.p_estado], // Parámetro utilizado para filtrar los proyectos según su estado (activo/inactivo).
+        dataParams.database, // Nombre de la base de datos específica donde se ejecutará el procedimiento.
     );
 
+// Función para obtener la información de subsidiarias desde la base de datos.
 leads.getDataSelect_Subsidiaria = (dataParams) =>
     executeStoredProcedure(
-        "getDataSelect_Subsidiaria", // Nombre del procedimiento almacenado que recupera la información de subsidiarias.
-        [dataParams.p_estado], // No se pasan parámetros adicionales al procedimiento.
-        dataParams.database, // Base de datos específica donde se ejecutará el procedimiento almacenado.
+        "getDataSelect_Subsidiaria", // Nombre del procedimiento almacenado encargado de recuperar los datos de subsidiarias.
+        [dataParams.p_estado], // Parámetro utilizado para filtrar las subsidiarias según su estado (activo/inactivo).
+        dataParams.database, // Nombre de la base de datos específica donde se ejecutará el procedimiento.
     );
 
+// Función para obtener la información de administradores desde la base de datos.
 leads.getDataSelect_Admins = (dataParams) =>
     executeStoredProcedure(
-        "getDataSelect_Admins", // Nombre del procedimiento almacenado que recupera la información de administradores.
-        [dataParams.p_estado], // No se pasan parámetros adicionales al procedimiento.
-        dataParams.database, // Base de datos específica donde se ejecutará el procedimiento almacenado.
+        "getDataSelect_Admins", // Nombre del procedimiento almacenado encargado de recuperar los datos de los administradores.
+        [dataParams.p_estado], // Parámetro utilizado para filtrar los administradores según su estado (activo/inactivo).
+        dataParams.database, // Nombre de la base de datos específica donde se ejecutará el procedimiento.
     );
 
+// Función para obtener la información de corredores desde la base de datos.
 leads.getDataSelect_Corredor = (dataParams) =>
     executeStoredProcedure(
-        "getDataSelect_Corredor", // Nombre del procedimiento almacenado que recupera la información de administradores.
-        [dataParams.p_estado], // No se pasan parámetros adicionales al procedimiento.
-        dataParams.database, // Base de datos específica donde se ejecutará el procedimiento almacenado.
+        "getDataSelect_Corredor", // Nombre del procedimiento almacenado encargado de recuperar los datos de corredores disponibles.
+        [dataParams.p_estado], // Parámetro utilizado para filtrar los corredores según su estado (activo/inactivo).
+        dataParams.database, // Nombre de la base de datos específica donde se ejecutará el procedimiento.
     );
 
+// Función para insertar información adicional de un lead específico en la base de datos.
 leads.insertInfo_extraLead = (idLead, corredor_value, database) => {
     return executeStoredProcedure(
-        "insertInfo_extraLead", // Nombre del procedimiento almacenado.
-        [idLead, corredor_value], // Parámetros necesarios.
+        "insertInfo_extraLead", // Nombre del procedimiento almacenado encargado de insertar información extra para un lead.
+        [idLead, corredor_value], // Parámetros necesarios: id del lead e información del corredor asociada al lead.
         database, // Base de datos donde se ejecutará el procedimiento.
+    );
+};
+
+// Función para obtener la información completa de un lead específico desde la base de datos.
+leads.getDataInformations_Lead = (dataParams) => {
+    return executeStoredProcedure(
+        "getDataInformations_Lead", // Nombre del procedimiento almacenado encargado de recuperar toda la información de un lead.
+        [dataParams.leadId], // Parámetro requerido: id del lead para identificar el registro en la base de datos.
+        dataParams.database, // Base de datos donde se ejecutará el procedimiento.
     );
 };
 

@@ -120,6 +120,7 @@ module.exports = function (app) {
                 { path: "/leads/getDataSelect_Subsidiaria", method: "getDataSelect_Subsidiaria" }, // ruta para tarer las subsidiarias
                 { path: "/leads/getDataSelect_Admins", method: "getDataSelect_Admins" }, // ruta para tarer las subsidiarias
                 { path: "/leads/getDataSelect_Corredor", method: "getDataSelect_Corredor" },
+                { path: "/leads/getDataInformations_Lead", method: "getDataInformations_Lead" },
             ],
         },
         {
