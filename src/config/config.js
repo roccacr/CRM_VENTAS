@@ -1,4 +1,4 @@
-const dotenv = require('dotenv');
+const dotenv = require("dotenv");
 dotenv.config(); // Carga las variables de entorno desde el archivo .env
 const jwtSecret = process.env.JWT_SECRET;
 
@@ -22,7 +22,6 @@ var configParams = {
             password: "!Roccacrm",
             database: "crmdatabase-api",
             port: 3306,
-
         },
         pruebas: {
             host: "localhost",
@@ -35,9 +34,4 @@ var configParams = {
     jwtSecret: jwtSecret,
 };
 
-
-
-
-
 module.exports = configParams;
-

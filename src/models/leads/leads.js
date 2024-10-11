@@ -351,4 +351,32 @@ leads.getAllLeadsTotal = (dataParams) =>
 
 
 
+leads.getDataSelect_Campaing = (dataParams) =>
+    executeStoredProcedure(
+        "getDataSelect_Campaing", // Nombre del procedimiento almacenado que recupera la información de campañas.
+        [dataParams.p_estado], // No se pasan parámetros adicionales al procedimiento.
+        dataParams.database, // Base de datos específica donde se ejecutará el procedimiento almacenado.
+    );
+
+leads.getDataSelect_Proyect = (dataParams) =>
+    executeStoredProcedure(
+        "getDataSelect_Proyect", // Nombre del procedimiento almacenado que recupera la información de proyectos.
+        [dataParams.p_estado], // No se pasan parámetros adicionales al procedimiento.
+        dataParams.database, // Base de datos específica donde se ejecutará el procedimiento almacenado.
+    );
+
+leads.getDataSelect_Subsidiaria = (dataParams) =>
+    executeStoredProcedure(
+        "getDataSelect_Subsidiaria", // Nombre del procedimiento almacenado que recupera la información de subsidiarias.
+        [dataParams.p_estado], // No se pasan parámetros adicionales al procedimiento.
+        dataParams.database, // Base de datos específica donde se ejecutará el procedimiento almacenado.
+    );
+
+leads.getDataSelect_Admins = (dataParams) =>
+    executeStoredProcedure(
+        "getDataSelect_Admins", // Nombre del procedimiento almacenado que recupera la información de administradores.
+        [dataParams.p_estado], // No se pasan parámetros adicionales al procedimiento.
+        dataParams.database, // Base de datos específica donde se ejecutará el procedimiento almacenado.
+    );
+
 module.exports = leads; // Exporta el objeto 'leads' que contiene todas las funciones definidas.

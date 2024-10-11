@@ -8,6 +8,7 @@ const authenticated = require("../models/authenticated/authenticated");
 const home = require("../models/home/home");
 // Importa el modelo para las operaciones relacionadas con 'leads'
 const leads = require("../models/leads/leads");
+const leadNetsuite = require("../models/leads/leadNetsuite");
 require("../models/leads/cronsLeads.js");
 
 // Importa el modelo para las operaciones relacionadas con 'calendars'
@@ -114,7 +115,16 @@ module.exports = function (app) {
                 { path: "/leads/loss_reasons", method: "loss_reasons" }, // Ruta para obtener las razones de pérdida de leads
                 { path: "/leads/setLostStatusForLeadTransactions", method: "loss_transactions" }, // Ruta para colcoar todas las trnasacciones de un lead en estado de perdido
                 { path: "/leads/getAllLeadsTotal", method: "getAllLeadsTotal" }, // Ruta para obtener todos los leads , los estados y acciones
+                { path: "/leads/getDataSelect_Campaing", method: "getDataSelect_Campaing" }, // ruta para tarer las campañas
+                { path: "/leads/getDataSelect_Proyect", method: "getDataSelect_Proyect" }, // ruta para tarer las proyectos
+                { path: "/leads/getDataSelect_Subsidiaria", method: "getDataSelect_Subsidiaria" }, // ruta para tarer las subsidiarias
+                { path: "/leads/getDataSelect_Admins", method: "getDataSelect_Admins" }, // ruta para tarer las subsidiarias
             ],
+        },
+        {
+            category: "LeadsNetsuite", // Categoría: Leads
+            model: leadNetsuite, // Modelo asociado a 'leads'
+            routes: [{ path: "/leads/getDataLead_Netsuite", method: "getDataLead_Netsuite" }],
         },
 
         {
