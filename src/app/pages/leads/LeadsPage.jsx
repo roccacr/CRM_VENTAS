@@ -11,6 +11,7 @@ import View_total_leads from "../../views/leads/list/total/View_total_leads";
 import { View_Consultar_lead } from "../../views/leads/consultar/View_Consultar_lead";
 import { View_crear_lead } from "../../views/leads/add/View_crear_lead";
 import { View_edit_lead } from "../../views/leads/edit/View_edit_lead";
+import { BotonVolveR } from "../../components/BotonVolveR";
 
 export const LeadsPage = () => {
     const location = useLocation();
@@ -26,20 +27,19 @@ export const LeadsPage = () => {
         <AppLayout>
             <div className="pc-container">
                 <div className="pc-content">
-                    <div className="row">
-                        {/* Mostrar la página de lista de leads si path coincide y data === "2" */}
-                        {path[1] === "leads" && path[2] === "lista" && dataValue === "2" && <View_list_leads_new />}
-                        {path[1] === "leads" && path[2] === "lista" && dataValue === "3" && <View_list_leads_attention />}
-                        {path[1] === "leads" && path[2] === "lista" && dataValue === "4" && <View_list_leads_Stragglers />}
-                        {path[1] === "leads" && path[2] === "lista" && dataValue === "1" && <View_list_leads_complete />}
-                        {path[1] === "leads" && path[2] === "lista" && dataValue === "5" && <View_total_leads />}
-                        {path[1] === "leads" && path[2] === "note" && <View_note />}
-                        {path[1] === "leads" && path[2] === "loss" && <View_loss_lead />}
-                        {path[1] === "leads" && path[2] === "follow_up" && <View_follow_up />}
-                        {path[1] === "leads" && path[2] === "consultar" && <View_Consultar_lead />}
-                        {path[1] === "leads" && path[2] === "crear" && <View_crear_lead />}
-                        {path[1] === "leads" && path[2] === "edit" && <View_edit_lead />}
-                    </div>
+                    <BotonVolveR />
+                    {/* Mostrar la página de lista de leads si path coincide y data === "2" */}
+                    {path[1] === "leads" && path[2] === "lista" && dataValue === "2" && <View_list_leads_new />}
+                    {path[1] === "leads" && path[2] === "lista" && dataValue === "3" && <View_list_leads_attention />}
+                    {path[1] === "leads" && path[2] === "lista" && dataValue === "4" && <View_list_leads_Stragglers />}
+                    {path[1] === "leads" && path[2] === "lista" && dataValue === "1" && <View_list_leads_complete />}
+                    {path[1] === "leads" && path[2] === "lista" && dataValue === "5" && <View_total_leads />}
+                    {path[1] === "leads" && path[2] === "note" && <View_note />}
+                    {path[1] === "leads" && path[2] === "loss" && <View_loss_lead />}
+                    {path[1] === "leads" && path[2] === "follow_up" && <View_follow_up />}
+                    {path[1] === "leads" && path[2] === "consultar" && <View_Consultar_lead />}
+                    {path[1] === "leads" && path[2] === "crear" && <View_crear_lead />}
+                    {path[1] === "leads" && path[2] === "edit" && <View_edit_lead />}
                 </div>
             </div>
         </AppLayout>

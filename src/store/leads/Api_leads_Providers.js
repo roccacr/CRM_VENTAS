@@ -407,3 +407,16 @@ export const createdNewLead_Netsuite = async ({ formData, idnetsuite_admin }) =>
     // La URL "leads/getDataSelect_Admins" corresponde al endpoint que proporciona la información de administradores.
     return await fetchData("leads/createdNewLead_Netsuite", requestData); // Devuelve los datos de los administradores obtenidos.
 };
+
+
+export const getDataInformations_Lead = async ({ leadId }) => {
+    // Construcción del objeto requestData combinando los datos comunes con la configuración necesaria.
+    const requestData = {
+        ...commonRequestData, // Datos comunes requeridos, como tokens de autenticación o configuraciones generales.
+        leadId,
+    };
+
+    // Realiza la solicitud a la API para obtener la lista de administradores.
+    // La URL "leads/getDataSelect_Admins" corresponde al endpoint que proporciona la información de administradores.
+    return await fetchData("leads/getDataInformations_Lead", requestData); // Devuelve los datos de los administradores obtenidos.
+};
