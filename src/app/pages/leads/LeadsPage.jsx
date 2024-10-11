@@ -1,4 +1,3 @@
-
 import { AppLayout } from "../../layout/AppLayout";
 import { useLocation } from "react-router-dom";
 import View_list_leads_new from "../../views/leads/list/new/View_list_leads_new";
@@ -11,6 +10,7 @@ import { View_follow_up } from "../../views/leads/follow-up/View_follow_up";
 import View_total_leads from "../../views/leads/list/total/View_total_leads";
 import { View_Consultar_lead } from "../../views/leads/consultar/View_Consultar_lead";
 import { View_crear_lead } from "../../views/leads/add/View_crear_lead";
+import { View_edit_lead } from "../../views/leads/edit/View_edit_lead";
 
 export const LeadsPage = () => {
     const location = useLocation();
@@ -36,9 +36,9 @@ export const LeadsPage = () => {
                         {path[1] === "leads" && path[2] === "note" && <View_note />}
                         {path[1] === "leads" && path[2] === "loss" && <View_loss_lead />}
                         {path[1] === "leads" && path[2] === "follow_up" && <View_follow_up />}
-
                         {path[1] === "leads" && path[2] === "consultar" && <View_Consultar_lead />}
                         {path[1] === "leads" && path[2] === "crear" && <View_crear_lead />}
+                        {path[1] === "leads" && path[2] === "edit" && <View_edit_lead />}
                     </div>
                 </div>
             </div>
