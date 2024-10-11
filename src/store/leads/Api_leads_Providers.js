@@ -334,3 +334,51 @@ export const getDataLead_Netsuite = async ({ idLead }) => {
     // La URL "leads/getAll_LeadsComplete" corresponde al endpoint que maneja esta petición.
     return await fetchData("leads/getDataLead_Netsuite", requestData); // Devuelve la lista completa de leads.
 };
+
+export const getDataSelect_Campaing = async ({ p_estado }) => {
+    // Construcción del objeto requestData combinando los datos comunes con la configuración necesaria.
+    const requestData = {
+        ...commonRequestData, // Datos comunes requeridos, como tokens de autenticación o configuraciones generales.
+        p_estado
+    };
+
+    // Realiza la solicitud a la API para obtener la lista de campañas.
+    // La URL "leads/getDataSelect_Campaing" corresponde al endpoint que proporciona la información de campañas.
+    return await fetchData("leads/getDataSelect_Campaing", requestData); // Devuelve los datos de las campañas obtenidos.
+};
+
+export const getDataSelect_Proyect = async ({ p_estado }) => {
+    // Construcción del objeto requestData combinando los datos comunes con la configuración necesaria.
+    const requestData = {
+        ...commonRequestData, // Datos comunes requeridos, como tokens de autenticación o configuraciones generales.\
+        p_estado
+    };
+
+    // Realiza la solicitud a la API para obtener la lista de proyectos.
+    // La URL "leads/getDataSelect_Proyect" corresponde al endpoint que proporciona la información de proyectos.
+    return await fetchData("leads/getDataSelect_Proyect", requestData); // Devuelve los datos de los proyectos obtenidos.
+};
+
+export const getDataSelect_Subsidiaria = async ({ p_estado }) => {
+    // Construcción del objeto requestData combinando los datos comunes con la configuración necesaria.
+    const requestData = {
+        ...commonRequestData, // Datos comunes requeridos, como tokens de autenticación o configuraciones generales.
+        p_estado
+    };
+
+    // Realiza la solicitud a la API para obtener la lista de subsidiarias.
+    // La URL "leads/getDataSelect_Subsidiaria" corresponde al endpoint que proporciona la información de subsidiarias.
+    return await fetchData("leads/getDataSelect_Subsidiaria", requestData); // Devuelve los datos de las subsidiarias obtenidas.
+};
+
+export const getDataSelect_Admins = async ({ p_estado }) => {
+    // Construcción del objeto requestData combinando los datos comunes con la configuración necesaria.
+    const requestData = {
+        ...commonRequestData, // Datos comunes requeridos, como tokens de autenticación o configuraciones generales.
+        p_estado,
+    };
+
+    // Realiza la solicitud a la API para obtener la lista de administradores.
+    // La URL "leads/getDataSelect_Admins" corresponde al endpoint que proporciona la información de administradores.
+    return await fetchData("leads/getDataSelect_Admins", requestData); // Devuelve los datos de los administradores obtenidos.
+};
