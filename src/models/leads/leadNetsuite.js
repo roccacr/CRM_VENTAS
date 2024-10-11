@@ -1,6 +1,8 @@
 // Requerimos el archivo de configuración donde están almacenadas las credenciales y configuraciones necesarias.
 var config = require("../../config/config");
 
+const leads = require("./leads");
+
 // Requerimos el módulo 'nsrestlet' que es utilizado para crear el enlace y realizar las llamadas a los servicios de NetSuite Restlet.
 var nsrestlet = require("nsrestlet");
 
@@ -51,5 +53,67 @@ leadNetsuite.getDataLead_Netsuite = async ({ idLead }) => {
     }
 };
 
+
+// Función para crear un nuevo lead en Netsuite utilizando los datos del formulario y el id del administrador de Netsuite
+leadNetsuite.createdNewLead_Netsuite = async ({ formData, idnetsuite_admin }) => {
+    // Extraer y validar los campos del formulario, proporcionando valores por defecto si son null o undefined
+    const {
+        firstname_new = "",   // Nombre del cliente, vacío por defecto
+        email_new = "",       // Correo electrónico del cliente, vacío por defecto
+        phone_new = "",       // Teléfono del cliente, vacío por defecto
+        comentario_cliente_new = "" // Comentarios del cliente, vacío por defecto
+    } = formData;
+
+    // Valores por defecto para campos que no siempre están presentes
+    const lastname_new = "-";  // Apellido por defecto
+    const middlename_new = "-"; // Segundo nombre por defecto
+
+    // Validar y extraer los valores de los objetos select si no son null o undefined
+    const campana_value = formData.campana_new?.value || null;
+    const proyecto_value = formData.proyecto_new?.value || null;
+    const subsidiary_value = formData.subsidiary_new?.value || null;
+    const vendedor_value = formData.vendedor_new?.value || idnetsuite_admin;
+    const corredor_value = formData.corredor_lead_new?.value || "";
+
+    // URL para la solicitud POST al servicio RESTlet de Netsuite
+    const urlSettings = {
+        url: "https://4552704.restlets.api.netsuite.com/app/site/hosting/restlet.nl?script=1763&deploy=1",
+    };
+
+    try {
+        // Crear el enlace RESTlet
+        const rest = nsrestlet.createLink(accountSettings, urlSettings);
+
+        // Hacer la solicitud POST al RESTlet con los datos del nuevo lead
+        const body = await rest.post({
+            rType: "lead",
+            firstname: firstname_new,
+            lastname: lastname_new,
+            middlename: middlename_new,
+            phone: phone_new,
+            comentario_cliente: comentario_cliente_new,
+            email: email_new,
+            campana: campana_value,
+            subsidiary: subsidiary_value,
+            proyecto: proyecto_value,
+            employee: vendedor_value,
+            currency: 1, // Moneda fija (1 = dólar, depende del contexto)
+            corredor_lead: corredor_value,
+        });
+
+
+        if (body.status===200) {
+            if ((typeof corredor_value === "number" && corredor_value > 0) || (typeof corredor_value === "string" && corredor_value !== "")) {
+                await leads.insertInfo_extraLead(body, corredor_value);
+            }
+        }
+        return { msg: "Crear Cliente desde Crm Netsuite", Detalle: body, status: 200 };
+
+    } catch (error) {
+        // Manejo de errores y logging
+        console.error("Error al crear lead en Netsuite:", error);
+        throw error;
+    }
+};
 // Exportamos el módulo 'leadNetsuite' para que pueda ser utilizado en otras partes del proyecto.
 module.exports = leadNetsuite;

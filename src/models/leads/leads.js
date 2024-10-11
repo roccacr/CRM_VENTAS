@@ -98,7 +98,6 @@ leads.getBitacora = (dataParams) =>
         dataParams.database, // Base de datos donde se ejecutará el procedimiento.
     );
 
-
 /**
  * Obtiene la lista de leads que requieren atención desde la base de datos.
  *
@@ -119,8 +118,6 @@ leads.getAll_LeadsAttention = (dataParams) =>
         dataParams.database, // Nombre de la base de datos donde se ejecutará el procedimiento almacenado.
     );
 
-
-    
 /**
  * Obtiene la lista de leads que requieren atención desde la base de datos.
  *
@@ -165,7 +162,6 @@ leads.getAll_LeadsComplete = (dataParams) =>
         dataParams.database, // Nombre de la base de datos donde se ejecutará el procedimiento almacenado.
     );
 
-
 /**
  * Obtiene la lista completa de leads repetidos desde la base de datos.
  *
@@ -187,12 +183,10 @@ leads.getAll_LeadsRepit = (dataParams) =>
         dataParams.database, // Nombre de la base de datos donde se ejecutará el procedimiento almacenado.
     );
 
-
-
 /**
  * Obtiene la información de un lead específico desde la base de datos.
  *
- * Esta función ejecuta un procedimiento almacenado para recuperar los detalles 
+ * Esta función ejecuta un procedimiento almacenado para recuperar los detalles
  * de un lead específico basado en su ID.
  *
  * @async
@@ -208,11 +202,10 @@ leads.get_Specific_Lead = (dataParams) =>
         dataParams.database, // Nombre de la base de datos donde se ejecutará el procedimiento almacenado.
     );
 
-
 /**
  * Inserta una bitácora de acciones para un lead específico en la base de datos.
  *
- * Esta función ejecuta un procedimiento almacenado para registrar una bitácora 
+ * Esta función ejecuta un procedimiento almacenado para registrar una bitácora
  * de las acciones realizadas sobre un lead en la base de datos, proporcionando
  * detalles como el ID del lead, la descripción del evento, el tipo de acción y el estado actual.
  *
@@ -227,20 +220,19 @@ leads.get_Specific_Lead = (dataParams) =>
  * @param {string} dataParams.database - Nombre de la base de datos donde se ejecutará el procedimiento almacenado.
  * @returns {Promise<Object>} - Promesa que resuelve con el resultado de la inserción de la bitácora.
  */
-leads.insertBitcoraLead = (dataParams) => 
+leads.insertBitcoraLead = (dataParams) =>
     executeStoredProcedure(
         "insertBitcoraLead", // Nombre del procedimiento almacenado que gestiona la inserción de la bitácora.
         [
-            dataParams.leadId,            // ID del lead que se está manejando.
-            dataParams.idnetsuite_admin,  // ID del administrador que realiza la acción.
-            dataParams.valorDeCaida,      // Valor asociado al progreso o caída del lead.
+            dataParams.leadId, // ID del lead que se está manejando.
+            dataParams.idnetsuite_admin, // ID del administrador que realiza la acción.
+            dataParams.valorDeCaida, // Valor asociado al progreso o caída del lead.
             dataParams.descripcionEvento, // Descripción del evento o acción realizada.
-            dataParams.tipo,              // Tipo de evento (ejemplo: seguimiento, reserva, etc.).
-            dataParams.estadoActual       // Estado actual del lead, validado previamente.
-        ], 
-        dataParams.database // Nombre de la base de datos donde se ejecutará el procedimiento almacenado.
+            dataParams.tipo, // Tipo de evento (ejemplo: seguimiento, reserva, etc.).
+            dataParams.estadoActual, // Estado actual del lead, validado previamente.
+        ],
+        dataParams.database, // Nombre de la base de datos donde se ejecutará el procedimiento almacenado.
     );
-
 
 /**
  * Actualiza la información de un lead y registra una bitácora de las acciones realizadas en la base de datos.
@@ -266,23 +258,22 @@ leads.updateLeadActionApi = (dataParams) =>
     executeStoredProcedure(
         "updateLeadActionApi", // Nombre del procedimiento almacenado que gestiona la actualización y registro de la bitácora.
         [
-            dataParams.estadoActual,            // Estado actual del lead.
-            dataParams.valor_segimineto_lead,   // Valor del seguimiento asociado al lead.
-            dataParams.estado_lead,             // Nuevo estado del lead a actualizar.
-            dataParams.accion_lead,             // Acción realizada sobre el lead.
-            dataParams.seguimiento_calendar,    // Información de seguimiento en el calendario.
-            dataParams.valorDeCaida,            // Valor relacionado con la caída del lead, si corresponde.
-            dataParams.formattedDate,           // Fecha formateada de la acción realizada (YYYY-MM-DD).
-            dataParams.leadId                   // ID del lead que se está actualizando.
+            dataParams.estadoActual, // Estado actual del lead.
+            dataParams.valor_segimineto_lead, // Valor del seguimiento asociado al lead.
+            dataParams.estado_lead, // Nuevo estado del lead a actualizar.
+            dataParams.accion_lead, // Acción realizada sobre el lead.
+            dataParams.seguimiento_calendar, // Información de seguimiento en el calendario.
+            dataParams.valorDeCaida, // Valor relacionado con la caída del lead, si corresponde.
+            dataParams.formattedDate, // Fecha formateada de la acción realizada (YYYY-MM-DD).
+            dataParams.leadId, // ID del lead que se está actualizando.
         ],
         dataParams.database, // Nombre de la base de datos donde se ejecutará el procedimiento almacenado.
     );
 
-
 /**
  * Obtiene las razones de pérdida (caídas) de leads desde la base de datos.
  *
- * Esta función ejecuta un procedimiento almacenado que recupera las razones por las que un lead 
+ * Esta función ejecuta un procedimiento almacenado que recupera las razones por las que un lead
  * ha sido clasificado como perdido. El procedimiento utiliza un parámetro de estado específico para filtrar los resultados,
  * lo que permite consultar diferentes tipos de caídas según el valor proporcionado.
  *
@@ -299,7 +290,6 @@ leads.loss_reasons = (dataParams) =>
         ],
         dataParams.database, // Nombre de la base de datos en la que se ejecutará el procedimiento almacenado.
     );
-
 
 /**
  * Ejecuta el procedimiento almacenado 'loss_transactions' para marcar todas las transacciones de un lead como perdidas.
@@ -322,8 +312,6 @@ leads.loss_transactions = (dataParams) =>
         ],
         dataParams.database, // Base de datos donde se ejecutará el procedimiento almacenado.
     );
-
-
 
 /**
  * Obtiene la lista completa de leads desde la base de datos, sin importar si son nuevos o requieren atención.
@@ -348,8 +336,6 @@ leads.getAllLeadsTotal = (dataParams) =>
         [dataParams.rol_admin, dataParams.idnetsuite_admin, dataParams.startDate, dataParams.endDate, dataParams.filterOption], // Parámetros necesarios: rol, ID del administrador, fechas y opción de filtro.
         dataParams.database, // Nombre de la base de datos donde se ejecutará el procedimiento almacenado.
     );
-
-
 
 leads.getDataSelect_Campaing = (dataParams) =>
     executeStoredProcedure(
@@ -378,5 +364,21 @@ leads.getDataSelect_Admins = (dataParams) =>
         [dataParams.p_estado], // No se pasan parámetros adicionales al procedimiento.
         dataParams.database, // Base de datos específica donde se ejecutará el procedimiento almacenado.
     );
+
+leads.getDataSelect_Corredor = (dataParams) =>
+    executeStoredProcedure(
+        "getDataSelect_Corredor", // Nombre del procedimiento almacenado que recupera la información de administradores.
+        [dataParams.p_estado], // No se pasan parámetros adicionales al procedimiento.
+        dataParams.database, // Base de datos específica donde se ejecutará el procedimiento almacenado.
+    );
+
+leads.insertInfo_extraLead = (dataParams, corredor_value) => {
+    insertInfo_extraLead(
+        "insertInfo_extraLead", // Nombre del procedimiento almacenado que recupera la información de administradores.
+        [dataParams.id, corredor_value], // Se pasa el parámetro p_estado al procedimiento.
+        dataParams.database, // Base de datos específica donde se ejecutará el procedimiento almacenado.
+    );
+};
+
 
 module.exports = leads; // Exporta el objeto 'leads' que contiene todas las funciones definidas.

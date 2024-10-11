@@ -119,12 +119,16 @@ module.exports = function (app) {
                 { path: "/leads/getDataSelect_Proyect", method: "getDataSelect_Proyect" }, // ruta para tarer las proyectos
                 { path: "/leads/getDataSelect_Subsidiaria", method: "getDataSelect_Subsidiaria" }, // ruta para tarer las subsidiarias
                 { path: "/leads/getDataSelect_Admins", method: "getDataSelect_Admins" }, // ruta para tarer las subsidiarias
+                { path: "/leads/getDataSelect_Corredor", method: "getDataSelect_Corredor" },
             ],
         },
         {
             category: "LeadsNetsuite", // Categoría: Leads
             model: leadNetsuite, // Modelo asociado a 'leads'
-            routes: [{ path: "/leads/getDataLead_Netsuite", method: "getDataLead_Netsuite" }],
+            routes: [
+                { path: "/leads/getDataLead_Netsuite", method: "getDataLead_Netsuite" },
+                { path: "/leads/createdNewLead_Netsuite", method: "createdNewLead_Netsuite" },
+            ],
         },
 
         {
