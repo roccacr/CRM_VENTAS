@@ -103,7 +103,7 @@ leadNetsuite.createdNewLead_Netsuite = async ({ formData, idnetsuite_admin, data
 
         if (body.status === 200) {
             if ((typeof corredor_value === "number" && corredor_value > 0) || (typeof corredor_value === "string" && corredor_value !== "")) {
-                await leads.insertInfo_extraLead(body, corredor_value, database);
+                await leads.insertInfo_extraLead(body.id, corredor_value, database);
             }
         }
         return { msg: "Crear Cliente desde Crm Netsuite", Detalle: body, status: 200 };
