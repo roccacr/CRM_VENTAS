@@ -287,173 +287,89 @@ export default function ViewListExpedientes() {
                                 </Typography>
                                 {selectedExpediente && (
                                     <>
-                                        {/* First Group */}
-                                        <Box sx={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", borderBottom: "1px solid #ccc", pb: 2, mb: 2, gap: window.innerWidth < 600 ? "16px" : "0" }}>
-                                            <Box sx={{ flex: { xs: "1 0 45%", sm: "1 0 30%" } }}>
-                                                <p>ID Expediente</p>
-                                                <strong>{selectedExpediente.id_expediente || "N"}</strong>
+                                        {[
+                                            [
+                                                { label: "Código Expediente", value: selectedExpediente.codigo_exp },
+                                                { label: "Proyecto Principal", value: selectedExpediente.proyectoPrincipal_exp },
+                                                { label: "Tipo de Vivienda", value: selectedExpediente.tipoDeVivienda_exp },
+                                            ],
+                                            [
+                                                { label: "Precio Venta Único", value: selectedExpediente.precioVentaUncio_exp },
+                                                { label: "Estado", value: selectedExpediente.estado_exp },
+                                                { label: "Entrega Estimada", value: selectedExpediente.entregaEstimada },
+                                            ],
+                                            [
+                                                { label: "Área Total M²", value: selectedExpediente.areaTotalM2_exp },
+                                                { label: "M² Habitables", value: selectedExpediente.m2Habitables_exp },
+                                                { label: "Lote M²", value: selectedExpediente.loteM2_exp },
+                                            ],
+                                            [
+                                                { label: "Área de Parqueo Aprox.", value: selectedExpediente.areaDeParqueoAprox },
+                                                { label: "Área de Bodega M²", value: selectedExpediente.areaDeBodegaM2_exp },
+                                                { label: "Área de Mezzanine M²", value: selectedExpediente.areaDeMezzanieM2_exp },
+                                            ],
+                                            [
+                                                { label: "Área Común Libre", value: selectedExpediente.areacomunLibe_exp },
+                                                { label: "Precio de Venta Mínimo", value: selectedExpediente.precioDeVentaMinimo },
+                                                {
+                                                    label: "Planos de Unidad",
+                                                    value: selectedExpediente.planosDeUnidad_exp ? (
+                                                        <a href={selectedExpediente.planosDeUnidad_exp} target="_blank" rel="noopener noreferrer" style={{ textDecoration: "none", fontWeight: "bold" }}>
+                                                            Ver Planos
+                                                        </a>
+                                                    ) : (
+                                                        "N/A"
+                                                    ),
+                                                },
+                                            ],
+                                            [
+                                                { label: "ID Expediente", value: selectedExpediente.id_expediente },
+                                                { label: "ID Interno Expediente", value: selectedExpediente.ID_interno_expediente },
+                                                { label: "ID Proyecto Principal", value: selectedExpediente.idProyectoPrincipal_exp },
+                                            ],
+                                            [
+                                                { label: "Cuota Mantenimiento Aproximada", value: selectedExpediente.cuotaMantenimientoAprox_exp },
+                                                { label: "Área de Balcón M²", value: selectedExpediente.areaDeBalconM2_exp },
+                                                { label: "Área de Planta Baja", value: selectedExpediente.areaDePlantaBaja_exp },
+                                            ],
+                                            [
+                                                { label: "Área de Planta Alta", value: selectedExpediente.areaDePlantaAlta_exp },
+                                                { label: "Área de Ampliación", value: selectedExpediente.areaDeAmpliacion_exp },
+                                                { label: "Área de Terraza", value: selectedExpediente.areaDeTerraza_exp },
+                                            ],
+                                            [
+                                                { label: "Precio por M²", value: selectedExpediente.precioPorM2_exp },
+                                                { label: "Tercer Nivel Sótano", value: selectedExpediente.tercerNivelSotano_exp },
+                                                { label: "Área Externa Jardín", value: selectedExpediente.areaExternaJardin_exp },
+                                            ],
+                                            [
+                                                { label: "Jardín con Talud", value: selectedExpediente.jardinConTalud_exp },
+                                                { label: "Fecha de Modificación", value: selectedExpediente.fecha_mod },
+                                            ],
+                                        ].map((group, index) => (
+                                            <Box
+                                                key={index}
+                                                sx={{
+                                                    display: "flex",
+                                                    justifyContent: "space-between",
+                                                    flexWrap: "wrap",
+                                                    borderBottom: "1px solid #ccc",
+                                                    pb: 2,
+                                                    mb: 2,
+                                                    gap: window.innerWidth < 600 ? "16px" : "0",
+                                                }}
+                                            >
+                                                {group.map((item, i) => (
+                                                    <Box key={i} sx={{ flex: { xs: "1 0 45%", sm: "1 0 30%" } }}>
+                                                        <p>{item.label}</p>
+                                                        {typeof item.value === "string" ? <strong>{item.value || "N"}</strong> : item.value}
+                                                    </Box>
+                                                ))}
                                             </Box>
-                                            <Box sx={{ flex: { xs: "1 0 45%", sm: "1 0 30%" } }}>
-                                                <p>ID Interno Expediente</p>
-                                                <strong>{selectedExpediente.ID_interno_expediente || "N"}</strong>
-                                            </Box>
-                                            <Box sx={{ flex: { xs: "1 0 45%", sm: "1 0 30%" } }}>
-                                                <p>Código Expediente</p>
-                                                <strong>{selectedExpediente.codigo_exp || "N"}</strong>
-                                            </Box>
-                                        </Box>
-
-                                        {/* Second Group */}
-                                        <Box sx={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", borderBottom: "1px solid #ccc", pb: 2, mb: 2, gap: window.innerWidth < 600 ? "16px" : "0" }}>
-                                            <Box sx={{ flex: { xs: "1 0 45%", sm: "1 0 30%" } }}>
-                                                <p>Proyecto Principal</p>
-                                                <strong>{selectedExpediente.proyectoPrincipal_exp || "N"}</strong>
-                                            </Box>
-                                            <Box sx={{ flex: { xs: "1 0 45%", sm: "1 0 30%" } }}>
-                                                <p>ID Proyecto Principal</p>
-                                                <strong>{selectedExpediente.idProyectoPrincipal_exp || "N"}</strong>
-                                            </Box>
-                                            <Box sx={{ flex: { xs: "1 0 45%", sm: "1 0 30%" } }}>
-                                                <p>Tipo de Vivienda</p>
-                                                <strong>{selectedExpediente.tipoDeVivienda_exp || "N"}</strong>
-                                            </Box>
-                                        </Box>
-
-                                        {/* Third Group */}
-                                        <Box sx={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", borderBottom: "1px solid #ccc", pb: 2, mb: 2, gap: window.innerWidth < 600 ? "16px" : "0" }}>
-                                            <Box sx={{ flex: { xs: "1 0 45%", sm: "1 0 30%" } }}>
-                                                <p>Lote M²</p>
-                                                <strong>{selectedExpediente.loteM2_exp || "N"}</strong>
-                                            </Box>
-                                            <Box sx={{ flex: { xs: "1 0 45%", sm: "1 0 30%" } }}>
-                                                <p>Estado</p>
-                                                <strong>{selectedExpediente.estado_exp || "N"}</strong>
-                                            </Box>
-                                            <Box sx={{ flex: { xs: "1 0 45%", sm: "1 0 30%" } }}>
-                                                <p>Precio Venta Único</p>
-                                                <strong>{selectedExpediente.precioVentaUncio_exp || "N"}</strong>
-                                            </Box>
-                                        </Box>
-
-                                        {/* Fourth Group */}
-                                        <Box sx={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", borderBottom: "1px solid #ccc", pb: 2, mb: 2, gap: window.innerWidth < 600 ? "16px" : "0" }}>
-                                            <Box sx={{ flex: { xs: "1 0 45%", sm: "1 0 30%" } }}>
-                                                <p>M² Habitables</p>
-                                                <strong>{selectedExpediente.m2Habitables_exp || "N"}</strong>
-                                            </Box>
-                                            <Box sx={{ flex: { xs: "1 0 45%", sm: "1 0 30%" } }}>
-                                                <p>Área Total M²</p>
-                                                <strong>{selectedExpediente.areaTotalM2_exp || "N"}</strong>
-                                            </Box>
-                                            <Box sx={{ flex: { xs: "1 0 45%", sm: "1 0 30%" } }}>
-                                                <p>Cuota Mantenimiento Aproximada</p>
-                                                <strong>{selectedExpediente.cuotaMantenimientoAprox_exp || "N"}</strong>
-                                            </Box>
-                                        </Box>
-
-                                        {/* Fifth Group */}
-                                        <Box sx={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", borderBottom: "1px solid #ccc", pb: 2, mb: 2, gap: window.innerWidth < 600 ? "16px" : "0" }}>
-                                            <Box sx={{ flex: { xs: "1 0 45%", sm: "1 0 30%" } }}>
-                                                <p>Planos de Unidad</p>
-                                                {selectedExpediente.planosDeUnidad_exp ? (
-                                                    <a href={selectedExpediente.planosDeUnidad_exp} target="_blank" rel="noopener noreferrer">
-                                                        Ver Planos
-                                                    </a>
-                                                ) : (
-                                                    <strong>N</strong>
-                                                )}
-                                            </Box>
-                                            <Box sx={{ flex: { xs: "1 0 45%", sm: "1 0 30%" } }}>
-                                                <p>Entrega Estimada</p>
-                                                <strong>{selectedExpediente.entregaEstimada || "N"}</strong>
-                                            </Box>
-                                            <Box sx={{ flex: { xs: "1 0 45%", sm: "1 0 30%" } }}>
-                                                <p>Área de Bodega M²</p>
-                                                <strong>{selectedExpediente.areaDeBodegaM2_exp || "N"}</strong>
-                                            </Box>
-                                        </Box>
-
-                                        {/* Sixth Group */}
-                                        <Box sx={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", borderBottom: "1px solid #ccc", pb: 2, mb: 2, gap: window.innerWidth < 600 ? "16px" : "0" }}>
-                                            <Box sx={{ flex: { xs: "1 0 45%", sm: "1 0 30%" } }}>
-                                                <p>Área de Mezzanine M²</p>
-                                                <strong>{selectedExpediente.areaDeMezzanieM2_exp || "N"}</strong>
-                                            </Box>
-                                            <Box sx={{ flex: { xs: "1 0 45%", sm: "1 0 30%" } }}>
-                                                <p>Área de Balcón M²</p>
-                                                <strong>{selectedExpediente.areaDeBalconM2_exp || "N"}</strong>
-                                            </Box>
-                                            <Box sx={{ flex: { xs: "1 0 45%", sm: "1 0 30%" } }}>
-                                                <p>Área de Planta Baja</p>
-                                                <strong>{selectedExpediente.areaDePlantaBaja_exp || "N"}</strong>
-                                            </Box>
-                                        </Box>
-
-                                        {/* Seventh Group */}
-                                        <Box sx={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", borderBottom: "1px solid #ccc", pb: 2, mb: 2, gap: window.innerWidth < 600 ? "16px" : "0" }}>
-                                            <Box sx={{ flex: { xs: "1 0 45%", sm: "1 0 30%" } }}>
-                                                <p>Área de Planta Alta</p>
-                                                <strong>{selectedExpediente.areaDePlantaAlta_exp || "N"}</strong>
-                                            </Box>
-                                            <Box sx={{ flex: { xs: "1 0 45%", sm: "1 0 30%" } }}>
-                                                <p>Área de Ampliación</p>
-                                                <strong>{selectedExpediente.areaDeAmpliacion_exp || "N"}</strong>
-                                            </Box>
-                                            <Box sx={{ flex: { xs: "1 0 45%", sm: "1 0 30%" } }}>
-                                                <p>Área de Terraza</p>
-                                                <strong>{selectedExpediente.areaDeTerraza_exp || "N"}</strong>
-                                            </Box>
-                                        </Box>
-
-                                        {/* Eighth Group */}
-                                        <Box sx={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", borderBottom: "1px solid #ccc", pb: 2, mb: 2, gap: window.innerWidth < 600 ? "16px" : "0" }}>
-                                            <Box sx={{ flex: { xs: "1 0 45%", sm: "1 0 30%" } }}>
-                                                <p>Precio por M²</p>
-                                                <strong>{selectedExpediente.precioPorM2_exp || "N"}</strong>
-                                            </Box>
-                                            <Box sx={{ flex: { xs: "1 0 45%", sm: "1 0 30%" } }}>
-                                                <p>Tercer Nivel Sótano</p>
-                                                <strong>{selectedExpediente.tercerNivelSotano_exp || "N"}</strong>
-                                            </Box>
-                                            <Box sx={{ flex: { xs: "1 0 45%", sm: "1 0 30%" } }}>
-                                                <p>Área de Parqueo Aproximada</p>
-                                                <strong>{selectedExpediente.areaDeParqueoAprox || "N"}</strong>
-                                            </Box>
-                                        </Box>
-
-                                        {/* Ninth Group */}
-                                        <Box sx={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", borderBottom: "1px solid #ccc", pb: 2, mb: 2, gap: window.innerWidth < 600 ? "16px" : "0" }}>
-                                            <Box sx={{ flex: { xs: "1 0 45%", sm: "1 0 30%" } }}>
-                                                <p>Área Externa Jardín</p>
-                                                <strong>{selectedExpediente.areaExternaJardin_exp || "N"}</strong>
-                                            </Box>
-                                            <Box sx={{ flex: { xs: "1 0 45%", sm: "1 0 30%" } }}>
-                                                <p>Jardín con Talud</p>
-                                                <strong>{selectedExpediente.jardinConTalud_exp || "N"}</strong>
-                                            </Box>
-                                            <Box sx={{ flex: { xs: "1 0 45%", sm: "1 0 30%" } }}>
-                                                <p>Área Común Libre</p>
-                                                <strong>{selectedExpediente.areacomunLibe_exp || "N"}</strong>
-                                            </Box>
-                                        </Box>
-
-                                        {/* Tenth Group */}
-                                        <Box sx={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", pb: 2, mb: 2, gap: window.innerWidth < 600 ? "16px" : "0" }}>
-                                            <Box sx={{ flex: { xs: "1 0 45%", sm: "1 0 30%" } }}>
-                                                <p>Precio de Venta Mínimo</p>
-                                                <strong>{selectedExpediente.precioDeVentaMinimo || "N"}</strong>
-                                            </Box>
-                                            <Box sx={{ flex: { xs: "1 0 45%", sm: "1 0 30%" } }}>
-                                                <p>Fecha de Modificación</p>
-                                                <strong>{selectedExpediente.fecha_mod || "N"}</strong>
-                                            </Box>
-                                            <Box sx={{ flex: { xs: "1 0 45%", sm: "1 0 30%" } }}>
-                                                <p>Valor Cron</p>
-                                                <strong>{selectedExpediente.cron_value || "N"}</strong>
-                                            </Box>
-                                        </Box>
+                                        ))}
                                     </>
                                 )}
+
                                 <button className="btn btn-dark">Sincronizar expediente de unidad</button>
                             </Box>
                         </Modal>
