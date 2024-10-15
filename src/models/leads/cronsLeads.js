@@ -198,7 +198,7 @@ cron.schedule("*/5 * * * *", async () => {
                 console.log("Procesando lead con ID", lead.idinterno_lead);
 
                 let fechaFormateada = null; // Variable para almacenar la fecha formateada
-                const { actualizadaaccion_lead } = lead; // Extraer la última fecha de actualización del lead
+                const { actualizadaaccion_lead, accion_lead } = lead; // Extraer la última fecha de actualización del lead
 
                 // Formatear la fecha según su tipo (Date o string)
                 if (actualizadaaccion_lead instanceof Date) {
@@ -228,7 +228,7 @@ cron.schedule("*/5 * * * *", async () => {
                     const diferenciaMilisegundos = hoy - fechaLead;
                     const diasDiferencia = Math.floor(diferenciaMilisegundos / (1000 * 60 * 60 * 24)); // Convertir milisegundos a días
 
-                    if (diasDiferencia >= 7) {
+                    if (diasDiferencia >= 7 && accion_lead === 3) {
                         const bitacoraParams = {
                             leadId: lead.idinterno_lead,
                             idnetsuite_admin: lead.id_empleado_lead,

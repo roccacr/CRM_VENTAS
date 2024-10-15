@@ -151,6 +151,7 @@ module.exports = function (app) {
             model: expedientes, // Modelo asociado a 'calendars'
             routes: [
                 { path: "/expedientes/getAllExpedientes", method: "getFileList" }, // Ruta para obtener todos los eventos del calendars
+                { path: "/expedientes/updateExpediente", method: "updateExpediente" }, // Ruta para obtener todos los eventos del calendars
             ],
         },
     ];
