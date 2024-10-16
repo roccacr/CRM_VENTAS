@@ -14,6 +14,7 @@ require("../models/leads/cronsLeads.js");
 // Importa el modelo para las operaciones relacionadas con 'calendars'
 const calendars = require("../models/calendars/calendars");
 const expedientes = require("../models/expedientes/expedientes");
+const expedientesNetsuite = require("../models/expedientes/expedientesNetsuite");
 
 // Cargar variables de entorno al iniciar la aplicación
 dotenv.config();
@@ -81,80 +82,86 @@ module.exports = function (app) {
     // Configuración de las rutas por categoría y modelo
     const routesConfig = [
         {
-            category: "Autenticación", // Categoría: Autenticación
+            category: "Autenticación", // Categoría: Rutas de autenticación de usuarios
             model: authenticated, // Modelo asociado a la autenticación
             routes: [
-                { path: "/login", method: "startSession" }, // Ruta para iniciar sesión
+                { path: "/login", method: "startSession" }, // Ruta para iniciar sesión y generar una nueva sesión de usuario
             ],
         },
         {
-            category: "Home", // Categoría: Home
-            model: home, // Modelo asociado a 'home'
+            category: "Home", // Categoría: Funcionalidades principales de la página de inicio
+            model: home, // Modelo asociado al módulo Home
             routes: [
-                { path: "/home/getAllBanners", method: "getAllBanners" }, // Ruta para obtener todos los banners
-                { path: "/home/getAllEventsHome", method: "getAllEventsHome" }, // Ruta para obtener todos los eventos del home
-                { path: "/home/updateEventStatus", method: "updateEventStatus" }, // Ruta para actualizar el estado de un evento
-                { path: "/home/getMonthlyDatakpi", method: "fetchGetMonthlyDataKpi" }, // Ruta para obtener los datos mensuales de KPIs
-                { path: "/home/getMonthlyData", method: "getMonthlyData" }, // Ruta para obtener los datos mensuales
-                { path: "/home/fetchupdateEventDate", method: "fetchupdateEventDate" }, // Ruta para actualizar la fecha de un evento
+                { path: "/home/getAllBanners", method: "getAllBanners" }, // Ruta para obtener todos los banners de la página de inicio
+                { path: "/home/getAllEventsHome", method: "getAllEventsHome" }, // Ruta para listar todos los eventos mostrados en la vista principal
+                { path: "/home/updateEventStatus", method: "updateEventStatus" }, // Ruta para actualizar el estado de un evento específico
+                { path: "/home/getMonthlyDatakpi", method: "fetchGetMonthlyDataKpi" }, // Ruta para obtener datos mensuales de KPIs
+                { path: "/home/getMonthlyData", method: "getMonthlyData" }, // Ruta para obtener información agregada mensual
+                { path: "/home/fetchupdateEventDate", method: "fetchupdateEventDate" }, // Ruta para actualizar la fecha de un evento específico
             ],
         },
         {
-            category: "Leads", // Categoría: Leads
-            model: leads, // Modelo asociado a 'leads'
+            category: "Leads", // Categoría: Gestión de leads y seguimiento
+            model: leads, // Modelo asociado a los leads
             routes: [
-                { path: "/leads/getAll_LeadsNew", method: "getAll_LeadsNew" }, // Ruta para obtener todos los leads nuevos
-                { path: "/leads/getAll_LeadsAttention", method: "getAll_LeadsAttention" }, // Ruta para obtener los leads que requieren atención
+                { path: "/leads/getAll_LeadsNew", method: "getAll_LeadsNew" }, // Ruta para obtener los leads nuevos
+                { path: "/leads/getAll_LeadsAttention", method: "getAll_LeadsAttention" }, // Ruta para obtener los leads que requieren atención inmediata
                 { path: "/leads/getBitacora", method: "getBitacora" }, // Ruta para obtener la bitácora de un lead específico
                 { path: "/leads/getAll_LeadsComplete", method: "getAll_LeadsComplete" }, // Ruta para obtener todos los leads completos
-                { path: "/leads/getAll_LeadsRepit", method: "getAll_LeadsRepit" }, // Ruta para obtener todos los leads duplicados
-                { path: "/leads/get_Specific_Lead", method: "get_Specific_Lead" }, // Ruta para obtener los datos de un lead específico
+                { path: "/leads/getAll_LeadsRepit", method: "getAll_LeadsRepit" }, // Ruta para obtener leads duplicados
+                { path: "/leads/get_Specific_Lead", method: "get_Specific_Lead" }, // Ruta para obtener la información detallada de un lead específico
                 { path: "/leads/insertBitcoraLead", method: "insertBitcoraLead" }, // Ruta para insertar un registro en la bitácora de un lead
-                { path: "/leads/updateLeadActionApi", method: "updateLeadActionApi" }, // Ruta para actualizar una acción de un lead a través de la API
-                { path: "/leads/getAllStragglers", method: "getAllStragglers" }, // Ruta para obtener todos los leads rezagados o inactivos
+                { path: "/leads/updateLeadActionApi", method: "updateLeadActionApi" }, // Ruta para actualizar una acción de un lead mediante la API
+                { path: "/leads/getAllStragglers", method: "getAllStragglers" }, // Ruta para obtener leads rezagados o inactivos
                 { path: "/leads/loss_reasons", method: "loss_reasons" }, // Ruta para obtener las razones de pérdida de leads
-                { path: "/leads/setLostStatusForLeadTransactions", method: "loss_transactions" }, // Ruta para colcoar todas las trnasacciones de un lead en estado de perdido
-                { path: "/leads/getAllLeadsTotal", method: "getAllLeadsTotal" }, // Ruta para obtener todos los leads , los estados y acciones
-                { path: "/leads/getDataSelect_Campaing", method: "getDataSelect_Campaing" }, // ruta para tarer las campañas
-                { path: "/leads/getDataSelect_Proyect", method: "getDataSelect_Proyect" }, // ruta para tarer las proyectos
-                { path: "/leads/getDataSelect_Subsidiaria", method: "getDataSelect_Subsidiaria" }, // ruta para tarer las subsidiarias
-                { path: "/leads/getDataSelect_Admins", method: "getDataSelect_Admins" }, // ruta para tarer las subsidiarias
-                { path: "/leads/getDataSelect_Corredor", method: "getDataSelect_Corredor" },
-                { path: "/leads/getDataInformations_Lead", method: "getDataInformations_Lead" },
+                { path: "/leads/setLostStatusForLeadTransactions", method: "loss_transactions" }, // Ruta para marcar las transacciones de un lead como perdidas
+                { path: "/leads/getAllLeadsTotal", method: "getAllLeadsTotal" }, // Ruta para obtener un resumen total de leads y sus acciones
+                { path: "/leads/getDataSelect_Campaing", method: "getDataSelect_Campaing" }, // Ruta para obtener las campañas disponibles
+                { path: "/leads/getDataSelect_Proyect", method: "getDataSelect_Proyect" }, // Ruta para obtener los proyectos disponibles
+                { path: "/leads/getDataSelect_Subsidiaria", method: "getDataSelect_Subsidiaria" }, // Ruta para obtener las subsidiarias disponibles
+                { path: "/leads/getDataSelect_Admins", method: "getDataSelect_Admins" }, // Ruta para obtener la lista de administradores
+                { path: "/leads/getDataSelect_Corredor", method: "getDataSelect_Corredor" }, // Ruta para obtener la lista de corredores
+                { path: "/leads/getDataInformations_Lead", method: "getDataInformations_Lead" }, // Ruta para obtener información adicional de un lead
             ],
         },
         {
-            category: "LeadsNetsuite", // Categoría: Leads
-            model: leadNetsuite, // Modelo asociado a 'leads'
+            category: "LeadsNetsuite", // Categoría: Integración con Netsuite para gestión de leads
+            model: leadNetsuite, // Modelo asociado a la gestión de leads en Netsuite
             routes: [
-                { path: "/leads/getDataLead_Netsuite", method: "getDataLead_Netsuite" },
-                { path: "/leads/createdNewLead_Netsuite", method: "createdNewLead_Netsuite" },
-            ],
-        },
-
-        {
-            category: "calendars", // Categoría: calendars
-            model: calendars, // Modelo asociado a 'calendars'
-            routes: [
-                { path: "/calendars/get_Calendars", method: "get_Calendars" }, // Ruta para obtener todos los eventos del calendars
-                { path: "/calendars/createEvent", method: "createEvent" }, // Ruta para obtener todos los eventos del calendars
-                { path: "/calendars/getDataEevent", method: "getDataEevent" }, // Ruta para obtener todos los eventos del calendars
-                { path: "/calendars/get_event_Citas", method: "get_event_Citas" }, // Ruta para obtener todos los eventos de un cliente pra ver si tiene citas o no
-                { path: "/calendars/editEvent", method: "editEvent" }, // modificar eventos del calendario
-                { path: "/calendars/update_event_MoveDate", method: "update_event_MoveDate" }, // modificar eventos del calendario\
-                { path: "/calendars/update_Status_Event", method: "update_Status_Event" }, // modificar eventos del calendario
-                { path: "/calendars/getAll_ListEvent", method: "getAll_ListEvent" }, // extarer todos los eventos
+                { path: "/leads/getDataLead_Netsuite", method: "getDataLead_Netsuite" }, // Ruta para obtener la información de un lead desde Netsuite
+                { path: "/leads/createdNewLead_Netsuite", method: "createdNewLead_Netsuite" }, // Ruta para crear un nuevo lead en Netsuite
             ],
         },
         {
-            category: "expedientes", // Categoría: calendars
-            model: expedientes, // Modelo asociado a 'calendars'
+            category: "Calendarios", // Categoría: Gestión de calendarios y eventos
+            model: calendars, // Modelo asociado a la gestión de calendarios
             routes: [
-                { path: "/expedientes/getAllExpedientes", method: "getFileList" }, // Ruta para obtener todos los eventos del calendars
-                { path: "/expedientes/updateExpediente", method: "updateExpediente" }, // Ruta para obtener todos los eventos del calendars
+                { path: "/calendars/get_Calendars", method: "get_Calendars" }, // Ruta para obtener todos los calendarios
+                { path: "/calendars/createEvent", method: "createEvent" }, // Ruta para crear un nuevo evento en el calendario
+                { path: "/calendars/getDataEevent", method: "getDataEevent" }, // Ruta para obtener información detallada de un evento
+                { path: "/calendars/get_event_Citas", method: "get_event_Citas" }, // Ruta para verificar si un cliente tiene citas programadas
+                { path: "/calendars/editEvent", method: "editEvent" }, // Ruta para editar un evento existente
+                { path: "/calendars/update_event_MoveDate", method: "update_event_MoveDate" }, // Ruta para cambiar la fecha de un evento
+                { path: "/calendars/update_Status_Event", method: "update_Status_Event" }, // Ruta para actualizar el estado de un evento
+                { path: "/calendars/getAll_ListEvent", method: "getAll_ListEvent" }, // Ruta para obtener la lista completa de eventos
+            ],
+        },
+        {
+            category: "Expedientes", // Categoría: Gestión de expedientes
+            model: expedientes, // Modelo asociado a la gestión de expedientes
+            routes: [
+                { path: "/expedientes/getAllExpedientes", method: "getFileList" }, // Ruta para obtener todos los expedientes
+            ],
+        },
+        {
+            category: "ExpedientesNetsuite", // Categoría: Gestión de expedientes
+            model: expedientesNetsuite, // Modelo asociado a la gestión de expedientes
+            routes: [
+                { path: "/expedientes/updateExpediente", method: "updateExpediente" }, // Ruta para actualizar un expediente existente
             ],
         },
     ];
+
 
     // Asignación de rutas dinámicamente
     routesConfig.forEach(({ category, model, routes }) => {
