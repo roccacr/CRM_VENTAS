@@ -1,4 +1,4 @@
-import { getAllExpedientes } from "./Api_expedintes_Providers";
+import { getAllExpedientes, updateExpediente } from "./Api_expedintes_Providers";
 
 /**
  * Función para obtener y gestionar la lista de expedientes.
@@ -28,3 +28,31 @@ export const getFileList = () => {
         }
     };
 };
+
+
+// Acción de Redux Thunk
+// Acción de Redux Thunk para actualizar un expediente específico.
+export const actualizarExpediente = (id_expediente) => {
+    /**
+     * Esta función retorna otra función asincrónica que recibe `dispatch` como argumento.
+     * Esto permite utilizar Redux Thunk para ejecutar lógica asíncrona (como llamadas a la API) 
+     * antes de despachar acciones al store de Redux.
+     */
+    return async () => {
+        try {
+            // Llama a la función `updateExpediente` para actualizar el expediente mediante una API.
+            // Se pasa el ID del expediente como parámetro para identificar el expediente a actualizar.
+            await updateExpediente({ id_expediente });
+
+            // Devuelve "ok" si la actualización es exitosa.
+            return "ok";
+        } catch (error) {
+            // Registra en la consola cualquier error que ocurra durante la actualización del expediente.
+            console.error("Error al actualizar el expediente de unidad:", error);
+
+            // Podrías añadir un manejo de errores adicional aquí, 
+            // como despachar una acción para actualizar el estado de error en Redux.
+        }
+    };
+};
+

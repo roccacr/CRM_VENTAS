@@ -3,8 +3,9 @@ import Select from "react-select";
 import makeAnimated from "react-select/animated";
 import * as XLSX from "xlsx"; // Importamos la librería para generar el archivo Excel
 import { useDispatch } from "react-redux"; // Importar useDispatch para llamar al thunk
-import { getFileList } from "../../../../store/expedientes/thunksExpedientes"; // Asegúrate de que esta función está disponible
+import { actualizarExpediente, getFileList } from "../../../../store/expedientes/thunksExpedientes"; // Asegúrate de que esta función está disponible
 import { Modal, Box, Button, Typography } from "@mui/material"; // Importamos Modal de Material UI
+import Swal from "sweetalert2";
 
 const getUniqueValuesWithCounts = (data, key) => {
     const counts = {};
@@ -38,6 +39,7 @@ export default function ViewListExpedientes() {
     const [projectOptions, setProjectOptions] = useState([]);
     const [modelOptions, setModelOptions] = useState([]);
     const [stateOptions, setStateOptions] = useState([]);
+    const [searchCode, setSearchCode] = useState("");
 
     // Estado para controlar la ordenación
     const [sortConfig, setSortConfig] = useState({ key: null, direction: "asc" });
@@ -93,13 +95,18 @@ export default function ViewListExpedientes() {
     useEffect(() => {
         const filterData = () => {
             let filtered = expedientes.filter((row) => {
-                return (searchFilters.proyectoPrincipal_exp.length === 0 || searchFilters.proyectoPrincipal_exp.map((p) => p.value).includes(row.proyectoPrincipal_exp)) && (searchFilters.modelo_exp.length === 0 || searchFilters.modelo_exp.map((m) => m.value).includes(row.tipoDeVivienda_exp)) && (searchFilters.estado_exp.length === 0 || searchFilters.estado_exp.map((e) => e.value).includes(row.estado_exp));
+                const matchesCode = row.codigo_exp.toLowerCase().includes(searchCode.toLowerCase());
+                const matchesProject = searchFilters.proyectoPrincipal_exp.length === 0 || searchFilters.proyectoPrincipal_exp.map((p) => p.value).includes(row.proyectoPrincipal_exp);
+                const matchesModel = searchFilters.modelo_exp.length === 0 || searchFilters.modelo_exp.map((m) => m.value).includes(row.tipoDeVivienda_exp);
+                const matchesState = searchFilters.estado_exp.length === 0 || searchFilters.estado_exp.map((e) => e.value).includes(row.estado_exp);
+
+                return matchesCode && matchesProject && matchesModel && matchesState;
             });
             setFilteredData(filtered);
         };
 
         filterData();
-    }, [searchFilters, expedientes]);
+    }, [searchFilters, expedientes, searchCode]);
 
     const handleOpenModal = (expediente) => {
         setSelectedExpediente(expediente); // Guardar el expediente seleccionado
@@ -160,6 +167,60 @@ export default function ViewListExpedientes() {
         XLSX.writeFile(wb, "Expedientes.xlsx");
     };
 
+    const actulizarExpedienteUnidad = async (id_expediente, nombre_expediente) => {
+        handleCloseModal(); // Cierra el modal inicial
+
+        const confirmResult = await Swal.fire({
+            title: "¿Estás seguro?",
+            text: `¿Realmente deseas actualizar el expediente de unidad: ${nombre_expediente}? Esto puede tardar alrededor de 1 minuto y 30 segundos.`,
+            icon: "warning",
+            showCancelButton: true,
+            confirmButtonColor: "#3085d6",
+            cancelButtonColor: "#d33",
+            confirmButtonText: "Sí, actualizar",
+            cancelButtonText: "Cancelar",
+        });
+
+        if (confirmResult.isConfirmed) {
+            const updatingAlert = Swal.fire({
+                title: "Actualizando...",
+                text: "Por favor, espera mientras se actualiza el expediente de unidad.",
+                icon: "info",
+                allowOutsideClick: false,
+                showConfirmButton: false,
+                didOpen: () => {
+                    Swal.showLoading(); // Mostrar spinner mientras se espera
+                },
+            });
+
+            try {
+                // Esperar a que la acción de actualización termine
+                await dispatch(actualizarExpediente(id_expediente));
+
+                // Cerrar la alerta de carga
+                Swal.close();
+
+                // Mostrar mensaje de éxito
+                await Swal.fire({
+                    title: "¡Actualizado!",
+                    text: "El expediente de unidad se ha actualizado correctamente.",
+                    icon: "success",
+                });
+                await new Promise((resolve) => setTimeout(resolve, 1000));
+
+                // Refrescar la página
+                window.location.reload();
+            } catch (error) {
+                // Manejar cualquier error en la actualización
+                Swal.fire({
+                    title: "Error",
+                    text: "Hubo un problema al actualizar el expediente. Por favor, inténtalo de nuevo.",
+                    icon: "error",
+                });
+            }
+        }
+    };
+
     return (
         <div className="card" style={{ width: "100%" }}>
             <div className="card-header table-card-header">
@@ -182,6 +243,12 @@ export default function ViewListExpedientes() {
                 ) : (
                     <>
                         <div className="row">
+                            <div className="row">
+                                <div className="col-md-4">
+                                    <label>Buscar por Código</label>
+                                    <input type="text" className="form-control" placeholder="Escribe el código" value={searchCode} onChange={(e) => setSearchCode(e.target.value)} />
+                                </div>
+                            </div>
                             <div className="col-md-4">
                                 <label>Filtrar por Proyecto</label>
                                 <Select components={animatedComponents} isMulti closeMenuOnSelect={false} options={projectOptions} value={searchFilters.proyectoPrincipal_exp} onChange={(selected) => setSearchFilters({ ...searchFilters, proyectoPrincipal_exp: selected })} placeholder="Proyecto" />
@@ -323,11 +390,6 @@ export default function ViewListExpedientes() {
                                                 },
                                             ],
                                             [
-                                                { label: "ID Expediente", value: selectedExpediente.id_expediente },
-                                                { label: "ID Interno Expediente", value: selectedExpediente.ID_interno_expediente },
-                                                { label: "ID Proyecto Principal", value: selectedExpediente.idProyectoPrincipal_exp },
-                                            ],
-                                            [
                                                 { label: "Cuota Mantenimiento Aproximada", value: selectedExpediente.cuotaMantenimientoAprox_exp },
                                                 { label: "Área de Balcón M²", value: selectedExpediente.areaDeBalconM2_exp },
                                                 { label: "Área de Planta Baja", value: selectedExpediente.areaDePlantaBaja_exp },
@@ -367,10 +429,11 @@ export default function ViewListExpedientes() {
                                                 ))}
                                             </Box>
                                         ))}
+                                        <button onClick={() => actulizarExpedienteUnidad(selectedExpediente.ID_interno_expediente, selectedExpediente.codigo_exp)} className="btn btn-dark">
+                                            Sincronizar expediente de unidad
+                                        </button>
                                     </>
                                 )}
-
-                                <button className="btn btn-dark">Sincronizar expediente de unidad</button>
                             </Box>
                         </Modal>
                     </>
