@@ -43,34 +43,13 @@ expedientesNetsuite.obtenerExp = async (exp) => {
 
 // Función para actualizar un expediente llamando a obtenerExp.
 expedientesNetsuite.updateExpediente = async ({ id_expediente, database }) => {
-
-console.log("🚀 ------------------------------------------------------------------------------------------------------------🚀");
-console.log("🚀 ~ file: expedientesNetsuite.js:47 ~ expedientesNetsuite.updateExpediente= ~ id_expediente:", id_expediente);
-console.log("🚀 ------------------------------------------------------------------------------------------------------------🚀");
-
-
     try {
         const result = await expedientesNetsuite.obtenerExp(id_expediente);
         const data = result.Detalle;
 
         const resulUpdate = await expedientes.updateFile(data, database, id_expediente);
 
-        console.log("🚀 --------------------------------------------------------------------------------------------------------🚀");
-        console.log("🚀 ~ file: expedientesNetsuite.js:53 ~ expedientesNetsuite.updateExpediente= ~ resulUpdate:", resulUpdate);
-        console.log("🚀 --------------------------------------------------------------------------------------------------------🚀");
-
-
-        // console.log("🚀 --------------------------------------------------------------------------------------------------------🚀");
-        // console.log("🚀 ~ file: expedientesNetsuite.js:53 ~ expedientesNetsuite.updateExpediente= ~ resulUpdate:", resulUpdate);
-        // console.log("🚀 --------------------------------------------------------------------------------------------------------🚀");
-
-
-
-        
-
-
-
-
+        return resulUpdate;
     } catch (error) {
         console.error("Error en updateExpediente:", error);
         throw error;

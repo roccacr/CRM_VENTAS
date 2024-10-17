@@ -16,6 +16,9 @@ const calendars = require("../models/calendars/calendars");
 const expedientes = require("../models/expedientes/expedientes");
 const expedientesNetsuite = require("../models/expedientes/expedientesNetsuite");
 
+
+const oportunidad = require("../models/oportunidad/oportunidad");
+
 // Cargar variables de entorno al iniciar la aplicación
 dotenv.config();
 
@@ -158,6 +161,15 @@ module.exports = function (app) {
             model: expedientesNetsuite, // Modelo asociado a la gestión de expedientes
             routes: [
                 { path: "/expedientes/updateExpediente", method: "updateExpediente" }, // Ruta para actualizar un expediente existente
+            ],
+        },
+
+        {
+            category: "oportunidad", // Categoría: Gestión de expedientes
+            model: oportunidad, // Modelo asociado a la gestión de expedientes
+            routes: [
+                { path: "/oportunidad/getUbicaciones", method: "getUbicaciones" }, // extraer las ubicaciones
+                { path: "/oportunidad/getClases", method: "getClases" }, // extraer las clases
             ],
         },
     ];
