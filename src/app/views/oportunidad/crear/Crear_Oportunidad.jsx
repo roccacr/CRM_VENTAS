@@ -149,8 +149,8 @@ export const Crear_Oportunidad = () => {
 
             // Mapea los datos recibidos para generar opciones adecuadas para los selects.
             const options = data.map((item) => ({
-                value: item.idNetsuite_ubicaciones, // ID de la ubicación.
-                label: item.nombre_ubicaciones, // Nombre descriptivo de la ubicación.
+                value: item.idNetsuite_clase, // ID de la ubicación.
+                label: item.nombre_clase, // Nombre descriptivo de la ubicación.
             }));
 
             // Actualiza el estado con las opciones de ubicaciones disponibles.
