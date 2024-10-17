@@ -224,7 +224,7 @@ export default function ViewListExpedientes() {
     };
     const asignarOportunidad = async (id_expediente) => {
 
-        navigate(`/oportunidad/crear?idOportunidad=${id_expediente}&idLead=0`);
+        navigate(`/oportunidad/crear?idExpediente=${id_expediente}&idLead=0`);
     }
 
     return (

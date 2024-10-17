@@ -169,7 +169,7 @@ export const ModalLeads = ({ leadData, onClose }) => {
     const crearOportunidad = (leadData) => {
         const idLead = leadData?.idinterno_lead; // Obtiene el ID del lead.
 
-        navigate(`/oportunidad/crear?idOportunidad=0&idLead=${idLead}`); // Navega a la ruta de eventos del lead.
+        navigate(`/oportunidad/crear?idExpediente=0&idLead=${idLead}`); // Navega a la ruta de eventos del lead.
     };
     let buttonData = [
         { text: "Ir a Whatsapp", icon: "fab fa-whatsapp", color: "#25d366", action: handleWhatsappClick },

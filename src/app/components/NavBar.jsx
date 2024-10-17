@@ -195,7 +195,7 @@ export const NavBar = ({ sidebarVisible, sidebarStatus, closeSidebar }) => {
                                         </NavLink>
                                     </li>
                                     <li className="pc-item">
-                                        <NavLink to="/oportunidad/crear?idOportunidad=0&idLead=0" className="pc-link active">
+                                        <NavLink to="/oportunidad/crear?idExpediente=0&idLead=0" className="pc-link active">
                                             <span className="pc-mtext">Crear Oportunidad</span>
                                         </NavLink>
                                     </li>

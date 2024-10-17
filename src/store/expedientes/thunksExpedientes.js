@@ -15,8 +15,6 @@ export const getFileList = () => {
             // Llama a la función getAllExpedientes para obtener la lista completa de expedientes
             const result = await getAllExpedientes();
 
-
-
             // Si la API responde con éxito, despacha una acción para actualizar el estado de Redux.
             // La propiedad "0" de result.data contiene la lista de expedientes obtenida.
             // dispatch(setLeadsNew(result.data["0"])); // Actualiza el estado con la lista de expedientes.

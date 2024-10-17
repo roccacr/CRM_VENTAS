@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
 import Select from "react-select"; // Importar el Select de react-select
 import { ButtonActions } from "../../../components/buttonAccions/buttonAccions";
-import { getSpecificLead } from "../../../../store/leads/thunksLeads";
+import { getLeadsComplete, getSpecificLead } from "../../../../store/leads/thunksLeads";
 import { useDispatch } from "react-redux";
 import Swal from "sweetalert2"; // Importa SweetAlert2 para mostrar alertas
 import { getfetch_Clases, getfetch_Ubicaciones } from "../../../../store/oportuinidad/thunkOportunidad";
+import { getFileList } from "../../../../store/expedientes/thunksExpedientes";
 
 /**
  * Devuelve una fecha formateada en el formato "dd/MM/yyyy" para la región de Costa Rica ("es-CR").
@@ -43,32 +44,12 @@ export const Crear_Oportunidad = () => {
     // Estado para almacenar las opciones de expedientes.
     const [expedienteOptions, setExpedienteOptions] = useState([]);
 
-    // Hook 'useEffect' que se ejecuta al montar el componente.
-    // Simula la carga de opciones para los expedientes.
-    // Reemplázalo con una fuente de datos real, como una API o base de datos, si es necesario.
-    useEffect(() => {
-        setExpedienteOptions([
-            { value: "expediente1", label: "Expediente 1" }, // Opción de ejemplo 1.
-            { value: "expediente2", label: "Expediente 2" }, // Opción de ejemplo 2.
-            { value: "expediente3", label: "Expediente 3" }, // Opción de ejemplo 3.
-        ]);
-    }, []); // Dependencia vacía para ejecutar solo al montar el componente.
-
     // Estado para almacenar las opciones de clientes.
     const [clientesOptions, setClientesOptions] = useState([]);
 
-    // Hook 'useEffect' que se ejecuta al montar el componente.
-    // Simula la carga de opciones para los clientes.
-    // Reemplázalo con datos reales obtenidos de una API o servicio externo si es necesario.
-    useEffect(() => {
-        setClientesOptions([
-            { value: "3078206", label: "Cliente 1" }, // Cliente 1 de ejemplo.
-            { value: "3067789", label: "Cliente 2" }, // Cliente 2 de ejemplo.
-        ]);
-    }, []); // Dependencia vacía para ejecutar solo al montar el componente.
-
     // Estado para almacenar todos los valores del formulario, con valores iniciales definidos.
     const [formValues, setFormValues] = useState({
+        clientesPoyrecto: 0, // ID del cliente.
         clientes: "", // ID del cliente.
         clienteAsignado: "", // Cliente asignado al expediente.
         probabilidad: "80.0%", // Porcentaje de probabilidad de éxito.
@@ -76,7 +57,7 @@ export const Crear_Oportunidad = () => {
         subsidiaria: "", // Subsidiaria relacionada con el cliente o proyecto.
         proyecto: "", // Proyecto asociado.
         memo: "", // Comentarios adicionales.
-        estado: "22", // Estado del lead o expediente (por ejemplo, "Activo", "Completado").
+        estado: "", // Estado del lead o expediente (por ejemplo, "Activo", "Completado").
         motivoCondicion: "", // Motivo de una condición especial.
         motivoCompra: "", // Motivo principal de la compra.
         metodoPago: "", // Método de pago seleccionado.
@@ -113,10 +94,12 @@ export const Crear_Oportunidad = () => {
                 subsidiaria: leadData.subsidiaria_lead, // Actualiza la subsidiaria del lead.
                 proyecto: leadData.proyecto_lead, // Asigna el proyecto asociado al lead.
                 clientes: idEvent, // Almacena el ID del lead como cliente.
+                clientesPoyrecto: leadData.idproyecto_lead, // Almacena el ID del lead como cliente.
             }));
-
             // Guarda todos los detalles del lead en el estado 'leadDetails' para su uso posterior.
             setLeadDetails(leadData);
+            const idExpediente = getQueryParam("idExpediente"); // Extrae el ID del lead desde la URL.
+            fetchExpedientes(idExpediente, leadData.idproyecto_lead);
         } catch (error) {
             console.error("Error al obtener los detalles del lead:", error); // Manejo de errores.
         }
@@ -160,6 +143,74 @@ export const Crear_Oportunidad = () => {
         }
     };
 
+    const fetchClientes = async (idLeads) => {
+        try {
+            // Llama a la acción 'getfetch_Ubicaciones' y obtiene las ubicaciones.
+            const data = await dispatch(getLeadsComplete("2024-01-01", "2055-01-01", 0));
+
+            // Mapea los datos recibidos para generar opciones adecuadas para los selects.
+            const options = data.map((item) => ({
+                value: item.idinterno_lead, // ID de la ubicación.
+                label: item.nombre_lead, // Nombre descriptivo de la ubicación.
+            }));
+
+            // Actualiza el estado con las opciones de ubicaciones disponibles.
+            setClientesOptions(options);
+            if (idLeads > 0) {
+                setFormValues((prevValues) => ({
+                    ...prevValues,
+                    clientes: idLeads,
+                }));
+            }
+        } catch (error) {
+            console.error("Error al obtener los clientes:", error); // Manejo de errores.
+        }
+    };
+
+    const fetchExpedientes = async (idExpediente, filtro) => {
+        try {
+            // Llama a la acción 'getfetch_Ubicaciones' y obtiene las ubicaciones.
+            const data = await dispatch(getFileList());
+
+            // Si el filtro no está vacío, aplica el filtrado basado en coincidencias parciales.
+            const filteredData = filtro > 0 ? data.filter((item) => item.idProyectoPrincipal_exp === filtro) : data; // Si el filtro está vacío, usa todos los datos.
+
+            // Mapea los datos filtrados para generar opciones adecuadas para los selects.
+            const options = filteredData.map((item) => ({
+                value: item.ID_interno_expediente, // ID de la ubicación.
+                label: item.codigo_exp, // Nombre descriptivo de la ubicación.
+            }));
+
+            // Actualiza el estado con las opciones de ubicaciones disponibles.
+            setExpedienteOptions(options);
+
+            if (idExpediente > 0) {
+                const expedienteEncontrado = data.find((item) => item.ID_interno_expediente === idExpediente);
+                setFormValues((prevValues) => ({
+                    ...prevValues,
+                    expediente: idExpediente,
+                    idInternoExpediente: expedienteEncontrado.ID_interno_expediente,
+                    estadoExpediente: expedienteEncontrado.estado_exp,
+                    nombreExpediente: expedienteEncontrado.codigo_exp,
+                    precioLista: expedienteEncontrado.precioVentaUncio_exp,
+                    precioMinimo: expedienteEncontrado.precioDeVentaMinimo,
+                }));
+            } else {
+                setFormValues((prevValues) => ({
+                    ...prevValues,
+                    expediente: "",
+                    idInternoExpediente: "",
+                    estadoExpediente: "",
+                    nombreExpediente: "",
+                    precioLista: "",
+                    precioMinimo: "",
+                }));
+            }
+        } catch (error) {
+            console.error("Error al obtener los expedientes:", error); // Manejo de errores.
+        }
+    };
+
     // Función para obtener el valor de un parámetro específico de la URL.
     const getQueryParam = (param) => {
         // Crea una instancia de 'URLSearchParams' con los parámetros de la URL.
@@ -186,6 +237,13 @@ export const Crear_Oportunidad = () => {
 
         // Llama a la función para obtener las clases con ID 1 por defecto. que es stauts activos
         fetchClases(1);
+
+        fetchClientes(leadId);
+
+        if (leadId === 0) {
+            const idExpediente = getQueryParam("idExpediente"); // Extrae el ID del lead desde la URL.
+            fetchExpedientes(idExpediente, formValues.clientesPoyrecto);
+        }
     }, [location.search]); // El efecto se ejecuta nuevamente si 'location.search' cambia.
 
     // Estado para almacenar los errores del formulario.
@@ -216,6 +274,11 @@ export const Crear_Oportunidad = () => {
         if (name === "clientes") {
             // Llama a la función para obtener los detalles del lead cuando se selecciona un cliente.
             fetchLeadDetails(value);
+        }
+
+        if (name === "expediente") {
+            // Llama a la función para obtener los detalles del lead cuando se selecciona un cliente.
+            fetchExpedientes(value, formValues.clientesPoyrecto);
         }
 
         // Si hay un error relacionado con el campo que se modificó, lo elimina del estado de errores.
