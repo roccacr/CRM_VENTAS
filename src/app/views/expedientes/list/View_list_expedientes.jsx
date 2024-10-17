@@ -6,6 +6,7 @@ import { useDispatch } from "react-redux"; // Importar useDispatch para llamar a
 import { actualizarExpediente, getFileList } from "../../../../store/expedientes/thunksExpedientes"; // Asegúrate de que esta función está disponible
 import { Modal, Box, Button, Typography } from "@mui/material"; // Importamos Modal de Material UI
 import Swal from "sweetalert2";
+import { useNavigate } from "react-router-dom";
 
 const getUniqueValuesWithCounts = (data, key) => {
     const counts = {};
@@ -22,6 +23,7 @@ const getUniqueValuesWithCounts = (data, key) => {
 export default function ViewListExpedientes() {
     const animatedComponents = makeAnimated();
     const dispatch = useDispatch(); // Instanciar el dispatch para llamar al thunk
+    const navigate = useNavigate();
 
     // Estado para los datos cargados y el estado de carga
     const [expedientes, setExpedientes] = useState([]); // Guardar los expedientes cargados
@@ -220,6 +222,10 @@ export default function ViewListExpedientes() {
             }
         }
     };
+    const asignarOportunidad = async (id_expediente) => {
+
+        navigate(`/oportunidad/crear?idOportunidad=${id_expediente}&idLead=0`);
+    }
 
     return (
         <div className="card" style={{ width: "100%" }}>
@@ -431,6 +437,9 @@ export default function ViewListExpedientes() {
                                         ))}
                                         <button onClick={() => actulizarExpedienteUnidad(selectedExpediente.ID_interno_expediente, selectedExpediente.codigo_exp)} className="btn btn-dark">
                                             Sincronizar expediente de unidad
+                                        </button>
+                                        <button onClick={() => asignarOportunidad(selectedExpediente.ID_interno_expediente)} className="btn btn-primary">
+                                           Asignar a una oportunidad
                                         </button>
                                     </>
                                 )}
