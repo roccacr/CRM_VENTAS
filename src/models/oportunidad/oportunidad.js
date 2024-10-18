@@ -93,4 +93,10 @@ oportunidad.getClases = (dataParams) =>
         dataParams.database, // Nombre de la base de datos a utilizar.
     );
 
+
+
+
+
+    
+
 module.exports = oportunidad; // Exporta el objeto 'oportunidad' que agrupa las funciones relacionadas con ubicaciones.
