@@ -57,7 +57,7 @@ export const Crear_Oportunidad = () => {
         subsidiaria: "", // Subsidiaria relacionada con el cliente o proyecto.
         proyecto: "", // Proyecto asociado.
         memo: "", // Comentarios adicionales.
-        estado: "", // Estado del lead o expediente (por ejemplo, "Activo", "Completado").
+        estado: "22", // Estado del lead o expediente (por ejemplo, "Activo", "Completado").
         motivoCondicion: "", // Motivo de una condición especial.
         motivoCompra: "", // Motivo principal de la compra.
         metodoPago: "", // Método de pago seleccionado.
@@ -292,7 +292,7 @@ export const Crear_Oportunidad = () => {
     // Función para validar los campos del formulario.
     const validateForm = () => {
         // Lista de campos requeridos que deben tener un valor.
-        const requiredFields = ["clienteAsignado", "subsidiaria", "proyecto", "motivoCondicion", "motivoCompra", "metodoPago", "ubicacion", "clase", "expediente"];
+        const requiredFields = ["clienteAsignado", "subsidiaria", "proyecto", "motivoCondicion", "motivoCompra", "metodoPago", "ubicacion", "clase", "expediente", "idInternoExpediente"];
 
         const errors = {}; // Objeto para almacenar los errores detectados.
         let isValid = true; // Variable para determinar si el formulario es válido.
@@ -309,10 +309,16 @@ export const Crear_Oportunidad = () => {
         if (formValues.estado === "11" && !formValues.motivoCondicion) {
             errors.motivoCondicion = true; // Marca el campo como erróneo si falta.
             isValid = false; // El formulario no es válido.
-        } else {
-            errors.motivoCondicion = false; // Limpia el error si el campo es válido.
-            isValid = true; // El formulario no es válido.
         }
+
+        if (formValues.estado === "22") {
+            errors.motivoCondicion = false; // Marca el campo como erróneo si falta.
+            isValid = true;
+        }
+
+         if (!formValues.idInternoExpediente) {
+             isValid = false;
+         }
 
         setErrors(errors); // Actualiza el estado de errores con los errores detectados.
         return isValid; // Retorna si el formulario es válido o no.
@@ -594,7 +600,7 @@ export const Crear_Oportunidad = () => {
                                         <div className="mb-3">
                                             <label className="col-form-label col-lg-2">ID INTERNO EXPEDIENTE</label>
                                             <div className="col-lg-10">
-                                                <input type="number" name="idInternoExpediente" className="form-control" value={formValues.idInternoExpediente} disabled />
+                                                <input type="number" className={`form-control ${errors.idInternoExpediente ? "is-invalid" : ""}`} name="idInternoExpediente" value={formValues.idInternoExpediente} disabled />
                                             </div>
                                         </div>
 
