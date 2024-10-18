@@ -190,7 +190,7 @@ export const NavBar = ({ sidebarVisible, sidebarStatus, closeSidebar }) => {
                             {openMenu.opportunitiesMenu && (
                                 <ul className="pc-submenu">
                                     <li className="pc-item">
-                                        <NavLink to="/oportunidad/list" className="pc-link active">
+                                        <NavLink to="/oportunidad/lista?oportuinidad=1&idLead=0" className="pc-link active">
                                             <span className="pc-mtext">Lista de Oportunidades</span>
                                         </NavLink>
                                     </li>

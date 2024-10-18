@@ -4,7 +4,7 @@ import { ButtonActions } from "../../../components/buttonAccions/buttonAccions";
 import { getLeadsComplete, getSpecificLead } from "../../../../store/leads/thunksLeads";
 import { useDispatch } from "react-redux";
 import Swal from "sweetalert2"; // Importa SweetAlert2 para mostrar alertas
-import { getfetch_Clases, getfetch_Ubicaciones } from "../../../../store/oportuinidad/thunkOportunidad";
+import { crearOportunidad, crearReoporteLead, getfetch_Clases, getfetch_Ubicaciones } from "../../../../store/oportuinidad/thunkOportunidad";
 import { getFileList } from "../../../../store/expedientes/thunksExpedientes";
 
 /**
@@ -178,7 +178,7 @@ export const Crear_Oportunidad = () => {
             // Mapea los datos filtrados para generar opciones adecuadas para los selects.
             const options = filteredData.map((item) => ({
                 value: item.ID_interno_expediente, // ID de la ubicación.
-                label: item.codigo_exp, // Nombre descriptivo de la ubicación.
+                label: `${item.codigo_exp} - ${item.estado_exp}   `, // Nombre descriptivo de la ubicación.
             }));
 
             // Actualiza el estado con las opciones de ubicaciones disponibles.
@@ -192,8 +192,8 @@ export const Crear_Oportunidad = () => {
                     idInternoExpediente: expedienteEncontrado.ID_interno_expediente,
                     estadoExpediente: expedienteEncontrado.estado_exp,
                     nombreExpediente: expedienteEncontrado.codigo_exp,
-                    precioLista: expedienteEncontrado.precioVentaUncio_exp,
-                    precioMinimo: expedienteEncontrado.precioDeVentaMinimo,
+                    precioLista: parseFloat(expedienteEncontrado.precioVentaUncio_exp.replace(/[,.]/g, "")), // Elimina comas y puntos
+                    precioMinimo: parseFloat(expedienteEncontrado.precioDeVentaMinimo.replace(/[,.]/g, "")), // Elimina comas y puntos
                 }));
             } else {
                 setFormValues((prevValues) => ({
@@ -202,8 +202,8 @@ export const Crear_Oportunidad = () => {
                     idInternoExpediente: "",
                     estadoExpediente: "",
                     nombreExpediente: "",
-                    precioLista: "",
-                    precioMinimo: "",
+                    precioLista: 0,
+                    precioMinimo: 0,
                 }));
             }
         } catch (error) {
@@ -311,6 +311,7 @@ export const Crear_Oportunidad = () => {
             isValid = false; // El formulario no es válido.
         } else {
             errors.motivoCondicion = false; // Limpia el error si el campo es válido.
+            isValid = true; // El formulario no es válido.
         }
 
         setErrors(errors); // Actualiza el estado de errores con los errores detectados.
@@ -318,18 +319,82 @@ export const Crear_Oportunidad = () => {
     };
 
     // Función para manejar la generación de una nueva oportunidad.
-    const handleGenerateOpportunity = () => {
-        console.log("Valores del formulario:", formValues); // Muestra los valores del formulario en la consola.
-
+    // Función para manejar la creación de una oportunidad
+    const handleGenerateOpportunity = async () => {
+        // Validar formulario antes de proceder
         if (validateForm()) {
-            // Si la validación es exitosa, muestra los valores del formulario.
-            console.log("Formulario validado con éxito:", formValues);
+            // Mostrar alerta de confirmación antes de crear la oportunidad
+            Swal.fire({
+                title: "¿Está seguro de crear la oportunidad?",
+                text: "No se podrá revertir esta acción, por favor confirme.",
+                icon: "warning",
+                showCancelButton: true,
+                confirmButtonColor: "#3085d6",
+                cancelButtonColor: "#d33",
+                confirmButtonText: "Sí, crear!",
+            }).then(async (result) => {
+                // Si el usuario confirma la creación
+                if (result.isConfirmed) {
+                    // Mostrar alerta de carga mientras se crea la oportunidad
+                    Swal.fire({
+                        title: "Creando oportunidad...",
+                        html: "Por favor espere...",
+                        allowOutsideClick: false,
+                        didOpen: () => Swal.showLoading(),
+                    });
+
+                    try {
+                        // Ejecutar acción para crear la oportunidad y obtener el resultado
+                        const response = await dispatch(crearOportunidad(formValues, leadDetails));
+                        const detalleOportunidad = response.data["Detalle"];
+
+                        // Si la respuesta es exitosa (código 200)
+                        if (detalleOportunidad.status === 200) {
+                            // Crear el reporte del lead relacionado a la oportunidad
+                            await dispatch(crearReoporteLead(leadDetails));
+
+                            // Mostrar notificación de éxito y redirigir a la página de detalles de la oportunidad
+                            Swal.fire({
+                                position: "top-end",
+                                icon: "success",
+                                title: "Oportunidad creada exitosamente",
+                                showConfirmButton: false,
+                                timer: 2500,
+                            }).then(() => {
+                                window.location.href = `oportunidad/ver?data=${leadDetails.idinterno_lead}&data2=${detalleOportunidad.id}`;
+                            });
+                        }
+                        // Si hay un error en el servidor (código 500)
+                        else if (detalleOportunidad.status === 500) {
+                            let error = JSON.parse(detalleOportunidad.Error); // Parsear el error
+                            Swal.fire({
+                                html: `
+                                <h4>Detalle de error:</h4>
+                                <p>${error.details}, <br> Lo sentimos, por favor contacte a su administrador.</p>
+                            `,
+                                icon: "error",
+                                confirmButtonText: "OK",
+                                cancelButtonText: "CORREGIR",
+                                showCancelButton: true,
+                                showCloseButton: true,
+                            });
+                        }
+                    } catch (error) {
+                        // Manejo de cualquier error inesperado
+                        Swal.fire({
+                            icon: "error",
+                            title: "Error inesperado",
+                            text: "Ocurrió un error al crear la oportunidad. Intente nuevamente.",
+                        });
+                    }
+                }
+            });
         } else {
-            // Si la validación falla, muestra un mensaje de error con SweetAlert.
+            // Mostrar mensaje de error si la validación del formulario falla
             Swal.fire({
                 icon: "error",
                 title: "Campos obligatorios",
-                text: "Por favor, complete todos los campos requeridos.", // Instrucción para el usuario.
+                text: "Por favor, complete todos los campos requeridos.",
             });
         }
     };
@@ -550,14 +615,31 @@ export const Crear_Oportunidad = () => {
                                         <div className="mb-3 ajax-select mt-3 mt-lg-0">
                                             <div className="templating-select">
                                                 <label className="form-label">PRECIO DE LISTA</label>
-                                                <input name="precioLista" className="form-control" value={formValues.precioLista} disabled />
+                                                <input
+                                                    name="precioLista"
+                                                    className="form-control"
+                                                    value={new Intl.NumberFormat("en-US", {
+                                                        minimumFractionDigits: 2,
+                                                        maximumFractionDigits: 2,
+                                                    }).format(formValues.precioLista)}
+                                                    disabled
+                                                />
                                             </div>
                                         </div>
 
                                         <div className="mb-3 ajax-select mt-3 mt-lg-0">
                                             <div className="templating-select">
                                                 <label className="form-label">PRECIO DE VENTA MÍNIMO</label>
-                                                <input name="precioMinimo" className="form-control" value={formValues.precioMinimo} disabled />
+
+                                                <input
+                                                    name="precioMinimo"
+                                                    className="form-control"
+                                                    value={new Intl.NumberFormat("en-US", {
+                                                        minimumFractionDigits: 2,
+                                                        maximumFractionDigits: 2,
+                                                    }).format(formValues.precioMinimo)}
+                                                    disabled
+                                                />
                                             </div>
 
                                             <input name="salesRep" id="salesrep" className="form-control" value={formValues.salesRep} hidden required />
