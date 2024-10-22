@@ -5,6 +5,7 @@ import { useLocation } from "react-router-dom";
 import { BotonVolveR } from "../../components/BotonVolveR";
 import { Crear_Oportunidad } from "../../views/oportunidad/crear/Crear_Oportunidad";
 import { View_oportunidad_list } from "../../views/oportunidad/lista/View_oportunidad_list";
+import { View_oportuinidad_ver } from "../../views/oportunidad/ver/View_oportuinidad_ver";
 
 export const Page_oportunidad = () => {
     const location = useLocation();
@@ -19,6 +20,7 @@ export const Page_oportunidad = () => {
                     <BotonVolveR />
                     <div className="row">{path[1] === "oportunidad" && path[2] === "crear" && <Crear_Oportunidad />}</div>
                     <div className="row">{path[1] === "oportunidad" && path[2] === "lista" && <View_oportunidad_list />}</div>
+                    <div className="row">{path[1] === "oportunidad" && path[2] === "ver" && <View_oportuinidad_ver />}</div>
                 </div>
             </div>
         </AppLayout>

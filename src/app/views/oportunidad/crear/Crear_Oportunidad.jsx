@@ -56,7 +56,7 @@ export const Crear_Oportunidad = () => {
         nombreValor: "Firme", // Estado del valor (por ejemplo, "Firme" o "Pendiente").
         subsidiaria: "", // Subsidiaria relacionada con el cliente o proyecto.
         proyecto: "", // Proyecto asociado.
-        memo: "", // Comentarios adicionales.
+        memo: "SIN DETALLE", // Comentarios adicionales.
         estado: "22", // Estado del lead o expediente (por ejemplo, "Activo", "Completado").
         motivoCondicion: "", // Motivo de una condición especial.
         motivoCompra: "", // Motivo principal de la compra.
@@ -90,7 +90,7 @@ export const Crear_Oportunidad = () => {
             // Actualiza los valores del formulario con los detalles específicos del lead.
             setFormValues((prevState) => ({
                 ...prevState, // Mantiene los valores anteriores del estado.
-                clienteAsignado: leadData.nombre_lead, // Asigna el nombre del lead al campo correspondiente.
+                clienteAsignado: `${leadData.nombre_lead} - ${leadData.proyecto_lead} `, // Asigna el nombre del lead al campo correspondiente.
                 subsidiaria: leadData.subsidiaria_lead, // Actualiza la subsidiaria del lead.
                 proyecto: leadData.proyecto_lead, // Asigna el proyecto asociado al lead.
                 clientes: idEvent, // Almacena el ID del lead como cliente.
@@ -151,7 +151,7 @@ export const Crear_Oportunidad = () => {
             // Mapea los datos recibidos para generar opciones adecuadas para los selects.
             const options = data.map((item) => ({
                 value: item.idinterno_lead, // ID de la ubicación.
-                label: item.nombre_lead, // Nombre descriptivo de la ubicación.
+                label: `${item.nombre_lead} -${item.proyecto_lead}`, // Nombre descriptivo de la ubicación.
             }));
 
             // Actualiza el estado con las opciones de ubicaciones disponibles.
@@ -367,7 +367,7 @@ export const Crear_Oportunidad = () => {
                                 showConfirmButton: false,
                                 timer: 2500,
                             }).then(() => {
-                                window.location.href = `oportunidad/ver?data=${leadDetails.idinterno_lead}&data2=${detalleOportunidad.id}`;
+                                window.location.href = `/oportunidad/ver?data=${leadDetails.idinterno_lead}&data2=${detalleOportunidad.id}`;
                             });
                         }
                         // Si hay un error en el servidor (código 500)
@@ -627,7 +627,7 @@ export const Crear_Oportunidad = () => {
                                                     value={new Intl.NumberFormat("en-US", {
                                                         minimumFractionDigits: 2,
                                                         maximumFractionDigits: 2,
-                                                    }).format(formValues.precioLista)}
+                                                    }).format(formValues.precioLista / 100)}
                                                     disabled
                                                 />
                                             </div>
@@ -643,7 +643,7 @@ export const Crear_Oportunidad = () => {
                                                     value={new Intl.NumberFormat("en-US", {
                                                         minimumFractionDigits: 2,
                                                         maximumFractionDigits: 2,
-                                                    }).format(formValues.precioMinimo)}
+                                                    }).format(formValues.precioMinimo / 100)}
                                                     disabled
                                                 />
                                             </div>
