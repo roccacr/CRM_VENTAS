@@ -61,7 +61,7 @@ export default function View_list_leads_Stragglers() {
     const [rowsPerPage, setRowsPerPage] = useState(10); // Estado para el número de filas por página
 
     // Estado para los checkboxes de filtrado
-    const [filterOption, setFilterOption] = useState(0); // 0: ninguno, 1: fecha creación, 2: última acción
+    const [filterOption, setFilterOption] = useState(1); // 0: ninguno, 1: fecha creación, 2: última acción
 
     // Estado para el ordenamiento
     const [sortConfig, setSortConfig] = useState({ key: null, direction: "asc" });
