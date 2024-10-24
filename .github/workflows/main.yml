@@ -52,5 +52,5 @@ jobs:
             [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # Carga nvm si está disponible
             nvm use 18  # Cambia a la versión 18 de Node.js para asegurarse de que PM2 use la versión correcta
 
-            # Reiniciar la aplicación en PM2 utilizando la ruta completa al binario de PM2 para evitar problemas de PATH
-            /home/ubuntu/.nvm/versions/node/v18.18.1/bin/pm2 restart 1  # Reinicia la aplicación con el ID 1 en PM2
+            # Reiniciar la aplicación en PM2 utilizando la ruta completa correcta
+            /home/ubuntu/.nvm/versions/node/v18.17.1/bin/pm2 restart 1  # Reinicia la aplicación con el ID 1 en PM2
