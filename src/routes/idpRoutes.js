@@ -35,7 +35,7 @@ const validateAccessToken = (req, res, next) => {
     const { token_access } = req.body;
 
     // Verificar si los tokens coinciden
-    if (TOKEN_ACCESS === token_access) {
+    if (process.env.TOKEN_ACCESS === token_access) {
         // Si el token es válido, continuar con el siguiente middleware
         console.log("Token de acceso válido.");
         next();
