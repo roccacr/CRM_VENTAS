@@ -1,4 +1,5 @@
-
+// Carga las variables de entorno desde el archivo .env
+const dotenv = require("dotenv");
 // Importa funciones de utilidad para gestionar respuestas HTTP
 const helpers = require("../utils/helpers");
 // Importa el modelo para la autenticación de usuarios
@@ -19,7 +20,8 @@ const expedientesNetsuite = require("../models/expedientes/expedientesNetsuite")
 const oportunidad = require("../models/oportunidad/oportunidad");
 const oportunidadNetsuite = require("../models/oportunidad/oportunidadNetsuite");
 
-
+// Cargar variables de entorno al iniciar la aplicación
+dotenv.config();
 
 // Prefijo global para las rutas de la API
 const API_PREFIX = "/api/v2.0";
@@ -38,10 +40,8 @@ const validateAccessToken = (req, res, next) => {
     // Extraer el token enviado en la solicitud
     const { token_access } = req.body;
 
-    console.log(`Token enviado desde la solicitud: ${token_access}`);
-    console.log(`Token almacenado en las variables de entorno: ${JSON.stringify(process.env.TOKEN_ACCESS, null, 2)}`);
 
-    console.log(`Token esperado (TOKEN_ACCESS): ${TOKEN_ACCESS}`);
+        console.log(`Token almacenado en las variables de entorno: ${JSON.stringify(process.env.TOKEN_ACCESS, null, 2)}`);
 
     // Verificar si los tokens coinciden
     if (TOKEN_ACCESS === token_access) {
@@ -54,7 +54,7 @@ const validateAccessToken = (req, res, next) => {
             message: "Unauthorized access. Invalid token.",
         });
     }
-    console.log("------------")};
+};
 
 /**
  * Manejador genérico de solicitudes para las operaciones de modelos.
