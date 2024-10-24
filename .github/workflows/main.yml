@@ -30,6 +30,12 @@ jobs:
 
           # Script que se ejecutará en el servidor una vez establecida la conexión SSH
           script: |
+            # permisos de la carpeta del proyecto en el servidor
+            sudo sudo chown -R $USER:$USER /var/www/crm_api_v2
+            sudo chmod -R 755 /var/www/crm_api_v2
+
+
+
             # Navegar al directorio del proyecto Node.js en el servidor
             cd /var/www/crm_api_v2
 
@@ -41,7 +47,7 @@ jobs:
             sudo git stash  # Si hay cambios locales sin comprometer, los guarda temporalmente con git stash
 
             # Realizar un pull del último código en la rama 'crm_api_v2' desde GitHub utilizando un token de acceso seguro
-            git pull https://${{ secrets.MY_GITHUB_TOKEN }}@github.com/roccacr/CRM_HOTEL.git crm_api_v2
+            git pull https://${{ secrets.MY_GITHUB_TOKEN }}@github.com/roccacr/CRM_VENTAS.git crm_api_v2
 
             # Cargar 'nvm' (Node Version Manager) y asegurarse de que la versión correcta de Node.js esté disponible para PM2
             export NVM_DIR="$HOME/.nvm"  # Establece el directorio donde está instalado nvm
