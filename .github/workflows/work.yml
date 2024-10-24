@@ -19,7 +19,7 @@ jobs:
         run: |
           echo "TOKEN_ACCESS en GitHub Actions: ${{ env.TOKEN_ACCESS }}"
         env:
-          TOKEN_ACCESS: "holaaaaaaaaaa"  # Definición de TOKEN_ACCESS
+          TOKEN_ACCESS: ${{ TOKEN_ACCESS }}  # Definición de TOKEN_ACCESS
 
       # Paso 3: Conectar vía SSH y desplegar en el servidor remoto
       - name: Deploy to server via SSH
@@ -34,7 +34,7 @@ jobs:
             cd /var/www/crm_api_v2
 
             # Exportar el TOKEN_ACCESS directamente en el script SSH
-            export TOKEN_ACCESS="holaaaaaaaaaa"
+            export TOKEN_ACCESS=${{ TOKEN_ACCESS }}
 
             # Hacer un log para verificar si TOKEN_ACCESS se exportó correctamente
             echo "El valor de TOKEN_ACCESS es: $TOKEN_ACCESS"
