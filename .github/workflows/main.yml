@@ -30,24 +30,22 @@ jobs:
 
           # Script que se ejecutará en el servidor una vez establecida la conexión SSH
           script: |
-            # permisos de la carpeta del proyecto en el servidor
-            sudo sudo chown -R $USER:$USER /var/www/crm_api_v2
+            # Dar permisos a la carpeta del proyecto en el servidor para el usuario actual
+            sudo chown -R $USER:$USER /var/www/crm_api_v2
             sudo chmod -R 755 /var/www/crm_api_v2
-
-
 
             # Navegar al directorio del proyecto Node.js en el servidor
             cd /var/www/crm_api_v2
 
-            # Configurar las credenciales de Git en el servidor para garantizar que los commits y pull estén identificados correctamente
+            # Configurar las credenciales de Git en el servidor para garantizar que los commits y pulls estén identificados correctamente
             git config --global user.email "soporte@roccacr.com"  # Establece el email del usuario para git
             git config --global user.name "roccacr"  # Establece el nombre del usuario para git
 
             # Guardar cualquier cambio local no comprometido en Git para evitar conflictos durante el pull
             sudo git stash  # Si hay cambios locales sin comprometer, los guarda temporalmente con git stash
 
-            # Realizar un pull del último código en la rama 'crm_api_v2' desde GitHub utilizando un token de acceso seguro
-            git pull https://${{ secrets.MY_GITHUB_TOKEN }}@github.com/roccacr/CRM_VENTAS.git crm_api_v2
+            # Realizar un pull del último código en la rama 'crm_api_nodejs_v2' desde GitHub utilizando un token de acceso seguro
+            git pull https://${{ secrets.MY_GITHUB_TOKEN }}@github.com/roccacr/CRM_VENTAS.git crm_api_nodejs_v2
 
             # Cargar 'nvm' (Node Version Manager) y asegurarse de que la versión correcta de Node.js esté disponible para PM2
             export NVM_DIR="$HOME/.nvm"  # Establece el directorio donde está instalado nvm
@@ -56,4 +54,3 @@ jobs:
 
             # Reiniciar la aplicación en PM2 utilizando la ruta completa al binario de PM2 para evitar problemas de PATH
             /home/ubuntu/.nvm/versions/node/v18.18.1/bin/pm2 restart 1  # Reinicia la aplicación con el ID 1 en PM2
-
