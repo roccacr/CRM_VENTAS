@@ -1,3 +1,5 @@
+// Carga las variables de entorno desde el archivo .env
+const dotenv = require("dotenv");
 // Importa funciones de utilidad para gestionar respuestas HTTP
 const helpers = require("../utils/helpers");
 // Importa el modelo para la autenticación de usuarios
@@ -14,8 +16,12 @@ const calendars = require("../models/calendars/calendars");
 const expedientes = require("../models/expedientes/expedientes");
 const expedientesNetsuite = require("../models/expedientes/expedientesNetsuite");
 
+
 const oportunidad = require("../models/oportunidad/oportunidad");
 const oportunidadNetsuite = require("../models/oportunidad/oportunidadNetsuite");
+
+// Cargar variables de entorno al iniciar la aplicación
+dotenv.config();
 
 // Prefijo global para las rutas de la API
 const API_PREFIX = "/api/v2.0";
@@ -31,20 +37,17 @@ const API_PREFIX = "/api/v2.0";
 const validateAccessToken = (req, res, next) => {
     // Extraer el token de las variables de entorno
     const { TOKEN_ACCESS } = process.env;
-
     // Extraer el token enviado en la solicitud
     const { token_access } = req.body;
 
-    // Verificar los valores para depurar
-    console.log(`Token enviado desde la solicitud: ${token_access}`);
-    console.log(`Token esperado (TOKEN_ACCESS): ${TOKEN_ACCESS}`);
+        console.log(`Token enviado desde la solicitud: ${token_access}`);
+        console.log(`Token esperado (TOKEN_ACCESS): ${TOKEN_ACCESS}`);
+
     // Verificar si los tokens coinciden
-    if (process.env.TOKEN_ACCESS === token_access) {
+    if (TOKEN_ACCESS === token_access) {
         // Si el token es válido, continuar con el siguiente middleware
-        console.log("Token de acceso válido.");
         next();
     } else {
-        console.log("Token de acceso no válido.");
         // Si el token no es válido, devolver un error 401 de acceso no autorizado
         res.status(401).json({
             statusCode: 401,
@@ -183,6 +186,7 @@ module.exports = function (app) {
             ],
         },
     ];
+
 
     // Asignación de rutas dinámicamente
     routesConfig.forEach(({ category, model, routes }) => {
