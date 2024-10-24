@@ -6,13 +6,15 @@ on:
       - crm_api_nodejs_v2  # Cambia esto por la rama que estés utilizando
 
 jobs:
-  build:
+  deploy:
     runs-on: ubuntu-latest
+
     steps:
+      # Paso 1: Check out del repositorio
       - name: Check out the repository
         uses: actions/checkout@v2
 
-      # Verificar el valor del token en el pipeline
+      # Paso 2: Verificar el valor del token en el pipeline
       - name: Verify TOKEN_ACCESS environment variable
         run: |
           if [ -z "$TOKEN_ACCESS" ]; then
@@ -22,6 +24,22 @@ jobs:
             echo "TOKEN_ACCESS esta definida"
           fi
         env:
-          TOKEN_ACCESS: "holaaaaaaaaaa"
+          TOKEN_ACCESS: "holaaaaaaaaaa"  # Definición de TOKEN_ACCESS
 
-      # Otros pasos para el build/deploy de tu aplicación
+      # Paso 3: Conectar vía SSH y desplegar en el servidor remoto
+      - name: Deploy to server via SSH
+        uses: appleboy/ssh-action@v0.1.6  # Usa la acción SSH para conectarse al servidor
+        with:
+          host: ${{ secrets.SERVER_IP }}  # IP del servidor
+          username: ${{ secrets.SERVER_USER }}  # Usuario SSH
+          key: ${{ secrets.SCADMINAPIS }}  # Clave privada SSH
+          port: 22  # Puerto SSH
+
+          # Aquí ejecutamos los comandos necesarios en el servidor remoto
+          script: |
+            # Navegar al directorio de la aplicación
+            cd /var/www/crm_api_v2
+    
+            # Exportar el TOKEN_ACCESS como variable de entorno
+            export TOKEN_ACCESS=${{ env.TOKEN_ACCESS }}
+
