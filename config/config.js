@@ -1,6 +1,6 @@
-const dotenv = require("dotenv");
-dotenv.config(); // Carga las variables de entorno desde el archivo .env
+// No es necesario require dotenv ya que GitHub Actions cargará las variables de entorno
 
+// Carga las variables de entorno directamente desde GitHub Actions
 const hostProduction = process.env.DB_HOST_PRODUCTION || "Valor por defecto si es null";
 const userProduction = process.env.DB_USER_PRODUCTION || "Valor por defecto si es null";
 const passProduction = process.env.DB_PASS_PRODUCTION || "Valor por defecto si es null";
@@ -14,6 +14,7 @@ const dbProduction = process.env.DB_NAME_PRODUCTION || "Valor por defecto si es 
 
 const jwtSecret = process.env.JWT_SECRET;
 
+// Configuración de parámetros basada en las variables de entorno
 var configParams = {
     oauthNetsuite: {
         consumer: {
@@ -46,4 +47,5 @@ var configParams = {
     jwtSecret: jwtSecret,
 };
 
+// Exporta la configuración
 module.exports = configParams;
