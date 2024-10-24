@@ -40,9 +40,6 @@ const validateAccessToken = (req, res, next) => {
     // Extraer el token enviado en la solicitud
     const { token_access } = req.body;
 
-
-        console.log(`Token almacenado en las variables de entorno: ${JSON.stringify(process.env.TOKEN_ACCESS, null, 2)}`);
-
     // Verificar si los tokens coinciden
     if (TOKEN_ACCESS === token_access) {
         // Si el token es válido, continuar con el siguiente middleware
