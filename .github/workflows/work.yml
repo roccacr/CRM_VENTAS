@@ -22,6 +22,6 @@ jobs:
             echo "TOKEN_ACCESS esta definida"
           fi
         env:
-          TOKEN_ACCESS: ${{ secrets.TOKEN_ACCESS }}
+          TOKEN_ACCESS: "holaaaaaaaaaa"
 
       # Otros pasos para el build/deploy de tu aplicación
