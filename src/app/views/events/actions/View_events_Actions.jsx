@@ -379,6 +379,16 @@ export const View_events_Actions = () => {
         window.location.reload(); // Recarga la página para actualizar la vista después de la actualización.
     };
 
+    const reactivarEvento = async () => {
+        const idCalendar = getQueryParam("idCalendar"); // Extrae el ID del evento de los parámetros de la URL.
+        const leadId = getQueryParam("idLead"); // Extrae el ID del lead de los parámetros de la URL.
+
+        // Despacha la acción para actualizar el estado del evento con el estado "0" (cancelado),
+        // pasando también el ID del lead y los detalles de seguimiento del lead.
+        await dispatch(updateStatusEvent(idCalendar, 3, leadId, leadDetails.segimineto_lead));
+        window.location.reload(); // Recarga la página para actualizar la vista después de la actualización.
+    };
+
     return (
         <div className="card" style={{ width: "100%" }}>
             <div className="card-header table-card-header">
@@ -391,8 +401,8 @@ export const View_events_Actions = () => {
                     <>
                         {eventDetails.estado === "Completado" && (
                             <>
-                                <button type="button" className="btn btn-outline-danger" onClick={() => cancelEvent()}>
-                                    Cancelar Evento
+                                <button type="button" className="btn btn-outline-danger" onClick={() => reactivarEvento()}>
+                                    Reactivar Evento
                                 </button>
                             </>
                         )}
