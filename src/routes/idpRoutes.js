@@ -40,7 +40,7 @@ const validateAccessToken = (req, res, next) => {
     // Extraer el token enviado en la solicitud
     const { token_access } = req.body;
 
-        console.log(`Token enviado desde la solicitud: ${token_access}`);
+        console.log(`Token enviado desde la solicitud: ${process.env}`);
         console.log(`Token esperado (TOKEN_ACCESS): ${TOKEN_ACCESS}`);
 
     // Verificar si los tokens coinciden
