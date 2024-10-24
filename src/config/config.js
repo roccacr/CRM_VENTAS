@@ -7,6 +7,13 @@ const passProduction = process.env.DB_PASS_PRODUCTION || "Valor por defecto si e
 const dbDevelopment = process.env.DB_NAME_DEVELOPMENT || "Valor por defecto si es null";
 const dbProduction = process.env.DB_NAME_PRODUCTION || "Valor por defecto si es null";
 
+console.log("hostProduction: ", hostProduction);
+console.log("userProduction: ", userProduction);
+console.log("passProduction: ", passProduction);
+console.log("dbDevelopment: ", dbDevelopment);
+console.log("dbProduction: ", dbProduction);
+
+
 const jwtSecret = process.env.JWT_SECRET;
 
 var configParams = {
