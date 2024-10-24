@@ -17,12 +17,7 @@ jobs:
       # Paso 2: Verificar el valor del token en el pipeline
       - name: Verify TOKEN_ACCESS environment variable
         run: |
-          if [ -z "$TOKEN_ACCESS" ]; then
-            echo "TOKEN_ACCESS is not set"
-            exit 1
-          else
-            echo "TOKEN_ACCESS esta definida"
-          fi
+          echo "TOKEN_ACCESS en GitHub Actions: ${{ env.TOKEN_ACCESS }}"
         env:
           TOKEN_ACCESS: "holaaaaaaaaaa"  # Definición de TOKEN_ACCESS
 
@@ -34,12 +29,13 @@ jobs:
           username: ${{ secrets.SERVER_USER }}  # Usuario del servidor, almacenado en un 'secret'
           key: ${{ secrets.SCADMINAPIS }}  # Clave privada SSH, almacenada en un 'secret'
           port: 22  # Puerto SSH (por defecto, 22)
-          envs:  # Definimos las variables de entorno que se pasarán al servidor remoto
-            TOKEN_ACCESS: 'holaaaaaaaaaa'
-
           script: |
             # Navegar al directorio de la aplicación
             cd /var/www/crm_api_v2
 
+            # Exportar el TOKEN_ACCESS directamente en el script SSH
+            export TOKEN_ACCESS="holaaaaaaaaaa"
+
             # Hacer un log para verificar si TOKEN_ACCESS se exportó correctamente
             echo "El valor de TOKEN_ACCESS es: $TOKEN_ACCESS"
+
