@@ -1,5 +1,4 @@
-// Carga las variables de entorno desde el archivo .env
-const dotenv = require("dotenv");
+
 // Importa funciones de utilidad para gestionar respuestas HTTP
 const helpers = require("../utils/helpers");
 // Importa el modelo para la autenticación de usuarios
@@ -20,8 +19,7 @@ const expedientesNetsuite = require("../models/expedientes/expedientesNetsuite")
 const oportunidad = require("../models/oportunidad/oportunidad");
 const oportunidadNetsuite = require("../models/oportunidad/oportunidadNetsuite");
 
-// Cargar variables de entorno al iniciar la aplicación
-dotenv.config();
+
 
 // Prefijo global para las rutas de la API
 const API_PREFIX = "/api/v2.0";
