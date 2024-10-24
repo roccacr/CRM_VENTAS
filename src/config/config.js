@@ -13,6 +13,7 @@ console.log("passProduction: ", passProduction);
 console.log("dbDevelopment: ", dbDevelopment);
 console.log("dbProduction: ", dbProduction);
 
+
 const jwtSecret = process.env.JWT_SECRET;
 
 var configParams = {
@@ -30,18 +31,17 @@ var configParams = {
     },
     database: {
         produccion: {
-            host: "db-crms.cfxfgwugknzb.us-east-2.rds.amazonaws.com",
-            user: "master_chief",
-            password: "D8hPz3$K!rN4mQX2%#jA7T",
-            database: "crmdatabase_ventas",
+            host: hostProduction,
+            user: userProduction,
+            password: passProduction,
+            database: dbProduction,
             port: 3306,
         },
-        
         pruebas: {
-            host: "db-crms.cfxfgwugknzb.us-east-2.rds.amazonaws.com",
-            user: "master_chief",
-            password: "D8hPz3$K!rN4mQX2%#jA7T",
-            database: "crmdatabase_ventas",
+            host: hostProduction,
+            user: userProduction,
+            password: passProduction,
+            database: dbDevelopment,
             port: 3306,
         },
     },
