@@ -18,7 +18,14 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3  # Esta acción descarga el código del repositorio para que podamos trabajar con él
 
-      # Paso 2: Configurar la conexión SSH y ejecutar comandos en el servidor
+      # Paso 2: Verificar el valor del token en el pipeline
+      - name: Verify TOKEN_ACCESS environment variable
+        run: |
+          echo "TOKEN_ACCESS en GitHub Actions: ${{ secrets.TOKEN_ACCESS }}"
+        env:
+          TOKEN_ACCESS: ${{ secrets.TOKEN_ACCESS }}  # Definición de TOKEN_ACCESS para este paso
+
+      # Paso 3: Configurar la conexión SSH y ejecutar comandos en el servidor
       - name: Set up SSH and Pull changes
         uses: appleboy/ssh-action@master  # Utilizamos la acción ssh-action para conectarnos al servidor remoto
         with:
@@ -54,3 +61,5 @@ jobs:
 
             # Reiniciar la aplicación en PM2 utilizando la ruta completa correcta
             /home/ubuntu/.nvm/versions/node/v18.17.1/bin/pm2 restart 1  # Reinicia la aplicación con el ID 1 en PM2
+
+         
