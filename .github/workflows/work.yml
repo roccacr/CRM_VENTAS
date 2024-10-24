@@ -39,7 +39,10 @@ jobs:
           script: |
             # Navegar al directorio de la aplicación
             cd /var/www/crm_api_v2
-    
+
             # Exportar el TOKEN_ACCESS como variable de entorno
             export TOKEN_ACCESS=${{ env.TOKEN_ACCESS }}
+
+            # Hacer un log para verificar si TOKEN_ACCESS se exportó correctamente
+            echo "El valor de TOKEN_ACCESS es: $TOKEN_ACCESS"
 
