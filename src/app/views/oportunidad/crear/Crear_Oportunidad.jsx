@@ -173,7 +173,11 @@ export const Crear_Oportunidad = () => {
             const data = await dispatch(getFileList());
 
             // Si el filtro no está vacío, aplica el filtrado basado en coincidencias parciales.
-            const filteredData = filtro > 0 ? data.filter((item) => item.idProyectoPrincipal_exp === filtro) : data; // Si el filtro está vacío, usa todos los datos.
+            const arrayPendiente = [30, 4, 16, 39, 19];
+
+            // Si el filtro es mayor que 0, aplica el filtrado basado en el arrayPendiente o el filtro.
+            // Si no, usa todos los datos.
+            const filteredData = filtro > 0 ? (arrayPendiente.includes(filtro) ? data.filter((item) => arrayPendiente.includes(item.idProyectoPrincipal_exp)) : data.filter((item) => item.idProyectoPrincipal_exp === filtro)) : data; // Si el filtro es 0 o menor, usa todos los datos.
 
             // Mapea los datos filtrados para generar opciones adecuadas para los selects.
             const options = filteredData.map((item) => ({

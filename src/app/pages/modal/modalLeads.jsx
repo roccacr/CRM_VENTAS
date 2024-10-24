@@ -165,12 +165,18 @@ export const ModalLeads = ({ leadData, onClose }) => {
         navigate(`/leads/edit?id=${idLead}`); // Navega a la ruta de eventos del lead.
     };
 
-
     const crearOportunidad = (leadData) => {
         const idLead = leadData?.idinterno_lead; // Obtiene el ID del lead.
 
         navigate(`/oportunidad/crear?idExpediente=0&idLead=${idLead}`); // Navega a la ruta de eventos del lead.
     };
+
+    const PerfilUsuario = (leadData) => {
+        const idLead = leadData?.idinterno_lead; // Obtiene el ID del lead.
+
+        navigate(`/leads/perfil?data=${idLead}`); // Navega a la ruta de eventos del lead.
+    };
+
     let buttonData = [
         { text: "Ir a Whatsapp", icon: "fab fa-whatsapp", color: "#25d366", action: handleWhatsappClick },
         { text: "Whatsapp y Contacto", icon: "fab fa-whatsapp", color: "#25d366", action: () => handleWhatsappAndNote() },
@@ -181,7 +187,7 @@ export const ModalLeads = ({ leadData, onClose }) => {
         { text: "Crear Oportunidad", icon: "fas fa-level-up-alt", color: "#af7ac5", action: () => crearOportunidad(leadData) },
         { text: "Lista Oportunidades", icon: "fas fa-stream", color: "#2471a3" },
         { text: "Llamar cliente", icon: "fas fa-phone", color: "#2e86c1", action: handleCallClient }, // Añadimos la acción de llamada
-        { text: "Ver Perfil", icon: "fas fa-user-circle", color: "#7b7d7d" },
+        { text: "Ver Perfil", icon: "fas fa-user-circle", color: "#7b7d7d", action: () => PerfilUsuario(leadData) },
         { text: "Volver", icon: "fas fa-backspace", color: "#000", action: handleBck },
         { text: "Edit lead", icon: "fas fa-location-arrow", color: "#2ec1bd", action: () => handedit(leadData) },
     ];

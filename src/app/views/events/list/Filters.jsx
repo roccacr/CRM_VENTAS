@@ -6,7 +6,6 @@ const Filters = ({ originalEvents, setEvents }) => {
     const [eventName, setEventName] = useState("");
     const [accionCalendar, setAccionCalendar] = useState([]);
     const [tipoCalendar, setTipoCalendar] = useState([]);
-    const [citaLead, setCitaLead] = useState([]);
     const [proyectoLead, setProyectoLead] = useState([]);
     const [campanaLead, setCampanaLead] = useState([]);
     const [nameAdmin, setNameAdmin] = useState([]);
@@ -67,30 +66,6 @@ const Filters = ({ originalEvents, setEvents }) => {
                     }
                 }
                 break;
-            case "cita_lead":
-                if (nameAdmin.length > 0 || proyectoLead.length > 0 || campanaLead.length > 0 || accionCalendar.length > 0 || tipoCalendar.length > 0) {
-                    if (nameAdmin.length > 0) {
-                        const selectedAdmins = nameAdmin.map((item) => item.value);
-                        contextFilteredEvents = contextFilteredEvents.filter((event) => selectedAdmins.includes(event.name_admin));
-                    }
-                    if (proyectoLead.length > 0) {
-                        const selectedProyectos = proyectoLead.map((item) => item.value);
-                        contextFilteredEvents = contextFilteredEvents.filter((event) => selectedProyectos.includes(event.proyecto_lead));
-                    }
-                    if (campanaLead.length > 0) {
-                        const selectedCampanas = campanaLead.map((item) => item.value);
-                        contextFilteredEvents = contextFilteredEvents.filter((event) => selectedCampanas.includes(event.campana_lead));
-                    }
-                    if (accionCalendar.length > 0) {
-                        const selectedAcciones = accionCalendar.map((item) => item.value);
-                        contextFilteredEvents = contextFilteredEvents.filter((event) => selectedAcciones.includes(event.accion_calendar));
-                    }
-                    if (tipoCalendar.length > 0) {
-                        const selectedTipos = tipoCalendar.map((item) => item.value);
-                        contextFilteredEvents = contextFilteredEvents.filter((event) => selectedTipos.includes(event.tipo_calendar));
-                    }
-                }
-                break;
             default:
                 break;
         }
@@ -106,15 +81,6 @@ const Filters = ({ originalEvents, setEvents }) => {
                 }
             }
         });
-
-        if (field === "cita_lead") {
-            const citaCount = contextFilteredEvents.filter((e) => e.cita_lead === 1).length;
-            const noCitaCount = contextFilteredEvents.filter((e) => e.cita_lead === 0).length;
-            return [
-                { value: "1", label: `Cita (${citaCount})` },
-                { value: "0", label: `No aplica (${noCitaCount})` },
-            ];
-        }
 
         return Array.from(uniqueValues.entries())
             .map(([value, count]) => ({
@@ -156,18 +122,13 @@ const Filters = ({ originalEvents, setEvents }) => {
             filteredEvents = filteredEvents.filter((event) => selectedTipos.includes(event.tipo_calendar));
         }
 
-        if (citaLead.length > 0) {
-            const selectedCitas = citaLead.map((item) => item.value);
-            filteredEvents = filteredEvents.filter((event) => selectedCitas.includes(event.cita_lead.toString()));
-        }
-
         return filteredEvents;
     };
 
     useEffect(() => {
         const filteredEvents = applyAllFilters(originalEvents);
         setEvents(filteredEvents);
-    }, [eventName, nameAdmin, proyectoLead, campanaLead, accionCalendar, tipoCalendar, citaLead]);
+    }, [eventName, nameAdmin, proyectoLead, campanaLead, accionCalendar, tipoCalendar]);
 
     const handleNameAdminChange = (selected) => {
         setNameAdmin(selected || []);
@@ -176,7 +137,6 @@ const Filters = ({ originalEvents, setEvents }) => {
             setCampanaLead([]);
             setAccionCalendar([]);
             setTipoCalendar([]);
-            setCitaLead([]);
         }
     };
 
@@ -186,7 +146,6 @@ const Filters = ({ originalEvents, setEvents }) => {
             setCampanaLead([]);
             setAccionCalendar([]);
             setTipoCalendar([]);
-            setCitaLead([]);
         }
     };
 
@@ -195,7 +154,6 @@ const Filters = ({ originalEvents, setEvents }) => {
         if (!selected || selected.length === 0) {
             setAccionCalendar([]);
             setTipoCalendar([]);
-            setCitaLead([]);
         }
     };
 
@@ -203,14 +161,6 @@ const Filters = ({ originalEvents, setEvents }) => {
         setAccionCalendar(selected || []);
         if (!selected || selected.length === 0) {
             setTipoCalendar([]);
-            setCitaLead([]);
-        }
-    };
-
-    const handleTipoCalendarChange = (selected) => {
-        setTipoCalendar(selected || []);
-        if (!selected || selected.length === 0) {
-            setCitaLead([]);
         }
     };
 
@@ -243,12 +193,7 @@ const Filters = ({ originalEvents, setEvents }) => {
 
             <div className="col-md-4">
                 <label>Filtrar por Tipo</label>
-                <Select components={animatedComponents} isMulti closeMenuOnSelect={false} options={getFilteredOptionsForField("tipo_calendar", originalEvents)} value={tipoCalendar} onChange={handleTipoCalendarChange} placeholder="Tipo" className="form-control" />
-            </div>
-
-            <div className="col-md-4">
-                <label>Filtrar por Cita</label>
-                <Select components={animatedComponents} isMulti closeMenuOnSelect={false} options={getFilteredOptionsForField("cita_lead", originalEvents)} value={citaLead} onChange={(selected) => setCitaLead(selected || [])} placeholder="Cita" className="form-control" />
+                <Select components={animatedComponents} isMulti closeMenuOnSelect={false} options={getFilteredOptionsForField("tipo_calendar", originalEvents)} value={tipoCalendar} onChange={(selected) => setTipoCalendar(selected || [])} placeholder="Tipo" className="form-control" />
             </div>
         </div>
     );

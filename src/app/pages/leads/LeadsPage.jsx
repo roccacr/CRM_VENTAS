@@ -12,6 +12,7 @@ import { View_Consultar_lead } from "../../views/leads/consultar/View_Consultar_
 import { View_crear_lead } from "../../views/leads/add/View_crear_lead";
 import { View_edit_lead } from "../../views/leads/edit/View_edit_lead";
 import { BotonVolveR } from "../../components/BotonVolveR";
+import { PerfilUsuario } from "../../views/leads/perfil/PerfilUsuario";
 
 export const LeadsPage = () => {
     const location = useLocation();
@@ -40,6 +41,7 @@ export const LeadsPage = () => {
                     {path[1] === "leads" && path[2] === "consultar" && <View_Consultar_lead />}
                     {path[1] === "leads" && path[2] === "crear" && <View_crear_lead />}
                     {path[1] === "leads" && path[2] === "edit" && <View_edit_lead />}
+                    {path[1] === "leads" && path[2] === "perfil"  && <PerfilUsuario />}
                 </div>
             </div>
         </AppLayout>
