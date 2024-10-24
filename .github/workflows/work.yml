@@ -10,15 +10,30 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      # Paso para hacer checkout del código del repositorio
       - name: Check out the repository
         uses: actions/checkout@v2
 
+      # Paso para configurar la versión de Node.js
       - name: Set up Node.js
         uses: actions/setup-node@v2
         with:
-          node-version: '18'  # Versión de Node.js que estés usando
+          node-version: '18'  # Cambia esto por la versión de Node.js que estás utilizando
 
+      # Paso para instalar las dependencias de Node.js
       - name: Install dependencies
         run: npm install
         env:
-          TOKEN_ACCESS: ${{ secrets.TOKEN_ACCESS }}  # Esto carga el secreto en la variable de entorno
+          TOKEN_ACCESS: ${{ secrets.TOKEN_ACCESS }}  # Pasar el secreto como variable de entorno
+
+      # Paso de depuración para verificar que el secreto se pasa correctamente
+      - name: Verify TOKEN_ACCESS environment variable
+        run: |
+          if [ -z "$TOKEN_ACCESS" ]; then
+            echo "TOKEN_ACCESS is not set"
+            exit 1
+          else
+            echo "TOKEN_ACCESS is set correctly"
+          fi
+        env:
+          TOKEN_ACCESS: ${{ secrets.TOKEN_ACCESS }}  # Asegurarte de que el secreto esté disponible como variable de entorno
