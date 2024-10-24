@@ -39,7 +39,8 @@ const validateAccessToken = (req, res, next) => {
     const { token_access } = req.body;
 
     console.log(`Token enviado desde la solicitud: ${token_access}`);
-    console.log(`Token almacenado en las variables de entorno: ${JSON.stringify(process.env.env, null, 2)}`);
+    console.log(`Token almacenado en las variables de entorno: ${JSON.stringify(process.env.TOKEN_ACCESS, null, 2)}`);
+
     console.log(`Token esperado (TOKEN_ACCESS): ${TOKEN_ACCESS}`);
 
     // Verificar si los tokens coinciden
