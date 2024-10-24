@@ -8,13 +8,11 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-
     steps:
-      # Paso para hacer checkout del código del repositorio
       - name: Check out the repository
         uses: actions/checkout@v2
 
-      # Paso de depuración para verificar que el secreto se pasa correctamente
+      # Verificar el valor del token en el pipeline
       - name: Verify TOKEN_ACCESS environment variable
         run: |
           if [ -z "$TOKEN_ACCESS" ]; then
@@ -24,4 +22,6 @@ jobs:
             echo "TOKEN_ACCESS esta definida"
           fi
         env:
-          TOKEN_ACCESS: ${{ secrets.TOKEN_ACCESS }}  # Asegúrate de que el secreto esté disponible como variable de entorno
+          TOKEN_ACCESS: ${{ secrets.TOKEN_ACCESS }}
+
+      # Otros pasos para el build/deploy de tu aplicación
