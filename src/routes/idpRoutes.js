@@ -34,29 +34,28 @@ const API_PREFIX = "/api/v2.0";
  * @param {Object} res - Respuesta HTTP
  * @param {Function} next - Función que permite continuar con el siguiente middleware
  */
-
-
-// En producción, asegúrate de que dotenv no sobrescriba las variables de entorno
-if (process.env.NODE_ENV !== "production") {
-    dotenv.config();
-}
-
-console.log(`TOKEN_ACCESS desde el entorno: ${process.env.TOKEN_ACCESS}`);
-
-// Validar el token en la solicitud
 const validateAccessToken = (req, res, next) => {
-    const { TOKEN_ACCESS } = process.env; // Se toma desde el entorno
-    const { token_access } = req.body; // Se espera que el token venga del body de la solicitud
+    // Extraer el token de las variables de entorno
+    const { TOKEN_ACCESS } = process.env;
+    // Extraer el token enviado en la solicitud
+    const { token_access } = req.body;
 
     console.log(`Token enviado desde la solicitud: ${token_access}`);
+    console.log(`Token almacenado en las variables de entorno: ${process.env.NODE_ENV}`);
     console.log(`Token esperado (TOKEN_ACCESS): ${TOKEN_ACCESS}`);
 
+    // Verificar si los tokens coinciden
     if (TOKEN_ACCESS === token_access) {
+        // Si el token es válido, continuar con el siguiente middleware
         next();
     } else {
-        res.status(401).json({ message: "Unauthorized access. Invalid token." });
+        // Si el token no es válido, devolver un error 401 de acceso no autorizado
+        res.status(401).json({
+            statusCode: 401,
+            message: "Unauthorized access. Invalid token.",
+        });
     }
-};
+    console.log("------------")};
 
 /**
  * Manejador genérico de solicitudes para las operaciones de modelos.
