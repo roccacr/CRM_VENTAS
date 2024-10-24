@@ -29,7 +29,6 @@ jobs:
       - name: Set up SSH and Pull changes
         uses: appleboy/ssh-action@master  # Utilizamos la acción ssh-action para conectarnos al servidor remoto
         with:
-          # Definimos los detalles del servidor remoto, como la IP, usuario y claves SSH que están almacenadas de manera segura en los 'secrets'
           host: ${{ secrets.SERVER_IP }}  # IP del servidor, almacenado en un 'secret'
           username: ${{ secrets.SERVER_USER }}  # Usuario del servidor, almacenado en un 'secret'
           key: ${{ secrets.SCADMINAPIS }}  # Clave privada SSH, almacenada en un 'secret'
@@ -61,5 +60,3 @@ jobs:
 
             # Reiniciar la aplicación en PM2 utilizando la ruta completa correcta
             /home/ubuntu/.nvm/versions/node/v18.17.1/bin/pm2 restart 1  # Reinicia la aplicación con el ID 1 en PM2
-
-         
