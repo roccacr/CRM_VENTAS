@@ -31,7 +31,7 @@ jobs:
           # Script que se ejecutará en el servidor una vez establecida la conexión SSH
           script: |
             # Navegar al directorio del proyecto Node.js en el servidor
-            cd /var/www/node-api/crm_api_v2
+            cd /var/www/crm_api_v2
 
             # Configurar las credenciales de Git en el servidor para garantizar que los commits y pull estén identificados correctamente
             git config --global user.email "soporte@roccacr.com"  # Establece el email del usuario para git
