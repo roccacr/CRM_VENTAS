@@ -3,7 +3,7 @@ name: Node.js CI/CD Pipeline
 on:
   push:
     branches:
-      - main  # Cambia esto por la rama que estés utilizando
+      - crm_api_nodejs_v2  # Cambia esto por la rama que estés utilizando
 
 jobs:
   build:
