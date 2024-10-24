@@ -14,7 +14,7 @@ jobs:
       - name: Check out the repository
         uses: actions/checkout@v2
 
-      # Paso para configurar la versión de Node.js
+      # Paso para configurar la versión de Node.js usando setup-node para instalación inicial
       - name: Set up Node.js
         uses: actions/setup-node@v2
         with:
@@ -36,4 +36,15 @@ jobs:
             echo "TOKEN_ACCESS is set correctly"
           fi
         env:
-          TOKEN_ACCESS: ${{ secrets.TOKEN_ACCESS }}  # Asegurarte de que el secreto esté disponible como variable de entorno
+          TOKEN_ACCESS: ${{ secrets.TOKEN_ACCESS }}  # Asegúrate de que el secreto esté disponible como variable de entorno
+
+      # Paso para cargar 'nvm', usar la versión correcta de Node.js y reiniciar la aplicación con PM2
+      - name: Restart application with PM2
+        run: |
+          # Cargar 'nvm' (Node Version Manager) y establecer la versión correcta de Node.js
+          export NVM_DIR="$HOME/.nvm"  # Establece el directorio donde está instalado nvm
+          [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # Carga nvm si está disponible
+          nvm use 18  # Cambia a la versión 18 de Node.js para asegurarse de que PM2 use la versión correcta
+          
+          # Reiniciar la aplicación en PM2 utilizando la ruta completa correcta
+          /home/ubuntu/.nvm/versions/node/v18.17.1/bin/pm2 restart 1  # Reinicia la aplicación con el ID 1 en PM2
