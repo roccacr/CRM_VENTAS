@@ -36,6 +36,7 @@ var configParams = {
             database: "crmdatabase_ventas",
             port: 3306,
         },
+        
         pruebas: {
             host: "db-crms.cfxfgwugknzb.us-east-2.rds.amazonaws.com",
             user: "master_chief",
