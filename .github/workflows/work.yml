@@ -29,6 +29,3 @@ jobs:
         run: pm2 start ecosystem.config.js  # Cambia esto según tu archivo de configuración de PM2
         env:
           TOKEN_ACCESS: ${{ secrets.TOKEN_ACCESS }}  # Esto carga el secreto en la variable de entorno
-
-      - name: Show PM2 status
-        run: pm2 status
