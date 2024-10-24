@@ -1,0 +1,53 @@
+# Nombre del flujo de trabajo: Deploy Node.js API
+name: Deploy Node.js API
+
+# Disparador: Este flujo se ejecutará automáticamente cada vez que se haga un push a la rama 'crm_api_nodejs_v2'
+on:
+  push:
+    branches:
+      - crm_api_nodejs_v2  # Especificamos que este flujo se activa solo cuando hay un push en la rama 'crm_api_nodejs_v2'
+
+# Definición de los trabajos (jobs) a ejecutar en este flujo
+jobs:
+  deploy:
+    # El flujo se ejecutará en el último entorno de Ubuntu disponible (ubuntu-latest)
+    runs-on: ubuntu-latest
+
+    steps:
+      # Paso 1: Realizar el checkout del repositorio
+      - name: Checkout repository
+        uses: actions/checkout@v3  # Esta acción descarga el código del repositorio para que podamos trabajar con él
+
+      # Paso 2: Configurar la conexión SSH y ejecutar comandos en el servidor
+      - name: Set up SSH and Pull changes
+        uses: appleboy/ssh-action@master  # Utilizamos la acción ssh-action para conectarnos al servidor remoto
+        with:
+          # Definimos los detalles del servidor remoto, como la IP, usuario y claves SSH que están almacenadas de manera segura en los 'secrets'
+          host: ${{ secrets.SERVER_IP }}  # IP del servidor, almacenado en un 'secret'
+          username: ${{ secrets.SERVER_USER }}  # Usuario del servidor, almacenado en un 'secret'
+          key: ${{ secrets.SCADMINAPIS }}  # Clave privada SSH, almacenada en un 'secret'
+          port: 22  # Puerto SSH (por defecto, 22)
+
+          # Script que se ejecutará en el servidor una vez establecida la conexión SSH
+          script: |
+            # Navegar al directorio del proyecto Node.js en el servidor
+            cd /var/www/node-api/crm_api_v2
+
+            # Configurar las credenciales de Git en el servidor para garantizar que los commits y pull estén identificados correctamente
+            git config --global user.email "soporte@roccacr.com"  # Establece el email del usuario para git
+            git config --global user.name "roccacr"  # Establece el nombre del usuario para git
+
+            # Guardar cualquier cambio local no comprometido en Git para evitar conflictos durante el pull
+            sudo git stash  # Si hay cambios locales sin comprometer, los guarda temporalmente con git stash
+
+            # Realizar un pull del último código en la rama 'crm_api_v2' desde GitHub utilizando un token de acceso seguro
+            git pull https://${{ secrets.MY_GITHUB_TOKEN }}@github.com/roccacr/CRM_HOTEL.git crm_api_v2
+
+            # Cargar 'nvm' (Node Version Manager) y asegurarse de que la versión correcta de Node.js esté disponible para PM2
+            export NVM_DIR="$HOME/.nvm"  # Establece el directorio donde está instalado nvm
+            [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # Carga nvm si está disponible
+            nvm use 18  # Cambia a la versión 18 de Node.js para asegurarse de que PM2 use la versión correcta
+
+            # Reiniciar la aplicación en PM2 utilizando la ruta completa al binario de PM2 para evitar problemas de PATH
+            /home/ubuntu/.nvm/versions/node/v18.18.1/bin/pm2 restart 1  # Reinicia la aplicación con el ID 1 en PM2
+
