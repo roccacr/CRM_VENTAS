@@ -53,6 +53,9 @@ jobs:
             # Realizar un pull del último código en la rama 'crm_api_nodejs_v2' desde GitHub utilizando un token de acceso seguro
             git pull https://${{ secrets.MY_GITHUB_TOKEN }}@github.com/roccacr/CRM_VENTAS.git crm_api_nodejs_v2
 
+            # Asegurarte de que la variable TOKEN_ACCESS esté disponible
+            export TOKEN_ACCESS=${{ secrets.TOKEN_ACCESS }}
+
             # Cargar 'nvm' (Node Version Manager) y asegurarse de que la versión correcta de Node.js esté disponible para PM2
             export NVM_DIR="$HOME/.nvm"  # Establece el directorio donde está instalado nvm
             [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # Carga nvm si está disponible
