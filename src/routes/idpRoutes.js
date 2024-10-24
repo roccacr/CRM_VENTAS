@@ -32,12 +32,12 @@ const validateAccessToken = (req, res, next) => {
     // Extraer el token de las variables de entorno
     const { TOKEN_ACCESS } = process.env;
 
-    // Verificar los valores para depurar
-    console.log(`Token enviado desde la solicitud: ${token_access}`);
-    console.log(`Token esperado (TOKEN_ACCESS): ${TOKEN_ACCESS}`);
     // Extraer el token enviado en la solicitud
     const { token_access } = req.body;
 
+    // Verificar los valores para depurar
+    console.log(`Token enviado desde la solicitud: ${token_access}`);
+    console.log(`Token esperado (TOKEN_ACCESS): ${TOKEN_ACCESS}`);
     // Verificar si los tokens coinciden
     if (process.env.TOKEN_ACCESS === token_access) {
         // Si el token es válido, continuar con el siguiente middleware
