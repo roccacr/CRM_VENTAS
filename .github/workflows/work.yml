@@ -17,9 +17,9 @@ jobs:
       # Paso 2: Verificar el valor del token en el pipeline
       - name: Verify TOKEN_ACCESS environment variable
         run: |
-          echo "TOKEN_ACCESS en GitHub Actions: ${{ env.TOKEN_ACCESS }}"
+          echo "TOKEN_ACCESS en GitHub Actions: ${{ secrets.TOKEN_ACCESS }}"
         env:
-          TOKEN_ACCESS: ${{ TOKEN_ACCESS }}  # Definición de TOKEN_ACCESS
+          TOKEN_ACCESS: ${{ secrets.TOKEN_ACCESS }}  # Definición de TOKEN_ACCESS
 
       # Paso 3: Conectar vía SSH y desplegar en el servidor remoto
       - name: Deploy to server via SSH
@@ -34,7 +34,7 @@ jobs:
             cd /var/www/crm_api_v2
 
             # Exportar el TOKEN_ACCESS directamente en el script SSH
-            export TOKEN_ACCESS=${{ TOKEN_ACCESS }}
+            export TOKEN_ACCESS=${{ secrets.TOKEN_ACCESS }}
 
             # Hacer un log para verificar si TOKEN_ACCESS se exportó correctamente
             echo "El valor de TOKEN_ACCESS es: $TOKEN_ACCESS"
