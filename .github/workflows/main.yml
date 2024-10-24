@@ -1,68 +1,56 @@
+# Nombre del flujo de trabajo: Deploy Node.js API
 name: Deploy Node.js API
 
+# Disparador: Este flujo se ejecutará automáticamente cada vez que se haga un push a la rama 'crm_api_nodejs_v2'
 on:
   push:
     branches:
-      - crm_api_nodejs_v2
+      - crm_api_nodejs_v2  # Especificamos que este flujo se activa solo cuando hay un push en la rama 'crm_api_nodejs_v2'
 
+# Definición de los trabajos (jobs) a ejecutar en este flujo
 jobs:
   deploy:
+    # El flujo se ejecutará en el último entorno de Ubuntu disponible (ubuntu-latest)
     runs-on: ubuntu-latest
-    
-    # Añadir environment para acceder a los secrets
-    environment: production
-    
+
     steps:
+      # Paso 1: Realizar el checkout del repositorio
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v3  # Esta acción descarga el código del repositorio para que podamos trabajar con él
 
-      - name: Verify TOKEN_ACCESS environment variable
-        run: |
-          if [ -z "$TOKEN_ACCESS" ]; then
-            echo "ERROR: TOKEN_ACCESS is empty"
-            exit 1
-          else
-            echo "TOKEN_ACCESS is set"
-          fi
-        env:
-          TOKEN_ACCESS: ${{ secrets.TOKEN_ACCESS }}
-
+      # Paso 2: Configurar la conexión SSH y ejecutar comandos en el servidor
       - name: Set up SSH and Pull changes
-        uses: appleboy/ssh-action@master
-        env:
-          TOKEN_ACCESS: ${{ secrets.TOKEN_ACCESS }}
+        uses: appleboy/ssh-action@master  # Utilizamos la acción ssh-action para conectarnos al servidor remoto
         with:
-          host: ${{ secrets.SERVER_IP }}
-          username: ${{ secrets.SERVER_USER }}
-          key: ${{ secrets.SCADMINAPIS }}
-          port: 22
-          envs: TOKEN_ACCESS
+          # Definimos los detalles del servidor remoto, como la IP, usuario y claves SSH que están almacenadas de manera segura en los 'secrets'
+          host: ${{ secrets.SERVER_IP }}  # IP del servidor, almacenado en un 'secret'
+          username: ${{ secrets.SERVER_USER }}  # Usuario del servidor, almacenado en un 'secret'
+          key: ${{ secrets.SCADMINAPIS }}  # Clave privada SSH, almacenada en un 'secret'
+          port: 22  # Puerto SSH (por defecto, 22)
+
+          # Script que se ejecutará en el servidor una vez establecida la conexión SSH
           script: |
-            # Configurar TOKEN_ACCESS en el ambiente del servidor
-            echo "export TOKEN_ACCESS='$TOKEN_ACCESS'" >> ~/.bashrc
-            source ~/.bashrc
-            
-            # Dar permisos a la carpeta del proyecto
+            # Dar permisos a la carpeta del proyecto en el servidor para el usuario actual
             sudo chown -R $USER:$USER /var/www/crm_api_v2
             sudo chmod -R 755 /var/www/crm_api_v2
-            
-            # Navegar al directorio del proyecto
+
+            # Navegar al directorio del proyecto Node.js en el servidor
             cd /var/www/crm_api_v2
-            
-            # Configurar Git
-            git config --global user.email "soporte@roccacr.com"
-            git config --global user.name "roccacr"
-            
-            # Guardar cambios locales
-            sudo git stash
-            
-            # Pull del último código
+
+            # Configurar las credenciales de Git en el servidor para garantizar que los commits y pulls estén identificados correctamente
+            git config --global user.email "soporte@roccacr.com"  # Establece el email del usuario para git
+            git config --global user.name "roccacr"  # Establece el nombre del usuario para git
+
+            # Guardar cualquier cambio local no comprometido en Git para evitar conflictos durante el pull
+            sudo git stash  # Si hay cambios locales sin comprometer, los guarda temporalmente con git stash
+
+            # Realizar un pull del último código en la rama 'crm_api_nodejs_v2' desde GitHub utilizando un token de acceso seguro
             git pull https://${{ secrets.MY_GITHUB_TOKEN }}@github.com/roccacr/CRM_VENTAS.git crm_api_nodejs_v2
-            
-            # Configurar NVM y Node.js
-            export NVM_DIR="$HOME/.nvm"
-            [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
-            nvm use 18
-            
-            # Reiniciar PM2
-            /home/ubuntu/.nvm/versions/node/v18.17.1/bin/pm2 restart 1
+
+            # Cargar 'nvm' (Node Version Manager) y asegurarse de que la versión correcta de Node.js esté disponible para PM2
+            export NVM_DIR="$HOME/.nvm"  # Establece el directorio donde está instalado nvm
+            [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # Carga nvm si está disponible
+            nvm use 18  # Cambia a la versión 18 de Node.js para asegurarse de que PM2 use la versión correcta
+
+            # Reiniciar la aplicación en PM2 utilizando la ruta completa correcta
+            /home/ubuntu/.nvm/versions/node/v18.17.1/bin/pm2 restart 1  # Reinicia la aplicación con el ID 1 en PM2
