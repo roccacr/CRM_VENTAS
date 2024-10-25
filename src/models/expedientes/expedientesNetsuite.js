@@ -24,6 +24,11 @@ const expedientesNetsuite = {};
 
 // Función para obtener un expediente de NetSuite por su ID.
 expedientesNetsuite.obtenerExp = async (exp) => {
+
+    console.log("🚀 ----------------------------------------------------------------------------------🚀");
+    console.log("🚀 ~ file: expedientesNetsuite.js:28 ~ expedientesNetsuite.obtenerExp= ~ exp:", exp);
+    console.log("🚀 ----------------------------------------------------------------------------------🚀");
+
     try {
         const rest = nsrestlet.createLink(accountSettings, urlSettings);
         const body = await rest.get({

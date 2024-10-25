@@ -7,6 +7,13 @@ const passProduction = process.env.DB_PASS_PRODUCTION || "Valor por defecto si e
 const dbDevelopment = process.env.DB_NAME_DEVELOPMENT || "Valor por defecto si es null";
 const dbProduction = process.env.DB_NAME_PRODUCTION || "Valor por defecto si es null";
 
+
+const hostProduction = process.env.OAUTH_NETSUITE_CONSUMER_KEY || "Valor por defecto si es null";
+const userProduction = process.env.DB_USER_PRODUCTION || "Valor por defecto si es null";
+const passProduction = process.env.DB_PASS_PRODUCTION || "Valor por defecto si es null";
+const dbDevelopment = process.env.DB_NAME_DEVELOPMENT || "Valor por defecto si es null";
+const dbProduction = process.env.DB_NAME_PRODUCTION || "Valor por defecto si es null";
+
 const jwtSecret = process.env.JWT_SECRET;
 
 var configParams = {
