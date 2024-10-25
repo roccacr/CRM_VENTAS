@@ -399,7 +399,7 @@ export const View_events_Actions = () => {
                 {Object.keys(leadDetails).length > 0 && <ButtonActions leadData={leadDetails} className="mb-4" />}
                 {getQueryParam("idCalendar") > 0 && (
                     <>
-                        {eventDetails.estado === "Completado" &&  eventDetails.estado === "Cancelado" && (
+                        {eventDetails.estado === "Completado" ||  eventDetails.estado === "Cancelado" && (
                             <>
                                 <button type="button" className="btn btn-outline-danger" onClick={() => reactivarEvento()}>
                                     Reactivar Evento
