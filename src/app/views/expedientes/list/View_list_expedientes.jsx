@@ -253,7 +253,7 @@ export default function ViewListExpedientes() {
             <div className="card-body">
                 {isLoading ? (
                     <div>Cargando datos...</div>
-                )  : (
+                ) : (
                     <>
                         <div className="row">
                             <div className="row">
@@ -299,20 +299,20 @@ export default function ViewListExpedientes() {
                                 <tbody>
                                     {paginatedData.map((row, rowIndex) => (
                                         <tr key={rowIndex} onClick={() => handleOpenModal(row)}>
-                                            <td>{row.codigo_exp}</td>
-                                            <td>{row.proyectoPrincipal_exp}</td>
-                                            <td>{row.tipoDeVivienda_exp}</td>
-                                            <td>{row.precioVentaUncio_exp}</td>
-                                            <td>{row.estado_exp}</td>
-                                            <td>{row.entregaEstimada}</td>
-                                            <td>{row.areaTotalM2_exp}</td>
-                                            <td>{row.m2Habitables_exp}</td>
+                                            <td>{row.codigo_exp || ""}</td>
+                                            <td>{row.proyectoPrincipal_exp || ""}</td>
+                                            <td>{row.tipoDeVivienda_exp || ""}</td>
+                                            <td>{row.precioVentaUncio_exp || ""}</td>
+                                            <td>{row.estado_exp || ""}</td>
+                                            <td>{row.entregaEstimada || ""}</td>
+                                            <td>{row.areaTotalM2_exp || ""}</td>
+                                            <td>{row.m2Habitables_exp || ""}</td>
                                             <td>{row.loteM2_exp}</td>
-                                            <td>{row.areaDeParqueoAprox}</td>
-                                            <td>{row.areaDeBodegaM2_exp}</td>
-                                            <td>{row.areaDeMezzanieM2_exp}</td>
-                                            <td>{row.areacomunLibe_exp}</td>
-                                            <td>{row.precioDeVentaMinimo}</td>
+                                            <td>{row.areaDeParqueoAprox || ""}</td>
+                                            <td>{row.areaDeBodegaM2_exp || ""}</td>
+                                            <td>{row.areaDeMezzanieM2_exp || ""}</td>
+                                            <td>{row.areacomunLibe_exp || ""}</td>
+                                            <td>{row.precioDeVentaMinimo || ""}</td>
                                         </tr>
                                     ))}
                                 </tbody>
@@ -446,7 +446,7 @@ export default function ViewListExpedientes() {
                                             Sincronizar expediente de unidad
                                         </button>
                                         <button onClick={() => asignarOportunidad(selectedExpediente.ID_interno_expediente)} className="btn btn-primary">
-                                           Asignar a una oportunidad
+                                            Asignar a una oportunidad
                                         </button>
                                     </>
                                 )}
