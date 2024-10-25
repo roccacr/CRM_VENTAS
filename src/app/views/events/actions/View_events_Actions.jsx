@@ -407,13 +407,6 @@ export const View_events_Actions = () => {
                             </>
                         )}
 
-                        {eventDetails.estado === "Cancelado" && (
-                            <>
-                                <button type="button" className="btn btn-outline-success" onClick={() => completeEvent()}>
-                                    Completar Evento
-                                </button>
-                            </>
-                        )}
                         {eventDetails.estado === "Pendiente" && (
                             <>
                                 <button type="button" className="btn btn-outline-danger" onClick={() => cancelEvent()}>
