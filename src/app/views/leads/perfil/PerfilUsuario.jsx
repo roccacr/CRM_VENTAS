@@ -12,7 +12,6 @@ export const PerfilUsuario = () => {
     const dispatch = useDispatch();
     // Estado para almacenar los detalles generales del lead.
     const [leadDetails, setLeadDetails] = useState({});
-    
     const [activeTab, setActiveTab] = useState("LineTime");
     const [BitacoraLeads, setBitacora] = useState([]);
 

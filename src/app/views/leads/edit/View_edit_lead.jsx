@@ -168,7 +168,7 @@ export const View_edit_lead = () => {
                                         <label htmlFor="firstnames">Nombre Completo</label>
                                         <input type="text" name="firstnames" id="firstnames" value={formData.firstnames} onChange={handleInputChange} className="form-control mb-2" />
                                     </div>
-                                    <div className="mb-3">
+                                    <div className="mb-3" hidden>
                                         <label className="required form-label">ID Lead</label>
                                         <input type="text" name="entitynumber" id="entitynumber" value={formData.entitynumber} readOnly className="form-control mb-2" />
                                     </div>
@@ -185,10 +185,50 @@ export const View_edit_lead = () => {
                                         <input type="text" name="comentario_clientes" id="comentario_clientes" value={formData.comentario_clientes} onChange={handleInputChange} className="form-control mb-2" />
                                     </div>
                                     <div className="mb-3">
+                                        <label className="form-label">Dirección cliente</label>
+                                        <textarea id="defaultaddress" name="defaultaddress" value={formData.defaultaddress} onChange={handleInputChange} className="form-control" maxLength="225" rows="3" placeholder="Introduzca una dirección"></textarea>
+                                    </div>
+                                </div>
+                                <div className="col-sm-6">
+                                    <div className="mb-3">
+                                        <label className="required form-label">Subsidiaria</label>
+                                        <br />
+                                        <Select id="subsidiary_new_edit" name="subsidiary_new_edit" components={animatedComponents} options={subsidiaryOptions} value={formData.subsidiary_new_edit} onChange={handleSelectChange} isSearchable required />
+                                    </div>
+                                    <div className="mb-3">
+                                        <label className="required form-label">Proyectos</label>
+                                        <br />
+                                        <Select id="proyecto_new_edit" name="proyecto_new_edit" components={animatedComponents} options={projectOptions} value={formData.proyecto_new_edit} onChange={handleSelectChange} isSearchable required />
+                                    </div>
+                                    <div className="mb-3">
                                         <label className="required form-label">Campaña Marketing</label>
                                         <br />
                                         <Select id="campana_new_edit" name="campana_new_edit" components={animatedComponents} options={campaignOptions} value={formData.campana_new_edit} onChange={handleSelectChange} isSearchable required />
                                     </div>
+
+                                    <div className="mb-3" hidden>
+                                        <label className="required form-label">Estado del LEAD Interesado</label>
+                                        <input type="text" name="id_estadointeresado_cliente" id="id_estadointeresado_cliente" value={formData.id_estadointeresado_cliente} readOnly className="form-control mb-2" />
+                                    </div>
+                                    <div className="mb-3" hidden>
+                                        <label className="required form-label">Nombre de la empresa</label>
+                                        <input type="text" name="empresa_cliente" id="empresa_cliente" value={formData.empresa_cliente} readOnly className="form-control mb-2" />
+                                    </div>
+                                    <div className="mb-3" hidden>
+                                        <label className="required form-label">¿Dónde escuchó de nosotros?</label>
+                                        <input type="text" name="referencia_cliente" id="referencia_cliente" value={formData.referencia_cliente} readOnly className="form-control mb-2" />
+                                    </div>
+                                    <div className="mb-3">
+                                        <label className="required form-label">Corredor Cliente</label>
+                                        <br />
+                                        <Select id="corredor_lead_edit" name="corredor_lead_edit" components={animatedComponents} options={corredor_lead_options} value={formData.corredor_lead_edit} onChange={handleSelectChange} isSearchable required />
+                                    </div>
+                                </div>
+                            </div>
+                            <hr style={{ border: "2px solid #000" }} />
+                            <h4 className="card-title">Datos Adicionales</h4> <br />
+                            <div className="row">
+                                <div className="col-sm-6">
                                     <div className="mb-3">
                                         <label className="required form-label">Rango de Edad</label>
                                         <select id="rango_edad" name="rango_edad" value={formData.rango_edad} onChange={handleInputChange} className="form-control select2" required>
@@ -229,50 +269,28 @@ export const View_edit_lead = () => {
                                         </select>
                                     </div>
                                     <div className="mb-3">
+                                        <label className="required form-label">Momento de compra</label>
+                                        <select id="momento_compra" name="momento_compra" value={formData.momento_compra} onChange={handleInputChange} className="form-control select2" required>
+                                            <option value="">Seleccionar momento compra</option>
+                                            <option value="Pre-venta">Pre-venta</option>
+                                            <option value="Proyecto iniciado">Proyecto iniciado</option>
+                                            <option value="En obra gris">En obra gris</option>
+                                            <option value="Entrega inmediata">Entrega inmediata</option>
+                                        </select>
+                                    </div>
+                                    <div className="mb-3">
+                                        <label className="form-label">Origen de los dondos</label>
+                                        <input type="text" name="origen_fondos" id="origen_fondos" value={formData.origen_fondos} onChange={handleInputChange} className="form-control mb-2" placeholder="origen_fondos" required />
+                                    </div>
+                                </div>
+                                <div className="col-sm-6">
+                                    <div className="mb-3">
                                         <label className="form-label">Cedula cliente</label>
                                         <input type="text" name="vatregnumber" id="vatregnumber" value={formData.vatregnumber} onChange={handleInputChange} className="form-control mb-2" placeholder="Cedula Cliente" />
                                     </div>
                                     <div className="mb-3">
                                         <label className="form-label">Nacionalidad cliente</label>
                                         <input type="text" name="custentity1" id="custentity1" value={formData.custentity1} onChange={handleInputChange} className="form-control mb-2" placeholder="Nacionalidad del Cliente" required />
-                                    </div>
-                                </div>
-                                <div className="col-sm-6">
-                                    <div className="mb-3">
-                                        <label className="required form-label">Proyectos</label>
-                                        <br />
-                                        <Select id="proyecto_new_edit" name="proyecto_new_edit" components={animatedComponents} options={projectOptions} value={formData.proyecto_new_edit} onChange={handleSelectChange} isSearchable required />
-                                    </div>
-                                    <div className="mb-3">
-                                        <label className="required form-label">Subsidiaria</label>
-                                        <br />
-                                        <Select id="subsidiary_new_edit" name="subsidiary_new_edit" components={animatedComponents} options={subsidiaryOptions} value={formData.subsidiary_new_edit} onChange={handleSelectChange} isSearchable required />
-                                    </div>
-
-                                    <div className="mb-3">
-                                        <label className="required form-label">Estado del LEAD Interesado</label>
-                                        <input type="text" name="id_estadointeresado_cliente" id="id_estadointeresado_cliente" value={formData.id_estadointeresado_cliente} readOnly className="form-control mb-2" />
-                                    </div>
-                                    <div className="mb-3">
-                                        <label className="required form-label">Nombre de la empresa</label>
-                                        <input type="text" name="empresa_cliente" id="empresa_cliente" value={formData.empresa_cliente} readOnly className="form-control mb-2" />
-                                    </div>
-                                    <div className="mb-3">
-                                        <label className="required form-label">¿Dónde escuchó de nosotros?</label>
-                                        <input type="text" name="referencia_cliente" id="referencia_cliente" value={formData.referencia_cliente} readOnly className="form-control mb-2" />
-                                    </div>
-                                    <div className="mb-3">
-                                        <label className="required form-label">Corredor Cliente</label>
-                                        <br />
-                                        <Select id="corredor_lead_edit" name="corredor_lead_edit" components={animatedComponents} options={corredor_lead_options} value={formData.corredor_lead_edit} onChange={handleSelectChange} isSearchable required />
-                                    </div>
-                                    <div className="mb-3">
-                                        <label className="form-label">Dirección cliente</label>
-                                        <textarea id="defaultaddress" name="defaultaddress" value={formData.defaultaddress} onChange={handleInputChange} className="form-control" maxLength="225" rows="3" placeholder="Introduzca una dirección"></textarea>
-                                    </div>
-                                    <div className="mb-3">
-                                        <label className="form-label">Teléfono alternativo</label>
-                                        <input type="text" name="altphone" id="altphone" value={formData.altphone} onChange={handleInputChange} className="form-control mb-2" placeholder="Teléfono alternativo" required />
                                     </div>
                                     <div className="mb-3">
                                         <label className="form-label">Profesión Cliente</label>
@@ -287,6 +305,20 @@ export const View_edit_lead = () => {
                                             <option value="Unión Libre">Unión Libre</option>
                                             <option value="Viudo">Viudo</option>
                                             <option value="Divorciado/a">Divorciado/a</option>
+                                        </select>
+                                    </div>
+                                    <div className="mb-3">
+                                        <label className="form-label">Lugar de trabajo</label>
+                                        <input type="text" name="lugar_trabajo" id="lugar_trabajo" value={formData.lugar_trabajo} onChange={handleInputChange} className="form-control mb-2" placeholder="Lugar de trabajo" required />
+                                    </div>
+                                    <div className="mb-3">
+                                        <label className="required form-label">Zona de recidencia</label>
+                                        <select id="momento_compra" name="momento_compra" value={formData.momento_compra} onChange={handleInputChange} className="form-control select2" required>
+                                            <option value="">Seleccionar recidencia</option>
+                                            {/* <option value="Pre-venta">Pre-venta</option>
+                                            <option value="Proyecto iniciado">Proyecto iniciado</option>
+                                            <option value="En obra gris">En obra gris</option>
+                                            <option value="Entrega inmediata">Entrega inmediata</option> */}
                                         </select>
                                     </div>
                                 </div>

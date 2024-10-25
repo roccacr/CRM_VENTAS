@@ -96,19 +96,28 @@ export default function ViewListExpedientes() {
 
     useEffect(() => {
         const filterData = () => {
-            let filtered = expedientes.filter((row) => {
-                const matchesCode = row.codigo_exp.toLowerCase().includes(searchCode.toLowerCase());
+            // Si no hay ningún filtro aplicado, mostramos todos los expedientes
+            if (searchCode === "" && searchFilters.proyectoPrincipal_exp.length === 0 && searchFilters.modelo_exp.length === 0 && searchFilters.estado_exp.length === 0) {
+                setFilteredData(expedientes); // Mostrar todos los expedientes si no hay filtros
+                return;
+            }
+
+            // Filtrar los expedientes en base a los filtros aplicados
+            const filtered = expedientes.filter((row) => {
+                const matchesCode = searchCode === "" || row.codigo_exp.toLowerCase().includes(searchCode.toLowerCase());
                 const matchesProject = searchFilters.proyectoPrincipal_exp.length === 0 || searchFilters.proyectoPrincipal_exp.map((p) => p.value).includes(row.proyectoPrincipal_exp);
                 const matchesModel = searchFilters.modelo_exp.length === 0 || searchFilters.modelo_exp.map((m) => m.value).includes(row.tipoDeVivienda_exp);
                 const matchesState = searchFilters.estado_exp.length === 0 || searchFilters.estado_exp.map((e) => e.value).includes(row.estado_exp);
 
                 return matchesCode && matchesProject && matchesModel && matchesState;
             });
-            setFilteredData(filtered);
+            setFilteredData(filtered); // Actualizar `filteredData` con los datos filtrados
         };
 
         filterData();
     }, [searchFilters, expedientes, searchCode]);
+
+
 
     const handleOpenModal = (expediente) => {
         setSelectedExpediente(expediente); // Guardar el expediente seleccionado
@@ -244,9 +253,7 @@ export default function ViewListExpedientes() {
             <div className="card-body">
                 {isLoading ? (
                     <div>Cargando datos...</div>
-                ) : filteredData.length === 0 ? (
-                    <div>No hay datos para mostrar</div>
-                ) : (
+                )  : (
                     <>
                         <div className="row">
                             <div className="row">
