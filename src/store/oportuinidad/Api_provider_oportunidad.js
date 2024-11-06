@@ -76,3 +76,23 @@ export const get_Oportunidades = async ({ idLead, startDate, endDate, isMode }) 
     // La URL "oportunidad/get_Oportunidades" apunta al endpoint que procesa esta petición en el servidor.
     return await fetchData("oportunidad/get_Oportunidades", requestData); // Retorna los datos obtenidos de la API sobre las oportunidades solicitadas.
 };
+
+
+
+
+/**
+ * Función asincrónica para obtener una oportunidad específica mediante un ID proporcionado.
+ * @param {object} oportunidad - El objeto que contiene el ID o parámetros necesarios para identificar la oportunidad.
+ * @returns {Promise} - Retorna los datos de la oportunidad obtenidos de la API.
+ */
+export const getSpecific_Oportunidad = async ({ oportunidad }) => {
+    // Construye el objeto de datos para la solicitud, combinando los datos comunes con los parámetros específicos de la oportunidad.
+    const requestData = {
+        ...commonRequestData, // Incluye datos comunes para la solicitud, como tokens de autenticación y configuraciones generales.
+        oportunidad, // Parámetro específico que identifica la oportunidad solicitada.
+    };
+
+    // Realiza una solicitud a la API para obtener los datos de la oportunidad correspondiente al ID proporcionado.
+    // La URL "oportunidad/getSpecificOportunidad" apunta al endpoint que procesa esta petición en el servidor.
+    return await fetchData("oportunidad/getSpecificOportunidad", requestData); // Retorna los datos obtenidos de la API sobre la oportunidad solicitada.
+};

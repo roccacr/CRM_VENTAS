@@ -1,5 +1,5 @@
 import { generateLeadBitacora } from "../leads/thunksLeads";
-import { get_Ubicaciones, get_Clases, get_Oportunidades, crear_Oportunidad } from "./Api_provider_oportunidad";
+import { get_Ubicaciones, get_Clases, get_Oportunidades, crear_Oportunidad, getSpecific_Oportunidad } from "./Api_provider_oportunidad";
 
 /**
  * Función que retorna una función asíncrona para obtener ubicaciones por ID.
@@ -117,6 +117,30 @@ export const crearReoporteLead = (leadData) => {
         } catch (error) {
             // Captura cualquier error que ocurra durante la generación de la bitácora y lo muestra en la consola para facilitar la depuración.
             console.error("Error al generar la bitácora del lead:", error);
+        }
+    };
+};
+
+
+
+
+
+/**
+ * Función que obtiene una oportunidad específica basada en el identificador proporcionado.
+ * @param {object} oportunidad - El objeto que contiene el identificador o información necesaria para obtener la oportunidad específica.
+ * @returns {function} - Una función asíncrona que retorna el resultado de la consulta de la oportunidad específica.
+ */
+export const getSpecificOportunidad = (oportunidad) => {
+    return async () => {
+        try {
+            // Llama a la API para obtener una oportunidad específica con los datos proporcionados.
+            const result = await getSpecific_Oportunidad({ oportunidad });
+
+            // Retorna el resultado de la operación, que puede incluir el estado o detalles de la oportunidad.
+            return result;
+        } catch (error) {
+            // Captura cualquier error que ocurra durante la obtención de la oportunidad y lo muestra en la consola para facilitar la depuración.
+            console.error("Error al obtener la oportunidad específica:", error);
         }
     };
 };
