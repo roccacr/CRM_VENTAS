@@ -1,4 +1,4 @@
-const { executeStoredProcedure } = require("../conectionPool/conectionPool");
+const { executeStoredProcedure, handleDatabaseOperation } = require("../conectionPool/conectionPool");
 
 const home = {}; // Objeto para agrupar todas las funciones relacionadas con 'home'.
 
@@ -11,7 +11,7 @@ const home = {}; // Objeto para agrupar todas las funciones relacionadas con 'ho
  */
 home.getAllBanners = (dataParams) =>
     executeStoredProcedure(
-        "getAllBanners", // Nombre del procedimiento almacenado que recupera los banners.
+        "37_OBTENER_TODOS_LOS_BANNERS", // Nombre del procedimiento almacenado que recupera los banners.
         [dataParams.rol_admin, dataParams.idnetsuite_admin], // Parámetros que identifican el rol y el ID del usuario.
         dataParams.database, // Nombre de la base de datos a utilizar.
     );
@@ -37,7 +37,6 @@ home.getAllEventsHome = (dataParams) =>
  */
 home.updateEventStatus = (dataParams) =>
     handleDatabaseOperation(async (connection) => {
-        console.log(dataParams);
         // Ejecuta el procedimiento almacenado para actualizar el estado del evento.
         const [result] = await connection.execute(
             `CALL 15_ACTUALIZAR_ESTADO_EVENTO_INICIO(?, ?)`, // Procedimiento almacenado para actualizar el estado del evento.

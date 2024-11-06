@@ -12,7 +12,7 @@ const leads = {}; // Objeto para agrupar todas las funciones relacionadas con 'l
  */
 leads.getAll_LeadsNew = (dataParams) =>
     executeStoredProcedure(
-        "getAll_LeadsNew", // Nombre del procedimiento almacenado que recupera los banners.
+        "32_OBTENER_TODOS_LOS_LEADS_NUEVOS", // Nombre del procedimiento almacenado que recupera los banners.
         [dataParams.rol_admin, dataParams.idnetsuite_admin], // Parámetros que identifican el rol y el ID del usuario.
         dataParams.database, // Nombre de la base de datos a utilizar.
     );
@@ -31,7 +31,7 @@ leads.getAll_LeadsNew = (dataParams) =>
  */
 leads.getBitacora = (dataParams) =>
     executeStoredProcedure(
-        "getBitacoraLead", // Nombre del procedimiento almacenado que recupera la bitácora del lead.
+        "30_OBTENER_BITACORA_LEAD", // Nombre del procedimiento almacenado que recupera la bitácora del lead.
         [dataParams.idLeads], // Parámetro que identifica el ID del lead.
         dataParams.database, // Base de datos donde se ejecutará el procedimiento.
     );
@@ -51,7 +51,7 @@ leads.getBitacora = (dataParams) =>
  */
 leads.getAll_LeadsAttention = (dataParams) =>
     executeStoredProcedure(
-        "getAll_LeadsAttention", // Nombre del procedimiento almacenado que recupera los leads que requieren atención.
+        "34_CONSULTAR_LEADS_PENDIENTES_ATENCION", // Nombre del procedimiento almacenado que recupera los leads que requieren atención.
         [dataParams.rol_admin, dataParams.idnetsuite_admin, dataParams.startDate, dataParams.endDate, dataParams.filterOption], // Parámetros necesarios: rol y ID del administrador.
         dataParams.database, // Nombre de la base de datos donde se ejecutará el procedimiento almacenado.
     );
@@ -71,7 +71,7 @@ leads.getAll_LeadsAttention = (dataParams) =>
  */
 leads.getAllStragglers = (dataParams) =>
     executeStoredProcedure(
-        "getAll_LeadStragglers", // Nombre del procedimiento almacenado que recupera los leads que requieren atención.
+        "35_OBTENER_LEADS_REZAGADOS", // Nombre del procedimiento almacenado que recupera los leads que requieren atención.
         [dataParams.rol_admin, dataParams.idnetsuite_admin, dataParams.startDate, dataParams.endDate, dataParams.filterOption], // Parámetros necesarios: rol y ID del administrador.
         dataParams.database, // Nombre de la base de datos donde se ejecutará el procedimiento almacenado.
     );
@@ -95,7 +95,7 @@ leads.getAllStragglers = (dataParams) =>
  */
 leads.getAll_LeadsComplete = (dataParams) =>
     executeStoredProcedure(
-        "getAll_LeadsComplete", // Nombre del procedimiento almacenado que recupera los leads.
+        "33_OBTENER_TODOS_LOS_LEADS_COMPLETOS", // Nombre del procedimiento almacenado que recupera los leads.
         [dataParams.rol_admin, dataParams.idnetsuite_admin, dataParams.startDate, dataParams.endDate, dataParams.filterOption], // Parámetros necesarios: rol, ID del administrador, fechas y opción de filtro.
         dataParams.database, // Nombre de la base de datos donde se ejecutará el procedimiento almacenado.
     );
@@ -194,7 +194,7 @@ leads.insertBitcoraLead = (dataParams) =>
  */
 leads.updateLeadActionApi = (dataParams) =>
     executeStoredProcedure(
-        "updateLeadActionApi", // Nombre del procedimiento almacenado que gestiona la actualización y registro de la bitácora.
+        "07_ACTUALIZAR_ACCION_LEAD_API", // Nombre del procedimiento almacenado que gestiona la actualización y registro de la bitácora.
         [
             dataParams.estadoActual, // Estado actual del lead.
             dataParams.valor_segimineto_lead, // Valor del seguimiento asociado al lead.
@@ -270,7 +270,7 @@ leads.loss_transactions = (dataParams) =>
  */
 leads.getAllLeadsTotal = (dataParams) =>
     executeStoredProcedure(
-        "getAllLeadsTotal", // Nombre del procedimiento almacenado que recupera los leads.
+        "36_OBTENER_TOTAL_LEADS", // Nombre del procedimiento almacenado que recupera los leads.
         [dataParams.rol_admin, dataParams.idnetsuite_admin, dataParams.startDate, dataParams.endDate, dataParams.filterOption], // Parámetros necesarios: rol, ID del administrador, fechas y opción de filtro.
         dataParams.database, // Nombre de la base de datos donde se ejecutará el procedimiento almacenado.
     );
@@ -278,7 +278,7 @@ leads.getAllLeadsTotal = (dataParams) =>
 // Función para obtener la información de campañas desde la base de datos.
 leads.getDataSelect_Campaing = (dataParams) =>
     executeStoredProcedure(
-        "getDataSelect_Campaing", // Nombre del procedimiento almacenado encargado de recuperar los datos de campañas disponibles.
+        "25_CONSULTAR_DATOS_CAMPAÑA", // Nombre del procedimiento almacenado encargado de recuperar los datos de campañas disponibles.
         [dataParams.p_estado], // Parámetro utilizado para filtrar las campañas según su estado (activo/inactivo).
         dataParams.database, // Nombre de la base de datos específica donde se ejecutará el procedimiento.
     );
@@ -302,7 +302,7 @@ leads.getDataSelect_Subsidiaria = (dataParams) =>
 // Función para obtener la información de administradores desde la base de datos.
 leads.getDataSelect_Admins = (dataParams) =>
     executeStoredProcedure(
-        "getDataSelect_Admins", // Nombre del procedimiento almacenado encargado de recuperar los datos de los administradores.
+        "26_CONSULTAR_DATOS_ADMINISTRADORES", // Nombre del procedimiento almacenado encargado de recuperar los datos de los administradores.
         [dataParams.p_estado], // Parámetro utilizado para filtrar los administradores según su estado (activo/inactivo).
         dataParams.database, // Nombre de la base de datos específica donde se ejecutará el procedimiento.
     );
@@ -327,7 +327,7 @@ leads.insertInfo_extraLead = (idLead, corredor_value, database) => {
 // Función para obtener la información completa de un lead específico desde la base de datos.
 leads.getDataInformations_Lead = (dataParams) => {
     return executeStoredProcedure(
-        "getDataInformations_Lead", // Nombre del procedimiento almacenado encargado de recuperar toda la información de un lead.
+        "27_OBTENER_INFORMACION_LEAD", // Nombre del procedimiento almacenado encargado de recuperar toda la información de un lead.
         [dataParams.leadId], // Parámetro requerido: id del lead para identificar el registro en la base de datos.
         dataParams.database, // Base de datos donde se ejecutará el procedimiento.
     );

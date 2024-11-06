@@ -63,7 +63,7 @@ calendars.createEvent = (dataParams) =>
  */
 calendars.getDataEevent = (dataParams) =>
     executeStoredProcedure(
-        "getDataEevent", // Nombre del procedimiento almacenado a ejecutar.
+        "28_OBTENER_DATOS_EVENTO", // Nombre del procedimiento almacenado a ejecutar.
         [dataParams.id], // Parámetro que contiene el ID del evento a consultar.
         dataParams.database, // Nombre de la base de datos a utilizar para la consulta.
     );
@@ -155,7 +155,7 @@ calendars.update_Status_Event = (dataParams) => {
  */
 calendars.getAll_ListEvent = (dataParams) =>
     executeStoredProcedure(
-        "getAll_ListEvent", // Nombre del procedimiento almacenado que recupera los eventos del calendario.
+        "31_OBTENER_LISTA_COMPLETA_EVENTOS", // Nombre del procedimiento almacenado que recupera los eventos del calendario.
         [
             dataParams.rol_admin,
             dataParams.idnetsuite_admin, // Parámetros que identifican el rol y el ID del administrador.

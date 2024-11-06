@@ -19,7 +19,7 @@ const cronsLeads = {}; // Objeto para agrupar todas las funciones relacionadas c
  */
 cronsLeads.getAll_LeadsAttention = async (dataParams) =>
     executeStoredProcedure(
-        "getAll_LeadsAttention", // Nombre del procedimiento almacenado que recupera los leads que requieren atención.
+        "34_CONSULTAR_LEADS_PENDIENTES_ATENCION", // Nombre del procedimiento almacenado que recupera los leads que requieren atención.
         [dataParams.rol_admin, dataParams.idnetsuite_admin, dataParams.startDate, dataParams.endDate, dataParams.filterOption], // Parámetros necesarios: rol y ID del administrador.
         dataParams.database, // Nombre de la base de datos donde se ejecutará el procedimiento almacenado.
     );

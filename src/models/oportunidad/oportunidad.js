@@ -25,7 +25,7 @@ oportunidad.getUbicaciones = (dataParams) =>
  */
 oportunidad.getClases = (dataParams) =>
     executeStoredProcedure(
-        "getClases", // Nombre del procedimiento almacenado que recupera las ubicaciones.
+        "29_OBTENER_CLASES", // Nombre del procedimiento almacenado que recupera las ubicaciones.
         [dataParams.idClases], // Parámetros para identificar la clases.
         dataParams.database, // Nombre de la base de datos a utilizar.
     );
