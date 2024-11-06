@@ -12,7 +12,7 @@ const expedientes = {}; // Objeto para agrupar todas las funciones relacionadas 
  */
 expedientes.getFileList = (dataParams) =>
     executeStoredProcedure(
-        "getFileList", // Nombre del procedimiento almacenado que recupera los expedientes.
+        "21_OBTENER_LISTA_ARCHIVOS", // Nombre del procedimiento almacenado que recupera los expedientes.
         [], // Parámetros que identifican el rol y el ID del administrador.
         dataParams.database, // Nombre de la base de datos a utilizar.
     );
@@ -25,7 +25,7 @@ expedientes.getFileList = (dataParams) =>
  */
 const updateFile = async (dataParams, database, id_expediente) => {
     return executeStoredProcedure(
-        "updateExpediente_unidad", // Nombre del procedimiento almacenado que recupera los expedientes.
+        "08_ACTUALIZAR_EXPEDIENTE_UNIDAD", // Nombre del procedimiento almacenado que recupera los expedientes.
         [
             dataParams.codigo,
             dataParams.proyecto_Principal,

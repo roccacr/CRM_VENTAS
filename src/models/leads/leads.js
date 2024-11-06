@@ -116,7 +116,7 @@ leads.getAll_LeadsComplete = (dataParams) =>
  */
 leads.getAll_LeadsRepit = (dataParams) =>
     executeStoredProcedure(
-        "get_Leads_With_Duplicate_Emails", // Nombre del procedimiento almacenado que recupera los leads repetidos.
+        "19_OBTENER_LEADS_CON_CORREOS_DUPLICADOS", // Nombre del procedimiento almacenado que recupera los leads repetidos.
         [dataParams.rol_admin, dataParams.idnetsuite_admin], // Parámetros necesarios: rol y ID del administrador.
         dataParams.database, // Nombre de la base de datos donde se ejecutará el procedimiento almacenado.
     );
@@ -135,7 +135,7 @@ leads.getAll_LeadsRepit = (dataParams) =>
  */
 leads.get_Specific_Lead = (dataParams) =>
     executeStoredProcedure(
-        "get_Specific_Lead", // Nombre del procedimiento almacenado que recupera la información del lead específico.
+        "18_OBTENER_LEAD_ESPECIFICO", // Nombre del procedimiento almacenado que recupera la información del lead específico.
         [dataParams.idLead], // Parámetros necesarios: ID del lead.
         dataParams.database, // Nombre de la base de datos donde se ejecutará el procedimiento almacenado.
     );
@@ -160,7 +160,7 @@ leads.get_Specific_Lead = (dataParams) =>
  */
 leads.insertBitcoraLead = (dataParams) =>
     executeStoredProcedure(
-        "insertBitcoraLead", // Nombre del procedimiento almacenado que gestiona la inserción de la bitácora.
+        "14_INSERTAR_BITACORA_LEAD", // Nombre del procedimiento almacenado que gestiona la inserción de la bitácora.
         [
             dataParams.leadId, // ID del lead que se está manejando.
             dataParams.idnetsuite_admin, // ID del administrador que realiza la acción.
@@ -222,7 +222,7 @@ leads.updateLeadActionApi = (dataParams) =>
  */
 leads.loss_reasons = (dataParams) =>
     executeStoredProcedure(
-        "loss_reasons", // Nombre del procedimiento almacenado que obtiene las razones de pérdida de leads.
+        "12_MOTIVOS_PERDIDA", // Nombre del procedimiento almacenado que obtiene las razones de pérdida de leads.
         [
             dataParams.valueID, // Estado específico del lead para filtrar las razones de pérdida.
         ],
@@ -243,7 +243,7 @@ leads.loss_reasons = (dataParams) =>
  */
 leads.loss_transactions = (dataParams) =>
     executeStoredProcedure(
-        "loss_transactions", // Procedimiento almacenado que marca todas las transacciones de un lead como perdidas.
+        "11_TRANSACCIONES_PERDIDAS", // Procedimiento almacenado que marca todas las transacciones de un lead como perdidas.
         [
             dataParams.leadId, // El ID del lead cuyas transacciones serán actualizadas.
             dataParams.descripcionEvento,
@@ -286,7 +286,7 @@ leads.getDataSelect_Campaing = (dataParams) =>
 // Función para obtener la información de proyectos desde la base de datos.
 leads.getDataSelect_Proyect = (dataParams) =>
     executeStoredProcedure(
-        "getDataSelect_Proyect", // Nombre del procedimiento almacenado encargado de recuperar los datos de los proyectos.
+        "23_CONSULTAR_DATOS_PROYECTO", // Nombre del procedimiento almacenado encargado de recuperar los datos de los proyectos.
         [dataParams.p_estado], // Parámetro utilizado para filtrar los proyectos según su estado (activo/inactivo).
         dataParams.database, // Nombre de la base de datos específica donde se ejecutará el procedimiento.
     );
@@ -294,7 +294,7 @@ leads.getDataSelect_Proyect = (dataParams) =>
 // Función para obtener la información de subsidiarias desde la base de datos.
 leads.getDataSelect_Subsidiaria = (dataParams) =>
     executeStoredProcedure(
-        "getDataSelect_Subsidiaria", // Nombre del procedimiento almacenado encargado de recuperar los datos de subsidiarias.
+        "22_CONSULTAR_DATOS_SUBSIDIARIA", // Nombre del procedimiento almacenado encargado de recuperar los datos de subsidiarias.
         [dataParams.p_estado], // Parámetro utilizado para filtrar las subsidiarias según su estado (activo/inactivo).
         dataParams.database, // Nombre de la base de datos específica donde se ejecutará el procedimiento.
     );
@@ -310,7 +310,7 @@ leads.getDataSelect_Admins = (dataParams) =>
 // Función para obtener la información de corredores desde la base de datos.
 leads.getDataSelect_Corredor = (dataParams) =>
     executeStoredProcedure(
-        "getDataSelect_Corredor", // Nombre del procedimiento almacenado encargado de recuperar los datos de corredores disponibles.
+        "24_CONSULTAR_DATOS_CORREDOR", // Nombre del procedimiento almacenado encargado de recuperar los datos de corredores disponibles.
         [dataParams.p_estado], // Parámetro utilizado para filtrar los corredores según su estado (activo/inactivo).
         dataParams.database, // Nombre de la base de datos específica donde se ejecutará el procedimiento.
     );
@@ -318,7 +318,7 @@ leads.getDataSelect_Corredor = (dataParams) =>
 // Función para insertar información adicional de un lead específico en la base de datos.
 leads.insertInfo_extraLead = (idLead, corredor_value, database) => {
     return executeStoredProcedure(
-        "insertInfo_extraLead", // Nombre del procedimiento almacenado encargado de insertar información extra para un lead.
+        "13_INSERTAR_INFO_EXTRA_LEAD", // Nombre del procedimiento almacenado encargado de insertar información extra para un lead.
         [idLead, corredor_value], // Parámetros necesarios: id del lead e información del corredor asociada al lead.
         database, // Base de datos donde se ejecutará el procedimiento.
     );

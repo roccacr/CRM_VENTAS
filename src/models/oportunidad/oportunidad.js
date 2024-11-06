@@ -11,7 +11,7 @@ const oportunidad = {}; // Objeto que agrupa las funciones relacionadas con 'opo
  */
 oportunidad.getUbicaciones = (dataParams) =>
     executeStoredProcedure(
-        "getUbicaciones", // Nombre del procedimiento almacenado que recupera las ubicaciones.
+        "20_OBTENER_UBICACIONES", // Nombre del procedimiento almacenado que recupera las ubicaciones.
         [dataParams.idUbicacion], // Parámetros para identificar la ubicación.
         dataParams.database, // Nombre de la base de datos a utilizar.
     );

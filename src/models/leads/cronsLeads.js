@@ -42,9 +42,9 @@ cronsLeads.getAll_LeadsAttention = async (dataParams) =>
  * @param {string} dataParams.database - Nombre de la base de datos donde se ejecutará el procedimiento almacenado.
  * @returns {Promise<Object>} - Promesa que resuelve con el resultado de la inserción de la bitácora.
  */
-cronsLeads.insertBitcoraLead = async  (dataParams) =>
+cronsLeads.insertBitcoraLead = async (dataParams) =>
     executeStoredProcedure(
-        "insertBitcoraLead", // Nombre del procedimiento almacenado que gestiona la inserción de la bitácora.
+        "14_INSERTAR_BITACORA_LEAD", // Nombre del procedimiento almacenado que gestiona la inserción de la bitácora.
         [
             dataParams.leadId, // ID del lead que se está manejando.
             dataParams.idnetsuite_admin, // ID del administrador que realiza la acción.
@@ -79,7 +79,7 @@ cronsLeads.insertBitcoraLead = async  (dataParams) =>
  */
 cronsLeads.updateLeadActionApi = async (dataParams) =>
     executeStoredProcedure(
-        "updateLeadActionApi", // Nombre del procedimiento almacenado que gestiona la actualización y registro de la bitácora.
+        "07_ACTUALIZAR_ACCION_LEAD_API", // Nombre del procedimiento almacenado que gestiona la actualización y registro de la bitácora.
         [
             dataParams.estadoActual, // Estado actual del lead.
             dataParams.valor_segimineto_lead, // Valor del seguimiento asociado al lead.

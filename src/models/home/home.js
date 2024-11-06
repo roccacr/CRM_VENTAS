@@ -24,7 +24,7 @@ home.getAllBanners = (dataParams) =>
  */
 home.getAllEventsHome = (dataParams) =>
     executeStoredProcedure(
-        "home_events_pending", // Nombre del procedimiento almacenado que recupera eventos pendientes.
+        "17_EVENTOS_PENDIENTES_INICIO", // Nombre del procedimiento almacenado que recupera eventos pendientes.
         [dataParams.rol_admin, dataParams.idnetsuite_admin], // Parámetros que identifican el rol y el ID del usuario.
         dataParams.database, // Nombre de la base de datos a utilizar.
     );
@@ -40,7 +40,7 @@ home.updateEventStatus = (dataParams) =>
         console.log(dataParams);
         // Ejecuta el procedimiento almacenado para actualizar el estado del evento.
         const [result] = await connection.execute(
-            `CALL home_update_event_status(?, ?)`, // Procedimiento almacenado para actualizar el estado del evento.
+            `CALL 15_ACTUALIZAR_ESTADO_EVENTO_INICIO(?, ?)`, // Procedimiento almacenado para actualizar el estado del evento.
             [dataParams.newStatus, dataParams.id_calendar], // Parámetros: nuevo estado e ID del evento.
         );
         return {
@@ -57,7 +57,7 @@ home.updateEventStatus = (dataParams) =>
  */
 home.fetchGetMonthlyDataKpi = (dataParams) =>
     executeStoredProcedure(
-        "monthly_graphicsKpi", // Procedimiento almacenado para obtener los datos de KPI mensuales.
+        "09_GRAFICOS_MENSUALES_KPI", // Procedimiento almacenado para obtener los datos de KPI mensuales.
         [dataParams.rol_admin, dataParams.idnetsuite_admin, dataParams.startDate, dataParams.endDate], // Parámetros para el procedimiento: rol, ID, rango de fechas.
         dataParams.database, // Base de datos a utilizar.
     );
@@ -70,7 +70,7 @@ home.fetchGetMonthlyDataKpi = (dataParams) =>
  */
 home.getMonthlyData = (dataParams) =>
     executeStoredProcedure(
-        "monthly_graphics", // Procedimiento almacenado para obtener los datos mensuales.
+        "10_GRAFICOS_MENSUALES", // Procedimiento almacenado para obtener los datos mensuales.
         [dataParams.rol_admin, dataParams.idnetsuite_admin, dataParams.startDate, dataParams.endDate], // Parámetros para el procedimiento: rol, ID, rango de fechas.
         dataParams.database, // Base de datos a utilizar.
     );
@@ -83,7 +83,7 @@ home.getMonthlyData = (dataParams) =>
  */
 home.fetchupdateEventDate = (dataParams) =>
     executeStoredProcedure(
-        "home_update_date_event", // Procedimiento almacenado que actualiza la fecha de un evento.
+        "16_ACTUALIZAR_FECHA_EVENTO_INICIO", // Procedimiento almacenado que actualiza la fecha de un evento.
         [dataParams.eventId, dataParams.selectedValue], // Parámetros: fecha de inicio y de fin del evento.
         dataParams.database, // Base de datos a utilizar.
     );

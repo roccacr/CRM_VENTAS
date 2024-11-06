@@ -9,7 +9,7 @@ const calendars = {}; // Objeto para agrupar todas las funciones relacionadas co
  */
 calendars.get_Calendars = (dataParams) =>
     executeStoredProcedure(
-        "get_Calendars", // Nombre del procedimiento almacenado que recupera los eventos del calendario.
+        "03_OBTENER_CALENDARIOS", // Nombre del procedimiento almacenado que recupera los eventos del calendario.
         [dataParams.rol_admin, dataParams.idnetsuite_admin], // Parámetros que identifican el rol y el ID del administrador.
         dataParams.database, // Nombre de la base de datos a utilizar.
     );
@@ -22,7 +22,7 @@ calendars.get_Calendars = (dataParams) =>
  */
 calendars.createEvent = (dataParams) =>
     executeStoredProcedure(
-        "create_Event", // Nombre del procedimiento almacenado que recupera los eventos del calendario.
+        "01_CREAR_EVENTO", // Nombre del procedimiento almacenado que recupera los eventos del calendario.
         [
             dataParams.nombreEvento, // Nombre descriptivo del evento
             dataParams.colorEvento, // Color visual que se asigna al evento
@@ -78,7 +78,7 @@ calendars.getDataEevent = (dataParams) =>
  */
 calendars.get_event_Citas = (dataParams) =>
     executeStoredProcedure(
-        "get_event_Citas", // Nombre del procedimiento almacenado a ejecutar.
+        "04_OBTENER_EVENTOS_CITAS", // Nombre del procedimiento almacenado a ejecutar.
         [dataParams.id], // Parámetro que contiene el ID del evento a consultar.
         dataParams.database, // Nombre de la
     );
@@ -91,7 +91,7 @@ calendars.get_event_Citas = (dataParams) =>
  */
 calendars.editEvent = (dataParams) =>
     executeStoredProcedure(
-        "editEvent", // Nombre del procedimiento almacenado que recupera los eventos del calendario.
+        "02_EDITAR_EVENTO", // Nombre del procedimiento almacenado que recupera los eventos del calendario.
         [
             dataParams.id_calendar, // Nombre descriptivo del evento
             dataParams.nombreEvento, // Nombre descriptivo del evento
@@ -124,7 +124,7 @@ calendars.editEvent = (dataParams) =>
  */
 calendars.update_event_MoveDate = (dataParams) =>
     executeStoredProcedure(
-        "update_event_MoveDate", // Nombre del procedimiento almacenado que se ejecuta en la base de datos.
+        "05_ACTUALIZAR_FECHA_EVENTO", // Nombre del procedimiento almacenado que se ejecuta en la base de datos.
         [
             dataParams.id, // ID del evento que se va a actualizar.
             dataParams.newDateStart, // Nueva fecha de inicio del evento.
@@ -138,7 +138,7 @@ calendars.update_Status_Event = (dataParams) => {
 
     // Llamada al procedimiento almacenado
     executeStoredProcedure(
-        "update_Status_Event", // Nombre del procedimiento almacenado
+        "06_MODIFICAR_ESTADO_EVENTO", // Nombre del procedimiento almacenado
         [
             dataParams.id, // ID del evento
             dataParams.NewStatus, // Nuevo estado
