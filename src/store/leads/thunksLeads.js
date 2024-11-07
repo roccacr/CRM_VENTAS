@@ -1,5 +1,5 @@
 import { setLeadsNew } from "./leadSlice"; // Acción para actualizar el estado de leads en Redux.
-import { createdNewLead_Netsuite, get_optionLoss, get_Specific_Lead, getAll_LeadsRepit, getAllLeadsAttention, getAllLeadsComplete, getAllLeadsNew, getAllLeadsTotal, getAllStragglers, getBitacora, getDataInformations_Lead, getDataLead_Netsuite, getDataSelect_Admins, getDataSelect_Campaing, getDataSelect_Corredor, getDataSelect_Proyect, getDataSelect_Subsidiaria, insertBitcoraLead, setLostStatusForLeadTransactions, updateLeadActionApi } from "./Api_leads_Providers"; // Función que hace la solicitud API para obtener nuevos leads.
+import { createdNewLead_Netsuite, get_optionLoss, get_Specific_Lead, getAll_LeadsRepit, getAllLeadsAttention, getAllLeadsComplete, getAllLeadsNew, getAllLeadsTotal, getAllStragglers, getBitacora, getDataInformations_Lead, getDataLead_Netsuite, getDataSelect_Admins, getDataSelect_Campaing, getDataSelect_Corredor, getDataSelect_Proyect, getDataSelect_Subsidiaria, insertBitcoraLead, setLostStatusForLeadTransactions, update_LeadStatus, updateLeadActionApi } from "./Api_leads_Providers"; // Función que hace la solicitud API para obtener nuevos leads.
 import { createCalendarEvent } from "../calendar/Api_calendar_Providers";
 
 /**
@@ -645,3 +645,32 @@ export const getDataInformationsLead = (leadId) => {
         }
     };
 };
+
+/**
+ * Action `updateLeadStatus`:
+ * This function updates the status of a lead (client) in the database.
+ * It receives the updated status (`estado`) and the client ID (`idCliente`) as parameters.
+ * 
+ * @param {string} estado - The new status to be set for the lead (e.g., "active", "inactive").
+ * @param {number} idCliente - The ID of the client whose status will be updated.
+ * @returns {function} - An async function that performs the update operation.
+ */
+export const updateLeadStatus = (estado, idCliente) => {
+    return async () => {
+        try {
+            // Calls the `update_LeadStatus` function to update the status
+            // of a lead in the database. This function receives the new status (`estado`)
+            // and the client ID (`idCliente`) as parameters.
+            const result = await update_LeadStatus({ estado, idCliente });
+
+            // Returns the updated lead data (`result.data.data`) for further processing
+            // in the application. This assumes `result.data.data` contains the updated information.
+            return result.data.data;
+        } catch (error) {
+            // Handles any errors that occur during the update request.
+            // Logs the error to the console for debugging purposes.
+            console.error("Error updating the lead status:", error);
+        }
+    };
+};
+

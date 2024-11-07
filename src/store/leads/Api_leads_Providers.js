@@ -420,3 +420,28 @@ export const getDataInformations_Lead = async ({ leadId }) => {
     // La URL "leads/getDataSelect_Admins" corresponde al endpoint que proporciona la información de administradores.
     return await fetchData("leads/getDataInformations_Lead", requestData); // Devuelve los datos de los administradores obtenidos.
 };
+
+
+
+/**
+ * Función `update_LeadStatus`:
+ * Esta función envía una solicitud para actualizar el estado de un lead (cliente) en la base de datos.
+ * Recibe los parámetros `estado` e `idCliente`, y combina esta información con datos comunes de la solicitud.
+ * 
+ * @param {object} params - Objeto con los parámetros necesarios para la solicitud.
+ * @param {string} params.estado - Nuevo estado que se desea asignar al lead (e.g., "activo", "inactivo").
+ * @param {number} params.idCliente - ID del cliente cuyo estado será actualizado.
+ * @returns {Promise<object>} - Devuelve una promesa que contiene el resultado de la solicitud.
+ */
+export const update_LeadStatus = async ({ estado, idCliente }) => {
+    // Construcción del objeto requestData combinando los datos comunes con los parámetros específicos.
+    const requestData = {
+        ...commonRequestData, // Datos comunes como tokens de autenticación o configuraciones generales.
+        estado,
+        idCliente,
+    };
+
+    // Realiza la solicitud a la API para actualizar el estado del lead.
+    // La URL "leads/update_LeadStatus" es el endpoint encargado de procesar la actualización del estado.
+    return await fetchData("leads/update_LeadStatus", requestData); // Devuelve el resultado de la solicitud.
+};

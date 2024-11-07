@@ -99,7 +99,7 @@ export const View_oportuinidad_ver = () => {
                    timer: 1500,
                    showConfirmButton: false,
                }).then(() => {
-                   window.location.reload(); // Recargar la página para reflejar los cambios
+                   fetchOportunidadDetails(idOportunidad); // Solicita los detalles de la oportunidad.
                });
            }
        });
@@ -127,7 +127,7 @@ export const View_oportuinidad_ver = () => {
                     timer: 1500,
                     showConfirmButton: false,
                 }).then(() => {
-                    window.location.reload();
+                    fetchOportunidadDetails(idOportunidad); // Solicita los detalles de la oportunidad.
                 });
             }
         });

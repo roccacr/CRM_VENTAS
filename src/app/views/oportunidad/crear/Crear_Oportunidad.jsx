@@ -602,9 +602,15 @@ export const Crear_Oportunidad = () => {
                                         </div>
 
                                         <div className="mb-3">
-                                            <label className="col-form-label col-lg-2">ID INTERNO EXPEDIENTE</label>
-                                            <div className="col-lg-10">
+                                            <label className="col-form-label col-lg-2" hidden>
+                                                ID INTERNO EXPEDIENTE
+                                            </label>
+                                            <div className="col-lg-10" hidden>
                                                 <input type="number" className={`form-control ${errors.idInternoExpediente ? "is-invalid" : ""}`} name="idInternoExpediente" value={formValues.idInternoExpediente} disabled />
+                                            </div>
+                                            <div className="mb-3 ajax-select mt-3 mt-lg-0">
+                                                <label className="form-label">NOMBRE DE EXPEDIENTE</label>
+                                                <input name="nombreExpediente" className="form-control" value={formValues.nombreExpediente} disabled />
                                             </div>
                                         </div>
 
@@ -617,11 +623,6 @@ export const Crear_Oportunidad = () => {
                                     </div>
 
                                     <div className="col-lg-6">
-                                        <div className="mb-3 ajax-select mt-3 mt-lg-0">
-                                            <label className="form-label">NOMBRE DE EXPEDIENTE</label>
-                                            <input name="nombreExpediente" className="form-control" value={formValues.nombreExpediente} disabled />
-                                        </div>
-
                                         <div className="mb-3 ajax-select mt-3 mt-lg-0">
                                             <div className="templating-select">
                                                 <label className="form-label">PRECIO DE LISTA</label>

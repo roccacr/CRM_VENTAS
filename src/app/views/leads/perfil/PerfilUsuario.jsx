@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { getBitacoraLeads, getSpecificLead } from "../../../../store/leads/thunksLeads";
+import { getBitacoraLeads, getSpecificLead, updateLeadStatus } from "../../../../store/leads/thunksLeads";
 import { ButtonActions } from "../../../components/buttonAccions/buttonAccions";
 import { useDispatch } from "react-redux";
 import { HeaderContent } from "./HeaderContent";
@@ -8,6 +8,7 @@ import { Eventos } from "./Eventos";
 import { Oportunidades } from "./Oportunidades";
 import { InfromacionCompleta } from "./InfromacionCompleta";
 import { useNavigate } from "react-router-dom";
+import Swal from "sweetalert2";
 
 export const PerfilUsuario = () => {
     const dispatch = useDispatch();
@@ -64,7 +65,34 @@ export const PerfilUsuario = () => {
         }
     }, [location.search]); // El efecto se ejecuta nuevamente si 'location.search' cambia.
     const navigate = useNavigate();
-    const handleClienteStatusChange = (estado) => {};
+        const handleClienteStatusChange = (estado, idCliente) => {
+            // Preguntar al usuario si desea cambiar el estado del cliente
+            Swal.fire({
+                title: "¿Deseas cambiar el estado del cliente?",
+                text: "Esta acción actualizará el estado del cliente seleccionado.",
+                icon: "warning",
+                showCancelButton: true,
+                confirmButtonText: "Sí, cambiar",
+                cancelButtonText: "Cancelar",
+            }).then((result) => {
+                // Si el usuario confirma, ejecutamos el dispatch para actualizar el estado
+                if (result.isConfirmed) {
+                    dispatch(updateLeadStatus(estado, idCliente)); // Llamada a la acción que actualiza el estado del cliente
+
+                    // Confirmación de cambio de estado
+                    Swal.fire({
+                        title: "¡Estado del cliente actualizado!",
+                        text: "El estado del cliente ha sido cambiado con éxito.",
+                        icon: "success",
+                        timer: 1500,
+                        showConfirmButton: false,
+                    }).then(() => {
+                        fetchLeadDetails(idCliente); // Ejecuta la solicitud para obtener los detalles del lead.
+                    });
+                }
+            });
+        };
+
     const irEditarCliente = (irEditarCliente) => {
         navigate(`/leads/edit?id=${irEditarCliente}`);
     };
@@ -96,14 +124,14 @@ export const PerfilUsuario = () => {
                                             {leadDetails.estado_lead === 1 ? (
                                                 <button
                                                     className="btn btn-sm btn-danger"
-                                                    onClick={() => handleClienteStatusChange(0)} // Cambiar a "Inactivar cliente"
+                                                    onClick={() => handleClienteStatusChange(0, leadDetails.idinterno_lead)} // Cambiar a "Inactivar cliente"
                                                 >
                                                     <i className="ti ti-x f-24"></i> Inactivar cliente
                                                 </button>
                                             ) : (
                                                 <button
                                                     className="btn btn-sm btn-success"
-                                                    onClick={() => handleClienteStatusChange(1)} // Cambiar a "Activar cliente"
+                                                    onClick={() => handleClienteStatusChange(1, leadDetails.idinterno_lead)} // Cambiar a "Activar cliente"
                                                 >
                                                     <i className="ti ti-checks f-24"></i> Activar cliente
                                                 </button>
