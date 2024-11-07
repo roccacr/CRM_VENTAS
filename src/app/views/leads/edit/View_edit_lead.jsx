@@ -117,7 +117,9 @@ export const View_edit_lead = () => {
                 setcorredor_lead(corredor);
 
                 // Establecer el valor por defecto en formData.corredor_lead_edit
-                const defaultCorredor = corredor.find((v) => v.value === resultInfolead.Corredor_lead || 0);
+                const corredorLeadInt = parseInt(resultInfolead.Corredor_lead, 10) || 0;
+                const defaultCorredor = corredor.find((v) => v.value === corredorLeadInt);
+
                 if (defaultCorredor) {
                     setFormData((prevData) => ({ ...prevData, corredor_lead_edit: defaultCorredor }));
                 }
