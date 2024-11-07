@@ -361,5 +361,29 @@ leads.oportunidades = (dataParams) => {
 };
 
 
+// Función `updateOpportunity_Status`:
+// Esta función actualiza el estado de un lead (cliente) en la base de datos, basado en los datos proporcionados.
+// Recibe un objeto `dataParams` con los siguientes atributos:
+// - `estado`: El nuevo estado que se asignará al lead (e.g., "activo", "inactivo").
+// - `idCliente`: El ID del cliente cuyo estado se actualizará.
+// - `database`: La base de datos objetivo donde se realizará la actualización.
+
+leads.update_LeadStatus = (dataParams) => {
+    // Consulta SQL para actualizar el estado del lead en la tabla `leads`.
+    const query = "UPDATE leads SET estado_lead = ? WHERE idinterno_lead = ?";
+
+    // Parámetros para la consulta SQL, incluyendo el nuevo estado y el ID del cliente.
+    const params = [dataParams.estado, dataParams.idCliente];
+
+    // Ejecuta la consulta con los parámetros especificados y la base de datos proporcionada.
+    return executeQuery(
+        query, // La consulta SQL a ejecutar.
+        params, // Array de parámetros para la consulta SQL.
+        dataParams.database, // La base de datos donde se realizará la consulta.
+    );
+};
+
+
+
 
 module.exports = leads; // Exporta el objeto 'leads' que contiene todas las funciones definidas.

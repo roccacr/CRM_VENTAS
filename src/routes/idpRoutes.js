@@ -129,6 +129,7 @@ module.exports = function (app) {
                 { path: "/leads/getDataInformations_Lead", method: "getDataInformations_Lead" }, // Ruta para obtener información adicional de un lead
                 { path: "/leads/eventos", method: "eventos" }, // Ruta para obtener los eventos del cliente
                 { path: "/leads/oportunidades", method: "oportunidades" }, // Ruta para obtener los eventos del cliente
+                { path: "/leads/update_LeadStatus", method: "update_LeadStatus" }, // Ruta para obtener los eventos del cliente
             ],
         },
         {
