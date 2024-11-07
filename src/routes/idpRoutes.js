@@ -1,22 +1,23 @@
-// Carga las variables de entorno desde el archivo .env
+// Carga las variables de entorno desde el archivo .env para configurar la aplicación
 const dotenv = require("dotenv");
-// Importa funciones de utilidad para gestionar respuestas HTTP
+// Importa funciones de utilidad para gestionar respuestas HTTP estándar
 const helpers = require("../utils/helpers");
 // Importa el modelo para la autenticación de usuarios
 const authenticated = require("../models/authenticated/authenticated");
-// Importa el modelo para las operaciones relacionadas con 'home'
+// Importa el modelo para las operaciones y datos del módulo 'home'
 const home = require("../models/home/home");
-// Importa el modelo para las operaciones relacionadas con 'leads'
+// Importa el modelo para gestionar operaciones relacionadas con los 'leads'
 const leads = require("../models/leads/leads");
 const leadNetsuite = require("../models/leads/leadNetsuite");
-require("../models/leads/cronsLeads.js");
+require("../models/leads/cronsLeads.js"); // Importa cron jobs para la gestión automatizada de leads
 
-// Importa el modelo para las operaciones relacionadas con 'calendars'
+// Importa el modelo para gestionar los eventos en calendarios
 const calendars = require("../models/calendars/calendars");
+// Importa el modelo para las operaciones de expedientes
 const expedientes = require("../models/expedientes/expedientes");
 const expedientesNetsuite = require("../models/expedientes/expedientesNetsuite");
 
-
+// Modelos para operaciones de oportunidades
 const oportunidad = require("../models/oportunidad/oportunidad");
 const oportunidadNetsuite = require("../models/oportunidad/oportunidadNetsuite");
 
@@ -155,6 +156,7 @@ module.exports = function (app) {
             model: expedientes, // Modelo asociado a la gestión de expedientes
             routes: [
                 { path: "/expedientes/getAllExpedientes", method: "getFileList" }, // Ruta para obtener todos los expedientes
+                { path: "/expedientes/getExpediente", method: "getExpediente" }, // Ruta para obtener todos los expedientes
             ],
         },
         {
@@ -171,7 +173,8 @@ module.exports = function (app) {
             routes: [
                 { path: "/oportunidad/getUbicaciones", method: "getUbicaciones" }, // extraer las ubicaciones
                 { path: "/oportunidad/getClases", method: "getClases" }, // extraer las clases
-                { path: "/oportunidad/getClases", method: "crear_Oportunidad" }, // extraer las clases
+                { path: "/oportunidad/crear_Oportunidad", method: "crear_Oportunidad" }, // Crear una nueva oportunidad
+                { path: "/oportunidad/getSpecificOportunidad", method: "getSpecificOportunidad" }, // Crear una nueva oportunidad
             ],
         },
 
@@ -179,11 +182,10 @@ module.exports = function (app) {
             category: "oportunidadNetsuite", // Categoría: Gestión de expedientes
             model: oportunidadNetsuite, // Modelo asociado a la gestión de expedientes
             routes: [
-                { path: "/oportunidad/crear_Oportunidad", method: "crear_Oportunidad" }, // extraer las clases
+                { path: "/oportunidad/crear_Oportunidad", method: "crear_Oportunidad" }, // Crear oportunidad en Netsuite
             ],
         },
     ];
-
 
     // Asignación de rutas dinámicamente
     routesConfig.forEach(({ category, model, routes }) => {

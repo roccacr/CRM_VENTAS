@@ -33,6 +33,23 @@ oportunidad.getClases = (dataParams) =>
 
 
 
+    
+/**
+ * Obtiene todas las clases de la base de datos mediante un procedimiento almacenado.
+ * @async
+ * @param {Object} dataParams - Objeto que contiene los parámetros necesarios para la consulta.
+ * @returns {Promise<Object>} - Resultado de la consulta de clases.
+ */
+oportunidad.getSpecificOportunidad = (dataParams) =>
+    executeStoredProcedure(
+        "38_EXTARER_INOFORMACION_OPORTUINIDAD", // Nombre del procedimiento almacenado que recupera las ubicaciones.
+        [dataParams.oportunidad], // Parámetros para identificar la clases.
+        dataParams.database, // Nombre de la base de datos a utilizar.
+    );
+
+
+
+
 
     
 

@@ -61,6 +61,20 @@ const updateFile = async (dataParams, database, id_expediente) => {
 
 
 
+/**
+ * Obtiene todos los archivos o expedientes.
+ * @async
+ * @param {Object} dataParams - Objeto que contiene los parámetros necesarios para la consulta.
+ * @returns {Promise<Object>} - Resultado de la consulta de archivos o expedientes.
+ */
+expedientes.getExpediente = (dataParams) =>
+    executeStoredProcedure(
+        "39_OBTENER_DATOS_EXPEDIENTE", // Nombre del procedimiento almacenado que recupera los expedientes.
+        [dataParams.id_expediente], // Parámetros que identifican el rol y el ID del administrador.
+        dataParams.database, // Nombre de la base de datos a utilizar.
+    );
+
+
 module.exports = {
     ...expedientes, // Desglosa las funciones del objeto expedientes.
     updateFile, // Exporta la función updateFile.
