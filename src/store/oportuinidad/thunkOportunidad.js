@@ -137,7 +137,7 @@ export const getSpecificOportunidad = (oportunidad) => {
             const result = await getSpecific_Oportunidad({ oportunidad });
 
             // Retorna el resultado de la operación, que puede incluir el estado o detalles de la oportunidad.
-            return result;
+            return result.data["0"]["0"];
         } catch (error) {
             // Captura cualquier error que ocurra durante la obtención de la oportunidad y lo muestra en la consola para facilitar la depuración.
             console.error("Error al obtener la oportunidad específica:", error);

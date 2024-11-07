@@ -1,4 +1,4 @@
-import { getAllExpedientes, updateExpediente } from "./Api_expedintes_Providers";
+import { getAllExpedientes, getExpedienteId, updateExpediente } from "./Api_expedintes_Providers";
 
 /**
  * Función para obtener y gestionar la lista de expedientes.
@@ -54,3 +54,31 @@ export const actualizarExpediente = (id_expediente) => {
     };
 };
 
+
+
+/**
+ * Función para obtener y gestionar la lista de expedientes.
+ *
+ * Esta función es un thunk (acción asíncrona) que despacha una solicitud para obtener
+ * la lista completa de expedientes a través de la función `getAllExpedientes()`.
+ * Utiliza Redux para actualizar el estado con los datos obtenidos.
+ *
+ * @returns {Function} - Devuelve una función asíncrona que maneja la lógica de obtención de datos.
+ */
+export const getExpediente = (id_expediente ) => {
+
+
+
+    return async () => {
+        try {
+            // Llama a la función getAllExpedientes para obtener la lista completa de expedientes
+            const result = await getExpedienteId({ id_expediente });
+
+
+            return result.data["0"]["0"]; // Devuelve los datos obtenidos para posibles usos adicionales.
+        } catch (error) {
+            // En caso de error, muestra el error en la consola para diagnóstico.
+            console.error("Error al cargar la lista completa de expedientes", error);
+        }
+    };
+};

@@ -9,71 +9,73 @@ import { getSpecificOportunidad } from "../../../../store/oportuinidad/thunkOpor
 
 export const View_oportuinidad_ver = () => {
     const dispatch = useDispatch();
+    // Estado para controlar la pestaña activa en la interfaz.
     const [activeTab, setActiveTab] = useState("infoPot");
 
+    // Función para cambiar la pestaña activa.
+    // Recibe la clave de la pestaña seleccionada ('tabKey') y actualiza el estado 'activeTab'.
     const handleTabClick = (tabKey) => {
         setActiveTab(tabKey); // Actualiza el estado con la pestaña seleccionada
     };
+
+    // Estado para almacenar los detalles del lead y la oportunidad seleccionados.
     const [leadDetails, setLeadDetails] = useState({});
     const [OportunidadDetails, setOportunidadDetails] = useState({});
 
 
 
+    // Función asíncrona para obtener los detalles de un lead específico.
+    const fetchLeadDetails = async (idLead) => {
+        try {
+            // Llama a la acción 'getSpecificLead' pasando el 'idLead' y espera su resultado.
+            const leadData = await dispatch(getSpecificLead(idLead));
 
-     const fetchLeadDetails = async (idLead) => {
-         try {
-             // Llama a la acción 'getSpecificLead' y actualiza el estado 'leadDetails'.
-             const leadData = await dispatch(getSpecificLead(idLead));
-
-             // Guarda todos los detalles del lead en el estado 'leadDetails' para su uso posterior.
-             setLeadDetails(leadData);
-         } catch (error) {
-             console.error("Error al obtener los detalles del lead:", error); // Manejo de errores.
-         }
+            // Almacena los detalles obtenidos en el estado 'leadDetails' para su uso en la vista.
+            setLeadDetails(leadData);
+        } catch (error) {
+            // Manejo de errores en caso de que la solicitud falle.
+            console.error("Error al obtener los detalles del lead:", error);
+        }
     };
-    
-      const fetchOportunidadDetails = async (idOportunidad) => {
-          try {
-              // Llama a la acción 'getSpecificOportunidad' y actualiza el estado 'oportunidadDetails'.
-              const oportunidadData = await dispatch(getSpecificOportunidad(idOportunidad));
 
-              console.log("🚀 -----------------------------------------------------------------------------------------------------🚀");
-              console.log("🚀 ~ file: View_oportuinidad_ver.jsx:40 ~ fetchOportunidadDetails ~ oportunidadData:", oportunidadData);
-              console.log("🚀 -----------------------------------------------------------------------------------------------------🚀");
+    // Función asíncrona para obtener los detalles de una oportunidad específica.
+    const fetchOportunidadDetails = async (idOportunidad) => {
+        try {
+            // Llama a la acción 'getSpecificOportunidad' pasando el 'idOportunidad' y espera su resultado.
+            const oportunidadData = await dispatch(getSpecificOportunidad(idOportunidad));
 
-
-              // Guarda todos los detalles de la oportunidad en el estado 'oportunidadDetails' para su uso posterior.
-              setOportunidadDetails(oportunidadData);
-          } catch (error) {
-              console.error("Error al obtener los detalles de la oportunidad:", error); // Manejo de errores.
-          }
-      };
-
-
+            // Almacena los detalles obtenidos en el estado 'oportunidadDetails' para su uso en la vista.
+            setOportunidadDetails(oportunidadData);
+        } catch (error) {
+            // Manejo de errores en caso de que la solicitud falle.
+            console.error("Error al obtener los detalles de la oportunidad:", error);
+        }
+    };
 
     // Función para obtener el valor de un parámetro específico de la URL.
     const getQueryParam = (param) => {
         // Crea una instancia de 'URLSearchParams' con los parámetros de la URL.
         const value = new URLSearchParams(location.search).get(param);
 
-        // Verifica si el valor es numérico. Si lo es, lo convierte a un número.
+        // Verifica si el valor es numérico; si lo es, lo convierte a número.
         if (value && !isNaN(value) && !isNaN(parseFloat(value))) {
-            return Number(value); // Retorna el valor como número.
+            return Number(value); // Retorna el valor como número si es posible.
         }
         return value; // Si no es numérico, retorna el valor original como cadena de texto.
     };
 
+    // Efecto para cargar detalles del lead y la oportunidad al montar el componente.
     useEffect(() => {
-        // Obtiene los parámetros 'idLead', 'idCalendar', y 'idDate' desde la URL.
+        // Obtiene los parámetros 'data' (para lead) y 'data2' (para oportunidad) desde la URL.
         const leadId = getQueryParam("data"); // Extrae el ID del lead desde la URL.
-        const oportuinidadId = getQueryParam("data2"); // Extrae el ID del lead desde la URL.
+        const oportuinidadId = getQueryParam("data2"); // Extrae el ID de la oportunidad desde la URL.
 
-        // Si 'leadId' es válido (mayor que 0), llama a la función para obtener los detalles del lead.
+        // Si 'leadId' es válido (mayor que 0), llama a las funciones para obtener los detalles correspondientes.
         if (leadId && leadId > 0) {
-            fetchLeadDetails(leadId); // Ejecuta la solicitud para obtener los detalles del lead.
-            fetchOportunidadDetails(oportuinidadId); // Ejecuta la solicitud para obtener los detalles del lead.
+            fetchLeadDetails(leadId); // Solicita los detalles del lead.
+            fetchOportunidadDetails(oportuinidadId); // Solicita los detalles de la oportunidad.
         }
-    }, []); // El efecto se ejecuta nuevamente si 'location.search' cambia.
+    }, []); // El efecto se ejecuta al montar el componente.
 
     return (
         <>
@@ -83,7 +85,7 @@ export const View_oportuinidad_ver = () => {
                     <div className="d-flex align-items-center">
                         <div className="flex-grow-1 me-3">
                             <h3 className="text-white">Vista general de la oportunidad </h3>
-                            <p className="text-white text-opacity-75 text-opa mb-0">#RDR1548</p>
+                            <p className="text-white text-opacity-75 text-opa mb-0">#{OportunidadDetails.tranid_oport}</p>
                         </div>
                         <div className="flex-shrink-0">
                             <img alt="img" loading="lazy" width="92" height="90" decoding="async" data-nimg="1" className="img-fluid wid-80" srcSet="" src="https://light-able-react-light.vercel.app/_next/image?url=%2F_next%2Fstatic%2Fmedia%2Fimg-accout-alert.a2294f08.png&w=96&q=75" style={{ color: "transparent" }} />
@@ -100,8 +102,8 @@ export const View_oportuinidad_ver = () => {
                                     <img alt="User image" loading="lazy" width="100" height="100" decoding="async" data-nimg="1" className="rounded-circle img-fluid wid-90 img-thumbnail" src="/opt.png" style={{ color: "transparent" }} />
                                     <i className="chat-badge bg-success me-2 mb-2"></i>
                                 </div>
-                                <h5 className="mb-0">1</h5>
-                                <p className="text-muted text-sm">1</p>
+                                <h5 className="mb-0">#{OportunidadDetails.tranid_oport}</h5>
+                                <p className="text-muted text-sm">{leadDetails.nombre_lead}</p>
                                 <ul className="list-inline mx-auto my-4">
                                     <blockquote className="blockquote  blockquote-reverse font-size-16 mb-0">{Object.keys(leadDetails).length > 0 && <ButtonActions leadData={leadDetails} className="mb-4" />}</blockquote>
 
@@ -153,7 +155,7 @@ export const View_oportuinidad_ver = () => {
                         <div className="position-relative card-body">
                             <div className="d-inline-flex align-items-center justify-content-between w-100 mb-3">
                                 <p className="mb-0 text-muted me-1">Codigo Oportunidad</p>
-                                <p className="mb-0">#asasasas</p>
+                                <p className="mb-0">#{OportunidadDetails.tranid_oport}</p>
                             </div>
                             <div className="d-inline-flex align-items-center justify-content-between w-100 mb-3">
                                 <p className="mb-0 text-muted me-1">Cliente Relacionado</p>
@@ -161,11 +163,18 @@ export const View_oportuinidad_ver = () => {
                             </div>
                             <div className="d-inline-flex align-items-center justify-content-between w-100 mb-3">
                                 <p className="mb-0 text-muted me-1">Estado Oportunidad</p>
-                                <p className="mb-0">1</p>
+                                <p
+                                    className="mb-0"
+                                    style={{
+                                        color: OportunidadDetails.estatus_oport === 1 ? "green" : "red",
+                                    }}
+                                >
+                                    {OportunidadDetails.estatus_oport === 1 ? "Activo" : "Inactivo"}
+                                </p>
                             </div>
                             <div className="d-inline-flex align-items-center justify-content-between w-100">
                                 <p className="mb-0 text-muted me-1">Metodo de Pago</p>
-                                <p className="mb-0">1</p>
+                                <p className="mb-0">{OportunidadDetails.nombre_motivo_pago}</p>
                             </div>
                         </div>
                     </div>
@@ -174,12 +183,12 @@ export const View_oportuinidad_ver = () => {
                     <div className="tab-content" id="user-set-tabContent">
                         {activeTab === "infoPot" && (
                             <div id="react-aria8348725315-:r6:-tabpane-infoPot" role="tabpanel" aria-labelledby="react-aria8348725315-:r6:-tab-infoPot" className="fade fade tab-pane active show">
-                                <InformacionBasicaOportunidad />
+                                <InformacionBasicaOportunidad oportuinidadId={OportunidadDetails} cliente={leadDetails.nombre_lead} />
                             </div>
                         )}
                         {activeTab === "Expediente" && (
                             <div id="react-aria8348725315-:r6:-tabpane-Expediente" role="tabpanel" aria-labelledby="react-aria8348725315-:r6:-tab-Expediente" className="fade fade tab-pane active show">
-                                <InformacionBasicaExpedienteUnidad />
+                                <InformacionBasicaExpedienteUnidad idExpediente={OportunidadDetails.exp_custbody38_oport} />
                             </div>
                         )}
                         {activeTab === "Estimaciones" && (

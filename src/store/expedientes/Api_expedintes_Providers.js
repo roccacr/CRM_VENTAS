@@ -43,3 +43,17 @@ export const updateExpediente = async ({id_expediente}) => {
     return await fetchData("expedientes/updateExpediente", requestData); // Ejecuta la solicitud y devuelve el resultado.
 };
 
+
+
+export const getExpedienteId = async ({ id_expediente }) => {
+    // Construcción del objeto de datos para la solicitud, combinando los datos comunes con los parámetros específicos.
+    const requestData = {
+        ...commonRequestData, // Datos comunes requeridos para cada solicitud (ej. tokens, configuraciones generales).
+        id_expediente,
+    };
+
+    // Realiza la solicitud a la API para obtener la lista de todos los expedientes nuevos.
+    // La URL "leads/getAllExpedientes" apunta al endpoint que maneja esta petición en el servidor.
+    // requestData contiene todos los parámetros necesarios para ejecutar la solicitud.
+    return await fetchData("expedientes/getExpediente", requestData); // Extrae toda la lista de expedientes nuevos.
+};
