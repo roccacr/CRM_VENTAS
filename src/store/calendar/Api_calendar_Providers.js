@@ -222,3 +222,21 @@ export const getAll_ListEvent = async ({ idnetsuite_admin, rol_admin, dateStart,
 };
 
 
+export const obtener_EventosCliente = async ({ leadDetails }) => {
+    // Construye el objeto de datos para la solicitud, combinando los datos comunes requeridos con el ID específico del cliente.
+    // commonRequestData contiene información como tokens de autenticación y configuraciones necesarias para todas las solicitudes a la API.
+    const requestData = {
+        ...commonRequestData, // Datos comunes para todas las solicitudes.
+        leadDetails, // Identificador único del cliente cuyos eventos se desean obtener.
+    };
+
+    // Realiza la solicitud a la API para obtener la lista de eventos asociados al cliente especificado.
+    // La URL "leads/eventos" representa el endpoint en el servidor donde se procesan las solicitudes de eventos.
+    // requestData contiene tanto los datos comunes como el ID del cliente, necesarios para ejecutar esta solicitud.
+    return await fetchData("leads/eventos", requestData); // Retorna la lista de eventos obtenida desde la API.
+};
+
+
+
+
+

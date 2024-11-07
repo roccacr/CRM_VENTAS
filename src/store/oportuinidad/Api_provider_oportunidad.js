@@ -96,3 +96,19 @@ export const getSpecific_Oportunidad = async ({ oportunidad }) => {
     // La URL "oportunidad/getSpecificOportunidad" apunta al endpoint que procesa esta petición en el servidor.
     return await fetchData("oportunidad/getSpecificOportunidad", requestData); // Retorna los datos obtenidos de la API sobre la oportunidad solicitada.
 };
+
+
+
+export const obtener_OportunidadesCliente = async ({ leadDetails }) => {
+    // Construye el objeto de datos para la solicitud, combinando los datos comunes requeridos con el ID específico del cliente.
+    // commonRequestData contiene información como tokens de autenticación y configuraciones necesarias para todas las solicitudes a la API.
+    const requestData = {
+        ...commonRequestData, // Datos comunes para todas las solicitudes.
+        leadDetails, // Identificador único del cliente cuyas oportunidades se desean obtener.
+    };
+
+    // Realiza la solicitud a la API para obtener la lista de oportunidades asociadas al cliente especificado.
+    // La URL "leads/oportunidades" representa el endpoint en el servidor donde se procesan las solicitudes de oportunidades.
+    // requestData contiene tanto los datos comunes como el ID del cliente, necesarios para ejecutar esta solicitud.
+    return await fetchData("leads/oportunidades", requestData); // Retorna la lista de oportunidades obtenida desde la API.
+};

@@ -7,6 +7,7 @@ import { Seguimiento } from "./Seguimiento";
 import { Eventos } from "./Eventos";
 import { Oportunidades } from "./Oportunidades";
 import { InfromacionCompleta } from "./InfromacionCompleta";
+import { useNavigate } from "react-router-dom";
 
 export const PerfilUsuario = () => {
     const dispatch = useDispatch();
@@ -51,7 +52,6 @@ export const PerfilUsuario = () => {
         }
         return value; // Si no es numérico, retorna el valor original como cadena de texto.
     };
-    
 
     useEffect(() => {
         // Obtiene los parámetros 'idLead', 'idCalendar', y 'idDate' desde la URL.
@@ -61,9 +61,13 @@ export const PerfilUsuario = () => {
         if (leadId && leadId > 0) {
             fetchLeadDetails(leadId); // Ejecuta la solicitud para obtener los detalles del lead.
             fetchBitacora(leadId); // Ejecuta la solicitud para obtener la bitácora del lead.
-
         }
     }, [location.search]); // El efecto se ejecuta nuevamente si 'location.search' cambia.
+    const navigate = useNavigate();
+    const handleClienteStatusChange = (estado) => {};
+    const irEditarCliente = (irEditarCliente) => {
+        navigate(`/leads/edit?id=${irEditarCliente}`);
+    };
     return (
         <>
             <HeaderContent leadInformations={leadDetails} />
@@ -83,22 +87,27 @@ export const PerfilUsuario = () => {
 
                                     <ul className="list-inline mx-auto my-4">
                                         <li className="list-inline-item">
-                                            <button className="btn btn-sm btn-dark">
+                                            <button onClick={() => irEditarCliente(leadDetails.idinterno_lead)} className="btn btn-sm btn-dark">
                                                 {" "}
                                                 <i className="ti ti-edit-circle f-24"></i> Editar Perfil{" "}
                                             </button>
                                         </li>
                                         <li className="list-inline-item">
-                                            <button className="btn btn-sm btn-danger">
-                                                {" "}
-                                                <i className="ti ti-x f-24"></i> Inactivar cliente{" "}
-                                            </button>
-                                        </li>
-                                        <li className="list-inline-item">
-                                            <button className="btn btn-sm btn-success">
-                                                {" "}
-                                                <i className="ti ti-checks f-24"></i> Inactivar cliente{" "}
-                                            </button>
+                                            {leadDetails.estado_lead === 1 ? (
+                                                <button
+                                                    className="btn btn-sm btn-danger"
+                                                    onClick={() => handleClienteStatusChange(0)} // Cambiar a "Inactivar cliente"
+                                                >
+                                                    <i className="ti ti-x f-24"></i> Inactivar cliente
+                                                </button>
+                                            ) : (
+                                                <button
+                                                    className="btn btn-sm btn-success"
+                                                    onClick={() => handleClienteStatusChange(1)} // Cambiar a "Activar cliente"
+                                                >
+                                                    <i className="ti ti-checks f-24"></i> Activar cliente
+                                                </button>
+                                            )}
                                         </li>
                                     </ul>
                                 </ul>
@@ -160,12 +169,12 @@ export const PerfilUsuario = () => {
                         )}
                         {activeTab === "Eventos" && (
                             <div id="react-aria8348725315-:r6:-tabpane-Eventos" role="tabpanel" aria-labelledby="react-aria8348725315-:r6:-tab-Eventos" className="fade fade tab-pane active show">
-                                <Eventos leadDetails={leadDetails} />
+                                <Eventos leadDetails={leadDetails.idinterno_lead} />
                             </div>
                         )}
                         {activeTab === "Oportunidades" && (
                             <div id="react-aria8348725315-:r6:-tabpane-Oportunidades" role="tabpanel" aria-labelledby="react-aria8348725315-:r6:-tab-Oportunidades" className="fade fade tab-pane active show">
-                                <Oportunidades leadDetails={leadDetails} />
+                                <Oportunidades leadDetails={leadDetails.idinterno_lead} />
                             </div>
                         )}
                         {activeTab === "Informacion" && (

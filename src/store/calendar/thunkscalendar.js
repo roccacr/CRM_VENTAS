@@ -1,5 +1,5 @@
 import { generateLeadBitacora } from "../leads/thunksLeads";
-import { createCalendarEvent, editCalendarEvent, get_CalendarFetch, get_dataEvents, get_event_Citas, getAll_ListEvent, update_event_MoveDate, update_Status_Event } from "./Api_calendar_Providers";
+import { createCalendarEvent, editCalendarEvent, get_CalendarFetch, get_dataEvents, get_event_Citas, getAll_ListEvent, obtener_EventosCliente, update_event_MoveDate, update_Status_Event } from "./Api_calendar_Providers";
 
 /**
  * Acción asincrónica para obtener la lista de nuevos calendarios.
@@ -341,6 +341,28 @@ export const getAllListEvent = (dateStart, dateEnd) => {
             return result.data["0"];
         } catch (error) {
             // En caso de error, registra el mensaje en la consola.
+            console.error("Error al cargar los nuevos calendarios:", error);
+        }
+    };
+};
+
+
+
+export const obtenerEventosCliente = (leadDetails) => {
+    return async () => {
+        try {
+            // Llama a la función `obtener_EventosCliente` para realizar la solicitud a la API.
+            // La función recibe el ID del cliente (`idCliente`) y retorna los eventos
+            // asociados a dicho cliente según las configuraciones de la API.
+            const result = await obtener_EventosCliente({ leadDetails });
+
+            // Devuelve el primer conjunto de datos de la respuesta (`result.data["0"]`)
+            // para su uso en la aplicación. Esto asume que el resultado de la API
+            // es un array u objeto en el que el primer elemento contiene la información necesaria.
+            return result.data.data;
+        } catch (error) {
+            // En caso de que ocurra un error durante la solicitud, se captura y se imprime el mensaje de error
+            // en la consola para facilitar la identificación de problemas.
             console.error("Error al cargar los nuevos calendarios:", error);
         }
     };

@@ -24,7 +24,7 @@ export const Seguimiento = ({ BitacoraLeads }) => {
 
         return { formattedDate, formattedTime };
     };
-    const sortedBitacora = [...BitacoraLeads].sort((a, b) => new Date(a.fecha_creado_bit) - new Date(b.fecha_creado_bit));
+    const sortedBitacora = [...BitacoraLeads].sort((a, b) => new Date(b.fecha_creado_bit) - new Date(a.fecha_creado_bit));
 
     return (
         <>
@@ -61,12 +61,8 @@ export const Seguimiento = ({ BitacoraLeads }) => {
                                                 <div className="d-flex align-items-center">
                                                     <h5 className="f-w-300 d-flex align-items-center m-b-0">Detalles</h5>
                                                 </div>
-                                                <p className="text-muted m-b-0">
-                                                    <h6 className="mb-0">Accion: </h6> {entry.detalle_bit}
-                                                </p>
-                                                <p className="text-muted m-b-0">
-                                                    <h6 className="mb-0">Motivo: </h6> {entry.nombre_caida}
-                                                </p>
+                                                <h6 className="mb-0">Accion: </h6> {entry.detalle_bit}
+                                                <h6 className="mb-0">Motivo: </h6> {entry.nombre_caida}
                                                 <br />
                                                 <h6 className="mb-0 me-2"> {formattedDate} </h6>
                                             </div>
