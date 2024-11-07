@@ -22,8 +22,6 @@ export const View_oportuinidad_ver = () => {
     const [leadDetails, setLeadDetails] = useState({});
     const [OportunidadDetails, setOportunidadDetails] = useState({});
 
-
-
     // Función asíncrona para obtener los detalles de un lead específico.
     const fetchLeadDetails = async (idLead) => {
         try {
@@ -77,9 +75,14 @@ export const View_oportuinidad_ver = () => {
         }
     }, []); // El efecto se ejecuta al montar el componente.
 
+    const handleStatusChange = (status) => {
+        alert("Cambiando el estado de la oportunidad");
+    };
+    const handleProbabilidadChange = (probabilidad) => {
+        alert("Cambiando la probabilidad de la oportunidad");
+    };
     return (
         <>
-            {" "}
             <div className="bg-dark card">
                 <div className="card-body">
                     <div className="d-flex align-items-center">
@@ -115,16 +118,40 @@ export const View_oportuinidad_ver = () => {
                                             </button>
                                         </li>
                                         <li className="list-inline-item">
-                                            <button className="btn btn-sm btn-danger">
-                                                {" "}
-                                                <i className="ti ti-x f-24"></i> Oportunidades + probable{" "}
-                                            </button>
+                                            {OportunidadDetails.chek_oport === 1 ? (
+                                                <button
+                                                    className="btn btn-sm btn-success"
+                                                    onClick={() => handleProbabilidadChange(0)} // Cambia a "Oportunidades + probable"
+                                                >
+                                                    <i className="ti ti-checks f-24"></i> Oportunidades + probable
+                                                </button>
+                                            ) : (
+                                                <button
+                                                    className="btn btn-sm btn-danger"
+                                                    onClick={() => handleProbabilidadChange(0)} // Cambia a "Oportunidades - probable"
+                                                >
+                                                    <i className="ti ti-x f-24"></i> Oportunidades - probable
+                                                </button>
+                                            )}
                                         </li>
+                                    </ul>
+                                    <ul className="list-inline mx-auto my-4">
                                         <li className="list-inline-item">
-                                            <button className="btn btn-sm btn-success">
-                                                {" "}
-                                                <i className="ti ti-checks f-24"></i> Oportunidades - probable{" "}
-                                            </button>
+                                            {OportunidadDetails.estatus_oport === 1 ? (
+                                                <button
+                                                    className="btn btn-sm btn-danger"
+                                                    onClick={() => handleStatusChange(0)} // Función para cambiar el estado a 0 (Inactivar)
+                                                >
+                                                    <i className="ti ti-x f-24"></i> Inactivar Oportunidad
+                                                </button>
+                                            ) : (
+                                                <button
+                                                    className="btn btn-sm btn-success"
+                                                    onClick={() => handleStatusChange(1)} // Función para cambiar el estado a 1 (Activar)
+                                                >
+                                                    <i className="ti ti-edit-circle f-24"></i> Activar Oportunidad
+                                                </button>
+                                            )}
                                         </li>
                                     </ul>
                                 </ul>
