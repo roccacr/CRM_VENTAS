@@ -173,10 +173,12 @@ module.exports = function (app) {
             category: "oportunidad", // Categoría: Gestión de expedientes
             model: oportunidad, // Modelo asociado a la gestión de expedientes
             routes: [
-                { path: "/oportunidad/getUbicaciones", method: "getUbicaciones" }, // extraer las ubicaciones
-                { path: "/oportunidad/getClases", method: "getClases" }, // extraer las clases
-                { path: "/oportunidad/crear_Oportunidad", method: "crear_Oportunidad" }, // Crear una nueva oportunidad
-                { path: "/oportunidad/getSpecificOportunidad", method: "getSpecificOportunidad" }, // Crear una nueva oportunidad
+                { path: "/oportunidad/getUbicaciones", method: "getUbicaciones" }, // Retrieve available locations for opportunities
+                { path: "/oportunidad/getClases", method: "getClases" }, // Retrieve available classes for opportunities
+                { path: "/oportunidad/crear_Oportunidad", method: "crear_Oportunidad" }, // Create a new opportunity
+                { path: "/oportunidad/getSpecificOportunidad", method: "getSpecificOportunidad" }, // Retrieve details of a specific opportunity
+                { path: "/oportunidad/updateOpportunity_Probability", method: "updateOpportunity_Probability" }, // Update the probability of success for an opportunity
+                { path: "/oportunidad/updateOpportunity_Status", method: "updateOpportunity_Status" }, // Update the status of an opportunity
             ],
         },
 
