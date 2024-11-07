@@ -127,6 +127,8 @@ module.exports = function (app) {
                 { path: "/leads/getDataSelect_Admins", method: "getDataSelect_Admins" }, // Ruta para obtener la lista de administradores
                 { path: "/leads/getDataSelect_Corredor", method: "getDataSelect_Corredor" }, // Ruta para obtener la lista de corredores
                 { path: "/leads/getDataInformations_Lead", method: "getDataInformations_Lead" }, // Ruta para obtener información adicional de un lead
+                { path: "/leads/eventos", method: "eventos" }, // Ruta para obtener los eventos del cliente
+                { path: "/leads/oportunidades", method: "oportunidades" }, // Ruta para obtener los eventos del cliente
             ],
         },
         {

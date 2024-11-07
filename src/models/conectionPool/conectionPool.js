@@ -60,6 +60,25 @@ const executeStoredProcedure = async (procedureName, params, database) => {
 };
 
 /**
+ * Ejecuta una consulta SQL arbitraria proporcionada y retorna el resultado.
+ * @async
+ * @param {string} query - Consulta SQL completa a ejecutar.
+ * @param {Array} params - Array de parámetros para la consulta (opcional).
+ * @param {string} database - Nombre de la base de datos a utilizar.
+ * @returns {Promise<Object>} - Resultado de la ejecución de la consulta.
+ */
+const executeQuery = async (query, params = [], database) => {
+    return handleDatabaseOperation(async (connection) => {
+        const [rows] = await connection.execute(query, params);
+        return {
+            ok: true,
+            statusCode: 200,
+            data: rows, // Devuelve los resultados de la consulta SQL.
+        };
+    }, database);
+};
+
+/**
  * Cierra todos los pools de conexiones.
  */
 const closePools = async () => {
@@ -77,5 +96,6 @@ module.exports = {
     getPool,
     handleDatabaseOperation,
     executeStoredProcedure,
+    executeQuery, // Exporta la nueva función para ejecutar consultas arbitrarias
     closePools,
 };

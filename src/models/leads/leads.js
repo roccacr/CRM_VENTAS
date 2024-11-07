@@ -1,4 +1,4 @@
-const { executeStoredProcedure } = require("../conectionPool/conectionPool");
+const { executeStoredProcedure, executeQuery } = require("../conectionPool/conectionPool");
 
 const leads = {}; // Objeto para agrupar todas las funciones relacionadas con 'leads'.
 
@@ -332,6 +332,34 @@ leads.getDataInformations_Lead = (dataParams) => {
         dataParams.database, // Base de datos donde se ejecutará el procedimiento.
     );
 };
+
+
+
+// Función para obtener eventos de un lead específico
+leads.eventos = (dataParams) => {
+    const query = "SELECT * FROM calendars WHERE id_lead = ?"; // Consulta SQL para eventos de un lead
+    const params = [dataParams.leadDetails]; // Parámetro id del lead
+
+    return executeQuery(
+        query, // Consulta SQL
+        params, // Parámetros de la consulta
+        dataParams.database // Base de datos donde se ejecuta
+    );
+};
+
+
+// Función para obtener oportunidades de un lead específico
+leads.oportunidades = (dataParams) => {
+    const query = "SELECT * FROM oportunidades WHERE entity_oport= ?"; // Consulta SQL para obtener oportunidades de un lead
+    const params = [dataParams.leadDetails]; // Parámetro id del lead
+
+    return executeQuery(
+        query, // Consulta SQL
+        params, // Parámetros de la consulta
+        dataParams.database, // Base de datos donde se ejecuta
+    );
+};
+
 
 
 module.exports = leads; // Exporta el objeto 'leads' que contiene todas las funciones definidas.
