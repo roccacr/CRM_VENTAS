@@ -1,8 +1,5 @@
 export const InfromacionCompleta = ({ leadDetails }) => {
 
-    console.log("🚀 --------------------------------------------------------------------------------------🚀");
-    console.log("🚀 ~ file: InfromacionCompleta.jsx:3 ~ InfromacionCompleta ~ leadDetails:", leadDetails);
-    console.log("🚀 --------------------------------------------------------------------------------------🚀");
 
     const informacionBasica = [
         { label: "Nombre Completo", value: leadDetails.nombre_lead },

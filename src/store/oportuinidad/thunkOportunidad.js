@@ -1,5 +1,5 @@
 import { generateLeadBitacora } from "../leads/thunksLeads";
-import { get_Ubicaciones, get_Clases, get_Oportunidades, crear_Oportunidad, getSpecific_Oportunidad, obtener_OportunidadesCliente } from "./Api_provider_oportunidad";
+import { get_Ubicaciones, get_Clases, get_Oportunidades, crear_Oportunidad, getSpecific_Oportunidad, obtener_OportunidadesCliente, updateOpportunity_Probability, updateOpportunity_Status } from "./Api_provider_oportunidad";
 
 /**
  * Función que retorna una función asíncrona para obtener ubicaciones por ID.
@@ -155,11 +155,6 @@ export const obtenerOportunidadesCliente = (leadDetails) => {
             // asociadas a dicho cliente según las configuraciones de la API.
             const result = await obtener_OportunidadesCliente({ leadDetails });
 
-            console.log("🚀 -------------------------------------------------------------🚀");
-            console.log("🚀 ~ file: thunkOportunidad.js:158 ~ return ~ result:", result);
-            console.log("🚀 -------------------------------------------------------------🚀");
-
-
             // Devuelve el conjunto de datos de la respuesta (`result.data.data`)
             // para su uso en la aplicación. Esto asume que el resultado de la API
             // es un array u objeto en el que el primer elemento contiene la información necesaria.
@@ -172,3 +167,45 @@ export const obtenerOportunidadesCliente = (leadDetails) => {
     };
 };
 
+
+
+
+export const updateOpportunityProbability = (probabilidad, idOportunidad) => {
+    return async () => {
+        try {
+            // Llama a la función `updateOpportunity_Probability` para realizar la actualización de probabilidad
+            // de una oportunidad en la base de datos. La función recibe la probabilidad actualizada (`probabilidad`)
+            // y el ID de la oportunidad (`idOportunidad`) como parámetros.
+            const result = await updateOpportunity_Probability({ probabilidad, idOportunidad });
+
+            // Retorna los datos actualizados (`result.data.data`) para que puedan ser utilizados
+            // en la aplicación. Este resultado asume que `result.data.data` contiene la información
+            // relevante después de la actualización.
+            return result.data.data;
+        } catch (error) {
+            // Captura cualquier error que ocurra durante la solicitud y lo muestra en la consola.
+            // Esto facilita la identificación de problemas al intentar actualizar la probabilidad de la oportunidad.
+            console.error("Error al actualizar la probabilidad de la oportunidad:", error);
+        }
+    };
+};
+
+export const updateOpportunityStatus = (estado, idOportunidad) => {
+
+    return async () => {
+        try {
+            // Calls the `updateOpportunity_Status` function to update the status
+            // of an opportunity in the database. This function receives the updated
+            // status (`estado`) and the opportunity ID (`idOportunidad`) as parameters.
+            const result = await updateOpportunity_Status({ estado, idOportunidad });
+
+            // Returns the updated data (`result.data.data`) to be used in the application.
+            // This assumes `result.data.data` contains the relevant information after the update.
+            return result.data.data;
+        } catch (error) {
+            // Catches any error that occurs during the request and logs it to the console.
+            // This helps in identifying issues when trying to update the status of the opportunity.
+            console.error("Error updating the opportunity status:", error);
+        }
+    };
+};

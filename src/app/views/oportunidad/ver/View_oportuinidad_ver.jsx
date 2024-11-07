@@ -5,7 +5,8 @@ import { EstimacionesOportunidad } from "./EstimacionesOportunidad";
 import { getSpecificLead } from "../../../../store/leads/thunksLeads";
 import { useDispatch } from "react-redux";
 import { ButtonActions } from "../../../components/buttonAccions/buttonAccions";
-import { getSpecificOportunidad } from "../../../../store/oportuinidad/thunkOportunidad";
+import { getSpecificOportunidad, updateOpportunityProbability, updateOpportunityStatus } from "../../../../store/oportuinidad/thunkOportunidad";
+import Swal from "sweetalert2";
 
 export const View_oportuinidad_ver = () => {
     const dispatch = useDispatch();
@@ -42,6 +43,7 @@ export const View_oportuinidad_ver = () => {
             // Llama a la acción 'getSpecificOportunidad' pasando el 'idOportunidad' y espera su resultado.
             const oportunidadData = await dispatch(getSpecificOportunidad(idOportunidad));
 
+
             // Almacena los detalles obtenidos en el estado 'oportunidadDetails' para su uso en la vista.
             setOportunidadDetails(oportunidadData);
         } catch (error) {
@@ -75,12 +77,62 @@ export const View_oportuinidad_ver = () => {
         }
     }, []); // El efecto se ejecuta al montar el componente.
 
-    const handleStatusChange = (status) => {
-        alert("Cambiando el estado de la oportunidad");
+   const handleStatusChange = (estado, idOportunidad) => {
+       // Preguntar al usuario si desea cambiar el estado de la oportunidad
+       Swal.fire({
+           title: "¿Deseas cambiar el estado de la oportunidad?",
+           text: "Esta acción actualizará el estado de esta oportunidad.",
+           icon: "warning",
+           showCancelButton: true,
+           confirmButtonText: "Sí, cambiar",
+           cancelButtonText: "Cancelar",
+       }).then((result) => {
+           // Si el usuario confirma, ejecutamos el dispatch para actualizar el estado
+           if (result.isConfirmed) {
+               dispatch(updateOpportunityStatus(estado, idOportunidad)); // Llamada a la acción que actualiza el estado de la oportunidad
+
+               // Confirmación de cambio de estado
+               Swal.fire({
+                   title: "¡Estado actualizado!",
+                   text: "El estado de la oportunidad ha sido cambiado con éxito.",
+                   icon: "success",
+                   timer: 1500,
+                   showConfirmButton: false,
+               }).then(() => {
+                   window.location.reload(); // Recargar la página para reflejar los cambios
+               });
+           }
+       });
+   };
+
+    const handleProbabilidadChange = (probabilidad, idOportunidad) => {
+        // Preguntar al usuario si desea cambiar la probabilidad
+        Swal.fire({
+            title: "¿Deseas cambiar la probabilidad?",
+            text: "Esta acción actualizará la probabilidad de esta oportunidad.",
+            icon: "warning",
+            showCancelButton: true,
+            confirmButtonText: "Sí, cambiar",
+            cancelButtonText: "Cancelar",
+        }).then((result) => {
+            // Si el usuario confirma, ejecutamos el dispatch
+            if (result.isConfirmed) {
+                dispatch(updateOpportunityProbability(probabilidad, idOportunidad));
+
+                // Confirmación de cambio
+                Swal.fire({
+                    title: "¡Probabilidad actualizada!",
+                    text: "La probabilidad de la oportunidad ha sido cambiada.",
+                    icon: "success",
+                    timer: 1500,
+                    showConfirmButton: false,
+                }).then(() => {
+                    window.location.reload();
+                });
+            }
+        });
     };
-    const handleProbabilidadChange = (probabilidad) => {
-        alert("Cambiando la probabilidad de la oportunidad");
-    };
+
     return (
         <>
             <div className="bg-dark card">
@@ -118,17 +170,17 @@ export const View_oportuinidad_ver = () => {
                                             </button>
                                         </li>
                                         <li className="list-inline-item">
-                                            {OportunidadDetails.chek_oport === 1 ? (
+                                            {OportunidadDetails?.chek_oport === 0 ? (
                                                 <button
                                                     className="btn btn-sm btn-success"
-                                                    onClick={() => handleProbabilidadChange(0)} // Cambia a "Oportunidades + probable"
+                                                    onClick={() => handleProbabilidadChange(1, OportunidadDetails.id_oportunidad_oport)} // Cambia a "Oportunidades + probable"
                                                 >
-                                                    <i className="ti ti-checks f-24"></i> Oportunidades + probable
+                                                    <i className="ti ti-check f-24"></i> Oportunidades + probable
                                                 </button>
                                             ) : (
                                                 <button
                                                     className="btn btn-sm btn-danger"
-                                                    onClick={() => handleProbabilidadChange(0)} // Cambia a "Oportunidades - probable"
+                                                    onClick={() => handleProbabilidadChange(0, OportunidadDetails.id_oportunidad_oport)} // Cambia a "Oportunidades - probable"
                                                 >
                                                     <i className="ti ti-x f-24"></i> Oportunidades - probable
                                                 </button>
@@ -140,14 +192,14 @@ export const View_oportuinidad_ver = () => {
                                             {OportunidadDetails.estatus_oport === 1 ? (
                                                 <button
                                                     className="btn btn-sm btn-danger"
-                                                    onClick={() => handleStatusChange(0)} // Función para cambiar el estado a 0 (Inactivar)
+                                                    onClick={() => handleStatusChange(0, OportunidadDetails.id_oportunidad_oport)} // Función para cambiar el estado a 0 (Inactivar)
                                                 >
                                                     <i className="ti ti-x f-24"></i> Inactivar Oportunidad
                                                 </button>
                                             ) : (
                                                 <button
                                                     className="btn btn-sm btn-success"
-                                                    onClick={() => handleStatusChange(1)} // Función para cambiar el estado a 1 (Activar)
+                                                    onClick={() => handleStatusChange(1, OportunidadDetails.id_oportunidad_oport)} // Función para cambiar el estado a 1 (Activar)
                                                 >
                                                     <i className="ti ti-edit-circle f-24"></i> Activar Oportunidad
                                                 </button>

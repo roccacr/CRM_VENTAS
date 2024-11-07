@@ -112,3 +112,44 @@ export const obtener_OportunidadesCliente = async ({ leadDetails }) => {
     // requestData contiene tanto los datos comunes como el ID del cliente, necesarios para ejecutar esta solicitud.
     return await fetchData("leads/oportunidades", requestData); // Retorna la lista de oportunidades obtenida desde la API.
 };
+
+
+
+
+export const updateOpportunity_Probability = async ({ probabilidad, idOportunidad }) => {
+    // Construye el objeto de datos para la solicitud, incluyendo tanto los datos comunes necesarios
+    // como los parámetros específicos para actualizar la probabilidad de una oportunidad.
+    // commonRequestData podría contener información como tokens de autenticación y configuraciones
+    // necesarias para todas las solicitudes a la API.
+    const requestData = {
+        ...commonRequestData, // Datos comunes requeridos en todas las solicitudes.
+        probabilidad, // Nueva probabilidad de la oportunidad.
+        idOportunidad, // Identificador único de la oportunidad a actualizar.
+    };
+
+    // Realiza la solicitud a la API para actualizar la probabilidad de la oportunidad especificada.
+    // La URL "oportunidad/updateOpportunity_Probability" es el endpoint en el servidor para procesar
+    // esta actualización. requestData contiene tanto los datos comunes como los parámetros específicos necesarios.
+    return await fetchData("oportunidad/updateOpportunity_Probability", requestData); // Retorna el resultado de la actualización desde la API.
+};
+
+
+export const updateOpportunity_Status = async ({ estado, idOportunidad }) => {
+    // Build the request data object, including both common data required for all requests
+    // and specific parameters to update the status of an opportunity.
+    // commonRequestData may contain information such as authentication tokens and
+    // configuration settings required for all API requests.
+    const requestData = {
+        ...commonRequestData, // Common data required for all requests.
+        estado, // New status of the opportunity.
+        idOportunidad, // Unique identifier of the opportunity to update.
+    };
+
+    // Send a request to the API to update the status of the specified opportunity.
+    // The endpoint "oportunidad/updateOpportunity_Status" on the server processes
+    // this update. requestData contains both common and specific parameters needed.
+    return await fetchData("oportunidad/updateOpportunity_Status", requestData); // Returns the result of the API update.
+};
+
+
+
