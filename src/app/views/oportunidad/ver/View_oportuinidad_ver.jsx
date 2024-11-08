@@ -7,6 +7,7 @@ import { useDispatch } from "react-redux";
 import { ButtonActions } from "../../../components/buttonAccions/buttonAccions";
 import { getSpecificOportunidad, updateOpportunityProbability, updateOpportunityStatus } from "../../../../store/oportuinidad/thunkOportunidad";
 import Swal from "sweetalert2";
+import { ModalEditarOportunidad } from "../EditarOportunidad/ModalEditarOportunidad";
 
 export const View_oportuinidad_ver = () => {
     const dispatch = useDispatch();
@@ -43,7 +44,6 @@ export const View_oportuinidad_ver = () => {
             // Llama a la acción 'getSpecificOportunidad' pasando el 'idOportunidad' y espera su resultado.
             const oportunidadData = await dispatch(getSpecificOportunidad(idOportunidad));
 
-
             // Almacena los detalles obtenidos en el estado 'oportunidadDetails' para su uso en la vista.
             setOportunidadDetails(oportunidadData);
         } catch (error) {
@@ -77,33 +77,33 @@ export const View_oportuinidad_ver = () => {
         }
     }, []); // El efecto se ejecuta al montar el componente.
 
-   const handleStatusChange = (estado, idOportunidad) => {
-       // Preguntar al usuario si desea cambiar el estado de la oportunidad
-       Swal.fire({
-           title: "¿Deseas cambiar el estado de la oportunidad?",
-           text: "Esta acción actualizará el estado de esta oportunidad.",
-           icon: "warning",
-           showCancelButton: true,
-           confirmButtonText: "Sí, cambiar",
-           cancelButtonText: "Cancelar",
-       }).then((result) => {
-           // Si el usuario confirma, ejecutamos el dispatch para actualizar el estado
-           if (result.isConfirmed) {
-               dispatch(updateOpportunityStatus(estado, idOportunidad)); // Llamada a la acción que actualiza el estado de la oportunidad
+    const handleStatusChange = (estado, idOportunidad) => {
+        // Preguntar al usuario si desea cambiar el estado de la oportunidad
+        Swal.fire({
+            title: "¿Deseas cambiar el estado de la oportunidad?",
+            text: "Esta acción actualizará el estado de esta oportunidad.",
+            icon: "warning",
+            showCancelButton: true,
+            confirmButtonText: "Sí, cambiar",
+            cancelButtonText: "Cancelar",
+        }).then((result) => {
+            // Si el usuario confirma, ejecutamos el dispatch para actualizar el estado
+            if (result.isConfirmed) {
+                dispatch(updateOpportunityStatus(estado, idOportunidad)); // Llamada a la acción que actualiza el estado de la oportunidad
 
-               // Confirmación de cambio de estado
-               Swal.fire({
-                   title: "¡Estado actualizado!",
-                   text: "El estado de la oportunidad ha sido cambiado con éxito.",
-                   icon: "success",
-                   timer: 1500,
-                   showConfirmButton: false,
-               }).then(() => {
-                   fetchOportunidadDetails(idOportunidad); // Solicita los detalles de la oportunidad.
-               });
-           }
-       });
-   };
+                // Confirmación de cambio de estado
+                Swal.fire({
+                    title: "¡Estado actualizado!",
+                    text: "El estado de la oportunidad ha sido cambiado con éxito.",
+                    icon: "success",
+                    timer: 1500,
+                    showConfirmButton: false,
+                }).then(() => {
+                    fetchOportunidadDetails(idOportunidad); // Solicita los detalles de la oportunidad.
+                });
+            }
+        });
+    };
 
     const handleProbabilidadChange = (probabilidad, idOportunidad) => {
         // Preguntar al usuario si desea cambiar la probabilidad
@@ -131,6 +131,19 @@ export const View_oportuinidad_ver = () => {
                 });
             }
         });
+    };
+
+    // Estado para controlar la visibilidad del modal
+    const [isModalOpen, setIsModalOpen] = useState(false);
+
+    // Función para abrir el modal
+    const handleOpenModal = () => {
+        setIsModalOpen(true);
+    };
+
+    // Función para cerrar el modal
+    const handleCloseModal = () => {
+        setIsModalOpen(false);
     };
 
     return (
@@ -164,9 +177,8 @@ export const View_oportuinidad_ver = () => {
 
                                     <ul className="list-inline mx-auto my-4">
                                         <li className="list-inline-item">
-                                            <button className="btn btn-sm btn-dark">
-                                                {" "}
-                                                <i className="ti ti-edit-circle f-24"></i> Editar Oportunidad{" "}
+                                            <button className="btn btn-sm btn-dark" onClick={handleOpenModal}>
+                                                <i className="ti ti-edit-circle f-24"></i> Editar Oportunidad
                                             </button>
                                         </li>
                                         <li className="list-inline-item">
@@ -278,6 +290,7 @@ export const View_oportuinidad_ver = () => {
                     </div>
                 </div>
             </div>
+            <ModalEditarOportunidad open={isModalOpen} onClose={handleCloseModal} OportunidadDetails={OportunidadDetails} />
         </>
     );
 };

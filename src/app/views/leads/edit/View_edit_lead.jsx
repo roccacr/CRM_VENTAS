@@ -315,12 +315,18 @@ export const View_edit_lead = () => {
                                     </div>
                                     <div className="mb-3">
                                         <label className="required form-label">Zona de recidencia</label>
-                                        <select id="momento_compra" name="momento_compra" value={formData.momento_compra} onChange={handleInputChange} className="form-control select2" required>
-                                            <option value="">Seleccionar recidencia</option>
-                                            {/* <option value="Pre-venta">Pre-venta</option>
-                                            <option value="Proyecto iniciado">Proyecto iniciado</option>
-                                            <option value="En obra gris">En obra gris</option>
-                                            <option value="Entrega inmediata">Entrega inmediata</option> */}
+                                        <select id="zona_residencia" name="zona_residencia" value={formData.zona_residencia} onChange={handleInputChange} className="form-control select2" required>
+                                            <option value="">Seleccionar Zona de Residencia</option>
+                                            <option value="Guanacaste">Guanacaste</option>
+                                            <option value="Limón">Limón</option>
+                                            <option value="Puntarenas">Puntarenas</option>
+                                            <option value="Cartago">Cartago</option>
+                                            <option value="Zona Sur">Zona Sur</option>
+                                            <option value="Zona Norte">Zona Norte</option>
+                                            <option value="GAM Este">GAM Este</option>
+                                            <option value="GAM Oeste">GAM Oeste</option>
+                                            <option value="GAM Norte">GAM Norte</option>
+                                            <option value="GAM Sur">GAM Sur</option>
                                         </select>
                                     </div>
                                 </div>
