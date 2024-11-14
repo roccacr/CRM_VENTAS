@@ -62,7 +62,7 @@ export const crear_Oportunidad = async ({ formValue, clientData }) => {
  * @param {boolean} isMode - Indicador que define si se aplica algún modo especial en la búsqueda de oportunidades.
  * @returns {Promise} - Retorna los datos de las oportunidades obtenidos de la API.
  */
-export const get_Oportunidades = async ({ idLead, startDate, endDate, isMode }) => {
+export const get_Oportunidades = async ({ idLead, startDate, endDate, isMode, idnetsuite_admin }) => {
     // Construye el objeto de datos para la solicitud, combinando los datos comunes con los parámetros específicos.
     const requestData = {
         ...commonRequestData, // Datos comunes requeridos para cada solicitud (como tokens de autenticación o configuraciones generales).
@@ -70,6 +70,7 @@ export const get_Oportunidades = async ({ idLead, startDate, endDate, isMode }) 
         startDate, // Fecha de inicio para filtrar oportunidades en un rango de fechas.
         endDate, // Fecha de fin para filtrar oportunidades en un rango de fechas.
         isMode, // Parámetro adicional que determina el modo de búsqueda.
+        idnetsuite_admin,
     };
 
     // Realiza una solicitud a la API para obtener las oportunidades correspondientes al lead y rango de fechas proporcionados.

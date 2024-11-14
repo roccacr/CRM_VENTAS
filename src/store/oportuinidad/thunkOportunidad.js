@@ -71,13 +71,15 @@ export const crearOportunidad = (formValue, clientData) => {
  * @returns {function} - Una función asíncrona que retorna los datos de las oportunidades.
  */
 export const getOportunidades = (idLead, startDate, endDate, isMode) => {
-    return async () => {
+    return async (dispatch, getState) => {
+        // Obtiene el ID del administrador Netsuite desde el estado de autenticación actual.
+        const { idnetsuite_admin } = getState().auth;
         try {
             // Llama a la API para obtener las oportunidades filtradas por ID de lead, rango de fechas y modo.
-            const result = await get_Oportunidades({ idLead, startDate, endDate, isMode });
+            const result = await get_Oportunidades({ idLead, startDate, endDate, isMode, idnetsuite_admin });
 
             // Retorna el primer elemento de los datos obtenidos, ya que se espera que sea la oportunidad requerida.
-            return result.data["0"];
+            return result.data.data;
         } catch (error) {
             // Captura cualquier error que ocurra durante la obtención de las oportunidades y lo muestra en la consola para facilitar la depuración.
             console.error("Error al cargar las oportunidades:", error);

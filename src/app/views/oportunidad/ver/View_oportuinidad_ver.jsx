@@ -153,7 +153,7 @@ export const View_oportuinidad_ver = () => {
                     <div className="d-flex align-items-center">
                         <div className="flex-grow-1 me-3">
                             <h3 className="text-white">Vista general de la oportunidad </h3>
-                            <p className="text-white text-opacity-75 text-opa mb-0">#{OportunidadDetails.tranid_oport}</p>
+                            <p className="text-white text-opacity-75 text-opa mb-0">#{OportunidadDetails.tranid_oport || ""}</p>
                         </div>
                         <div className="flex-shrink-0">
                             <img alt="img" loading="lazy" width="92" height="90" decoding="async" data-nimg="1" className="img-fluid wid-80" srcSet="" src="https://light-able-react-light.vercel.app/_next/image?url=%2F_next%2Fstatic%2Fmedia%2Fimg-accout-alert.a2294f08.png&w=96&q=75" style={{ color: "transparent" }} />
@@ -170,7 +170,7 @@ export const View_oportuinidad_ver = () => {
                                     <img alt="User image" loading="lazy" width="100" height="100" decoding="async" data-nimg="1" className="rounded-circle img-fluid wid-90 img-thumbnail" src="/opt.png" style={{ color: "transparent" }} />
                                     <i className="chat-badge bg-success me-2 mb-2"></i>
                                 </div>
-                                <h5 className="mb-0">#{OportunidadDetails.tranid_oport}</h5>
+                                <h5 className="mb-0">#{OportunidadDetails.tranid_oport || ""}</h5>
                                 <p className="text-muted text-sm">{leadDetails.nombre_lead}</p>
                                 <ul className="list-inline mx-auto my-4">
                                     <blockquote className="blockquote  blockquote-reverse font-size-16 mb-0">{Object.keys(leadDetails).length > 0 && <ButtonActions leadData={leadDetails} className="mb-4" />}</blockquote>
@@ -246,7 +246,7 @@ export const View_oportuinidad_ver = () => {
                         <div className="position-relative card-body">
                             <div className="d-inline-flex align-items-center justify-content-between w-100 mb-3">
                                 <p className="mb-0 text-muted me-1">Codigo Oportunidad</p>
-                                <p className="mb-0">#{OportunidadDetails.tranid_oport}</p>
+                                <p className="mb-0">#{OportunidadDetails.tranid_oport || "0"}</p>
                             </div>
                             <div className="d-inline-flex align-items-center justify-content-between w-100 mb-3">
                                 <p className="mb-0 text-muted me-1">Cliente Relacionado</p>
