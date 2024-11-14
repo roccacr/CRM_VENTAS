@@ -96,6 +96,59 @@ oportunidad.updateOpportunity_Status = (dataParams) => {
 };
 
 
+
+
+oportunidad.get_Oportunidades = (dataParams) => {
+
+console.log("🚀 -------------------------------------------------------🚀");
+console.log("🚀 ~ file: oportunidad.js:103 ~ dataParams:", dataParams);
+console.log("🚀 -------------------------------------------------------🚀");
+
+
+
+
+
+    // Consulta SQL para actualizar la probabilidad y otro indicador de la oportunidad
+    const query = `
+    SELECT
+            p.chek2_oport,
+            p.chek_oport,
+            p.entitystatus_oport
+            ,p.tranid_oport,
+            p.entity_oport,
+            p.id_oportunidad_oport,
+            p.exp_custbody38_oport,
+            p.Motico_Condicion,
+            p.fecha_Condicion,
+            p.fecha_creada_oport,
+            l.nombre_lead,
+            l.proyecto_lead,
+            l.campana_lead,
+            exp.precioVentaUncio_exp,
+            exp.precioDeVentaMinimo,
+            exp.codigo_exp,
+            admins.name_admin,
+            compras.nombre_motivo_compra,
+            pagos.nombre_motivo_pago
+     FROM oportunidades as p
+     INNER JOIN leads as l ON l.idinterno_lead = p.entity_oport
+     INNER JOIN expedientes as exp ON exp.ID_interno_expediente = p.exp_custbody38_oport
+     INNER JOIN admins ON p.employee_oport = admins.idnetsuite_admin
+     INNER JOIN compras ON p.custbody76_oport = compras.id_motivo_compra
+     INNER JOIN pagos ON p.custbody75_oport = pagos.id_motivo_pago
+     WHERE chek_oport=1 and p.employee_oport=?`;
+    const params = [dataParams.idnetsuite_admin];
+
+    // Ejecuta la consulta con los parámetros y la base de datos especificada
+    return executeQuery(
+        query, // Consulta SQL a ejecutar
+        params, // Parámetros de la consulta
+        dataParams.database, // Base de datos donde se ejecuta
+    );
+};
+
+
+
     
 
 module.exports = oportunidad; // Exporta el objeto 'oportunidad' que agrupa las funciones relacionadas con ubicaciones.
