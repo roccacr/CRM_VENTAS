@@ -9,7 +9,6 @@ import { MetodoPago } from "./MetodoPago";
 export const ModalEstimacion = ({ open, onClose }) => {
     // Estado para manejar si el contenido del modal está cargando
     const [isLoading, setIsLoading] = useState(true);
-    const [isDiscounted, setIsDiscounted] = useState(null);
 
     const [formValues, setFormValues] = useState({
         custbody114: "31/12/2025", // Entrega fecha (opcional)
