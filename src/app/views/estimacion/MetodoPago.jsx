@@ -27,51 +27,51 @@ export const MetodoPago = ({ formValues, handleInputChange }) => {
                             </div>
                         </div>
                     </div>
-                    <div className="row" hidden={formValues.custbody75_estimacion === "1" ? false: true }>
+                    <div className="row" hidden={formValues.custbody75_estimacion === "1" ? false : true}>
                         <div className="col-sm-3">
-                            <label className="form-label">Entrega Fecha</label>
+                            <label className="form-label">HITO 6 %</label>
                             <input
                                 autoComplete="off"
                                 disabled
                                 type="text"
-                                name="custbody114"
-                                value={formValues.custbody114}
+                                name="contra_enterega11"
+                                value={formValues.contra_enterega11}
                                 onChange={handleInputChange}
                                 className={`form-control mb-2`}
                             />
                         </div>
                         <div className="col-sm-3">
-                            <label className="form-label">Nombre cliente:</label>
+                            <label className="form-label">Monto Calculado:</label>
                             <input
                                 autoComplete="off"
                                 disabled
                                 type="text"
-                                name="entity"
-                                value={formValues.entity}
+                                name="contra_enterega1"
+                                value={formValues.contra_enterega1}
                                 onChange={handleInputChange}
                                 className={`form-control mb-2`}
                             />
                         </div>
                         <div className="col-sm-3">
-                            <label className="form-label">UNI. EXPED. LIGADO VTA:</label>
+                            <label className="form-label">Fecha Entrega</label>
                             <input
                                 autoComplete="off"
                                 disabled
-                                type="text"
-                                name="custbody38"
-                                value={formValues.custbody38}
+                                type="date"
+                                name="contra_enterega11_date"
+                                value={formValues.contra_enterega11_date}
                                 onChange={handleInputChange}
                                 className={`form-control mb-2`}
                             />
                         </div>
                         <div className="col-sm-3">
-                            <label className="form-label">PROYECTO:</label>
+                            <label className="form-label"> MONTO SIN PRIMA TOTAL:</label>
                             <input
                                 autoComplete="off"
                                 disabled
                                 type="text"
-                                name="proyecto_lead_est"
-                                value={formValues.proyecto_lead_est}
+                                name="mspt_contra_entrega"
+                                value={formValues.mspt_contra_entrega}
                                 onChange={handleInputChange}
                                 className={`form-control mb-2`}
                             />

@@ -75,6 +75,10 @@ export const ModalEstimacion = ({ open, onClose }) => {
         custbody184_tres_date: "", // TRACTOS PRIMA EXTRA
         custbody195_tres: "PAGO DE PRIMA EXTRA 3+", // DESCRIPCIÓN PRIMA EXTRA
         custbody75_estimacion: "", // MONTO ESTIMACIÓN (opcional)
+        contra_enterega11: 0, // HITO 6 % (opcional)
+        contra_enterega1: 0, // MONTO CALCULADO (opcional)
+        contra_enterega11_date: "", // FECHA ENTREGA (opc
+        mspt_contra_entrega: 0, // MONTO SIN PRIMA TOTAL (opcional)
     });
 
     // Estado para manejar los errores del formulario
