@@ -70,22 +70,43 @@ export const crearOportunidad = (formValue, clientData) => {
  * @param {boolean} isMode - Un valor que indica si se debe aplicar algún modo especial en la búsqueda.
  * @returns {function} - Una función asíncrona que retorna los datos de las oportunidades.
  */
-export const getOportunidades = (idLead, startDate, endDate, isMode) => {
+export const getOportunidades = (idLead, startDate, endDate, isMode, BotonesEstados) => {
     return async (dispatch, getState) => {
-        // Obtiene el ID del administrador Netsuite desde el estado de autenticación actual.
         const { idnetsuite_admin } = getState().auth;
-        try {
-            // Llama a la API para obtener las oportunidades filtradas por ID de lead, rango de fechas y modo.
-            const result = await get_Oportunidades({ idLead, startDate, endDate, isMode, idnetsuite_admin });
 
-            // Retorna el primer elemento de los datos obtenidos, ya que se espera que sea la oportunidad requerida.
-            return result.data.data;
+        try {
+            // Validar las fechas para evitar errores al formatearlas
+            const start = startDate instanceof Date ? startDate.toISOString().split("T")[0] : null;
+            const end = endDate instanceof Date ? endDate.toISOString().split("T")[0] : null;
+
+            if (!start || !end) {
+                throw new Error("Las fechas proporcionadas no son válidas.");
+            }
+
+            // Realizar la llamada a la API
+            const response = await get_Oportunidades({
+                idLead,
+                startDate: start,
+                endDate: end,
+                isMode,
+                idnetsuite_admin,
+                BotonesEstados,
+            });
+
+            // Verificar si hay datos en la respuesta
+            if (response?.data?.data) {
+                return response.data.data;
+            } else {
+                throw new Error("No se encontraron datos de oportunidades.");
+            }
         } catch (error) {
-            // Captura cualquier error que ocurra durante la obtención de las oportunidades y lo muestra en la consola para facilitar la depuración.
             console.error("Error al cargar las oportunidades:", error);
+            // Lanzar el error para manejarlo en niveles superiores
+            throw error;
         }
     };
 };
+
 
 /**
  * Función que crea un reporte de bitácora para un lead relacionado con la creación de una oportunidad.
@@ -93,9 +114,8 @@ export const getOportunidades = (idLead, startDate, endDate, isMode) => {
  * @returns {function} - Una función asíncrona que despacha la acción para generar la bitácora y retorna un valor de éxito.
  */
 export const crearReoporteLead = (leadData) => {
-    return async (dispatch, getState) => {
+    return async (dispatch) => {
         // Obtiene el ID del administrador Netsuite desde el estado de autenticación actual.
-        const { idnetsuite_admin } = getState().auth;
 
         try {
             // Define la descripción del evento que será registrada en la bitácora.

@@ -15,7 +15,7 @@ const initialDashboardItems = [
     { id: 1, image: "1.svg", icon: "ti ti-user", name: "LEADS NUEVOS", url: "/leads/lista?data=2" },
     { id: 2, image: "2.svg", icon: "ti ti-user-x", name: "LEADS REQUIEREN ATENCIÓN", url: "/leads/lista?data=3" },
     { id: 3, image: "3.svg", icon: "ti ti-calendar", name: "EVENTOS PARA HOY", url: "/events/list?data=1" },
-    { id: 4, image: "1.svg", icon: "ti ti-trending-up", name: "OPORTUNIDADES", url: "/oportunidad/list?data=1&data2=0" },
+    { id: 4, image: "1.svg", icon: "ti ti-trending-up", name: "OPORTUNIDADES", url: "/oportunidad/lista?oportuinidad=1&idLead=0" },
     { id: 5, image: "2.svg", icon: "ti ti-download", name: "ORDENES DE VENTA", url: "/orden/lista?data=1" },
     { id: 6, image: "3.svg", icon: "ti ti-download", name: "CONTRATOS FIRMADOS", url: "/orden/lista?data=2" },
 ];

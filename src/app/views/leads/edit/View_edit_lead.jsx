@@ -146,6 +146,7 @@ export const View_edit_lead = () => {
         document.getElementById(action.name).style.border = "1px solid #ced4da";
     };
 
+
     return (
         <div className="container-fluid">
             <div className="row">
