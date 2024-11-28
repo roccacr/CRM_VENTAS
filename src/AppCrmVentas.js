@@ -32,7 +32,7 @@ app.use(express.urlencoded({ extended: true, limit: "1mb" }));
 
 // Middleware de registro HTTP
 // Usa el formato 'combined' en producción para más detalles, 'dev' en desarrollo para claridad
-// app.use(morgan(process.env.NODE_ENV === "production" ? "combined" : "dev"));
+app.use(morgan(process.env.NODE_ENV === "production" ? "combined" : "dev"));
 
 // Lista de orígenes permitidos para CORS
 // Se define como una constante para mayor seguridad y claridad
