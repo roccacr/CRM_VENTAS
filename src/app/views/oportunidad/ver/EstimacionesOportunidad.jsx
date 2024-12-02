@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { ModalEstimacion } from "../../estimacion/ModalEstimacion";
-export const EstimacionesOportunidad = () => {
+export const EstimacionesOportunidad = ({ OportunidadDetails, cliente }) => {
     // Datos de ejemplo para la tabla
     const estimacionesData = [
         { estimacion: "#12345", caduca: "2024-12-01", creado: "2024-11-01" },
@@ -31,7 +31,13 @@ export const EstimacionesOportunidad = () => {
                     <h2>Estimaciones de Oportunidad</h2>
 
                     {/* Filtro de búsqueda */}
-                    <input type="text" placeholder="Buscar por #Estimacion" value={search} onChange={(e) => setSearch(e.target.value)} style={{ marginBottom: "20px", padding: "10px", width: "100%" }} />
+                    <input
+                        type="text"
+                        placeholder="Buscar por #Estimacion"
+                        value={search}
+                        onChange={(e) => setSearch(e.target.value)}
+                        style={{ marginBottom: "20px", padding: "10px", width: "100%" }}
+                    />
 
                     {/* Botón para abrir el modal */}
                     <button className="btn btn-dark" onClick={openModal} style={{ marginBottom: "20px", padding: "10px 20px", cursor: "pointer" }}>
@@ -40,7 +46,10 @@ export const EstimacionesOportunidad = () => {
 
                     {/* Tabla de estimaciones */}
                     <div className="table-responsive">
-                        <table className="table table-striped table dt-responsive w-100 display text-left" style={{ fontSize: "15px", width: "100%", textAlign: "left" }}>
+                        <table
+                            className="table table-striped table dt-responsive w-100 display text-left"
+                            style={{ fontSize: "15px", width: "100%", textAlign: "left" }}
+                        >
                             <thead>
                                 <tr>
                                     <th style={{ border: "1px solid #ddd", padding: "8px" }}>#Estimacion</th>
@@ -71,7 +80,7 @@ export const EstimacionesOportunidad = () => {
             </div>
 
             {/* Modal */}
-            {isModalOpen && <ModalEstimacion open={isModalOpen} onClose={closeModal} />}
+            {isModalOpen && <ModalEstimacion open={isModalOpen} onClose={closeModal} OportunidadDetails={OportunidadDetails} cliente={cliente} />}
         </>
     );
 };

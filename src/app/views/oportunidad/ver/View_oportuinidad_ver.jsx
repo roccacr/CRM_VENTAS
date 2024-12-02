@@ -156,7 +156,18 @@ export const View_oportuinidad_ver = () => {
                             <p className="text-white text-opacity-75 text-opa mb-0">#{OportunidadDetails.tranid_oport || ""}</p>
                         </div>
                         <div className="flex-shrink-0">
-                            <img alt="img" loading="lazy" width="92" height="90" decoding="async" data-nimg="1" className="img-fluid wid-80" srcSet="" src="https://light-able-react-light.vercel.app/_next/image?url=%2F_next%2Fstatic%2Fmedia%2Fimg-accout-alert.a2294f08.png&w=96&q=75" style={{ color: "transparent" }} />
+                            <img
+                                alt="img"
+                                loading="lazy"
+                                width="92"
+                                height="90"
+                                decoding="async"
+                                data-nimg="1"
+                                className="img-fluid wid-80"
+                                srcSet=""
+                                src="https://light-able-react-light.vercel.app/_next/image?url=%2F_next%2Fstatic%2Fmedia%2Fimg-accout-alert.a2294f08.png&w=96&q=75"
+                                style={{ color: "transparent" }}
+                            />
                         </div>
                     </div>
                 </div>
@@ -167,13 +178,25 @@ export const View_oportuinidad_ver = () => {
                         <div className="position-relative card-body">
                             <div className="text-center mt-3">
                                 <div className="chat-avtar d-inline-flex mx-auto">
-                                    <img alt="User image" loading="lazy" width="100" height="100" decoding="async" data-nimg="1" className="rounded-circle img-fluid wid-90 img-thumbnail" src="/opt.png" style={{ color: "transparent" }} />
+                                    <img
+                                        alt="User image"
+                                        loading="lazy"
+                                        width="100"
+                                        height="100"
+                                        decoding="async"
+                                        data-nimg="1"
+                                        className="rounded-circle img-fluid wid-90 img-thumbnail"
+                                        src="/opt.png"
+                                        style={{ color: "transparent" }}
+                                    />
                                     <i className="chat-badge bg-success me-2 mb-2"></i>
                                 </div>
                                 <h5 className="mb-0">#{OportunidadDetails.tranid_oport || ""}</h5>
                                 <p className="text-muted text-sm">{leadDetails.nombre_lead}</p>
                                 <ul className="list-inline mx-auto my-4">
-                                    <blockquote className="blockquote  blockquote-reverse font-size-16 mb-0">{Object.keys(leadDetails).length > 0 && <ButtonActions leadData={leadDetails} className="mb-4" />}</blockquote>
+                                    <blockquote className="blockquote  blockquote-reverse font-size-16 mb-0">
+                                        {Object.keys(leadDetails).length > 0 && <ButtonActions leadData={leadDetails} className="mb-4" />}
+                                    </blockquote>
 
                                     <ul className="list-inline mx-auto my-4">
                                         <li className="list-inline-item">
@@ -221,18 +244,35 @@ export const View_oportuinidad_ver = () => {
                                 </ul>
                             </div>
                         </div>
-                        <div className="flex-column list-group list-group-flush account-pills mb-0 nav nav-pills" id="user-set-tab" aria-orientation="vertical" role="tablist">
-                            <a onClick={() => handleTabClick("infoPot")} role="tab" className={`list-group-item list-group-item-action nav-link ${activeTab === "infoPot" ? "active" : ""}`}>
+                        <div
+                            className="flex-column list-group list-group-flush account-pills mb-0 nav nav-pills"
+                            id="user-set-tab"
+                            aria-orientation="vertical"
+                            role="tablist"
+                        >
+                            <a
+                                onClick={() => handleTabClick("infoPot")}
+                                role="tab"
+                                className={`list-group-item list-group-item-action nav-link ${activeTab === "infoPot" ? "active" : ""}`}
+                            >
                                 <span className="f-w-500">
                                     <i className="ph-duotone ph-user-circle m-r-10"></i>Informacion Oportunidad
                                 </span>
                             </a>
-                            <a onClick={() => handleTabClick("Expediente")} role="tab" className={`list-group-item list-group-item-action nav-link ${activeTab === "Expediente" ? "active" : ""}`}>
+                            <a
+                                onClick={() => handleTabClick("Expediente")}
+                                role="tab"
+                                className={`list-group-item list-group-item-action nav-link ${activeTab === "Expediente" ? "active" : ""}`}
+                            >
                                 <span className="f-w-500">
                                     <i className="ph-duotone ph-calendar m-r-10"></i> Expediente de unidad
                                 </span>
                             </a>
-                            <a onClick={() => handleTabClick("Estimaciones")} role="tab" className={`list-group-item list-group-item-action nav-link ${activeTab === "Estimaciones" ? "active" : ""}`}>
+                            <a
+                                onClick={() => handleTabClick("Estimaciones")}
+                                role="tab"
+                                className={`list-group-item list-group-item-action nav-link ${activeTab === "Estimaciones" ? "active" : ""}`}
+                            >
                                 <span className="f-w-500">
                                     <i className="ph-duotone ph-notebook m-r-10"></i> Estimaciones
                                 </span>
@@ -273,18 +313,33 @@ export const View_oportuinidad_ver = () => {
                 <div className="col-xxl-9 col-lg-7">
                     <div className="tab-content" id="user-set-tabContent">
                         {activeTab === "infoPot" && (
-                            <div id="react-aria8348725315-:r6:-tabpane-infoPot" role="tabpanel" aria-labelledby="react-aria8348725315-:r6:-tab-infoPot" className="fade fade tab-pane active show">
+                            <div
+                                id="react-aria8348725315-:r6:-tabpane-infoPot"
+                                role="tabpanel"
+                                aria-labelledby="react-aria8348725315-:r6:-tab-infoPot"
+                                className="fade fade tab-pane active show"
+                            >
                                 <InformacionBasicaOportunidad oportuinidadId={OportunidadDetails} cliente={leadDetails.nombre_lead} />
                             </div>
                         )}
                         {activeTab === "Expediente" && (
-                            <div id="react-aria8348725315-:r6:-tabpane-Expediente" role="tabpanel" aria-labelledby="react-aria8348725315-:r6:-tab-Expediente" className="fade fade tab-pane active show">
+                            <div
+                                id="react-aria8348725315-:r6:-tabpane-Expediente"
+                                role="tabpanel"
+                                aria-labelledby="react-aria8348725315-:r6:-tab-Expediente"
+                                className="fade fade tab-pane active show"
+                            >
                                 <InformacionBasicaExpedienteUnidad idExpediente={OportunidadDetails.exp_custbody38_oport} />
                             </div>
                         )}
                         {activeTab === "Estimaciones" && (
-                            <div id="react-aria8348725315-:r6:-tabpane-Estimaciones" role="tabpanel" aria-labelledby="react-aria8348725315-:r6:-tab-Estimaciones" className="fade fade tab-pane active show">
-                                <EstimacionesOportunidad />
+                            <div
+                                id="react-aria8348725315-:r6:-tabpane-Estimaciones"
+                                role="tabpanel"
+                                aria-labelledby="react-aria8348725315-:r6:-tab-Estimaciones"
+                                className="fade fade tab-pane active show"
+                            >
+                                <EstimacionesOportunidad OportunidadDetails={OportunidadDetails} cliente={leadDetails} />
                             </div>
                         )}
                     </div>

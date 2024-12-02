@@ -87,7 +87,14 @@ export const View_oportunidad_list = () => {
         <>
             <div className="row">
                 {state.dashboardItems.map((item) => (
-                    <TableroHome key={item.id} image={`/assets/panel/${item.image}`} icons={item.icon} nombre={item.name} cantidad={item.quantity} url="/" />
+                    <TableroHome
+                        key={item.id}
+                        image={`/assets/panel/${item.image}`}
+                        icons={item.icon}
+                        nombre={item.name}
+                        cantidad={item.quantity}
+                        url="/"
+                    />
                 ))}
             </div>
             <div className="card">
@@ -136,13 +143,25 @@ export const View_oportunidad_list = () => {
                             <div className="col-md-6">
                                 <div className="form-floating mb-0">
                                     <div className="form-check">
-                                        <input className="form-check-input" type="checkbox" id="creationDate" checked={isMode === 1} onChange={(e) => setIsMode(e.target.checked ? 1 : 0)} />
+                                        <input
+                                            className="form-check-input"
+                                            type="checkbox"
+                                            id="creationDate"
+                                            checked={isMode === 1}
+                                            onChange={(e) => setIsMode(e.target.checked ? 1 : 0)}
+                                        />
                                         <label className="form-check-label" htmlFor="creationDate">
                                             FECHA DE CREACIÓN
                                         </label>
                                     </div>
                                     <div className="form-check">
-                                        <input className="form-check-input" type="checkbox" id="lastActionDate" checked={isMode === 2} onChange={(e) => setIsMode(e.target.checked ? 2 : 0)} />
+                                        <input
+                                            className="form-check-input"
+                                            type="checkbox"
+                                            id="lastActionDate"
+                                            checked={isMode === 2}
+                                            onChange={(e) => setIsMode(e.target.checked ? 2 : 0)}
+                                        />
                                         <label className="form-check-label" htmlFor="lastActionDate">
                                             FECHA DE CIERRE PREVISTO
                                         </label>
@@ -173,7 +192,10 @@ export const View_oportunidad_list = () => {
                             </thead>
                             <tbody>
                                 {state.oportunidad.map((item) => (
-                                    <tr key={item.id_oportunidad_oport} onClick={() => navigate(`/oportunidad/ver?data=${item.entity_oport}&data2=${item.id_oportunidad_oport}`)}>
+                                    <tr
+                                        key={item.id_oportunidad_oport}
+                                        onClick={() => navigate(`/oportunidad/ver?data=${item.entity_oport}&data2=${item.id_oportunidad_oport}`)}
+                                    >
                                         <td>{item.nombre_lead}</td>
                                         <td>{item.tranid_oport}</td>
                                         <td>{item.codigo_exp}</td>

@@ -6,92 +6,130 @@ import { CalculodePrima } from "./CalculodePrima";
 import { SeleccionPrima } from "./SeleccionPrima";
 import { MetodoPago } from "./MetodoPago";
 
-export const ModalEstimacion = ({ open, onClose }) => {
+export const ModalEstimacion = ({ open, onClose, OportunidadDetails, cliente }) => {
     // Estado para manejar si el contenido del modal está cargando
     const [isLoading, setIsLoading] = useState(true);
 
     const [formValues, setFormValues] = useState({
-        custbody114: "31/12/2025", // Entrega fecha (opcional)
-        entity: " Alexandra Sancho ", // Nombre del cliente (obligatorio)
-        custbody38: "LHLIB-FF007", // UNI. EXPED. LIGADO VTA (opcional)
-        proyecto_lead_est: "Lean Homes Liberia", // Proyecto (opcional)
-        subsidiary: "idSubsidiaria", // Subsidiaria (opcional)
-        entitystatus: "idEstado Cliente", // Estado del cliente (opcional)
-        tranid_oport: "idOportunidad", // Oportunidad (opcional)
-        expectedclosedate: "31/12/2025", // Fecha de cierre esperada (opcional)
-        pre_reserva: false, // Valor inicial del checkbox
-        custbody13: 0, // Precio de lista (opcional)
-        custbody132: 0, // MONTO DESCUENTO DIRECTO (opcional)
-        custbody46: 0, // EXTRAS PAGADAS POR EL CLIENTE (opcional)
-        custbody47: "--", // DESCRIPCIÓN EXTRAS (opcional)
-        custbodyix_salesorder_cashback: 0, // CASHBACK (opcional)
-        custbody52: 0, // MONTO RESERVA (opcional)
-        custbody16: 0, // MONTO TOTAL.
-        custbody35: "--", // DESCRIPCIÓN DE LAS CORTESIAS
-        custbody18: 0, // PREC. DE VENTA MÍNIMO
-        fech_reserva: "", // FECHA RESERVA (opcional)
-        pvneto: 0, // PEC. DE VENTA NETO (opcional)
-        custbody_ix_total_amount: 0, // MONTO TOTAL (opcional)
-        diferecia: 0, // EXTRAS SOBRE EL PRECIO DE LISTA (opcional)
-        custbody191: 500, // MONTO PRERESERVA (opcional)
-        pre_3: "---", // COMPROBANTE PRERESERVA (opcional)
-        pre_5: "", // FECHA DE PRERESERVA (opcional)
-        pre_8: "--", // OBSERVACIONES PRERESERVA (opcional)
-        custbody188: "1", // METODO DE PAGO (opcional)
-        isDiscounted: null, // "percentage" o "amount"
-        custbody39: 0, // PRIMA TOTAL (opcional)
-        custbody60: 0.15, // PRIMA% (opcional)
-        custbody_ix_salesorder_monto_prima: 0, // MONTO PR
-        custbody40: "--", // TRACTO (opcional)
-        neta: 0, // MONTO ASIGNABLE
-        chec_fra: false, // PRIMA FRACCIONADA
-        chec_uica: false, // PRIMA ÚNICA
-        chec_extra: false, // PRIMA EXTRA-ORDINARIA
-        chec_extra_uno: false, // PRIMA EXTRA 1+
-        chec_extra_dos: false, // PRIMA EXTRA 2+
-        chec_extra_tres: false, // PRIMA EXTRA 3+
-        custbody179: 0, // MONTO FRACCIONADO (opcional)
-        custbody179_date: "", // FECHA (opcional)
-        custbody193: "PAGO DE PRIMA FRACCIONADO", // DESCRIPCIÓN FRACCIONADO (opcional)
-        custbody180: 1, // TRACTOS FRACCIONADO (opcional)
-        custbody181: 0, // MONTO ÚNICO (opcional)
-        custbody182_date: "", // FECHA (opcional)
-        custbody182: 1, // TRACTOS ÚNICA (opcional)
-        custbody194: "PAGO DE PRIMA ÚNICA", // DESCRIPCIÓN ÚNICA (opcional)
-        custbody183: 0, // MONTO EXTRA-ORDINARIA (opcional
-        custbody184_date: "", // FECHA (opcional)
-        custbody184: 1, // TRACTOS EXTRA-ORDINARIA (opcional)
-        custbody195: "PAGO DE PRIMA EXTRA-ORDINARIA", // DESCRIPCIÓN EXTRA-ORDINARIA (opcional)
-        o_2_uno_input: 0, // MONTO PRIMA EXTRA 1+ (opcional)
-        custbody184_uno: 1, // FECHA (opcional)
-        custbody184_uno_date: "", // TRACTOS PRIMA EXTRA 1+ (opcional)
-        custbody195_uno: "PAGO DE PRIMA EXTRA 1+", // DESCRIPCIÓN PRIMA EXTRA 1+ (opcional)
-        o_2_dos_input: 0, // MONTO PRIMA EXTRA 2+ (opcional)
-        custbody184_dos: 1, // FECHA (opcional)
-        custbody184_dos_date: "", // TRACTOS PRIMA EXTRA
-        custbody195_dos: "PAGO DE PRIMA EXTRA 2+", // DESCRIPCIÓN PRIMA EXTRA 2+ (opcional)
-        o_2_tres_input: 0, // MONTO PRIMA EXTRA 3+ (opcional)
-        custbody184_tres: 1, // FECHA (opcional)
-        custbody184_tres_date: "", // TRACTOS PRIMA EXTRA
-        custbody195_tres: "PAGO DE PRIMA EXTRA 3+", // DESCRIPCIÓN PRIMA EXTRA
-        custbody75_estimacion: "", // MONTO ESTIMACIÓN (opcional)
-        contra_enterega11: 0, // HITO 6 % (opcional)
-        contra_enterega1: 0, // MONTO CALCULADO (opcional)
-        contra_enterega11_date: "", // FECHA ENTREGA (opc
-        mspt_contra_entrega: 0, // MONTO SIN PRIMA TOTAL (opcional)
-        avnace_obra_hito11: 0, // HITO 11 % (opcional)
-        avnace_obra_hito1: 0, // MONTO CALCULADO (opcional)
-        avnace_obra_hito12: 0, // HITO 12 % (opcional)
-        avnace_obra_hito2: 0, // MONTO CALCULADO (opcional)
-        avnace_obra_hito13: 0, // HITO 13 % (opcional)
-        avnace_obra_hito3: 0, // MONTO CALCULADO (opcional)
-        avnace_obra_hito14: 0, // HITO 14 % (opcional)
-        avnace_obra_hito4: 0, // MONTO CALCULADO (opcional)
-        avnace_obra_hito15: 0, // HITO 15 % (opcional)
-        avnace_obra_hito5: 0, // MONTO CALCULADO (opcional)
-        avnace_obra_hito16: 0, // HITO 16 % (opcional)
-        avnace_obra_hito6: 0, // MONTO CALCULADO (opcional)
-        obra_enterega:1111  
+        // Datos de la primera línea
+        entity: "",
+        custbody38: "",
+        proyecto_lead_est: "",
+        entitystatus: "",
+
+        // Datos de la segunda línea
+        rType: "estimacion",
+        custbody18: "",
+        /*MONTO TOTAL*/
+        custbody_ix_total_amount: "",
+        /*OPORTUNIDAD*/
+        opportunity: "",
+        /*PRECIO DE LISTA:*/
+        custbody13: "",
+        /*SUBSIDIARIA*/
+        subsidiary: "",
+        /*PRIMA TOTAL*/
+        custbody39: 0,
+        /*PRIMA%*/
+        custbody60: 0.15,
+        /*MONTO PRIMA NETA%*/
+        custbody_ix_salesorder_monto_prima: 0,
+        /*MONTO DESCUENTO DIRECTO%*/
+        custbody132: 0,
+        /*CASHBACK*/
+        custbodyix_salesorder_cashback: 0,
+
+        /*EXTRAS SOBRE EL PRECIO DE LISTA /diferencia*/
+        custbody185: "",
+        //MONTO EXTRAS SOBRE EL PRECIO DE LISTA / EXTRAS PAGADAS POR EL CLIENTE
+        custbody46: 0,
+        //MONTO TOTAL DE CORTESÍAS
+        custbody16: "",
+
+        //DESCRIPCIÓN EXTRAS
+        custbody47: "--",
+        //DESCRIPCIÓN DE LAS CORTESIAS
+        custbody35: "--",
+        //MONTO RESERVA
+        rateReserva: "",
+        fech_reserva: "",
+        //MONTO ASIGNABLE PRIMA NETA:
+        neta: "",
+        /*-----------Nuevo*/
+        //METODO DE PAGO
+        custbody75: "",
+        custbody67: "",
+        custbody_ix_salesorder_hito6: "",
+        custbody163: "",
+        custbody62: "",
+        custbodyix_salesorder_hito1: "",
+        custbody63: "",
+        custbody_ix_salesorder_hito2: "",
+        custbody64: "",
+        custbody_ix_salesorder_hito3: "",
+        custbody65: "",
+        custbody_ix_salesorder_hito4: "",
+        custbody66: "",
+        custbody_ix_salesorder_hito5: "",
+        hito_chek_uno: "",
+        hito_chek_dos: "",
+        hito_chek_tres: "",
+        hito_chek_cuatro: "",
+        hito_chek_cinco: "",
+        hito_chek_seis: "",
+        date_hito_1: "",
+        date_hito_2: "",
+        date_hito_3: "",
+        date_hito_4: "",
+        date_hito_5: "",
+        date_hito_6: "",
+        custbody113: "",
+        custbody191: 500,
+        custbody188: 1,
+        custbody189: "",
+        custbody206: "",
+
+        custbody190: "--",
+        pre_8: "--",
+
+
+        custbody176: "",
+        custbody179: "",
+        custbody180: "",
+        custbody193: "",
+        custbody179_date: "",
+
+        custbody177: "",
+        custbody181: "",
+        custbody182: "",
+        custbody194: "",
+        custbody182_date: "",
+
+        custbody178: "",
+        custbody183: "",
+        custbody184: "",
+        custbody195: "",
+        custbody184_date: "",
+
+        prima_extra_uno: "",
+        monto_extra_uno: "",
+        monto_tracto_uno: "",
+        desc_extra_uno: "",
+        custbody184_uno_date: "",
+
+        prima_extra_dos: "",
+        monto_extra_dos: "",
+        monto_tracto_dos: "",
+        desc_extra_dos: "",
+        custbody184_dos_date: "",
+
+        prima_extra_tres: "",
+        monto_extra_tres: "",
+        monto_tracto_tres: "",
+        desc_extra_tres: "",
+        custbody184_tres_date: "",
+        custbody114: "",
+        isDiscounted: null,
     });
 
     // Estado para manejar los errores del formulario
@@ -118,7 +156,7 @@ export const ModalEstimacion = ({ open, onClose }) => {
         let newValue = type === "checkbox" ? checked : value;
 
         // Lista de campos específicos que necesitan ser procesados con la función limpiarCampos
-        const campos = ["custbody132", "custbody46", "custbodyix_salesorder_cashback", "custbody52", "custbody16"];
+        const campos = ["custbody132", "custbody46", "custbodyix_salesorder_cashback", "custbody52", "custbody16", "custbody39", "custbody60"];
 
         // Verifica si el campo actual (name) está en la lista de campos a procesar
         if (campos.includes(name)) {
@@ -159,12 +197,34 @@ export const ModalEstimacion = ({ open, onClose }) => {
     };
 
     useEffect(() => {
-        if (open) {
-            setIsLoading(true);
-            const timer = setTimeout(() => setIsLoading(false), 100);
-            return () => clearTimeout(timer);
-        }
-    }, [open]);
+        if (!open) return; // Si no está abierto, no ejecutamos nada
+
+        setIsLoading(true);
+
+        // Calculamos el monto prima directamente sin necesidad de variables intermedias
+        const precioVenta = OportunidadDetails.precioVentaUncio_exp.replace(/\D/g, "");
+        const montoPrima = new Intl.NumberFormat("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format((precioVenta * 0.15) / 100); // 15% de precioVenta
+
+        // Actualizamos el formulario con los valores requeridos
+        setFormValues((prevValues) => ({
+            ...prevValues,
+            entity: cliente.nombre_lead,
+            custbody114: OportunidadDetails.entregaEstimada,
+            proyecto_lead_est: cliente.proyecto_lead,
+            custbody38: OportunidadDetails.codigo_exp,
+            tranid_oport: OportunidadDetails.tranid_oport,
+            expectedclosedate: OportunidadDetails.expectedclosedate_oport,
+            entitystatus: OportunidadDetails.Motico_Condicion,
+            custbody13: OportunidadDetails.precioVentaUncio_exp,
+            custbody18: OportunidadDetails.precioDeVentaMinimo,
+            custbody_ix_total_amount: OportunidadDetails.precioVentaUncio_exp,
+            custbody39: montoPrima,
+            custbody_ix_salesorder_monto_prima: montoPrima,
+            neta: montoPrima,
+        }));
+
+        setIsLoading(false); // No hay necesidad de un retraso, se puede establecer false inmediatamente
+    }, [open, cliente, OportunidadDetails]);
 
     return (
         <Modal open={open} onClose={onClose} className="modal fade show" style={{ display: "block" }} aria-modal="true">

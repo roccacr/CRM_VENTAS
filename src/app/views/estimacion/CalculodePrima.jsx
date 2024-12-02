@@ -110,6 +110,7 @@ export const CalculodePrima = ({ formValues, handleInputChange, handleDiscountSe
                     <label className="form-label">MONTO ASIGNABLE PRIMA NETA</label>
                     <input
                         autoComplete="off"
+                        disabled
                         type="text"
                         name="neta"
                         value={formValues.neta}
