@@ -101,23 +101,23 @@ oportunidad.updateOpportunity_Status = (dataParams) => {
 // Función para obtener oportunidades basadas en parámetros de filtrado
 oportunidad.get_Oportunidades = (dataParams) => {
 
-
     // Determinar filtro adicional basado en BotonesEstados
     const estadoFiltro =
         {
-            0: "AND estatus_oport = 0",
-            1: "AND p.estatus_oport = 1 AND chek_oport = 1",
-            3: "",
-        }[dataParams.BotonesEstados] || "";
+            0: "estatus_oport = 0", // Filtro para estado 0
+            1: "p.estatus_oport = 1 AND chek_oport = 1", // Filtro para estado 1
+            3: "", // Filtro vacío cuando BotonesEstados es 3
+        }[dataParams.BotonesEstados] || ""; // Si no se encuentra en los casos anteriores, no aplica filtro
 
     // Seleccionar campo de fecha según el modo
     const dateField = dataParams.isMode === 1 ? "fecha_creada_oport" : "fecha_Condicion";
 
-    // Generar filtro de fecha
-    const dateFilter = `
-        AND DATE(${dateField}) >= "${dataParams.startDate}"
-        AND DATE(${dateField}) < "${dataParams.endDate}"
-    `;
+    // Solo generar filtro de fecha si BotonesEstados no es 3
+    let dateFilter = `
+            AND DATE(${dateField}) >= "${dataParams.startDate}"
+            AND DATE(${dateField}) < "${dataParams.endDate}"
+        `;
+     console.log(dateFilter)
 
     // Construir la consulta SQL
     const query = `
@@ -148,10 +148,11 @@ oportunidad.get_Oportunidades = (dataParams) => {
         INNER JOIN admins ON p.employee_oport = admins.idnetsuite_admin
         INNER JOIN compras ON p.custbody76_oport = compras.id_motivo_compra
         INNER JOIN pagos ON p.custbody75_oport = pagos.id_motivo_pago
-        WHERE p.employee_oport = ? ${dateFilter} ${estadoFiltro}
+        WHERE ${estadoFiltro} ${dateFilter}
     `;
 
- 
+    // Imprimir la consulta para depuración
+    console.log(query);
 
     // Parámetros para la consulta
     const params = [dataParams.idnetsuite_admin];
