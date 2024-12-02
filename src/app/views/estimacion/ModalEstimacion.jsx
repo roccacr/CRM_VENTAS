@@ -79,6 +79,19 @@ export const ModalEstimacion = ({ open, onClose }) => {
         contra_enterega1: 0, // MONTO CALCULADO (opcional)
         contra_enterega11_date: "", // FECHA ENTREGA (opc
         mspt_contra_entrega: 0, // MONTO SIN PRIMA TOTAL (opcional)
+        avnace_obra_hito11: 0, // HITO 11 % (opcional)
+        avnace_obra_hito1: 0, // MONTO CALCULADO (opcional)
+        avnace_obra_hito12: 0, // HITO 12 % (opcional)
+        avnace_obra_hito2: 0, // MONTO CALCULADO (opcional)
+        avnace_obra_hito13: 0, // HITO 13 % (opcional)
+        avnace_obra_hito3: 0, // MONTO CALCULADO (opcional)
+        avnace_obra_hito14: 0, // HITO 14 % (opcional)
+        avnace_obra_hito4: 0, // MONTO CALCULADO (opcional)
+        avnace_obra_hito15: 0, // HITO 15 % (opcional)
+        avnace_obra_hito5: 0, // MONTO CALCULADO (opcional)
+        avnace_obra_hito16: 0, // HITO 16 % (opcional)
+        avnace_obra_hito6: 0, // MONTO CALCULADO (opcional)
+        obra_enterega:1111  
     });
 
     // Estado para manejar los errores del formulario

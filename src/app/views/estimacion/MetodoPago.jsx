@@ -1,3 +1,6 @@
+import { AvanceDiferenciado } from "./AvanceDiferenciado";
+import { AvanceObra } from "./AvanceObra";
+import { ContraEntrega } from "./ContraEntrega";
 
 export const MetodoPago = ({ formValues, handleInputChange }) => {
     return (
@@ -27,56 +30,10 @@ export const MetodoPago = ({ formValues, handleInputChange }) => {
                             </div>
                         </div>
                     </div>
-                    <div className="row" hidden={formValues.custbody75_estimacion === "1" ? false : true}>
-                        <div className="col-sm-3">
-                            <label className="form-label">HITO 6 %</label>
-                            <input
-                                autoComplete="off"
-                                disabled
-                                type="text"
-                                name="contra_enterega11"
-                                value={formValues.contra_enterega11}
-                                onChange={handleInputChange}
-                                className={`form-control mb-2`}
-                            />
-                        </div>
-                        <div className="col-sm-3">
-                            <label className="form-label">Monto Calculado:</label>
-                            <input
-                                autoComplete="off"
-                                disabled
-                                type="text"
-                                name="contra_enterega1"
-                                value={formValues.contra_enterega1}
-                                onChange={handleInputChange}
-                                className={`form-control mb-2`}
-                            />
-                        </div>
-                        <div className="col-sm-3">
-                            <label className="form-label">Fecha Entrega</label>
-                            <input
-                                autoComplete="off"
-                                disabled
-                                type="date"
-                                name="contra_enterega11_date"
-                                value={formValues.contra_enterega11_date}
-                                onChange={handleInputChange}
-                                className={`form-control mb-2`}
-                            />
-                        </div>
-                        <div className="col-sm-3">
-                            <label className="form-label"> MONTO SIN PRIMA TOTAL:</label>
-                            <input
-                                autoComplete="off"
-                                disabled
-                                type="text"
-                                name="mspt_contra_entrega"
-                                value={formValues.mspt_contra_entrega}
-                                onChange={handleInputChange}
-                                className={`form-control mb-2`}
-                            />
-                        </div>
-                    </div>
+                    <ContraEntrega formValues={formValues} handleInputChange={handleInputChange} />
+                    <AvanceObra formValues={formValues} handleInputChange={handleInputChange} />
+                    <AvanceDiferenciado formValues={formValues} handleInputChange={handleInputChange} />
+                  
                 </div>
             </div>
         </>
