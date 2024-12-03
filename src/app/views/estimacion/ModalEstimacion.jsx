@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Modal } from "@mui/material";
-import { limpiarCampos } from "../../../hook/useInputFormatter";
+import { limpiarCampos, montoTotal, precioVentaNeto } from "../../../hook/useInputFormatter";
 import { PrimeraLinea } from "./PrimeraLinea";
 import { CalculodePrima } from "./CalculodePrima";
 import { SeleccionPrima } from "./SeleccionPrima";
@@ -16,6 +16,7 @@ export const ModalEstimacion = ({ open, onClose, OportunidadDetails, cliente }) 
         custbody38: "",
         proyecto_lead_est: "",
         entitystatus: "",
+        pvneto:121,
 
         // Datos de la segunda línea
         rType: "estimacion",
@@ -164,10 +165,25 @@ export const ModalEstimacion = ({ open, onClose, OportunidadDetails, cliente }) 
             newValue = limpiarCampos(value);
         }
 
-        // Actualizar los valores del formulario
+       if ("custbody132" === name) {
+           // Calcula el nuevo precio neto
+           const pvn = precioVentaNeto({ ...formValues, [name]: newValue });
+
+           const montot = montoTotal({ ...formValues, [name]: newValue });
+
+           // Actualiza el estado del formulario incluyendo pvneto
+           setFormValues((prevValues) => ({
+               ...prevValues,
+               [name]: newValue, // Actualiza el valor del campo actual
+               pvneto: pvn, // Actualiza el precio neto
+               custbody_ix_total_amount: montot, // Actualiza el monto total
+           }));
+           return;
+       }
+            // Actualizar los valores del formulario
         setFormValues({
-            ...formValues,
-            [name]: newValue, // Asignar el valor limpio y modificado
+                ...formValues,
+                [name]: newValue, // Asignar el valor limpio y modificado
         });
         setErrors({ ...errors, [name]: "" });
     };
