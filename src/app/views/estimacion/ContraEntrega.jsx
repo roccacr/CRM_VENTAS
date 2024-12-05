@@ -3,15 +3,15 @@
 export const ContraEntrega = ({ formValues, handleInputChange }) => {
     return (
         <>
-            <div className="row" hidden={formValues.custbody75_estimacion === "1" ? false : true}>
+            <div className="row" hidden={parseInt(formValues.custbody75, 10) === 1 ? false : true}>
                 <div className="col-sm-4">
                     <label className="form-label">HITO 6 %</label>
                     <input
                         autoComplete="off"
                         disabled
                         type="text"
-                        name="contra_enterega11"
-                        value={formValues.contra_enterega11}
+                        name="custbody67"
+                        value={formValues.custbody67}
                         onChange={handleInputChange}
                         className={`form-control mb-2`}
                     />

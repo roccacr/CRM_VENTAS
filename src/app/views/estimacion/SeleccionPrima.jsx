@@ -1,4 +1,4 @@
-const PrimaSection = ({ title, fields, formValues, handleInputChange }) => {
+const PrimaSection = ({ title, fields, formValues, handleInputChange, errors }) => {
     if (!formValues[fields.checkbox]) return null;
 
     return (
@@ -17,7 +17,7 @@ const PrimaSection = ({ title, fields, formValues, handleInputChange }) => {
                                         <textarea
                                             cols="50"
                                             rows="2"
-                                            className="form-control"
+                                            className={`form-control mb-2 ${errors[input.name] ? "is-invalid" : ""}`}
                                             name={input.name}
                                             placeholder={input.placeholder}
                                             value={formValues[input.name]}
@@ -27,12 +27,13 @@ const PrimaSection = ({ title, fields, formValues, handleInputChange }) => {
                                         <input
                                             type={input.type}
                                             placeholder={input.placeholder}
-                                            className="form-control"
+                                            className={`form-control mb-2 ${errors[input.name] ? "is-invalid" : ""}`}
                                             name={input.name}
                                             value={formValues[input.name]}
                                             onChange={handleInputChange}
                                         />
                                     )}
+                                    {errors[input.name] && <div className="invalid-feedback">{errors[input.name]}</div>}
                                 </div>
                             </div>
                         </div>
@@ -43,11 +44,11 @@ const PrimaSection = ({ title, fields, formValues, handleInputChange }) => {
     );
 };
 
-export const SeleccionPrima = ({ formValues, handleInputChange }) => {
+export const SeleccionPrima = ({ formValues, handleInputChange, errors }) => {
     const primas = [
         {
             title: "PRIMA FRACCIONADA",
-            checkbox: "chec_fra",
+            checkbox: "custbody176",
             inputs: [
                 { name: "custbody179", label: "MONTO FRACCIONADO", type: "text", placeholder: "0" },
                 { name: "custbody179_date", label: "FECHA:", type: "date", placeholder: "0" },
@@ -57,7 +58,7 @@ export const SeleccionPrima = ({ formValues, handleInputChange }) => {
         },
         {
             title: "PRIMA ÚNICA",
-            checkbox: "chec_uica",
+            checkbox: "custbody177",
             inputs: [
                 { name: "custbody181", label: "MONTO ÚNICO", type: "text", placeholder: "0" },
                 { name: "custbody182_date", label: "FECHA:", type: "date", placeholder: "0" },
@@ -67,7 +68,7 @@ export const SeleccionPrima = ({ formValues, handleInputChange }) => {
         },
         {
             title: "PRIMA EXTRA-ORDINARIA",
-            checkbox: "chec_extra",
+            checkbox: "custbody178",
             inputs: [
                 { name: "custbody183", label: "MONTO EXTRA-ORDINARIA", type: "text", placeholder: "0" },
                 { name: "custbody184_date", label: "FECHA:", type: "date", placeholder: "0" },
@@ -77,31 +78,31 @@ export const SeleccionPrima = ({ formValues, handleInputChange }) => {
         },
         {
             title: "PRIMA EXTRA 1+",
-            checkbox: "chec_extra_uno",
+            checkbox: "prima_extra_uno",
             inputs: [
-                { name: "o_2_uno_input", label: "MONTO PRIMA EXTRA 1+", type: "text", placeholder: "0" },
+                { name: "monto_extra_uno", label: "MONTO PRIMA EXTRA 1+", type: "text", placeholder: "0" },
                 { name: "custbody184_uno_date", label: "FECHA:", type: "date", placeholder: "0" },
-                { name: "custbody184_uno", label: "TRACTOS PRIMA EXTRA 1+", type: "number", placeholder: "0" },
+                { name: "monto_tracto_uno", label: "TRACTOS PRIMA EXTRA 1+", type: "number", placeholder: "0" },
                 { name: "custbody195_uno", label: "DESCRIPCIÓN PRIMA EXTRA 1+:", type: "textarea", placeholder: "PAGO DE PRIMA PRIMA EXTRA 1+" },
             ],
         },
         {
             title: "PRIMA EXTRA 2+",
-            checkbox: "chec_extra_dos",
+            checkbox: "prima_extra_dos",
             inputs: [
-                { name: "o_2_dos_input", label: "MONTO PRIMA EXTRA 2+", type: "text", placeholder: "0" },
+                { name: "monto_extra_dos", label: "MONTO PRIMA EXTRA 2+", type: "text", placeholder: "0" },
                 { name: "custbody184_dos_date", label: "FECHA:", type: "date", placeholder: "0" },
-                { name: "custbody184_dos", label: "TRACTOS PRIMA EXTRA 2+", type: "number", placeholder: "0" },
+                { name: "monto_tracto_dos", label: "TRACTOS PRIMA EXTRA 2+", type: "number", placeholder: "0" },
                 { name: "custbody195_dos", label: "DESCRIPCIÓN PRIMA EXTRA 2+:", type: "textarea", placeholder: "PAGO DE PRIMA PRIMA EXTRA 2+" },
             ],
         },
         {
             title: "PRIMA EXTRA 3+",
-            checkbox: "chec_extra_tres",
+            checkbox: "prima_extra_tres",
             inputs: [
-                { name: "o_2_tres_input", label: "MONTO PRIMA EXTRA 3+", type: "text", placeholder: "0" },
+                { name: "monto_extra_tres", label: "MONTO PRIMA EXTRA 3+", type: "text", placeholder: "0" },
                 { name: "custbody184_tres_date", label: "FECHA:", type: "date", placeholder: "0" },
-                { name: "custbody184_tres", label: "TRACTOS PRIMA EXTRA 3+", type: "number", placeholder: "0" },
+                { name: "monto_tracto_tres", label: "TRACTOS PRIMA EXTRA 3+", type: "number", placeholder: "0" },
                 { name: "custbody195_tres", label: "DESCRIPCIÓN PRIMA EXTRA 3+:", type: "textarea", placeholder: "PAGO DE PRIMA PRIMA EXTRA 3+" },
             ],
         },
@@ -125,6 +126,7 @@ export const SeleccionPrima = ({ formValues, handleInputChange }) => {
                                         checked={formValues[prima.checkbox]}
                                         onChange={handleInputChange}
                                     />
+
                                     <label className="form-check-label">{prima.title}</label>
                                 </div>
                             </div>
@@ -133,7 +135,14 @@ export const SeleccionPrima = ({ formValues, handleInputChange }) => {
                 </div>
             </div>
             {primas.map((prima) => (
-                <PrimaSection key={prima.checkbox} title={prima.title} fields={prima} formValues={formValues} handleInputChange={handleInputChange} />
+                <PrimaSection
+                    key={prima.checkbox}
+                    title={prima.title}
+                    fields={prima}
+                    formValues={formValues}
+                    handleInputChange={handleInputChange}
+                    errors={errors}
+                />
             ))}
         </>
     );

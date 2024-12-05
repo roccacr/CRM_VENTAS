@@ -16,12 +16,7 @@ export const MetodoPago = ({ formValues, handleInputChange }) => {
                         </p>
                         <div className="col">
                             <div className="col-sm-3">
-                                <select
-                                    className="form-select"
-                                    value={formValues.custbody75_estimacion}
-                                    name="custbody75_estimacion"
-                                    onChange={handleInputChange}
-                                >
+                                <select className="form-select" value={formValues.custbody75} name="custbody75" onChange={handleInputChange}>
                                     <option value="">Selecione un Metodo de pago</option>
                                     <option value="2">Avance De Obra</option>
                                     <option value="7">Avance Diferenciado</option>
@@ -33,7 +28,6 @@ export const MetodoPago = ({ formValues, handleInputChange }) => {
                     <ContraEntrega formValues={formValues} handleInputChange={handleInputChange} />
                     <AvanceObra formValues={formValues} handleInputChange={handleInputChange} />
                     <AvanceDiferenciado formValues={formValues} handleInputChange={handleInputChange} />
-                  
                 </div>
             </div>
         </>

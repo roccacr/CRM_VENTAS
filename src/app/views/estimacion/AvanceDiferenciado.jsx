@@ -3,7 +3,7 @@
 export const AvanceDiferenciado = ({formValues, handleInputChange}) => {
   return (
       <>
-          <div className="row" hidden={formValues.custbody75_estimacion === "7" ? false : true}>
+          <div className="row" hidden={parseInt(formValues.custbody75, 10) === 7 ? false : true}>
               <div className="col-sm-3">
                   <label className="form-label">HITO 1 %</label>
                   <input

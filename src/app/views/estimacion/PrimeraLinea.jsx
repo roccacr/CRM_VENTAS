@@ -1,4 +1,4 @@
-export const PrimeraLinea = ({ formValues, handleInputChange }) => {
+export const PrimeraLinea = ({ formValues, handleInputChange, errors }) => {
     return (
         <>
             <div className="row">
@@ -253,8 +253,8 @@ export const PrimeraLinea = ({ formValues, handleInputChange }) => {
                     <input
                         autoComplete="off"
                         type="text"
-                        name="diferecia"
-                        value={formValues.diferecia}
+                        name="custbody185"
+                        value={formValues.custbody185}
                         onChange={handleInputChange}
                         className={`form-control mb-2`}
                     />
@@ -271,41 +271,45 @@ export const PrimeraLinea = ({ formValues, handleInputChange }) => {
                         name="custbody191"
                         value={formValues.custbody191}
                         onChange={handleInputChange}
-                        className={`form-control mb-2`}
+                        className={`form-control mb-2 ${errors.custbody191 ? "is-invalid" : ""}`}
                     />
+                    {errors.custbody191 && <div className="invalid-feedback">{errors.custbody191}</div>}
                 </div>
                 <div className="col-sm-3">
                     <label className="form-label">COMPROBANTE PRERESERVA</label>
                     <input
                         autoComplete="off"
                         type="text"
-                        name="pre_3"
-                        value={formValues.pre_3}
+                        name="custbody189"
+                        value={formValues.custbody189}
                         onChange={handleInputChange}
-                        className={`form-control mb-2`}
+                        className={`form-control mb-2 ${errors.custbody189 ? "is-invalid" : ""}`}
                     />
+                    {errors.custbody189 && <div className="invalid-feedback">{errors.custbody189}</div>}
                 </div>
                 <div className="col-sm-3">
                     <label className="form-label">FECHA DE PRERESERVA</label>
                     <input
                         autoComplete="off"
                         type="date"
-                        name="pre_5"
-                        value={formValues.pre_5}
+                        name="custbody206"
+                        value={formValues.custbody206}
                         onChange={handleInputChange}
-                        className={`form-control mb-2`}
+                        className={`form-control mb-2 ${errors.custbody206 ? "is-invalid" : ""}`}
                     />
+                    {errors.custbody206 && <div className="invalid-feedback">{errors.custbody206}</div>}
                 </div>
                 <div className="col-sm-3">
                     <label className="form-label">OBSERVACIONES PRERESERVA</label>
                     <input
                         autoComplete="off"
                         type="text"
-                        name="pre_8"
-                        value={formValues.pre_8}
+                        name="custbody190"
+                        value={formValues.custbody190}
                         onChange={handleInputChange}
-                        className={`form-control mb-2`}
+                        className={`form-control mb-2 ${errors.custbody190 ? "is-invalid" : ""}`}
                     />
+                    {errors.custbody190 && <div className="invalid-feedback">{errors.custbody190}</div>}
                 </div>
                 <div className="col-sm-3">
                     <label className="form-label">METODO DE PAGO</label>

@@ -1,4 +1,4 @@
-export const CalculodePrima = ({ formValues, handleInputChange, handleDiscountSelection }) => {
+export const CalculodePrima = ({ formValues, handleInputChange, handleDiscountSelection, errors }) => {
     return (
         <>
             {/* PRIMA */}
@@ -67,8 +67,9 @@ export const CalculodePrima = ({ formValues, handleInputChange, handleDiscountSe
                         name="custbody39"
                         value={formValues.custbody39}
                         onChange={handleInputChange}
-                        className={`form-control mb-2`}
+                        className={`form-control mb-2 ${errors.custbody39 ? "is-invalid" : ""}`}
                     />
+                    {errors.custbody39 && <div className="invalid-feedback">{errors.custbody39}</div>}
                 </div>
                 <div className="col-sm-3">
                     <label className="form-label">PRIMA%</label>
@@ -79,8 +80,9 @@ export const CalculodePrima = ({ formValues, handleInputChange, handleDiscountSe
                         name="custbody60"
                         value={formValues.custbody60}
                         onChange={handleInputChange}
-                        className={`form-control mb-2`}
+                        className={`form-control mb-2 ${errors.custbody60 ? "is-invalid" : ""}`}
                     />
+                    {errors.custbody60 && <div className="invalid-feedback">{errors.custbody60}</div>}
                 </div>
                 <div className="col-sm-3">
                     <label className="form-label">MONTO PRIMA NETA</label>
