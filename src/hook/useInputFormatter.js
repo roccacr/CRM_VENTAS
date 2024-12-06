@@ -127,7 +127,7 @@ export const calculoPrimaTotalPorcentaje = (formValues) => {
     let porcentaje = montoPrimaTotal / montoTotal;
 
     // Redondea a 5 decimales para mayor precisión
-    //  porcentaje = Math.round(porcentaje * 10000) / 10000;
+   porcentaje = Math.round(porcentaje * 1e9) / 1e9;
 
     // Devuelve el porcentaje redondeado
     return porcentaje;

@@ -244,8 +244,7 @@ export const ModalEstimacion = ({ open, onClose, OportunidadDetails, cliente }) 
                 const total = calculoPrimaTotalPorcentaje(updatedValues); // Porcentaje total
                 const montoPrimaNet = montoPrimaNeta(newValue, updatedValues); // Prima neta
                 const asignable = calculoPrimaAsignable(newValue, updatedValues); // Prima asignable
-                const calculoMontoHito6 = calculoContraEntregaSinprimaTotal(updatedValues);
-                const calculoMontoCalculado = calculoContraEntregaMontoCalculado(updatedValues);
+
 
                 if (parseInt(updatedValues.custbody75, 10) === 2) {
                     const montot = montoTotal(updatedValues); // Monto total
@@ -264,8 +263,6 @@ export const ModalEstimacion = ({ open, onClose, OportunidadDetails, cliente }) 
                     custbody60: total,
                     custbody_ix_salesorder_monto_prima: montoPrimaNet,
                     neta: asignable,
-                    custbody163: calculoMontoHito6,
-                    custbody_ix_salesorder_hito6: calculoMontoCalculado,
                 };
             });
             return; // Detiene el flujo
@@ -295,8 +292,6 @@ export const ModalEstimacion = ({ open, onClose, OportunidadDetails, cliente }) 
                 const total = calculoMontoSegunPorcentaje(updatedValues); // Monto total basado en porcentaje
                 const montoPrimaNet = montoPrimaNeta(total, updatedValues); // Prima neta
                 const asignable = calculoPrimaAsignable(total, updatedValues); // Prima asignable
-                const calculoMontoHito6 = calculoContraEntregaSinprimaTotal(updatedValues);
-                const calculoMontoCalculado = calculoContraEntregaMontoCalculado(updatedValues);
 
                 if (parseInt(updatedValues.custbody75, 10) === 2) {
                     const montot = montoTotal(updatedValues); // Monto total
@@ -315,8 +310,6 @@ export const ModalEstimacion = ({ open, onClose, OportunidadDetails, cliente }) 
                     custbody39: total,
                     custbody_ix_salesorder_monto_prima: montoPrimaNet,
                     neta: asignable,
-                    custbody163: calculoMontoHito6,
-                    custbody_ix_salesorder_hito6: calculoMontoCalculado,
                 };
             });
             return; // Detiene el flujo
