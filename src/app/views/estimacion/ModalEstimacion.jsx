@@ -316,6 +316,40 @@ export const ModalEstimacion = ({ open, onClose, OportunidadDetails, cliente }) 
             return; // Detiene el flujo
         }
 
+        if (name === "custbody75") {
+           setFormValues((prevValues) => {
+               const updatedValues = { ...prevValues, [name]: newValue };
+
+               // Cálculos relacionados con el precio y montos
+               const pvn = precioVentaNeto(updatedValues); // Precio de venta neto
+               const montot = montoTotal(updatedValues); // Monto total
+               const montoPrimaTotal = calcularPrimaToal(montot, updatedValues.custbody60); // Prima total
+               const montoPrimaNet = montoPrimaNeta(montoPrimaTotal, updatedValues); // Prima neta
+               const asignable = calculoPrimaAsignable(montoPrimaTotal, updatedValues); // Prima asignable
+
+               // Cálculos específicos según el tipo de operación
+               if (parseInt(updatedValues.custbody75, 10) === 2) {
+                   calculoAvenceObra(updatedValues, setFormValues, montot, montoPrimaTotal);
+               }
+
+               if (parseInt(updatedValues.custbody75, 10) === 1) {
+                   calculoContraEntregaSinprimaTotal(updatedValues, setFormValues);
+                   calculoContraEntregaMontoCalculado(updatedValues, setFormValues);
+               }
+
+               // Retorna el estado actualizado con los cálculos
+               return {
+                   ...updatedValues,
+                   pvneto: pvn,
+                   neta: asignable,
+                   custbody_ix_total_amount: montot,
+                   custbody39: montoPrimaTotal,
+                   custbody_ix_salesorder_monto_prima: montoPrimaNet,
+               };
+           });
+            return;
+        }
+
         // Actualización genérica para otros campos
         setFormValues({
             ...formValues,
@@ -526,13 +560,8 @@ export const ModalEstimacion = ({ open, onClose, OportunidadDetails, cliente }) 
 
         // Obtener la fecha actual y formatearla como mm/dd/yyyy
          const today = new Date();
-        const formattedDate = today.toISOString().split("T")[0];
-        
+         const formattedDate = today.toISOString().split("T")[0];
          const entregaEstimada = dataOportunidad.entregaEstimada ? dataOportunidad.entregaEstimada.split("/").reverse().join("-") : "";
-
-        console.log("🚀 ----------------------------------------------------------------------------------🚀");
-        console.log("🚀 ~ file: ModalEstimacion.jsx:533 ~ useEffect ~ entregaEstimada:", entregaEstimada);
-        console.log("🚀 ----------------------------------------------------------------------------------🚀");
 
         // Actualizar los valores del formulario con la información procesada
         setFormValues((prevValues) => ({
