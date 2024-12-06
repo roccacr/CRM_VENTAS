@@ -8,8 +8,8 @@ export const AvanceObra = ({ formValues, handleInputChange, errors }) => {
                         autoComplete="off"
                         disabled
                         type="text"
-                        name="avnace_obra_hito11"
-                        value={formValues.avnace_obra_hito11}
+                        name="custbody62"
+                        value={formValues.custbody62}
                         onChange={handleInputChange}
                         className={`form-control mb-2`}
                     />
@@ -17,8 +17,8 @@ export const AvanceObra = ({ formValues, handleInputChange, errors }) => {
                         autoComplete="off"
                         disabled
                         type="text"
-                        name="avnace_obra_hito1"
-                        value={formValues.avnace_obra_hito1}
+                        name="custbodyix_salesorder_hito1"
+                        value={formValues.custbodyix_salesorder_hito1}
                         onChange={handleInputChange}
                         className={`form-control mb-2`}
                     />
@@ -29,8 +29,8 @@ export const AvanceObra = ({ formValues, handleInputChange, errors }) => {
                         autoComplete="off"
                         disabled
                         type="text"
-                        name="avnace_obra_hito12"
-                        value={formValues.avnace_obra_hito12}
+                        name="custbody63"
+                        value={formValues.custbody63}
                         onChange={handleInputChange}
                         className={`form-control mb-2`}
                     />
@@ -38,8 +38,8 @@ export const AvanceObra = ({ formValues, handleInputChange, errors }) => {
                         autoComplete="off"
                         disabled
                         type="text"
-                        name="avnace_obra_hito2"
-                        value={formValues.avnace_obra_hito2}
+                        name="custbody_ix_salesorder_hito2"
+                        value={formValues.custbody_ix_salesorder_hito2}
                         onChange={handleInputChange}
                         className={`form-control mb-2`}
                     />
@@ -50,8 +50,8 @@ export const AvanceObra = ({ formValues, handleInputChange, errors }) => {
                         autoComplete="off"
                         disabled
                         type="text"
-                        name="avnace_obra_hito13"
-                        value={formValues.avnace_obra_hito13}
+                        name="custbody64"
+                        value={formValues.custbody64}
                         onChange={handleInputChange}
                         className={`form-control mb-2`}
                     />
@@ -59,8 +59,8 @@ export const AvanceObra = ({ formValues, handleInputChange, errors }) => {
                         autoComplete="off"
                         disabled
                         type="text"
-                        name="avnace_obra_hito3"
-                        value={formValues.avnace_obra_hito3}
+                        name="custbody_ix_salesorder_hito3"
+                        value={formValues.custbody_ix_salesorder_hito3}
                         onChange={handleInputChange}
                         className={`form-control mb-2`}
                     />
@@ -71,8 +71,8 @@ export const AvanceObra = ({ formValues, handleInputChange, errors }) => {
                         autoComplete="off"
                         disabled
                         type="text"
-                        name="avnace_obra_hito14"
-                        value={formValues.avnace_obra_hito14}
+                        name="custbody65"
+                        value={formValues.custbody65}
                         onChange={handleInputChange}
                         className={`form-control mb-2`}
                     />
@@ -80,8 +80,8 @@ export const AvanceObra = ({ formValues, handleInputChange, errors }) => {
                         autoComplete="off"
                         disabled
                         type="text"
-                        name="avnace_obra_hito4"
-                        value={formValues.avnace_obra_hito4}
+                        name="custbody_ix_salesorder_hito4"
+                        value={formValues.custbody_ix_salesorder_hito4}
                         onChange={handleInputChange}
                         className={`form-control mb-2`}
                     />
@@ -92,8 +92,8 @@ export const AvanceObra = ({ formValues, handleInputChange, errors }) => {
                         autoComplete="off"
                         disabled
                         type="text"
-                        name="avnace_obra_hito15"
-                        value={formValues.avnace_obra_hito15}
+                        name="custbody66"
+                        value={formValues.custbody66}
                         onChange={handleInputChange}
                         className={`form-control mb-2`}
                     />
@@ -101,8 +101,8 @@ export const AvanceObra = ({ formValues, handleInputChange, errors }) => {
                         autoComplete="off"
                         disabled
                         type="text"
-                        name="avnace_obra_hito5"
-                        value={formValues.avnace_obra_hito5}
+                        name="custbody_ix_salesorder_hito5"
+                        value={formValues.custbody_ix_salesorder_hito5}
                         onChange={handleInputChange}
                         className={`form-control mb-2`}
                     />
@@ -113,8 +113,8 @@ export const AvanceObra = ({ formValues, handleInputChange, errors }) => {
                         autoComplete="off"
                         disabled
                         type="text"
-                        name="avnace_obra_hito16"
-                        value={formValues.avnace_obra_hito16}
+                        name="custbody67"
+                        value={formValues.custbody67}
                         onChange={handleInputChange}
                         className={`form-control mb-2`}
                     />
@@ -122,8 +122,8 @@ export const AvanceObra = ({ formValues, handleInputChange, errors }) => {
                         autoComplete="off"
                         disabled
                         type="text"
-                        name="avnace_obra_hito6"
-                        value={formValues.avnace_obra_hito6}
+                        name="custbody_ix_salesorder_hito6"
+                        value={formValues.custbody_ix_salesorder_hito6}
                         onChange={handleInputChange}
                         className={`form-control mb-2`}
                     />
@@ -134,8 +134,8 @@ export const AvanceObra = ({ formValues, handleInputChange, errors }) => {
                         autoComplete="off"
                         disabled
                         type="text"
-                        name="obra_enterega"
-                        value={formValues.obra_enterega}
+                        name="custbody163"
+                        value={formValues.custbody163}
                         onChange={handleInputChange}
                         className={`form-control mb-2`}
                     />

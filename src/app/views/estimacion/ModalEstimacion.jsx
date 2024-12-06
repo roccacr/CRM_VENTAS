@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Modal } from "@mui/material";
 import {
     calcularPrimaToal,
+    calculoAvenceObra,
     calculoContraEntregaMontoCalculado,
     calculoContraEntregaSinprimaTotal,
     calculoMontoSegunPorcentaje,
@@ -79,23 +80,23 @@ export const ModalEstimacion = ({ open, onClose, OportunidadDetails, cliente }) 
         //mspt_contra_entrega
         custbody163: "",
         //avance_diferenciado_hito11
-        custbody62: "",
+        custbody62: 0.15,
         custbodyix_salesorder_hito1: "",
 
         //avnace_obra_hito12
-        custbody63: "",
+        custbody63: 0.25,
         custbody_ix_salesorder_hito2: "",
 
         //avance_diferenciado_hito13
-        custbody64: "",
+        custbody64: 0.25,
         custbody_ix_salesorder_hito3: "",
 
         //avance_diferenciado_hito14
-        custbody65: "",
+        custbody65: 0.15,
         custbody_ix_salesorder_hito4: "",
 
         //avance_diferenciado_hito15
-        custbody66: "",
+        custbody66: 0.15,
         custbody_ix_salesorder_hito5: "",
         hito_chek_uno: "",
         hito_chek_dos: "",
@@ -182,40 +183,46 @@ export const ModalEstimacion = ({ open, onClose, OportunidadDetails, cliente }) 
         // Determinar el nuevo valor basado en el tipo de input
         let newValue = type === "checkbox" ? checked : value;
 
-        // Campos que requieren limpieza específica
+        // Lista de campos que requieren limpieza específica
         const campos = ["custbody132", "custbody46", "custbodyix_salesorder_cashback", "custbody52", "custbody16", "custbody39", "custbody60"];
 
         // Procesar campos específicos con reglas adicionales
         if (campos.includes(name)) {
-            newValue = limpiarCampos(value); // Limpia el valor
+            newValue = limpiarCampos(value); // Limpia el valor usando una función personalizada
 
-            // Procesamiento adicional para "custbody132"
+            // Procesamiento especial para "custbody132"
             if (name === "custbody132") {
                 newValue = `-${newValue.replace(/^-+/, "")}`; // Remueve guiones iniciales dejando solo uno
                 if (newValue === "-0" || newValue === "-") {
-                    newValue = ""; // Ajusta valores inválidos
+                    newValue = ""; // Ajusta valores inválidos a vacío
                 }
             }
         }
 
-        // Actualización para campos que afectan cálculos complejos
+        // Campos que afectan cálculos complejos
         const afectaCalculos = ["custbody132", "custbody46", "custbodyix_salesorder_cashback", "custbody52", "custbody16"];
         if (afectaCalculos.includes(name)) {
             setFormValues((prevValues) => {
                 const updatedValues = { ...prevValues, [name]: newValue };
 
-                // Calcula valores derivados
+                // Cálculos relacionados con el precio y montos
                 const pvn = precioVentaNeto(updatedValues); // Precio de venta neto
                 const montot = montoTotal(updatedValues); // Monto total
                 const montoPrimaTotal = calcularPrimaToal(montot, updatedValues.custbody60); // Prima total
-                const montoPrimaNet = montoPrimaNeta(montoPrimaTotal, updatedValues); // Prima netapvneto
-
+                const montoPrimaNet = montoPrimaNeta(montoPrimaTotal, updatedValues); // Prima neta
                 const asignable = calculoPrimaAsignable(montoPrimaTotal, updatedValues); // Prima asignable
 
-                const calculoMontoHito6 = calculoContraEntregaSinprimaTotal(updatedValues);
-                const calculoMontoCalculado = calculoContraEntregaMontoCalculado(updatedValues);
+                // Cálculos específicos según el tipo de operación
+                if (parseInt(updatedValues.custbody75, 10) === 2) {
+                    calculoAvenceObra(updatedValues, setFormValues, montot, montoPrimaTotal);
+                }
 
-                // Retorna el nuevo estado actualizado
+                if (parseInt(updatedValues.custbody75, 10) === 1) {
+                    calculoContraEntregaSinprimaTotal(updatedValues, setFormValues);
+                    calculoContraEntregaMontoCalculado(updatedValues, setFormValues);
+                }
+
+                // Retorna el estado actualizado con los cálculos
                 return {
                     ...updatedValues,
                     pvneto: pvn,
@@ -223,26 +230,35 @@ export const ModalEstimacion = ({ open, onClose, OportunidadDetails, cliente }) 
                     custbody_ix_total_amount: montot,
                     custbody39: montoPrimaTotal,
                     custbody_ix_salesorder_monto_prima: montoPrimaNet,
-                    custbody163: calculoMontoHito6,
-                    custbody_ix_salesorder_hito6: calculoMontoCalculado,
                 };
             });
             return; // Detiene el flujo para evitar actualizaciones innecesarias
         }
 
-        // Actualización para campos relacionados con la prima total
+        // Procesa cambios en el campo "custbody39" (Prima total)
         if (name === "custbody39") {
             setFormValues((prevValues) => {
                 const updatedValues = { ...prevValues, [name]: newValue };
 
-                // Calcula valores derivados
+                // Cálculos relacionados con porcentajes y primas
                 const total = calculoPrimaTotalPorcentaje(updatedValues); // Porcentaje total
                 const montoPrimaNet = montoPrimaNeta(newValue, updatedValues); // Prima neta
                 const asignable = calculoPrimaAsignable(newValue, updatedValues); // Prima asignable
                 const calculoMontoHito6 = calculoContraEntregaSinprimaTotal(updatedValues);
                 const calculoMontoCalculado = calculoContraEntregaMontoCalculado(updatedValues);
 
-                // Retorna el nuevo estado actualizado
+                if (parseInt(updatedValues.custbody75, 10) === 2) {
+                    const montot = montoTotal(updatedValues); // Monto total
+                    const montoPrimaTotal = calcularPrimaToal(montot, updatedValues.custbody60); // Prima total
+                    calculoAvenceObra(updatedValues, setFormValues, montot, montoPrimaTotal);
+                }
+
+                if (parseInt(updatedValues.custbody75, 10) === 1) {
+                    calculoContraEntregaSinprimaTotal(updatedValues, setFormValues);
+                    calculoContraEntregaMontoCalculado(updatedValues, setFormValues);
+                }
+
+                // Retorna el estado actualizado
                 return {
                     ...updatedValues,
                     custbody60: total,
@@ -255,7 +271,7 @@ export const ModalEstimacion = ({ open, onClose, OportunidadDetails, cliente }) 
             return; // Detiene el flujo
         }
 
-        // Actualización para campos relacionados con porcentajes
+        // Procesa cambios en campos relacionados con porcentajes
         if (
             [
                 "custbody60",
@@ -275,14 +291,25 @@ export const ModalEstimacion = ({ open, onClose, OportunidadDetails, cliente }) 
             setFormValues((prevValues) => {
                 const updatedValues = { ...prevValues, [name]: newValue };
 
-                // Calcula valores derivados
-                const total = calculoMontoSegunPorcentaje(updatedValues); // Monto total según porcentaje
+                // Cálculos derivados según el porcentaje
+                const total = calculoMontoSegunPorcentaje(updatedValues); // Monto total basado en porcentaje
                 const montoPrimaNet = montoPrimaNeta(total, updatedValues); // Prima neta
                 const asignable = calculoPrimaAsignable(total, updatedValues); // Prima asignable
                 const calculoMontoHito6 = calculoContraEntregaSinprimaTotal(updatedValues);
                 const calculoMontoCalculado = calculoContraEntregaMontoCalculado(updatedValues);
 
-                // Retorna el nuevo estado actualizado
+                if (parseInt(updatedValues.custbody75, 10) === 2) {
+                    const montot = montoTotal(updatedValues); // Monto total
+                    const montoPrimaTotal = calcularPrimaToal(montot, updatedValues.custbody60); // Prima total
+                    calculoAvenceObra(updatedValues, setFormValues, montot, montoPrimaTotal);
+                }
+
+                if (parseInt(updatedValues.custbody75, 10) === 1) {
+                    calculoContraEntregaSinprimaTotal(updatedValues, setFormValues);
+                    calculoContraEntregaMontoCalculado(updatedValues, setFormValues);
+                }
+
+                // Retorna el estado actualizado
                 return {
                     ...updatedValues,
                     custbody39: total,
@@ -500,7 +527,8 @@ export const ModalEstimacion = ({ open, onClose, OportunidadDetails, cliente }) 
         const montoPrima = (precioVenta * 0.15) / 100;
 
         // Determinar el valor para "hito6" basado en una condición específica
-        const hito6 = dataOportunidad.custbody75_oport === 2 ? "100%" : 0;
+        let hito6 = 0;
+        hito6 = parseInt(dataOportunidad.custbody75_oport, 10) === 1 ? "100%" : parseInt(dataOportunidad.custbody75_oport, 10) === 2 ? "0.05" : 0;
 
         // Actualizar los valores del formulario con la información procesada
         setFormValues((prevValues) => ({
@@ -527,62 +555,61 @@ export const ModalEstimacion = ({ open, onClose, OportunidadDetails, cliente }) 
         setIsLoading(false); // Indicar que la carga de datos ha finalizado
     }, [open, cliente, OportunidadDetails]);
 
-   return (
-       // Componente Modal que se muestra cuando `open` es true
-       <Modal
-           open={open}
-           onClose={onClose}
-           className="modal fade show"
-           style={{ display: "block" }} // Forzar que el modal siempre se muestre en pantalla
-           aria-modal="true" // Indicador de accesibilidad para navegadores
-       >
-           <div
-               className="modal-dialog"
-               style={{ maxWidth: "89%", margin: "1.75rem auto" }} // Estilo personalizado para el tamaño y centrado del modal
-           >
-               <div className="modal-content">
-                   <div className="modal-body">
-                       {isLoading ? (
-                           // Mostrar un indicador de carga mientras los datos se procesan
-                           <div
-                               className="d-flex justify-content-center align-items-center"
-                               style={{ height: "200px" }} // Asegurar el centrado vertical y horizontal del spinner
-                           >
-                               <div className="spinner-border" role="status">
-                                   <span className="visually-hidden">Cargando...</span> {/* Texto accesible para lectores de pantalla */}
-                               </div>
-                           </div>
-                       ) : (
-                           // Contenido principal del modal cuando no está cargando
-                           <>
-                               <h4>GENERAR ESTIMACIÓN</h4> {/* Título principal del modal */}
-                               <form onSubmit={handleSubmit}>
-                                   {" "}
-                                   {/* Manejo del envío del formulario */}
-                                   {/* Componente para gestionar la primera línea del formulario */}
-                                   <PrimeraLinea formValues={formValues} handleInputChange={handleInputChange} errors={errors} />
-                                   {/* Componente para cálculo de primas */}
-                                   <CalculodePrima
-                                       errors={errors}
-                                       formValues={formValues}
-                                       handleInputChange={handleInputChange}
-                                       handleDiscountSelection={handleDiscountSelection}
-                                   />
-                                   {/* Componente para selección de primas */}
-                                   <SeleccionPrima errors={errors} formValues={formValues} handleInputChange={handleInputChange}/>
-                                   {/* Componente para selección de método de pago */}
-                                   <MetodoPago formValues={formValues} handleInputChange={handleInputChange} errors={errors} />
-                                   {/* Botón para guardar la estimación */}
-                                   <button type="submit" className="btn btn-primary">
-                                       Guardar Estimacion
-                                   </button>
-                               </form>
-                           </>
-                       )}
-                   </div>
-               </div>
-           </div>
-       </Modal>
-   );
-
+    return (
+        // Componente Modal que se muestra cuando `open` es true
+        <Modal
+            open={open}
+            onClose={onClose}
+            className="modal fade show"
+            style={{ display: "block" }} // Forzar que el modal siempre se muestre en pantalla
+            aria-modal="true" // Indicador de accesibilidad para navegadores
+        >
+            <div
+                className="modal-dialog"
+                style={{ maxWidth: "89%", margin: "1.75rem auto" }} // Estilo personalizado para el tamaño y centrado del modal
+            >
+                <div className="modal-content">
+                    <div className="modal-body">
+                        {isLoading ? (
+                            // Mostrar un indicador de carga mientras los datos se procesan
+                            <div
+                                className="d-flex justify-content-center align-items-center"
+                                style={{ height: "200px" }} // Asegurar el centrado vertical y horizontal del spinner
+                            >
+                                <div className="spinner-border" role="status">
+                                    <span className="visually-hidden">Cargando...</span> {/* Texto accesible para lectores de pantalla */}
+                                </div>
+                            </div>
+                        ) : (
+                            // Contenido principal del modal cuando no está cargando
+                            <>
+                                <h4>GENERAR ESTIMACIÓN</h4> {/* Título principal del modal */}
+                                <form onSubmit={handleSubmit}>
+                                    {" "}
+                                    {/* Manejo del envío del formulario */}
+                                    {/* Componente para gestionar la primera línea del formulario */}
+                                    <PrimeraLinea formValues={formValues} handleInputChange={handleInputChange} errors={errors} />
+                                    {/* Componente para cálculo de primas */}
+                                    <CalculodePrima
+                                        errors={errors}
+                                        formValues={formValues}
+                                        handleInputChange={handleInputChange}
+                                        handleDiscountSelection={handleDiscountSelection}
+                                    />
+                                    {/* Componente para selección de primas */}
+                                    <SeleccionPrima errors={errors} formValues={formValues} handleInputChange={handleInputChange} />
+                                    {/* Componente para selección de método de pago */}
+                                    <MetodoPago formValues={formValues} handleInputChange={handleInputChange} errors={errors} />
+                                    {/* Botón para guardar la estimación */}
+                                    <button type="submit" className="btn btn-primary">
+                                        Guardar Estimacion
+                                    </button>
+                                </form>
+                            </>
+                        )}
+                    </div>
+                </div>
+            </div>
+        </Modal>
+    );
 };

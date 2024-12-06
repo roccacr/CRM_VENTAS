@@ -239,7 +239,7 @@ export const calculoContraEntrega = (formValues) => {
 };
 
 
-export const calculoContraEntregaSinprimaTotal = (formValues) => {
+export const calculoContraEntregaSinprimaTotal = (formValues, setFormValues) => {
     // Parsear y limpiar el monto total (custbody_ix_total_amount) desde el formulario.
     const monto_total_sin_prima = cleanAndParseFloat(formValues.custbody_ix_total_amount);
 
@@ -257,16 +257,19 @@ export const calculoContraEntregaSinprimaTotal = (formValues) => {
         maximumFractionDigits: 5,
     }).format(monto_sin_prima_total);
 
-    // Devuelve el monto total formateado como una cadena.
-    return formateado;
+    setFormValues((prevValues) => ({
+        ...prevValues,
+        custbody67: "100%",
+        custbody163: formateado,
+    }));
 };
 
-export const calculoContraEntregaMontoCalculado = (formValues) => {
+export const calculoContraEntregaMontoCalculado = (formValues, setFormValues) => {
     // Parsear y limpiar el monto total (custbody_ix_total_amount) desde el formulario.
     const MontoCalculado = cleanAndParseFloat(formValues.custbody163);
 
     // Calcular el monto sin prima total restando la prima del monto total.
-    var total = MontoCalculado*1;
+    var total = MontoCalculado * 1;
 
     // Formatear el resultado con un número configurable:
     // - Siempre muestra al menos 2 decimales.
@@ -277,5 +280,53 @@ export const calculoContraEntregaMontoCalculado = (formValues) => {
     }).format(total);
 
     // Devuelve el monto total formateado como una cadena.
-    return formateado;
+    setFormValues((prevValues) => ({
+        ...prevValues,
+        custbody67:"100%",
+        custbody_ix_salesorder_hito6: formateado,
+    }));
 };
+
+
+export const calculoAvenceObra = (formValues, setFormValues, montot, montoPrimaTotal) => {
+    // Limpia y convierte el monto total (sin prima) a un número flotante.
+    const montoTotalSinPrima = cleanAndParseFloat(montot);
+
+    // Limpia y convierte el monto de prima total a un número flotante.
+    const montoPrimaTotalSinPrima = cleanAndParseFloat(montoPrimaTotal);
+
+    // Calcula el monto sin prima total restando el monto de prima al monto total.
+    const montoSinPrimaTotal = montoTotalSinPrima - montoPrimaTotalSinPrima;
+
+    // Formateadores para los diferentes hitos y el total
+    const formatNumber = (value) =>
+        new Intl.NumberFormat("en-US", {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 5,
+        }).format(value);
+
+    // Calcula los valores de los hitos y el total, aplicando los porcentajes correspondientes.
+    const totalHito1 = formatNumber(montoSinPrimaTotal * 0.15); // 15% del total sin prima
+    const totalHito2 = formatNumber(montoSinPrimaTotal * 0.25); // 25% del total sin prima
+    const totalHito3 = formatNumber(montoSinPrimaTotal * 0.25); // 25% del total sin prima
+    const totalHito4 = formatNumber(montoSinPrimaTotal * 0.15); // 15% del total sin prima
+    const totalHito5 = formatNumber(montoSinPrimaTotal * 0.15); // 20% del total sin prima
+    const totalHito6 = formatNumber(montoSinPrimaTotal * 0.05); // 5% del total sin prima
+    const totalFormatted = formatNumber(montoSinPrimaTotal); // Total formateado
+
+    // Actualiza los valores en el formulario usando el setter.
+    setFormValues((prevValues) => ({
+        ...prevValues,
+        custbody163: totalFormatted, // Total sin prima formateado
+        custbodyix_salesorder_hito1: totalHito1, // Valor del primer hito (15%)
+        custbody_ix_salesorder_hito2: totalHito2, // Valor del segundo hito (25%)
+        custbody_ix_salesorder_hito3: totalHito3, // Valor del tercer hito (25%)
+        custbody_ix_salesorder_hito4: totalHito4, // Valor del cuarto hito (15%)
+        custbody_ix_salesorder_hito5: totalHito5,
+        custbody_ix_salesorder_hito6: totalHito6,
+    }));
+
+    // Retorna un mensaje opcional para confirmar la acción realizada.
+    return "Actualización realizada";
+};
+
