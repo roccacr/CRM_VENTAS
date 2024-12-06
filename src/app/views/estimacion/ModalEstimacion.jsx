@@ -17,6 +17,7 @@ import { PrimeraLinea } from "./PrimeraLinea";
 import { CalculodePrima } from "./CalculodePrima";
 import { SeleccionPrima } from "./SeleccionPrima";
 import { MetodoPago } from "./MetodoPago";
+import { data } from "jquery";
 
 export const ModalEstimacion = ({ open, onClose, OportunidadDetails, cliente }) => {
     // Estado para manejar si el contenido del modal está cargando
@@ -523,6 +524,16 @@ export const ModalEstimacion = ({ open, onClose, OportunidadDetails, cliente }) 
         let hito6 = 0;
         hito6 = parseInt(dataOportunidad.custbody75_oport, 10) === 1 ? "100%" : parseInt(dataOportunidad.custbody75_oport, 10) === 2 ? "0.05" : 0;
 
+        // Obtener la fecha actual y formatearla como mm/dd/yyyy
+         const today = new Date();
+        const formattedDate = today.toISOString().split("T")[0];
+        
+         const entregaEstimada = dataOportunidad.entregaEstimada ? dataOportunidad.entregaEstimada.split("/").reverse().join("-") : "";
+
+        console.log("🚀 ----------------------------------------------------------------------------------🚀");
+        console.log("🚀 ~ file: ModalEstimacion.jsx:533 ~ useEffect ~ entregaEstimada:", entregaEstimada);
+        console.log("🚀 ----------------------------------------------------------------------------------🚀");
+
         // Actualizar los valores del formulario con la información procesada
         setFormValues((prevValues) => ({
             ...prevValues,
@@ -543,6 +554,8 @@ export const ModalEstimacion = ({ open, onClose, OportunidadDetails, cliente }) 
             // Método de pago y otros campos adicionales
             custbody75: dataOportunidad.custbody75_oport, // Método de pago seleccionado
             custbody67: hito6, // Hito de progreso basado en condiciones específicas
+            fech_reserva: formattedDate, // Fecha de la reserva
+            date_hito_6: entregaEstimada,
         }));
 
         setIsLoading(false); // Indicar que la carga de datos ha finalizado
