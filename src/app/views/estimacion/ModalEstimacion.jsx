@@ -2,6 +2,8 @@ import { useState, useEffect } from "react";
 import { Modal } from "@mui/material";
 import {
     calcularPrimaToal,
+    calculoContraEntregaMontoCalculado,
+    calculoContraEntregaSinprimaTotal,
     calculoMontoSegunPorcentaje,
     calculoPrimaAsignable,
     calculoPrimaTotalPorcentaje,
@@ -16,11 +18,6 @@ import { SeleccionPrima } from "./SeleccionPrima";
 import { MetodoPago } from "./MetodoPago";
 
 export const ModalEstimacion = ({ open, onClose, OportunidadDetails, cliente }) => {
-
-    console.log("🚀 ---------------------------------------------------------------------------------------------🚀");
-    console.log("🚀 ~ file: ModalEstimacion.jsx:20 ~ ModalEstimacion ~ OportunidadDetails:", OportunidadDetails);
-    console.log("🚀 ---------------------------------------------------------------------------------------------🚀");
-
     // Estado para manejar si el contenido del modal está cargando
     const [isLoading, setIsLoading] = useState(true);
 
@@ -213,13 +210,21 @@ export const ModalEstimacion = ({ open, onClose, OportunidadDetails, cliente }) 
                 const montoPrimaTotal = calcularPrimaToal(montot, updatedValues.custbody60); // Prima total
                 const montoPrimaNet = montoPrimaNeta(montoPrimaTotal, updatedValues); // Prima netapvneto
 
+                const asignable = calculoPrimaAsignable(montoPrimaTotal, updatedValues); // Prima asignable
+
+                const calculoMontoHito6 = calculoContraEntregaSinprimaTotal(updatedValues);
+                const calculoMontoCalculado = calculoContraEntregaMontoCalculado(updatedValues);
+
                 // Retorna el nuevo estado actualizado
                 return {
                     ...updatedValues,
                     pvneto: pvn,
+                    neta: asignable,
                     custbody_ix_total_amount: montot,
                     custbody39: montoPrimaTotal,
                     custbody_ix_salesorder_monto_prima: montoPrimaNet,
+                    custbody163: calculoMontoHito6,
+                    custbody_ix_salesorder_hito6: calculoMontoCalculado,
                 };
             });
             return; // Detiene el flujo para evitar actualizaciones innecesarias
@@ -234,6 +239,8 @@ export const ModalEstimacion = ({ open, onClose, OportunidadDetails, cliente }) 
                 const total = calculoPrimaTotalPorcentaje(updatedValues); // Porcentaje total
                 const montoPrimaNet = montoPrimaNeta(newValue, updatedValues); // Prima neta
                 const asignable = calculoPrimaAsignable(newValue, updatedValues); // Prima asignable
+                const calculoMontoHito6 = calculoContraEntregaSinprimaTotal(updatedValues);
+                const calculoMontoCalculado = calculoContraEntregaMontoCalculado(updatedValues);
 
                 // Retorna el nuevo estado actualizado
                 return {
@@ -241,6 +248,8 @@ export const ModalEstimacion = ({ open, onClose, OportunidadDetails, cliente }) 
                     custbody60: total,
                     custbody_ix_salesorder_monto_prima: montoPrimaNet,
                     neta: asignable,
+                    custbody163: calculoMontoHito6,
+                    custbody_ix_salesorder_hito6: calculoMontoCalculado,
                 };
             });
             return; // Detiene el flujo
@@ -270,6 +279,8 @@ export const ModalEstimacion = ({ open, onClose, OportunidadDetails, cliente }) 
                 const total = calculoMontoSegunPorcentaje(updatedValues); // Monto total según porcentaje
                 const montoPrimaNet = montoPrimaNeta(total, updatedValues); // Prima neta
                 const asignable = calculoPrimaAsignable(total, updatedValues); // Prima asignable
+                const calculoMontoHito6 = calculoContraEntregaSinprimaTotal(updatedValues);
+                const calculoMontoCalculado = calculoContraEntregaMontoCalculado(updatedValues);
 
                 // Retorna el nuevo estado actualizado
                 return {
@@ -277,6 +288,8 @@ export const ModalEstimacion = ({ open, onClose, OportunidadDetails, cliente }) 
                     custbody39: total,
                     custbody_ix_salesorder_monto_prima: montoPrimaNet,
                     neta: asignable,
+                    custbody163: calculoMontoHito6,
+                    custbody_ix_salesorder_hito6: calculoMontoCalculado,
                 };
             });
             return; // Detiene el flujo
@@ -292,47 +305,151 @@ export const ModalEstimacion = ({ open, onClose, OportunidadDetails, cliente }) 
         setErrors({ ...errors, [name]: "" });
     };
 
-    // Reglas de validación: Determina qué campos son obligatorios
+    // Reglas de validación: Configuran los campos del formulario indicando si son obligatorios y el mensaje de error correspondiente
     const validationRules = {
-        entity: { required: false, message: "El nombre del cliente es obligatorio" },
-        custbody191: { required: !!formValues.pre_reserva, message: "Pre-reserva: Este campo es obligatorio y debe ser seleccionado." },
-        custbody189: { required: !!formValues.pre_reserva, message: "Pre-reserva: Este campo es obligatorio y debe ser seleccionado." },
-        custbody206: { required: !!formValues.pre_reserva, message: "Pre-reserva: Este campo es obligatorio y debe ser seleccionado." },
-        custbody190: { required: !!formValues.pre_reserva, message: "Pre-reserva: Este campo es obligatorio y debe ser seleccionado." },
+        // Validación del cliente
+        entity: {
+            required: false, // Este campo no es obligatorio
+            message: "El nombre del cliente es obligatorio", // Mensaje en caso de que sea requerido en el futuro
+        },
 
-        //validamos los campos de primas custbody176
-        custbody179: { required: !!formValues.custbody176, message: "Este valor es requerido" },
-        custbody179_date: { required: !!formValues.custbody176, message: "Este valor es requerido" },
-        custbody180: { required: !!formValues.custbody176, message: "Este valor es requerido" },
-        custbody193: { required: !!formValues.custbody176, message: "Este valor es requerido" },
+        // Validaciones para campos relacionados con pre-reserva
+        custbody191: {
+            required: !!formValues.pre_reserva, // Obligatorio solo si hay una pre-reserva activa
+            message: "Pre-reserva: Este campo es obligatorio y debe ser seleccionado.",
+        },
+        custbody189: {
+            required: !!formValues.pre_reserva,
+            message: "Pre-reserva: Este campo es obligatorio y debe ser seleccionado.",
+        },
+        custbody206: {
+            required: !!formValues.pre_reserva,
+            message: "Pre-reserva: Este campo es obligatorio y debe ser seleccionado.",
+        },
+        custbody190: {
+            required: !!formValues.pre_reserva,
+            message: "Pre-reserva: Este campo es obligatorio y debe ser seleccionado.",
+        },
 
-        custbody181: { required: !!formValues.custbody177, message: "Este valor es requerido" },
-        custbody182_date: { required: !!formValues.custbody177, message: "Este valor es requerido" },
-        custbody182: { required: !!formValues.custbody177, message: "Este valor es requerido" },
-        custbody194: { required: !!formValues.custbody177, message: "Este valor es requerido" },
+        // Validaciones para campos relacionados con primas (custbody176)
+        custbody179: {
+            required: !!formValues.custbody176,
+            message: "Este valor es requerido",
+        },
+        custbody179_date: {
+            required: !!formValues.custbody176,
+            message: "Este valor es requerido",
+        },
+        custbody180: {
+            required: !!formValues.custbody176,
+            message: "Este valor es requerido",
+        },
+        custbody193: {
+            required: !!formValues.custbody176,
+            message: "Este valor es requerido",
+        },
 
-        custbody183: { required: !!formValues.custbody178, message: "Este valor es requerido" },
-        custbody184_date: { required: !!formValues.custbody178, message: "Este valor es requerido" },
-        custbody184: { required: !!formValues.custbody178, message: "Este valor es requerido" },
-        custbody195: { required: !!formValues.custbody178, message: "Este valor es requerido" },
+        // Validaciones para otras primas relacionadas (custbody177 y custbody178)
+        custbody181: {
+            required: !!formValues.custbody177,
+            message: "Este valor es requerido",
+        },
+        custbody182_date: {
+            required: !!formValues.custbody177,
+            message: "Este valor es requerido",
+        },
+        custbody182: {
+            required: !!formValues.custbody177,
+            message: "Este valor es requerido",
+        },
+        custbody194: {
+            required: !!formValues.custbody177,
+            message: "Este valor es requerido",
+        },
 
-        monto_extra_uno: { required: !!formValues.prima_extra_uno, message: "Este valor es requerido" },
-        custbody184_uno_date: { required: !!formValues.prima_extra_uno, message: "Este valor es requerido" },
-        monto_tracto_uno: { required: !!formValues.prima_extra_uno, message: "Este valor es requerido" },
-        custbody195_uno: { required: !!formValues.prima_extra_uno, message: "Este valor es requerido" },
+        custbody183: {
+            required: !!formValues.custbody178,
+            message: "Este valor es requerido",
+        },
+        custbody184_date: {
+            required: !!formValues.custbody178,
+            message: "Este valor es requerido",
+        },
+        custbody184: {
+            required: !!formValues.custbody178,
+            message: "Este valor es requerido",
+        },
+        custbody195: {
+            required: !!formValues.custbody178,
+            message: "Este valor es requerido",
+        },
 
-        monto_extra_dos: { required: !!formValues.prima_extra_dos, message: "Este valor es requerido" },
-        custbody184_dos_date: { required: !!formValues.prima_extra_dos, message: "Este valor es requerido" },
-        monto_tracto_dos: { required: !!formValues.prima_extra_dos, message: "Este valor es requerido" },
-        custbody195_dos: { required: !!formValues.prima_extra_dos, message: "Este valor es requerido" },
+        // Validaciones para primas adicionales (prima_extra_uno, prima_extra_dos, prima_extra_tres)
+        monto_extra_uno: {
+            required: !!formValues.prima_extra_uno,
+            message: "Este valor es requerido",
+        },
+        custbody184_uno_date: {
+            required: !!formValues.prima_extra_uno,
+            message: "Este valor es requerido",
+        },
+        monto_tracto_uno: {
+            required: !!formValues.prima_extra_uno,
+            message: "Este valor es requerido",
+        },
+        custbody195_uno: {
+            required: !!formValues.prima_extra_uno,
+            message: "Este valor es requerido",
+        },
 
-        monto_extra_tres: { required: !!formValues.prima_extra_tres, message: "Este valor es requerido" },
-        custbody184_tres_date: { required: !!formValues.prima_extra_tres, message: "Este valor es requerido" },
-        monto_tracto_tres: { required: !!formValues.prima_extra_tres, message: "Este valor es requerido" },
-        custbody195_tres: { required: !!formValues.prima_extra_tres, message: "Este valor es requerido" },
+        monto_extra_dos: {
+            required: !!formValues.prima_extra_dos,
+            message: "Este valor es requerido",
+        },
+        custbody184_dos_date: {
+            required: !!formValues.prima_extra_dos,
+            message: "Este valor es requerido",
+        },
+        monto_tracto_dos: {
+            required: !!formValues.prima_extra_dos,
+            message: "Este valor es requerido",
+        },
+        custbody195_dos: {
+            required: !!formValues.prima_extra_dos,
+            message: "Este valor es requerido",
+        },
 
-        custbody39: { required: true, message: "Este valor es requerido" },
-        custbody60: { required: true, message: "Este valor es requerido" },
+        monto_extra_tres: {
+            required: !!formValues.prima_extra_tres,
+            message: "Este valor es requerido",
+        },
+        custbody184_tres_date: {
+            required: !!formValues.prima_extra_tres,
+            message: "Este valor es requerido",
+        },
+        monto_tracto_tres: {
+            required: !!formValues.prima_extra_tres,
+            message: "Este valor es requerido",
+        },
+        custbody195_tres: {
+            required: !!formValues.prima_extra_tres,
+            message: "Este valor es requerido",
+        },
+
+        // Validación de campos esenciales
+        custbody39: {
+            required: true, // Campo siempre obligatorio
+            message: "Este valor es requerido",
+        },
+        custbody60: {
+            required: true, // Campo siempre obligatorio
+            message: "Este valor es requerido",
+        },
+
+        date_hito_6: {
+            required: parseInt(formValues.custbody75, 10) === 1 ? true : false, // Campo obligatorio si custbody75 es igual a 2
+            message: "Este valor es requerido",
+        },
     };
 
     // Valida el formulario
@@ -354,88 +471,118 @@ export const ModalEstimacion = ({ open, onClose, OportunidadDetails, cliente }) 
 
     // Maneja el envío del formulario
     const handleSubmit = (e) => {
-        e.preventDefault();
+        e.preventDefault(); // Previene el comportamiento predeterminado del formulario (recargar la página)
+
+        // Valida los datos del formulario antes de proceder
         if (validateForm()) {
-            console.log("Formulario válido:", formValues);
-            // Aquí puedes manejar el envío del formulario
+            console.log("Formulario válido:", formValues); // Imprime los valores del formulario si la validación es exitosa
+
+            // Aquí puedes implementar la lógica para enviar los datos del formulario,
+            // como realizar una solicitud a un servidor o actualizar el estado global
         } else {
-            console.log("Errores en el formulario:", errors);
+            console.log("Errores en el formulario:", errors); // Imprime los errores si la validación falla
         }
     };
 
     useEffect(() => {
-        if (!open) return; // Salir si el componente no está "abierto"
+        if (!open) return; // Si el componente no está "abierto", salir inmediatamente
 
-        setIsLoading(true); // Indicar que estamos cargando datos
+        setIsLoading(true); // Indicar que se está cargando la información necesaria
 
-        // Convertir el precio de venta a un valor numérico sin caracteres no numéricos
-        const precioVenta = parseFloat(OportunidadDetails.precioVentaUncio_exp.replace(/\D/g, ""));
+        // Extraer datos de la oportunidad y del cliente
+        const dataOportunidad = OportunidadDetails;
+        const dataCliente = cliente;
 
-        // Calcular el monto de la prima (15% del precio de venta dividido entre 100)
+        // Convertir el precio de venta único en un valor numérico eliminando caracteres no numéricos
+        const precioVenta = parseFloat(dataOportunidad.precioVentaUncio_exp.replace(/\D/g, ""));
+
+        // Calcular el monto de la prima como el 15% del precio de venta (escala de 0 a 100)
         const montoPrima = (precioVenta * 0.15) / 100;
 
+        // Determinar el valor para "hito6" basado en una condición específica
+        const hito6 = dataOportunidad.custbody75_oport === 2 ? "100%" : 0;
 
-        const hito6 = OportunidadDetails.custbody75_oport ===2 ? "100%" : 0;
-
-        // Actualizar el formulario con los valores correspondientes
+        // Actualizar los valores del formulario con la información procesada
         setFormValues((prevValues) => ({
             ...prevValues,
-            entity: cliente.nombre_lead, // Nombre del cliente
-            custbody114: OportunidadDetails.entregaEstimada, // Fecha de entrega estimada
-            proyecto_lead_est: cliente.proyecto_lead, // Proyecto asociado al cliente
-            custbody38: OportunidadDetails.codigo_exp, // Código de la oportunidad
-            tranid_oport: OportunidadDetails.tranid_oport, // ID de la transacción
-            expectedclosedate: OportunidadDetails.expectedclosedate_oport, // Fecha de cierre esperada
-            entitystatus: OportunidadDetails.Motico_Condicion, // Estado de la oportunidad
-            custbody13: OportunidadDetails.precioVentaUncio_exp, // Precio de venta único original
-            custbody18: OportunidadDetails.precioDeVentaMinimo, // Precio de venta mínimo
-            custbody_ix_total_amount: OportunidadDetails.precioVentaUncio_exp, // Precio de venta total
-            custbody39: montoPrima.toFixed(2), // Monto de la prima calculado con dos decimales
-            custbody_ix_salesorder_monto_prima: montoPrima.toFixed(2), // Monto de la prima para la orden
-            neta: montoPrima.toFixed(2), // Prima neta
+            entity: dataCliente.nombre_lead, // Asignar el nombre del cliente
+            custbody114: dataOportunidad.entregaEstimada, // Fecha estimada de entrega
+            proyecto_lead_est: dataCliente.proyecto_lead, // Proyecto asociado al cliente
+            custbody38: dataOportunidad.codigo_exp, // Código único de la oportunidad
+            tranid_oport: dataOportunidad.tranid_oport, // ID de transacción de la oportunidad
+            expectedclosedate: dataOportunidad.expectedclosedate_oport, // Fecha esperada de cierre
+            entitystatus: dataOportunidad.Motico_Condicion, // Estado o condición de la oportunidad
+            custbody13: dataOportunidad.precioVentaUncio_exp, // Precio de venta único original
+            custbody18: dataOportunidad.precioDeVentaMinimo, // Precio mínimo permitido para la venta
+            custbody_ix_total_amount: dataOportunidad.precioVentaUncio_exp, // Total del precio de venta
+            custbody39: montoPrima.toFixed(2), // Prima calculada con dos decimales
+            custbody_ix_salesorder_monto_prima: montoPrima.toFixed(2), // Monto de la prima para la orden de venta
+            neta: montoPrima.toFixed(2), // Prima neta calculada con precisión
 
-            // metodo de pago
-            custbody75: OportunidadDetails.custbody75_oport,
-            custbody67: hito6,
+            // Método de pago y otros campos adicionales
+            custbody75: dataOportunidad.custbody75_oport, // Método de pago seleccionado
+            custbody67: hito6, // Hito de progreso basado en condiciones específicas
         }));
 
-        setIsLoading(false); // Finaliza la carga
+        setIsLoading(false); // Indicar que la carga de datos ha finalizado
     }, [open, cliente, OportunidadDetails]);
 
-    return (
-        <Modal open={open} onClose={onClose} className="modal fade show" style={{ display: "block" }} aria-modal="true">
-            <div className="modal-dialog" style={{ maxWidth: "89%", margin: "1.75rem auto" }}>
-                <div className="modal-content">
-                    <div className="modal-body">
-                        {isLoading ? (
-                            <div className="d-flex justify-content-center align-items-center" style={{ height: "200px" }}>
-                                <div className="spinner-border" role="status">
-                                    <span className="visually-hidden">Cargando...</span>
-                                </div>
-                            </div>
-                        ) : (
-                            <>
-                                <h4>GENERAR ESTIMACIÓN</h4>
-                                <form onSubmit={handleSubmit}>
-                                    <PrimeraLinea formValues={formValues} handleInputChange={handleInputChange} errors={errors} />
-                                    <CalculodePrima
-                                        errors={errors}
-                                        formValues={formValues}
-                                        handleInputChange={handleInputChange}
-                                        handleDiscountSelection={handleDiscountSelection}
-                                    />
-                                    <SeleccionPrima errors={errors} formValues={formValues} handleInputChange={handleInputChange} />
-                                    <MetodoPago formValues={formValues} handleInputChange={handleInputChange} />
+   return (
+       // Componente Modal que se muestra cuando `open` es true
+       <Modal
+           open={open}
+           onClose={onClose}
+           className="modal fade show"
+           style={{ display: "block" }} // Forzar que el modal siempre se muestre en pantalla
+           aria-modal="true" // Indicador de accesibilidad para navegadores
+       >
+           <div
+               className="modal-dialog"
+               style={{ maxWidth: "89%", margin: "1.75rem auto" }} // Estilo personalizado para el tamaño y centrado del modal
+           >
+               <div className="modal-content">
+                   <div className="modal-body">
+                       {isLoading ? (
+                           // Mostrar un indicador de carga mientras los datos se procesan
+                           <div
+                               className="d-flex justify-content-center align-items-center"
+                               style={{ height: "200px" }} // Asegurar el centrado vertical y horizontal del spinner
+                           >
+                               <div className="spinner-border" role="status">
+                                   <span className="visually-hidden">Cargando...</span> {/* Texto accesible para lectores de pantalla */}
+                               </div>
+                           </div>
+                       ) : (
+                           // Contenido principal del modal cuando no está cargando
+                           <>
+                               <h4>GENERAR ESTIMACIÓN</h4> {/* Título principal del modal */}
+                               <form onSubmit={handleSubmit}>
+                                   {" "}
+                                   {/* Manejo del envío del formulario */}
+                                   {/* Componente para gestionar la primera línea del formulario */}
+                                   <PrimeraLinea formValues={formValues} handleInputChange={handleInputChange} errors={errors} />
+                                   {/* Componente para cálculo de primas */}
+                                   <CalculodePrima
+                                       errors={errors}
+                                       formValues={formValues}
+                                       handleInputChange={handleInputChange}
+                                       handleDiscountSelection={handleDiscountSelection}
+                                   />
+                                   {/* Componente para selección de primas */}
+                                   <SeleccionPrima errors={errors} formValues={formValues} handleInputChange={handleInputChange}/>
+                                   {/* Componente para selección de método de pago */}
+                                   <MetodoPago formValues={formValues} handleInputChange={handleInputChange} errors={errors} />
+                                   {/* Botón para guardar la estimación */}
+                                   <button type="submit" className="btn btn-primary">
+                                       Guardar Estimacion
+                                   </button>
+                               </form>
+                           </>
+                       )}
+                   </div>
+               </div>
+           </div>
+       </Modal>
+   );
 
-                                    <button type="submit" className="btn btn-primary">
-                                        Guardar Estimacion
-                                    </button>
-                                </form>
-                            </>
-                        )}
-                    </div>
-                </div>
-            </div>
-        </Modal>
-    );
 };

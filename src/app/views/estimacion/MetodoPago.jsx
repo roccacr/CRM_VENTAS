@@ -2,7 +2,7 @@ import { AvanceDiferenciado } from "./AvanceDiferenciado";
 import { AvanceObra } from "./AvanceObra";
 import { ContraEntrega } from "./ContraEntrega";
 
-export const MetodoPago = ({ formValues, handleInputChange }) => {
+export const MetodoPago = ({ formValues, handleInputChange, errors }) => {
     return (
         <>
             <div className="row" style={{ marginTop: "15px" }} /* Ajusta el valor según sea necesario */>
@@ -25,8 +25,8 @@ export const MetodoPago = ({ formValues, handleInputChange }) => {
                             </div>
                         </div>
                     </div>
-                    <ContraEntrega formValues={formValues} handleInputChange={handleInputChange} />
-                    <AvanceObra formValues={formValues} handleInputChange={handleInputChange} />
+                    <ContraEntrega formValues={formValues} handleInputChange={handleInputChange} errors={errors} />
+                    <AvanceObra formValues={formValues} handleInputChange={handleInputChange} errors={errors} />
                     <AvanceDiferenciado formValues={formValues} handleInputChange={handleInputChange} />
                 </div>
             </div>

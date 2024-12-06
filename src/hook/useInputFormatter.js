@@ -127,7 +127,7 @@ export const calculoPrimaTotalPorcentaje = (formValues) => {
     let porcentaje = montoPrimaTotal / montoTotal;
 
     // Redondea a 5 decimales para mayor precisión
-     porcentaje = Math.round(porcentaje * 100) / 100;
+    //  porcentaje = Math.round(porcentaje * 10000) / 10000;
 
     // Devuelve el porcentaje redondeado
     return porcentaje;
@@ -202,5 +202,80 @@ export const calculoPrimaAsignable = (total, formValues) => {
     }).format(total_neta);
 
     // Devuelve el monto total formateado como una cadena
+    return formateado;
+};
+
+
+
+
+
+
+/**
+ * Calcula el monto total sin prima y lo formatea.
+ * 
+ * @param {Object} formValues - Objeto que contiene los valores del formulario.
+ * @returns {string} - Monto total sin prima formateado como una cadena.
+ */
+export const calculoContraEntrega = (formValues) => {
+    // Parsear y limpiar el monto total (custbody_ix_total_amount) desde el formulario.
+    const monto_total_sin_prima = cleanAndParseFloat(formValues.custbody_ix_total_amount);
+
+    // Parsear y limpiar el monto de prima total (custbody39) desde el formulario.
+    const monto_prima_total_sin_prima = cleanAndParseFloat(formValues.custbody39);
+
+    // Calcular el monto sin prima total restando la prima del monto total.
+    var monto_sin_prima_total = (monto_total_sin_prima - monto_prima_total_sin_prima);
+
+    // Formatear el resultado con un número configurable:
+    // - Siempre muestra al menos 2 decimales.
+    // - Permite hasta 5 decimales para mantener precisión.
+    const formateado = new Intl.NumberFormat("en-US", {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 5,
+    }).format(monto_sin_prima_total);
+
+    // Devuelve el monto total formateado como una cadena.
+    return formateado;
+};
+
+
+export const calculoContraEntregaSinprimaTotal = (formValues) => {
+    // Parsear y limpiar el monto total (custbody_ix_total_amount) desde el formulario.
+    const monto_total_sin_prima = cleanAndParseFloat(formValues.custbody_ix_total_amount);
+
+    // Parsear y limpiar el monto de prima total (custbody39) desde el formulario.
+    const monto_prima_total_sin_prima = cleanAndParseFloat(formValues.custbody39);
+
+    // Calcular el monto sin prima total restando la prima del monto total.
+    var monto_sin_prima_total = monto_total_sin_prima - monto_prima_total_sin_prima;
+
+    // Formatear el resultado con un número configurable:
+    // - Siempre muestra al menos 2 decimales.
+    // - Permite hasta 5 decimales para mantener precisión.
+    const formateado = new Intl.NumberFormat("en-US", {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 5,
+    }).format(monto_sin_prima_total);
+
+    // Devuelve el monto total formateado como una cadena.
+    return formateado;
+};
+
+export const calculoContraEntregaMontoCalculado = (formValues) => {
+    // Parsear y limpiar el monto total (custbody_ix_total_amount) desde el formulario.
+    const MontoCalculado = cleanAndParseFloat(formValues.custbody163);
+
+    // Calcular el monto sin prima total restando la prima del monto total.
+    var total = MontoCalculado*1;
+
+    // Formatear el resultado con un número configurable:
+    // - Siempre muestra al menos 2 decimales.
+    // - Permite hasta 5 decimales para mantener precisión.
+    const formateado = new Intl.NumberFormat("en-US", {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 5,
+    }).format(total);
+
+    // Devuelve el monto total formateado como una cadena.
     return formateado;
 };

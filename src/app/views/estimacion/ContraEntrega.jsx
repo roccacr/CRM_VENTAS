@@ -1,6 +1,4 @@
-
-
-export const ContraEntrega = ({ formValues, handleInputChange }) => {
+export const ContraEntrega = ({ formValues, handleInputChange, errors }) => {
     return (
         <>
             <div className="row" hidden={parseInt(formValues.custbody75, 10) === 1 ? false : true}>
@@ -22,8 +20,8 @@ export const ContraEntrega = ({ formValues, handleInputChange }) => {
                         autoComplete="off"
                         disabled
                         type="text"
-                        name="contra_enterega1"
-                        value={formValues.contra_enterega1}
+                        name="custbody_ix_salesorder_hito6"
+                        value={formValues.custbody_ix_salesorder_hito6}
                         onChange={handleInputChange}
                         className={`form-control mb-2`}
                     />
@@ -33,11 +31,12 @@ export const ContraEntrega = ({ formValues, handleInputChange }) => {
                     <input
                         autoComplete="off"
                         type="date"
-                        name="contra_enterega11_date"
-                        value={formValues.contra_enterega11_date}
+                        name="date_hito_6"
+                        value={formValues.date_hito_6}
                         onChange={handleInputChange}
-                        className={`form-control mb-2`}
+                        className={`form-control mb-2 ${errors.date_hito_6 ? "is-invalid" : ""}`}
                     />
+                    {errors.date_hito_6 && <div className="invalid-feedback">{errors.date_hito_6}</div>}
                 </div>
                 <div className="col-sm-4">
                     <label className="form-label"> MONTO SIN PRIMA TOTAL:</label>
@@ -45,8 +44,8 @@ export const ContraEntrega = ({ formValues, handleInputChange }) => {
                         autoComplete="off"
                         disabled
                         type="text"
-                        name="mspt_contra_entrega"
-                        value={formValues.mspt_contra_entrega}
+                        name="custbody163"
+                        value={formValues.custbody163}
                         onChange={handleInputChange}
                         className={`form-control mb-2`}
                     />

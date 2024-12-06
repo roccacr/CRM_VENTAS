@@ -1,4 +1,4 @@
-export const AvanceObra = ({ formValues, handleInputChange }) => {
+export const AvanceObra = ({ formValues, handleInputChange, errors }) => {
     return (
         <>
             <div className="row" hidden={parseInt(formValues.custbody75, 10) === 2 ? false : true}>
