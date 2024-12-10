@@ -194,53 +194,54 @@ export const View_oportuinidad_ver = () => {
                                 <h5 className="mb-0">#{OportunidadDetails.tranid_oport || ""}</h5>
                                 <p className="text-muted text-sm">{leadDetails.nombre_lead}</p>
                                 <ul className="list-inline mx-auto my-4">
-                                    <blockquote className="blockquote  blockquote-reverse font-size-16 mb-0">
+                                    <blockquote className="blockquote blockquote-reverse font-size-16 mb-0">
                                         {Object.keys(leadDetails).length > 0 && <ButtonActions leadData={leadDetails} className="mb-4" />}
                                     </blockquote>
-
-                                    <ul className="list-inline mx-auto my-4">
-                                        <li className="list-inline-item">
-                                            <button className="btn btn-sm btn-dark" onClick={handleOpenModal}>
-                                                <i className="ti ti-edit-circle f-24"></i> Editar Oportunidad
+                                    <li className="list-inline-item mb-2">
+                                        {" "}
+                                        {/* Espacio entre botones */}
+                                        <button className="btn btn-sm btn-dark" onClick={handleOpenModal}>
+                                            <i className="ti ti-edit-circle f-24"></i> Editar Oportunidad
+                                        </button>
+                                    </li>
+                                    <li className="list-inline-item mb-2">
+                                        {" "}
+                                        {/* Espacio entre botones */}
+                                        {OportunidadDetails?.chek_oport === 0 ? (
+                                            <button
+                                                className="btn btn-sm btn-success"
+                                                onClick={() => handleProbabilidadChange(1, OportunidadDetails.id_oportunidad_oport)}
+                                            >
+                                                <i className="ti ti-check f-24"></i> Oportunidades + probable
                                             </button>
-                                        </li>
-                                        <li className="list-inline-item">
-                                            {OportunidadDetails?.chek_oport === 0 ? (
-                                                <button
-                                                    className="btn btn-sm btn-success"
-                                                    onClick={() => handleProbabilidadChange(1, OportunidadDetails.id_oportunidad_oport)} // Cambia a "Oportunidades + probable"
-                                                >
-                                                    <i className="ti ti-check f-24"></i> Oportunidades + probable
-                                                </button>
-                                            ) : (
-                                                <button
-                                                    className="btn btn-sm btn-danger"
-                                                    onClick={() => handleProbabilidadChange(0, OportunidadDetails.id_oportunidad_oport)} // Cambia a "Oportunidades - probable"
-                                                >
-                                                    <i className="ti ti-x f-24"></i> Oportunidades - probable
-                                                </button>
-                                            )}
-                                        </li>
-                                    </ul>
-                                    <ul className="list-inline mx-auto my-4">
-                                        <li className="list-inline-item">
-                                            {OportunidadDetails.estatus_oport === 1 ? (
-                                                <button
-                                                    className="btn btn-sm btn-danger"
-                                                    onClick={() => handleStatusChange(0, OportunidadDetails.id_oportunidad_oport)} // Función para cambiar el estado a 0 (Inactivar)
-                                                >
-                                                    <i className="ti ti-x f-24"></i> Inactivar Oportunidad
-                                                </button>
-                                            ) : (
-                                                <button
-                                                    className="btn btn-sm btn-success"
-                                                    onClick={() => handleStatusChange(1, OportunidadDetails.id_oportunidad_oport)} // Función para cambiar el estado a 1 (Activar)
-                                                >
-                                                    <i className="ti ti-edit-circle f-24"></i> Activar Oportunidad
-                                                </button>
-                                            )}
-                                        </li>
-                                    </ul>
+                                        ) : (
+                                            <button
+                                                className="btn btn-sm btn-danger"
+                                                onClick={() => handleProbabilidadChange(0, OportunidadDetails.id_oportunidad_oport)}
+                                            >
+                                                <i className="ti ti-x f-24"></i> Oportunidades - probable
+                                            </button>
+                                        )}
+                                    </li>
+                                    <li className="list-inline-item mb-2">
+                                        {" "}
+                                        {/* Espacio entre botones */}
+                                        {OportunidadDetails.estatus_oport === 1 ? (
+                                            <button
+                                                className="btn btn-sm btn-danger"
+                                                onClick={() => handleStatusChange(0, OportunidadDetails.id_oportunidad_oport)}
+                                            >
+                                                <i className="ti ti-x f-24"></i> Inactivar Oportunidad
+                                            </button>
+                                        ) : (
+                                            <button
+                                                className="btn btn-sm btn-success"
+                                                onClick={() => handleStatusChange(1, OportunidadDetails.id_oportunidad_oport)}
+                                            >
+                                                <i className="ti ti-edit-circle f-24"></i> Activar Oportunidad
+                                            </button>
+                                        )}
+                                    </li>
                                 </ul>
                             </div>
                         </div>

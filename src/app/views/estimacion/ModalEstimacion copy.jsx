@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import Swal from "sweetalert2";
 import { Modal } from "@mui/material";
 import {
     calcularPrimaToal,
@@ -102,12 +101,12 @@ export const ModalEstimacion = ({ open, onClose, OportunidadDetails, cliente }) 
         //avance_diferenciado_hito15
         custbody66: 0.15,
         custbody_ix_salesorder_hito5: "",
-        hito_chek_uno: false,
-        hito_chek_dos: false,
-        hito_chek_tres: false,
-        hito_chek_cuatro: false,
-        hito_chek_cinco: false,
-        hito_chek_seis: false,
+        hito_chek_uno: "",
+        hito_chek_dos: "",
+        hito_chek_tres: "",
+        hito_chek_cuatro: "",
+        hito_chek_cinco: "",
+        hito_chek_seis: "",
         date_hito_1: "",
         date_hito_2: "",
         date_hito_3: "",
@@ -129,46 +128,44 @@ export const ModalEstimacion = ({ open, onClose, OportunidadDetails, cliente }) 
         //($('#chec_fra').prop('checked')) ? $("#custbody179").val() : 0;
         custbody179: 0,
         custbody180: 1,
-        custbody193: "PRIMA",
+        custbody193: "PAGO DE PRIMA FRACCIONADO",
         custbody179_date: "",
 
         //($('#chec_uica').prop('checked')) ? "T" : "F";
         custbody177: "",
         custbody181: 0,
         custbody182: 1,
-        custbody194: "PRIMA",
+        custbody194: "PAGO DE PRIMA ÚNICA",
         custbody182_date: "",
 
         // ($('#chec_extra').prop('checked')) ? "T" : "F";
         custbody178: "",
         custbody183: "",
         custbody184: 1,
-        custbody195: "PRIMA",
+        custbody195: "",
         custbody184_date: "",
 
         prima_extra_uno: "",
         monto_extra_uno: 0,
         monto_tracto_uno: 1,
-        desc_extra_uno: "PRIMA",
+        desc_extra_uno: "",
         custbody184_uno_date: "",
 
         prima_extra_dos: "",
         monto_extra_dos: "",
-        monto_tracto_dos: 1,
-        desc_extra_dos: "PRIMA",
+        monto_tracto_dos: "",
+        desc_extra_dos: "",
         custbody184_dos_date: "",
 
         prima_extra_tres: "",
         monto_extra_tres: "",
-        monto_tracto_tres: 1,
-        desc_extra_tres: "PRIMA",
+        monto_tracto_tres: "",
+        desc_extra_tres: "",
         custbody184_tres_date: "",
 
         //entrega estimada
         custbody114: "",
         isDiscounted: null,
-
-        total_porcentaje: "100",
     });
 
     // Estado para manejar los errores del formulario
@@ -182,286 +179,225 @@ export const ModalEstimacion = ({ open, onClose, OportunidadDetails, cliente }) 
         });
     };
 
-    // Maneja los cambios en los inputs del formulario
+    // Maneja cambios en los inputs del formulario
     const handleInputChange = (e) => {
         const { name, value, type, checked } = e.target;
 
-        // Determina el nuevo valor según el tipo de input
-        const newValue = type === "checkbox" ? checked : value;
+        // Determinar el nuevo valor basado en el tipo de input
+        let newValue = type === "checkbox" ? checked : value;
 
         // Lista de campos que requieren limpieza específica
-        const camposLimpieza = [
-            "custbody132",
-            "custbody46",
-            "custbodyix_salesorder_cashback",
-            "custbody52",
-            "custbody16",
-            "custbody39",
-            "custbody60",
-        ];
+        const campos = ["custbody132", "custbody46", "custbodyix_salesorder_cashback", "custbody52", "custbody16", "custbody39", "custbody60"];
 
-        // validamos el chek del hito uno si esta marcado y si no esta marcado
-        const hitoMappings = {
-            hito_chek_uno: { custbody: "custbody62", salesOrder: "custbodyix_salesorder_hito1", date: "date_hito_1" },
-            hito_chek_dos: { custbody: "custbody63", salesOrder: "custbody_ix_salesorder_hito2", date: "date_hito_2" },
-            hito_chek_tres: { custbody: "custbody64", salesOrder: "custbody_ix_salesorder_hito3", date: "date_hito_3" },
-            hito_chek_cuatro: { custbody: "custbody65", salesOrder: "custbody_ix_salesorder_hito4", date: "date_hito_4" },
-            hito_chek_cinco: { custbody: "custbody66", salesOrder: "custbody_ix_salesorder_hito5", date: "date_hito_5" },
-            hito_chek_seis: { custbody: "custbody67", salesOrder: "custbody_ix_salesorder_hito6", date: "date_hito_6" },
-        };
+        // Procesar campos específicos con reglas adicionales
+        if (campos.includes(name)) {
+            newValue = limpiarCampos(value); // Limpia el valor usando una función personalizada
 
-        if (hitoMappings[name]) {
-            const { custbody, salesOrder, date } = hitoMappings[name];
-            setFormValues((prevValues) => ({
-                ...prevValues,
-                [custbody]: "0",
-                [salesOrder]: 0,
-                [date]: "",
-                [name]: newValue,
-            }));
-            return;
+            // Procesamiento especial para "custbody132"
+            if (name === "custbody132") {
+                newValue = `-${newValue.replace(/^-+/, "")}`; // Remueve guiones iniciales dejando solo uno
+                if (newValue === "-0" || newValue === "-") {
+                    newValue = ""; // Ajusta valores inválidos a vacío
+                }
+            }
         }
 
-        // Aplica reglas específicas de limpieza para ciertos campos
-        const valorProcesado = camposLimpieza.includes(name) ? procesarValor(name, value) : newValue;
+        // Campos que afectan cálculos complejos
+        const afectaCalculos = ["custbody132", "custbody46", "custbodyix_salesorder_cashback", "custbody52", "custbody16"];
+        if (afectaCalculos.includes(name)) {
+            setFormValues((prevValues) => {
+                const updatedValues = { ...prevValues, [name]: newValue };
 
-        // Identifica los campos que requieren cálculos complejos
-        const camposCalculos = ["custbody132", "custbody46", "custbodyix_salesorder_cashback", "custbody52", "custbody16"];
-        if (camposCalculos.includes(name)) {
-            actualizarConCalculos(name, valorProcesado);
+                // Cálculos relacionados con el precio y montos
+                const pvn = precioVentaNeto(updatedValues); // Precio de venta neto
+                const montot = montoTotal(updatedValues); // Monto total
+                const montoPrimaTotal = calcularPrimaToal(montot, updatedValues.custbody60); // Prima total
+                const montoPrimaNet = montoPrimaNeta(montoPrimaTotal, updatedValues); // Prima neta
+                const asignable = calculoPrimaAsignable(montoPrimaTotal, updatedValues); // Prima asignable
+
+                // Cálculos específicos según el tipo de operación
+                if (parseInt(updatedValues.custbody75, 10) === 2) {
+                    calculoAvenceObra(updatedValues, setFormValues, montot, montoPrimaTotal);
+                }
+
+                if (parseInt(updatedValues.custbody75, 10) === 1) {
+                    calculoContraEntregaSinprimaTotal(updatedValues, setFormValues);
+                    calculoContraEntregaMontoCalculado(updatedValues, setFormValues);
+                }
+
+                if (parseInt(updatedValues.custbody75, 10) === 7) {
+                    calculoAvanceDiferenciado(updatedValues, setFormValues, montot, montoPrimaTotal);
+                }
+
+                // Retorna el estado actualizado con los cálculos
+                return {
+                    ...updatedValues,
+                    pvneto: pvn,
+                    neta: asignable,
+                    custbody_ix_total_amount: montot,
+                    custbody39: montoPrimaTotal,
+                    custbody_ix_salesorder_monto_prima: montoPrimaNet,
+                };
+            });
             return; // Detiene el flujo para evitar actualizaciones innecesarias
         }
 
-        // Maneja cambios específicos en campos de prima total
+        // Procesa cambios en el campo "custbody39" (Prima total)
         if (name === "custbody39") {
-            actualizarPrimaTotal(name, valorProcesado);
+            setFormValues((prevValues) => {
+                const updatedValues = { ...prevValues, [name]: newValue };
+
+                // Cálculos relacionados con porcentajes y primas
+                const total = calculoPrimaTotalPorcentaje(updatedValues); // Porcentaje total
+                const montoPrimaNet = montoPrimaNeta(newValue, updatedValues); // Prima neta
+                const asignable = calculoPrimaAsignable(newValue, updatedValues); // Prima asignable
+
+
+                if (parseInt(updatedValues.custbody75, 10) === 2) {
+                    const montot = montoTotal(updatedValues); // Monto total
+                    const montoPrimaTotal = calcularPrimaToal(montot, updatedValues.custbody60); // Prima total
+                    calculoAvenceObra(updatedValues, setFormValues, montot, montoPrimaTotal);
+                }
+
+                if (parseInt(updatedValues.custbody75, 10) === 1) {
+                    calculoContraEntregaSinprimaTotal(updatedValues, setFormValues);
+                    calculoContraEntregaMontoCalculado(updatedValues, setFormValues);
+                }
+
+                if (parseInt(updatedValues.custbody75, 10) === 7) {
+                    const montot = montoTotal(updatedValues); // Monto total
+                    const montoPrimaTotal = calcularPrimaToal(montot, updatedValues.custbody60); // Prima total
+                    calculoAvanceDiferenciado(updatedValues, setFormValues, montot, montoPrimaTotal);
+                }
+
+                // Retorna el estado actualizado
+                return {
+                    ...updatedValues,
+                    custbody60: total,
+                    custbody_ix_salesorder_monto_prima: montoPrimaNet,
+                    neta: asignable,
+                };
+            });
+            return; // Detiene el flujo
+        }
+
+        // Procesa cambios en campos relacionados con porcentajes
+        if (
+            [
+                "custbody60",
+                "custbody179",
+                "custbody180",
+                "custbody181",
+                "custbody182",
+                "custbody183",
+                "custbody184",
+                "monto_extra_uno",
+                "monto_tracto_uno",
+                "monto_extra_dos",
+                "monto_extra_tres",
+                "monto_tracto_tres",
+            ].includes(name)
+        ) {
+            setFormValues((prevValues) => {
+                const updatedValues = { ...prevValues, [name]: newValue };
+
+                // Cálculos derivados según el porcentaje
+                const total = calculoMontoSegunPorcentaje(updatedValues); // Monto total basado en porcentaje
+                const montoPrimaNet = montoPrimaNeta(total, updatedValues); // Prima neta
+                const asignable = calculoPrimaAsignable(total, updatedValues); // Prima asignable
+
+                if (parseInt(updatedValues.custbody75, 10) === 2) {
+                    const montot = montoTotal(updatedValues); // Monto total
+                    const montoPrimaTotal = calcularPrimaToal(montot, updatedValues.custbody60); // Prima total
+                    calculoAvenceObra(updatedValues, setFormValues, montot, montoPrimaTotal);
+                }
+
+                if (parseInt(updatedValues.custbody75, 10) === 1) {
+                    calculoContraEntregaSinprimaTotal(updatedValues, setFormValues);
+                    calculoContraEntregaMontoCalculado(updatedValues, setFormValues);
+                }
+
+                 if (parseInt(updatedValues.custbody75, 10) === 7) {
+                     const montot = montoTotal(updatedValues); // Monto total
+                     const montoPrimaTotal = calcularPrimaToal(montot, updatedValues.custbody60); // Prima total
+                     calculoAvanceDiferenciado(updatedValues, setFormValues, montot, montoPrimaTotal);
+                 }
+
+                // Retorna el estado actualizado
+                return {
+                    ...updatedValues,
+                    custbody39: total,
+                    custbody_ix_salesorder_monto_prima: montoPrimaNet,
+                    neta: asignable,
+                };
+            });
+            return; // Detiene el flujo
+        }
+
+        if (name === "custbody75") {
+           setFormValues((prevValues) => {
+               const updatedValues = { ...prevValues, [name]: newValue };
+
+               // Cálculos relacionados con el precio y montos
+               const pvn = precioVentaNeto(updatedValues); // Precio de venta neto
+               const montot = montoTotal(updatedValues); // Monto total
+               const montoPrimaTotal = calcularPrimaToal(montot, updatedValues.custbody60); // Prima total
+               const montoPrimaNet = montoPrimaNeta(montoPrimaTotal, updatedValues); // Prima neta
+               const asignable = calculoPrimaAsignable(montoPrimaTotal, updatedValues); // Prima asignable
+
+               // Cálculos específicos según el tipo de operación
+               if (parseInt(updatedValues.custbody75, 10) === 2) {
+                   calculoAvenceObra(updatedValues, setFormValues, montot, montoPrimaTotal);
+               }
+
+               if (parseInt(updatedValues.custbody75, 10) === 1) {
+                   calculoContraEntregaSinprimaTotal(updatedValues, setFormValues);
+                   calculoContraEntregaMontoCalculado(updatedValues, setFormValues);
+               }
+
+                if (parseInt(updatedValues.custbody75, 10) === 7) {
+                    const montot = montoTotal(updatedValues); // Monto total
+                    const montoPrimaTotal = calcularPrimaToal(montot, updatedValues.custbody60); // Prima total
+                    calculoAvanceDiferenciado(updatedValues, setFormValues, montot, montoPrimaTotal);
+                }
+
+               // Retorna el estado actualizado con los cálculos
+               return {
+                   ...updatedValues,
+                   pvneto: pvn,
+                   neta: asignable,
+                   custbody_ix_total_amount: montot,
+                   custbody39: montoPrimaTotal,
+                   custbody_ix_salesorder_monto_prima: montoPrimaNet,
+               };
+           });
             return;
         }
 
-        // Maneja cambios relacionados con porcentajes
-        const camposPorcentaje = [
-            "custbody60",
-            "custbody179",
-            "custbody180",
-            "custbody181",
-            "custbody182",
-            "custbody183",
-            "custbody184",
-            "monto_extra_uno",
-            "monto_tracto_uno",
-            "monto_extra_dos",
-            "monto_extra_tres",
-            "monto_tracto_tres",
-        ];
-        if (camposPorcentaje.includes(name)) {
-            actualizarPorcentaje(name, valorProcesado);
+        if (name === "custbody62") {
+            setFormValues((prevValues) => {
+                const updatedValues = { ...prevValues, [name]: newValue };
+                const montot = montoTotal(updatedValues); // Monto total
+                const montoPrimaTotal = calcularPrimaToal(montot, updatedValues.custbody60); // Prima total
+                calculoHito1Diferenciado(newValue, montot, montoPrimaTotal, setFormValues, updatedValues);
+
+
+                // Retorna el estado actualizado con los cálculos
+                return {
+                    ...updatedValues,
+                };
+            });
             return;
-        }
-
-        const manejadores = {
-            custbody75: () => actualizarCustbody75(name, valorProcesado),
-            custbody62: () => actualizarHitoDiferenciado(name, valorProcesado, "custbodyix_salesorder_hito1"),
-            custbody63: () => actualizarHitoDiferenciado(name, valorProcesado, "custbody_ix_salesorder_hito2"),
-            custbody64: () => actualizarHitoDiferenciado(name, valorProcesado, "custbody_ix_salesorder_hito3"),
-            custbody65: () => actualizarHitoDiferenciado(name, valorProcesado, "custbody_ix_salesorder_hito4"),
-            custbody66: () => actualizarHitoDiferenciado(name, valorProcesado, "custbody_ix_salesorder_hito5"),
-            custbody67: () => actualizarHitoDiferenciado(name, valorProcesado, "custbody_ix_salesorder_hito6"),
-        };
-
-        //aplicar pero ahora sobre el monto no sobre el porcentaje
-        const manejadoresMonto = {
-            custbody75: () => actualizarCustbody75(name, valorProcesado),
-            custbody62: () => actualizarHitoDiferenciado(name, valorProcesado, "custbodyix_salesorder_hito1"),
-            custbody63: () => actualizarHitoDiferenciado(name, valorProcesado, "custbody_ix_salesorder_hito2"),
-            custbody64: () => actualizarHitoDiferenciado(name, valorProcesado, "custbody_ix_salesorder_hito3"),
-            custbody65: () => actualizarHitoDiferenciado(name, valorProcesado, "custbody_ix_salesorder_hito4"),
-            custbody66: () => actualizarHitoDiferenciado(name, valorProcesado, "custbody_ix_salesorder_hito5"),
-            custbody67: () => actualizarHitoDiferenciado(name, valorProcesado, "custbody_ix_salesorder_hito6"),
-        };
-
-        // Verifica si hay un manejador para el campo y lo ejecuta
-        if (manejadores[name]) {
-            manejadores[name]();
-        }
-
-        if (manejadoresMonto[name]) {
-            manejadoresMonto[name]();
         }
 
         // Actualización genérica para otros campos
         setFormValues({
             ...formValues,
-            [name]: valorProcesado,
+            [name]: newValue,
         });
 
-        // Limpia errores relacionados con el campo
+        // Limpia errores del campo actualizado
         setErrors({ ...errors, [name]: "" });
-    };
-
-    // Procesa el valor de campos específicos con reglas adicionales
-    const procesarValor = (name, value) => {
-        let processedValue = limpiarCampos(value);
-
-        if (name === "custbody132") {
-            processedValue = `-${processedValue.replace(/^-+/, "")}`; // Mantiene un solo guion inicial
-            if (processedValue === "-0" || processedValue === "-") {
-                processedValue = ""; // Ajusta valores inválidos a vacío
-            }
-        }
-
-        return processedValue;
-    };
-
-    // Actualiza el estado con cálculos complejos según el campo modificado
-    const actualizarConCalculos = (name, value) => {
-        setFormValues((prevValues) => {
-            const updatedValues = { ...prevValues, [name]: value };
-            const pvn = precioVentaNeto(updatedValues);
-            const montot = montoTotal(updatedValues);
-            const montoPrimaTotal = calcularPrimaToal(montot, updatedValues.custbody60);
-            const montoPrimaNet = montoPrimaNeta(montoPrimaTotal, updatedValues);
-            const asignable = calculoPrimaAsignable(montoPrimaTotal, updatedValues);
-
-            ejecutarCálculosEspecíficos(updatedValues, montot, montoPrimaTotal);
-
-            return {
-                ...updatedValues,
-                pvneto: pvn,
-                neta: asignable,
-                custbody_ix_total_amount: montot,
-                custbody39: montoPrimaTotal,
-                custbody_ix_salesorder_monto_prima: montoPrimaNet,
-            };
-        });
-    };
-
-    // Actualiza el estado al modificar custbody39 (Prima total)
-    const actualizarPrimaTotal = (name, value) => {
-        setFormValues((prevValues) => {
-            const updatedValues = { ...prevValues, [name]: value };
-            const total = calculoPrimaTotalPorcentaje(updatedValues);
-            const montoPrimaNet = montoPrimaNeta(value, updatedValues);
-            const asignable = calculoPrimaAsignable(value, updatedValues);
-
-            ejecutarCálculosEspecíficos(updatedValues);
-
-            return {
-                ...updatedValues,
-                custbody60: total,
-                custbody_ix_salesorder_monto_prima: montoPrimaNet,
-                neta: asignable,
-            };
-        });
-    };
-
-    // Maneja actualizaciones de campos relacionados con porcentajes
-    const actualizarPorcentaje = (name, value) => {
-        setFormValues((prevValues) => {
-            const updatedValues = { ...prevValues, [name]: value };
-            const total = calculoMontoSegunPorcentaje(updatedValues);
-            const montoPrimaNet = montoPrimaNeta(total, updatedValues);
-            const asignable = calculoPrimaAsignable(total, updatedValues);
-
-            ejecutarCálculosEspecíficos(updatedValues);
-
-            return {
-                ...updatedValues,
-                custbody39: total,
-                custbody_ix_salesorder_monto_prima: montoPrimaNet,
-                neta: asignable,
-            };
-        });
-    };
-
-    // Maneja actualizaciones del campo custbody75
-    const actualizarCustbody75 = (name, value) => {
-        setFormValues((prevValues) => {
-            const updatedValues = { ...prevValues, [name]: value };
-            const pvn = precioVentaNeto(updatedValues);
-            const montot = montoTotal(updatedValues);
-            const montoPrimaTotal = calcularPrimaToal(montot, updatedValues.custbody60);
-            const montoPrimaNet = montoPrimaNeta(montoPrimaTotal, updatedValues);
-            const asignable = calculoPrimaAsignable(montoPrimaTotal, updatedValues);
-
-            ejecutarCálculosEspecíficos(updatedValues, montot, montoPrimaTotal);
-
-            return {
-                ...updatedValues,
-                pvneto: pvn,
-                neta: asignable,
-                custbody_ix_total_amount: montot,
-                custbody39: montoPrimaTotal,
-                custbody_ix_salesorder_monto_prima: montoPrimaNet,
-            };
-        });
-    };
-
-    // Maneja actualizaciones específicas para custbody62
-    const actualizarHitoDiferenciado = (name, value, campoActualizar) => {
-        setFormValues((prevValues) => {
-            // Actualiza el valor inicial del campo proporcionado.
-            const updatedValues = { ...prevValues, [name]: value };
-
-            // Calcula el monto total y la prima total con los valores actualizados.
-            const montot = montoTotal(updatedValues);
-            const montoPrimaTotal = calcularPrimaToal(montot, updatedValues.custbody60);
-
-            // Valor inicial
-            const porcentajeInicial = 100;
-
-            // Valores de porcentajes y su respectivo chequeo
-            const porcentajes = [
-                updatedValues.hito_chek_uno === true ? updatedValues.custbody62 : 0,
-                updatedValues.hito_chek_dos === true ? updatedValues.custbody63 : 0,
-                updatedValues.hito_chek_tres === true ? updatedValues.custbody64 : 0,
-                updatedValues.hito_chek_cuatro === true ? updatedValues.custbody65 : 0,
-                updatedValues.hito_chek_cinco === true ? updatedValues.custbody66 : 0,
-                updatedValues.hito_chek_seis === true ? updatedValues.custbody67 : 0,
-            ];
-
-            // Sumar los porcentajes válidos
-            const sumaPorcentajes = porcentajes
-                .map((p) => parseFloat(p) || 0) // Asegurarse de convertir a número o usar 0 si no es válido
-                .reduce((sum, value) => sum + value, 0); // Sumar los valores
-
-            // Calcular el porcentaje restante
-            const porcentajeRestante = porcentajeInicial - sumaPorcentajes * 100;
-
-            // Verificar si la suma de porcentajes excede el 100%
-            if (sumaPorcentajes > 1) {
-                alert(
-                    `La suma de los porcentajes no puede exceder el 100%. El porcentaje actual es del ${(sumaPorcentajes * 100).toFixed(
-                        2,
-                    )}%. Por favor, ajusta los valores.`,
-                );
-            }
-            // Llama a `calculoHito1Diferenciado` para calcular y actualizar el campo dinámico.
-            calculoHito1Diferenciado(
-                value, // El nuevo porcentaje ingresado.
-                montot, // El monto total calculado.
-                montoPrimaTotal, // La prima total calculada.
-                setFormValues, // Función para actualizar el formulario.
-                updatedValues, // Los valores actuales del formulario.
-                campoActualizar, // Nombre del campo a actualizar.
-                porcentajeRestante,
-            );
-
-            return updatedValues;
-        });
-    };
-
-    // Ejecuta cálculos específicos según el tipo de operación
-    const ejecutarCálculosEspecíficos = (updatedValues, montot, montoPrimaTotal) => {
-        const tipoOperacion = parseInt(updatedValues.custbody75, 10);
-
-        if (tipoOperacion === 2) {
-            calculoAvenceObra(updatedValues, setFormValues, montot, montoPrimaTotal);
-        } else if (tipoOperacion === 1) {
-            calculoContraEntregaSinprimaTotal(updatedValues, setFormValues);
-            calculoContraEntregaMontoCalculado(updatedValues, setFormValues);
-        } else if (tipoOperacion === 7) {
-            calculoAvanceDiferenciado(updatedValues, setFormValues, montot, montoPrimaTotal);
-        }
     };
 
     // Reglas de validación: Configuran los campos del formulario indicando si son obligatorios y el mensaje de error correspondiente
@@ -663,9 +599,9 @@ export const ModalEstimacion = ({ open, onClose, OportunidadDetails, cliente }) 
         hito6 = parseInt(dataOportunidad.custbody75_oport, 10) === 1 ? "100%" : parseInt(dataOportunidad.custbody75_oport, 10) === 2 ? "0.05" : 0;
 
         // Obtener la fecha actual y formatearla como mm/dd/yyyy
-        const today = new Date();
-        const formattedDate = today.toISOString().split("T")[0];
-        const entregaEstimada = dataOportunidad.entregaEstimada ? dataOportunidad.entregaEstimada.split("/").reverse().join("-") : "";
+         const today = new Date();
+         const formattedDate = today.toISOString().split("T")[0];
+         const entregaEstimada = dataOportunidad.entregaEstimada ? dataOportunidad.entregaEstimada.split("/").reverse().join("-") : "";
 
         // Actualizar los valores del formulario con la información procesada
         setFormValues((prevValues) => ({
