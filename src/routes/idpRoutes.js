@@ -21,6 +21,8 @@ const expedientesNetsuite = require("../models/expedientes/expedientesNetsuite")
 const oportunidad = require("../models/oportunidad/oportunidad");
 const oportunidadNetsuite = require("../models/oportunidad/oportunidadNetsuite");
 
+const estimacion = require("../models/estimacion/estimacion");
+
 // Cargar variables de entorno al iniciar la aplicación
 dotenv.config();
 
@@ -189,6 +191,14 @@ module.exports = function (app) {
             model: oportunidadNetsuite, // Modelo asociado a la gestión de expedientes
             routes: [
                 { path: "/oportunidad/crear_Oportunidad", method: "crear_Oportunidad" }, // Crear oportunidad en Netsuite
+            ],
+        },
+
+        {
+            category: "estimacion", // Categoría: Gestión de expedientes
+            model: estimacion, // Modelo asociado a la gestión de expedientes
+            routes: [
+                { path: "/estimacion/CrearEstimacion", method: "crear_estimacion" }, // Crear oportunidad en Netsuite
             ],
         },
     ];

@@ -8,21 +8,30 @@ const dbDevelopment = process.env.DB_NAME_DEVELOPMENT || "Valor por defecto si e
 const dbProduction = process.env.DB_NAME_PRODUCTION || "Valor por defecto si es null";
 
 
+const OAUTH_NETSUITE_CONSUMER_KEY = process.env.NETSUITE_CONSUMER_KEY;
+const OAUTH_NETSUITE_CONSUMER_SECRET = process.env.NETSUITE_CONSUMER_SECRET;
+const OAUTH_NETSUITE_TOKEN_ID = process.env.NETSUITE_TOKEN_ID;
+const OAUTH_NETSUITE_TOKEN_SECRET = process.env.NETSUITE_TOKEN_SECRET;
+const OAUTH_NETSUITE_REALM = process.env.NETSUITE_REALM;
+const OAUTH_NETSUITE_SIGNATURE = process.env.OAUTH_NETSUITE_SIGNATURE;
+
+
+
 
 const jwtSecret = process.env.JWT_SECRET;
 
 var configParams = {
     oauthNetsuite: {
         consumer: {
-            key: process.env.OAUTH_NETSUITE_CONSUMER_KEY,
-            secret: process.env.OAUTH_NETSUITE_CONSUMER_SECRET,
+            key: OAUTH_NETSUITE_CONSUMER_KEY,
+            secret: OAUTH_NETSUITE_CONSUMER_SECRET,
         },
         token: {
-            id: process.env.OAUTH_NETSUITE_TOKEN_ID,
-            secret: process.env.OAUTH_NETSUITE_TOKEN_SECRET,
+            id: OAUTH_NETSUITE_TOKEN_ID,
+            secret: OAUTH_NETSUITE_TOKEN_SECRET,
         },
-        realm: process.env.OAUTH_NETSUITE_REALM,
-        signature: process.env.OAUTH_NETSUITE_SIGNATURE,
+        realm: OAUTH_NETSUITE_REALM,
+        signature: OAUTH_NETSUITE_SIGNATURE,
     },
     database: {
         produccion: {
