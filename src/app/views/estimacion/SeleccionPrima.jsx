@@ -67,23 +67,23 @@ export const SeleccionPrima = ({ formValues, handleInputChange, errors }) => {
             ],
         },
         {
-            title: "PRIMA 4",
+            title: "PRIMA 3",
             checkbox: "custbody178",
             inputs: [
-                { name: "custbody183", label: "PRIMA 4", type: "text", placeholder: "0" },
+                { name: "custbody183", label: "PRIMA 3", type: "text", placeholder: "0" },
                 { name: "custbody184_date", label: "FECHA:", type: "date", placeholder: "0" },
-                { name: "custbody184", label: "TRACTOS PRIMA 4", type: "number", placeholder: "0" },
-                { name: "custbody195", label: "DESCRIPCIÓN PRIMA 4:", type: "textarea", placeholder: "PRIMA 4" },
+                { name: "custbody184", label: "TRACTOS PRIMA 3", type: "number", placeholder: "0" },
+                { name: "custbody195", label: "DESCRIPCIÓN PRIMA 3:", type: "textarea", placeholder: "PRIMA 3" },
             ],
         },
         {
-            title: "PRIMA 2",
+            title: "PRIMA 4",
             checkbox: "prima_extra_uno",
             inputs: [
-                { name: "monto_extra_uno", label: "PRIMA 2", type: "text", placeholder: "0" },
+                { name: "monto_extra_uno", label: "PRIMA 4", type: "text", placeholder: "0" },
                 { name: "custbody184_uno_date", label: "FECHA:", type: "date", placeholder: "0" },
-                { name: "monto_tracto_uno", label: "TRACTOS PRIMA 2", type: "number", placeholder: "0" },
-                { name: "desc_extra_uno", label: "DESCRIPCIÓN PRIMA 2", type: "textarea", placeholder: "PRIMA 2" },
+                { name: "monto_tracto_uno", label: "TRACTOS PRIMA 4", type: "number", placeholder: "0" },
+                { name: "desc_extra_uno", label: "DESCRIPCIÓN PRIMA 4", type: "textarea", placeholder: "PRIMA 4" },
             ],
         },
         {

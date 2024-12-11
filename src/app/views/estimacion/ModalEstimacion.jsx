@@ -64,7 +64,7 @@ export const ModalEstimacion = ({ open, onClose, OportunidadDetails, cliente }) 
         custbodyix_salesorder_cashback: 0,
 
         /*EXTRAS SOBRE EL PRECIO DE LISTA /diferencia*/
-        custbody185: "",
+        custbody185: 2000,
         //MONTO EXTRAS SOBRE EL PRECIO DE LISTA / EXTRAS PAGADAS POR EL CLIENTE
         custbody46: 0,
         //MONTO TOTAL DE CORTESÍAS
@@ -76,6 +76,7 @@ export const ModalEstimacion = ({ open, onClose, OportunidadDetails, cliente }) 
         custbody35: "--",
         //MONTO RESERVA
         rateReserva: "",
+
         fech_reserva: "",
         //MONTO ASIGNABLE PRIMA NETA:
         neta: "",
@@ -177,6 +178,8 @@ export const ModalEstimacion = ({ open, onClose, OportunidadDetails, cliente }) 
 
         total_porcentaje: "100",
         valortotals: 0,
+        custbody52: 0,
+        pre_reserva: false,
     });
 
     // Estado para manejar los errores del formulario
@@ -261,6 +264,13 @@ export const ModalEstimacion = ({ open, onClose, OportunidadDetails, cliente }) 
 
         // Maneja cambios específicos en el campo de "prima total"
         // Se utiliza una función especializada para actualizar este campo
+        if (name === "custbody39") {
+            actualizarPrimaTotal(name, valorProcesado);
+            return; // Detiene el flujo después de manejar este caso específico
+        }
+
+
+        //limpiamos lo valores de las primas cuando se deselecciona el checkbox
         if (name === "custbody39") {
             actualizarPrimaTotal(name, valorProcesado);
             return; // Detiene el flujo después de manejar este caso específico
@@ -700,10 +710,7 @@ export const ModalEstimacion = ({ open, onClose, OportunidadDetails, cliente }) 
             required: !!formValues.prima_extra_uno,
             message: "Este valor es requerido",
         },
-        custbody195_uno: {
-            required: !!formValues.prima_extra_uno,
-            message: "Este valor es requerido",
-        },
+        
 
         monto_extra_dos: {
             required: !!formValues.prima_extra_dos,
@@ -774,6 +781,8 @@ export const ModalEstimacion = ({ open, onClose, OportunidadDetails, cliente }) 
             }
         });
 
+        console.log(newErrors);
+
         // Actualiza los errores en el estado del formulario
         setErrors(newErrors);
 
@@ -799,6 +808,8 @@ export const ModalEstimacion = ({ open, onClose, OportunidadDetails, cliente }) 
                  alert("Operación cancelada.");
              }
          } else {
+             
+             console.log(validateForm);
              // Si la validación falla
              alert("Algunos campos no pueden quedar vacíos. Por favor, verifíquelos.");
          }
