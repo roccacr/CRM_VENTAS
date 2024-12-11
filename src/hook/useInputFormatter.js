@@ -341,29 +341,29 @@ export const calculoAvanceDiferenciado = (
     montoTotal, // Monto total sin incluir la prima.
     montoPrimaTotal // Monto de la prima total.
 ) => {
-    // Convierte el monto total a un número flotante válido.
+    // Limpia y convierte el monto total a un número flotante válido.
     const montoTotalCalculado = cleanAndParseFloat(montoTotal);
 
-    // Convierte el monto de la prima total a un número flotante válido.
+    // Limpia y convierte el monto de la prima total a un número flotante válido.
     const montoPrimaCalculado = cleanAndParseFloat(montoPrimaTotal);
 
     // Calcula el monto total sin incluir la prima.
     const montoSinPrimaTotal = montoTotalCalculado - montoPrimaCalculado;
 
-    // Formatea un número con al menos 2 decimales y hasta 5 decimales para precisión.
+    // Función para formatear un número con 2 a 5 decimales para mayor precisión.
     const formatearNumero = (valor) =>
         new Intl.NumberFormat("en-US", {
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 5,
+            minimumFractionDigits: 2, // Asegura al menos 2 decimales.
+            maximumFractionDigits: 5, // Limita a un máximo de 5 decimales.
         }).format(valor);
 
-    // Formatea el monto total sin prima.
+    // Formatea el monto total sin prima utilizando la función de formateo.
     const montoSinPrimaFormateado = formatearNumero(montoSinPrimaTotal);
 
-    // Actualiza los valores del formulario con el monto formateado.
+    // Actualiza los valores del formulario con el monto sin prima formateado.
     setValoresFormulario((valoresPrevios) => ({
-        ...valoresPrevios,
-        custbody163: montoSinPrimaFormateado, // Almacena el monto sin prima formateado.
+        ...valoresPrevios, // Conserva los valores existentes del formulario.
+        custbody163: montoSinPrimaFormateado, // Actualiza el campo `custbody163` con el monto formateado.
     }));
 
     // Retorna un mensaje indicando que la actualización se realizó con éxito.
@@ -371,71 +371,158 @@ export const calculoAvanceDiferenciado = (
 };
 
 
+// Función para calcular el monto de un hito diferenciado basado en un porcentaje ingresado
 export const calculoHito1Diferenciado = (
-    porcentajeIngresado, // Nuevo valor ingresado por el usuario.
-    montoTotal, // Monto total sin incluir la prima.
-    montoPrimaTotal, // Monto de la prima total.
-    setFormValues, // Función para actualizar los valores del formulario.
-    valoresPrevios, // Los valores actuales del formulario.
-    campoActualizar, // Nombre del campo a actualizar.
-    porcentajeRestante,
+    porcentajeIngresado, // Nuevo valor ingresado por el usuario
+    montoTotal, // Monto total sin incluir la prima
+    montoPrimaTotal, // Monto de la prima total
+    setFormValues, // Función para actualizar los valores del formulario
+    valoresPrevios, // Los valores actuales del formulario
+    campoActualizar, // Nombre del campo a actualizar
+    porcentajeRestante, // Porcentaje restante calculado
+    updatedValues, // Valores actualizados del formulario
 ) => {
-    // Convierte el porcentaje ingresado a un número flotante válido.
+    // Limpia y convierte el porcentaje ingresado a un número flotante válido
     const porcentajeCalculado = cleanAndParseFloat(porcentajeIngresado);
 
-    // Convierte el monto total a un número flotante válido.
+    // Limpia y convierte el monto total a un número flotante válido
     const montoTotalCalculado = cleanAndParseFloat(montoTotal);
 
-    // Calcula el valor del hito, multiplicando el porcentaje por el monto total.
+    // Calcula el monto del hito multiplicando el monto total por el porcentaje calculado
     const montoHitoCalculado = montoTotalCalculado * porcentajeCalculado;
 
-    // Formatea el resultado con al menos 2 decimales y hasta 5 decimales para precisión.
+    // Formatea el monto del hito con 2 a 5 decimales para mayor precisión
     const montoHitoFormateado = new Intl.NumberFormat("en-US", {
         minimumFractionDigits: 2,
         maximumFractionDigits: 5,
     }).format(montoHitoCalculado);
 
+    // Limpia y convierte el monto total asignado a un valor flotante válido
+    const montoTotalAsignado = cleanAndParseFloat(updatedValues.custbody163);
 
+    // Construye un arreglo con los valores de los hitos activados
+    const valores = [
+        updatedValues.hito_chek_uno ? cleanAndParseFloat(updatedValues.custbodyix_salesorder_hito1) : 0,
+        updatedValues.hito_chek_dos ? cleanAndParseFloat(updatedValues.custbody_ix_salesorder_hito2) : 0,
+        updatedValues.hito_chek_tres ? cleanAndParseFloat(updatedValues.custbody_ix_salesorder_hito3) : 0,
+        updatedValues.hito_chek_cuatro ? cleanAndParseFloat(updatedValues.custbody_ix_salesorder_hito4) : 0,
+        updatedValues.hito_chek_cinco ? cleanAndParseFloat(updatedValues.custbody_ix_salesorder_hito5) : 0,
+        updatedValues.hito_chek_seis ? cleanAndParseFloat(updatedValues.custbody_ix_salesorder_hito6) : 0,
+    ];
 
-    // Actualiza dinámicamente el campo específico en los valores del formulario.
+    // Suma los valores de los hitos seleccionados
+    const sumaHitos = valores.reduce((acumulador, valor) => acumulador + valor, 0);
+
+    // Calcula la diferencia entre el monto total asignado y la suma de los hitos activados
+    const diferencia = montoTotalAsignado - sumaHitos;
+
+    // Actualiza dinámicamente los valores del formulario con los nuevos cálculos
     setFormValues({
-        ...valoresPrevios,
-        [campoActualizar]: montoHitoFormateado, // Utiliza el nombre del campo dinámicamente.
-        total_porcentaje: `${porcentajeRestante.toFixed(2)}%`,
+        ...valoresPrevios, // Mantiene los valores previos del formulario
+        [campoActualizar]: montoHitoFormateado, // Actualiza el campo específico con el monto calculado
+        total_porcentaje: `${porcentajeRestante.toFixed(2)}%`, // Actualiza el porcentaje restante formateado
+        valortotals: diferencia, // Actualiza la diferencia calculada
     });
 };
 
 
 
+// Función para calcular el monto diferenciado para un hito específico y actualizar valores en el formulario
+export const calculoHito1DiferenciadoMonto = (MontoSinPrimaTotal, campoActualizar, updatedValues, setFormValues, name) => {
+    // Limpia y convierte el monto sin prima total a un valor numérico
+    const montoTotalAsignado = cleanAndParseFloat(MontoSinPrimaTotal);
+
+    // Crea un arreglo con los valores de los hitos activados; si no están activados, se asigna 0
+    const valores = [
+        updatedValues.hito_chek_uno ? cleanAndParseFloat(updatedValues.custbodyix_salesorder_hito1) : 0,
+        updatedValues.hito_chek_dos ? cleanAndParseFloat(updatedValues.custbody_ix_salesorder_hito2) : 0,
+        updatedValues.hito_chek_tres ? cleanAndParseFloat(updatedValues.custbody_ix_salesorder_hito3) : 0,
+        updatedValues.hito_chek_cuatro ? cleanAndParseFloat(updatedValues.custbody_ix_salesorder_hito4) : 0,
+        updatedValues.hito_chek_cinco ? cleanAndParseFloat(updatedValues.custbody_ix_salesorder_hito5) : 0,
+        updatedValues.hito_chek_seis ? cleanAndParseFloat(updatedValues.custbody_ix_salesorder_hito6) : 0,
+    ];
+
+    // Suma los valores de los hitos seleccionados
+    const sumaHitos = valores.reduce((acumulador, valor) => acumulador + valor, 0);
+
+    // Calcula la diferencia entre el monto total asignado y la suma de los hitos activados
+    const diferencia = montoTotalAsignado - sumaHitos;
+
+    // Verifica si la diferencia es negativa e informa al usuario si la suma de hitos excede el monto total
+    if (diferencia < 0) {
+        alert(
+            `La suma de los montos de los hitos activados (${sumaHitos}) supera el MONTO SIN PRIMA TOTAL (${montoTotalAsignado}). Por favor, revisa los valores.`,
+        );
+    }
+
+    // Limpia y convierte el valor total y el monto asociado al nombre proporcionado
+    let montoTotal = cleanAndParseFloat(updatedValues.custbody_ix_total_amount);
+    let montoPrimaTotal = cleanAndParseFloat(updatedValues[name]);
+
+    // Valida que el monto total sea válido y diferente de cero para evitar errores en la división
+    if (!montoTotal || montoTotal === 0) {
+        throw new Error("El monto total no puede ser cero o inválido."); // Lanza un error si el monto total es inválido
+    }
+
+    // Calcula el porcentaje como un valor decimal (montoPrimaTotal / montoTotal)
+    let porcentaje = montoPrimaTotal / montoTotal;
+
+    // Redondea el porcentaje a 9 decimales para precisión
+    porcentaje = Math.round(porcentaje * 1e9) / 1e9;
+
+    // Actualiza los valores del formulario con la diferencia calculada y el porcentaje para el campo especificado
+    setFormValues({
+        ...updatedValues, // Mantiene los valores actuales del formulario
+        valortotals: diferencia, // Actualiza la diferencia calculada
+        [campoActualizar]: porcentaje, // Asigna el porcentaje calculado al campo específico
+    });
+};
 
 
-// export const actualizarHitoDiferenciadoMonto = (
-//     porcentajeIngresado, // Nuevo valor ingresado por el usuario.
-//     montoTotal, // Monto total sin incluir la prima.
-//     montoPrimaTotal, // Monto de la prima total.
-//     setFormValues, // Función para actualizar los valores del formulario.
-//     valoresPrevios, // Los valores actuales del formulario.
-//     campoActualizar, // Nombre del campo a actualizar.
-// ) => {
-//     // Convierte el porcentaje ingresado a un número flotante válido.
-//     const porcentajeCalculado = cleanAndParseFloat(porcentajeIngresado);
 
-//     // Convierte el monto total a un número flotante válido.
-//     const montoTotalCalculado = cleanAndParseFloat(montoTotal);
+// Función para recalcular montos y actualizar los valores del formulario
+export const recalcultarMontoshitos = (updatedValues, setFormValues) => {
+    // Obtiene el monto total asignado después de limpiar y convertir el valor
+    const montoTotalAsignado = cleanAndParseFloat(updatedValues.custbody163);
 
-//     // Calcula el valor del hito, multiplicando el porcentaje por el monto total.
-//     const montoHitoCalculado = montoTotalCalculado * porcentajeCalculado;
+    // Construye una lista de valores basada en los hitos seleccionados (marcados como true)
+    const valores = [
+        updatedValues.hito_chek_uno ? cleanAndParseFloat(updatedValues.custbodyix_salesorder_hito1) : 0,
+        updatedValues.hito_chek_dos ? cleanAndParseFloat(updatedValues.custbody_ix_salesorder_hito2) : 0,
+        updatedValues.hito_chek_tres ? cleanAndParseFloat(updatedValues.custbody_ix_salesorder_hito3) : 0,
+        updatedValues.hito_chek_cuatro ? cleanAndParseFloat(updatedValues.custbody_ix_salesorder_hito4) : 0,
+        updatedValues.hito_chek_cinco ? cleanAndParseFloat(updatedValues.custbody_ix_salesorder_hito5) : 0,
+        updatedValues.hito_chek_seis ? cleanAndParseFloat(updatedValues.custbody_ix_salesorder_hito6) : 0,
+    ];
 
-//     // Formatea el resultado con al menos 2 decimales y hasta 5 decimales para precisión.
-//     const montoHitoFormateado = new Intl.NumberFormat("en-US", {
-//         minimumFractionDigits: 2,
-//         maximumFractionDigits: 5,
-//     }).format(montoHitoCalculado);
+    // Calcula la suma de los valores de los hitos seleccionados
+    const sumaHitos = valores.reduce((acumulador, valor) => acumulador + valor, 0);
 
-//     // Actualiza dinámicamente el campo específico en los valores del formulario.
-//     setFormValues({
-//         ...valoresPrevios,
-//         [campoActualizar]: montoHitoFormateado, // Utiliza el nombre del campo dinámicamente.
-//     });
-// };
+    // Calcula la diferencia entre el monto total asignado y la suma de los hitos seleccionados
+    const diferencia = montoTotalAsignado - sumaHitos;
 
+    // Construye una lista de porcentajes basados en los hitos seleccionados
+    const porcentajes = [
+        updatedValues.hito_chek_uno === true ? updatedValues.custbody62 : 0,
+        updatedValues.hito_chek_dos === true ? updatedValues.custbody63 : 0,
+        updatedValues.hito_chek_tres === true ? updatedValues.custbody64 : 0,
+        updatedValues.hito_chek_cuatro === true ? updatedValues.custbody65 : 0,
+        updatedValues.hito_chek_cinco === true ? updatedValues.custbody66 : 0,
+        updatedValues.hito_chek_seis === true ? updatedValues.custbody67 : 0,
+    ];
+
+    // Calcula la suma de los porcentajes válidos (conversión a número y manejo de valores no válidos)
+    const sumaPorcentajes = porcentajes
+        .map((p) => parseFloat(p) || 0) // Convierte a número o usa 0 si no es válido
+        .reduce((sum, value) => sum + value, 0); // Suma los valores
+
+    // Calcula el porcentaje restante basado en los porcentajes válidos
+    const porcentajeRestante = 100 - sumaPorcentajes * 100;
+
+    // Actualiza los valores del formulario con los nuevos cálculos
+    setFormValues({
+        ...updatedValues, // Mantiene los valores existentes actualizados
+        valortotals: diferencia, // Asigna la diferencia calculada
+        total_porcentaje: `${porcentajeRestante.toFixed(2)}%`, // Formatea el porcentaje restante con dos decimales
+    });
+};

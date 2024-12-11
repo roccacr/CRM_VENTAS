@@ -262,7 +262,7 @@ export const AvanceDiferenciado = ({ formValues, handleInputChange }) => {
                         autoComplete="off"
                         type="number"
                         name="valortotals"
-                        value={formValues.valortotal}
+                        value={formValues.valortotals}
                         onChange={handleInputChange}
                         className={`form-control mb-2`}
                     />
