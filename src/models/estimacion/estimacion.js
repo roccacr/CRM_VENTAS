@@ -89,12 +89,13 @@ estimacion.crear_estimacion = async ({ formulario }) => {
         // Asegúrate de que el valor sea una cadena antes de aplicar la limpieza
         const cleanedValue =
             typeof value === "string"
-                ? value.replace(/[^\d]/g, "") // Elimina todo excepto dígitos
-                : value.toString().replace(/[^\d]/g, "");
+                ? value.replace(/,/g, "") // Elimina solo las comas
+                : value.toString().replace(/,/g, "");
         // Convierte el valor limpio a un número entero
-        console.log("cleanedValue", parseInt(cleanedValue, 10));
-        return parseInt(cleanedValue, 10) || 0; // Retorna 0 si no es un número válido
+        console.log("cleanedValue", parseFloat(cleanedValue, 10));
+        return parseFloat(cleanedValue, 10) || 0; // Retorna 0 si no es un número válido
     };
+
 
     try {
         const rest = nsrestlet.createLink(accountSettings, urlSettings);
@@ -120,31 +121,31 @@ estimacion.crear_estimacion = async ({ formulario }) => {
             /*EXTRAS SOBRE EL PRECIO DE LISTA /diferencia*/
             custbody185: cleanAndParseInteger(formulario.custbody185),
             //MONTO EXTRAS SOBRE EL PRECIO DE LISTA / EXTRAS PAGADAS POR EL CLIENTE
-            custbody46: formulario.custbody46,
+            custbody46: cleanAndParseInteger(formulario.custbody46),
             //MONTO TOTAL DE CORTESÍAS
-            custbody16: formulario.custbody16,
+            custbody16: cleanAndParseInteger(formulario.custbody16),
 
             //DESCRIPCIÓN EXTRAS
             custbody47: formulario.custbody47,
-            neta: formulario.neta,
+            neta: cleanAndParseInteger(formulario.neta),
             fech_reserva: fechaTransformada_14,
             //DESCRIPCIÓN DE LAS CORTESIAS
             custbody35: formulario.custbody35,
             custbody75: formulario.custbody75,
             custbody67: formulario.custbody67,
-            custbody_ix_salesorder_hito6: formulario.custbody_ix_salesorder_hito6,
-            custbody163: formulario.custbody163,
+            custbody_ix_salesorder_hito6: cleanAndParseInteger(formulario.custbody_ix_salesorder_hito6),
+            custbody163: cleanAndParseInteger(formulario.custbody163),
 
             custbody62: formulario.custbody62,
-            custbodyix_salesorder_hito1: formulario.custbodyix_salesorder_hito1,
+            custbodyix_salesorder_hito1: cleanAndParseInteger(formulario.custbodyix_salesorder_hito1),
             custbody63: formulario.custbody63,
-            custbody_ix_salesorder_hito2: formulario.custbody_ix_salesorder_hito2,
+            custbody_ix_salesorder_hito2: cleanAndParseInteger(formulario.custbody_ix_salesorder_hito2),
             custbody64: formulario.custbody64,
-            custbody_ix_salesorder_hito3: formulario.custbody_ix_salesorder_hito3,
+            custbody_ix_salesorder_hito3: cleanAndParseInteger(formulario.custbody_ix_salesorder_hito3),
             custbody65: formulario.custbody65,
-            custbody_ix_salesorder_hito4: formulario.custbody_ix_salesorder_hito4,
+            custbody_ix_salesorder_hito4: cleanAndParseInteger(formulario.custbody_ix_salesorder_hito4),
             custbody66: formulario.custbody66,
-            custbody_ix_salesorder_hito5: formulario.custbody_ix_salesorder_hito5,
+            custbody_ix_salesorder_hito5: cleanAndParseInteger(formulario.custbody_ix_salesorder_hito5),
             hito_chek_uno: formulario.hito_chek_uno,
             hito_chek_dos: formulario.hito_chek_dos,
             hito_chek_tres: formulario.hito_chek_tres,
@@ -157,46 +158,46 @@ estimacion.crear_estimacion = async ({ formulario }) => {
             date_hito_4: fechaTransformada_4,
             date_hito_5: fechaTransformada_5,
             date_hito_6: fechaTransformada_6,
-            custbody113: formulario.custbody113,
+            custbody113: formulario.pre_reserva ? "T" : "F",
             custbody191: formulario.custbody191,
             custbody188: formulario.custbody188,
             custbody189: formulario.custbody189,
             custbody206: fechaTransformada_7,
             custbody190: formulario.custbody190,
-            rateReserva: formulario.rateReserva,
+            rateReserva: cleanAndParseInteger(formulario.custbody52),
 
-            custbody176: formulario.custbody176,
-            custbody179: formulario.custbody179,
+            custbody176: formulario.custbody176 ? "T" : "F",
+            custbody179: cleanAndParseInteger(formulario.custbody179),
             custbody180: formulario.custbody180,
             custbody193: formulario.custbody193,
             custbody179_date: fechaTransformada_8,
 
-            custbody177: formulario.custbody177,
-            custbody181: formulario.custbody181,
+            custbody177: formulario.custbody177 ? "T" : "F",
+            custbody181: cleanAndParseInteger(formulario.custbody181),
             custbody182: formulario.custbody182,
             custbody194: formulario.custbody194,
             custbody182_date: fechaTransformada_9,
 
-            custbody178: formulario.custbody178,
-            custbody183: formulario.custbody183,
+            custbody178: formulario.custbody178 ? "T" : "F",
+            custbody183: cleanAndParseInteger(formulario.custbody183),
             custbody184: formulario.custbody184,
             custbody195: formulario.custbody195,
             custbody184_date: fechaTransformada_10,
 
-            prima_extra_uno: formulario.prima_extra_uno,
-            monto_extra_uno: formulario.monto_extra_uno,
+            prima_extra_uno: formulario.prima_extra_uno ? "T" : "F",
+            monto_extra_uno: cleanAndParseInteger(formulario.monto_extra_uno),
             monto_tracto_uno: formulario.monto_tracto_uno,
             desc_extra_uno: formulario.desc_extra_uno,
             custbody184_uno_date: fechaTransformada_11,
 
-            prima_extra_dos: formulario.prima_extra_dos,
-            monto_extra_dos: formulario.monto_extra_dos,
+            prima_extra_dos: formulario.prima_extra_dos ? "T" : "F",
+            monto_extra_dos: cleanAndParseInteger(formulario.monto_extra_dos),
             monto_tracto_dos: formulario.monto_tracto_dos,
             desc_extra_dos: formulario.desc_extra_dos,
             custbody184_dos_date: fechaTransformada_12,
 
-            prima_extra_tres: formulario.prima_extra_tres,
-            monto_extra_tres: formulario.monto_extra_tres,
+            prima_extra_tres: formulario.prima_extra_tres ? "T" : "F",
+            monto_extra_tres: cleanAndParseInteger(formulario.monto_extra_tres),
             monto_tracto_tres: formulario.monto_tracto_tres,
             desc_extra_tres: formulario.desc_extra_tres,
             custbody184_tres_date: fechaTransformada_13,
