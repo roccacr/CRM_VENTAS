@@ -430,7 +430,7 @@ export const calculoHito1Diferenciado = (
 // Función para calcular el monto diferenciado para un hito específico y actualizar valores en el formulario
 export const calculoHito1DiferenciadoMonto = (MontoSinPrimaTotal, campoActualizar, updatedValues, setFormValues, name) => {
     // Limpia y convierte el monto sin prima total a un valor numérico
-    const montoTotalAsignado = cleanAndParseFloat(updatedValues.custbody163);
+    const montoTotalAsignado = cleanAndParseFloat(MontoSinPrimaTotal);
 
     // Crea un arreglo con los valores de los hitos activados; si no están activados, se asigna 0
     const valores = [
@@ -456,7 +456,7 @@ export const calculoHito1DiferenciadoMonto = (MontoSinPrimaTotal, campoActualiza
     }
 
     // Limpia y convierte el valor total y el monto asociado al nombre proporcionado
-    let montoTotal = cleanAndParseFloat(updatedValues.custbody_ix_total_amount);
+    let montoTotal = cleanAndParseFloat(updatedValues.custbody163);
     let montoPrimaTotal = cleanAndParseFloat(updatedValues[name]);
 
     // Valida que el monto total sea válido y diferente de cero para evitar errores en la división
