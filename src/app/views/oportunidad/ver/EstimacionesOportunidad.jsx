@@ -1,25 +1,40 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ModalEstimacion } from "../../estimacion/ModalEstimacion";
+import { useDispatch } from "react-redux";
+import { useNavigate } from "react-router-dom"; // Para redirigir
+import { obtenerEstimacionesPorOportunidad } from "../../../../store/estimacion/thunkEstimacion";
+
 export const EstimacionesOportunidad = ({ OportunidadDetails, cliente }) => {
-    // Datos de ejemplo para la tabla
-    const estimacionesData = [
-        { estimacion: "#12345", caduca: "2024-12-01", creado: "2024-11-01" },
-        { estimacion: "#67890", caduca: "2024-12-05", creado: "2024-11-05" },
-        { estimacion: "#11223", caduca: "2024-12-10", creado: "2024-11-10" },
-    ];
+    const [estimacionesData, setEstimaciones] = useState([]); // Inicialización como array vacío
+    const [search, setSearch] = useState(""); // Filtro de búsqueda
+    const [isModalOpen, setIsModalOpen] = useState(false); // Control del modal
 
-    // Estado para el filtro de búsqueda
-    const [search, setSearch] = useState("");
-    // Estado para controlar la apertura del modal
-    const [isModalOpen, setIsModalOpen] = useState(false);
+    const dispatch = useDispatch();
+    const navigate = useNavigate(); // Inicialización de navegación
 
-    // Función para abrir el modal
-    const openModal = () => setIsModalOpen(true);
-    // Función para cerrar el modal
-    const closeModal = () => setIsModalOpen(false);
+    // Obtiene estimaciones asociadas a una oportunidad
+    const enlistarEstimaciones = async (idOportunidad) => {
+        try {
+            const oportunidadData = await dispatch(obtenerEstimacionesPorOportunidad(idOportunidad));
+            setEstimaciones(oportunidadData || []); // Manejo en caso de datos nulos o vacíos
+        } catch (error) {
+            console.error("Error al obtener los detalles de la oportunidad:", error);
+        }
+    };
 
-    // Filtra los datos en función del valor de búsqueda en #Estimacion
-    const filteredData = estimacionesData.filter((item) => item.estimacion.toLowerCase().includes(search.toLowerCase()));
+    useEffect(() => {
+        if (OportunidadDetails?.id_oportunidad_oport) {
+            enlistarEstimaciones(OportunidadDetails.id_oportunidad_oport);
+        }
+    }, [OportunidadDetails]); // Dependencia para actualizar cuando cambien los detalles
+
+    // Filtra los datos en función del valor de búsqueda
+    const filteredData = estimacionesData.filter((item) => item.tranid_est.toLowerCase().includes(search.toLowerCase()));
+
+    // Redirige al hacer clic en una fila
+    const handleRowClick = (data, data2) => {
+        navigate(`/estimaciones/view?data=${data}&data2=${data2}`);
+    };
 
     return (
         <>
@@ -40,7 +55,11 @@ export const EstimacionesOportunidad = ({ OportunidadDetails, cliente }) => {
                     />
 
                     {/* Botón para abrir el modal */}
-                    <button className="btn btn-dark" onClick={openModal} style={{ marginBottom: "20px", padding: "10px 20px", cursor: "pointer" }}>
+                    <button
+                        className="btn btn-dark"
+                        onClick={() => setIsModalOpen(true)}
+                        style={{ marginBottom: "20px", padding: "10px 20px", cursor: "pointer" }}
+                    >
                         Crear Estimaciones
                     </button>
 
@@ -60,15 +79,26 @@ export const EstimacionesOportunidad = ({ OportunidadDetails, cliente }) => {
                             <tbody>
                                 {filteredData.length > 0 ? (
                                     filteredData.map((item, index) => (
-                                        <tr key={index}>
-                                            <td style={{ border: "1px solid #ddd", padding: "8px" }}>{item.estimacion}</td>
+                                        <tr
+                                            key={index}
+                                            onClick={() => handleRowClick(item.idLead_est, item.idEstimacion_est)} // Redirigir al hacer clic
+                                            style={{ cursor: "pointer" }}
+                                        >
+                                            <td style={{ border: "1px solid #ddd", padding: "8px" }}>{item.tranid_est}</td>
                                             <td style={{ border: "1px solid #ddd", padding: "8px" }}>{item.caduca}</td>
-                                            <td style={{ border: "1px solid #ddd", padding: "8px" }}>{item.creado}</td>
+                                            <td style={{ border: "1px solid #ddd", padding: "8px" }}>{item.creado_est}</td>
                                         </tr>
                                     ))
                                 ) : (
                                     <tr>
-                                        <td colSpan="3" style={{ border: "1px solid #ddd", padding: "8px", textAlign: "center" }}>
+                                        <td
+                                            colSpan="3"
+                                            style={{
+                                                border: "1px solid #ddd",
+                                                padding: "8px",
+                                                textAlign: "center",
+                                            }}
+                                        >
                                             No se encontraron resultados
                                         </td>
                                     </tr>
@@ -80,7 +110,9 @@ export const EstimacionesOportunidad = ({ OportunidadDetails, cliente }) => {
             </div>
 
             {/* Modal */}
-            {isModalOpen && <ModalEstimacion open={isModalOpen} onClose={closeModal} OportunidadDetails={OportunidadDetails} cliente={cliente} />}
+            {isModalOpen && (
+                <ModalEstimacion open={isModalOpen} onClose={() => setIsModalOpen(false)} OportunidadDetails={OportunidadDetails} cliente={cliente} />
+            )}
         </>
     );
 };

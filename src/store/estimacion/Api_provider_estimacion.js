@@ -17,3 +17,17 @@ export const crearEstimacion = async ({ formulario }) => {
     // La URL "estimacion/CrearEstimacion" corresponde al endpoint en el servidor que gestiona esta operación.
     return await fetchData("estimacion/CrearEstimacion", requestData); // Retorna la respuesta de la API para la solicitud realizada.
 };
+
+
+
+export const obtenerEstimacionesOportunidad = async ({ idOportunidad }) => {
+    // Construye el objeto de datos para la solicitud, incluyendo información común y el ID de la oportunidad específica.
+    const requestData = {
+        ...commonRequestData, // Datos comunes requeridos para todas las solicitudes (p. ej., autenticación, configuraciones generales).
+        idOportunidad, // Identificador único de la oportunidad para obtener sus estimaciones.
+    };
+
+    // Realiza la solicitud a la API para obtener las estimaciones asociadas a la oportunidad especificada.
+    // La URL "estimacion/ObtenerEstimaciones" corresponde al endpoint que gestiona esta operación en el servidor.
+    return await fetchData("estimacion/ObtenerEstimacionesOportunidad", requestData); // Retorna la respuesta de la API.
+};

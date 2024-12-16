@@ -1,4 +1,4 @@
-import { crearEstimacion } from "./Api_provider_estimacion";
+import { crearEstimacion, obtenerEstimacionesOportunidad } from "./Api_provider_estimacion";
 
 /**
  * Función para manejar la creación de una estimación a partir de los datos proporcionados en un formulario.
@@ -17,6 +17,24 @@ export const crearEstimacionFormulario = (formulario) => {
         } catch (error) {
             // Captura y registra cualquier error que ocurra durante la solicitud para facilitar la depuración.
             console.error("Error al crear la estimación:", error);
+        }
+    };
+};
+
+
+// Función para obtener la lista de estimaciones relacionadas con una oportunidad específica, identificada por su ID de transacción.
+export const obtenerEstimacionesPorOportunidad = (idOportunidad) => {
+    return async () => {
+        try {
+            // Realiza la llamada a la API para obtener las estimaciones relacionadas con la oportunidad especificada.
+            const respuesta = await obtenerEstimacionesOportunidad({ idOportunidad });
+
+
+            // Retorna el primer elemento de los datos obtenidos, que contiene la información principal de la estimación.
+            return respuesta.data.data;
+        } catch (error) {
+            // Captura y registra cualquier error que ocurra durante la solicitud para facilitar su depuración.
+            console.error("Error al obtener las estimaciones de la oportunidad:", error);
         }
     };
 };
