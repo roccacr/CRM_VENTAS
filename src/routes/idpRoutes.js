@@ -200,6 +200,7 @@ module.exports = function (app) {
             routes: [
                 { path: "/estimacion/CrearEstimacion", method: "crear_estimacion" }, // Crear oportunidad en Netsuite3
                 { path: "/estimacion/ObtenerEstimacionesOportunidad", method: "ObtenerEstimacionesOportunidad" }, // Crear oportunidad en Netsuite
+                { path: "/estimacion/extraerEstimacion", method: "extraerEstimacion" }, // Crear oportunidad en Netsuite
             ],
         },
     ];

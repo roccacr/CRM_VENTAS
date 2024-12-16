@@ -243,6 +243,56 @@ estimacion.ObtenerEstimacionesOportunidad = (dataParams) => {
 };
 
 
+estimacion.extarerEstimacionNetsuite = async (estimacionId ) => {
+    const urlSettings = {
+        url: "https://4552704.restlets.api.netsuite.com/app/site/hosting/restlet.nl?script=1764&deploy=1",
+    };
+    try {
+        const rest = nsrestlet.createLink(accountSettings, urlSettings);
+
+        const body = await rest.get({ rType: "estimate", id: estimacionId });
+
+
+        return {
+            msg: "Crear estimacion ",
+            Detalle: body,
+            status: 200,
+        };
+    } catch (error) {
+        console.error("Error al obtener oportuindad:", error);
+        throw error;
+    }
+};
+
+
+// Método para obtener las estimaciones relacionadas a una oportunidad específica
+estimacion.extraerEstimacion =async (dataParams) => {
+    // Consulta SQL para seleccionar todas las estimaciones asociadas a una oportunidad específica,
+    // ordenándolas por la fecha de caducidad en orden descendente.
+    const query = "SELECT * FROM estimaciones WHERE idEstimacion_est = ? ";
+
+    // Parámetro que contiene el ID de la oportunidad para filtrar los resultados.
+    const params = [dataParams.idEstimacion];
+
+    // Llama a la función de ejecución de consultas en la base de datos.
+    // Retorna los resultados obtenidos en base a:
+    // - `query`: la consulta SQL.
+    // - `params`: el ID de la oportunidad utilizado como filtro.
+    // - `dataParams.database`: la base de datos en la que se ejecutará la consulta.
+    const result = await executeQuery(query, params, dataParams.database);
+    const resultNetsuite = await estimacion.extarerEstimacionNetsuite(dataParams.idEstimacion);
+
+     const datosReales = {
+         crm: result.data[0], // Propaga las propiedades de la primera fila
+         netsuite: resultNetsuite, // Agrega la nueva propiedad
+     };
+
+
+    return datosReales;
+};
+
+
+
 
 // Exportamos el módulo para su uso en otras partes del proyecto.
 module.exports = estimacion;
