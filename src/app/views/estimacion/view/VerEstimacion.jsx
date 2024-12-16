@@ -2,43 +2,89 @@ import { useEffect, useState } from "react";
 import { ButtonActions } from "../../../components/buttonAccions/buttonAccions";
 import { useDispatch } from "react-redux";
 import { getSpecificLead } from "../../../../store/leads/thunksLeads";
+import { extarerEstimacion } from "../../../../store/estimacion/thunkEstimacion";
+import Swal from "sweetalert2";
+
+
 
 export const VerEstimacion = () => {
+    // Estado para almacenar los detalles del lead.
     const [leadDetails, setLeadDetails] = useState({});
-    const dispatch = useDispatch(); // Función para despachar acciones de Redux.
+    // Estado para almacenar los datos de la estimación.
+    const [datosEstimacion, setDatosEstimacion] = useState({});
+    const [datosCrm, setDatosCrm] = useState({});
+    
+    // Hook para despachar acciones de Redux.
+    const dispatch = useDispatch();
 
-    // Función para obtener el valor de un parámetro específico de la URL.
+    /**
+     * Obtiene el valor de un parámetro específico de la URL.
+     * @param {string} param - Nombre del parámetro a extraer.
+     * @returns {string|number|null} - Retorna el valor del parámetro (convertido a número si es posible) o null si no existe.
+     */
     const getQueryParam = (param) => {
-        // Crea una instancia de 'URLSearchParams' con los parámetros de la URL.
-        const value = new URLSearchParams(location.search).get(param);
-
-        // Verifica si el valor es numérico; si lo es, lo convierte a número.
-        if (value && !isNaN(value) && !isNaN(parseFloat(value))) {
-            return Number(value); // Retorna el valor como número si es posible.
-        }
-        return value; // Si no es numérico, retorna el valor original como cadena de texto.
+        const value = new URLSearchParams(window.location.search).get(param);
+        return value && !isNaN(value) && !isNaN(parseFloat(value)) ? Number(value) : value;
     };
 
+    /**
+     * Solicita los detalles de un lead desde el backend.
+     * @param {number} idLead - ID del lead a buscar.
+     */
     const fetchLeadDetails = async (idLead) => {
         try {
-            // Llama a la acción 'getSpecificLead' pasando el 'idLead' y espera su resultado.
             const leadData = await dispatch(getSpecificLead(idLead));
-
-            // Almacena los detalles obtenidos en el estado 'leadDetails' para su uso en la vista.
             setLeadDetails(leadData);
         } catch (error) {
-            // Manejo de errores en caso de que la solicitud falle.
             console.error("Error al obtener los detalles del lead:", error);
         }
     };
 
-    useEffect(() => {
-        // Obtiene los parámetros 'data' (para lead) y 'data2' (para oportunidad) desde la URL.
-        const leadId = getQueryParam("data"); // Extrae el ID del lead desde la URL.
-        if (leadId && leadId > 0) {
-            fetchLeadDetails(leadId); // Solicita los detalles del lead.
+    /**
+     * Solicita los detalles de una estimación desde el backend.
+     * @param {number} idEstimacion - ID de la estimación a buscar.
+     */
+    const fetchEstimacionDetails = async (idEstimacion) => {
+        try {
+            const estimacionData = await dispatch(extarerEstimacion(idEstimacion));
+          setDatosEstimacion(estimacionData.netsuite.Detalle);
+          setDatosCrm(estimacionData.crm);
+        } catch (error) {
+            console.error("Error al obtener los detalles de la estimación:", error);
         }
-    }, []); // El efecto se ejecuta al montar el componente.
+    };
+
+  
+  const formatoMoneda = (valor) => {
+      return new Intl.NumberFormat("en-US", {
+          minimumFractionDigits: 2, // Asegura al menos 2 decimales.
+          maximumFractionDigits: 5, // Limita a un máximo de 5 decimales.
+      }).format(valor);
+  };
+
+
+    // Efecto que se ejecuta al montar el componente.
+    useEffect(() => {
+        // Muestra un indicador de carga con SweetAlert.
+        Swal.fire({
+            title: "Cargando datos...",
+            text: "Por favor espera.",
+            allowOutsideClick: false,
+            allowEscapeKey: false,
+            didOpen: () => Swal.showLoading(),
+        });
+
+        // Obtiene los IDs de la URL para lead y estimación.
+        const leadId = getQueryParam("data");
+        const estimacionId = getQueryParam("data2");
+
+        // Si el ID del lead es válido, solicita los datos correspondientes.
+        if (leadId && leadId > 0) {
+            Promise.all([fetchLeadDetails(leadId), fetchEstimacionDetails(estimacionId)]).finally(() => Swal.close()); // Cierra el indicador de carga cuando se completen las solicitudes.
+        } else {
+            Swal.close(); // Cierra el SweetAlert en caso de que no haya IDs válidos.
+        }
+    }, [dispatch]); // El efecto depende de 'dispatch'.
 
     return (
         <>
@@ -96,42 +142,42 @@ export const VerEstimacion = () => {
                                     <p className="mb-1 text-muted">
                                         <i className="fas fa-user"></i> CLIENTE:
                                     </p>
-                                    <p className="mb-0"></p>
+                                    <p className="mb-0">{datosEstimacion.cli || ""}</p>
                                 </div>
                                 <div className="col-md-2">
                                     <p className="mb-1 text-muted">
                                         {" "}
                                         <i className="fas fa-archway"></i> UNIDAD EXPEDIENTE LIGADO VTA
                                     </p>
-                                    <p className="mb-0"></p>
+                                    <p className="mb-0">{datosEstimacion.Exp || ""}</p>
                                 </div>
                                 <div className="col-md-2">
                                     <p className="mb-1 text-muted">
                                         {" "}
                                         <i className="fas fa-archway"></i> SUBSIDIARIA
                                     </p>
-                                    <p className="mb-0"></p>
+                                    <p className="mb-0">{datosEstimacion.Subsidaria || ""}</p>
                                 </div>
                                 <div className="col-md-2">
                                     <p className="mb-1 text-muted">
                                         {" "}
                                         <i className="fas fa-certificate"></i> ESTADO
                                     </p>
-                                    <p className="mb-0"></p>
+                                    <p className="mb-0">{datosEstimacion.Estado || ""}</p>
                                 </div>
                                 <div className="col-md-2">
                                     <p className="mb-1 text-muted">
                                         {" "}
                                         <i className="fas fa-chevron-circle-up"></i> OPORTUNIDAD
                                     </p>
-                                    <p className="mb-0"></p>
+                                    <p className="mb-0">{datosEstimacion.opportunity_name || ""}</p>
                                 </div>
                                 <div className="col-md-2">
                                     <p className="mb-1 text-muted">
                                         {" "}
                                         <i className="fas fa-calendar-plus"></i> CIERRE DE PREVISTO
                                     </p>
-                                    <p className="mb-0"></p>
+                                    <p className="mb-0">{datosCrm.caduca || ""}</p>
                                 </div>
                             </div>
                         </li>
@@ -143,42 +189,42 @@ export const VerEstimacion = () => {
                                     <p className="mb-1 text-muted">
                                         <i className="fas fa-money-bill-wave"></i> PRECIO DE LISTA:
                                     </p>
-                                    <p className="mb-0"></p>
+                                    <p className="mb-0">{formatoMoneda(datosEstimacion.data.fields.custbody13 || "")}</p>
                                 </div>
                                 <div className="col-md-2">
                                     <p className="mb-1 text-muted">
                                         {" "}
                                         <i className="fas fa-money-bill-wave"></i> MONTO DESCUENTO DIRECTO
                                     </p>
-                                    <p className="mb-0"></p>
+                                    <p className="mb-0">{formatoMoneda(datosEstimacion.data.fields.custbody132 || "")}</p>
                                 </div>
                                 <div className="col-md-2">
                                     <p className="mb-1 text-muted">
                                         {" "}
                                         <i className="fas fa-money-bill-wave"></i> MONTO EXTRAS SOBRE EL PRECIO DE LISTA
                                     </p>
-                                    <p className="mb-0"></p>
+                                    <p className="mb-0">{formatoMoneda(datosEstimacion.data.fields.custbody46 || "")}</p>
                                 </div>
                                 <div className="col-md-2">
                                     <p className="mb-1 text-muted">
                                         {" "}
                                         <i className="fas fa-list-ul"></i> DESCRIPCIÓN EXTRAS
                                     </p>
-                                    <p className="mb-0"></p>
+                                    <p className="mb-0">{datosEstimacion.data.fields.custbody47 || ""}</p>
                                 </div>
                                 <div className="col-md-2">
                                     <p className="mb-1 text-muted">
                                         {" "}
                                         <i className="fas fa-money-bill-wave"></i> CASHBACK
                                     </p>
-                                    <p className="mb-0"></p>
+                                    <p className="mb-0">{formatoMoneda(datosEstimacion.data.fields.custbodyix_salesorder_cashback || "")}</p>
                                 </div>
                                 <div className="col-md-2">
                                     <p className="mb-1 text-muted">
                                         {" "}
                                         <i className="fas fa-money-bill-wave"></i> MONTO RESERVA
                                     </p>
-                                    <p className="mb-0"></p>
+                                    <p className="mb-0">{formatoMoneda(datosEstimacion.data.fields.custbody52 || "")}</p>
                                 </div>
                             </div>
                         </li>

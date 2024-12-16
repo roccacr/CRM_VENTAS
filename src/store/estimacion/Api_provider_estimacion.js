@@ -31,3 +31,15 @@ export const obtenerEstimacionesOportunidad = async ({ idOportunidad }) => {
     // La URL "estimacion/ObtenerEstimaciones" corresponde al endpoint que gestiona esta operación en el servidor.
     return await fetchData("estimacion/ObtenerEstimacionesOportunidad", requestData); // Retorna la respuesta de la API.
 };
+
+
+export const extraerEstimacionNetsuite = async ({ idEstimacion }) => {
+    // Construye el objeto de datos para la solicitud, incluyendo información común y el ID de la estimación específica.
+    const requestData = {
+        ...commonRequestData, // Datos comunes requeridos para todas las solicitudes (p. ej., autenticación, configuraciones generales).
+        idEstimacion, // Identificador único de la estimación para obtener sus datos asociados.
+    };
+
+    return await fetchData("estimacion/extraerEstimacion", requestData); // Retorna la respuesta de la API.
+   
+};
