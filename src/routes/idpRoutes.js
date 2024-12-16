@@ -198,7 +198,8 @@ module.exports = function (app) {
             category: "estimacion", // Categoría: Gestión de expedientes
             model: estimacion, // Modelo asociado a la gestión de expedientes
             routes: [
-                { path: "/estimacion/CrearEstimacion", method: "crear_estimacion" }, // Crear oportunidad en Netsuite
+                { path: "/estimacion/CrearEstimacion", method: "crear_estimacion" }, // Crear oportunidad en Netsuite3
+                { path: "/estimacion/ObtenerEstimacionesOportunidad", method: "ObtenerEstimacionesOportunidad" }, // Crear oportunidad en Netsuite
             ],
         },
     ];

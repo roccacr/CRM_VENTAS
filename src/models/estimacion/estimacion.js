@@ -3,6 +3,9 @@ const config = require("../../config/config");
 // Importamos el módulo 'nsrestlet' para realizar llamadas a la API de NetSuite Restlet.
 const nsrestlet = require("nsrestlet");
 
+const { executeStoredProcedure, executeQuery } = require("../conectionPool/conectionPool");
+
+
 // Configuración de credenciales para acceder a NetSuite.
 var accountSettings = {
     accountId: config.oauthNetsuite.realm,
@@ -215,6 +218,31 @@ estimacion.crear_estimacion = async ({ formulario }) => {
         throw error;
     }
 };
+
+
+
+// Método para obtener las estimaciones relacionadas a una oportunidad específica
+estimacion.ObtenerEstimacionesOportunidad = (dataParams) => {
+    // Consulta SQL para seleccionar todas las estimaciones asociadas a una oportunidad específica,
+    // ordenándolas por la fecha de caducidad en orden descendente.
+    const query = "SELECT * FROM estimaciones WHERE idOportunidad_est = ? ORDER BY caduca DESC";
+    
+    // Parámetro que contiene el ID de la oportunidad para filtrar los resultados.
+    const params = [dataParams.idOportunidad];
+
+    // Llama a la función de ejecución de consultas en la base de datos.
+    // Retorna los resultados obtenidos en base a:
+    // - `query`: la consulta SQL.
+    // - `params`: el ID de la oportunidad utilizado como filtro.
+    // - `dataParams.database`: la base de datos en la que se ejecutará la consulta.
+    return executeQuery(
+        query, // Consulta SQL que se ejecutará
+        params, // Parámetros necesarios para la consulta
+        dataParams.database, // Conexión a la base de datos proporcionada
+    );
+};
+
+
 
 // Exportamos el módulo para su uso en otras partes del proyecto.
 module.exports = estimacion;
