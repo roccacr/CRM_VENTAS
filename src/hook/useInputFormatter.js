@@ -4,7 +4,7 @@ export const limpiarCampos = (newValue) => {
     return cleanedValue; // Devuelve el valor limpio
 };
 
-const cleanAndParseFloat = (value) => {
+export const cleanAndParseFloat = (value) => {
     // Si el valor es nulo o indefinido, retorna 0
     if (value == null || value === "") return 0;
     // Asegúrate de que el valor sea una cadena antes de aplicar .replace

@@ -4,6 +4,7 @@ import { useDispatch } from "react-redux";
 import { getSpecificLead } from "../../../../store/leads/thunksLeads";
 import { extarerEstimacion } from "../../../../store/estimacion/thunkEstimacion";
 import Swal from "sweetalert2";
+import { cleanAndParseFloat } from "../../../../hook/useInputFormatter";
 
 
 
@@ -61,6 +62,30 @@ export const VerEstimacion = () => {
           maximumFractionDigits: 5, // Limita a un máximo de 5 decimales.
       }).format(valor);
   };
+
+  
+const CalculoPvtaNeto = (custbody13, custbody132, custbody46, custbodyix_salesorder_cashback, custbody16) => {
+    // Conversión de los parámetros a números, asegurando que sean válidos
+    const precio_de_lista = cleanAndParseFloat(custbody13) || 0;
+    const descuento_directo = cleanAndParseFloat(custbody132) || 0;
+    const extrasPagadasPorelcliente = cleanAndParseFloat(custbody46) || 0;
+    const cashback = cleanAndParseFloat(custbodyix_salesorder_cashback) || 0;
+    const monto_de_cortecias = cleanAndParseFloat(custbody16) || 0;
+
+    // Cálculo del monto total del precio de venta neto
+    const monto_total_precio_venta_neto = precio_de_lista - descuento_directo + extrasPagadasPorelcliente - cashback - monto_de_cortecias;
+
+    // Validación para retornar 0 o null si el resultado no es válido
+    if (isNaN(monto_total_precio_venta_neto) || monto_total_precio_venta_neto === 0) {
+        return null; // Retorna null si es vacío o inválido
+    }
+
+    // Formateo del resultado como moneda en colones costarricenses
+    return formatoMoneda(monto_total_precio_venta_neto);
+};
+
+
+    
 
 
     // Efecto que se ejecuta al montar el componente.
@@ -236,28 +261,38 @@ export const VerEstimacion = () => {
                                     <p className="mb-1 text-muted">
                                         <i className="fas fa-money-bill-wave"></i> MONTO TOTAL DE CORTESÍAS
                                     </p>
-                                    <p className="mb-0"></p>
+                                    <p className="mb-0">{formatoMoneda(datosEstimacion.data.fields.custbody16 || "")}</p>
                                 </div>
                                 <div className="col-md-2">
                                     <p className="mb-1 text-muted">
                                         {" "}
                                         <i className="fas fa-list-ul"></i> DESCRIPCIÓN DE LAS CORTESIAS
                                     </p>
-                                    <p className="mb-0"></p>
+                                    <p className="mb-0">{datosEstimacion.data.fields.custbody35 || ""}</p>
                                 </div>
                                 <div className="col-md-2">
                                     <p className="mb-1 text-muted">
                                         {" "}
                                         <i className="fas fa-money-bill-wave"></i> PREC. DE VENTA MÍNIMO:
                                     </p>
-                                    <p className="mb-0"></p>
+                                    <p className="mb-0">{formatoMoneda(datosEstimacion.data.fields.custbody_precio_vta_min || "")}</p>
                                 </div>
                                 <div className="col-md-2">
                                     <p className="mb-1 text-muted">
                                         {" "}
                                         <i className="fas fa-money-bill-wave"></i> PEC. DE VENTA NETO:
                                     </p>
-                                    <p className="mb-0"></p>
+                                    <p className="mb-0">
+                                        {formatoMoneda(
+                                            CalculoPvtaNeto(
+                                                datosEstimacion.data.fields.custbody13,
+                                                datosEstimacion.data.fields.custbody132,
+                                                datosEstimacion.data.fields.custbody46,
+                                                datosEstimacion.data.fields.custbodyix_salesorder_cashback,
+                                                datosEstimacion.data.fields.custbody16,
+                                            ) || "",
+                                        )}
+                                    </p>
                                 </div>
                                 <div className="col-md-2">
                                     <p className="mb-1 text-muted">
