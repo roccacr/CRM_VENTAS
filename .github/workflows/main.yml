@@ -16,12 +16,12 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: '16'
+          node-version: '18'  # Updated to Node.js 18
 
       - name: Install dependencies
         run: |
-          npm ci  # 'ci' es más rápido y limpio para CI/CD que 'install'
-          npm install vite --save-dev  # Instalamos Vite como dependencia de desarrollo
+          npm ci
+          npm install vite --save-dev
 
       - name: Grant execute permissions to vite
         run: chmod +x node_modules/.bin/vite
@@ -30,7 +30,7 @@ jobs:
         run: rm -rf dist
 
       - name: Build
-        run: npm run build  # Ejecutamos el script de construcción definido en el package.json
+        run: npm run build
 
       - name: Deploy to Server
         uses: appleboy/scp-action@master
@@ -39,6 +39,5 @@ jobs:
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SCADMINAPIS }}
           port: 22
-          
-          source: "dist/*"  # Ruta de origen de la construcción, ajustar si es necesario
-          target: "/var/www/crmReact"  # Ruta de destino en el servidor, ajustar si es necesario
+          source: "dist/*"
+          target: "/var/www/crmReact"
