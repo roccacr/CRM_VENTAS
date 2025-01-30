@@ -31,8 +31,6 @@ export const ModalEstimacion = ({ open, onClose, OportunidadDetails, cliente }) 
     const [isLoading, setIsLoading] = useState(true);
     const dispatch = useDispatch();
 
-    
-
     const [formValues, setFormValues] = useState({
         // Datos de la primera línea
         entity: "",
@@ -269,7 +267,6 @@ export const ModalEstimacion = ({ open, onClose, OportunidadDetails, cliente }) 
             return; // Detiene el flujo después de manejar este caso específico
         }
 
-
         //limpiamos lo valores de las primas cuando se deselecciona el checkbox
         if (name === "custbody39") {
             actualizarPrimaTotal(name, valorProcesado);
@@ -430,30 +427,45 @@ export const ModalEstimacion = ({ open, onClose, OportunidadDetails, cliente }) 
         });
     };
 
-    // Maneja actualizaciones de campos relacionados con porcentajes
+    /**
+     * Maneja la actualización de campos relacionados con porcentajes en el formulario.
+     * Realiza cálculos basados en el valor actualizado y actualiza el estado del formulario
+     * con los nuevos valores calculados.
+     *
+     * @param {string} name - El nombre del campo que se está actualizando.
+     * @param {number} value - El nuevo valor del campo.
+     */
     const actualizarPorcentaje = (name, value) => {
         setFormValues((prevValues) => {
-            // Copia el estado actual y actualiza el valor del campo relacionado con el porcentaje
+            // 1. Copia el estado actual del formulario y actualiza el valor del campo específico.
             const updatedValues = { ...prevValues, [name]: value };
 
-            // Calcula el monto total basado en el porcentaje actualizado
+            // 2. Calcula el monto total basado en el porcentaje actualizado.
             const total = calculoMontoSegunPorcentaje(updatedValues);
 
-            // Calcula la prima neta basada en el monto total calculado y los valores actualizados
+            // 3. Calcula la prima neta basada en el monto total y los valores actualizados.
             const montoPrimaNet = montoPrimaNeta(total, updatedValues);
 
-            // Calcula la prima asignable utilizando el monto total calculado y los valores actuales
+            // 4. Calcula la prima asignable utilizando el monto total y los valores actuales.
             const asignable = calculoPrimaAsignable(total, updatedValues);
 
-            // Ejecuta cálculos adicionales personalizados si es necesario
+            // 5. Ejecuta cálculos adicionales personalizados si es necesario.
             ejecutarCálculosEspecíficos(updatedValues);
 
-            // Retorna el nuevo estado actualizado con los valores calculados
+            // 6. Si el campo actualizado es "custbody60", retorna un estado con campos adicionales.
+            if (name === "custbody60") {
+                return {
+                    ...updatedValues, // Mantiene todos los valores existentes del estado.
+                    custbody39: total, // Actualiza el monto total calculado.
+                    custbody_ix_salesorder_monto_prima: montoPrimaNet, // Actualiza la prima neta calculada.
+                    neta: asignable, // Actualiza la prima asignable calculada.
+                };
+            }
+
+            // 7. Si el campo no es "custbody60", retorna un estado sin los campos adicionales.
             return {
-                ...updatedValues, // Mantiene los valores existentes del estado
-                custbody39: total, // Actualiza el monto total calculado
-                custbody_ix_salesorder_monto_prima: montoPrimaNet, // Actualiza la prima neta calculada
-                neta: asignable, // Actualiza la prima asignable calculada
+                ...updatedValues, // Mantiene todos los valores existentes del estado.
+                neta: asignable, // Actualiza la prima asignable calculada.
             };
         });
     };
@@ -596,23 +608,23 @@ export const ModalEstimacion = ({ open, onClose, OportunidadDetails, cliente }) 
             calculoContraEntregaSinprimaTotal(updatedValues, setFormValues); // Sin prima total
             calculoContraEntregaMontoCalculado(updatedValues, setFormValues); // Con monto calculado
         } else if (tipoOperacion === 7) {
-             setFormValues((prevValues) => ({
-                 ...prevValues, // Conserva los valores existentes del formulario.
-                 custbody62: 0, // Actualiza el campo `hito 1` con el monto total calculado.
-                 custbody63: 0, // Actualiza el campo `hito 2` con el monto total calculado.
-                 custbody64: 0, // Actualiza el campo `hito 3` con el monto total calculado.
-                 custbody65: 0, // Actualiza el campo `hito 4` con el monto total calculado.
-                 custbody66: 0, // Actualiza el campo `hito 5` con el monto total calculado.
-                 custbody67: 0, // Actualiza el campo `hito 6` con el monto total calculado.
-                 valortotals: 0, // Actualiza el campo `valor por asignar` con el monto total calculado.
-                 total_porcentaje: "100%", // actualiza el campo `total porcentaje` con el valor 100%.
-                 custbodyix_salesorder_hito1: 0, // Actualiza el campo `hito 1` con el monto total calculado.
-                 custbody_ix_salesorder_hito2: 0, // Actualiza el campo `hito 2` con el monto total calculado.
-                 custbody_ix_salesorder_hito3: 0, // Actualiza el campo `hito 3` con el monto total calculado.
-                 custbody_ix_salesorder_hito4: 0, // Actualiza el campo `hito 4` con el monto total calculado.
-                 custbody_ix_salesorder_hito5: 0, // Actualiza el campo `hito 5` con el monto total calculado.
-                 custbody_ix_salesorder_hito6: 0, // Actualiza el campo `hito 6` con el monto total calculado.
-             }));
+            setFormValues((prevValues) => ({
+                ...prevValues, // Conserva los valores existentes del formulario.
+                custbody62: 0, // Actualiza el campo `hito 1` con el monto total calculado.
+                custbody63: 0, // Actualiza el campo `hito 2` con el monto total calculado.
+                custbody64: 0, // Actualiza el campo `hito 3` con el monto total calculado.
+                custbody65: 0, // Actualiza el campo `hito 4` con el monto total calculado.
+                custbody66: 0, // Actualiza el campo `hito 5` con el monto total calculado.
+                custbody67: 0, // Actualiza el campo `hito 6` con el monto total calculado.
+                valortotals: 0, // Actualiza el campo `valor por asignar` con el monto total calculado.
+                total_porcentaje: "100%", // actualiza el campo `total porcentaje` con el valor 100%.
+                custbodyix_salesorder_hito1: 0, // Actualiza el campo `hito 1` con el monto total calculado.
+                custbody_ix_salesorder_hito2: 0, // Actualiza el campo `hito 2` con el monto total calculado.
+                custbody_ix_salesorder_hito3: 0, // Actualiza el campo `hito 3` con el monto total calculado.
+                custbody_ix_salesorder_hito4: 0, // Actualiza el campo `hito 4` con el monto total calculado.
+                custbody_ix_salesorder_hito5: 0, // Actualiza el campo `hito 5` con el monto total calculado.
+                custbody_ix_salesorder_hito6: 0, // Actualiza el campo `hito 6` con el monto total calculado.
+            }));
             // Cálculo para avance diferenciado
             calculoAvanceDiferenciado(updatedValues, setFormValues, montot, montoPrimaTotal);
         }
@@ -710,7 +722,6 @@ export const ModalEstimacion = ({ open, onClose, OportunidadDetails, cliente }) 
             required: !!formValues.prima_extra_uno,
             message: "Este valor es requerido",
         },
-        
 
         monto_extra_dos: {
             required: !!formValues.prima_extra_dos,
@@ -795,24 +806,23 @@ export const ModalEstimacion = ({ open, onClose, OportunidadDetails, cliente }) 
         e.preventDefault(); // Previene que la página se recargue al enviar el formulario
 
         // Valida los datos del formulario antes de proceder
-         if (validateForm()) {
-             // Confirmar si desea crear la estimación
-             const confirmCreate = window.confirm("¿Desea crear la estimación?");
+        if (validateForm()) {
+            // Confirmar si desea crear la estimación
+            const confirmCreate = window.confirm("¿Desea crear la estimación?");
 
-             if (confirmCreate) {
-                 // Si el usuario acepta
-                 dispatch(crearEstimacionFormulario(formValues));
-                 // Aquí puedes agregar la lógica para crear la estimación
-             } else {
-                 // Si el usuario cancela
-                 alert("Operación cancelada.");
-             }
-         } else {
-             
-             console.log(validateForm);
-             // Si la validación falla
-             alert("Algunos campos no pueden quedar vacíos. Por favor, verifíquelos.");
-         }
+            if (confirmCreate) {
+                // Si el usuario acepta
+                dispatch(crearEstimacionFormulario(formValues));
+                // Aquí puedes agregar la lógica para crear la estimación
+            } else {
+                // Si el usuario cancela
+                alert("Operación cancelada.");
+            }
+        } else {
+            console.log(validateForm);
+            // Si la validación falla
+            alert("Algunos campos no pueden quedar vacíos. Por favor, verifíquelos.");
+        }
     };
 
     useEffect(() => {
@@ -838,7 +848,7 @@ export const ModalEstimacion = ({ open, onClose, OportunidadDetails, cliente }) 
         const today = new Date();
         const formattedDate = today.toISOString().split("T")[0];
         const entregaEstimada = dataOportunidad.entregaEstimada ? dataOportunidad.entregaEstimada.split("/").reverse().join("-") : "";
-        console.log(dataOportunidad);   
+        console.log(dataOportunidad);
 
         // Actualizar los valores del formulario con la información procesada
         setFormValues((prevValues) => ({
