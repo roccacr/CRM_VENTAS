@@ -25,7 +25,6 @@ import { SeleccionPrima } from "./SeleccionPrima";
 import { MetodoPago } from "./MetodoPago";
 import { crearEstimacionFormulario } from "../../../store/estimacion/thunkEstimacion";
 
-
 export const ModalEstimacion = ({ open, onClose, OportunidadDetails, cliente }) => {
     // Estado para manejar si el contenido del modal está cargando
     const [isLoading, setIsLoading] = useState(true);
@@ -340,6 +339,52 @@ export const ModalEstimacion = ({ open, onClose, OportunidadDetails, cliente }) 
             ...errors, // Mantiene los errores existentes de otros campos
             [name]: "", // Elimina cualquier error asociado al campo actualizado
         });
+
+        // Mapa de campos a restablecer por cada checkbox de primas
+        const mapaPrimas = {
+            custbody176: {
+                campos: ["custbody179", "custbody179_date", "custbody180", "custbody193"],
+                numero: 1,
+            },
+            custbody177: {
+                campos: ["custbody181", "custbody182_date", "custbody182", "custbody194"],
+                numero: 2,
+            },
+            custbody178: {
+                campos: ["custbody183", "custbody184_date", "custbody184", "custbody195"],
+                numero: 3,
+            },
+            prima_extra_uno: {
+                campos: ["monto_extra_uno", "custbody184_uno_date", "monto_tracto_uno", "desc_extra_uno"],
+                numero: 4,
+            },
+            prima_extra_dos: {
+                campos: ["monto_extra_dos", "custbody184_dos_date", "monto_tracto_dos", "desc_extra_dos"],
+                numero: 5,
+            },
+            prima_extra_tres: {
+                campos: ["monto_extra_tres", "custbody184_tres_date", "monto_tracto_tres", "desc_extra_tres"],
+                numero: 6,
+            },
+        };
+
+        // Lógica única para manejar todas las primas
+        if (mapaPrimas[name] && !newValue) {
+            // Obtener configuración de la prima actual
+            const { campos, numero } = mapaPrimas[name];
+
+            // Actualizar porcentaje primero
+            actualizarPorcentaje(name, valorProcesado);
+
+            // Restablecer campos relacionados
+            setFormValues((prevValues) => ({
+                ...prevValues,
+                [campos[0]]: "0", // Restablece monto
+                [campos[1]]: "", // Limpia fecha
+                [campos[2]]: 1, // Tractos a 1
+                [campos[3]]: `PRIMA ${numero}`, // Descripción estándar
+            }));
+        }
     };
 
     // Procesa el valor de campos específicos con reglas adicionales
