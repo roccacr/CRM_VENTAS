@@ -151,35 +151,43 @@ export const calculoMontoSegunPorcentaje = (formValues) => {
 };
 
 export const calculoPrimaAsignable = (total, formValues) => {
+    const cleanAndParseFloat = (value) => {
+        if (value == null || value === "") return 0;
+        const cleanedValue = typeof value === "string" ? value.replace(/,/g, "") : value.toString();
+        const parsed = parseFloat(cleanedValue) || 0;
+        // Redondear a 2 decimales desde el principio
+        return Math.round(parsed * 100) / 100;
+    };
     /* PRIMA NETA */
     const prima_total_neta = cleanAndParseFloat(total);
     const cashback_neta = cleanAndParseFloat(formValues.custbodyix_salesorder_cashback);
     const reserva_neta = cleanAndParseFloat(formValues.custbody52);
 
-    //MONTOS PRIMAS UNICA
+    // MONTOS PRIMAS UNICA
     const monto_prima_unico = formValues.custbody177 === false ? 0 : cleanAndParseFloat(formValues.custbody181);
     const monto_tracto_unico = formValues.custbody177 === false ? 0 : cleanAndParseFloat(formValues.custbody182);
 
-    //MONTOS PRIMAS
+    // MONTOS PRIMAS FRACCIONADO
     const monto_prima_fraccionado = formValues.custbody176 === false ? 0 : cleanAndParseFloat(formValues.custbody179);
     const monto_tracto_fraccionado = formValues.custbody176 === false ? 0 : cleanAndParseFloat(formValues.custbody180);
 
-    //MONTOS PRIMAS
+    // MONTOS PRIMAS EXTRA
     const monto_prima_extra = formValues.custbody178 === false ? 0 : cleanAndParseFloat(formValues.custbody183);
     const monto_tracto_extra = formValues.custbody178 === false ? 0 : cleanAndParseFloat(formValues.custbody184);
 
-    //MONTOS PRIMAS +1
+    // MONTOS PRIMAS +1
     const monto_prima_extra_uno = formValues.prima_extra_uno === false ? 0 : cleanAndParseFloat(formValues.monto_extra_uno);
     const monto_tracto_extra_uno = formValues.prima_extra_uno === false ? 0 : cleanAndParseFloat(formValues.monto_tracto_uno);
 
-    //MONTOS PRIMAS +2
+    // MONTOS PRIMAS +2
     const monto_prima_extra_dos = formValues.prima_extra_dos === false ? 0 : cleanAndParseFloat(formValues.monto_extra_dos);
     const monto_tracto_extra_dos = formValues.prima_extra_dos === false ? 0 : cleanAndParseFloat(formValues.monto_tracto_dos);
 
-    //MONTOS PRIMAS +3
+    // MONTOS PRIMAS +3
     const monto_prima_extra_tres = formValues.prima_extra_tres === false ? 0 : cleanAndParseFloat(formValues.monto_extra_tres);
     const monto_tracto_extra_tres = formValues.prima_extra_tres === false ? 0 : cleanAndParseFloat(formValues.monto_tracto_tres);
 
+    // CÁLCULO DEL TOTAL
     const total_neta =
         prima_total_neta -
         cashback_neta -
@@ -191,14 +199,19 @@ export const calculoPrimaAsignable = (total, formValues) => {
         monto_prima_extra_dos * monto_tracto_extra_dos -
         monto_prima_extra_tres * monto_tracto_extra_tres;
 
-    const formateado = new Intl.NumberFormat("en-US", {
-        minimumFractionDigits: 2, // Siempre muestra al menos 2 decimales
-        maximumFractionDigits: 3, // Hasta 5 decimales para manejar precisión
-    }).format(total_neta);
+    // Redondeo final a 2 decimales (estándar monetario)
+    const total_neta_redondeado = Math.round(total_neta * 100) / 100;
 
-    // Devuelve el monto total formateado como una cadena
+    // Formatear con 2 decimales fijos
+    const formateado = new Intl.NumberFormat("en-US", {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+    }).format(total_neta_redondeado);
+
     return formateado;
 };
+
+
 
 /**
  * Calcula el monto total sin prima y lo formatea.
