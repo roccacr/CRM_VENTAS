@@ -193,7 +193,7 @@ export const calculoPrimaAsignable = (total, formValues) => {
 
     const formateado = new Intl.NumberFormat("en-US", {
         minimumFractionDigits: 2, // Siempre muestra al menos 2 decimales
-        maximumFractionDigits: 5, // Hasta 5 decimales para manejar precisión
+        maximumFractionDigits: 3, // Hasta 5 decimales para manejar precisión
     }).format(total_neta);
 
     // Devuelve el monto total formateado como una cadena
