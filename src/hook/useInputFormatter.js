@@ -441,7 +441,7 @@ export const calculoHito1Diferenciado = (
 
 
 // Función para calcular el monto diferenciado para un hito específico y actualizar valores en el formulario
-export const calculoHito1DiferenciadoMonto = (MontoSinPrimaTotal, campoActualizar, updatedValues, setFormValues, name) => {
+export const calculoHito1DiferenciadoMonto = (MontoSinPrimaTotal, campoActualizar, updatedValues, setFormValues, name, porcentajeRestante) => {
     // Limpia y convierte el monto sin prima total a un valor numérico
     const montoTotalAsignado = cleanAndParseFloat(MontoSinPrimaTotal);
 
@@ -477,17 +477,18 @@ export const calculoHito1DiferenciadoMonto = (MontoSinPrimaTotal, campoActualiza
         throw new Error("El monto total no puede ser cero o inválido."); // Lanza un error si el monto total es inválido
     }
 
-    // Calcula el porcentaje como un valor decimal (montoPrimaTotal / montoTotal)
     let porcentaje = montoPrimaTotal / montoTotal;
 
-    // Redondea el porcentaje a 9 decimales para precisión
-    porcentaje = Math.round(porcentaje * 1e9) / 1e9;
+    // Redondea a 2 decimales y luego convierte a cadena con 2 decimales
+    porcentaje = Math.round(porcentaje * 100) / 100; // Redondeo numérico
+    let porcentajeFormateado = porcentaje.toFixed(2); // Formatea a 2 decimales como texto
 
     // Actualiza los valores del formulario con la diferencia calculada y el porcentaje para el campo especificado
     setFormValues({
         ...updatedValues, // Mantiene los valores actuales del formulario
         valortotals: diferencia, // Actualiza la diferencia calculada
-        [campoActualizar]: porcentaje, // Asigna el porcentaje calculado al campo específico
+        total_porcentaje: `${porcentajeRestante}%`, // Actualiza el porcentaje restante formateado
+        [campoActualizar]: porcentajeFormateado, // Asigna el porcentaje calculado al campo específico
     });
 };
 

@@ -243,7 +243,7 @@ export const AvanceDiferenciado = ({ formValues, handleInputChange }) => {
                         className={`form-control mb-2`}
                     />
 
-                    <label className="form-label">PORCENTAJE YA ASIGNADO</label>
+                    <label className="form-label">% POR ASIGNAR</label>
                     <input
                         disabled
                         autoComplete="off"

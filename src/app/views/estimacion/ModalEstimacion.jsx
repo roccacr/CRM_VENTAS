@@ -272,28 +272,28 @@ export const ModalEstimacion = ({ open, onClose, OportunidadDetails, cliente }) 
             return; // Detiene el flujo después de manejar este caso específico
         }
 
-        /// Maneja cambios relacionados con porcentajes
-        // Define una lista de campos que representan porcentajes y requieren un manejo específico
-        const camposPorcentaje = [
-            "custbody60",
-            "custbody179",
-            "custbody180",
-            "custbody181",
-            "custbody182",
-            "custbody183",
-            "custbody184",
-            "monto_extra_uno",
-            "monto_tracto_uno",
-            "monto_extra_dos",
-            "monto_extra_tres",
-            "monto_tracto_tres",
-        ];
+        // /// Maneja cambios relacionados con porcentajes
+        // // Define una lista de campos que representan porcentajes y requieren un manejo específico
+        // const camposPorcentaje = [
+        //     "custbody60",
+        //     "custbody179",
+        //     "custbody180",
+        //     "custbody181",
+        //     "custbody182",
+        //     "custbody183",
+        //     "custbody184",
+        //     "monto_extra_uno",
+        //     "monto_tracto_uno",
+        //     "monto_extra_dos",
+        //     "monto_extra_tres",
+        //     "monto_tracto_tres",
+        // ];
 
-        // Si el campo pertenece a `camposPorcentaje`, utiliza la función para actualizar el valor del porcentaje
-        if (camposPorcentaje.includes(name)) {
-            actualizarPorcentaje(name, valorProcesado);
-            return; // Detiene el flujo después de manejar el campo
-        }
+        // // Si el campo pertenece a `camposPorcentaje`, utiliza la función para actualizar el valor del porcentaje
+        // if (camposPorcentaje.includes(name)) {
+        //     actualizarPorcentaje(name, valorProcesado);
+        //     return; // Detiene el flujo después de manejar el campo
+        // }
 
         // Define manejadores específicos para ciertos campos, ejecutando lógica personalizada
         const manejadores = {
@@ -610,25 +610,59 @@ export const ModalEstimacion = ({ open, onClose, OportunidadDetails, cliente }) 
     // Maneja actualizaciones específicas para los montos de hitos
     const actualizarHitoDiferenciadoMonto = (name, value, campoActualizar) => {
         setFormValues((prevValues) => {
-            // Copia el estado actual y actualiza el valor del campo modificado
+            // Copia y actualiza el estado con el nuevo valor
             const updatedValues = { ...prevValues, [name]: value };
 
-            // Obtiene el monto inicial a partir de un campo específico (custbody163)
+            // Obtiene el monto inicial actualizado
             const montoInicial = updatedValues.custbody163;
 
-            // Realiza cálculos específicos para el monto del hito y actualiza el formulario
+            const porcentajeInicial = 100;
+
+            // Calcular los porcentajes considerando solo los valores seleccionados
+            const porcentajes = [
+                updatedValues.hito_chek_uno ? Math.round(parseFloat(updatedValues.custbody62 || 0) * 100) / 100 : 0,
+                updatedValues.hito_chek_dos ? Math.round(parseFloat(updatedValues.custbody63 || 0) * 100) / 100 : 0,
+                updatedValues.hito_chek_tres ? Math.round(parseFloat(updatedValues.custbody64 || 0) * 100) / 100 : 0,
+                updatedValues.hito_chek_cuatro ? Math.round(parseFloat(updatedValues.custbody65 || 0) * 100) / 100 : 0,
+                updatedValues.hito_chek_cinco ? Math.round(parseFloat(updatedValues.custbody66 || 0) * 100) / 100 : 0,
+                updatedValues.hito_chek_seis ? Math.round(parseFloat(updatedValues.custbody67 || 0) * 100) / 100 : 0,
+            ];
+
+            // Sumar los porcentajes actualizados
+            const sumaPorcentajes = porcentajes.reduce((sum, val) => sum + val, 0);
+
+            // Calcular el porcentaje restante correctamente
+            const porcentajeRestante = porcentajeInicial - sumaPorcentajes * 100;
+            const porcentajeRestanteFormateado = porcentajeRestante.toFixed(2); // Ejemplo: "40.00"
+
+            // Verificar si la suma de los porcentajes excede el 100%
+            if (sumaPorcentajes > 1) {
+                alert(
+                    `La suma de los porcentajes no puede exceder el 100%. El porcentaje actual es ${(sumaPorcentajes * 100).toFixed(
+                        2,
+                    )}%. Por favor, ajusta los valores.`,
+                );
+                return prevValues; // Evita continuar si hay error
+            }
+
+            // Crear un nuevo estado actualizado antes de llamar a la función de cálculo
+            const updatedFormValues = { ...updatedValues, total_porcentaje: porcentajeRestanteFormateado };
+
+            // Llamar a la función de cálculo con los valores correctos
             calculoHito1DiferenciadoMonto(
-                montoInicial, // Monto inicial base para los cálculos
-                campoActualizar, // Campo que debe actualizarse dinámicamente
-                updatedValues, // Valores actuales del formulario
-                setFormValues, // Función para actualizar el formulario
-                name, // Campo modificado
+                montoInicial, // Monto inicial actualizado
+                campoActualizar, // Campo a actualizar
+                updatedFormValues, // Formulario actualizado
+                setFormValues, // Setter del estado
+                name, // Nombre del campo modificado
+                porcentajeRestanteFormateado,
             );
 
-            // No retorna un nuevo estado ya que `setFormValues` actualiza el estado directamente
-            return;
+            // Retornar el nuevo estado para actualizar correctamente
+            return updatedFormValues;
         });
     };
+
 
     // Ejecuta cálculos específicos según el tipo de operación
     const ejecutarCálculosEspecíficos = (updatedValues, montot, montoPrimaTotal) => {
