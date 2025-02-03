@@ -6,13 +6,15 @@ import { extarerEstimacion } from "../../../../store/estimacion/thunkEstimacion"
 import Swal from "sweetalert2";
 import { cleanAndParseFloat } from "../../../../hook/useInputFormatter";
 
+
+
 export const VerEstimacion = () => {
     // Estado para almacenar los detalles del lead.
     const [leadDetails, setLeadDetails] = useState({});
     // Estado para almacenar los datos de la estimación.
     const [datosEstimacion, setDatosEstimacion] = useState({});
     const [datosCrm, setDatosCrm] = useState({});
-
+    
     // Hook para despachar acciones de Redux.
     const dispatch = useDispatch();
 
@@ -33,7 +35,7 @@ export const VerEstimacion = () => {
     const fetchLeadDetails = async (idLead) => {
         try {
             const leadData = await dispatch(getSpecificLead(idLead));
-
+            
             setLeadDetails(leadData);
         } catch (error) {
             console.error("Error al obtener los detalles del lead:", error);
@@ -46,50 +48,52 @@ export const VerEstimacion = () => {
      */
     const fetchEstimacionDetails = async (idEstimacion) => {
         try {
+            console.log(idEstimacion);
             const estimacionData = await dispatch(extarerEstimacion(idEstimacion));
             setDatosEstimacion(estimacionData.netsuite.Detalle);
-            setDatosCrm(estimacionData.crm);
-
-            console.log(estimacionData.netsuite.Detalle.data.sublists.item);
+            console.log(estimacionData);
+          setDatosCrm(estimacionData.crm);
         } catch (error) {
             console.error("Error al obtener los detalles de la estimación:", error);
         }
     };
 
-    const formatoMoneda = (valor) => {
-        return new Intl.NumberFormat("en-US", {
-            minimumFractionDigits: 2, // Asegura al menos 2 decimales.
-            maximumFractionDigits: 5, // Limita a un máximo de 5 decimales.
-        }).format(valor);
-    };
+  
+  const formatoMoneda = (valor) => {
+      return new Intl.NumberFormat("en-US", {
+          minimumFractionDigits: 2, // Asegura al menos 2 decimales.
+          maximumFractionDigits: 5, // Limita a un máximo de 5 decimales.
+      }).format(valor);
+  };
 
-    const CalculoPvtaNeto = (custbody13, custbody132, custbody46, custbodyix_salesorder_cashback, custbody16) => {
-        // Función de parseo mejorada (si no está definida)
-        const cleanAndParseFloat = (value) => {
-            if (typeof value === "string") {
-                // Elimina símbolos de moneda, comas y espacios
-                const cleaned = value.replace(/[^\d.-]/g, "");
-                return parseFloat(cleaned) || 0; // Devuelve 0 si falla
-            }
-            return Number(value) || 0; // Convierte a número o devuelve 0
-        };
+  
+const CalculoPvtaNeto = (custbody13, custbody132, custbody46, custbodyix_salesorder_cashback, custbody16) => {
+    // Conversión de los parámetros a números, asegurando que sean válidos
+    const precio_de_lista = cleanAndParseFloat(custbody13) || 0;
+    const descuento_directo = cleanAndParseFloat(custbody132) || 0;
+    const extrasPagadasPorelcliente = cleanAndParseFloat(custbody46) || 0;
+    const cashback = cleanAndParseFloat(custbodyix_salesorder_cashback) || 0;
+    const monto_de_cortecias = cleanAndParseFloat(custbody16) || 0;
 
-        // Convertir parámetros a números
-        const precio_de_lista = cleanAndParseFloat(custbody13);
-        const descuento_directo = cleanAndParseFloat(custbody132);
-        const extrasPagadasPorelcliente = cleanAndParseFloat(custbody46);
-        const cashback = cleanAndParseFloat(custbodyix_salesorder_cashback);
-        const monto_de_cortecias = cleanAndParseFloat(custbody16);
+    // Cálculo del monto total del precio de venta neto
+    const monto_total_precio_venta_neto = precio_de_lista - descuento_directo + extrasPagadasPorelcliente - cashback - monto_de_cortecias;
 
-        // Calcular precio de venta neto
-        const monto_total_precio_venta_neto = precio_de_lista - descuento_directo + extrasPagadasPorelcliente - cashback - monto_de_cortecias;
+    // Validación para retornar 0 o null si el resultado no es válido
+    if (isNaN(monto_total_precio_venta_neto) || monto_total_precio_venta_neto === 0) {
+        return null; // Retorna null si es vacío o inválido
+    }
 
-        // Formatear y retornar (evita valores negativos o cero si es necesario)
-        return monto_total_precio_venta_neto;
-    };
+    // Formateo del resultado como moneda en colones costarricenses
+    return formatoMoneda(monto_total_precio_venta_neto);
+};
+
+
+    
+
 
     // Efecto que se ejecuta al montar el componente.
     useEffect(() => {
+        console.log("🚀 ~ file: VerEstimacion.jsx ~ line 47 ~ useEffect ~ useEffect");
         // Muestra un indicador de carga con SweetAlert.
         Swal.fire({
             title: "Cargando datos...",
@@ -99,9 +103,12 @@ export const VerEstimacion = () => {
             didOpen: () => Swal.showLoading(),
         });
 
+
         // Obtiene los IDs de la URL para lead y estimación.
         const leadId = getQueryParam("data");
         const estimacionId = getQueryParam("data2");
+
+        console.log(leadId);
 
         // Si el ID del lead es válido, solicita los datos correspondientes.
         if (leadId && leadId > 0) {
@@ -111,18 +118,6 @@ export const VerEstimacion = () => {
         }
     }, [dispatch]); // El efecto depende de 'dispatch'.
 
-    const [sortConfig, setSortConfig] = useState({
-        column: null,
-        direction: "asc", // 'asc' o 'desc'
-    });
-
-    const handleSort = (column) => {
-        let direction = "asc";
-        if (sortConfig.column === column && sortConfig.direction === "asc") {
-            direction = "desc";
-        }
-        setSortConfig({ column, direction });
-    };
     return (
         <>
             <div className="col-xl-12 col-sm-12">
@@ -226,42 +221,42 @@ export const VerEstimacion = () => {
                                     <p className="mb-1 text-muted">
                                         <i className="fas fa-money-bill-wave"></i> PRECIO DE LISTA:
                                     </p>
-                                    <p className="mb-0">{formatoMoneda(datosEstimacion?.data?.fields?.custbody13 || "")}</p>
+                                    <p className="mb-0">{formatoMoneda(datosEstimacion.data.fields.custbody13 || "")}</p>
                                 </div>
                                 <div className="col-md-2">
                                     <p className="mb-1 text-muted">
                                         {" "}
                                         <i className="fas fa-money-bill-wave"></i> MONTO DESCUENTO DIRECTO
                                     </p>
-                                    <p className="mb-0">{formatoMoneda(datosEstimacion?.data?.fields?.custbody132 || "")}</p>
+                                    <p className="mb-0">{formatoMoneda(datosEstimacion.data.fields.custbody132 || "")}</p>
                                 </div>
                                 <div className="col-md-2">
                                     <p className="mb-1 text-muted">
                                         {" "}
                                         <i className="fas fa-money-bill-wave"></i> MONTO EXTRAS SOBRE EL PRECIO DE LISTA
                                     </p>
-                                    <p className="mb-0">{formatoMoneda(datosEstimacion?.data?.fields?.custbody46 || "")}</p>
+                                    <p className="mb-0">{formatoMoneda(datosEstimacion.data.fields.custbody46 || "")}</p>
                                 </div>
                                 <div className="col-md-2">
                                     <p className="mb-1 text-muted">
                                         {" "}
                                         <i className="fas fa-list-ul"></i> DESCRIPCIÓN EXTRAS
                                     </p>
-                                    <p className="mb-0">{datosEstimacion?.data?.fields?.custbody47 || "--"}</p>
+                                    <p className="mb-0">{datosEstimacion.data.fields.custbody47 || ""}</p>
                                 </div>
                                 <div className="col-md-2">
                                     <p className="mb-1 text-muted">
                                         {" "}
                                         <i className="fas fa-money-bill-wave"></i> CASHBACK
                                     </p>
-                                    <p className="mb-0">{formatoMoneda(datosEstimacion?.data?.fields?.custbodyix_salesorder_cashback || "")}</p>
+                                    <p className="mb-0">{formatoMoneda(datosEstimacion.data.fields.custbodyix_salesorder_cashback || "")}</p>
                                 </div>
                                 <div className="col-md-2">
                                     <p className="mb-1 text-muted">
                                         {" "}
                                         <i className="fas fa-money-bill-wave"></i> MONTO RESERVA
                                     </p>
-                                    <p className="mb-0">{formatoMoneda(datosEstimacion?.data?.fields?.custbody52 || "")}</p>
+                                    <p className="mb-0">{formatoMoneda(datosEstimacion.data.fields.custbody52 || "")}</p>
                                 </div>
                             </div>
                         </li>
@@ -273,21 +268,21 @@ export const VerEstimacion = () => {
                                     <p className="mb-1 text-muted">
                                         <i className="fas fa-money-bill-wave"></i> MONTO TOTAL DE CORTESÍAS
                                     </p>
-                                    <p className="mb-0">{formatoMoneda(datosEstimacion?.data?.fields?.custbody16 || "")}</p>
+                                    <p className="mb-0">{formatoMoneda(datosEstimacion.data.fields.custbody16 || "")}</p>
                                 </div>
                                 <div className="col-md-2">
                                     <p className="mb-1 text-muted">
                                         {" "}
                                         <i className="fas fa-list-ul"></i> DESCRIPCIÓN DE LAS CORTESIAS
                                     </p>
-                                    <p className="mb-0">{datosEstimacion?.data?.fields?.custbody35 || "--"}</p>
+                                    <p className="mb-0">{datosEstimacion.data.fields.custbody35 || ""}</p>
                                 </div>
                                 <div className="col-md-2">
                                     <p className="mb-1 text-muted">
                                         {" "}
                                         <i className="fas fa-money-bill-wave"></i> PREC. DE VENTA MÍNIMO:
                                     </p>
-                                    <p className="mb-0">{formatoMoneda(datosEstimacion?.data?.fields?.custbody_precio_vta_min || "")}</p>
+                                    <p className="mb-0">{formatoMoneda(datosEstimacion.data.fields.custbody_precio_vta_min || "")}</p>
                                 </div>
                                 <div className="col-md-2">
                                     <p className="mb-1 text-muted">
@@ -297,11 +292,11 @@ export const VerEstimacion = () => {
                                     <p className="mb-0">
                                         {formatoMoneda(
                                             CalculoPvtaNeto(
-                                                datosEstimacion?.data?.fields?.custbody13,
-                                                datosEstimacion?.data?.fields?.custbody132,
-                                                datosEstimacion?.data?.fields?.custbody46,
-                                                datosEstimacion?.data?.fields?.custbodyix_salesorder_cashback,
-                                                datosEstimacion?.data?.fields?.custbody16,
+                                                datosEstimacion.data.fields.custbody13,
+                                                datosEstimacion.data.fields.custbody132,
+                                                datosEstimacion.data.fields.custbody46,
+                                                datosEstimacion.data.fields.custbodyix_salesorder_cashback,
+                                                datosEstimacion.data.fields.custbody16,
                                             ) || "",
                                         )}
                                     </p>
@@ -311,14 +306,14 @@ export const VerEstimacion = () => {
                                         {" "}
                                         <i className="fas fa-money-bill-wave"></i> EXTRAS SOBRE EL PRECIO DE LISTA
                                     </p>
-                                    <p className="mb-0">{formatoMoneda(datosEstimacion?.data?.fields?.custbody185 || "")}</p>
+                                    <p className="mb-0"></p>
                                 </div>
                                 <div className="col-md-2">
                                     <p className="mb-1 text-muted">
                                         {" "}
                                         <i className="fas fa-money-bill-wave"></i> MONTO TOTAL
                                     </p>
-                                    <p className="mb-0">{formatoMoneda(datosEstimacion?.data?.fields?.custbody_ix_total_amount || "")}</p>
+                                    <p className="mb-0"></p>
                                 </div>
                             </div>
                         </li>
@@ -341,28 +336,28 @@ export const VerEstimacion = () => {
                                     <p className="mb-1 text-muted">
                                         <i className="fas fa-money-bill-alt"></i> PRIMA TOTAL
                                     </p>
-                                    <p className="mb-0">{formatoMoneda(datosEstimacion?.data?.fields?.custbody39 || "")}</p>
+                                    <p className="mb-0"></p>
                                 </div>
                                 <div className="col-md-3">
                                     <p className="mb-1 text-muted">
                                         {" "}
                                         <i className="fas fa-money-bill-alt"></i> PRIMA%
                                     </p>
-                                    <p className="mb-0">{datosEstimacion?.data?.fields?.custbody60 || ""}%</p>
+                                    <p className="mb-0"></p>
                                 </div>
                                 <div className="col-md-3">
                                     <p className="mb-1 text-muted">
                                         {" "}
                                         <i className="fas fa-money-bill-alt"></i> MONTO PRIMA NETA
                                     </p>
-                                    <p className="mb-0">{formatoMoneda(datosEstimacion?.data?.fields?.custbody_ix_salesorder_monto_prima || "")}</p>
+                                    <p className="mb-0"></p>
                                 </div>
                                 <div className="col-md-3">
                                     <p className="mb-1 text-muted">
                                         {" "}
                                         <i className="fas fa-money-bill-alt"></i> MONTO ASIGNABLE PRIMA NETA:
                                     </p>
-                                    <p className="mb-0">{formatoMoneda(datosEstimacion?.data?.fields?.custbody211 || "")}</p>
+                                    <p className="mb-0"></p>
                                 </div>
                             </div>
                         </li>
@@ -377,95 +372,21 @@ export const VerEstimacion = () => {
                     <h5 className="text-truncate font-size-15">CONDICIONES DE LA PRIMA</h5>
                 </div>
                 <div className="card-body">
-                    <table className="table table-striped table dt-responsive w-100 display text-left">
+                    <table
+                        className="table table-striped table dt-responsive w-100 display text-left"
+                        style={{ fontSize: "15px", width: "100%", textAlign: "left" }}
+                    >
                         <thead>
                             <tr>
-                                {["#", "ARTÍCULO", "MONTO", "FECHA DE PAGO PROYECTADO", "CANTIDAD", "DESCRIPCIÓN"].map((header) => (
-                                    <th
-                                        key={header}
-                                        onClick={() => handleSort(header)}
-                                        style={{
-                                            border: "1px solid #ddd",
-                                            padding: "8px",
-                                            cursor: "pointer",
-                                            backgroundColor: sortConfig.column === header ? "#f0f0f0" : "transparent",
-                                        }}
-                                    >
-                                        {header}
-                                        {sortConfig.column === header && (
-                                            <span style={{ marginLeft: "5px" }}>{sortConfig.direction === "asc" ? "↑" : "↓"}</span>
-                                        )}
-                                    </th>
-                                ))}
+                                <th style={{ border: "1px solid #ddd", padding: "8px" }}>#</th>
+                                <th style={{ border: "1px solid #ddd", padding: "8px" }}>ARTÍCULO</th>
+                                <th style={{ border: "1px solid #ddd", padding: "8px" }}>MONTO</th>
+                                <th style={{ border: "1px solid #ddd", padding: "8px" }}>FECHA DE PAGO PROYECTADO </th>
+                                <th style={{ border: "1px solid #ddd", padding: "8px" }}>CANTIDAD</th>
+                                <th style={{ border: "1px solid #ddd", padding: "8px" }}>DESCRIPCIÓN</th>
                             </tr>
                         </thead>
-                        <tbody>
-                            {Object.entries(datosEstimacion?.data?.sublists?.item || {})
-                                .filter(([key]) => key !== "currentline")
-                                .sort((a, b) => {
-                                    const [keyA, itemA] = a;
-                                    const [keyB, itemB] = b;
-
-                                    // Obtener valores para comparar
-                                    let valueA, valueB;
-
-                                    switch (sortConfig.column) {
-                                        case "#":
-                                            valueA = parseInt(itemA.line || keyA.replace("line ", ""));
-                                            valueB = parseInt(itemB.line || keyB.replace("line ", ""));
-                                            break;
-                                        case "ARTÍCULO":
-                                            valueA = itemA.item_display?.toLowerCase() || itemA.item?.toLowerCase();
-                                            valueB = itemB.item_display?.toLowerCase() || itemB.item?.toLowerCase();
-                                            break;
-                                        case "MONTO":
-                                            valueA = cleanAndParseFloat(itemA.amount);
-                                            valueB = cleanAndParseFloat(itemB.amount);
-                                            break;
-                                        case "FECHA DE PAGO PROYECTADO":
-                                            valueA = new Date(itemA.custcolfecha_pago_proyectado || 0);
-                                            valueB = new Date(itemB.custcolfecha_pago_proyectado || 0);
-                                            break;
-                                        case "CANTIDAD":
-                                            valueA = parseInt(itemA.quantity);
-                                            valueB = parseInt(itemB.quantity);
-                                            break;
-                                        case "DESCRIPCIÓN":
-                                            valueA = itemA.description?.toLowerCase();
-                                            valueB = itemB.description?.toLowerCase();
-                                            break;
-                                        default:
-                                            valueA = keyA;
-                                            valueB = keyB;
-                                    }
-
-                                    // Ordenamiento natural si no hay columna seleccionada
-                                    if (!sortConfig.column) {
-                                        const numA = parseInt(keyA.replace("line ", ""));
-                                        const numB = parseInt(keyB.replace("line ", ""));
-                                        return numA - numB;
-                                    }
-
-                                    // Comparación según dirección
-                                    if (valueA < valueB) {
-                                        return sortConfig.direction === "asc" ? -1 : 1;
-                                    }
-                                    if (valueA > valueB) {
-                                        return sortConfig.direction === "asc" ? 1 : -1;
-                                    }
-                                    return 0;
-                                })
-                                .map(([key, linea], index) => (
-                                    <tr key={key} style={{ cursor: "pointer" }}>
-                                        <td style={{ border: "1px solid #ddd", padding: "8px" }}>{linea.line || key.replace("line ", "")}</td>
-                                        <td style={{ border: "1px solid #ddd", padding: "8px" }}>{linea.item_display || linea.item}</td>
-                                        <td style={{ border: "1px solid #ddd", padding: "8px" }}>{formatoMoneda(linea.amount || 0)}</td>
-                                        <td style={{ border: "1px solid #ddd", padding: "8px" }}>{linea.custcolfecha_pago_proyectado || "N/A"}</td>
-                                        <td style={{ border: "1px solid #ddd", padding: "8px" }}>{linea.quantity}</td>
-                                        <td style={{ border: "1px solid #ddd", padding: "8px" }}>{linea.description}</td>
-                                    </tr>
-                                ))}
-                        </tbody>
+                        <tbody></tbody>
                     </table>
                 </div>
             </div>

@@ -41,14 +41,12 @@ export const obtenerEstimacionesPorOportunidad = (idOportunidad) => {
 
 
 export const extarerEstimacion = (idEstimacion) => {
+    console.log(idEstimacion);
     return async () => {
         try {
             // Realiza la llamada a la API para obtener las estimaciones relacionadas con la estimación especificada.
             const respuesta = await extraerEstimacionNetsuite({ idEstimacion });
 
-            console.log("🚀 -----------------------------------------------------------------🚀");
-            console.log("🚀 ~ file: thunkEstimacion.js:49 ~ return ~ respuesta:", respuesta);
-            console.log("🚀 -----------------------------------------------------------------🚀");
 
             // Retorna el primer elemento de los datos obtenidos, que contiene la información principal de la estimación.
             return respuesta?.data || null; // Devuelve null si los datos están indefinidos.
