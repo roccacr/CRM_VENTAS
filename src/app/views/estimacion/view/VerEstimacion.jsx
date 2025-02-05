@@ -123,6 +123,15 @@ export const VerEstimacion = () => {
         }
         setSortConfig({ column, direction });
     };
+
+
+    const vistaDePdf = () => {
+         const estimacionId = getQueryParam("data2");
+        window.open(
+            `https://4552704.app.netsuite.com/app/accounting/print/hotprint.nl?regular=T&sethotprinter=T&formnumber=342&trantype=estimate&id=${estimacionId}`,
+            "_blank",
+        );
+    }
     return (
         <>
             <div className="col-xl-12 col-sm-12">
@@ -152,7 +161,7 @@ export const VerEstimacion = () => {
                             </div>
                             <div className="col-3">
                                 <div className="d-grid">
-                                    <button className="btn btn-dark">
+                                    <button className="btn btn-dark" onClick={() => vistaDePdf()}>
                                         {" "}
                                         <i className="ti ti-ad-2"></i> PDF ESTIMACION
                                     </button>
