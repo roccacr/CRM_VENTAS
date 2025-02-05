@@ -23,11 +23,11 @@ import { PrimeraLinea } from "./PrimeraLinea";
 import { CalculodePrima } from "./CalculodePrima";
 import { SeleccionPrima } from "./SeleccionPrima";
 import { MetodoPago } from "./MetodoPago";
-import { crearEstimacionFormulario } from "../../../store/estimacion/thunkEstimacion";
+import { crearEstimacionFormulario, extarerEstimacion } from "../../../store/estimacion/thunkEstimacion";
 
-export const ModalEstimacion = ({ open, onClose, OportunidadDetails, cliente }) => {
+export const ModalEstimacionEdit = ({ open, onClose, idEstimacion }) => {
     // Estado para manejar si el contenido del modal está cargando
-    const [isLoading, setIsLoading] = useState(true);
+    const [isLoading, setIsLoading] = useState(false);
     const dispatch = useDispatch();
 
     const [formValues, setFormValues] = useState({
@@ -663,7 +663,6 @@ export const ModalEstimacion = ({ open, onClose, OportunidadDetails, cliente }) 
         });
     };
 
-
     // Ejecuta cálculos específicos según el tipo de operación
     const ejecutarCálculosEspecíficos = (updatedValues, montot, montoPrimaTotal) => {
         // Determina el tipo de operación a partir del valor en custbody75
@@ -907,54 +906,141 @@ export const ModalEstimacion = ({ open, onClose, OportunidadDetails, cliente }) 
     useEffect(() => {
         if (!open) return; // Si el componente no está "abierto", salir inmediatamente
 
-        setIsLoading(true); // Indicar que se está cargando la información necesaria
 
-        // Extraer datos de la oportunidad y del cliente
-        const dataOportunidad = OportunidadDetails;
-        const dataCliente = cliente;
+        const fetchEstimacion = async () => {
+            try {
+                setIsLoading(true); // Indicar que la carga de datos ha finalizado
+                // Llamada asíncrona al action del store
+                const estimacionData = await dispatch(extarerEstimacion(idEstimacion));
 
-        // Convertir el precio de venta único en un valor numérico eliminando caracteres no numéricos
-        const precioVenta = parseFloat(dataOportunidad.precioVentaUncio_exp.replace(/\D/g, ""));
+                const DatosTransaccion = estimacionData.netsuite.Detalle;
 
-        // Calcular el monto de la prima como el 15% del precio de venta (escala de 0 a 100)
-        const montoPrima = (precioVenta * 0.15) / 100;
+                const data = DatosTransaccion?.data?.sublists?.item || {};
 
-        // Determinar el valor para "hito6" basado en una condición específica
-        let hito6 = 0;
-        hito6 = parseInt(dataOportunidad.custbody75_oport, 10) === 1 ? "100%" : parseInt(dataOportunidad.custbody75_oport, 10) === 2 ? "0.05" : 0;
+                // Filtrar los elementos ignorando "currentline" y buscando donde "custcol_indentificadorprima" sea "551"
+                const FechaReserva = Object.entries(data)
+                    .filter(([key, value]) => key !== "currentline" && value?.custcol_indentificadorprima === "551")
+                    .map(([key, value]) => value); // Extraer solo los valores
 
-        // Obtener la fecha actual y formatearla como mm/dd/yyyy
-        const today = new Date();
-        const formattedDate = today.toISOString().split("T")[0];
-        const entregaEstimada = dataOportunidad.entregaEstimada ? dataOportunidad.entregaEstimada.split("/").reverse().join("-") : "";
+                // Función para convertir la fecha al formato mm/dd/yyyy
+                const formatFecha = (fecha) => {
+                    if (!fecha) return null;
 
-        // Actualizar los valores del formulario con la información procesada
-        setFormValues((prevValues) => ({
-            ...prevValues,
-            opportunity: dataOportunidad.id_oportunidad_oport, // ID de la oportunidad
-            entity: dataCliente.nombre_lead, // Asignar el nombre del cliente
-            custbody114: dataOportunidad.entregaEstimada, // Fecha estimada de entrega
-            proyecto_lead_est: dataCliente.proyecto_lead, // Proyecto asociado al cliente
-            custbody38: dataOportunidad.codigo_exp, // Código único de la oportunidad
-            tranid_oport: dataOportunidad.tranid_oport, // ID de transacción de la oportunidad
-            expectedclosedate: dataOportunidad.expectedclosedate_oport, // Fecha esperada de cierre
-            entitystatus: dataOportunidad.Motico_Condicion, // Estado o condición de la oportunidad
-            custbody13: dataOportunidad.precioVentaUncio_exp, // Precio de venta único original
-            custbody18: dataOportunidad.precioDeVentaMinimo, //Precio mínimo permitido para la venta
-            custbody_ix_total_amount: dataOportunidad.precioVentaUncio_exp, // Total del precio de venta
-            custbody39: montoPrima.toFixed(2), // Prima calculada con dos decimales
-            custbody_ix_salesorder_monto_prima: montoPrima.toFixed(2), // Monto de la prima para la orden de venta
-            neta: montoPrima.toFixed(2), // Prima neta calculada con precisión
+                    // Asumimos que la fecha viene en formato dd/mm/yyyy
+                    const [day, month, year] = fecha.split("/");
+                    return `${month}/${day}/${year}`;
+                };
 
-            // Método de pago y otros campos adicionales
-            custbody75: dataOportunidad.custbody75_oport, // Método de pago seleccionado
-            custbody67: hito6, // Hito de progreso basado en condiciones específicas
-            fech_reserva: formattedDate, // Fecha de la reserva
-            date_hito_6: entregaEstimada,
-        }));
 
-        setIsLoading(false); // Indicar que la carga de datos ha finalizado
-    }, [open, cliente, OportunidadDetails]);
+
+                setFormValues((prevValues) => ({
+                    ...prevValues,
+                    entity: DatosTransaccion?.cli,
+                    custbody38: DatosTransaccion?.Exp || "-",
+                    proyecto_lead_est: DatosTransaccion?.Exp || "-",
+                    entitystatus: DatosTransaccion?.Estado || "-",
+                    pvneto: 0,
+                    // Datos de la segunda línea
+                    rType: "estimacion",
+                    custbody18: DatosTransaccion?.data?.fields?.custbody18 || 0,
+                    /*MONTO TOTAL*/
+                    custbody_ix_total_amount: DatosTransaccion?.data?.fields?.custbody_ix_total_amount || 0,
+                    /*OPORTUNIDAD*/
+                    opportunity: DatosTransaccion?.opportunity_name || "-",
+                    /*PRECIO DE LISTA:*/
+                    custbody13: DatosTransaccion?.data?.fields?.custbody13 || 0,
+                    /*SUBSIDIARIA*/
+                    subsidiary: DatosTransaccion?.Subsidaria,
+
+                    /*PRIMA TOTAL*/
+                    custbody39: DatosTransaccion?.data?.fields?.custbody39 || 0,
+                    /*PRIMA%*/
+                    custbody60: DatosTransaccion?.data?.fields?.custbody60 || 0,
+                    /*MONTO PRIMA NETA%*/
+                    custbody_ix_salesorder_monto_prima: DatosTransaccion?.data?.fields?.custbody_ix_salesorder_monto_prima || 0,
+                    /*MONTO DESCUENTO DIRECTO%*/
+                    custbody132: DatosTransaccion?.data?.fields?.custbody132 || 0,
+                    /*CASHBACK*/
+                    custbodyix_salesorder_cashback: DatosTransaccion?.data?.fields?.custbodyix_salesorder_cashback || 0,
+
+                    /*EXTRAS SOBRE EL PRECIO DE LISTA /diferencia*/
+                    custbody185: DatosTransaccion?.data?.fields?.custbody185 || 0,
+                    //MONTO EXTRAS SOBRE EL PRECIO DE LISTA / EXTRAS PAGADAS POR EL CLIENTE
+                    custbody46: DatosTransaccion?.data?.fields?.custbody46 || 0,
+                    //MONTO TOTAL DE CORTESÍAS
+                    custbody16: DatosTransaccion?.data?.fields?.custbody16 || 0,
+
+                    //DESCRIPCIÓN EXTRAS
+                    custbody47: DatosTransaccion?.data?.fields?.custbody47 || 0,
+                    //DESCRIPCIÓN DE LAS CORTESIAS
+                    custbody35: DatosTransaccion?.data?.fields?.custbody35 || 0,
+                    //MONTO RESERVA
+                    rateReserva: DatosTransaccion?.data?.fields?.custbody52 || 0,
+
+                    fech_reserva: FechaReserva[0]?.custcolfecha_pago_proyectado.toISOString().split("T")[0],
+                    //MONTO ASIGNABLE PRIMA NETA:
+                    neta: "",
+                    /*-----------Nuevo*/
+                    //METODO DE PAGO
+                    // custbody75_estimacion
+                    custbody75: 0,
+                }));
+
+                // Manejar "estimacionData" según sea necesario
+                console.log("Estimación obtenida:", DatosTransaccion);
+                setIsLoading(false); // Indicar que la carga de datos ha finalizado
+            } catch (error) {
+                console.error("Error al obtener la estimación:", error);
+            } finally {
+                // setIsLoading(true);
+            }
+        };
+
+        // Invocamos la función asíncrona
+        fetchEstimacion();
+
+        // // Convertir el precio de venta único en un valor numérico eliminando caracteres no numéricos
+        // const precioVenta = parseFloat(dataOportunidad.precioVentaUncio_exp.replace(/\D/g, ""));
+
+        // // Calcular el monto de la prima como el 15% del precio de venta (escala de 0 a 100)
+        // const montoPrima = (precioVenta * 0.15) / 100;
+
+        // // Determinar el valor para "hito6" basado en una condición específica
+        // let hito6 = 0;
+        // hito6 = parseInt(dataOportunidad.custbody75_oport, 10) === 1 ? "100%" : parseInt(dataOportunidad.custbody75_oport, 10) === 2 ? "0.05" : 0;
+
+        // // Obtener la fecha actual y formatearla como mm/dd/yyyy
+        // const today = new Date();
+        // const formattedDate = today.toISOString().split("T")[0];
+        // const entregaEstimada = dataOportunidad.entregaEstimada ? dataOportunidad.entregaEstimada.split("/").reverse().join("-") : "";
+        // console.log(dataOportunidad);
+
+        // // Actualizar los valores del formulario con la información procesada
+        // setFormValues((prevValues) => ({
+        //     ...prevValues,
+        //     opportunity: dataOportunidad.id_oportunidad_oport, // ID de la oportunidad
+        //     entity: dataCliente.nombre_lead, // Asignar el nombre del cliente
+        //     custbody114: dataOportunidad.entregaEstimada, // Fecha estimada de entrega
+        //     proyecto_lead_est: dataCliente.proyecto_lead, // Proyecto asociado al cliente
+        //     custbody38: dataOportunidad.codigo_exp, // Código único de la oportunidad
+        //     tranid_oport: dataOportunidad.tranid_oport, // ID de transacción de la oportunidad
+        //     expectedclosedate: dataOportunidad.expectedclosedate_oport, // Fecha esperada de cierre
+        //     entitystatus: dataOportunidad.Motico_Condicion, // Estado o condición de la oportunidad
+        //     custbody13: dataOportunidad.precioVentaUncio_exp, // Precio de venta único original
+        //     custbody18: dataOportunidad.precioDeVentaMinimo, // Precio mínimo permitido para la venta
+        //     custbody_ix_total_amount: dataOportunidad.precioVentaUncio_exp, // Total del precio de venta
+        //     custbody39: montoPrima.toFixed(2), // Prima calculada con dos decimales
+        //     custbody_ix_salesorder_monto_prima: montoPrima.toFixed(2), // Monto de la prima para la orden de venta
+        //     neta: montoPrima.toFixed(2), // Prima neta calculada con precisión
+
+        //     // Método de pago y otros campos adicionales
+        //     custbody75: dataOportunidad.custbody75_oport, // Método de pago seleccionado
+        //     custbody67: hito6, // Hito de progreso basado en condiciones específicas
+        //     fech_reserva: formattedDate, // Fecha de la reserva
+        //     date_hito_6: entregaEstimada,
+        // }));
+
+    }, [open, idEstimacion, dispatch]);
 
     return (
         // Componente Modal que se muestra cuando `open` es true

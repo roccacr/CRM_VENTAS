@@ -5,6 +5,7 @@ import { getSpecificLead } from "../../../../store/leads/thunksLeads";
 import { extarerEstimacion } from "../../../../store/estimacion/thunkEstimacion";
 import Swal from "sweetalert2";
 import { cleanAndParseFloat } from "../../../../hook/useInputFormatter";
+import { ModalEstimacionEdit } from "../ModalEstimacionEdit";
 
 export const VerEstimacion = () => {
     // Estado para almacenar los detalles del lead.
@@ -15,6 +16,8 @@ export const VerEstimacion = () => {
 
     // Hook para despachar acciones de Redux.
     const dispatch = useDispatch();
+
+    const [isModalOpen, setIsModalOpen] = useState(false); // Control del modal
 
     /**
      * Obtiene el valor de un parámetro específico de la URL.
@@ -124,14 +127,13 @@ export const VerEstimacion = () => {
         setSortConfig({ column, direction });
     };
 
-
     const vistaDePdf = () => {
-         const estimacionId = getQueryParam("data2");
+        const estimacionId = getQueryParam("data2");
         window.open(
             `https://4552704.app.netsuite.com/app/accounting/print/hotprint.nl?regular=T&sethotprinter=T&formnumber=342&trantype=estimate&id=${estimacionId}`,
             "_blank",
         );
-    }
+    };
     return (
         <>
             <div className="col-xl-12 col-sm-12">
@@ -145,7 +147,7 @@ export const VerEstimacion = () => {
                         <div className="row">
                             <div className="col-3">
                                 <div className="d-grid">
-                                    <button className="btn btn-dark">
+                                    <button className="btn btn-dark" onClick={() => setIsModalOpen(true)}>
                                         {" "}
                                         <i className="ti ti-pencil"></i> Editar estimacion
                                     </button>
@@ -477,6 +479,10 @@ export const VerEstimacion = () => {
                         </tbody>
                     </table>
                 </div>
+                {/* Modal */}
+                {isModalOpen && (
+                    <ModalEstimacionEdit open={isModalOpen} onClose={() => setIsModalOpen(false)} idEstimacion={getQueryParam("data2")} />
+                )}
             </div>
         </>
     );
