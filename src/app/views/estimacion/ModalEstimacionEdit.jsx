@@ -977,7 +977,7 @@ export const ModalEstimacionEdit = ({ open, onClose, idEstimacion }) => {
                     //MONTO RESERVA
                     rateReserva: DatosTransaccion?.data?.fields?.custbody52 || 0,
 
-                    fech_reserva: FechaReserva[0]?.custcolfecha_pago_proyectado.toISOString().split("T")[0],
+                    fech_reserva: FechaReserva[0]?.custcolfecha_pago_proyectado,
                     //MONTO ASIGNABLE PRIMA NETA:
                     neta: "",
                     /*-----------Nuevo*/
