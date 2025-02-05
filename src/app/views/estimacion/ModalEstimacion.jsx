@@ -274,26 +274,26 @@ export const ModalEstimacion = ({ open, onClose, OportunidadDetails, cliente }) 
 
         // /// Maneja cambios relacionados con porcentajes
         // // Define una lista de campos que representan porcentajes y requieren un manejo específico
-        // const camposPorcentaje = [
-        //     "custbody60",
-        //     "custbody179",
-        //     "custbody180",
-        //     "custbody181",
-        //     "custbody182",
-        //     "custbody183",
-        //     "custbody184",
-        //     "monto_extra_uno",
-        //     "monto_tracto_uno",
-        //     "monto_extra_dos",
-        //     "monto_extra_tres",
-        //     "monto_tracto_tres",
-        // ];
+        const camposPorcentaje = [
+            "custbody60",
+            "custbody179",
+            "custbody180",
+            "custbody181",
+            "custbody182",
+            "custbody183",
+            "custbody184",
+            "monto_extra_uno",
+            "monto_tracto_uno",
+            "monto_extra_dos",
+            "monto_extra_tres",
+            "monto_tracto_tres",
+        ];
 
-        // // Si el campo pertenece a `camposPorcentaje`, utiliza la función para actualizar el valor del porcentaje
-        // if (camposPorcentaje.includes(name)) {
-        //     actualizarPorcentaje(name, valorProcesado);
-        //     return; // Detiene el flujo después de manejar el campo
-        // }
+        // Si el campo pertenece a `camposPorcentaje`, utiliza la función para actualizar el valor del porcentaje
+        if (camposPorcentaje.includes(name)) {
+            actualizarPorcentaje(name, valorProcesado);
+            return; // Detiene el flujo después de manejar el campo
+        }
 
         // Define manejadores específicos para ciertos campos, ejecutando lógica personalizada
         const manejadores = {
