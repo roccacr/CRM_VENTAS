@@ -16,6 +16,7 @@ export const EstimacionesOportunidad = ({ OportunidadDetails, cliente }) => {
     const enlistarEstimaciones = async (idOportunidad) => {
         try {
             const oportunidadData = await dispatch(obtenerEstimacionesPorOportunidad(idOportunidad));
+
             setEstimaciones(oportunidadData || []); // Manejo en caso de datos nulos o vacíos
         } catch (error) {
             console.error("Error al obtener los detalles de la oportunidad:", error);
