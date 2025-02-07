@@ -93,6 +93,8 @@ module.exports = function (app) {
             model: authenticated, // Modelo asociado a la autenticación
             routes: [
                 { path: "/login", method: "startSession" }, // Ruta para iniciar sesión y generar una nueva sesión de usuario
+                { path: "/admins/validarUsuario", method: "SP_VALIDAR_EMAIL" }, // Validar si un correo electrónico ya está registrado
+                { path: "/admins/recuperar_Contrasena", method: "SP_RECUPERAR_CONTRASENA" }, // Recuperar contraseña mediante correo electrónico
             ],
         },
         {

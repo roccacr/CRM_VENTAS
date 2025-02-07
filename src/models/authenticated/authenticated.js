@@ -2,6 +2,8 @@ const mysql = require("mysql2/promise");
 const config = require("../../config/config");
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcrypt");
+const sendMailer = require("../senMailer/sendMailer");
+
 
 const authenticated = {};
 
@@ -119,5 +121,99 @@ authenticated.validateToken = (token_admin) => {
         return { statusCode: 500, data: "Error en la validación del token" };
     }
 };
+
+/**
+ * Verifica si un correo electrónico ya está registrado en la base de datos.
+ *
+ * @param {Object} dataParams - Parámetros para la validación del correo electrónico.
+ * @param {string} dataParams.email - Correo electrónico a validar.
+ * @param {string} dataParams.database - Nombre de la base de datos a utilizar.
+ * @returns {Promise<Object>} Promesa que resuelve con el resultado de la consulta, indicando si el correo ya existe.
+ */
+authenticated.SP_VALIDAR_EMAIL = async (dataParams) => {
+    return handleDatabaseOperation(async (connection) => {
+        // Definición de la consulta SQL para contar cuántos registros existen con el correo proporcionado.
+        const query = `
+            SELECT COUNT(*) AS count
+            FROM admins
+            WHERE email_admin = ?
+        `;
+
+        // Parámetros de la consulta: el correo electrónico a validar.
+        const params = [dataParams.email ?? null];
+
+        // Ejecuta la consulta en la base de datos y obtiene el resultado.
+        const [result] = await connection.execute(query, params);
+
+        return { statusCode: 200, data: result };
+    }, dataParams.database);
+};
+
+
+authenticated.SP_RECUPERAR_CONTRASENA = async (dataParams) => {
+    return handleDatabaseOperation(async (connection) => {
+        try {
+            // Obtener el año actual.
+            const currentYear = new Date().getFullYear();
+
+            /**
+             * Genera una nueva contraseña siguiendo el formato `!Rocca.[año][caracteres aleatorios]`.
+             *
+             * @returns {string} Contraseña generada.
+             */
+            const generatePassword = () => {
+                const randomChars = Math.random().toString(36).substring(2, 6).toUpperCase();
+                return `!Rocca.${currentYear}${randomChars}`;
+            };
+
+            // Generar una nueva contraseña y encriptarla usando bcrypt.
+            const rawPassword = generatePassword();
+
+            // Usar una sal fija como en el ejemplo de PHP.
+            const salt = "$2a$07$azybxcags23425sdg23sdfhsd$";
+            // Generar el hash con la sal fija.
+            const encryptedPassword = await bcrypt.hash(rawPassword, salt);
+
+            // Definir la consulta SQL para actualizar la contraseña del administrador.
+            const query = `
+                UPDATE admins
+                SET password_admin = ?
+                WHERE email_admin = ?;
+            `;
+
+            // Parámetros para la consulta SQL: contraseña encriptada y correo del administrador.
+            const params = [
+                encryptedPassword, // Contraseña encriptada.
+                dataParams.email, // Correo electrónico del administrador.
+            ];
+
+            // Ejecutar la consulta en la base de datos para actualizar la contraseña.
+            const [result] = await connection.execute(query, params);
+
+            // Preparar los datos para enviar el correo electrónico con la nueva contraseña.
+            const mailData = {
+                email: dataParams.email,
+                password: rawPassword, // Contraseña sin encriptar para el correo.
+            };
+
+            // Verificar si la consulta afectó alguna fila (contraseña actualizada con éxito).
+            if (result.affectedRows > 0) {
+                // Enviar el correo electrónico utilizando el servicio de correo.
+                await sendMailer.toolMail(mailData, "templatePasswordRecover", "CRM HOTEL : Recuperación de clave");
+            }
+
+            // Retornar el resultado de la consulta.
+            return { statusCode: result.affectedRows > 0 ? 200 : 404, message: result.affectedRows > 0 ? "Contraseña actualizada y correo enviado" : "Correo no encontrado" };
+        } catch (error) {
+            // Manejar y registrar cualquier error ocurrido durante el proceso.
+            console.error("Error al recuperar contraseña:", error.message);
+            return { statusCode: 500, error: "Error interno en la recuperación de contraseña" };
+        }
+    }, dataParams.database);
+};
+
+// $2a$07$azybxcags23425sdg23sdeBuMTaZMjxh107gGCUvdA7ES6SKZvGby;
+
+
 
 module.exports = authenticated;
