@@ -2,7 +2,7 @@
 import { errorMessages, secretKey } from "../../api";
 import { setCheckingCredentials, setLoadingCredentials, setUserAuthentication, setUserLogout } from "./authSlice";
 
-import { exitLogout, singAuth } from "./Api_Auth_Providers";
+import { exitLogout, recuperar_Contraseña, singAuth, validarSiexisteUsuario } from "./Api_Auth_Providers";
 import CryptoJS from "crypto-js";
 
 // Esta acción verifica la autenticación del usuario de forma asíncrona
@@ -79,3 +79,55 @@ export const startLogout = () => {
         dispatch(setUserLogout({ errorMessage: errorMessages[4] }));
     };
 };
+
+
+/**
+ * Valida si un usuario existe en la base de datos utilizando su correo electrónico.
+ *
+ * @param {string} email - Correo electrónico del usuario a validar.
+ * @returns {Function} Función thunk que retorna una Promesa con los datos del usuario si existe, o un array vacío si no existe o hay un error.
+ */
+export const ValidarUsuario = (email) => {
+    return async () => {
+        try {
+            // Llama a la API para verificar si el usuario existe utilizando el correo electrónico proporcionado.
+            const resultado = await validarSiexisteUsuario({ email });
+
+            console.log("resultado: ", resultado);
+
+            // Retorna los datos del usuario si existe, o un array vacío si no hay datos válidos.
+            return resultado?.data?.data || [];
+        } catch (error) {
+            // Captura y registra cualquier error ocurrido durante la solicitud.
+            console.error("Error al validar el usuario:", error);
+
+            // Retorna un array vacío en caso de error para evitar fallos en el flujo de la aplicación.
+            return [];
+        }
+    };
+};
+
+/**
+ * Solicita la recuperación de contraseña para un usuario utilizando su correo electrónico.
+ *
+ * @param {string} email - Correo electrónico del usuario para la recuperación de contraseña.
+ * @returns {Function} Función thunk que retorna una Promesa con los datos de recuperación o un array vacío si hay un error.
+ */
+export const recuperarContraseña = (email) => {
+    return async () => {
+        try {
+            // Llama a la API para iniciar el proceso de recuperación de contraseña utilizando el correo electrónico proporcionado.
+            const resultado = await recuperar_Contraseña({ email });
+
+            // Retorna los datos de la respuesta de la API, o un array vacío si no hay datos válidos.
+            return resultado?.data?.data || [];
+        } catch (error) {
+            // Captura y registra cualquier error ocurrido durante la solicitud.
+            console.error("Error al solicitar la recuperación de contraseña:", error);
+
+            // Retorna un array vacío en caso de error para manejar el fallo de manera segura.
+            return [];
+        }
+    };
+};
+
