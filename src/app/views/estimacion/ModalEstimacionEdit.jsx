@@ -906,178 +906,137 @@ export const ModalEstimacionEdit = ({ open, onClose, idEstimacion }) => {
     };
 
     useEffect(() => {
-        if (!open) return; // Si el componente no está "abierto", salir inmediatamente
+        // Salir temprano si el modal no está abierto para evitar ejecuciones innecesarias
+        if (!open) return;
 
-
+        /**
+         * Función asíncrona que obtiene y procesa los datos de una estimación
+         * desde NetSuite y actualiza el estado del formulario
+         */
         const fetchEstimacion = async () => {
             try {
-                // Estado de carga - inicia proceso de obtención de datos
+                // Activar indicador de carga
                 setIsLoading(true);
 
-                // Función para normalización de formato de fecha
+                /**
+                 * Formatea una fecha string al formato YYYY-MM-DD
+                 * @param {string} dateStr - Fecha en formato DD/MM/YYYY o YYYY-MM-DD
+                 * @returns {string} Fecha formateada o string vacío si es inválida
+                 */
                 const formatDate = (dateStr) => {
-                    if (!dateStr) return ""; // Manejo de valores nulos
-                    // Conversión de formato DD/MM/YYYY a YYYY-MM-DD
+                    if (!dateStr) return "";
                     if (dateStr.includes("/")) {
                         const [day, month, year] = dateStr.split("/");
                         return `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
                     }
-                    return dateStr; // Retorno directo si ya está formateado
+                    return dateStr;
                 };
 
-                // Obtención de datos de estimación desde NetSuite via acción Redux
+                /**
+                 * Obtiene un valor específico de un objeto de datos anidado
+                 * @param {Object} data - Objeto que contiene los datos
+                 * @param {string} identifier - Identificador para buscar el valor
+                 * @param {string} field - Campo específico a obtener
+                 * @returns {string} Valor encontrado o string vacío
+                 */
+                const getColumnValue = (data, identifier, field) => {
+                    if (!data || typeof data !== 'object') return "";
+                    return Object.values(data).find(
+                        item => item?.custcol_indentificadorprima === identifier
+                    )?.[field] || "";
+                };
+
+                // Obtener datos de la estimación desde NetSuite
                 const estimacionData = await dispatch(extarerEstimacion(idEstimacion));
+                const transactionData = estimacionData?.netsuite?.Detalle || {};
+                const itemData = transactionData?.data?.sublists?.item || {};
 
-                // Extracción de datos principales de la transacción
-                const DatosTransaccion = estimacionData.netsuite.Detalle;
-
-                // Acceso seguro a sublista de items con fallback a objeto vacío
-                const data = DatosTransaccion?.data?.sublists?.item || {};
-
-                // busqueda de campo de hitlos
-                const getCustol = (data, identificador, campo) => {
-                    return Object.values(data).find((item) => item?.custcol_indentificadorprima === identificador)?.[campo];
+                /**
+                 * Formatea números con 2 decimales en formato estadounidense
+                 * @param {string|number} value - Valor a formatear
+                 * @returns {string} Número formateado con 2 decimales
+                 */
+                const formatNumber = (value) => {
+                    let cleanValue = value;
+                    if (typeof value === 'string') {
+                        cleanValue = value.replace(/[^0-9.-]/g, '');
+                    }
+                    
+                    return new Intl.NumberFormat("en-US", {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2
+                    }).format(Number(cleanValue) || 0);
                 };
 
+                // Extraer y formatear datos financieros
+                const financialData = {
+                    listPrice: formatNumber(transactionData?.data?.fields?.custbody13),
+                    directDiscount: formatNumber(transactionData?.data?.fields?.custbody132),
+                    extrasPaidByClient: formatNumber(transactionData?.data?.fields?.custbody46),
+                    cashback: formatNumber(transactionData?.data?.fields?.custbodyix_salesorder_cashback),
+                    courtesyAmount: formatNumber(transactionData?.data?.fields?.custbody16),
+                    custbody52: formatNumber(transactionData?.data?.fields?.custbody52),
+                    custbody18: formatNumber(transactionData?.data?.fields?.custbody18),
+                    custbody_ix_total_amount: formatNumber(transactionData?.data?.fields?.custbody_ix_total_amount) || 0
+                };
 
-                const FechaReserva = getCustol(data, "551", "custcolfecha_pago_proyectado");
+                // Calcular precio de venta neto
+                const netSalePrice = (
+                    Number(financialData.listPrice.replace(/,/g, '')) +
+                    Number(financialData.directDiscount.replace(/,/g, '')) + 
+                    Number(financialData.extrasPaidByClient.replace(/,/g, '')) -
+                    Number(financialData.cashback.replace(/,/g, '')) -
+                    Number(financialData.courtesyAmount.replace(/,/g, ''))
+                ).toFixed(2);
 
+                // Actualizar estado del formulario con los nuevos valores
+                setFormValues(prevValues => ({
+                    ...prevValues,
+                    rType: "estimacion",
+                    
+                    // Información básica de la transacción
+                    entity: transactionData?.cli || "-",
+                    custbody38: transactionData?.Exp || "-",
+                    proyecto_lead_est: transactionData?.Exp || "-", 
+                    entitystatus: transactionData?.Estado || "-",
+                    subsidiary: transactionData?.Subsidaria || "-",
 
+                    // Campos financieros
+                    pvneto: formatNumber(netSalePrice),
+                    custbody13: financialData.listPrice,
+                    custbody132: financialData.directDiscount,
+                    custbodyix_salesorder_cashback: financialData.cashback,
+                    custbody46: financialData.extrasPaidByClient,
+                    custbody16: financialData.courtesyAmount,
+                    custbody52: financialData.custbody52,
+                    custbody18: financialData.custbody18,
 
-                // Obtención de porcentaje diferenciado y monto para hito 16
-                const avance_diferenciado_hito16 = Object.values(data).find(
-                    (item) => item?.custcol_indentificadorprima === "55570",
-                )?.custcol_porcentajediferenciadocrm;
-                const Amountcustbody_ix_salesorder_hito6 = Object.values(data).find((item) => item?.custcol_indentificadorprima === "55570")?.amount;
-
-                // Cálculo de montos base para precio de venta neto
-                const precio_de_lista = Number(DatosTransaccion?.data?.fields.custbody13) || 0;
-                const descuento_directo = Number(DatosTransaccion?.data?.fields.custbody132) || 0;
-                const extrasPagadasPorelcliente = Number(DatosTransaccion?.data?.fields.custbody46) || 0;
-                const cashback = Number(DatosTransaccion?.data?.fields.custbodyix_salesorder_cashback) || 0;
-                const monto_de_cortecias = Number(DatosTransaccion?.data?.fields.custbody16) || 0;
-
-                // Cálculo final del precio de venta neto con precisión decimal
-                const monto_total_precio_venta_neto = (
-                    precio_de_lista -
-                    Math.abs(descuento_directo) +
-                    extrasPagadasPorelcliente -
-                    cashback -
-                    monto_de_cortecias
-                ).toFixed(3);
-
-                // Actualización masiva del estado del formulario
-                setFormValues((prevValues) => ({
-                    ...prevValues, // Mantenimiento de valores existentes
-                    rType: "estimacion", // Tipo fijo de transacción
-
-                    // Mapeo de datos básicos de la transacción
-                    entity: DatosTransaccion?.cli,
-                    custbody38: DatosTransaccion?.Exp || "-",
-                    proyecto_lead_est: DatosTransaccion?.Exp || "-",
-                    entitystatus: DatosTransaccion?.Estado || "-",
-
-                    // Mapeo de campos financieros clave
-                    custbody18: DatosTransaccion?.data?.fields?.custbody18 || 0,
-                    custbody_ix_total_amount: DatosTransaccion?.data?.fields?.custbody_ix_total_amount || 0,
-                    opportunity: DatosTransaccion?.data?.fields?.opportunity || "-",
-                    custbody13: precio_de_lista,
-                    subsidiary: DatosTransaccion?.Subsidaria,
-                    custbody39: DatosTransaccion?.data?.fields?.custbody39 || 0,
-                    custbody60: DatosTransaccion?.data?.fields?.custbody60 || 0,
-                    custbody_ix_salesorder_monto_prima: DatosTransaccion?.data?.fields?.custbody_ix_salesorder_monto_prima || 0,
-
-                    // Campos de descuentos y ajustes
-                    custbody132: descuento_directo,
-                    custbodyix_salesorder_cashback: cashback,
-                    custbody185: DatosTransaccion?.data?.fields?.custbody185 || 0,
-                    custbody46: extrasPagadasPorelcliente,
-                    custbody16: monto_de_cortecias,
-
-                    // Campos adicionales de configuración
-                    custbody47: DatosTransaccion?.data?.fields?.custbody47 || 0,
-                    custbody35: DatosTransaccion?.data?.fields?.custbody35 || 0,
-                    rateReserva: DatosTransaccion?.data?.fields?.custbody52 || 0,
-                    fech_reserva: FechaReserva ? formatDate(FechaReserva) : "",
-                    neta: DatosTransaccion?.data?.fields?.custbody211 || 0,
-                    custbody75: DatosTransaccion?.data?.fields?.custbody75 || 0,
-                    tranid_oport: DatosTransaccion?.opportunity_name || "-",
-                    custbody114: DatosTransaccion?.data?.fields?.custbody114 || "-",
-
-                    // Campo calculado de precio de venta neto
-                    pvneto: monto_total_precio_venta_neto,
-
-                    // Mapeo de hitos y porcentajes diferenciados
-                    custbody67: avance_diferenciado_hito16 || "",
-                    custbody_ix_salesorder_hito6: Amountcustbody_ix_salesorder_hito6,
-
-                    expectedclosedate: DatosTransaccion?.data?.fields?.expectedclosedate, // Fecha esperada de cierre
-
-                    // Valores estáticos para hitos de obra (configuración inicial)
-                    custbody163: DatosTransaccion?.data?.fields?.custbody114 || "-", // mspt_contra_entrega
-                    custbody62: getCustol(data, "55565", "custcol_porcentacustcol_porcentajediferenciadocrmjediferenciadocrm"), // avance_diferenciado_hito11
-                    custbodyix_salesorder_hito1: "",
-                    custbody63: 0, // avance_obra_hito12
-                    custbody_ix_salesorder_hito2: "",
-                    custbody64: 0, // avance_diferenciado_hito13
-                    custbody_ix_salesorder_hito3: "",
-                    custbody65: 0, // avance_diferenciado_hito14
-                    custbody_ix_salesorder_hito4: "",
+                    // Campos descriptivos y fechas
+                    custbody47: transactionData?.data?.fields?.custbody47 || "-",
+                    custbody35: transactionData?.data?.fields?.custbody35 || "-",
+                    custbody114: transactionData?.data?.fields?.custbody114 || 0,
+                    tranid_oport: transactionData?.opportunity_name || "-",
+                    custbody_ix_total_amount: formatNumber(financialData.custbody_ix_total_amount) || 0,
+                    expectedclosedate: transactionData?.data?.fields?.expectedclosedate || "-"
                 }));
+
+                // Actualizar fecha de reserva
+                setFormValues(prevValues => ({
+                    ...prevValues,
+                    fech_reserva: "111111"
+                }));
+
             } catch (error) {
-                // Manejo centralizado de errores (logging removido)
+                console.error('Error fetching estimacion:', error);
+                alert('Error al obtener la estimación. Por favor, inténtelo de nuevo.');
             } finally {
-                // Finalización del proceso de carga
                 setIsLoading(false);
             }
         };
 
-
-        // Invocamos la función asíncrona
+        // Ejecutar la función de obtención de datos
         fetchEstimacion();
-
-        // // Convertir el precio de venta único en un valor numérico eliminando caracteres no numéricos
-        // const precioVenta = parseFloat(dataOportunidad.precioVentaUncio_exp.replace(/\D/g, ""));
-
-        // // Calcular el monto de la prima como el 15% del precio de venta (escala de 0 a 100)
-        // const montoPrima = (precioVenta * 0.15) / 100;
-
-        // // Determinar el valor para "hito6" basado en una condición específica
-        // let hito6 = 0;
-        // hito6 = parseInt(dataOportunidad.custbody75_oport, 10) === 1 ? "100%" : parseInt(dataOportunidad.custbody75_oport, 10) === 2 ? "0.05" : 0;
-
-        // // Obtener la fecha actual y formatearla como mm/dd/yyyy
-        // const today = new Date();
-        // const formattedDate = today.toISOString().split("T")[0];
-        // const entregaEstimada = dataOportunidad.entregaEstimada ? dataOportunidad.entregaEstimada.split("/").reverse().join("-") : "";
-        // console.log(dataOportunidad);
-
-        // // Actualizar los valores del formulario con la información procesada
-        // setFormValues((prevValues) => ({
-        //     ...prevValues,
-        //     opportunity: dataOportunidad.id_oportunidad_oport, // ID de la oportunidad
-        //     entity: dataCliente.nombre_lead, // Asignar el nombre del cliente
-        //     custbody114: dataOportunidad.entregaEstimada, // Fecha estimada de entrega
-        //     proyecto_lead_est: dataCliente.proyecto_lead, // Proyecto asociado al cliente
-        //     custbody38: dataOportunidad.codigo_exp, // Código único de la oportunidad
-        //     tranid_oport: dataOportunidad.tranid_oport, // ID de transacción de la oportunidad
-        //     expectedclosedate: dataOportunidad.expectedclosedate_oport, // Fecha esperada de cierre
-        //     entitystatus: dataOportunidad.Motico_Condicion, // Estado o condición de la oportunidad
-        //     custbody13: dataOportunidad.precioVentaUncio_exp, // Precio de venta único original
-        //     custbody18: dataOportunidad.precioDeVentaMinimo, // Precio mínimo permitido para la venta
-        //     custbody_ix_total_amount: dataOportunidad.precioVentaUncio_exp, // Total del precio de venta
-        //     custbody39: montoPrima.toFixed(2), // Prima calculada con dos decimales
-        //     custbody_ix_salesorder_monto_prima: montoPrima.toFixed(2), // Monto de la prima para la orden de venta
-        //     neta: montoPrima.toFixed(2), // Prima neta calculada con precisión
-
-        //     // Método de pago y otros campos adicionales
-        //     custbody75: dataOportunidad.custbody75_oport, // Método de pago seleccionado
-        //     custbody67: hito6, // Hito de progreso basado en condiciones específicas
-        //     fech_reserva: formattedDate, // Fecha de la reserva
-        //     date_hito_6: entregaEstimada,
-        // }));
-
-    }, [open, idEstimacion, dispatch]);
+    }, [open, idEstimacion, dispatch]); // Dependencias del efecto
 
     return (
         // Componente Modal que se muestra cuando `open` es true
