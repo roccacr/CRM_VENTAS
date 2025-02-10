@@ -1275,9 +1275,9 @@ export const ModalEstimacionEdit = ({ open, onClose, idEstimacion }) => {
                                         errors={errors} 
                                     />
                                     {/* Button to save the estimation */}
-                                    <button type="submit" className="btn btn-primary">
+                                    {/* <button type="submit" className="btn btn-primary">
                                         Guardar Estimacion
-                                    </button>
+                                    </button> */}
                                 </form>
                             </>
                         )}
