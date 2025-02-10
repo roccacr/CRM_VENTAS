@@ -872,8 +872,6 @@ export const ModalEstimacionEdit = ({ open, onClose, idEstimacion }) => {
             }
         });
 
-        console.log(newErrors);
-
         // Actualiza los errores en el estado del formulario
         setErrors(newErrors);
 
@@ -906,69 +904,29 @@ export const ModalEstimacionEdit = ({ open, onClose, idEstimacion }) => {
     };
 
     useEffect(() => {
-        // Salir temprano si el modal no está abierto para evitar ejecuciones innecesarias
-        if (!open) return;
+        if (!open) return; // Salir temprano si el modal no está abierto
 
-        /**
-         * Función asíncrona que obtiene y procesa los datos de una estimación
-         * desde NetSuite y actualiza el estado del formulario
-         */
         const fetchEstimacion = async () => {
             try {
-                // Activar indicador de carga
-                setIsLoading(true);
+                setIsLoading(true); // Activar indicador de carga
 
-                /**
-                 * Formatea una fecha string al formato YYYY-MM-DD
-                 * @param {string} dateStr - Fecha en formato DD/MM/YYYY o YYYY-MM-DD
-                 * @returns {string} Fecha formateada o string vacío si es inválida
-                 */
                 const formatDate = (dateStr) => {
                     if (!dateStr) return "";
-                    if (dateStr.includes("/")) {
-                        const [day, month, year] = dateStr.split("/");
-                        return `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
-                    }
-                    return dateStr;
+                    const [day, month, year] = dateStr.includes("/") ? dateStr.split("/") : [];
+                    return dateStr.includes("/") ? `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}` : dateStr;
                 };
 
-                /**
-                 * Obtiene un valor específico de un objeto de datos anidado
-                 * @param {Object} data - Objeto que contiene los datos
-                 * @param {string} identifier - Identificador para buscar el valor
-                 * @param {string} field - Campo específico a obtener
-                 * @returns {string} Valor encontrado o string vacío
-                 */
-                const getColumnValue = (data, identifier, field) => {
-                    if (!data || typeof data !== 'object') return "";
-                    return Object.values(data).find(
-                        item => item?.custcol_indentificadorprima === identifier
-                    )?.[field] || "";
-                };
-
-                // Obtener datos de la estimación desde NetSuite
-                const estimacionData = await dispatch(extarerEstimacion(idEstimacion));
-                const transactionData = estimacionData?.netsuite?.Detalle || {};
-                const itemData = transactionData?.data?.sublists?.item || {};
-
-                /**
-                 * Formatea números con 2 decimales en formato estadounidense
-                 * @param {string|number} value - Valor a formatear
-                 * @returns {string} Número formateado con 2 decimales
-                 */
                 const formatNumber = (value) => {
-                    let cleanValue = value;
-                    if (typeof value === 'string') {
-                        cleanValue = value.replace(/[^0-9.-]/g, '');
-                    }
-                    
+                    const cleanValue = typeof value === 'string' ? value.replace(/[^0-9.-]/g, '') : value;
                     return new Intl.NumberFormat("en-US", {
                         minimumFractionDigits: 2,
                         maximumFractionDigits: 2
                     }).format(Number(cleanValue) || 0);
                 };
 
-                // Extraer y formatear datos financieros
+                const estimacionData = await dispatch(extarerEstimacion(idEstimacion));
+                const transactionData = estimacionData?.netsuite?.Detalle || {};
+
                 const financialData = {
                     listPrice: formatNumber(transactionData?.data?.fields?.custbody13),
                     directDiscount: formatNumber(transactionData?.data?.fields?.custbody132),
@@ -977,31 +935,27 @@ export const ModalEstimacionEdit = ({ open, onClose, idEstimacion }) => {
                     courtesyAmount: formatNumber(transactionData?.data?.fields?.custbody16),
                     custbody52: formatNumber(transactionData?.data?.fields?.custbody52),
                     custbody18: formatNumber(transactionData?.data?.fields?.custbody18),
-                    custbody_ix_total_amount: formatNumber(transactionData?.data?.fields?.custbody_ix_total_amount) || 0
+                    custbody_ix_total_amount: formatNumber(transactionData?.data?.fields?.custbody_ix_total_amount) || 0,
+                    custbody39: formatNumber(transactionData?.data?.fields?.custbody39),
+                    custbody_ix_salesorder_monto_prima: formatNumber(transactionData?.data?.fields?.custbody_ix_salesorder_monto_prima)
                 };
 
-                // Calcular precio de venta neto
                 const netSalePrice = (
                     Number(financialData.listPrice.replace(/,/g, '')) +
-                    Number(financialData.directDiscount.replace(/,/g, '')) + 
+                    Number(financialData.directDiscount.replace(/,/g, '')) +
                     Number(financialData.extrasPaidByClient.replace(/,/g, '')) -
                     Number(financialData.cashback.replace(/,/g, '')) -
                     Number(financialData.courtesyAmount.replace(/,/g, ''))
                 ).toFixed(2);
 
-                // Actualizar estado del formulario con los nuevos valores
                 setFormValues(prevValues => ({
                     ...prevValues,
                     rType: "estimacion",
-                    
-                    // Información básica de la transacción
                     entity: transactionData?.cli || "-",
                     custbody38: transactionData?.Exp || "-",
-                    proyecto_lead_est: transactionData?.Exp || "-", 
+                    proyecto_lead_est: transactionData?.Exp || "-",
                     entitystatus: transactionData?.Estado || "-",
                     subsidiary: transactionData?.Subsidaria || "-",
-
-                    // Campos financieros
                     pvneto: formatNumber(netSalePrice),
                     custbody13: financialData.listPrice,
                     custbody132: financialData.directDiscount,
@@ -1010,21 +964,249 @@ export const ModalEstimacionEdit = ({ open, onClose, idEstimacion }) => {
                     custbody16: financialData.courtesyAmount,
                     custbody52: financialData.custbody52,
                     custbody18: financialData.custbody18,
-
-                    // Campos descriptivos y fechas
                     custbody47: transactionData?.data?.fields?.custbody47 || "-",
                     custbody35: transactionData?.data?.fields?.custbody35 || "-",
                     custbody114: transactionData?.data?.fields?.custbody114 || 0,
                     tranid_oport: transactionData?.opportunity_name || "-",
                     custbody_ix_total_amount: formatNumber(financialData.custbody_ix_total_amount) || 0,
-                    expectedclosedate: transactionData?.data?.fields?.expectedclosedate || "-"
+                    expectedclosedate: transactionData?.data?.fields?.expectedclosedate || "-",
+                    custbody39: formatNumber(financialData.custbody39), // PRIMA TOTAL
+                    custbody60: transactionData?.data?.fields?.custbody60 || "0.15",
+                    custbody_ix_salesorder_monto_prima: formatNumber(financialData.custbody_ix_salesorder_monto_prima),
+                    neta: formatNumber(transactionData?.data?.fields?.custbody211),
+                    custbody75: transactionData?.data?.fields?.custbody75 || 1,
                 }));
 
-                // Actualizar fecha de reserva
-                setFormValues(prevValues => ({
-                    ...prevValues,
-                    fech_reserva: "111111"
-                }));
+
+                const itemData = transactionData?.data?.sublists?.item || {};
+
+                // Function to process item lines from the transaction data
+                /**
+                 * Procesa las líneas de items y actualiza los valores del formulario según los identificadores de prima.
+                 * @param {Object} items - Lista de líneas de items.
+                 * @returns {Array} Formato de salida para las líneas procesadas.
+                 */
+                const processItemLines = (items) => {
+                    /**
+                     * Actualiza los valores del formulario con los datos proporcionados.
+                     * @param {Object} updates - Objeto con las actualizaciones a realizar.
+                     */
+                    const updateFormValues = (updates) => {
+                        setFormValues((prev) => ({
+                            ...prev,
+                            ...updates,
+                        }));
+                    };
+
+                    /**
+                     * Formatea los datos de una línea para generar la salida final.
+                     * @param {Object} lineData - Datos de la línea.
+                     * @returns {Object} Objeto formateado para la salida.
+                     */
+                    const formatLineOutput = (lineData) => ({
+                        amount: lineData.amount || '',
+                        quantity: lineData.quantity || '',
+                        custcolfecha_pago_proyectado: lineData.custcolfecha_pago_proyectado || '',
+                        custcol_indentificadorprima: lineData.custcol_indentificadorprima || '',
+                        description: lineData.description || '',
+                        porcentaje: lineData.amount || '',
+                    });
+                    /**
+                     * Genera las actualizaciones del formulario basadas en el identificador de prima.
+                     * @param {string} identifier - Identificador de la prima.
+                     * @param {Object} data - Datos de la línea de prima.
+                     * @returns {Object} Objeto con las actualizaciones del formulario.
+                     */
+                    const getPrimaUpdates = (identifier, data) => {
+                        const { amount, quantity, custcolfecha_pago_proyectado, description, porcentaje } = data;
+                        const formattedDate = formatDate(custcolfecha_pago_proyectado);
+                        const formattedAmount = formatNumber(amount);
+
+                        // Mapa de identificadores de prima y sus respectivas actualizaciones
+                        const primaUpdatesMap = {
+                            '551': { fech_reserva: formattedDate },
+                            '552': {
+                                custbody206: formattedDate,
+                                custbody191: formatNumber(transactionData?.data?.fields?.custbody191),
+                                custbody189: transactionData?.data?.fields?.custbody189,
+                                custbody190: transactionData?.data?.fields?.custbody190,
+                                custbody188: transactionData?.data?.fields?.custbody188,
+                                pre_reserva: true,
+                            },
+                            '5551': {
+                                custbody176: true,
+                                custbody179: formattedAmount,
+                                custbody179_date: formattedDate,
+                                custbody180: quantity,
+                                custbody193: description,
+                            },
+                            '5552': {
+                                custbody177: true,
+                                custbody181: formattedAmount,
+                                custbody182_date: formattedDate,
+                                custbody182: quantity,
+                                custbody194: description,
+                            },
+                            '5553': {
+                                custbody178: true,
+                                custbody183: formattedAmount,
+                                custbody184_date: formattedDate,
+                                custbody184: quantity,
+                                custbody195: description,
+                            },
+                            '5554': {
+                                prima_extra_uno: true,
+                                monto_extra_uno: formattedAmount,
+                                custbody184_uno_date: formattedDate,
+                                monto_tracto_uno: quantity,
+                                desc_extra_uno: description,
+                            },
+                            '5555': {
+                                prima_extra_dos: true,
+                                monto_extra_dos: formattedAmount,
+                                custbody184_dos_date: formattedDate,
+                                monto_tracto_dos: quantity,
+                                desc_extra_dos: description,
+                            },
+                            '5556': {
+                                prima_extra_tres: true,
+                                monto_extra_tres: formattedAmount,
+                                custbody184_tres_date: formattedDate,
+                                monto_tracto_tres: quantity,
+                                desc_extra_tres: description,
+                            },
+
+                            //Se calcula el contra entrega
+                            '5557': {
+                                custbody67: "100%",
+                                custbody_ix_salesorder_hito6: formattedAmount,
+                                date_hito_6: formattedDate,
+                                custbody163: formatNumber(transactionData?.data?.fields?.custbody163),
+                            },
+
+
+                            // se calcula el avance obras
+                            // se calcula el hito 1
+                            '11115': {
+                                custbody163: formatNumber(transactionData?.data?.fields?.custbody163),
+                                custbody62: "0.15",
+                                custbodyix_salesorder_hito1: formattedAmount,
+                            },
+                            // se calcula el hito 2
+                            '11116': {
+                                custbody163: formatNumber(transactionData?.data?.fields?.custbody163),
+                                custbody63: "0.25",
+                                custbody_ix_salesorder_hito2: formattedAmount,
+                            },
+                            // se calcula el hito 3
+                            '111167': {
+                                custbody163: formatNumber(transactionData?.data?.fields?.custbody163),
+                                custbody64: "0.25",
+                                custbody_ix_salesorder_hito3: formattedAmount,
+                            },
+                            // se calcula el hito 4
+                            '111168': {
+                                custbody163: formatNumber(transactionData?.data?.fields?.custbody163),
+                                custbody65: "0.15",
+                                custbody_ix_salesorder_hito4: formattedAmount,
+                            },
+                            // se calcula el hito 5
+                            '111169': {
+                                custbody163: formatNumber(transactionData?.data?.fields?.custbody163),
+                                custbody66: "0.15",
+                                custbody_ix_salesorder_hito5: formattedAmount,
+                            },
+                            // se calcula el hito 6
+                            '111170': {
+                                custbody163: formatNumber(transactionData?.data?.fields?.custbody163),
+                                custbody67: "0.05",
+                                custbody_ix_salesorder_hito6: formattedAmount,
+                            },
+
+
+                            // se calcula El avance diferenciado
+                            // este es el hito 1
+                            '55565': {
+                                custbody163: formatNumber(transactionData?.data?.fields?.custbody163),
+                                hito_chek_uno: true,
+                                custbody62: data.custcol_porcentajediferenciadocrm,
+                                custbodyix_salesorder_hito1: formattedAmount,
+                                date_hito_1: formattedDate,
+                                
+                            },
+                            // este es el hito 2
+                            '55566': {
+                                custbody163: formatNumber(transactionData?.data?.fields?.custbody163),
+                                hito_chek_dos: true,
+                                custbody63: data.custcol_porcentajediferenciadocrm,
+                                custbody_ix_salesorder_hito2: formattedAmount,
+                                date_hito_2: formattedDate,
+                                
+                            },
+                            // este es el hito 3
+                            '55567': {
+                                custbody163: formatNumber(transactionData?.data?.fields?.custbody163),
+                                hito_chek_tres: true,
+                                custbody64: data.custcol_porcentajediferenciadocrm,
+                                custbody_ix_salesorder_hito3: formattedAmount,
+                                date_hito_3: formattedDate,
+                                
+                            },
+                            // este es el hito 4
+                            '55568': {
+                                custbody163: formatNumber(transactionData?.data?.fields?.custbody163),
+                                hito_chek_cuatro: true,
+                                custbody65: data.custcol_porcentajediferenciadocrm,
+                                custbody_ix_salesorder_hito4: formattedAmount,
+                                date_hito_4: formattedDate,
+                                
+                            },
+                            // este es el hito 5
+                            '55569': {
+                                custbody163: formatNumber(transactionData?.data?.fields?.custbody163),
+                                hito_chek_cinco: true,
+                                custbody66: data.custcol_porcentajediferenciadocrm,
+                                custbody_ix_salesorder_hito5: formattedAmount,
+                                date_hito_5: formattedDate,
+                                
+
+                            },
+
+                            // este es el hito 6
+                            '55570': {
+                                custbody163: formatNumber(transactionData?.data?.fields?.custbody163),
+                                hito_chek_seis: true,
+                                custbody67: data.custcol_porcentajediferenciadocrm,
+                                custbody_ix_salesorder_hito6: formattedAmount,
+                                date_hito_6: formattedDate,
+                            },
+                        };
+
+
+                        // Devuelve las actualizaciones específicas o un objeto vacío si no hay coincidencia
+                        return primaUpdatesMap[identifier] || {};
+                    };
+
+                    // Procesa las líneas de items y aplica las actualizaciones correspondientes
+                    return Object.entries(items)
+                        .filter(([key]) => key !== 'currentline') // Excluir la línea 'currentline'
+                        .map(([_, lineData]) => {
+                            const { custcol_indentificadorprima } = lineData;
+
+                            // Obtener actualizaciones para el identificador actual
+                            const primaUpdates = getPrimaUpdates(custcol_indentificadorprima, lineData);
+
+                            // Aplicar las actualizaciones si existen
+                            if (Object.keys(primaUpdates).length > 0) {
+                                updateFormValues(primaUpdates);
+                            }
+
+                            // Retornar la línea formateada
+                            return formatLineOutput(lineData);
+                        });
+                };
+                const processedItems = processItemLines(itemData);
+
 
             } catch (error) {
                 console.error('Error fetching estimacion:', error);
@@ -1034,8 +1216,7 @@ export const ModalEstimacionEdit = ({ open, onClose, idEstimacion }) => {
             }
         };
 
-        // Ejecutar la función de obtención de datos
-        fetchEstimacion();
+        fetchEstimacion(); // Ejecutar la función de obtención de datos
     }, [open, idEstimacion, dispatch]); // Dependencias del efecto
 
     return (
@@ -1044,46 +1225,56 @@ export const ModalEstimacionEdit = ({ open, onClose, idEstimacion }) => {
             open={open}
             onClose={onClose}
             className="modal fade show"
-            style={{ display: "block" }} // Forzar que el modal siempre se muestre en pantalla
-            aria-modal="true" // Indicador de accesibilidad para navegadores
+            style={{ display: "block" }} // Ensure the modal is always visible
+            aria-modal="true" // Accessibility indicator for browsers
         >
             <div
                 className="modal-dialog"
-                style={{ maxWidth: "89%", margin: "1.75rem auto" }} // Estilo personalizado para el tamaño y centrado del modal
+                style={{ maxWidth: "89%", margin: "1.75rem auto" }} // Custom style for modal size and centering
             >
                 <div className="modal-content">
                     <div className="modal-body">
                         {isLoading ? (
-                            // Mostrar un indicador de carga mientras los datos se procesan
+                            // Loading indicator while data is being processed
                             <div
                                 className="d-flex justify-content-center align-items-center"
-                                style={{ height: "200px" }} // Asegurar el centrado vertical y horizontal del spinner
+                                style={{ height: "200px" }} // Ensure vertical and horizontal centering of the spinner
                             >
                                 <div className="spinner-border" role="status">
-                                    <span className="visually-hidden">Cargando...</span> {/* Texto accesible para lectores de pantalla */}
+                                    <span className="visually-hidden">Cargando...</span> {/* Accessible text for screen readers */}
                                 </div>
                             </div>
                         ) : (
-                            // Contenido principal del modal cuando no está cargando
+                            // Main content of the modal when not loading
                             <>
-                                <h4>GENERAR ESTIMACIÓN</h4> {/* Título principal del modal */}
+                                <h4>GENERAR ESTIMACIÓN</h4> {/* Main title of the modal */}
                                 <form onSubmit={handleSubmit}>
-                                    {" "}
-                                    {/* Manejo del envío del formulario */}
-                                    {/* Componente para gestionar la primera línea del formulario */}
-                                    <PrimeraLinea formValues={formValues} handleInputChange={handleInputChange} errors={errors} />
-                                    {/* Componente para cálculo de primas */}
+                                    {/* Component to manage the first line of the form */}
+                                    <PrimeraLinea 
+                                        formValues={formValues} 
+                                        handleInputChange={handleInputChange} 
+                                        errors={errors} 
+                                    />
+                                    {/* Component for premium calculation */}
                                     <CalculodePrima
                                         errors={errors}
                                         formValues={formValues}
                                         handleInputChange={handleInputChange}
                                         handleDiscountSelection={handleDiscountSelection}
                                     />
-                                    {/* Componente para selección de primas */}
-                                    <SeleccionPrima errors={errors} formValues={formValues} handleInputChange={handleInputChange} />
-                                    {/* Componente para selección de método de pago */}
-                                    <MetodoPago formValues={formValues} handleInputChange={handleInputChange} errors={errors} />
-                                    {/* Botón para guardar la estimación */}
+                                    {/* Component for premium selection */}
+                                    <SeleccionPrima 
+                                        errors={errors} 
+                                        formValues={formValues} 
+                                        handleInputChange={handleInputChange} 
+                                    />
+                                    {/* Component for payment method selection */}
+                                    <MetodoPago 
+                                        formValues={formValues} 
+                                        handleInputChange={handleInputChange} 
+                                        errors={errors} 
+                                    />
+                                    {/* Button to save the estimation */}
                                     <button type="submit" className="btn btn-primary">
                                         Guardar Estimacion
                                     </button>

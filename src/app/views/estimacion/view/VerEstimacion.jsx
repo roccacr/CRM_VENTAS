@@ -52,8 +52,6 @@ export const VerEstimacion = () => {
             const estimacionData = await dispatch(extarerEstimacion(idEstimacion));
             setDatosEstimacion(estimacionData.netsuite.Detalle);
             setDatosCrm(estimacionData.crm);
-
-            console.log(estimacionData.netsuite.Detalle.data.sublists.item);
         } catch (error) {
             console.error("Error al obtener los detalles de la estimación:", error);
         }
@@ -190,42 +188,42 @@ export const VerEstimacion = () => {
                                     <p className="mb-1 text-muted">
                                         <i className="fas fa-user"></i> CLIENTE:
                                     </p>
-                                    <p className="mb-0">{datosEstimacion.cli || ""}</p>
+                                    <p className="mb-0">{datosEstimacion?.cli || ""}</p>
                                 </div>
                                 <div className="col-md-2">
                                     <p className="mb-1 text-muted">
                                         {" "}
                                         <i className="fas fa-archway"></i> UNIDAD EXPEDIENTE LIGADO VTA
                                     </p>
-                                    <p className="mb-0">{datosEstimacion.Exp || ""}</p>
+                                    <p className="mb-0">{datosEstimacion?.Exp || ""}</p>
                                 </div>
                                 <div className="col-md-2">
                                     <p className="mb-1 text-muted">
                                         {" "}
                                         <i className="fas fa-archway"></i> SUBSIDIARIA
                                     </p>
-                                    <p className="mb-0">{datosEstimacion.Subsidaria || ""}</p>
+                                    <p className="mb-0">{datosEstimacion?.Subsidaria || ""}</p>
                                 </div>
                                 <div className="col-md-2">
                                     <p className="mb-1 text-muted">
                                         {" "}
                                         <i className="fas fa-certificate"></i> ESTADO
                                     </p>
-                                    <p className="mb-0">{datosEstimacion.Estado || ""}</p>
+                                    <p className="mb-0">{datosEstimacion?.Estado || ""}</p>
                                 </div>
                                 <div className="col-md-2">
                                     <p className="mb-1 text-muted">
                                         {" "}
                                         <i className="fas fa-chevron-circle-up"></i> OPORTUNIDAD
                                     </p>
-                                    <p className="mb-0">{datosEstimacion.opportunity_name || ""}</p>
+                                    <p className="mb-0">{datosEstimacion?.opportunity_name || ""}</p>
                                 </div>
                                 <div className="col-md-2">
                                     <p className="mb-1 text-muted">
                                         {" "}
                                         <i className="fas fa-calendar-plus"></i> CIERRE DE PREVISTO
                                     </p>
-                                    <p className="mb-0">{datosCrm.caduca || ""}</p>
+                                    <p className="mb-0">{datosCrm?.caduca || ""}</p>
                                 </div>
                             </div>
                         </li>
