@@ -1,0 +1,5 @@
+/* Ocultar el botón con clase 'dtsp-searchIcon' */
+.dtsp-searchIcon.btn.btn-subtle {
+    display: none !important;
+  }
+  
