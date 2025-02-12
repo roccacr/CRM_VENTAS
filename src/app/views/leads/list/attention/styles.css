@@ -27,7 +27,7 @@
 /* Filtros en móvil */
 .accordion-filters {
     padding: 10px;
-    background-color: #f7f7f7;
+    background-color: #ffffff;
     border-radius: 5px;
 }
 
@@ -42,7 +42,7 @@
 
     .btn-link {
         text-decoration: none;
-        color: #007bff;
+        color: #ffffff;
         font-weight: bold;
         font-size: 1.1rem;
     }

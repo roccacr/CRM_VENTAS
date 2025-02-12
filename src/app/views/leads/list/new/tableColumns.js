@@ -1,9 +1,9 @@
-import { formatDate } from "../../../../../hook/useFormatDate";
 
-export const columnsConfig = [
+
+export const tableColumns = [
     { title: "ASESOR", data: "name_admin", className: "text-center" }, // 0
     { title: "Nombre Cliente", data: "nombre_lead", className: "text-left" }, // 1
-    { title: "# NETSUITE", data: "idinterno_lead", className: "text-left" }, // 2
+    { title: "# NETSUITE", data: "idinterno_lead", className: "text-left" , visible: false }, // 2
     { title: "Correo Cliente", data: "email_lead", className: "text-left" }, // 3
     { title: "Teléfono", data: "telefono_lead", className: "text-left" }, // 4
     { title: "Proyecto", data: "proyecto_lead", className: "text-left" }, // 5
@@ -19,6 +19,7 @@ export const columnsConfig = [
             }
             return data; // Si no tiene guion, retorna el dato tal como está
         },
+        visible: false,
     }, // 7
     {
         title: "Creado",
@@ -28,8 +29,9 @@ export const columnsConfig = [
             const { formattedDate, formattedTime } = formatDate(data);
             return `${formattedDate} ${formattedTime}`;
         },
+
     }, // 8
-    { title: "Subsidiarias", data: "subsidiaria_lead", className: "text-left" }, // 9
+    { title: "Subsidiarias", data: "subsidiaria_lead", className: "text-left", visible: false }, // 9
     {
         title: "Última Acción",
         data: "actualizadaaccion_lead",
@@ -38,8 +40,9 @@ export const columnsConfig = [
             const { formattedDate, formattedTime } = formatDate(data);
             return `${formattedDate} ${formattedTime}`;
         },
+        visible: false,
     }, // 10
-    { title: "Seguimineto", data: "nombre_caida", className: "text-left" }, // 11
+    { title: "Seguimineto", data: "nombre_caida", className: "text-left", visible: false }, // 11
     {
         title: "Estado Lead",
         data: "estado_lead",
@@ -47,5 +50,6 @@ export const columnsConfig = [
         render: function (data) {
             return data === 1 ? "Activo" : data === 2 ? "Inactivo" : "Desconocido";
         },
+        visible: false,
     }, // 12
 ];
