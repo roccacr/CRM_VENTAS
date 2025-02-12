@@ -30,7 +30,6 @@ export const useTableData = (MostrarSwal = true) => {
             }
             // Obtener los datos llamando a la acción Redux
             const result = await dispatch(getFileList());
-            console.log(result);
             setData(result);
          } catch (error) {
             console.error("Error al cargar datos:", error);
