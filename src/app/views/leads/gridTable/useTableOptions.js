@@ -6,6 +6,8 @@ import { useMemo } from "react";
  * @returns {Object} Configuración de opciones para DataTables
  */
 export const useTableOptions = (content, options = {}) => {
+    const isMobile = window.innerWidth <= 768; // Ajusta el valor según tus necesidades
+
     return useMemo(() => ({
         stateSave: true,
         dom: "PBfrtip",
@@ -34,10 +36,10 @@ export const useTableOptions = (content, options = {}) => {
                     show: false,
                 },
             },
-            layout: "columns-3",
+            layout: isMobile ? "columns-1" : "columns-2",
         },
         columnDefs: [
             { targets: content, searchPanes: { show: true } },
         ],
-    }), [content]);
+    }), [content, isMobile]);
 }; 
