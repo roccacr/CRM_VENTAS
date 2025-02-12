@@ -7,8 +7,8 @@ import { useMemo } from "react";
  */
 export const useTableOptions = (content, options = {}) => {
     return useMemo(() => ({
-        
-        dom: "PBflrtip",
+        stateSave: true,
+        dom: "PBfrtip",
         order: [[8, "asc"]],
         paging: true,
         pageLength: 10,
@@ -18,7 +18,7 @@ export const useTableOptions = (content, options = {}) => {
         ],
         responsive: true,
         buttons: ["excel"],
-        stateSave: true,
+       
         processing: true,
         searchPanes: {
             show: true,
