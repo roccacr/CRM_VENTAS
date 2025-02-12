@@ -5,10 +5,24 @@ import { WhatsappAndNote } from '../store/leads/thunksLeads';
 import Swal from 'sweetalert2';
 import { MODAL_TEXTS } from '../app/pages/modal/constants';
 
+/**
+ * Hook `useLeadActions`
+ *
+ * Este hook encapsula todas las acciones relacionadas con un lead, como navegar a vistas específicas,
+ * interactuar con APIs externas (WhatsApp), mostrar mensajes de confirmación y manejar datos asociados.
+ *
+ * @returns {Object} - Funciones para manejar acciones relacionadas con el lead.
+ */
 export const useLeadActions = () => {
     const dispatch = useDispatch();
     const navigate = useNavigate();
 
+    /**
+     * Abre WhatsApp con el número proporcionado.
+     * Si el número no es válido o no está definido, muestra un mensaje de error.
+     *
+     * @param {string} telefono - Número de teléfono del lead.
+     */
     const handleWhatsappClick = (telefono) => {
         if (!telefono) {
             Swal.fire('Error', MODAL_TEXTS.NO_PHONE, 'error');
@@ -25,16 +39,31 @@ export const useLeadActions = () => {
         }
     };
 
+    /**
+     * Navega a la pantalla para agregar una nota asociada al lead.
+     *
+     * @param {Object} leadData - Datos del lead.
+     */
     const handleNote = (leadData) => {
         dispatch(setleadActive(leadData));
         navigate(`/leads/note?id=${leadData?.idinterno_lead}`);
     };
 
+    /**
+     * Navega a la pantalla para crear o ver eventos asociados al lead.
+     *
+     * @param {Object} leadData - Datos del lead.
+     */
     const handleEvents = (leadData) => {
         dispatch(setleadActive(leadData));
         navigate(`/events/actions?idCalendar=0&idLead=${leadData?.idinterno_lead}&idDate=0`);
     };
 
+    /**
+     * Abre WhatsApp y genera una nota asociada al lead después de confirmar la acción.
+     *
+     * @param {Object} leadData - Datos del lead.
+     */
     const handleWhatsappAndNote = async (leadData) => {
         const result = await Swal.fire({
             title: '¿Está seguro?',
@@ -53,6 +82,11 @@ export const useLeadActions = () => {
         }
     };
 
+    /**
+     * Marca un lead como perdido después de confirmar la acción.
+     *
+     * @param {Object} leadData - Datos del lead.
+     */
     const handleLoss = (leadData) => {
         Swal.fire({
             title: '¿Está seguro?',
@@ -68,6 +102,11 @@ export const useLeadActions = () => {
         });
     };
 
+    /**
+     * Coloca un lead en seguimiento después de confirmar la acción.
+     *
+     * @param {Object} leadData - Datos del lead.
+     */
     const handfollow_up = (leadData) => {
         Swal.fire({
             title: '¿Está seguro?',
@@ -83,6 +122,11 @@ export const useLeadActions = () => {
         });
     };
 
+    /**
+     * Crea una oportunidad asociada al lead después de confirmar la acción.
+     *
+     * @param {Object} leadData - Datos del lead.
+     */
     const crearOportunidad = (leadData) => {
         Swal.fire({
             title: '¿Está seguro?',
@@ -98,10 +142,21 @@ export const useLeadActions = () => {
         });
     };
 
+    /**
+     * Navega a la lista de oportunidades asociadas al lead.
+     *
+     * @param {Object} leadData - Datos del lead.
+     */
     const handleOpportunityList = (leadData) => {
         navigate(`/oportunidad/list?idLead=${leadData?.idinterno_lead}`);
     };
 
+    /**
+     * Realiza una llamada al número proporcionado.
+     * Si el número no está definido, muestra un mensaje de error.
+     *
+     * @param {string} telefono - Número de teléfono del lead.
+     */
     const handleCallClient = (telefono) => {
         if (telefono) {
             window.open(`tel:${telefono}`, "_self");
@@ -110,14 +165,27 @@ export const useLeadActions = () => {
         }
     };
 
+    /**
+     * Navega al perfil del usuario asociado al lead.
+     *
+     * @param {Object} leadData - Datos del lead.
+     */
     const PerfilUsuario = (leadData) => {
         navigate(`/leads/perfil?data=${leadData?.idinterno_lead}`);
     };
 
+    /**
+     * Navega hacia atrás en el historial de navegación.
+     */
     const handleBck = () => {
         navigate(-1);
     };
 
+    /**
+     * Navega a la pantalla de edición del lead.
+     *
+     * @param {Object} leadData - Datos del lead.
+     */
     const handedit = (leadData) => {
         navigate(`/leads/edit?id=${leadData?.idinterno_lead}`);
     };
@@ -134,6 +202,6 @@ export const useLeadActions = () => {
         handleCallClient,
         PerfilUsuario,
         handleBck,
-        handedit
+        handedit,
     };
-}; 
+};
