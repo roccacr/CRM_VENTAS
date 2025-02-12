@@ -7,6 +7,7 @@ import { useMemo } from "react";
  */
 export const useTableOptions = (content, options = {}) => {
     return useMemo(() => ({
+        
         dom: "PBflrtip",
         order: [[8, "asc"]],
         paging: true,
