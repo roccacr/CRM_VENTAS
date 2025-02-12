@@ -41,8 +41,7 @@ export const tableColumns = [
             return `${formattedDate} ${formattedTime}`;
         },
         visible: false,
-    }, // 10
-    { title: "Seguimineto", data: "nombre_caida", className: "text-left", visible: false }, // 11
+    }, // 9
     {
         title: "Estado Lead",
         data: "estado_lead",
@@ -51,5 +50,5 @@ export const tableColumns = [
             return data === 1 ? "Activo" : data === 2 ? "Inactivo" : "Desconocido";
         },
         visible: false,
-    }, // 12
+    }, // 10
 ];
