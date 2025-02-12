@@ -13,9 +13,9 @@
   "vueIndentScriptAndStyle": false,
   "proseWrap": "preserve",
   "insertPragma": false,
-  "printWidth": 150,
+  "printWidth": 145,
   "requirePragma": false,
-  "tabWidth": 5,
+  "tabWidth": 3,
   "useTabs": false,
   "embeddedLanguageFormatting": "auto"
 }
