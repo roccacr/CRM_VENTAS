@@ -16,32 +16,35 @@ DataTable.use(DT);
  *
  * @component
  * @returns {JSX.Element} A DataTable component with leads data
- *
- * @example
- * return (
- *   <ViewListLeadsNew />
- * )
  */
 const ViewListLeadsNew = () => {
     // State and refs initialization
-    const [tableData] = useTableData(); // Hook to fetch and manage table data
-    const tableOptions = useTableOptions([0, 1, 3, 4, 5, 6]); // Custom table configuration
-    const tableRef = useRef(null); // Reference to the table instance
-    const [showModal, setShowModal] = useState(false); // Mostrar modal
-    const [selectedLead, setSelectedLead] = useState(null); // Para el modal
+    const [tableData] = useTableData();
+    const tableRef = useRef(null);
+    const [showModal, setShowModal] = useState(false);
+    const [selectedLead, setSelectedLead] = useState(null);
 
-    // Función para cerrar el modal
+    // Create table options with row click handler
+    const tableOptions = {
+        ...useTableOptions([0, 1, 3, 4, 5, 6]),
+        rowCallback: function(row, data) {
+            // Add click event listener to each row
+            row.addEventListener('click', () => {
+                handleOpenModal(data);
+            });
+        }
+    };
+
+    // Function to close modal
     const handleCloseModal = () => {
         setShowModal(false);
     };
 
-    // Función para abrir el modal
+    // Function to open modal
     const handleOpenModal = (lead) => {
         setSelectedLead(lead);
         setShowModal(true);
     };
-
-
 
     /**
      * Effect hook to update table data when it changes
@@ -53,15 +56,6 @@ const ViewListLeadsNew = () => {
             table.clear();
             table.rows.add(tableData);
             table.columns.adjust().draw();
-
-            // Agrega un evento de clic a las filas de la tabla
-            table.off('click', 'tr'); // Limpia eventos anteriores
-            table.on('click', 'tr', function () {
-                const data = table.row(this).data(); // Obtiene los datos de la fila
-                if (data) {
-                    handleOpenModal(data);
-                }
-            });
         }
     }, [tableData]);
 
@@ -82,7 +76,6 @@ const ViewListLeadsNew = () => {
                         />
                     </div>
                 </div>
-
                 {showModal && selectedLead && <ModalLeads leadData={selectedLead} onClose={handleCloseModal} />}
             </div>
         </div>

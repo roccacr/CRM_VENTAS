@@ -5,7 +5,7 @@ import { useMemo } from "react";
  * @param {Array} content - Columnas a mostrar en los paneles de búsqueda
  * @returns {Object} Configuración de opciones para DataTables
  */
-export const useTableOptions = (content) => {
+export const useTableOptions = (content, options = {}) => {
     return useMemo(() => ({
         dom: "PBflrtip",
         order: [[8, "asc"]],
