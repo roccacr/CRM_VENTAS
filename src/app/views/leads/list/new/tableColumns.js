@@ -1,5 +1,5 @@
 
-
+import { formatDate } from "../../../../../hook/useFormatDate";
 export const tableColumns = [
     { title: "ASESOR", data: "name_admin", className: "text-center" }, // 0
     { title: "Nombre Cliente", data: "nombre_lead", className: "text-left" }, // 1
