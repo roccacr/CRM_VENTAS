@@ -15,7 +15,7 @@
   "insertPragma": false,
   "printWidth": 150,
   "requirePragma": false,
-  "tabWidth": 4,
+  "tabWidth": 5,
   "useTabs": false,
   "embeddedLanguageFormatting": "auto"
 }
