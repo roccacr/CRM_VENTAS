@@ -3,11 +3,10 @@ import { useTableData } from "./useTableData";
 import { tableColumns } from "./tableColumns";
 import "../../leads/list/Imports/style.css";
 import { useState } from "react";
+import ExpedienteModal from "./ExpedienteModal";
 
 // Initialize DataTables with DT plugin
 DataTable.use(DT);
-
-
 
 /**
  * DataTableComponent
@@ -35,23 +34,35 @@ const DataTableComponent = ({ tableData, tableRef, tableOptions }) => (
  * @returns {JSX.Element} A complete leads management component.
  */
 const ViewListExpedientes = () => {
-
-
    // State management
-   
+
    // Use table data hook at the top level
    const [tableData] = useTableData(true);
    const tableRef = useRef(null);
 
+   // Añadir estado para el modal y el expediente seleccionado
+   const [modalIsOpen, setModalIsOpen] = useState(false);
+   const [selectedExpediente, setSelectedExpediente] = useState(null);
+
+   // Función para abrir el modal
+   const handleOpenModal = (expediente) => {
+      setSelectedExpediente(expediente);
+      setModalIsOpen(true);
+   };
+
+   // Función para cerrar el modal
+   const handleCloseModal = () => {
+      setModalIsOpen(false);
+      setSelectedExpediente(null);
+   };
 
    // Table options with row click handling
    const tableOptions = {
-      ...useTableOptions([1,2,3,5]),
+      ...useTableOptions([1, 2, 3, 5]),
       rowCallback: function (row, data) {
          row.addEventListener("click", () => handleOpenModal(data));
       },
    };
-
 
    /**
     * Effect hook to update the DataTable whenever tableData changes.
@@ -74,6 +85,7 @@ const ViewListExpedientes = () => {
 
          <div className="card-body" style={{ width: "100%", padding: "0" }}>
             <DataTableComponent tableData={tableData} tableRef={tableRef} tableOptions={tableOptions} />
+            <ExpedienteModal isOpen={modalIsOpen} onClose={handleCloseModal} expediente={selectedExpediente}  />
          </div>
       </div>
    );
