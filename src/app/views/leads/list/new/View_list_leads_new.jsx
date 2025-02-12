@@ -23,7 +23,7 @@ DataTable.use(DT);
 const ViewListLeadsNew = () => {
     // State and refs initialization
     const [tableData] = useTableData(); // Hook to fetch and manage table data
-    const tableOptions = useTableOptions([0, 1, 3, 4, 5, 6, 7]); // Custom table configuration
+    const tableOptions = useTableOptions([0, 1, 3, 4, 5, 6]); // Custom table configuration
     const tableRef = useRef(null); // Reference to the table instance
 
     /**
