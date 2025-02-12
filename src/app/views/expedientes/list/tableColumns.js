@@ -1,10 +1,10 @@
-// Configuración de las columnas que se mostrarán en la tabla.
-export const columnsConfig = [
+
+export const tableColumns = [
     { title: "IdInterno", data: "ID_interno_expediente", className: "text-center" }, // 0
     { title: "Código", data: "codigo_exp", className: "text-left" }, // 1
     { title: "Proyecto", data: "proyectoPrincipal_exp", className: "text-left" }, // 2
     { title: "Tipo de Vivienda", data: "tipoDeVivienda_exp", className: "text-left" }, // 3
-    { title: "Precio de Venta", data: "precioVentaUnico_exp", className: "text-left" }, // 4
+    { title: "Precio de Venta", data: "precioVentaUncio_exp", className: "text-left" }, // 4
     { title: "Estado", data: "estado_exp", className: "text-left" }, // 5
     { title: "Entrega Estimada", data: "entregaEstimada", className: "text-left" }, // 6
     { title: "Área Total (m2)", data: "areaTotalM2_exp", className: "text-left" }, // 7
