@@ -9,7 +9,7 @@ const home = require("../models/home/home");
 // Importa el modelo para gestionar operaciones relacionadas con los 'leads'
 const leads = require("../models/leads/leads");
 const leadNetsuite = require("../models/leads/leadNetsuite");
-require("../models/leads/cronsLeads.js"); // Importa cron jobs para la gestión automatizada de leads
+// require("../models/leads/cronsLeads.js"); // Importa cron jobs para la gestión automatizada de leads
 
 // Importa el modelo para gestionar los eventos en calendarios
 const calendars = require("../models/calendars/calendars");
