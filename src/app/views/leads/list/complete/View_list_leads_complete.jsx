@@ -151,7 +151,7 @@ const ViewListLeadsComplete = () => {
      return (
           <div className="card" style={{ width: "100%" }}>
                <div className="card-header table-card-header">
-                    <h5>LISTA COMPLETA DE LEADS</h5>
+                    <h5>LISTA LEADS ACTIVOS</h5>
                </div>
                <FilterOptions
                     inputStartDate={inputStartDate}

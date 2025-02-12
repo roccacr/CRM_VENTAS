@@ -10,7 +10,7 @@ export const useTableOptions = (content, options = {}) => {
 
     return useMemo(() => ({
         stateSave: true,
-        dom: "PBfrtip",
+        dom: "lPBfrtip",
         order: [[8, "asc"]],
         paging: true,
         pageLength: 10,
