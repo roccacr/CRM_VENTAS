@@ -31,11 +31,12 @@ export const useTableData = (MostrarSwal = true) => {
             }
             // Dispatch the Redux action to get leads
             const result = await dispatch(getLeadsNew());
-            // Update local state with the fetched data
-            setData(result);
             if (MostrarSwal) {
                 Swal.close();
             }
+            // Update local state with the fetched data
+            setData(result);
+            
         };
 
         fetchData();
