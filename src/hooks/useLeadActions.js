@@ -1,9 +1,9 @@
-import { useDispatch } from 'react-redux';
-import { useNavigate } from 'react-router-dom';
-import { setleadActive } from '../store/leads/leadSlice';
-import { WhatsappAndNote } from '../store/leads/thunksLeads';
-import Swal from 'sweetalert2';
-import { MODAL_TEXTS } from '../app/pages/modal/constants';
+import { useDispatch } from "react-redux";
+import { useNavigate } from "react-router-dom";
+import { setleadActive } from "../store/leads/leadSlice";
+import { WhatsappAndNote } from "../store/leads/thunksLeads";
+import Swal from "sweetalert2";
+import { MODAL_TEXTS } from "../app/pages/modal/constants";
 
 /**
  * Hook `useLeadActions`
@@ -25,7 +25,7 @@ export const useLeadActions = () => {
      */
     const handleWhatsappClick = (telefono) => {
         if (!telefono) {
-            Swal.fire('Error', MODAL_TEXTS.NO_PHONE, 'error');
+            Swal.fire("Error", MODAL_TEXTS.NO_PHONE, "error");
             return;
         }
 
@@ -35,7 +35,7 @@ export const useLeadActions = () => {
         if (formattedPhone.length > 8) {
             window.open(`https://wa.me/${formattedPhone}`, "_blank");
         } else {
-            Swal.fire('Error', 'El número de teléfono no es válido para WhatsApp.', 'error');
+            Swal.fire("Error", "El número de teléfono no es válido para WhatsApp.", "error");
         }
     };
 
@@ -66,12 +66,12 @@ export const useLeadActions = () => {
      */
     const handleWhatsappAndNote = async (leadData) => {
         const result = await Swal.fire({
-            title: '¿Está seguro?',
+            title: "¿Está seguro?",
             text: MODAL_TEXTS.WHATSAPP_CONFIRM,
-            icon: 'warning',
+            icon: "warning",
             showCancelButton: true,
-            confirmButtonText: 'Sí, quiero hacerlo',
-            cancelButtonText: 'No',
+            confirmButtonText: "Sí, quiero hacerlo",
+            cancelButtonText: "No",
         });
 
         if (result.isConfirmed) {
@@ -89,12 +89,12 @@ export const useLeadActions = () => {
      */
     const handleLoss = (leadData) => {
         Swal.fire({
-            title: '¿Está seguro?',
+            title: "¿Está seguro?",
             text: MODAL_TEXTS.CONFIRM_LOSS,
-            icon: 'warning',
+            icon: "warning",
             showCancelButton: true,
-            confirmButtonText: 'Sí, marcar como perdido',
-            cancelButtonText: 'Cancelar',
+            confirmButtonText: "Sí, marcar como perdido",
+            cancelButtonText: "Cancelar",
         }).then((result) => {
             if (result.isConfirmed) {
                 navigate(`/leads/loss?id=${leadData?.idinterno_lead}`);
@@ -109,12 +109,12 @@ export const useLeadActions = () => {
      */
     const handfollow_up = (leadData) => {
         Swal.fire({
-            title: '¿Está seguro?',
+            title: "¿Está seguro?",
             text: MODAL_TEXTS.CONFIRM_FOLLOW_UP,
-            icon: 'warning',
+            icon: "warning",
             showCancelButton: true,
-            confirmButtonText: 'Sí, colocar en seguimiento',
-            cancelButtonText: 'Cancelar',
+            confirmButtonText: "Sí, colocar en seguimiento",
+            cancelButtonText: "Cancelar",
         }).then((result) => {
             if (result.isConfirmed) {
                 navigate(`/leads/follow_up?id=${leadData?.idinterno_lead}`);
@@ -129,12 +129,12 @@ export const useLeadActions = () => {
      */
     const crearOportunidad = (leadData) => {
         Swal.fire({
-            title: '¿Está seguro?',
+            title: "¿Está seguro?",
             text: MODAL_TEXTS.CONFIRM_OPPORTUNITY,
-            icon: 'warning',
+            icon: "warning",
             showCancelButton: true,
-            confirmButtonText: 'Sí, crear oportunidad',
-            cancelButtonText: 'Cancelar',
+            confirmButtonText: "Sí, crear oportunidad",
+            cancelButtonText: "Cancelar",
         }).then((result) => {
             if (result.isConfirmed) {
                 navigate(`/oportunidad/crear?idExpediente=0&idLead=${leadData?.idinterno_lead}`);
@@ -161,7 +161,7 @@ export const useLeadActions = () => {
         if (telefono) {
             window.open(`tel:${telefono}`, "_self");
         } else {
-            Swal.fire('Error', MODAL_TEXTS.NO_PHONE, 'error');
+            Swal.fire("Error", MODAL_TEXTS.NO_PHONE, "error");
         }
     };
 
