@@ -13,7 +13,7 @@ import { View_crear_lead } from "../../views/leads/add/View_crear_lead";
 import { View_edit_lead } from "../../views/leads/edit/View_edit_lead";
 import { BotonVolveR } from "../../components/BotonVolveR";
 import { PerfilUsuario } from "../../views/leads/perfil/PerfilUsuario";
-import AgGridTable from "../../views/leads/gridTable/AgGridTable";
+
 
 export const LeadsPage = () => {
     const location = useLocation();
@@ -43,8 +43,6 @@ export const LeadsPage = () => {
                     {path[1] === "leads" && path[2] === "crear" && <View_crear_lead />}
                     {path[1] === "leads" && path[2] === "edit" && <View_edit_lead />}
                     {path[1] === "leads" && path[2] === "perfil"  && <PerfilUsuario />}
-
-                    {path[1] === "leads" && path[2] === "grid" && <AgGridTable />}
                 </div>
             </div>
         </AppLayout>
