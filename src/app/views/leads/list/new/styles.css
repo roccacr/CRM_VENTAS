@@ -76,6 +76,16 @@
 }
 
 .custom-select-asesor .select__menu {
-    background-color: white !important;
+    background-color: rgba(4, 4, 4, 0.607) !important;
     /* Asegura que el menú desplegable también tenga fondo blanco */
+}
+
+
+   /* neeito colcoar un color de fondo a los panes   */
+.dtsp-searchPanes{
+  background-color: #1d1d1d44;
+}
+
+.dtsp-searchPanes {
+    background-color: "#000" !important;
 }

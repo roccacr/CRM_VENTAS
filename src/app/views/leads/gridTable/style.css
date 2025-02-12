@@ -2,4 +2,39 @@
 .dtsp-searchIcon.btn.btn-subtle {
     display: none !important;
   }
+.dtsp-nameButton.btn.btn-subtle {
+    display: none !important;
+  }
+
+  .dtsp-countButton.btn.btn-subtle {
+    display: none !important;
+  }
+  /* .dtsp-countButton.btn.btn-subtle {
+    display: none !important;
+  } */
+
+.table-container {
+    position: center;
+    margin: 0;
+    padding: 0.5rem;
+}
+
+.loading-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(255, 255, 255, 0.8);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+
+.dtsp-searchPanes{
+  background-color: #f4f7fa;
+}
+
+
   
