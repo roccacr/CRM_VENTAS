@@ -17,7 +17,7 @@ export const useTableOptions = (content, options = {}) => {
         ],
         responsive: true,
         buttons: ["excel"],
-        stateSave: false,
+        stateSave: true,
         processing: true,
         searchPanes: {
             show: true,
