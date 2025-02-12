@@ -53,9 +53,9 @@ const ViewListLeadsNew = () => {
     useEffect(() => {
         if (tableRef.current && typeof tableRef.current.DataTable === "function") {
             const table = tableRef.current.DataTable();
-            table.clear();
-            table.rows.add(tableData);
-            table.columns.adjust().draw();
+            // table.clear();
+            // table.rows.add(tableData);
+            // table.columns.adjust().draw();
         }
     }, [tableData]);
 
