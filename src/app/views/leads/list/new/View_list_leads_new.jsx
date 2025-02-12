@@ -46,6 +46,19 @@ const ViewListLeadsNew = () => {
         setShowModal(true);
     };
 
+    /**
+     * Effect hook to update table data when it changes
+     * Clears existing data, adds new rows, and adjusts columns
+     */
+    useEffect(() => {
+        if (tableRef.current && typeof tableRef.current.DataTable === "function") {
+            const table = tableRef.current.DataTable();
+            table.clear();
+            table.rows.add(tableData);
+            table.columns.adjust().draw();
+        }
+    }, [tableData]);
+
     return (
         <div className="card" style={{ width: "100%" }}>
             <div className="card-header table-card-header">
@@ -60,7 +73,6 @@ const ViewListLeadsNew = () => {
                             className="table table-striped table dt-responsive w-100 display text-left"
                             options={tableOptions}
                             columns={tableColumns}
-                            id="mi-tabla-unica"
                         />
                     </div>
                 </div>
