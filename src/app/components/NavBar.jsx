@@ -164,8 +164,8 @@ const MenuItems = ({ openMenu, toggleMenu }) => (
             <label>Modulos</label>
         </li>
         <SubMenu
+            icon="ti ti-user"
             title="Leads"
-            icon="ti ti-users"
             isOpen={openMenu.leadsMenu}
             toggle={() => toggleMenu("leadsMenu")}
             items={[
@@ -180,8 +180,8 @@ const MenuItems = ({ openMenu, toggleMenu }) => (
         <MenuItem to="/expedientes/list" icon="ti ti-file-text" text="Expedientes" />
         <MenuItem to="/events/list" icon="ti ti-calendar" text="Lista de eventos" />
         <SubMenu
+            icon="ti ti-file-text"
             title="Oportunidades"
-            icon="ti ti-trending-up"
             isOpen={openMenu.opportunitiesMenu}
             toggle={() => toggleMenu("opportunitiesMenu")}
             items={[
@@ -189,8 +189,6 @@ const MenuItems = ({ openMenu, toggleMenu }) => (
                 { to: "/oportunidad/crear?idExpediente=0&idLead=0", text: "Crear Oportunidad" },
             ]}
         />
-        <MenuItem to="/events" icon="ti ti-calendar-event" text="Lista de Eventos" />
-        <MenuItem to="/cotizaciones" icon="ti ti-chart-infographic" text="Cotizaciones" />
     </ul>
 );
 
@@ -198,15 +196,17 @@ const MenuItems = ({ openMenu, toggleMenu }) => (
  * Componente para un elemento de menú
  * @param {Object} props - Propiedades del componente
  * @param {string} props.to - Ruta de navegación
- * @param {string} props.icon - Clase del ícono
+ * @param {string} [props.icon] - Clase del ícono (opcional)
  * @param {string} props.text - Texto del menú
  */
 const MenuItem = ({ to, icon, text }) => (
     <li className="pc-item">
         <NavLink to={to} className="pc-link active">
-            <span className="pc-micon">
-                <i className={icon}></i>
-            </span>
+            {icon && (
+                <span className="pc-micon">
+                    <i className={icon}></i>
+                </span>
+            )}
             <span className="pc-mtext">{text}</span>
         </NavLink>
     </li>
@@ -224,9 +224,11 @@ const MenuItem = ({ to, icon, text }) => (
 const SubMenu = ({ title, icon, isOpen, toggle, items }) => (
     <li className="pc-item" onClick={toggle}>
         <a className="pc-link">
-            <span className="pc-micon">
-                <i className={icon}></i>
-            </span>
+            {icon && (
+                <span className="pc-micon">
+                    <i className={icon}></i>
+                </span>
+            )}
             <span className="pc-mtext">{title}</span>
             <span className="pc-arrow">
                 <i className={isOpen ? "ti ti-angle-up" : "ti ti-angle-down"}></i>
