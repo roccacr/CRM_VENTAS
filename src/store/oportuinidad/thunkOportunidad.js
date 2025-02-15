@@ -71,13 +71,18 @@ export const crearOportunidad = (formValue, clientData) => {
  * @returns {function} - Una función asíncrona que retorna los datos de las oportunidades.
  */
 export const getOportunidades = (idLead, startDate, endDate, isMode, BotonesEstados) => {
+
+
+
+    
     return async (dispatch, getState) => {
         const { idnetsuite_admin } = getState().auth;
 
         try {
             // Validar las fechas para evitar errores al formatearlas
-            const start = startDate instanceof Date ? startDate.toISOString().split("T")[0] : null;
-            const end = endDate instanceof Date ? endDate.toISOString().split("T")[0] : null;
+            const start = startDate instanceof Date ? startDate.toISOString().split("T")[0] : startDate;
+            const end = endDate instanceof Date ? endDate.toISOString().split("T")[0] : endDate;
+
 
             if (!start || !end) {
                 throw new Error("Las fechas proporcionadas no son válidas.");
