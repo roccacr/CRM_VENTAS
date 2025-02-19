@@ -71,22 +71,13 @@ export const crearOportunidad = (formValue, clientData) => {
  * @returns {function} - Una función asíncrona que retorna los datos de las oportunidades.
  */
 export const getOportunidades = (idLead, startDate, endDate, isMode, BotonesEstados) => {
-
-
-
-    
     return async (dispatch, getState) => {
         const { idnetsuite_admin } = getState().auth;
 
         try {
-            // Validar las fechas para evitar errores al formatearlas
-            const start = startDate instanceof Date ? startDate.toISOString().split("T")[0] : startDate;
-            const end = endDate instanceof Date ? endDate.toISOString().split("T")[0] : endDate;
-
-
-            if (!start || !end) {
-                throw new Error("Las fechas proporcionadas no son válidas.");
-            }
+            // Validar las fechas y permitir que se envíen vacías
+            const start = startDate instanceof Date ? startDate.toISOString().split("T")[0] : startDate || "";
+            const end = endDate instanceof Date ? endDate.toISOString().split("T")[0] : endDate || "";
 
             // Realizar la llamada a la API
             const response = await get_Oportunidades({
@@ -111,7 +102,6 @@ export const getOportunidades = (idLead, startDate, endDate, isMode, BotonesEsta
         }
     };
 };
-
 
 /**
  * Función que crea un reporte de bitácora para un lead relacionado con la creación de una oportunidad.
@@ -148,10 +138,6 @@ export const crearReoporteLead = (leadData) => {
     };
 };
 
-
-
-
-
 /**
  * Función que obtiene una oportunidad específica basada en el identificador proporcionado.
  * @param {object} oportunidad - El objeto que contiene el identificador o información necesaria para obtener la oportunidad específica.
@@ -172,8 +158,6 @@ export const getSpecificOportunidad = (oportunidad) => {
     };
 };
 
-
-
 export const obtenerOportunidadesCliente = (leadDetails) => {
     return async () => {
         try {
@@ -193,9 +177,6 @@ export const obtenerOportunidadesCliente = (leadDetails) => {
         }
     };
 };
-
-
-
 
 export const updateOpportunityProbability = (probabilidad, idOportunidad) => {
     return async () => {

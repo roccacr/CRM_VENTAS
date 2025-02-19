@@ -112,15 +112,27 @@ const FilterCheckbox = ({ id, label, checked, onChange }) => (
 const StatusToggle = ({ BotonesEstados, setBotonesEstados }) => (
    <div className="card-header border-bottom-0">
       <div className="d-flex">
-         {BotonesEstados === 1 ? (
-            <button className="btn btn-danger ms-2" onClick={() => setBotonesEstados(0)} aria-label="Ver oportunidades inactivas">
-               Oportunidades Inactivas
-            </button>
-         ) : (
-            <button className="btn btn-success ms-2" onClick={() => setBotonesEstados(1)} aria-label="Ver oportunidades activas">
-               Oportunidades Activas
-            </button>
-         )}
+         <button
+            className={`btn ms-2 ${BotonesEstados === 1 ? 'btn-danger' : 'btn-outline-danger'}`}
+            onClick={() => setBotonesEstados(1)}
+            aria-label="Ver oportunidades inactivas"
+         >
+            Oportunidades Inactivas
+         </button>
+         <button
+            className={`btn ms-2 ${BotonesEstados === 2 ? 'btn-success' : 'btn-outline-success'}`}
+            onClick={() => setBotonesEstados(2)}
+            aria-label="Ver oportunidades activas"
+         >
+            Oportunidades Activas
+         </button>
+         <button
+            className={`btn ms-2 ${BotonesEstados === 3 ? 'btn-primary' : 'btn-outline-primary'}`}
+            onClick={() => setBotonesEstados(3)}
+            aria-label="Ver todas las oportunidades"
+         >
+            Todas las Oportunidades
+         </button>
       </div>
    </div>
 );
@@ -128,9 +140,10 @@ const StatusToggle = ({ BotonesEstados, setBotonesEstados }) => (
 // Refactored FilterOptions component using composition
 const FilterOptions = (props) => (
    <div className="card-body border-top">
+      <StatusToggle {...props} />
       <DateRangeFilter {...props} />
       <ModeSelector {...props} />
-      <StatusToggle {...props} />
+      
    </div>
 );
 
@@ -178,8 +191,8 @@ const View_oportunidad_listas = () => {
    const { firstDay, lastDay } = getDefaultDates();
 
    // State management
-   const [inputStartDate, setInputStartDate] = useState(firstDay);
-   const [inputEndDate, setInputEndDate] = useState(lastDay);
+   const [inputStartDate, setInputStartDate] = useState();
+   const [inputEndDate, setInputEndDate] = useState();
    const [filterOption, setFilterOption] = useState(1); // 0: none, 1: creation date, 2: last action
    const [isMode, setIsMode] = useState(2); // Modo de filtrado (0 = por defecto)
    const [botonesEstados, setBotonesEstados] = useState(1);
@@ -203,8 +216,7 @@ const View_oportunidad_listas = () => {
     * @param {Object} item - Selected item data.
     */
    const handleOpenModal = (item) => {
-      console.log(item)
-      navigate(`/oportunidad/ver?data=${item.entity_oport}&data2=${item.id_oportunidad_oport}`)
+      navigate(`/oportunidad/ver?data=${item.entity_oport}&data2=${item.id_oportunidad_oport}`);
    };
 
    // Use custom hook for table management
