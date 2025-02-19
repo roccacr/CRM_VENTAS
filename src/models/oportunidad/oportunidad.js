@@ -2,7 +2,6 @@ const { executeStoredProcedure, executeQuery } = require("../conectionPool/conec
 
 const oportunidad = {}; // Objeto que agrupa las funciones relacionadas con 'oportunidad'.
 
-
 /**
  * Obtiene todas las ubicaciones de la base de datos mediante un procedimiento almacenado.
  * @async
@@ -15,7 +14,6 @@ oportunidad.getUbicaciones = (dataParams) =>
         [dataParams.idUbicacion], // Parámetros para identificar la ubicación.
         dataParams.database, // Nombre de la base de datos a utilizar.
     );
-
 
 /**
  * Obtiene todas las clases de la base de datos mediante un procedimiento almacenado.
@@ -30,10 +28,6 @@ oportunidad.getClases = (dataParams) =>
         dataParams.database, // Nombre de la base de datos a utilizar.
     );
 
-
-
-
-    
 /**
  * Obtiene todas las clases de la base de datos mediante un procedimiento almacenado.
  * @async
@@ -47,10 +41,9 @@ oportunidad.getSpecificOportunidad = (dataParams) =>
         dataParams.database, // Nombre de la base de datos a utilizar.
     );
 
-
 /**
  * Actualiza la probabilidad de una oportunidad en la base de datos.
- * 
+ *
  * @param {Object} dataParams - Objeto con los parámetros necesarios para la actualización.
  * @param {number} dataParams.probabilidad - Nueva probabilidad de la oportunidad.
  * @param {number} dataParams.idOportunidad - ID de la oportunidad a actualizar.
@@ -64,12 +57,11 @@ oportunidad.updateOpportunity_Probability = (dataParams) => {
 
     // Ejecuta la consulta con los parámetros y la base de datos especificada
     return executeQuery(
-        query,     // Consulta SQL a ejecutar
-        params,    // Parámetros de la consulta
-        dataParams.database // Base de datos donde se ejecuta
+        query, // Consulta SQL a ejecutar
+        params, // Parámetros de la consulta
+        dataParams.database, // Base de datos donde se ejecuta
     );
 };
-
 
 /**
  * Updates the status of an opportunity in the database.
@@ -83,41 +75,54 @@ oportunidad.updateOpportunity_Probability = (dataParams) => {
 oportunidad.updateOpportunity_Status = (dataParams) => {
     // SQL query to update the opportunity status based on the provided probability
     const query = "UPDATE oportunidades SET estatus_oport = ? WHERE id_oportunidad_oport = ?";
-    
+
     // Parameters for the query, including the new probability and the opportunity ID
     const params = [dataParams.estado, dataParams.idOportunidad];
 
     // Executes the query with the specified parameters and database
     return executeQuery(
-        query,          // The SQL query to be executed
-        params,         // Array of parameters for the query
-        dataParams.database // Target database for the query
+        query, // The SQL query to be executed
+        params, // Array of parameters for the query
+        dataParams.database, // Target database for the query
     );
 };
 
-
-
-
 // Función para obtener oportunidades basadas en parámetros de filtrado
 oportunidad.get_Oportunidades = (dataParams) => {
-
+    console.log(dataParams)
     // Determinar filtro adicional basado en BotonesEstados
     const estadoFiltro =
         {
-            0: "estatus_oport = 0", // Filtro para estado 0
-            1: "p.estatus_oport = 1 AND chek_oport = 1", // Filtro para estado 1
+            0: "and estatus_oport = 0", // Filtro para estado 0
+            1: "and p.estatus_oport = 1 AND chek_oport = 1", // Filtro para estado 1
             3: "", // Filtro vacío cuando BotonesEstados es 3
         }[dataParams.BotonesEstados] || ""; // Si no se encuentra en los casos anteriores, no aplica filtro
 
     // Seleccionar campo de fecha según el modo
     const dateField = dataParams.isMode === 1 ? "fecha_creada_oport" : "fecha_Condicion";
 
-    // Solo generar filtro de fecha si BotonesEstados no es 3
-    let dateFilter = `
-            AND DATE(${dateField}) >= "${dataParams.startDate}"
-            AND DATE(${dateField}) < "${dataParams.endDate}"
+    // Ajustar el formato de la fecha según el modo
+    let startDate = dataParams.startDate;
+    let endDate = dataParams.endDate;
+
+    // Verificar si ambas fechas están vacías
+    if (startDate === "" && endDate === "") {
+        dateFilter = "";
+    } else {
+        if (dataParams.isMode === 2) {
+            startDate += " 00:00:00";
+            endDate += " 23:59:59";
+        }
+
+        // Verificar el campo de fecha para aplicar el formato correcto
+        const dateFormat = dateField === "fecha_Condicion" ? '%Y-%m-%d' : '%Y-%m-%d %H:%i:%s';
+
+        dateFilter = `
+            AND ${dateField} >= STR_TO_DATE("${startDate}", '${dateFormat}')
+            AND ${dateField} < STR_TO_DATE("${endDate}", '${dateFormat}')
         `;
-     console.log(dateFilter)
+    }
+
 
     // Construir la consulta SQL
     const query = `
@@ -148,11 +153,8 @@ oportunidad.get_Oportunidades = (dataParams) => {
         INNER JOIN admins ON p.employee_oport = admins.idnetsuite_admin
         INNER JOIN compras ON p.custbody76_oport = compras.id_motivo_compra
         INNER JOIN pagos ON p.custbody75_oport = pagos.id_motivo_pago
-        WHERE ${estadoFiltro} ${dateFilter}
+        WHERE employee_oport = ${dataParams.idnetsuite_admin} ${estadoFiltro} ${dateFilter}
     `;
-
-    // Imprimir la consulta para depuración
-    console.log(query);
 
     // Parámetros para la consulta
     const params = [dataParams.idnetsuite_admin];
@@ -160,11 +162,5 @@ oportunidad.get_Oportunidades = (dataParams) => {
     // Ejecutar la consulta SQL
     return executeQuery(query, params, dataParams.database);
 };
-
-
-
-
-
-    
 
 module.exports = oportunidad; // Exporta el objeto 'oportunidad' que agrupa las funciones relacionadas con ubicaciones.
