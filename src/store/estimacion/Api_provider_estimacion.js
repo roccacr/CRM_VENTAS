@@ -20,6 +20,26 @@ export const crearEstimacion = async ({ formulario }) => {
 
 
 
+/**
+ * Función asincrónica para editar una estimación utilizando datos proporcionados en un formulario.
+ * @param {object} formulario - Los datos del formulario utilizados para la edición de la estimación.
+ * @returns {Promise} - Retorna la respuesta de la API tras intentar editar la estimación.
+ */
+export const editarEstimacion = async ({ formulario }) => {
+    // Construye el objeto de datos para la solicitud, combinando datos comunes y los específicos del formulario.
+    const requestData = {
+        ...commonRequestData, // Datos comunes requeridos para cada solicitud (p. ej., tokens de autenticación, configuraciones generales).
+        formulario, // Datos específicos del formulario necesarios para la creación de la estimación.
+    };
+
+    // Realiza una solicitud a la API para crear la estimación con los datos proporcionados.
+    // La URL "estimacion/CrearEstimacion" corresponde al endpoint en el servidor que gestiona esta operación.
+    return await fetchData("estimacion/editarEstimacion", requestData); // Retorna la respuesta de la API para la solicitud realizada.
+};
+
+
+
+
 export const obtenerEstimacionesOportunidad = async ({ idOportunidad }) => {
     // Construye el objeto de datos para la solicitud, incluyendo información común y el ID de la oportunidad específica.
     const requestData = {

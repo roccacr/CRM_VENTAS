@@ -1,0 +1,10 @@
+.custom-swal-popup {
+    z-index: 9999 !important;
+    /* Asegura que Swal esté por encima de otros elementos */
+}
+
+/* Si tu modal existente tiene un z-index alto, puedes ajustarlo también si es necesario */
+.modal {
+    z-index: 1050 !important;
+    /* Modifica esto si es necesario para reducir el z-index del modal */
+}

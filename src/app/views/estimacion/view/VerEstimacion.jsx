@@ -177,7 +177,7 @@ export const VerEstimacion = () => {
                 </div>
                 <div className="alert alert-success" role="alert">
                     <h5 className="text-truncate font-size-15">
-                        ID ESTIMACION:<p className="text-muted mb-0" id="train_id"></p>
+                        ID ESTIMACION:<p className="text-muted mb-0" id="train_id">{datosCrm?.tranid_est || ""}</p>
                     </h5>
                 </div>
                 <div className="card-body">

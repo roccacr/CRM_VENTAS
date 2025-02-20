@@ -1,4 +1,4 @@
-import { crearEstimacion, extraerEstimacionNetsuite, obtenerEstimacionesOportunidad } from "./Api_provider_estimacion";
+import { crearEstimacion, editarEstimacion, extraerEstimacionNetsuite, obtenerEstimacionesOportunidad } from "./Api_provider_estimacion";
 
 /**
  * Función para manejar la creación de una estimación a partir de los datos proporcionados en un formulario.
@@ -21,6 +21,27 @@ export const crearEstimacionFormulario = (formulario) => {
     };
 };
 
+
+/**
+ * Función para manejar la edición de una estimación a partir de los datos proporcionados en un formulario.
+ * @param {object} formulario - Los datos del formulario utilizados para la edición de la estimación.
+ * @returns {Function} - Una función asincrónica que realiza la solicitud y maneja los resultados.
+*/
+export const editarEstimacionFormulario = (formulario) => {
+
+   return async () => {
+       try {
+           // Llama a la API para editar la estimación utilizando los datos del formulario.
+           const result = await editarEstimacion({ formulario });
+
+           // Retorna el primer elemento de los datos obtenidos, asumiendo que contiene la información principal requerida.
+           return result;
+       } catch (error) {
+           // Captura y registra cualquier error que ocurra durante la solicitud para facilitar la depuración.
+           console.error("Error al editar la estimación:", error);
+       }
+   };
+};
 
 // Función para obtener la lista de estimaciones relacionadas con una oportunidad específica, identificada por su ID de transacción.
 export const obtenerEstimacionesPorOportunidad = (idOportunidad) => {

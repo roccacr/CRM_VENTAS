@@ -1,6 +1,6 @@
 export const AvanceObra = ({ formValues, handleInputChange, errors }) => {
     // Determine visibility based on the value of custbody75
-    const isVisible = parseInt(formValues.custbody75, 10) !== 2;
+    const isVisible = parseInt(formValues.custbody75, 10) === 2;
 
     return (
         <>
