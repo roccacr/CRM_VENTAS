@@ -63,3 +63,26 @@ export const extraerEstimacionNetsuite = async ({ idEstimacion }) => {
     return await fetchData("estimacion/extraerEstimacion", requestData); // Retorna la respuesta de la API.
    
 };
+
+
+export const enviarEstimacionComoPreReservaNetsuite = async ({ idEstimacion, idCliente }) => {
+    const requestData = {
+        ...commonRequestData, // Datos comunes requeridos para todas las solicitudes (p. ej., autenticación, configuraciones generales).
+        idEstimacion, // Identificador único de la estimación para obtener sus datos asociados.
+        idCliente, // Identificador único del cliente para enviar la estimación como Pre-reserva.
+    };
+
+    return await fetchData("estimacion/enviarEstimacionComoPreReserva", requestData); // Retorna la respuesta de la API.
+};
+
+
+export const actualizarEstimacionPreReserva = async ({ idEstimacion, fecha_prereserva }) => {
+    const requestData = {
+        ...commonRequestData, // Datos comunes requeridos para todas las solicitudes (p. ej., autenticación, configuraciones generales).
+        idEstimacion, // Identificador único de la estimación para obtener sus datos asociados.
+        fecha_prereserva, // Identificador único de la estimación para obtener sus datos asociados.
+    };
+
+    return await fetchData("estimacion/actualizarEstimacionPreReserva", requestData); // Retorna la respuesta de la API.
+};
+
