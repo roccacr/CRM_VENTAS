@@ -195,7 +195,7 @@ const View_oportunidad_listas = () => {
    const [inputEndDate, setInputEndDate] = useState();
    const [filterOption, setFilterOption] = useState(1); // 0: none, 1: creation date, 2: last action
    const [isMode, setIsMode] = useState(1); // Modo de filtrado (0 = por defecto)
-   const [botonesEstados, setBotonesEstados] = useState(1);
+   const [botonesEstados, setBotonesEstados] = useState(2);
    const [idOportunidad, setIdOportunidad] = useState(1);
 
    // Use table data hook at the top level
