@@ -194,7 +194,7 @@ const View_oportunidad_listas = () => {
    const [inputStartDate, setInputStartDate] = useState();
    const [inputEndDate, setInputEndDate] = useState();
    const [filterOption, setFilterOption] = useState(1); // 0: none, 1: creation date, 2: last action
-   const [isMode, setIsMode] = useState(2); // Modo de filtrado (0 = por defecto)
+   const [isMode, setIsMode] = useState(1); // Modo de filtrado (0 = por defecto)
    const [botonesEstados, setBotonesEstados] = useState(1);
    const [idOportunidad, setIdOportunidad] = useState(1);
 
