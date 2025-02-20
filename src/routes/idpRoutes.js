@@ -204,6 +204,8 @@ module.exports = function (app) {
                 { path: "/estimacion/ObtenerEstimacionesOportunidad", method: "ObtenerEstimacionesOportunidad" }, // Crear oportunidad en Netsuite
                 { path: "/estimacion/extraerEstimacion", method: "extraerEstimacion" }, // Crear oportunidad en Netsuite
                 { path: "/estimacion/editarEstimacion", method: "editarEstimacion" }, // Crear oportunidad en Netsuite
+                { path: "/estimacion/enviarEstimacionComoPreReserva", method: "enviarEstimacionComoPreReserva" }, // Crear oportunidad en Netsuite
+                { path: "/estimacion/actualizarEstimacionPreReserva", method: "actualizarEstimacionPreReserva" }, // Crear oportunidad en Netsuite
             ],
         },
     ];

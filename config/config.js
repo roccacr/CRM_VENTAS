@@ -1,16 +1,11 @@
 // No es necesario require dotenv ya que GitHub Actions cargará las variables de entorno
 
 // Carga las variables de entorno directamente desde GitHub Actions
-const hostProduction = process.env.DB_HOST_PRODUCTION || "Valor por defecto si es null";
-const userProduction = process.env.DB_USER_PRODUCTION || "Valor por defecto si es null";
-const passProduction = process.env.DB_PASS_PRODUCTION || "Valor por defecto si es null";
-
-console.log("🚀 --------------------------------------------------------🚀");
-console.log("🚀 ~ file: config.js:8 ~ passProduction:", passProduction);
-console.log("🚀 --------------------------------------------------------🚀");
-
-const dbDevelopment = process.env.DB_NAME_DEVELOPMENT || "Valor por defecto si es null";
-const dbProduction = process.env.DB_NAME_PRODUCTION || "Valor por defecto si es null";
+const hostProduction = process.env.DB_HOST_PRODUCTION || "";
+const userProduction = process.env.DB_USER_PRODUCTION || "";
+const passProduction = process.env.DB_PASS_PRODUCTION || "";
+const dbDevelopment = process.env.DB_NAME_DEVELOPMENT || "";
+const dbProduction = process.env.DB_NAME_PRODUCTION || "";
 
 const jwtSecret = process.env.JWT_SECRET;
 

@@ -91,7 +91,6 @@ estimacion.crear_estimacion = async ({ formulario }) => {
                 ? value.replace(/,/g, "") // Elimina solo las comas
                 : value.toString().replace(/,/g, "");
         // Convierte el valor limpio a un número entero
-        console.log("cleanedValue", parseFloat(cleanedValue, 10));
         return parseFloat(cleanedValue, 10) || 0; // Retorna 0 si no es un número válido
     };
 
@@ -201,9 +200,6 @@ estimacion.crear_estimacion = async ({ formulario }) => {
             desc_extra_tres: formulario.desc_extra_tres,
             custbody184_tres_date: fechaTransformada_13,
         });
-
-        console.log("body", body);
-
         return {
             msg: "Crear estimacion ",
             Detalle: body,
@@ -289,6 +285,7 @@ estimacion.extraerEstimacion =async (dataParams) => {
 
 
 estimacion.editarEstimacion = async ({ formulario }) => {
+
     // Transformar la fecha del campo "date_hito_1" del formulario y almacenarla en una variable.
     var fechaTransformada_1 = transformarFecha(formulario.date_hito_1, "date_hito_1");
 
@@ -355,7 +352,6 @@ estimacion.editarEstimacion = async ({ formulario }) => {
                 ? value.replace(/,/g, "") // Elimina solo las comas
                 : value.toString().replace(/,/g, "");
         // Convierte el valor limpio a un número entero
-        console.log("cleanedValue", parseFloat(cleanedValue, 10));
         return parseFloat(cleanedValue, 10) || 0; // Retorna 0 si no es un número válido
     };
 
@@ -471,8 +467,6 @@ estimacion.editarEstimacion = async ({ formulario }) => {
             custbody184_tres_date: fechaTransformada_13,
         });
 
-        console.log("body", body);
-
         return {
             msg: "Editar estimacion ",
             Detalle: body,
@@ -484,6 +478,54 @@ estimacion.editarEstimacion = async ({ formulario }) => {
     }
 };
 
+
+estimacion.enviarEstimacionComoPreReserva = (dataParams) => {
+    // Retorna una nueva promesa que maneja la operación de enviar una estimación como pre-reserva.
+    return new Promise(function (resolve, reject) {
+        // Configuración de la URL para el Restlet de NetSuite.
+        var urlSettings = { 
+            url: 'https://4552704.restlets.api.netsuite.com/app/site/hosting/restlet.nl?script=1774&deploy=1' 
+        };
+        try {
+            // Crea un enlace al Restlet usando las configuraciones de cuenta y URL.
+            var rest = nsrestlet.createLink(accountSettings, urlSettings);
+            
+            // Realiza una solicitud POST al Restlet con el tipo de solicitud y el ID de la estimación.
+            rest.post({ rType: "prereserva", id: dataParams.idEstimacion })
+                .then(function (body) {
+                    // Si la solicitud es exitosa, resuelve la promesa con un objeto de respuesta.
+                    let response = { msg: "Pre reserva: ", Detalle: body, status: 200 };
+                    resolve(response);
+                })
+                .catch(function (error) {
+                    // Maneja cualquier error que ocurra durante la solicitud POST.
+                    reject(error);
+                });
+        } catch (err) {
+            // Captura y registra cualquier error que ocurra al crear el enlace o realizar la solicitud.
+            console.log(error);
+        }
+    });
+}
+
+
+estimacion.actualizarEstimacionPreReserva = async (dataParams) => {
+
+    const today = new Date();
+    const formattedDate = today.toISOString().split('T')[0];
+     // Consulta SQL para seleccionar todas las estimaciones asociadas a una oportunidad específica,
+    // ordenándolas por la fecha de caducidad en orden descendente.
+    const query = "UPDATE estimaciones SET pre_reserva=1, envioPreReserva=?, fechaClienteComprobante_est=? WHERE idEstimacion_est=?";
+
+    // Parámetro que contiene el ID de la oportunidad para filtrar los resultados.
+    const params = [formattedDate, dataParams.fecha_prereserva, dataParams.idEstimacion];
+
+
+    const result = await executeQuery(query, params, dataParams.database)
+
+
+    return result;
+}
 
 
 
