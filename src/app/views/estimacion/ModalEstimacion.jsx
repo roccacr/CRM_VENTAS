@@ -911,10 +911,8 @@ export const ModalEstimacion = ({ open, onClose, OportunidadDetails, cliente }) 
 
             // Si el usuario acepta
             const result = await dispatch(crearEstimacionFormulario(formValues));
-  
 
             let ExTraerResultado = result.data["Detalle"];
-
 
             Swal.close();
 

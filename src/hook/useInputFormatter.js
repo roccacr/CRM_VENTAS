@@ -330,10 +330,15 @@ export const calculoAvenceObra = (
     // Formatea el monto total sin prima para almacenamiento.
     const montoSinPrimaFormateado = formatearNumero(montoSinPrimaTotal);
 
+    const montoFormateado = new Intl.NumberFormat("en-US", {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 5,
+    }).format(montoSinPrimaFormateado);
+
     // Actualiza los valores del formulario con los resultados de los cálculos.
     setValoresFormulario((valoresPrevios) => ({
         ...valoresPrevios,
-        custbody163: montoSinPrimaFormateado, // Total sin prima formateado.
+        custbody163: montoFormateado, // Total sin prima formateado.
         custbodyix_salesorder_hito1: hito1, // Valor del primer hito (15%).
         custbody_ix_salesorder_hito2: hito2, // Valor del segundo hito (25%).
         custbody_ix_salesorder_hito3: hito3, // Valor del tercer hito (25%).
@@ -373,10 +378,15 @@ export const calculoAvanceDiferenciado = (
     // Formatea el monto total sin prima utilizando la función de formateo.
     const montoSinPrimaFormateado = formatearNumero(montoSinPrimaTotal);
 
+    const montoFormateado = new Intl.NumberFormat("en-US", {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 5,
+    }).format(montoSinPrimaFormateado);
+
     // Actualiza los valores del formulario con el monto sin prima formateado.
     setValoresFormulario((valoresPrevios) => ({
         ...valoresPrevios, // Conserva los valores existentes del formulario.
-        custbody163: montoSinPrimaFormateado, // Actualiza el campo `custbody163` con el monto formateado.
+        custbody163: montoFormateado, // Actualiza el campo `custbody163` con el monto formateado.
     }));
 
     // Retorna un mensaje indicando que la actualización se realizó con éxito.
