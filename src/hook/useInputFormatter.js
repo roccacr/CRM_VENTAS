@@ -84,7 +84,7 @@ export const calcularPrimaToal = (monto, porcentaje) => {
     // Formatea el resultado con hasta cinco decimales (precisión ajustada)
     const formateado = new Intl.NumberFormat("en-US", {
         minimumFractionDigits: 2, // Siempre muestra al menos 2 decimales
-        maximumFractionDigits: 5, // Hasta 5 decimales para manejar precisión
+        maximumFractionDigits: 4, // Hasta 5 decimales para manejar precisión
     }).format(calculaMontoTotal);
 
     // Devuelve el monto total formateado como una cadena
@@ -106,7 +106,7 @@ export const montoPrimaNeta = (montoPrimaTotal, formValues) => {
     // Formatea el resultado con hasta cinco decimales (precisión ajustada)
     const formateado = new Intl.NumberFormat("en-US", {
         minimumFractionDigits: 2, // Siempre muestra al menos 2 decimales
-        maximumFractionDigits: 5, // Hasta 5 decimales para manejar precisión
+        maximumFractionDigits: 4, // Hasta 5 decimales para manejar precisión
     }).format(total);
 
     // Devuelve el monto total formateado como una cadena
@@ -143,7 +143,7 @@ export const calculoMontoSegunPorcentaje = (formValues) => {
 
     const formateado = new Intl.NumberFormat("en-US", {
         minimumFractionDigits: 2, // Siempre muestra al menos 2 decimales
-        maximumFractionDigits: 5, // Hasta 5 decimales para manejar precisión
+        maximumFractionDigits: 4, // Hasta 5 decimales para manejar precisión
     }).format(monto);
 
     // Devuelve el monto total formateado como una cadena
@@ -234,7 +234,7 @@ export const calculoContraEntrega = (formValues) => {
     // - Permite hasta 5 decimales para mantener precisión.
     const formateado = new Intl.NumberFormat("en-US", {
         minimumFractionDigits: 2,
-        maximumFractionDigits: 5,
+        maximumFractionDigits: 4,
     }).format(monto_sin_prima_total);
 
     // Devuelve el monto total formateado como una cadena.
@@ -258,14 +258,14 @@ export const calculoContraEntregaSinprimaTotal = (
     // Formatea el resultado con al menos 2 decimales y hasta 5 decimales para precisión.
     const montoFormateado = new Intl.NumberFormat("en-US", {
         minimumFractionDigits: 2,
-        maximumFractionDigits: 5,
+        maximumFractionDigits: 4,
     }).format(montoSinPrimaTotal);
 
     // Actualiza los valores del formulario con el porcentaje y el monto sin prima.
     setValoresFormulario((valoresPrevios) => ({
         ...valoresPrevios,
         custbody67: "100%", // Indica que el porcentaje es del 100%.
-        custbody163: montoFormateado.toFixed(3), // Monto total sin prima formateado.
+        custbody163: montoFormateado, // Monto total sin prima formateado.
     }));
 };
 
@@ -284,7 +284,7 @@ export const calculoContraEntregaMontoCalculado = (
     // Formatea el monto con al menos 2 decimales y hasta 5 decimales para precisión.
     const montoFormateado = new Intl.NumberFormat("en-US", {
         minimumFractionDigits: 2,
-        maximumFractionDigits: 5,
+        maximumFractionDigits: 4,
     }).format(montoContraEntrega);
 
     // Actualiza los valores del formulario con el porcentaje y el monto calculado.
@@ -316,7 +316,7 @@ export const calculoAvenceObra = (
     const formatearNumero = (valor) =>
         new Intl.NumberFormat("en-US", {
             minimumFractionDigits: 2,
-            maximumFractionDigits: 5,
+            maximumFractionDigits: 4,
         }).format(valor);
 
     // Calcula los valores de cada hito con base en los porcentajes establecidos.
@@ -333,7 +333,7 @@ export const calculoAvenceObra = (
     // Actualiza los valores del formulario con los resultados de los cálculos.
     setValoresFormulario((valoresPrevios) => ({
         ...valoresPrevios,
-        custbody163: montoSinPrimaFormateado.toFixed(3), // Total sin prima formateado.
+        custbody163: montoSinPrimaFormateado, // Total sin prima formateado.
         custbodyix_salesorder_hito1: hito1, // Valor del primer hito (15%).
         custbody_ix_salesorder_hito2: hito2, // Valor del segundo hito (25%).
         custbody_ix_salesorder_hito3: hito3, // Valor del tercer hito (25%).
@@ -367,7 +367,7 @@ export const calculoAvanceDiferenciado = (
     const formatearNumero = (valor) =>
         new Intl.NumberFormat("en-US", {
             minimumFractionDigits: 2, // Asegura al menos 2 decimales.
-            maximumFractionDigits: 5, // Limita a un máximo de 5 decimales.
+            maximumFractionDigits: 4, // Limita a un máximo de 5 decimales.
         }).format(valor);
 
     // Formatea el monto total sin prima utilizando la función de formateo.
@@ -376,7 +376,7 @@ export const calculoAvanceDiferenciado = (
     // Actualiza los valores del formulario con el monto sin prima formateado.
     setValoresFormulario((valoresPrevios) => ({
         ...valoresPrevios, // Conserva los valores existentes del formulario.
-        custbody163: montoSinPrimaFormateado.toFixed(3), // Actualiza el campo `custbody163` con el monto formateado.
+        custbody163: montoSinPrimaFormateado, // Actualiza el campo `custbody163` con el monto formateado.
     }));
 
     // Retorna un mensaje indicando que la actualización se realizó con éxito.
@@ -407,7 +407,7 @@ export const calculoHito1Diferenciado = (
     // Formatea el monto del hito con 2 a 5 decimales para mayor precisión
     const montoHitoFormateado = new Intl.NumberFormat("en-US", {
         minimumFractionDigits: 2,
-        maximumFractionDigits: 5,
+        maximumFractionDigits: 4,
     }).format(montoHitoCalculado);
 
     // Limpia y convierte el monto total asignado a un valor flotante válido
