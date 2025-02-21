@@ -14,7 +14,7 @@ export const crearEstimacionFormulario = (formulario) => {
             const result = await crearEstimacion({ formulario });
 
             // Retorna el primer elemento de los datos obtenidos, asumiendo que contiene la información principal requerida.
-            return result.data["0"];
+            return result;
         } catch (error) {
             // Captura y registra cualquier error que ocurra durante la solicitud para facilitar la depuración.
             console.error("Error al crear la estimación:", error);
