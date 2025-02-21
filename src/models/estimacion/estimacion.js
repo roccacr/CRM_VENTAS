@@ -113,7 +113,7 @@ estimacion.crear_estimacion = async ({ formulario }) => {
             /*MONTO PRIMA NETA%*/
             custbody_ix_salesorder_monto_prima: cleanAndParseInteger(formulario.custbody_ix_salesorder_monto_prima),
             /*MONTO DESCUENTO DIRECTO%*/
-            custbody132: formulario.custbody132,
+            custbody132: cleanAndParseInteger(formulario.custbody132),
             /*CASHBACK*/
             custbodyix_salesorder_cashback: formulario.custbodyix_salesorder_cashback,
             /*EXTRAS SOBRE EL PRECIO DE LISTA /diferencia*/
@@ -379,7 +379,7 @@ estimacion.editarEstimacion = async ({ formulario }) => {
             /*MONTO PRIMA NETA%*/
             custbody_ix_salesorder_monto_prima: cleanAndParseInteger(formulario.custbody_ix_salesorder_monto_prima),
             /*MONTO DESCUENTO DIRECTO%*/
-            custbody132: formulario.custbody132,
+            custbody132: cleanAndParseInteger(formulario.custbody132),
             /*CASHBACK*/
             custbodyix_salesorder_cashback: formulario.custbodyix_salesorder_cashback,
             /*EXTRAS SOBRE EL PRECIO DE LISTA /diferencia*/
