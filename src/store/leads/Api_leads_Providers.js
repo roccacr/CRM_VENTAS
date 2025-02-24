@@ -445,3 +445,15 @@ export const update_LeadStatus = async ({ estado, idCliente }) => {
     // La URL "leads/update_LeadStatus" es el endpoint encargado de procesar la actualización del estado.
     return await fetchData("leads/update_LeadStatus", requestData); // Devuelve el resultado de la solicitud.
 };
+
+export const editarInformacionLead_Netsuite = async ({ formData }) => {
+    // Construcción del objeto requestData combinando los datos comunes con la configuración necesaria.
+    const requestData = {
+        ...commonRequestData, // Datos comunes requeridos, como tokens de autenticación o configuraciones generales.
+        formData,
+    };
+
+    // Realiza la solicitud a la API para actualizar la información del lead.
+    // La URL "leads/editarInformacionLead_Netsuite" es el endpoint encargado de procesar la actualización de la información del lead.
+    return await fetchData("leads/editarInformacionLead_Netsuite", requestData); // Devuelve el resultado de la solicitud.  
+};
