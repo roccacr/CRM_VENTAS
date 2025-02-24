@@ -600,7 +600,6 @@ export const getDataSelectAdmins = (p_estado) => {
         try {
             // Llama a la función getDataSelect_Admins para obtener la lista de administradores desde la base de datos.
             const result = await getDataSelect_Admins({ p_estado });
-
             return result.data["0"]; // Devuelve los datos de las campañas obtenidos para su uso posterior.
         } catch (error) {
             // En caso de error, muestra un mensaje en la consola y el detalle del error para facilitar el diagnóstico.
