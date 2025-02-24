@@ -1,5 +1,6 @@
 // Requerimos el archivo de configuración donde están almacenadas las credenciales y configuraciones necesarias.
 var config = require("../../config/config");
+const { executeQuery } = require("../conectionPool/conectionPool");
 
 const leads = require("./leads");
 
@@ -120,6 +121,206 @@ leadNetsuite.createdNewLead_Netsuite = async ({ formData, idnetsuite_admin, data
         throw error; // Lanzar el error para manejarlo en niveles superiores si es necesario
     }
 };
+
+/**
+ * Edita la información de un lead en NetSuite
+ * @param {Object} params - Parámetros de la función
+ * @param {Object} params.formData - Datos del formulario a actualizar
+ * @param {string} params.idnetsuite_admin - ID del administrador de NetSuite
+ * @returns {Promise} Respuesta de la actualización
+ */
+leadNetsuite.editarInformacionLead_Netsuite = async ({ formData,    database }) => {
+
+    // Procesar nombre completo
+    const nombres = formData.firstnames.split(/\s+/).filter(n => n.trim());
+    const [nombre, primerApellido, ...restoApellidos] = nombres;
+    const segundoApellido = restoApellidos.join(' ') || '.';
+
+    // Validar información extra
+    const camposInfoExtra = [
+        'vatregnumber', 'custentity1', 'custentityestado_civil', 'altphone',
+        'rango_edad', 'cantidad_hijos', 'custentity_ix_customer_profession',
+        'defaultaddress'
+    ];
+    const informacion_Extra = camposInfoExtra.some(campo => formData[campo] === '') ? 0 : formData.informacion_Extra;
+
+    // Validar corredor
+    const corredor = formData.corredor_lead_edit.value !== 0 ? 1 : formData.corredor_extra;
+
+    // Validar información extra adicional
+    const camposInfoExtraDos = ['custentity77', 'custentity81', 'custentity82', 'custentity83'];
+    const infromacion_extra = camposInfoExtraDos.some(campo => formData[campo] === '') ? 0 : formData.informacion_Extra;
+
+    const body = {
+        tipos: "update_add_lead_id",
+        id: formData.id,
+        nombre,
+        primerApellido,
+        segundoApellido,
+        comentario_cliente: formData.comentario_clientes,
+        proyecto_new: formData.proyecto_new_edit.value,
+        subsidiary_new: formData.subsidiary_new_edit.value,
+        campana_new: formData.campana_new_edit.value,
+        email: formData.emails,
+        phone: formData.phones,
+        employee: formData.employee,
+        informacion_Extra,
+        // Campos de información personal
+        vatregnumber: formData.vatregnumber,
+        custentity1: formData.custentity1,
+        custentityestado_civil: formData.custentityestado_civil,
+        altphone: formData.altphone,
+        custentity11: formData.rango_edad?.replace(/-/g, ''),
+        custentityhijos_cliente: formData.cantidad_hijos,
+        custentity_ix_customer_profession: formData.custentity_ix_customer_profession,
+        // Campos de corredor
+        corredor_extra: corredor,
+        corredor_new: formData.corredor_lead_edit.value,
+        // Campos de información extra
+        infromacion_extra_dos: infromacion_extra,
+        custentity77: formData.custentity77,
+        custentity78: formData.custentity78,
+        custentity79: formData.custentity79,
+        custentity80: formData.custentityestado_civil_extra,
+        custentity81: formData.custentity81,
+        custentity82: formData.custentity82,
+        custentity84: formData.custentity84
+    };
+
+    const urlSettings = {
+        url: "https://4552704.restlets.api.netsuite.com/app/site/hosting/restlet.nl?script=1764&deploy=1"
+    };
+
+    try {
+        const rest = nsrestlet.createLink(accountSettings, urlSettings);
+        const response = await rest.put(body);
+
+        if(response.status === 200){
+            leadNetsuite.update_LeadStatus(formData, database);
+            leadNetsuite.update_LeadInformations(formData, database);
+
+        }
+        return {
+            msg: "Actualizar cliente: ",
+            Detalle: response,
+        };
+    } catch (error) {
+        console.error("Error al actualizar lead:", error);
+        throw error;
+    }
+};
+// ... existing code ...
+
+/**
+ * Construye el objeto de campos a actualizar para un lead
+ * @param {Object} dataParams - Datos del lead a actualizar
+ * @returns {Object} Objeto con los campos y valores a actualizar
+ */
+const buildLeadUpdateFields = (dataParams) => {
+    return {
+        nombre_lead: dataParams.firstnames,
+        email_lead: dataParams.emails,
+        telefono_lead: dataParams.phones,
+        comentario_lead: dataParams.comentario_clientes,
+        idproyecto_lead: dataParams.proyecto_new_edit.value,
+        proyecto_lead: dataParams.proyecto_new_edit.label,
+        idsubsidaria_lead: dataParams.subsidiary_new_edit.value,
+        subsidiaria_lead: dataParams.subsidiary_new_edit.label,
+        idcampana_lead: dataParams.campana_new_edit.value,
+        campana_lead: dataParams.campana_new_edit.label
+    };
+};
+
+/**
+ * Construye la consulta SQL para actualizar un lead
+ * @param {Object} updateFields - Campos a actualizar
+ * @returns {string} Consulta SQL formateada
+ */
+const buildUpdateQuery = (updateFields) => {
+    const setStatements = Object.entries(updateFields)
+        .map(([field, value]) => `${field}="${value}"`)
+        .join(',\n    ');
+    
+    return `UPDATE leads 
+    SET 
+    ${setStatements}
+    WHERE idinterno_lead = ?`;
+};
+
+/**
+ * Actualiza el estado de un lead en la base de datos local
+ * @param {Object} dataParams - Parámetros del lead incluyendo datos y conexión a BD
+ * @returns {Promise} Resultado de la ejecución de la consulta
+ * @throws {Error} Si hay un error en la actualización
+ */
+leadNetsuite.update_LeadStatus = async (dataParams, database) => {
+    try {
+        // Construir campos a actualizar
+        const updateFields = buildLeadUpdateFields(dataParams);
+        
+        // Generar consulta SQL
+        const query = buildUpdateQuery(updateFields);
+        
+        // Ejecutar actualización
+        return await executeQuery(
+            query,
+            [dataParams.id],
+            database
+        );
+    } catch (error) {
+        console.error('Error actualizando estado del lead:', error);
+        throw new Error(`Error actualizando lead: ${error.message}`);
+    }
+};
+
+
+leadNetsuite.update_LeadInformations = async (dataParams, database) => {
+    try {
+
+        console.log("infromacion de lead", dataParams);
+
+        
+        // Generar consulta SQL
+        const query =  `UPDATE info_extra_lead 
+                SET 
+                cedula_lead ="${dataParams.vatregnumber}",
+                Nacionalidad_lead="${dataParams.custentity1}",
+                Estado_ciLead="${dataParams.custentityestado_civil}",
+                Edad_lead="${dataParams.rango_edad}",
+                Profesion_lead="${dataParams.custentity_ix_customer_profession}",
+                Hijos_lead="${dataParams.cantidad_hijos}",
+                TelefonoAlternatovo_lead="${dataParams.altphone}",
+                Direccion="${dataParams.defaultaddress}",
+                Corredor_lead="${dataParams.corredor_lead_edit.value}",
+                nombre_extra_lead="${dataParams.custentity77}",
+                cedula_extra_lead="${dataParams.custentity78}",
+                profesion_extra_lead="${dataParams.custentity79}",
+                estado_civil_extra_lead="${dataParams.custentityestado_civil}",
+                telefono_extra_lead="${dataParams.custentity82}",
+                nacionalidad_extra_lead="${dataParams.custentity81}",
+                email_extra_lead="${dataParams.custentity84}",
+                info_extra_ingresos="${dataParams.ingresos}",
+                info_extra_MotivoCompra="${dataParams.motivo_compra}",
+                info_extra_MomentodeCompra="${dataParams.momento_compra}",
+                info_extra_Trabajo="${dataParams.lugar_trabajo}",
+                info_extra_OrigenFondo="${dataParams.origen_fondos}",
+                info_extra_ZonaRecidencia="${dataParams.zona_residencia}"
+                where id_lead_fk  =?
+                `
+        
+        // Ejecutar actualización
+        return await executeQuery(
+            query,
+            [dataParams.id],
+            database
+        );
+    } catch (error) {
+        console.error('Error actualizando estado del lead:', error);
+        throw new Error(`Error actualizando lead: ${error.message}`);
+    }
+};
+
+
 
 // Exportamos el módulo 'leadNetsuite' para que pueda ser utilizado en otras partes del proyecto.
 module.exports = leadNetsuite;

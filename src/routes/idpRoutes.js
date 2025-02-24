@@ -134,6 +134,7 @@ module.exports = function (app) {
                 { path: "/leads/eventos", method: "eventos" }, // Ruta para obtener los eventos del cliente
                 { path: "/leads/oportunidades", method: "oportunidades" }, // Ruta para obtener los eventos del cliente
                 { path: "/leads/update_LeadStatus", method: "update_LeadStatus" }, // Ruta para obtener los eventos del cliente
+                
             ],
         },
         {
@@ -142,6 +143,7 @@ module.exports = function (app) {
             routes: [
                 { path: "/leads/getDataLead_Netsuite", method: "getDataLead_Netsuite" }, // Ruta para obtener la información de un lead desde Netsuite
                 { path: "/leads/createdNewLead_Netsuite", method: "createdNewLead_Netsuite" }, // Ruta para crear un nuevo lead en Netsuite
+                { path: "/leads/editarInformacionLead_Netsuite", method: "editarInformacionLead_Netsuite" }, // Ruta para editar la información de un lead en Netsuite
             ],
         },
         {
