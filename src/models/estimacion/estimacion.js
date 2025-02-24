@@ -5,7 +5,6 @@ const nsrestlet = require("nsrestlet");
 
 const { executeStoredProcedure, executeQuery } = require("../conectionPool/conectionPool");
 
-
 // Configuración de credenciales para acceder a NetSuite.
 var accountSettings = {
     accountId: config.oauthNetsuite.realm,
@@ -94,7 +93,6 @@ estimacion.crear_estimacion = async ({ formulario }) => {
         return parseFloat(cleanedValue, 10) || 0; // Retorna 0 si no es un número válido
     };
 
-
     try {
         const rest = nsrestlet.createLink(accountSettings, urlSettings);
 
@@ -113,7 +111,7 @@ estimacion.crear_estimacion = async ({ formulario }) => {
             /*MONTO PRIMA NETA%*/
             custbody_ix_salesorder_monto_prima: cleanAndParseInteger(formulario.custbody_ix_salesorder_monto_prima),
             /*MONTO DESCUENTO DIRECTO%*/
-            custbody132: formulario.custbody132,
+            custbody132: cleanAndParseInteger(formulario.custbody132),
             /*CASHBACK*/
             custbodyix_salesorder_cashback: formulario.custbodyix_salesorder_cashback,
             /*EXTRAS SOBRE EL PRECIO DE LISTA /diferencia*/
@@ -211,14 +209,12 @@ estimacion.crear_estimacion = async ({ formulario }) => {
     }
 };
 
-
-
 // Método para obtener las estimaciones relacionadas a una oportunidad específica
 estimacion.ObtenerEstimacionesOportunidad = (dataParams) => {
     // Consulta SQL para seleccionar todas las estimaciones asociadas a una oportunidad específica,
     // ordenándolas por la fecha de caducidad en orden descendente.
     const query = "SELECT * FROM estimaciones WHERE idOportunidad_est = ? ORDER BY caduca DESC";
-    
+
     // Parámetro que contiene el ID de la oportunidad para filtrar los resultados.
     const params = [dataParams.idOportunidad];
 
@@ -234,8 +230,7 @@ estimacion.ObtenerEstimacionesOportunidad = (dataParams) => {
     );
 };
 
-
-estimacion.extarerEstimacionNetsuite = async (estimacionId ) => {
+estimacion.extarerEstimacionNetsuite = async (estimacionId) => {
     const urlSettings = {
         url: "https://4552704.restlets.api.netsuite.com/app/site/hosting/restlet.nl?script=1764&deploy=1",
     };
@@ -243,7 +238,6 @@ estimacion.extarerEstimacionNetsuite = async (estimacionId ) => {
         const rest = nsrestlet.createLink(accountSettings, urlSettings);
 
         const body = await rest.get({ rType: "estimate", id: estimacionId });
-
 
         return {
             msg: "Crear estimacion ",
@@ -256,9 +250,8 @@ estimacion.extarerEstimacionNetsuite = async (estimacionId ) => {
     }
 };
 
-
 // Método para obtener las estimaciones relacionadas a una oportunidad específica
-estimacion.extraerEstimacion =async (dataParams) => {
+estimacion.extraerEstimacion = async (dataParams) => {
     // Consulta SQL para seleccionar todas las estimaciones asociadas a una oportunidad específica,
     // ordenándolas por la fecha de caducidad en orden descendente.
     const query = "SELECT * FROM estimaciones WHERE idEstimacion_est = ? ";
@@ -274,18 +267,15 @@ estimacion.extraerEstimacion =async (dataParams) => {
     const result = await executeQuery(query, params, dataParams.database);
     const resultNetsuite = await estimacion.extarerEstimacionNetsuite(dataParams.idEstimacion);
 
-     const datosReales = {
-         crm: result.data[0], // Propaga las propiedades de la primera fila
-         netsuite: resultNetsuite, // Agrega la nueva propiedad
-     };
-
+    const datosReales = {
+        crm: result.data[0], // Propaga las propiedades de la primera fila
+        netsuite: resultNetsuite, // Agrega la nueva propiedad
+    };
 
     return datosReales;
 };
 
-
 estimacion.editarEstimacion = async ({ formulario }) => {
-
     // Transformar la fecha del campo "date_hito_1" del formulario y almacenarla en una variable.
     var fechaTransformada_1 = transformarFecha(formulario.date_hito_1, "date_hito_1");
 
@@ -359,7 +349,6 @@ estimacion.editarEstimacion = async ({ formulario }) => {
         url: "https://4552704.restlets.api.netsuite.com/app/site/hosting/restlet.nl?script=1764&deploy=1",
     };
 
-
     try {
         const rest = nsrestlet.createLink(accountSettings, urlSettings);
 
@@ -379,7 +368,7 @@ estimacion.editarEstimacion = async ({ formulario }) => {
             /*MONTO PRIMA NETA%*/
             custbody_ix_salesorder_monto_prima: cleanAndParseInteger(formulario.custbody_ix_salesorder_monto_prima),
             /*MONTO DESCUENTO DIRECTO%*/
-            custbody132: formulario.custbody132,
+            custbody132: cleanAndParseInteger(formulario.custbody132),
             /*CASHBACK*/
             custbodyix_salesorder_cashback: formulario.custbodyix_salesorder_cashback,
             /*EXTRAS SOBRE EL PRECIO DE LISTA /diferencia*/
@@ -478,18 +467,17 @@ estimacion.editarEstimacion = async ({ formulario }) => {
     }
 };
 
-
 estimacion.enviarEstimacionComoPreReserva = (dataParams) => {
     // Retorna una nueva promesa que maneja la operación de enviar una estimación como pre-reserva.
     return new Promise(function (resolve, reject) {
         // Configuración de la URL para el Restlet de NetSuite.
-        var urlSettings = { 
-            url: 'https://4552704.restlets.api.netsuite.com/app/site/hosting/restlet.nl?script=1774&deploy=1' 
+        var urlSettings = {
+            url: "https://4552704.restlets.api.netsuite.com/app/site/hosting/restlet.nl?script=1774&deploy=1",
         };
         try {
             // Crea un enlace al Restlet usando las configuraciones de cuenta y URL.
             var rest = nsrestlet.createLink(accountSettings, urlSettings);
-            
+
             // Realiza una solicitud POST al Restlet con el tipo de solicitud y el ID de la estimación.
             rest.post({ rType: "prereserva", id: dataParams.idEstimacion })
                 .then(function (body) {
@@ -506,28 +494,22 @@ estimacion.enviarEstimacionComoPreReserva = (dataParams) => {
             console.log(error);
         }
     });
-}
-
+};
 
 estimacion.actualizarEstimacionPreReserva = async (dataParams) => {
-
     const today = new Date();
-    const formattedDate = today.toISOString().split('T')[0];
-     // Consulta SQL para seleccionar todas las estimaciones asociadas a una oportunidad específica,
+    const formattedDate = today.toISOString().split("T")[0];
+    // Consulta SQL para seleccionar todas las estimaciones asociadas a una oportunidad específica,
     // ordenándolas por la fecha de caducidad en orden descendente.
     const query = "UPDATE estimaciones SET pre_reserva=1, envioPreReserva=?, fechaClienteComprobante_est=? WHERE idEstimacion_est=?";
 
     // Parámetro que contiene el ID de la oportunidad para filtrar los resultados.
     const params = [formattedDate, dataParams.fecha_prereserva, dataParams.idEstimacion];
 
-
-    const result = await executeQuery(query, params, dataParams.database)
-
+    const result = await executeQuery(query, params, dataParams.database);
 
     return result;
-}
-
-
+};
 
 // Exportamos el módulo para su uso en otras partes del proyecto.
 module.exports = estimacion;
