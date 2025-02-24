@@ -209,7 +209,6 @@ leadNetsuite.editarInformacionLead_Netsuite = async ({ formData,    database }) 
         throw error;
     }
 };
-// ... existing code ...
 
 /**
  * Construye el objeto de campos a actualizar para un lead
@@ -273,54 +272,102 @@ leadNetsuite.update_LeadStatus = async (dataParams, database) => {
     }
 };
 
+/**
+ * Construye el objeto con los campos básicos del lead
+ * @param {Object} dataParams - Datos del lead
+ * @returns {Object} Objeto con los campos básicos
+ */
+const buildBasicLeadFields = (dataParams) => ({
+    cedula_lead: dataParams.vatregnumber,
+    Nacionalidad_lead: dataParams.custentity1,
+    Estado_ciLead: dataParams.custentityestado_civil,
+    Edad_lead: dataParams.rango_edad,
+    Profesion_lead: dataParams.custentity_ix_customer_profession,
+    Hijos_lead: dataParams.cantidad_hijos,
+    TelefonoAlternatovo_lead: dataParams.altphone,
+    Direccion: dataParams.defaultaddress,
+    Corredor_lead: dataParams.corredor_lead_edit.value
+});
 
+/**
+ * Construye el objeto con los campos extra del lead
+ * @param {Object} dataParams - Datos adicionales del lead
+ * @returns {Object} Objeto con los campos extra
+ */
+const buildExtraLeadFields = (dataParams) => ({
+    nombre_extra_lead: dataParams.custentity77,
+    cedula_extra_lead: dataParams.custentity78,
+    profesion_extra_lead: dataParams.custentity79,
+    estado_civil_extra_lead: dataParams.custentityestado_civil,
+    telefono_extra_lead: dataParams.custentity82,
+    nacionalidad_extra_lead: dataParams.custentity81,
+    email_extra_lead: dataParams.custentity84
+});
+
+/**
+ * Construye el objeto con la información adicional del lead
+ * @param {Object} dataParams - Información adicional del lead
+ * @returns {Object} Objeto con la información adicional
+ */
+const buildAdditionalInfoFields = (dataParams) => ({
+    info_extra_ingresos: dataParams.ingresos,
+    info_extra_MotivoCompra: dataParams.motivo_compra,
+    info_extra_MomentodeCompra: dataParams.momento_compra,
+    info_extra_Trabajo: dataParams.lugar_trabajo,
+    info_extra_OrigenFondo: dataParams.origen_fondos,
+    info_extra_ZonaRecidencia: dataParams.zona_residencia
+});
+
+/**
+ * Construye la consulta SQL para actualizar la información del lead
+ * @param {Object} allFields - Todos los campos a actualizar
+ * @returns {string} Consulta SQL formateada
+ */
+const buildLeadInfoUpdateQuery = (allFields) => {
+    const setStatements = Object.entries(allFields)
+        .map(([field, value]) => `${field}="${value}"`)
+        .join(',\n        ');
+    
+    return `UPDATE info_extra_lead 
+        SET 
+        ${setStatements}
+        WHERE id_lead_fk = ?`;
+};
+
+/**
+ * Actualiza la información extra de un lead en la base de datos
+ * @param {Object} dataParams - Parámetros del lead
+ * @param {Object} database - Conexión a la base de datos
+ * @returns {Promise} Resultado de la actualización
+ * @throws {Error} Si hay un error en la actualización
+ */
 leadNetsuite.update_LeadInformations = async (dataParams, database) => {
     try {
 
-        console.log("infromacion de lead", dataParams);
 
+        const query1 = `INSERT INTO info_extra_lead(id_lead_fk) VALUES (?)`
         
-        // Generar consulta SQL
-        const query =  `UPDATE info_extra_lead 
-                SET 
-                cedula_lead ="${dataParams.vatregnumber}",
-                Nacionalidad_lead="${dataParams.custentity1}",
-                Estado_ciLead="${dataParams.custentityestado_civil}",
-                Edad_lead="${dataParams.rango_edad}",
-                Profesion_lead="${dataParams.custentity_ix_customer_profession}",
-                Hijos_lead="${dataParams.cantidad_hijos}",
-                TelefonoAlternatovo_lead="${dataParams.altphone}",
-                Direccion="${dataParams.defaultaddress}",
-                Corredor_lead="${dataParams.corredor_lead_edit.value}",
-                nombre_extra_lead="${dataParams.custentity77}",
-                cedula_extra_lead="${dataParams.custentity78}",
-                profesion_extra_lead="${dataParams.custentity79}",
-                estado_civil_extra_lead="${dataParams.custentityestado_civil}",
-                telefono_extra_lead="${dataParams.custentity82}",
-                nacionalidad_extra_lead="${dataParams.custentity81}",
-                email_extra_lead="${dataParams.custentity84}",
-                info_extra_ingresos="${dataParams.ingresos}",
-                info_extra_MotivoCompra="${dataParams.motivo_compra}",
-                info_extra_MomentodeCompra="${dataParams.momento_compra}",
-                info_extra_Trabajo="${dataParams.lugar_trabajo}",
-                info_extra_OrigenFondo="${dataParams.origen_fondos}",
-                info_extra_ZonaRecidencia="${dataParams.zona_residencia}"
-                where id_lead_fk  =?
-                `
+        await executeQuery(query1, [dataParams.id], database);
+
+
+
+
+        // Combinar todos los campos en un solo objeto
+        const allFields = {
+            ...buildBasicLeadFields(dataParams),
+            ...buildExtraLeadFields(dataParams),
+            ...buildAdditionalInfoFields(dataParams)
+        };
+
+        // Construir y ejecutar la consulta
+        const query = buildLeadInfoUpdateQuery(allFields);
         
-        // Ejecutar actualización
-        return await executeQuery(
-            query,
-            [dataParams.id],
-            database
-        );
+        return await executeQuery(query, [dataParams.id], database);
     } catch (error) {
-        console.error('Error actualizando estado del lead:', error);
-        throw new Error(`Error actualizando lead: ${error.message}`);
+        console.error('Error actualizando información del lead:', error);
+        throw new Error(`Error actualizando información del lead: ${error.message}`);
     }
 };
-
-
 
 // Exportamos el módulo 'leadNetsuite' para que pueda ser utilizado en otras partes del proyecto.
 module.exports = leadNetsuite;
