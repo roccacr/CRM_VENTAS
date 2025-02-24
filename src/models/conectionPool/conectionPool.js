@@ -50,7 +50,6 @@ const handleDatabaseOperation = async (operation, database) => {
 const executeStoredProcedure = async (procedureName, params, database) => {
     return handleDatabaseOperation(async (connection) => {
         const [rows] = await connection.execute(`CALL ${procedureName}(${params.map(() => "?").join(", ")})`, params);
-
         return {
             ok: true,
             statusCode: 200,
