@@ -12,6 +12,8 @@ import {
    getDataSelectSubsidiaria,
 } from "../../../../store/leads/thunksLeads";
 
+import { useNavigate } from "react-router-dom";
+
 /**
  * Initial form state for the lead creation form
  * @type {Object}
@@ -59,6 +61,9 @@ const requiredFields = ["firstname_new", "email_new", "phone_new", "comentario_c
  * @param {Function} handleSuccessfulCreation - Function to handle successful lead creation
  */
 export const View_crear_lead = () => {
+   //navigate para redireccionar
+   const navigate = useNavigate();
+
    //dispatch para ejecutar las funciones de los thunks
    const dispatch = useDispatch();
    //estado para guardar los datos del formulario
@@ -251,8 +256,6 @@ export const View_crear_lead = () => {
       } catch (error) {
          console.error("Error creating lead:", error);
          showErrorAlert("Error al crear el lead. Por favor, intente nuevamente.");
-      } finally {
-         Swal.close();
       }
    };
 
@@ -268,8 +271,10 @@ export const View_crear_lead = () => {
          title: "Se creó un nuevo lead con éxito",
          showConfirmButton: false,
          timer: 3500,
+         willClose: () => {
+            navigate(`/leads/perfil?data=${id}`);
+         }
       });
-      window.location.href = `/leads/perfil?data=${id}`;
    };
 
    /**
