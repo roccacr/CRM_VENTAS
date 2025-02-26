@@ -36,6 +36,30 @@ const getDefaultDateTime = () => {
     return { currentDate, nextDate, currentTime, nextTime };
 };
 
+// Función auxiliar para generar las opciones de tiempo
+const generateTimeOptions = () => {
+    const options = [];
+    // Empezamos desde 7 (7 AM) hasta 20 (8 PM)
+    for (let hour = 7; hour <= 20; hour++) {
+        for (let minute = 0; minute < 60; minute += 15) {
+            // Convertir a formato 12 horas
+            let displayHour = hour % 12;
+            displayHour = displayHour === 0 ? 12 : displayHour; // Convertir 0 a 12
+            const ampm = hour < 12 ? 'AM' : 'PM';
+            
+            const formattedHour = displayHour.toString();
+            const formattedMinute = minute.toString().padStart(2, '0');
+            const time24 = `${hour.toString().padStart(2, '0')}:${formattedMinute}`; // Formato 24h para el value
+            const timeDisplay = `${formattedHour}:${formattedMinute} ${ampm}`; // Formato 12h para mostrar
+            
+            options.push({
+                value: time24,      // Mantener formato 24h para cálculos internos
+                label: timeDisplay  // Mostrar en formato 12h
+            });
+        }
+    }
+    return options;
+};
 
 export const View_events_Actions = () => {
     // Inicializa el hook 'useNavigate' para realizar la navegación programática entre rutas.
@@ -236,6 +260,7 @@ export const View_events_Actions = () => {
     // Verifica que todos los campos obligatorios estén completos y, si es necesario, que un lead esté asignado.
     // Luego, muestra una confirmación para proceder con la acción.
     const handleGenerateEvent = () => {
+
         // Extrae los detalles del evento desde la variable eventDetails.
         const { type, startTime, startDate, name, endTime, endDate, description } = eventDetails;
 
@@ -488,36 +513,49 @@ export const View_events_Actions = () => {
 
                             <div className="mb-3">
                                 <label className="form-label">Hora de inicio</label>
-                                <input
-                                    type="time"
-                                    min="08:00"
-                                    max="17:00"
-                                    step="1800"
+                                <select
                                     className="form-control"
                                     name="startTime"
                                     value={eventDetails.startTime}
                                     onChange={(e) => {
                                         const newStartTime = e.target.value;
-                                        const [hours, minutes] = newStartTime.split(":");
-
+                                        const [hours, minutes] = newStartTime.split(':');
+                                        
                                         // Sumar 1 hora a la hora de inicio
                                         let newHours = parseInt(hours) + 1;
-                                        if (newHours >= 24) newHours = newHours % 24; // Para manejar la hora después de las 23:00
-
-                                        const newEndTime = `${newHours.toString().padStart(2, "0")}:${minutes}`;
-
+                                        if (newHours >= 24) newHours = newHours % 24;
+                                        
+                                        const newEndTime = `${newHours.toString().padStart(2, '0')}:${minutes}`;
+                                        
                                         setEventDetails((prevDetails) => ({
                                             ...prevDetails,
                                             startTime: newStartTime,
-                                            endTime: newEndTime, // Actualiza también la hora de finalización
+                                            endTime: newEndTime,
                                         }));
                                     }}
-                                />
+                                >
+                                    {generateTimeOptions().map((timeObj) => (
+                                        <option key={timeObj.value} value={timeObj.value}>
+                                            {timeObj.label}
+                                        </option>
+                                    ))}
+                                </select>
                             </div>
 
                             <div className="mb-3">
                                 <label className="form-label">Hora Final</label>
-                                <input type="time" className="form-control" name="endTime" value={eventDetails.endTime} onChange={(e) => setEventDetails({ ...eventDetails, endTime: e.target.value })} />
+                                <select
+                                    className="form-control"
+                                    name="endTime"
+                                    value={eventDetails.endTime}
+                                    onChange={(e) => setEventDetails({ ...eventDetails, endTime: e.target.value })}
+                                >
+                                    {generateTimeOptions().map((timeObj) => (
+                                        <option key={timeObj.value} value={timeObj.value}>
+                                            {timeObj.label}
+                                        </option>
+                                    ))}
+                                </select>
                             </div>
                         </div>
                         {Object.keys(leadDetailsCitas).length > 0 && (
