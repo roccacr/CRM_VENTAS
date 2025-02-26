@@ -1,0 +1,102 @@
+/* Ocultar el botón con clase 'dtsp-searchIcon' */
+.dtsp-searchIcon.btn.btn-subtle {
+    display: none !important;
+  }
+.dtsp-nameButton.btn.btn-subtle {
+    display: none !important;
+  }
+
+  .dtsp-countButton.btn.btn-subtle {
+    display: none !important;
+  }
+  /* .dtsp-countButton.btn.btn-subtle {
+    display: none !important;
+  } */
+
+/* Estilos para los botones de SearchPanes (Limpiar, Mostrar, Colapsar) */
+.dtsp-clearAll,
+.dtsp-showAll,
+.dtsp-collapseAll {
+    background-color: #ffffff !important;
+    border: 1px solid #e0e0e0 !important;
+    color: #444444 !important;
+    padding: 8px 16px !important;
+    border-radius: 6px !important;
+    font-weight: 500 !important;
+    font-size: 0.875rem !important;
+    transition: all 0.2s ease-in-out !important;
+    margin: 5px !important;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05) !important;
+    text-transform: none !important;
+    letter-spacing: 0.3px !important;
+}
+
+.dtsp-clearAll:hover,
+.dtsp-showAll:hover,
+.dtsp-collapseAll:hover {
+    background-color: #f8f9fa !important;
+    border-color: #d0d0d0 !important;
+    color: #2c2c2c !important;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.08) !important;
+}
+
+.dtsp-clearAll:active,
+.dtsp-showAll:active,
+.dtsp-collapseAll:active {
+    transform: translateY(1px) !important;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.1) !important;
+}
+
+/* Contenedor de los botones de filtro */
+.dtsp-buttonGroup {
+    display: flex !important;
+    gap: 8px !important;
+    flex-wrap: wrap !important;
+    align-items: center !important;
+    margin: 10px 0 !important;
+    padding: 8px !important;
+    background-color: #f8f9fa !important;
+    border-radius: 8px !important;
+}
+
+/* Estilo específico para cada tipo de botón */
+.dtsp-clearAll {
+    color: #dc3545 !important;
+    border-color: #ffcdd2 !important;
+}
+
+.dtsp-clearAll:hover {
+    background-color: #fff5f5 !important;
+    border-color: #ff8a8a !important;
+}
+
+.dtsp-showAll {
+    color: #0d6efd !important;
+    border-color: #b8daff !important;
+}
+
+.dtsp-showAll:hover {
+    background-color: #f0f7ff !important;
+    border-color: #74b4ff !important;
+}
+
+.dtsp-collapseAll {
+    color: #198754 !important;
+    border-color: #b7dfb9 !important;
+}
+
+.dtsp-collapseAll:hover {
+    background-color: #f0fff4 !important;
+    border-color: #75c177 !important;
+}
+
+/* Estilo para el contenedor de botones */
+.dt-buttons {
+    margin-bottom: 15px !important;
+    display: flex !important;
+    gap: 10px !important;
+    align-items: center !important;
+}
+
+
+
