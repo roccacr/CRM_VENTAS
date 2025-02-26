@@ -170,7 +170,7 @@ leadNetsuite.editarInformacionLead_Netsuite = async ({ formData,    database }) 
         custentity1: formData.custentity1,
         custentityestado_civil: formData.custentityestado_civil,
         altphone: formData.altphone,
-        custentity11: formData.rango_edad?.replace(/-/g, ''),
+        custentity11: formData.rango_edad?.replace(/[+-]/g, ''),
         custentityhijos_cliente: formData.cantidad_hijos,
         custentity_ix_customer_profession: formData.custentity_ix_customer_profession,
         // Campos de corredor
