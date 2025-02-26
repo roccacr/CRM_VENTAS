@@ -12,6 +12,7 @@ import {
 } from "../../../../store/leads/thunksLeads";
 import { ButtonActions } from "../../../components/buttonAccions/buttonAccions";
 import Swal from "sweetalert2";
+import { useNavigate } from "react-router-dom";
 
 const animatedComponents = makeAnimated();
 
@@ -75,10 +76,27 @@ const INITIAL_FORM_STATE = {
    custentity79: "",
    infromacion_extra_dos: 1,
    corredor_extra: 1,
-   informacion_Extra : 1,
+   informacion_Extra: 1,
    id: 0,
-   employee: 0
+   employee: 0,
 };
+
+// Agregar esta constante con los campos adicionales
+const additionalRequiredFields = [
+   "rango_edad",
+   "ingresos",
+   "motivo_compra",
+   "cantidad_hijos",
+   "momento_compra",
+   "origen_fondos",
+   "vatregnumber",
+   "custentity1",
+   "custentity_ix_customer_profession",
+   "custentityestado_civil",
+   "lugar_trabajo",
+   "zona_residencia",
+   "defaultaddress"
+];
 
 /**
  * Componente principal para la edición de leads
@@ -90,6 +108,7 @@ const INITIAL_FORM_STATE = {
  * @param {Object} props.leadData - Datos del lead
  */
 export const View_edit_lead = () => {
+   const navigate = useNavigate();
    const dispatch = useDispatch();
 
    /**
@@ -228,14 +247,37 @@ export const View_edit_lead = () => {
          const leadId = getQueryParam("id");
          // Obtener los detalles del lead desde el servidor
          const leadInfo = await dispatch(getDataInformationsLead(leadId));
-         console.log("leadInfo", leadInfo);
 
-         setFormData((prev) => ({ 
-         ...prev, 
+
+         setFormData((prev) => ({
+            ...prev,
             id: leadInfo.idinterno_lead,
-            employee: leadInfo.id_empleado_lead 
-         })); 
-         
+            employee: leadInfo.id_empleado_lead,
+            rango_edad: leadInfo.Edad_lead,
+            ingresos: leadInfo.info_extra_ingresos,
+            motivo_compra: leadInfo.info_extra_MotivoCompra,
+            cantidad_hijos: leadInfo.Hijos_lead,
+            momento_compra: leadInfo.info_extra_MomentodeCompra,
+            lugar_trabajo: leadInfo.info_extra_Trabajo,
+            origen_fondos: leadInfo.info_extra_OrigenFondo,
+            zona_residencia: leadInfo.info_extra_ZonaRecidencia,
+            vatregnumber: leadInfo.cedula_lead,
+            custentity1: leadInfo.Nacionalidad_lead,
+            custentityestado_civil: leadInfo.Estado_ciLead,
+            custentity11: leadInfo.Edad_lead.replace(/[+-]/g, ''),
+            custentity_ix_customer_profession: leadInfo.Profesion_lead,
+            defaultaddress: leadInfo.Direccion,
+            custentity77: leadInfo.nombre_extra_lead,
+            custentity81: leadInfo.nacionalidad_extra_lead,
+            custentityestado_civil_extra: leadInfo.estado_civil_extra_lead,
+            custentity82: leadInfo.telefono_extra_lead,
+            custentity78: leadInfo.cedula_extra_lead,
+            custentity84: leadInfo.email_extra_lead,
+            custentity79: leadInfo.profesion_extra_lead,
+
+
+         }));
+
          // Actualizar los detalles del lead
          setLeadDetails(leadInfo);
          // Actualizar los datos básicos del formulario
@@ -270,8 +312,39 @@ export const View_edit_lead = () => {
    const handleInputChange = (e) => {
       const { name, value } = e.target;
       setFormData((prev) => ({ ...prev, [name]: value }));
+      
       // Reset border color when user starts typing
       e.target.style.border = "1px solid #ced4da";
+      
+      // Validación para campos del segundo cliente
+      const secondClientFields = [
+         "custentity77", "custentity81", "custentityestado_civil_extra",
+         "custentity82", "custentity78", "custentity84", "custentity79"
+      ];
+      
+      // Validación para campos adicionales
+      if (additionalRequiredFields.includes(name) && value.trim() !== "") {
+         additionalRequiredFields.forEach(field => {
+            if (field !== name && (!formData[field] || formData[field].trim() === "")) {
+               const element = document.getElementById(field);
+               if (element) {
+                  element.style.border = "1px solid red";
+               }
+            }
+         });
+      }
+      
+      // Validación existente para campos del segundo cliente
+      if (secondClientFields.includes(name) && value.trim() !== "") {
+         secondClientFields.forEach(field => {
+            if (field !== name && (!formData[field] || formData[field].trim() === "")) {
+               const element = document.getElementById(field);
+               if (element) {
+                  element.style.border = "1px solid red";
+               }
+            }
+         });
+      }
    };
 
    /**
@@ -295,12 +368,82 @@ export const View_edit_lead = () => {
       return formData.firstnames !== "" && formData.emails !== "" && formData.phones !== "" && formData.comentario_clientes !== "";
    };
 
+   // Nueva función para validar campos adicionales
+   const validateAdditionalFields = () => {
+      // Verifica si algún campo tiene valor
+      const hasAnyAdditionalInfo = additionalRequiredFields.some(field => 
+         formData[field] && formData[field].toString().trim() !== ""
+      );
+
+      // Si hay información en algún campo, verifica todos
+      if (hasAnyAdditionalInfo) {
+         const emptyFields = additionalRequiredFields.filter(field => 
+            !formData[field] || formData[field].toString().trim() === ""
+         );
+
+         // Marca los campos vacíos en rojo
+         emptyFields.forEach(field => {
+            const element = document.getElementById(field);
+            if (element) {
+               element.style.border = "1px solid red";
+            }
+         });
+
+         if (emptyFields.length > 0) {
+            Swal.fire({
+               title: "Atención",
+               text: "Si completa información adicional, todos los campos de esta sección son obligatorios",
+               icon: "error"
+            });
+            return false;
+         }
+      }
+      return true;
+   };
+
    /**
     * Maneja el envío del formulario
     * @returns {void} - No devuelve ningún valor
     * @description Maneja el envío del formulario
     */
    const handleSubmit = async () => {
+      // Validación de campos adicionales
+      if (!validateAdditionalFields()) {
+         return;
+      }
+
+      // Validación existente para campos del segundo cliente
+      const secondClientFields = [
+         "custentity77", "custentity81", "custentityestado_civil_extra",
+         "custentity82", "custentity78", "custentity84", "custentity79"
+      ];
+
+      const hasAnySecondClientInfo = secondClientFields.some(field => 
+         formData[field] && formData[field].toString().trim() !== ""
+      );
+
+      if (hasAnySecondClientInfo) {
+         const emptySecondClientFields = secondClientFields.filter(field => 
+            !formData[field] || formData[field].toString().trim() === ""
+         );
+
+         emptySecondClientFields.forEach(field => {
+            const element = document.getElementById(field);
+            if (element) {
+               element.style.border = "1px solid red";
+            }
+         });
+
+         if (emptySecondClientFields.length > 0) {
+            Swal.fire({
+               title: "Atención",
+               text: "Si ingresa información del segundo cliente, todos los campos son obligatorios",
+               icon: "error"
+            });
+            return;
+         }
+      }
+
       // Define required fields including Select components
       const requiredFields = [
          "firstnames",
@@ -327,8 +470,6 @@ export const View_edit_lead = () => {
          return isEmpty;
       });
 
-      console.log("hasEmptyFields", formData);
-
       if (hasEmptyFields) {
          Swal.fire({
             title: "Error",
@@ -344,8 +485,52 @@ export const View_edit_lead = () => {
          });
 
          if (result.isConfirmed) {
+            //mostrar un mensaje de espera pero sin el preload de espera pero que no se pueda cerrar
+            Swal.fire({
+               title: "Editando lead",
+               text: "Por favor, espere un momento...",
+               icon: "info",
+               showConfirmButton: false,
+               allowOutsideClick: false,
+            });
+            console.clear();
+
             const response = await dispatch(editarInformacionLead(formData));
-            console.log("result", response);
+
+            console.log("response", response);
+            var ExTraerResultado = response.data["Detalle"];
+            if (ExTraerResultado.status == 200) {
+               Swal.fire({
+                  title: "Lead editado",
+                  text: "Lead editado correctamente",
+                  icon: "success",
+                  showConfirmButton: false,
+                  allowOutsideClick: false,
+                  timer: 3000,
+               }).then(() => {
+                  navigate(`/leads/perfil?data=${leadDetails?.idinterno_lead}`);
+               });
+            }
+
+            if (ExTraerResultado.status == 500) {
+               console.log("ExTraerResultado", response.data["Detalle"]);
+               let error;
+               try {
+                  error = response.data["Detalle"]["Data"]["message"];
+               } catch (e) {
+                  error = "Error desconocido";
+               }
+               return Swal.fire({
+                  title: "Detalle de error : " + error + ",  \nLo sentimos, favor revisar este error con su administrador.",
+                  icon: "error", // Changed to error icon for better UX
+                  width: "40em",
+                  padding: "0 0 1.25em",
+                  confirmButtonText: "OK",
+                  cancelButtonText: "CORREGIR",
+                  showCancelButton: true,
+                  showCloseButton: true,
+               });
+            }
          }
       }
    };
