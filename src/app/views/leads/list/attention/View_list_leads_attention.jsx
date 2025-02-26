@@ -12,6 +12,116 @@ import { TABLE_COLUMNS } from "./tableColumns";
 import { ModalLeads } from "../../../../pages/modal/modalLeads";
 
 /**
+ * Componente para el encabezado de la vista de leads
+ * @returns {JSX.Element} Encabezado con mensaje informativo
+ */
+const Header = () => (
+   <div className="card-header table-card-header">
+      <div role="alert" className="fade alert alert-success show">
+         Usted está en la vista de leads que requieren atención
+      </div>
+   </div>
+);
+
+/**
+ * Componente para los controles de fecha
+ * @param {Object} props - Propiedades del componente
+ * @param {string} props.inputStartDate - Fecha inicial
+ * @param {string} props.inputEndDate - Fecha final
+ * @param {Function} props.setInputStartDate - Función para actualizar fecha inicial
+ * @param {Function} props.setInputEndDate - Función para actualizar fecha final
+ * @returns {JSX.Element} Controles de fecha
+ */
+const DateControls = ({ inputStartDate, inputEndDate, setInputStartDate, setInputEndDate }) => (
+   <div className="row g-4">
+      <div className="col-md-6">
+         <div className="form-floating mb-0">
+            <input type="date" className="form-control" value={inputStartDate} onChange={(e) => setInputStartDate(e.target.value)} />
+            <label htmlFor="startDate">Fecha de inicio de filtro</label>
+         </div>
+      </div>
+      <div className="col-md-6">
+         <div className="form-floating mb-0">
+            <input type="date" className="form-control" value={inputEndDate} onChange={(e) => setInputEndDate(e.target.value)} />
+            <label htmlFor="endDate">Fecha de final de filtro</label>
+         </div>
+      </div>
+   </div>
+);
+
+/**
+ * Componente para los controles de filtrado
+ * @param {Object} props - Propiedades del componente
+ * @param {number} props.filterOption - Opción de filtrado actual
+ * @param {Function} props.handleCheckboxChange - Manejador de cambio de filtro
+ * @returns {JSX.Element} Controles de filtrado
+ */
+const FilterControls = ({ filterOption, handleCheckboxChange }) => (
+   <div className="row g-4 mt-3">
+      <div className="col-md-6">
+         <FilterOption
+            id="creationDate"
+            label="Filtrar por Fecha de Creación"
+            checked={filterOption === 1}
+            onChange={() => handleCheckboxChange(1)}
+         />
+         <FilterOption
+            id="lastActionDate"
+            label="Filtrar por Última Acción"
+            checked={filterOption === 2}
+            onChange={() => handleCheckboxChange(2)}
+         />
+      </div>
+   </div>
+);
+
+/**
+ * Componente para una opción individual de filtro
+ * @param {Object} props - Propiedades del componente
+ * @returns {JSX.Element} Opción de filtro
+ */
+const FilterOption = ({ id, label, checked, onChange }) => (
+   <div className="form-check">
+      <input className="form-check-input" type="checkbox" id={id} checked={checked} onChange={onChange} />
+      <label className="form-check-label" htmlFor={id}>
+         {label}
+      </label>
+   </div>
+);
+
+/**
+ * Componente que renderiza la tabla de leads con estilos
+ * @param {Object} props - Propiedades del componente
+ * @returns {JSX.Element} Tabla con estilos
+ */
+const LeadsTable = ({ tableRef }) => (
+   <div className="table-responsive">
+      <TableStyles />
+      <table ref={tableRef} className="table table-striped table-bordered">
+         <thead></thead>
+      </table>
+   </div>
+);
+
+/**
+ * Componente para los estilos de la tabla
+ * @returns {JSX.Element} Estilos CSS
+ */
+const TableStyles = () => (
+   <style>
+      {`
+         .selected-row {
+            background-color:rgb(20, 20, 20) !important;
+            color: white !important;
+         }
+         .selected-row td {
+            color: white !important;
+         }
+      `}
+   </style>
+);
+
+/**
  * Obtiene la configuración completa para inicializar DataTables.
  * @param {HTMLElement} tableElement - Referencia al elemento DOM de la tabla
  * @param {string} inputStartDate - Fecha de inicio para filtrar los datos (formato YYYY-MM-DD)
@@ -54,7 +164,7 @@ const getDataTableConfig = (tableElement, inputStartDate, inputEndDate, filterOp
             searching: true,
          },
          viewTotal: true,
-         columns: [0, 1, 3, 4, 5, 6, 11],
+         columns: [0, 1, 3, 4, 5, 6, 11,12],
       },
       processing: true,
       dom: "lPBfrtip",
@@ -85,36 +195,11 @@ const getDataTableConfig = (tableElement, inputStartDate, inputEndDate, filterOp
          return JSON.parse(localStorage.getItem("DataTables_state")) || null;
       },
       select: {
-         style: 'single',    // 'single' para selección única, 'multi' para múltiple
-         className: 'selected-row'  // clase CSS que se aplicará a la fila seleccionada
+         style: "single", // 'single' para selección única, 'multi' para múltiple
+         className: "selected-row", // clase CSS que se aplicará a la fila seleccionada
       },
    };
 };
-
-/**
- * Componente que renderiza la tabla de leads.
- * @param {Object} props - Propiedades del componente
- * @param {React.RefObject<HTMLTableElement>} props.tableRef - Referencia al elemento de tabla
- * @returns {JSX.Element} Tabla HTML con estructura básica
- */
-const LeadsTable = ({ tableRef }) => (
-   <div className="table-responsive">
-      <style>
-         {`
-            .selected-row {
-               background-color:rgb(20, 20, 20) !important;
-               color: white !important;
-            }
-            .selected-row td {
-               color: white !important;
-            }
-         `}
-      </style>
-      <table ref={tableRef} className="table table-striped table-bordered">
-         <thead></thead>
-      </table>
-   </div>
-);
 
 /**
  * Hook personalizado para inicializar y gestionar DataTables.
@@ -180,31 +265,31 @@ const useDataTable = (
  * @returns {JSX.Element} Contenedor principal con la tabla y modal
  */
 const View_list_leads_attention = () => {
-   /** @type {React.RefObject<HTMLTableElement>} Referencia a la tabla */
+   /** Referencia a la tabla */
    const tableRef = useRef(null);
 
-   /** @type {React.MutableRefObject<DataTable|null>} Referencia a la instancia de DataTables */
+   /** Referencia a la instancia de DataTables */
    const tableInstanceRef = useRef(null);
 
-   /** @type {Object} Fechas por defecto para el filtrado */
+   /** Fechas por defecto para el filtrado */
    const { firstDay, lastDay } = getDefaultDates();
 
-   /** @type {[string, Function]} Estado para la fecha de inicio */
+   /** Estado para la fecha de inicio */
    const [inputStartDate, setInputStartDate] = useState(firstDay);
 
-   /** @type {[string, Function]} Estado para la fecha final */
+   /**  Estado para la fecha final */
    const [inputEndDate, setInputEndDate] = useState(lastDay);
 
-   /** @type {[number, Function]} Estado para la opción de filtrado */
+   /**  Estado para la opción de filtrado */
    const [filterOption, setFilterOption] = useState(1);
 
-   /** @type {[boolean, Function]} Estado para controlar la visibilidad del modal */
+   /** Estado para controlar la visibilidad del modal */
    const [showModal, setShowModal] = useState(false);
 
-   /** @type {[Object|null, Function]} Estado para almacenar el lead seleccionado */
+   /**  Estado para almacenar el lead seleccionado */
    const [selectedLead, setSelectedLead] = useState(null);
 
-   /** @type {Object} Datos del administrador desde Redux */
+   /** Datos del administrador desde Redux */
    const { idnetsuite_admin, rol_admin } = useSelector((state) => state.auth);
 
    /**
@@ -213,6 +298,15 @@ const View_list_leads_attention = () => {
    const handleCloseModal = () => {
       setShowModal(false);
       setSelectedLead(null);
+   };
+
+   /**
+    * Maneja el cambio entre las opciones de filtrado
+    * @param {number} option - Opción seleccionada (1 o 2)
+    */
+   const handleCheckboxChange = (option) => {
+      setFilterOption(option);
+      // La tabla se actualizará automáticamente debido a la dependencia en useDataTable
    };
 
    useDataTable(
@@ -229,12 +323,19 @@ const View_list_leads_attention = () => {
 
    return (
       <div className="card" style={{ width: "100%" }}>
-         <div className="card-header table-card-header">
-            <div role="alert" className="fade alert alert-success show">
-               usted esta en la vista de leads que requieren atención
-            </div>
-         </div>
+         <Header />
          <div className="table-border-style card-body">
+            {/* Nuevo bloque de controles de filtro */}
+            <div className="card-body border-top">
+               <DateControls
+                  inputStartDate={inputStartDate}
+                  inputEndDate={inputEndDate}
+                  setInputStartDate={setInputStartDate}
+                  setInputEndDate={setInputEndDate}
+               />
+               <FilterControls filterOption={filterOption} handleCheckboxChange={handleCheckboxChange} />
+            </div>
+            {/* Fin del bloque de controles de filtro */}
             <div className="table-responsive">
                <LeadsTable tableRef={tableRef} />
                {showModal && selectedLead && <ModalLeads leadData={selectedLead} onClose={handleCloseModal} />}

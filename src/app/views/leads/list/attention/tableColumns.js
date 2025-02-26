@@ -112,7 +112,6 @@ export const TABLE_COLUMNS = [
         data: "actualizadaaccion_lead",
         className: "text-left",
         render: formatDateTime,
-        visible: false,
         searchPanes: { show: true }
     },
     {
