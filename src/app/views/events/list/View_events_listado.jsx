@@ -112,10 +112,6 @@ const View_events_listado  = () => {
          // Filtrar por fecha actual, comparando solo la parte YYYY-MM-DD
          filtered = filtered.filter(item => {
             const itemDate = item.fechaIni_calendar.split('T')[0];
-            console.log("====");
-            console.log("item", item.nombre_calendar);
-            console.log("itemDate", itemDate);
-            console.log("today", formattedToday);
             return itemDate === formattedToday;
          });
       }
@@ -175,7 +171,7 @@ const View_events_listado  = () => {
 
    // Table options with row click handling
    const tableOptions = {
-      ...useTableOptions([0,1,2,5,6,7,8]),
+      ...useTableOptions([0,1,2,5,6,7,8,9]),
       rowCallback: function (row, data) {
          row.addEventListener("click", () => handleOpenModal(data));
          return false;
