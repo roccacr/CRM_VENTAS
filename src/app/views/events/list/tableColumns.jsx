@@ -8,7 +8,6 @@ export const tableColumns = [
         data: "nombre_lead",
         className: "text-left",
         render: function (data) {
-            console.log("data",data);
             return data === "0" || data === null  || data === 0 ? "No aplica" : data;
         },
     }, // LEAD
@@ -33,11 +32,11 @@ export const tableColumns = [
         },
     }, // CITA
     { title: "PROYECTO", data: "proyecto_lead", className: "text-left", render: function (data) {
-        console.log("data",data);
+
         return data === "0" || data === null  || data === 0 ? "No aplica" : data;
     }, }, // PROYECTO
     { title: "CAMPAÑA", data: "campana_lead", className: "text-left", render: function (data) {
-        console.log("data",data);
+
         return data === "0" || data === null  || data === 0 ? "No aplica" : data;
     }, }, // CAMPAÑA.
 ];

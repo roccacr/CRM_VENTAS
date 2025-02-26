@@ -1,6 +1,6 @@
 import { React, useRef, useEffect, DataTable, useTableOptions, DT } from "../../leads/list/Imports/imports";
 import { useTableData } from "./useTableData";
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 
 import "../../leads/list/Imports/style.css";
 import { useState } from "react";
@@ -81,8 +81,49 @@ const View_events_listado  = () => {
    const [inputEndDate, setInputEndDate] = useState(lastDay);
    const [filterOption, setFilterOption] = useState(1); // 0: none, 1: creation date, 2: last action
 
+   // Añadir useSearchParams para leer parámetros de URL
+   const [searchParams] = useSearchParams();
+
    // Use table data hook at the top level
    const [tableData] = useTableData(true, inputStartDate, inputEndDate);
+   
+   // Filtrar los datos según el parámetro URL y la fecha actual
+   const filteredTableData = React.useMemo(() => {
+      if (!tableData) return [];
+      
+      const dataParam = searchParams.get('data');
+      
+      // Obtener fecha actual en zona horaria de Costa Rica
+      const today = new Date().toLocaleString('en-US', { 
+         timeZone: 'America/Costa_Rica',
+         year: 'numeric',
+         month: '2-digit',
+         day: '2-digit'
+      }).split('/');
+      
+      // Formatear a YYYY-MM-DD (corregido el orden)
+      const formattedToday = `${today[2]}-${today[0].padStart(2, '0')}-${today[1].padStart(2, '0')}`;
+
+      let filtered = tableData;
+      
+      if (dataParam === '1') {
+         filtered = filtered.filter(item => item.cita_lead === 1);
+         
+         // Filtrar por fecha actual, comparando solo la parte YYYY-MM-DD
+         filtered = filtered.filter(item => {
+            const itemDate = item.fechaIni_calendar.split('T')[0];
+            console.log("====");
+            console.log("item", item.nombre_calendar);
+            console.log("itemDate", itemDate);
+            console.log("today", formattedToday);
+            return itemDate === formattedToday;
+         });
+      }
+      
+      return filtered;
+   }, [tableData, searchParams]);
+
+   console.log("tableData", tableData);
    const tableRef = useRef(null);
 
    // State to manage modal visibility and selected lead data
@@ -149,7 +190,7 @@ const View_events_listado  = () => {
       if (tableRef.current && typeof tableRef.current.DataTable === "function") {
          const table = tableRef.current.DataTable();
          table.clear();
-         table.rows.add(tableData);
+         table.rows.add(filteredTableData);
          table.columns.adjust().draw();
 
          // Remove previous event listeners to prevent multiple triggers
@@ -170,7 +211,7 @@ const View_events_listado  = () => {
             table.off('click', 'tr');
          }
       };
-   }, [tableData]);
+   }, [filteredTableData]);
 
    return (
       <div className="card" style={{ width: "100%" }}>
@@ -186,7 +227,11 @@ const View_events_listado  = () => {
             handleCheckboxChange={setFilterOption}
          />
          <div className="card-body" style={{ width: "100%", padding: "0" }}>
-            <DataTableComponent tableData={tableData} tableRef={tableRef} tableOptions={tableOptions} />
+            <DataTableComponent 
+               tableData={filteredTableData}
+               tableRef={tableRef} 
+               tableOptions={tableOptions} 
+            />
          </div>
          {selectedLead && (
             <ModalLeads leadData={selectedLead} onClose={handleCloseModal} />
