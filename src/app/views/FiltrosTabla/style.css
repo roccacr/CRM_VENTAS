@@ -98,5 +98,64 @@
     align-items: center !important;
 }
 
+/* Estilo para el botón de Excel */
+.buttons-excel {
+    padding: 6px 12px !important;
+    font-size: 0.875rem !important;
+    width: auto !important;
+    min-width: 100px !important;
+    max-width: fit-content !important;
+    display: inline-block !important;
+}
+
+/* Estilos para la paginación y texto informativo */
+.dataTables_info,
+.dataTables_paginate {
+    margin-top: 15px !important;
+    margin-bottom: 10px !important;
+}
+
+.dataTables_paginate {
+    display: flex !important;
+    align-items: center !important;
+    gap: 5px !important;
+}
+
+.paginate_button {
+    padding: 5px 10px !important;
+    border-radius: 4px !important;
+    cursor: pointer !important;
+}
+
+.paginate_button.current {
+    background-color: #0d6efd !important;
+    color: white !important;
+}
+
+.dataTables_info {
+    color: #6c757d !important;
+    font-size: 0.875rem !important;
+}
+
+/* Ajustes adicionales para dt-info y dt-paging */
+.dt-info,
+.dt-paging {
+    margin-top: 20px !important;
+    padding-bottom: 10px !important;
+}
+
+.dt-paging {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    gap: 5px !important;
+}
+
+.dt-info {
+    color: #6c757d !important;
+    font-size: 0.875rem !important;
+    padding-left: 10px !important;
+}
+
 
 

@@ -3,7 +3,7 @@ import { NavLink } from "react-router-dom";
 export const TableroHome = ({ image, icons, nombre, cantidad, url }) => {
     return (
         <div className="col-md-12 col-xxl-4">
-            <NavLink to={url}>
+            <a href={url}>
                 <div className="card statistics-card-1">
                     <div className="card-body">
                         <img src={image} alt="img" className="img-fluid img-bg" />
@@ -21,7 +21,7 @@ export const TableroHome = ({ image, icons, nombre, cantidad, url }) => {
                         </div>
                     </div>
                 </div>
-            </NavLink>
+            </a>
         </div>
     );
 };

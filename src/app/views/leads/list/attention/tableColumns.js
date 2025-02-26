@@ -1,6 +1,6 @@
 
 import { formatDate } from "../../../../../hook/useFormatDate";
-export const COLUMN_DEFINITIONS = [
+export const TABLE_COLUMNS = [
     { title: "ASESOR", data: "name_admin", className: "text-center" }, // 0
     { title: "Nombre Cliente", data: "nombre_lead", className: "text-left" }, // 1
     { title: "# NETSUITE", data: "idinterno_lead", className: "text-left" , visible: false }, // 2

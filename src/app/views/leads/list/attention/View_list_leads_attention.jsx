@@ -1,172 +1,185 @@
-import { React, useRef, useEffect, DataTable, useTableOptions, DT } from "../Imports/imports";
-import { useTableData } from "./useTableData";
-import { tableColumns } from "./tableColumns";
-import "../Imports/style.css";
-import { ModalLeads } from "../../../../pages/modal/modalLeads";
-import { useState } from "react";
+import React, { useEffect, useRef } from "react";
+import $ from "jquery";
+import "datatables.net";
+import "datatables.net-bs5";
+import "datatables.net-searchpanes-bs5";
+import "datatables.net-select-bs5";
+import "../../../FiltrosTabla/style.css";
+import { TABLE_COLUMNS } from "./tableColumns";
 
-// Initialize DataTables with DT plugin
-DataTable.use(DT);
 
 /**
- * Helper function to get default date range (first and last day of the current month).
- * @returns {Object} An object containing firstDay and lastDay in YYYY-MM-DD format.
+ * Datos de ejemplo para la tabla de leads.
+ * Cada objeto representa un lead con sus propiedades básicas.
+ * @typedef {Object} Lead
+ * @property {string} nombre - Nombre completo del lead
+ * @property {string} email - Dirección de correo electrónico
+ * @property {string} telefono - Número de teléfono
+ * @property {string} estado - Estado actual del lead (Pendiente, Contactado, Rechazado)
+ *
+ * @type {Array<Lead>}
  */
-const getDefaultDates = () => {
-   const now = new Date();
-   const firstDay = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split("T")[0];
-   const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split("T")[0];
-   return { firstDay, lastDay };
+const MOCK_DATA = [
+   {
+      name_admin: "Admin Test",
+      nombre_lead: "Juan Pérez",
+      idinterno_lead: "NS123456",
+      email_lead: "juan@ejemplo.com",
+      telefono_lead: "123-456-7890",
+      proyecto_lead: "Proyecto A",
+      campana_lead: "Campaña 2024",
+      segimineto_lead: "Estado-Seguimiento-Pendiente",
+      creado_lead: "2024-03-20T10:30:00",
+      subsidiaria_lead: "Subsidiaria 1",
+      actualizadaaccion_lead: "2024-03-21T15:45:00",
+      estado_lead: 1,
+      nombre_caida: "Seguimiento 1"
+   },
+   {
+      name_admin: "ASASAS Test",
+      nombre_lead: "Juan Pérez",
+      idinterno_lead: "NS123456",
+      email_lead: "juan@ejemplo.com",
+      telefono_lead: "123-456-7890",
+      proyecto_lead: "Proyecto A",
+      campana_lead: "Campaña 2024",
+      segimineto_lead: "Estado-Seguimiento-Pendiente",
+      creado_lead: "2024-03-20T10:30:00",
+      subsidiaria_lead: "Subsidiaria 1",
+      actualizadaaccion_lead: "2024-03-21T15:45:00",
+      estado_lead: 1,
+      nombre_caida: "Seguimiento 1"
+   }
+];
+
+
+
+/**
+ * Obtiene la configuración completa para inicializar DataTables.
+ * @param {HTMLElement} tableElement - Referencia al elemento DOM de la tabla
+ * @returns {Object} Configuración completa de DataTables con las siguientes propiedades:
+ * @property {boolean} stateSave - Habilita el guardado del estado de la tabla
+ * @property {string} dom - Configuración del layout de los controles
+ * @property {Object} searchPanes - Configuración de los paneles de búsqueda
+ * @property {Array<Lead>} data - Datos a mostrar en la tabla
+ * @property {Array<ColumnConfig>} columns - Configuración de columnas
+ * @property {Array<Object>} columnDefs - Definiciones adicionales de columnas
+ * @property {Object} language - Configuración de idioma
+ */
+const getDataTableConfig = (tableElement) => ({
+   stateSave: true,
+   dom: "lPBfrtip",
+   searchPanes: {
+      layout: "columns-2",
+      initCollapsed: false,
+      viewTotal: true,
+   },
+   data: MOCK_DATA,
+   columns: TABLE_COLUMNS,
+   columnDefs: [
+      {
+         searchPanes: {
+            show: true,
+         },
+         targets: [0, 1, 2, 3],
+      },
+   ],
+   order: [[1, "asc"]],
+   paging: true,
+   pageLength: 10,
+   lengthMenu: [
+      [10, 25, 50, 200, -1],
+      [10, 25, 50, 200, "All"],
+   ],
+   responsive: true,
+   buttons: ["excel"],
+   language: {
+      url: "//cdn.datatables.net/plug-ins/1.13.7/i18n/es-ES.json",
+   },
+});
+
+/**
+ * Componente que representa la tabla de leads.
+ * @param {Object} props - Propiedades del componente
+ * @param {React.RefObject<HTMLTableElement>} props.tableRef - Referencia al elemento de tabla
+ * @returns {JSX.Element} Tabla HTML con estructura básica
+ */
+const LeadsTable = ({ tableRef }) => (
+   <div className="table-responsive">
+      <div style={{ margin: "0", padding: "0.5rem" }}>
+         <table ref={tableRef} className="table table-striped">
+            <thead>
+               <tr>
+                  <th>ASESOR</th>
+                  <th>Nombre Cliente</th>
+                  <th># NETSUITE</th>
+                  <th>Correo Cliente</th>
+                  <th>Teléfono</th>
+                  <th>Proyecto</th>
+                  <th>Campaña</th>
+                  <th>Estado</th>
+                  <th>Creado</th>
+                  <th>Subsidiarias</th>
+                  <th>Última Acción</th>
+                  <th>Estado Lead</th>
+                  <th>Seguimiento</th>
+               </tr>
+            </thead>
+         </table>
+      </div>
+   </div>
+);
+
+/**
+ * Hook personalizado para manejar el ciclo de vida de DataTables.
+ * @param {React.RefObject<HTMLTableElement>} tableRef - Referencia al elemento de tabla
+ * @param {React.MutableRefObject<DataTable|null>} tableInstanceRef - Referencia para almacenar la instancia de DataTables
+ * @returns {void}
+ */
+const useDataTable = (tableRef, tableInstanceRef) => {
+   useEffect(() => {
+      /**
+       * Inicializa DataTables con la configuración proporcionada.
+       * @returns {DataTable} Instancia de DataTables creada
+       */
+      const initializeDataTable = () => {
+         const table = $(tableRef.current).DataTable(getDataTableConfig(tableRef.current));
+         tableInstanceRef.current = table;
+         return table;
+      };
+
+      const tableInstance = initializeDataTable();
+
+      return () => {
+         /**
+          * Limpia y destruye la instancia de DataTables al desmontar el componente.
+          */
+         if (tableInstance) {
+            tableInstance.destroy();
+         }
+      };
+   }, [tableRef, tableInstanceRef]);
 };
 
 /**
- * FilterOptions Component
- * Handles the rendering of date filters and filter options.
- * @param {Object} props - Props for managing date and filter option states.
- */
-const FilterOptions = ({ inputStartDate, setInputStartDate, inputEndDate, setInputEndDate, filterOption, handleCheckboxChange }) => (
-   <div className="card-body border-top">
-      <div className="row g-4">
-         <div className="col-md-6">
-            <div className="form-floating mb-0">
-               <input type="date" className="form-control" value={inputStartDate} onChange={(e) => setInputStartDate(e.target.value)} />
-               <label htmlFor="startDate">Fecha de inicio de filtro</label>
-            </div>
-         </div>
-         <div className="col-md-6">
-            <div className="form-floating mb-0">
-               <input type="date" className="form-control" value={inputEndDate} onChange={(e) => setInputEndDate(e.target.value)} />
-               <label htmlFor="endDate">Fecha de final de filtro</label>
-            </div>
-         </div>
-      </div>
-      <div className="row g-4 mt-3">
-         <div className="col-md-6">
-            <div className="form-check">
-               <input
-                  className="form-check-input"
-                  type="checkbox"
-                  id="creationDate"
-                  checked={filterOption === 1}
-                  onChange={() => handleCheckboxChange(1)}
-               />
-               <label className="form-check-label" htmlFor="creationDate">
-                  Filtrar por Fecha de Creación
-               </label>
-            </div>
-            <div className="form-check">
-               <input
-                  className="form-check-input"
-                  type="checkbox"
-                  id="lastActionDate"
-                  checked={filterOption === 2}
-                  onChange={() => handleCheckboxChange(2)}
-               />
-               <label className="form-check-label" htmlFor="lastActionDate">
-                  Filtrar por Última Acción
-               </label>
-            </div>
-         </div>
-      </div>
-   </div>
-);
-
-/**
- * DataTableComponent
- * Renders the DataTable with leads data and manages row click events.
- * @param {Object} props - Props containing tableData, tableRef, and tableOptions.
- */
-const DataTableComponent = ({ tableData, tableRef, tableOptions }) => (
-   <div className="table-responsive">
-      <div style={{ margin: "0", padding: "0.5rem" }}>
-         <DataTable
-            data={tableData}
-            ref={tableRef}
-            className="table table-striped table dt-responsive w-100 display text-left"
-            options={tableOptions}
-            columns={tableColumns}
-         />
-      </div>
-   </div>
-);
-
-/**
- * View_list_leads_attention Component
- * Main component to render the complete leads list with filtering and modal functionality.
- * @component
- * @returns {JSX.Element} A complete leads management component.
+ * Componente principal que muestra la lista de leads que requieren atención.
+ * Maneja la inicialización de la tabla y provee funcionalidad para limpiar su estado.
+ * @returns {JSX.Element} Contenedor principal con la tabla y controles
  */
 const View_list_leads_attention = () => {
-   // Default dates for filtering (start and end of the current month)
-   const { firstDay, lastDay } = getDefaultDates();
-
-   // State management
-   const [inputStartDate, setInputStartDate] = useState(firstDay);
-   const [inputEndDate, setInputEndDate] = useState(lastDay);
-   const [filterOption, setFilterOption] = useState(1); // 0: none, 1: creation date, 2: last action
-
-   // Use table data hook at the top level
-   const [tableData] = useTableData(true, inputStartDate, inputEndDate, filterOption);
    const tableRef = useRef(null);
-   const [showModal, setShowModal] = useState(false);
-   const [selectedLead, setSelectedLead] = useState(null);
+   const tableInstanceRef = useRef(null);
 
-   // Table options with row click handling
-   const tableOptions = {
-      ...useTableOptions([0, 1, 3, 4, 5, 6, 11]),
-      rowCallback: function (row, data) {
-         row.addEventListener("click", () => handleOpenModal(data));
-      },
-   };
-
-   /**
-    * Handles opening the modal with selected lead data.
-    * @param {Object} lead - Selected lead data.
-    */
-   const handleOpenModal = (lead) => {
-      setSelectedLead(lead);
-      setShowModal(true);
-   };
-
-   /**
-    * Handles closing the modal.
-    */
-   const handleCloseModal = () => {
-      setShowModal(false);
-   };
-
-   /**
-    * Effect hook to update the DataTable whenever tableData changes.
-    * Synchronizes the DataTable with the latest tableData.
-    */
-   useEffect(() => {
-      if (tableRef.current && typeof tableRef.current.DataTable === "function") {
-         const table = tableRef.current.DataTable();
-         table.clear();
-         table.rows.add(tableData);
-         table.columns.adjust().draw();
-      }
-   }, [tableData]);
+   useDataTable(tableRef, tableInstanceRef);
 
    return (
       <div className="card" style={{ width: "100%" }}>
          <div className="card-header table-card-header">
             <h5>LISTA COMPLETA DE LEADS QUE REQUIEREN ATENCIÓN</h5>
          </div>
-         <FilterOptions
-            inputStartDate={inputStartDate}
-            setInputStartDate={setInputStartDate}
-            inputEndDate={inputEndDate}
-            setInputEndDate={setInputEndDate}
-            filterOption={filterOption}
-            handleCheckboxChange={setFilterOption}
-         />
-         <div className="card-body" style={{ width: "100%", padding: "0" }}>
-            <DataTableComponent tableData={tableData} tableRef={tableRef} tableOptions={tableOptions} />
-            {showModal && selectedLead && <ModalLeads leadData={selectedLead} onClose={handleCloseModal} />}
-         </div>
+         <LeadsTable tableRef={tableRef} />
       </div>
    );
 };
 
-export default React.memo(View_list_leads_attention);
+export default View_list_leads_attention;
