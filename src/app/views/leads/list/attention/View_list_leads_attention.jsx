@@ -1,183 +1,245 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import $ from "jquery";
 import "datatables.net";
 import "datatables.net-bs5";
 import "datatables.net-searchpanes-bs5";
 import "datatables.net-select-bs5";
 import "../../../FiltrosTabla/style.css";
+import { getDefaultDates } from "../../../FiltrosTabla/dataTableConfig";
+import { useSelector } from "react-redux";
+import { apiUrlImg, commonRequestData } from "../../../../../api";
 import { TABLE_COLUMNS } from "./tableColumns";
-
-
-/**
- * Datos de ejemplo para la tabla de leads.
- * Cada objeto representa un lead con sus propiedades básicas.
- * @typedef {Object} Lead
- * @property {string} nombre - Nombre completo del lead
- * @property {string} email - Dirección de correo electrónico
- * @property {string} telefono - Número de teléfono
- * @property {string} estado - Estado actual del lead (Pendiente, Contactado, Rechazado)
- *
- * @type {Array<Lead>}
- */
-const MOCK_DATA = [
-   {
-      name_admin: "Admin Test",
-      nombre_lead: "Juan Pérez",
-      idinterno_lead: "NS123456",
-      email_lead: "juan@ejemplo.com",
-      telefono_lead: "123-456-7890",
-      proyecto_lead: "Proyecto A",
-      campana_lead: "Campaña 2024",
-      segimineto_lead: "Estado-Seguimiento-Pendiente",
-      creado_lead: "2024-03-20T10:30:00",
-      subsidiaria_lead: "Subsidiaria 1",
-      actualizadaaccion_lead: "2024-03-21T15:45:00",
-      estado_lead: 1,
-      nombre_caida: "Seguimiento 1"
-   },
-   {
-      name_admin: "ASASAS Test",
-      nombre_lead: "Juan Pérez",
-      idinterno_lead: "NS123456",
-      email_lead: "juan@ejemplo.com",
-      telefono_lead: "123-456-7890",
-      proyecto_lead: "Proyecto A",
-      campana_lead: "Campaña 2024",
-      segimineto_lead: "Estado-Seguimiento-Pendiente",
-      creado_lead: "2024-03-20T10:30:00",
-      subsidiaria_lead: "Subsidiaria 1",
-      actualizadaaccion_lead: "2024-03-21T15:45:00",
-      estado_lead: 1,
-      nombre_caida: "Seguimiento 1"
-   }
-];
-
-
+import { ModalLeads } from "../../../../pages/modal/modalLeads";
 
 /**
  * Obtiene la configuración completa para inicializar DataTables.
  * @param {HTMLElement} tableElement - Referencia al elemento DOM de la tabla
- * @returns {Object} Configuración completa de DataTables con las siguientes propiedades:
- * @property {boolean} stateSave - Habilita el guardado del estado de la tabla
- * @property {string} dom - Configuración del layout de los controles
- * @property {Object} searchPanes - Configuración de los paneles de búsqueda
- * @property {Array<Lead>} data - Datos a mostrar en la tabla
- * @property {Array<ColumnConfig>} columns - Configuración de columnas
- * @property {Array<Object>} columnDefs - Definiciones adicionales de columnas
- * @property {Object} language - Configuración de idioma
+ * @param {string} inputStartDate - Fecha de inicio para filtrar los datos (formato YYYY-MM-DD)
+ * @param {string} inputEndDate - Fecha final para filtrar los datos (formato YYYY-MM-DD)
+ * @param {number} filterOption - Opción de filtrado seleccionada
+ * @param {string|number} idnetsuite_admin - ID del administrador en NetSuite
+ * @param {string} rol_admin - Rol del administrador
+ * @returns {Object} Configuración completa de DataTables
  */
-const getDataTableConfig = (tableElement) => ({
-   stateSave: true,
-   dom: "lPBfrtip",
-   searchPanes: {
-      layout: "columns-2",
-      initCollapsed: false,
-      viewTotal: true,
-   },
-   data: MOCK_DATA,
-   columns: TABLE_COLUMNS,
-   columnDefs: [
-      {
-         searchPanes: {
-            show: true,
+const getDataTableConfig = (tableElement, inputStartDate, inputEndDate, filterOption, idnetsuite_admin, rol_admin) => {
+   /** @type {boolean} Determina si el dispositivo es móvil basado en el ancho de la ventana */
+   const isMobile = window.innerWidth <= 768;
+   return {
+      ajax: {
+         url: `${apiUrlImg}leads/getAll_LeadsAttention`,
+         type: "POST",
+         data: function (d) {
+            return {
+               ...commonRequestData,
+               idnetsuite_admin,
+               startDate: inputStartDate,
+               endDate: inputEndDate,
+               filterOption,
+               rol_admin,
+               start: d.start,
+               length: d.length,
+               search: d.searchPanes || undefined, // Evita undefined en la petición
+            };
          },
-         targets: [0, 1, 2, 3],
+         dataSrc: (response) => response["0"] || [],
       },
-   ],
-   order: [[1, "asc"]],
-   paging: true,
-   pageLength: 10,
-   lengthMenu: [
-      [10, 25, 50, 200, -1],
-      [10, 25, 50, 200, "All"],
-   ],
-   responsive: true,
-   buttons: ["excel"],
-   language: {
-      url: "//cdn.datatables.net/plug-ins/1.13.7/i18n/es-ES.json",
-   },
-});
+      columns: TABLE_COLUMNS,
+      searchPanes: {
+         layout: isMobile ? "columns-1" : "columns-2",
+         initCollapsed: true,
+         cascadePanes: true,
+         dtOpts: {
+            select: { style: "multi" },
+            info: false,
+            searching: true,
+         },
+         viewTotal: true,
+         columns: [0, 1, 3, 4, 5, 6, 11],
+      },
+      processing: true,
+      dom: "lPBfrtip",
+      buttons: [
+         {
+            extend: "excel",
+            text: "Exportar a Excel",
+            className: "btn btn-primary",
+         },
+      ],
+      language: {
+         searchPanes: {
+            title: "Filtros",
+            collapse: "Filtros",
+            clearMessage: "Limpiar Todo",
+            emptyPanes: "No hay datos para filtrar",
+            count: "{total}",
+            countFiltered: "{shown} ({total})",
+            loadMessage: "Cargando paneles de búsqueda...",
+         },
+      },
+      stateSave: true,
+      stateDuration: -1, // Mantiene el estado durante la sesión
+      stateSaveCallback: function (settings, data) {
+         localStorage.setItem("DataTables_state", JSON.stringify(data));
+      },
+      stateLoadCallback: function () {
+         return JSON.parse(localStorage.getItem("DataTables_state")) || null;
+      },
+      select: {
+         style: 'single',    // 'single' para selección única, 'multi' para múltiple
+         className: 'selected-row'  // clase CSS que se aplicará a la fila seleccionada
+      },
+   };
+};
 
 /**
- * Componente que representa la tabla de leads.
+ * Componente que renderiza la tabla de leads.
  * @param {Object} props - Propiedades del componente
  * @param {React.RefObject<HTMLTableElement>} props.tableRef - Referencia al elemento de tabla
  * @returns {JSX.Element} Tabla HTML con estructura básica
  */
 const LeadsTable = ({ tableRef }) => (
    <div className="table-responsive">
-      <div style={{ margin: "0", padding: "0.5rem" }}>
-         <table ref={tableRef} className="table table-striped">
-            <thead>
-               <tr>
-                  <th>ASESOR</th>
-                  <th>Nombre Cliente</th>
-                  <th># NETSUITE</th>
-                  <th>Correo Cliente</th>
-                  <th>Teléfono</th>
-                  <th>Proyecto</th>
-                  <th>Campaña</th>
-                  <th>Estado</th>
-                  <th>Creado</th>
-                  <th>Subsidiarias</th>
-                  <th>Última Acción</th>
-                  <th>Estado Lead</th>
-                  <th>Seguimiento</th>
-               </tr>
-            </thead>
-         </table>
-      </div>
+      <style>
+         {`
+            .selected-row {
+               background-color:rgb(20, 20, 20) !important;
+               color: white !important;
+            }
+            .selected-row td {
+               color: white !important;
+            }
+         `}
+      </style>
+      <table ref={tableRef} className="table table-striped table-bordered">
+         <thead></thead>
+      </table>
    </div>
 );
 
 /**
- * Hook personalizado para manejar el ciclo de vida de DataTables.
+ * Hook personalizado para inicializar y gestionar DataTables.
  * @param {React.RefObject<HTMLTableElement>} tableRef - Referencia al elemento de tabla
- * @param {React.MutableRefObject<DataTable|null>} tableInstanceRef - Referencia para almacenar la instancia de DataTables
- * @returns {void}
+ * @param {React.MutableRefObject<DataTable|null>} tableInstanceRef - Referencia de la instancia de DataTables
+ * @param {string} inputStartDate - Fecha de inicio para filtrar datos
+ * @param {string} inputEndDate - Fecha final para filtrar datos
+ * @param {number} filterOption - Opción de filtrado seleccionada
+ * @param {string|number} idnetsuite_admin - ID del administrador
+ * @param {string} rol_admin - Rol del administrador
+ * @param {Function} setSelectedLead - Función para establecer el lead seleccionado
+ * @param {Function} setShowModal - Función para controlar la visibilidad del modal
  */
-const useDataTable = (tableRef, tableInstanceRef) => {
+const useDataTable = (
+   tableRef,
+   tableInstanceRef,
+   inputStartDate,
+   inputEndDate,
+   filterOption,
+   idnetsuite_admin,
+   rol_admin,
+   setSelectedLead,
+   setShowModal,
+) => {
    useEffect(() => {
-      /**
-       * Inicializa DataTables con la configuración proporcionada.
-       * @returns {DataTable} Instancia de DataTables creada
-       */
-      const initializeDataTable = () => {
-         const table = $(tableRef.current).DataTable(getDataTableConfig(tableRef.current));
-         tableInstanceRef.current = table;
-         return table;
-      };
+      if (!tableRef.current) return;
+      if (tableInstanceRef.current) {
+         tableInstanceRef.current.destroy();
+         tableInstanceRef.current = null;
+      }
 
-      const tableInstance = initializeDataTable();
+      tableInstanceRef.current = $(tableRef.current).DataTable(
+         getDataTableConfig(tableRef.current, inputStartDate, inputEndDate, filterOption, idnetsuite_admin, rol_admin),
+      );
+
+      // Modificar el manejador del clic
+      $(tableRef.current).on("click", "tbody tr", function () {
+         const data = tableInstanceRef.current.row(this).data();
+         if (data) {
+            setSelectedLead(data); // Guardar todos los datos en selectedLead
+            setShowModal(true); // Abrir el modal
+         }
+      });
 
       return () => {
-         /**
-          * Limpia y destruye la instancia de DataTables al desmontar el componente.
-          */
-         if (tableInstance) {
-            tableInstance.destroy();
+         if (tableInstanceRef.current) {
+            $(tableRef.current).off("click", "tbody tr");
+            tableInstanceRef.current.destroy();
+            tableInstanceRef.current = null;
          }
       };
-   }, [tableRef, tableInstanceRef]);
+   }, [tableRef, inputStartDate, inputEndDate, filterOption, idnetsuite_admin, rol_admin, setSelectedLead, setShowModal]);
 };
 
 /**
- * Componente principal que muestra la lista de leads que requieren atención.
- * Maneja la inicialización de la tabla y provee funcionalidad para limpiar su estado.
- * @returns {JSX.Element} Contenedor principal con la tabla y controles
+ * Componente principal que gestiona la vista de leads que requieren atención.
+ * Incluye funcionalidades de:
+ * - Visualización de datos en tabla
+ * - Filtrado por fechas
+ * - Modal para detalles de leads
+ * - Integración con DataTables
+ *
+ * @returns {JSX.Element} Contenedor principal con la tabla y modal
  */
 const View_list_leads_attention = () => {
+   /** @type {React.RefObject<HTMLTableElement>} Referencia a la tabla */
    const tableRef = useRef(null);
+
+   /** @type {React.MutableRefObject<DataTable|null>} Referencia a la instancia de DataTables */
    const tableInstanceRef = useRef(null);
 
-   useDataTable(tableRef, tableInstanceRef);
+   /** @type {Object} Fechas por defecto para el filtrado */
+   const { firstDay, lastDay } = getDefaultDates();
+
+   /** @type {[string, Function]} Estado para la fecha de inicio */
+   const [inputStartDate, setInputStartDate] = useState(firstDay);
+
+   /** @type {[string, Function]} Estado para la fecha final */
+   const [inputEndDate, setInputEndDate] = useState(lastDay);
+
+   /** @type {[number, Function]} Estado para la opción de filtrado */
+   const [filterOption, setFilterOption] = useState(1);
+
+   /** @type {[boolean, Function]} Estado para controlar la visibilidad del modal */
+   const [showModal, setShowModal] = useState(false);
+
+   /** @type {[Object|null, Function]} Estado para almacenar el lead seleccionado */
+   const [selectedLead, setSelectedLead] = useState(null);
+
+   /** @type {Object} Datos del administrador desde Redux */
+   const { idnetsuite_admin, rol_admin } = useSelector((state) => state.auth);
+
+   /**
+    * Cierra el modal y limpia el lead seleccionado
+    */
+   const handleCloseModal = () => {
+      setShowModal(false);
+      setSelectedLead(null);
+   };
+
+   useDataTable(
+      tableRef,
+      tableInstanceRef,
+      inputStartDate,
+      inputEndDate,
+      filterOption,
+      idnetsuite_admin,
+      rol_admin,
+      setSelectedLead,
+      setShowModal,
+   );
 
    return (
       <div className="card" style={{ width: "100%" }}>
          <div className="card-header table-card-header">
-            <h5>LISTA COMPLETA DE LEADS QUE REQUIEREN ATENCIÓN</h5>
+            <div role="alert" className="fade alert alert-success show">
+               usted esta en la vista de leads que requieren atención
+            </div>
          </div>
-         <LeadsTable tableRef={tableRef} />
+         <div className="table-border-style card-body">
+            <div className="table-responsive">
+               <LeadsTable tableRef={tableRef} />
+               {showModal && selectedLead && <ModalLeads leadData={selectedLead} onClose={handleCloseModal} />}
+            </div>
+         </div>
       </div>
    );
 };

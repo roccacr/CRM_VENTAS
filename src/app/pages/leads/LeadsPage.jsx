@@ -17,33 +17,38 @@ import { PerfilUsuario } from "../../views/leads/perfil/PerfilUsuario";
 
 export const LeadsPage = () => {
     const location = useLocation();
-
-    // Este código divide la URL en partes (los segmentos de la ruta)
     const path = location.pathname.split("/");
-
-    // Extraer el valor de "data" del query string
     const searchParams = new URLSearchParams(location.search);
-    const dataValue = searchParams.get("data"); // Extrae el valor de "data"
+    const dataValue = searchParams.get("data");
+
+    // Determinar si se debe mostrar el contenedor pc-content
+    const shouldShowPcContent = !(path[1] === "leads" && path[2] === "lista" && 
+        (dataValue === "2" || dataValue === "3" || dataValue === "4" || 
+         dataValue === "1" || dataValue === "5"));
 
     return (
         <AppLayout>
             <div className="pc-container">
-                <div className="pc-content">
-                    <BotonVolveR />
-                    {/* Mostrar la página de lista de leads si path coincide y data === "2" */}
-                    {path[1] === "leads" && path[2] === "lista" && dataValue === "2" && <View_list_leads_new />}
-                    {path[1] === "leads" && path[2] === "lista" && dataValue === "3" && <View_list_leads_attention />}
-                    {path[1] === "leads" && path[2] === "lista" && dataValue === "4" && <View_list_leads_Stragglers />}
-                    {path[1] === "leads" && path[2] === "lista" && dataValue === "1" && <View_list_leads_complete />}
-                    {path[1] === "leads" && path[2] === "lista" && dataValue === "5" && <View_total_leads />}
-                    {path[1] === "leads" && path[2] === "note" && <View_note />}
-                    {path[1] === "leads" && path[2] === "loss" && <View_loss_lead />}
-                    {path[1] === "leads" && path[2] === "follow_up" && <View_follow_up />}
-                    {path[1] === "leads" && path[2] === "consultar" && <View_Consultar_lead />}
-                    {path[1] === "leads" && path[2] === "crear" && <View_crear_lead />}
-                    {path[1] === "leads" && path[2] === "edit" && <View_edit_lead />}
-                    {path[1] === "leads" && path[2] === "perfil"  && <PerfilUsuario />}
-                </div>
+                {shouldShowPcContent ? (
+                    <div className="pc-content">
+                        <BotonVolveR />
+                        {path[1] === "leads" && path[2] === "note" && <View_note />}
+                        {path[1] === "leads" && path[2] === "loss" && <View_loss_lead />}
+                        {path[1] === "leads" && path[2] === "follow_up" && <View_follow_up />}
+                        {path[1] === "leads" && path[2] === "consultar" && <View_Consultar_lead />}
+                        {path[1] === "leads" && path[2] === "crear" && <View_crear_lead />}
+                        {path[1] === "leads" && path[2] === "edit" && <View_edit_lead />}
+                        {path[1] === "leads" && path[2] === "perfil" && <PerfilUsuario />}
+                    </div>
+                ) : (
+                    <>
+                        {path[1] === "leads" && path[2] === "lista" && dataValue === "2" && <View_list_leads_new />}
+                        {path[1] === "leads" && path[2] === "lista" && dataValue === "3" && <View_list_leads_attention />}
+                        {path[1] === "leads" && path[2] === "lista" && dataValue === "4" && <View_list_leads_Stragglers />}
+                        {path[1] === "leads" && path[2] === "lista" && dataValue === "1" && <View_list_leads_complete />}
+                        {path[1] === "leads" && path[2] === "lista" && dataValue === "5" && <View_total_leads />}
+                    </>
+                )}
             </div>
         </AppLayout>
     );
