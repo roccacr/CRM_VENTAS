@@ -23,6 +23,8 @@ const oportunidadNetsuite = require("../models/oportunidad/oportunidadNetsuite")
 
 const estimacion = require("../models/estimacion/estimacion");
 
+const ordenVenta = require("../models/ordenVenta/ordenVenta");
+
 // Cargar variables de entorno al iniciar la aplicación
 dotenv.config();
 
@@ -208,6 +210,14 @@ module.exports = function (app) {
                 { path: "/estimacion/editarEstimacion", method: "editarEstimacion" }, // Crear oportunidad en Netsuite
                 { path: "/estimacion/enviarEstimacionComoPreReserva", method: "enviarEstimacionComoPreReserva" }, // Crear oportunidad en Netsuite
                 { path: "/estimacion/actualizarEstimacionPreReserva", method: "actualizarEstimacionPreReserva" }, // Crear oportunidad en Netsuite
+            ],
+        },
+        {
+            category: "ordenVenta", // Categoría: Gestión de expedientes
+            model: ordenVenta, // Modelo asociado a la gestión de expedientes
+            routes: [
+                { path: "/ordenVenta/listar", method: "enlistarOrdenesVenta" }, // Crear oportunidad en Netsuite3
+                
             ],
         },
     ];
