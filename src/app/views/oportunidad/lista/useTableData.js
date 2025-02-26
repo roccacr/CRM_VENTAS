@@ -14,13 +14,6 @@ import Swal from "sweetalert2";
  */
 export const useTableData = (MostrarSwal = true, idLead, startDate, endDate, isMode, BotonesEstados) => {
    
-   console.log("idLead", idLead)
-   console.log("startDate", startDate)
-   console.log("endDate", endDate)
-   console.log("isMode", isMode)
-   console.log("BotonesEstados", BotonesEstados)
-
-   
    const dispatch = useDispatch(); // Hook de Redux para despachar acciones
    const [data, setData] = useState([]); // Estado local para almacenar los datos
    useEffect(() => {
@@ -38,8 +31,6 @@ export const useTableData = (MostrarSwal = true, idLead, startDate, endDate, isM
             }
             // Obtener los datos llamando a la acción Redux
             const result = await dispatch(getOportunidades(idLead, startDate, endDate, isMode, BotonesEstados));
-
-            console.log(result)
             setData(result);
          } catch (error) {
             console.log("Error al cargar datos:", error);

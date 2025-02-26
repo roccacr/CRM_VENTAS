@@ -185,7 +185,7 @@ const MenuItems = ({ openMenu, toggleMenu }) => (
             isOpen={openMenu.opportunitiesMenu}
             toggle={() => toggleMenu("opportunitiesMenu")}
             items={[
-                { to: "/oportunidad/lista?oportuinidad=1&idLead=0", text: "Lista de Oportunidades" },
+                { to: "/oportunidad/lista?oportuinidad=2&idLead=0", text: "Lista de Oportunidades" },
                 { to: "/oportunidad/crear?idExpediente=0&idLead=0", text: "Crear Oportunidad" },
             ]}
         />

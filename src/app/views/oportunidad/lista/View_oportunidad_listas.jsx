@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useTableData } from "./useTableData";
 import { tableColumns } from "./tableColumns";
 import "../../leads/list/Imports/style.css";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 
 // Initialize DataTables with DT plugin
 DataTable.use(DT);
@@ -187,20 +187,32 @@ const useTableManager = (tableRef, tableData) => {
  */
 const View_oportunidad_listas = () => {
    const navigate = useNavigate();
-   // Default dates for filtering (start and end of the current month)
    const { firstDay, lastDay } = getDefaultDates();
 
+   // Add URL parameters check
+   const [searchParams] = useState(new URLSearchParams(window.location.search));
+   const oportunidadParam = searchParams.get('oportuinidad');
+   
    // State management
    const [inputStartDate, setInputStartDate] = useState();
    const [inputEndDate, setInputEndDate] = useState();
-   const [filterOption, setFilterOption] = useState(1); // 0: none, 1: creation date, 2: last action
-   const [isMode, setIsMode] = useState(1); // Modo de filtrado (0 = por defecto)
+   const [filterOption, setFilterOption] = useState(1);
+   const [isMode, setIsMode] = useState(1);
    const [botonesEstados, setBotonesEstados] = useState(2);
    const [idOportunidad, setIdOportunidad] = useState(1);
 
-   // Use table data hook at the top level
-
+   // Get table data
    const [tableData] = useTableData(true, idOportunidad, inputStartDate, inputEndDate, isMode, botonesEstados);
+
+   // Filter data based on URL parameter
+   const filteredTableData = useMemo(() => {
+      if (oportunidadParam === '1') {
+         return tableData.filter(item => item.chek_oport === 1);
+      }
+      return tableData;
+   }, [tableData, oportunidadParam]);
+
+   // Update DataTableComponent to use filteredTableData instead of tableData
    const tableRef = useRef(null);
 
    // Table options with row click handling
@@ -220,7 +232,7 @@ const View_oportunidad_listas = () => {
    };
 
    // Use custom hook for table management
-   useTableManager(tableRef, tableData);
+   useTableManager(tableRef, filteredTableData);
 
    return (
       <div className="card" style={{ width: "100%" }}>
@@ -240,7 +252,11 @@ const View_oportunidad_listas = () => {
             BotonesEstados={botonesEstados}
          />
          <div className="card-body" style={{ width: "100%", padding: "0" }}>
-            <DataTableComponent tableData={tableData} tableRef={tableRef} tableOptions={tableOptions} />
+            <DataTableComponent 
+               tableData={filteredTableData} 
+               tableRef={tableRef} 
+               tableOptions={tableOptions} 
+            />
          </div>
       </div>
    );

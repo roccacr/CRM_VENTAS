@@ -139,11 +139,6 @@ export const setgetMonthlyDataKpi = (startDate, endDate) => {
             // Verifica si result.data["0"] es un array no vacío
             const dataToDispatch = result.data?.[0] && Array.isArray(result.data[0]) && result.data[0].length > 0 ? result.data[0] : [];
 
-            console.log("🚀 -----------------------------------------------------------------------🚀");
-            console.log("🚀 ~ file: thunksHome.js:142 ~ return ~ dataToDispatch:", dataToDispatch);
-            console.log("🚀 -----------------------------------------------------------------------🚀");
-
-
             // Actualiza el estado de Redux solo si dataToDispatch tiene datos
             return dataToDispatch;
         } catch (error) {
