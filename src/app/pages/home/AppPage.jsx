@@ -22,7 +22,7 @@ const initialDashboardItems = [
    { id: 3, image: "4.svg", icon: "ti ti-calendar", name: "EVENTOS PARA HOY", url: "/events/list?data=1" },
    { id: 4, image: "4.svg", icon: "ti ti-trending-up", name: "OPORTUNIDADES", url: "/oportunidad/lista?oportuinidad=1&idLead=0" },
    { id: 5, image: "4.svg", icon: "ti ti-download", name: "ORDENES DE VENTA", url: "/orden/lista?data=1" },
-   { id: 6, image: "4.svg", icon: "ti ti-download", name: "CONTRATOS FIRMADOS", url: "/orden/lista?data=2" },
+   { id: 6, image: "4.svg", icon: "ti ti-download", name: "CONTRATOS FIRMADOS", url: "/orden/lista?data=1" },
 ];
 
 // Componente principal de la página del tablero
