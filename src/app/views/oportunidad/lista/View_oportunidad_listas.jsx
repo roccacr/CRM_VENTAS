@@ -189,10 +189,16 @@ const View_oportunidad_listas = () => {
    const navigate = useNavigate();
    const { firstDay, lastDay } = getDefaultDates();
 
-   // Add URL parameters check
-   const [searchParams] = useState(new URLSearchParams(window.location.search));
+   // Use location instead of window.location.search to detect URL changes
+   const location = window.location.search;
+   const [searchParams, setSearchParams] = useState(new URLSearchParams(location));
    const oportunidadParam = searchParams.get('oportuinidad');
    
+   // Update searchParams when URL changes
+   useEffect(() => {
+      setSearchParams(new URLSearchParams(location));
+   }, [location]);
+
    // State management
    const [inputStartDate, setInputStartDate] = useState();
    const [inputEndDate, setInputEndDate] = useState();
@@ -201,18 +207,20 @@ const View_oportunidad_listas = () => {
    const [botonesEstados, setBotonesEstados] = useState(2);
    const [idOportunidad, setIdOportunidad] = useState(1);
 
-   // Get table data
+   // Force update when URL changes
+   const [forceUpdate, setForceUpdate] = useState(0);
+   useEffect(() => {
+      setForceUpdate(prev => prev + 1);
+   }, [location]);
+
+   // Get table data with forceUpdate dependency
    const [tableData] = useTableData(true, idOportunidad, inputStartDate, inputEndDate, isMode, botonesEstados);
 
    // Filter data based on URL parameter
-   const filteredTableData = useMemo(() => {
-      if (oportunidadParam === '1') {
-         return tableData.filter(item => item.chek_oport === 1);
-      }
-      return tableData;
-   }, [tableData, oportunidadParam]);
+   const filteredTableData = oportunidadParam === '1' 
+      ? tableData.filter(item => item.chek_oport === 1)
+      : tableData;
 
-   // Update DataTableComponent to use filteredTableData instead of tableData
    const tableRef = useRef(null);
 
    // Table options with row click handling
