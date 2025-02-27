@@ -34,7 +34,7 @@ const Header = () => (
  */
 const DateControls = ({ inputStartDate, inputEndDate, setInputStartDate, setInputEndDate, filterOption }) => {
    // Determinar si los campos deben estar deshabilitados
-   const isDisabled = filterOption === 3 || filterOption === 4;
+   const isDisabled = filterOption === 1 || filterOption === 2;
 
    return (
       <div className="row g-4">
@@ -196,7 +196,7 @@ const getDataTableConfig = (tableElement, inputStartDate, inputEndDate, filterOp
             searching: true,
          },
          viewTotal: true,
-         columns: [0, 1, 2, 3, 4],
+         columns: [0, 1, 2, 3, 4,5],
       },
       processing: true,
       dom: "lPBfrtip",

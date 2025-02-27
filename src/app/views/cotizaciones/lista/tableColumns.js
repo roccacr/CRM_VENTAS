@@ -19,6 +19,12 @@ const formatDateTime = (date) => {
  */
 export const TABLE_COLUMNS = [
     {
+        title: "ADMIN",
+        data: "name_admin",
+        className: "text-left",
+        searchPanes: { show: true }
+    },
+    {
         title: "#COTIZACION",
         data: "id_ov_tranid",
         className: "text-left",
