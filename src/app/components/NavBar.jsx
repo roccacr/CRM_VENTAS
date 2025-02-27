@@ -172,7 +172,7 @@ const MenuItems = ({ openMenu, toggleMenu }) => (
             { to: "/oportunidad/crear?idExpediente=0&idLead=0", text: "Crear Oportunidad" },
          ]}
       />
-      <MenuItem to="/orden/lista?data=2" icon="ti ti-vocabulary" text="Cotizaciones" />
+      <MenuItem to="/orden/lista?data=4" icon="ti ti-vocabulary" text="Cotizaciones" />
    </ul>
 );
 

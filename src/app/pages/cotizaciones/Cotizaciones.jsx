@@ -14,7 +14,7 @@ export const Cotizaciones = () => {
 
     // Determinar si se debe mostrar el contenedor pc-content
     const shouldShowPcContent = !(path[1] === "orden" && path[2] === "lista" && 
-        (dataValue === "1" || dataValue === "2"));
+        (dataValue === "1" || dataValue === "2" || dataValue === "3" || dataValue==="4" ));
 
     return (
         <AppLayout>
@@ -27,7 +27,7 @@ export const Cotizaciones = () => {
                     </div>
                 ) : (
                     <>
-                        {path[1] === "orden" && path[2] === "lista" && (dataValue === "1" || dataValue === "2") && <Lista_Cotizaciones />}
+                        {path[1] === "orden" && path[2] === "lista" && (dataValue === "1" || dataValue === "2" || dataValue==="3"|| dataValue==="4") && <Lista_Cotizaciones />}
                     </>
                 )}
             </div>

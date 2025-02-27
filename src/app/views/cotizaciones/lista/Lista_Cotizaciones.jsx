@@ -29,24 +29,42 @@ const Header = () => (
  * @param {string} props.inputEndDate - Fecha final
  * @param {Function} props.setInputStartDate - Función para actualizar fecha inicial
  * @param {Function} props.setInputEndDate - Función para actualizar fecha final
+ * @param {number} props.filterOption - Opción de filtrado actual
  * @returns {JSX.Element} Controles de fecha
  */
-const DateControls = ({ inputStartDate, inputEndDate, setInputStartDate, setInputEndDate }) => (
-   <div className="row g-4">
-      <div className="col-md-6">
-         <div className="form-floating mb-0">
-            <input type="date" className="form-control" value={inputStartDate} onChange={(e) => setInputStartDate(e.target.value)} />
-            <label htmlFor="startDate">Fecha de inicio de filtro</label>
+const DateControls = ({ inputStartDate, inputEndDate, setInputStartDate, setInputEndDate, filterOption }) => {
+   // Determinar si los campos deben estar deshabilitados
+   const isDisabled = filterOption === 3 || filterOption === 4;
+
+   return (
+      <div className="row g-4">
+         <div className="col-md-6">
+            <div className="form-floating mb-0">
+               <input 
+                  type="date" 
+                  className="form-control" 
+                  value={inputStartDate} 
+                  onChange={(e) => setInputStartDate(e.target.value)}
+                  disabled={isDisabled}
+               />
+               <label htmlFor="startDate">Fecha de inicio de filtro</label>
+            </div>
+         </div>
+         <div className="col-md-6">
+            <div className="form-floating mb-0">
+               <input 
+                  type="date" 
+                  className="form-control" 
+                  value={inputEndDate} 
+                  onChange={(e) => setInputEndDate(e.target.value)}
+                  disabled={isDisabled}
+               />
+               <label htmlFor="endDate">Fecha de final de filtro</label>
+            </div>
          </div>
       </div>
-      <div className="col-md-6">
-         <div className="form-floating mb-0">
-            <input type="date" className="form-control" value={inputEndDate} onChange={(e) => setInputEndDate(e.target.value)} />
-            <label htmlFor="endDate">Fecha de final de filtro</label>
-         </div>
-      </div>
-   </div>
-);
+   );
+};
 
 /**
  * Componente para los controles de filtrado
@@ -60,15 +78,27 @@ const FilterControls = ({ filterOption, handleCheckboxChange }) => (
       <div className="col-md-6">
          <FilterOption
             id="creationDate"
-            label="Ordenes de venta Pagadas"
+            label="Ordenes de Venta Banner"
             checked={filterOption === 1}
             onChange={() => handleCheckboxChange(1)}
          />
          <FilterOption
             id="lastActionDate"
-            label="Todas las Ordenes de venta"
+            label="Contratos Firmados Banner"
             checked={filterOption === 2}
             onChange={() => handleCheckboxChange(2)}
+         />
+         <FilterOption
+            id="pendingPayment"
+            label="Contratos Pagados"
+            checked={filterOption === 3}
+            onChange={() => handleCheckboxChange(3)}
+         />
+          <FilterOption
+            id="pendingPayment"
+            label="Todos los contratos"
+            checked={filterOption === 4}
+            onChange={() => handleCheckboxChange(4)}
          />
       </div>
    </div>
@@ -286,7 +316,11 @@ const Lista_Cotizaciones = () => {
    const [filterOption, setFilterOption] = useState(() => {
       const params = new URLSearchParams(window.location.search);
       const dataParam = params.get("data");
-      return dataParam === "2" ? 2 : 1; // Si data=2 retorna 2, sino retorna 1 por defecto
+      // Check for data=3 for pending payment orders, data=2 for all orders, default to 1 (paid orders)
+      if (dataParam === "3") return 3;
+      if (dataParam === "2") return 2;
+      if (dataParam === "4") return 4;
+      return 1;
    });
 
    /** Estado para controlar la visibilidad del modal */
@@ -338,6 +372,7 @@ const Lista_Cotizaciones = () => {
                   inputEndDate={inputEndDate}
                   setInputStartDate={setInputStartDate}
                   setInputEndDate={setInputEndDate}
+                  filterOption={filterOption}
                />
                <FilterControls filterOption={filterOption} handleCheckboxChange={handleCheckboxChange} />
             </div>
