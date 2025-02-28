@@ -1,4 +1,4 @@
-import { obtenerOrdenVenta } from "./Api_provider_estimacion";
+import { obtenerOrdenVenta, updateAplicarComicion } from "./Api_provider_estimacion";
 
 
 /**
@@ -23,3 +23,18 @@ export const obtenerOrdendeventa = (idTransaccion) => {
     };
 };
 
+
+export const AplicarComicion = (valor, idTransaccion) => {
+    return async () => {
+        try {
+            // Llama a la API para crear la ordenDeventa utilizando el id de la transaccion.
+            const result = await updateAplicarComicion({ valor, idTransaccion });
+
+            // Retorna el primer elemento de los datos obtenidos, asumiendo que contiene la información principal requerida.
+            return result;
+        } catch (error) {
+            // Captura y registra cualquier error que ocurra durante la solicitud para facilitar la depuración.
+            console.error("Error al aplicar comicion", error);
+        }
+    };
+};

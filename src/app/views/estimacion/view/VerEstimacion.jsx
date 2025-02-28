@@ -6,7 +6,20 @@ import { enviarEstimacionComoPreReserva, extarerEstimacion } from "../../../../s
 import Swal from "sweetalert2";
 import { cleanAndParseFloat } from "../../../../hook/useInputFormatter";
 import { ModalEstimacionEdit } from "../ModalEstimacionEdit";
+import $ from "jquery";
+import "datatables.net";
+import "datatables.net-bs5";
+import "datatables.net-searchpanes-bs5";
+import "datatables.net-select-bs5";
 
+/**
+ * Componente principal para visualizar y gestionar estimaciones.
+ * Permite ver detalles de estimaciones, convertirlas en pre-reservas,
+ * y realizar diversas acciones relacionadas.
+ * 
+ * @component
+ * @returns {JSX.Element} Componente renderizado
+ */
 export const VerEstimacion = () => {
    // Estado para almacenar los detalles del lead.
    const [leadDetails, setLeadDetails] = useState({});
@@ -57,60 +70,262 @@ export const VerEstimacion = () => {
       }
    };
 
+   /**
+    * Formatea un valor numérico a formato de moneda.
+    * 
+    * @param {number} valor - Valor a formatear
+    * @returns {string} Valor formateado como moneda
+    */
    const formatoMoneda = (valor) => {
       return new Intl.NumberFormat("en-US", {
-         minimumFractionDigits: 2, // Asegura al menos 2 decimales.
-         maximumFractionDigits: 5, // Limita a un máximo de 5 decimales.
+         minimumFractionDigits: 2,
+         maximumFractionDigits: 5,
       }).format(valor);
    };
 
+   /**
+    * Calcula el precio de venta neto basado en varios parámetros.
+    * 
+    * @param {number|string} custbody13 - Precio de lista
+    * @param {number|string} custbody132 - Descuento directo
+    * @param {number|string} custbody46 - Extras pagados por el cliente
+    * @param {number|string} custbodyix_salesorder_cashback - Cashback
+    * @param {number|string} custbody16 - Monto de cortesías
+    * @returns {number} Precio de venta neto calculado
+    */
    const CalculoPvtaNeto = (custbody13, custbody132, custbody46, custbodyix_salesorder_cashback, custbody16) => {
-      // Función de parseo mejorada (si no está definida)
-      const cleanAndParseFloat = (value) => {
-         if (typeof value === "string") {
-            // Elimina símbolos de moneda, comas y espacios
-            const cleaned = value.replace(/[^\d.-]/g, "");
-            return parseFloat(cleaned) || 0; // Devuelve 0 si falla
-         }
-         return Number(value) || 0; // Convierte a número o devuelve 0
-      };
+      const valores = [
+         custbody13,
+         custbody132,
+         custbody46,
+         custbodyix_salesorder_cashback,
+         custbody16
+      ].map(cleanAndParseFloat);
 
-      // Convertir parámetros a números
-      const precio_de_lista = cleanAndParseFloat(custbody13);
-      const descuento_directo = cleanAndParseFloat(custbody132);
-      const extrasPagadasPorelcliente = cleanAndParseFloat(custbody46);
-      const cashback = cleanAndParseFloat(custbodyix_salesorder_cashback);
-      const monto_de_cortecias = cleanAndParseFloat(custbody16);
-
-      // Calcular precio de venta neto
-      const monto_total_precio_venta_neto = precio_de_lista - descuento_directo + extrasPagadasPorelcliente - cashback - monto_de_cortecias;
-
-      // Formatear y retornar (evita valores negativos o cero si es necesario)
-      return monto_total_precio_venta_neto;
+      return valores[0] - valores[1] + valores[2] - valores[3] - valores[4];
    };
 
-   // Efecto que se ejecuta al montar el componente.
-   useEffect(() => {
-      // Muestra un indicador de carga con SweetAlert.
-      Swal.fire({
-         title: "Cargando datos...",
-         text: "Por favor espera.",
-         allowOutsideClick: false,
-         allowEscapeKey: false,
-         didOpen: () => Swal.showLoading(),
-      });
-
-      // Obtiene los IDs de la URL para lead y estimación.
-      const leadId = getQueryParam("data");
-      const estimacionId = getQueryParam("data2");
-
-      // Si el ID del lead es válido, solicita los datos correspondientes.
-      if (leadId && leadId > 0) {
-         Promise.all([fetchLeadDetails(leadId), fetchEstimacionDetails(estimacionId)]).finally(() => Swal.close()); // Cierra el indicador de carga cuando se completen las solicitudes.
-      } else {
-         Swal.close(); // Cierra el SweetAlert en caso de que no haya IDs válidos.
+   /**
+    * Configura y retorna las opciones de DataTables.
+    * 
+    * @returns {Object} Configuración de DataTables
+    */
+   const getDataTableConfig = () => ({
+      responsive: true,
+      language: {
+         decimal: "",
+         emptyTable: "No hay información disponible",
+         info: "Mostrando _START_ a _END_ de _TOTAL_ registros",
+         infoEmpty: "Mostrando 0 a 0 de 0 registros",
+         infoFiltered: "(filtrado de _MAX_ registros totales)",
+         infoPostFix: "",
+         thousands: ",",
+         lengthMenu: "Mostrar _MENU_ registros",
+         loadingRecords: "Cargando...",
+         processing: "Procesando...",
+         search: "Buscar:",
+         zeroRecords: "No se encontraron registros coincidentes",
+         paginate: {
+            first: "Primero",
+            last: "Último",
+            next: "Siguiente",
+            previous: "Anterior",
+         },
+         aria: {
+            sortAscending: ": activar para ordenar la columna ascendente",
+            sortDescending: ": activar para ordenar la columna descendente",
+         },
       }
-   }, [dispatch]); // El efecto depende de 'dispatch'.
+   });
+
+   /**
+    * Procesa los datos de la estimación para su visualización en la tabla.
+    * 
+    * @param {Object} datosEstimacion - Datos crudos de la estimación
+    * @returns {Array} Datos procesados listos para DataTables
+    */
+   const processTableData = (datosEstimacion) => {
+      if (!datosEstimacion?.data?.sublists?.item) return [];
+
+      return Object.entries(datosEstimacion.data.sublists.item)
+         .filter(([key]) => key !== "currentline")
+         .map(([key, linea]) => ({
+            numero: linea.line || key.replace("line ", ""),
+            articulo: linea.item_display || linea.item,
+            monto: formatoMoneda(linea.amount || 0),
+            fechaPago: linea.custcolfecha_pago_proyectado || "N/A",
+            cantidad: linea.quantity,
+            descripcion: linea.description
+         }));
+   };
+
+   /**
+    * Inicializa y configura la tabla de DataTables.
+    */
+   const initializeDataTable = () => {
+      if (!datosEstimacion?.data?.sublists?.item) return;
+
+      const tableConfig = {
+         ...getDataTableConfig(),
+         data: processTableData(datosEstimacion),
+         columns: [
+            { data: "numero", title: "#" },
+            { data: "articulo", title: "ARTÍCULO" },
+            { data: "monto", title: "MONTO" },
+            { data: "fechaPago", title: "FECHA DE PAGO PROYECTADO" },
+            { data: "cantidad", title: "CANTIDAD" },
+            { data: "descripcion", title: "DESCRIPCIÓN" }
+         ]
+      };
+
+      const table = $("#estimacionTable").DataTable(tableConfig);
+
+      return () => table.destroy();
+   };
+
+   /**
+    * Maneja la visualización del PDF de la estimación.
+    */
+   const vistaDePdf = () => {
+      const estimacionId = getQueryParam("data2");
+      window.open(
+         `https://4552704.app.netsuite.com/app/accounting/print/hotprint.nl?regular=T&sethotprinter=T&formnumber=342&trantype=estimate&id=${estimacionId}`,
+         "_blank",
+      );
+   };
+
+   /**
+    * Renderiza la sección de información del cliente y detalles básicos.
+    * 
+    * @returns {JSX.Element} Sección de información básica
+    */
+   const renderBasicInfo = () => (
+      <div className="row">
+         <div className="col-md-2">
+            <p className="mb-1 text-muted">
+               <i className="fas fa-user"></i> CLIENTE:
+            </p>
+            <p className="mb-0">{datosEstimacion?.cli || ""}</p>
+         </div>
+         <div className="col-md-2">
+            <p className="mb-1 text-muted">
+               {" "}
+               <i className="fas fa-archway"></i> UNIDAD EXPEDIENTE LIGADO VTA
+            </p>
+            <p className="mb-0">{datosEstimacion?.Exp || ""}</p>
+         </div>
+         <div className="col-md-2">
+            <p className="mb-1 text-muted">
+               {" "}
+               <i className="fas fa-archway"></i> SUBSIDIARIA
+            </p>
+            <p className="mb-0">{datosEstimacion?.Subsidaria || ""}</p>
+         </div>
+         <div className="col-md-2">
+            <p className="mb-1 text-muted">
+               {" "}
+               <i className="fas fa-certificate"></i> ESTADO
+            </p>
+            <p className="mb-0">{datosEstimacion?.Estado || ""}</p>
+         </div>
+         <div className="col-md-2">
+            <p className="mb-1 text-muted">
+               {" "}
+               <i className="fas fa-chevron-circle-up"></i> OPORTUNIDAD
+            </p>
+            <p className="mb-0">{datosEstimacion?.opportunity_name || ""}</p>
+         </div>
+         <div className="col-md-2">
+            <p className="mb-1 text-muted">
+               {" "}
+               <i className="fas fa-calendar-plus"></i> CIERRE DE PREVISTO
+            </p>
+            <p className="mb-0">{datosCrm?.caduca || ""}</p>
+         </div>
+      </div>
+   );
+
+   /**
+    * Renderiza la sección de información financiera.
+    * 
+    * @returns {JSX.Element} Sección de información financiera
+    */
+   const renderFinancialInfo = () => (
+      <div className="row">
+         <div className="col-md-2">
+            <p className="mb-1 text-muted">
+               <i className="fas fa-money-bill-wave"></i> PRECIO DE LISTA:
+            </p>
+            <p className="mb-0">{formatoMoneda(datosEstimacion?.data?.fields?.custbody13 || "")}</p>
+         </div>
+         <div className="col-md-2">
+            <p className="mb-1 text-muted">
+               {" "}
+               <i className="fas fa-money-bill-wave"></i> MONTO DESCUENTO DIRECTO
+            </p>
+            <p className="mb-0">{formatoMoneda(datosEstimacion?.data?.fields?.custbody132 || "")}</p>
+         </div>
+         <div className="col-md-2">
+            <p className="mb-1 text-muted">
+               {" "}
+               <i className="fas fa-money-bill-wave"></i> MONTO EXTRAS SOBRE EL PRECIO DE LISTA
+            </p>
+            <p className="mb-0">{formatoMoneda(datosEstimacion?.data?.fields?.custbody46 || "")}</p>
+         </div>
+         <div className="col-md-2">
+            <p className="mb-1 text-muted">
+               {" "}
+               <i className="fas fa-list-ul"></i> DESCRIPCIÓN EXTRAS
+            </p>
+            <p className="mb-0">{datosEstimacion?.data?.fields?.custbody47 || "--"}</p>
+         </div>
+         <div className="col-md-2">
+            <p className="mb-1 text-muted">
+               {" "}
+               <i className="fas fa-money-bill-wave"></i> CASHBACK
+            </p>
+            <p className="mb-0">{formatoMoneda(datosEstimacion?.data?.fields?.custbodyix_salesorder_cashback || "")}</p>
+         </div>
+         <div className="col-md-2">
+            <p className="mb-1 text-muted">
+               {" "}
+               <i className="fas fa-money-bill-wave"></i> MONTO RESERVA
+            </p>
+            <p className="mb-0">{formatoMoneda(datosEstimacion?.data?.fields?.custbody52 || "")}</p>
+         </div>
+      </div>
+   );
+
+   // Effect hooks
+   useEffect(() => {
+      const loadInitialData = async () => {
+         Swal.fire({
+            title: "Cargando datos...",
+            text: "Por favor espera.",
+            allowOutsideClick: false,
+            allowEscapeKey: false,
+            didOpen: () => Swal.showLoading(),
+         });
+
+         const leadId = getQueryParam("data");
+         const estimacionId = getQueryParam("data2");
+
+         if (leadId && leadId > 0) {
+            await Promise.all([
+               fetchLeadDetails(leadId),
+               fetchEstimacionDetails(estimacionId)
+            ]);
+         }
+
+         Swal.close();
+      };
+
+      loadInitialData();
+   }, [dispatch]);
+
+   useEffect(() => {
+      return initializeDataTable();
+   }, [datosEstimacion]);
 
    const [sortConfig, setSortConfig] = useState({
       column: null,
@@ -123,14 +338,6 @@ export const VerEstimacion = () => {
          direction = "desc";
       }
       setSortConfig({ column, direction });
-   };
-
-   const vistaDePdf = () => {
-      const estimacionId = getQueryParam("data2");
-      window.open(
-         `https://4552704.app.netsuite.com/app/accounting/print/hotprint.nl?regular=T&sethotprinter=T&formnumber=342&trantype=estimate&id=${estimacionId}`,
-         "_blank",
-      );
    };
 
    /**
@@ -264,97 +471,11 @@ export const VerEstimacion = () => {
             <div className="card-body">
                <ul className="list-group list-group-flush">
                   <li className="list-group-item px-0">
-                     <div className="row">
-                        <div className="col-md-2">
-                           <p className="mb-1 text-muted">
-                              <i className="fas fa-user"></i> CLIENTE:
-                           </p>
-                           <p className="mb-0">{datosEstimacion?.cli || ""}</p>
-                        </div>
-                        <div className="col-md-2">
-                           <p className="mb-1 text-muted">
-                              {" "}
-                              <i className="fas fa-archway"></i> UNIDAD EXPEDIENTE LIGADO VTA
-                           </p>
-                           <p className="mb-0">{datosEstimacion?.Exp || ""}</p>
-                        </div>
-                        <div className="col-md-2">
-                           <p className="mb-1 text-muted">
-                              {" "}
-                              <i className="fas fa-archway"></i> SUBSIDIARIA
-                           </p>
-                           <p className="mb-0">{datosEstimacion?.Subsidaria || ""}</p>
-                        </div>
-                        <div className="col-md-2">
-                           <p className="mb-1 text-muted">
-                              {" "}
-                              <i className="fas fa-certificate"></i> ESTADO
-                           </p>
-                           <p className="mb-0">{datosEstimacion?.Estado || ""}</p>
-                        </div>
-                        <div className="col-md-2">
-                           <p className="mb-1 text-muted">
-                              {" "}
-                              <i className="fas fa-chevron-circle-up"></i> OPORTUNIDAD
-                           </p>
-                           <p className="mb-0">{datosEstimacion?.opportunity_name || ""}</p>
-                        </div>
-                        <div className="col-md-2">
-                           <p className="mb-1 text-muted">
-                              {" "}
-                              <i className="fas fa-calendar-plus"></i> CIERRE DE PREVISTO
-                           </p>
-                           <p className="mb-0">{datosCrm?.caduca || ""}</p>
-                        </div>
-                     </div>
+                     {renderBasicInfo()}
                   </li>
                </ul>
                <ul className="list-group list-group-flush">
-                  <li className="list-group-item px-0">
-                     <div className="row">
-                        <div className="col-md-2">
-                           <p className="mb-1 text-muted">
-                              <i className="fas fa-money-bill-wave"></i> PRECIO DE LISTA:
-                           </p>
-                           <p className="mb-0">{formatoMoneda(datosEstimacion?.data?.fields?.custbody13 || "")}</p>
-                        </div>
-                        <div className="col-md-2">
-                           <p className="mb-1 text-muted">
-                              {" "}
-                              <i className="fas fa-money-bill-wave"></i> MONTO DESCUENTO DIRECTO
-                           </p>
-                           <p className="mb-0">{formatoMoneda(datosEstimacion?.data?.fields?.custbody132 || "")}</p>
-                        </div>
-                        <div className="col-md-2">
-                           <p className="mb-1 text-muted">
-                              {" "}
-                              <i className="fas fa-money-bill-wave"></i> MONTO EXTRAS SOBRE EL PRECIO DE LISTA
-                           </p>
-                           <p className="mb-0">{formatoMoneda(datosEstimacion?.data?.fields?.custbody46 || "")}</p>
-                        </div>
-                        <div className="col-md-2">
-                           <p className="mb-1 text-muted">
-                              {" "}
-                              <i className="fas fa-list-ul"></i> DESCRIPCIÓN EXTRAS
-                           </p>
-                           <p className="mb-0">{datosEstimacion?.data?.fields?.custbody47 || "--"}</p>
-                        </div>
-                        <div className="col-md-2">
-                           <p className="mb-1 text-muted">
-                              {" "}
-                              <i className="fas fa-money-bill-wave"></i> CASHBACK
-                           </p>
-                           <p className="mb-0">{formatoMoneda(datosEstimacion?.data?.fields?.custbodyix_salesorder_cashback || "")}</p>
-                        </div>
-                        <div className="col-md-2">
-                           <p className="mb-1 text-muted">
-                              {" "}
-                              <i className="fas fa-money-bill-wave"></i> MONTO RESERVA
-                           </p>
-                           <p className="mb-0">{formatoMoneda(datosEstimacion?.data?.fields?.custbody52 || "")}</p>
-                        </div>
-                     </div>
-                  </li>
+                  {renderFinancialInfo()}
                </ul>
                <ul className="list-group list-group-flush">
                   <li className="list-group-item px-0">
@@ -467,95 +588,17 @@ export const VerEstimacion = () => {
                <h5 className="text-truncate font-size-15">CONDICIONES DE LA PRIMA</h5>
             </div>
             <div className="card-body">
-               <table className="table table-striped table dt-responsive w-100 display text-left">
+               <table id="estimacionTable" className="table table-striped table-bordered dt-responsive nowrap">
                   <thead>
                      <tr>
-                        {["#", "ARTÍCULO", "MONTO", "FECHA DE PAGO PROYECTADO", "CANTIDAD", "DESCRIPCIÓN"].map((header) => (
-                           <th
-                              key={header}
-                              onClick={() => handleSort(header)}
-                              style={{
-                                 border: "1px solid #ddd",
-                                 padding: "8px",
-                                 cursor: "pointer",
-                                 backgroundColor: sortConfig.column === header ? "#f0f0f0" : "transparent",
-                              }}
-                           >
-                              {header}
-                              {sortConfig.column === header && (
-                                 <span style={{ marginLeft: "5px" }}>{sortConfig.direction === "asc" ? "↑" : "↓"}</span>
-                              )}
-                           </th>
-                        ))}
+                        <th>#</th>
+                        <th>ARTÍCULO</th>
+                        <th>MONTO</th>
+                        <th>FECHA DE PAGO PROYECTADO</th>
+                        <th>CANTIDAD</th>
+                        <th>DESCRIPCIÓN</th>
                      </tr>
                   </thead>
-                  <tbody>
-                     {Object.entries(datosEstimacion?.data?.sublists?.item || {})
-                        .filter(([key]) => key !== "currentline")
-                        .sort((a, b) => {
-                           const [keyA, itemA] = a;
-                           const [keyB, itemB] = b;
-
-                           // Obtener valores para comparar
-                           let valueA, valueB;
-
-                           switch (sortConfig.column) {
-                              case "#":
-                                 valueA = parseInt(itemA.line || keyA.replace("line ", ""));
-                                 valueB = parseInt(itemB.line || keyB.replace("line ", ""));
-                                 break;
-                              case "ARTÍCULO":
-                                 valueA = itemA.item_display?.toLowerCase() || itemA.item?.toLowerCase();
-                                 valueB = itemB.item_display?.toLowerCase() || itemB.item?.toLowerCase();
-                                 break;
-                              case "MONTO":
-                                 valueA = cleanAndParseFloat(itemA.amount);
-                                 valueB = cleanAndParseFloat(itemB.amount);
-                                 break;
-                              case "FECHA DE PAGO PROYECTADO":
-                                 valueA = new Date(itemA.custcolfecha_pago_proyectado || 0);
-                                 valueB = new Date(itemB.custcolfecha_pago_proyectado || 0);
-                                 break;
-                              case "CANTIDAD":
-                                 valueA = parseInt(itemA.quantity);
-                                 valueB = parseInt(itemB.quantity);
-                                 break;
-                              case "DESCRIPCIÓN":
-                                 valueA = itemA.description?.toLowerCase();
-                                 valueB = itemB.description?.toLowerCase();
-                                 break;
-                              default:
-                                 valueA = keyA;
-                                 valueB = keyB;
-                           }
-
-                           // Ordenamiento natural si no hay columna seleccionada
-                           if (!sortConfig.column) {
-                              const numA = parseInt(keyA.replace("line ", ""));
-                              const numB = parseInt(keyB.replace("line ", ""));
-                              return numA - numB;
-                           }
-
-                           // Comparación según dirección
-                           if (valueA < valueB) {
-                              return sortConfig.direction === "asc" ? -1 : 1;
-                           }
-                           if (valueA > valueB) {
-                              return sortConfig.direction === "asc" ? 1 : -1;
-                           }
-                           return 0;
-                        })
-                        .map(([key, linea], index) => (
-                           <tr key={key} style={{ cursor: "pointer" }}>
-                              <td style={{ border: "1px solid #ddd", padding: "8px" }}>{linea.line || key.replace("line ", "")}</td>
-                              <td style={{ border: "1px solid #ddd", padding: "8px" }}>{linea.item_display || linea.item}</td>
-                              <td style={{ border: "1px solid #ddd", padding: "8px" }}>{formatoMoneda(linea.amount || 0)}</td>
-                              <td style={{ border: "1px solid #ddd", padding: "8px" }}>{linea.custcolfecha_pago_proyectado || "N/A"}</td>
-                              <td style={{ border: "1px solid #ddd", padding: "8px" }}>{linea.quantity}</td>
-                              <td style={{ border: "1px solid #ddd", padding: "8px" }}>{linea.description}</td>
-                           </tr>
-                        ))}
-                  </tbody>
                </table>
             </div>
             {/* Modal */}

@@ -3,7 +3,7 @@ import { ButtonActions } from "../../../components/buttonAccions/buttonAccions";
 import Swal from "sweetalert2";
 import { useDispatch } from "react-redux";
 import { getSpecificLead } from "../../../../store/leads/thunksLeads";
-import { obtenerOrdendeventa } from "../../../../store/ordenVenta/thunkOrdenVenta";
+import { AplicarComicion, obtenerOrdendeventa } from "../../../../store/ordenVenta/thunkOrdenVenta";
 import $ from "jquery";
 import "datatables.net";
 import "datatables.net-bs5";
@@ -80,6 +80,133 @@ const fetchData = async ({ leadId, transaccion, dispatch, setLeadDetails, setDat
          text: "Error al cargar los datos. Por favor, intente nuevamente.",
       });
    }
+};
+
+/**
+ * Constants and configurations
+ */
+const TABLE_CONFIG = {
+   language: {
+      decimal: "",
+      emptyTable: "No hay información disponible",
+      info: "Mostrando _START_ a _END_ de _TOTAL_ registros",
+      infoEmpty: "Mostrando 0 a 0 de 0 registros",
+      infoFiltered: "(filtrado de _MAX_ registros totales)",
+      infoPostFix: "",
+      thousands: ",",
+      lengthMenu: "Mostrar _MENU_ registros",
+      loadingRecords: "Cargando...",
+      processing: "Procesando...",
+      search: "Buscar:",
+      zeroRecords: "No se encontraron registros coincidentes",
+      paginate: {
+         first: "Primero",
+         last: "Último",
+         next: "Siguiente",
+         previous: "Anterior",
+      },
+      aria: {
+         sortAscending: ": activar para ordenar la columna ascendente",
+         sortDescending: ": activar para ordenar la columna descendente",
+      },
+   },
+   columns: [
+      { data: "numero", title: "#" },
+      { data: "articulo", title: "ARTÍCULO" },
+      { data: "monto", title: "MONTO" },
+      { data: "fechaPago", title: "FECHA DE PAGO PROYECTADO" },
+      { data: "cantidad", title: "CANTIDAD" },
+      { data: "descripcion", title: "DESCRIPCIÓN" },
+   ]
+};
+
+/**
+ * Handles commission application logic
+ * @param {Function} dispatch - Redux dispatch function
+ * @param {string|number} orderId - Order ID to apply commission to
+ */
+const handleCommissionAction = async (dispatch, orderId) => {
+   const result = await Swal.fire({
+      title: "Gestión de Comisión",
+      text: "¿Qué acción desea realizar con la comisión?",
+      icon: "question",
+      showDenyButton: true,
+      showCancelButton: true,
+      confirmButtonText: "Aplicar Comisión",
+      denyButtonText: "Anular Comisión",
+      cancelButtonText: "Cancelar"
+   });
+
+   if (result.isConfirmed) {
+      await dispatch(AplicarComicion(1, orderId));
+      Swal.fire('¡Aplicada!', 'La comisión ha sido aplicada.', 'success');
+   } else if (result.isDenied) {
+      await dispatch(AplicarComicion(0, orderId));
+      Swal.fire('¡Anulada!', 'La comisión ha sido anulada.', 'info');
+   }
+};
+
+/**
+ * Processes sales order data for DataTable
+ * @param {Object} datosOrdenVenta - Raw sales order data
+ * @returns {Array} Processed data for DataTable
+ */
+const processTableData = (datosOrdenVenta) => {
+   if (!datosOrdenVenta?.data?.sublists?.item) return [];
+
+   return Object.entries(datosOrdenVenta.data.sublists.item)
+      .filter(([key]) => key !== "currentline")
+      .map(([key, linea]) => ({
+         numero: linea.line || key.replace("line ", ""),
+         articulo: linea.item_display || linea.item,
+         monto: formatoMoneda(linea.amount || 0),
+         fechaPago: linea.custcolfecha_pago_proyectado || "N/A",
+         cantidad: linea.quantity,
+         descripcion: linea.description,
+      }));
+};
+
+/**
+ * Custom hook for managing sales order actions
+ * @param {Object} params - Parameters for action handlers
+ * @returns {Object} Action handlers and configurations
+ */
+const useSalesOrderActions = ({ navigate, dispatch, datosOrdenVenta }) => {
+   return {
+      actions: {
+         EnviarReserva: () => {},
+         EnviarCierre: () => {},
+         EnviarReservaCaida: () => {},
+         verPdf: () => {
+            const goURL = `https://4552704.app.netsuite.com/app/accounting/print/hotprint.nl?regular=T&sethotprinter=T&formnumber=136&trantype=salesord&&id=${getQueryParam(
+               "data2",
+            )}&label=Orden+de+venta&printtype=transaction`;
+            window.open(goURL, "PopupWindow", "width=900,height=800,scrollbars=yes");
+         },
+         verOportunidad: () => {
+            navigate(`/oportunidad/ver?data=${getQueryParam("data")}&data2=${datosOrdenVenta?.data?.fields?.opportunity}&whence=`);
+         },
+         verEstimacion: () => {
+            navigate(`/estimaciones/view?data=${getQueryParam("data")}&data2=${datosOrdenVenta?.data?.fields?.createdfrom}&whence=`);
+         },
+         editarOV: () => {},
+         aplicarComision: () => handleCommissionAction(dispatch, getQueryParam("data2")),
+      },
+      configs: {
+         primary: [
+            { icon: "ti-pencil", text: "EDITAR OV", action: "editarOV" },
+            { icon: "ti-eye", text: "VER ESTIMACIÓN", action: "verEstimacion" },
+            { icon: "ti-eye", text: "VER OPORTUNIDAD", action: "verOportunidad" },
+            { icon: "ti-eye", text: "PDF OV", action: "verPdf" },
+         ],
+         secondary: [
+            { icon: "ti-flag-3", text: "ENVIAR RESERVA", action: "EnviarReserva" },
+            { icon: "ti-send", text: "CIERRE FIRMADO", action: "EnviarCierre" },
+            { icon: "ti-trending-down", text: "RESERVA CAÍDA", action: "EnviarReservaCaida" },
+            { icon: "ti-brand-paypal", text: "APLICAR COMICION", action: "aplicarComision" },
+         ],
+      }
+   };
 };
 
 /**
@@ -356,43 +483,11 @@ export const VistaOrdenVenta = () => {
    const [datosOrdenVenta, setDatosOrdenVenta] = useState({});
    const [isModalOpen, setIsModalOpen] = useState(false);
 
-   // Action configurations and handlers
-   const actions = {
-      EnviarReserva: () => {},
-      EnviarCierre: () => {},
-      EnviarReservaCaida: () => {},
-      verPdf: () => {
-
-         /* enviamos a una ventana que se encarga de abrir el pdf modal */
-         const goURL = `https://4552704.app.netsuite.com/app/accounting/print/hotprint.nl?regular=T&sethotprinter=T&formnumber=136&trantype=salesord&&id=${getQueryParam(
-            "data2",
-         )}&label=Orden+de+venta&printtype=transaction`;
-         // Abre una nueva ventana sin cerrar la existent
-         window.open(goURL, "PopupWindow", "width=900,height=800,scrollbars=yes");
-      },
-      verOportunidad: () => {
-         navigate(`/oportunidad/ver?data=${getQueryParam("data")}&data2=${datosOrdenVenta?.data?.fields?.opportunity}&whence=`);
-      },
-      verEstimacion: () => {
-         navigate(`/estimaciones/view?data=${getQueryParam("data")}&data2=${datosOrdenVenta?.data?.fields?.createdfrom}&whence=`);
-      },
-      editarOV: () => {},
-   };
-
-   const actionConfigs = {
-      primary: [
-         { icon: "ti-pencil", text: "EDITAR OV", action: "editarOV" },
-         { icon: "ti-eye", text: "VER ESTIMACIÓN", action: "verEstimacion" },
-         { icon: "ti-eye", text: "VER OPORTUNIDAD", action: "verOportunidad" },
-         { icon: "ti-eye", text: "PDF OV", action: "verPdf" },
-      ],
-      secondary: [
-         { icon: "ti-flag-3", text: "ENVIAR RESERVA", action: "EnviarReserva" },
-         { icon: "ti-send", text: "CIERRE FIRMADO", action: "EnviarCierre" },
-         { icon: "ti-trending-down", text: "RESERVA CAÍDA", action: "EnviarReservaCaida" },
-         { icon: "ti-brand-paypal", text: "APLICAR COMICION", action: "EnviarReservaCaida" },
-      ],
-   };
+   const { actions, configs } = useSalesOrderActions({ 
+      navigate, 
+      dispatch, 
+      datosOrdenVenta 
+   });
 
    // Initial data fetch
    useEffect(() => {
@@ -416,12 +511,18 @@ export const VistaOrdenVenta = () => {
       loadInitialData();
    }, [dispatch]);
 
-   // DataTable initialization
+   // DataTable initialization with cleanup
    useEffect(() => {
-      const table = initializeDataTable(datosOrdenVenta);
-      return () => {
-         if (table) table.destroy();
-      };
+      if (!datosOrdenVenta?.data?.sublists?.item) return;
+
+      const table = $("#condicionesPrimaTable").DataTable({
+         data: processTableData(datosOrdenVenta),
+         columns: TABLE_CONFIG.columns,
+         responsive: true,
+         language: TABLE_CONFIG.language,
+      });
+
+      return () => table.destroy();
    }, [datosOrdenVenta]);
 
    return (
@@ -435,9 +536,9 @@ export const VistaOrdenVenta = () => {
                         {Object.keys(leadDetails).length > 0 && <ButtonActions leadData={leadDetails} className="mb-4" />}
                      </blockquote>
                   </div>
-                  <ActionPanel actions={actions} buttonConfigs={actionConfigs.primary} />
+                  <ActionPanel actions={actions} buttonConfigs={configs.primary} />
                   <br />
-                  <ActionPanel actions={actions} buttonConfigs={actionConfigs.secondary} />
+                  <ActionPanel actions={actions} buttonConfigs={configs.secondary} />
                </div>
             </div>
          </div>
