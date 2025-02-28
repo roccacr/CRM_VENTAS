@@ -216,7 +216,8 @@ module.exports = function (app) {
             category: "ordenVenta", // Categoría: Gestión de expedientes
             model: ordenVenta, // Modelo asociado a la gestión de expedientes
             routes: [
-                { path: "/ordenVenta/listar", method: "enlistarOrdenesVenta" }, // Crear oportunidad en Netsuite3
+                { path: "/ordenVenta/listar", method: "enlistarOrdenesVenta" }, // Cextraer datos de ordenes de venta
+                { path: "/ordenVenta/obtenerOrdendeventa", method: "obtenerOrdendeventa" }, // extarer datos de orden de venta
                 
             ],
         },

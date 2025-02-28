@@ -33,8 +33,6 @@ var accountSettings = {
  * @throws {Error} Si la opción de filtrado no es válida
  */
 ordenVenta.enlistarOrdenesVenta = async (dataParams) => {
-    console.log(dataParams);
-
     const conditions = [];
     const isAdmin = dataParams.rol_admin === "1";
 
@@ -85,6 +83,28 @@ ordenVenta.enlistarOrdenesVenta = async (dataParams) => {
     `;
 
     return await executeQuery(query, [], dataParams.database);
+};
+
+
+ordenVenta.obtenerOrdendeventa = async ({idTransaccion}) => {
+    console.log("idTransaccion", idTransaccion);
+    const urlSettings = {
+        url: 'https://4552704.restlets.api.netsuite.com/app/site/hosting/restlet.nl?script=1764&deploy=1',
+    };
+    try {
+        const rest = nsrestlet.createLink(accountSettings, urlSettings);
+
+        const body = await rest.get({ rType: "salesordersExtraer", id: idTransaccion });
+
+        return {
+            msg: "Crear estimacion ",
+            Detalle: body,
+            status: 200,
+        };
+    } catch (error) {
+        console.error("Error al obtener oportuindad:", error);
+        throw error;
+    }
 };
 
 module.exports = ordenVenta;
