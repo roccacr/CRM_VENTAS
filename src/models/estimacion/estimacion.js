@@ -252,6 +252,7 @@ estimacion.extarerEstimacionNetsuite = async (estimacionId) => {
 
 // Método para obtener las estimaciones relacionadas a una oportunidad específica
 estimacion.extraerEstimacion = async (dataParams) => {
+    console.log("dataParams", dataParams);
     // Consulta SQL para seleccionar todas las estimaciones asociadas a una oportunidad específica,
     // ordenándolas por la fecha de caducidad en orden descendente.
     const query = "SELECT * FROM estimaciones WHERE idEstimacion_est = ? ";
@@ -510,6 +511,79 @@ estimacion.actualizarEstimacionPreReserva = async (dataParams) => {
 
     return result;
 };
+
+
+/**
+ * Realiza una solicitud POST al Restlet de NetSuite para enviar una estimación como caída.
+ * 
+ * @param {Object} estimacion - Objeto que contiene los datos de la estimación.
+ * @param {number} estimacion.id - ID de la estimación.
+ * @param {string} estimacion.motivo - Motivo de la caída.
+ * @param {string} estimacion.comentario - Comentario de la caída.
+ * @returns {Promise<Object>} Resultado de la ejecución de la consulta.
+ */
+
+estimacion.caidaReserva = (estimacion) => {
+
+    // Retorna una nueva promesa que maneja la operación de enviar una estimación como pre-reserva.
+    return new Promise(function (resolve, reject) {
+        // Configuración de la URL para el Restlet de NetSuite.
+        var urlSettings = {
+            url: "https://4552704.restlets.api.netsuite.com/app/site/hosting/restlet.nl?script=1774&deploy=1",
+        };
+        try {
+            // Crea un enlace al Restlet usando las configuraciones de cuenta y URL.
+            var rest = nsrestlet.createLink(accountSettings, urlSettings);
+
+            // Realiza una solicitud POST al Restlet con el tipo de solicitud y el ID de la estimación.
+            rest.put({ rType: "caida", id: estimacion.id, motivo: estimacion.motivo, comentario: estimacion.comentario })
+                .then(function (body) {
+                    // Si la solicitud es exitosa, resuelve la promesa con un objeto de respuesta.
+                    let response = { msg: "Caida: ", Detalle: body, status: 200 };
+                    resolve(response);
+                })
+                .catch(function (error) {
+                    // Maneja cualquier error que ocurra durante la solicitud POST.
+                    reject(error);
+                });
+        } catch (err) {
+            // Captura y registra cualquier error que ocurra al crear el enlace o realizar la solicitud.
+            console.log(error);
+        }
+    });
+ }
+
+
+ /**
+ * Modifica la estimación de un cliente y actualiza el estado del lead asociado.
+ * 
+ * @param {Object} dataParams - Parámetros necesarios para la actualización.
+ * @param {number} dataParams.idEstimacion - ID de la estimación a modificar.
+ * @param {number} dataParams.IdCliente - ID del cliente asociado.
+ * @param {number} dataParams.status - Nuevo estado para el lead.
+ * @param {Object} dataParams.database - Conexión a la base de datos.
+ * @returns {Promise<Object>} Resultado de la ejecución de la consulta.
+ */
+ estimacion.ModificarEstimacionCliente = async ({ idEstimacion, IdCliente, status, database }) => {
+    const formattedDate = new Date().toISOString().split('T')[0];
+
+    // Actualiza la estimación marcándola como caída
+    const result = await executeQuery(
+        "UPDATE estimaciones SET status=0, pre_caida=1, envioPreReservaCaida=? WHERE idEstimacion_est=?",
+        [formattedDate, idEstimacion],
+        database
+    );
+
+    // Actualiza el estado del lead asociado
+    const result2 = await executeQuery(
+        "UPDATE leads SET status=? WHERE idinterno_lead=?",
+        [status, IdCliente],
+        database
+    );
+
+    return { result, result2 };
+};
+
 
 // Exportamos el módulo para su uso en otras partes del proyecto.
 module.exports = estimacion;

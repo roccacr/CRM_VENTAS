@@ -210,6 +210,8 @@ module.exports = function (app) {
                 { path: "/estimacion/editarEstimacion", method: "editarEstimacion" }, // Crear oportunidad en Netsuite
                 { path: "/estimacion/enviarEstimacionComoPreReserva", method: "enviarEstimacionComoPreReserva" }, // Crear oportunidad en Netsuite
                 { path: "/estimacion/actualizarEstimacionPreReserva", method: "actualizarEstimacionPreReserva" }, // Crear oportunidad en Netsuite
+                { path: "/estimacion/caidaReserva", method: "caidaReserva" }, // Crear oportunidad en Netsuite
+                { path: "/estimacion/ModificarEstimacionCliente", method: "ModificarEstimacionCliente" }, // Crear oportunidad en Netsuite
             ],
         },
         {
@@ -218,6 +220,9 @@ module.exports = function (app) {
             routes: [
                 { path: "/ordenVenta/listar", method: "enlistarOrdenesVenta" }, // Cextraer datos de ordenes de venta
                 { path: "/ordenVenta/obtenerOrdendeventa", method: "obtenerOrdendeventa" }, // extarer datos de orden de venta
+                { path: "/ordenVenta/aplicarComicion", method: "aplicarComicio" }, // actualizar datos de orden de venta
+                { path: "/ordenVenta/crearOrdenVenta", method: "crearOrdenVenta" }, // actualizar datos de orden de venta
+                { path: "/ordenVenta/insertarOrdenVentaBd", method: "insertarOrdenVentaBd" }, // Insertar datos de orden de venta en la base de datos
                 
             ],
         },

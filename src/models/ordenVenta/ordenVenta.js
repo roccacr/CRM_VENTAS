@@ -85,11 +85,9 @@ ordenVenta.enlistarOrdenesVenta = async (dataParams) => {
     return await executeQuery(query, [], dataParams.database);
 };
 
-
-ordenVenta.obtenerOrdendeventa = async ({idTransaccion}) => {
-    console.log("idTransaccion", idTransaccion);
+ordenVenta.obtenerOrdendeventa = async ({ idTransaccion }) => {
     const urlSettings = {
-        url: 'https://4552704.restlets.api.netsuite.com/app/site/hosting/restlet.nl?script=1764&deploy=1',
+        url: "https://4552704.restlets.api.netsuite.com/app/site/hosting/restlet.nl?script=1764&deploy=1",
     };
     try {
         const rest = nsrestlet.createLink(accountSettings, urlSettings);
@@ -103,6 +101,75 @@ ordenVenta.obtenerOrdendeventa = async ({idTransaccion}) => {
         };
     } catch (error) {
         console.error("Error al obtener oportuindad:", error);
+        throw error;
+    }
+};
+
+ordenVenta.aplicarComicio = async (dataParams) => {
+    // Fixed the UPDATE query syntax by adding table name and proper SET clause
+    const query = "UPDATE ordenventa SET pagadas_ov = ? WHERE id_ov_netsuite = ?";
+
+    // Parameter that contains the transaction ID to filter results
+    const params = [dataParams.valor, dataParams.idTransaccion];
+
+    try {
+        const result = await executeQuery(query, params, dataParams.database);
+        console.log("result", result);
+
+        if (result.affectedRows === 0) {
+            throw new Error("No records were updated");
+        }
+
+        return result;
+    } catch (error) {
+        console.error("Error updating order:", error);
+        throw error;
+    }
+};
+
+ordenVenta.crearOrdenVenta = async (dataParams) => {
+    const urlSettings = {
+        url: "https://4552704.restlets.api.netsuite.com/app/site/hosting/restlet.nl?script=1763&deploy=1",
+    };
+    try {
+        const rest = nsrestlet.createLink(accountSettings, urlSettings);
+
+        const body = await rest.post({
+            rType: "salesorder",
+            estimate: dataParams.idEstimacion,
+        });
+
+        return {
+            msg: "Crear orden de venta",
+            Detalle: body,
+            status: 200,
+        };
+    } catch (error) {
+        console.error("Error al crear la orden de venta:", error);
+        throw error;
+    }
+};
+
+ordenVenta.insertarOrdenVentaBd = async (dataParams) => {
+    console.log("dataParams", dataParams);
+
+    // Fixed the UPDATE query syntax by adding table name and proper SET clause
+    const query = "INSERT INTO ordenventa( id_ov_tranid, id_ov_netsuite, id_ov_est, id_ov_opt, id_ov_admin, id_ov_lead, idExpediente_ov, idsubsidiaria_ov ) VALUES (?,?,?,?,?,?,?,?)";
+
+    // Parameter that contains the transaction ID to filter results
+    const params = [dataParams.tranid, dataParams.id_orden, dataParams.idEstimacion, dataParams.opportunityInternalId, dataParams.employeeInternalId, dataParams.entityInternalId, dataParams.custbody38Value, dataParams.subsidiaryInternalId];
+
+    try {
+        const result = await executeQuery(query, params, dataParams.database);
+        console.log("result", result);
+
+        if (result.affectedRows === 0) {
+            throw new Error("No records were updated");
+        }
+
+        return result;
+    } catch (error) {
+        console.error("Error updating order:", error);
         throw error;
     }
 };
