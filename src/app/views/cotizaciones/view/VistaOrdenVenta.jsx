@@ -136,6 +136,7 @@ const handleCommissionAction = async (dispatch, orderId) => {
       denyButtonText: "Anular Comisión",
       cancelButtonText: "Cancelar"
    });
+   
 
    if (result.isConfirmed) {
       await dispatch(AplicarComicion(1, orderId));
