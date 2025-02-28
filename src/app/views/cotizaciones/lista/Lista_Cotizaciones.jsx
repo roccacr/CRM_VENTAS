@@ -9,7 +9,7 @@ import { getDefaultDatesMeses } from "../../FiltrosTabla/dataTableConfig";
 import { useSelector } from "react-redux";
 import { apiUrlImg, commonRequestData } from "../../../../api";
 import { TABLE_COLUMNS } from "./tableColumns";
-
+import { useNavigate } from "react-router-dom";
 /**
  * Componente para el encabezado de la vista de leads
  * @returns {JSX.Element} Encabezado con mensaje informativo
@@ -181,7 +181,7 @@ const getDataTableConfig = (tableElement, inputStartDate, inputEndDate, filterOp
             };
          },
          dataSrc: (response) => {
-            console.log("DataTables response data:", response.data);
+           // console.log("DataTables response data:", response.data);
             return response.data || [];
          },
       },
@@ -256,6 +256,7 @@ const useDataTable = (
    setSelectedLead,
    setShowModal,
 ) => {
+   const navigate = useNavigate();
    useEffect(() => {
       if (!tableRef.current) return;
       if (tableInstanceRef.current) {
@@ -271,8 +272,7 @@ const useDataTable = (
       $(tableRef.current).on("click", "tbody tr", function () {
          const data = tableInstanceRef.current.row(this).data();
          if (data) {
-            setSelectedLead(data); // Guardar todos los datos en selectedLead
-            setShowModal(true); // Abrir el modal
+            navigate(`/orden/view?data=${data.idinterno_lead}&data2=${data.id_ov_netsuite}`);
          }
       });
 

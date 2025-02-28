@@ -18,7 +18,7 @@ export const ButtonActions = ({ leadData }) => {
     return (
         <>
             <button className="btn btn-dark" onClick={handleOpenModal}>
-                Nueva Acción 
+                Nueva Acción Lead
                 
             </button>
 

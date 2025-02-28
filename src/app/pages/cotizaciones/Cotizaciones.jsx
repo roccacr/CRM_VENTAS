@@ -2,6 +2,7 @@ import { AppLayout } from "../../layout/AppLayout";
 import { useLocation } from "react-router-dom";
 import { BotonVolveR } from "../../components/BotonVolveR";
 import Lista_Cotizaciones from "../../views/cotizaciones/lista/Lista_Cotizaciones";
+import { VistaOrdenVenta } from "../../views/cotizaciones/view/VistaOrdenVenta";
 
 
 
@@ -22,8 +23,7 @@ export const Cotizaciones = () => {
                 {shouldShowPcContent ? (
                     <div className="pc-content">
                         <BotonVolveR />
-                        <h1>asas</h1>
-                        {/* {path[1] === "orden" && path[2] === "note" && <View_note />} */}
+                        {path[1] === "orden" && path[2] === "view" && <VistaOrdenVenta />}
                     </div>
                 ) : (
                     <>
