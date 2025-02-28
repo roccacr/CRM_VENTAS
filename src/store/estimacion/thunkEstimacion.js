@@ -1,5 +1,5 @@
 import { generateLeadBitacora } from "../leads/thunksLeads";
-import { crearEstimacion, editarEstimacion, extraerEstimacionNetsuite, obtenerEstimacionesOportunidad, enviarEstimacionComoPreReservaNetsuite, actualizarEstimacionPreReserva } from "./Api_provider_estimacion";
+import { crearEstimacion, editarEstimacion, extraerEstimacionNetsuite, obtenerEstimacionesOportunidad, enviarEstimacionComoPreReservaNetsuite, actualizarEstimacionPreReserva, updatecaidaReserva, ModificarEstimacionCliente } from "./Api_provider_estimacion";
 
 /**
  * Función para manejar la creación de una estimación a partir de los datos proporcionados en un formulario.
@@ -152,6 +152,73 @@ export const actulizarEstimacionPreReserva = (idEstimacion, fecha_prereserva) =>
         } catch (error) {
             // Captura y registra cualquier error que ocurra durante la solicitud para facilitar su depuración.
             console.error("Error al actualizar la estimacion como pre-reserva:", error);
+        }
+    };
+};
+
+
+
+
+export const caidaReserva = (id, motivo, comentario ) => {
+    return async () => {
+        try {
+            // Realiza la llamada a la API para obtener las estimaciones relacionadas con la oportunidad especificada.
+            const respuesta = await updatecaidaReserva({ id, motivo, comentario });
+
+            // Retorna el primer elemento de los datos obtenidos, que contiene la información principal de la estimación.
+            return respuesta;
+        } catch (error) {
+            // Captura y registra cualquier error que ocurra durante la solicitud para facilitar su depuración.
+            console.error("Error al caer la reserva:", error);
+        }
+    };
+};
+
+
+export const crearBitacoraEstimacionCaida = (leadId, comentario) => {
+    return async (dispatch, getState) => {
+        // Extrae el ID del administrador desde el estado de autenticación
+        const { idnetsuite_admin } = getState().auth;
+
+        // Define la descripción del evento, en este caso es la nota proporcionada
+        const descripcionEvento = comentario;
+
+        const valueStatus = "03-LEAD-PRE-RESERVA"
+
+        // Valores adicionales que serán enviados al generar la bitácora del lead
+        const additionalValues = {
+            valorDeCaida: 56, // Valor estándar para caídas (causa de la nota)
+            tipo: "Se Envio la Estimacion como Pre-Reserva Caida", // Tipo de evento
+            estado_lead: 0, // Estado del lead (1: activo, por ejemplo)
+            accion_lead: 6, // Acción específica relacionada con la nota (6: nota creada)
+            seguimiento_calendar: 0, // Indica que no requiere seguimiento en calendario
+            valor_segimineto_lead: 3, // Valor de seguimiento del lead (3: seguimiento intermedio)
+        };
+
+        try {
+            // Despacha la acción para generar la bitácora del lead con los valores adicionales
+            await dispatch(generateLeadBitacora(idnetsuite_admin, leadId, additionalValues, descripcionEvento, valueStatus));
+            // Retorna "ok" si todo salió correctamente
+            return "ok";
+        } catch (error) {
+            // Manejo de errores: captura y muestra en consola cualquier problema al generar el evento
+            console.error("Error al crear el evento para el lead:", error);
+        }
+    };
+};
+
+
+export const ModificarEstimacion = (idEstimacion, IdCliente, status ) => {
+    return async () => {
+        try {
+            // Realiza la llamada a la API para obtener las estimaciones relacionadas con la oportunidad especificada.
+            const respuesta = await ModificarEstimacionCliente({idEstimacion, IdCliente, status });
+
+            // Retorna el primer elemento de los datos obtenidos, que contiene la información principal de la estimación.
+            return respuesta;
+        } catch (error) {
+            // Captura y registra cualquier error que ocurra durante la solicitud para facilitar su depuración.
+            console.error("Error al modificar la estimacion:", error);
         }
     };
 };

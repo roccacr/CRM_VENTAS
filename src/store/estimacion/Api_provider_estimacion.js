@@ -40,6 +40,13 @@ export const editarEstimacion = async ({ formulario }) => {
 
 
 
+/**
+ * Función asincrónica para obtener las estimaciones asociadas a una oportunidad específica.
+ * @param {object} dataParams - Parámetros necesarios para la obtención de las estimaciones.
+ * @param {number} dataParams.idOportunidad - ID de la oportunidad para obtener sus estimaciones.
+ * @returns {Promise} - Retorna la respuesta de la API tras intentar obtener las estimaciones.
+ */
+            
 export const obtenerEstimacionesOportunidad = async ({ idOportunidad }) => {
     // Construye el objeto de datos para la solicitud, incluyendo información común y el ID de la oportunidad específica.
     const requestData = {
@@ -53,6 +60,13 @@ export const obtenerEstimacionesOportunidad = async ({ idOportunidad }) => {
 };
 
 
+/**
+ * Función asincrónica para extraer una estimación de NetSuite.
+ * @param {object} dataParams - Parámetros necesarios para la extracción de la estimación.
+ * @param {number} dataParams.idEstimacion - ID de la estimación a extraer.
+ * @returns {Promise} - Retorna la respuesta de la API tras intentar extraer la estimación.
+ */
+
 export const extraerEstimacionNetsuite = async ({ idEstimacion }) => {
     // Construye el objeto de datos para la solicitud, incluyendo información común y el ID de la estimación específica.
     const requestData = {
@@ -65,6 +79,14 @@ export const extraerEstimacionNetsuite = async ({ idEstimacion }) => {
 };
 
 
+/**
+ * Función asincrónica para enviar una estimación como Pre-reserva a NetSuite.
+ * @param {object} dataParams - Parámetros necesarios para la envío de la estimación como Pre-reserva.
+ * @param {number} dataParams.idEstimacion - ID de la estimación a enviar como Pre-reserva.
+ * @param {number} dataParams.idCliente - ID del cliente asociado a la estimación.
+ * @returns {Promise} - Retorna la respuesta de la API tras intentar enviar la estimación como Pre-reserva.
+ */
+
 export const enviarEstimacionComoPreReservaNetsuite = async ({ idEstimacion, idCliente }) => {
     const requestData = {
         ...commonRequestData, // Datos comunes requeridos para todas las solicitudes (p. ej., autenticación, configuraciones generales).
@@ -76,6 +98,14 @@ export const enviarEstimacionComoPreReservaNetsuite = async ({ idEstimacion, idC
 };
 
 
+/**
+ * Función asincrónica para actualizar la estimación como Pre-reserva.
+ * @param {object} dataParams - Parámetros necesarios para la actualización.
+ * @param {number} dataParams.idEstimacion - ID de la estimación a modificar.
+ * @param {string} dataParams.fecha_prereserva - Nueva fecha para la estimación.
+ * @returns {Promise} - Retorna la respuesta de la API tras intentar actualizar la estimación como Pre-reserva.
+ */
+
 export const actualizarEstimacionPreReserva = async ({ idEstimacion, fecha_prereserva }) => {
     const requestData = {
         ...commonRequestData, // Datos comunes requeridos para todas las solicitudes (p. ej., autenticación, configuraciones generales).
@@ -85,4 +115,44 @@ export const actualizarEstimacionPreReserva = async ({ idEstimacion, fecha_prere
 
     return await fetchData("estimacion/actualizarEstimacionPreReserva", requestData); // Retorna la respuesta de la API.
 };
+
+
+/**
+ * Función asincrónica para actualizar la estimación como Pre-reserva.
+ * @param {object} dataParams - Parámetros necesarios para la actualización.
+ * @param {number} dataParams.idEstimacion - ID de la estimación a modificar.
+ * @param {string} dataParams.fecha_prereserva - Nueva fecha para la estimación.
+ * @returns {Promise} - Retorna la respuesta de la API tras intentar actualizar la estimación como Pre-reserva.
+ */
+export const updatecaidaReserva = async ({ id, motivo, comentario }) => {
+    const requestData = {
+        ...commonRequestData, // Datos comunes requeridos para todas las solicitudes (p. ej., autenticación, configuraciones generales).
+        id, // Identificador único de la estimación para obtener sus datos asociados.
+        motivo, // Identificador único de la estimación para obtener sus datos asociados.
+        comentario, // Identificador único de la estimación para obtener sus datos asociados.
+    };
+
+    return await fetchData("estimacion/caidaReserva", requestData); // Retorna la respuesta de la API.
+};  
+
+
+/**
+ * Función asincrónica para modificar la estimación de un cliente.
+ * @param {object} dataParams - Parámetros necesarios para la modificación.
+ * @param {number} dataParams.idEstimacion - ID de la estimación a modificar.
+ * @param {number} dataParams.IdCliente - ID del cliente asociado.
+ * @param {number} dataParams.status - Nuevo estado para la estimación. 
+ * @returns {Promise} - Retorna la respuesta de la API tras intentar modificar la estimación.
+ */
+export const ModificarEstimacionCliente = async ({ idEstimacion, IdCliente, status }) => {
+    const requestData = {
+        ...commonRequestData, // Datos comunes requeridos para todas las solicitudes (p. ej., autenticación, configuraciones generales).
+        idEstimacion, // Identificador único de la estimación para obtener sus datos asociados.
+        IdCliente, // Identificador único de la estimación para obtener sus datos asociados.
+        status, // Identificador único de la estimación para obtener sus datos asociados.
+    };
+
+    return await fetchData("estimacion/ModificarEstimacionCliente", requestData); // Retorna la respuesta de la API.
+};
+
 

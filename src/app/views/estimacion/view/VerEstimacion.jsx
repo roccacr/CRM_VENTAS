@@ -2,7 +2,13 @@ import { useEffect, useState } from "react";
 import { ButtonActions } from "../../../components/buttonAccions/buttonAccions";
 import { useDispatch } from "react-redux";
 import { getSpecificLead } from "../../../../store/leads/thunksLeads";
-import { enviarEstimacionComoPreReserva, extarerEstimacion } from "../../../../store/estimacion/thunkEstimacion";
+import {
+   caidaReserva,
+   crearBitacoraEstimacionCaida,
+   enviarEstimacionComoPreReserva,
+   extarerEstimacion,
+   ModificarEstimacion,
+} from "../../../../store/estimacion/thunkEstimacion";
 import Swal from "sweetalert2";
 import { cleanAndParseFloat } from "../../../../hook/useInputFormatter";
 import { ModalEstimacionEdit } from "../ModalEstimacionEdit";
@@ -11,16 +17,18 @@ import "datatables.net";
 import "datatables.net-bs5";
 import "datatables.net-searchpanes-bs5";
 import "datatables.net-select-bs5";
-
+import { crearOrdenVenta } from "../../../../store/ordenVenta/thunkOrdenVenta";
+import { useNavigate } from "react-router-dom";
 /**
  * Componente principal para visualizar y gestionar estimaciones.
  * Permite ver detalles de estimaciones, convertirlas en pre-reservas,
  * y realizar diversas acciones relacionadas.
- * 
+ *
  * @component
  * @returns {JSX.Element} Componente renderizado
  */
 export const VerEstimacion = () => {
+   const navigate = useNavigate();
    // Estado para almacenar los detalles del lead.
    const [leadDetails, setLeadDetails] = useState({});
    // Estado para almacenar los datos de la estimación.
@@ -72,7 +80,7 @@ export const VerEstimacion = () => {
 
    /**
     * Formatea un valor numérico a formato de moneda.
-    * 
+    *
     * @param {number} valor - Valor a formatear
     * @returns {string} Valor formateado como moneda
     */
@@ -85,7 +93,7 @@ export const VerEstimacion = () => {
 
    /**
     * Calcula el precio de venta neto basado en varios parámetros.
-    * 
+    *
     * @param {number|string} custbody13 - Precio de lista
     * @param {number|string} custbody132 - Descuento directo
     * @param {number|string} custbody46 - Extras pagados por el cliente
@@ -94,20 +102,14 @@ export const VerEstimacion = () => {
     * @returns {number} Precio de venta neto calculado
     */
    const CalculoPvtaNeto = (custbody13, custbody132, custbody46, custbodyix_salesorder_cashback, custbody16) => {
-      const valores = [
-         custbody13,
-         custbody132,
-         custbody46,
-         custbodyix_salesorder_cashback,
-         custbody16
-      ].map(cleanAndParseFloat);
+      const valores = [custbody13, custbody132, custbody46, custbodyix_salesorder_cashback, custbody16].map(cleanAndParseFloat);
 
       return valores[0] - valores[1] + valores[2] - valores[3] - valores[4];
    };
 
    /**
     * Configura y retorna las opciones de DataTables.
-    * 
+    *
     * @returns {Object} Configuración de DataTables
     */
    const getDataTableConfig = () => ({
@@ -135,12 +137,12 @@ export const VerEstimacion = () => {
             sortAscending: ": activar para ordenar la columna ascendente",
             sortDescending: ": activar para ordenar la columna descendente",
          },
-      }
+      },
    });
 
    /**
     * Procesa los datos de la estimación para su visualización en la tabla.
-    * 
+    *
     * @param {Object} datosEstimacion - Datos crudos de la estimación
     * @returns {Array} Datos procesados listos para DataTables
     */
@@ -155,7 +157,7 @@ export const VerEstimacion = () => {
             monto: formatoMoneda(linea.amount || 0),
             fechaPago: linea.custcolfecha_pago_proyectado || "N/A",
             cantidad: linea.quantity,
-            descripcion: linea.description
+            descripcion: linea.description,
          }));
    };
 
@@ -174,8 +176,8 @@ export const VerEstimacion = () => {
             { data: "monto", title: "MONTO" },
             { data: "fechaPago", title: "FECHA DE PAGO PROYECTADO" },
             { data: "cantidad", title: "CANTIDAD" },
-            { data: "descripcion", title: "DESCRIPCIÓN" }
-         ]
+            { data: "descripcion", title: "DESCRIPCIÓN" },
+         ],
       };
 
       const table = $("#estimacionTable").DataTable(tableConfig);
@@ -196,7 +198,7 @@ export const VerEstimacion = () => {
 
    /**
     * Renderiza la sección de información del cliente y detalles básicos.
-    * 
+    *
     * @returns {JSX.Element} Sección de información básica
     */
    const renderBasicInfo = () => (
@@ -247,7 +249,7 @@ export const VerEstimacion = () => {
 
    /**
     * Renderiza la sección de información financiera.
-    * 
+    *
     * @returns {JSX.Element} Sección de información financiera
     */
    const renderFinancialInfo = () => (
@@ -311,10 +313,7 @@ export const VerEstimacion = () => {
          const estimacionId = getQueryParam("data2");
 
          if (leadId && leadId > 0) {
-            await Promise.all([
-               fetchLeadDetails(leadId),
-               fetchEstimacionDetails(estimacionId)
-            ]);
+            await Promise.all([fetchLeadDetails(leadId), fetchEstimacionDetails(estimacionId)]);
          }
 
          Swal.close();
@@ -344,7 +343,7 @@ export const VerEstimacion = () => {
     * Handles the process of sending an estimation as a pre-reservation.
     * This function prompts the user for confirmation, shows a loading indicator,
     * and dispatches an action to send the estimation as a pre-reservation.
-    * 
+    *
     * @async
     * @function EnviarReserva
     * @returns {Promise<void>} - A promise that resolves when the process is complete.
@@ -394,9 +393,157 @@ export const VerEstimacion = () => {
       }
    };
 
-   const EnviarTransaccionCaida = () => {
-      console.log("Enviar Transaccion Caida");
+   /**
+    * Función asincrónica para manejar el proceso de envío de una pre-reserva caída.
+    *
+    * 1. Solicita confirmación al usuario antes de proceder.
+    * 2. Si el usuario confirma, solicita detalles adicionales como comentario y motivo.
+    * 3. Valida que los datos requeridos hayan sido ingresados correctamente.
+    * 4. Envía la solicitud de pre-reserva caída al servidor.
+    * 5. Si el envío es exitoso, solicita confirmación para marcar al cliente como perdido.
+    * 6. Registra la acción en la bitácora y modifica el estado de la estimación.
+    */
+   const EnviarTransaccionCaida = async () => {
+      // Paso 1: Confirmación inicial
+      const result = await Swal.fire({
+         title: "¿Está seguro?",
+         text: "¿Desea enviar la pre-reserva caída?",
+         icon: "warning",
+         showCancelButton: true,
+         confirmButtonColor: "#3085d6",
+         cancelButtonColor: "#d33",
+         confirmButtonText: "Sí, enviar",
+      });
+
+      if (result.isConfirmed) {
+         // Paso 2: Solicitud de datos adicionales
+         const { value: formValues } = await Swal.fire({
+            title: "Estimación Caída",
+            html: `
+               <label for="swal-input1">Comentario de caída</label>
+               <input id="swal-input1" class="swal2-input" required>
+               <label for="swal-select">Seleccione el motivo</label>
+               <select id="swal-select" class="swal2-select" required>
+                   <option value="">Escoger</option>
+                   <option value="2">Inconformidad - Cambios en proyecto</option>
+                   <option value="3">Inconformidad - Distribución</option>
+                   <option value="1">Inconformidad - Fecha de entrega</option>
+                   <option value="12">Incumplimiento contractual</option>
+                   <option value="10">Mejor Oferta</option>
+                   <option value="13">Motivo de empresa - Proyecto pospuesto</option>
+                   <option value="9">Motivo Financiero - Condiciones bancarias</option>
+                   <option value="8">Motivo Financiero - Venta de propiedad</option>
+                   <option value="14">Motivo Laboral</option>
+                   <option value="6">Motivo Personal - Económico</option>
+                   <option value="5">Motivo Personal - Familiar</option>
+                   <option value="4">Motivo Personal - Salud</option>
+                   <option value="7">Motivo Personal - Sin Especificar</option>
+                   <option value="11">No sujeto a crédito</option>
+                   <option value="15">Traslado de FF/proyecto</option>
+               </select>
+           `,
+            preConfirm: () => {
+               const input1Value = document.getElementById("swal-input1").value;
+               const selectValue = document.getElementById("swal-select").value;
+               return [input1Value, selectValue];
+            },
+         });
+
+         // Paso 3: Validación de entrada
+         if (!formValues[0] || !formValues[1]) {
+            Swal.fire("Error", "Debe ingresar un comentario y seleccionar un motivo para continuar.", "error");
+            return;
+         }
+
+         // Paso 4: Mostrar mensaje de carga
+         Swal.fire({
+            title: "Enviando...",
+            text: "Por favor, espere un momento.",
+            allowOutsideClick: false,
+            allowEscapeKey: false,
+            didOpen: () => Swal.showLoading(),
+         });
+
+         // Obtención de parámetros necesarios
+         const idEstimacion = getQueryParam("data2");
+         const leadId = getQueryParam("data");
+         const motivo = formValues[1];
+         const comentario = formValues[0];
+
+         // Paso 5: Envío de la pre-reserva caída
+         const result = await dispatch(caidaReserva(idEstimacion, motivo, comentario));
+         const xTraerResultado = result.data["Detalle"];
+
+         if (xTraerResultado.status === 200) {
+            // Paso 6: Confirmar si se debe marcar al cliente como perdido
+            const result = await Swal.fire({
+               title: "¿Quiere enviar como perdido este cliente?",
+               text: "Al perder el cliente se perderán todas sus transacciones!",
+               icon: "warning",
+               showCancelButton: true,
+               confirmButtonColor: "#3085d6",
+               cancelButtonColor: "#d33",
+               confirmButtonText: "Sí, perder",
+            });
+
+            let estadoValor = result.isConfirmed ? 1 : 0;
+
+            // Paso 7: Registrar en bitácora y actualizar estimación
+            await dispatch(crearBitacoraEstimacionCaida(leadId, comentario));
+            await dispatch(ModificarEstimacion(idEstimacion, leadId, estadoValor));
+
+            // Cerrar carga y mostrar éxito
+            Swal.close();
+            Swal.fire("Enviado", "La estimación ha sido enviada como Pre-reserva.", "success");
+         } else {
+            Swal.fire("Algo no está bien.", "No se pudo hacer la pre reserva caída.", "question");
+         }
+      }
    };
+   
+   const crearOrdenVentas = async () => {
+      const { isConfirmed } = await Swal.fire({
+         title: "¿Está seguro?",
+         text: "¿Desea crear la orden de venta?",
+         icon: "warning",
+         showCancelButton: true,
+         confirmButtonColor: "#3085d6",
+         cancelButtonColor: "#d33",
+         confirmButtonText: "Sí, crear",
+      });
+   
+      if (isConfirmed) {
+         const idEstimacion = getQueryParam("data2");
+         const leadId = getQueryParam("data");
+
+         // Paso 4: Mostrar mensaje de carga
+         Swal.fire({
+            title: "Enviando...",
+            text: "Por favor, espere un momento.",
+            allowOutsideClick: false,
+            allowEscapeKey: false,
+            didOpen: () => Swal.showLoading(),
+         });
+
+         const resultado = await dispatch(crearOrdenVenta(idEstimacion, leadId));
+
+         if(resultado.statusNormal !== 200){
+            Swal.fire("Algo no está bien.", "No se pudo crear la orden de venta.", "question");
+            return;
+         }
+         
+         await Swal.fire({
+            title: "¡Éxito!",
+            text: "Orden de venta creada correctamente",
+            icon: "success",
+            timer: 3000,
+            showConfirmButton: false
+         });
+
+         navigate(`/orden/view?data=${leadId}&data2=${resultado.data.id}`);
+      }
+   };
+   
 
    return (
       <>
@@ -419,7 +566,7 @@ export const VerEstimacion = () => {
                      </div>
                      <div className="col-3">
                         <div className="d-grid">
-                           <button className="btn btn-dark">
+                           <button className="btn btn-dark" onClick={() => crearOrdenVentas()}>
                               {" "}
                               <i className="ti ti-color-swatch"></i> ORDEN DE VENTA
                            </button>
@@ -446,7 +593,7 @@ export const VerEstimacion = () => {
                      </div>
                      <div className="col-3">
                         <div className="d-grid">
-                           <button className="btn btn-dark" onClick={() =>  EnviarTransaccionCaida()}>
+                           <button className="btn btn-dark" onClick={() => EnviarTransaccionCaida()}>
                               {" "}
                               <i className="ti ti-file-shredder"></i> ESTIMACION CAIDA
                            </button>
@@ -470,13 +617,9 @@ export const VerEstimacion = () => {
             </div>
             <div className="card-body">
                <ul className="list-group list-group-flush">
-                  <li className="list-group-item px-0">
-                     {renderBasicInfo()}
-                  </li>
+                  <li className="list-group-item px-0">{renderBasicInfo()}</li>
                </ul>
-               <ul className="list-group list-group-flush">
-                  {renderFinancialInfo()}
-               </ul>
+               <ul className="list-group list-group-flush">{renderFinancialInfo()}</ul>
                <ul className="list-group list-group-flush">
                   <li className="list-group-item px-0">
                      <div className="row">
