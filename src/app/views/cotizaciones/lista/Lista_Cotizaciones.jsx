@@ -78,19 +78,19 @@ const FilterControls = ({ filterOption, handleCheckboxChange }) => (
       <div className="col-md-6">
          <FilterOption
             id="creationDate"
-            label="Ordenes de Venta Banner"
+            label="Ordenes de Venta con Pendientes"
             checked={filterOption === 1}
             onChange={() => handleCheckboxChange(1)}
          />
          <FilterOption
             id="lastActionDate"
-            label="Contratos Firmados Banner"
+            label="Ordenes de Venta lista para Cobrar"
             checked={filterOption === 2}
             onChange={() => handleCheckboxChange(2)}
          />
          <FilterOption
             id="pendingPayment"
-            label="Contratos Pagados"
+            label="Comiciones Canceladas"
             checked={filterOption === 3}
             onChange={() => handleCheckboxChange(3)}
          />
