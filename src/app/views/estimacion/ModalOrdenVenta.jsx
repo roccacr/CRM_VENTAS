@@ -1392,9 +1392,9 @@ export const ModalOrdenVenta = ({ open, onClose, idEstimacion }) => {
                            {/* Component for payment method selection */}
                            <MetodoPago formValues={formValues} handleInputChange={handleInputChange} errors={errors} />
                            {/* Button to save the estimation */}
-                           <button type="submit" className="btn btn-primary">
+                           {/* <button type="submit" className="btn btn-primary">
                               Guardar ordenVenta
-                           </button>
+                           </button> */}
                         </form>
                      </>
                   )}
