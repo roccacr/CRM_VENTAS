@@ -20,11 +20,13 @@ import {
    precioVentaNeto,
    recalcultarMontoshitos,
 } from "../../../hook/useInputFormatter";
-import { PrimeraLinea } from "./PrimeraLinea";
+
 import { CalculodePrima } from "./CalculodePrima";
 import { SeleccionPrima } from "./SeleccionPrima";
 import { MetodoPago } from "./MetodoPago";
 import { editarEstimacionFormulario, extarerEstimacion } from "../../../store/estimacion/thunkEstimacion";
+import { obtenerOrdendeventa } from "../../../store/ordenVenta/thunkOrdenVenta";
+import { PrimeraLineaOrdenVenta } from "./PrimeraLineaOrdenVenta";
 
 export const ModalOrdenVenta = ({ open, onClose, idEstimacion }) => {
    // Estado para manejar si el contenido del modal está cargando
@@ -180,6 +182,22 @@ export const ModalOrdenVenta = ({ open, onClose, idEstimacion }) => {
       valortotals: 0,
       custbody52: 0,
       pre_reserva: false,
+
+      CAMPANA: "",
+      CREADO:"",
+      Clase:"",
+      Departamento:"",
+      FONDOS : "",
+      METODO_PAGO:"",
+      MOTIVO_CANCE:"",
+      MOTIVO_COMPRA:"",
+      Oportunidad:"",
+      Subsidaria:"",
+      Ubi:"",
+      
+      
+
+      
    });
 
    // Estado para manejar los errores del formulario
@@ -1005,11 +1023,20 @@ export const ModalOrdenVenta = ({ open, onClose, idEstimacion }) => {
                return new Intl.NumberFormat("en-US", {
                   minimumFractionDigits: 2,
                   maximumFractionDigits: 2,
-               }).format(Number(cleanValue) || 0);
+               }).format(Number(cleanValue) || 0);f
             };
 
-            const estimacionData = await dispatch(extarerEstimacion(idEstimacion));
-            const transactionData = estimacionData?.netsuite?.Detalle || {};
+            const estimacionData = await dispatch(obtenerOrdendeventa(idEstimacion));
+
+            console.clear();
+            console.log(estimacionData)
+
+
+
+            const transactionData = estimacionData?.data?.Detalle || {};
+
+
+            console.log(transactionData?.data?.fields?.custbody114)
 
             const financialData = {
                listPrice: formatNumber(transactionData?.data?.fields?.custbody13),
@@ -1037,7 +1064,7 @@ export const ModalOrdenVenta = ({ open, onClose, idEstimacion }) => {
                rType: "estimacion",
                location: transactionData?.data?.fields?.location || "-",
                entity: transactionData?.cli || "-",
-               custbody38: transactionData?.Exp || "-",
+               custbody38: transactionData?.UNIDAD || "-",
                proyecto_lead_est: transactionData?.Exp || "-",
                entitystatus: transactionData?.Estado || "-",
                subsidiary: transactionData?.Subsidaria || "-",
@@ -1284,7 +1311,7 @@ export const ModalOrdenVenta = ({ open, onClose, idEstimacion }) => {
             };
             const processedItems = processItemLines(itemData);
          } catch (error) {
-            console.error("Error fetching estimacion:", error);
+            console.error("Error fetching ordenVenta:", error);
             alert("Error al obtener la estimación. Por favor, inténtelo de nuevo.");
          } finally {
             setIsLoading(false);
@@ -1323,10 +1350,10 @@ export const ModalOrdenVenta = ({ open, onClose, idEstimacion }) => {
                   ) : (
                      // Main content of the modal when not loading
                      <>
-                        <h4>EDITAR ESTIMACIÓN</h4> {/* Main title of the modal */}
+                        <h4>EDITAR ORDEN DE VENTA</h4> {/* Main title of the modal */}
                         <form onSubmit={handleSubmit}>
                            {/* Component to manage the first line of the form */}
-                           <PrimeraLinea formValues={formValues} handleInputChange={handleInputChange} errors={errors} />
+                           <PrimeraLineaOrdenVenta formValues={formValues} handleInputChange={handleInputChange} errors={errors} />
                            {/* Component for premium calculation */}
                            <CalculodePrima
                               errors={errors}
@@ -1340,7 +1367,7 @@ export const ModalOrdenVenta = ({ open, onClose, idEstimacion }) => {
                            <MetodoPago formValues={formValues} handleInputChange={handleInputChange} errors={errors} />
                            {/* Button to save the estimation */}
                            <button type="submit" className="btn btn-primary">
-                              Guardar Estimacion
+                              Guardar ordenVenta
                            </button>
                         </form>
                      </>
