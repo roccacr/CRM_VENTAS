@@ -25,7 +25,7 @@ import { CalculodePrima } from "./CalculodePrima";
 import { SeleccionPrima } from "./SeleccionPrima";
 import { MetodoPago } from "./MetodoPago";
 import { editarEstimacionFormulario, extarerEstimacion } from "../../../store/estimacion/thunkEstimacion";
-import { obtenerOrdendeventa } from "../../../store/ordenVenta/thunkOrdenVenta";
+import { editarOrdenVentaFormulario, obtenerOrdendeventa } from "../../../store/ordenVenta/thunkOrdenVenta";
 import { PrimeraLineaOrdenVenta } from "./PrimeraLineaOrdenVenta";
 
 export const ModalOrdenVenta = ({ open, onClose, idEstimacion }) => {
@@ -184,20 +184,30 @@ export const ModalOrdenVenta = ({ open, onClose, idEstimacion }) => {
       pre_reserva: false,
 
       CAMPANA: "",
-      CREADO:"",
-      Clase:"",
-      Departamento:"",
-      FONDOS : "",
-      METODO_PAGO:"",
-      MOTIVO_CANCE:"",
-      MOTIVO_COMPRA:"",
-      Oportunidad:"",
-      Subsidaria:"",
-      Ubi:"",
-      
-      
+      CREADO: "",
+      Clase: "",
+      Departamento: "",
+      FONDOS: "",
+      METODO_PAGO: "",
+      MOTIVO_CANCE: "",
+      MOTIVO_COMPRA: "",
+      Oportunidad: "",
+      Subsidaria: "",
+      Ubi: "",
 
-      
+      custbody207: 0,
+      custbody191: "",
+      custbody189: "",
+      custbody208: "",
+      custbody190: "",
+      custbody188: "",
+      saleseffectivedate: 0,
+      custbody20: "",
+      custbody14: "",
+      custbody37: "",
+      custbody115: "",
+      custbody116: "",
+      memo: "",
    });
 
    // Estado para manejar los errores del formulario
@@ -574,8 +584,6 @@ export const ModalOrdenVenta = ({ open, onClose, idEstimacion }) => {
 
    // Maneja actualizaciones específicas para custbody62
    const actualizarHitoDiferenciado = (name, value, campoActualizar) => {
-
-
       setFormValues((prevValues) => {
          // Copia el estado actual y actualiza el valor del campo modificado
          const updatedValues = { ...prevValues, [name]: value };
@@ -740,18 +748,18 @@ export const ModalOrdenVenta = ({ open, onClose, idEstimacion }) => {
       },
 
       // Validaciones para campos relacionados con pre-reserva
-      custbody191: {
-         required: !!formValues.pre_reserva, // Obligatorio solo si hay una pre-reserva activa
-         message: "Pre-reserva: Este campo es obligatorio y debe ser seleccionado.",
-      },
+      // custbody191: {
+      //    required: !!formValues.pre_reserva, // Obligatorio solo si hay una pre-reserva activa
+      //    message: "Pre-reserva: Este campo es obligatorio y debe ser seleccionado.",
+      // },
       custbody189: {
          required: !!formValues.pre_reserva,
          message: "Pre-reserva: Este campo es obligatorio y debe ser seleccionado.",
       },
-      custbody206: {
-         required: !!formValues.pre_reserva,
-         message: "Pre-reserva: Este campo es obligatorio y debe ser seleccionado.",
-      },
+      // custbody206: {
+      //    required: !!formValues.pre_reserva,
+      //    message: "Pre-reserva: Este campo es obligatorio y debe ser seleccionado.",
+      // },
       custbody190: {
          required: !!formValues.pre_reserva,
          message: "Pre-reserva: Este campo es obligatorio y debe ser seleccionado.",
@@ -925,7 +933,7 @@ export const ModalOrdenVenta = ({ open, onClose, idEstimacion }) => {
             });
 
             try {
-               const result = await dispatch(editarEstimacionFormulario(formValues));
+               const result = await dispatch(editarOrdenVentaFormulario(formValues));
                let ExTraerResultado = result.data["Detalle"];
 
                // Cerrar el Swal de carga
@@ -1023,20 +1031,15 @@ export const ModalOrdenVenta = ({ open, onClose, idEstimacion }) => {
                return new Intl.NumberFormat("en-US", {
                   minimumFractionDigits: 2,
                   maximumFractionDigits: 2,
-               }).format(Number(cleanValue) || 0);f
+               }).format(Number(cleanValue) || 0);
+               f;
             };
 
             const estimacionData = await dispatch(obtenerOrdendeventa(idEstimacion));
 
             console.clear();
-            console.log(estimacionData)
-
-
 
             const transactionData = estimacionData?.data?.Detalle || {};
-
-
-            console.log(transactionData?.data?.fields?.custbody114)
 
             const financialData = {
                listPrice: formatNumber(transactionData?.data?.fields?.custbody13),
@@ -1059,8 +1062,14 @@ export const ModalOrdenVenta = ({ open, onClose, idEstimacion }) => {
                Number(financialData.courtesyAmount.replace(/,/g, ""))
             ).toFixed(2);
 
+            let reserva = false;
+            if (transactionData?.data?.fields?.custbody207 > 0 && transactionData?.data?.fields?.custbody207 !== "") {
+               reserva = true;
+            }
+
             setFormValues((prevValues) => ({
                ...prevValues,
+               pre_reserva: reserva,
                rType: "estimacion",
                location: transactionData?.data?.fields?.location || "-",
                entity: transactionData?.cli || "-",
@@ -1080,15 +1089,32 @@ export const ModalOrdenVenta = ({ open, onClose, idEstimacion }) => {
                custbody35: transactionData?.data?.fields?.custbody35 || "-",
                custbody114: formatDate(transactionData?.data?.fields?.custbody114) || 0,
                date_hito_6: transactionData?.data?.fields?.custbody114,
-               tranid_oport: transactionData?.opportunity_name || "-",
                custbody_ix_total_amount: formatNumber(financialData.custbody_ix_total_amount) || 0,
-               expectedclosedate: transactionData?.data?.fields?.expectedclosedate || "-",
+               expectedclosedate: transactionData?.data?.fields?.saleseffectivedate || 0,
                custbody39: formatNumber(financialData.custbody39), // PRIMA TOTAL
                custbody60: transactionData?.data?.fields?.custbody60 || "0.15",
                custbody_ix_salesorder_monto_prima: formatNumber(financialData.custbody_ix_salesorder_monto_prima),
                neta: formatNumber(transactionData?.data?.fields?.custbody211),
                custbody75: transactionData?.data?.fields?.custbody75 || 1,
-               total_porcentaje: "0.00%"
+               total_porcentaje: "0.00%",
+
+               Clase: transactionData?.Clase || "-",
+               Ubi: transactionData?.Ubi || "-",
+               tranid_oport: transactionData?.Oportunidad || "-",
+
+               custbody207: transactionData?.data?.fields?.custbody207 || 0,
+               custbody191: transactionData?.data?.fields?.custbody191 || 0,
+               custbody189: transactionData?.data?.fields?.custbody189 || 0,
+               custbody208: formatDate(transactionData?.data?.fields?.custbody208) || 0,
+               custbody190: transactionData?.data?.fields?.custbody190 || 0,
+               custbody188: transactionData?.data?.fields?.custbody188 || 0,
+               saleseffectivedate: formatDate(transactionData?.data?.fields?.saleseffectivedate) || 0,
+               custbody20: transactionData?.data?.fields?.custbody20 || "",
+               custbody14: transactionData?.data?.fields?.custbody14 || "",
+               custbody37: transactionData?.data?.fields?.custbody37 || "",
+               custbody115: transactionData?.data?.fields?.custbody115 || "",
+               custbody116: transactionData?.data?.fields?.custbody116 || "",
+               memo: transactionData?.data?.fields?.memo || "",
             }));
 
             const itemData = transactionData?.data?.sublists?.item || {};

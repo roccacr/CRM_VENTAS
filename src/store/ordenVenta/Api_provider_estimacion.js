@@ -61,3 +61,21 @@ export const insertarOrdenVentaBd = async ({ tranid, id_orden, idEstimacion, opp
     return await fetchData("ordenVenta/insertarOrdenVentaBd", requestData); // Retorna la respuesta de la API para la solicitud realizada.
 };
 
+
+
+/**
+ * Función asincrónica para editar una orden de venta utilizando datos proporcionados en un formulario.
+ * @param {object} formulario - Los datos del formulario utilizados para la edición de la orden de venta.
+ * @returns {Promise} - Retorna la respuesta de la API tras intentar editar la orden de venta.
+ */
+export const editarOrdenVenta = async ({ formulario }) => {
+    // Construye el objeto de datos para la solicitud, combinando datos comunes y los específicos del formulario.
+    const requestData = {
+        ...commonRequestData, // Datos comunes requeridos para cada solicitud (p. ej., tokens de autenticación, configuraciones generales).
+        formulario, // Datos específicos del formulario necesarios para la creación de la orden de venta.
+    };
+
+    // Realiza una solicitud a la API para editar la orden de venta con los datos proporcionados.
+    // La URL "ordenVenta/editarOrdenVenta" corresponde al endpoint en el servidor que gestiona esta operación.
+    return await fetchData("ordenVenta/editarOrdenVenta", requestData); // Retorna la respuesta de la API para la solicitud realizada.
+};

@@ -1,4 +1,4 @@
-import { insertarOrdenVenta, insertarOrdenVentaBd, obtenerOrdenVenta, updateAplicarComicion } from "./Api_provider_estimacion";
+import { editarOrdenVenta, insertarOrdenVenta, insertarOrdenVentaBd, obtenerOrdenVenta, updateAplicarComicion } from "./Api_provider_estimacion";
 
 
 /**
@@ -114,3 +114,27 @@ export const InsertarOrdenVentaBds = (tranid, id_orden, idEstimacion, opportunit
     };
 };
 
+
+
+
+/**
+ * Función para manejar la edición de una orden de venta a partir de los datos proporcionados en un formulario.
+ * @param {object} formulario - Los datos del formulario utilizados para la edición de la orden de venta.
+ * @returns {Function} - Una función asincrónica que realiza la solicitud y maneja los resultados.
+*/
+export const editarOrdenVentaFormulario = (formulario) => {
+
+    return async () => {
+        try {
+            // Llama a la API para editar la estimación utilizando los datos del formulario.
+            const result = await editarOrdenVenta({ formulario });
+ 
+            // Retorna el primer elemento de los datos obtenidos, asumiendo que contiene la información principal requerida.
+            return result;
+        } catch (error) {
+            // Captura y registra cualquier error que ocurra durante la solicitud para facilitar la depuración.
+            console.error("Error al editar la orden de venta:", error);
+        }
+    };
+ };
+ 
