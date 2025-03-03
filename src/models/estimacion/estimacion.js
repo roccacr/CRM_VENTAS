@@ -277,6 +277,12 @@ estimacion.extraerEstimacion = async (dataParams) => {
 };
 
 estimacion.editarEstimacion = async ({ formulario }) => {
+
+ 
+
+
+
+
     // Transformar la fecha del campo "date_hito_1" del formulario y almacenarla en una variable.
     var fechaTransformada_1 = transformarFecha(formulario.date_hito_1, "date_hito_1");
 
@@ -345,6 +351,10 @@ estimacion.editarEstimacion = async ({ formulario }) => {
         // Convierte el valor limpio a un número entero
         return parseFloat(cleanedValue, 10) || 0; // Retorna 0 si no es un número válido
     };
+
+    console.clear();
+    console.log("Tractos",formulario.custbody180);
+    console.log("Montos", cleanAndParseInteger(formulario.custbody179));
 
     const urlSettings = {
         url: "https://4552704.restlets.api.netsuite.com/app/site/hosting/restlet.nl?script=1764&deploy=1",
