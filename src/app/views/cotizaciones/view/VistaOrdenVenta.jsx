@@ -10,6 +10,7 @@ import "datatables.net-bs5";
 import "datatables.net-searchpanes-bs5";
 import "datatables.net-select-bs5";
 import { useNavigate } from "react-router-dom";
+import { ModalOrdenVenta } from "../../estimacion/ModalOrdenVenta";
 /**
  * Utility Functions
  */
@@ -172,7 +173,7 @@ const processTableData = (datosOrdenVenta) => {
  * @param {Object} params - Parameters for action handlers
  * @returns {Object} Action handlers and configurations
  */
-const useSalesOrderActions = ({ navigate, dispatch, datosOrdenVenta }) => {
+const useSalesOrderActions = ({ navigate, dispatch, datosOrdenVenta, setIsModalOpen }) => {
    return {
       actions: {
          EnviarReserva: () => {},
@@ -190,7 +191,9 @@ const useSalesOrderActions = ({ navigate, dispatch, datosOrdenVenta }) => {
          verEstimacion: () => {
             navigate(`/estimaciones/view?data=${getQueryParam("data")}&data2=${datosOrdenVenta?.data?.fields?.createdfrom}&whence=`);
          },
-         editarOV: () => {},
+         editarOV: () => {
+            setIsModalOpen(true);
+         },
          aplicarComision: () => handleCommissionAction(dispatch, getQueryParam("data2")),
       },
       configs: {
@@ -487,7 +490,8 @@ export const VistaOrdenVenta = () => {
    const { actions, configs } = useSalesOrderActions({ 
       navigate, 
       dispatch, 
-      datosOrdenVenta 
+      datosOrdenVenta ,
+      setIsModalOpen
    });
 
    // Initial data fetch
@@ -619,10 +623,9 @@ export const VistaOrdenVenta = () => {
                      </thead>
                   </table>
                </div>
-               {/* Modal */}
-               {isModalOpen && (
-                  <ModalEstimacionEdit open={isModalOpen} onClose={() => setIsModalOpen(false)} idEstimacion={getQueryParam("data2")} />
-               )}
+                  {isModalOpen && (
+                     <ModalOrdenVenta open={isModalOpen} onClose={() => setIsModalOpen(false)} idEstimacion={getQueryParam("data2")} />
+                  )}
             </div>
          </div>
       </>

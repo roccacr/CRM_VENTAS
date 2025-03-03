@@ -26,7 +26,7 @@ import { SeleccionPrima } from "./SeleccionPrima";
 import { MetodoPago } from "./MetodoPago";
 import { editarEstimacionFormulario, extarerEstimacion } from "../../../store/estimacion/thunkEstimacion";
 
-export const ModalEstimacionEdit = ({ open, onClose, idEstimacion }) => {
+export const ModalOrdenVenta = ({ open, onClose, idEstimacion }) => {
    // Estado para manejar si el contenido del modal está cargando
    const [isLoading, setIsLoading] = useState(false);
    const dispatch = useDispatch();
