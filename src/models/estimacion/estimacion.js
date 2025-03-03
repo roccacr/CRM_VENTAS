@@ -353,8 +353,8 @@ estimacion.editarEstimacion = async ({ formulario }) => {
     };
 
     console.clear();
-    console.log("Tractos",formulario.custbody180);
-    console.log("Montos", cleanAndParseInteger(formulario.custbody179));
+    console.log("formulario", formulario.custbody114);
+
 
     const urlSettings = {
         url: "https://4552704.restlets.api.netsuite.com/app/site/hosting/restlet.nl?script=1764&deploy=1",
@@ -366,6 +366,7 @@ estimacion.editarEstimacion = async ({ formulario }) => {
         const body = await rest.put({
             rType: "estimate",
             id: formulario.idEst,
+            custbody114: formulario.custbody114,
             /*MONTO TOTAL*/
             custbody_ix_total_amount: cleanAndParseInteger(formulario.custbody_ix_total_amount),
             /*OPORTUNIDAD*/
