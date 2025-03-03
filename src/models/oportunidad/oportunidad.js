@@ -89,13 +89,15 @@ oportunidad.updateOpportunity_Status = (dataParams) => {
 
 // Función para obtener oportunidades basadas en parámetros de filtrado
 oportunidad.get_Oportunidades = (dataParams) => {
-    console.log(dataParams)
+
     // Determinar filtro adicional basado en BotonesEstados
     const estadoFiltro =
         {
-            0: "and estatus_oport = 0", // Filtro para estado 0
-            1: "and p.estatus_oport = 1 AND chek_oport = 1", // Filtro para estado 1
-            3: "", // Filtro vacío cuando BotonesEstados es 3
+            1: "and p.estatus_oport = 1 AND chek_oport = 1", 
+            2: "",
+            5: "and estatus_oport = 0",
+            6: "and estatus_oport = 1", 
+            7: "", 
         }[dataParams.BotonesEstados] || ""; // Si no se encuentra en los casos anteriores, no aplica filtro
 
     // Seleccionar campo de fecha según el modo
