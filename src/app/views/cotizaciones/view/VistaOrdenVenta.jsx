@@ -424,10 +424,10 @@ const initializeDataTable = (datosOrdenVenta) => {
 
    const tableData = Object.entries(datosOrdenVenta.data.sublists.item)
       .filter(([key]) => key !== "currentline")
-      .map(([key, linea]) => ({
-         numero: linea.line || key.replace("line ", ""),
+      .map(([key, linea], index) => ({
+         numero:index + 1, // Use the index as the numero
          articulo: linea.item_display || linea.item,
-         monto: formatoMoneda(linea.amount || 0),
+         monto: formatoMoneda(linea.rate || 0),
          fechaPago: linea.custcolfecha_pago_proyectado || "N/A",
          cantidad: linea.quantity,
          descripcion: linea.description,
