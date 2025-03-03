@@ -71,7 +71,6 @@ export const VerEstimacion = () => {
    const fetchEstimacionDetails = async (idEstimacion) => {
       try {
          const estimacionData = await dispatch(extarerEstimacion(idEstimacion));
-         console.log(estimacionData);
          setDatosEstimacion(estimacionData.netsuite.Detalle);
          setDatosCrm(estimacionData.crm);
       } catch (error) {
@@ -152,8 +151,8 @@ export const VerEstimacion = () => {
 
       return Object.entries(datosEstimacion.data.sublists.item)
          .filter(([key]) => key !== "currentline")
-         .map(([key, linea]) => ({
-            numero: linea.line || key.replace("line ", ""),
+         .map(([key, linea], index) => ({
+            numero:index + 1, // Use the index as the numero
             articulo: linea.item_display || linea.item,
             monto: formatoMoneda(linea.rate || 0),
             fechaPago: linea.custcolfecha_pago_proyectado || "N/A",

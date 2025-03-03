@@ -556,6 +556,8 @@ export const ModalEstimacionEdit = ({ open, onClose, idEstimacion }) => {
 
    // Maneja actualizaciones específicas para custbody62
    const actualizarHitoDiferenciado = (name, value, campoActualizar) => {
+
+
       setFormValues((prevValues) => {
          // Copia el estado actual y actualiza el valor del campo modificado
          const updatedValues = { ...prevValues, [name]: value };
@@ -1058,6 +1060,7 @@ export const ModalEstimacionEdit = ({ open, onClose, idEstimacion }) => {
                custbody_ix_salesorder_monto_prima: formatNumber(financialData.custbody_ix_salesorder_monto_prima),
                neta: formatNumber(transactionData?.data?.fields?.custbody211),
                custbody75: transactionData?.data?.fields?.custbody75 || 1,
+               total_porcentaje: "0.00%"
             }));
 
             const itemData = transactionData?.data?.sublists?.item || {};

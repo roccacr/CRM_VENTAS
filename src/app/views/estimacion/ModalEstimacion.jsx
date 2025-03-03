@@ -916,7 +916,6 @@ export const ModalEstimacion = ({ open, onClose, OportunidadDetails, cliente }) 
 
             Swal.close();
 
-            console.log("ExTraerResultado: ", ExTraerResultado);
 
             if (ExTraerResultado.status == 200) {
                Swal.fire({
@@ -979,7 +978,6 @@ export const ModalEstimacion = ({ open, onClose, OportunidadDetails, cliente }) 
             alert("Operación cancelada.");
          }
       } else {
-         console.log(validateForm);
          // Si la validación falla
          alert("Algunos campos no pueden quedar vacíos. Por favor, verifíquelos.");
       }
