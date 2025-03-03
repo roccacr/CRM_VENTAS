@@ -423,16 +423,65 @@ ordenVenta.editarOrdenVenta = async (dataParams) => {
             
 
             
+            custbody163 : formulario?.custbody163,
+            
+            
+            neta : cleanAndParseInteger(formulario?.neta),
             
             
             
-            
-            
-            
-            
+            custbody62 : formulario?.custbody62,
+            custbodyix_salesorder_hito1 : cleanAndParseInteger(formulario?.custbodyix_salesorder_hito1),
 
-       
+            custbody63 : formulario?.custbody63,
 
+            custbody_ix_salesorder_hito2 : cleanAndParseInteger(formulario?.custbody_ix_salesorder_hito2),
+
+            custbody64 : formulario?.custbody64,
+
+            custbody_ix_salesorder_hito3 : cleanAndParseInteger(formulario?.custbody_ix_salesorder_hito3),
+
+            custbody65 : formulario?.custbody65,
+
+            custbody_ix_salesorder_hito4 : cleanAndParseInteger(formulario?.custbody_ix_salesorder_hito4),
+
+            custbody66 : formulario?.custbody66,
+
+            custbody_ix_salesorder_hito5 : cleanAndParseInteger(formulario?.custbody_ix_salesorder_hito5),
+
+            custbody67 : formulario?.custbody67,
+
+            custbody_ix_salesorder_hito6 : cleanAndParseInteger(formulario?.custbody_ix_salesorder_hito6),
+
+            custbody163 : formulario?.custbody163,
+
+            custbody164 : formulario?.custbody164,
+
+            hito_chek_uno : formulario?.hito_chek_uno,
+            date_hito_1 : transformarFecha(formulario?.date_hito_1, "date_hito_1") || 0,
+
+            hito_chek_dos : formulario?.hito_chek_dos,
+            date_hito_2 : transformarFecha(formulario?.date_hito_2, "date_hito_2") || 0,
+
+            hito_chek_tres : formulario?.hito_chek_tres,
+            date_hito_3 : transformarFecha(formulario?.date_hito_3, "date_hito_3") || 0,
+
+            hito_chek_cuatro : formulario?.hito_chek_cuatro,
+            date_hito_4 : transformarFecha(formulario?.date_hito_4, "date_hito_4") || 0,
+
+            hito_chek_cinco : formulario?.hito_chek_cinco,
+            date_hito_5 : transformarFecha(formulario?.date_hito_5, "date_hito_5") || 0,
+
+            hito_chek_seis : formulario?.hito_chek_seis,
+            date_hito_6 : transformarFecha(formulario?.date_hito_6, "date_hito_6") || 0,
+
+            // var partnerId = dataIn.corredorID; // Almacena el ID válido de un socio
+            // if (dataIn.validacionCorredor != 0) {
+
+
+
+            
+            
 
 
 
