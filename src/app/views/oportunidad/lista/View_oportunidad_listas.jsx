@@ -113,22 +113,22 @@ const StatusToggle = ({ BotonesEstados, setBotonesEstados }) => (
    <div className="card-header border-bottom-0">
       <div className="d-flex">
          <button
-            className={`btn ms-2 ${BotonesEstados === 1 ? 'btn-danger' : 'btn-outline-danger'}`}
-            onClick={() => setBotonesEstados(1)}
+            className={`btn ms-2 ${BotonesEstados === 5 ? 'btn-danger' : 'btn-outline-danger'}`}
+            onClick={() => setBotonesEstados(5)}
             aria-label="Ver oportunidades inactivas"
          >
             Oportunidades Inactivas
          </button>
          <button
-            className={`btn ms-2 ${BotonesEstados === 2 ? 'btn-success' : 'btn-outline-success'}`}
-            onClick={() => setBotonesEstados(2)}
+            className={`btn ms-2 ${BotonesEstados === 6 ? 'btn-success' : 'btn-outline-success'}`}
+            onClick={() => setBotonesEstados(6)}
             aria-label="Ver oportunidades activas"
          >
             Oportunidades Activas
          </button>
          <button
-            className={`btn ms-2 ${BotonesEstados === 3 ? 'btn-primary' : 'btn-outline-primary'}`}
-            onClick={() => setBotonesEstados(3)}
+            className={`btn ms-2 ${BotonesEstados === 7 ? 'btn-primary' : 'btn-outline-primary'}`}
+            onClick={() => setBotonesEstados(7)}
             aria-label="Ver todas las oportunidades"
          >
             Todas las Oportunidades
@@ -204,7 +204,7 @@ const View_oportunidad_listas = () => {
    const [inputEndDate, setInputEndDate] = useState();
    const [filterOption, setFilterOption] = useState(1);
    const [isMode, setIsMode] = useState(1);
-   const [botonesEstados, setBotonesEstados] = useState(2);
+   const [botonesEstados, setBotonesEstados] = useState(parseInt(oportunidadParam));
    const [idOportunidad, setIdOportunidad] = useState(1);
 
    // Force update when URL changes
