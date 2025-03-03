@@ -1086,12 +1086,12 @@ export const ModalEstimacionEdit = ({ open, onClose, idEstimacion }) => {
                 * @returns {Object} Objeto formateado para la salida.
                 */
                const formatLineOutput = (lineData) => ({
-                  amount: lineData.amount || "",
+                  rate: lineData.rate || "",
                   quantity: lineData.quantity || "",
                   custcolfecha_pago_proyectado: lineData.custcolfecha_pago_proyectado || "",
                   custcol_indentificadorprima: lineData.custcol_indentificadorprima || "",
                   description: lineData.description || "",
-                  porcentaje: lineData.amount || "",
+                  porcentaje: lineData.rate || "",
                });
                /**
                 * Genera las actualizaciones del formulario basadas en el identificador de prima.
@@ -1100,9 +1100,9 @@ export const ModalEstimacionEdit = ({ open, onClose, idEstimacion }) => {
                 * @returns {Object} Objeto con las actualizaciones del formulario.
                 */
                const getPrimaUpdates = (identifier, data) => {
-                  const { amount, quantity, custcolfecha_pago_proyectado, description, porcentaje } = data;
+                  const { rate, quantity, custcolfecha_pago_proyectado, description, porcentaje } = data;
                   const formattedDate = formatDate(custcolfecha_pago_proyectado);
-                  const formattedAmount = formatNumber(amount);
+                  const formattedAmount = formatNumber(rate);
 
                   // Mapa de identificadores de prima y sus respectivas actualizaciones
                   const primaUpdatesMap = {
