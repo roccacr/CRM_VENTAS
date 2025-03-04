@@ -178,6 +178,10 @@ ordenVenta.insertarOrdenVentaBd = async (dataParams) => {
 
 ordenVenta.editarOrdenVenta = async (dataParams) => {
 
+    console.clear();
+    console.log("dataParams", dataParams);
+    console.log("formulario?.custbody52", dataParams.formulario?.custbody52)
+
     function transformarFecha(fecha, campo) {
         // Validar si la fecha es vacía o no válida
         if (!fecha || typeof fecha !== "string" || !fecha.includes("-")) {
@@ -230,10 +234,10 @@ ordenVenta.editarOrdenVenta = async (dataParams) => {
             custbody18: cleanAndParseInteger(formulario?.custbody18) || 0,
 
             // COMISIÓN DEL ASESOR %
-            custbody20: formulario?.custbody20 || 0,
+            custbody20: formulario?.custbody20.replace('%', '') || 0,
 
             // % COMISIÓN DEL CORREDOR
-            custbody14: formulario?.custbody14 || 0,
+            custbody14: formulario?.custbody14.replace('%', '') || 0,
 
             // FONDOS DE COMPRA
             custbody37: formulario?.custbody37 || 0,
@@ -255,7 +259,7 @@ ordenVenta.editarOrdenVenta = async (dataParams) => {
             diferencia: cleanAndParseInteger(formulario?.custbody185) || 0,
 
             //chek reserva
-            RESERVA: formulario?.pre_reserva || 0,
+            RESERVA: formulario?.pre_reserva ? "T" : "F",
 
             //MONTO RESERVA :
             rateReserva: cleanAndParseInteger(formulario?.custbody52) || 0,
@@ -322,7 +326,7 @@ ordenVenta.editarOrdenVenta = async (dataParams) => {
 
 
             //PRIMA FRACCIONADA
-            custbody176 : formulario?.custbody176,
+            custbody176 : formulario?.custbody176 ? "T" : "F",
 
             //PRIMA 1 fecha
             custbody179_date : transformarFecha(formulario?.custbody179_date, "custbody179_date") || 0,
@@ -337,7 +341,7 @@ ordenVenta.editarOrdenVenta = async (dataParams) => {
             custbody179 : cleanAndParseInteger(formulario.custbody179),
 
             // prima chek 2 
-            custbody177 : formulario?.custbody177,
+            custbody177 : formulario?.custbody177  ? "T" : "F",
 
             // prima chek 2 fecha
             custbody182_date : transformarFecha(formulario?.custbody182_date, "custbody182_date") || 0,
@@ -352,7 +356,7 @@ ordenVenta.editarOrdenVenta = async (dataParams) => {
             custbody181 : cleanAndParseInteger(formulario.custbody181),
 
             // prima chek 3
-            custbody178 : formulario?.custbody178,
+            custbody178 : formulario?.custbody178 ? "T" : "F",
 
             // prima chek 3 fecha
             custbody184_date : transformarFecha(formulario?.custbody184_date, "custbody184_date") || 0,
@@ -367,7 +371,7 @@ ordenVenta.editarOrdenVenta = async (dataParams) => {
             custbody183 : cleanAndParseInteger(formulario.custbody183),
 
 
-            prima_extra_uno : formulario?.prima_extra_uno,
+            prima_extra_uno : formulario?.prima_extra_uno ? "T" : "F",
 
             // monto prima 4
             monto_extra_uno : cleanAndParseInteger(formulario.monto_extra_uno),
@@ -381,7 +385,7 @@ ordenVenta.editarOrdenVenta = async (dataParams) => {
             // descripcion prima 4
             desc_extra_uno : formulario?.desc_extra_uno,
 
-            prima_extra_dos : formulario?.prima_extra_dos,
+            prima_extra_dos : formulario?.prima_extra_dos ? "T" : "F",
 
             // monto prima 5
             monto_extra_dos : cleanAndParseInteger(formulario.monto_extra_dos),
@@ -400,7 +404,7 @@ ordenVenta.editarOrdenVenta = async (dataParams) => {
             custbody206 : transformarFecha(formulario?.custbody206, "custbody206") || 0,
 
 
-            prima_extra_tres : formulario?.prima_extra_tres,
+            prima_extra_tres : formulario?.prima_extra_tres ? "T" : "F",
 
             // monto prima 6
             monto_extra_tres : cleanAndParseInteger(formulario.monto_extra_tres),
@@ -423,37 +427,38 @@ ordenVenta.editarOrdenVenta = async (dataParams) => {
             
 
             
-            custbody163 : formulario?.custbody163,
+            custbody163 : cleanAndParseInteger(formulario?.custbody163),
             
             
             neta : cleanAndParseInteger(formulario?.neta),
             
             
             
-            custbody62 : formulario?.custbody62,
+            custbody62: formulario?.custbody75 === "2" ? `${formulario?.custbody62}%` : formulario?.custbody62,
+
             custbodyix_salesorder_hito1 : cleanAndParseInteger(formulario?.custbodyix_salesorder_hito1),
 
-            custbody63 : formulario?.custbody63,
+            custbody63 : formulario?.custbody75 === "2" ? `${formulario?.custbody63}%` : formulario?.custbody63,
 
             custbody_ix_salesorder_hito2 : cleanAndParseInteger(formulario?.custbody_ix_salesorder_hito2),
 
-            custbody64 : formulario?.custbody64,
+            custbody64 : formulario?.custbody75 === "2" ? `${formulario?.custbody64}%` : formulario?.custbody64,
 
             custbody_ix_salesorder_hito3 : cleanAndParseInteger(formulario?.custbody_ix_salesorder_hito3),
 
-            custbody65 : formulario?.custbody65,
+            custbody65 : formulario?.custbody75 === "2" ? `${formulario?.custbody65}%` : formulario?.custbody65,
 
             custbody_ix_salesorder_hito4 : cleanAndParseInteger(formulario?.custbody_ix_salesorder_hito4),
 
-            custbody66 : formulario?.custbody66,
+            custbody66 : formulario?.custbody75 === "2" ? `${formulario?.custbody66}%` : formulario?.custbody66,
 
             custbody_ix_salesorder_hito5 : cleanAndParseInteger(formulario?.custbody_ix_salesorder_hito5),
 
-            custbody67 : formulario?.custbody67,
+            custbody67 : formulario?.custbody75 === "2" ? `${formulario?.custbody67}%` : formulario?.custbody67,
 
             custbody_ix_salesorder_hito6 : cleanAndParseInteger(formulario?.custbody_ix_salesorder_hito6),
 
-            custbody163 : formulario?.custbody163,
+            custbody163 : cleanAndParseInteger(formulario?.custbody163),
 
             custbody164 : formulario?.custbody164,
 
@@ -481,11 +486,15 @@ ordenVenta.editarOrdenVenta = async (dataParams) => {
             
         });
 
+        console.log("body", body);
+
         return {
             msg: "Editar estimacion ",
             Detalle: body,
             status: 200,
         };
+
+       
     } catch (error) {
         console.error("Error al editar estimacion:", error);
         throw error;
