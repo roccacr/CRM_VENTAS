@@ -475,18 +475,9 @@ ordenVenta.editarOrdenVenta = async (dataParams) => {
             hito_chek_seis : formulario?.hito_chek_seis,
             date_hito_6 : transformarFecha(formulario?.date_hito_6, "date_hito_6") || 0,
 
-            // var partnerId = dataIn.corredorID; // Almacena el ID válido de un socio
-            // if (dataIn.validacionCorredor != 0) {
-
-
-
-            
-            
-
-
-
-
-            
+            partnerId : 0,
+            validacionCorredor: 0
+ 
             
         });
 
