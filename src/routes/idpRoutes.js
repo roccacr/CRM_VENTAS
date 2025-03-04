@@ -225,6 +225,9 @@ module.exports = function (app) {
                 { path: "/ordenVenta/insertarOrdenVentaBd", method: "insertarOrdenVentaBd" }, // Insertar datos de orden de venta en la base de datos
                 { path: "/ordenVenta/editarOrdenVenta", method: "editarOrdenVenta" }, // Insertar datos de orden de venta en la base de datos
                 { path: "/ordenVenta/enviarReservaCaida", method: "enviarReservaCaida" }, // ENVIAR RESERVA CAIDA
+                { path: "/ordenVenta/enviarReservaNetsuite", method: "enviarReservaNetsuite" }, // ENVIAR RESERVA NETSUITE
+                { path: "/ordenVenta/actualizarOrdenVentaBd", method: "actualizarOrdenVentaBd" }, // ACTUALIZAR ORDEN DE VENTA EN LA BASE DE DATOS
+
             ],
         },
     ];

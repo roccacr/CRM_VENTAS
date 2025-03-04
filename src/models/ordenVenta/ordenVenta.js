@@ -174,13 +174,8 @@ ordenVenta.insertarOrdenVentaBd = async (dataParams) => {
     }
 };
 
-
-
 ordenVenta.editarOrdenVenta = async (dataParams) => {
-
     console.clear();
-    console.log("dataParams", dataParams);
-    console.log("formulario?.custbody52", dataParams.formulario?.custbody52)
 
     function transformarFecha(fecha, campo) {
         // Validar si la fecha es vacía o no válida
@@ -210,7 +205,7 @@ ordenVenta.editarOrdenVenta = async (dataParams) => {
     };
 
     const urlSettings = {
-         url: "https://4552704.restlets.api.netsuite.com/app/site/hosting/restlet.nl?script=1764&deploy=1",
+        url: "https://4552704.restlets.api.netsuite.com/app/site/hosting/restlet.nl?script=1764&deploy=1",
     };
 
     const { formulario } = dataParams;
@@ -225,19 +220,17 @@ ordenVenta.editarOrdenVenta = async (dataParams) => {
             //ID de campo: custbody114
             custbody114: formulario?.custbody114 || 0,
 
-
             // FECHA DE VIGENCIA DE LA VENTA
-            saleseffectivedate : transformarFecha(formulario?.saleseffectivedate, "saleseffectivedate") || 0,
-
+            saleseffectivedate: transformarFecha(formulario?.saleseffectivedate, "saleseffectivedate") || 0,
 
             // PREC. DE VENTA MÍNIMO
             custbody18: cleanAndParseInteger(formulario?.custbody18) || 0,
 
             // COMISIÓN DEL ASESOR %
-            custbody20: formulario?.custbody20.replace('%', '') || 0,
+            custbody20: formulario?.custbody20.replace("%", "") || 0,
 
             // % COMISIÓN DEL CORREDOR
-            custbody14: formulario?.custbody14.replace('%', '') || 0,
+            custbody14: formulario?.custbody14.replace("%", "") || 0,
 
             // FONDOS DE COMPRA
             custbody37: formulario?.custbody37 || 0,
@@ -251,7 +244,6 @@ ordenVenta.editarOrdenVenta = async (dataParams) => {
             // nota
             memo: formulario?.memo || 0,
 
-
             // PRECIO NETO
             pvneto: cleanAndParseInteger(formulario?.pvneto) || 0,
 
@@ -264,13 +256,11 @@ ordenVenta.editarOrdenVenta = async (dataParams) => {
             //MONTO RESERVA :
             rateReserva: cleanAndParseInteger(formulario?.custbody52) || 0,
 
-
             // FECHA DE SERVA APLICADA
             custbody208: transformarFecha(formulario?.custbody208, "custbody208") || 0,
 
             // METODO DE PAGO
             custbody188: formulario?.custbody188 || 0,
-
 
             //COMPROBANTE PRERESERVA
             custbody189: formulario?.custbody189 || 0,
@@ -278,7 +268,7 @@ ordenVenta.editarOrdenVenta = async (dataParams) => {
             // MONTO RESERVA APLICADA
             custbody207: cleanAndParseInteger(formulario?.custbody207) || 0,
 
-            // MONTO TOTAL 
+            // MONTO TOTAL
             custbody_ix_total_amount: cleanAndParseInteger(formulario?.custbody_ix_total_amount) || 0,
 
             //PRECIO DE LISTA
@@ -289,21 +279,19 @@ ordenVenta.editarOrdenVenta = async (dataParams) => {
 
             //PRIMA
             custbody60: formulario?.custbody60 || 0,
-            
+
             // MONTO PRIMA NETA
             custbody_ix_salesorder_monto_prima: cleanAndParseInteger(formulario?.custbody_ix_salesorder_monto_prima) || 0,
-
 
             //MONTO DESCUENTO DIRECTO
             custbody132: cleanAndParseInteger(formulario?.custbody132) || 0,
 
-            //CASHBACK 
+            //CASHBACK
             custbodyix_salesorder_cashback: cleanAndParseInteger(formulario?.custbodyix_salesorder_cashback) || 0,
 
-            //EXTRAS SOBRE EL PRECIO DE LISTA   
+            //EXTRAS SOBRE EL PRECIO DE LISTA
             custbody185: cleanAndParseInteger(formulario?.custbody185) || 0,
 
-            
             //MONTO EXTRAS SOBRE EL PRECIO DE LISTA
             custbody46: cleanAndParseInteger(formulario?.custbody46) || 0,
 
@@ -313,177 +301,163 @@ ordenVenta.editarOrdenVenta = async (dataParams) => {
             //DESCRIPCIÓN DE EXTRAS SOBRE EL PRECIO DE LISTA
             custbody47: formulario?.custbody47 || "",
 
-
             //DESCRIPCIÓN DE LAS CORTESIAS
             custbody35: formulario?.custbody35 || "",
 
             //COMPROBANTE DE RESERVA
             custbody190: formulario?.custbody190 || "",
 
-
             //FECHA DE RESERVA
             fech_reserva: transformarFecha(formulario?.fech_reserva, "fech_reserva") || 0,
 
-
             //PRIMA FRACCIONADA
-            custbody176 : formulario?.custbody176 ? "T" : "F",
+            custbody176: formulario?.custbody176 ? "T" : "F",
 
             //PRIMA 1 fecha
-            custbody179_date : transformarFecha(formulario?.custbody179_date, "custbody179_date") || 0,
+            custbody179_date: transformarFecha(formulario?.custbody179_date, "custbody179_date") || 0,
 
             // tractos prima 1
-            custbody180 : formulario?.custbody180,
+            custbody180: formulario?.custbody180,
 
             // descripcion prima 1
-            custbody193 : formulario?.custbody193,
+            custbody193: formulario?.custbody193,
 
             // monnto prima 1
-            custbody179 : cleanAndParseInteger(formulario.custbody179),
+            custbody179: cleanAndParseInteger(formulario.custbody179),
 
-            // prima chek 2 
-            custbody177 : formulario?.custbody177  ? "T" : "F",
+            // prima chek 2
+            custbody177: formulario?.custbody177 ? "T" : "F",
 
             // prima chek 2 fecha
-            custbody182_date : transformarFecha(formulario?.custbody182_date, "custbody182_date") || 0,
+            custbody182_date: transformarFecha(formulario?.custbody182_date, "custbody182_date") || 0,
 
             // tractos prima 2
-            custbody182 : formulario?.custbody182,
+            custbody182: formulario?.custbody182,
 
             // descripcion prima 2
-            custbody194 : formulario?.custbody194,
+            custbody194: formulario?.custbody194,
 
             // monto prima 2
-            custbody181 : cleanAndParseInteger(formulario.custbody181),
+            custbody181: cleanAndParseInteger(formulario.custbody181),
 
             // prima chek 3
-            custbody178 : formulario?.custbody178 ? "T" : "F",
+            custbody178: formulario?.custbody178 ? "T" : "F",
 
             // prima chek 3 fecha
-            custbody184_date : transformarFecha(formulario?.custbody184_date, "custbody184_date") || 0,
+            custbody184_date: transformarFecha(formulario?.custbody184_date, "custbody184_date") || 0,
 
             // tractos prima 3
-            custbody184 : formulario?.custbody184,
+            custbody184: formulario?.custbody184,
 
             // descripcion prima 3
-            custbody195 : formulario?.custbody195,
+            custbody195: formulario?.custbody195,
 
             // monto prima 3
-            custbody183 : cleanAndParseInteger(formulario.custbody183),
+            custbody183: cleanAndParseInteger(formulario.custbody183),
 
-
-            prima_extra_uno : formulario?.prima_extra_uno ? "T" : "F",
+            prima_extra_uno: formulario?.prima_extra_uno ? "T" : "F",
 
             // monto prima 4
-            monto_extra_uno : cleanAndParseInteger(formulario.monto_extra_uno),
+            monto_extra_uno: cleanAndParseInteger(formulario.monto_extra_uno),
 
             // fecha prima 4
-            custbody184_uno_date : transformarFecha(formulario?.custbody184_uno_date, "custbody184_uno_date") || 0,
+            custbody184_uno_date: transformarFecha(formulario?.custbody184_uno_date, "custbody184_uno_date") || 0,
 
             // tractos prima 4
-            monto_tracto_uno : formulario?.monto_tracto_uno,
+            monto_tracto_uno: formulario?.monto_tracto_uno,
 
             // descripcion prima 4
-            desc_extra_uno : formulario?.desc_extra_uno,
+            desc_extra_uno: formulario?.desc_extra_uno,
 
-            prima_extra_dos : formulario?.prima_extra_dos ? "T" : "F",
+            prima_extra_dos: formulario?.prima_extra_dos ? "T" : "F",
 
             // monto prima 5
-            monto_extra_dos : cleanAndParseInteger(formulario.monto_extra_dos),
-
+            monto_extra_dos: cleanAndParseInteger(formulario.monto_extra_dos),
 
             // fecha prima 5
-            custbody184_dos_date : transformarFecha(formulario?.custbody184_dos_date, "custbody184_dos_date") || 0,
+            custbody184_dos_date: transformarFecha(formulario?.custbody184_dos_date, "custbody184_dos_date") || 0,
 
             // tractos prima 5
-            monto_tracto_dos : formulario?.monto_tracto_dos,
+            monto_tracto_dos: formulario?.monto_tracto_dos,
 
             // descripcion prima 5
-            desc_extra_dos : formulario?.desc_extra_dos,
+            desc_extra_dos: formulario?.desc_extra_dos,
 
             // fecha de prereserva
-            custbody206 : transformarFecha(formulario?.custbody206, "custbody206") || 0,
+            custbody206: transformarFecha(formulario?.custbody206, "custbody206") || 0,
 
-
-            prima_extra_tres : formulario?.prima_extra_tres ? "T" : "F",
+            prima_extra_tres: formulario?.prima_extra_tres ? "T" : "F",
 
             // monto prima 6
-            monto_extra_tres : cleanAndParseInteger(formulario.monto_extra_tres),
+            monto_extra_tres: cleanAndParseInteger(formulario.monto_extra_tres),
 
             // fecha prima 6
-            custbody184_tres_date : transformarFecha(formulario?.custbody184_tres_date, "custbody184_tres_date") || 0,
+            custbody184_tres_date: transformarFecha(formulario?.custbody184_tres_date, "custbody184_tres_date") || 0,
 
             // tractos prima 6
-            monto_tracto_tres : formulario?.monto_tracto_tres,
+            monto_tracto_tres: formulario?.monto_tracto_tres,
 
             // descripcion prima 6
-            desc_extra_tres : formulario?.desc_extra_tres,
+            desc_extra_tres: formulario?.desc_extra_tres,
 
-            custbody75 : formulario?.custbody75,
-            
-            
-            date_hito_6 : transformarFecha(formulario?.date_hito_6, "date_hito_6") || 0,
+            custbody75: formulario?.custbody75,
 
-            custbody_ix_salesorder_hito6 : cleanAndParseInteger(formulario?.custbody_ix_salesorder_hito6),
-            
+            date_hito_6: transformarFecha(formulario?.date_hito_6, "date_hito_6") || 0,
 
-            
-            custbody163 : cleanAndParseInteger(formulario?.custbody163),
-            
-            
-            neta : cleanAndParseInteger(formulario?.neta),
-            
-            
-            
+            custbody_ix_salesorder_hito6: cleanAndParseInteger(formulario?.custbody_ix_salesorder_hito6),
+
+            custbody163: cleanAndParseInteger(formulario?.custbody163),
+
+            neta: cleanAndParseInteger(formulario?.neta),
+
             custbody62: formulario?.custbody75 === "2" ? `${formulario?.custbody62}%` : formulario?.custbody62,
 
-            custbodyix_salesorder_hito1 : cleanAndParseInteger(formulario?.custbodyix_salesorder_hito1),
+            custbodyix_salesorder_hito1: cleanAndParseInteger(formulario?.custbodyix_salesorder_hito1),
 
-            custbody63 : formulario?.custbody75 === "2" ? `${formulario?.custbody63}%` : formulario?.custbody63,
+            custbody63: formulario?.custbody75 === "2" ? `${formulario?.custbody63}%` : formulario?.custbody63,
 
-            custbody_ix_salesorder_hito2 : cleanAndParseInteger(formulario?.custbody_ix_salesorder_hito2),
+            custbody_ix_salesorder_hito2: cleanAndParseInteger(formulario?.custbody_ix_salesorder_hito2),
 
-            custbody64 : formulario?.custbody75 === "2" ? `${formulario?.custbody64}%` : formulario?.custbody64,
+            custbody64: formulario?.custbody75 === "2" ? `${formulario?.custbody64}%` : formulario?.custbody64,
 
-            custbody_ix_salesorder_hito3 : cleanAndParseInteger(formulario?.custbody_ix_salesorder_hito3),
+            custbody_ix_salesorder_hito3: cleanAndParseInteger(formulario?.custbody_ix_salesorder_hito3),
 
-            custbody65 : formulario?.custbody75 === "2" ? `${formulario?.custbody65}%` : formulario?.custbody65,
+            custbody65: formulario?.custbody75 === "2" ? `${formulario?.custbody65}%` : formulario?.custbody65,
 
-            custbody_ix_salesorder_hito4 : cleanAndParseInteger(formulario?.custbody_ix_salesorder_hito4),
+            custbody_ix_salesorder_hito4: cleanAndParseInteger(formulario?.custbody_ix_salesorder_hito4),
 
-            custbody66 : formulario?.custbody75 === "2" ? `${formulario?.custbody66}%` : formulario?.custbody66,
+            custbody66: formulario?.custbody75 === "2" ? `${formulario?.custbody66}%` : formulario?.custbody66,
 
-            custbody_ix_salesorder_hito5 : cleanAndParseInteger(formulario?.custbody_ix_salesorder_hito5),
+            custbody_ix_salesorder_hito5: cleanAndParseInteger(formulario?.custbody_ix_salesorder_hito5),
 
-            custbody67 : formulario?.custbody75 === "2" ? `${formulario?.custbody67}%` : formulario?.custbody67,
+            custbody67: formulario?.custbody75 === "2" ? `${formulario?.custbody67}%` : formulario?.custbody67,
 
-            custbody_ix_salesorder_hito6 : cleanAndParseInteger(formulario?.custbody_ix_salesorder_hito6),
+            custbody_ix_salesorder_hito6: cleanAndParseInteger(formulario?.custbody_ix_salesorder_hito6),
 
-            custbody163 : cleanAndParseInteger(formulario?.custbody163),
+            custbody163: cleanAndParseInteger(formulario?.custbody163),
 
-            custbody164 : formulario?.custbody164,
+            custbody164: formulario?.custbody164,
 
-            hito_chek_uno : formulario?.hito_chek_uno,
-            date_hito_1 : transformarFecha(formulario?.date_hito_1, "date_hito_1") || 0,
+            hito_chek_uno: formulario?.hito_chek_uno,
+            date_hito_1: transformarFecha(formulario?.date_hito_1, "date_hito_1") || 0,
 
-            hito_chek_dos : formulario?.hito_chek_dos,
-            date_hito_2 : transformarFecha(formulario?.date_hito_2, "date_hito_2") || 0,
+            hito_chek_dos: formulario?.hito_chek_dos,
+            date_hito_2: transformarFecha(formulario?.date_hito_2, "date_hito_2") || 0,
 
-            hito_chek_tres : formulario?.hito_chek_tres,
-            date_hito_3 : transformarFecha(formulario?.date_hito_3, "date_hito_3") || 0,
+            hito_chek_tres: formulario?.hito_chek_tres,
+            date_hito_3: transformarFecha(formulario?.date_hito_3, "date_hito_3") || 0,
 
-            hito_chek_cuatro : formulario?.hito_chek_cuatro,
-            date_hito_4 : transformarFecha(formulario?.date_hito_4, "date_hito_4") || 0,
+            hito_chek_cuatro: formulario?.hito_chek_cuatro,
+            date_hito_4: transformarFecha(formulario?.date_hito_4, "date_hito_4") || 0,
 
-            hito_chek_cinco : formulario?.hito_chek_cinco,
-            date_hito_5 : transformarFecha(formulario?.date_hito_5, "date_hito_5") || 0,
+            hito_chek_cinco: formulario?.hito_chek_cinco,
+            date_hito_5: transformarFecha(formulario?.date_hito_5, "date_hito_5") || 0,
 
-            hito_chek_seis : formulario?.hito_chek_seis,
-            date_hito_6 : transformarFecha(formulario?.date_hito_6, "date_hito_6") || 0,
+            hito_chek_seis: formulario?.hito_chek_seis,
+            date_hito_6: transformarFecha(formulario?.date_hito_6, "date_hito_6") || 0,
 
-            partnerId : 0,
-            validacionCorredor: 0
- 
-            
+            partnerId: 0,
+            validacionCorredor: 0,
         });
 
         console.log("body", body);
@@ -493,30 +467,58 @@ ordenVenta.editarOrdenVenta = async (dataParams) => {
             Detalle: body,
             status: 200,
         };
-
-       
     } catch (error) {
         console.error("Error al editar estimacion:", error);
         throw error;
     }
 };
 
-
 ordenVenta.enviarReservaCaida = async (dataParams) => {
     // Obtener fecha actual en zona horaria de Costa Rica (UTC-6)
     const today = new Date();
-    const options = { timeZone: 'America/Costa_Rica' };
-    const formattedDate = today.toLocaleDateString('en-CA', options); // Formato YYYY-MM-DD
+    const options = { timeZone: "America/Costa_Rica" };
+    const formattedDate = today.toLocaleDateString("en-CA", options); // Formato YYYY-MM-DD
 
     const query = `
         UPDATE ordenventa SET caida_ov=1,envioReservaCaida=? WHERE id_ov_netsuite =?
     `;
 
-    return await executeQuery(query, [ formattedDate, dataParams.idTransaccion ], dataParams.database);
+    return await executeQuery(query, [formattedDate, dataParams.idTransaccion], dataParams.database);
 };
 
+ordenVenta.enviarReservaNetsuite = async (dataParams) => {
+    const urlSettings = {
+        url: "https://4552704.restlets.api.netsuite.com/app/site/hosting/restlet.nl?script=1774&deploy=1",
+    };
+    try {
+        const rest = nsrestlet.createLink(accountSettings, urlSettings);
 
+        const body = await rest.post({ rType: "reserva", id: dataParams.idTransaccion });
 
+        return {
+            msg: "Enviar reserva a Netsuite",
+            Detalle: body,
+            status: 200,
+        };
+    } catch (error) {
+        console.error("Error al enviar la reserva a Netsuite:", error);
+        throw error;
+    }
+};
 
+ordenVenta.actualizarOrdenVentaBd = async (dataParams) => {
+    // Obtener fecha actual en zona horaria de Costa Rica (UTC-6)
+    const today = new Date();
+    const options = { timeZone: "America/Costa_Rica" };
+    const formattedDate = today.toLocaleDateString("en-CA", options); // Formato YYYY-MM-DD
+
+    const fecha_prereserva = dataParams.fecha_prereserva;
+
+    const query = `
+            UPDATE ordenventa SET reserva_ov = 1, envioReserva=? ,fechaClienteComprobante_ov=? WHERE id_ov_netsuite =?
+        `;
+
+    return await executeQuery(query, [formattedDate, fecha_prereserva, dataParams.idTransaccion], dataParams.database);
+};
 
 module.exports = ordenVenta;
