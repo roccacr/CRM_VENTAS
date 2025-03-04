@@ -119,7 +119,7 @@ const TABLE_CONFIG = {
       { data: "fechaPago", title: "FECHA DE PAGO PROYECTADO" },
       { data: "cantidad", title: "CANTIDAD" },
       { data: "descripcion", title: "DESCRIPCIÓN" },
-   ]
+   ],
 };
 
 /**
@@ -136,16 +136,15 @@ const handleCommissionAction = async (dispatch, orderId) => {
       showCancelButton: true,
       confirmButtonText: "Aplicar Comisión",
       denyButtonText: "Anular Comisión",
-      cancelButtonText: "Cancelar"
+      cancelButtonText: "Cancelar",
    });
-   
 
    if (result.isConfirmed) {
       await dispatch(AplicarComicion(1, orderId));
-      Swal.fire('¡Aplicada!', 'La comisión ha sido aplicada.', 'success');
+      Swal.fire("¡Aplicada!", "La comisión ha sido aplicada.", "success");
    } else if (result.isDenied) {
       await dispatch(AplicarComicion(0, orderId));
-      Swal.fire('¡Anulada!', 'La comisión ha sido anulada.', 'info');
+      Swal.fire("¡Anulada!", "La comisión ha sido anulada.", "info");
    }
 };
 
@@ -180,93 +179,89 @@ const useSalesOrderActions = ({ navigate, dispatch, datosOrdenVenta, setIsModalO
          EnviarReserva: () => {},
          EnviarCierre: () => {},
          EnviarReservaCaida: async () => {
-            const exp_correo = datosOrdenVenta?.Expediente;  
+            // Obtener el expediente y el id de la transacción
+            const exp_correo = datosOrdenVenta?.Expediente;
             const idTrannsaccion = getQueryParam("data2");
+        
+            // Preguntar al usuario si está seguro de enviar el correo
             const result = await Swal.fire({
-               title: '¿Está seguro?',
-               text: "¿Desea enviar el correo de RESERVA CAIDA?",
-               icon: 'warning',
-               showCancelButton: true,
-               confirmButtonColor: '#3085d6',
-               cancelButtonColor: '#d33',
-               confirmButtonText: 'Sí, enviar'
-           });
-           if (result.isConfirmed) {
-               const { value: formValues } = await Swal.fire({
-                  width: '900px',
-                  title: 'Reserva Caida: ' + exp_correo,
-                  html:
-                     '<label for="swal-textarea">Comentario de caida</label>' +
-                     '<textarea id="swal-textarea" class="swal2-textarea" style="width: 100%; padding: 10px; box-sizing: border-box;"></textarea>',
-                  focusConfirm: false,
-                  preConfirm: () => {
-                     const textareaValue = document.getElementById('swal-textarea').value;
-                     return textareaValue;
-                  }
+                title: "¿Está seguro?",
+                text: "¿Desea enviar el correo de RESERVA CAIDA?",
+                icon: "warning",
+                showCancelButton: true,
+                confirmButtonColor: "#3085d6",
+                cancelButtonColor: "#d33",
+                confirmButtonText: "Sí, enviar",
             });
-
-            if (formValues) {
-               showLoadingIndicator();
-               async function mostrarMensaje() {
-                  // Verificar si el usuario está en un dispositivo móvil (celular)
-                  const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-
-                  if (isMobile) {
-                      // Si está en un dispositivo móvil, mostrar un cuadro de diálogo de confirmación personalizado
-                      const respuesta = confirm(
-                          "No se puede enviar la reserva caída desde un dispositivo móvil. Solo se puede enviar desde una computadora.\nPresiona 'Aceptar' para recordarlo más tarde."
-                      );
-
-                      if (!respuesta) {
-                          alert("Recuerda enviar el correo más tarde.");
-                      }
-                     } else {
-
-                        // Si no está en un dispositivo móvil, abrir el cliente de correo predeterminado
-                        const destinatario = 'abarrientos@roccacr.com';
-                        const copia =  email_admin;
-                        const asunto = 'Reserva Caida: ' + exp_correo;
-                        const cuerpo = formValues;
-                        const mensajeCorreo = `Buen día compañeras,\n\nEspero que se encuentren bien. Les comento que la siguiente venta, ${exp_correo} ha sido cancelada debido a ${cuerpo}.\n\nSaludos cordiales,`;
-                        const mailtoLink = `mailto:${destinatario}?cc=${copia}&subject=${encodeURIComponent(asunto)}&body=${encodeURIComponent(mensajeCorreo)}`;
-                        // Abrir el cliente de correo predeterminado del usuario
-                        window.location.href = mailtoLink;
-
-                     }
-
-                     const confirmacion = confirm("¿Has enviado el correo?\n\nHaz clic en 'Aceptar' si lo enviaste o en 'Cancelar' si aún no lo has enviado.");
-
-                     if (confirmacion) {
-                         alert("Correo enviado y reserva caída con éxito. " + exp_correo);
-
-                         dispatch(enviarReservaCaida(idTrannsaccion));
-                         Swal.fire('¡Enviado!', 'La reserva caída ha sido enviada.', 'success');
-
-                     } else {
-                         alert("Recuerda enviar el correo más tarde. " + exp_correo);
-                     }
-                     setTimeout(() => {
-                        Swal.close();
-                      }, 2000);
-
-
-               }
-
-               // Llamar a la función cuando sea apropiado, por ejemplo, al hacer clic en un botón.
-              await mostrarMensaje();
-               
+        
+            // Si el usuario confirma, solicitar el comentario de la caída
+            if (result.isConfirmed) {
+                const { value: formValues } = await Swal.fire({
+                    width: "900px",
+                    title: "Reserva Caida: " + exp_correo,
+                    html: '<label for="swal-textarea">Comentario de caida</label>' +
+                          '<textarea id="swal-textarea" class="swal2-textarea" style="width: 100%; padding: 10px; box-sizing: border-box;"></textarea>',
+                    focusConfirm: false,
+                    preConfirm: () => {
+                        // Obtener el valor del comentario
+                        return document.getElementById("swal-textarea").value;
+                    },
+                });
+        
+                if (formValues) {
+                    showLoadingIndicator(); // Mostrar indicador de carga
+        
+                    // Función que maneja el envío del correo
+                    async function mostrarMensaje() {
+                        // Verificar si el usuario está en un dispositivo móvil
+                        const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+        
+                        if (isMobile) {
+                            // En dispositivos móviles, mostrar un mensaje de advertencia
+                            const respuesta = confirm(
+                                "No se puede enviar la reserva caída desde un dispositivo móvil. Solo se puede enviar desde una computadora.\nPresiona 'Aceptar' para recordarlo más tarde."
+                            );
+                            if (!respuesta) {
+                                alert("Recuerda enviar el correo más tarde.");
+                            }
+                        } else {
+                            // En una computadora, crear el enlace para abrir el cliente de correo
+                            const destinatario = "abarrientos@roccacr.com";
+                            const copia = email_admin;
+                            const asunto = "Reserva Caida: " + exp_correo;
+                            const cuerpo = formValues;
+                            const mensajeCorreo = `Buen día compañeras,\n\nEspero que se encuentren bien. Les comento que la siguiente venta, ${exp_correo} ha sido cancelada debido a ${cuerpo}.\n\nSaludos cordiales,`;
+                            const mailtoLink = `mailto:${destinatario}?cc=${copia}&subject=${encodeURIComponent(asunto)}&body=${encodeURIComponent(mensajeCorreo)}`;
+                            // Abrir el cliente de correo
+                            window.location.href = mailtoLink;
+                        }
+        
+                        // Confirmar si el correo fue enviado
+                        const confirmacion = confirm(
+                            "¿Has enviado el correo?\n\nHaz clic en 'Aceptar' si lo enviaste o en 'Cancelar' si aún no lo has enviado."
+                        );
+        
+                        if (confirmacion) {
+                            // Si el correo fue enviado, ejecutar la acción
+                            alert("Correo enviado y reserva caída con éxito. " + exp_correo);
+                            dispatch(enviarReservaCaida(idTrannsaccion));
+                            Swal.fire("¡Enviado!", "La reserva caída ha sido enviada.", "success");
+                        } else {
+                            alert("Recuerda enviar el correo más tarde. " + exp_correo);
+                        }
+        
+                        // Cerrar el modal después de 2 segundos
+                        setTimeout(() => {
+                            Swal.close();
+                        }, 2000);
+                    }
+        
+                    // Llamar a la función para mostrar el mensaje
+                    await mostrarMensaje();
+                }
             }
-           }
-
-
-
-
-
-
-
-
-
-         },
+        },
+        
          verPdf: () => {
             const goURL = `https://4552704.app.netsuite.com/app/accounting/print/hotprint.nl?regular=T&sethotprinter=T&formnumber=136&trantype=salesord&&id=${getQueryParam(
                "data2",
@@ -297,7 +292,7 @@ const useSalesOrderActions = ({ navigate, dispatch, datosOrdenVenta, setIsModalO
             { icon: "ti-trending-down", text: "RESERVA CAÍDA", action: "EnviarReservaCaida" },
             { icon: "ti-brand-paypal", text: "APLICAR COMICION", action: "aplicarComision" },
          ],
-      }
+      },
    };
 };
 
@@ -418,7 +413,7 @@ const SalesInformation = ({ datosOrdenVenta }) => {
       { label: "CAMPAÑA DE MARKETING", value: datosOrdenVenta?.CAMPANA?.replace(/"/g, "") },
       { label: "CREADO", value: datosOrdenVenta?.data?.fields?.createddate },
       { label: "Clase", value: datosOrdenVenta?.data?.fields?.class },
-      { label: "Departamento", value: datosOrdenVenta?.Departamento?.replace(/"/g, "")  },
+      { label: "Departamento", value: datosOrdenVenta?.Departamento?.replace(/"/g, "") },
       { label: "FONDOS", value: datosOrdenVenta?.FONDOS?.replace(/"/g, "") },
       { label: "METODO PAGO", value: datosOrdenVenta?.METODO_PAGO?.replace(/"/g, "") },
       { label: "MOTIVO CANCE", value: datosOrdenVenta?.MOTIVO_CANCE?.replace(/"/g, "") },
@@ -526,7 +521,7 @@ const initializeDataTable = (datosOrdenVenta) => {
    const tableData = Object.entries(datosOrdenVenta.data.sublists.item)
       .filter(([key]) => key !== "currentline")
       .map(([key, linea], index) => ({
-         numero:index + 1, // Use the index as the numero
+         numero: index + 1, // Use the index as the numero
          articulo: linea.item_display || linea.item,
          monto: formatoMoneda(linea.rate || 0),
          fechaPago: linea.custcolfecha_pago_proyectado || "N/A",
@@ -590,15 +585,12 @@ export const VistaOrdenVenta = () => {
 
    const { email_admin } = useSelector((state) => state.auth);
 
-
-
-
-   const { actions, configs } = useSalesOrderActions({ 
-      navigate, 
-      dispatch, 
-      datosOrdenVenta ,
+   const { actions, configs } = useSalesOrderActions({
+      navigate,
+      dispatch,
+      datosOrdenVenta,
       setIsModalOpen,
-      email_admin
+      email_admin,
    });
 
    // Initial data fetch
@@ -730,9 +722,9 @@ export const VistaOrdenVenta = () => {
                      </thead>
                   </table>
                </div>
-                  {isModalOpen && (
-                     <ModalOrdenVenta open={isModalOpen} onClose={() => setIsModalOpen(false)} idEstimacion={getQueryParam("data2")} />
-                  )}
+               {isModalOpen && (
+                  <ModalOrdenVenta open={isModalOpen} onClose={() => setIsModalOpen(false)} idEstimacion={getQueryParam("data2")} />
+               )}
             </div>
          </div>
       </>
