@@ -178,7 +178,68 @@ const useSalesOrderActions = ({ navigate, dispatch, datosOrdenVenta, setIsModalO
       actions: {
          EnviarReserva: () => {},
          EnviarCierre: () => {},
-         EnviarReservaCaida: () => {},
+         EnviarReservaCaida: async () => {
+            const exp_correo = datosOrdenVenta?.Expediente;  
+            const idTrannsaccion = getQueryParam("data2");
+            const result = await Swal.fire({
+               title: '¿Está seguro?',
+               text: "¿Desea enviar el correo de RESERVA CAIDA?",
+               icon: 'warning',
+               showCancelButton: true,
+               confirmButtonColor: '#3085d6',
+               cancelButtonColor: '#d33',
+               confirmButtonText: 'Sí, enviar'
+           });
+           if (result.isConfirmed) {
+               const { value: formValues } = await Swal.fire({
+                  width: '900px',
+                  title: 'Reserva Caida: ' + exp_correo,
+                  html:
+                     '<label for="swal-textarea">Comentario de caida</label>' +
+                     '<textarea id="swal-textarea" class="swal2-textarea" style="width: 100%; padding: 10px; box-sizing: border-box;"></textarea>',
+                  focusConfirm: false,
+                  preConfirm: () => {
+                     const textareaValue = document.getElementById('swal-textarea').value;
+                     return textareaValue;
+                  }
+            });
+
+            if (formValues) {
+               showLoadingIndicator();
+               async function mostrarMensaje() {
+                  // Verificar si el usuario está en un dispositivo móvil (celular)
+                  const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+
+                  if (isMobile) {
+                      // Si está en un dispositivo móvil, mostrar un cuadro de diálogo de confirmación personalizado
+                      const respuesta = confirm(
+                          "No se puede enviar la reserva caída desde un dispositivo móvil. Solo se puede enviar desde una computadora.\nPresiona 'Aceptar' para recordarlo más tarde."
+                      );
+
+                      if (!respuesta) {
+                          alert("Recuerda enviar el correo más tarde.");
+                      }
+                     } else {
+
+                     }
+
+               }
+
+               // Llamar a la función cuando sea apropiado, por ejemplo, al hacer clic en un botón.
+              await mostrarMensaje();
+               
+            }
+           }
+
+
+
+
+
+
+
+
+
+         },
          verPdf: () => {
             const goURL = `https://4552704.app.netsuite.com/app/accounting/print/hotprint.nl?regular=T&sethotprinter=T&formnumber=136&trantype=salesord&&id=${getQueryParam(
                "data2",
@@ -238,7 +299,9 @@ const ActionButton = ({ icon, text, onClick }) => (
 const ActionPanel = ({ actions, buttonConfigs }) => (
    <div className="row">
       {buttonConfigs.map(({ icon, text, action }, index) => (
-         <ActionButton key={index} icon={icon} text={text} onClick={() => actions[action](true)} />
+         <div key={index} className="col-6 col-md-auto mb-2 mb-md-0">
+            <ActionButton icon={icon} text={text} onClick={() => actions[action](true)} />
+         </div>
       ))}
    </div>
 );

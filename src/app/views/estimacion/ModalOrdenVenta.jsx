@@ -912,7 +912,7 @@ export const ModalOrdenVenta = ({ open, onClose, idEstimacion }) => {
       e.preventDefault();
 
       console.clear();
-      console.log(formValues)
+      console.log(formValues);
 
       if (validateForm()) {
          const confirmEdit = window.confirm("¿Desea editar la Orden de venta?");
@@ -954,25 +954,24 @@ export const ModalOrdenVenta = ({ open, onClose, idEstimacion }) => {
                   }).then((result) => {
                      window.location.reload();
                   });
-               }else{
-                  
-                     return Swal.fire({
-                        title:
-                           "Detalle de error : " +
-                           result.data["Detalle"].Error.message +
-                           ",  \nLo sentimos, favor revisar este error con su administrador.",
-                        icon: "question",
-                        iconHtml: "؟",
-                        width: "40em",
-                        padding: "0 0 1.25em",
-                        confirmButtonText: "OK",
-                        cancelButtonText: "CORREGUIR",
-                        showCancelButton: true,
-                        showCloseButton: true,
-                        customClass: {
-                           popup: "swal-on-top",
-                        },
-                     });
+               } else {
+                  return Swal.fire({
+                     title:
+                        "Detalle de error : " +
+                        result.data["Detalle"].Error.message +
+                        ",  \nLo sentimos, favor revisar este error con su administrador.",
+                     icon: "question",
+                     iconHtml: "؟",
+                     width: "40em",
+                     padding: "0 0 1.25em",
+                     confirmButtonText: "OK",
+                     cancelButtonText: "CORREGUIR",
+                     showCancelButton: true,
+                     showCloseButton: true,
+                     customClass: {
+                        popup: "swal-on-top",
+                     },
+                  });
                }
             } catch (error) {
                // Cerrar el Swal de carga en caso de error
