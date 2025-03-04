@@ -71,3 +71,28 @@ export const recuperar_Contraseña = async ({ email }) => {
     // Retorna la respuesta obtenida de la API, que incluye el resultado de la solicitud.
     return response;
 };
+
+
+/**
+ * Envia una reserva caída a la API.
+ *
+ * @param {Object} params - Parámetros para la solicitud.
+ * @param {string} params.idTransaccion - ID de la transacción a enviar.
+ * @returns {Promise<Object>} La respuesta de la API con el resultado de la solicitud.
+ */
+export const enviarReservaCaidas = async ({ idTransaccion }) => {
+    // Prepara los datos necesarios para la solicitud, combinando datos comunes y el ID de la transacción.
+    const requestData = {
+        ...commonRequestData, // Incluye datos comunes como headers y token de autenticación.
+        idTransaccion, // ID de la transacción a enviar.
+    };
+
+    // Realiza una solicitud a la API para enviar la reserva caída.
+    // Utiliza el endpoint "admins/enviarReservaCaida" para gestionar la solicitud.
+    const response = await fetchData("ordenventa/enviarReservaCaida", requestData);
+
+    // Retorna la respuesta obtenida de la API, que incluye el resultado de la solicitud.
+    return response;
+};
+
+

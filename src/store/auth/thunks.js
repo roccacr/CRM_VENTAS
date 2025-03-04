@@ -2,7 +2,7 @@
 import { errorMessages, secretKey } from "../../api";
 import { setCheckingCredentials, setLoadingCredentials, setUserAuthentication, setUserLogout } from "./authSlice";
 
-import { exitLogout, recuperar_Contraseña, singAuth, validarSiexisteUsuario } from "./Api_Auth_Providers";
+import { enviarReservaCaidas, exitLogout, recuperar_Contraseña, singAuth, validarSiexisteUsuario } from "./Api_Auth_Providers";
 import CryptoJS from "crypto-js";
 
 // Esta acción verifica la autenticación del usuario de forma asíncrona
@@ -124,6 +124,25 @@ export const recuperarContraseña = (email) => {
         } catch (error) {
             // Captura y registra cualquier error ocurrido durante la solicitud.
             console.error("Error al solicitar la recuperación de contraseña:", error);
+
+            // Retorna un array vacío en caso de error para manejar el fallo de manera segura.
+            return [];
+        }
+    };
+};
+
+
+export const enviarReservaCaida = (idTransaccion) => {
+    return async () => {
+        try {
+            // Llama a la API para enviar la reserva caída utilizando el id de la transacción proporcionado.
+            const resultado = await enviarReservaCaidas({ idTransaccion });
+
+            // Retorna los datos de la respuesta de la API, o un array vacío si no hay datos válidos.
+            return resultado || [];
+        } catch (error) {
+            // Captura y registra cualquier error ocurrido durante la solicitud.
+            console.error("Error al enviar la reserva caída:", error);
 
             // Retorna un array vacío en caso de error para manejar el fallo de manera segura.
             return [];

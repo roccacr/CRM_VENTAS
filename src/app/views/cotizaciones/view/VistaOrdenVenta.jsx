@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { ButtonActions } from "../../../components/buttonAccions/buttonAccions";
 import Swal from "sweetalert2";
-import { useDispatch } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import { getSpecificLead } from "../../../../store/leads/thunksLeads";
 import { AplicarComicion, obtenerOrdendeventa } from "../../../../store/ordenVenta/thunkOrdenVenta";
 import $ from "jquery";
@@ -11,6 +11,7 @@ import "datatables.net-searchpanes-bs5";
 import "datatables.net-select-bs5";
 import { useNavigate } from "react-router-dom";
 import { ModalOrdenVenta } from "../../estimacion/ModalOrdenVenta";
+import { enviarReservaCaida } from "../../../../store/auth/thunks";
 /**
  * Utility Functions
  */
@@ -173,7 +174,7 @@ const processTableData = (datosOrdenVenta) => {
  * @param {Object} params - Parameters for action handlers
  * @returns {Object} Action handlers and configurations
  */
-const useSalesOrderActions = ({ navigate, dispatch, datosOrdenVenta, setIsModalOpen }) => {
+const useSalesOrderActions = ({ navigate, dispatch, datosOrdenVenta, setIsModalOpen, email_admin }) => {
    return {
       actions: {
          EnviarReserva: () => {},
@@ -221,6 +222,32 @@ const useSalesOrderActions = ({ navigate, dispatch, datosOrdenVenta, setIsModalO
                       }
                      } else {
 
+                        // Si no está en un dispositivo móvil, abrir el cliente de correo predeterminado
+                        const destinatario = 'abarrientos@roccacr.com';
+                        const copia =  email_admin;
+                        const asunto = 'Reserva Caida: ' + exp_correo;
+                        const cuerpo = formValues;
+                        const mensajeCorreo = `Buen día compañeras,\n\nEspero que se encuentren bien. Les comento que la siguiente venta, ${exp_correo} ha sido cancelada debido a ${cuerpo}.\n\nSaludos cordiales,`;
+                        const mailtoLink = `mailto:${destinatario}?cc=${copia}&subject=${encodeURIComponent(asunto)}&body=${encodeURIComponent(mensajeCorreo)}`;
+                        // Abrir el cliente de correo predeterminado del usuario
+                        window.location.href = mailtoLink;
+
+                     }
+
+                     const confirmacion = confirm("¿Has enviado el correo?\n\nHaz clic en 'Aceptar' si lo enviaste o en 'Cancelar' si aún no lo has enviado.");
+
+                     if (confirmacion) {
+                         alert("Correo enviado y reserva caída con éxito. " + exp_correo);
+
+                         dispatch(enviarReservaCaida(idTrannsaccion));
+                         Swal.fire('¡Enviado!', 'La reserva caída ha sido enviada.', 'success');
+
+                         setTimeout(() => {
+                           Swal.close();
+                         }, 2000);
+
+                     } else {
+                         alert("Recuerda enviar el correo más tarde. " + exp_correo);
                      }
 
                }
@@ -561,11 +588,17 @@ export const VistaOrdenVenta = () => {
    const [datosOrdenVenta, setDatosOrdenVenta] = useState({});
    const [isModalOpen, setIsModalOpen] = useState(false);
 
+   const { email_admin } = useSelector((state) => state.auth);
+
+
+
+
    const { actions, configs } = useSalesOrderActions({ 
       navigate, 
       dispatch, 
       datosOrdenVenta ,
-      setIsModalOpen
+      setIsModalOpen,
+      email_admin
    });
 
    // Initial data fetch
