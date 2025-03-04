@@ -3,7 +3,14 @@ import { ButtonActions } from "../../../components/buttonAccions/buttonAccions";
 import Swal from "sweetalert2";
 import { useDispatch, useSelector } from "react-redux";
 import { getSpecificLead } from "../../../../store/leads/thunksLeads";
-import { AplicarComicion, obtenerOrdendeventa } from "../../../../store/ordenVenta/thunkOrdenVenta";
+import {
+   AplicarComicion,
+   enviarReservaCaida,
+   enviarReservaN,
+   obtenerOrdendeventa,
+   bitacoraOrdenDeventa,
+   modifcarOrdenVenta,
+} from "../../../../store/ordenVenta/thunkOrdenVenta";
 import $ from "jquery";
 import "datatables.net";
 import "datatables.net-bs5";
@@ -11,7 +18,7 @@ import "datatables.net-searchpanes-bs5";
 import "datatables.net-select-bs5";
 import { useNavigate } from "react-router-dom";
 import { ModalOrdenVenta } from "../../estimacion/ModalOrdenVenta";
-import { enviarReservaCaida } from "../../../../store/auth/thunks";
+
 /**
  * Utility Functions
  */
@@ -176,92 +183,132 @@ const processTableData = (datosOrdenVenta) => {
 const useSalesOrderActions = ({ navigate, dispatch, datosOrdenVenta, setIsModalOpen, email_admin }) => {
    return {
       actions: {
-         EnviarReserva: () => {},
+         EnviarReserva: async () => {
+            const idTrannsaccion = getQueryParam("data");
+            const idTrannsaccion2 = getQueryParam("data2");
+
+            const fecha_prereserva = datosOrdenVenta?.data?.fields?.custbody208;
+
+            // Preguntar al usuario si está seguro de enviar el correo
+            const result = await Swal.fire({
+               title: "¿Está seguro?",
+               text: "¿Desea enviar la reserva?",
+               icon: "warning",
+               showCancelButton: true,
+               confirmButtonColor: "#3085d6",
+               cancelButtonColor: "#d33",
+               confirmButtonText: "Sí, enviar",
+            });
+
+            // Si el usuario confirma, solicitar el comentario de la caída
+            if (result.isConfirmed) {
+               showLoadingIndicator(); // Mostrar indicador de carga
+               const result = await dispatch(enviarReservaN(idTrannsaccion2));
+
+               let ExTraerResultado = result.data["Detalle"];
+               console.log(ExTraerResultado);
+               if (ExTraerResultado.status === 200) {
+                  await dispatch(bitacoraOrdenDeventa(idTrannsaccion));
+                  await dispatch(modifcarOrdenVenta(idTrannsaccion2, fecha_prereserva));
+                  Swal.fire("¡Enviado!", "La reserva ha sido enviada.", "success");
+               } else {
+                  Swal.fire("¡Error!", "La reserva no ha sido enviada.", "error");
+               }
+            }
+            setTimeout(() => {
+               Swal.close();
+            }, 2000);
+         },
          EnviarCierre: () => {},
          EnviarReservaCaida: async () => {
             // Obtener el expediente y el id de la transacción
             const exp_correo = datosOrdenVenta?.Expediente;
             const idTrannsaccion = getQueryParam("data2");
-        
+
             // Preguntar al usuario si está seguro de enviar el correo
             const result = await Swal.fire({
-                title: "¿Está seguro?",
-                text: "¿Desea enviar el correo de RESERVA CAIDA?",
-                icon: "warning",
-                showCancelButton: true,
-                confirmButtonColor: "#3085d6",
-                cancelButtonColor: "#d33",
-                confirmButtonText: "Sí, enviar",
+               title: "¿Está seguro?",
+               text: "¿Desea enviar el correo de RESERVA CAIDA?",
+               icon: "warning",
+               showCancelButton: true,
+               confirmButtonColor: "#3085d6",
+               cancelButtonColor: "#d33",
+               confirmButtonText: "Sí, enviar",
             });
-        
+
             // Si el usuario confirma, solicitar el comentario de la caída
             if (result.isConfirmed) {
-                const { value: formValues } = await Swal.fire({
-                    width: "900px",
-                    title: "Reserva Caida: " + exp_correo,
-                    html: '<label for="swal-textarea">Comentario de caida</label>' +
-                          '<textarea id="swal-textarea" class="swal2-textarea" style="width: 100%; padding: 10px; box-sizing: border-box;"></textarea>',
-                    focusConfirm: false,
-                    preConfirm: () => {
-                        // Obtener el valor del comentario
-                        return document.getElementById("swal-textarea").value;
-                    },
-                });
-        
-                if (formValues) {
-                    showLoadingIndicator(); // Mostrar indicador de carga
-        
-                    // Función que maneja el envío del correo
-                    async function mostrarMensaje() {
-                        // Verificar si el usuario está en un dispositivo móvil
-                        const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-        
-                        if (isMobile) {
-                            // En dispositivos móviles, mostrar un mensaje de advertencia
-                            const respuesta = confirm(
-                                "No se puede enviar la reserva caída desde un dispositivo móvil. Solo se puede enviar desde una computadora.\nPresiona 'Aceptar' para recordarlo más tarde."
-                            );
-                            if (!respuesta) {
-                                alert("Recuerda enviar el correo más tarde.");
-                            }
-                        } else {
-                            // En una computadora, crear el enlace para abrir el cliente de correo
-                            const destinatario = "abarrientos@roccacr.com";
-                            const copia = email_admin;
-                            const asunto = "Reserva Caida: " + exp_correo;
-                            const cuerpo = formValues;
-                            const mensajeCorreo = `Buen día compañeras,\n\nEspero que se encuentren bien. Les comento que la siguiente venta, ${exp_correo} ha sido cancelada debido a ${cuerpo}.\n\nSaludos cordiales,`;
-                            const mailtoLink = `mailto:${destinatario}?cc=${copia}&subject=${encodeURIComponent(asunto)}&body=${encodeURIComponent(mensajeCorreo)}`;
-                            // Abrir el cliente de correo
-                            window.location.href = mailtoLink;
-                        }
-        
-                        // Confirmar si el correo fue enviado
-                        const confirmacion = confirm(
-                            "¿Has enviado el correo?\n\nHaz clic en 'Aceptar' si lo enviaste o en 'Cancelar' si aún no lo has enviado."
+               const { value: formValues } = await Swal.fire({
+                  width: "900px",
+                  title: "Reserva Caida: " + exp_correo,
+                  html:
+                     '<label for="swal-textarea">Comentario de caida</label>' +
+                     '<textarea id="swal-textarea" class="swal2-textarea" style="width: 100%; padding: 10px; box-sizing: border-box;"></textarea>',
+                  focusConfirm: false,
+                  preConfirm: () => {
+                     // Obtener el valor del comentario
+                     return document.getElementById("swal-textarea").value;
+                  },
+               });
+               Swal.close();
+
+               if (formValues) {
+                  showLoadingIndicator(); // Mostrar indicador de carga
+
+                  // Función que maneja el envío del correo
+                  async function mostrarMensaje() {
+                     Swal.close();
+                     // Verificar si el usuario está en un dispositivo móvil
+                     const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+
+                     if (isMobile) {
+                        // En dispositivos móviles, mostrar un mensaje de advertencia
+                        const respuesta = confirm(
+                           "No se puede enviar la reserva caída desde un dispositivo móvil. Solo se puede enviar desde una computadora.\nPresiona 'Aceptar' para recordarlo más tarde.",
                         );
-        
-                        if (confirmacion) {
-                            // Si el correo fue enviado, ejecutar la acción
-                            alert("Correo enviado y reserva caída con éxito. " + exp_correo);
-                            dispatch(enviarReservaCaida(idTrannsaccion));
-                            Swal.fire("¡Enviado!", "La reserva caída ha sido enviada.", "success");
-                        } else {
-                            alert("Recuerda enviar el correo más tarde. " + exp_correo);
+                        if (!respuesta) {
+                           alert("Recuerda enviar el correo más tarde.");
                         }
-        
-                        // Cerrar el modal después de 2 segundos
-                        setTimeout(() => {
-                            Swal.close();
-                        }, 2000);
-                    }
-        
-                    // Llamar a la función para mostrar el mensaje
-                    await mostrarMensaje();
-                }
+                     } else {
+                        // En una computadora, crear el enlace para abrir el cliente de correo
+                        const destinatario = "abarrientos@roccacr.com";
+                        const copia = email_admin;
+                        const asunto = "Reserva Caida: " + exp_correo;
+                        const cuerpo = formValues;
+                        const mensajeCorreo = `Buen día compañeras,\n\nEspero que se encuentren bien. Les comento que la siguiente venta, ${exp_correo} ha sido cancelada debido a ${cuerpo}.\n\nSaludos cordiales,`;
+                        const mailtoLink = `mailto:${destinatario}?cc=${copia}&subject=${encodeURIComponent(asunto)}&body=${encodeURIComponent(
+                           mensajeCorreo,
+                        )}`;
+                        // Abrir el cliente de correo
+                        window.location.href = mailtoLink;
+                     }
+
+                     // Confirmar si el correo fue enviado
+                     const confirmacion = confirm(
+                        "¿Has enviado el correo?\n\nHaz clic en 'Aceptar' si lo enviaste o en 'Cancelar' si aún no lo has enviado.",
+                     );
+
+                     if (confirmacion) {
+                        // Si el correo fue enviado, ejecutar la acción
+                        alert("Correo enviado y reserva caída con éxito. " + exp_correo);
+                        dispatch(enviarReservaCaida(idTrannsaccion));
+                        Swal.fire("¡Enviado!", "La reserva caída ha sido enviada.", "success");
+                     } else {
+                        alert("Recuerda enviar el correo más tarde. " + exp_correo);
+                     }
+
+                     // Cerrar el modal después de 2 segundos
+                     setTimeout(() => {
+                        Swal.close();
+                     }, 2000);
+                  }
+
+                  // Llamar a la función para mostrar el mensaje
+                  await mostrarMensaje();
+               }
             }
-        },
-        
+         },
+
          verPdf: () => {
             const goURL = `https://4552704.app.netsuite.com/app/accounting/print/hotprint.nl?regular=T&sethotprinter=T&formnumber=136&trantype=salesord&&id=${getQueryParam(
                "data2",

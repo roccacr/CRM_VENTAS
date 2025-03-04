@@ -1,4 +1,5 @@
-import { editarOrdenVenta, insertarOrdenVenta, insertarOrdenVentaBd, obtenerOrdenVenta, updateAplicarComicion } from "./Api_provider_estimacion";
+import { generateLeadBitacora } from "../leads/thunksLeads";
+import { actualizarOrdenVentaBd, editarOrdenVenta, enviarReservaCaidas, enviarReservaNetsuite, insertarOrdenVenta, insertarOrdenVentaBd, obtenerOrdenVenta, updateAplicarComicion } from "./Api_provider_estimacion";
 
 
 /**
@@ -137,4 +138,90 @@ export const editarOrdenVentaFormulario = (formulario) => {
         }
     };
  };
- 
+    
+
+ export const enviarReservaCaida = (idTransaccion) => {
+    return async () => {
+        try {
+            // Llama a la API para enviar la reserva caída utilizando el id de la transacción proporcionado.
+            const resultado = await enviarReservaCaidas({ idTransaccion });
+
+            // Retorna los datos de la respuesta de la API, o un array vacío si no hay datos válidos.
+            return resultado || [];
+        } catch (error) {
+            // Captura y registra cualquier error ocurrido durante la solicitud.
+            console.error("Error al enviar la reserva caída:", error);
+
+            // Retorna un array vacío en caso de error para manejar el fallo de manera segura.
+            return [];
+        }
+    };
+};
+
+
+
+    
+
+export const enviarReservaN = (idTransaccion) => {
+    return async () => {
+        try {
+            const resultado = await enviarReservaNetsuite({ idTransaccion });
+
+
+            return resultado || [];
+        } catch (error) {
+
+            console.error("Error al enviar la reserva:", error);
+            return [];
+        }
+    };
+};
+
+
+export const bitacoraOrdenDeventa = (leadId) => {
+    return async (dispatch, getState) => {
+        // Extrae el ID del administrador desde el estado de autenticación
+        const { idnetsuite_admin } = getState().auth;
+
+        // Define la descripción del evento, en este caso es la nota proporcionada
+        const descripcionEvento = "Se envio la reserva a Netsuite";
+
+        const valueStatus = "04-LEAD-RESERVA"
+
+        // Valores adicionales que serán enviados al generar la bitácora del lead
+        const additionalValues = {
+            valorDeCaida: 55, // Valor estándar para caídas (causa de la nota)
+            tipo: "Se Envio la Reserva a Netsuite", // Tipo de evento
+            estado_lead: 1, // Estado del lead (1: activo, por ejemplo)
+            accion_lead: 6, // Acción específica relacionada con la nota (6: nota creada)
+            seguimiento_calendar: 0, // Indica que no requiere seguimiento en calendario
+            valor_segimineto_lead: 3, // Valor de seguimiento del lead (3: seguimiento intermedio)
+        };
+
+      
+        try {
+            // Despacha la acción para generar la bitácora del lead con los valores adicionales
+            await dispatch(generateLeadBitacora(idnetsuite_admin, leadId, additionalValues, descripcionEvento, valueStatus));
+            // Retorna "ok" si todo salió correctamente
+            return "ok";
+        } catch (error) {
+            // Manejo de errores: captura y muestra en consola cualquier problema al generar el evento
+            console.error("Error al crear el evento para el lead:", error);
+        }
+    };
+};
+
+export const modifcarOrdenVenta = (idTransaccion, fecha_prereserva) => {
+    return async () => {
+        try {
+            const resultado = await actualizarOrdenVentaBd({ idTransaccion, fecha_prereserva });
+
+
+            return resultado || [];
+        } catch (error) {
+
+            console.error("Error al enviar la reserva:", error);
+            return [];
+        }
+    };
+}

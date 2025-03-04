@@ -79,3 +79,69 @@ export const editarOrdenVenta = async ({ formulario }) => {
     // La URL "ordenVenta/editarOrdenVenta" corresponde al endpoint en el servidor que gestiona esta operación.
     return await fetchData("ordenVenta/editarOrdenVenta", requestData); // Retorna la respuesta de la API para la solicitud realizada.
 };
+
+
+/**
+ * Envia una reserva caída a la API.
+ *
+ * @param {Object} params - Parámetros para la solicitud.
+ * @param {string} params.idTransaccion - ID de la transacción a enviar.
+ * @returns {Promise<Object>} La respuesta de la API con el resultado de la solicitud.
+ */
+export const enviarReservaCaidas = async ({ idTransaccion }) => {
+    // Prepara los datos necesarios para la solicitud, combinando datos comunes y el ID de la transacción.
+    const requestData = {
+        ...commonRequestData, // Incluye datos comunes como headers y token de autenticación.
+        idTransaccion, // ID de la transacción a enviar.
+    };
+
+    // Realiza una solicitud a la API para enviar la reserva caída.
+    // Utiliza el endpoint "admins/enviarReservaCaida" para gestionar la solicitud.
+    const response = await fetchData("ordenventa/enviarReservaCaida", requestData);
+
+    // Retorna la respuesta obtenida de la API, que incluye el resultado de la solicitud.
+    return response;
+};
+
+
+
+
+/**
+ * Envia una reserva a Netsuite.
+ *
+ * @param {Object} params - Parámetros para la solicitud.
+ * @param {string} params.idTransaccion - ID de la transacción a enviar.
+ * @returns {Promise<Object>} La respuesta de la API con el resultado de la solicitud.
+ */
+export const enviarReservaNetsuite = async ({ idTransaccion }) => {
+    // Prepara los datos necesarios para la solicitud, combinando datos comunes y el ID de la transacción.
+    const requestData = {
+        ...commonRequestData, // Incluye datos comunes como headers y token de autenticación.
+        idTransaccion, // ID de la transacción a enviar.
+    };
+
+    // Realiza una solicitud a la API para enviar la reserva caída.
+    // Utiliza el endpoint "admins/ " para gestionar la solicitud.
+    const response = await fetchData("ordenventa/enviarReservaNetsuite", requestData);
+
+    // Retorna la respuesta obtenida de la API, que incluye el resultado de la solicitud.
+    return response;
+};
+
+
+
+export const actualizarOrdenVentaBd = async ({ idTransaccion, fecha_prereserva }) => {
+    // Prepara los datos necesarios para la solicitud, combinando datos comunes y el ID de la transacción.
+    const requestData = {
+        ...commonRequestData, // Incluye datos comunes como headers y token de autenticación.
+        idTransaccion, // ID de la transacción a enviar.
+        fecha_prereserva
+    };
+
+    // Realiza una solicitud a la API para actualizar la orden de venta.
+    // Utiliza el endpoint "ordenVenta/actualizarOrdenVentaBd" para gestionar la solicitud.
+    const response = await fetchData("ordenVenta/actualizarOrdenVentaBd", requestData);
+
+    // Retorna la respuesta obtenida de la API, que incluye el resultado de la solicitud.
+    return response;
+}
