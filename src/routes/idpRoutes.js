@@ -224,6 +224,7 @@ module.exports = function (app) {
                 { path: "/ordenVenta/crearOrdenVenta", method: "crearOrdenVenta" }, // actualizar datos de orden de venta
                 { path: "/ordenVenta/insertarOrdenVentaBd", method: "insertarOrdenVentaBd" }, // Insertar datos de orden de venta en la base de datos
                 { path: "/ordenVenta/editarOrdenVenta", method: "editarOrdenVenta" }, // Insertar datos de orden de venta en la base de datos
+                { path: "/ordenVenta/enviarReservaCaida", method: "enviarReservaCaida" }, // ENVIAR RESERVA CAIDA
             ],
         },
     ];
