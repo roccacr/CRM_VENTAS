@@ -264,7 +264,9 @@ export const View_edit_lead = () => {
             vatregnumber: leadInfo.cedula_lead,
             custentity1: leadInfo.Nacionalidad_lead,
             custentityestado_civil: leadInfo.Estado_ciLead,
-            custentity11: leadInfo.Edad_lead.replace(/[+-]/g, ''),
+            custentity11: typeof leadInfo.Edad_lead === 'string' && /[+-]/.test(leadInfo.Edad_lead) 
+                ? leadInfo.Edad_lead.replace(/[+-]/g, '') 
+                : leadInfo.Edad_lead,
             custentity_ix_customer_profession: leadInfo.Profesion_lead,
             defaultaddress: leadInfo.Direccion,
             custentity77: leadInfo.nombre_extra_lead,
