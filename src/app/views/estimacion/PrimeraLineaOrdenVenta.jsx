@@ -337,6 +337,24 @@ export const PrimeraLineaOrdenVenta = ({ formValues, handleInputChange, errors }
                />
                {errors.custbody190 && <div className="invalid-feedback">{errors.custbody190}</div>}
             </div>
+
+            <div className="col-sm-3">
+               <label className="form-label">METODO DE PAGO</label>
+               <select className="form-select" value={formValues.custbody188} name="custbody188" onChange={handleInputChange}>
+                  <option value="">Selecione un Metodo de pago</option>
+                  <option value="3">Cheque</option>
+                  <option value="2">Efectivo</option>
+                  <option value="4">Paypal</option>
+                  <option value="5">Tarjeta de Credito</option>
+                  <option value="6">Tarjeta de Débito</option>
+                  <option value="1">Transferencia</option>
+               </select>
+            </div>
+
+            <hr />
+         </div>
+
+         <div className="row">
             <div className="col-sm-3">
                <label className="form-label">ENTREGA ESTIMADA:</label>
                <input
@@ -367,25 +385,25 @@ export const PrimeraLineaOrdenVenta = ({ formValues, handleInputChange, errors }
                   autoComplete="off"
                   type="text"
                   name="custbody20"
-                  value={formValues.custbody20}
+                  value={formValues.custbody20.replace('%', '')}
                   onChange={handleInputChange}
                   className={`form-control mb-2 ${errors.custbody20 ? "is-invalid" : ""}`}
                />
                {errors.custbody20 && <div className="invalid-feedback">{errors.custbody20}</div>}
             </div>
+
             <div className="col-sm-3">
                <label className="form-label">% COMISIÓN DEL CORREDOR</label>
                <input
                   autoComplete="off"
                   type="text"
                   name="custbody14"
-                  value={formValues.custbody14}
+                  value={formValues.custbody14.replace('%', '')}
                   onChange={handleInputChange}
                   className={`form-control mb-2 ${errors.custbody14 ? "is-invalid" : ""}`}
                />
                {errors.custbody14 && <div className="invalid-feedback">{errors.custbody14}</div>}
             </div>
-
             <div className="col-sm-3">
                <label className="form-label">FONDOS DE COMPRA</label>
                <select className="form-select" value={formValues.custbody37} name="custbody37" onChange={handleInputChange}>
@@ -394,20 +412,6 @@ export const PrimeraLineaOrdenVenta = ({ formValues, handleInputChange, errors }
                   <option value="2">Financiado</option>
                </select>
             </div>
-
-            <div className="col-sm-3">
-               <label className="form-label">METODO DE PAGO</label>
-               <select className="form-select" value={formValues.custbody188} name="custbody188" onChange={handleInputChange}>
-                  <option value="">Selecione un Metodo de pago</option>
-                  <option value="3">Cheque</option>
-                  <option value="2">Efectivo</option>
-                  <option value="4">Paypal</option>
-                  <option value="5">Tarjeta de Credito</option>
-                  <option value="6">Tarjeta de Débito</option>
-                  <option value="1">Transferencia</option>
-               </select>
-            </div>
-
             <div className="col-sm-3">
                <label className="form-label">MOTIVO DE CANCELACIÓN DE RESERVA O VENTA CAIDA</label>
                <select className="form-select" value={formValues.custbody115} name="custbody115" onChange={handleInputChange}>
@@ -429,7 +433,6 @@ export const PrimeraLineaOrdenVenta = ({ formValues, handleInputChange, errors }
                   <option value="15">Traslado de FF/proyecto</option>
                </select>
             </div>
-
             <div className="col-sm-3">
                <label className="form-label">COMENTARIOS CANCELACIÓN DE RESERVA</label>
                <input
@@ -442,6 +445,7 @@ export const PrimeraLineaOrdenVenta = ({ formValues, handleInputChange, errors }
                />
                {errors.custbody14 && <div className="invalid-feedback">{errors.custbody116}</div>}
             </div>
+
             <div className="col-sm-3">
                <label className="form-label">NOTA</label>
                <textarea
@@ -454,10 +458,6 @@ export const PrimeraLineaOrdenVenta = ({ formValues, handleInputChange, errors }
                />
                {errors.memo && <div className="invalid-feedback">{errors.memo}</div>}
             </div>
-
-            <br />
-            <br />
-            <hr />
 
             <div className="col-sm-3">
                <label className="form-label">MONTO PRERESERVA</label>

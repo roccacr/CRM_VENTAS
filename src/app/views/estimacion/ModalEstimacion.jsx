@@ -832,7 +832,7 @@ export const ModalEstimacion = ({ open, onClose, OportunidadDetails, cliente }) 
          required: !!formValues.prima_extra_tres,
          message: "Este valor es requerido",
       },
-      custbody195_tres: {
+      desc_extra_tres: {
          required: !!formValues.prima_extra_tres,
          message: "Este valor es requerido",
       },

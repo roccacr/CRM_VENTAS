@@ -162,7 +162,7 @@ const processTableData = (datosOrdenVenta) => {
          numero: linea.line || key.replace("line ", ""),
          articulo: linea.item_display || linea.item,
          monto: formatoMoneda(linea.amount || 0),
-         fechaPago: linea.custcolfecha_pago_proyectado || "N/A",
+         fechaPago: linea.custcolfecha_pago_proyectado || "No aplica",
          cantidad: linea.quantity,
          descripcion: linea.description,
       }));

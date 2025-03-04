@@ -24,7 +24,6 @@ import {
 import { CalculodePrima } from "./CalculodePrima";
 import { SeleccionPrima } from "./SeleccionPrima";
 import { MetodoPago } from "./MetodoPago";
-import { editarEstimacionFormulario, extarerEstimacion } from "../../../store/estimacion/thunkEstimacion";
 import { editarOrdenVentaFormulario, obtenerOrdendeventa } from "../../../store/ordenVenta/thunkOrdenVenta";
 import { PrimeraLineaOrdenVenta } from "./PrimeraLineaOrdenVenta";
 
@@ -844,7 +843,7 @@ export const ModalOrdenVenta = ({ open, onClose, idEstimacion }) => {
          required: !!formValues.prima_extra_dos,
          message: "Este valor es requerido",
       },
-      custbody195_dos: {
+      desc_extra_dos: {
          required: !!formValues.prima_extra_dos,
          message: "Este valor es requerido",
       },
@@ -861,7 +860,7 @@ export const ModalOrdenVenta = ({ open, onClose, idEstimacion }) => {
          required: !!formValues.prima_extra_tres,
          message: "Este valor es requerido",
       },
-      custbody195_tres: {
+      desc_extra_tres: {
          required: !!formValues.prima_extra_tres,
          message: "Este valor es requerido",
       },
@@ -912,13 +911,16 @@ export const ModalOrdenVenta = ({ open, onClose, idEstimacion }) => {
    const handleSubmit = async (e) => {
       e.preventDefault();
 
+      console.clear();
+      console.log(formValues)
+
       if (validateForm()) {
-         const confirmEdit = window.confirm("¿Desea editar la estimación?");
+         const confirmEdit = window.confirm("¿Desea editar la Orden de venta?");
 
          if (confirmEdit) {
             // Mostrar Swal de carga
             Swal.fire({
-               title: "Editando estimación...",
+               title: "Editando la Ordende venta...",
                text: "Por favor espere",
                allowOutsideClick: false,
                allowEscapeKey: false,
@@ -943,7 +945,7 @@ export const ModalOrdenVenta = ({ open, onClose, idEstimacion }) => {
                   Swal.fire({
                      position: "top-end",
                      icon: "success",
-                     title: "Se editó la estimación",
+                     title: "Se editó la Orden V.",
                      showConfirmButton: false,
                      timer: 2500,
                      customClass: {
@@ -952,28 +954,8 @@ export const ModalOrdenVenta = ({ open, onClose, idEstimacion }) => {
                   }).then((result) => {
                      window.location.reload();
                   });
-               }
-
-               if (ExTraerResultado.Status == 500) {
-                  if (
-                     result.data["Detalle"].Error.message ==
-                     "El campo custcolfecha_pago_proyectado contenía más del número máximo ( 10 ) de caracteres permitidos."
-                  ) {
-                     return Swal.fire({
-                        title: "Lo sentimos, ha ocurrido un error.  : El campo de fecha debe estar seleccionado o tener el formato correcto.",
-                        icon: "question",
-                        width: "40em",
-                        padding: "0 0 1.25em",
-                        iconHtml: "؟",
-                        confirmButtonText: "OK",
-                        cancelButtonText: "CORREGUIR",
-                        showCancelButton: true,
-                        showCloseButton: true,
-                        customClass: {
-                           popup: "swal-on-top",
-                        },
-                     });
-                  } else {
+               }else{
+                  
                      return Swal.fire({
                         title:
                            "Detalle de error : " +
@@ -991,7 +973,6 @@ export const ModalOrdenVenta = ({ open, onClose, idEstimacion }) => {
                            popup: "swal-on-top",
                         },
                      });
-                  }
                }
             } catch (error) {
                // Cerrar el Swal de carga en caso de error
@@ -1001,7 +982,7 @@ export const ModalOrdenVenta = ({ open, onClose, idEstimacion }) => {
                Swal.fire({
                   icon: "error",
                   title: "Error",
-                  text: "Ha ocurrido un error al editar la estimación",
+                  text: "Ha ocurrido un error al editar la Orden V.",
                   customClass: {
                      popup: "swal-on-top",
                   },
@@ -1070,7 +1051,7 @@ export const ModalOrdenVenta = ({ open, onClose, idEstimacion }) => {
             setFormValues((prevValues) => ({
                ...prevValues,
                pre_reserva: reserva,
-               rType: "estimacion",
+               rType: "ordenVenta",
                location: transactionData?.data?.fields?.location || "-",
                entity: transactionData?.cli || "-",
                custbody38: transactionData?.UNIDAD || "-",
@@ -1338,7 +1319,7 @@ export const ModalOrdenVenta = ({ open, onClose, idEstimacion }) => {
             const processedItems = processItemLines(itemData);
          } catch (error) {
             console.error("Error fetching ordenVenta:", error);
-            alert("Error al obtener la estimación. Por favor, inténtelo de nuevo.");
+            alert("Error al obtener la Orden de venta. Por favor, inténtelo de nuevo.");
          } finally {
             setIsLoading(false);
          }
@@ -1392,9 +1373,9 @@ export const ModalOrdenVenta = ({ open, onClose, idEstimacion }) => {
                            {/* Component for payment method selection */}
                            <MetodoPago formValues={formValues} handleInputChange={handleInputChange} errors={errors} />
                            {/* Button to save the estimation */}
-                           {/* <button type="submit" className="btn btn-primary">
+                           <button type="submit" className="btn btn-primary">
                               Guardar ordenVenta
-                           </button> */}
+                           </button>
                         </form>
                      </>
                   )}
