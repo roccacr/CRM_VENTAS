@@ -282,15 +282,18 @@ const useSalesOrderActions = ({ navigate, dispatch, datosOrdenVenta, setIsModalO
  * Renders a button with an icon and text.
  * @param {Object} props - Component properties
  */
-const ActionButton = ({ icon, text, onClick }) => (
-   <div className="col-3">
-      <div className="d-grid">
-         <button className="btn btn-dark" onClick={onClick}>
-            <i className={`ti ${icon}`}></i> {text}
-         </button>
+const ActionButton = ({ icon, text, onClick }) => {
+   const isMobile = window.innerWidth <= 768
+   return (
+      <div className={isMobile ? "col-12" : "col-3"}>
+         <div className="d-grid">
+            <button className="btn btn-dark" onClick={onClick}>
+               <i className={`ti ${icon}`}></i> {text}
+            </button>
+         </div>
       </div>
-   </div>
-);
+   );
+};
 
 /**
  * Renders a panel of action buttons.
@@ -299,13 +302,9 @@ const ActionButton = ({ icon, text, onClick }) => (
 const ActionPanel = ({ actions, buttonConfigs }) => (
    <div className="row">
       {buttonConfigs.map(({ icon, text, action }, index) => (
-         <div key={index} className="col-6 col-md-auto mb-2 mb-md-0">
-            <ActionButton icon={icon} text={text} onClick={() => actions[action](true)} />
-         </div>
+         <ActionButton key={index} icon={icon} text={text} onClick={() => actions[action](true)} />
       ))}
    </div>
-
-   
 );
 
 /**
