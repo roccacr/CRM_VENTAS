@@ -242,13 +242,13 @@ const useSalesOrderActions = ({ navigate, dispatch, datosOrdenVenta, setIsModalO
                          dispatch(enviarReservaCaida(idTrannsaccion));
                          Swal.fire('¡Enviado!', 'La reserva caída ha sido enviada.', 'success');
 
-                         setTimeout(() => {
-                           Swal.close();
-                         }, 2000);
-
                      } else {
                          alert("Recuerda enviar el correo más tarde. " + exp_correo);
                      }
+                     setTimeout(() => {
+                        Swal.close();
+                      }, 2000);
+
 
                }
 
