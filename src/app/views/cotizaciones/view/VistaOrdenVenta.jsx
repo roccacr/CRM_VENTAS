@@ -283,9 +283,9 @@ const useSalesOrderActions = ({ navigate, dispatch, datosOrdenVenta, setIsModalO
  * @param {Object} props - Component properties
  */
 const ActionButton = ({ icon, text, onClick }) => {
-   const isMobile = window.innerWidth <= 768
+   const isMobile = window.innerWidth <= 768;
    return (
-      <div className={isMobile ? "col-12" : "col-3"}>
+      <div className={isMobile ? "col-12 mb-2" : "col-3"}>
          <div className="d-grid">
             <button className="btn btn-dark" onClick={onClick}>
                <i className={`ti ${icon}`}></i> {text}
