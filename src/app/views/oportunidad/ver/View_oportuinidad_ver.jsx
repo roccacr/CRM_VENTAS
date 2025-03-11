@@ -191,7 +191,7 @@ export const View_oportuinidad_ver = () => {
                                     />
                                     <i className="chat-badge bg-success me-2 mb-2"></i>
                                 </div>
-                                <h5 className="mb-0">#{OportunidadDetails.tranid_oport || ""}</h5>
+                                <h5 className="mb-0">#{OportunidadDetails?.tranid_oport || ""}</h5>
                                 <p className="text-muted text-sm">{leadDetails.nombre_lead}</p>
                                 <ul className="list-inline mx-auto my-4">
                                     <blockquote className="blockquote blockquote-reverse font-size-16 mb-0">
@@ -210,14 +210,14 @@ export const View_oportuinidad_ver = () => {
                                         {OportunidadDetails?.chek_oport === 0 ? (
                                             <button
                                                 className="btn btn-sm btn-success"
-                                                onClick={() => handleProbabilidadChange(1, OportunidadDetails.id_oportunidad_oport)}
+                                                onClick={() => handleProbabilidadChange(1, OportunidadDetails?.id_oportunidad_oport)}
                                             >
                                                 <i className="ti ti-check f-24"></i> Oportunidades + probable
                                             </button>
                                         ) : (
                                             <button
                                                 className="btn btn-sm btn-danger"
-                                                onClick={() => handleProbabilidadChange(0, OportunidadDetails.id_oportunidad_oport)}
+                                                onClick={() => handleProbabilidadChange(0, OportunidadDetails?.id_oportunidad_oport)}
                                             >
                                                 <i className="ti ti-x f-24"></i> Oportunidades - probable
                                             </button>
@@ -226,17 +226,17 @@ export const View_oportuinidad_ver = () => {
                                     <li className="list-inline-item mb-2">
                                         {" "}
                                         {/* Espacio entre botones */}
-                                        {OportunidadDetails.estatus_oport === 1 ? (
+                                        {OportunidadDetails?.estatus_oport === 1 ? (
                                             <button
                                                 className="btn btn-sm btn-danger"
-                                                onClick={() => handleStatusChange(0, OportunidadDetails.id_oportunidad_oport)}
+                                                onClick={() => handleStatusChange(0, OportunidadDetails?.id_oportunidad_oport)}
                                             >
                                                 <i className="ti ti-x f-24"></i> Inactivar Oportunidad
                                             </button>
                                         ) : (
                                             <button
                                                 className="btn btn-sm btn-success"
-                                                onClick={() => handleStatusChange(1, OportunidadDetails.id_oportunidad_oport)}
+                                                onClick={() => handleStatusChange(1, OportunidadDetails?.id_oportunidad_oport)}
                                             >
                                                 <i className="ti ti-edit-circle f-24"></i> Activar Oportunidad
                                             </button>
@@ -287,7 +287,7 @@ export const View_oportuinidad_ver = () => {
                         <div className="position-relative card-body">
                             <div className="d-inline-flex align-items-center justify-content-between w-100 mb-3">
                                 <p className="mb-0 text-muted me-1">Codigo Oportunidad</p>
-                                <p className="mb-0">#{OportunidadDetails.tranid_oport || "0"}</p>
+                                <p className="mb-0">#{OportunidadDetails?.tranid_oport || "0"}</p>
                             </div>
                             <div className="d-inline-flex align-items-center justify-content-between w-100 mb-3">
                                 <p className="mb-0 text-muted me-1">Cliente Relacionado</p>
@@ -298,15 +298,15 @@ export const View_oportuinidad_ver = () => {
                                 <p
                                     className="mb-0"
                                     style={{
-                                        color: OportunidadDetails.estatus_oport === 1 ? "green" : "red",
+                                        color: OportunidadDetails?.estatus_oport === 1 ? "green" : "red",
                                     }}
                                 >
-                                    {OportunidadDetails.estatus_oport === 1 ? "Activo" : "Inactivo"}
+                                    {OportunidadDetails?.estatus_oport === 1 ? "Activo" : "Inactivo"}
                                 </p>
                             </div>
                             <div className="d-inline-flex align-items-center justify-content-between w-100">
                                 <p className="mb-0 text-muted me-1">Metodo de Pago</p>
-                                <p className="mb-0">{OportunidadDetails.nombre_motivo_pago}</p>
+                                <p className="mb-0">{OportunidadDetails?.nombre_motivo_pago}</p>
                             </div>
                         </div>
                     </div>
