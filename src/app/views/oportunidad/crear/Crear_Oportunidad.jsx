@@ -296,7 +296,7 @@ export const Crear_Oportunidad = () => {
     // Función para validar los campos del formulario.
     const validateForm = () => {
         // Lista de campos requeridos que deben tener un valor.
-        const requiredFields = ["clienteAsignado", "subsidiaria", "proyecto", "motivoCondicion", "motivoCompra", "metodoPago", "ubicacion", "clase", "expediente", "idInternoExpediente"];
+        const requiredFields = ["clienteAsignado", "subsidiaria", "proyecto", "motivoCompra", "metodoPago", "ubicacion", "clase", "expediente", "idInternoExpediente"];
 
         const errors = {}; // Objeto para almacenar los errores detectados.
         let isValid = true; // Variable para determinar si el formulario es válido.
@@ -315,14 +315,11 @@ export const Crear_Oportunidad = () => {
             isValid = false; // El formulario no es válido.
         }
 
-        if (formValues.estado === "22") {
-            errors.motivoCondicion = false; // Marca el campo como erróneo si falta.
-            isValid = true;
-        }
-
-         if (!formValues.idInternoExpediente) {
-             isValid = false;
-         }
+        // Eliminamos esta condición que estaba anulando la validación anterior
+        // if (formValues.estado === "22") {
+        //     errors.motivoCondicion = false; // Marca el campo como erróneo si falta.
+        //     isValid = true; // Esta línea estaba forzando isValid a true independientemente de otros campos
+        // }
 
         setErrors(errors); // Actualiza el estado de errores con los errores detectados.
         return isValid; // Retorna si el formulario es válido o no.
