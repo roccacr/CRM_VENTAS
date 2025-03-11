@@ -153,7 +153,7 @@ export const View_oportuinidad_ver = () => {
                     <div className="d-flex align-items-center">
                         <div className="flex-grow-1 me-3">
                             <h3 className="text-white">Vista general de la oportunidad </h3>
-                            <p className="text-white text-opacity-75 text-opa mb-0">#{OportunidadDetails.tranid_oport || ""}</p>
+                            <p className="text-white text-opacity-75 text-opa mb-0">#{OportunidadDetails?.tranid_oport || ""}</p>
                         </div>
                         <div className="flex-shrink-0">
                             <img
