@@ -44,6 +44,8 @@ export const View_oportuinidad_ver = () => {
             // Llama a la acción 'getSpecificOportunidad' pasando el 'idOportunidad' y espera su resultado.
             const oportunidadData = await dispatch(getSpecificOportunidad(idOportunidad));
 
+            console.log(oportunidadData);
+
             // Almacena los detalles obtenidos en el estado 'oportunidadDetails' para su uso en la vista.
             setOportunidadDetails(oportunidadData);
         } catch (error) {
