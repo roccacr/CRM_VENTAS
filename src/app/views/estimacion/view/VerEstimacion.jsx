@@ -101,17 +101,20 @@ export const VerEstimacion = () => {
     * @param {number|string} custbody16 - Monto de cortesías
     * @returns {number} Precio de venta neto calculado
     */
-   const CalculoPvtaNeto = (custbody13, custbody132, custbody46, custbodyix_salesorder_cashback, custbody16) => {
-      const cleanAndParseFloat = (value) => {
-         const num = parseFloat(value);
-         return isNaN(num) ? 0 : num; // Si no es un número válido, devuelve 0
-      };
-   
-      const valores = [custbody13, custbody132, custbody46, custbodyix_salesorder_cashback, custbody16].map(cleanAndParseFloat);
-   
-      return valores[0] - valores[1] + valores[2] - valores[3] - valores[4];
+
+   const formatNumber = (value) => {
+      const cleanValue = typeof value === "string" ? value.replace(/[^0-9.-]/g, "") : value;
+      return new Intl.NumberFormat("en-US", {
+         minimumFractionDigits: 2,
+         maximumFractionDigits: 2,
+      }).format(Number(cleanValue) || 0);
    };
-   
+   const CalculoPvtaNeto = (custbody13, custbody132, custbody46, custbodyix_salesorder_cashback, custbody16) => {
+      const valores = [custbody13, custbody132, custbody46, custbodyix_salesorder_cashback, custbody16].map(cleanAndParseFloat);
+
+      const pvtaNeto = valores[0] - valores[1] + valores[2] - valores[3] - valores[4];
+      return formatNumber(pvtaNeto);
+   };
 
    /**
     * Configura y retorna las opciones de DataTables.
