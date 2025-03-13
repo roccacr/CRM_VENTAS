@@ -102,10 +102,16 @@ export const VerEstimacion = () => {
     * @returns {number} Precio de venta neto calculado
     */
    const CalculoPvtaNeto = (custbody13, custbody132, custbody46, custbodyix_salesorder_cashback, custbody16) => {
+      const cleanAndParseFloat = (value) => {
+         const num = parseFloat(value);
+         return isNaN(num) ? 0 : num; // Si no es un número válido, devuelve 0
+      };
+   
       const valores = [custbody13, custbody132, custbody46, custbodyix_salesorder_cashback, custbody16].map(cleanAndParseFloat);
-
+   
       return valores[0] - valores[1] + valores[2] - valores[3] - valores[4];
    };
+   
 
    /**
     * Configura y retorna las opciones de DataTables.
