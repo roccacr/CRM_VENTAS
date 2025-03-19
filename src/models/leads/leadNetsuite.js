@@ -196,6 +196,7 @@ leadNetsuite.editarInformacionLead_Netsuite = async ({ formData,    database }) 
         const response = await rest.put(body);
 
         if(response.status === 200){
+            leadNetsuite.eliminar_LeadStatus(formData, database);
             leadNetsuite.update_LeadStatus(formData, database);
             leadNetsuite.update_LeadInformations(formData, database);
 
@@ -368,6 +369,20 @@ leadNetsuite.update_LeadInformations = async (dataParams, database) => {
         throw new Error(`Error actualizando información del lead: ${error.message}`);
     }
 };
+
+leadNetsuite.eliminar_LeadStatus = async (dataParams, database) => {
+    try {
+
+
+    const query1 = `DELETE FROM info_extra_lead WHERE id_lead_fk = ?`
+        
+      return  await executeQuery(query1, [dataParams.id], database);  
+    } catch (error) {
+        console.error('Error actualizando información del lead:', error);
+        throw new Error(`Error actualizando información del lead: ${error.message}`);
+    }
+};
+
 
 // Exportamos el módulo 'leadNetsuite' para que pueda ser utilizado en otras partes del proyecto.
 module.exports = leadNetsuite;
