@@ -524,6 +524,9 @@ ordenVenta.actualizarOrdenVentaBd = async (dataParams) => {
 
 ordenVenta.obtenerOrdenesPorCliente = async (dataParams) => {
 
+    console.log(dataParams);
+
+
     const query = `
         SELECT * FROM ordenventa WHERE id_ov_lead =?
     `;
