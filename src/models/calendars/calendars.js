@@ -136,12 +136,15 @@ calendars.update_event_MoveDate = (dataParams) =>
 calendars.update_Status_Event = (dataParams) => {
     console.log(dataParams);
 
+    
+
     // Llamada al procedimiento almacenado
     executeStoredProcedure(
         "06_MODIFICAR_ESTADO_EVENTO", // Nombre del procedimiento almacenado
         [
             dataParams.id, // ID del evento
             dataParams.NewStatus, // Nuevo estado
+            dataParams.EstadoAccion
         ],
         dataParams.database, // Nombre de la base de datos
     );
