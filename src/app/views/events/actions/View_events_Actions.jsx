@@ -386,7 +386,7 @@ export const View_events_Actions = () => {
 
         // Despacha la acción para actualizar el estado del evento con el estado "1" (completado),
         // pasando también el ID del lead y los detalles de seguimiento del lead.
-        await dispatch(updateStatusEvent(idCalendar, 1, leadId, leadDetails.segimineto_lead, 0));
+        await dispatch(updateStatusEvent(idCalendar, 1, leadId, leadDetails.segimineto_lead, 0,2));
         window.location.reload(); // Recarga la página para actualizar la vista después de la actualización.
     };
 
@@ -400,7 +400,7 @@ export const View_events_Actions = () => {
 
         // Despacha la acción para actualizar el estado del evento con el estado "0" (cancelado),
         // pasando también el ID del lead y los detalles de seguimiento del lead.
-        await dispatch(updateStatusEvent(idCalendar, 0, leadId, leadDetails.segimineto_lead, 0));
+        await dispatch(updateStatusEvent(idCalendar, 0, leadId, leadDetails.segimineto_lead, 0,3));
         window.location.reload(); // Recarga la página para actualizar la vista después de la actualización.
     };
 
@@ -410,8 +410,8 @@ export const View_events_Actions = () => {
 
         // Despacha la acción para actualizar el estado del evento con el estado "0" (cancelado),
         // pasando también el ID del lead y los detalles de seguimiento del lead.
-        await dispatch(updateStatusEvent(idCalendar, 3, leadId, leadDetails.segimineto_lead, 1));
-        window.location.reload(); // Recarga la página para actualizar la vista después de la actualización.
+        await dispatch(updateStatusEvent(idCalendar, 3, leadId, leadDetails.segimineto_lead, 1, 1));
+       // window.location.reload(); // Recarga la página para actualizar la vista después de la actualización.
     };
 
     return (

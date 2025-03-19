@@ -189,13 +189,14 @@ export const update_event_MoveDate = async ({ id, newDateStart, newDateEnd }) =>
  * @param {string} params.NewStatus - El nuevo estado que se asignará al evento.
  * @returns {Promise<Object>} - Promesa que resuelve los datos de la respuesta del backend.
  */
-export const update_Status_Event = async ({ id, NewStatus }) => {
+export const update_Status_Event = async ({ id, NewStatus,EstadoAccion }) => {
     // Mezcla los datos comunes del sistema con los parámetros específicos del evento.
     // Esto puede incluir tokens de autenticación, claves API, entre otros valores globales.
     const requestData = {
         ...commonRequestData, // Datos comunes para todas las solicitudes del sistema.
         id, // ID del evento a actualizar.
         NewStatus, // Nuevo estado para el evento.
+        EstadoAccion
     };
 
     // Envía la solicitud al backend a través de la función `fetchData`, que está encargada
