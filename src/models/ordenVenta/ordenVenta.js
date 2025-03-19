@@ -521,4 +521,14 @@ ordenVenta.actualizarOrdenVentaBd = async (dataParams) => {
     return await executeQuery(query, [formattedDate, fecha_prereserva, dataParams.idTransaccion], dataParams.database);
 };
 
+
+ordenVenta.obtenerOrdenesPorCliente = async (dataParams) => {
+
+    const query = `
+        SELECT * FROM ordenventa WHERE id_ov_lead =?
+    `;
+
+    return await executeQuery(query, [dataParams.idTransaccion], dataParams.database);  
+};
+
 module.exports = ordenVenta;

@@ -227,6 +227,7 @@ module.exports = function (app) {
                 { path: "/ordenVenta/enviarReservaCaida", method: "enviarReservaCaida" }, // ENVIAR RESERVA CAIDA
                 { path: "/ordenVenta/enviarReservaNetsuite", method: "enviarReservaNetsuite" }, // ENVIAR RESERVA NETSUITE
                 { path: "/ordenVenta/actualizarOrdenVentaBd", method: "actualizarOrdenVentaBd" }, // ACTUALIZAR ORDEN DE VENTA EN LA BASE DE DATOS
+                { path: "/ordenVenta/obtenerOrdenesPorCliente", method: "obtenerOrdenesPorCliente" }, // EXTRAER ORDENES DE VENTA POR CLIENTE
 
             ],
         },
