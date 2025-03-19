@@ -1,5 +1,5 @@
 import { generateLeadBitacora } from "../leads/thunksLeads";
-import { actualizarOrdenVentaBd, editarOrdenVenta, enviarReservaCaidas, enviarReservaNetsuite, insertarOrdenVenta, insertarOrdenVentaBd, obtenerOrdenVenta, updateAplicarComicion } from "./Api_provider_estimacion";
+import { actualizarOrdenVentaBd, editarOrdenVenta, enviarReservaCaidas, enviarReservaNetsuite, extraerOrdenDeventaPorCLiente, insertarOrdenVenta, insertarOrdenVentaBd, obtenerOrdenVenta, updateAplicarComicion } from "./Api_provider_estimacion";
 
 
 /**
@@ -225,3 +225,22 @@ export const modifcarOrdenVenta = (idTransaccion, fecha_prereserva) => {
         }
     };
 }
+
+
+export const obtenerOrndesPorcliente = (idTransaccion) => {
+
+    console.log(idTransaccion);
+    return async () => {
+        try {
+            const leads = idTransaccion.idinterno_lead;
+            const resultado = await extraerOrdenDeventaPorCLiente({ idTransaccion:leads });
+
+            return resultado.data.data || [];
+        } catch (error) {
+
+            console.error("Error al enviar la reserva:", error);
+            return [];
+        }
+    };
+}
+

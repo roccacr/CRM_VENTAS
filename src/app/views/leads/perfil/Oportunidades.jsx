@@ -60,7 +60,6 @@ export const Oportunidades = ({ leadDetails }) => {
                             <tbody>
                                 {oportunidades.map(
                                     (oportunidad, index) => (
-                                        console.log(oportunidad),
                                         (
                                             <tr key={index} onClick={() => handleOpportunityClick(oportunidad.id_oportunidad_oport, oportunidad.entity_oport)}>
                                                 <td>{oportunidad.tranid_oport}</td>

@@ -39,7 +39,7 @@ export const ModalEstimacionEdit = ({ open, onClose, idEstimacion }) => {
       custbody38: "",
       proyecto_lead_est: "",
       entitystatus: "",
-      pvneto: 121,
+      pvneto: 0,
 
       // Datos de la segunda línea
       rType: "estimacion",
@@ -64,7 +64,7 @@ export const ModalEstimacionEdit = ({ open, onClose, idEstimacion }) => {
       custbodyix_salesorder_cashback: 0,
 
       /*EXTRAS SOBRE EL PRECIO DE LISTA /diferencia*/
-      custbody185: 2000,
+      custbody185: 0,
       //MONTO EXTRAS SOBRE EL PRECIO DE LISTA / EXTRAS PAGADAS POR EL CLIENTE
       custbody46: 0,
       //MONTO TOTAL DE CORTESÍAS

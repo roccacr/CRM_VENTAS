@@ -69,13 +69,13 @@ export const getExpediente = (id_expediente ) => {
 
 
 
+
     return async () => {
         try {
             // Llama a la función getAllExpedientes para obtener la lista completa de expedientes
             const result = await getExpedienteId({ id_expediente });
 
-
-            return result.data["0"]["0"]; // Devuelve los datos obtenidos para posibles usos adicionales.
+            return result.data.data["0"]; // Devuelve los datos obtenidos para posibles usos adicionales.
         } catch (error) {
             // En caso de error, muestra el error en la consola para diagnóstico.
             console.error("Error al cargar la lista completa de expedientes", error);

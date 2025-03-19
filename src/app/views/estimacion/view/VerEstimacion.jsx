@@ -102,9 +102,22 @@ export const VerEstimacion = () => {
     * @returns {number} Precio de venta neto calculado
     */
    const CalculoPvtaNeto = (custbody13, custbody132, custbody46, custbodyix_salesorder_cashback, custbody16) => {
-      const valores = [custbody13, custbody132, custbody46, custbodyix_salesorder_cashback, custbody16].map(cleanAndParseFloat);
-
-      return valores[0] - valores[1] + valores[2] - valores[3] - valores[4];
+      const parseNumber = (value) => {
+         if (typeof value === "string") {
+            return parseFloat(value.replace(/[^0-9.-]/g, "")) || 0;
+         }
+         return Number(value) || 0;
+      };
+   
+      // Convertir valores a números
+      custbody13 = parseNumber(custbody13);
+      custbody132 = parseNumber(custbody132);
+      custbody46 = parseNumber(custbody46);
+      custbodyix_salesorder_cashback = parseNumber(custbodyix_salesorder_cashback);
+      custbody16 = parseNumber(custbody16);
+   
+      // Asegurar que la resta se haga correctamente
+      return custbody13 - Math.abs(custbody132) + custbody46 - custbodyix_salesorder_cashback - custbody16;
    };
 
    /**

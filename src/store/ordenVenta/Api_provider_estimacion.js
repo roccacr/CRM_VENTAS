@@ -145,3 +145,13 @@ export const actualizarOrdenVentaBd = async ({ idTransaccion, fecha_prereserva }
     // Retorna la respuesta obtenida de la API, que incluye el resultado de la solicitud.
     return response;
 }
+
+
+export const extraerOrdenDeventaPorCLiente = async ({ idTransaccion }) => {
+    const requestData = {
+        ...commonRequestData, // Incluye datos comunes como headers y token de autenticación.
+        idTransaccion, // ID de la transacción a enviar.
+    };
+
+    return await fetchData("ordenVenta/obtenerOrdenesPorCliente", requestData); // Retorna la respuesta de la API para la solicitud realizada.
+}

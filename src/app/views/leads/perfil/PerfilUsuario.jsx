@@ -9,6 +9,7 @@ import { Oportunidades } from "./Oportunidades";
 import { InfromacionCompleta } from "./InfromacionCompleta";
 import { useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
+import { Ordenes } from "./Ordenes";
 
 export const PerfilUsuario = () => {
     const dispatch = useDispatch();
@@ -162,6 +163,11 @@ export const PerfilUsuario = () => {
                                     <i className="ph-duotone ph-user-circle m-r-10"></i> Informacion Completada
                                 </span>
                             </a>
+                            <a onClick={() => handleTabClick("ordenes")} role="tab" className={`list-group-item list-group-item-action nav-link ${activeTab === "ordenes" ? "active" : ""}`}>
+                                <span className="f-w-500">
+                                    <i className="ph-duotone ph-article m-r-10"></i> Ordenes de Venta
+                                </span>
+                            </a>
                         </div>
                     </div>
                     <div className="card">
@@ -208,6 +214,11 @@ export const PerfilUsuario = () => {
                         {activeTab === "Informacion" && (
                             <div id="react-aria8348725315-:r6:-tabpane-Informacion" role="tabpanel" aria-labelledby="react-aria8348725315-:r6:-tab-Informacion" className="fade fade tab-pane active show">
                                 <InfromacionCompleta leadDetails={leadDetails} />
+                            </div>
+                        )}
+                        {activeTab === "ordenes" && (
+                            <div id="react-aria8348725315-:r6:-tabpane-ordenes" role="tabpanel" aria-labelledby="react-aria8348725315-:r6:-tab-ordenes" className="fade fade tab-pane active show">
+                                <Ordenes leadDetails={leadDetails} />
                             </div>
                         )}
                     </div>
