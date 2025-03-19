@@ -21,7 +21,7 @@ export const View_follow_up = () => {
     const [lossOptions, setLossOptions] = useState([]); // Lista de opciones de pérdida
     const [selectedLossOption, setSelectedLossOption] = useState(""); // Opción seleccionada
     const [followUpDate, setFollowUpDate] = useState(""); // Almacenar la fecha seleccionada
-    const [leadStatus, setLeadStatus] = useState(""); // Estado del lead (activo o no)
+    const [leadStatus, setLeadStatus] = useState("1"); // Estado del lead (activo o no) - Valor por defecto "1"
 
     const getIdFromUrl = useCallback(() => {
         const params = new URLSearchParams(location.search);
@@ -158,48 +158,56 @@ export const View_follow_up = () => {
                         </p>
 
                         {/* Campo para seleccionar la fecha */}
-                        <div className="g-4 row">
-                            <label className="form-label">Seleccionar una fecha de seguimiento:</label>
-                            <input type="date" className={`form-control ${isDateError ? "is-invalid" : ""}`} value={followUpDate} onChange={handleDateChange} />
-                            {isDateError && <div className="invalid-feedback">Debe seleccionar una fecha.</div>}
+                        <div className="g-4 row mb-3">
+                            <div className="col-12">
+                                <label className="form-label mb-2">Seleccionar una fecha de seguimiento:</label>
+                                <input type="date" className={`form-control ${isDateError ? "is-invalid" : ""}`} value={followUpDate} onChange={handleDateChange} />
+                                {isDateError && <div className="invalid-feedback">Debe seleccionar una fecha.</div>}
+                            </div>
                         </div>
 
                         {/* Campo para seleccionar el motivo de pérdida */}
-                        <div className="g-4 row">
-                            <label className="form-label">Seleccionar el motivo de pérdida:</label>
-                            <select className={`form-select ${isSelectError ? "is-invalid" : ""}`} value={selectedLossOption} onChange={handleLossOptionChange}>
-                                <option value="" disabled>
-                                    Seleccionar
-                                </option>
-                                {lossOptions.map((option) => (
-                                    <option key={option.id_caida} value={option.id_caida}>
-                                        {option.nombre_caida}
+                        <div className="g-4 row mb-3">
+                            <div className="col-12">
+                                <label className="form-label mb-2">Seleccionar el motivo de pérdida:</label>
+                                <select className={`form-select ${isSelectError ? "is-invalid" : ""}`} value={selectedLossOption} onChange={handleLossOptionChange}>
+                                    <option value="" disabled>
+                                        Seleccionar
                                     </option>
-                                ))}
-                            </select>
-                            {isSelectError && <div className="invalid-feedback">Debe seleccionar un motivo de pérdida.</div>}
+                                    {lossOptions.map((option) => (
+                                        <option key={option.id_caida} value={option.id_caida}>
+                                            {option.nombre_caida}
+                                        </option>
+                                    ))}
+                                </select>
+                                {isSelectError && <div className="invalid-feedback">Debe seleccionar un motivo de pérdida.</div>}
+                            </div>
                         </div>
 
                         {/* Nuevo campo para seleccionar el estado del lead */}
-                        <div className="g-4 row">
-                            <label className="form-label">Seleccionar el estado del lead:</label>
-                            <select className={`form-select ${isLeadStatusError ? "is-invalid" : ""}`} value={leadStatus} onChange={handleLeadStatusChange}>
-                                <option value="" disabled>
-                                    Seleccionar estado
-                                </option>
-                                <option value="1">Activo</option>
-                                <option value="0">Inactivo</option>
-                            </select>
-                            {isLeadStatusError && <div className="invalid-feedback">Debe seleccionar el estado del lead.</div>}
+                        <div className="g-4 row mb-3">
+                            <div className="col-12">
+                                <label className="form-label mb-2">Seleccionar el estado del lead:</label>
+                                <select className={`form-select ${isLeadStatusError ? "is-invalid" : ""}`} value={leadStatus} onChange={handleLeadStatusChange}>
+                                    <option value="" disabled>
+                                        Seleccionar estado
+                                    </option>
+                                    <option value="1">Activo</option>
+                                    <option value="0">Inactivo</option>
+                                </select>
+                                {isLeadStatusError && <div className="invalid-feedback">Debe seleccionar el estado del lead.</div>}
+                            </div>
                         </div>
 
                         {/* Campo para ingresar una nota */}
-                        <div className="g-4 row">
-                            <label className="form-label" htmlFor="exampleFormControlTextarea1">
-                                Ingresa una nota:
-                            </label>
-                            <textarea rows="3" id="exampleFormControlTextarea1" className={`form-control ${isTextareaError ? "is-invalid" : ""}`} value={note} onChange={handleNoteChange}></textarea>
-                            {isTextareaError && <div className="invalid-feedback">La nota no puede estar vacía.</div>}
+                        <div className="g-4 row mb-3">
+                            <div className="col-12">
+                                <label className="form-label mb-2" htmlFor="exampleFormControlTextarea1">
+                                    Ingresa una nota:
+                                </label>
+                                <textarea rows="3" id="exampleFormControlTextarea1" className={`form-control ${isTextareaError ? "is-invalid" : ""}`} value={note} onChange={handleNoteChange}></textarea>
+                                {isTextareaError && <div className="invalid-feedback">La nota no puede estar vacía.</div>}
+                            </div>
                         </div>
                     </div>
                     <button className="btn btn-dark" onClick={handleGenerateNote}>
