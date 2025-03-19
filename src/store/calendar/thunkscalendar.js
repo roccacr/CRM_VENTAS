@@ -298,13 +298,9 @@ export const updateStatusEvent = (id, NewStatus, idinterno_lead, valueStatus, es
         const { idnetsuite_admin } = getState().auth;
         try {
 
-            
+        
 
-            console.log("estado NewStatus",  NewStatus)
-            console.log("estadoNew", estadoNew)
-            console.log("type", type)
-
-            const EstadoAccion = type === 1 ? "Pendiente" :  type === 2 ? "completado" : "Cancelado";
+            const EstadoAccion = type === 1 ? "Pendiente" :  type === 2 ? "Completado" : "Cancelado";
 
             
             // Llama a la API para actualizar la fecha de un evento específico, basado en el ID del evento y la nueva fecha proporcionada.

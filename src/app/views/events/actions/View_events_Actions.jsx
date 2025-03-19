@@ -142,6 +142,8 @@ export const View_events_Actions = () => {
         // Solicita los detalles específicos del evento y guarda los datos en 'eventData'.
         const eventData = await dispatch(getDataEevent(eventId));
 
+        console.log(eventData)
+
         // Función auxiliar para formatear la hora en el formato HH:MM.
         function formatTime(time) {
             if (!time) return ""; // Retorna una cadena vacía si no hay hora.
@@ -171,6 +173,7 @@ export const View_events_Actions = () => {
     const fetchLeadsOptions = async () => {
         // Realiza la solicitud para obtener los leads. Se utilizan fechas de ejemplo, pero no tienen impacto en la obtención de los datos.
         const leads = await dispatch(getLeadsComplete("2024-01-01", "2024-01-01", 0));
+        
 
         // Formatea los leads obtenidos en un arreglo con los campos 'value' y 'label'.
         const formattedLeads = leads.map((lead) => ({
@@ -411,7 +414,7 @@ export const View_events_Actions = () => {
         // Despacha la acción para actualizar el estado del evento con el estado "0" (cancelado),
         // pasando también el ID del lead y los detalles de seguimiento del lead.
         await dispatch(updateStatusEvent(idCalendar, 3, leadId, leadDetails.segimineto_lead, 1, 1));
-       // window.location.reload(); // Recarga la página para actualizar la vista después de la actualización.
+       window.location.reload(); // Recarga la página para actualizar la vista después de la actualización.
     };
 
     return (
