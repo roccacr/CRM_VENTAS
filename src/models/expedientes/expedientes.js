@@ -67,12 +67,16 @@ const updateFile = async (dataParams, database, id_expediente) => {
  * @param {Object} dataParams - Objeto que contiene los parámetros necesarios para la consulta.
  * @returns {Promise<Object>} - Resultado de la consulta de archivos o expedientes.
  */
-expedientes.getExpediente = (dataParams) =>
-    executeStoredProcedure(
-        "39_OBTENER_DATOS_EXPEDIENTE", // Nombre del procedimiento almacenado que recupera los expedientes.
-        [dataParams.id_expediente], // Parámetros que identifican el rol y el ID del administrador.
-        dataParams.database, // Nombre de la base de datos a utilizar.
-    );
+expedientes.getExpediente = (dataParams) => {
+        const query = "SELECT * FROM expedientes WHERE ID_interno_expediente = ?"; // Consulta SQL para eventos de un lead
+        const params = [dataParams.id_expediente]; // Parámetro id del lead
+    
+        return executeQuery(
+            query, // Consulta SQL
+            params, // Parámetros de la consulta
+            dataParams.database // Base de datos donde se ejecuta
+        );
+};
 
 
 module.exports = {
