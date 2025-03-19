@@ -762,7 +762,7 @@ export const View_edit_lead = () => {
                      <option value="0">0</option>
                      <option value="1">1</option>
                      <option value="2">2</option>
-                     <option value="3+">3 o más</option>
+                     <option value="3">3 o más</option>
                   </select>
                </div>
                <div className="mb-3">
