@@ -63,7 +63,7 @@ export const ModalEstimacion = ({ open, onClose, OportunidadDetails, cliente }) 
       custbodyix_salesorder_cashback: 0,
 
       /*EXTRAS SOBRE EL PRECIO DE LISTA /diferencia*/
-      custbody185: 2000,
+      custbody185: 0,
       //MONTO EXTRAS SOBRE EL PRECIO DE LISTA / EXTRAS PAGADAS POR EL CLIENTE
       custbody46: 0,
       //MONTO TOTAL DE CORTESÍAS
