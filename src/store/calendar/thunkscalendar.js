@@ -292,16 +292,21 @@ export const moveEvenOtherDate = (id, newDateStart, newDateEnd) => {
 
 
 
-export const updateStatusEvent = (id, NewStatus, idinterno_lead, valueStatus) => {
+export const updateStatusEvent = (id, NewStatus, idinterno_lead, valueStatus, estadoNew) => {
     return async (dispatch, getState) => {
         // Obtiene el ID del administrador Netsuite desde el estado de autenticación
         const { idnetsuite_admin } = getState().auth;
         try {
+
+            
+
             // Llama a la API para actualizar la fecha de un evento específico, basado en el ID del evento y la nueva fecha proporcionada.
-            const result = await update_Status_Event({ id, NewStatus });
+            const result = await update_Status_Event({ id, NewStatus: estadoNew });
             // Retorna el primer conjunto de datos de la respuesta de la API, que contiene los datos actualizados del evento.
 
             const estadoEvento = NewStatus === 1 ? "Completado" :  NewStatus === 3 ? "Reactivado" : "Cancelado";
+
+
             if (idinterno_lead > 0) {
                 const descripcionEvento = "Modificaion de evento : " + estadoEvento;
                 const additionalValues = {
