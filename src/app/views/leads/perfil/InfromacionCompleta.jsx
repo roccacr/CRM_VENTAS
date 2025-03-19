@@ -1,5 +1,7 @@
 export const InfromacionCompleta = ({ leadDetails }) => {
 
+    console.log(leadDetails);
+
 
     const informacionBasica = [
         { label: "Nombre Completo", value: leadDetails.nombre_lead },
