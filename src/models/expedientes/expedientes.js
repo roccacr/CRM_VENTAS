@@ -1,4 +1,4 @@
-const { executeStoredProcedure } = require("../conectionPool/conectionPool");
+const { executeStoredProcedure, executeQuery } = require("../conectionPool/conectionPool");
 
 const expedientes = {}; // Objeto para agrupar todas las funciones relacionadas con 'expedientes'.
 
