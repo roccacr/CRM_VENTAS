@@ -371,6 +371,7 @@ leadNetsuite.update_LeadInformations = async (dataParams, database) => {
 };
 
 leadNetsuite.eliminar_LeadStatus = async (dataParams, database) => {
+    console.log("eliminar_LeadStatus",dataParams);
     try {
 
 
