@@ -38,7 +38,7 @@ export const ModalEstimacion = ({ open, onClose, OportunidadDetails, cliente }) 
       custbody38: "",
       proyecto_lead_est: "",
       entitystatus: "",
-      pvneto: 121,
+      pvneto: 0,
 
       // Datos de la segunda línea
       rType: "estimacion",
