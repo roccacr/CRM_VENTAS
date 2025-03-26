@@ -68,12 +68,12 @@ estimacion.crear_estimacion = async ({ formulario }) => {
 
     function transformarFecha(fecha, campo) {
         // Validar si la fecha es vacía o no válida
-        if (!fecha || typeof fecha !== "string" || !fecha.includes("-")) {
+        if (!fecha || typeof fecha !== "string") {
             console.warn("⚠️ Fecha vacía o formato inválido. No se realiza la transformación.");
             return null; // Retorna null o un valor predeterminado según tu necesidad
         }
 
-        console.log("fecha", campo, fecha);
+        console.log("fecha modificada", campo, fecha);
 
         var partesFecha = fecha.split("-");
         var dia = partesFecha[2];
@@ -94,6 +94,8 @@ estimacion.crear_estimacion = async ({ formulario }) => {
         // Convierte el valor limpio a un número entero
         return parseFloat(cleanedValue, 10) || 0; // Retorna 0 si no es un número válido
     };
+
+    console.log("fechaTransformada_1", formulario.date_hito_6);
 
 
 
