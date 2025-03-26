@@ -73,6 +73,8 @@ estimacion.crear_estimacion = async ({ formulario }) => {
             return null; // Retorna null o un valor predeterminado según tu necesidad
         }
 
+        console.log("fecha", campo, fecha);
+
         var partesFecha = fecha.split("-");
         var dia = partesFecha[2];
         var mes = partesFecha[1];
@@ -94,7 +96,7 @@ estimacion.crear_estimacion = async ({ formulario }) => {
     };
 
 
-    console.log("formulario", formulario.custbody114);
+
 
     try {
         const rest = nsrestlet.createLink(accountSettings, urlSettings);
