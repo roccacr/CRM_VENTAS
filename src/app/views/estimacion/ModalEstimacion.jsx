@@ -933,30 +933,18 @@ export const ModalEstimacion = ({ open, onClose, OportunidadDetails, cliente }) 
             }
 
             if (ExTraerResultado.status == 500) {
-               if (
-                  result.data["Detalle"].Error.message ==
-                  "El campo custcolfecha_pago_proyectado contenía más del número máximo ( 10 ) de caracteres permitidos."
-               ) {
-                  return Swal.fire({
-                     title: "Lo sentimos, ha ocurrido un error.  : El campo de fecha debe estar seleccionado o tener el formato correcto.",
-                     icon: "question",
-                     width: "40em",
-                     padding: "0 0 1.25em",
-                     iconHtml: "؟",
-                     confirmButtonText: "OK",
-                     cancelButtonText: "CORREGUIR",
-                     showCancelButton: true,
-                     showCloseButton: true,
-                     customClass: {
-                        popup: "swal-on-top",
-                     },
-                  });
-               } else {
+
+                        // Parseamos el mensaje de error contenido en ErrorMsj
+            const parsedError = JSON.parse(ExTraerResultado.ErrorMsj);
+
+            // Accedemos al campo "details"
+            const errorDetails = parsedError.details;
+
+            
+
                   return Swal.fire({
                      title:
-                        "Detalle de error : " +
-                        result.data["Detalle"].Error.message +
-                        ",  \nLo sentimos, favor revisar este error con su administrador.",
+                        "Error: " + errorDetails,
                      icon: "question",
                      iconHtml: "؟",
                      width: "40em",
@@ -969,7 +957,7 @@ export const ModalEstimacion = ({ open, onClose, OportunidadDetails, cliente }) 
                         popup: "swal-on-top",
                      },
                   });
-               }
+               
             }
 
             // Aquí puedes agregar la lógica para crear la estimación
@@ -1005,7 +993,8 @@ export const ModalEstimacion = ({ open, onClose, OportunidadDetails, cliente }) 
       // Obtener la fecha actual y formatearla como mm/dd/yyyy
       const today = new Date();
       const formattedDate = today.toISOString().split("T")[0];
-      const entregaEstimada = dataOportunidad.entregaEstimada ? dataOportunidad.entregaEstimada.split("/").reverse().join("-") : "";
+
+
 
       // Actualizar los valores del formulario con la información procesada
       setFormValues((prevValues) => ({
@@ -1029,7 +1018,7 @@ export const ModalEstimacion = ({ open, onClose, OportunidadDetails, cliente }) 
          custbody75: dataOportunidad.custbody75_oport, // Método de pago seleccionado
          custbody67: hito6, // Hito de progreso basado en condiciones específicas
          fech_reserva: formattedDate, // Fecha de la reserva
-         date_hito_6: entregaEstimada,
+         date_hito_6: dataOportunidad.entregaEstimada,
       }));
 
       setIsLoading(false); // Indicar que la carga de datos ha finalizado

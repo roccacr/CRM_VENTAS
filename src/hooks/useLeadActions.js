@@ -31,9 +31,17 @@ export const useLeadActions = () => {
 
           const cleanedPhone = telefono.trim().replace(/[^0-9+]/g, "");
           const formattedPhone = cleanedPhone.startsWith("+") ? cleanedPhone : `+${cleanedPhone}`;
-
+          
           if (formattedPhone.length > 8) {
-               window.open(`https://wa.me/${formattedPhone}`, "_blank");
+               // Detectar si es un dispositivo móvil
+               const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+               
+               // URL diferente según el dispositivo
+               const whatsappUrl = isMobile 
+                    ? `https://api.whatsapp.com/send?phone=${formattedPhone}` // WhatsApp Business en móvil
+                    : `https://web.whatsapp.com/send?phone=${formattedPhone}`; // WhatsApp Web en PC
+               
+               window.open(whatsappUrl, "_blank");
           } else {
                Swal.fire("Error", "El número de teléfono no es válido para WhatsApp.", "error");
           }

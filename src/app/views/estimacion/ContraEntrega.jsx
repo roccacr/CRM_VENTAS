@@ -30,7 +30,7 @@ export const ContraEntrega = ({ formValues, handleInputChange, errors }) => {
                     <label className="form-label">Fecha Entrega</label>
                     <input
                         autoComplete="off"
-                        type="date"
+                        type="text"
                         name="date_hito_6"
                         value={formValues.date_hito_6}
                         onChange={handleInputChange}
