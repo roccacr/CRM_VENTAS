@@ -93,11 +93,15 @@ estimacion.crear_estimacion = async ({ formulario }) => {
         return parseFloat(cleanedValue, 10) || 0; // Retorna 0 si no es un número válido
     };
 
+
+    console.log("formulario", formulario.custbody114);
+
     try {
         const rest = nsrestlet.createLink(accountSettings, urlSettings);
 
         const body = await rest.post({
             rType: "estimacion",
+            custbody114: formulario.custbody114,
             /*MONTO TOTAL*/
             custbody_ix_total_amount: cleanAndParseInteger(formulario.custbody_ix_total_amount),
             /*OPORTUNIDAD*/
@@ -353,7 +357,6 @@ estimacion.editarEstimacion = async ({ formulario }) => {
     };
 
     console.clear();
-    console.log("formulario", formulario.custbody114);
 
 
     const urlSettings = {
