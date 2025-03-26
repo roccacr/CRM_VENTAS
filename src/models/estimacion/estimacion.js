@@ -73,7 +73,6 @@ estimacion.crear_estimacion = async ({ formulario }) => {
             return null; // Retorna null o un valor predeterminado según tu necesidad
         }
 
-        console.log("fecha antes de transformar", campo, fecha);
         
         // Verificar el formato de la fecha y limpiarla si es necesario
         let fechaLimpia = fecha;
@@ -118,7 +117,7 @@ estimacion.crear_estimacion = async ({ formulario }) => {
         return parseFloat(cleanedValue, 10) || 0; // Retorna 0 si no es un número válido
     };
 
-    console.log("fechaTransformada_1", fechaTransformada_6);
+
 
 
 
@@ -308,10 +307,8 @@ estimacion.extraerEstimacion = async (dataParams) => {
 };
 
 estimacion.editarEstimacion = async ({ formulario }) => {
-
+    console.clear();
  
-
-
 
 
     // Transformar la fecha del campo "date_hito_1" del formulario y almacenarla en una variable.
@@ -363,7 +360,6 @@ estimacion.editarEstimacion = async ({ formulario }) => {
             return null; // Retorna null o un valor predeterminado según tu necesidad
         }
 
-        console.log("fecha antes de transformar", campo, fecha);
         
         // Verificar el formato de la fecha y limpiarla si es necesario
         let fechaLimpia = fecha;
@@ -408,7 +404,7 @@ estimacion.editarEstimacion = async ({ formulario }) => {
         return parseFloat(cleanedValue, 10) || 0; // Retorna 0 si no es un número válido
     };
 
-    console.clear();
+    
 
 
     const urlSettings = {
