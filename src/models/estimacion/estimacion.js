@@ -73,13 +73,36 @@ estimacion.crear_estimacion = async ({ formulario }) => {
             return null; // Retorna null o un valor predeterminado según tu necesidad
         }
 
-        console.log("fecha modificada", campo, fecha);
-
-        var partesFecha = fecha.split("-");
+        console.log("fecha antes de transformar", campo, fecha);
+        
+        // Verificar el formato de la fecha y limpiarla si es necesario
+        let fechaLimpia = fecha;
+        
+        // Si la fecha ya tiene barras (posiblemente ya está transformada)
+        if (fecha.includes("/")) {
+            // Verificar si tiene formato correcto ya (DD/MM/YYYY)
+            const partes = fecha.split("/");
+            if (partes.length === 3) {
+                return fecha; // Ya está en formato correcto
+            }
+            // Limpiar formato incorrecto
+            fechaLimpia = fecha.replace(/\//g, "-");
+        }
+        
+        // Dividir la fecha por guiones
+        var partesFecha = fechaLimpia.split("-");
+        
+        // Verificar que tengamos exactamente 3 partes (año, mes, día)
+        if (partesFecha.length !== 3) {
+            console.warn(`⚠️ Formato de fecha inválido para ${campo}: ${fecha}`);
+            return null;
+        }
+        
         var dia = partesFecha[2];
         var mes = partesFecha[1];
         var anio = partesFecha[0];
 
+        console.log("fecha después de transformar", campo, `${dia}/${mes}/${anio}`);
         return dia + "/" + mes + "/" + anio;
     }
 
@@ -335,16 +358,41 @@ estimacion.editarEstimacion = async ({ formulario }) => {
 
     function transformarFecha(fecha, campo) {
         // Validar si la fecha es vacía o no válida
-        if (!fecha || typeof fecha !== "string" || !fecha.includes("-")) {
+        if (!fecha || typeof fecha !== "string") {
             console.warn("⚠️ Fecha vacía o formato inválido. No se realiza la transformación.");
             return null; // Retorna null o un valor predeterminado según tu necesidad
         }
 
-        var partesFecha = fecha.split("-");
+        console.log("fecha antes de transformar", campo, fecha);
+        
+        // Verificar el formato de la fecha y limpiarla si es necesario
+        let fechaLimpia = fecha;
+        
+        // Si la fecha ya tiene barras (posiblemente ya está transformada)
+        if (fecha.includes("/")) {
+            // Verificar si tiene formato correcto ya (DD/MM/YYYY)
+            const partes = fecha.split("/");
+            if (partes.length === 3) {
+                return fecha; // Ya está en formato correcto
+            }
+            // Limpiar formato incorrecto
+            fechaLimpia = fecha.replace(/\//g, "-");
+        }
+        
+        // Dividir la fecha por guiones
+        var partesFecha = fechaLimpia.split("-");
+        
+        // Verificar que tengamos exactamente 3 partes (año, mes, día)
+        if (partesFecha.length !== 3) {
+            console.warn(`⚠️ Formato de fecha inválido para ${campo}: ${fecha}`);
+            return null;
+        }
+        
         var dia = partesFecha[2];
         var mes = partesFecha[1];
         var anio = partesFecha[0];
 
+        console.log("fecha después de transformar", campo, `${dia}/${mes}/${anio}`);
         return dia + "/" + mes + "/" + anio;
     }
 
