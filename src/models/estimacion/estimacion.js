@@ -95,7 +95,7 @@ estimacion.crear_estimacion = async ({ formulario }) => {
         return parseFloat(cleanedValue, 10) || 0; // Retorna 0 si no es un número válido
     };
 
-    console.log("fechaTransformada_1", formulario.date_hito_6);
+    console.log("fechaTransformada_1", fechaTransformada_6);
 
 
 
