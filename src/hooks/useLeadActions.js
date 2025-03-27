@@ -26,65 +26,89 @@ export const useLeadActions = () => {
      const handleWhatsappClick = (telefono) => {
           if (!telefono) {
                Swal.fire("Error", MODAL_TEXTS.NO_PHONE, "error");
-               return;
+               return Promise.reject("No phone number provided");
           }
 
           const cleanedPhone = telefono.trim().replace(/[^0-9+]/g, "");
           
-          // Verificar si el número ya tiene código de país
-          if (!cleanedPhone.startsWith("+")) {
-               // Mostrar SweetAlert para agregar código de país
-               Swal.fire({
-                    title: "Código de país faltante",
-                    html: `
-                         <p>Este número no tiene el código de país +506 que es de costa rica</p>
-                         <div style="margin-bottom: 15px; display: flex; align-items: center; justify-content: center;">
-                              <input class="form-check-input" type="checkbox" id="addCodeCheckbox" checked style="margin-right: 10px;">
-                              <label class="form-check-label" for="addCodeCheckbox">
-                                   Agregar +506
-                              </label>
-                         </div>
-                         <div style="margin-bottom: 10px;">
-                              <input id="phoneInput" class="swal2-input" value="${cleanedPhone}" style="width: 250px;">
-                         </div>
-                    `,
-                    showCancelButton: true,
-                    confirmButtonText: "Ir a WhatsApp",
-                    cancelButtonText: "Cancelar",
-                    preConfirm: () => {
-                         const addCode = document.getElementById('addCodeCheckbox').checked;
-                         const phoneInputValue = document.getElementById('phoneInput').value.trim();
-                         return {
-                              addCode,
-                              phone: phoneInputValue
-                         };
-                    }
-               }).then((result) => {
-                    if (result.isConfirmed) {
-                         let formattedPhone;
-                         if (result.value.addCode) {
-                              formattedPhone = `+506${result.value.phone}`;
-                         } else {
-                              formattedPhone = result.value.phone;
+          // Verificar si el número ya tiene el formato correcto (+506...)
+          if (!cleanedPhone.startsWith("+") && 
+              (cleanedPhone.startsWith("506") || !cleanedPhone.startsWith("506"))) {
+               
+               // Determinar mensaje según el formato del número
+               let message = "";
+               if (cleanedPhone.startsWith("506")) {
+                    message = "Este número comienza con 506 pero le falta el signo +";
+               } else {
+                    message = "Este número no tiene el código de país +506";
+               }
+               
+               // Retornar una promesa que se resolverá después de la interacción del usuario
+               return new Promise((resolve) => {
+                    // Mostrar SweetAlert para agregar código de país
+                    Swal.fire({
+                         title: "Código de país incompleto",
+                         html: `
+                              <p>${message}</p>
+                              <div style="margin-bottom: 15px; display: flex; align-items: center; justify-content: center;">
+                                   <input class="form-check-input" type="checkbox" id="addCodeCheckbox" checked style="margin-right: 10px;">
+                                   <label class="form-check-label" for="addCodeCheckbox">
+                                        Agregar +506
+                                   </label>
+                              </div>
+                              <div style="margin-bottom: 10px;">
+                                   <input id="phoneInput" class="swal2-input" value="${cleanedPhone}" style="width: 250px;">
+                              </div>
+                         `,
+                         showCancelButton: true,
+                         confirmButtonText: "Ir a WhatsApp",
+                         cancelButtonText: "Cancelar",
+                         preConfirm: () => {
+                              const addCode = document.getElementById('addCodeCheckbox').checked;
+                              const phoneInputValue = document.getElementById('phoneInput').value.trim();
+                              return {
+                                   addCode,
+                                   phone: phoneInputValue
+                              };
                          }
-                         
-                         if (formattedPhone.length > 8) {
-                              const whatsappUrl = `https://wa.me/${formattedPhone.replace(/^\+/, '')}`;
-                              window.open(whatsappUrl, "_blank");
+                    }).then((result) => {
+                         if (result.isConfirmed) {
+                              let formattedPhone;
+                              if (result.value.addCode) {
+                                   // Si el número ya comienza con 506, solo añadir el "+"
+                                   if (result.value.phone.startsWith("506")) {
+                                        formattedPhone = `+${result.value.phone}`;
+                                   } else {
+                                        formattedPhone = `+506${result.value.phone}`;
+                                   }
+                              } else {
+                                   formattedPhone = result.value.phone;
+                              }
+                              
+                              if (formattedPhone.length > 8) {
+                                   const whatsappUrl = `https://wa.me/${formattedPhone.replace(/^\+/, '')}`;
+                                   window.open(whatsappUrl, "_blank");
+                                   resolve(true); // Resuelve la promesa después de abrir WhatsApp
+                              } else {
+                                   Swal.fire("Error", "El número de teléfono no es válido para WhatsApp.", "error")
+                                        .then(() => resolve(false)); // Resuelve con false en caso de error
+                              }
                          } else {
-                              Swal.fire("Error", "El número de teléfono no es válido para WhatsApp.", "error");
+                              resolve(false); // El usuario canceló
                          }
-                    }
+                    });
                });
           } else {
-               // Si ya tiene código de país, usar directamente
+               // Si ya tiene el formato correcto (+xxx), usar directamente
                const formattedPhone = cleanedPhone;
                
                if (formattedPhone.length > 8) {
                     const whatsappUrl = `https://wa.me/${formattedPhone.replace(/^\+/, '')}`;
                     window.open(whatsappUrl, "_blank");
+                    return Promise.resolve(true); // Resuelve inmediatamente
                } else {
                     Swal.fire("Error", "El número de teléfono no es válido para WhatsApp.", "error");
+                    return Promise.resolve(false);
                }
           }
      };
@@ -127,8 +151,14 @@ export const useLeadActions = () => {
           if (result.isConfirmed) {
                const note = "Contacto generado desde el botón de WhatsApp";
                await dispatch(WhatsappAndNote(note, leadData?.idinterno_lead, leadData?.segimineto_lead));
-               handleWhatsappClick(leadData?.telefono_lead);
-               window.location.reload();
+               
+               // Esperar a que se complete la validación y apertura de WhatsApp
+               const whatsappOpened = await handleWhatsappClick(leadData?.telefono_lead);
+               
+               // Solo recargar si se abrió WhatsApp con éxito
+               if (whatsappOpened) {
+                    window.location.reload();
+               }
           }
      };
 
