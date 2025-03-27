@@ -33,15 +33,30 @@ export const useLeadActions = () => {
           const formattedPhone = cleanedPhone.startsWith("+") ? cleanedPhone : `+${cleanedPhone}`;
           
           if (formattedPhone.length > 8) {
-               // Detectar si es un dispositivo móvil
                const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+               const phoneNumber = "1234567890"; // Reemplaza con el número adecuado
+               const formattedPhone = phoneNumber.replace(/\D/g, ""); // Asegura formato correcto del número
                
-               // URL diferente según el dispositivo
-               const whatsappUrl = isMobile 
-                    ? `https://api.whatsapp.com/send?phone=${formattedPhone}` // WhatsApp Business en móvil
-                    : `https://web.whatsapp.com/send?phone=${formattedPhone}`; // WhatsApp Web en PC
+               let whatsappUrl;
                
-               window.open(whatsappUrl, "_blank");
+               if (isMobile) {
+                   // Intenta abrir WhatsApp Business
+                   whatsappUrl = `whatsapp-business://send?phone=${formattedPhone}`;
+                   
+                   // Verifica si WhatsApp Business está instalado
+                   const win = window.open(whatsappUrl, "_blank");
+                   
+                   // Si no se abre (caso en que no esté instalado), redirige a la versión web
+                   setTimeout(() => {
+                       if (!win || win.closed || typeof win.closed === "undefined") {
+                           window.open(`https://api.whatsapp.com/send?phone=${formattedPhone}`, "_blank");
+                       }
+                   }, 1000);
+               } else {
+                   // Para escritorio, usa la versión web
+                   whatsappUrl = `https://web.whatsapp.com/send?phone=${formattedPhone}`;
+                   window.open(whatsappUrl, "_blank");
+               }
           } else {
                Swal.fire("Error", "El número de teléfono no es válido para WhatsApp.", "error");
           }
