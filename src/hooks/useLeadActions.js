@@ -37,7 +37,7 @@ export const useLeadActions = () => {
               // const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
                
                // URL diferente según el dispositivo
-               const whatsappUrl = `https://web.whatsapp.com/send?phone=${formattedPhone}`
+               const whatsappUrl = `https://wa.me/${formattedPhone}`
                
                window.open(whatsappUrl, "_blank");
           } else {
