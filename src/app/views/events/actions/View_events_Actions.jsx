@@ -24,7 +24,7 @@ const getDefaultDateTime = () => {
     const currentDate = now.toISOString().slice(0, 10);
 
     // Calcula la fecha del día siguiente, añade 24 horas a la fecha actual y convierte a formato ISO.
-    const nextDate = new Date(now.getTime() + 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    const nextDate =  now.toISOString().slice(0, 10);
 
     // Obtiene la hora actual en formato "HH:MM".
     const currentTime = now.toTimeString().slice(0, 5);
