@@ -85,7 +85,7 @@ ordenVenta.enlistarOrdenesVenta = async (dataParams) => {
     return await executeQuery(query, [], dataParams.database);
 };
 
-ordenVenta.obtenerOrdendeventa = async ({ idTransaccion }) => {
+ordenVenta.obtenerOrdendeventa = async ({ idTransaccion, database }) => {
     const urlSettings = {
         url: "https://4552704.restlets.api.netsuite.com/app/site/hosting/restlet.nl?script=1764&deploy=1",
     };
@@ -94,10 +94,17 @@ ordenVenta.obtenerOrdendeventa = async ({ idTransaccion }) => {
 
         const body = await rest.get({ rType: "salesordersExtraer", id: idTransaccion });
 
+        const validarOrdenVenta = await ordenVenta.validarOrdenVenta(idTransaccion, database);
+
+
+
+
+
         return {
-            msg: "Crear estimacion ",
+            msg: "Obtener orden de venta",       
             Detalle: body,
             status: 200,
+            validarOrdenVenta: validarOrdenVenta,
         };
     } catch (error) {
         console.error("Error al obtener oportuindad:", error);
@@ -549,14 +556,21 @@ ordenVenta.actualizarOrdenVentaBd = async (dataParams) => {
 
 ordenVenta.obtenerOrdenesPorCliente = async (dataParams) => {
 
-    console.log(dataParams);
-
-
     const query = `
         SELECT * FROM ordenventa WHERE id_ov_lead =?
     `;
 
     return await executeQuery(query, [dataParams.idTransaccion], dataParams.database);  
+};
+
+
+ordenVenta.validarOrdenVenta = async (id, database) => {
+
+    const query = `
+        SELECT * FROM ordenventa WHERE id_ov_netsuite =?
+    `;
+
+    return await executeQuery(query, [id], database);  
 };
 
 module.exports = ordenVenta;
