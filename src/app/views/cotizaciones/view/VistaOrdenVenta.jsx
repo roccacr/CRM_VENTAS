@@ -81,7 +81,6 @@ const fetchData = async ({ leadId, transaccion, dispatch, setLeadDetails, setDat
          dispatch(obtenerOrdendeventa(transaccion)),
       ]);
 
-      console.log(ordenData);
 
       setLeadDetails(leadData);
       if (ordenData?.data?.Detalle) {
@@ -460,6 +459,7 @@ const PrimaryInformation = ({ datosOrdenVenta }) => (
  * @returns {JSX.Element} Sales information section
  */
 const SalesInformation = ({ datosOrdenVenta }) => {
+
    const fields = [
       { label: "UNIDAD EXPEDIENTE LIGADO", value: datosOrdenVenta?.Expediente?.replace(/"/g, "") },
       { label: "PRECIO DE VENTA", value: formatoMoneda(datosOrdenVenta?.data?.fields?.custbody_ix_total_amount) },
@@ -469,7 +469,7 @@ const SalesInformation = ({ datosOrdenVenta }) => {
       { label: "FECHA DE VIGENCIA DE LA VENTA", value: datosOrdenVenta?.data?.fields?.saleseffectivedate },
       { label: "CAMPAÑA DE MARKETING", value: datosOrdenVenta?.CAMPANA?.replace(/"/g, "") },
       { label: "CREADO", value: datosOrdenVenta?.data?.fields?.createddate },
-      { label: "Clase", value: datosOrdenVenta?.data?.fields?.class },
+      { label: "Clase", value: datosOrdenVenta?.Clase?.replace(/"/g, "")  },
       { label: "Departamento", value: datosOrdenVenta?.Departamento?.replace(/"/g, "") },
       { label: "FONDOS", value: datosOrdenVenta?.FONDOS?.replace(/"/g, "") },
       { label: "METODO PAGO", value: datosOrdenVenta?.METODO_PAGO?.replace(/"/g, "") },

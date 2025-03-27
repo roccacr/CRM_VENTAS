@@ -75,7 +75,6 @@ export const VerEstimacion = () => {
    const fetchEstimacionDetails = async (idEstimacion) => {
       try {
          const estimacionData = await dispatch(extarerEstimacion(idEstimacion));
-         console.log(estimacionData);
          setDatosEstimacion(estimacionData.netsuite.Detalle);
          setDatosCrm(estimacionData.crm);
          
