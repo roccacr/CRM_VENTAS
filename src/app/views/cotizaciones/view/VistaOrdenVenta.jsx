@@ -71,15 +71,24 @@ const showLoadingIndicator = () => {
  * @param {Function} params.dispatch - Redux dispatch function
  * @param {Function} params.setLeadDetails - Function to set lead details
  * @param {Function} params.setDatosOrdenVenta - Function to set order details
+ * @param {Function} params.setValidarOrdenVenta - Function to set order details
  * @returns {Promise<void>}
  */
-const fetchData = async ({ leadId, transaccion, dispatch, setLeadDetails, setDatosOrdenVenta }) => {
+const fetchData = async ({ leadId, transaccion, dispatch, setLeadDetails, setDatosOrdenVenta, setValidarOrdenVenta }) => {
    try {
-      const [leadData, ordenData] = await Promise.all([dispatch(getSpecificLead(leadId)), dispatch(obtenerOrdendeventa(transaccion))]);
+      const [leadData, ordenData] = await Promise.all([
+         dispatch(getSpecificLead(leadId)), 
+         dispatch(obtenerOrdendeventa(transaccion)),
+      ]);
+
+      console.log(ordenData);
 
       setLeadDetails(leadData);
       if (ordenData?.data?.Detalle) {
          setDatosOrdenVenta(ordenData.data.Detalle);
+      }
+      if (ordenData?.data?.validarOrdenVenta) {
+         setValidarOrdenVenta(ordenData?.data?.validarOrdenVenta.data[0]);
       }
    } catch (error) {
       console.error("Error fetching data:", error);
@@ -180,7 +189,7 @@ const processTableData = (datosOrdenVenta) => {
  * @param {Object} params - Parameters for action handlers
  * @returns {Object} Action handlers and configurations
  */
-const useSalesOrderActions = ({ navigate, dispatch, datosOrdenVenta, setIsModalOpen, email_admin }) => {
+const useSalesOrderActions = ({ navigate, dispatch, datosOrdenVenta, setIsModalOpen, email_admin, validarOrdenVenta }) => {
    return {
       actions: {
          EnviarReserva: async () => {
@@ -256,7 +265,7 @@ const useSalesOrderActions = ({ navigate, dispatch, datosOrdenVenta, setIsModalO
                   showLoadingIndicator(); // Mostrar indicador de carga
 
                   // Función que maneja el envío del correo
-                  async function mostrarMensaje() {
+                  const mostrarMensaje = async () => {
                      Swal.close();
                      // Verificar si el usuario está en un dispositivo móvil
                      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
@@ -334,9 +343,9 @@ const useSalesOrderActions = ({ navigate, dispatch, datosOrdenVenta, setIsModalO
             { icon: "ti-eye", text: "PDF OV", action: "verPdf" },
          ],
          secondary: [
-            { icon: "ti-flag-3", text: "ENVIAR RESERVA", action: "EnviarReserva" },
+            { icon: "ti-flag-3", text: "ENVIAR RESERVA", action: "EnviarReserva" , disabled: validarOrdenVenta?.reserva_ov=== 1 ? true : false},   
             { icon: "ti-send", text: "CIERRE FIRMADO", action: "EnviarCierre" },
-            { icon: "ti-trending-down", text: "RESERVA CAÍDA", action: "EnviarReservaCaida" },
+            { icon: "ti-trending-down", text: "RESERVA CAÍDA", action: "EnviarReservaCaida", disabled: validarOrdenVenta?.caida_ov=== 1 ? true : false},
             { icon: "ti-brand-paypal", text: "APLICAR COMICION", action: "aplicarComision" },
          ],
       },
@@ -351,12 +360,12 @@ const useSalesOrderActions = ({ navigate, dispatch, datosOrdenVenta, setIsModalO
  * Renders a button with an icon and text.
  * @param {Object} props - Component properties
  */
-const ActionButton = ({ icon, text, onClick }) => {
+const ActionButton = ({ icon, text, onClick, disabled }) => {
    const isMobile = window.innerWidth <= 768;
    return (
-      <div className={isMobile ? "col-12 mb-2" : "col-3"}>
+      <div className={isMobile ? "col-12 mb-2" : "col-3"} hidden={disabled}> 
          <div className="d-grid">
-            <button className="btn btn-dark" onClick={onClick}>
+            <button className="btn btn-dark" onClick={onClick} >
                <i className={`ti ${icon}`}></i> {text}
             </button>
          </div>
@@ -365,13 +374,14 @@ const ActionButton = ({ icon, text, onClick }) => {
 };
 
 /**
- * Renders a panel of action buttons.
+ * Renders a panel of action buttons.  
  * @param {Object} props - Component properties
  */
 const ActionPanel = ({ actions, buttonConfigs }) => (
    <div className="row">
-      {buttonConfigs.map(({ icon, text, action }, index) => (
-         <ActionButton key={index} icon={icon} text={text} onClick={() => actions[action](true)} />
+      {buttonConfigs.map(({ icon, text, action, disabled }, index) => (
+         
+         <ActionButton key={index} icon={icon} text={text} onClick={() => actions[action](true)} disabled={disabled} /> 
       ))}
    </div>
 );
@@ -630,6 +640,8 @@ export const VistaOrdenVenta = () => {
    const [datosOrdenVenta, setDatosOrdenVenta] = useState({});
    const [isModalOpen, setIsModalOpen] = useState(false);
 
+   const [validarOrdenVenta, setValidarOrdenVenta] = useState({});
+
    const { email_admin } = useSelector((state) => state.auth);
 
    const { actions, configs } = useSalesOrderActions({
@@ -637,7 +649,8 @@ export const VistaOrdenVenta = () => {
       dispatch,
       datosOrdenVenta,
       setIsModalOpen,
-      email_admin,
+      email_admin,   
+      validarOrdenVenta
    });
 
    // Initial data fetch
@@ -654,6 +667,7 @@ export const VistaOrdenVenta = () => {
                dispatch,
                setLeadDetails,
                setDatosOrdenVenta,
+               setValidarOrdenVenta
             });
          }
          Swal.close();
@@ -661,6 +675,7 @@ export const VistaOrdenVenta = () => {
 
       loadInitialData();
    }, [dispatch]);
+
 
    // DataTable initialization with cleanup
    useEffect(() => {
@@ -687,7 +702,7 @@ export const VistaOrdenVenta = () => {
                         {Object.keys(leadDetails).length > 0 && <ButtonActions leadData={leadDetails} className="mb-4" />}
                      </blockquote>
                   </div>
-                  <ActionPanel actions={actions} buttonConfigs={configs.primary} />
+                  <ActionPanel actions={actions} buttonConfigs={configs.primary}  />
                   <br />
                   <ActionPanel actions={actions} buttonConfigs={configs.secondary} />
                </div>
