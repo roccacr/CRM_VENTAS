@@ -34,28 +34,12 @@ export const useLeadActions = () => {
           
           if (formattedPhone.length > 8) {
                // Detectar si es un dispositivo móvil
-               const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+              // const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
                
-               let whatsappUrl;
-
-               if (isMobile) {
-               // Intenta abrir WhatsApp Business
-               whatsappUrl = `whatsapp-business://send?phone=${formattedPhone}`;
+               // URL diferente según el dispositivo
+               const whatsappUrl = `https://web.whatsapp.com/send?phone=${formattedPhone}`
                
-               // Verifica si WhatsApp Business está instalado
-               const win = window.open(whatsappUrl, "_blank");
-               
-               // Si no se abre (caso en que no esté instalado), redirige a la versión web
-               setTimeout(() => {
-                    if (!win || win.closed || typeof win.closed === "undefined") {
-                         window.open(`https://api.whatsapp.com/send?phone=${formattedPhone}`, "_blank");
-                    }
-               }, 1000);
-               } else {
-               // Para escritorio, usa la versión web
-               whatsappUrl = `https://web.whatsapp.com/send?phone=${formattedPhone}`;
                window.open(whatsappUrl, "_blank");
-               }
           } else {
                Swal.fire("Error", "El número de teléfono no es válido para WhatsApp.", "error");
           }
