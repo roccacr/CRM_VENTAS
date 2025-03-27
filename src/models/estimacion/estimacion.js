@@ -290,17 +290,25 @@ estimacion.extraerEstimacion = async (dataParams) => {
     // Parámetro que contiene el ID de la oportunidad para filtrar los resultados.
     const params = [dataParams.idEstimacion];
 
-    // Llama a la función de ejecución de consultas en la base de datos.
-    // Retorna los resultados obtenidos en base a:
-    // - `query`: la consulta SQL.
-    // - `params`: el ID de la oportunidad utilizado como filtro.
-    // - `dataParams.database`: la base de datos en la que se ejecutará la consulta.
     const result = await executeQuery(query, params, dataParams.database);
+
+
+
+    const queryTotalOredenes = "SELECT COUNT(`id_ov_est`) as totalOredenes FROM `ordenventa` WHERE `id_ov_est` = ? ";        
+
+    // Parámetro que contiene el ID de la oportunidad para filtrar los resultados.
+    const paramsTotalOredenes = [dataParams.idEstimacion];
+
+    const resultTotalOredenes = await executeQuery(queryTotalOredenes, paramsTotalOredenes, dataParams.database);
+
+
+
     const resultNetsuite = await estimacion.extarerEstimacionNetsuite(dataParams.idEstimacion);
 
     const datosReales = {
         crm: result.data[0], // Propaga las propiedades de la primera fila
-        netsuite: resultNetsuite, // Agrega la nueva propiedad
+        netsuite: resultNetsuite, // Agrega la nueva propiedad\
+        totalOredenes: resultTotalOredenes.data[0].totalOredenes
     };
 
     return datosReales;
