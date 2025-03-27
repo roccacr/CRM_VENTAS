@@ -33,6 +33,10 @@ export const VerEstimacion = () => {
    const [leadDetails, setLeadDetails] = useState({});
    // Estado para almacenar los datos de la estimación.
    const [datosEstimacion, setDatosEstimacion] = useState({});
+
+   const [totalOredenes, setTotalOredenes] = useState(0);
+
+
    const [datosCrm, setDatosCrm] = useState({});
 
    // Hook para despachar acciones de Redux.
@@ -71,8 +75,11 @@ export const VerEstimacion = () => {
    const fetchEstimacionDetails = async (idEstimacion) => {
       try {
          const estimacionData = await dispatch(extarerEstimacion(idEstimacion));
+         console.log(estimacionData);
          setDatosEstimacion(estimacionData.netsuite.Detalle);
          setDatosCrm(estimacionData.crm);
+         
+         setTotalOredenes(estimacionData.totalOredenes);
       } catch (error) {
          console.error("Error al obtener los detalles de la estimación:", error);
       }
@@ -577,8 +584,8 @@ export const VerEstimacion = () => {
                            </button>
                         </div>
                      </div>
-                     <div className="col-3">
-                        <div className="d-grid">
+                     <div className="col-3" hidden={totalOredenes > 0 ? true : false}>
+                        <div className="d-grid" >
                            <button className="btn btn-dark" onClick={() => crearOrdenVentas()}>
                               {" "}
                               <i className="ti ti-color-swatch"></i> ORDEN DE VENTA
@@ -596,7 +603,7 @@ export const VerEstimacion = () => {
                   </div>
                   <br />
                   <div className="row">
-                     <div className="col-3">
+                     <div className="col-3" hidden={datosCrm?.pre_reserva ===1 ? true : false }>
                         <div className="d-grid">
                            <button className="btn btn-dark" onClick={() => EnviarReserva()}>
                               {" "}
@@ -604,7 +611,7 @@ export const VerEstimacion = () => {
                            </button>
                         </div>
                      </div>
-                     <div className="col-3">
+                     <div className="col-3" hidden={datosCrm?.pre_caida ===1 ? true : false }>
                         <div className="d-grid">
                            <button className="btn btn-dark" onClick={() => EnviarTransaccionCaida()}>
                               {" "}
