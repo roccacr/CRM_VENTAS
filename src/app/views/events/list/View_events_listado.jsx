@@ -119,7 +119,6 @@ const View_events_listado  = () => {
       return filtered;
    }, [tableData, searchParams]);
 
-   console.log("tableData", tableData);
    const tableRef = useRef(null);
 
    // State to manage modal visibility and selected lead data

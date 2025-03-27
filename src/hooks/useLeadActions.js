@@ -30,18 +30,62 @@ export const useLeadActions = () => {
           }
 
           const cleanedPhone = telefono.trim().replace(/[^0-9+]/g, "");
-          const formattedPhone = cleanedPhone.startsWith("+") ? cleanedPhone : `+${cleanedPhone}`;
           
-          if (formattedPhone.length > 8) {
-               // Detectar si es un dispositivo móvil
-              // const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-               
-               // URL diferente según el dispositivo
-               const whatsappUrl = `https://wa.me/${formattedPhone}`
-               
-               window.open(whatsappUrl, "_blank");
+          // Verificar si el número ya tiene código de país
+          if (!cleanedPhone.startsWith("+")) {
+               // Mostrar SweetAlert para agregar código de país
+               Swal.fire({
+                    title: "Código de país faltante",
+                    html: `
+                         <p>Este número no tiene el código de país +506 que es de costa rica</p>
+                         <div style="margin-bottom: 15px; display: flex; align-items: center; justify-content: center;">
+                              <input class="form-check-input" type="checkbox" id="addCodeCheckbox" checked style="margin-right: 10px;">
+                              <label class="form-check-label" for="addCodeCheckbox">
+                                   Agregar +506
+                              </label>
+                         </div>
+                         <div style="margin-bottom: 10px;">
+                              <input id="phoneInput" class="swal2-input" value="${cleanedPhone}" style="width: 250px;">
+                         </div>
+                    `,
+                    showCancelButton: true,
+                    confirmButtonText: "Ir a WhatsApp",
+                    cancelButtonText: "Cancelar",
+                    preConfirm: () => {
+                         const addCode = document.getElementById('addCodeCheckbox').checked;
+                         const phoneInputValue = document.getElementById('phoneInput').value.trim();
+                         return {
+                              addCode,
+                              phone: phoneInputValue
+                         };
+                    }
+               }).then((result) => {
+                    if (result.isConfirmed) {
+                         let formattedPhone;
+                         if (result.value.addCode) {
+                              formattedPhone = `+506${result.value.phone}`;
+                         } else {
+                              formattedPhone = result.value.phone;
+                         }
+                         
+                         if (formattedPhone.length > 8) {
+                              const whatsappUrl = `https://wa.me/${formattedPhone.replace(/^\+/, '')}`;
+                              window.open(whatsappUrl, "_blank");
+                         } else {
+                              Swal.fire("Error", "El número de teléfono no es válido para WhatsApp.", "error");
+                         }
+                    }
+               });
           } else {
-               Swal.fire("Error", "El número de teléfono no es válido para WhatsApp.", "error");
+               // Si ya tiene código de país, usar directamente
+               const formattedPhone = cleanedPhone;
+               
+               if (formattedPhone.length > 8) {
+                    const whatsappUrl = `https://wa.me/${formattedPhone.replace(/^\+/, '')}`;
+                    window.open(whatsappUrl, "_blank");
+               } else {
+                    Swal.fire("Error", "El número de teléfono no es válido para WhatsApp.", "error");
+               }
           }
      };
 
