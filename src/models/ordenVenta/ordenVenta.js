@@ -188,7 +188,7 @@ ordenVenta.editarOrdenVenta = async (dataParams) => {
         // Validar si la fecha es vacía o no válida
         if (!fecha || typeof fecha !== "string") {
             console.warn("⚠️ Fecha vacía o formato inválido. No se realiza la transformación.");
-            return null; // Retorna null o un valor predeterminado según tu necesidad
+            return fecha; // Retorna null o un valor predeterminado según tu necesidad
         }
     
         console.log("fecha antes de transformar", campo, fecha);
@@ -213,7 +213,7 @@ ordenVenta.editarOrdenVenta = async (dataParams) => {
         // Verificar que tengamos exactamente 3 partes (año, mes, día)
         if (partesFecha.length !== 3) {
             console.warn(`⚠️ Formato de fecha inválido para ${campo}: ${fecha}`);
-            return null;
+            return fecha;
         }
         
         var dia = partesFecha[2];
