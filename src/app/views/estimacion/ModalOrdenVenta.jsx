@@ -1199,7 +1199,7 @@ export const ModalOrdenVenta = ({ open, onClose, idEstimacion }) => {
                      5557: {
                         custbody67: "100%",
                         custbody_ix_salesorder_hito6: formattedAmount,
-                        date_hito_6: formattedDate,
+                        date_hito_6: custcolfecha_pago_proyectado,
                         custbody163: formatNumber(transactionData?.data?.fields?.custbody163),
                      },
 
