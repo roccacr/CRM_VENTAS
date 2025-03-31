@@ -218,7 +218,12 @@ const useSalesOrderActions = ({ navigate, dispatch, datosOrdenVenta, setIsModalO
                if (ExTraerResultado.status === 200) {
                   await dispatch(bitacoraOrdenDeventa(idTrannsaccion));
                   await dispatch(modifcarOrdenVenta(idTrannsaccion2, fecha_prereserva));
-                  Swal.fire("¡Enviado!", "La reserva ha sido enviada.", "success");
+                  //jacer un swal que sea wxito y luego hacer un reload de la pagina uando termine el swal despues de 2 segundos
+                  Swal.fire("¡Enviado!", "La reserva ha sido enviada.", "success").then(() => {
+                     setTimeout(() => {
+                        window.location.reload();
+                     }, 2000);
+                  });
                } else {
                   Swal.fire("¡Error!", "La reserva no ha sido enviada.", "error");
                }
@@ -300,7 +305,11 @@ const useSalesOrderActions = ({ navigate, dispatch, datosOrdenVenta, setIsModalO
                         // Si el correo fue enviado, ejecutar la acción
                         alert("Correo enviado y reserva caída con éxito. " + exp_correo);
                         dispatch(enviarReservaCaida(idTrannsaccion));
-                        Swal.fire("¡Enviado!", "La reserva caída ha sido enviada.", "success");
+                        Swal.fire("¡Enviado!", "La reserva caída ha sido enviada.", "success").then(() => {
+                           setTimeout(() => {
+                              window.location.reload();
+                           }, 2000);
+                        });   
                      } else {
                         alert("Recuerda enviar el correo más tarde. " + exp_correo);
                      }
