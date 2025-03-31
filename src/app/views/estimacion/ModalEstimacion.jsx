@@ -525,7 +525,7 @@ export const ModalEstimacion = ({ open, onClose, OportunidadDetails, cliente }) 
          let updatedValues;
          updatedValues = { ...prevValues, [name]: value };
 
-         if(value === 1 || value === "1"){
+         if(updatedValues.custbody75 === 1 || updatedValues.custbody75 === "1"){
             updatedValues = { ...prevValues, 
                date_hito_6: updatedValues.custbody114 };
          }
