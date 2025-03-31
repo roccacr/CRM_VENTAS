@@ -539,13 +539,13 @@ ordenVenta.enviarReservaNetsuite = async (dataParams) => {
 };
 
 ordenVenta.actualizarOrdenVentaBd = async (dataParams) => {
-    console.log("dataParams", dataParams);
     // Obtener fecha actual en zona horaria de Costa Rica (UTC-6)
     const today = new Date();
     const options = { timeZone: "America/Costa_Rica" };
     const formattedDate = today.toLocaleDateString("en-CA", options); // Formato YYYY-MM-DD
 
-    const fecha_prereserva = dataParams.fecha_prereserva;
+    // Make sure fecha_prereserva is null if undefined
+    const fecha_prereserva = dataParams.fecha_prereserva || formattedDate;
 
     const query = `
             UPDATE ordenventa SET reserva_ov = 1, envioReserva=? ,fechaClienteComprobante_ov=? WHERE id_ov_netsuite =?
