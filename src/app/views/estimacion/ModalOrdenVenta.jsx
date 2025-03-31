@@ -549,7 +549,14 @@ export const ModalOrdenVenta = ({ open, onClose, idEstimacion }) => {
    const actualizarCustbody75 = (name, value) => {
       setFormValues((prevValues) => {
          // Copia el estado actual y actualiza el valor de "custbody75"
-         const updatedValues = { ...prevValues, [name]: value };
+         let updatedValues;
+         updatedValues = { ...prevValues, [name]: value };
+
+         if(updatedValues.custbody75 === 1 || updatedValues.custbody75 === "1"){
+            updatedValues = { ...prevValues, 
+               date_hito_6: updatedValues.custbody114 };
+         }
+
 
          // Calcula el precio de venta neto basado en los valores actualizados
          const pvn = precioVentaNeto(updatedValues);
