@@ -266,6 +266,7 @@ export const calculoContraEntregaSinprimaTotal = (
         ...valoresPrevios,
         custbody67: "100%", // Indica que el porcentaje es del 100%.
         custbody163: montoFormateado, // Monto total sin prima formateado.
+        date_hito_6: valoresPrevios.custbody114,
     }));
 };
 
@@ -292,6 +293,7 @@ export const calculoContraEntregaMontoCalculado = (
         ...valoresPrevios,
         custbody67: "100%", // Indica que el porcentaje es del 100%.
         custbody_ix_salesorder_hito6: montoFormateado, // Monto formateado del hito 6.
+        date_hito_6: valoresPrevios.custbody114,
     }));
 };
 
