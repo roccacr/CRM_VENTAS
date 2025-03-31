@@ -345,7 +345,7 @@ const useSalesOrderActions = ({ navigate, dispatch, datosOrdenVenta, setIsModalO
             { icon: "ti-flag-3", text: "ENVIAR RESERVA", action: "EnviarReserva" , disabled: validarOrdenVenta?.reserva_ov=== 1 ? true : false},   
             { icon: "ti-send", text: "CIERRE FIRMADO", action: "EnviarCierre" },
             { icon: "ti-trending-down", text: "RESERVA CAÍDA", action: "EnviarReservaCaida", disabled: validarOrdenVenta?.caida_ov=== 1 ? true : false},
-            { icon: "ti-brand-paypal", text: "APLICAR COMICION", action: "aplicarComision" },
+            { icon: "ti-brand-paypal", text: "APLICAR COMISIÓN", action: "aplicarComision" },   
          ],
       },
    };

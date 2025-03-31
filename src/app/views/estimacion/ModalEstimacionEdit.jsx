@@ -498,7 +498,7 @@ export const ModalEstimacionEdit = ({ open, onClose, idEstimacion }) => {
          const asignable = calculoPrimaAsignable(total, updatedValues);
 
          // 5. Ejecuta cálculos adicionales personalizados si es necesario.
-         ejecutarCálculosEspecíficos(updatedValues);
+        // ejecutarCálculosEspecíficos(updatedValues);
 
          // 6. Si el campo actualizado es "custbody60", retorna un estado con campos adicionales.
          if (name === "custbody60") {

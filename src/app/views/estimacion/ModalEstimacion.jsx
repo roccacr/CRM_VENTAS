@@ -483,6 +483,7 @@ export const ModalEstimacion = ({ open, onClose, OportunidadDetails, cliente }) 
     * @param {number} value - El nuevo valor del campo.
     */
    const actualizarPorcentaje = (name, value) => {
+
       setFormValues((prevValues) => {
          // 1. Copia el estado actual del formulario y actualiza el valor del campo específico.
          const updatedValues = { ...prevValues, [name]: value };
@@ -497,7 +498,7 @@ export const ModalEstimacion = ({ open, onClose, OportunidadDetails, cliente }) 
          const asignable = calculoPrimaAsignable(total, updatedValues);
 
          // 5. Ejecuta cálculos adicionales personalizados si es necesario.
-         ejecutarCálculosEspecíficos(updatedValues);
+         // ejecutarCálculosEspecíficos(updatedValues);
 
          // 6. Si el campo actualizado es "custbody60", retorna un estado con campos adicionales.
          if (name === "custbody60") {

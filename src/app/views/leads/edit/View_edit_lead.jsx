@@ -579,19 +579,7 @@ export const View_edit_lead = () => {
                   className="form-control mb-2"
                />
             </div>
-            <div className="mb-3">
-               <label className="form-label">Dirección cliente</label>
-               <textarea
-                  id="defaultaddress"
-                  name="defaultaddress"
-                  value={formData.defaultaddress}
-                  onChange={handleInputChange}
-                  className="form-control"
-                  maxLength="225"
-                  rows="3"
-                  placeholder="Introduzca una dirección"
-               ></textarea>
-            </div>
+           
          </div>
          <div className="col-sm-6">
             <div className="mb-3">
@@ -698,6 +686,7 @@ export const View_edit_lead = () => {
          <h4 className="card-title">Datos Adicionales</h4>
          <div className="row">
             <div className="col-sm-6">
+               
                <div className="mb-3">
                   <label className="required form-label">Rango de Edad</label>
                   <select
@@ -765,6 +754,7 @@ export const View_edit_lead = () => {
                      <option value="3">3 o más</option>
                   </select>
                </div>
+               
                <div className="mb-3">
                   <label className="required form-label">Momento de compra</label>
                   <select
@@ -889,6 +879,19 @@ export const View_edit_lead = () => {
                      <option value="GAM Sur">GAM Sur</option>
                   </select>
                </div>
+               <div className="mb-3">
+               <label className="form-label">Dirección cliente</label>
+               <textarea
+                  id="defaultaddress"
+                  name="defaultaddress"
+                  value={formData.defaultaddress}
+                  onChange={handleInputChange}
+                  className="form-control"
+                  maxLength="225"
+                  rows="3"
+                  placeholder="Introduzca una dirección"
+               ></textarea>
+            </div>
             </div>
          </div>
       </>
