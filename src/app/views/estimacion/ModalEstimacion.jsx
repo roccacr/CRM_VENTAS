@@ -26,6 +26,7 @@ import { SeleccionPrima } from "./SeleccionPrima";
 import { MetodoPago } from "./MetodoPago";
 import { crearEstimacionFormulario } from "../../../store/estimacion/thunkEstimacion";
 import { useNavigate } from "react-router-dom";
+import { ceilPowerOfTwo } from "three/src/math/MathUtils.js";
 
 export const ModalEstimacion = ({ open, onClose, OportunidadDetails, cliente }) => {
    // Estado para manejar si el contenido del modal está cargando
@@ -578,29 +579,17 @@ export const ModalEstimacion = ({ open, onClose, OportunidadDetails, cliente }) 
             updatedValues.hito_chek_seis === true ? updatedValues.custbody67 : 0,
          ];
 
-         // Extrae la parte decimal (después del punto) y la convierte a un número entero
-         // Ej: 0.15 -> 15, 0.30 -> 30
-         const porcentajesDecimal = porcentajes.map(p => {
-            // Convierte a string primero para manejar caso de valores nulos
-            const pString = String(p);
-            // Si tiene punto decimal, extrae lo que está después del punto
-            if (pString.includes('.')) {
-               const decimalPart = pString.split('.')[1];
-               // Si es un solo dígito (ej: 0.5), multiplica por 10 para obtener 50
-               if (decimalPart.length === 1) {
-                  return parseInt(decimalPart) * 10;
-               }
-               // Para otros casos, convierte a entero (ej: 0.15 -> 15)
-               return parseInt(decimalPart);
-            }
-            return 0; // Si no tiene decimal, retorna 0
-         });
+         // Convertir directamente a porcentajes (multiplicando por 100)
+         const porcentajesEnPorciento = porcentajes.map(p => p * 100);
 
-         // Suma los porcentajes decimales
-         const sumaPorcentajes = porcentajesDecimal.reduce((sum, value) => sum + value, 0);
+         // Suma los porcentajes 
+         const sumaPorcentajes = porcentajesEnPorciento.reduce((sum, value) => sum + value, 0);
 
          // Calcula el porcentaje restante
          const porcentajeRestante = porcentajeInicial - sumaPorcentajes;
+
+         console.log("sumaPorcentajes", sumaPorcentajes);
+         console.log("porcentajeRestante", porcentajeRestante);
 
          // Verifica si la suma de porcentajes excede el 100%
          if (sumaPorcentajes > 100) {
@@ -627,57 +616,84 @@ export const ModalEstimacion = ({ open, onClose, OportunidadDetails, cliente }) 
 
    // Maneja actualizaciones específicas para los montos de hitos
    const actualizarHitoDiferenciadoMonto = (name, value, campoActualizar) => {
+      console.clear();
       setFormValues((prevValues) => {
-         // Copia y actualiza el estado con el nuevo valor
-         const updatedValues = { ...prevValues, [name]: value };
+        // Copia y actualiza el estado con el nuevo valor
+        const updatedValues = { ...prevValues, [name]: value };
+        // Obtiene el monto inicial actualizado
+        const montoInicial = updatedValues.custbody163;
 
-         // Obtiene el monto inicial actualizado
-         const montoInicial = updatedValues.custbody163;
+        // Calcula el porcentaje - limpia los valores de cualquier formato
+        const montoInicialNumerico = parseFloat(String(montoInicial).replace(/,/g, ''));
+        const valueNumerico = parseFloat(String(value).replace(/,/g, ''));
+        
+        // Calcula el porcentaje decimal (0-1)
+        const porcentajeDecimal = valueNumerico / montoInicialNumerico;
+        
+        // Redondea a 2 decimales para evitar errores de punto flotante
+        const porcentajeRedondeado = Math.round(porcentajeDecimal * 100) / 100;
+        
+        // Guarda el valor formateado con 2 decimales
+        const porcentajeFormateado = porcentajeRedondeado.toFixed(2);
 
-         const porcentajeInicial = 100;
+        const valoresActualizados = {
+          ...prevValues,
+          [campoActualizar]: porcentajeFormateado
+        };
+        console.log("porcentajeDecimal:", porcentajeDecimal);
+        console.log("porcentajeFormateado:", porcentajeFormateado);
 
-         // Calcular los porcentajes considerando solo los valores seleccionados
-         const porcentajes = [
-            updatedValues.hito_chek_uno ? Math.round(parseFloat(updatedValues.custbody62 || 0) * 100) / 100 : 0,
-            updatedValues.hito_chek_dos ? Math.round(parseFloat(updatedValues.custbody63 || 0) * 100) / 100 : 0,
-            updatedValues.hito_chek_tres ? Math.round(parseFloat(updatedValues.custbody64 || 0) * 100) / 100 : 0,
-            updatedValues.hito_chek_cuatro ? Math.round(parseFloat(updatedValues.custbody65 || 0) * 100) / 100 : 0,
-            updatedValues.hito_chek_cinco ? Math.round(parseFloat(updatedValues.custbody66 || 0) * 100) / 100 : 0,
-            updatedValues.hito_chek_seis ? Math.round(parseFloat(updatedValues.custbody67 || 0) * 100) / 100 : 0,
-         ];
+        // Porcentaje inicial (100%)
+        const porcentajeInicial = 100;
 
-         // Sumar los porcentajes actualizados
-         const sumaPorcentajes = porcentajes.reduce((sum, val) => sum + val, 0);
+        // Define los porcentajes relacionados a los hitos, considerando si están marcados como chequeados
+        // y multiplicando por 100 para convertir de decimal a porcentaje
+        const porcentajes = [
+          updatedValues.hito_chek_uno === true ? parseFloat(valoresActualizados.custbody62) : 0,     
+          updatedValues.hito_chek_dos === true ? parseFloat(valoresActualizados.custbody63) : 0,
+          updatedValues.hito_chek_tres === true ? parseFloat(valoresActualizados.custbody64) : 0,
+          updatedValues.hito_chek_cuatro === true ? parseFloat(valoresActualizados.custbody65) : 0,
+          updatedValues.hito_chek_cinco === true ? parseFloat(valoresActualizados.custbody66) : 0,
+          updatedValues.hito_chek_seis === true ? parseFloat(valoresActualizados.custbody67) : 0,
+        ];
 
-         // Calcular el porcentaje restante correctamente
-         const porcentajeRestante = porcentajeInicial - sumaPorcentajes * 100;
-         const porcentajeRestanteFormateado = porcentajeRestante.toFixed(2); // Ejemplo: "40.00"
+        // Convertir de decimal a porcentaje (multiplicando por 100)
+        const porcentajesEnPorciento = porcentajes.map(p => p * 100);
 
-         // Verificar si la suma de los porcentajes excede el 100%
-         if (sumaPorcentajes > 1) {
-            alert(
-               `La suma de los porcentajes no puede exceder el 100%. El porcentaje actual es ${(sumaPorcentajes * 100).toFixed(
-                  2,
-               )}%. Por favor, ajusta los valores.`,
-            );
-            return prevValues; // Evita continuar si hay error
-         }
+        // Suma los porcentajes 
+        const sumaPorcentajes = porcentajesEnPorciento.reduce((sum, value) => sum + value, 0);
 
-         // Crear un nuevo estado actualizado antes de llamar a la función de cálculo
-         const updatedFormValues = { ...updatedValues, total_porcentaje: porcentajeRestanteFormateado };
+        // Calcula el porcentaje restante
+        const porcentajeRestante = porcentajeInicial - sumaPorcentajes;
 
-         // Llamar a la función de cálculo con los valores correctos
-         calculoHito1DiferenciadoMonto(
-            montoInicial, // Monto inicial actualizado
-            campoActualizar, // Campo a actualizar
-            updatedFormValues, // Formulario actualizado
-            setFormValues, // Setter del estado
-            name, // Nombre del campo modificado
-            porcentajeRestanteFormateado,
-         );
+        console.log("sumaPorcentajes:", sumaPorcentajes);
+        console.log("porcentajeRestante:", porcentajeRestante);
 
-         // Retornar el nuevo estado para actualizar correctamente
-         return updatedFormValues;
+        // Verifica si la suma de porcentajes excede el 100%
+        if (sumaPorcentajes > 100) {
+          alert(
+            `La suma de los porcentajes no puede exceder el 100%. El porcentaje actual es del ${sumaPorcentajes.toFixed(2)}%. Por favor, ajusta los valores.`
+          );
+        }
+
+        // Crear un nuevo estado actualizado antes de llamar a la función de cálculo
+        const updatedFormValues = { 
+          ...updatedValues, 
+          total_porcentaje: porcentajeRestante.toFixed(2) 
+        };
+
+        // Llamar a la función de cálculo con los valores correctos
+        calculoHito1DiferenciadoMonto(
+          montoInicial, // Monto inicial actualizado
+          campoActualizar, // Campo a actualizar
+          updatedFormValues, // Formulario actualizado
+          setFormValues, // Setter del estado
+          name, // Nombre del campo modificado
+          porcentajeRestante,
+        );
+
+        // Retornar el nuevo estado para actualizar correctamente
+        return updatedFormValues;
       });
    };
 

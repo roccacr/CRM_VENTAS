@@ -469,11 +469,19 @@ export const calculoHito1DiferenciadoMonto = (MontoSinPrimaTotal, campoActualiza
     // Suma los valores de los hitos seleccionados
     const sumaHitos = valores.reduce((acumulador, valor) => acumulador + valor, 0);
 
-    // Calcula la diferencia entre el monto total asignado y la suma de los hitos activados
-    const diferencia = montoTotalAsignado - sumaHitos;
+    // Calcula la diferencia numérica primero
+    const diferenciaNumero = montoTotalAsignado - sumaHitos;
+    
+    // Luego formatea para mostrar
+    const diferenciaFormateada = new Intl.NumberFormat("en-US", {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 4,
+    }).format(diferenciaNumero);
 
-    // Verifica si la diferencia es negativa e informa al usuario si la suma de hitos excede el monto total
-    if (diferencia < 0) {
+    console.log("diferencia", diferenciaFormateada);
+    
+    // Verifica si la diferencia es negativa usando el valor numérico
+    if (diferenciaNumero < 0) {
         alert(
             `La suma de los montos de los hitos activados (${sumaHitos}) supera el MONTO SIN PRIMA TOTAL (${montoTotalAsignado}). Por favor, revisa los valores.`,
         );
@@ -497,9 +505,9 @@ export const calculoHito1DiferenciadoMonto = (MontoSinPrimaTotal, campoActualiza
     // Actualiza los valores del formulario con la diferencia calculada y el porcentaje para el campo especificado
     setFormValues({
         ...updatedValues, // Mantiene los valores actuales del formulario
-        valortotals: diferencia, // Actualiza la diferencia calculada
-        total_porcentaje: `${porcentajeRestante}%`, // Actualiza el porcentaje restante formateado
-        [campoActualizar]: porcentajeFormateado, // Asigna el porcentaje calculado al campo específico
+        valortotals: diferenciaFormateada, // Actualiza con la diferencia formateada
+        total_porcentaje: `${porcentajeRestante.toFixed(2)}%`, // Muestra el porcentaje con formato
+        [campoActualizar]: porcentajeFormateado, // Asigna el porcentaje decimal calculado al campo específico
     });
 };
 
