@@ -478,7 +478,7 @@ export const calculoHito1DiferenciadoMonto = (MontoSinPrimaTotal, campoActualiza
         maximumFractionDigits: 4,
     }).format(diferenciaNumero);
 
-    console.log("diferencia", diferenciaFormateada);
+
     
     // Verifica si la diferencia es negativa usando el valor numérico
     if (diferenciaNumero < 0) {
