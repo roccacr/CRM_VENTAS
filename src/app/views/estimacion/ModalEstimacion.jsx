@@ -26,7 +26,6 @@ import { SeleccionPrima } from "./SeleccionPrima";
 import { MetodoPago } from "./MetodoPago";
 import { crearEstimacionFormulario } from "../../../store/estimacion/thunkEstimacion";
 import { useNavigate } from "react-router-dom";
-import { ceilPowerOfTwo } from "three/src/math/MathUtils.js";
 
 export const ModalEstimacion = ({ open, onClose, OportunidadDetails, cliente }) => {
    // Estado para manejar si el contenido del modal está cargando
