@@ -562,6 +562,7 @@ export const ModalEstimacion = ({ open, onClose, OportunidadDetails, cliente }) 
 
          // Calcula el monto total y la prima total utilizando los valores actualizados
          const montot = montoTotal(updatedValues);
+
          const montoPrimaTotal = calcularPrimaToal(montot, updatedValues.custbody60);
 
          // Porcentaje inicial (100%)
@@ -577,20 +578,34 @@ export const ModalEstimacion = ({ open, onClose, OportunidadDetails, cliente }) 
             updatedValues.hito_chek_seis === true ? updatedValues.custbody67 : 0,
          ];
 
-         // Suma los porcentajes válidos después de convertirlos a números
-         const sumaPorcentajes = porcentajes
-            .map((p) => parseFloat(p) || 0) // Convierte cada valor a número o lo reemplaza por 0 si no es válido
-            .reduce((sum, value) => sum + value, 0); // Suma todos los porcentajes
+         // Extrae la parte decimal (después del punto) y la convierte a un número entero
+         // Ej: 0.15 -> 15, 0.30 -> 30
+         const porcentajesDecimal = porcentajes.map(p => {
+            // Convierte a string primero para manejar caso de valores nulos
+            const pString = String(p);
+            // Si tiene punto decimal, extrae lo que está después del punto
+            if (pString.includes('.')) {
+               const decimalPart = pString.split('.')[1];
+               // Si es un solo dígito (ej: 0.5), multiplica por 10 para obtener 50
+               if (decimalPart.length === 1) {
+                  return parseInt(decimalPart) * 10;
+               }
+               // Para otros casos, convierte a entero (ej: 0.15 -> 15)
+               return parseInt(decimalPart);
+            }
+            return 0; // Si no tiene decimal, retorna 0
+         });
+
+         // Suma los porcentajes decimales
+         const sumaPorcentajes = porcentajesDecimal.reduce((sum, value) => sum + value, 0);
 
          // Calcula el porcentaje restante
-         const porcentajeRestante = porcentajeInicial - sumaPorcentajes * 100;
+         const porcentajeRestante = porcentajeInicial - sumaPorcentajes;
 
          // Verifica si la suma de porcentajes excede el 100%
-         if (sumaPorcentajes > 1) {
+         if (sumaPorcentajes > 100) {
             alert(
-               `La suma de los porcentajes no puede exceder el 100%. El porcentaje actual es del ${(sumaPorcentajes * 100).toFixed(
-                  2,
-               )}%. Por favor, ajusta los valores.`,
+               `La suma de los porcentajes no puede exceder el 100%. El porcentaje actual es del ${sumaPorcentajes.toFixed(2)}%. Por favor, ajusta los valores.`
             );
          }
 

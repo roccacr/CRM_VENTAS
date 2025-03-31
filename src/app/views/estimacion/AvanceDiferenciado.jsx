@@ -260,7 +260,7 @@ export const AvanceDiferenciado = ({ formValues, handleInputChange }) => {
                     <input
                         disabled
                         autoComplete="off"
-                        type="number"
+                        type="text"
                         name="valortotals"
                         value={formValues.valortotals}
                         onChange={handleInputChange}

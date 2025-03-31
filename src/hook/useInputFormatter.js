@@ -410,31 +410,42 @@ export const calculoHito1Diferenciado = (
         maximumFractionDigits: 4,
     }).format(montoHitoCalculado);
 
+    // Crea un objeto con valores actualizados incluyendo el nuevo valor del hito
+    const valoresActualizados = {
+        ...valoresPrevios,
+        [campoActualizar]: montoHitoFormateado
+    };
+
     // Limpia y convierte el monto total asignado a un valor flotante válido
     const montoTotalAsignado = cleanAndParseFloat(updatedValues.custbody163);
 
     // Construye un arreglo con los valores de los hitos activados
+    // Usando valoresActualizados para tener en cuenta el valor recién actualizado
     const valores = [
-        updatedValues.hito_chek_uno ? cleanAndParseFloat(updatedValues.custbodyix_salesorder_hito1) : 0,
-        updatedValues.hito_chek_dos ? cleanAndParseFloat(updatedValues.custbody_ix_salesorder_hito2) : 0,
-        updatedValues.hito_chek_tres ? cleanAndParseFloat(updatedValues.custbody_ix_salesorder_hito3) : 0,
-        updatedValues.hito_chek_cuatro ? cleanAndParseFloat(updatedValues.custbody_ix_salesorder_hito4) : 0,
-        updatedValues.hito_chek_cinco ? cleanAndParseFloat(updatedValues.custbody_ix_salesorder_hito5) : 0,
-        updatedValues.hito_chek_seis ? cleanAndParseFloat(updatedValues.custbody_ix_salesorder_hito6) : 0,
+        updatedValues.hito_chek_uno ? cleanAndParseFloat(valoresActualizados.custbodyix_salesorder_hito1) : 0,
+        updatedValues.hito_chek_dos ? cleanAndParseFloat(valoresActualizados.custbody_ix_salesorder_hito2) : 0,
+        updatedValues.hito_chek_tres ? cleanAndParseFloat(valoresActualizados.custbody_ix_salesorder_hito3) : 0,
+        updatedValues.hito_chek_cuatro ? cleanAndParseFloat(valoresActualizados.custbody_ix_salesorder_hito4) : 0,
+        updatedValues.hito_chek_cinco ? cleanAndParseFloat(valoresActualizados.custbody_ix_salesorder_hito5) : 0,
+        updatedValues.hito_chek_seis ? cleanAndParseFloat(valoresActualizados.custbody_ix_salesorder_hito6) : 0,
     ];
 
     // Suma los valores de los hitos seleccionados
     const sumaHitos = valores.reduce((acumulador, valor) => acumulador + valor, 0);
 
+
     // Calcula la diferencia entre el monto total asignado y la suma de los hitos activados
-    const diferencia = montoTotalAsignado - sumaHitos;
+    const diferenciaFormato = new Intl.NumberFormat("en-US", {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 4,
+    }).format(montoTotalAsignado - sumaHitos);
 
     // Actualiza dinámicamente los valores del formulario con los nuevos cálculos
     setFormValues({
         ...valoresPrevios, // Mantiene los valores previos del formulario
         [campoActualizar]: montoHitoFormateado, // Actualiza el campo específico con el monto calculado
         total_porcentaje: `${porcentajeRestante.toFixed(2)}%`, // Actualiza el porcentaje restante formateado
-        valortotals: diferencia, // Actualiza la diferencia calculada
+        valortotals: diferenciaFormato, // Actualiza la diferencia calculada
     });
 };
 
