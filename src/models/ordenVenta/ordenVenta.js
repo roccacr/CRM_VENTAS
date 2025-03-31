@@ -539,6 +539,7 @@ ordenVenta.enviarReservaNetsuite = async (dataParams) => {
 };
 
 ordenVenta.actualizarOrdenVentaBd = async (dataParams) => {
+    console.log("dataParams", dataParams);
     // Obtener fecha actual en zona horaria de Costa Rica (UTC-6)
     const today = new Date();
     const options = { timeZone: "America/Costa_Rica" };
