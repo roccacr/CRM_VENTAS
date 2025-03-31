@@ -527,9 +527,10 @@ export const ModalEstimacionEdit = ({ open, onClose, idEstimacion }) => {
 
          if(updatedValues.custbody75 === 1 || updatedValues.custbody75 === "1"){
             updatedValues = { ...prevValues, 
-               date_hito_6: updatedValues.custbody114 };
+               date_hito_6: updatedValues.custbody114,
+               custbody67: "100%"
+             };
          }
-
 
          // Calcula el precio de venta neto basado en los valores actualizados
          const pvn = precioVentaNeto(updatedValues);
