@@ -75,10 +75,12 @@ export const VerEstimacion = () => {
    const fetchEstimacionDetails = async (idEstimacion) => {
       try {
          const estimacionData = await dispatch(extarerEstimacion(idEstimacion));
+
          setDatosEstimacion(estimacionData.netsuite.Detalle);
          setDatosCrm(estimacionData.crm);
-         
-         setTotalOredenes(estimacionData.totalOredenes);
+
+   
+         setTotalOredenes(estimacionData.totalOredenes.data);
       } catch (error) {
          console.error("Error al obtener los detalles de la estimación:", error);
       }
@@ -584,6 +586,10 @@ export const VerEstimacion = () => {
       }
    };
    
+   const navigateToOrder = (orderId) => {
+      const leadId = getQueryParam("data");
+      navigate(`/orden/view?data=${leadId}&data2=${orderId}`);
+   };
 
    return (
       <>
@@ -596,26 +602,32 @@ export const VerEstimacion = () => {
                      </blockquote>
                   </div>
                   <div className="row">
-                     <div className="col-3" hidden={totalOredenes > 0 ? true : false}>
+                     <div className="col-3" hidden={totalOredenes.length > 0}>
                         <div className="d-grid">
                            <button className="btn btn-dark" onClick={() => setIsModalOpen(true)}>
-                              {" "}
                               <i className="ti ti-pencil"></i> Editar estimacion
                            </button>
                         </div>
                      </div>
-                     <div className="col-3" hidden={totalOredenes > 0 ? true : false}>
-                        <div className="d-grid" >
+                     <div className="col-3" hidden={totalOredenes.length > 0}>
+                        <div className="d-grid">
                            <button className="btn btn-dark" onClick={() => crearOrdenVentas()}>
-                              {" "}
                               <i className="ti ti-color-swatch"></i> ORDEN DE VENTA
                            </button>
                         </div>
                      </div>
+                     {totalOredenes.length > 0 && (
+                        <div className="col-3">
+                           <div className="d-grid">
+                              <button className="btn btn-dark" onClick={() => navigateToOrder(totalOredenes[0].id_ov_est)}>
+                                 <i className="ti ti-eye"></i> Ver Orden de Venta
+                              </button>
+                           </div>
+                        </div>
+                     )}
                      <div className="col-3">
                         <div className="d-grid">
                            <button className="btn btn-dark" onClick={() => vistaDePdf()}>
-                              {" "}
                               <i className="ti ti-ad-2"></i> PDF ESTIMACION
                            </button>
                         </div>
