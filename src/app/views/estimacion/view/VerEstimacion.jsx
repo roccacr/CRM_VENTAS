@@ -526,6 +526,15 @@ export const VerEstimacion = () => {
             // Cerrar carga y mostrar éxito
             Swal.close();
             Swal.fire("Enviado", "La estimación ha sido enviada como Pre-reserva.", "success");
+            Swal.fire({
+               title: "Refrescando...",
+               text: "Por favor, espere un momento.",
+               allowOutsideClick: false,
+               allowEscapeKey: false,
+            });
+            setTimeout(() => {
+               window.location.reload();
+            }, 3000);
          } else {
             Swal.fire("Algo no está bien.", "No se pudo hacer la pre reserva caída.", "question");
          }
