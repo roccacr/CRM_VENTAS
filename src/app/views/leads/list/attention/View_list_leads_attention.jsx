@@ -274,11 +274,21 @@ const View_list_leads_attention = () => {
    /** Fechas por defecto para el filtrado */
    const { firstDay, lastDay } = getDefaultDates();
 
-   /** Estado para la fecha de inicio */
-   const [inputStartDate, setInputStartDate] = useState(firstDay);
+   // Cargar fechas desde el local storage o usar las fechas por defecto
+   const storedStartDate = localStorage.getItem("inputStartDate");
+   const storedEndDate = localStorage.getItem("inputEndDate");
 
-   /**  Estado para la fecha final */
-   const [inputEndDate, setInputEndDate] = useState(lastDay);
+   const [inputStartDate, setInputStartDate] = useState(storedStartDate || firstDay);
+   const [inputEndDate, setInputEndDate] = useState(storedEndDate || lastDay);
+
+   // Guardar fechas en el local storage cuando cambien
+   useEffect(() => {
+      localStorage.setItem("inputStartDate", inputStartDate);
+   }, [inputStartDate]);
+
+   useEffect(() => {
+      localStorage.setItem("inputEndDate", inputEndDate);
+   }, [inputEndDate]);
 
    /**  Estado para la opción de filtrado */
    const [filterOption, setFilterOption] = useState(1);
