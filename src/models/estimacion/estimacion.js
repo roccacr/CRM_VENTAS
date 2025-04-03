@@ -570,12 +570,14 @@ estimacion.enviarEstimacionComoPreReserva = (dataParams) => {
 estimacion.actualizarEstimacionPreReserva = async (dataParams) => {
     const today = new Date();
     const formattedDate = today.toISOString().split("T")[0];
+
+    const fecha_prereserva = dataParams.fecha_prereserva || formattedDate;
     // Consulta SQL para seleccionar todas las estimaciones asociadas a una oportunidad específica,
     // ordenándolas por la fecha de caducidad en orden descendente.
     const query = "UPDATE estimaciones SET pre_reserva=1, envioPreReserva=?, fechaClienteComprobante_est=? WHERE idEstimacion_est=?";
 
     // Parámetro que contiene el ID de la oportunidad para filtrar los resultados.
-    const params = [formattedDate, dataParams.fecha_prereserva, dataParams.idEstimacion];
+    const params = [formattedDate, fecha_prereserva, dataParams.idEstimacion];
 
     const result = await executeQuery(query, params, dataParams.database);
 
