@@ -305,12 +305,12 @@ estimacion.extraerEstimacion = async (dataParams) => {
 
     const resultNetsuite = await estimacion.extarerEstimacionNetsuite(dataParams.idEstimacion);
 
-    console.log("resultNetsuite", resultNetsuite);
+    console.log("resultNetsuite", resultTotalOredenes);
 
     const datosReales = {
         crm: result.data[0], // Propaga las propiedades de la primera fila
         netsuite: resultNetsuite, // Agrega la nueva propiedad\
-        totalOredenes: resultTotalOredenes.data
+        totalOredenes: resultTotalOredenes.=
     };
 
     return datosReales;
