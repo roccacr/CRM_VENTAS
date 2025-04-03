@@ -294,7 +294,7 @@ estimacion.extraerEstimacion = async (dataParams) => {
 
 
 
-    const queryTotalOredenes = "SELECT id_ov_est FROM `ordenventa` WHERE `id_ov_est` = ? ";        
+    const queryTotalOredenes = "SELECT id_ov_est, id_ov_netsuite FROM `ordenventa` WHERE `id_ov_est` = ? ";        
 
     // Parámetro que contiene el ID de la oportunidad para filtrar los resultados.
     const paramsTotalOredenes = [dataParams.idEstimacion];
