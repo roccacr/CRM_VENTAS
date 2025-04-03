@@ -596,7 +596,7 @@ export const VerEstimacion = () => {
                      </blockquote>
                   </div>
                   <div className="row">
-                     <div className="col-3">
+                     <div className="col-3" hidden={totalOredenes > 0 ? true : false}>
                         <div className="d-grid">
                            <button className="btn btn-dark" onClick={() => setIsModalOpen(true)}>
                               {" "}
