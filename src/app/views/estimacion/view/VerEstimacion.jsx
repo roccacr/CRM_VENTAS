@@ -602,7 +602,7 @@ export const VerEstimacion = () => {
                   </div>
                   <br />
                   <div className="row">
-                     <div className="col-3" hidden={datosCrm?.pre_reserva ===1 ? true : false }>
+                     <div className="col-3" hidden={datosCrm?.pre_reserva === 1 ? true : false }>
                         <div className="d-grid">
                            <button className="btn btn-dark" onClick={() => EnviarReserva()}>
                               {" "}
