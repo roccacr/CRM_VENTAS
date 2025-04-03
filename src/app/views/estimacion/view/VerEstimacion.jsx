@@ -707,7 +707,7 @@ export const VerEstimacion = () => {
                               )}
                            </p>
                         </div>
-                        <div className="col-md-2">
+                        <div className="col-md-2" hidden>
                            <p className="mb-1 text-muted">
                               {" "}
                               <i className="fas fa-money-bill-wave"></i> EXTRAS SOBRE EL PRECIO DE LISTA
