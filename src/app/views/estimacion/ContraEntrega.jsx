@@ -27,7 +27,16 @@ export const ContraEntrega = ({ formValues, handleInputChange, errors }) => {
                     />
                 </div>
                 <div className="col-sm-4">
-                    <label className="form-label">Fecha Entrega</label>
+                    <label className="form-label">
+                        Fecha Entrega
+                        <span 
+                            className="ms-2" 
+                            title="Si la fecha está en texto, ingrésela en formato DD/MM/AAAA."
+                            style={{ cursor: 'pointer' }}
+                        >
+                            <i className="fas fa-exclamation-circle"></i>
+                        </span>
+                    </label>
                     <input
                         autoComplete="off"
                         type="text"
