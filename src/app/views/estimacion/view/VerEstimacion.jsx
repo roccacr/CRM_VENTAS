@@ -758,7 +758,7 @@ export const VerEstimacion = () => {
                            </p>
                            <p className="mb-0">{formatoMoneda(datosEstimacion?.data?.fields?.custbody_ix_salesorder_monto_prima || "")}</p>
                         </div>
-                        <div className="col-md-3">
+                        <div className="col-md-3" hidden>
                            <p className="mb-1 text-muted">
                               {" "}
                               <i className="fas fa-money-bill-alt"></i> MONTO ASIGNABLE PRIMA NETA:
