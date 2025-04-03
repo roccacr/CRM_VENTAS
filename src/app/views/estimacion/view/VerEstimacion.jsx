@@ -688,7 +688,7 @@ export const VerEstimacion = () => {
                               {" "}
                               <i className="fas fa-money-bill-wave"></i> PREC. DE VENTA MÍNIMO:
                            </p>
-                           <p className="mb-0">{formatoMoneda(datosEstimacion?.data?.fields?.custbody_precio_vta_min || "")}</p>
+                           <p className="mb-0">{formatoMoneda(datosEstimacion?.data?.fields?.custbody18 || "")}</p>
                         </div>
                         <div className="col-md-2">
                            <p className="mb-1 text-muted">
