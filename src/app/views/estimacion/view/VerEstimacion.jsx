@@ -588,7 +588,8 @@ export const VerEstimacion = () => {
    
    const navigateToOrder = (orderId) => {
       const leadId = getQueryParam("data");
-      navigate(`/orden/view?data=${leadId}&data2=${orderId}`);
+
+      navigate(`/orden/view?data=${leadId}&data2=${orderId[0].id_ov_netsuite}`);
    };
 
    return (
@@ -619,7 +620,7 @@ export const VerEstimacion = () => {
                      {totalOredenes.length > 0 && (
                         <div className="col-3">
                            <div className="d-grid">
-                              <button className="btn btn-dark" onClick={() => navigateToOrder(totalOredenes[0].id_ov_est)}>
+                              <button className="btn btn-dark" onClick={() => navigateToOrder(totalOredenes)}>
                                  <i className="ti ti-eye"></i> Ver Orden de Venta
                               </button>
                            </div>
