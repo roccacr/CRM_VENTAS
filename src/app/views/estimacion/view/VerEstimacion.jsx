@@ -404,6 +404,18 @@ export const VerEstimacion = () => {
          // Close loading indicator and show success message
          Swal.close();
          Swal.fire("Enviado", "La estimación ha sido enviada como Pre-reserva.", "success");
+
+
+         // hacer un swal alert que refresque la pagina despues de 3 segundos
+         Swal.fire({
+            title: "Refrescando...",
+            text: "Por favor, espere un momento.",
+            allowOutsideClick: false,
+            allowEscapeKey: false,
+         });
+         setTimeout(() => {
+            window.location.reload();
+         }, 3000);
       } catch (error) {
          // Error handling: log error and show alert
          console.error("Error al enviar la estimación como Pre-reserva:", error);
