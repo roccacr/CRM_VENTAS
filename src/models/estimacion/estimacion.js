@@ -294,7 +294,7 @@ estimacion.extraerEstimacion = async (dataParams) => {
 
 
 
-    const queryTotalOredenes = "SELECT COUNT(`id_ov_est`) as totalOredenes FROM `ordenventa` WHERE `id_ov_est` = ? ";        
+    const queryTotalOredenes = "SELECT id_ov_est FROM `ordenventa` WHERE `id_ov_est` = ? ";        
 
     // Parámetro que contiene el ID de la oportunidad para filtrar los resultados.
     const paramsTotalOredenes = [dataParams.idEstimacion];
@@ -308,7 +308,7 @@ estimacion.extraerEstimacion = async (dataParams) => {
     const datosReales = {
         crm: result.data[0], // Propaga las propiedades de la primera fila
         netsuite: resultNetsuite, // Agrega la nueva propiedad\
-        totalOredenes: resultTotalOredenes.data[0].totalOredenes
+        totalOredenes: resultTotalOredenes.data[0]
     };
 
     return datosReales;
