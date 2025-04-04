@@ -18,7 +18,7 @@ buscador.getAll = async (dataParams) => {
         const query = `SELECT l.*, a.name_admin as nombre_admin FROM leads as l 
         INNER JOIN admins as a ON a.idnetsuite_admin = l.id_empleado_lead 
         WHERE l.nombre_lead LIKE ?`;
-        const params = [dataParams.inn, `%${search}%`];
+        const params = [`%${search}%`];
         const result = await executeQuery(query, params, dataParams.database);
         return result;
     }
