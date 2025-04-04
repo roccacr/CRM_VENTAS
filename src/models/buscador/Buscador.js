@@ -42,7 +42,15 @@ buscador.getAll = async (dataParams) => {
         const result = await executeQuery(query, params, dataParams.database);
         return result;
     }
-
+    if (selectedOption === "estimaciones") {
+        const query = `SELECT es.*, a.name_admin AS employee_estimacion, l.nombre_lead as entity_estimacion FROM estimaciones as es
+        INNER JOIN admins AS a ON a.idnetsuite_admin = es.idAdmin_est  
+        LEFT JOIN leads AS l ON l.idinterno_lead = es.idLead_est 
+        WHERE es.tranid_est LIKE ?`;
+        const params = [`%${searchs}%`];
+        const result = await executeQuery(query, params, dataParams.database);
+        return result;
+    }
 };
 
 // buscador.getAll = async (dataParams) => {
