@@ -24,8 +24,9 @@ buscador.getAll = async (dataParams) => {
     }
 
     if (selectedOption === "oportunidad") {
-        const query = `SELECT p.*,a.name_admin as employee_oport  FROM oportunidades AS p 
+        const query = `SELECT p.*,a.name_admin as employee_oport, l.nombre_lead as entity_oport  FROM oportunidades AS p 
         INNER JOIN admins as a ON a.idnetsuite_admin = p.employee_oport 
+        INNER JOIN leads as l ON l.idinterno_lead  = p.entity_oport 
         WHERE p.tranid_oport LIKE ?`;
         const params = [`%${searchs}%`];
         const result = await executeQuery(query, params, dataParams.database);
