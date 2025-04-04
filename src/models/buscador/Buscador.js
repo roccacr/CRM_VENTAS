@@ -12,20 +12,20 @@ buscador.getAll = async (dataParams) => {
 
     console.log(dataParams);
     
-    const { selectedOption, search } = dataParams;
+    const { selectedOption, searchs } = dataParams;
 
     if (selectedOption === "leads") {
         const query = `SELECT l.*, a.name_admin as nombre_admin FROM leads as l 
         INNER JOIN admins as a ON a.idnetsuite_admin = l.id_empleado_lead 
         WHERE l.nombre_lead LIKE ?`;
-        const params = [`%${search}%`];
+        const params = [`%${searchs }%`];
         const result = await executeQuery(query, params, dataParams.database);
         return result;
     }
 
     if (selectedOption === "oportunidad") {
         const query = "SELECT * FROM oportunidades WHERE tranid_oport LIKE ?";
-        const params = [`%${search}%`];
+        const params = [`%${searchs}%`];
         const result = await executeQuery(query, params, dataParams.database);
         return result;
     }
