@@ -76,6 +76,13 @@ buscador.getAll = async (dataParams) => {
         return result;
     }
 
+    if (selectedOption === "subsidiaria") {
+        const query = `SELECT * FROM subsidiarias
+        WHERE Nombre_Subsidiaria LIKE ?`;
+        const params = [`%${searchs}%`];
+        const result = await executeQuery(query, params, dataParams.database);
+        return result;
+    }
 
 };
 
