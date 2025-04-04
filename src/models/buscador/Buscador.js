@@ -90,7 +90,7 @@ buscador.getAll = async (dataParams) => {
         const result = await executeQuery(query, params, dataParams.database);
         return result;
     }   
-    if (selectedOption === "ubicaciones") { 
+    if (selectedOption === "campana") { 
         const query = `SELECT * FROM campanas
         WHERE Nombre_Campana LIKE ?`;
         const params = [`%${searchs}%`];
