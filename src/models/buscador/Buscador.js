@@ -38,7 +38,7 @@ buscador.getAll = async (dataParams) => {
             e.*, 
             a.name_admin AS employee_evento, 
             COALESCE(l.nombre_lead, 'No aplica') AS nombre_lead 
-        FROM eventos AS e
+        FROM calendars AS e
         INNER JOIN admins AS a ON a.idnetsuite_admin = e.id_admin
         LEFT JOIN leads AS l ON l.idinterno_lead = e.id_lead
         WHERE e.nombre_evento LIKE ?`;
