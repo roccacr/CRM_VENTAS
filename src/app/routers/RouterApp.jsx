@@ -7,7 +7,7 @@ import { Page_Expediente } from "../pages/expediente/Page_Expediente";
 import { Page_oportunidad } from "../pages/oportunidad/Page_oportunidad";
 import { Page_Estimaciones } from "../pages/estimaciones/Page_Estimaciones";
 import { Cotizaciones } from "../pages/cotizaciones/Cotizaciones";
-// import { LeadsPage } from "../pages/leads/LeadsPage";
+import { BuscadorPage } from "../pages/buscadorPage/BuscadorPage";
 
 
 
@@ -36,6 +36,9 @@ export const RouterApp = () => {
 
           {/** Cualquier ruta*/}
           <Route path="/*" element={<Navigate to="/" />} />
+
+          {/* buscador */}
+          <Route path="/buscador/*" element={<BuscadorPage />} />
       </Routes>
   );
 }

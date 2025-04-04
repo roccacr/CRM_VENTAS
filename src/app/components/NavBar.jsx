@@ -142,7 +142,7 @@ const MenuItems = ({ openMenu, toggleMenu }) => (
          <label>Menú Principal</label>
       </li>
       <MenuItem to="/" icon="ti ti-home" text="Inicio" />
-      <MenuItem to="/Movies/list" icon="ti ti-search" text="Buscador General" />
+      <MenuItem to="/buscador" icon="ti ti-search" text="Buscador General" />
       <li className="pc-item pc-caption">
          <label>Modulos</label>
       </li>
