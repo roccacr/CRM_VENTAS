@@ -10,6 +10,7 @@ import { InfromacionCompleta } from "./InfromacionCompleta";
 import { useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
 import { Ordenes } from "./Ordenes";
+import { OneDrive } from "./OneDrive";
 
 export const PerfilUsuario = () => {
     const dispatch = useDispatch();

@@ -9,6 +9,7 @@ import "datatables.net-select-bs5";
 import "../../../FiltrosTabla/style.css";
 import { apiUrlImg, commonRequestData } from "../../../../../api";
 import { 
+
    TABLE_LEADS_BUSCADOR,
    TABLE_OPORTUNIDADES_BUSCADOR,
    TABLE_EVENTOS_BUSCADOR,
@@ -18,13 +19,16 @@ import {
    TABLE_PROYECTOS_BUSCADOR,
    TABLE_SUBSIDIARIA_BUSCADOR,
    TABLE_UBICACIONES_BUSCADOR,
-   TABLE_CAMPANAS_BUSCADORES
+   TABLE_CAMPANAS_BUSCADOR,
+   
 } from "./tableColumns";
 import { ModalLeads } from "../../../../pages/modal/modalLeads";
 
 // Constantes
 const STORAGE_KEY = "buscador_state";
 const MOBILE_BREAKPOINT = 768;
+
+
 
 /**
  * Configuración de columnas por tipo de búsqueda
@@ -60,6 +64,7 @@ const NAVIGATION_ROUTES = {
  */
 const getColumnsForOption = (option) => {
    const columnMappings = {
+      campana: TABLE_CAMPANAS_BUSCADOR,
       oportunidad: TABLE_OPORTUNIDADES_BUSCADOR,
       evento: TABLE_EVENTOS_BUSCADOR,
       estimaciones: TABLE_ESTIMACIONES_BUSCADOR,
@@ -68,7 +73,7 @@ const getColumnsForOption = (option) => {
       proyecto: TABLE_PROYECTOS_BUSCADOR,
       subsidiaria: TABLE_SUBSIDIARIA_BUSCADOR,
       ubicaciones: TABLE_UBICACIONES_BUSCADOR,
-      campana: TABLE_CAMPANAS_BUSCADORES,
+      
       leads: TABLE_LEADS_BUSCADOR
    };
    return columnMappings[option] || TABLE_LEADS_BUSCADOR;

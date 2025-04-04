@@ -8,9 +8,26 @@ import axios from "axios";
  */
 const getApiUrl = () => {
     return window.location.hostname === "localhost" 
-        ? "https://api-node-v2.roccacr.com/api/v2.0/" 
+        ? "http://localhost:7000/api/v2.0/" 
         : "https://api-node-v2.roccacr.com/api/v2.0/";
 };
+
+const isLocalEnvironment = () => {
+    return window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
+  };
+
+export const MSAL_CONFIG = {
+    clientId: "5bdec38b-68b4-488a-a361-c9df7cd2fe3a",
+    authority: "https://login.microsoftonline.com/52d206d1-13b5-4260-a65c-0b0cac860b1d",
+    redirectUri: isLocalEnvironment() ? "http://localhost:5173/auth/login" : `${window.location.origin}/auth/login`,
+    groupId: "46b0a57a-45ab-4534-8dde-cd4ba39e29b7",
+  };
+
+// For backward compatibility
+export const MSAL_CLIENT_ID = MSAL_CONFIG.clientId;
+export const MSAL_AUTHORITY = MSAL_CONFIG.authority;
+export const MSAL_REDIRECT_URI = MSAL_CONFIG.redirectUri;
+export const GRAPH_GROUP_ID = MSAL_CONFIG.groupId;
 
 /**
  * Determines the base API URL for images, similar to the base API URL.

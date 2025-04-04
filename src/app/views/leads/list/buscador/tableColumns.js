@@ -142,6 +142,16 @@ export const TABLE_SUBSIDIARIA_BUSCADOR = [
     createColumn("ID Netsuite", "id_NetsuiteSub"),
     createColumn("Estado Subsidiaria", "Estado_Subsidiaria", { render: (data) => getStatusText(data) })
 ];
+/**
+ * Columnas para la tabla de campañas
+ * @type {Array<Object>}
+ */
+export const TABLE_CAMPANAS_BUSCADOR = [
+    createColumn("Nombre Campaña", "Nombre_Campana"),
+    createColumn("ID Netsuite", "id_NetsauiteCampana"),
+    createColumn("Estado Campaña", "Estado_Campana", { render: (data) => getStatusText(data) })
+];
+
 
 /**
  * Columnas para la tabla de ubicaciones
@@ -153,13 +163,4 @@ export const TABLE_UBICACIONES_BUSCADOR = [
     createColumn("Estado Ubicacion", "estado_ubicaciones", { render: (data) => getStatusText(data) })
 ];
 
-/**
- * Columnas para la tabla de campañas
- * @type {Array<Object>}
- */
-export const TABLE_CAMPANAS_BUSCADORES = [
-    createColumn("Nombre Campaña", "Nombre_Campana"),
-    createColumn("ID Netsuite", "id_NetsauiteCampana"),
-    createColumn("Estado Campaña", "Estado_Campana", { render: (data) => getStatusText(data) })
-];
 

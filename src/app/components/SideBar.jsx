@@ -5,7 +5,7 @@ import { getLeadsRepit } from "../../store/leads/thunksLeads";
 
 export const SideBar = ({ toggleSidebar }) => {
    const dispatch = useDispatch();
-   const { name_admin } = useSelector((state) => state.auth);
+   const { name_admin, microsoftUser } = useSelector((state) => state.auth);
    const [leadItems, setLeadItems] = useState([]);
    const [leadCount, setLeadCount] = useState(0);
 
@@ -174,7 +174,18 @@ export const SideBar = ({ toggleSidebar }) => {
                            data-bs-auto-close="outside"
                            aria-expanded="false"
                         >
-                           <img src="/assets/images/user/avatar-2.jpg" alt="user-image" className="user-avtar" />
+                           <img 
+                              src={microsoftUser?.profilePicture && microsoftUser.profilePicture !== "" ? 
+                                 microsoftUser.profilePicture : 
+                                 "/assets/images/user/avatar-2.jpg"
+                              } 
+                              alt="user-image" 
+                              className="user-avtar" 
+                              onError={(e) => {
+                                 e.target.onerror = null;
+                                 e.target.src = "/assets/images/user/avatar-2.jpg";
+                              }}
+                           />
                         </a>
                         <div className="dropdown-menu dropdown-user-profile dropdown-menu-end pc-h-dropdown">
                            <div className="dropdown-header d-flex align-items-center justify-content-between">
@@ -186,7 +197,18 @@ export const SideBar = ({ toggleSidebar }) => {
                                     <li className="list-group-item">
                                        <div className="d-flex align-items-center">
                                           <div className="flex-shrink-0">
-                                             <img src="/assets/images/user/avatar-2.jpg" alt="user-image" className="wid-50 rounded-circle" />
+                                             <img 
+                                                src={microsoftUser?.profilePicture && microsoftUser.profilePicture !== "" ? 
+                                                   microsoftUser.profilePicture : 
+                                                   "/assets/images/user/avatar-2.jpg"
+                                                } 
+                                                alt="user-image" 
+                                                className="wid-50 rounded-circle"
+                                                onError={(e) => {
+                                                   e.target.onerror = null;
+                                                   e.target.src = "/assets/images/user/avatar-2.jpg";
+                                                }}
+                                             />
                                           </div>
                                           <div className="flex-grow-1 mx-3">
                                              <h5 className="mb-0">{name_admin}</h5>
