@@ -15,7 +15,7 @@ buscador.getAll = async (dataParams) => {
     const { selectedOption, search } = dataParams;
 
     if (selectedOption === "leads") {
-        const query = `SELECT l.*, a.nombre_admin as nombre_admin FROM leads as l 
+        const query = `SELECT l.*, a.name_admin as nombre_admin FROM leads as l 
         INNER JOIN admins as a ON a.idnetsuite_admin = l.id_empleado_lead 
         WHERE l.nombre_lead LIKE ?`;
         const params = [dataParams.inn, `%${search}%`];
