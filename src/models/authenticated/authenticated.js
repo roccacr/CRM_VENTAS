@@ -101,6 +101,35 @@ authenticated.startSession = async (dataParams) => {
     }, dataParams.database);
 };
 
+
+authenticated.verificaionDeUsuario = async (dataParams) => {
+    const getUser = await authenticated.getUserMicrosoft(dataParams);
+    if (getUser.statusCode !== 200) {
+        return { status: 401, message: "Lo sentimos pero el usuario no se encuentra registrado, favor de contactar al administrador" };
+    }
+    const userData = getUser.data[0];
+    return { 
+        status: 200, 
+        message: "Usuario encontrado", 
+        data: {
+            userData
+        } 
+    };
+};
+
+authenticated.getUserMicrosoft = async (dataParams) => {
+    return handleDatabaseOperation(async (connection) => {
+        // SEGURIDAD: Usar consultas parametrizadas para prevenir inyección SQL
+        const [result] = await connection.execute("SELECT id_admin,idnetsuite_admin , name_admin, token_admin, id_rol_admin, password_admin, email_admin, status_admin FROM admins WHERE email_admin=?", [dataParams.transaccion.user.email]);
+        return { statusCode: result.length > 0 ? 200 : 210, data: result };
+    }, dataParams.database);
+};
+
+
+
+
+
+
 // Valida un token JWT
 authenticated.validateToken = (token_admin) => {
     try {

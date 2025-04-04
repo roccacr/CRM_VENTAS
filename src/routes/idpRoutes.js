@@ -99,6 +99,8 @@ module.exports = function (app) {
                 { path: "/login", method: "startSession" }, // Ruta para iniciar sesión y generar una nueva sesión de usuario
                 { path: "/admins/validarUsuario", method: "SP_VALIDAR_EMAIL" }, // Validar si un correo electrónico ya está registrado
                 { path: "/admins/recuperar_Contrasena", method: "SP_RECUPERAR_CONTRASENA" }, // Recuperar contraseña mediante correo electrónico
+                { path: "/usuario/microsoft", method: "usuarioMicrosoft" }, // Recuperar contraseña mediante correo electrónico
+                { path: "/usuario/verificaionDeUsuario", method: "verificaionDeUsuario" }, // Recuperar contraseña mediante correo electrónico
             ],
         },
         {
