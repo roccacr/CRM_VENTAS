@@ -25,6 +25,8 @@ const estimacion = require("../models/estimacion/estimacion");
 
 const ordenVenta = require("../models/ordenVenta/ordenVenta");
 
+const buscador = require("../models/buscador/Buscador");
+
 // Cargar variables de entorno al iniciar la aplicación
 dotenv.config();
 
@@ -228,6 +230,15 @@ module.exports = function (app) {
                 { path: "/ordenVenta/enviarReservaNetsuite", method: "enviarReservaNetsuite" }, // ENVIAR RESERVA NETSUITE
                 { path: "/ordenVenta/actualizarOrdenVentaBd", method: "actualizarOrdenVentaBd" }, // ACTUALIZAR ORDEN DE VENTA EN LA BASE DE DATOS
                 { path: "/ordenVenta/obtenerOrdenesPorCliente", method: "obtenerOrdenesPorCliente" }, // EXTRAER ORDENES DE VENTA POR CLIENTE
+
+            ],
+        },
+        {
+            category: "buscador", // Categoría: Gestión de buscar datos en la base de datos
+            model: buscador, 
+            routes: [
+                { path: "/buscador/getAll", method: "getAll" }, // buscador general
+
 
             ],
         },
