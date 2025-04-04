@@ -18,7 +18,7 @@ import {
    TABLE_PROYECTOS_BUSCADOR,
    TABLE_SUBSIDIARIA_BUSCADOR,
    TABLE_UBICACIONES_BUSCADOR,
-   TABLE_CAMPANAS_BUSCADOR
+   TABLE_CAMPANAS_BUSCADORES
 } from "./tableColumns";
 import { ModalLeads } from "../../../../pages/modal/modalLeads";
 
@@ -68,7 +68,7 @@ const getColumnsForOption = (option) => {
       proyecto: TABLE_PROYECTOS_BUSCADOR,
       subsidiaria: TABLE_SUBSIDIARIA_BUSCADOR,
       ubicaciones: TABLE_UBICACIONES_BUSCADOR,
-      campana: TABLE_CAMPANAS_BUSCADOR,
+      campana: TABLE_CAMPANAS_BUSCADORES,
       leads: TABLE_LEADS_BUSCADOR
    };
    return columnMappings[option] || TABLE_LEADS_BUSCADOR;

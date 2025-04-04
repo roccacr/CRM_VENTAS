@@ -157,7 +157,7 @@ export const TABLE_UBICACIONES_BUSCADOR = [
  * Columnas para la tabla de campañas
  * @type {Array<Object>}
  */
-export const TABLE_CAMPANAS_BUSCADOR = [
+export const TABLE_CAMPANAS_BUSCADORES = [
     createColumn("Nombre Campaña", "Nombre_Campana"),
     createColumn("ID Netsuite", "id_NetsauiteCampana"),
     createColumn("Estado Campaña", "Estado_Campana", { render: (data) => getStatusText(data) })

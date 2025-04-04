@@ -168,6 +168,11 @@ export const PerfilUsuario = () => {
                                     <i className="ph-duotone ph-article m-r-10"></i> Ordenes de Venta
                                 </span>
                             </a>
+                            <a onClick={() => handleTabClick("OneDrive")} role="tab" className={`list-group-item list-group-item-action nav-link ${activeTab === "OneDrive" ? "active" : ""}`}>
+                                <span className="f-w-500">
+                                    <i className="ph-duotone ph-article m-r-10"></i> OneDrive
+                                </span>
+                            </a>
                         </div>
                     </div>
                     <div className="card">
@@ -219,6 +224,11 @@ export const PerfilUsuario = () => {
                         {activeTab === "ordenes" && (
                             <div id="react-aria8348725315-:r6:-tabpane-ordenes" role="tabpanel" aria-labelledby="react-aria8348725315-:r6:-tab-ordenes" className="fade fade tab-pane active show">
                                 <Ordenes leadDetails={leadDetails} />
+                            </div>
+                        )}
+                        {activeTab === "OneDrive" && (
+                            <div id="react-aria8348725315-:r6:-tabpane-OneDrive" role="tabpanel" aria-labelledby="react-aria8348725315-:r6:-tab-OneDrive" className="fade fade tab-pane active show">
+                                <OneDrive leadDetails={leadDetails} />
                             </div>
                         )}
                     </div>
