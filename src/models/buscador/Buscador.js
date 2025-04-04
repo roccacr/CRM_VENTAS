@@ -89,6 +89,13 @@ buscador.getAll = async (dataParams) => {
         const params = [`%${searchs}%`];
         const result = await executeQuery(query, params, dataParams.database);
         return result;
+    }   
+    if (selectedOption === "ubicaciones") { 
+        const query = `SELECT * FROM campanas
+        WHERE Nombre_Campana LIKE ?`;
+        const params = [`%${searchs}%`];
+        const result = await executeQuery(query, params, dataParams.database);
+        return result;
     }
 
 };
