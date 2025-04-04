@@ -68,6 +68,15 @@ buscador.getAll = async (dataParams) => {
         return result;
     }
 
+    if (selectedOption === "proyecto") {
+        const query = `SELECT * FROM proyectos
+        WHERE Nombre_proyecto LIKE ?`;
+        const params = [`%${searchs}%`];
+        const result = await executeQuery(query, params, dataParams.database);
+        return result;
+    }
+
+
 };
 
 // buscador.getAll = async (dataParams) => {
