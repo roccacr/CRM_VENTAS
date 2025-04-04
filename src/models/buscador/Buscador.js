@@ -18,7 +18,13 @@ buscador.getAll = async (dataParams) => {
         const query = "SELECT * FROM leads WHERE nombre_lead LIKE ?";
         const params = [`%${search}%`];
         const result = await executeQuery(query, params, dataParams.database);
-        console.log(result);
+        return result;
+    }
+
+    if (selectedOption === "oportunidad") {
+        const query = "SELECT * FROM oportunidades WHERE tranid_oport LIKE ?";
+        const params = [`%${search}%`];
+        const result = await executeQuery(query, params, dataParams.database);
         return result;
     }
 
