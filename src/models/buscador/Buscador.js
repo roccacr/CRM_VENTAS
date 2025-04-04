@@ -60,6 +60,13 @@ buscador.getAll = async (dataParams) => {
         const result = await executeQuery(query, params, dataParams.database);
         return result;
     }
+    if (selectedOption === "corredores") {
+        const query = `SELECT * FROM corredores
+        WHERE nombre_corredor LIKE ?`;
+        const params = [`%${searchs}%`];
+        const result = await executeQuery(query, params, dataParams.database);
+        return result;
+    }
 
 };
 
