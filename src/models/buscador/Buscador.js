@@ -52,7 +52,7 @@ buscador.getAll = async (dataParams) => {
         return result;
     }
     if (selectedOption === "ordenVenta") {
-        const query = `SELECT ov.*, a.name_admin AS employee_ordenVenta, l.nombre_lead as entity_ordenVenta FROM orden_ventas as ov
+        const query = `SELECT ov.*, a.name_admin AS employee_ordenVenta, l.nombre_lead as entity_ordenVenta FROM ordenventa as ov
         INNER JOIN admins AS a ON a.idnetsuite_admin = ov.id_ov_admin   
         LEFT JOIN leads AS l ON l.idinterno_lead = ov.id_ov_lead  
         WHERE ov.id_ov_tranid LIKE ?`;
