@@ -35,7 +35,9 @@ buscador.getAll = async (dataParams) => {
             query: `SELECT l.*, a.name_admin as nombre_admin 
                    FROM leads as l 
                    INNER JOIN admins as a ON a.idnetsuite_admin = l.id_empleado_lead 
-                   WHERE l.nombre_lead LIKE ?`
+                   WHERE l.nombre_lead LIKE ? 
+                   OR l.email_lead LIKE ? 
+                   OR l.telefono_lead LIKE ?`
         },
         oportunidad: {
             query: `SELECT p.*, a.name_admin as employee_oport, l.nombre_lead as entity_oport_name
