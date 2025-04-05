@@ -1,4 +1,9 @@
-// utils/microsoft.js
+/**
+ * @fileoverview Microsoft Graph API integration utilities
+ * This module provides a set of utilities for interacting with Microsoft Graph API,
+ * handling authentication, file operations, and folder management.
+ */
+
 import {
 	Client,
 	FileUpload,
@@ -7,28 +12,59 @@ import {
 import { initializeMSAL, msalInstance } from "@/config/msalConfig";
 import { InteractionRequiredAuthError } from "@azure/msal-browser";
 
-const groupId = "46b0a57a-45ab-4534-8dde-cd4ba39e29b7";
+// Constants
+const GROUP_ID = "46b0a57a-45ab-4534-8dde-cd4ba39e29b7";
+const DEFAULT_SCOPES = ["User.Read", "Files.Read"];	
+const CHUNK_SIZE = 1024 * 1024; // 1MB for file uploads
 
-export async function getMSALToken(microsoftUser) {
-	if (!microsoftUser) {
-		throw new Error(
-			"Usuario no autenticado. Por favor, cierre sesión y vuelva a iniciar sesión."
-		);
-	}
-
-	await initializeMSAL();
-
-	try {
-		let account = sessionStorage.getItem("msalAccount");
-		
-		// Si no hay cuenta en sesión, guardamos el username
-		if (!account) {
-			sessionStorage.setItem("msalAccount", microsoftUser.email);
-			account = microsoftUser.email;
+/**
+ * Authentication Service class handling MSAL token operations
+ */
+class AuthenticationService {
+	/**
+	 * Obtains an authentication token for Microsoft Graph API
+	 * @param {Object} microsoftUser - The Microsoft user object containing email
+	 * @returns {Promise<string>} The access token
+	 * @throws {Error} If authentication fails
+	 */
+	static async getMSALToken(microsoftUser) {
+		if (!microsoftUser) {
+			throw new Error(
+				"Usuario no autenticado. Por favor, cierre sesión y vuelva a iniciar sesión."
+			);
 		}
 
+		await initializeMSAL();
+
+		try {
+			const account = await this._getOrSetAccount(microsoftUser.email);
+			return await this._acquireToken(account);
+		} catch (error) {
+			console.error("Error en autenticación:", error);
+			throw new Error("Error al obtener el token de acceso. Por favor, inicie sesión nuevamente.");
+		}
+	}
+
+	/**
+	 * Gets or sets the account in session storage
+	 * @private
+	 */
+	static async _getOrSetAccount(email) {
+		let account = sessionStorage.getItem("msalAccount");
+		if (!account) {
+			sessionStorage.setItem("msalAccount", email);
+			account = email;
+		}
+		return account;
+	}
+
+	/**
+	 * Acquires token either silently or through popup
+	 * @private
+	 */
+	static async _acquireToken(account) {
 		const silentRequest = {
-			scopes: ["User.Read", "Files.Read"],
+			scopes: DEFAULT_SCOPES,
 			account: msalInstance.getAccountByUsername(account)
 		};
 
@@ -39,215 +75,256 @@ export async function getMSALToken(microsoftUser) {
 			if (silentError instanceof InteractionRequiredAuthError) {
 				const interactiveResult = await msalInstance.acquireTokenPopup(silentRequest);
 				return interactiveResult.accessToken;
-			} else {
-				throw silentError;
 			}
+			throw silentError;
 		}
-	} catch (error) {
-		console.error("Error en autenticación:", error);
-		throw new Error("Error al obtener el token de acceso. Por favor, inicie sesión nuevamente.");
 	}
 }
 
-export async function getUserDetailsGraph(accessToken) {
-	const client = Client.init({
-		authProvider: (done) => {
-			done(null, accessToken);
-		},
-	});
-
-	try {
-		const userDetails = await client.api("/me").get();
-		return userDetails;
-	} catch (error) {
-		console.error("Error al obtener los detalles del usuario: ", error);
-		throw error;
+/**
+ * Graph Client Factory to create authenticated Microsoft Graph clients
+ */
+class GraphClientFactory {
+	/**
+	 * Creates a new Microsoft Graph client with the provided access token
+	 * @param {string} accessToken - The access token for authentication
+	 * @returns {Client} Authenticated Microsoft Graph client
+	 */
+	static createClient(accessToken) {
+		return Client.init({
+			authProvider: (done) => {
+				done(null, accessToken);
+			},
+		});
 	}
 }
 
-export async function getFolderFromGraph(
-	accessToken,
-	recordFolderId,
-	folderId
-) {
-
-	
-	const client = Client.init({
-		authProvider: (done) => {
-			done(null, accessToken);
-		},
-	});
-
-
-	try {
-		const folder = await client
-			.api(`/groups/${groupId}/drive/items/01QPXOKICVOQPUSDN67VH3WHUUBQOWY7KQ/children`)
-			.select("id,name,folder,package")
-			.filter(`name eq '${folderId}'`)
-			.get();
-
-		if (folder.value.length > 0) {
-			return folder.value[0];
-		} else {
-			return null;
+/**
+ * User Service for handling Microsoft Graph user operations
+ */
+class UserService {
+	/**
+	 * Retrieves user details from Microsoft Graph
+	 * @param {string} accessToken - The access token for authentication
+	 * @returns {Promise<Object>} User details from Microsoft Graph
+	 */
+	static async getUserDetails(accessToken) {
+		const client = GraphClientFactory.createClient(accessToken);
+		try {
+			return await client.api("/me").get();
+		} catch (error) {
+			console.error("Error al obtener los detalles del usuario: ", error);
+			throw error;
 		}
-	} catch (error) {
-		console.error("Error al obtener la carpeta: ", error);
-		throw error;
 	}
 }
 
-export async function getFilesFromGraph(accessToken, folderId) {
-	const client = Client.init({
-		authProvider: (done) => {
-			done(null, accessToken);
-		},
-	});
+/**
+ * File Service for handling Microsoft Graph file operations
+ */
+class FileService {
+	/**
+	 * Downloads a file from Microsoft Graph
+	 * @param {string} fileId - The ID of the file to download
+	 * @param {Object} microsoftUser - The Microsoft user object
+	 * @returns {Promise<Object>} The file object with download URL
+	 */
+	static async downloadFile(fileId, microsoftUser) {
+		const accessToken = await AuthenticationService.getMSALToken(microsoftUser);
+		const client = GraphClientFactory.createClient(accessToken);
 
-	try {
-		const files = await client
-			.api(`/groups/${groupId}/drive/items/${folderId}/children`)
-			.select("id,name,size,fileSystemInfo,folder,package")
-			.get();
+		try {
+			const file = await client
+				.api(`/groups/${GROUP_ID}/drive/items/${fileId}`)
+				.select("@microsoft.graph.downloadUrl")
+				.get();
 
-		return files.value;
-	} catch (error) {
-		console.error("Error al obtener los archivos: ", error);
-		throw error;
+			window.open(file["@microsoft.graph.downloadUrl"], "_self");
+			return file;
+		} catch (error) {
+			console.error("Error al descargar el archivo: ", error);
+			throw error;
+		}
 	}
-}
 
-export async function downloadFile(fileId, microsoftUser) {
-	const accessToken = await getMSALToken(microsoftUser);
+	/**
+	 * Uploads a file to Microsoft Graph
+	 * @param {File} file - The file to upload
+	 * @param {string} action - The conflict behavior ('create' or 'replace')
+	 * @param {string} folderId - The ID of the destination folder
+	 * @param {Object} microsoftUser - The Microsoft user object
+	 * @returns {Promise<Object>} The upload result
+	 */
+	static async uploadFile(file, action = "create", folderId, microsoftUser) {
+		const accessToken = await AuthenticationService.getMSALToken(microsoftUser);
+		const client = GraphClientFactory.createClient(accessToken);
 
-	const client = Client.init({
-		authProvider: (done) => {
-			done(null, accessToken);
-		},
-	});
-
-	try {
-		const file = await client
-			.api(`/groups/${groupId}/drive/items/${fileId}`)
-			.select("@microsoft.graph.downloadUrl")
-			.get();
-
-		const downloadUrl = file["@microsoft.graph.downloadUrl"];
-		//Abriendo el archivo en ventana nueva
-		window.open(downloadUrl, "_self");
-
-		return file;
-	} catch (error) {
-		console.error("Error al descargar el archivo: ", error);
-		throw error;
+		try {
+			const cleanFileName = this._sanitizeFileName(file.name);
+			const uploadSession = await this._createUploadSession(client, folderId, cleanFileName, action);
+			const uploadTask = this._createUploadTask(client, file, cleanFileName, uploadSession);
+			
+			return await uploadTask.upload();
+		} catch (error) {
+			console.error("Error al subir el archivo: ", error);
+			throw error;
+		}
 	}
-}
 
-export async function uploadFile(
-	file,
-	action = "create",
-	folderId,
-	microsoftUser
-) {
-	const accessToken = await getMSALToken(microsoftUser);
+	/**
+	 * Sanitizes a file name by removing invalid characters
+	 * @private
+	 */
+	static _sanitizeFileName(fileName) {
+		return fileName.replace(/[\/\\:*?"<>|#%]/g, "");
+	}
 
-	const client = Client.init({
-		authProvider: (done) => {
-			done(null, accessToken);
-		},
-	});
-
-	try {
-		// Limpiar el nombre del archivo
-		const nombreArchivo = file.name.replace(/[\/\\:*?"<>|#%]/g, "");
-		// URL de la API de Graph para subir archivos
-		const apiUrl = `/groups/${groupId}/drive/items/${folderId}:/${nombreArchivo}://createUploadSession`;
-
-		// Configuración para la carga de archivos grandes
-		const options = { rangeSize: 1024 * 1024 }; // Tamaño de los fragmentos (1MB)
+	/**
+	 * Creates an upload session for large file upload
+	 * @private
+	 */
+	static async _createUploadSession(client, folderId, fileName, action) {
+		const apiUrl = `/groups/${GROUP_ID}/drive/items/${folderId}:/${fileName}://createUploadSession`;
 		const payload = {
-			item: { "@microsoft.graph.conflictBehavior": action }, // Acción para manejar conflictos (e.g., renombrar, sobrescribir)
+			item: { "@microsoft.graph.conflictBehavior": action }
 		};
-		// Crear un objeto de archivo
-		const fileObject = new FileUpload(file, nombreArchivo, file.size);
+		return await LargeFileUploadTask.createUploadSession(client, apiUrl, payload);
+	}
 
-		// Crear la sesión de carga
-		const uploadSession = await LargeFileUploadTask.createUploadSession(
-			client,
-			apiUrl,
-			payload
-		);
-
-		// Crear una tarea de carga de archivos grandes
-		const task = new LargeFileUploadTask(
+	/**
+	 * Creates a large file upload task
+	 * @private
+	 */
+	static _createUploadTask(client, file, fileName, uploadSession) {
+		const fileObject = new FileUpload(file, fileName, file.size);
+		return new LargeFileUploadTask(
 			client,
 			fileObject,
 			uploadSession,
-			options
+			{ rangeSize: CHUNK_SIZE }
 		);
+	}
 
-		// Ejecutar la tarea de carga
-		const uploadResult = await task.upload();
+	/**
+	 * Previews a file from Microsoft Graph
+	 * @param {string} fileId - The ID of the file to preview
+	 * @param {Object} microsoftUser - The Microsoft user object
+	 * @returns {Promise<Object>} The file preview object
+	 */
+	static async previewFile(fileId, microsoftUser) {
+		const accessToken = await AuthenticationService.getMSALToken(microsoftUser);
+		const client = GraphClientFactory.createClient(accessToken);
 
-		return uploadResult;
-	} catch (error) {
-		console.error("Error al subir el archivo: ", error);
-		throw error;
+		try {
+			const file = await client
+				.api(`/groups/${GROUP_ID}/drive/items/${fileId}/preview`)
+				.select("@microsoft.graph.getUrl")
+				.post();
+
+			window.open(file["getUrl"], "_blank");
+			return file;
+		} catch (error) {
+			console.error("Error al obtener la vista previa del archivo: ", error);
+			throw error;
+		}
 	}
 }
 
-export async function previewFile(fileId, microsoftUser) {
-	const accessToken = await getMSALToken(microsoftUser);
+/**
+ * Folder Service for handling Microsoft Graph folder operations
+ */
+class FolderService {
+	/**
+	 * Gets a folder from Microsoft Graph
+	 * @param {string} accessToken - The access token for authentication
+	 * @param {string} recordFolderId - The record folder ID
+	 * @param {string} folderId - The folder ID to get
+	 * @returns {Promise<Object|null>} The folder object or null if not found
+	 */
+	static async getFolder(accessToken, recordFolderId, folderId) {
+		const client = GraphClientFactory.createClient(accessToken);
 
-	const client = Client.init({
-		authProvider: (done) => {
-			done(null, accessToken);
-		},
-	});
+		try {
+			const folder = await client
+				.api(`/groups/${GROUP_ID}/drive/items/01QPXOKICVOQPUSDN67VH3WHUUBQOWY7KQ/children`)
+				.select("id,name,folder,package")
+				.filter(`name eq '${folderId}'`)
+				.get();
 
-	try {
-		const file = await client
-			.api(`/groups/${groupId}/drive/items/${fileId}/preview`)
-			.select("@microsoft.graph.getUrl")
-			.post();
+			return folder.value.length > 0 ? folder.value[0] : null;
+		} catch (error) {
+			console.error("Error al obtener la carpeta: ", error);
+			throw error;
+		}
+	}
 
-		const previewLink = file["getUrl"];
-		//Abriendo el archivo en ventana nueva
-		window.open(previewLink, "_blank");
+	/**
+	 * Gets files from a folder in Microsoft Graph
+	 * @param {string} accessToken - The access token for authentication
+	 * @param {string} folderId - The folder ID to get files from
+	 * @returns {Promise<Array>} Array of file objects
+	 */
+	static async getFiles(accessToken, folderId) {
+		const client = GraphClientFactory.createClient(accessToken);
 
-		return file;
-	} catch (error) {
-		console.error("Error al obtener la vista previa del archivo: ", error);
-		throw error;
+		try {
+			const files = await client
+				.api(`/groups/${GROUP_ID}/drive/items/${folderId}/children`)
+				.select("id,name,size,fileSystemInfo,folder,package")
+				.get();
+
+			return files.value;
+		} catch (error) {
+			console.error("Error al obtener los archivos: ", error);
+			throw error;
+		}
+	}
+
+	/**
+	 * Creates a new folder in Microsoft Graph
+	 * @param {string} rootFolder - The parent folder ID
+	 * @param {Object} microsoftUser - The Microsoft user object
+	 * @param {string} folderName - The name for the new folder
+	 * @returns {Promise<Object>} The created folder object
+	 */
+	static async createFolder(rootFolder, microsoftUser, folderName) {
+		const accessToken = await AuthenticationService.getMSALToken(microsoftUser);
+		const client = GraphClientFactory.createClient(accessToken);
+
+		try {
+			const options = {
+				name: folderName,
+				folder: {},
+				"@microsoft.graph.conflictBehavior": "rename",
+			};
+
+			return await client
+				.api(`/groups/${GROUP_ID}/drive/items/${rootFolder}/children`)
+				.post(options);
+		} catch (error) {
+			console.error("Error al crear la carpeta: ", error);
+			throw error;
+		}
 	}
 }
 
-export async function createFolderGraph(rootFolder, microsoftUser, folderName) {
-	const accessToken = await getMSALToken(microsoftUser);
+// Export service classes and their methods
+export const MicrosoftGraphServices = {
+	auth: AuthenticationService,
+	user: UserService,
+	file: FileService,
+	folder: FolderService,
+};
 
-	const client = Client.init({
-		authProvider: (done) => {
-			done(null, accessToken);
-		},
-	});
-
-	try {
-		let options = {
-			name: folderName,
-			folder: {},
-			"@microsoft.graph.conflictBehavior": "rename",
-		};
-
-		const folder = await client
-			.api(`/groups/${groupId}/drive/items/${rootFolder}/children`)
-			.post(options);
-
-		return folder;
-	} catch (error) {
-		console.error("Error al crear la carpeta: ", error);
-		throw error;
-	}
-}
+// Export individual functions for backward compatibility
+export const getMSALToken = AuthenticationService.getMSALToken.bind(AuthenticationService);
+export const getUserDetailsGraph = UserService.getUserDetails;
+export const getFolderFromGraph = FolderService.getFolder;
+export const getFilesFromGraph = FolderService.getFiles;
+export const downloadFile = FileService.downloadFile.bind(FileService);
+export const uploadFile = FileService.uploadFile.bind(FileService);
+export const previewFile = FileService.previewFile.bind(FileService);
+export const createFolderGraph = FolderService.createFolder.bind(FolderService);
 
 const searchParams = new URLSearchParams(location.search);
 const dataValue = searchParams.get('data');
