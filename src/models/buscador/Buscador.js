@@ -91,7 +91,14 @@ buscador.getAll = async (dataParams) => {
 
     try {
         const { query } = queryDefinitions[selectedOption];
-        const params = [`%${searchs}%`];
+        let params;
+        
+        if (selectedOption === 'leads') {
+            params = [`%${searchs}%`, `%${searchs}%`, `%${searchs}%`];
+        } else {
+            params = [`%${searchs}%`];
+        }
+        
         return await executeQuery(query, params, database);
     } catch (error) {
         console.error(`Error en búsqueda de ${selectedOption}:`, error);
