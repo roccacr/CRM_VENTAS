@@ -257,7 +257,7 @@ class FolderService {
 
 		try {
 			const folder = await client
-				.api(`/groups/${GROUP_ID}/drive/items/01QPXOKICVOQPUSDN67VH3WHUUBQOWY7KQ/children`)
+				.api(`/groups/${GROUP_ID}/drive/items/${recordFolderId}/children`)
 				.select("id,name,folder,package")
 				.filter(`name eq '${folderId}'`)
 				.get();

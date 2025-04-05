@@ -23,10 +23,8 @@ const Attached = () => {
    // Determinar el ID de la carpeta según el pathname
    const getFolderIdByPathname = (pathname) => {
       if (pathname.includes("leads")) {
-         dataValue = searchParams.get("data");
          return "01QPXOKICVOQPUSDN67VH3WHUUBQOWY7KQ";
       } else if (pathname.includes("orden")) {
-         dataValue = searchParams.get("data2");
          return "01QPXOKIF43B3PZFOW4VFIPCME4QKXURLE";
       }
       return "01QPXOKICVOQPUSDN67VH3WHUUBQOWY7KQ"; // ID por defecto
@@ -40,9 +38,15 @@ const Attached = () => {
       dataValue = searchParams.get("data");
    }
 
+
+
    console.log('dataValue final:', dataValue);
 
    const recordFolderId = getFolderIdByPathname(location.pathname);
+
+
+   console.log('recordFolderId:', recordFolderId);
+   
    const recordId = dataValue || 0; // Fallback a 0 solo si no se encontró ningún valor
 
    const [error, setError] = useState(null);
