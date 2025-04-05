@@ -38,7 +38,11 @@ class AuthenticationService {
 
 		try {
 			const account = await this._getOrSetAccount(microsoftUser.email);
+			console.log("account", account);
+			console.log("token", token);
 			return await this._acquireToken(account);
+
+			
 		} catch (error) {
 			console.error("Error en autenticación:", error);
 			throw new Error("Error al obtener el token de acceso. Por favor, inicie sesión nuevamente.");
@@ -297,9 +301,6 @@ class FolderService {
 				folder: {},
 				"@microsoft.graph.conflictBehavior": "rename",
 			};
-
-
-			
 			return await client
 				.api(`/groups/${GROUP_ID}/drive/items/${rootFolder}/children`)
 				.post(options);
