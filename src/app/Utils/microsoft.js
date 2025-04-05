@@ -298,6 +298,8 @@ class FolderService {
 				"@microsoft.graph.conflictBehavior": "rename",
 			};
 
+
+			
 			return await client
 				.api(`/groups/${GROUP_ID}/drive/items/${rootFolder}/children`)
 				.post(options);
