@@ -18,6 +18,7 @@ import "datatables.net-searchpanes-bs5";
 import "datatables.net-select-bs5";
 import { useNavigate } from "react-router-dom";
 import { ModalOrdenVenta } from "../../estimacion/ModalOrdenVenta";
+import { OneDrive } from "./OneDrive";
 
 /**
  * Utility Functions
@@ -773,6 +774,7 @@ export const VistaOrdenVenta = () => {
                   ]}
                />
             </div>
+            
             <div className="card">
                <div className="card-header">
                   <h5>Resumen de Información</h5>
@@ -798,6 +800,7 @@ export const VistaOrdenVenta = () => {
                   <ModalOrdenVenta open={isModalOpen} onClose={() => setIsModalOpen(false)} idEstimacion={getQueryParam("data2")} />
                )}
             </div>
+            <OneDrive />
          </div>
       </>
    );

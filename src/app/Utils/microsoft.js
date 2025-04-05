@@ -40,7 +40,7 @@ class AuthenticationService {
 			console.log("Iniciando proceso de autenticación para:", microsoftUser.email);
 			// Obtener todas las cuentas
 			const accounts = msalInstance.getAllAccounts();
-			console.log("Cuentas encontradas:", accounts.length);
+		
 			let account;
 
 			// Si hay cuentas existentes, buscar la que coincide con el email
