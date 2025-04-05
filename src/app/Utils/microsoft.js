@@ -39,7 +39,6 @@ class AuthenticationService {
 		try {
 			const account = await this._getOrSetAccount(microsoftUser.email);
 			console.log("account", account);
-			console.log("token", token);
 			return await this._acquireToken(account);
 
 			
