@@ -37,49 +37,57 @@ class AuthenticationService {
 		await initializeMSAL();
 
 		try {
-			const account = await this._getOrSetAccount(microsoftUser.email);
-			console.log("account", account);
-			return await this._acquireToken(account);
+			console.log("Iniciando proceso de autenticación para:", microsoftUser.email);
+			// Obtener todas las cuentas
+			const accounts = msalInstance.getAllAccounts();
+			console.log("Cuentas encontradas:", accounts.length);
+			let account;
 
-			
+			// Si hay cuentas existentes, buscar la que coincide con el email
+			if (accounts.length > 0) {
+				account = accounts.find(acc => acc.username.toLowerCase() === microsoftUser.email.toLowerCase());
+				console.log("Cuenta encontrada:", account ? "Sí" : "No");
+			}
+
+			// Si no se encuentra la cuenta, forzar login
+			if (!account) {
+				console.log("Iniciando login popup...");
+				const loginResult = await msalInstance.loginPopup({
+					scopes: DEFAULT_SCOPES,
+					prompt: "select_account"
+				});
+				account = loginResult.account;
+				console.log("Login popup completado");
+			}
+
+			// Establecer la cuenta como activa
+			msalInstance.setActiveAccount(account);
+			console.log("Cuenta activa establecida");
+
+			// Intentar adquirir el token
+			const silentRequest = {
+				scopes: DEFAULT_SCOPES,
+				account: account
+			};
+
+			try {
+				console.log("Intentando adquirir token silenciosamente...");
+				const silentResult = await msalInstance.acquireTokenSilent(silentRequest);
+				console.log("Token adquirido silenciosamente");
+				return silentResult.accessToken;
+			} catch (silentError) {
+				console.log("Error en adquisición silenciosa:", silentError);
+				if (silentError instanceof InteractionRequiredAuthError) {
+					console.log("Intentando adquirir token con popup...");
+					const interactiveResult = await msalInstance.acquireTokenPopup(silentRequest);
+					console.log("Token adquirido con popup");
+					return interactiveResult.accessToken;
+				}
+				throw silentError;
+			}
 		} catch (error) {
 			console.error("Error en autenticación:", error);
 			throw new Error("Error al obtener el token de acceso. Por favor, inicie sesión nuevamente.");
-		}
-	}
-
-	/**
-	 * Gets or sets the account in session storage
-	 * @private
-	 */
-	static async _getOrSetAccount(email) {
-		let account = sessionStorage.getItem("msalAccount");
-		if (!account) {
-			sessionStorage.setItem("msalAccount", email);
-			account = email;
-		}
-		return account;
-	}
-
-	/**
-	 * Acquires token either silently or through popup
-	 * @private
-	 */
-	static async _acquireToken(account) {
-		const silentRequest = {
-			scopes: DEFAULT_SCOPES,
-			account: msalInstance.getAccountByUsername(account)
-		};
-
-		try {
-			const silentResult = await msalInstance.acquireTokenSilent(silentRequest);
-			return silentResult.accessToken;
-		} catch (silentError) {
-			if (silentError instanceof InteractionRequiredAuthError) {
-				const interactiveResult = await msalInstance.acquireTokenPopup(silentRequest);
-				return interactiveResult.accessToken;
-			}
-			throw silentError;
 		}
 	}
 }
