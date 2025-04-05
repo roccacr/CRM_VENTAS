@@ -21,7 +21,8 @@ jobs:
       - name: Install dependencies
         run: |
           npm ci
-          npm install vite --save-dev --legacy-peer-deps
+          npm install vite --save-dev 
+          npm install --legacy-peer-deps
 
       - name: Grant execute permissions to vite
         run: chmod +x node_modules/.bin/vite
