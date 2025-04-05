@@ -1,5 +1,4 @@
 import { Stack, Typography } from "@mui/material";
-import Image from "next/image";
 import React from "react";
 
 const ErrorComponent = ({
@@ -16,7 +15,6 @@ const ErrorComponent = ({
 			<Typography variant="h6" align="center">
 				{errorMessage}
 			</Typography>
-			{/* eslint-disable-next-line @next/next/no-img-element */}
 			<img src="/Error.png" alt="Error" style={{ width: "350px" }} />
 			<Typography variant="body1" align="center">
 				{errorDetails}

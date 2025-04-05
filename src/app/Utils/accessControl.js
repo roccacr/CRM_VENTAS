@@ -4,6 +4,7 @@ const recordFolderId = {
 	purchaseRequest: "01QPXOKID232NUU3JJGJCJ7KJFXORO63IN",
 	purchaseOrder: "01QPXOKIBZSTMKWLEAZFBZJIQRKWMGX6WL",
 	itemReceipt: "01QPXOKIAFGZW7DTRXLNFKLQUR4MDD2NME",
+	customer: "01QPXOKICVOQPUSDN67VH3WHUUBQOWY7KQ"  // ID de la carpeta de clientes
 };
 
 const matchRoute = (path, pattern) => {
@@ -42,6 +43,11 @@ export const getFolderIdFromPathname = (pathname) => {
 };
 
 export const getRecordIdFromPathname = (pathname) => {
+	// Si pathname es un string simple (solo el ID), retornarlo directamente
+	if (!pathname || pathname.indexOf('/') === -1) {
+		return pathname;
+	}
+	// Si es un path completo, extraer el ID
 	const pathParts = pathname.split("/");
 	return pathParts[3];
 };

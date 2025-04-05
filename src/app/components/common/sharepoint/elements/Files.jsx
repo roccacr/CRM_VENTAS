@@ -1,141 +1,144 @@
-import { IconButton, Paper, Typography } from "@mui/material";
-import { Stack } from "@mui/system";
+import { IconButton, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Typography } from "@mui/material";
+import { Box } from "@mui/system";
 import React from "react";
 import PreviewIcon from "@mui/icons-material/Preview";
 import FileDownloadIcon from "@mui/icons-material/FileDownload";
+import InsertDriveFileIcon from "@mui/icons-material/InsertDriveFile";
 import LoadingComponent from "../../loading/Loading";
-import { downloadFile, previewFile } from "@/utils/microsoft";
+import { downloadFile, previewFile } from "@/app/Utils/microsoft";
 import { useSelector } from "react-redux";
 
 const FilesElement = ({ files, loading }) => {
 	const { microsoftUser } = useSelector((state) => state.auth); 
+	
 	if (loading) {
 		return (
-			<Stack direction={"column"} spacing={2}>
+			<Box sx={{ p: 2, display: "flex", justifyContent: "center" }}>
 				<LoadingComponent />
-			</Stack>
+			</Box>
 		);
 	}
 
 	return (
-		<Stack
-			direction={"column"}
-			spacing={2}
-			sx={{
-				minWidth: "70%",
-				width: "70%",
-				padding: "20px",
-				height: "300px",
-				overflowY: "auto",
-			}}
-		>
-			<Paper key={"title"} elevation={3}>
-				<Stack
-					direction={"row"}
-					spacing={2}
-					justifyContent={"space-between"}
-					alignItems={"center"}
-					sx={{
-						padding: "0 10px",
-					}}
-				>
-					<Stack
-						direction={"row"}
-						width={"88%"}
-						alignItems={"center"}
-					>
-						{/* Si el nombre es muy largo debemos hacer wrap de la información */}
-						<Typography
-							variant={"body1"}
-							sx={{
-								overflow: "hidden",
-								textOverflow: "ellipsis",
-								whiteSpace: "nowrap",
-								width: "100%",
+		<TableContainer>
+			<Table sx={{ minWidth: 650 }} aria-label="files table">
+				<TableHead>
+					<TableRow>
+						<TableCell 
+							sx={{ 
+								color: "#666",
+								fontSize: "14px",
+								fontWeight: 500,
+								borderBottom: "1px solid #E5E5E5",
 							}}
 						>
-							Nombre de Archivo
-						</Typography>
-						<Typography variant={"body1"}>Tamaño</Typography>
-					</Stack>
-					<Stack
-						direction={"row"}
-						width={"12%"}
-						justifyContent={"space-between"}
-					>
-						<Typography variant={"body1"}>Ver</Typography>
-						<Typography variant={"body1"}>Descargar</Typography>
-					</Stack>
-				</Stack>
-			</Paper>
-			{files.map((file) => {
-				return (
-					<Paper key={file.id} elevation={3}>
-						<Stack
-							direction={"row"}
-							spacing={2}
-							justifyContent={"space-between"}
-							alignItems={"center"}
-							sx={{
-								padding: "0 10px",
+							Nombre
+						</TableCell>
+						<TableCell 
+							align="right"
+							sx={{ 
+								color: "#666",
+								fontSize: "14px",
+								fontWeight: 500,
+								borderBottom: "1px solid #E5E5E5",
+								width: "100px"
 							}}
 						>
-							<Stack
-								direction={"row"}
-								width={"88%"}
-								alignItems={"center"}
+							Tamaño
+						</TableCell>
+						<TableCell 
+							align="right"
+							sx={{ 
+								color: "#666",
+								fontSize: "14px",
+								fontWeight: 500,
+								borderBottom: "1px solid #E5E5E5",
+								width: "120px"
+							}}
+						>
+							Acciones
+						</TableCell>
+					</TableRow>
+				</TableHead>
+				<TableBody>
+					{files.map((file) => (
+						<TableRow
+							key={file.id}
+							sx={{
+								'&:hover': {
+									bgcolor: '#F5F5F5',
+								},
+							}}
+						>
+							<TableCell
+								component="th"
+								scope="row"
+								sx={{
+									borderBottom: "1px solid #E5E5E5",
+								}}
 							>
-								{/* Si el nombre es muy largo debemos hacer wrap de la información */}
-								<Typography
-									variant={"body1"}
-									sx={{
-										overflow: "hidden",
-										textOverflow: "ellipsis",
-										whiteSpace: "nowrap",
-										width: "100%",
-									}}
-								>
-									{file.name}
-								</Typography>
-								<Typography variant={"body1"}>
-									{file.size}
-								</Typography>
-							</Stack>
-							<Stack
-								direction={"row"}
-								width={"12%"}
-								justifyContent={"space-between"}
-								paddingRight={"15px"}
+								<Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+									<InsertDriveFileIcon sx={{ color: '#91A3B0', fontSize: 20 }} />
+									<Typography
+										sx={{
+											fontSize: "14px",
+											color: "#333",
+										}}
+									>
+										{file.name}
+									</Typography>
+								</Box>
+							</TableCell>
+							<TableCell
+								align="right"
+								sx={{
+									borderBottom: "1px solid #E5E5E5",
+									color: "#666",
+									fontSize: "14px",
+								}}
 							>
-								<IconButton
-									aria-label="preview"
-									color="primary"
-								>
-									<PreviewIcon
-										onClick={() => {
-											previewFile(file.id, microsoftUser);
+								{file.size}
+							</TableCell>
+							<TableCell
+								align="right"
+								sx={{
+									borderBottom: "1px solid #E5E5E5",
+								}}
+							>
+								<Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
+									<IconButton
+										size="small"
+										onClick={() => previewFile(file.id, microsoftUser)}
+										sx={{
+											color: '#666',
+											'&:hover': {
+												color: '#0078D4',
+												bgcolor: '#F0F0F0',
+											},
 										}}
-									/>
-								</IconButton>
-								<IconButton
-									aria-label="download"
-									color="primary"
-								>
-									<FileDownloadIcon
-										onClick={() => {
-											downloadFile(
-												file.id,
-												microsoftUser
-											);
+									>
+										<PreviewIcon fontSize="small" />
+									</IconButton>
+									<IconButton
+										size="small"
+										onClick={() => downloadFile(file.id, microsoftUser)}
+										sx={{
+											color: '#666',
+											'&:hover': {
+												color: '#0078D4',
+												bgcolor: '#F0F0F0',
+											},
 										}}
-									/>
-								</IconButton>
-							</Stack>
-						</Stack>
-					</Paper>
-				);
-			})}
-		</Stack>
+									>
+										<FileDownloadIcon fontSize="small" />
+									</IconButton>
+								</Box>
+							</TableCell>
+						</TableRow>
+					))}
+				</TableBody>
+			</Table>
+		</TableContainer>
 	);
 };
 

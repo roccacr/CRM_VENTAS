@@ -13,7 +13,7 @@ import DriveFileMoveIcon from "@mui/icons-material/DriveFileMove";
 import styles from "./uploader.module.css";
 import CustomConfirmDialogComponent from "../../dialogs/CustomConfirmDialog";
 import { useSelector } from "react-redux";
-import { uploadFile } from "@/utils/microsoft";
+import { uploadFile } from "@/app/Utils/microsoft";
 
 const UploaderElement = ({ filderId, currentFiles, fetchFiles, setError }) => {
 	const { microsoftUser } = useSelector((state) => state.auth); 

@@ -1,7 +1,7 @@
 import React from "react";
-import NotFoundActionComponent from "../../notFound/NotFoundAction";
-import { Stack } from "@mui/system";
-import { createFolderGraph } from "@/utils/microsoft";
+import { Box, Button, Typography } from "@mui/material";
+import CreateNewFolderIcon from "@mui/icons-material/CreateNewFolder";
+import { createFolderGraph } from "@/app/Utils/microsoft";
 
 const NoFolderElement = ({
 	recordFolderId,
@@ -19,17 +19,64 @@ const NoFolderElement = ({
 	};
 
 	return (
-		<Stack>
-			<NotFoundActionComponent
-				notFoundMessage={
-					"No se ha encontrado la carpeta para este registro"
-				}
-				actionMessage={"Presione el botón para crear una carpeta"}
-				action={() => {
-					handleCreateFolder();
+		<Box
+			sx={{
+				width: "100%",
+				height: "calc(100vh - 200px)",
+				display: "flex",
+				flexDirection: "column",
+				alignItems: "center",
+				justifyContent: "center",
+				bgcolor: "#F8F9FA",
+				p: 3,
+			}}
+		>
+			<CreateNewFolderIcon
+				sx={{
+					fontSize: 64,
+					color: "#0078D4",
+					mb: 2,
 				}}
 			/>
-		</Stack>
+			<Typography
+				variant="h6"
+				sx={{
+					color: "#333",
+					fontSize: "18px",
+					fontWeight: 500,
+					textAlign: "center",
+					mb: 1,
+				}}
+			>
+				No se ha encontrado la carpeta
+			</Typography>
+			<Typography
+				variant="body1"
+				sx={{
+					color: "#666",
+					fontSize: "14px",
+					textAlign: "center",
+					mb: 3,
+				}}
+			>
+				Este registro no tiene una carpeta asociada en OneDrive
+			</Typography>
+			<Button
+				variant="contained"
+				startIcon={<CreateNewFolderIcon />}
+				onClick={handleCreateFolder}
+				sx={{
+					bgcolor: "#0078D4",
+					"&:hover": {
+						bgcolor: "#106EBE",
+					},
+					textTransform: "none",
+					px: 4,
+				}}
+			>
+				Crear carpeta
+			</Button>
+		</Box>
 	);
 };
 

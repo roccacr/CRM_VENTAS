@@ -7,38 +7,45 @@ import {
 import { initializeMSAL, msalInstance } from "@/config/msalConfig";
 import { InteractionRequiredAuthError } from "@azure/msal-browser";
 
-const groupId = process.env.NEXT_PUBLIC_GRAPH_GROUP_ID;
+const groupId = "46b0a57a-45ab-4534-8dde-cd4ba39e29b7";
 
 export async function getMSALToken(microsoftUser) {
 	if (!microsoftUser) {
 		throw new Error(
-			"User is not authenticated. Please sign out and sign in again."
+			"Usuario no autenticado. Por favor, cierre sesión y vuelva a iniciar sesión."
 		);
 	}
 
 	await initializeMSAL();
 
 	try {
+		let account = sessionStorage.getItem("msalAccount");
+		
+		// Si no hay cuenta en sesión, guardamos el username
+		if (!account) {
+			sessionStorage.setItem("msalAccount", microsoftUser.email);
+			account = microsoftUser.email;
+		}
+
 		const silentRequest = {
 			scopes: ["User.Read", "Files.Read"],
-			account: msalInstance.getAccount(microsoftUser.idToken),
+			account: msalInstance.getAccountByUsername(account)
 		};
 
-		const silentResult = await msalInstance.acquireTokenSilent(
-			silentRequest
-		);
-
-		return silentResult.accessToken;
-	} catch (silentError) {
-		if (silentError instanceof InteractionRequiredAuthError) {
-			const interactiveResult = await msalInstance.acquireTokenPopup(
-				silentRequest
-			);
-			return interactiveResult.accessToken;
-		} else {
-			console.log(silentError);
-			throw silentError;
+		try {
+			const silentResult = await msalInstance.acquireTokenSilent(silentRequest);
+			return silentResult.accessToken;
+		} catch (silentError) {
+			if (silentError instanceof InteractionRequiredAuthError) {
+				const interactiveResult = await msalInstance.acquireTokenPopup(silentRequest);
+				return interactiveResult.accessToken;
+			} else {
+				throw silentError;
+			}
 		}
+	} catch (error) {
+		console.error("Error en autenticación:", error);
+		throw new Error("Error al obtener el token de acceso. Por favor, inicie sesión nuevamente.");
 	}
 }
 
@@ -63,15 +70,18 @@ export async function getFolderFromGraph(
 	recordFolderId,
 	folderId
 ) {
+
+	
 	const client = Client.init({
 		authProvider: (done) => {
 			done(null, accessToken);
 		},
 	});
 
+
 	try {
 		const folder = await client
-			.api(`/groups/${groupId}/drive/items/${recordFolderId}/children`)
+			.api(`/groups/${groupId}/drive/items/01QPXOKICVOQPUSDN67VH3WHUUBQOWY7KQ/children`)
 			.select("id,name,folder,package")
 			.filter(`name eq '${folderId}'`)
 			.get();
@@ -238,3 +248,6 @@ export async function createFolderGraph(rootFolder, microsoftUser, folderName) {
 		throw error;
 	}
 }
+
+const searchParams = new URLSearchParams(location.search);
+const dataValue = searchParams.get('data');

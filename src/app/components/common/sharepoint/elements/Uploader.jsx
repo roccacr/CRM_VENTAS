@@ -3,19 +3,20 @@ import {
 	CircularProgress,
 	List,
 	ListItem,
+	ListItemIcon,
 	ListItemText,
-	Stack,
+	Paper,
 	Typography,
 } from "@mui/material";
 import React, { useState, useEffect, useCallback } from "react";
 import { useDropzone } from "react-dropzone";
 import CloudUploadIcon from "@mui/icons-material/CloudUpload";
-import DriveFileMoveIcon from "@mui/icons-material/DriveFileMove";
+import InsertDriveFileIcon from "@mui/icons-material/InsertDriveFile";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle"; // Ícono para indicar que la carga está completa
 import styles from "./uploader.module.css";
 import CustomConfirmDialogComponent from "../../dialogs/CustomConfirmDialog";
 import { useSelector } from "react-redux";
-import { uploadFile } from "@/utils/microsoft";
+import { uploadFile } from "@/app/Utils/microsoft";
 import { useForm } from "react-hook-form";
 
 const UploaderElement = ({ folderId, currentFiles, fetchFiles, setError }) => {
@@ -138,31 +139,27 @@ const UploaderElement = ({ folderId, currentFiles, fetchFiles, setError }) => {
 	// Renderiza la lista de archivos pendientes de carga
 	const renderPendingFiles = () => {
 		return (
-			<List
-				sx={{
-					width: "100%",
-					border: "1px solid rgba(100, 35, 185, 0.92)",
-					padding: "5px 10px",
-					overflowY: "auto",
-				}}
-			>
+			<List sx={{ width: "100%", mt: 2 }}>
 				{filesToUpload.map((fileObj, index) => (
 					<ListItem
 						key={index}
 						sx={{
-							border: "1px solid rgba(100, 135, 85, 0.12)",
-							padding: "0",
-							margin: "0",
+							py: 1,
+							px: 2,
+							borderRadius: 1,
+							mb: 1,
+							bgcolor: "#F8F9FA",
 						}}
 					>
+						<ListItemIcon>
+							<InsertDriveFileIcon sx={{ color: "#91A3B0" }} />
+						</ListItemIcon>
 						<ListItemText
 							primary={fileObj.file.name}
 							sx={{
-								textOverflow: "ellipsis",
-								overflow: "hidden",
-								whiteSpace: "nowrap",
-								"& span": {
+								"& .MuiTypography-root": {
 									fontSize: "14px",
+									color: "#333",
 								},
 							}}
 						/>
@@ -170,12 +167,12 @@ const UploaderElement = ({ folderId, currentFiles, fetchFiles, setError }) => {
 							(completeFile) =>
 								completeFile.file.name === fileObj.file.name
 						) ? (
-							<CheckCircleIcon sx={{ color: "green" }} />
+							<CheckCircleIcon sx={{ color: "#0078D4" }} />
 						) : (
 							<CircularProgress
 								size={20}
-								thickness={5}
-								color={"primary"}
+								thickness={4}
+								sx={{ color: "#0078D4" }}
 							/>
 						)}
 					</ListItem>
@@ -186,100 +183,94 @@ const UploaderElement = ({ folderId, currentFiles, fetchFiles, setError }) => {
 
 	return (
 		<React.Fragment>
-			<Stack
-				direction={"row"}
-				spacing={2}
-				alignItems={"center"}
+			<Box
 				sx={{
-					width: "30%",
-					minHeight: "300px",
-					backgroundColor: "rgba(0, 0, 0, 0.04)",
-					padding: "10px",
+					width: "100%",
+					height: "100%",
+					display: "flex",
+					flexDirection: "column",
 				}}
 			>
 				{filesToUpload.length > 0 ? (
-					<Stack
-						direction={"column"}
-						rowGap={1}
-						justifyContent={"center"}
-						alignItems={"flex-start"}
+					<Box
 						sx={{
 							width: "100%",
-							height: "100%",
-							padding: "10px",
-
-							border: "1px solid rgba(0, 135, 85, 0.12)",
+							p: 2,
 						}}
 					>
 						<Typography
-							variant={"body1"}
-							style={{
-								fontWeight: "bold",
-								fontSize: "14px",
+							variant="subtitle1"
+							sx={{
+								fontSize: "16px",
+								fontWeight: 500,
+								color: "#333",
+								mb: 2,
 							}}
 						>
-							Archivos pendientes de carga
+							Archivos pendientes
 						</Typography>
 						{renderPendingFiles()}
-					</Stack>
+					</Box>
 				) : (
-					<div
-						component={"div"}
-						{...getRootProps({
-							className: `dropzone ${styles.block} ${
-								isDragActive ? styles.blockActive : ""
-							}`,
-						})}
+					<Box
+						{...getRootProps()}
+						sx={{
+							width: "100%",
+							height: "100%",
+							display: "flex",
+							flexDirection: "column",
+							alignItems: "center",
+							justifyContent: "center",
+							cursor: "pointer",
+							transition: "all 0.2s ease",
+							"&:hover": {
+								bgcolor: "#F0F0F0",
+							},
+						}}
 					>
 						<input {...getInputProps()} />
-						{isDragActive ? (
-							<Stack
-								direction={"column"}
-								rowGap={2}
-								justifyContent={"center"}
-								alignItems={"center"}
-								sx={{
-									padding: "20px",
-								}}
-							>
-								<DriveFileMoveIcon
-									sx={{ fontSize: "4rem", color: "black" }}
-								/>
-								<Typography
-									variant={"body1"}
-									sx={{ color: "black" }}
-								>
-									Suelta los archivos aquí...
-								</Typography>
-							</Stack>
-						) : (
-							<Stack
-								direction={"column"}
-								rowGap={2}
-								justifyContent={"center"}
-								alignItems={"center"}
-								sx={{
-									padding: "20px",
-								}}
-							>
-								<CloudUploadIcon
-									sx={{
-										fontSize: "4rem",
-										color: "primary.main",
-									}}
-								/>
-								<Typography variant={"body1"}>
-									Arrastra y suelta los archivos aquí, o haz
-									clic para seleccionarlos
-								</Typography>
-							</Stack>
-						)}
-					</div>
+						<CloudUploadIcon
+							sx={{
+								fontSize: 64,
+								color: "#0078D4",
+								mb: 2,
+							}}
+						/>
+						<Typography
+							variant="h6"
+							sx={{
+								color: "#333",
+								fontSize: "16px",
+								fontWeight: 500,
+								textAlign: "center",
+							}}
+						>
+							{isDragActive
+								? "Suelta los archivos aquí"
+								: "Arrastra y suelta los archivos aquí"}
+						</Typography>
+						<Typography
+							variant="body2"
+							sx={{
+								color: "#666",
+								fontSize: "14px",
+								mt: 1,
+								textAlign: "center",
+							}}
+						>
+							o haz clic para seleccionar
+						</Typography>
+					</Box>
 				)}
-			</Stack>
+			</Box>
 			<CustomConfirmDialogComponent
-				dialogState={dialogState}
-				setDialogState={setDialogState}
+				open={dialogState.open}
+				title={dialogState.title}
+				message={dialogState.message}
+				confirmButtonText={dialogState.confirmButtonText}
+				cancelButtonText={dialogState.cancelButtonText}
+				onConfirm={dialogState.onConfirm}
+				onCancel={dialogState.onCancel}
 			/>
 		</React.Fragment>
 	);

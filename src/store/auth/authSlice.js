@@ -41,7 +41,6 @@ export const authSlice = createSlice({
       },
       // Reducer para establecer la autenticación del usuario
       setUserAuthentication: (state, { payload }) => {
-         console.log(payload);
          state.status = "authenticated";
          state.id_admin = payload.id_admin;
          state.idnetsuite_admin = payload.idnetsuite_admin;
