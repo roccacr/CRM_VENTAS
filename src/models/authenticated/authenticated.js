@@ -228,7 +228,7 @@ authenticated.SP_RECUPERAR_CONTRASENA = async (dataParams) => {
             // Verificar si la consulta afectó alguna fila (contraseña actualizada con éxito).
             if (result.affectedRows > 0) {
                 // Enviar el correo electrónico utilizando el servicio de correo.
-                await sendMailer.toolMail(mailData, "templatePasswordRecover", "CRM HOTEL : Recuperación de clave");
+                await sendMailer.toolMail(mailData, "templatePasswordRecover", "CRM VENTAS : Recuperación de clave");
             }
 
             // Retornar el resultado de la consulta.
