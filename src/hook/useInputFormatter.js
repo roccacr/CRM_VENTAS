@@ -78,14 +78,18 @@ export const calcularPrimaToal = (monto, porcentaje) => {
         montoPorcentaje /= 100; // Ajusta el porcentaje a formato decimal
     }
 
+    console.log("Monto porcentaje", montoPorcentaje);
+
     // Calcula el monto total multiplicando el monto base por el porcentaje
     const calculaMontoTotal = montoTotal * montoPorcentaje;
 
-    // Formatea el resultado con hasta cinco decimales (precisión ajustada)
+    // Formatea el resultado con exactamente dos decimales
     const formateado = new Intl.NumberFormat("en-US", {
         minimumFractionDigits: 2, // Siempre muestra al menos 2 decimales
-        maximumFractionDigits: 4, // Hasta 5 decimales para manejar precisión
+        maximumFractionDigits: 2, // Exactamente 2 decimales para manejar precisión
     }).format(calculaMontoTotal);
+
+    console.log("Monto total", formateado);
 
     // Devuelve el monto total formateado como una cadena
     return formateado;
