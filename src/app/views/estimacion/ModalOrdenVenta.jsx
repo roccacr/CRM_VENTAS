@@ -753,10 +753,6 @@ const actualizarHitoDiferenciadoMonto = (name, value, campoActualizar) => {
          }));
 
 
-
-
-
-         
          calculoAvenceObra(updatedValues, setFormValues, montot, montoPrimaTotal);
       } else if (tipoOperacion === 1) {
          // Cálculos para operaciones contra entrega

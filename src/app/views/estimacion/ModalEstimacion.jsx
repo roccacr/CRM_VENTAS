@@ -717,8 +717,7 @@ export const ModalEstimacion = ({ open, onClose, OportunidadDetails, cliente }) 
          calculoAvenceObra(updatedValues, setFormValues, montot, montoPrimaTotal);
       } else if (tipoOperacion === 1) {
          // Cálculos para operaciones contra entrega
-         calculoContraEntregaSinprimaTotal(updatedValues, setFormValues); // Sin prima total
-         calculoContraEntregaMontoCalculado(updatedValues, setFormValues); // Con monto calculado
+         calculoContraEntregaSinprimaTotal(updatedValues, setFormValues); // Sin prima tota
       } else if (tipoOperacion === 7) {
          setFormValues((prevValues) => ({
             ...prevValues, // Conserva los valores existentes del formulario.

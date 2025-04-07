@@ -727,7 +727,6 @@ const actualizarHitoDiferenciadoMonto = (name, value, campoActualizar) => {
       } else if (tipoOperacion === 1) {
          // Cálculos para operaciones contra entrega
          calculoContraEntregaSinprimaTotal(updatedValues, setFormValues); // Sin prima total
-         calculoContraEntregaMontoCalculado(updatedValues, setFormValues); // Con monto calculado
       } else if (tipoOperacion === 7) {
          setFormValues((prevValues) => ({
             ...prevValues, // Conserva los valores existentes del formulario.
