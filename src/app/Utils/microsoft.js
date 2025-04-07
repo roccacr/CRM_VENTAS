@@ -37,7 +37,7 @@ class AuthenticationService {
 		await initializeMSAL();
 
 		try {
-			console.log("Iniciando proceso de autenticación para:", microsoftUser.email);
+			// console.log("Iniciando proceso de autenticación para:", microsoftUser.email);
 			// Obtener todas las cuentas
 			const accounts = msalInstance.getAllAccounts();
 		
@@ -46,23 +46,23 @@ class AuthenticationService {
 			// Si hay cuentas existentes, buscar la que coincide con el email
 			if (accounts.length > 0) {
 				account = accounts.find(acc => acc.username.toLowerCase() === microsoftUser.email.toLowerCase());
-				console.log("Cuenta encontrada:", account ? "Sí" : "No");
+				//console.log("Cuenta encontrada:", account ? "Sí" : "No");
 			}
 
 			// Si no se encuentra la cuenta, forzar login
 			if (!account) {
-				console.log("Iniciando login popup...");
+				//console.log("Iniciando login popup...");
 				const loginResult = await msalInstance.loginPopup({
 					scopes: DEFAULT_SCOPES,
 					prompt: "select_account"
 				});
 				account = loginResult.account;
-				console.log("Login popup completado");
+				//console.log("Login popup completado");
 			}
 
 			// Establecer la cuenta como activa
 			msalInstance.setActiveAccount(account);
-			console.log("Cuenta activa establecida");
+			//console.log("Cuenta activa establecida");
 
 			// Intentar adquirir el token
 			const silentRequest = {
@@ -71,12 +71,12 @@ class AuthenticationService {
 			};
 
 			try {
-				console.log("Intentando adquirir token silenciosamente...");
+				///console.log("Intentando adquirir token silenciosamente...");
 				const silentResult = await msalInstance.acquireTokenSilent(silentRequest);
-				console.log("Token adquirido silenciosamente");
+				//console.log("Token adquirido silenciosamente");
 				return silentResult.accessToken;
 			} catch (silentError) {
-				console.log("Error en adquisición silenciosa:", silentError);
+				//console.log("Error en adquisición silenciosa:", silentError);
 				if (silentError instanceof InteractionRequiredAuthError) {
 					console.log("Intentando adquirir token con popup...");
 					const interactiveResult = await msalInstance.acquireTokenPopup(silentRequest);
@@ -86,7 +86,7 @@ class AuthenticationService {
 				throw silentError;
 			}
 		} catch (error) {
-			console.error("Error en autenticación:", error);
+			//console.error("Error en autenticación:", error);
 			throw new Error("Error al obtener el token de acceso. Por favor, inicie sesión nuevamente.");
 		}
 	}
@@ -124,7 +124,7 @@ class UserService {
 		try {
 			return await client.api("/me").get();
 		} catch (error) {
-			console.error("Error al obtener los detalles del usuario: ", error);
+			//console.error("Error al obtener los detalles del usuario: ", error);
 			throw error;
 		}
 	}
@@ -153,7 +153,7 @@ class FileService {
 			window.open(file["@microsoft.graph.downloadUrl"], "_self");
 			return file;
 		} catch (error) {
-			console.error("Error al descargar el archivo: ", error);
+			//console.error("Error al descargar el archivo: ", error);
 			throw error;
 		}
 	}
@@ -177,7 +177,7 @@ class FileService {
 			
 			return await uploadTask.upload();
 		} catch (error) {
-			console.error("Error al subir el archivo: ", error);
+			//console.error("Error al subir el archivo: ", error);
 			throw error;
 		}
 	}
@@ -235,7 +235,7 @@ class FileService {
 			window.open(file["getUrl"], "_blank");
 			return file;
 		} catch (error) {
-			console.error("Error al obtener la vista previa del archivo: ", error);
+			//console.error("Error al obtener la vista previa del archivo: ", error);
 			throw error;
 		}
 	}
@@ -264,7 +264,7 @@ class FolderService {
 
 			return folder.value.length > 0 ? folder.value[0] : null;
 		} catch (error) {
-			console.error("Error al obtener la carpeta: ", error);
+			//console.error("Error al obtener la carpeta: ", error);
 			throw error;
 		}
 	}
@@ -286,7 +286,7 @@ class FolderService {
 
 			return files.value;
 		} catch (error) {
-			console.error("Error al obtener los archivos: ", error);
+			//console.error("Error al obtener los archivos: ", error);
 			throw error;
 		}
 	}
@@ -312,7 +312,7 @@ class FolderService {
 				.api(`/groups/${GROUP_ID}/drive/items/${rootFolder}/children`)
 				.post(options);
 		} catch (error) {
-			console.error("Error al crear la carpeta: ", error);
+			//console.error("Error al crear la carpeta: ", error);
 			throw error;
 		}
 	}
