@@ -266,6 +266,7 @@ export const calculoContraEntregaSinprimaTotal = (
         ...valoresPrevios,
         custbody67: "100%", // Indica que el porcentaje es del 100%.
         custbody163: montoFormateado, // Monto total sin prima formateado.
+         custbody_ix_salesorder_hito6: montoFormateado,
         date_hito_6: valoresPrevios.custbody114,
     }));
 };
@@ -276,17 +277,24 @@ export const calculoContraEntregaMontoCalculado = (
     valoresFormulario, // Valores actuales del formulario.
     setValoresFormulario // Función para actualizar los valores del formulario.
 ) => {
+    console.clear();
+    console.log("Valores formulario", valoresFormulario);
     // Convierte el monto total calculado (custbody163) a un número flotante válido.
     const montoTotalCalculado = cleanAndParseFloat(valoresFormulario.custbody163);
+    console.log("Monto total calculado", montoTotalCalculado);
 
     // Calcula el monto de contra entrega (aquí simplemente se multiplica por 1).
-    const montoContraEntrega = montoTotalCalculado * 1;
+    const montoContraEntrega = parseInt(montoTotalCalculado) * 1;
+
+    console.log("Monto contra entrega", montoContraEntrega);
 
     // Formatea el monto con al menos 2 decimales y hasta 5 decimales para precisión.
     const montoFormateado = new Intl.NumberFormat("en-US", {
         minimumFractionDigits: 2,
         maximumFractionDigits: 4,
     }).format(montoContraEntrega);
+
+    console.log("Monto formateado", montoFormateado);
 
     // Actualiza los valores del formulario con el porcentaje y el monto calculado.
     setValoresFormulario((valoresPrevios) => ({

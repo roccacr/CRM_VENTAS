@@ -524,8 +524,7 @@ export const ModalOrdenVenta = ({ open, onClose, idEstimacion }) => {
          // 4. Calcula la prima asignable utilizando el monto total y los valores actuales.
          const asignable = calculoPrimaAsignable(total, updatedValues);
 
-         // 5. Ejecuta cálculos adicionales personalizados si es necesario.
-        // ejecutarCálculosEspecíficos(updatedValues);
+
 
          // 6. Si el campo actualizado es "custbody60", retorna un estado con campos adicionales.
          if (name === "custbody60") {
@@ -734,6 +733,9 @@ const actualizarHitoDiferenciadoMonto = (name, value, campoActualizar) => {
 
    // Ejecuta cálculos específicos según el tipo de operación
    const ejecutarCálculosEspecíficos = (updatedValues, montot, montoPrimaTotal) => {
+
+
+      
       // Determina el tipo de operación a partir del valor en custbody75
       const tipoOperacion = parseInt(updatedValues.custbody75, 10);
 
@@ -749,11 +751,17 @@ const actualizarHitoDiferenciadoMonto = (name, value, campoActualizar) => {
             custbody66: 0.15, // Actualiza el campo `hito 5` con el monto total calculado.
             custbody67: 0.05, // Actualiza el campo `hito 6` con el monto total calculado.
          }));
+
+
+
+
+
+         
          calculoAvenceObra(updatedValues, setFormValues, montot, montoPrimaTotal);
       } else if (tipoOperacion === 1) {
          // Cálculos para operaciones contra entrega
          calculoContraEntregaSinprimaTotal(updatedValues, setFormValues); // Sin prima total
-         calculoContraEntregaMontoCalculado(updatedValues, setFormValues); // Con monto calculado
+         //(updatedValues, setFormValues); // Con monto calculado
       } else if (tipoOperacion === 7) {
          setFormValues((prevValues) => ({
             ...prevValues, // Conserva los valores existentes del formulario.
