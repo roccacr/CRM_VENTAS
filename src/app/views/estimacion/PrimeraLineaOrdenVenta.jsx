@@ -230,6 +230,8 @@ export const PrimeraLineaOrdenVenta = ({ formValues, handleInputChange, errors }
                <label className="form-label">PREC. DE VENTA MÍNIMO</label>
                <input
                   autoComplete="off"
+                  disabled
+                  readOnly
                   type="text"
                   name="custbody18"
                   value={formValues.custbody18}
