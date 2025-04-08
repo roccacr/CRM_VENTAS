@@ -86,6 +86,8 @@ const View_events_listado  = () => {
 
    // Use table data hook at the top level
    const [tableData] = useTableData(true, inputStartDate, inputEndDate);
+
+   console.log("tableData", tableData);
    
    // Filtrar los datos según el parámetro URL y la fecha actual
    const filteredTableData = React.useMemo(() => {
@@ -104,10 +106,15 @@ const View_events_listado  = () => {
       // Formatear a YYYY-MM-DD (corregido el orden)
       const formattedToday = `${today[2]}-${today[0].padStart(2, '0')}-${today[1].padStart(2, '0')}`;
 
+      
+
       let filtered = tableData;
       
       if (dataParam === '1') {
-         filtered = filtered.filter(item => item.cita_lead === 1);
+         // console.log("dataParam", dataParam);
+         //filtered = filtered.filter(item => item.cita_lead === 1);
+
+         // console.log("filtered", filtered);
          
          // Filtrar por fecha actual, comparando solo la parte YYYY-MM-DD
          filtered = filtered.filter(item => {
