@@ -159,6 +159,7 @@ oportunidad.get_Oportunidades = (dataParams) => {
         INNER JOIN pagos ON p.custbody75_oport = pagos.id_motivo_pago
         WHERE employee_oport = ${dataParams.idnetsuite_admin} ${estadoFiltro} ${dateFilter} ${dataParams.leadAsignado !== '0' ? `AND entity_oport = ${dataParams.leadAsignado}` : ''}
     `;
+    console.log("query", query);
 
     // Parámetros para la consulta
     const params = [dataParams.idnetsuite_admin];
