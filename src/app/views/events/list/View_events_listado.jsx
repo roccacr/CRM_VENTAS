@@ -137,38 +137,22 @@ const View_events_listado  = () => {
    const navigate = useNavigate();
 
    const handleOpenModal = (lead) => {
-      if (lead.idinterno_lead > "0") {
+      console.log("leadasasas", lead.id_lead );
          Swal.fire({
             title: "¿Qué desea hacer?",
-            text: "Este evento tiene un lead asignado",
+            text: "Quieres ir a este evento?",
             icon: "warning",
             showCancelButton: true,
             confirmButtonColor: "#3085d6",
             cancelButtonColor: "#d33",
             confirmButtonText: "Ir al evento",
-            cancelButtonText: "Abrir información del cliente",
+            cancelButtonText: "Cancelar",
          }).then((result) => {
             if (result.isConfirmed) {
-               setSelectedLead(null);
-               navigate(`/events/actions?idCalendar=${lead.id_calendar}&idLead=${lead.idinterno_lead}&idDate=0`);
-            } else if (result.dismiss === Swal.DismissReason.cancel) {
-               setSelectedLead(lead);
-            }
-            setIsModalOpen(false); // Reset modal open state
-         });
-         return false;
-      } else {
-         Swal.fire({
-            title: "No se puede abrir el modal",
-            text: "Este evento no tiene un lead asignado",
-            icon: "error",
-         }).finally(() => {
-            setIsModalOpen(false); // Reset modal open state
-         });
-         return false;
-      }
 
-      return false;
+               navigate(`/events/actions?idCalendar=${lead.id_calendar}&idLead=${lead.idinterno_lead}&idDate=0`);
+            }
+         });
    };
 
    const handleCloseModal = () => {
