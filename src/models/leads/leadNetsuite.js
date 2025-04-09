@@ -151,6 +151,8 @@ leadNetsuite.editarInformacionLead_Netsuite = async ({ formData,    database }) 
     const camposInfoExtraDos = ['custentity77', 'custentity81', 'custentity82', 'custentity83'];
     const infromacion_extra = camposInfoExtraDos.some(campo => formData[campo] === '') ? 0 : formData.informacion_Extra;
 
+    console.log(formData)
+
     const body = {
         tipos: "update_add_lead_id",
         id: formData.id,
