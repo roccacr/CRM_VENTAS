@@ -165,4 +165,40 @@ oportunidad.get_Oportunidades = (dataParams) => {
     return executeQuery(query, params, dataParams.database);
 };
 
+
+oportunidad.updateEstadoOportunidad = (dataParams) => {
+    console.log(dataParams);
+
+    
+    // // SQL query to update the opportunity status based on the provided probability
+    // const query = "UPDATE oportunidades SET estatus_oport = ? WHERE id_oportunidad_oport = ?";  
+
+    // // Parameters for the query, including the new probability and the opportunity ID
+    // const params = [dataParams.estado, dataParams.idOportunidad];
+
+    // // Executes the query with the specified parameters and database
+    // return executeQuery(
+    //     query, // The SQL query to be executed
+    //     params, // Array of parameters for the query
+    //     dataParams.database, // Target database for the query
+    // );
+};
+
+
+oportunidad.actulizarExpediente = (dataParams) => {
+    console.log(dataParams);
+    // // SQL query to update the opportunity status based on the provided probability
+    // const query = "UPDATE oportunidades SET estatus_oport = ? WHERE id_oportunidad_oport = ?";  
+
+    // // Parameters for the query, including the new probability and the opportunity ID
+    // const params = [dataParams.estado, dataParams.idOportunidad];
+
+    // // Executes the query with the specified parameters and database
+    // return executeQuery(
+    //     query, // The SQL query to be executed
+    //     params, // Array of parameters for the query
+    //     dataParams.database, // Target database for the query
+    // );
+};
+
 module.exports = oportunidad; // Exporta el objeto 'oportunidad' que agrupa las funciones relacionadas con ubicaciones.

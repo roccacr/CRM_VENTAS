@@ -193,6 +193,7 @@ module.exports = function (app) {
                 { path: "/oportunidad/updateOpportunity_Probability", method: "updateOpportunity_Probability" }, // Update the probability of success for an opportunity
                 { path: "/oportunidad/updateOpportunity_Status", method: "updateOpportunity_Status" }, // Update the status of an opportunity
                 { path: "/oportunidad/get_Oportunidades", method: "get_Oportunidades" }, // ruta ara traer las oportunidades
+                { path: "/oportunidad/updateEstadoOportunidad", method: "updateEstadoOportunidad" }, // ruta ara traer las oportunidades
             ],
         },
 
