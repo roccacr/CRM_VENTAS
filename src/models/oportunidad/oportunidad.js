@@ -157,7 +157,9 @@ oportunidad.get_Oportunidades = (dataParams) => {
         INNER JOIN admins ON p.employee_oport = admins.idnetsuite_admin
         INNER JOIN compras ON p.custbody76_oport = compras.id_motivo_compra
         INNER JOIN pagos ON p.custbody75_oport = pagos.id_motivo_pago
-        WHERE employee_oport = ${dataParams.idnetsuite_admin} ${estadoFiltro} ${dateFilter} ${dataParams.leadAsignado !== '0' ? `AND entity_oport = ${dataParams.leadAsignado}` : ''}
+        WHERE ${dataParams.leadAsignado !== '0' 
+            ? `entity_oport = ${dataParams.leadAsignado} ${estadoFiltro} ${dateFilter}`
+            : `employee_oport = ${dataParams.idnetsuite_admin} ${estadoFiltro} ${dateFilter}`}
     `;
     console.log("query", query);
 
