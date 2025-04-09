@@ -437,8 +437,10 @@ export const View_events_Actions = () => {
                             // Vuelve a la vista anterior en la navegación.
                             history.go(-1);
                         } else if (result.isDenied) {
+
+                            navigate(`/leads/perfil?data=${leadDetails.idinterno_lead}`);
                             // Redirige a la página de perfil del cliente.
-                            window.location.href = "leads/perfil?data=" + leadDetails.idinterno_lead;
+        
                         } else {
                             // Recarga la página actual.
                             window.location.reload();
