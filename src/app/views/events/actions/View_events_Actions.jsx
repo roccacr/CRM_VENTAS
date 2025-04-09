@@ -37,7 +37,7 @@ const getDefaultDateTime = () => {
 };
 
 // Función auxiliar para generar las opciones de tiempo
-const generateTimeOptions = (eventDetails) => {
+const generateTimeOptions = (eventDetails, calendarId) => {
     const options = [];
     const now = new Date();
     const currentHour = now.getHours();
@@ -46,12 +46,28 @@ const generateTimeOptions = (eventDetails) => {
     // Verificar si la fecha seleccionada es igual a la fecha actual
     const isToday = eventDetails.startDate === now.toISOString().slice(0, 10);
     
+    // Verificar si estamos editando un evento existente
+    const isEditingExistingEvent = calendarId && calendarId > 0;
+    
     // Empezamos desde 7 (7 AM) hasta 20 (8 PM)
     for (let hour = 7; hour <= 20; hour++) {
         for (let minute = 0; minute < 60; minute += 15) {
-            // Si es hoy y la hora es anterior a la actual, saltamos esta opción
+            // Si es hoy y la hora es anterior a la actual, y no estamos editando un evento existente
+            // o si estamos editando pero la hora no coincide con las horas ya seleccionadas
             if (isToday && (hour < currentHour || (hour === currentHour && minute < currentMinute))) {
-                continue;
+                // Si estamos editando un evento existente, verificar si esta hora coincide con las horas ya seleccionadas
+                if (isEditingExistingEvent) {
+                    const time24 = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+                    if (time24 === eventDetails.startTime || time24 === eventDetails.endTime) {
+                        // Si coincide con las horas ya seleccionadas, continuamos con el proceso
+                    } else {
+                        // Si no coincide, saltamos esta opción
+                        continue;
+                    }
+                } else {
+                    // Si no estamos editando, simplemente saltamos las horas pasadas
+                    continue;
+                }
             }
             
             // Convertir a formato 12 horas
@@ -609,7 +625,7 @@ export const View_events_Actions = () => {
                                         }));
                                     }}
                                 >
-                                    {generateTimeOptions(eventDetails).map((timeObj) => (
+                                    {generateTimeOptions(eventDetails, getQueryParam("idCalendar")).map((timeObj) => (
                                         <option key={timeObj.value} value={timeObj.value}>
                                             {timeObj.label}
                                         </option>
@@ -625,7 +641,7 @@ export const View_events_Actions = () => {
                                     value={eventDetails.endTime}
                                     onChange={(e) => setEventDetails({ ...eventDetails, endTime: e.target.value })}
                                 >
-                                    {generateTimeOptions(eventDetails).map((timeObj) => (
+                                    {generateTimeOptions(eventDetails, getQueryParam("idCalendar")).map((timeObj) => (
                                         <option key={timeObj.value} value={timeObj.value}>
                                             {timeObj.label}
                                         </option>
