@@ -167,9 +167,9 @@ oportunidad.get_Oportunidades = (dataParams) => {
 
 
 oportunidad.updateEstadoOportunidad = (dataParams) => {
-    console.log(dataParams);
+    console.log("datos para actulizar estado de oportunidad", dataParams);
 
-    
+
     // // SQL query to update the opportunity status based on the provided probability
     // const query = "UPDATE oportunidades SET estatus_oport = ? WHERE id_oportunidad_oport = ?";  
 
@@ -186,7 +186,7 @@ oportunidad.updateEstadoOportunidad = (dataParams) => {
 
 
 oportunidad.actulizarExpediente = (dataParams) => {
-    console.log(dataParams);
+    console.log("datos para actulizar exoediente", dataParams);
     // // SQL query to update the opportunity status based on the provided probability
     // const query = "UPDATE oportunidades SET estatus_oport = ? WHERE id_oportunidad_oport = ?";  
 
