@@ -24,7 +24,7 @@ const getDefaultDateTime = () => {
     const currentDate = now.toISOString().slice(0, 10);
 
     // Calcula la fecha del día siguiente, añade 24 horas a la fecha actual y convierte a formato ISO.
-    const nextDate =  now.toISOString().slice(0, 10);
+    const nextDate = now.toISOString().slice(0, 10);
 
     // Obtiene la hora actual en formato "HH:MM".
     const currentTime = now.toTimeString().slice(0, 5);
@@ -59,6 +59,17 @@ const generateTimeOptions = () => {
         }
     }
     return options;
+};
+
+// Función para validar si una fecha es anterior a la fecha actual
+const isDateInPast = (dateString) => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // Establece la hora a medianoche para comparar solo fechas
+    
+    const dateToCheck = new Date(dateString);
+    dateToCheck.setHours(0, 0, 0, 0);
+    
+    return dateToCheck < today;
 };
 
 export const View_events_Actions = () => {
@@ -185,6 +196,44 @@ export const View_events_Actions = () => {
         setLeadsOptions(formattedLeads);
     };
 
+    // Función para manejar el cambio de fecha de inicio
+    const handleStartDateChange = (e) => {
+        const newStartDate = e.target.value;
+        
+        // Verificar si la fecha seleccionada es anterior a la fecha actual
+        if (isDateInPast(newStartDate)) {
+            Swal.fire({
+                icon: "error",
+                title: "Fecha no válida",
+                text: "No se pueden seleccionar fechas que ya han pasado.",
+            });
+            return;
+        }
+        
+        setEventDetails((prevDetails) => ({
+            ...prevDetails,
+            startDate: newStartDate,
+            endDate: newStartDate, // Actualiza también la fecha de finalización
+        }));
+    };
+    
+    // Función para manejar el cambio de fecha de finalización
+    const handleEndDateChange = (e) => {
+        const newEndDate = e.target.value;
+        
+        // Verificar si la fecha seleccionada es anterior a la fecha actual
+        if (isDateInPast(newEndDate)) {
+            Swal.fire({
+                icon: "error",
+                title: "Fecha no válida",
+                text: "No se pueden seleccionar fechas que ya han pasado.",
+            });
+            return;
+        }
+        
+        setEventDetails({ ...eventDetails, endDate: newEndDate });
+    };
+
     // Hook useEffect para ejecutar lógica cuando cambia la URL o cuando se monta el componente
     // Este hook maneja la lógica inicial cuando el componente se carga o cuando la búsqueda en la URL cambia (location.search).
     useEffect(() => {
@@ -205,11 +254,21 @@ export const View_events_Actions = () => {
 
         // Si se ha proporcionado un 'idDate' válido, actualiza las fechas de inicio y fin en los detalles del evento.
         if (idDate != 0) {
-            setEventDetails((prevDetails) => ({
-                ...prevDetails,
-                startDate: idDate, // Establece la fecha de inicio con 'idDate'.
-                endDate: idDate, // Establece la fecha de fin con 'idDate'.
-            }));
+            // Verificar si la fecha proporcionada es anterior a la fecha actual
+            if (isDateInPast(idDate)) {
+                // Si es una fecha pasada, usar la fecha actual
+                setEventDetails((prevDetails) => ({
+                    ...prevDetails,
+                    startDate: currentDate,
+                    endDate: currentDate,
+                }));
+            } else {
+                setEventDetails((prevDetails) => ({
+                    ...prevDetails,
+                    startDate: idDate, // Establece la fecha de inicio con 'idDate'.
+                    endDate: idDate, // Establece la fecha de fin con 'idDate'.
+                }));
+            }
         }
 
         // Llama a la función para obtener y formatear los leads al cargar el componente.
@@ -498,20 +557,21 @@ export const View_events_Actions = () => {
                                     className="form-control"
                                     name="startDate"
                                     value={eventDetails.startDate}
-                                    onChange={(e) => {
-                                        const newStartDate = e.target.value;
-                                        setEventDetails((prevDetails) => ({
-                                            ...prevDetails,
-                                            startDate: newStartDate,
-                                            endDate: newStartDate, // Actualiza también la fecha de finalización
-                                        }));
-                                    }}
+                                    min={currentDate}
+                                    onChange={handleStartDateChange}
                                 />
                             </div>
 
                             <div className="mb-3">
                                 <label className="form-label">Fecha de finalización</label>
-                                <input type="date" className="form-control" name="endDate" value={eventDetails.endDate} onChange={(e) => setEventDetails({ ...eventDetails, endDate: e.target.value })} />
+                                <input 
+                                    type="date" 
+                                    className="form-control" 
+                                    name="endDate" 
+                                    value={eventDetails.endDate} 
+                                    min={currentDate}
+                                    onChange={handleEndDateChange} 
+                                />
                             </div>
 
                             <div className="mb-3">
