@@ -90,7 +90,7 @@ oportunidad.updateOpportunity_Status = (dataParams) => {
 // Función para obtener oportunidades basadas en parámetros de filtrado
 oportunidad.get_Oportunidades = (dataParams) => {
 
-    console.log("datos para obtener oportunidades", dataParams);
+
 
     // Determinar filtro adicional basado en BotonesEstados
     const estadoFiltro =
@@ -169,7 +169,7 @@ oportunidad.get_Oportunidades = (dataParams) => {
 
 
 oportunidad.updateEstadoOportunidad = (dataParams) => {
-    console.log("datos para actulizar estado de oportunidad", dataParams);
+    
 
     // SQL query to update the opportunity status based on the provided probabilit      
     const query = "UPDATE oportunidades SET Motico_Condicion = ? WHERE id_oportunidad_oport = ?";  
