@@ -186,7 +186,8 @@ leadNetsuite.editarInformacionLead_Netsuite = async ({ formData,    database }) 
         custentity80: formData.custentityestado_civil_extra,
         custentity81: formData.custentity81,
         custentity82: formData.custentity82,
-        custentity84: formData.custentity84
+        custentity84: formData.custentity84,
+        defaultaddress: formData.defaultaddress
     };
 
     const urlSettings = {
