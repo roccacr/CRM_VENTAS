@@ -155,3 +155,15 @@ export const updateOpportunity_Status = async ({ estado, idOportunidad }) => {
 
 
 
+export const updateEstadoOportunidad_fetch = async ({ formValues, detalleOportunidad }) => {     
+    // Construye el objeto de datos para la solicitud, combinando los datos comunes con los parámetros específicos.
+    const requestData = {
+        ...commonRequestData, // Datos comunes requeridos para cada solicitud (como tokens de autenticación o configuraciones generales).
+        formValues, // Valores del formulario que contienen los detalles de la oportunidad a crear.
+        detalleOportunidad, // Identificador único de la oportunidad a actualizar.
+    };
+
+    // Realiza una solicitud a la API para actualizar el estado de   la oportunidad con los datos proporcionados.
+    // La URL "oportunidad/updateEstadoOportunidad" apunta al endpoint que procesa la actualización del estado de la oportunidad en el servidor.
+    return await fetchData("oportunidad/updateEstadoOportunidad", requestData); // Retorna el resultado de la actualización del estado de la oportunidad.
+};

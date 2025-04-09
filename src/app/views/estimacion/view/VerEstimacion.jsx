@@ -371,6 +371,10 @@ export const VerEstimacion = () => {
     * @throws Will log an error and show an alert if the process fails.
     */
    const EnviarReserva = async () => {
+
+      console.log("datosEstimacion", estimacionData.crm);
+
+      return;
       try {
          // Prompt user for confirmation using SweetAlert
          const result = await Swal.fire({

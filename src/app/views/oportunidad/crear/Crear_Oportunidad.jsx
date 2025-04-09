@@ -4,7 +4,7 @@ import { ButtonActions } from "../../../components/buttonAccions/buttonAccions";
 import { getLeadsComplete, getSpecificLead } from "../../../../store/leads/thunksLeads";
 import { useDispatch } from "react-redux";
 import Swal from "sweetalert2"; // Importa SweetAlert2 para mostrar alertas
-import { crearOportunidad, crearReoporteLead, getfetch_Clases, getfetch_Ubicaciones } from "../../../../store/oportuinidad/thunkOportunidad";
+import { crearOportunidad, crearReoporteLead, getfetch_Clases, getfetch_Ubicaciones, updateEstadoOportunidad } from "../../../../store/oportuinidad/thunkOportunidad";
 import { getFileList } from "../../../../store/expedientes/thunksExpedientes";
 
 /**
@@ -357,12 +357,15 @@ export const Crear_Oportunidad = () => {
                         // Ejecutar acción para crear la oportunidad y obtener el resultado
                         const response = await dispatch(crearOportunidad(formValues, leadDetails));
                         const detalleOportunidad = response.data["Detalle"];
+                        const idOportunidad = detalleOportunidad.id;
+                        
+                        console.log("idOportunidad", idOportunidad);
 
                         // Si la respuesta es exitosa (código 200)
                         if (detalleOportunidad.status === 200) {
                             // Crear el reporte del lead relacionado a la oportunidad
                             await dispatch(crearReoporteLead(leadDetails));
-
+                            await dispatch(updateEstadoOportunidad(formValues, detalleOportunidad));
                             // Mostrar notificación de éxito y redirigir a la página de detalles de la oportunidad
                             Swal.fire({
                                 position: "top-end",
