@@ -179,8 +179,11 @@ export const Crear_Oportunidad = () => {
             // Si no, usa todos los datos.
             const filteredData = filtro > 0 ? (arrayPendiente.includes(filtro) ? data.filter((item) => arrayPendiente.includes(item.idProyectoPrincipal_exp)) : data.filter((item) => item.idProyectoPrincipal_exp === filtro)) : data; // Si el filtro es 0 o menor, usa todos los datos.
 
+            // Filtrar para mostrar solo los expedientes con estado_exp igual a "1. Disponible para Venta"
+            const expedientesDisponibles = filteredData.filter((item) => item.estado_exp === "1. Disponible para Venta");
+            
             // Mapea los datos filtrados para generar opciones adecuadas para los selects.
-            const options = filteredData.map((item) => ({
+            const options = expedientesDisponibles.map((item) => ({
                 value: item.ID_interno_expediente, // ID de la ubicación.
                 label: `${item.codigo_exp} - ${item.estado_exp}   `, // Nombre descriptivo de la ubicación.
             }));
@@ -454,7 +457,7 @@ export const Crear_Oportunidad = () => {
                                 <input value={formValues.subsidiaria} onChange={handleInputChange} name="subsidiaria" type="text" className={`form-control ${errors.subsidiaria ? "is-invalid" : ""}`} disabled />
                             </div>
                             <div className="mb-3">
-                                <label className="form-label">ROYECTO </label>
+                                <label className="form-label">PROYECTO </label>
                                 <input value={formValues.proyecto} onChange={handleInputChange} name="proyecto" type="text" className={`form-control ${errors.proyecto ? "is-invalid" : ""}`} disabled />
                             </div>
                             <div className="mb-3">

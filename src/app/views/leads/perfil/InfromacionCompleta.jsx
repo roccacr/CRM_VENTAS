@@ -1,7 +1,5 @@
 export const InfromacionCompleta = ({ leadDetails }) => {
 
-    console.log(leadDetails);
-
 
     const informacionBasica = [
         { label: "Nombre Completo", value: leadDetails.nombre_lead },
@@ -22,7 +20,7 @@ export const InfromacionCompleta = ({ leadDetails }) => {
         { label: "Hijos", value: leadDetails.Hijos_lead },
         { label: "Teléfono Alternativo", value: leadDetails.TelefonoAlternatovo_lead },
         { label: "Dirección", value: leadDetails.Direccion },
-        { label: "Corredor", value: leadDetails.Corredor_lead },
+        { label: "Corredor", value: leadDetails.nombre_corredor  },
         { label: "Nombre Extra", value: leadDetails.nombre_extra_lead },
         { label: "Cédula Extra", value: leadDetails.cedula_extra_lead },
         { label: "Profesión Extra", value: leadDetails.profesion_extra_lead },
