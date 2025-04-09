@@ -90,8 +90,6 @@ oportunidad.updateOpportunity_Status = (dataParams) => {
 // Función para obtener oportunidades basadas en parámetros de filtrado
 oportunidad.get_Oportunidades = (dataParams) => {
 
-    console.log("datos para obtener oportunidades", dataParams.rol_admin ===2);
-
     // Determinar filtro adicional basado en BotonesEstados
     const estadoFiltro =
         {
