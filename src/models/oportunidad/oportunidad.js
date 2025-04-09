@@ -171,7 +171,7 @@ oportunidad.updateEstadoOportunidad = (dataParams) => {
 
 
     // // SQL query to update the opportunity status based on the provided probability
-    // const query = "UPDATE oportunidades SET estatus_oport = ? WHERE id_oportunidad_oport = ?";  
+    const query = "UPDATE oportunidades SET Motico_Condicion = ? WHERE id_oportunidad_oport = ?";  
 
     // // Parameters for the query, including the new probability and the opportunity ID
     // const params = [dataParams.estado, dataParams.idOportunidad];
