@@ -162,7 +162,7 @@ oportunidad.get_Oportunidades = (dataParams) => {
             : dataParams.rol_admin === 2 
                 ? `employee_oport = ${dataParams.idnetsuite_admin} ${estadoFiltro} ${dateFilter}`
                 : dataParams.rol_admin === 1
-                    ? `${estadoFiltro} ${dateFilter}`
+                    ? `1=1 ${estadoFiltro} ${dateFilter}`
                     : `employee_oport = ${dataParams.idnetsuite_admin} ${estadoFiltro} ${dateFilter}`}
     `;
     console.log("query", query);
