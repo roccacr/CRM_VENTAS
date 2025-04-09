@@ -37,11 +37,23 @@ const getDefaultDateTime = () => {
 };
 
 // Función auxiliar para generar las opciones de tiempo
-const generateTimeOptions = () => {
+const generateTimeOptions = (eventDetails) => {
     const options = [];
+    const now = new Date();
+    const currentHour = now.getHours();
+    const currentMinute = now.getMinutes();
+    
+    // Verificar si la fecha seleccionada es igual a la fecha actual
+    const isToday = eventDetails.startDate === now.toISOString().slice(0, 10);
+    
     // Empezamos desde 7 (7 AM) hasta 20 (8 PM)
     for (let hour = 7; hour <= 20; hour++) {
         for (let minute = 0; minute < 60; minute += 15) {
+            // Si es hoy y la hora es anterior a la actual, saltamos esta opción
+            if (isToday && (hour < currentHour || (hour === currentHour && minute < currentMinute))) {
+                continue;
+            }
+            
             // Convertir a formato 12 horas
             let displayHour = hour % 12;
             displayHour = displayHour === 0 ? 12 : displayHour; // Convertir 0 a 12
@@ -63,13 +75,15 @@ const generateTimeOptions = () => {
 
 // Función para validar si una fecha es anterior a la fecha actual
 const isDateInPast = (dateString) => {
+    // Crear fecha en zona horaria de Costa Rica
     const today = new Date();
-    today.setHours(0, 0, 0, 0); // Establece la hora a medianoche para comparar solo fechas
+    const costaRicaTime = new Date(today.toLocaleString('en-US', { timeZone: 'America/Costa_Rica' }));
+    costaRicaTime.setHours(0, 0, 0, 0); // Establece la hora a medianoche
     
-    const dateToCheck = new Date(dateString);
+    const dateToCheck = new Date(dateString + 'T00:00:00-06:00'); // Ajusta a zona horaria de Costa Rica
     dateToCheck.setHours(0, 0, 0, 0);
     
-    return dateToCheck < today;
+    return dateToCheck < costaRicaTime;
 };
 
 export const View_events_Actions = () => {
@@ -152,8 +166,6 @@ export const View_events_Actions = () => {
     const fetchEventDetails = async (eventId) => {
         // Solicita los detalles específicos del evento y guarda los datos en 'eventData'.
         const eventData = await dispatch(getDataEevent(eventId));
-
-        console.log(eventData)
 
         // Función auxiliar para formatear la hora en el formato HH:MM.
         function formatTime(time) {
@@ -597,7 +609,7 @@ export const View_events_Actions = () => {
                                         }));
                                     }}
                                 >
-                                    {generateTimeOptions().map((timeObj) => (
+                                    {generateTimeOptions(eventDetails).map((timeObj) => (
                                         <option key={timeObj.value} value={timeObj.value}>
                                             {timeObj.label}
                                         </option>
@@ -613,7 +625,7 @@ export const View_events_Actions = () => {
                                     value={eventDetails.endTime}
                                     onChange={(e) => setEventDetails({ ...eventDetails, endTime: e.target.value })}
                                 >
-                                    {generateTimeOptions().map((timeObj) => (
+                                    {generateTimeOptions(eventDetails).map((timeObj) => (
                                         <option key={timeObj.value} value={timeObj.value}>
                                             {timeObj.label}
                                         </option>
