@@ -169,36 +169,42 @@ oportunidad.get_Oportunidades = (dataParams) => {
 oportunidad.updateEstadoOportunidad = (dataParams) => {
     console.log("datos para actulizar estado de oportunidad", dataParams);
 
-
-    // // SQL query to update the opportunity status based on the provided probability
+    // SQL query to update the opportunity status based on the provided probabilit      
     const query = "UPDATE oportunidades SET Motico_Condicion = ? WHERE id_oportunidad_oport = ?";  
 
-    // // Parameters for the query, including the new probability and the opportunity ID
-    // const params = [dataParams.estado, dataParams.idOportunidad];
+    // Parameters for the query, including the new probability and the opportunity ID
+    const params = [dataParams.formValues.motivoCondicion, dataParams.detalleOportunidad.id];
 
-    // // Executes the query with the specified parameters and database
-    // return executeQuery(
-    //     query, // The SQL query to be executed
-    //     params, // Array of parameters for the query
-    //     dataParams.database, // Target database for the query
-    // );
+    // Executes the query with the specified parameters and database
+    const result = executeQuery(
+        query, // The SQL query to be executed
+        params, // Array of parameters for the query
+        dataParams.database, // Target database for the query
+    );
+
+    // Calculate date 3 days before today in Costa Rica timezone
+    const today = new Date();
+    const threeDaysAgo = new Date(today);
+    threeDaysAgo.setDate(today.getDate() - 3);
+    
+    // Format the date as YYYY-MM-DD HH:mm:ss
+    const formattedDate = threeDaysAgo.toISOString().slice(0, 19).replace('T', ' ');
+
+    // SQL query to update the opportunity status based on the provided probability
+    const query2 = "UPDATE expedientes SET estado_exp=?, fecha_mod = ? WHERE ID_interno_expediente = ?";  
+
+    // Parameters for the query, including the new probability and the opportunity ID
+    const params2 = ["0. No Disponible", formattedDate, dataParams.formValues.expediente];
+
+    // Executes the query with the specified parameters and database
+    const result2 = executeQuery(
+        query2, // The SQL query to be executed
+        params2, // Array of parameters for the query
+        dataParams.database, // Target database for the query
+    );
+
+    return result;
 };
 
-
-oportunidad.actulizarExpediente = (dataParams) => {
-    console.log("datos para actulizar exoediente", dataParams);
-    // // SQL query to update the opportunity status based on the provided probability
-    // const query = "UPDATE oportunidades SET estatus_oport = ? WHERE id_oportunidad_oport = ?";  
-
-    // // Parameters for the query, including the new probability and the opportunity ID
-    // const params = [dataParams.estado, dataParams.idOportunidad];
-
-    // // Executes the query with the specified parameters and database
-    // return executeQuery(
-    //     query, // The SQL query to be executed
-    //     params, // Array of parameters for the query
-    //     dataParams.database, // Target database for the query
-    // );
-};
 
 module.exports = oportunidad; // Exporta el objeto 'oportunidad' que agrupa las funciones relacionadas con ubicaciones.
