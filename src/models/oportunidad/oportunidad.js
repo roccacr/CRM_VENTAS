@@ -157,13 +157,13 @@ oportunidad.get_Oportunidades = (dataParams) => {
         INNER JOIN admins ON p.employee_oport = admins.idnetsuite_admin
         INNER JOIN compras ON p.custbody76_oport = compras.id_motivo_compra
         INNER JOIN pagos ON p.custbody75_oport = pagos.id_motivo_pago
-        WHERE ${dataParams.leadAsignado !== '0' 
-            ? `entity_oport = ${dataParams.leadAsignado} ${estadoFiltro} ${dateFilter}`
+         ${dataParams.leadAsignado !== '0' 
+            ? `WHERE entity_oport = ${dataParams.leadAsignado} ${estadoFiltro} ${dateFilter}`
             : dataParams.rol_admin === 2 
-                ? `employee_oport = ${dataParams.idnetsuite_admin} ${estadoFiltro} ${dateFilter}`
+                ? `WHERE employee_oport = ${dataParams.idnetsuite_admin} ${estadoFiltro} ${dateFilter}`
                 : dataParams.rol_admin === 1
-                    ? `1=1 ${estadoFiltro} ${dateFilter}`
-                    : `employee_oport = ${dataParams.idnetsuite_admin} ${estadoFiltro} ${dateFilter}`}
+                    ? `WHERE 1=1 ${estadoFiltro} ${dateFilter}`
+                    : `WHERE employee_oport = ${dataParams.idnetsuite_admin} ${estadoFiltro} ${dateFilter}`}
     `;
     console.log("query", query);
 
