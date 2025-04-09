@@ -90,7 +90,7 @@ oportunidad.updateOpportunity_Status = (dataParams) => {
 // Función para obtener oportunidades basadas en parámetros de filtrado
 oportunidad.get_Oportunidades = (dataParams) => {
 
-    console.log("datos para obtener oportunidades", dataParams);
+    console.log("datos para obtener oportunidades", dataParams.leadAsignado);
 
     // Determinar filtro adicional basado en BotonesEstados
     const estadoFiltro =
@@ -157,7 +157,7 @@ oportunidad.get_Oportunidades = (dataParams) => {
         INNER JOIN admins ON p.employee_oport = admins.idnetsuite_admin
         INNER JOIN compras ON p.custbody76_oport = compras.id_motivo_compra
         INNER JOIN pagos ON p.custbody75_oport = pagos.id_motivo_pago
-        WHERE employee_oport = ${dataParams.idnetsuite_admin} ${estadoFiltro} ${dateFilter}
+        WHERE employee_oport = ${dataParams.idnetsuite_admin} ${estadoFiltro} ${dateFilter} ${dataParams.leadAsignado !== '0' ? `AND entity_oport = ${dataParams.leadAsignado}` : ''}
     `;
 
     // Parámetros para la consulta
