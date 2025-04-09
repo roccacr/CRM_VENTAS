@@ -228,7 +228,7 @@ export const useLeadActions = () => {
       * @param {Object} leadData - Datos del lead.
       */
      const handleOpportunityList = (leadData) => {
-          navigate(`/oportunidad/list?idLead=${leadData?.idinterno_lead}`);
+          navigate(`/oportunidad/lista?oportuinidad=2&idLead=${leadData?.idinterno_lead}`);
      };
 
      /**

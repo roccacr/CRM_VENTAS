@@ -12,8 +12,10 @@ import Swal from "sweetalert2";
  * @param {number} filterOption - Opción de filtro (1: creación, 2: última acción).
  * @returns {[Array, Function]} - El estado de datos y su función actualizadora.
  */
-export const useTableData = (MostrarSwal = true, idLead, startDate, endDate, isMode, BotonesEstados) => {
+export const useTableData = (MostrarSwal = true, idLead, startDate, endDate, isMode, BotonesEstados , leadAsignado) => {
    
+  
+
    const dispatch = useDispatch(); // Hook de Redux para despachar acciones
    const [data, setData] = useState([]); // Estado local para almacenar los datos
    useEffect(() => {
@@ -30,7 +32,7 @@ export const useTableData = (MostrarSwal = true, idLead, startDate, endDate, isM
                });
             }
             // Obtener los datos llamando a la acción Redux
-            const result = await dispatch(getOportunidades(idLead, startDate, endDate, isMode, BotonesEstados));
+            const result = await dispatch(getOportunidades(idLead, startDate, endDate, isMode, BotonesEstados, leadAsignado));
             setData(result);
          } catch (error) {
             console.log("Error al cargar datos:", error);
@@ -41,7 +43,7 @@ export const useTableData = (MostrarSwal = true, idLead, startDate, endDate, isM
          }
       };
       fetchData();
-   }, [dispatch, idLead, startDate, endDate, isMode, BotonesEstados, MostrarSwal]); // Dependencias correctas
+   }, [dispatch, idLead, startDate, endDate, isMode, BotonesEstados, MostrarSwal, leadAsignado]); // Dependencias correctas
 
    return [data, setData];
 };

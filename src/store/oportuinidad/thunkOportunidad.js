@@ -70,9 +70,11 @@ export const crearOportunidad = (formValue, clientData) => {
  * @param {boolean} isMode - Un valor que indica si se debe aplicar algún modo especial en la búsqueda.
  * @returns {function} - Una función asíncrona que retorna los datos de las oportunidades.
  */
-export const getOportunidades = (idLead, startDate, endDate, isMode, BotonesEstados) => {
+export const getOportunidades = (idLead, startDate, endDate, isMode, BotonesEstados, leadAsignado) => {
+  
+    
     return async (dispatch, getState) => {
-        const { idnetsuite_admin } = getState().auth;
+        const { idnetsuite_admin , rol_admin } = getState().auth;
 
         try {
             // Validar las fechas y permitir que se envíen vacías
@@ -87,6 +89,8 @@ export const getOportunidades = (idLead, startDate, endDate, isMode, BotonesEsta
                 isMode,
                 idnetsuite_admin,
                 BotonesEstados,
+                leadAsignado,
+                rol_admin,
             });
 
             // Verificar si hay datos en la respuesta

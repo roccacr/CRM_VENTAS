@@ -193,6 +193,7 @@ const View_oportunidad_listas = () => {
    const location = window.location.search;
    const [searchParams, setSearchParams] = useState(new URLSearchParams(location));
    const oportunidadParam = searchParams.get('oportuinidad');
+   const leadAsignado = searchParams.get('idLead');
    
    // Update searchParams when URL changes
    useEffect(() => {
@@ -214,7 +215,7 @@ const View_oportunidad_listas = () => {
    }, [location]);
 
    // Get table data with forceUpdate dependency
-   const [tableData] = useTableData(true, idOportunidad, inputStartDate, inputEndDate, isMode, botonesEstados);
+   const [tableData] = useTableData(true, idOportunidad, inputStartDate, inputEndDate, isMode, botonesEstados, leadAsignado);
 
    // Filter data based on URL parameter
    const filteredTableData = oportunidadParam === '1' 
