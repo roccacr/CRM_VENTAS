@@ -622,8 +622,8 @@ export const ModalOrdenVenta = ({ open, onClose, idEstimacion }) => {
       // Calcula el porcentaje restante
       const porcentajeRestante = porcentajeInicial - sumaPorcentajes;
 
-      console.log("sumaPorcentajes", sumaPorcentajes);
-      console.log("porcentajeRestante", porcentajeRestante);
+      // console.log("sumaPorcentajes", sumaPorcentajes);
+      // console.log("porcentajeRestante", porcentajeRestante);
 
       // Verifica si la suma de porcentajes excede el 100%
       if (sumaPorcentajes > 100) {
@@ -650,7 +650,7 @@ export const ModalOrdenVenta = ({ open, onClose, idEstimacion }) => {
 
 // Maneja actualizaciones específicas para los montos de hitos
 const actualizarHitoDiferenciadoMonto = (name, value, campoActualizar) => {
-   console.clear();
+   // console.clear();
    setFormValues((prevValues) => {
      // Copia y actualiza el estado con el nuevo valor
      const updatedValues = { ...prevValues, [name]: value };
@@ -674,8 +674,8 @@ const actualizarHitoDiferenciadoMonto = (name, value, campoActualizar) => {
        ...prevValues,
        [campoActualizar]: porcentajeFormateado
      };
-     console.log("porcentajeDecimal:", porcentajeDecimal);
-     console.log("porcentajeFormateado:", porcentajeFormateado);
+   //   console.log("porcentajeDecimal:", porcentajeDecimal);
+   //   console.log("porcentajeFormateado:", porcentajeFormateado);
 
      // Porcentaje inicial (100%)
      const porcentajeInicial = 100;
@@ -700,8 +700,8 @@ const actualizarHitoDiferenciadoMonto = (name, value, campoActualizar) => {
      // Calcula el porcentaje restante
      const porcentajeRestante = porcentajeInicial - sumaPorcentajes;
 
-     console.log("sumaPorcentajes:", sumaPorcentajes);
-     console.log("porcentajeRestante:", porcentajeRestante);
+   //   console.log("sumaPorcentajes:", sumaPorcentajes);
+   //   console.log("porcentajeRestante:", porcentajeRestante);
 
      // Verifica si la suma de porcentajes excede el 100%
      if (sumaPorcentajes > 100) {
@@ -954,8 +954,8 @@ const actualizarHitoDiferenciadoMonto = (name, value, campoActualizar) => {
    const handleSubmit = async (e) => {
       e.preventDefault();
 
-      console.clear();
-      console.log(formValues);
+      // console.clear();
+      // console.log(formValues);
 
       if (validateForm()) {
          const confirmEdit = window.confirm("¿Desea editar la Orden de venta?");
@@ -1060,7 +1060,7 @@ const actualizarHitoDiferenciadoMonto = (name, value, campoActualizar) => {
 
             const estimacionData = await dispatch(obtenerOrdendeventa(idEstimacion));
 
-            console.clear();
+            // console.clear();
 
             const transactionData = estimacionData?.data?.Detalle || {};
 

@@ -597,8 +597,8 @@ export const ModalEstimacionEdit = ({ open, onClose, idEstimacion }) => {
       // Calcula el porcentaje restante
       const porcentajeRestante = porcentajeInicial - sumaPorcentajes;
 
-      console.log("sumaPorcentajes", sumaPorcentajes);
-      console.log("porcentajeRestante", porcentajeRestante);
+      // console.log("sumaPorcentajes", sumaPorcentajes);
+      // console.log("porcentajeRestante", porcentajeRestante);
 
       // Verifica si la suma de porcentajes excede el 100%
       if (sumaPorcentajes > 100) {
@@ -649,8 +649,8 @@ const actualizarHitoDiferenciadoMonto = (name, value, campoActualizar) => {
        ...prevValues,
        [campoActualizar]: porcentajeFormateado
      };
-     console.log("porcentajeDecimal:", porcentajeDecimal);
-     console.log("porcentajeFormateado:", porcentajeFormateado);
+   //   console.log("porcentajeDecimal:", porcentajeDecimal);
+   //   console.log("porcentajeFormateado:", porcentajeFormateado);
 
      // Porcentaje inicial (100%)
      const porcentajeInicial = 100;
@@ -675,8 +675,8 @@ const actualizarHitoDiferenciadoMonto = (name, value, campoActualizar) => {
      // Calcula el porcentaje restante
      const porcentajeRestante = porcentajeInicial - sumaPorcentajes;
 
-     console.log("sumaPorcentajes:", sumaPorcentajes);
-     console.log("porcentajeRestante:", porcentajeRestante);
+   //   console.log("sumaPorcentajes:", sumaPorcentajes);
+   //   console.log("porcentajeRestante:", porcentajeRestante);
 
      // Verifica si la suma de porcentajes excede el 100%
      if (sumaPorcentajes > 100) {

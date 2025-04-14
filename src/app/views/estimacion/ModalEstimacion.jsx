@@ -622,7 +622,7 @@ export const ModalEstimacion = ({ open, onClose, OportunidadDetails, cliente }) 
 
    // Maneja actualizaciones específicas para los montos de hitos
    const actualizarHitoDiferenciadoMonto = (name, value, campoActualizar) => {
-      console.clear();
+      // console.clear();
       setFormValues((prevValues) => {
         // Copia y actualiza el estado con el nuevo valor
         const updatedValues = { ...prevValues, [name]: value };
@@ -903,7 +903,7 @@ export const ModalEstimacion = ({ open, onClose, OportunidadDetails, cliente }) 
          }
       });
 
-      console.log(newErrors);
+      // console.log(newErrors);
 
       // Actualiza los errores en el estado del formulario
       setErrors(newErrors);
