@@ -352,7 +352,15 @@ const useSalesOrderActions = ({ navigate, dispatch, datosOrdenVenta, setIsModalO
             { icon: "ti-eye", text: "PDF OV", action: "verPdf" },
          ],
          secondary: [
-            { icon: "ti-flag-3", text: "ENVIAR RESERVA", action: "EnviarReserva" , disabled: validarOrdenVenta?.reserva_ov=== 1 ? true : false},   
+            { icon: "ti-flag-3", text: "ENVIAR RESERVA", action: "EnviarReserva" , disabled: 
+               validarOrdenVenta?.reserva_ov === 1 
+               || !datosOrdenVenta?.data?.fields?.custbody207 
+               || !datosOrdenVenta?.data?.fields?.custbody189
+               || !datosOrdenVenta?.data?.fields?.custbody208
+               || !datosOrdenVenta?.data?.fields?.custbody190
+               || !datosOrdenVenta?.data?.fields?.custbody188
+
+               ? true : false},   
             { icon: "ti-send", text: "CIERRE FIRMADO", action: "EnviarCierre" },
             { icon: "ti-trending-down", text: "RESERVA CAÍDA", action: "EnviarReservaCaida", disabled: validarOrdenVenta?.caida_ov=== 1 ? true : false},
             { icon: "ti-brand-paypal", text: "APLICAR COMISIÓN", action: "aplicarComision" },   
