@@ -45,7 +45,19 @@ ordenVenta.enlistarOrdenesVenta = async (dataParams) => {
             conditions.push("o.caida_ov = 0", "o.comision_cancelada_ov = 0", "o.status_ov = 1", "o.contrado_frima_ov = 0", "o.pagadas_ov = 0");
             break;
         case "2":
-            conditions.push("o.caida_ov = 0", "o.comision_cancelada_ov = 0", "o.contrado_frima_ov = 1", "o.cierre_firmado_ov = 1", "o.aprobacion_forma_ov = 1", "o.aprobacion__rdr_ov = 1", "o.calculo_comision_asesor_ov = 1", "o.status_ov = 1", "o.pagadas_ov = 0");
+            // conditions.push("o.caida_ov = 0", "o.comision_cancelada_ov = 0", "o.contrado_frima_ov = 1", "o.cierre_firmado_ov = 1", "o.aprobacion_forma_ov = 1", "o.aprobacion__rdr_ov = 1", "o.calculo_comision_asesor_ov = 1", "o.status_ov = 1", "o.pagadas_ov = 0");
+            conditions.push(
+                "o.caida_ov = 0",                     // Exclude fallen orders
+                "o.comision_cancelada_ov = 0",       // Exclude canceled commissions
+                "o.contrado_frima_ov = 1",           // Include signed contracts
+                "o.cierre_firmado_ov = 1",           // Include signed closures
+                "o.aprobacion_forma_ov = 1",         // Include approved forms
+                "o.aprobacion__rdr_ov = 1",          // Include RDR approvals
+                // "o.calculo_comision_asesor_ov = 1", // Include if required (commented in SQL)
+                "o.status_ov = 1",                   // Active orders only
+                "o.pagadas_ov = 0",                  // Unpaid orders only
+                "o.chekJefeVenta = 1"                // Checked by sales manager
+              );
             break;
         case "3":
             conditions.push("o.pagadas_ov = 1");
