@@ -130,6 +130,7 @@ leadNetsuite.createdNewLead_Netsuite = async ({ formData, idnetsuite_admin, data
  * @returns {Promise} Respuesta de la actualización
  */
 leadNetsuite.editarInformacionLead_Netsuite = async ({ formData,    database }) => {
+    
 
     // Procesar nombre completo
     const nombres = formData.firstnames.split(/\s+/).filter(n => n.trim());
@@ -151,7 +152,7 @@ leadNetsuite.editarInformacionLead_Netsuite = async ({ formData,    database }) 
     const camposInfoExtraDos = ['custentity77', 'custentity81', 'custentity82', 'custentity83'];
     const infromacion_extra = camposInfoExtraDos.some(campo => formData[campo] === '') ? 0 : formData.informacion_Extra;
 
-    console.log(formData)
+
 
     const body = {
         tipos: "update_add_lead_id",
@@ -197,6 +198,8 @@ leadNetsuite.editarInformacionLead_Netsuite = async ({ formData,    database }) 
     try {
         const rest = nsrestlet.createLink(accountSettings, urlSettings);
         const response = await rest.put(body);
+
+        console.log("response editarInformacionLead_Netsuite", response);
 
         if(response.status === 200){
             leadNetsuite.eliminar_LeadStatus(formData, database);
