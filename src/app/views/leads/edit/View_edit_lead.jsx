@@ -251,33 +251,31 @@ export const View_edit_lead = () => {
 
          setFormData((prev) => ({
             ...prev,
-            id: leadInfo.idinterno_lead,
-            employee: leadInfo.id_empleado_lead,
-            rango_edad: leadInfo.Edad_lead,
-            ingresos: leadInfo.info_extra_ingresos,
-            motivo_compra: leadInfo.info_extra_MotivoCompra,
-            cantidad_hijos: leadInfo.Hijos_lead,
-            momento_compra: leadInfo.info_extra_MomentodeCompra,
-            lugar_trabajo: leadInfo.info_extra_Trabajo,
-            origen_fondos: leadInfo.info_extra_OrigenFondo,
-            zona_residencia: leadInfo.info_extra_ZonaRecidencia,
-            vatregnumber: leadInfo.cedula_lead,
-            custentity1: leadInfo.Nacionalidad_lead,
-            custentityestado_civil: leadInfo.Estado_ciLead,
-            custentity11: typeof leadInfo.Edad_lead === 'string' && /[+-]/.test(leadInfo.Edad_lead) 
+            id: leadInfo.idinterno_lead === "null" ? "" : leadInfo.idinterno_lead,
+            employee: leadInfo.id_empleado_lead === "null" ? "" : leadInfo.id_empleado_lead,
+            rango_edad: leadInfo.Edad_lead === "null" ? "" : leadInfo.Edad_lead,
+            ingresos: leadInfo.info_extra_ingresos === "null" ? "" : leadInfo.info_extra_ingresos,
+            motivo_compra: leadInfo.info_extra_MotivoCompra === "null" ? "" : leadInfo.info_extra_MotivoCompra,
+            cantidad_hijos: leadInfo.Hijos_lead === "null" ? "" : leadInfo.Hijos_lead,
+            momento_compra: leadInfo.info_extra_MomentodeCompra === "null" ? "" : leadInfo.info_extra_MomentodeCompra,
+            lugar_trabajo: leadInfo.info_extra_Trabajo === "null" ? "" : leadInfo.info_extra_Trabajo,
+            origen_fondos: leadInfo.info_extra_OrigenFondo === "null" ? "" : leadInfo.info_extra_OrigenFondo,
+            zona_residencia: leadInfo.info_extra_ZonaRecidencia === "null" ? "" : leadInfo.info_extra_ZonaRecidencia,
+            vatregnumber: leadInfo.cedula_lead === "null" ? "" : leadInfo.cedula_lead,
+            custentity1: leadInfo.Nacionalidad_lead === "null" ? "" : leadInfo.Nacionalidad_lead,
+            custentityestado_civil: leadInfo.Estado_ciLead === "null" ? "" : leadInfo.Estado_ciLead,
+            custentity11: leadInfo.Edad_lead === "null" ? "" : (typeof leadInfo.Edad_lead === 'string' && /[+-]/.test(leadInfo.Edad_lead) 
                 ? leadInfo.Edad_lead.replace(/[+-]/g, '') 
-                : leadInfo.Edad_lead,
-            custentity_ix_customer_profession: leadInfo.Profesion_lead,
-            defaultaddress: leadInfo.Direccion,
-            custentity77: leadInfo.nombre_extra_lead,
-            custentity81: leadInfo.nacionalidad_extra_lead,
-            custentityestado_civil_extra: leadInfo.estado_civil_extra_lead,
-            custentity82: leadInfo.telefono_extra_lead,
-            custentity78: leadInfo.cedula_extra_lead,
-            custentity84: leadInfo.email_extra_lead,
-            custentity79: leadInfo.profesion_extra_lead,
-
-
+                : leadInfo.Edad_lead),
+            custentity_ix_customer_profession: leadInfo.Profesion_lead === "null" ? "" : leadInfo.Profesion_lead,
+            defaultaddress: leadInfo.Direccion === "null" ? "" : leadInfo.Direccion,
+            custentity77: leadInfo.nombre_extra_lead === "null" ? "" : leadInfo.nombre_extra_lead,
+            custentity81: leadInfo.nacionalidad_extra_lead === "null" ? "" : leadInfo.nacionalidad_extra_lead,
+            custentityestado_civil_extra: leadInfo.estado_civil_extra_lead === "null" ? "" : leadInfo.estado_civil_extra_lead,
+            custentity82: leadInfo.telefono_extra_lead === "null" ? "" : leadInfo.telefono_extra_lead,
+            custentity78: leadInfo.cedula_extra_lead === "null" ? "" : leadInfo.cedula_extra_lead,
+            custentity84: leadInfo.email_extra_lead === "null" ? "" : leadInfo.email_extra_lead,
+            custentity79: leadInfo.profesion_extra_lead === "null" ? "" : leadInfo.profesion_extra_lead,
          }));
 
          // Actualizar los detalles del lead

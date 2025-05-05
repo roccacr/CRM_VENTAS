@@ -169,7 +169,7 @@ export const View_follow_up = () => {
                         {/* Campo para seleccionar el motivo de pérdida */}
                         <div className="g-4 row mb-3">
                             <div className="col-12">
-                                <label className="form-label mb-2">Seleccionar el motivo de pérdida:</label>
+                                <label className="form-label mb-2">Seleccionar el motivo de seguimiento:</label>
                                 <select className={`form-select ${isSelectError ? "is-invalid" : ""}`} value={selectedLossOption} onChange={handleLossOptionChange}>
                                     <option value="" disabled>
                                         Seleccionar
@@ -180,7 +180,7 @@ export const View_follow_up = () => {
                                         </option>
                                     ))}
                                 </select>
-                                {isSelectError && <div className="invalid-feedback">Debe seleccionar un motivo de pérdida.</div>}
+                                {isSelectError && <div className="invalid-feedback">Debe seleccionar un motivo de seguimiento.</div>}
                             </div>
                         </div>
 
