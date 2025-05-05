@@ -270,11 +270,15 @@ leadNetsuite.update_LeadStatus = async (dataParams, database) => {
         const query = buildUpdateQuery(updateFields);
         
         // Ejecutar actualización
-        return await executeQuery(
+        const result = await executeQuery(
             query,
             [dataParams.id],
             database
         );
+
+        console.log("result update_LeadStatus", result);
+
+        return result;
     } catch (error) {
         console.error('Error actualizando estado del lead:', error);
         throw new Error(`Error actualizando lead: ${error.message}`);
@@ -371,7 +375,11 @@ leadNetsuite.update_LeadInformations = async (dataParams, database) => {
         // Construir y ejecutar la consulta
         const query = buildLeadInfoUpdateQuery(allFields);
         
-        return await executeQuery(query, [dataParams.id], database);
+         const result = await executeQuery(query, [dataParams.id], database);
+
+         console.log("result update_LeadInformations", result);
+
+         return result;
     } catch (error) {
         console.error('Error actualizando información del lead:', error);
         throw new Error(`Error actualizando información del lead: ${error.message}`);
@@ -380,9 +388,13 @@ leadNetsuite.update_LeadInformations = async (dataParams, database) => {
 
 leadNetsuite.eliminar_LeadStatus = async (dataParams, database) => {
     try {
-    const query1 = `DELETE FROM info_extra_lead WHERE id_lead_fk = ?`
+       const query1 = `DELETE FROM info_extra_lead WHERE id_lead_fk = ?`
         
-      return  await executeQuery(query1, [dataParams.id], database);  
+        const result = await executeQuery(query1, [dataParams.id], database);  
+
+        console.log("result eliminar_LeadStatus", result);
+
+        return result;
     } catch (error) {
         console.error('Error actualizando información del lead:', error);
         throw new Error(`Error actualizando información del lead: ${error.message}`);
