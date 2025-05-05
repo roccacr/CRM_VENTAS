@@ -199,8 +199,6 @@ leadNetsuite.editarInformacionLead_Netsuite = async ({ formData,    database }) 
         const rest = nsrestlet.createLink(accountSettings, urlSettings);
         const response = await rest.put(body);
 
-        console.log("response editarInformacionLead_Netsuite", response);
-
         if(response.status === 200){
             leadNetsuite.eliminar_LeadStatus(formData, database);
             leadNetsuite.update_LeadStatus(formData, database);
@@ -224,7 +222,7 @@ leadNetsuite.editarInformacionLead_Netsuite = async ({ formData,    database }) 
  */
 const buildLeadUpdateFields = (dataParams) => {
     return {
-        nombre_lead: dataParams.firstnames,
+        nombre_lead: dataParams.firstnames ,
         email_lead: dataParams.emails,
         telefono_lead: dataParams.phones,
         comentario_lead: dataParams.comentario_clientes,
@@ -261,7 +259,6 @@ const buildUpdateQuery = (updateFields) => {
  */
 leadNetsuite.update_LeadStatus = async (dataParams, database) => {
 
-    console.log("dataParams update_LeadStatus", dataParams);
     try {
         // Construir campos a actualizar
         const updateFields = buildLeadUpdateFields(dataParams);
@@ -291,15 +288,15 @@ leadNetsuite.update_LeadStatus = async (dataParams, database) => {
  * @returns {Object} Objeto con los campos básicos
  */
 const buildBasicLeadFields = (dataParams) => ({
-    cedula_lead: dataParams.vatregnumber,
-    Nacionalidad_lead: dataParams.custentity1,
-    Estado_ciLead: dataParams.custentityestado_civil,
-    Edad_lead: dataParams.rango_edad,
-    Profesion_lead: dataParams.custentity_ix_customer_profession,
-    Hijos_lead: dataParams.cantidad_hijos,
-    TelefonoAlternatovo_lead: dataParams.altphone,
-    Direccion: dataParams.defaultaddress,
-    Corredor_lead: dataParams.corredor_lead_edit.value
+    cedula_lead: dataParams.vatregnumber || "--",
+    Nacionalidad_lead: dataParams.custentity1 || "--",
+    Estado_ciLead: dataParams.custentityestado_civil || "--",
+    Edad_lead: dataParams.rango_edad || "--",
+    Profesion_lead: dataParams.custentity_ix_customer_profession || "--",
+    Hijos_lead: dataParams.cantidad_hijos || "--",
+    TelefonoAlternatovo_lead: dataParams.altphone || "--",
+    Direccion: dataParams.defaultaddress || "--",
+    Corredor_lead: dataParams.corredor_lead_edit.value || "--"
 });
 
 /**
@@ -308,13 +305,13 @@ const buildBasicLeadFields = (dataParams) => ({
  * @returns {Object} Objeto con los campos extra
  */
 const buildExtraLeadFields = (dataParams) => ({
-    nombre_extra_lead: dataParams.custentity77,
-    cedula_extra_lead: dataParams.custentity78,
-    profesion_extra_lead: dataParams.custentity79,
-    estado_civil_extra_lead: dataParams.custentityestado_civil,
-    telefono_extra_lead: dataParams.custentity82,
-    nacionalidad_extra_lead: dataParams.custentity81,
-    email_extra_lead: dataParams.custentity84
+    nombre_extra_lead: dataParams.custentity77 || "--",
+    cedula_extra_lead: dataParams.custentity78 || "--",
+    profesion_extra_lead: dataParams.custentity79 || "--",
+    estado_civil_extra_lead: dataParams.custentityestado_civil || "--",
+    telefono_extra_lead: dataParams.custentity82 || "--",
+    nacionalidad_extra_lead: dataParams.custentity81 || "--",
+    email_extra_lead: dataParams.custentity84 || "--"
 });
 
 /**
@@ -323,12 +320,12 @@ const buildExtraLeadFields = (dataParams) => ({
  * @returns {Object} Objeto con la información adicional
  */
 const buildAdditionalInfoFields = (dataParams) => ({
-    info_extra_ingresos: dataParams.ingresos,
-    info_extra_MotivoCompra: dataParams.motivo_compra,
-    info_extra_MomentodeCompra: dataParams.momento_compra,
-    info_extra_Trabajo: dataParams.lugar_trabajo,
-    info_extra_OrigenFondo: dataParams.origen_fondos,
-    info_extra_ZonaRecidencia: dataParams.zona_residencia
+    info_extra_ingresos: dataParams.ingresos || "--",
+    info_extra_MotivoCompra: dataParams.motivo_compra || "--",
+    info_extra_MomentodeCompra: dataParams.momento_compra || "--",
+    info_extra_Trabajo: dataParams.lugar_trabajo || "--",
+    info_extra_OrigenFondo: dataParams.origen_fondos || "--",
+    info_extra_ZonaRecidencia: dataParams.zona_residencia || "--"
 });
 
 /**
@@ -388,11 +385,9 @@ leadNetsuite.update_LeadInformations = async (dataParams, database) => {
 
 leadNetsuite.eliminar_LeadStatus = async (dataParams, database) => {
     try {
-       const query1 = `DELETE FROM info_extra_lead WHERE id_lead_fk = ?`
+        const query1 = `DELETE FROM info_extra_lead WHERE id_lead_fk = ?`
         
         const result = await executeQuery(query1, [dataParams.id], database);  
-
-        console.log("result eliminar_LeadStatus", result);
 
         return result;
     } catch (error) {
