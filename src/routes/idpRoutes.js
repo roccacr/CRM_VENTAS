@@ -234,6 +234,7 @@ module.exports = function (app) {
                 { path: "/ordenVenta/actualizarOrdenVentaBd", method: "actualizarOrdenVentaBd" }, // ACTUALIZAR ORDEN DE VENTA EN LA BASE DE DATOS
                 { path: "/ordenVenta/obtenerOrdenesPorCliente", method: "obtenerOrdenesPorCliente" }, // EXTRAER ORDENES DE VENTA POR CLIENTE
                 { path: "/ordenVenta/enviarCierreFirmando", method: "enviarCierreFirmando" }, // ENVIAR CIERRE FIRMADO
+                { path: "/ordenVenta/modificarCierrreFirmando", method: "modificarCierrreFirmando" }, // ENVIAR CIERRE FIRMADO
 
             ],
         },

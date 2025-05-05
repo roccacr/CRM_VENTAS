@@ -609,17 +609,19 @@ ordenVenta.enviarCierreFirmando = async (dataParams) => {
     // }
 };
 
-ordenVenta.enviarReservaCaida = async (dataParams) => {
+ordenVenta.modificarCierrreFirmando = async (dataParams) => {
+
+    console.log("dataParams modificar cierre firmado", dataParams);
     // Obtener fecha actual en zona horaria de Costa Rica (UTC-6)
-    const today = new Date();
-    const options = { timeZone: "America/Costa_Rica" };
-    const formattedDate = today.toLocaleDateString("en-CA", options); // Formato YYYY-MM-DD
+    // const today = new Date();
+    // const options = { timeZone: "America/Costa_Rica" };
+    // const formattedDate = today.toLocaleDateString("en-CA", options); // Formato YYYY-MM-DD
 
-    const query = `
-        UPDATE ordenventa SET caida_ov=1,envioReservaCaida=? WHERE id_ov_netsuite =?
-    `;
+    // const query = `
+    //     UPDATE ordenventa SET caida_ov=1,envioReservaCaida=? WHERE id_ov_netsuite =?
+    // `;
 
-    return await executeQuery(query, [formattedDate, dataParams.idTransaccion], dataParams.database);
+    // return await executeQuery(query, [formattedDate, dataParams.idTransaccion], dataParams.database);
 };
 
 module.exports = ordenVenta;
