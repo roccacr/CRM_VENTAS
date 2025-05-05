@@ -11,6 +11,8 @@ import {
    bitacoraOrdenDeventa,
    modifcarOrdenVenta,
    enviarCierreFirmando,
+   modificarCierrreFirmandoThinks,
+   bitacoraOrdenDeventaCierre,
 } from "../../../../store/ordenVenta/thunkOrdenVenta";
 import $ from "jquery";
 import "datatables.net";
@@ -237,6 +239,7 @@ const useSalesOrderActions = ({ navigate, dispatch, datosOrdenVenta, setIsModalO
          EnviarCierre: async () => {
 
             const idTrannsaccion = getQueryParam("data2");
+            const idTrannsaccion2 = getQueryParam("data");
 
             const result = await Swal.fire({
                title: "¿Está seguro?",
@@ -251,6 +254,14 @@ const useSalesOrderActions = ({ navigate, dispatch, datosOrdenVenta, setIsModalO
             if (result.isConfirmed) {
                showLoadingIndicator(); // Mostrar indicador de carga
                await dispatch(enviarCierreFirmando(idTrannsaccion));
+               await dispatch(modificarCierrreFirmandoThinks(idTrannsaccion));
+               await dispatch(bitacoraOrdenDeventaCierre(idTrannsaccion2));
+
+               Swal.fire("¡Enviado!", "El cierre firmado ha sido enviado.", "success").then(() => {
+                  setTimeout(() => {
+                     window.location.reload();
+                  }, 2000);
+               });
             }
 
 

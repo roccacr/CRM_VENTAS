@@ -1,5 +1,5 @@
 import { generateLeadBitacora } from "../leads/thunksLeads";
-import { actualizarOrdenVentaBd, editarOrdenVenta, enviarReservaCaidas, enviarReservaNetsuite, extraerOrdenDeventaPorCLiente, insertarOrdenVenta, insertarOrdenVentaBd, obtenerOrdenVenta, updateAplicarComicion } from "./Api_provider_estimacion";
+import { actualizarOrdenVentaBd, editarOrdenVenta, enviarCierreFirmandoApi, enviarReservaCaidas, enviarReservaNetsuite, extraerOrdenDeventaPorCLiente, insertarOrdenVenta, insertarOrdenVentaBd, modificarCierrreFirmando, obtenerOrdenVenta, updateAplicarComicion } from "./Api_provider_estimacion";
 
 
 /**
@@ -211,6 +211,40 @@ export const bitacoraOrdenDeventa = (leadId) => {
     };
 };
 
+
+export const bitacoraOrdenDeventaCierre = (leadId) => {
+    return async (dispatch, getState) => {
+        // Extrae el ID del administrador desde el estado de autenticación
+        const { idnetsuite_admin } = getState().auth;
+
+        // Define la descripción del evento, en este caso es la nota proporcionada
+        const descripcionEvento = "Se envio el cierre firmado a Netsuite";
+
+        const valueStatus = "05-LEAD-CONTRATO";
+
+        // Valores adicionales que serán enviados al generar la bitácora del lead
+        const additionalValues = {
+            valorDeCaida: 55, // Valor estándar para caídas (causa de la nota)
+            tipo: "Se Envio el cierre firmado a Netsuite", // Tipo de evento
+            estado_lead: 1, // Estado del lead (1: activo, por ejemplo)
+            accion_lead: 6, // Acción específica relacionada con la nota (6: nota creada)
+            seguimiento_calendar: 0, // Indica que no requiere seguimiento en calendario
+            valor_segimineto_lead: 3, // Valor de seguimiento del lead (3: seguimiento intermedio)
+        };
+
+      
+        try {
+            // Despacha la acción para generar la bitácora del lead con los valores adicionales
+            await dispatch(generateLeadBitacora(idnetsuite_admin, leadId, additionalValues, descripcionEvento, valueStatus));
+            // Retorna "ok" si todo salió correctamente
+            return "ok";
+        } catch (error) {
+            // Manejo de errores: captura y muestra en consola cualquier problema al generar el evento
+            console.error("Error al crear el evento para el lead:", error);
+        }
+    };
+};
+
 export const modifcarOrdenVenta = (idTransaccion, fecha_prereserva) => {
     return async () => {
         try {
@@ -247,10 +281,34 @@ export const obtenerOrndesPorcliente = (idTransaccion) => {
 
 
 export const enviarCierreFirmando = (idTransaccion) => {
+
+    console.log("idTransaccion cierre firmado", idTransaccion);
     return async () => {
         try {
             // Llama a la API para enviar la reserva caída utilizando el id de la transacción proporcionado.
             const resultado = await enviarCierreFirmandoApi({ idTransaccion });
+
+            // Retorna los datos de la respuesta de la API, o un array vacío si no hay datos válidos.
+            return resultado || [];
+        } catch (error) {
+            // Captura y registra cualquier error ocurrido durante la solicitud.
+            console.error("Error al enviar el cierre firmando:", error);
+
+            // Retorna un array vacío en caso de error para manejar el fallo de manera segura.
+            return [];
+        }
+    };
+};
+
+
+
+
+export const modificarCierrreFirmandoThinks = (idTransaccion) => {
+
+    return async () => {
+        try {
+            // Llama a la API para enviar la reserva caída utilizando el id de la transacción proporcionado.
+            const resultado = await modificarCierrreFirmando({ idTransaccion });
 
             // Retorna los datos de la respuesta de la API, o un array vacío si no hay datos válidos.
             return resultado || [];

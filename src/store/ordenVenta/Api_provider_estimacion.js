@@ -165,3 +165,11 @@ export const enviarCierreFirmandoApi = async ({ idTransaccion }) => {
 
     return await fetchData("ordenVenta/enviarCierreFirmando", requestData); // Retorna la respuesta de la API para la solicitud realizada.
 }
+
+export const modificarCierrreFirmando = async ({ idTransaccion }) => {
+    const requestData = {
+        ...commonRequestData, // Incluye datos comunes como headers y token de autenticación.
+        idTransaccion, // ID de la transacción a enviar.
+    };
+    return await fetchData("ordenVenta/modificarCierrreFirmando", requestData); // Retorna la respuesta de la API para la solicitud realizada.
+}

@@ -14,10 +14,8 @@ const Attached = () => {
    const { microsoftUser } = useSelector((state) => state.auth);
    const location = useLocation();
 
-   console.log(location);
 
    const searchParams = new URLSearchParams(location.search);
-   console.log(searchParams);
    let dataValue = null;
 
    // Determinar el ID de la carpeta según el pathname
@@ -40,12 +38,12 @@ const Attached = () => {
 
 
 
-   console.log('dataValue final:', dataValue);
+
 
    const recordFolderId = getFolderIdByPathname(location.pathname);
 
 
-   console.log('recordFolderId:', recordFolderId);
+
    
    const recordId = dataValue || 0; // Fallback a 0 solo si no se encontró ningún valor
 
