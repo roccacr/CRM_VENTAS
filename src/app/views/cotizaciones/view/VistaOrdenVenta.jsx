@@ -10,6 +10,7 @@ import {
    obtenerOrdendeventa,
    bitacoraOrdenDeventa,
    modifcarOrdenVenta,
+   enviarCierreFirmando,
 } from "../../../../store/ordenVenta/thunkOrdenVenta";
 import $ from "jquery";
 import "datatables.net";
@@ -233,7 +234,29 @@ const useSalesOrderActions = ({ navigate, dispatch, datosOrdenVenta, setIsModalO
                Swal.close();
             }, 2000);
          },
-         EnviarCierre: () => {},
+         EnviarCierre: async () => {
+
+            const idTrannsaccion = getQueryParam("data2");
+
+            const result = await Swal.fire({
+               title: "¿Está seguro?",
+               text: "¿Desea enviar el correo de CIERRE FIRMADO?",
+               icon: "warning",
+               showCancelButton: true,
+               confirmButtonColor: "#3085d6",
+               cancelButtonColor: "#d33",
+               confirmButtonText: "Sí, enviar",
+            });
+
+            if (result.isConfirmed) {
+               showLoadingIndicator(); // Mostrar indicador de carga
+               await dispatch(enviarCierreFirmando(idTrannsaccion));
+            }
+
+
+
+
+         },
          EnviarReservaCaida: async () => {
             // Obtener el expediente y el id de la transacción
             const exp_correo = datosOrdenVenta?.Expediente;

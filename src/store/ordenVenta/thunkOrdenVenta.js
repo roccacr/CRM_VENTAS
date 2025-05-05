@@ -244,3 +244,22 @@ export const obtenerOrndesPorcliente = (idTransaccion) => {
     };
 }
 
+
+
+export const enviarCierreFirmando = (idTransaccion) => {
+    return async () => {
+        try {
+            // Llama a la API para enviar la reserva caída utilizando el id de la transacción proporcionado.
+            const resultado = await enviarCierreFirmandoApi({ idTransaccion });
+
+            // Retorna los datos de la respuesta de la API, o un array vacío si no hay datos válidos.
+            return resultado || [];
+        } catch (error) {
+            // Captura y registra cualquier error ocurrido durante la solicitud.
+            console.error("Error al enviar el cierre firmando:", error);
+
+            // Retorna un array vacío en caso de error para manejar el fallo de manera segura.
+            return [];
+        }
+    };
+};

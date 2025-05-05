@@ -5,7 +5,6 @@ import "datatables.net-bs5";
 import "datatables.net-searchpanes-bs5";
 import "datatables.net-select-bs5";
 import "../../../FiltrosTabla/style.css";
-import { getDefaultDates } from "../../../FiltrosTabla/dataTableConfig";
 import { useSelector } from "react-redux";
 import { apiUrlImg, commonRequestData } from "../../../../../api";
 import { TABLE_COLUMNS } from "./tableColumns";
@@ -252,6 +251,13 @@ const useDataTable = (
          }
       };
    }, [tableRef, inputStartDate, inputEndDate, filterOption, idnetsuite_admin, rol_admin, setSelectedLead, setShowModal]);
+};
+
+export const getDefaultDates = () => {
+   const now = new Date();
+   const firstDay = `${now.getFullYear()}-01-01`; // January 1st
+   const lastDay = `${now.getFullYear()}-12-31`; // December 31st
+   return { firstDay, lastDay };
 };
 
 /**
