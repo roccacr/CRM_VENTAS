@@ -372,9 +372,7 @@ export const VerEstimacion = () => {
     */
    const EnviarReserva = async () => {
 
-      console.log("datosEstimacion", estimacionData.crm);
-
-      return;
+    
       try {
          // Prompt user for confirmation using SweetAlert
          const result = await Swal.fire({
