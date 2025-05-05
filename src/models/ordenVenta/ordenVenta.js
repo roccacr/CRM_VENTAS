@@ -586,4 +586,40 @@ ordenVenta.validarOrdenVenta = async (id, database) => {
     return await executeQuery(query, [id], database);  
 };
 
+
+ordenVenta.enviarCierreFirmando = async (dataParams) => {  
+
+    console.log("dataParams cierre firmado", dataParams);
+    // const urlSettings = {
+    //     url: 'https://4552704.restlets.api.netsuite.com/app/site/hosting/restlet.nl?script=1774&deploy=1',
+    // };
+    // try {
+    //     const rest = nsrestlet.createLink(accountSettings, urlSettings);
+
+    //     const body = await rest.post({ rType: "cierre_firmado", id: dataParams.idTransaccion });
+
+    //     return {
+    //         msg: "cierre_firmado",
+    //         Detalle: body,
+    //         status: 200,
+    //     };
+    // } catch (error) {
+    //     console.error("Error al enviar la reserva a Netsuite:", error);
+    //     throw error;
+    // }
+};
+
+ordenVenta.enviarReservaCaida = async (dataParams) => {
+    // Obtener fecha actual en zona horaria de Costa Rica (UTC-6)
+    const today = new Date();
+    const options = { timeZone: "America/Costa_Rica" };
+    const formattedDate = today.toLocaleDateString("en-CA", options); // Formato YYYY-MM-DD
+
+    const query = `
+        UPDATE ordenventa SET caida_ov=1,envioReservaCaida=? WHERE id_ov_netsuite =?
+    `;
+
+    return await executeQuery(query, [formattedDate, dataParams.idTransaccion], dataParams.database);
+};
+
 module.exports = ordenVenta;
