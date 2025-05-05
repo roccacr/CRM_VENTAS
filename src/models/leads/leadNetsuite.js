@@ -260,6 +260,8 @@ const buildUpdateQuery = (updateFields) => {
  * @throws {Error} Si hay un error en la actualización
  */
 leadNetsuite.update_LeadStatus = async (dataParams, database) => {
+
+    console.log("dataParams update_LeadStatus", dataParams);
     try {
         // Construir campos a actualizar
         const updateFields = buildLeadUpdateFields(dataParams);
@@ -378,8 +380,6 @@ leadNetsuite.update_LeadInformations = async (dataParams, database) => {
 
 leadNetsuite.eliminar_LeadStatus = async (dataParams, database) => {
     try {
-
-
     const query1 = `DELETE FROM info_extra_lead WHERE id_lead_fk = ?`
         
       return  await executeQuery(query1, [dataParams.id], database);  
