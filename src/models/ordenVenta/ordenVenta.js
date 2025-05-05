@@ -589,39 +589,33 @@ ordenVenta.validarOrdenVenta = async (id, database) => {
 
 ordenVenta.enviarCierreFirmando = async (dataParams) => {  
 
-    console.log("dataParams cierre firmado", dataParams);
-    // const urlSettings = {
-    //     url: 'https://4552704.restlets.api.netsuite.com/app/site/hosting/restlet.nl?script=1774&deploy=1',
-    // };
-    // try {
-    //     const rest = nsrestlet.createLink(accountSettings, urlSettings);
+    const urlSettings = {
+        url: 'https://4552704.restlets.api.netsuite.com/app/site/hosting/restlet.nl?script=1774&deploy=1',
+    };
+    try {
+        const rest = nsrestlet.createLink(accountSettings, urlSettings);
 
-    //     const body = await rest.post({ rType: "cierre_firmado", id: dataParams.idTransaccion });
+        const body = await rest.post({ rType: "cierre_firmado", id: dataParams.idTransaccion });
 
-    //     return {
-    //         msg: "cierre_firmado",
-    //         Detalle: body,
-    //         status: 200,
-    //     };
-    // } catch (error) {
-    //     console.error("Error al enviar la reserva a Netsuite:", error);
-    //     throw error;
-    // }
+        return {
+            msg: "cierre_firmado",
+            Detalle: body,
+            status: 200,
+        };
+    } catch (error) {
+        console.error("Error al enviar la reserva a Netsuite:", error);
+        throw error;
+    }
 };
 
 ordenVenta.modificarCierrreFirmando = async (dataParams) => {
 
-    console.log("dataParams modificar cierre firmado", dataParams);
-    // Obtener fecha actual en zona horaria de Costa Rica (UTC-6)
-    // const today = new Date();
-    // const options = { timeZone: "America/Costa_Rica" };
-    // const formattedDate = today.toLocaleDateString("en-CA", options); // Formato YYYY-MM-DD
 
-    // const query = `
-    //     UPDATE ordenventa SET caida_ov=1,envioReservaCaida=? WHERE id_ov_netsuite =?
-    // `;
+    const query = `
+        UPDATE ordenventa SET cierre_firmado_ov=1 WHERE id_ov_netsuite =?
+    `;
 
-    // return await executeQuery(query, [formattedDate, dataParams.idTransaccion], dataParams.database);
+    return await executeQuery(query, [formattedDate, dataParams.idTransaccion], dataParams.database);
 };
 
 module.exports = ordenVenta;
