@@ -589,23 +589,23 @@ ordenVenta.validarOrdenVenta = async (id, database) => {
 
 ordenVenta.enviarCierreFirmando = async (dataParams) => {  
 
-    // const urlSettings = {
-    //     url: 'https://4552704.restlets.api.netsuite.com/app/site/hosting/restlet.nl?script=1774&deploy=1',
-    // };
-    // try {
-    //     const rest = nsrestlet.createLink(accountSettings, urlSettings);
+    const urlSettings = {
+        url: 'https://4552704.restlets.api.netsuite.com/app/site/hosting/restlet.nl?script=1774&deploy=1',
+    };
+    try {
+        const rest = nsrestlet.createLink(accountSettings, urlSettings);
 
-    //     const body = await rest.post({ rType: "cierre_firmado", id: dataParams.idTransaccion });
+        const body = await rest.put({ rType: "cierre_firmado", id: dataParams.idTransaccion });
 
-    //     return {
-    //         msg: "cierre_firmado",
-    //         Detalle: body,
-    //         status: 200,
-    //     };
-    // } catch (error) {
-    //     console.error("Error al enviar la reserva a Netsuite:", error);
-    //     throw error;
-    // }
+        return {
+            msg: "cierre_firmado",
+            Detalle: body,
+            status: 200,
+        };
+    } catch (error) {
+        console.error("Error al enviar la reserva a Netsuite:", error);
+        throw error;
+    }
 };
 
 ordenVenta.modificarCierrreFirmando = async (dataParams) => {
