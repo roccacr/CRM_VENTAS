@@ -609,13 +609,17 @@ ordenVenta.enviarCierreFirmando = async (dataParams) => {
 };
 
 ordenVenta.modificarCierrreFirmando = async (dataParams) => {
-
-
     const query = `
         UPDATE ordenventa SET cierre_firmado_ov=1 WHERE id_ov_netsuite =?
     `;
 
-    return await executeQuery(query, [formattedDate, dataParams.idTransaccion], dataParams.database);
+    const result = await executeQuery(query, [dataParams.idTransaccion], dataParams.database);
+
+    return {
+        msg: "cierre_firmado",
+        Detalle: result,
+        status: 200,
+    }
 };
 
 module.exports = ordenVenta;
