@@ -49,6 +49,7 @@ export const View_calendars = () => {
     const [currentView, setCurrentView] = useState(window.innerWidth < 768 ? "listWeek" : "dayGridMonth");
     const [isLoading, setIsLoading] = useState(true);
     const [isLoadingOutlook, setIsLoadingOutlook] = useState(false);
+    const [showAllYear, setShowAllYear] = useState(false);
     const { instance, accounts } = useMsal();
     const [accessToken, setAccessToken] = useState("");
     const [outlookError, setOutlookError] = useState(null);
@@ -195,7 +196,10 @@ export const View_calendars = () => {
                 // Primero cargar los eventos del calendario principal
                 const result = await dispatch(get_Calendar());
                 const transformedEvents = transformEvents(result);
-                setEvents(transformedEvents);
+                
+                // Filtrar los eventos que no son de Outlook
+                const nonOutlookEvents = transformedEvents.filter(event => event.category !== 'categoria6');
+                setEvents(nonOutlookEvents);
                 setIsLoading(false);
 
                 // Luego intentar cargar los eventos de Outlook si hay token
@@ -203,10 +207,20 @@ export const View_calendars = () => {
                     setIsLoadingOutlook(true);
                     const startDate = new Date().toISOString();
                     const endDate = new Date();
-                    endDate.setFullYear(endDate.getFullYear() + 1);
+                    
+                    if (showAllYear) {
+                        // Si showAllYear está activo, mostrar todo el año actual
+                        endDate.setMonth(11); // Diciembre
+                        endDate.setDate(31); // Último día de diciembre
+                    } else {
+                        // Si no está activo, mostrar hasta diciembre del año actual
+                        endDate.setMonth(11); // Diciembre
+                        endDate.setDate(31); // Último día de diciembre
+                    }
+                    
                     const endDateISO = endDate.toISOString();
 
-                    const url = `https://graph.microsoft.com/v1.0/me/calendarview?startDateTime=${startDate}&endDateTime=${endDateISO}&$orderby=start/dateTime&$top=100`;
+                    const url = `https://graph.microsoft.com/v1.0/me/calendarview?startDateTime=${startDate}&endDateTime=${endDateISO}&$orderby=start/dateTime&$top=7000`;
 
                     const response = await fetch(url, {
                         method: 'GET',
@@ -244,7 +258,8 @@ export const View_calendars = () => {
                             webLink: event.webLink,
                         }));
 
-                        setEvents(prevEvents => [...prevEvents, ...outlookEvents]);
+                        // Combinar los eventos no-Outlook con los nuevos eventos de Outlook
+                        setEvents([...nonOutlookEvents, ...outlookEvents]);
                         setOutlookError(null);
                     }
                 }
@@ -256,7 +271,7 @@ export const View_calendars = () => {
         };
 
         fetchEvents();
-    }, [accessToken, dispatch]);
+    }, [accessToken, dispatch, showAllYear]);
 
     const handleFilterChange = (selected) => {
         setSelectedFilters(selected || []);
@@ -443,6 +458,22 @@ export const View_calendars = () => {
                                 <button className="btn btn-dark" onClick={() => CreatedEvents()}>
                                     Crear evento
                                 </button>
+                                <div className="form-check mt-3">
+                                    <input
+                                        className="form-check-input"
+                                        type="checkbox"
+                                        id="showAllYearCheck"
+                                        checked={showAllYear}
+                                        onChange={(e) => {
+                                            setShowAllYear(e.target.checked);
+                                            setIsLoading(true);
+                                            setIsLoadingOutlook(true);
+                                        }}
+                                    />
+                                    <label className="form-check-label" htmlFor="showAllYearCheck">
+                                        Mostrar todos los eventos del año de Outlook
+                                    </label>
+                                </div>
                             </div>
                         </div>
                     </div>

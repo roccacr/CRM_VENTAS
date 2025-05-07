@@ -53,9 +53,9 @@ export const createEventForLead = (nombreEvento, tipoEvento, descripcionEvento, 
 
         // Definición de colores por tipo de evento
         const eventColors = {
-            Llamada: "#556ee6",
-            Whatsapp: "#556ee6",
-            Correo: "#556ee6",
+            Llamada: "#808080",
+            Whatsapp: "#808080",
+            Correo: "#808080",
             Tarea: "#343a40",
             Reunion: "#34c38f",
             Seguimientos: "#f46a6a",
@@ -198,9 +198,9 @@ export const editeEventForLead = (
         // Mapa de colores asignados según el tipo de evento.
         // Estos colores se usan para diferenciar visualmente los tipos de eventos en la interfaz.
         const eventColors = {
-            Llamada: "#556ee6",     // Azul para Llamada, Whatsapp, Correo
-            Whatsapp: "#556ee6",
-            Correo: "#556ee6",
+            Llamada: "#808080",     // Azul para Llamada, Whatsapp, Correo
+            Whatsapp: "#808080",
+            Correo: "#808080",
             Tarea: "#343a40",       // Gris oscuro para Tareas
             Reunion: "#34c38f",     // Verde para Reuniones
             Seguimientos: "#f46a6a",// Rojo para Seguimientos
