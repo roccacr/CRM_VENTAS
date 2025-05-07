@@ -48,6 +48,7 @@ export const View_calendars = () => {
     const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
     const [currentView, setCurrentView] = useState(window.innerWidth < 768 ? "listWeek" : "dayGridMonth");
     const [isLoading, setIsLoading] = useState(true);
+    const [isLoadingOutlook, setIsLoadingOutlook] = useState(false);
     const { instance, accounts } = useMsal();
     const [accessToken, setAccessToken] = useState("");
     const [outlookError, setOutlookError] = useState(null);
@@ -171,6 +172,7 @@ export const View_calendars = () => {
 
                 // Luego intentar cargar los eventos de Outlook si hay token
                 if (accessToken) {
+                    setIsLoadingOutlook(true);
                     const startDate = new Date().toISOString();
                     const endDate = new Date();
                     endDate.setFullYear(endDate.getFullYear() + 1);
@@ -202,7 +204,7 @@ export const View_calendars = () => {
                             end_two: event.end.dateTime,
                             timeUno: event.start.dateTime.split('T')[1],
                             timeDos: event.end.dateTime.split('T')[1],
-                            descs: event.bodyPreview || 'Sin descripción', // Usamos bodyPreview como descripción
+                            descs: event.bodyPreview || 'Sin descripción',
                             lead: 'No aplica',
                             cita: false,
                             category: 'categoria6',
@@ -210,7 +212,7 @@ export const View_calendars = () => {
                             className: "evento-especial",
                             eventColor: '#808080',
                             nombre_lead: 'No aplica',
-                            practicante: event.attendees?.map(a => a.emailAddress.name).join(', ') || 'No hay participantes' // Usamos los asistentes como practicantes
+                            practicante: event.attendees?.map(a => a.emailAddress.name).join(', ') || 'No hay participantes'
                         }));
 
                         setEvents(prevEvents => [...prevEvents, ...outlookEvents]);
@@ -219,6 +221,8 @@ export const View_calendars = () => {
                 }
             } catch (err) {
                 setOutlookError(`Error al obtener eventos de Outlook: ${err.message}`);
+            } finally {
+                setIsLoadingOutlook(false);
             }
         };
 
@@ -300,7 +304,21 @@ export const View_calendars = () => {
             <div className="card-header table-card-header">
                 <h5>CALENDARIO</h5>
             </div>
-            {outlookError && (
+            {isLoadingOutlook && (
+                <div className="alert alert-info" role="alert" style={{ margin: '10px' }}>
+                    <div className="d-flex align-items-center">
+                        <div className="spinner-border spinner-border-sm me-2" role="status">
+                            <span className="visually-hidden">Cargando...</span>
+                        </div>
+                        <div>
+                            <strong>Estamos cargando los eventos de Outlook...</strong>
+                            <br />
+                            <small>Por favor espere un momento mientras sincronizamos su calendario.</small>
+                        </div>
+                    </div>
+                </div>
+            )}
+            {outlookError && !isLoadingOutlook && (
                 <div className="alert alert-danger" role="alert" style={{ margin: '10px' }}>
                     <strong>⚠️ Error de Outlook:</strong> {outlookError}
                     <br />
@@ -310,6 +328,7 @@ export const View_calendars = () => {
                         className="btn btn-sm btn-primary mt-2" 
                         onClick={() => {
                             if (accounts && accounts.length > 0) {
+                                setIsLoadingOutlook(true);
                                 instance.acquireTokenPopup({
                                     scopes: ['Calendars.Read'],
                                     account: accounts[0],
@@ -318,6 +337,8 @@ export const View_calendars = () => {
                                     setOutlookError(null);
                                 }).catch(err => {
                                     setOutlookError('No se pudo obtener el token con permisos de calendario.');
+                                }).finally(() => {
+                                    setIsLoadingOutlook(false);
                                 });
                             }
                         }}
