@@ -481,7 +481,7 @@ export const View_calendars = () => {
                                         <strong>Evento:</strong> ${info.event.title} <br>
                                         <strong>Descripción:</strong> ${info.event.extendedProps.descs}<br>
                                         ${info.event.extendedProps.nombre_lead !== 'No aplica' ? `<strong>Cliente:</strong> ${info.event.extendedProps.nombre_lead}` : ''}
-                                        ${info.event.extendedProps.practicante ? `<br><strong>Practicante:</strong> ${info.event.extendedProps.practicante}` : ''}
+                                        ${info.event.extendedProps.practicante ? `<br><strong>Participantes:</strong> ${info.event.extendedProps.practicante}` : ''}
                                     `;
                                     tooltip.style.position = "absolute";
                                     tooltip.style.backgroundColor = "white";
