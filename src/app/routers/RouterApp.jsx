@@ -39,6 +39,7 @@ export const RouterApp = () => {
 
           {/* buscador */}
           <Route path="/buscador/*" element={<BuscadorPage />} />
+          <Route path="/outlook/*"  element={<Page_calendars />} />
       </Routes>
   );
 }

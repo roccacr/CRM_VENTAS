@@ -456,6 +456,7 @@ export const useMicrosoftAuth = () => {
          // Crear el objeto con los datos del usuario
          const userData = await createUserData(account, response.accessToken, response);
 
+         
          // Obtener la imagen de perfil del usuario
          const profilePicture = await getUserProfilePicture(response.accessToken);
          userData.user.imageUsuario = profilePicture; // Asignar la imagen al objeto de usuario
@@ -471,6 +472,9 @@ export const useMicrosoftAuth = () => {
                verificacionUsuario({ status: "EnProceso", Mensaje: `Hola ${resultadoValidacion?.data?.data?.userData?.name_admin || ""}` }),
             );
 
+
+      
+
             const userDataMicrosoft = {
               id_admin: resultadoValidacion?.data?.data?.userData?.id_admin,
               idnetsuite_admin: resultadoValidacion?.data?.data?.userData?.idnetsuite_admin,
@@ -485,6 +489,7 @@ export const useMicrosoftAuth = () => {
                   idToken: userData.token,
                   authorityType: userData.authorityType ? userData.authorityType : "MSSTS",
                   profilePicture: userData.user.profilePicture,
+                  new:userData
                },
             };
 

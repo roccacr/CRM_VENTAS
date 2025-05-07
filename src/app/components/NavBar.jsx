@@ -173,6 +173,7 @@ const MenuItems = ({ openMenu, toggleMenu }) => (
          ]}
       />
       <MenuItem to="/orden/lista?data=4" icon="ti ti-vocabulary" text="Cotizaciones" />
+      <MenuItem to="/outlook" icon="ti ti-calendar" text="Calendario Outlook" />
    </ul>
 );
 
