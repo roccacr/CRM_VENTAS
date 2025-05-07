@@ -57,7 +57,7 @@ export const View_calendars = () => {
     useEffect(() => {
         const getAccessToken = async () => {
             if (!accounts || accounts.length === 0) {
-                setOutlookError('Usuario no autenticado.');
+                setOutlookError('Usuario no autenticado. Verificar si se inició sesión en Microsoft 365.');
                 return;
             }
 
