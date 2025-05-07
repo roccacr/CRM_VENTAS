@@ -240,7 +240,8 @@ export const View_calendars = () => {
                             className: "evento-especial",
                             eventColor: '#808080',
                             nombre_lead: 'No aplica',
-                            practicante: event.attendees?.map(a => a.emailAddress.name).join(', ') || 'No hay participantes'
+                            practicante: event.attendees?.map(a => a.emailAddress.name).join(', ') || 'No hay participantes',
+                            webLink: event.webLink,
                         }));
 
                         setEvents(prevEvents => [...prevEvents, ...outlookEvents]);
@@ -286,13 +287,10 @@ export const View_calendars = () => {
 
         // Si es un evento de Outlook, mostrar alerta en lugar de navegar
         if (eventDetails.category === 'categoria6') {
-            alert(`
-                Título: ${info.event.title}
-                Inicio: ${info.event.start.toLocaleString()}
-                Fin: ${info.event.end.toLocaleString()}
-                ${info.event.extendedProps.descs ? `\nParticipantes: ${info.event.extendedProps.descs}` : ''}
-                ${info.event.extendedProps.name_admin ? `\nOrganizador: ${info.event.extendedProps.name_admin}` : ''}
-            `);
+            if (eventDetails.webLink) {
+                window.open(eventDetails.webLink, '_blank', 'noopener,noreferrer');
+            }
+            return;
         } else {
             // Redirigir a la página de edición del evento
             navigate(`/events/actions?idCalendar=${eventDetails._id}&idLead=${eventDetails.lead}&idDate=0`);
@@ -509,9 +507,9 @@ export const View_calendars = () => {
                                     }
                                 });
                             }}
-                            eventClick={handleEventClick}
-                            editable={true}
-                            eventDrop={handleEventDrop}
+                            eventClick={handleEventClick} // Llama la función al hacer clic en un evento
+                            editable={true} // Habilitar edición (mover eventos)
+                            eventDrop={handleEventDrop} // Llama la función al mover un evento
                             style={{ width: "100%" }}
                             eventContent={renderEventContent}
                             height={1000}
