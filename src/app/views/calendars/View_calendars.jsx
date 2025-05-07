@@ -10,10 +10,6 @@ import { get_Calendar, moveEvenOtherDate } from "../../../store/calendar/thunksc
 import { useDispatch } from "react-redux";
 import { useNavigate } from "react-router-dom";
 
-import { useSelector } from 'react-redux';
-import { useMsal } from '@azure/msal-react';
-
-
 const filterOptions = [
     { value: "categoria1", label: "Contactos" },
     { value: "categoria2", label: "Tareas" },
@@ -48,13 +44,6 @@ export const View_calendars = () => {
     const [currentView, setCurrentView] = useState(window.innerWidth < 768 ? "listWeek" : "dayGridMonth");
     const [isLoading, setIsLoading] = useState(true);
 
-
-    const { microsoftUser } = useSelector((state) => state.auth);
-    const [accessToken, setAccessToken] = useState("");
-    const [error, setError] = useState(null);
-    const { instance, accounts } = useMsal();
-
-
     const transformEvents = (apiData) => {
         return apiData.map((item) => {
             return {
@@ -83,93 +72,12 @@ export const View_calendars = () => {
         try {
             const result = await dispatch(get_Calendar());
             const transformedEvents = transformEvents(result);
-            const resultOutlook = await getAccessToken(accounts);
             setEvents(transformedEvents);
         } catch (error) {
             console.error("Error al cargar los eventos", error);
         }
         setIsLoading(false);
     };
-
-
-
-    const getAccessToken = async (accounts) => {
-        if (!accounts || accounts.length === 0) {
-          setError('Usuario no autenticado.');
-          return;
-        }
-  
-        try {
-          const response = await instance.acquireTokenSilent({
-            scopes: ['Calendars.Read'],
-            account: accounts[0],
-          });
-          setAccessToken(response.accessToken);
-          setError(null);
-        } catch (err) {
-          if (err instanceof InteractionRequiredAuthError) {
-            try {
-              const response = await instance.acquireTokenPopup({
-                scopes: ['Calendars.Read'],
-                account: accounts[0],
-              });
-              setAccessToken(response.accessToken);
-              setError(null);
-            } catch (popupErr) {
-              setError('Se requiere permiso para acceder al calendario.');
-            }
-          } else {
-            setError('No se pudo obtener el token con permisos de calendario.');
-          }
-        }
-      };
-
-
-      const fetchEvents = async () => {
-        setLoading(true);
-        try {
-          const startDate = new Date().toISOString();
-          const endDate = new Date();
-          endDate.setFullYear(endDate.getFullYear() + 1);
-          const endDateISO = endDate.toISOString();
-  
-          const url = `https://graph.microsoft.com/v1.0/me/calendarview?startDateTime=${startDate}&endDateTime=${endDateISO}&$orderby=start/dateTime&$top=100`;
-  
-          const response = await fetch(url, {
-            method: 'GET',
-            headers: {
-              'Authorization': `Bearer ${accessToken}`,
-              'Content-Type': 'application/json',
-              'Prefer': 'outlook.timezone=\"America/Costa_Rica\"',
-            },
-          });
-  
-          if (!response.ok) {
-            throw new Error(`Error HTTP ${response.status}`);
-          }
-  
-          const data = await response.json();
-          if (data && data.value) {
-            // Transform events to FullCalendar format
-            const formattedEvents = data.value.map(event => ({
-              id: event.id,
-              title: event.subject,
-              start: event.start.dateTime,
-              end: event.end.dateTime,
-              description: event.bodyPreview,
-              location: event.location?.displayName,
-              organizer: event.organizer?.emailAddress.name,
-              attendees: event.attendees?.map(a => a.emailAddress.name)
-            }));
-            setEvents(formattedEvents);
-            setError(null);
-          }
-        } catch (err) {
-          setError(`Error al obtener eventos: ${err.message}`);
-        } finally {
-          setLoading(false);
-        }
-      };
 
     useEffect(() => {
         fetchData();

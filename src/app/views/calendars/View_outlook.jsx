@@ -16,6 +16,8 @@ const View_outlook = () => {
   const { instance, accounts } = useMsal();
   const [loading, setLoading] = useState(false);
 
+  
+
   useEffect(() => {
     const getAccessToken = async () => {
       if (!accounts || accounts.length === 0) {
