@@ -24,7 +24,7 @@ const filterOptions = [
 const getColor = (category) => {
     switch (category) {
         case "categoria1":
-            return "#556ee6";
+            return "#808080";
         case "categoria2":
             return "#343a40";
         case "categoria3":
@@ -34,7 +34,7 @@ const getColor = (category) => {
         case "categoria5":
             return "#f1b44c";
         case "categoria6":
-            return "#808080"; // Gray color for Outlook events
+            return "#556ee6"; // Gray color for Outlook events
         default:
             return "#000000";
     }
@@ -238,7 +238,7 @@ export const View_calendars = () => {
                             category: 'categoria6',
                             name_admin: event.organizer?.emailAddress.name || 'No especificado',
                             className: "evento-especial",
-                            eventColor: '#808080',
+                            eventColor: '#556ee6',
                             nombre_lead: 'No aplica',
                             practicante: event.attendees?.map(a => a.emailAddress.name).join(', ') || 'No hay participantes',
                             webLink: event.webLink,
