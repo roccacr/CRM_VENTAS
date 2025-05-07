@@ -114,67 +114,67 @@ export const View_calendars = () => {
 
     // Obtener eventos de Outlook
     useEffect(() => {
-        if (!accessToken) return;
-
-        const fetchOutlookEvents = async () => {
+        const fetchEvents = async () => {
             try {
-                const startDate = new Date().toISOString();
-                const endDate = new Date();
-                endDate.setFullYear(endDate.getFullYear() + 1);
-                const endDateISO = endDate.toISOString();
+                // Primero cargar los eventos del calendario principal
+                const result = await dispatch(get_Calendar());
+                const transformedEvents = transformEvents(result);
+                setEvents(transformedEvents);
+                setIsLoading(false);
 
-                const url = `https://graph.microsoft.com/v1.0/me/calendarview?startDateTime=${startDate}&endDateTime=${endDateISO}&$orderby=start/dateTime&$top=100`;
+                // Luego intentar cargar los eventos de Outlook si hay token
+                if (accessToken) {
+                    const startDate = new Date().toISOString();
+                    const endDate = new Date();
+                    endDate.setFullYear(endDate.getFullYear() + 1);
+                    const endDateISO = endDate.toISOString();
 
-                const response = await fetch(url, {
-                    method: 'GET',
-                    headers: {
-                        'Authorization': `Bearer ${accessToken}`,
-                        'Content-Type': 'application/json',
-                        'Prefer': 'outlook.timezone=\"America/Costa_Rica\"',
-                    },
-                });
+                    const url = `https://graph.microsoft.com/v1.0/me/calendarview?startDateTime=${startDate}&endDateTime=${endDateISO}&$orderby=start/dateTime&$top=100`;
 
-                if (!response.ok) {
-                    throw new Error(`Error HTTP ${response.status}`);
-                }
+                    const response = await fetch(url, {
+                        method: 'GET',
+                        headers: {
+                            'Authorization': `Bearer ${accessToken}`,
+                            'Content-Type': 'application/json',
+                            'Prefer': 'outlook.timezone=\"America/Costa_Rica\"',
+                        },
+                    });
 
-                const data = await response.json();
-                if (data && data.value) {
-                    const outlookEvents = data.value.map(event => ({
-                        _id: event.id,
-                        title: event.subject,
-                        start: event.start.dateTime,
-                        end: event.end.dateTime,
-                        start_one: event.start.dateTime,
-                        end_two: event.end.dateTime,
-                        timeUno: event.start.dateTime.split('T')[1],
-                        timeDos: event.end.dateTime.split('T')[1],
-                        descs: event.attendees?.map(a => a.emailAddress.name).join(', ') || 'No hay participantes',
-                        lead: 'No aplica',
-                        cita: false,
-                        category: 'categoria6',
-                        name_admin: event.organizer?.emailAddress.name || 'No especificado',
-                        className: "evento-especial",
-                        eventColor: '#808080',
-                        nombre_lead: 'No aplica'
-                    }));
+                    if (!response.ok) {
+                        throw new Error(`Error HTTP ${response.status}`);
+                    }
 
-                    // Obtener eventos del calendario principal
-                    const result = await dispatch(get_Calendar());
-                    const transformedEvents = transformEvents(result);
+                    const data = await response.json();
+                    if (data && data.value) {
+                        const outlookEvents = data.value.map(event => ({
+                            _id: event.id,
+                            title: event.subject,
+                            start: event.start.dateTime,
+                            end: event.end.dateTime,
+                            start_one: event.start.dateTime,
+                            end_two: event.end.dateTime,
+                            timeUno: event.start.dateTime.split('T')[1],
+                            timeDos: event.end.dateTime.split('T')[1],
+                            descs: event.attendees?.map(a => a.emailAddress.name).join(', ') || 'No hay participantes',
+                            lead: 'No aplica',
+                            cita: false,
+                            category: 'categoria6',
+                            name_admin: event.organizer?.emailAddress.name || 'No especificado',
+                            className: "evento-especial",
+                            eventColor: '#808080',
+                            nombre_lead: 'No aplica'
+                        }));
 
-                    // Combinar ambos conjuntos de eventos
-                    setEvents([...transformedEvents, ...outlookEvents]);
-                    setOutlookError(null);
+                        setEvents(prevEvents => [...prevEvents, ...outlookEvents]);
+                        setOutlookError(null);
+                    }
                 }
             } catch (err) {
                 setOutlookError(`Error al obtener eventos de Outlook: ${err.message}`);
-            } finally {
-                setIsLoading(false);
             }
         };
 
-        fetchOutlookEvents();
+        fetchEvents();
     }, [accessToken, dispatch]);
 
     const handleFilterChange = (selected) => {
@@ -253,8 +253,10 @@ export const View_calendars = () => {
                 <h5>CALENDARIO</h5>
             </div>
             {outlookError && (
-                <div className="alert alert-warning" role="alert">
-                    <strong>Error de Outlook:</strong> {outlookError}
+                <div className="alert alert-danger" role="alert" style={{ margin: '10px' }}>
+                    <strong>⚠️ Error de Outlook:</strong> {outlookError}
+                    <br />
+                    <small>Para ver los eventos de Outlook, por favor inicie sesión con su cuenta de Microsoft.</small>
                 </div>
             )}
             <div className="row">
