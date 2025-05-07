@@ -80,13 +80,59 @@ export const View_calendars = () => {
                         setOutlookError('Se requiere permiso para acceder al calendario.');
                     }
                 } else {
-                    setOutlookError('No se pudo obtener el token con permisos de calendario.');
+                    // Si hay un error, intentamos obtener un nuevo token
+                    try {
+                        const response = await instance.acquireTokenPopup({
+                            scopes: ['Calendars.Read'],
+                            account: accounts[0],
+                        });
+                        setAccessToken(response.accessToken);
+                        setOutlookError(null);
+                    } catch (retryErr) {
+                        setOutlookError('No se pudo obtener el token con permisos de calendario.');
+                    }
                 }
             }
         };
 
         getAccessToken();
     }, [instance, accounts]);
+
+    // Agregar un efecto para reintentar la obtención del token cuando el componente se monte
+    useEffect(() => {
+        const checkAndRefreshToken = async () => {
+            if (accounts && accounts.length > 0 && !accessToken) {
+                try {
+                    const response = await instance.acquireTokenSilent({
+                        scopes: ['Calendars.Read'],
+                        account: accounts[0],
+                    });
+                    setAccessToken(response.accessToken);
+                    setOutlookError(null);
+                } catch (err) {
+                    // Si falla el token silencioso, intentamos con popup
+                    try {
+                        const response = await instance.acquireTokenPopup({
+                            scopes: ['Calendars.Read'],
+                            account: accounts[0],
+                        });
+                        setAccessToken(response.accessToken);
+                        setOutlookError(null);
+                    } catch (popupErr) {
+                        setOutlookError('No se pudo obtener el token con permisos de calendario.');
+                    }
+                }
+            }
+        };
+
+        // Verificar el token cada 5 minutos
+        const intervalId = setInterval(checkAndRefreshToken, 5 * 60 * 1000);
+        
+        // Verificar inmediatamente al montar el componente
+        checkAndRefreshToken();
+
+        return () => clearInterval(intervalId);
+    }, [instance, accounts, accessToken]);
 
     const transformEvents = (apiData) => {
         console.log(apiData);
@@ -108,6 +154,7 @@ export const View_calendars = () => {
                 className: "evento-especial",
                 eventColor: item.color_calendar,
                 nombre_lead: item.nombre_lead,
+                practicante: '' // Agregamos campo practicante vacío para eventos normales
             };
         });
     };
@@ -155,14 +202,15 @@ export const View_calendars = () => {
                             end_two: event.end.dateTime,
                             timeUno: event.start.dateTime.split('T')[1],
                             timeDos: event.end.dateTime.split('T')[1],
-                            descs: event.attendees?.map(a => a.emailAddress.name).join(', ') || 'No hay participantes',
+                            descs: event.bodyPreview || 'Sin descripción', // Usamos bodyPreview como descripción
                             lead: 'No aplica',
                             cita: false,
                             category: 'categoria6',
                             name_admin: event.organizer?.emailAddress.name || 'No especificado',
                             className: "evento-especial",
                             eventColor: '#808080',
-                            nombre_lead: 'No aplica'
+                            nombre_lead: 'No aplica',
+                            practicante: event.attendees?.map(a => a.emailAddress.name).join(', ') || 'No hay participantes' // Usamos los asistentes como practicantes
                         }));
 
                         setEvents(prevEvents => [...prevEvents, ...outlookEvents]);
@@ -257,6 +305,25 @@ export const View_calendars = () => {
                     <strong>⚠️ Error de Outlook:</strong> {outlookError}
                     <br />
                     <small>Para ver los eventos de Outlook, por favor inicie sesión con su cuenta de Microsoft.</small>
+                    <br />
+                    <button 
+                        className="btn btn-sm btn-primary mt-2" 
+                        onClick={() => {
+                            if (accounts && accounts.length > 0) {
+                                instance.acquireTokenPopup({
+                                    scopes: ['Calendars.Read'],
+                                    account: accounts[0],
+                                }).then(response => {
+                                    setAccessToken(response.accessToken);
+                                    setOutlookError(null);
+                                }).catch(err => {
+                                    setOutlookError('No se pudo obtener el token con permisos de calendario.');
+                                });
+                            }
+                        }}
+                    >
+                        Reintentar conexión
+                    </button>
                 </div>
             )}
             <div className="row">
@@ -357,6 +424,7 @@ export const View_calendars = () => {
                                         <strong>Evento:</strong> ${info.event.title} <br>
                                         <strong>Descripción:</strong> ${info.event.extendedProps.descs}<br>
                                         ${info.event.extendedProps.nombre_lead !== 'No aplica' ? `<strong>Cliente:</strong> ${info.event.extendedProps.nombre_lead}` : ''}
+                                        ${info.event.extendedProps.practicante ? `<br><strong>Practicante:</strong> ${info.event.extendedProps.practicante}` : ''}
                                     `;
                                     tooltip.style.position = "absolute";
                                     tooltip.style.backgroundColor = "white";
