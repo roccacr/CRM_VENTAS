@@ -202,7 +202,7 @@ const View_events_listado  = () => {
    return (
       <div className="card" style={{ width: "100%" }}>
          <div className="card-header table-card-header">
-            <h5>LISTA COMPLETA DE LEADS QUE REQUIEREN ATENCIÓN</h5>
+            <h5>LISTA COMPLETA DE EVENTOS QUE REQUIEREN ATENCIÓN</h5> 
          </div>
          <FilterOptions
             inputStartDate={inputStartDate}
