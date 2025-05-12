@@ -335,8 +335,6 @@ export const updateStatusEvent = (id, NewStatus, idinterno_lead, valueStatus, es
 
 
 export const getAllListEvent = (dateStart, dateEnd) => {
-
-
     return async (dispatch, getState) => {
         // Extrae idnetsuite_admin y rol_admin del estado de autenticación en Redux.
         const { idnetsuite_admin, rol_admin } = getState().auth;
@@ -345,9 +343,11 @@ export const getAllListEvent = (dateStart, dateEnd) => {
             // Llama a la API para obtener los calendarios nuevos, basados en el rol y el ID del administrador.
             const result = await getAll_ListEvent({ idnetsuite_admin, rol_admin, dateStart, dateEnd });
 
+            // Filtra los eventos donde accion_calendar es "Pendiente"
+            const filteredEvents = result.data["0"].filter(event => event.accion_calendar === "Pendiente");
 
-            // Retorna el primer conjunto de datos de la respuesta para su uso posterior.
-            return result.data["0"];
+            // Retorna los eventos filtrados
+            return filteredEvents;
         } catch (error) {
             // En caso de error, registra el mensaje en la consola.
             console.error("Error al cargar los nuevos calendarios:", error);

@@ -87,7 +87,6 @@ const View_events_listado  = () => {
    // Use table data hook at the top level
    const [tableData] = useTableData(true, inputStartDate, inputEndDate);
 
-   console.log("tableData", tableData);
    
    // Filtrar los datos según el parámetro URL y la fecha actual
    const filteredTableData = React.useMemo(() => {
@@ -109,8 +108,12 @@ const View_events_listado  = () => {
       
 
       let filtered = tableData;
-      
-      if (dataParam === '1') {
+
+      if (dataParam === '1' || dataParam === 1) {
+         
+
+   
+
          // console.log("dataParam", dataParam);
          //filtered = filtered.filter(item => item.cita_lead === 1);
 
@@ -202,7 +205,7 @@ const View_events_listado  = () => {
    return (
       <div className="card" style={{ width: "100%" }}>
          <div className="card-header table-card-header">
-            <h5>LISTA COMPLETA DE LEADS QUE REQUIEREN ATENCIÓN</h5>
+            <h5>LISTA COMPLETA DE EVENTOS QUE REQUIEREN ATENCIÓN</h5> 
          </div>
          <FilterOptions
             inputStartDate={inputStartDate}
