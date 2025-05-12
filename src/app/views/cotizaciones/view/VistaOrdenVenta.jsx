@@ -810,7 +810,7 @@ export const VistaOrdenVenta = () => {
                   approvals={[
                      { label: "Aprobación Jefe de Ventas", checked: datosOrdenVenta?.data?.fields?.custbody_aprueba_jefe_ventas === "T" },
                      { label: "APROBACION FORMALIZACIÓN", checked: datosOrdenVenta?.data?.fields?.custbodyid_firma_rc === "T" },
-                     { label: "APROBACION RDR", checked: datosOrdenVenta?.data?.fields?.custbodyid_firma_rc === "T" },
+                     { label: "APROBACION RDR", checked: datosOrdenVenta?.data?.fields?.custbodyid_firma_rocca === "T" },
                      { label: "CÁLCULO COMISIÓN ASESOR(AUTO)", checked: datosOrdenVenta?.data?.fields?.custbody74 === "T" },
                      { label: "CALCULO COMISIÓN CORREDOR(AUTO)", checked: datosOrdenVenta?.data?.fields?.custbody73 === "T" },
                   ]}
