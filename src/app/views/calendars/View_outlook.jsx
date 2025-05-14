@@ -16,6 +16,8 @@ const View_outlook = () => {
   const { instance, accounts } = useMsal();
   const [loading, setLoading] = useState(false);
 
+  
+
   useEffect(() => {
     const getAccessToken = async () => {
       if (!accounts || accounts.length === 0) {
@@ -79,24 +81,16 @@ const View_outlook = () => {
 
         const data = await response.json();
         if (data && data.value) {
-          // Transform events to match the main calendar structure
+          // Transform events to FullCalendar format
           const formattedEvents = data.value.map(event => ({
-            _id: event.id,
+            id: event.id,
             title: event.subject,
             start: event.start.dateTime,
             end: event.end.dateTime,
-            start_one: event.start.dateTime,
-            end_two: event.end.dateTime,
-            timeUno: event.start.dateTime.split('T')[1],
-            timeDos: event.end.dateTime.split('T')[1],
-            descs: event.attendees?.map(a => a.emailAddress.name).join(', ') || 'No hay participantes',
-            lead: 'No aplica',
-            cita: false,
-            category: 'categoria6', // Outlook category
-            name_admin: event.organizer?.emailAddress.name || 'No especificado',
-            className: "evento-especial",
-            eventColor: '#808080', // Gray color for Outlook events
-            nombre_lead: 'No aplica'
+            description: event.bodyPreview,
+            location: event.location?.displayName,
+            organizer: event.organizer?.emailAddress.name,
+            attendees: event.attendees?.map(a => a.emailAddress.name)
           }));
           setEvents(formattedEvents);
           setError(null);
@@ -140,8 +134,9 @@ const View_outlook = () => {
                 Título: ${info.event.title}
                 Inicio: ${info.event.start.toLocaleString()}
                 Fin: ${info.event.end.toLocaleString()}
-                ${info.event.extendedProps.descs ? `\nParticipantes: ${info.event.extendedProps.descs}` : ''}
-                ${info.event.extendedProps.name_admin ? `\nOrganizador: ${info.event.extendedProps.name_admin}` : ''}
+                ${info.event.extendedProps.description ? `\nDescripción: ${info.event.extendedProps.description}` : ''}
+                ${info.event.extendedProps.location ? `\nUbicación: ${info.event.extendedProps.location}` : ''}
+                ${info.event.extendedProps.organizer ? `\nOrganizador: ${info.event.extendedProps.organizer}` : ''}
               `);
             }}
             height="100%"

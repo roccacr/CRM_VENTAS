@@ -14,6 +14,13 @@ import { getAllListEvent } from "../../../../store/calendar/thunkscalendar";
  * @returns {[Array, Function]} - El estado de datos y su función actualizadora.
  */
 export const useTableData = (MostrarSwal = true, dateStart, dateEnd) => {
+
+
+   console.log("dateStart", dateStart);
+   console.log("dateEnd", dateEnd);
+
+
+
    const dispatch = useDispatch(); // Hook de Redux para despachar acciones
    const [data, setData] = useState([]); // Estado local para almacenar los datos
    useEffect(() => {
@@ -29,8 +36,12 @@ export const useTableData = (MostrarSwal = true, dateStart, dateEnd) => {
                   },
                });
             }
+
+
+
             // Obtener los datos llamando a la acción Redux
             const result = await dispatch(getAllListEvent(dateStart, dateEnd));
+
             setData(result);
          } catch (error) {
             console.error("Error al cargar datos:", error);
