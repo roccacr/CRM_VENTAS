@@ -11,40 +11,67 @@ import ArrowDownwardIcon from "@mui/icons-material/ArrowDownward";
 import Select from "react-select"; // Librería react-select para dropdown con búsqueda
 import Swal from "sweetalert2";
 
+// Función para validar si una fecha es anterior a la fecha actual
+const isDateInPast = (dateString) => {
+    // Crear fecha en zona horaria de Costa Rica
+    const now = new Date();
+    const costaRicaTime = new Date(now.toLocaleString('en-US', { timeZone: 'America/Costa_Rica' }));
+    
+    // Establecer la hora a medianoche en la zona horaria de Costa Rica
+    const today = new Date(costaRicaTime.getFullYear(), costaRicaTime.getMonth(), costaRicaTime.getDate());
+    
+    // Convertir la fecha a verificar a la zona horaria de Costa Rica
+    const [year, month, day] = dateString.split('-').map(Number);
+    const dateToCheck = new Date(year, month - 1, day);
+    
+    // Comparar solo las fechas (sin tener en cuenta la hora)
+    return dateToCheck < today;
+};
+
 // Función para obtener las fechas y horas actuales por defecto
-// Esta función devuelve un objeto con las siguientes propiedades:
-// - currentDate: La fecha actual en formato "YYYY-MM-DD".
-// - nextDate: La fecha del día siguiente en formato "YYYY-MM-DD".
-// - currentTime: La hora actual en formato "HH:MM".
-// - nextTime: La hora una hora después de la hora actual en formato "HH:MM".
 const getDefaultDateTime = () => {
-    const now = new Date(); // Obtiene la fecha y hora actuales.
+    // Crear fecha en zona horaria de Costa Rica
+    const now = new Date();
+    const costaRicaTime = new Date(now.toLocaleString('en-US', { timeZone: 'America/Costa_Rica' }));
 
-    // Convierte la fecha actual a formato ISO y toma solo la parte de la fecha (YYYY-MM-DD).
-    const currentDate = now.toISOString().slice(0, 10);
+    // Obtener la fecha actual en formato YYYY-MM-DD
+    const currentDate = costaRicaTime.toLocaleDateString('en-CA'); // Formato YYYY-MM-DD
 
-    // Calcula la fecha del día siguiente, añade 24 horas a la fecha actual y convierte a formato ISO.
-    const nextDate = now.toISOString().slice(0, 10);
+    // Obtener la hora actual en formato HH:MM
+    const currentTime = costaRicaTime.toLocaleTimeString('en-US', {
+        hour12: false,
+        hour: '2-digit',
+        minute: '2-digit',
+        timeZone: 'America/Costa_Rica'
+    });
 
-    // Obtiene la hora actual en formato "HH:MM".
-    const currentTime = now.toTimeString().slice(0, 5);
+    // Calcular la hora siguiente
+    const nextTime = new Date(costaRicaTime.getTime() + 60 * 60 * 1000).toLocaleTimeString('en-US', {
+        hour12: false,
+        hour: '2-digit',
+        minute: '2-digit',
+        timeZone: 'America/Costa_Rica'
+    });
 
-    // Calcula la hora una hora después de la actual, añade 60 minutos y obtiene el formato "HH:MM".
-    const nextTime = new Date(now.getTime() + 60 * 60 * 1000).toTimeString().slice(0, 5);
-
-    // Retorna un objeto con la fecha y hora actuales y la fecha y hora siguientes.
-    return { currentDate, nextDate, currentTime, nextTime };
+    return { 
+        currentDate, 
+        nextDate: currentDate, 
+        currentTime, 
+        nextTime 
+    };
 };
 
 // Función auxiliar para generar las opciones de tiempo
 const generateTimeOptions = (eventDetails, calendarId) => {
     const options = [];
+    // Obtener hora actual en zona horaria de Costa Rica
     const now = new Date();
-    const currentHour = now.getHours();
-    const currentMinute = now.getMinutes();
+    const costaRicaTime = new Date(now.toLocaleString('en-US', { timeZone: 'America/Costa_Rica' }));
+    const currentHour = costaRicaTime.getHours();
+    const currentMinute = costaRicaTime.getMinutes();
     
-    // Verificar si la fecha seleccionada es igual a la fecha actual
-    const isToday = eventDetails.startDate === now.toISOString().slice(0, 10);
+    // Verificar si la fecha seleccionada es igual a la fecha actual en zona horaria de Costa Rica
+    const isToday = eventDetails.startDate === costaRicaTime.toLocaleDateString('en-CA');
     
     // Verificar si estamos editando un evento existente
     const isEditingExistingEvent = calendarId && calendarId > 0;
@@ -53,7 +80,6 @@ const generateTimeOptions = (eventDetails, calendarId) => {
     for (let hour = 7; hour <= 20; hour++) {
         for (let minute = 0; minute < 60; minute += 15) {
             // Si es hoy y la hora es anterior a la actual, y no estamos editando un evento existente
-            // o si estamos editando pero la hora no coincide con las horas ya seleccionadas
             if (isToday && (hour < currentHour || (hour === currentHour && minute < currentMinute))) {
                 // Si estamos editando un evento existente, verificar si esta hora coincide con las horas ya seleccionadas
                 if (isEditingExistingEvent) {
@@ -87,19 +113,6 @@ const generateTimeOptions = (eventDetails, calendarId) => {
         }
     }
     return options;
-};
-
-// Función para validar si una fecha es anterior a la fecha actual
-const isDateInPast = (dateString) => {
-    // Crear fecha en zona horaria de Costa Rica
-    const today = new Date();
-    const costaRicaTime = new Date(today.toLocaleString('en-US', { timeZone: 'America/Costa_Rica' }));
-    costaRicaTime.setHours(0, 0, 0, 0); // Establece la hora a medianoche
-    
-    const dateToCheck = new Date(dateString + 'T00:00:00-06:00'); // Ajusta a zona horaria de Costa Rica
-    dateToCheck.setHours(0, 0, 0, 0);
-    
-    return dateToCheck < costaRicaTime;
 };
 
 export const View_events_Actions = () => {
