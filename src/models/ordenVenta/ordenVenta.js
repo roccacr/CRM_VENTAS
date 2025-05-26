@@ -195,7 +195,6 @@ ordenVenta.insertarOrdenVentaBd = async (dataParams) => {
 
 ordenVenta.editarOrdenVenta = async (dataParams) => {
     console.clear();
-    console.log("dataParams", dataParams);
 
     function transformarFecha(fecha, campo) {
         // Validar si la fecha es vacía o no válida
@@ -263,7 +262,7 @@ ordenVenta.editarOrdenVenta = async (dataParams) => {
             //ID de la orden de venta
             id: formulario.idEst,
             //ID de campo: custbody114
-            custbody114: formulario?.custbody114 || 0,
+            custbody114:  transformarFecha(formulario?.custbody114, "custbody114")  || 0,
 
             // FECHA DE VIGENCIA DE LA VENTA
             saleseffectivedate: transformarFecha(formulario?.saleseffectivedate, "saleseffectivedate") || 0,
