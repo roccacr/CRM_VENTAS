@@ -195,6 +195,7 @@ ordenVenta.insertarOrdenVentaBd = async (dataParams) => {
 
 ordenVenta.editarOrdenVenta = async (dataParams) => {
     console.clear();
+    console.log("dataParams", dataParams);
 
     function transformarFecha(fecha, campo) {
         // Validar si la fecha es vacía o no válida
