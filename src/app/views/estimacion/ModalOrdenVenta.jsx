@@ -510,37 +510,39 @@ export const ModalOrdenVenta = ({ open, onClose, idEstimacion }) => {
     * @param {number} value - El nuevo valor del campo.
     */
    const actualizarPorcentaje = (name, value) => {
-      setFormValues((prevValues) => {
-         // 1. Copia el estado actual del formulario y actualiza el valor del campo específico.
-         const updatedValues = { ...prevValues, [name]: value };
+      // 1. Crea updatedValues fuera de setFormValues para poder usarlo después
+      const updatedValues = { ...formValues, [name]: value };
 
-         // 2. Calcula el monto total basado en el porcentaje actualizado.
-         const total = calculoMontoSegunPorcentaje(updatedValues);
+      // 2. Calcula el monto total basado en el porcentaje actualizado.
+      const total = calculoMontoSegunPorcentaje(updatedValues);
 
-         // 3. Calcula la prima neta basada en el monto total y los valores actualizados.
-         const montoPrimaNet = montoPrimaNeta(total, updatedValues);
+      // 3. Calcula la prima neta basada en el monto total y los valores actualizados.
+      const montoPrimaNet = montoPrimaNeta(total, updatedValues);
 
-         // 4. Calcula la prima asignable utilizando el monto total y los valores actuales.
-         const asignable = calculoPrimaAsignable(total, updatedValues);
+      // 4. Calcula la prima asignable utilizando el monto total y los valores actuales.
+      const asignable = calculoPrimaAsignable(total, updatedValues);
 
+      // 5. Prepara el objeto final con todas las actualizaciones necesarias
+      let valoresFinales = { ...updatedValues, neta: asignable };
 
-
-         // 6. Si el campo actualizado es "custbody60", retorna un estado con campos adicionales.
-         if (name === "custbody60") {
-            return {
-               ...updatedValues, // Mantiene todos los valores existentes del estado.
-               custbody39: total, // Actualiza el monto total calculado.
-               custbody_ix_salesorder_monto_prima: montoPrimaNet, // Actualiza la prima neta calculada.
-               neta: asignable, // Actualiza la prima asignable calculada.
-            };
-         }
-
-         // 7. Si el campo no es "custbody60", retorna un estado sin los campos adicionales.
-         return {
-            ...updatedValues, // Mantiene todos los valores existentes del estado.
-            neta: asignable, // Actualiza la prima asignable calculada.
+      // 6. Si el campo actualizado es "custbody60", añade campos adicionales
+      if (name === "custbody60") {
+         valoresFinales = {
+            ...valoresFinales,
+            custbody39: total,
+            custbody_ix_salesorder_monto_prima: montoPrimaNet
          };
-      });
+      }
+
+      // 7. Actualiza el estado con los valores finales
+      setFormValues(valoresFinales);
+
+      // 8. Ejecuta cálculos específicos con los mismos valores actualizados
+      ejecutarCálculosEspecíficos(
+         valoresFinales,
+         valoresFinales.custbody39,
+         valoresFinales.custbody_ix_salesorder_monto_prima
+      );
    };
 
    // Maneja actualizaciones del campo custbody75

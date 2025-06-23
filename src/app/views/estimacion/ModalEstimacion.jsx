@@ -1,13 +1,12 @@
-import { useState, useEffect } from "react";
-import Swal from "sweetalert2";
 import { Modal } from "@mui/material";
+import { useEffect, useState } from "react";
 import { useDispatch } from "react-redux";
-import "./style.css";
+import { useNavigate } from "react-router-dom";
+import Swal from "sweetalert2";
 import {
    calcularPrimaToal,
    calculoAvanceDiferenciado,
    calculoAvenceObra,
-   calculoContraEntregaMontoCalculado,
    calculoContraEntregaSinprimaTotal,
    calculoHito1Diferenciado,
    calculoHito1DiferenciadoMonto,
@@ -18,14 +17,14 @@ import {
    montoPrimaNeta,
    montoTotal,
    precioVentaNeto,
-   recalcultarMontoshitos,
+   recalcultarMontoshitos
 } from "../../../hook/useInputFormatter";
-import { PrimeraLinea } from "./PrimeraLinea";
-import { CalculodePrima } from "./CalculodePrima";
-import { SeleccionPrima } from "./SeleccionPrima";
-import { MetodoPago } from "./MetodoPago";
 import { crearEstimacionFormulario } from "../../../store/estimacion/thunkEstimacion";
-import { useNavigate } from "react-router-dom";
+import { CalculodePrima } from "./CalculodePrima";
+import { MetodoPago } from "./MetodoPago";
+import { PrimeraLinea } from "./PrimeraLinea";
+import { SeleccionPrima } from "./SeleccionPrima";
+import "./style.css";
 
 export const ModalEstimacion = ({ open, onClose, OportunidadDetails, cliente }) => {
    // Estado para manejar si el contenido del modal está cargando
@@ -483,39 +482,39 @@ export const ModalEstimacion = ({ open, onClose, OportunidadDetails, cliente }) 
     * @param {number} value - El nuevo valor del campo.
     */
    const actualizarPorcentaje = (name, value) => {
+      // 1. Crea updatedValues fuera de setFormValues para poder usarlo después
+      const updatedValues = { ...formValues, [name]: value };
 
-      setFormValues((prevValues) => {
-         // 1. Copia el estado actual del formulario y actualiza el valor del campo específico.
-         const updatedValues = { ...prevValues, [name]: value };
+      // 2. Calcula el monto total basado en el porcentaje actualizado.
+      const total = calculoMontoSegunPorcentaje(updatedValues);
 
-         // 2. Calcula el monto total basado en el porcentaje actualizado.
-         const total = calculoMontoSegunPorcentaje(updatedValues);
+      // 3. Calcula la prima neta basada en el monto total y los valores actualizados.
+      const montoPrimaNet = montoPrimaNeta(total, updatedValues);
 
-         // 3. Calcula la prima neta basada en el monto total y los valores actualizados.
-         const montoPrimaNet = montoPrimaNeta(total, updatedValues);
+      // 4. Calcula la prima asignable utilizando el monto total y los valores actuales.
+      const asignable = calculoPrimaAsignable(total, updatedValues);
 
-         // 4. Calcula la prima asignable utilizando el monto total y los valores actuales.
-         const asignable = calculoPrimaAsignable(total, updatedValues);
+      // 5. Prepara el objeto final con todas las actualizaciones necesarias
+      let valoresFinales = { ...updatedValues, neta: asignable };
 
-         // 5. Ejecuta cálculos adicionales personalizados si es necesario.
-         // ejecutarCálculosEspecíficos(updatedValues);
-
-         // 6. Si el campo actualizado es "custbody60", retorna un estado con campos adicionales.
-         if (name === "custbody60") {
-            return {
-               ...updatedValues, // Mantiene todos los valores existentes del estado.
-               custbody39: total, // Actualiza el monto total calculado.
-               custbody_ix_salesorder_monto_prima: montoPrimaNet, // Actualiza la prima neta calculada.
-               neta: asignable, // Actualiza la prima asignable calculada.
-            };
-         }
-
-         // 7. Si el campo no es "custbody60", retorna un estado sin los campos adicionales.
-         return {
-            ...updatedValues, // Mantiene todos los valores existentes del estado.
-            neta: asignable, // Actualiza la prima asignable calculada.
+      // 6. Si el campo actualizado es "custbody60", añade campos adicionales
+      if (name === "custbody60") {
+         valoresFinales = {
+            ...valoresFinales,
+            custbody39: total,
+            custbody_ix_salesorder_monto_prima: montoPrimaNet
          };
-      });
+      }
+
+      // 7. Actualiza el estado con los valores finales
+      setFormValues(valoresFinales);
+
+      // 8. Ejecuta cálculos específicos con los mismos valores actualizados
+      ejecutarCálculosEspecíficos(
+         valoresFinales,
+         valoresFinales.custbody39,
+         valoresFinales.custbody_ix_salesorder_monto_prima
+      );
    };
 
    // Maneja actualizaciones del campo custbody75
@@ -524,8 +523,8 @@ export const ModalEstimacion = ({ open, onClose, OportunidadDetails, cliente }) 
          // Copia el estado actual y actualiza el valor de "custbody75"
          let updatedValues = { ...prevValues, [name]: value };
 
-         if(updatedValues.custbody75 === 1 || updatedValues.custbody75 === "1"){
-            updatedValues = { 
+         if (updatedValues.custbody75 === 1 || updatedValues.custbody75 === "1") {
+            updatedValues = {
                ...updatedValues,  // Use updatedValues instead of prevValues to keep the custbody75 update
                date_hito_6: updatedValues.custbody114,
                custbody67: "100%"
@@ -624,76 +623,76 @@ export const ModalEstimacion = ({ open, onClose, OportunidadDetails, cliente }) 
    const actualizarHitoDiferenciadoMonto = (name, value, campoActualizar) => {
       // console.clear();
       setFormValues((prevValues) => {
-        // Copia y actualiza el estado con el nuevo valor
-        const updatedValues = { ...prevValues, [name]: value };
-        // Obtiene el monto inicial actualizado
-        const montoInicial = updatedValues.custbody163;
+         // Copia y actualiza el estado con el nuevo valor
+         const updatedValues = { ...prevValues, [name]: value };
+         // Obtiene el monto inicial actualizado
+         const montoInicial = updatedValues.custbody163;
 
-        // Calcula el porcentaje - limpia los valores de cualquier formato
-        const montoInicialNumerico = parseFloat(String(montoInicial).replace(/,/g, ''));
-        const valueNumerico = parseFloat(String(value).replace(/,/g, ''));
-        
-        // Calcula el porcentaje decimal (0-1)
-        const porcentajeDecimal = valueNumerico / montoInicialNumerico;
-        
-        // Redondea a 2 decimales para evitar errores de punto flotante
-        const porcentajeRedondeado = Math.round(porcentajeDecimal * 100) / 100;
-        
-        // Guarda el valor formateado con 2 decimales
-        const porcentajeFormateado = porcentajeRedondeado.toFixed(2);
+         // Calcula el porcentaje - limpia los valores de cualquier formato
+         const montoInicialNumerico = parseFloat(String(montoInicial).replace(/,/g, ''));
+         const valueNumerico = parseFloat(String(value).replace(/,/g, ''));
 
-        const valoresActualizados = {
-          ...prevValues,
-          [campoActualizar]: porcentajeFormateado
-        };
-        // Porcentaje inicial (100%)
-        const porcentajeInicial = 100;
+         // Calcula el porcentaje decimal (0-1)
+         const porcentajeDecimal = valueNumerico / montoInicialNumerico;
 
-        // Define los porcentajes relacionados a los hitos, considerando si están marcados como chequeados
-        // y multiplicando por 100 para convertir de decimal a porcentaje
-        const porcentajes = [
-          updatedValues.hito_chek_uno === true ? parseFloat(valoresActualizados.custbody62) : 0,     
-          updatedValues.hito_chek_dos === true ? parseFloat(valoresActualizados.custbody63) : 0,
-          updatedValues.hito_chek_tres === true ? parseFloat(valoresActualizados.custbody64) : 0,
-          updatedValues.hito_chek_cuatro === true ? parseFloat(valoresActualizados.custbody65) : 0,
-          updatedValues.hito_chek_cinco === true ? parseFloat(valoresActualizados.custbody66) : 0,
-          updatedValues.hito_chek_seis === true ? parseFloat(valoresActualizados.custbody67) : 0,
-        ];
+         // Redondea a 2 decimales para evitar errores de punto flotante
+         const porcentajeRedondeado = Math.round(porcentajeDecimal * 100) / 100;
 
-        // Convertir de decimal a porcentaje (multiplicando por 100)
-        const porcentajesEnPorciento = porcentajes.map(p => p * 100);
+         // Guarda el valor formateado con 2 decimales
+         const porcentajeFormateado = porcentajeRedondeado.toFixed(2);
 
-        // Suma los porcentajes 
-        const sumaPorcentajes = porcentajesEnPorciento.reduce((sum, value) => sum + value, 0);
+         const valoresActualizados = {
+            ...prevValues,
+            [campoActualizar]: porcentajeFormateado
+         };
+         // Porcentaje inicial (100%)
+         const porcentajeInicial = 100;
 
-        // Calcula el porcentaje restante
-        const porcentajeRestante = porcentajeInicial - sumaPorcentajes;
+         // Define los porcentajes relacionados a los hitos, considerando si están marcados como chequeados
+         // y multiplicando por 100 para convertir de decimal a porcentaje
+         const porcentajes = [
+            updatedValues.hito_chek_uno === true ? parseFloat(valoresActualizados.custbody62) : 0,
+            updatedValues.hito_chek_dos === true ? parseFloat(valoresActualizados.custbody63) : 0,
+            updatedValues.hito_chek_tres === true ? parseFloat(valoresActualizados.custbody64) : 0,
+            updatedValues.hito_chek_cuatro === true ? parseFloat(valoresActualizados.custbody65) : 0,
+            updatedValues.hito_chek_cinco === true ? parseFloat(valoresActualizados.custbody66) : 0,
+            updatedValues.hito_chek_seis === true ? parseFloat(valoresActualizados.custbody67) : 0,
+         ];
 
-        // Verifica si la suma de porcentajes excede el 100%
-        if (sumaPorcentajes > 100) {
-          alert(
-            `La suma de los porcentajes no puede exceder el 100%. El porcentaje actual es del ${sumaPorcentajes.toFixed(2)}%. Por favor, ajusta los valores.`
-          );
-        }
+         // Convertir de decimal a porcentaje (multiplicando por 100)
+         const porcentajesEnPorciento = porcentajes.map(p => p * 100);
 
-        // Crear un nuevo estado actualizado antes de llamar a la función de cálculo
-        const updatedFormValues = { 
-          ...updatedValues, 
-          total_porcentaje: porcentajeRestante.toFixed(2) 
-        };
+         // Suma los porcentajes 
+         const sumaPorcentajes = porcentajesEnPorciento.reduce((sum, value) => sum + value, 0);
 
-        // Llamar a la función de cálculo con los valores correctos
-        calculoHito1DiferenciadoMonto(
-          montoInicial, // Monto inicial actualizado
-          campoActualizar, // Campo a actualizar
-          updatedFormValues, // Formulario actualizado
-          setFormValues, // Setter del estado
-          name, // Nombre del campo modificado
-          porcentajeRestante,
-        );
+         // Calcula el porcentaje restante
+         const porcentajeRestante = porcentajeInicial - sumaPorcentajes;
 
-        // Retornar el nuevo estado para actualizar correctamente
-        return updatedFormValues;
+         // Verifica si la suma de porcentajes excede el 100%
+         if (sumaPorcentajes > 100) {
+            alert(
+               `La suma de los porcentajes no puede exceder el 100%. El porcentaje actual es del ${sumaPorcentajes.toFixed(2)}%. Por favor, ajusta los valores.`
+            );
+         }
+
+         // Crear un nuevo estado actualizado antes de llamar a la función de cálculo
+         const updatedFormValues = {
+            ...updatedValues,
+            total_porcentaje: porcentajeRestante.toFixed(2)
+         };
+
+         // Llamar a la función de cálculo con los valores correctos
+         calculoHito1DiferenciadoMonto(
+            montoInicial, // Monto inicial actualizado
+            campoActualizar, // Campo a actualizar
+            updatedFormValues, // Formulario actualizado
+            setFormValues, // Setter del estado
+            name, // Nombre del campo modificado
+            porcentajeRestante,
+         );
+
+         // Retornar el nuevo estado para actualizar correctamente
+         return updatedFormValues;
       });
    };
 
@@ -965,30 +964,30 @@ export const ModalEstimacion = ({ open, onClose, OportunidadDetails, cliente }) 
 
             if (ExTraerResultado.status == 500) {
 
-                        // Parseamos el mensaje de error contenido en ErrorMsj
-            const parsedError = JSON.parse(ExTraerResultado.ErrorMsj);
+               // Parseamos el mensaje de error contenido en ErrorMsj
+               const parsedError = JSON.parse(ExTraerResultado.ErrorMsj);
 
-            // Accedemos al campo "details"
-            const errorDetails = parsedError.details;
+               // Accedemos al campo "details"
+               const errorDetails = parsedError.details;
 
-            
 
-                  return Swal.fire({
-                     title:
-                        "Error: " + errorDetails,
-                     icon: "question",
-                     iconHtml: "؟",
-                     width: "40em",
-                     padding: "0 0 1.25em",
-                     confirmButtonText: "OK",
-                     cancelButtonText: "CORREGUIR",
-                     showCancelButton: true,
-                     showCloseButton: true,
-                     customClass: {
-                        popup: "swal-on-top",
-                     },
-                  });
-               
+
+               return Swal.fire({
+                  title:
+                     "Error: " + errorDetails,
+                  icon: "question",
+                  iconHtml: "؟",
+                  width: "40em",
+                  padding: "0 0 1.25em",
+                  confirmButtonText: "OK",
+                  cancelButtonText: "CORREGUIR",
+                  showCancelButton: true,
+                  showCloseButton: true,
+                  customClass: {
+                     popup: "swal-on-top",
+                  },
+               });
+
             }
 
             // Aquí puedes agregar la lógica para crear la estimación
