@@ -317,6 +317,7 @@ export const calculoAvenceObra = (
     montoTotal, // Monto total sin incluir la prima.
     montoPrimaTotal, // Monto de la prima total.
 ) => {
+
     // Convierte el monto total a un número flotante válido.
     const montoTotalCalculado = cleanAndParseFloat(montoTotal);
 

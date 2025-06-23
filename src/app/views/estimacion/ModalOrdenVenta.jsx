@@ -475,30 +475,36 @@ export const ModalOrdenVenta = ({ open, onClose, idEstimacion }) => {
 
    // Actualiza el estado al modificar custbody39 (Prima total)
    const actualizarPrimaTotal = (name, value) => {
-      setFormValues((prevValues) => {
-         // Copia el estado actual y actualiza el valor de "custbody39" (Prima total)
-         const updatedValues = { ...prevValues, [name]: value };
+      // Primero, crear el objeto con los valores actualizados
+      const updatedValues = { ...formValues, [name]: value };
 
-         // Calcula el porcentaje total de prima basado en los valores actualizados
-         const total = calculoPrimaTotalPorcentaje(updatedValues);
+      // Calcular todos los valores derivados
+      const total = calculoPrimaTotalPorcentaje(updatedValues);
+      const montoPrimaNet = montoPrimaNeta(value, updatedValues);
+      const asignable = calculoPrimaAsignable(value, updatedValues);
 
-         // Calcula la prima neta utilizando el nuevo valor de prima total y los valores actualizados
-         const montoPrimaNet = montoPrimaNeta(value, updatedValues);
 
-         // Calcula la prima asignable a partir del nuevo valor de prima total y los valores actuales
-         const asignable = calculoPrimaAsignable(value, updatedValues);
+      // Crear el objeto final de valores
+      const valoresFinales = {
+         ...updatedValues,
+         custbody60: total,
+         custbody_ix_salesorder_monto_prima: montoPrimaNet,
+         neta: asignable
+      };
 
-         // Ejecuta cálculos adicionales personalizados según los valores actualizados
-         ejecutarCálculosEspecíficos(updatedValues);
 
-         // Retorna el nuevo estado actualizado con los valores calculados
-         return {
-            ...updatedValues, // Mantiene los valores existentes del estado
-            custbody60: total, // Asigna el porcentaje total calculado
-            custbody_ix_salesorder_monto_prima: montoPrimaNet, // Actualiza la prima neta calculada
-            neta: asignable, // Actualiza la prima asignable calculada
-         };
-      });
+      console.clear()
+
+
+      // este modifica si es por monto
+      // Actualizar el estado con los nuevos valores
+      setFormValues(valoresFinales);
+      // Luego ejecutar cálculos específicos con los valores finales ya calculados
+      ejecutarCálculosEspecíficos(
+         valoresFinales,
+         valoresFinales.custbody_ix_total_amount,
+         valoresFinales.custbody39
+      );
    };
 
    /**
@@ -537,11 +543,13 @@ export const ModalOrdenVenta = ({ open, onClose, idEstimacion }) => {
       // 7. Actualiza el estado con los valores finales
       setFormValues(valoresFinales);
 
+      // este modifica si es por % 
+
       // 8. Ejecuta cálculos específicos con los mismos valores actualizados
       ejecutarCálculosEspecíficos(
          valoresFinales,
-         valoresFinales.custbody39,
-         valoresFinales.custbody_ix_salesorder_monto_prima
+         valoresFinales.custbody_ix_total_amount,
+         valoresFinales.custbody39
       );
    };
 
@@ -763,7 +771,7 @@ export const ModalOrdenVenta = ({ open, onClose, idEstimacion }) => {
       } else if (tipoOperacion === 7) {
          setFormValues((prevValues) => ({
             ...prevValues, // Conserva los valores existentes del formulario.
-            custbody62: 0, // Actualiza el campo `hito 1` con el monto total calculado.
+            custbody62: "0.15", // Actualiza el campo `hito 1` con el monto total calculado.
             custbody63: 0, // Actualiza el campo `hito 2` con el monto total calculado.
             custbody64: 0, // Actualiza el campo `hito 3` con el monto total calculado.
             custbody65: 0, // Actualiza el campo `hito 4` con el monto total calculado.
