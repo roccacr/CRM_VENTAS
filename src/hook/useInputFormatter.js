@@ -270,8 +270,8 @@ export const calculoContraEntregaSinprimaTotal = (
         ...valoresPrevios,
         custbody67: "100%", // Indica que el porcentaje es del 100%.
         custbody163: montoFormateado, // Monto total sin prima formateado.
-         custbody_ix_salesorder_hito6: montoFormateado,
-        date_hito_6: valoresPrevios.custbody114,
+        custbody_ix_salesorder_hito6: montoFormateado,
+        date_hito_6: valoresPrevios.date_hito_6,
     }));
 };
 
@@ -305,7 +305,7 @@ export const calculoContraEntregaMontoCalculado = (
         ...valoresPrevios,
         custbody67: "100%", // Indica que el porcentaje es del 100%.
         custbody_ix_salesorder_hito6: montoFormateado, // Monto formateado del hito 6.
-        date_hito_6: valoresPrevios.custbody114,
+        date_hito_6: valoresPrevios.date_hito_6,
     }));
 };
 
@@ -485,7 +485,7 @@ export const calculoHito1DiferenciadoMonto = (MontoSinPrimaTotal, campoActualiza
 
     // Calcula la diferencia numérica primero
     const diferenciaNumero = montoTotalAsignado - sumaHitos;
-    
+
     // Luego formatea para mostrar
     const diferenciaFormateada = new Intl.NumberFormat("en-US", {
         minimumFractionDigits: 2,
@@ -493,7 +493,7 @@ export const calculoHito1DiferenciadoMonto = (MontoSinPrimaTotal, campoActualiza
     }).format(diferenciaNumero);
 
 
-    
+
     // Verifica si la diferencia es negativa usando el valor numérico
     if (diferenciaNumero < 0) {
         alert(
