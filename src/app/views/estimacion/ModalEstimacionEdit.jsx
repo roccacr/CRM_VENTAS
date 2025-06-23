@@ -448,40 +448,46 @@ export const ModalEstimacionEdit = ({ open, onClose, idEstimacion }) => {
 
    // Actualiza el estado al modificar custbody39 (Prima total)
    const actualizarPrimaTotal = (name, value) => {
-      setFormValues((prevValues) => {
-         // Copia el estado actual y actualiza el valor de "custbody39" (Prima total)
-         const updatedValues = { ...prevValues, [name]: value };
+      // Primero, crear el objeto con los valores actualizados
+      const updatedValues = { ...formValues, [name]: value };
 
-         // Calcula el porcentaje total de prima basado en los valores actualizados
-         const total = calculoPrimaTotalPorcentaje(updatedValues);
+      // Calcular todos los valores derivados
+      const total = calculoPrimaTotalPorcentaje(updatedValues);
+      const montoPrimaNet = montoPrimaNeta(value, updatedValues);
+      const asignable = calculoPrimaAsignable(value, updatedValues);
 
-         // Calcula la prima neta utilizando el nuevo valor de prima total y los valores actualizados
-         const montoPrimaNet = montoPrimaNeta(value, updatedValues);
 
-         // Calcula la prima asignable a partir del nuevo valor de prima total y los valores actuales
-         const asignable = calculoPrimaAsignable(value, updatedValues);
+      // Crear el objeto final de valores
+      const valoresFinales = {
+         ...updatedValues,
+         custbody60: total,
+         custbody_ix_salesorder_monto_prima: montoPrimaNet,
+         neta: asignable
+      };
 
-         // Ejecuta cálculos adicionales personalizados según los valores actualizados
-         ejecutarCálculosEspecíficos(updatedValues);
 
-         // Retorna el nuevo estado actualizado con los valores calculados
-         return {
-            ...updatedValues, // Mantiene los valores existentes del estado
-            custbody60: total, // Asigna el porcentaje total calculado
-            custbody_ix_salesorder_monto_prima: montoPrimaNet, // Actualiza la prima neta calculada
-            neta: asignable, // Actualiza la prima asignable calculada
-         };
-      });
+      console.clear()
+
+
+      // este modifica si es por monto
+      // Actualizar el estado con los nuevos valores
+      setFormValues(valoresFinales);
+      // Luego ejecutar cálculos específicos con los valores finales ya calculados
+      ejecutarCálculosEspecíficos(
+         valoresFinales,
+         valoresFinales.custbody_ix_total_amount,
+         valoresFinales.custbody39
+      );
    };
 
    /**
-    * Maneja la actualización de campos relacionados con porcentajes en el formulario.
-    * Realiza cálculos basados en el valor actualizado y actualiza el estado del formulario
-    * con los nuevos valores calculados.
-    *
-    * @param {string} name - El nombre del campo que se está actualizando.
-    * @param {number} value - El nuevo valor del campo.
-    */
+      * Maneja la actualización de campos relacionados con porcentajes en el formulario.
+      * Realiza cálculos basados en el valor actualizado y actualiza el estado del formulario
+      * con los nuevos valores calculados.
+      *
+      * @param {string} name - El nombre del campo que se está actualizando.
+      * @param {number} value - El nuevo valor del campo.
+      */
    const actualizarPorcentaje = (name, value) => {
       // 1. Crea updatedValues fuera de setFormValues para poder usarlo después
       const updatedValues = { ...formValues, [name]: value };
@@ -510,14 +516,15 @@ export const ModalEstimacionEdit = ({ open, onClose, idEstimacion }) => {
       // 7. Actualiza el estado con los valores finales
       setFormValues(valoresFinales);
 
+      // este modifica si es por % 
+
       // 8. Ejecuta cálculos específicos con los mismos valores actualizados
       ejecutarCálculosEspecíficos(
          valoresFinales,
-         valoresFinales.custbody39,
-         valoresFinales.custbody_ix_salesorder_monto_prima
+         valoresFinales.custbody_ix_total_amount,
+         valoresFinales.custbody39
       );
    };
-
    // Maneja actualizaciones del campo custbody75
    const actualizarCustbody75 = (name, value) => {
       setFormValues((prevValues) => {
