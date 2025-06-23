@@ -819,7 +819,13 @@ export const ModalOrdenVenta = ({ open, onClose, idEstimacion }) => {
             custbody_ix_salesorder_hito6: 0, // Monto hito 6: 0
          }));
          // Ejecuta el cálculo para avance diferenciado y actualiza el formulario
-         calculoAvanceDiferenciado(updatedValues, setFormValues, montot, montoPrimaTotal);
+         if (metodo === 0) {
+            // Función que realiza los cálculos de avance de obra y actualiza el formulario
+            calculoAvanceDiferenciado(updatedValues, setFormValues, montot, montoPrimaTotal);
+         } else {
+            // Si el método no es 0, actualiza el campo custbody75 con la función correspondiente
+            actualizarCustbody75(name, value);
+         }
       }
    };
 

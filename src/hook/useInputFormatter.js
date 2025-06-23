@@ -391,6 +391,7 @@ export const calculoAvanceDiferenciado = (
     setValoresFormulario((valoresPrevios) => ({
         ...valoresPrevios, // Conserva los valores existentes del formulario.
         custbody163: montoSinPrimaFormateado, // Actualiza el campo `custbody163` con el monto formateado.
+        valortotals: montoSinPrimaFormateado
     }));
 
     // Retorna un mensaje indicando que la actualización se realizó con éxito.
