@@ -545,6 +545,7 @@ export const ModalOrdenVenta = ({ open, onClose, idEstimacion }) => {
 
    // Maneja actualizaciones del campo custbody75
    const actualizarCustbody75 = (name, value) => {
+
       setFormValues((prevValues) => {
          // Copia el estado actual y actualiza el valor de "custbody75"
          let updatedValues = { ...prevValues, [name]: value };
