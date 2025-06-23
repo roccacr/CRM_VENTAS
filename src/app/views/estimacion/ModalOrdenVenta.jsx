@@ -509,7 +509,6 @@ export const ModalOrdenVenta = ({ open, onClose, idEstimacion }) => {
     * @param {string} name - El nombre del campo que se está actualizando.
     * @param {number} value - El nuevo valor del campo.
     */
-   // Maneja la actualización de campos relacionados con porcentajes en el formulario
    const actualizarPorcentaje = (name, value) => {
       setFormValues((prevValues) => {
          // 1. Copia el estado actual del formulario y actualiza el valor del campo específico.
@@ -525,31 +524,21 @@ export const ModalOrdenVenta = ({ open, onClose, idEstimacion }) => {
          const asignable = calculoPrimaAsignable(total, updatedValues);
 
 
-         // 5. Si el campo actualizado es "custbody60" (porcentaje de prima total)
+
+         // 6. Si el campo actualizado es "custbody60", retorna un estado con campos adicionales.
          if (name === "custbody60") {
-            // 5.1. Prepara los cambios a aplicar en el estado
-            const cambios = {
+            return {
                ...updatedValues, // Mantiene todos los valores existentes del estado.
                custbody39: total, // Actualiza el monto total calculado.
                custbody_ix_salesorder_monto_prima: montoPrimaNet, // Actualiza la prima neta calculada.
                neta: asignable, // Actualiza la prima asignable calculada.
-               date_hito_6: updatedValues.date_hito_6, // Actualiza la fecha del hito 6.
-            };
-
-            // 5.2. Ejecuta cálculos adicionales específicos según el tipo de operación
-            ejecutarCálculosEspecíficos(cambios, total, montoPrimaNet, 1, name, value);
-
-            // 5.3. Retorna el nuevo estado con los cambios aplicados
-            return {
-               ...cambios,
             };
          }
 
-         // 6. Si el campo no es "custbody60", retorna el estado actualizado solo con la prima asignable recalculada
+         // 7. Si el campo no es "custbody60", retorna un estado sin los campos adicionales.
          return {
             ...updatedValues, // Mantiene todos los valores existentes del estado.
             neta: asignable, // Actualiza la prima asignable calculada.
-            date_hito_6: updatedValues.date_hito_6, // Actualiza la fecha del hito 6.
          };
       });
    };
@@ -742,90 +731,52 @@ export const ModalOrdenVenta = ({ open, onClose, idEstimacion }) => {
    };
 
    // Ejecuta cálculos específicos según el tipo de operación
-   /**
-    * Ejecuta cálculos específicos en función del tipo de operación seleccionado en el formulario.
-    *
-    * Esta función actualiza los valores del formulario (`formValues`) y ejecuta cálculos adicionales
-    * dependiendo del tipo de operación definido en el campo `custbody75` de `updatedValues`.
-    * 
-    * Tipos de operación soportados:
-    * - 1: Contra entrega (ejecuta cálculos sin prima total).
-    * - 2: Avance de obra (asigna porcentajes a hitos y ejecuta cálculos de avance de obra).
-    * - 7: Avance diferenciado (reinicia hitos y ejecuta cálculos diferenciados).
-    *
-    * @param {Object} updatedValues - Objeto con los valores actualizados del formulario.
-    * @param {number} montot - Monto total utilizado para los cálculos.
-    * @param {number} montoPrimaTotal - Monto total de la prima, utilizado en algunos cálculos.
-    * @param {number} [metodo=0] - Método de cálculo a utilizar (por defecto 0).
-    * @param {string} name - Nombre del campo que ha cambiado (usado en algunos métodos).
-    * @param {any} value - Valor del campo que ha cambiado (usado en algunos métodos).
-    *
-    * @returns {void}
-    *
-    * @example
-    * ejecutarCálculosEspecíficos(formValues, 10000, 2000, 0, 'custbody75', 2);
-    */
-   const ejecutarCálculosEspecíficos = (updatedValues, montot, montoPrimaTotal, metodo = 0, name, value) => {
+   const ejecutarCálculosEspecíficos = (updatedValues, montot, montoPrimaTotal) => {
+
+
+
       // Determina el tipo de operación a partir del valor en custbody75
-      // 1 = Contra entrega, 2 = Avance de obra, 7 = Avance diferenciado
       const tipoOperacion = parseInt(updatedValues.custbody75, 10);
 
       // Lógica para cada tipo de operación
       if (tipoOperacion === 2) {
-         // Tipo 2: Avance de obra
-         // Asigna porcentajes fijos a los hitos del formulario
+         // Cálculo para avance de obra
          setFormValues((prevValues) => ({
             ...prevValues, // Conserva los valores existentes del formulario.
-            custbody62: 0.15, // Hito 1: 15%
-            custbody63: 0.25, // Hito 2: 25%
-            custbody64: 0.25, // Hito 3: 25%
-            custbody65: 0.15, // Hito 4: 15%
-            custbody66: 0.15, // Hito 5: 15%
-            custbody67: 0.05, // Hito 6: 5%
+            custbody62: 0.15, // Actualiza el campo `hito 1` con el monto total calculado.
+            custbody63: 0.25, // Actualiza el campo `hito 2` con el monto total calculado.
+            custbody64: 0.25, // Actualiza el campo `hito 3` con el monto total calculado.
+            custbody65: 0.15, // Actualiza el campo `hito 4` con el monto total calculado.
+            custbody66: 0.15, // Actualiza el campo `hito 5` con el monto total calculado.
+            custbody67: 0.05, // Actualiza el campo `hito 6` con el monto total calculado.
          }));
 
-         // Si el método es 0, ejecuta el cálculo de avance de obra normal
-         if (metodo === 0) {
-            // Función que realiza los cálculos de avance de obra y actualiza el formulario
-            calculoAvenceObra(updatedValues, setFormValues, montot, montoPrimaTotal);
-         } else {
-            // Si el método no es 0, actualiza el campo custbody75 con la función correspondiente
-            actualizarCustbody75(name, value);
-         }
+
+         calculoAvenceObra(updatedValues, setFormValues, montot, montoPrimaTotal);
       } else if (tipoOperacion === 1) {
-         // Tipo 1: Contra entrega
-         // Ejecuta los cálculos para operaciones contra entrega (sin prima total)
+         // Cálculos para operaciones contra entrega
          calculoContraEntregaSinprimaTotal(updatedValues, setFormValues); // Sin prima total
-         // Si se requiere con monto calculado, descomentar la siguiente línea:
-         // calculoContraEntregaConMontoCalculado(updatedValues, setFormValues);
+         //(updatedValues, setFormValues); // Con monto calculado
       } else if (tipoOperacion === 7) {
-         // Tipo 7: Avance diferenciado
-         // Reinicia los valores de los hitos y porcentajes a cero
          setFormValues((prevValues) => ({
             ...prevValues, // Conserva los valores existentes del formulario.
-            custbody62: 0, // Hito 1: 0%
-            custbody63: 0, // Hito 2: 0%
-            custbody64: 0, // Hito 3: 0%
-            custbody65: 0, // Hito 4: 0%
-            custbody66: 0, // Hito 5: 0%
-            custbody67: 0, // Hito 6: 0%
-            valortotals: 0, // Valor por asignar: 0
-            total_porcentaje: "100%", // Total porcentaje: 100%
-            custbodyix_salesorder_hito1: 0, // Monto hito 1: 0
-            custbody_ix_salesorder_hito2: 0, // Monto hito 2: 0
-            custbody_ix_salesorder_hito3: 0, // Monto hito 3: 0
-            custbody_ix_salesorder_hito4: 0, // Monto hito 4: 0
-            custbody_ix_salesorder_hito5: 0, // Monto hito 5: 0
-            custbody_ix_salesorder_hito6: 0, // Monto hito 6: 0
+            custbody62: 0, // Actualiza el campo `hito 1` con el monto total calculado.
+            custbody63: 0, // Actualiza el campo `hito 2` con el monto total calculado.
+            custbody64: 0, // Actualiza el campo `hito 3` con el monto total calculado.
+            custbody65: 0, // Actualiza el campo `hito 4` con el monto total calculado.
+            custbody66: 0, // Actualiza el campo `hito 5` con el monto total calculado.
+            custbody67: 0, // Actualiza el campo `hito 6` con el monto total calculado.
+            valortotals: 0, // Actualiza el campo `valor por asignar` con el monto total calculado.
+            total_porcentaje: "100%", // actualiza el campo `total porcentaje` con el valor 100%.
+            custbodyix_salesorder_hito1: 0, // Actualiza el campo `hito 1` con el monto total calculado.
+            custbody_ix_salesorder_hito2: 0, // Actualiza el campo `hito 2` con el monto total calculado.
+            custbody_ix_salesorder_hito3: 0, // Actualiza el campo `hito 3` con el monto total calculado.
+            custbody_ix_salesorder_hito4: 0, // Actualiza el campo `hito 4` con el monto total calculado.
+            custbody_ix_salesorder_hito5: 0, // Actualiza el campo `hito 5` con el monto total calculado.
+            custbody_ix_salesorder_hito6: 0, // Actualiza el campo `hito 6` con el monto total calculado.
          }));
-         // Ejecuta el cálculo para avance diferenciado y actualiza el formulario
-         if (metodo === 0) {
-            // Función que realiza los cálculos de avance de obra y actualiza el formulario
-            calculoAvanceDiferenciado(updatedValues, setFormValues, montot, montoPrimaTotal);
-         } else {
-            // Si el método no es 0, actualiza el campo custbody75 con la función correspondiente
-            actualizarCustbody75(name, value);
-         }
+         // Cálculo para avance diferenciado
+         calculoAvanceDiferenciado(updatedValues, setFormValues, montot, montoPrimaTotal);
       }
    };
 
