@@ -30,7 +30,7 @@ const processFollowUpStatus = (status) => {
 const getLeadStatus = (status) => {
     const statusMap = {
         1: "Activo",
-        2: "Inactivo",
+        0: "Inactivo",
         default: "Desconocido"
     };
     return statusMap[status] || statusMap.default;
@@ -123,9 +123,16 @@ export const TABLE_COLUMNS = [
         searchPanes: { show: true }
     },
     {
-        title: "Seguimineto",
+        title: "Estado Accion",
         data: "nombre_caida",
         className: "text-left",
+        searchPanes: { show: true }
+    },
+    {
+        title: "Estado Seguimiento",
+        data: "segimineto_lead",
+        className: "text-left",
+        render: processFollowUpStatus,
         searchPanes: { show: true }
     }
 ];

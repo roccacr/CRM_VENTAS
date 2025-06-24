@@ -1,15 +1,15 @@
-import React, { useEffect, useRef, useState } from "react";
-import $ from "jquery";
 import "datatables.net";
 import "datatables.net-bs5";
 import "datatables.net-searchpanes-bs5";
 import "datatables.net-select-bs5";
-import "../../../FiltrosTabla/style.css";
-import { getDefaultDates } from "../../../FiltrosTabla/dataTableConfig";
+import $ from "jquery";
+import React, { useEffect, useRef, useState } from "react";
 import { useSelector } from "react-redux";
 import { apiUrlImg, commonRequestData } from "../../../../../api";
-import { TABLE_COLUMNS } from "./tableColumns";
 import { ModalLeads } from "../../../../pages/modal/modalLeads";
+import { getDefaultDates } from "../../../FiltrosTabla/dataTableConfig";
+import "../../../FiltrosTabla/style.css";
+import { TABLE_COLUMNS } from "./tableColumns";
 
 /**
  * Componente para el encabezado de la vista de leads
@@ -164,7 +164,7 @@ const getDataTableConfig = (tableElement, inputStartDate, inputEndDate, filterOp
             searching: true,
          },
          viewTotal: true,
-         columns: [0, 1, 3, 4, 5, 6, 11,12],
+         columns: [0, 1, 3, 4, 5, 6, 11, 12, 13],
       },
       processing: true,
       dom: "lPBfrtip",

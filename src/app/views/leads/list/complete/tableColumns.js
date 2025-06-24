@@ -30,7 +30,7 @@ const processFollowUpStatus = (status) => {
 const getLeadStatus = (status) => {
     const statusMap = {
         1: "Activo",
-        2: "Inactivo",
+        0: "Inactivo",
         default: "Desconocido"
     };
     return statusMap[status] || statusMap.default;
