@@ -185,7 +185,7 @@ const getDataTableConfig = (tableElement, inputStartDate, inputEndDate, filterOp
             searching: true,
          },
          viewTotal: true,
-         columns: [0, 1, 3, 4, 5, 6, 11, 12],
+         columns: [0, 1, 3, 4, 5, 6, 11, 12, 13],
       },
       processing: true,
       dom: "lPBfrtip",

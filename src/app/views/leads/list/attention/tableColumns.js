@@ -123,8 +123,14 @@ export const TABLE_COLUMNS = [
         searchPanes: { show: true }
     },
     {
-        title: "Seguimineto",
+        title: "Estado Accion",
         data: "nombre_caida",
+        className: "text-left",
+        searchPanes: { show: true }
+    },
+    {
+        title: "Estado Seguimiento",
+        data: "segimineto_lead",
         className: "text-left",
         searchPanes: { show: true }
     }
