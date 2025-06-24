@@ -1,14 +1,14 @@
-import React, { useEffect, useRef, useState } from "react";
-import $ from "jquery";
 import "datatables.net";
 import "datatables.net-bs5";
 import "datatables.net-searchpanes-bs5";
 import "datatables.net-select-bs5";
-import "../../../FiltrosTabla/style.css";
+import $ from "jquery";
+import React, { useEffect, useRef, useState } from "react";
 import { useSelector } from "react-redux";
 import { apiUrlImg, commonRequestData } from "../../../../../api";
-import { TABLE_COLUMNS } from "./tableColumns";
 import { ModalLeads } from "../../../../pages/modal/modalLeads";
+import "../../../FiltrosTabla/style.css";
+import { TABLE_COLUMNS } from "./tableColumns";
 
 /**
  * Componente para el encabezado de la vista de leads
@@ -55,24 +55,46 @@ const DateControls = ({ inputStartDate, inputEndDate, setInputStartDate, setInpu
  * @param {Function} props.handleCheckboxChange - Manejador de cambio de filtro
  * @returns {JSX.Element} Controles de filtrado
  */
-const FilterControls = ({ filterOption, handleCheckboxChange }) => (
-   <div className="row g-4 mt-3">
-      <div className="col-md-6">
-         <FilterOption
-            id="creationDate"
-            label="Filtrar por Fecha de Creación"
-            checked={filterOption === 1}
-            onChange={() => handleCheckboxChange(1)}
-         />
-         <FilterOption
-            id="lastActionDate"
-            label="Filtrar por Última Acción"
-            checked={filterOption === 2}
-            onChange={() => handleCheckboxChange(2)}
-         />
+const FilterControls = ({ filterOption, handleCheckboxChange }) => {
+   /**
+    * Función para limpiar las fechas almacenadas en localStorage y refrescar la página
+    */
+   const handleClearDates = () => {
+      localStorage.removeItem("inputStartDate");
+      localStorage.removeItem("inputEndDate");
+      window.location.reload(); // Refrescar la página
+   };
+
+   return (
+      <div className="row g-4 mt-3">
+         <div className="col-md-6">
+            <FilterOption
+               id="creationDate"
+               label="Filtrar por Fecha de Creación"
+               checked={filterOption === 1}
+               onChange={() => handleCheckboxChange(1)}
+            />
+            <FilterOption
+               id="lastActionDate"
+               label="Filtrar por Última Acción"
+               checked={filterOption === 2}
+               onChange={() => handleCheckboxChange(2)}
+            />
+
+            {/* Botón para limpiar fechas y refrescar */}
+            <div className="mt-3">
+               <button
+                  className="btn btn-danger btn-sm"
+                  onClick={handleClearDates}
+                  title="Elimina las fechas guardadas y restablece a los valores predeterminados"
+               >
+                  <i className="feather icon-trash-2 mr-1"></i> Restablecer fechas por defecto
+               </button>
+            </div>
+         </div>
       </div>
-   </div>
-);
+   );
+};
 
 /**
  * Componente para una opción individual de filtro
@@ -163,7 +185,7 @@ const getDataTableConfig = (tableElement, inputStartDate, inputEndDate, filterOp
             searching: true,
          },
          viewTotal: true,
-         columns: [0, 1, 3, 4, 5, 6, 11,12],
+         columns: [0, 1, 3, 4, 5, 6, 11, 12],
       },
       processing: true,
       dom: "lPBfrtip",
@@ -253,18 +275,40 @@ const useDataTable = (
    }, [tableRef, inputStartDate, inputEndDate, filterOption, idnetsuite_admin, rol_admin, setSelectedLead, setShowModal]);
 };
 
+/**
+ * Calcula las fechas predeterminadas para los filtros de la tabla
+ * @returns {Object} Objeto con firstDay (hace un año de la fecha actual) y lastDay (un año después de la fecha actual)
+ */
 export const getDefaultDates = () => {
    const now = new Date();
-   const firstDay = `${now.getFullYear()}-01-01`; // January 1st
-   const lastDay = `${now.getFullYear()}-12-31`; // December 31st
-   return { firstDay, lastDay };
+
+   // Fecha de un año antes (mismo día y mes, año anterior)
+   const oneYearAgo = new Date(now);
+   oneYearAgo.setFullYear(now.getFullYear() - 1);
+
+   // Fecha de un año después (mismo día y mes, año siguiente)
+   const oneYearLater = new Date(now);
+   oneYearLater.setFullYear(now.getFullYear() + 1);
+
+   // Formatear las fechas como YYYY-MM-DD
+   const formatDate = (date) => {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+   };
+
+   return {
+      firstDay: formatDate(oneYearAgo),   // Fecha hace un año
+      lastDay: formatDate(oneYearLater)   // Fecha dentro de un año
+   };
 };
 
 /**
  * Componente principal que gestiona la vista de leads que requieren atención.
  * Incluye funcionalidades de:
  * - Visualización de datos en tabla
- * - Filtrado por fechas
+ * - Filtrado por fechas (automáticamente establecido desde un año atrás hasta un año adelante)
  * - Modal para detalles de leads
  * - Integración con DataTables
  *
@@ -277,17 +321,45 @@ const View_list_leads_attention = () => {
    /** Referencia a la instancia de DataTables */
    const tableInstanceRef = useRef(null);
 
-   /** Fechas por defecto para el filtrado */
+   /** 
+    * Fechas por defecto para el filtrado
+    * Se recalculan en cada renderizado para mantener sincronizado con la fecha actual 
+    */
    const { firstDay, lastDay } = getDefaultDates();
 
-   // Cargar fechas desde el local storage o usar las fechas por defecto
-   const storedStartDate = localStorage.getItem("inputStartDate");
-   const storedEndDate = localStorage.getItem("inputEndDate");
+   // Actualizar fechas desde localStorage solo si existen, de lo contrario usar las calculadas
+   const [inputStartDate, setInputStartDate] = useState(() => {
+      const storedStartDate = localStorage.getItem("inputStartDate");
+      return storedStartDate || firstDay;
+   });
 
-   const [inputStartDate, setInputStartDate] = useState(storedStartDate || firstDay);
-   const [inputEndDate, setInputEndDate] = useState(storedEndDate || lastDay);
+   const [inputEndDate, setInputEndDate] = useState(() => {
+      const storedEndDate = localStorage.getItem("inputEndDate");
+      return storedEndDate || lastDay;
+   });
 
-   // Guardar fechas en el local storage cuando cambien
+   // Actualizar las fechas cada vez que cambie la fecha actual (a medianoche)
+   useEffect(() => {
+      const updateDatesAtMidnight = () => {
+         const { firstDay, lastDay } = getDefaultDates();
+         setInputStartDate(firstDay);
+         setInputEndDate(lastDay);
+      };
+
+      // Calcular milisegundos hasta la próxima medianoche
+      const now = new Date();
+      const tomorrow = new Date(now);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      tomorrow.setHours(0, 0, 0, 0);
+      const timeUntilMidnight = tomorrow.getTime() - now.getTime();
+
+      // Configurar temporizador para actualizar fechas a medianoche
+      const midnightTimer = setTimeout(updateDatesAtMidnight, timeUntilMidnight);
+
+      return () => clearTimeout(midnightTimer);
+   }, []);
+
+   // Guardar fechas en localStorage cuando cambien
    useEffect(() => {
       localStorage.setItem("inputStartDate", inputStartDate);
    }, [inputStartDate]);
