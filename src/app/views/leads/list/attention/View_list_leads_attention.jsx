@@ -369,7 +369,7 @@ const View_list_leads_attention = () => {
    }, [inputEndDate]);
 
    /**  Estado para la opción de filtrado */
-   const [filterOption, setFilterOption] = useState(1);
+   const [filterOption, setFilterOption] = useState(2);
 
    /** Estado para controlar la visibilidad del modal */
    const [showModal, setShowModal] = useState(false);
