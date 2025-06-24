@@ -46,7 +46,7 @@ export const get_Calendar = () => {
  * @param {string} valueStatus - Estado adicional para el evento, utilizado para acciones de seguimiento.
  * @returns {Function} Thunk - Función que puede ser ejecutada gracias a Redux Thunk.
  */
-export const createEventForLead = (nombreEvento, tipoEvento, descripcionEvento, fechaInicio, fechaFinal, horaInicio, horaFinal, leadId=0, valueStatus) => {
+export const createEventForLead = (nombreEvento, tipoEvento, descripcionEvento, fechaInicio, fechaFinal, horaInicio, horaFinal, leadId = 0, valueStatus) => {
     return async (dispatch, getState) => {
         // Variables comunes
         const { idnetsuite_admin } = getState().auth; // ID del administrador de Netsuite
@@ -81,26 +81,26 @@ export const createEventForLead = (nombreEvento, tipoEvento, descripcionEvento, 
         };
 
         // Construcción del objeto con los parámetros para enviar a la API
-       const eventParams = {
-           idnetsuite_admin,
-           nombreEvento,
-           tipoEvento,
-           descripcionEvento,
-           formatdateIni: fechaHoraInicio,
-           formatdateFin: fechaHoraFin,
-           horaInicio,
-           horaFinal,
-           leadId: leadId || 0, // Si leadId es vacío, se asigna 0
-           colorEvento,
-           citaValue,
-       };
+        const eventParams = {
+            idnetsuite_admin,
+            nombreEvento,
+            tipoEvento,
+            descripcionEvento,
+            formatdateIni: fechaHoraInicio,
+            formatdateFin: fechaHoraFin,
+            horaInicio,
+            horaFinal,
+            leadId: leadId || 0, // Si leadId es vacío, se asigna 0
+            colorEvento,
+            citaValue,
+        };
 
         try {
             // Envío de solicitud al backend para crear el evento
             await createCalendarEvent(eventParams);
 
-            if (eventParams.leadId> 0) {
-                 await dispatch(generateLeadBitacora(idnetsuite_admin, leadId, additionalValues, descripcionEvento, valueStatus));
+            if (eventParams.leadId > 0) {
+                await dispatch(generateLeadBitacora(idnetsuite_admin, leadId, additionalValues, descripcionEvento, valueStatus));
             }
 
             // Retorno de la respuesta de la API si es necesario
@@ -187,13 +187,13 @@ export const getSpecificLeadCitas = (id) => {
  * @returns {Promise<string>} - Retorna "ok" si el evento fue editado correctamente.
  */
 export const editeEventForLead = (
-    id_calendar, nombreEvento, tipoEvento, descripcionEvento, 
-    fechaInicio, fechaFinal, horaInicio, horaFinal, 
+    id_calendar, nombreEvento, tipoEvento, descripcionEvento,
+    fechaInicio, fechaFinal, horaInicio, horaFinal,
     leadId = 0, valueStatus
 ) => {
     return async (dispatch, getState) => {
         // Obtiene el ID del administrador Netsuite desde el estado de autenticación
-        const { idnetsuite_admin } = getState().auth; 
+        const { idnetsuite_admin } = getState().auth;
 
         // Mapa de colores asignados según el tipo de evento.
         // Estos colores se usan para diferenciar visualmente los tipos de eventos en la interfaz.
@@ -249,10 +249,10 @@ export const editeEventForLead = (
             // Si el evento está asociado a un lead (leadId > 0), genera una entrada en la bitácora del lead.
             if (eventParams.leadId > 0) {
                 await dispatch(generateLeadBitacora(
-                    idnetsuite_admin, 
-                    leadId, 
-                    additionalValues, 
-                    descripcionEvento, 
+                    idnetsuite_admin,
+                    leadId,
+                    additionalValues,
+                    descripcionEvento,
                     valueStatus
                 ));
             }
@@ -298,17 +298,17 @@ export const updateStatusEvent = (id, NewStatus, idinterno_lead, valueStatus, es
         const { idnetsuite_admin } = getState().auth;
         try {
 
-        
 
-            const EstadoAccion = type === 1 ? "Pendiente" :  type === 2 ? "Completado" : "Cancelado";
 
-            
+            const EstadoAccion = type === 1 ? "Pendiente" : type === 2 ? "Completado" : "Cancelado";
+
+
             // Llama a la API para actualizar la fecha de un evento específico, basado en el ID del evento y la nueva fecha proporcionada.
-            const result = await update_Status_Event({ id, NewStatus: estadoNew, EstadoAccion  });
+            const result = await update_Status_Event({ id, NewStatus: estadoNew, EstadoAccion });
             console.log(result)
             // Retorna el primer conjunto de datos de la respuesta de la API, que contiene los datos actualizados del evento.
 
-            const estadoEvento = NewStatus === 1 ? "Completado" :  NewStatus === 3 ? "Reactivado" : "Cancelado";
+            const estadoEvento = NewStatus === 1 ? "Completado" : NewStatus === 3 ? "Reactivado" : "Cancelado";
 
 
             if (idinterno_lead > 0) {
@@ -331,7 +331,7 @@ export const updateStatusEvent = (id, NewStatus, idinterno_lead, valueStatus, es
         }
     };
 };
- 
+
 
 
 export const getAllListEvent = (dateStart, dateEnd) => {
@@ -344,7 +344,9 @@ export const getAllListEvent = (dateStart, dateEnd) => {
             const result = await getAll_ListEvent({ idnetsuite_admin, rol_admin, dateStart, dateEnd });
 
             // Filtra los eventos donde accion_calendar es "Pendiente"
-            const filteredEvents = result.data["0"].filter(event => event.accion_calendar === "Pendiente");
+            // const filteredEvents = result.data["0"].filter(event => event.accion_calendar === "Pendiente");
+
+            const filteredEvents = result.data["0"];
 
             // Retorna los eventos filtrados
             return filteredEvents;

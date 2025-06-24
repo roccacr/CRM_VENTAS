@@ -1,13 +1,12 @@
-import { React, useRef, useEffect, DataTable, useTableOptions, DT } from "../../leads/list/Imports/imports";
-import { useTableData } from "./useTableData";
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { DataTable, DT, React, useEffect, useRef, useTableOptions } from "../../leads/list/Imports/imports";
+import { useTableData } from "./useTableData";
 
-import "../../leads/list/Imports/style.css";
 import { useState } from "react";
-import { ButtonActions } from "../../../components/buttonAccions/buttonAccions";
-import { tableColumns } from "./tableColumns";
-import { ModalLeads } from "../../../pages/modal/modalLeads";
 import Swal from "sweetalert2";
+import { ModalLeads } from "../../../pages/modal/modalLeads";
+import "../../leads/list/Imports/style.css";
+import { tableColumns } from "./tableColumns";
 
 // Initialize DataTables with DT plugin
 DataTable.use(DT);
@@ -72,7 +71,7 @@ const DataTableComponent = ({ tableData, tableRef, tableOptions }) => (
  * @component
  * @returns {JSX.Element} A complete leads management component.
  */
-const View_events_listado  = () => {
+const View_events_listado = () => {
    // Default dates for filtering (start and end of the current month)
    const { firstDay, lastDay } = getDefaultDates();
 
@@ -87,45 +86,37 @@ const View_events_listado  = () => {
    // Use table data hook at the top level
    const [tableData] = useTableData(true, inputStartDate, inputEndDate);
 
-   
+
    // Filtrar los datos según el parámetro URL y la fecha actual
    const filteredTableData = React.useMemo(() => {
       if (!tableData) return [];
-      
+
       const dataParam = searchParams.get('data');
-      
+
       // Obtener fecha actual en zona horaria de Costa Rica
-      const today = new Date().toLocaleString('en-US', { 
+      const today = new Date().toLocaleString('en-US', {
          timeZone: 'America/Costa_Rica',
          year: 'numeric',
          month: '2-digit',
          day: '2-digit'
       }).split('/');
-      
+
       // Formatear a YYYY-MM-DD (corregido el orden)
       const formattedToday = `${today[2]}-${today[0].padStart(2, '0')}-${today[1].padStart(2, '0')}`;
 
-      
 
       let filtered = tableData;
 
       if (dataParam === '1' || dataParam === 1) {
-         
 
-   
-
-         // console.log("dataParam", dataParam);
-         //filtered = filtered.filter(item => item.cita_lead === 1);
-
-         // console.log("filtered", filtered);
-         
-         // Filtrar por fecha actual, comparando solo la parte YYYY-MM-DD
          filtered = filtered.filter(item => {
             const itemDate = item.fechaIni_calendar.split('T')[0];
-            return itemDate === formattedToday;
+            return itemDate === formattedToday && item.accion_calendar === "Pendiente";
          });
       }
-      
+
+
+
       return filtered;
    }, [tableData, searchParams]);
 
@@ -140,22 +131,21 @@ const View_events_listado  = () => {
    const navigate = useNavigate();
 
    const handleOpenModal = (lead) => {
-      console.log("leadasasas", lead.id_lead );
-         Swal.fire({
-            title: "¿Qué desea hacer?",
-            text: "Quieres ir a este evento?",
-            icon: "warning",
-            showCancelButton: true,
-            confirmButtonColor: "#3085d6",
-            cancelButtonColor: "#d33",
-            confirmButtonText: "Ir al evento",
-            cancelButtonText: "Cancelar",
-         }).then((result) => {
-            if (result.isConfirmed) {
+      Swal.fire({
+         title: "¿Qué desea hacer?",
+         text: "Quieres ir a este evento?",
+         icon: "warning",
+         showCancelButton: true,
+         confirmButtonColor: "#3085d6",
+         cancelButtonColor: "#d33",
+         confirmButtonText: "Ir al evento",
+         cancelButtonText: "Cancelar",
+      }).then((result) => {
+         if (result.isConfirmed) {
 
-               navigate(`/events/actions?idCalendar=${lead.id_calendar}&idLead=${lead.idinterno_lead}&idDate=0`);
-            }
-         });
+            navigate(`/events/actions?idCalendar=${lead.id_calendar}&idLead=${lead.idinterno_lead}&idDate=0`);
+         }
+      });
    };
 
    const handleCloseModal = () => {
@@ -164,7 +154,7 @@ const View_events_listado  = () => {
 
    // Table options with row click handling
    const tableOptions = {
-      ...useTableOptions([0,1,2,5,6,7,8,9]),
+      ...useTableOptions([0, 1, 2, 5, 6, 7, 8, 9]),
       rowCallback: function (row, data) {
          row.addEventListener("click", () => handleOpenModal(data));
          return false;
@@ -205,7 +195,7 @@ const View_events_listado  = () => {
    return (
       <div className="card" style={{ width: "100%" }}>
          <div className="card-header table-card-header">
-            <h5>LISTA COMPLETA DE EVENTOS QUE REQUIEREN ATENCIÓN</h5> 
+            <h5>LISTA COMPLETA DE EVENTOS QUE REQUIEREN ATENCIÓN</h5>
          </div>
          <FilterOptions
             inputStartDate={inputStartDate}
@@ -216,10 +206,10 @@ const View_events_listado  = () => {
             handleCheckboxChange={setFilterOption}
          />
          <div className="card-body" style={{ width: "100%", padding: "0" }}>
-            <DataTableComponent 
+            <DataTableComponent
                tableData={filteredTableData}
-               tableRef={tableRef} 
-               tableOptions={tableOptions} 
+               tableRef={tableRef}
+               tableOptions={tableOptions}
             />
          </div>
          {selectedLead && (

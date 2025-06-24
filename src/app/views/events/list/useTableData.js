@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useDispatch } from "react-redux";
 
 import Swal from "sweetalert2";
@@ -41,6 +41,8 @@ export const useTableData = (MostrarSwal = true, dateStart, dateEnd) => {
 
             // Obtener los datos llamando a la acción Redux
             const result = await dispatch(getAllListEvent(dateStart, dateEnd));
+
+
 
             setData(result);
          } catch (error) {
