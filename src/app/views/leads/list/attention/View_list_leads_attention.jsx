@@ -68,12 +68,13 @@ const FilterControls = ({ filterOption, handleCheckboxChange }) => {
    return (
       <div className="row g-4 mt-3">
          <div className="col-md-6">
-            <FilterOption
+            {/* <FilterOption
+               style={{ display: 'none' }}
                id="creationDate"
                label="Filtrar por Fecha de Creación"
                checked={filterOption === 1}
                onChange={() => handleCheckboxChange(1)}
-            />
+            /> */}
             <FilterOption
                id="lastActionDate"
                label="Filtrar por Última Acción"
