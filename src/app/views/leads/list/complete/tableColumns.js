@@ -115,17 +115,16 @@ export const TABLE_COLUMNS = [
         searchPanes: { show: true }
     },
     {
-        title: "Estado Lead",
-        data: "estado_lead",
+        title: "Estado Accion",
+        data: "nombre_caida",
         className: "text-left",
-        render: getLeadStatus,
-        visible: false,
         searchPanes: { show: true }
     },
     {
-        title: "Seguimineto",
-        data: "nombre_caida",
+        title: "Estado Seguimiento",
+        data: "segimineto_lead",
         className: "text-left",
+        render: processFollowUpStatus,
         searchPanes: { show: true }
     }
 ];

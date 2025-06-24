@@ -114,14 +114,7 @@ export const TABLE_COLUMNS = [
         render: formatDateTime,
         searchPanes: { show: true }
     },
-    {
-        title: "Estado Lead",
-        data: "estado_lead",
-        className: "text-left",
-        render: getLeadStatus,
-        visible: false,
-        searchPanes: { show: true }
-    },
+
     {
         title: "Estado Accion",
         data: "nombre_caida",
@@ -132,6 +125,7 @@ export const TABLE_COLUMNS = [
         title: "Estado Seguimiento",
         data: "segimineto_lead",
         className: "text-left",
+        render: processFollowUpStatus,
         searchPanes: { show: true }
     }
 ];
