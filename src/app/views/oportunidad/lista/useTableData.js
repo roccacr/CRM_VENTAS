@@ -1,7 +1,7 @@
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useDispatch } from "react-redux";
-import { getOportunidades } from "../../../../store/oportuinidad/thunkOportunidad";
 import Swal from "sweetalert2";
+import { getOportunidades } from "../../../../store/oportuinidad/thunkOportunidad";
 
 /**
  * Custom hook para gestionar la obtención de datos de leads.
@@ -12,9 +12,9 @@ import Swal from "sweetalert2";
  * @param {number} filterOption - Opción de filtro (1: creación, 2: última acción).
  * @returns {[Array, Function]} - El estado de datos y su función actualizadora.
  */
-export const useTableData = (MostrarSwal = true, idLead, startDate, endDate, isMode, BotonesEstados , leadAsignado) => {
-   
-  
+export const useTableData = (MostrarSwal = true, idLead, startDate, endDate, isMode, BotonesEstados, leadAsignado) => {
+
+
 
    const dispatch = useDispatch(); // Hook de Redux para despachar acciones
    const [data, setData] = useState([]); // Estado local para almacenar los datos
@@ -33,6 +33,8 @@ export const useTableData = (MostrarSwal = true, idLead, startDate, endDate, isM
             }
             // Obtener los datos llamando a la acción Redux
             const result = await dispatch(getOportunidades(idLead, startDate, endDate, isMode, BotonesEstados, leadAsignado));
+            console.log("Datos obtenidos:", result);
+
             setData(result);
          } catch (error) {
             console.log("Error al cargar datos:", error);

@@ -1,10 +1,9 @@
-import React from "react";
-import { ModalHeader } from "./components/ModalHeader";
+import { useLeadActions } from "../../../hooks/useLeadActions";
+import { useModalLeads } from "../../../hooks/useModalLeads";
 import { ActionButtons } from "./components/ActionButtons";
+import { ModalHeader } from "./components/ModalHeader";
 import { RecentActions } from "./components/RecentActions";
 import { BUTTON_DATA } from "./constants";
-import { useModalLeads } from "../../../hooks/useModalLeads";
-import { useLeadActions } from "../../../hooks/useLeadActions";
 
 /**
  * Componente `ModalLeads`

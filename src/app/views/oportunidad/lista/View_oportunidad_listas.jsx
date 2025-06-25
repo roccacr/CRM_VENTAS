@@ -1,9 +1,9 @@
-import { React, useRef, useEffect, DataTable, useTableOptions, DT } from "../../leads/list/Imports/imports";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useTableData } from "./useTableData";
-import { tableColumns } from "./tableColumns";
+import { DataTable, DT, React, useEffect, useRef, useTableOptions } from "../../leads/list/Imports/imports";
 import "../../leads/list/Imports/style.css";
-import { useState, useMemo } from "react";
+import { tableColumns } from "./tableColumns";
+import { useTableData } from "./useTableData";
 
 // Initialize DataTables with DT plugin
 DataTable.use(DT);
@@ -143,7 +143,7 @@ const FilterOptions = (props) => (
       <StatusToggle {...props} />
       <DateRangeFilter {...props} />
       <ModeSelector {...props} />
-      
+
    </div>
 );
 
@@ -194,7 +194,7 @@ const View_oportunidad_listas = () => {
    const [searchParams, setSearchParams] = useState(new URLSearchParams(location));
    const oportunidadParam = searchParams.get('oportuinidad');
    const leadAsignado = searchParams.get('idLead');
-   
+
    // Update searchParams when URL changes
    useEffect(() => {
       setSearchParams(new URLSearchParams(location));
@@ -218,7 +218,7 @@ const View_oportunidad_listas = () => {
    const [tableData] = useTableData(true, idOportunidad, inputStartDate, inputEndDate, isMode, botonesEstados, leadAsignado);
 
    // Filter data based on URL parameter
-   const filteredTableData = oportunidadParam === '1' 
+   const filteredTableData = oportunidadParam === '1'
       ? tableData.filter(item => item.chek_oport === 1)
       : tableData;
 
@@ -226,7 +226,7 @@ const View_oportunidad_listas = () => {
 
    // Table options with row click handling
    const tableOptions = {
-      ...useTableOptions([0, 1, 2, 4, 5, 8, 10, 11]),
+      ...useTableOptions([0, 1, 2, 4, 5, 8, 10, 11, 12]),
       rowCallback: function (row, data) {
          row.addEventListener("click", () => handleOpenModal(data));
       },
@@ -261,10 +261,10 @@ const View_oportunidad_listas = () => {
             BotonesEstados={botonesEstados}
          />
          <div className="card-body" style={{ width: "100%", padding: "0" }}>
-            <DataTableComponent 
-               tableData={filteredTableData} 
-               tableRef={tableRef} 
-               tableOptions={tableOptions} 
+            <DataTableComponent
+               tableData={filteredTableData}
+               tableRef={tableRef}
+               tableOptions={tableOptions}
             />
          </div>
       </div>
