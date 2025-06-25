@@ -36,10 +36,10 @@ export const tableColumns = [
     title: "PROBABILIDAD", className: "text-center", data: null,
     render: (data, type, row) => {
       // Verificación defensiva de las propiedades
-      const check2 = row.chek2_oport !== undefined ? parseInt(row.chek2_oport) : 0;
+      // const check2 = row.chek2_oport !== undefined ? parseInt(row.chek2_oport) : 0;
       const check1 = row.chek_oport !== undefined ? parseInt(row.chek_oport) : 0;
 
-      return (check2 === 1 || check1 === 1) ? "Probable" : "Menos Probable";
+      return (check1 === 1) ? "Probable" : "Menos Probable";
     }
   }, // 12
 ];
