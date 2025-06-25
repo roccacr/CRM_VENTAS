@@ -161,8 +161,9 @@ leads.get_Specific_Lead = (dataParams) =>
  * @param {string} dataParams.database - Nombre de la base de datos donde se ejecutará el procedimiento almacenado.
  * @returns {Promise<Object>} - Promesa que resuelve con el resultado de la inserción de la bitácora.
  */
-leads.insertBitcoraLead = (dataParams) =>
-    executeStoredProcedure(
+leads.insertBitcoraLead = (dataParams) => {
+    console.log("insertBitcoraLead dataParams:", dataParams);
+    return executeStoredProcedure(
         "14_INSERTAR_BITACORA_LEAD", // Nombre del procedimiento almacenado que gestiona la inserción de la bitácora.
         [
             dataParams.leadId, // ID del lead que se está manejando.
@@ -174,6 +175,7 @@ leads.insertBitcoraLead = (dataParams) =>
         ],
         dataParams.database, // Nombre de la base de datos donde se ejecutará el procedimiento almacenado.
     );
+};
 
 /**
  * Actualiza la información de un lead y registra una bitácora de las acciones realizadas en la base de datos.
