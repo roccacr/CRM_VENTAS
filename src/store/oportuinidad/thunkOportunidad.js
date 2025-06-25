@@ -1,5 +1,5 @@
 import { generateLeadBitacora } from "../leads/thunksLeads";
-import { get_Ubicaciones, get_Clases, get_Oportunidades, crear_Oportunidad, getSpecific_Oportunidad, obtener_OportunidadesCliente, updateOpportunity_Probability, updateOpportunity_Status, updateEstadoOportunidad_fetch } from "./Api_provider_oportunidad";
+import { crear_Oportunidad, get_Clases, get_Oportunidades, get_Ubicaciones, getSpecific_Oportunidad, obtener_OportunidadesCliente, updateEstadoOportunidad_fetch, updateOpportunity_Probability, updateOpportunity_Status } from "./Api_provider_oportunidad";
 
 /**
  * Función que retorna una función asíncrona para obtener ubicaciones por ID.
@@ -41,26 +41,6 @@ export const getfetch_Clases = (idClases) => {
     };
 };
 
-/**
- * Función que crea una nueva oportunidad basada en los valores del formulario y datos del cliente.
- * @param {object} formValue - Los valores del formulario para crear la oportunidad.
- * @param {object} clientData - Los datos del cliente asociados con la oportunidad.
- * @returns {function} - Una función asíncrona que retorna el resultado de la creación de la oportunidad.
- */
-export const crearOportunidad = (formValue, clientData) => {
-    return async () => {
-        try {
-            // Llama a la API para crear una nueva oportunidad con los datos proporcionados.
-            const result = await crear_Oportunidad({ formValue, clientData });
-
-            // Retorna el resultado de la operación, que puede incluir un estado o mensaje de éxito.
-            return result;
-        } catch (error) {
-            // Captura cualquier error que ocurra durante la creación de la oportunidad y lo muestra en la consola para facilitar la depuración.
-            console.error("Error al crear la oportunidad:", error);
-        }
-    };
-};
 
 /**
  * Función que retorna una función asíncrona para obtener oportunidades por ID de lead, rango de fechas y modo.
@@ -71,10 +51,10 @@ export const crearOportunidad = (formValue, clientData) => {
  * @returns {function} - Una función asíncrona que retorna los datos de las oportunidades.
  */
 export const getOportunidades = (idLead, startDate, endDate, isMode, BotonesEstados, leadAsignado) => {
-  
-    
+
+
     return async (dispatch, getState) => {
-        const { idnetsuite_admin , rol_admin } = getState().auth;
+        const { idnetsuite_admin, rol_admin } = getState().auth;
 
         try {
             // Validar las fechas y permitir que se envíen vacías
@@ -107,6 +87,28 @@ export const getOportunidades = (idLead, startDate, endDate, isMode, BotonesEsta
     };
 };
 
+
+/**
+ * Función que crea una nueva oportunidad basada en los valores del formulario y datos del cliente.
+ * @param {object} formValue - Los valores del formulario para crear la oportunidad.
+ * @param {object} clientData - Los datos del cliente asociados con la oportunidad.
+ * @returns {function} - Una función asíncrona que retorna el resultado de la creación de la oportunidad.
+ */
+export const crearOportunidad = (formValue, clientData) => {
+    return async () => {
+        try {
+            // Llama a la API para crear una nueva oportunidad con los datos proporcionados.
+            const result = await crear_Oportunidad({ formValue, clientData });
+
+            // Retorna el resultado de la operación, que puede incluir un estado o mensaje de éxito.
+            return result;
+        } catch (error) {
+            // Captura cualquier error que ocurra durante la creación de la oportunidad y lo muestra en la consola para facilitar la depuración.
+            console.error("Error al crear la oportunidad:", error);
+        }
+    };
+};
+
 /**
  * Función que crea un reporte de bitácora para un lead relacionado con la creación de una oportunidad.
  * @param {object} leadData - Los datos del lead que será actualizado en la bitácora.
@@ -131,7 +133,7 @@ export const crearReoporteLead = (leadData) => {
             };
 
             // Despacha la acción para generar la bitácora del lead, incluyendo la descripción del evento y los valores adicionales.
-            await dispatch(generateLeadBitacora(leadData.id_empleado_lead, leadData.idinterno_lead, additionalValues, descripcionEvento, leadData.segimineto_lead));
+            await dispatch(generateLeadBitacora(leadData.id_empleado_lead, leadData.idinterno_lead, additionalValues, descripcionEvento, "02-LEAD-OPORTUNIDAD"));
 
             // Retorna un valor verdadero para indicar que la operación fue exitosa.
             return true;
@@ -237,7 +239,7 @@ export const updateEstadoOportunidad = (formValues, detalleOportunidad) => {
         } catch (error) {
             // Catches any error that occurs during the request and logs it to the console.
             // This helps in identifying issues when trying to update the status of the opportunity.
-            console.error("Error updating the opportunity status:", error); 
+            console.error("Error updating the opportunity status:", error);
         }
     };
 };
