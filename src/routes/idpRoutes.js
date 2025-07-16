@@ -33,6 +33,11 @@ dotenv.config();
 // Prefijo global para las rutas de la API
 const API_PREFIX = "/api/v2.0";
 
+// const correoCitas = require("../models/correoCitas/correoCitas");
+
+
+
+
 /**
  * Middleware para validar el token de acceso.
  * Compara el token enviado en la solicitud con el token almacenado en las variables de entorno.
