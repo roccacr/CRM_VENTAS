@@ -45,7 +45,7 @@ const DateRangeFilter = ({ inputStartDate, setInputStartDate, inputEndDate, setI
             <input
                type="date"
                className="form-control"
-               value={inputStartDate}
+               value={inputStartDate || ''}
                onChange={(e) => setInputStartDate(e.target.value)}
                aria-label="Fecha de inicio"
             />
@@ -57,7 +57,7 @@ const DateRangeFilter = ({ inputStartDate, setInputStartDate, inputEndDate, setI
             <input
                type="date"
                className="form-control"
-               value={inputEndDate}
+               value={inputEndDate || ''}
                onChange={(e) => setInputEndDate(e.target.value)}
                aria-label="Fecha final"
             />
@@ -71,7 +71,7 @@ const DateRangeFilter = ({ inputStartDate, setInputStartDate, inputEndDate, setI
  * ModeSelector Component - Responsible for filter mode selection
  * Following Single Responsibility Principle
  */
-const ModeSelector = ({ isMode, setIsMode }) => (
+const ModeSelector = ({ isMode, setIsMode, onClearDates }) => (
    <div className="row g-4">
       <div className="col-md-6">
          <div className="form-floating mb-0">
@@ -87,6 +87,15 @@ const ModeSelector = ({ isMode, setIsMode }) => (
                checked={isMode === 2}
                onChange={(e) => setIsMode(e.target.checked ? 2 : 0)}
             />
+            <button
+               className="btn btn-outline-danger btn-sm mt-2"
+               type="button"
+               onClick={onClearDates}
+               aria-label="Limpiar filtro de fecha"
+               style={{ width: 'auto', minWidth: '120px', padding: '0.25rem 0.75rem', fontSize: '0.9rem' }}
+            >
+               Limpiar filtro de fecha
+            </button>
          </div>
       </div>
    </div>
@@ -143,7 +152,6 @@ const FilterOptions = (props) => (
       <StatusToggle {...props} />
       <DateRangeFilter {...props} />
       <ModeSelector {...props} />
-
    </div>
 );
 
@@ -200,9 +208,39 @@ const View_oportunidad_listas = () => {
       setSearchParams(new URLSearchParams(location));
    }, [location]);
 
+   // --- FECHAS: Persistencia en localStorage ---
+   const LS_START = 'oportunidad_inputStartDate';
+   const LS_END = 'oportunidad_inputEndDate';
+
+   // Leer fechas de localStorage al montar
+   const [inputStartDate, setInputStartDateState] = useState(() => localStorage.getItem(LS_START) || '');
+   const [inputEndDate, setInputEndDateState] = useState(() => localStorage.getItem(LS_END) || '');
+
+   // Guardar en localStorage al cambiar
+   const setInputStartDate = (val) => {
+      setInputStartDateState(val);
+      if (val) {
+         localStorage.setItem(LS_START, val);
+      } else {
+         localStorage.removeItem(LS_START);
+      }
+   };
+   const setInputEndDate = (val) => {
+      setInputEndDateState(val);
+      if (val) {
+         localStorage.setItem(LS_END, val);
+      } else {
+         localStorage.removeItem(LS_END);
+      }
+   };
+
+   // Botón limpiar fechas
+   const handleClearDates = () => {
+      setInputStartDate('');
+      setInputEndDate('');
+   };
+
    // State management
-   const [inputStartDate, setInputStartDate] = useState();
-   const [inputEndDate, setInputEndDate] = useState();
    const [filterOption, setFilterOption] = useState(1);
    const [isMode, setIsMode] = useState(1);
    const [botonesEstados, setBotonesEstados] = useState(parseInt(oportunidadParam));
@@ -259,6 +297,7 @@ const View_oportunidad_listas = () => {
             setIsMode={setIsMode}
             isMode={isMode}
             BotonesEstados={botonesEstados}
+            onClearDates={handleClearDates}
          />
          <div className="card-body" style={{ width: "100%", padding: "0" }}>
             <DataTableComponent
