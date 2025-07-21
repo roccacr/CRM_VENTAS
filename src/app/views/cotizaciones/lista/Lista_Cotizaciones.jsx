@@ -43,7 +43,7 @@ const DateControls = ({ inputStartDate, inputEndDate, setInputStartDate, setInpu
                <input 
                   type="date" 
                   className="form-control" 
-                  value={inputStartDate} 
+                  value={inputStartDate || ''} 
                   onChange={(e) => setInputStartDate(e.target.value)}
                   disabled={isDisabled}
                />
@@ -55,7 +55,7 @@ const DateControls = ({ inputStartDate, inputEndDate, setInputStartDate, setInpu
                <input 
                   type="date" 
                   className="form-control" 
-                  value={inputEndDate} 
+                  value={inputEndDate || ''} 
                   onChange={(e) => setInputEndDate(e.target.value)}
                   disabled={isDisabled}
                />
@@ -71,9 +71,10 @@ const DateControls = ({ inputStartDate, inputEndDate, setInputStartDate, setInpu
  * @param {Object} props - Propiedades del componente
  * @param {number} props.filterOption - Opción de filtrado actual
  * @param {Function} props.handleCheckboxChange - Manejador de cambio de filtro
+ * @param {Function} props.onClearDates - Manejador para limpiar fechas
  * @returns {JSX.Element} Controles de filtrado
  */
-const FilterControls = ({ filterOption, handleCheckboxChange }) => (
+const FilterControls = ({ filterOption, handleCheckboxChange, onClearDates }) => (
    <div className="row g-4 mt-3">
       <div className="col-md-6">
          <FilterOption
@@ -94,12 +95,21 @@ const FilterControls = ({ filterOption, handleCheckboxChange }) => (
             checked={filterOption === 3}
             onChange={() => handleCheckboxChange(3)}
          />
-          <FilterOption
+         <FilterOption
             id="pendingPayment"
             label="Todos los contratos"
             checked={filterOption === 4}
             onChange={() => handleCheckboxChange(4)}
          />
+         <button
+            className="btn btn-outline-danger btn-sm mt-2"
+            type="button"
+            onClick={onClearDates}
+            aria-label="Limpiar filtro de fecha"
+            style={{ width: 'auto', minWidth: '120px', padding: '0.25rem 0.75rem', fontSize: '0.9rem' }}
+         >
+            Limpiar filtro de fecha
+         </button>
       </div>
    </div>
 );
@@ -306,11 +316,37 @@ const Lista_Cotizaciones = () => {
    /** Fechas por defecto para el filtrado */
    const { firstDay, lastDay } = getDefaultDatesMeses();
 
-   /** Estado para la fecha de inicio */
-   const [inputStartDate, setInputStartDate] = useState(firstDay);
+   // --- FECHAS: Persistencia en localStorage ---
+   const LS_START = 'cotizaciones_inputStartDate';
+   const LS_END = 'cotizaciones_inputEndDate';
 
-   /**  Estado para la fecha final */
-   const [inputEndDate, setInputEndDate] = useState(lastDay);
+   // Leer fechas de localStorage al montar
+   const [inputStartDate, setInputStartDateState] = useState(() => localStorage.getItem(LS_START) || firstDay);
+   const [inputEndDate, setInputEndDateState] = useState(() => localStorage.getItem(LS_END) || lastDay);
+
+   // Guardar en localStorage al cambiar
+   const setInputStartDate = (val) => {
+      setInputStartDateState(val);
+      if (val) {
+         localStorage.setItem(LS_START, val);
+      } else {
+         localStorage.removeItem(LS_START);
+      }
+   };
+   const setInputEndDate = (val) => {
+      setInputEndDateState(val);
+      if (val) {
+         localStorage.setItem(LS_END, val);
+      } else {
+         localStorage.removeItem(LS_END);
+      }
+   };
+
+   // Botón limpiar fechas
+   const handleClearDates = () => {
+      setInputStartDate('');
+      setInputEndDate('');
+   };
 
    /**  Estado para la opción de filtrado */
    const [filterOption, setFilterOption] = useState(() => {
@@ -374,7 +410,7 @@ const Lista_Cotizaciones = () => {
                   setInputEndDate={setInputEndDate}
                   filterOption={filterOption}
                />
-               <FilterControls filterOption={filterOption} handleCheckboxChange={handleCheckboxChange} />
+               <FilterControls filterOption={filterOption} handleCheckboxChange={handleCheckboxChange} onClearDates={handleClearDates} />
             </div>
             {/* Fin del bloque de controles de filtro */}
             <div className="table-responsive">
