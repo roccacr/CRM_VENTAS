@@ -4,6 +4,7 @@ import { ActionButtons } from "./components/ActionButtons";
 import { ModalHeader } from "./components/ModalHeader";
 import { RecentActions } from "./components/RecentActions";
 import { BUTTON_DATA } from "./constants";
+import { useLocation } from "react-router-dom";
 
 /**
  * Componente `ModalLeads`
@@ -22,6 +23,17 @@ export const ModalLeads = ({ leadData, onClose }) => {
     // Custom hooks para manejar el estado y las acciones del modal
     const { showModal, isMobile, showPreload, bitacora, setShowModal } = useModalLeads(leadData);
     const { handleWhatsappClick, handleNote, handleEvents, handleWhatsappAndNote, handleLoss, handfollow_up, crearOportunidad, handleOpportunityList, handleCallClient, PerfilUsuario, handleBck, handedit } = useLeadActions();
+    const location = useLocation();
+
+    // Filtra los botones según la URL
+    const filteredButtonData = BUTTON_DATA.filter(btn => {
+        if (btn.action === "handleWhatsappAndNote") {
+            // Solo mostrar si la URL es exactamente '/leads/lista?data=2'
+            const isTarget = location.pathname === "/leads/lista" && location.search === "?data=2";
+            return isTarget;
+        }
+        return true;
+    });
 
     /**
      * Cierra el modal con un pequeño retraso para permitir animaciones.
@@ -82,7 +94,7 @@ export const ModalLeads = ({ leadData, onClose }) => {
      * @returns {JSX.Element[]} Arreglo de botones renderizados.
      */
     const renderButtons = (forDropdown = false) =>
-        BUTTON_DATA.map((btn, idx) => {
+        filteredButtonData.map((btn, idx) => {
             // Mapeo de acciones a funciones
             const actionMap = {
                 handleWhatsappClick: () => handleWhatsappClick(leadData?.telefono_lead),
