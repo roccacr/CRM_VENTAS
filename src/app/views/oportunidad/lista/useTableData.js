@@ -33,7 +33,6 @@ export const useTableData = (MostrarSwal = true, idLead, startDate, endDate, isM
             }
             // Obtener los datos llamando a la acción Redux
             const result = await dispatch(getOportunidades(idLead, startDate, endDate, isMode, BotonesEstados, leadAsignado));
-            console.log("Datos obtenidos:", result);
 
             setData(result);
          } catch (error) {
