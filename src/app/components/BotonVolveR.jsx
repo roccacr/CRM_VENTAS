@@ -1,7 +1,16 @@
+import { useLocation, useNavigate } from 'react-router-dom';
+
 export const BotonVolveR = () => {
+    const navigate = useNavigate();
+    const location = useLocation();
+
     const handleVolverClickPagina = () => {
-        // Usar la API de historial para volver a la página anterior
-        window.history.back();
+        if (window.history.length > 2) {
+            navigate(-1); // Volver a la página anterior del historial
+        } else {
+            // Si no hay historial, ir a una ruta lógica definida
+            navigate('/'); // Personaliza esta ruta
+        }
     };
 
     return (
