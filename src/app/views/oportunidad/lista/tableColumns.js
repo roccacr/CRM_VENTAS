@@ -1,5 +1,6 @@
 export const tableColumns = [
   { title: "LEADS", data: "nombre_lead", className: "text-center" }, // 0
+  { title: "ASESOR", data: "name_admin", className: "text-center" }, // 1
   { title: "#OPORTUNIDAD", data: "tranid_oport", className: "text-center" }, // 1
   { title: "MOTIVO CONDICION", data: "Motico_Condicion", className: "text-center" }, // 2
   {

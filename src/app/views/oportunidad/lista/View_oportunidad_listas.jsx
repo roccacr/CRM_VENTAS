@@ -226,7 +226,7 @@ const View_oportunidad_listas = () => {
 
    // Table options with row click handling
    const tableOptions = {
-      ...useTableOptions([0, 1, 2, 4, 5, 8, 10, 11, 12]),
+      ...useTableOptions([0, 1, 2, 4, 5, 8, 10, 11, 12,13]),
       rowCallback: function (row, data) {
          row.addEventListener("click", () => handleOpenModal(data));
       },
