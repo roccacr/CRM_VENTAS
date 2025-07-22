@@ -155,11 +155,6 @@ const database = "pruebas";
  * @param {number} notificarCliente - 6: nueva, 3: reprogramada, 4: cancelada
  */
 const extraerEvento = (notificarCliente) => {
-    // Determinar el tipo_calendar según el tipo de notificación
-    let tipoCalendar = 'Pendiente';
-    if (notificarCliente === 4) {
-        tipoCalendar = 'Cancelado';
-    }
     const query = `SELECT 
         c.*, 
         a.name_admin, 
@@ -176,7 +171,7 @@ const extraerEvento = (notificarCliente) => {
         AND c.id_proyecto > 0 
         AND c.NotificarCliente = ?
         AND c.correoEnviado = 0`;
-    const params = [tipoCalendar, "Cita", notificarCliente];
+    const params = ["Pendiente", "Cita", notificarCliente];
     return executeQuery(query, params, database);
 };
 
@@ -224,7 +219,7 @@ async function procesarEventos(notificarCliente, tipo) {
                 fechaTexto: new Date(evento.fechaIni_calendar).toLocaleString('es-CR'),
                 asesorNombre: evento.name_admin,
                 asesorEmail: evento.email_admin,
-                web: '',
+                web: 'https://roccacr.com',
                 tipo
             });
 
@@ -245,7 +240,8 @@ async function procesarEventos(notificarCliente, tipo) {
 
             // Destinatarios
             const to = [evento.email_lead, evento.email_admin].filter(Boolean).join(',');
-            const cc = ''
+            // Para pruebas, no enviar copia a nadie
+            const cc = '';
 
             // Asunto
             let subject = `Confirmación de cita: ${evento.nombre_proyecto}`;
@@ -294,7 +290,7 @@ async function procesarCancelacionesDefinitivas() {
                 fechaTexto: new Date(evento.fechaIni_calendar).toLocaleString('es-CR'),
                 asesorNombre: evento.name_admin,
                 asesorEmail: evento.email_admin,
-                web: '',
+                web: 'https://roccacr.com',
                 tipo: 'cancelada'
             });
 
@@ -314,7 +310,7 @@ async function procesarCancelacionesDefinitivas() {
             });
 
             const to = [evento.email_lead, evento.email_admin].filter(Boolean).join(',');
-            const cc = ''
+            const cc = ''; // Solo destinatarios principales en pruebas
 
             const subject = `Cancelación de cita: ${evento.nombre_proyecto}`;
 
@@ -356,7 +352,7 @@ cron.schedule('*/1 * * * *', async () => {
         // Enviar cancelaciones definitivas (NotificarCliente = 5)
         await procesarCancelacionesDefinitivas();
 
-        return;
+        return ;
     } catch (error) {
         console.error('Error en el cron de envío de invitaciones:', error);
     }

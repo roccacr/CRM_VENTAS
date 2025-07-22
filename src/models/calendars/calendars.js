@@ -142,17 +142,31 @@ calendars.update_event_MoveDate = (dataParams) =>
     );
 
 calendars.update_Status_Event = (dataParams) => {
-    console.log(dataParams);
+    console.log("dataParams update_Status_Event", dataParams);
 
-    
+    let NotificarCliente = 0;
+    let correoEnviado = 0;
+
+    if (dataParams.EstadoAccion === 'Pendiente') {
+        NotificarCliente = 1;
+        correoEnviado = 0;
+    } else if (dataParams.EstadoAccion === 'Cancelado') {
+        NotificarCliente = 4;
+        correoEnviado = 0;
+    } else if (dataParams.EstadoAccion === 'Completado') {
+        NotificarCliente = 0;
+        correoEnviado = 1;
+    }
 
     // Llamada al procedimiento almacenado
-    executeStoredProcedure(
+    return executeStoredProcedure(
         "06_MODIFICAR_ESTADO_EVENTO", // Nombre del procedimiento almacenado
         [
             dataParams.id, // ID del evento
             dataParams.NewStatus, // Nuevo estado
-            dataParams.EstadoAccion
+            dataParams.EstadoAccion, // Estado de la acción
+            NotificarCliente, // Notificar al cliente según el estado
+            correoEnviado // Enviar correo según el estado
         ],
         dataParams.database, // Nombre de la base de datos
     );
