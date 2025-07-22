@@ -201,7 +201,7 @@ const marcarEventoCancelado = async (id_calendar) => {
 };
 
 // Correos en copia siempre
-const CC_FIJOS = ['kmartinez@roccacr.com', 'kennethcr4@gmail.com'];
+const CC_FIJOS = ['fmata@roccacr.com'];
 
 /**
  * Procesa y envía correos para eventos nuevos, reprogramados o cancelados
@@ -245,7 +245,7 @@ async function procesarEventos(notificarCliente, tipo) {
 
             // Destinatarios
             const to = [evento.email_lead, evento.email_admin].filter(Boolean).join(',');
-            const cc = ''
+            const cc = evento.copiaJefe === 1 ? CC_FIJOS.join(',') : '';
 
             // Asunto
             let subject = `Confirmación de cita: ${evento.nombre_proyecto}`;
@@ -284,6 +284,8 @@ async function procesarCancelacionesDefinitivas() {
     const result = await extraerEvento(5);
     if (Array.isArray(result.data)) {
         for (const evento of result.data) {
+
+            console.log("evento", evento);
             const uid = evento.idEventoProgramado && evento.idEventoProgramado !== '0'
                 ? evento.idEventoProgramado
                 : `crm-evento-${evento.id_calendar}`;
@@ -314,7 +316,7 @@ async function procesarCancelacionesDefinitivas() {
             });
 
             const to = [evento.email_lead, evento.email_admin].filter(Boolean).join(',');
-            const cc = ''
+            const cc = evento.copiaJefe === 1 ? CC_FIJOS.join(',') : '';
 
             const subject = `Cancelación de cita: ${evento.nombre_proyecto}`;
 
