@@ -187,6 +187,19 @@ export const View_events_Actions = () => {
         const leadDataCitas = await dispatch(getSpecificLeadCitas(idEvent));
         setLeadDetailsCitas(leadDataCitas); // Guarda los detalles de las citas del lead en el estado.
 
+        // Si el tipo de evento es 'Cita' y el lead tiene un proyecto válido, selecciona el proyecto
+        if (eventDetails.type === 'Cita' && leadData.idproyecto_lead && leadData.idproyecto_lead > 0 && projectsOptions.length > 0) {
+            const found = projectsOptions.find(p => p.value === leadData.idproyecto_lead);
+            if (found) {
+                setSelectedProject(found);
+                setEventDetails((prev) => ({
+                    ...prev,
+                    id_proyecto: found.value,
+                    nombre_proyecto: found.label,
+                }));
+            }
+        }
+
         // Activa el checkbox y abre el acordeón de opciones adicionales.
         setIsCheckboxChecked(true);
         setIsAccordionOpen(true);
@@ -647,7 +660,7 @@ export const View_events_Actions = () => {
 
                             {eventDetails.type === "Cita" && (
                                 <div className="mb-3">
-                                    <label className="form-label">
+                                    <label className="form-label" title="Seleccione el proyecto al que el cliente va a hacer la visita. No necesariamente es el mismo que tiene asignado, puede elegir otro para enviar en el correo de confirmación.">
                                         Seleccionar el proyecto a visitar<span className="text-danger">*</span>
                                     </label>
                                     <Select
