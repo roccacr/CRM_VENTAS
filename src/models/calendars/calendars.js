@@ -37,6 +37,8 @@ calendars.createEvent = (dataParams) =>
             dataParams.citaValue, // Color visual que se asigna al evento campo cita_lead
             dataParams.citaValue, // Color visual que se asigna al evento campo citas_chek
             dataParams.citaValue, // Color visual que se asigna al evento campo masDeUnaCita_calendar
+            dataParams.id_proyecto, // ID del proyecto relacionado con el evento
+            dataParams.nombre_proyecto, // Nombre del proyecto relacionado con el evento
         ], // Parámetros que identifican el rol y el ID del administrador.
         dataParams.database, // Nombre de la base de datos a utilizar.
     );
@@ -89,8 +91,9 @@ calendars.get_event_Citas = (dataParams) =>
  * @param {Object} dataParams - Objeto que contiene los parámetros necesarios para la consulta.
  * @returns {Promise<Object>} - Resultado de la consulta de eventos del calendario.
  */
-calendars.editEvent = (dataParams) =>
-    executeStoredProcedure(
+calendars.editEvent = (dataParams) => {
+    console.log(dataParams); // Log the dataParams to the console
+    return executeStoredProcedure(
         "02_EDITAR_EVENTO", // Nombre del procedimiento almacenado que recupera los eventos del calendario.
         [
             dataParams.id_calendar, // Nombre descriptivo del evento
@@ -107,9 +110,12 @@ calendars.editEvent = (dataParams) =>
             dataParams.citaValue, // Color visual que se asigna al evento campo cita_lead
             dataParams.citaValue, // Color visual que se asigna al evento campo citas_chek
             dataParams.citaValue, // Color visual que se asigna al evento campo masDeUnaCita_calendar
+            dataParams.id_proyecto, // ID del proyecto relacionado con el evento
+            dataParams.nombre_proyecto, // Nombre del proyecto relacionado con el evento
         ], // Parámetros que identifican el rol y el ID del administrador.
         dataParams.database, // Nombre de la base de datos a utilizar.
     );
+};
 
 /**
  * Ejecuta el procedimiento almacenado para actualizar la fecha de un evento en el calendario.
