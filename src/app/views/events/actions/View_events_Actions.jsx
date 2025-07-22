@@ -2,7 +2,7 @@ import { useEffect, useState } from "react"; // Hooks de React para manejar el c
 import { useLocation, useNavigate } from "react-router-dom"; // Hook de React Router para obtener la ubicación actual (URL)
 import { ButtonActions } from "../../../components/buttonAccions/buttonAccions"; // Componente personalizado para botones de acciones
 import { useDispatch } from "react-redux"; // Hook de Redux para despachar acciones
-import { getLeadsComplete, getSpecificLead } from "../../../../store/leads/thunksLeads"; // Acción asíncrona para obtener un lead específico
+import { getLeadsComplete, getSpecificLead, getDataSelectProyect } from "../../../../store/leads/thunksLeads"; // Acción asíncrona para obtener un lead específico
 import { createEventForLead, editeEventForLead, getDataEevent, getSpecificLeadCitas, updateStatusEvent } from "../../../../store/calendar/thunkscalendar"; // Acción asíncrona para obtener un evento específico
 import Accordion from "@mui/material/Accordion"; // Acordion de Material UI
 import AccordionSummary from "@mui/material/AccordionSummary";
@@ -158,6 +158,10 @@ export const View_events_Actions = () => {
     // Estado para manejar el lead seleccionado del selector de leads.
     const [selectedLead, setSelectedLead] = useState(null);
 
+    // Estado para almacenar la lista de proyectos y el proyecto seleccionado
+    const [projectsOptions, setProjectsOptions] = useState([]);
+    const [selectedProject, setSelectedProject] = useState(null);
+
     // Función para obtener los parámetros de la URL.
     // Extrae el valor del parámetro proporcionado desde la URL utilizando 'location.search'.
     // Si el valor es un número válido, lo convierte a número; de lo contrario, retorna el valor tal cual.
@@ -215,7 +219,23 @@ export const View_events_Actions = () => {
             startTime: formatTime(eventData.horaInicio_calendar.split(" ")[0].slice(0, 5)), // Formatea y actualiza la hora de inicio.
             endTime: formatTime(eventData.horaFinal_calendar.split(" ")[0].slice(0, 5)), // Formatea y actualiza la hora de fin.
             estado: eventData.accion_calendar, // Actualiza el estado del evento.
+            id_proyecto: eventData.id_proyecto, // Actualiza el ID del proyecto.
+            nombre_proyecto: eventData.nombre_proyecto || '', // Actualiza el nombre del proyecto si está disponible.
         }));
+
+        // Si el id_proyecto es válido, seleccionar el proyecto en el select
+        if (eventData.id_proyecto && eventData.id_proyecto > 0) {
+            // Esperar a que projectsOptions esté disponible
+            setTimeout(() => {
+                setSelectedProject((prev) => {
+                    // Buscar el proyecto en projectsOptions
+                    const found = projectsOptions.find(p => p.value === eventData.id_proyecto);
+                    if (found) return found;
+                    // Si no se encuentra, mantener el valor anterior
+                    return prev;
+                });
+            }, 300);
+        }
     };
 
     // Función para obtener la lista de leads y formatearlos
@@ -275,6 +295,16 @@ export const View_events_Actions = () => {
         setEventDetails({ ...eventDetails, endDate: newEndDate });
     };
 
+    // Nueva función para manejar la selección del proyecto
+    const handleProjectSelect = (option) => {
+        setSelectedProject(option);
+        setEventDetails((prev) => ({
+            ...prev,
+            id_proyecto: option ? option.value : '',
+            nombre_proyecto: option ? option.label : '',
+        }));
+    };
+
     // Hook useEffect para ejecutar lógica cuando cambia la URL o cuando se monta el componente
     // Este hook maneja la lógica inicial cuando el componente se carga o cuando la búsqueda en la URL cambia (location.search).
     useEffect(() => {
@@ -314,7 +344,28 @@ export const View_events_Actions = () => {
 
         // Llama a la función para obtener y formatear los leads al cargar el componente.
         fetchLeadsOptions();
+
+        // Cargar proyectos
+        const fetchProjectsOptions = async () => {
+            const resultProjects = await dispatch(getDataSelectProyect(1));
+            if (resultProjects) {
+                const formattedProjects = resultProjects.map((p) => ({
+                    value: p.id_ProNetsuite,
+                    label: p.Nombre_proyecto,
+                }));
+                setProjectsOptions(formattedProjects);
+            }
+        };
+        fetchProjectsOptions();
     }, [location.search]); // Vuelve a ejecutar el efecto cuando 'location.search' cambia.
+
+    // Seleccionar automáticamente el proyecto cuando ambos datos estén listos
+    useEffect(() => {
+        if (eventDetails.id_proyecto && eventDetails.id_proyecto > 0 && projectsOptions.length > 0) {
+            const found = projectsOptions.find(p => p.value === eventDetails.id_proyecto);
+            if (found) setSelectedProject(found);
+        }
+    }, [eventDetails.id_proyecto, projectsOptions]);
 
     // Función para manejar el cambio de tipo de evento
     // Esta función se activa cuando el usuario selecciona un tipo de evento desde un menú desplegable.
@@ -387,6 +438,16 @@ export const View_events_Actions = () => {
                 icon: "error",
                 title: "Campo obligatorio",
                 text: `El campo '${emptyField[0]}' debe estar lleno para continuar.`,
+            });
+            return;
+        }
+
+        // Validar que el proyecto esté seleccionado
+        if (eventDetails.type === "Cita" && !selectedProject) {
+            Swal.fire({
+                icon: "error",
+                title: "Proyecto obligatorio",
+                text: "Debe seleccionar el proyecto a visitar para continuar.",
             });
             return;
         }
@@ -522,7 +583,7 @@ export const View_events_Actions = () => {
     return (
         <div className="card" style={{ width: "100%" }}>
             <div className="card-header table-card-header">
-                <h5>Manage Event</h5>
+                <h5>Administrar evento</h5>
             </div>
 
             <div className="d-flex flex-wrap gap-2">
@@ -583,6 +644,21 @@ export const View_events_Actions = () => {
                                     <option value="Cita">Asignar Cita</option>
                                 </select>
                             </div>
+
+                            {eventDetails.type === "Cita" && (
+                                <div className="mb-3">
+                                    <label className="form-label">
+                                        Seleccionar el proyecto a visitar<span className="text-danger">*</span>
+                                    </label>
+                                    <Select
+                                        options={projectsOptions}
+                                        value={selectedProject}
+                                        onChange={handleProjectSelect}
+                                        placeholder="Buscar y seleccionar proyecto..."
+                                        isClearable
+                                    />
+                                </div>
+                            )}
 
                             <div className="mb-3">
                                 <label className="form-label">
