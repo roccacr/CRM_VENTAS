@@ -42,7 +42,7 @@ export const get_CalendarFetch = async ({ idnetsuite_admin, rol_admin }) => {
  * @param {string} params.colorEvento - Color asignado al evento, según su tipo o categoría.
  * @returns {Promise} - Devuelve una promesa que se resuelve con los datos de la respuesta de la API.
  */
-export const createCalendarEvent = async ({ idnetsuite_admin, nombreEvento, tipoEvento, descripcionEvento, formatdateIni, formatdateFin, horaInicio, horaFinal, leadId, colorEvento, citaValue }) => {
+export const createCalendarEvent = async ({ idnetsuite_admin, nombreEvento, tipoEvento, descripcionEvento, formatdateIni, formatdateFin, horaInicio, horaFinal, leadId, colorEvento, citaValue, id_proyecto, nombre_proyecto }) => {
     // Construye el objeto de datos para la solicitud, combinando datos comunes y específicos del evento
     const requestData = {
         ...commonRequestData, // Datos comunes requeridos para todas las solicitudes (ej. tokens de autenticación).
@@ -57,6 +57,8 @@ export const createCalendarEvent = async ({ idnetsuite_admin, nombreEvento, tipo
         leadId, // ID del lead relacionado con el evento
         colorEvento, // Color visual que se asigna al evento
         citaValue, // sabemos si es cita o no
+        id_proyecto, // ID del proyecto relacionado con el evento.
+        nombre_proyecto, // Nombre del proyecto relacionado con el evento.
     };
 
     // Realiza la solicitud al endpoint adecuado en el servidor para crear el evento en el calendario.
@@ -130,7 +132,7 @@ export const get_event_Citas = async ({ id }) => {
  *
  * @returns {Promise<object>} - Retorna una promesa con la respuesta del servidor al intentar editar el evento.
  */
-export const editCalendarEvent = async ({ idnetsuite_admin, id_calendar, nombreEvento, tipoEvento, descripcionEvento, formatdateIni, formatdateFin, horaInicio, horaFinal, leadId, colorEvento, citaValue }) => {
+export const editCalendarEvent = async ({ idnetsuite_admin, id_calendar, nombreEvento, tipoEvento, descripcionEvento, formatdateIni, formatdateFin, horaInicio, horaFinal, leadId, colorEvento, citaValue, id_proyecto, nombre_proyecto }) => {
     // Construye el objeto de datos para la solicitud al backend,
     // combinando los datos comunes con los específicos del evento.
     const requestData = {
@@ -147,6 +149,8 @@ export const editCalendarEvent = async ({ idnetsuite_admin, id_calendar, nombreE
         leadId, // ID del lead relacionado con este evento, si existe.
         colorEvento, // Color que se usará para identificar el evento visualmente.
         citaValue, // Valor booleano (1 o 0) para indicar si es una cita.
+        id_proyecto, // ID del proyecto relacionado con el evento.
+        nombre_proyecto, // Nombre del proyecto relacionado con el evento.
     };
 
     // Realiza una solicitud POST al servidor para editar el evento en el calendario.

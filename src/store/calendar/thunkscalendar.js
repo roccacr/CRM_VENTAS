@@ -46,7 +46,7 @@ export const get_Calendar = () => {
  * @param {string} valueStatus - Estado adicional para el evento, utilizado para acciones de seguimiento.
  * @returns {Function} Thunk - Función que puede ser ejecutada gracias a Redux Thunk.
  */
-export const createEventForLead = (nombreEvento, tipoEvento, descripcionEvento, fechaInicio, fechaFinal, horaInicio, horaFinal, leadId = 0, valueStatus) => {
+export const createEventForLead = (nombreEvento, tipoEvento, descripcionEvento, fechaInicio, fechaFinal, horaInicio, horaFinal, leadId = 0, valueStatus, id_proyecto, nombre_proyecto) => {
     return async (dispatch, getState) => {
         // Variables comunes
         const { idnetsuite_admin } = getState().auth; // ID del administrador de Netsuite
@@ -93,6 +93,8 @@ export const createEventForLead = (nombreEvento, tipoEvento, descripcionEvento, 
             leadId: leadId || 0, // Si leadId es vacío, se asigna 0
             colorEvento,
             citaValue,
+            id_proyecto,
+            nombre_proyecto,
         };
 
         try {
@@ -189,7 +191,7 @@ export const getSpecificLeadCitas = (id) => {
 export const editeEventForLead = (
     id_calendar, nombreEvento, tipoEvento, descripcionEvento,
     fechaInicio, fechaFinal, horaInicio, horaFinal,
-    leadId = 0, valueStatus
+    leadId = 0, valueStatus, id_proyecto, nombre_proyecto
 ) => {
     return async (dispatch, getState) => {
         // Obtiene el ID del administrador Netsuite desde el estado de autenticación
@@ -240,6 +242,8 @@ export const editeEventForLead = (
             leadId: leadId || 0,       // ID del lead asociado (si no hay, usa 0)
             colorEvento,               // Color asignado al evento
             citaValue,                 // Valor si es una cita o no (1 o 0)
+            id_proyecto,
+            nombre_proyecto,
         };
 
         try {

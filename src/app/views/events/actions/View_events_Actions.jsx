@@ -300,8 +300,8 @@ export const View_events_Actions = () => {
         setSelectedProject(option);
         setEventDetails((prev) => ({
             ...prev,
-            id_proyecto: option ? option.value : '',
-            nombre_proyecto: option ? option.label : '',
+            id_proyecto: option ? option.value : 0,
+            nombre_proyecto: option ? option.label : null,
         }));
     };
 
@@ -486,12 +486,12 @@ export const View_events_Actions = () => {
                 try {
                     // Si no hay un ID de calendario, crea un nuevo evento.
                     if (calendarId === 0) {
-                        await dispatch(createEventForLead(name, type, description, startDate, endDate, startTime, endTime, leadDetails.idinterno_lead, leadDetails.segimineto_lead));
+                        await dispatch(createEventForLead(name, type, description, startDate, endDate, startTime, endTime, leadDetails.idinterno_lead, leadDetails.segimineto_lead, eventDetails.id_proyecto, eventDetails.nombre_proyecto));
                     }
 
                     // Si existe un ID de calendario, edita el evento existente.
                     if (calendarId > 0) {
-                        await dispatch(editeEventForLead(calendarId, name, type, description, startDate, endDate, startTime, endTime, leadDetails.idinterno_lead, leadDetails.segimineto_lead));
+                        await dispatch(editeEventForLead(calendarId, name, type, description, startDate, endDate, startTime, endTime, leadDetails.idinterno_lead, leadDetails.segimineto_lead, eventDetails.id_proyecto, eventDetails.nombre_proyecto));
                     }
 
                     // Muestra una alerta de éxito y ofrece opciones al usuario sobre qué hacer a continuación.
