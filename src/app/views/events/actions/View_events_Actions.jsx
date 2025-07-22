@@ -162,6 +162,9 @@ export const View_events_Actions = () => {
     const [projectsOptions, setProjectsOptions] = useState([]);
     const [selectedProject, setSelectedProject] = useState(null);
 
+    // Estado para el checkbox de copia al jefe de ventas (por defecto desmarcado)
+    const [copiaJefeChecked, setCopiaJefeChecked] = useState(false);
+
     // Función para obtener los parámetros de la URL.
     // Extrae el valor del parámetro proporcionado desde la URL utilizando 'location.search'.
     // Si el valor es un número válido, lo convierte a número; de lo contrario, retorna el valor tal cual.
@@ -221,6 +224,8 @@ export const View_events_Actions = () => {
             return `${formattedHours}:${minutes}`; // Retorna la hora formateada.
         }
 
+        console.log("eventData", eventData);
+
         // Actualiza el estado 'eventDetails' con los detalles obtenidos del evento.
         setEventDetails((prevDetails) => ({
             ...prevDetails, // Mantiene los detalles anteriores y actualiza solo los siguientes campos.
@@ -234,6 +239,7 @@ export const View_events_Actions = () => {
             estado: eventData.accion_calendar, // Actualiza el estado del evento.
             id_proyecto: eventData.id_proyecto, // Actualiza el ID del proyecto.
             nombre_proyecto: eventData.nombre_proyecto || '', // Actualiza el nombre del proyecto si está disponible.
+            copiaJefe: eventData.copiaJefe, // Actualiza el estado de la copia al jefe de ventas.
         }));
 
         // Si el id_proyecto es válido, seleccionar el proyecto en el select
@@ -318,6 +324,16 @@ export const View_events_Actions = () => {
         }));
     };
 
+    // Handler para el checkbox de copia al jefe de ventas
+    const handleCopiaJefeChange = (e) => {
+        const checked = e.target.checked;
+        setCopiaJefeChecked(checked);
+        setEventDetails((prev) => ({
+            ...prev,
+            copiaJefe: checked ? 1 : 0,
+        }));
+    };
+
     // Hook useEffect para ejecutar lógica cuando cambia la URL o cuando se monta el componente
     // Este hook maneja la lógica inicial cuando el componente se carga o cuando la búsqueda en la URL cambia (location.search).
     useEffect(() => {
@@ -379,6 +395,13 @@ export const View_events_Actions = () => {
             if (found) setSelectedProject(found);
         }
     }, [eventDetails.id_proyecto, projectsOptions]);
+
+    // Sincronizar el checkbox con eventDetails.copiaJefe cuando se cargan los detalles del evento
+    useEffect(() => {
+        if (typeof eventDetails.copiaJefe !== 'undefined') {
+            setCopiaJefeChecked(eventDetails.copiaJefe === 1);
+        }
+    }, [eventDetails.copiaJefe]);
 
     // Función para manejar el cambio de tipo de evento
     // Esta función se activa cuando el usuario selecciona un tipo de evento desde un menú desplegable.
@@ -499,12 +522,12 @@ export const View_events_Actions = () => {
                 try {
                     // Si no hay un ID de calendario, crea un nuevo evento.
                     if (calendarId === 0) {
-                        await dispatch(createEventForLead(name, type, description, startDate, endDate, startTime, endTime, leadDetails.idinterno_lead, leadDetails.segimineto_lead, eventDetails.id_proyecto, eventDetails.nombre_proyecto));
+                        await dispatch(createEventForLead(name, type, description, startDate, endDate, startTime, endTime, leadDetails.idinterno_lead, leadDetails.segimineto_lead, eventDetails.id_proyecto, eventDetails.nombre_proyecto, eventDetails.copiaJefe));       
                     }
 
                     // Si existe un ID de calendario, edita el evento existente.
                     if (calendarId > 0) {
-                        await dispatch(editeEventForLead(calendarId, name, type, description, startDate, endDate, startTime, endTime, leadDetails.idinterno_lead, leadDetails.segimineto_lead, eventDetails.id_proyecto, eventDetails.nombre_proyecto));
+                        await dispatch(editeEventForLead(calendarId, name, type, description, startDate, endDate, startTime, endTime, leadDetails.idinterno_lead, leadDetails.segimineto_lead, eventDetails.id_proyecto, eventDetails.nombre_proyecto, eventDetails.copiaJefe));
                     }
 
                     // Muestra una alerta de éxito y ofrece opciones al usuario sobre qué hacer a continuación.
@@ -659,18 +682,30 @@ export const View_events_Actions = () => {
                             </div>
 
                             {eventDetails.type === "Cita" && (
-                                <div className="mb-3">
-                                    <label className="form-label" title="Seleccione el proyecto al que el cliente va a hacer la visita. No necesariamente es el mismo que tiene asignado, puede elegir otro para enviar en el correo de confirmación.">
-                                        Seleccionar el proyecto a visitar<span className="text-danger">*</span>
-                                    </label>
-                                    <Select
-                                        options={projectsOptions}
-                                        value={selectedProject}
-                                        onChange={handleProjectSelect}
-                                        placeholder="Buscar y seleccionar proyecto..."
-                                        isClearable
-                                    />
-                                </div>
+                                <>
+                                    <div className="mb-3">
+                                        <label className="form-label" title="Seleccione el proyecto al que el cliente va a hacer la visita. No necesariamente es el mismo que tiene asignado, puede elegir otro para enviar en el correo de confirmación.">
+                                            Seleccionar el proyecto a visitar<span className="text-danger">*</span>
+                                        </label>
+                                        <Select
+                                            options={projectsOptions}
+                                            value={selectedProject}
+                                            onChange={handleProjectSelect}
+                                            placeholder="Buscar y seleccionar proyecto..."
+                                            isClearable
+                                        />
+                                    </div>
+                                    {/* Checkbox para copiar al jefe de ventas, solo cuando el tipo es Cita */}
+                                    <div className="mb-2">
+                                        <div className="form-check">
+                                            <input type="checkbox" id="CheckCopiaJefe" className="form-check-input" checked={copiaJefeChecked} onChange={handleCopiaJefeChange} />
+                                            <label htmlFor="CheckCopiaJefe" className="form-check-label" title="Solo seleccionar si quiere copiar al jefe de ventas (supervisor), en este caso a Fabián Mata.">
+                                                Copiar al jefe de ventas
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <br />
+                                </>
                             )}
 
                             <div className="mb-3">
@@ -753,6 +788,7 @@ export const View_events_Actions = () => {
                                 </select>
                             </div>
                         </div>
+                        {/* Mover Citas Anteriores arriba del checkbox de copia al jefe de ventas */}
                         {Object.keys(leadDetailsCitas).length > 0 && (
                             <div className="card-body">
                                 <label className="form-label">Citas Anteriores</label>
@@ -775,6 +811,16 @@ export const View_events_Actions = () => {
                                 ))}
                             </div>
                         )}
+
+                        {/* Checkbox para copiar al jefe de ventas */}
+                        {/* <div className="mb-2">
+                            <div className="form-check">
+                                <input type="checkbox" id="CheckCopiaJefe" className="form-check-input" checked={copiaJefeChecked} onChange={handleCopiaJefeChange} />
+                                <label htmlFor="CheckCopiaJefe" className="form-check-label">
+                                    Copiar al jefe de ventas
+                                </label>
+                            </div>
+                        </div> */}
 
                         <div className="mb-2">
                             <div className="form-check">
