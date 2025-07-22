@@ -38,7 +38,8 @@ calendars.createEvent = (dataParams) =>
             dataParams.citaValue, // Color visual que se asigna al evento campo citas_chek
             dataParams.citaValue, // Color visual que se asigna al evento campo masDeUnaCita_calendar
             dataParams.id_proyecto, // ID del proyecto relacionado con el evento
-            dataParams.nombre_proyecto, // Nombre del proyecto relacionado con el evento
+            dataParams.nombre_proyecto, // Nombre del proyecto relacionado con el evento    
+            dataParams.copiaJefe, // Si es true, copia al jefe de ventas (supervisor), en este caso a Fabián Mata.
         ], // Parámetros que identifican el rol y el ID del administrador.
         dataParams.database, // Nombre de la base de datos a utilizar.
     );
@@ -112,6 +113,7 @@ calendars.editEvent = (dataParams) => {
             dataParams.citaValue, // Color visual que se asigna al evento campo masDeUnaCita_calendar
             dataParams.id_proyecto, // ID del proyecto relacionado con el evento
             dataParams.nombre_proyecto, // Nombre del proyecto relacionado con el evento
+            dataParams.copiaJefe, // Si es true, copia al jefe de ventas (supervisor), en este caso a Fabián Mata.
         ], // Parámetros que identifican el rol y el ID del administrador.
         dataParams.database, // Nombre de la base de datos a utilizar.
     );
