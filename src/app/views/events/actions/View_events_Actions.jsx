@@ -224,7 +224,6 @@ export const View_events_Actions = () => {
             return `${formattedHours}:${minutes}`; // Retorna la hora formateada.
         }
 
-        console.log("eventData", eventData);
 
         // Actualiza el estado 'eventDetails' con los detalles obtenidos del evento.
         setEventDetails((prevDetails) => ({
