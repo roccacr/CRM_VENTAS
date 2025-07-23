@@ -144,6 +144,7 @@ export const View_events_Actions = () => {
         startTime: currentTime, // Hora de inicio (inicializada con la hora actual).
         endTime: nextTime, // Hora de fin (inicializada con la próxima hora).
         estado: "", // Estado del evento (completado, cancelado, etc.).
+        copiaJefe: 1, // Por defecto marcado (1 = marcado, 0 = desmarcado)
     });
 
     // Estado para manejar si el checkbox está marcado o no.
@@ -162,8 +163,8 @@ export const View_events_Actions = () => {
     const [projectsOptions, setProjectsOptions] = useState([]);
     const [selectedProject, setSelectedProject] = useState(null);
 
-    // Estado para el checkbox de copia al jefe de ventas (por defecto desmarcado)
-    const [copiaJefeChecked, setCopiaJefeChecked] = useState(false);
+    // Estado para el checkbox de copia al jefe de ventas (por defecto marcado)
+    const [copiaJefeChecked, setCopiaJefeChecked] = useState(true);
 
     // Función para obtener los parámetros de la URL.
     // Extrae el valor del parámetro proporcionado desde la URL utilizando 'location.search'.
