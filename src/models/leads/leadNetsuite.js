@@ -4,6 +4,8 @@ const { executeQuery } = require("../conectionPool/conectionPool");
 
 const leads = require("./leads");
 
+const axios = require("axios");
+
 // Requerimos el módulo 'nsrestlet' que es utilizado para crear el enlace y realizar las llamadas a los servicios de NetSuite Restlet.
 var nsrestlet = require("nsrestlet");
 
@@ -105,6 +107,26 @@ leadNetsuite.createdNewLead_Netsuite = async ({ formData, idnetsuite_admin, data
 
         // Verificar si la respuesta de Netsuite fue exitosa
         if (body.status === 200) {
+
+
+            const camposEnviados = {
+                firstname: firstname_new, // Nombre del cliente
+                lastname: lastname_new, // Apellido, usando el valor por defecto si no fue proporcionado
+                middlename: middlename_new, // Segundo nombre del cliente
+                phone: phone_new, // Teléfono del cliente
+                email: email_new, // Correo electrónico del cliente
+                proyecto: proyecto_value, // Proyecto al que está asociado el lead
+            };
+            
+            // Enviar datos a Zapier webhook
+            try {
+                await axios.post("https://hooks.zapier.com/hooks/catch/5214118/u2s1a8x/", camposEnviados);
+                console.log("Datos enviados exitosamente a Zapier:", camposEnviados);
+            } catch (error) {
+                console.error("Error enviando datos a Zapier:", error);
+            }
+
+
             // Si el corredor está definido (numérico o string), se almacena la información adicional
             if ((typeof corredor_value === "number" && corredor_value > 0) || (typeof corredor_value === "string" && corredor_value !== "")) {
                 let idLead = body.id; // Obtener el id del lead creado
