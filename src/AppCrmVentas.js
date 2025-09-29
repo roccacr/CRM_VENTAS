@@ -54,10 +54,36 @@ app.use(
                 return callback(new Error(msg), false);
             }
         },
-        // Métodos HTTP permitidos
-        methods: ["POST"],
+        // Métodos HTTP permitidos (incluyendo OPTIONS para preflight requests)
+        methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+        // Headers permitidos
+        allowedHeaders: [
+            "Origin",
+            "X-Requested-With", 
+            "Content-Type", 
+            "Accept", 
+            "Authorization",
+            "Cache-Control",
+            "Pragma"
+        ],
+        // Headers expuestos al cliente
+        exposedHeaders: ["Content-Length", "X-Foo", "X-Bar"],
+        // Permitir credenciales (cookies, headers de autorización)
+        credentials: true,
+        // Tiempo de caché para preflight requests (en segundos)
+        maxAge: 86400, // 24 horas
     }),
 );
+
+// Manejar solicitudes OPTIONS (preflight requests) de manera explícita
+app.options('*', (req, res) => {
+    res.header('Access-Control-Allow-Origin', req.headers.origin);
+    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization, Cache-Control, Pragma');
+    res.header('Access-Control-Allow-Credentials', 'true');
+    res.header('Access-Control-Max-Age', '86400'); // 24 horas
+    res.sendStatus(200);
+});
 
 // Importación y configuración de rutas
 // Las rutas se definen en un archivo separado para mejor organización
