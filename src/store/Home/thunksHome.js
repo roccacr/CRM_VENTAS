@@ -178,12 +178,10 @@ export const setgetMonthlyData = (startDate, endDate) => {
         // Si no hay datos en la primera consulta, devolver tal cual
         if (!result?.data) return result;
   
-        // Construir la data final con las ventas incluidas
+        // Construir la data final (forzando que "3" contenga solo total_ventas)
         const modifiedData = {
           ...result.data,
-          ...(result.data["3"]?.affectedRows !== undefined && {
-            "3": [{ total_ventas }],
-          }),
+          "3": [{ total_ventas }],
         };
   
         // Retornar datos listos para la vista
@@ -193,6 +191,7 @@ export const setgetMonthlyData = (startDate, endDate) => {
       }
     };
   };
+  
   
 
 /**
