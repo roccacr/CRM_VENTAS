@@ -363,7 +363,7 @@ export const Crear_Oportunidad = () => {
                         // Si la respuesta es exitosa (código 200)
                         if (detalleOportunidad.status === 200) {
                             // Crear el reporte del lead relacionado a la oportunidad
-                            await dispatch(crearReoporteLead(leadDetails));
+                           // await dispatch(crearReoporteLead(leadDetails));
                             await dispatch(updateEstadoOportunidad(formValues, detalleOportunidad));
                             // Mostrar notificación de éxito y redirigir a la página de detalles de la oportunidad
                             Swal.fire({
