@@ -61,7 +61,7 @@ home.fetchGetMonthlyDataKpi = (dataParams) =>
         dataParams.database, // Base de datos a utilizar.
     );
  home.getMonthlyData_venta = (dataParams) => {
-        console.log("dataParams:", dataParams);
+       // console.log("dataParams:", dataParams);
     
         return executeStoredProcedure(
             "40_GRAFICO_RESERVA_HOME", // Procedimiento almacenado para obtener los datos de KPI mensuales
