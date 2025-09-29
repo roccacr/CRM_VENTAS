@@ -60,15 +60,21 @@ home.fetchGetMonthlyDataKpi = (dataParams) =>
         [dataParams.rol_admin, dataParams.idnetsuite_admin, dataParams.startDate, dataParams.endDate], // Parámetros para el procedimiento: rol, ID, rango de fechas.
         dataParams.database, // Base de datos a utilizar.
     );
-
-home.getMonthlyData_venta = (dataParams) =>
-    console.log("dataParams", dataParams),
-        executeStoredProcedure(
-            "40_GRAFICO_RESERVA_HOME", // Procedimiento almacenado para obtener los datos de KPI mensuales.
-        [dataParams.rol_admin, dataParams.idnetsuite_admin, dataParams.startDate, dataParams.endDate], // Parámetros para el procedimiento: rol, ID, rango de fechas.
-        dataParams.database, // Base de datos a utilizar.
-    );
-
+ home.getMonthlyData_venta = (dataParams) => {
+        console.log("dataParams:", dataParams);
+    
+        return executeStoredProcedure(
+            "40_GRAFICO_RESERVA_HOME", // Procedimiento almacenado para obtener los datos de KPI mensuales
+            [
+                dataParams.rol_admin,
+                dataParams.idnetsuite_admin,
+                dataParams.startDate,
+                dataParams.endDate
+            ], // Parámetros para el procedimiento
+            dataParams.database // Base de datos a utilizar
+        );
+    };
+    
 
 /**
  * Obtiene los datos gráficos mensuales basados en el rol del administrador y un rango de fechas.
