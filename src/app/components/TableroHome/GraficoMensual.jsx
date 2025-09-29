@@ -27,7 +27,7 @@ const fetchNewData = (startDate, endDate, dispatch) => {
                     { year: "LEADS", LEADS: result.data["0"]?.[0]?.total_lead || 0 },
                     { year: "VISITAS", VISITAS: result.data["2"]?.[0]?.total_calendars || 0 },
                     { year: "OPORTUN", OPORTUN: result.data["1"]?.[0]?.total_oport || 0 },
-                    { year: "VENTAS", VENTAS: result.ventas || 0 },
+                    { year: "VENTAS", VENTAS: result.data["3"]?.[0]?.total_ventas || 0 },
                 ];
                 resolve(newData);
             })

@@ -86,7 +86,16 @@ export const fetchGetMonthlyData = async ({ idnetsuite_admin, rol_admin, startDa
 };
 
 
-
+export const fetchGetMonthlyData_venta = async ({ idnetsuite_admin, rol_admin, startDate, endDate }) => {
+    const requestData = {
+        ...commonRequestData,
+        idnetsuite_admin,
+        rol_admin,
+        startDate,
+        endDate
+    };
+    return await fetchData("home/getMonthlyData_venta", requestData); // Llama a la API para obtener los datos del gráfico mensual.
+};
 
 
 /**

@@ -1,7 +1,7 @@
 /********************************************** MODULE IMPORTS ****************************************************/
 // Importación de las funciones necesarias para interactuar con los servicios de API y los slices de Redux.
 import { generateLeadBitacora } from "../leads/thunksLeads";
-import { fetchGetMonthlyData, fetchGetMonthlyDataKpi, fetchupdateEventDate, getAllBanners, getAllEventsHome, updateEventStatus } from "./Api_Home_Providers";
+import { fetchGetMonthlyData, fetchGetMonthlyDataKpi , fetchGetMonthlyData_venta, fetchupdateEventDate, getAllBanners, getAllEventsHome, updateEventStatus } from "./Api_Home_Providers";
 
 import { setLeadsNew, setListEvents, setListOportunity, setListOrderSale, setListOrderSalePending, setlistAttentions, setlistEventsPending, setlistGraficoKpi, updateDateCalendar } from "./HomeSlice";
 
@@ -159,24 +159,41 @@ export const setgetMonthlyDataKpi = (startDate, endDate) => {
  * @param {String} endDate - La fecha de fin del rango de búsqueda.
  * @returns {Promise} - Devuelve una promesa con los datos solicitados.
  */
+// Acción asincrónica para obtener datos mensuales y ventas en paralelo
 export const setgetMonthlyData = (startDate, endDate) => {
     return async (dispatch, getState) => {
-        // Extrae el id y rol del administrador desde el estado actual de autenticación en Redux
+      try {
+        // Extraer credenciales desde Redux
         const { idnetsuite_admin, rol_admin } = getState().auth;
-
-        try {
-            // Solicita los datos del gráfico mensual
-            const result = await fetchGetMonthlyData({ idnetsuite_admin, rol_admin, startDate, endDate });
-
-
-
-            return result;
-        } catch (error) {
-            // Manejo de errores durante la solicitud
-            console.error("Error al cargar los datos del gráfico mensual:", error);
-        }
+  
+        // Ejecutar ambas consultas al mismo tiempo con Promise.all
+        const [result, result_ventas] = await Promise.all([
+          fetchGetMonthlyData({ idnetsuite_admin, rol_admin, startDate, endDate }),
+          fetchGetMonthlyData_venta({ idnetsuite_admin, rol_admin, startDate, endDate }),
+        ]);
+  
+        // Calcular total de ventas (si no existe se deja en 0)
+        const total_ventas = result_ventas?.data?.["0"]?.[0]?.total_ventas ?? 0;
+  
+        // Si no hay datos en la primera consulta, devolver tal cual
+        if (!result?.data) return result;
+  
+        // Construir la data final con las ventas incluidas
+        const modifiedData = {
+          ...result.data,
+          ...(result.data["3"]?.affectedRows !== undefined && {
+            "3": [{ total_ventas }],
+          }),
+        };
+  
+        // Retornar datos listos para la vista
+        return { data: modifiedData };
+      } catch (error) {
+        console.error("Error al cargar los datos del gráfico mensual:", error);
+      }
     };
-};
+  };
+  
 
 /**
  * Actualiza la fecha de un evento en el calendario.
