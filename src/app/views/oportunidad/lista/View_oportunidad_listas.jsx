@@ -275,6 +275,15 @@ const View_oportunidad_listas = () => {
     * @param {Object} item - Selected item data.
     */
    const handleOpenModal = (item) => {
+      // Capturar la URL actual ANTES de cualquier navegación
+      const currentPath = window.location.pathname;
+      const currentSearch = window.location.search;
+      const currentUrl = currentPath + currentSearch;
+      
+      // Guardar la URL actual en localStorage
+      localStorage.setItem('previousUrl', currentUrl);
+      
+      // Ahora navegar a la nueva página
       navigate(`/oportunidad/ver?data=${item.entity_oport}&data2=${item.id_oportunidad_oport}`);
    };
 
