@@ -141,8 +141,6 @@ function enviarInvitacionCalendar({ to, cc, subject, text, icsContent, callback 
         if (callback) return callback(error, info);
         if (error) {
             console.error('❌ Error al enviar:', error);
-        } else {
-            console.log('✅ Invitación enviada correctamente a', to, '@', new Date().toLocaleTimeString());
         }
     });
 }
@@ -186,7 +184,6 @@ const extraerEvento = (notificarCliente) => {
 const actualizarIdEventoProgramado = async (id_calendar, uid) => {
     const query = "UPDATE calendars SET idEventoProgramado = ?, correoEnviado = 1 WHERE id_calendar = ?";
     const result = await executeQuery(query, [uid, id_calendar], database);
-    console.log('Resultado del UPDATE:', result);
     return result;
 };
 
@@ -196,7 +193,6 @@ const actualizarIdEventoProgramado = async (id_calendar, uid) => {
 const marcarEventoCancelado = async (id_calendar) => {
     const query = "UPDATE calendars SET NotificarCliente = 0, correoEnviado = 1 WHERE id_calendar = ?";
     const result = await executeQuery(query, [id_calendar], database);
-    console.log('Resultado del UPDATE:', result);
     return result;
 };
 
@@ -262,9 +258,7 @@ async function procesarEventos(notificarCliente, tipo) {
             }, (error, info) => {
                 if (error) {
                     console.error('❌ Error al enviar correo:', error);
-                } else {
-                    console.log('✅ Invitación enviada correctamente a', to, '@', new Date().toLocaleTimeString());
-                }
+                } 
             });
 
             // Actualiza SIEMPRE después de intentar enviar el correo
@@ -273,8 +267,6 @@ async function procesarEventos(notificarCliente, tipo) {
             } else {
                 await marcarEventoCancelado(evento.id_calendar);
             }
-
-            console.log(`Correo (${tipo}) enviado a ${to} para el evento ${evento.id_calendar} (UID: ${uid})`);
         }
     }
 }
@@ -285,7 +277,6 @@ async function procesarCancelacionesDefinitivas() {
     if (Array.isArray(result.data)) {
         for (const evento of result.data) {
 
-            console.log("evento", evento);
             const uid = evento.idEventoProgramado && evento.idEventoProgramado !== '0'
                 ? evento.idEventoProgramado
                 : `crm-evento-${evento.id_calendar}`;
@@ -330,7 +321,6 @@ async function procesarCancelacionesDefinitivas() {
                 if (error) {
                     console.error('❌ Error al enviar correo:', error);
                 } else {
-                    console.log('✅ Invitación enviada correctamente a', to, '@', new Date().toLocaleTimeString());
                     // Si el correo se envió correctamente, actualiza el campo correoEnviado
                     if (info && info.response.includes('250 2.0.0 Ok')) {
                         marcarEventoCancelado(evento.id_calendar);
@@ -341,7 +331,6 @@ async function procesarCancelacionesDefinitivas() {
             // Marca el evento como procesado/cancelado
             // La actualización de correoEnviado ahora ocurre en el callback de éxito
 
-            console.log(`Correo (cancelación definitiva) enviado a ${to} para el evento ${evento.id_calendar} (UID: ${uid})`);
         }
     }
 }
@@ -364,7 +353,6 @@ cron.schedule('*/1 * * * *', async () => {
     }
 });
 
-console.log('Cron de envío de invitaciones iniciado. Se ejecuta cada 1 minuto.');
 
 
 

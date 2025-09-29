@@ -100,8 +100,6 @@ estimacion.crear_estimacion = async ({ formulario }) => {
         var dia = partesFecha[2];
         var mes = partesFecha[1];
         var anio = partesFecha[0];
-
-        console.log("fecha después de transformar", campo, `${dia}/${mes}/${anio}`);
         return dia + "/" + mes + "/" + anio;
     }
 
@@ -282,7 +280,7 @@ estimacion.extarerEstimacionNetsuite = async (estimacionId) => {
 
 // Método para obtener las estimaciones relacionadas a una oportunidad específica
 estimacion.extraerEstimacion = async (dataParams) => {
-    console.log("dataParams", dataParams);
+
     // Consulta SQL para seleccionar todas las estimaciones asociadas a una oportunidad específica,
     // ordenándolas por la fecha de caducidad en orden descendente.
     const query = "SELECT * FROM estimaciones WHERE idEstimacion_est = ? ";
@@ -305,7 +303,6 @@ estimacion.extraerEstimacion = async (dataParams) => {
 
     const resultNetsuite = await estimacion.extarerEstimacionNetsuite(dataParams.idEstimacion);
 
-    console.log("resultNetsuite", resultTotalOredenes);
 
     const datosReales = {
         crm: result.data[0], // Propaga las propiedades de la primera fila
@@ -398,7 +395,6 @@ estimacion.editarEstimacion = async ({ formulario }) => {
         var mes = partesFecha[1];
         var anio = partesFecha[0];
 
-        console.log("fecha después de transformar", campo, `${dia}/${mes}/${anio}`);
         return dia + "/" + mes + "/" + anio;
     }
 
@@ -564,7 +560,7 @@ estimacion.enviarEstimacionComoPreReserva = (dataParams) => {
                 });
         } catch (err) {
             // Captura y registra cualquier error que ocurra al crear el enlace o realizar la solicitud.
-            console.log(error);
+            
         }
     });
 };
@@ -622,7 +618,6 @@ estimacion.caidaReserva = (estimacion) => {
                 });
         } catch (err) {
             // Captura y registra cualquier error que ocurra al crear el enlace o realizar la solicitud.
-            console.log(error);
         }
     });
  }

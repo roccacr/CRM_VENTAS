@@ -106,24 +106,7 @@ buscador.getAll = async (dataParams) => {
     }
 };
 
-// buscador.getAll = async (dataParams) => {
 
-//     console.log(dataParams);
-    
-//     const { selectedOption, searchs, idnetsuite_admin, rol_admin } = dataParams; 
-
-//     if (selectedOption === "leads") {
-//         const query = `SELECT l.*, a.name_admin as nombre_admin FROM leads as l 
-//         INNER JOIN admins as a ON a.idnetsuite_admin = l.id_empleado_lead 
-//         WHERE l.nombre_lead LIKE ? ${rol_admin === '2' ? 'AND l.id_empleado_lead= ?' : ''}`;
-//         const params = [`%${searchs}%`];
-//         if (rol_admin === '2') {
-//             params.push(idnetsuite_admin);
-//         }
-//         const result = await executeQuery(query, params, dataParams.database);
-//         return result;
-//     }
-// };
 
 // Exportamos el módulo para su uso en otras partes del proyecto.
 module.exports = buscador;

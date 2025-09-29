@@ -162,7 +162,6 @@ leads.get_Specific_Lead = (dataParams) =>
  * @returns {Promise<Object>} - Promesa que resuelve con el resultado de la inserción de la bitácora.
  */
 leads.insertBitcoraLead = (dataParams) => {
-    console.log("insertBitcoraLead dataParams:", dataParams);
     return executeStoredProcedure(
         "14_INSERTAR_BITACORA_LEAD", // Nombre del procedimiento almacenado que gestiona la inserción de la bitácora.
         [

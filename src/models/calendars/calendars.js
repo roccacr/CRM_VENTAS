@@ -62,7 +62,6 @@ calendars.createEvent = (dataParams) =>
  *
  * @example
  * const eventData = await calendars.getDataEevent({ id: 123, database: 'production_db' });
- * console.log(eventData);
  */
 calendars.getDataEevent = (dataParams) =>
     executeStoredProcedure(
@@ -93,7 +92,7 @@ calendars.get_event_Citas = (dataParams) =>
  * @returns {Promise<Object>} - Resultado de la consulta de eventos del calendario.
  */
 calendars.editEvent = (dataParams) => {
-    console.log(dataParams); // Log the dataParams to the console
+
     return executeStoredProcedure(
         "02_EDITAR_EVENTO", // Nombre del procedimiento almacenado que recupera los eventos del calendario.
         [
@@ -142,7 +141,6 @@ calendars.update_event_MoveDate = (dataParams) =>
     );
 
 calendars.update_Status_Event = (dataParams) => {
-    console.log("dataParams update_Status_Event", dataParams);
 
     let NotificarCliente = 0;
     let correoEnviado = 0;

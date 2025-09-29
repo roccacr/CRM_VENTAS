@@ -110,11 +110,6 @@ const authenticated = {
      * @returns {Object} Resultado del inicio de sesión y código de estado
      */
     async startSession(dataParams) {
-
-        console.log("🚀 ------------------------------------------------------------------------🚀");
-        console.log("🚀 ~ file: authenticated.js:112 ~ startSession ~ dataParams:", dataParams);
-        console.log("🚀 ------------------------------------------------------------------------🚀");
-
         const { password, database } = dataParams;
         const connection = await this.createDbConnection(database);
         try {
