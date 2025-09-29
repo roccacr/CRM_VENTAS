@@ -155,7 +155,7 @@ const MenuItems = ({ openMenu, toggleMenu }) => (
             { to: "/leads/lista?data=1", text: "Leads Activos" },
             { to: "/leads/lista?data=2", text: "Leads Nuevos" },
             { to: "/leads/lista?data=3", text: "Leads Requieren Atencion" },
-            { to: "/leads/lista?data=4", text: "Leads Rezagados" },
+            // { to: "/leads/lista?data=4", text: "Leads Rezagados" }, // Oculto temporalmente
             { to: "/leads/lista?data=5", text: "Leads Totales" },
          ]}
       />
