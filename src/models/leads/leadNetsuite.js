@@ -121,7 +121,6 @@ leadNetsuite.createdNewLead_Netsuite = async ({ formData, idnetsuite_admin, data
             // Enviar datos a Zapier webhook
             try {
                 await axios.post("https://hooks.zapier.com/hooks/catch/5214118/u2s1a8x/", camposEnviados);
-                console.log("Datos enviados exitosamente a Zapier:", camposEnviados);
             } catch (error) {
                 console.error("Error enviando datos a Zapier:", error);
             }
@@ -295,7 +294,6 @@ leadNetsuite.update_LeadStatus = async (dataParams, database) => {
             database
         );
 
-        console.log("result update_LeadStatus", result);
 
         return result;
     } catch (error) {
@@ -396,7 +394,6 @@ leadNetsuite.update_LeadInformations = async (dataParams, database) => {
         
          const result = await executeQuery(query, [dataParams.id], database);
 
-         console.log("result update_LeadInformations", result);
 
          return result;
     } catch (error) {

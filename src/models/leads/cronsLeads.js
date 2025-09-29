@@ -96,12 +96,12 @@
 
 // // Programación de una tarea con cron que se ejecutará todos los días a las 8:54 AM
 // cron.schedule("*/5 * * * *", async () => {
-//     console.log("Ejecutando cron de leads cada día a las 8:54 AM");
+
 
 //     // Obtener la fecha de hoy en formato YYYY-MM-DD
 //     const hoy = new Date();
 //     const fechaHoyFormateada = hoy.getFullYear() + "-" + String(hoy.getMonth() + 1).padStart(2, "0") + "-" + String(hoy.getDate()).padStart(2, "0");
-//     console.log("La fecha de hoy es:", fechaHoyFormateada);
+
 
 //     // Base de datos a utilizar en las consultas
 //     const database = "produccion";
@@ -133,7 +133,7 @@
 //         // Procesar cada lead de manera asincrónica utilizando Promise.all()
 //         await Promise.all(
 //             result["0"].map(async (lead) => {
-//                 console.log("Procesando lead con ID", lead.idinterno_lead);
+
 
 //                 let fechaFormateada = null; // Variable para almacenar la fecha formateada
 //                 const { actualizadaaccion_lead, accion_lead } = lead; // Extraer la última fecha de actualización del lead
@@ -153,9 +153,7 @@
 //                         fechaFormateada = actualizadaaccion_lead;
 //                     }
 //                 } else {
-//                     // Manejar casos donde el valor no es ni cadena ni fecha válida
-//                     console.log(`El valor de actualizadaaccion_lead para el lead con ID ${lead.idinterno_lead} no es ni una cadena ni una fecha válida.`);
-//                 }
+//                     
 
 //                 // Si se pudo obtener una fecha válida, calcular la diferencia en días
 //                 if (fechaFormateada) {
@@ -195,18 +193,16 @@
 //                         // Actualizar el estado del lead
 //                         await cronsLeads.updateLeadActionApi(updateParams);
 
-//                         console.log(`El lead con ID ${lead.idinterno_lead} ha estado inactivo por más de 7 días. y los dias son ${fechaFormateada}`);
+
 //                     }
 //                 } else {
 //                     // Si no se pudo obtener una fecha válida, se muestra un mensaje
-//                     console.log("No se pudo obtener una fecha válida para este lead.");
+
 //                 }
 
-//                 console.log("------ Next lead ------");
 //             }),
 //         );
 
-//         console.log("🚀 Proceso automático de leads rezagados completado.");
 //     } catch (error) {
 //         // Capturar y mostrar cualquier error durante la ejecución del cron
 //         console.error("Error al ejecutar el cron de leads:", error.message);

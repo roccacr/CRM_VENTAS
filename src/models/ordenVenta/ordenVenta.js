@@ -133,7 +133,7 @@ ordenVenta.aplicarComicio = async (dataParams) => {
 
     try {
         const result = await executeQuery(query, params, dataParams.database);
-        console.log("result", result);
+
 
         if (result.affectedRows === 0) {
             throw new Error("No records were updated");
@@ -170,7 +170,7 @@ ordenVenta.crearOrdenVenta = async (dataParams) => {
 };
 
 ordenVenta.insertarOrdenVentaBd = async (dataParams) => {
-    console.log("dataParams", dataParams);
+
 
     // Fixed the UPDATE query syntax by adding table name and proper SET clause
     const query = "INSERT INTO ordenventa( id_ov_tranid, id_ov_netsuite, id_ov_est, id_ov_opt, id_ov_admin, id_ov_lead, idExpediente_ov, idsubsidiaria_ov ) VALUES (?,?,?,?,?,?,?,?)";
@@ -180,7 +180,6 @@ ordenVenta.insertarOrdenVentaBd = async (dataParams) => {
 
     try {
         const result = await executeQuery(query, params, dataParams.database);
-        console.log("result", result);
 
         if (result.affectedRows === 0) {
             throw new Error("No records were updated");
@@ -203,8 +202,7 @@ ordenVenta.editarOrdenVenta = async (dataParams) => {
             return fecha; // Retorna null o un valor predeterminado según tu necesidad
         }
     
-        console.log("fecha antes de transformar", campo, fecha);
-        
+
         // Verificar el formato de la fecha y limpiarla si es necesario
         let fechaLimpia = fecha;
         
@@ -232,7 +230,7 @@ ordenVenta.editarOrdenVenta = async (dataParams) => {
         var mes = partesFecha[1];
         var anio = partesFecha[0];
     
-        console.log("fecha después de transformar", campo, `${dia}/${mes}/${anio}`);
+
         return dia + "/" + mes + "/" + anio;
     }
 
@@ -504,7 +502,7 @@ ordenVenta.editarOrdenVenta = async (dataParams) => {
             validacionCorredor: 0,
         });
 
-        console.log("body", body);
+
 
         return {
             msg: "Editar estimacion ",

@@ -163,7 +163,7 @@ oportunidad.get_Oportunidades = (dataParams) => {
                     ? `WHERE 1=1 ${estadoFiltro} ${dateFilter}`
                     : `WHERE employee_oport = ${dataParams.idnetsuite_admin} ${estadoFiltro} ${dateFilter}`}
     `;
-    console.log("query", query);
+
 
     // Parámetros para la consulta
     const params = [dataParams.idnetsuite_admin];

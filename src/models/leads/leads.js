@@ -50,7 +50,7 @@ leads.getBitacora = (dataParams) =>
  * @returns {Promise<Object>} - Promesa que resuelve con el resultado de la consulta de leads que requieren atención.
  */
 leads.getAll_LeadsAttention = (dataParams) => {
-    console.log(dataParams);
+
     return executeStoredProcedure(
         "34_CONSULTAR_LEADS_PENDIENTES_ATENCION", // Nombre del procedimiento almacenado que recupera los leads que requieren atención.
         [dataParams.rol_admin, dataParams.idnetsuite_admin, dataParams.startDate, dataParams.endDate, dataParams.filterOption], // Parámetros necesarios: rol y ID del administrador.
