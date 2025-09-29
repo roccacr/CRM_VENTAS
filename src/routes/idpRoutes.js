@@ -118,6 +118,7 @@ module.exports = function (app) {
                 { path: "/home/updateEventStatus", method: "updateEventStatus" }, // Ruta para actualizar el estado de un evento específico
                 { path: "/home/getMonthlyDatakpi", method: "fetchGetMonthlyDataKpi" }, // Ruta para obtener datos mensuales de KPIs
                 { path: "/home/getMonthlyData", method: "getMonthlyData" }, // Ruta para obtener información agregada mensual
+                { path: "/home/getMonthlyData_venta", method: "getMonthlyData_venta" }, // Ruta para obtener información agregada mensual
                 { path: "/home/fetchupdateEventDate", method: "fetchupdateEventDate" }, // Ruta para actualizar la fecha de un evento específico
             ],
         },
