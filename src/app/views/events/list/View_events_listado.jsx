@@ -27,7 +27,7 @@ const getDefaultDates = () => {
  * Handles the rendering of date filters and filter options.
  * @param {Object} props - Props for managing date and filter option states.
  */
-const FilterOptions = ({ inputStartDate, setInputStartDate, inputEndDate, setInputEndDate, filterOption, handleCheckboxChange }) => (
+const FilterOptions = ({ inputStartDate, setInputStartDate, inputEndDate, setInputEndDate, filterOption, handleCheckboxChange, onResetFilters }) => (
    <div className="card-body border-top">
       <div className="row g-4">
          <div className="col-md-6">
@@ -41,6 +41,17 @@ const FilterOptions = ({ inputStartDate, setInputStartDate, inputEndDate, setInp
                <input type="date" className="form-control" value={inputEndDate} onChange={(e) => setInputEndDate(e.target.value)} />
                <label htmlFor="endDate">Fecha de final de filtro</label>
             </div>
+         </div>
+      </div>
+      <div className="row g-4 mt-3">
+         <div className="col-md-6">
+            <button
+               className="btn btn-outline-danger"
+               onClick={onResetFilters}
+               type="button"
+            >
+               Restablecer fechas por defecto
+            </button>
          </div>
       </div>
    </div>
@@ -75,9 +86,13 @@ const View_events_listado = () => {
    // Default dates for filtering (start and end of the current month)
    const { firstDay, lastDay } = getDefaultDates();
 
-   // State management
-   const [inputStartDate, setInputStartDate] = useState(firstDay);
-   const [inputEndDate, setInputEndDate] = useState(lastDay);
+   // State management - recuperar de localStorage si existe
+   const [inputStartDate, setInputStartDate] = useState(
+      localStorage.getItem('inputStartDate') || firstDay
+   );
+   const [inputEndDate, setInputEndDate] = useState(
+      localStorage.getItem('inputEndDate') || lastDay
+   );
    const [filterOption, setFilterOption] = useState(1); // 0: none, 1: creation date, 2: last action
 
    // Añadir useSearchParams para leer parámetros de URL
@@ -129,6 +144,37 @@ const View_events_listado = () => {
    const [isModalOpen, setIsModalOpen] = useState(false);
 
    const navigate = useNavigate();
+
+   /**
+    * Actualiza la fecha de inicio y la guarda en localStorage
+    * @param {string} value - Nueva fecha de inicio
+    */
+   const handleStartDateChange = (value) => {
+      setInputStartDate(value);
+      localStorage.setItem('inputStartDate', value);
+   };
+
+   /**
+    * Actualiza la fecha final y la guarda en localStorage
+    * @param {string} value - Nueva fecha final
+    */
+   const handleEndDateChange = (value) => {
+      setInputEndDate(value);
+      localStorage.setItem('inputEndDate', value);
+   };
+
+   /**
+    * Reinicia los filtros de fecha a los valores por defecto y elimina datos en localStorage
+    */
+   const handleResetFilters = () => {
+      // Eliminar valores del localStorage
+      localStorage.removeItem('inputStartDate');
+      localStorage.removeItem('inputEndDate');
+
+      // Restaurar valores predeterminados
+      setInputStartDate(firstDay);
+      setInputEndDate(lastDay);
+   };
 
    const handleOpenModal = (lead) => {
       Swal.fire({
@@ -199,11 +245,12 @@ const View_events_listado = () => {
          </div>
          <FilterOptions
             inputStartDate={inputStartDate}
-            setInputStartDate={setInputStartDate}
+            setInputStartDate={handleStartDateChange}
             inputEndDate={inputEndDate}
-            setInputEndDate={setInputEndDate}
+            setInputEndDate={handleEndDateChange}
             filterOption={filterOption}
             handleCheckboxChange={setFilterOption}
+            onResetFilters={handleResetFilters}
          />
          <div className="card-body" style={{ width: "100%", padding: "0" }}>
             <DataTableComponent
