@@ -99,8 +99,7 @@ export const fetchGetMonthlyData = async ({ idnetsuite_admin, rol_admin, startDa
  * @returns {Promise<Object>} - Retorna una promesa con los datos del gráfico mensual, incluyendo el total de leads y oportunidades.
  */
 export const fetchupdateEventDate = async ({ eventId, selectedValue }) => {
-    console.log("eventId", eventId);
-    console.log("selectedValue", selectedValue);
+
     const requestData = {
         ...commonRequestData,
         eventId,

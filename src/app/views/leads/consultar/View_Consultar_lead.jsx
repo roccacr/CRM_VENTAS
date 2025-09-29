@@ -80,7 +80,6 @@ export const View_Consultar_lead = () => {
     };
 
     const Guardar_Lead = () => {
-      console.log("Datos del lead:", DataLead);
       alert("Datos guardados correctamente");``
     };
 

@@ -191,7 +191,6 @@ const getDataTableConfig = (tableElement, inputStartDate, inputEndDate, filterOp
             };
          },
          dataSrc: (response) => {
-           // console.log("DataTables response data:", response.data);
             return response.data || [];
          },
       },

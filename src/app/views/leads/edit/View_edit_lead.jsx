@@ -497,7 +497,6 @@ export const View_edit_lead = () => {
 
             const response = await dispatch(editarInformacionLead(formData));
 
-            console.log("response", response);
             var ExTraerResultado = response.data["Detalle"];
             if (ExTraerResultado.status == 200) {
                Swal.fire({
@@ -513,7 +512,7 @@ export const View_edit_lead = () => {
             }
 
             if (ExTraerResultado.status == 500) {
-               console.log("ExTraerResultado", response.data["Detalle"]);
+        
                let error;
                try {
                   error = response.data["Detalle"]["Data"]["message"];

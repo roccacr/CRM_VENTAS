@@ -251,12 +251,10 @@ export const generateLeadBitacora = (idnetsuite_admin, leadId, additionalValues,
             // Ajustamos el substring para extraer correctamente el estado.
             const estadoExtraido = valueStatus.length > 3 ? valueStatus.substring(3).trim() : "";
 
-            console.log("estadoExtraido", estadoExtraido);
 
             // Si el estado extraído está en la lista de permitidos, se utiliza; de lo contrario, se asigna "08-LEAD-SEGUIMIENTO".
             estadoActual = estadosPermitidos.includes(estadoExtraido) ? valueStatus : "08-LEAD-SEGUIMIENTO";
 
-            console.log("estadoActual", estadoActual);
          }
 
          // Inserción de la bitácora en el sistema.
@@ -313,12 +311,9 @@ export const updateLeadAction = (leadId, additionalValues, valueStatus) => {
             // Ajustamos el substring para extraer correctamente el estado.
             const estadoExtraido = valueStatus.length > 3 ? valueStatus.substring(3).trim() : "";
 
-            console.log(estadoExtraido);
-
             // Si el estado extraído está en la lista de permitidos, se utiliza; de lo contrario, se asigna "08-LEAD-SEGUIMIENTO".
             estadoActual = estadosPermitidos.includes(estadoExtraido) ? valueStatus : "08-LEAD-SEGUIMIENTO";
 
-            console.log(estadoActual);
          }
 
          // Obtener la fecha actual en formato YYYY-MM-DD, para registrar la fecha de actualización.

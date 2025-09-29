@@ -218,7 +218,6 @@ const useSalesOrderActions = ({ navigate, dispatch, datosOrdenVenta, setIsModalO
                const result = await dispatch(enviarReservaN(idTrannsaccion2));
 
                let ExTraerResultado = result.data["Detalle"];
-               console.log(ExTraerResultado);
                if (ExTraerResultado.status === 200) {
                   await dispatch(bitacoraOrdenDeventa(idTrannsaccion));
                   await dispatch(modifcarOrdenVenta(idTrannsaccion2, fecha_prereserva));

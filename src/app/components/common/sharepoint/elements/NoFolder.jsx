@@ -14,7 +14,7 @@ const NoFolderElement = ({
 			await createFolderGraph(recordFolderId, microsoftUser, recordId);
 			await fetchData();
 		} catch (error) {
-			console.log("Error al crear carpeta: ", error);
+		
 		}
 	};
 

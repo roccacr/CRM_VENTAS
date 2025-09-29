@@ -263,7 +263,6 @@ export const modifcarOrdenVenta = (idTransaccion, fecha_prereserva) => {
 
 export const obtenerOrndesPorcliente = (idTransaccion) => {
 
-    console.log(idTransaccion);
     return async () => {
         try {
             const leads = idTransaccion.idinterno_lead;
@@ -282,7 +281,6 @@ export const obtenerOrndesPorcliente = (idTransaccion) => {
 
 export const enviarCierreFirmando = (idTransaccion) => {
 
-    console.log("idTransaccion cierre firmado", idTransaccion);
     return async () => {
         try {
             // Llama a la API para enviar la reserva caída utilizando el id de la transacción proporcionado.

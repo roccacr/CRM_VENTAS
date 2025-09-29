@@ -311,7 +311,7 @@ export const updateStatusEvent = (id, NewStatus, idinterno_lead, valueStatus, es
 
             // Llama a la API para actualizar la fecha de un evento específico, basado en el ID del evento y la nueva fecha proporcionada.
             const result = await update_Status_Event({ id, NewStatus: estadoNew, EstadoAccion });
-            console.log(result)
+
             // Retorna el primer conjunto de datos de la respuesta de la API, que contiene los datos actualizados del evento.
 
             const estadoEvento = NewStatus === 1 ? "Completado" : NewStatus === 3 ? "Reactivado" : "Cancelado";

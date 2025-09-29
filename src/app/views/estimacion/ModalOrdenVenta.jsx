@@ -632,8 +632,7 @@ export const ModalOrdenVenta = ({ open, onClose, idEstimacion }) => {
          // Calcula el porcentaje restante
          const porcentajeRestante = porcentajeInicial - sumaPorcentajes;
 
-         // console.log("sumaPorcentajes", sumaPorcentajes);
-         // console.log("porcentajeRestante", porcentajeRestante);
+
 
          // Verifica si la suma de porcentajes excede el 100%
          if (sumaPorcentajes > 100) {
@@ -684,8 +683,7 @@ export const ModalOrdenVenta = ({ open, onClose, idEstimacion }) => {
             ...prevValues,
             [campoActualizar]: porcentajeFormateado
          };
-         //   console.log("porcentajeDecimal:", porcentajeDecimal);
-         //   console.log("porcentajeFormateado:", porcentajeFormateado);
+
 
          // Porcentaje inicial (100%)
          const porcentajeInicial = 100;
@@ -710,8 +708,7 @@ export const ModalOrdenVenta = ({ open, onClose, idEstimacion }) => {
          // Calcula el porcentaje restante
          const porcentajeRestante = porcentajeInicial - sumaPorcentajes;
 
-         //   console.log("sumaPorcentajes:", sumaPorcentajes);
-         //   console.log("porcentajeRestante:", porcentajeRestante);
+
 
          // Verifica si la suma de porcentajes excede el 100%
          if (sumaPorcentajes > 100) {
@@ -964,8 +961,7 @@ export const ModalOrdenVenta = ({ open, onClose, idEstimacion }) => {
    const handleSubmit = async (e) => {
       e.preventDefault();
 
-      // console.clear();
-      // console.log(formValues);
+
 
       if (validateForm()) {
          const confirmEdit = window.confirm("¿Desea editar la Orden de venta?");

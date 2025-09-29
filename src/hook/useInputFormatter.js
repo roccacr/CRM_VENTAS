@@ -78,7 +78,6 @@ export const calcularPrimaToal = (monto, porcentaje) => {
         montoPorcentaje /= 100; // Ajusta el porcentaje a formato decimal
     }
 
-    console.log("Monto porcentaje", montoPorcentaje);
 
     // Calcula el monto total multiplicando el monto base por el porcentaje
     const calculaMontoTotal = montoTotal * montoPorcentaje;
@@ -89,7 +88,7 @@ export const calcularPrimaToal = (monto, porcentaje) => {
         maximumFractionDigits: 2, // Exactamente 2 decimales para manejar precisión
     }).format(calculaMontoTotal);
 
-    console.log("Monto total", formateado);
+
 
     // Devuelve el monto total formateado como una cadena
     return formateado;
@@ -281,16 +280,14 @@ export const calculoContraEntregaMontoCalculado = (
     valoresFormulario, // Valores actuales del formulario.
     setValoresFormulario // Función para actualizar los valores del formulario.
 ) => {
-    console.clear();
-    console.log("Valores formulario", valoresFormulario);
+
     // Convierte el monto total calculado (custbody163) a un número flotante válido.
     const montoTotalCalculado = cleanAndParseFloat(valoresFormulario.custbody163);
-    console.log("Monto total calculado", montoTotalCalculado);
 
     // Calcula el monto de contra entrega (aquí simplemente se multiplica por 1).
     const montoContraEntrega = parseInt(montoTotalCalculado) * 1;
 
-    console.log("Monto contra entrega", montoContraEntrega);
+
 
     // Formatea el monto con al menos 2 decimales y hasta 5 decimales para precisión.
     const montoFormateado = new Intl.NumberFormat("en-US", {
@@ -298,7 +295,7 @@ export const calculoContraEntregaMontoCalculado = (
         maximumFractionDigits: 4,
     }).format(montoContraEntrega);
 
-    console.log("Monto formateado", montoFormateado);
+
 
     // Actualiza los valores del formulario con el porcentaje y el monto calculado.
     setValoresFormulario((valoresPrevios) => ({

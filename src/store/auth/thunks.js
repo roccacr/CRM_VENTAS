@@ -57,7 +57,7 @@ export const startAuthentication = ({ loginEmail, loginPassword }) => {
                 localStorage.setItem("payload_1", payload_1);
             }
         } catch (error) {
-            console.log("error: ", error);
+
             // En caso de cualquier error durante el proceso de autenticación, cierra la sesión y muestra un mensaje de error
             dispatch(setUserLogout({ errorMessage: "Error durante la autenticación (startAuthentication)" }));
         }
@@ -92,7 +92,7 @@ export const ValidarUsuario = (email) => {
             // Llama a la API para verificar si el usuario existe utilizando el correo electrónico proporcionado.
             const resultado = await validarSiexisteUsuario({ email });
 
-            console.log("resultado: ", resultado);
+
 
             // Retorna los datos del usuario si existe, o un array vacío si no hay datos válidos.
             return resultado?.data?.data || [];

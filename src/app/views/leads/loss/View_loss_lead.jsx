@@ -72,7 +72,7 @@ export const View_loss_lead = () => {
      * Valida si el textarea y el select están vacíos y muestra el alert.
      */
     const handleGenerateNote = () => {
-        console.log("Dar como perdido clicado"); // Mostrar un mensaje en la consola al hacer clic
+
         if (note.trim() === "" || selectedLossOption === "") {
             Swal.fire({
                 title: "Campos incompletos", // Título del SweetAlert

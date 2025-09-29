@@ -37,7 +37,7 @@ class AuthenticationService {
 		await initializeMSAL();
 
 		try {
-			// console.log("Iniciando proceso de autenticación para:", microsoftUser.email);
+			
 			// Obtener todas las cuentas
 			const accounts = msalInstance.getAllAccounts();
 		
@@ -46,23 +46,23 @@ class AuthenticationService {
 			// Si hay cuentas existentes, buscar la que coincide con el email
 			if (accounts.length > 0) {
 				account = accounts.find(acc => acc.username.toLowerCase() === microsoftUser.email.toLowerCase());
-				//console.log("Cuenta encontrada:", account ? "Sí" : "No");
+				
 			}
 
 			// Si no se encuentra la cuenta, forzar login
 			if (!account) {
-				//console.log("Iniciando login popup...");
+				
 				const loginResult = await msalInstance.loginPopup({
 					scopes: DEFAULT_SCOPES,
 					prompt: "select_account"
 				});
 				account = loginResult.account;
-				//console.log("Login popup completado");
+				
 			}
 
 			// Establecer la cuenta como activa
 			msalInstance.setActiveAccount(account);
-			//console.log("Cuenta activa establecida");
+			
 
 			// Intentar adquirir el token
 			const silentRequest = {
@@ -71,16 +71,16 @@ class AuthenticationService {
 			};
 
 			try {
-				///console.log("Intentando adquirir token silenciosamente...");
+				
 				const silentResult = await msalInstance.acquireTokenSilent(silentRequest);
-				//console.log("Token adquirido silenciosamente");
+				
 				return silentResult.accessToken;
 			} catch (silentError) {
-				//console.log("Error en adquisición silenciosa:", silentError);
+				
 				if (silentError instanceof InteractionRequiredAuthError) {
-					console.log("Intentando adquirir token con popup...");
+
 					const interactiveResult = await msalInstance.acquireTokenPopup(silentRequest);
-					console.log("Token adquirido con popup");
+
 					return interactiveResult.accessToken;
 				}
 				throw silentError;

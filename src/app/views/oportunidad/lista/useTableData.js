@@ -36,7 +36,7 @@ export const useTableData = (MostrarSwal = true, idLead, startDate, endDate, isM
 
             setData(result);
          } catch (error) {
-            console.log("Error al cargar datos:", error);
+
          } finally {
             if (MostrarSwal) {
                Swal.close();

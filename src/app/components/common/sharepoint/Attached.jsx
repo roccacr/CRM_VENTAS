@@ -71,7 +71,6 @@ const Attached = () => {
          setUserDetails(userDetails);
          setGraphFolder(folder || null);
       } catch (error) {
-         console.log(error);
          setError({
             errorMessage: "Error al cargar datos",
             errorDetails: "Por favor, intente de nuevo más tarde.",

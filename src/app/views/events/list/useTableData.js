@@ -16,10 +16,6 @@ import { getAllListEvent } from "../../../../store/calendar/thunkscalendar";
 export const useTableData = (MostrarSwal = true, dateStart, dateEnd) => {
 
 
-   console.log("dateStart", dateStart);
-   console.log("dateEnd", dateEnd);
-
-
 
    const dispatch = useDispatch(); // Hook de Redux para despachar acciones
    const [data, setData] = useState([]); // Estado local para almacenar los datos

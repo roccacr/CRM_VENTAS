@@ -71,7 +71,6 @@ export const View_follow_up = () => {
     };
 
     const handleGenerateNote = () => {
-        console.log("Dar como seguimiento clicado");
         if (note.trim() === "" || selectedLossOption === "" || followUpDate === "" || leadStatus === "") {
             Swal.fire({
                 title: "Campos incompletos",

@@ -82,7 +82,7 @@ export const createCalendarEvent = async ({ idnetsuite_admin, nombreEvento, tipo
  *
  * @example
  * const eventData = await get_dataEvents({ id: 123 });
- * console.log(eventData);
+
  */
 
 export const get_dataEvents = async ({ id }) => {

@@ -359,7 +359,6 @@ export const Crear_Oportunidad = () => {
                         const detalleOportunidad = response.data["Detalle"];
                         const idOportunidad = detalleOportunidad.id;
                         
-                        console.log("idOportunidad", idOportunidad);
 
                         // Si la respuesta es exitosa (código 200)
                         if (detalleOportunidad.status === 200) {

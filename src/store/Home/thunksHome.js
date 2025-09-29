@@ -204,7 +204,6 @@ export const updateEventDate = (eventId, newDate, oldDate) => {
 
             // Realizar una llamada a la API para actualizar la fecha del evento en el servidor
             const result = await fetchupdateEventDate({ eventId: eventId, selectedValue: newDate + oldDateResult });
-            console.log("result", result);
 
             // Devolver "ok" si la operación fue exitosa
             return "ok";

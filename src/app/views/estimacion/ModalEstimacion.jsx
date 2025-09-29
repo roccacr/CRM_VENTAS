@@ -910,7 +910,6 @@ export const ModalEstimacion = ({ open, onClose, OportunidadDetails, cliente }) 
          }
       });
 
-      // console.log(newErrors);
 
       // Actualiza los errores en el estado del formulario
       setErrors(newErrors);

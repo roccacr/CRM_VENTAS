@@ -23,7 +23,6 @@ const FolderElement = ({ folder, microsoftUser }) => {
 				const files = await getFilesFromGraph(token, folder.id);
 				setFiles(files);
 			} catch (error) {
-				console.log("Error al cargar archivos: ", error);
 				setError({
 					errorMessage: "Error al cargar archivos",
 					errorDetails: "Por favor, intente de nuevo más tarde.",

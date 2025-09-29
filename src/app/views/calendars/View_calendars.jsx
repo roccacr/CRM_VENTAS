@@ -165,7 +165,6 @@ export const View_calendars = () => {
     }, [instance, accounts, accessToken]);
 
     const transformEvents = (apiData) => {
-        console.log(apiData);
         return apiData.map((item) => {
             return {
                 _id: item.id_calendar,

@@ -63,7 +63,7 @@ export const obtenerEstimacionesPorOportunidad = (idOportunidad) => {
 
 
 export const extarerEstimacion = (idEstimacion) => {
-    console.log(idEstimacion);
+
     return async () => {
         try {
             // Realiza la llamada a la API para obtener las estimaciones relacionadas con la estimación especificada.
@@ -100,7 +100,7 @@ export const enviarEstimacionComoPreReserva = (idEstimacion, idCliente, fecha_pr
             return respuesta?.data || null; // Devuelve null si los datos están indefinidos.
         } catch (error) {
             // Captura y registra cualquier error que ocurra durante la solicitud para facilitar su depuración.
-            console.log(error);
+
             throw error; // Re-lanza el error para permitir que sea manejado por el contexto externo.
         }
     };
