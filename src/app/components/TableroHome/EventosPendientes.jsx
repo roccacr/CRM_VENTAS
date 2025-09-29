@@ -74,7 +74,7 @@ export const EventosPendientes = () => {
             {sortedEvents.length > 0 && (
                 <div className="card table-card">
                     <div className="card-header d-flex align-items-center justify-content-between py-3">
-                        <h5 className="mb-0">Eventos pendientes de acción</h5>
+                        <h5 className="mb-0">Eventos pendientes de acción.</h5>
 
                         {/* Select para filtrar por name_admin */}
                         {rol_admin === 1 && (
