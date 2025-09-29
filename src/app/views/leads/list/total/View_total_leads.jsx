@@ -54,9 +54,10 @@ const DateControls = ({ inputStartDate, inputEndDate, setInputStartDate, setInpu
  * @param {Object} props - Propiedades del componente
  * @param {number} props.filterOption - Opción de filtrado actual
  * @param {Function} props.handleCheckboxChange - Manejador de cambio de filtro
+ * @param {Function} props.onResetFilters - Manejador para reiniciar filtros
  * @returns {JSX.Element} Controles de filtrado
  */
-const FilterControls = ({ filterOption, handleCheckboxChange }) => (
+const FilterControls = ({ filterOption, handleCheckboxChange, onResetFilters }) => (
    <div className="row g-4 mt-3">
       <div className="col-md-6">
          <FilterOption
@@ -71,6 +72,13 @@ const FilterControls = ({ filterOption, handleCheckboxChange }) => (
             checked={filterOption === 2}
             onChange={() => handleCheckboxChange(2)}
          />
+         <button
+            className="btn btn-outline-danger mt-3"
+            onClick={onResetFilters}
+            type="button"
+         >
+            Restablecer fechas por defecto
+         </button>
       </div>
    </div>
 );
@@ -274,11 +282,15 @@ const View_total_leads = () => {
    /** Fechas por defecto para el filtrado */
    const { firstDay, lastDay } = getDefaultDates();
 
-   /** Estado para la fecha de inicio */
-   const [inputStartDate, setInputStartDate] = useState(firstDay);
+   /** Estado para la fecha de inicio - recuperar de localStorage si existe */
+   const [inputStartDate, setInputStartDate] = useState(
+      localStorage.getItem('inputStartDate') || firstDay
+   );
 
-   /**  Estado para la fecha final */
-   const [inputEndDate, setInputEndDate] = useState(lastDay);
+   /**  Estado para la fecha final - recuperar de localStorage si existe */
+   const [inputEndDate, setInputEndDate] = useState(
+      localStorage.getItem('inputEndDate') || lastDay
+   );
 
    /**  Estado para la opción de filtrado */
    const [filterOption, setFilterOption] = useState(1);
@@ -291,6 +303,37 @@ const View_total_leads = () => {
 
    /** Datos del administrador desde Redux */
    const { idnetsuite_admin, rol_admin } = useSelector((state) => state.auth);
+
+   /**
+    * Actualiza la fecha de inicio y la guarda en localStorage
+    * @param {string} value - Nueva fecha de inicio
+    */
+   const handleStartDateChange = (value) => {
+      setInputStartDate(value);
+      localStorage.setItem('inputStartDate', value);
+   };
+
+   /**
+    * Actualiza la fecha final y la guarda en localStorage
+    * @param {string} value - Nueva fecha final
+    */
+   const handleEndDateChange = (value) => {
+      setInputEndDate(value);
+      localStorage.setItem('inputEndDate', value);
+   };
+
+   /**
+    * Reinicia los filtros de fecha a los valores por defecto y elimina datos en localStorage
+    */
+   const handleResetFilters = () => {
+      // Eliminar valores del localStorage
+      localStorage.removeItem('inputStartDate');
+      localStorage.removeItem('inputEndDate');
+
+      // Restaurar valores predeterminados
+      setInputStartDate(firstDay);
+      setInputEndDate(lastDay);
+   };
 
    /**
     * Cierra el modal y limpia el lead seleccionado
@@ -330,10 +373,14 @@ const View_total_leads = () => {
                <DateControls
                   inputStartDate={inputStartDate}
                   inputEndDate={inputEndDate}
-                  setInputStartDate={setInputStartDate}
-                  setInputEndDate={setInputEndDate}
+                  setInputStartDate={handleStartDateChange}
+                  setInputEndDate={handleEndDateChange}
                />
-               <FilterControls filterOption={filterOption} handleCheckboxChange={handleCheckboxChange} />
+               <FilterControls 
+                  filterOption={filterOption} 
+                  handleCheckboxChange={handleCheckboxChange}
+                  onResetFilters={handleResetFilters}
+               />
             </div>
             {/* Fin del bloque de controles de filtro */}
             <div className="table-responsive">
