@@ -30,6 +30,36 @@ campana.crearCampana = async (dataParams) => {
         }
     });
 };
+campana.editarCampana = async (dataParams) => {
+    return new Promise((resolve, reject) => {
+        try {
+          
+            console.log("📦 Parámetros recibidos en editarCampana:", dataParams);
+
+            executeStoredProcedure(
+                "SP_ACTUALIZAR_NOMBRE_CAMPANA_NETSUITE",
+                [
+                    parseInt(dataParams.id),  // ID de la campaña a actualizar
+                    dataParams.titulo || "",  // Nuevo nombre de la campaña
+                    
+                ],
+                "produccion"
+            );
+
+            return "ok"
+
+
+        } catch (error) {
+            console.error("❌ Error al editar campaña:", error);
+            reject({
+                statusCode: 500,
+                message: "Error al editar la campaña",
+                error: error.message
+            });
+        }
+    });
+};
+
 
 
 module.exports = campana; // Exporta el objeto 'campana' que contiene todas las funciones definidas.
