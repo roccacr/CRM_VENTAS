@@ -185,7 +185,6 @@ export const View_note = () => {
                                     <option value="Interés en:">Interés en:</option>
                                     <option value="Seguimiento 1">Seguimiento 1</option>
                                     <option value="Seguimiento 2">Seguimiento 2</option>
-                                    <option value="No contesta">No contesta</option>
                                     <option value="Cliente potencial alto">Cliente potencial alto</option>
                                     <option value="Cliente potencial medio">Cliente potencial medio</option>
                                     <option value="Cliente potencial bajo">Cliente potencial bajo</option>
