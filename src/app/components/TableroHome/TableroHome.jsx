@@ -18,18 +18,18 @@ export const TableroHome = ({ image, icons, nombre, cantidad, url, outlookCount,
                                     <div className="d-flex align-items-center gap-3">
                                         <a href={url} style={{ textDecoration: "none", color: "inherit" }}>
                                             <div className="text-center">
-                                                <h4 className="mb-0 f-w-500" style={{ fontSize: "1.3rem", cursor: "pointer" }}>
+                                                <h2 className="mb-0 f-w-500" style={{ fontSize: "1.3rem", cursor: "pointer" }}>
                                                     {cantidad !== undefined && cantidad !== null ? cantidad : "..."}
-                                                </h4>
+                                                </h2>
                                                 <p className="mb-0 text-muted" style={{ fontSize: "0.8rem" }}>CRM</p>
                                             </div>
                                         </a>
                                         <span className="text-muted">/</span>
                                         <a href="/calendar" style={{ textDecoration: "none", color: "inherit" }}>
                                             <div className="text-center">
-                                                <h4 className="mb-0 f-w-500" style={{ color: "#6c757d", fontWeight: "600", fontSize: "1.3rem", cursor: "pointer" }}>
+                                                <h2 className="mb-0 f-w-500" style={{ color: "#6c757d", fontWeight: "600", fontSize: "1.3rem", cursor: "pointer" }}>
                                                     {outlookCount !== undefined && outlookCount !== null ? outlookCount : "..."}
-                                                </h4>
+                                                </h2>
                                                 <p className="mb-0 text-muted" style={{ fontSize: "0.8rem" }}>Outlook</p>
                                             </div>
                                         </a>
