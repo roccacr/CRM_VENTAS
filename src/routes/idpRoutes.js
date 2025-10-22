@@ -29,6 +29,8 @@ const buscador = require("../models/buscador/Buscador");
 
 const campanas = require("../models/campanas/campanas");
 
+const partner = require("../models/partner/partner");
+
 // Cargar variables de entorno al iniciar la aplicación
 dotenv.config();
 
@@ -277,13 +279,20 @@ module.exports = function (app) {
                 { path: "/campaign/add/crm", method: "crearCampana" }, // buscador general
             ],
         },
+        {
+            category: "partner", // Categoría: Gestión de buscar datos en la base de datos
+            model: partner, 
+            routes: [
+                { path: "/partner/add/crm", method: "crearpartner" }, // buscador general
+            ],
+        },
     ];
 
     // Asignación de rutas dinámicamente
     routesConfig.forEach(({ category, model, routes }) => {
         routes.forEach(({ path, method }) => {
             // Rutas que permiten acceso sin autenticación (para integraciones externas como NetSuite)
-            const noAuthRoutes = ["/campaign/add/crm"];
+            const noAuthRoutes = ["/campaign/add/crm", "/partner/add/crm"];
 
             // Selecciona el middleware según si la ruta está en la lista de exclusión
             const middleware = noAuthRoutes.includes(path) ? allowNoAuth : validateAccessToken;
