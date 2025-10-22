@@ -27,6 +27,8 @@ const ordenVenta = require("../models/ordenVenta/ordenVenta");
 
 const buscador = require("../models/buscador/Buscador");
 
+const campanas = require("../models/campanas/campanas");
+
 // Cargar variables de entorno al iniciar la aplicación
 dotenv.config();
 
@@ -64,6 +66,19 @@ const validateAccessToken = (req, res, next) => {
             message: "Unauthorized access. Invalid token.",
         });
     }
+};
+
+/**
+ * Middleware para permitir acceso sin autenticación para rutas específicas.
+ * Esta ruta (/campaign/add/crm) está destinada a integraciones externas como NetSuite.
+ *
+ * @param {Object} req - Solicitud HTTP
+ * @param {Object} res - Respuesta HTTP
+ * @param {Function} next - Función que permite continuar con el siguiente middleware
+ */
+const allowNoAuth = (req, res, next) => {
+    // Permite acceso sin autenticación a esta ruta
+    next();
 };
 
 /**
@@ -255,13 +270,26 @@ module.exports = function (app) {
 
             ],
         },
+        {
+            category: "campanas", // Categoría: Gestión de buscar datos en la base de datos
+            model: campanas, 
+            routes: [
+                { path: "/campaign/add/crm", method: "crearCampana" }, // buscador general
+            ],
+        },
     ];
 
     // Asignación de rutas dinámicamente
     routesConfig.forEach(({ category, model, routes }) => {
         routes.forEach(({ path, method }) => {
+            // Rutas que permiten acceso sin autenticación (para integraciones externas como NetSuite)
+            const noAuthRoutes = ["/campaign/add/crm"];
+
+            // Selecciona el middleware según si la ruta está en la lista de exclusión
+            const middleware = noAuthRoutes.includes(path) ? allowNoAuth : validateAccessToken;
+
             // Define la ruta POST para cada método, validando el token antes de procesar la solicitud
-            app.post(`${API_PREFIX}${path}`, validateAccessToken, handleRequest(model, method));
+            app.post(`${API_PREFIX}${path}`, middleware, handleRequest(model, method));
         });
     });
 };
