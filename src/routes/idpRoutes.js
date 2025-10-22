@@ -107,6 +107,7 @@ module.exports = function (app) {
                 { path: "/admins/recuperar_Contrasena", method: "SP_RECUPERAR_CONTRASENA" }, // Recuperar contraseña mediante correo electrónico
                 { path: "/usuario/microsoft", method: "usuarioMicrosoft" }, // Recuperar contraseña mediante correo electrónico
                 { path: "/usuario/verificaionDeUsuario", method: "verificaionDeUsuario" }, // Recuperar contraseña mediante correo electrónico
+                { path: "/usuario/validarToken", method: "validateTokenUser" }, // Validar el token JWT del usuario autenticado (para F5/Refresh)
             ],
         },
         {

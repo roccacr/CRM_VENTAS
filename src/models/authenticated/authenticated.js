@@ -107,13 +107,37 @@ authenticated.verificaionDeUsuario = async (dataParams) => {
     if (getUser.statusCode !== 200) {
         return { status: 401, message: "Lo sentimos pero el usuario no se encuentra registrado, favor de contactar al administrador" };
     }
+
     const userData = getUser.data[0];
-    return { 
-        status: 200, 
-        message: "Usuario encontrado", 
+
+    // Generar un nuevo token JWT para la sesión actual
+    const nuevoToken = await authenticated.generatedToken({
+        id_admin: userData.id_admin,
+        name_admin: userData.name_admin,
+        email: userData.email_admin,
+    });
+
+    // Actualizar el token en la base de datos
+    try {
+        await authenticated.updateTokenUser({
+            email: userData.email_admin,
+            database: dataParams.database,
+        });
+    } catch (error) {
+        console.error("Error al actualizar token en DB:", error);
+        // Continuar de todas formas, el token se devuelve aunque falle la actualización en DB
+    }
+
+    // Devolver los datos del usuario con el token actualizado
+    return {
+        status: 200,
+        message: "Usuario autenticado correctamente",
         data: {
-            userData
-        } 
+            userData: {
+                ...userData,
+                token_admin: nuevoToken, // Usar el nuevo token generado
+            }
+        }
     };
 };
 
@@ -243,6 +267,89 @@ authenticated.SP_RECUPERAR_CONTRASENA = async (dataParams) => {
 
 // $2a$07$azybxcags23425sdg23sdeBuMTaZMjxh107gGCUvdA7ES6SKZvGby;
 
+/**
+ * Valida el token JWT del usuario autenticado.
+ * Verifica que el token sea válido y no haya expirado.
+ *
+ * @param {Object} dataParams - Parámetros para la validación del token
+ * @param {string} dataParams.token_admin - Token JWT a validar
+ * @returns {Promise<Object>} Resultado de la validación del token
+ *   - statusCode: 200 si el token es válido, 401 si ha expirado, 400 si es inválido
+ *   - data: Mensaje descriptivo del resultado
+ *   - decoded: Datos descodificados del token (solo si es válido)
+ *
+ * Este método es utilizado por el frontend para validar si la sesión aún es válida
+ * cuando el usuario recarga la página (F5).
+ */
+authenticated.validateTokenUser = (dataParams) => {
+    try {
+        // Verificar que se proporcionó el token
+        // El token viene dentro de transaccion desde el frontend
+        const token = dataParams.transaccion?.token_admin || dataParams.token_admin;
 
+        if (!token) {
+            console.warn("Validación de token: Token no proporcionado");
+            console.warn(`dataParams.transaccion: ${JSON.stringify(dataParams.transaccion)}`);
+            console.warn(`dataParams.token_admin: ${dataParams.token_admin}`);
+            return {
+                statusCode: 400,
+                data: "Token no proporcionado",
+            };
+        }
+
+        // SEGURIDAD: Verificar el token con la clave secreta
+        const decoded = jwt.verify(token, config.jwtSecret);
+
+        // Verificar si el token ha expirado
+        // Convertir exp (en segundos) a milisegundos y comparar
+        const tokenExpiresAt = decoded.exp * 1000;
+        const now = Date.now();
+        const timeUntilExpiry = tokenExpiresAt - now;
+
+        console.log(`✓ Token validation: Token expires in ${Math.round(timeUntilExpiry / 1000)} seconds`);
+
+        if (timeUntilExpiry < 0) {
+            console.warn(`Token validation: Token expired ${Math.round(Math.abs(timeUntilExpiry) / 1000)} seconds ago`);
+            return {
+                statusCode: 401,
+                data: "El token ha expirado",
+            };
+        }
+
+        // Token válido
+        console.log(`Token validation: Token is valid for ${Math.round(timeUntilExpiry / 60)} more minutes`);
+        return {
+            statusCode: 200,
+            data: "El token es válido",
+            decoded: {
+                id: decoded.data?.id,
+                name_admin: decoded.data?.name_admin,
+                email: decoded.data?.email,
+                exp: decoded.exp,
+                remainingTime: timeUntilExpiry,
+            },
+        };
+    } catch (error) {
+        if (error instanceof jwt.TokenExpiredError) {
+            console.warn(`Token validation: Token expired at ${new Date(error.expiredAt).toISOString()}`);
+            return {
+                statusCode: 401,
+                data: "El token ha expirado",
+            };
+        } else if (error instanceof jwt.JsonWebTokenError) {
+            console.warn(`Token validation: Invalid token - ${error.message}`);
+            return {
+                statusCode: 400,
+                data: "El token no es válido",
+            };
+        }
+        // SEGURIDAD: No exponer detalles internos del error
+        console.error(`Token validation: Unexpected error - ${error.message}`);
+        return {
+            statusCode: 500,
+            data: "Error en la validación del token",
+        };
+    }
+};
 
 module.exports = authenticated;
