@@ -15,6 +15,7 @@ export const View_note = () => {
     const location = useLocation(); // Hook para obtener la URL actual y sus parámetros
     const [valueStatus, setValueStatus] = useState(null);
     const [leadId, setLeadId] = useState(null);
+    const [selectedQuickOption, setSelectedQuickOption] = useState(""); // Para la opción de llenado rápido
 
     /**
      * Extrae el parámetro 'id' de la URL.
@@ -48,6 +49,30 @@ export const View_note = () => {
         setNote(event.target.value);
         if (event.target.value.trim() !== "") {
             setIsTextareaError(false); // Si hay texto, quitar el borde rojo
+        }
+    };
+
+    /**
+     * Maneja la selección de opción rápida y la agrega al textarea
+     */
+    const handleQuickOptionSelect = (event) => {
+        const selectedValue = event.target.value;
+        setSelectedQuickOption(selectedValue);
+        
+        if (selectedValue) {
+            // Si hay texto en el textarea, agregar al final
+            if (note.trim() !== "") {
+                setNote(prevNote => prevNote + " " + selectedValue);
+            } else {
+                // Si no hay texto, llenar con la opción seleccionada
+                setNote(selectedValue);
+            }
+            
+            // Quitar el borde rojo si había error
+            setIsTextareaError(false);
+            
+            // Resetear el select
+            setSelectedQuickOption("");
         }
     };
 
@@ -145,6 +170,45 @@ export const View_note = () => {
                             <span className="text-danger">*</span> Esta función es clave para llevar un registro exhaustivo de todas las interacciones realizadas con el cliente, asegurando que cada acción tomada quede registrada y sea fácilmente accesible para futuras consultas o revisiones.
                         </p>
                         <div className="g-4 row">
+                            {/* Select de opciones rápidas */}
+                            <div className="col-12 mb-3">
+                                <label className="form-label">
+                                    Opciones de llenado rápido:
+                                </label>
+                                <select 
+                                    className="form-select" 
+                                    value={selectedQuickOption}
+                                    onChange={handleQuickOptionSelect}
+                                >
+                                    <option value="">Selecciona una opción rápida...</option>
+                                    <option value="Quiere visitar">Quiere visitar</option>
+                                    <option value="Interés en:">Interés en:</option>
+                                    <option value="Seguimiento 1">Seguimiento 1</option>
+                                    <option value="Seguimiento 2">Seguimiento 2</option>
+                                    <option value="No contesta">No contesta</option>
+                                    <option value="Cliente potencial alto">Cliente potencial alto</option>
+                                    <option value="Cliente potencial medio">Cliente potencial medio</option>
+                                    <option value="Cliente potencial bajo">Cliente potencial bajo</option>
+                                    <option value="Presupuesto aprobado">Presupuesto aprobado</option>
+                                    <option value="Esperando respuesta">Esperando respuesta</option>
+                                    <option value="Necesita más información">Necesita más información</option>
+                                    <option value="Agendada cita">Agendada cita</option>
+                                    <option value="Canceló cita">Canceló cita</option>
+                                    <option value="Confirmó asistencia">Confirmó asistencia</option>
+                                    <option value="Cliente muy interesado">Cliente muy interesado</option>
+                                    <option value="Solicita cotización">Solicita cotización</option>
+                                    <option value="Comparando con competencia">Comparando con competencia</option>
+                                    <option value="Decisión pendiente">Decisión pendiente</option>
+                                    <option value="Cliente frío">Cliente frío</option>
+                                    <option value="Cliente caliente">Cliente caliente</option>
+                                    <option value="Proyecto en marcha">Proyecto en marcha</option>
+                                    <option value="Proyecto pausado">Proyecto pausado</option>
+                                    <option value="Cliente perdido">Cliente perdido</option>
+                                    <option value="Cliente ganado">Cliente ganado</option>
+                                </select>
+                            </div>
+                            
+                            {/* Textarea */}
                             <label className="form-label" htmlFor="exampleFormControlTextarea1">
                                 Ingresa una nota :
                             </label>
