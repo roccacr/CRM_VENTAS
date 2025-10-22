@@ -21,7 +21,6 @@ const fetchNewData = (startDate, endDate, dispatch) => {
         // Ejecutar la acción usando dispatch
         dispatch(setgetMonthlyData(startDate, endDate))
             .then((result) => {
-                console.log("result home", result);
 
                 // Simulación de obtención de datos
                 const newData = [
