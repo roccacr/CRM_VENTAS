@@ -37,7 +37,7 @@ const NavbarContent = styled("div")({
 export const NavBar = ({ sidebarVisible, sidebarStatus, closeSidebar }) => {
    const dispatch = useDispatch();
    const navigate = useNavigate();
-   const { name_admin } = useSelector((state) => state.auth);
+   const { name_admin, rol_admin } = useSelector((state) => state.auth);
 
    // Estado para controlar los menús desplegables
    const [openMenu, setOpenMenu] = useState({
@@ -85,7 +85,7 @@ export const NavBar = ({ sidebarVisible, sidebarStatus, closeSidebar }) => {
          </DrawerHeader>
          <Divider />
          <NavbarContent>
-            <MenuItems openMenu={openMenu} toggleMenu={toggleMenu} />
+            <MenuItems openMenu={openMenu} toggleMenu={toggleMenu} rol_admin={rol_admin} />
             <UserCard name_admin={name_admin} CreatedEvents={CreatedEvents} />
          </NavbarContent>
       </Drawer>
@@ -135,8 +135,20 @@ const BrandLogo = () => (
  * @param {Object} props - Propiedades del componente
  * @param {Object} props.openMenu - Estado de apertura de los menús desplegables
  * @param {function} props.toggleMenu - Función para alternar el estado de los menús
+ * @param {string} props.rol_admin - Rol del administrador
  */
-const MenuItems = ({ openMenu, toggleMenu }) => (
+const MenuItems = ({ openMenu, toggleMenu, rol_admin }) => {
+   // Filtrar elementos de leads basado en el rol
+   const leadsItems = [
+      { to: "/leads/lista?data=1", text: "Leads Activos" },
+      { to: "/leads/lista?data=2", text: "Leads Nuevos" },
+      { to: "/leads/lista?data=3", text: "Leads Requieren Atencion" },
+      // { to: "/leads/lista?data=4", text: "Leads Rezagados" }, // Oculto temporalmente
+      { to: "/leads/lista?data=5", text: "Leads Totales" },
+      ...(rol_admin === 1 ? [{ to: "/leads/lista?data=6", text: "Lead Poco Seguimiento" }] : []),6
+   ];
+
+   return (
    <ul className="pc-navbar" style={{ display: "block" }}>
       <li className="pc-item pc-caption">
          <label>Menú Principal</label>
@@ -151,14 +163,7 @@ const MenuItems = ({ openMenu, toggleMenu }) => (
          title="Leads"
          isOpen={openMenu.leadsMenu}
          toggle={() => toggleMenu("leadsMenu")}
-         items={[
-            { to: "/leads/lista?data=1", text: "Leads Activos" },
-            { to: "/leads/lista?data=2", text: "Leads Nuevos" },
-            { to: "/leads/lista?data=3", text: "Leads Requieren Atencion" },
-            // { to: "/leads/lista?data=4", text: "Leads Rezagados" }, // Oculto temporalmente
-            { to: "/leads/lista?data=5", text: "Leads Totales" },
-            { to: "/leads/lista?data=6", text: "Lead Poco Seguimiento" },
-         ]}
+         items={leadsItems}
       />
       <MenuItem to="/calendar" icon="ti ti-calendar" text="Calendario" />
       <MenuItem to="/expedientes/list" icon="ti ti-file-text" text="Expedientes" />
@@ -176,7 +181,8 @@ const MenuItems = ({ openMenu, toggleMenu }) => (
       <MenuItem to="/orden/lista?data=4" icon="ti ti-vocabulary" text="Cotizaciones" />
       {/* <MenuItem to="/outlook" icon="ti ti-calendar" text="Calendario Outlook" /> */}
    </ul>
-);
+   );
+};
 
 /**
  * Componente para un elemento de menú
