@@ -12,8 +12,6 @@ const partner = {}; // Objeto para agrupar todas las funciones relacionadas con 
 partner.crearpartner = async (dataParams) => {
     return new Promise((resolve, reject) => {
         try {
-            console.log("📦 Parámetros recibidos en crearpartner:", dataParams);
-
 
             executeStoredProcedure(
                 "SP_CREAR_CORREDORES_NETSUITE", // Nombre del procedimiento almacenado que crea partners desde NetSuite.
