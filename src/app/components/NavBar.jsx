@@ -157,6 +157,7 @@ const MenuItems = ({ openMenu, toggleMenu }) => (
             { to: "/leads/lista?data=3", text: "Leads Requieren Atencion" },
             // { to: "/leads/lista?data=4", text: "Leads Rezagados" }, // Oculto temporalmente
             { to: "/leads/lista?data=5", text: "Leads Totales" },
+            { to: "/leads/lista?data=6", text: "Lead Poco Seguimiento" },
          ]}
       />
       <MenuItem to="/calendar" icon="ti ti-calendar" text="Calendario" />

@@ -13,6 +13,8 @@ import { View_crear_lead } from "../../views/leads/add/View_crear_lead";
 import { View_edit_lead } from "../../views/leads/edit/View_edit_lead";
 import { BotonVolveR } from "../../components/BotonVolveR";
 import { PerfilUsuario } from "../../views/leads/perfil/PerfilUsuario";
+import PocoSeguimeinto from "../../views/leads/list/PocoSeguimeinto/PocoSeguimeinto";
+
 
 
 export const LeadsPage = () => {
@@ -24,7 +26,7 @@ export const LeadsPage = () => {
     // Determinar si se debe mostrar el contenedor pc-content
     const shouldShowPcContent = !(path[1] === "leads" && path[2] === "lista" && 
         (dataValue === "2" || dataValue === "3" || dataValue === "4" || 
-         dataValue === "1" || dataValue === "5"));
+         dataValue === "1" || dataValue === "5" || dataValue === "6"));
 
     return (
         <AppLayout>
@@ -47,6 +49,7 @@ export const LeadsPage = () => {
                         {path[1] === "leads" && path[2] === "lista" && dataValue === "4" && <View_list_leads_Stragglers />}
                         {path[1] === "leads" && path[2] === "lista" && dataValue === "1" && <View_list_leads_complete />}
                         {path[1] === "leads" && path[2] === "lista" && dataValue === "5" && <View_total_leads />}
+                        {path[1] === "leads" && path[2] === "lista" && dataValue === "6" && <PocoSeguimeinto />}
                     </>
                 )}
             </div>
