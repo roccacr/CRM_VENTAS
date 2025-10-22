@@ -27,6 +27,8 @@ partner.crearpartner = async (dataParams) => {
                 "produccion" // Nombre de la base de datos a utilizar
             );
 
+            return "ok"
+
         } catch (error) {
             console.error("❌ Error al crear partner:", error);
             reject({
@@ -56,6 +58,7 @@ partner.editarpartner = async (dataParams) => {
                 ],
                 "produccion"
             );
+             return "ok"
            
         } catch (error) {
             console.error("❌ Error al editar partner:", error);
