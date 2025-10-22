@@ -13,15 +13,6 @@ partner.crearpartner = async (dataParams) => {
     return new Promise((resolve, reject) => {
         try {
 
-            // Validar que los datos necesarios estén presentes
-            if (!dataParams || Object.keys(dataParams).length === 0) {
-                return reject({
-                    statusCode: 400,
-                    message: "No se proporcionaron parámetros para crear la partner",
-                    error: "EMPTY_PARAMS"
-                });
-            }
-
             executeStoredProcedure(
                 "SP_CREAR_CORREDORES_NETSUITE", // Nombre del procedimiento almacenado que crea corredores desde NetSuite
                 [
@@ -35,18 +26,6 @@ partner.crearpartner = async (dataParams) => {
                 ], // Parámetros para crear corredor desde NetSuite
                 "produccion" // Nombre de la base de datos a utilizar
             );
-
-            console.log("✅ Partner creada exitosamente desde NetSuite");
-
-            resolve({
-                statusCode: 201,
-                message: "Partner creada exitosamente",
-                data: {
-                    success: true,
-                    timestamp: new Date(),
-                    params: dataParams
-                }
-            });
 
         } catch (error) {
             console.error("❌ Error al crear partner:", error);
@@ -69,9 +48,6 @@ partner.crearpartner = async (dataParams) => {
 partner.editarpartner = async (dataParams) => {
     return new Promise((resolve, reject) => {
         try {
-            console.log("📦 Parámetros recibidos en editarpartner:", dataParams);
-
-
             executeStoredProcedure(
                 "SP_ACTUALIZAR_NOMBRE_CORREDOR_NETSUITE",
                 [
@@ -80,9 +56,6 @@ partner.editarpartner = async (dataParams) => {
                 ],
                 "produccion"
             );
-
-            console.log("✅ Partner editada exitosamente desde NetSuite" );  
-
            
         } catch (error) {
             console.error("❌ Error al editar partner:", error);

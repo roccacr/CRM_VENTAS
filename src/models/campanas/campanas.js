@@ -17,8 +17,6 @@ campana.crearCampana = async (dataParams) => {
                 [dataParams.id, dataParams.titulo], // Parámetros que identifican el rol y el ID del usuario.
                 "produccion", // Nombre de la base de datos a utilizar.
             );
-            console.log("result", "Se creo la campaña desde NetSuite");
-
             return "ok"
         } catch (error) {
             console.error("❌ Error al crear campaña:", error);
@@ -33,9 +31,7 @@ campana.crearCampana = async (dataParams) => {
 campana.editarCampana = async (dataParams) => {
     return new Promise((resolve, reject) => {
         try {
-          
-            console.log("📦 Parámetros recibidos en editarCampana:", dataParams);
-
+        
             executeStoredProcedure(
                 "SP_ACTUALIZAR_NOMBRE_CAMPANA_NETSUITE",
                 [
@@ -45,10 +41,7 @@ campana.editarCampana = async (dataParams) => {
                 ],
                 "produccion"
             );
-
             return "ok"
-
-
         } catch (error) {
             console.error("❌ Error al editar campaña:", error);
             reject({
