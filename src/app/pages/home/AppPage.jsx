@@ -14,6 +14,7 @@ import {
    selectListOrderSale,
    selectListOrderSalePending,
 } from "../../../store/Home/selectorsHome";
+import { useOutlookEvents } from "../../../hooks/useOutlookEvents";
 
 // Constante para los elementos del tablero
 const initialDashboardItems = [
@@ -38,15 +39,18 @@ export const AppPage = () => {
    const listOrderSale = useSelector(selectListOrderSale);
    const listOrderSalePending = useSelector(selectListOrderSalePending);
 
+   // Obtener eventos de Outlook del día
+   const { eventsCount: outlookEventsCount, isLoading: outlookLoading, error: outlookError } = useOutlookEvents();
+
    // Cargar leads al montar el componente
    useEffect(() => {
       loadLeads();
    }, [dispatch]);
 
-   // Actualizar los elementos del tablero cuando cambien los valores de los leads
+   // Actualizar los elementos del tablero cuando cambien los valores de los leads o eventos de Outlook
    useEffect(() => {
       updateDashboardItems();
-   }, [listNew, listAttention, listEvents, listOportunity, listOrderSale, listOrderSalePending]);
+   }, [listNew, listAttention, listEvents, listOportunity, listOrderSale, listOrderSalePending, outlookEventsCount, outlookLoading]);
 
    // Función para cargar los leads
    const loadLeads = () => {
@@ -64,9 +68,20 @@ export const AppPage = () => {
             5: listOrderSale,
             6: listOrderSalePending,
          };
+
+         // Para el item de eventos (id: 3), agregar información de Outlook
+         if (item.id === 3) {
+            return {
+               ...item,
+               quantity: quantities[item.id] ?? item.quantity,
+               outlookCount: outlookLoading ? null : outlookEventsCount, // null muestra "..."
+               hasOutlook: true, // Indica que tiene integración con Outlook
+            };
+         }
+
          return {
             ...item,
-            quantity: quantities[item.id] ?? item.quantity, // Si no hay cantidad, mantener la anterior
+            quantity: quantities[item.id] ?? item.quantity,
          };
       });
       setDashboardItems(updatedItems);
@@ -82,6 +97,8 @@ export const AppPage = () => {
             nombre={item.name}
             cantidad={item.quantity}
             url={item.url}
+            outlookCount={item.outlookCount}
+            hasOutlook={item.hasOutlook}
          />
       ));
    };

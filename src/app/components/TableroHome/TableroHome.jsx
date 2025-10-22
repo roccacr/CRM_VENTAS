@@ -1,6 +1,6 @@
 import { NavLink } from "react-router-dom";
 
-export const TableroHome = ({ image, icons, nombre, cantidad, url }) => {
+export const TableroHome = ({ image, icons, nombre, cantidad, url, outlookCount, hasOutlook }) => {
     return (
         <div className="col-md-12 col-xxl-4">
             <a href={url}>
@@ -14,8 +14,25 @@ export const TableroHome = ({ image, icons, nombre, cantidad, url }) => {
                             <div>
                                 <p className="text-muted mb-0">{nombre}</p>
                                 <div className="d-flex align-items-end">
-                                    {/* Si la cantidad es null o undefined, muestra el loader */}
-                                    {cantidad !== undefined && cantidad !== null ? <h2 className="mb-0 f-w-500">{cantidad}</h2> : "..."}
+                                    {hasOutlook ? (
+                                        // Mostrar formato "CRM X / Outlook Y" para eventos
+                                        <div className="d-flex align-items-center gap-2">
+                                            <h4 className="mb-0 f-w-500" style={{ fontSize: "1.3rem" }}>
+                                                CRM {cantidad !== undefined && cantidad !== null ? cantidad : "..."}
+                                            </h4>
+                                            <span className="text-muted">/</span>
+                                            <h4 className="mb-0 f-w-500" style={{ color: "#6c757d", fontWeight: "600", fontSize: "1.3rem" }}>
+                                                outlook {outlookCount !== undefined && outlookCount !== null ? outlookCount : "..."}
+                                            </h4>
+                                        </div>
+                                    ) : (
+                                        // Mostrar cantidad normal para otros items
+                                        cantidad !== undefined && cantidad !== null ? (
+                                            <h2 className="mb-0 f-w-500">{cantidad}</h2>
+                                        ) : (
+                                            "..."
+                                        )
+                                    )}
                                 </div>
                             </div>
                         </div>
