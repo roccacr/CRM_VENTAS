@@ -15,6 +15,8 @@ export const authSlice = createSlice({
       errorMessage: null, // Mensaje de error, si lo hay
       idnetsuite_admin: null,
       microsoftUser: null,
+      profilePicture: null, // Imagen de perfil del usuario
+      expiresIn: null, // Tiempo de expiración del token (en ms)
       mensaje: null,
    },
    reducers: {
@@ -50,6 +52,8 @@ export const authSlice = createSlice({
          state.token_admin = payload.token_admin;
          state.status_admin = payload.status_admin;
          state.microsoftUser = payload.microsoftUser;
+         state.profilePicture = payload.microsoftUser?.profilePicture || null;
+         state.expiresIn = payload.microsoftUser?.expiresIn || null;
          state.errorMessage = "";
       },
       // Reducer para cerrar la sesión del usuario
@@ -90,10 +94,12 @@ export const authSlice = createSlice({
          state.email_admin = null;
          state.token_admin = null;
          state.status_admin = null;
-         state.errorMessage = action.payload.mensaje;  
+         state.errorMessage = action.payload.mensaje;
          state.microsoftUser = null;
+         state.profilePicture = null;
+         state.expiresIn = null;
          localStorage.removeItem("payload_1");
-         
+
       },
    },
 });

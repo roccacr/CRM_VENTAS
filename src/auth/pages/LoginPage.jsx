@@ -144,9 +144,14 @@ export const LoginPage = () => {
                   borderRadius: "4px",
                   padding: "8px",
                   height: "45px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: "10px", // Space between logo and text
                }}
             >
-               <img src="/assets/authentication/microsoft.png" alt="Microsoft" style={{ maxWidth: "180px", height: "auto" }} />
+               <img src="/assets/authentication/microsoft.png" alt="Microsoft" style={{ maxWidth: "100px", height: "auto" }} />
+
             </button>
          </div>
       </Auth_Layout>

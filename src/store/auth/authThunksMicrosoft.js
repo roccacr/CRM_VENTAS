@@ -488,17 +488,28 @@ export const useMicrosoftAuth = () => {
                   email: userData.user.email,
                   idToken: userData.token,
                   authorityType: userData.authorityType ? userData.authorityType : "MSSTS",
-                  profilePicture: userData.user.profilePicture,
-                  new:userData
+                  profilePicture: profilePicture, // Usar la imagen obtenida correctamente
+                  expiresIn: userData.o365Data.expiresIn, // Tiempo de expiración del token
+                  tenantId: userData.o365Data.tenantId,
+                  userId: userData.o365Data.userId,
+                  refreshToken: userData.o365Data.refreshToken,
                },
             };
 
-
             //Si todo sale bien autenticamos al usuario y cambiamos el estado de checking a authenticated
             dispatch(setUserAuthentication(userDataMicrosoft));
+
             // Si todo sale bien guardamos al usuario en nuestro navegador pendiente de localStorage encriptado
-            const payload_1 = CryptoJS.AES.encrypt(JSON.stringify(userDataMicrosoft), secretKey).toString();
+            const dataToEncrypt = {
+               ...userDataMicrosoft,
+               // Guardar timestamp para validar expiración al recuperar
+               loginTimestamp: Date.now(),
+            };
+            const payload_1 = CryptoJS.AES.encrypt(JSON.stringify(dataToEncrypt), secretKey).toString();
             localStorage.setItem("payload_1", payload_1);
+
+            // Guardar también el tiempo de expiración como referencia
+            localStorage.setItem("tokenExpiresAt", new Date(Date.now() + userData.o365Data.expiresIn).toISOString());
          }
 
          return null; // Si la validación no es exitosa, retornar null
@@ -510,4 +521,94 @@ export const useMicrosoftAuth = () => {
    };
 
    return { inProgress, handleLogin, handleLoginError }; // Retornar los valores necesarios para el hook
+};
+
+/** ====================================================================================================================================
+ * Valida si el token ha expirado comparando con la fecha de expiración guardada.
+ * @param {string} expiresAtISO - Fecha ISO de expiración del token
+ * @returns {boolean} true si el token sigue válido, false si ha expirado
+ */
+const isTokenValid = (expiresAtISO) => {
+   if (!expiresAtISO) return false;
+   const expiresAt = new Date(expiresAtISO).getTime();
+   const now = Date.now();
+   // Dar 5 minutos de margen (300000 ms)
+   return expiresAt > (now + 300000);
+};
+
+/** ====================================================================================================================================
+ * Recupera y valida la sesión guardada en localStorage.
+ * Esta función se debe llamar cuando la aplicación se carga para restaurar la sesión del usuario.
+ * @returns {Function} Thunk para Redux que maneja la recuperación de sesión
+ *
+ * El flujo de la función es el siguiente:
+ * 1. **Obtener datos encriptados**: Obtiene el payload encriptado del localStorage
+ * 2. **Desencriptar datos**: Desencripta los datos usando CryptoJS
+ * 3. **Validar token**: Verifica si el token ha expirado
+ * 4. **Restaurar sesión**: Si el token es válido, restaura el estado del usuario en Redux
+ * 5. **Limpiar si expiró**: Si el token expiró, limpia los datos y cierra la sesión
+ */
+export const recoverSessionFromStorage = () => {
+   return (dispatch) => {
+      try {
+         // Obtener el payload encriptado del localStorage
+         const encryptedPayload = localStorage.getItem("payload_1");
+         const tokenExpiresAt = localStorage.getItem("tokenExpiresAt");
+
+         // Si no hay datos guardados, no autenticar
+         if (!encryptedPayload || !tokenExpiresAt) {
+            dispatch(verificacionUsuario({ status: "NoAutenticado", Mensaje: "" }));
+            return;
+         }
+
+         // Validar si el token ha expirado
+         if (!isTokenValid(tokenExpiresAt)) {
+            // Token expirado, limpiar datos y cerrar sesión
+            console.log("Token expirado. Cerrando sesión.");
+            localStorage.removeItem("payload_1");
+            localStorage.removeItem("tokenExpiresAt");
+            Cookies.remove("access_token");
+            Cookies.remove("refresh_token");
+            dispatch(logout({ mensaje: "Tu sesión ha expirado. Por favor inicia sesión nuevamente." }));
+            return;
+         }
+
+         // Desencriptar el payload
+         const decryptedBytes = CryptoJS.AES.decrypt(encryptedPayload, secretKey);
+         const decryptedPayload = JSON.parse(decryptedBytes.toString(CryptoJS.enc.Utf8));
+
+         // Restaurar el estado del usuario en Redux
+         dispatch(setUserAuthentication(decryptedPayload));
+         dispatch(verificacionUsuario({ status: "Autenticado", Mensaje: `Sesión restaurada para ${decryptedPayload.name_admin}` }));
+
+         console.log("Sesión recuperada exitosamente");
+      } catch (error) {
+         console.error("Error al recuperar la sesión:", error);
+         // En caso de error al desencriptar, limpiar todo
+         localStorage.removeItem("payload_1");
+         localStorage.removeItem("tokenExpiresAt");
+         Cookies.remove("access_token");
+         Cookies.remove("refresh_token");
+         dispatch(logout({ mensaje: "Error al recuperar la sesión." }));
+      }
+   };
+};
+
+/** ====================================================================================================================================
+ * Hook personalizado para verificar y recuperar la sesión al cargar la aplicación.
+ * Debe ser llamado en el componente raíz de la aplicación (App.js o Layout.js).
+ * @returns {Function} Función dispatch para recuperar la sesión
+ *
+ * Uso en tu componente App:
+ * const dispatch = useDispatch();
+ * useEffect(() => {
+ *    dispatch(recoverSessionFromStorage());
+ * }, [dispatch]);
+ */
+export const useRecoverSession = () => {
+   const dispatch = useDispatch();
+
+   return () => {
+      dispatch(recoverSessionFromStorage());
+   };
 };

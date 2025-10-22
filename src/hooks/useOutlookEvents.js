@@ -6,9 +6,11 @@ import { InteractionRequiredAuthError } from '@azure/msal-browser';
  * Custom Hook para obtener eventos de Outlook del día actual
  * Filtra eventos mayores a la hora actual en zona horaria de Costa Rica
  * @returns {Object} { eventsCount, isLoading, error }
+ *
+ * NOTA: Requiere que MSAL esté inicializado en main.jsx
  */
 export const useOutlookEvents = () => {
-  const { instance, accounts } = useMsal();
+  const { instance, accounts, inProgress } = useMsal();
   const [eventsCount, setEventsCount] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -19,6 +21,29 @@ export const useOutlookEvents = () => {
   // Obtener token de acceso con reintentos
   useEffect(() => {
     const getAccessToken = async () => {
+      // Esperar a que MSAL esté listo
+      if (inProgress === "startup") {
+        console.log("⏳ MSAL aún se está inicializando...");
+        if (retryCountRef.current < 10) {
+          retryCountRef.current += 1;
+          retryTimeoutRef.current = setTimeout(getAccessToken, 500);
+          return;
+        }
+      }
+
+      // Validar que MSAL esté inicializado
+      if (!instance) {
+        console.warn("⚠️ MSAL no inicializado aún, reintentando...");
+        if (retryCountRef.current < 5) {
+          retryCountRef.current += 1;
+          retryTimeoutRef.current = setTimeout(getAccessToken, 1000);
+          return;
+        }
+        setError("MSAL no pudo inicializarse");
+        setIsLoading(false);
+        return;
+      }
+
       if (!accounts || accounts.length === 0) {
         // Si no hay cuentas, reintentar después de 2 segundos (puede estar cargando MSAL)
         if (retryCountRef.current < 5) {
@@ -26,49 +51,57 @@ export const useOutlookEvents = () => {
           retryTimeoutRef.current = setTimeout(getAccessToken, 2000);
           return;
         }
-        setError('Usuario no autenticado con Microsoft 365');
+        console.log("⚠️ Usuario no autenticado con Microsoft 365");
+        setError("Usuario no autenticado con Microsoft 365");
         setIsLoading(false);
         return;
       }
 
       try {
+        // Verificar que instance tenga el método acquireTokenSilent
+        if (!instance.acquireTokenSilent) {
+          throw new Error("instance.acquireTokenSilent no está disponible");
+        }
+
         const response = await instance.acquireTokenSilent({
-          scopes: ['Calendars.Read'],
+          scopes: ["Calendars.Read"],
           account: accounts[0],
         });
         setAccessToken(response.accessToken);
         setError(null);
-        retryCountRef.current = 0; // Reset retry count on success
+        retryCountRef.current = 0;
+        console.log("✓ Token de Outlook obtenido correctamente");
       } catch (err) {
         if (err instanceof InteractionRequiredAuthError) {
           // No intentar popup automáticamente, solo en caso necesario
           try {
             const response = await instance.acquireTokenPopup({
-              scopes: ['Calendars.Read'],
+              scopes: ["Calendars.Read"],
               account: accounts[0],
             });
             setAccessToken(response.accessToken);
             setError(null);
             retryCountRef.current = 0;
+            console.log("✓ Token de Outlook obtenido via popup");
           } catch (popupErr) {
-            console.error('Error en popup de autenticación:', popupErr);
+            console.error("❌ Error en popup de autenticación:", popupErr);
             // Reintentar con silent después de 3 segundos
             if (retryCountRef.current < 3) {
               retryCountRef.current += 1;
               retryTimeoutRef.current = setTimeout(getAccessToken, 3000);
             } else {
-              setError('Se requiere permiso para acceder al calendario');
+              setError("Se requiere permiso para acceder al calendario");
               setIsLoading(false);
             }
           }
         } else {
-          console.error('Error obteniendo token:', err);
+          console.error("❌ Error obteniendo token:", err.message);
           // Reintentar después de 3 segundos
           if (retryCountRef.current < 3) {
             retryCountRef.current += 1;
             retryTimeoutRef.current = setTimeout(getAccessToken, 3000);
           } else {
-            setError('No se pudo obtener el token de calendario');
+            setError("No se pudo obtener el token de calendario");
             setIsLoading(false);
           }
         }
@@ -83,7 +116,7 @@ export const useOutlookEvents = () => {
         clearTimeout(retryTimeoutRef.current);
       }
     };
-  }, [instance, accounts]);
+  }, [instance, accounts, inProgress]);
 
   // Verificar y refrescar token periódicamente
   useEffect(() => {
@@ -92,13 +125,13 @@ export const useOutlookEvents = () => {
     const checkAndRefreshToken = async () => {
       try {
         const response = await instance.acquireTokenSilent({
-          scopes: ['Calendars.Read'],
+          scopes: ["Calendars.Read"],
           account: accounts[0],
         });
         setAccessToken(response.accessToken);
         setError(null);
       } catch (err) {
-        console.error('Error al refrescar token:', err);
+        console.error("Error al refrescar token:", err);
         // No establecer error aquí, dejar que el token actual siga funcionando
       }
     };
@@ -121,7 +154,7 @@ export const useOutlookEvents = () => {
       try {
         // Obtener fecha actual en Costa Rica
         const now = new Date();
-        const costaRicaTime = new Date(now.toLocaleString('en-US', { timeZone: 'America/Costa_Rica' }));
+        const costaRicaTime = new Date(now.toLocaleString("en-US", { timeZone: "America/Costa_Rica" }));
 
         // Inicio del día (00:00:00)
         const startOfDay = new Date(costaRicaTime);
@@ -137,11 +170,11 @@ export const useOutlookEvents = () => {
         const url = `https://graph.microsoft.com/v1.0/me/calendarview?startDateTime=${startDateTime}&endDateTime=${endDateTime}&$orderby=start/dateTime&$top=100`;
 
         const response = await fetch(url, {
-          method: 'GET',
+          method: "GET",
           headers: {
-            'Authorization': `Bearer ${accessToken}`,
-            'Content-Type': 'application/json',
-            'Prefer': 'outlook.timezone="America/Costa_Rica"',
+            Authorization: `Bearer ${accessToken}`,
+            "Content-Type": "application/json",
+            Prefer: 'outlook.timezone="America/Costa_Rica"',
           },
         });
 
@@ -149,18 +182,18 @@ export const useOutlookEvents = () => {
           // Si es error 401, el token puede estar vencido
           if (response.status === 401 && fetchRetryCount < MAX_FETCH_RETRIES) {
             fetchRetryCount += 1;
-            console.log(`Token expirado, reintentando... (${fetchRetryCount}/${MAX_FETCH_RETRIES})`);
+            console.log(`⏳ Token expirado, reintentando... (${fetchRetryCount}/${MAX_FETCH_RETRIES})`);
             // Intentar obtener un nuevo token
             try {
               const newTokenResponse = await instance.acquireTokenSilent({
-                scopes: ['Calendars.Read'],
+                scopes: ["Calendars.Read"],
                 account: accounts[0],
               });
               setAccessToken(newTokenResponse.accessToken);
               // El useEffect se volverá a ejecutar con el nuevo token
               return;
             } catch (tokenErr) {
-              console.error('Error al renovar token:', tokenErr);
+              console.error("Error al renovar token:", tokenErr);
             }
           }
           throw new Error(`Error HTTP ${response.status}`);
@@ -172,26 +205,27 @@ export const useOutlookEvents = () => {
           // Filtrar eventos que sean mayores a la hora actual
           const currentTime = costaRicaTime.getTime();
 
-          const upcomingEvents = data.value.filter(event => {
+          const upcomingEvents = data.value.filter((event) => {
             const eventStart = new Date(event.start.dateTime);
             return eventStart.getTime() >= currentTime;
           });
 
           setEventsCount(upcomingEvents.length);
           setError(null);
-          fetchRetryCount = 0; // Reset retry count on success
+          fetchRetryCount = 0;
+          console.log(`✓ ${upcomingEvents.length} eventos próximos encontrados`);
         } else {
           setEventsCount(0);
           setError(null);
         }
       } catch (err) {
-        console.error('Error al obtener eventos de Outlook:', err);
+        console.error("Error al obtener eventos de Outlook:", err);
 
         // Reintentar si no hemos alcanzado el máximo de reintentos
         if (fetchRetryCount < MAX_FETCH_RETRIES) {
           fetchRetryCount += 1;
-          console.log(`Reintentando obtener eventos... (${fetchRetryCount}/${MAX_FETCH_RETRIES})`);
-          setTimeout(fetchTodayEvents, 2000); // Reintentar después de 2 segundos
+          console.log(`⏳ Reintentando obtener eventos... (${fetchRetryCount}/${MAX_FETCH_RETRIES})`);
+          setTimeout(fetchTodayEvents, 2000);
           return;
         }
 
