@@ -338,6 +338,15 @@ leads.getDataInformations_Lead = (dataParams) => {
 };
 
 
+leads.SP_OBTENER_LEADS_PERDIDOS_MINIMO_SEGUIMIENTO_API = (dataParams) => {
+    return executeStoredProcedure(
+        "SP_OBTENER_LEADS_PERDIDOS_MINIMO_SEGUIMIENTO", // Nombre del procedimiento almacenado encargado de recuperar toda la información de un lead.
+        [dataParams.startDate, dataParams.endDate], // Parámetro requerido: id del lead para identificar el registro en la base de datos.
+        dataParams.database, // Base de datos donde se ejecutará el procedimiento.
+    );
+};
+
+
 
 // Función para obtener eventos de un lead específico
 leads.eventos = (dataParams) => {
