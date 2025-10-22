@@ -23,7 +23,6 @@ export const useOutlookEvents = () => {
     const getAccessToken = async () => {
       // Esperar a que MSAL esté listo
       if (inProgress === "startup") {
-        console.log("⏳ MSAL aún se está inicializando...");
         if (retryCountRef.current < 10) {
           retryCountRef.current += 1;
           retryTimeoutRef.current = setTimeout(getAccessToken, 500);
@@ -33,32 +32,30 @@ export const useOutlookEvents = () => {
 
       // Validar que MSAL esté inicializado
       if (!instance) {
-        console.warn("⚠️ MSAL no inicializado aún, reintentando...");
         if (retryCountRef.current < 5) {
           retryCountRef.current += 1;
           retryTimeoutRef.current = setTimeout(getAccessToken, 1000);
           return;
         }
-        setError("MSAL no pudo inicializarse");
+        setError(null); // Sin error, solo no mostrar eventos
         setIsLoading(false);
         return;
       }
 
       if (!accounts || accounts.length === 0) {
-        // Si no hay cuentas, reintentar después de 2 segundos (puede estar cargando MSAL)
         if (retryCountRef.current < 5) {
           retryCountRef.current += 1;
           retryTimeoutRef.current = setTimeout(getAccessToken, 2000);
           return;
         }
-        console.log("⚠️ Usuario no autenticado con Microsoft 365");
-        setError("Usuario no autenticado con Microsoft 365");
+        // Usuario no autenticado, no mostrar error
+        setError(null);
+        setEventsCount(0);
         setIsLoading(false);
         return;
       }
 
       try {
-        // Verificar que instance tenga el método acquireTokenSilent
         if (!instance.acquireTokenSilent) {
           throw new Error("instance.acquireTokenSilent no está disponible");
         }
@@ -73,7 +70,6 @@ export const useOutlookEvents = () => {
         console.log("✓ Token de Outlook obtenido correctamente");
       } catch (err) {
         if (err instanceof InteractionRequiredAuthError) {
-          // No intentar popup automáticamente, solo en caso necesario
           try {
             const response = await instance.acquireTokenPopup({
               scopes: ["Calendars.Read"],
@@ -84,26 +80,20 @@ export const useOutlookEvents = () => {
             retryCountRef.current = 0;
             console.log("✓ Token de Outlook obtenido via popup");
           } catch (popupErr) {
-            console.error("❌ Error en popup de autenticación:", popupErr);
-            // Reintentar con silent después de 3 segundos
-            if (retryCountRef.current < 3) {
-              retryCountRef.current += 1;
-              retryTimeoutRef.current = setTimeout(getAccessToken, 3000);
-            } else {
-              setError("Se requiere permiso para acceder al calendario");
-              setIsLoading(false);
-            }
+            // Falta de permisos - no reintentar
+            console.warn("⚠️ Se requiere dar permisos de calendario en Microsoft");
+            setError(null); // No mostrar error al usuario
+            setEventsCount(0);
+            setIsLoading(false);
+            retryCountRef.current = 999; // Evitar reintentos
           }
         } else {
-          console.error("❌ Error obteniendo token:", err.message);
-          // Reintentar después de 3 segundos
-          if (retryCountRef.current < 3) {
-            retryCountRef.current += 1;
-            retryTimeoutRef.current = setTimeout(getAccessToken, 3000);
-          } else {
-            setError("No se pudo obtener el token de calendario");
-            setIsLoading(false);
-          }
+          // Error desconocido - no reintentar continuamente
+          console.warn("⚠️ No se pudo obtener eventos de Outlook (sin permisos)");
+          setError(null); // No mostrar error al usuario
+          setEventsCount(0);
+          setIsLoading(false);
+          retryCountRef.current = 999; // Evitar reintentos
         }
       }
     };

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import listPlugin from "@fullcalendar/list";
@@ -50,15 +50,27 @@ export const View_calendars = () => {
     const [isLoading, setIsLoading] = useState(true);
     const [isLoadingOutlook, setIsLoadingOutlook] = useState(false);
     const [showAllYear, setShowAllYear] = useState(false);
-    const { instance, accounts } = useMsal();
+    const { instance, accounts, inProgress } = useMsal();
     const [accessToken, setAccessToken] = useState("");
     const [outlookError, setOutlookError] = useState(null);
+    const retryCountRef = useRef(0);
+    const outlookInitializedRef = useRef(false);
 
     // Obtener token de acceso de Outlook
     useEffect(() => {
         const getAccessToken = async () => {
+            // Si ya se intentó una vez y falló, no reintentar continuamente
+            if (outlookInitializedRef.current) return;
+
+            if (inProgress === "startup") {
+                // MSAL aún está inicializando, esperar
+                return;
+            }
+
             if (!accounts || accounts.length === 0) {
-                setOutlookError('Usuario no autenticado. Verificar si se inició sesión en Microsoft 365.');
+                // Usuario no autenticado, no mostrar error
+                outlookInitializedRef.current = true;
+                setIsLoadingOutlook(false);
                 return;
             }
 
@@ -69,8 +81,12 @@ export const View_calendars = () => {
                 });
                 setAccessToken(response.accessToken);
                 setOutlookError(null);
+                outlookInitializedRef.current = true;
+                setIsLoadingOutlook(false);
             } catch (err) {
-                if (err instanceof InteractionRequiredAuthError) {
+                // Primer intento fallido, intentar con popup una sola vez
+                if (retryCountRef.current === 0) {
+                    retryCountRef.current = 1;
                     try {
                         const response = await instance.acquireTokenPopup({
                             scopes: ['Calendars.Read'],
@@ -79,90 +95,20 @@ export const View_calendars = () => {
                         setAccessToken(response.accessToken);
                         setOutlookError(null);
                     } catch (popupErr) {
-                        setOutlookError('Se requiere permiso para acceder al calendario.');
-                        // Intentar reconexión automática después de 5 segundos
-                        setTimeout(() => {
-                            if (accounts && accounts.length > 0) {
-                                instance.acquireTokenPopup({
-                                    scopes: ['Calendars.Read'],
-                                    account: accounts[0],
-                                }).then(response => {
-                                    setAccessToken(response.accessToken);
-                                    setOutlookError(null);
-                                }).catch(err => {
-                                    setOutlookError('No se pudo obtener el token con permisos de calendario.');
-                                });
-                            }
-                        }, 5000);
-                    }
-                } else {
-                    // Si hay un error, intentamos obtener un nuevo token
-                    try {
-                        const response = await instance.acquireTokenPopup({
-                            scopes: ['Calendars.Read'],
-                            account: accounts[0],
-                        });
-                        setAccessToken(response.accessToken);
-                        setOutlookError(null);
-                    } catch (retryErr) {
-                        setOutlookError('No se pudo obtener el token con permisos de calendario.');
-                        // Intentar reconexión automática después de 5 segundos
-                        setTimeout(() => {
-                            if (accounts && accounts.length > 0) {
-                                instance.acquireTokenPopup({
-                                    scopes: ['Calendars.Read'],
-                                    account: accounts[0],
-                                }).then(response => {
-                                    setAccessToken(response.accessToken);
-                                    setOutlookError(null);
-                                }).catch(err => {
-                                    setOutlookError('No se pudo obtener el token con permisos de calendario.');
-                                });
-                            }
-                        }, 5000);
+                        // No mostrar error, solo marcar como inicializado
+                        console.warn("⚠️ Sin permisos para acceder al calendario de Outlook");
                     }
                 }
+                outlookInitializedRef.current = true;
+                setIsLoadingOutlook(false);
             }
         };
 
-        getAccessToken();
-    }, [instance, accounts]);
-
-    // Agregar un efecto para reintentar la obtención del token cuando el componente se monte
-    useEffect(() => {
-        const checkAndRefreshToken = async () => {
-            if (accounts && accounts.length > 0 && !accessToken) {
-                try {
-                    const response = await instance.acquireTokenSilent({
-                        scopes: ['Calendars.Read'],
-                        account: accounts[0],
-                    });
-                    setAccessToken(response.accessToken);
-                    setOutlookError(null);
-                } catch (err) {
-                    // Si falla el token silencioso, intentamos con popup
-                    try {
-                        const response = await instance.acquireTokenPopup({
-                            scopes: ['Calendars.Read'],
-                            account: accounts[0],
-                        });
-                        setAccessToken(response.accessToken);
-                        setOutlookError(null);
-                    } catch (popupErr) {
-                        setOutlookError('No se pudo obtener el token con permisos de calendario.');
-                    }
-                }
-            }
-        };
-
-        // Verificar el token cada 5 minutos
-        const intervalId = setInterval(checkAndRefreshToken, 5 * 60 * 1000);
-        
-        // Verificar inmediatamente al montar el componente
-        checkAndRefreshToken();
-
-        return () => clearInterval(intervalId);
-    }, [instance, accounts, accessToken]);
+        if (!outlookInitializedRef.current) {
+            setIsLoadingOutlook(true);
+            getAccessToken();
+        }
+    }, [instance, accounts, inProgress]);
 
     const transformEvents = (apiData) => {
         return apiData.map((item) => {
@@ -351,47 +297,10 @@ export const View_calendars = () => {
                             <span className="visually-hidden">Cargando...</span>
                         </div>
                         <div>
-                            <strong>Estamos cargando los eventos de Outlook...</strong>
+                            <strong>Cargando eventos de Microsoft Outlook...</strong>
                             <br />
-                            <small>Por favor espere un momento mientras sincronizamos su calendario.</small>
+                            <small>Por favor espere mientras sincronizamos su calendario.</small>
                         </div>
-                    </div>
-                </div>
-            )}
-            {outlookError && !isLoadingOutlook && (
-                <div className="alert alert-danger" role="alert" style={{ margin: '10px' }}>
-                    <div className="d-flex align-items-center">
-                        <div className="spinner-border spinner-border-sm me-2" role="status">
-                            <span className="visually-hidden">Reconectando...</span>
-                        </div>
-                        <div>
-                            <strong>⚠️ Error de Outlook:</strong> {outlookError}
-                            <br />
-                            <small>Intentando reconectar automáticamente...</small>
-                        </div>
-                    </div>
-                    <div className="mt-2">
-                        <button 
-                            className="btn btn-sm btn-primary" 
-                            onClick={() => {
-                                if (accounts && accounts.length > 0) {
-                                    setIsLoadingOutlook(true);
-                                    instance.acquireTokenPopup({
-                                        scopes: ['Calendars.Read'],
-                                        account: accounts[0],
-                                    }).then(response => {
-                                        setAccessToken(response.accessToken);
-                                        setOutlookError(null);
-                                    }).catch(err => {
-                                        setOutlookError('No se pudo obtener el token con permisos de calendario.');
-                                    }).finally(() => {
-                                        setIsLoadingOutlook(false);
-                                    });
-                                }
-                            }}
-                        >
-                            Reintentar ahora
-                        </button>
                     </div>
                 </div>
             )}
