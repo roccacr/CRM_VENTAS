@@ -284,6 +284,7 @@ module.exports = function (app) {
             model: partner, 
             routes: [
                 { path: "/partner/add/crm", method: "crearpartner" }, // buscador general
+                { path: "/partner/edit/crm", method: "editarpartner" }, // buscador general
             ],
         },
     ];
@@ -292,7 +293,7 @@ module.exports = function (app) {
     routesConfig.forEach(({ category, model, routes }) => {
         routes.forEach(({ path, method }) => {
             // Rutas que permiten acceso sin autenticación (para integraciones externas como NetSuite)
-            const noAuthRoutes = ["/campaign/add/crm", "/partner/add/crm"];
+            const noAuthRoutes = ["/campaign/add/crm", "/partner/add/crm", "/partner/edit/crm"];
 
             // Selecciona el middleware según si la ruta está en la lista de exclusión
             const middleware = noAuthRoutes.includes(path) ? allowNoAuth : validateAccessToken;

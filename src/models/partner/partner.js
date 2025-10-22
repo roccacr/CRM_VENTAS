@@ -4,30 +4,49 @@ const partner = {}; // Objeto para agrupar todas las funciones relacionadas con 
 
 
 /**
- * Crea una nueva partner desde la integración de NetSuite.
+ * Crea un nuevo corredor desde la integración de NetSuite.
  * @async
- * @param {Object} dataParams - Objeto que contiene los parámetros de la partner
- * @returns {Promise<Object>} - Resultado de la creación de la partner
+ * @param {Object} dataParams - Objeto que contiene los parámetros del corredor
+ * @returns {Promise<Object>} - Resultado de la creación del corredor
  */
 partner.crearpartner = async (dataParams) => {
     return new Promise((resolve, reject) => {
         try {
 
+            // Validar que los datos necesarios estén presentes
+            if (!dataParams || Object.keys(dataParams).length === 0) {
+                return reject({
+                    statusCode: 400,
+                    message: "No se proporcionaron parámetros para crear la partner",
+                    error: "EMPTY_PARAMS"
+                });
+            }
+
             executeStoredProcedure(
-                "SP_CREAR_CORREDORES_NETSUITE", // Nombre del procedimiento almacenado que crea partners desde NetSuite.
+                "SP_CREAR_CORREDORES_NETSUITE", // Nombre del procedimiento almacenado que crea corredores desde NetSuite
                 [
-                    dataParams.id, // id_netsuiteCorredor
-                    dataParams?.fields?.entitynumber || dataParams.id, // valoridNetsuite
-                    dataParams?.companyName || dataParams?.fields?.companyname || "N/A", // nombre_corredor
-                    "N/A", // categoria_corredor
-                    "N/A", // empresa_corredor
-                    "N/A", // telefono_corredor
-                    "N/A", // correo__corredor
-                ], // Parámetros para crear partner desde NetSuite.
-                "produccion", // Nombre de la base de datos a utilizar.
+                    dataParams.id, // id_netsuiteCorredor - ID del corredor en NetSuite
+                    dataParams?.fields?.entitynumber || dataParams.id, // valoridNetsuite - Número de entidad en NetSuite
+                    dataParams?.companyName || dataParams?.fields?.companyname || "N/A", // nombre_corredor - Nombre del corredor
+                    "N/A", // categoria_corredor - Categoría del corredor (no disponible)
+                    "N/A", // empresa_corredor - Empresa del corredor (no disponible)
+                    "N/A", // telefono_corredor - Teléfono del corredor (no disponible)
+                    "N/A", // correo__corredor - Correo del corredor (no disponible)
+                ], // Parámetros para crear corredor desde NetSuite
+                "produccion" // Nombre de la base de datos a utilizar
             );
-            console.log("result", "Se creo el partner desde NetSuite");
-           
+
+            console.log("✅ Partner creada exitosamente desde NetSuite");
+
+            resolve({
+                statusCode: 201,
+                message: "Partner creada exitosamente",
+                data: {
+                    success: true,
+                    timestamp: new Date(),
+                    params: dataParams
+                }
+            });
 
         } catch (error) {
             console.error("❌ Error al crear partner:", error);
@@ -40,5 +59,40 @@ partner.crearpartner = async (dataParams) => {
     });
 };
 
+
+/**
+ * Actualiza un corredor existente desde la integración de NetSuite.
+ * @async
+ * @param {Object} dataParams - Objeto que contiene los parámetros del corredor a actualizar
+ * @returns {Promise<Object>} - Resultado de la actualización del corredor
+ */
+partner.editarpartner = async (dataParams) => {
+    return new Promise((resolve, reject) => {
+        try {
+            console.log("📦 Parámetros recibidos en editarpartner:", dataParams);
+
+
+            executeStoredProcedure(
+                "SP_ACTUALIZAR_NOMBRE_CORREDOR_NETSUITE",
+                [
+                    parseInt(dataParams.id),        // 🟢 ID del corredor (primer parámetro)
+                    dataParams?.companyName || "",  // 🟢 Nuevo nombre (segundo parámetro)
+                ],
+                "produccion"
+            );
+
+            console.log("✅ Partner editada exitosamente desde NetSuite" );  
+
+           
+        } catch (error) {
+            console.error("❌ Error al editar partner:", error);
+            reject({
+                statusCode: 500,
+                message: "Error al editar la partner",
+                error: error.message
+            });
+        }
+    });
+};
 
 module.exports = partner; // Exporta el objeto 'partner' que contiene todas las funciones definidas.
