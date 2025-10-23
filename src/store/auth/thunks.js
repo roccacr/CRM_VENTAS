@@ -55,6 +55,11 @@ export const startAuthentication = ({ loginEmail, loginPassword }) => {
                 // Si todo sale bien guardamos al usuario en nuestro navegador pendiente de localStorage encriptado
                 const payload_1 = CryptoJS.AES.encrypt(JSON.stringify(userData.data), secretKey).toString();
                 localStorage.setItem("payload_1", payload_1);
+
+                // Guardar fecha de expiración del token (24 horas)
+                const expiresIn = 24 * 60 * 60 * 1000; // 24 horas en milisegundos
+                const expiresAt = new Date(Date.now() + expiresIn).toISOString();
+                localStorage.setItem("tokenExpiresAt", expiresAt);
             }
         } catch (error) {
 
