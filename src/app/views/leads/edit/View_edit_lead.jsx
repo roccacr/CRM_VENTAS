@@ -249,6 +249,8 @@ export const View_edit_lead = () => {
          const leadInfo = await dispatch(getDataInformationsLead(leadId));
 
 
+
+
          setFormData((prev) => ({
             ...prev,
             id: leadInfo.idinterno_lead === "null" ? "" : leadInfo.idinterno_lead,
@@ -276,6 +278,7 @@ export const View_edit_lead = () => {
             custentity78: leadInfo.cedula_extra_lead === "null" ? "" : leadInfo.cedula_extra_lead,
             custentity84: leadInfo.email_extra_lead === "null" ? "" : leadInfo.email_extra_lead,
             custentity79: leadInfo.profesion_extra_lead === "null" ? "" : leadInfo.profesion_extra_lead,
+            comentario_clientes: leadInfo.comentario_lead === "null" ? "" : leadInfo.comentario_lead,
          }));
 
          // Actualizar los detalles del lead

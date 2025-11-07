@@ -9,6 +9,7 @@ export const InfromacionCompleta = ({ leadDetails }) => {
         { label: "Teléfono", value: leadDetails.telefono_lead },
         { label: "Subsidiaria", value: leadDetails.subsidiaria_lead },
         { label: "Seguimiento", value: leadDetails.segimineto_lead },
+        { label: "Comentario", value: leadDetails.comentario_lead },
     ];
 
     const informacionExtra = [
