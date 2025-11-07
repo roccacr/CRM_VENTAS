@@ -219,6 +219,7 @@ module.exports = function (app) {
                 { path: "/oportunidad/updateOpportunity_Status", method: "updateOpportunity_Status" }, // Update the status of an opportunity
                 { path: "/oportunidad/get_Oportunidades", method: "get_Oportunidades" }, // ruta ara traer las oportunidades
                 { path: "/oportunidad/updateEstadoOportunidad", method: "updateEstadoOportunidad" }, // ruta ara traer las oportunidades
+                { path: "/oportunidad/editar_Oportunidad", method: "editarOportunidad" }, // Editar una oportunidad existente
             ],
         },
 

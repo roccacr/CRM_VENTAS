@@ -213,5 +213,82 @@ oportunidad.updateEstadoOportunidad = (dataParams) => {
     return result;
 };
 
+/**
+ * Función para editar una oportunidad existente.
+ * @async
+ * @param {object} dataParams - Objeto que contiene los datos a actualizar y el ID de la oportunidad.
+ * @returns {Promise} - Promesa que resuelve con el resultado de la actualización.
+ */
+oportunidad.editarOportunidad = async (dataParams) => {
+    console.log("dataParams recibido:", dataParams);
+
+    try {
+        // Extrae los datos del formulario y el ID de la oportunidad
+        // Los datos vienen en dataParams.formData o directamente en dataParams
+        const formData = dataParams.formData || {};
+        const {
+            estado = dataParams.estado,
+            probabilidad = dataParams.probabilidad,
+            detalles = dataParams.detalles,
+            motivoCondicion = dataParams.motivoCondicion,
+            motivoCompra = dataParams.motivoCompra,
+            metodoPago = dataParams.metodoPago,
+        } = formData;
+
+        const idOportunidad = dataParams.idOportunidad;
+
+        console.log("Datos extraídos:", {
+            estado,
+            probabilidad,
+            detalles,
+            motivoCondicion,
+            motivoCompra,
+            metodoPago,
+            idOportunidad,
+        });
+
+        // Consulta SQL para actualizar la oportunidad
+        const query = `
+            UPDATE oportunidades SET
+                entitystatus_oport = ?,
+                probability_oport = ?,
+                memo_oport = ?,
+                Motico_Condicion = ?,
+                custbody76_oport = ?,
+                custbody75_oport = ?,
+                update_fecha_oport = NOW()
+            WHERE id_oportunidad_oport = ?
+        `;
+
+        // Parámetros para la consulta
+        const params = [
+            estado,
+            probabilidad,
+            detalles,
+            motivoCondicion,
+            motivoCompra,
+            metodoPago,
+            idOportunidad,
+        ];
+
+        console.log("Query a ejecutar:", query);
+        console.log("Parámetros:", params);
+
+        // Ejecuta la consulta con los parámetros especificados y espera el resultado
+        const result = await executeQuery(
+            query, // Consulta SQL a ejecutar
+            params, // Array de parámetros para la consulta
+            dataParams.database, // Base de datos destino para la consulta
+        );
+
+        console.log("Resultado de la actualización:", result);
+
+        return result;
+    } catch (error) {
+        console.error("Error en editarOportunidad:", error);
+        throw error;
+    }
+};
+
 
 module.exports = oportunidad; // Exporta el objeto 'oportunidad' que agrupa las funciones relacionadas con ubicaciones.
