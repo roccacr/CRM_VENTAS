@@ -147,6 +147,17 @@ export const View_oportuinidad_ver = () => {
         setIsModalOpen(false);
     };
 
+    // Función callback para recargar los datos después de editar
+    const handleEditSuccess = () => {
+        // Obtener el ID de la oportunidad desde los parámetros de URL
+        const oportuinidadId = getQueryParam("data2");
+
+        // Recargar los detalles de la oportunidad
+        if (oportuinidadId && oportuinidadId > 0) {
+            fetchOportunidadDetails(oportuinidadId);
+        }
+    };
+
     return (
         <>
             <div className="bg-dark card">
@@ -347,7 +358,12 @@ export const View_oportuinidad_ver = () => {
                     </div>
                 </div>
             </div>
-            <ModalEditarOportunidad open={isModalOpen} onClose={handleCloseModal} OportunidadDetails={OportunidadDetails} />
+            <ModalEditarOportunidad
+                open={isModalOpen}
+                onClose={handleCloseModal}
+                OportunidadDetails={OportunidadDetails}
+                onSuccess={handleEditSuccess}
+            />
         </>
     );
 };

@@ -4,10 +4,10 @@ import { useDispatch } from "react-redux";
 import Swal from "sweetalert2";
 import { editarOportunidad } from "../../../../store/oportuinidad/thunkOportunidad";
 
-export const ModalEditarOportunidad = ({ open, onClose, OportunidadDetails }) => {
+export const ModalEditarOportunidad = ({ open, onClose, OportunidadDetails, onSuccess }) => {
     const dispatch = useDispatch();
 
-    console.log(OportunidadDetails);
+
     const [formData, setFormData] = useState({
         probabilidad: "80.0%",
         firme: "Firme",
@@ -86,7 +86,10 @@ export const ModalEditarOportunidad = ({ open, onClose, OportunidadDetails }) =>
 
     const handleSubmit = async () => {
         if (validateForm()) {
-            // Mostrar alerta de confirmación antes de editar
+            // Cerrar el modal primero
+            onClose();
+
+            // Mostrar alerta de confirmación antes de editar (ahora sin modal detrás)
             Swal.fire({
                 title: "¿Está seguro de editar la oportunidad?",
                 text: "Se guardarán los cambios realizados.",
@@ -95,9 +98,6 @@ export const ModalEditarOportunidad = ({ open, onClose, OportunidadDetails }) =>
                 confirmButtonColor: "#3085d6",
                 cancelButtonColor: "#d33",
                 confirmButtonText: "Sí, editar!",
-                didOpen: () => {
-                    document.querySelector('.swal2-container').style.zIndex = '9999';
-                },
             }).then(async (result) => {
                 // Si el usuario confirma la edición
                 if (result.isConfirmed) {
@@ -108,7 +108,6 @@ export const ModalEditarOportunidad = ({ open, onClose, OportunidadDetails }) =>
                         allowOutsideClick: false,
                         didOpen: () => {
                             Swal.showLoading();
-                            document.querySelector('.swal2-container').style.zIndex = '9999';
                         },
                     });
 
@@ -139,18 +138,18 @@ export const ModalEditarOportunidad = ({ open, onClose, OportunidadDetails }) =>
                         console.log("changedRows:", response?.changedRows);
 
                         if (isSuccess) {
-                            // Mostrar notificación de éxito y cerrar el modal
+                            // Mostrar notificación de éxito
                             Swal.fire({
                                 position: "top-end",
                                 icon: "success",
                                 title: "Oportunidad editada exitosamente",
                                 showConfirmButton: false,
                                 timer: 2500,
-                                didOpen: () => {
-                                    document.querySelector('.swal2-container').style.zIndex = '9999';
-                                },
                             }).then(() => {
-                                onClose();
+                                // Llamar callback para recargar datos
+                                if (onSuccess) {
+                                    onSuccess();
+                                }
                             });
                         } else {
                             // Mostrar error si no se editó correctamente
@@ -158,9 +157,6 @@ export const ModalEditarOportunidad = ({ open, onClose, OportunidadDetails }) =>
                                 icon: "error",
                                 title: "Error",
                                 text: "No se pudo editar la oportunidad. Intente nuevamente.",
-                                didOpen: () => {
-                                    document.querySelector('.swal2-container').style.zIndex = '9999';
-                                },
                             });
                         }
                     } catch (error) {
@@ -169,9 +165,6 @@ export const ModalEditarOportunidad = ({ open, onClose, OportunidadDetails }) =>
                             icon: "error",
                             title: "Error inesperado",
                             text: "Ocurrió un error al editar la oportunidad. Intente nuevamente.",
-                            didOpen: () => {
-                                document.querySelector('.swal2-container').style.zIndex = '9999';
-                            },
                         });
                         console.error("Error al editar la oportunidad:", error);
                     }
@@ -183,9 +176,6 @@ export const ModalEditarOportunidad = ({ open, onClose, OportunidadDetails }) =>
                 icon: "error",
                 title: "Campos obligatorios",
                 text: "Por favor, complete todos los campos requeridos.",
-                didOpen: () => {
-                    document.querySelector('.swal2-container').style.zIndex = '9999';
-                },
             });
         }
     };
