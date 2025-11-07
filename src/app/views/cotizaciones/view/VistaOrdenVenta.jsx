@@ -394,7 +394,7 @@ const useSalesOrderActions = ({ navigate, dispatch, datosOrdenVenta, setIsModalO
                || !datosOrdenVenta?.data?.fields?.custbody188
 
                ? true : false},   
-            { icon: "ti-send", text: "CIERRE FIRMADO", action: "EnviarCierre" },
+            { icon: "ti-send", text: "CIERRE FIRMADO", action: "EnviarCierre", disabled: validarOrdenVenta?.reserva_ov !== 1 ? true : false},
             { icon: "ti-trending-down", text: "RESERVA CAÍDA", action: "EnviarReservaCaida", disabled: validarOrdenVenta?.caida_ov=== 1 ? true : false},
             { icon: "ti-brand-paypal", text: "APLICAR COMISIÓN", action: "aplicarComision" },   
          ],
