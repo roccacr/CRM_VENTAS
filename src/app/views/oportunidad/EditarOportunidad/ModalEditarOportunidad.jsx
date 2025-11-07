@@ -115,27 +115,12 @@ export const ModalEditarOportunidad = ({ open, onClose, OportunidadDetails, onSu
                         // Ejecutar acción para editar la oportunidad
                         const response = await dispatch(editarOportunidad(formData, OportunidadDetails.id_oportunidad_oport));
 
-                        console.log("Respuesta completa del servidor:", response);
-                        console.log("Tipo de response:", typeof response);
-                        console.log("Keys de response:", response ? Object.keys(response) : "null");
-
-                        // La respuesta puede ser:
-                        // 1. Un objeto con affectedRows (resultado directo de MySQL)
-                        // 2. Un objeto con fieldCount, affectedRows, insertId, etc
-                        // 3. Un array de resultados
-                        // 4. Cualquier valor truthy indica éxito
-
                         const isSuccess = response && (
                             response.affectedRows >= 0 ||
                             response.fieldCount >= 0 ||
                             response.changedRows >= 0 ||
                             typeof response === 'object'
                         );
-
-                        console.log("¿Es éxito?", isSuccess);
-                        console.log("affectedRows:", response?.affectedRows);
-                        console.log("fieldCount:", response?.fieldCount);
-                        console.log("changedRows:", response?.changedRows);
 
                         if (isSuccess) {
                             // Mostrar notificación de éxito

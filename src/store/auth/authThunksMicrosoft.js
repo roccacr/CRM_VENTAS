@@ -564,7 +564,7 @@ export const recoverSessionFromStorage = () => {
          // Validar si el token ha expirado
          if (!isTokenValid(tokenExpiresAt)) {
             // Token expirado, limpiar datos y cerrar sesión
-            console.log("Token expirado. Cerrando sesión.");
+
             localStorage.removeItem("payload_1");
             localStorage.removeItem("tokenExpiresAt");
             Cookies.remove("access_token");
@@ -581,7 +581,7 @@ export const recoverSessionFromStorage = () => {
          dispatch(setUserAuthentication(decryptedPayload));
          dispatch(verificacionUsuario({ status: "Autenticado", Mensaje: `Sesión restaurada para ${decryptedPayload.name_admin}` }));
 
-         console.log("Sesión recuperada exitosamente");
+
       } catch (error) {
          console.error("Error al recuperar la sesión:", error);
          // En caso de error al desencriptar, limpiar todo

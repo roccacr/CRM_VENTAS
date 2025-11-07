@@ -46,14 +46,12 @@ export const useCheckAuth = () => {
 
                 // Si no hay datos cifrados, no autenticar
                 if (!encryptedUserData || !tokenExpiresAt) {
-                    console.log("No hay datos de sesión guardados");
                     dispatch(setUserLogout({ errorMessage: "" }));
                     return;
                 }
 
                 // Validar si el token ha expirado localmente
                 if (!isTokenValid(tokenExpiresAt)) {
-                    console.log("Token expirado en useCheckAuth. Cerrando sesión.");
                     // Limpiar datos si token expiró
                     localStorage.removeItem("payload_1");
                     localStorage.removeItem("tokenExpiresAt");
@@ -69,11 +67,9 @@ export const useCheckAuth = () => {
                 if (decryptedUserData) {
                     // Primero restaurar la sesión en Redux (estado: "checking" → "authenticated")
                     dispatch(setUserAuthentication(decryptedUserData));
-                    console.log(`✓ Sesión restaurada en Redux para ${decryptedUserData.name_admin}`);
 
                     // Luego validar el token con el backend (de forma no bloqueante)
                     try {
-                        console.log(`Validando token con backend para ${decryptedUserData.email_admin}...`);
                         const validationResponse = await ApiProvider({
                             transaccion: { token_admin: decryptedUserData.token_admin },
                             endpoint: "usuario/validarToken",
@@ -81,11 +77,9 @@ export const useCheckAuth = () => {
 
                         // Si el backend confirma que el token es válido
                         if (validationResponse?.data?.statusCode === 200) {
-                            console.log(`✓ Token válido. Tiempo restante: ${Math.round(validationResponse.data.decoded?.remainingTime / 60000)} minutos`);
+                            // Token válido
                         } else {
                             // Token inválido según el backend
-                            console.error(`❌ Token inválido en backend: ${validationResponse?.data?.data}`);
-                            console.error(`Token provisto: ${decryptedUserData.token_admin?.substring(0, 20)}...`);
 
                             // Limpiar datos si token es inválido
                             localStorage.removeItem("payload_1");
@@ -101,18 +95,13 @@ export const useCheckAuth = () => {
                             }, 500);
                         }
                     } catch (apiError) {
-                        console.warn(`⚠️ No se pudo validar token con backend: ${apiError.message}`);
-                        console.log("Sesión restaurada usando validación local como fallback...");
-                        console.log(`Token que se usará: ${decryptedUserData.token_admin?.substring(0, 30)}...`);
                         // Si no se puede validar con el backend, mantener la sesión con validación local
                     }
                 } else {
                     // Error al desencriptar
-                    console.error("❌ Error al desencriptar datos de sesión");
                     dispatch(setUserLogout({ errorMessage: "" }));
                 }
             } catch (error) {
-                console.error("Error en checkAuth:", error);
                 dispatch(setUserLogout({ errorMessage: "" }));
             }
         };

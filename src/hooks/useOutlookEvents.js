@@ -67,7 +67,6 @@ export const useOutlookEvents = () => {
         setAccessToken(response.accessToken);
         setError(null);
         retryCountRef.current = 0;
-        console.log("✓ Token de Outlook obtenido correctamente");
       } catch (err) {
         if (err instanceof InteractionRequiredAuthError) {
           try {
@@ -78,10 +77,8 @@ export const useOutlookEvents = () => {
             setAccessToken(response.accessToken);
             setError(null);
             retryCountRef.current = 0;
-            console.log("✓ Token de Outlook obtenido via popup");
           } catch (popupErr) {
             // Falta de permisos - no reintentar
-            console.warn("⚠️ Se requiere dar permisos de calendario en Microsoft");
             setError(null); // No mostrar error al usuario
             setEventsCount(0);
             setIsLoading(false);
@@ -89,7 +86,6 @@ export const useOutlookEvents = () => {
           }
         } else {
           // Error desconocido - no reintentar continuamente
-          console.warn("⚠️ No se pudo obtener eventos de Outlook (sin permisos)");
           setError(null); // No mostrar error al usuario
           setEventsCount(0);
           setIsLoading(false);
@@ -121,7 +117,6 @@ export const useOutlookEvents = () => {
         setAccessToken(response.accessToken);
         setError(null);
       } catch (err) {
-        console.error("Error al refrescar token:", err);
         // No establecer error aquí, dejar que el token actual siga funcionando
       }
     };
@@ -172,7 +167,6 @@ export const useOutlookEvents = () => {
           // Si es error 401, el token puede estar vencido
           if (response.status === 401 && fetchRetryCount < MAX_FETCH_RETRIES) {
             fetchRetryCount += 1;
-            console.log(`⏳ Token expirado, reintentando... (${fetchRetryCount}/${MAX_FETCH_RETRIES})`);
             // Intentar obtener un nuevo token
             try {
               const newTokenResponse = await instance.acquireTokenSilent({
@@ -183,7 +177,6 @@ export const useOutlookEvents = () => {
               // El useEffect se volverá a ejecutar con el nuevo token
               return;
             } catch (tokenErr) {
-              console.error("Error al renovar token:", tokenErr);
             }
           }
           throw new Error(`Error HTTP ${response.status}`);
@@ -203,18 +196,14 @@ export const useOutlookEvents = () => {
           setEventsCount(upcomingEvents.length);
           setError(null);
           fetchRetryCount = 0;
-          console.log(`✓ ${upcomingEvents.length} eventos próximos encontrados`);
         } else {
           setEventsCount(0);
           setError(null);
         }
       } catch (err) {
-        console.error("Error al obtener eventos de Outlook:", err);
-
         // Reintentar si no hemos alcanzado el máximo de reintentos
         if (fetchRetryCount < MAX_FETCH_RETRIES) {
           fetchRetryCount += 1;
-          console.log(`⏳ Reintentando obtener eventos... (${fetchRetryCount}/${MAX_FETCH_RETRIES})`);
           setTimeout(fetchTodayEvents, 2000);
           return;
         }

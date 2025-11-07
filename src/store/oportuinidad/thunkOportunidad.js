@@ -261,7 +261,6 @@ export const editarOportunidad = (formData, idOportunidad) => {
 
             // Retornar los datos actualizados completos
             // result.data contiene toda la respuesta del servidor
-            console.log("Resultado en thunk:", result);
             return result.data || result;
         } catch (error) {
             // Capturar errores y mostrarlos en consola
