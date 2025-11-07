@@ -1,12 +1,14 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Modal, Box, TextField, Button, Grid, MenuItem, Switch, Typography } from "@mui/material";
 
 export const ModalEditarOportunidad = ({ open, onClose, OportunidadDetails }) => {
+
+    console.log(OportunidadDetails);
     const [formData, setFormData] = useState({
         probabilidad: "80.0%",
         firme: "Firme",
         detalles: "Introduzca información adicional sobre la oportunidad.",
-        estado: "B- Firme",
+        estado: "22",
         motivoCondicion: "",
         cierrePrevisto: false,
         ultimoDiaCierre: "2025-08-04",
@@ -15,14 +17,54 @@ export const ModalEditarOportunidad = ({ open, onClose, OportunidadDetails }) =>
         metodoPago: "Contra Entrega",
     });
 
+    // Cargar datos cuando OportunidadDetails cambia
+    useEffect(() => {
+        if (OportunidadDetails && open) {
+            setFormData({
+                probabilidad: OportunidadDetails.probability_oport || "80.0%",
+                firme: "",
+                detalles: OportunidadDetails.memo_oport || "SIN DETALLE",
+                estado: String(OportunidadDetails.entitystatus_oport) || "22",
+                motivoCondicion: OportunidadDetails.Motico_Condicion || "",
+                cierrePrevisto: false,
+                ultimoDiaCierre: OportunidadDetails.fecha_Condicion || "2025-08-04",
+                nuevoValorAsignar: OportunidadDetails.expectedclosedate_oport || "2025-09-29",
+                motivoCompra: String(OportunidadDetails.custbody76_oport) || "",
+                metodoPago: String(OportunidadDetails.custbody75_oport) || "",
+            });
+        }
+    }, [OportunidadDetails, open]);
+
+    // Actualizar el campo "Firme" según el estado
+    useEffect(() => {
+        if (formData.estado === "22") {
+            setFormData((prev) => ({ ...prev, firme: "Firme" }));
+        } else if (formData.estado === "11") {
+            setFormData((prev) => ({ ...prev, firme: "Condicional" }));
+        }
+    }, [formData.estado]);
+
     const [errors, setErrors] = useState({});
 
     const handleChange = (e) => {
         const { name, value } = e.target;
-        setFormData((prevState) => ({
-            ...prevState,
+        const updatedFormData = {
+            ...formData,
             [name]: value,
-        }));
+        };
+
+        // Si el campo que cambia es "estado", actualizar la probabilidad automáticamente
+        if (name === "estado") {
+            if (value === "22") {
+                // Firme = 80%
+                updatedFormData.probabilidad = "80.0%";
+            } else if (value === "11") {
+                // Condicional = 50%
+                updatedFormData.probabilidad = "50.0%";
+            }
+        }
+
+        setFormData(updatedFormData);
     };
 
     const handleSwitchChange = (e) => {
@@ -77,19 +119,15 @@ export const ModalEditarOportunidad = ({ open, onClose, OportunidadDetails }) =>
                             label="Probabilidad"
                             name="probabilidad"
                             value={formData.probabilidad}
-                            onChange={handleChange}
-                            error={errors.probabilidad}
-                            helperText={errors.probabilidad ? "Campo obligatorio" : ""}
+                            disabled
                             sx={{ marginBottom: 3 }}
                         />
                         <TextField
                             fullWidth
-                            label="Firme"
+                            label="Tipo de Estado"
                             name="firme"
                             value={formData.firme}
-                            onChange={handleChange}
-                            error={errors.firme}
-                            helperText={errors.firme ? "Campo obligatorio" : ""}
+                            disabled
                             sx={{ marginBottom: 3 }}
                         />
                         <TextField
@@ -113,12 +151,16 @@ export const ModalEditarOportunidad = ({ open, onClose, OportunidadDetails }) =>
                             fullWidth
                             label="Estado"
                             name="estado"
+                            select
                             value={formData.estado}
                             onChange={handleChange}
                             error={errors.estado}
                             helperText={errors.estado ? "Campo obligatorio" : ""}
                             sx={{ marginBottom: 3 }}
-                        />
+                        >
+                            <MenuItem value="22">Firme</MenuItem>
+                            <MenuItem value="11">Condicional</MenuItem>
+                        </TextField>
                         <TextField
                             fullWidth
                             label="Motivo de Condición"
@@ -126,13 +168,17 @@ export const ModalEditarOportunidad = ({ open, onClose, OportunidadDetails }) =>
                             select
                             value={formData.motivoCondicion}
                             onChange={handleChange}
-                            error={errors.motivoCondicion}
-                            helperText={errors.motivoCondicion ? "Campo obligatorio" : ""}
+                            disabled={formData.estado === "22"}
+                            error={errors.motivoCondicion && formData.estado === "11"}
+                            helperText={errors.motivoCondicion && formData.estado === "11" ? "Campo obligatorio" : ""}
                             sx={{ marginBottom: 3 }}
                         >
-                            <MenuItem value="">Escoger...</MenuItem>
-                            <MenuItem value="Condición A">Condición A</MenuItem>
-                            <MenuItem value="Condición B">Condición B</MenuItem>
+                            <MenuItem value="">Escoger ...</MenuItem>
+                            <MenuItem value="Esperando un negocio">Esperando un negocio</MenuItem>
+                            <MenuItem value="Viendo opciones">Viendo opciones</MenuItem>
+                            <MenuItem value="Depende la venta de la casa">Depende la venta de la casa</MenuItem>
+                            <MenuItem value="Definiendo Prima">Definiendo Prima</MenuItem>
+                            <MenuItem value="Análisis de banco">Análisis de banco</MenuItem>
                         </TextField>
                         <Box display="flex" alignItems="center" gap={2} sx={{ marginBottom: 3 }}>
                             <Typography>Cierre Previsto Según el Estado</Typography>
@@ -162,22 +208,33 @@ export const ModalEditarOportunidad = ({ open, onClose, OportunidadDetails }) =>
                             fullWidth
                             label="Motivo de Compra"
                             name="motivoCompra"
+                            select
                             value={formData.motivoCompra}
                             onChange={handleChange}
                             error={errors.motivoCompra}
                             helperText={errors.motivoCompra ? "Campo obligatorio" : ""}
                             sx={{ marginBottom: 3 }}
-                        />
+                        >
+                            <MenuItem value="">Seleccionar...</MenuItem>
+                            <MenuItem value="1">Primera Casa</MenuItem>
+                            <MenuItem value="4">Inversión</MenuItem>
+                        </TextField>
                         <TextField
                             fullWidth
                             label="Método de Pago"
                             name="metodoPago"
+                            select
                             value={formData.metodoPago}
                             onChange={handleChange}
                             error={errors.metodoPago}
                             helperText={errors.metodoPago ? "Campo obligatorio" : ""}
                             sx={{ marginBottom: 3 }}
-                        />
+                        >
+                            <MenuItem value="">Seleccionar</MenuItem>
+                            <MenuItem value="2">Avance De Obra</MenuItem>
+                            <MenuItem value="7">Avance Diferenciado</MenuItem>
+                            <MenuItem value="1">Contra Entrega</MenuItem>
+                        </TextField>
                     </Grid>
                 </Grid>
 
