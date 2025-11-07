@@ -157,7 +157,7 @@ export const updateOpportunity_Status = async ({ estado, idOportunidad }) => {
 
 
 
-export const updateEstadoOportunidad_fetch = async ({ formValues, detalleOportunidad }) => {     
+export const updateEstadoOportunidad_fetch = async ({ formValues, detalleOportunidad }) => {
     // Construye el objeto de datos para la solicitud, combinando los datos comunes con los parámetros específicos.
     const requestData = {
         ...commonRequestData, // Datos comunes requeridos para cada solicitud (como tokens de autenticación o configuraciones generales).
@@ -168,4 +168,23 @@ export const updateEstadoOportunidad_fetch = async ({ formValues, detalleOportun
     // Realiza una solicitud a la API para actualizar el estado de   la oportunidad con los datos proporcionados.
     // La URL "oportunidad/updateEstadoOportunidad" apunta al endpoint que procesa la actualización del estado de la oportunidad en el servidor.
     return await fetchData("oportunidad/updateEstadoOportunidad", requestData); // Retorna el resultado de la actualización del estado de la oportunidad.
+};
+
+/**
+ * Función asincrónica para editar una oportunidad existente.
+ * @param {object} formData - Los datos del formulario con los campos a actualizar.
+ * @param {number} idOportunidad - El ID de la oportunidad a editar (id_oportunidad_oport).
+ * @returns {Promise} - Retorna el resultado de la edición de la oportunidad desde la API.
+ */
+export const editar_Oportunidad = async ({ formData, idOportunidad }) => {
+    // Construye el objeto de datos para la solicitud, combinando los datos comunes con los parámetros específicos.
+    const requestData = {
+        ...commonRequestData, // Datos comunes requeridos para cada solicitud (como tokens de autenticación o configuraciones generales).
+        formData, // Datos del formulario que contienen los campos a actualizar (estado, probabilidad, detalles, motivoCondicion, motivoCompra, metodoPago).
+        idOportunidad, // ID de la oportunidad a editar (id_oportunidad_oport).
+    };
+
+    // Realiza una solicitud a la API para editar la oportunidad existente con los datos proporcionados.
+    // La URL "oportunidad/editar_Oportunidad" apunta al endpoint que procesa la edición de la oportunidad en el servidor.
+    return await fetchData("oportunidad/editar_Oportunidad", requestData); // Retorna el resultado de la edición de la oportunidad.
 };

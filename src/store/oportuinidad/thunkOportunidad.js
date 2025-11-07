@@ -243,3 +243,30 @@ export const updateEstadoOportunidad = (formValues, detalleOportunidad) => {
         }
     };
 };
+
+/**
+ * Función que edita una oportunidad existente con los datos del formulario.
+ * @param {object} formData - Los datos del formulario con los campos a actualizar.
+ * @param {number} idOportunidad - El ID de la oportunidad a editar (id_oportunidad_oport).
+ * @returns {function} - Una función asíncrona que retorna el resultado de la edición.
+ */
+export const editarOportunidad = (formData, idOportunidad) => {
+    return async () => {
+        try {
+            // Importar la función de edición
+            const { editar_Oportunidad } = await import("./Api_provider_oportunidad");
+
+            // Llamar a la API para editar la oportunidad
+            const result = await editar_Oportunidad({ formData, idOportunidad });
+
+            // Retornar los datos actualizados completos
+            // result.data contiene toda la respuesta del servidor
+            console.log("Resultado en thunk:", result);
+            return result.data || result;
+        } catch (error) {
+            // Capturar errores y mostrarlos en consola
+            console.error("Error al editar la oportunidad:", error);
+            throw error;
+        }
+    };
+};
