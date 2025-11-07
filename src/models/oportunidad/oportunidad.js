@@ -220,7 +220,7 @@ oportunidad.updateEstadoOportunidad = (dataParams) => {
  * @returns {Promise} - Promesa que resuelve con el resultado de la actualización.
  */
 oportunidad.editarOportunidad = async (dataParams) => {
-    console.log("dataParams recibido:", dataParams);
+
 
     try {
         // Extrae los datos del formulario y el ID de la oportunidad
@@ -237,15 +237,7 @@ oportunidad.editarOportunidad = async (dataParams) => {
 
         const idOportunidad = dataParams.idOportunidad;
 
-        console.log("Datos extraídos:", {
-            estado,
-            probabilidad,
-            detalles,
-            motivoCondicion,
-            motivoCompra,
-            metodoPago,
-            idOportunidad,
-        });
+
 
         // Consulta SQL para actualizar la oportunidad
         const query = `
@@ -271,8 +263,6 @@ oportunidad.editarOportunidad = async (dataParams) => {
             idOportunidad,
         ];
 
-        console.log("Query a ejecutar:", query);
-        console.log("Parámetros:", params);
 
         // Ejecuta la consulta con los parámetros especificados y espera el resultado
         const result = await executeQuery(
@@ -281,7 +271,7 @@ oportunidad.editarOportunidad = async (dataParams) => {
             dataParams.database, // Base de datos destino para la consulta
         );
 
-        console.log("Resultado de la actualización:", result);
+
 
         return result;
     } catch (error) {
