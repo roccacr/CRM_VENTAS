@@ -10,7 +10,7 @@ export const BotonVolveR = () => {
         if (previousUrl) {
             localStorage.removeItem('previousUrl');
             // Si existe, navegar a esa URL y borrarla
-            navigate("/oportunidad/lista?oportuinidad=2&idLead=0");
+            navigate("/oportunidad/lista?oportuinidad=1&idLead=0");
 
         } else if (window.history.length > 2) {
             navigate(-1); // Volver a la página anterior del historial
