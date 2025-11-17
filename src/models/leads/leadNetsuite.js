@@ -230,9 +230,12 @@ leadNetsuite.editarInformacionLead_Netsuite = async ({ formData,    database }) 
         const response = await rest.put(body);
 
         if(response.status === 200){
-            leadNetsuite.eliminar_LeadStatus(formData, database);
-            leadNetsuite.update_LeadStatus(formData, database);
-            leadNetsuite.update_LeadInformations(formData, database);
+            // Primero eliminar, esperar a que termine antes de continuar
+            await leadNetsuite.eliminar_LeadStatus(formData, database);
+            // Luego actualizar el estado del lead
+            await leadNetsuite.update_LeadStatus(formData, database);
+            // Finalmente actualizar la información extra del lead
+            await leadNetsuite.update_LeadInformations(formData, database);
 
         }
         return {
@@ -316,17 +319,23 @@ leadNetsuite.update_LeadStatus = async (dataParams, database) => {
  * @param {Object} dataParams - Datos del lead
  * @returns {Object} Objeto con los campos básicos
  */
-const buildBasicLeadFields = (dataParams) => ({
-    cedula_lead: dataParams.vatregnumber || "--",
-    Nacionalidad_lead: dataParams.custentity1 || "--",
-    Estado_ciLead: dataParams.custentityestado_civil || "--",
-    Edad_lead: dataParams.rango_edad || "--",
-    Profesion_lead: dataParams.custentity_ix_customer_profession || "--",
-    Hijos_lead: dataParams.cantidad_hijos || "--",
-    TelefonoAlternatovo_lead: dataParams.altphone || "--",
-    Direccion: dataParams.defaultaddress || "--",
-    Corredor_lead: dataParams.corredor_lead_edit.value || "--"
-});
+const buildBasicLeadFields = (dataParams) => {
+    const corredorValue = dataParams.corredor_lead_edit && typeof dataParams.corredor_lead_edit === 'object' && dataParams.corredor_lead_edit.value 
+        ? dataParams.corredor_lead_edit.value 
+        : "--";
+    
+    return {
+        cedula_lead: dataParams.vatregnumber || "--",
+        Nacionalidad_lead: dataParams.custentity1 || "--",
+        Estado_ciLead: dataParams.custentityestado_civil || "--",
+        Edad_lead: dataParams.rango_edad || "--",
+        Profesion_lead: dataParams.custentity_ix_customer_profession || "--",
+        Hijos_lead: dataParams.cantidad_hijos || "--",
+        TelefonoAlternatovo_lead: dataParams.altphone || "--",
+        Direccion: dataParams.defaultaddress || "--",
+        Corredor_lead: corredorValue
+    };
+};
 
 /**
  * Construye el objeto con los campos extra del lead
@@ -337,7 +346,7 @@ const buildExtraLeadFields = (dataParams) => ({
     nombre_extra_lead: dataParams.custentity77 || "--",
     cedula_extra_lead: dataParams.custentity78 || "--",
     profesion_extra_lead: dataParams.custentity79 || "--",
-    estado_civil_extra_lead: dataParams.custentityestado_civil || "--",
+    estado_civil_extra_lead: dataParams.custentityestado_civil_extra || "--",
     telefono_extra_lead: dataParams.custentity82 || "--",
     nacionalidad_extra_lead: dataParams.custentity81 || "--",
     email_extra_lead: dataParams.custentity84 || "--"
@@ -358,19 +367,20 @@ const buildAdditionalInfoFields = (dataParams) => ({
 });
 
 /**
- * Construye la consulta SQL para actualizar la información del lead
- * @param {Object} allFields - Todos los campos a actualizar
- * @returns {string} Consulta SQL formateada
+ * Construye la consulta SQL para insertar la información del lead
+ * @param {Object} allFields - Todos los campos a insertar
+ * @returns {Object} Objeto con la consulta SQL y los valores
  */
-const buildLeadInfoUpdateQuery = (allFields) => {
-    const setStatements = Object.entries(allFields)
-        .map(([field, value]) => `${field}="${value}"`)
-        .join(',\n        ');
+const buildLeadInfoInsertQuery = (allFields, idLead) => {
+    const fields = Object.keys(allFields);
+    const values = Object.values(allFields);
+    const placeholders = fields.map(() => '?').join(', ');
+    const fieldNames = fields.join(', ');
     
-    return `UPDATE info_extra_lead 
-        SET 
-        ${setStatements}
-        WHERE id_lead_fk = ?`;
+    return {
+        query: `INSERT INTO info_extra_lead(id_lead_fk, ${fieldNames}) VALUES (?, ${placeholders})`,
+        values: [idLead, ...values]
+    };
 };
 
 /**
@@ -382,14 +392,6 @@ const buildLeadInfoUpdateQuery = (allFields) => {
  */
 leadNetsuite.update_LeadInformations = async (dataParams, database) => {
     try {
-
-
-        const query1 = `INSERT INTO info_extra_lead(id_lead_fk) VALUES (?)`
-        
-        await executeQuery(query1, [dataParams.id], database);
-
-
-        
         console.log("dataParams buildBasicLeadFields: ", dataParams);
 
         // Combinar todos los campos en un solo objeto
@@ -399,13 +401,12 @@ leadNetsuite.update_LeadInformations = async (dataParams, database) => {
             ...buildAdditionalInfoFields(dataParams)
         };
 
-        // Construir y ejecutar la consulta
-        const query = buildLeadInfoUpdateQuery(allFields);
-        
-         const result = await executeQuery(query, [dataParams.id], database);
+        // Construir y ejecutar la consulta de inserción con todos los campos
+        // Nota: La eliminación ya se realizó en eliminar_LeadStatus antes de llamar a esta función
+        const { query, values } = buildLeadInfoInsertQuery(allFields, dataParams.id);
+        const result = await executeQuery(query, values, database);
 
-
-         return result;
+        return result;
     } catch (error) {
         console.error('Error actualizando información del lead:', error);
         throw new Error(`Error actualizando información del lead: ${error.message}`);
@@ -414,14 +415,20 @@ leadNetsuite.update_LeadInformations = async (dataParams, database) => {
 
 leadNetsuite.eliminar_LeadStatus = async (dataParams, database) => {
     try {
-        const query1 = `DELETE FROM info_extra_lead WHERE id_lead_fk = ?`
+        const query1 = `DELETE FROM info_extra_lead WHERE id_lead_fk = ?`;
         
-        const result = await executeQuery(query1, [dataParams.id], database);  
+        const result = await executeQuery(query1, [dataParams.id], database);
+        
+        // Verificar que la eliminación fue exitosa
+        if (!result) {
+            throw new Error('No se pudo eliminar el registro de info_extra_lead');
+        }
 
+        console.log(`Registro eliminado exitosamente para id_lead_fk: ${dataParams.id}`);
         return result;
     } catch (error) {
-        console.error('Error actualizando información del lead:', error);
-        throw new Error(`Error actualizando información del lead: ${error.message}`);
+        console.error('Error eliminando información del lead:', error);
+        throw new Error(`Error eliminando información del lead: ${error.message}`);
     }
 };
 
