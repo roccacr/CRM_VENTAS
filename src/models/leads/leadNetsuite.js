@@ -174,6 +174,9 @@ leadNetsuite.editarInformacionLead_Netsuite = async ({ formData,    database }) 
     const corredorValue = formData.corredor_lead_edit && typeof formData.corredor_lead_edit === 'object' && formData.corredor_lead_edit.value 
         ? formData.corredor_lead_edit.value 
         : 0;
+
+    console.log("corredorValue: ", corredorValue);
+
     // Si hay un valor válido de corredor, usar 1, sino usar corredor_extra del frontend
     const corredor = corredorValue && corredorValue !== 0 ? 1 : formData.corredor_extra;
 
