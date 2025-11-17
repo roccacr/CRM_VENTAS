@@ -227,7 +227,13 @@ export const View_edit_lead = () => {
          value: v.id_netsuiteCorredor,
          label: v.nombre_corredor,
       }));
-      setcorredor_lead(corredor);
+      
+      // Agregar opción "Sin corredor" al inicio de las opciones
+      const corredorWithEmpty = [
+         { value: "", label: "Sin corredor" },
+         ...corredor
+      ];
+      setcorredor_lead(corredorWithEmpty);
 
       const corredorLeadInt = parseInt(leadInfo.Corredor_lead, 10) || 0;
       const defaultCorredor = corredor.find((v) => v.value === corredorLeadInt);
@@ -238,9 +244,10 @@ export const View_edit_lead = () => {
             corredor_extra: 1
          }));
       } else {
-         // Si no hay corredor seleccionado, asegurar que corredor_extra sea 0
+         // Si no hay corredor seleccionado, establecer como "Sin corredor"
          setFormData((prev) => ({ 
             ...prev, 
+            corredor_lead_edit: { value: "", label: "Sin corredor" },
             corredor_extra: 0
          }));
       }
@@ -370,10 +377,16 @@ export const View_edit_lead = () => {
    const handleSelectChange = (selectedOption, action) => {
       // Si es el select de corredor, actualizar corredor_extra según si hay selección o no
       if (action.name === "corredor_lead_edit") {
-         const corredorExtraValue = selectedOption && selectedOption.value ? 1 : 0;
+         // Si no hay selección o se selecciona "Sin corredor" (value vacío), establecer corredor_extra en 0
+         const corredorExtraValue = (selectedOption && selectedOption.value && selectedOption.value !== "") ? 1 : 0;
+         // Si se deselecciona (null) o se selecciona "Sin corredor", usar el objeto con value vacío
+         const corredorValue = selectedOption === null || (selectedOption && selectedOption.value === "")
+            ? { value: "", label: "Sin corredor" }
+            : selectedOption;
+         
          setFormData((prev) => ({ 
             ...prev, 
-            [action.name]: selectedOption,
+            [action.name]: corredorValue,
             corredor_extra: corredorExtraValue
          }));
       } else {
@@ -689,6 +702,8 @@ export const View_edit_lead = () => {
                   value={formData.corredor_lead_edit}
                   onChange={handleSelectChange}
                   isSearchable
+                  isClearable
+                  placeholder="Seleccionar corredor..."
                />
             </div>
          </div>
