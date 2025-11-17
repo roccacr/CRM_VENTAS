@@ -389,7 +389,8 @@ leadNetsuite.update_LeadInformations = async (dataParams, database) => {
         await executeQuery(query1, [dataParams.id], database);
 
 
-
+        
+        console.log("dataParams buildBasicLeadFields: ", dataParams);
 
         // Combinar todos los campos en un solo objeto
         const allFields = {
