@@ -1,5 +1,27 @@
 export const InfromacionCompleta = ({ leadDetails }) => {
 
+    /**
+     * Función para convertir el ID del estado civil al nombre correspondiente
+     * @param {string|number} estadoCivilId - ID del estado civil
+     * @returns {string} Nombre del estado civil o el valor original si no coincide
+     */
+    const getEstadoCivilName = (estadoCivilId) => {
+        if (!estadoCivilId || estadoCivilId === "null" || estadoCivilId === "--") {
+            return "N/A";
+        }
+        
+        const estadoCivilMap = {
+            "1": "Casado/a",
+            "2": "Soltero/a",
+            "3": "Unión Libre",
+            "4": "Viudo",
+            "5": "Divorciado/a"
+        };
+        
+        // Convertir a string para comparar
+        const idString = String(estadoCivilId);
+        return estadoCivilMap[idString] || estadoCivilId;
+    };
 
     const informacionBasica = [
         { label: "Nombre Completo", value: leadDetails.nombre_lead },
@@ -15,7 +37,7 @@ export const InfromacionCompleta = ({ leadDetails }) => {
     const informacionExtra = [
         { label: "Cédula", value: leadDetails.cedula_lead },
         { label: "Nacionalidad", value: leadDetails.Nacionalidad_lead },
-        { label: "Estado Civil", value: leadDetails.Estado_ciLead },
+        { label: "Estado Civil", value: getEstadoCivilName(leadDetails.Estado_ciLead) },
         { label: "Edad", value: leadDetails.Edad_lead },
         { label: "Profesión", value: leadDetails.Profesion_lead },
         { label: "Hijos", value: leadDetails.Hijos_lead },
@@ -25,7 +47,7 @@ export const InfromacionCompleta = ({ leadDetails }) => {
         { label: "Nombre Extra", value: leadDetails.nombre_extra_lead },
         { label: "Cédula Extra", value: leadDetails.cedula_extra_lead },
         { label: "Profesión Extra", value: leadDetails.profesion_extra_lead },
-        { label: "Estado Civil Extra", value: leadDetails.estado_civil_extra_lead },
+        { label: "Estado Civil Extra", value: getEstadoCivilName(leadDetails.estado_civil_extra_lead) },
         { label: "Teléfono Extra", value: leadDetails.telefono_extra_lead },
         { label: "Nacionalidad Extra", value: leadDetails.nacionalidad_extra_lead },
         { label: "Email Extra", value: leadDetails.email_extra_lead },
