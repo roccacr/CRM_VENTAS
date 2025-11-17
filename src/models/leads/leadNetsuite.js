@@ -166,7 +166,6 @@ leadNetsuite.editarInformacionLead_Netsuite = async ({ formData,    database }) 
     ];
     const informacion_Extra = camposInfoExtra.some(campo => formData[campo] === '') ? 0 : formData.informacion_Extra;
 
-    console.log("formData edit lead: ", formData);
 
 
     // Validar corredor
@@ -175,7 +174,6 @@ leadNetsuite.editarInformacionLead_Netsuite = async ({ formData,    database }) 
         ? formData.corredor_lead_edit.value 
         : 0;
 
-    console.log("corredorValue: ", corredorValue);
 
     // Si hay un valor válido de corredor, usar 1, sino usar corredor_extra del frontend
     const corredor = corredorValue && corredorValue !== 0 ? 1 : formData.corredor_extra;
