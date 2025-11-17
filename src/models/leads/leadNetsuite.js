@@ -170,7 +170,12 @@ leadNetsuite.editarInformacionLead_Netsuite = async ({ formData,    database }) 
 
 
     // Validar corredor
-    const corredor = formData.corredor_lead_edit.value !== 0 ? 1 : formData.corredor_extra;
+    // Extraer el valor del corredor (puede ser objeto {value, label} o cadena vacía '')
+    const corredorValue = formData.corredor_lead_edit && typeof formData.corredor_lead_edit === 'object' && formData.corredor_lead_edit.value 
+        ? formData.corredor_lead_edit.value 
+        : 0;
+    // Si hay un valor válido de corredor, usar 1, sino usar corredor_extra del frontend
+    const corredor = corredorValue && corredorValue !== 0 ? 1 : formData.corredor_extra;
 
     // Validar información extra adicional
     const camposInfoExtraDos = ['custentity77', 'custentity81', 'custentity82', 'custentity83'];
@@ -202,7 +207,7 @@ leadNetsuite.editarInformacionLead_Netsuite = async ({ formData,    database }) 
         custentity_ix_customer_profession: formData.custentity_ix_customer_profession,
         // Campos de corredor
         corredor_extra: corredor,
-        corredor_new: formData.corredor_lead_edit.value,
+        corredor_new: corredorValue || 0,
         // Campos de información extra
         infromacion_extra_dos: infromacion_extra,
         custentity77: formData.custentity77,
