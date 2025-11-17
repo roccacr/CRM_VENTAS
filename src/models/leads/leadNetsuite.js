@@ -166,6 +166,9 @@ leadNetsuite.editarInformacionLead_Netsuite = async ({ formData,    database }) 
     ];
     const informacion_Extra = camposInfoExtra.some(campo => formData[campo] === '') ? 0 : formData.informacion_Extra;
 
+    console.log("formData edit lead: ", formData);
+
+
     // Validar corredor
     const corredor = formData.corredor_lead_edit.value !== 0 ? 1 : formData.corredor_extra;
 
