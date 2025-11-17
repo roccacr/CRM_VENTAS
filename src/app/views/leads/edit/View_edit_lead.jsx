@@ -75,7 +75,7 @@ const INITIAL_FORM_STATE = {
    custentity84: "",
    custentity79: "",
    infromacion_extra_dos: 1,
-   corredor_extra: 1,
+   corredor_extra: 0,
    informacion_Extra: 1,
    id: 0,
    employee: 0,
@@ -232,7 +232,17 @@ export const View_edit_lead = () => {
       const corredorLeadInt = parseInt(leadInfo.Corredor_lead, 10) || 0;
       const defaultCorredor = corredor.find((v) => v.value === corredorLeadInt);
       if (defaultCorredor) {
-         setFormData((prev) => ({ ...prev, corredor_lead_edit: defaultCorredor }));
+         setFormData((prev) => ({ 
+            ...prev, 
+            corredor_lead_edit: defaultCorredor,
+            corredor_extra: 1
+         }));
+      } else {
+         // Si no hay corredor seleccionado, asegurar que corredor_extra sea 0
+         setFormData((prev) => ({ 
+            ...prev, 
+            corredor_extra: 0
+         }));
       }
    };
 
@@ -358,7 +368,17 @@ export const View_edit_lead = () => {
     * @description Maneja cambios en componentes Select
     */
    const handleSelectChange = (selectedOption, action) => {
-      setFormData((prev) => ({ ...prev, [action.name]: selectedOption }));
+      // Si es el select de corredor, actualizar corredor_extra según si hay selección o no
+      if (action.name === "corredor_lead_edit") {
+         const corredorExtraValue = selectedOption && selectedOption.value ? 1 : 0;
+         setFormData((prev) => ({ 
+            ...prev, 
+            [action.name]: selectedOption,
+            corredor_extra: corredorExtraValue
+         }));
+      } else {
+         setFormData((prev) => ({ ...prev, [action.name]: selectedOption }));
+      }
       document.getElementById(action.name).style.border = "1px solid #ced4da";
    };
 
