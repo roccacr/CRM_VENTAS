@@ -11,6 +11,20 @@ const formatDateTime = (date) => {
     return `${formattedDate} ${formattedTime}`;
 };
 
+/**
+ * Renderiza el código de cotización con icono de alerta si aplica
+ * @param {string} tranid - ID de la transacción
+ * @param {Object} row - Fila completa de datos
+ * @returns {string} HTML con el código y el icono de alerta si es necesario
+ */
+const renderCotizacionConAlerta = (tranid, row) => {
+    if (!row.alerta) {
+        return tranid;
+    }
+    const mensaje = row.alerta_mensaje ? row.alerta_mensaje.replace(/"/g, '&quot;') : 'Sin mensaje';
+    return `${tranid} <i class="fas fa-exclamation-circle" style="color: #dc3545; font-size: 16px; cursor: pointer; margin-left: 8px;" title="${mensaje}"></i>`;
+};
+
 
 /**
  * Definición de columnas para la tabla de leads
@@ -28,7 +42,10 @@ export const TABLE_COLUMNS = [
         title: "#COTIZACION",
         data: "id_ov_tranid",
         className: "text-left",
-        searchPanes: { show: true }
+        searchPanes: { show: true },
+        render: (tranid, type, row) => {
+            return renderCotizacionConAlerta(tranid, row);
+        }
     },
     {
         title: "LEADS",
