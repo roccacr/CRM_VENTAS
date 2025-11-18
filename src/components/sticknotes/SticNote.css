@@ -1,0 +1,149 @@
+/* Estilos para el sticky note */
+.sticknote {
+    position: absolute;
+    width: 300px;
+    background-color: #FFFF88;
+    border-radius: 5px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    cursor: move;
+    user-select: none;
+    transition: box-shadow 0.2s ease;
+    z-index: 50;
+    display: flex;
+    flex-direction: column;
+    min-height: 150px;
+    max-height: 400px;
+}
+
+.sticknote:hover {
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.25);
+}
+
+.sticknote.dragging {
+    opacity: 0.9;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+}
+
+/* Encabezado de la nota */
+.sticknote-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    padding: 10px 12px;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+    gap: 8px;
+}
+
+.sticknote-title {
+    margin: 0;
+    font-size: 14px;
+    font-weight: bold;
+    color: #333;
+    flex: 1;
+    word-wrap: break-word;
+    max-width: 200px;
+}
+
+/* Acciones del encabezado */
+.sticknote-header-actions {
+    display: flex;
+    gap: 4px;
+    flex-shrink: 0;
+}
+
+.sticknote-btn {
+    background: none;
+    border: none;
+    padding: 4px 6px;
+    cursor: pointer;
+    font-size: 14px;
+    opacity: 0.6;
+    transition: opacity 0.2s ease;
+    border-radius: 3px;
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.sticknote-btn:hover {
+    opacity: 1;
+    background-color: rgba(0, 0, 0, 0.1);
+}
+
+.sticknote-btn-edit:hover {
+    background-color: rgba(33, 150, 243, 0.2);
+}
+
+.sticknote-btn-hide:hover {
+    background-color: rgba(244, 67, 54, 0.2);
+}
+
+.sticknote-btn-state:hover {
+    background-color: rgba(76, 175, 80, 0.2);
+}
+
+/* Contenido de la nota */
+.sticknote-content {
+    flex: 1;
+    padding: 10px 12px;
+    overflow-y: auto;
+    font-size: 13px;
+    color: #333;
+    line-height: 1.4;
+}
+
+.sticknote-content p {
+    margin: 0;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+}
+
+/* Pie de página */
+.sticknote-footer {
+    padding: 6px 12px;
+    border-top: 1px solid rgba(0, 0, 0, 0.1);
+    font-size: 11px;
+    color: #666;
+    text-align: right;
+}
+
+/* Estilos responsive */
+@media (max-width: 768px) {
+    .sticknote {
+        width: 250px;
+        min-height: 120px;
+    }
+
+    .sticknote-title {
+        font-size: 13px;
+        max-width: 150px;
+    }
+
+    .sticknote-content {
+        font-size: 12px;
+    }
+
+    .sticknote-btn {
+        width: 24px;
+        height: 24px;
+        font-size: 12px;
+    }
+}
+
+/* Animación de aparición */
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: scale(0.8);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+.sticknote {
+    animation: slideIn 0.2s ease-out;
+}

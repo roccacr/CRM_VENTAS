@@ -22,6 +22,7 @@ import "datatables.net-select-bs5";
 import { useNavigate } from "react-router-dom";
 import { ModalOrdenVenta } from "../../estimacion/ModalOrdenVenta";
 import { OneDrive } from "./OneDrive";
+import SticNotesContainer from "../../../../components/sticknotes/SticNotesContainer";
 import { Box, Typography, Paper } from "@mui/material";
 import { keyframes } from "@mui/system";
 
@@ -88,7 +89,7 @@ const fetchData = async ({ leadId, transaccion, dispatch, setLeadDetails, setDat
       ]);
 
 
-      console.log("ordenData", ordenData);
+
 
 
       setLeadDetails(leadData);
@@ -1088,7 +1089,6 @@ export const VistaOrdenVenta = () => {
       loadInitialData();
    }, [dispatch]);
 
-
    // DataTable initialization with cleanup
    useEffect(() => {
       if (!datosOrdenVenta?.data?.sublists?.item) return;
@@ -1105,6 +1105,15 @@ export const VistaOrdenVenta = () => {
 
    return (
       <>
+         {/* Sticky Notes Container */}
+         <div style={{ position: 'relative', height: '0px', zIndex: 999 }}>
+            <SticNotesContainer
+               idinternoLead={leadDetails?.idinterno_lead}
+               transactionType="ordersale"
+               transactionId={getQueryParam("data2")}
+            />
+         </div>
+
          {/* Action Buttons Section */}
          <div className="col-xl-12 col-sm-12">
             <div className="card">

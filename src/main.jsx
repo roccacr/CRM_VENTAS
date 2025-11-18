@@ -15,7 +15,6 @@ import { initializeMSAL } from './config/msalConfig';
 const initializeApp = async () => {
   try {
     await initializeMSAL();
-    console.log('MSAL inicializado correctamente');
   } catch (error) {
     console.error('Error al inicializar MSAL:', error);
   }
