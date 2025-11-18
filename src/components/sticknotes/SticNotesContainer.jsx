@@ -377,6 +377,7 @@ const SticNotesContainer = ({ idinternoLead, transactionType, transactionId }) =
                     onClose={handleCloseModal}
                 />
             )}
+        
         </div>
     );
 };
