@@ -12,17 +12,13 @@ import "./ModalSticNote.css";
 const ModalSticNote = ({ note, onSave, onClose }) => {
     const [titulo, setTitulo] = useState("");
     const [mensaje, setMensaje] = useState("");
-    const [colorHex, setColorHex] = useState("#FFFF88");
+    const [colorHex, setColorHex] = useState("#C8E6C9"); // Verde claro por defecto
 
-    // Colores preestablecidos disponibles
+    // Colores preestablecidos disponibles (solo 3)
     const colorPresets = [
-        "#FFFF88", // Amarillo (default)
-        "#FFB3B3", // Rojo claro
-        "#B3E5FC", // Azul claro
         "#C8E6C9", // Verde claro
         "#FFE0B2", // Naranja claro
         "#F8BBD0", // Rosa claro
-        "#D1C4E9", // Púrpura claro
     ];
 
     // Llenar el formulario si está editando
@@ -30,11 +26,11 @@ const ModalSticNote = ({ note, onSave, onClose }) => {
         if (note) {
             setTitulo(note.titulo || "");
             setMensaje(note.mensaje || "");
-            setColorHex(note.color_hex || "#FFFF88");
+            setColorHex(note.color_hex || "#C8E6C9");
         } else {
             setTitulo("");
             setMensaje("");
-            setColorHex("#FFFF88");
+            setColorHex("#C8E6C9"); // Verde claro por defecto
         }
     }, [note]);
 
@@ -116,13 +112,6 @@ const ModalSticNote = ({ note, onSave, onClose }) => {
                                     title={color}
                                 />
                             ))}
-                            <input
-                                type="color"
-                                value={colorHex}
-                                onChange={(e) => setColorHex(e.target.value)}
-                                className="color-input"
-                                title="Color personalizado"
-                            />
                         </div>
                     </div>
 

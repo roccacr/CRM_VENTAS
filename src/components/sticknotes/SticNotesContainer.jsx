@@ -28,6 +28,8 @@ const SticNotesContainer = ({ idinternoLead, transactionType, transactionId }) =
     const [editingNote, setEditingNote] = useState(null);
     const [draggedNote, setDraggedNote] = useState(null);
     const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+    const [showHiddenNotes, setShowHiddenNotes] = useState(false); // Estado para mostrar notas ocultas ADICIONALES
+    const [hideAllNotes, setHideAllNotes] = useState(false); // Estado para ocultar todas visualmente
     const containerRef = useRef(null);
 
     // Obtener notas al montar el componente o cuando cambien los IDs
@@ -215,15 +217,27 @@ const SticNotesContainer = ({ idinternoLead, transactionType, transactionId }) =
      */
     const handleToggleVisibility = async (noteId, currentVisible) => {
         try {
+            // Actualizar localmente primero para feedback inmediato
+            const newVisibility = currentVisible === 1 ? 0 : 1;
+            setSticNotes((prevNotes) =>
+                prevNotes.map((note) =>
+                    note.id_sticknote === noteId
+                        ? { ...note, visible: newVisibility }
+                        : note
+                )
+            );
+
+            // Luego hacer la petición al servidor
             await dispatch(
                 cambiarVisibilidadSticNotePorId({
                     id_sticknote: noteId,
-                    visible: currentVisible === 1 ? 0 : 1,
+                    visible: newVisibility,
                 })
             );
-            fetchSticNotes();
         } catch (error) {
-            // Error cambiando visibilidad
+            // Error cambiando visibilidad - recargar para restaurar estado
+            console.error("Error cambiando visibilidad:", error);
+            fetchSticNotes();
         }
     };
 
@@ -244,6 +258,56 @@ const SticNotesContainer = ({ idinternoLead, transactionType, transactionId }) =
         }
     };
 
+    /**
+     * Oculta todas las notas visualmente (sin cambiar BD)
+     */
+    const handleHideAllNotes = () => {
+        setHideAllNotes(true);
+        setShowHiddenNotes(false);
+    };
+
+    /**
+     * Muestra todas las notas nuevamente
+     */
+    const handleShowAllNotes = () => {
+        setHideAllNotes(false);
+    };
+
+    /**
+     * Muestra las notas que están ocultas en BD
+     */
+    const handleShowHiddenNotes = () => {
+        setShowHiddenNotes(!showHiddenNotes);
+    };
+
+    /**
+     * Filtra las notas a mostrar según el estado
+     * Lógica:
+     * - hideAllNotes: Oculta visualmente TODAS las notas (no modifica BD)
+     * - showHiddenNotes: MUESTRA ADEMÁS las notas archivadas (visible=0)
+     * - normal: Muestra SOLO las notas visibles (visible=1) y activas (estado=1)
+     */
+    const notasAMostrar = sticNotes.filter((note) => {
+        // Si ocultamos todas visualmente, no mostrar nada
+        if (hideAllNotes) {
+            return false;
+        }
+
+        // Por defecto: mostrar las notas visibles y activas
+        if (note.estado !== 1) {
+            return false; // No mostrar notas inactivas nunca
+        }
+
+        // Si mostramos notas archivadas, mostrar TAMBIÉN las archivadas
+        if (showHiddenNotes) {
+            // Mostrar tanto visibles como archivadas
+            return note.visible === 1 || note.visible === 0;
+        }
+
+        // Modo normal: mostrar SOLO las notas visibles
+        return note.visible === 1;
+    });
+
     return (
         <div
             ref={containerRef}
@@ -258,11 +322,42 @@ const SticNotesContainer = ({ idinternoLead, transactionType, transactionId }) =
                 onClick={handleOpenCreateModal}
                 title="Crear nueva nota"
             >
-                + Stick Notes 
+                + Stick Notes
             </button>
 
-            {/* Mostrar todas las notas */}
-            {sticNotes.map((note) => (
+            {/* Botón para ocultar todas las notas */}
+            {!hideAllNotes && (
+                <button
+                    className="btn-hide-all-sticknotes"
+                    onClick={handleHideAllNotes}
+                    title="Oculta todas las notas de la vista actual (no las elimina)"
+                >
+                    Ocultar Todas
+                </button>
+            )}
+
+            {/* Botón para mostrar todas las notas */}
+            {hideAllNotes && (
+                <button
+                    className="btn-show-all-sticknotes"
+                    onClick={handleShowAllNotes}
+                    title="Muestra todas las notas nuevamente"
+                >
+                    Mostrar Todas
+                </button>
+            )}
+
+            {/* Botón para mostrar notas archivadas */}
+            <button
+                className={`btn-show-hidden-sticknotes ${showHiddenNotes ? 'active' : ''}`}
+                onClick={handleShowHiddenNotes}
+                title="Muestra las notas que han sido archivadas"
+            >
+                Archivadas ({sticNotes.filter(n => n.visible === 0).length})
+            </button>
+
+            {/* Mostrar las notas filtradas */}
+            {notasAMostrar.map((note) => (
                 <SticNote
                     key={note.id_sticknote}
                     note={note}
@@ -270,6 +365,7 @@ const SticNotesContainer = ({ idinternoLead, transactionType, transactionId }) =
                     onEdit={handleEditNote}
                     onToggleVisibility={handleToggleVisibility}
                     onToggleState={handleToggleState}
+                    showingHidden={showHiddenNotes}
                 />
             ))}
 

@@ -11,6 +11,7 @@ import "./SticNote.css";
  * @param {Function} props.onEdit - Callback para editar nota
  * @param {Function} props.onToggleVisibility - Callback para cambiar visibilidad
  * @param {Function} props.onToggleState - Callback para cambiar estado
+ * @param {boolean} props.showingHidden - Si estamos mostrando notas ocultas
  */
 const SticNote = ({
     note,
@@ -18,9 +19,15 @@ const SticNote = ({
     onEdit,
     onToggleVisibility,
     onToggleState,
+    showingHidden,
 }) => {
-    // No mostrar notas ocultas o inactivas
-    if (note.visible === 0 || note.estado === 0) {
+    // No mostrar notas inactivas (siempre)
+    if (note.estado === 0) {
+        return null;
+    }
+
+    // No mostrar notas ocultas a menos que estemos en modo mostrar ocultas
+    if (note.visible === 0 && !showingHidden) {
         return null;
     }
 
@@ -54,20 +61,36 @@ const SticNote = ({
                         ✎
                     </button>
 
-                    {/* Botón para ocultar */}
-                    <button
-                        className="sticknote-btn sticknote-btn-hide"
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            onToggleVisibility(
-                                note.id_sticknote,
-                                note.visible
-                            );
-                        }}
-                        title="Ocultar nota"
-                    >
-                        👁
-                    </button>
+                    {/* Botón para ocultar o reactivar según el estado */}
+                    {showingHidden && note.visible === 0 ? (
+                        <button
+                            className="sticknote-btn sticknote-btn-reactivate"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                onToggleVisibility(
+                                    note.id_sticknote,
+                                    note.visible
+                                );
+                            }}
+                            title="Reactivar nota"
+                        >
+                            ↩️
+                        </button>
+                    ) : (
+                        <button
+                            className="sticknote-btn sticknote-btn-hide"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                onToggleVisibility(
+                                    note.id_sticknote,
+                                    note.visible
+                                );
+                            }}
+                            title="Ocultar nota"
+                        >
+                            👁
+                        </button>
+                    )}
 
                     {/* Botón para cambiar estado */}
                     <button

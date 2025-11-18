@@ -80,6 +80,10 @@
     background-color: rgba(244, 67, 54, 0.2);
 }
 
+.sticknote-btn-reactivate:hover {
+    background-color: rgba(76, 175, 80, 0.2);
+}
+
 .sticknote-btn-state:hover {
     background-color: rgba(76, 175, 80, 0.2);
 }

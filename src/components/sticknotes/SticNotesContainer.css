@@ -36,6 +36,95 @@
     transform: translateY(0);
 }
 
+/* Botón para ocultar todas las notas */
+.btn-hide-all-sticknotes {
+    position: absolute;
+    top: 15px;
+    right: 180px;
+    padding: 10px 20px;
+    background-color: #333333;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: bold;
+    z-index: 100;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+}
+
+.btn-hide-all-sticknotes:hover {
+    background-color: #1a1a1a;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+    transform: translateY(-2px);
+}
+
+.btn-hide-all-sticknotes:active {
+    transform: translateY(0);
+}
+
+/* Botón para mostrar todas las notas */
+.btn-show-all-sticknotes {
+    position: absolute;
+    top: 15px;
+    right: 180px;
+    padding: 10px 20px;
+    background-color: #333333;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: bold;
+    z-index: 100;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+}
+
+.btn-show-all-sticknotes:hover {
+    background-color: #1a1a1a;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+    transform: translateY(-2px);
+}
+
+.btn-show-all-sticknotes:active {
+    transform: translateY(0);
+}
+
+/* Botón para mostrar notas archivadas */
+.btn-show-hidden-sticknotes {
+    position: absolute;
+    top: 15px;
+    right: 330px;
+    padding: 10px 20px;
+    background-color: #333333;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: bold;
+    z-index: 100;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+}
+
+.btn-show-hidden-sticknotes:hover {
+    background-color: #1a1a1a;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+    transform: translateY(-2px);
+}
+
+.btn-show-hidden-sticknotes.active {
+    background-color: #1a1a1a;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+}
+
+.btn-show-hidden-sticknotes:active {
+    transform: translateY(0);
+}
+
 /* Estilos responsive */
 @media (max-width: 768px) {
     .btn-create-sticknote {
