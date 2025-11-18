@@ -16,6 +16,7 @@ var accountSettings = {
     consumerSecret: config.oauthNetsuite.consumer.secret,
 };
 
+
 /**
  * Lista las órdenes de venta según los filtros especificados.
  * @param {Object} dataParams - Parámetros para filtrar las órdenes de venta
@@ -29,10 +30,14 @@ var accountSettings = {
  * @param {string} [dataParams.startDate] - Fecha inicial para filtrar (formato: YYYY-MM-DD)
  * @param {string} [dataParams.endDate] - Fecha final para filtrar (formato: YYYY-MM-DD)
  * @param {string} dataParams.database - Nombre de la base de datos a consultar
- * @returns {Promise<Array>} Array de órdenes de venta que cumplen con los criterios
+ * @returns {Promise<Array>} Array de órdenes de venta con campos adicionales de alerta
  * @throws {Error} Si la opción de filtrado no es válida
  */
 ordenVenta.enlistarOrdenesVenta = async (dataParams) => {
+
+    console.clear();
+    console.log("dataParams", dataParams);
+
     const conditions = [];
     const isAdmin = dataParams.rol_admin === "1";
 
@@ -45,18 +50,16 @@ ordenVenta.enlistarOrdenesVenta = async (dataParams) => {
             conditions.push("o.caida_ov = 0", "o.comision_cancelada_ov = 0", "o.status_ov = 1", "o.contrado_frima_ov = 0", "o.pagadas_ov = 0");
             break;
         case "2":
-            // conditions.push("o.caida_ov = 0", "o.comision_cancelada_ov = 0", "o.contrado_frima_ov = 1", "o.cierre_firmado_ov = 1", "o.aprobacion_forma_ov = 1", "o.aprobacion__rdr_ov = 1", "o.calculo_comision_asesor_ov = 1", "o.status_ov = 1", "o.pagadas_ov = 0");
             conditions.push(
-                "o.caida_ov = 0",                     // Exclude fallen orders
-                "o.comision_cancelada_ov = 0",       // Exclude canceled commissions
-                "o.contrado_frima_ov = 1",           // Include signed contracts
-                "o.cierre_firmado_ov = 1",           // Include signed closures
-                "o.aprobacion_forma_ov = 1",         // Include approved forms
-                "o.aprobacion__rdr_ov = 1",          // Include RDR approvals
-                // "o.calculo_comision_asesor_ov = 1", // Include if required (commented in SQL)
-                "o.status_ov = 1",                   // Active orders only
-                "o.pagadas_ov = 0",                  // Unpaid orders only
-                "o.chekJefeVenta = 1"                // Checked by sales manager
+                "o.caida_ov = 0",
+                "o.comision_cancelada_ov = 0",
+                "o.contrado_frima_ov = 1",
+                "o.cierre_firmado_ov = 1",
+                "o.aprobacion_forma_ov = 1",
+                "o.aprobacion__rdr_ov = 1",
+                "o.status_ov = 1",
+                "o.pagadas_ov = 0",
+                "o.chekJefeVenta = 1"
               );
             break;
         case "3":
@@ -78,13 +81,166 @@ ordenVenta.enlistarOrdenesVenta = async (dataParams) => {
     const whereClause = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
 
     const query = `
-        SELECT o.status_ov, o.id_ov_tranid, o.id_ov_netsuite, 
-               l.nombre_lead, l.idinterno_lead, 
-               p.tranid_oport, p.id_oportunidad_oport, 
-               e.idEstimacion_est, e.tranid_est, 
-               ex.ID_interno_expediente, ex.codigo_exp, 
-               o.creado_ov, 
-               a.name_admin
+        SELECT
+            o.status_ov,
+            o.id_ov_tranid,
+            o.id_ov_netsuite,
+            l.nombre_lead,
+            l.idinterno_lead,
+            p.tranid_oport,
+            p.id_oportunidad_oport,
+            e.idEstimacion_est,
+            e.tranid_est,
+            ex.ID_interno_expediente,
+            ex.codigo_exp,
+            o.creado_ov,
+            a.name_admin,
+            CASE
+                WHEN o.caida_ov = 1 THEN FALSE
+                WHEN o.reserva_ov = 0 THEN (
+                    CASE
+                        WHEN DATEDIFF(
+                            CURDATE(),
+                            STR_TO_DATE(
+                                CASE
+                                    WHEN e.envioPreReservaCaida IS NOT NULL THEN e.envioPreReservaCaida
+                                    ELSE e.caduca
+                                END,
+                                '%d/%m/%Y'
+                            )
+                        ) >= -3 AND DATEDIFF(
+                            CURDATE(),
+                            STR_TO_DATE(
+                                CASE
+                                    WHEN e.envioPreReservaCaida IS NOT NULL THEN e.envioPreReservaCaida
+                                    ELSE e.caduca
+                                END,
+                                '%d/%m/%Y'
+                            )
+                        ) <= 0 THEN TRUE
+                        WHEN DATEDIFF(
+                            CURDATE(),
+                            STR_TO_DATE(
+                                CASE
+                                    WHEN e.envioPreReservaCaida IS NOT NULL THEN e.envioPreReservaCaida
+                                    ELSE e.caduca
+                                END,
+                                '%d/%m/%Y'
+                            )
+                        ) > 0 THEN TRUE
+                        ELSE FALSE
+                    END
+                )
+                WHEN o.reserva_ov = 1 AND o.cierre_firmado_ov = 0 THEN (
+                    CASE
+                        WHEN DATEDIFF(
+                            CURDATE(),
+                            DATE_ADD(STR_TO_DATE(o.fechaClienteComprobante_ov, '%d/%m/%Y'), INTERVAL 30 DAY)
+                        ) >= -3 AND DATEDIFF(
+                            CURDATE(),
+                            DATE_ADD(STR_TO_DATE(o.fechaClienteComprobante_ov, '%d/%m/%Y'), INTERVAL 30 DAY)
+                        ) <= 0 THEN TRUE
+                        WHEN DATEDIFF(
+                            CURDATE(),
+                            DATE_ADD(STR_TO_DATE(o.fechaClienteComprobante_ov, '%d/%m/%Y'), INTERVAL 30 DAY)
+                        ) > 0 THEN TRUE
+                        ELSE FALSE
+                    END
+                )
+                ELSE FALSE
+            END AS alerta,
+            CASE
+                WHEN o.caida_ov = 1 THEN ''
+                WHEN o.reserva_ov = 0 THEN (
+                    CASE
+                        WHEN DATEDIFF(
+                            CURDATE(),
+                            STR_TO_DATE(
+                                CASE
+                                    WHEN e.envioPreReservaCaida IS NOT NULL THEN e.envioPreReservaCaida
+                                    ELSE e.caduca
+                                END,
+                                '%d/%m/%Y'
+                            )
+                        ) = 0 THEN 'Vence hoy'
+                        WHEN DATEDIFF(
+                            CURDATE(),
+                            STR_TO_DATE(
+                                CASE
+                                    WHEN e.envioPreReservaCaida IS NOT NULL THEN e.envioPreReservaCaida
+                                    ELSE e.caduca
+                                END,
+                                '%d/%m/%Y'
+                            )
+                        ) < 0 AND DATEDIFF(
+                            CURDATE(),
+                            STR_TO_DATE(
+                                CASE
+                                    WHEN e.envioPreReservaCaida IS NOT NULL THEN e.envioPreReservaCaida
+                                    ELSE e.caduca
+                                END,
+                                '%d/%m/%Y'
+                            )
+                        ) >= -3 THEN CONCAT('Faltan ', -DATEDIFF(
+                            CURDATE(),
+                            STR_TO_DATE(
+                                CASE
+                                    WHEN e.envioPreReservaCaida IS NOT NULL THEN e.envioPreReservaCaida
+                                    ELSE e.caduca
+                                END,
+                                '%d/%m/%Y'
+                            )
+                        ), ' días para vencer')
+                        WHEN DATEDIFF(
+                            CURDATE(),
+                            STR_TO_DATE(
+                                CASE
+                                    WHEN e.envioPreReservaCaida IS NOT NULL THEN e.envioPreReservaCaida
+                                    ELSE e.caduca
+                                END,
+                                '%d/%m/%Y'
+                            )
+                        ) > 0 THEN CONCAT('Lleva ', DATEDIFF(
+                            CURDATE(),
+                            STR_TO_DATE(
+                                CASE
+                                    WHEN e.envioPreReservaCaida IS NOT NULL THEN e.envioPreReservaCaida
+                                    ELSE e.caduca
+                                END,
+                                '%d/%m/%Y'
+                            )
+                        ), ' días vencido')
+                        ELSE ''
+                    END
+                )
+                WHEN o.reserva_ov = 1 AND o.cierre_firmado_ov = 0 THEN (
+                    CASE
+                        WHEN DATEDIFF(
+                            CURDATE(),
+                            DATE_ADD(STR_TO_DATE(o.fechaClienteComprobante_ov, '%d/%m/%Y'), INTERVAL 30 DAY)
+                        ) = 0 THEN 'Vence hoy'
+                        WHEN DATEDIFF(
+                            CURDATE(),
+                            DATE_ADD(STR_TO_DATE(o.fechaClienteComprobante_ov, '%d/%m/%Y'), INTERVAL 30 DAY)
+                        ) < 0 AND DATEDIFF(
+                            CURDATE(),
+                            DATE_ADD(STR_TO_DATE(o.fechaClienteComprobante_ov, '%d/%m/%Y'), INTERVAL 30 DAY)
+                        ) >= -3 THEN CONCAT('Faltan ', -DATEDIFF(
+                            CURDATE(),
+                            DATE_ADD(STR_TO_DATE(o.fechaClienteComprobante_ov, '%d/%m/%Y'), INTERVAL 30 DAY)
+                        ), ' días para vencer')
+                        WHEN DATEDIFF(
+                            CURDATE(),
+                            DATE_ADD(STR_TO_DATE(o.fechaClienteComprobante_ov, '%d/%m/%Y'), INTERVAL 30 DAY)
+                        ) > 0 THEN CONCAT('Lleva ', DATEDIFF(
+                            CURDATE(),
+                            DATE_ADD(STR_TO_DATE(o.fechaClienteComprobante_ov, '%d/%m/%Y'), INTERVAL 30 DAY)
+                        ), ' días vencido')
+                        ELSE ''
+                    END
+                )
+                ELSE ''
+            END AS alerta_mensaje
         FROM ordenventa AS o
         INNER JOIN leads AS l ON l.idinterno_lead = o.id_ov_lead
         INNER JOIN oportunidades AS p ON p.id_oportunidad_oport = o.id_ov_opt
@@ -94,7 +250,11 @@ ordenVenta.enlistarOrdenesVenta = async (dataParams) => {
         ${whereClause}
     `;
 
-    return await executeQuery(query, [], dataParams.database);
+    const resultados = await executeQuery(query, [], dataParams.database);
+
+    console.log("resultados", resultados);
+
+    return resultados;
 };
 
 ordenVenta.obtenerOrdendeventa = async ({ idTransaccion, database }) => {
