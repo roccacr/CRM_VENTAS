@@ -1,74 +1,122 @@
 const { executeStoredProcedure, handleDatabaseOperation } = require("../conectionPool/conectionPool");
 
-const partner = {}; // Objeto para agrupar todas las funciones relacionadas con 'partner'.
-
+/**
+ * Módulo para gestionar corredores (partners) sincronizados desde NetSuite
+ */
+const partner = {};
 
 /**
- * Crea un nuevo corredor desde la integración de NetSuite.
- * @async
- * @param {Object} dataParams - Objeto que contiene los parámetros del corredor
- * @returns {Promise<Object>} - Resultado de la creación del corredor
+ * Crea un nuevo corredor en la base de datos
+ * @param {Object} dataParams - Datos del corredor
+ * @param {number|string} dataParams.id - ID del corredor en NetSuite
+ * @param {string} [dataParams.companyName] - Nombre de la compañía
+ * @param {Object} [dataParams.fields] - Campos adicionales del corredor
+ * @returns {Promise<Object>} Resultado de la operación
  */
 partner.crearpartner = async (dataParams) => {
-    return new Promise((resolve, reject) => {
-        try {
+    try {
+        const result = await executeStoredProcedure(
+            "SP_CREAR_CORREDORES_NETSUITE",
+            [
+                dataParams.id,
+                dataParams?.fields?.entitynumber || dataParams.id,
+                dataParams?.companyName || dataParams?.fields?.companyname || "N/A",
+                "N/A",
+                "N/A",
+                "N/A",
+                "N/A",
+            ],
+            "produccion"
+        );
 
-            executeStoredProcedure(
-                "SP_CREAR_CORREDORES_NETSUITE", // Nombre del procedimiento almacenado que crea corredores desde NetSuite
-                [
-                    dataParams.id, // id_netsuiteCorredor - ID del corredor en NetSuite
-                    dataParams?.fields?.entitynumber || dataParams.id, // valoridNetsuite - Número de entidad en NetSuite
-                    dataParams?.companyName || dataParams?.fields?.companyname || "N/A", // nombre_corredor - Nombre del corredor
-                    "N/A", // categoria_corredor - Categoría del corredor (no disponible)
-                    "N/A", // empresa_corredor - Empresa del corredor (no disponible)
-                    "N/A", // telefono_corredor - Teléfono del corredor (no disponible)
-                    "N/A", // correo__corredor - Correo del corredor (no disponible)
-                ], // Parámetros para crear corredor desde NetSuite
-                "produccion" // Nombre de la base de datos a utilizar
-            );
-
-            return "ok"
-
-        } catch (error) {
-            console.error("❌ Error al crear partner:", error);
-            reject({
-                statusCode: 500,
-                message: "Error al crear la partner",
-                error: error.message
-            });
-        }
-    });
+        return {
+            status: "ok",
+            message: "Corredor creado exitosamente",
+            ...result
+        };
+    } catch (error) {
+        throw {
+            statusCode: 500,
+            message: "Error al crear el corredor",
+            error: error.message
+        };
+    }
 };
 
-
 /**
- * Actualiza un corredor existente desde la integración de NetSuite.
- * @async
- * @param {Object} dataParams - Objeto que contiene los parámetros del corredor a actualizar
- * @returns {Promise<Object>} - Resultado de la actualización del corredor
+ * Edita un corredor existente o lo crea si no existe
+ * @param {Object} dataParams - Datos del corredor
+ * @param {number|string} dataParams.id - ID del corredor en NetSuite
+ * @param {string} [dataParams.companyName] - Nombre de la compañía
+ * @returns {Promise<Object>} Resultado de la operación
  */
 partner.editarpartner = async (dataParams) => {
-    return new Promise((resolve, reject) => {
-        try {
-            executeStoredProcedure(
+    try {
+        // Consulta si el corredor existe
+        const partnerExistente = await partner.consultarPartner(dataParams.id);
+
+        // Verifica si encontró resultados (el array en el índice 0 tiene elementos)
+        const existePartner = partnerExistente[0] && 
+                             Array.isArray(partnerExistente[0]) && 
+                             partnerExistente[0].length > 0;
+
+        if (existePartner) {
+            // Si existe, actualiza el nombre
+            const result = await executeStoredProcedure(
                 "SP_ACTUALIZAR_NOMBRE_CORREDOR_NETSUITE",
                 [
-                    parseInt(dataParams.id),        // 🟢 ID del corredor (primer parámetro)
-                    dataParams?.companyName || "",  // 🟢 Nuevo nombre (segundo parámetro)
+                    parseInt(dataParams.id),
+                    dataParams?.companyName || "",
                 ],
                 "produccion"
             );
-             return "ok"
-           
-        } catch (error) {
-            console.error("❌ Error al editar partner:", error);
-            reject({
-                statusCode: 500,
-                message: "Error al editar la partner",
-                error: error.message
-            });
+
+            return {
+                status: "ok",
+                message: "Corredor actualizado exitosamente",
+                ...result
+            };
+        } else {
+            // Si no existe, crea uno nuevo
+            const result = await partner.crearpartner(dataParams);
+            
+            return {
+                status: "ok",
+                message: "Corredor creado exitosamente",
+                ...result
+            };
         }
-    });
+
+    } catch (error) {
+        throw {
+            statusCode: 500,
+            message: "Error al editar el corredor",
+            error: error.message
+        };
+    }
 };
 
-module.exports = partner; // Exporta el objeto 'partner' que contiene todas las funciones definidas.
+/**
+ * Consulta un corredor por su ID de NetSuite
+ * @param {number|string} id - ID del corredor en NetSuite
+ * @returns {Promise<Object>} Resultado de la consulta (resultado[0] contiene los registros)
+ */
+partner.consultarPartner = async (id) => {
+    try {
+        const result = await executeStoredProcedure(
+            "SP_CONSULTAR_CORREDOR_NETSUITE",
+            [parseInt(id)],
+            "produccion"
+        );
+
+        return result; 
+    } catch (error) {
+        throw {
+            statusCode: 500,
+            message: "Error al consultar el corredor",
+            error: error.message
+        };
+    }
+};
+
+module.exports = partner;
