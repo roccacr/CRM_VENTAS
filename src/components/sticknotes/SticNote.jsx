@@ -3,38 +3,41 @@ import "./SticNote.css";
 
 /**
  * Componente individual de Sticky Note
- * Representa una nota individual con opciones de editar, ocultar y cambiar estado
+ * Representa una nota individual con opciones de editar, fijar y cambiar estado
  *
  * @param {Object} props - Props del componente
  * @param {Object} props.note - Datos de la nota
  * @param {Function} props.onMouseDown - Callback para inicio de arrastre
  * @param {Function} props.onEdit - Callback para editar nota
- * @param {Function} props.onToggleVisibility - Callback para cambiar visibilidad
+ * @param {Function} props.onTogglePin - Callback para alternar PIN
  * @param {Function} props.onToggleState - Callback para cambiar estado
  * @param {boolean} props.showingHidden - Si estamos mostrando notas ocultas
+ * @param {Object} props.adminsMap - Mapeo de idnetsuite_admin a nombre de admin
+ * @param {number} props.currentUserId - ID del usuario autenticado actual
  */
 const SticNote = ({
     note,
     onMouseDown,
     onEdit,
-    onToggleVisibility,
+    onTogglePin,
     onToggleState,
     showingHidden,
+    adminsMap,
+    currentUserId,
 }) => {
-    // No mostrar notas inactivas (siempre)
-    if (note.estado === 0) {
+    // No mostrar notas desactivadas a menos que estemos en modo mostrar archivadas
+    if (note.estado === 0 && !showingHidden) {
         return null;
     }
 
-    // No mostrar notas ocultas a menos que estemos en modo mostrar ocultas
-    if (note.visible === 0 && !showingHidden) {
-        return null;
-    }
+    // Validar si el usuario actual es el creador de la nota
+    const isOwner = currentUserId === note.id_usuario_creador;
 
     const noteStyle = {
         backgroundColor: note.color_hex || "#FFFF88",
         left: `${note.pos_x}px`,
         top: `${note.pos_y}px`,
+        position: note.pinned ? "fixed" : "absolute",
     };
 
     return (
@@ -49,59 +52,42 @@ const SticNote = ({
                     {note.titulo || "Sin título"}
                 </h4>
                 <div className="sticknote-header-actions">
-                    {/* Botón para editar */}
-                    <button
-                        className="sticknote-btn sticknote-btn-edit"
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            onEdit(note);
-                        }}
-                        title="Editar nota"
-                    >
-                        ✎
-                    </button>
-
-                    {/* Botón para ocultar o reactivar según el estado */}
-                    {showingHidden && note.visible === 0 ? (
+                    {/* Botón para editar - Solo visible si soy el dueño */}
+                    {isOwner && (
                         <button
-                            className="sticknote-btn sticknote-btn-reactivate"
+                            className="sticknote-btn sticknote-btn-edit"
                             onClick={(e) => {
                                 e.stopPropagation();
-                                onToggleVisibility(
-                                    note.id_sticknote,
-                                    note.visible
-                                );
+                                onEdit(note);
                             }}
-                            title="Reactivar nota"
+                            title="Editar nota"
                         >
-                            ↩️
-                        </button>
-                    ) : (
-                        <button
-                            className="sticknote-btn sticknote-btn-hide"
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                onToggleVisibility(
-                                    note.id_sticknote,
-                                    note.visible
-                                );
-                            }}
-                            title="Ocultar nota"
-                        >
-                            👁
+                            ✎
                         </button>
                     )}
 
-                    {/* Botón para cambiar estado */}
+                    {/* Botón para fijar/desfijar (PIN) */}
+                    <button
+                        className={`sticknote-btn sticknote-btn-pin ${note.pinned ? 'pinned' : ''}`}
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            onTogglePin(note.id_sticknote, note.pinned);
+                        }}
+                        title={note.pinned ? "Desfijar nota" : "Fijar nota en la parte superior"}
+                    >
+                        {note.pinned ? "📌" : "📍"}
+                    </button>
+
+                    {/* Botón para cambiar estado - Desactivar o Reactivar */}
                     <button
                         className="sticknote-btn sticknote-btn-state"
                         onClick={(e) => {
                             e.stopPropagation();
                             onToggleState(note.id_sticknote, note.estado);
                         }}
-                        title="Desactivar nota"
+                        title={note.estado === 1 ? "Desactivar nota" : "Reactivar nota"}
                     >
-                        ✓
+                        {note.estado === 1 ? "✓" : "↩️"}
                     </button>
                 </div>
             </div>
@@ -111,10 +97,20 @@ const SticNote = ({
                 <p>{note.mensaje}</p>
             </div>
 
-            {/* Pie de página con información de creación */}
+            {/* Pie de página con información de creación y asignación */}
             <div className="sticknote-footer">
                 <small>
-                    {new Date(note.creado_en).toLocaleDateString()}
+                    <div className="sticknote-creator">
+                        👤 {adminsMap ? adminsMap[note.id_usuario_creador] || "Desconocido" : "Desconocido"}
+                    </div>
+                    {note.id_usuario_asignado && (
+                        <div className="sticknote-assigned">
+                            📌 {adminsMap ? adminsMap[note.id_usuario_asignado] || "Desconocido" : "Desconocido"}
+                        </div>
+                    )}
+                    <div className="sticknote-date">
+                        {new Date(note.creado_en).toLocaleDateString()}
+                    </div>
                 </small>
             </div>
         </div>

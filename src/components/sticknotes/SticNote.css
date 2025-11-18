@@ -24,6 +24,12 @@
     box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
 }
 
+/* Nota fijada - permanece fija en la pantalla */
+.sticknote[style*="position: fixed"] {
+    z-index: 9999;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
+}
+
 /* Encabezado de la nota */
 .sticknote-header {
     display: flex;
@@ -88,6 +94,15 @@
     background-color: rgba(76, 175, 80, 0.2);
 }
 
+.sticknote-btn-pin:hover {
+    background-color: rgba(255, 152, 0, 0.2);
+}
+
+.sticknote-btn-pin.pinned {
+    opacity: 1;
+    background-color: rgba(255, 152, 0, 0.3);
+}
+
 /* Contenido de la nota */
 .sticknote-content {
     flex: 1;
@@ -110,6 +125,24 @@
     border-top: 1px solid rgba(0, 0, 0, 0.1);
     font-size: 11px;
     color: #666;
+    text-align: left;
+}
+
+.sticknote-creator {
+    margin-bottom: 3px;
+    font-weight: 500;
+    color: #555;
+}
+
+.sticknote-assigned {
+    margin-bottom: 3px;
+    font-weight: 500;
+    color: #2196F3;
+}
+
+.sticknote-date {
+    margin-top: 3px;
+    color: #999;
     text-align: right;
 }
 

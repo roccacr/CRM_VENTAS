@@ -7,6 +7,8 @@ import {
     actualizarPosicionSticNotePorId,
     cambiarVisibilidadSticNotePorId,
     cambiarEstadoSticNotePorId,
+    actualizarPinSticNotePorId,
+    obtenerAdminsParaSticknotesThunk,
 } from "../../store/sticknotes/thunkSticknotes";
 import SticNote from "./SticNote";
 import ModalSticNote from "./ModalSticNote";
@@ -23,7 +25,9 @@ import "./SticNotesContainer.css";
  */
 const SticNotesContainer = ({ idinternoLead, transactionType, transactionId }) => {
     const dispatch = useDispatch();
+    const { idnetsuite_admin } = useSelector((state) => state.auth);
     const [sticNotes, setSticNotes] = useState([]);
+    const [adminsMap, setAdminsMap] = useState({}); // Mapeo de idnetsuite_admin -> nombre
     const [showModal, setShowModal] = useState(false);
     const [editingNote, setEditingNote] = useState(null);
     const [draggedNote, setDraggedNote] = useState(null);
@@ -32,9 +36,40 @@ const SticNotesContainer = ({ idinternoLead, transactionType, transactionId }) =
     const [hideAllNotes, setHideAllNotes] = useState(false); // Estado para ocultar todas visualmente
     const containerRef = useRef(null);
 
+    // Cargar admins para mapeo de nombres al montar el componente
+    useEffect(() => {
+        const loadAdminsMap = async () => {
+            try {
+                const result = await dispatch(obtenerAdminsParaSticknotesThunk(1));
+                let adminsData = [];
+                if (result && result.data) {
+                    if (result.data["0"] && Array.isArray(result.data["0"])) {
+                        adminsData = result.data["0"];
+                    } else if (Array.isArray(result.data)) {
+                        adminsData = result.data;
+                    } else if (result.data.data && Array.isArray(result.data.data)) {
+                        adminsData = result.data.data;
+                    }
+                }
+                // Crear mapeo de idnetsuite_admin -> name_admin
+                const map = {};
+                adminsData.forEach((admin) => {
+                    map[admin.idnetsuite_admin] = admin.name_admin;
+                });
+                setAdminsMap(map);
+            } catch (error) {
+                console.error("Error cargando admins map:", error);
+            }
+        };
+        loadAdminsMap();
+    }, [dispatch]);
+
     // Obtener notas al montar el componente o cuando cambien los IDs
     useEffect(() => {
-        fetchSticNotes();
+        if (transactionType && transactionId) {
+            console.log("📥 useEffect trigger:", { transactionType, transactionId });
+            fetchSticNotes();
+        }
     }, [transactionType, transactionId]);
 
     /**
@@ -42,16 +77,16 @@ const SticNotesContainer = ({ idinternoLead, transactionType, transactionId }) =
      */
     const fetchSticNotes = async () => {
         try {
-            console.log("🔄 Obteniendo sticky notes para:", { transactionType, transactionId });
-
             // Pequeño delay para asegurar que la BD ha procesado
             await new Promise(resolve => setTimeout(resolve, 300));
+
+            console.log("🔍 Buscando notas con:", { transactionType, transactionId });
 
             const result = await dispatch(
                 obtenerSticNotesPorTransaccion(transactionType, transactionId)
             );
 
-            console.log("📝 Resultado fetch sticky notes:", result);
+            console.log("📦 Respuesta del servidor:", result);
 
             // Navegar a través de la estructura anidada
             // result.data contiene { statusCode, message, data: { ok, statusCode, data: [...] } }
@@ -73,10 +108,11 @@ const SticNotesContainer = ({ idinternoLead, transactionType, transactionId }) =
                 }
             }
 
-            console.log("✅ Notas cargadas:", notesData.length, notesData);
+            console.log("✅ Notas obtenidas:", notesData.length, notesData);
+
             setSticNotes(notesData);
         } catch (error) {
-            console.error("❌ Error obteniendo sticky notes:", error);
+            console.error("❌ Error obteniendo notas:", error);
             setSticNotes([]);
         }
     };
@@ -120,16 +156,14 @@ const SticNotesContainer = ({ idinternoLead, transactionType, transactionId }) =
                         color_hex: noteData.color_hex,
                     })
                 );
+                handleCloseModal();
+                fetchSticNotes();
             } else {
                 // Crear nueva nota
-                // Calcular posición basada en el ancho de la pantalla
-                // La nota tiene ~300px de ancho
                 const posX = 1205;
                 const posY = 256;
 
-                console.log("📍 Posición inicial de nota:", { posX, posY });
-
-                await dispatch(
+                const result = await dispatch(
                     crearSticNotePorTransaccion({
                         idinterno_lead: idinternoLead,
                         transaction_type: transactionType,
@@ -139,13 +173,52 @@ const SticNotesContainer = ({ idinternoLead, transactionType, transactionId }) =
                         color_hex: noteData.color_hex,
                         pos_x: posX,
                         pos_y: posY,
+                        privado: noteData.privado || 0,
+                        id_usuario_asignado: noteData.id_usuario_asignado || null,
+                        prioridad: noteData.prioridad || "media",
+                        categoria: noteData.categoria || "general",
                     })
                 );
+
+                handleCloseModal();
+
+                // Crear una nota temporal para mostrar inmediatamente
+                if (result && result.data && result.data.id_sticknote) {
+                    const newNote = {
+                        id_sticknote: result.data.id_sticknote,
+                        idinterno_lead: idinternoLead,
+                        transaction_type: transactionType,
+                        transaction_id: transactionId,
+                        titulo: noteData.titulo,
+                        mensaje: noteData.mensaje,
+                        color_hex: noteData.color_hex,
+                        pos_x: posX,
+                        pos_y: posY,
+                        visible: 1,
+                        estado: 1,
+                        pinned: 0,
+                        id_usuario_creador: idnetsuite_admin,
+                        privado: noteData.privado || 0,
+                        id_usuario_asignado: noteData.id_usuario_asignado || null,
+                        prioridad: noteData.prioridad || "media",
+                        categoria: noteData.categoria || "general",
+                        creado_en: new Date().toISOString(),
+                        actualizado_en: new Date().toISOString(),
+                    };
+
+                    // Agregar la nota al estado local inmediatamente
+                    setSticNotes((prevNotes) => [newNote, ...prevNotes]);
+                }
+
+                // Luego recargar desde el servidor después de un delay
+                setTimeout(() => {
+                    fetchSticNotes();
+                }, 500);
             }
+        } catch (error) {
+            console.error("Error guardando nota:", error);
             handleCloseModal();
             fetchSticNotes();
-        } catch (error) {
-            // Error guardando nota
         }
     };
 
@@ -189,27 +262,39 @@ const SticNotesContainer = ({ idinternoLead, transactionType, transactionId }) =
     };
 
     /**
-     * Maneja el final del arrastre - envía la actualización al servidor
+     * Maneja el final del arrastre - envía la actualización al servidor después de 5 segundos
      */
     const handleMouseUp = async (e) => {
         if (!draggedNote) return;
 
-        const note = sticNotes.find((n) => n.id_sticknote === draggedNote);
-        if (note) {
-            try {
-                await dispatch(
-                    actualizarPosicionSticNotePorId({
-                        id_sticknote: draggedNote,
+        const noteId = draggedNote;
+        setDraggedNote(null);
+
+        // Esperar 5 segundos antes de enviar la actualización al servidor
+        setTimeout(async () => {
+            const note = sticNotes.find((n) => n.id_sticknote === noteId);
+            if (note) {
+                try {
+                    console.log("📤 Enviando posición actualizada:", {
+                        id_sticknote: noteId,
                         pos_x: note.pos_x,
                         pos_y: note.pos_y,
-                    })
-                );
-            } catch (error) {
-                // Error actualizando posición
-            }
-        }
+                    });
 
-        setDraggedNote(null);
+                    await dispatch(
+                        actualizarPosicionSticNotePorId({
+                            id_sticknote: noteId,
+                            pos_x: note.pos_x,
+                            pos_y: note.pos_y,
+                        })
+                    );
+
+                    console.log("✅ Posición actualizada correctamente");
+                } catch (error) {
+                    console.error("❌ Error actualizando posición:", error);
+                }
+            }
+        }, 5000); // 5 segundos de delay
     };
 
     /**
@@ -236,25 +321,41 @@ const SticNotesContainer = ({ idinternoLead, transactionType, transactionId }) =
             );
         } catch (error) {
             // Error cambiando visibilidad - recargar para restaurar estado
-            console.error("Error cambiando visibilidad:", error);
             fetchSticNotes();
         }
     };
 
     /**
      * Cambia el estado de una nota (activo/inactivo)
+     * Cuando desactivas (estado=0), también establece visible=0
+     * Cuando reactivas (estado=1), también establece visible=1
      */
     const handleToggleState = async (noteId, currentState) => {
         try {
+            const newState = currentState === 1 ? 0 : 1;
+
+            // Actualizar localmente primero para feedback inmediato
+            setSticNotes((prevNotes) =>
+                prevNotes.map((note) =>
+                    note.id_sticknote === noteId
+                        ? { ...note, estado: newState, visible: newState }
+                        : note
+                )
+            );
+
+            // Luego hacer la petición al servidor
             await dispatch(
                 cambiarEstadoSticNotePorId({
                     id_sticknote: noteId,
-                    estado: currentState === 1 ? 0 : 1,
+                    estado: newState,
+                    visible: newState,
                 })
             );
+
             fetchSticNotes();
         } catch (error) {
-            // Error cambiando estado
+            console.error("❌ Error cambiando estado:", error);
+            fetchSticNotes();
         }
     };
 
@@ -281,11 +382,61 @@ const SticNotesContainer = ({ idinternoLead, transactionType, transactionId }) =
     };
 
     /**
-     * Filtra las notas a mostrar según el estado
+     * Alterna el estado PIN de una nota (fijar en la parte superior)
+     */
+    const handleTogglePin = async (noteId, currentPinned) => {
+        try {
+            // Actualizar localmente primero para feedback inmediato
+            const newPinned = currentPinned ? 0 : 1;
+            setSticNotes((prevNotes) =>
+                prevNotes.map((note) =>
+                    note.id_sticknote === noteId
+                        ? { ...note, pinned: newPinned }
+                        : note
+                )
+            );
+
+            // Luego hacer la petición al servidor
+            await dispatch(
+                actualizarPinSticNotePorId({
+                    id_sticknote: noteId,
+                    pinned: newPinned,
+                })
+            );
+        } catch (error) {
+            // Error cambiando pin - recargar para restaurar estado
+            fetchSticNotes();
+        }
+    };
+
+    /**
+     * Verifica si el usuario puede ver una nota basado en permisos de privacidad
+     * Reglas:
+     * 1. Si la creo yo (id_usuario_creador === idnetsuite_admin) → siempre puedo verla
+     * 2. Si es privada (privado === 1) → solo puedo verla si la creo yo
+     * 3. Si no es privada → puedo verla siempre
+     */
+    const canViewNote = (note) => {
+        // Si soy el creador, siempre puedo verla
+        if (note.id_usuario_creador === idnetsuite_admin) {
+            return true;
+        }
+
+        // Si es privada y no soy el creador, no puedo verla
+        if (note.privado === 1) {
+            return false;
+        }
+
+        // Si no es privada, puedo verla
+        return true;
+    };
+
+    /**
+     * Filtra las notas a mostrar según el estado y permisos
      * Lógica:
      * - hideAllNotes: Oculta visualmente TODAS las notas (no modifica BD)
-     * - showHiddenNotes: MUESTRA ADEMÁS las notas archivadas (visible=0)
-     * - normal: Muestra SOLO las notas visibles (visible=1) y activas (estado=1)
+     * - showHiddenNotes: MUESTRA ADEMÁS las notas desactivadas (estado=0)
+     * - Validar permisos de privacidad (privado)
      */
     const notasAMostrar = sticNotes.filter((note) => {
         // Si ocultamos todas visualmente, no mostrar nada
@@ -293,19 +444,19 @@ const SticNotesContainer = ({ idinternoLead, transactionType, transactionId }) =
             return false;
         }
 
-        // Por defecto: mostrar las notas visibles y activas
-        if (note.estado !== 1) {
-            return false; // No mostrar notas inactivas nunca
+        // Validar permisos de privacidad
+        if (!canViewNote(note)) {
+            return false;
         }
 
-        // Si mostramos notas archivadas, mostrar TAMBIÉN las archivadas
+        // Si mostramos notas archivadas, mostrar TAMBIÉN las desactivadas
         if (showHiddenNotes) {
-            // Mostrar tanto visibles como archivadas
-            return note.visible === 1 || note.visible === 0;
+            // Mostrar tanto activas (estado=1) como desactivadas (estado=0)
+            return true;
         }
 
-        // Modo normal: mostrar SOLO las notas visibles
-        return note.visible === 1;
+        // Modo normal: mostrar SOLO las notas activas (estado=1)
+        return note.estado === 1;
     });
 
     return (
@@ -347,13 +498,13 @@ const SticNotesContainer = ({ idinternoLead, transactionType, transactionId }) =
                 </button>
             )}
 
-            {/* Botón para mostrar notas archivadas */}
+            {/* Botón para mostrar notas archivadas/desactivadas */}
             <button
                 className={`btn-show-hidden-sticknotes ${showHiddenNotes ? 'active' : ''}`}
                 onClick={handleShowHiddenNotes}
-                title="Muestra las notas que han sido archivadas"
+                title="Muestra las notas que han sido desactivadas"
             >
-                Archivadas ({sticNotes.filter(n => n.visible === 0).length})
+                Archivadas ({sticNotes.filter(n => n.estado === 0).length})
             </button>
 
             {/* Mostrar las notas filtradas */}
@@ -365,7 +516,10 @@ const SticNotesContainer = ({ idinternoLead, transactionType, transactionId }) =
                     onEdit={handleEditNote}
                     onToggleVisibility={handleToggleVisibility}
                     onToggleState={handleToggleState}
+                    onTogglePin={handleTogglePin}
                     showingHidden={showHiddenNotes}
+                    adminsMap={adminsMap}
+                    currentUserId={idnetsuite_admin}
                 />
             ))}
 

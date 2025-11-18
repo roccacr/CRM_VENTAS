@@ -10,6 +10,8 @@ import {
     cambiarVisibilidadSticNote,
     cambiarEstadoSticNote,
     obtenerSticNotePorId,
+    actualizarPinSticNote,
+    obtenerAdminsParaSticknotes,
 } from "./Api_provider_sticknotes";
 
 /**
@@ -135,6 +137,40 @@ export const obtenerSticNotePorIdThunk = (id_sticknote) => {
             return result;
         } catch (error) {
             console.error("Error en obtenerSticNotePorIdThunk:", error);
+            throw error;
+        }
+    };
+};
+
+/**
+ * Actualiza el estado PIN de un sticky note
+ * @param {Object} params - Parámetros de PIN
+ * @returns {Function} - Función asincrónica de Redux
+ */
+export const actualizarPinSticNotePorId = (params) => {
+    return async (dispatch, getState) => {
+        try {
+            const result = await actualizarPinSticNote(params);
+            return result;
+        } catch (error) {
+            console.error("Error en actualizarPinSticNotePorId:", error);
+            throw error;
+        }
+    };
+};
+
+/**
+ * Obtiene la lista de administradores para asignar notas
+ * @param {number} p_estado - Estado del administrador (1 = activo)
+ * @returns {Function} - Función asincrónica de Redux
+ */
+export const obtenerAdminsParaSticknotesThunk = (p_estado = 1) => {
+    return async (dispatch, getState) => {
+        try {
+            const result = await obtenerAdminsParaSticknotes({ p_estado });
+            return result;
+        } catch (error) {
+            console.error("Error en obtenerAdminsParaSticknotesThunk:", error);
             throw error;
         }
     };
