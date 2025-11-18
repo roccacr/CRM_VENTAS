@@ -14,13 +14,17 @@ const sticknotes = {};
  */
 sticknotes.obtenerSticNotesPorTransaccion = async ({ transaction_type, transaction_id, database }) => {
     try {
+        console.log("🔍 Buscando sticky notes con:", { transaction_type, transaction_id });
+
         const query = `
             SELECT * FROM crm_stick_notes
-            WHERE transaction_type = ? AND transaction_id = ? AND estado = 1
+            WHERE transaction_type = ? AND transaction_id = ?
             ORDER BY creado_en DESC
         `;
 
         const result = await executeQuery(query, [transaction_type, transaction_id], database);
+
+        console.log("✅ Sticky notes encontrados:", result.length, "notas");
 
         return {
             statusCode: 200,
@@ -28,6 +32,7 @@ sticknotes.obtenerSticNotesPorTransaccion = async ({ transaction_type, transacti
             data: result,
         };
     } catch (error) {
+        console.error("❌ Error en obtenerSticNotesPorTransaccion:", error.message, error.sql);
         return {
             statusCode: 500,
             message: "Error al obtener sticky notes",
@@ -48,6 +53,10 @@ sticknotes.obtenerSticNotesPorTransaccion = async ({ transaction_type, transacti
  * @param {number} params.pos_x - Posición X en pantalla
  * @param {number} params.pos_y - Posición Y en pantalla
  * @param {number} params.id_usuario_creador - ID del usuario que crea la nota
+ * @param {number} params.privado - Si es privado (0/1)
+ * @param {number} params.id_usuario_asignado - ID del usuario asignado
+ * @param {string} params.prioridad - Prioridad (baja, media, alta)
+ * @param {string} params.categoria - Categoría de la nota
  * @param {Object} params.database - Conexión a la base de datos
  * @returns {Promise<Object>} - Resultado de la inserción
  */
@@ -62,6 +71,10 @@ sticknotes.crearSticNote = async ({
     pos_x,
     pos_y,
     id_usuario_creador,
+    privado,
+    id_usuario_asignado,
+    prioridad,
+    categoria,
     database,
 }) => {
     const leadId = idinterno_lead || id_lead;
@@ -76,6 +89,10 @@ sticknotes.crearSticNote = async ({
         pos_x,
         pos_y,
         id_usuario_creador,
+        privado,
+        id_usuario_asignado,
+        prioridad,
+        categoria,
     });
 
     try {
@@ -83,8 +100,9 @@ sticknotes.crearSticNote = async ({
             INSERT INTO crm_stick_notes (
                 idinterno_lead, transaction_type, transaction_id, titulo, mensaje,
                 color_hex, pos_x, pos_y, visible, estado, id_usuario_creador,
+                privado, id_usuario_asignado, prioridad, categoria, pinned,
                 creado_en, actualizado_en
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, 1, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, 1, ?, ?, ?, ?, ?, 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
         `;
 
         const result = await executeQuery(
@@ -95,10 +113,14 @@ sticknotes.crearSticNote = async ({
                 transaction_id,
                 titulo,
                 mensaje,
-                color_hex || "#FFFF88",
+                color_hex || "#C8E6C9",
                 pos_x || 0,
                 pos_y || 0,
                 id_usuario_creador,
+                privado || 0,
+                id_usuario_asignado || null,
+                prioridad || "media",
+                categoria || "general",
             ],
             database
         );
@@ -251,26 +273,34 @@ sticknotes.cambiarVisibilidadSticNote = async ({
  * @param {Object} params - Parámetros de la solicitud
  * @param {number} params.id_sticknote - ID del sticky note
  * @param {number} params.estado - Nuevo estado (0 o 1)
+ * @param {number} params.visible - Visibilidad (0 o 1) - Opcional
  * @param {Object} params.database - Conexión a la base de datos
  * @returns {Promise<Object>} - Resultado de la actualización
  */
 sticknotes.cambiarEstadoSticNote = async ({
     id_sticknote,
     estado,
+    visible,
     database,
 }) => {
     try {
-        const query = `
+        // Construir query dinámicamente según si se proporciona visible
+        let query = `
             UPDATE crm_stick_notes
-            SET estado = ?, actualizado_en = CURRENT_TIMESTAMP
-            WHERE id_sticknote = ?
-        `;
+            SET estado = ?`;
 
-        const result = await executeQuery(
-            query,
-            [estado, id_sticknote],
-            database
-        );
+        const params = [estado];
+
+        if (visible !== undefined) {
+            query += `, visible = ?`;
+            params.push(visible);
+        }
+
+        query += `, actualizado_en = CURRENT_TIMESTAMP
+            WHERE id_sticknote = ?`;
+        params.push(id_sticknote);
+
+        const result = await executeQuery(query, params, database);
 
         return {
             statusCode: 200,
