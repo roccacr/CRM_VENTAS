@@ -35,8 +35,6 @@ var accountSettings = {
  */
 ordenVenta.enlistarOrdenesVenta = async (dataParams) => {
 
-    console.clear();
-    console.log("dataParams", dataParams);
 
     const conditions = [];
     const isAdmin = dataParams.rol_admin === "1";
@@ -252,7 +250,7 @@ ordenVenta.enlistarOrdenesVenta = async (dataParams) => {
 
     const resultados = await executeQuery(query, [], dataParams.database);
 
-    console.log("resultados", resultados);
+
 
     return resultados;
 };

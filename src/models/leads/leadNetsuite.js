@@ -392,7 +392,6 @@ const buildLeadInfoInsertQuery = (allFields, idLead) => {
  */
 leadNetsuite.update_LeadInformations = async (dataParams, database) => {
     try {
-        console.log("dataParams buildBasicLeadFields: ", dataParams);
 
         // Combinar todos los campos en un solo objeto
         const allFields = {
@@ -424,7 +423,6 @@ leadNetsuite.eliminar_LeadStatus = async (dataParams, database) => {
             throw new Error('No se pudo eliminar el registro de info_extra_lead');
         }
 
-        console.log(`Registro eliminado exitosamente para id_lead_fk: ${dataParams.id}`);
         return result;
     } catch (error) {
         console.error('Error eliminando información del lead:', error);

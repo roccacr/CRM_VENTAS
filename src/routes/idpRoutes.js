@@ -31,6 +31,8 @@ const campanas = require("../models/campanas/campanas");
 
 const partner = require("../models/partner/partner");
 
+const sticknotes = require("../models/sticknotes/sticknotes");
+
 // Cargar variables de entorno al iniciar la aplicación
 dotenv.config();
 
@@ -283,10 +285,23 @@ module.exports = function (app) {
         },
         {
             category: "partner", // Categoría: Gestión de buscar datos en la base de datos
-            model: partner, 
+            model: partner,
             routes: [
                 { path: "/partner/add/crm", method: "crearpartner" }, // buscador general
                 { path: "/partner/edit/crm", method: "editarpartner" }, // buscador general
+            ],
+        },
+        {
+            category: "sticknotes", // Categoría: Gestión de sticky notes
+            model: sticknotes,
+            routes: [
+                { path: "/sticknotes/obtener", method: "obtenerSticNotesPorTransaccion" }, // Obtener sticky notes por transacción
+                { path: "/sticknotes/crear", method: "crearSticNote" }, // Crear nuevo sticky note
+                { path: "/sticknotes/editar", method: "editarSticNote" }, // Editar sticky note
+                { path: "/sticknotes/posicion", method: "actualizarPosicionSticNote" }, // Actualizar posición
+                { path: "/sticknotes/visibilidad", method: "cambiarVisibilidadSticNote" }, // Cambiar visibilidad
+                { path: "/sticknotes/estado", method: "cambiarEstadoSticNote" }, // Cambiar estado
+                { path: "/sticknotes/obtener-por-id", method: "obtenerSticNotePorId" }, // Obtener sticky note específico
             ],
         },
     ];
