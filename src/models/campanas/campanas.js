@@ -10,23 +10,25 @@ const campana = {}; // Objeto para agrupar todas las funciones relacionadas con 
  * @returns {Promise<Object>} - Resultado de la creación de la campaña
  */
 campana.crearCampana = async (dataParams) => {
-    return new Promise((resolve, reject) => {
-        try {
-            executeStoredProcedure(
-                "SP_CREAR_CAMPANAS_NETSUITE", // Nombre del procedimiento almacenado que recupera los banners.
-                [dataParams.id, dataParams.titulo], // Parámetros que identifican el rol y el ID del usuario.
-                "produccion", // Nombre de la base de datos a utilizar.
-            );
-            return "ok"
-        } catch (error) {
-            console.error("❌ Error al crear campaña:", error);
-            reject({
-                statusCode: 500,
-                message: "Error al crear la campaña",
-                error: error.message
-            });
-        }
-    });
+    try {
+        const result = await executeStoredProcedure(
+            "SP_CREAR_CAMPANAS_NETSUITE", // Nombre del procedimiento almacenado que recupera los banners.
+            [dataParams.id, dataParams.titulo], // Parámetros que identifican el rol y el ID del usuario.
+            "produccion", // Nombre de la base de datos a utilizar.
+        );
+        return {
+            status: "ok",
+            message: "Campaña creada exitosamente",
+            ...result
+        };
+    } catch (error) {
+        console.error("❌ Error al crear campaña:", error);
+        throw {
+            statusCode: 500,
+            message: "Error al crear la campaña",
+            error: error.message
+        };
+    }
 };
 campana.editarCampana = async (dataParams) => {
     try {
@@ -35,17 +37,36 @@ campana.editarCampana = async (dataParams) => {
 
         console.log("campanaExistente", campanaExistente);
 
-        // Ejecutar actualización
-        await executeStoredProcedure(
-            "SP_ACTUALIZAR_NOMBRE_CAMPANA_NETSUITE",
-            [
-                parseInt(dataParams.id), 
-                dataParams.titulo || "",
-            ],
-            "produccion"
-        );
+        // Verificar si la campaña existe (el resultado está en el índice 0 del array)
+        const existeCampana = campanaExistente[0] && Array.isArray(campanaExistente[0]) && campanaExistente[0].length > 0;
 
-        return { status: "ok" };
+        if (existeCampana) {
+            // Si existe, actualizar la campaña
+            const result = await executeStoredProcedure(
+                "SP_ACTUALIZAR_NOMBRE_CAMPANA_NETSUITE",
+                [
+                    parseInt(dataParams.id), 
+                    dataParams.titulo || "",
+                ],
+                "produccion"
+            );
+
+            return {
+                status: "ok",
+                message: "Campaña actualizada exitosamente",
+                ...result
+            };
+        } else {
+            // Si no existe, crear la campaña
+            console.log("Campaña no encontrada, creando nueva campaña...");
+            const result = await campana.crearCampana(dataParams);
+            
+            return {
+                status: "ok",
+                message: "Campaña creada exitosamente",
+                ...result
+            };
+        }
 
     } catch (error) {
         console.error("❌ Error al editar campaña:", error);
