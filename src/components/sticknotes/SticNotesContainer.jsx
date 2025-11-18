@@ -384,14 +384,14 @@ const SticNotesContainer = ({ idinternoLead, transactionType, transactionId }) =
     /**
      * Alterna el estado PIN de una nota (fijar en la parte superior)
      */
-    const handleTogglePin = async (noteId, currentPinned) => {
+    const handleTogglePin = async (noteId, currentPin) => {
         try {
             // Actualizar localmente primero para feedback inmediato
-            const newPinned = currentPinned ? 0 : 1;
+            const newPin = currentPin ? 0 : 1;
             setSticNotes((prevNotes) =>
                 prevNotes.map((note) =>
                     note.id_sticknote === noteId
-                        ? { ...note, pinned: newPinned }
+                        ? { ...note, pin: newPin }
                         : note
                 )
             );
@@ -400,7 +400,7 @@ const SticNotesContainer = ({ idinternoLead, transactionType, transactionId }) =
             await dispatch(
                 actualizarPinSticNotePorId({
                     id_sticknote: noteId,
-                    pinned: newPinned,
+                    pin: newPin,
                 })
             );
         } catch (error) {

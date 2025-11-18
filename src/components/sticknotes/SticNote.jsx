@@ -37,7 +37,7 @@ const SticNote = ({
         backgroundColor: note.color_hex || "#FFFF88",
         left: `${note.pos_x}px`,
         top: `${note.pos_y}px`,
-        position: note.pinned ? "fixed" : "absolute",
+        position: note.pin ? "fixed" : "absolute",
     };
 
     return (
@@ -68,14 +68,14 @@ const SticNote = ({
 
                     {/* Botón para fijar/desfijar (PIN) */}
                     <button
-                        className={`sticknote-btn sticknote-btn-pin ${note.pinned ? 'pinned' : ''}`}
+                        className={`sticknote-btn sticknote-btn-pin ${note.pin ? 'pinned' : ''}`}
                         onClick={(e) => {
                             e.stopPropagation();
-                            onTogglePin(note.id_sticknote, note.pinned);
+                            onTogglePin(note.id_sticknote, note.pin);
                         }}
-                        title={note.pinned ? "Desfijar nota" : "Fijar nota en la parte superior"}
+                        title={note.pin ? "Desfijar nota" : "Fijar nota en la parte superior"}
                     >
-                        {note.pinned ? "📌" : "📍"}
+                        {note.pin ? "📌" : "📍"}
                     </button>
 
                     {/* Botón para cambiar estado - Desactivar o Reactivar */}

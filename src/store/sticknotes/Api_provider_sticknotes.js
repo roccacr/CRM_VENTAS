@@ -196,17 +196,17 @@ export const obtenerSticNotePorId = async ({ id_sticknote }) => {
  * Actualiza el estado PIN de un sticky note
  * @param {Object} params - Parámetros de la solicitud
  * @param {number} params.id_sticknote - ID del sticky note
- * @param {number} params.pinned - Nuevo estado PIN (0 o 1)
+ * @param {number} params.pin - Nuevo estado PIN (0 o 1)
  * @returns {Promise} - Respuesta de la API
  */
 export const actualizarPinSticNote = async ({
     id_sticknote,
-    pinned,
+    pin,
 }) => {
     const requestData = {
         ...commonRequestData,
         id_sticknote,
-        pinned,
+        pin,
     };
 
     const response = await fetchData("sticknotes/pin", requestData);
