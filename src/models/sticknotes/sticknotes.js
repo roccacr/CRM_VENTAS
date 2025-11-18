@@ -24,12 +24,15 @@ sticknotes.obtenerSticNotesPorTransaccion = async ({ transaction_type, transacti
 
         const result = await executeQuery(query, [transaction_type, transaction_id], database);
 
-        console.log("✅ Sticky notes encontrados:", result.length, "notas");
+        // Asegurar que result es un array
+        const notesData = Array.isArray(result) ? result : (result && result.data ? result.data : []);
+
+        console.log("✅ Sticky notes encontrados:", notesData.length, "notas");
 
         return {
             statusCode: 200,
             message: "Sticky notes obtenidos correctamente",
-            data: result,
+            data: notesData,
         };
     } catch (error) {
         console.error("❌ Error en obtenerSticNotesPorTransaccion:", error.message, error.sql);
@@ -100,9 +103,9 @@ sticknotes.crearSticNote = async ({
             INSERT INTO crm_stick_notes (
                 idinterno_lead, transaction_type, transaction_id, titulo, mensaje,
                 color_hex, pos_x, pos_y, visible, estado, id_usuario_creador,
-                privado, id_usuario_asignado, prioridad, categoria, pinned,
+                privado, id_usuario_asignado, prioridad, categoria,
                 creado_en, actualizado_en
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, 1, ?, ?, ?, ?, ?, 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, 1, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
         `;
 
         const result = await executeQuery(
@@ -348,6 +351,46 @@ sticknotes.obtenerSticNotePorId = async ({
         return {
             statusCode: 500,
             message: "Error al obtener sticky note",
+            error: error.message,
+        };
+    }
+};
+
+/**
+ * Actualiza el estado PIN de un sticky note (fijar en la parte superior)
+ * @param {Object} params - Parámetros de la solicitud
+ * @param {number} params.id_sticknote - ID del sticky note
+ * @param {number} params.pin - Nuevo estado PIN (0 o 1)
+ * @param {Object} params.database - Conexión a la base de datos
+ * @returns {Promise<Object>} - Resultado de la actualización
+ */
+sticknotes.actualizarPinSticNote = async ({
+    id_sticknote,
+    pin,
+    database,
+}) => {
+    try {
+        const query = `
+            UPDATE crm_stick_notes
+            SET pin = ?, actualizado_en = CURRENT_TIMESTAMP
+            WHERE id_sticknote = ?
+        `;
+
+        const result = await executeQuery(
+            query,
+            [pin, id_sticknote],
+            database
+        );
+
+        return {
+            statusCode: 200,
+            message: "PIN actualizado correctamente",
+            data: result,
+        };
+    } catch (error) {
+        return {
+            statusCode: 500,
+            message: "Error al actualizar el PIN",
             error: error.message,
         };
     }
