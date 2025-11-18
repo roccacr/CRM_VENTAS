@@ -28,74 +28,24 @@ campana.crearCampana = async (dataParams) => {
     });
 };
 campana.editarCampana = async (dataParams) => {
-    return new Promise(async (resolve, reject) => {
+    return new Promise((resolve, reject) => {
         try {
-            // Primero consultar si la campaña existe
-            campana.consultarCampanas({ id: dataParams.id })
-                .then((result) => {
-                    // Si existe, entonces editar
-                    if (result && result.length > 0) {
-                        handleDatabaseOperation(
-                            "SP_ACTUALIZAR_NOMBRE_CAMPANA_NETSUITE",
-                            [
-                                parseInt(dataParams.id),  // ID de la campaña a actualizar
-                                dataParams.titulo || "",  // Nuevo nombre de la campaña
-                            ],
-                            "produccion",
-                            (error, updateResult) => {
-                                if (error) {
-                                    reject({
-                                        statusCode: 500,
-                                        message: "Error al editar la campaña",
-                                        error: error.message
-                                    });
-                                } else {
-                                    resolve({
-                                        statusCode: 200,
-                                        message: "Campaña actualizada exitosamente",
-                                        action: "update"
-                                    });
-                                }
-                            }
-                        );
-                    } else {
-                        // Si no existe, entonces crear
-                        handleDatabaseOperation(
-                            "SP_CREAR_CAMPANAS_NETSUITE",
-                            [
-                                parseInt(dataParams.id),  // ID de la nueva campaña
-                                dataParams.titulo || ""   // Nombre de la campaña
-                            ],
-                            "produccion",
-                            (error, createResult) => {
-                                if (error) {
-                                    reject({
-                                        statusCode: 500,
-                                        message: "Error al crear la campaña",
-                                        error: error.message
-                                    });
-                                } else {
-                                    resolve({
-                                        statusCode: 201,
-                                        message: "Campaña creada exitosamente",
-                                        action: "create"
-                                    });
-                                }
-                            }
-                        );
-                    }
-                })
-                .catch((error) => {
-                    reject({
-                        statusCode: 500,
-                        message: "Error al consultar la campaña",
-                        error: error.message
-                    });
-                });
+
+            executeStoredProcedure(
+                "SP_ACTUALIZAR_NOMBRE_CAMPANA_NETSUITE",
+                [
+                    parseInt(dataParams.id),  // ID de la campaña a actualizar
+                    dataParams.titulo || "",  // Nuevo nombre de la campaña
+
+                ],
+                "produccion"
+            );
+            return "ok"
         } catch (error) {
+            console.error("❌ Error al editar campaña:", error);
             reject({
                 statusCode: 500,
-                message: "Error al procesar la campaña",
+                message: "Error al editar la campaña",
                 error: error.message
             });
         }
