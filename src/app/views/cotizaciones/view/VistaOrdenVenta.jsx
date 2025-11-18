@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { ButtonActions } from "../../../components/buttonAccions/buttonAccions";
 import Swal from "sweetalert2";
 import { useDispatch, useSelector } from "react-redux";
@@ -23,6 +23,7 @@ import { useNavigate } from "react-router-dom";
 import { ModalOrdenVenta } from "../../estimacion/ModalOrdenVenta";
 import { OneDrive } from "./OneDrive";
 import { Box, Typography, Paper } from "@mui/material";
+import { keyframes } from "@mui/system";
 
 /**
  * Utility Functions
@@ -623,9 +624,78 @@ const getProgressColor = (percentage) => {
  * @param {Object} props - Component properties
  * @param {Object} props.validarOrdenVenta - Order validation data
  * @param {Object} props.datosOrdenVenta - Order data for additional validations
+ * @param {boolean} props.isLoading - Loading state for animation
  */
-const OrderProgress = ({ validarOrdenVenta, datosOrdenVenta }) => {
-   const { percentage, activeStep, steps } = calculateProgress(validarOrdenVenta, datosOrdenVenta);
+// Animación sutil para el efecto de preload
+const shimmer = keyframes`
+  0% {
+    opacity: 0.4;
+  }
+  50% {
+    opacity: 0.7;
+  }
+  100% {
+    opacity: 0.4;
+  }
+`;
+
+// Pasos para la animación de carga (definidos fuera del componente para evitar recreación)
+// Usando colores grises sutiles durante la carga
+const loadingSteps = [
+   { label: "OV Creada", percentage: 10, color: "#bdbdbd" },
+   { label: "OV con Reserva", percentage: 20, color: "#bdbdbd" },
+   { label: "OV con Cierre Firmado", percentage: 30, color: "#bdbdbd" },
+   { label: "Aprobación Jefe Ventas", percentage: 50, color: "#bdbdbd" },
+   { label: "Aprobación RDR", percentage: 70, color: "#bdbdbd" },
+   { label: "Aprobación Formalizaciones", percentage: 80, color: "#bdbdbd" },
+   { label: "Contrato Firmado", percentage: 100, color: "#bdbdbd" },
+];
+
+const OrderProgress = ({ validarOrdenVenta, datosOrdenVenta, isLoading = false }) => {
+   const [loadingStep, setLoadingStep] = useState(0);
+   const animationRef = useRef(null);
+
+   // Animación de carga progresiva
+   useEffect(() => {
+      if (isLoading) {
+         setLoadingStep(0);
+         let currentStep = 0;
+         
+         const animate = () => {
+            if (currentStep < loadingSteps.length) {
+               setLoadingStep(currentStep);
+               currentStep++;
+               animationRef.current = setTimeout(animate, 400); // 400ms por paso
+            }
+         };
+         
+         animate();
+      } else {
+         if (animationRef.current) {
+            clearTimeout(animationRef.current);
+         }
+      }
+
+      return () => {
+         if (animationRef.current) {
+            clearTimeout(animationRef.current);
+         }
+      };
+   }, [isLoading]);
+
+   // Usar pasos de carga o datos reales
+   const progressData = isLoading 
+      ? { 
+           percentage: loadingSteps[loadingStep]?.percentage || 10, 
+           activeStep: loadingStep, 
+           steps: loadingSteps.map((step, index) => ({
+              ...step,
+              completed: index <= loadingStep
+           }))
+        }
+      : calculateProgress(validarOrdenVenta, datosOrdenVenta);
+   
+   const { percentage, activeStep, steps } = progressData;
 
    return (
       <Paper elevation={3} sx={{ p: 3, mt: 2, mb: 2 }}>
@@ -668,21 +738,39 @@ const OrderProgress = ({ validarOrdenVenta, datosOrdenVenta }) => {
                               width: { xs: 36, sm: 44, md: 48 },
                               height: { xs: 36, sm: 44, md: 48 },
                               borderRadius: "50%",
-                              backgroundColor: isCompleted ? step.color : "#e0e0e0",
+                              backgroundColor: isLoading 
+                                 ? "#bdbdbd" 
+                                 : (isCompleted ? step.color : "#e0e0e0"),
                               display: "flex",
                               alignItems: "center",
                               justifyContent: "center",
                               zIndex: 2,
-                              border: isActive ? `3px solid ${step.color}` : "none",
-                              boxShadow: isCompleted ? `0 0 12px ${step.color}50` : "none",
-                              transition: "all 0.3s ease",
+                              border: isLoading 
+                                 ? "none" 
+                                 : (isActive ? `3px solid ${step.color}` : "none"),
+                              boxShadow: isLoading 
+                                 ? "none" 
+                                 : (isCompleted ? `0 0 12px ${step.color}50` : "none"),
+                              transition: "all 0.4s ease",
                               mb: 1,
                               position: "relative",
+                              ...(isLoading && index === loadingStep && {
+                                 animation: `${shimmer} 1.5s ease-in-out infinite`,
+                                 opacity: 0.7,
+                              }),
+                              ...(isLoading && index < loadingStep && {
+                                 opacity: 0.5,
+                              }),
+                              ...(isLoading && index > loadingStep && {
+                                 opacity: 0.3,
+                              }),
                            }}
                         >
                            <Typography
                               sx={{
-                                 color: isCompleted ? "white" : "#9e9e9e",
+                                 color: isLoading 
+                                    ? "#757575" 
+                                    : (isCompleted ? "white" : "#9e9e9e"),
                                  fontSize: { xs: "0.65rem", sm: "0.75rem", md: "0.85rem" },
                                  fontWeight: "bold",
                                  lineHeight: 1,
@@ -697,8 +785,12 @@ const OrderProgress = ({ validarOrdenVenta, datosOrdenVenta }) => {
                            <Typography
                               variant="caption"
                               sx={{
-                                 fontWeight: isCompleted ? "bold" : "normal",
-                                 color: isCompleted ? step.color : "#9e9e9e",
+                                 fontWeight: isLoading 
+                                    ? "normal" 
+                                    : (isCompleted ? "bold" : "normal"),
+                                 color: isLoading 
+                                    ? "#9e9e9e" 
+                                    : (isCompleted ? step.color : "#9e9e9e"),
                                  fontSize: { xs: "0.6rem", sm: "0.7rem", md: "0.75rem" },
                                  lineHeight: 1.2,
                                  display: "block",
@@ -721,8 +813,21 @@ const OrderProgress = ({ validarOrdenVenta, datosOrdenVenta }) => {
                                     ? (nextStepCompleted ? steps[index + 1].color : step.color)
                                     : "#e0e0e0",
                                  zIndex: 1,
-                                 transition: "background-color 0.3s ease",
+                                 transition: "all 0.4s ease",
                                  display: { xs: "none", md: "block" },
+                                 ...(isLoading && index === loadingStep && {
+                                    backgroundColor: "#d0d0d0",
+                                    animation: `${shimmer} 1.5s ease-in-out infinite`,
+                                    opacity: 0.6,
+                                 }),
+                                 ...(isLoading && index < loadingStep && {
+                                    backgroundColor: "#c0c0c0",
+                                    opacity: 0.4,
+                                 }),
+                                 ...(isLoading && index > loadingStep && {
+                                    backgroundColor: "#e0e0e0",
+                                    opacity: 0.3,
+                                 }),
                               }}
                            />
                         )}
@@ -940,6 +1045,7 @@ export const VistaOrdenVenta = () => {
    const [leadDetails, setLeadDetails] = useState({});
    const [datosOrdenVenta, setDatosOrdenVenta] = useState({});
    const [isModalOpen, setIsModalOpen] = useState(false);
+   const [isLoading, setIsLoading] = useState(true);
 
    const [validarOrdenVenta, setValidarOrdenVenta] = useState({});
 
@@ -957,6 +1063,7 @@ export const VistaOrdenVenta = () => {
    // Initial data fetch
    useEffect(() => {
       const loadInitialData = async () => {
+         setIsLoading(true);
          showLoadingIndicator();
          const leadId = getQueryParam("data");
          const transaccion = getQueryParam("data2");
@@ -972,6 +1079,10 @@ export const VistaOrdenVenta = () => {
             });
          }
          Swal.close();
+         // Esperar un poco para que se complete la animación antes de mostrar los datos reales
+         setTimeout(() => {
+            setIsLoading(false);
+         }, 500);
       };
 
       loadInitialData();
@@ -1023,7 +1134,11 @@ export const VistaOrdenVenta = () => {
                   </div>
                   <div className="card-body">
                      {/* Progress Component */}
-                     <OrderProgress validarOrdenVenta={validarOrdenVenta} datosOrdenVenta={datosOrdenVenta} />
+                     <OrderProgress 
+                        validarOrdenVenta={validarOrdenVenta} 
+                        datosOrdenVenta={datosOrdenVenta} 
+                        isLoading={isLoading}
+                     />
                      
                      <PrimaryInformation datosOrdenVenta={datosOrdenVenta} />
                      <br />
