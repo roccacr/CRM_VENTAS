@@ -1,28 +1,31 @@
 const { executeStoredProcedure, handleDatabaseOperation } = require("../conectionPool/conectionPool");
 
-const campana = {}; // Objeto para agrupar todas las funciones relacionadas con 'campana'.
-
+/**
+ * Módulo para gestionar campañas de marketing sincronizadas desde NetSuite
+ */
+const campana = {};
 
 /**
- * Crea una nueva campaña desde la integración de NetSuite.
- * @async
- * @param {Object} dataParams - Objeto que contiene los parámetros de la campaña
- * @returns {Promise<Object>} - Resultado de la creación de la campaña
+ * Crea una nueva campaña en la base de datos
+ * @param {Object} dataParams - Datos de la campaña
+ * @param {number|string} dataParams.id - ID de la campaña en NetSuite
+ * @param {string} dataParams.titulo - Nombre de la campaña
+ * @returns {Promise<Object>} Resultado de la operación
  */
 campana.crearCampana = async (dataParams) => {
     try {
         const result = await executeStoredProcedure(
-            "SP_CREAR_CAMPANAS_NETSUITE", // Nombre del procedimiento almacenado que recupera los banners.
-            [dataParams.id, dataParams.titulo], // Parámetros que identifican el rol y el ID del usuario.
-            "produccion", // Nombre de la base de datos a utilizar.
+            "SP_CREAR_CAMPANAS_NETSUITE",
+            [dataParams.id, dataParams.titulo],
+            "produccion"
         );
+
         return {
             status: "ok",
             message: "Campaña creada exitosamente",
             ...result
         };
     } catch (error) {
-        console.error("❌ Error al crear campaña:", error);
         throw {
             statusCode: 500,
             message: "Error al crear la campaña",
@@ -30,18 +33,26 @@ campana.crearCampana = async (dataParams) => {
         };
     }
 };
+
+/**
+ * Edita una campaña existente o la crea si no existe
+ * @param {Object} dataParams - Datos de la campaña
+ * @param {number|string} dataParams.id - ID de la campaña en NetSuite
+ * @param {string} [dataParams.titulo=""] - Nombre de la campaña
+ * @returns {Promise<Object>} Resultado de la operación
+ */
 campana.editarCampana = async (dataParams) => {
     try {
-        // Validar existencia de la campaña
+        // Consulta si la campaña existe
         const campanaExistente = await campana.consultarCampanas(dataParams.id);
 
-        console.log("campanaExistente", campanaExistente);
-
-        // Verificar si la campaña existe (el resultado está en el índice 0 del array)
-        const existeCampana = campanaExistente[0] && Array.isArray(campanaExistente[0]) && campanaExistente[0].length > 0;
+        // Verifica si encontró resultados (el array en el índice 0 tiene elementos)
+        const existeCampana = campanaExistente[0] && 
+                             Array.isArray(campanaExistente[0]) && 
+                             campanaExistente[0].length > 0;
 
         if (existeCampana) {
-            // Si existe, actualizar la campaña
+            // Si existe, actualiza el nombre
             const result = await executeStoredProcedure(
                 "SP_ACTUALIZAR_NOMBRE_CAMPANA_NETSUITE",
                 [
@@ -57,8 +68,7 @@ campana.editarCampana = async (dataParams) => {
                 ...result
             };
         } else {
-            // Si no existe, crear la campaña
-            console.log("Campaña no encontrada, creando nueva campaña...");
+            // Si no existe, crea una nueva
             const result = await campana.crearCampana(dataParams);
             
             return {
@@ -69,8 +79,6 @@ campana.editarCampana = async (dataParams) => {
         }
 
     } catch (error) {
-        console.error("❌ Error al editar campaña:", error);
-
         throw {
             statusCode: 500,
             message: "Error al editar la campaña",
@@ -79,20 +87,21 @@ campana.editarCampana = async (dataParams) => {
     }
 };
 
-
+/**
+ * Consulta una campaña por su ID de NetSuite
+ * @param {number|string} id - ID de la campaña en NetSuite
+ * @returns {Promise<Object>} Resultado de la consulta (resultado[0] contiene los registros)
+ */
 campana.consultarCampanas = async (id) => {
     try {
         const result = await executeStoredProcedure(
             "SP_CONSULTAR_CAMPANAS_NETSUITE",
-            [
-                parseInt(id), // ID Netsuite de la campaña
-            ],
+            [parseInt(id)],
             "produccion"
         );
 
         return result; 
     } catch (error) {
-        console.error("❌ Error al consultar campaña:", error);
         throw {
             statusCode: 500,
             message: "Error al consultar la campaña",
@@ -101,5 +110,4 @@ campana.consultarCampanas = async (id) => {
     }
 };
 
-
-module.exports = campana; // Exporta el objeto 'campana' que contiene todas las funciones definidas.
+module.exports = campana;
