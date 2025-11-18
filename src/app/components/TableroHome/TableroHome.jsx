@@ -1,9 +1,54 @@
 import { NavLink } from "react-router-dom";
 
-export const TableroHome = ({ image, icons, nombre, cantidad, url, outlookCount, hasOutlook }) => {
+export const TableroHome = ({ image, icons, nombre, cantidad, url, outlookCount, hasOutlook, alertStatus }) => {
+    // Función para obtener los estilos según el estado de alerta
+    const getAlertStyles = () => {
+        if (!alertStatus) return {};
+        
+        switch (alertStatus) {
+            case "ok":
+                return {
+                    borderLeft: "4px solid #28a745", // Verde
+                    backgroundColor: "#f8fff9",
+                };
+            case "warning":
+                return {
+                    borderLeft: "4px solid #dc3545", // Rojo
+                    backgroundColor: "#fff5f5",
+                };
+            case "alert":
+                return {
+                    borderLeft: "4px solid #c82333", // Rojo más intenso
+                    backgroundColor: "#ffe6e6",
+                    boxShadow: "0 0 10px rgba(220, 53, 69, 0.3)", // Sombra roja para destacar
+                };
+            default:
+                return {};
+        }
+    };
+
+    // Función para obtener el color del número según el estado de alerta
+    const getQuantityColor = () => {
+        if (!alertStatus) return "inherit";
+        
+        switch (alertStatus) {
+            case "ok":
+                return "#28a745"; // Verde
+            case "warning":
+                return "#dc3545"; // Rojo
+            case "alert":
+                return "#c82333"; // Rojo más intenso
+            default:
+                return "inherit";
+        }
+    };
+
+    const alertStyles = getAlertStyles();
+    const quantityColor = getQuantityColor();
+
     return (
         <div className="col-md-12 col-xxl-4">
-            <div className="card statistics-card-1">
+            <div className="card statistics-card-1" style={alertStyles}>
                 <div className="card-body">
                     <img src={image} alt="img" className="img-fluid img-bg" />
                     <div className="d-flex align-items-center">
@@ -18,7 +63,7 @@ export const TableroHome = ({ image, icons, nombre, cantidad, url, outlookCount,
                                     <div className="d-flex align-items-center gap-3">
                                         <a href={url} style={{ textDecoration: "none", color: "inherit" }}>
                                             <div className="text-center">
-                                                <h2 className="mb-0 f-w-500" style={{ fontSize: "1.3rem", cursor: "pointer" }}>
+                                                <h2 className="mb-0 f-w-500" style={{ fontSize: "1.3rem", cursor: "pointer", color: quantityColor }}>
                                                     {cantidad !== undefined && cantidad !== null ? cantidad : "..."}
                                                 </h2>
                                                 <p className="mb-0 text-muted" style={{ fontSize: "0.8rem" }}>CRM</p>
@@ -38,7 +83,7 @@ export const TableroHome = ({ image, icons, nombre, cantidad, url, outlookCount,
                                     // Mostrar cantidad normal para otros items con enlace general
                                     <a href={url} style={{ textDecoration: "none", color: "inherit" }}>
                                         {cantidad !== undefined && cantidad !== null ? (
-                                            <h2 className="mb-0 f-w-500" style={{ cursor: "pointer" }}>{cantidad}</h2>
+                                            <h2 className="mb-0 f-w-500" style={{ cursor: "pointer", color: quantityColor }}>{cantidad}</h2>
                                         ) : (
                                             "..."
                                         )}

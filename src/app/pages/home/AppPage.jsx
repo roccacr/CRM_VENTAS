@@ -57,6 +57,25 @@ export const AppPage = () => {
       dispatch(startLoadingAllLeads());
    };
 
+   // Función genérica para determinar el estado de alerta según umbrales personalizados
+   const getAlertStatusByThresholds = (quantity, okThreshold, warningThreshold) => {
+      if (quantity === undefined || quantity === null) return null;
+      if (quantity < okThreshold) return "ok"; // Verde
+      if (quantity >= okThreshold && quantity < warningThreshold) return "warning"; // Rojo
+      if (quantity >= warningThreshold) return "alert"; // Alerta (rojo más intenso)
+      return null;
+   };
+
+   // Función para determinar el estado de alerta según el umbral de Leads Nuevos
+   const getAlertStatusNewLeads = (quantity) => {
+      return getAlertStatusByThresholds(quantity, 10, 20);
+   };
+
+   // Función para determinar el estado de alerta según el umbral de Leads que Requieren Atención
+   const getAlertStatusAttention = (quantity) => {
+      return getAlertStatusByThresholds(quantity, 50, 100);
+   };
+
    // Función para actualizar los elementos del tablero
    const updateDashboardItems = () => {
       const updatedItems = initialDashboardItems.map((item) => {
@@ -76,6 +95,24 @@ export const AppPage = () => {
                quantity: quantities[item.id] ?? item.quantity,
                outlookCount: outlookLoading ? null : outlookEventsCount, // null muestra "..."
                hasOutlook: true, // Indica que tiene integración con Outlook
+            };
+         }
+
+         // Para el item de Leads Nuevos (id: 1), agregar estado de alerta
+         if (item.id === 1) {
+            return {
+               ...item,
+               quantity: quantities[item.id] ?? item.quantity,
+               alertStatus: getAlertStatusNewLeads(quantities[item.id]),
+            };
+         }
+
+         // Para el item de Leads que Requieren Atención (id: 2), agregar estado de alerta
+         if (item.id === 2) {
+            return {
+               ...item,
+               quantity: quantities[item.id] ?? item.quantity,
+               alertStatus: getAlertStatusAttention(quantities[item.id]),
             };
          }
 
@@ -99,6 +136,7 @@ export const AppPage = () => {
             url={item.url}
             outlookCount={item.outlookCount}
             hasOutlook={item.hasOutlook}
+            alertStatus={item.alertStatus}
          />
       ));
    };
