@@ -22,6 +22,7 @@ import "datatables.net-select-bs5";
 import { useNavigate } from "react-router-dom";
 import { ModalOrdenVenta } from "../../estimacion/ModalOrdenVenta";
 import { OneDrive } from "./OneDrive";
+import { Box, Typography, Paper } from "@mui/material";
 
 /**
  * Utility Functions
@@ -84,6 +85,9 @@ const fetchData = async ({ leadId, transaccion, dispatch, setLeadDetails, setDat
          dispatch(getSpecificLead(leadId)), 
          dispatch(obtenerOrdendeventa(transaccion)),
       ]);
+
+
+      console.log("ordenData", ordenData);
 
 
       setLeadDetails(leadData);
@@ -486,6 +490,252 @@ const ApprovalCheckboxItem = ({ label, checked }) => (
 );
 
 /**
+ * Calculates the progress percentage based on order validation fields
+ * 
+ * REQUISITOS DE VALIDACIÓN POR PASO:
+ * 1. OV Creada = 10% - Siempre completado (requisito: OV creada)
+ * 2. OV con Reserva = 20% - Requisito: reserva_ov === 1
+ * 3. OV con Cierre Firmado = 30% - Requisito: cierre_firmado_ov === 1
+ * 4. Aprobación Jefe Ventas = 50% (+20%) - Requisito: chekJefeVenta === 1
+ * 5. Aprobación RDR = 70% (+20%) - Requisito: aprobacion__rdr_ov === 1
+ * 6. Aprobación Formalizaciones = 80% - Requisito: aprobacion_forma_ov === 1 AND estado facturación pendiente
+ * 7. Contrato Firmado = 100% - Requisito: contrado_frima_ov === 1
+ * 
+ * @param {Object} validarOrdenVenta - Order validation data
+ * @param {Object} datosOrdenVenta - Order data for additional validations (facturación)
+ * @returns {Object} Progress data with percentage and steps
+ */
+const calculateProgress = (validarOrdenVenta, datosOrdenVenta) => {
+   if (!validarOrdenVenta) {
+      return { percentage: 10, activeStep: 0, steps: [] };
+   }
+
+   // Verificar estado de facturación pendiente para Aprobación Formalizaciones
+   // REQUISITO: Para que "Aprobación Formalizaciones" esté completa (80%), 
+   // se requiere: aprobacion_forma_ov === 1 AND estado facturación pendiente
+   // NOTA: Ajustar según el campo real disponible en datosOrdenVenta
+   // Posibles campos a verificar:
+   // - datosOrdenVenta?.data?.fields?.status
+   // - datosOrdenVenta?.data?.fields?.billingstatus  
+   // - datosOrdenVenta?.data?.fields?.custbody_estado_facturacion
+   // - datosOrdenVenta?.data?.fields?.custbody_xxx (campo personalizado)
+   const estadoFacturacionPendiente = 
+      datosOrdenVenta?.data?.fields?.status === "Pending Billing" 
+      || datosOrdenVenta?.data?.fields?.billingstatus === "Pending"
+      || datosOrdenVenta?.data?.fields?.custbody_estado_facturacion === "Pendiente"
+      || datosOrdenVenta?.data?.fields?.billingstatus === "Pending Billing"
+      || false; // Si no se encuentra el campo, se considera como no pendiente
+
+   const steps = [
+      { 
+         label: "OV Creada", 
+         percentage: 10, 
+         completed: true, // Siempre completado
+         color: "#4caf50",
+         requirement: "OV creada"
+      },
+      { 
+         label: "OV con Reserva", 
+         percentage: 20, 
+         completed: validarOrdenVenta.reserva_ov === 1, 
+         color: "#2196f3",
+         requirement: "reserva_ov === 1"
+      },
+      { 
+         label: "OV con Cierre Firmado", 
+         percentage: 30, 
+         completed: validarOrdenVenta.cierre_firmado_ov === 1, 
+         color: "#ff9800",
+         requirement: "cierre_firmado_ov === 1"
+      },
+      { 
+         label: "Aprobación Jefe Ventas", 
+         percentage: 50, 
+         completed: validarOrdenVenta.chekJefeVenta === 1, 
+         color: "#9c27b0",
+         requirement: "chekJefeVenta === 1"
+      },
+      { 
+         label: "Aprobación RDR", 
+         percentage: 70, 
+         completed: validarOrdenVenta.aprobacion__rdr_ov === 1, 
+         color: "#f44336",
+         requirement: "aprobacion__rdr_ov === 1"
+      },
+      { 
+         label: "Aprobación Formalizaciones", 
+         percentage: 80, 
+         completed: validarOrdenVenta.aprobacion_forma_ov === 1 && estadoFacturacionPendiente, 
+         color: "#00bcd4",
+         requirement: "aprobacion_forma_ov === 1 && estado facturación pendiente"
+      },
+      { 
+         label: "Contrato Firmado", 
+         percentage: 100, 
+         completed: validarOrdenVenta.contrado_frima_ov === 1, 
+         color: "#4caf50",
+         requirement: "contrado_frima_ov === 1"
+      },
+   ];
+
+   let percentage = 10; // Siempre empieza con 10%
+   let activeStep = 0;
+
+   // Encontrar el último paso completado en secuencia (acumulativo)
+   for (let i = 0; i < steps.length; i++) {
+      // Verificar si este paso y todos los anteriores están completados
+      let allCompleted = true;
+      for (let j = 0; j <= i; j++) {
+         if (!steps[j].completed) {
+            allCompleted = false;
+            break;
+         }
+      }
+      
+      if (allCompleted) {
+         percentage = steps[i].percentage;
+         activeStep = i;
+      } else {
+         break; // Si encontramos un paso no completado, detenemos
+      }
+   }
+
+   return { percentage, activeStep, steps };
+};
+
+/**
+ * Gets the color for the progress bar based on percentage
+ * @param {number} percentage - Current progress percentage
+ * @returns {string} Color hex code
+ */
+const getProgressColor = (percentage) => {
+   if (percentage >= 100) return "#4caf50"; // Verde
+   if (percentage >= 80) return "#00bcd4"; // Cyan
+   if (percentage >= 70) return "#f44336"; // Rojo
+   if (percentage >= 50) return "#9c27b0"; // Morado
+   if (percentage >= 30) return "#ff9800"; // Naranja
+   if (percentage >= 20) return "#2196f3"; // Azul
+   return "#4caf50"; // Verde para el inicio
+};
+
+/**
+ * Progress Component for Order Status
+ * @param {Object} props - Component properties
+ * @param {Object} props.validarOrdenVenta - Order validation data
+ * @param {Object} props.datosOrdenVenta - Order data for additional validations
+ */
+const OrderProgress = ({ validarOrdenVenta, datosOrdenVenta }) => {
+   const { percentage, activeStep, steps } = calculateProgress(validarOrdenVenta, datosOrdenVenta);
+
+   return (
+      <Paper elevation={3} sx={{ p: 3, mt: 2, mb: 2 }}>
+         <Typography variant="h6" gutterBottom sx={{ fontWeight: "bold", mb: 3 }}>
+            Estado de la Orden de Venta
+         </Typography>
+
+         {/* Horizontal Timeline Steps */}
+         <Box sx={{ position: "relative", width: "100%", overflowX: "auto", pb: 2 }}>
+            <Box sx={{ 
+               display: "flex", 
+               alignItems: "flex-start", 
+               position: "relative", 
+               px: { xs: 1, md: 2 },
+               justifyContent: "space-between",
+               gap: { xs: 0.5, md: 0 },
+            }}>
+               {steps.map((step, index) => {
+                  const isCompleted = step.completed;
+                  const isActive = index === activeStep && isCompleted;
+                  const isPast = index <= activeStep && isCompleted;
+                  const nextStepCompleted = index < steps.length - 1 ? steps[index + 1].completed : false;
+                  const shouldShowConnector = index < steps.length - 1;
+
+                  return (
+                     <Box
+                        key={index}
+                        sx={{
+                           display: "flex",
+                           flexDirection: "column",
+                           alignItems: "center",
+                           position: "relative",
+                           flex: { xs: "0 0 auto", md: "1 1 0" },
+                           minWidth: { xs: 85, sm: 100, md: "auto" },
+                        }}
+                     >
+                        {/* Step Icon with Percentage */}
+                        <Box
+                           sx={{
+                              width: { xs: 36, sm: 44, md: 48 },
+                              height: { xs: 36, sm: 44, md: 48 },
+                              borderRadius: "50%",
+                              backgroundColor: isCompleted ? step.color : "#e0e0e0",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              zIndex: 2,
+                              border: isActive ? `3px solid ${step.color}` : "none",
+                              boxShadow: isCompleted ? `0 0 12px ${step.color}50` : "none",
+                              transition: "all 0.3s ease",
+                              mb: 1,
+                              position: "relative",
+                           }}
+                        >
+                           <Typography
+                              sx={{
+                                 color: isCompleted ? "white" : "#9e9e9e",
+                                 fontSize: { xs: "0.65rem", sm: "0.75rem", md: "0.85rem" },
+                                 fontWeight: "bold",
+                                 lineHeight: 1,
+                              }}
+                           >
+                              {step.percentage}%
+                           </Typography>
+                        </Box>
+
+                        {/* Step Label */}
+                        <Box sx={{ textAlign: "center", width: "100%" }}>
+                           <Typography
+                              variant="caption"
+                              sx={{
+                                 fontWeight: isCompleted ? "bold" : "normal",
+                                 color: isCompleted ? step.color : "#9e9e9e",
+                                 fontSize: { xs: "0.6rem", sm: "0.7rem", md: "0.75rem" },
+                                 lineHeight: 1.2,
+                                 display: "block",
+                              }}
+                           >
+                              {step.label}
+                           </Typography>
+                        </Box>
+
+                        {/* Horizontal Connector Line */}
+                        {shouldShowConnector && (
+                           <Box
+                              sx={{
+                                 position: "absolute",
+                                 top: { xs: 18, sm: 22, md: 24 },
+                                 left: { xs: "calc(50% + 18px)", sm: "calc(50% + 22px)", md: "calc(50% + 24px)" },
+                                 right: { md: "calc(-50% + 24px)" },
+                                 height: 3,
+                                 backgroundColor: isCompleted 
+                                    ? (nextStepCompleted ? steps[index + 1].color : step.color)
+                                    : "#e0e0e0",
+                                 zIndex: 1,
+                                 transition: "background-color 0.3s ease",
+                                 display: { xs: "none", md: "block" },
+                              }}
+                           />
+                        )}
+                     </Box>
+                  );
+               })}
+            </Box>
+         </Box>
+      </Paper>
+   );
+};
+
+/**
  * Information Section Components
  */
 
@@ -772,6 +1022,9 @@ export const VistaOrdenVenta = () => {
                      <h5>Cliente Relacioando: {datosOrdenVenta?.cli?.replace(/"/g, "") ?? ""}</h5>
                   </div>
                   <div className="card-body">
+                     {/* Progress Component */}
+                     <OrderProgress validarOrdenVenta={validarOrdenVenta} datosOrdenVenta={datosOrdenVenta} />
+                     
                      <PrimaryInformation datosOrdenVenta={datosOrdenVenta} />
                      <br />
                      <SalesInformation datosOrdenVenta={datosOrdenVenta} />
