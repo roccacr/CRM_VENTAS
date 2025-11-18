@@ -60,6 +60,8 @@ campana.consultarCampanas = async (dataParams) => {
                 [parseInt(dataParams.id)],
                 "produccion",
                 (error, result) => {
+
+                    console.log("result", result);
                     if (error) {
                         reject({
                             statusCode: 500,
