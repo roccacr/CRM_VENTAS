@@ -1,18 +1,22 @@
 /* Contenedor principal de las notas */
 .sticknotes-container {
-    position: relative;
+    position: fixed;
+    top: 0;
+    left: 0;
     width: 100%;
     height: 100%;
     min-height: 500px;
     background: transparent;
     overflow: visible;
+    z-index: 1000;
+    pointer-events: none; /* Por defecto no bloquea eventos */
 }
 
 /* Botón para crear nueva nota */
 .btn-create-sticknote {
-    position: absolute;
-    top: 15px;
-    right: 20px;
+    position: fixed;
+    top: 100px;
+    right: 200px;
     padding: 10px 20px;
     background-color: #4CAF50;
     color: white;
@@ -21,9 +25,10 @@
     cursor: pointer;
     font-size: 14px;
     font-weight: bold;
-    z-index: 100;
+    z-index: 1001;
     transition: all 0.3s ease;
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+    pointer-events: auto; /* Permitir clics en el botón */
 }
 
 .btn-create-sticknote:hover {
@@ -38,9 +43,9 @@
 
 /* Botón para ocultar todas las notas */
 .btn-hide-all-sticknotes {
-    position: absolute;
-    top: 15px;
-    right: 180px;
+    position: fixed;
+    top: 100px;
+    right: 360px;
     padding: 10px 20px;
     background-color: #333333;
     color: white;
@@ -49,9 +54,10 @@
     cursor: pointer;
     font-size: 13px;
     font-weight: bold;
-    z-index: 100;
+    z-index: 1001;
     transition: all 0.3s ease;
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+    pointer-events: auto; /* Permitir clics en el botón */
 }
 
 .btn-hide-all-sticknotes:hover {
@@ -66,9 +72,9 @@
 
 /* Botón para mostrar todas las notas */
 .btn-show-all-sticknotes {
-    position: absolute;
-    top: 15px;
-    right: 180px;
+    position: fixed;
+    top: 100px;
+    right: 360px;
     padding: 10px 20px;
     background-color: #333333;
     color: white;
@@ -77,9 +83,10 @@
     cursor: pointer;
     font-size: 13px;
     font-weight: bold;
-    z-index: 100;
+    z-index: 1001;
     transition: all 0.3s ease;
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+    pointer-events: auto; /* Permitir clics en el botón */
 }
 
 .btn-show-all-sticknotes:hover {
@@ -94,9 +101,9 @@
 
 /* Botón para mostrar notas archivadas */
 .btn-show-hidden-sticknotes {
-    position: absolute;
-    top: 15px;
-    right: 330px;
+    position: fixed;
+    top: 100px;
+    right: 510px;
     padding: 10px 20px;
     background-color: #333333;
     color: white;
@@ -105,9 +112,10 @@
     cursor: pointer;
     font-size: 13px;
     font-weight: bold;
-    z-index: 100;
+    z-index: 1001;
     transition: all 0.3s ease;
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+    pointer-events: auto; /* Permitir clics en el botón */
 }
 
 .btn-show-hidden-sticknotes:hover {
@@ -128,9 +136,16 @@
 /* Estilos responsive */
 @media (max-width: 768px) {
     .btn-create-sticknote {
-        top: 10px;
+        top: 80px;
         right: 10px;
         padding: 8px 16px;
         font-size: 12px;
+    }
+    
+    .btn-hide-all-sticknotes,
+    .btn-show-all-sticknotes,
+    .btn-show-hidden-sticknotes {
+        top: 80px;
+        right: 10px;
     }
 }

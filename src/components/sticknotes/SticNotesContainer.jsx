@@ -463,9 +463,10 @@ const SticNotesContainer = ({ idinternoLead, transactionType, transactionId }) =
         <div
             ref={containerRef}
             className="sticknotes-container"
-            onMouseMove={handleMouseMove}
-            onMouseUp={handleMouseUp}
-            onMouseLeave={handleMouseUp}
+            onMouseMove={draggedNote ? handleMouseMove : undefined}
+            onMouseUp={draggedNote ? handleMouseUp : undefined}
+            onMouseLeave={draggedNote ? handleMouseUp : undefined}
+            style={{ pointerEvents: draggedNote ? 'auto' : 'none' }}
         >
             {/* Botón para crear nueva nota */}
             <button
@@ -509,18 +510,19 @@ const SticNotesContainer = ({ idinternoLead, transactionType, transactionId }) =
 
             {/* Mostrar las notas filtradas */}
             {notasAMostrar.map((note) => (
-                <SticNote
-                    key={note.id_sticknote}
-                    note={note}
-                    onMouseDown={handleMouseDown}
-                    onEdit={handleEditNote}
-                    onToggleVisibility={handleToggleVisibility}
-                    onToggleState={handleToggleState}
-                    onTogglePin={handleTogglePin}
-                    showingHidden={showHiddenNotes}
-                    adminsMap={adminsMap}
-                    currentUserId={idnetsuite_admin}
-                />
+                <div key={note.id_sticknote} style={{ pointerEvents: 'auto' }}>
+                    <SticNote
+                        note={note}
+                        onMouseDown={handleMouseDown}
+                        onEdit={handleEditNote}
+                        onToggleVisibility={handleToggleVisibility}
+                        onToggleState={handleToggleState}
+                        onTogglePin={handleTogglePin}
+                        showingHidden={showHiddenNotes}
+                        adminsMap={adminsMap}
+                        currentUserId={idnetsuite_admin}
+                    />
+                </div>
             ))}
 
             {/* Modal para crear/editar notas */}
