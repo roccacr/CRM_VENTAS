@@ -101,11 +101,21 @@ const SticNote = ({
             <div className="sticknote-footer">
                 <small>
                     <div className="sticknote-creator">
-                        👤 {adminsMap ? adminsMap[note.id_usuario_creador] || "Desconocido" : "Desconocido"}
+                        👤 {note.nombre_duenio || (adminsMap ? adminsMap[note.id_usuario_creador] : "Desconocido")}
+                        {note.correo_duenio && (
+                            <div className="sticknote-email">
+                                ✉️ {note.correo_duenio}
+                            </div>
+                        )}
                     </div>
                     {note.id_usuario_asignado && (
                         <div className="sticknote-assigned">
-                            📌 {adminsMap ? adminsMap[note.id_usuario_asignado] || "Desconocido" : "Desconocido"}
+                            📌 {note.nombre_asignado || (adminsMap ? adminsMap[note.id_usuario_asignado] : "Desconocido")}
+                            {note.correo_asignado && (
+                                <div className="sticknote-email">
+                                    ✉️ {note.correo_asignado}
+                                </div>
+                            )}
                         </div>
                     )}
                     <div className="sticknote-date">

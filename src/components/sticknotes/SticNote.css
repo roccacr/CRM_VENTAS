@@ -147,6 +147,14 @@
     text-align: right;
 }
 
+.sticknote-email {
+    margin-top: 2px;
+    font-size: 10px;
+    color: #888;
+    font-weight: normal;
+    font-style: italic;
+}
+
 /* Estilos responsive */
 @media (max-width: 768px) {
     .sticknote {

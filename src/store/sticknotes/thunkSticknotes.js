@@ -16,6 +16,7 @@ import {
 
 /**
  * Obtiene todos los sticky notes para una transacción específica
+ * Filtra por usuario autenticado (creador, asignado o notas públicas)
  * @param {string} transaction_type - Tipo de transacción (ej: ordersale)
  * @param {number} transaction_id - ID de la transacción
  * @returns {Function} - Función asincrónica de Redux
@@ -23,13 +24,17 @@ import {
 export const obtenerSticNotesPorTransaccion = (transaction_type, transaction_id) => {
     return async (dispatch, getState) => {
         try {
+            // Obtener el estado completo de auth
+            const authState = getState().auth;
+            const { idnetsuite_admin } = authState;
+
             const result = await obtenerSticNotes({
                 transaction_type,
                 transaction_id,
+                id_usuario_autenticado: idnetsuite_admin,
             });
             return result;
         } catch (error) {
-            console.error("Error en obtenerSticNotesPorTransaccion:", error);
             throw error;
         }
     };
@@ -51,7 +56,6 @@ export const crearSticNotePorTransaccion = (params) => {
             });
             return result;
         } catch (error) {
-            console.error("Error en crearSticNotePorTransaccion:", error);
             throw error;
         }
     };
@@ -68,7 +72,6 @@ export const editarSticNotePorId = (params) => {
             const result = await editarSticNote(params);
             return result;
         } catch (error) {
-            console.error("Error en editarSticNotePorId:", error);
             throw error;
         }
     };
@@ -85,7 +88,6 @@ export const actualizarPosicionSticNotePorId = (params) => {
             const result = await actualizarPosicionSticNote(params);
             return result;
         } catch (error) {
-            console.error("Error en actualizarPosicionSticNotePorId:", error);
             throw error;
         }
     };
@@ -102,7 +104,6 @@ export const cambiarVisibilidadSticNotePorId = (params) => {
             const result = await cambiarVisibilidadSticNote(params);
             return result;
         } catch (error) {
-            console.error("Error en cambiarVisibilidadSticNotePorId:", error);
             throw error;
         }
     };
@@ -119,7 +120,6 @@ export const cambiarEstadoSticNotePorId = (params) => {
             const result = await cambiarEstadoSticNote(params);
             return result;
         } catch (error) {
-            console.error("Error en cambiarEstadoSticNotePorId:", error);
             throw error;
         }
     };
@@ -136,7 +136,6 @@ export const obtenerSticNotePorIdThunk = (id_sticknote) => {
             const result = await obtenerSticNotePorId({ id_sticknote });
             return result;
         } catch (error) {
-            console.error("Error en obtenerSticNotePorIdThunk:", error);
             throw error;
         }
     };
@@ -153,7 +152,6 @@ export const actualizarPinSticNotePorId = (params) => {
             const result = await actualizarPinSticNote(params);
             return result;
         } catch (error) {
-            console.error("Error en actualizarPinSticNotePorId:", error);
             throw error;
         }
     };
@@ -170,7 +168,6 @@ export const obtenerAdminsParaSticknotesThunk = (p_estado = 1) => {
             const result = await obtenerAdminsParaSticknotes({ p_estado });
             return result;
         } catch (error) {
-            console.error("Error en obtenerAdminsParaSticknotesThunk:", error);
             throw error;
         }
     };

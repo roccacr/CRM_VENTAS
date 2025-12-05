@@ -82,7 +82,7 @@ const ModalSticNote = ({ note, onSave, onClose }) => {
 
                 setAdminsFiltered(filtered);
             } catch (error) {
-                console.error("Error cargando admins:", error);
+                // Error cargando admins
             } finally {
                 setLoadingAdmins(false);
             }
@@ -179,8 +179,6 @@ const ModalSticNote = ({ note, onSave, onClose }) => {
                 });
             }, 300);
         } catch (error) {
-            console.error("Error guardando nota:", error);
-
             // Cerrar el preloader
             Swal.close();
 

@@ -11,11 +11,12 @@ import { commonRequestData, fetchData } from "../../api";
  * @param {number} params.transaction_id - ID de la transacción
  * @returns {Promise} - Respuesta de la API
  */
-export const obtenerSticNotes = async ({ transaction_type, transaction_id }) => {
+export const obtenerSticNotes = async ({ transaction_type, transaction_id , id_usuario_autenticado}) => {   
     const requestData = {
         ...commonRequestData,
         transaction_type,
         transaction_id,
+        id_usuario_autenticado,
     };
 
     const response = await fetchData("sticknotes/obtener", requestData);

@@ -58,7 +58,7 @@ const SticNotesContainer = ({ idinternoLead, transactionType, transactionId }) =
                 });
                 setAdminsMap(map);
             } catch (error) {
-                console.error("Error cargando admins map:", error);
+                // Error cargando admins map
             }
         };
         loadAdminsMap();
@@ -67,7 +67,6 @@ const SticNotesContainer = ({ idinternoLead, transactionType, transactionId }) =
     // Obtener notas al montar el componente o cuando cambien los IDs
     useEffect(() => {
         if (transactionType && transactionId) {
-            console.log("📥 useEffect trigger:", { transactionType, transactionId });
             fetchSticNotes();
         }
     }, [transactionType, transactionId]);
@@ -80,13 +79,9 @@ const SticNotesContainer = ({ idinternoLead, transactionType, transactionId }) =
             // Pequeño delay para asegurar que la BD ha procesado
             await new Promise(resolve => setTimeout(resolve, 300));
 
-            console.log("🔍 Buscando notas con:", { transactionType, transactionId });
-
             const result = await dispatch(
                 obtenerSticNotesPorTransaccion(transactionType, transactionId)
             );
-
-            console.log("📦 Respuesta del servidor:", result);
 
             // Navegar a través de la estructura anidada
             // result.data contiene { statusCode, message, data: { ok, statusCode, data: [...] } }
@@ -108,11 +103,8 @@ const SticNotesContainer = ({ idinternoLead, transactionType, transactionId }) =
                 }
             }
 
-            console.log("✅ Notas obtenidas:", notesData.length, notesData);
-
             setSticNotes(notesData);
         } catch (error) {
-            console.error("❌ Error obteniendo notas:", error);
             setSticNotes([]);
         }
     };
@@ -216,7 +208,6 @@ const SticNotesContainer = ({ idinternoLead, transactionType, transactionId }) =
                 }, 500);
             }
         } catch (error) {
-            console.error("Error guardando nota:", error);
             handleCloseModal();
             fetchSticNotes();
         }
@@ -275,12 +266,6 @@ const SticNotesContainer = ({ idinternoLead, transactionType, transactionId }) =
             const note = sticNotes.find((n) => n.id_sticknote === noteId);
             if (note) {
                 try {
-                    console.log("📤 Enviando posición actualizada:", {
-                        id_sticknote: noteId,
-                        pos_x: note.pos_x,
-                        pos_y: note.pos_y,
-                    });
-
                     await dispatch(
                         actualizarPosicionSticNotePorId({
                             id_sticknote: noteId,
@@ -288,10 +273,8 @@ const SticNotesContainer = ({ idinternoLead, transactionType, transactionId }) =
                             pos_y: note.pos_y,
                         })
                     );
-
-                    console.log("✅ Posición actualizada correctamente");
                 } catch (error) {
-                    console.error("❌ Error actualizando posición:", error);
+                    // Error actualizando posición
                 }
             }
         }, 5000); // 5 segundos de delay
@@ -354,7 +337,6 @@ const SticNotesContainer = ({ idinternoLead, transactionType, transactionId }) =
 
             fetchSticNotes();
         } catch (error) {
-            console.error("❌ Error cambiando estado:", error);
             fetchSticNotes();
         }
     };
