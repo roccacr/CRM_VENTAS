@@ -131,6 +131,26 @@
     transform: translateY(0);
 }
 
+/* SweetAlert z-index mayor que Material-UI Dialog (1300) */
+.swal-high-zindex {
+    z-index: 9999 !important;
+}
+
+/* Asegurar que el contenedor de SweetAlert esté por encima del modal */
+.swal2-container {
+    z-index: 9999 !important;
+}
+
+/* Asegurar que el popup de SweetAlert esté por encima */
+.swal2-popup {
+    z-index: 10000 !important;
+}
+
+/* Asegurar que el backdrop de SweetAlert también esté por encima */
+.swal2-backdrop-show {
+    z-index: 9998 !important;
+}
+
 /* Estilos responsive */
 @media (max-width: 768px) {
     .sticknotes-buttons-container {
@@ -138,7 +158,7 @@
         align-items: stretch;
         gap: 8px;
     }
-    
+
     .btn-create-sticknote,
     .btn-hide-all-sticknotes,
     .btn-show-all-sticknotes,

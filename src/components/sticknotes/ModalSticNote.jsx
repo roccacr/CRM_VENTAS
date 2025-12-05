@@ -12,13 +12,17 @@ import {
     IconButton,
     Stack,
     FormControlLabel,
-    Checkbox,
+    Switch,
     MenuItem,
     CircularProgress,
     Autocomplete,
+    Divider,
+    Grid,
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import { obtenerAdminsParaSticknotesThunk } from "../../store/sticknotes/thunkSticknotes";
+import Swal from "sweetalert2";
+import "./SticNotesContainer.css";
 
 /**
  * Modal para crear o editar sticky notes
@@ -30,6 +34,7 @@ import { obtenerAdminsParaSticknotesThunk } from "../../store/sticknotes/thunkSt
  */
 const ModalSticNote = ({ note, onSave, onClose }) => {
     const dispatch = useDispatch();
+    const [open, setOpen] = useState(true);
 
     const [titulo, setTitulo] = useState("");
     const [mensaje, setMensaje] = useState("");
@@ -37,7 +42,6 @@ const ModalSticNote = ({ note, onSave, onClose }) => {
     const [privado, setPrivado] = useState(false);
     const [idUsuarioAsignado, setIdUsuarioAsignado] = useState(null);
     const [prioridad, setPrioridad] = useState("media");
-    const [categoria, setCategoria] = useState("general");
     const [admins, setAdmins] = useState([]);
     const [adminsFiltered, setAdminsFiltered] = useState([]);
     const [loadingAdmins, setLoadingAdmins] = useState(false);
@@ -95,7 +99,6 @@ const ModalSticNote = ({ note, onSave, onClose }) => {
             setPrivado(note.privado === 1 || false);
             setIdUsuarioAsignado(note.id_usuario_asignado || null);
             setPrioridad(note.prioridad || "media");
-            setCategoria(note.categoria || "general");
         } else {
             setTitulo("");
             setMensaje("");
@@ -103,43 +106,117 @@ const ModalSticNote = ({ note, onSave, onClose }) => {
             setPrivado(false);
             setIdUsuarioAsignado(null);
             setPrioridad("media");
-            setCategoria("general");
         }
     }, [note]);
+    
+    // Resetear el estado cuando el modal se cierra completamente
+    useEffect(() => {
+        return () => {
+            // Limpiar cualquier SweetAlert pendiente al desmontar
+            Swal.close();
+        };
+    }, []);
 
     /**
      * Maneja el envío del formulario
      */
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
 
         // Validar campos requeridos
         if (!mensaje.trim()) {
-            alert("El mensaje es obligatorio");
+            Swal.fire({
+                icon: "warning",
+                title: "Campo requerido",
+                text: "El mensaje es obligatorio",
+                confirmButtonText: "Entendido",
+            });
             return;
         }
 
-        onSave({
-            titulo: titulo.trim(),
-            mensaje: mensaje.trim(),
-            color_hex: colorHex,
-            privado: privado ? 1 : 0,
-            id_usuario_asignado: idUsuarioAsignado,
-            prioridad: prioridad,
-            categoria: categoria,
+        // Mostrar preloader
+        Swal.fire({
+            title: note ? "Actualizando nota..." : "Creando nota...",
+            html: "Por favor espera mientras procesamos tu solicitud",
+            allowOutsideClick: false,
+            allowEscapeKey: false,
+            didOpen: () => {
+                Swal.showLoading();
+            },
         });
+
+        try {
+            await onSave({
+                titulo: titulo.trim(),
+                mensaje: mensaje.trim(),
+                color_hex: colorHex,
+                privado: privado ? 1 : 0,
+                id_usuario_asignado: idUsuarioAsignado,
+                prioridad: prioridad,
+                categoria: "general", // Valor por defecto
+            });
+
+            // Cerrar el preloader
+            Swal.close();
+
+            // Cerrar el modal completamente
+            setOpen(false);
+
+            // Esperar 300ms para que termine la animación de cierre del modal
+            setTimeout(() => {
+                // Llamar a onClose para notificar al padre
+                onClose();
+
+                // Mostrar el SweetAlert de éxito después de que el modal se cerró
+                Swal.fire({
+                    icon: "success",
+                    title: note ? "¡Nota actualizada!" : "¡Nota creada!",
+                    text: note
+                        ? "La nota se actualizó correctamente"
+                        : "La nota se creó correctamente",
+                    timer: 2000,
+                    showConfirmButton: false,
+                });
+            }, 300);
+        } catch (error) {
+            console.error("Error guardando nota:", error);
+
+            // Cerrar el preloader
+            Swal.close();
+
+            // Mostrar error (el modal sigue abierto para que el usuario pueda corregir)
+            Swal.fire({
+                icon: "error",
+                title: "Error",
+                text: note
+                    ? "No se pudo actualizar la nota. Por favor intenta de nuevo."
+                    : "No se pudo crear la nota. Por favor intenta de nuevo.",
+                confirmButtonText: "Entendido",
+            });
+        }
+    };
+
+    /**
+     * Maneja el cierre del modal (usado por el botón cancelar y el backdrop)
+     */
+    const handleClose = () => {
+        setOpen(false);
+        setTimeout(() => {
+            onClose();
+        }, 300);
     };
 
     return (
         <Dialog
-            open={true}
-            onClose={onClose}
+            open={open}
+            onClose={handleClose}
             maxWidth="sm"
             fullWidth
             PaperProps={{
                 sx: {
-                    borderRadius: 2,
-                    maxHeight: "90vh",
+                    borderRadius: 3,
+                    boxShadow: "0 8px 32px rgba(0, 0, 0, 0.12)",
+                    zIndex: 1301, // Popup del Dialog
                 },
             }}
         >
@@ -148,20 +225,24 @@ const ModalSticNote = ({ note, onSave, onClose }) => {
                     display: "flex",
                     justifyContent: "space-between",
                     alignItems: "center",
-                    pb: 1,
+                    px: 3,
+                    py: 2.5,
+                    borderBottom: "1px solid",
+                    borderColor: "divider",
                 }}
             >
-                <Typography variant="h6" component="span">
+                <Typography variant="h6" component="span" fontWeight={600}>
                     {note ? "Editar Nota" : "Nueva Nota"}
                 </Typography>
                 <IconButton
-                    onClick={onClose}
+                    onClick={handleClose}
                     aria-label="Cerrar"
                     size="small"
                     sx={{
                         color: "text.secondary",
                         "&:hover": {
                             backgroundColor: "action.hover",
+                            color: "text.primary",
                         },
                     }}
                 >
@@ -170,165 +251,243 @@ const ModalSticNote = ({ note, onSave, onClose }) => {
             </DialogTitle>
 
             <form onSubmit={handleSubmit}>
-                <DialogContent dividers>
-                    <Stack spacing={3}>
-                        {/* Campo de Título */}
-                        <TextField
-                            label="Título (Opcional)"
-                            id="titulo"
-                            value={titulo}
-                            onChange={(e) => setTitulo(e.target.value)}
-                            placeholder="Ingresa un título..."
-                            inputProps={{ maxLength: 200 }}
-                            fullWidth
-                            variant="outlined"
-                        />
-
-                        {/* Campo de Mensaje */}
-                        <TextField
-                            label="Descripción *"
-                            id="mensaje"
-                            value={mensaje}
-                            onChange={(e) => setMensaje(e.target.value)}
-                            placeholder="Ingresa el contenido de la nota..."
-                            rows={5}
-                            required
-                            fullWidth
-                            multiline
-                            variant="outlined"
-                        />
-
-                        {/* Selector de Color */}
+                <DialogContent sx={{ px: 3, py: 3 }}>
+                    <Stack spacing={3.5}>
+                        {/* Sección: Contenido Principal */}
                         <Box>
-                            <Typography variant="body2" fontWeight={600} gutterBottom>
-                                Color
-                            </Typography>
-                            <Box
-                                sx={{
-                                    display: "flex",
-                                    gap: 2,
-                                    alignItems: "center",
-                                    justifyContent: "center",
-                                    flexWrap: "wrap",
-                                    mt: 1,
-                                }}
-                            >
-                                {colorPresets.map((color) => {
-                                    const isSelected = colorHex === color;
-                                    return (
-                                        <Button
-                                            key={color}
-                                            onClick={() => setColorHex(color)}
-                                            title={color}
-                                            aria-label={`Seleccionar color ${color}`}
-                                            sx={{
-                                                width: 50,
-                                                height: 50,
-                                                minWidth: 50,
-                                                padding: 0,
-                                                backgroundColor: color,
-                                                border: isSelected
-                                                    ? "3px solid #333"
-                                                    : "3px solid transparent",
-                                                borderRadius: 2,
-                                                boxShadow: isSelected
-                                                    ? "0 0 0 2px white, 0 0 0 5px #333"
-                                                    : "0 2px 8px rgba(0, 0, 0, 0.15)",
-                                                transform: isSelected ? "scale(1.1)" : "scale(1)",
-                                                transition: "all 0.2s ease",
-                                                "&:hover": {
-                                                    transform: "scale(1.15)",
-                                                    boxShadow: "0 4px 12px rgba(0, 0, 0, 0.25)",
-                                                },
-                                            }}
-                                        />
-                                    );
-                                })}
-                            </Box>
+                            <Stack spacing={2.5}>
+                                <TextField
+                                    label="Título"
+                                    id="titulo"
+                                    value={titulo}
+                                    onChange={(e) => setTitulo(e.target.value)}
+                                    placeholder="Ingrese un título opcional"
+                                    inputProps={{ maxLength: 200 }}
+                                    fullWidth
+                                    variant="outlined"
+                                    sx={{
+                                        "& .MuiOutlinedInput-root": {
+                                            borderRadius: 2,
+                                        },
+                                    }}
+                                />
+
+                                <TextField
+                                    label="Descripción"
+                                    id="mensaje"
+                                    value={mensaje}
+                                    onChange={(e) => setMensaje(e.target.value)}
+                                    placeholder="Ingrese el contenido de la nota"
+                                    rows={4}
+                                    required
+                                    fullWidth
+                                    multiline
+                                    variant="outlined"
+                                    sx={{
+                                        "& .MuiOutlinedInput-root": {
+                                            borderRadius: 2,
+                                        },
+                                    }}
+                                />
+                            </Stack>
                         </Box>
 
-                        {/* Prioridad */}
-                        <TextField
-                            select
-                            label="Prioridad"
-                            value={prioridad}
-                            onChange={(e) => setPrioridad(e.target.value)}
-                            fullWidth
-                            variant="outlined"
-                        >
-                            <MenuItem value="baja">Baja</MenuItem>
-                            <MenuItem value="media">Media</MenuItem>
-                            <MenuItem value="alta">Alta</MenuItem>
-                        </TextField>
+                        <Divider sx={{ my: 1 }} />
 
-                        {/* Categoría */}
-                        <TextField
-                            label="Categoría"
-                            id="categoria"
-                            value={categoria}
-                            onChange={(e) => setCategoria(e.target.value)}
-                            placeholder="ej: general, seguimiento, importante..."
-                            fullWidth
-                            variant="outlined"
-                        />
-
-                        {/* Asignar a Usuario */}
+                        {/* Sección: Configuración */}
                         <Box>
-                            <Typography variant="body2" fontWeight={600} gutterBottom>
-                                Asignar a
-                            </Typography>
-                            {loadingAdmins ? (
-                                <Box sx={{ display: "flex", justifyContent: "center" }}>
-                                    <CircularProgress size={30} />
-                                </Box>
-                            ) : (
-                                <Autocomplete
-                                    options={adminsFiltered}
-                                    getOptionLabel={(option) => option.name_admin || ""}
-                                    value={
-                                        idUsuarioAsignado
-                                            ? adminsFiltered.find((a) => a.idnetsuite_admin === idUsuarioAsignado) || null
-                                            : null
-                                    }
-                                    onChange={(event, newValue) => {
-                                        setIdUsuarioAsignado(newValue ? newValue.idnetsuite_admin : null);
+                            <Stack spacing={3}>
+                                {/* Prioridad */}
+                                <TextField
+                                    select
+                                    label="Prioridad"
+                                    value={prioridad}
+                                    onChange={(e) => setPrioridad(e.target.value)}
+                                    fullWidth
+                                    variant="outlined"
+                                    sx={{
+                                        "& .MuiOutlinedInput-root": {
+                                            borderRadius: 2,
+                                        },
                                     }}
-                                    renderInput={(params) => (
-                                        <TextField
-                                            {...params}
-                                            placeholder="Escribe para buscar un usuario..."
-                                            variant="outlined"
+                                >
+                                    <MenuItem value="baja">Baja</MenuItem>
+                                    <MenuItem value="media">Media</MenuItem>
+                                    <MenuItem value="alta">Alta</MenuItem>
+                                </TextField>
+
+                                {/* Selector de Color */}
+                                <Box>
+                                    <Typography
+                                        variant="body2"
+                                        component="label"
+                                        sx={{
+                                            display: "block",
+                                            mb: 1.5,
+                                            color: "text.secondary",
+                                            fontSize: "0.875rem",
+                                            fontWeight: 500,
+                                        }}
+                                    >
+                                        Color
+                                    </Typography>
+                                    <Box
+                                        sx={{
+                                            display: "flex",
+                                            gap: 1.5,
+                                            alignItems: "center",
+                                        }}
+                                    >
+                                        {colorPresets.map((color) => {
+                                            const isSelected = colorHex === color;
+                                            return (
+                                                <Box
+                                                    key={color}
+                                                    onClick={() => setColorHex(color)}
+                                                    sx={{
+                                                        position: "relative",
+                                                        width: 52,
+                                                        height: 52,
+                                                        borderRadius: 2,
+                                                        backgroundColor: color,
+                                                        cursor: "pointer",
+                                                        transition: "all 0.25s cubic-bezier(0.4, 0, 0.2, 1)",
+                                                        border: "3px solid",
+                                                        borderColor: isSelected ? "primary.main" : "transparent",
+                                                        boxShadow: isSelected
+                                                            ? "0 0 0 3px rgba(25, 118, 210, 0.12), 0 2px 8px rgba(25, 118, 210, 0.2)"
+                                                            : "0 1px 3px rgba(0, 0, 0, 0.12)",
+                                                        "&:hover": {
+                                                            transform: "scale(1.08)",
+                                                            boxShadow: isSelected
+                                                                ? "0 0 0 3px rgba(25, 118, 210, 0.12), 0 4px 12px rgba(25, 118, 210, 0.25)"
+                                                                : "0 3px 8px rgba(0, 0, 0, 0.15)",
+                                                        },
+                                                    }}
+                                                />
+                                            );
+                                        })}
+                                    </Box>
+                                </Box>
+
+                                {/* Asignar a Usuario */}
+                                <Box>
+                                    {loadingAdmins ? (
+                                        <Box sx={{ display: "flex", justifyContent: "center", py: 2 }}>
+                                            <CircularProgress size={24} />
+                                        </Box>
+                                    ) : (
+                                        <Autocomplete
+                                            options={adminsFiltered}
+                                            getOptionLabel={(option) => option.name_admin || ""}
+                                            value={
+                                                idUsuarioAsignado
+                                                    ? adminsFiltered.find((a) => a.idnetsuite_admin === idUsuarioAsignado) || null
+                                                    : null
+                                            }
+                                            onChange={(event, newValue) => {
+                                                setIdUsuarioAsignado(newValue ? newValue.idnetsuite_admin : null);
+                                            }}
+                                            renderInput={(params) => (
+                                                <TextField
+                                                    {...params}
+                                                    label="Asignar a"
+                                                    placeholder="Seleccione un usuario"
+                                                    variant="outlined"
+                                                    sx={{
+                                                        "& .MuiOutlinedInput-root": {
+                                                            borderRadius: 2,
+                                                        },
+                                                    }}
+                                                />
+                                            )}
+                                            noOptionsText="Sin usuarios disponibles"
+                                            clearText="Limpiar"
+                                            openText="Abrir"
+                                            closeText="Cerrar"
                                         />
                                     )}
-                                    noOptionsText="Sin usuarios disponibles"
-                                    clearText="Limpiar"
-                                    openText="Abrir"
-                                    closeText="Cerrar"
-                                />
-                            )}
-                        </Box>
+                                </Box>
 
-                        {/* Checkboxes */}
-                        <Stack spacing={1}>
-                            <FormControlLabel
-                                control={
-                                    <Checkbox
+                                {/* Switch Privado */}
+                                <Box
+                                    sx={{
+                                        display: "flex",
+                                        justifyContent: "space-between",
+                                        alignItems: "center",
+                                        p: 2.5,
+                                        borderRadius: 2,
+                                        border: "1px solid",
+                                        borderColor: "divider",
+                                        backgroundColor: privado ? "action.selected" : "background.paper",
+                                        transition: "background-color 0.2s ease",
+                                    }}
+                                >
+                                    <Box sx={{ flex: 1 }}>
+                                        <Typography variant="body2" fontWeight={500} gutterBottom={0.5}>
+                                            Nota privada
+                                        </Typography>
+                                        <Typography variant="caption" color="text.secondary">
+                                            Solo será visible para ti
+                                        </Typography>
+                                    </Box>
+                                    <Switch
                                         checked={privado}
                                         onChange={(e) => setPrivado(e.target.checked)}
+                                        color="primary"
+                                        sx={{
+                                            "& .MuiSwitch-switchBase.Mui-checked": {
+                                                color: "primary.main",
+                                            },
+                                            "& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track": {
+                                                backgroundColor: "primary.main",
+                                            },
+                                        }}
                                     />
-                                }
-                                label="Privado (solo visible para mí)"
-                            />
-                        </Stack>
+                                </Box>
+                            </Stack>
+                        </Box>
                     </Stack>
                 </DialogContent>
 
-                <DialogActions sx={{ px: 3, py: 2 }}>
-                    <Button onClick={onClose} variant="outlined" color="inherit">
+                <DialogActions
+                    sx={{
+                        px: 3,
+                        py: 2.5,
+                        borderTop: "1px solid",
+                        borderColor: "divider",
+                        gap: 1.5,
+                    }}
+                >
+                    <Button
+                        onClick={handleClose}
+                        variant="outlined"
+                        color="inherit"
+                        sx={{
+                            borderRadius: 2,
+                            textTransform: "none",
+                            px: 3,
+                            fontWeight: 500,
+                        }}
+                    >
                         Cancelar
                     </Button>
-                    <Button type="submit" variant="contained" color="primary">
-                        {note ? "Actualizar" : "Crear"}
+                    <Button
+                        type="submit"
+                        variant="contained"
+                        color="primary"
+                        sx={{
+                            borderRadius: 2,
+                            textTransform: "none",
+                            px: 3,
+                            fontWeight: 500,
+                            boxShadow: "none",
+                            "&:hover": {
+                                boxShadow: "none",
+                            },
+                        }}
+                    >
+                        {note ? "Actualizar" : "Crear Nota"}
                     </Button>
                 </DialogActions>
             </form>
