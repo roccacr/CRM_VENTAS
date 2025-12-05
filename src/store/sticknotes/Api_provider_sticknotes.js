@@ -37,6 +37,7 @@ export const obtenerSticNotes = async ({ transaction_type, transaction_id , id_u
  * @param {number} params.id_usuario_creador - ID del usuario creador
  * @param {number} params.privado - Si es privado (0/1)
  * @param {number} params.id_usuario_asignado - ID del usuario asignado
+ * @param {string} params.email_usuario_asignado - Email del usuario asignado
  * @param {string} params.prioridad - Prioridad (baja, media, alta)
  * @param {string} params.categoria - Categoría
  * @returns {Promise} - Respuesta de la API
@@ -53,6 +54,7 @@ export const crearSticNote = async ({
     id_usuario_creador,
     privado,
     id_usuario_asignado,
+    email_usuario_asignado,
     prioridad,
     categoria,
 }) => {
@@ -69,9 +71,13 @@ export const crearSticNote = async ({
         id_usuario_creador,
         privado: privado || 0,
         id_usuario_asignado: id_usuario_asignado || null,
+        email_usuario_asignado: email_usuario_asignado || null,
         prioridad: prioridad || "media",
         categoria: categoria || "general",
     };
+
+
+    console.log("📤 Datos que se enviarán al crear nota:", requestData);
 
     const response = await fetchData("sticknotes/crear", requestData);
     return response;

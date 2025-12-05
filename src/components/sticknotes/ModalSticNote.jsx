@@ -41,6 +41,7 @@ const ModalSticNote = ({ note, onSave, onClose }) => {
     const [colorHex, setColorHex] = useState("#C8E6C9"); // Verde claro por defecto
     const [privado, setPrivado] = useState(false);
     const [idUsuarioAsignado, setIdUsuarioAsignado] = useState(null);
+    const [emailUsuarioAsignado, setEmailUsuarioAsignado] = useState(null);
     const [prioridad, setPrioridad] = useState("media");
     const [admins, setAdmins] = useState([]);
     const [adminsFiltered, setAdminsFiltered] = useState([]);
@@ -60,6 +61,8 @@ const ModalSticNote = ({ note, onSave, onClose }) => {
             try {
                 const result = await dispatch(obtenerAdminsParaSticknotesThunk(1));
 
+                console.log("🔍 result admin:", result);
+
 
                 // Navegar a través de la estructura de datos
                 let adminsData = [];
@@ -75,10 +78,14 @@ const ModalSticNote = ({ note, onSave, onClose }) => {
                 }
                 setAdmins(adminsData);
 
+                console.log("📋 Ejemplo de admin (primer elemento):", adminsData[0]);
+
                 // Filtrar solo los admins con id_rol_admin = 2, 3 o 4
                 const filtered = adminsData.filter(
-                    (admin) => admin.id_rol_admin === 2 || admin.id_rol_admin === 3 || admin.id_rol_admin === 4
+                    (admin) =>admin.id_rol_admin === 1 || admin.id_rol_admin === 2 || admin.id_rol_admin === 3 || admin.id_rol_admin === 4
                 );
+
+                console.log("✅ Admins filtrados:", filtered.length, "admins");
 
                 setAdminsFiltered(filtered);
             } catch (error) {
@@ -98,6 +105,7 @@ const ModalSticNote = ({ note, onSave, onClose }) => {
             setColorHex(note.color_hex || "#C8E6C9");
             setPrivado(note.privado === 1 || false);
             setIdUsuarioAsignado(note.id_usuario_asignado || null);
+            setEmailUsuarioAsignado(note.correo_asignado || null);
             setPrioridad(note.prioridad || "media");
         } else {
             setTitulo("");
@@ -105,6 +113,7 @@ const ModalSticNote = ({ note, onSave, onClose }) => {
             setColorHex("#C8E6C9"); // Verde claro por defecto
             setPrivado(false);
             setIdUsuarioAsignado(null);
+            setEmailUsuarioAsignado(null);
             setPrioridad("media");
         }
     }, [note]);
@@ -146,15 +155,20 @@ const ModalSticNote = ({ note, onSave, onClose }) => {
         });
 
         try {
-            await onSave({
+            const dataToSend = {
                 titulo: titulo.trim(),
                 mensaje: mensaje.trim(),
                 color_hex: colorHex,
                 privado: privado ? 1 : 0,
                 id_usuario_asignado: idUsuarioAsignado,
+                email_usuario_asignado: emailUsuarioAsignado,
                 prioridad: prioridad,
                 categoria: "general", // Valor por defecto
-            });
+            };
+
+            console.log("📤 Datos que se enviarán al crear/editar nota:", dataToSend);
+
+            await onSave(dataToSend);
 
             // Cerrar el preloader
             Swal.close();
@@ -384,7 +398,21 @@ const ModalSticNote = ({ note, onSave, onClose }) => {
                                                     : null
                                             }
                                             onChange={(event, newValue) => {
-                                                setIdUsuarioAsignado(newValue ? newValue.idnetsuite_admin : null);
+                                                // eslint-disable-next-line no-console
+                                                console.log("👤 USUARIO SELECCIONADO - Objeto completo:", JSON.stringify(newValue, null, 2));
+
+                                                const userId = newValue ? newValue.idnetsuite_admin : null;
+                                                const userEmail = newValue ? newValue.email_admin : null;
+
+                                                setIdUsuarioAsignado(userId);
+                                                setEmailUsuarioAsignado(userEmail);
+
+                                                // eslint-disable-next-line no-console
+                                                console.log("✅ ESTADO GUARDADO:", {
+                                                    id_usuario_asignado: userId,
+                                                    email_usuario_asignado: userEmail,
+                                                    nombre: newValue?.name_admin
+                                                });
                                             }}
                                             renderInput={(params) => (
                                                 <TextField
