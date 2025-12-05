@@ -229,3 +229,19 @@ export const obtenerAdminsParaSticknotes = async ({ p_estado = 1 }) => {
     const response = await fetchData("leads/getDataSelect_Admins", requestData);
     return response;
 };
+
+/**
+ * Elimina un sticky note por su ID
+ * @param {Object} params - Parámetros de la solicitud
+ * @param {number} params.id_sticknote - ID del sticky note a eliminar
+ * @returns {Promise} - Respuesta de la API
+ */
+export const eliminarSticNote = async ({ id_sticknote }) => {
+    const requestData = {
+        ...commonRequestData,
+        id_sticknote,
+    };
+
+    const response = await fetchData("sticknotes/eliminar", requestData);
+    return response;
+};

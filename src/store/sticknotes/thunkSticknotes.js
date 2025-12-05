@@ -12,6 +12,7 @@ import {
     obtenerSticNotePorId,
     actualizarPinSticNote,
     obtenerAdminsParaSticknotes,
+    eliminarSticNote,
 } from "./Api_provider_sticknotes";
 
 /**
@@ -166,6 +167,22 @@ export const obtenerAdminsParaSticknotesThunk = (p_estado = 1) => {
     return async (dispatch, getState) => {
         try {
             const result = await obtenerAdminsParaSticknotes({ p_estado });
+            return result;
+        } catch (error) {
+            throw error;
+        }
+    };
+};
+
+/**
+ * Elimina un sticky note por su ID
+ * @param {number} id_sticknote - ID del sticky note a eliminar
+ * @returns {Function} - Función asincrónica de Redux
+ */
+export const eliminarSticNotePorId = (id_sticknote) => {
+    return async (dispatch, getState) => {
+        try {
+            const result = await eliminarSticNote({ id_sticknote });
             return result;
         } catch (error) {
             throw error;

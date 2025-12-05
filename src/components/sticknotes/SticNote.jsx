@@ -11,6 +11,7 @@ import "./SticNote.css";
  * @param {Function} props.onEdit - Callback para editar nota
  * @param {Function} props.onTogglePin - Callback para alternar PIN
  * @param {Function} props.onToggleState - Callback para cambiar estado
+ * @param {Function} props.onDelete - Callback para eliminar nota
  * @param {boolean} props.showingHidden - Si estamos mostrando notas ocultas
  * @param {Object} props.adminsMap - Mapeo de idnetsuite_admin a nombre de admin
  * @param {number} props.currentUserId - ID del usuario autenticado actual
@@ -21,6 +22,7 @@ const SticNote = ({
     onEdit,
     onTogglePin,
     onToggleState,
+    onDelete,
     showingHidden,
     adminsMap,
     currentUserId,
@@ -63,6 +65,20 @@ const SticNote = ({
                             title="Editar nota"
                         >
                             ✎
+                        </button>
+                    )}
+
+                    {/* Botón para eliminar - Solo visible si soy el dueño */}
+                    {isOwner && (
+                        <button
+                            className="sticknote-btn sticknote-btn-delete"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                onDelete(note.id_sticknote);
+                            }}
+                            title="Eliminar nota"
+                        >
+                            🗑️
                         </button>
                     )}
 

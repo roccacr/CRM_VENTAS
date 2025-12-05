@@ -9,7 +9,9 @@ import {
     cambiarEstadoSticNotePorId,
     actualizarPinSticNotePorId,
     obtenerAdminsParaSticknotesThunk,
+    eliminarSticNotePorId,
 } from "../../store/sticknotes/thunkSticknotes";
+import Swal from "sweetalert2";
 import SticNote from "./SticNote";
 import ModalSticNote from "./ModalSticNote";
 import "./SticNotesContainer.css";
@@ -392,6 +394,71 @@ const SticNotesContainer = ({ idinternoLead, transactionType, transactionId }) =
     };
 
     /**
+     * Elimina una nota sticky
+     */
+    const handleDeleteNote = async (noteId) => {
+        try {
+            // Mostrar confirmación
+            const result = await Swal.fire({
+                icon: "warning",
+                title: "¿Eliminar nota?",
+                text: "Esta acción no se puede deshacer. ¿Estás seguro?",
+                showCancelButton: true,
+                confirmButtonText: "Sí, eliminar",
+                cancelButtonText: "Cancelar",
+                confirmButtonColor: "#d33",
+                cancelButtonColor: "#3085d6",
+            });
+
+            if (!result.isConfirmed) {
+                return;
+            }
+
+            // Mostrar preloader
+            Swal.fire({
+                title: "Eliminando nota...",
+                html: "Por favor espera",
+                allowOutsideClick: false,
+                allowEscapeKey: false,
+                didOpen: () => {
+                    Swal.showLoading();
+                },
+            });
+
+            // Eliminar del servidor
+            await dispatch(eliminarSticNotePorId(noteId));
+
+            // Cerrar preloader
+            Swal.close();
+
+            // Eliminar localmente
+            setSticNotes((prevNotes) =>
+                prevNotes.filter((note) => note.id_sticknote !== noteId)
+            );
+
+            // Mostrar éxito
+            Swal.fire({
+                icon: "success",
+                title: "¡Nota eliminada!",
+                text: "La nota se eliminó correctamente",
+                timer: 2000,
+                showConfirmButton: false,
+            });
+        } catch (error) {
+            // Cerrar preloader
+            Swal.close();
+
+            // Mostrar error
+            Swal.fire({
+                icon: "error",
+                title: "Error",
+                text: "No se pudo eliminar la nota. Por favor intenta de nuevo.",
+                confirmButtonText: "Entendido",
+            });
+        }
+    };
+
+    /**
      * Verifica si el usuario puede ver una nota basado en permisos de privacidad
      * Reglas:
      * 1. Si la creo yo (id_usuario_creador === idnetsuite_admin) → siempre puedo verla
@@ -504,6 +571,7 @@ const SticNotesContainer = ({ idinternoLead, transactionType, transactionId }) =
                         onToggleVisibility={handleToggleVisibility}
                         onToggleState={handleToggleState}
                         onTogglePin={handleTogglePin}
+                        onDelete={handleDeleteNote}
                         showingHidden={showHiddenNotes}
                         adminsMap={adminsMap}
                         currentUserId={idnetsuite_admin}
