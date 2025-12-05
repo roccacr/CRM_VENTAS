@@ -428,5 +428,45 @@ sticknotes.actualizarPinSticNote = async ({
     }
 };
 
+/**
+ * Elimina un sticky note por su ID
+ * @param {Object} params - Parámetros de la solicitud
+ * @param {number} params.id_sticknote - ID del sticky note a eliminar
+ * @param {Object} params.database - Conexión a la base de datos
+ * @returns {Promise<Object>} - Resultado de la eliminación
+ */
+sticknotes.eliminarSticNote = async ({
+    id_sticknote,
+    database,
+}) => {
+    try {
+        const query = `
+            DELETE FROM crm_stick_notes
+            WHERE id_sticknote = ?
+        `;
+
+        const result = await executeQuery(
+            query,
+            [id_sticknote],
+            database
+        );
+
+        console.log("🗑️ Sticky note eliminado:", id_sticknote);
+
+        return {
+            statusCode: 200,
+            message: "Sticky note eliminado correctamente",
+            data: result,
+        };
+    } catch (error) {
+        console.error("❌ Error eliminando sticky note:", error);
+        return {
+            statusCode: 500,
+            message: "Error al eliminar sticky note",
+            error: error.message,
+        };
+    }
+};
+
 // Exportar el objeto con todas las funciones
 module.exports = sticknotes;

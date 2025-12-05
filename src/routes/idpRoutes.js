@@ -304,6 +304,7 @@ module.exports = function (app) {
                 { path: "/sticknotes/estado", method: "cambiarEstadoSticNote" }, // Cambiar estado
                 { path: "/sticknotes/pin", method: "actualizarPinSticNote" }, // Actualizar PIN (fijar nota)
                 { path: "/sticknotes/obtener-por-id", method: "obtenerSticNotePorId" }, // Obtener sticky note específico
+                { path: "/sticknotes/eliminar", method: "eliminarSticNote" }, // Eliminar sticky note
             ],
         },
     ];
