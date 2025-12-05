@@ -6,7 +6,7 @@ const sticknotes = {};
 
 /**
  * Obtiene todos los sticky notes para una transacción específica
- * Solo devuelve notas donde el usuario es creador O asignado (o notas públicas)
+ * Solo devuelve notas donde el usuario es creador O asignado
  * @param {Object} params - Parámetros de la solicitud
  * @param {string} params.transaction_type - Tipo de transacción (ej: salesorder, estimate)
  * @param {number} params.transaction_id - ID de la transacción específica
@@ -45,8 +45,6 @@ sticknotes.obtenerSticNotesPorTransaccion = async ({ transaction_type, transacti
                     sn.id_usuario_creador = ?
                     -- O soy el asignado
                     OR sn.id_usuario_asignado = ?
-                    -- O es una nota pública (privado = 0)
-                    OR sn.privado = 0
                 )
             ORDER BY sn.creado_en DESC
         `;
@@ -88,6 +86,7 @@ sticknotes.obtenerSticNotesPorTransaccion = async ({ transaction_type, transacti
  * @param {number} params.id_usuario_creador - ID del usuario que crea la nota
  * @param {number} params.privado - Si es privado (0/1)
  * @param {number} params.id_usuario_asignado - ID del usuario asignado
+ * @param {string} params.email_usuario_asignado - Email del usuario asignado
  * @param {string} params.prioridad - Prioridad (baja, media, alta)
  * @param {string} params.categoria - Categoría de la nota
  * @param {Object} params.database - Conexión a la base de datos
@@ -106,11 +105,30 @@ sticknotes.crearSticNote = async ({
     id_usuario_creador,
     privado,
     id_usuario_asignado,
+    email_usuario_asignado,
     prioridad,
     categoria,
     database,
 }) => {
     const leadId = idinterno_lead || id_lead;
+
+    console.log("📝 Datos recibidos para crear sticky note:", {
+        id_lead,
+        idinterno_lead,
+        transaction_type,
+        transaction_id,
+        titulo,
+        mensaje,
+        color_hex,
+        pos_x,
+        pos_y,
+        id_usuario_creador,
+        privado,
+        id_usuario_asignado,
+        email_usuario_asignado,
+        prioridad,
+        categoria,
+    });
 
     try {
         const query = `
