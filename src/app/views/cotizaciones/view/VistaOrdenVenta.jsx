@@ -567,7 +567,7 @@ const calculateProgress = (validarOrdenVenta, datosOrdenVenta) => {
       { 
          label: "Aprobación Formalizaciones", 
          percentage: 80, 
-         completed: validarOrdenVenta.aprobacion_forma_ov === 1 && estadoFacturacionPendiente, 
+         completed: validarOrdenVenta.aprobacion_forma_ov === 1, 
          color: "#00bcd4",
          requirement: "aprobacion_forma_ov === 1 && estado facturación pendiente"
       },
