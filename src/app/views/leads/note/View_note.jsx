@@ -1,12 +1,13 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { useDispatch } from "react-redux";
 import { createNote, getSpecificLead } from "../../../../store/leads/thunksLeads";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { ButtonActions } from "../../../components/buttonAccions/buttonAccions";
 import Swal from "sweetalert2"; // Asegúrate de tener SweetAlert instalado
 
 export const View_note = () => {
     const dispatch = useDispatch();
+    const navigate = useNavigate();
     const [leadData, setLeadData] = useState(null); // Almacena los datos del lead
     const [leadName, setLeadName] = useState(null); // Almacena el nombre del lead
     const [note, setNote] = useState(""); // Almacena el valor del textarea
@@ -46,8 +47,9 @@ export const View_note = () => {
      * Maneja el cambio en el textarea.
      */
     const handleNoteChange = (event) => {
-        setNote(event.target.value);
-        if (event.target.value.trim() !== "") {
+        const newValue = event.target.value;
+        setNote(newValue);
+        if (newValue.trim() !== "") {
             setIsTextareaError(false); // Si hay texto, quitar el borde rojo
         }
     };
@@ -57,9 +59,11 @@ export const View_note = () => {
      */
     const handleQuickOptionSelect = (event) => {
         const selectedValue = event.target.value;
-        setSelectedQuickOption(selectedValue);
         
-        if (selectedValue) {
+        if (selectedValue && selectedValue !== "") {
+            // Actualizar el estado para que el select muestre la opción seleccionada
+            setSelectedQuickOption(selectedValue);
+            
             // Si hay texto en el textarea, agregar al final
             if (note.trim() !== "") {
                 setNote(prevNote => prevNote + " " + selectedValue);
@@ -71,7 +75,9 @@ export const View_note = () => {
             // Quitar el borde rojo si había error
             setIsTextareaError(false);
             
-            // Resetear el select
+            // La opción permanecerá visible hasta que el usuario escriba en el textarea o seleccione otra opción
+        } else {
+            // Si se selecciona la opción vacía, limpiar
             setSelectedQuickOption("");
         }
     };
@@ -115,10 +121,10 @@ export const View_note = () => {
                          }).then((result) => {
                              if (result.isConfirmed) {
                                  // Vuelve a la vista anterior en la navegación.
-                                 history.go(-1);
+                                 navigate(-1);
                              } else if (result.isDenied) {
                                  // Redirige a la página de perfil del cliente.
-                                 window.location.href = "leads/perfil?data=" + leadId; // Reemplazar `id_le` por `leadId` si corresponde
+                                 navigate(`/leads/perfil?data=${leadId}`);
                              } else {
                                  // Recarga la página actual.
                                  window.location.reload();
@@ -181,7 +187,15 @@ export const View_note = () => {
                                     onChange={handleQuickOptionSelect}
                                 >
                                     <option value="">Selecciona una opción rápida...</option>
+                                    <option value="Seguimiento inicial">Seguimiento inicial</option>
+                                    <option value="Seguimiento Avanzado">Seguimiento Avanzado</option>
+                                    <option value="Interés Alto">Interés Alto</option>
+                                    <option value="Interés Medio">Interés Medio</option>
+                                    <option value="Interés Bajo">Interés Bajo</option>
                                     <option value="Quiere visitar">Quiere visitar</option>
+                                    <option value="Interés en otro proyecto">Interés en otro proyecto</option>
+                                    <option value="Cliente en análisis bancario">Cliente en análisis bancario</option>
+                                    <option value="Se reactivó">Se reactivó</option>
                                     <option value="Interés en:">Interés en:</option>
                                     <option value="Seguimiento 1">Seguimiento 1</option>
                                     <option value="Seguimiento 2">Seguimiento 2</option>
