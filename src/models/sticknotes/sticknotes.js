@@ -112,7 +112,8 @@ sticknotes.crearSticNote = async ({
 }) => {
     const leadId = idinterno_lead || id_lead;
 
-    console.log("📝 Datos recibidos para crear sticky note:", {
+    console.log("📝 ========== DATOS RECIBIDOS PARA CREAR STICKY NOTE ==========");
+    console.log("📝 Datos completos:", JSON.stringify({
         id_lead,
         idinterno_lead,
         transaction_type,
@@ -128,7 +129,14 @@ sticknotes.crearSticNote = async ({
         email_usuario_asignado,
         prioridad,
         categoria,
+    }, null, 2));
+    console.log("👤 Usuario asignado:", {
+        id: id_usuario_asignado,
+        email: email_usuario_asignado,
+        tieneId: !!id_usuario_asignado,
+        tieneEmail: !!email_usuario_asignado,
     });
+    console.log("📝 ============================================================");
 
     try {
         const query = `
@@ -181,6 +189,11 @@ sticknotes.crearSticNote = async ({
  * @param {string} params.titulo - Nuevo título
  * @param {string} params.mensaje - Nuevo contenido del mensaje
  * @param {string} params.color_hex - Nuevo color en formato HEX
+ * @param {number} params.privado - Si es privado (0/1)
+ * @param {number} params.id_usuario_asignado - ID del usuario asignado
+ * @param {string} params.email_usuario_asignado - Email del usuario asignado
+ * @param {string} params.prioridad - Prioridad (baja, media, alta)
+ * @param {string} params.categoria - Categoría de la nota
  * @param {Object} params.database - Conexión a la base de datos
  * @returns {Promise<Object>} - Resultado de la actualización
  */
@@ -189,18 +202,60 @@ sticknotes.editarSticNote = async ({
     titulo,
     mensaje,
     color_hex,
+    privado,
+    id_usuario_asignado,
+    email_usuario_asignado,
+    prioridad,
+    categoria,
     database,
 }) => {
+    console.log("📝 ========== DATOS RECIBIDOS PARA EDITAR STICKY NOTE ==========");
+    console.log("📝 Datos completos:", JSON.stringify({
+        id_sticknote,
+        titulo,
+        mensaje,
+        color_hex,
+        privado,
+        id_usuario_asignado,
+        email_usuario_asignado,
+        prioridad,
+        categoria,
+    }, null, 2));
+    console.log("👤 Usuario asignado:", {
+        id: id_usuario_asignado,
+        email: email_usuario_asignado,
+        tieneId: !!id_usuario_asignado,
+        tieneEmail: !!email_usuario_asignado,
+    });
+    console.log("📝 ============================================================");
+
     try {
         const query = `
             UPDATE crm_stick_notes
-            SET titulo = ?, mensaje = ?, color_hex = ?, actualizado_en = CURRENT_TIMESTAMP
+            SET 
+                titulo = ?,
+                mensaje = ?,
+                color_hex = ?,
+                privado = ?,
+                id_usuario_asignado = ?,
+                prioridad = ?,
+                categoria = ?,
+                actualizado_en = CURRENT_TIMESTAMP
             WHERE id_sticknote = ?
         `;
 
         const result = await executeQuery(
             query,
-            [titulo, mensaje, color_hex, id_sticknote],
+            [
+                titulo,
+                mensaje,
+                color_hex,
+                privado !== undefined ? privado : null,
+                id_usuario_asignado || null,
+                prioridad || "media",
+                categoria || "general",
+                id_sticknote,
+            ],
             database
         );
 
