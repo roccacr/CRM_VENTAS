@@ -19,7 +19,6 @@ const handleDatabaseOperation = async (operation, database) => {
         connection = await createConnection(database);
         return await operation(connection);
     } catch (error) {
-        console.error(`Error en la operación de base de datos: ${error.message}`);
         // SEGURIDAD: No exponer detalles internos del error al cliente
         return { statusCode: 500, error: "Error interno del servidor" };
     } finally {
@@ -124,7 +123,6 @@ authenticated.verificaionDeUsuario = async (dataParams) => {
             database: dataParams.database,
         });
     } catch (error) {
-        console.error("Error al actualizar token en DB:", error);
         // Continuar de todas formas, el token se devuelve aunque falle la actualización en DB
     }
 
@@ -259,7 +257,6 @@ authenticated.SP_RECUPERAR_CONTRASENA = async (dataParams) => {
             return { statusCode: result.affectedRows > 0 ? 200 : 404, message: result.affectedRows > 0 ? "Contraseña actualizada y correo enviado" : "Correo no encontrado" };
         } catch (error) {
             // Manejar y registrar cualquier error ocurrido durante el proceso.
-            console.error("Error al recuperar contraseña:", error.message);
             return { statusCode: 500, error: "Error interno en la recuperación de contraseña" };
         }
     }, dataParams.database);
@@ -288,9 +285,6 @@ authenticated.validateTokenUser = (dataParams) => {
         const token = dataParams.transaccion?.token_admin || dataParams.token_admin;
 
         if (!token) {
-            console.warn("Validación de token: Token no proporcionado");
-            console.warn(`dataParams.transaccion: ${JSON.stringify(dataParams.transaccion)}`);
-            console.warn(`dataParams.token_admin: ${dataParams.token_admin}`);
             return {
                 statusCode: 400,
                 data: "Token no proporcionado",
@@ -306,10 +300,7 @@ authenticated.validateTokenUser = (dataParams) => {
         const now = Date.now();
         const timeUntilExpiry = tokenExpiresAt - now;
 
-        console.log(`✓ Token validation: Token expires in ${Math.round(timeUntilExpiry / 1000)} seconds`);
-
         if (timeUntilExpiry < 0) {
-            console.warn(`Token validation: Token expired ${Math.round(Math.abs(timeUntilExpiry) / 1000)} seconds ago`);
             return {
                 statusCode: 401,
                 data: "El token ha expirado",
@@ -317,7 +308,6 @@ authenticated.validateTokenUser = (dataParams) => {
         }
 
         // Token válido
-        console.log(`Token validation: Token is valid for ${Math.round(timeUntilExpiry / 60)} more minutes`);
         return {
             statusCode: 200,
             data: "El token es válido",
@@ -331,20 +321,17 @@ authenticated.validateTokenUser = (dataParams) => {
         };
     } catch (error) {
         if (error instanceof jwt.TokenExpiredError) {
-            console.warn(`Token validation: Token expired at ${new Date(error.expiredAt).toISOString()}`);
             return {
                 statusCode: 401,
                 data: "El token ha expirado",
             };
         } else if (error instanceof jwt.JsonWebTokenError) {
-            console.warn(`Token validation: Invalid token - ${error.message}`);
             return {
                 statusCode: 400,
                 data: "El token no es válido",
             };
         }
         // SEGURIDAD: No exponer detalles internos del error
-        console.error(`Token validation: Unexpected error - ${error.message}`);
         return {
             statusCode: 500,
             data: "Error en la validación del token",

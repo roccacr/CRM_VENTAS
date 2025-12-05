@@ -96,6 +96,7 @@ const allowNoAuth = (req, res, next) => {
 const handleRequest = (model, method) => async (req, res) => {
     try {
         // Ejecuta el método del modelo con los datos del cuerpo de la solicitud
+        // req.body ya debe incluir id_usuario_autenticado desde el frontend
         const response = await model[method](req.body);
         // Gestiona la respuesta exitosa utilizando el helper
         helpers.manageResponse(res, response, null);

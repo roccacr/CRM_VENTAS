@@ -6,28 +6,59 @@ const sticknotes = {};
 
 /**
  * Obtiene todos los sticky notes para una transacción específica
+ * Solo devuelve notas donde el usuario es creador O asignado (o notas públicas)
  * @param {Object} params - Parámetros de la solicitud
  * @param {string} params.transaction_type - Tipo de transacción (ej: salesorder, estimate)
  * @param {number} params.transaction_id - ID de la transacción específica
+ * @param {number} params.id_usuario_autenticado - ID del usuario autenticado
  * @param {Object} params.database - Conexión a la base de datos
  * @returns {Promise<Object>} - Resultado de la consulta
  */
-sticknotes.obtenerSticNotesPorTransaccion = async ({ transaction_type, transaction_id, database }) => {
+sticknotes.obtenerSticNotesPorTransaccion = async ({ transaction_type, transaction_id, id_usuario_autenticado, database }) => {
     try {
-        console.log("🔍 Buscando sticky notes con:", { transaction_type, transaction_id });
-
         const query = `
-            SELECT * FROM crm_stick_notes
-            WHERE transaction_type = ? AND transaction_id = ?
-            ORDER BY creado_en DESC
+            SELECT
+                sn.*,
+
+                -- Datos del dueño/creador de la nota
+                creador.name_admin  AS nombre_duenio,
+                creador.email_admin AS correo_duenio,
+
+                -- Datos del usuario asignado
+                asignado.name_admin  AS nombre_asignado,
+                asignado.email_admin AS correo_asignado
+
+            FROM crm_stick_notes AS sn
+
+            -- JOIN con el creador
+            LEFT JOIN admins AS creador
+                ON creador.idnetsuite_admin = sn.id_usuario_creador
+
+            -- JOIN con el asignado
+            LEFT JOIN admins AS asignado
+                ON asignado.idnetsuite_admin = sn.id_usuario_asignado
+
+            WHERE sn.transaction_type = ?
+                AND sn.transaction_id = ?
+                AND (
+                    -- Soy el creador
+                    sn.id_usuario_creador = ?
+                    -- O soy el asignado
+                    OR sn.id_usuario_asignado = ?
+                    -- O es una nota pública (privado = 0)
+                    OR sn.privado = 0
+                )
+            ORDER BY sn.creado_en DESC
         `;
 
-        const result = await executeQuery(query, [transaction_type, transaction_id], database);
+        const result = await executeQuery(
+            query,
+            [transaction_type, transaction_id, id_usuario_autenticado, id_usuario_autenticado],
+            database
+        );
 
         // Asegurar que result es un array
         const notesData = Array.isArray(result) ? result : (result && result.data ? result.data : []);
-
-        console.log("✅ Sticky notes encontrados:", notesData.length, "notas");
 
         return {
             statusCode: 200,
@@ -35,7 +66,6 @@ sticknotes.obtenerSticNotesPorTransaccion = async ({ transaction_type, transacti
             data: notesData,
         };
     } catch (error) {
-        console.error("❌ Error en obtenerSticNotesPorTransaccion:", error.message, error.sql);
         return {
             statusCode: 500,
             message: "Error al obtener sticky notes",
@@ -82,22 +112,6 @@ sticknotes.crearSticNote = async ({
 }) => {
     const leadId = idinterno_lead || id_lead;
 
-    console.log("🔍 Parámetros recibidos en crearSticNote:", {
-        leadId,
-        transaction_type,
-        transaction_id,
-        titulo,
-        mensaje,
-        color_hex,
-        pos_x,
-        pos_y,
-        id_usuario_creador,
-        privado,
-        id_usuario_asignado,
-        prioridad,
-        categoria,
-    });
-
     try {
         const query = `
             INSERT INTO crm_stick_notes (
@@ -128,15 +142,12 @@ sticknotes.crearSticNote = async ({
             database
         );
 
-        console.log("✅ Sticky note creado correctamente, ID:", result.insertId);
-
         return {
             statusCode: 201,
             message: "Sticky note creado correctamente",
             data: { id_sticknote: result.insertId },
         };
     } catch (error) {
-        console.error("❌ Error en la operación de base de datos:", error.message);
         return {
             statusCode: 500,
             message: "Error al crear sticky note",
@@ -332,8 +343,29 @@ sticknotes.obtenerSticNotePorId = async ({
 }) => {
     try {
         const query = `
-            SELECT * FROM crm_stick_notes
-            WHERE id_sticknote = ?
+            SELECT
+                sn.*,
+
+                -- Datos del dueño/creador de la nota
+                creador.name_admin  AS nombre_duenio,
+                creador.email_admin AS correo_duenio,
+
+                -- Datos del usuario asignado
+                asignado.name_admin  AS nombre_asignado,
+                asignado.email_admin AS correo_asignado
+
+            FROM crm_stick_notes AS sn
+
+            -- JOIN con el creador
+            LEFT JOIN admins AS creador
+                ON creador.idnetsuite_admin = sn.id_usuario_creador
+
+            -- JOIN con el asignado
+            LEFT JOIN admins AS asignado
+                ON asignado.idnetsuite_admin = sn.id_usuario_asignado
+
+            WHERE sn.id_sticknote = ?;
+
         `;
 
         const result = await executeQuery(
