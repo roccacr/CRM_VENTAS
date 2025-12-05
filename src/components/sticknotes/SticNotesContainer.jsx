@@ -460,79 +460,84 @@ const SticNotesContainer = ({ idinternoLead, transactionType, transactionId }) =
     });
 
     return (
-        <div
-            ref={containerRef}
-            className="sticknotes-container"
-            onMouseMove={handleMouseMove}
-            onMouseUp={handleMouseUp}
-            onMouseLeave={handleMouseUp}
-        >
-            {/* Botón para crear nueva nota */}
-            <button
-                className="btn-create-sticknote"
-                onClick={handleOpenCreateModal}
-                title="Crear nueva nota"
-            >
-                + Stick Notes
-            </button>
-
-            {/* Botón para ocultar todas las notas */}
-            {!hideAllNotes && (
+        <>
+            {/* Contenedor de botones fuera del contenedor principal */}
+            <div className="sticknotes-buttons-container">
+                {/* Botón para mostrar notas archivadas/desactivadas */}
                 <button
-                    className="btn-hide-all-sticknotes"
-                    onClick={handleHideAllNotes}
-                    title="Oculta todas las notas de la vista actual (no las elimina)"
+                    className={`btn-show-hidden-sticknotes ${showHiddenNotes ? 'active' : ''}`}
+                    onClick={handleShowHiddenNotes}
+                    title="Muestra las notas que han sido desactivadas"
                 >
-                    Ocultar Todas
+                    Archivadas ({sticNotes.filter(n => n.estado === 0).length})
                 </button>
-            )}
 
-            {/* Botón para mostrar todas las notas */}
-            {hideAllNotes && (
+                {/* Botón para ocultar todas las notas */}
+                {!hideAllNotes && (
+                    <button
+                        className="btn-hide-all-sticknotes"
+                        onClick={handleHideAllNotes}
+                        title="Oculta todas las notas de la vista actual (no las elimina)"
+                    >
+                        Ocultar Todas
+                    </button>
+                )}
+
+                {/* Botón para mostrar todas las notas */}
+                {hideAllNotes && (
+                    <button
+                        className="btn-show-all-sticknotes"
+                        onClick={handleShowAllNotes}
+                        title="Muestra todas las notas nuevamente"
+                    >
+                        Mostrar Todas
+                    </button>
+                )}
+
+                {/* Botón para crear nueva nota */}
                 <button
-                    className="btn-show-all-sticknotes"
-                    onClick={handleShowAllNotes}
-                    title="Muestra todas las notas nuevamente"
+                    className="btn-create-sticknote"
+                    onClick={handleOpenCreateModal}
+                    title="Crear nueva nota"
                 >
-                    Mostrar Todas
+                    + Stick Notes
                 </button>
-            )}
+            </div>
 
-            {/* Botón para mostrar notas archivadas/desactivadas */}
-            <button
-                className={`btn-show-hidden-sticknotes ${showHiddenNotes ? 'active' : ''}`}
-                onClick={handleShowHiddenNotes}
-                title="Muestra las notas que han sido desactivadas"
+            {/* Contenedor principal de las notas */}
+            <div
+                ref={containerRef}
+                className="sticknotes-container"
+                onMouseMove={handleMouseMove}
+                onMouseUp={handleMouseUp}
+                onMouseLeave={handleMouseUp}
             >
-                Archivadas ({sticNotes.filter(n => n.estado === 0).length})
-            </button>
+                {/* Mostrar las notas filtradas */}
+                {notasAMostrar.map((note) => (
+                    <SticNote
+                        key={note.id_sticknote}
+                        note={note}
+                        onMouseDown={handleMouseDown}
+                        onEdit={handleEditNote}
+                        onToggleVisibility={handleToggleVisibility}
+                        onToggleState={handleToggleState}
+                        onTogglePin={handleTogglePin}
+                        showingHidden={showHiddenNotes}
+                        adminsMap={adminsMap}
+                        currentUserId={idnetsuite_admin}
+                    />
+                ))}
 
-            {/* Mostrar las notas filtradas */}
-            {notasAMostrar.map((note) => (
-                <SticNote
-                    key={note.id_sticknote}
-                    note={note}
-                    onMouseDown={handleMouseDown}
-                    onEdit={handleEditNote}
-                    onToggleVisibility={handleToggleVisibility}
-                    onToggleState={handleToggleState}
-                    onTogglePin={handleTogglePin}
-                    showingHidden={showHiddenNotes}
-                    adminsMap={adminsMap}
-                    currentUserId={idnetsuite_admin}
-                />
-            ))}
-
-            {/* Modal para crear/editar notas */}
-            {showModal && (
-                <ModalSticNote
-                    note={editingNote}
-                    onSave={handleSaveNote}
-                    onClose={handleCloseModal}
-                />
-            )}
-        
-        </div>
+                {/* Modal para crear/editar notas */}
+                {showModal && (
+                    <ModalSticNote
+                        note={editingNote}
+                        onSave={handleSaveNote}
+                        onClose={handleCloseModal}
+                    />
+                )}
+            </div>
+        </>
     );
 };
 

@@ -1106,7 +1106,7 @@ export const VistaOrdenVenta = () => {
    return (
       <>
          {/* Sticky Notes Container */}
-         <div style={{ position: 'relative', height: '0px', zIndex: 999 }}>
+         <div style={{ position: 'relative', zIndex: 999 }}>
             <SticNotesContainer
                idinternoLead={leadDetails?.idinterno_lead}
                transactionType="ordersale"
