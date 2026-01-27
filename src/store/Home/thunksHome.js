@@ -24,6 +24,8 @@ export const startLoadingAllLeads = () => {
             const result = await getAllBanners({ idnetsuite_admin, rol_admin });
             const data = result.data;
 
+            console.log( "data dashboard" , data);
+
             // Extrae los datos necesarios y maneja los posibles valores nulos
             const resultData = {
                 total_new: data["0"]?.[0]?.total_new || 0,
@@ -32,6 +34,7 @@ export const startLoadingAllLeads = () => {
                 total_oport: data["3"]?.[0]?.total_oport || 0,
                 total_orders: data["4"]?.[0]?.total_orders || 0,
                 total_orders_pending: data["5"]?.[0]?.total_orders_pending || 0,
+                total_oport_negative: data["6"]?.[0]?.total_oport_negative || 0,
             };
 
             // Actualiza el estado de Redux con los datos obtenidos
