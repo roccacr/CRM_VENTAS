@@ -90,6 +90,8 @@ oportunidad.updateOpportunity_Status = (dataParams) => {
 // Función para obtener oportunidades basadas en parámetros de filtrado
 oportunidad.get_Oportunidades = (dataParams) => {
 
+    
+
     // Determinar filtro adicional basado en BotonesEstados
     const estadoFiltro =
         {
@@ -98,7 +100,9 @@ oportunidad.get_Oportunidades = (dataParams) => {
             5: "and estatus_oport = 0",
             6: "and estatus_oport = 1", 
             7: "", 
+            10: "and p.estatus_oport = 1 AND chek_oport=0",
         }[dataParams.BotonesEstados] || ""; // Si no se encuentra en los casos anteriores, no aplica filtro
+
 
     // Seleccionar campo de fecha según el modo
     const dateField = dataParams.isMode === 1 ? "fecha_creada_oport" : "fecha_Condicion";
@@ -163,6 +167,7 @@ oportunidad.get_Oportunidades = (dataParams) => {
                     ? `WHERE 1=1 ${estadoFiltro} ${dateFilter}`
                     : `WHERE employee_oport = ${dataParams.idnetsuite_admin} ${estadoFiltro} ${dateFilter}`}
     `;
+
 
 
     // Parámetros para la consulta
