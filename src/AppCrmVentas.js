@@ -36,7 +36,7 @@ app.use(morgan(process.env.NODE_ENV === "production" ? "combined" : "dev"));
 
 // Lista de orígenes permitidos para CORS
 // Se define como una constante para mayor seguridad y claridad
-const allowedOrigins = ["http://localhost:5173", "https://crm.roccacr.com", "https://test.roccacr.com", "https://4552704-sb1.app.netsuite.com", "https://crmtest.roccacr.com"];
+const allowedOrigins = ["http://localhost:5174","http://localhost:5173", "https://crm.roccacr.com", "https://test.roccacr.com", "https://4552704-sb1.app.netsuite.com", "https://crmtest.roccacr.com"];
 
 // Configuración de CORS
 app.use(
