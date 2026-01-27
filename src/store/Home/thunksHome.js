@@ -24,7 +24,7 @@ export const startLoadingAllLeads = () => {
             const result = await getAllBanners({ idnetsuite_admin, rol_admin });
             const data = result.data;
 
-            console.log( "data dashboard" , data);
+
 
             // Extrae los datos necesarios y maneja los posibles valores nulos
             const resultData = {
