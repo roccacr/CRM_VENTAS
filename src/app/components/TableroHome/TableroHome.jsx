@@ -1,6 +1,6 @@
 import { NavLink } from "react-router-dom";
 
-export const TableroHome = ({ image, icons, nombre, cantidad, url, outlookCount, hasOutlook, alertStatus }) => {
+export const TableroHome = ({ image, icons, nombre, cantidad, url, outlookCount, hasOutlook, alertStatus, leftLabel, rightLabel, leftColor, rightColor, leftUrl, rightUrl }) => {
     // Función para obtener los estilos según el estado de alerta
     const getAlertStyles = () => {
         if (!alertStatus) return {};
@@ -61,21 +61,21 @@ export const TableroHome = ({ image, icons, nombre, cantidad, url, outlookCount,
                                 {hasOutlook ? (
                                     // Mostrar formato con números arriba y etiquetas abajo
                                     <div className="d-flex align-items-center gap-3">
-                                        <a href={url} style={{ textDecoration: "none", color: "inherit" }}>
+                                        <a href={leftUrl || url} style={{ textDecoration: "none", color: "inherit" }}>
                                             <div className="text-center">
-                                                <h2 className="mb-0 f-w-500" style={{ fontSize: "1.3rem", cursor: "pointer", color: quantityColor }}>
+                                                <h2 className="mb-0 f-w-500" style={{ fontSize: "1.3rem", cursor: "pointer", color: leftColor || quantityColor }}>
                                                     {cantidad !== undefined && cantidad !== null ? cantidad : "..."}
                                                 </h2>
-                                                <p className="mb-0 text-muted" style={{ fontSize: "0.8rem" }}>CRM</p>
+                                                <p className="mb-0 text-muted" style={{ fontSize: "0.65rem", fontWeight: "500" }}>{leftLabel || "CRM"}</p>
                                             </div>
                                         </a>
                                         <span className="text-muted">/</span>
-                                        <a href="/calendar" style={{ textDecoration: "none", color: "inherit" }}>
+                                        <a href={rightUrl || "/calendar"} style={{ textDecoration: "none", color: "inherit" }}>
                                             <div className="text-center">
-                                                <h2 className="mb-0 f-w-500" style={{ color: "#6c757d", fontWeight: "600", fontSize: "1.3rem", cursor: "pointer" }}>
+                                                <h2 className="mb-0 f-w-500" style={{ color: rightColor || "#6c757d", fontWeight: "600", fontSize: "1.3rem", cursor: "pointer" }}>
                                                     {outlookCount !== undefined && outlookCount !== null ? outlookCount : "..."}
                                                 </h2>
-                                                <p className="mb-0 text-muted" style={{ fontSize: "0.8rem" }}>Outlook</p>
+                                                <p className="mb-0 text-muted" style={{ fontSize: "0.65rem", fontWeight: "500" }}>{rightLabel || "Outlook"}</p>
                                             </div>
                                         </a>
                                     </div>

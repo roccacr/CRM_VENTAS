@@ -3,7 +3,7 @@
 import { generateLeadBitacora } from "../leads/thunksLeads";
 import { fetchGetMonthlyData, fetchGetMonthlyDataKpi , fetchGetMonthlyData_venta, fetchupdateEventDate, getAllBanners, getAllEventsHome, updateEventStatus } from "./Api_Home_Providers";
 
-import { setLeadsNew, setListEvents, setListOportunity, setListOrderSale, setListOrderSalePending, setlistAttentions, setlistEventsPending, setlistGraficoKpi, updateDateCalendar } from "./HomeSlice";
+import { setLeadsNew, setListEvents, setListOportunity, setListOportNegative, setListOrderSale, setListOrderSalePending, setlistAttentions, setlistEventsPending, setlistGraficoKpi, updateDateCalendar } from "./HomeSlice";
 
 /**
  * Inicia la carga asincrónica de todos los leads y eventos relacionados.
@@ -42,6 +42,7 @@ export const startLoadingAllLeads = () => {
             dispatch(setlistAttentions(resultData.total_attention));
             dispatch(setListEvents(resultData.total_events));
             dispatch(setListOportunity(resultData.total_oport));
+            dispatch(setListOportNegative(resultData.total_oport_negative));
             dispatch(setListOrderSale(resultData.total_orders));
             dispatch(setListOrderSalePending(resultData.total_orders_pending));
         } catch (error) {

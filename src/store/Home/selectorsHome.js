@@ -28,6 +28,11 @@ export const selectListOportunity = createSelector(
     (home) => home.listOportunity
 );
 
+export const selectListOportNegative = createSelector(
+    [selectHomeState],
+    (home) => home.listOportNegative
+);
+
 export const selectListOrderSale = createSelector(
     [selectHomeState],
     (home) => home.listOrderSale

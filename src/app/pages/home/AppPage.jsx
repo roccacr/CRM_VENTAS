@@ -11,6 +11,7 @@ import {
    selectListAttention,
    selectListEvents,
    selectListOportunity,
+   selectListOportNegative,
    selectListOrderSale,
    selectListOrderSalePending,
 } from "../../../store/Home/selectorsHome";
@@ -36,6 +37,7 @@ export const AppPage = () => {
    const listAttention = useSelector(selectListAttention);
    const listEvents = useSelector(selectListEvents);
    const listOportunity = useSelector(selectListOportunity);
+   const listOportNegative = useSelector(selectListOportNegative);
    const listOrderSale = useSelector(selectListOrderSale);
    const listOrderSalePending = useSelector(selectListOrderSalePending);
 
@@ -50,7 +52,7 @@ export const AppPage = () => {
    // Actualizar los elementos del tablero cuando cambien los valores de los leads o eventos de Outlook
    useEffect(() => {
       updateDashboardItems();
-   }, [listNew, listAttention, listEvents, listOportunity, listOrderSale, listOrderSalePending, outlookEventsCount, outlookLoading]);
+   }, [listNew, listAttention, listEvents, listOportunity, listOportNegative, listOrderSale, listOrderSalePending, outlookEventsCount, outlookLoading]);
 
    // Función para cargar los leads
    const loadLeads = () => {
@@ -98,6 +100,22 @@ export const AppPage = () => {
             };
          }
 
+         // Para el item de oportunidades (id: 4), agregar información de oportunidades negativas
+         if (item.id === 4) {
+            return {
+               ...item,
+               quantity: quantities[item.id] ?? item.quantity,
+               outlookCount: listOportNegative, // Oportunidades negativas
+               hasOutlook: true, // Indica que tiene integración adicional (oportunidades negativas)
+               leftLabel: "+ PROBABLE",
+               rightLabel: "- PROBABLE",
+               leftColor: "#28a745", // Verde para oportunidades positivas
+               rightColor: "#dc3545", // Rojo para oportunidades negativas
+               leftUrl: "/oportunidad/lista?oportuinidad=1&idLead=0", // URL para + PROBABLE
+               rightUrl: "/oportunidad/lista?oportuinidad=10&idLead=0", // URL para - PROBABLE
+            };
+         }
+
          // Para el item de Leads Nuevos (id: 1), agregar estado de alerta
          if (item.id === 1) {
             return {
@@ -137,6 +155,12 @@ export const AppPage = () => {
             outlookCount={item.outlookCount}
             hasOutlook={item.hasOutlook}
             alertStatus={item.alertStatus}
+            leftLabel={item.leftLabel}
+            rightLabel={item.rightLabel}
+            leftColor={item.leftColor}
+            rightColor={item.rightColor}
+            leftUrl={item.leftUrl}
+            rightUrl={item.rightUrl}
          />
       ));
    };
