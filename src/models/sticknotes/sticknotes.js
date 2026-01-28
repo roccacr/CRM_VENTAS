@@ -799,6 +799,12 @@ const enviarCorreoStickyNote = async ({
         } else if (transaction_type === 'opportunity' && transaction_id) {
             netsuiteLink = `https://4552704.app.netsuite.com/app/accounting/transactions/opprtnty.nl?id=${transaction_id}&whence=`;
             linkTexto = 'Ver Oportunidad en NetSuite';
+        } else if (transaction_type === 'estimate' && transaction_id) {
+            netsuiteLink = `https://4552704.app.netsuite.com/app/accounting/transactions/estimate.nl?id=${transaction_id}&whence=`;
+            linkTexto = 'Ver Estimación en NetSuite';
+        } else if (transaction_type === 'lead' && transaction_id) {
+            netsuiteLink = `https://4552704.app.netsuite.com/app/common/entity/custjob.nl?id=${transaction_id}`;
+            linkTexto = 'Ver Lead en NetSuite';
         }
         // Aquí se pueden agregar más tipos de transacciones en el futuro
 
