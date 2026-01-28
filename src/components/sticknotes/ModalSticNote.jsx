@@ -72,9 +72,6 @@ const ModalSticNote = ({ note, onSave, onClose }) => {
             try {
                 const result = await dispatch(obtenerAdminsParaSticknotesThunk(1));
 
-                console.log("🔍 result admin:", result);
-
-
                 // Navegar a través de la estructura de datos
                 let adminsData = [];
                 if (result && result.data) {
@@ -89,14 +86,10 @@ const ModalSticNote = ({ note, onSave, onClose }) => {
                 }
                 setAdmins(adminsData);
 
-                console.log("📋 Ejemplo de admin (primer elemento):", adminsData[0]);
-
                 // Filtrar solo los admins con id_rol_admin = 2, 3 o 4
                 const filtered = adminsData.filter(
                     (admin) =>admin.id_rol_admin === 1 || admin.id_rol_admin === 2 || admin.id_rol_admin === 3 || admin.id_rol_admin === 4
                 );
-
-                console.log("✅ Admins filtrados:", filtered.length, "admins");
 
                 setAdminsFiltered(filtered);
             } catch (error) {
@@ -202,8 +195,6 @@ const ModalSticNote = ({ note, onSave, onClose }) => {
                 prioridad: prioridad,
                 categoria: "general", // Valor por defecto
             };
-
-            console.log("📤 Datos que se enviarán al crear/editar nota:", dataToSend);
 
             await onSave(dataToSend);
 
@@ -578,19 +569,7 @@ const ModalSticNote = ({ note, onSave, onClose }) => {
                                             getOptionLabel={(option) => option.name_admin || ""}
                                             value={usuariosAsignados}
                                             onChange={(event, newValue) => {
-                                                // eslint-disable-next-line no-console
-                                                console.log("👤 USUARIOS SELECCIONADOS - Array completo:", JSON.stringify(newValue, null, 2));
-
                                                 setUsuariosAsignados(newValue || []);
-
-                                                // eslint-disable-next-line no-console
-                                                console.log("✅ ESTADO GUARDADO:", {
-                                                    usuarios_asignados: newValue?.map(u => ({
-                                                        id: u.idnetsuite_admin,
-                                                        nombre: u.name_admin,
-                                                        email: u.email_admin
-                                                    }))
-                                                });
                                             }}
                                             isOptionEqualToValue={(option, value) => 
                                                 option.idnetsuite_admin === value.idnetsuite_admin

@@ -76,9 +76,6 @@ export const crearSticNote = async ({
         categoria: categoria || "general",
     };
 
-
-    console.log("📤 Datos que se enviarán al crear nota:", requestData);
-
     const response = await fetchData("sticknotes/crear", requestData);
     return response;
 };

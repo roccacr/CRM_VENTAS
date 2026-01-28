@@ -309,10 +309,6 @@ const SticNotesContainer = ({ idinternoLead, transactionType, transactionId }) =
                             pos_y: currentNote.pos_y,
                         })
                     );
-                    console.log(`✅ Posición guardada para nota ${noteId}:`, {
-                        pos_x: currentNote.pos_x,
-                        pos_y: currentNote.pos_y,
-                    });
                 } catch (error) {
                     console.error("Error actualizando posición:", error);
                 }
