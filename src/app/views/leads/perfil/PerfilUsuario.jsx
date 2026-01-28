@@ -11,6 +11,7 @@ import { useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
 import { Ordenes } from "./Ordenes";
 import { OneDrive } from "./OneDrive";
+import SticNotesContainer from "../../../../components/sticknotes/SticNotesContainer";
 
 export const PerfilUsuario = () => {
     const dispatch = useDispatch();
@@ -100,6 +101,15 @@ export const PerfilUsuario = () => {
     };
     return (
         <>
+            {/* Sticky Notes Container */}
+            <div style={{ position: 'relative', zIndex: 999 }}>
+                <SticNotesContainer
+                    idinternoLead={getQueryParam("data")}
+                    transactionType="lead"
+                    transactionId={getQueryParam("data")}
+                />
+            </div>
+
             <HeaderContent leadInformations={leadDetails} />
             <div className="row">
                 <div className="col-xxl-3 col-lg-5">

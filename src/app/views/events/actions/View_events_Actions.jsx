@@ -10,6 +10,7 @@ import Typography from "@mui/material/Typography";
 import ArrowDownwardIcon from "@mui/icons-material/ArrowDownward";
 import Select from "react-select"; // Librería react-select para dropdown con búsqueda
 import Swal from "sweetalert2";
+import SticNotesContainer from "../../../../components/sticknotes/SticNotesContainer";
 
 // Función para validar si una fecha es anterior a la fecha actual
 const isDateInPast = (dateString) => {
@@ -617,7 +618,17 @@ export const View_events_Actions = () => {
     };
 
     return (
-        <div className="card" style={{ width: "100%" }}>
+        <>
+            {/* Sticky Notes Container */}
+            <div style={{ position: 'relative', zIndex: 999 }}>
+                <SticNotesContainer
+                    idinternoLead={getQueryParam("idLead") || 0}
+                    transactionType="event"
+                    transactionId={getQueryParam("idCalendar")}
+                />
+            </div>
+
+            <div className="card" style={{ width: "100%" }}>
             <div className="card-header table-card-header">
                 <h5>Administrar evento</h5>
             </div>
@@ -875,5 +886,6 @@ export const View_events_Actions = () => {
                 Generar Accion
             </button>
         </div>
+        </>
     );
 };

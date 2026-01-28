@@ -19,6 +19,7 @@ import "datatables.net-searchpanes-bs5";
 import "datatables.net-select-bs5";
 import { crearOrdenVenta } from "../../../../store/ordenVenta/thunkOrdenVenta";
 import { useNavigate } from "react-router-dom";
+import SticNotesContainer from "../../../../components/sticknotes/SticNotesContainer";
 /**
  * Componente principal para visualizar y gestionar estimaciones.
  * Permite ver detalles de estimaciones, convertirlas en pre-reservas,
@@ -596,6 +597,15 @@ export const VerEstimacion = () => {
 
    return (
       <>
+         {/* Sticky Notes Container */}
+         <div style={{ position: 'relative', zIndex: 999 }}>
+            <SticNotesContainer
+               idinternoLead={getQueryParam("data")}
+               transactionType="estimate"
+               transactionId={getQueryParam("data2")}
+            />
+         </div>
+
          <div className="col-xl-12 col-sm-12">
             <div className="card">
                <div className="card-body">
