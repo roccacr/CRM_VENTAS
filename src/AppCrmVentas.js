@@ -102,6 +102,5 @@ app.use((err, req, res, next) => {
 
 // Inicio del servidor
 app.listen(app.get("port"), () => {
-    // Registra un mensaje en la consola cuando el servidor está listo
-    console.log(`Server listening on port ${app.get("port")}`);
+    // Servidor iniciado
 });

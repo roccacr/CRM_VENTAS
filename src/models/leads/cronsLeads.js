@@ -131,7 +131,8 @@ const log = (level, message, data = null) => {
             break;
         case 'INFO':
         default:
-            console.log(logMessage, data || '');
+            // Logging deshabilitado
+            break;
     }
 };
 
@@ -462,22 +463,7 @@ const procesarLeadsInteresados = async () => {
             danger: vendedores.filter(v => v.estado_alerta === 'danger')
         };
 
-        // Mostrar reporte en consola
-        console.log(`\n${'='.repeat(70)}`);
-        console.log(`  RESUMEN DE LEADS INTERESADOS POR VENDEDOR`);
-        console.log(`${'='.repeat(70)}\n`);
-
-        vendedores.forEach((v, i) => {
-            const icono = v.estado_alerta === 'ok' ? '✓' : v.estado_alerta === 'warning' ? '⚠' : '🔴';
-            const estadoTexto = v.estado_alerta === 'ok' ? 'OK      ' :
-                               v.estado_alerta === 'warning' ? 'ROJO    ' : 'ALERTA  ';
-            console.log(`  ${(i + 1).toString().padStart(2)}. [${icono} ${estadoTexto}] ${v.vendedor_nombre} = ${v.cantidad_leads} leads`);
-        });
-
-        console.log(`\n${'='.repeat(70)}`);
-        console.log(`  TOTAL: ${vendedores.length} vendedores | ${totalLeads} leads`);
-        console.log(`  OK: ${porEstado.ok.length} | ROJO: ${porEstado.warning.length} | ALERTA: ${porEstado.danger.length}`);
-        console.log(`${'='.repeat(70)}\n`);
+        // Reporte procesado
 
         // Actualizar métricas
         metrics.leadsProcessedTotal += totalLeads;
