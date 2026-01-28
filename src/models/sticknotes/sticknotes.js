@@ -345,6 +345,8 @@ sticknotes.editarSticNote = async ({
 
         // Enviar correo de forma asíncrona (sin await) si hay usuarios asignados
         // La privacidad solo afecta la vista, pero si hay asignados deben recibir correo
+        console.log('📧 Iniciando proceso de envío de correo para nota editada:', id_sticknote);
+        
         // Obtener datos completos de la nota y del creador para enviar correo
         executeQuery(
             `SELECT sn.titulo, sn.mensaje, sn.color_hex, sn.prioridad, sn.id_usuario_creador,
@@ -356,13 +358,26 @@ sticknotes.editarSticNote = async ({
             [id_sticknote],
             database
         ).then(noteResult => {
+            console.log('📧 Resultado de consulta para correo:', JSON.stringify(noteResult, null, 2));
+            
             if (Array.isArray(noteResult) && noteResult.length > 0) {
                 const note = noteResult[0];
+                console.log('📧 Datos de la nota obtenidos:', {
+                    email_bd: note.email_usuario_asignado,
+                    email_proporcionado: email_usuario_asignado,
+                    transaction_type: note.transaction_type,
+                    transaction_id: note.transaction_id,
+                });
+                
                 // Usar el email actualizado si se proporcionó, sino el de la BD
                 const emailFinal = email_usuario_asignado !== undefined ? email_usuario_asignado : note.email_usuario_asignado;
                 
+                console.log('📧 Email final para envío:', emailFinal);
+                
                 // Enviar correo siempre que haya emails asignados (independiente de privacidad)
                 if (emailFinal && emailFinal.trim() !== '') {
+                    console.log('📧 Enviando correo a:', emailFinal);
+                    
                     // Enviar correo sin await (no bloquea la respuesta)
                     enviarCorreoStickyNote({
                         email_usuario_asignado: emailFinal,
@@ -377,7 +392,11 @@ sticknotes.editarSticNote = async ({
                         transaction_id: note.transaction_id,
                         database,
                     });
+                } else {
+                    console.log('⚠️ No se enviará correo: no hay emails asignados');
                 }
+            } else {
+                console.log('⚠️ No se encontró la nota para enviar correo');
             }
         }).catch(error => {
             console.error('❌ Error obteniendo datos de la nota para correo:', error);
@@ -694,8 +713,18 @@ const enviarCorreoStickyNote = async ({
     transaction_id,
     database,
 }) => {
+    console.log('📧 ========== ENVIAR CORREO STICKY NOTE ==========');
+    console.log('📧 Parámetros recibidos:', {
+        email_usuario_asignado,
+        titulo,
+        transaction_type,
+        transaction_id,
+        id_sticknote,
+    });
+    
     // Si no hay emails asignados, no enviar correo
     if (!email_usuario_asignado || email_usuario_asignado.trim() === '') {
+        console.log('⚠️ No se enviará correo: email_usuario_asignado vacío o null');
         return;
     }
 
@@ -706,7 +735,11 @@ const enviarCorreoStickyNote = async ({
             .map(email => email.trim())
             .filter(email => email && email.includes('@'));
 
+        console.log('📧 Emails parseados:', emailsArray);
+        console.log('📧 Cantidad de emails:', emailsArray.length);
+
         if (emailsArray.length === 0) {
+            console.log('⚠️ No se enviará correo: array de emails vacío después de parsear');
             return;
         }
 
@@ -882,12 +915,20 @@ Este es un mensaje automático del sistema CRM Ventas Rocca.
             `.trim(),
         };
 
+        console.log('📧 Configurando envío de correo...');
+        console.log('📧 Destinatarios:', emailsArray.join(', '));
+        console.log('📧 Asunto:', mailOptions.subject);
+        console.log('📧 Link NetSuite:', netsuiteLink || 'No aplica');
+        
         // Enviar correo (sin await para no bloquear)
         emailTransporter.sendMail(mailOptions, async (error, info) => {
             if (error) {
                 console.error('❌ Error enviando correo de sticky note:', error);
+                console.error('❌ Detalles del error:', JSON.stringify(error, null, 2));
             } else {
-                console.log('✅ Correo de sticky note enviado:', info.messageId);
+                console.log('✅ Correo de sticky note enviado exitosamente');
+                console.log('✅ MessageId:', info.messageId);
+                console.log('✅ Respuesta del servidor:', info.response);
                 console.log('📧 Destinatarios:', emailsArray.join(', '));
 
                 // Actualizar campo notificado en la base de datos
@@ -903,6 +944,8 @@ Este es un mensaje automático del sistema CRM Ventas Rocca.
                 }
             }
         });
+        
+        console.log('📧 Función sendMail llamada (proceso asíncrono iniciado)');
     } catch (error) {
         console.error('❌ Error en función enviarCorreoStickyNote:', error);
     }
