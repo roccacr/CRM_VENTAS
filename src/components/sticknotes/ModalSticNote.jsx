@@ -20,6 +20,11 @@ import {
     Grid,
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
+import NoteIcon from "@mui/icons-material/Note";
+import PriorityHighIcon from "@mui/icons-material/PriorityHigh";
+import PersonIcon from "@mui/icons-material/Person";
+import LockIcon from "@mui/icons-material/Lock";
+import PaletteIcon from "@mui/icons-material/Palette";
 import { obtenerAdminsParaSticknotesThunk } from "../../store/sticknotes/thunkSticknotes";
 import Swal from "sweetalert2";
 import "./SticNotesContainer.css";
@@ -38,20 +43,26 @@ const ModalSticNote = ({ note, onSave, onClose }) => {
 
     const [titulo, setTitulo] = useState("");
     const [mensaje, setMensaje] = useState("");
-    const [colorHex, setColorHex] = useState("#C8E6C9"); // Verde claro por defecto
+    const [colorHex, setColorHex] = useState("#FFF9C4"); // Amarillo pastel por defecto (media)
     const [privado, setPrivado] = useState(false);
-    const [idUsuarioAsignado, setIdUsuarioAsignado] = useState(null);
-    const [emailUsuarioAsignado, setEmailUsuarioAsignado] = useState(null);
+    const [usuariosAsignados, setUsuariosAsignados] = useState([]); // Array de usuarios asignados
     const [prioridad, setPrioridad] = useState("media");
     const [admins, setAdmins] = useState([]);
     const [adminsFiltered, setAdminsFiltered] = useState([]);
     const [loadingAdmins, setLoadingAdmins] = useState(false);
 
-    // Colores preestablecidos disponibles (solo 3)
+    // Colores según prioridad (tonos suaves de sticky notes reales)
+    const coloresPorPrioridad = {
+        baja: "#E8F5E9",   // Verde muy claro/pastel
+        media: "#FFF9C4",  // Amarillo pastel (como sticky note real)
+        alta: "#FFE0E6",   // Rosa suave
+    };
+
+    // Colores preestablecidos disponibles (coinciden con las prioridades)
     const colorPresets = [
-        "#C8E6C9", // Verde claro
-        "#FFE0B2", // Naranja claro
-        "#F8BBD0", // Rosa claro
+        coloresPorPrioridad.baja,   // Verde (Baja)
+        coloresPorPrioridad.media,  // Amarillo (Media)
+        coloresPorPrioridad.alta,   // Rojo (Alta)
     ];
 
     // Cargar admins al montar el componente
@@ -97,26 +108,48 @@ const ModalSticNote = ({ note, onSave, onClose }) => {
         loadAdmins();
     }, [dispatch]);
 
+    // Efecto para cambiar el color automáticamente cuando cambia la prioridad
+    useEffect(() => {
+        const colorSegunPrioridad = coloresPorPrioridad[prioridad] || coloresPorPrioridad.media;
+        setColorHex(colorSegunPrioridad);
+    }, [prioridad]);
+
     // Llenar el formulario si está editando
     useEffect(() => {
         if (note) {
             setTitulo(note.titulo || "");
             setMensaje(note.mensaje || "");
-            setColorHex(note.color_hex || "#C8E6C9");
+            const prioridadNota = note.prioridad || "media";
+            setPrioridad(prioridadNota);
+            // El color se establecerá automáticamente por el useEffect de prioridad
+            setColorHex(coloresPorPrioridad[prioridadNota] || coloresPorPrioridad.media);
             setPrivado(note.privado === 1 || false);
-            setIdUsuarioAsignado(note.id_usuario_asignado || null);
-            setEmailUsuarioAsignado(note.correo_asignado || null);
-            setPrioridad(note.prioridad || "media");
+            // Si hay usuarios asignados, convertirlos a array
+            if (note.id_usuario_asignado && adminsFiltered.length > 0) {
+                // Si es un string con IDs separados por coma, convertirlo a array
+                const idsArray = Array.isArray(note.id_usuario_asignado) 
+                    ? note.id_usuario_asignado 
+                    : String(note.id_usuario_asignado).split(',').filter(id => id.trim());
+                
+                // Buscar los usuarios correspondientes en adminsFiltered
+                const usuarios = idsArray
+                    .map(id => adminsFiltered.find(a => String(a.idnetsuite_admin) === String(id.trim())))
+                    .filter(u => u !== undefined);
+                
+                setUsuariosAsignados(usuarios);
+            } else {
+                setUsuariosAsignados([]);
+            }
         } else {
             setTitulo("");
             setMensaje("");
-            setColorHex("#C8E6C9"); // Verde claro por defecto
-            setPrivado(false);
-            setIdUsuarioAsignado(null);
-            setEmailUsuarioAsignado(null);
             setPrioridad("media");
+            // El color se establecerá automáticamente por el useEffect de prioridad
+            setColorHex(coloresPorPrioridad.media);
+            setPrivado(false);
+            setUsuariosAsignados([]);
         }
-    }, [note]);
+    }, [note, adminsFiltered]);
     
     // Resetear el estado cuando el modal se cierra completamente
     useEffect(() => {
@@ -155,13 +188,17 @@ const ModalSticNote = ({ note, onSave, onClose }) => {
         });
 
         try {
+            // Extraer IDs y emails de los usuarios asignados y convertirlos a strings separados por coma
+            const idsUsuarios = usuariosAsignados.map(u => u.idnetsuite_admin).filter(id => id !== null && id !== undefined);
+            const emailsUsuarios = usuariosAsignados.map(u => u.email_admin).filter(email => email);
+
             const dataToSend = {
                 titulo: titulo.trim(),
                 mensaje: mensaje.trim(),
                 color_hex: colorHex,
                 privado: privado ? 1 : 0,
-                id_usuario_asignado: idUsuarioAsignado,
-                email_usuario_asignado: emailUsuarioAsignado,
+                id_usuario_asignado: idsUsuarios.length > 0 ? idsUsuarios.join(',') : null,
+                email_usuario_asignado: emailsUsuarios.length > 0 ? emailsUsuarios.join(',') : null,
                 prioridad: prioridad,
                 categoria: "general", // Valor por defecto
             };
@@ -226,9 +263,12 @@ const ModalSticNote = ({ note, onSave, onClose }) => {
             fullWidth
             PaperProps={{
                 sx: {
-                    borderRadius: 3,
-                    boxShadow: "0 8px 32px rgba(0, 0, 0, 0.12)",
-                    zIndex: 1301, // Popup del Dialog
+                    borderRadius: 2,
+                    boxShadow: "0 4px 24px rgba(0, 0, 0, 0.12), 0 0 1px rgba(0, 0, 0, 0.08)",
+                    zIndex: 1301,
+                    overflow: "hidden",
+                    backgroundColor: "#ffffff",
+                    border: "1px solid #e5e7eb",
                 },
             }}
         >
@@ -237,37 +277,45 @@ const ModalSticNote = ({ note, onSave, onClose }) => {
                     display: "flex",
                     justifyContent: "space-between",
                     alignItems: "center",
-                    px: 3,
-                    py: 2.5,
-                    borderBottom: "1px solid",
-                    borderColor: "divider",
+                    px: 2.5,
+                    py: 1.5,
+                    backgroundColor: "#1f2937",
+                    color: "#ffffff",
+                    borderBottom: "1px solid #374151",
                 }}
             >
-                <Typography variant="h6" component="span" fontWeight={600}>
-                    {note ? "Editar Nota" : "Nueva Nota"}
-                </Typography>
+                <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                    <NoteIcon sx={{ fontSize: 20 }} />
+                    <Typography variant="h6" component="span" fontWeight={600}>
+                        {note ? "Editar Nota" : "Nueva Nota"}
+                    </Typography>
+                </Box>
                 <IconButton
                     onClick={handleClose}
                     aria-label="Cerrar"
                     size="small"
                     sx={{
-                        color: "text.secondary",
+                        color: "#ffffff",
                         "&:hover": {
-                            backgroundColor: "action.hover",
-                            color: "text.primary",
+                            backgroundColor: "rgba(255, 255, 255, 0.1)",
                         },
                     }}
                 >
-                    <CloseIcon />
+                    <CloseIcon fontSize="small" />
                 </IconButton>
             </DialogTitle>
 
             <form onSubmit={handleSubmit}>
-                <DialogContent sx={{ px: 3, py: 3 }}>
-                    <Stack spacing={3.5}>
+                <DialogContent sx={{ 
+                    px: 2.5, 
+                    py: 2, 
+                    backgroundColor: "transparent",
+                    position: "relative",
+                }}>
+                    <Stack spacing={2}>
                         {/* Sección: Contenido Principal */}
                         <Box>
-                            <Stack spacing={2.5}>
+                            <Stack spacing={1.5}>
                                 <TextField
                                     label="Título"
                                     id="titulo"
@@ -277,9 +325,25 @@ const ModalSticNote = ({ note, onSave, onClose }) => {
                                     inputProps={{ maxLength: 200 }}
                                     fullWidth
                                     variant="outlined"
+                                    size="small"
                                     sx={{
                                         "& .MuiOutlinedInput-root": {
-                                            borderRadius: 2,
+                                            borderRadius: 1,
+                                            backgroundColor: "#fafafa",
+                                            fontSize: "0.875rem",
+                                            "&:hover": {
+                                                backgroundColor: "#f5f5f5",
+                                            },
+                                            "&.Mui-focused": {
+                                                backgroundColor: "white",
+                                                borderColor: "#212121",
+                                            },
+                                        },
+                                        "& .MuiInputLabel-root": {
+                                            fontSize: "0.875rem",
+                                        },
+                                        "& .MuiInputLabel-root.Mui-focused": {
+                                            color: "#212121",
                                         },
                                     }}
                                 />
@@ -290,59 +354,142 @@ const ModalSticNote = ({ note, onSave, onClose }) => {
                                     value={mensaje}
                                     onChange={(e) => setMensaje(e.target.value)}
                                     placeholder="Ingrese el contenido de la nota"
-                                    rows={4}
+                                    rows={3}
                                     required
                                     fullWidth
                                     multiline
                                     variant="outlined"
+                                    size="small"
                                     sx={{
                                         "& .MuiOutlinedInput-root": {
-                                            borderRadius: 2,
+                                            borderRadius: 1,
+                                            backgroundColor: "#ffffff",
+                                            fontSize: "0.875rem",
+                                            border: "1px solid #d1d5db",
+                                            "&:hover": {
+                                                borderColor: "#9ca3af",
+                                            },
+                                            "&.Mui-focused": {
+                                                borderColor: "#1f2937",
+                                                boxShadow: "0 0 0 3px rgba(31, 41, 55, 0.1)",
+                                            },
+                                        },
+                                        "& .MuiInputLabel-root": {
+                                            fontSize: "0.875rem",
+                                            color: "#6b7280",
+                                        },
+                                        "& .MuiInputLabel-root.Mui-focused": {
+                                            color: "#1f2937",
                                         },
                                     }}
                                 />
                             </Stack>
                         </Box>
 
-                        <Divider sx={{ my: 1 }} />
-
                         {/* Sección: Configuración */}
                         <Box>
-                            <Stack spacing={3}>
+                            <Stack spacing={2}>
                                 {/* Prioridad */}
-                                <TextField
-                                    select
-                                    label="Prioridad"
-                                    value={prioridad}
-                                    onChange={(e) => setPrioridad(e.target.value)}
-                                    fullWidth
-                                    variant="outlined"
-                                    sx={{
-                                        "& .MuiOutlinedInput-root": {
-                                            borderRadius: 2,
-                                        },
-                                    }}
-                                >
-                                    <MenuItem value="baja">Baja</MenuItem>
-                                    <MenuItem value="media">Media</MenuItem>
-                                    <MenuItem value="alta">Alta</MenuItem>
-                                </TextField>
+                                <Box>
+                                    <Box sx={{ display: "flex", alignItems: "center", gap: 0.75, mb: 1 }}>
+                                        <PriorityHighIcon sx={{ fontSize: 16, color: "#6b7280" }} />
+                                        <Typography
+                                            variant="body2"
+                                            sx={{
+                                                fontSize: "0.8125rem",
+                                                fontWeight: 600,
+                                                color: "#374151",
+                                            }}
+                                        >
+                                            Prioridad
+                                        </Typography>
+                                    </Box>
+                                    <TextField
+                                        select
+                                        value={prioridad}
+                                        onChange={(e) => setPrioridad(e.target.value)}
+                                        fullWidth
+                                        variant="outlined"
+                                        size="small"
+                                        sx={{
+                                            "& .MuiOutlinedInput-root": {
+                                                borderRadius: 1,
+                                                backgroundColor: "#ffffff",
+                                                fontSize: "0.875rem",
+                                                border: "1px solid #d1d5db",
+                                                "&:hover": {
+                                                    borderColor: "#9ca3af",
+                                                },
+                                                "&.Mui-focused": {
+                                                    borderColor: "#1f2937",
+                                                    boxShadow: "0 0 0 3px rgba(31, 41, 55, 0.1)",
+                                                },
+                                            },
+                                            "& .MuiInputLabel-root": {
+                                                fontSize: "0.875rem",
+                                            },
+                                        }}
+                                    >
+                                        <MenuItem value="baja">
+                                            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                                                <Box
+                                                    sx={{
+                                                        width: 10,
+                                                        height: 10,
+                                                        borderRadius: "50%",
+                                                        backgroundColor: coloresPorPrioridad.baja,
+                                                        border: "1px solid #d1d5db",
+                                                    }}
+                                                />
+                                                <Typography sx={{ fontSize: "0.875rem" }}>Baja</Typography>
+                                            </Box>
+                                        </MenuItem>
+                                        <MenuItem value="media">
+                                            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                                                <Box
+                                                    sx={{
+                                                        width: 10,
+                                                        height: 10,
+                                                        borderRadius: "50%",
+                                                        backgroundColor: coloresPorPrioridad.media,
+                                                        border: "1px solid #d1d5db",
+                                                    }}
+                                                />
+                                                <Typography sx={{ fontSize: "0.875rem" }}>Media</Typography>
+                                            </Box>
+                                        </MenuItem>
+                                        <MenuItem value="alta">
+                                            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                                                <Box
+                                                    sx={{
+                                                        width: 10,
+                                                        height: 10,
+                                                        borderRadius: "50%",
+                                                        backgroundColor: coloresPorPrioridad.alta,
+                                                        border: "1px solid #d1d5db",
+                                                    }}
+                                                />
+                                                <Typography sx={{ fontSize: "0.875rem" }}>Alta</Typography>
+                                            </Box>
+                                        </MenuItem>
+                                    </TextField>
+                                </Box>
 
                                 {/* Selector de Color */}
                                 <Box>
-                                    <Typography
-                                        variant="body2"
-                                        component="label"
-                                        sx={{
-                                            display: "block",
-                                            mb: 1.5,
-                                            color: "text.secondary",
-                                            fontSize: "0.875rem",
-                                            fontWeight: 500,
-                                        }}
-                                    >
-                                        Color
-                                    </Typography>
+                                    <Box sx={{ display: "flex", alignItems: "center", gap: 0.75, mb: 1 }}>
+                                        <PaletteIcon sx={{ fontSize: 16, color: "#6b7280" }} />
+                                        <Typography
+                                            variant="body2"
+                                            sx={{
+                                                fontSize: "0.8125rem",
+                                                fontWeight: 600,
+                                                color: "#374151",
+                                            }}
+                                        >
+                                            Color
+                                        </Typography>
+                                    </Box>
                                     <Box
                                         sx={{
                                             display: "flex",
@@ -350,33 +497,56 @@ const ModalSticNote = ({ note, onSave, onClose }) => {
                                             alignItems: "center",
                                         }}
                                     >
-                                        {colorPresets.map((color) => {
+                                        {colorPresets.map((color, index) => {
                                             const isSelected = colorHex === color;
+                                            const prioridadAsociada = index === 0 ? "baja" : index === 1 ? "media" : "alta";
+                                            const etiquetaPrioridad = index === 0 ? "Baja" : index === 1 ? "Media" : "Alta";
                                             return (
                                                 <Box
                                                     key={color}
-                                                    onClick={() => setColorHex(color)}
+                                                    onClick={() => {
+                                                        setColorHex(color);
+                                                        setPrioridad(prioridadAsociada);
+                                                    }}
                                                     sx={{
                                                         position: "relative",
-                                                        width: 52,
-                                                        height: 52,
-                                                        borderRadius: 2,
-                                                        backgroundColor: color,
+                                                        display: "flex",
+                                                        flexDirection: "column",
+                                                        alignItems: "center",
+                                                        gap: 0.5,
                                                         cursor: "pointer",
-                                                        transition: "all 0.25s cubic-bezier(0.4, 0, 0.2, 1)",
-                                                        border: "3px solid",
-                                                        borderColor: isSelected ? "primary.main" : "transparent",
-                                                        boxShadow: isSelected
-                                                            ? "0 0 0 3px rgba(25, 118, 210, 0.12), 0 2px 8px rgba(25, 118, 210, 0.2)"
-                                                            : "0 1px 3px rgba(0, 0, 0, 0.12)",
-                                                        "&:hover": {
-                                                            transform: "scale(1.08)",
-                                                            boxShadow: isSelected
-                                                                ? "0 0 0 3px rgba(25, 118, 210, 0.12), 0 4px 12px rgba(25, 118, 210, 0.25)"
-                                                                : "0 3px 8px rgba(0, 0, 0, 0.15)",
-                                                        },
                                                     }}
-                                                />
+                                                >
+                                                    <Box
+                                                        sx={{
+                                                            width: 40,
+                                                            height: 40,
+                                                            borderRadius: 1,
+                                                            backgroundColor: color,
+                                                            transition: "all 0.2s ease",
+                                                        border: isSelected ? "2px solid" : "1px solid",
+                                                        borderColor: isSelected ? "#1f2937" : "#d1d5db",
+                                                            boxShadow: isSelected
+                                                                ? "0 2px 8px rgba(0, 0, 0, 0.15)"
+                                                                : "0 1px 3px rgba(0, 0, 0, 0.08)",
+                                                            "&:hover": {
+                                                                transform: "translateY(-2px)",
+                                                                boxShadow: "0 2px 8px rgba(0, 0, 0, 0.15)",
+                                                            },
+                                                        }}
+                                                    />
+                                                    <Typography
+                                                        variant="caption"
+                                                        sx={{
+                                                            fontSize: "0.6875rem",
+                                                            fontWeight: isSelected ? 600 : 400,
+                                                            color: isSelected ? "#1f2937" : "#6b7280",
+                                                            textTransform: "uppercase",
+                                                        }}
+                                                    >
+                                                        {etiquetaPrioridad}
+                                                    </Typography>
+                                                </Box>
                                             );
                                         })}
                                     </Box>
@@ -384,49 +554,94 @@ const ModalSticNote = ({ note, onSave, onClose }) => {
 
                                 {/* Asignar a Usuario */}
                                 <Box>
+                                    <Box sx={{ display: "flex", alignItems: "center", gap: 0.75, mb: 1 }}>
+                                        <PersonIcon sx={{ fontSize: 16, color: "#6b7280" }} />
+                                        <Typography
+                                            variant="body2"
+                                            sx={{
+                                                fontSize: "0.8125rem",
+                                                fontWeight: 600,
+                                                color: "#374151",
+                                            }}
+                                        >
+                                            Asignar a
+                                        </Typography>
+                                    </Box>
                                     {loadingAdmins ? (
-                                        <Box sx={{ display: "flex", justifyContent: "center", py: 2 }}>
-                                            <CircularProgress size={24} />
+                                        <Box sx={{ display: "flex", justifyContent: "center", py: 1 }}>
+                                            <CircularProgress size={20} />
                                         </Box>
                                     ) : (
                                         <Autocomplete
+                                            multiple
                                             options={adminsFiltered}
                                             getOptionLabel={(option) => option.name_admin || ""}
-                                            value={
-                                                idUsuarioAsignado
-                                                    ? adminsFiltered.find((a) => a.idnetsuite_admin === idUsuarioAsignado) || null
-                                                    : null
-                                            }
+                                            value={usuariosAsignados}
                                             onChange={(event, newValue) => {
                                                 // eslint-disable-next-line no-console
-                                                console.log("👤 USUARIO SELECCIONADO - Objeto completo:", JSON.stringify(newValue, null, 2));
+                                                console.log("👤 USUARIOS SELECCIONADOS - Array completo:", JSON.stringify(newValue, null, 2));
 
-                                                const userId = newValue ? newValue.idnetsuite_admin : null;
-                                                const userEmail = newValue ? newValue.email_admin : null;
-
-                                                setIdUsuarioAsignado(userId);
-                                                setEmailUsuarioAsignado(userEmail);
+                                                setUsuariosAsignados(newValue || []);
 
                                                 // eslint-disable-next-line no-console
                                                 console.log("✅ ESTADO GUARDADO:", {
-                                                    id_usuario_asignado: userId,
-                                                    email_usuario_asignado: userEmail,
-                                                    nombre: newValue?.name_admin
+                                                    usuarios_asignados: newValue?.map(u => ({
+                                                        id: u.idnetsuite_admin,
+                                                        nombre: u.name_admin,
+                                                        email: u.email_admin
+                                                    }))
                                                 });
                                             }}
+                                            isOptionEqualToValue={(option, value) => 
+                                                option.idnetsuite_admin === value.idnetsuite_admin
+                                            }
                                             renderInput={(params) => (
                                                 <TextField
                                                     {...params}
-                                                    label="Asignar a"
-                                                    placeholder="Seleccione un usuario"
+                                                    placeholder="Seleccione uno o más usuarios"
                                                     variant="outlined"
+                                                    size="small"
                                                     sx={{
                                                         "& .MuiOutlinedInput-root": {
-                                                            borderRadius: 2,
+                                                            borderRadius: 1,
+                                                            backgroundColor: "#ffffff",
+                                                            fontSize: "0.875rem",
+                                                            border: "1px solid #d1d5db",
+                                                            "&:hover": {
+                                                                borderColor: "#9ca3af",
+                                                            },
+                                                            "&.Mui-focused": {
+                                                                borderColor: "#1f2937",
+                                                                boxShadow: "0 0 0 3px rgba(31, 41, 55, 0.1)",
+                                                            },
+                                                        },
+                                                        "& .MuiInputLabel-root": {
+                                                            fontSize: "0.875rem",
                                                         },
                                                     }}
                                                 />
                                             )}
+                                            renderTags={(value, getTagProps) =>
+                                                value.map((option, index) => (
+                                                    <Box
+                                                        key={option.idnetsuite_admin}
+                                                        component="span"
+                                                        sx={{
+                                                            display: "inline-flex",
+                                                            alignItems: "center",
+                                                            backgroundColor: "#f3f4f6",
+                                                            borderRadius: 1,
+                                                            padding: "2px 8px",
+                                                            margin: "2px",
+                                                            fontSize: "0.75rem",
+                                                            color: "#374151",
+                                                        }}
+                                                        {...getTagProps({ index })}
+                                                    >
+                                                        {option.name_admin}
+                                                    </Box>
+                                                ))
+                                            }
                                             noOptionsText="Sin usuarios disponibles"
                                             clearText="Limpiar"
                                             openText="Abrir"
@@ -441,32 +656,35 @@ const ModalSticNote = ({ note, onSave, onClose }) => {
                                         display: "flex",
                                         justifyContent: "space-between",
                                         alignItems: "center",
-                                        p: 2.5,
-                                        borderRadius: 2,
+                                        p: 1.5,
+                                        borderRadius: 1,
                                         border: "1px solid",
-                                        borderColor: "divider",
-                                        backgroundColor: privado ? "action.selected" : "background.paper",
-                                        transition: "background-color 0.2s ease",
+                                        borderColor: privado ? "#1f2937" : "#e5e7eb",
+                                        backgroundColor: privado ? "#f9fafb" : "#ffffff",
+                                        transition: "all 0.2s ease",
                                     }}
                                 >
-                                    <Box sx={{ flex: 1 }}>
-                                        <Typography variant="body2" fontWeight={500} gutterBottom={0.5}>
-                                            Nota privada
-                                        </Typography>
-                                        <Typography variant="caption" color="text.secondary">
-                                            Solo será visible para ti
-                                        </Typography>
+                                    <Box sx={{ display: "flex", alignItems: "center", gap: 1, flex: 1 }}>
+                                        <LockIcon sx={{ fontSize: 16, color: privado ? "#1f2937" : "#6b7280" }} />
+                                        <Box>
+                                            <Typography variant="body2" fontWeight={500} sx={{ fontSize: "0.8125rem", color: "#374151" }}>
+                                                Nota privada
+                                            </Typography>
+                                            <Typography variant="caption" sx={{ fontSize: "0.6875rem", color: "#6b7280" }}>
+                                                Solo visible para ti
+                                            </Typography>
+                                        </Box>
                                     </Box>
                                     <Switch
                                         checked={privado}
                                         onChange={(e) => setPrivado(e.target.checked)}
-                                        color="primary"
+                                        size="small"
                                         sx={{
                                             "& .MuiSwitch-switchBase.Mui-checked": {
-                                                color: "primary.main",
+                                                color: "#1f2937",
                                             },
                                             "& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track": {
-                                                backgroundColor: "primary.main",
+                                                backgroundColor: "#374151",
                                             },
                                         }}
                                     />
@@ -478,22 +696,29 @@ const ModalSticNote = ({ note, onSave, onClose }) => {
 
                 <DialogActions
                     sx={{
-                        px: 3,
-                        py: 2.5,
-                        borderTop: "1px solid",
-                        borderColor: "divider",
+                        px: 2.5,
+                        py: 1.5,
+                        borderTop: "1px solid #e5e7eb",
                         gap: 1.5,
+                        backgroundColor: "#f9fafb",
                     }}
                 >
                     <Button
                         onClick={handleClose}
                         variant="outlined"
-                        color="inherit"
                         sx={{
-                            borderRadius: 2,
+                            borderRadius: 1,
                             textTransform: "none",
-                            px: 3,
+                            px: 2.5,
+                            py: 0.75,
+                            fontSize: "0.875rem",
                             fontWeight: 500,
+                            borderColor: "#d1d5db",
+                            color: "#374151",
+                            "&:hover": {
+                                borderColor: "#9ca3af",
+                                backgroundColor: "#f3f4f6",
+                            },
                         }}
                     >
                         Cancelar
@@ -501,19 +726,24 @@ const ModalSticNote = ({ note, onSave, onClose }) => {
                     <Button
                         type="submit"
                         variant="contained"
-                        color="primary"
                         sx={{
-                            borderRadius: 2,
+                            borderRadius: 1,
                             textTransform: "none",
-                            px: 3,
-                            fontWeight: 500,
-                            boxShadow: "none",
+                            px: 2.5,
+                            py: 0.75,
+                            fontSize: "0.875rem",
+                            fontWeight: 600,
+                            backgroundColor: "#1f2937",
+                            color: "#ffffff",
+                            boxShadow: "0 1px 2px rgba(0, 0, 0, 0.05)",
                             "&:hover": {
-                                boxShadow: "none",
+                                backgroundColor: "#111827",
+                                boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)",
                             },
+                            transition: "all 0.2s ease",
                         }}
                     >
-                        {note ? "Actualizar" : "Crear Nota"}
+                        {note ? "Actualizar" : "Crear"}
                     </Button>
                 </DialogActions>
             </form>

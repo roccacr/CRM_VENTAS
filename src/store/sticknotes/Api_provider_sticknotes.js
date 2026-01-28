@@ -90,6 +90,10 @@ export const crearSticNote = async ({
  * @param {string} params.titulo - Nuevo título
  * @param {string} params.mensaje - Nuevo mensaje
  * @param {string} params.color_hex - Nuevo color
+ * @param {number} params.privado - Si es privado (0/1)
+ * @param {string} params.id_usuario_asignado - IDs de usuarios asignados separados por coma
+ * @param {string} params.email_usuario_asignado - Emails de usuarios asignados separados por coma
+ * @param {string} params.prioridad - Prioridad (baja, media, alta)
  * @returns {Promise} - Respuesta de la API
  */
 export const editarSticNote = async ({
@@ -97,6 +101,10 @@ export const editarSticNote = async ({
     titulo,
     mensaje,
     color_hex,
+    privado,
+    id_usuario_asignado,
+    email_usuario_asignado,
+    prioridad,
 }) => {
     const requestData = {
         ...commonRequestData,
@@ -105,6 +113,20 @@ export const editarSticNote = async ({
         mensaje,
         color_hex,
     };
+
+    // Agregar campos opcionales si se proporcionan
+    if (privado !== undefined) {
+        requestData.privado = privado;
+    }
+    if (id_usuario_asignado !== undefined) {
+        requestData.id_usuario_asignado = id_usuario_asignado;
+    }
+    if (email_usuario_asignado !== undefined) {
+        requestData.email_usuario_asignado = email_usuario_asignado;
+    }
+    if (prioridad !== undefined) {
+        requestData.prioridad = prioridad;
+    }
 
     const response = await fetchData("sticknotes/editar", requestData);
     return response;

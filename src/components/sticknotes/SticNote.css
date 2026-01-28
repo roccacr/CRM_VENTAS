@@ -2,7 +2,7 @@
 .sticknote {
     position: absolute;
     width: 300px;
-    background-color: #FFFF88;
+    background-color: #FFF9C4;
     border-radius: 5px;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
     cursor: move;
@@ -143,6 +143,25 @@
     margin-bottom: 3px;
     font-weight: 500;
     color: #2196F3;
+}
+
+.sticknote-assigned-label {
+    font-weight: 600;
+    font-size: 11px;
+    margin-bottom: 4px;
+    color: #1976d2;
+}
+
+.sticknote-assigned-user {
+    margin-left: 8px;
+    margin-bottom: 4px;
+    padding-left: 4px;
+    border-left: 2px solid #2196F3;
+}
+
+.sticknote-assigned-name {
+    font-size: 11px;
+    display: block;
 }
 
 .sticknote-date {

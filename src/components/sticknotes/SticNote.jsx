@@ -35,8 +35,41 @@ const SticNote = ({
     // Validar si el usuario actual es el creador de la nota
     const isOwner = currentUserId === note.id_usuario_creador;
 
+    // Parsear usuarios asignados (puede ser string separado por coma o array)
+    const parseUsuariosAsignados = () => {
+        if (!note.id_usuario_asignado) return [];
+        
+        let idsArray = [];
+        if (Array.isArray(note.id_usuario_asignado)) {
+            idsArray = note.id_usuario_asignado;
+        } else if (typeof note.id_usuario_asignado === 'string') {
+            idsArray = note.id_usuario_asignado.split(',').map(id => id.trim()).filter(id => id);
+        } else {
+            idsArray = [String(note.id_usuario_asignado)];
+        }
+
+        // Parsear emails asignados
+        let emailsArray = [];
+        if (note.email_usuario_asignado) {
+            if (Array.isArray(note.email_usuario_asignado)) {
+                emailsArray = note.email_usuario_asignado;
+            } else if (typeof note.email_usuario_asignado === 'string') {
+                emailsArray = note.email_usuario_asignado.split(',').map(email => email.trim()).filter(email => email);
+            }
+        }
+
+        // Crear array de objetos con id, nombre y email
+        return idsArray.map((id, index) => ({
+            id: id.trim(),
+            nombre: adminsMap && adminsMap[id.trim()] ? adminsMap[id.trim()] : `Usuario ${id}`,
+            email: emailsArray[index] || null,
+        }));
+    };
+
+    const usuariosAsignados = parseUsuariosAsignados();
+
     const noteStyle = {
-        backgroundColor: note.color_hex || "#FFFF88",
+        backgroundColor: note.color_hex || "#FFF9C4",
         left: `${note.pos_x}px`,
         top: `${note.pos_y}px`,
         position: note.pin ? "fixed" : "absolute",
@@ -124,14 +157,19 @@ const SticNote = ({
                             </div>
                         )}
                     </div>
-                    {note.id_usuario_asignado && (
+                    {usuariosAsignados.length > 0 && (
                         <div className="sticknote-assigned">
-                            📌 {note.nombre_asignado || (adminsMap ? adminsMap[note.id_usuario_asignado] : "Desconocido")}
-                            {note.correo_asignado && (
-                                <div className="sticknote-email">
-                                    ✉️ {note.correo_asignado}
+                            <div className="sticknote-assigned-label">📌 Asignado a:</div>
+                            {usuariosAsignados.map((usuario, index) => (
+                                <div key={index} className="sticknote-assigned-user">
+                                    <span className="sticknote-assigned-name">👤 {usuario.nombre}</span>
+                                    {usuario.email && (
+                                        <div className="sticknote-email">
+                                            ✉️ {usuario.email}
+                                        </div>
+                                    )}
                                 </div>
-                            )}
+                            ))}
                         </div>
                     )}
                     <div className="sticknote-date">
