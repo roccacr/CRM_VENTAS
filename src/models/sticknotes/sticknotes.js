@@ -796,6 +796,9 @@ const enviarCorreoStickyNote = async ({
         if (transaction_type === 'ordersale' && transaction_id) {
             netsuiteLink = `https://4552704.app.netsuite.com/app/accounting/transactions/salesord.nl?id=${transaction_id}&whence=`;
             linkTexto = 'Ver Orden de Venta en NetSuite';
+        } else if (transaction_type === 'opportunity' && transaction_id) {
+            netsuiteLink = `https://4552704.app.netsuite.com/app/accounting/transactions/opprtnty.nl?id=${transaction_id}&whence=`;
+            linkTexto = 'Ver Oportunidad en NetSuite';
         }
         // Aquí se pueden agregar más tipos de transacciones en el futuro
 
