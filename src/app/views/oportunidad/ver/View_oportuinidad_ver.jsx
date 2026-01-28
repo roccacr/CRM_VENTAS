@@ -8,6 +8,7 @@ import { ButtonActions } from "../../../components/buttonAccions/buttonAccions";
 import { getSpecificOportunidad, updateOpportunityProbability, updateOpportunityStatus } from "../../../../store/oportuinidad/thunkOportunidad";
 import Swal from "sweetalert2";
 import { ModalEditarOportunidad } from "../EditarOportunidad/ModalEditarOportunidad";
+import SticNotesContainer from "../../../../components/sticknotes/SticNotesContainer";
 
 export const View_oportuinidad_ver = () => {
     const dispatch = useDispatch();
@@ -160,6 +161,15 @@ export const View_oportuinidad_ver = () => {
 
     return (
         <>
+            {/* Sticky Notes Container */}
+            <div style={{ position: 'relative', zIndex: 999 }}>
+                <SticNotesContainer
+                    idinternoLead={getQueryParam("data")}
+                    transactionType="opportunity"
+                    transactionId={getQueryParam("data2")}
+                />
+            </div>
+
             <div className="bg-dark card">
                 <div className="card-body">
                     <div className="d-flex align-items-center">
