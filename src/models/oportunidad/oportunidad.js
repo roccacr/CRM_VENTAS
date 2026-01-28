@@ -194,26 +194,26 @@ oportunidad.updateEstadoOportunidad = (dataParams) => {
         dataParams.database, // Target database for the query
     );
 
-    // Calculate date 3 days before today in Costa Rica timezone
-    const today = new Date();
-    const threeDaysAgo = new Date(today);
-    threeDaysAgo.setDate(today.getDate() - 3);
+    // // Calculate date 3 days before today in Costa Rica timezone
+    // const today = new Date();
+    // const threeDaysAgo = new Date(today);
+    // threeDaysAgo.setDate(today.getDate() - 3);
     
-    // Format the date as YYYY-MM-DD HH:mm:ss
-    const formattedDate = threeDaysAgo.toISOString().slice(0, 19).replace('T', ' ');
+    // // Format the date as YYYY-MM-DD HH:mm:ss
+    // const formattedDate = threeDaysAgo.toISOString().slice(0, 19).replace('T', ' ');
 
-    // SQL query to update the opportunity status based on the provided probability
-    const query2 = "UPDATE expedientes SET estado_exp=?, fecha_mod = ? WHERE ID_interno_expediente = ?";  
+    // // SQL query to update the opportunity status based on the provided probability
+    // const query2 = "UPDATE expedientes SET estado_exp=?, fecha_mod = ? WHERE ID_interno_expediente = ?";  
 
-    // Parameters for the query, including the new probability and the opportunity ID
-    const params2 = ["0. No Disponible", formattedDate, dataParams.formValues.expediente];
+    // // Parameters for the query, including the new probability and the opportunity ID
+    // const params2 = ["0. No Disponible", formattedDate, dataParams.formValues.expediente];
 
-    // Executes the query with the specified parameters and database
-    const result2 = executeQuery(
-        query2, // The SQL query to be executed
-        params2, // Array of parameters for the query
-        dataParams.database, // Target database for the query
-    );
+    // // Executes the query with the specified parameters and database
+    // const result2 = executeQuery(
+    //     query2, // The SQL query to be executed
+    //     params2, // Array of parameters for the query
+    //     dataParams.database, // Target database for the query
+    // );
 
     return result;
 };
