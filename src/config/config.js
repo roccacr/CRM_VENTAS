@@ -20,6 +20,19 @@ const OAUTH_NETSUITE_SIGNATURE = process.env.OAUTH_NETSUITE_SIGNATURE;
 
 const jwtSecret = process.env.JWT_SECRET;
 
+// Configuración de correo electrónico
+const emailConfig = {
+    host: process.env.EMAIL_HOST || 'smtp.gmail.com',
+    port: parseInt(process.env.EMAIL_PORT || '587', 10),
+    secure: process.env.EMAIL_SECURE === 'true',
+    auth: {
+        user: process.env.EMAIL_USER || '',
+        pass: process.env.EMAIL_PASS || ''
+    },
+    from: process.env.API_NOTIFICATION_EMAIL ,
+    securityPrefix: process.env.API_SECURITY_PREFIX 
+};
+
 var configParams = {
     oauthNetsuite: {
         consumer: {
@@ -41,8 +54,8 @@ var configParams = {
             database: dbProduction,
             port: 3306,
             waitForConnections: true,
-            connectionLimit: 30, // Ajusta según la carga de tu aplicación
-            queueLimit: 0, // No limitar las consultas en cola
+            connectionLimit: 30,
+            queueLimit: 0,
         },
         pruebas: {
             host: hostProduction,
@@ -51,10 +64,11 @@ var configParams = {
             database: dbDevelopment,
             port: 3306,
             waitForConnections: true,
-            connectionLimit: 30, // Ajusta según la carga de tu aplicación
-            queueLimit: 0, // No limitar las consultas en cola
+            connectionLimit: 30,
+            queueLimit: 0,
         },
     },
+    email: emailConfig,
     jwtSecret: jwtSecret,
 };
 

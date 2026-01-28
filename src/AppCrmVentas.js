@@ -5,6 +5,8 @@ const cors = require("cors"); // Middleware para habilitar CORS
 const helmet = require("helmet"); // Middleware para mejorar la seguridad de la aplicación
 require("dotenv").config(); // Carga variables de entorno desde un archivo .env
 
+// Importar cron jobs para que se inicialicen
+require("./models/leads/cronsLeads");
 
 //npm install ua-parser-js
 
