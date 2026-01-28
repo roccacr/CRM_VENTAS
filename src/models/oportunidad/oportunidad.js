@@ -286,4 +286,87 @@ oportunidad.editarOportunidad = async (dataParams) => {
 };
 
 
+/**
+ * Valida la disponibilidad de un expediente de unidad consultando:
+ * - Oportunidades activas (estatus_oport = 1) separadas por chek_oport (1 y 0)
+ * - Estimaciones activas (status = 1)
+ * - Órdenes de venta activas (status_ov = 1)
+ * 
+ * @param {Object} dataParams - Objeto que contiene los parámetros necesarios para la consulta.
+ * @param {number} dataParams.idExpediente - ID del expediente de unidad a validar.
+ * @param {string} dataParams.database - Nombre de la base de datos a utilizar.
+ * @returns {Promise<Object>} - Objeto con los conteos de oportunidades, estimaciones y órdenes de venta.
+ */
+oportunidad.validarDisponibilidad = async (dataParams) => {
+    try {
+        const { idExpediente, database } = dataParams;
+
+        // Consulta 1: Contar oportunidades activas con chek_oport = 1
+        const queryOportunidadesChek1 = `
+            SELECT COUNT(*) as total 
+            FROM oportunidades 
+            WHERE exp_custbody38_oport = ? 
+            AND estatus_oport = 1 
+            AND chek_oport = 1
+        `;
+
+        // Consulta 2: Contar oportunidades activas con chek_oport = 0
+        const queryOportunidadesChek0 = `
+            SELECT COUNT(*) as total 
+            FROM oportunidades 
+            WHERE exp_custbody38_oport = ? 
+            AND estatus_oport = 1 
+            AND chek_oport = 0
+        `;
+
+        // Consulta 3: Contar estimaciones activas
+        const queryEstimaciones = `
+            SELECT COUNT(*) as total 
+            FROM estimaciones 
+            WHERE idExpediente_est = ? 
+            AND status = 1
+        `;
+
+        // Consulta 4: Contar órdenes de venta activas
+        const queryOrdenVenta = `
+            SELECT COUNT(*) as total 
+            FROM ordenventa 
+            WHERE idExpediente_ov = ? 
+            AND status_ov = 1
+        `;
+
+        // Ejecutar todas las consultas en paralelo
+        const [resultOportunidadesChek1, resultOportunidadesChek0, resultEstimaciones, resultOrdenVenta] = await Promise.all([
+            executeQuery(queryOportunidadesChek1, [idExpediente], database),
+            executeQuery(queryOportunidadesChek0, [idExpediente], database),
+            executeQuery(queryEstimaciones, [idExpediente], database),
+            executeQuery(queryOrdenVenta, [idExpediente], database),
+        ]);
+
+        // Extraer los valores de conteo de cada resultado (executeQuery retorna { ok, statusCode, data })
+        const oportunidadesChek1 = resultOportunidadesChek1?.data?.[0]?.total || 0;
+        const oportunidadesChek0 = resultOportunidadesChek0?.data?.[0]?.total || 0;
+        const estimaciones = resultEstimaciones?.data?.[0]?.total || 0;
+        const ordenVenta = resultOrdenVenta?.data?.[0]?.total || 0;
+
+        // Retornar el objeto con todos los conteos
+        return {
+            oportunidades: {
+                total: oportunidadesChek1 + oportunidadesChek0,
+                chek1: oportunidadesChek1,
+                chek0: oportunidadesChek0,
+            },
+            estimaciones: {
+                total: estimaciones,
+            },
+            ordenVenta: {
+                total: ordenVenta,
+            },
+        };
+    } catch (error) {
+        console.error("Error al validar disponibilidad del expediente:", error);
+        throw error;
+    }
+};
+
 module.exports = oportunidad; // Exporta el objeto 'oportunidad' que agrupa las funciones relacionadas con ubicaciones.

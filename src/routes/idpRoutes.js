@@ -223,6 +223,7 @@ module.exports = function (app) {
                 { path: "/oportunidad/get_Oportunidades", method: "get_Oportunidades" }, // ruta ara traer las oportunidades
                 { path: "/oportunidad/updateEstadoOportunidad", method: "updateEstadoOportunidad" }, // ruta ara traer las oportunidades
                 { path: "/oportunidad/editar_Oportunidad", method: "editarOportunidad" }, // Editar una oportunidad existente
+                { path: "/oportunidad/validarDisponibilidad", method: "validarDisponibilidad" }, // Validar disponibilidad de expediente de unidad
             ],
         },
 
