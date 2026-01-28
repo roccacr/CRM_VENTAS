@@ -1,5 +1,20 @@
 // Importamos las funciones necesarias para conectarse a la base de datos
 const { executeQuery } = require("../conectionPool/conectionPool");
+const nodemailer = require('nodemailer');
+
+// Configuración del transporte SMTP para Outlook (CRM Ventas)
+const emailTransporter = nodemailer.createTransport({
+    host: 'smtp.office365.com',
+    port: 587,
+    secure: false,
+    auth: {
+        user: 'crm_noreply@roccacr.com',
+        pass: 'CrM_$2023.T1',
+    },
+    tls: {
+        ciphers: 'SSLv3',
+    },
+});
 
 // Creamos un objeto que contendrá las funciones relacionadas con Sticky Notes
 const sticknotes = {};
@@ -181,10 +196,44 @@ sticknotes.crearSticNote = async ({
             database
         );
 
+        const id_sticknote_creado = result.insertId;
+
+        // Enviar correo de forma asíncrona (sin await) si hay usuarios asignados
+        // La privacidad solo afecta la vista, pero si hay asignados deben recibir correo
+        if (email_usuario_asignado && email_usuario_asignado.trim() !== '') {
+            // Obtener datos del creador de forma asíncrona
+            executeQuery(
+                `SELECT name_admin, email_admin FROM admins WHERE idnetsuite_admin = ? LIMIT 1`,
+                [id_usuario_creador],
+                database
+            ).then(creadorResult => {
+                const creador = Array.isArray(creadorResult) && creadorResult.length > 0 
+                    ? creadorResult[0] 
+                    : { name_admin: 'Sistema', email_admin: null };
+
+                // Enviar correo sin await (no bloquea la respuesta)
+                enviarCorreoStickyNote({
+                    email_usuario_asignado,
+                    titulo,
+                    mensaje,
+                    color_hex: color_hex || "#FFF9C4",
+                    prioridad: prioridad || "media",
+                    creador_nombre: creador.name_admin || 'Sistema',
+                    creador_email: creador.email_admin || null,
+                    id_sticknote: id_sticknote_creado,
+                    transaction_type: transaction_type,
+                    transaction_id: transaction_id,
+                    database,
+                });
+            }).catch(error => {
+                console.error('❌ Error obteniendo datos del creador:', error);
+            });
+        }
+
         return {
             statusCode: 201,
             message: "Sticky note creado correctamente",
-            data: { id_sticknote: result.insertId },
+            data: { id_sticknote: id_sticknote_creado },
         };
     } catch (error) {
         return {
@@ -293,6 +342,46 @@ sticknotes.editarSticNote = async ({
         params.push(id_sticknote);
 
         const result = await executeQuery(query, params, database);
+
+        // Enviar correo de forma asíncrona (sin await) si hay usuarios asignados
+        // La privacidad solo afecta la vista, pero si hay asignados deben recibir correo
+        // Obtener datos completos de la nota y del creador para enviar correo
+        executeQuery(
+            `SELECT sn.titulo, sn.mensaje, sn.color_hex, sn.prioridad, sn.id_usuario_creador,
+                    sn.email_usuario_asignado, sn.transaction_type, sn.transaction_id,
+                    creador.name_admin, creador.email_admin
+             FROM crm_stick_notes sn
+             LEFT JOIN admins creador ON creador.idnetsuite_admin = sn.id_usuario_creador
+             WHERE sn.id_sticknote = ? LIMIT 1`,
+            [id_sticknote],
+            database
+        ).then(noteResult => {
+            if (Array.isArray(noteResult) && noteResult.length > 0) {
+                const note = noteResult[0];
+                // Usar el email actualizado si se proporcionó, sino el de la BD
+                const emailFinal = email_usuario_asignado !== undefined ? email_usuario_asignado : note.email_usuario_asignado;
+                
+                // Enviar correo siempre que haya emails asignados (independiente de privacidad)
+                if (emailFinal && emailFinal.trim() !== '') {
+                    // Enviar correo sin await (no bloquea la respuesta)
+                    enviarCorreoStickyNote({
+                        email_usuario_asignado: emailFinal,
+                        titulo: titulo !== undefined ? titulo : note.titulo,
+                        mensaje: mensaje !== undefined ? mensaje : note.mensaje,
+                        color_hex: color_hex !== undefined ? color_hex : note.color_hex,
+                        prioridad: prioridad !== undefined ? prioridad : note.prioridad,
+                        creador_nombre: note.name_admin || 'Sistema',
+                        creador_email: note.email_admin || null,
+                        id_sticknote: id_sticknote,
+                        transaction_type: note.transaction_type,
+                        transaction_id: note.transaction_id,
+                        database,
+                    });
+                }
+            }
+        }).catch(error => {
+            console.error('❌ Error obteniendo datos de la nota para correo:', error);
+        });
 
         return {
             statusCode: 200,
@@ -573,6 +662,249 @@ sticknotes.eliminarSticNote = async ({
             message: "Error al eliminar sticky note",
             error: error.message,
         };
+    }
+};
+
+/**
+ * Función auxiliar para enviar correo de notificación de sticky note
+ * Se ejecuta de forma asíncrona (sin await) para no bloquear la respuesta
+ * @param {Object} params - Parámetros del correo
+ * @param {string} params.email_usuario_asignado - Emails separados por coma
+ * @param {string} params.titulo - Título de la nota
+ * @param {string} params.mensaje - Mensaje de la nota
+ * @param {string} params.color_hex - Color de la nota
+ * @param {string} params.prioridad - Prioridad (baja, media, alta)
+ * @param {string} params.creador_nombre - Nombre del creador
+ * @param {string} params.creador_email - Email del creador
+ * @param {number} params.id_sticknote - ID de la nota
+ * @param {string} params.transaction_type - Tipo de transacción (ej: ordersale)
+ * @param {number} params.transaction_id - ID de la transacción
+ * @param {Object} params.database - Conexión a la base de datos
+ */
+const enviarCorreoStickyNote = async ({
+    email_usuario_asignado,
+    titulo,
+    mensaje,
+    color_hex,
+    prioridad,
+    creador_nombre,
+    creador_email,
+    id_sticknote,
+    transaction_type,
+    transaction_id,
+    database,
+}) => {
+    // Si no hay emails asignados, no enviar correo
+    if (!email_usuario_asignado || email_usuario_asignado.trim() === '') {
+        return;
+    }
+
+    try {
+        // Parsear emails (separados por coma)
+        const emailsArray = email_usuario_asignado
+            .split(',')
+            .map(email => email.trim())
+            .filter(email => email && email.includes('@'));
+
+        if (emailsArray.length === 0) {
+            return;
+        }
+
+        // Mapear prioridad a texto
+        const prioridadTexto = {
+            baja: 'Baja',
+            media: 'Media',
+            alta: 'Alta',
+        };
+
+        // Mapear prioridad a color de texto
+        const prioridadColor = {
+            baja: '#2e7d32',
+            media: '#f57c00',
+            alta: '#c62828',
+        };
+
+        // Función para escapar HTML y prevenir XSS
+        const escapeHtml = (text) => {
+            if (!text) return '';
+            const map = {
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#039;'
+            };
+            return String(text).replace(/[&<>"']/g, m => map[m]);
+        };
+
+        // Escapar contenido para seguridad
+        const tituloEscapado = escapeHtml(titulo || 'Sticky Note');
+        const mensajeEscapado = escapeHtml(mensaje || '').replace(/\n/g, '<br>');
+        const creadorNombreEscapado = escapeHtml(creador_nombre || 'Sistema');
+        const creadorEmailEscapado = creador_email ? escapeHtml(creador_email) : '';
+
+        // Generar link de NetSuite según el tipo de transacción
+        let netsuiteLink = null;
+        let linkTexto = '';
+        if (transaction_type === 'ordersale' && transaction_id) {
+            netsuiteLink = `https://4552704.app.netsuite.com/app/accounting/transactions/salesord.nl?id=${transaction_id}&whence=`;
+            linkTexto = 'Ver Orden de Venta en NetSuite';
+        }
+        // Aquí se pueden agregar más tipos de transacciones en el futuro
+
+        // Crear HTML con estilo de sticky note
+        const htmlContent = `
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .sticky-note-container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: ${color_hex || '#FFF9C4'};
+            border-radius: 8px;
+            padding: 25px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            border-left: 4px solid ${prioridadColor[prioridad] || '#f57c00'};
+        }
+        .sticky-note-header {
+            border-bottom: 2px solid rgba(0, 0, 0, 0.1);
+            padding-bottom: 15px;
+            margin-bottom: 20px;
+        }
+        .sticky-note-title {
+            font-size: 22px;
+            font-weight: bold;
+            color: #212121;
+            margin: 0 0 10px 0;
+        }
+        .sticky-note-priority {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+            color: white;
+            background-color: ${prioridadColor[prioridad] || '#f57c00'};
+            text-transform: uppercase;
+        }
+        .sticky-note-content {
+            font-size: 15px;
+            line-height: 1.6;
+            color: #424242;
+            white-space: pre-wrap;
+            margin-bottom: 20px;
+        }
+        .sticky-note-footer {
+            border-top: 1px solid rgba(0, 0, 0, 0.1);
+            padding-top: 15px;
+            font-size: 13px;
+            color: #757575;
+        }
+        .sticky-note-creator {
+            margin-bottom: 8px;
+        }
+        .sticky-note-creator strong {
+            color: #212121;
+        }
+        .sticky-note-link-button {
+            display: inline-block;
+            margin-top: 15px;
+            padding: 12px 24px;
+            background-color: #1976d2;
+            color: white !important;
+            text-decoration: none;
+            border-radius: 4px;
+            font-weight: 600;
+            font-size: 14px;
+            text-align: center;
+            transition: background-color 0.3s ease;
+        }
+        .sticky-note-link-button:hover {
+            background-color: #1565c0;
+        }
+    </style>
+</head>
+<body>
+    <div class="sticky-note-container">
+        <div class="sticky-note-header">
+            <h2 class="sticky-note-title">${tituloEscapado}</h2>
+            <span class="sticky-note-priority">Prioridad: ${prioridadTexto[prioridad] || 'Media'}</span>
+        </div>
+        <div class="sticky-note-content">
+            ${mensajeEscapado}
+        </div>
+        <div class="sticky-note-footer">
+            <div class="sticky-note-creator">
+                <strong>👤 Creado por:</strong> ${creadorNombreEscapado}${creadorEmailEscapado ? ` (${creadorEmailEscapado})` : ''}
+            </div>
+            ${netsuiteLink ? `
+            <div style="margin-top: 15px; text-align: center;">
+                <a href="${netsuiteLink}" class="sticky-note-link-button" style="color: white; text-decoration: none;">
+                    🔗 ${linkTexto}
+                </a>
+            </div>
+            ` : ''}
+            <div style="margin-top: 15px; font-size: 12px; color: #9e9e9e; text-align: center;">
+                Este es un mensaje automático del sistema CRM Ventas Rocca.
+            </div>
+        </div>
+    </div>
+</body>
+</html>
+        `.trim();
+
+        // Configurar opciones del correo
+        const mailOptions = {
+            from: '"CRM Ventas Rocca" <crm_noreply@roccacr.com>',
+            to: emailsArray.join(', '),
+            subject: `📌 Sticky Note: ${tituloEscapado}`,
+            html: htmlContent,
+            text: `
+Sticky Note: ${titulo || 'Nueva Nota'}
+
+${mensaje || ''}
+
+Prioridad: ${prioridadTexto[prioridad] || 'Media'}
+Creado por: ${creador_nombre || 'Sistema'}${creador_email ? ` (${creador_email})` : ''}
+${netsuiteLink ? `\n\nVer en NetSuite: ${netsuiteLink}` : ''}
+
+---
+Este es un mensaje automático del sistema CRM Ventas Rocca.
+            `.trim(),
+        };
+
+        // Enviar correo (sin await para no bloquear)
+        emailTransporter.sendMail(mailOptions, async (error, info) => {
+            if (error) {
+                console.error('❌ Error enviando correo de sticky note:', error);
+            } else {
+                console.log('✅ Correo de sticky note enviado:', info.messageId);
+                console.log('📧 Destinatarios:', emailsArray.join(', '));
+
+                // Actualizar campo notificado en la base de datos
+                try {
+                    await executeQuery(
+                        `UPDATE crm_stick_notes SET notificado = 1 WHERE id_sticknote = ?`,
+                        [id_sticknote],
+                        database
+                    );
+                    console.log(`✅ Campo 'notificado' actualizado para nota ${id_sticknote}`);
+                } catch (updateError) {
+                    console.error('❌ Error actualizando campo notificado:', updateError);
+                }
+            }
+        });
+    } catch (error) {
+        console.error('❌ Error en función enviarCorreoStickyNote:', error);
     }
 };
 
