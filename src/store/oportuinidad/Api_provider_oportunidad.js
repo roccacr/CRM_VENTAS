@@ -188,3 +188,21 @@ export const editar_Oportunidad = async ({ formData, idOportunidad }) => {
     // La URL "oportunidad/editar_Oportunidad" apunta al endpoint que procesa la edición de la oportunidad en el servidor.
     return await fetchData("oportunidad/editar_Oportunidad", requestData); // Retorna el resultado de la edición de la oportunidad.
 };
+
+/**
+ * Función asincrónica para validar la disponibilidad de un expediente de unidad.
+ * Consulta oportunidades activas, estimaciones activas y órdenes de venta activas.
+ * @param {object} idExpediente - El ID del expediente de unidad a validar.
+ * @returns {Promise} - Retorna los conteos de oportunidades, estimaciones y órdenes de venta.
+ */
+export const validar_Disponibilidad = async ({ idExpediente }) => {
+    // Construye el objeto de datos para la solicitud, combinando los datos comunes con los parámetros específicos.
+    const requestData = {
+        ...commonRequestData, // Datos comunes requeridos para cada solicitud (como tokens de autenticación o configuraciones generales).
+        idExpediente, // ID del expediente de unidad a validar.
+    };
+
+    // Realiza una solicitud a la API para validar la disponibilidad del expediente.
+    // La URL "oportunidad/validarDisponibilidad" apunta al endpoint que procesa esta validación en el servidor.
+    return await fetchData("oportunidad/validarDisponibilidad", requestData); // Retorna los conteos de disponibilidad.
+};

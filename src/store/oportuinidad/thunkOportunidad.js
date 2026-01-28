@@ -1,5 +1,5 @@
 import { generateLeadBitacora } from "../leads/thunksLeads";
-import { crear_Oportunidad, get_Clases, get_Oportunidades, get_Ubicaciones, getSpecific_Oportunidad, obtener_OportunidadesCliente, updateEstadoOportunidad_fetch, updateOpportunity_Probability, updateOpportunity_Status } from "./Api_provider_oportunidad";
+import { crear_Oportunidad, get_Clases, get_Oportunidades, get_Ubicaciones, getSpecific_Oportunidad, obtener_OportunidadesCliente, updateEstadoOportunidad_fetch, updateOpportunity_Probability, updateOpportunity_Status, validar_Disponibilidad } from "./Api_provider_oportunidad";
 
 /**
  * Función que retorna una función asíncrona para obtener ubicaciones por ID.
@@ -265,6 +265,28 @@ export const editarOportunidad = (formData, idOportunidad) => {
         } catch (error) {
             // Capturar errores y mostrarlos en consola
             console.error("Error al editar la oportunidad:", error);
+            throw error;
+        }
+    };
+};
+
+/**
+ * Función que valida la disponibilidad de un expediente de unidad.
+ * Consulta oportunidades activas, estimaciones activas y órdenes de venta activas.
+ * @param {number} idExpediente - El ID del expediente de unidad a validar.
+ * @returns {function} - Una función asíncrona que retorna los conteos de disponibilidad.
+ */
+export const fetchValidardisponibilidad = (idExpediente) => {
+    return async () => {
+        try {
+            // Llama a la API para validar la disponibilidad del expediente
+            const result = await validar_Disponibilidad({ idExpediente });
+
+            // Retorna los datos de disponibilidad
+            return result.data || result;
+        } catch (error) {
+            // Captura cualquier error que ocurra durante la validación
+            console.error("Error al validar disponibilidad del expediente:", error);
             throw error;
         }
     };
