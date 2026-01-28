@@ -22,11 +22,7 @@ sticknotes.obtenerSticNotesPorTransaccion = async ({ transaction_type, transacti
 
                 -- Datos del dueño/creador de la nota
                 creador.name_admin  AS nombre_duenio,
-                creador.email_admin AS correo_duenio,
-
-                -- Datos del usuario asignado
-                asignado.name_admin  AS nombre_asignado,
-                asignado.email_admin AS correo_asignado
+                creador.email_admin AS correo_duenio
 
             FROM crm_stick_notes AS sn
 
@@ -34,24 +30,39 @@ sticknotes.obtenerSticNotesPorTransaccion = async ({ transaction_type, transacti
             LEFT JOIN admins AS creador
                 ON creador.idnetsuite_admin = sn.id_usuario_creador
 
-            -- JOIN con el asignado
-            LEFT JOIN admins AS asignado
-                ON asignado.idnetsuite_admin = sn.id_usuario_asignado
-
             WHERE sn.transaction_type = ?
                 AND sn.transaction_id = ?
                 AND (
-                    -- Soy el creador
+                    -- Regla 1: Si soy el creador, siempre puedo verla
                     sn.id_usuario_creador = ?
-                    -- O soy el asignado
-                    OR sn.id_usuario_asignado = ?
+                    OR
+                    -- Regla 2: Si NO es privada Y estoy asignado (múltiples asignaciones soportadas)
+                    (
+                        sn.privado = 0
+                        AND sn.id_usuario_asignado IS NOT NULL
+                        AND (
+                            -- Buscar mi ID en el string separado por coma
+                            FIND_IN_SET(?, sn.id_usuario_asignado) > 0
+                            OR sn.id_usuario_asignado LIKE CONCAT(?, ',%')
+                            OR sn.id_usuario_asignado LIKE CONCAT('%,', ?)
+                            OR sn.id_usuario_asignado = ?
+                        )
+                    )
                 )
             ORDER BY sn.creado_en DESC
         `;
 
         const result = await executeQuery(
             query,
-            [transaction_type, transaction_id, id_usuario_autenticado, id_usuario_autenticado],
+            [
+                transaction_type, 
+                transaction_id, 
+                id_usuario_autenticado, // Para verificar si soy el creador
+                id_usuario_autenticado, // Para FIND_IN_SET
+                id_usuario_autenticado, // Para LIKE inicio
+                id_usuario_autenticado, // Para LIKE fin
+                id_usuario_autenticado  // Para igualdad exacta
+            ],
             database
         );
 
@@ -64,6 +75,7 @@ sticknotes.obtenerSticNotesPorTransaccion = async ({ transaction_type, transacti
             data: notesData,
         };
     } catch (error) {
+        console.error("❌ Error obteniendo sticky notes:", error);
         return {
             statusCode: 500,
             message: "Error al obtener sticky notes",
@@ -143,9 +155,9 @@ sticknotes.crearSticNote = async ({
             INSERT INTO crm_stick_notes (
                 idinterno_lead, transaction_type, transaction_id, titulo, mensaje,
                 color_hex, pos_x, pos_y, visible, estado, id_usuario_creador,
-                privado, id_usuario_asignado, prioridad, categoria,
+                privado, id_usuario_asignado, email_usuario_asignado, notificado, prioridad, categoria,
                 creado_en, actualizado_en
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, 1, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, 1, ?, ?, ?, ?, 0, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
         `;
 
         const result = await executeQuery(
@@ -156,12 +168,13 @@ sticknotes.crearSticNote = async ({
                 transaction_id,
                 titulo,
                 mensaje,
-                color_hex || "#C8E6C9",
+                color_hex || "#FFF9C4",
                 pos_x || 0,
                 pos_y || 0,
                 id_usuario_creador,
                 privado || 0,
                 id_usuario_asignado || null,
+                email_usuario_asignado || null,
                 prioridad || "media",
                 categoria || "general",
             ],
@@ -230,34 +243,56 @@ sticknotes.editarSticNote = async ({
     console.log("📝 ============================================================");
 
     try {
-        const query = `
-            UPDATE crm_stick_notes
-            SET 
-                titulo = ?,
-                mensaje = ?,
-                color_hex = ?,
-                privado = ?,
-                id_usuario_asignado = ?,
-                prioridad = ?,
-                categoria = ?,
-                actualizado_en = CURRENT_TIMESTAMP
-            WHERE id_sticknote = ?
-        `;
+        // Construir query dinámicamente para solo actualizar campos proporcionados
+        let query = `UPDATE crm_stick_notes SET `;
+        const params = [];
+        const updates = [];
 
-        const result = await executeQuery(
-            query,
-            [
-                titulo,
-                mensaje,
-                color_hex,
-                privado !== undefined ? privado : null,
-                id_usuario_asignado || null,
-                prioridad || "media",
-                categoria || "general",
-                id_sticknote,
-            ],
-            database
-        );
+        if (titulo !== undefined) {
+            updates.push(`titulo = ?`);
+            params.push(titulo);
+        }
+        if (mensaje !== undefined) {
+            updates.push(`mensaje = ?`);
+            params.push(mensaje);
+        }
+        if (color_hex !== undefined) {
+            updates.push(`color_hex = ?`);
+            params.push(color_hex);
+        }
+        if (privado !== undefined) {
+            updates.push(`privado = ?`);
+            params.push(privado);
+        }
+        if (id_usuario_asignado !== undefined) {
+            updates.push(`id_usuario_asignado = ?`);
+            params.push(id_usuario_asignado || null);
+        }
+        if (email_usuario_asignado !== undefined) {
+            updates.push(`email_usuario_asignado = ?`);
+            params.push(email_usuario_asignado || null);
+        }
+        if (prioridad !== undefined) {
+            updates.push(`prioridad = ?`);
+            params.push(prioridad);
+        }
+        if (categoria !== undefined) {
+            updates.push(`categoria = ?`);
+            params.push(categoria);
+        }
+
+        if (updates.length === 0) {
+            return {
+                statusCode: 400,
+                message: "No se proporcionaron campos para actualizar",
+            };
+        }
+
+        query += updates.join(', ');
+        query += `, actualizado_en = CURRENT_TIMESTAMP WHERE id_sticknote = ?`;
+        params.push(id_sticknote);
+
+        const result = await executeQuery(query, params, database);
 
         return {
             statusCode: 200,
