@@ -207,8 +207,14 @@ sticknotes.crearSticNote = async ({
                 [id_usuario_creador],
                 database
             ).then(creadorResult => {
-                const creador = Array.isArray(creadorResult) && creadorResult.length > 0 
-                    ? creadorResult[0] 
+                // executeQuery devuelve un objeto con estructura { ok, statusCode, data }
+                // Necesitamos acceder a creadorResult.data que es el array de resultados
+                const creadorArray = (creadorResult && creadorResult.data && Array.isArray(creadorResult.data)) 
+                    ? creadorResult.data 
+                    : (Array.isArray(creadorResult) ? creadorResult : []);
+                
+                const creador = creadorArray.length > 0 
+                    ? creadorArray[0] 
                     : { name_admin: 'Sistema', email_admin: null };
 
                 // Enviar correo sin await (no bloquea la respuesta)
@@ -360,8 +366,16 @@ sticknotes.editarSticNote = async ({
         ).then(noteResult => {
             console.log('📧 Resultado de consulta para correo:', JSON.stringify(noteResult, null, 2));
             
-            if (Array.isArray(noteResult) && noteResult.length > 0) {
-                const note = noteResult[0];
+            // executeQuery devuelve un objeto con estructura { ok, statusCode, data }
+            // Necesitamos acceder a noteResult.data que es el array de resultados
+            const notesArray = (noteResult && noteResult.data && Array.isArray(noteResult.data)) 
+                ? noteResult.data 
+                : (Array.isArray(noteResult) ? noteResult : []);
+            
+            console.log('📧 Array de notas extraído:', notesArray.length, 'nota(s)');
+            
+            if (notesArray.length > 0) {
+                const note = notesArray[0];
                 console.log('📧 Datos de la nota obtenidos:', {
                     email_bd: note.email_usuario_asignado,
                     email_proporcionado: email_usuario_asignado,
