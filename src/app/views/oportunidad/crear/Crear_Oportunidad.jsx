@@ -155,7 +155,7 @@ export const Crear_Oportunidad = () => {
     const fetchClientes = async (idLeads) => {
         try {
             // Llama a la acción 'getfetch_Ubicaciones' y obtiene las ubicaciones.
-            const data = await dispatch(getLeadsComplete("2024-01-01", "2055-01-01", 0));
+            const data = await dispatch(getLeadsComplete("2024-01-01", "2060-01-01", 0));
 
             // Mapea los datos recibidos para generar opciones adecuadas para los selects.
             const options = data.map((item) => ({
@@ -400,7 +400,7 @@ export const Crear_Oportunidad = () => {
                         // Si la respuesta es exitosa (código 200)
                         if (detalleOportunidad.status === 200) {
                             // Crear el reporte del lead relacionado a la oportunidad
-                           // await dispatch(crearReoporteLead(leadDetails));
+                            await dispatch(crearReoporteLead(leadDetails));
                             await dispatch(updateEstadoOportunidad(formValues, detalleOportunidad));
                             // Mostrar notificación de éxito y redirigir a la página de detalles de la oportunidad
                             Swal.fire({
