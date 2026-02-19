@@ -6,10 +6,12 @@ import "datatables.net-searchpanes-bs5";
 import "datatables.net-select-bs5";
 import "../../FiltrosTabla/style.css";
 import { getDefaultDatesMeses } from "../../FiltrosTabla/dataTableConfig";
-import { useSelector } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import { apiUrlImg, commonRequestData } from "../../../../api";
 import { TABLE_COLUMNS } from "./tableColumns";
 import { useNavigate } from "react-router-dom";
+import Swal from "sweetalert2";
+import { AplicarComicion } from "../../../../store/ordenVenta/thunkOrdenVenta";
 /**
  * Componente para el encabezado de la vista de leads
  * @returns {JSX.Element} Encabezado con mensaje informativo
@@ -161,6 +163,64 @@ const TableStyles = () => (
 );
 
 /**
+ * Handles commission application logic.
+ * @param {Function} dispatch - Redux dispatch function
+ * @param {string|number} orderId - NetSuite order ID
+ * @param {Object|null} rowApi - DataTables row API para eliminar la fila al completar la acción
+ * @returns {Promise<void>}
+ */
+const handleCommissionAction = async (dispatch, orderId, rowApi = null) => {
+   if (!orderId) {
+      Swal.fire("Sin datos", "No se encontró el ID de la orden para aplicar comisión.", "warning");
+      return;
+   }
+
+   const result = await Swal.fire({
+      title: "Gestión de Comisión",
+      text: "¿Qué acción desea realizar con la comisión?",
+      icon: "question",
+      showDenyButton: true,
+      showCancelButton: true,
+      confirmButtonText: "Aplicar Comisión",
+      denyButtonText: "Anular Comisión",
+      cancelButtonText: "Cancelar",
+   });
+
+   if (result.isConfirmed) {
+      await dispatch(AplicarComicion(1, orderId));
+      await Swal.fire("¡Aplicada!", "La comisión ha sido aplicada.", "success");
+      if (rowApi) {
+         rowApi.remove().draw(false);
+      }
+   } else if (result.isDenied) {
+      await dispatch(AplicarComicion(0, orderId));
+      Swal.fire("¡Anulada!", "La comisión ha sido anulada.", "info");
+   }
+};
+
+/**
+ * Returns columns for DataTable, adding commission button only for /orden/lista?data=2.
+ * @param {boolean} isCommissionView - Whether current URL is /orden/lista?data=2
+ * @returns {Array<Object>}
+ */
+const getColumnsConfig = (isCommissionView) => {
+   if (!isCommissionView) return TABLE_COLUMNS;
+
+   return [
+      {
+         title: "ACCIONES",
+         data: null,
+         className: "text-center",
+         orderable: false,
+         searchable: false,
+         render: () =>
+            '<button type="button" class="btn btn-dark btn-sm apply-commission-btn"><i class="ti ti-brand-paypal"></i> APLICAR COMISIÓN</button>',
+      },
+      ...TABLE_COLUMNS,
+   ];
+};
+
+/**
  * Obtiene la configuración completa para inicializar DataTables.
  * @param {HTMLElement} tableElement - Referencia al elemento DOM de la tabla
  * @param {string} inputStartDate - Fecha de inicio para filtrar los datos (formato YYYY-MM-DD)
@@ -170,7 +230,7 @@ const TableStyles = () => (
  * @param {string} rol_admin - Rol del administrador
  * @returns {Object} Configuración completa de DataTables
  */
-const getDataTableConfig = (tableElement, inputStartDate, inputEndDate, filterOption, idnetsuite_admin, rol_admin) => {
+const getDataTableConfig = (tableElement, inputStartDate, inputEndDate, filterOption, idnetsuite_admin, rol_admin, isCommissionView) => {
    /** @type {boolean} Determina si el dispositivo es móvil basado en el ancho de la ventana */
    const isMobile = window.innerWidth <= 768;
    return {
@@ -194,7 +254,7 @@ const getDataTableConfig = (tableElement, inputStartDate, inputEndDate, filterOp
             return response.data || [];
          },
       },
-      columns: TABLE_COLUMNS,
+      columns: getColumnsConfig(isCommissionView),
       searchPanes: {
          layout: isMobile ? "columns-1" : "columns-2",
          initCollapsed: true,
@@ -205,7 +265,7 @@ const getDataTableConfig = (tableElement, inputStartDate, inputEndDate, filterOp
             searching: true,
          },
          viewTotal: true,
-         columns: [0, 1, 2, 3, 4,5],
+         columns: isCommissionView ? [1, 2, 3, 4, 5, 6] : [0, 1, 2, 3, 4, 5],
       },
       processing: true,
       dom: "lPBfrtip",
@@ -264,6 +324,8 @@ const useDataTable = (
    rol_admin,
    setSelectedLead,
    setShowModal,
+   isCommissionView,
+   dispatch,
 ) => {
    const navigate = useNavigate();
    useEffect(() => {
@@ -274,8 +336,17 @@ const useDataTable = (
       }
 
       tableInstanceRef.current = $(tableRef.current).DataTable(
-         getDataTableConfig(tableRef.current, inputStartDate, inputEndDate, filterOption, idnetsuite_admin, rol_admin),
+         getDataTableConfig(tableRef.current, inputStartDate, inputEndDate, filterOption, idnetsuite_admin, rol_admin, isCommissionView),
       );
+
+      if (isCommissionView) {
+         $(tableRef.current).on("click", "button.apply-commission-btn", async function (event) {
+            event.stopPropagation();
+            const rowApi = tableInstanceRef.current.row($(this).closest("tr"));
+            const rowData = rowApi.data();
+            await handleCommissionAction(dispatch, rowData?.id_ov_netsuite, rowApi);
+         });
+      }
 
       // Modificar el manejador del clic
       $(tableRef.current).on("click", "tbody tr", function () {
@@ -287,12 +358,13 @@ const useDataTable = (
 
       return () => {
          if (tableInstanceRef.current) {
+            $(tableRef.current).off("click", "button.apply-commission-btn");
             $(tableRef.current).off("click", "tbody tr");
             tableInstanceRef.current.destroy();
             tableInstanceRef.current = null;
          }
       };
-   }, [tableRef, inputStartDate, inputEndDate, filterOption, idnetsuite_admin, rol_admin, setSelectedLead, setShowModal]);
+   }, [tableRef, inputStartDate, inputEndDate, filterOption, idnetsuite_admin, rol_admin, setSelectedLead, setShowModal, isCommissionView, dispatch, navigate]);
 };
 
 /**
@@ -311,6 +383,7 @@ const Lista_Cotizaciones = () => {
 
    /** Referencia a la instancia de DataTables */
    const tableInstanceRef = useRef(null);
+   const dispatch = useDispatch();
 
    /** Fechas por defecto para el filtrado */
    const { firstDay, lastDay } = getDefaultDatesMeses();
@@ -366,6 +439,11 @@ const Lista_Cotizaciones = () => {
 
    /** Datos del administrador desde Redux */
    const { idnetsuite_admin, rol_admin } = useSelector((state) => state.auth);
+   const isCommissionView = (() => {
+      const params = new URLSearchParams(window.location.search);
+      const isRoleAllowed = Number(rol_admin) === 1;
+      return window.location.pathname === "/orden/lista" && params.get("data") === "2" && isRoleAllowed;
+   })();
 
    /**
     * Cierra el modal y limpia el lead seleccionado
@@ -394,6 +472,8 @@ const Lista_Cotizaciones = () => {
       rol_admin,
       setSelectedLead,
       setShowModal,
+      isCommissionView,
+      dispatch,
    );
 
    return (
