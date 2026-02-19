@@ -4,7 +4,7 @@ import { useForm } from "../../hook";
 import { useDispatch, useSelector } from "react-redux";
 // import { startAuthentication } from "@ThunksL";
 import { TextField } from "@mui/material";
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { Auth_Layout } from "../layout/Auth_Layout";
 import { startAuthentication } from "../../store/auth/thunks";
 import { useMicrosoftAuth } from "../../store/auth/authThunksMicrosoft";
@@ -21,6 +21,10 @@ const loginFormData = {
 
 export const LoginPage = () => {
    const dispatch = useDispatch();
+
+   useEffect(() => {
+      localStorage.clear();
+   }, []);
 
    // useEffect(() => {
    //     // dispatch(startLoadingLeads());
