@@ -43,6 +43,7 @@ export const NavBar = ({ sidebarVisible, sidebarStatus, closeSidebar }) => {
    const [openMenu, setOpenMenu] = useState({
       leadsMenu: false,
       opportunitiesMenu: false,
+      linksExternosMenu: false,
    });
 
    // Obtiene la clase CSS dinámica para el sidebar
@@ -179,6 +180,16 @@ const MenuItems = ({ openMenu, toggleMenu, rol_admin }) => {
          ]}
       />
       <MenuItem to="/orden/lista?data=4" icon="ti ti-vocabulary" text="Cotizaciones" />
+      <SubMenu
+         icon="ti ti-link"
+         title="Links externos"
+         isOpen={openMenu.linksExternosMenu}
+         toggle={() => toggleMenu("linksExternosMenu")}
+         items={[
+            { to: "https://form.jotform.com/232835580708866", image: "/assets/Ticket.jpg", external: true },
+            // Agregar { divider: true } y más opciones cuando las necesites
+         ]}
+      />
       {/* <MenuItem to="/outlook" icon="ti ti-calendar" text="Calendario Outlook" /> */}
    </ul>
    );
@@ -239,9 +250,31 @@ const SubMenu = ({ title, icon, isOpen, toggle, items }) => (
       </a>
       {isOpen && (
          <ul className="pc-submenu">
-            {items.map((item, index) => (
-               <MenuItem key={index} to={item.to} text={item.text} />
-            ))}
+            {items.map((item, index) =>
+               item.divider ? (
+                  <li key={index} style={{ listStyle: "none", padding: 0 }}>
+                     <hr style={{ margin: "0.5rem 0", borderColor: "rgba(0,0,0,0.08)" }} />
+                  </li>
+               ) : item.external ? (
+                  <li key={index} className="pc-item">
+                     <a
+                        href={item.to}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="pc-link active"
+                        style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}
+                     >
+                        {item.image ? (
+                           <img src={item.image} alt="Ticket" style={{ maxHeight: "32px", objectFit: "contain" }} />
+                        ) : (
+                           <span className="pc-mtext">{item.text}</span>
+                        )}
+                     </a>
+                  </li>
+               ) : (
+                  <MenuItem key={index} to={item.to} text={item.text} />
+               )
+            )}
          </ul>
       )}
    </li>
@@ -254,7 +287,7 @@ const SubMenu = ({ title, icon, isOpen, toggle, items }) => (
  * @param {function} props.CreatedEvents - Función para crear un evento
  */
 const UserCard = ({ name_admin, CreatedEvents }) => (
-   <div className="card pc-user-card">
+   <div className="card pc-user-card" style={{ marginTop: "1.5rem" }}>
       <div className="card-body">
          <div className="d-flex align-items-center">
             <div className="avtar avtar-s btn-light-dark">
