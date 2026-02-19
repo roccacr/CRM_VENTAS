@@ -282,15 +282,11 @@ const View_total_leads = () => {
    /** Fechas por defecto para el filtrado */
    const { firstDay, lastDay } = getDefaultDates();
 
-   /** Estado para la fecha de inicio - recuperar de localStorage si existe */
-   const [inputStartDate, setInputStartDate] = useState(
-      localStorage.getItem('inputStartDate') || firstDay
-   );
+   /** Estado para la fecha de inicio */
+   const [inputStartDate, setInputStartDate] = useState(firstDay);
 
-   /**  Estado para la fecha final - recuperar de localStorage si existe */
-   const [inputEndDate, setInputEndDate] = useState(
-      localStorage.getItem('inputEndDate') || lastDay
-   );
+   /** Estado para la fecha final */
+   const [inputEndDate, setInputEndDate] = useState(lastDay);
 
    /**  Estado para la opción de filtrado */
    const [filterOption, setFilterOption] = useState(1);
@@ -305,32 +301,25 @@ const View_total_leads = () => {
    const { idnetsuite_admin, rol_admin } = useSelector((state) => state.auth);
 
    /**
-    * Actualiza la fecha de inicio y la guarda en localStorage
+    * Actualiza la fecha de inicio
     * @param {string} value - Nueva fecha de inicio
     */
    const handleStartDateChange = (value) => {
       setInputStartDate(value);
-      localStorage.setItem('inputStartDate', value);
    };
 
    /**
-    * Actualiza la fecha final y la guarda en localStorage
+    * Actualiza la fecha final
     * @param {string} value - Nueva fecha final
     */
    const handleEndDateChange = (value) => {
       setInputEndDate(value);
-      localStorage.setItem('inputEndDate', value);
    };
 
    /**
-    * Reinicia los filtros de fecha a los valores por defecto y elimina datos en localStorage
+    * Reinicia los filtros de fecha a los valores por defecto
     */
    const handleResetFilters = () => {
-      // Eliminar valores del localStorage
-      localStorage.removeItem('inputStartDate');
-      localStorage.removeItem('inputEndDate');
-
-      // Restaurar valores predeterminados
       setInputStartDate(firstDay);
       setInputEndDate(lastDay);
    };
