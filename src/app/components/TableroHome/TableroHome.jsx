@@ -1,6 +1,12 @@
-import { NavLink } from "react-router-dom";
-
 export const TableroHome = ({ image, icons, nombre, cantidad, url, outlookCount, hasOutlook, alertStatus, leftLabel, rightLabel, leftColor, rightColor, leftUrl, rightUrl }) => {
+    const updatePreviousUrlIfOpportunity = (targetUrl) => {
+        if (!targetUrl) return;
+        if (targetUrl.startsWith("/oportunidad/lista")) {
+            localStorage.removeItem("previousUrl");
+            localStorage.setItem("previousUrl", targetUrl);
+        }
+    };
+
     // Función para obtener los estilos según el estado de alerta
     const getAlertStyles = () => {
         if (!alertStatus) return {};
@@ -61,7 +67,11 @@ export const TableroHome = ({ image, icons, nombre, cantidad, url, outlookCount,
                                 {hasOutlook ? (
                                     // Mostrar formato con números arriba y etiquetas abajo
                                     <div className="d-flex align-items-center gap-3">
-                                        <a href={leftUrl || url} style={{ textDecoration: "none", color: "inherit" }}>
+                                        <a
+                                            href={leftUrl || url}
+                                            onClick={() => updatePreviousUrlIfOpportunity(leftUrl || url)}
+                                            style={{ textDecoration: "none", color: "inherit" }}
+                                        >
                                             <div className="text-center">
                                                 <h2 className="mb-0 f-w-500" style={{ fontSize: "1.3rem", cursor: "pointer", color: leftColor || quantityColor }}>
                                                     {cantidad !== undefined && cantidad !== null ? cantidad : "..."}
@@ -70,7 +80,11 @@ export const TableroHome = ({ image, icons, nombre, cantidad, url, outlookCount,
                                             </div>
                                         </a>
                                         <span className="text-muted">/</span>
-                                        <a href={rightUrl || "/calendar"} style={{ textDecoration: "none", color: "inherit" }}>
+                                        <a
+                                            href={rightUrl || "/calendar"}
+                                            onClick={() => updatePreviousUrlIfOpportunity(rightUrl || "/calendar")}
+                                            style={{ textDecoration: "none", color: "inherit" }}
+                                        >
                                             <div className="text-center">
                                                 <h2 className="mb-0 f-w-500" style={{ color: rightColor || "#6c757d", fontWeight: "600", fontSize: "1.3rem", cursor: "pointer" }}>
                                                     {outlookCount !== undefined && outlookCount !== null ? outlookCount : "..."}
@@ -81,7 +95,11 @@ export const TableroHome = ({ image, icons, nombre, cantidad, url, outlookCount,
                                     </div>
                                 ) : (
                                     // Mostrar cantidad normal para otros items con enlace general
-                                    <a href={url} style={{ textDecoration: "none", color: "inherit" }}>
+                                    <a
+                                        href={url}
+                                        onClick={() => updatePreviousUrlIfOpportunity(url)}
+                                        style={{ textDecoration: "none", color: "inherit" }}
+                                    >
                                         {cantidad !== undefined && cantidad !== null ? (
                                             <h2 className="mb-0 f-w-500" style={{ cursor: "pointer", color: quantityColor }}>{cantidad}</h2>
                                         ) : (

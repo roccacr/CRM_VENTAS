@@ -184,6 +184,8 @@ const MenuItems = ({ openMenu, toggleMenu, rol_admin }) => {
    );
 };
 
+const isOpportunityListUrl = (url) => typeof url === "string" && url.startsWith("/oportunidad/lista");
+
 /**
  * Componente para un elemento de menú
  * @param {Object} props - Propiedades del componente
@@ -193,7 +195,16 @@ const MenuItems = ({ openMenu, toggleMenu, rol_admin }) => {
  */
 const MenuItem = ({ to, icon, text }) => (
    <li className="pc-item">
-      <NavLink to={to} className="pc-link active">
+      <NavLink
+         to={to}
+         className="pc-link active"
+         onClick={() => {
+            if (isOpportunityListUrl(to)) {
+               localStorage.removeItem("previousUrl");
+               localStorage.setItem("previousUrl", to);
+            }
+         }}
+      >
          {icon && (
             <span className="pc-micon">
                <i className={icon}></i>

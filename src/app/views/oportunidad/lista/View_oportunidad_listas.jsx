@@ -208,6 +208,14 @@ const View_oportunidad_listas = () => {
       setSearchParams(new URLSearchParams(location));
    }, [location]);
 
+   useEffect(() => {
+      const currentPath = window.location.pathname;
+      const currentSearch = window.location.search;
+      const currentUrl = currentPath + currentSearch;
+      localStorage.removeItem("previousUrl");
+      localStorage.setItem("previousUrl", currentUrl);
+   }, [location]);
+
    // --- FECHAS: Persistencia en localStorage ---
    const LS_START = 'oportunidad_inputStartDate';
    const LS_END = 'oportunidad_inputEndDate';
@@ -281,6 +289,7 @@ const View_oportunidad_listas = () => {
       const currentUrl = currentPath + currentSearch;
       
       // Guardar la URL actual en localStorage
+      localStorage.removeItem('previousUrl');
       localStorage.setItem('previousUrl', currentUrl);
       
       // Ahora navegar a la nueva página

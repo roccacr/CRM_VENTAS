@@ -1,23 +1,23 @@
-import { useLocation, useNavigate } from 'react-router-dom';
+﻿import { useNavigate } from 'react-router-dom';
 
 export const BotonVolveR = () => {
     const navigate = useNavigate();
 
     const handleVolverClickPagina = () => {
-        // Verificar si existe previousUrl en localStorage
         const previousUrl = localStorage.getItem('previousUrl');
-        
-        if (previousUrl) {
-            localStorage.removeItem('previousUrl');
-            // Si existe, navegar a esa URL y borrarla
-            navigate("/oportunidad/lista?oportuinidad=1&idLead=0");
 
-        } else if (window.history.length > 2) {
-            navigate(-1); // Volver a la página anterior del historial
-        } else {
-            // Si no hay historial, ir a una ruta lógica definida
-            navigate('/'); // Personaliza esta ruta
+        if (previousUrl && previousUrl.startsWith('/oportunidad/lista')) {
+            localStorage.removeItem('previousUrl');
+            navigate(previousUrl);
+            return;
         }
+
+        if (window.history.length > 2) {
+            navigate(-1);
+            return;
+        }
+
+        navigate('/');
     };
 
     return (
