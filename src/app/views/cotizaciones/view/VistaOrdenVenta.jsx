@@ -1111,6 +1111,7 @@ export const VistaOrdenVenta = () => {
                idinternoLead={leadDetails?.idinterno_lead}
                transactionType="ordersale"
                transactionId={getQueryParam("data2")}
+               sourceUrl={window.location.href}
             />
          </div>
 

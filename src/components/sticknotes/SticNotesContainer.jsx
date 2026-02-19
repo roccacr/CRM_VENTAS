@@ -25,7 +25,7 @@ import "./SticNotesContainer.css";
  * @param {string} props.transactionType - Tipo de transacción (ej: ordersale)
  * @param {number} props.transactionId - ID de la transacción
  */
-const SticNotesContainer = ({ idinternoLead, transactionType, transactionId }) => {
+const SticNotesContainer = ({ idinternoLead, transactionType, transactionId, sourceUrl }) => {
     const dispatch = useDispatch();
     const { idnetsuite_admin } = useSelector((state) => state.auth);
     const [sticNotes, setSticNotes] = useState([]);
@@ -169,6 +169,7 @@ const SticNotesContainer = ({ idinternoLead, transactionType, transactionId }) =
                         id_usuario_asignado: noteData.id_usuario_asignado || null,
                         email_usuario_asignado: noteData.email_usuario_asignado || null,
                         prioridad: noteData.prioridad || "media",
+                        crm_url: sourceUrl || null,
                     })
                 );
                 handleCloseModal();
@@ -193,6 +194,7 @@ const SticNotesContainer = ({ idinternoLead, transactionType, transactionId }) =
                         email_usuario_asignado: noteData.email_usuario_asignado || null,
                         prioridad: noteData.prioridad || "media",
                         categoria: noteData.categoria || "general",
+                        crm_url: sourceUrl || null,
                     })
                 );
 

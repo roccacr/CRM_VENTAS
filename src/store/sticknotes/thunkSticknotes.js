@@ -50,6 +50,9 @@ export const crearSticNotePorTransaccion = (params) => {
     return async (dispatch, getState) => {
         try {
             const { idnetsuite_admin } = getState().auth;
+            if (idnetsuite_admin === undefined || idnetsuite_admin === null || idnetsuite_admin === "") {
+                throw new Error("No se pudo identificar el usuario autenticado para crear la nota.");
+            }
 
             const result = await crearSticNote({
                 ...params,

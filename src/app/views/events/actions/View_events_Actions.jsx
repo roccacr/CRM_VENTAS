@@ -619,14 +619,17 @@ export const View_events_Actions = () => {
 
     return (
         <>
-            {/* Sticky Notes Container */}
-            <div style={{ position: 'relative', zIndex: 999 }}>
-                <SticNotesContainer
-                    idinternoLead={getQueryParam("idLead") || 0}
-                    transactionType="event"
-                    transactionId={getQueryParam("idCalendar")}
-                />
-            </div>
+            {/* Sticky Notes Container: solo en edición */}
+            {getQueryParam("idCalendar") > 0 && (
+                <div style={{ position: 'relative', zIndex: 999 }}>
+                    <SticNotesContainer
+                        idinternoLead={getQueryParam("idLead") || 0}
+                        transactionType="event"
+                        transactionId={getQueryParam("idCalendar")}
+                        sourceUrl={window.location.href}
+                    />
+                </div>
+            )}
 
             <div className="card" style={{ width: "100%" }}>
             <div className="card-header table-card-header">
@@ -664,7 +667,7 @@ export const View_events_Actions = () => {
 
             <div className="card-body">
                 <p>
-                    <span className="text-danger">*</span> Please manage the event details before proceeding.
+                    <span className="text-danger">*</span> Por favor, complete los datos del evento antes de continuar.
                 </p>
                 <div className="g-8 row">
                     <div className="row">

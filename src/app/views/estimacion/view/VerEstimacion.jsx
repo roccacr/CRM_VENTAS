@@ -603,6 +603,7 @@ export const VerEstimacion = () => {
                idinternoLead={getQueryParam("data")}
                transactionType="estimate"
                transactionId={getQueryParam("data2")}
+               sourceUrl={window.location.href}
             />
          </div>
 

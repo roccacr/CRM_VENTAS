@@ -107,6 +107,7 @@ export const PerfilUsuario = () => {
                     idinternoLead={getQueryParam("data")}
                     transactionType="lead"
                     transactionId={getQueryParam("data")}
+                    sourceUrl={window.location.href}
                 />
             </div>
 

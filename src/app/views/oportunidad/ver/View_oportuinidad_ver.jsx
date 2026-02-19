@@ -167,6 +167,7 @@ export const View_oportuinidad_ver = () => {
                     idinternoLead={getQueryParam("data")}
                     transactionType="opportunity"
                     transactionId={getQueryParam("data2")}
+                    sourceUrl={window.location.href}
                 />
             </div>
 

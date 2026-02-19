@@ -57,6 +57,7 @@ export const crearSticNote = async ({
     email_usuario_asignado,
     prioridad,
     categoria,
+    crm_url,
 }) => {
     const requestData = {
         ...commonRequestData,
@@ -74,6 +75,7 @@ export const crearSticNote = async ({
         email_usuario_asignado: email_usuario_asignado || null,
         prioridad: prioridad || "media",
         categoria: categoria || "general",
+        crm_url: crm_url || null,
     };
 
     const response = await fetchData("sticknotes/crear", requestData);
@@ -102,6 +104,7 @@ export const editarSticNote = async ({
     id_usuario_asignado,
     email_usuario_asignado,
     prioridad,
+    crm_url,
 }) => {
     const requestData = {
         ...commonRequestData,
@@ -123,6 +126,9 @@ export const editarSticNote = async ({
     }
     if (prioridad !== undefined) {
         requestData.prioridad = prioridad;
+    }
+    if (crm_url !== undefined) {
+        requestData.crm_url = crm_url;
     }
 
     const response = await fetchData("sticknotes/editar", requestData);
