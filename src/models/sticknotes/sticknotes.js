@@ -135,9 +135,55 @@ sticknotes.crearSticNote = async ({
     email_usuario_asignado,
     prioridad,
     categoria,
+    crm_url,
     database,
 }) => {
-    const leadId = idinterno_lead || id_lead;
+    console.log("🧪 [sticknotes.crearSticNote] payload recibido", {
+        id_lead,
+        idinterno_lead,
+        transaction_type,
+        transaction_id,
+        id_usuario_creador,
+        privado,
+        id_usuario_asignado,
+        email_usuario_asignado,
+        prioridad,
+        categoria,
+        crm_url,
+        database,
+    });
+
+    const leadIdRaw = idinterno_lead ?? id_lead;
+    const transactionType = transaction_type ?? null;
+    const transactionIdRaw = transaction_id ?? null;
+    const creatorIdRaw = id_usuario_creador ?? null;
+    const mensajeFinal = typeof mensaje === "string" ? mensaje.trim() : mensaje;
+    const tituloFinal = typeof titulo === "string" ? titulo.trim() : "";
+
+    const missingFields = [];
+    if (leadIdRaw === null || leadIdRaw === undefined || leadIdRaw === "") missingFields.push("idinterno_lead");
+    if (transactionType === null || transactionType === undefined || transactionType === "") missingFields.push("transaction_type");
+    if (transactionIdRaw === null || transactionIdRaw === undefined || transactionIdRaw === "") missingFields.push("transaction_id");
+    if (creatorIdRaw === null || creatorIdRaw === undefined || creatorIdRaw === "") missingFields.push("id_usuario_creador");
+    if (mensajeFinal === null || mensajeFinal === undefined || mensajeFinal === "") missingFields.push("mensaje");
+
+    if (missingFields.length > 0) {
+        return {
+            statusCode: 400,
+            message: `Campos requeridos faltantes: ${missingFields.join(", ")}`,
+        };
+    }
+
+    const leadId = Number(leadIdRaw);
+    const transactionId = Number(transactionIdRaw);
+    const creatorId = Number(creatorIdRaw);
+
+    if (Number.isNaN(leadId) || Number.isNaN(transactionId) || Number.isNaN(creatorId)) {
+        return {
+            statusCode: 400,
+            message: "Parámetros inválidos para crear sticky note",
+        };
+    }
 
     try {
         const query = `
@@ -153,24 +199,35 @@ sticknotes.crearSticNote = async ({
             query,
             [
                 leadId,
-                transaction_type,
-                transaction_id,
-                titulo,
-                mensaje,
+                transactionType,
+                transactionId,
+                tituloFinal,
+                mensajeFinal,
                 color_hex || "#FFF9C4",
-                pos_x || 0,
-                pos_y || 0,
-                id_usuario_creador,
-                privado || 0,
-                id_usuario_asignado || null,
-                email_usuario_asignado || null,
+                pos_x ?? 0,
+                pos_y ?? 0,
+                creatorId,
+                privado ?? 0,
+                id_usuario_asignado ?? null,
+                email_usuario_asignado ?? null,
                 prioridad || "media",
                 categoria || "general",
             ],
             database
         );
 
-        const id_sticknote_creado = result.insertId;
+        const insertMeta = (result && result.data) ? result.data : result;
+        const id_sticknote_creado = insertMeta ? insertMeta.insertId : null;
+
+        if (!id_sticknote_creado) {
+            console.error("❌ [sticknotes.crearSticNote] No se obtuvo insertId al crear nota", {
+                result,
+                leadId,
+                transactionType,
+                transactionId,
+                creatorId,
+            });
+        }
 
         // Enviar correo de forma asíncrona (sin await) si hay usuarios asignados
         // La privacidad solo afecta la vista, pero si hay asignados deben recibir correo
@@ -178,7 +235,7 @@ sticknotes.crearSticNote = async ({
             // Obtener datos del creador de forma asíncrona
             executeQuery(
                 `SELECT name_admin, email_admin FROM admins WHERE idnetsuite_admin = ? LIMIT 1`,
-                [id_usuario_creador],
+                [creatorId],
                 database
             ).then(creadorResult => {
                 // executeQuery devuelve un objeto con estructura { ok, statusCode, data }
@@ -194,15 +251,16 @@ sticknotes.crearSticNote = async ({
                 // Enviar correo sin await (no bloquea la respuesta)
                 enviarCorreoStickyNote({
                     email_usuario_asignado,
-                    titulo,
-                    mensaje,
+                    titulo: tituloFinal,
+                    mensaje: mensajeFinal,
                     color_hex: color_hex || "#FFF9C4",
                     prioridad: prioridad || "media",
                     creador_nombre: creador.name_admin || 'Sistema',
                     creador_email: creador.email_admin || null,
                     id_sticknote: id_sticknote_creado,
-                    transaction_type: transaction_type,
-                    transaction_id: transaction_id,
+                    transaction_type: transactionType,
+                    transaction_id: transactionId,
+                    crm_url,
                     database,
                 });
             }).catch(error => {
@@ -249,6 +307,7 @@ sticknotes.editarSticNote = async ({
     email_usuario_asignado,
     prioridad,
     categoria,
+    crm_url,
     database,
 }) => {
     try {
@@ -343,6 +402,7 @@ sticknotes.editarSticNote = async ({
                         id_sticknote: id_sticknote,
                         transaction_type: note.transaction_type,
                         transaction_id: note.transaction_id,
+                        crm_url,
                         database,
                     });
                 }
@@ -658,6 +718,7 @@ const enviarCorreoStickyNote = async ({
     id_sticknote,
     transaction_type,
     transaction_id,
+    crm_url,
     database,
 }) => {
     // Si no hay emails asignados, no enviar correo
@@ -710,22 +771,9 @@ const enviarCorreoStickyNote = async ({
         const creadorEmailEscapado = creador_email ? escapeHtml(creador_email) : '';
 
         // Generar link de NetSuite según el tipo de transacción
-        let netsuiteLink = null;
-        let linkTexto = '';
-        if (transaction_type === 'ordersale' && transaction_id) {
-            netsuiteLink = `https://4552704.app.netsuite.com/app/accounting/transactions/salesord.nl?id=${transaction_id}&whence=`;
-            linkTexto = 'Ver Orden de Venta en NetSuite';
-        } else if (transaction_type === 'opportunity' && transaction_id) {
-            netsuiteLink = `https://4552704.app.netsuite.com/app/accounting/transactions/opprtnty.nl?id=${transaction_id}&whence=`;
-            linkTexto = 'Ver Oportunidad en NetSuite';
-        } else if (transaction_type === 'estimate' && transaction_id) {
-            netsuiteLink = `https://4552704.app.netsuite.com/app/accounting/transactions/estimate.nl?id=${transaction_id}&whence=`;
-            linkTexto = 'Ver Estimación en NetSuite';
-        } else if (transaction_type === 'lead' && transaction_id) {
-            netsuiteLink = `https://4552704.app.netsuite.com/app/common/entity/custjob.nl?id=${transaction_id}`;
-            linkTexto = 'Ver Lead en NetSuite';
-        }
-        // Aquí se pueden agregar más tipos de transacciones en el futuro
+        const crmLink = typeof crm_url === "string" ? crm_url.trim() : "";
+        const actionLink = crmLink !== "" ? crmLink : null;
+        const linkTexto = transaction_type === "event" ? "al evento CRM" : "al detalle en CRM";
 
         // Crear HTML con estilo de sticky note
         const htmlContent = `
@@ -821,10 +869,10 @@ const enviarCorreoStickyNote = async ({
             <div class="sticky-note-creator">
                 <strong>👤 Creado por:</strong> ${creadorNombreEscapado}${creadorEmailEscapado ? ` (${creadorEmailEscapado})` : ''}
             </div>
-            ${netsuiteLink ? `
+            ${actionLink ? `
             <div style="margin-top: 15px; text-align: center;">
-                <a href="${netsuiteLink}" class="sticky-note-link-button" style="color: white; text-decoration: none;">
-                    🔗 ${linkTexto}
+                <a href="${actionLink}" class="sticky-note-link-button" style="color: white; text-decoration: none;">
+                    Ir ${linkTexto}
                 </a>
             </div>
             ` : ''}
@@ -850,7 +898,7 @@ ${mensaje || ''}
 
 Prioridad: ${prioridadTexto[prioridad] || 'Media'}
 Creado por: ${creador_nombre || 'Sistema'}${creador_email ? ` (${creador_email})` : ''}
-${netsuiteLink ? `\n\nVer en NetSuite: ${netsuiteLink}` : ''}
+${actionLink ? `\n\nIr ${linkTexto}: ${actionLink}` : ''}
 
 ---
 Este es un mensaje automático del sistema CRM Ventas Rocca.
@@ -865,11 +913,21 @@ Este es un mensaje automático del sistema CRM Ventas Rocca.
             } else {
                 // Actualizar campo notificado en la base de datos
                 try {
-                    await executeQuery(
-                        `UPDATE crm_stick_notes SET notificado = 1 WHERE id_sticknote = ?`,
-                        [id_sticknote],
-                        database
-                    );
+                    if (id_sticknote === undefined || id_sticknote === null) {
+                        console.error("❌ [enviarCorreoStickyNote] id_sticknote indefinido al actualizar notificado", {
+                            id_sticknote,
+                            transaction_type,
+                            transaction_id,
+                            crm_url,
+                            email_usuario_asignado,
+                        });
+                    } else {
+                        await executeQuery(
+                            `UPDATE crm_stick_notes SET notificado = 1 WHERE id_sticknote = ?`,
+                            [id_sticknote],
+                            database
+                        );
+                    }
                 } catch (updateError) {
                     console.error('❌ Error actualizando campo notificado:', updateError);
                 }
@@ -882,3 +940,4 @@ Este es un mensaje automático del sistema CRM Ventas Rocca.
 
 // Exportar el objeto con todas las funciones
 module.exports = sticknotes;
+

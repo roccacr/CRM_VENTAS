@@ -68,6 +68,21 @@ const executeStoredProcedure = async (procedureName, params, database) => {
  */
 const executeQuery = async (query, params = [], database) => {
     return handleDatabaseOperation(async (connection) => {
+        if (Array.isArray(params)) {
+            const undefinedIndexes = params
+                .map((value, index) => (value === undefined ? index : -1))
+                .filter((index) => index >= 0);
+
+            if (undefinedIndexes.length > 0) {
+                console.error("❌ [executeQuery] Parámetros undefined detectados", {
+                    database,
+                    undefinedIndexes,
+                    params,
+                    query,
+                });
+            }
+        }
+
         const [rows] = await connection.execute(query, params);
 
     

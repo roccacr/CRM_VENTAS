@@ -102,5 +102,5 @@ app.use((err, req, res, next) => {
 
 // Inicio del servidor
 app.listen(app.get("port"), () => {
-    // Servidor iniciado
+    console.log(`[CRM API] iniciado en puerto ${app.get("port")} - PID ${process.pid}`);
 });
