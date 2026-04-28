@@ -77,6 +77,8 @@ export const VerEstimacion = () => {
       try {
          const estimacionData = await dispatch(extarerEstimacion(idEstimacion));
 
+         console.log(estimacionData);
+
          setDatosEstimacion(estimacionData.netsuite.Detalle);
          setDatosCrm(estimacionData.crm);
 
@@ -664,11 +666,11 @@ export const VerEstimacion = () => {
                            </button>
                         </div>
                      </div>
-                     <div className="col-3" hidden={datosCrm?.pre_caida ===1 ? true : false }>
+                     <div className="col-3" hidden={datosCrm?.pre_caida === 1 || datosCrm?.pre_reserva !== 1}>
                         <div className="d-grid">
                            <button className="btn btn-dark" onClick={() => EnviarTransaccionCaida()}>
                               {" "}
-                              <i className="ti ti-file-shredder"></i> ESTIMACION CAIDA
+                              <i className="ti ti-file-shredder"></i> PRE-RESERVA CAIDA
                            </button>
                         </div>
                      </div>
