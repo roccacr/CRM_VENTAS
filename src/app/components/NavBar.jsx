@@ -182,7 +182,7 @@ const MenuItems = ({ openMenu, toggleMenu, rol_admin }) => {
       <MenuItem to="/orden/lista?data=4" icon="ti ti-vocabulary" text="Cotizaciones" />
       <SubMenu
          icon="ti ti-link"
-         title="Links externos"
+         title="Tickets"
          isOpen={openMenu.linksExternosMenu}
          toggle={() => toggleMenu("linksExternosMenu")}
          items={[
@@ -191,9 +191,9 @@ const MenuItems = ({ openMenu, toggleMenu, rol_admin }) => {
                to: "https://4552704.extforms.netsuite.com/app/site/hosting/scriptlet.nl?script=3095&deploy=1&compid=4552704&ns-at=AAEJ7tMQF_Q_ZaKM6OXzzIKOWmL076kq0-mT2kWoeSkSzjZzqfk",
                image: "/assets/rocca2.jpg",
                external: true,
-               alt: "Soporte Técnico",
+               alt: "",
                tooltip: "Generar ticket",
-               text: "Soporte Técnico",
+               text: "",
                imageStyle: { maxHeight: "24px" }
             },
             // Agregar { divider: true } y más opciones cuando las necesites
