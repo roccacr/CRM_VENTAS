@@ -187,6 +187,15 @@ const MenuItems = ({ openMenu, toggleMenu, rol_admin }) => {
          toggle={() => toggleMenu("linksExternosMenu")}
          items={[
             { to: "https://form.jotform.com/232835580708866", image: "/assets/Ticket.jpg", external: true },
+            {
+               to: "https://4552704.extforms.netsuite.com/app/site/hosting/scriptlet.nl?script=3095&deploy=1&compid=4552704&ns-at=AAEJ7tMQF_Q_ZaKM6OXzzIKOWmL076kq0-mT2kWoeSkSzjZzqfk",
+               image: "/assets/rocca2.jpg",
+               external: true,
+               alt: "Soporte Técnico",
+               tooltip: "Generar ticket",
+               text: "Soporte Técnico",
+               imageStyle: { maxHeight: "24px" }
+            },
             // Agregar { divider: true } y más opciones cuando las necesites
          ]}
       />
@@ -250,31 +259,62 @@ const SubMenu = ({ title, icon, isOpen, toggle, items }) => (
       </a>
       {isOpen && (
          <ul className="pc-submenu">
-            {items.map((item, index) =>
-               item.divider ? (
+            {items.map((item, index) => {
+               const isLastItem = index === items.length - 1;
+
+               return (
                   <li key={index} style={{ listStyle: "none", padding: 0 }}>
-                     <hr style={{ margin: "0.5rem 0", borderColor: "rgba(0,0,0,0.08)" }} />
+                     {item.divider ? (
+                        <hr style={{ margin: "0.5rem 0", borderColor: "rgba(0,0,0,0.08)" }} />
+                     ) : item.external ? (
+                        <a
+                           href={item.to}
+                           target="_blank"
+                           rel="noopener noreferrer"
+                           className="pc-link active"
+                           title={item.tooltip || ""}
+                           aria-label={item.tooltip || item.alt || "Link externo"}
+                           onMouseEnter={(e) => {
+                              e.currentTarget.style.backgroundColor = "rgba(4, 29, 77, 0.1)";
+                              e.currentTarget.style.transform = "translateX(2px)";
+                           }}
+                           onMouseLeave={(e) => {
+                              e.currentTarget.style.backgroundColor = "transparent";
+                              e.currentTarget.style.transform = "translateX(0)";
+                           }}
+                           style={{
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              flexDirection: item.text ? "column" : "row",
+                              gap: item.text ? "0.25rem" : "0.5rem",
+                              borderRadius: "8px",
+                              padding: "0.45rem 0.6rem",
+                              width: "100%",
+                              textAlign: "center",
+                              marginLeft: "-8px",
+                              transition: "background-color 0.18s ease, transform 0.18s ease"
+                           }}
+                        >
+                           {item.image ? (
+                              <img
+                                 src={item.image}
+                                 alt={item.alt || "Ticket"}
+                                 style={{ maxHeight: "32px", objectFit: "contain", ...item.imageStyle }}
+                              />
+                           ) : (
+                              <span className="pc-mtext">{item.text}</span>
+                           )}
+                           {item.image && item.text && <span className="pc-mtext">{item.text}</span>}
+                        </a>
+                     ) : (
+                        <MenuItem to={item.to} text={item.text} />
+                     )}
+
+                     {!isLastItem && <hr style={{ margin: "0.5rem 0", borderColor: "rgba(0,0,0,0.08)" }} />}
                   </li>
-               ) : item.external ? (
-                  <li key={index} className="pc-item">
-                     <a
-                        href={item.to}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="pc-link active"
-                        style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}
-                     >
-                        {item.image ? (
-                           <img src={item.image} alt="Ticket" style={{ maxHeight: "32px", objectFit: "contain" }} />
-                        ) : (
-                           <span className="pc-mtext">{item.text}</span>
-                        )}
-                     </a>
-                  </li>
-               ) : (
-                  <MenuItem key={index} to={item.to} text={item.text} />
-               )
-            )}
+               );
+            })}
          </ul>
       )}
    </li>
