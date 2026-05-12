@@ -54,6 +54,12 @@ export const TABLE_COLUMNS = [
         searchPanes: { show: true }
     },
     {
+        title: "PROYECTO",
+        data: "proyecto_lead",
+        className: "text-left",
+        searchPanes: { show: true }
+    },
+    {
         title: "#OPORTUNIDAD",
         data: "tranid_oport",
         className: "text-left",

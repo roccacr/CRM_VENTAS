@@ -8,7 +8,7 @@ import axios from "axios";
  */
 const getApiUrl = () => {
     return window.location.hostname === "localhost" 
-        ? "https://api-node-v2.roccacr.com/api/v2.0/" 
+        ? "http://localhost:7000/api/v2.0/" 
         : "https://api-node-v2.roccacr.com/api/v2.0/";
 };
 

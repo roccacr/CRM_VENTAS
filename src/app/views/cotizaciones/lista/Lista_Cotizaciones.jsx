@@ -251,6 +251,8 @@ const getDataTableConfig = (tableElement, inputStartDate, inputEndDate, filterOp
             };
          },
          dataSrc: (response) => {
+
+            console.log(response.data);
             return response.data || [];
          },
       },
@@ -265,7 +267,7 @@ const getDataTableConfig = (tableElement, inputStartDate, inputEndDate, filterOp
             searching: true,
          },
          viewTotal: true,
-         columns: isCommissionView ? [1, 2, 3, 4, 5, 6] : [0, 1, 2, 3, 4, 5],
+         columns: isCommissionView ? [1, 2, 3, 4, 5, 6, 7] : [0, 1, 2, 3, 4, 5, 6],
       },
       processing: true,
       dom: "lPBfrtip",
