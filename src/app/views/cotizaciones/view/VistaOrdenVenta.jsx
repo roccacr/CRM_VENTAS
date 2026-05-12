@@ -324,7 +324,7 @@ const useSalesOrderActions = ({ navigate, dispatch, datosOrdenVenta, setIsModalO
                         }
                      } else {
                         // En una computadora, crear el enlace para abrir el cliente de correo
-                        const destinatario = "abarrientos@roccacr.com";
+                        const destinatario = "Formalizacion@roccacr.com";
                         const copia = email_admin;
                         const asunto = "Reserva Caida: " + exp_correo;
                         const cuerpo = formValues;
