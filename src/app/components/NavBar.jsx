@@ -145,8 +145,7 @@ const MenuItems = ({ openMenu, toggleMenu, rol_admin }) => {
       { to: "/leads/lista?data=2", text: "Leads Nuevos" },
       { to: "/leads/lista?data=3", text: "Leads Requieren Atencion" },
       // { to: "/leads/lista?data=4", text: "Leads Rezagados" }, // Oculto temporalmente
-      { to: "/leads/lista?data=5", text: "Leads Totales" },
-      ...(rol_admin === 1 ? [{ to: "/leads/lista?data=6", text: "Lead Poco Seguimiento" }] : [])
+      { to: "/leads/lista?data=5", text: "Leads Totales" }
    ];
 
    return (
