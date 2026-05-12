@@ -1,4 +1,4 @@
-const { executeStoredProcedure } = require("../conectionPool/conectionPool");
+const { executeStoredProcedure, executeQuery } = require("../conectionPool/conectionPool");
 const calendars = {}; // Objeto para agrupar todas las funciones relacionadas con 'calendars'.
 
 /**
@@ -187,5 +187,42 @@ calendars.getAll_ListEvent = (dataParams) =>
         ],
         dataParams.database,
     );
+
+/**
+ * Cancela automáticamente eventos pendientes con más de 7 días de atraso.
+ *
+ * Reglas:
+ * - Solo toma eventos activos (`estado_calendar = 1`)
+ * - Excluye eventos ya `Completado` o `Cancelado`
+ * - Soporta fechas en formato `YYYY-MM-DDTHH:mm` y `YYYY-MM-DDTHH:mm:ss`
+ * - Marca el evento como cancelado para limpiar el CRM
+ *
+ * @param {Object} dataParams - Parámetros de la ejecución
+ * @param {string} dataParams.database - Base de datos objetivo
+ * @returns {Promise<Object>} Resultado del UPDATE
+ */
+calendars.cancelOverduePendingEvents = async (dataParams) => {
+    const query = `
+        UPDATE calendars
+        SET
+            estado_calendar = 0,
+            accion_calendar = 'Cancelado',
+            NotificarCliente = 4,
+            correoEnviado = 0
+        WHERE estado_calendar = 1
+          AND accion_calendar NOT IN ('Completado', 'Cancelado')
+          AND (
+                -- La data histórica mezcla eventos con fecha tipo 2026-05-16T11:00
+                -- y otros con 2026-05-16T11:00:00, por eso se contemplan ambos parseos.
+                CASE
+                    WHEN fechaIni_calendar LIKE '%:%:%'
+                        THEN STR_TO_DATE(fechaIni_calendar, '%Y-%m-%dT%H:%i:%s')
+                    ELSE STR_TO_DATE(fechaIni_calendar, '%Y-%m-%dT%H:%i')
+                END
+              ) < NOW() - INTERVAL 7 DAY
+    `;
+
+    return executeQuery(query, [], dataParams.database);
+};
 
 module.exports = calendars; // Exporta el objeto 'calendars' que contiene todas las funciones relacionadas con eventos del calendario.
