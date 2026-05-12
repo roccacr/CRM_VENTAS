@@ -254,6 +254,7 @@ module.exports = function (app) {
             model: ordenVenta, // Modelo asociado a la gestión de expedientes
             routes: [
                 { path: "/ordenVenta/listar", method: "enlistarOrdenesVenta" }, // Cextraer datos de ordenes de venta
+                { path: "/ordenVenta/listarClientesCierreFirmado", method: "enlistarClientesCierreFirmado" }, // Extraer clientes con cierre firmado
                 { path: "/ordenVenta/obtenerOrdendeventa", method: "obtenerOrdendeventa" }, // extarer datos de orden de venta
                 { path: "/ordenVenta/aplicarComicion", method: "aplicarComicio" }, // actualizar datos de orden de venta
                 { path: "/ordenVenta/crearOrdenVenta", method: "crearOrdenVenta" }, // actualizar datos de orden de venta

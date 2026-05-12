@@ -259,6 +259,51 @@ ordenVenta.enlistarOrdenesVenta = async (dataParams) => {
     return resultados;
 };
 
+/**
+ * Lista clientes con cierre firmado para análisis comercial por proyecto y perfil.
+ *
+ * La consulta conserva todas las ordenes con cierre firmado aunque falte
+ * `info_extra_lead`, por eso la relacion con esa tabla es LEFT JOIN.
+ *
+ * @param {Object} dataParams - Parámetros de consulta
+ * @param {string} dataParams.rol_admin - Rol del administrador
+ * @param {string} dataParams.idnetsuite_admin - ID Netsuite del asesor/admin
+ * @param {string} dataParams.database - Base de datos a consultar
+ * @param {string} [dataParams.startDate] - Fecha inicial opcional
+ * @param {string} [dataParams.endDate] - Fecha final opcional
+ * @returns {Promise<Object>} Listado de clientes con cierre firmado
+ */
+ordenVenta.enlistarClientesCierreFirmado = async (dataParams) => {
+    const conditions = ["o.cierre_firmado_ov = 1"];
+    const isAdmin = dataParams.rol_admin === "1";
+
+    if (!isAdmin) {
+        conditions.push(`o.id_ov_admin = '${dataParams.idnetsuite_admin}'`);
+    }
+
+    if (dataParams.startDate && dataParams.endDate) {
+        conditions.push(`DATE(o.creado_ov) BETWEEN '${dataParams.startDate}' AND '${dataParams.endDate}'`);
+    }
+
+    const whereClause = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
+
+    const query = `
+        SELECT
+            o.*,
+            l.*,
+            i.*,
+            a.name_admin
+        FROM ordenventa AS o
+        INNER JOIN leads AS l ON l.idinterno_lead = o.id_ov_lead
+        LEFT JOIN info_extra_lead AS i ON i.id_lead_fk = l.idinterno_lead
+        LEFT JOIN admins AS a ON a.idnetsuite_admin = o.id_ov_admin
+        ${whereClause}
+        ORDER BY o.creado_ov DESC
+    `;
+
+    return executeQuery(query, [], dataParams.database);
+};
+
 ordenVenta.obtenerOrdendeventa = async ({ idTransaccion, database }) => {
     const urlSettings = {
         url: "https://4552704.restlets.api.netsuite.com/app/site/hosting/restlet.nl?script=1764&deploy=1",
