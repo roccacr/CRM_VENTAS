@@ -1,14 +1,14 @@
 /**
  * `BUTTON_DATA`
- * 
+ *
  * Contiene un arreglo de objetos que representan las acciones disponibles para un lead. Cada objeto incluye
- * el texto, icono, color y la acción asociada que se ejecutará al seleccionar el botón.
- * 
+ * el texto, icono, color y la accion asociada que se ejecutara al seleccionar el boton.
+ *
  * @type {Array<Object>}
- * @property {string} text - El texto que se mostrará en el botón.
- * @property {string} icon - Clase CSS que representa el ícono del botón (compatible con Font Awesome).
- * @property {string} color - Código hexadecimal que define el color principal del botón.
- * @property {string} action - Nombre de la función o acción que se ejecutará al hacer clic en el botón.
+ * @property {string} text - El texto que se mostrara en el boton.
+ * @property {string} icon - Clase CSS que representa el icono del boton (compatible con Font Awesome).
+ * @property {string} color - Codigo hexadecimal que define el color principal del boton.
+ * @property {string} action - Nombre de la funcion o accion que se ejecutara al hacer clic en el boton.
  */
 export const BUTTON_DATA = [
     { text: "Ir a Whatsapp", icon: "fab fa-whatsapp", color: "#25d366", action: "handleWhatsappClick" },
@@ -27,21 +27,23 @@ export const BUTTON_DATA = [
 
 /**
  * `MODAL_TEXTS`
- * 
- * Contiene textos predefinidos que se muestran en los cuadros de diálogo (modales) de confirmación para acciones
- * específicas del lead.
- * 
+ *
+ * Contiene textos predefinidos que se muestran en los cuadros de dialogo (modales) de confirmacion para acciones
+ * especificas del lead.
+ *
  * @type {Object}
- * @property {string} WHATSAPP_CONFIRM - Texto de confirmación para abrir WhatsApp y generar una nota.
- * @property {string} NO_PHONE - Mensaje que se muestra cuando el lead no tiene un número de teléfono.
- * @property {string} CONFIRM_LOSS - Confirmación para marcar el lead como perdido.
- * @property {string} CONFIRM_FOLLOW_UP - Confirmación para colocar al lead en seguimiento.
- * @property {string} CONFIRM_OPPORTUNITY - Confirmación para crear una oportunidad con el lead.
+ * @property {string} WHATSAPP_CONFIRM - Texto de confirmacion para abrir WhatsApp y generar una nota.
+ * @property {string} NO_PHONE - Mensaje que se muestra cuando el lead no tiene un numero de telefono.
+ * @property {string} CONFIRM_LOSS - Confirmacion para marcar el lead como perdido.
+ * @property {string} CONFIRM_FOLLOW_UP - Confirmacion para colocar al lead en seguimiento.
+ * @property {string} CONFIRM_FOLLOW_UP_NOTE - Nota aclaratoria sobre cuando corresponde usar seguimiento.
+ * @property {string} CONFIRM_OPPORTUNITY - Confirmacion para crear una oportunidad con el lead.
  */
 export const MODAL_TEXTS = {
     WHATSAPP_CONFIRM: "¿abrir WhatsApp y generar una nota?",
-    NO_PHONE: "Este lead no tiene un número de teléfono.",
-    CONFIRM_LOSS: "¿Está seguro de marcar este lead como perdido?",
-    CONFIRM_FOLLOW_UP: "¿Está seguro de colocar este lead en seguimiento?",
-    CONFIRM_OPPORTUNITY: "¿Está seguro de crear una oportunidad con este lead?"
+    NO_PHONE: "Este lead no tiene un numero de telefono.",
+    CONFIRM_LOSS: "¿Esta seguro de marcar este lead como perdido?",
+    CONFIRM_FOLLOW_UP: "Esto cambiara el estado del lead.",
+    CONFIRM_FOLLOW_UP_NOTE: "Use seguimiento solo si el lead sigue activo, pero aun no es oportunidad ni corresponde enviarlo a perdido. Si solo necesita agendar una llamada o recordatorio, cree un evento.",
+    CONFIRM_OPPORTUNITY: "¿Esta seguro de crear una oportunidad con este lead?"
 };

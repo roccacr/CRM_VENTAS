@@ -8,8 +8,8 @@ import { MODAL_TEXTS } from "../app/pages/modal/constants";
 /**
  * Hook `useLeadActions`
  *
- * Este hook encapsula todas las acciones relacionadas con un lead, como navegar a vistas específicas,
- * interactuar con APIs externas (WhatsApp), mostrar mensajes de confirmación y manejar datos asociados.
+ * Este hook encapsula todas las acciones relacionadas con un lead, como navegar a vistas especificas,
+ * interactuar con APIs externas (WhatsApp), mostrar mensajes de confirmacion y manejar datos asociados.
  *
  * @returns {Object} - Funciones para manejar acciones relacionadas con el lead.
  */
@@ -18,10 +18,10 @@ export const useLeadActions = () => {
      const navigate = useNavigate();
 
      /**
-      * Abre WhatsApp con el número proporcionado.
-      * Si el número no es válido o no está definido, muestra un mensaje de error.
+      * Abre WhatsApp con el numero proporcionado.
+      * Si el numero no es valido o no esta definido, muestra un mensaje de error.
       *
-      * @param {string} telefono - Número de teléfono del lead.
+      * @param {string} telefono - Numero de telefono del lead.
       */
      const handleWhatsappClick = (telefono) => {
           if (!telefono) {
@@ -30,24 +30,24 @@ export const useLeadActions = () => {
           }
 
           const cleanedPhone = telefono.trim().replace(/[^0-9+]/g, "");
-          
-          // Verificar si el número ya tiene el formato correcto (+506...)
-          if (!cleanedPhone.startsWith("+") && 
+
+          // Verificar si el numero ya tiene el formato correcto (+506...)
+          if (!cleanedPhone.startsWith("+") &&
               (cleanedPhone.startsWith("506") || !cleanedPhone.startsWith("506"))) {
-               
-               // Determinar mensaje según el formato del número
+
+               // Determinar mensaje segun el formato del numero
                let message = "";
                if (cleanedPhone.startsWith("506")) {
-                    message = "Este número comienza con 506 pero le falta el signo +";
+                    message = "Este numero comienza con 506 pero le falta el signo +";
                } else {
-                    message = "Este número no tiene el código de país +506";
+                    message = "Este numero no tiene el codigo de pais +506";
                }
-               
-               // Retornar una promesa que se resolverá después de la interacción del usuario
+
+               // Retornar una promesa que se resolvera despues de la interaccion del usuario
                return new Promise((resolve) => {
-                    // Mostrar SweetAlert para agregar código de país
+                    // Mostrar SweetAlert para agregar codigo de pais
                     Swal.fire({
-                         title: "Código de país incompleto",
+                         title: "Codigo de pais incompleto",
                          html: `
                               <p>${message}</p>
                               <div style="margin-bottom: 15px; display: flex; align-items: center; justify-content: center;">
@@ -64,8 +64,8 @@ export const useLeadActions = () => {
                          confirmButtonText: "Ir a WhatsApp",
                          cancelButtonText: "Cancelar",
                          preConfirm: () => {
-                              const addCode = document.getElementById('addCodeCheckbox').checked;
-                              const phoneInputValue = document.getElementById('phoneInput').value.trim();
+                              const addCode = document.getElementById("addCodeCheckbox").checked;
+                              const phoneInputValue = document.getElementById("phoneInput").value.trim();
                               return {
                                    addCode,
                                    phone: phoneInputValue
@@ -75,7 +75,7 @@ export const useLeadActions = () => {
                          if (result.isConfirmed) {
                               let formattedPhone;
                               if (result.value.addCode) {
-                                   // Si el número ya comienza con 506, solo añadir el "+"
+                                   // Si el numero ya comienza con 506, solo anadir el "+"
                                    if (result.value.phone.startsWith("506")) {
                                         formattedPhone = `+${result.value.phone}`;
                                    } else {
@@ -84,30 +84,30 @@ export const useLeadActions = () => {
                               } else {
                                    formattedPhone = result.value.phone;
                               }
-                              
+
                               if (formattedPhone.length > 8) {
-                                   const whatsappUrl = `https://wa.me/${formattedPhone.replace(/^\+/, '')}`;
+                                   const whatsappUrl = `https://wa.me/${formattedPhone.replace(/^\+/, "")}`;
                                    window.open(whatsappUrl, "_blank");
-                                   resolve(true); // Resuelve la promesa después de abrir WhatsApp
+                                   resolve(true); // Resuelve la promesa despues de abrir WhatsApp
                               } else {
-                                   Swal.fire("Error", "El número de teléfono no es válido para WhatsApp.", "error")
+                                   Swal.fire("Error", "El numero de telefono no es valido para WhatsApp.", "error")
                                         .then(() => resolve(false)); // Resuelve con false en caso de error
                               }
                          } else {
-                              resolve(false); // El usuario canceló
+                              resolve(false); // El usuario cancelo
                          }
                     });
                });
           } else {
                // Si ya tiene el formato correcto (+xxx), usar directamente
                const formattedPhone = cleanedPhone;
-               
+
                if (formattedPhone.length > 8) {
-                    const whatsappUrl = `https://wa.me/${formattedPhone.replace(/^\+/, '')}`;
+                    const whatsappUrl = `https://wa.me/${formattedPhone.replace(/^\+/, "")}`;
                     window.open(whatsappUrl, "_blank");
                     return Promise.resolve(true); // Resuelve inmediatamente
                } else {
-                    Swal.fire("Error", "El número de teléfono no es válido para WhatsApp.", "error");
+                    Swal.fire("Error", "El numero de telefono no es valido para WhatsApp.", "error");
                     return Promise.resolve(false);
                }
           }
@@ -134,28 +134,28 @@ export const useLeadActions = () => {
      };
 
      /**
-      * Abre WhatsApp y genera una nota asociada al lead después de confirmar la acción.
+      * Abre WhatsApp y genera una nota asociada al lead despues de confirmar la accion.
       *
       * @param {Object} leadData - Datos del lead.
       */
      const handleWhatsappAndNote = async (leadData) => {
           const result = await Swal.fire({
-               title: "¿Está seguro?",
+               title: "¿Esta seguro?",
                text: MODAL_TEXTS.WHATSAPP_CONFIRM,
                icon: "warning",
                showCancelButton: true,
-               confirmButtonText: "Sí, quiero hacerlo",
+               confirmButtonText: "Si, quiero hacerlo",
                cancelButtonText: "No",
           });
 
           if (result.isConfirmed) {
-               const note = "Contacto generado desde el botón de WhatsApp";
+               const note = "Contacto generado desde el boton de WhatsApp";
                await dispatch(WhatsappAndNote(note, leadData?.idinterno_lead, leadData?.segimineto_lead));
-               
-               // Esperar a que se complete la validación y apertura de WhatsApp
+
+               // Esperar a que se complete la validacion y apertura de WhatsApp
                const whatsappOpened = await handleWhatsappClick(leadData?.telefono_lead);
-               
-               // Solo recargar si se abrió WhatsApp con éxito
+
+               // Solo recargar si se abrio WhatsApp con exito
                if (whatsappOpened) {
                     window.location.reload();
                }
@@ -163,17 +163,17 @@ export const useLeadActions = () => {
      };
 
      /**
-      * Marca un lead como perdido después de confirmar la acción.
+      * Marca un lead como perdido despues de confirmar la accion.
       *
       * @param {Object} leadData - Datos del lead.
       */
      const handleLoss = (leadData) => {
           Swal.fire({
-               title: "¿Está seguro?",
+               title: "¿Esta seguro?",
                text: MODAL_TEXTS.CONFIRM_LOSS,
                icon: "warning",
                showCancelButton: true,
-               confirmButtonText: "Sí, marcar como perdido",
+               confirmButtonText: "Si, marcar como perdido",
                cancelButtonText: "Cancelar",
           }).then((result) => {
                if (result.isConfirmed) {
@@ -183,17 +183,22 @@ export const useLeadActions = () => {
      };
 
      /**
-      * Coloca un lead en seguimiento después de confirmar la acción.
+      * Coloca un lead en seguimiento despues de confirmar la accion.
       *
       * @param {Object} leadData - Datos del lead.
       */
      const handfollow_up = (leadData) => {
           Swal.fire({
-               title: "¿Está seguro?",
-               text: MODAL_TEXTS.CONFIRM_FOLLOW_UP,
+               title: "Colocar lead en seguimiento",
+               html: `
+                    <p style="margin-bottom: 10px;">${MODAL_TEXTS.CONFIRM_FOLLOW_UP}</p>
+                    <p style="margin: 0; text-align: left; line-height: 1.5;">
+                         ${MODAL_TEXTS.CONFIRM_FOLLOW_UP_NOTE}
+                    </p>
+               `,
                icon: "warning",
                showCancelButton: true,
-               confirmButtonText: "Sí, colocar en seguimiento",
+               confirmButtonText: "Si, colocar en seguimiento",
                cancelButtonText: "Cancelar",
           }).then((result) => {
                if (result.isConfirmed) {
@@ -203,17 +208,17 @@ export const useLeadActions = () => {
      };
 
      /**
-      * Crea una oportunidad asociada al lead después de confirmar la acción.
+      * Crea una oportunidad asociada al lead despues de confirmar la accion.
       *
       * @param {Object} leadData - Datos del lead.
       */
      const crearOportunidad = (leadData) => {
           Swal.fire({
-               title: "¿Está seguro?",
+               title: "¿Esta seguro?",
                text: MODAL_TEXTS.CONFIRM_OPPORTUNITY,
                icon: "warning",
                showCancelButton: true,
-               confirmButtonText: "Sí, crear oportunidad",
+               confirmButtonText: "Si, crear oportunidad",
                cancelButtonText: "Cancelar",
           }).then((result) => {
                if (result.isConfirmed) {
@@ -232,10 +237,10 @@ export const useLeadActions = () => {
      };
 
      /**
-      * Realiza una llamada al número proporcionado.
-      * Si el número no está definido, muestra un mensaje de error.
+      * Realiza una llamada al numero proporcionado.
+      * Si el numero no esta definido, muestra un mensaje de error.
       *
-      * @param {string} telefono - Número de teléfono del lead.
+      * @param {string} telefono - Numero de telefono del lead.
       */
      const handleCallClient = (telefono) => {
           if (telefono) {
@@ -255,14 +260,14 @@ export const useLeadActions = () => {
      };
 
      /**
-      * Navega hacia atrás en el historial de navegación.
+      * Navega hacia atras en el historial de navegacion.
       */
      const handleBck = () => {
           navigate(-1);
      };
 
      /**
-      * Navega a la pantalla de edición del lead.
+      * Navega a la pantalla de edicion del lead.
       *
       * @param {Object} leadData - Datos del lead.
       */
