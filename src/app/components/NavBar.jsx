@@ -42,6 +42,7 @@ export const NavBar = ({ sidebarVisible, sidebarStatus, closeSidebar }) => {
    // Estado para controlar los menús desplegables
    const [openMenu, setOpenMenu] = useState({
       leadsMenu: false,
+      salesOrdersMenu: false,
       opportunitiesMenu: false,
       linksExternosMenu: false,
    });
@@ -178,7 +179,16 @@ const MenuItems = ({ openMenu, toggleMenu, rol_admin }) => {
             { to: "/oportunidad/crear?idExpediente=0&idLead=0", text: "Crear Oportunidad" },
          ]}
       />
-      <MenuItem to="/orden/lista?data=4" icon="ti ti-vocabulary" text="Cotizaciones" />
+      <SubMenu
+         icon="ti ti-vocabulary"
+         title="Ordenes de Venta"
+         isOpen={openMenu.salesOrdersMenu}
+         toggle={() => toggleMenu("salesOrdersMenu")}
+         items={[
+            { to: "/orden/lista?data=4", text: "Cotizaciones" },
+            { to: "/orden/cierre-firmado", text: "Cliente cierre firmado" },
+         ]}
+      />
       <SubMenu
          icon="ti ti-link"
          title="Tickets"
