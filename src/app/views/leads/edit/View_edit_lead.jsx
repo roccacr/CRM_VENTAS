@@ -892,7 +892,7 @@ export const View_edit_lead = () => {
                   />
                </div>
                <div className="mb-3">
-                  <label className="required form-label">Zona de recidencia</label>
+                  <label className="required form-label">Zona de residencia</label>
                   <select
                      id="zona_residencia"
                      name="zona_residencia"
@@ -901,17 +901,19 @@ export const View_edit_lead = () => {
                      className="form-control select2"
                      required
                   >
-                     <option value="">Seleccionar Zona de Residencia</option>
+                     <option value="">Seleccionar zona de residencia</option>
+                     <option value="Fuera del país">Fuera del país</option>
+                     <option value="SJ Este">SJ Este</option>
+                     <option value="SJ Norte">SJ Norte</option>
+                     <option value="SJ Oeste">SJ Oeste</option>
+                     <option value="SJ Sur">SJ Sur</option>
+                     <option value="Alajuela">Alajuela</option>
+                     <option value="Cartago">Cartago</option>
                      <option value="Guanacaste">Guanacaste</option>
+                     <option value="Heredia">Heredia</option>
                      <option value="Limón">Limón</option>
                      <option value="Puntarenas">Puntarenas</option>
-                     <option value="Cartago">Cartago</option>
-                     <option value="Zona Sur">Zona Sur</option>
-                     <option value="Zona Norte">Zona Norte</option>
-                     <option value="GAM Este">GAM Este</option>
-                     <option value="GAM Oeste">GAM Oeste</option>
-                     <option value="GAM Norte">GAM Norte</option>
-                     <option value="GAM Sur">GAM Sur</option>
+                     <option value="San José">San José</option>
                   </select>
                </div>
                <div className="mb-3">
