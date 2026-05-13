@@ -18,6 +18,7 @@ const emailTransporter = nodemailer.createTransport({
 
 // Creamos un objeto que contendrá las funciones relacionadas con Sticky Notes
 const sticknotes = {};
+const NETSUITE_ORDER_SALE_URL = "https://4552704.app.netsuite.com/app/accounting/transactions/salesord.nl";
 
 /**
  * Obtiene todos los sticky notes para una transacción específica
@@ -773,7 +774,19 @@ const enviarCorreoStickyNote = async ({
         // Generar link de NetSuite según el tipo de transacción
         const crmLink = typeof crm_url === "string" ? crm_url.trim() : "";
         const actionLink = crmLink !== "" ? crmLink : null;
-        const linkTexto = transaction_type === "event" ? "al evento CRM" : "al detalle en CRM";
+        const normalizedTransactionType = typeof transaction_type === "string"
+            ? transaction_type.trim().toLowerCase()
+            : "";
+        const hasValidTransactionId = transaction_id !== null
+            && transaction_id !== undefined
+            && String(transaction_id).trim() !== "";
+        const netsuiteLink = (
+            hasValidTransactionId
+            && (normalizedTransactionType === "ordersale" || normalizedTransactionType === "salesorder")
+        )
+            ? `${NETSUITE_ORDER_SALE_URL}?id=${encodeURIComponent(String(transaction_id).trim())}&whence=`
+            : null;
+        const linkTexto = transaction_type === "event" ? "Ir al evento CRM" : "Ir al detalle en CRM";
 
         // Crear HTML con estilo de sticky note
         const htmlContent = `
@@ -854,6 +867,13 @@ const enviarCorreoStickyNote = async ({
         .sticky-note-link-button:hover {
             background-color: #1565c0;
         }
+        .sticky-note-link-button--netsuite {
+            background-color: #1b5e20;
+            margin-left: 12px;
+        }
+        .sticky-note-link-button--netsuite:hover {
+            background-color: #124116;
+        }
     </style>
 </head>
 <body>
@@ -869,11 +889,18 @@ const enviarCorreoStickyNote = async ({
             <div class="sticky-note-creator">
                 <strong>👤 Creado por:</strong> ${creadorNombreEscapado}${creadorEmailEscapado ? ` (${creadorEmailEscapado})` : ''}
             </div>
-            ${actionLink ? `
+            ${(actionLink || netsuiteLink) ? `
             <div style="margin-top: 15px; text-align: center;">
+                ${actionLink ? `
                 <a href="${actionLink}" class="sticky-note-link-button" style="color: white; text-decoration: none;">
-                    Ir ${linkTexto}
+                    ${linkTexto}
                 </a>
+                ` : ''}
+                ${netsuiteLink ? `
+                <a href="${netsuiteLink}" class="sticky-note-link-button sticky-note-link-button--netsuite" style="color: white; text-decoration: none;">
+                    Ver en Netsuite
+                </a>
+                ` : ''}
             </div>
             ` : ''}
             <div style="margin-top: 15px; font-size: 12px; color: #9e9e9e; text-align: center;">
