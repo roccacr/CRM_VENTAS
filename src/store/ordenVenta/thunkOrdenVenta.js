@@ -203,7 +203,7 @@ export const bitacoraOrdenDeventa = (leadId) => {
         try {
             // Despacha la acción para generar la bitácora del lead con los valores adicionales
             await dispatch(generateLeadBitacora(idnetsuite_admin, leadId, additionalValues, descripcionEvento, valueStatus));
-            await ensureLeadOpportunitiesAreInactive(leadId);
+            await ensureLeadOpportunitiesAreInactive(leadId, "LEAD_RESERVA");
             // Retorna "ok" si todo salió correctamente
             return "ok";
         } catch (error) {

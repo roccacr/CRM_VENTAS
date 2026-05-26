@@ -7,5 +7,5 @@ import { deactivateLeadOpportunities } from "./opportunityDeactivationCore.js";
  * @param {number} leadId - ID del lead.
  * @returns {Promise<Object>} Respuesta satisfactoria del backend.
  */
-export const ensureLeadOpportunitiesAreInactive = async (leadId) =>
-    deactivateLeadOpportunities(inactivateOpportunitiesByLead, leadId);
+export const ensureLeadOpportunitiesAreInactive = async (leadId, reason = null) =>
+    deactivateLeadOpportunities((currentLeadId) => inactivateOpportunitiesByLead(currentLeadId, reason), leadId);

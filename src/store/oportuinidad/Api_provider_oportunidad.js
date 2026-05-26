@@ -138,7 +138,7 @@ export const updateOpportunity_Probability = async ({ probabilidad, idOportunida
 };
 
 
-export const updateOpportunity_Status = async ({ estado, idOportunidad }) => {
+export const updateOpportunity_Status = async ({ estado, idOportunidad, motivoInactivacion = null }) => {
     // Build the request data object, including both common data required for all requests
     // and specific parameters to update the status of an opportunity.
     // commonRequestData may contain information such as authentication tokens and
@@ -147,6 +147,7 @@ export const updateOpportunity_Status = async ({ estado, idOportunidad }) => {
         ...commonRequestData, // Common data required for all requests.
         estado, // New status of the opportunity.
         idOportunidad, // Unique identifier of the opportunity to update.
+        motivoInactivacion,
     };
 
     // Send a request to the API to update the status of the specified opportunity.

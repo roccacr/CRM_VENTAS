@@ -93,7 +93,7 @@ export const enviarEstimacionComoPreReserva = (idEstimacion, idCliente, fecha_pr
 
             // Despacha la acción para generar la bitácora de la estimación
             await dispatch(crearBitacoraEstimacion(idCliente));
-            await ensureLeadOpportunitiesAreInactive(idCliente);
+            await ensureLeadOpportunitiesAreInactive(idCliente, "LEAD_PRE_RESERVA");
             await dispatch(actulizarEstimacionPreReserva(idEstimacion, fecha_prereserva));
 
 
