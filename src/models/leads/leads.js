@@ -1,4 +1,5 @@
 const { executeStoredProcedure, executeQuery, handleDatabaseOperation } = require("../conectionPool/conectionPool");
+const { supportsInactivationReasonColumn } = require("../oportunidad/lessProbableTracking");
 
 const leads = {}; // Objeto para agrupar todas las funciones relacionadas con 'leads'.
 
@@ -397,15 +398,27 @@ leads.oportunidades = (dataParams) => {
  * @param {string} dataParams.database - Base de datos donde se ejecutará la consulta.
  * @returns {Promise<Object>} Resultado de la actualización.
  */
-leads.inactivateOpportunitiesByLead = (dataParams) => {
-    const query = `
-        UPDATE oportunidades
-        SET estatus_oport = 0
-        WHERE entity_oport = ?
-          AND estatus_oport = 1
-    `;
+leads.inactivateOpportunitiesByLead = async (dataParams) => {
+    const supportsReasonColumn = await supportsInactivationReasonColumn(dataParams.database);
+    const query = supportsReasonColumn
+        ? `
+            UPDATE oportunidades
+            SET estatus_oport = 0,
+                motivo_inactivacion_oport = ?
+            WHERE entity_oport = ?
+              AND estatus_oport = 1
+        `
+        : `
+            UPDATE oportunidades
+            SET estatus_oport = 0
+            WHERE entity_oport = ?
+              AND estatus_oport = 1
+        `;
+    const params = supportsReasonColumn
+        ? [dataParams.reason || null, dataParams.leadId]
+        : [dataParams.leadId];
 
-    return executeQuery(query, [dataParams.leadId], dataParams.database);
+    return executeQuery(query, params, dataParams.database);
 };
 
 

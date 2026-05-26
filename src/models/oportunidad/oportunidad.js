@@ -1,4 +1,12 @@
 const { executeStoredProcedure, executeQuery } = require("../conectionPool/conectionPool");
+const {
+    buildUpdateOpportunityProbabilityParams,
+    buildUpdateOpportunityProbabilityQuery,
+    buildUpdateOpportunityStatusParams,
+    buildUpdateOpportunityStatusQuery,
+    supportsInactivationReasonColumn,
+    supportsLessProbableTrackingColumn,
+} = require("./lessProbableTracking");
 
 const oportunidad = {}; // Objeto que agrupa las funciones relacionadas con 'oportunidad'.
 
@@ -50,17 +58,16 @@ oportunidad.getSpecificOportunidad = (dataParams) =>
  * @param {string} dataParams.database - Base de datos donde se ejecuta la consulta.
  * @returns {Promise} Resultado de la ejecución de la consulta.
  */
-oportunidad.updateOpportunity_Probability = (dataParams) => {
-    // Consulta SQL para actualizar la probabilidad y otro indicador de la oportunidad
-    const query = "UPDATE oportunidades SET chek_oport = ?, chek2_oport = ? WHERE id_oportunidad_oport  = ?";
-    const params = [dataParams.probabilidad, 1, dataParams.idOportunidad];
-
-    // Ejecuta la consulta con los parámetros y la base de datos especificada
-    return executeQuery(
-        query, // Consulta SQL a ejecutar
-        params, // Parámetros de la consulta
-        dataParams.database, // Base de datos donde se ejecuta
+oportunidad.updateOpportunity_Probability = async (dataParams) => {
+    const supportsTrackingColumn = await supportsLessProbableTrackingColumn(dataParams.database);
+    const query = buildUpdateOpportunityProbabilityQuery(supportsTrackingColumn);
+    const params = buildUpdateOpportunityProbabilityParams(
+        dataParams.probabilidad,
+        dataParams.idOportunidad,
+        supportsTrackingColumn,
     );
+
+    return executeQuery(query, params, dataParams.database);
 };
 
 /**
@@ -72,19 +79,17 @@ oportunidad.updateOpportunity_Probability = (dataParams) => {
  * @param {string} dataParams.database - Name of the database where the query should be executed.
  * @returns {Promise} - Promise representing the result of the query execution.
  */
-oportunidad.updateOpportunity_Status = (dataParams) => {
-    // SQL query to update the opportunity status based on the provided probability
-    const query = "UPDATE oportunidades SET estatus_oport = ? WHERE id_oportunidad_oport = ?";
-
-    // Parameters for the query, including the new probability and the opportunity ID
-    const params = [dataParams.estado, dataParams.idOportunidad];
-
-    // Executes the query with the specified parameters and database
-    return executeQuery(
-        query, // The SQL query to be executed
-        params, // Array of parameters for the query
-        dataParams.database, // Target database for the query
+oportunidad.updateOpportunity_Status = async (dataParams) => {
+    const supportsReasonColumn = await supportsInactivationReasonColumn(dataParams.database);
+    const query = buildUpdateOpportunityStatusQuery(supportsReasonColumn);
+    const params = buildUpdateOpportunityStatusParams(
+        dataParams.estado,
+        dataParams.idOportunidad,
+        supportsReasonColumn,
+        dataParams.motivoInactivacion || "MANUAL",
     );
+
+    return executeQuery(query, params, dataParams.database);
 };
 
 // Función para obtener oportunidades basadas en parámetros de filtrado
