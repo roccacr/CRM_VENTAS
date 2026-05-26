@@ -167,6 +167,7 @@ module.exports = function (app) {
                 { path: "/leads/getDataInformations_Lead", method: "getDataInformations_Lead" }, // Ruta para obtener información adicional de un lead
                 { path: "/leads/eventos", method: "eventos" }, // Ruta para obtener los eventos del cliente
                 { path: "/leads/oportunidades", method: "oportunidades" }, // Ruta para obtener los eventos del cliente
+                { path: "/leads/inactivateOpportunitiesByLead", method: "inactivateOpportunitiesByLead" }, // Ruta para inactivar oportunidades activas de un lead
                 { path: "/leads/update_LeadStatus", method: "update_LeadStatus" }, // Ruta para obtener los eventos del cliente
                 { path: "/leads/SP_OBTENER_LEADS_PERDIDOS_MINIMO_SEGUIMIENTO_API", method: "SP_OBTENER_LEADS_PERDIDOS_MINIMO_SEGUIMIENTO_API" }, // Ruta para obtener los leads perdidos con minimo seguimiento
             ],

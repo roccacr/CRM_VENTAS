@@ -1,4 +1,4 @@
-const { executeStoredProcedure, executeQuery } = require("../conectionPool/conectionPool");
+const { executeStoredProcedure, executeQuery, handleDatabaseOperation } = require("../conectionPool/conectionPool");
 
 const leads = {}; // Objeto para agrupar todas las funciones relacionadas con 'leads'.
 
@@ -161,20 +161,36 @@ leads.get_Specific_Lead = (dataParams) =>
  * @param {string} dataParams.database - Nombre de la base de datos donde se ejecutará el procedimiento almacenado.
  * @returns {Promise<Object>} - Promesa que resuelve con el resultado de la inserción de la bitácora.
  */
-leads.insertBitcoraLead = (dataParams) => {
-    return executeStoredProcedure(
-        "14_INSERTAR_BITACORA_LEAD", // Nombre del procedimiento almacenado que gestiona la inserción de la bitácora.
-        [
-            dataParams.leadId, // ID del lead que se está manejando.
-            dataParams.idnetsuite_admin, // ID del administrador que realiza la acción.
-            dataParams.valorDeCaida, // Valor asociado al progreso o caída del lead.
-            dataParams.descripcionEvento, // Descripción del evento o acción realizada.
-            dataParams.tipo, // Tipo de evento (ejemplo: seguimiento, reserva, etc.).
-            dataParams.estadoActual, // Estado actual del lead, validado previamente.
-        ],
-        dataParams.database, // Nombre de la base de datos donde se ejecutará el procedimiento almacenado.
-    );
-};
+leads.insertBitcoraLead = (dataParams) =>
+    handleDatabaseOperation(async (connection) => {
+        const [timeZoneRows] = await connection.query("SELECT @@session.time_zone AS sessionTimeZone");
+        const previousTimeZone = timeZoneRows?.[0]?.sessionTimeZone || "SYSTEM";
+        const procedureParams = [
+            dataParams.leadId,
+            dataParams.idnetsuite_admin,
+            dataParams.valorDeCaida,
+            dataParams.descripcionEvento,
+            dataParams.tipo,
+            dataParams.estadoActual,
+        ];
+
+        try {
+            await connection.query("SET time_zone = '-06:00'");
+
+            const [rows] = await connection.execute(
+                `CALL 14_INSERTAR_BITACORA_LEAD(${procedureParams.map(() => "?").join(", ")})`,
+                procedureParams,
+            );
+
+            return {
+                ok: true,
+                statusCode: 200,
+                ...rows,
+            };
+        } finally {
+            await connection.query("SET time_zone = ?", [previousTimeZone]);
+        }
+    }, dataParams.database);
 
 /**
  * Actualiza la información de un lead y registra una bitácora de las acciones realizadas en la base de datos.
@@ -371,6 +387,25 @@ leads.oportunidades = (dataParams) => {
         params, // Parámetros de la consulta
         dataParams.database, // Base de datos donde se ejecuta
     );
+};
+
+/**
+ * Inactiva todas las oportunidades activas asociadas a un lead.
+ *
+ * @param {Object} dataParams - Parámetros necesarios para la actualización.
+ * @param {number} dataParams.leadId - ID del lead cuyas oportunidades se inactivarán.
+ * @param {string} dataParams.database - Base de datos donde se ejecutará la consulta.
+ * @returns {Promise<Object>} Resultado de la actualización.
+ */
+leads.inactivateOpportunitiesByLead = (dataParams) => {
+    const query = `
+        UPDATE oportunidades
+        SET estatus_oport = 0
+        WHERE entity_oport = ?
+          AND estatus_oport = 1
+    `;
+
+    return executeQuery(query, [dataParams.leadId], dataParams.database);
 };
 
 
