@@ -18,12 +18,36 @@ import {
    getDataSelect_Corredor,
    getDataSelect_Proyect,
    getDataSelect_Subsidiaria,
+   inactivateOpportunitiesByLead,
    insertBitcoraLead,
    setLostStatusForLeadTransactions,
    update_LeadStatus,
    updateLeadActionApi,
 } from "./Api_leads_Providers"; // Función que hace la solicitud API para obtener nuevos leads.
 import { createCalendarEvent } from "../calendar/Api_calendar_Providers";
+
+const COSTA_RICA_TIME_ZONE = "America/Costa_Rica";
+
+const ensureLeadOpportunitiesAreInactive = async (leadId) => {
+   const response = await inactivateOpportunitiesByLead(leadId);
+
+   if (!response?.ok) {
+      throw new Error(response?.errorMessage || "No se pudieron inactivar las oportunidades del lead.");
+   }
+
+   return response;
+};
+
+const getCurrentCostaRicaDate = () => {
+   const formatter = new Intl.DateTimeFormat("en-CA", {
+      timeZone: COSTA_RICA_TIME_ZONE,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+   });
+
+   return formatter.format(new Date());
+};
 
 /**
  * Acción asincrónica para obtener la lista de nuevos leads.
@@ -317,8 +341,7 @@ export const updateLeadAction = (leadId, additionalValues, valueStatus) => {
          }
 
          // Obtener la fecha actual en formato YYYY-MM-DD, para registrar la fecha de actualización.
-         const now = new Date();
-         const formattedDate = now.toISOString().slice(0, 10); // Extrae los primeros 10 caracteres del formato ISO.
+         const formattedDate = getCurrentCostaRicaDate();
 
          // Desestructuración de los valores adicionales, que incluyen el seguimiento y la acción realizada sobre el lead.
          const { valor_segimineto_lead, estado_lead, accion_lead, seguimiento_calendar, valorDeCaida } = additionalValues;
@@ -469,6 +492,7 @@ export const createNoteLoss = (nota, leadId, selectedLossOption) => {
          // Despacha la acción para generar la bitácora del lead con los valores adicionales
          await dispatch(generateLeadBitacora(idnetsuite_admin, leadId, additionalValues, descripcionEvento, valueStatus));
          await setLostStatusForLeadTransactions(leadId, descripcionEvento);
+         await ensureLeadOpportunitiesAreInactive(leadId);
          // Retorna "ok" si todo salió correctamente
          return "ok";
       } catch (error) {
@@ -528,8 +552,9 @@ export const createNoteFollow_up = (nota, leadId, selectedLossOption, followUpDa
 
       try {
          // Envío de solicitud al backend para crear el evento
-         await createCalendarEvent(eventParams);
          await dispatch(generateLeadBitacora(idnetsuite_admin, leadId, additionalValues, descripcionEvento, valueStatus));
+         await ensureLeadOpportunitiesAreInactive(leadId);
+         await createCalendarEvent(eventParams);
 
          // Retorno de la respuesta de la API si es necesario
          return "ok";

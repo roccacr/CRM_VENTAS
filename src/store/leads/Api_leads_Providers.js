@@ -243,6 +243,21 @@ export const updateLeadActionApi = async (estadoActual, valor_segimineto_lead, e
     return await fetchData("leads/updateLeadActionApi", requestData);
 };
 
+/**
+ * Inactiva todas las oportunidades activas asociadas a un lead.
+ *
+ * @param {number} leadId - ID del lead cuyas oportunidades deben pasar a inactivas.
+ * @returns {Promise<Object>} Respuesta del backend.
+ */
+export const inactivateOpportunitiesByLead = async (leadId) => {
+    const requestData = {
+        ...commonRequestData,
+        leadId,
+    };
+
+    return await fetchData("leads/inactivateOpportunitiesByLead", requestData);
+};
+
 
 
 
