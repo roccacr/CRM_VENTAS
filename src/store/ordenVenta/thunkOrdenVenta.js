@@ -1,3 +1,4 @@
+import { ensureLeadOpportunitiesAreInactive } from "../leads/opportunityDeactivation";
 import { generateLeadBitacora } from "../leads/thunksLeads";
 import { actualizarOrdenVentaBd, editarOrdenVenta, enviarCierreFirmandoApi, enviarReservaCaidas, enviarReservaNetsuite, extraerOrdenDeventaPorCLiente, insertarOrdenVenta, insertarOrdenVentaBd, modificarCierrreFirmando, obtenerOrdenVenta, updateAplicarComicion } from "./Api_provider_estimacion";
 
@@ -202,6 +203,7 @@ export const bitacoraOrdenDeventa = (leadId) => {
         try {
             // Despacha la acción para generar la bitácora del lead con los valores adicionales
             await dispatch(generateLeadBitacora(idnetsuite_admin, leadId, additionalValues, descripcionEvento, valueStatus));
+            await ensureLeadOpportunitiesAreInactive(leadId);
             // Retorna "ok" si todo salió correctamente
             return "ok";
         } catch (error) {

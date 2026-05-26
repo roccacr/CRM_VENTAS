@@ -18,25 +18,15 @@ import {
    getDataSelect_Corredor,
    getDataSelect_Proyect,
    getDataSelect_Subsidiaria,
-   inactivateOpportunitiesByLead,
    insertBitcoraLead,
    setLostStatusForLeadTransactions,
    update_LeadStatus,
    updateLeadActionApi,
 } from "./Api_leads_Providers"; // Función que hace la solicitud API para obtener nuevos leads.
 import { createCalendarEvent } from "../calendar/Api_calendar_Providers";
+import { ensureLeadOpportunitiesAreInactive } from "./opportunityDeactivation";
 
 const COSTA_RICA_TIME_ZONE = "America/Costa_Rica";
-
-const ensureLeadOpportunitiesAreInactive = async (leadId) => {
-   const response = await inactivateOpportunitiesByLead(leadId);
-
-   if (!response?.ok) {
-      throw new Error(response?.errorMessage || "No se pudieron inactivar las oportunidades del lead.");
-   }
-
-   return response;
-};
 
 const getCurrentCostaRicaDate = () => {
    const formatter = new Intl.DateTimeFormat("en-CA", {

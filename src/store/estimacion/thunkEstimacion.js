@@ -1,3 +1,4 @@
+import { ensureLeadOpportunitiesAreInactive } from "../leads/opportunityDeactivation";
 import { generateLeadBitacora } from "../leads/thunksLeads";
 import { crearEstimacion, editarEstimacion, extraerEstimacionNetsuite, obtenerEstimacionesOportunidad, enviarEstimacionComoPreReservaNetsuite, actualizarEstimacionPreReserva, updatecaidaReserva, ModificarEstimacionCliente } from "./Api_provider_estimacion";
 
@@ -92,6 +93,7 @@ export const enviarEstimacionComoPreReserva = (idEstimacion, idCliente, fecha_pr
 
             // Despacha la acción para generar la bitácora de la estimación
             await dispatch(crearBitacoraEstimacion(idCliente));
+            await ensureLeadOpportunitiesAreInactive(idCliente);
             await dispatch(actulizarEstimacionPreReserva(idEstimacion, fecha_prereserva));
 
 
