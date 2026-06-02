@@ -69,6 +69,14 @@ export const EventosPendientes = () => {
         dispatch(updateEventDate(id, newDate, originalDate));
     };
 
+    const getDisplayValue = (value) => {
+        if (value === 0 || value === "0" || value === null || value === undefined || value === "") {
+            return "No aplica";
+        }
+
+        return value;
+    };
+
     return (
         <div className="col-12">
             {sortedEvents.length > 0 && (
@@ -113,7 +121,7 @@ export const EventosPendientes = () => {
                                                 <tr key={event.id_calendar}>
                                                     <td>{event.name_admin}</td>
                                                     <td>{event.nombre_calendar}</td>
-                                                    <td>{event.nombre_lead}</td>
+                                                    <td>{getDisplayValue(event.nombre_lead)}</td>
                                                     <td>
                                                         <input className="form-control" type="date" value={formatDate(event.fechaIni_calendar)} onChange={(e) => handleDateChange(e, event.id_calendar, event.fechaIni_calendar)} />
                                                     </td>
@@ -126,8 +134,8 @@ export const EventosPendientes = () => {
                                                     </td>
                                                     <td>{event.tipo_calendar}</td>
                                                     <td>{event.cita_lead === 1 ? "Cita" : "-"}</td>
-                                                    <td>{event.proyecto_lead}</td>
-                                                    <td>{event.campana_lead}</td>
+                                                    <td>{getDisplayValue(event.proyecto_lead)}</td>
+                                                    <td>{getDisplayValue(event.campana_lead)}</td>
                                                     <td>{event.id_lead > 0 ? <ButtonActions leadData={event} /> : "No aplica"}</td>
                                                 </tr>
                                             ))
