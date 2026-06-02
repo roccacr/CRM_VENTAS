@@ -6,7 +6,8 @@
   "scripts": {
     "start": "node src/AppCrmVentas.js",
     "server": "nodemon src/AppCrmVentas.js",
-    "test:oportunidad-less-probable": "node --test src/models/oportunidad/lessProbableTracking.test.js"
+    "test:oportunidad-less-probable": "node --test src/models/oportunidad/lessProbableTracking.test.js",
+    "test:oportunidad-traceability": "node --test src/models/oportunidad/opportunityTraceability.test.js"
   },
   "author": "",
   "license": "ISC",

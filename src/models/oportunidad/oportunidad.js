@@ -1,12 +1,16 @@
-const { executeStoredProcedure, executeQuery } = require("../conectionPool/conectionPool");
+const { executeStoredProcedure, executeQuery, handleDatabaseOperation } = require("../conectionPool/conectionPool");
 const {
     buildUpdateOpportunityProbabilityParams,
     buildUpdateOpportunityProbabilityQuery,
-    buildUpdateOpportunityStatusParams,
-    buildUpdateOpportunityStatusQuery,
-    supportsInactivationReasonColumn,
     supportsLessProbableTrackingColumn,
 } = require("./lessProbableTracking");
+const {
+    applyOpportunityStatusTransition,
+    formatDurationLabel,
+    getActivationReason,
+    supportsHistoryTable,
+    supportsTraceabilityColumns,
+} = require("./opportunityTraceability");
 
 const oportunidad = {}; // Objeto que agrupa las funciones relacionadas con 'oportunidad'.
 
@@ -79,18 +83,156 @@ oportunidad.updateOpportunity_Probability = async (dataParams) => {
  * @param {string} dataParams.database - Name of the database where the query should be executed.
  * @returns {Promise} - Promise representing the result of the query execution.
  */
-oportunidad.updateOpportunity_Status = async (dataParams) => {
-    const supportsReasonColumn = await supportsInactivationReasonColumn(dataParams.database);
-    const query = buildUpdateOpportunityStatusQuery(supportsReasonColumn);
-    const params = buildUpdateOpportunityStatusParams(
-        dataParams.estado,
-        dataParams.idOportunidad,
-        supportsReasonColumn,
-        dataParams.motivoInactivacion || "MANUAL",
-    );
+oportunidad.updateOpportunity_Status = (dataParams) =>
+    handleDatabaseOperation(async (connection) => {
+        await connection.beginTransaction();
 
-    return executeQuery(query, params, dataParams.database);
-};
+        try {
+            const nextStatus = Number(dataParams.estado);
+            const actorType = dataParams.actorType || (nextStatus === 0 ? "USUARIO" : "USUARIO");
+            const reason = nextStatus === 0
+                ? dataParams.motivoInactivacion || "MANUAL"
+                : dataParams.motivoReactivacion || getActivationReason(actorType);
+            const detail = dataParams.detail
+                || (nextStatus === 0
+                    ? "Cambio manual desde vista de oportunidad"
+                    : "Reactivación manual desde vista de oportunidad");
+            const result = await applyOpportunityStatusTransition(connection, {
+                opportunityId: dataParams.idOportunidad,
+                nextStatus,
+                reason,
+                actorId: dataParams.idnetsuite_admin,
+                actorType,
+                source: dataParams.source || "OPORTUNIDAD_UI",
+                detail,
+            });
+
+            await connection.commit();
+
+            return {
+                ok: true,
+                statusCode: 200,
+                data: result,
+            };
+        } catch (error) {
+            await connection.rollback();
+            throw error;
+        }
+    }, dataParams.database);
+
+/**
+ * Obtiene snapshot actual y el historial de trazabilidad de una oportunidad.
+ *
+ * @param {object} dataParams - Parámetros de consulta.
+ * @returns {Promise<object>} Snapshot + historial.
+ */
+oportunidad.getOpportunityTraceability = (dataParams) =>
+    handleDatabaseOperation(async (connection) => {
+        const traceabilityEnabled = await supportsTraceabilityColumns(connection);
+        const historyEnabled = await supportsHistoryTable(connection);
+
+        if (!traceabilityEnabled) {
+            return {
+                ok: true,
+                statusCode: 200,
+                data: {
+                    current: null,
+                    history: [],
+                    traceabilityEnabled: false,
+                },
+            };
+        }
+
+        const [currentRows] = await connection.execute(
+            `
+                SELECT
+                    o.id_oportunidad_oport,
+                    o.tranid_oport,
+                    o.estatus_oport,
+                    o.motivo_inactivacion_oport,
+                    o.fecha_inactivacion_oport,
+                    o.id_usuario_inactivo_oport,
+                    o.tipo_actor_inactivacion_oport,
+                    o.fuente_inactivacion_oport,
+                    o.detalle_inactivacion_oport,
+                    o.fecha_reactivacion_oport,
+                    o.id_usuario_reactivo_oport,
+                    o.tipo_actor_reactivacion_oport,
+                    o.fuente_reactivacion_oport,
+                    o.detalle_reactivacion_oport,
+                    o.duracion_ultima_inactividad_seg_oport,
+                    creador.name_admin AS nombre_inactivo_admin,
+                    reactivador.name_admin AS nombre_reactivo_admin,
+                    CASE
+                        WHEN o.estatus_oport = 0 AND o.fecha_inactivacion_oport IS NOT NULL
+                            THEN TIMESTAMPDIFF(
+                                SECOND,
+                                o.fecha_inactivacion_oport,
+                                CONVERT_TZ(UTC_TIMESTAMP(), '+00:00', '-06:00')
+                            )
+                        ELSE NULL
+                    END AS tiempo_inactividad_actual_seg
+                FROM oportunidades o
+                LEFT JOIN admins creador ON creador.idnetsuite_admin = o.id_usuario_inactivo_oport
+                LEFT JOIN admins reactivador ON reactivador.idnetsuite_admin = o.id_usuario_reactivo_oport
+                WHERE o.id_oportunidad_oport = ?
+                LIMIT 1
+            `,
+            [dataParams.idOportunidad],
+        );
+        const current = currentRows?.[0] || null;
+        let history = [];
+
+        if (historyEnabled) {
+            const [historyRows] = await connection.execute(
+                `
+                    SELECT
+                        h.id_historial_oport,
+                        h.id_oportunidad_oport,
+                        h.estado_anterior_oport,
+                        h.estado_nuevo_oport,
+                        h.motivo_oport,
+                        h.detalle_oport,
+                        h.id_usuario_actor_oport,
+                        h.tipo_actor_oport,
+                        h.fuente_oport,
+                        h.fecha_evento_oport,
+                        h.fecha_inicio_inactividad_oport,
+                        h.fecha_fin_inactividad_oport,
+                        h.duracion_inactividad_seg_oport,
+                        a.name_admin AS nombre_actor_admin
+                    FROM oportunidades_historial_estado h
+                    LEFT JOIN admins a ON a.idnetsuite_admin = h.id_usuario_actor_oport
+                    WHERE h.id_oportunidad_oport = ?
+                    ORDER BY h.fecha_evento_oport DESC, h.id_historial_oport DESC
+                `,
+                [dataParams.idOportunidad],
+            );
+
+            history = (historyRows || []).map((row) => ({
+                ...row,
+                duracion_inactividad_label: formatDurationLabel(row.duracion_inactividad_seg_oport),
+            }));
+        }
+
+        const currentWithLabels = current
+            ? {
+                ...current,
+                tiempo_inactividad_actual_label: formatDurationLabel(current.tiempo_inactividad_actual_seg),
+                duracion_ultima_inactividad_label: formatDurationLabel(current.duracion_ultima_inactividad_seg_oport),
+            }
+            : null;
+
+        return {
+            ok: true,
+            statusCode: 200,
+            data: {
+                current: currentWithLabels,
+                history,
+                traceabilityEnabled: true,
+            },
+        };
+    }, dataParams.database);
 
 // Función para obtener oportunidades basadas en parámetros de filtrado
 oportunidad.get_Oportunidades = (dataParams) => {

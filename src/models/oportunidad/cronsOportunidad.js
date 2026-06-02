@@ -1,10 +1,10 @@
 const cron = require("node-cron");
-const { executeQuery } = require("../conectionPool/conectionPool");
+const { executeQuery, handleDatabaseOperation } = require("../conectionPool/conectionPool");
 const {
     buildExpiredLessProbableSelectionQuery,
-    buildInactivateOpportunitiesByIdsQuery,
     supportsLessProbableTrackingColumn,
 } = require("./lessProbableTracking");
+const { applyOpportunityStatusTransition } = require("./opportunityTraceability");
 
 const CONFIG = {
     CRON_SCHEDULE: "0 1 * * *",
@@ -101,12 +101,28 @@ const inactivateExpiredLessProbableOpportunities = async () => {
         return { inactivatedCount: 0, opportunityIds: [] };
     }
 
-    const { query, params } = buildInactivateOpportunitiesByIdsQuery(opportunityIds);
-    const updateResult = await executeQuery(query, params, CONFIG.DB_ENVIRONMENT);
+    await handleDatabaseOperation(async (connection) => {
+        await connection.beginTransaction();
 
-    if (!updateResult?.ok) {
-        throw new Error(updateResult?.error || "No se pudieron inactivar las oportunidades menos probables vencidas.");
-    }
+        try {
+            for (const opportunityId of opportunityIds) {
+                await applyOpportunityStatusTransition(connection, {
+                    opportunityId,
+                    nextStatus: 0,
+                    reason: "MENOS_PROBABLE_3_MESES",
+                    actorId: null,
+                    actorType: "CRON",
+                    source: "CRON_MENOS_PROBABLE_3_MESES",
+                    detail: "Inactivación automática por 3 meses continuos en menos probable",
+                });
+            }
+
+            await connection.commit();
+        } catch (error) {
+            await connection.rollback();
+            throw error;
+        }
+    }, CONFIG.DB_ENVIRONMENT);
 
     return {
         inactivatedCount: opportunityIds.length,

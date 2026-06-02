@@ -1,5 +1,5 @@
 const { executeStoredProcedure, executeQuery, handleDatabaseOperation } = require("../conectionPool/conectionPool");
-const { supportsInactivationReasonColumn } = require("../oportunidad/lessProbableTracking");
+const { inactivateLeadOpportunitiesWithTraceability } = require("../oportunidad/opportunityTraceability");
 
 const leads = {}; // Objeto para agrupar todas las funciones relacionadas con 'leads'.
 
@@ -398,28 +398,32 @@ leads.oportunidades = (dataParams) => {
  * @param {string} dataParams.database - Base de datos donde se ejecutará la consulta.
  * @returns {Promise<Object>} Resultado de la actualización.
  */
-leads.inactivateOpportunitiesByLead = async (dataParams) => {
-    const supportsReasonColumn = await supportsInactivationReasonColumn(dataParams.database);
-    const query = supportsReasonColumn
-        ? `
-            UPDATE oportunidades
-            SET estatus_oport = 0,
-                motivo_inactivacion_oport = ?
-            WHERE entity_oport = ?
-              AND estatus_oport = 1
-        `
-        : `
-            UPDATE oportunidades
-            SET estatus_oport = 0
-            WHERE entity_oport = ?
-              AND estatus_oport = 1
-        `;
-    const params = supportsReasonColumn
-        ? [dataParams.reason || null, dataParams.leadId]
-        : [dataParams.leadId];
+leads.inactivateOpportunitiesByLead = (dataParams) =>
+    handleDatabaseOperation(async (connection) => {
+        await connection.beginTransaction();
 
-    return executeQuery(query, params, dataParams.database);
-};
+        try {
+            const results = await inactivateLeadOpportunitiesWithTraceability(connection, {
+                leadId: dataParams.leadId,
+                reason: dataParams.reason || "SISTEMA_OTRO",
+                actorId: dataParams.idnetsuite_admin,
+                actorType: dataParams.actorType || (dataParams.idnetsuite_admin ? "USUARIO" : "SISTEMA"),
+                source: dataParams.source || "LEAD_FLOW",
+                detail: dataParams.detail || null,
+            });
+
+            await connection.commit();
+
+            return {
+                ok: true,
+                statusCode: 200,
+                data: results,
+            };
+        } catch (error) {
+            await connection.rollback();
+            throw error;
+        }
+    }, dataParams.database);
 
 
 // Función `updateOpportunity_Status`:
