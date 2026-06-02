@@ -1,5 +1,5 @@
 import { generateLeadBitacora } from "../leads/thunksLeads";
-import { crear_Oportunidad, get_Clases, get_Oportunidades, get_Ubicaciones, getSpecific_Oportunidad, obtener_OportunidadesCliente, updateEstadoOportunidad_fetch, updateOpportunity_Probability, updateOpportunity_Status, validar_Disponibilidad } from "./Api_provider_oportunidad";
+import { crear_Oportunidad, get_Clases, get_Oportunidades, get_Ubicaciones, getOpportunityTraceability, getSpecific_Oportunidad, obtener_OportunidadesCliente, updateEstadoOportunidad_fetch, updateOpportunity_Probability, updateOpportunity_Status, validar_Disponibilidad } from "./Api_provider_oportunidad";
 
 /**
  * Función que retorna una función asíncrona para obtener ubicaciones por ID.
@@ -164,6 +164,25 @@ export const getSpecificOportunidad = (oportunidad) => {
     };
 };
 
+/**
+ * Obtiene snapshot e historial de trazabilidad de una oportunidad.
+ *
+ * @param {number} idOportunidad - ID interno Netsuite de la oportunidad.
+ * @returns {Function} Thunk con trazabilidad.
+ */
+export const fetchOpportunityTraceability = (idOportunidad) => {
+    return async () => {
+        try {
+            const result = await getOpportunityTraceability({ idOportunidad });
+
+            return result?.data?.data || { current: null, history: [], traceabilityEnabled: false };
+        } catch (error) {
+            console.error("Error al obtener la trazabilidad de la oportunidad:", error);
+            throw error;
+        }
+    };
+};
+
 export const obtenerOportunidadesCliente = (leadDetails) => {
     return async () => {
         try {
@@ -204,14 +223,26 @@ export const updateOpportunityProbability = (probabilidad, idOportunidad) => {
     };
 };
 
-export const updateOpportunityStatus = (estado, idOportunidad) => {
-
-    return async () => {
+export const updateOpportunityStatus = (estado, idOportunidad, motivoInactivacion = null) => {
+    return async (dispatch, getState) => {
         try {
+            const { idnetsuite_admin } = getState().auth;
+            const isInactivation = Number(estado) === 0;
             // Calls the `updateOpportunity_Status` function to update the status
             // of an opportunity in the database. This function receives the updated
             // status (`estado`) and the opportunity ID (`idOportunidad`) as parameters.
-            const result = await updateOpportunity_Status({ estado, idOportunidad });
+            const result = await updateOpportunity_Status({
+                estado,
+                idOportunidad,
+                motivoInactivacion,
+                motivoReactivacion: isInactivation ? null : "REACTIVACION_MANUAL",
+                idnetsuite_admin,
+                actorType: "USUARIO",
+                source: "OPORTUNIDAD_UI",
+                detail: isInactivation
+                    ? "Cambio manual desde vista de oportunidad"
+                    : "Reactivación manual desde vista de oportunidad",
+            });
 
             // Returns the updated data (`result.data.data`) to be used in the application.
             // This assumes `result.data.data` contains the relevant information after the update.

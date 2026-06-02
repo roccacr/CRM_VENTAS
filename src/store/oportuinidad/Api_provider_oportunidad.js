@@ -101,6 +101,22 @@ export const getSpecific_Oportunidad = async ({ oportunidad }) => {
     return await fetchData("oportunidad/getSpecificOportunidad", requestData); // Retorna los datos obtenidos de la API sobre la oportunidad solicitada.
 };
 
+/**
+ * Obtiene snapshot e historial de trazabilidad de una oportunidad.
+ *
+ * @param {object} params - Parámetros de consulta.
+ * @param {number} params.idOportunidad - ID interno Netsuite de oportunidad.
+ * @returns {Promise<object>} Trazabilidad actual e historial.
+ */
+export const getOpportunityTraceability = async ({ idOportunidad }) => {
+    const requestData = {
+        ...commonRequestData,
+        idOportunidad,
+    };
+
+    return await fetchData("oportunidad/getOpportunityTraceability", requestData);
+};
+
 
 
 export const obtener_OportunidadesCliente = async ({ leadDetails }) => {
@@ -138,7 +154,16 @@ export const updateOpportunity_Probability = async ({ probabilidad, idOportunida
 };
 
 
-export const updateOpportunity_Status = async ({ estado, idOportunidad, motivoInactivacion = null }) => {
+export const updateOpportunity_Status = async ({
+    estado,
+    idOportunidad,
+    motivoInactivacion = null,
+    motivoReactivacion = null,
+    idnetsuite_admin = null,
+    actorType = null,
+    source = null,
+    detail = null,
+}) => {
     // Build the request data object, including both common data required for all requests
     // and specific parameters to update the status of an opportunity.
     // commonRequestData may contain information such as authentication tokens and
@@ -148,6 +173,11 @@ export const updateOpportunity_Status = async ({ estado, idOportunidad, motivoIn
         estado, // New status of the opportunity.
         idOportunidad, // Unique identifier of the opportunity to update.
         motivoInactivacion,
+        motivoReactivacion,
+        idnetsuite_admin,
+        actorType,
+        source,
+        detail,
     };
 
     // Send a request to the API to update the status of the specified opportunity.

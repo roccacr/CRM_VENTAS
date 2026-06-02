@@ -85,15 +85,22 @@ export const extarerEstimacion = (idEstimacion) => {
 // hacer un thunk para enviar la estimacion como pre-reserva
 export const enviarEstimacionComoPreReserva = (idEstimacion, idCliente, fecha_prereserva) => {
 
-    return async (dispatch) => {
+    return async (dispatch, getState) => {
         try {
             // Realiza la llamada a la API para obtener las estimaciones relacionadas con la estimación especificada.
+            const { idnetsuite_admin } = getState().auth;
             const respuesta = await enviarEstimacionComoPreReservaNetsuite({ idEstimacion });
 
 
             // Despacha la acción para generar la bitácora de la estimación
             await dispatch(crearBitacoraEstimacion(idCliente));
-            await ensureLeadOpportunitiesAreInactive(idCliente, "LEAD_PRE_RESERVA");
+            await ensureLeadOpportunitiesAreInactive(idCliente, {
+                reason: "LEAD_PRE_RESERVA",
+                idnetsuite_admin,
+                actorType: "USUARIO",
+                source: "PRE_RESERVA_UI",
+                detail: `Inactivación automática al pasar lead a pre-reserva. Fecha pre-reserva: ${fecha_prereserva}`,
+            });
             await dispatch(actulizarEstimacionPreReserva(idEstimacion, fecha_prereserva));
 
 

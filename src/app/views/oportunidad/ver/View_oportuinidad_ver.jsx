@@ -2,10 +2,11 @@
 import { InformacionBasicaOportunidad } from "./InformacionBasicaOportunidad";
 import { InformacionBasicaExpedienteUnidad } from "./InformacionBasicaExpedienteUnidad";
 import { EstimacionesOportunidad } from "./EstimacionesOportunidad";
+import { TrazabilidadOportunidad } from "./TrazabilidadOportunidad";
 import { getSpecificLead } from "../../../../store/leads/thunksLeads";
 import { useDispatch } from "react-redux";
 import { ButtonActions } from "../../../components/buttonAccions/buttonAccions";
-import { getSpecificOportunidad, updateOpportunityProbability, updateOpportunityStatus } from "../../../../store/oportuinidad/thunkOportunidad";
+import { fetchOpportunityTraceability, getSpecificOportunidad, updateOpportunityProbability, updateOpportunityStatus } from "../../../../store/oportuinidad/thunkOportunidad";
 import Swal from "sweetalert2";
 import { ModalEditarOportunidad } from "../EditarOportunidad/ModalEditarOportunidad";
 import SticNotesContainer from "../../../../components/sticknotes/SticNotesContainer";
@@ -35,6 +36,7 @@ export const View_oportuinidad_ver = () => {
     // Estado para almacenar los detalles del lead y la oportunidad seleccionados.
     const [leadDetails, setLeadDetails] = useState({});
     const [OportunidadDetails, setOportunidadDetails] = useState({});
+    const [traceability, setTraceability] = useState({ current: null, history: [], traceabilityEnabled: false });
 
     // FunciÃ³n asÃ­ncrona para obtener los detalles de un lead especÃ­fico.
     const fetchLeadDetails = async (idLead) => {
@@ -65,6 +67,15 @@ export const View_oportuinidad_ver = () => {
         }
     };
 
+    const fetchOpportunityTraceabilityData = async (idOportunidad) => {
+        try {
+            const traceabilityData = await dispatch(fetchOpportunityTraceability(idOportunidad));
+            setTraceability(traceabilityData);
+        } catch (error) {
+            console.error("Error al obtener la trazabilidad de la oportunidad:", error);
+        }
+    };
+
     // FunciÃ³n para obtener el valor de un parÃ¡metro especÃ­fico de la URL.
     const getQueryParam = (param) => {
         // Crea una instancia de 'URLSearchParams' con los parÃ¡metros de la URL.
@@ -87,6 +98,7 @@ export const View_oportuinidad_ver = () => {
         if (leadId && leadId > 0) {
             fetchLeadDetails(leadId); // Solicita los detalles del lead.
             fetchOportunidadDetails(oportuinidadId); // Solicita los detalles de la oportunidad.
+            fetchOpportunityTraceabilityData(oportuinidadId);
         }
     }, []); // El efecto se ejecuta al montar el componente.
 
@@ -102,7 +114,8 @@ export const View_oportuinidad_ver = () => {
         }).then((result) => {
             // Si el usuario confirma, ejecutamos el dispatch para actualizar el estado
             if (result.isConfirmed) {
-                dispatch(updateOpportunityStatus(estado, idOportunidad)); // Llamada a la acciÃ³n que actualiza el estado de la oportunidad
+                const motivoInactivacion = estado === 0 ? "MANUAL" : null;
+                dispatch(updateOpportunityStatus(estado, idOportunidad, motivoInactivacion)); // Llamada a la acciÃ³n que actualiza el estado de la oportunidad
 
                 // ConfirmaciÃ³n de cambio de estado
                 Swal.fire({
@@ -113,6 +126,7 @@ export const View_oportuinidad_ver = () => {
                     showConfirmButton: false,
                 }).then(() => {
                     fetchOportunidadDetails(idOportunidad); // Solicita los detalles de la oportunidad.
+                    fetchOpportunityTraceabilityData(idOportunidad);
                 });
             }
         });
@@ -141,6 +155,7 @@ export const View_oportuinidad_ver = () => {
                     showConfirmButton: false,
                 }).then(() => {
                     fetchOportunidadDetails(idOportunidad); // Solicita los detalles de la oportunidad.
+                    fetchOpportunityTraceabilityData(idOportunidad);
                 });
             }
         });
@@ -167,6 +182,7 @@ export const View_oportuinidad_ver = () => {
         // Recargar los detalles de la oportunidad
         if (oportuinidadId && oportuinidadId > 0) {
             fetchOportunidadDetails(oportuinidadId);
+            fetchOpportunityTraceabilityData(oportuinidadId);
         }
     };
 
@@ -355,6 +371,7 @@ export const View_oportuinidad_ver = () => {
                                 className="fade fade tab-pane active show"
                             >
                                 <InformacionBasicaOportunidad oportuinidadId={OportunidadDetails} cliente={leadDetails.nombre_lead} />
+                                <TrazabilidadOportunidad traceability={traceability} />
                             </div>
                         )}
                         {activeTab === "Expediente" && (

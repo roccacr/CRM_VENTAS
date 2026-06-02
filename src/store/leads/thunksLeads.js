@@ -482,7 +482,13 @@ export const createNoteLoss = (nota, leadId, selectedLossOption) => {
          // Despacha la acción para generar la bitácora del lead con los valores adicionales
          await dispatch(generateLeadBitacora(idnetsuite_admin, leadId, additionalValues, descripcionEvento, valueStatus));
          await setLostStatusForLeadTransactions(leadId, descripcionEvento);
-         await ensureLeadOpportunitiesAreInactive(leadId, "LEAD_PERDIDO");
+         await ensureLeadOpportunitiesAreInactive(leadId, {
+            reason: "LEAD_PERDIDO",
+            idnetsuite_admin,
+            actorType: "USUARIO",
+            source: "LEAD_PERDIDO_UI",
+            detail: "Inactivación automática al marcar lead como perdido",
+         });
          // Retorna "ok" si todo salió correctamente
          return "ok";
       } catch (error) {
@@ -543,7 +549,13 @@ export const createNoteFollow_up = (nota, leadId, selectedLossOption, followUpDa
       try {
          // Envío de solicitud al backend para crear el evento
          await dispatch(generateLeadBitacora(idnetsuite_admin, leadId, additionalValues, descripcionEvento, valueStatus));
-         await ensureLeadOpportunitiesAreInactive(leadId, "LEAD_SEGUIMIENTO");
+         await ensureLeadOpportunitiesAreInactive(leadId, {
+            reason: "LEAD_SEGUIMIENTO",
+            idnetsuite_admin,
+            actorType: "USUARIO",
+            source: "LEAD_SEGUIMIENTO_UI",
+            detail: `Inactivación automática al poner lead en seguimiento para ${followUpDate}`,
+         });
          await createCalendarEvent(eventParams);
 
          // Retorno de la respuesta de la API si es necesario
