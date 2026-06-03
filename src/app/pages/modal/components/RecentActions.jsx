@@ -188,6 +188,8 @@ export const RecentActions = ({ showPreload, sortedBitacora, formatDate }) => (
                 border-bottom: 1px solid #e2e8f0;
                 padding-top: 0.9rem;
                 padding-bottom: 0.9rem;
+                padding-left: 1.1rem;
+                padding-right: 1.1rem;
                 text-align: left;
             }
 
@@ -207,6 +209,8 @@ export const RecentActions = ({ showPreload, sortedBitacora, formatDate }) => (
             .recent-actions-timeline__body {
                 padding-top: 0.35rem;
                 padding-bottom: 0.85rem;
+                padding-left: 1.1rem;
+                padding-right: 1rem;
             }
 
             .recent-actions-timeline__loading-text {
@@ -222,7 +226,7 @@ export const RecentActions = ({ showPreload, sortedBitacora, formatDate }) => (
 
             .recent-actions-timeline__item {
                 display: grid;
-                grid-template-columns: 72px 22px minmax(0, 1fr);
+                grid-template-columns: 98px 22px minmax(0, 1fr);
                 column-gap: 14px;
                 align-items: stretch;
                 padding: 0.35rem 0;
@@ -233,6 +237,7 @@ export const RecentActions = ({ showPreload, sortedBitacora, formatDate }) => (
                 flex-direction: column;
                 align-items: flex-start;
                 text-align: left;
+                padding-left: 0.85rem;
                 padding-top: 0.55rem;
             }
 
@@ -360,7 +365,7 @@ export const RecentActions = ({ showPreload, sortedBitacora, formatDate }) => (
 
             .recent-actions-timeline__skeleton-row {
                 display: grid;
-                grid-template-columns: 72px 22px 1fr;
+                grid-template-columns: 98px 22px 1fr;
                 column-gap: 14px;
                 align-items: center;
             }
@@ -395,8 +400,18 @@ export const RecentActions = ({ showPreload, sortedBitacora, formatDate }) => (
             }
 
             @media (max-width: 575.98px) {
+                .recent-actions-timeline__header {
+                    padding-left: 0.85rem;
+                    padding-right: 0.85rem;
+                }
+
+                .recent-actions-timeline__body {
+                    padding-left: 0.85rem;
+                    padding-right: 0.75rem;
+                }
+
                 .recent-actions-timeline__item {
-                    grid-template-columns: 64px 18px minmax(0, 1fr);
+                    grid-template-columns: 78px 18px minmax(0, 1fr);
                     column-gap: 10px;
                 }
 
