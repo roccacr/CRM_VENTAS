@@ -33,6 +33,10 @@ const CONFIG = {
     DB_ENVIRONMENT: "produccion",
     MAX_RETRIES: 3,
     RETRY_DELAY_MS: 5000,
+    ATTENTION_ALERT_MANAGEMENT_RECIPIENTS: [
+        "ccordoba@roccacr.com",
+        "fmata@roccacr.com",
+    ],
 
     // Filtros de consulta
     LEAD_ACTIONS: { NUEVA: 0, SEGUIMIENTO: 2 },
@@ -43,7 +47,8 @@ const CONFIG = {
     ALERT_THRESHOLDS: {
         OK: 10,        // Menor a 10 leads = ok (verde)
         WARNING: 20    // Entre 10-19 = warning (amarillo), 20+ = danger (rojo)
-    }
+    },
+    ATTENTION_ALERT_THRESHOLD: 50
 };
 
 /**
@@ -362,6 +367,133 @@ const enviarReportePorCorreo = async (vendedores, estadisticas) => {
     }
 };
 
+/**
+ * Genera HTML de alerta de leads que requieren atención por asesor.
+ *
+ * @param {Object} asesor - Datos del asesor en alerta.
+ * @returns {string} HTML del correo.
+ */
+const generarHTMLReporteAtencionPorAsesor = (asesor) => {
+    const fecha = obtenerFechaHoraActual();
+    const linkLeads = `https://crm.roccacr.com/leads/lista?data=3&vendedor=${asesor.id_empleado_lead}`;
+
+    return `
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        </head>
+        <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f3f4f6; margin: 0; padding: 0;">
+            <table role="presentation" style="width: 100%; border-collapse: collapse; background-color: #f3f4f6; padding: 40px 20px;">
+                <tr>
+                    <td align="center">
+                        <table role="presentation" style="max-width: 720px; width: 100%; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.1); border: 1px solid #e5e7eb;">
+                            <tr>
+                                <td style="background: #1f2937; padding: 32px 40px; text-align: left;">
+                                    <h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: 600; letter-spacing: -0.5px;">
+                                        Alerta CRM - Leads Requieren Atención
+                                    </h1>
+                                    <p style="margin: 8px 0 0 0; color: #d1d5db; font-size: 14px; font-weight: 400;">
+                                        Ejecución diaria de control comercial
+                                    </p>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 32px 40px;">
+                                    <p style="margin: 0 0 20px 0; color: #374151; font-size: 14px; line-height: 1.6;">
+                                        Se detectó una acumulación alta de leads pendientes de seguimiento para un asesor.
+                                        Este correo se envía al asesor correspondiente y en copia a la jefatura comercial.
+                                    </p>
+
+                                    <table role="presentation" style="width: 100%; border-collapse: collapse; border: 1px solid #e5e7eb; border-radius: 6px; overflow: hidden;">
+                                        <tbody>
+                                            <tr>
+                                                <td style="padding: 14px 16px; background: #f9fafb; color: #6b7280; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; width: 34%;">Asesor</td>
+                                                <td style="padding: 14px 16px; color: #111827; font-size: 14px; font-weight: 500;">${asesor.vendedor_nombre}</td>
+                                            </tr>
+                                            <tr>
+                                                <td style="padding: 14px 16px; background: #f9fafb; color: #6b7280; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Correo futuro destino</td>
+                                                <td style="padding: 14px 16px; color: #111827; font-size: 14px; font-weight: 500;">${asesor.vendedor_email || "No configurado"}</td>
+                                            </tr>
+                                            <tr>
+                                                <td style="padding: 14px 16px; background: #f9fafb; color: #6b7280; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Jefatura detectada</td>
+                                                <td style="padding: 14px 16px; color: #111827; font-size: 14px; font-weight: 500;">${asesor.supervisor_nombre || "No detectada"}${asesor.supervisor_email ? ` (${asesor.supervisor_email})` : ""}</td>
+                                            </tr>
+                                            <tr>
+                                                <td style="padding: 14px 16px; background: #f9fafb; color: #6b7280; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Leads requieren atención</td>
+                                                <td style="padding: 14px 16px; color: #991b1b; font-size: 28px; font-weight: 700;">${asesor.cantidad_leads}</td>
+                                            </tr>
+                                            <tr>
+                                                <td style="padding: 14px 16px; background: #f9fafb; color: #6b7280; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Fecha de corte</td>
+                                                <td style="padding: 14px 16px; color: #111827; font-size: 14px; font-weight: 500;">${fecha}</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+
+                                    <table role="presentation" style="width: 100%; border-collapse: collapse; margin-top: 24px;">
+                                        <tr>
+                                            <td align="left">
+                                                <a href="${linkLeads}" style="display: inline-block; padding: 10px 20px; background: #1f2937; color: #ffffff; text-decoration: none; border-radius: 4px; font-weight: 500; font-size: 13px;">
+                                                    Ver leads requieren atención
+                                                </a>
+                                            </td>
+                                        </tr>
+                                    </table>
+                                </td>
+                            </tr>
+                        </table>
+                    </td>
+                </tr>
+            </table>
+        </body>
+        </html>
+    `;
+};
+
+/**
+ * Envía alerta individual de requiere atención.
+ *
+ * @param {Object} asesor - Datos del asesor.
+ * @returns {Promise<Object>} Resultado del envío.
+ */
+const enviarReporteAtencionPorAsesor = async (asesor) => {
+    try {
+        const htmlContent = generarHTMLReporteAtencionPorAsesor(asesor);
+        const subject = `[ALERTA CRM] Requieren atención - ${asesor.vendedor_nombre} - ${asesor.cantidad_leads} leads`;
+        const destinatarioAsesor = asesor.vendedor_email;
+
+        if (!destinatarioAsesor) {
+            throw new Error(`Asesor sin correo configurado: ${asesor.vendedor_nombre}`);
+        }
+
+        const info = await emailTransporter.sendMail({
+            from: `"ROCCA CRM" <${process.env.API_NOTIFICATION_EMAIL}>`,
+            to: destinatarioAsesor,
+            cc: CONFIG.ATTENTION_ALERT_MANAGEMENT_RECIPIENTS.join(","),
+            subject,
+            html: htmlContent,
+        });
+
+        return {
+            success: true,
+            messageId: info.messageId,
+            destinatarioAsesor,
+            destinatariosJefatura: [...CONFIG.ATTENTION_ALERT_MANAGEMENT_RECIPIENTS],
+        };
+    } catch (error) {
+        log('ERROR', 'Error enviando alerta de requiere atención', {
+            asesor: asesor.vendedor_nombre,
+            error: error.message,
+        });
+
+        return {
+            success: false,
+            error: error.message,
+        };
+    }
+};
+
 // ============================================================================
 // CONSULTAS A BASE DE DATOS
 // ============================================================================
@@ -385,6 +517,58 @@ const QUERY_LEADS_INTERESADOS = `
         AND l.estado_lead = ?
         AND l.segimineto_lead = ?
     GROUP BY l.id_empleado_lead, a.name_admin, a.email_admin
+    ORDER BY cantidad_leads DESC, a.name_admin ASC
+`;
+
+const QUERY_LEADS_REQUIEREN_ATENCION_POR_ASESOR = `
+    SELECT
+        l.id_empleado_lead,
+        a.name_admin AS vendedor_nombre,
+        a.email_admin AS vendedor_email,
+        a.id_supervisor_admin,
+        (
+            SELECT s.name_admin
+            FROM admins s
+            WHERE s.id_admin = CAST(NULLIF(a.id_supervisor_admin, '') AS UNSIGNED)
+               OR s.idnetsuite_admin = CAST(NULLIF(a.id_supervisor_admin, '') AS UNSIGNED)
+            ORDER BY s.status_admin DESC, s.id_admin ASC
+            LIMIT 1
+        ) AS supervisor_nombre,
+        (
+            SELECT s.email_admin
+            FROM admins s
+            WHERE s.id_admin = CAST(NULLIF(a.id_supervisor_admin, '') AS UNSIGNED)
+               OR s.idnetsuite_admin = CAST(NULLIF(a.id_supervisor_admin, '') AS UNSIGNED)
+            ORDER BY s.status_admin DESC, s.id_admin ASC
+            LIMIT 1
+        ) AS supervisor_email,
+        COUNT(DISTINCT l.idinterno_lead) AS cantidad_leads
+    FROM leads AS l
+    INNER JOIN admins AS a
+        ON a.idnetsuite_admin = l.id_empleado_lead
+    LEFT JOIN calendars c
+        ON c.id_lead = l.idinterno_lead
+        AND STR_TO_DATE(c.fechaIni_calendar, '%Y-%m-%dT%H:%i') >= l.actualizadaaccion_lead
+        AND c.estado_calendar = 1
+        AND c.accion_calendar = 'Pendiente'
+    WHERE l.accion_lead = 6
+        AND l.estado_lead = 1
+        AND l.seguimiento_calendar = 0
+        AND l.actualizadaaccion_lead <= DATE_SUB(CURDATE(), INTERVAL 4 DAY)
+        AND l.segimineto_lead NOT IN (
+            '02-LEAD-OPORTUNIDAD',
+            '03-LEAD-PRE-RESERVA',
+            '04-LEAD-RESERVA',
+            '05-LEAD-CONTRATO',
+            '06-LEAD-ENTREGADO'
+        )
+        AND c.id_calendar IS NULL
+    GROUP BY
+        l.id_empleado_lead,
+        a.name_admin,
+        a.email_admin,
+        a.id_supervisor_admin
+    HAVING COUNT(DISTINCT l.idinterno_lead) > ?
     ORDER BY cantidad_leads DESC, a.name_admin ASC
 `;
 
@@ -434,6 +618,39 @@ const consultarLeadsInteresados = async (retryCount = 0) => {
         }
 
         log('ERROR', 'Error crítico en consulta de leads', { error: error.message });
+        throw error;
+    }
+};
+
+/**
+ * Consulta asesores con exceso de leads en requiere atención.
+ *
+ * @param {number} [retryCount=0] - Contador de reintentos.
+ * @returns {Promise<Array<Object>>} Asesores en alerta.
+ */
+const consultarLeadsAtencionPorAsesor = async (retryCount = 0) => {
+    try {
+        const resultado = await executeQuery(
+            QUERY_LEADS_REQUIEREN_ATENCION_POR_ASESOR,
+            [CONFIG.ATTENTION_ALERT_THRESHOLD],
+            CONFIG.DB_ENVIRONMENT
+        );
+
+        const datos = resultado?.data || resultado;
+
+        if (!Array.isArray(datos)) {
+            throw new Error('La consulta de atención no retornó un array válido');
+        }
+
+        return datos;
+    } catch (error) {
+        if (retryCount < CONFIG.MAX_RETRIES && !error.message.includes('array válido')) {
+            log('WARN', `Error en consulta de atención. Reintento ${retryCount + 1}/${CONFIG.MAX_RETRIES}`);
+            await sleep(CONFIG.RETRY_DELAY_MS);
+            return consultarLeadsAtencionPorAsesor(retryCount + 1);
+        }
+
+        log('ERROR', 'Error crítico en consulta de atención por asesor', { error: error.message });
         throw error;
     }
 };
@@ -513,6 +730,46 @@ const procesarLeadsInteresados = async () => {
     }
 };
 
+/**
+ * Procesa alertas diarias de requiere atención por asesor.
+ *
+ * @returns {Promise<Object>} Resumen de ejecución.
+ */
+const procesarLeadsAtencionPorAsesor = async () => {
+    const startTime = Date.now();
+    const asesores = await consultarLeadsAtencionPorAsesor();
+
+    if (asesores.length === 0) {
+        return {
+            success: true,
+            totalAsesores: 0,
+            emailsEnviados: 0,
+            duration: Date.now() - startTime,
+            razon: `No hay asesores con más de ${CONFIG.ATTENTION_ALERT_THRESHOLD} leads en requiere atención`,
+        };
+    }
+
+    const resultados = [];
+
+    for (const asesor of asesores) {
+        const envio = await enviarReporteAtencionPorAsesor(asesor);
+        resultados.push({
+            asesor: asesor.vendedor_nombre,
+            cantidad_leads: asesor.cantidad_leads,
+            ...envio,
+        });
+    }
+
+    return {
+        success: true,
+        totalAsesores: asesores.length,
+        emailsEnviados: resultados.filter((item) => item.success).length,
+        asesores,
+        resultados,
+        duration: Date.now() - startTime,
+    };
+};
+
 
 // ============================================================================
 // CONTROL DEL CRON JOB
@@ -537,11 +794,13 @@ const ejecutarCronJob = async () => {
 
     try {
         const resultado = await procesarLeadsInteresados();
+        const resultadoAtencion = await procesarLeadsAtencionPorAsesor();
 
         metrics.successfulExecutions++;
         metrics.lastError = null;
 
         log('INFO', `Ejecutado exitosamente - ${resultado.totalLeads} leads procesados en ${resultado.duration}ms`);
+        log('INFO', `Atención ejecutado - ${resultadoAtencion.totalAsesores} asesor(es) en alerta, ${resultadoAtencion.emailsEnviados} correo(s) enviados`);
 
     } catch (error) {
         metrics.failedExecutions++;
@@ -611,7 +870,13 @@ const reiniciar = () => {
  */
 const ejecutarManualmente = async () => {
     log('INFO', 'Ejecución manual iniciada');
-    return await procesarLeadsInteresados();
+    const interesados = await procesarLeadsInteresados();
+    const atencion = await procesarLeadsAtencionPorAsesor();
+
+    return {
+        interesados,
+        atencion,
+    };
 };
 
 // ============================================================================
