@@ -12,7 +12,8 @@ import {
    selectListEvents,
    selectListOportunity,
    selectListOportNegative,
-   selectListOrderSale,
+   selectListOrderSalePreReserve,
+   selectListOrderSaleReserve,
    selectListOrderSalePending,
 } from "../../../store/Home/selectorsHome";
 import { useOutlookEvents } from "../../../hooks/useOutlookEvents";
@@ -38,7 +39,8 @@ export const AppPage = () => {
    const listEvents = useSelector(selectListEvents);
    const listOportunity = useSelector(selectListOportunity);
    const listOportNegative = useSelector(selectListOportNegative);
-   const listOrderSale = useSelector(selectListOrderSale);
+   const listOrderSalePreReserve = useSelector(selectListOrderSalePreReserve);
+   const listOrderSaleReserve = useSelector(selectListOrderSaleReserve);
    const listOrderSalePending = useSelector(selectListOrderSalePending);
 
    // Obtener eventos de Outlook del día
@@ -52,7 +54,7 @@ export const AppPage = () => {
    // Actualizar los elementos del tablero cuando cambien los valores de los leads o eventos de Outlook
    useEffect(() => {
       updateDashboardItems();
-   }, [listNew, listAttention, listEvents, listOportunity, listOportNegative, listOrderSale, listOrderSalePending, outlookEventsCount, outlookLoading]);
+   }, [listNew, listAttention, listEvents, listOportunity, listOportNegative, listOrderSalePreReserve, listOrderSaleReserve, listOrderSalePending, outlookEventsCount, outlookLoading]);
 
    // Función para cargar los leads
    const loadLeads = () => {
@@ -86,7 +88,7 @@ export const AppPage = () => {
             2: listAttention,
             3: listEvents,
             4: listOportunity,
-            5: listOrderSale,
+            5: listOrderSalePreReserve,
             6: listOrderSalePending,
          };
 
@@ -113,6 +115,19 @@ export const AppPage = () => {
                rightColor: "#dc3545", // Rojo para oportunidades negativas
                leftUrl: "/oportunidad/lista?oportuinidad=1&idLead=0", // URL para + PROBABLE
                rightUrl: "/oportunidad/lista?oportuinidad=10&idLead=0", // URL para - PROBABLE
+            };
+         }
+
+         if (item.id === 5) {
+            return {
+               ...item,
+               quantity: quantities[item.id] ?? item.quantity,
+               outlookCount: listOrderSaleReserve,
+               hasOutlook: true,
+               leftLabel: "PRE-RESERVA",
+               rightLabel: "RESERVA",
+               leftUrl: "/orden/lista?data=pre-reserva",
+               rightUrl: "/orden/lista?data=reserva",
             };
          }
 

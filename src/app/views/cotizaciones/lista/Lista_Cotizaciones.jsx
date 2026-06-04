@@ -230,7 +230,7 @@ const getColumnsConfig = (isCommissionView) => {
  * @param {string} rol_admin - Rol del administrador
  * @returns {Object} Configuración completa de DataTables
  */
-const getDataTableConfig = (tableElement, inputStartDate, inputEndDate, filterOption, idnetsuite_admin, rol_admin, isCommissionView) => {
+const getDataTableConfig = (tableElement, inputStartDate, inputEndDate, filterOption, orderStage, tableStateKey, idnetsuite_admin, rol_admin, isCommissionView) => {
    /** @type {boolean} Determina si el dispositivo es móvil basado en el ancho de la ventana */
    const isMobile = window.innerWidth <= 768;
    return {
@@ -244,6 +244,7 @@ const getDataTableConfig = (tableElement, inputStartDate, inputEndDate, filterOp
                startDate: inputStartDate,
                endDate: inputEndDate,
                filterOption,
+               orderStage,
                rol_admin,
                start: d.start,
                length: d.length,
@@ -251,8 +252,6 @@ const getDataTableConfig = (tableElement, inputStartDate, inputEndDate, filterOp
             };
          },
          dataSrc: (response) => {
-
-            console.log(response.data);
             return response.data || [];
          },
       },
@@ -292,10 +291,10 @@ const getDataTableConfig = (tableElement, inputStartDate, inputEndDate, filterOp
       stateSave: true,
       stateDuration: -1, // Mantiene el estado durante la sesión
       stateSaveCallback: function (settings, data) {
-         localStorage.setItem("DataTables_state", JSON.stringify(data));
+         localStorage.setItem(tableStateKey, JSON.stringify(data));
       },
       stateLoadCallback: function () {
-         return JSON.parse(localStorage.getItem("DataTables_state")) || null;
+         return JSON.parse(localStorage.getItem(tableStateKey)) || null;
       },
       select: {
          style: "single", // 'single' para selección única, 'multi' para múltiple
@@ -322,6 +321,8 @@ const useDataTable = (
    inputStartDate,
    inputEndDate,
    filterOption,
+   orderStage,
+   tableStateKey,
    idnetsuite_admin,
    rol_admin,
    setSelectedLead,
@@ -338,7 +339,7 @@ const useDataTable = (
       }
 
       tableInstanceRef.current = $(tableRef.current).DataTable(
-         getDataTableConfig(tableRef.current, inputStartDate, inputEndDate, filterOption, idnetsuite_admin, rol_admin, isCommissionView),
+         getDataTableConfig(tableRef.current, inputStartDate, inputEndDate, filterOption, orderStage, tableStateKey, idnetsuite_admin, rol_admin, isCommissionView),
       );
 
       if (isCommissionView) {
@@ -366,7 +367,7 @@ const useDataTable = (
             tableInstanceRef.current = null;
          }
       };
-   }, [tableRef, inputStartDate, inputEndDate, filterOption, idnetsuite_admin, rol_admin, setSelectedLead, setShowModal, isCommissionView, dispatch, navigate]);
+   }, [tableRef, inputStartDate, inputEndDate, filterOption, orderStage, tableStateKey, idnetsuite_admin, rol_admin, setSelectedLead, setShowModal, isCommissionView, dispatch, navigate]);
 };
 
 /**
@@ -422,11 +423,15 @@ const Lista_Cotizaciones = () => {
       setInputEndDate('');
    };
 
+   const params = new URLSearchParams(window.location.search);
+   const dataParam = params.get("data");
+   const orderStage = dataParam === "pre-reserva" || dataParam === "reserva" ? dataParam : "";
+   const tableStateKey = `DataTables_state_ordenes_${dataParam || "default"}`;
+
    /**  Estado para la opción de filtrado */
    const [filterOption, setFilterOption] = useState(() => {
-      const params = new URLSearchParams(window.location.search);
-      const dataParam = params.get("data");
       // Check for data=3 for pending payment orders, data=2 for all orders, default to 1 (paid orders)
+      if (dataParam === "pre-reserva" || dataParam === "reserva") return 1;
       if (dataParam === "3") return 3;
       if (dataParam === "2") return 2;
       if (dataParam === "4") return 4;
@@ -470,6 +475,8 @@ const Lista_Cotizaciones = () => {
       inputStartDate,
       inputEndDate,
       filterOption,
+      orderStage,
+      tableStateKey,
       idnetsuite_admin,
       rol_admin,
       setSelectedLead,

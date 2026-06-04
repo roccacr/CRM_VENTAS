@@ -3,7 +3,20 @@
 import { generateLeadBitacora } from "../leads/thunksLeads";
 import { fetchGetMonthlyData, fetchGetMonthlyDataKpi , fetchGetMonthlyData_venta, fetchupdateEventDate, getAllBanners, getAllEventsHome, updateEventStatus } from "./Api_Home_Providers";
 
-import { setLeadsNew, setListEvents, setListOportunity, setListOportNegative, setListOrderSale, setListOrderSalePending, setlistAttentions, setlistEventsPending, setlistGraficoKpi, updateDateCalendar } from "./HomeSlice";
+import {
+    setLeadsNew,
+    setListEvents,
+    setListOportunity,
+    setListOportNegative,
+    setListOrderSale,
+    setListOrderSalePending,
+    setListOrderSalePreReserve,
+    setListOrderSaleReserve,
+    setlistAttentions,
+    setlistEventsPending,
+    setlistGraficoKpi,
+    updateDateCalendar,
+} from "./HomeSlice";
 
 /**
  * Inicia la carga asincrónica de todos los leads y eventos relacionados.
@@ -35,6 +48,8 @@ export const startLoadingAllLeads = () => {
                 total_orders: data["4"]?.[0]?.total_orders || 0,
                 total_orders_pending: data["5"]?.[0]?.total_orders_pending || 0,
                 total_oport_negative: data["6"]?.[0]?.total_oport_negative || 0,
+                total_orders_pre_reserva: data["7"]?.[0]?.total_orders_pre_reserva || 0,
+                total_orders_reserva: data["8"]?.[0]?.total_orders_reserva || 0,
             };
 
             // Actualiza el estado de Redux con los datos obtenidos
@@ -44,6 +59,8 @@ export const startLoadingAllLeads = () => {
             dispatch(setListOportunity(resultData.total_oport));
             dispatch(setListOportNegative(resultData.total_oport_negative));
             dispatch(setListOrderSale(resultData.total_orders));
+            dispatch(setListOrderSalePreReserve(resultData.total_orders_pre_reserva));
+            dispatch(setListOrderSaleReserve(resultData.total_orders_reserva));
             dispatch(setListOrderSalePending(resultData.total_orders_pending));
         } catch (error) {
             // Muestra el error en la consola en caso de fallo en la API

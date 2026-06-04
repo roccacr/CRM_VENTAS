@@ -38,6 +38,16 @@ export const selectListOrderSale = createSelector(
     (home) => home.listOrderSale
 );
 
+export const selectListOrderSalePreReserve = createSelector(
+    [selectHomeState],
+    (home) => home.listOrderSalePreReserve
+);
+
+export const selectListOrderSaleReserve = createSelector(
+    [selectHomeState],
+    (home) => home.listOrderSaleReserve
+);
+
 export const selectListOrderSalePending = createSelector(
     [selectHomeState],
     (home) => home.listOrderSalePending

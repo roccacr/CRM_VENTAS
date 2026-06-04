@@ -13,10 +13,11 @@ export const Cotizaciones = () => {
     const path = location.pathname.split("/");
     const searchParams = new URLSearchParams(location.search);
     const dataValue = searchParams.get("data");
+    const allowedListParams = new Set(["1", "2", "3", "4", "pre-reserva", "reserva"]);
 
     // Determinar si se debe mostrar el contenedor pc-content
     const isCotizacionesListRoute = path[1] === "orden" && path[2] === "lista" &&
-        (dataValue === "1" || dataValue === "2" || dataValue === "3" || dataValue === "4");
+        allowedListParams.has(dataValue);
     const isSignedClosingRoute = path[1] === "orden" && path[2] === "cierre-firmado";
     const shouldShowPcContent = !(isCotizacionesListRoute || isSignedClosingRoute);
 

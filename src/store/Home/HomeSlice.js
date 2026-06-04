@@ -10,6 +10,8 @@ export const HomeSlice = createSlice({
         listOportunity: 0, // Cantidad de oportunidades de lead
         listOportNegative: 0, // Cantidad de oportunidades negativas
         listOrderSale: 0, // Cantidad de ventas cerradas
+        listOrderSalePreReserve: 0, // Cantidad de OV en pre-reserva
+        listOrderSaleReserve: 0, // Cantidad de OV en reserva
         listOrderSalePending: 0, // Cantidad de ventas pendientes
         listEventsPending: [], // Lista de eventos pendientes
         listGraficoKpi: [], // Lista de eventos pendientes
@@ -67,6 +69,14 @@ export const HomeSlice = createSlice({
          */
         setListOrderSale: (state, action) => {
             state.listOrderSale = action.payload;
+        },
+
+        setListOrderSalePreReserve: (state, action) => {
+            state.listOrderSalePreReserve = action.payload;
+        },
+
+        setListOrderSaleReserve: (state, action) => {
+            state.listOrderSaleReserve = action.payload;
         },
 
         /**
@@ -128,7 +138,21 @@ export const HomeSlice = createSlice({
 });
 
 // Exportar acciones generadas por el slice
-export const { setLeadsNew, setlistAttentions, setListEvents, setListOportunity, setListOportNegative, setListOrderSale, setListOrderSalePending, setlistEventsPending, updateActionCalendar, setlistGraficoKpi, updateDateCalendar } = HomeSlice.actions;
+export const {
+    setLeadsNew,
+    setlistAttentions,
+    setListEvents,
+    setListOportunity,
+    setListOportNegative,
+    setListOrderSale,
+    setListOrderSalePreReserve,
+    setListOrderSaleReserve,
+    setListOrderSalePending,
+    setlistEventsPending,
+    updateActionCalendar,
+    setlistGraficoKpi,
+    updateDateCalendar,
+} = HomeSlice.actions;
 
 // Exportar el reducer del slice para que pueda ser utilizado en el store de Redux
 export default HomeSlice.reducer;
