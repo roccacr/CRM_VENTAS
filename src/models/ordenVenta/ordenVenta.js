@@ -556,6 +556,12 @@ ordenVenta.editarOrdenVenta = async (dataParams) => {
             //COMPROBANTE DE RESERVA
             custbody190: formulario?.custbody190 || "",
 
+            custbody_mezzanine_verifica: formulario?.custbody_mezzanine_verifica ? "T" : "F",
+
+            custbody_mezzanine_area: formulario?.custbody_mezzanine_area || "",
+
+            custbody_mezzanine_monto: formulario?.custbody_mezzanine_monto || "",
+
             //FECHA DE RESERVA
             fech_reserva: transformarFecha(formulario?.fech_reserva, "fech_reserva") || 0,
 
