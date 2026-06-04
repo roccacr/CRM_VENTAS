@@ -1,3 +1,5 @@
+import { formatDate as formatCostaRicaDate } from "../../../../hook/useFormatDate";
+
 const INACTIVATION_REASON_LABELS = {
     MANUAL: "Manual",
     SISTEMA_OTRO: "Sistema",
@@ -17,31 +19,31 @@ const INACTIVATION_REASON_LABELS = {
  * @returns {JSX.Element} Tarjeta con informacion de la oportunidad.
  */
 export const InformacionBasicaOportunidad = ({ oportuinidadId, cliente }) => {
-    const dateOptions = {
-        year: "numeric",
-        month: "2-digit",
-        day: "2-digit",
-        hour: "numeric",
-        minute: "numeric",
-        hour12: true,
+    const formatDateTime = (dateString) => {
+        if (!dateString) {
+            return "Fecha no disponible";
+        }
+
+        const { formattedDate, formattedTime } = formatCostaRicaDate(dateString);
+
+        return [formattedDate, formattedTime].filter(Boolean).join(" ") || "Fecha no disponible";
     };
 
-    const formatDate = (dateString, options = dateOptions) => (
-        dateString
-            ? new Date(dateString).toLocaleString("en-US", options).replace(/\//g, "-")
-            : "Fecha no disponible"
-    );
+    const formatDateOnly = (dateString) => {
+        if (!dateString) {
+            return "Fecha no disponible";
+        }
+
+        return formatCostaRicaDate(dateString).formattedDate || "Fecha no disponible";
+    };
 
     const getInactivationReasonLabel = (reason) => (
         INACTIVATION_REASON_LABELS[reason] || "No disponible"
     );
 
-    const fechaCreacion = formatDate(oportuinidadId?.fecha_creada_oport);
-    const fechaModificacion = formatDate(oportuinidadId?.update_fecha_oport);
-    const fechaCondicion = formatDate(
-        oportuinidadId?.fecha_Condicion,
-        { year: "numeric", month: "2-digit", day: "2-digit" },
-    );
+    const fechaCreacion = formatDateTime(oportuinidadId?.fecha_creada_oport);
+    const fechaModificacion = formatDateTime(oportuinidadId?.update_fecha_oport);
+    const fechaCondicion = formatDateOnly(oportuinidadId?.fecha_Condicion);
 
     const oportunidadData = [
         { label: "ID de la Oportunidad NetSuite", value: oportuinidadId?.tranid_oport || "No disponible" },

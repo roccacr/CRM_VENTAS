@@ -28,15 +28,22 @@ import { ensureLeadOpportunitiesAreInactive } from "./opportunityDeactivation";
 
 const COSTA_RICA_TIME_ZONE = "America/Costa_Rica";
 
-const getCurrentCostaRicaDate = () => {
+const getCurrentCostaRicaDateTime = () => {
    const formatter = new Intl.DateTimeFormat("en-CA", {
       timeZone: COSTA_RICA_TIME_ZONE,
       year: "numeric",
       month: "2-digit",
       day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: false,
    });
 
-   return formatter.format(new Date());
+   const parts = formatter.formatToParts(new Date());
+   const valueByType = Object.fromEntries(parts.map(({ type, value }) => [type, value]));
+
+   return `${valueByType.year}-${valueByType.month}-${valueByType.day} ${valueByType.hour}:${valueByType.minute}:${valueByType.second}`;
 };
 
 /**
@@ -330,8 +337,8 @@ export const updateLeadAction = (leadId, additionalValues, valueStatus) => {
 
          }
 
-         // Obtener la fecha actual en formato YYYY-MM-DD, para registrar la fecha de actualización.
-         const formattedDate = getCurrentCostaRicaDate();
+         // Guardar la fecha/hora real de Costa Rica evita que la UI invente una hora al renderizar.
+         const formattedDate = getCurrentCostaRicaDateTime();
 
          // Desestructuración de los valores adicionales, que incluyen el seguimiento y la acción realizada sobre el lead.
          const { valor_segimineto_lead, estado_lead, accion_lead, seguimiento_calendar, valorDeCaida } = additionalValues;

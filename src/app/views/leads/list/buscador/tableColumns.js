@@ -12,7 +12,7 @@ import { formatDate } from "../../../../../hook/useFormatDate";
  */
 const formatDateTime = (date) => {
     const { formattedDate, formattedTime } = formatDate(date);
-    return `${formattedDate} ${formattedTime}`;
+    return [formattedDate, formattedTime].filter(Boolean).join(" ");
 };
 
 /**

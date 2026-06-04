@@ -10,7 +10,7 @@ const formatDateTime = (date) => {
         return '';
     }
     const { formattedDate, formattedTime } = formatDate(date);
-    return `${formattedDate} ${formattedTime}`;
+    return [formattedDate, formattedTime].filter(Boolean).join(" ");
 };
 
 /**
