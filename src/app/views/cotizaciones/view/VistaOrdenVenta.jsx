@@ -970,6 +970,26 @@ const Reserva = ({ datosOrdenVenta }) => {
    );
 };
 
+const Mezzanine = ({ datosOrdenVenta }) => {
+   const mezzanineEnabled = datosOrdenVenta?.data?.fields?.custbody_mezzanine_verifica === "T";
+   const fields = [
+      { label: "MEZZANINE", value: mezzanineEnabled ? "Sí" : "No" },
+      { label: "ÁREA DEL MEZZANINE M²", value: datosOrdenVenta?.data?.fields?.custbody_mezzanine_area || "No aplica" },
+      { label: "MONTO DEL MEZZANINE", value: mezzanineEnabled ? formatoMoneda(datosOrdenVenta?.data?.fields?.custbody_mezzanine_monto) || "No aplica" : "No aplica" },
+   ];
+
+   return (
+      <div className="row">
+         <div className="alert alert-dark" role="alert">
+            INFORMACIÓN DE MEZZANINE
+         </div>
+         {fields.map(({ label, value }, index) => (
+            <InfoField key={index} icon="ti-file-invoice" label={label} value={value} />
+         ))}
+      </div>
+   );
+};
+
 /**
  * DataTable Configuration
  */
@@ -1155,6 +1175,8 @@ export const VistaOrdenVenta = () => {
                      <SalesInformation datosOrdenVenta={datosOrdenVenta} />
                      <br />
                      <AutorizacionVenta datosOrdenVenta={datosOrdenVenta} />
+                     <br />
+                     <Mezzanine datosOrdenVenta={datosOrdenVenta} />
                      <br />
                      <Reserva datosOrdenVenta={datosOrdenVenta} />
                   </div>

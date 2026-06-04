@@ -197,6 +197,9 @@ export const ModalOrdenVenta = ({ open, onClose, idEstimacion }) => {
       // custbody191: "",
       // custbody189: "",
       custbody208: "",
+      custbody_mezzanine_verifica: false,
+      custbody_mezzanine_area: "",
+      custbody_mezzanine_monto: "",
       // custbody190: "",
       // custbody188: "",
       saleseffectivedate: 0,
@@ -230,6 +233,16 @@ export const ModalOrdenVenta = ({ open, onClose, idEstimacion }) => {
 
       // Determina el nuevo valor según el tipo de input
       const newValue = type === "checkbox" ? checked : value;
+
+      if (name === "custbody_mezzanine_verifica" && !newValue) {
+         setFormValues((prevValues) => ({
+            ...prevValues,
+            custbody_mezzanine_verifica: false,
+            custbody_mezzanine_area: "",
+            custbody_mezzanine_monto: "",
+         }));
+         return;
+      }
 
       // Lista de campos que requieren limpieza específica
       const camposLimpieza = [
@@ -1136,6 +1149,9 @@ export const ModalOrdenVenta = ({ open, onClose, idEstimacion }) => {
                custbody191: transactionData?.data?.fields?.custbody191 || 0,
                custbody189: transactionData?.data?.fields?.custbody189 || 0,
                custbody208: formatDate(transactionData?.data?.fields?.custbody208) || 0,
+               custbody_mezzanine_verifica: transactionData?.data?.fields?.custbody_mezzanine_verifica === "T",
+               custbody_mezzanine_area: transactionData?.data?.fields?.custbody_mezzanine_area || "",
+               custbody_mezzanine_monto: transactionData?.data?.fields?.custbody_mezzanine_monto || "",
                custbody190: transactionData?.data?.fields?.custbody190 || 0,
                custbody188: transactionData?.data?.fields?.custbody188 || 0,
                saleseffectivedate: formatDate(transactionData?.data?.fields?.saleseffectivedate) || 0,

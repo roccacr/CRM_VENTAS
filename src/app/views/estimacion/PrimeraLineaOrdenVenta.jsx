@@ -356,6 +356,57 @@ export const PrimeraLineaOrdenVenta = ({ formValues, handleInputChange, errors }
             <hr />
          </div>
 
+         <hr />
+         <div className="row">
+            <h4>Asignar Valores para Mezzanine</h4>
+
+            <div className="col-sm-12">
+               <div className="form-check mb-3">
+                  <input
+                     autoComplete="off"
+                     className="form-check-input"
+                     type="checkbox"
+                     id="MEZZANINE"
+                     name="custbody_mezzanine_verifica"
+                     checked={formValues.custbody_mezzanine_verifica}
+                     onChange={handleInputChange}
+                  />
+                  <label className="form-check-label" htmlFor="MEZZANINE">
+                     MEZZANINE
+                  </label>
+               </div>
+            </div>
+
+            {formValues.custbody_mezzanine_verifica && (
+               <>
+                  <div className="col-sm-3">
+                     <label className="form-label">AREA DEL MEZZANINE M²</label>
+                     <input
+                        autoComplete="off"
+                        type="text"
+                        name="custbody_mezzanine_area"
+                        value={formValues.custbody_mezzanine_area}
+                        onChange={handleInputChange}
+                        className="form-control mb-2"
+                     />
+                  </div>
+
+                  <div className="col-sm-3">
+                     <label className="form-label">MONTO DEL MEZZANINE</label>
+                     <input
+                        autoComplete="off"
+                        type="text"
+                        name="custbody_mezzanine_monto"
+                        value={formValues.custbody_mezzanine_monto}
+                        onChange={handleInputChange}
+                        className="form-control mb-2"
+                     />
+                  </div>
+               </>
+            )}
+         </div>
+         <hr />
+
          <div className="row">
             <div className="col-sm-3">
                <label className="form-label">ENTREGA ESTIMADA:</label>
