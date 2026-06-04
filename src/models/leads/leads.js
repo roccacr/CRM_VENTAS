@@ -209,7 +209,7 @@ leads.insertBitcoraLead = (dataParams) =>
  * @param {string} dataParams.accion_lead - Acción que se ha realizado sobre el lead, como seguimiento, reserva, etc.
  * @param {string} dataParams.seguimiento_calendar - Información de seguimiento relacionada con el calendario del lead.
  * @param {string} dataParams.valorDeCaida - Motivo o valor relacionado con la caída del lead, si aplica.
- * @param {string} dataParams.formattedDate - Fecha formateada en la que se realizó la acción (YYYY-MM-DD).
+ * @param {string} dataParams.formattedDate - Fecha y hora de Costa Rica en que se realizó la acción (YYYY-MM-DD HH:mm:ss).
  * @param {string} dataParams.database - Nombre de la base de datos en la que se ejecutará el procedimiento almacenado.
  * @returns {Promise<Object>} - Devuelve una promesa que resuelve con el resultado de la ejecución del procedimiento almacenado.
  */
@@ -223,7 +223,7 @@ leads.updateLeadActionApi = (dataParams) =>
             dataParams.accion_lead, // Acción realizada sobre el lead.
             dataParams.seguimiento_calendar, // Información de seguimiento en el calendario.
             dataParams.valorDeCaida, // Valor relacionado con la caída del lead, si corresponde.
-            dataParams.formattedDate, // Fecha formateada de la acción realizada (YYYY-MM-DD).
+            dataParams.formattedDate, // Fecha y hora real de la acción realizada en Costa Rica.
             dataParams.leadId, // ID del lead que se está actualizando.
         ],
         dataParams.database, // Nombre de la base de datos donde se ejecutará el procedimiento almacenado.

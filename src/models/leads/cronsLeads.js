@@ -548,13 +548,23 @@ const QUERY_LEADS_REQUIEREN_ATENCION_POR_ASESOR = `
         ON a.idnetsuite_admin = l.id_empleado_lead
     LEFT JOIN calendars c
         ON c.id_lead = l.idinterno_lead
-        AND STR_TO_DATE(c.fechaIni_calendar, '%Y-%m-%dT%H:%i') >= l.actualizadaaccion_lead
+        AND STR_TO_DATE(c.fechaIni_calendar, '%Y-%m-%dT%H:%i') >= COALESCE(
+            STR_TO_DATE(l.actualizadaaccion_lead, '%Y-%m-%d %H:%i:%s'),
+            STR_TO_DATE(l.actualizadaaccion_lead, '%Y-%m-%d')
+        )
         AND c.estado_calendar = 1
         AND c.accion_calendar = 'Pendiente'
     WHERE l.accion_lead = 6
         AND l.estado_lead = 1
         AND l.seguimiento_calendar = 0
-        AND l.actualizadaaccion_lead <= DATE_SUB(CURDATE(), INTERVAL 4 DAY)
+        AND COALESCE(
+            STR_TO_DATE(l.actualizadaaccion_lead, '%Y-%m-%d %H:%i:%s'),
+            STR_TO_DATE(l.actualizadaaccion_lead, '%Y-%m-%d')
+        ) <= DATE_SUB(NOW(), INTERVAL 4 DAY)
+        AND COALESCE(
+            STR_TO_DATE(l.actualizadaaccion_lead, '%Y-%m-%d %H:%i:%s'),
+            STR_TO_DATE(l.actualizadaaccion_lead, '%Y-%m-%d')
+        ) > DATE_SUB(NOW(), INTERVAL 1 MONTH)
         AND l.segimineto_lead NOT IN (
             '02-LEAD-OPORTUNIDAD',
             '03-LEAD-PRE-RESERVA',
