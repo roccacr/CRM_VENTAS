@@ -9,10 +9,11 @@ const VISIBLE_FIELDS = [
     "campana_lead",
     "id_ov_tranid",
     "namesubsi_ov",
-    "contrado_frima_ov",
     "cierre_firmado_ov",
-    "aprobacion_forma_ov",
+    "chekJefeVenta",
     "aprobacion__rdr_ov",
+    "aprobacion_forma_ov",
+    "contrado_frima_ov",
     "calculo_comision_asesor_ov",
     "comision_cancelada_ov",
     "creado_ov",
@@ -43,6 +44,11 @@ const FILTERABLE_FIELDS = new Set([
     "proyecto_lead",
     "campana_lead",
     "namesubsi_ov",
+    "cierre_firmado_ov",
+    "chekJefeVenta",
+    "aprobacion__rdr_ov",
+    "aprobacion_forma_ov",
+    "contrado_frima_ov",
     "ubicacion",
     "Edad_lead",
     "Profesion_lead",
@@ -57,13 +63,53 @@ const FILTERABLE_FIELDS = new Set([
 const DATE_FIELDS = new Set(["creado_ov"]);
 const DATE_TEXT_FIELDS = new Set(["trandate_ov", "fechaClienteComprobante_ov"]);
 const YES_NO_FIELDS = new Set([
-    "contrado_frima_ov",
     "cierre_firmado_ov",
+    "chekJefeVenta",
+    "contrado_frima_ov",
     "aprobacion_forma_ov",
     "aprobacion__rdr_ov",
     "calculo_comision_asesor_ov",
     "comision_cancelada_ov",
 ]);
+
+const COLUMN_TITLES = {
+    name_admin: "Asesor",
+    nombre_lead: "Nombre Cliente",
+    email_lead: "Correo Cliente",
+    telefono_lead: "Teléfono",
+    proyecto_lead: "Proyecto",
+    campana_lead: "Campaña",
+    id_ov_tranid: "Orden de Venta",
+    namesubsi_ov: "Subsidiaria",
+    cierre_firmado_ov: "Cierre firmado OV",
+    chekJefeVenta: "Aprobación Jefatura de Ventas",
+    aprobacion__rdr_ov: "Aprobación RDR",
+    aprobacion_forma_ov: "Aprobación Formalizaciones",
+    contrado_frima_ov: "Contrato Firma",
+    calculo_comision_asesor_ov: "Cálculo Comisión Asesor",
+    comision_cancelada_ov: "Comisión Cancelada",
+    creado_ov: "Creado",
+    pre_lista_ov: "Pre lista",
+    trandate_ov: "Fecha OV",
+    prec_ventaneto_ov: "Precio Venta Neto",
+    prec_venta_ov: "Precio Venta",
+    comison_asesor_ov: "Comisión Asesor",
+    ubicacion: "Ubicación",
+    fechaClienteComprobante_ov: "Fecha Cliente Comprobante",
+    Nacionalidad_lead: "Nacionalidad",
+    Estado_ciLead: "Estado Civil",
+    Edad_lead: "Edad",
+    Profesion_lead: "Profesión",
+    Hijos_lead: "Hijos",
+    Direccion: "Dirección",
+    Corredor_lead: "Corredor",
+    info_extra_ingresos: "Ingresos",
+    info_extra_MotivoCompra: "Motivo Compra",
+    info_extra_MomentodeCompra: "Momento de Compra",
+    info_extra_Trabajo: "Trabajo",
+    info_extra_OrigenFondo: "Origen Fondo",
+    info_extra_ZonaRecidencia: "Zona Residencia",
+};
 
 const formatDateTime = (date) => {
     if (!date) return "No aplica";
@@ -71,10 +117,8 @@ const formatDateTime = (date) => {
     return `${formattedDate} ${formattedTime}`;
 };
 
-const formatColumnTitle = (field) =>
-    field
-        .replace(/_/g, " ")
-        .replace(/\b\w/g, (letter) => letter.toUpperCase());
+const formatColumnTitle = (field) => COLUMN_TITLES[field]
+    || field.replace(/_/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
 
 const normalizeValue = (value) => {
     if (value === null || value === undefined || value === "") return "No aplica";
