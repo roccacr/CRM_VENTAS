@@ -46,6 +46,12 @@ ordenVenta.enlistarOrdenesVenta = async (dataParams) => {
     switch (dataParams.filterOption) {
         case "1":
             conditions.push("o.caida_ov = 0", "o.comision_cancelada_ov = 0", "o.status_ov = 1", "o.contrado_frima_ov = 0", "o.pagadas_ov = 0");
+            if (dataParams.orderStage === "pre-reserva") {
+                conditions.push("o.reserva_ov = 0");
+            }
+            if (dataParams.orderStage === "reserva") {
+                conditions.push("o.reserva_ov = 1");
+            }
             break;
         case "2":
             conditions.push(
