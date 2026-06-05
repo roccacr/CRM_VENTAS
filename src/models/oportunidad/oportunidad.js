@@ -288,6 +288,7 @@ oportunidad.get_Oportunidades = (dataParams) => {
             p.id_oportunidad_oport,
             p.exp_custbody38_oport,
             p.Motico_Condicion,
+            p.motivo_inactivacion_oport,
             p.fecha_Condicion,
             p.fecha_creada_oport,
             l.nombre_lead,
