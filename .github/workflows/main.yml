@@ -47,6 +47,7 @@ jobs:
         run: npm run build
         env:
           VITE_APP_VERSION: "V1.0.14-${{ env.BUILD_TIME }}"
+          VITE_TOKEN_ACCESS: ${{ secrets.VITE_TOKEN_ACCESS }}
 
       # 8. Limpiar directorio dist en el servidor (CRÍTICO para evitar archivos antiguos)
       - name: Clean dist directory on server
