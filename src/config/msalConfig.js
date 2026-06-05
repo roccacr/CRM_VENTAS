@@ -9,13 +9,13 @@ export const msalConfig = {
     postLogoutRedirectUri: MSAL_REDIRECT_URI,
   },
   cache: {
-    cacheLocation: "localStorage",
+    cacheLocation: "sessionStorage",
     storeAuthStateInCookie: false,
   },
 };
 
 export const loginRequest = {
-  scopes: ["openid", "profile", "User.Read"],
+  scopes: ["openid", "profile", "email", "offline_access", "User.Read"],
 };
 
 // Create a MSAL instance that can be used throughout the application

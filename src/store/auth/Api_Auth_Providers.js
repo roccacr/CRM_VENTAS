@@ -19,9 +19,19 @@ export const singAuth = async ({ email, password }) => {
 };
 
 // Función exportada que realiza el proceso de cierre de sesión
-export const exitLogout = async () => {
-    // Retorna una cadena indicando que el proceso de cierre de sesión fue exitoso
-    return "ok";
+export const exitLogout = async ({ token_admin }) => {
+    if (!token_admin) {
+        return { ok: true, data: { statusCode: 200, data: "Sin sesión local para cerrar" } };
+    }
+
+    const requestData = {
+        ...commonRequestData,
+        transaccion: {
+            token_admin,
+        },
+    };
+
+    return await fetchData("usuario/logout", requestData);
 };
 
 

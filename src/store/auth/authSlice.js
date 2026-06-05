@@ -68,8 +68,9 @@ export const authSlice = createSlice({
          state.status_admin = null;
          state.errorMessage = payload?.errorMessage;
          state.microsoftUser = null;
-         localStorage.removeItem("payload_1");
-         localStorage.removeItem("tokenExpiresAt");
+         state.profilePicture = null;
+         state.expiresIn = null;
+         state.mensaje = null;
       },
       // Reducer para establecer el estado de verificación de credenciales
       setCheckingCredentials: (state) => {
@@ -99,8 +100,7 @@ export const authSlice = createSlice({
          state.microsoftUser = null;
          state.profilePicture = null;
          state.expiresIn = null;
-         localStorage.removeItem("payload_1");
-         localStorage.removeItem("tokenExpiresAt");
+         state.mensaje = null;
 
       },
    },

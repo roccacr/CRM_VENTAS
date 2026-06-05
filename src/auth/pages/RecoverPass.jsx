@@ -1,11 +1,12 @@
 import { useState } from "react";
-import { Auth_Layout } from "../layout/Auth_Layout";
-import { Link, useNavigate } from "react-router-dom";
-import { Link as RouterLink } from "react-dom/client";
+import { Link } from "react-router-dom";
 import { TextField } from "@mui/material";
 import { useDispatch } from "react-redux";
+import { useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
-import { ValidarUsuario, recuperarContraseña } from "../../store/auth/thunks";
+
+import { ValidarUsuario, recuperarContrasena } from "../../store/auth/thunks";
+import { Auth_Layout } from "../layout/Auth_Layout";
 
 export const RecoverPass = () => {
     const [email, setEmail] = useState("");
@@ -14,41 +15,39 @@ export const RecoverPass = () => {
     const dispatch = useDispatch();
     const navigate = useNavigate();
 
-    // Función para validar el correo electrónico
-    const validarEmail = async (email) => {
-        if (email.trim() === "") {
+    const validarEmail = async (nextEmail) => {
+        if (nextEmail.trim() === "") {
             setEmailExists(false);
             setErrorMessage("");
             return;
         }
 
         try {
-            const exists = await dispatch(ValidarUsuario(email));
+            const exists = await dispatch(ValidarUsuario(nextEmail));
+
             if (exists["0"].count === 1) {
                 setEmailExists(true);
                 setErrorMessage("Correo encontrado. Puede recuperar su clave.");
-            } else {
-                setEmailExists(false);
-                setErrorMessage("Correo no encontrado.");
+                return;
             }
+
+            setEmailExists(false);
+            setErrorMessage("Correo no encontrado.");
         } catch (error) {
             console.error("Error al validar el correo:", error);
             setErrorMessage("Error al validar el correo.");
         }
     };
 
-    // Función para manejar el cambio del campo de correo
     const handleEmailChange = (event) => {
         const emailValue = event.target.value;
         setEmail(emailValue);
         validarEmail(emailValue);
     };
 
-    // Función para manejar la solicitud de restablecimiento de contraseña
     const handleRecoverPassword = async (event) => {
         event.preventDefault();
 
-        // Mostrar confirmación con SweetAlert
         const result = await Swal.fire({
             title: "¿Restablecer contraseña?",
             text: "¿Estás seguro de que deseas restablecer tu contraseña?",
@@ -58,32 +57,31 @@ export const RecoverPass = () => {
             cancelButtonText: "Cancelar",
         });
 
-        if (result.isConfirmed) {
-            try {
-                // Llamar a la acción para recuperar contraseña
-                await dispatch(recuperarContraseña(email));
+        if (!result.isConfirmed) {
+            return;
+        }
 
-                // Mostrar mensaje de éxito
-                await Swal.fire({
-                    icon: "success",
-                    title: "Solicitud enviada",
-                    text: "Se ha enviado un correo para restablecer tu contraseña.",
-                    showConfirmButton: false,
-                    timer: 1000,
-                });
+        try {
+            await dispatch(recuperarContrasena(email));
 
-                // Recargar la página y redirigir al login después de 3 segundos
-                setTimeout(() => {
-                    navigate("/auth/login");
-                }, 1000);
-            } catch (error) {
-                console.error("Error al recuperar la contraseña:", error);
-                await Swal.fire({
-                    icon: "error",
-                    title: "Error",
-                    text: "No se pudo enviar la solicitud. Intenta nuevamente.",
-                });
-            }
+            await Swal.fire({
+                icon: "success",
+                title: "Solicitud enviada",
+                text: "Se ha enviado un correo para restablecer tu contraseña.",
+                showConfirmButton: false,
+                timer: 1000,
+            });
+
+            setTimeout(() => {
+                navigate("/auth/login");
+            }, 1000);
+        } catch (error) {
+            console.error("Error al recuperar la contraseña:", error);
+            await Swal.fire({
+                icon: "error",
+                title: "Error",
+                text: "No se pudo enviar la solicitud. Intenta nuevamente.",
+            });
         }
     };
 
@@ -94,7 +92,7 @@ export const RecoverPass = () => {
                     <div style={{ display: "flex", justifyContent: "center", alignItems: "center" }}>
                         <img src="/assets/logo2.jpg" alt="images" className="mb-1" style={{ maxWidth: "100%", height: "92px" }} />
                     </div>
-                    <p className="mb-3">Recuperacion de clave</p>
+                    <p className="mb-3">Recuperación de clave</p>
                 </div>
 
                 <div className="mb-3">
@@ -116,7 +114,7 @@ export const RecoverPass = () => {
                 )}
 
                 <div className="d-flex mt-1 justify-content-between align-items-center">
-                    <Link component={RouterLink} to="/auth/login">
+                    <Link className="text-decoration-none" to="/auth/login">
                         <h6 className="f-w-400 mb-0">¿Ya tienes acceso?</h6>
                     </Link>
                 </div>

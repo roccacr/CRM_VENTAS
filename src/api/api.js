@@ -48,11 +48,7 @@ const getDatabaseName = () => {
 const apiUrl = getApiUrl();
 const apiUrlImg = getApiUrlImg();
 const databaseuse = getDatabaseName();
-
-/********************************************** TOKEN DE ACCESO **********************************************/
-
-// Secret key used for authentication (should be stored securely)
-const secretKey = "9e-@5Y4cHdQ)5wT!uL*BzR#e^T@6f2X!";
+const frontendAccessToken = import.meta.env.VITE_TOKEN_ACCESS || (isLocalEnvironment() ? "4jH6k-3m.b@s_T8" : "");
 
 /********************************************** COMMON REQUEST DATA **********************************************/
 
@@ -62,7 +58,7 @@ const secretKey = "9e-@5Y4cHdQ)5wT!uL*BzR#e^T@6f2X!";
  */
 const getCommonRequestData = () => {
     return {
-        token_access: "4jH6k-3m.b@s_T8",
+        token_access: frontendAccessToken,
         database: databaseuse,
         sqlQuery: "",
         type: "",
@@ -116,4 +112,4 @@ const fetchDataFile = async (endpoint, requestData) => {
 /********************************************** EXPORT FUNCTIONS AND DATA **********************************************/
 
 // Export functions and common data for use in other modules
-export { fetchData, commonRequestData, secretKey, fetchDataFile, apiUrlImg };
+export { fetchData, commonRequestData, fetchDataFile, apiUrlImg };

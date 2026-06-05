@@ -9,12 +9,12 @@ import {
 	FileUpload,
 	LargeFileUploadTask,
 } from "@microsoft/microsoft-graph-client";
-import { initializeMSAL, msalInstance } from "@/config/msalConfig";
+import { initializeMSAL, loginRequest, msalInstance } from "@/config/msalConfig";
 import { InteractionRequiredAuthError } from "@azure/msal-browser";
 
 // Constants
 const GROUP_ID = "46b0a57a-45ab-4534-8dde-cd4ba39e29b7";
-const DEFAULT_SCOPES = ["User.Read", "Files.Read"];	
+const DEFAULT_SCOPES = [...new Set([...loginRequest.scopes, "Files.Read"])];
 const CHUNK_SIZE = 1024 * 1024; // 1MB for file uploads
 
 /**
@@ -53,8 +53,7 @@ class AuthenticationService {
 			if (!account) {
 				
 				const loginResult = await msalInstance.loginPopup({
-					scopes: DEFAULT_SCOPES,
-					prompt: "select_account"
+					scopes: DEFAULT_SCOPES
 				});
 				account = loginResult.account;
 				

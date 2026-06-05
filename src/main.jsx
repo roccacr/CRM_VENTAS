@@ -4,9 +4,8 @@ import { BrowserRouter } from 'react-router-dom';
 import { Provider } from "react-redux";
 import { store } from './store/store';
 import { MsalProvider } from "@azure/msal-react";
-import { pca } from './store/auth/authThunksMicrosoft';
 import { CssBaseline } from '@mui/material';
-import { initializeMSAL } from './config/msalConfig';
+import { initializeMSAL, msalInstance } from './config/msalConfig';
 
 /**
  * Inicializar MSAL antes de renderizar la aplicación
@@ -21,7 +20,7 @@ const initializeApp = async () => {
 
   ReactDOM.createRoot(document.getElementById("root")).render(
     <Provider store={store}>
-      <MsalProvider instance={pca}>
+      <MsalProvider instance={msalInstance}>
         <BrowserRouter>
           <CssBaseline />
           <App />
