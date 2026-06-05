@@ -67,9 +67,9 @@ authenticated.getUser = async (dataParams) => {
 // Actualiza el token del usuario
 authenticated.updateTokenUser = async (dataParams) => {
     return handleDatabaseOperation(async (connection) => {
-        const token = await authenticated.generatedToken(dataParams);
+        const token = dataParams.token_admin || await authenticated.generatedToken(dataParams);
         const [result] = await connection.execute("UPDATE admins SET token_admin=? WHERE email_admin=?", [token, dataParams.email]);
-        return { statusCode: result.affectedRows === 0 ? 210 : 200, data: result };
+        return { statusCode: result.affectedRows === 0 ? 210 : 200, data: result, token_admin: token };
     }, dataParams.database);
 };
 
@@ -121,6 +121,7 @@ authenticated.verificaionDeUsuario = async (dataParams) => {
         await authenticated.updateTokenUser({
             email: userData.email_admin,
             database: dataParams.database,
+            token_admin: nuevoToken,
         });
     } catch (error) {
         // Continuar de todas formas, el token se devuelve aunque falle la actualización en DB
@@ -144,6 +145,49 @@ authenticated.getUserMicrosoft = async (dataParams) => {
         // SEGURIDAD: Usar consultas parametrizadas para prevenir inyección SQL
         const [result] = await connection.execute("SELECT id_admin,idnetsuite_admin , name_admin, token_admin, id_rol_admin, password_admin, email_admin, status_admin FROM admins WHERE email_admin=?", [dataParams.transaccion.user.email]);
         return { statusCode: result.length > 0 ? 200 : 210, data: result };
+    }, dataParams.database);
+};
+
+
+authenticated.logoutUser = async (dataParams) => {
+    const token = dataParams.transaccion?.token_admin || dataParams.token_admin;
+
+    if (!token) {
+        return { statusCode: 400, data: "Token no proporcionado" };
+    }
+
+    let decoded;
+
+    try {
+        decoded = jwt.verify(token, config.jwtSecret);
+    } catch (error) {
+        if (error instanceof jwt.TokenExpiredError) {
+            return { statusCode: 401, data: "El token ha expirado" };
+        }
+
+        if (error instanceof jwt.JsonWebTokenError) {
+            return { statusCode: 400, data: "El token no es válido" };
+        }
+
+        return { statusCode: 500, data: "Error en la validación del token" };
+    }
+
+    return handleDatabaseOperation(async (connection) => {
+        const email = decoded.data?.email;
+
+        if (!email) {
+            return { statusCode: 400, data: "Token sin correo asociado" };
+        }
+
+        const [result] = await connection.execute(
+            "UPDATE admins SET token_admin = NULL WHERE email_admin = ? AND token_admin = ?",
+            [email, token],
+        );
+
+        return {
+            statusCode: result.affectedRows > 0 ? 200 : 404,
+            data: result.affectedRows > 0 ? "Sesión cerrada correctamente" : "No se encontró una sesión activa para cerrar",
+        };
     }, dataParams.database);
 };
 
@@ -279,23 +323,17 @@ authenticated.SP_RECUPERAR_CONTRASENA = async (dataParams) => {
  * cuando el usuario recarga la página (F5).
  */
 authenticated.validateTokenUser = (dataParams) => {
+    const token = dataParams.transaccion?.token_admin || dataParams.token_admin;
+
+    if (!token) {
+        return {
+            statusCode: 400,
+            data: "Token no proporcionado",
+        };
+    }
+
     try {
-        // Verificar que se proporcionó el token
-        // El token viene dentro de transaccion desde el frontend
-        const token = dataParams.transaccion?.token_admin || dataParams.token_admin;
-
-        if (!token) {
-            return {
-                statusCode: 400,
-                data: "Token no proporcionado",
-            };
-        }
-
-        // SEGURIDAD: Verificar el token con la clave secreta
         const decoded = jwt.verify(token, config.jwtSecret);
-
-        // Verificar si el token ha expirado
-        // Convertir exp (en segundos) a milisegundos y comparar
         const tokenExpiresAt = decoded.exp * 1000;
         const now = Date.now();
         const timeUntilExpiry = tokenExpiresAt - now;
@@ -307,18 +345,40 @@ authenticated.validateTokenUser = (dataParams) => {
             };
         }
 
-        // Token válido
-        return {
-            statusCode: 200,
-            data: "El token es válido",
-            decoded: {
-                id: decoded.data?.id,
-                name_admin: decoded.data?.name_admin,
-                email: decoded.data?.email,
-                exp: decoded.exp,
-                remainingTime: timeUntilExpiry,
-            },
-        };
+        return handleDatabaseOperation(async (connection) => {
+            const [result] = await connection.execute(
+                "SELECT id_admin, idnetsuite_admin, name_admin, id_rol_admin, email_admin, status_admin, token_admin FROM admins WHERE email_admin = ? LIMIT 1",
+                [decoded.data?.email ?? null],
+            );
+
+            if (result.length === 0 || result[0].token_admin !== token) {
+                return {
+                    statusCode: 401,
+                    data: "La sesión ya no es válida",
+                };
+            }
+
+            return {
+                statusCode: 200,
+                data: "El token es válido",
+                userData: {
+                    id_admin: result[0].id_admin,
+                    idnetsuite_admin: result[0].idnetsuite_admin,
+                    name_admin: result[0].name_admin,
+                    id_rol_admin: result[0].id_rol_admin,
+                    email_admin: result[0].email_admin,
+                    status_admin: result[0].status_admin,
+                    token_admin: result[0].token_admin,
+                },
+                decoded: {
+                    id: decoded.data?.id,
+                    name_admin: decoded.data?.name_admin,
+                    email: decoded.data?.email,
+                    exp: decoded.exp,
+                    remainingTime: timeUntilExpiry,
+                },
+            };
+        }, dataParams.database);
     } catch (error) {
         if (error instanceof jwt.TokenExpiredError) {
             return {

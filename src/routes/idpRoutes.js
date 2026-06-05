@@ -129,6 +129,7 @@ module.exports = function (app) {
                 { path: "/usuario/microsoft", method: "usuarioMicrosoft" }, // Recuperar contraseña mediante correo electrónico
                 { path: "/usuario/verificaionDeUsuario", method: "verificaionDeUsuario" }, // Recuperar contraseña mediante correo electrónico
                 { path: "/usuario/validarToken", method: "validateTokenUser" }, // Validar el token JWT del usuario autenticado (para F5/Refresh)
+                { path: "/usuario/logout", method: "logoutUser" }, // Cerrar sesión actual e invalidar token almacenado
             ],
         },
         {
