@@ -154,24 +154,39 @@ const buildStoredAuthenticatedUser = (storedSession, validationResponse) => ({
 export const restoreMicrosoftSession = () => {
   return async (dispatch) => {
     try {
+      console.log("[auth-restore] restoreMicrosoftSession start");
       await initializeMSAL();
       await msalInstance.handleRedirectPromise();
 
       const account = getCachedAccount();
 
+      console.log("[auth-restore] cached account", {
+        hasAccount: !!account,
+        username: account?.username || null,
+      });
+
       if (!account) {
+        console.log("[auth-restore] no cached account");
         return false;
       }
 
       await acquireMicrosoftToken(account, false);
+      console.log("[auth-restore] token silent acquired");
 
       const backendResponse = await verifyMicrosoftUserInBackend(account);
 
+      console.log("[auth-restore] backend verification", {
+        hasResponse: !!backendResponse,
+        status: backendResponse?.status || null,
+      });
+
       if (!backendResponse || backendResponse.status !== 200) {
+        console.log("[auth-restore] backend verification failed");
         return false;
       }
 
       if (!validateBackendUserState(backendResponse, dispatch)) {
+        console.log("[auth-restore] backend user invalid");
         return false;
       }
 
@@ -179,9 +194,16 @@ export const restoreMicrosoftSession = () => {
 
       dispatch(setUserAuthentication(authenticatedUser));
       persistAuthSession(authenticatedUser);
+      console.log("[auth-restore] restoreMicrosoftSession success", {
+        email_admin: authenticatedUser?.email_admin,
+      });
 
       return true;
     } catch (error) {
+      console.log("[auth-restore] restoreMicrosoftSession error", {
+        name: error?.name,
+        message: error?.message,
+      });
       if (error instanceof InteractionRequiredAuthError) {
         return false;
       }
@@ -196,12 +218,21 @@ const restoreStoredSession = () => {
   return async (dispatch) => {
     const storedSession = readAuthSession();
 
+    console.log("[auth-restore] restoreStoredSession read", {
+      hasStoredSession: !!storedSession,
+      email_admin: storedSession?.email_admin || null,
+    });
+
     if (!storedSession?.token_admin) {
       clearAuthSession();
       return false;
     }
 
     const validationResponse = await validateStoredToken(storedSession.token_admin);
+
+    console.log("[auth-restore] restoreStoredSession validate token", {
+      statusCode: validationResponse?.statusCode || null,
+    });
 
     if (validationResponse?.statusCode !== 200) {
       clearAuthSession();
@@ -218,6 +249,9 @@ const restoreStoredSession = () => {
 
     dispatch(setUserAuthentication(authenticatedUser));
     persistAuthSession(authenticatedUser);
+    console.log("[auth-restore] restoreStoredSession success", {
+      email_admin: authenticatedUser?.email_admin,
+    });
     return true;
   };
 };
@@ -225,7 +259,12 @@ const restoreStoredSession = () => {
 
 export const restoreSession = () => {
   return async (dispatch, getState) => {
+    console.log("[auth-restore] restoreSession start");
     const microsoftRestored = await dispatch(restoreMicrosoftSession());
+
+    console.log("[auth-restore] restoreSession microsoft result", {
+      microsoftRestored,
+    });
 
     if (microsoftRestored) {
       return true;
@@ -233,11 +272,16 @@ export const restoreSession = () => {
 
     const storedSessionRestored = await dispatch(restoreStoredSession());
 
+    console.log("[auth-restore] restoreSession stored result", {
+      storedSessionRestored,
+    });
+
     if (storedSessionRestored) {
       return true;
     }
 
     if (getState().auth.status === "checking") {
+      console.log("[auth-restore] restoreSession fallback logout");
       dispatch(setUserLogout({ errorMessage: "" }));
     }
 
@@ -297,12 +341,18 @@ export const useMicrosoftAuth = () => {
 
   const handleLogin = async () => {
     try {
+      console.log("[auth-login] handleLogin start");
       setInProgress("microsoft");
       validateMsalConfig();
       dispatch(verificacionUsuario({ status: "EnProceso", Mensaje: "" }));
 
       const response = await instance.loginPopup(loginRequest);
       const account = response.account || instance.getActiveAccount();
+
+      console.log("[auth-login] popup success", {
+        hasAccount: !!account,
+        username: account?.username || null,
+      });
 
       if (!account) {
         throw new Error("No se pudo obtener la cuenta del usuario");
@@ -313,6 +363,11 @@ export const useMicrosoftAuth = () => {
       const tokenResponse = await acquireMicrosoftToken(account, true);
       const profilePicture = await getUserProfilePicture(tokenResponse.accessToken);
       const backendResponse = await dispatch(validarSesion(account));
+
+      console.log("[auth-login] backend validation result", {
+        hasUserData: !!backendResponse?.data?.userData,
+        status: backendResponse?.status || null,
+      });
 
       if (!backendResponse?.data?.userData) {
         return null;
@@ -326,9 +381,16 @@ export const useMicrosoftAuth = () => {
 
       dispatch(setUserAuthentication(authenticatedUser));
       persistAuthSession(authenticatedUser);
+      console.log("[auth-login] success", {
+        email_admin: authenticatedUser?.email_admin,
+      });
 
       return authenticatedUser;
     } catch (error) {
+      console.log("[auth-login] error", {
+        name: error?.name,
+        message: error?.message,
+      });
       const message = error?.message || "Ocurrió un error durante el inicio de sesión con Microsoft.";
 
       clearAuthSession();
