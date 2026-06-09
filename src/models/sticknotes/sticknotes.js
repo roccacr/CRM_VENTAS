@@ -22,6 +22,16 @@ const CRM_APP_BASE_URL = "https://crm.roccacr.com";
 const NETSUITE_ORDER_SALE_URL = "https://4552704.app.netsuite.com/app/accounting/transactions/salesord.nl";
 
 
+const appendCacheBusterToUrl = (url) => {
+    if (!url) {
+        return null;
+    }
+
+    const separator = url.includes("?") ? "&" : "?";
+    return `${url}${separator}stickyEmail=1&_ts=${Date.now()}`;
+};
+
+
 const buildStickyNoteCrmLink = ({ transaction_type, transaction_id, idinterno_lead, crm_url }) => {
     const normalizedTransactionType = typeof transaction_type === "string"
         ? transaction_type.trim().toLowerCase()
@@ -34,26 +44,34 @@ const buildStickyNoteCrmLink = ({ transaction_type, transaction_id, idinterno_le
         : null;
 
     if (normalizedTransactionType === "lead" && normalizedLeadId) {
-        return `${CRM_APP_BASE_URL}/leads/perfil?data=${encodeURIComponent(normalizedLeadId)}`;
+        return appendCacheBusterToUrl(`${CRM_APP_BASE_URL}/leads/perfil?data=${encodeURIComponent(normalizedLeadId)}`);
     }
 
     if ((normalizedTransactionType === "ordersale" || normalizedTransactionType === "salesorder") && normalizedLeadId && normalizedTransactionId) {
-        return `${CRM_APP_BASE_URL}/orden/view?data=${encodeURIComponent(normalizedLeadId)}&data2=${encodeURIComponent(normalizedTransactionId)}`;
+        return appendCacheBusterToUrl(
+            `${CRM_APP_BASE_URL}/orden/view?data=${encodeURIComponent(normalizedLeadId)}&data2=${encodeURIComponent(normalizedTransactionId)}`
+        );
     }
 
     if (normalizedTransactionType === "opportunity" && normalizedLeadId && normalizedTransactionId) {
-        return `${CRM_APP_BASE_URL}/oportunidad/ver?data=${encodeURIComponent(normalizedLeadId)}&data2=${encodeURIComponent(normalizedTransactionId)}`;
+        return appendCacheBusterToUrl(
+            `${CRM_APP_BASE_URL}/oportunidad/ver?data=${encodeURIComponent(normalizedLeadId)}&data2=${encodeURIComponent(normalizedTransactionId)}`
+        );
     }
 
     if (normalizedTransactionType === "estimate" && normalizedLeadId && normalizedTransactionId) {
-        return `${CRM_APP_BASE_URL}/estimaciones/view?data=${encodeURIComponent(normalizedLeadId)}&data2=${encodeURIComponent(normalizedTransactionId)}`;
+        return appendCacheBusterToUrl(
+            `${CRM_APP_BASE_URL}/estimaciones/view?data=${encodeURIComponent(normalizedLeadId)}&data2=${encodeURIComponent(normalizedTransactionId)}`
+        );
     }
 
     if (normalizedTransactionType === "event" && normalizedLeadId && normalizedTransactionId) {
-        return `${CRM_APP_BASE_URL}/events/actions?idCalendar=${encodeURIComponent(normalizedTransactionId)}&idLead=${encodeURIComponent(normalizedLeadId)}&idDate=0`;
+        return appendCacheBusterToUrl(
+            `${CRM_APP_BASE_URL}/events/actions?idCalendar=${encodeURIComponent(normalizedTransactionId)}&idLead=${encodeURIComponent(normalizedLeadId)}&idDate=0`
+        );
     }
 
-    return typeof crm_url === "string" ? crm_url.trim() : null;
+    return appendCacheBusterToUrl(typeof crm_url === "string" ? crm_url.trim() : null);
 };
 
 /**
