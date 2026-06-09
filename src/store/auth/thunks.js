@@ -3,7 +3,7 @@ import { errorMessages } from "../../api";
 
 import { exitLogout, recuperar_Contraseña as recuperarContrasenaApi, singAuth, validarSiexisteUsuario } from "./Api_Auth_Providers";
 import { setCheckingCredentials, setLoadingCredentials, setUserAuthentication, setUserLogout } from "./authSlice";
-import { clearAuthSession, persistAuthSession } from "./authSessionStorage";
+import { clearAuthRedirectPath, clearAuthSession, persistAuthSession } from "./authSessionStorage";
 import { logoutMicrosoftSession } from "./authThunksMicrosoft";
 
 
@@ -59,6 +59,7 @@ export const startLogout = () => {
         await exitLogout({ token_admin });
         await logoutMicrosoftSession();
         clearAuthSession();
+        clearAuthRedirectPath();
 
         dispatch(setUserLogout({ errorMessage: errorMessages[4] }));
     };

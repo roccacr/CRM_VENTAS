@@ -1,8 +1,9 @@
-import { Navigate, Route, Routes } from "react-router-dom";
+import { Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { RouterApp } from "../app/routers/RouterApp";
 import { AuthRouter } from "../auth/routers";
 import { CheckingAuth } from "../ui";
 import { useCheckAuth } from "../hook";
+import { consumeAuthRedirectPath, persistAuthRedirectPath } from "../store/auth/authSessionStorage";
 
 /**
  * AppRouter - Enrutador principal de la aplicación
@@ -14,12 +15,23 @@ import { useCheckAuth } from "../hook";
  * - "not-authenticated": Usuario no autenticado (muestra AuthRouter con rutas de login)
  */
 export const AppRouter = () => {
-
+  const location = useLocation();
   const status = useCheckAuth();
+  const currentPath = `${location.pathname}${location.search}${location.hash}`;
+  const isAuthRoute = location.pathname.startsWith("/auth");
 
   // Mientras se valida la autenticación, mostrar componente de carga
   if (status === "checking") {
       return <CheckingAuth />;
+  }
+
+  if (status === "authenticated" && isAuthRoute) {
+      const redirectPath = consumeAuthRedirectPath() || "/";
+      return <Navigate to={redirectPath} replace />;
+  }
+
+  if (status !== "authenticated" && !isAuthRoute) {
+      persistAuthRedirectPath(currentPath);
   }
 
   return (
