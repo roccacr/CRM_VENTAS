@@ -42,7 +42,7 @@ jobs:
           VITE_APP_VERSION: "V1.0.14-${{ env.BUILD_TIME }}"
           VITE_TOKEN_ACCESS: ${{ secrets.VITE_TOKEN_ACCESS }}
 
-      - name: Clean deployed frontend files on server
+      - name: Clean dist directory on server
         uses: appleboy/ssh-action@master
         with:
           host: ${{ secrets.SERVER_IP }}
@@ -50,17 +50,9 @@ jobs:
           key: ${{ secrets.SCADMINAPIS }}
           port: 22
           script: |
-            echo "Limpiando artefactos frontend anteriores..."
+            echo "Limpiando directorio dist anterior..."
             rm -rf /var/www/produccion/dist
-            rm -rf /var/www/produccion/assets
-            rm -f /var/www/produccion/.htaccess
-            rm -f /var/www/produccion/index.html
-            rm -f /var/www/produccion/avatar.webp
-            rm -f /var/www/produccion/notification.mp3
-            rm -f /var/www/produccion/opt.png
-            rm -f /var/www/produccion/style.css
-            rm -f /var/www/produccion/vite.svg
-            echo "Artefactos frontend limpiados"
+            echo "Directorio limpiado exitosamente"
 
       - name: Deploy to Server
         uses: appleboy/scp-action@master
@@ -69,9 +61,8 @@ jobs:
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SCADMINAPIS }}
           port: 22
-          source: "dist"
+          source: "dist/*"
           target: "/var/www/produccion"
-          strip_components: 1
 
       - name: Configure Apache and reload
         uses: appleboy/ssh-action@master
@@ -82,10 +73,10 @@ jobs:
           port: 22
           script: |
             echo "Verificando archivo .htaccess..."
-            if [ -f /var/www/produccion/.htaccess ]; then
+            if [ -f /var/www/produccion/dist/.htaccess ]; then
               echo ".htaccess encontrado correctamente"
             else
-              echo "ADVERTENCIA: .htaccess no encontrado en /var/www/produccion/"
+              echo "ADVERTENCIA: .htaccess no encontrado en /var/www/produccion/dist/"
             fi
             echo "Recargando configuración de Apache..."
             sudo systemctl reload apache2
