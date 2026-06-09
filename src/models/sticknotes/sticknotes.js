@@ -18,7 +18,43 @@ const emailTransporter = nodemailer.createTransport({
 
 // Creamos un objeto que contendrá las funciones relacionadas con Sticky Notes
 const sticknotes = {};
+const CRM_APP_BASE_URL = "https://crm.roccacr.com";
 const NETSUITE_ORDER_SALE_URL = "https://4552704.app.netsuite.com/app/accounting/transactions/salesord.nl";
+
+
+const buildStickyNoteCrmLink = ({ transaction_type, transaction_id, idinterno_lead, crm_url }) => {
+    const normalizedTransactionType = typeof transaction_type === "string"
+        ? transaction_type.trim().toLowerCase()
+        : "";
+    const normalizedLeadId = idinterno_lead !== null && idinterno_lead !== undefined && String(idinterno_lead).trim() !== ""
+        ? String(idinterno_lead).trim()
+        : null;
+    const normalizedTransactionId = transaction_id !== null && transaction_id !== undefined && String(transaction_id).trim() !== ""
+        ? String(transaction_id).trim()
+        : null;
+
+    if (normalizedTransactionType === "lead" && normalizedLeadId) {
+        return `${CRM_APP_BASE_URL}/leads/perfil?data=${encodeURIComponent(normalizedLeadId)}`;
+    }
+
+    if ((normalizedTransactionType === "ordersale" || normalizedTransactionType === "salesorder") && normalizedLeadId && normalizedTransactionId) {
+        return `${CRM_APP_BASE_URL}/orden/view?data=${encodeURIComponent(normalizedLeadId)}&data2=${encodeURIComponent(normalizedTransactionId)}`;
+    }
+
+    if (normalizedTransactionType === "opportunity" && normalizedLeadId && normalizedTransactionId) {
+        return `${CRM_APP_BASE_URL}/oportunidad/ver?data=${encodeURIComponent(normalizedLeadId)}&data2=${encodeURIComponent(normalizedTransactionId)}`;
+    }
+
+    if (normalizedTransactionType === "estimate" && normalizedLeadId && normalizedTransactionId) {
+        return `${CRM_APP_BASE_URL}/estimaciones/view?data=${encodeURIComponent(normalizedLeadId)}&data2=${encodeURIComponent(normalizedTransactionId)}`;
+    }
+
+    if (normalizedTransactionType === "event" && normalizedLeadId && normalizedTransactionId) {
+        return `${CRM_APP_BASE_URL}/events/actions?idCalendar=${encodeURIComponent(normalizedTransactionId)}&idLead=${encodeURIComponent(normalizedLeadId)}&idDate=0`;
+    }
+
+    return typeof crm_url === "string" ? crm_url.trim() : null;
+};
 
 /**
  * Obtiene todos los sticky notes para una transacción específica
@@ -259,6 +295,7 @@ sticknotes.crearSticNote = async ({
                     creador_nombre: creador.name_admin || 'Sistema',
                     creador_email: creador.email_admin || null,
                     id_sticknote: id_sticknote_creado,
+                    idinterno_lead: leadId,
                     transaction_type: transactionType,
                     transaction_id: transactionId,
                     crm_url,
@@ -368,7 +405,7 @@ sticknotes.editarSticNote = async ({
         
         // Obtener datos completos de la nota y del creador para enviar correo
         executeQuery(
-            `SELECT sn.titulo, sn.mensaje, sn.color_hex, sn.prioridad, sn.id_usuario_creador,
+            `SELECT sn.idinterno_lead, sn.titulo, sn.mensaje, sn.color_hex, sn.prioridad, sn.id_usuario_creador,
                     sn.email_usuario_asignado, sn.transaction_type, sn.transaction_id,
                     creador.name_admin, creador.email_admin
              FROM crm_stick_notes sn
@@ -401,6 +438,7 @@ sticknotes.editarSticNote = async ({
                         creador_nombre: note.name_admin || 'Sistema',
                         creador_email: note.email_admin || null,
                         id_sticknote: id_sticknote,
+                        idinterno_lead: note.idinterno_lead,
                         transaction_type: note.transaction_type,
                         transaction_id: note.transaction_id,
                         crm_url,
@@ -704,6 +742,7 @@ sticknotes.eliminarSticNote = async ({
  * @param {string} params.creador_nombre - Nombre del creador
  * @param {string} params.creador_email - Email del creador
  * @param {number} params.id_sticknote - ID de la nota
+ * @param {number} params.idinterno_lead - Lead relacionado
  * @param {string} params.transaction_type - Tipo de transacción (ej: ordersale)
  * @param {number} params.transaction_id - ID de la transacción
  * @param {Object} params.database - Conexión a la base de datos
@@ -717,6 +756,7 @@ const enviarCorreoStickyNote = async ({
     creador_nombre,
     creador_email,
     id_sticknote,
+    idinterno_lead,
     transaction_type,
     transaction_id,
     crm_url,
@@ -771,12 +811,15 @@ const enviarCorreoStickyNote = async ({
         const creadorNombreEscapado = escapeHtml(creador_nombre || 'Sistema');
         const creadorEmailEscapado = creador_email ? escapeHtml(creador_email) : '';
 
-        // Generar link de NetSuite según el tipo de transacción
-        const crmLink = typeof crm_url === "string" ? crm_url.trim() : "";
-        const actionLink = crmLink !== "" ? crmLink : null;
         const normalizedTransactionType = typeof transaction_type === "string"
             ? transaction_type.trim().toLowerCase()
             : "";
+        const actionLink = buildStickyNoteCrmLink({
+            transaction_type: normalizedTransactionType,
+            transaction_id,
+            idinterno_lead,
+            crm_url,
+        });
         const hasValidTransactionId = transaction_id !== null
             && transaction_id !== undefined
             && String(transaction_id).trim() !== "";
@@ -943,6 +986,7 @@ Este es un mensaje automático del sistema CRM Ventas Rocca.
                     if (id_sticknote === undefined || id_sticknote === null) {
                         console.error("❌ [enviarCorreoStickyNote] id_sticknote indefinido al actualizar notificado", {
                             id_sticknote,
+                            idinterno_lead,
                             transaction_type,
                             transaction_id,
                             crm_url,
