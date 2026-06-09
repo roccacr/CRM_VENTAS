@@ -10,47 +10,39 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1. Clonar el repositorio
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      # 2. Configurar Node.js
       - name: Set up Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: '18' # Versión LTS compatible con las últimas librerías
+          node-version: '18'
 
-      # 3. Instalar dependencias
       - name: Install dependencies
         run: |
-          npm i --legacy-peer-deps  # Usar legacy-peer-deps para resolver conflictos de dependencias
+          npm i --legacy-peer-deps
           npm install vite --save-dev --legacy-peer-deps
-          npm install vite-plugin-node-polyfills --save-dev --legacy-peer-deps  # Add missing plugin
+          npm install vite-plugin-node-polyfills --save-dev --legacy-peer-deps
 
-      # 4. Asegurar permisos de ejecución (opcional)
       - name: Grant execute permissions to vite
         run: chmod +x node_modules/.bin/vite
 
-      # 5. Limpiar compilaciones previas
       - name: Clean previous builds
         run: rm -rf dist
 
-      # 6. Generar versión con timestamp para cache busting
       - name: Generate version with timestamp
         run: |
           BUILD_TIME=$(date +%Y%m%d%H%M%S)
           echo "BUILD_TIME=$BUILD_TIME" >> $GITHUB_ENV
           echo "Build timestamp: $BUILD_TIME"
 
-      # 7. Construir el proyecto
       - name: Build
         run: npm run build
         env:
           VITE_APP_VERSION: "V1.0.14-${{ env.BUILD_TIME }}"
           VITE_TOKEN_ACCESS: ${{ secrets.VITE_TOKEN_ACCESS }}
 
-      # 8. Limpiar directorio dist en el servidor (CRÍTICO para evitar archivos antiguos)
-      - name: Clean dist directory on server
+      - name: Clean deployed frontend files on server
         uses: appleboy/ssh-action@master
         with:
           host: ${{ secrets.SERVER_IP }}
@@ -58,22 +50,29 @@ jobs:
           key: ${{ secrets.SCADMINAPIS }}
           port: 22
           script: |
-            echo "Limpiando directorio dist anterior..."
+            echo "Limpiando artefactos frontend anteriores..."
             rm -rf /var/www/produccion/dist
-            echo "Directorio limpiado exitosamente"
+            rm -rf /var/www/produccion/assets
+            rm -f /var/www/produccion/.htaccess
+            rm -f /var/www/produccion/index.html
+            rm -f /var/www/produccion/avatar.webp
+            rm -f /var/www/produccion/notification.mp3
+            rm -f /var/www/produccion/opt.png
+            rm -f /var/www/produccion/style.css
+            rm -f /var/www/produccion/vite.svg
+            echo "Artefactos frontend limpiados"
 
-      # 9. Desplegar al servidor
       - name: Deploy to Server
         uses: appleboy/scp-action@master
         with:
-          host: ${{ secrets.SERVER_IP }}  # Dirección del servidor
-          username: ${{ secrets.SERVER_USER }}  # Usuario SSH
-          key: ${{ secrets.SCADMINAPIS }}  # Llave privada para autenticación
-          port: 22  # Puerto SSH
-          source: "dist/*"  # Archivos compilados que serán enviados
-          target: "/var/www/produccion"  # Ruta de destino en el servidor
+          host: ${{ secrets.SERVER_IP }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SCADMINAPIS }}
+          port: 22
+          source: "dist"
+          target: "/var/www/produccion"
+          strip_components: 1
 
-      # 10. Verificar que el .htaccess esté en su lugar y recargar Apache
       - name: Configure Apache and reload
         uses: appleboy/ssh-action@master
         with:
@@ -83,10 +82,10 @@ jobs:
           port: 22
           script: |
             echo "Verificando archivo .htaccess..."
-            if [ -f /var/www/produccion/dist/.htaccess ]; then
+            if [ -f /var/www/produccion/.htaccess ]; then
               echo ".htaccess encontrado correctamente"
             else
-              echo "ADVERTENCIA: .htaccess no encontrado en /var/www/produccion/dist/"
+              echo "ADVERTENCIA: .htaccess no encontrado en /var/www/produccion/"
             fi
             echo "Recargando configuración de Apache..."
             sudo systemctl reload apache2
