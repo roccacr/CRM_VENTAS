@@ -14,13 +14,8 @@ export const useCheckAuth = () => {
   const { status } = useSelector((state) => state.auth);
 
   useEffect(() => {
-    console.log("[useCheckAuth] dispatch restoreSession");
     dispatch(restoreSession());
   }, [dispatch]);
-
-  useEffect(() => {
-    console.log("[useCheckAuth] status changed", { status });
-  }, [status]);
 
   return status;
 };

@@ -20,31 +20,17 @@ export const AppRouter = () => {
   const currentPath = `${location.pathname}${location.search}${location.hash}`;
   const isAuthRoute = location.pathname.startsWith("/auth");
 
-  console.log("[auth-router] render", {
-      status,
-      currentPath,
-      isAuthRoute,
-  });
-
   // Mientras se valida la autenticación, mostrar componente de carga
   if (status === "checking") {
-      console.log("[auth-router] status checking", { currentPath });
       return <CheckingAuth />;
   }
 
   if (status === "authenticated" && isAuthRoute) {
       const redirectPath = consumeAuthRedirectPath() || "/";
-      console.log("[auth-router] authenticated on auth route, redirecting", {
-          currentPath,
-          redirectPath,
-      });
       return <Navigate to={redirectPath} replace />;
   }
 
   if (status !== "authenticated" && !isAuthRoute) {
-      console.log("[auth-router] unauthenticated protected route, saving redirect", {
-          currentPath,
-      });
       persistAuthRedirectPath(currentPath);
   }
 

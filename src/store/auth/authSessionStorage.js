@@ -29,17 +29,8 @@ export const persistAuthSession = (authPayload) => {
    const storage = getPreferredStorage();
 
    if (!storage || !authPayload?.token_admin) {
-      console.log("[auth-storage] skip persistAuthSession", {
-         hasStorage: !!storage,
-         hasToken: !!authPayload?.token_admin,
-      });
       return;
    }
-
-   console.log("[auth-storage] persistAuthSession", {
-      email_admin: authPayload?.email_admin,
-      status_admin: authPayload?.status_admin,
-   });
    storage.setItem(AUTH_SESSION_KEY, JSON.stringify(authPayload));
 };
 
@@ -54,21 +45,13 @@ export const readAuthSession = () => {
    const rawSession = storage?.getItem(AUTH_SESSION_KEY) || legacyStorage?.getItem(AUTH_SESSION_KEY);
 
    if (!rawSession) {
-      console.log("[auth-storage] readAuthSession empty");
       return null;
    }
 
    try {
       const parsedSession = JSON.parse(rawSession);
 
-      console.log("[auth-storage] readAuthSession hit", {
-         email_admin: parsedSession?.email_admin,
-         hasLocal: !!storage?.getItem(AUTH_SESSION_KEY),
-         hasLegacy: !!legacyStorage?.getItem(AUTH_SESSION_KEY),
-      });
-
       if (storage && legacyStorage?.getItem(AUTH_SESSION_KEY)) {
-         console.log("[auth-storage] migrating legacy sessionStorage -> localStorage");
          storage.setItem(AUTH_SESSION_KEY, rawSession);
          legacyStorage.removeItem(AUTH_SESSION_KEY);
       }
@@ -87,7 +70,6 @@ export const readAuthSession = () => {
  * @returns {void}
  */
 export const clearAuthSession = () => {
-   console.log("[auth-storage] clearAuthSession");
    getPreferredStorage()?.removeItem(AUTH_SESSION_KEY);
    getLegacyStorage()?.removeItem(AUTH_SESSION_KEY);
 };
@@ -102,14 +84,9 @@ export const persistAuthRedirectPath = (redirectPath) => {
    const storage = getPreferredStorage();
 
    if (!storage || !redirectPath || redirectPath.startsWith("/auth")) {
-      console.log("[auth-storage] skip persistAuthRedirectPath", {
-         hasStorage: !!storage,
-         redirectPath,
-      });
       return;
    }
 
-    console.log("[auth-storage] persistAuthRedirectPath", { redirectPath });
    storage.setItem(AUTH_REDIRECT_KEY, redirectPath);
 };
 
@@ -122,18 +99,15 @@ export const consumeAuthRedirectPath = () => {
    const storage = getPreferredStorage();
 
    if (!storage) {
-      console.log("[auth-storage] consumeAuthRedirectPath no storage");
       return null;
    }
 
    const redirectPath = storage.getItem(AUTH_REDIRECT_KEY);
 
    if (!redirectPath) {
-      console.log("[auth-storage] consumeAuthRedirectPath empty");
       return null;
    }
 
-   console.log("[auth-storage] consumeAuthRedirectPath", { redirectPath });
    storage.removeItem(AUTH_REDIRECT_KEY);
    return redirectPath;
 };
