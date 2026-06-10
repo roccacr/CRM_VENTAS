@@ -195,6 +195,7 @@ module.exports = function (app) {
                 { path: "/calendars/update_event_MoveDate", method: "update_event_MoveDate" }, // Ruta para cambiar la fecha de un evento
                 { path: "/calendars/update_Status_Event", method: "update_Status_Event" }, // Ruta para actualizar el estado de un evento
                 { path: "/calendars/getAll_ListEvent", method: "getAll_ListEvent" }, // Ruta para obtener la lista completa de eventos
+                { path: "/calendars/getPendingActionCalendarEvents", method: "getPendingActionCalendarEvents" }, // Ruta para obtener eventos pendientes con datos basicos de lead y admin
             ],
         },
         {

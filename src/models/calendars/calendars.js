@@ -1,4 +1,5 @@
 const { executeStoredProcedure, executeQuery } = require("../conectionPool/conectionPool");
+const outlookEvent = require("./outlookEvent");
 const calendars = {}; // Objeto para agrupar todas las funciones relacionadas con 'calendars'.
 
 /**
@@ -224,5 +225,15 @@ calendars.cancelOverduePendingEvents = async (dataParams) => {
 
     return executeQuery(query, [], dataParams.database);
 };
+
+/**
+ * Obtiene eventos activos con accion `Pendiente` y sus relaciones basicas de lead y admin.
+ *
+ * @param {Object} dataParams - Parametros de la ejecucion.
+ * @param {string} dataParams.database - Base de datos objetivo.
+ * @returns {Promise<Object>} Resultado de la consulta.
+ */
+calendars.getPendingActionCalendarEvents = (dataParams) =>
+    outlookEvent.getPendingActionCalendarEvents(dataParams);
 
 module.exports = calendars; // Exporta el objeto 'calendars' que contiene todas las funciones relacionadas con eventos del calendario.
