@@ -1,5 +1,6 @@
 // Importa las funciones comunes y necesarias para las solicitudes API desde la ruta especificada
 import { commonRequestData, fetchData } from "../../api";
+import { readAuthSession } from "../auth/authSessionStorage";
 
 /**
  * Función para obtener todos los calendarios nuevos.
@@ -226,6 +227,30 @@ export const getAll_ListEvent = async ({ idnetsuite_admin, rol_admin, dateStart,
     // La URL "calendar/get_Calendars" apunta al endpoint que maneja esta petición en el servidor.
     // requestData contiene todos los parámetros necesarios para ejecutar la solicitud.
     return await fetchData("calendars/getAll_ListEvent", requestData); // Retorna la lista de nuevos calendarios desde la API.
+};
+
+/**
+ * Obtiene eventos pendientes del calendario Outlook desde el backend CRM.
+ *
+ * @param {object} params - Rango visible a consultar.
+ * @param {string} params.dateStart - Fecha inicio inclusiva en formato YYYY-MM-DD.
+ * @param {string} params.dateEnd - Fecha fin inclusiva en formato YYYY-MM-DD.
+ * @returns {Promise<object>} Respuesta del backend con la lista de eventos.
+ */
+export const getPendingActionCalendarEvents = async ({ dateStart, dateEnd }) => {
+    const storedSession = readAuthSession();
+    const requestData = {
+        ...commonRequestData,
+        dateStart,
+        dateEnd,
+        rol_admin: storedSession?.id_rol_admin ?? null,
+        idnetsuite_admin: storedSession?.idnetsuite_admin ?? null,
+        transaccion: storedSession?.token_admin
+            ? { token_admin: storedSession.token_admin }
+            : undefined,
+    };
+
+    return await fetchData("calendars/getPendingActionCalendarEvents", requestData);
 };
 
 
