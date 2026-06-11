@@ -1,4 +1,4 @@
-.outlook-calendar-page {
+﻿.outlook-calendar-page {
     --fc-border-color: #d9e1ea;
     --outlook-page: #f4f6f8;
     --outlook-surface: #ffffff;
@@ -337,6 +337,23 @@
     overflow-wrap: anywhere;
     text-align: left;
     white-space: normal;
+}
+
+.outlook-check-label-wrap {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+
+.outlook-check-subtitle {
+    color: #7b8794;
+    display: block;
+    font-size: 0.74rem;
+    font-weight: 500;
+    line-height: 1.2;
+    text-align: left;
 }
 
 .outlook-calendar-check.is-unselected .outlook-check-indicator {
@@ -917,6 +934,1151 @@
     padding: 0;
 }
 
+.outlook-create-modal {
+    border-radius: 12px !important;
+    max-width: 1320px !important;
+    width: min(1320px, calc(100vw - 32px)) !important;
+}
+
+.outlook-create-modal-content {
+    background: #f6f8fb;
+    padding: 0 !important;
+}
+
+.outlook-create-topbar,
+.outlook-create-window-actions,
+.outlook-create-toolbar,
+.outlook-create-toolbar-left,
+.outlook-create-grid,
+.outlook-create-field-row,
+.outlook-create-preview-header,
+.outlook-create-preview-nav,
+.outlook-create-preview-grid,
+.outlook-create-preview-hour,
+.outlook-create-preview-event {
+    align-items: center;
+    display: flex;
+}
+
+.outlook-create-topbar {
+    background: #f3f4f6;
+    border-bottom: 1px solid #dde4eb;
+    justify-content: space-between;
+    padding: 12px 18px;
+}
+
+.outlook-create-window-title {
+    color: #434f5c;
+    font-size: 0.95rem !important;
+}
+
+.outlook-create-window-actions {
+    gap: 10px;
+}
+
+.outlook-create-window-icon {
+    align-items: center;
+    background: transparent;
+    border: 0;
+    border-radius: 6px;
+    color: #5d6976;
+    display: inline-flex;
+    height: 32px;
+    justify-content: center;
+    width: 32px;
+}
+
+.outlook-create-toolbar {
+    background: #fff;
+    border-bottom: 1px solid #e1e7ee;
+    overflow-x: auto;
+    padding: 10px 14px;
+}
+
+.outlook-create-toolbar-left {
+    gap: 8px;
+    min-width: max-content;
+}
+
+.outlook-create-save,
+.outlook-create-toolbar-chip,
+.outlook-create-toolbar-ghost,
+.outlook-create-toolbar-addon,
+.outlook-create-preview-icon,
+.outlook-create-editor-tool {
+    align-items: center;
+    background: #fff;
+    border: 1px solid #d7dee6;
+    border-radius: 6px;
+    color: #3d4a57;
+    display: inline-flex;
+    font-size: 0.9rem;
+    gap: 8px;
+    height: 38px;
+    justify-content: center;
+    padding: 0 12px;
+}
+
+.outlook-create-save {
+    background: #0f6c8d;
+    border-color: #0f6c8d;
+    color: #fff;
+    font-weight: 700;
+}
+
+.outlook-create-save:disabled {
+    background: #c7d2db;
+    border-color: #c7d2db;
+    color: #fff;
+    cursor: not-allowed;
+}
+
+.outlook-create-submit-error {
+    color: #b42318;
+    display: block;
+    font-size: 0.84rem;
+    padding: 0 12px;
+}
+
+.outlook-create-toolbar-chip.is-active {
+    border-color: #8b96a3;
+    box-shadow: inset 0 0 0 1px #8b96a3;
+}
+
+.outlook-create-toolbar-ghost.is-icon-only,
+.outlook-create-preview-icon,
+.outlook-create-editor-tool {
+    min-width: 38px;
+    padding: 0;
+}
+
+.outlook-create-toolbar-addon {
+    border-color: transparent;
+    color: #41505e;
+}
+
+.outlook-create-toolbar-divider {
+    background: #d8dfe7;
+    display: inline-flex;
+    height: 24px;
+    width: 1px;
+}
+
+.outlook-create-grid {
+    align-items: stretch;
+    display: grid;
+    gap: 14px;
+    grid-template-columns: minmax(0, 1fr) 352px;
+    padding: 12px;
+}
+
+.outlook-create-form-shell,
+.outlook-create-preview-shell {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.outlook-create-form-card,
+.outlook-create-editor-card,
+.outlook-create-preview-shell {
+    background: #fff;
+    border: 1px solid #dfe6ed;
+    border-radius: 8px;
+}
+
+.outlook-create-form-card {
+    overflow: visible;
+    padding: 14px 14px 10px;
+    position: relative;
+}
+
+.outlook-create-field-row {
+    gap: 12px;
+    min-height: 52px;
+}
+
+.outlook-create-field-row + .outlook-create-field-row {
+    border-top: 1px solid #eef2f5;
+}
+
+.outlook-create-field-row.is-schedule-summary-row {
+    cursor: pointer;
+}
+
+.outlook-create-field-row.is-schedule-summary-row:hover {
+    background: #f8fbfd;
+}
+
+.outlook-create-scheduler-anchor {
+    position: relative;
+}
+
+.outlook-create-field-row.is-attendees-row {
+    align-items: flex-start;
+    padding-top: 10px;
+}
+
+.outlook-create-leading-dot {
+    background: #2f6f83;
+    border-radius: 999px;
+    display: inline-flex;
+    flex: 0 0 auto;
+    height: 14px;
+    width: 14px;
+}
+
+.outlook-create-calendar-select {
+    background: transparent;
+    border: 0;
+    color: #42505d;
+    display: inline-flex;
+    font-size: 0.98rem;
+    gap: 8px;
+    padding: 0;
+}
+
+.outlook-create-side-icon,
+.outlook-create-inline-icon,
+.outlook-create-inline-text {
+    align-items: center;
+    background: transparent;
+    border: 0;
+    color: #5d6976;
+    display: inline-flex;
+    flex: 0 0 auto;
+    gap: 8px;
+    justify-content: center;
+    padding: 0;
+}
+
+.outlook-create-side-icon {
+    height: 36px;
+    width: 36px;
+}
+
+.outlook-create-row-icon {
+    color: #586574;
+    font-size: 1.08rem;
+    width: 24px;
+}
+
+.outlook-create-line-field {
+    border-bottom: 1px solid #929fb0;
+    flex: 1;
+    min-height: 38px;
+}
+
+.outlook-create-title-input,
+.outlook-create-line-input {
+    background: transparent;
+    border: 0;
+    color: #3f4c59;
+    font-size: 1rem;
+    height: 38px;
+    outline: none;
+    width: 100%;
+}
+
+.outlook-create-title-input {
+    font-size: 1.15rem;
+}
+
+.outlook-create-title-input::placeholder,
+.outlook-create-line-input::placeholder {
+    color: #8a95a2;
+}
+
+.outlook-create-location-shell {
+    position: relative;
+}
+
+.outlook-create-location-field {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 4px 0;
+}
+
+.outlook-create-location-field .outlook-create-line-input {
+    flex: 1 1 160px;
+    min-width: 160px;
+}
+
+.outlook-create-room-tag {
+    align-items: center;
+    background: #fff;
+    border: 1px solid #d8dde6;
+    border-radius: 999px;
+    display: inline-flex;
+    gap: 8px;
+    margin: 2px 0;
+    max-width: 320px;
+    min-height: 38px;
+    padding: 4px 8px 4px 6px;
+}
+
+.outlook-create-room-tag-avatar {
+    align-items: center;
+    background: #2f6f83;
+    border-radius: 999px;
+    color: #fff;
+    display: inline-flex;
+    flex: 0 0 auto;
+    font-size: 0.8rem;
+    height: 30px;
+    justify-content: center;
+    width: 30px;
+}
+
+.outlook-create-room-tag-texts {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    min-width: 0;
+}
+
+.outlook-create-room-tag-name {
+    color: #334150;
+    font-size: 0.82rem;
+    font-weight: 600;
+    line-height: 1.1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.outlook-create-room-tag-status {
+    color: #2b8a3e;
+    font-size: 0.74rem;
+    font-weight: 600;
+    line-height: 1.1;
+}
+
+.outlook-create-room-tag-status.is-workingElsewhere {
+    color: #1c6b59;
+}
+
+.outlook-create-room-tag-status.is-tentative {
+    color: #9a6700;
+}
+
+.outlook-create-room-tag-status.is-busy,
+.outlook-create-room-tag-status.is-oof,
+.outlook-create-room-tag-status.is-unknown {
+    color: #b42318;
+}
+
+.outlook-create-room-tag-remove {
+    align-items: center;
+    background: transparent;
+    border: 0;
+    border-radius: 999px;
+    color: #637082;
+    display: inline-flex;
+    flex: 0 0 auto;
+    height: 24px;
+    justify-content: center;
+    width: 24px;
+}
+
+.outlook-create-room-tag-remove:hover {
+    background: #eef3f8;
+    color: #334150;
+}
+
+.outlook-create-room-dropdown {
+    background: #fff;
+    border: 1px solid #d8e0e7;
+    border-radius: 0 0 8px 8px;
+    box-shadow: 0 16px 36px rgba(15, 23, 42, 0.14);
+    left: 36px;
+    overflow: hidden;
+    position: absolute;
+    right: 0;
+    top: calc(100% - 1px);
+    z-index: 16;
+}
+
+.outlook-create-room-dropdown-title {
+    color: #586574;
+    font-size: 0.84rem;
+    font-weight: 700;
+    padding: 12px 16px 6px;
+}
+
+.outlook-create-room-feedback {
+    align-items: center;
+    color: #637082;
+    display: inline-flex;
+    font-size: 0.86rem;
+    gap: 8px;
+    min-height: 52px;
+    padding: 0 16px 12px;
+}
+
+.outlook-create-room-feedback.is-error {
+    color: #b42318;
+}
+
+.outlook-create-room-list {
+    display: flex;
+    flex-direction: column;
+}
+
+.outlook-create-room-option {
+    align-items: center;
+    background: #fff;
+    border: 0;
+    border-top: 1px solid #e7eef4;
+    display: flex;
+    gap: 12px;
+    min-height: 64px;
+    padding: 10px 16px;
+    text-align: left;
+    width: 100%;
+}
+
+.outlook-create-room-option:hover,
+.outlook-create-room-option.is-selected {
+    background: #eef8ff;
+}
+
+.outlook-create-room-option-avatar {
+    align-items: center;
+    background: #2f6f83;
+    border-radius: 999px;
+    color: #fff;
+    display: inline-flex;
+    flex: 0 0 auto;
+    height: 38px;
+    justify-content: center;
+    width: 38px;
+}
+
+.outlook-create-room-option-texts {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    gap: 3px;
+    min-width: 0;
+}
+
+.outlook-create-room-option-name {
+    color: #334150;
+    font-size: 0.92rem;
+    font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.outlook-create-room-option-meta {
+    color: #768394;
+    display: inline-flex;
+    flex-wrap: wrap;
+    font-size: 0.78rem;
+    gap: 4px;
+}
+
+.outlook-create-room-option-state {
+    color: #2b8a3e;
+    font-weight: 700;
+}
+
+.outlook-create-room-option-state.is-workingElsewhere {
+    color: #1c6b59;
+}
+
+.outlook-create-room-option-state.is-tentative {
+    color: #9a6700;
+}
+
+.outlook-create-room-option-state.is-busy,
+.outlook-create-room-option-state.is-oof,
+.outlook-create-room-option-state.is-unknown {
+    color: #b42318;
+}
+
+.outlook-create-room-more {
+    align-items: center;
+    background: #fff;
+    border: 0;
+    border-top: 1px solid #e7eef4;
+    color: #334150;
+    display: inline-flex;
+    font-size: 0.92rem;
+    gap: 8px;
+    min-height: 52px;
+    padding: 0 16px;
+    width: 100%;
+}
+
+.outlook-create-room-more:hover {
+    background: #f7fafc;
+}
+
+.outlook-create-attendees-field {
+    padding-bottom: 6px;
+    padding-top: 2px;
+}
+
+.outlook-create-attendee-popper {
+    z-index: 1600;
+}
+
+.outlook-create-attendee-paper {
+    border: 1px solid #d8e0e7;
+    border-radius: 0 0 8px 8px;
+    box-shadow: 0 16px 36px rgba(15, 23, 42, 0.14);
+    margin-top: 6px;
+    overflow: hidden;
+}
+
+.outlook-create-attendee-options-list {
+    list-style: none;
+    margin: 0;
+    padding: 6px 0 0;
+}
+
+.outlook-create-attendee-option-item {
+    border-bottom: 1px solid #e7eef4;
+    margin: 0 10px;
+    min-height: 56px;
+    padding: 10px 12px !important;
+}
+
+.outlook-create-attendee-option-item[aria-selected="true"],
+.outlook-create-attendee-option-item.Mui-focused,
+.outlook-create-attendee-option-item.Mui-focusVisible {
+    background: #bfe9fb !important;
+    box-shadow: inset 0 0 0 1px #122b40;
+}
+
+.outlook-create-attendee-option {
+    display: flex;
+    gap: 12px;
+    min-width: 0;
+}
+
+.outlook-create-attendee-option-avatar {
+    align-items: center;
+    background: #9ad8b3;
+    border-radius: 999px;
+    color: #1c4b2f;
+    display: inline-flex;
+    flex: 0 0 auto;
+    font-size: 0.9rem;
+    font-weight: 700;
+    height: 38px;
+    justify-content: center;
+    width: 38px;
+}
+
+.outlook-create-attendee-option-texts {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+
+.outlook-create-attendee-option-name,
+.outlook-create-attendee-tag-name {
+    color: #334150;
+    font-size: 0.88rem;
+    font-weight: 600;
+}
+
+.outlook-create-attendee-option-email,
+.outlook-create-attendee-tag-email {
+    color: #768394;
+    font-size: 0.76rem;
+}
+
+.outlook-create-attendee-tag {
+    align-items: center;
+    background: #ffffff;
+    border: 1px solid #d8dde6;
+    border-radius: 999px;
+    display: inline-flex;
+    flex-wrap: nowrap;
+    gap: 8px;
+    justify-content: flex-start;
+    margin: 2px 6px 2px 0;
+    max-width: min(100%, 320px);
+    min-height: 38px;
+    padding: 4px 8px 4px 6px;
+    vertical-align: top;
+}
+
+.outlook-create-attendee-tag.is-busy,
+.outlook-create-attendee-tag.is-oof,
+.outlook-create-attendee-tag.is-tentative,
+.outlook-create-attendee-tag.is-unknown {
+    border-color: #e6b8b6;
+}
+
+.outlook-create-attendee-tag-avatar {
+    align-items: center;
+    background: #a8ddaf;
+    border-radius: 999px;
+    color: #1c4b2f;
+    display: inline-flex;
+    flex: 0 0 auto;
+    font-size: 0.78rem;
+    font-weight: 700;
+    height: 30px;
+    justify-content: center;
+    width: 30px;
+}
+
+.outlook-create-attendee-tag-texts {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    gap: 1px;
+    justify-content: center;
+    min-width: 0;
+    overflow: hidden;
+}
+
+.outlook-create-attendee-tag-name {
+    display: block;
+    font-size: 0.82rem;
+    line-height: 1.1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.outlook-create-attendee-tag-status {
+    color: #2b8a3e;
+    display: block;
+    font-size: 0.74rem;
+    font-weight: 600;
+    line-height: 1.1;
+    margin-top: 1px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.outlook-create-attendee-tag-status.is-workingElsewhere {
+    color: #1c6b59;
+}
+
+.outlook-create-attendee-tag-status.is-tentative {
+    color: #9a6700;
+}
+
+.outlook-create-attendee-tag-status.is-busy,
+.outlook-create-attendee-tag-status.is-oof,
+.outlook-create-attendee-tag-status.is-unknown {
+    color: #b42318;
+}
+
+.outlook-create-attendee-tag-remove {
+    align-self: center;
+    align-items: center;
+    background: transparent;
+    border: 0;
+    border-radius: 999px;
+    color: #637082;
+    cursor: pointer;
+    display: inline-flex;
+    flex: 0 0 auto;
+    height: 24px;
+    justify-content: center;
+    padding: 0;
+    width: 24px;
+}
+
+.outlook-create-attendee-tag-remove:hover {
+    background: #eef3f8;
+    color: #334150;
+}
+
+.outlook-create-attendee-more {
+    align-items: center;
+    background: #fff;
+    border: 0;
+    color: #0f5ea6;
+    cursor: pointer;
+    display: inline-flex;
+    font-size: 0.92rem;
+    gap: 8px;
+    padding: 14px 18px 16px;
+    width: 100%;
+}
+
+.outlook-create-attendee-more:hover {
+    background: #f4f9fc;
+}
+
+.outlook-create-title-input.is-invalid {
+    color: #b42318;
+}
+
+.outlook-create-field-help {
+    color: #b42318;
+    display: block;
+    font-size: 0.76rem;
+    line-height: 1.2;
+    padding: 0 0 8px;
+}
+
+.outlook-create-line-value,
+.outlook-create-inline-text {
+    color: #44515d;
+    font-size: 0.98rem;
+}
+
+.outlook-create-field-row.is-switch-row {
+    min-height: 48px;
+}
+
+.outlook-create-switch {
+    align-items: center;
+    background: #6d7580;
+    border: 0;
+    border-radius: 999px;
+    display: inline-flex;
+    flex: 0 0 auto;
+    height: 22px;
+    justify-content: flex-start;
+    padding: 3px;
+    transition: background 0.18s ease;
+    width: 38px;
+}
+
+.outlook-create-switch.is-active {
+    background: #0f6c8d;
+}
+
+.outlook-create-switch-thumb {
+    background: #fff;
+    border-radius: 999px;
+    display: block;
+    height: 16px;
+    transition: transform 0.18s ease;
+    width: 16px;
+}
+
+.outlook-create-switch.is-active .outlook-create-switch-thumb {
+    transform: translateX(16px);
+}
+
+.outlook-create-switch-label {
+    color: #3f4d5a;
+    font-size: 0.98rem !important;
+}
+
+.outlook-create-scheduler-panel {
+    left: 22px;
+    position: absolute;
+    right: -2px;
+    top: calc(100% - 2px);
+    z-index: 12;
+}
+
+.outlook-create-scheduler-panel-inner {
+    background: #ffffff;
+    border: 1px solid #dfe6ed;
+    border-radius: 0 0 10px 10px;
+    box-shadow: 0 18px 38px rgba(15, 23, 42, 0.12);
+    display: grid;
+    gap: 18px;
+    padding: 14px 18px 16px;
+}
+
+.outlook-create-scheduler-fields {
+    display: grid;
+    gap: 16px;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.outlook-create-scheduler-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 0;
+}
+
+.outlook-create-scheduler-label {
+    color: #6a7580;
+    font-size: 0.84rem;
+    font-weight: 600;
+}
+
+.outlook-create-scheduler-input,
+.outlook-create-scheduler-select {
+    background: #fff;
+    border: 0;
+    border-bottom: 1px solid #b3bdc8;
+    color: #394652;
+    font-size: 1rem;
+    height: 38px;
+    outline: none;
+    width: 100%;
+}
+
+.outlook-create-scheduler-suggestions {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.outlook-create-scheduler-suggestions-header {
+    align-items: center;
+    color: #374450;
+    display: inline-flex;
+    font-size: 0.92rem;
+    font-weight: 700;
+    gap: 8px;
+}
+
+.outlook-create-scheduler-suggestion-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.outlook-create-scheduler-suggestion {
+    align-items: center;
+    background: #ffffff;
+    border: 1px solid #d8e0f5;
+    border-radius: 8px;
+    color: #334150;
+    display: flex;
+    justify-content: space-between;
+    min-height: 44px;
+    padding: 0 12px;
+    text-align: left;
+}
+
+.outlook-create-scheduler-suggestion:hover {
+    background: #f6f9ff;
+    border-color: #a9bfff;
+}
+
+.outlook-create-scheduler-suggestion.is-active {
+    background: #eef0ff;
+    border-color: #5f6fff;
+    box-shadow: inset 0 0 0 1px #5f6fff;
+}
+
+.outlook-create-scheduler-suggestion-label {
+    font-size: 0.9rem;
+}
+
+.outlook-create-scheduler-suggestion-meta {
+    align-items: center;
+    color: #2d6b3f;
+    display: inline-flex;
+    flex: 0 0 auto;
+    font-size: 0.86rem;
+    gap: 6px;
+}
+
+.outlook-create-scheduler-feedback {
+    color: #667380;
+    font-size: 0.84rem;
+}
+
+.outlook-create-scheduler-feedback.is-error {
+    color: #b42318;
+}
+
+.outlook-create-editor-card {
+    display: flex;
+    flex-direction: column;
+    min-height: 446px;
+    padding: 12px 12px 10px;
+}
+
+.outlook-create-editor-icon {
+    color: #596673;
+    font-size: 1rem;
+    margin-bottom: 10px;
+}
+
+.outlook-create-editor-surface {
+    background: #fff;
+    border: 1px solid #dfe5ec;
+    border-radius: 4px;
+    flex: 1;
+}
+
+.outlook-create-editor-textarea {
+    color: #3f4c59;
+    font-family: inherit;
+    font-size: 0.96rem;
+    line-height: 1.45;
+    min-height: 340px;
+    outline: none;
+    padding: 16px;
+    resize: none;
+}
+
+.outlook-create-editor-textarea::placeholder {
+    color: #8a95a2;
+}
+
+.outlook-create-editor-toolbar {
+    align-items: center;
+    background: #f5f7f9;
+    border: 1px solid #dfe5ec;
+    border-radius: 0 0 4px 4px;
+    border-top: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    min-height: 46px;
+    justify-content: flex-start;
+    padding: 8px;
+}
+
+.outlook-create-preview-shell {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.outlook-create-preview-header {
+    border-bottom: 1px solid #e3e9ef;
+    gap: 10px;
+    justify-content: space-between;
+    padding: 10px 12px;
+}
+
+.outlook-create-preview-nav {
+    gap: 4px;
+}
+
+.outlook-create-preview-title {
+    color: #485560;
+    flex: 1;
+    font-size: 0.98rem !important;
+    font-weight: 700 !important;
+    text-align: center;
+}
+
+.outlook-create-preview-scroll {
+    flex: 1 1 auto;
+    max-height: 700px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    scrollbar-gutter: stable;
+}
+
+.outlook-create-preview-grid {
+    align-items: stretch;
+    display: grid;
+    grid-template-columns: 46px 1fr;
+    min-height: 1464px;
+    position: relative;
+}
+
+.outlook-create-preview-hours {
+    border-right: 1px solid #e3e9ef;
+}
+
+.outlook-create-preview-hour {
+    border-bottom: 1px solid #edf1f5;
+    color: #73808c;
+    font-size: 0.84rem;
+    height: 61px;
+    justify-content: center;
+}
+
+.outlook-create-preview-day {
+    position: relative;
+}
+
+.outlook-create-preview-slot {
+    border-bottom: 1px solid #edf1f5;
+    height: 61px;
+}
+
+.outlook-create-preview-busy {
+    align-items: flex-start;
+    background: rgba(224, 81, 71, 0.18);
+    border: 1px solid rgba(224, 81, 71, 0.22);
+    border-radius: 4px;
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    justify-content: center;
+    left: 18px;
+    overflow: hidden;
+    padding: 5px 7px;
+    pointer-events: none;
+    position: absolute;
+    right: 18px;
+    z-index: 1;
+}
+
+.outlook-create-preview-busy-time {
+    color: #7a2d26;
+    display: block;
+    font-size: 0.72rem;
+    font-weight: 700;
+    line-height: 1.1;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.outlook-create-preview-busy-label {
+    color: #8d3b33;
+    display: block;
+    font-size: 0.68rem;
+    line-height: 1.1;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.outlook-create-preview-event {
+    align-items: center;
+    background: #49c36c;
+    border-radius: 4px;
+    color: #0f2415;
+    display: flex;
+    gap: 8px;
+    justify-content: space-between;
+    left: 10px;
+    min-height: 34px;
+    padding: 0 10px;
+    position: absolute;
+    right: 10px;
+    top: calc(((100% / 11) * 2) + 20px);
+    z-index: 2;
+}
+
+.outlook-create-preview-event.is-conflict {
+    background: #f5c46b;
+    color: #573600;
+}
+
+.outlook-create-preview-event-label {
+    color: #0d2414;
+    flex: 0 0 auto;
+    font-size: 0.85rem;
+    font-weight: 700;
+    line-height: 1;
+    white-space: nowrap;
+}
+
+.outlook-create-preview-event.is-conflict .outlook-create-preview-event-label {
+    color: #573600;
+}
+
+.outlook-create-preview-event-meta {
+    flex: 1 1 auto;
+    font-size: 0.76rem;
+    font-weight: 600;
+    line-height: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-align: center;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.outlook-create-preview-event-handle {
+    background: #fff;
+    border: 2px solid #49c36c;
+    border-radius: 999px;
+    display: inline-flex;
+    height: 12px;
+    width: 12px;
+}
+
+.outlook-create-preview-event.is-conflict .outlook-create-preview-event-handle {
+    border-color: #f5c46b;
+}
+
+.outlook-create-preview-footer {
+    align-items: center;
+    border-top: 1px solid #e3e9ef;
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    min-height: 52px;
+    padding: 8px 12px 6px;
+}
+
+.outlook-create-preview-participant {
+    align-items: center;
+    background: #ffffff;
+    border: 1px solid #d8dde6;
+    border-radius: 999px;
+    display: inline-flex;
+    justify-content: center;
+    min-width: 34px;
+    padding: 4px;
+    position: relative;
+}
+
+.outlook-create-preview-participant-avatar {
+    align-items: center;
+    background: #dce8f6;
+    border-radius: 999px;
+    color: #334150;
+    display: inline-flex;
+    font-size: 0.82rem;
+    font-weight: 700;
+    height: 28px;
+    justify-content: center;
+    width: 28px;
+}
+
+.outlook-create-preview-participant.is-room .outlook-create-preview-participant-avatar {
+    background: #2f6f83;
+    color: #fff;
+}
+
+.outlook-create-preview-participant-state {
+    background: #2b8a3e;
+    border: 2px solid #fff;
+    border-radius: 999px;
+    bottom: 2px;
+    height: 11px;
+    position: absolute;
+    right: 2px;
+    width: 11px;
+}
+
+.outlook-create-preview-participant-state.is-workingElsewhere {
+    background: #1c6b59;
+}
+
+.outlook-create-preview-participant-state.is-tentative {
+    background: #d08700;
+}
+
+.outlook-create-preview-participant-state.is-busy,
+.outlook-create-preview-participant-state.is-oof,
+.outlook-create-preview-participant-state.is-unknown {
+    background: #c5342a;
+}
+
+.outlook-create-preview-feedback {
+    color: #667482;
+    display: block;
+    font-size: 0.78rem;
+    padding: 0 14px 12px;
+    text-align: center;
+}
+
+.outlook-create-preview-feedback.is-error {
+    color: #b42318;
+}
+
 .outlook-expanded-modal {
     border-radius: 12px !important;
     max-width: 1120px !important;
@@ -1121,6 +2283,23 @@
         grid-template-columns: 1fr;
     }
 
+    .outlook-create-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .outlook-create-preview-grid {
+        min-height: 520px;
+    }
+
+    .outlook-create-scheduler-fields {
+        grid-template-columns: 1fr;
+    }
+
+    .outlook-create-scheduler-panel {
+        left: 0;
+        right: 0;
+    }
+
     .outlook-calendar-frame .fc-daygrid-day {
         min-height: 104px;
     }
@@ -1134,3 +2313,4 @@
         display: none;
     }
 }
+

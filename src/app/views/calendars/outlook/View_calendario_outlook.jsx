@@ -1,4 +1,4 @@
-/**
+﻿/**
  * @file View_calendario_outlook.jsx
  * @description Vista principal del calendario estilo Outlook dentro del CRM.
  *              Fusiona eventos del backend CRM con eventos de Microsoft 365 (Graph API)
@@ -41,6 +41,9 @@ import { Link } from "react-router-dom";
 import {
     getPendingActionCalendarEvents,
 } from "../../../../store/calendar/Api_calendar_Providers";
+import { renderOutlookCalendarEventContent } from "./components/OutlookCalendarEventContent";
+import { OutlookCreateEventModal } from "./components/OutlookCreateEventModal";
+import { OutlookFilterMenuSection } from "./components/OutlookFilterMenuSection";
 
 // --- Estilos scoped de la vista (layout Outlook, eventos, sidebar) ---
 import "./View_calendario_outlook.css";
@@ -53,7 +56,7 @@ import "./View_calendario_outlook.css";
 const CRM_FILTER_OPTIONS = [
     { value: "categoria1", label: "Contactos" },
     { value: "categoria2", label: "Tareas" },
-    { value: "categoria3", label: "Reunion" },
+    { value: "categoria3", label: "Reunión" },
     { value: "categoria4", label: "Seguimientos" },
     { value: "categoria5", label: "Primeras Citas" },
 ];
@@ -72,7 +75,7 @@ const ORIGIN_FILTER_OPTIONS = [
 const VIEW_CONFIG = {
     day: {
         calendarView: "timeGridDay", // Una columna con franjas horarias
-        buttonLabel: "Dia",
+        buttonLabel: "Día",
         buttonIcon: "ti-layout-day",
         metaLabel: "Vista diaria",
     },
@@ -122,6 +125,81 @@ const DEFAULT_CRM_FILTERS = CRM_FILTER_OPTIONS.reduce((accumulator, option) => (
 const DEFAULT_ORIGIN_FILTERS = {
     crm: false,
     outlook: false,
+};
+
+const OUTLOOK_PEOPLE_SCOPE = "User.ReadBasic.All";
+const OUTLOOK_PLACE_SCOPE = "Place.Read.All";
+const OUTLOOK_SCHEDULE_SCOPE = "Calendars.Read";
+const OUTLOOK_CREATE_EVENT_SCOPE = "Calendars.ReadWrite";
+const PEOPLE_PAGE_SIZE = 25;
+const PEOPLE_SEARCH_MIN_LENGTH = 2;
+const ROOM_SUGGESTION_LIMIT = 6;
+const OUTLOOK_TIMEZONE = "Central America Standard Time";
+const SCHEDULE_INTERVAL_MINUTES = 30;
+const CREATE_EVENT_PREVIEW_START_HOUR = 0;
+const CREATE_EVENT_PREVIEW_END_HOUR = 24;
+const CREATE_EVENT_DEFAULT_START_HOUR = 9;
+const CREATE_EVENT_DEFAULT_START_MINUTE = 0;
+const CREATE_EVENT_DEFAULT_DURATION_MINUTES = 30;
+const CREATE_EVENT_SUGGESTION_LIMIT = 6;
+const SCHEDULE_STATUS_META = {
+    free: { label: "Disponible", isAvailable: true },
+    workingElsewhere: { label: "En otro lugar", isAvailable: true },
+    tentative: { label: "Tentativo", isAvailable: false },
+    busy: { label: "Ocupado", isAvailable: false },
+    oof: { label: "Fuera de oficina", isAvailable: false },
+    unknown: { label: "Desconocido", isAvailable: false },
+};
+
+const escapeODataValue = (value) => value.replace(/'/g, "''");
+
+const normalizeDirectoryUser = (userItem) => {
+    const primaryEmail = userItem.mail || userItem.userPrincipalName || "";
+    const displayName = userItem.displayName || primaryEmail || "Sin nombre";
+
+    return {
+        id: userItem.id || primaryEmail || displayName,
+        displayName,
+        email: primaryEmail,
+    };
+};
+
+const normalizeRoomPlace = (roomItem) => {
+    const displayName = roomItem.displayName || roomItem.name || roomItem.emailAddress || "Sala";
+    const email = roomItem.emailAddress || "";
+    const building = roomItem.building || "";
+    const floorLabel = roomItem.floorLabel || roomItem.floor || "";
+    const floorNumber = roomItem.floorNumber ?? null;
+    const capacity = Number.isFinite(Number(roomItem.capacity)) ? Number(roomItem.capacity) : null;
+
+    return {
+        id: roomItem.id || email || displayName,
+        displayName,
+        email,
+        building,
+        floorLabel,
+        floorNumber,
+        capacity,
+    };
+};
+
+const matchesRoomSearch = (roomItem, searchValue) => {
+    if (!searchValue) {
+        return true;
+    }
+
+    const normalizedSearch = searchValue.trim().toLowerCase();
+
+    if (!normalizedSearch) {
+        return true;
+    }
+
+    return [
+        roomItem.displayName,
+        roomItem.email,
+        roomItem.building,
+        roomItem.floorLabel,
+    ].some((value) => value?.toLowerCase().includes(normalizedSearch));
 };
 
 /**
@@ -363,10 +441,16 @@ const mapUnifiedEventsToCalendarEvents = (unifiedEvents) =>
             outlookEvent?.organizer?.emailAddress?.name,
             toDisplayName(crmEvent?.name_admin, "Sin organizador"),
         );
-        const adminFilterKey = crmEvent?.id_admin
-            ? `crm-admin-${crmEvent.id_admin}`
-            : organizerEmail
-                ? `outlook-admin-${organizerEmail.toLowerCase()}`
+        const adminEmail = (
+            crmEvent?.email_admin
+            || outlookEvent?.organizer?.emailAddress?.address
+            || organizerEmail
+            || ""
+        ).trim().toLowerCase();
+        const adminFilterKey = adminEmail
+            ? `admin-email-${adminEmail}`
+            : crmEvent?.id_admin
+                ? `crm-admin-${crmEvent.id_admin}`
                 : organizer
                     ? `outlook-admin-${organizer.toLowerCase()}`
                     : "";
@@ -381,7 +465,7 @@ const mapUnifiedEventsToCalendarEvents = (unifiedEvents) =>
         );
         const title = toDisplayName(
             outlookEvent?.subject,
-            toDisplayName(crmEvent?.nombre_calendar, "Evento sin titulo"),
+            toDisplayName(crmEvent?.nombre_calendar, "Evento sin título"),
         );
         const responseValue = crmEvent?.accion_calendar
             ? toDisplayName(crmEvent?.accion_calendar, "Sin respuesta")
@@ -413,16 +497,18 @@ const mapUnifiedEventsToCalendarEvents = (unifiedEvents) =>
                 outlook: outlookEvent,
                 adminFilterKey,
                 adminFilterLabel,
+                adminFilterEmail: adminEmail,
+                adminFilterSource: item.source,
                 location: toDisplayName(
                     outlookEvent?.location?.displayName,
-                    toDisplayName(crmEvent?.tipo_calendar, "Sin ubicacion"),
+                    toDisplayName(crmEvent?.tipo_calendar, "Sin ubicación"),
                 ),
                 attendee,
                 leadName: item.source === "outlook" ? "" : leadName, // Sin lead en eventos solo-Outlook
                 leadInternalId: crmEvent?.idinterno_lead || null,
                 eventType: toDisplayName(
                     crmEvent?.tipo_calendar,
-                    outlookEvent?.isOnlineMeeting ? "Reunion" : "Evento",
+                    outlookEvent?.isOnlineMeeting ? "Reunión" : "Evento",
                 ),
                 projectName: toDisplayName(crmEvent?.nombre_proyecto, ""),
                 response: responseValue,
@@ -434,7 +520,7 @@ const mapUnifiedEventsToCalendarEvents = (unifiedEvents) =>
                 organizer,
                 sentAt: outlookEvent?.lastModifiedDateTime
                     ? `Actualizado ${new Date(outlookEvent.lastModifiedDateTime).toLocaleString("es-CR")}`
-                    : "Sin marca de envio",
+                    : "Sin marca de envío",
                 teamsLink,
                 teamsChatLink,
                 meetingId: outlookEvent?.id || crmEvent?.outlook_event_id || null,
@@ -455,6 +541,402 @@ const getMonthTitle = (value) =>
         month: "long",
         year: "numeric",
     }).format(value).replace(/^\w/, (char) => char.toUpperCase()); // Capitalizar primera letra
+
+const CREATE_EVENT_PREVIEW_HOURS = Array.from(
+    { length: CREATE_EVENT_PREVIEW_END_HOUR - CREATE_EVENT_PREVIEW_START_HOUR },
+    (_, hourIndex) => CREATE_EVENT_PREVIEW_START_HOUR + hourIndex,
+);
+
+const formatCreateEventPreviewTitle = (value) =>
+    new Intl.DateTimeFormat("es-CR", {
+        weekday: "short",
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+    }).format(value).replace(/^\w/, (char) => char.toUpperCase());
+
+const formatDateInputValue = (value) => {
+    const yearValue = value.getFullYear();
+    const monthValue = `${value.getMonth() + 1}`.padStart(2, "0");
+    const dayValue = `${value.getDate()}`.padStart(2, "0");
+
+    return `${yearValue}-${monthValue}-${dayValue}`;
+};
+
+const parseTimeValueToParts = (value) => {
+    const [hourValue = "0", minuteValue = "0"] = `${value || ""}`.split(":");
+
+    return {
+        hour: Number.parseInt(hourValue, 10) || 0,
+        minute: Number.parseInt(minuteValue, 10) || 0,
+    };
+};
+
+const formatTimeValue = (hourValue, minuteValue) =>
+    `${`${hourValue}`.padStart(2, "0")}:${`${minuteValue}`.padStart(2, "0")}`;
+
+const addMinutesToTimeValue = (timeValue, minutesToAdd) => {
+    const { hour, minute } = parseTimeValueToParts(timeValue);
+    const normalizedDate = new Date(2026, 0, 1, hour, minute, 0, 0);
+    normalizedDate.setMinutes(normalizedDate.getMinutes() + minutesToAdd);
+
+    return formatTimeValue(normalizedDate.getHours(), normalizedDate.getMinutes());
+};
+
+const roundDateToNextScheduleSlot = (value) => {
+    const normalizedDate = new Date(value.getTime());
+    normalizedDate.setSeconds(0, 0);
+
+    const currentMinutes = normalizedDate.getMinutes();
+    const nextSlotMinutes = Math.ceil(currentMinutes / SCHEDULE_INTERVAL_MINUTES) * SCHEDULE_INTERVAL_MINUTES;
+
+    if (nextSlotMinutes >= 60) {
+        normalizedDate.setHours(normalizedDate.getHours() + 1, 0, 0, 0);
+        return normalizedDate;
+    }
+
+    normalizedDate.setMinutes(nextSlotMinutes, 0, 0);
+    return normalizedDate;
+};
+
+const getCreateEventMinimumDate = () => {
+    const minimumDate = startOfDay(new Date());
+    minimumDate.setDate(minimumDate.getDate() - 1);
+    return minimumDate;
+};
+
+const clampCreateEventDateValue = (dateValue) => {
+    const minimumDateValue = formatDateInputValue(getCreateEventMinimumDate());
+
+    if (!dateValue || dateValue < minimumDateValue) {
+        return minimumDateValue;
+    }
+
+    return dateValue;
+};
+
+const getDefaultCreateEventStartDate = () => {
+    const now = new Date();
+    const roundedNow = roundDateToNextScheduleSlot(now);
+    const todayDateValue = formatDateInputValue(now);
+
+    if (formatDateInputValue(roundedNow) !== todayDateValue) {
+        roundedNow.setFullYear(now.getFullYear(), now.getMonth(), now.getDate());
+        roundedNow.setHours(23, 30, 0, 0);
+    }
+
+    return roundedNow;
+};
+
+const buildDateFromInputParts = (dateValue, timeValue) => {
+    const [yearValue, monthValue, dayValue] = `${dateValue || ""}`.split("-").map((partValue) => Number.parseInt(partValue, 10) || 0);
+    const { hour, minute } = parseTimeValueToParts(timeValue);
+    const normalizedDate = new Date(
+        yearValue || 2026,
+        Math.max((monthValue || 1) - 1, 0),
+        dayValue || 1,
+        hour,
+        minute,
+        0,
+        0,
+    );
+
+    return normalizedDate;
+};
+
+const formatCreateEventDateTimeLabel = (rangeValue) => {
+    const dateLabel = new Intl.DateTimeFormat("es-CR", {
+        weekday: "short",
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+    }).format(rangeValue.start);
+
+    return `${dateLabel}, de ${formatHourMinuteLabel(
+        rangeValue.start.getHours(),
+        rangeValue.start.getMinutes(),
+    )} a ${formatHourMinuteLabel(
+        rangeValue.end.getHours(),
+        rangeValue.end.getMinutes(),
+    )}`;
+};
+
+const formatHourMinuteLabel = (hourValue, minuteValue) => {
+    const normalizedDate = new Date(2026, 0, 1, 0, 0, 0, 0);
+    normalizedDate.setHours(hourValue, minuteValue, 0, 0);
+
+    return new Intl.DateTimeFormat("es-CR", {
+        hour: "numeric",
+        minute: "2-digit",
+        hour12: false,
+    }).format(normalizedDate);
+};
+
+const buildCreateEventScheduleRange = (dateValue, startTimeValue, endTimeValue) => {
+    const startDate = buildDateFromInputParts(dateValue, startTimeValue);
+    const endDate = buildDateFromInputParts(dateValue, endTimeValue);
+
+    if (endDate <= startDate) {
+        endDate.setMinutes(endDate.getMinutes() + CREATE_EVENT_DEFAULT_DURATION_MINUTES);
+    }
+
+    return {
+        start: startDate,
+        end: endDate,
+    };
+};
+
+const buildMeetingDurationIso = (rangeValue) => {
+    const durationMinutes = Math.max(
+        SCHEDULE_INTERVAL_MINUTES,
+        Math.round((rangeValue.end.getTime() - rangeValue.start.getTime()) / 60000),
+    );
+
+    return `PT${durationMinutes}M`;
+};
+
+const buildSuggestionSearchWindow = (rangeValue) => {
+    const startDate = startOfDay(rangeValue.start);
+    startDate.setHours(CREATE_EVENT_PREVIEW_START_HOUR, 0, 0, 0);
+
+    const endDate = startOfDay(rangeValue.start);
+    endDate.setHours(CREATE_EVENT_PREVIEW_END_HOUR, 0, 0, 0);
+
+    return {
+        start: startDate,
+        end: endDate,
+    };
+};
+
+const buildEventTransactionId = () => {
+    if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+        return crypto.randomUUID();
+    }
+
+    return `crm-ventas-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+};
+
+const formatMeetingSuggestionLabel = (rangeValue) => {
+    const dateLabel = new Intl.DateTimeFormat("es-CR", {
+        weekday: "short",
+        day: "2-digit",
+        month: "2-digit",
+    }).format(rangeValue.start);
+    const durationMinutes = Math.max(0, Math.round((rangeValue.end.getTime() - rangeValue.start.getTime()) / 60000));
+
+    return `${dateLabel} ${formatHourMinuteLabel(rangeValue.start.getHours(), rangeValue.start.getMinutes())} - ${formatHourMinuteLabel(
+        rangeValue.end.getHours(),
+        rangeValue.end.getMinutes(),
+    )} (${durationMinutes} min)`;
+};
+
+const toGraphDateTime = (value) => {
+    const yearValue = value.getFullYear();
+    const monthValue = `${value.getMonth() + 1}`.padStart(2, "0");
+    const dayValue = `${value.getDate()}`.padStart(2, "0");
+    const hourValue = `${value.getHours()}`.padStart(2, "0");
+    const minuteValue = `${value.getMinutes()}`.padStart(2, "0");
+    const secondValue = `${value.getSeconds()}`.padStart(2, "0");
+
+    return `${yearValue}-${monthValue}-${dayValue}T${hourValue}:${minuteValue}:${secondValue}`;
+};
+
+const normalizeScheduleStatus = (statusValue) => {
+    if (!statusValue) {
+        return "unknown";
+    }
+
+    if (statusValue === "workingElsewhere") {
+        return "workingElsewhere";
+    }
+
+    if (statusValue === "tentative" || statusValue === "busy" || statusValue === "oof" || statusValue === "free") {
+        return statusValue;
+    }
+
+    return "unknown";
+};
+
+const intersectsScheduleRange = (rangeStart, rangeEnd, itemStart, itemEnd) =>
+    itemStart < rangeEnd && itemEnd > rangeStart;
+
+const getScheduleStatusPriority = (statusValue) => {
+    const priorities = {
+        free: 0,
+        workingElsewhere: 1,
+        tentative: 2,
+        busy: 3,
+        oof: 4,
+        unknown: 5,
+    };
+
+    return priorities[statusValue] ?? priorities.unknown;
+};
+
+const getParticipantAvailabilityStatus = (scheduleInfo, rangeValue) => {
+    if (!scheduleInfo || scheduleInfo.error) {
+        return "unknown";
+    }
+
+    const scheduleItems = Array.isArray(scheduleInfo.scheduleItems) ? scheduleInfo.scheduleItems : [];
+    const overlappingStatuses = scheduleItems
+        .filter((scheduleItem) => {
+            const itemStart = new Date(scheduleItem?.start?.dateTime || "");
+            const itemEnd = new Date(scheduleItem?.end?.dateTime || "");
+
+            if (Number.isNaN(itemStart.getTime()) || Number.isNaN(itemEnd.getTime())) {
+                return false;
+            }
+
+            return intersectsScheduleRange(rangeValue.start, rangeValue.end, itemStart, itemEnd);
+        })
+        .map((scheduleItem) => normalizeScheduleStatus(scheduleItem.status));
+
+    if (!overlappingStatuses.length) {
+        return "free";
+    }
+
+    return overlappingStatuses.sort((leftValue, rightValue) => (
+        getScheduleStatusPriority(rightValue) - getScheduleStatusPriority(leftValue)
+    ))[0];
+};
+
+const buildPreviewBusyBlocks = (scheduleCollection, rangeValue, focusEmail = "") => {
+    const previewDayStart = startOfDay(rangeValue.start);
+    previewDayStart.setHours(CREATE_EVENT_PREVIEW_START_HOUR, 0, 0, 0);
+
+    const previewDayEnd = startOfDay(rangeValue.start);
+    previewDayEnd.setHours(CREATE_EVENT_PREVIEW_END_HOUR, 0, 0, 0);
+
+    const normalizedFocusEmails = Array.isArray(focusEmail)
+        ? focusEmail
+            .map((emailValue) => emailValue?.trim().toLowerCase())
+            .filter(Boolean)
+        : [focusEmail.trim().toLowerCase()].filter(Boolean);
+
+    return scheduleCollection
+        .filter((scheduleInfo) => {
+            if (!normalizedFocusEmails.length) {
+                return true;
+            }
+
+            const scheduleEmail = (scheduleInfo?.requestedEmail || scheduleInfo?.scheduleId || "").toLowerCase();
+
+            return normalizedFocusEmails.includes(scheduleEmail);
+        })
+        .flatMap((scheduleInfo) => {
+            const scheduleItems = Array.isArray(scheduleInfo?.scheduleItems) ? scheduleInfo.scheduleItems : [];
+
+            return scheduleItems
+                .map((scheduleItem) => {
+                    const normalizedStatus = normalizeScheduleStatus(scheduleItem.status);
+
+                    if (SCHEDULE_STATUS_META[normalizedStatus]?.isAvailable) {
+                        return null;
+                    }
+
+                    const itemStart = new Date(scheduleItem?.start?.dateTime || "");
+                    const itemEnd = new Date(scheduleItem?.end?.dateTime || "");
+
+                    if (Number.isNaN(itemStart.getTime()) || Number.isNaN(itemEnd.getTime())) {
+                        return null;
+                    }
+
+                    const clampedStart = new Date(Math.max(itemStart.getTime(), previewDayStart.getTime()));
+                    const clampedEnd = new Date(Math.min(itemEnd.getTime(), previewDayEnd.getTime()));
+
+                    if (clampedEnd <= clampedStart) {
+                        return null;
+                    }
+
+                    const totalMinutes = (previewDayEnd.getTime() - previewDayStart.getTime()) / 60000;
+                    const startMinutes = (clampedStart.getTime() - previewDayStart.getTime()) / 60000;
+                    const durationMinutes = (clampedEnd.getTime() - clampedStart.getTime()) / 60000;
+                    const scheduleLocation = typeof scheduleItem?.location === "string"
+                        ? scheduleItem.location.trim()
+                        : scheduleItem?.location?.displayName?.trim() || "";
+                    const scheduleSubject = scheduleItem?.isPrivate
+                        ? "Evento privado"
+                        : (scheduleItem?.subject || "").trim();
+                    const previewLabel = scheduleSubject || scheduleLocation || (SCHEDULE_STATUS_META[normalizedStatus]?.label || "No disponible");
+                    const timeLabel = `${formatHourMinuteLabel(itemStart.getHours(), itemStart.getMinutes())} - ${formatHourMinuteLabel(itemEnd.getHours(), itemEnd.getMinutes())}`;
+
+                    return {
+                        id: `${scheduleInfo.scheduleId}-${scheduleItem.start?.dateTime}-${scheduleItem.end?.dateTime}-${normalizedStatus}`,
+                        label: SCHEDULE_STATUS_META[normalizedStatus]?.label || "No disponible",
+                        participant: scheduleInfo.scheduleId,
+                        previewLabel,
+                        timeLabel,
+                        status: normalizedStatus,
+                        topPercent: (startMinutes / totalMinutes) * 100,
+                        heightPercent: (durationMinutes / totalMinutes) * 100,
+                    };
+                })
+                .filter(Boolean);
+        });
+};
+
+const buildSuggestionItemFromRange = (rangeValue, participantStatuses = {}, suggestionReason = "") => {
+    const availableCount = Object.values(participantStatuses).filter(
+        (statusValue) => SCHEDULE_STATUS_META[statusValue]?.isAvailable,
+    ).length;
+
+    return {
+        id: `${toGraphDateTime(rangeValue.start)}-${toGraphDateTime(rangeValue.end)}`,
+        start: rangeValue.start,
+        end: rangeValue.end,
+        label: formatMeetingSuggestionLabel(rangeValue),
+        availableCount,
+        participantStatuses,
+        suggestionReason,
+    };
+};
+
+const buildLocalMeetingSuggestions = (scheduleCollection, baseRange, participantEmails) => {
+    const previewWindow = buildSuggestionSearchWindow(baseRange);
+    const suggestionItems = [];
+    const maxSuggestions = CREATE_EVENT_SUGGESTION_LIMIT;
+    const durationMinutes = Math.max(
+        SCHEDULE_INTERVAL_MINUTES,
+        Math.round((baseRange.end.getTime() - baseRange.start.getTime()) / 60000),
+    );
+
+    for (
+        let cursorDate = new Date(previewWindow.start.getTime());
+        cursorDate.getTime() + (durationMinutes * 60000) <= previewWindow.end.getTime() && suggestionItems.length < maxSuggestions;
+        cursorDate = new Date(cursorDate.getTime() + (SCHEDULE_INTERVAL_MINUTES * 60000))
+    ) {
+        const nextEndDate = new Date(cursorDate.getTime() + (durationMinutes * 60000));
+        const nextRange = { start: new Date(cursorDate.getTime()), end: nextEndDate };
+        const participantStatuses = Object.fromEntries(
+            participantEmails.map((participantEmail) => {
+                const scheduleInfo = scheduleCollection.find((item) =>
+                    (item?.requestedEmail || item?.scheduleId || "").toLowerCase() === participantEmail,
+                );
+
+                return [
+                    participantEmail,
+                    getParticipantAvailabilityStatus(scheduleInfo, nextRange),
+                ];
+            }),
+        );
+        const everyoneAvailable = Object.values(participantStatuses).every(
+            (statusValue) => SCHEDULE_STATUS_META[statusValue]?.isAvailable,
+        );
+
+        if (everyoneAvailable) {
+            suggestionItems.push(
+                buildSuggestionItemFromRange(
+                    nextRange,
+                    participantStatuses,
+                    "Sugerido porque todos los asistentes están disponibles.",
+                ),
+            );
+        }
+    }
+
+    return suggestionItems;
+};
 
 /**
  * Número de semana ISO 8601 para la columna de números del mini-calendario.
@@ -707,18 +1189,54 @@ const buildAdminFilterOptions = (events) => {
     events.forEach((eventItem) => {
         const adminKey = eventItem?.extendedProps?.adminFilterKey;
         const adminLabel = eventItem?.extendedProps?.adminFilterLabel;
+        const adminEmail = eventItem?.extendedProps?.adminFilterEmail || "";
+        const adminSource = eventItem?.extendedProps?.adminFilterSource || "";
 
-        if (!adminKey || !adminLabel || adminMap.has(adminKey)) {
+        if (!adminKey || !adminLabel) {
             return;
         }
 
-        adminMap.set(adminKey, {
-            value: adminKey,
-            label: adminLabel,
-        });
+        const currentAdmin = adminMap.get(adminKey);
+
+        if (!currentAdmin) {
+            adminMap.set(adminKey, {
+                value: adminKey,
+                label: adminLabel,
+                email: adminEmail,
+                sourceSet: new Set(adminSource ? [adminSource] : []),
+            });
+            return;
+        }
+
+        if (!currentAdmin.email && adminEmail) {
+            currentAdmin.email = adminEmail;
+        }
+
+        if (adminSource) {
+            currentAdmin.sourceSet.add(adminSource);
+        }
     });
 
-    return Array.from(adminMap.values()).sort((left, right) => left.label.localeCompare(right.label, "es"));
+    return Array.from(adminMap.values())
+        .map((adminItem) => {
+            const normalizedSources = Array.from(adminItem.sourceSet);
+            const subtitle = normalizedSources.includes("merged")
+                ? "CRM · Outlook"
+                : normalizedSources.includes("crm") && normalizedSources.includes("outlook")
+                    ? "CRM · Outlook"
+                    : normalizedSources.includes("crm")
+                        ? "CRM"
+                        : normalizedSources.includes("outlook")
+                            ? "Outlook"
+                            : "";
+
+            return {
+                value: adminItem.value,
+                label: adminItem.label,
+                subtitle,
+            };
+        })
+        .sort((left, right) => left.label.localeCompare(right.label, "es"));
 };
 
 const countActiveFilters = (crmFilters, originFilters, selectedAdmins, visibleCrmOptions) => {
@@ -730,55 +1248,6 @@ const countActiveFilters = (crmFilters, originFilters, selectedAdmins, visibleCr
     return disabledCrmFilterCount
         + Object.values(originFilters).filter(Boolean).length
         + Object.values(selectedAdmins).filter(Boolean).length;
-};
-
-const FilterToggleButton = ({ label, selected, onClick }) => (
-    <button
-        aria-pressed={selected}
-        className={`outlook-calendar-check ${selected ? "is-selected" : "is-unselected"}`}
-        onClick={onClick}
-        type="button"
-    >
-        <span className="outlook-check-indicator">
-            {selected && <span className="ti ti-check"></span>}
-        </span>
-        <span className="outlook-check-label">{label}</span>
-    </button>
-);
-
-const FilterMenuSection = ({ title, options, selectedMap, onToggle }) => {
-    if (!options.length) {
-        return null;
-    }
-
-    return (
-        <div className="outlook-filter-menu-section">
-            <h3>{title}</h3>
-            {options.map((option) => (
-                <FilterToggleButton
-                    key={option.value}
-                    label={option.label}
-                    onClick={() => onToggle(option.value)}
-                    selected={selectedMap[option.value] === true}
-                />
-            ))}
-        </div>
-    );
-};
-
-const renderCalendarEventContent = (eventInfo) => {
-    const eventColor = eventInfo.event.extendedProps.eventColor || OUTLOOK_DEFAULT_COLOR;
-
-    return (
-        <div
-            className={`outlook-event-card ${eventInfo.event.classNames.join(" ")}`}
-            style={{ "--outlook-event-accent": eventColor }}
-        >
-            <span className="outlook-event-stripe"></span>
-            <span className="outlook-event-time">{eventInfo.timeText}</span>
-            <span className="outlook-event-title">{eventInfo.event.title}</span>
-        </div>
-    );
 };
 
 /**
@@ -794,7 +1263,13 @@ const renderCalendarEventContent = (eventInfo) => {
  */
 export const View_calendario_outlook = () => {
     // --- Estado global de autenticación CRM (Redux) ---
-    const { idnetsuite_admin, microsoftUser, rol_admin } = useSelector((state) => state.auth);
+    const {
+        idnetsuite_admin,
+        microsoftUser,
+        rol_admin,
+        email_admin,
+        name_admin,
+    } = useSelector((state) => state.auth);
 
     // --- MSAL: cuenta Microsoft vinculada al usuario CRM ---
     const { accounts, inProgress, instance } = useMsal();
@@ -804,6 +1279,7 @@ export const View_calendario_outlook = () => {
 
     // Timeout para abrir modal tras cerrar popover (evita conflicto de foco MUI)
     const expandModalTimeoutRef = useRef(null);
+    const attendeeSearchTimeoutRef = useRef(null);
 
     // Modo de vista activo: day | workweek | week | month
     const [activeViewMode, setActiveViewMode] = useState("month");
@@ -834,6 +1310,44 @@ export const View_calendario_outlook = () => {
 
     // Control de apertura del Dialog expandido
     const [isExpandedModalOpen, setIsExpandedModalOpen] = useState(false);
+    const [isCreateEventModalOpen, setIsCreateEventModalOpen] = useState(false);
+    const [isCreateTeamsMeeting, setIsCreateTeamsMeeting] = useState(false);
+    const [isScheduleEditorOpen, setIsScheduleEditorOpen] = useState(false);
+    const [createEventTitle, setCreateEventTitle] = useState("");
+    const [createEventLocation, setCreateEventLocation] = useState("");
+    const [roomSearchText, setRoomSearchText] = useState("");
+    const [createEventDescription, setCreateEventDescription] = useState("");
+    const [createEventDateValue, setCreateEventDateValue] = useState(formatDateInputValue(calendarDate));
+    const [createEventStartTimeValue, setCreateEventStartTimeValue] = useState(
+        formatTimeValue(CREATE_EVENT_DEFAULT_START_HOUR, CREATE_EVENT_DEFAULT_START_MINUTE),
+    );
+    const [createEventEndTimeValue, setCreateEventEndTimeValue] = useState(
+        formatTimeValue(CREATE_EVENT_DEFAULT_START_HOUR, CREATE_EVENT_DEFAULT_START_MINUTE + CREATE_EVENT_DEFAULT_DURATION_MINUTES),
+    );
+    const [hasTouchedCreateEventTitle, setHasTouchedCreateEventTitle] = useState(false);
+    const [attendeeDirectoryOptions, setAttendeeDirectoryOptions] = useState([]);
+    const [selectedAttendees, setSelectedAttendees] = useState([]);
+    const [attendeeSearchText, setAttendeeSearchText] = useState("");
+    const [isLoadingAttendeeDirectory, setIsLoadingAttendeeDirectory] = useState(false);
+    const [attendeeDirectoryError, setAttendeeDirectoryError] = useState("");
+    const [roomDirectoryOptions, setRoomDirectoryOptions] = useState([]);
+    const [selectedRoomOption, setSelectedRoomOption] = useState(null);
+    const [isRoomSuggestionsOpen, setIsRoomSuggestionsOpen] = useState(false);
+    const [hasLoadedRoomDirectory, setHasLoadedRoomDirectory] = useState(false);
+    const [showAllRoomSuggestions, setShowAllRoomSuggestions] = useState(false);
+    const [isLoadingRoomDirectory, setIsLoadingRoomDirectory] = useState(false);
+    const [isLoadingRoomAvailability, setIsLoadingRoomAvailability] = useState(false);
+    const [roomDirectoryError, setRoomDirectoryError] = useState("");
+    const [roomAvailabilityByEmail, setRoomAvailabilityByEmail] = useState({});
+    const [scheduleAvailability, setScheduleAvailability] = useState([]);
+    const [isLoadingScheduleAvailability, setIsLoadingScheduleAvailability] = useState(false);
+    const [scheduleAvailabilityError, setScheduleAvailabilityError] = useState("");
+    const [meetingSuggestions, setMeetingSuggestions] = useState([]);
+    const [isLoadingMeetingSuggestions, setIsLoadingMeetingSuggestions] = useState(false);
+    const [meetingSuggestionsError, setMeetingSuggestionsError] = useState("");
+    const [isSavingCreateEvent, setIsSavingCreateEvent] = useState(false);
+    const [createEventSubmitError, setCreateEventSubmitError] = useState("");
+    const [eventsReloadToken, setEventsReloadToken] = useState(0);
 
     // Feedback visual "Copiado" al copiar enlace Teams
     const [copiedLinkEventId, setCopiedLinkEventId] = useState("");
@@ -889,6 +1403,778 @@ export const View_calendario_outlook = () => {
         () => countActiveFilters(crmFilters, originFilters, selectedAdmins, visibleCrmFilterOptions),
         [crmFilters, originFilters, selectedAdmins, visibleCrmFilterOptions],
     );
+    const activeMicrosoftAccount = useMemo(() => {
+        if (!accounts?.length) {
+            return null;
+        }
+
+        return accounts.find(
+            (account) => account.username?.toLowerCase() === microsoftUser?.email?.toLowerCase(),
+        ) || instance.getActiveAccount() || accounts[0];
+    }, [accounts, instance, microsoftUser?.email]);
+
+    const createEventCalendarLabel =
+        activeMicrosoftAccount?.username || microsoftUser?.email || email_admin || "sin-correo";
+    const createEventMinimumDateValue = useMemo(
+        () => formatDateInputValue(getCreateEventMinimumDate()),
+        [],
+    );
+    const createEventScheduleRange = useMemo(
+        () => buildCreateEventScheduleRange(
+            clampCreateEventDateValue(createEventDateValue),
+            createEventStartTimeValue,
+            createEventEndTimeValue,
+        ),
+        [createEventDateValue, createEventEndTimeValue, createEventStartTimeValue],
+    );
+    const createEventHeaderLabel = formatCreateEventPreviewTitle(createEventScheduleRange.start);
+    const createEventDateTimeLabel = formatCreateEventDateTimeLabel(createEventScheduleRange);
+    const createEventWeekLabel = `semana ${getIsoWeekNumber(createEventScheduleRange.start)}`;
+    const hasCreateEventTitle = createEventTitle.trim().length > 0;
+    const shouldOpenAttendeeSuggestions = attendeeSearchText.trim().length >= PEOPLE_SEARCH_MIN_LENGTH;
+    const createEventScheduleLabel = useMemo(
+        () => `${formatHourMinuteLabel(createEventScheduleRange.start.getHours(), createEventScheduleRange.start.getMinutes())} - ${formatHourMinuteLabel(
+            createEventScheduleRange.end.getHours(),
+            createEventScheduleRange.end.getMinutes(),
+        )}`,
+        [createEventScheduleRange.end, createEventScheduleRange.start],
+    );
+    const scheduleRequestWindow = useMemo(
+        () => buildSuggestionSearchWindow(createEventScheduleRange),
+        [createEventScheduleRange],
+    );
+    const roomSearchValue = roomSearchText.trim();
+    const matchingRoomOptions = useMemo(
+        () => roomDirectoryOptions.filter((roomItem) => matchesRoomSearch(roomItem, roomSearchValue)),
+        [roomDirectoryOptions, roomSearchValue],
+    );
+    const hasMoreRoomSuggestions = matchingRoomOptions.length > ROOM_SUGGESTION_LIMIT;
+    const visibleRoomOptions = useMemo(
+        () => (showAllRoomSuggestions ? matchingRoomOptions : matchingRoomOptions.slice(0, ROOM_SUGGESTION_LIMIT)),
+        [matchingRoomOptions, showAllRoomSuggestions],
+    );
+    const roomSuggestionEmails = useMemo(
+        () => visibleRoomOptions
+            .map((roomItem) => roomItem.email?.trim().toLowerCase())
+            .filter(Boolean),
+        [visibleRoomOptions],
+    );
+    const roomSuggestionOptions = useMemo(
+        () => visibleRoomOptions.map((roomItem) => {
+            const roomEmail = roomItem.email?.trim().toLowerCase() || "";
+            const availabilityStatus = roomAvailabilityByEmail[roomEmail] || "unknown";
+
+            return {
+                ...roomItem,
+                availabilityStatus,
+            };
+        }),
+        [roomAvailabilityByEmail, visibleRoomOptions],
+    );
+    const createEventTimeOptions = useMemo(
+        () => Array.from({ length: (24 * 60) / SCHEDULE_INTERVAL_MINUTES }, (_, index) => {
+            const totalMinutes = index * SCHEDULE_INTERVAL_MINUTES;
+            const hourValue = Math.floor(totalMinutes / 60);
+            const minuteValue = totalMinutes % 60;
+            const value = formatTimeValue(hourValue, minuteValue);
+
+            return {
+                value,
+                label: formatHourMinuteLabel(hourValue, minuteValue),
+            };
+        }),
+        [],
+    );
+    const createEventEndTimeOptions = useMemo(
+        () => {
+            const startDate = buildDateFromInputParts(createEventDateValue, createEventStartTimeValue);
+
+            return createEventTimeOptions.filter((option) => (
+                buildDateFromInputParts(createEventDateValue, option.value) > startDate
+            ));
+        },
+        [createEventDateValue, createEventStartTimeValue, createEventTimeOptions],
+    );
+    const scheduleParticipantEmails = useMemo(() => {
+        const participantEmailSet = new Set();
+        const ownerEmail = activeMicrosoftAccount?.username || microsoftUser?.email || email_admin || "";
+
+        if (ownerEmail) {
+            participantEmailSet.add(ownerEmail.toLowerCase());
+        }
+
+        selectedAttendees.forEach((attendeeItem) => {
+            const attendeeEmail = attendeeItem?.email?.trim().toLowerCase();
+
+            if (attendeeEmail) {
+                participantEmailSet.add(attendeeEmail);
+            }
+        });
+
+        const roomEmail = selectedRoomOption?.email?.trim().toLowerCase();
+
+        if (roomEmail) {
+            participantEmailSet.add(roomEmail);
+        }
+
+        return Array.from(participantEmailSet);
+    }, [activeMicrosoftAccount?.username, email_admin, microsoftUser?.email, selectedAttendees, selectedRoomOption]);
+    const scheduleAvailabilityByEmail = useMemo(
+        () => Object.fromEntries(
+            scheduleAvailability
+                .filter((scheduleInfo) => scheduleInfo?.requestedEmail || scheduleInfo?.scheduleId)
+                .map((scheduleInfo) => [
+                    (scheduleInfo.requestedEmail || scheduleInfo.scheduleId).toLowerCase(),
+                    scheduleInfo,
+                ]),
+        ),
+        [scheduleAvailability],
+    );
+    const attendeeAvailabilityStatuses = useMemo(
+        () => Object.fromEntries(
+            scheduleParticipantEmails.map((participantEmail) => [
+                participantEmail,
+                getParticipantAvailabilityStatus(scheduleAvailabilityByEmail[participantEmail], createEventScheduleRange),
+            ]),
+        ),
+        [createEventScheduleRange, scheduleAvailabilityByEmail, scheduleParticipantEmails],
+    );
+    const currentOwnerEmail = (activeMicrosoftAccount?.username || microsoftUser?.email || email_admin || "").toLowerCase();
+    const ownerAvailabilityStatus = attendeeAvailabilityStatuses[currentOwnerEmail] || "unknown";
+    const selectedRoomEmail = selectedRoomOption?.email?.trim().toLowerCase() || "";
+    const selectedRoomAvailabilityStatus = selectedRoomEmail
+        ? attendeeAvailabilityStatuses[selectedRoomEmail] || "unknown"
+        : "unknown";
+    const isRoomAvailable = !selectedRoomEmail || (SCHEDULE_STATUS_META[selectedRoomAvailabilityStatus]?.isAvailable ?? true);
+    const previewBusyBlocks = useMemo(
+        () => buildPreviewBusyBlocks(
+            scheduleAvailability,
+            createEventScheduleRange,
+            selectedRoomEmail ? [currentOwnerEmail, selectedRoomEmail] : currentOwnerEmail,
+        ),
+        [createEventScheduleRange, currentOwnerEmail, scheduleAvailability, selectedRoomEmail],
+    );
+    const createEventPreviewPosition = useMemo(() => {
+        const previewDayStart = startOfDay(createEventScheduleRange.start);
+        previewDayStart.setHours(CREATE_EVENT_PREVIEW_START_HOUR, 0, 0, 0);
+
+        const previewDayEnd = startOfDay(createEventScheduleRange.start);
+        previewDayEnd.setHours(CREATE_EVENT_PREVIEW_END_HOUR, 0, 0, 0);
+
+        const totalMinutes = (previewDayEnd.getTime() - previewDayStart.getTime()) / 60000;
+        const startMinutes = (createEventScheduleRange.start.getTime() - previewDayStart.getTime()) / 60000;
+        const durationMinutes = (createEventScheduleRange.end.getTime() - createEventScheduleRange.start.getTime()) / 60000;
+
+        return {
+            topPercent: (startMinutes / totalMinutes) * 100,
+            heightPercent: (durationMinutes / totalMinutes) * 100,
+        };
+    }, [createEventScheduleRange.end, createEventScheduleRange.start]);
+    const isOwnerAvailable = SCHEDULE_STATUS_META[ownerAvailabilityStatus]?.isAvailable ?? true;
+    const isPrimaryScheduleAvailable = isOwnerAvailable && isRoomAvailable;
+    const areAllParticipantsAvailable = useMemo(
+        () => scheduleParticipantEmails.every((participantEmail) => SCHEDULE_STATUS_META[attendeeAvailabilityStatuses[participantEmail]]?.isAvailable),
+        [attendeeAvailabilityStatuses, scheduleParticipantEmails],
+    );
+    const previewParticipants = useMemo(
+        () => scheduleParticipantEmails.map((participantEmail) => {
+            const selectedAttendee = selectedAttendees.find(
+                (attendeeItem) => attendeeItem?.email?.trim().toLowerCase() === participantEmail,
+            );
+
+            if (participantEmail === currentOwnerEmail) {
+                return {
+                    id: participantEmail,
+                    displayName: createEventCalendarLabel,
+                    email: participantEmail,
+                    status: attendeeAvailabilityStatuses[participantEmail] || "unknown",
+                    isOwner: true,
+                    type: "owner",
+                };
+            }
+
+            if (participantEmail === selectedRoomEmail) {
+                return {
+                    id: selectedRoomOption?.id || participantEmail,
+                    displayName: selectedRoomOption?.displayName || participantEmail,
+                    email: participantEmail,
+                    status: attendeeAvailabilityStatuses[participantEmail] || "unknown",
+                    isOwner: false,
+                    type: "room",
+                };
+            }
+
+            return {
+                id: selectedAttendee?.id || participantEmail,
+                displayName: selectedAttendee?.displayName || participantEmail,
+                email: participantEmail,
+                status: attendeeAvailabilityStatuses[participantEmail] || "unknown",
+                isOwner: false,
+                type: "attendee",
+            };
+        }),
+        [attendeeAvailabilityStatuses, createEventCalendarLabel, currentOwnerEmail, scheduleParticipantEmails, selectedAttendees, selectedRoomEmail, selectedRoomOption],
+    );
+    const loadAttendeeDirectory = async (searchValue = "") => {
+        const normalizedSearch = searchValue.trim();
+
+        if (normalizedSearch.length < PEOPLE_SEARCH_MIN_LENGTH) {
+            setIsLoadingAttendeeDirectory(false);
+            setAttendeeDirectoryError("");
+            setAttendeeDirectoryOptions([...selectedAttendees]);
+            return;
+        }
+
+        if (!activeMicrosoftAccount) {
+            setAttendeeDirectoryOptions([]);
+            setAttendeeDirectoryError("No hay cuenta Microsoft activa.");
+            return;
+        }
+
+        setIsLoadingAttendeeDirectory(true);
+        setAttendeeDirectoryError("");
+
+        try {
+            let tokenResponse;
+
+            try {
+                tokenResponse = await instance.acquireTokenSilent({
+                    scopes: [OUTLOOK_PEOPLE_SCOPE],
+                    account: activeMicrosoftAccount,
+                });
+            } catch (error) {
+                if (!(error instanceof InteractionRequiredAuthError)) {
+                    throw error;
+                }
+
+                tokenResponse = await instance.acquireTokenPopup({
+                    scopes: [OUTLOOK_PEOPLE_SCOPE],
+                    account: activeMicrosoftAccount,
+                });
+            }
+
+            const searchParams = new URLSearchParams();
+            searchParams.set("$select", "id,displayName,mail,userPrincipalName");
+            searchParams.set("$top", String(PEOPLE_PAGE_SIZE));
+            searchParams.set("$orderby", "displayName");
+            searchParams.set("$count", "true");
+
+            const escapedSearch = escapeODataValue(normalizedSearch);
+            searchParams.set(
+                "$search",
+                `"displayName:${escapedSearch}" OR "mail:${escapedSearch}" OR "userPrincipalName:${escapedSearch}"`,
+            );
+
+            const response = await fetch(
+                "https://graph.microsoft.com/v1.0/users?" + searchParams.toString(),
+                {
+                    headers: {
+                        Authorization: "Bearer " + tokenResponse.accessToken,
+                        "Content-Type": "application/json",
+                        ConsistencyLevel: "eventual",
+                    },
+                },
+            );
+
+            if (!response.ok) {
+                throw new Error("Graph /users respondió " + response.status);
+            }
+
+            const directoryData = await response.json();
+            const nextOptions = Array.isArray(directoryData?.value)
+                ? directoryData.value.map(normalizeDirectoryUser)
+                : [];
+
+            const mergedOptionsMap = new Map();
+
+            [...selectedAttendees, ...nextOptions].forEach((option) => {
+                mergedOptionsMap.set(option.id, option);
+            });
+
+            setAttendeeDirectoryOptions(Array.from(mergedOptionsMap.values()));
+        } catch (error) {
+            setAttendeeDirectoryOptions([...selectedAttendees]);
+            setAttendeeDirectoryError("No se pudieron cargar usuarios de Outlook.");
+        } finally {
+            setIsLoadingAttendeeDirectory(false);
+        }
+    };
+
+    const loadRoomDirectory = async () => {
+        if (!activeMicrosoftAccount) {
+            setRoomDirectoryOptions([]);
+            setRoomDirectoryError("No hay cuenta Microsoft activa.");
+            return;
+        }
+
+        setIsLoadingRoomDirectory(true);
+        setRoomDirectoryError("");
+
+        try {
+            let tokenResponse;
+
+            try {
+                tokenResponse = await instance.acquireTokenSilent({
+                    scopes: [OUTLOOK_PLACE_SCOPE],
+                    account: activeMicrosoftAccount,
+                });
+            } catch (error) {
+                if (!(error instanceof InteractionRequiredAuthError)) {
+                    throw error;
+                }
+
+                tokenResponse = await instance.acquireTokenPopup({
+                    scopes: [OUTLOOK_PLACE_SCOPE],
+                    account: activeMicrosoftAccount,
+                });
+            }
+
+            const searchParams = new URLSearchParams();
+            searchParams.set("$select", "id,displayName,emailAddress,capacity,building,floorLabel,floorNumber");
+            searchParams.set("$top", "100");
+
+            const response = await fetch(
+                "https://graph.microsoft.com/v1.0/places/microsoft.graph.room?" + searchParams.toString(),
+                {
+                    headers: {
+                        Authorization: "Bearer " + tokenResponse.accessToken,
+                        "Content-Type": "application/json",
+                    },
+                },
+            );
+
+            if (!response.ok) {
+                throw new Error("Graph /places respondió " + response.status);
+            }
+
+            const roomData = await response.json();
+            const nextOptions = Array.isArray(roomData?.value)
+                ? roomData.value
+                    .map(normalizeRoomPlace)
+                    .filter((roomItem) => roomItem.email)
+                    .sort((leftValue, rightValue) => leftValue.displayName.localeCompare(rightValue.displayName, "es"))
+                : [];
+
+            setRoomDirectoryOptions(nextOptions);
+            setHasLoadedRoomDirectory(true);
+        } catch (error) {
+            console.error("[outlook-calendar] no se pudieron cargar salas Outlook", error);
+            setRoomDirectoryOptions([]);
+            setRoomDirectoryError("No se pudieron cargar salas de Outlook.");
+        } finally {
+            setIsLoadingRoomDirectory(false);
+        }
+    };
+
+    const openRoomSuggestions = async () => {
+        setIsRoomSuggestionsOpen(true);
+
+        if (showAllRoomSuggestions) {
+            setShowAllRoomSuggestions(false);
+        }
+
+        if (hasLoadedRoomDirectory || isLoadingRoomDirectory) {
+            return;
+        }
+
+        await loadRoomDirectory();
+    };
+
+    const closeRoomSuggestions = () => {
+        setIsRoomSuggestionsOpen(false);
+        setShowAllRoomSuggestions(false);
+    };
+
+    const handleCreateEventLocationChange = (nextLocationValue) => {
+        setRoomSearchText(nextLocationValue);
+        setCreateEventLocation(nextLocationValue);
+        setIsRoomSuggestionsOpen(true);
+
+        if (showAllRoomSuggestions) {
+            setShowAllRoomSuggestions(false);
+        }
+
+        if (
+            selectedRoomOption
+            && nextLocationValue.trim().toLowerCase() !== selectedRoomOption.displayName.trim().toLowerCase()
+        ) {
+            setSelectedRoomOption(null);
+        }
+    };
+
+    const handleSelectRoomOption = (roomItem) => {
+        setSelectedRoomOption(roomItem);
+        setCreateEventLocation(roomItem.displayName);
+        setRoomSearchText("");
+        setIsRoomSuggestionsOpen(false);
+        setShowAllRoomSuggestions(false);
+    };
+
+    const clearSelectedRoomOption = () => {
+        setSelectedRoomOption(null);
+        setCreateEventLocation("");
+        setRoomSearchText("");
+        setRoomAvailabilityByEmail({});
+        setIsRoomSuggestionsOpen(false);
+    };
+
+    useEffect(() => {
+        if (!isCreateEventModalOpen) {
+            return undefined;
+        }
+
+        const normalizedSearch = attendeeSearchText.trim();
+
+        if (attendeeSearchTimeoutRef.current) {
+            clearTimeout(attendeeSearchTimeoutRef.current);
+        }
+
+        if (normalizedSearch.length < PEOPLE_SEARCH_MIN_LENGTH) {
+            setIsLoadingAttendeeDirectory(false);
+            setAttendeeDirectoryError("");
+            setAttendeeDirectoryOptions([...selectedAttendees]);
+            return undefined;
+        }
+
+        attendeeSearchTimeoutRef.current = setTimeout(() => {
+            loadAttendeeDirectory(normalizedSearch);
+        }, 500);
+
+        return () => {
+            if (attendeeSearchTimeoutRef.current) {
+                clearTimeout(attendeeSearchTimeoutRef.current);
+            }
+        };
+    }, [attendeeSearchText, isCreateEventModalOpen, activeMicrosoftAccount, selectedAttendees]);
+
+    useEffect(() => {
+        const loadRoomAvailability = async () => {
+            if (!isCreateEventModalOpen || !isRoomSuggestionsOpen) {
+                setRoomAvailabilityByEmail({});
+                setIsLoadingRoomAvailability(false);
+                return;
+            }
+
+            if (!activeMicrosoftAccount || !roomSuggestionEmails.length) {
+                setRoomAvailabilityByEmail({});
+                setIsLoadingRoomAvailability(false);
+                return;
+            }
+
+            setIsLoadingRoomAvailability(true);
+
+            try {
+                let tokenResponse;
+
+                try {
+                    tokenResponse = await instance.acquireTokenSilent({
+                        scopes: [OUTLOOK_SCHEDULE_SCOPE],
+                        account: activeMicrosoftAccount,
+                    });
+                } catch (error) {
+                    if (!(error instanceof InteractionRequiredAuthError)) {
+                        throw error;
+                    }
+
+                    tokenResponse = await instance.acquireTokenPopup({
+                        scopes: [OUTLOOK_SCHEDULE_SCOPE],
+                        account: activeMicrosoftAccount,
+                    });
+                }
+
+                const response = await fetch("https://graph.microsoft.com/v1.0/me/calendar/getSchedule", {
+                    method: "POST",
+                    headers: {
+                        Authorization: `Bearer ${tokenResponse.accessToken}`,
+                        "Content-Type": "application/json",
+                        Prefer: `outlook.timezone="${OUTLOOK_TIMEZONE}"`,
+                    },
+                    body: JSON.stringify({
+                        schedules: roomSuggestionEmails,
+                        startTime: {
+                            dateTime: toGraphDateTime(createEventScheduleRange.start),
+                            timeZone: OUTLOOK_TIMEZONE,
+                        },
+                        endTime: {
+                            dateTime: toGraphDateTime(createEventScheduleRange.end),
+                            timeZone: OUTLOOK_TIMEZONE,
+                        },
+                        availabilityViewInterval: SCHEDULE_INTERVAL_MINUTES,
+                    }),
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Graph getSchedule rooms HTTP ${response.status}`);
+                }
+
+                const scheduleResponse = await response.json();
+                const nextAvailability = Array.isArray(scheduleResponse?.value)
+                    ? scheduleResponse.value.reduce((accumulator, scheduleInfo, scheduleIndex) => {
+                        const requestedEmail = roomSuggestionEmails[scheduleIndex] || "";
+
+                        if (!requestedEmail) {
+                            return accumulator;
+                        }
+
+                        return {
+                            ...accumulator,
+                            [requestedEmail]: getParticipantAvailabilityStatus(scheduleInfo, createEventScheduleRange),
+                        };
+                    }, {})
+                    : {};
+
+                setRoomAvailabilityByEmail(nextAvailability);
+            } catch (error) {
+                console.error("[outlook-calendar] no se pudo cargar disponibilidad de salas", error);
+                setRoomAvailabilityByEmail({});
+            } finally {
+                setIsLoadingRoomAvailability(false);
+            }
+        };
+
+        loadRoomAvailability();
+    }, [
+        activeMicrosoftAccount,
+        createEventScheduleRange,
+        instance,
+        isCreateEventModalOpen,
+        isRoomSuggestionsOpen,
+        roomSuggestionEmails,
+    ]);
+
+    useEffect(() => {
+        const loadScheduleAvailability = async () => {
+            if (!isCreateEventModalOpen) {
+                return;
+            }
+
+            if (!activeMicrosoftAccount || !scheduleParticipantEmails.length) {
+                setScheduleAvailability([]);
+                setScheduleAvailabilityError("");
+                setIsLoadingScheduleAvailability(false);
+                return;
+            }
+
+            setIsLoadingScheduleAvailability(true);
+            setScheduleAvailabilityError("");
+
+            try {
+                let tokenResponse;
+
+                try {
+                    tokenResponse = await instance.acquireTokenSilent({
+                        scopes: [OUTLOOK_SCHEDULE_SCOPE],
+                        account: activeMicrosoftAccount,
+                    });
+                } catch (error) {
+                    if (!(error instanceof InteractionRequiredAuthError)) {
+                        throw error;
+                    }
+
+                    tokenResponse = await instance.acquireTokenPopup({
+                        scopes: [OUTLOOK_SCHEDULE_SCOPE],
+                        account: activeMicrosoftAccount,
+                    });
+                }
+
+                const response = await fetch("https://graph.microsoft.com/v1.0/me/calendar/getSchedule", {
+                    method: "POST",
+                    headers: {
+                        Authorization: `Bearer ${tokenResponse.accessToken}`,
+                        "Content-Type": "application/json",
+                        Prefer: `outlook.timezone="${OUTLOOK_TIMEZONE}"`,
+                    },
+                    body: JSON.stringify({
+                        schedules: scheduleParticipantEmails,
+                        startTime: {
+                            dateTime: toGraphDateTime(scheduleRequestWindow.start),
+                            timeZone: OUTLOOK_TIMEZONE,
+                        },
+                        endTime: {
+                            dateTime: toGraphDateTime(scheduleRequestWindow.end),
+                            timeZone: OUTLOOK_TIMEZONE,
+                        },
+                        availabilityViewInterval: SCHEDULE_INTERVAL_MINUTES,
+                    }),
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Graph getSchedule HTTP ${response.status}`);
+                }
+
+                const scheduleResponse = await response.json();
+                const normalizedSchedules = Array.isArray(scheduleResponse?.value)
+                    ? scheduleResponse.value.map((scheduleInfo, scheduleIndex) => ({
+                        ...scheduleInfo,
+                        requestedEmail: scheduleParticipantEmails[scheduleIndex] || "",
+                    }))
+                    : [];
+
+                setScheduleAvailability(normalizedSchedules);
+            } catch (error) {
+                console.error("[outlook-calendar] no se pudo cargar disponibilidad de asistentes", error);
+                setScheduleAvailability([]);
+                setScheduleAvailabilityError("No se pudo consultar disponibilidad.");
+            } finally {
+                setIsLoadingScheduleAvailability(false);
+            }
+        };
+
+        loadScheduleAvailability();
+    }, [
+        activeMicrosoftAccount,
+        instance,
+        isCreateEventModalOpen,
+        scheduleParticipantEmails,
+        scheduleRequestWindow.end,
+        scheduleRequestWindow.start,
+    ]);
+
+    useEffect(() => {
+        const loadMeetingSuggestions = async () => {
+            if (!isCreateEventModalOpen) {
+                return;
+            }
+
+            if (!activeMicrosoftAccount) {
+                setMeetingSuggestions([]);
+                setMeetingSuggestionsError("");
+                setIsLoadingMeetingSuggestions(false);
+                return;
+            }
+
+            const localFallback = () => {
+                const localSuggestions = buildLocalMeetingSuggestions(
+                    scheduleAvailability,
+                    createEventScheduleRange,
+                    scheduleParticipantEmails,
+                );
+                setMeetingSuggestions(localSuggestions);
+            };
+
+            if (!selectedAttendees.length) {
+                localFallback();
+                setMeetingSuggestionsError("");
+                setIsLoadingMeetingSuggestions(false);
+                return;
+            }
+
+            setIsLoadingMeetingSuggestions(true);
+            setMeetingSuggestionsError("");
+
+            try {
+                let tokenResponse;
+
+                try {
+                    tokenResponse = await instance.acquireTokenSilent({
+                        scopes: [OUTLOOK_SCHEDULE_SCOPE],
+                        account: activeMicrosoftAccount,
+                    });
+                } catch (error) {
+                    if (!(error instanceof InteractionRequiredAuthError)) {
+                        throw error;
+                    }
+
+                    tokenResponse = await instance.acquireTokenPopup({
+                        scopes: [OUTLOOK_SCHEDULE_SCOPE],
+                        account: activeMicrosoftAccount,
+                    });
+                }
+
+                const response = await fetch("https://graph.microsoft.com/v1.0/me/findMeetingTimes", {
+                    method: "POST",
+                    headers: {
+                        Authorization: `Bearer ${tokenResponse.accessToken}`,
+                        "Content-Type": "application/json",
+                        Prefer: `outlook.timezone="${OUTLOOK_TIMEZONE}"`,
+                    },
+                    body: JSON.stringify({
+                        attendees: selectedAttendees.map((attendeeItem) => ({
+                            type: "required",
+                            emailAddress: {
+                                name: attendeeItem.displayName,
+                                address: attendeeItem.email,
+                            },
+                        })),
+                        timeConstraint: {
+                            activityDomain: "work",
+                            timeSlots: [
+                                {
+                                    start: {
+                                        dateTime: toGraphDateTime(scheduleRequestWindow.start),
+                                        timeZone: OUTLOOK_TIMEZONE,
+                                    },
+                                    end: {
+                                        dateTime: toGraphDateTime(scheduleRequestWindow.end),
+                                        timeZone: OUTLOOK_TIMEZONE,
+                                    },
+                                },
+                            ],
+                        },
+                        meetingDuration: buildMeetingDurationIso(createEventScheduleRange),
+                        returnSuggestionReasons: true,
+                        minimumAttendeePercentage: 100,
+                    }),
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Graph findMeetingTimes HTTP ${response.status}`);
+                }
+
+                const suggestionsResponse = await response.json();
+                const normalizedSuggestions = Array.isArray(suggestionsResponse?.meetingTimeSuggestions)
+                    ? suggestionsResponse.meetingTimeSuggestions
+                        .slice(0, CREATE_EVENT_SUGGESTION_LIMIT)
+                        .map((suggestionItem) => {
+                            const startDate = new Date(suggestionItem?.meetingTimeSlot?.start?.dateTime || "");
+                            const endDate = new Date(suggestionItem?.meetingTimeSlot?.end?.dateTime || "");
+
+                            if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) {
+                                return null;
+                            }
+
+                            const participantStatuses = Object.fromEntries(
+                                (suggestionItem?.attendeeAvailability || []).map((availabilityItem) => [
+                                    availabilityItem?.attendee?.emailAddress?.address?.toLowerCase() || "",
+                                    normalizeScheduleStatus(availabilityItem?.availability?.toLowerCase()),
+                                ]).filter(([emailValue]) => Boolean(emailValue)),
+                            );
+
+                            return buildSuggestionItemFromRange(
+                                { start: startDate, end: endDate },
+                                participantStatuses,
+                                suggestionItem?.suggestionReason || "",
+                            );
+                        })
+                        .filter(Boolean)
+                    : [];
+
+                if (normalizedSuggestions.length) {
+                    setMeetingSuggestions(normalizedSuggestions);
+                } else {
+                    localFallback();
+                }
+            } catch (error) {
+                console.error("[outlook-calendar] no se pudieron cargar sugerencias de horario", error);
+                localFallback();
+                setMeetingSuggestionsError("No se pudieron cargar sugerencias de horario.");
+            } finally {
+                setIsLoadingMeetingSuggestions(false);
+            }
+        };
+
+        loadMeetingSuggestions();
+    }, [
+        activeMicrosoftAccount,
+        createEventScheduleRange,
+        instance,
+        isCreateEventModalOpen,
+        scheduleAvailability,
+        scheduleParticipantEmails,
+        scheduleRequestWindow.end,
+        scheduleRequestWindow.start,
+        selectedAttendees,
+    ]);
 
     /** Cierra popover y resetea estado de interacción del evento. */
     const closeEventCard = () => {
@@ -906,6 +2192,235 @@ export const View_calendario_outlook = () => {
     const closeExpandedModal = () => {
         setIsExpandedModalOpen(false);
         setExpandedEvent(null);
+    };
+
+    const openCreateEventModal = () => {
+        const defaultStartDate = getDefaultCreateEventStartDate();
+        const defaultDateValue = formatDateInputValue(defaultStartDate);
+        const defaultStartTimeValue = formatTimeValue(
+            defaultStartDate.getHours(),
+            defaultStartDate.getMinutes(),
+        );
+
+        closeEventCard();
+        setCreateEventTitle("");
+        setCreateEventLocation("");
+        setRoomSearchText("");
+        setCreateEventDescription("");
+        setCreateEventDateValue(defaultDateValue);
+        setCreateEventStartTimeValue(defaultStartTimeValue);
+        setCreateEventEndTimeValue(addMinutesToTimeValue(defaultStartTimeValue, CREATE_EVENT_DEFAULT_DURATION_MINUTES));
+        setHasTouchedCreateEventTitle(false);
+        setIsCreateTeamsMeeting(false);
+        setIsScheduleEditorOpen(false);
+        setIsRoomSuggestionsOpen(false);
+        setShowAllRoomSuggestions(false);
+        setSelectedRoomOption(null);
+        setRoomAvailabilityByEmail({});
+        setRoomDirectoryError("");
+        setSelectedAttendees([]);
+        setAttendeeSearchText("");
+        setAttendeeDirectoryOptions([]);
+        setAttendeeDirectoryError("");
+        setScheduleAvailability([]);
+        setScheduleAvailabilityError("");
+        setMeetingSuggestions([]);
+        setMeetingSuggestionsError("");
+        setCreateEventSubmitError("");
+        setIsCreateEventModalOpen(true);
+    };
+
+    const closeCreateEventModal = () => {
+        setIsCreateEventModalOpen(false);
+        setIsCreateTeamsMeeting(false);
+        setIsScheduleEditorOpen(false);
+        setCreateEventTitle("");
+        setCreateEventLocation("");
+        setRoomSearchText("");
+        setCreateEventDescription("");
+        setIsRoomSuggestionsOpen(false);
+        setShowAllRoomSuggestions(false);
+        setSelectedRoomOption(null);
+        setRoomAvailabilityByEmail({});
+        setRoomDirectoryError("");
+        setHasTouchedCreateEventTitle(false);
+        setSelectedAttendees([]);
+        setAttendeeSearchText("");
+        setAttendeeDirectoryOptions([]);
+        setAttendeeDirectoryError("");
+        setScheduleAvailability([]);
+        setScheduleAvailabilityError("");
+        setMeetingSuggestions([]);
+        setMeetingSuggestionsError("");
+        setCreateEventSubmitError("");
+    };
+
+    const handleCreateEventDateChange = (nextDateValue) => {
+        if (!nextDateValue) {
+            return;
+        }
+
+        setCreateEventDateValue(clampCreateEventDateValue(nextDateValue));
+    };
+
+    const handleCreateEventStartTimeChange = (nextStartTimeValue) => {
+        const nextRange = buildCreateEventScheduleRange(
+            createEventDateValue,
+            nextStartTimeValue,
+            createEventEndTimeValue,
+        );
+
+        setCreateEventStartTimeValue(nextStartTimeValue);
+
+        if (nextRange.end <= nextRange.start) {
+            setCreateEventEndTimeValue(addMinutesToTimeValue(nextStartTimeValue, CREATE_EVENT_DEFAULT_DURATION_MINUTES));
+        }
+    };
+
+    const handleCreateEventEndTimeChange = (nextEndTimeValue) => {
+        const nextRange = buildCreateEventScheduleRange(
+            createEventDateValue,
+            createEventStartTimeValue,
+            nextEndTimeValue,
+        );
+
+        if (nextRange.end <= nextRange.start) {
+            setCreateEventEndTimeValue(addMinutesToTimeValue(createEventStartTimeValue, CREATE_EVENT_DEFAULT_DURATION_MINUTES));
+            return;
+        }
+
+        setCreateEventEndTimeValue(nextEndTimeValue);
+    };
+
+    const shiftCreateEventDate = (daysToMove) => {
+        const nextDate = buildDateFromInputParts(createEventDateValue, createEventStartTimeValue);
+        nextDate.setDate(nextDate.getDate() + daysToMove);
+        setCreateEventDateValue(clampCreateEventDateValue(formatDateInputValue(nextDate)));
+    };
+
+    const applyMeetingSuggestion = (suggestionItem) => {
+        setCreateEventDateValue(clampCreateEventDateValue(formatDateInputValue(suggestionItem.start)));
+        setCreateEventStartTimeValue(
+            formatTimeValue(suggestionItem.start.getHours(), suggestionItem.start.getMinutes()),
+        );
+        setCreateEventEndTimeValue(
+            formatTimeValue(suggestionItem.end.getHours(), suggestionItem.end.getMinutes()),
+        );
+    };
+
+    const handleCreateOutlookEvent = async () => {
+        if (!hasCreateEventTitle || !activeMicrosoftAccount) {
+            setHasTouchedCreateEventTitle(true);
+            return;
+        }
+
+        if (createEventDateValue < createEventMinimumDateValue) {
+            setCreateEventSubmitError("No puedes crear eventos antes de ayer.");
+            return;
+        }
+
+        setIsSavingCreateEvent(true);
+        setCreateEventSubmitError("");
+
+        try {
+            let tokenResponse;
+
+            try {
+                tokenResponse = await instance.acquireTokenSilent({
+                    scopes: [OUTLOOK_CREATE_EVENT_SCOPE],
+                    account: activeMicrosoftAccount,
+                });
+            } catch (error) {
+                if (!(error instanceof InteractionRequiredAuthError)) {
+                    throw error;
+                }
+
+                tokenResponse = await instance.acquireTokenPopup({
+                    scopes: [OUTLOOK_CREATE_EVENT_SCOPE],
+                    account: activeMicrosoftAccount,
+                });
+            }
+
+            const payload = {
+                subject: createEventTitle.trim(),
+                body: {
+                    contentType: "HTML",
+                    content: createEventDescription.trim() || "Evento creado desde CRM Ventas.",
+                },
+                start: {
+                    dateTime: toGraphDateTime(createEventScheduleRange.start),
+                    timeZone: OUTLOOK_TIMEZONE,
+                },
+                end: {
+                    dateTime: toGraphDateTime(createEventScheduleRange.end),
+                    timeZone: OUTLOOK_TIMEZONE,
+                },
+                allowNewTimeProposals: true,
+                transactionId: buildEventTransactionId(),
+            };
+
+            if (createEventLocation.trim()) {
+                payload.location = {
+                    displayName: createEventLocation.trim(),
+                };
+            }
+
+            const requiredAttendees = selectedAttendees
+                    .filter((attendeeItem) => attendeeItem?.email?.trim())
+                    .map((attendeeItem) => ({
+                        emailAddress: {
+                            address: attendeeItem.email.trim(),
+                            name: attendeeItem.displayName || attendeeItem.email.trim(),
+                        },
+                        type: "required",
+                    }));
+
+            const resourceAttendees = selectedRoomOption?.email?.trim()
+                ? [{
+                    emailAddress: {
+                        address: selectedRoomOption.email.trim(),
+                        name: selectedRoomOption.displayName || selectedRoomOption.email.trim(),
+                    },
+                    type: "resource",
+                }]
+                : [];
+
+            if (requiredAttendees.length || resourceAttendees.length) {
+                payload.attendees = [
+                    ...requiredAttendees,
+                    ...resourceAttendees,
+                ];
+            }
+
+            if (isCreateTeamsMeeting) {
+                payload.isOnlineMeeting = true;
+                payload.onlineMeetingProvider = "teamsForBusiness";
+            }
+
+            const response = await fetch("https://graph.microsoft.com/v1.0/me/events", {
+                method: "POST",
+                headers: {
+                    Authorization: `Bearer ${tokenResponse.accessToken}`,
+                    "Content-Type": "application/json",
+                    Prefer: `outlook.timezone="${OUTLOOK_TIMEZONE}"`,
+                },
+                body: JSON.stringify(payload),
+            });
+
+            if (!response.ok) {
+                throw new Error(`Graph create event HTTP ${response.status}`);
+            }
+
+            await response.json();
+
+            closeCreateEventModal();
+            setEventsReloadToken((currentValue) => currentValue + 1);
+        } catch (error) {
+            console.error("[outlook-calendar] no se pudo crear evento Outlook", error);
+            setCreateEventSubmitError("No se pudo guardar evento en Outlook.");
+        } finally {
+            setIsSavingCreateEvent(false);
+        }
     };
 
     /**
@@ -1101,6 +2616,7 @@ export const View_calendario_outlook = () => {
         currentWindow.endExclusive,
         currentWindow.endInclusive,
         currentWindow.start,
+        eventsReloadToken,
         idnetsuite_admin,
         inProgress,
         instance,
@@ -1199,13 +2715,18 @@ export const View_calendario_outlook = () => {
                 <div className="outlook-toolbar-group is-compact">
                     {/* Botón placeholder; creación de evento aún no implementada */}
                     <div className="outlook-split-button">
-                        <button className="outlook-button outlook-button-primary" type="button">
+                        <button
+                            className="outlook-button outlook-button-primary"
+                            onClick={openCreateEventModal}
+                            type="button"
+                        >
                             <span className="ti ti-calendar-plus"></span>
                             Nuevo evento
                         </button>
                         <button
-                            aria-label="Mas opciones de nuevo evento"
+                            aria-label="Más opciones de nuevo evento"
                             className="outlook-button outlook-button-primary outlook-button-primary-chevron"
+                            onClick={openCreateEventModal}
                             type="button"
                         >
                             <span className="ti ti-chevron-down"></span>
@@ -1241,8 +2762,82 @@ export const View_calendario_outlook = () => {
                     </button>
                 </div>
             </div>
+            <OutlookCreateEventModal
+                applyMeetingSuggestion={applyMeetingSuggestion}
+                areAllParticipantsAvailable={areAllParticipantsAvailable}
+                attendeeAvailabilityStatuses={attendeeAvailabilityStatuses}
+                attendeeDirectoryError={attendeeDirectoryError}
+                attendeeDirectoryOptions={attendeeDirectoryOptions}
+                attendeeSearchText={attendeeSearchText}
+                closeCreateEventModal={closeCreateEventModal}
+                createEventCalendarLabel={createEventCalendarLabel}
+                createEventDateValue={createEventDateValue}
+                createEventDateTimeLabel={createEventDateTimeLabel}
+                createEventDescription={createEventDescription}
+                createEventEndTimeOptions={createEventEndTimeOptions}
+                createEventEndTimeValue={createEventEndTimeValue}
+                createEventHeaderLabel={createEventHeaderLabel}
+                createEventLocation={createEventLocation}
+                createEventMinimumDateValue={createEventMinimumDateValue}
+                createEventPreviewPosition={createEventPreviewPosition}
+                createEventScheduleLabel={createEventScheduleLabel}
+                createEventScheduleRange={createEventScheduleRange}
+                createEventStartTimeValue={createEventStartTimeValue}
+                createEventSubmitError={createEventSubmitError}
+                createEventTimeOptions={createEventTimeOptions}
+                createEventTitle={createEventTitle}
+                createEventWeekLabel={createEventWeekLabel}
+                handleCreateEventDateChange={handleCreateEventDateChange}
+                handleCreateEventEndTimeChange={handleCreateEventEndTimeChange}
+                handleCreateEventStartTimeChange={handleCreateEventStartTimeChange}
+                handleCreateOutlookEvent={handleCreateOutlookEvent}
+                hasCreateEventTitle={hasCreateEventTitle}
+                hasTouchedCreateEventTitle={hasTouchedCreateEventTitle}
+                isCreateEventModalOpen={isCreateEventModalOpen}
+                isCreateTeamsMeeting={isCreateTeamsMeeting}
+                isLoadingAttendeeDirectory={isLoadingAttendeeDirectory}
+                isLoadingMeetingSuggestions={isLoadingMeetingSuggestions}
+                isLoadingRoomAvailability={isLoadingRoomAvailability}
+                isLoadingRoomDirectory={isLoadingRoomDirectory}
+                isLoadingScheduleAvailability={isLoadingScheduleAvailability}
+                isOwnerAvailable={isOwnerAvailable}
+                isPrimaryScheduleAvailable={isPrimaryScheduleAvailable}
+                isRoomAvailable={isRoomAvailable}
+                isRoomSuggestionsOpen={isRoomSuggestionsOpen}
+                isSavingCreateEvent={isSavingCreateEvent}
+                isScheduleEditorOpen={isScheduleEditorOpen}
+                roomDirectoryError={roomDirectoryError}
+                roomSuggestionOptions={roomSuggestionOptions}
+                roomSuggestionSearchValue={roomSearchValue}
+                hasMoreRoomSuggestions={hasMoreRoomSuggestions && !showAllRoomSuggestions}
+                meetingSuggestions={meetingSuggestions}
+                meetingSuggestionsError={meetingSuggestionsError}
+                openRoomSuggestions={openRoomSuggestions}
+                closeRoomSuggestions={closeRoomSuggestions}
+                openAttendeeSuggestions={shouldOpenAttendeeSuggestions}
+                previewBusyBlocks={previewBusyBlocks}
+                previewParticipants={previewParticipants}
+                handleCreateEventLocationChange={handleCreateEventLocationChange}
+                handleSelectRoomOption={handleSelectRoomOption}
+                clearSelectedRoomOption={clearSelectedRoomOption}
+                scheduleAvailabilityError={scheduleAvailabilityError}
+                selectedAttendees={selectedAttendees}
+                selectedRoomOption={selectedRoomOption}
+                selectedRoomAvailabilityStatus={selectedRoomAvailabilityStatus}
+                setAttendeeSearchText={setAttendeeSearchText}
+                setCreateEventDescription={setCreateEventDescription}
+                setCreateEventTitle={setCreateEventTitle}
+                setHasTouchedCreateEventTitle={setHasTouchedCreateEventTitle}
+                setIsCreateTeamsMeeting={setIsCreateTeamsMeeting}
+                setIsScheduleEditorOpen={setIsScheduleEditorOpen}
+                setSelectedAttendees={setSelectedAttendees}
+                setShowAllRoomSuggestions={setShowAllRoomSuggestions}
+                shiftCreateEventDate={shiftCreateEventDate}
+                toGraphDateTime={toGraphDateTime}
+                roomSearchText={roomSearchText}
+            />
 
-            <div className="outlook-body">
+            <div className="outlook-body"> 
                 {/* Sidebar izquierdo: mini-calendario y lista de calendarios */}
                 <aside className="outlook-sidebar">
                     <div className="outlook-sidebar-month">
@@ -1370,7 +2965,7 @@ export const View_calendario_outlook = () => {
                                     });
                                     setShowResponseActions(false);
                                 }}
-                                eventContent={renderCalendarEventContent}
+                                eventContent={renderOutlookCalendarEventContent}
                                 eventDisplay="block"
                                 eventTimeFormat={{ hour: "2-digit", minute: "2-digit", hour12: false }}
                                 events={adminScopedCalendarEvents}
@@ -1412,21 +3007,21 @@ export const View_calendario_outlook = () => {
                         Borrar filtros
                     </button>
 
-                    <FilterMenuSection
+                    <OutlookFilterMenuSection
                         onToggle={toggleCrmFilter}
                         options={visibleCrmFilterOptions}
                         selectedMap={crmFilters}
                         title="Mis calendarios"
                     />
 
-                    <FilterMenuSection
+                    <OutlookFilterMenuSection
                         onToggle={toggleOriginFilter}
                         options={ORIGIN_FILTER_OPTIONS}
                         selectedMap={originFilters}
                         title="Origen"
                     />
 
-                    <FilterMenuSection
+                    <OutlookFilterMenuSection
                         onToggle={toggleAdminFilter}
                         options={adminFilterOptions}
                         selectedMap={selectedAdmins}
@@ -1587,7 +3182,7 @@ export const View_calendario_outlook = () => {
                                             rel="noreferrer"
                                             target="_blank"
                                         >
-                                            Abrir vinculo
+                                            Abrir vínculo
                                         </a>
                                         <button
                                             className="outlook-hover-card-copy"
@@ -1642,7 +3237,7 @@ export const View_calendario_outlook = () => {
                                                     padding: 0,
                                                 }}
                                             />
-                                            Enviar correo electronico al organizador
+                                            Enviar correo electrónico al organizador
                                         </label>
 
                                         <input
@@ -1679,7 +3274,7 @@ export const View_calendario_outlook = () => {
                         {/* Barra de título del modal */}
                         <Box className="outlook-expanded-topbar">
                             <Typography className="outlook-expanded-window-title">
-                                {modalEvent.title}: reunion: Calendario
+                                {modalEvent.title}: reunión: Calendario
                             </Typography>
                             <Box className="outlook-expanded-window-actions">
                                 <span className="ti ti-arrow-up-right"></span>
@@ -1717,7 +3312,7 @@ export const View_calendario_outlook = () => {
                                     <Box className="outlook-expanded-row">
                                         <span className="ti ti-users"></span>
                                         <Typography>
-                                            {modalEvent.extendedProps.organizer}; {modalEvent.extendedProps.attendees?.slice(0, 2).join("; ")}; y {modalEvent.extendedProps.acceptedCount} mas
+                                            {modalEvent.extendedProps.organizer}; {modalEvent.extendedProps.attendees?.slice(0, 2).join("; ")}; y {modalEvent.extendedProps.acceptedCount} más
                                         </Typography>
                                     </Box>
 
@@ -1737,7 +3332,7 @@ export const View_calendario_outlook = () => {
                                 {/* Descripción: variante Teams vs evento estándar */}
                                 <Box className="outlook-expanded-description">
                                     <Typography className="outlook-expanded-description-title">
-                                        {isTeamsModalEvent ? "Reunion de Microsoft Teams" : "Detalle del evento"}
+                                        {isTeamsModalEvent ? "Reunión de Microsoft Teams" : "Detalle del evento"}
                                     </Typography>
 
                                     {isTeamsModalEvent ? (
@@ -1746,16 +3341,16 @@ export const View_calendario_outlook = () => {
                                                 Unirse: {modalEvent.extendedProps.teamsLink || "Sin enlace disponible"}
                                             </Typography>
                                             <Typography className="outlook-expanded-meta">
-                                                Id. de reunion: {modalEvent.extendedProps.meetingId || "Sin identificador"}
+                                                Id. de reunión: {modalEvent.extendedProps.meetingId || "Sin identificador"}
                                             </Typography>
                                             <Typography className="outlook-expanded-meta">
-                                                Codigo de acceso: {modalEvent.extendedProps.accessCode || "No disponible"}
+                                                Código de acceso: {modalEvent.extendedProps.accessCode || "No disponible"}
                                             </Typography>
                                         </>
                                     ) : (
                                         <>
                                             <Typography className="outlook-expanded-meta">
-                                                Ubicacion: {modalEvent.extendedProps.location}
+                                                Ubicación: {modalEvent.extendedProps.location}
                                             </Typography>
                                             <Typography className="outlook-expanded-meta">
                                                 Responsable: {modalEvent.extendedProps.attendee}
@@ -1827,3 +3422,13 @@ export const View_calendario_outlook = () => {
         </section>
     );
 };
+
+
+
+
+
+
+
+
+
+
