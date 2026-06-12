@@ -1,4 +1,5 @@
 const { executeStoredProcedure, executeQuery } = require("../conectionPool/conectionPool");
+const outlookCalendarSync = require("./outlookCalendarSync");
 const outlookEvent = require("./outlookEvent");
 const calendars = {}; // Objeto para agrupar todas las funciones relacionadas con 'calendars'.
 
@@ -44,6 +45,36 @@ calendars.createEvent = (dataParams) =>
         ], // Parámetros que identifican el rol y el ID del administrador.
         dataParams.database, // Nombre de la base de datos a utilizar.
     );
+
+/**
+ * Crea evento del nuevo flujo Outlook -> CRM usando INSERT SQL dedicado.
+ *
+ * Se separa del SP legado para soportar `outlook_event_id`
+ * sin alterar contratos existentes de otros módulos.
+ *
+ * @param {Object} dataParams - Datos del evento.
+ * @returns {Promise<Object>} Resultado de inserción.
+ */
+calendars.createOutlookEvent = (dataParams) =>
+    outlookEvent.createOutlookEvent(dataParams);
+
+/**
+ * Actualiza fecha/hora de evento CRM del flujo Outlook.
+ *
+ * @param {Object} dataParams - Datos de actualización.
+ * @returns {Promise<Object>} Resultado de actualización.
+ */
+calendars.updateOutlookEventSchedule = (dataParams) =>
+    outlookEvent.updateOutlookEventSchedule(dataParams);
+
+calendars.updateOutlookEventDetails = (dataParams) =>
+    outlookEvent.updateOutlookEventDetails(dataParams);
+
+calendars.registerOutlookCalendarSync = (dataParams) =>
+    outlookCalendarSync.registerOutlookCalendarSync(dataParams);
+
+calendars.processOutlookCalendarSync = (dataParams) =>
+    outlookCalendarSync.processOutlookCalendarSync(dataParams);
 
 /**
  * Obtiene todos los eventos del calendario desde una base de datos específica.

@@ -4,6 +4,7 @@ const dotenv = require("dotenv");
 const helpers = require("../utils/helpers");
 // Importa el modelo para la autenticación de usuarios
 const authenticated = require("../models/authenticated/authenticated");
+const outlookCalendarSync = require("../models/calendars/outlookCalendarSync");
 // Importa el modelo para las operaciones y datos del módulo 'home'
 const home = require("../models/home/home");
 // Importa el modelo para gestionar operaciones relacionadas con los 'leads'
@@ -117,6 +118,33 @@ module.exports = function (app) {
     // Ruta para verificar que la API está activa
     app.get("/", (_, res) => res.status(200).json({ message: "SHOWTIME API ACTIVE", status: "OK" }));
 
+    app.post(`${API_PREFIX}/webhooks/microsoft/calendar`, async (req, res) => {
+        try {
+            const webhookResult = await outlookCalendarSync.handleMicrosoftCalendarWebhook({
+                validationToken: req.query?.validationToken,
+                notifications: req.body?.value,
+            });
+
+            if (webhookResult.isValidation) {
+                return res.status(200).type("text/plain").send(webhookResult.validationToken);
+            }
+
+            return res.status(202).json({
+                ok: true,
+                processed: webhookResult.processed || 0,
+            });
+        } catch (error) {
+            console.error("[outlook-webhook] error procesando webhook", {
+                message: error.message,
+            });
+
+            return res.status(500).json({
+                ok: false,
+                message: "Error procesando webhook de Microsoft Graph.",
+            });
+        }
+    });
+
     // Configuración de las rutas por categoría y modelo
     const routesConfig = [
         {
@@ -189,6 +217,11 @@ module.exports = function (app) {
             routes: [
                 { path: "/calendars/get_Calendars", method: "get_Calendars" }, // Ruta para obtener todos los calendarios
                 { path: "/calendars/createEvent", method: "createEvent" }, // Ruta para crear un nuevo evento en el calendario
+                { path: "/calendars/createOutlookEvent", method: "createOutlookEvent" }, // Ruta para crear evento CRM vinculado a Outlook
+                { path: "/calendars/updateOutlookEventSchedule", method: "updateOutlookEventSchedule" }, // Ruta para mover evento CRM vinculado a Outlook
+                { path: "/calendars/updateOutlookEventDetails", method: "updateOutlookEventDetails" }, // Ruta para editar evento CRM vinculado a Outlook
+                { path: "/calendars/registerOutlookCalendarSync", method: "registerOutlookCalendarSync" }, // Ruta para registrar/renovar sincronización Outlook
+                { path: "/calendars/processOutlookCalendarSync", method: "processOutlookCalendarSync" }, // Ruta para ejecutar delta sync Outlook -> CRM
                 { path: "/calendars/getDataEevent", method: "getDataEevent" }, // Ruta para obtener información detallada de un evento
                 { path: "/calendars/get_event_Citas", method: "get_event_Citas" }, // Ruta para verificar si un cliente tiene citas programadas
                 { path: "/calendars/editEvent", method: "editEvent" }, // Ruta para editar un evento existente
