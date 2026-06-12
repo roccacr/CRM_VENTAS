@@ -6,7 +6,6 @@ const outlookCalendarSync = {};
 
 const OUTLOOK_SYNC_TABLE = "outlook_calendar_sync";
 const MICROSOFT_GRAPH_BASE_URL = "https://graph.microsoft.com/v1.0";
-const WEBHOOK_BASE_URL = process.env.MICROSOFT_GRAPH_WEBHOOK_BASE_URL || "https://api-node-v2.roccacr.com";
 const WEBHOOK_PATH = "/api/v2.0/webhooks/microsoft/calendar";
 const SYNC_PAST_DAYS = 30;
 const SYNC_FUTURE_DAYS = 365;
@@ -78,7 +77,19 @@ const buildSubscriptionExpirationDateTime = () => addMinutes(
     SUBSCRIPTION_DURATION_MINUTES,
 ).toISOString();
 
-const buildWebhookUrl = () => `${WEBHOOK_BASE_URL}${WEBHOOK_PATH}`;
+const resolveWebhookBaseUrl = (database) => {
+    if (database === "produccion") {
+        return "https://api-node-v2.roccacr.com";
+    }
+
+    return null;
+};
+
+const buildWebhookUrl = (database) => {
+    const webhookBaseUrl = resolveWebhookBaseUrl(database);
+
+    return webhookBaseUrl ? `${webhookBaseUrl}${WEBHOOK_PATH}` : null;
+};
 
 const buildClientState = (idAdmin, outlookUserEmail) => (
     `crm-sync-${idAdmin}-${Buffer.from(outlookUserEmail).toString("base64").replace(/=/g, "")}`
@@ -317,14 +328,24 @@ const patchExistingSubscription = async (accessToken, subscriptionId) => {
     };
 };
 
-const createGraphSubscription = async ({ accessToken, idAdmin, outlookUserEmail }) => {
+const createGraphSubscription = async ({ accessToken, database, idAdmin, outlookUserEmail }) => {
+    const webhookUrl = buildWebhookUrl(database);
+
+    if (!webhookUrl) {
+        const configError = new Error(
+            "No hay URL pública de webhook configurada para este entorno. Outlook sync por webhook no puede ejecutarse localmente.",
+        );
+        configError.statusCode = 400;
+        throw configError;
+    }
+
     const response = await fetch(`${MICROSOFT_GRAPH_BASE_URL}/subscriptions`, {
         method: "POST",
         headers: buildGraphHeaders(accessToken),
         body: JSON.stringify({
             changeType: "created,updated,deleted",
-            notificationUrl: buildWebhookUrl(),
-            lifecycleNotificationUrl: buildWebhookUrl(),
+            notificationUrl: webhookUrl,
+            lifecycleNotificationUrl: webhookUrl,
             resource: "/me/events",
             expirationDateTime: buildSubscriptionExpirationDateTime(),
             clientState: buildClientState(idAdmin, outlookUserEmail),
@@ -362,7 +383,7 @@ const ensureGraphSubscription = async ({ accessToken, database, idAdmin, outlook
     }
 
     if (!subscriptionData) {
-        subscriptionData = await createGraphSubscription({ accessToken, idAdmin, outlookUserEmail });
+        subscriptionData = await createGraphSubscription({ accessToken, database, idAdmin, outlookUserEmail });
     }
 
     const syncWindow = buildSyncWindowRange();

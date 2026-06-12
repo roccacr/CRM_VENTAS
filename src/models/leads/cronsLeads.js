@@ -337,7 +337,7 @@ const enviarReportePorCorreo = async (vendedores, estadisticas) => {
     try {
         const htmlContent = generarHTMLReporte(vendedores, estadisticas);
 
-        const destinatarios = 'rzuniga@roccacr.com, ccordoba@roccacr.com,fmata@roccacr.com ';
+        const destinatarios = CONFIG.ATTENTION_ALERT_MANAGEMENT_RECIPIENTS.join(",");
 
         const subject = `[ALERTA CRM] ${estadisticas.danger} Vendedor(es) con Alta Carga de Leads (${estadisticas.danger > 1 ? '20+ leads cada uno' : '20+ leads'})`;
 
@@ -403,7 +403,7 @@ const generarHTMLReporteAtencionPorAsesor = (asesor) => {
                                 <td style="padding: 32px 40px;">
                                     <p style="margin: 0 0 20px 0; color: #374151; font-size: 14px; line-height: 1.6;">
                                         Se detectó una acumulación alta de leads pendientes de seguimiento para un asesor.
-                                        Este correo se envía al asesor correspondiente y en copia a la jefatura comercial.
+                                        Este correo corresponde únicamente a tus indicadores.
                                     </p>
 
                                     <table role="presentation" style="width: 100%; border-collapse: collapse; border: 1px solid #e5e7eb; border-radius: 6px; overflow: hidden;">
@@ -413,12 +413,8 @@ const generarHTMLReporteAtencionPorAsesor = (asesor) => {
                                                 <td style="padding: 14px 16px; color: #111827; font-size: 14px; font-weight: 500;">${asesor.vendedor_nombre}</td>
                                             </tr>
                                             <tr>
-                                                <td style="padding: 14px 16px; background: #f9fafb; color: #6b7280; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Correo futuro destino</td>
+                                                <td style="padding: 14px 16px; background: #f9fafb; color: #6b7280; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Correo destino</td>
                                                 <td style="padding: 14px 16px; color: #111827; font-size: 14px; font-weight: 500;">${asesor.vendedor_email || "No configurado"}</td>
-                                            </tr>
-                                            <tr>
-                                                <td style="padding: 14px 16px; background: #f9fafb; color: #6b7280; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Jefatura detectada</td>
-                                                <td style="padding: 14px 16px; color: #111827; font-size: 14px; font-weight: 500;">${asesor.supervisor_nombre || "No detectada"}${asesor.supervisor_email ? ` (${asesor.supervisor_email})` : ""}</td>
                                             </tr>
                                             <tr>
                                                 <td style="padding: 14px 16px; background: #f9fafb; color: #6b7280; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Leads requieren atención</td>
@@ -470,7 +466,6 @@ const enviarReporteAtencionPorAsesor = async (asesor) => {
         const info = await emailTransporter.sendMail({
             from: `"ROCCA CRM" <${process.env.API_NOTIFICATION_EMAIL}>`,
             to: destinatarioAsesor,
-            cc: CONFIG.ATTENTION_ALERT_MANAGEMENT_RECIPIENTS.join(","),
             subject,
             html: htmlContent,
         });
@@ -479,11 +474,109 @@ const enviarReporteAtencionPorAsesor = async (asesor) => {
             success: true,
             messageId: info.messageId,
             destinatarioAsesor,
-            destinatariosJefatura: [...CONFIG.ATTENTION_ALERT_MANAGEMENT_RECIPIENTS],
         };
     } catch (error) {
         log('ERROR', 'Error enviando alerta de requiere atención', {
             asesor: asesor.vendedor_nombre,
+            error: error.message,
+        });
+
+        return {
+            success: false,
+            error: error.message,
+        };
+    }
+};
+
+/**
+ * Envía reporte consolidado gerencial de requiere atención.
+ *
+ * @param {Array<Object>} asesores - Asesores en alerta.
+ * @returns {Promise<Object>} Resultado del envío.
+ */
+const enviarReporteAtencionGerencial = async (asesores) => {
+    try {
+        const filasAsesores = asesores.map((asesor, index) => `
+            <tr style="border-bottom: 1px solid #e5e7eb;">
+                <td style="padding: 14px 16px; text-align: center; color: #6b7280; font-size: 13px;">${index + 1}</td>
+                <td style="padding: 14px 16px; color: #111827; font-size: 14px; font-weight: 500;">${asesor.vendedor_nombre}</td>
+                <td style="padding: 14px 16px; color: #4b5563; font-size: 13px;">${asesor.vendedor_email || "No configurado"}</td>
+                <td style="padding: 14px 16px; color: #991b1b; font-size: 14px; font-weight: 700; text-align: center;">${asesor.cantidad_leads}</td>
+            </tr>
+        `).join("");
+
+        const htmlContent = `
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            </head>
+            <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f3f4f6; margin: 0; padding: 0;">
+                <table role="presentation" style="width: 100%; border-collapse: collapse; background-color: #f3f4f6; padding: 40px 20px;">
+                    <tr>
+                        <td align="center">
+                            <table role="presentation" style="max-width: 840px; width: 100%; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.1); border: 1px solid #e5e7eb;">
+                                <tr>
+                                    <td style="background: #1f2937; padding: 32px 40px; text-align: left;">
+                                        <h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: 600; letter-spacing: -0.5px;">
+                                            Alerta CRM - Leads Requieren Atención
+                                        </h1>
+                                        <p style="margin: 8px 0 0 0; color: #d1d5db; font-size: 14px; font-weight: 400;">
+                                            Reporte consolidado gerencial
+                                        </p>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td style="padding: 32px 40px;">
+                                        <p style="margin: 0 0 20px 0; color: #374151; font-size: 14px; line-height: 1.6;">
+                                            Se detectaron asesores con más de ${CONFIG.ATTENTION_ALERT_THRESHOLD} leads pendientes de seguimiento.
+                                        </p>
+
+                                        <table role="presentation" style="width: 100%; border-collapse: collapse; background: #ffffff; border: 1px solid #e5e7eb; border-radius: 6px; overflow: hidden;">
+                                            <thead>
+                                                <tr style="background: #f9fafb; border-bottom: 2px solid #e5e7eb;">
+                                                    <th style="padding: 14px 16px; text-align: center; font-size: 12px; font-weight: 600; color: #374151; text-transform: uppercase; letter-spacing: 0.5px; width: 8%;">#</th>
+                                                    <th style="padding: 14px 16px; text-align: left; font-size: 12px; font-weight: 600; color: #374151; text-transform: uppercase; letter-spacing: 0.5px;">Asesor</th>
+                                                    <th style="padding: 14px 16px; text-align: left; font-size: 12px; font-weight: 600; color: #374151; text-transform: uppercase; letter-spacing: 0.5px;">Correo</th>
+                                                    <th style="padding: 14px 16px; text-align: center; font-size: 12px; font-weight: 600; color: #374151; text-transform: uppercase; letter-spacing: 0.5px;">Leads</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                ${filasAsesores}
+                                            </tbody>
+                                        </table>
+
+                                        <p style="margin: 20px 0 0 0; color: #6b7280; font-size: 13px;">
+                                            Fecha de corte: ${obtenerFechaHoraActual()}
+                                        </p>
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+                </table>
+            </body>
+            </html>
+        `;
+
+        const destinatarios = CONFIG.ATTENTION_ALERT_MANAGEMENT_RECIPIENTS.join(",");
+        const subject = `[ALERTA CRM] ${asesores.length} asesor(es) con más de ${CONFIG.ATTENTION_ALERT_THRESHOLD} leads en requiere atención`;
+
+        const info = await emailTransporter.sendMail({
+            from: `"ROCCA CRM" <${process.env.API_NOTIFICATION_EMAIL}>`,
+            to: destinatarios,
+            subject,
+            html: htmlContent,
+        });
+
+        return {
+            success: true,
+            messageId: info.messageId,
+            destinatarios,
+        };
+    } catch (error) {
+        log('ERROR', 'Error enviando reporte gerencial de requiere atención', {
             error: error.message,
         });
 
@@ -760,6 +853,7 @@ const procesarLeadsAtencionPorAsesor = async () => {
     }
 
     const resultados = [];
+    const gerencial = await enviarReporteAtencionGerencial(asesores);
 
     for (const asesor of asesores) {
         const envio = await enviarReporteAtencionPorAsesor(asesor);
@@ -774,6 +868,8 @@ const procesarLeadsAtencionPorAsesor = async () => {
         success: true,
         totalAsesores: asesores.length,
         emailsEnviados: resultados.filter((item) => item.success).length,
+        emailGerencialEnviado: gerencial.success,
+        emailGerencialMessageId: gerencial.messageId,
         asesores,
         resultados,
         duration: Date.now() - startTime,
