@@ -12,8 +12,10 @@ import { useEffect, useMemo, useRef, useState } from "react";
 // --- FullCalendar: motor de renderizado del calendario y plugins de vista ---
 import esLocale from "@fullcalendar/core/locales/es"; // Localización en español (días, meses)
 import dayGridPlugin from "@fullcalendar/daygrid"; // Plugin vista mensual (rejilla de días)
+import interactionPlugin from "@fullcalendar/interaction"; // Plugin drag/drop y resize
 import FullCalendar from "@fullcalendar/react"; // Wrapper React de FullCalendar
 import timeGridPlugin from "@fullcalendar/timegrid"; // Plugin vistas diaria/semanal con horas
+import Swal from "sweetalert2";
 
 // --- MSAL: autenticación silenciosa contra Microsoft para leer calendario ---
 import { InteractionRequiredAuthError } from "@azure/msal-browser"; // Error cuando hace falta login interactivo
@@ -32,18 +34,30 @@ import {
 } from "@mui/material";
 
 // --- Redux: leer sesión del usuario autenticado en el CRM ---
-import { useSelector } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 
 // --- React Router: enlazar al perfil del lead desde el popover ---
 import { Link } from "react-router-dom";
 
 // --- API interna: eventos pendientes del CRM filtrados por rango de fechas ---
 import {
+    createOutlookCalendarEvent,
     getPendingActionCalendarEvents,
+    processOutlookCalendarSync,
+    registerOutlookCalendarSync,
+    update_Status_Event,
+    updateOutlookCalendarEventDetails,
+    updateOutlookCalendarEventSchedule,
 } from "../../../../store/calendar/Api_calendar_Providers";
+import { loginRequest } from "../../../../config/msalConfig";
+import { getDataSelectProyect, getLeadsComplete } from "../../../../store/leads/thunksLeads";
 import { renderOutlookCalendarEventContent } from "./components/OutlookCalendarEventContent";
 import { OutlookCreateEventModal } from "./components/OutlookCreateEventModal";
 import { OutlookFilterMenuSection } from "./components/OutlookFilterMenuSection";
+import {
+    buildCalendarMoveBlockedMessage,
+    canAuthenticatedUserMoveCalendarEvent,
+} from "./outlookCalendarUtils";
 
 // --- Estilos scoped de la vista (layout Outlook, eventos, sidebar) ---
 import "./View_calendario_outlook.css";
@@ -131,17 +145,45 @@ const OUTLOOK_PEOPLE_SCOPE = "User.ReadBasic.All";
 const OUTLOOK_PLACE_SCOPE = "Place.Read.All";
 const OUTLOOK_SCHEDULE_SCOPE = "Calendars.Read";
 const OUTLOOK_CREATE_EVENT_SCOPE = "Calendars.ReadWrite";
+const OUTLOOK_REQUIRED_SCOPES = [...new Set([
+    ...loginRequest.scopes,
+    OUTLOOK_PEOPLE_SCOPE,
+    OUTLOOK_PLACE_SCOPE,
+    OUTLOOK_SCHEDULE_SCOPE,
+    OUTLOOK_CREATE_EVENT_SCOPE,
+])];
 const PEOPLE_PAGE_SIZE = 25;
 const PEOPLE_SEARCH_MIN_LENGTH = 2;
 const ROOM_SUGGESTION_LIMIT = 6;
 const OUTLOOK_TIMEZONE = "Central America Standard Time";
 const SCHEDULE_INTERVAL_MINUTES = 30;
-const CREATE_EVENT_PREVIEW_START_HOUR = 0;
-const CREATE_EVENT_PREVIEW_END_HOUR = 24;
+const CREATE_EVENT_PREVIEW_START_HOUR = 7;
+const CREATE_EVENT_PREVIEW_END_HOUR = 22;
+const CREATE_EVENT_AVAILABLE_START_HOUR = 7;
+const CREATE_EVENT_AVAILABLE_END_HOUR = 22;
 const CREATE_EVENT_DEFAULT_START_HOUR = 9;
 const CREATE_EVENT_DEFAULT_START_MINUTE = 0;
-const CREATE_EVENT_DEFAULT_DURATION_MINUTES = 30;
+const CREATE_EVENT_DEFAULT_DURATION_MINUTES = 60;
 const CREATE_EVENT_SUGGESTION_LIMIT = 6;
+const CREATE_EVENT_TYPE_OPTIONS = [
+    { value: "", label: "Seleccionar tipo de evento..." },
+    { value: "Llamada", label: "Llamada" },
+    { value: "Tarea", label: "Tarea" },
+    { value: "Reunion", label: "Reunión" },
+    { value: "Correo", label: "Correo" },
+    { value: "Whatsapp", label: "Whatsapp" },
+    { value: "Seguimientos", label: "Seguimientos" },
+    { value: "Cita", label: "Asignar Cita" },
+];
+const CREATE_EVENT_COLOR_BY_TYPE = {
+    Llamada: "#808080",
+    Whatsapp: "#808080",
+    Correo: "#808080",
+    Tarea: "#343a40",
+    Reunion: "#34c38f",
+    Seguimientos: "#f46a6a",
+    Cita: "#f1b44c",
+};
 const SCHEDULE_STATUS_META = {
     free: { label: "Disponible", isAvailable: true },
     workingElsewhere: { label: "En otro lugar", isAvailable: true },
@@ -162,6 +204,119 @@ const normalizeDirectoryUser = (userItem) => {
         displayName,
         email: primaryEmail,
     };
+};
+
+const normalizeParticipantEmail = (value) => (typeof value === "string" ? value.trim().toLowerCase() : "");
+
+const buildManualAttendeeOption = (emailValue) => {
+    const normalizedEmail = normalizeParticipantEmail(emailValue);
+
+    if (!normalizedEmail) {
+        return null;
+    }
+
+    return {
+        id: normalizedEmail,
+        displayName: normalizedEmail,
+        email: normalizedEmail,
+        source: "manual",
+    };
+};
+
+const buildGraphAttendeeOption = (attendeeItem) => {
+    const attendeeEmail = normalizeParticipantEmail(attendeeItem?.emailAddress?.address);
+
+    if (!attendeeEmail) {
+        return null;
+    }
+
+    return {
+        id: attendeeItem?.emailAddress?.address || attendeeEmail,
+        displayName: attendeeItem?.emailAddress?.name || attendeeEmail,
+        email: attendeeEmail,
+        type: attendeeItem?.type || "required",
+        source: "outlook",
+    };
+};
+
+const normalizeCreateEventTypeValue = (eventTypeValue) => {
+    if (typeof eventTypeValue !== "string") {
+        return "";
+    }
+
+    const normalizedValue = eventTypeValue
+        .trim()
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "");
+    const matchedOption = CREATE_EVENT_TYPE_OPTIONS.find(
+        (option) => option.value
+            && option.value.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "") === normalizedValue,
+    );
+
+    return matchedOption?.value || "";
+};
+
+const getCreateEventColor = (eventType) => CREATE_EVENT_COLOR_BY_TYPE[eventType] || OUTLOOK_DEFAULT_COLOR;
+
+const deleteOutlookEventById = async (accessToken, outlookEventId) => {
+    if (!accessToken || !outlookEventId) {
+        return false;
+    }
+
+    const response = await fetch(`https://graph.microsoft.com/v1.0/me/events/${encodeURIComponent(outlookEventId)}`, {
+        method: "DELETE",
+        headers: {
+            Authorization: `Bearer ${accessToken}`,
+        },
+    });
+
+    return response.ok;
+};
+
+const updateOutlookEventScheduleById = async (accessToken, outlookEventId, rangeValue) => {
+    if (!accessToken || !outlookEventId || !rangeValue?.start || !rangeValue?.end) {
+        return false;
+    }
+
+    const response = await fetch(`https://graph.microsoft.com/v1.0/me/events/${encodeURIComponent(outlookEventId)}`, {
+        method: "PATCH",
+        headers: {
+            Authorization: `Bearer ${accessToken}`,
+            "Content-Type": "application/json",
+            Prefer: `outlook.timezone="${OUTLOOK_TIMEZONE}"`,
+        },
+        body: JSON.stringify({
+            start: {
+                dateTime: toGraphDateTime(rangeValue.start),
+                timeZone: OUTLOOK_TIMEZONE,
+            },
+            end: {
+                dateTime: toGraphDateTime(rangeValue.end),
+                timeZone: OUTLOOK_TIMEZONE,
+            },
+        }),
+    });
+
+    return response.ok;
+};
+
+const updateOutlookEventById = async (accessToken, outlookEventId, payload) => {
+    if (!accessToken || !outlookEventId || !payload) {
+        return false;
+    }
+
+    const response = await fetch(`https://graph.microsoft.com/v1.0/me/events/${encodeURIComponent(outlookEventId)}`, {
+        method: "PATCH",
+        headers: {
+            Authorization: `Bearer ${accessToken}`,
+            "Content-Type": "application/json",
+            Prefer: `outlook.timezone="${OUTLOOK_TIMEZONE}"`,
+        },
+        body: JSON.stringify(payload),
+    });
+
+    return response.ok;
 };
 
 const normalizeRoomPlace = (roomItem) => {
@@ -579,6 +734,12 @@ const addMinutesToTimeValue = (timeValue, minutesToAdd) => {
     const { hour, minute } = parseTimeValueToParts(timeValue);
     const normalizedDate = new Date(2026, 0, 1, hour, minute, 0, 0);
     normalizedDate.setMinutes(normalizedDate.getMinutes() + minutesToAdd);
+    const maximumEndMinutes = CREATE_EVENT_AVAILABLE_END_HOUR * 60;
+    const normalizedMinutes = (normalizedDate.getHours() * 60) + normalizedDate.getMinutes();
+
+    if (normalizedMinutes > maximumEndMinutes) {
+        return formatTimeValue(CREATE_EVENT_AVAILABLE_END_HOUR, 0);
+    }
 
     return formatTimeValue(normalizedDate.getHours(), normalizedDate.getMinutes());
 };
@@ -618,11 +779,19 @@ const clampCreateEventDateValue = (dateValue) => {
 const getDefaultCreateEventStartDate = () => {
     const now = new Date();
     const roundedNow = roundDateToNextScheduleSlot(now);
-    const todayDateValue = formatDateInputValue(now);
+    const minimumStartMinutes = CREATE_EVENT_AVAILABLE_START_HOUR * 60;
+    const maximumStartMinutes = (CREATE_EVENT_AVAILABLE_END_HOUR * 60) - SCHEDULE_INTERVAL_MINUTES;
+    const roundedMinutes = (roundedNow.getHours() * 60) + roundedNow.getMinutes();
 
-    if (formatDateInputValue(roundedNow) !== todayDateValue) {
-        roundedNow.setFullYear(now.getFullYear(), now.getMonth(), now.getDate());
-        roundedNow.setHours(23, 30, 0, 0);
+    if (roundedMinutes < minimumStartMinutes) {
+        roundedNow.setHours(CREATE_EVENT_AVAILABLE_START_HOUR, 0, 0, 0);
+    } else if (roundedMinutes > maximumStartMinutes) {
+        roundedNow.setHours(
+            Math.floor(maximumStartMinutes / 60),
+            maximumStartMinutes % 60,
+            0,
+            0,
+        );
     }
 
     return roundedNow;
@@ -1262,6 +1431,8 @@ const countActiveFilters = (crmFilters, originFilters, selectedAdmins, visibleCr
  * @returns {JSX.Element} Calendario operativo.
  */
 export const View_calendario_outlook = () => {
+    const dispatch = useDispatch();
+
     // --- Estado global de autenticación CRM (Redux) ---
     const {
         idnetsuite_admin,
@@ -1280,6 +1451,7 @@ export const View_calendario_outlook = () => {
     // Timeout para abrir modal tras cerrar popover (evita conflicto de foco MUI)
     const expandModalTimeoutRef = useRef(null);
     const attendeeSearchTimeoutRef = useRef(null);
+    const microsoftReauthInFlightRef = useRef(false);
 
     // Modo de vista activo: day | workweek | week | month
     const [activeViewMode, setActiveViewMode] = useState("month");
@@ -1311,12 +1483,24 @@ export const View_calendario_outlook = () => {
     // Control de apertura del Dialog expandido
     const [isExpandedModalOpen, setIsExpandedModalOpen] = useState(false);
     const [isCreateEventModalOpen, setIsCreateEventModalOpen] = useState(false);
+    const [editingEventContext, setEditingEventContext] = useState(null);
     const [isCreateTeamsMeeting, setIsCreateTeamsMeeting] = useState(false);
     const [isScheduleEditorOpen, setIsScheduleEditorOpen] = useState(false);
     const [createEventTitle, setCreateEventTitle] = useState("");
+    const [createEventType, setCreateEventType] = useState("");
     const [createEventLocation, setCreateEventLocation] = useState("");
     const [roomSearchText, setRoomSearchText] = useState("");
     const [createEventDescription, setCreateEventDescription] = useState("");
+    const [isCreateEventLeadEnabled, setIsCreateEventLeadEnabled] = useState(false);
+    const [createEventLeadId, setCreateEventLeadId] = useState("");
+    const [isLeadInvitationEnabled, setIsLeadInvitationEnabled] = useState(false);
+    const [createEventLeadOptions, setCreateEventLeadOptions] = useState([]);
+    const [isLoadingCreateEventLeadOptions, setIsLoadingCreateEventLeadOptions] = useState(false);
+    const [createEventLeadOptionsError, setCreateEventLeadOptionsError] = useState("");
+    const [createEventProjectId, setCreateEventProjectId] = useState("");
+    const [createEventProjectOptions, setCreateEventProjectOptions] = useState([]);
+    const [isLoadingCreateEventProjectOptions, setIsLoadingCreateEventProjectOptions] = useState(false);
+    const [createEventProjectOptionsError, setCreateEventProjectOptionsError] = useState("");
     const [createEventDateValue, setCreateEventDateValue] = useState(formatDateInputValue(calendarDate));
     const [createEventStartTimeValue, setCreateEventStartTimeValue] = useState(
         formatTimeValue(CREATE_EVENT_DEFAULT_START_HOUR, CREATE_EVENT_DEFAULT_START_MINUTE),
@@ -1346,6 +1530,7 @@ export const View_calendario_outlook = () => {
     const [isLoadingMeetingSuggestions, setIsLoadingMeetingSuggestions] = useState(false);
     const [meetingSuggestionsError, setMeetingSuggestionsError] = useState("");
     const [isSavingCreateEvent, setIsSavingCreateEvent] = useState(false);
+    const [isUpdatingEventStatus, setIsUpdatingEventStatus] = useState(false);
     const [createEventSubmitError, setCreateEventSubmitError] = useState("");
     const [eventsReloadToken, setEventsReloadToken] = useState(0);
 
@@ -1385,6 +1570,21 @@ export const View_calendario_outlook = () => {
         [originScopedCalendarEvents],
     );
 
+    const selectedCreateEventLeadOption = useMemo(
+        () => createEventLeadOptions.find(
+            (leadOption) => String(leadOption.value) === String(createEventLeadId),
+        ) || null,
+        [createEventLeadId, createEventLeadOptions],
+    );
+    const selectedCreateEventLeadEmail = normalizeParticipantEmail(selectedCreateEventLeadOption?.email || "");
+
+    const selectedCreateEventProjectOption = useMemo(
+        () => createEventProjectOptions.find(
+            (projectOption) => String(projectOption.value) === String(createEventProjectId),
+        ) || null,
+        [createEventProjectId, createEventProjectOptions],
+    );
+
     const filteredCalendarEvents = useMemo(
         () => originScopedCalendarEvents.filter(
             (eventItem) => shouldKeepEventByCategory(eventItem, crmFilters),
@@ -1403,18 +1603,30 @@ export const View_calendario_outlook = () => {
         () => countActiveFilters(crmFilters, originFilters, selectedAdmins, visibleCrmFilterOptions),
         [crmFilters, originFilters, selectedAdmins, visibleCrmFilterOptions],
     );
+    const expectedMicrosoftEmail = useMemo(
+        () => (microsoftUser?.email || email_admin || "").trim().toLowerCase(),
+        [email_admin, microsoftUser?.email],
+    );
+
     const activeMicrosoftAccount = useMemo(() => {
-        if (!accounts?.length) {
+        if (!accounts?.length || !expectedMicrosoftEmail) {
             return null;
         }
 
         return accounts.find(
-            (account) => account.username?.toLowerCase() === microsoftUser?.email?.toLowerCase(),
-        ) || instance.getActiveAccount() || accounts[0];
-    }, [accounts, instance, microsoftUser?.email]);
+            (account) => account.username?.toLowerCase() === expectedMicrosoftEmail,
+        ) || null;
+    }, [accounts, expectedMicrosoftEmail]);
 
     const createEventCalendarLabel =
         activeMicrosoftAccount?.username || microsoftUser?.email || email_admin || "sin-correo";
+    const createEventMode = editingEventContext ? "edit" : "create";
+    const createEventWindowTitle = createEventMode === "edit"
+        ? "Editar evento: Calendario"
+        : "Nuevo evento: Calendario";
+    const createEventSubmitLabel = createEventMode === "edit"
+        ? "Guardar cambios"
+        : "Guardar";
     const createEventMinimumDateValue = useMemo(
         () => formatDateInputValue(getCreateEventMinimumDate()),
         [],
@@ -1431,6 +1643,8 @@ export const View_calendario_outlook = () => {
     const createEventDateTimeLabel = formatCreateEventDateTimeLabel(createEventScheduleRange);
     const createEventWeekLabel = `semana ${getIsoWeekNumber(createEventScheduleRange.start)}`;
     const hasCreateEventTitle = createEventTitle.trim().length > 0;
+    const shouldShowCreateEventLeadSelect = isCreateEventLeadEnabled;
+    const shouldShowCreateEventProjectSelect = createEventType === "Cita";
     const shouldOpenAttendeeSuggestions = attendeeSearchText.trim().length >= PEOPLE_SEARCH_MIN_LENGTH;
     const createEventScheduleLabel = useMemo(
         () => `${formatHourMinuteLabel(createEventScheduleRange.start.getHours(), createEventScheduleRange.start.getMinutes())} - ${formatHourMinuteLabel(
@@ -1448,6 +1662,57 @@ export const View_calendario_outlook = () => {
         () => roomDirectoryOptions.filter((roomItem) => matchesRoomSearch(roomItem, roomSearchValue)),
         [roomDirectoryOptions, roomSearchValue],
     );
+
+    useEffect(() => {
+        if (inProgress === "startup" || !expectedMicrosoftEmail || activeMicrosoftAccount || microsoftReauthInFlightRef.current) {
+            return;
+        }
+
+        let isCancelled = false;
+
+        const forceExpectedMicrosoftAccount = async () => {
+            microsoftReauthInFlightRef.current = true;
+
+            try {
+                const loginResult = await instance.loginPopup({
+                    scopes: OUTLOOK_REQUIRED_SCOPES,
+                    loginHint: expectedMicrosoftEmail,
+                    prompt: "select_account",
+                });
+                const authenticatedAccount = loginResult?.account || null;
+
+                if (!authenticatedAccount) {
+                    throw new Error("No se pudo obtener cuenta Microsoft.");
+                }
+
+                if (authenticatedAccount.username?.toLowerCase() !== expectedMicrosoftEmail) {
+                    throw new Error(`Debe autenticarse con ${expectedMicrosoftEmail}.`);
+                }
+
+                if (!isCancelled) {
+                    instance.setActiveAccount(authenticatedAccount);
+                }
+            } catch (error) {
+                console.error("[outlook-calendar] cuenta Microsoft no coincide con usuario CRM", error);
+
+                if (!isCancelled) {
+                    await Swal.fire(
+                        "Reautenticación requerida",
+                        `Debe iniciar sesión con ${expectedMicrosoftEmail} para operar eventos de Outlook.`,
+                        "warning",
+                    );
+                }
+            } finally {
+                microsoftReauthInFlightRef.current = false;
+            }
+        };
+
+        forceExpectedMicrosoftAccount();
+
+        return () => {
+            isCancelled = true;
+        };
+    }, [activeMicrosoftAccount, expectedMicrosoftEmail, inProgress, instance]);
     const hasMoreRoomSuggestions = matchingRoomOptions.length > ROOM_SUGGESTION_LIMIT;
     const visibleRoomOptions = useMemo(
         () => (showAllRoomSuggestions ? matchingRoomOptions : matchingRoomOptions.slice(0, ROOM_SUGGESTION_LIMIT)),
@@ -1472,28 +1737,54 @@ export const View_calendario_outlook = () => {
         [roomAvailabilityByEmail, visibleRoomOptions],
     );
     const createEventTimeOptions = useMemo(
-        () => Array.from({ length: (24 * 60) / SCHEDULE_INTERVAL_MINUTES }, (_, index) => {
-            const totalMinutes = index * SCHEDULE_INTERVAL_MINUTES;
-            const hourValue = Math.floor(totalMinutes / 60);
-            const minuteValue = totalMinutes % 60;
-            const value = formatTimeValue(hourValue, minuteValue);
+        () => {
+            const startMinutes = CREATE_EVENT_AVAILABLE_START_HOUR * 60;
+            const endMinutes = (CREATE_EVENT_AVAILABLE_END_HOUR * 60) - SCHEDULE_INTERVAL_MINUTES;
+            const optionsLength = ((endMinutes - startMinutes) / SCHEDULE_INTERVAL_MINUTES) + 1;
 
-            return {
-                value,
-                label: formatHourMinuteLabel(hourValue, minuteValue),
-            };
-        }),
+            return Array.from({ length: optionsLength }, (_, index) => {
+                const totalMinutes = startMinutes + (index * SCHEDULE_INTERVAL_MINUTES);
+                const hourValue = Math.floor(totalMinutes / 60);
+                const minuteValue = totalMinutes % 60;
+                const value = formatTimeValue(hourValue, minuteValue);
+
+                return {
+                    value,
+                    label: formatHourMinuteLabel(hourValue, minuteValue),
+                };
+            });
+        },
+        [],
+    );
+    const createEventAllTimeOptions = useMemo(
+        () => {
+            const startMinutes = CREATE_EVENT_AVAILABLE_START_HOUR * 60;
+            const endMinutes = CREATE_EVENT_AVAILABLE_END_HOUR * 60;
+            const optionsLength = ((endMinutes - startMinutes) / SCHEDULE_INTERVAL_MINUTES) + 1;
+
+            return Array.from({ length: optionsLength }, (_, index) => {
+                const totalMinutes = startMinutes + (index * SCHEDULE_INTERVAL_MINUTES);
+                const hourValue = Math.floor(totalMinutes / 60);
+                const minuteValue = totalMinutes % 60;
+                const value = formatTimeValue(hourValue, minuteValue);
+
+                return {
+                    value,
+                    label: formatHourMinuteLabel(hourValue, minuteValue),
+                };
+            });
+        },
         [],
     );
     const createEventEndTimeOptions = useMemo(
         () => {
             const startDate = buildDateFromInputParts(createEventDateValue, createEventStartTimeValue);
 
-            return createEventTimeOptions.filter((option) => (
+            return createEventAllTimeOptions.filter((option) => (
                 buildDateFromInputParts(createEventDateValue, option.value) > startDate
             ));
         },
-        [createEventDateValue, createEventStartTimeValue, createEventTimeOptions],
+        [createEventAllTimeOptions, createEventDateValue, createEventStartTimeValue],
     );
     const scheduleParticipantEmails = useMemo(() => {
         const participantEmailSet = new Set();
@@ -1540,6 +1831,21 @@ export const View_calendario_outlook = () => {
         [createEventScheduleRange, scheduleAvailabilityByEmail, scheduleParticipantEmails],
     );
     const currentOwnerEmail = (activeMicrosoftAccount?.username || microsoftUser?.email || email_admin || "").toLowerCase();
+    const selectedEventEditPermission = useMemo(
+        () => canAuthenticatedUserMoveCalendarEvent({
+            crmEvent: selectedEvent?.extendedProps?.crm || null,
+            outlookEvent: selectedEvent?.extendedProps?.outlook || null,
+            currentAdminId: idnetsuite_admin,
+            currentUserEmail: currentOwnerEmail,
+        }),
+        [currentOwnerEmail, idnetsuite_admin, selectedEvent],
+    );
+    const canEditSelectedEvent = Boolean(selectedEvent && selectedEventEditPermission.canMove);
+    const canShowEditStatusActions = Boolean(
+        createEventMode === "edit"
+        && editingEventContext?.crmEventId
+        && editingEventContext?.crmStatus === "Pendiente",
+    );
     const ownerAvailabilityStatus = attendeeAvailabilityStatuses[currentOwnerEmail] || "unknown";
     const selectedRoomEmail = selectedRoomOption?.email?.trim().toLowerCase() || "";
     const selectedRoomAvailabilityStatus = selectedRoomEmail
@@ -2194,6 +2500,210 @@ export const View_calendario_outlook = () => {
         setExpandedEvent(null);
     };
 
+    const handleCreateEventTypeChange = (nextEventType) => {
+        setCreateEventType(nextEventType);
+
+        if (nextEventType !== "Cita") {
+            setCreateEventProjectId("");
+        }
+    };
+
+    const handleCreateEventLeadToggle = (isChecked) => {
+        setIsCreateEventLeadEnabled(isChecked);
+
+        if (!isChecked) {
+            setCreateEventLeadId("");
+            setIsLeadInvitationEnabled(false);
+        }
+    };
+
+    useEffect(() => {
+        if (!isCreateEventModalOpen || !isCreateEventLeadEnabled || createEventLeadOptions.length) {
+            return undefined;
+        }
+
+        let isMounted = true;
+
+        const fetchCreateEventLeadOptions = async () => {
+            setIsLoadingCreateEventLeadOptions(true);
+            setCreateEventLeadOptionsError("");
+
+            try {
+                const leads = await dispatch(getLeadsComplete("2024-01-01", "2024-01-01", 0));
+                const formattedLeads = Array.isArray(leads)
+                    ? leads
+                        .map((lead) => ({
+                            value: lead.idinterno_lead,
+                            label: lead.nombre_lead,
+                            email: lead.email_lead || "",
+                        }))
+                        .filter((leadOption) => leadOption.value && leadOption.label)
+                    : [];
+
+                if (!isMounted) {
+                    return;
+                }
+
+                setCreateEventLeadOptions(formattedLeads);
+            } catch (error) {
+                if (!isMounted) {
+                    return;
+                }
+
+                setCreateEventLeadOptions([]);
+                setCreateEventLeadOptionsError("No se pudieron cargar leads.");
+            } finally {
+                if (isMounted) {
+                    setIsLoadingCreateEventLeadOptions(false);
+                }
+            }
+        };
+
+        fetchCreateEventLeadOptions();
+
+        return () => {
+            isMounted = false;
+        };
+    }, [
+        createEventLeadOptions.length,
+        dispatch,
+        isCreateEventLeadEnabled,
+        isCreateEventModalOpen,
+    ]);
+
+    useEffect(() => {
+        if (!isCreateEventModalOpen) {
+            return;
+        }
+
+        if (!isLeadInvitationEnabled || !selectedCreateEventLeadEmail) {
+            setSelectedAttendees((currentValue) => currentValue.filter((attendeeItem) => attendeeItem?.source !== "lead"));
+            return;
+        }
+
+        setSelectedAttendees((currentValue) => {
+            const nextAttendees = currentValue.filter((attendeeItem) => attendeeItem?.source !== "lead");
+            const alreadyExists = nextAttendees.some(
+                (attendeeItem) => normalizeParticipantEmail(attendeeItem?.email) === selectedCreateEventLeadEmail,
+            );
+
+            if (alreadyExists) {
+                return nextAttendees;
+            }
+
+            return [
+                ...nextAttendees,
+                {
+                    id: "lead-" + String(selectedCreateEventLeadOption?.value || selectedCreateEventLeadEmail),
+                    displayName: selectedCreateEventLeadEmail,
+                    email: selectedCreateEventLeadEmail,
+                    source: "lead",
+                },
+            ];
+        });
+    }, [
+        isCreateEventModalOpen,
+        isLeadInvitationEnabled,
+        selectedCreateEventLeadEmail,
+        selectedCreateEventLeadOption,
+    ]);
+
+    useEffect(() => {
+        if (!isCreateEventModalOpen || !shouldShowCreateEventProjectSelect || createEventProjectOptions.length) {
+            return undefined;
+        }
+
+        let isMounted = true;
+
+        const fetchCreateEventProjectOptions = async () => {
+            setIsLoadingCreateEventProjectOptions(true);
+            setCreateEventProjectOptionsError("");
+
+            try {
+                const resultProjects = await dispatch(getDataSelectProyect(1));
+                const formattedProjects = Array.isArray(resultProjects)
+                    ? resultProjects
+                        .map((projectItem) => ({
+                            value: projectItem.id_ProNetsuite,
+                            label: projectItem.Nombre_proyecto,
+                        }))
+                        .filter((projectOption) => projectOption.value && projectOption.label)
+                    : [];
+
+                if (!isMounted) {
+                    return;
+                }
+
+                setCreateEventProjectOptions(formattedProjects);
+            } catch (error) {
+                if (!isMounted) {
+                    return;
+                }
+
+                setCreateEventProjectOptions([]);
+                setCreateEventProjectOptionsError("No se pudieron cargar proyectos.");
+            } finally {
+                if (isMounted) {
+                    setIsLoadingCreateEventProjectOptions(false);
+                }
+            }
+        };
+
+        fetchCreateEventProjectOptions();
+
+        return () => {
+            isMounted = false;
+        };
+    }, [
+        createEventProjectOptions.length,
+        dispatch,
+        isCreateEventModalOpen,
+        shouldShowCreateEventProjectSelect,
+    ]);
+
+    const resetCreateEventFormState = ({
+        defaultDateValue = createEventMinimumDateValue,
+        defaultStartTimeValue = createEventTimeOptions[0]?.value || "07:00",
+        defaultEndTimeValue = addMinutesToTimeValue(
+            createEventTimeOptions[0]?.value || "07:00",
+            CREATE_EVENT_DEFAULT_DURATION_MINUTES,
+        ),
+    } = {}) => {
+        setEditingEventContext(null);
+        setIsCreateTeamsMeeting(false);
+        setIsScheduleEditorOpen(false);
+        setCreateEventTitle("");
+        setCreateEventType("");
+        setCreateEventLocation("");
+        setRoomSearchText("");
+        setCreateEventDescription("");
+        setIsCreateEventLeadEnabled(false);
+        setCreateEventLeadId("");
+        setIsLeadInvitationEnabled(false);
+        setCreateEventProjectId("");
+        setCreateEventDateValue(defaultDateValue);
+        setCreateEventStartTimeValue(defaultStartTimeValue);
+        setCreateEventEndTimeValue(defaultEndTimeValue);
+        setIsRoomSuggestionsOpen(false);
+        setShowAllRoomSuggestions(false);
+        setSelectedRoomOption(null);
+        setRoomAvailabilityByEmail({});
+        setRoomDirectoryError("");
+        setHasTouchedCreateEventTitle(false);
+        setSelectedAttendees([]);
+        setAttendeeSearchText("");
+        setAttendeeDirectoryOptions([]);
+        setAttendeeDirectoryError("");
+        setCreateEventLeadOptionsError("");
+        setCreateEventProjectOptionsError("");
+        setScheduleAvailability([]);
+        setScheduleAvailabilityError("");
+        setMeetingSuggestions([]);
+        setMeetingSuggestionsError("");
+        setIsUpdatingEventStatus(false);
+        setCreateEventSubmitError("");
+    };
+
     const openCreateEventModal = () => {
         const defaultStartDate = getDefaultCreateEventStartDate();
         const defaultDateValue = formatDateInputValue(defaultStartDate);
@@ -2203,25 +2713,86 @@ export const View_calendario_outlook = () => {
         );
 
         closeEventCard();
-        setCreateEventTitle("");
-        setCreateEventLocation("");
+        resetCreateEventFormState({
+            defaultDateValue,
+            defaultStartTimeValue,
+            defaultEndTimeValue: addMinutesToTimeValue(defaultStartTimeValue, CREATE_EVENT_DEFAULT_DURATION_MINUTES),
+        });
+        setIsCreateEventModalOpen(true);
+    };
+
+    const openEditEventModal = (eventItem) => {
+        const crmEvent = eventItem?.extendedProps?.crm || null;
+        const outlookEvent = eventItem?.extendedProps?.outlook || null;
+        const startDate = eventItem?.start ? new Date(eventItem.start) : getDefaultCreateEventStartDate();
+        const endDate = eventItem?.end
+            ? new Date(eventItem.end)
+            : new Date(startDate.getTime() + (CREATE_EVENT_DEFAULT_DURATION_MINUTES * 60000));
+        const organizerEmail = normalizeParticipantEmail(outlookEvent?.organizer?.emailAddress?.address);
+        const attendeeOptions = (outlookEvent?.attendees || [])
+            .map(buildGraphAttendeeOption)
+            .filter(Boolean);
+        const resourceAttendee = attendeeOptions.find((attendeeItem) => attendeeItem.type === "resource") || null;
+        const selectedAttendeeOptions = attendeeOptions.filter(
+            (attendeeItem) => attendeeItem.type !== "resource"
+                && attendeeItem.email !== organizerEmail,
+        );
+        const leadEmail = normalizeParticipantEmail(crmEvent?.email_lead);
+        const shouldInviteLead = Boolean(
+            leadEmail
+            && selectedAttendeeOptions.some(
+                (attendeeItem) => normalizeParticipantEmail(attendeeItem?.email) === leadEmail,
+            ),
+        );
+
+        closeEventCard();
+        setEditingEventContext({
+            id: eventItem.id,
+            crmEventId: crmEvent?.id_calendar || null,
+            crmLeadId: crmEvent?.idinterno_lead || crmEvent?.id_lead || 0,
+            crmStatus: crmEvent?.accion_calendar || "",
+            outlookEventId: outlookEvent?.id || crmEvent?.outlook_event_id || null,
+            source: eventItem?.extendedProps?.source || "crm",
+        });
+        setCreateEventTitle(eventItem?.title || crmEvent?.nombre_calendar || "");
+        setCreateEventType(normalizeCreateEventTypeValue(crmEvent?.tipo_calendar || eventItem?.extendedProps?.eventType));
+        setCreateEventLocation(outlookEvent?.location?.displayName || "");
         setRoomSearchText("");
-        setCreateEventDescription("");
-        setCreateEventDateValue(defaultDateValue);
-        setCreateEventStartTimeValue(defaultStartTimeValue);
-        setCreateEventEndTimeValue(addMinutesToTimeValue(defaultStartTimeValue, CREATE_EVENT_DEFAULT_DURATION_MINUTES));
+        setCreateEventDescription(crmEvent?.decrip_calendar || eventItem?.extendedProps?.description || "");
+        setIsCreateEventLeadEnabled(Boolean(crmEvent?.id_lead));
+        setCreateEventLeadId(crmEvent?.id_lead ? String(crmEvent.id_lead) : "");
+        setIsLeadInvitationEnabled(shouldInviteLead);
+        setCreateEventProjectId(crmEvent?.id_proyecto ? String(crmEvent.id_proyecto) : "");
+        setCreateEventDateValue(formatDateInputValue(startDate));
+        setCreateEventStartTimeValue(formatTimeValue(startDate.getHours(), startDate.getMinutes()));
+        setCreateEventEndTimeValue(formatTimeValue(endDate.getHours(), endDate.getMinutes()));
         setHasTouchedCreateEventTitle(false);
-        setIsCreateTeamsMeeting(false);
+        setIsCreateTeamsMeeting(Boolean(outlookEvent?.isOnlineMeeting || eventItem?.extendedProps?.teamsLink));
         setIsScheduleEditorOpen(false);
         setIsRoomSuggestionsOpen(false);
         setShowAllRoomSuggestions(false);
-        setSelectedRoomOption(null);
+        setSelectedRoomOption(
+            resourceAttendee
+                ? {
+                    id: resourceAttendee.id,
+                    displayName: resourceAttendee.displayName,
+                    email: resourceAttendee.email,
+                }
+                : null,
+        );
         setRoomAvailabilityByEmail({});
         setRoomDirectoryError("");
-        setSelectedAttendees([]);
+        setSelectedAttendees(selectedAttendeeOptions.map((attendeeItem) => ({
+            id: attendeeItem.id,
+            displayName: attendeeItem.displayName,
+            email: attendeeItem.email,
+            source: attendeeItem.source || "outlook",
+        })));
         setAttendeeSearchText("");
-        setAttendeeDirectoryOptions([]);
+        setAttendeeDirectoryOptions(selectedAttendeeOptions);
         setAttendeeDirectoryError("");
+        setCreateEventLeadOptionsError("");
+        setCreateEventProjectOptionsError("");
         setScheduleAvailability([]);
         setScheduleAvailabilityError("");
         setMeetingSuggestions([]);
@@ -2232,28 +2803,50 @@ export const View_calendario_outlook = () => {
 
     const closeCreateEventModal = () => {
         setIsCreateEventModalOpen(false);
-        setIsCreateTeamsMeeting(false);
-        setIsScheduleEditorOpen(false);
-        setCreateEventTitle("");
-        setCreateEventLocation("");
-        setRoomSearchText("");
-        setCreateEventDescription("");
-        setIsRoomSuggestionsOpen(false);
-        setShowAllRoomSuggestions(false);
-        setSelectedRoomOption(null);
-        setRoomAvailabilityByEmail({});
-        setRoomDirectoryError("");
-        setHasTouchedCreateEventTitle(false);
-        setSelectedAttendees([]);
-        setAttendeeSearchText("");
-        setAttendeeDirectoryOptions([]);
-        setAttendeeDirectoryError("");
-        setScheduleAvailability([]);
-        setScheduleAvailabilityError("");
-        setMeetingSuggestions([]);
-        setMeetingSuggestionsError("");
-        setCreateEventSubmitError("");
+        resetCreateEventFormState();
     };
+
+    const handleUpdateCalendarEventStatus = async (statusAction) => {
+        const crmEventId = editingEventContext?.crmEventId || 0;
+
+        if (!crmEventId) {
+            return;
+        }
+
+        const statusConfig = statusAction === "complete"
+            ? { newStatus: 0, actionLabel: "Completado" }
+            : { newStatus: 0, actionLabel: "Cancelado" };
+
+        setIsUpdatingEventStatus(true);
+        setCreateEventSubmitError("");
+
+        try {
+            const response = await update_Status_Event({
+                id: crmEventId,
+                NewStatus: statusConfig.newStatus,
+                EstadoAccion: statusConfig.actionLabel,
+            });
+            const succeeded = response?.ok && response?.data?.ok !== false;
+
+            if (!succeeded) {
+                throw new Error("Status update failed.");
+            }
+
+            closeCreateEventModal();
+            setSelectedEvent(null);
+            setSelectedPosition(null);
+            setEventsReloadToken((currentValue) => currentValue + 1);
+        } catch (error) {
+            console.error("[outlook-calendar] no se pudo actualizar estado del evento", error);
+            setCreateEventSubmitError(`No se pudo marcar el evento como ${statusConfig.actionLabel.toLowerCase()}.`);
+        } finally {
+            setIsUpdatingEventStatus(false);
+        }
+    };
+
+    const handleCompleteCalendarEvent = () => handleUpdateCalendarEventStatus("complete");
+
+    const handleCancelCalendarEvent = () => handleUpdateCalendarEventStatus("cancel");
 
     const handleCreateEventDateChange = (nextDateValue) => {
         if (!nextDateValue) {
@@ -2264,17 +2857,8 @@ export const View_calendario_outlook = () => {
     };
 
     const handleCreateEventStartTimeChange = (nextStartTimeValue) => {
-        const nextRange = buildCreateEventScheduleRange(
-            createEventDateValue,
-            nextStartTimeValue,
-            createEventEndTimeValue,
-        );
-
         setCreateEventStartTimeValue(nextStartTimeValue);
-
-        if (nextRange.end <= nextRange.start) {
-            setCreateEventEndTimeValue(addMinutesToTimeValue(nextStartTimeValue, CREATE_EVENT_DEFAULT_DURATION_MINUTES));
-        }
+        setCreateEventEndTimeValue(addMinutesToTimeValue(nextStartTimeValue, CREATE_EVENT_DEFAULT_DURATION_MINUTES));
     };
 
     const handleCreateEventEndTimeChange = (nextEndTimeValue) => {
@@ -2308,9 +2892,29 @@ export const View_calendario_outlook = () => {
         );
     };
 
-    const handleCreateOutlookEvent = async () => {
+    const handleSubmitOutlookEvent = async () => {
         if (!hasCreateEventTitle || !activeMicrosoftAccount) {
             setHasTouchedCreateEventTitle(true);
+            return;
+        }
+
+        if (!createEventType) {
+            setCreateEventSubmitError("Selecciona el tipo de evento.");
+            return;
+        }
+
+        if (!idnetsuite_admin) {
+            setCreateEventSubmitError("No se identificó el usuario autenticado del CRM.");
+            return;
+        }
+
+        if (isCreateEventLeadEnabled && !createEventLeadId) {
+            setCreateEventSubmitError("Selecciona el lead del evento.");
+            return;
+        }
+
+        if (shouldShowCreateEventProjectSelect && !createEventProjectId) {
+            setCreateEventSubmitError("Selecciona el proyecto a visitar.");
             return;
         }
 
@@ -2341,7 +2945,26 @@ export const View_calendario_outlook = () => {
                 });
             }
 
-            const payload = {
+            const requiredAttendees = selectedAttendees
+                .filter((attendeeItem) => attendeeItem?.email?.trim())
+                .map((attendeeItem) => ({
+                    emailAddress: {
+                        address: attendeeItem.email.trim(),
+                        name: attendeeItem.displayName || attendeeItem.email.trim(),
+                    },
+                    type: "required",
+                }));
+
+            const resourceAttendees = selectedRoomOption?.email?.trim()
+                ? [{
+                    emailAddress: {
+                        address: selectedRoomOption.email.trim(),
+                        name: selectedRoomOption.displayName || selectedRoomOption.email.trim(),
+                    },
+                    type: "resource",
+                }]
+                : [];
+            const graphPayload = {
                 subject: createEventTitle.trim(),
                 body: {
                     contentType: "HTML",
@@ -2355,71 +2978,254 @@ export const View_calendario_outlook = () => {
                     dateTime: toGraphDateTime(createEventScheduleRange.end),
                     timeZone: OUTLOOK_TIMEZONE,
                 },
-                allowNewTimeProposals: true,
-                transactionId: buildEventTransactionId(),
             };
 
             if (createEventLocation.trim()) {
-                payload.location = {
+                graphPayload.location = {
                     displayName: createEventLocation.trim(),
                 };
             }
 
-            const requiredAttendees = selectedAttendees
-                    .filter((attendeeItem) => attendeeItem?.email?.trim())
-                    .map((attendeeItem) => ({
-                        emailAddress: {
-                            address: attendeeItem.email.trim(),
-                            name: attendeeItem.displayName || attendeeItem.email.trim(),
-                        },
-                        type: "required",
-                    }));
-
-            const resourceAttendees = selectedRoomOption?.email?.trim()
-                ? [{
-                    emailAddress: {
-                        address: selectedRoomOption.email.trim(),
-                        name: selectedRoomOption.displayName || selectedRoomOption.email.trim(),
-                    },
-                    type: "resource",
-                }]
-                : [];
-
             if (requiredAttendees.length || resourceAttendees.length) {
-                payload.attendees = [
+                graphPayload.attendees = [
                     ...requiredAttendees,
                     ...resourceAttendees,
                 ];
             }
 
-            if (isCreateTeamsMeeting) {
-                payload.isOnlineMeeting = true;
-                payload.onlineMeetingProvider = "teamsForBusiness";
+            if (createEventMode === "edit") {
+                const outlookEventId = editingEventContext?.outlookEventId || null;
+                const crmEventId = editingEventContext?.crmEventId || null;
+
+                if (outlookEventId) {
+                    const graphUpdateSucceeded = await updateOutlookEventById(
+                        tokenResponse.accessToken,
+                        outlookEventId,
+                        graphPayload,
+                    );
+
+                    if (!graphUpdateSucceeded) {
+                        throw new Error("Graph update event failed.");
+                    }
+                }
+
+                if (crmEventId) {
+                    const crmUpdateResponse = await updateOutlookCalendarEventDetails({
+                        id_calendar: crmEventId,
+                        idnetsuite_admin,
+                        nombreEvento: createEventTitle.trim(),
+                        tipoEvento: createEventType,
+                        descripcionEvento: createEventDescription.trim(),
+                        formatdateIni: toGraphDateTime(createEventScheduleRange.start),
+                        formatdateFin: toGraphDateTime(createEventScheduleRange.end),
+                        horaInicio: createEventStartTimeValue,
+                        horaFinal: createEventEndTimeValue,
+                        leadId: isCreateEventLeadEnabled ? Number(createEventLeadId || 0) : 0,
+                        colorEvento: getCreateEventColor(createEventType),
+                        citaValue: createEventType === "Cita" ? 1 : 0,
+                        id_proyecto: shouldShowCreateEventProjectSelect ? Number(createEventProjectId || 0) : 0,
+                        nombre_proyecto: shouldShowCreateEventProjectSelect
+                            ? (selectedCreateEventProjectOption?.label || "0")
+                            : "0",
+                        copiaJefe: 1,
+                    });
+
+                    const crmUpdateSucceeded = crmUpdateResponse?.ok && crmUpdateResponse?.data?.ok !== false;
+
+                    if (!crmUpdateSucceeded) {
+                        throw new Error("CRM update event failed.");
+                    }
+                }
+            } else {
+                graphPayload.allowNewTimeProposals = true;
+                graphPayload.transactionId = buildEventTransactionId();
+
+                if (isCreateTeamsMeeting) {
+                    graphPayload.isOnlineMeeting = true;
+                    graphPayload.onlineMeetingProvider = "teamsForBusiness";
+                }
+
+                const response = await fetch("https://graph.microsoft.com/v1.0/me/events", {
+                    method: "POST",
+                    headers: {
+                        Authorization: `Bearer ${tokenResponse.accessToken}`,
+                        "Content-Type": "application/json",
+                        Prefer: `outlook.timezone="${OUTLOOK_TIMEZONE}"`,
+                    },
+                    body: JSON.stringify(graphPayload),
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Graph create event HTTP ${response.status}`);
+                }
+
+                const createdOutlookEvent = await response.json();
+                const createdOutlookEventId = createdOutlookEvent?.id || "";
+
+                if (!createdOutlookEventId) {
+                    throw new Error("Graph create event did not return id.");
+                }
+
+                const crmCreateResponse = await createOutlookCalendarEvent({
+                    idnetsuite_admin,
+                    nombreEvento: createEventTitle.trim(),
+                    tipoEvento: createEventType,
+                    descripcionEvento: createEventDescription.trim(),
+                    formatdateIni: toGraphDateTime(createEventScheduleRange.start),
+                    formatdateFin: toGraphDateTime(createEventScheduleRange.end),
+                    horaInicio: createEventStartTimeValue,
+                    horaFinal: createEventEndTimeValue,
+                    leadId: isCreateEventLeadEnabled ? Number(createEventLeadId || 0) : 0,
+                    colorEvento: getCreateEventColor(createEventType),
+                    citaValue: createEventType === "Cita" ? 1 : 0,
+                    id_proyecto: shouldShowCreateEventProjectSelect ? Number(createEventProjectId || 0) : 0,
+                    nombre_proyecto: shouldShowCreateEventProjectSelect
+                        ? (selectedCreateEventProjectOption?.label || "0")
+                        : "0",
+                    copiaJefe: 1,
+                    outlook_event_id: createdOutlookEventId,
+                });
+
+                const crmCreateSucceeded = crmCreateResponse?.ok && crmCreateResponse?.data?.ok !== false;
+
+                if (!crmCreateSucceeded) {
+                    const rollbackSucceeded = await deleteOutlookEventById(
+                        tokenResponse.accessToken,
+                        createdOutlookEventId,
+                    );
+
+                    throw new Error(
+                        rollbackSucceeded
+                            ? "CRM create failed after Outlook create. Outlook rollback applied."
+                            : "CRM create failed after Outlook create. Outlook rollback failed.",
+                    );
+                }
             }
-
-            const response = await fetch("https://graph.microsoft.com/v1.0/me/events", {
-                method: "POST",
-                headers: {
-                    Authorization: `Bearer ${tokenResponse.accessToken}`,
-                    "Content-Type": "application/json",
-                    Prefer: `outlook.timezone="${OUTLOOK_TIMEZONE}"`,
-                },
-                body: JSON.stringify(payload),
-            });
-
-            if (!response.ok) {
-                throw new Error(`Graph create event HTTP ${response.status}`);
-            }
-
-            await response.json();
 
             closeCreateEventModal();
             setEventsReloadToken((currentValue) => currentValue + 1);
         } catch (error) {
-            console.error("[outlook-calendar] no se pudo crear evento Outlook", error);
-            setCreateEventSubmitError("No se pudo guardar evento en Outlook.");
+            console.error("[outlook-calendar] no se pudo guardar evento Outlook", error);
+            setCreateEventSubmitError(
+                createEventMode === "edit"
+                    ? "No se pudo actualizar el evento en Outlook y CRM."
+                    : "No se pudo guardar el evento en Outlook y CRM.",
+            );
         } finally {
             setIsSavingCreateEvent(false);
+        }
+    };
+
+const handleCalendarEventScheduleChange = async (info) => {
+        const crmEvent = info.event.extendedProps?.crm || null;
+        const outlookEvent = info.event.extendedProps?.outlook || null;
+        const nextStartDate = info.event.start ? new Date(info.event.start) : null;
+        const nextEndDate = info.event.end ? new Date(info.event.end) : null;
+        const previousStartDate = info.oldEvent?.start ? new Date(info.oldEvent.start) : null;
+        const previousEndDate = info.oldEvent?.end ? new Date(info.oldEvent.end) : null;
+        const crmEventId = crmEvent?.id_calendar || null;
+        const outlookEventId = outlookEvent?.id || crmEvent?.outlook_event_id || null;
+        const shouldUpdateCrm = Boolean(crmEventId);
+        const shouldUpdateOutlook = Boolean(outlookEventId);
+        const currentUserEmail = activeMicrosoftAccount?.username || microsoftUser?.email || email_admin || "";
+        const movePermission = canAuthenticatedUserMoveCalendarEvent({
+            crmEvent,
+            outlookEvent,
+            currentAdminId: idnetsuite_admin,
+            currentUserEmail,
+        });
+
+        if (!nextStartDate || !nextEndDate || (!shouldUpdateCrm && !shouldUpdateOutlook)) {
+            info.revert();
+            return;
+        }
+
+        if (!movePermission.canMove) {
+            info.revert();
+            await Swal.fire("No permitido", buildCalendarMoveBlockedMessage(movePermission.owner), "warning");
+            return;
+        }
+
+        closeEventCard();
+
+        try {
+            let tokenResponse = null;
+
+            if (shouldUpdateOutlook) {
+                if (!activeMicrosoftAccount) {
+                    throw new Error("No Microsoft account available for event move.");
+                }
+
+                try {
+                    tokenResponse = await instance.acquireTokenSilent({
+                        scopes: [OUTLOOK_CREATE_EVENT_SCOPE],
+                        account: activeMicrosoftAccount,
+                    });
+                } catch (error) {
+                    if (!(error instanceof InteractionRequiredAuthError)) {
+                        throw error;
+                    }
+
+                    tokenResponse = await instance.acquireTokenPopup({
+                        scopes: [OUTLOOK_CREATE_EVENT_SCOPE],
+                        account: activeMicrosoftAccount,
+                    });
+                }
+
+                const outlookUpdated = await updateOutlookEventScheduleById(
+                    tokenResponse.accessToken,
+                    outlookEventId,
+                    {
+                        start: nextStartDate,
+                        end: nextEndDate,
+                    },
+                );
+
+                if (!outlookUpdated) {
+                    throw new Error("Outlook event update failed.");
+                }
+            }
+
+            if (shouldUpdateCrm) {
+                const crmResponse = await updateOutlookCalendarEventSchedule({
+                    id_calendar: crmEventId,
+                    formatdateIni: toGraphDateTime(nextStartDate),
+                    formatdateFin: toGraphDateTime(nextEndDate),
+                    horaInicio: formatTimeValue(nextStartDate.getHours(), nextStartDate.getMinutes()),
+                    horaFinal: formatTimeValue(nextEndDate.getHours(), nextEndDate.getMinutes()),
+                });
+                const crmPayload = crmResponse?.data || null;
+                const crmUpdated = crmResponse?.ok && crmPayload?.ok !== false;
+
+                if (!crmUpdated) {
+                    if (shouldUpdateOutlook && tokenResponse?.accessToken && previousStartDate && previousEndDate) {
+                        await updateOutlookEventScheduleById(tokenResponse.accessToken, outlookEventId, {
+                            start: previousStartDate,
+                            end: previousEndDate,
+                        });
+                    }
+
+                    const ownershipBlocked = crmPayload?.data?.code === "EVENT_OWNER_MISMATCH";
+                    const notFoundBlocked = crmPayload?.data?.code === "EVENT_NOT_FOUND";
+                    const backendMessage = crmPayload?.message || "CRM event update failed.";
+                    const backendError = new Error(backendMessage);
+
+                    if (ownershipBlocked || notFoundBlocked) {
+                        backendError.code = crmPayload?.data?.code;
+                    }
+
+                    throw backendError;
+                }
+            }
+
+            setEventsReloadToken((currentValue) => currentValue + 1);
+        } catch (error) {
+            console.error("[outlook-calendar] no se pudo mover evento", error);
+            info.revert();
+
+            if (error?.code === "EVENT_OWNER_MISMATCH" || error?.code === "EVENT_NOT_FOUND") {
+                await Swal.fire("No permitido", error.message, "warning");
+            }
         }
     };
 
@@ -2512,6 +3318,45 @@ export const View_calendario_outlook = () => {
         const loadVisibleEvents = async () => {
             const crmEvents = [];
             const microsoftEvents = [];
+            let tokenResponse = null;
+
+            if (inProgress !== "startup" && microsoftUser && activeMicrosoftAccount) {
+                try {
+                    tokenResponse = await instance.acquireTokenSilent({
+                        scopes: ["Calendars.Read"],
+                        account: activeMicrosoftAccount,
+                    });
+
+                    const registerSyncResponse = await registerOutlookCalendarSync({
+                        accessToken: tokenResponse.accessToken,
+                        outlook_user_email: activeMicrosoftAccount.username || microsoftUser?.email || "",
+                        idnetsuite_admin,
+                    });
+                    const registerSyncPayload = registerSyncResponse?.data || null;
+
+                    if (registerSyncPayload?.ok === false) {
+                        throw new Error(registerSyncPayload?.message || "No se pudo registrar la suscripción Outlook.");
+                    }
+
+                    const processSyncResponse = await processOutlookCalendarSync({
+                        accessToken: tokenResponse.accessToken,
+                        outlook_user_email: activeMicrosoftAccount.username || microsoftUser?.email || "",
+                        idnetsuite_admin,
+                        forceSync: true,
+                    });
+                    const processSyncPayload = processSyncResponse?.data || null;
+
+                    if (processSyncPayload?.ok === false) {
+                        throw new Error(processSyncPayload?.message || "No se pudo procesar delta sync Outlook.");
+                    }
+                } catch (error) {
+                    if (error instanceof InteractionRequiredAuthError) {
+                        console.log("[outlook-calendar] Microsoft requiere permisos interactivos. Se omite delta sync.");
+                    } else {
+                        console.error("[outlook-calendar] error registrando o sincronizando delta Outlook -> CRM", error);
+                    }
+                }
+            }
 
             // --- Bloque CRM: requiere usuario NetSuite y rol ---
             if (idnetsuite_admin && rol_admin) {
@@ -2532,18 +3377,14 @@ export const View_calendario_outlook = () => {
             }
 
             // --- Bloque Microsoft 365: requiere MSAL listo y usuario Microsoft vinculado ---
-            if (inProgress !== "startup" && microsoftUser && accounts?.length) {
+            if (inProgress !== "startup" && microsoftUser && activeMicrosoftAccount) {
                 try {
-                    // Preferir cuenta cuyo email coincide con microsoftUser del CRM
-                    const matchedAccount = accounts.find(
-                        (account) => account.username?.toLowerCase() === microsoftUser.email?.toLowerCase(),
-                    ) || accounts[0];
-
-                    // Token silencioso; Calendars.Read es scope mínimo para calendarView
-                    const tokenResponse = await instance.acquireTokenSilent({
-                        scopes: ["Calendars.Read"],
-                        account: matchedAccount,
-                    });
+                    if (!tokenResponse) {
+                        tokenResponse = await instance.acquireTokenSilent({
+                            scopes: ["Calendars.Read"],
+                            account: activeMicrosoftAccount,
+                        });
+                    }
 
                     // Query OData para calendarView con rango ISO y campos selectivos
                     const searchParams = new URLSearchParams({
@@ -2613,6 +3454,7 @@ export const View_calendario_outlook = () => {
         loadVisibleEvents();
     }, [
         accounts,
+        activeMicrosoftAccount,
         currentWindow.endExclusive,
         currentWindow.endInclusive,
         currentWindow.start,
@@ -2769,6 +3611,7 @@ export const View_calendario_outlook = () => {
                 attendeeDirectoryError={attendeeDirectoryError}
                 attendeeDirectoryOptions={attendeeDirectoryOptions}
                 attendeeSearchText={attendeeSearchText}
+                canShowEditStatusActions={canShowEditStatusActions}
                 closeCreateEventModal={closeCreateEventModal}
                 createEventCalendarLabel={createEventCalendarLabel}
                 createEventDateValue={createEventDateValue}
@@ -2779,27 +3622,50 @@ export const View_calendario_outlook = () => {
                 createEventHeaderLabel={createEventHeaderLabel}
                 createEventLocation={createEventLocation}
                 createEventMinimumDateValue={createEventMinimumDateValue}
+                createEventMode={createEventMode}
                 createEventPreviewPosition={createEventPreviewPosition}
                 createEventScheduleLabel={createEventScheduleLabel}
                 createEventScheduleRange={createEventScheduleRange}
                 createEventStartTimeValue={createEventStartTimeValue}
                 createEventSubmitError={createEventSubmitError}
+                createEventSubmitLabel={createEventSubmitLabel}
                 createEventTimeOptions={createEventTimeOptions}
                 createEventTitle={createEventTitle}
+                createEventType={createEventType}
+                createEventTypeOptions={CREATE_EVENT_TYPE_OPTIONS}
                 createEventWeekLabel={createEventWeekLabel}
+                createEventWindowTitle={createEventWindowTitle}
+                createEventLeadId={createEventLeadId}
+                createEventLeadLabel={selectedCreateEventLeadOption?.label || ""}
+                createEventLeadOptions={createEventLeadOptions}
+                createEventLeadOptionsError={createEventLeadOptionsError}
+                createEventLeadEmail={selectedCreateEventLeadEmail}
+                createEventProjectId={createEventProjectId}
+                createEventProjectLabel={selectedCreateEventProjectOption?.label || ""}
+                createEventProjectOptions={createEventProjectOptions}
+                createEventProjectOptionsError={createEventProjectOptionsError}
                 handleCreateEventDateChange={handleCreateEventDateChange}
                 handleCreateEventEndTimeChange={handleCreateEventEndTimeChange}
+                handleCreateEventLeadToggle={handleCreateEventLeadToggle}
                 handleCreateEventStartTimeChange={handleCreateEventStartTimeChange}
-                handleCreateOutlookEvent={handleCreateOutlookEvent}
+                handleCreateEventTypeChange={handleCreateEventTypeChange}
+                handleCancelCalendarEvent={handleCancelCalendarEvent}
+                handleCompleteCalendarEvent={handleCompleteCalendarEvent}
+                handleSubmitOutlookEvent={handleSubmitOutlookEvent}
                 hasCreateEventTitle={hasCreateEventTitle}
                 hasTouchedCreateEventTitle={hasTouchedCreateEventTitle}
+                isCreateEventLeadEnabled={isCreateEventLeadEnabled}
+                isLeadInvitationEnabled={isLeadInvitationEnabled}
                 isCreateEventModalOpen={isCreateEventModalOpen}
                 isCreateTeamsMeeting={isCreateTeamsMeeting}
                 isLoadingAttendeeDirectory={isLoadingAttendeeDirectory}
+                isLoadingCreateEventLeadOptions={isLoadingCreateEventLeadOptions}
+                isLoadingCreateEventProjectOptions={isLoadingCreateEventProjectOptions}
                 isLoadingMeetingSuggestions={isLoadingMeetingSuggestions}
                 isLoadingRoomAvailability={isLoadingRoomAvailability}
                 isLoadingRoomDirectory={isLoadingRoomDirectory}
                 isLoadingScheduleAvailability={isLoadingScheduleAvailability}
+                isUpdatingEventStatus={isUpdatingEventStatus}
                 isOwnerAvailable={isOwnerAvailable}
                 isPrimaryScheduleAvailable={isPrimaryScheduleAvailable}
                 isRoomAvailable={isRoomAvailable}
@@ -2826,12 +3692,17 @@ export const View_calendario_outlook = () => {
                 selectedRoomAvailabilityStatus={selectedRoomAvailabilityStatus}
                 setAttendeeSearchText={setAttendeeSearchText}
                 setCreateEventDescription={setCreateEventDescription}
+                setCreateEventLeadId={setCreateEventLeadId}
+                setCreateEventProjectId={setCreateEventProjectId}
                 setCreateEventTitle={setCreateEventTitle}
                 setHasTouchedCreateEventTitle={setHasTouchedCreateEventTitle}
+                setIsLeadInvitationEnabled={setIsLeadInvitationEnabled}
                 setIsCreateTeamsMeeting={setIsCreateTeamsMeeting}
                 setIsScheduleEditorOpen={setIsScheduleEditorOpen}
                 setSelectedAttendees={setSelectedAttendees}
                 setShowAllRoomSuggestions={setShowAllRoomSuggestions}
+                shouldShowCreateEventLeadSelect={shouldShowCreateEventLeadSelect}
+                shouldShowCreateEventProjectSelect={shouldShowCreateEventProjectSelect}
                 shiftCreateEventDate={shiftCreateEventDate}
                 toGraphDateTime={toGraphDateTime}
                 roomSearchText={roomSearchText}
@@ -2967,8 +3838,11 @@ export const View_calendario_outlook = () => {
                                 }}
                                 eventContent={renderOutlookCalendarEventContent}
                                 eventDisplay="block"
+                                eventChange={handleCalendarEventScheduleChange}
+                                eventDurationEditable={false}
                                 eventTimeFormat={{ hour: "2-digit", minute: "2-digit", hour12: false }}
                                 events={adminScopedCalendarEvents}
+                                editable={true}
                                 firstDay={1}
                                 fixedWeekCount={true}
                                 headerToolbar={false}
@@ -2977,7 +3851,7 @@ export const View_calendario_outlook = () => {
                                 initialView={VIEW_CONFIG[activeViewMode].calendarView}
                                 locale={esLocale}
                                 nowIndicator
-                                plugins={[dayGridPlugin, timeGridPlugin]}
+                                plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
                                 showNonCurrentDates={true}
                                 slotMinTime="06:00:00"
                                 weekends={activeViewMode !== "workweek"}
@@ -3052,6 +3926,15 @@ export const View_calendario_outlook = () => {
                                 <span className="outlook-hover-card-id-badge">
                                     Id# {selectedEvent.extendedProps.crm.id_calendar}
                                 </span>
+                                {canEditSelectedEvent && (
+                                    <button
+                                        className="outlook-hover-card-expand-button"
+                                        onClick={() => openEditEventModal(selectedEvent)}
+                                        type="button"
+                                    >
+                                        <span className="ti ti-pencil outlook-hover-card-expand"></span>
+                                    </button>
+                                )}
                             </Box>
                         )}
 
@@ -3422,13 +4305,3 @@ export const View_calendario_outlook = () => {
         </section>
     );
 };
-
-
-
-
-
-
-
-
-
-

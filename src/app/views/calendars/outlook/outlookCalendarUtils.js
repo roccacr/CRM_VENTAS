@@ -172,6 +172,104 @@ export const normalizeDirectoryUser = (userItem) => {
     };
 };
 
+/**
+ * Normaliza email para comparaciones de propiedad.
+ *
+ * @param {string|null|undefined} emailValue - Email bruto.
+ * @returns {string} Email en minúscula o string vacío.
+ */
+export const normalizeComparableEmail = (emailValue) => (
+    typeof emailValue === "string" ? emailValue.trim().toLowerCase() : ""
+);
+
+/**
+ * Normaliza ID numérico para comparaciones de propiedad.
+ *
+ * @param {number|string|null|undefined} idValue - ID bruto.
+ * @returns {number|null} ID válido o `null`.
+ */
+export const normalizeComparableId = (idValue) => {
+    const parsedId = Number(idValue);
+
+    return Number.isFinite(parsedId) && parsedId > 0 ? parsedId : null;
+};
+
+/**
+ * Resuelve dueño visible del evento combinando CRM y Outlook.
+ *
+ * @param {object|null} crmEvent - Evento local CRM.
+ * @param {object|null} outlookEvent - Evento Microsoft Graph.
+ * @returns {object} Datos normalizados del dueño.
+ */
+export const resolveCalendarEventOwner = (crmEvent, outlookEvent) => {
+    const crmOwnerId = normalizeComparableId(crmEvent?.id_admin);
+    const crmOwnerName = typeof crmEvent?.name_admin === "string" ? crmEvent.name_admin.trim() : "";
+    const crmOwnerEmail = normalizeComparableEmail(crmEvent?.email_admin);
+    const outlookOwnerName = typeof outlookEvent?.organizer?.emailAddress?.name === "string"
+        ? outlookEvent.organizer.emailAddress.name.trim()
+        : "";
+    const outlookOwnerEmail = normalizeComparableEmail(outlookEvent?.organizer?.emailAddress?.address);
+    const displayName = crmOwnerName
+        || outlookOwnerName
+        || crmOwnerEmail
+        || outlookOwnerEmail
+        || "otro usuario";
+
+    return {
+        crmOwnerId,
+        crmOwnerName,
+        crmOwnerEmail,
+        outlookOwnerName,
+        outlookOwnerEmail,
+        displayName,
+    };
+};
+
+/**
+ * Determina si usuario autenticado puede mover evento.
+ * Regla: basta con que sea dueño CRM por ID/email o dueño Outlook por organizer email.
+ *
+ * @param {object} params - Contexto de validación.
+ * @param {object|null} params.crmEvent - Evento CRM.
+ * @param {object|null} params.outlookEvent - Evento Outlook.
+ * @param {number|string|null|undefined} params.currentAdminId - ID Netsuite del admin autenticado.
+ * @param {string|null|undefined} params.currentUserEmail - Email autenticado.
+ * @returns {{ canMove: boolean, owner: object }} Resultado de autorización.
+ */
+export const canAuthenticatedUserMoveCalendarEvent = ({
+    crmEvent,
+    outlookEvent,
+    currentAdminId,
+    currentUserEmail,
+}) => {
+    const owner = resolveCalendarEventOwner(crmEvent, outlookEvent);
+    const normalizedCurrentAdminId = normalizeComparableId(currentAdminId);
+    const normalizedCurrentEmail = normalizeComparableEmail(currentUserEmail);
+    const isCrmOwnerById = owner.crmOwnerId !== null
+        && normalizedCurrentAdminId !== null
+        && owner.crmOwnerId === normalizedCurrentAdminId;
+    const isCrmOwnerByEmail = Boolean(owner.crmOwnerEmail)
+        && Boolean(normalizedCurrentEmail)
+        && owner.crmOwnerEmail === normalizedCurrentEmail;
+    const isOutlookOwner = Boolean(owner.outlookOwnerEmail)
+        && Boolean(normalizedCurrentEmail)
+        && owner.outlookOwnerEmail === normalizedCurrentEmail;
+
+    return {
+        canMove: isCrmOwnerById || isCrmOwnerByEmail || isOutlookOwner,
+        owner,
+    };
+};
+
+/**
+ * Construye mensaje visible cuando evento no pertenece al usuario autenticado.
+ *
+ * @param {object} owner - Resultado de `resolveCalendarEventOwner`.
+ * @returns {string} Mensaje listo para Swal.
+ */
+export const buildCalendarMoveBlockedMessage = (owner) =>
+    `Este evento no se puede mover porque pertenece a ${owner?.displayName || "otro usuario"}.`;
+
 // =============================================================================
 // HELPERS DE VISTA Y FECHAS
 // =============================================================================

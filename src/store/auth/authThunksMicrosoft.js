@@ -24,7 +24,7 @@ const getCachedAccount = () => {
 
   const accounts = msalInstance.getAllAccounts();
 
-  if (accounts.length === 0) {
+  if (accounts.length !== 1) {
     return null;
   }
 
@@ -301,7 +301,10 @@ export const useMicrosoftAuth = () => {
       validateMsalConfig();
       dispatch(verificacionUsuario({ status: "EnProceso", Mensaje: "" }));
 
-      const response = await instance.loginPopup(loginRequest);
+      const response = await instance.loginPopup({
+        ...loginRequest,
+        prompt: "select_account",
+      });
       const account = response.account || instance.getActiveAccount();
 
       if (!account) {

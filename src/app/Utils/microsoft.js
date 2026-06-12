@@ -51,12 +51,16 @@ class AuthenticationService {
 
 			// Si no se encuentra la cuenta, forzar login
 			if (!account) {
-				
 				const loginResult = await msalInstance.loginPopup({
-					scopes: DEFAULT_SCOPES
+					scopes: DEFAULT_SCOPES,
+					loginHint: microsoftUser.email,
+					prompt: "select_account",
 				});
 				account = loginResult.account;
-				
+			}
+
+			if (account?.username?.toLowerCase() !== microsoftUser.email?.toLowerCase()) {
+				throw new Error("La cuenta Microsoft autenticada no coincide con el usuario actual del CRM.");
 			}
 
 			// Establecer la cuenta como activa

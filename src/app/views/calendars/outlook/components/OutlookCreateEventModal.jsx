@@ -14,6 +14,37 @@ import {
 import { SCHEDULE_STATUS_META } from "../outlookCalendarUtils";
 import { OutlookCreateEventPreview } from "./OutlookCreateEventPreview";
 
+const CREATE_EVENT_TYPE_ICON_MAP = {
+    Cita: "ti ti-calendar-event",
+    Correo: "ti ti-mail",
+    Llamada: "ti ti-phone-call",
+    Reunion: "ti ti-users",
+    Seguimientos: "ti ti-history",
+    Tarea: "ti ti-checks",
+    Whatsapp: "ti ti-brand-whatsapp",
+};
+
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/i;
+
+const normalizeCustomAttendeeOption = (optionValue) => {
+    if (typeof optionValue !== "string") {
+        return optionValue;
+    }
+
+    const normalizedEmail = optionValue.trim().toLowerCase();
+
+    if (!EMAIL_PATTERN.test(normalizedEmail)) {
+        return null;
+    }
+
+    return {
+        id: normalizedEmail,
+        displayName: normalizedEmail,
+        email: normalizedEmail,
+        source: "manual",
+    };
+};
+
 export const OutlookCreateEventModal = ({
     applyMeetingSuggestion,
     areAllParticipantsAvailable,
@@ -21,6 +52,7 @@ export const OutlookCreateEventModal = ({
     attendeeDirectoryError,
     attendeeDirectoryOptions,
     attendeeSearchText,
+    canShowEditStatusActions,
     closeCreateEventModal,
     closeRoomSuggestions,
     createEventCalendarLabel,
@@ -30,33 +62,56 @@ export const OutlookCreateEventModal = ({
     createEventEndTimeOptions,
     createEventEndTimeValue,
     createEventHeaderLabel,
+    createEventLeadId,
+    createEventLeadEmail,
+    createEventLeadLabel,
+    createEventLeadOptions,
+    createEventLeadOptionsError,
+    createEventMode,
     createEventLocation,
     createEventMinimumDateValue,
     createEventPreviewPosition,
+    createEventProjectId,
+    createEventProjectLabel,
+    createEventProjectOptions,
+    createEventProjectOptionsError,
     createEventScheduleLabel,
     createEventScheduleRange,
     createEventStartTimeValue,
     createEventSubmitError,
+    createEventSubmitLabel,
     createEventTimeOptions,
     createEventTitle,
+    createEventType,
+    createEventTypeOptions,
     createEventWeekLabel,
+    createEventWindowTitle,
     handleCreateEventDateChange,
     handleCreateEventEndTimeChange,
+    handleCreateEventLeadToggle,
     handleCreateEventLocationChange,
     handleCreateEventStartTimeChange,
-    handleCreateOutlookEvent,
+    handleCreateEventTypeChange,
+    handleCancelCalendarEvent,
+    handleCompleteCalendarEvent,
+    handleSubmitOutlookEvent,
     handleSelectRoomOption,
     clearSelectedRoomOption,
     hasCreateEventTitle,
     hasMoreRoomSuggestions,
     hasTouchedCreateEventTitle,
+    isCreateEventLeadEnabled,
+    isLeadInvitationEnabled,
     isCreateEventModalOpen,
     isCreateTeamsMeeting,
     isLoadingAttendeeDirectory,
+    isLoadingCreateEventLeadOptions,
+    isLoadingCreateEventProjectOptions,
     isLoadingMeetingSuggestions,
     isLoadingRoomAvailability,
     isLoadingRoomDirectory,
     isLoadingScheduleAvailability,
+    isUpdatingEventStatus,
     isOwnerAvailable,
     isPrimaryScheduleAvailable,
     isRoomAvailable,
@@ -78,26 +133,86 @@ export const OutlookCreateEventModal = ({
     selectedRoomOption,
     setAttendeeSearchText,
     setCreateEventDescription,
+    setCreateEventLeadId,
+    setCreateEventProjectId,
     setCreateEventTitle,
     setHasTouchedCreateEventTitle,
     setIsCreateTeamsMeeting,
+    setIsLeadInvitationEnabled,
     setIsScheduleEditorOpen,
     setSelectedAttendees,
     setShowAllRoomSuggestions,
+    shouldShowCreateEventLeadSelect,
+    shouldShowCreateEventProjectSelect,
     shiftCreateEventDate,
     toGraphDateTime,
-}) => (
-    <Dialog
+}) => {
+    const [isEventTypeDropdownOpen, setIsEventTypeDropdownOpen] = React.useState(false);
+    const [isProjectDropdownOpen, setIsProjectDropdownOpen] = React.useState(false);
+    const [isLeadDropdownOpen, setIsLeadDropdownOpen] = React.useState(false);
+    const [leadSearchText, setLeadSearchText] = React.useState("");
+    const [projectSearchText, setProjectSearchText] = React.useState("");
+
+    const selectedEventTypeOption = createEventTypeOptions.find((option) => option.value === createEventType) || null;
+    const selectedEventTypeLabel = selectedEventTypeOption?.label || "";
+    const selectedEventTypeIconClass = CREATE_EVENT_TYPE_ICON_MAP[createEventType] || "ti ti-calendar-event";
+    const filteredCreateEventLeadOptions = React.useMemo(() => {
+        const normalizedSearch = leadSearchText.trim().toLowerCase();
+
+        if (!normalizedSearch) {
+            return createEventLeadOptions;
+        }
+
+        return createEventLeadOptions.filter((leadOption) => (
+            leadOption.label?.toLowerCase().includes(normalizedSearch)
+        ));
+    }, [createEventLeadOptions, leadSearchText]);
+    const filteredCreateEventProjectOptions = React.useMemo(() => {
+        const normalizedSearch = projectSearchText.trim().toLowerCase();
+
+        if (!normalizedSearch) {
+            return createEventProjectOptions;
+        }
+
+        return createEventProjectOptions.filter((projectOption) => (
+            projectOption.label?.toLowerCase().includes(normalizedSearch)
+        ));
+    }, [createEventProjectOptions, projectSearchText]);
+
+    React.useEffect(() => {
+        setLeadSearchText(createEventLeadLabel || "");
+    }, [createEventLeadLabel, shouldShowCreateEventLeadSelect]);
+
+    React.useEffect(() => {
+        setProjectSearchText(createEventProjectLabel || "");
+    }, [createEventProjectLabel, shouldShowCreateEventProjectSelect]);
+
+    const handleSelectEventType = (nextEventType) => {
+        handleCreateEventTypeChange(nextEventType);
+        setIsEventTypeDropdownOpen(false);
+    };
+
+    const closeAllCreateEventDropdowns = () => {
+        setIsEventTypeDropdownOpen(false);
+        setIsProjectDropdownOpen(false);
+        setIsLeadDropdownOpen(false);
+    };
+
+    return (
+        <Dialog
         PaperProps={{ className: "outlook-create-modal" }}
         fullWidth
         maxWidth="xl"
-        onClose={closeCreateEventModal}
+        onClose={() => {
+            closeAllCreateEventDropdowns();
+            closeCreateEventModal();
+        }}
         open={isCreateEventModalOpen}
     >
         <DialogContent className="outlook-create-modal-content">
             <Box className="outlook-create-topbar">
                 <Typography className="outlook-create-window-title">
-                    Nuevo evento: Calendario
+                    {createEventWindowTitle}
                 </Typography>
                 <Box className="outlook-create-window-actions">
                     <button className="outlook-create-window-icon" type="button">
@@ -110,15 +225,40 @@ export const OutlookCreateEventModal = ({
             </Box>
 
             <Box className="outlook-create-toolbar">
-                <button
-                    className="outlook-create-save"
-                    disabled={!hasCreateEventTitle || isSavingCreateEvent}
-                    onClick={handleCreateOutlookEvent}
-                    type="button"
-                >
-                    <span className="ti ti-device-floppy"></span>
-                    {isSavingCreateEvent ? "Guardando..." : "Guardar"}
-                </button>
+                <Box className="outlook-create-toolbar-left">
+                    <button
+                        className="outlook-create-save"
+                        disabled={!hasCreateEventTitle || isSavingCreateEvent || isUpdatingEventStatus}
+                        onClick={handleSubmitOutlookEvent}
+                        type="button"
+                    >
+                        <span className="ti ti-device-floppy"></span>
+                        {isSavingCreateEvent
+                            ? createEventMode === "edit" ? "Guardando cambios..." : "Guardando..."
+                            : createEventSubmitLabel}
+                    </button>
+
+                    {canShowEditStatusActions && (
+                        <>
+                            <button
+                                className="outlook-create-status-button is-cancel"
+                                disabled={isSavingCreateEvent || isUpdatingEventStatus}
+                                onClick={handleCancelCalendarEvent}
+                                type="button"
+                            >
+                                {isUpdatingEventStatus ? "Procesando..." : "Cancelar Evento"}
+                            </button>
+                            <button
+                                className="outlook-create-status-button is-complete"
+                                disabled={isSavingCreateEvent || isUpdatingEventStatus}
+                                onClick={handleCompleteCalendarEvent}
+                                type="button"
+                            >
+                                {isUpdatingEventStatus ? "Procesando..." : "Completar Evento"}
+                            </button>
+                        </>
+                    )}
+                </Box>
             </Box>
 
             {createEventSubmitError ? (
@@ -163,6 +303,7 @@ export const OutlookCreateEventModal = ({
                                     blurOnSelect={false}
                                     clearOnBlur={false}
                                     disableCloseOnSelect
+                                    freeSolo
                                     filterOptions={(options) => options}
                                     filterSelectedOptions
                                     getOptionLabel={(option) => option.displayName || option.email || ""}
@@ -174,7 +315,11 @@ export const OutlookCreateEventModal = ({
                                     multiple
                                     noOptionsText={openAttendeeSuggestions ? attendeeDirectoryError || "Sin coincidencias" : ""}
                                     onChange={(event, newValue) => {
-                                        setSelectedAttendees(newValue || []);
+                                        const normalizedAttendees = (newValue || [])
+                                            .map(normalizeCustomAttendeeOption)
+                                            .filter(Boolean);
+
+                                        setSelectedAttendees(normalizedAttendees);
                                         setAttendeeSearchText("");
                                     }}
                                     onInputChange={(event, newInputValue, reason) => {
@@ -506,6 +651,232 @@ export const OutlookCreateEventModal = ({
                                 Reunión de Teams
                             </Typography>
                         </Box>
+
+                    </Box>
+
+                    <Box className="outlook-create-form-card outlook-create-extra-card">
+                        <Box className="outlook-create-extra-section">
+                            <ClickAwayListener onClickAway={() => setIsEventTypeDropdownOpen(false)}>
+                                <div className="outlook-create-location-shell">
+                                    <Box className="outlook-create-field-row">
+                                        <span className={`${selectedEventTypeIconClass} outlook-create-row-icon`}></span>
+                                        <div className="outlook-create-line-field outlook-create-location-field">
+                                            <input
+                                                className="outlook-create-line-input"
+                                                onClick={() => setIsEventTypeDropdownOpen((currentValue) => !currentValue)}
+                                                placeholder="Tipo de evento*"
+                                                readOnly
+                                                type="text"
+                                                value={selectedEventTypeLabel}
+                                            />
+                                        </div>
+                                    </Box>
+
+                                    {isEventTypeDropdownOpen ? (
+                                        <div className="outlook-create-room-dropdown">
+                                            <div className="outlook-create-room-dropdown-title">Sugerencias</div>
+                                            <div className="outlook-create-room-list">
+                                                {createEventTypeOptions
+                                                    .filter((option) => option.value)
+                                                    .map((option) => (
+                                                        <button
+                                                            className={`outlook-create-room-option ${createEventType === option.value ? "is-selected" : ""}`}
+                                                            key={option.value}
+                                                            onClick={() => handleSelectEventType(option.value)}
+                                                            onMouseDown={(event) => event.preventDefault()}
+                                                            type="button"
+                                                        >
+                                                            <span className="outlook-create-room-option-avatar">
+                                                                <span className={CREATE_EVENT_TYPE_ICON_MAP[option.value] || "ti ti-calendar-event"}></span>
+                                                            </span>
+                                                            <span className="outlook-create-room-option-texts">
+                                                                <span className="outlook-create-room-option-name">{option.label}</span>
+                                                            </span>
+                                                        </button>
+                                                    ))}
+                                            </div>
+                                        </div>
+                                    ) : null}
+                                </div>
+                            </ClickAwayListener>
+
+                            {shouldShowCreateEventProjectSelect ? (
+                                <ClickAwayListener onClickAway={() => setIsProjectDropdownOpen(false)}>
+                                    <div className="outlook-create-location-shell">
+                                        <Box className="outlook-create-field-row">
+                                            <span className="ti ti-home outlook-create-row-icon"></span>
+                                            <div className="outlook-create-line-field outlook-create-location-field">
+                                                <input
+                                                    className="outlook-create-line-input"
+                                                    onChange={(event) => {
+                                                        setCreateEventProjectId("");
+                                                        setProjectSearchText(event.target.value);
+                                                        setIsProjectDropdownOpen(true);
+                                                    }}
+                                                    onFocus={() => setIsProjectDropdownOpen(true)}
+                                                    placeholder="Seleccionar el proyecto a visitar*"
+                                                    type="text"
+                                                    value={projectSearchText}
+                                                />
+                                            </div>
+                                        </Box>
+
+                                        {isProjectDropdownOpen ? (
+                                            <div className="outlook-create-room-dropdown">
+                                                <div className="outlook-create-room-dropdown-title">Sugerencias</div>
+
+                                                {isLoadingCreateEventProjectOptions ? (
+                                                    <div className="outlook-create-room-feedback">
+                                                        <CircularProgress color="inherit" size={16} />
+                                                        Cargando proyectos...
+                                                    </div>
+                                                ) : null}
+
+                                                {!isLoadingCreateEventProjectOptions && createEventProjectOptionsError ? (
+                                                    <div className="outlook-create-room-feedback is-error">
+                                                        {createEventProjectOptionsError}
+                                                    </div>
+                                                ) : null}
+
+                                                {!isLoadingCreateEventProjectOptions && !createEventProjectOptionsError && !filteredCreateEventProjectOptions.length ? (
+                                                    <div className="outlook-create-room-feedback">
+                                                        No hay proyectos que coincidan.
+                                                    </div>
+                                                ) : null}
+
+                                                {!isLoadingCreateEventProjectOptions && !createEventProjectOptionsError && filteredCreateEventProjectOptions.length ? (
+                                                    <div className="outlook-create-room-list">
+                                                        {filteredCreateEventProjectOptions.map((projectOption) => (
+                                                            <button
+                                                                className={`outlook-create-room-option ${String(createEventProjectId) === String(projectOption.value) ? "is-selected" : ""}`}
+                                                                key={projectOption.value}
+                                                                onClick={() => {
+                                                                    setCreateEventProjectId(projectOption.value);
+                                                                    setProjectSearchText(projectOption.label);
+                                                                    setIsProjectDropdownOpen(false);
+                                                                }}
+                                                                onMouseDown={(event) => event.preventDefault()}
+                                                                type="button"
+                                                            >
+                                                                <span className="outlook-create-room-option-avatar">
+                                                                    <span className="ti ti-home"></span>
+                                                                </span>
+                                                                <span className="outlook-create-room-option-texts">
+                                                                    <span className="outlook-create-room-option-name">{projectOption.label}</span>
+                                                                </span>
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                ) : null}
+                                            </div>
+                                        ) : null}
+                                    </div>
+                                </ClickAwayListener>
+                            ) : null}
+
+                            <Box className="outlook-create-field-row">
+                                <span className="ti ti-user-plus outlook-create-row-icon"></span>
+                                <label className="outlook-create-extra-checkbox" htmlFor="create-event-assign-lead">
+                                    <input
+                                        checked={isCreateEventLeadEnabled}
+                                        id="create-event-assign-lead"
+                                        onChange={(event) => handleCreateEventLeadToggle(event.target.checked)}
+                                        type="checkbox"
+                                    />
+                                    <span>Asignar un lead a este evento</span>
+                                </label>
+                            </Box>
+
+                            {shouldShowCreateEventLeadSelect ? (
+                                <>
+                                    <ClickAwayListener onClickAway={() => setIsLeadDropdownOpen(false)}>
+                                        <div className="outlook-create-location-shell">
+                                            <Box className="outlook-create-field-row">
+                                                <span className="ti ti-user-search outlook-create-row-icon"></span>
+                                                <div className="outlook-create-line-field outlook-create-location-field">
+                                                    <input
+                                                        className="outlook-create-line-input"
+                                                        onChange={(event) => {
+                                                            setCreateEventLeadId("");
+                                                            setLeadSearchText(event.target.value);
+                                                            setIsLeadDropdownOpen(true);
+                                                        }}
+                                                        onFocus={() => setIsLeadDropdownOpen(true)}
+                                                        placeholder="Seleccionar lead"
+                                                        type="text"
+                                                        value={leadSearchText}
+                                                    />
+                                                </div>
+                                            </Box>
+
+                                            {isLeadDropdownOpen ? (
+                                                <div className="outlook-create-room-dropdown">
+                                                    <div className="outlook-create-room-dropdown-title">Sugerencias</div>
+
+                                                    {isLoadingCreateEventLeadOptions ? (
+                                                        <div className="outlook-create-room-feedback">
+                                                            <CircularProgress color="inherit" size={16} />
+                                                            Cargando leads...
+                                                        </div>
+                                                    ) : null}
+
+                                                    {!isLoadingCreateEventLeadOptions && createEventLeadOptionsError ? (
+                                                        <div className="outlook-create-room-feedback is-error">
+                                                            {createEventLeadOptionsError}
+                                                        </div>
+                                                    ) : null}
+
+                                                    {!isLoadingCreateEventLeadOptions && !createEventLeadOptionsError && !filteredCreateEventLeadOptions.length ? (
+                                                        <div className="outlook-create-room-feedback">
+                                                            No hay leads que coincidan.
+                                                        </div>
+                                                    ) : null}
+
+                                                    {!isLoadingCreateEventLeadOptions && !createEventLeadOptionsError && filteredCreateEventLeadOptions.length ? (
+                                                        <div className="outlook-create-room-list">
+                                                            {filteredCreateEventLeadOptions.map((leadOption) => (
+                                                                <button
+                                                                    className={`outlook-create-room-option ${String(createEventLeadId) === String(leadOption.value) ? "is-selected" : ""}`}
+                                                                    key={leadOption.value}
+                                                                    onClick={() => {
+                                                                        setCreateEventLeadId(leadOption.value);
+                                                                        setLeadSearchText(leadOption.label);
+                                                                        setIsLeadDropdownOpen(false);
+                                                                    }}
+                                                                    onMouseDown={(event) => event.preventDefault()}
+                                                                    type="button"
+                                                                >
+                                                                    <span className="outlook-create-room-option-avatar">
+                                                                        <span className="ti ti-user"></span>
+                                                                    </span>
+                                                                    <span className="outlook-create-room-option-texts">
+                                                                        <span className="outlook-create-room-option-name">{leadOption.label}</span>
+                                                                    </span>
+                                                                </button>
+                                                            ))}
+                                                        </div>
+                                                    ) : null}
+                                                </div>
+                                            ) : null}
+                                        </div>
+                                    </ClickAwayListener>
+
+                                    <Box className="outlook-create-field-row">
+                                        <span className="ti ti-mail outlook-create-row-icon"></span>
+                                        <label className="outlook-create-extra-checkbox" htmlFor="create-event-invite-lead">
+                                            <input
+                                                checked={isLeadInvitationEnabled}
+                                                disabled={!createEventLeadEmail}
+                                                id="create-event-invite-lead"
+                                                onChange={(event) => setIsLeadInvitationEnabled(event.target.checked)}
+                                                type="checkbox"
+                                            />
+                                            <span>Enviar invitación al lead del evento</span>
+                                        </label>
+                                    </Box>
+                                </>
+                            ) : null}
+                        </Box>
                     </Box>
 
                     <Box className="outlook-create-editor-card">
@@ -562,5 +933,5 @@ export const OutlookCreateEventModal = ({
             </Box>
         </DialogContent>
     </Dialog>
-);
-
+    );
+};

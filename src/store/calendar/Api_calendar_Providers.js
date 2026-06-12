@@ -69,6 +69,111 @@ export const createCalendarEvent = async ({ idnetsuite_admin, nombreEvento, tipo
 };
 
 /**
+ * Crea registro local CRM para evento previamente creado en Outlook.
+ *
+ * @param {Object} params - Datos persistidos en `calendars`.
+ * @returns {Promise<object>} Resultado del backend.
+ */
+export const createOutlookCalendarEvent = async (params) => {
+    const storedSession = readAuthSession();
+    const requestData = {
+        ...commonRequestData,
+        ...params,
+        idnetsuite_admin: params.idnetsuite_admin ?? storedSession?.idnetsuite_admin ?? null,
+        rol_admin: storedSession?.id_rol_admin ?? null,
+        transaccion: storedSession?.token_admin
+            ? { token_admin: storedSession.token_admin }
+            : undefined,
+    };
+
+    return await fetchData("calendars/createOutlookEvent", requestData);
+};
+
+/**
+ * Actualiza fecha/hora del registro local CRM asociado al calendario Outlook.
+ *
+ * @param {Object} params - Datos de movimiento.
+ * @returns {Promise<object>} Resultado del backend.
+ */
+export const updateOutlookCalendarEventSchedule = async (params) => {
+    const storedSession = readAuthSession();
+    const requestData = {
+        ...commonRequestData,
+        ...params,
+        rol_admin: storedSession?.id_rol_admin ?? null,
+        idnetsuite_admin: params.idnetsuite_admin ?? storedSession?.idnetsuite_admin ?? null,
+        transaccion: storedSession?.token_admin
+            ? { token_admin: storedSession.token_admin }
+            : undefined,
+    };
+
+    return await fetchData("calendars/updateOutlookEventSchedule", requestData);
+};
+
+/**
+ * Actualiza detalles del registro local CRM asociado a Outlook.
+ *
+ * @param {Object} params - Datos editables del evento.
+ * @returns {Promise<object>} Resultado del backend.
+ */
+export const updateOutlookCalendarEventDetails = async (params) => {
+    const storedSession = readAuthSession();
+    const requestData = {
+        ...commonRequestData,
+        ...params,
+        rol_admin: storedSession?.id_rol_admin ?? null,
+        idnetsuite_admin: params.idnetsuite_admin ?? storedSession?.idnetsuite_admin ?? null,
+        transaccion: storedSession?.token_admin
+            ? { token_admin: storedSession.token_admin }
+            : undefined,
+    };
+
+    return await fetchData("calendars/updateOutlookEventDetails", requestData);
+};
+
+/**
+ * Registra o renueva la suscripción de sincronización Outlook del usuario autenticado.
+ *
+ * @param {Object} params - Datos del usuario Outlook autenticado.
+ * @returns {Promise<object>} Resultado del backend.
+ */
+export const registerOutlookCalendarSync = async (params) => {
+    const storedSession = readAuthSession();
+    const requestData = {
+        ...commonRequestData,
+        ...params,
+        rol_admin: storedSession?.id_rol_admin ?? null,
+        idnetsuite_admin: params.idnetsuite_admin ?? storedSession?.idnetsuite_admin ?? null,
+        transaccion: storedSession?.token_admin
+            ? { token_admin: storedSession.token_admin }
+            : undefined,
+    };
+
+    return await fetchData("calendars/registerOutlookCalendarSync", requestData);
+};
+
+/**
+ * Ejecuta delta sync Outlook -> CRM usando access token fresco del usuario.
+ *
+ * @param {Object} params - Parámetros de sincronización.
+ * @returns {Promise<object>} Resultado del backend.
+ */
+export const processOutlookCalendarSync = async (params) => {
+    const storedSession = readAuthSession();
+    const requestData = {
+        ...commonRequestData,
+        ...params,
+        rol_admin: storedSession?.id_rol_admin ?? null,
+        idnetsuite_admin: params.idnetsuite_admin ?? storedSession?.idnetsuite_admin ?? null,
+        transaccion: storedSession?.token_admin
+            ? { token_admin: storedSession.token_admin }
+            : undefined,
+    };
+
+    return await fetchData("calendars/processOutlookCalendarSync", requestData);
+};
+
+/**
  * Función asíncrona para obtener los datos de eventos específicos.
  *
  * @function get_dataEvents
