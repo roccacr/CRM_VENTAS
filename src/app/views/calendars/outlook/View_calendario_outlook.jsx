@@ -319,6 +319,26 @@ const updateOutlookEventById = async (accessToken, outlookEventId, payload) => {
     return response.ok;
 };
 
+const respondToOutlookEventById = async (accessToken, outlookEventId, action, payload) => {
+    if (!accessToken || !outlookEventId || !action) {
+        return false;
+    }
+
+    const response = await fetch(
+        `https://graph.microsoft.com/v1.0/me/events/${encodeURIComponent(outlookEventId)}/${action}`,
+        {
+            method: "POST",
+            headers: {
+                Authorization: `Bearer ${accessToken}`,
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify(payload || {}),
+        },
+    );
+
+    return response.ok;
+};
+
 const normalizeRoomPlace = (roomItem) => {
     const displayName = roomItem.displayName || roomItem.name || roomItem.emailAddress || "Sala";
     const email = roomItem.emailAddress || "";
@@ -1479,6 +1499,8 @@ export const View_calendario_outlook = () => {
 
     // Checkbox "notificar al organizador" en panel de respuesta
     const [notifyOrganizer, setNotifyOrganizer] = useState(true);
+    const [responseComment, setResponseComment] = useState("");
+    const [isSubmittingResponseAction, setIsSubmittingResponseAction] = useState(false);
 
     // Control de apertura del Dialog expandido
     const [isExpandedModalOpen, setIsExpandedModalOpen] = useState(false);
@@ -2487,6 +2509,8 @@ export const View_calendario_outlook = () => {
         setSelectedEvent(null);
         setSelectedPosition(null);
         setShowResponseActions(false);
+        setResponseComment("");
+        setNotifyOrganizer(true);
     };
 
     /** Abre modal expandido. */
@@ -3540,6 +3564,115 @@ const handleCalendarEventScheduleChange = async (info) => {
         }
     };
 
+    const applyLocalEventResponseUpdate = (eventApi, responseValue) => {
+        if (!eventApi || !responseValue) {
+            return;
+        }
+
+        const responseLabel = humanizeOutlookResponse(responseValue, "Sin respuesta");
+        const nextOutlookValue = {
+            ...(eventApi.extendedProps?.outlook || {}),
+            responseStatus: {
+                ...(eventApi.extendedProps?.outlook?.responseStatus || {}),
+                response: responseValue,
+            },
+        };
+
+        eventApi.setExtendedProp("status", responseLabel);
+        eventApi.setExtendedProp("outlook", nextOutlookValue);
+
+        if (!eventApi.extendedProps?.crm?.accion_calendar) {
+            eventApi.setExtendedProp("response", responseLabel);
+        }
+
+        setCalendarEvents((currentValue) => currentValue.map((eventItem) => {
+            if (eventItem.id !== eventApi.id) {
+                return eventItem;
+            }
+
+            return {
+                ...eventItem,
+                extendedProps: {
+                    ...eventItem.extendedProps,
+                    status: responseLabel,
+                    response: eventItem.extendedProps?.crm?.accion_calendar
+                        ? eventItem.extendedProps.response
+                        : responseLabel,
+                    outlook: nextOutlookValue,
+                },
+            };
+        }));
+    };
+
+    const handleOutlookResponseAction = async (action) => {
+        if (!selectedEvent || !activeMicrosoftAccount) {
+            return;
+        }
+
+        const outlookEventId = selectedEvent.extendedProps?.outlook?.id || selectedEvent.extendedProps?.meetingId || "";
+
+        if (!outlookEventId) {
+            await Swal.fire("No disponible", "Este evento no tiene identificador Outlook para responder.", "warning");
+            return;
+        }
+
+        const graphActionByResponse = {
+            accepted: "accept",
+            declined: "decline",
+            tentativelyAccepted: "tentativelyAccept",
+        };
+        const graphAction = graphActionByResponse[action];
+
+        if (!graphAction) {
+            return;
+        }
+
+        setIsSubmittingResponseAction(true);
+
+        try {
+            let tokenResponse = null;
+
+            try {
+                tokenResponse = await instance.acquireTokenSilent({
+                    scopes: [OUTLOOK_CREATE_EVENT_SCOPE],
+                    account: activeMicrosoftAccount,
+                });
+            } catch (error) {
+                if (!(error instanceof InteractionRequiredAuthError)) {
+                    throw error;
+                }
+
+                tokenResponse = await instance.acquireTokenPopup({
+                    scopes: [OUTLOOK_CREATE_EVENT_SCOPE],
+                    account: activeMicrosoftAccount,
+                });
+            }
+
+            const responseSucceeded = await respondToOutlookEventById(
+                tokenResponse.accessToken,
+                outlookEventId,
+                graphAction,
+                {
+                    comment: responseComment.trim(),
+                    sendResponse: notifyOrganizer,
+                },
+            );
+
+            if (!responseSucceeded) {
+                throw new Error("Outlook response action failed.");
+            }
+
+            applyLocalEventResponseUpdate(selectedEvent, action);
+            setShowResponseActions(false);
+            setResponseComment("");
+        } catch (error) {
+            console.error("[outlook-calendar] no se pudo responder invitación Outlook", error);
+            await Swal.fire("Error", "No se pudo registrar la respuesta del evento en Outlook.", "error");
+        } finally {
+            setIsSubmittingResponseAction(false);
+        }
+    };
+
     /** Abre URL en nueva pestaña con rel noopener por seguridad. */
     const openExternalLink = (linkValue) => {
         if (!linkValue) {
@@ -3835,6 +3968,8 @@ const handleCalendarEventScheduleChange = async (info) => {
                                         top: info.jsEvent.clientY + 18,
                                     });
                                     setShowResponseActions(false);
+                                    setResponseComment("");
+                                    setNotifyOrganizer(true);
                                 }}
                                 eventContent={renderOutlookCalendarEventContent}
                                 eventDisplay="block"
@@ -4125,15 +4260,46 @@ const handleCalendarEventScheduleChange = async (info) => {
 
                                         <input
                                             className="outlook-message-input"
+                                            disabled={isSubmittingResponseAction}
+                                            onChange={(event) => setResponseComment(event.target.value)}
                                             placeholder="Agregar un mensaje (opcional)"
                                             type="text"
+                                            value={responseComment}
                                         />
 
                                         <Box className="outlook-hover-response-actions">
-                                            <button className="outlook-response-button is-accept" type="button">Aceptar</button>
-                                            <button className="outlook-response-button is-reject" type="button">Rechazar</button>
-                                            <button className="outlook-response-button is-follow" type="button">Seguir</button>
-                                            <button className="outlook-response-button is-more" type="button">...</button>
+                                            <button
+                                                className="outlook-response-button is-accept"
+                                                disabled={isSubmittingResponseAction}
+                                                onClick={() => handleOutlookResponseAction("accepted")}
+                                                type="button"
+                                            >
+                                                {isSubmittingResponseAction ? "Guardando..." : "Aceptar"}
+                                            </button>
+                                            <button
+                                                className="outlook-response-button is-reject"
+                                                disabled={isSubmittingResponseAction}
+                                                onClick={() => handleOutlookResponseAction("declined")}
+                                                type="button"
+                                            >
+                                                Rechazar
+                                            </button>
+                                            <button
+                                                className="outlook-response-button is-follow"
+                                                disabled={isSubmittingResponseAction}
+                                                onClick={() => handleOutlookResponseAction("tentativelyAccepted")}
+                                                type="button"
+                                            >
+                                                Seguir
+                                            </button>
+                                            <button
+                                                className="outlook-response-button is-more"
+                                                disabled={isSubmittingResponseAction}
+                                                onClick={() => setShowResponseActions(false)}
+                                                type="button"
+                                            >
+                                                ...
+                                            </button>
                                         </Box>
                                     </Box>
                                 )}
