@@ -360,6 +360,12 @@ const createGraphSubscription = async ({ accessToken, database, idAdmin, outlook
     };
 };
 
+const isExpectedLocalWebhookSyncError = (error) => {
+    const message = typeof error?.message === "string" ? error.message : "";
+
+    return message.includes("No hay URL pública de webhook configurada para este entorno");
+};
+
 const ensureGraphSubscription = async ({ accessToken, database, idAdmin, outlookUserEmail }) => {
     const currentSyncRow = await getSyncRowByAdminAndEmail(database, idAdmin, outlookUserEmail);
 

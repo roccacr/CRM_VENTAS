@@ -20,6 +20,7 @@ pendingCalendarEvents.getPendingActionCalendarEvents = async (dataParams) => {
             l.nombre_lead,
             l.email_lead,
             l.telefono_lead,
+            l.segimineto_lead,
             a.id_admin AS admin_id_admin,
             a.idnetsuite_admin,
             a.id_rol_admin,

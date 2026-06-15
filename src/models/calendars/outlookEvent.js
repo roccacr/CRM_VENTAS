@@ -349,6 +349,7 @@ outlookEvent.updateOutlookEventDetails = async (dataParams) => {
         ? 1
         : normalizeIntegerValue(dataParams.citaValue, 0);
     const nombreProyecto = normalizeStringValue(dataParams.nombre_proyecto, "0");
+    const outlookEventId = normalizeStringValue(dataParams.outlook_event_id);
     const query = `
         UPDATE calendars
         SET
@@ -366,7 +367,11 @@ outlookEvent.updateOutlookEventDetails = async (dataParams) => {
             masDeUnaCita_calendar = ?,
             id_proyecto = ?,
             nombre_proyecto = ?,
-            copiaJefe = ?
+            copiaJefe = ?,
+            outlook_event_id = CASE
+                WHEN ? <> '' THEN ?
+                ELSE outlook_event_id
+            END
         WHERE id_calendar = ?
         LIMIT 1
     `;
@@ -387,6 +392,8 @@ outlookEvent.updateOutlookEventDetails = async (dataParams) => {
         normalizeIntegerValue(dataParams.id_proyecto, 0),
         nombreProyecto,
         normalizeIntegerValue(dataParams.copiaJefe, 1),
+        outlookEventId,
+        outlookEventId,
         calendarId,
     ];
 
