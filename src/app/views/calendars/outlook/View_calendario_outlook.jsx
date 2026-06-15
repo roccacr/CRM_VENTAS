@@ -3233,7 +3233,10 @@ const handleCalendarEventScheduleChange = async (info) => {
         const previousStartDate = info.oldEvent?.start ? new Date(info.oldEvent.start) : null;
         const previousEndDate = info.oldEvent?.end ? new Date(info.oldEvent.end) : null;
         const crmEventId = crmEvent?.id_calendar || null;
-        const outlookEventId = outlookEvent?.id || crmEvent?.outlook_event_id || null;
+        const linkedOutlookEventId = typeof crmEvent?.outlook_event_id === "string"
+            ? crmEvent.outlook_event_id.trim()
+            : "";
+        const outlookEventId = outlookEvent?.id || linkedOutlookEventId || null;
         const shouldUpdateCrm = Boolean(crmEventId);
         const shouldUpdateOutlook = Boolean(outlookEventId);
         const currentUserEmail = activeMicrosoftAccount?.username || microsoftUser?.email || email_admin || "";
