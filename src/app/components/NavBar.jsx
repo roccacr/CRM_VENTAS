@@ -166,8 +166,8 @@ const MenuItems = ({ openMenu, toggleMenu, rol_admin }) => {
          toggle={() => toggleMenu("leadsMenu")}
          items={leadsItems}
       />
-      <MenuItem to="/calendar" icon="ti ti-calendar" text="Calendario" />
-      {/* <MenuItem to="/calendar/outlook" icon="ti ti-calendar" text="Calendario Outlook" /> */}
+      {/* <MenuItem to="/calendar" icon="ti ti-calendar" text="Calendario" /> */}
+      <MenuItem to="/calendar/outlook" icon="ti ti-calendar" text="Calendario Outlook" />
       <MenuItem to="/expedientes/list" icon="ti ti-file-text" text="Expedientes" />
       <MenuItem to="/events/list" icon="ti ti-calendar" text="Lista de eventos" />
       <SubMenu

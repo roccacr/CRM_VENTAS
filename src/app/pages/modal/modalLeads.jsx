@@ -1,15 +1,19 @@
+import { useState } from "react";
 import { useLocation } from "react-router-dom";
 
 import { formatDate } from "../../../hook/useFormatDate";
 import { useLeadActions } from "../../../hooks/useLeadActions";
 import { useModalLeads } from "../../../hooks/useModalLeads";
 import { ActionButtons } from "./components/ActionButtons";
+import { LeadOutlookCreateEventModal } from "./components/LeadOutlookCreateEventModal";
 import { ModalHeader } from "./components/ModalHeader";
 import { RecentActions } from "./components/RecentActions";
 import { BUTTON_DATA } from "./constants";
 
 export const ModalLeads = ({ leadData, onClose }) => {
     const { showModal, isMobile, showPreload, bitacora, setShowModal } = useModalLeads(leadData);
+    const [isInlineCreateEventOpen, setIsInlineCreateEventOpen] = useState(false);
+    const [selectedLeadForEvent, setSelectedLeadForEvent] = useState(null);
     const {
         handleWhatsappClick,
         handleNote,
@@ -34,9 +38,23 @@ export const ModalLeads = ({ leadData, onClose }) => {
         return true;
     });
 
-    const handleClose = () => {
+        const handleClose = () => {
         setShowModal(false);
         setTimeout(() => onClose && onClose(), 100);
+    };
+
+    const handleOpenInlineCreateEvent = (currentLeadData) => {
+        setSelectedLeadForEvent(currentLeadData);
+        setShowModal(false);
+        setTimeout(() => {
+            setIsInlineCreateEventOpen(true);
+        }, 120);
+    };
+
+    const handleCloseInlineCreateEvent = () => {
+        setIsInlineCreateEventOpen(false);
+        setSelectedLeadForEvent(null);
+        onClose && onClose();
     };
 
     const handleCopy = () => {
@@ -56,7 +74,7 @@ export const ModalLeads = ({ leadData, onClose }) => {
             const actionMap = {
                 handleWhatsappClick: () => handleWhatsappClick(leadData?.telefono_lead),
                 handleNote: () => handleNote(leadData),
-                handleEvents: () => handleEvents(leadData),
+                handleEvents: () => handleEvents(leadData, handleOpenInlineCreateEvent),
                 handleWhatsappAndNote: () => handleWhatsappAndNote(leadData),
                 handleLoss: () => handleLoss(leadData),
                 handfollow_up: () => handfollow_up(leadData),
@@ -91,28 +109,44 @@ export const ModalLeads = ({ leadData, onClose }) => {
         });
 
     return (
-        <div
-            className={`modal fade bd-example-modal-lg ${showModal ? "show" : ""}`}
-            tabIndex="-1"
-            aria-labelledby="myLargeModalLabel"
-            style={{ display: showModal ? "block" : "none" }}
-            aria-modal="true"
-            role="dialog"
-            onClick={handleClose}
-        >
+        <>
             <div
-                className="modal-dialog modal-lg"
-                style={{ maxWidth: isMobile ? "98%" : "68%", margin: "4.99rem auto" }}
-                onClick={(e) => e.stopPropagation()}
+                className={`modal fade bd-example-modal-lg ${showModal ? "show" : ""}`}
+                tabIndex="-1"
+                aria-labelledby="myLargeModalLabel"
+                style={{ display: showModal ? "block" : "none" }}
+                aria-modal="true"
+                role="dialog"
+                onClick={handleClose}
             >
-                <div className="modal-content">
-                    <ModalHeader leadData={leadData} handleClose={handleClose} handleCopy={handleCopy} handleCopyPhone={handleCopyPhone} />
-                    <div className="modal-body">
-                        <ActionButtons buttonData={BUTTON_DATA} renderButtons={renderButtons} />
+                <div
+                    className="modal-dialog modal-lg"
+                    style={{
+                        maxWidth: isMobile ? "98%" : "68%",
+                        margin: "4.99rem auto",
+                        maxHeight: "calc(100vh - 7rem)",
+                        display: "flex",
+                        flexDirection: "column",
+                    }}
+                    onClick={(e) => e.stopPropagation()}
+                >
+                    <div className="modal-content">
+                        <ModalHeader leadData={leadData} handleClose={handleClose} handleCopy={handleCopy} handleCopyPhone={handleCopyPhone} />
+                        <div className="modal-body">
+                            <ActionButtons buttonData={BUTTON_DATA} renderButtons={renderButtons} />
+                        </div>
                     </div>
+                    <RecentActions showPreload={showPreload} sortedBitacora={sortedBitacora} formatDate={formatDate} />
                 </div>
-                <RecentActions showPreload={showPreload} sortedBitacora={sortedBitacora} formatDate={formatDate} />
             </div>
-        </div>
+
+            {isInlineCreateEventOpen && selectedLeadForEvent ? (
+                <LeadOutlookCreateEventModal
+                    initialLead={selectedLeadForEvent}
+                    isOpen={isInlineCreateEventOpen}
+                    onClose={handleCloseInlineCreateEvent}
+                />
+            ) : null}
+        </>
     );
 };

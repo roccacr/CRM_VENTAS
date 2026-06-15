@@ -53,6 +53,7 @@ export const OutlookCreateEventModal = ({
     attendeeDirectoryOptions,
     attendeeSearchText,
     canShowEditStatusActions,
+    canShowReactivateAction,
     closeCreateEventModal,
     closeRoomSuggestions,
     createEventCalendarLabel,
@@ -94,6 +95,7 @@ export const OutlookCreateEventModal = ({
     handleCreateEventTypeChange,
     handleCancelCalendarEvent,
     handleCompleteCalendarEvent,
+    handleReactivateCalendarEvent,
     handleSubmitOutlookEvent,
     handleSelectRoomOption,
     clearSelectedRoomOption,
@@ -257,6 +259,17 @@ export const OutlookCreateEventModal = ({
                                 {isUpdatingEventStatus ? "Procesando..." : "Completar Evento"}
                             </button>
                         </>
+                    )}
+
+                    {canShowReactivateAction && (
+                        <button
+                            className="outlook-create-status-button is-complete"
+                            disabled={isSavingCreateEvent || isUpdatingEventStatus}
+                            onClick={handleReactivateCalendarEvent}
+                            type="button"
+                        >
+                            {isUpdatingEventStatus ? "Procesando..." : "Reactivar Evento"}
+                        </button>
                     )}
                 </Box>
             </Box>
@@ -889,29 +902,6 @@ export const OutlookCreateEventModal = ({
                             placeholder="Agregar descripción o notas del evento"
                             value={createEventDescription}
                         ></textarea>
-                        <Box className="outlook-create-editor-toolbar">
-                            <button className="outlook-create-editor-tool" type="button">
-                                <span className="ti ti-paperclip"></span>
-                            </button>
-                            <button className="outlook-create-editor-tool" type="button">
-                                <span className="ti ti-chevron-down"></span>
-                            </button>
-                            <button className="outlook-create-editor-tool" type="button">
-                                <span className="ti ti-photo"></span>
-                            </button>
-                            <button className="outlook-create-editor-tool" type="button">
-                                <span className="ti ti-mood-smile"></span>
-                            </button>
-                            <button className="outlook-create-editor-tool" type="button">
-                                <span className="ti ti-pencil"></span>
-                            </button>
-                            <button className="outlook-create-editor-tool" type="button">
-                                <span className="ti ti-spellcheck"></span>
-                            </button>
-                            <button className="outlook-create-editor-tool" type="button">
-                                <span className="ti ti-brand-teams"></span>
-                            </button>
-                        </Box>
                     </Box>
                 </Box>
 

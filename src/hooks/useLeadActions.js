@@ -124,12 +124,21 @@ export const useLeadActions = () => {
      };
 
      /**
-      * Navega a la pantalla para crear o ver eventos asociados al lead.
+      * Abre la creación de eventos asociada al lead.
+      * Si el caller inyecta un handler inline, se usa ese flujo; si no, se mantiene
+      * la navegación legacy para no romper pantallas existentes.
       *
       * @param {Object} leadData - Datos del lead.
+      * @param {Function} [openInlineEventModal] - Apertura inline opcional.
       */
-     const handleEvents = (leadData) => {
+     const handleEvents = (leadData, openInlineEventModal) => {
           dispatch(setleadActive(leadData));
+
+          if (typeof openInlineEventModal === "function") {
+               openInlineEventModal(leadData);
+               return;
+          }
+
           navigate(`/events/actions?idCalendar=0&idLead=${leadData?.idinterno_lead}&idDate=0`);
      };
 

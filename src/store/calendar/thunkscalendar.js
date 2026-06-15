@@ -1,5 +1,17 @@
 import { generateLeadBitacora } from "../leads/thunksLeads";
-import { createCalendarEvent, editCalendarEvent, get_CalendarFetch, get_dataEvents, get_event_Citas, getAll_ListEvent, obtener_EventosCliente, update_event_MoveDate, update_Status_Event } from "./Api_calendar_Providers";
+import {
+    createCalendarEvent,
+    createOutlookCalendarEvent,
+    editCalendarEvent,
+    get_CalendarFetch,
+    get_dataEvents,
+    get_event_Citas,
+    getAll_ListEvent,
+    obtener_EventosCliente,
+    update_event_MoveDate,
+    update_Status_Event,
+    updateOutlookCalendarEventDetails,
+} from "./Api_calendar_Providers";
 
 /**
  * Acción asincrónica para obtener la lista de nuevos calendarios.
@@ -111,6 +123,95 @@ export const createEventForLead = (nombreEvento, tipoEvento, descripcionEvento, 
         } catch (error) {
             // Manejo de errores en caso de fallo
             console.error("Error al crear el evento para el lead:", error);
+        }
+    };
+};
+
+/**
+ * Crea evento Outlook/CRM y replica bitácora del flujo legacy cuando existe lead.
+ *
+ * Recommend reuse thunk, not duplicate business rules in componentes.
+ * Sacrifices una capa extra Redux. Acceptable porque centraliza bitácora/estado.
+ *
+ * @param {Object} eventParams - Payload de creación CRM vinculado a Outlook.
+ * @param {string|number} valueStatus - Estado actual `segimineto_lead` usado por bitácora legacy.
+ * @returns {Function} Thunk Redux.
+ */
+export const createOutlookEventForLead = (eventParams, valueStatus) => {
+    return async (dispatch, getState) => {
+        const { idnetsuite_admin } = getState().auth;
+        const normalizedLeadId = Number(eventParams?.leadId || 0);
+        const additionalValues = {
+            valorDeCaida: 51,
+            tipo: "Se generó un evento para el cliente",
+            estado_lead: 1,
+            accion_lead: 6,
+            seguimiento_calendar: 0,
+            valor_segimineto_lead: 3,
+        };
+
+        try {
+            const result = await createOutlookCalendarEvent(eventParams);
+
+            if (normalizedLeadId > 0) {
+                await dispatch(
+                    generateLeadBitacora(
+                        idnetsuite_admin,
+                        normalizedLeadId,
+                        additionalValues,
+                        eventParams?.descripcionEvento || "",
+                        valueStatus,
+                    ),
+                );
+            }
+
+            return result;
+        } catch (error) {
+            console.error("Error al crear el evento Outlook para el lead:", error);
+            throw error;
+        }
+    };
+};
+
+/**
+ * Edita evento Outlook/CRM y replica bitácora legacy si hay lead.
+ *
+ * @param {Object} eventParams - Datos editables del evento.
+ * @param {string|number} valueStatus - `segimineto_lead` actual del lead.
+ * @returns {Function} Thunk Redux.
+ */
+export const updateOutlookEventForLeadDetails = (eventParams, valueStatus) => {
+    return async (dispatch, getState) => {
+        const { idnetsuite_admin } = getState().auth;
+        const normalizedLeadId = Number(eventParams?.leadId || 0);
+        const additionalValues = {
+            valorDeCaida: 51,
+            tipo: "Se Edito un evento para el cliente",
+            estado_lead: 1,
+            accion_lead: 6,
+            seguimiento_calendar: 0,
+            valor_segimineto_lead: 3,
+        };
+
+        try {
+            const result = await updateOutlookCalendarEventDetails(eventParams);
+
+            if (normalizedLeadId > 0) {
+                await dispatch(
+                    generateLeadBitacora(
+                        idnetsuite_admin,
+                        normalizedLeadId,
+                        additionalValues,
+                        eventParams?.descripcionEvento || "",
+                        valueStatus,
+                    ),
+                );
+            }
+
+            return result;
+        } catch (error) {
+            console.error("Error al editar el evento Outlook para el lead:", error);
+            throw error;
         }
     };
 };
