@@ -30,13 +30,14 @@ const getEventTextColor = (hexColor) => {
     return luminance > 0.62 ? "#163142" : "#ffffff";
 };
 
-export const renderOutlookCalendarEventContent = (eventInfo) => {
+export const renderOutlookCalendarEventContent = (eventInfo, options = {}) => {
     const eventColor = normalizeHexColor(eventInfo.event.extendedProps.eventColor || OUTLOOK_DEFAULT_COLOR);
     const eventTextColor = getEventTextColor(eventColor);
+    const isSelected = Boolean(options?.isSelected);
 
     return (
         <div
-            className={`outlook-event-card ${eventInfo.event.classNames.join(" ")}`}
+            className={`outlook-event-card ${eventInfo.event.classNames.join(" ")} ${isSelected ? "is-selected" : ""}`}
             style={{
                 "--outlook-event-accent": eventColor,
                 "--outlook-event-background": eventColor,

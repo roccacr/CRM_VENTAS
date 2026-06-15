@@ -741,6 +741,20 @@ const formatDateInputValue = (value) => {
     return `${yearValue}-${monthValue}-${dayValue}`;
 };
 
+const parseLocalDateOnlyValue = (value) => {
+    if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+        return null;
+    }
+
+    const [yearValue, monthValue, dayValue] = value.split("-").map((part) => Number.parseInt(part, 10));
+
+    if (!yearValue || !monthValue || !dayValue) {
+        return null;
+    }
+
+    return new Date(yearValue, monthValue - 1, dayValue, 0, 0, 0, 0);
+};
+
 const parseTimeValueToParts = (value) => {
     const [hourValue = "0", minuteValue = "0"] = `${value || ""}`.split(":");
 
@@ -852,6 +866,12 @@ const formatCreateEventDateTimeLabel = (rangeValue) => {
         rangeValue.end.getMinutes(),
     )}`;
 };
+
+const formatCalendarDayPopoverTitle = (value) => new Intl.DateTimeFormat("es-CR", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+}).format(value);
 
 const formatHourMinuteLabel = (hourValue, minuteValue) => {
     const normalizedDate = new Date(2026, 0, 1, 0, 0, 0, 0);
@@ -1184,6 +1204,12 @@ const getEventDateLabel = (event) => {
         return "";
     }
 
+    const startDate = event.start instanceof Date ? event.start : new Date(event.start);
+
+    if (Number.isNaN(startDate.getTime())) {
+        return "";
+    }
+
     const formatter = new Intl.DateTimeFormat("es-CR", {
         weekday: "short",
         day: "2-digit",
@@ -1193,9 +1219,15 @@ const getEventDateLabel = (event) => {
         minute: "2-digit",
     });
 
-    const startLabel = formatter.format(event.start);
+    const startLabel = formatter.format(startDate);
 
     if (!event.end) {
+        return startLabel;
+    }
+
+    const endDate = event.end instanceof Date ? event.end : new Date(event.end);
+
+    if (Number.isNaN(endDate.getTime())) {
         return startLabel;
     }
 
@@ -1204,7 +1236,7 @@ const getEventDateLabel = (event) => {
         minute: "2-digit",
     });
 
-    return `${startLabel} a ${endFormatter.format(event.end)}`;
+    return `${startLabel} a ${endFormatter.format(endDate)}`;
 };
 
 /** Badge de origen del evento en la UI de sincronización. */
@@ -1497,6 +1529,9 @@ export const View_calendario_outlook = () => {
 
     // Evento seleccionado al hacer clic (objeto Event de FullCalendar)
     const [selectedEvent, setSelectedEvent] = useState(null);
+    const [selectedDayEvents, setSelectedDayEvents] = useState([]);
+    const [selectedDayEventsTitle, setSelectedDayEventsTitle] = useState("");
+    const [selectedDayEventsPosition, setSelectedDayEventsPosition] = useState(null);
 
     // Copia del evento al expandir modal (se setea antes de cerrar popover)
     const [expandedEvent, setExpandedEvent] = useState(null);
@@ -2529,6 +2564,83 @@ export const View_calendario_outlook = () => {
         setNotifyOrganizer(true);
     };
 
+    const closeDayEventsPopover = () => {
+        setSelectedDayEvents([]);
+        setSelectedDayEventsTitle("");
+        setSelectedDayEventsPosition(null);
+    };
+
+    const openEventCardAtPosition = (eventItem, positionValue) => {
+        if (!eventItem || !positionValue) {
+            return;
+        }
+
+        setSelectedEvent(eventItem);
+        setSelectedPosition(positionValue);
+        setShowResponseActions(false);
+        setResponseComment("");
+        setNotifyOrganizer(true);
+    };
+
+    const openEventCardFromElement = (eventItem, element) => {
+        const rect = element?.getBoundingClientRect?.();
+
+        if (!rect) {
+            return;
+        }
+
+        openEventCardAtPosition(eventItem, {
+            left: Math.min(rect.right + 18, window.innerWidth - 420),
+            top: Math.max(rect.top + (rect.height / 2) - 48, 80),
+        });
+    };
+
+    const handleDayEventsMoreClick = (moreLinkArg) => {
+        const currentTarget = moreLinkArg?.jsEvent?.currentTarget || moreLinkArg?.jsEvent?.target || null;
+        const rect = currentTarget?.getBoundingClientRect?.();
+        const currentDayCell = currentTarget?.closest?.("[data-date]") || null;
+        const dayCellDateValue = currentDayCell?.getAttribute?.("data-date") || "";
+        const targetDate = parseLocalDateOnlyValue(dayCellDateValue)
+            || (moreLinkArg?.date instanceof Date ? startOfDay(new Date(moreLinkArg.date.getTime())) : null);
+
+        moreLinkArg?.jsEvent?.preventDefault?.();
+        moreLinkArg?.jsEvent?.stopPropagation?.();
+
+        if (!targetDate || !rect) {
+            closeDayEventsPopover();
+            closeEventCard();
+            return true;
+        }
+
+        const segmentEventIds = new Set(
+            (Array.isArray(moreLinkArg?.allSegs) ? moreLinkArg.allSegs : [])
+                .map((segment) => segment?.eventRange?.def?.publicId || segment?.eventRange?.instance?.instanceId || "")
+                .filter(Boolean),
+        );
+
+        const dayEvents = (
+            segmentEventIds.size
+                ? adminScopedCalendarEvents.filter((eventItem) => segmentEventIds.has(eventItem.id))
+                : adminScopedCalendarEvents.filter((eventItem) => eventItem?.start && sameDay(new Date(eventItem.start), targetDate))
+        ).sort((firstEvent, secondEvent) => {
+            const firstStart = firstEvent?.start ? new Date(firstEvent.start).getTime() : 0;
+            const secondStart = secondEvent?.start ? new Date(secondEvent.start).getTime() : 0;
+
+            return firstStart - secondStart;
+        });
+
+        closeDayEventsPopover();
+        closeEventCard();
+        setSelectedDayEvents(dayEvents);
+        setSelectedDayEventsTitle(formatCalendarDayPopoverTitle(targetDate));
+        setSelectedDayEventsPosition({
+            left: Math.min(rect.left + 8, window.innerWidth - 460),
+            top: rect.bottom + 8,
+        });
+
+        return true;
+    };
+
     /** Abre modal expandido. */
     const openExpandedModal = () => {
         setIsExpandedModalOpen(true);
@@ -2763,6 +2875,7 @@ export const View_calendario_outlook = () => {
         );
 
         closeEventCard();
+        closeDayEventsPopover();
         resetCreateEventFormState({
             defaultDateValue,
             defaultStartTimeValue,
@@ -2825,6 +2938,7 @@ export const View_calendario_outlook = () => {
         );
 
         closeEventCard();
+        closeDayEventsPopover();
         setEditingEventContext({
             id: eventItem.id,
             crmEventId: crmEvent?.id_calendar || null,
@@ -4107,6 +4221,7 @@ const handleCalendarEventScheduleChange = async (info) => {
                                     setCalendarTitle(dateInfo.view.title);
                                     setActiveViewMode(nextViewMode);
                                     closeEventCard();
+                                    closeDayEventsPopover();
                                 }}
                                 dateClick={handleCalendarDateClick}
                                 dayCellClassNames={(arg) => {
@@ -4121,17 +4236,17 @@ const handleCalendarEventScheduleChange = async (info) => {
                                     return [];
                                 }}
                                 dayMaxEvents={activeViewMode === "month" ? 3 : false}
+                                moreLinkClick={handleDayEventsMoreClick}
                                 eventClick={(info) => {
-                                    setSelectedEvent(info.event);
-                                    setSelectedPosition({
+                                    closeDayEventsPopover();
+                                    openEventCardAtPosition(info.event, {
                                         left: info.jsEvent.clientX + 18,
                                         top: info.jsEvent.clientY + 18,
                                     });
-                                    setShowResponseActions(false);
-                                    setResponseComment("");
-                                    setNotifyOrganizer(true);
                                 }}
-                                eventContent={renderOutlookCalendarEventContent}
+                                eventContent={(eventInfo) => renderOutlookCalendarEventContent(eventInfo, {
+                                    isSelected: selectedEvent?.id === eventInfo.event.id,
+                                })}
                                 eventDisplay="block"
                                 eventChange={handleCalendarEventScheduleChange}
                                 eventDurationEditable={false}
@@ -4200,6 +4315,76 @@ const handleCalendarEventScheduleChange = async (info) => {
             </Popover>
 
             <Popover
+                anchorPosition={selectedDayEventsPosition || undefined}
+                anchorReference="anchorPosition"
+                disableAutoFocus
+                disableEnforceFocus
+                disableRestoreFocus
+                onClose={closeDayEventsPopover}
+                open={Boolean(selectedDayEvents.length && selectedDayEventsPosition)}
+                slotProps={{
+                    paper: {
+                        className: "outlook-day-events-popover",
+                    },
+                }}
+            >
+                <Box className="outlook-day-events-popover-content">
+                    <Box className="outlook-day-events-popover-header">
+                        <Typography className="outlook-day-events-popover-title">
+                            {selectedDayEventsTitle}
+                        </Typography>
+                        <button
+                            className="outlook-day-events-popover-close"
+                            onClick={closeDayEventsPopover}
+                            type="button"
+                        >
+                            <span className="ti ti-x"></span>
+                        </button>
+                    </Box>
+
+                    <Box className="outlook-day-events-popover-list">
+                        {selectedDayEvents.map((eventItem) => {
+                            const isSelectedDayEvent = selectedEvent?.id === eventItem.id;
+                            const eventStartDate = eventItem?.start ? new Date(eventItem.start) : null;
+                            const eventTimeLabel = eventItem.allDay
+                                ? "Todo el día"
+                                : (
+                                    eventItem.extendedProps?.timeText
+                                    || (
+                                        eventStartDate && !Number.isNaN(eventStartDate.getTime())
+                                            ? formatHourMinuteLabel(eventStartDate.getHours(), eventStartDate.getMinutes())
+                                            : "00:00"
+                                    )
+                                );
+
+                            return (
+                                <button
+                                    className={`outlook-day-events-popover-item ${isSelectedDayEvent ? "is-selected" : ""}`}
+                                    key={`day-popover-${eventItem.id}`}
+                                    onClick={(event) => openEventCardFromElement(eventItem, event.currentTarget)}
+                                    type="button"
+                                >
+                                    <span
+                                        className="outlook-day-events-popover-accent"
+                                        style={{ background: eventItem.extendedProps?.eventColor || eventItem.backgroundColor || "#2a5f79" }}
+                                    ></span>
+                                    <span className="outlook-day-events-popover-time">
+                                        {eventTimeLabel}
+                                    </span>
+                                    <span className="outlook-day-events-popover-name">
+                                        {eventItem.title}
+                                    </span>
+                                    <span className="outlook-day-events-popover-arrow">
+                                        <span className="ti ti-arrow-right"></span>
+                                    </span>
+                                </button>
+                            );
+                        })}
+                    </Box>
+                </Box>
+            </Popover>
+
+            <Popover
                 anchorPosition={selectedPosition || undefined}
                 anchorReference="anchorPosition" // Posición fija en coordenadas de pantalla
                 disableAutoFocus
@@ -4209,7 +4394,7 @@ const handleCalendarEventScheduleChange = async (info) => {
                 open={Boolean(selectedEvent && selectedPosition)}
                 slotProps={{
                     paper: {
-                        className: "outlook-hover-card",
+                        className: `outlook-hover-card ${selectedDayEvents.length ? "has-day-list-arrow" : ""}`,
                     },
                 }}
             >
