@@ -81,8 +81,8 @@ export const TableroHome = ({ image, icons, nombre, cantidad, url, outlookCount,
                                         </a>
                                         <span className="text-muted">/</span>
                                         <a
-                                            href={rightUrl || "/calendar"}
-                                            onClick={() => updatePreviousUrlIfOpportunity(rightUrl || "/calendar")}
+                                            href={rightUrl || "/calendar/outlook"}
+                                            onClick={() => updatePreviousUrlIfOpportunity(rightUrl || "/calendar/outlook")}
                                             style={{ textDecoration: "none", color: "inherit" }}
                                         >
                                             <div className="text-center">

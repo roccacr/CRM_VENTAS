@@ -575,7 +575,7 @@ export const View_events_Actions = () => {
     // Esta función se activa cuando un usuario desea ver o acceder al calendario.
     // Utiliza la función navigate de la librería de enrutamiento para cambiar la URL actual a "/calendar".
     const openCalendar = () => {
-        navigate("/calendar"); // Redirige al usuario a la página del calendario.
+        navigate("/calendar/outlook"); // Redirige al usuario a la página del calendario.
     };
 
     // Función para marcar un evento como completado

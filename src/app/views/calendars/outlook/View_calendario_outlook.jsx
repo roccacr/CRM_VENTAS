@@ -2752,8 +2752,10 @@ export const View_calendario_outlook = () => {
         setCreateEventSubmitError("");
     };
 
-    const openCreateEventModal = () => {
-        const defaultStartDate = getDefaultCreateEventStartDate();
+    const openCreateEventModalAtDate = (startDateValue) => {
+        const defaultStartDate = startDateValue instanceof Date && !Number.isNaN(startDateValue.getTime())
+            ? new Date(startDateValue.getTime())
+            : getDefaultCreateEventStartDate();
         const defaultDateValue = formatDateInputValue(defaultStartDate);
         const defaultStartTimeValue = formatTimeValue(
             defaultStartDate.getHours(),
@@ -2767,6 +2769,35 @@ export const View_calendario_outlook = () => {
             defaultEndTimeValue: addMinutesToTimeValue(defaultStartTimeValue, CREATE_EVENT_DEFAULT_DURATION_MINUTES),
         });
         setIsCreateEventModalOpen(true);
+    };
+
+    const openCreateEventModal = () => {
+        openCreateEventModalAtDate(getDefaultCreateEventStartDate());
+    };
+
+    const handleCalendarDateClick = (dateInfo) => {
+        const clickedDate = dateInfo?.date instanceof Date
+            ? new Date(dateInfo.date.getTime())
+            : null;
+
+        if (!clickedDate || Number.isNaN(clickedDate.getTime())) {
+            openCreateEventModal();
+            return;
+        }
+
+        if (dateInfo?.allDay) {
+            clickedDate.setHours(CREATE_EVENT_DEFAULT_START_HOUR, CREATE_EVENT_DEFAULT_START_MINUTE, 0, 0);
+        } else {
+            const roundedClickedDate = roundDateToNextScheduleSlot(clickedDate);
+            clickedDate.setHours(
+                roundedClickedDate.getHours(),
+                roundedClickedDate.getMinutes(),
+                0,
+                0,
+            );
+        }
+
+        openCreateEventModalAtDate(clickedDate);
     };
 
     const openEditEventModal = (eventItem) => {
@@ -4077,6 +4108,7 @@ const handleCalendarEventScheduleChange = async (info) => {
                                     setActiveViewMode(nextViewMode);
                                     closeEventCard();
                                 }}
+                                dateClick={handleCalendarDateClick}
                                 dayCellClassNames={(arg) => {
                                     if (sameDay(arg.date, calendarDate)) {
                                         return ["outlook-day-focus"];
