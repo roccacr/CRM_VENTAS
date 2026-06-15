@@ -26,6 +26,7 @@ import {
     Avatar, // Avatar circular para asistentes/organizador
     Box, // Contenedor flexible con sistema de estilos MUI
     Checkbox, // Casilla para "notificar al organizador"
+    CircularProgress, // Indicador de carga del calendario principal
     Dialog, // Modal expandido al hacer clic en expandir evento
     DialogContent, // Cuerpo del modal
     Divider, // Línea separadora visual
@@ -1492,6 +1493,7 @@ export const View_calendario_outlook = () => {
 
     // Eventos ya mapeados al formato FullCalendar
     const [calendarEvents, setCalendarEvents] = useState([]);
+    const [isLoadingCalendarEvents, setIsLoadingCalendarEvents] = useState(false);
 
     // Evento seleccionado al hacer clic (objeto Event de FullCalendar)
     const [selectedEvent, setSelectedEvent] = useState(null);
@@ -3422,145 +3424,161 @@ const handleCalendarEventScheduleChange = async (info) => {
      * Carga CRM y Microsoft en secuencia dentro del mismo async; fallos son independientes.
      */
     useEffect(() => {
+        let isMounted = true;
+
         const loadVisibleEvents = async () => {
             const crmEvents = [];
             const microsoftEvents = [];
             let tokenResponse = null;
 
-            if (inProgress !== "startup" && microsoftUser && activeMicrosoftAccount) {
-                try {
-                    tokenResponse = await instance.acquireTokenSilent({
-                        scopes: ["Calendars.Read"],
-                        account: activeMicrosoftAccount,
-                    });
+            setIsLoadingCalendarEvents(true);
 
-                    const registerSyncResponse = await registerOutlookCalendarSync({
-                        accessToken: tokenResponse.accessToken,
-                        outlook_user_email: activeMicrosoftAccount.username || microsoftUser?.email || "",
-                        idnetsuite_admin,
-                    });
-                    const registerSyncPayload = registerSyncResponse?.data || null;
-
-                    if (registerSyncPayload?.ok === false) {
-                        throw new Error(registerSyncPayload?.message || "No se pudo registrar la suscripción Outlook.");
-                    }
-
-                    const processSyncResponse = await processOutlookCalendarSync({
-                        accessToken: tokenResponse.accessToken,
-                        outlook_user_email: activeMicrosoftAccount.username || microsoftUser?.email || "",
-                        idnetsuite_admin,
-                        forceSync: true,
-                    });
-                    const processSyncPayload = processSyncResponse?.data || null;
-
-                    if (processSyncPayload?.ok === false) {
-                        throw new Error(processSyncPayload?.message || "No se pudo procesar delta sync Outlook.");
-                    }
-                } catch (error) {
-                    if (error instanceof InteractionRequiredAuthError) {
-                        console.log("[outlook-calendar] Microsoft requiere permisos interactivos. Se omite delta sync.");
-                    } else if (isExpectedLocalWebhookSyncError(error)) {
-                        // Local/pruebas sin webhook público: condición esperada, no ensuciar consola.
-                    } else {
-                        console.error("[outlook-calendar] error registrando o sincronizando delta Outlook -> CRM", error);
-                    }
-                }
-            }
-
-            // --- Bloque CRM: requiere usuario NetSuite y rol ---
-            if (idnetsuite_admin && rol_admin) {
-                try {
-                    const crmResponse = await getPendingActionCalendarEvents({
-                        dateStart: formatDateOnly(currentWindow.start),
-                        dateEnd: formatDateOnly(currentWindow.endInclusive),
-                    });
-
-                    const responseEvents = Array.isArray(crmResponse?.data?.data)
-                        ? crmResponse.data.data
-                        : [];
-
-                    crmEvents.push(...responseEvents);
-                } catch (error) {
-                    console.error("[outlook-calendar] error cargando eventos CRM por rango", error);
-                }
-            }
-
-            // --- Bloque Microsoft 365: requiere MSAL listo y usuario Microsoft vinculado ---
-            if (inProgress !== "startup" && microsoftUser && activeMicrosoftAccount) {
-                try {
-                    if (!tokenResponse) {
+            try {
+                if (inProgress !== "startup" && microsoftUser && activeMicrosoftAccount) {
+                    try {
                         tokenResponse = await instance.acquireTokenSilent({
                             scopes: ["Calendars.Read"],
                             account: activeMicrosoftAccount,
                         });
-                    }
 
-                    // Query OData para calendarView con rango ISO y campos selectivos
-                    const searchParams = new URLSearchParams({
-                        startDateTime: currentWindow.start.toISOString(),
-                        endDateTime: currentWindow.endExclusive.toISOString(),
-                        $top: "100",
-                        $orderby: "start/dateTime",
-                        $select: [
-                            "id",
-                            "subject",
-                            "start",
-                            "end",
-                            "location",
-                            "organizer",
-                            "attendees",
-                            "bodyPreview",
-                            "webLink",
-                            "responseStatus",
-                            "lastModifiedDateTime",
-                            "isOnlineMeeting",
-                            "onlineMeeting",
-                            "onlineMeetingProvider",
-                        ].join(","),
-                    });
-
-                    let nextUrl = `https://graph.microsoft.com/v1.0/me/calendarView?${searchParams.toString()}`;
-
-                    // Paginación: Graph puede devolver @odata.nextLink
-                    while (nextUrl) {
-                        const response = await fetch(nextUrl, {
-                            method: "GET",
-                            headers: {
-                                Authorization: `Bearer ${tokenResponse.accessToken}`,
-                                "Content-Type": "application/json",
-                                // Fuerza zona horaria Costa Rica en dateTime de respuesta
-                                Prefer: 'outlook.timezone="America/Costa_Rica"',
-                            },
+                        const registerSyncResponse = await registerOutlookCalendarSync({
+                            accessToken: tokenResponse.accessToken,
+                            outlook_user_email: activeMicrosoftAccount.username || microsoftUser?.email || "",
+                            idnetsuite_admin,
                         });
+                        const registerSyncPayload = registerSyncResponse?.data || null;
 
-                        if (!response.ok) {
-                            throw new Error(`Microsoft Graph HTTP ${response.status}`);
+                        if (registerSyncPayload?.ok === false) {
+                            throw new Error(registerSyncPayload?.message || "No se pudo registrar la suscripción Outlook.");
                         }
 
-                        const data = await response.json();
-                        const pageEvents = Array.isArray(data?.value) ? data.value : [];
+                        const processSyncResponse = await processOutlookCalendarSync({
+                            accessToken: tokenResponse.accessToken,
+                            outlook_user_email: activeMicrosoftAccount.username || microsoftUser?.email || "",
+                            idnetsuite_admin,
+                            forceSync: true,
+                        });
+                        const processSyncPayload = processSyncResponse?.data || null;
 
-                        microsoftEvents.push(...pageEvents);
-                        nextUrl = data?.["@odata.nextLink"] || null;
-                    }
-                } catch (error) {
-                    if (error instanceof InteractionRequiredAuthError) {
-                        // Usuario debe re-autenticarse; degradación graceful a solo CRM
-                        console.log("[outlook-calendar] Microsoft requiere permisos interactivos. Se cargan solo eventos CRM.");
-                    } else {
-                        console.error("[outlook-calendar] error cargando eventos Microsoft 365 por rango", error);
+                        if (processSyncPayload?.ok === false) {
+                            throw new Error(processSyncPayload?.message || "No se pudo procesar delta sync Outlook.");
+                        }
+                    } catch (error) {
+                        if (error instanceof InteractionRequiredAuthError) {
+                            console.log("[outlook-calendar] Microsoft requiere permisos interactivos. Se omite delta sync.");
+                        } else if (isExpectedLocalWebhookSyncError(error)) {
+                            // Local/pruebas sin webhook público: condición esperada, no ensuciar consola.
+                        } else {
+                            console.error("[outlook-calendar] error registrando o sincronizando delta Outlook -> CRM", error);
+                        }
                     }
                 }
+
+                // --- Bloque CRM: requiere usuario NetSuite y rol ---
+                if (idnetsuite_admin && rol_admin) {
+                    try {
+                        const crmResponse = await getPendingActionCalendarEvents({
+                            dateStart: formatDateOnly(currentWindow.start),
+                            dateEnd: formatDateOnly(currentWindow.endInclusive),
+                        });
+
+                        const responseEvents = Array.isArray(crmResponse?.data?.data)
+                            ? crmResponse.data.data
+                            : [];
+
+                        crmEvents.push(...responseEvents);
+                    } catch (error) {
+                        console.error("[outlook-calendar] error cargando eventos CRM por rango", error);
+                    }
+                }
+
+                // --- Bloque Microsoft 365: requiere MSAL listo y usuario Microsoft vinculado ---
+                if (inProgress !== "startup" && microsoftUser && activeMicrosoftAccount) {
+                    try {
+                        if (!tokenResponse) {
+                            tokenResponse = await instance.acquireTokenSilent({
+                                scopes: ["Calendars.Read"],
+                                account: activeMicrosoftAccount,
+                            });
+                        }
+
+                        // Query OData para calendarView con rango ISO y campos selectivos
+                        const searchParams = new URLSearchParams({
+                            startDateTime: currentWindow.start.toISOString(),
+                            endDateTime: currentWindow.endExclusive.toISOString(),
+                            $top: "100",
+                            $orderby: "start/dateTime",
+                            $select: [
+                                "id",
+                                "subject",
+                                "start",
+                                "end",
+                                "location",
+                                "organizer",
+                                "attendees",
+                                "bodyPreview",
+                                "webLink",
+                                "responseStatus",
+                                "lastModifiedDateTime",
+                                "isOnlineMeeting",
+                                "onlineMeeting",
+                                "onlineMeetingProvider",
+                            ].join(","),
+                        });
+
+                        let nextUrl = `https://graph.microsoft.com/v1.0/me/calendarView?${searchParams.toString()}`;
+
+                        // Paginación: Graph puede devolver @odata.nextLink
+                        while (nextUrl) {
+                            const response = await fetch(nextUrl, {
+                                method: "GET",
+                                headers: {
+                                    Authorization: `Bearer ${tokenResponse.accessToken}`,
+                                    "Content-Type": "application/json",
+                                    // Fuerza zona horaria Costa Rica en dateTime de respuesta
+                                    Prefer: 'outlook.timezone="America/Costa_Rica"',
+                                },
+                            });
+
+                            if (!response.ok) {
+                                throw new Error(`Microsoft Graph HTTP ${response.status}`);
+                            }
+
+                            const data = await response.json();
+                            const pageEvents = Array.isArray(data?.value) ? data.value : [];
+
+                            microsoftEvents.push(...pageEvents);
+                            nextUrl = data?.["@odata.nextLink"] || null;
+                        }
+                    } catch (error) {
+                        if (error instanceof InteractionRequiredAuthError) {
+                            // Usuario debe re-autenticarse; degradación graceful a solo CRM
+                            console.log("[outlook-calendar] Microsoft requiere permisos interactivos. Se cargan solo eventos CRM.");
+                        } else {
+                            console.error("[outlook-calendar] error cargando eventos Microsoft 365 por rango", error);
+                        }
+                    }
+                }
+
+                // Unificar fuentes y transformar a eventos FullCalendar
+                const unifiedEvents = buildUnifiedDebugPayload(crmEvents, microsoftEvents);
+                const mappedEvents = mapUnifiedEventsToCalendarEvents(unifiedEvents);
+
+                if (isMounted) {
+                    setCalendarEvents(mappedEvents);
+                }
+            } finally {
+                if (isMounted) {
+                    setIsLoadingCalendarEvents(false);
+                }
             }
-
-            // Unificar fuentes y transformar a eventos FullCalendar
-            const unifiedEvents = buildUnifiedDebugPayload(crmEvents, microsoftEvents);
-            const mappedEvents = mapUnifiedEventsToCalendarEvents(unifiedEvents);
-
-            setCalendarEvents(mappedEvents);
         };
 
         loadVisibleEvents();
+
+        return () => {
+            isMounted = false;
+        };
     }, [
         accounts,
         activeMicrosoftAccount,
@@ -4013,6 +4031,26 @@ const handleCalendarEventScheduleChange = async (info) => {
                         </div>
 
                         <div className="outlook-calendar-frame">
+                            {isLoadingCalendarEvents ? (
+                                <div className="outlook-calendar-loading-overlay">
+                                    <div className="outlook-calendar-loading-card">
+                                        <CircularProgress size={26} thickness={4.6} />
+                                        <div className="outlook-calendar-loading-copy">
+                                            <strong>Cargando eventos</strong>
+                                            <span>Sincronizando CRM y Outlook para esta vista.</span>
+                                        </div>
+                                    </div>
+
+                                    <div className="outlook-calendar-loading-skeleton" aria-hidden="true">
+                                        {Array.from({ length: 8 }).map((_, index) => (
+                                            <span
+                                                className={`outlook-calendar-loading-bar is-${(index % 4) + 1}`}
+                                                key={`calendar-loading-bar-${index}`}
+                                            ></span>
+                                        ))}
+                                    </div>
+                                </div>
+                            ) : null}
                             {/*
                               FullCalendar: motor principal.
                               - datesSet sincroniza estado React al navegar

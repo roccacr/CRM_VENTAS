@@ -462,6 +462,97 @@
 .outlook-calendar-frame {
     overflow: hidden;
     padding: 10px 12px 12px;
+    position: relative;
+}
+
+.outlook-calendar-loading-overlay {
+    align-items: center;
+    backdrop-filter: blur(2px);
+    background: rgba(244, 248, 252, 0.78);
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    inset: 10px 12px 12px;
+    justify-content: center;
+    position: absolute;
+    z-index: 8;
+}
+
+.outlook-calendar-loading-card {
+    align-items: center;
+    background: rgba(255, 255, 255, 0.96);
+    border: 1px solid rgba(176, 194, 212, 0.7);
+    border-radius: 18px;
+    box-shadow: 0 16px 40px rgba(28, 53, 77, 0.12);
+    display: flex;
+    gap: 14px;
+    min-width: 290px;
+    padding: 16px 18px;
+}
+
+.outlook-calendar-loading-copy {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.outlook-calendar-loading-copy strong {
+    color: #1d3550;
+    font-size: 0.96rem;
+    font-weight: 700;
+}
+
+.outlook-calendar-loading-copy span {
+    color: #607487;
+    font-size: 0.82rem;
+}
+
+.outlook-calendar-loading-skeleton {
+    display: grid;
+    gap: 10px;
+    grid-template-columns: repeat(2, minmax(180px, 240px));
+}
+
+.outlook-calendar-loading-bar {
+    animation: outlookCalendarLoadingPulse 1.45s ease-in-out infinite;
+    background: linear-gradient(90deg, rgba(194, 214, 232, 0.42) 0%, rgba(225, 236, 245, 0.82) 50%, rgba(194, 214, 232, 0.42) 100%);
+    background-size: 220% 100%;
+    border: 1px solid rgba(195, 211, 226, 0.72);
+    border-radius: 10px;
+    height: 14px;
+}
+
+.outlook-calendar-loading-bar.is-1 {
+    width: 238px;
+}
+
+.outlook-calendar-loading-bar.is-2 {
+    width: 198px;
+}
+
+.outlook-calendar-loading-bar.is-3 {
+    width: 220px;
+}
+
+.outlook-calendar-loading-bar.is-4 {
+    width: 176px;
+}
+
+@keyframes outlookCalendarLoadingPulse {
+    0% {
+        background-position: 100% 0;
+        opacity: 0.62;
+    }
+
+    50% {
+        background-position: 0 0;
+        opacity: 1;
+    }
+
+    100% {
+        background-position: -100% 0;
+        opacity: 0.62;
+    }
 }
 
 .outlook-calendar-frame .fc {
