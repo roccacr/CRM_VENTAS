@@ -18,7 +18,7 @@ import "datatables.net-bs5";
 import "datatables.net-searchpanes-bs5";
 import "datatables.net-select-bs5";
 import { crearOrdenVenta } from "../../../../store/ordenVenta/thunkOrdenVenta";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import SticNotesContainer from "../../../../components/sticknotes/SticNotesContainer";
 /**
  * Componente principal para visualizar y gestionar estimaciones.
@@ -29,6 +29,7 @@ import SticNotesContainer from "../../../../components/sticknotes/SticNotesConta
  * @returns {JSX.Element} Componente renderizado
  */
 export const VerEstimacion = () => {
+   const location = useLocation();
    const navigate = useNavigate();
    // Estado para almacenar los detalles del lead.
    const [leadDetails, setLeadDetails] = useState({});
@@ -44,6 +45,8 @@ export const VerEstimacion = () => {
    const dispatch = useDispatch();
 
    const [isModalOpen, setIsModalOpen] = useState(false); // Control del modal
+   const leadId = getQueryParam("data");
+   const estimacionId = getQueryParam("data2");
 
    /**
     * Obtiene el valor de un parámetro específico de la URL.
@@ -323,6 +326,10 @@ export const VerEstimacion = () => {
    // Effect hooks
    useEffect(() => {
       const loadInitialData = async () => {
+         setLeadDetails({});
+         setDatosEstimacion({});
+         setDatosCrm({});
+         setTotalOredenes(0);
          Swal.fire({
             title: "Cargando datos...",
             text: "Por favor espera.",
@@ -330,9 +337,6 @@ export const VerEstimacion = () => {
             allowEscapeKey: false,
             didOpen: () => Swal.showLoading(),
          });
-
-         const leadId = getQueryParam("data");
-         const estimacionId = getQueryParam("data2");
 
          if (leadId && leadId > 0) {
             await Promise.all([fetchLeadDetails(leadId), fetchEstimacionDetails(estimacionId)]);
@@ -342,7 +346,7 @@ export const VerEstimacion = () => {
       };
 
       loadInitialData();
-   }, [dispatch]);
+   }, [dispatch, leadId, estimacionId, location.search]);
 
    useEffect(() => {
       return initializeDataTable();
@@ -600,9 +604,9 @@ export const VerEstimacion = () => {
          {/* Sticky Notes Container */}
          <div style={{ position: 'relative', zIndex: 999 }}>
             <SticNotesContainer
-               idinternoLead={getQueryParam("data")}
+               idinternoLead={leadId}
                transactionType="estimate"
-               transactionId={getQueryParam("data2")}
+               transactionId={estimacionId}
                sourceUrl={window.location.href}
             />
          </div>
@@ -819,7 +823,7 @@ export const VerEstimacion = () => {
             </div>
             {/* Modal */}
             {isModalOpen && (
-               <ModalEstimacionEdit open={isModalOpen} onClose={() => setIsModalOpen(false)} idEstimacion={getQueryParam("data2")} />
+               <ModalEstimacionEdit open={isModalOpen} onClose={() => setIsModalOpen(false)} idEstimacion={estimacionId} />
             )}
          </div>
       </>

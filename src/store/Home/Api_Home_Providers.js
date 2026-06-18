@@ -19,6 +19,16 @@ export const getAllEventsHome = async ({ idnetsuite_admin, rol_admin }) => {
     return await fetchData("home/getAllEventsHome", requestData);
 };
 
+export const getNotificationsHome = async ({ idnetsuite_admin, rol_admin }) => {
+    const requestData = {
+        ...commonRequestData,
+        idnetsuite_admin,
+        rol_admin,
+    };
+
+    return await fetchData("home/getNotifications", requestData);
+};
+
 
 /**
  * Función para actualizar el estado de un evento específico.

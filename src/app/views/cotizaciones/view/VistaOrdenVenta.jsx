@@ -19,7 +19,7 @@ import "datatables.net";
 import "datatables.net-bs5";
 import "datatables.net-searchpanes-bs5";
 import "datatables.net-select-bs5";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { ModalOrdenVenta } from "../../estimacion/ModalOrdenVenta";
 import { OneDrive } from "./OneDrive";
 import SticNotesContainer from "../../../../components/sticknotes/SticNotesContainer";
@@ -1061,6 +1061,7 @@ const initializeDataTable = (datosOrdenVenta) => {
  * @returns {JSX.Element} Complete sales order view
  */
 export const VistaOrdenVenta = () => {
+   const location = useLocation();
    const navigate = useNavigate();
    const dispatch = useDispatch();
    const [leadDetails, setLeadDetails] = useState({});
@@ -1071,6 +1072,8 @@ export const VistaOrdenVenta = () => {
    const [validarOrdenVenta, setValidarOrdenVenta] = useState({});
 
    const { email_admin } = useSelector((state) => state.auth);
+   const leadId = getQueryParam("data");
+   const transaccion = getQueryParam("data2");
 
    const { actions, configs } = useSalesOrderActions({
       navigate,
@@ -1085,9 +1088,10 @@ export const VistaOrdenVenta = () => {
    useEffect(() => {
       const loadInitialData = async () => {
          setIsLoading(true);
+         setLeadDetails({});
+         setDatosOrdenVenta({});
+         setValidarOrdenVenta({});
          showLoadingIndicator();
-         const leadId = getQueryParam("data");
-         const transaccion = getQueryParam("data2");
 
          if (leadId && leadId > 0) {
             await fetchData({
@@ -1107,7 +1111,7 @@ export const VistaOrdenVenta = () => {
       };
 
       loadInitialData();
-   }, [dispatch]);
+   }, [dispatch, leadId, transaccion, location.search]);
 
    // DataTable initialization with cleanup
    useEffect(() => {
@@ -1130,7 +1134,7 @@ export const VistaOrdenVenta = () => {
             <SticNotesContainer
                idinternoLead={leadDetails?.idinterno_lead}
                transactionType="ordersale"
-               transactionId={getQueryParam("data2")}
+               transactionId={transaccion}
                sourceUrl={window.location.href}
             />
          </div>
@@ -1238,7 +1242,7 @@ export const VistaOrdenVenta = () => {
                   </table>
                </div>
                {isModalOpen && (
-                  <ModalOrdenVenta open={isModalOpen} onClose={() => setIsModalOpen(false)} idEstimacion={getQueryParam("data2")} />
+                  <ModalOrdenVenta open={isModalOpen} onClose={() => setIsModalOpen(false)} idEstimacion={transaccion} />
                )}
             </div>
             <OneDrive />
