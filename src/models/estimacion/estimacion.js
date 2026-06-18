@@ -21,6 +21,8 @@ const urlSettings = {
 
 // Creamos un objeto que contendrá las funciones relacionadas con NetSuite.
 const estimacion = {};
+const COSTA_RICA_TIME_ZONE = "America/Costa_Rica";
+const getCurrentCostaRicaDate = () => new Date().toLocaleDateString("en-CA", { timeZone: COSTA_RICA_TIME_ZONE });
 
 // Función para obtener un expediente de NetSuite por su ID.
 estimacion.crear_estimacion = async ({ formulario }) => {
@@ -566,8 +568,7 @@ estimacion.enviarEstimacionComoPreReserva = (dataParams) => {
 };
 
 estimacion.actualizarEstimacionPreReserva = async (dataParams) => {
-    const today = new Date();
-    const formattedDate = today.toISOString().split("T")[0];
+    const formattedDate = getCurrentCostaRicaDate();
 
     const fecha_prereserva = dataParams.fecha_prereserva || formattedDate;
     // Consulta SQL para seleccionar todas las estimaciones asociadas a una oportunidad específica,
@@ -634,7 +635,7 @@ estimacion.caidaReserva = (estimacion) => {
  * @returns {Promise<Object>} Resultado de la ejecución de la consulta.
  */
  estimacion.ModificarEstimacionCliente = async ({ idEstimacion, IdCliente, status, database }) => {
-    const formattedDate = new Date().toISOString().split('T')[0];
+    const formattedDate = getCurrentCostaRicaDate();
 
     // Actualiza la estimación marcándola como caída
     const result = await executeQuery(

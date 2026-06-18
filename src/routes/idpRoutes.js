@@ -166,6 +166,7 @@ module.exports = function (app) {
             routes: [
                 { path: "/home/getAllBanners", method: "getAllBanners" }, // Ruta para obtener todos los banners de la página de inicio
                 { path: "/home/getAllEventsHome", method: "getAllEventsHome" }, // Ruta para listar todos los eventos mostrados en la vista principal
+                { path: "/home/getNotifications", method: "getNotifications" }, // Ruta para obtener notificaciones CRM
                 { path: "/home/updateEventStatus", method: "updateEventStatus" }, // Ruta para actualizar el estado de un evento específico
                 { path: "/home/getMonthlyDatakpi", method: "fetchGetMonthlyDataKpi" }, // Ruta para obtener datos mensuales de KPIs
                 { path: "/home/getMonthlyData", method: "getMonthlyData" }, // Ruta para obtener información agregada mensual
