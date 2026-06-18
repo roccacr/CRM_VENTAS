@@ -10,13 +10,39 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+
+      - name: Install dependencies
+        run: |
+          npm i --legacy-peer-deps
+          npm install vite --save-dev --legacy-peer-deps
+          npm install vite-plugin-node-polyfills --save-dev --legacy-peer-deps
+
+      - name: Grant execute permissions to vite
+        run: chmod +x node_modules/.bin/vite
+
+      - name: Clean previous builds
+        run: rm -rf dist
+
       - name: Generate version with timestamp
         run: |
           BUILD_TIME=$(date +%Y%m%d%H%M%S)
           echo "BUILD_TIME=$BUILD_TIME" >> $GITHUB_ENV
           echo "Build timestamp: $BUILD_TIME"
 
-      - name: Pull and build on server
+      - name: Build
+        run: npm run build
+        env:
+          VITE_APP_VERSION: "V1.0.14-${{ env.BUILD_TIME }}"
+          VITE_TOKEN_ACCESS: ${{ secrets.VITE_TOKEN_ACCESS }}
+
+      - name: Clean dist directory on server
         uses: appleboy/ssh-action@master
         with:
           host: ${{ secrets.SERVER_IP }}
@@ -24,69 +50,34 @@ jobs:
           key: ${{ secrets.SCADMINAPIS }}
           port: 22
           script: |
-            set -e
+            echo "Limpiando directorio dist anterior..."
+            rm -rf /var/www/produccion/dist
+            echo "Directorio limpiado exitosamente"
 
-            APP_DIR="/var/www/produccion"
+      - name: Deploy to Server
+        uses: appleboy/scp-action@master
+        with:
+          host: ${{ secrets.SERVER_IP }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SCADMINAPIS }}
+          port: 22
+          source: "dist/*"
+          target: "/var/www/produccion"
 
-            echo "Entrando a $APP_DIR"
-            cd "$APP_DIR"
-
-            echo "Corrigiendo permisos del repositorio..."
-            sudo chown -R "$USER":"$USER" "$APP_DIR"
-            git config --global --add safe.directory "$APP_DIR"
-
-            if [ -d .git ]; then
-              if [ -n "$(git status --porcelain)" ]; then
-                echo "Repositorio con cambios locales. Se omite git pull y se continúa con build."
-              else
-                echo "Repositorio limpio. Ejecutando git pull..."
-                git pull origin produccion
-              fi
-            else
-              echo "No existe .git. Se omite git pull."
-            fi
-
-            echo "Limpiando build anterior..."
-            rm -rf dist
-
-            echo "Cargando Node.js..."
-            export PATH="/usr/local/bin:/usr/bin:/bin:$PATH"
-
-            if ! command -v npm >/dev/null 2>&1; then
-              export NVM_DIR="$HOME/.nvm"
-              if [ -s "$NVM_DIR/nvm.sh" ]; then
-                . "$NVM_DIR/nvm.sh"
-                nvm use 18 >/dev/null 2>&1 || nvm use node >/dev/null 2>&1 || true
-              fi
-            fi
-
-            if ! command -v npm >/dev/null 2>&1; then
-              echo "npm no está disponible en esta sesión SSH. Configure Node.js/NVM para el usuario de deploy."
-              exit 1
-            fi
-
-            echo "Node: $(node -v)"
-            echo "NPM: $(npm -v)"
-
-            if [ ! -d node_modules ] || [ ! -x node_modules/.bin/vite ]; then
-              echo "Dependencias faltantes. Instalando solo esta vez..."
-              npm i --legacy-peer-deps
-            else
-              echo "Dependencias detectadas. Se omite npm install."
-            fi
-
-            echo "Generando build..."
-            export VITE_APP_VERSION="V1.0.14-${{ env.BUILD_TIME }}"
-            export VITE_TOKEN_ACCESS="${{ secrets.VITE_TOKEN_ACCESS }}"
-            npm run build
-
+      - name: Configure Apache and reload
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.SERVER_IP }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SCADMINAPIS }}
+          port: 22
+          script: |
             echo "Verificando archivo .htaccess..."
-            if [ -f "$APP_DIR/dist/.htaccess" ]; then
+            if [ -f /var/www/produccion/dist/.htaccess ]; then
               echo ".htaccess encontrado correctamente"
             else
-              echo "ADVERTENCIA: .htaccess no encontrado en $APP_DIR/dist/"
+              echo "ADVERTENCIA: .htaccess no encontrado en /var/www/produccion/dist/"
             fi
-
             echo "Recargando configuración de Apache..."
             sudo systemctl reload apache2
-            echo "Deployment completado - Versión: V1.0.14-${{ env.BUILD_TIME }}"
+            echo "Deployment completado - Versión: V1.0.14-$BUILD_TIME"
