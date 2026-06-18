@@ -26,47 +26,9 @@ const STATUS_THEME = {
 
 const DEFAULT_THEME = { accent: "#64748b", pillBg: "#f1f5f9", pillColor: "#475569" };
 
-const DETAIL_TEXT_REPLACEMENTS = [
-    [/hist\?rico/gi, "histórico"],
-    [/histÃ³rico/gi, "histórico"],
-    [/Se creo un un nuevo lead/gi, "Se creó un nuevo lead"],
-    [/Se creo un nuevo lead/gi, "Se creó un nuevo lead"],
-    [/Se creo/gi, "Se creó"],
-    [/generadon/gi, "generado"],
-    [/boton/gi, "botón"],
-    [/automatico/gi, "automático"],
-    [/Se Coloco/gi, "Se colocó"],
-    [/Se coloco/gi, "Se colocó"],
-    [/interaccion/gi, "interacción"],
-    [/especificos/gi, "específicos"],
-    [/creado el lead/gi, "creado el lead"],
-    [/evento\.\s*:/g, "evento:"],
-    [/\s{2,}/g, " "],
-];
-
 const getStatusLabel = (status) => STATUS_LABELS[status] || status?.replace(/^\d+-/, "").replace(/-/g, " ") || "Actividad";
 
 const getStatusTheme = (status) => STATUS_THEME[status] || DEFAULT_THEME;
-
-/**
- * Normaliza textos históricos de bitácora para mostrar ortografía correcta en UI.
- *
- * @param {string} text - Texto original del detalle.
- * @returns {string} Texto corregido para presentación.
- */
-const normalizeDetailText = (text) => {
-    if (!text) {
-        return "Sin detalle";
-    }
-
-    let normalized = text.trim();
-
-    DETAIL_TEXT_REPLACEMENTS.forEach(([pattern, replacement]) => {
-        normalized = normalized.replace(pattern, replacement);
-    });
-
-    return normalized;
-};
 
 const TimelineSkeleton = () => (
     <div className="recent-actions-timeline__skeleton" aria-hidden="true">
@@ -116,7 +78,7 @@ export const RecentActions = ({ showPreload, sortedBitacora, formatDate }) => (
                             const { formattedDate, formattedTime } = formatDate(entry.fecha_creado_bit);
                             const theme = getStatusTheme(entry.estado_bit);
                             const isLast = idx === sortedBitacora.length - 1;
-                            const detail = normalizeDetailText(entry.detalle_bit);
+                            const detail = entry.detalle_bit?.trim() || "Sin detalle";
 
                             return (
                                 <li
