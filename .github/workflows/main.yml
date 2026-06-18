@@ -68,6 +68,13 @@ jobs:
             echo "Node: $(node -v)"
             echo "NPM: $(npm -v)"
 
+            if [ ! -d node_modules ] || [ ! -x node_modules/.bin/vite ]; then
+              echo "Dependencias faltantes. Instalando solo esta vez..."
+              npm i --legacy-peer-deps
+            else
+              echo "Dependencias detectadas. Se omite npm install."
+            fi
+
             echo "Generando build..."
             export VITE_APP_VERSION="V1.0.14-${{ env.BUILD_TIME }}"
             export VITE_TOKEN_ACCESS="${{ secrets.VITE_TOKEN_ACCESS }}"
