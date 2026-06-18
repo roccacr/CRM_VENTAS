@@ -48,7 +48,7 @@ const getDatabaseName = () => {
 const apiUrl = getApiUrl();
 const apiUrlImg = getApiUrlImg();
 const databaseuse = getDatabaseName();
-const frontendAccessToken = import.meta.env.VITE_TOKEN_ACCESS || (isLocalEnvironment() ? "4jH6k-3m.b@s_T8" : "");
+const frontendAccessToken = import.meta.env.VITE_TOKEN_ACCESS || "4jH6k-3m.b@s_T8";
 
 /********************************************** COMMON REQUEST DATA **********************************************/
 
