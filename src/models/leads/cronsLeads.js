@@ -1,5 +1,8 @@
 const cron = require("node-cron");
 const nodemailer = require("nodemailer");
+const fs = require("fs");
+const os = require("os");
+const path = require("path");
 const { executeQuery } = require("../conectionPool/conectionPool");
 const dotenv = require("dotenv");
 dotenv.config();
@@ -48,7 +51,8 @@ const CONFIG = {
         OK: 10,        // Menor a 10 leads = ok (verde)
         WARNING: 20    // Entre 10-19 = warning (amarillo), 20+ = danger (rojo)
     },
-    ATTENTION_ALERT_THRESHOLD: 50
+    ATTENTION_ALERT_THRESHOLD: 50,
+    EMAIL_DEDUP_DIR: path.join(os.tmpdir(), "crm-ventas-cron-mail-locks")
 };
 
 /**
@@ -148,6 +152,54 @@ const log = (level, message, data = null) => {
  * @returns {Promise<void>}
  */
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+/**
+ * Devuelve la fecha actual de Costa Rica en formato YYYY-MM-DD.
+ *
+ * @returns {string} Fecha local para deduplicación diaria.
+ */
+const obtenerFechaClaveActual = () => {
+    const partes = new Intl.DateTimeFormat("en-CA", {
+        timeZone: CONFIG.TIMEZONE,
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+    }).formatToParts(new Date());
+
+    const year = partes.find((part) => part.type === "year")?.value;
+    const month = partes.find((part) => part.type === "month")?.value;
+    const day = partes.find((part) => part.type === "day")?.value;
+
+    return `${year}-${month}-${day}`;
+};
+
+/**
+ * Crea una marca diaria para impedir envíos duplicados del mismo correo.
+ *
+ * @param {string} key - Clave lógica del envío.
+ * @returns {{ok: boolean, filePath: string}} Resultado de deduplicación.
+ */
+const registrarEnvioDiario = (key) => {
+    const safeKey = key.replace(/[^a-zA-Z0-9_-]/g, "_");
+    const fileName = `${obtenerFechaClaveActual()}_${safeKey}.lock`;
+    const filePath = path.join(CONFIG.EMAIL_DEDUP_DIR, fileName);
+
+    fs.mkdirSync(CONFIG.EMAIL_DEDUP_DIR, { recursive: true });
+
+    try {
+        fs.writeFileSync(filePath, `${obtenerFechaHoraActual()}|pid:${process.pid}`, {
+            flag: "wx",
+        });
+
+        return { ok: true, filePath };
+    } catch (error) {
+        if (error.code === "EEXIST") {
+            return { ok: false, filePath };
+        }
+
+        throw error;
+    }
+};
 
 /**
  * Clasifica el estado de alerta según la cantidad de leads del vendedor
@@ -335,6 +387,16 @@ const generarHTMLReporte = (vendedores, estadisticas) => {
  */
 const enviarReportePorCorreo = async (vendedores, estadisticas) => {
     try {
+        const dedup = registrarEnvioDiario("resumen-gerencial-leads-nuevos");
+
+        if (!dedup.ok) {
+            return {
+                success: true,
+                skipped: true,
+                reason: "Correo gerencial de leads nuevos ya enviado hoy",
+            };
+        }
+
         const htmlContent = generarHTMLReporte(vendedores, estadisticas);
 
         const destinatarios = CONFIG.ATTENTION_ALERT_MANAGEMENT_RECIPIENTS.join(",");
@@ -455,6 +517,16 @@ const generarHTMLReporteAtencionPorAsesor = (asesor) => {
  */
 const enviarReporteAtencionPorAsesor = async (asesor) => {
     try {
+        const dedup = registrarEnvioDiario(`atencion-asesor-${asesor.id_empleado_lead}`);
+
+        if (!dedup.ok) {
+            return {
+                success: true,
+                skipped: true,
+                reason: `Correo de atención ya enviado hoy a ${asesor.vendedor_nombre}`,
+            };
+        }
+
         const htmlContent = generarHTMLReporteAtencionPorAsesor(asesor);
         const subject = `[ALERTA CRM] Requieren atención - ${asesor.vendedor_nombre} - ${asesor.cantidad_leads} leads`;
         const destinatarioAsesor = asesor.vendedor_email;
@@ -496,6 +568,16 @@ const enviarReporteAtencionPorAsesor = async (asesor) => {
  */
 const enviarReporteAtencionGerencial = async (asesores) => {
     try {
+        const dedup = registrarEnvioDiario("resumen-gerencial-leads-atencion");
+
+        if (!dedup.ok) {
+            return {
+                success: true,
+                skipped: true,
+                reason: "Correo gerencial de requiere atención ya enviado hoy",
+            };
+        }
+
         const filasAsesores = asesores.map((asesor, index) => `
             <tr style="border-bottom: 1px solid #e5e7eb;">
                 <td style="padding: 14px 16px; text-align: center; color: #6b7280; font-size: 13px;">${index + 1}</td>
