@@ -36,8 +36,12 @@ jobs:
             git config --global --add safe.directory "$APP_DIR"
 
             if [ -d .git ]; then
-              echo "Repositorio detectado. Ejecutando git pull..."
-              git pull origin produccion
+              if [ -n "$(git status --porcelain)" ]; then
+                echo "Repositorio con cambios locales. Se omite git pull y se continúa con build."
+              else
+                echo "Repositorio limpio. Ejecutando git pull..."
+                git pull origin produccion
+              fi
             else
               echo "No existe .git. Se omite git pull."
             fi
