@@ -10,39 +10,13 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: '18'
-
-      - name: Install dependencies
-        run: |
-          npm i --legacy-peer-deps
-          npm install vite --save-dev --legacy-peer-deps
-          npm install vite-plugin-node-polyfills --save-dev --legacy-peer-deps
-
-      - name: Grant execute permissions to vite
-        run: chmod +x node_modules/.bin/vite
-
-      - name: Clean previous builds
-        run: rm -rf dist
-
       - name: Generate version with timestamp
         run: |
           BUILD_TIME=$(date +%Y%m%d%H%M%S)
           echo "BUILD_TIME=$BUILD_TIME" >> $GITHUB_ENV
           echo "Build timestamp: $BUILD_TIME"
 
-      - name: Build
-        run: npm run build
-        env:
-          VITE_APP_VERSION: "V1.0.14-${{ env.BUILD_TIME }}"
-          VITE_TOKEN_ACCESS: ${{ secrets.VITE_TOKEN_ACCESS }}
-
-      - name: Clean dist directory on server
+      - name: Pull and build on server
         uses: appleboy/ssh-action@master
         with:
           host: ${{ secrets.SERVER_IP }}
@@ -50,34 +24,35 @@ jobs:
           key: ${{ secrets.SCADMINAPIS }}
           port: 22
           script: |
-            echo "Limpiando directorio dist anterior..."
-            rm -rf /var/www/produccion/dist
-            echo "Directorio limpiado exitosamente"
+            set -e
 
-      - name: Deploy to Server
-        uses: appleboy/scp-action@master
-        with:
-          host: ${{ secrets.SERVER_IP }}
-          username: ${{ secrets.SERVER_USER }}
-          key: ${{ secrets.SCADMINAPIS }}
-          port: 22
-          source: "dist/*"
-          target: "/var/www/produccion"
+            APP_DIR="/var/www/produccion"
 
-      - name: Configure Apache and reload
-        uses: appleboy/ssh-action@master
-        with:
-          host: ${{ secrets.SERVER_IP }}
-          username: ${{ secrets.SERVER_USER }}
-          key: ${{ secrets.SCADMINAPIS }}
-          port: 22
-          script: |
+            echo "Entrando a $APP_DIR"
+            cd "$APP_DIR"
+
+            if [ -d .git ]; then
+              echo "Repositorio detectado. Ejecutando git pull..."
+              git pull origin produccion
+            else
+              echo "No existe .git. Se omite git pull."
+            fi
+
+            echo "Limpiando build anterior..."
+            rm -rf dist
+
+            echo "Generando build..."
+            export VITE_APP_VERSION="V1.0.14-${{ env.BUILD_TIME }}"
+            export VITE_TOKEN_ACCESS="${{ secrets.VITE_TOKEN_ACCESS }}"
+            npm run build
+
             echo "Verificando archivo .htaccess..."
-            if [ -f /var/www/produccion/dist/.htaccess ]; then
+            if [ -f "$APP_DIR/dist/.htaccess" ]; then
               echo ".htaccess encontrado correctamente"
             else
-              echo "ADVERTENCIA: .htaccess no encontrado en /var/www/produccion/dist/"
+              echo "ADVERTENCIA: .htaccess no encontrado en $APP_DIR/dist/"
             fi
+
             echo "Recargando configuración de Apache..."
             sudo systemctl reload apache2
-            echo "Deployment completado - Versión: V1.0.14-$BUILD_TIME"
+            echo "Deployment completado - Versión: V1.0.14-${{ env.BUILD_TIME }}"
