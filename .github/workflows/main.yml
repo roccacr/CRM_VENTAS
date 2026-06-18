@@ -49,6 +49,25 @@ jobs:
             echo "Limpiando build anterior..."
             rm -rf dist
 
+            echo "Cargando Node.js..."
+            export PATH="/usr/local/bin:/usr/bin:/bin:$PATH"
+
+            if ! command -v npm >/dev/null 2>&1; then
+              export NVM_DIR="$HOME/.nvm"
+              if [ -s "$NVM_DIR/nvm.sh" ]; then
+                . "$NVM_DIR/nvm.sh"
+                nvm use 18 >/dev/null 2>&1 || nvm use node >/dev/null 2>&1 || true
+              fi
+            fi
+
+            if ! command -v npm >/dev/null 2>&1; then
+              echo "npm no está disponible en esta sesión SSH. Configure Node.js/NVM para el usuario de deploy."
+              exit 1
+            fi
+
+            echo "Node: $(node -v)"
+            echo "NPM: $(npm -v)"
+
             echo "Generando build..."
             export VITE_APP_VERSION="V1.0.14-${{ env.BUILD_TIME }}"
             export VITE_TOKEN_ACCESS="${{ secrets.VITE_TOKEN_ACCESS }}"
