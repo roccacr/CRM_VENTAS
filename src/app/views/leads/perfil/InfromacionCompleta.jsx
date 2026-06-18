@@ -27,6 +27,7 @@ export const InfromacionCompleta = ({ leadDetails }) => {
         { label: "Nombre Completo", value: leadDetails.nombre_lead },
         { label: "Proyecto", value: leadDetails.proyecto_lead },
         { label: "Campaña", value: leadDetails.campana_lead },
+        { label: "Anuncio", value: leadDetails.custentityaccion_campana },
         { label: "Correo", value: leadDetails.email_lead },
         { label: "Teléfono", value: leadDetails.telefono_lead },
         { label: "Subsidiaria", value: leadDetails.subsidiaria_lead },
