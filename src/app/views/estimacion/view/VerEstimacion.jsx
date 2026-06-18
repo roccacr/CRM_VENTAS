@@ -45,18 +45,19 @@ export const VerEstimacion = () => {
    const dispatch = useDispatch();
 
    const [isModalOpen, setIsModalOpen] = useState(false); // Control del modal
-   const leadId = getQueryParam("data");
-   const estimacionId = getQueryParam("data2");
 
    /**
     * Obtiene el valor de un parámetro específico de la URL.
     * @param {string} param - Nombre del parámetro a extraer.
     * @returns {string|number|null} - Retorna el valor del parámetro (convertido a número si es posible) o null si no existe.
     */
-   const getQueryParam = (param) => {
-      const value = new URLSearchParams(window.location.search).get(param);
+   function getQueryParam(param) {
+      const value = new URLSearchParams(location.search).get(param);
       return value && !isNaN(value) && !isNaN(parseFloat(value)) ? Number(value) : value;
-   };
+   }
+
+   const leadId = getQueryParam("data");
+   const estimacionId = getQueryParam("data2");
 
    /**
     * Solicita los detalles de un lead desde el backend.
