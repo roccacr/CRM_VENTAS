@@ -1,245 +1,318 @@
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { useDispatch } from "react-redux";
-import { createNote, getSpecificLead } from "../../../../store/leads/thunksLeads";
 import { useLocation, useNavigate } from "react-router-dom";
+import Swal from "sweetalert2";
+import { createNote, getSpecificLead } from "../../../../store/leads/thunksLeads";
 import { ButtonActions } from "../../../components/buttonAccions/buttonAccions";
-import Swal from "sweetalert2"; // Asegúrate de tener SweetAlert instalado
+import { PROFILE_PANEL_STYLES, PROFILE_THEME_STYLES } from "../perfil/profileTheme";
+
+const NOTE_VIEW_STYLES = `
+   ${PROFILE_THEME_STYLES}
+
+   .lead-note-shell .lead-profile-panel {
+      padding: 18px;
+   }
+
+   .lead-note-toolbar {
+      display: flex;
+      justify-content: flex-end;
+      margin-bottom: 12px;
+   }
+
+   .lead-note-helper {
+      margin: 0;
+      padding: 12px 14px;
+      border: 1px solid #e5e7eb;
+      border-radius: 12px;
+      background: #fbfbfc;
+      font-size: 12px;
+      line-height: 1.55;
+      color: #4b5563;
+   }
+
+   .lead-note-helper strong {
+      color: #111827;
+   }
+
+   .lead-note-form {
+      display: grid;
+      gap: 12px;
+   }
+
+   .lead-note-field label {
+      display: inline-block;
+      margin-bottom: 6px;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: #6b7280;
+   }
+
+   .lead-note-field .form-select,
+   .lead-note-field .form-control {
+      border: 1px solid #d1d5db;
+      border-radius: 12px;
+      min-height: 44px;
+      padding: 10px 12px;
+      font-size: 13px;
+      box-shadow: none;
+   }
+
+   .lead-note-field textarea.form-control {
+      min-height: 150px;
+      resize: vertical;
+   }
+
+   .lead-note-field .form-select:focus,
+   .lead-note-field .form-control:focus {
+      border-color: #111827;
+      box-shadow: 0 0 0 4px rgba(17, 24, 39, 0.08);
+   }
+
+   .lead-note-submit {
+      display: flex;
+      justify-content: flex-end;
+      margin-top: 4px;
+   }
+
+   .lead-note-submit .btn {
+      min-width: 190px;
+      border-radius: 10px;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+   }
+
+   .lead-note-loading {
+      padding: 20px 0 4px;
+      text-align: center;
+      font-size: 12px;
+      color: #6b7280;
+   }
+`;
+
+const QUICK_OPTIONS = [
+   "Seguimiento inicial",
+   "Seguimiento Avanzado",
+   "Interés Alto",
+   "Interés Medio",
+   "Interés Bajo",
+   "Quiere visitar",
+   "Interés en otro proyecto",
+   "Cliente en análisis bancario",
+   "Se reactivó",
+   "Interés en:",
+   "Seguimiento 1",
+   "Seguimiento 2",
+   "Cliente potencial alto",
+   "Cliente potencial medio",
+   "Cliente potencial bajo",
+   "Presupuesto aprobado",
+   "Esperando respuesta",
+   "Necesita más información",
+   "Agendada cita",
+   "Canceló cita",
+];
 
 export const View_note = () => {
-    const dispatch = useDispatch();
-    const navigate = useNavigate();
-    const [leadData, setLeadData] = useState(null); // Almacena los datos del lead
-    const [leadName, setLeadName] = useState(null); // Almacena el nombre del lead
-    const [note, setNote] = useState(""); // Almacena el valor del textarea
-    const [isLoading, setIsLoading] = useState(true); // Estado para controlar el indicador de carga
-    const [isTextareaError, setIsTextareaError] = useState(false); // Para el borde rojo
-    const location = useLocation(); // Hook para obtener la URL actual y sus parámetros
-    const [valueStatus, setValueStatus] = useState(null);
-    const [leadId, setLeadId] = useState(null);
-    const [selectedQuickOption, setSelectedQuickOption] = useState(""); // Para la opción de llenado rápido
+   const dispatch = useDispatch();
+   const navigate = useNavigate();
+   const location = useLocation();
+   const [leadData, setLeadData] = useState(null);
+   const [leadName, setLeadName] = useState(null);
+   const [note, setNote] = useState("");
+   const [isLoading, setIsLoading] = useState(true);
+   const [isTextareaError, setIsTextareaError] = useState(false);
+   const [valueStatus, setValueStatus] = useState(null);
+   const [leadId, setLeadId] = useState(null);
+   const [selectedQuickOption, setSelectedQuickOption] = useState("");
 
-    /**
-     * Extrae el parámetro 'id' de la URL.
-     * useCallback asegura que la función no se recree innecesariamente en cada renderizado.
-     */
-    const getIdFromUrl = useCallback(() => {
-        const params = new URLSearchParams(location.search);
-        return params.get("id");
-    }, [location.search]);
+   const getIdFromUrl = useCallback(() => {
+      const params = new URLSearchParams(location.search);
+      return params.get("id");
+   }, [location.search]);
 
-    /**
-     * Función asíncrona para obtener los datos de un lead específico basado en su id.
-     * Actualiza el estado con los datos recibidos.
-     * @param {string} id - El id del lead a buscar.
-     */
-    const fetchLeadData = async (id) => {
-        setIsLoading(true); // Mostrar el indicador de carga mientras se obtienen los datos
-        const result = await dispatch(getSpecificLead(id)); // Llamar al thunk para obtener los datos del lead
+   const fetchLeadData = async (id) => {
+      setIsLoading(true);
+      const result = await dispatch(getSpecificLead(id));
+      setLeadName(result?.nombre_lead || "Cliente");
+      setValueStatus(result?.segimineto_lead || null);
+      setLeadId(result?.idinterno_lead || null);
+      setLeadData(result || null);
+      setIsLoading(false);
+   };
 
-        setLeadName(result.nombre_lead); // Almacenar el nombre del lead
-        setValueStatus(result.segimineto_lead);
-        setLeadId(result.idinterno_lead);
-        setLeadData(result); // Almacenar los datos completos del lead
-        setIsLoading(false); // Ocultar el indicador de carga una vez que los datos están disponibles
-    };
+   const handleNoteChange = (event) => {
+      const newValue = event.target.value;
+      setNote(newValue);
+      if (newValue.trim() !== "") {
+         setIsTextareaError(false);
+      }
+   };
 
-    /**
-     * Maneja el cambio en el textarea.
-     */
-    const handleNoteChange = (event) => {
-        const newValue = event.target.value;
-        setNote(newValue);
-        if (newValue.trim() !== "") {
-            setIsTextareaError(false); // Si hay texto, quitar el borde rojo
-        }
-    };
+   const handleQuickOptionSelect = (event) => {
+      const selectedValue = event.target.value;
 
-    /**
-     * Maneja la selección de opción rápida y la agrega al textarea
-     */
-    const handleQuickOptionSelect = (event) => {
-        const selectedValue = event.target.value;
-        
-        if (selectedValue && selectedValue !== "") {
-            // Actualizar el estado para que el select muestre la opción seleccionada
-            setSelectedQuickOption(selectedValue);
-            
-            // Si hay texto en el textarea, agregar al final
-            if (note.trim() !== "") {
-                setNote(prevNote => prevNote + " " + selectedValue);
-            } else {
-                // Si no hay texto, llenar con la opción seleccionada
-                setNote(selectedValue);
-            }
-            
-            // Quitar el borde rojo si había error
-            setIsTextareaError(false);
-            
-            // La opción permanecerá visible hasta que el usuario escriba en el textarea o seleccione otra opción
-        } else {
-            // Si se selecciona la opción vacía, limpiar
-            setSelectedQuickOption("");
-        }
-    };
+      if (selectedValue) {
+         setSelectedQuickOption(selectedValue);
+         setNote((prevNote) => (prevNote.trim() ? `${prevNote} ${selectedValue}` : selectedValue));
+         setIsTextareaError(false);
+      } else {
+         setSelectedQuickOption("");
+      }
+   };
 
-    /**
-     * Función para manejar el clic en "Generar Nota".
-     * Valida si el textarea está vacío y muestra el alert.
-     */
-    const handleGenerateNote = () => {
-        if (note.trim() === "") {
-            // Si la nota está vacía, muestra el borde rojo y no permite continuar
-            setIsTextareaError(true);
-        } else {
-            // Muestra el alert de confirmación
+   const handleGenerateNote = () => {
+      if (note.trim() === "") {
+         setIsTextareaError(true);
+         return;
+      }
+
+      Swal.fire({
+         title: "¿Está seguro?",
+         text: "¿Desea generar la nota?",
+         icon: "warning",
+         showCancelButton: true,
+         confirmButtonText: "Sí, crear nota",
+         cancelButtonText: "Cancelar",
+      }).then(async (result) => {
+         if (!result.isConfirmed) {
+            return;
+         }
+
+         try {
+            await dispatch(createNote(note, leadId, valueStatus));
+
             Swal.fire({
-                title: "¿Estás seguro?",
-                text: "¿Deseas generar la nota?",
-                icon: "warning",
-                showCancelButton: true,
-                confirmButtonText: "Sí, crear nota",
-                cancelButtonText: "Cancelar",
-            }).then(async (result) => {
-                if (result.isConfirmed) {
-                    // Si se confirma, loguea la nota en la consol
-                     try {
-                         // Llamar a la función para crear el evento con los datos del formulario
-                          await dispatch(createNote(note, leadId, valueStatus));
-
-                         // Mostrar mensaje de éxito
-                         Swal.fire({
-                             title: "¡Nota creada con éxito!",
-                             text: "¿Qué desea hacer a continuación?",
-                             icon: "question",
-                             iconHtml: "✔️",
-                             width: "40em",
-                             padding: "0 0 1.20em",
-                             showDenyButton: true,
-                             showCancelButton: true,
-                             confirmButtonText: "Volver a la vista anterior",
-                             denyButtonText: "Ir al perfil del cliente",
-                         }).then((result) => {
-                             if (result.isConfirmed) {
-                                 // Vuelve a la vista anterior en la navegación.
-                                 navigate(-1);
-                             } else if (result.isDenied) {
-                                 // Redirige a la página de perfil del cliente.
-                                 navigate(`/leads/perfil?data=${leadId}`);
-                             } else {
-                                 // Recarga la página actual.
-                                 window.location.reload();
-                             }
-                         });
-                     } catch (error) {
-                         console.error("Error al crear el evento:", error);
-                         Swal.fire({
-                             title: "Error",
-                             text: "No se pudo crear el evento. Inténtelo nuevamente.",
-                             icon: "error",
-                             confirmButtonText: "Aceptar",
-                         });
-                     }
-                }
+               title: "¡Nota creada con éxito!",
+               text: "La nota fue registrada correctamente.",
+               icon: "question",
+               iconHtml: "✔️",
+               width: "40em",
+               padding: "0 0 1.20em",
+               showDenyButton: true,
+               showCancelButton: true,
+               confirmButtonText: "Volver la vista anterior",
+               denyButtonText: "Ir al perfil del cliente",
+            }).then((response) => {
+               if (response.isConfirmed) {
+                  navigate(-1);
+               } else if (response.isDenied) {
+                  navigate(`/leads/perfil?data=${leadId}`);
+               } else {
+                  window.location.reload();
+               }
             });
-        }
-    };
+         } catch (error) {
+            console.error("Error al crear la nota:", error);
+            Swal.fire({
+               title: "Error",
+               text: "No se pudo crear la nota. Inténtelo nuevamente.",
+               icon: "error",
+               confirmButtonText: "Aceptar",
+            });
+         }
+      });
+   };
 
-    /**
-     * Hook de efecto que se ejecuta al montar el componente y cuando el parámetro 'id' cambia.
-     * Obtiene el id de la URL y carga los datos correspondientes.
-     */
-    useEffect(() => {
-        const id = getIdFromUrl(); // Obtener el id de la URL
-        if (id) {
-            fetchLeadData(id); // Obtener los datos del lead si el id existe
-        }
-    }, [getIdFromUrl]); // El efecto depende del id extraído de la URL
+   useEffect(() => {
+      const id = getIdFromUrl();
+      if (id) {
+         fetchLeadData(id);
+      }
+   }, [getIdFromUrl]);
 
-    return (
-        <div className="card" style={{ width: "100%" }}>
-            <div className="card-header table-card-header">
-                <h5>CREAR UNA NOTA: {leadName}</h5>
-            </div>
-
-            {isLoading ? (
-                <div className="preloader">
-                    {/* Indicador de carga mientras se obtienen los datos */}
-                    <p>Cargando datos...</p>
-                </div>
-            ) : (
-                <>
-                    <div className="card-header">
-                        <ButtonActions leadData={leadData} /> {/* Usar el nuevo componente */}
-                    </div>
-                    <div className="card-body">
-                        <p>
-                            <span className="text-danger">*</span> Esta función es clave para llevar un registro exhaustivo de todas las interacciones realizadas con el cliente, asegurando que cada acción tomada quede registrada y sea fácilmente accesible para futuras consultas o revisiones.
-                        </p>
-                        <div className="g-4 row">
-                            {/* Select de opciones rápidas */}
-                            <div className="col-12 mb-3">
-                                <label className="form-label">
-                                    Opciones de llenado rápido:
-                                </label>
-                                <select 
-                                    className="form-select" 
-                                    value={selectedQuickOption}
-                                    onChange={handleQuickOptionSelect}
-                                >
-                                    <option value="">Selecciona una opción rápida...</option>
-                                    <option value="Seguimiento inicial">Seguimiento inicial</option>
-                                    <option value="Seguimiento Avanzado">Seguimiento Avanzado</option>
-                                    <option value="Interés Alto">Interés Alto</option>
-                                    <option value="Interés Medio">Interés Medio</option>
-                                    <option value="Interés Bajo">Interés Bajo</option>
-                                    <option value="Quiere visitar">Quiere visitar</option>
-                                    <option value="Interés en otro proyecto">Interés en otro proyecto</option>
-                                    <option value="Cliente en análisis bancario">Cliente en análisis bancario</option>
-                                    <option value="Se reactivó">Se reactivó</option>
-                                    <option value="Interés en:">Interés en:</option>
-                                    <option value="Seguimiento 1">Seguimiento 1</option>
-                                    <option value="Seguimiento 2">Seguimiento 2</option>
-                                    <option value="Cliente potencial alto">Cliente potencial alto</option>
-                                    <option value="Cliente potencial medio">Cliente potencial medio</option>
-                                    <option value="Cliente potencial bajo">Cliente potencial bajo</option>
-                                    <option value="Presupuesto aprobado">Presupuesto aprobado</option>
-                                    <option value="Esperando respuesta">Esperando respuesta</option>
-                                    <option value="Necesita más información">Necesita más información</option>
-                                    <option value="Agendada cita">Agendada cita</option>
-                                    <option value="Canceló cita">Canceló cita</option>
-                                    <option value="Confirmó asistencia">Confirmó asistencia</option>
-                                    <option value="Cliente muy interesado">Cliente muy interesado</option>
-                                    <option value="Solicita cotización">Solicita cotización</option>
-                                    <option value="Comparando con competencia">Comparando con competencia</option>
-                                    <option value="Decisión pendiente">Decisión pendiente</option>
-                                    <option value="Cliente frío">Cliente frío</option>
-                                    <option value="Cliente caliente">Cliente caliente</option>
-                                    <option value="Proyecto en marcha">Proyecto en marcha</option>
-                                    <option value="Proyecto pausado">Proyecto pausado</option>
-                                    <option value="Cliente perdido">Cliente perdido</option>
-                                    <option value="Cliente ganado">Cliente ganado</option>
-                                </select>
-                            </div>
-                            
-                            {/* Textarea */}
-                            <label className="form-label" htmlFor="exampleFormControlTextarea1">
-                                Ingresa una nota :
-                            </label>
-                            <textarea
-                                rows="3"
-                                id="exampleFormControlTextarea1"
-                                className={`form-control ${isTextareaError ? "is-invalid" : ""}`} // Agregar borde rojo si hay error
-                                value={note}
-                                onChange={handleNoteChange}
-                            ></textarea>
-                            {isTextareaError && <div className="invalid-feedback">La nota no puede estar vacía.</div>}
+   return (
+      <div className="container-fluid lead-profile-shell lead-note-shell">
+         <style>{NOTE_VIEW_STYLES}</style>
+         <div className="row">
+            <div className="col-12">
+               <div className="card border-0 bg-transparent shadow-none">
+                  <div className="card-body lead-profile-panel" style={PROFILE_PANEL_STYLES}>
+                     <div className="lead-profile-hero">
+                        <div>
+                           <span className="lead-profile-eyebrow">Gestión comercial</span>
+                           <h4 className="card-title lead-profile-page-title">Crear una nota del lead</h4>
+                           <p className="lead-profile-page-copy">
+                              Registre interacciones, avances y observaciones del cliente en una
+                              vista más clara y ordenada para seguimiento futuro.
+                           </p>
                         </div>
-                    </div>
-                    <button className="btn btn-dark" onClick={handleGenerateNote}>
-                        Generar Nota
-                    </button>
-                </>
-            )}
-        </div>
-    );
+                     </div>
+
+                     {isLoading ? (
+                        <div className="lead-note-loading">
+                           <p>Cargando datos del lead...</p>
+                        </div>
+                     ) : (
+                        <>
+                           <div className="lead-note-toolbar">
+                              <ButtonActions leadData={leadData} />
+                           </div>
+
+                           <section className="lead-profile-section">
+                              <div className="lead-profile-section-head">
+                                 <span className="lead-profile-kicker">Registro manual</span>
+                                 <h5 className="lead-profile-section-title">Nota para {leadName}</h5>
+                                 <p className="lead-profile-section-copy">
+                                    Use plantillas rápidas o escriba una nota libre para documentar la
+                                    interacción del cliente.
+                                 </p>
+                              </div>
+
+                              <p className="lead-note-helper">
+                                 <strong>Importante:</strong> esta función permite mantener un
+                                 registro claro de las acciones realizadas con el cliente y facilita
+                                 consultas posteriores del equipo comercial.
+                              </p>
+
+                              <div className="lead-note-form">
+                                 <div className="lead-note-field">
+                                    <label>Opciones de llenado rápido</label>
+                                    <select
+                                       className="form-select"
+                                       value={selectedQuickOption}
+                                       onChange={handleQuickOptionSelect}
+                                    >
+                                       <option value="">Selecciona una opción rápida...</option>
+                                       {QUICK_OPTIONS.map((option) => (
+                                          <option key={option} value={option}>
+                                             {option}
+                                          </option>
+                                       ))}
+                                    </select>
+                                 </div>
+
+                                 <div className="lead-note-field">
+                                    <label htmlFor="exampleFormControlTextarea1">Comentario o nota</label>
+                                    <textarea
+                                       rows="5"
+                                       id="exampleFormControlTextarea1"
+                                       className={`form-control ${isTextareaError ? "is-invalid" : ""}`}
+                                       value={note}
+                                       onChange={handleNoteChange}
+                                       placeholder="Escriba aquí el detalle de la interacción, avance, acuerdo u observación relevante."
+                                    ></textarea>
+                                    {isTextareaError ? (
+                                       <div className="invalid-feedback">La nota no puede estar vacía.</div>
+                                    ) : null}
+                                 </div>
+
+                                 <div className="lead-note-submit">
+                                    <button className="btn btn-dark" onClick={handleGenerateNote}>
+                                       Generar nota
+                                    </button>
+                                 </div>
+                              </div>
+                           </section>
+                        </>
+                     )}
+                  </div>
+               </div>
+            </div>
+         </div>
+      </div>
+   );
 };
