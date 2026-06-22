@@ -1,72 +1,63 @@
-import { useEffect, useState, useCallback } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useDispatch } from "react-redux";
-
 import { useNavigate } from "react-router-dom";
 import { obtenerOrndesPorcliente } from "../../../../store/ordenVenta/thunkOrdenVenta";
+import { ProfileEmptyState, ProfileSection } from "./profileTheme";
 
 export const Ordenes = ({ leadDetails }) => {
-    const navigate = useNavigate();
-    const dispatch = useDispatch();
-    const [ordenes, setOrdenes] = useState([]); // Estado para almacenar las ordenes de venta asociadas al lead.             
+   const navigate = useNavigate();
+   const dispatch = useDispatch();
+   const [ordenes, setOrdenes] = useState([]);
 
-    // Función asíncrona memorizada para obtener eventos específicos del cliente basado en el ID del lead. 
-    const fetchOrdenes = useCallback(
-        async (leadDetails) => {
-            try {
-                // Dispatch para obtener las ordenes de venta del cliente, retorna los datos de ordenes
-                const leadData = await dispatch(obtenerOrndesPorcliente(leadDetails));
-                setOrdenes(leadData || []); // Actualiza el estado de 'ordenes' con las ordenes obtenidas
-            } catch (error) {
-                console.error("Error fetching client orders:", error); // Manejo de errores en caso de fallo
-            }
-        },
-        [dispatch],
-    ); // Incluye 'dispatch' como dependencia, ya que es una función externa
+   const fetchOrdenes = useCallback(async () => {
+      try {
+         const leadData = await dispatch(obtenerOrndesPorcliente(leadDetails));
+         setOrdenes(leadData || []);
+      } catch (error) {
+         console.error("Error fetching client orders:", error);
+      }
+   }, [dispatch, leadDetails]);
 
-    useEffect(() => {
-        // Llama a la función al cargar el componente o cuando cambia el ID del lead
-        fetchOrdenes(leadDetails);
-    }, [leadDetails, fetchOrdenes]); // Incluye 'fetchOrdenes' como dependencia
+   useEffect(() => {
+      fetchOrdenes();
+   }, [fetchOrdenes]);
 
-    const handleOrdenClick = (idOrden, idLead) => {
-        navigate(`/orden/view?data=${idOrden}&data2=${idLead}`);
-    };
-    return (
-        <>
-            <div className="card">
-                <div className="card-header">
-                    <h5>Lista de ordenes de venta del cliente</h5>
-                </div>
-                <div className="card-body">
-                    <p className="mb-0">Aquí se desglosan todas las ordenes de venta relacionadas con este cliente</p>  
-                </div>
+   const handleOrdenClick = (idOrden, idLead) => {
+      navigate(`/orden/view?data=${idOrden}&data2=${idLead}`);
+   };
+
+   return (
+      <ProfileSection
+         eyebrow="Cierre comercial"
+         title="Órdenes de venta"
+         description="Visualice las órdenes de venta asociadas al cliente y acceda a su detalle."
+      >
+         {ordenes.length === 0 ? (
+            <ProfileEmptyState message="No hay órdenes de venta asociadas a este cliente." />
+         ) : (
+            <div className="lead-profile-table-wrap table-responsive">
+               <table className="lead-profile-table">
+                  <thead>
+                     <tr>
+                        <th>Cotización</th>
+                        <th>Fecha de creación</th>
+                     </tr>
+                  </thead>
+                  <tbody>
+                     {ordenes.map((orden) => (
+                        <tr
+                           key={orden.id_ov_lead}
+                           className="is-clickable"
+                           onClick={() => handleOrdenClick(orden.id_ov_lead, orden.id_ov_netsuite)}
+                        >
+                           <td>{orden.id_ov_tranid}</td>
+                           <td>{orden.creado_ov}</td>
+                        </tr>
+                     ))}
+                  </tbody>
+               </table>
             </div>
-
-            <div className="card">
-                <div className="card-header">
-                    <h5>Ordenes</h5>
-                </div>
-                <div className="card-body">
-                    <div className="table-responsive">
-                        <table className="table table-striped table dt-responsive w-100 display text-left" style={{ fontSize: "15px", width: "100%", textAlign: "left" }}>
-                            <thead>
-                                <tr>
-                                    <th scope="col">#COTIZACION</th>
-                                    <th scope="col">FECHA DE CREACION</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {ordenes.map((orden, index) => (
-                                    <tr key={index} onClick={() => handleOrdenClick(orden.id_ov_lead, orden.id_ov_netsuite)}> 
-                                        <td>{orden.id_ov_tranid}</td>
-                                        <td>{orden.creado_ov}</td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-        </>
-    );
+         )}
+      </ProfileSection>
+   );
 };

@@ -1,80 +1,72 @@
-import { useEffect, useState, useCallback } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useDispatch } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import { obtenerOportunidadesCliente } from "../../../../store/oportuinidad/thunkOportunidad";
+import { ProfileEmptyState, ProfileSection } from "./profileTheme";
 
 export const Oportunidades = ({ leadDetails }) => {
-    const navigate = useNavigate();
-    const dispatch = useDispatch();
-    const [oportunidades, setOportunidades] = useState([]); // Estado para almacenar las oportunidades asociadas al lead.
+   const navigate = useNavigate();
+   const dispatch = useDispatch();
+   const [oportunidades, setOportunidades] = useState([]);
 
-    // Función asíncrona memorizada para obtener oportunidades específicas del cliente basado en el ID del lead.
-    const fetchClientOportunidades = useCallback(
-        async (leadDetails) => {
-            try {
-                // Dispatch para obtener las oportunidades del cliente, retorna los datos de oportunidades
-                const leadData = await dispatch(obtenerOportunidadesCliente(leadDetails));
-                setOportunidades(leadData || []); // Actualiza el estado de 'oportunidades' con las oportunidades obtenidas
-            } catch (error) {
-                console.error("Error fetching client opportunities:", error); // Manejo de errores en caso de fallo
-            }
-        },
-        [dispatch],
-    ); // Incluye 'dispatch' como dependencia, ya que es una función externa
+   const fetchClientOportunidades = useCallback(async () => {
+      try {
+         const leadData = await dispatch(obtenerOportunidadesCliente(leadDetails));
+         setOportunidades(leadData || []);
+      } catch (error) {
+         console.error("Error fetching client opportunities:", error);
+      }
+   }, [dispatch, leadDetails]);
 
-    useEffect(() => {
-        // Llama a la función al cargar el componente o cuando cambia el ID del lead
-        fetchClientOportunidades(leadDetails);
-    }, [leadDetails, fetchClientOportunidades]); // Incluye 'fetchClientOportunidades' como dependencia
+   useEffect(() => {
+      fetchClientOportunidades();
+   }, [fetchClientOportunidades]);
 
-    const handleOpportunityClick = (idOportunidad, idLead) => {
-        navigate(`/oportunidad/ver?data=${idLead}&data2=${idOportunidad}`);
-    };
+   const handleOpportunityClick = (idOportunidad, idLead) => {
+      navigate(`/oportunidad/ver?data=${idLead}&data2=${idOportunidad}`);
+   };
 
-    return (
-        <>
-            <div className="card">
-                <div className="card-header">
-                    <h5>Lista de oportunidades del cliente</h5>
-                </div>
-                <div className="card-body">
-                    <p className="mb-0">Aquí se desglosan todas las oportunidades relacionadas con este cliente</p>
-                </div>
+   return (
+      <ProfileSection
+         eyebrow="Pipeline"
+         title="Oportunidades del cliente"
+         description="Consulte las oportunidades creadas para este cliente y su estado dentro del proceso comercial."
+      >
+         {oportunidades.length === 0 ? (
+            <ProfileEmptyState message="No hay oportunidades registradas para este cliente." />
+         ) : (
+            <div className="lead-profile-table-wrap table-responsive">
+               <table className="lead-profile-table">
+                  <thead>
+                     <tr>
+                        <th>ID oportunidad</th>
+                        <th>Motivo condición</th>
+                        <th>Estado</th>
+                        <th>Creado</th>
+                     </tr>
+                  </thead>
+                  <tbody>
+                     {oportunidades.map((oportunidad) => (
+                        <tr
+                           key={oportunidad.id_oportunidad_oport}
+                           className="is-clickable"
+                           onClick={() =>
+                              handleOpportunityClick(
+                                 oportunidad.id_oportunidad_oport,
+                                 oportunidad.entity_oport
+                              )
+                           }
+                        >
+                           <td>{oportunidad.tranid_oport}</td>
+                           <td>{oportunidad.Motico_Condicion}</td>
+                           <td>{oportunidad.chek_oport === 1 ? "+MAS PROBABLE" : "-MENOS PROBABLE"}</td>
+                           <td>{oportunidad.fecha_creada_oport}</td>
+                        </tr>
+                     ))}
+                  </tbody>
+               </table>
             </div>
-
-            <div className="card">
-                <div className="card-header">
-                    <h5>Oportunidades</h5>
-                </div>
-                <div className="card-body">
-                    <div className="table-responsive">
-                        <table className="table table-striped table dt-responsive w-100 display text-left" style={{ fontSize: "15px", width: "100%", textAlign: "left" }}>
-                            <thead>
-                                <tr>
-                                    <th scope="col">#ID OPORTUNIDAD</th>
-                                    <th scope="col">Motivo Condicion</th>
-                                    <th scope="col">Estado</th>
-                                    <th scope="col">CREADO</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {oportunidades.map(
-                                    (oportunidad, index) => (
-                                        (
-                                            <tr key={index} onClick={() => handleOpportunityClick(oportunidad.id_oportunidad_oport, oportunidad.entity_oport)}>
-                                                <td>{oportunidad.tranid_oport}</td>
-                                                <td>{oportunidad.Motico_Condicion}</td>
-                                                <td>{oportunidad.chek_oport === 1 ? "+MAS PROBABLE" : "-MENOS PROBABLE"}</td>
-                                                <td>{oportunidad.fecha_creada_oport}</td>
-                                            </tr>
-                                        )
-                                    ),
-                                )}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-        </>
-    );
+         )}
+      </ProfileSection>
+   );
 };

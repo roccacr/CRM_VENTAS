@@ -1,32 +1,24 @@
-import { useState } from "react";
 import { useSelector } from "react-redux";
 import Attached from "../../../components/common/sharepoint/Attached";
-
+import { ProfileSection } from "./profileTheme";
 
 export const OneDrive = () => {
-    const { microsoftUser } = useSelector((state) => state.auth); 
-  
+   const { microsoftUser } = useSelector((state) => state.auth);
+
    return (
-      <>
-         <div className="card">
-            <div className="card-header">
-               <h5>OneDrive Subida de archivos</h5>
+      <ProfileSection
+         eyebrow="Documentación"
+         title="OneDrive y archivos"
+         description="Gestione los archivos vinculados al cliente desde la integración con Microsoft."
+      >
+         {microsoftUser ? (
+            <Attached />
+         ) : (
+            <div className="lead-profile-empty">
+               Para ver esta sección debe iniciar sesión con su cuenta de Microsoft y
+               volver a ingresar a esta vista.
             </div>
-            <div className="card-body">
-              <div className="row">
-               {microsoftUser ? (
-                  <Attached />
-               ) : (
-                  <div className="col-12 text-center">
-                    <p className="alert alert-warning">
-                      Para poder ver esta vista debe iniciar sesión con su cuenta de Microsoft. 
-                      Por favor, cierre sesión y vuelva a intentarlo volviendo a esta vista.
-                    </p>
-                  </div>
-               )}
-              </div>
-            </div>
-         </div>
-      </>
+         )}
+      </ProfileSection>
    );
 };

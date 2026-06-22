@@ -1,57 +1,48 @@
 import { formatDate } from "../../../../hook/useFormatDate";
+import { ProfileEmptyState, ProfileSection, getDisplayText } from "./profileTheme";
 
 export const Seguimiento = ({ BitacoraLeads }) => {
-    const sortedBitacora = [...BitacoraLeads].sort((a, b) => new Date(b.fecha_creado_bit) - new Date(a.fecha_creado_bit));
+   const sortedBitacora = [...BitacoraLeads].sort(
+      (a, b) => new Date(b.fecha_creado_bit) - new Date(a.fecha_creado_bit)
+   );
 
-    return (
-        <>
-            <div className="card">
-                <div className="card-header">
-                    <h5>Historial de Seguimiento del Cliente</h5>
-                </div>
-                <div className="card-body">
-                    <p className="mb-0">Resumen detallado de todas las acciones y seguimientos realizados por el asesor con este cliente, incluyendo notas y detalles especificos de cada interaccion.</p>
-                </div>
+   return (
+      <ProfileSection
+         eyebrow="Historial comercial"
+         title="Bitácora de seguimiento"
+         description="Resumen detallado de las acciones, notas y avances registrados por el asesor para este cliente."
+      >
+         {sortedBitacora.length === 0 ? (
+            <ProfileEmptyState message="No hay registros de seguimiento disponibles para este cliente." />
+         ) : (
+            <div className="lead-profile-timeline">
+               {sortedBitacora.map((entry, idx) => {
+                  const estadoTexto = getDisplayText(entry.estado_bit)
+                     .split("-")
+                     .slice(1)
+                     .join("-") || getDisplayText(entry.estado_bit);
+                  const { formattedDate, formattedTime } = formatDate(entry.fecha_creado_bit);
+                  const accion = getDisplayText(entry.detalle_bit);
+                  const motivo = getDisplayText(entry.nombre_caida);
+
+                  return (
+                     <article className="lead-profile-timeline-card" key={`${entry.fecha_creado_bit}-${idx}`}>
+                        <h6 className="lead-profile-timeline-title">{estadoTexto}</h6>
+                        <div className="lead-profile-meta">
+                           <span>{formattedDate}</span>
+                           <span>{formattedTime}</span>
+                        </div>
+                        <p className="lead-profile-note">
+                           <strong>Acción:</strong> {accion}
+                        </p>
+                        <p className="lead-profile-note">
+                           <strong>Motivo:</strong> {motivo}
+                        </p>
+                     </article>
+                  );
+               })}
             </div>
-
-            <div className="card">
-                <div className="card-header">
-                    <h5>Bitacora Seguimiento</h5>
-                </div>
-                <div className="card-body">
-                    <div className="row">
-                        {sortedBitacora.length > 0 ? (
-                            sortedBitacora.map((entry, idx) => {
-                                const estadoTexto = entry.estado_bit.split("-").slice(1).join("-");
-                                const { formattedDate, formattedTime } = formatDate(entry.fecha_creado_bit);
-
-                                return (
-                                    <div className="col-xl-4 col-sm-6" key={idx}>
-                                        <div className="statistics-card-1 card">
-                                            <div className="card-header d-flex align-items-center justify-content-between py-3">
-                                                <h5>{estadoTexto}</h5>
-                                            </div>
-
-                                            <div className="card-body">
-                                                <img alt="img" width="63" height="134" decoding="async" data-nimg="1" className="img-fluid img-bg" src="https://light-able-react-light.vercel.app/_next/static/media/img-status-2.4d72f177.svg" style={{ color: "transparent" }} />
-                                                <div className="d-flex align-items-center">
-                                                    <h5 className="f-w-300 d-flex align-items-center m-b-0">Detalles</h5>
-                                                </div>
-                                                <h6 className="mb-0">Accion: </h6> {entry.detalle_bit}
-                                                <h6 className="mb-0">Motivo: </h6> {entry.nombre_caida}
-                                                <br />
-                                                <h6 className="mb-0 me-2">{formattedDate} {formattedTime}</h6>
-                                            </div>
-                                        </div>
-                                    </div>
-                                );
-                            })
-                        ) : (
-                            <p>No hay acciones recientes para este lead.</p>
-                        )}
-                    </div>
-                </div>
-            </div>
-        </>
-    );
+         )}
+      </ProfileSection>
+   );
 };
