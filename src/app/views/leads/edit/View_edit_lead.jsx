@@ -24,10 +24,228 @@ const animatedComponents = makeAnimated();
  * @property {string} boxShadow - Sombra de la tarjeta
  */
 const CARD_STYLES = {
-   borderRadius: "27px",
+   borderRadius: "28px",
    background: "#ffffff",
-   boxShadow: "-26px -26px 79px #bababa, 26px 26px 79px #ffffff",
+   border: "1px solid #d9dde3",
+   boxShadow: "0 24px 60px rgba(15, 23, 42, 0.08)",
+   overflow: "hidden",
 };
+
+const SELECT_STYLES = {
+   control: (base, state) => ({
+      ...base,
+      minHeight: "52px",
+      borderRadius: "16px",
+      borderColor: state.isFocused ? "#111827" : "#d1d5db",
+      boxShadow: "none",
+      backgroundColor: "#ffffff",
+      padding: "0 6px",
+      transition: "border-color 0.2s ease, box-shadow 0.2s ease",
+      "&:hover": {
+         borderColor: "#111827",
+      },
+   }),
+   valueContainer: (base) => ({
+      ...base,
+      padding: "2px 8px",
+   }),
+   placeholder: (base) => ({
+      ...base,
+      color: "#6b7280",
+   }),
+   menu: (base) => ({
+      ...base,
+      borderRadius: "16px",
+      overflow: "hidden",
+      border: "1px solid #e5e7eb",
+      boxShadow: "0 18px 40px rgba(15, 23, 42, 0.1)",
+   }),
+};
+
+const FORM_VIEW_STYLES = `
+   .lead-edit-shell {
+      padding: 18px 0 34px;
+   }
+
+   .lead-edit-panel {
+      padding: 32px;
+   }
+
+   .lead-edit-hero {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 24px;
+      margin-bottom: 28px;
+      padding-bottom: 24px;
+      border-bottom: 1px solid #e5e7eb;
+   }
+
+   .lead-edit-eyebrow {
+      display: inline-block;
+      margin-bottom: 10px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: #4b5563;
+   }
+
+   .lead-edit-page-title {
+      margin-bottom: 10px;
+      font-size: 30px;
+      font-weight: 700;
+      letter-spacing: -0.03em;
+      color: #111827;
+   }
+
+   .lead-edit-page-copy {
+      max-width: 760px;
+      margin: 0;
+      font-size: 14px;
+      line-height: 1.7;
+      color: #4b5563;
+   }
+
+   .lead-edit-actions {
+      min-width: 220px;
+   }
+
+   .lead-edit-actions .mb-4 {
+      margin-bottom: 0 !important;
+   }
+
+   .lead-edit-section {
+      margin-top: 26px;
+      padding: 24px 24px 8px;
+      border: 1px solid #e5e7eb;
+      border-radius: 22px;
+      background: #ffffff;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
+   }
+
+   .lead-edit-section-head {
+      margin-bottom: 22px;
+      padding-bottom: 18px;
+      border-bottom: 1px solid #eceff3;
+   }
+
+   .lead-edit-kicker {
+      display: inline-block;
+      margin-bottom: 8px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: #6b7280;
+   }
+
+   .lead-edit-section-title {
+      margin: 0 0 8px;
+      font-size: 22px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      color: #111827;
+   }
+
+   .lead-edit-section-copy {
+      margin: 0;
+      max-width: 760px;
+      font-size: 14px;
+      line-height: 1.7;
+      color: #4b5563;
+   }
+
+   .lead-edit-shell .row {
+      --bs-gutter-x: 1.5rem;
+      --bs-gutter-y: 0;
+   }
+
+   .lead-edit-shell .mb-3 {
+      margin-bottom: 1.2rem !important;
+   }
+
+   .lead-edit-shell .form-label,
+   .lead-edit-shell label {
+      display: inline-block;
+      margin-bottom: 8px;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: #374151;
+   }
+
+   .lead-edit-shell .required::after {
+      content: " *";
+      color: #111827;
+   }
+
+   .lead-edit-shell .form-control,
+   .lead-edit-shell .select2 {
+      min-height: 52px;
+      border: 1px solid #d1d5db;
+      border-radius: 16px;
+      padding: 13px 16px;
+      background: #ffffff;
+      box-shadow: none;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+   }
+
+   .lead-edit-shell textarea.form-control {
+      min-height: 150px;
+      padding-top: 14px;
+      resize: vertical;
+   }
+
+   .lead-edit-shell .form-control:focus,
+   .lead-edit-shell .select2:focus {
+      border-color: #111827;
+      box-shadow: 0 0 0 4px rgba(17, 24, 39, 0.08);
+   }
+
+   .lead-edit-shell .lead-select__indicator-separator {
+      display: none;
+   }
+
+   .lead-edit-submit {
+      display: flex;
+      justify-content: flex-end;
+      margin-top: 18px;
+   }
+
+   .lead-edit-submit-button {
+      min-width: 240px;
+      min-height: 50px;
+      border-radius: 14px;
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+   }
+
+   @media (max-width: 991px) {
+      .lead-edit-panel {
+         padding: 24px 18px;
+      }
+
+      .lead-edit-hero {
+         flex-direction: column;
+      }
+
+      .lead-edit-actions {
+         width: 100%;
+      }
+
+      .lead-edit-submit {
+         justify-content: stretch;
+      }
+
+      .lead-edit-submit-button {
+         width: 100%;
+      }
+   }
+`;
 
 /**
  * Estado inicial del formulario
@@ -583,7 +801,16 @@ export const View_edit_lead = () => {
     * @description Renderiza el formulario de información personal
     */
    const renderPersonalInfoForm = () => (
-      <div className="row ticket">
+      <section className="lead-edit-section">
+         <div className="lead-edit-section-head">
+            <span className="lead-edit-kicker">Resumen principal</span>
+            <h4 className="lead-edit-section-title">Información base del lead</h4>
+            <p className="lead-edit-section-copy">
+               Actualice los datos de contacto, asignación comercial y referencias
+               principales del cliente.
+            </p>
+         </div>
+         <div className="row ticket">
          <div className="col-sm-6">
             <div className="mb-3">
                <label htmlFor="firstnames">Nombre Completo</label>
@@ -626,12 +853,15 @@ export const View_edit_lead = () => {
                <label className="required form-label">Subsidiaria</label>
                <br />
                <Select
+                  className="lead-select-container"
+                  classNamePrefix="lead-select"
                   id="subsidiary_new_edit"
                   name="subsidiary_new_edit"
                   components={animatedComponents}
-                  options={subsidiaryOptions}
-                  value={formData.subsidiary_new_edit}
-                  onChange={handleSelectChange}
+                   options={subsidiaryOptions}
+                   value={formData.subsidiary_new_edit}
+                   onChange={handleSelectChange}
+                  styles={SELECT_STYLES}
                   isSearchable
                   required
                />
@@ -640,12 +870,15 @@ export const View_edit_lead = () => {
                <label className="required form-label">Proyectos</label>
                <br />
                <Select
+                  className="lead-select-container"
+                  classNamePrefix="lead-select"
                   id="proyecto_new_edit"
                   name="proyecto_new_edit"
                   components={animatedComponents}
-                  options={projectOptions}
-                  value={formData.proyecto_new_edit}
-                  onChange={handleSelectChange}
+                   options={projectOptions}
+                   value={formData.proyecto_new_edit}
+                   onChange={handleSelectChange}
+                  styles={SELECT_STYLES}
                   isSearchable
                   required
                />
@@ -654,12 +887,15 @@ export const View_edit_lead = () => {
                <label className="required form-label">Campaña Marketing</label>
                <br />
                <Select
+                  className="lead-select-container"
+                  classNamePrefix="lead-select"
                   id="campana_new_edit"
                   name="campana_new_edit"
                   components={animatedComponents}
-                  options={campaignOptions}
-                  value={formData.campana_new_edit}
-                  onChange={handleSelectChange}
+                   options={campaignOptions}
+                   value={formData.campana_new_edit}
+                   onChange={handleSelectChange}
+                  styles={SELECT_STYLES}
                   isSearchable
                   required
                />
@@ -702,19 +938,23 @@ export const View_edit_lead = () => {
                <label className="required form-label">Corredor Cliente</label>
                <br />
                <Select
+                  className="lead-select-container"
+                  classNamePrefix="lead-select"
                   id="corredor_lead_edit"
                   name="corredor_lead_edit"
                   components={animatedComponents}
-                  options={corredor_lead_options}
-                  value={formData.corredor_lead_edit}
-                  onChange={handleSelectChange}
+                   options={corredor_lead_options}
+                   value={formData.corredor_lead_edit}
+                   onChange={handleSelectChange}
+                  styles={SELECT_STYLES}
                   isSearchable
                   isClearable
                   placeholder="Seleccionar corredor..."
                />
             </div>
          </div>
-      </div>
+         </div>
+      </section>
    );
 
    /**
@@ -723,9 +963,15 @@ export const View_edit_lead = () => {
     * @description Renderiza el formulario de información adicional
     */
    const renderAdditionalInfoForm = () => (
-      <>
-         <hr style={{ border: "2px solid #000" }} />
-         <h4 className="card-title">Datos Adicionales</h4>
+      <section className="lead-edit-section">
+         <div className="lead-edit-section-head">
+            <span className="lead-edit-kicker">Contexto comercial</span>
+            <h4 className="lead-edit-section-title">Perfil del comprador</h4>
+            <p className="lead-edit-section-copy">
+               Documente la motivación, capacidad de compra y contexto cualitativo
+               que ayuda a entender por qué este cliente decidió avanzar.
+            </p>
+         </div>
          <div className="row">
             <div className="col-sm-6">
                
@@ -951,7 +1197,7 @@ export const View_edit_lead = () => {
             </div>
             </div>
          </div>
-      </>
+      </section>
    );
 
    /**
@@ -960,9 +1206,15 @@ export const View_edit_lead = () => {
     * @description Renderiza el formulario del segundo cliente
     */
    const renderSecondClientForm = () => (
-      <>
-         <hr style={{ border: "2px solid #000" }} />
-         <h4 className="card-title">Información Extra Segundo Cliente</h4>
+      <section className="lead-edit-section">
+         <div className="lead-edit-section-head">
+            <span className="lead-edit-kicker">Co-titular</span>
+            <h4 className="lead-edit-section-title">Información del segundo cliente</h4>
+            <p className="lead-edit-section-copy">
+               Complete esta sección únicamente cuando la compra incluya un segundo
+               cliente o coparticipante.
+            </p>
+         </div>
          <div className="row">
             <div className="col-sm-6">
                <div className="mb-3">
@@ -1064,24 +1316,41 @@ export const View_edit_lead = () => {
                </div>
             </div>
          </div>
-      </>
+         </section>
    );
 
    const buttonEditLead = () => (
-      <button type="button" onClick={handleSubmit} className="btn btn-dark waves-effect waves-light">
-         Editar en el sistema
-      </button>
+      <div className="lead-edit-submit">
+         <button
+            type="button"
+            onClick={handleSubmit}
+            className="btn btn-dark waves-effect waves-light lead-edit-submit-button"
+         >
+            Guardar cambios del lead
+         </button>
+      </div>
    );
 
    return (
-      <div className="container-fluid">
+      <div className="container-fluid lead-edit-shell">
+         <style>{FORM_VIEW_STYLES}</style>
          <div className="row">
             <div className="col-12">
-               <div className="card">
-                  <div className="card-body" style={CARD_STYLES}>
-                     <h4 className="card-title">Información recolectada de NetSuite (LEAD)</h4>
-                     <div style={{ marginBottom: "25px" }}>
-                        <ButtonActions leadData={leadDetails} className="mb-4" />
+               <div className="card border-0 bg-transparent shadow-none">
+                  <div className="card-body lead-edit-panel" style={CARD_STYLES}>
+                     <div className="lead-edit-hero">
+                        <div>
+                           <span className="lead-edit-eyebrow">Edición del expediente</span>
+                           <h4 className="card-title lead-edit-page-title">Perfil completo del lead</h4>
+                           <p className="lead-edit-page-copy">
+                              Ordene la información comercial, personal y cualitativa del
+                              comprador en una vista más clara para operación, seguimiento y
+                              análisis posterior.
+                           </p>
+                        </div>
+                        <div className="lead-edit-actions">
+                           <ButtonActions leadData={leadDetails} className="mb-4" />
+                        </div>
                      </div>
                      {renderPersonalInfoForm()}
                      {buttonEditLead()}
