@@ -1,5 +1,5 @@
 import { Modal } from "@mui/material";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useDispatch } from "react-redux";
 import Swal from "sweetalert2";
 import {
@@ -25,6 +25,397 @@ import { CalculodePrima } from "./CalculodePrima";
 import { MetodoPago } from "./MetodoPago";
 import { PrimeraLineaOrdenVenta } from "./PrimeraLineaOrdenVenta";
 import { SeleccionPrima } from "./SeleccionPrima";
+
+const SALES_ORDER_MODAL_STYLES = `
+  .sales-order-modal-shell {
+    display: grid;
+    gap: 14px;
+  }
+
+  .sales-order-modal-content {
+    border: 1px solid #d9dde3;
+    border-radius: 18px;
+    background: #ffffff;
+    box-shadow: 0 18px 40px rgba(15, 23, 42, 0.08);
+    overflow: hidden;
+  }
+
+  .sales-order-modal-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 18px 18px 16px;
+    border-bottom: 1px solid #eceff3;
+    background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+  }
+
+  .sales-order-modal-kicker {
+    display: inline-block;
+    margin-bottom: 6px;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #4b5563;
+  }
+
+  .sales-order-modal-title {
+    margin: 0 0 6px;
+    font-size: 20px;
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    color: #111827;
+  }
+
+  .sales-order-modal-copy {
+    margin: 0;
+    max-width: 680px;
+    font-size: 11px;
+    line-height: 1.5;
+    color: #4b5563;
+  }
+
+  .sales-order-modal-badge {
+    min-width: 120px;
+    padding: 10px 12px;
+    border: 1px solid #dbe2ea;
+    border-radius: 14px;
+    background: #ffffff;
+    text-align: left;
+  }
+
+  .sales-order-modal-badge-label {
+    display: block;
+    margin-bottom: 4px;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #6b7280;
+  }
+
+  .sales-order-modal-badge-value {
+    display: block;
+    font-size: 14px;
+    font-weight: 700;
+    color: #111827;
+    word-break: break-word;
+  }
+
+  .sales-order-modal-body {
+    padding: 18px;
+    background: linear-gradient(180deg, #ffffff 0%, #fcfcfd 100%);
+  }
+
+  .sales-order-modal-grid {
+    display: grid;
+    grid-template-columns: minmax(250px, 300px) minmax(0, 1fr);
+    gap: 14px;
+    align-items: start;
+  }
+
+  .sales-order-modal-sidebar {
+    display: grid;
+    gap: 12px;
+  }
+
+  .sales-order-modal-sidebar-card {
+    padding: 14px;
+    border: 1px solid #e5e7eb;
+    border-radius: 14px;
+    background: linear-gradient(180deg, #ffffff 0%, #fbfbfc 100%);
+  }
+
+  .sales-order-modal-sidebar-title {
+    margin: 0 0 6px;
+    font-size: 13px;
+    font-weight: 700;
+    color: #111827;
+  }
+
+  .sales-order-modal-sidebar-copy {
+    margin: 0;
+    font-size: 11px;
+    line-height: 1.45;
+    color: #4b5563;
+  }
+
+  .sales-order-modal-hint-list {
+    display: grid;
+    gap: 8px;
+  }
+
+  .sales-order-modal-hint {
+    padding: 10px 12px;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    background: #ffffff;
+  }
+
+  .sales-order-modal-hint-label {
+    margin: 0 0 4px;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #6b7280;
+  }
+
+  .sales-order-modal-hint-value {
+    margin: 0;
+    font-size: 12px;
+    font-weight: 700;
+    color: #111827;
+    word-break: break-word;
+  }
+
+  .sales-order-modal-main {
+    padding: 14px;
+    border: 1px solid #d9dde3;
+    border-radius: 16px;
+    background: #ffffff;
+    box-shadow: 0 14px 32px rgba(15, 23, 42, 0.06);
+  }
+
+  .sales-order-modal-section {
+    margin-top: 12px;
+    padding: 14px;
+    border: 1px solid #e5e7eb;
+    border-radius: 14px;
+    background: linear-gradient(180deg, #ffffff 0%, #fbfbfc 100%);
+  }
+
+  .sales-order-modal-section:first-child {
+    margin-top: 0;
+  }
+
+  .sales-order-modal-section-head {
+    margin-bottom: 12px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #eceff3;
+  }
+
+  .sales-order-modal-section-kicker {
+    display: inline-block;
+    margin-bottom: 4px;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #6b7280;
+  }
+
+  .sales-order-modal-section-title {
+    margin: 0 0 4px;
+    font-size: 14px;
+    font-weight: 700;
+    color: #111827;
+  }
+
+  .sales-order-modal-section-copy {
+    margin: 0;
+    font-size: 11px;
+    line-height: 1.45;
+    color: #4b5563;
+  }
+
+  .sales-order-modal-main .form-label {
+    margin-bottom: 6px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: #6b7280;
+  }
+
+  .sales-order-modal-main .form-control,
+  .sales-order-modal-main .form-select {
+    min-height: 44px;
+    border: 1px solid #d1d5db;
+    border-radius: 12px;
+    background: #f8fafc;
+    box-shadow: none;
+    font-size: 12px;
+    color: #111827;
+    padding: 10px 12px;
+  }
+
+  .sales-order-modal-main textarea.form-control {
+    min-height: 88px;
+    resize: vertical;
+  }
+
+  .sales-order-modal-main .form-control:focus,
+  .sales-order-modal-main .form-select:focus {
+    border-color: #94a3b8;
+    box-shadow: 0 0 0 3px rgba(148, 163, 184, 0.12);
+    background: #ffffff;
+  }
+
+  .sales-order-modal-main .form-control:disabled,
+  .sales-order-modal-main .form-control[readonly],
+  .sales-order-modal-main .form-select:disabled {
+    background: #eef2f7;
+    color: #475569;
+    opacity: 1;
+  }
+
+  .sales-order-modal-main .row {
+    row-gap: 8px;
+  }
+
+  .sales-order-modal-main hr {
+    margin: 12px 0 16px;
+    border-color: #e5e7eb;
+    opacity: 1;
+  }
+
+  .sales-order-modal-main h4,
+  .sales-order-modal-main h5 {
+    margin-bottom: 10px;
+    font-size: 14px;
+    font-weight: 700;
+    color: #111827;
+  }
+
+  .sales-order-modal-main .alert {
+    margin-bottom: 14px;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    background: linear-gradient(180deg, #ffffff 0%, #fbfbfc 100%);
+    color: #111827;
+  }
+
+  .sales-order-modal-main .alert.alert-dark {
+    border-color: #e5e7eb;
+    background: linear-gradient(180deg, #ffffff 0%, #fbfbfc 100%);
+    color: #111827;
+  }
+
+  .sales-order-modal-main .alert p,
+  .sales-order-modal-main .alert h2,
+  .sales-order-modal-main .alert h5 {
+    margin: 0;
+    color: #111827 !important;
+    font-size: 12px;
+    font-weight: 700;
+    font-style: normal;
+    text-decoration: none;
+  }
+
+  .sales-order-modal-main .card {
+    margin-top: 12px;
+    border: 1px solid #e5e7eb;
+    border-radius: 14px;
+    background: linear-gradient(180deg, #ffffff 0%, #fbfbfc 100%);
+    box-shadow: none;
+    overflow: hidden;
+  }
+
+  .sales-order-modal-main .card:first-of-type {
+    margin-top: 0;
+  }
+
+  .sales-order-modal-main .card-header {
+    padding: 12px 14px;
+    border-bottom: 1px solid #eceff3;
+    background: #ffffff !important;
+    color: #111827 !important;
+  }
+
+  .sales-order-modal-main .card-header h5,
+  .sales-order-modal-main .card-header center {
+    margin: 0;
+    font-size: 12px;
+    font-weight: 700;
+    color: #111827;
+  }
+
+  .sales-order-modal-main .card-body {
+    padding: 14px;
+  }
+
+  .sales-order-modal-main .form-check {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 36px;
+    margin-bottom: 8px;
+  }
+
+  .sales-order-modal-main .form-check-input {
+    margin-top: 0;
+    box-shadow: none;
+  }
+
+  .sales-order-modal-main .form-check-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: #374151;
+  }
+
+  .sales-order-modal-main .invalid-feedback {
+    display: block;
+    font-size: 10px;
+  }
+
+  .sales-order-modal-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-top: 14px;
+    padding-top: 14px;
+    border-top: 1px solid #eceff3;
+  }
+
+  .sales-order-modal-footer-copy {
+    margin: 0;
+    font-size: 11px;
+    line-height: 1.45;
+    color: #4b5563;
+  }
+
+  .sales-order-modal-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .sales-order-modal-loading {
+    min-height: 240px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  @media (max-width: 991px) {
+    .sales-order-modal-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  @media (max-width: 767px) {
+    .sales-order-modal-header,
+    .sales-order-modal-footer {
+      flex-direction: column;
+      align-items: flex-start;
+    }
+
+    .sales-order-modal-body,
+    .sales-order-modal-main,
+    .sales-order-modal-sidebar-card {
+      padding: 12px;
+    }
+
+    .sales-order-modal-actions {
+      width: 100%;
+      justify-content: flex-start;
+      flex-wrap: wrap;
+    }
+  }
+`;
 
 export const ModalOrdenVenta = ({ open, onClose, idEstimacion }) => {
    // Estado para manejar si el contenido del modal está cargando
@@ -211,8 +602,66 @@ export const ModalOrdenVenta = ({ open, onClose, idEstimacion }) => {
       memo: "",
    });
 
-   // Estado para manejar los errores del formulario
-   const [errors, setErrors] = useState({});
+// Estado para manejar los errores del formulario
+const [errors, setErrors] = useState({});
+
+const summaryCards = useMemo(
+   () => [
+      {
+         label: "Entrega fecha",
+         value: formValues.custbody114 || "N/A",
+      },
+      {
+         label: "Nombre cliente",
+         value: formValues.entity || "N/A",
+      },
+      {
+         label: "Uni. exped. ligado vta",
+         value: formValues.custbody38 || "N/A",
+      },
+      {
+         label: "Proyecto",
+         value:
+            formValues.proyecto_lead_est && formValues.proyecto_lead_est !== "-"
+               ? formValues.proyecto_lead_est
+               : formValues.Clase && formValues.Clase !== "-"
+                 ? formValues.Clase
+                 : formValues.subsidiary && formValues.subsidiary !== "-"
+                   ? formValues.subsidiary
+                   : "N/A",
+      },
+      {
+         label: "Estado",
+         value:
+            formValues.entitystatus && formValues.entitystatus !== "-"
+               ? formValues.entitystatus
+               : formValues.location && formValues.location !== "-"
+                 ? formValues.location
+                 : "N/A",
+      },
+      {
+         label: "Oportunidad",
+         value: formValues.tranid_oport || formValues.opportunity || "N/A",
+      },
+      {
+         label: "Cierre previsto",
+         value: formValues.expectedclosedate || "N/A",
+      },
+   ],
+   [
+      formValues.custbody114,
+      formValues.custbody38,
+      formValues.entity,
+      formValues.entitystatus,
+      formValues.expectedclosedate,
+      formValues.location,
+      formValues.opportunity,
+      formValues.proyecto_lead_est,
+      formValues.Clase,
+      formValues.subsidiary,
+      formValues.tranid_oport,
+   ],
+);
 
    // Maneja la selección de descuento por parte del usuario
    const handleDiscountSelection = (e) => {
@@ -1394,59 +1843,170 @@ export const ModalOrdenVenta = ({ open, onClose, idEstimacion }) => {
    }, [open, idEstimacion, dispatch]); // Dependencias del efecto
 
    return (
-      <Modal
-         open={Boolean(open)}
-         onClose={onClose}
-         className="modal fade show"
-         aria-labelledby="exampleModalLongTitle"
-         style={{ display: "block" }}
-         aria-modal="true"
-         role="dialog"
-      >
-         <div
-            className="modal-dialog"
-            style={{ maxWidth: "89%", margin: "1.75rem auto" }} // Custom style for modal size and centering
+      <>
+         <style>{SALES_ORDER_MODAL_STYLES}</style>
+
+         <Modal
+            open={Boolean(open)}
+            onClose={onClose}
+            className="modal fade show"
+            aria-labelledby="exampleModalLongTitle"
+            style={{ display: "block" }}
+            aria-modal="true"
+            role="dialog"
          >
-            <div className="modal-content">
-               <div className="modal-body">
-                  {isLoading ? (
-                     // Loading indicator while data is being processed
-                     <div
-                        className="d-flex justify-content-center align-items-center"
-                        style={{ height: "200px" }} // Ensure vertical and horizontal centering of the spinner
-                     >
-                        <div className="spinner-border" role="status">
-                           <span className="visually-hidden">Cargando...</span> {/* Accessible text for screen readers */}
-                        </div>
+            <div className="modal-dialog" style={{ maxWidth: "89%", margin: "1.75rem auto" }}>
+               <div className="modal-content sales-order-modal-content">
+                  <div className="sales-order-modal-header">
+                     <div>
+                        <span className="sales-order-modal-kicker">Gestión comercial</span>
+                        <h4 className="sales-order-modal-title">Editar orden de venta</h4>
+                        <p className="sales-order-modal-copy">
+                           Ajuste la información comercial, financiera y de forma de pago
+                           manteniendo la consistencia de primas, tractos y condiciones
+                           operativas de la orden.
+                        </p>
                      </div>
-                  ) : (
-                     // Main content of the modal when not loading
-                     <>
-                        <h4>EDITAR ORDEN DE VENTA</h4> {/* Main title of the modal */}
-                        <form onSubmit={handleSubmit}>
-                           {/* Component to manage the first line of the form */}
-                           <PrimeraLineaOrdenVenta formValues={formValues} handleInputChange={handleInputChange} errors={errors} />
-                           {/* Component for premium calculation */}
-                           <CalculodePrima
-                              errors={errors}
-                              formValues={formValues}
-                              handleInputChange={handleInputChange}
-                              handleDiscountSelection={handleDiscountSelection}
-                           />
-                           {/* Component for premium selection */}
-                           <SeleccionPrima errors={errors} formValues={formValues} handleInputChange={handleInputChange} />
-                           {/* Component for payment method selection */}
-                           <MetodoPago formValues={formValues} handleInputChange={handleInputChange} errors={errors} />
-                           {/* Button to save the estimation */}
-                           <button type="submit" className="btn btn-primary">
-                              Guardar ordenVenta
-                           </button>
-                        </form>
-                     </>
-                  )}
+
+                     <div className="sales-order-modal-badge">
+                        <span className="sales-order-modal-badge-label">Estado de carga</span>
+                        <span className="sales-order-modal-badge-value">
+                           {isLoading ? "Cargando..." : "Listo para edición"}
+                        </span>
+                     </div>
+                  </div>
+
+                  <div className="modal-body sales-order-modal-body">
+                     {isLoading ? (
+                        <div className="sales-order-modal-loading">
+                           <div className="spinner-border" role="status">
+                              <span className="visually-hidden">Cargando...</span>
+                           </div>
+                        </div>
+                     ) : (
+                        <div className="sales-order-modal-shell">
+                           <div className="sales-order-modal-grid">
+                              <aside className="sales-order-modal-sidebar">
+                                 <div className="sales-order-modal-sidebar-card">
+                                    <h5 className="sales-order-modal-sidebar-title">Resumen de contexto</h5>
+                                    <p className="sales-order-modal-sidebar-copy">
+                                       Revise aquí la base comercial principal antes de editar
+                                       montos, primas y forma de pago para mantener una lectura
+                                       clara dentro del formulario.
+                                    </p>
+                                 </div>
+
+                                 <div className="sales-order-modal-hint-list">
+                                    {summaryCards.map((item) => (
+                                       <div className="sales-order-modal-hint" key={item.label}>
+                                          <p className="sales-order-modal-hint-label">{item.label}</p>
+                                          <p className="sales-order-modal-hint-value">{item.value}</p>
+                                       </div>
+                                    ))}
+                                 </div>
+
+                                 <div className="sales-order-modal-sidebar-card">
+                                    <h5 className="sales-order-modal-sidebar-title">Cómo revisar esta edición</h5>
+                                    <p className="sales-order-modal-sidebar-copy">
+                                       Valide primero la información principal, luego confirme la
+                                       estructura económica y por último revise la forma de pago
+                                       para no alterar la lógica comercial.
+                                    </p>
+                                 </div>
+                              </aside>
+
+                              <section className="sales-order-modal-main">
+                                 <form onSubmit={handleSubmit}>
+                                    <section className="sales-order-modal-section">
+                                       <div className="sales-order-modal-section-head">
+                                          <span className="sales-order-modal-section-kicker">Datos base</span>
+                                          <h5 className="sales-order-modal-section-title">
+                                             Información principal de la orden
+                                          </h5>
+                                          <p className="sales-order-modal-section-copy">
+                                             Datos generales del negocio, cliente, proyecto y
+                                             referencia comercial asociados a la orden de venta.
+                                          </p>
+                                       </div>
+
+                                       <PrimeraLineaOrdenVenta
+                                          formValues={formValues}
+                                          handleInputChange={handleInputChange}
+                                          errors={errors}
+                                          hideContextFields
+                                       />
+                                    </section>
+
+                                    <section className="sales-order-modal-section">
+                                       <div className="sales-order-modal-section-head">
+                                          <span className="sales-order-modal-section-kicker">Estructura económica</span>
+                                          <h5 className="sales-order-modal-section-title">
+                                             Cálculo financiero y selección de primas
+                                          </h5>
+                                          <p className="sales-order-modal-section-copy">
+                                             Ajuste descuentos, montos, distribución de primas y
+                                             tractos manteniendo el cálculo integral de la orden.
+                                          </p>
+                                       </div>
+
+                                       <CalculodePrima
+                                          errors={errors}
+                                          formValues={formValues}
+                                          handleInputChange={handleInputChange}
+                                          handleDiscountSelection={handleDiscountSelection}
+                                       />
+
+                                       <SeleccionPrima
+                                          errors={errors}
+                                          formValues={formValues}
+                                          handleInputChange={handleInputChange}
+                                       />
+                                    </section>
+
+                                    <section className="sales-order-modal-section">
+                                       <div className="sales-order-modal-section-head">
+                                          <span className="sales-order-modal-section-kicker">Cierre operativo</span>
+                                          <h5 className="sales-order-modal-section-title">
+                                             Forma de pago y confirmaciones finales
+                                          </h5>
+                                          <p className="sales-order-modal-section-copy">
+                                             Revise las condiciones de pago y observaciones para
+                                             dejar la orden lista para su continuidad comercial.
+                                          </p>
+                                       </div>
+
+                                       <MetodoPago
+                                          formValues={formValues}
+                                          handleInputChange={handleInputChange}
+                                          errors={errors}
+                                       />
+                                    </section>
+
+                                    <div className="sales-order-modal-footer">
+                                       <p className="sales-order-modal-footer-copy">
+                                          Antes de guardar, confirme que los montos, la forma de
+                                          pago y la distribución de primas reflejen la operación
+                                          comercial correcta.
+                                       </p>
+
+                                       <div className="sales-order-modal-actions">
+                                          <button type="button" className="btn btn-outline-dark" onClick={onClose}>
+                                             Cerrar
+                                          </button>
+                                          <button type="submit" className="btn btn-dark">
+                                             Guardar orden de venta
+                                          </button>
+                                       </div>
+                                    </div>
+                                 </form>
+                              </section>
+                           </div>
+                        </div>
+                     )}
+                  </div>
                </div>
             </div>
-         </div>
-      </Modal>
+         </Modal>
+      </>
    );
 };
