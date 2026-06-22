@@ -1,409 +1,792 @@
-﻿import { useEffect, useRef, useState } from "react";
-import { InformacionBasicaOportunidad } from "./InformacionBasicaOportunidad";
-import { InformacionBasicaExpedienteUnidad } from "./InformacionBasicaExpedienteUnidad";
-import { EstimacionesOportunidad } from "./EstimacionesOportunidad";
-import { TrazabilidadOportunidad } from "./TrazabilidadOportunidad";
-import { getSpecificLead } from "../../../../store/leads/thunksLeads";
+import { useEffect, useRef, useState } from "react";
 import { useDispatch } from "react-redux";
-import { ButtonActions } from "../../../components/buttonAccions/buttonAccions";
-import { fetchOpportunityTraceability, getSpecificOportunidad, updateOpportunityProbability, updateOpportunityStatus } from "../../../../store/oportuinidad/thunkOportunidad";
 import Swal from "sweetalert2";
-import { ModalEditarOportunidad } from "../EditarOportunidad/ModalEditarOportunidad";
+
 import SticNotesContainer from "../../../../components/sticknotes/SticNotesContainer";
+import { getSpecificLead } from "../../../../store/leads/thunksLeads";
+import {
+   fetchOpportunityTraceability,
+   getSpecificOportunidad,
+   updateOpportunityProbability,
+   updateOpportunityStatus,
+} from "../../../../store/oportuinidad/thunkOportunidad";
+import { ButtonActions } from "../../../components/buttonAccions/buttonAccions";
+import {
+   PROFILE_PANEL_STYLES,
+   PROFILE_THEME_STYLES,
+} from "../../leads/perfil/profileTheme";
+import { ModalEditarOportunidad } from "../EditarOportunidad/ModalEditarOportunidad";
+import { EstimacionesOportunidad } from "./EstimacionesOportunidad";
+import { InformacionBasicaExpedienteUnidad } from "./InformacionBasicaExpedienteUnidad";
+import { InformacionBasicaOportunidad } from "./InformacionBasicaOportunidad";
+import { TrazabilidadOportunidad } from "./TrazabilidadOportunidad";
 
-export const View_oportuinidad_ver = () => {
-    const dispatch = useDispatch();
-    const previousUrlAtEntryRef = useRef(localStorage.getItem("previousUrl"));
+const OPPORTUNITY_VIEW_STYLES = `
+   ${PROFILE_THEME_STYLES}
 
-    useEffect(() => {
-        const previousUrlAtEntry = previousUrlAtEntryRef.current;
-        if (!previousUrlAtEntry) return;
+   .opportunity-view-shell .lead-profile-panel {
+      padding: 18px;
+   }
 
-        const currentPreviousUrl = localStorage.getItem("previousUrl");
-        if (currentPreviousUrl !== previousUrlAtEntry) {
-            localStorage.setItem("previousUrl", previousUrlAtEntry);
-        }
-    });
-    // Estado para controlar la pestaña activa en la interfaz.
-    const [activeTab, setActiveTab] = useState("infoPot");
+   .opportunity-view-shell .lead-profile-hero {
+      margin-bottom: 0;
+      padding-bottom: 0;
+      border-bottom: none;
+   }
 
-    // Función para cambiar la pestaña activa.
-    // Recibe la clave de la pestaña seleccionada ('tabKey') y actualiza el estado 'activeTab'.
-    const handleTabClick = (tabKey) => {
-        setActiveTab(tabKey); // Actualiza el estado con la pestaña seleccionada
-    };
+   .opportunity-view-layout {
+      display: grid;
+      grid-template-columns: minmax(290px, 340px) minmax(0, 1fr);
+      gap: 16px;
+      align-items: start;
+   }
 
-    // Estado para almacenar los detalles del lead y la oportunidad seleccionados.
-    const [leadDetails, setLeadDetails] = useState({});
-    const [OportunidadDetails, setOportunidadDetails] = useState({});
-    const [traceability, setTraceability] = useState({ current: null, history: [], traceabilityEnabled: false });
+   .opportunity-view-sticky-notes {
+      position: relative;
+      z-index: 999;
+      margin-bottom: 12px;
+   }
 
-    // Función asíncrona para obtener los detalles de un lead específico.
-    const fetchLeadDetails = async (idLead) => {
-        try {
-            // Llama a la acción 'getSpecificLead' pasando el 'idLead' y espera su resultado.
-            const leadData = await dispatch(getSpecificLead(idLead));
+   .opportunity-view-sidebar-card,
+   .opportunity-view-main-card {
+      border: 1px solid #d9dde3;
+      border-radius: 20px;
+      background: #ffffff;
+      box-shadow: 0 14px 32px rgba(15, 23, 42, 0.06);
+      overflow: hidden;
+   }
 
-            // Almacena los detalles obtenidos en el estado 'leadDetails' para su uso en la vista.
-            setLeadDetails(leadData);
-        } catch (error) {
-            // Manejo de errores en caso de que la solicitud falle.
-            console.error("Error al obtener los detalles del lead:", error);
-        }
-    };
+   .opportunity-view-sidebar-body {
+      padding: 18px;
+   }
 
-    // Función asíncrona para obtener los detalles de una oportunidad específica.
-    const fetchOportunidadDetails = async (idOportunidad) => {
-        try {
-            // Llama a la acción 'getSpecificOportunidad' pasando el 'idOportunidad' y espera su resultado.
-            const oportunidadData = await dispatch(getSpecificOportunidad(idOportunidad));
+   .opportunity-view-hero-card {
+      margin-bottom: 14px;
+      border: 1px solid #d9dde3;
+      border-radius: 20px;
+      background: linear-gradient(135deg, #1f242b 0%, #29313b 100%);
+      box-shadow: 0 16px 34px rgba(15, 23, 42, 0.12);
+      overflow: hidden;
+   }
 
+   .opportunity-view-hero-body {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+      padding: 20px 22px;
+   }
 
-            // Almacena los detalles obtenidos en el estado 'oportunidadDetails' para su uso en la vista.
-            setOportunidadDetails(oportunidadData);
-        } catch (error) {
-            // Manejo de errores en caso de que la solicitud falle.
-            console.error("Error al obtener los detalles de la oportunidad:", error);
-        }
-    };
+   .opportunity-view-hero-copy {
+      flex: 1;
+      min-width: 0;
+   }
 
-    const fetchOpportunityTraceabilityData = async (idOportunidad) => {
-        try {
-            const traceabilityData = await dispatch(fetchOpportunityTraceability(idOportunidad));
-            setTraceability(traceabilityData);
-        } catch (error) {
-            console.error("Error al obtener la trazabilidad de la oportunidad:", error);
-        }
-    };
+   .opportunity-view-hero-kicker {
+      display: inline-block;
+      margin-bottom: 5px;
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: rgba(255, 255, 255, 0.68);
+   }
 
-    // Función para obtener el valor de un parámetro específico de la URL.
-    const getQueryParam = (param) => {
-        // Crea una instancia de 'URLSearchParams' con los parámetros de la URL.
-        const value = new URLSearchParams(location.search).get(param);
+   .opportunity-view-hero-title {
+      margin: 0 0 6px;
+      font-size: 20px;
+      font-weight: 700;
+      line-height: 1.1;
+      color: #ffffff;
+   }
 
-        // Verifica si el valor es numérico; si lo es, lo convierte a número.
-        if (value && !isNaN(value) && !isNaN(parseFloat(value))) {
-            return Number(value); // Retorna el valor como número si es posible.
-        }
-        return value; // Si no es numérico, retorna el valor original como cadena de texto.
-    };
+   .opportunity-view-hero-copy p {
+      margin: 0;
+      max-width: 620px;
+      font-size: 12px;
+      line-height: 1.5;
+      color: rgba(255, 255, 255, 0.72);
+   }
 
-    // Efecto para cargar detalles del lead y la oportunidad al montar el componente.
-    useEffect(() => {
-        // Obtiene los parámetros 'data' (para lead) y 'data2' (para oportunidad) desde la URL.
-        const leadId = getQueryParam("data"); // Extrae el ID del lead desde la URL.
-        const oportuinidadId = getQueryParam("data2"); // Extrae el ID de la oportunidad desde la URL.
+   .opportunity-view-hero-figure {
+      flex-shrink: 0;
+      width: 82px;
+      height: 82px;
+      border-radius: 18px;
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      background: rgba(255, 255, 255, 0.08);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+   }
 
-        // Si 'leadId' es válido (mayor que 0), llama a las funciones para obtener los detalles correspondientes.
-        if (leadId && leadId > 0) {
-            fetchLeadDetails(leadId); // Solicita los detalles del lead.
-            fetchOportunidadDetails(oportuinidadId); // Solicita los detalles de la oportunidad.
-            fetchOpportunityTraceabilityData(oportuinidadId);
-        }
-    }, []); // El efecto se ejecuta al montar el componente.
+   .opportunity-view-hero-figure img {
+      width: 78px;
+      height: 78px;
+      object-fit: contain;
+   }
 
-    const handleStatusChange = (estado, idOportunidad) => {
-        // Preguntar al usuario si desea cambiar el estado de la oportunidad
-        Swal.fire({
-            title: "¿Deseas cambiar el estado de la oportunidad?",
-            text: "Esta acción actualizará el estado de esta oportunidad.",
-            icon: "warning",
-            showCancelButton: true,
-            confirmButtonText: "Sí, cambiar",
-            cancelButtonText: "Cancelar",
-        }).then((result) => {
-            // Si el usuario confirma, ejecutamos el dispatch para actualizar el estado
-            if (result.isConfirmed) {
-                const motivoInactivacion = estado === 0 ? "MANUAL" : null;
-                dispatch(updateOpportunityStatus(estado, idOportunidad, motivoInactivacion)); // Llamada a la acción que actualiza el estado de la oportunidad
+   .opportunity-view-sidebar-top {
+      text-align: center;
+      padding-bottom: 14px;
+      border-bottom: 1px solid #edf0f2;
+   }
 
-                // Confirmación de cambio de estado
-                Swal.fire({
-                    title: "¡Estado actualizado!",
-                    text: "El estado de la oportunidad ha sido cambiado con éxito.",
-                    icon: "success",
-                    timer: 1500,
-                    showConfirmButton: false,
-                }).then(() => {
-                    fetchOportunidadDetails(idOportunidad); // Solicita los detalles de la oportunidad.
-                    fetchOpportunityTraceabilityData(idOportunidad);
-                });
-            }
-        });
-    };
+   .opportunity-view-sidebar-avatar {
+      width: 92px;
+      height: 92px;
+      margin: 0 auto 12px;
+      border-radius: 999px;
+      border: 4px solid #f8fafc;
+      background: linear-gradient(180deg, #ffffff 0%, #eef2f7 100%);
+      box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+   }
 
-    const handleProbabilidadChange = (probabilidad, idOportunidad) => {
-        // Preguntar al usuario si desea cambiar la probabilidad
-        Swal.fire({
-            title: "¿Deseas cambiar la probabilidad?",
-            text: "Esta acción actualizará la probabilidad de esta oportunidad.",
-            icon: "warning",
-            showCancelButton: true,
-            confirmButtonText: "Sí, cambiar",
-            cancelButtonText: "Cancelar",
-        }).then((result) => {
-            // Si el usuario confirma, ejecutamos el dispatch
-            if (result.isConfirmed) {
-                dispatch(updateOpportunityProbability(probabilidad, idOportunidad));
+   .opportunity-view-sidebar-avatar img {
+      width: 84px;
+      height: 84px;
+      object-fit: cover;
+   }
 
-                // Confirmación de cambio
-                Swal.fire({
-                    title: "¡Probabilidad actualizada!",
-                    text: "La probabilidad de la oportunidad ha sido cambiada.",
-                    icon: "success",
-                    timer: 1500,
-                    showConfirmButton: false,
-                }).then(() => {
-                    fetchOportunidadDetails(idOportunidad); // Solicita los detalles de la oportunidad.
-                    fetchOpportunityTraceabilityData(idOportunidad);
-                });
-            }
-        });
-    };
+   .opportunity-view-sidebar-title {
+      margin: 0 0 4px;
+      font-size: 18px;
+      font-weight: 700;
+      color: #111827;
+   }
 
-    // Estado para controlar la visibilidad del modal
-    const [isModalOpen, setIsModalOpen] = useState(false);
+   .opportunity-view-sidebar-copy {
+      margin: 0;
+      font-size: 12px;
+      color: #6b7280;
+   }
 
-    // Función para abrir el modal
-    const handleOpenModal = () => {
-        setIsModalOpen(true);
-    };
+   .opportunity-view-lead-actions {
+      margin-top: 12px;
+      padding: 12px;
+      border: 1px solid #e5e7eb;
+      border-radius: 14px;
+      background: linear-gradient(180deg, #ffffff 0%, #fbfbfc 100%);
+   }
 
-    // Función para cerrar el modal
-    const handleCloseModal = () => {
-        setIsModalOpen(false);
-    };
+   .opportunity-view-action-buttons {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-top: 12px;
+   }
 
-    // Función callback para recargar los datos después de editar
-    const handleEditSuccess = () => {
-        // Obtener el ID de la oportunidad desde los parámetros de URL
-        const oportuinidadId = getQueryParam("data2");
+   .opportunity-view-action-buttons .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      min-height: 42px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 700;
+      box-shadow: none;
+   }
 
-        // Recargar los detalles de la oportunidad
-        if (oportuinidadId && oportuinidadId > 0) {
-            fetchOportunidadDetails(oportuinidadId);
-            fetchOpportunityTraceabilityData(oportuinidadId);
-        }
-    };
+   .opportunity-view-meta-grid {
+      display: grid;
+      gap: 10px;
+      margin-top: 14px;
+   }
 
-    return (
-        <>
-            {/* Sticky Notes Container */}
-            <div style={{ position: 'relative', zIndex: 999 }}>
-                <SticNotesContainer
-                    idinternoLead={getQueryParam("data")}
-                    transactionType="opportunity"
-                    transactionId={getQueryParam("data2")}
-                    sourceUrl={window.location.href}
-                />
-            </div>
+   .opportunity-view-meta-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 11px 13px;
+      border: 1px solid #e5e7eb;
+      border-radius: 12px;
+      background: #fbfbfc;
+   }
 
-            <div className="bg-dark card">
-                <div className="card-body">
-                    <div className="d-flex align-items-center">
-                        <div className="flex-grow-1 me-3">
-                            <h3 className="text-white">Vista general de la oportunidad </h3>
-                            <p className="text-white text-opacity-75 text-opa mb-0">#{OportunidadDetails?.tranid_oport || ""}</p>
-                        </div>
-                        <div className="flex-shrink-0">
-                            <img
-                                alt="img"
-                                loading="lazy"
-                                width="92"
-                                height="90"
-                                decoding="async"
-                                data-nimg="1"
-                                className="img-fluid wid-80"
-                                srcSet=""
-                                src="https://light-able-react-light.vercel.app/_next/image?url=%2F_next%2Fstatic%2Fmedia%2Fimg-accout-alert.a2294f08.png&w=96&q=75"
-                                style={{ color: "transparent" }}
-                            />
-                        </div>
-                    </div>
-                </div>
-            </div>{" "}
-            <div className="row">
-                <div className="col-xxl-3 col-lg-5">
-                    <div className="overflow-hidden card">
-                        <div className="position-relative card-body">
-                            <div className="text-center mt-3">
-                                <div className="chat-avtar d-inline-flex mx-auto">
-                                    <img
-                                        alt="User image"
-                                        loading="lazy"
-                                        width="100"
-                                        height="100"
-                                        decoding="async"
-                                        data-nimg="1"
-                                        className="rounded-circle img-fluid wid-90 img-thumbnail"
-                                        src="/opt.png"
-                                        style={{ color: "transparent" }}
-                                    />
-                                    <i className="chat-badge bg-success me-2 mb-2"></i>
-                                </div>
-                                <h5 className="mb-0">#{OportunidadDetails?.tranid_oport || ""}</h5>
-                                <p className="text-muted text-sm">{leadDetails.nombre_lead}</p>
-                                <ul className="list-inline mx-auto my-4">
-                                    <blockquote className="blockquote blockquote-reverse font-size-16 mb-0">
-                                        {Object.keys(leadDetails).length > 0 && <ButtonActions leadData={leadDetails} className="mb-4" />}
-                                    </blockquote>
-                                    <li className="list-inline-item mb-2">
-                                        {" "}
-                                        {/* Espacio entre botones */}
-                                        <button className="btn btn-sm btn-dark" onClick={handleOpenModal}>
-                                            <i className="ti ti-edit-circle f-24"></i> Editar Oportunidad
-                                        </button>
-                                    </li>
-                                    <li className="list-inline-item mb-2">
-                                        {" "}
-                                        {/* Espacio entre botones */}
-                                        {OportunidadDetails?.chek_oport === 0 ? (
-                                            <button
-                                                className="btn btn-sm btn-success"
-                                                onClick={() => handleProbabilidadChange(1, OportunidadDetails?.id_oportunidad_oport)}
-                                            >
-                                                <i className="ti ti-check f-24"></i> Oportunidades + probable
-                                            </button>
-                                        ) : (
-                                            <button
-                                                className="btn btn-sm btn-danger"
-                                                onClick={() => handleProbabilidadChange(0, OportunidadDetails?.id_oportunidad_oport)}
-                                            >
-                                                <i className="ti ti-x f-24"></i> Oportunidades - probable
-                                            </button>
-                                        )}
-                                    </li>
-                                    <li className="list-inline-item mb-2">
-                                        {" "}
-                                        {/* Espacio entre botones */}
-                                        {OportunidadDetails?.estatus_oport === 1 ? (
-                                            <button
-                                                className="btn btn-sm btn-danger"
-                                                onClick={() => handleStatusChange(0, OportunidadDetails?.id_oportunidad_oport)}
-                                            >
-                                                <i className="ti ti-x f-24"></i> Inactivar Oportunidad
-                                            </button>
-                                        ) : (
-                                            <button
-                                                className="btn btn-sm btn-success"
-                                                onClick={() => handleStatusChange(1, OportunidadDetails?.id_oportunidad_oport)}
-                                            >
-                                                <i className="ti ti-edit-circle f-24"></i> Activar Oportunidad
-                                            </button>
-                                        )}
-                                    </li>
-                                </ul>
-                            </div>
-                        </div>
-                        <div
-                            className="flex-column list-group list-group-flush account-pills mb-0 nav nav-pills"
-                            id="user-set-tab"
-                            aria-orientation="vertical"
-                            role="tablist"
-                        >
-                            <a
-                                onClick={() => handleTabClick("infoPot")}
-                                role="tab"
-                                className={`list-group-item list-group-item-action nav-link ${activeTab === "infoPot" ? "active" : ""}`}
-                            >
-                                <span className="f-w-500">
-                                    <i className="ph-duotone ph-user-circle m-r-10"></i>Informacion Oportunidad
-                                </span>
-                            </a>
-                            <a
-                                onClick={() => handleTabClick("Expediente")}
-                                role="tab"
-                                className={`list-group-item list-group-item-action nav-link ${activeTab === "Expediente" ? "active" : ""}`}
-                            >
-                                <span className="f-w-500">
-                                    <i className="ph-duotone ph-calendar m-r-10"></i> Expediente de unidad
-                                </span>
-                            </a>
-                            <a
-                                onClick={() => handleTabClick("Estimaciones")}
-                                role="tab"
-                                className={`list-group-item list-group-item-action nav-link ${activeTab === "Estimaciones" ? "active" : ""}`}
-                            >
-                                <span className="f-w-500">
-                                    <i className="ph-duotone ph-notebook m-r-10"></i> Estimaciones
-                                </span>
-                            </a>
-                        </div>
-                    </div>
-                    <div className="card">
-                        <div className="card-header">
-                            <h5>Informacion Basica</h5>
-                        </div>
-                        <div className="position-relative card-body">
-                            <div className="d-inline-flex align-items-center justify-content-between w-100 mb-3">
-                                <p className="mb-0 text-muted me-1">Codigo Oportunidad</p>
-                                <p className="mb-0">#{OportunidadDetails?.tranid_oport || "0"}</p>
-                            </div>
-                            <div className="d-inline-flex align-items-center justify-content-between w-100 mb-3">
-                                <p className="mb-0 text-muted me-1">Cliente Relacionado</p>
-                                <p className="mb-0">{leadDetails.nombre_lead}</p>
-                            </div>
-                            <div className="d-inline-flex align-items-center justify-content-between w-100 mb-3">
-                                <p className="mb-0 text-muted me-1">Estado Oportunidad</p>
-                                <p
-                                    className="mb-0"
-                                    style={{
-                                        color: OportunidadDetails?.estatus_oport === 1 ? "green" : "red",
-                                    }}
-                                >
-                                    {OportunidadDetails?.estatus_oport === 1 ? "Activo" : "Inactivo"}
-                                </p>
-                            </div>
-                            <div className="d-inline-flex align-items-center justify-content-between w-100">
-                                <p className="mb-0 text-muted me-1">Metodo de Pago</p>
-                                <p className="mb-0">{OportunidadDetails?.nombre_motivo_pago}</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div className="col-xxl-9 col-lg-7">
-                    <div className="tab-content" id="user-set-tabContent">
-                        {activeTab === "infoPot" && (
-                            <div
-                                id="react-aria8348725315-:r6:-tabpane-infoPot"
-                                role="tabpanel"
-                                aria-labelledby="react-aria8348725315-:r6:-tab-infoPot"
-                                className="fade fade tab-pane active show"
-                            >
-                                <InformacionBasicaOportunidad oportuinidadId={OportunidadDetails} cliente={leadDetails.nombre_lead} />
-                                <TrazabilidadOportunidad traceability={traceability} />
-                            </div>
-                        )}
-                        {activeTab === "Expediente" && (
-                            <div
-                                id="react-aria8348725315-:r6:-tabpane-Expediente"
-                                role="tabpanel"
-                                aria-labelledby="react-aria8348725315-:r6:-tab-Expediente"
-                                className="fade fade tab-pane active show"
-                            >
-                                <InformacionBasicaExpedienteUnidad idExpediente={OportunidadDetails.exp_custbody38_oport} />
-                            </div>
-                        )}
-                        {activeTab === "Estimaciones" && (
-                            <div
-                                id="react-aria8348725315-:r6:-tabpane-Estimaciones"
-                                role="tabpanel"
-                                aria-labelledby="react-aria8348725315-:r6:-tab-Estimaciones"
-                                className="fade fade tab-pane active show"
-                            >
-                                <EstimacionesOportunidad OportunidadDetails={OportunidadDetails} cliente={leadDetails} />
-                            </div>
-                        )}
-                    </div>
-                </div>
-            </div>
-            <ModalEditarOportunidad
-                open={isModalOpen}
-                onClose={handleCloseModal}
-                OportunidadDetails={OportunidadDetails}
-                onSuccess={handleEditSuccess}
-            />
-        </>
-    );
+   .opportunity-view-meta-label {
+      margin: 0;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      color: #6b7280;
+   }
+
+   .opportunity-view-meta-value {
+      margin: 0;
+      font-size: 13px;
+      font-weight: 600;
+      color: #111827;
+      text-align: right;
+   }
+
+   .opportunity-view-meta-value.is-active {
+      color: #047857;
+   }
+
+   .opportunity-view-meta-value.is-inactive {
+      color: #b91c1c;
+   }
+
+   .opportunity-view-main-card .lead-profile-panel {
+      padding: 14px;
+   }
+
+   .opportunity-view-tablist {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 8px;
+      margin-bottom: 14px;
+   }
+
+   .opportunity-view-tab {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      min-height: 44px;
+      padding: 0 14px;
+      border: 1px solid #d9dde3;
+      border-radius: 12px;
+      background: #ffffff;
+      font-size: 12px;
+      font-weight: 700;
+      color: #334155;
+      transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+   }
+
+   .opportunity-view-tab.is-active {
+      border-color: #111827;
+      background: #111827;
+      color: #ffffff;
+      box-shadow: 0 12px 26px rgba(15, 23, 42, 0.12);
+   }
+
+   .opportunity-view-main-card .card {
+      border: 1px solid #e5e7eb;
+      border-radius: 16px;
+      box-shadow: none;
+      overflow: hidden;
+   }
+
+   .opportunity-view-main-card .card + .card {
+      margin-top: 12px;
+   }
+
+   .opportunity-view-main-card .card-header {
+      padding: 13px 16px;
+      border-bottom: 1px solid #edf0f2;
+      background: linear-gradient(180deg, #ffffff 0%, #fbfbfc 100%);
+   }
+
+   .opportunity-view-main-card .card-header h5 {
+      margin: 0;
+      font-size: 14px;
+      font-weight: 700;
+      color: #111827;
+   }
+
+   .opportunity-view-main-card .card-body {
+      padding: 14px 16px;
+   }
+
+   .opportunity-view-main-card .list-group-item {
+      border-color: #edf0f2;
+   }
+
+   .opportunity-view-main-card .text-muted,
+   .opportunity-view-main-card p.text-muted {
+      color: #6b7280 !important;
+   }
+
+   .opportunity-view-main-card table thead th {
+      background: #f8fafc;
+      color: #6b7280;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+   }
+
+   .opportunity-view-main-card table tbody td {
+      vertical-align: middle;
+   }
+
+   @media (max-width: 1199px) {
+      .opportunity-view-layout {
+         grid-template-columns: 1fr;
+      }
+   }
+
+   @media (max-width: 767px) {
+      .opportunity-view-hero-body {
+         flex-direction: column;
+         align-items: flex-start;
+      }
+
+      .opportunity-view-tablist {
+         grid-template-columns: 1fr;
+      }
+   }
+`;
+
+const getDisplayText = (value) => {
+   if (value === null || value === undefined || value === "" || value === "null") {
+      return "N/A";
+   }
+
+   return value;
 };
 
+const VIEW_TABS = [
+   {
+      key: "infoPot",
+      icon: "ph-duotone ph-briefcase",
+      label: "Información oportunidad",
+   },
+   {
+      key: "Expediente",
+      icon: "ph-duotone ph-buildings",
+      label: "Expediente unidad",
+   },
+   {
+      key: "Estimaciones",
+      icon: "ph-duotone ph-file-text",
+      label: "Estimaciones",
+   },
+];
+
+export const View_oportuinidad_ver = () => {
+   const dispatch = useDispatch();
+   const previousUrlAtEntryRef = useRef(localStorage.getItem("previousUrl"));
+   const [activeTab, setActiveTab] = useState("infoPot");
+   const [leadDetails, setLeadDetails] = useState({});
+   const [oportunidadDetails, setOportunidadDetails] = useState({});
+   const [traceability, setTraceability] = useState({
+      current: null,
+      history: [],
+      traceabilityEnabled: false,
+   });
+   const [isModalOpen, setIsModalOpen] = useState(false);
+
+   useEffect(() => {
+      const previousUrlAtEntry = previousUrlAtEntryRef.current;
+
+      if (!previousUrlAtEntry) {
+         return;
+      }
+
+      const currentPreviousUrl = localStorage.getItem("previousUrl");
+
+      if (currentPreviousUrl !== previousUrlAtEntry) {
+         localStorage.setItem("previousUrl", previousUrlAtEntry);
+      }
+   });
+
+   const getQueryParam = (param) => {
+      const value = new URLSearchParams(window.location.search).get(param);
+
+      if (value && !Number.isNaN(Number(value))) {
+         return Number(value);
+      }
+
+      return value;
+   };
+
+   const fetchLeadDetails = async (idLead) => {
+      try {
+         const leadData = await dispatch(getSpecificLead(idLead));
+         setLeadDetails(leadData);
+      } catch (error) {
+         console.error("Error al obtener los detalles del lead:", error);
+      }
+   };
+
+   const fetchOportunidadDetails = async (idOportunidad) => {
+      try {
+         const fetchedOportunidad = await dispatch(
+            getSpecificOportunidad(idOportunidad)
+         );
+         setOportunidadDetails(fetchedOportunidad);
+      } catch (error) {
+         console.error("Error al obtener los detalles de la oportunidad:", error);
+      }
+   };
+
+   const fetchOpportunityTraceabilityData = async (idOportunidad) => {
+      try {
+         const traceabilityData = await dispatch(
+            fetchOpportunityTraceability(idOportunidad)
+         );
+         setTraceability(traceabilityData);
+      } catch (error) {
+         console.error(
+            "Error al obtener la trazabilidad de la oportunidad:",
+            error
+         );
+      }
+   };
+
+   useEffect(() => {
+      const leadId = getQueryParam("data");
+      const oportunidadId = getQueryParam("data2");
+
+      if (leadId && leadId > 0) {
+         fetchLeadDetails(leadId);
+         fetchOportunidadDetails(oportunidadId);
+         fetchOpportunityTraceabilityData(oportunidadId);
+      }
+   }, []);
+
+   const handleStatusChange = (estado, idOportunidad) => {
+      Swal.fire({
+         title: "¿Deseas cambiar el estado de la oportunidad?",
+         text: "Esta acción actualizará el estado de esta oportunidad.",
+         icon: "warning",
+         showCancelButton: true,
+         confirmButtonText: "Sí, cambiar",
+         cancelButtonText: "Cancelar",
+      }).then((result) => {
+         if (result.isConfirmed) {
+            const motivoInactivacion = estado === 0 ? "MANUAL" : null;
+
+            dispatch(
+               updateOpportunityStatus(
+                  estado,
+                  idOportunidad,
+                  motivoInactivacion
+               )
+            );
+
+            Swal.fire({
+               title: "¡Estado actualizado!",
+               text: "El estado de la oportunidad ha sido cambiado con éxito.",
+               icon: "success",
+               timer: 1500,
+               showConfirmButton: false,
+            }).then(() => {
+               fetchOportunidadDetails(idOportunidad);
+               fetchOpportunityTraceabilityData(idOportunidad);
+            });
+         }
+      });
+   };
+
+   const handleProbabilidadChange = (probabilidad, idOportunidad) => {
+      Swal.fire({
+         title: "¿Deseas cambiar la probabilidad?",
+         text: "Esta acción actualizará la probabilidad de esta oportunidad.",
+         icon: "warning",
+         showCancelButton: true,
+         confirmButtonText: "Sí, cambiar",
+         cancelButtonText: "Cancelar",
+      }).then((result) => {
+         if (result.isConfirmed) {
+            dispatch(updateOpportunityProbability(probabilidad, idOportunidad));
+
+            Swal.fire({
+               title: "¡Probabilidad actualizada!",
+               text: "La probabilidad de la oportunidad ha sido cambiada.",
+               icon: "success",
+               timer: 1500,
+               showConfirmButton: false,
+            }).then(() => {
+               fetchOportunidadDetails(idOportunidad);
+               fetchOpportunityTraceabilityData(idOportunidad);
+            });
+         }
+      });
+   };
+
+   const handleOpenModal = () => {
+      setIsModalOpen(true);
+   };
+
+   const handleCloseModal = () => {
+      setIsModalOpen(false);
+   };
+
+   const handleEditSuccess = () => {
+      const oportunidadId = getQueryParam("data2");
+
+      if (oportunidadId && oportunidadId > 0) {
+         fetchOportunidadDetails(oportunidadId);
+         fetchOpportunityTraceabilityData(oportunidadId);
+      }
+   };
+
+   const leadName = getDisplayText(leadDetails?.nombre_lead);
+   const opportunityCode = getDisplayText(oportunidadDetails?.tranid_oport || "");
+   const statusIsActive = oportunidadDetails?.estatus_oport === 1;
+   const probabilityIsPositive = oportunidadDetails?.chek_oport === 0;
+
+   const sidebarSummary = [
+      {
+         label: "Código oportunidad",
+         value: `#${opportunityCode}`,
+      },
+      {
+         label: "Cliente relacionado",
+         value: leadName,
+      },
+      {
+         label: "Estado oportunidad",
+         value: statusIsActive ? "Activa" : "Inactiva",
+         stateClass: statusIsActive ? "is-active" : "is-inactive",
+      },
+      {
+         label: "Método de pago",
+         value: getDisplayText(oportunidadDetails?.nombre_motivo_pago),
+      },
+   ];
+
+   return (
+      <>
+         <style>{OPPORTUNITY_VIEW_STYLES}</style>
+
+         <div className="opportunity-view-sticky-notes">
+            <SticNotesContainer
+               idinternoLead={getQueryParam("data")}
+               transactionType="opportunity"
+               transactionId={getQueryParam("data2")}
+               sourceUrl={window.location.href}
+            />
+         </div>
+
+         <div className="lead-profile-shell opportunity-view-shell">
+            <div className="opportunity-view-hero-card">
+               <div className="opportunity-view-hero-body">
+                  <div className="opportunity-view-hero-copy">
+                     <span className="opportunity-view-hero-kicker">
+                        Gestión comercial
+                     </span>
+                     <h1 className="opportunity-view-hero-title">
+                        Vista general de la oportunidad
+                     </h1>
+                     <p>
+                        Revise el estado comercial, expediente, estimaciones y
+                        trazabilidad de la oportunidad desde una vista
+                        consolidada y más ejecutiva.
+                     </p>
+                  </div>
+
+                  <div className="opportunity-view-hero-figure">
+                     <img src="/opt.png" alt="Oportunidad" />
+                  </div>
+               </div>
+            </div>
+
+            <div className="opportunity-view-layout">
+               <aside className="opportunity-view-sidebar-card">
+                  <div className="opportunity-view-sidebar-body">
+                     <div className="opportunity-view-sidebar-top">
+                        <div className="opportunity-view-sidebar-avatar">
+                           <img src="/opt.png" alt="Oportunidad" />
+                        </div>
+
+                        <h3 className="opportunity-view-sidebar-title">
+                           #{opportunityCode}
+                        </h3>
+                        <p className="opportunity-view-sidebar-copy">
+                           Cliente asociado: {leadName}
+                        </p>
+                     </div>
+
+                     <div className="opportunity-view-lead-actions">
+                        <div className="lead-profile-section-head">
+                           <span className="lead-profile-kicker">
+                              Acciones relacionadas
+                           </span>
+                           <h5 className="lead-profile-section-title">
+                              Gestión del lead vinculado
+                           </h5>
+                           <p className="lead-profile-section-copy">
+                              Acceda al perfil y a las acciones comerciales del
+                              lead asociado a esta oportunidad.
+                           </p>
+                        </div>
+
+                        {Object.keys(leadDetails).length > 0 ? (
+                           <ButtonActions leadData={leadDetails} className="mb-0" />
+                        ) : null}
+                     </div>
+
+                     <div className="opportunity-view-action-buttons">
+                        <button
+                           type="button"
+                           className="btn btn-dark"
+                           onClick={handleOpenModal}
+                        >
+                           <i className="ti ti-edit-circle f-24"></i>
+                           Editar oportunidad
+                        </button>
+
+                        {probabilityIsPositive ? (
+                           <button
+                              type="button"
+                              className="btn btn-success"
+                              onClick={() =>
+                                 handleProbabilidadChange(
+                                    1,
+                                    oportunidadDetails?.id_oportunidad_oport
+                                 )
+                              }
+                           >
+                              <i className="ti ti-check f-24"></i>
+                              Oportunidad + probable
+                           </button>
+                        ) : (
+                           <button
+                              type="button"
+                              className="btn btn-danger"
+                              onClick={() =>
+                                 handleProbabilidadChange(
+                                    0,
+                                    oportunidadDetails?.id_oportunidad_oport
+                                 )
+                              }
+                           >
+                              <i className="ti ti-x f-24"></i>
+                              Oportunidad - probable
+                           </button>
+                        )}
+
+                        {statusIsActive ? (
+                           <button
+                              type="button"
+                              className="btn btn-danger"
+                              onClick={() =>
+                                 handleStatusChange(
+                                    0,
+                                    oportunidadDetails?.id_oportunidad_oport
+                                 )
+                              }
+                           >
+                              <i className="ti ti-x f-24"></i>
+                              Inactivar oportunidad
+                           </button>
+                        ) : (
+                           <button
+                              type="button"
+                              className="btn btn-success"
+                              onClick={() =>
+                                 handleStatusChange(
+                                    1,
+                                    oportunidadDetails?.id_oportunidad_oport
+                                 )
+                              }
+                           >
+                              <i className="ti ti-edit-circle f-24"></i>
+                              Activar oportunidad
+                           </button>
+                        )}
+                     </div>
+
+                     <div className="opportunity-view-meta-grid">
+                        {sidebarSummary.map((item) => (
+                           <div
+                              className="opportunity-view-meta-item"
+                              key={item.label}
+                           >
+                              <p className="opportunity-view-meta-label">
+                                 {item.label}
+                              </p>
+                              <p
+                                 className={`opportunity-view-meta-value ${
+                                    item.stateClass || ""
+                                 }`.trim()}
+                              >
+                                 {item.value}
+                              </p>
+                           </div>
+                        ))}
+                     </div>
+                  </div>
+               </aside>
+
+               <section className="opportunity-view-main-card">
+                  <div
+                     className="lead-profile-panel"
+                     style={PROFILE_PANEL_STYLES}
+                  >
+                     <div className="lead-profile-hero">
+                        <div>
+                           <span className="lead-profile-eyebrow">
+                              Vista consolidada
+                           </span>
+                           <h2 className="lead-profile-page-title">
+                              Información detallada de la oportunidad
+                           </h2>
+                           <p className="lead-profile-page-copy">
+                              Consulte la información operativa, financiera y de
+                              expediente usando pestañas más claras y una
+                              presentación alineada al resto del CRM.
+                           </p>
+                        </div>
+                     </div>
+
+                     <div className="opportunity-view-tablist" role="tablist">
+                        {VIEW_TABS.map((tab) => (
+                           <button
+                              key={tab.key}
+                              type="button"
+                              className={`opportunity-view-tab ${
+                                 activeTab === tab.key ? "is-active" : ""
+                              }`}
+                              onClick={() => setActiveTab(tab.key)}
+                           >
+                              <i className={tab.icon}></i>
+                              <span>{tab.label}</span>
+                           </button>
+                        ))}
+                     </div>
+
+                     <div className="tab-content">
+                        {activeTab === "infoPot" ? (
+                           <>
+                              <InformacionBasicaOportunidad
+                                 oportuinidadId={oportunidadDetails}
+                                 cliente={leadName}
+                              />
+                              <TrazabilidadOportunidad
+                                 traceability={traceability}
+                              />
+                           </>
+                        ) : null}
+
+                        {activeTab === "Expediente" ? (
+                           <InformacionBasicaExpedienteUnidad
+                              idExpediente={
+                                 oportunidadDetails.exp_custbody38_oport
+                              }
+                           />
+                        ) : null}
+
+                        {activeTab === "Estimaciones" ? (
+                           <EstimacionesOportunidad
+                              OportunidadDetails={oportunidadDetails}
+                              cliente={leadDetails}
+                           />
+                        ) : null}
+                     </div>
+                  </div>
+               </section>
+            </div>
+         </div>
+
+         <ModalEditarOportunidad
+            open={isModalOpen}
+            onClose={handleCloseModal}
+            OportunidadDetails={oportunidadDetails}
+            onSuccess={handleEditSuccess}
+         />
+      </>
+   );
+};
