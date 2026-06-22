@@ -1,204 +1,384 @@
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { useDispatch } from "react-redux";
-import { createNote, createNoteLoss, getSpecificLead, getoptionLoss } from "../../../../store/leads/thunksLeads";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
+import Swal from "sweetalert2";
+import {
+   createNoteLoss,
+   getSpecificLead,
+   getoptionLoss,
+} from "../../../../store/leads/thunksLeads";
 import { ButtonActions } from "../../../components/buttonAccions/buttonAccions";
-import Swal from "sweetalert2"; // Asegúrate de tener SweetAlert instalado
+import {
+   PROFILE_PANEL_STYLES,
+   PROFILE_THEME_STYLES,
+} from "../perfil/profileTheme";
+
+const LOSS_VIEW_STYLES = `
+${PROFILE_THEME_STYLES}
+
+.lead-loss-shell .lead-profile-panel {
+   padding: 18px;
+}
+
+.lead-loss-toolbar {
+   display: flex;
+   justify-content: flex-end;
+   margin-bottom: 12px;
+}
+
+.lead-loss-loading,
+.lead-loss-empty {
+   display: flex;
+   align-items: center;
+   justify-content: center;
+   min-height: 180px;
+   padding: 24px;
+   border: 1px dashed #d1d5db;
+   border-radius: 14px;
+   text-align: center;
+   font-size: 12px;
+   color: #6b7280;
+   background: linear-gradient(180deg, #ffffff 0%, #fbfbfc 100%);
+}
+
+.lead-loss-alert {
+   display: grid;
+   gap: 6px;
+   margin: 0 0 12px;
+   padding: 14px 16px;
+   border: 1px solid #e5e7eb;
+   border-radius: 12px;
+   background: #fbfbfc;
+}
+
+.lead-loss-alert strong {
+   font-size: 11px;
+   letter-spacing: 0.06em;
+   text-transform: uppercase;
+   color: #111827;
+}
+
+.lead-loss-alert p {
+   margin: 0;
+   font-size: 12px;
+   line-height: 1.55;
+   color: #4b5563;
+}
+
+.lead-loss-form {
+   display: grid;
+   gap: 12px;
+}
+
+.lead-loss-field label {
+   display: inline-block;
+   margin-bottom: 6px;
+   font-size: 10px;
+   font-weight: 700;
+   letter-spacing: 0.04em;
+   text-transform: uppercase;
+   color: #6b7280;
+}
+
+.lead-loss-field .form-select,
+.lead-loss-field .form-control {
+   border: 1px solid #d1d5db;
+   border-radius: 12px;
+   min-height: 44px;
+   padding: 10px 12px;
+   font-size: 13px;
+   box-shadow: none;
+}
+
+.lead-loss-field .form-select:focus,
+.lead-loss-field .form-control:focus {
+   border-color: #111827;
+   box-shadow: 0 0 0 4px rgba(17, 24, 39, 0.08);
+}
+
+.lead-loss-field textarea.form-control {
+   min-height: 160px;
+   resize: vertical;
+}
+
+.lead-loss-field .invalid-feedback {
+   display: block;
+   margin-top: 6px;
+   font-size: 11px;
+}
+
+.lead-loss-submit {
+   display: flex;
+   justify-content: flex-end;
+   margin-top: 4px;
+}
+
+.lead-loss-submit .btn {
+   min-width: 180px;
+   min-height: 44px;
+   border-radius: 12px;
+   padding: 0 18px;
+   font-size: 12px;
+   font-weight: 700;
+   letter-spacing: 0.02em;
+}
+`;
 
 export const View_loss_lead = () => {
-    const dispatch = useDispatch();
-    const [leadData, setLeadData] = useState(null); // Almacena los datos del lead
-    const [leadName, setLeadName] = useState(null); // Almacena el nombre del lead
-    const [note, setNote] = useState(""); // Almacena el valor del textarea
-    const [isLoading, setIsLoading] = useState(true); // Estado para controlar el indicador de carga
-    const [isTextareaError, setIsTextareaError] = useState(false); // Para el borde rojo
-    const [isSelectError, setIsSelectError] = useState(false); // Para el borde rojo del select
-    const location = useLocation(); // Hook para obtener la URL actual y sus parámetros
-    const [valueStatus, setValueStatus] = useState(null);
-    const [leadId, setLeadId] = useState(null);
-    const [lossOptions, setLossOptions] = useState([]); // Lista de opciones de pérdida
-    const [selectedLossOption, setSelectedLossOption] = useState(""); // Opción seleccionada
+   const dispatch = useDispatch();
+   const navigate = useNavigate();
+   const location = useLocation();
+   const [leadData, setLeadData] = useState(null);
+   const [leadName, setLeadName] = useState("Cliente");
+   const [note, setNote] = useState("");
+   const [isLoading, setIsLoading] = useState(true);
+   const [isTextareaError, setIsTextareaError] = useState(false);
+   const [isSelectError, setIsSelectError] = useState(false);
+   const [leadId, setLeadId] = useState(null);
+   const [lossOptions, setLossOptions] = useState([]);
+   const [selectedLossOption, setSelectedLossOption] = useState("");
 
-    /**
-     * Extrae el parámetro 'id' de la URL.
-     * useCallback asegura que la función no se recree innecesariamente en cada renderizado.
-     */
-    const getIdFromUrl = useCallback(() => {
-        const params = new URLSearchParams(location.search);
-        return params.get("id");
-    }, [location.search]);
+   const getIdFromUrl = useCallback(() => {
+      const params = new URLSearchParams(location.search);
+      return params.get("id");
+   }, [location.search]);
 
-    /**
-     * Función asíncrona para obtener los datos de un lead específico basado en su id.
-     * Actualiza el estado con los datos recibidos.
-     * @param {string} id - El id del lead a buscar.
-     */
-    const fetchLeadData = async (id) => {
-        setIsLoading(true); // Mostrar el indicador de carga mientras se obtienen los datos
-        const optionsLoss = await dispatch(getoptionLoss(3)); // Obtener las opciones de pérdida
-        setLossOptions(optionsLoss); // Almacenar las opciones de pérdida
-        const result = await dispatch(getSpecificLead(id)); // Llamar al thunk para obtener los datos del lead
+   const fetchLeadData = useCallback(
+      async (id) => {
+         setIsLoading(true);
 
-        setLeadName(result.nombre_lead); // Almacenar el nombre del lead
-        setValueStatus(result.segimineto_lead);
-        setLeadId(result.idinterno_lead);
-        setLeadData(result); // Almacenar los datos completos del lead
-        setIsLoading(false); // Ocultar el indicador de carga una vez que los datos están disponibles
-    };
+         try {
+            const [leadResult, lossResult] = await Promise.all([
+               dispatch(getSpecificLead(id)),
+               dispatch(getoptionLoss(3)),
+            ]);
 
-    /**
-     * Maneja el cambio en el textarea.
-     */
-    const handleNoteChange = (event) => {
-        setNote(event.target.value);
-        if (event.target.value.trim() !== "") {
-            setIsTextareaError(false); // Si hay texto, quitar el borde rojo
-        }
-    };
+            setLeadName(leadResult?.nombre_lead || "Cliente");
+            setLeadId(leadResult?.idinterno_lead || null);
+            setLeadData(leadResult || null);
+            setLossOptions(Array.isArray(lossResult) ? lossResult : []);
+         } catch (error) {
+            console.error("Error al cargar la vista de lead perdido:", error);
+            setLeadData(null);
+            setLossOptions([]);
+         } finally {
+            setIsLoading(false);
+         }
+      },
+      [dispatch]
+   );
 
-    /**
-     * Maneja el cambio en el select de opciones de pérdida.
-     */
-    const handleLossOptionChange = (event) => {
-        const selectedOption = lossOptions.find((option) => option.id_caida === parseInt(event.target.value));
-        setSelectedLossOption(event.target.value);
-        if (selectedOption) {
-            setIsSelectError(false); // Quitar el borde rojo si se selecciona una opción válida
-        }
-    };
+   const handleNoteChange = (event) => {
+      const newValue = event.target.value;
+      setNote(newValue);
 
-    /**
-     * Función para manejar el clic en "Dar como perdido".
-     * Valida si el textarea y el select están vacíos y muestra el alert.
-     */
-    const handleGenerateNote = () => {
+      if (newValue.trim() !== "") {
+         setIsTextareaError(false);
+      }
+   };
 
-        if (note.trim() === "" || selectedLossOption === "") {
+   const handleLossOptionChange = (event) => {
+      const newValue = event.target.value;
+      setSelectedLossOption(newValue);
+
+      if (newValue !== "") {
+         setIsSelectError(false);
+      }
+   };
+
+   const handleGenerateNote = () => {
+      const hasNote = note.trim() !== "";
+      const hasLossReason = selectedLossOption !== "";
+
+      if (!hasNote || !hasLossReason) {
+         setIsTextareaError(!hasNote);
+         setIsSelectError(!hasLossReason);
+
+         Swal.fire({
+            title: "Campos incompletos",
+            text: "Debe completar el motivo de pérdida y la nota antes de continuar.",
+            icon: "warning",
+            confirmButtonText: "Aceptar",
+         });
+         return;
+      }
+
+      Swal.fire({
+         title: "¿Está seguro que desea marcar este lead como perdido?",
+         text: "Esta acción actualizará el registro comercial y marcará sus transacciones relacionadas como perdidas.",
+         icon: "warning",
+         showCancelButton: true,
+         confirmButtonText: "Sí, marcar como perdido",
+         cancelButtonText: "Cancelar",
+      }).then(async (result) => {
+         if (!result.isConfirmed) {
+            return;
+         }
+
+         try {
+            await dispatch(createNoteLoss(note, leadId, selectedLossOption));
+
             Swal.fire({
-                title: "Campos incompletos", // Título del SweetAlert
-                text: "Debe llenar todos los campos antes de continuar.", // Mensaje de advertencia
-                icon: "warning",
-                confirmButtonText: "Aceptar",
+               title: "Lead marcado como perdido",
+               text: "La información fue registrada correctamente.",
+               icon: "question",
+               iconHtml: "✔️",
+               width: "40em",
+               padding: "0 0 1.2em",
+               showDenyButton: true,
+               showCancelButton: true,
+               confirmButtonText: "Volver a la vista anterior",
+               denyButtonText: "Ir al perfil del cliente",
+            }).then((response) => {
+               if (response.isConfirmed) {
+                  navigate(-1);
+               } else if (response.isDenied) {
+                  navigate(`/leads/perfil?data=${leadId}`);
+               } else {
+                  window.location.reload();
+               }
             });
-            if (note.trim() === "") setIsTextareaError(true);
-            if (selectedLossOption === "") setIsSelectError(true);
-        } else {
-            // Muestra el alert de confirmación
+         } catch (error) {
+            console.error("Error al marcar el lead como perdido:", error);
             Swal.fire({
-                title: "¿Está seguro que quiere dar como perdido a este cliente?", // Nuevo mensaje de confirmación
-                text: "¿Deseas generar la nota?",
-                icon: "warning",
-                showCancelButton: true,
-                confirmButtonText: "Sí, dar como perdido",
-                cancelButtonText: "Cancelar",
-            }).then(async (result) => {
-                if (result.isConfirmed) {
-                     try {
-                         // Llamar a la función para crear el evento con los datos del formulario
-                         await dispatch(createNoteLoss(note, leadId, selectedLossOption));
-
-                         // Mostrar mensaje de éxito
-                         Swal.fire({
-                             title: "¡Cliente Perdido!",
-                             text: "¿Qué desea hacer a continuación?",
-                             icon: "question",
-                             iconHtml: "✔️",
-                             width: "40em",
-                             padding: "0 0 1.20em",
-                             showDenyButton: true,
-                             showCancelButton: true,
-                             confirmButtonText: "Volver a la vista anterior",
-                             denyButtonText: "Ir al perfil del cliente",
-                         }).then((result) => {
-                             if (result.isConfirmed) {
-                                 // Vuelve a la vista anterior en la navegación.
-                                 history.go(-1);
-                             } else if (result.isDenied) {
-                                 // Redirige a la página de perfil del cliente.
-                                 window.location.href = "leads/perfil?data=" + leadId; // Reemplazar `id_le` por `leadId` si corresponde
-                             } else {
-                                 // Recarga la página actual.
-                                 window.location.reload();
-                             }
-                         });
-                     } catch (error) {
-                         console.error("Error al crear el evento:", error);
-                         Swal.fire({
-                             title: "Error",
-                             text: "No se pudo crear el evento. Inténtelo nuevamente.",
-                             icon: "error",
-                             confirmButtonText: "Aceptar",
-                         });
-                     }
-                }
+               title: "Error",
+               text: "No se pudo completar la acción. Inténtelo nuevamente.",
+               icon: "error",
+               confirmButtonText: "Aceptar",
             });
-        }
-    };
+         }
+      });
+   };
 
-    /**
-     * Hook de efecto que se ejecuta al montar el componente y cuando el parámetro 'id' cambia.
-     * Obtiene el id de la URL y carga los datos correspondientes.
-     */
-    useEffect(() => {
-        const id = getIdFromUrl(); // Obtener el id de la URL
-        if (id) {
-            fetchLeadData(id); // Obtener los datos del lead si el id existe
-        }
-    }, [getIdFromUrl]); // El efecto depende del id extraído de la URL
+   useEffect(() => {
+      const id = getIdFromUrl();
 
-    return (
-        <div className="card" style={{ width: "100%" }}>
-            <div className="card-header table-card-header">
-                <h5>CREAR UNA NOTA: {leadName}</h5>
+      if (id) {
+         fetchLeadData(id);
+      } else {
+         setIsLoading(false);
+      }
+   }, [fetchLeadData, getIdFromUrl]);
+
+   return (
+      <div className="container-fluid lead-profile-shell lead-loss-shell">
+         <style>{LOSS_VIEW_STYLES}</style>
+
+         <div className="row">
+            <div className="col-12">
+               <div className="card border-0 bg-transparent shadow-none">
+                  <div className="card-body lead-profile-panel" style={PROFILE_PANEL_STYLES}>
+                     <div className="lead-profile-hero">
+                        <div>
+                           <span className="lead-profile-eyebrow">Gestión comercial</span>
+                           <h4 className="card-title lead-profile-page-title">
+                              Marcar lead como perdido
+                           </h4>
+                           <p className="lead-profile-page-copy">
+                              Registre el motivo comercial y el contexto de cierre para
+                              mantener el historial del cliente claro, ordenado y útil para
+                              seguimiento posterior.
+                           </p>
+                        </div>
+                     </div>
+
+                     {isLoading ? (
+                        <div className="lead-loss-loading">
+                           <p>Cargando información del lead...</p>
+                        </div>
+                     ) : (
+                        <>
+                           <div className="lead-loss-toolbar">
+                              <ButtonActions leadData={leadData} />
+                           </div>
+
+                           <section className="lead-profile-section">
+                              <div className="lead-profile-section-head">
+                                 <span className="lead-profile-kicker">Cierre comercial</span>
+                                 <h5 className="lead-profile-section-title">
+                                    Gestión de pérdida para {leadName}
+                                 </h5>
+                                 <p className="lead-profile-section-copy">
+                                    Documente el motivo de pérdida y una nota cualitativa para
+                                    dar contexto al cierre del proceso.
+                                 </p>
+                              </div>
+
+                              <div className="lead-loss-alert">
+                                 <strong>Importante</strong>
+                                 <p>
+                                    Esta acción no se puede deshacer desde esta vista. Además de
+                                    generar la nota, el sistema actualizará el estado del lead y
+                                    de sus transacciones relacionadas.
+                                 </p>
+                              </div>
+
+                              {!leadId ? (
+                                 <div className="lead-loss-empty">
+                                    <p>No fue posible cargar la información del lead.</p>
+                                 </div>
+                              ) : (
+                                 <div className="lead-loss-form">
+                                    <div className="lead-loss-field">
+                                       <label htmlFor="lossReason">Motivo de pérdida</label>
+                                       <select
+                                          id="lossReason"
+                                          className={`form-select ${
+                                             isSelectError ? "is-invalid" : ""
+                                          }`}
+                                          value={selectedLossOption}
+                                          onChange={handleLossOptionChange}
+                                       >
+                                          <option value="">Seleccione un motivo...</option>
+                                          {lossOptions.map((option) => (
+                                             <option
+                                                key={option.id_caida}
+                                                value={option.id_caida}
+                                             >
+                                                {option.nombre_caida}
+                                             </option>
+                                          ))}
+                                       </select>
+                                       {isSelectError ? (
+                                          <div className="invalid-feedback">
+                                             Debe seleccionar un motivo de pérdida.
+                                          </div>
+                                       ) : null}
+                                    </div>
+
+                                    <div className="lead-loss-field">
+                                       <label htmlFor="lossNote">Nota de cierre</label>
+                                       <textarea
+                                          id="lossNote"
+                                          rows="5"
+                                          className={`form-control ${
+                                             isTextareaError ? "is-invalid" : ""
+                                          }`}
+                                          value={note}
+                                          onChange={handleNoteChange}
+                                          placeholder="Describa el contexto de la pérdida, objeciones relevantes, razones identificadas y cualquier información útil para el equipo comercial."
+                                       />
+                                       {isTextareaError ? (
+                                          <div className="invalid-feedback">
+                                             La nota no puede estar vacía.
+                                          </div>
+                                       ) : null}
+                                    </div>
+
+                                    <div className="lead-loss-submit">
+                                       <button className="btn btn-dark" onClick={handleGenerateNote}>
+                                          Dar como perdido
+                                       </button>
+                                    </div>
+                                 </div>
+                              )}
+                           </section>
+                        </>
+                     )}
+                  </div>
+               </div>
             </div>
-
-            {isLoading ? (
-                <div className="preloader">
-                    {/* Indicador de carga mientras se obtienen los datos */}
-                    <p>Cargando datos...</p>
-                </div>
-            ) : (
-                <>
-                    <div className="card-header">
-                        <ButtonActions leadData={leadData} /> {/* Usar el nuevo componente */}
-                    </div>
-                    <div className="card-body">
-                        <p>
-                            <span className="text-danger">*</span> Esta función da como perdido al cliente, toma en cuenta que esta acción no se puede deshacer. Se generará una nota en el perfil del cliente, y todas sus transacciones se marcarán como perdidas.
-                        </p>
-                        <div className="g-4 row">
-                            <label className="form-label">Seleccionar el motivo de pérdida:</label>
-                            <select className={`form-select ${isSelectError ? "is-invalid" : ""}`} value={selectedLossOption} onChange={handleLossOptionChange}>
-                                <option value="" disabled>
-                                    Seleccionar
-                                </option>
-                                {lossOptions.map((option) => (
-                                    <option key={option.id_caida} value={option.id_caida}>
-                                        {option.nombre_caida}
-                                    </option>
-                                ))}
-                            </select>
-                            {isSelectError && <div className="invalid-feedback">Debe seleccionar un motivo de pérdida.</div>}
-                        </div>
-                        <div className="g-4 row">
-                            <label className="form-label" htmlFor="exampleFormControlTextarea1">
-                                Ingresa una nota:
-                            </label>
-                            <textarea
-                                rows="3"
-                                id="exampleFormControlTextarea1"
-                                className={`form-control ${isTextareaError ? "is-invalid" : ""}`} // Agregar borde rojo si hay error
-                                value={note}
-                                onChange={handleNoteChange}
-                            ></textarea>
-                            {isTextareaError && <div className="invalid-feedback">La nota no puede estar vacía.</div>}
-                        </div>
-                    </div>
-                    <button className="btn btn-dark" onClick={handleGenerateNote}>
-                        Dar como perdido
-                    </button>
-                </>
-            )}
-        </div>
-    );
+         </div>
+      </div>
+   );
 };
