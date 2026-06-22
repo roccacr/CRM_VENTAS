@@ -26,12 +26,374 @@ import { PrimeraLinea } from "./PrimeraLinea";
 import { SeleccionPrima } from "./SeleccionPrima";
 import "./style.css";
 
+const ESTIMATION_MODAL_STYLES = `
+  .estimation-create-modal-shell {
+    display: grid;
+    gap: 14px;
+  }
+
+  .estimation-create-modal-content {
+    border: 1px solid #d9dde3;
+    border-radius: 18px;
+    background: #ffffff;
+    box-shadow: 0 18px 40px rgba(15, 23, 42, 0.08);
+    overflow: hidden;
+  }
+
+  .estimation-create-modal-body {
+    padding: 18px;
+    background: linear-gradient(180deg, #ffffff 0%, #fcfcfd 100%);
+  }
+
+  .estimation-create-modal-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 18px 18px 16px;
+    border-bottom: 1px solid #eceff3;
+    background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+  }
+
+  .estimation-create-modal-kicker {
+    display: inline-block;
+    margin-bottom: 4px;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #6b7280;
+  }
+
+  .estimation-create-modal-title {
+    margin: 0 0 5px;
+    font-size: 18px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    color: #111827;
+  }
+
+  .estimation-create-modal-copy {
+    max-width: 660px;
+    margin: 0;
+    font-size: 12px;
+    line-height: 1.5;
+    color: #4b5563;
+  }
+
+  .estimation-create-modal-badge {
+    min-width: 190px;
+    padding: 12px 14px;
+    border: 1px solid #e5e7eb;
+    border-radius: 14px;
+    background: #ffffff;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
+  }
+
+  .estimation-create-modal-badge-label {
+    margin: 0 0 4px;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #6b7280;
+  }
+
+  .estimation-create-modal-badge-value {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 700;
+    color: #111827;
+  }
+
+  .estimation-create-modal-grid {
+    display: grid;
+    grid-template-columns: minmax(230px, 280px) minmax(0, 1fr);
+    gap: 14px;
+    align-items: start;
+  }
+
+  .estimation-create-modal-sidebar,
+  .estimation-create-modal-main {
+    border: 1px solid #e5e7eb;
+    border-radius: 16px;
+    background: #ffffff;
+  }
+
+  .estimation-create-modal-sidebar {
+    padding: 14px;
+    background: linear-gradient(180deg, #ffffff 0%, #fbfbfc 100%);
+  }
+
+  .estimation-create-modal-sidebar-card {
+    padding: 12px;
+    border: 1px solid #eceff3;
+    border-radius: 14px;
+    background: #ffffff;
+  }
+
+  .estimation-create-modal-sidebar-card + .estimation-create-modal-sidebar-card {
+    margin-top: 10px;
+  }
+
+  .estimation-create-modal-sidebar-title {
+    margin: 0 0 4px;
+    font-size: 12px;
+    font-weight: 700;
+    color: #111827;
+  }
+
+  .estimation-create-modal-sidebar-copy {
+    margin: 0;
+    font-size: 11px;
+    line-height: 1.5;
+    color: #6b7280;
+  }
+
+  .estimation-create-modal-hint-list {
+    display: grid;
+    gap: 8px;
+    margin-top: 10px;
+  }
+
+  .estimation-create-modal-hint {
+    padding: 10px 11px;
+    border: 1px solid #eceff3;
+    border-radius: 12px;
+    background: #fbfbfc;
+  }
+
+  .estimation-create-modal-hint-label {
+    margin: 0 0 3px;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: #6b7280;
+  }
+
+  .estimation-create-modal-hint-value {
+    margin: 0;
+    font-size: 12px;
+    font-weight: 600;
+    color: #111827;
+    word-break: break-word;
+  }
+
+  .estimation-create-modal-main {
+    padding: 14px;
+  }
+
+  .estimation-create-modal-section {
+    margin-top: 12px;
+    padding: 14px;
+    border: 1px solid #e5e7eb;
+    border-radius: 14px;
+    background: linear-gradient(180deg, #ffffff 0%, #fbfbfc 100%);
+  }
+
+  .estimation-create-modal-section:first-child {
+    margin-top: 0;
+  }
+
+  .estimation-create-modal-section-head {
+    margin-bottom: 12px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #eceff3;
+  }
+
+  .estimation-create-modal-section-kicker {
+    display: inline-block;
+    margin-bottom: 4px;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #6b7280;
+  }
+
+  .estimation-create-modal-section-title {
+    margin: 0 0 4px;
+    font-size: 14px;
+    font-weight: 700;
+    color: #111827;
+  }
+
+  .estimation-create-modal-section-copy {
+    margin: 0;
+    font-size: 11px;
+    line-height: 1.45;
+    color: #4b5563;
+  }
+
+  .estimation-create-modal-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-top: 14px;
+    padding-top: 14px;
+    border-top: 1px solid #eceff3;
+  }
+
+  .estimation-create-modal-footer-copy {
+    margin: 0;
+    font-size: 11px;
+    line-height: 1.45;
+    color: #6b7280;
+  }
+
+  .estimation-create-modal-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .estimation-create-modal-actions .btn {
+    min-height: 40px;
+    padding: 0 16px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 700;
+    transition: transform 160ms ease-out;
+  }
+
+  .estimation-create-modal-actions .btn:active {
+    transform: scale(0.98);
+  }
+
+  .estimation-create-modal-main .row {
+    row-gap: 4px;
+  }
+
+  .estimation-create-modal-main .form-label {
+    margin-bottom: 6px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: #4b5563;
+  }
+
+  .estimation-create-modal-main .form-control,
+  .estimation-create-modal-main .form-select {
+    min-height: 40px;
+    border-color: #d1d5db;
+    border-radius: 12px;
+    font-size: 12px;
+    color: #111827;
+    box-shadow: none;
+  }
+
+  .estimation-create-modal-main textarea.form-control {
+    min-height: 86px;
+  }
+
+  .estimation-create-modal-main .form-control:disabled,
+  .estimation-create-modal-main .form-select:disabled {
+    background: #f8fafc;
+    color: #4b5563;
+  }
+
+  .estimation-create-modal-main hr {
+    margin: 10px 0 14px;
+    border-color: #eceff3;
+    opacity: 1;
+  }
+
+  .estimation-create-modal-main .alert {
+    margin-bottom: 0;
+    padding: 12px;
+    border: 1px solid #e5e7eb;
+    border-radius: 14px;
+    background: #ffffff;
+    color: #111827;
+  }
+
+  .estimation-create-modal-main .alert.alert-dark {
+    background: linear-gradient(180deg, #ffffff 0%, #fbfbfc 100%);
+    border-color: #e5e7eb;
+  }
+
+  .estimation-create-modal-main .alert p,
+  .estimation-create-modal-main .alert h2 {
+    margin-bottom: 8px !important;
+    font-size: 11px !important;
+    font-style: normal !important;
+    text-decoration: none !important;
+    color: #111827 !important;
+  }
+
+  .estimation-create-modal-main .card {
+    border: 1px solid #e5e7eb;
+    border-radius: 14px;
+    box-shadow: none;
+    overflow: hidden;
+  }
+
+  .estimation-create-modal-main .card-header {
+    padding: 11px 14px;
+    border-bottom: 1px solid #eceff3;
+    background: linear-gradient(180deg, #ffffff 0%, #fbfbfc 100%) !important;
+    color: #111827 !important;
+  }
+
+  .estimation-create-modal-main .card-header h5,
+  .estimation-create-modal-main .card-header center {
+    margin: 0;
+    font-size: 12px;
+    font-weight: 700;
+  }
+
+  .estimation-create-modal-main .card-body {
+    padding: 14px;
+  }
+
+  .estimation-create-modal-loading {
+    display: flex;
+    min-height: 220px;
+    align-items: center;
+    justify-content: center;
+  }
+
+  @media (max-width: 1199px) {
+    .estimation-create-modal-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  @media (max-width: 767px) {
+    .estimation-create-modal-body,
+    .estimation-create-modal-header,
+    .estimation-create-modal-main,
+    .estimation-create-modal-sidebar {
+      padding: 12px;
+    }
+
+    .estimation-create-modal-header,
+    .estimation-create-modal-footer {
+      flex-direction: column;
+      align-items: flex-start;
+    }
+
+    .estimation-create-modal-actions {
+      width: 100%;
+      justify-content: stretch;
+      flex-direction: column;
+    }
+
+    .estimation-create-modal-actions .btn {
+      width: 100%;
+    }
+  }
+`;
+
 export const ModalEstimacion = ({ open, onClose, OportunidadDetails, cliente }) => {
    // Estado para manejar si el contenido del modal está cargando
    const [isLoading, setIsLoading] = useState(true);
    const dispatch = useDispatch();
 
-   const [formValues, setFormValues] = useState({
+const [formValues, setFormValues] = useState({
       // Datos de la primera línea
       entity: "",
       custbody38: "",
@@ -177,8 +539,43 @@ export const ModalEstimacion = ({ open, onClose, OportunidadDetails, cliente }) 
       total_porcentaje: "100",
       valortotals: 0,
       custbody52: 0,
-      pre_reserva: false,
-   });
+pre_reserva: false,
+});
+
+const summaryCards = [
+  {
+    label: "Entrega fecha",
+    value: formValues.custbody114 || "N/A",
+  },
+  {
+    label: "Nombre cliente",
+    value: formValues.entity || cliente?.nombre_lead || "N/A",
+  },
+  {
+    label: "Uni. exped. ligado vta",
+    value: formValues.custbody38 || "N/A",
+  },
+  {
+    label: "Proyecto",
+    value: formValues.proyecto_lead_est || "N/A",
+  },
+  {
+    label: "Estado",
+    value: formValues.entitystatus || "N/A",
+  },
+  {
+    label: "Oportunidad",
+    value: formValues.tranid_oport || OportunidadDetails?.tranid_oport || "N/A",
+  },
+  {
+    label: "Cierre previsto",
+    value:
+      OportunidadDetails?.caduca ||
+      OportunidadDetails?.fecha_Condicion ||
+      OportunidadDetails?.fecha_cierre_oport ||
+      "N/A",
+  },
+];
 
    // Estado para manejar los errores del formulario
    const [errors, setErrors] = useState({});
@@ -1061,61 +1458,185 @@ export const ModalEstimacion = ({ open, onClose, OportunidadDetails, cliente }) 
       setIsLoading(false); // Indicar que la carga de datos ha finalizado
    }, [open, cliente, OportunidadDetails]);
 
-   return (
-      // Componente Modal que se muestra cuando `open` es true
-      <Modal
-         open={open}
-         onClose={onClose}
-         className="modal fade show"
-         style={{ display: "block" }} // Forzar que el modal siempre se muestre en pantalla
-         aria-modal="true" // Indicador de accesibilidad para navegadores
-      >
-         <div
-            className="modal-dialog"
-            style={{ maxWidth: "89%", margin: "1.75rem auto" }} // Estilo personalizado para el tamaño y centrado del modal
+return (
+      <>
+         <style>{ESTIMATION_MODAL_STYLES}</style>
+         <Modal
+            open={open}
+            onClose={onClose}
+            className="modal fade show"
+            style={{ display: "block" }}
+            aria-modal="true"
          >
-            <div className="modal-content">
-               <div className="modal-body">
-                  {isLoading ? (
-                     // Mostrar un indicador de carga mientras los datos se procesan
-                     <div
-                        className="d-flex justify-content-center align-items-center"
-                        style={{ height: "200px" }} // Asegurar el centrado vertical y horizontal del spinner
-                     >
-                        <div className="spinner-border" role="status">
-                           <span className="visually-hidden">Cargando...</span> {/* Texto accesible para lectores de pantalla */}
-                        </div>
+            <div className="modal-dialog" style={{ maxWidth: "89%", margin: "1.75rem auto" }}>
+               <div className="modal-content estimation-create-modal-content">
+                  <div className="estimation-create-modal-header">
+                     <div>
+                        <span className="estimation-create-modal-kicker">Generación comercial</span>
+                        <h4 className="estimation-create-modal-title">Crear estimación</h4>
+                        <p className="estimation-create-modal-copy">
+                           Complete la información comercial, la estructura de prima y el método de pago
+                           usando bloques más claros para facilitar lectura, validación y captura.
+                        </p>
                      </div>
-                  ) : (
-                     // Contenido principal del modal cuando no está cargando
-                     <>
-                        <h4>GENERAR ESTIMACIÓN</h4> {/* Título principal del modal */}
-                        <form onSubmit={handleSubmit}>
-                           {" "}
-                           {/* Manejo del envío del formulario */}
-                           {/* Componente para gestionar la primera línea del formulario */}
-                           <PrimeraLinea formValues={formValues} handleInputChange={handleInputChange} errors={errors} />
-                           {/* Componente para cálculo de primas */}
-                           <CalculodePrima
-                              errors={errors}
-                              formValues={formValues}
-                              handleInputChange={handleInputChange}
-                              handleDiscountSelection={handleDiscountSelection}
-                           />
-                           {/* Componente para selección de primas */}
-                           <SeleccionPrima errors={errors} formValues={formValues} handleInputChange={handleInputChange} />
-                           {/* Componente para selección de método de pago */}
-                           <MetodoPago formValues={formValues} handleInputChange={handleInputChange} errors={errors} />
-                           {/* Botón para guardar la estimación */}
-                           <button type="submit" className="btn btn-primary">
-                              Guardar Estimacion
-                           </button>
-                        </form>
-                     </>
-                  )}
+
+                     <div className="estimation-create-modal-badge">
+                        <p className="estimation-create-modal-badge-label">Estado del formulario</p>
+                        <p className="estimation-create-modal-badge-value">
+                           {isLoading ? "Preparando datos..." : "Listo para captura"}
+                        </p>
+                     </div>
+                  </div>
+
+                  <div className="modal-body estimation-create-modal-body">
+                     {isLoading ? (
+                        <div className="estimation-create-modal-loading">
+                           <div className="spinner-border" role="status">
+                              <span className="visually-hidden">Cargando...</span>
+                           </div>
+                        </div>
+                     ) : (
+                        <div className="estimation-create-modal-shell">
+                           <div className="estimation-create-modal-grid">
+                              <aside className="estimation-create-modal-sidebar">
+                                 <div className="estimation-create-modal-sidebar-card">
+                                    <h5 className="estimation-create-modal-sidebar-title">
+                                       Resumen de contexto
+                                    </h5>
+                                    <p className="estimation-create-modal-sidebar-copy">
+                                       Consulte aquí la referencia comercial principal antes de completar
+                                       la estimación para evitar duplicar revisión dentro del formulario.
+                                    </p>
+                                 </div>
+
+                                 <div className="estimation-create-modal-hint-list">
+                                    {summaryCards.map((item) => (
+                                       <div className="estimation-create-modal-hint" key={item.label}>
+                                          <p className="estimation-create-modal-hint-label">{item.label}</p>
+                                          <p className="estimation-create-modal-hint-value">{item.value}</p>
+                                       </div>
+                                    ))}
+                                 </div>
+
+                                 <div className="estimation-create-modal-sidebar-card">
+                                    <h5 className="estimation-create-modal-sidebar-title">
+                                       Cómo llenar esta vista
+                                    </h5>
+                                    <p className="estimation-create-modal-sidebar-copy">
+                                       Primero valide datos base y precio, luego defina la prima, active
+                                       solo los tractos necesarios y cierre con el método de pago.
+                                    </p>
+                                 </div>
+                              </aside>
+
+                              <section className="estimation-create-modal-main">
+                                 <form onSubmit={handleSubmit}>
+                                    <section className="estimation-create-modal-section">
+                                       <div className="estimation-create-modal-section-head">
+                                          <span className="estimation-create-modal-section-kicker">
+                                             Datos base
+                                          </span>
+                                          <h5 className="estimation-create-modal-section-title">
+                                             Información principal de la estimación
+                                          </h5>
+                                          <p className="estimation-create-modal-section-copy">
+                                             Revise el cliente, expediente, oportunidad, precio base y
+                                             datos iniciales heredados del negocio.
+                                          </p>
+                                       </div>
+                                       <PrimeraLinea
+                                          formValues={formValues}
+                                          handleInputChange={handleInputChange}
+                                          errors={errors}
+                                          hideContextFields
+                                       />
+                                    </section>
+
+                                    <section className="estimation-create-modal-section">
+                                       <div className="estimation-create-modal-section-head">
+                                          <span className="estimation-create-modal-section-kicker">
+                                             Estructura económica
+                                          </span>
+                                          <h5 className="estimation-create-modal-section-title">
+                                             Definición y cálculo de la prima
+                                          </h5>
+                                          <p className="estimation-create-modal-section-copy">
+                                             Elija si desea calcular la prima por porcentaje o monto y
+                                             confirme el impacto en los valores netos y asignables.
+                                          </p>
+                                       </div>
+                                       <CalculodePrima
+                                          errors={errors}
+                                          formValues={formValues}
+                                          handleInputChange={handleInputChange}
+                                          handleDiscountSelection={handleDiscountSelection}
+                                       />
+                                    </section>
+
+                                    <section className="estimation-create-modal-section">
+                                       <div className="estimation-create-modal-section-head">
+                                          <span className="estimation-create-modal-section-kicker">
+                                             Distribución comercial
+                                          </span>
+                                          <h5 className="estimation-create-modal-section-title">
+                                             Selección y configuración de primas
+                                          </h5>
+                                          <p className="estimation-create-modal-section-copy">
+                                             Active únicamente las primas requeridas y complete fecha,
+                                             tractos, montos y descripción de cada una.
+                                          </p>
+                                       </div>
+                                       <SeleccionPrima
+                                          errors={errors}
+                                          formValues={formValues}
+                                          handleInputChange={handleInputChange}
+                                       />
+                                    </section>
+
+                                    <section className="estimation-create-modal-section">
+                                       <div className="estimation-create-modal-section-head">
+                                          <span className="estimation-create-modal-section-kicker">
+                                             Estructura de cobro
+                                          </span>
+                                          <h5 className="estimation-create-modal-section-title">
+                                             Método de pago y avance del negocio
+                                          </h5>
+                                          <p className="estimation-create-modal-section-copy">
+                                             Seleccione la modalidad de pago para desplegar los hitos y
+                                             completar la programación financiera correspondiente.
+                                          </p>
+                                       </div>
+                                       <MetodoPago
+                                          formValues={formValues}
+                                          handleInputChange={handleInputChange}
+                                          errors={errors}
+                                       />
+                                    </section>
+
+                                    <div className="estimation-create-modal-footer">
+                                       <p className="estimation-create-modal-footer-copy">
+                                          Antes de guardar, confirme que los montos, primas y método de pago
+                                          reflejan correctamente la estructura comercial del cliente.
+                                       </p>
+
+                                       <div className="estimation-create-modal-actions">
+                                          <button type="button" className="btn btn-outline-dark" onClick={onClose}>
+                                             Cancelar
+                                          </button>
+                                          <button type="submit" className="btn btn-primary">
+                                             Guardar estimación
+                                          </button>
+                                       </div>
+                                    </div>
+                                 </form>
+                              </section>
+                           </div>
+                        </div>
+                     )}
+                  </div>
                </div>
             </div>
-         </div>
-      </Modal>
+         </Modal>
+      </>
    );
 };

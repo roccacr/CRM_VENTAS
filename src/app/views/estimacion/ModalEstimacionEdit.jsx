@@ -25,13 +25,277 @@ import { PrimeraLinea } from "./PrimeraLinea";
 import { SeleccionPrima } from "./SeleccionPrima";
 import "./style.css";
 
+const ESTIMATION_MODAL_STYLES = `
+  .estimation-create-modal-shell {
+    display: grid;
+    gap: 14px;
+  }
+
+  .estimation-create-modal-content {
+    border: 1px solid #d9dde3;
+    border-radius: 18px;
+    background: #ffffff;
+    box-shadow: 0 18px 40px rgba(15, 23, 42, 0.08);
+    overflow: hidden;
+  }
+
+  .estimation-create-modal-body {
+    padding: 18px;
+    background: linear-gradient(180deg, #ffffff 0%, #fcfcfd 100%);
+  }
+
+  .estimation-create-modal-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 18px 18px 16px;
+    border-bottom: 1px solid #eceff3;
+    background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+  }
+
+  .estimation-create-modal-kicker {
+    display: inline-block;
+    margin-bottom: 6px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #6b7280;
+  }
+
+  .estimation-create-modal-title {
+    margin: 0 0 6px;
+    font-size: 22px;
+    font-weight: 700;
+    color: #111827;
+  }
+
+  .estimation-create-modal-copy {
+    max-width: 760px;
+    margin: 0;
+    font-size: 12px;
+    line-height: 1.55;
+    color: #4b5563;
+  }
+
+  .estimation-create-modal-badge {
+    min-width: 210px;
+    padding: 12px 14px;
+    border: 1px solid #e5e7eb;
+    border-radius: 14px;
+    background: #ffffff;
+  }
+
+  .estimation-create-modal-badge-label {
+    margin: 0 0 4px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: #6b7280;
+  }
+
+  .estimation-create-modal-badge-value {
+    margin: 0;
+    font-size: 13px;
+    font-weight: 700;
+    color: #111827;
+  }
+
+  .estimation-create-modal-grid {
+    display: grid;
+    grid-template-columns: minmax(250px, 295px) minmax(0, 1fr);
+    gap: 16px;
+    align-items: start;
+  }
+
+  .estimation-create-modal-sidebar {
+    display: grid;
+    gap: 12px;
+  }
+
+  .estimation-create-modal-sidebar-card {
+    padding: 14px;
+    border: 1px solid #e5e7eb;
+    border-radius: 14px;
+    background: linear-gradient(180deg, #ffffff 0%, #fbfbfc 100%);
+  }
+
+  .estimation-create-modal-sidebar-title {
+    margin: 0 0 6px;
+    font-size: 13px;
+    font-weight: 700;
+    color: #111827;
+  }
+
+  .estimation-create-modal-sidebar-copy {
+    margin: 0;
+    font-size: 11px;
+    line-height: 1.5;
+    color: #4b5563;
+  }
+
+  .estimation-create-modal-hint-list {
+    display: grid;
+    gap: 10px;
+  }
+
+  .estimation-create-modal-hint {
+    padding: 10px 11px;
+    border: 1px solid #eceff3;
+    border-radius: 12px;
+    background: #fbfbfc;
+  }
+
+  .estimation-create-modal-hint-label {
+    margin: 0 0 3px;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: #6b7280;
+  }
+
+  .estimation-create-modal-hint-value {
+    margin: 0;
+    font-size: 12px;
+    font-weight: 600;
+    color: #111827;
+    word-break: break-word;
+  }
+
+  .estimation-create-modal-main {
+    padding: 14px;
+  }
+
+  .estimation-create-modal-section {
+    margin-top: 12px;
+    padding: 14px;
+    border: 1px solid #e5e7eb;
+    border-radius: 14px;
+    background: linear-gradient(180deg, #ffffff 0%, #fbfbfc 100%);
+  }
+
+  .estimation-create-modal-section:first-child {
+    margin-top: 0;
+  }
+
+  .estimation-create-modal-section-head {
+    margin-bottom: 12px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #eceff3;
+  }
+
+  .estimation-create-modal-section-kicker {
+    display: inline-block;
+    margin-bottom: 4px;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #6b7280;
+  }
+
+  .estimation-create-modal-section-title {
+    margin: 0 0 4px;
+    font-size: 14px;
+    font-weight: 700;
+    color: #111827;
+  }
+
+  .estimation-create-modal-section-copy {
+    margin: 0;
+    font-size: 11px;
+    line-height: 1.45;
+    color: #4b5563;
+  }
+
+  .estimation-create-modal-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-top: 14px;
+    padding-top: 14px;
+    border-top: 1px solid #eceff3;
+  }
+
+  .estimation-create-modal-footer-copy {
+    margin: 0;
+    font-size: 11px;
+    line-height: 1.45;
+    color: #4b5563;
+  }
+
+  .estimation-create-modal-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .estimation-create-modal-main hr {
+    margin: 14px 0;
+    border-color: #eceff3;
+    opacity: 1;
+  }
+
+  .estimation-create-modal-main h4 {
+    font-size: 15px;
+    font-weight: 700;
+    color: #111827;
+  }
+
+  .estimation-create-modal-main .card-body {
+    padding: 14px;
+  }
+
+  .estimation-create-modal-loading {
+    display: flex;
+    min-height: 220px;
+    align-items: center;
+    justify-content: center;
+  }
+
+  @media (max-width: 1199px) {
+    .estimation-create-modal-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  @media (max-width: 767px) {
+    .estimation-create-modal-body,
+    .estimation-create-modal-header,
+    .estimation-create-modal-main,
+    .estimation-create-modal-sidebar {
+      padding: 12px;
+    }
+
+    .estimation-create-modal-header,
+    .estimation-create-modal-footer {
+      flex-direction: column;
+      align-items: flex-start;
+    }
+
+    .estimation-create-modal-actions {
+      width: 100%;
+      justify-content: stretch;
+      flex-direction: column;
+    }
+
+    .estimation-create-modal-actions .btn {
+      width: 100%;
+    }
+  }
+`;
+
 export const ModalEstimacionEdit = ({ open, onClose, idEstimacion }) => {
-   // Estado para manejar si el contenido del modal está cargando
+   // Estado para manejar si el contenido del modal estÃƒÆ’Ã‚Â¡ cargando
    const [isLoading, setIsLoading] = useState(false);
    const dispatch = useDispatch();
 
-   const [formValues, setFormValues] = useState({
-      // Datos de la primera línea
+const [formValues, setFormValues] = useState({
+      // Datos de la primera lÃƒÆ’Ã‚Â­nea
       idEst: idEstimacion,
       location: "",
       entity: "",
@@ -40,7 +304,7 @@ export const ModalEstimacionEdit = ({ open, onClose, idEstimacion }) => {
       entitystatus: "",
       pvneto: 0,
 
-      // Datos de la segunda línea
+      // Datos de la segunda lÃƒÆ’Ã‚Â­nea
       rType: "estimacion",
       custbody18: "",
       /*MONTO TOTAL*/
@@ -66,12 +330,12 @@ export const ModalEstimacionEdit = ({ open, onClose, idEstimacion }) => {
       custbody185: 0,
       //MONTO EXTRAS SOBRE EL PRECIO DE LISTA / EXTRAS PAGADAS POR EL CLIENTE
       custbody46: 0,
-      //MONTO TOTAL DE CORTESÍAS
+      //MONTO TOTAL DE CORTESÃƒÆ’Ã‚ÂAS
       custbody16: 0,
 
-      //DESCRIPCIÓN EXTRAS
+      //DESCRIPCIÃƒÆ’Ã¢â‚¬Å“N EXTRAS
       custbody47: "--",
-      //DESCRIPCIÓN DE LAS CORTESIAS
+      //DESCRIPCIÃƒÆ’Ã¢â‚¬Å“N DE LAS CORTESIAS
       custbody35: "--",
       //MONTO RESERVA
       rateReserva: "",
@@ -178,22 +442,53 @@ export const ModalEstimacionEdit = ({ open, onClose, idEstimacion }) => {
       total_porcentaje: "100",
       valortotals: 0,
       custbody52: 0,
-      pre_reserva: false,
-   });
+pre_reserva: false,
+});
 
-   // Estado para manejar los errores del formulario
-   const [errors, setErrors] = useState({});
+const summaryCards = [
+   {
+      label: "Entrega fecha",
+      value: formValues.custbody114 || "N/A",
+   },
+   {
+      label: "Nombre cliente",
+      value: formValues.entity || "N/A",
+   },
+   {
+      label: "Uni. exped. ligado vta",
+      value: formValues.custbody38 || "N/A",
+   },
+   {
+      label: "Proyecto",
+      value: formValues.proyecto_lead_est || "N/A",
+   },
+   {
+      label: "Estado",
+      value: formValues.entitystatus || "N/A",
+   },
+   {
+      label: "Oportunidad",
+      value: formValues.tranid_oport || formValues.opportunity || "N/A",
+   },
+   {
+      label: "Cierre previsto",
+      value: formValues.expectedclosedate || "N/A",
+   },
+];
 
-   // Maneja la selección de descuento por parte del usuario
+// Estado para manejar los errores del formulario
+const [errors, setErrors] = useState({});
+
+   // Maneja la selecciÃƒÆ’Ã‚Â³n de descuento por parte del usuario
    const handleDiscountSelection = (e) => {
       // Extrae el valor seleccionado del evento
       const { value } = e.target;
 
       // Actualiza el estado del formulario con el valor seleccionado.
-      // Si el valor está vacío, se establece isDiscounted como null, de lo contrario, se guarda el valor.
+      // Si el valor estÃƒÆ’Ã‚Â¡ vacÃƒÆ’Ã‚Â­o, se establece isDiscounted como null, de lo contrario, se guarda el valor.
       setFormValues({
          ...formValues, // Mantiene los valores actuales del formulario
-         isDiscounted: value === "" ? null : value, // Asigna null si el valor es vacío, de lo contrario, asigna el valor
+         isDiscounted: value === "" ? null : value, // Asigna null si el valor es vacÃƒÆ’Ã‚Â­o, de lo contrario, asigna el valor
       });
    };
 
@@ -201,10 +496,10 @@ export const ModalEstimacionEdit = ({ open, onClose, idEstimacion }) => {
    const handleInputChange = (e) => {
       const { name, value, type, checked } = e.target;
 
-      // Determina el nuevo valor según el tipo de input
+      // Determina el nuevo valor segÃƒÆ’Ã‚Âºn el tipo de input
       const newValue = type === "checkbox" ? checked : value;
 
-      // Lista de campos que requieren limpieza específica
+      // Lista de campos que requieren limpieza especÃƒÆ’Ã‚Â­fica
       const camposLimpieza = [
          "custbody132",
          "custbody46",
@@ -215,7 +510,7 @@ export const ModalEstimacionEdit = ({ open, onClose, idEstimacion }) => {
          "custbody60",
       ];
 
-      // Mapeo de los campos relacionados con cada hito para facilitar la actualización del estado
+      // Mapeo de los campos relacionados con cada hito para facilitar la actualizaciÃƒÆ’Ã‚Â³n del estado
       const hitoMappings = {
          hito_chek_uno: { custbody: "custbody62", salesOrder: "custbodyix_salesorder_hito1", date: "date_hito_1" },
          hito_chek_dos: { custbody: "custbody63", salesOrder: "custbody_ix_salesorder_hito2", date: "date_hito_2" },
@@ -248,34 +543,34 @@ export const ModalEstimacionEdit = ({ open, onClose, idEstimacion }) => {
          });
       }
 
-      // Aplica reglas específicas de limpieza para ciertos campos
-      // Si el campo actual está en la lista de `camposLimpieza`, procesa el valor con una función personalizada.
+      // Aplica reglas especÃƒÆ’Ã‚Â­ficas de limpieza para ciertos campos
+      // Si el campo actual estÃƒÆ’Ã‚Â¡ en la lista de `camposLimpieza`, procesa el valor con una funciÃƒÆ’Ã‚Â³n personalizada.
       // De lo contrario, usa el valor nuevo sin procesamiento adicional.
       const valorProcesado = camposLimpieza.includes(name) ? procesarValor(name, value) : newValue;
 
-      // Define una lista de campos que requieren cálculos complejos antes de ser actualizados
+      // Define una lista de campos que requieren cÃƒÆ’Ã‚Â¡lculos complejos antes de ser actualizados
       const camposCalculos = ["custbody132", "custbody46", "custbodyix_salesorder_cashback", "custbody52", "custbody16"];
       if (camposCalculos.includes(name)) {
-         // Realiza cálculos complejos específicos para el campo actual
+         // Realiza cÃƒÆ’Ã‚Â¡lculos complejos especÃƒÆ’Ã‚Â­ficos para el campo actual
          actualizarConCalculos(name, valorProcesado);
-         return; // Termina la ejecución para evitar pasos adicionales innecesarios
+         return; // Termina la ejecuciÃƒÆ’Ã‚Â³n para evitar pasos adicionales innecesarios
       }
 
-      // Maneja cambios específicos en el campo de "prima total"
-      // Se utiliza una función especializada para actualizar este campo
+      // Maneja cambios especÃƒÆ’Ã‚Â­ficos en el campo de "prima total"
+      // Se utiliza una funciÃƒÆ’Ã‚Â³n especializada para actualizar este campo
       if (name === "custbody39") {
          actualizarPrimaTotal(name, valorProcesado);
-         return; // Detiene el flujo después de manejar este caso específico
+         return; // Detiene el flujo despuÃƒÆ’Ã‚Â©s de manejar este caso especÃƒÆ’Ã‚Â­fico
       }
 
       //limpiamos lo valores de las primas cuando se deselecciona el checkbox
       if (name === "custbody39") {
          actualizarPrimaTotal(name, valorProcesado);
-         return; // Detiene el flujo después de manejar este caso específico
+         return; // Detiene el flujo despuÃƒÆ’Ã‚Â©s de manejar este caso especÃƒÆ’Ã‚Â­fico
       }
 
       // /// Maneja cambios relacionados con porcentajes
-      // // Define una lista de campos que representan porcentajes y requieren un manejo específico
+      // // Define una lista de campos que representan porcentajes y requieren un manejo especÃƒÆ’Ã‚Â­fico
       const camposPorcentaje = [
          "custbody60",
          "custbody179",
@@ -291,15 +586,15 @@ export const ModalEstimacionEdit = ({ open, onClose, idEstimacion }) => {
          "monto_tracto_tres",
       ];
 
-      // Si el campo pertenece a `camposPorcentaje`, utiliza la función para actualizar el valor del porcentaje
+      // Si el campo pertenece a `camposPorcentaje`, utiliza la funciÃƒÆ’Ã‚Â³n para actualizar el valor del porcentaje
       if (camposPorcentaje.includes(name)) {
          actualizarPorcentaje(name, valorProcesado);
-         return; // Detiene el flujo después de manejar el campo
+         return; // Detiene el flujo despuÃƒÆ’Ã‚Â©s de manejar el campo
       }
 
-      // Define manejadores específicos para ciertos campos, ejecutando lógica personalizada
+      // Define manejadores especÃƒÆ’Ã‚Â­ficos para ciertos campos, ejecutando lÃƒÆ’Ã‚Â³gica personalizada
       const manejadores = {
-         custbody75: () => actualizarCustbody75(name, valorProcesado), // Lógica para el campo `custbody75`
+         custbody75: () => actualizarCustbody75(name, valorProcesado), // LÃƒÆ’Ã‚Â³gica para el campo `custbody75`
          custbody62: () => actualizarHitoDiferenciado(name, valorProcesado, "custbodyix_salesorder_hito1"), // Hito 1
          custbody63: () => actualizarHitoDiferenciado(name, valorProcesado, "custbody_ix_salesorder_hito2"), // Hito 2
          custbody64: () => actualizarHitoDiferenciado(name, valorProcesado, "custbody_ix_salesorder_hito3"), // Hito 3
@@ -308,7 +603,7 @@ export const ModalEstimacionEdit = ({ open, onClose, idEstimacion }) => {
          custbody67: () => actualizarHitoDiferenciado(name, valorProcesado, "custbody_ix_salesorder_hito6"), // Hito 6
       };
 
-      // Define manejadores específicos para actualizar montos asociados a los hitos
+      // Define manejadores especÃƒÆ’Ã‚Â­ficos para actualizar montos asociados a los hitos
       const manejadoresMonto = {
          custbodyix_salesorder_hito1: () => actualizarHitoDiferenciadoMonto(name, valorProcesado, "custbody62"), // Monto Hito 1
          custbody_ix_salesorder_hito2: () => actualizarHitoDiferenciadoMonto(name, valorProcesado, "custbody63"), // Monto Hito 2
@@ -320,23 +615,23 @@ export const ModalEstimacionEdit = ({ open, onClose, idEstimacion }) => {
 
       // Verifica si el campo tiene un manejador asignado y lo ejecuta
       if (manejadores[name]) {
-         manejadores[name](); // Lógica específica para el campo
+         manejadores[name](); // LÃƒÆ’Ã‚Â³gica especÃƒÆ’Ã‚Â­fica para el campo
       }
 
       // Verifica si el campo tiene un manejador de monto asignado y lo ejecuta
       if (manejadoresMonto[name]) {
-         manejadoresMonto[name](); // Lógica específica para actualizar el monto asociado al campo
+         manejadoresMonto[name](); // LÃƒÆ’Ã‚Â³gica especÃƒÆ’Ã‚Â­fica para actualizar el monto asociado al campo
       }
 
-      // Actualización genérica para otros campos
+      // ActualizaciÃƒÆ’Ã‚Â³n genÃƒÆ’Ã‚Â©rica para otros campos
       // Si el campo no requiere manejo especial, simplemente actualiza su valor en el estado del formulario
       setFormValues({
          ...formValues, // Mantiene los valores actuales del formulario
-         [name]: valorProcesado, // Actualiza el valor del campo específico con el valor procesado
+         [name]: valorProcesado, // Actualiza el valor del campo especÃƒÆ’Ã‚Â­fico con el valor procesado
       });
 
       // Limpia errores relacionados con el campo
-      // Establece el mensaje de error del campo como vacío para indicar que no hay errores
+      // Establece el mensaje de error del campo como vacÃƒÆ’Ã‚Â­o para indicar que no hay errores
       setErrors({
          ...errors, // Mantiene los errores existentes de otros campos
          [name]: "", // Elimina cualquier error asociado al campo actualizado
@@ -370,9 +665,9 @@ export const ModalEstimacionEdit = ({ open, onClose, idEstimacion }) => {
          },
       };
 
-      // Lógica única para manejar todas las primas
+      // LÃƒÆ’Ã‚Â³gica ÃƒÆ’Ã‚Âºnica para manejar todas las primas
       if (mapaPrimas[name] && !newValue) {
-         // Obtener configuración de la prima actual
+         // Obtener configuraciÃƒÆ’Ã‚Â³n de la prima actual
          const { campos, numero } = mapaPrimas[name];
 
          // Actualizar porcentaje primero
@@ -384,34 +679,34 @@ export const ModalEstimacionEdit = ({ open, onClose, idEstimacion }) => {
             [campos[0]]: "0", // Restablece monto
             [campos[1]]: "", // Limpia fecha
             [campos[2]]: 1, // Tractos a 1
-            [campos[3]]: `PRIMA ${numero}`, // Descripción estándar
+            [campos[3]]: `PRIMA ${numero}`, // DescripciÃƒÆ’Ã‚Â³n estÃƒÆ’Ã‚Â¡ndar
          }));
       }
    };
 
-   // Procesa el valor de campos específicos con reglas adicionales
+   // Procesa el valor de campos especÃƒÆ’Ã‚Â­ficos con reglas adicionales
    const procesarValor = (name, value) => {
-      // Aplica una limpieza inicial al valor utilizando una función genérica
+      // Aplica una limpieza inicial al valor utilizando una funciÃƒÆ’Ã‚Â³n genÃƒÆ’Ã‚Â©rica
       let processedValue = limpiarCampos(value);
 
-      // Aplica reglas específicas para el campo "custbody132"
+      // Aplica reglas especÃƒÆ’Ã‚Â­ficas para el campo "custbody132"
       if (name === "custbody132") {
          // Asegura que el valor procesado tenga un solo guion inicial
          processedValue = `-${processedValue.replace(/^-+/, "")}`;
 
-         // Si el valor es "-0" o solo "-", lo ajusta a una cadena vacía para evitar valores inválidos
+         // Si el valor es "-0" o solo "-", lo ajusta a una cadena vacÃƒÆ’Ã‚Â­a para evitar valores invÃƒÆ’Ã‚Â¡lidos
          if (processedValue === "-0" || processedValue === "-") {
-            processedValue = ""; // Establece como vacío para mantener consistencia
+            processedValue = ""; // Establece como vacÃƒÆ’Ã‚Â­o para mantener consistencia
          }
       }
 
-      // Retorna el valor procesado (ya sea limpio o con las reglas específicas aplicadas)
+      // Retorna el valor procesado (ya sea limpio o con las reglas especÃƒÆ’Ã‚Â­ficas aplicadas)
       return processedValue;
    };
 
-   // Actualiza el estado con cálculos complejos según el campo modificado
+   // Actualiza el estado con cÃƒÆ’Ã‚Â¡lculos complejos segÃƒÆ’Ã‚Âºn el campo modificado
    const actualizarConCalculos = (name, value) => {
-      // Actualiza el estado utilizando la función `setFormValues`
+      // Actualiza el estado utilizando la funciÃƒÆ’Ã‚Â³n `setFormValues`
       setFormValues((prevValues) => {
          // Copia el estado actual y actualiza el valor del campo modificado
          const updatedValues = { ...prevValues, [name]: value };
@@ -425,14 +720,14 @@ export const ModalEstimacionEdit = ({ open, onClose, idEstimacion }) => {
          // Calcula la prima total utilizando el monto total y un valor porcentual (`custbody60`)
          const montoPrimaTotal = calcularPrimaToal(montot, updatedValues.custbody60);
 
-         // Calcula la prima neta basándose en la prima total y otros valores actualizados
+         // Calcula la prima neta basÃƒÆ’Ã‚Â¡ndose en la prima total y otros valores actualizados
          const montoPrimaNet = montoPrimaNeta(montoPrimaTotal, updatedValues);
 
          // Calcula el valor asignable para la prima utilizando la prima total y valores adicionales
          const asignable = calculoPrimaAsignable(montoPrimaTotal, updatedValues);
 
-         // Ejecuta cálculos específicos adicionales, si es necesario, utilizando los valores actualizados
-         ejecutarCálculosEspecíficos(updatedValues, montot, montoPrimaTotal);
+         // Ejecuta cÃƒÆ’Ã‚Â¡lculos especÃƒÆ’Ã‚Â­ficos adicionales, si es necesario, utilizando los valores actualizados
+         ejecutarCalculosEspecificos(updatedValues, montot, montoPrimaTotal);
 
          // Retorna el nuevo estado con todos los valores calculados incluidos
          return {
@@ -472,8 +767,8 @@ export const ModalEstimacionEdit = ({ open, onClose, idEstimacion }) => {
       // este modifica si es por monto
       // Actualizar el estado con los nuevos valores
       setFormValues(valoresFinales);
-      // Luego ejecutar cálculos específicos con los valores finales ya calculados
-      ejecutarCálculosEspecíficos(
+      // Luego ejecutar cÃƒÆ’Ã‚Â¡lculos especÃƒÆ’Ã‚Â­ficos con los valores finales ya calculados
+      ejecutarCalculosEspecificos(
          valoresFinales,
          valoresFinales.custbody_ix_total_amount,
          valoresFinales.custbody39
@@ -481,15 +776,15 @@ export const ModalEstimacionEdit = ({ open, onClose, idEstimacion }) => {
    };
 
    /**
-      * Maneja la actualización de campos relacionados con porcentajes en el formulario.
-      * Realiza cálculos basados en el valor actualizado y actualiza el estado del formulario
+      * Maneja la actualizaciÃƒÆ’Ã‚Â³n de campos relacionados con porcentajes en el formulario.
+      * Realiza cÃƒÆ’Ã‚Â¡lculos basados en el valor actualizado y actualiza el estado del formulario
       * con los nuevos valores calculados.
       *
-      * @param {string} name - El nombre del campo que se está actualizando.
+      * @param {string} name - El nombre del campo que se estÃƒÆ’Ã‚Â¡ actualizando.
       * @param {number} value - El nuevo valor del campo.
       */
    const actualizarPorcentaje = (name, value) => {
-      // 1. Crea updatedValues fuera de setFormValues para poder usarlo después
+      // 1. Crea updatedValues fuera de setFormValues para poder usarlo despuÃƒÆ’Ã‚Â©s
       const updatedValues = { ...formValues, [name]: value };
 
       // 2. Calcula el monto total basado en el porcentaje actualizado.
@@ -504,7 +799,7 @@ export const ModalEstimacionEdit = ({ open, onClose, idEstimacion }) => {
       // 5. Prepara el objeto final con todas las actualizaciones necesarias
       let valoresFinales = { ...updatedValues, neta: asignable };
 
-      // 6. Si el campo actualizado es "custbody60", añade campos adicionales
+      // 6. Si el campo actualizado es "custbody60", aÃƒÆ’Ã‚Â±ade campos adicionales
       if (name === "custbody60") {
          valoresFinales = {
             ...valoresFinales,
@@ -518,8 +813,8 @@ export const ModalEstimacionEdit = ({ open, onClose, idEstimacion }) => {
 
       // este modifica si es por % 
 
-      // 8. Ejecuta cálculos específicos con los mismos valores actualizados
-      ejecutarCálculosEspecíficos(
+      // 8. Ejecuta cÃƒÆ’Ã‚Â¡lculos especÃƒÆ’Ã‚Â­ficos con los mismos valores actualizados
+      ejecutarCalculosEspecificos(
          valoresFinales,
          valoresFinales.custbody_ix_total_amount,
          valoresFinales.custbody39
@@ -556,8 +851,8 @@ export const ModalEstimacionEdit = ({ open, onClose, idEstimacion }) => {
          // Calcula la prima asignable utilizando la prima total y los valores actualizados
          const asignable = calculoPrimaAsignable(montoPrimaTotal, updatedValues);
 
-         // Ejecuta cálculos adicionales personalizados basados en los valores calculados
-         ejecutarCálculosEspecíficos(updatedValues, montot, montoPrimaTotal);
+         // Ejecuta cÃƒÆ’Ã‚Â¡lculos adicionales personalizados basados en los valores calculados
+         ejecutarCalculosEspecificos(updatedValues, montot, montoPrimaTotal);
 
          // Retorna el nuevo estado actualizado con los valores calculados
          return {
@@ -571,7 +866,7 @@ export const ModalEstimacionEdit = ({ open, onClose, idEstimacion }) => {
       });
    };
 
-   // Maneja actualizaciones específicas para custbody62
+   // Maneja actualizaciones especÃƒÆ’Ã‚Â­ficas para custbody62
    const actualizarHitoDiferenciado = (name, value, campoActualizar) => {
       setFormValues((prevValues) => {
          // Copia el estado actual y actualiza el valor del campo modificado
@@ -585,7 +880,7 @@ export const ModalEstimacionEdit = ({ open, onClose, idEstimacion }) => {
          // Porcentaje inicial (100%)
          const porcentajeInicial = 100;
 
-         // Define los porcentajes relacionados a los hitos, considerando si están marcados como chequeados
+         // Define los porcentajes relacionados a los hitos, considerando si estÃƒÆ’Ã‚Â¡n marcados como chequeados
          const porcentajes = [
             updatedValues.hito_chek_uno === true ? updatedValues.custbody62 : 0,
             updatedValues.hito_chek_dos === true ? updatedValues.custbody63 : 0,
@@ -612,14 +907,14 @@ export const ModalEstimacionEdit = ({ open, onClose, idEstimacion }) => {
             );
          }
 
-         // Calcula y actualiza el campo dinámico utilizando una función específica
+         // Calcula y actualiza el campo dinÃƒÆ’Ã‚Â¡mico utilizando una funciÃƒÆ’Ã‚Â³n especÃƒÆ’Ã‚Â­fica
          calculoHito1Diferenciado(
             value, // Nuevo porcentaje ingresado
             montot, // Monto total calculado
             montoPrimaTotal, // Prima total calculada
-            setFormValues, // Función para actualizar el formulario
+            setFormValues, // FunciÃƒÆ’Ã‚Â³n para actualizar el formulario
             updatedValues, // Valores actuales del formulario
-            campoActualizar, // Campo que debe actualizarse dinámicamente
+            campoActualizar, // Campo que debe actualizarse dinÃƒÆ’Ã‚Â¡micamente
             porcentajeRestante, // Porcentaje restante calculado
             updatedValues, // Estado actualizado
          );
@@ -628,7 +923,7 @@ export const ModalEstimacionEdit = ({ open, onClose, idEstimacion }) => {
       });
    };
 
-   // Maneja actualizaciones específicas para los montos de hitos
+   // Maneja actualizaciones especÃƒÆ’Ã‚Â­ficas para los montos de hitos
    const actualizarHitoDiferenciadoMonto = (name, value, campoActualizar) => {
       console.clear();
       setFormValues((prevValues) => {
@@ -659,7 +954,7 @@ export const ModalEstimacionEdit = ({ open, onClose, idEstimacion }) => {
          // Porcentaje inicial (100%)
          const porcentajeInicial = 100;
 
-         // Define los porcentajes relacionados a los hitos, considerando si están marcados como chequeados
+         // Define los porcentajes relacionados a los hitos, considerando si estÃƒÆ’Ã‚Â¡n marcados como chequeados
          // y multiplicando por 100 para convertir de decimal a porcentaje
          const porcentajes = [
             updatedValues.hito_chek_uno === true ? parseFloat(valoresActualizados.custbody62) : 0,
@@ -687,13 +982,13 @@ export const ModalEstimacionEdit = ({ open, onClose, idEstimacion }) => {
             );
          }
 
-         // Crear un nuevo estado actualizado antes de llamar a la función de cálculo
+         // Crear un nuevo estado actualizado antes de llamar a la funciÃƒÆ’Ã‚Â³n de cÃƒÆ’Ã‚Â¡lculo
          const updatedFormValues = {
             ...updatedValues,
             total_porcentaje: porcentajeRestante.toFixed(2)
          };
 
-         // Llamar a la función de cálculo con los valores correctos
+         // Llamar a la funciÃƒÆ’Ã‚Â³n de cÃƒÆ’Ã‚Â¡lculo con los valores correctos
          calculoHito1DiferenciadoMonto(
             montoInicial, // Monto inicial actualizado
             campoActualizar, // Campo a actualizar
@@ -708,14 +1003,14 @@ export const ModalEstimacionEdit = ({ open, onClose, idEstimacion }) => {
       });
    };
 
-   // Ejecuta cálculos específicos según el tipo de operación
-   const ejecutarCálculosEspecíficos = (updatedValues, montot, montoPrimaTotal) => {
-      // Determina el tipo de operación a partir del valor en custbody75
+   // Ejecuta cÃƒÆ’Ã‚Â¡lculos especÃƒÆ’Ã‚Â­ficos segÃƒÆ’Ã‚Âºn el tipo de operaciÃƒÆ’Ã‚Â³n
+   const ejecutarCalculosEspecificos = (updatedValues, montot, montoPrimaTotal) => {
+      // Determina el tipo de operaciÃƒÆ’Ã‚Â³n a partir del valor en custbody75
       const tipoOperacion = parseInt(updatedValues.custbody75, 10);
 
-      // Lógica para cada tipo de operación
+      // LÃƒÆ’Ã‚Â³gica para cada tipo de operaciÃƒÆ’Ã‚Â³n
       if (tipoOperacion === 2) {
-         // Cálculo para avance de obra
+         // CÃƒÆ’Ã‚Â¡lculo para avance de obra
          setFormValues((prevValues) => ({
             ...prevValues, // Conserva los valores existentes del formulario.
             custbody62: 0.15, // Actualiza el campo `hito 1` con el monto total calculado.
@@ -727,7 +1022,7 @@ export const ModalEstimacionEdit = ({ open, onClose, idEstimacion }) => {
          }));
          calculoAvenceObra(updatedValues, setFormValues, montot, montoPrimaTotal);
       } else if (tipoOperacion === 1) {
-         // Cálculos para operaciones contra entrega
+         // CÃƒÆ’Ã‚Â¡lculos para operaciones contra entrega
          calculoContraEntregaSinprimaTotal(updatedValues, setFormValues); // Sin prima total
       } else if (tipoOperacion === 7) {
          setFormValues((prevValues) => ({
@@ -747,14 +1042,14 @@ export const ModalEstimacionEdit = ({ open, onClose, idEstimacion }) => {
             custbody_ix_salesorder_hito5: 0, // Actualiza el campo `hito 5` con el monto total calculado.
             custbody_ix_salesorder_hito6: 0, // Actualiza el campo `hito 6` con el monto total calculado.
          }));
-         // Cálculo para avance diferenciado
+         // CÃƒÆ’Ã‚Â¡lculo para avance diferenciado
          calculoAvanceDiferenciado(updatedValues, setFormValues, montot, montoPrimaTotal);
       }
    };
 
-   // Reglas de validación: Configuran los campos del formulario indicando si son obligatorios y el mensaje de error correspondiente
+   // Reglas de validaciÃƒÆ’Ã‚Â³n: Configuran los campos del formulario indicando si son obligatorios y el mensaje de error correspondiente
    const validationRules = {
-      // Validación del cliente
+      // ValidaciÃƒÆ’Ã‚Â³n del cliente
       entity: {
          required: false, // Este campo no es obligatorio
          message: "El nombre del cliente es obligatorio", // Mensaje en caso de que sea requerido en el futuro
@@ -879,7 +1174,7 @@ export const ModalEstimacionEdit = ({ open, onClose, idEstimacion }) => {
          message: "Este valor es requerido",
       },
 
-      // Validación de campos esenciales
+      // ValidaciÃƒÆ’Ã‚Â³n de campos esenciales
       custbody39: {
          required: true, // Campo siempre obligatorio
          message: "Este valor es requerido",
@@ -899,15 +1194,15 @@ export const ModalEstimacionEdit = ({ open, onClose, idEstimacion }) => {
    const validateForm = () => {
       const newErrors = {}; // Objeto para almacenar los errores detectados
 
-      // Itera sobre las reglas de validación definidas
+      // Itera sobre las reglas de validaciÃƒÆ’Ã‚Â³n definidas
       Object.keys(validationRules).forEach((field) => {
-         const rule = validationRules[field]; // Reglas de validación para el campo actual
+         const rule = validationRules[field]; // Reglas de validaciÃƒÆ’Ã‚Â³n para el campo actual
          const fieldValue = formValues[field]; // Valor actual del campo en el formulario
 
-         // Verifica si el campo es obligatorio y si su valor es válido
+         // Verifica si el campo es obligatorio y si su valor es vÃƒÆ’Ã‚Â¡lido
          if (
             rule.required && // La regla indica que el campo es obligatorio
-            (!fieldValue || (typeof fieldValue === "string" && !fieldValue.trim())) // El valor está vacío o no contiene texto
+            (!fieldValue || (typeof fieldValue === "string" && !fieldValue.trim())) // El valor estÃƒÆ’Ã‚Â¡ vacÃƒÆ’Ã‚Â­o o no contiene texto
          ) {
             // Agrega un mensaje de error para el campo actual
             newErrors[field] = rule.message || "Este campo es obligatorio";
@@ -921,17 +1216,17 @@ export const ModalEstimacionEdit = ({ open, onClose, idEstimacion }) => {
       return Object.keys(newErrors).length === 0;
    };
 
-   // Maneja el envío del formulario
+   // Maneja el envÃƒÆ’Ã‚Â­o del formulario
    const handleSubmit = async (e) => {
       e.preventDefault();
 
       if (validateForm()) {
-         const confirmEdit = window.confirm("¿Desea editar la estimación?");
+         const confirmEdit = window.confirm("Ãƒâ€šÃ‚Â¿Desea editar la estimaciÃƒÆ’Ã‚Â³n?");
 
          if (confirmEdit) {
             // Mostrar Swal de carga
             Swal.fire({
-               title: "Editando estimación...",
+               title: "Editando estimaciÃƒÆ’Ã‚Â³n...",
                text: "Por favor espere",
                allowOutsideClick: false,
                allowEscapeKey: false,
@@ -941,7 +1236,7 @@ export const ModalEstimacionEdit = ({ open, onClose, idEstimacion }) => {
                   Swal.showLoading();
                },
                customClass: {
-                  popup: "swal-on-top", // Clase personalizada para asegurar que esté por encima
+                  popup: "swal-on-top", // Clase personalizada para asegurar que estÃƒÆ’Ã‚Â© por encima
                },
             });
 
@@ -956,7 +1251,7 @@ export const ModalEstimacionEdit = ({ open, onClose, idEstimacion }) => {
                   Swal.fire({
                      position: "top-end",
                      icon: "success",
-                     title: "Se editó la estimación",
+                     title: "Se editÃƒÆ’Ã‚Â³ la estimaciÃƒÆ’Ã‚Â³n",
                      showConfirmButton: false,
                      timer: 2500,
                      customClass: {
@@ -970,14 +1265,14 @@ export const ModalEstimacionEdit = ({ open, onClose, idEstimacion }) => {
                if (ExTraerResultado.Status == 500) {
                   if (
                      result.data["Detalle"].Error.message ==
-                     "El campo custcolfecha_pago_proyectado contenía más del número máximo ( 10 ) de caracteres permitidos."
+                     "El campo custcolfecha_pago_proyectado contenÃƒÆ’Ã‚Â­a mÃƒÆ’Ã‚Â¡s del nÃƒÆ’Ã‚Âºmero mÃƒÆ’Ã‚Â¡ximo ( 10 ) de caracteres permitidos."
                   ) {
                      return Swal.fire({
                         title: "Lo sentimos, ha ocurrido un error.  : El campo de fecha debe estar seleccionado o tener el formato correcto.",
                         icon: "question",
                         width: "40em",
                         padding: "0 0 1.25em",
-                        iconHtml: "؟",
+                        iconHtml: "ÃƒËœÃ…Â¸",
                         confirmButtonText: "OK",
                         cancelButtonText: "CORREGUIR",
                         showCancelButton: true,
@@ -993,7 +1288,7 @@ export const ModalEstimacionEdit = ({ open, onClose, idEstimacion }) => {
                            result.data["Detalle"].Error.message +
                            ",  \nLo sentimos, favor revisar este error con su administrador.",
                         icon: "question",
-                        iconHtml: "؟",
+                        iconHtml: "ÃƒËœÃ…Â¸",
                         width: "40em",
                         padding: "0 0 1.25em",
                         confirmButtonText: "OK",
@@ -1014,7 +1309,7 @@ export const ModalEstimacionEdit = ({ open, onClose, idEstimacion }) => {
                Swal.fire({
                   icon: "error",
                   title: "Error",
-                  text: "Ha ocurrido un error al editar la estimación",
+                  text: "Ha ocurrido un error al editar la estimaciÃƒÆ’Ã‚Â³n",
                   customClass: {
                      popup: "swal-on-top",
                   },
@@ -1022,12 +1317,12 @@ export const ModalEstimacionEdit = ({ open, onClose, idEstimacion }) => {
             }
          }
       } else {
-         alert("Algunos campos no pueden quedar vacíos. Por favor, verifíquelos.");
+         alert("Algunos campos no pueden quedar vacÃƒÆ’Ã‚Â­os. Por favor, verifÃƒÆ’Ã‚Â­quelos.");
       }
    };
 
    useEffect(() => {
-      if (!open) return; // Salir temprano si el modal no está abierto
+      if (!open) return; // Salir temprano si el modal no estÃƒÆ’Ã‚Â¡ abierto
 
       const fetchEstimacion = async () => {
          try {
@@ -1108,9 +1403,9 @@ export const ModalEstimacionEdit = ({ open, onClose, idEstimacion }) => {
 
             // Function to process item lines from the transaction data
             /**
-             * Procesa las líneas de items y actualiza los valores del formulario según los identificadores de prima.
-             * @param {Object} items - Lista de líneas de items.
-             * @returns {Array} Formato de salida para las líneas procesadas.
+             * Procesa las lÃƒÆ’Ã‚Â­neas de items y actualiza los valores del formulario segÃƒÆ’Ã‚Âºn los identificadores de prima.
+             * @param {Object} items - Lista de lÃƒÆ’Ã‚Â­neas de items.
+             * @returns {Array} Formato de salida para las lÃƒÆ’Ã‚Â­neas procesadas.
              */
             const processItemLines = (items) => {
                /**
@@ -1125,8 +1420,8 @@ export const ModalEstimacionEdit = ({ open, onClose, idEstimacion }) => {
                };
 
                /**
-                * Formatea los datos de una línea para generar la salida final.
-                * @param {Object} lineData - Datos de la línea.
+                * Formatea los datos de una lÃƒÆ’Ã‚Â­nea para generar la salida final.
+                * @param {Object} lineData - Datos de la lÃƒÆ’Ã‚Â­nea.
                 * @returns {Object} Objeto formateado para la salida.
                 */
                const formatLineOutput = (lineData) => ({
@@ -1140,7 +1435,7 @@ export const ModalEstimacionEdit = ({ open, onClose, idEstimacion }) => {
                /**
                 * Genera las actualizaciones del formulario basadas en el identificador de prima.
                 * @param {string} identifier - Identificador de la prima.
-                * @param {Object} data - Datos de la línea de prima.
+                * @param {Object} data - Datos de la lÃƒÆ’Ã‚Â­nea de prima.
                 * @returns {Object} Objeto con las actualizaciones del formulario.
                 */
                const getPrimaUpdates = (identifier, data) => {
@@ -1300,13 +1595,13 @@ export const ModalEstimacionEdit = ({ open, onClose, idEstimacion }) => {
                      },
                   };
 
-                  // Devuelve las actualizaciones específicas o un objeto vacío si no hay coincidencia
+                  // Devuelve las actualizaciones especÃƒÆ’Ã‚Â­ficas o un objeto vacÃƒÆ’Ã‚Â­o si no hay coincidencia
                   return primaUpdatesMap[identifier] || {};
                };
 
-               // Procesa las líneas de items y aplica las actualizaciones correspondientes
+               // Procesa las lÃƒÆ’Ã‚Â­neas de items y aplica las actualizaciones correspondientes
                return Object.entries(items)
-                  .filter(([key]) => key !== "currentline") // Excluir la línea 'currentline'
+                  .filter(([key]) => key !== "currentline") // Excluir la lÃƒÆ’Ã‚Â­nea 'currentline'
                   .map(([_, lineData]) => {
                      const { custcol_indentificadorprima } = lineData;
 
@@ -1318,76 +1613,201 @@ export const ModalEstimacionEdit = ({ open, onClose, idEstimacion }) => {
                         updateFormValues(primaUpdates);
                      }
 
-                     // Retornar la línea formateada
+                     // Retornar la lÃƒÆ’Ã‚Â­nea formateada
                      return formatLineOutput(lineData);
                   });
             };
             const processedItems = processItemLines(itemData);
          } catch (error) {
             console.error("Error fetching estimacion:", error);
-            alert("Error al obtener la estimación. Por favor, inténtelo de nuevo.");
+            alert("Error al obtener la estimaciÃƒÆ’Ã‚Â³n. Por favor, intÃƒÆ’Ã‚Â©ntelo de nuevo.");
          } finally {
             setIsLoading(false);
          }
       };
 
-      fetchEstimacion(); // Ejecutar la función de obtención de datos
+      fetchEstimacion(); // Ejecutar la funciÃƒÆ’Ã‚Â³n de obtenciÃƒÆ’Ã‚Â³n de datos
    }, [open, idEstimacion, dispatch]); // Dependencias del efecto
 
    return (
-      <Modal
-         open={Boolean(open)}
-         onClose={onClose}
-         className="modal fade show"
-         aria-labelledby="exampleModalLongTitle"
-         style={{ display: "block" }}
-         aria-modal="true"
-         role="dialog"
-      >
-         <div
-            className="modal-dialog"
-            style={{ maxWidth: "89%", margin: "1.75rem auto" }} // Custom style for modal size and centering
+      <>
+         <style>{ESTIMATION_MODAL_STYLES}</style>
+         <Modal
+            open={Boolean(open)}
+            onClose={onClose}
+            className="modal fade show"
+            aria-labelledby="exampleModalLongTitle"
+            style={{ display: "block" }}
+            aria-modal="true"
+            role="dialog"
          >
-            <div className="modal-content">
-               <div className="modal-body">
-                  {isLoading ? (
-                     // Loading indicator while data is being processed
-                     <div
-                        className="d-flex justify-content-center align-items-center"
-                        style={{ height: "200px" }} // Ensure vertical and horizontal centering of the spinner
-                     >
-                        <div className="spinner-border" role="status">
-                           <span className="visually-hidden">Cargando...</span> {/* Accessible text for screen readers */}
-                        </div>
+            <div className="modal-dialog" style={{ maxWidth: "89%", margin: "1.75rem auto" }}>
+               <div className="modal-content estimation-create-modal-content">
+                  <div className="estimation-create-modal-header">
+                     <div>
+                        <span className="estimation-create-modal-kicker">Gestion comercial</span>
+                        <h4 className="estimation-create-modal-title">Editar estimacion</h4>
+                        <p className="estimation-create-modal-copy">
+                           Ajuste la informacion comercial, revise la distribucion de prima y confirme el metodo de
+                           pago sin perder el contexto principal de la operacion.
+                        </p>
                      </div>
-                  ) : (
-                     // Main content of the modal when not loading
-                     <>
-                        <h4>EDITAR ESTIMACIÓN</h4> {/* Main title of the modal */}
-                        <form onSubmit={handleSubmit}>
-                           {/* Component to manage the first line of the form */}
-                           <PrimeraLinea formValues={formValues} handleInputChange={handleInputChange} errors={errors} />
-                           {/* Component for premium calculation */}
-                           <CalculodePrima
-                              errors={errors}
-                              formValues={formValues}
-                              handleInputChange={handleInputChange}
-                              handleDiscountSelection={handleDiscountSelection}
-                           />
-                           {/* Component for premium selection */}
-                           <SeleccionPrima errors={errors} formValues={formValues} handleInputChange={handleInputChange} />
-                           {/* Component for payment method selection */}
-                           <MetodoPago formValues={formValues} handleInputChange={handleInputChange} errors={errors} />
-                           {/* Button to save the estimation */}
-                           <button type="submit" className="btn btn-primary">
-                              Guardar Estimacion
-                           </button>
-                        </form>
-                     </>
-                  )}
+
+                     <div className="estimation-create-modal-badge">
+                        <p className="estimation-create-modal-badge-label">Estado del formulario</p>
+                        <p className="estimation-create-modal-badge-value">
+                           {isLoading ? "Cargando informacion..." : "Listo para edicion"}
+                        </p>
+                     </div>
+                  </div>
+
+                  <div className="modal-body estimation-create-modal-body">
+                     {isLoading ? (
+                        <div className="estimation-create-modal-loading">
+                           <div className="spinner-border" role="status">
+                              <span className="visually-hidden">Cargando...</span>
+                           </div>
+                        </div>
+                     ) : (
+                        <div className="estimation-create-modal-shell">
+                           <div className="estimation-create-modal-grid">
+                              <aside className="estimation-create-modal-sidebar">
+                                 <div className="estimation-create-modal-sidebar-card">
+                                    <h5 className="estimation-create-modal-sidebar-title">Resumen de contexto</h5>
+                                    <p className="estimation-create-modal-sidebar-copy">
+                                       Consulte aqui la referencia comercial principal antes de editar la estimacion
+                                       para mantener consistencia entre valores, tractos y forma de cobro.
+                                    </p>
+                                 </div>
+
+                                 <div className="estimation-create-modal-hint-list">
+                                    {summaryCards.map((item) => (
+                                       <div className="estimation-create-modal-hint" key={item.label}>
+                                          <p className="estimation-create-modal-hint-label">{item.label}</p>
+                                          <p className="estimation-create-modal-hint-value">{item.value}</p>
+                                       </div>
+                                    ))}
+                                 </div>
+
+                                 <div className="estimation-create-modal-sidebar-card">
+                                    <h5 className="estimation-create-modal-sidebar-title">Como revisar esta edicion</h5>
+                                    <p className="estimation-create-modal-sidebar-copy">
+                                       Valide primero la base economica, luego confirme la distribucion de primas y
+                                       cierre verificando que el metodo de pago mantenga la estructura comercial.
+                                    </p>
+                                 </div>
+                              </aside>
+
+                              <section className="estimation-create-modal-main">
+                                 <form onSubmit={handleSubmit}>
+                                    <section className="estimation-create-modal-section">
+                                       <div className="estimation-create-modal-section-head">
+                                          <span className="estimation-create-modal-section-kicker">Datos base</span>
+                                          <h5 className="estimation-create-modal-section-title">
+                                             Informacion principal de la estimacion
+                                          </h5>
+                                          <p className="estimation-create-modal-section-copy">
+                                             Revise descuentos, extras, reservas y valores netos con los datos
+                                             iniciales heredados del negocio.
+                                          </p>
+                                       </div>
+
+                                       <PrimeraLinea
+                                          formValues={formValues}
+                                          handleInputChange={handleInputChange}
+                                          errors={errors}
+                                          hideContextFields
+                                       />
+                                    </section>
+
+                                    <section className="estimation-create-modal-section">
+                                       <div className="estimation-create-modal-section-head">
+                                          <span className="estimation-create-modal-section-kicker">
+                                             Estructura economica
+                                          </span>
+                                          <h5 className="estimation-create-modal-section-title">
+                                             Ajustes y calculo de prima
+                                          </h5>
+                                          <p className="estimation-create-modal-section-copy">
+                                             Modifique descuentos, porcentajes y montos clave mientras confirma el
+                                             impacto en los valores netos y asignables.
+                                          </p>
+                                       </div>
+
+                                       <CalculodePrima
+                                          errors={errors}
+                                          formValues={formValues}
+                                          handleInputChange={handleInputChange}
+                                          handleDiscountSelection={handleDiscountSelection}
+                                       />
+                                    </section>
+
+                                    <section className="estimation-create-modal-section">
+                                       <div className="estimation-create-modal-section-head">
+                                          <span className="estimation-create-modal-section-kicker">
+                                             Distribucion comercial
+                                          </span>
+                                          <h5 className="estimation-create-modal-section-title">
+                                             Organizacion de primas y tractos
+                                          </h5>
+                                          <p className="estimation-create-modal-section-copy">
+                                             Ajuste la estructura de prima manteniendo visibles fechas, porcentajes,
+                                             tractos, montos y descripcion de cada una.
+                                          </p>
+                                       </div>
+
+                                       <SeleccionPrima
+                                          errors={errors}
+                                          formValues={formValues}
+                                          handleInputChange={handleInputChange}
+                                       />
+                                    </section>
+
+                                    <section className="estimation-create-modal-section">
+                                       <div className="estimation-create-modal-section-head">
+                                          <span className="estimation-create-modal-section-kicker">
+                                             Estructura de cobro
+                                          </span>
+                                          <h5 className="estimation-create-modal-section-title">
+                                             MÃƒÂ©todo de pago y programacion financiera
+                                          </h5>
+                                          <p className="estimation-create-modal-section-copy">
+                                             Seleccione la modalidad correcta y revise los hitos necesarios para
+                                             completar la programacion financiera correspondiente.
+                                          </p>
+                                       </div>
+
+                                       <MetodoPago
+                                          formValues={formValues}
+                                          handleInputChange={handleInputChange}
+                                          errors={errors}
+                                       />
+                                    </section>
+
+                                    <div className="estimation-create-modal-footer">
+                                       <p className="estimation-create-modal-footer-copy">
+                                          Antes de guardar, confirme que los montos, primas y metodo de pago reflejan
+                                          correctamente la estructura comercial actual del cliente.
+                                       </p>
+
+                                       <div className="estimation-create-modal-actions">
+                                          <button type="button" className="btn btn-outline-secondary" onClick={onClose}>
+                                             Cancelar
+                                          </button>
+                                          <button type="submit" className="btn btn-primary">
+                                             Guardar estimacion
+                                          </button>
+                                       </div>
+                                    </div>
+                                 </form>
+                              </section>
+                           </div>
+                        </div>
+                     )}
+                  </div>
                </div>
             </div>
-         </div>
-      </Modal>
+         </Modal>
+      </>
    );
 };

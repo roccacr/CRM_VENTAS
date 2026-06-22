@@ -1,330 +1,288 @@
-export const PrimeraLinea = ({ formValues, handleInputChange, errors }) => {
-    return (
+const PAYMENT_METHOD_OPTIONS = [
+  { value: "", label: "Selecione un Metodo de pago" },
+  { value: "3", label: "Cheque" },
+  { value: "2", label: "Efectivo" },
+  { value: "4", label: "Paypal" },
+  { value: "5", label: "Tarjeta de Credito" },
+  { value: "6", label: "Tarjeta de Debito" },
+  { value: "1", label: "Transferencia" },
+];
+
+const READONLY_FIELDS = [
+  { name: "custbody114", label: "Entrega Fecha" },
+  { name: "entity", label: "Nombre cliente" },
+  { name: "custbody38", label: "Uni. exped. ligado vta" },
+  { name: "proyecto_lead_est", label: "Proyecto" },
+  { name: "entitystatus", label: "Estado" },
+  { name: "tranid_oport", label: "Oportunidad" },
+  { name: "expectedclosedate", label: "Cierre de previsto" },
+  { name: "custbody13", label: "Precio de lista" },
+  { name: "custbody18", label: "Prec. de venta minimo" },
+  { name: "pvneto", label: "Pec. de venta neto" },
+  { name: "custbody_ix_total_amount", label: "Monto total" },
+];
+
+const EDITABLE_FIELDS = [
+  [
+    { name: "custbody132", label: "Monto descuento directo", type: "text" },
+    { name: "custbody46", label: "Extras pagadas por el cliente", type: "text" },
+    { name: "custbody47", label: "Descripcion extras", type: "text" },
+  ],
+  [
+    { name: "custbodyix_salesorder_cashback", label: "Cashback", type: "text" },
+    { name: "custbody52", label: "Monto reserva", type: "text" },
+    { name: "custbody16", label: "Monto total de cortesias", type: "text" },
+    { name: "custbody35", label: "Descripcion de las cortesias", type: "text" },
+  ],
+  [
+    { name: "fech_reserva", label: "Fecha reserva", type: "date" },
+  ],
+];
+
+const PRE_RESERVA_FIELDS = [
+  { name: "custbody191", label: "Monto prereserva", type: "text" },
+  { name: "custbody189", label: "Comprobante prereserva", type: "text" },
+  { name: "custbody206", label: "Fecha de prereserva", type: "date" },
+  { name: "custbody190", label: "Observaciones prereserva", type: "text" },
+];
+
+const FieldInput = ({
+  field,
+  formValues,
+  handleInputChange,
+  errors,
+  disabled = false,
+}) => (
+  <div className="col-sm-3">
+    <label className="form-label">{field.label}</label>
+    <input
+      autoComplete="off"
+      disabled={disabled}
+      readOnly={disabled}
+      type={field.type}
+      name={field.name}
+      value={formValues[field.name] || ""}
+      onChange={handleInputChange}
+      className={`form-control mb-2 ${errors[field.name] ? "is-invalid" : ""}`}
+    />
+    {errors[field.name] ? (
+      <div className="invalid-feedback">{errors[field.name]}</div>
+    ) : null}
+  </div>
+);
+
+export const PrimeraLinea = ({
+  formValues,
+  handleInputChange,
+  errors,
+  compactReadonly = false,
+  hideContextFields = false,
+}) => {
+  return (
+    <>
+      {!compactReadonly && !hideContextFields ? (
         <>
-            <div className="row">
-                <div className="col-sm-3">
-                    <label className="form-label">Entrega Fecha</label>
-                    <input
-                        autoComplete="off"
-                        disabled
-                        type="text"
-                        name="custbody114"
-                        value={formValues.custbody114}
-                        onChange={handleInputChange}
-                        className={`form-control mb-2`}
-                    />
-                </div>
-                <div className="col-sm-3">
-                    <label className="form-label">Nombre cliente:</label>
-                    <input
-                        autoComplete="off"
-                        disabled
-                        type="text"
-                        name="entity"
-                        value={formValues.entity}
-                        onChange={handleInputChange}
-                        className={`form-control mb-2`}
-                    />
-                </div>
-                <div className="col-sm-3">
-                    <label className="form-label">UNI. EXPED. LIGADO VTA:</label>
-                    <input
-                        autoComplete="off"
-                        disabled
-                        type="text"
-                        name="custbody38"
-                        value={formValues.custbody38}
-                        onChange={handleInputChange}
-                        className={`form-control mb-2`}
-                    />
-                </div>
-                <div className="col-sm-3">
-                    <label className="form-label">PROYECTO:</label>
-                    <input
-                        autoComplete="off"
-                        disabled
-                        type="text"
-                        name="proyecto_lead_est"
-                        value={formValues.proyecto_lead_est}
-                        onChange={handleInputChange}
-                        className={`form-control mb-2`}
-                    />
-                </div>
-            </div>
-            <hr />
-            <div className="row">
-                <div className="col-sm-3">
-                    <label className="form-label">ESTADO :</label>
-                    <input
-                        autoComplete="off"
-                        disabled
-                        type="text"
-                        name="entitystatus"
-                        value={formValues.entitystatus}
-                        onChange={handleInputChange}
-                        className={`form-control mb-2`}
-                    />
-                </div>
-                <div className="col-sm-3">
-                    <label className="form-label">OPORTUNIDAD</label>
-                    <input
-                        autoComplete="off"
-                        disabled
-                        type="text"
-                        name="tranid_oport"
-                        value={formValues.tranid_oport}
-                        onChange={handleInputChange}
-                        className={`form-control mb-2`}
-                    />
-                </div>
-                <div className="col-sm-3">
-                    <label className="form-label">CIERRE DE PREVISTO:</label>
-                    <input
-                        autoComplete="off"
-                        disabled
-                        type="text"
-                        name="expectedclosedate"
-                        value={formValues.expectedclosedate}
-                        onChange={handleInputChange}
-                        className={`form-control mb-2`}
-                    />
-                </div>
-                <div className="col-sm-2" style={{ marginTop: "15px" }}>
-                    <input
-                        autoComplete="off"
-                        className="form-check-input"
-                        type="checkbox"
-                        id="PRERESERVA"
-                        name="pre_reserva"
-                        checked={formValues.pre_reserva}
-                        onChange={handleInputChange}
-                    />
-                    <label className="form-check-label" style={{ marginLeft: "5px", marginTop: "3px" }}>
-                        <span>PRE - RESERVA</span>
-                    </label>
-                </div>
-            </div>
-            <hr />
-            <div className="row">
-                <div className="col-sm-3">
-                    <label className="form-label">RECIO DE LISTA:</label>
-                    <input
-                        autoComplete="off"
-                        disabled
-                        type="text"
-                        name="custbody13"
-                        value={formValues.custbody13}
-                        onChange={handleInputChange}
-                        className={`form-control mb-2`}
-                    />
-                </div>
-                <div className="col-sm-3">
-                    <label className="form-label">MONTO DESCUENTO DIRECTO:</label>
-                    <input
-                        autoComplete="off"
-                        type="text"
-                        name="custbody132"
-                        value={formValues.custbody132}
-                        onChange={handleInputChange}
-                        className={`form-control mb-2`}
-                    />
-                </div>
-                <div className="col-sm-3">
-                    <label className="form-label">EXTRAS PAGADAS POR EL CLIENTE:</label>
-                    <input
-                        autoComplete="off"
-                        type="text"
-                        name="custbody46"
-                        value={formValues.custbody46}
-                        onChange={handleInputChange}
-                        className={`form-control mb-2`}
-                    />
-                </div>
-                <div className="col-sm-3">
-                    <label className="form-label">DESCRIPCIÓN EXTRAS:</label>
-                    <input
-                        autoComplete="off"
-                        type="text"
-                        name="custbody47"
-                        value={formValues.custbody47}
-                        onChange={handleInputChange}
-                        className={`form-control mb-2`}
-                    />
-                </div>
-            </div>
-            <hr />
-            <div className="row">
-                <div className="col-sm-3">
-                    <label className="form-label">CASHBACK</label>
-                    <input
-                        autoComplete="off"
-                        type="text"
-                        name="custbodyix_salesorder_cashback"
-                        value={formValues.custbodyix_salesorder_cashback}
-                        onChange={handleInputChange}
-                        className={`form-control mb-2`}
-                    />
-                </div>
-                <div className="col-sm-3">
-                    <label className="form-label">MONTO RESERVA :</label>
-                    <input
-                        autoComplete="off"
-                        type="text"
-                        name="custbody52"
-                        value={formValues.custbody52}
-                        onChange={handleInputChange}
-                        className={`form-control mb-2`}
-                    />
-                </div>
-                <div className="col-sm-3">
-                    <label className="form-label">MONTO TOTAL DE CORTESÍAS</label>
-                    <input
-                        autoComplete="off"
-                        type="text"
-                        name="custbody16"
-                        value={formValues.custbody16}
-                        onChange={handleInputChange}
-                        className={`form-control mb-2`}
-                    />
-                </div>
-                <div className="col-sm-3">
-                    <label className="form-label">DESCRIPCIÓN DE LAS CORTESIAS</label>
-                    <input
-                        autoComplete="off"
-                        type="text"
-                        name="custbody35"
-                        value={formValues.custbody35}
-                        onChange={handleInputChange}
-                        className={`form-control mb-2`}
-                    />
-                </div>
-            </div>
-            <hr />
-            <div className="row">
-                <div className="col-sm-3">
-                    <label className="form-label">PREC. DE VENTA MÍNIMO</label>
-                    <input
-                        autoComplete="off"
-                        disabled
-                        readOnly
-                        type="text"
-                        name="custbody18"
-                        value={formValues.custbody18}
-                        onChange={handleInputChange}
-                        className={`form-control mb-2`}
-                    />
-                </div>
-                <div className="col-sm-3">
-                    <label className="form-label">FECHA RESERVA:</label>
-                    <input
-                        autoComplete="off"
-                        type="date"
-                        name="fech_reserva"
-                        value={formValues.fech_reserva}
-                        onChange={handleInputChange}
-                        className={`form-control mb-2`}
-                    />
-                </div>
-                <div className="col-sm-3">
-                    <label className="form-label">PEC. DE VENTA NETO:</label>
-                    <input
-                        autoComplete="off"
-                        type="text"
-                        disabled
-                        name="pvneto"
-                        value={formValues.pvneto}
-                        onChange={handleInputChange}
-                        className={`form-control mb-2`}
-                    />
-                </div>
-                <div className="col-sm-3">
-                    <label className="form-label">MONTO TOTAL</label>
-                    <input
-                        autoComplete="off"
-                        type="text"
-                        disabled
-                        name="custbody_ix_total_amount"
-                        value={formValues.custbody_ix_total_amount}
-                        onChange={handleInputChange}
-                        className={`form-control mb-2`}
-                    />
-                </div>
-                <div className="col-sm-3" hidden>
-                    <label className="form-label">EXTRAS SOBRE EL PRECIO DE LISTA</label>
-                    <input
-                        autoComplete="off"
-                        type="text"
-                        name="custbody185"
-                        value={formValues.custbody185}
-                        onChange={handleInputChange}
-                        className={`form-control mb-2`}
-                    />
-                </div>
-            </div>
-            <div className="row" hidden={!formValues.pre_reserva}>
-                <hr />
-                <h4>Agregar valores para Pre Reserva</h4>
-                <div className="col-sm-3">
-                    <label className="form-label">MONTO PRERESERVA</label>
-                    <input
-                        autoComplete="off"
-                        type="text"
-                        name="custbody191"
-                        value={formValues.custbody191}
-                        onChange={handleInputChange}
-                        className={`form-control mb-2 ${errors.custbody191 ? "is-invalid" : ""}`}
-                    />
-                    {errors.custbody191 && <div className="invalid-feedback">{errors.custbody191}</div>}
-                </div>
-                <div className="col-sm-3">
-                    <label className="form-label">COMPROBANTE PRERESERVA</label>
-                    <input
-                        autoComplete="off"
-                        type="text"
-                        name="custbody189"
-                        value={formValues.custbody189}
-                        onChange={handleInputChange}
-                        className={`form-control mb-2 ${errors.custbody189 ? "is-invalid" : ""}`}
-                    />
-                    {errors.custbody189 && <div className="invalid-feedback">{errors.custbody189}</div>}
-                </div>
-                <div className="col-sm-3">
-                    <label className="form-label">FECHA DE PRERESERVA</label>
-                    <input
-                        autoComplete="off"
-                        type="date"
-                        name="custbody206"
-                        value={formValues.custbody206}
-                        onChange={handleInputChange}
-                        className={`form-control mb-2 ${errors.custbody206 ? "is-invalid" : ""}`}
-                    />
-                    {errors.custbody206 && <div className="invalid-feedback">{errors.custbody206}</div>}
-                </div>
-                <div className="col-sm-3">
-                    <label className="form-label">OBSERVACIONES PRERESERVA</label>
-                    <input
-                        autoComplete="off"
-                        type="text"
-                        name="custbody190"
-                        value={formValues.custbody190}
-                        onChange={handleInputChange}
-                        className={`form-control mb-2 ${errors.custbody190 ? "is-invalid" : ""}`}
-                    />
-                    {errors.custbody190 && <div className="invalid-feedback">{errors.custbody190}</div>}
-                </div>
-                <div className="col-sm-3">
-                    <label className="form-label">METODO DE PAGO</label>
-                    <select className="form-select" value={formValues.custbody188} name="custbody188" onChange={handleInputChange}>
-                        <option value="">Selecione un Metodo de pago</option>
-                        <option value="3">Cheque</option>
-                        <option value="2">Efectivo</option>
-                        <option value="4">Paypal</option>
-                        <option value="5">Tarjeta de Credito</option>
-                        <option value="6">Tarjeta de Débito</option>
-                        <option value="1">Transferencia</option>
-                    </select>
-                </div>
-            </div>
+          <div className="row">
+            {READONLY_FIELDS.slice(0, 4).map((field) => (
+              <FieldInput
+                key={field.name}
+                field={field}
+                formValues={formValues}
+                handleInputChange={handleInputChange}
+                errors={errors}
+                disabled
+              />
+            ))}
+          </div>
+
+          <hr />
+
+          <div className="row">
+            {READONLY_FIELDS.slice(4, 8).map((field) => (
+              <FieldInput
+                key={field.name}
+                field={field}
+                formValues={formValues}
+                handleInputChange={handleInputChange}
+                errors={errors}
+                disabled
+              />
+            ))}
+          </div>
+
+          <hr />
         </>
-    );
+      ) : null}
+
+      <div className="row align-items-end">
+        {!compactReadonly && !hideContextFields ? (
+          <FieldInput
+            field={READONLY_FIELDS[7]}
+            formValues={formValues}
+            handleInputChange={handleInputChange}
+            errors={errors}
+            disabled
+          />
+        ) : null}
+
+        <FieldInput
+          field={EDITABLE_FIELDS[0][0]}
+          formValues={formValues}
+          handleInputChange={handleInputChange}
+          errors={errors}
+        />
+        <FieldInput
+          field={EDITABLE_FIELDS[0][1]}
+          formValues={formValues}
+          handleInputChange={handleInputChange}
+          errors={errors}
+        />
+        <FieldInput
+          field={EDITABLE_FIELDS[0][2]}
+          formValues={formValues}
+          handleInputChange={handleInputChange}
+          errors={errors}
+        />
+      </div>
+
+      <hr />
+
+      <div className="row align-items-end">
+        {EDITABLE_FIELDS[1].map((field) => (
+          <FieldInput
+            key={field.name}
+            field={field}
+            formValues={formValues}
+            handleInputChange={handleInputChange}
+            errors={errors}
+          />
+        ))}
+      </div>
+
+      <hr />
+
+      <div className="row align-items-end">
+        {!compactReadonly && !hideContextFields ? (
+          <>
+            <FieldInput
+              field={READONLY_FIELDS[8]}
+              formValues={formValues}
+              handleInputChange={handleInputChange}
+              errors={errors}
+              disabled
+            />
+            <FieldInput
+              field={EDITABLE_FIELDS[2][0]}
+              formValues={formValues}
+              handleInputChange={handleInputChange}
+              errors={errors}
+            />
+            <FieldInput
+              field={READONLY_FIELDS[9]}
+              formValues={formValues}
+              handleInputChange={handleInputChange}
+              errors={errors}
+              disabled
+            />
+            <FieldInput
+              field={READONLY_FIELDS[10]}
+              formValues={formValues}
+              handleInputChange={handleInputChange}
+              errors={errors}
+              disabled
+            />
+          </>
+        ) : (
+          <>
+            <FieldInput
+              field={READONLY_FIELDS[8]}
+              formValues={formValues}
+              handleInputChange={handleInputChange}
+              errors={errors}
+              disabled
+            />
+            <FieldInput
+              field={EDITABLE_FIELDS[2][0]}
+              formValues={formValues}
+              handleInputChange={handleInputChange}
+              errors={errors}
+            />
+            <FieldInput
+              field={READONLY_FIELDS[9]}
+              formValues={formValues}
+              handleInputChange={handleInputChange}
+              errors={errors}
+              disabled
+            />
+          </>
+        )}
+      </div>
+
+      {hideContextFields ? (
+        <>
+          <hr />
+          <div className="row align-items-end">
+            <FieldInput
+              field={READONLY_FIELDS[10]}
+              formValues={formValues}
+              handleInputChange={handleInputChange}
+              errors={errors}
+              disabled
+            />
+            <div className="col-sm-3" style={{ marginTop: "15px" }}>
+              <input
+                autoComplete="off"
+                className="form-check-input"
+                type="checkbox"
+                id="PRERESERVA"
+                name="pre_reserva"
+                checked={Boolean(formValues.pre_reserva)}
+                onChange={handleInputChange}
+              />
+              <label
+                className="form-check-label"
+                style={{ marginLeft: "5px", marginTop: "3px" }}
+              >
+                <span>PRE - RESERVA</span>
+              </label>
+            </div>
+            <div className="col-sm-3" />
+            <div className="col-sm-3" />
+          </div>
+        </>
+      ) : null}
+
+      <div className="row" hidden={!formValues.pre_reserva}>
+        <hr />
+        <h4>Agregar valores para Pre Reserva</h4>
+        {PRE_RESERVA_FIELDS.map((field) => (
+          <FieldInput
+            key={field.name}
+            field={field}
+            formValues={formValues}
+            handleInputChange={handleInputChange}
+            errors={errors}
+          />
+        ))}
+        <div className="col-sm-3">
+          <label className="form-label">Metodo de pago</label>
+          <select
+            className={`form-select ${errors.custbody188 ? "is-invalid" : ""}`}
+            value={formValues.custbody188 || ""}
+            name="custbody188"
+            onChange={handleInputChange}
+          >
+            {PAYMENT_METHOD_OPTIONS.map((option) => (
+              <option key={option.value || "empty"} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+          {errors.custbody188 ? (
+            <div className="invalid-feedback d-block">{errors.custbody188}</div>
+          ) : null}
+        </div>
+      </div>
+    </>
+  );
 };

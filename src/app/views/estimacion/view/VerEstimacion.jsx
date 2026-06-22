@@ -274,39 +274,39 @@ const ESTIMATION_VIEW_STYLES = `
     color: #4b5563;
   }
 
-  .estimation-view-metric-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(165px, 1fr));
-    gap: 10px;
-  }
+.estimation-view-metric-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 12px;
+}
 
-  .estimation-view-metric-card {
-    min-height: 100%;
-    padding: 12px;
-    border: 1px solid #e5e7eb;
-    border-radius: 12px;
-    background: linear-gradient(180deg, #ffffff 0%, #fbfbfc 100%);
-  }
+.estimation-view-metric-card {
+  min-height: 100%;
+  padding: 14px 16px;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  background: linear-gradient(180deg, #ffffff 0%, #fbfbfc 100%);
+}
 
-  .estimation-view-metric-label {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin: 0 0 6px;
-    font-size: 10px;
-    font-weight: 700;
-    letter-spacing: 0.05em;
-    text-transform: uppercase;
-    color: #6b7280;
-  }
+.estimation-view-metric-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 8px;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #6b7280;
+}
 
-  .estimation-view-metric-value {
-    margin: 0;
-    font-size: 12px;
-    font-weight: 700;
-    line-height: 1.35;
-    color: #111827;
-    white-space: pre-wrap;
+.estimation-view-metric-value {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.35;
+  color: #111827;
+  white-space: pre-wrap;
     word-break: break-word;
   }
 
