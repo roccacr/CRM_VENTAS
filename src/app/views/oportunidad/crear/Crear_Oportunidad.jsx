@@ -1,906 +1,1175 @@
 import { useEffect, useState } from "react";
-import Select from "react-select"; // Importar el Select de react-select
-import { ButtonActions } from "../../../components/buttonAccions/buttonAccions";
-import { getLeadsComplete, getSpecificLead } from "../../../../store/leads/thunksLeads";
 import { useDispatch } from "react-redux";
-import Swal from "sweetalert2"; // Importa SweetAlert2 para mostrar alertas
-import { crearOportunidad, crearReoporteLead, fetchValidardisponibilidad, getfetch_Clases, getfetch_Ubicaciones, updateEstadoOportunidad } from "../../../../store/oportuinidad/thunkOportunidad";
+import Select from "react-select";
+import Swal from "sweetalert2";
+
+import { ButtonActions } from "../../../components/buttonAccions/buttonAccions";
 import { getFileList } from "../../../../store/expedientes/thunksExpedientes";
+import { getLeadsComplete, getSpecificLead } from "../../../../store/leads/thunksLeads";
+import {
+   crearOportunidad,
+   crearReoporteLead,
+   fetchValidardisponibilidad,
+   getfetch_Clases,
+   getfetch_Ubicaciones,
+   updateEstadoOportunidad,
+} from "../../../../store/oportuinidad/thunkOportunidad";
+import { PROFILE_PANEL_STYLES, PROFILE_THEME_STYLES } from "../../leads/perfil/profileTheme";
+
+const OPPORTUNITY_CREATE_STYLES = `
+    ${PROFILE_THEME_STYLES}
+
+    .opportunity-create-shell .lead-profile-panel {
+        padding: 18px;
+    }
+
+    .opportunity-create-toolbar {
+        display: flex;
+        justify-content: flex-end;
+        margin-bottom: 12px;
+    }
+
+    .opportunity-create-grid {
+        display: grid;
+        gap: 12px;
+    }
+
+    .opportunity-create-two-columns {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 12px;
+    }
+
+    .opportunity-create-three-columns {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 12px;
+    }
+
+    .opportunity-create-field {
+        display: grid;
+        gap: 6px;
+    }
+
+    .opportunity-create-field label,
+    .opportunity-create-inline-label {
+        display: inline-block;
+        margin: 0;
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+        color: #6b7280;
+    }
+
+    .opportunity-create-field .form-control,
+    .opportunity-create-field .form-select,
+    .opportunity-create-field .input-group-text {
+        min-height: 44px;
+        border-radius: 12px;
+        border-color: #d1d5db;
+        box-shadow: none;
+        font-size: 13px;
+    }
+
+    .opportunity-create-field .form-control:focus,
+    .opportunity-create-field .form-select:focus {
+        border-color: #111827;
+        box-shadow: 0 0 0 4px rgba(17, 24, 39, 0.08);
+    }
+
+    .opportunity-create-field textarea.form-control {
+        min-height: 160px;
+        resize: vertical;
+        padding-top: 12px;
+    }
+
+    .opportunity-create-field .form-control:disabled,
+    .opportunity-create-field .form-select:disabled {
+        background: #f8fafc;
+        color: #4b5563;
+    }
+
+    .opportunity-create-static-note {
+        margin: 0;
+        padding: 12px 14px;
+        border: 1px solid #e5e7eb;
+        border-radius: 12px;
+        background: #fbfbfc;
+        font-size: 12px;
+        line-height: 1.55;
+        color: #4b5563;
+    }
+
+    .opportunity-create-date-box {
+        display: grid;
+        gap: 8px;
+        padding: 12px 14px;
+        border: 1px solid #e5e7eb;
+        border-radius: 12px;
+        background: #fbfbfc;
+    }
+
+    .opportunity-create-date-copy {
+        margin: 0;
+        font-size: 11px;
+        color: #6b7280;
+    }
+
+    .opportunity-create-date-copy strong {
+        color: #111827;
+    }
+
+    .opportunity-create-expediente-grid {
+        display: grid;
+        grid-template-columns: 1.25fr 1fr;
+        gap: 12px;
+    }
+
+    .opportunity-create-box {
+        padding: 14px;
+        border: 1px solid #e5e7eb;
+        border-radius: 14px;
+        background: linear-gradient(180deg, #ffffff 0%, #fbfbfc 100%);
+    }
+
+    .opportunity-create-box-title {
+        margin: 0 0 10px;
+        font-size: 13px;
+        font-weight: 700;
+        color: #111827;
+    }
+
+    .opportunity-create-loading,
+    .opportunity-create-empty {
+        margin: 0;
+        padding: 12px 14px;
+        border: 1px dashed #d1d5db;
+        border-radius: 12px;
+        background: #fbfbfc;
+        font-size: 12px;
+        color: #6b7280;
+        text-align: center;
+    }
+
+    .opportunity-create-summary {
+        display: grid;
+        gap: 10px;
+    }
+
+    .opportunity-create-summary-row {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 10px;
+        padding: 10px 0;
+        border-bottom: 1px solid #eceff3;
+    }
+
+    .opportunity-create-summary-row:last-child {
+        padding-bottom: 0;
+        border-bottom: none;
+    }
+
+    .opportunity-create-summary-label {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 12px;
+        font-weight: 600;
+        color: #374151;
+    }
+
+    .opportunity-create-summary-label i {
+        font-size: 15px;
+        color: #6b7280;
+    }
+
+    .opportunity-create-summary-value {
+        text-align: right;
+    }
+
+    .opportunity-create-summary-value strong {
+        display: block;
+        font-size: 15px;
+        line-height: 1.1;
+        color: #111827;
+    }
+
+    .opportunity-create-badges {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+        gap: 6px;
+        margin-top: 6px;
+    }
+
+    .opportunity-create-badge {
+        display: inline-flex;
+        align-items: center;
+        min-height: 22px;
+        padding: 0 8px;
+        border-radius: 999px;
+        background: #f3f4f6;
+        font-size: 11px;
+        font-weight: 600;
+        color: #4b5563;
+    }
+
+    .opportunity-create-data-grid {
+        display: grid;
+        gap: 10px;
+    }
+
+    .opportunity-create-data-item {
+        padding: 12px 14px;
+        border: 1px solid #e5e7eb;
+        border-radius: 12px;
+        background: #ffffff;
+    }
+
+    .opportunity-create-data-item span {
+        display: block;
+        margin-bottom: 4px;
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+        color: #6b7280;
+    }
+
+    .opportunity-create-data-item strong {
+        display: block;
+        font-size: 14px;
+        line-height: 1.35;
+        color: #111827;
+        word-break: break-word;
+    }
+
+    .opportunity-create-invalid {
+        margin: 0;
+        font-size: 11px;
+        color: #b91c1c;
+    }
+
+    .opportunity-create-footer {
+        display: flex;
+        justify-content: flex-end;
+        margin-top: 14px;
+    }
+
+    .opportunity-create-submit {
+        min-width: 220px;
+        min-height: 46px;
+        border: none;
+        border-radius: 999px;
+        background: #111827;
+        color: #ffffff;
+        font-size: 13px;
+        font-weight: 700;
+        letter-spacing: 0.01em;
+        transition: transform 0.16s ease, box-shadow 0.16s ease;
+        box-shadow: 0 14px 28px rgba(17, 24, 39, 0.18);
+    }
+
+    .opportunity-create-submit:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 18px 34px rgba(17, 24, 39, 0.2);
+    }
+
+    .opportunity-create-submit i {
+        margin-right: 6px;
+    }
+
+    @media (max-width: 991px) {
+        .opportunity-create-two-columns,
+        .opportunity-create-three-columns,
+        .opportunity-create-expediente-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+`;
+
+const selectControlStyles = (hasError, isDisabled = false) => ({
+   control: (base, state) => ({
+      ...base,
+      minHeight: 44,
+      borderRadius: 12,
+      borderColor: hasError ? "#dc2626" : state.isFocused ? "#111827" : "#d1d5db",
+      boxShadow: state.isFocused ? "0 0 0 4px rgba(17, 24, 39, 0.08)" : "none",
+      backgroundColor: isDisabled ? "#f8fafc" : "#ffffff",
+      opacity: isDisabled ? 0.7 : 1,
+      "&:hover": {
+         borderColor: hasError ? "#dc2626" : "#111827",
+      },
+   }),
+   valueContainer: (base) => ({
+      ...base,
+      padding: "4px 12px",
+   }),
+   indicatorSeparator: (base) => ({
+      ...base,
+      backgroundColor: "#e5e7eb",
+   }),
+   placeholder: (base) => ({
+      ...base,
+      color: "#9ca3af",
+      fontSize: 13,
+   }),
+   singleValue: (base) => ({
+      ...base,
+      color: "#111827",
+      fontSize: 13,
+   }),
+   menu: (base) => ({
+      ...base,
+      borderRadius: 12,
+      overflow: "hidden",
+      boxShadow: "0 18px 40px rgba(15, 23, 42, 0.12)",
+   }),
+});
+
+const currencyFormatter = new Intl.NumberFormat("es-CR", {
+   minimumFractionDigits: 2,
+   maximumFractionDigits: 2,
+});
+
+const availabilityLabelMap = {
+   oportunidades: "Oportunidades",
+   estimaciones: "Estimaciones",
+   ordenesVenta: "Órdenes de venta",
+   ordenes_venta: "Órdenes de venta",
+   ov: "Órdenes de venta",
+};
+
+const availabilityIconMap = {
+   oportunidades: "mdi mdi-briefcase-outline",
+   estimaciones: "mdi mdi-file-document-outline",
+   ordenesVenta: "mdi mdi-file-check-outline",
+   ordenes_venta: "mdi mdi-file-check-outline",
+   ov: "mdi mdi-file-check-outline",
+};
 
 /**
  * Devuelve una fecha formateada en el formato "dd/MM/yyyy" para la región de Costa Rica ("es-CR").
  * La fecha resultante es la fecha actual más la cantidad de días especificada como parámetro.
  *
- * @param {number} suma - Número de días a sumar a la fecha actual (puede ser positivo o negativo).
+ * @param {number} suma - Número de días sumar la fecha actual (puede ser positivo o negativo).
  * @returns {string} - Fecha formateada como "dd/MM/yyyy".
  */
 const getFormattedDate = (suma) => {
-    const today = new Date(); // Obtiene la fecha actual.
+   const today = new Date();
+   today.setDate(today.getDate() + suma);
 
-    // Suma la cantidad de días especificada al día actual.
-    today.setDate(today.getDate() + suma);
+   return new Intl.DateTimeFormat("es-CR", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+   }).format(today);
+};
 
-    // Formatea la fecha resultante según el formato "es-CR" (día/mes/año).
-    return new Intl.DateTimeFormat("es-CR", {
-        day: "2-digit", // Muestra el día con dos dígitos.
-        month: "2-digit", // Muestra el mes con dos dígitos.
-        year: "numeric", // Muestra el año completo con cuatro dígitos.
-    }).format(today); // Retorna la fecha formateada como cadena.
+const formatCurrencyValue = (value) => {
+   const amount = Number(value || 0) / 100;
+   return currencyFormatter.format(amount);
+};
+
+const toDisplayValue = (value) => {
+   if (value === null || value === undefined || value === "") {
+      return "N/A";
+   }
+
+   return value;
+};
+
+const getAvailabilityEntries = (availability) => {
+   if (!availability || typeof availability !== "object") {
+      return [];
+   }
+
+   return Object.entries(availability).filter(([, value]) => {
+      return value && typeof value === "object" && !Array.isArray(value);
+   });
+};
+
+const getAvailabilityBadges = (sectionValue = {}) => {
+   return Object.entries(sectionValue)
+      .filter(([key, value]) => key !== "total" && Number(value) > 0)
+      .map(([key, value]) => ({
+         key,
+         label: `${value} ${key}`,
+      }));
 };
 
 export const Crear_Oportunidad = () => {
-    // Estado para almacenar los detalles generales del lead.
-    const [leadDetails, setLeadDetails] = useState({});
+   const [leadDetails, setLeadDetails] = useState({});
+   const dispatch = useDispatch();
+   const [leadsOptions, setClasesOptions] = useState([]);
+   const [ubicacionOptions, setUbicacionOptions] = useState([]);
+   const [expedienteOptions, setExpedienteOptions] = useState([]);
+   const [clientesOptions, setClientesOptions] = useState([]);
+   const [formValues, setFormValues] = useState({
+      clientesPoyrecto: 0,
+      clientes: "",
+      clienteAsignado: "",
+      probabilidad: "80.0%",
+      nombreValor: "Firme",
+      subsidiaria: "",
+      proyecto: "",
+      memo: "SIN DETALLE",
+      estado: "22",
+      motivoCondicion: "",
+      motivoCompra: "",
+      metodoPago: "",
+      ubicacion: "",
+      clase: "",
+      expediente: "",
+      idInternoExpediente: "",
+      estadoExpediente: "",
+      nombreExpediente: "",
+      precioLista: "",
+      precioMinimo: "",
+      salesRep: "",
+      currency: "1",
+      fechaCierrePrevista: getFormattedDate(7),
+      fechaActual: new Date().toLocaleDateString(),
+   });
+   const [isMotivoCondicionEnabled, setIsMotivoCondicionEnabled] = useState(false);
+   const [fechaActualComparar] = useState(getFormattedDate(0));
+   const [loadingExpediente, setLoadingExpediente] = useState(false);
+   const [disponibilidadExpediente, setDisponibilidadExpediente] = useState(null);
+   const [loadingDisponibilidad, setLoadingDisponibilidad] = useState(false);
+   const [errors, setErrors] = useState({});
 
-    // Inicializa el hook 'useDispatch' para permitir el envío de acciones a Redux desde este componente.
-    const dispatch = useDispatch();
+   const fetchLeadDetails = async (idEvent) => {
+      try {
+         const leadData = await dispatch(getSpecificLead(idEvent));
 
-    // Estado para almacenar las opciones disponibles para los leads.
-    const [leadsOptions, setClasesOptions] = useState([]);
+         setFormValues((prevState) => ({
+            ...prevState,
+            clienteAsignado: `${leadData.nombre_lead} - ${leadData.proyecto_lead} `,
+            subsidiaria: leadData.subsidiaria_lead,
+            proyecto: leadData.proyecto_lead,
+            clientes: idEvent,
+            clientesPoyrecto: leadData.idproyecto_lead,
+         }));
 
-    // Estado para almacenar las opciones de ubicaciones.
-    const [ubicacionOptions, setUbicacionOptions] = useState([]);
+         setLeadDetails(leadData);
+         const idExpediente = getQueryParam("idExpediente");
+         fetchExpedientes(idExpediente, leadData.idproyecto_lead);
+      } catch (error) {
+         console.error("Error al obtener los detalles del lead:", error);
+      }
+   };
 
-    // Estado para almacenar las opciones de expedientes.
-    const [expedienteOptions, setExpedienteOptions] = useState([]);
+   const fetchUbicaciones = async (idUbicacion) => {
+      try {
+         const data = await dispatch(getfetch_Ubicaciones(idUbicacion));
+         const options = data.map((item) => ({
+            value: item.idNetsuite_ubicaciones,
+            label: item.nombre_ubicaciones,
+         }));
 
-    // Estado para almacenar las opciones de clientes.
-    const [clientesOptions, setClientesOptions] = useState([]);
+         setUbicacionOptions(options);
+      } catch (error) {
+         console.error("Error al obtener las ubicaciones:", error);
+      }
+   };
 
-    // Estado para almacenar todos los valores del formulario, con valores iniciales definidos.
-    const [formValues, setFormValues] = useState({
-        clientesPoyrecto: 0, // ID del cliente.
-        clientes: "", // ID del cliente.
-        clienteAsignado: "", // Cliente asignado al expediente.
-        probabilidad: "80.0%", // Porcentaje de probabilidad de éxito.
-        nombreValor: "Firme", // Estado del valor (por ejemplo, "Firme" o "Pendiente").
-        subsidiaria: "", // Subsidiaria relacionada con el cliente o proyecto.
-        proyecto: "", // Proyecto asociado.
-        memo: "SIN DETALLE", // Comentarios adicionales.
-        estado: "22", // Estado del lead o expediente (por ejemplo, "Activo", "Completado").
-        motivoCondicion: "", // Motivo de una condición especial.
-        motivoCompra: "", // Motivo principal de la compra.
-        metodoPago: "", // Método de pago seleccionado.
-        ubicacion: "", // Ubicación relacionada con el expediente.
-        clase: "", // Clase del expediente o lead.
-        expediente: "", // ID del expediente asociado.
-        idInternoExpediente: "", // ID interno del expediente.
-        estadoExpediente: "", // Estado actual del expediente.
-        nombreExpediente: "", // Nombre del expediente.
-        precioLista: "", // Precio de lista del proyecto o producto.
-        precioMinimo: "", // Precio mínimo permitido.
-        salesRep: "", // Representante de ventas asignado.
-        currency: "1", // Moneda utilizada (por ejemplo, 1 = local).
-        fechaCierrePrevista: getFormattedDate(7), // Fecha estimada de cierre (7 días desde hoy).
-        fechaActual: new Date().toLocaleDateString(), // Fecha actual formateada para mostrar.
-    });
+   const fetchClases = async (idClases) => {
+      try {
+         const data = await dispatch(getfetch_Clases(idClases));
+         const options = data.map((item) => ({
+            value: item.idNetsuite_clase,
+            label: item.nombre_clase,
+         }));
 
-    // Estado para controlar si se habilita el select de motivo de condición.
-    const [isMotivoCondicionEnabled, setIsMotivoCondicionEnabled] = useState(false);
+         setClasesOptions(options);
+      } catch (error) {
+         console.error("Error al obtener las ubicaciones:", error);
+      }
+   };
 
-    // Estado para almacenar la fecha actual para comparaciones.
-    const [fechaActualComparar, setFechaActualComparar] = useState(getFormattedDate(0)); // Fecha de hoy formateada.
+   const fetchClientes = async (idLeads) => {
+      try {
+         const data = await dispatch(getLeadsComplete("2024-01-01", "2060-01-01", 0));
 
-    // Estado para controlar el loading de expediente.
-    const [loadingExpediente, setLoadingExpediente] = useState(false);
+         const options = data.map((item) => ({
+            value: item.idinterno_lead,
+            label: `${item.nombre_lead} -${item.proyecto_lead}`,
+         }));
 
-    // Estado para almacenar la información de disponibilidad del expediente.
-    const [disponibilidadExpediente, setDisponibilidadExpediente] = useState(null);
+         setClientesOptions(options);
 
-    // Estado para controlar el loading de disponibilidad.
-    const [loadingDisponibilidad, setLoadingDisponibilidad] = useState(false);
-
-    // Función asíncrona para obtener los detalles específicos de un lead basado en su ID.
-    const fetchLeadDetails = async (idEvent) => {
-        try {
-            // Llama a la acción 'getSpecificLead' y actualiza el estado 'leadDetails'.
-            const leadData = await dispatch(getSpecificLead(idEvent));
-
-            // Actualiza los valores del formulario con los detalles específicos del lead.
-            setFormValues((prevState) => ({
-                ...prevState, // Mantiene los valores anteriores del estado.
-                clienteAsignado: `${leadData.nombre_lead} - ${leadData.proyecto_lead} `, // Asigna el nombre del lead al campo correspondiente.
-                subsidiaria: leadData.subsidiaria_lead, // Actualiza la subsidiaria del lead.
-                proyecto: leadData.proyecto_lead, // Asigna el proyecto asociado al lead.
-                clientes: idEvent, // Almacena el ID del lead como cliente.
-                clientesPoyrecto: leadData.idproyecto_lead, // Almacena el ID del lead como cliente.
+         if (idLeads > 0) {
+            setFormValues((prevValues) => ({
+               ...prevValues,
+               clientes: idLeads,
             }));
-            // Guarda todos los detalles del lead en el estado 'leadDetails' para su uso posterior.
-            setLeadDetails(leadData);
-            const idExpediente = getQueryParam("idExpediente"); // Extrae el ID del lead desde la URL.
-            fetchExpedientes(idExpediente, leadData.idproyecto_lead);
-        } catch (error) {
-            console.error("Error al obtener los detalles del lead:", error); // Manejo de errores.
-        }
-    };
+         }
+      } catch (error) {
+         console.error("Error al obtener los clientes:", error);
+      }
+   };
 
-    // Función asíncrona para obtener las ubicaciones disponibles basadas en un ID específico.
-    const fetchUbicaciones = async (idUbicacion) => {
-        try {
-            // Llama a la acción 'getfetch_Ubicaciones' y obtiene las ubicaciones.
-            const data = await dispatch(getfetch_Ubicaciones(idUbicacion));
+   const fetchExpedientes = async (idExpediente, filtro, showLoading = false) => {
+      try {
+         if (showLoading) {
+            setLoadingExpediente(true);
+         }
 
-            // Mapea los datos recibidos para generar opciones adecuadas para los selects.
-            const options = data.map((item) => ({
-                value: item.idNetsuite_ubicaciones, // ID de la ubicación.
-                label: item.nombre_ubicaciones, // Nombre descriptivo de la ubicación.
-            }));
+         const data = await dispatch(getFileList());
+         const arrayPendiente = [30, 4, 16, 39, 19];
+         const filteredData =
+            filtro > 0
+               ? arrayPendiente.includes(filtro)
+                  ? data.filter((item) => arrayPendiente.includes(item.idProyectoPrincipal_exp))
+                  : data.filter((item) => item.idProyectoPrincipal_exp === filtro)
+               : data;
 
-            // Actualiza el estado con las opciones de ubicaciones disponibles.
-            setUbicacionOptions(options);
-        } catch (error) {
-            console.error("Error al obtener las ubicaciones:", error); // Manejo de errores.
-        }
-    };
+         const expedientesDisponibles = filteredData.filter((item) => item.estado_exp === "1. Disponible para Venta");
 
-    // Función asíncrona para obtener las ubicaciones disponibles basadas en un ID específico.
-    const fetchClases = async (idClases) => {
-        try {
-            // Llama a la acción 'getfetch_Ubicaciones' y obtiene las ubicaciones.
-            const data = await dispatch(getfetch_Clases(idClases));
+         const options = expedientesDisponibles.map((item) => ({
+            value: item.ID_interno_expediente,
+            label: `${item.codigo_exp} - ${item.estado_exp} `,
+         }));
 
-            // Mapea los datos recibidos para generar opciones adecuadas para los selects.
-            const options = data.map((item) => ({
-                value: item.idNetsuite_clase, // ID de la ubicación.
-                label: item.nombre_clase, // Nombre descriptivo de la ubicación.
-            }));
+         setExpedienteOptions(options);
 
-            // Actualiza el estado con las opciones de ubicaciones disponibles.
-            setClasesOptions(options);
-        } catch (error) {
-            console.error("Error al obtener las ubicaciones:", error); // Manejo de errores.
-        }
-    };
+         if (idExpediente > 0) {
+            const expedienteEncontrado = data.find((item) => item.ID_interno_expediente === idExpediente);
 
-    const fetchClientes = async (idLeads) => {
-        try {
-            // Llama a la acción 'getfetch_Ubicaciones' y obtiene las ubicaciones.
-            const data = await dispatch(getLeadsComplete("2024-01-01", "2060-01-01", 0));
-
-            // Mapea los datos recibidos para generar opciones adecuadas para los selects.
-            const options = data.map((item) => ({
-                value: item.idinterno_lead, // ID de la ubicación.
-                label: `${item.nombre_lead} -${item.proyecto_lead}`, // Nombre descriptivo de la ubicación.
-            }));
-
-            // Actualiza el estado con las opciones de ubicaciones disponibles.
-            setClientesOptions(options);
-            if (idLeads > 0) {
-                setFormValues((prevValues) => ({
-                    ...prevValues,
-                    clientes: idLeads,
-                }));
+            if (expedienteEncontrado) {
+               setFormValues((prevValues) => ({
+                  ...prevValues,
+                  expediente: idExpediente,
+                  idInternoExpediente: expedienteEncontrado.ID_interno_expediente,
+                  estadoExpediente: expedienteEncontrado.estado_exp,
+                  nombreExpediente: expedienteEncontrado.codigo_exp,
+                  precioLista: parseFloat(expedienteEncontrado.precioVentaUncio_exp.replace(/[,.]/g, "")),
+                  precioMinimo: parseFloat(expedienteEncontrado.precioDeVentaMinimo.replace(/[,.]/g, "")),
+               }));
             }
-        } catch (error) {
-            console.error("Error al obtener los clientes:", error); // Manejo de errores.
-        }
-    };
-
-    const fetchExpedientes = async (idExpediente, filtro, showLoading = false) => {
-        try {
-            // Activar loading si se solicita
-            if (showLoading) {
-                setLoadingExpediente(true);
-            }
-
-            // Llama a la acción 'getfetch_Ubicaciones' y obtiene las ubicaciones.
-            const data = await dispatch(getFileList());
-
-            // Si el filtro no está vacío, aplica el filtrado basado en coincidencias parciales.
-            const arrayPendiente = [30, 4, 16, 39, 19];
-
-            // Si el filtro es mayor que 0, aplica el filtrado basado en el arrayPendiente o el filtro.
-            // Si no, usa todos los datos.
-            const filteredData = filtro > 0 ? (arrayPendiente.includes(filtro) ? data.filter((item) => arrayPendiente.includes(item.idProyectoPrincipal_exp)) : data.filter((item) => item.idProyectoPrincipal_exp === filtro)) : data; // Si el filtro es 0 o menor, usa todos los datos.
-
-            // Filtrar para mostrar solo los expedientes con estado_exp igual a "1. Disponible para Venta"
-            const expedientesDisponibles = filteredData.filter((item) => item.estado_exp === "1. Disponible para Venta");
-            
-            // Mapea los datos filtrados para generar opciones adecuadas para los selects.
-            const options = expedientesDisponibles.map((item) => ({
-                value: item.ID_interno_expediente, // ID de la ubicación.
-                label: `${item.codigo_exp} - ${item.estado_exp}   `, // Nombre descriptivo de la ubicación.
+         } else {
+            setFormValues((prevValues) => ({
+               ...prevValues,
+               expediente: "",
+               idInternoExpediente: "",
+               estadoExpediente: "",
+               nombreExpediente: "",
+               precioLista: 0,
+               precioMinimo: 0,
             }));
+         }
+      } catch (error) {
+         console.error("Error al obtener los expedientes:", error);
+      } finally {
+         if (showLoading) {
+            setLoadingExpediente(false);
+         }
+      }
+   };
 
-            // Actualiza el estado con las opciones de ubicaciones disponibles.
-            setExpedienteOptions(options);
+   const getQueryParam = (param) => {
+      const value = new URLSearchParams(location.search).get(param);
 
-            if (idExpediente > 0) {
-                const expedienteEncontrado = data.find((item) => item.ID_interno_expediente === idExpediente);
+      if (value && !isNaN(value) && !isNaN(parseFloat(value))) {
+         return Number(value);
+      }
 
-                setFormValues((prevValues) => ({
-                    ...prevValues,
-                    expediente: idExpediente,
-                    idInternoExpediente: expedienteEncontrado.ID_interno_expediente,
-                    estadoExpediente: expedienteEncontrado.estado_exp,
-                    nombreExpediente: expedienteEncontrado.codigo_exp,
-                    precioLista: parseFloat(expedienteEncontrado.precioVentaUncio_exp.replace(/[,.]/g, "")), // Elimina comas y puntos
-                    precioMinimo: parseFloat(expedienteEncontrado.precioDeVentaMinimo.replace(/[,.]/g, "")), // Elimina comas y puntos
-                }));
-            } else {
-                setFormValues((prevValues) => ({
-                    ...prevValues,
-                    expediente: "",
-                    idInternoExpediente: "",
-                    estadoExpediente: "",
-                    nombreExpediente: "",
-                    precioLista: 0,
-                    precioMinimo: 0,
-                }));
-            }
-        } catch (error) {
-            console.error("Error al obtener los expedientes:", error); // Manejo de errores.
-        } finally {
-            // Desactivar loading al finalizar
-            if (showLoading) {
-                setLoadingExpediente(false);
-            }
-        }
-    };
+      return value;
+   };
 
-    // Función para obtener el valor de un parámetro específico de la URL.
-    const getQueryParam = (param) => {
-        // Crea una instancia de 'URLSearchParams' con los parámetros de la URL.
-        const value = new URLSearchParams(location.search).get(param);
+   useEffect(() => {
+      const leadId = getQueryParam("idLead");
 
-        // Verifica si el valor es numérico. Si lo es, lo convierte a un número.
-        if (value && !isNaN(value) && !isNaN(parseFloat(value))) {
-            return Number(value); // Retorna el valor como número.
-        }
-        return value; // Si no es numérico, retorna el valor original como cadena de texto.
-    };
+      if (leadId && leadId > 0) {
+         fetchLeadDetails(leadId);
+      }
 
-    useEffect(() => {
-        // Obtiene los parámetros 'idLead', 'idCalendar', y 'idDate' desde la URL.
-        const leadId = getQueryParam("idLead"); // Extrae el ID del lead desde la URL.
+      fetchUbicaciones(1);
+      fetchClases(1);
+      fetchClientes(leadId);
 
-        // Si 'leadId' es válido (mayor que 0), llama a la función para obtener los detalles del lead.
-        if (leadId && leadId > 0) {
-            fetchLeadDetails(leadId); // Ejecuta la solicitud para obtener los detalles del lead.
-        }
+      if (leadId === 0) {
+         const idExpediente = getQueryParam("idExpediente");
+         fetchExpedientes(idExpediente, formValues.clientesPoyrecto);
+      }
+   }, [location.search]);
 
-        // Llama a la función para obtener las ubicaciones con ID 1 por defecto. que es stauts activos
-        fetchUbicaciones(1);
+   const handleInputChange = (e) => {
+      const { name, value } = e.target;
 
-        // Llama a la función para obtener las clases con ID 1 por defecto. que es stauts activos
-        fetchClases(1);
+      if (name === "estado") {
+         const isCondicional = value === "11";
+         setIsMotivoCondicionEnabled(isCondicional);
 
-        fetchClientes(leadId);
+         setFormValues((prevState) => ({
+            ...prevState,
+            estado: value,
+            probabilidad: isCondicional ? "50.0%" : "80.0%",
+            nombreValor: isCondicional ? "Condicional" : "Firme",
+            fechaCierrePrevista: isCondicional ? getFormattedDate(22) : getFormattedDate(7),
+         }));
+      } else {
+         setFormValues((prevState) => ({
+            ...prevState,
+            [name]: value,
+         }));
+      }
 
-        if (leadId === 0) {
-            const idExpediente = getQueryParam("idExpediente"); // Extrae el ID del lead desde la URL.
-            fetchExpedientes(idExpediente, formValues.clientesPoyrecto);
-        }
-    }, [location.search]); // El efecto se ejecuta nuevamente si 'location.search' cambia.
+      if (name === "clientes") {
+         fetchLeadDetails(value);
+      }
 
-    // Estado para almacenar los errores del formulario.
-    const [errors, setErrors] = useState({});
-
-    // Función para manejar los cambios en los campos del formulario.
-    const handleInputChange = (e) => {
-        const { name, value } = e.target; // Extrae el nombre y valor del campo que se modificó.
-
-        if (name === "estado") {
-            // Verifica si el estado seleccionado es "11" (Condicional) para habilitar el select de motivoCondicion.
-            const isCondicional = value === "11";
-            setIsMotivoCondicionEnabled(isCondicional); // Habilita o deshabilita el select según el estado.
-
-            // Actualiza los valores del formulario según si el estado es "Condicional" o no.
-            setFormValues((prevState) => ({
-                ...prevState, // Mantiene los valores anteriores del formulario.
-                estado: value, // Actualiza el estado seleccionado.
-                probabilidad: isCondicional ? "50.0%" : "80.0%", // Ajusta la probabilidad según el estado.
-                nombreValor: isCondicional ? "Condicional" : "Firme", // Define el nombre del valor.
-                fechaCierrePrevista: isCondicional ? getFormattedDate(22) : getFormattedDate(7), // Establece la fecha de cierre prevista.
+      if (name === "expediente") {
+         if (value) {
+            fetchExpedientes(value, formValues.clientesPoyrecto, true);
+            fetchValidarDisponibilidad(value);
+         } else {
+            setFormValues((prevValues) => ({
+               ...prevValues,
+               expediente: "",
+               idInternoExpediente: "",
+               estadoExpediente: "",
+               nombreExpediente: "",
+               precioLista: 0,
+               precioMinimo: 0,
             }));
-        } else {
-            // Si no es el campo 'estado', actualiza el valor del formulario normalmente.
-            setFormValues({ ...formValues, [name]: value });
-        }
-
-        if (name === "clientes") {
-            // Llama a la función para obtener los detalles del lead cuando se selecciona un cliente.
-            fetchLeadDetails(value);
-        }
-
-        if (name === "expediente") {
-            // Si se selecciona un expediente, activar loading y cargar los datos
-            if (value) {
-                // Cargar datos del expediente y validar disponibilidad en paralelo
-                fetchExpedientes(value, formValues.clientesPoyrecto, true);
-                fetchValidarDisponibilidad(value);
-            } else {
-                // Si se limpia la selección, resetear los valores sin loading
-                setFormValues((prevValues) => ({
-                    ...prevValues,
-                    expediente: "",
-                    idInternoExpediente: "",
-                    estadoExpediente: "",
-                    nombreExpediente: "",
-                    precioLista: 0,
-                    precioMinimo: 0,
-                }));
-                // Limpiar información de disponibilidad
-                setDisponibilidadExpediente(null);
-            }
-        }
-
-        // Si hay un error relacionado con el campo que se modificó, lo elimina del estado de errores.
-        if (errors[name]) {
-            setErrors((prevErrors) => ({
-                ...prevErrors, // Mantiene los errores anteriores.
-                [name]: false, // Elimina el error del campo actual.
-            }));
-        }
-    };
-    // Función para validar los campos del formulario.
-    const validateForm = () => {
-        // Lista de campos requeridos que deben tener un valor.
-        const requiredFields = ["clienteAsignado", "subsidiaria", "proyecto", "motivoCompra", "metodoPago", "ubicacion", "clase", "expediente", "idInternoExpediente"];
-
-        const errors = {}; // Objeto para almacenar los errores detectados.
-        let isValid = true; // Variable para determinar si el formulario es válido.
-
-        // Itera sobre los campos requeridos y verifica si tienen valor.
-        requiredFields.forEach((field) => {
-            if (!formValues[field]) {
-                errors[field] = true; // Marca el campo como erróneo si está vacío.
-                isValid = false; // El formulario no es válido si falta un campo requerido.
-            }
-        });
-
-        // Validación adicional: si el estado es "11", 'motivoCondicion' es obligatorio.
-        if (formValues.estado === "11" && !formValues.motivoCondicion) {
-            errors.motivoCondicion = true; // Marca el campo como erróneo si falta.
-            isValid = false; // El formulario no es válido.
-        }
-
-        // Eliminamos esta condición que estaba anulando la validación anterior
-        // if (formValues.estado === "22") {
-        //     errors.motivoCondicion = false; // Marca el campo como erróneo si falta.
-        //     isValid = true; // Esta línea estaba forzando isValid a true independientemente de otros campos
-        // }
-
-        setErrors(errors); // Actualiza el estado de errores con los errores detectados.
-        return isValid; // Retorna si el formulario es válido o no.
-    };
-
-    // Función para manejar la generación de una nueva oportunidad.
-    // Función para manejar la creación de una oportunidad
-    const handleGenerateOpportunity = async () => {
-        // Validar formulario antes de proceder
-        if (validateForm()) {
-            // Mostrar alerta de confirmación antes de crear la oportunidad
-            Swal.fire({
-                title: "¿Está seguro de crear la oportunidad?",
-                text: "No se podrá revertir esta acción, por favor confirme.",
-                icon: "warning",
-                showCancelButton: true,
-                confirmButtonColor: "#3085d6",
-                cancelButtonColor: "#d33",
-                confirmButtonText: "Sí, crear!",
-            }).then(async (result) => {
-                // Si el usuario confirma la creación
-                if (result.isConfirmed) {
-                    // Mostrar alerta de carga mientras se crea la oportunidad
-                    Swal.fire({
-                        title: "Creando oportunidad...",
-                        html: "Por favor espere...",
-                        allowOutsideClick: false,
-                        didOpen: () => Swal.showLoading(),
-                    });
-
-                    try {
-                        // Ejecutar acción para crear la oportunidad y obtener el resultado
-                        const response = await dispatch(crearOportunidad(formValues, leadDetails));
-                        const detalleOportunidad = response.data["Detalle"];
-                        const idOportunidad = detalleOportunidad.id;
-                        
-
-                        // Si la respuesta es exitosa (código 200)
-                        if (detalleOportunidad.status === 200) {
-                            // Crear el reporte del lead relacionado a la oportunidad
-                            await dispatch(crearReoporteLead(leadDetails));
-                            await dispatch(updateEstadoOportunidad(formValues, detalleOportunidad));
-                            // Mostrar notificación de éxito y redirigir a la página de detalles de la oportunidad
-                            Swal.fire({
-                                position: "top-end",
-                                icon: "success",
-                                title: "Oportunidad creada exitosamente",
-                                showConfirmButton: false,
-                                timer: 2500,
-                            }).then(() => {
-                                window.location.href = `/oportunidad/ver?data=${leadDetails.idinterno_lead}&data2=${detalleOportunidad.id}`;
-                            });
-                        }
-                        // Si hay un error en el servidor (código 500)
-                        else if (detalleOportunidad.status === 500) {
-                            let error = JSON.parse(detalleOportunidad.Error); // Parsear el error
-                            Swal.fire({
-                                html: `
-                                <h4>Detalle de error:</h4>
-                                <p>${error.details}, <br> Lo sentimos, por favor contacte a su administrador.</p>
-                            `,
-                                icon: "error",
-                                confirmButtonText: "OK",
-                                cancelButtonText: "CORREGIR",
-                                showCancelButton: true,
-                                showCloseButton: true,
-                            });
-                        }
-                    } catch (error) {
-                        // Manejo de cualquier error inesperado
-                        Swal.fire({
-                            icon: "error",
-                            title: "Error inesperado",
-                            text: "Ocurrió un error al crear la oportunidad. Intente nuevamente.",
-                        });
-                    }
-                }
-            });
-        } else {
-            // Mostrar mensaje de error si la validación del formulario falla
-            Swal.fire({
-                icon: "error",
-                title: "Campos obligatorios",
-                text: "Por favor, complete todos los campos requeridos.",
-            });
-        }
-    };
-
-    // Función para validar la disponibilidad del expediente de unidad
-    const fetchValidarDisponibilidad = async (idExpediente) => {
-        try {
-            setLoadingDisponibilidad(true);
-            const result = await dispatch(fetchValidardisponibilidad(idExpediente));
-            setDisponibilidadExpediente(result);
-        } catch (error) {
-            console.error("Error al validar disponibilidad del expediente:", error);
             setDisponibilidadExpediente(null);
-        } finally {
-            setLoadingDisponibilidad(false);
-        }
-    };
+         }
+      }
 
-    return (
-        <>
-            <div className="card">
-                <div className="card-body" style={{ borderRadius: "13px", background: "#fcfcfc" }}>
-                    <h4 className="card-title">
-                        <strong>Generar una nueva oportunidad</strong>
-                    </h4>
-                    <div className="col-xl-6">
-                        <div className="mt-4 mt-lg-0">
-                            <blockquote className="blockquote  blockquote-reverse font-size-16 mb-0">{Object.keys(leadDetails).length > 0 && <ButtonActions leadData={leadDetails} className="mb-4" />}</blockquote>
-                        </div>
-                    </div>
+      if (errors[name]) {
+         setErrors((prevErrors) => ({
+            ...prevErrors,
+            [name]: false,
+         }));
+      }
+   };
 
-                    <div className="row">
-                        <div className="col-xl-6">
-                            <h4 className="card-title">
-                                <span>Información principal</span>
-                            </h4>
-                            <div className="mb-3">
-                                <label className="form-label">CLIENTE ASIGNADO </label>
-                                <Select
-                                    name="clientes"
-                                    options={clientesOptions}
-                                    value={clientesOptions.find((option) => option.value === formValues.clientes)}
-                                    onChange={(selectedOption) =>
-                                        handleInputChange({
-                                            target: { name: "clientes", value: selectedOption ? selectedOption.value : "" },
-                                        })
-                                    }
-                                    placeholder="Seleccione un Cliente"
-                                    isClearable
-                                    classNamePrefix="react-select"
-                                />
-                            </div>
-                            <div className="mb-3">
-                                <label className="form-label">CLIENTE ASIGNADO </label>
-                                <input value={formValues.clienteAsignado} onChange={handleInputChange} type="text" name="clienteAsignado" className={`form-control ${errors.clienteAsignado ? "is-invalid" : ""}`} disabled />
-                            </div>
-                            <div className="mb-3">
-                                <label className="form-label">PROBABILIDAD </label>
-                                <input type="text" value={formValues.probabilidad} onChange={handleInputChange} name="probabilidad" className="form-control" disabled />
-                                <input type="text" value={formValues.nombreValor} onChange={handleInputChange} name="nombreValor" className="form-control" disabled />
-                            </div>
-                            <div className="mb-3">
-                                <label className="form-label">SUBSIDIARIA </label>
-                                <input value={formValues.subsidiaria} onChange={handleInputChange} name="subsidiaria" type="text" className={`form-control ${errors.subsidiaria ? "is-invalid" : ""}`} disabled />
-                            </div>
-                            <div className="mb-3">
-                                <label className="form-label">PROYECTO </label>
-                                <input value={formValues.proyecto} onChange={handleInputChange} name="proyecto" type="text" className={`form-control ${errors.proyecto ? "is-invalid" : ""}`} disabled />
-                            </div>
-                            <div className="mb-3">
-                                <label className="form-label">DETALLES </label>
-                                <textarea id="memo" className="form-control" value={formValues.memo} onChange={handleInputChange} name="memo" rows="8"></textarea>
-                            </div>
+   const validateForm = () => {
+      const requiredFields = [
+         "clienteAsignado",
+         "subsidiaria",
+         "proyecto",
+         "motivoCompra",
+         "metodoPago",
+         "ubicacion",
+         "clase",
+         "expediente",
+         "idInternoExpediente",
+      ];
+      const nextErrors = {};
+      let isValid = true;
+
+      requiredFields.forEach((field) => {
+         if (!formValues[field]) {
+            nextErrors[field] = true;
+            isValid = false;
+         }
+      });
+
+      if (formValues.estado === "11" && !formValues.motivoCondicion) {
+         nextErrors.motivoCondicion = true;
+         isValid = false;
+      }
+
+      setErrors(nextErrors);
+      return isValid;
+   };
+
+   const handleGenerateOpportunity = async () => {
+      if (!validateForm()) {
+         Swal.fire({
+            icon: "error",
+            title: "Campos obligatorios",
+            text: "Por favor, complete todos los campos requeridos.",
+         });
+         return;
+      }
+
+      Swal.fire({
+         title: "¿Está seguro de crear la oportunidad?",
+         text: "No se podrá revertir esta acción, por favor confirme.",
+         icon: "warning",
+         showCancelButton: true,
+         confirmButtonColor: "#3085d6",
+         cancelButtonColor: "#d33",
+         confirmButtonText: "Sí, crear!",
+      }).then(async (result) => {
+         if (!result.isConfirmed) {
+            return;
+         }
+
+         Swal.fire({
+            title: "Creando oportunidad...",
+            html: "Por favor espere...",
+            allowOutsideClick: false,
+            didOpen: () => Swal.showLoading(),
+         });
+
+         try {
+            const response = await dispatch(crearOportunidad(formValues, leadDetails));
+            const detalleOportunidad = response.data["Detalle"];
+
+            if (detalleOportunidad.status === 200) {
+               await dispatch(crearReoporteLead(leadDetails));
+               await dispatch(updateEstadoOportunidad(formValues, detalleOportunidad));
+
+               Swal.fire({
+                  position: "top-end",
+                  icon: "success",
+                  title: "Oportunidad creada exitosamente",
+                  showConfirmButton: false,
+                  timer: 2500,
+               }).then(() => {
+                  window.location.href = `/oportunidad/ver?data=${leadDetails.idinterno_lead}&data2=${detalleOportunidad.id}`;
+               });
+            } else if (detalleOportunidad.status === 500) {
+               const error = JSON.parse(detalleOportunidad.Error);
+
+               Swal.fire({
+                  html: `
+                            <h4>Detalle de error:</h4>
+                            <p>${error.details}, <br> Lo sentimos, por favor contacte a su administrador.</p>
+                        `,
+                  icon: "error",
+                  confirmButtonText: "OK",
+                  cancelButtonText: "CORREGIR",
+                  showCancelButton: true,
+                  showCloseButton: true,
+               });
+            }
+         } catch (error) {
+            Swal.fire({
+               icon: "error",
+               title: "Error inesperado",
+               text: "Ocurrió un error al crear la oportunidad. Intente nuevamente.",
+            });
+         }
+      });
+   };
+
+   const fetchValidarDisponibilidad = async (idExpediente) => {
+      try {
+         setLoadingDisponibilidad(true);
+         const result = await dispatch(fetchValidardisponibilidad(idExpediente));
+         setDisponibilidadExpediente(result);
+      } catch (error) {
+         console.error("Error al validar disponibilidad del expediente:", error);
+         setDisponibilidadExpediente(null);
+      } finally {
+         setLoadingDisponibilidad(false);
+      }
+   };
+
+   const availabilityEntries = getAvailabilityEntries(disponibilidadExpediente);
+
+   return (
+      <>
+         <style>{OPPORTUNITY_CREATE_STYLES}</style>
+
+         <div className="lead-profile-shell opportunity-create-shell">
+            <div style={PROFILE_PANEL_STYLES}>
+               <div className="lead-profile-panel">
+                  <div className="lead-profile-hero">
+                     <div>
+                        <span className="lead-profile-eyebrow">Gestión comercial</span>
+                        <h1 className="lead-profile-page-title">Crear oportunidad</h1>
+                        <p className="lead-profile-page-copy">
+                           Centralice la información principal del lead, complete los datos de cierre y vincule el expediente correcto antes de
+                           generar la oportunidad.
+                        </p>
+                     </div>
+                  </div>
+
+                  {Object.keys(leadDetails).length > 0 && (
+                     <div className="opportunity-create-toolbar">
+                        <ButtonActions leadData={leadDetails} />
+                     </div>
+                  )}
+
+                  <section className="lead-profile-section">
+                     <div className="lead-profile-section-head">
+                        <span className="lead-profile-kicker">Información base</span>
+                        <h5 className="lead-profile-section-title">Resumen comercial</h5>
+                        <p className="lead-profile-section-copy">
+                           Datos generales del cliente, contexto del registro y comentario interno para la oportunidad.
+                        </p>
+                     </div>
+
+                     <div className="opportunity-create-grid">
+                        <div className="opportunity-create-field">
+                           <label>Cliente asociado</label>
+                           <Select
+                              name="clientes"
+                              options={clientesOptions}
+                              value={clientesOptions.find((option) => option.value === formValues.clientes)}
+                              onChange={(selectedOption) =>
+                                 handleInputChange({
+                                    target: {
+                                       name: "clientes",
+                                       value: selectedOption ? selectedOption.value : "",
+                                    },
+                                 })
+                              }
+                              placeholder="Seleccione un cliente"
+                              isClearable
+                              classNamePrefix="react-select"
+                              styles={selectControlStyles(false)}
+                           />
                         </div>
-                        <div className="col-xl-6">
-                            <h4 className="card-title">
-                                <span>Información obligatoria</span>
-                            </h4>
-                            <div className="mb-3">
-                                <label>ESTADO</label>
-                                <select className="form-control" value={formValues.estado} onChange={handleInputChange} name="estado">
-                                    <option value="11">Condicional</option>
-                                    <option value="22">Firme</option>
-                                </select>
-                            </div>
-                            <div className="mb-3">
-                                <label className="form-label">MOTIVO DE CONDICION</label>
-                                <select
-                                    className={`form-control ${errors.motivoCondicion ? "is-invalid" : ""}`}
-                                    name="motivoCondicion"
-                                    value={formValues.motivoCondicion}
+
+                        <div className="opportunity-create-two-columns">
+                           <div className="opportunity-create-field">
+                              <label>Cliente asignado</label>
+                              <input
+                                 value={formValues.clienteAsignado}
+                                 onChange={handleInputChange}
+                                 type="text"
+                                 name="clienteAsignado"
+                                 className={`form-control ${errors.clienteAsignado ? "is-invalid" : ""}`}
+                                 disabled
+                              />
+                           </div>
+
+                           <div className="opportunity-create-field">
+                              <label>Subsidiaria</label>
+                              <input
+                                 value={formValues.subsidiaria}
+                                 onChange={handleInputChange}
+                                 name="subsidiaria"
+                                 type="text"
+                                 className={`form-control ${errors.subsidiaria ? "is-invalid" : ""}`}
+                                 disabled
+                              />
+                           </div>
+                        </div>
+
+                        <div className="opportunity-create-two-columns">
+                           <div className="opportunity-create-field">
+                              <label>Proyecto</label>
+                              <input
+                                 value={formValues.proyecto}
+                                 onChange={handleInputChange}
+                                 name="proyecto"
+                                 type="text"
+                                 className={`form-control ${errors.proyecto ? "is-invalid" : ""}`}
+                                 disabled
+                              />
+                           </div>
+
+                           <div className="opportunity-create-field">
+                              <label>Probabilidad y valor</label>
+                              <div className="opportunity-create-two-columns">
+                                 <input
+                                    type="text"
+                                    value={formValues.probabilidad}
                                     onChange={handleInputChange}
-                                    required
-                                    disabled={!isMotivoCondicionEnabled} // Deshabilitado si isMotivoCondicionEnabled es false
-                                >
-                                    <option value="">Escoger ...</option>
-                                    <option value="Esperando un negocio">Esperando un negocio</option>
-                                    <option value="Viendo opciones">Viendo opciones</option>
-                                    <option value="Depende la venta de la casa">Depende la venta de la casa</option>
-                                    <option value="Definiendo Prima">Definiendo Prima</option>
-                                    <option value="Análisis de banco">Análisis de banco</option>
-                                </select>
-                            </div>
-                            <div className="mb-3">
-                                <label className="form-label">CIERRE PREVISTO SEGUN EL ESTADO</label>
-                                <br />
-                                <p>
-                                    FECHA ACTUAL A COMPARAR: <span id="fechaActual">{fechaActualComparar}</span>
-                                </p>
-                                <div className="docs-datepicker">
-                                    <div className="input-group">
-                                        <input type="text" name="fechaCierrePrevista" value={formValues.fechaCierrePrevista} onChange={handleInputChange} className="form-control docs-date" disabled />
-                                    </div>
-                                    <div className="docs-datepicker-container"></div>
-                                </div>
-                            </div>
-                            <div className="mb-3">
-                                <label className="form-label" data-bs-toggle="tooltip" data-bs-placement="right" title="" data-bs-original-title="Motivo de Compra">
-                                    MOTIVO DE COMPRA{" "}
-                                </label>
-                                <select className={`form-control ${errors.motivoCompra ? "is-invalid" : ""}`} name="motivoCompra" value={formValues.motivoCompra} onChange={handleInputChange} required>
-                                    <option value="" required>
-                                        Selecionar..
-                                    </option>
-                                    <option value="1">Primera Casa</option>
-                                    <option value="4">Inversión</option>
-                                </select>
-                            </div>
-                            <div className="mb-3">
-                                <label className="form-label" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-original-title="Avance o contra entrega">
-                                    METODO DE PAGO{" "}
-                                </label>
-                                <select className={`form-control ${errors.metodoPago ? "is-invalid" : ""}`} name="metodoPago" value={formValues.metodoPago} onChange={handleInputChange} required>
-                                    <option value="">Seleccionar</option>
-                                    <option value="2">Avance De Obra</option>
-                                    <option value="7">Avance Diferenciado</option>
-                                    <option value="1">Contra Entrega</option>
-                                </select>
-                            </div>
-                            <div className="col">
-                                <label className="col-form-label">
-                                    {" "}
-                                    <span>UBICACION</span>
-                                </label>
-                                <Select
-                                    name="ubicacion"
-                                    className={`form-control ${errors.ubicacion ? "is-invalid" : ""}`}
-                                    options={ubicacionOptions}
-                                    value={ubicacionOptions.find((option) => option.value === formValues.ubicacion)}
-                                    onChange={(selectedOption) =>
-                                        handleInputChange({
-                                            target: { name: "ubicacion", value: selectedOption ? selectedOption.value : "" },
-                                        })
-                                    }
-                                    placeholder="Seleccione una Ubicación"
-                                    isClearable
-                                    classNamePrefix="react-select"
-                                />
-                            </div>
-                            <div className="col">
-                                <label className="col-form-label">
-                                    {" "}
-                                    <span>CLASE</span>
-                                </label>
-                                <Select
-                                    name="clase"
-                                    options={leadsOptions}
-                                    value={leadsOptions.find((option) => option.value === formValues.clase)}
-                                    onChange={(selectedOption) =>
-                                        handleInputChange({
-                                            target: { name: "clase", value: selectedOption ? selectedOption.value : "" },
-                                        })
-                                    }
-                                    placeholder="Seleccione una Clase"
-                                    className={`form-control ${errors.clase ? "is-invalid" : ""}`}
-                                    isClearable
-                                    classNamePrefix="react-select"
-                                />
-                            </div>
+                                    name="probabilidad"
+                                    className="form-control"
+                                    disabled
+                                 />
+                                 <input
+                                    type="text"
+                                    value={formValues.nombreValor}
+                                    onChange={handleInputChange}
+                                    name="nombreValor"
+                                    className="form-control"
+                                    disabled
+                                 />
+                              </div>
+                           </div>
                         </div>
-                    </div>
-                </div>
 
-                {/* Sección: Unidad Expediente Ligado VTA */}
-                <div className="row mt-3">
-                    <div className="col-12">
-                        <div className="card" style={{ borderRadius: "8px", border: "1px solid #e9ecef" }}>
-                            <div className="card-body" style={{ padding: "1rem" }}>
-                                {/* Header de la sección */}
-                                <div className="mb-3">
-                                    <h5 className="card-title mb-1" style={{ color: "#495057", fontWeight: "600", fontSize: "1rem" }}>
-                                        UNIDAD EXPEDIENTE LIGADO VTA
-                                    </h5>
-                                    <p className="text-muted mb-0" style={{ fontSize: "0.75rem" }}>
-                                        Este es un campo personalizado creado para su cuenta. Comuníquese con el administrador para obtener detalles.
-                                    </p>
-                                </div>
+                        <div className="opportunity-create-field">
+                           <label>Detalles</label>
+                           <textarea
+                              id="memo"
+                              className="form-control"
+                              value={formValues.memo}
+                              onChange={handleInputChange}
+                              name="memo"
+                              rows="8"
+                           />
+                        </div>
+                     </div>
+                  </section>
 
-                                {/* Contenido de la sección */}
-                                {loadingExpediente && (
-                                    <div className="text-center py-3 mb-3" style={{ backgroundColor: "#f8f9fa", borderRadius: "6px", border: "1px solid #e9ecef" }}>
-                                        <div className="spinner-border spinner-border-sm text-primary me-2" role="status" style={{ width: "1rem", height: "1rem" }}>
-                                            <span className="visually-hidden">Cargando...</span>
-                                        </div>
-                                        <span style={{ fontSize: "0.875rem", color: "#495057" }}>Cargando información del expediente...</span>
-                                    </div>
-                                )}
-                                <div className="row">
-                                    {/* Columna Izquierda: Búsqueda y Estado */}
-                                    <div className="col-lg-6">
-                                        <div className="mb-2">
-                                            <label className="form-label mb-1" style={{ color: "#495057", fontSize: "0.875rem", fontWeight: "500" }}>
-                                                Buscar Expediente <span className="text-danger">*</span>
-                                            </label>
-                                            <Select
-                                                name="expediente"
-                                                options={expedienteOptions}
-                                                value={expedienteOptions.find((option) => option.value === formValues.expediente)}
-                                                onChange={(selectedOption) =>
-                                                    handleInputChange({
-                                                        target: { name: "expediente", value: selectedOption ? selectedOption.value : "" },
-                                                    })
-                                                }
-                                                className={`${errors.expediente ? "is-invalid" : ""}`}
-                                                placeholder="Seleccione un expediente"
-                                                isClearable
-                                                isDisabled={loadingExpediente}
-                                                classNamePrefix="react-select"
-                                                styles={{
-                                                    control: (base) => ({
-                                                        ...base,
-                                                        minHeight: "38px",
-                                                        borderColor: errors.expediente ? "#dc3545" : base.borderColor,
-                                                        opacity: loadingExpediente ? 0.6 : 1,
-                                                    }),
-                                                }}
-                                            />
-                                            {errors.expediente && <div className="invalid-feedback d-block" style={{ fontSize: "0.75rem" }}>Este campo es obligatorio</div>}
-                                        </div>
+                  <section className="lead-profile-section">
+                     <div className="lead-profile-section-head">
+                        <span className="lead-profile-kicker">Reglas de cierre</span>
+                        <h5 className="lead-profile-section-title">Información obligatoria</h5>
+                        <p className="lead-profile-section-copy">
+                           Complete el estado, motivo y configuración comercial requerida para enviar la oportunidad correctamente.
+                        </p>
+                     </div>
 
-                                        {/* Campo oculto para ID Interno */}
-                                        <input type="hidden" name="idInternoExpediente" value={formValues.idInternoExpediente} />
+                     <div className="opportunity-create-grid">
+                        <div className="opportunity-create-three-columns">
+                           <div className="opportunity-create-field">
+                              <label>Estado</label>
+                              <select className="form-select" value={formValues.estado} onChange={handleInputChange} name="estado">
+                                 <option value="11">Condicional</option>
+                                 <option value="22">Firme</option>
+                              </select>
+                           </div>
 
-                                        <div className="mb-2">
-                                            <label className="form-label mb-1" style={{ color: "#495057", fontSize: "0.875rem", fontWeight: "500" }}>
-                                                Estado del Expediente
-                                            </label>
-                                            <input
-                                                type="text"
-                                                name="estadoExpediente"
-                                                className="form-control form-control-sm"
-                                                value={loadingExpediente ? "Cargando..." : formValues.estadoExpediente}
-                                                disabled
-                                                style={{ backgroundColor: "#f8f9fa", cursor: "not-allowed", fontSize: "0.875rem" }}
-                                            />
-                                        </div>
+                           <div className="opportunity-create-field">
+                              <label>Motivo de condición</label>
+                              <select
+                                 className={`form-select ${errors.motivoCondicion ? "is-invalid" : ""}`}
+                                 name="motivoCondicion"
+                                 value={formValues.motivoCondicion}
+                                 onChange={handleInputChange}
+                                 required
+                                 disabled={!isMotivoCondicionEnabled}
+                              >
+                                 <option value="">Escoger ...</option>
+                                 <option value="Esperando un negocio">Esperando un negocio</option>
+                                 <option value="Viendo opciones">Viendo opciones</option>
+                                 <option value="Depende la venta de la casa">Depende la venta de la casa</option>
+                                 <option value="Definiendo Prima">Definiendo Prima</option>
+                                 <option value="Análisis de banco">Análisis de banco</option>
+                              </select>
+                              {errors.motivoCondicion && (
+                                 <p className="opportunity-create-invalid">Este campo es obligatorio cuando el estado es condicional.</p>
+                              )}
+                           </div>
 
-                                        {/* Resumen de Disponibilidad del Expediente */}
-                                        {loadingDisponibilidad && (
-                                            <div className="mb-2">
-                                                <div style={{ 
-                                                    backgroundColor: "#ffffff", 
-                                                    padding: "0.5rem", 
-                                                    borderRadius: "4px", 
-                                                    border: "1px solid #dee2e6",
-                                                    boxShadow: "0 1px 2px rgba(0,0,0,0.03)"
-                                                }}>
-                                                    <div className="d-flex align-items-center justify-content-center" style={{ 
-                                                        fontSize: "0.7rem", 
-                                                        color: "#6c757d",
-                                                        padding: "0.25rem 0"
-                                                    }}>
-                                                        <div className="spinner-border spinner-border-sm me-2" role="status" style={{ 
-                                                            width: "0.75rem", 
-                                                            height: "0.75rem",
-                                                            borderWidth: "1.5px",
-                                                            borderColor: "#6c757d",
-                                                            borderRightColor: "transparent"
-                                                        }}>
-                                                            <span className="visually-hidden">Cargando...</span>
-                                                        </div>
-                                                        <span style={{ fontWeight: "500" }}>Cargando disponibilidad...</span>
-                                                    </div>
+                           <div className="opportunity-create-field">
+                              <label>Cierre previsto según estado</label>
+                              <div className="opportunity-create-date-box">
+                                 <p className="opportunity-create-date-copy">
+                                    Fecha actual de referencia: <strong>{fechaActualComparar}</strong>
+                                 </p>
+                                 <input
+                                    type="text"
+                                    name="fechaCierrePrevista"
+                                    value={formValues.fechaCierrePrevista}
+                                    onChange={handleInputChange}
+                                    className="form-control docs-date"
+                                    disabled
+                                 />
+                              </div>
+                           </div>
+                        </div>
+
+                        <div className="opportunity-create-three-columns">
+                           <div className="opportunity-create-field">
+                              <label>Motivo de compra</label>
+                              <select
+                                 className={`form-select ${errors.motivoCompra ? "is-invalid" : ""}`}
+                                 name="motivoCompra"
+                                 value={formValues.motivoCompra}
+                                 onChange={handleInputChange}
+                                 required
+                              >
+                                 <option value="">Seleccionar</option>
+                                 <option value="1">Primera Casa</option>
+                                 <option value="4">Inversión</option>
+                              </select>
+                           </div>
+
+                           <div className="opportunity-create-field">
+                              <label>Método de pago</label>
+                              <select
+                                 className={`form-select ${errors.metodoPago ? "is-invalid" : ""}`}
+                                 name="metodoPago"
+                                 value={formValues.metodoPago}
+                                 onChange={handleInputChange}
+                                 required
+                              >
+                                 <option value="">Seleccionar</option>
+                                 <option value="2">Avance de obra</option>
+                                 <option value="7">Avance diferenciado</option>
+                                 <option value="1">Contra entrega</option>
+                              </select>
+                           </div>
+
+                           <div className="opportunity-create-field">
+                              <label>Guía operativa</label>
+                              <p className="opportunity-create-static-note">
+                                 La oportunidad se crea con los datos comerciales del lead actual y mantiene la lógica de validación del flujo
+                                 original.
+                              </p>
+                           </div>
+                        </div>
+
+                        <div className="opportunity-create-two-columns">
+                           <div className="opportunity-create-field">
+                              <label>Ubicación</label>
+                              <Select
+                                 name="ubicacion"
+                                 options={ubicacionOptions}
+                                 value={ubicacionOptions.find((option) => option.value === formValues.ubicacion)}
+                                 onChange={(selectedOption) =>
+                                    handleInputChange({
+                                       target: {
+                                          name: "ubicacion",
+                                          value: selectedOption ? selectedOption.value : "",
+                                       },
+                                    })
+                                 }
+                                 placeholder="Seleccione una ubicación"
+                                 isClearable
+                                 classNamePrefix="react-select"
+                                 styles={selectControlStyles(errors.ubicacion)}
+                              />
+                              {errors.ubicacion && <p className="opportunity-create-invalid">Este campo es obligatorio.</p>}
+                           </div>
+
+                           <div className="opportunity-create-field">
+                              <label>Clase</label>
+                              <Select
+                                 name="clase"
+                                 options={leadsOptions}
+                                 value={leadsOptions.find((option) => option.value === formValues.clase)}
+                                 onChange={(selectedOption) =>
+                                    handleInputChange({
+                                       target: {
+                                          name: "clase",
+                                          value: selectedOption ? selectedOption.value : "",
+                                       },
+                                    })
+                                 }
+                                 placeholder="Seleccione una clase"
+                                 isClearable
+                                 classNamePrefix="react-select"
+                                 styles={selectControlStyles(errors.clase)}
+                              />
+                              {errors.clase && <p className="opportunity-create-invalid">Este campo es obligatorio.</p>}
+                           </div>
+                        </div>
+                     </div>
+                  </section>
+
+                  <section className="lead-profile-section">
+                     <div className="lead-profile-section-head">
+                        <span className="lead-profile-kicker">Expediente ligado</span>
+                        <h5 className="lead-profile-section-title">Unidad expediente ligado VTA</h5>
+                        <p className="lead-profile-section-copy">
+                           Seleccione la unidad correcta y revise el resumen de disponibilidad antes de continuar.
+                        </p>
+                     </div>
+
+                     <div className="opportunity-create-expediente-grid">
+                        <div className="opportunity-create-box">
+                           <h6 className="opportunity-create-box-title">Selección y validación</h6>
+
+                           <div className="opportunity-create-field">
+                              <label>Buscar expediente</label>
+                              <Select
+                                 name="expediente"
+                                 options={expedienteOptions}
+                                 value={expedienteOptions.find((option) => option.value === formValues.expediente)}
+                                 onChange={(selectedOption) =>
+                                    handleInputChange({
+                                       target: {
+                                          name: "expediente",
+                                          value: selectedOption ? selectedOption.value : "",
+                                       },
+                                    })
+                                 }
+                                 placeholder="Seleccione un expediente"
+                                 isClearable
+                                 isDisabled={loadingExpediente}
+                                 classNamePrefix="react-select"
+                                 styles={selectControlStyles(errors.expediente, loadingExpediente)}
+                              />
+                              {errors.expediente && <p className="opportunity-create-invalid">Este campo es obligatorio.</p>}
+                           </div>
+
+                           <input type="hidden" name="idInternoExpediente" value={formValues.idInternoExpediente} />
+
+                           <div className="opportunity-create-field">
+                              <label>Estado del expediente</label>
+                              <input
+                                 type="text"
+                                 name="estadoExpediente"
+                                 className="form-control"
+                                 value={loadingExpediente ? "Cargando..." : formValues.estadoExpediente}
+                                 disabled
+                              />
+                           </div>
+
+                           {loadingExpediente && <p className="opportunity-create-loading">Cargando información del expediente...</p>}
+
+                           {loadingDisponibilidad && <p className="opportunity-create-loading">Cargando disponibilidad...</p>}
+
+                           {!loadingDisponibilidad && disponibilidadExpediente && (
+                              <div className="opportunity-create-summary">
+                                 {availabilityEntries.map(([key, value]) => {
+                                    const badges = getAvailabilityBadges(value);
+
+                                    return (
+                                       <div className="opportunity-create-summary-row" key={key}>
+                                          <div className="opportunity-create-summary-label">
+                                             <i className={availabilityIconMap[key] || "mdi mdi-chart-box-outline"} />
+                                             <span>{availabilityLabelMap[key] || key}</span>
+                                          </div>
+
+                                          <div className="opportunity-create-summary-value">
+                                             <strong>{Number(value?.total || 0)}</strong>
+
+                                             {badges.length > 0 && (
+                                                <div className="opportunity-create-badges">
+                                                   {badges.map((badge) => (
+                                                      <span key={badge.key} className="opportunity-create-badge">
+                                                         {badge.label}
+                                                      </span>
+                                                   ))}
                                                 </div>
-                                            </div>
-                                        )}
-                                        {!loadingDisponibilidad && disponibilidadExpediente && (
-                                            <div className="mb-2">
-                                                <div style={{ 
-                                                    backgroundColor: "#ffffff", 
-                                                    padding: "0.5rem", 
-                                                    borderRadius: "4px", 
-                                                    border: "1px solid #dee2e6",
-                                                    boxShadow: "0 1px 2px rgba(0,0,0,0.03)"
-                                                }}>
-                                                    {/* Header compacto */}
-                                                    <div className="mb-2 pb-1" style={{ 
-                                                        borderBottom: "1px solid #e9ecef",
-                                                        fontWeight: "600", 
-                                                        color: "#495057",
-                                                        fontSize: "0.75rem"
-                                                    }}>
-                                                        <i className="mdi mdi-information-outline me-1" style={{ fontSize: "0.8rem" }}></i>
-                                                        Resumen de Disponibilidad
-                                                    </div>
+                                             )}
+                                          </div>
+                                       </div>
+                                    );
+                                 })}
+                              </div>
+                           )}
 
-                                                    {/* Tabla compacta */}
-                                                    <table className="table table-sm mb-0" style={{ fontSize: "0.75rem" }}>
-                                                        <tbody>
-                                                            {/* Oportunidades */}
-                                                            <tr>
-                                                                <td style={{ padding: "0.35rem 0.5rem", width: "45%", border: "none" }}>
-                                                                    <i className="mdi mdi-briefcase-outline me-1" style={{ fontSize: "0.8rem", color: "#6c757d" }}></i>
-                                                                    <span style={{ fontWeight: "500", color: "#495057" }}>Oportunidades</span>
-                                                                </td>
-                                                                <td style={{ padding: "0.35rem 0.5rem", border: "none", textAlign: "right" }}>
-                                                                    <span style={{ fontWeight: "700", color: "#212529", fontSize: "0.85rem" }}>
-                                                                        {disponibilidadExpediente.oportunidades?.total || 0}
-                                                                    </span>
-                                                                    {(disponibilidadExpediente.oportunidades?.chek1 > 0 || disponibilidadExpediente.oportunidades?.chek0 > 0) && (
-                                                                        <span className="ms-2">
-                                                                            {disponibilidadExpediente.oportunidades?.chek1 > 0 && (
-                                                                                <span className="badge" style={{ 
-                                                                                    backgroundColor: "#d1e7dd", 
-                                                                                    color: "#0f5132",
-                                                                                    fontSize: "0.65rem",
-                                                                                    padding: "0.15rem 0.4rem",
-                                                                                    fontWeight: "500"
-                                                                                }}>
-                                                                                    {disponibilidadExpediente.oportunidades.chek1} probables
-                                                                                </span>
-                                                                            )}
-                                                                            {disponibilidadExpediente.oportunidades?.chek0 > 0 && (
-                                                                                <span className="badge ms-1" style={{ 
-                                                                                    backgroundColor: "#fff3cd", 
-                                                                                    color: "#856404",
-                                                                                    fontSize: "0.65rem",
-                                                                                    padding: "0.15rem 0.4rem",
-                                                                                    fontWeight: "500"
-                                                                                }}>
-                                                                                    {disponibilidadExpediente.oportunidades.chek0} no probables
-                                                                                </span>
-                                                                            )}
-                                                                        </span>
-                                                                    )}
-                                                                </td>
-                                                            </tr>
-                                                            {/* Estimaciones */}
-                                                            <tr>
-                                                                <td style={{ padding: "0.35rem 0.5rem", border: "none" }}>
-                                                                    <i className="mdi mdi-file-document-outline me-1" style={{ fontSize: "0.8rem", color: "#6c757d" }}></i>
-                                                                    <span style={{ fontWeight: "500", color: "#495057" }}>Estimaciones</span>
-                                                                </td>
-                                                                <td style={{ padding: "0.35rem 0.5rem", border: "none", textAlign: "right" }}>
-                                                                    <span style={{ fontWeight: "700", color: "#212529", fontSize: "0.85rem" }}>
-                                                                        {disponibilidadExpediente.estimaciones?.total || 0}
-                                                                    </span>
-                                                                </td>
-                                                            </tr>
-                                                            {/* Órdenes de Venta */}
-                                                            <tr>
-                                                                <td style={{ padding: "0.35rem 0.5rem", border: "none" }}>
-                                                                    <i className="mdi mdi-cart-outline me-1" style={{ fontSize: "0.8rem", color: "#6c757d" }}></i>
-                                                                    <span style={{ fontWeight: "500", color: "#495057" }}>Órdenes de Venta</span>
-                                                                </td>
-                                                                <td style={{ padding: "0.35rem 0.5rem", border: "none", textAlign: "right" }}>
-                                                                    <span style={{ fontWeight: "700", color: "#212529", fontSize: "0.85rem" }}>
-                                                                        {disponibilidadExpediente.ordenVenta?.total || 0}
-                                                                    </span>
-                                                                </td>
-                                                            </tr>
-                                                        </tbody>
-                                                    </table>
-                                                </div>
-                                            </div>
-                                        )}
-                                    </div>
-
-                                    {/* Columna Derecha: Información del Expediente */}
-                                    <div className="col-lg-6">
-                                        <div className="mb-2">
-                                            <label className="form-label mb-1" style={{ color: "#495057", fontSize: "0.875rem", fontWeight: "500" }}>
-                                                Nombre del Expediente
-                                            </label>
-                                            <input
-                                                name="nombreExpediente"
-                                                className="form-control form-control-sm"
-                                                value={loadingExpediente ? "Cargando..." : formValues.nombreExpediente}
-                                                disabled
-                                                style={{ backgroundColor: "#f8f9fa", cursor: "not-allowed", fontSize: "0.875rem" }}
-                                            />
-                                        </div>
-
-                                        <div className="mb-2">
-                                            <label className="form-label mb-1" style={{ color: "#495057", fontSize: "0.875rem", fontWeight: "500" }}>
-                                                Precio de Lista
-                                            </label>
-                                            <div className="input-group input-group-sm">
-                                                <span className="input-group-text" style={{ backgroundColor: "#f8f9fa", fontSize: "0.875rem" }}>
-                                                    ₡
-                                                </span>
-                                                <input
-                                                    name="precioLista"
-                                                    className="form-control"
-                                                    value={loadingExpediente ? "Cargando..." : new Intl.NumberFormat("es-CR", {
-                                                        minimumFractionDigits: 2,
-                                                        maximumFractionDigits: 2,
-                                                    }).format(formValues.precioLista / 100)}
-                                                    disabled
-                                                    style={{ backgroundColor: "#f8f9fa", cursor: "not-allowed", fontSize: "0.875rem", textAlign: "left" }}
-                                                />
-                                            </div>
-                                        </div>
-
-                                        <div className="mb-2">
-                                            <label className="form-label mb-1" style={{ color: "#495057", fontSize: "0.875rem", fontWeight: "500" }}>
-                                                Precio de Venta Mínimo
-                                            </label>
-                                            <div className="input-group input-group-sm">
-                                                <span className="input-group-text" style={{ backgroundColor: "#f8f9fa", fontSize: "0.875rem" }}>
-                                                    ₡
-                                                </span>
-                                                <input
-                                                    name="precioMinimo"
-                                                    className="form-control"
-                                                    value={loadingExpediente ? "Cargando..." : new Intl.NumberFormat("es-CR", {
-                                                        minimumFractionDigits: 2,
-                                                        maximumFractionDigits: 2,
-                                                    }).format(formValues.precioMinimo / 100)}
-                                                    disabled
-                                                    style={{ backgroundColor: "#f8f9fa", cursor: "not-allowed", fontSize: "0.875rem", textAlign: "left" }}
-                                                />
-                                            </div>
-                                        </div>
-
-                                        {/* Campos ocultos */}
-                                        <input type="hidden" name="salesRep" id="salesrep" value={formValues.salesRep} />
-                                        <input type="hidden" name="currency" id="currency" value={formValues.currency} />
-                                    </div>
-                                </div>
-                            </div>
+                           {!loadingDisponibilidad && !loadingExpediente && formValues.expediente && !disponibilidadExpediente && (
+                              <p className="opportunity-create-empty">
+                                 No fue posible obtener el resumen de disponibilidad para este expediente.
+                              </p>
+                           )}
                         </div>
-                    </div>
-                </div>
 
-                {/* Botón de acción principal */}
-                <div className="row mt-3">
-                    <div className="col-12">
-                        <div className="d-flex justify-content-end gap-2">
-                            <button onClick={handleGenerateOpportunity} className="btn btn-dark px-4" style={{ borderRadius: "6px", fontWeight: "500", fontSize: "0.875rem" }}>
-                                <i className="mdi mdi-check-circle me-1"></i>
-                                Generar Oportunidad
-                            </button>
+                        <div className="opportunity-create-box">
+                           <h6 className="opportunity-create-box-title">Datos del expediente</h6>
+
+                           <div className="opportunity-create-data-grid">
+                              <div className="opportunity-create-data-item">
+                                 <span>Nombre del expediente</span>
+                                 <strong>{loadingExpediente ? "Cargando..." : toDisplayValue(formValues.nombreExpediente)}</strong>
+                              </div>
+
+                              <div className="opportunity-create-data-item">
+                                 <span>Precio de lista</span>
+                                 <strong>{loadingExpediente ? "Cargando..." : `₡ ${formatCurrencyValue(formValues.precioLista)}`}</strong>
+                              </div>
+
+                              <div className="opportunity-create-data-item">
+                                 <span>Precio de venta mínimo</span>
+                                 <strong>{loadingExpediente ? "Cargando..." : `₡ ${formatCurrencyValue(formValues.precioMinimo)}`}</strong>
+                              </div>
+                           </div>
+
+                           <input type="hidden" name="salesRep" id="salesrep" value={formValues.salesRep} />
+                           <input type="hidden" name="currency" id="currency" value={formValues.currency} />
                         </div>
-                    </div>
-                </div>
+                     </div>
+                  </section>
+
+                  <div className="opportunity-create-footer">
+                     <button onClick={handleGenerateOpportunity} className="opportunity-create-submit">
+                        <i className="mdi mdi-check-circle" />
+                        Generar oportunidad
+                     </button>
+                  </div>
+               </div>
             </div>
-        </>
-    );
+         </div>
+      </>
+   );
 };
