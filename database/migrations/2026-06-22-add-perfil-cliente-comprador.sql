@@ -1,0 +1,3 @@
+ALTER TABLE info_extra_lead
+ADD COLUMN info_extra_PerfilClienteComprador TEXT NULL
+AFTER info_extra_ZonaRecidencia;

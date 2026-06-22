@@ -360,10 +360,11 @@ const buildExtraLeadFields = (dataParams) => ({
 const buildAdditionalInfoFields = (dataParams) => ({
     info_extra_ingresos: dataParams.ingresos || "--",
     info_extra_MotivoCompra: dataParams.motivo_compra || "--",
-    info_extra_MomentodeCompra: dataParams.momento_compra || "--",
-    info_extra_Trabajo: dataParams.lugar_trabajo || "--",
-    info_extra_OrigenFondo: dataParams.origen_fondos || "--",
-    info_extra_ZonaRecidencia: dataParams.zona_residencia || "--"
+ info_extra_MomentodeCompra: dataParams.momento_compra || "--",
+ info_extra_Trabajo: dataParams.lugar_trabajo || "--",
+ info_extra_OrigenFondo: dataParams.origen_fondos || "--",
+ info_extra_ZonaRecidencia: dataParams.zona_residencia || "--",
+ info_extra_PerfilClienteComprador: dataParams.perfil_cliente_comprador || "--"
 });
 
 /**
