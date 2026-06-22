@@ -8,31 +8,195 @@ import "datatables.net-searchpanes-bs5";
 import "datatables.net-select-bs5";
 import "../../../FiltrosTabla/style.css";
 import { apiUrlImg, commonRequestData } from "../../../../../api";
-import { 
-
+import {
+   TABLE_CAMPANAS_BUSCADOR,
+   TABLE_CORREDORES_BUSCADOR,
+   TABLE_ESTIMACIONES_BUSCADOR,
+   TABLE_EVENTOS_BUSCADOR,
    TABLE_LEADS_BUSCADOR,
    TABLE_OPORTUNIDADES_BUSCADOR,
-   TABLE_EVENTOS_BUSCADOR,
-   TABLE_ESTIMACIONES_BUSCADOR,
    TABLE_ORDEN_VENTA_BUSCADOR,
-   TABLE_CORREDORES_BUSCADOR,
    TABLE_PROYECTOS_BUSCADOR,
    TABLE_SUBSIDIARIA_BUSCADOR,
    TABLE_UBICACIONES_BUSCADOR,
-   TABLE_CAMPANAS_BUSCADOR,
-   
 } from "./tableColumns";
 import { ModalLeads } from "../../../../pages/modal/modalLeads";
+import {
+   PROFILE_PANEL_STYLES,
+   PROFILE_THEME_STYLES,
+} from "../../perfil/profileTheme";
 
-// Constantes
 const STORAGE_KEY = "buscador_state";
 const MOBILE_BREAKPOINT = 768;
 
+const SEARCH_VIEW_STYLES = `
+${PROFILE_THEME_STYLES}
 
+.search-view-shell .lead-profile-panel {
+   padding: 18px;
+}
 
-/**
- * Configuración de columnas por tipo de búsqueda
- */
+.search-view-toolbar {
+   display: grid;
+   gap: 12px;
+}
+
+.search-view-grid {
+   display: grid;
+   grid-template-columns: repeat(2, minmax(0, 1fr));
+   gap: 12px;
+}
+
+.search-view-field {
+   display: grid;
+   gap: 6px;
+}
+
+.search-view-label {
+   margin: 0;
+   font-size: 11px;
+   font-weight: 700;
+   letter-spacing: 0.04em;
+   text-transform: uppercase;
+   color: #4b5563;
+}
+
+.search-view-select,
+.search-view-input {
+   min-height: 46px;
+   border: 1px solid #d1d5db;
+   border-radius: 12px;
+   background: #ffffff;
+   color: #111827;
+   font-size: 13px;
+   transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.search-view-select:focus,
+.search-view-input:focus {
+   border-color: #111827;
+   box-shadow: 0 0 0 3px rgba(17, 24, 39, 0.08);
+}
+
+.search-view-hint {
+   display: flex;
+   flex-wrap: wrap;
+   align-items: center;
+   justify-content: space-between;
+   gap: 10px;
+   padding: 12px 14px;
+   border: 1px solid #e5e7eb;
+   border-radius: 12px;
+   background: linear-gradient(180deg, #ffffff 0%, #fbfbfc 100%);
+}
+
+.search-view-hint-copy {
+   margin: 0;
+   font-size: 12px;
+   line-height: 1.5;
+   color: #4b5563;
+}
+
+.search-view-status {
+   display: inline-flex;
+   align-items: center;
+   gap: 6px;
+   padding: 6px 10px;
+   border-radius: 999px;
+   border: 1px solid #d1d5db;
+   background: #ffffff;
+   font-size: 11px;
+   font-weight: 700;
+   letter-spacing: 0.04em;
+   text-transform: uppercase;
+   color: #374151;
+}
+
+.search-view-status.is-loading {
+   border-color: #cfd6de;
+   background: #f9fafb;
+   color: #111827;
+}
+
+.search-view-table-shell {
+   border: 1px solid #e5e7eb;
+   border-radius: 14px;
+   background: linear-gradient(180deg, #ffffff 0%, #fbfbfc 100%);
+   overflow: hidden;
+}
+
+.search-view-table-wrap {
+   padding: 14px;
+}
+
+.search-view-table-wrap .table {
+   margin-bottom: 0;
+}
+
+.search-view-table-wrap .table > :not(caption) > * > * {
+   padding: 10px 12px;
+   font-size: 12px;
+   vertical-align: middle;
+}
+
+.search-view-table-wrap .table thead th {
+   border-bottom-width: 1px;
+   background: #f8fafc;
+   color: #374151;
+   font-size: 11px;
+   font-weight: 700;
+   letter-spacing: 0.05em;
+   text-transform: uppercase;
+}
+
+.search-view-table-wrap .dataTables_length,
+.search-view-table-wrap .dataTables_filter {
+   margin-bottom: 12px;
+}
+
+.search-view-table-wrap .dataTables_filter input,
+.search-view-table-wrap .dataTables_length select {
+   min-height: 38px;
+   border: 1px solid #d1d5db;
+   border-radius: 10px;
+   background: #ffffff;
+   font-size: 12px;
+}
+
+.search-view-table-wrap .dtsp-searchPanes {
+   margin-bottom: 12px;
+}
+
+.search-view-table-wrap .dtsp-searchPanes .dtsp-titleRow,
+.search-view-table-wrap .dtsp-searchPanes .dtsp-searchPane {
+   border-radius: 12px;
+}
+
+.search-view-table-wrap .selected-row {
+   background: #111827 !important;
+   color: #ffffff !important;
+}
+
+.search-view-table-wrap .selected-row td {
+   color: #ffffff !important;
+}
+
+@media (max-width: 768px) {
+   .search-view-grid {
+      grid-template-columns: 1fr;
+   }
+
+   .search-view-hint {
+      align-items: flex-start;
+   }
+
+   .search-view-status {
+      width: 100%;
+      justify-content: center;
+   }
+}
+`;
+
 const SEARCH_PANE_OPTIONS = {
    leads: [0, 1, 2, 3, 4],
    oportunidad: [0, 1, 2],
@@ -43,46 +207,51 @@ const SEARCH_PANE_OPTIONS = {
    proyecto: [0, 1, 2],
    subsidiaria: [0, 1, 2],
    ubicaciones: [0, 1, 2],
-   campana: [0, 1, 2]
+   campana: [0, 1, 2],
 };
 
-/**
- * Mapeo de rutas de navegación por tipo de búsqueda
- */
+const SEARCH_OPTIONS = [
+   { value: "leads", label: "Leads" },
+   { value: "oportunidad", label: "Oportunidad" },
+   { value: "estimaciones", label: "Estimaciones" },
+   { value: "ordenVenta", label: "Orden de venta" },
+   { value: "evento", label: "Evento" },
+   { value: "corredores", label: "Corredores" },
+   { value: "proyecto", label: "Proyecto" },
+   { value: "subsidiaria", label: "Subsidiaria" },
+   { value: "ubicaciones", label: "Ubicaciones" },
+   { value: "campana", label: "Campaña" },
+];
+
 const NAVIGATION_ROUTES = {
-   leads: null, // Maneja modal en lugar de navegación
-   oportunidad: (data) => `/oportunidad/ver?data=${data.entity_oport}&data2=${data.id_oportunidad_oport}`,
-   estimaciones: (data) => `/estimaciones/view?data=${data.idLead_est}&data2=${data.idEstimacion_est}`,
-   ordenVenta: (data) => `/orden/view?data=${data.id_ov_lead}&data2=${data.id_ov_netsuite}`,
-   evento: (data) => `/events/actions?idCalendar=${data.id_calendar}&idLead=${data.id_lead}&idDate=0`
+   leads: null,
+   oportunidad: (data) =>
+      `/oportunidad/ver?data=${data.entity_oport}&data2=${data.id_oportunidad_oport}`,
+   estimaciones: (data) =>
+      `/estimaciones/view?data=${data.idLead_est}&data2=${data.idEstimacion_est}`,
+   ordenVenta: (data) =>
+      `/orden/view?data=${data.id_ov_lead}&data2=${data.id_ov_netsuite}`,
+   evento: (data) =>
+      `/events/actions?idCalendar=${data.id_calendar}&idLead=${data.id_lead}&idDate=0`,
 };
 
-/**
- * Obtiene las columnas según el tipo de búsqueda
- * @param {string} option - Tipo de búsqueda
- * @returns {Array} Configuración de columnas
- */
 const getColumnsForOption = (option) => {
    const columnMappings = {
       campana: TABLE_CAMPANAS_BUSCADOR,
-      oportunidad: TABLE_OPORTUNIDADES_BUSCADOR,
-      evento: TABLE_EVENTOS_BUSCADOR,
-      estimaciones: TABLE_ESTIMACIONES_BUSCADOR,
-      ordenVenta: TABLE_ORDEN_VENTA_BUSCADOR,
       corredores: TABLE_CORREDORES_BUSCADOR,
+      estimaciones: TABLE_ESTIMACIONES_BUSCADOR,
+      evento: TABLE_EVENTOS_BUSCADOR,
+      leads: TABLE_LEADS_BUSCADOR,
+      oportunidad: TABLE_OPORTUNIDADES_BUSCADOR,
+      ordenVenta: TABLE_ORDEN_VENTA_BUSCADOR,
       proyecto: TABLE_PROYECTOS_BUSCADOR,
       subsidiaria: TABLE_SUBSIDIARIA_BUSCADOR,
       ubicaciones: TABLE_UBICACIONES_BUSCADOR,
-      
-      leads: TABLE_LEADS_BUSCADOR
    };
+
    return columnMappings[option] || TABLE_LEADS_BUSCADOR;
 };
 
-/**
- * Hook personalizado para gestionar el estado persistente
- * @returns {Object} Estado almacenado
- */
 const useStoredState = () => {
    const getUrlParams = () => {
       const params = new URLSearchParams(window.location.search);
@@ -104,23 +273,25 @@ const useStoredState = () => {
 
    return {
       initialSearchInput: storedState?.searchInput || "",
-      initialSelectedOption: urlParams.option || storedState?.selectedOption || "leads"
+      initialSelectedOption:
+         urlParams.option || storedState?.selectedOption || "leads",
    };
 };
 
-/**
- * Configuración de DataTables según los parámetros proporcionados
- */
-const getDataTableConfig = (searchInput, selectedOption, idnetsuite_admin, rol_admin) => {
+const getDataTableConfig = (
+   searchInput,
+   selectedOption,
+   idnetsuite_admin,
+   rol_admin
+) => {
    const isMobile = window.innerWidth <= MOBILE_BREAKPOINT;
    const columns = getColumnsForOption(selectedOption);
-
    const baseConfig = {
       columns,
       searchPanes: {
          layout: isMobile ? "columns-1" : "columns-2",
          initCollapsed: true,
-         columns: SEARCH_PANE_OPTIONS[selectedOption]
+         columns: SEARCH_PANE_OPTIONS[selectedOption],
       },
       processing: true,
       dom: "lPfrtip",
@@ -129,10 +300,10 @@ const getDataTableConfig = (searchInput, selectedOption, idnetsuite_admin, rol_a
          searchPanes: {
             title: "Filtros",
             collapse: "Filtros",
-            clearMessage: "Limpiar Todo",
-            emptyPanes: "No hay datos para filtrar"
-         }
-      }
+            clearMessage: "Limpiar todo",
+            emptyPanes: "No hay datos para filtrar",
+         },
+      },
    };
 
    if (!searchInput.trim()) {
@@ -144,33 +315,41 @@ const getDataTableConfig = (searchInput, selectedOption, idnetsuite_admin, rol_a
       ajax: {
          url: `${apiUrlImg}buscador/getAll`,
          type: "POST",
-         data: (d) => ({
+         data: (dataTableRequest) => ({
             ...commonRequestData,
             searchs: searchInput,
             selectedOption,
             idnetsuite_admin,
             rol_admin,
-            start: d.start,
-            length: d.length,
-            search: d.searchPanes
+            start: dataTableRequest.start,
+            length: dataTableRequest.length,
+            search: dataTableRequest.searchPanes,
          }),
-         dataSrc: (response) => response.data || []
+         dataSrc: (response) => response.data || [],
       },
       select: {
          style: "single",
-         className: "selected-row"
-      }
+         className: "selected-row",
+      },
    };
 };
 
-/**
- * Hook personalizado para gestionar la tabla de datos
- */
-const useDataTable = (tableRef, tableInstanceRef, searchInput, selectedOption, setSelectedLead, setShowModal, idnetsuite_admin, rol_admin) => {
+const useDataTable = (
+   tableRef,
+   tableInstanceRef,
+   searchInput,
+   selectedOption,
+   setSelectedLead,
+   setShowModal,
+   idnetsuite_admin,
+   rol_admin
+) => {
    const navigate = useNavigate();
 
    useEffect(() => {
-      if (!tableRef.current) return;
+      if (!tableRef.current) {
+         return undefined;
+      }
 
       if (tableInstanceRef.current) {
          tableInstanceRef.current.destroy();
@@ -178,12 +357,20 @@ const useDataTable = (tableRef, tableInstanceRef, searchInput, selectedOption, s
       }
 
       tableInstanceRef.current = $(tableRef.current).DataTable(
-         getDataTableConfig(searchInput, selectedOption, idnetsuite_admin, rol_admin)
+         getDataTableConfig(
+            searchInput,
+            selectedOption,
+            idnetsuite_admin,
+            rol_admin
+         )
       );
 
-      const handleRowClick = function() {
+      const handleRowClick = function () {
          const data = tableInstanceRef.current.row(this).data();
-         if (!data) return;
+
+         if (!data) {
+            return;
+         }
 
          if (selectedOption === "leads") {
             setSelectedLead(data);
@@ -192,6 +379,7 @@ const useDataTable = (tableRef, tableInstanceRef, searchInput, selectedOption, s
          }
 
          const navigationRoute = NAVIGATION_ROUTES[selectedOption];
+
          if (navigationRoute) {
             navigate(navigationRoute(data));
          }
@@ -200,73 +388,75 @@ const useDataTable = (tableRef, tableInstanceRef, searchInput, selectedOption, s
       $(tableRef.current).on("click", "tbody tr", handleRowClick);
 
       return () => {
+         if (tableRef.current) {
+            $(tableRef.current).off("click", "tbody tr", handleRowClick);
+         }
+
          if (tableInstanceRef.current) {
-            $(tableRef.current).off("click", "tbody tr");
             tableInstanceRef.current.destroy();
             tableInstanceRef.current = null;
          }
       };
-   }, [tableRef, searchInput, selectedOption, setSelectedLead, setShowModal, idnetsuite_admin, rol_admin, navigate]);
+   }, [
+      tableRef,
+      tableInstanceRef,
+      searchInput,
+      selectedOption,
+      setSelectedLead,
+      setShowModal,
+      idnetsuite_admin,
+      rol_admin,
+      navigate,
+   ]);
 };
 
-/**
- * Componente de tabla responsiva
- */
-const LeadsTable = React.memo(({ tableRef }) => (
-   <div className="table-responsive">
-      <style>
-         {`
-            .selected-row {
-               background-color:rgb(20, 20, 20) !important;
-               color: white !important;
-            }
-            .selected-row td {
-               color: white !important;
-            }
-         `}
-      </style>
-      <table ref={tableRef} className="table table-striped table-bordered">
+const SearchResultsTable = React.memo(({ tableRef }) => (
+   <div className="table-responsive search-view-table-wrap">
+      <table
+         ref={tableRef}
+         className="table table-striped table-bordered w-100"
+      >
          <thead></thead>
       </table>
    </div>
 ));
 
-/**
- * Componente principal del buscador
- * Gestiona la búsqueda y visualización de diferentes tipos de datos
- */
 const View_buscador = () => {
    const tableRef = useRef(null);
    const tableInstanceRef = useRef(null);
    const { initialSearchInput, initialSelectedOption } = useStoredState();
-
    const [searchInput, setSearchInput] = useState(initialSearchInput);
    const [debouncedSearch, setDebouncedSearch] = useState(initialSearchInput);
    const [selectedOption, setSelectedOption] = useState(initialSelectedOption);
    const [showModal, setShowModal] = useState(false);
    const [selectedLead, setSelectedLead] = useState(null);
-
    const { idnetsuite_admin, rol_admin } = useSelector((state) => state.auth);
 
-   // Persistencia del estado
    useEffect(() => {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify({ searchInput, selectedOption }));
+      localStorage.setItem(
+         STORAGE_KEY,
+         JSON.stringify({ searchInput, selectedOption })
+      );
    }, [searchInput, selectedOption]);
 
-   // Debounce para la búsqueda
    useEffect(() => {
       if (!searchInput.trim()) {
          setDebouncedSearch("");
-         return;
+         return undefined;
       }
 
-      const timer = setTimeout(() => setDebouncedSearch(searchInput), 1000);
+      const timer = setTimeout(() => {
+         setDebouncedSearch(searchInput);
+      }, 1000);
+
       return () => clearTimeout(timer);
    }, [searchInput]);
 
-   const handleOptionChange = (e) => {
+   const handleOptionChange = (event) => {
+      const newOption = event.target.value;
+
+      setSelectedOption(newOption);
       localStorage.removeItem(STORAGE_KEY);
-      const newOption = e.target.value;
       window.location.href = `${window.location.pathname}?option=${newOption}`;
    };
 
@@ -281,53 +471,139 @@ const View_buscador = () => {
       rol_admin
    );
 
+   const selectedOptionLabel =
+      SEARCH_OPTIONS.find((option) => option.value === selectedOption)?.label ||
+      "Leads";
+   const isSearching =
+      searchInput.trim() !== "" && searchInput.trim() !== debouncedSearch.trim();
+
    return (
-      <div className="card" style={{ width: "100%" }}>
-         <div className="card-header table-card-header">
-            <div role="alert" className="fade alert alert-success show">
-               Buscar transacciones de:
-            </div>
-            <div className="row mb-3">
-               <div className="col-md-6">
-                  <select 
-                     className="form-select" 
-                     value={selectedOption} 
-                     onChange={handleOptionChange}
-                  >
-                     <option value="leads">Leads</option>
-                     <option value="oportunidad">Oportunidad</option>
-                     <option value="estimaciones">Estimaciones</option>
-                     <option value="ordenVenta">Orden de Venta</option>
-                     <option value="evento">Evento</option>
-                     <option value="corredores">Corredores</option>
-                     <option value="proyecto">Proyecto</option>
-                     <option value="subsidiaria">Subsidiaria</option>
-                     <option value="ubicaciones">Ubicaciones</option>
-                     <option value="campana">Campaña</option>
-                  </select>
+      <div className="lead-profile-shell search-view-shell">
+         <style>{SEARCH_VIEW_STYLES}</style>
+
+         <div className="lead-profile-sidebar" style={PROFILE_PANEL_STYLES}>
+            <div className="lead-profile-panel">
+               <div className="lead-profile-hero">
+                  <div>
+                     <span className="lead-profile-eyebrow">
+                        Consulta global
+                     </span>
+                     <h1 className="lead-profile-page-title">
+                        Buscador consolidado
+                     </h1>
+                     <p className="lead-profile-page-copy">
+                        Consulte leads, oportunidades, eventos y catálogos
+                        comerciales desde una sola vista, con filtros rápidos y
+                        acceso directo al detalle de cada registro.
+                     </p>
+                  </div>
                </div>
-               <div className="col-md-6">
-                  <input 
-                     type="text" 
-                     className="form-control" 
-                     value={searchInput} 
-                     onChange={(e) => setSearchInput(e.target.value)} 
-                     placeholder="Buscar..." 
+
+               <section className="lead-profile-section">
+                  <div className="lead-profile-section-head">
+                     <span className="lead-profile-kicker">Controles</span>
+                     <h5 className="lead-profile-section-title">
+                        Parámetros de búsqueda
+                     </h5>
+                     <p className="lead-profile-section-copy">
+                        Defina el tipo de transacción y el término de consulta
+                        para visualizar resultados relacionados en tiempo real.
+                     </p>
+                  </div>
+
+                  <div className="search-view-toolbar">
+                     <div className="search-view-grid">
+                        <div className="search-view-field">
+                           <label
+                              htmlFor="search-view-option"
+                              className="search-view-label"
+                           >
+                              Tipo de registro
+                           </label>
+                           <select
+                              id="search-view-option"
+                              className="form-select search-view-select"
+                              value={selectedOption}
+                              onChange={handleOptionChange}
+                           >
+                              {SEARCH_OPTIONS.map((option) => (
+                                 <option
+                                    key={option.value}
+                                    value={option.value}
+                                 >
+                                    {option.label}
+                                 </option>
+                              ))}
+                           </select>
+                        </div>
+
+                        <div className="search-view-field">
+                           <label
+                              htmlFor="search-view-input"
+                              className="search-view-label"
+                           >
+                              Término de búsqueda
+                           </label>
+                           <input
+                              id="search-view-input"
+                              type="text"
+                              className="form-control search-view-input"
+                              value={searchInput}
+                              onChange={(event) =>
+                                 setSearchInput(event.target.value)
+                              }
+                              placeholder="Escriba nombre, correo, teléfono, ID o referencia"
+                           />
+                        </div>
+                     </div>
+
+                     <div className="search-view-hint">
+                        <p className="search-view-hint-copy">
+                           La consulta actual está enfocada en{" "}
+                           <strong>{selectedOptionLabel}</strong>. Al hacer clic
+                           en una fila se abrirá el detalle disponible para ese
+                           tipo de registro.
+                        </p>
+                        <span
+                           className={`search-view-status ${
+                              isSearching ? "is-loading" : ""
+                           }`}
+                        >
+                           {isSearching
+                              ? "Actualizando resultados"
+                              : "Vista lista para consultar"}
+                        </span>
+                     </div>
+                  </div>
+               </section>
+
+               <section className="lead-profile-section">
+                  <div className="lead-profile-section-head">
+                     <span className="lead-profile-kicker">Resultado</span>
+                     <h5 className="lead-profile-section-title">
+                        Registros encontrados
+                     </h5>
+                     <p className="lead-profile-section-copy">
+                        Utilice los paneles de filtro para refinar la consulta y
+                        revisar únicamente la información relevante.
+                     </p>
+                  </div>
+
+                  <div className="search-view-table-shell">
+                     <SearchResultsTable tableRef={tableRef} />
+                  </div>
+               </section>
+
+               {showModal && selectedLead && (
+                  <ModalLeads
+                     leadData={selectedLead}
+                     onClose={() => {
+                        setShowModal(false);
+                        setSelectedLead(null);
+                     }}
                   />
-               </div>
+               )}
             </div>
-         </div>
-         <div className="table-border-style card-body">
-            <LeadsTable tableRef={tableRef} />
-            {showModal && selectedLead && (
-               <ModalLeads 
-                  leadData={selectedLead} 
-                  onClose={() => {
-                     setShowModal(false);
-                     setSelectedLead(null);
-                  }} 
-               />
-            )}
          </div>
       </div>
    );
