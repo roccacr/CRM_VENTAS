@@ -177,7 +177,7 @@ export const ModalHeader = ({
             <div className="lead-modal-header__item">
                <span className="lead-modal-header__label">Asesor</span>
                <p className="lead-modal-header__value">
-                  {getDisplayValue(leadData?.name_admin)}
+                  {getDisplayValue(leadData?.nombre_admin)}
                </p>
             </div>
          </div>
