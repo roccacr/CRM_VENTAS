@@ -58,6 +58,7 @@ const INITIAL_FORM_STATE = {
    lugar_trabajo: "",
    origen_fondos: "",
    zona_residencia: "",
+   perfil_cliente_comprador: "",
    vatregnumber: "",
    custentity1: "",
    custentityestado_civil: "",
@@ -95,6 +96,7 @@ const additionalRequiredFields = [
    "custentityestado_civil",
    "lugar_trabajo",
    "zona_residencia",
+   "perfil_cliente_comprador",
    "defaultaddress"
 ];
 
@@ -280,6 +282,8 @@ export const View_edit_lead = () => {
             lugar_trabajo: leadInfo.info_extra_Trabajo === "null" ? "" : leadInfo.info_extra_Trabajo,
             origen_fondos: leadInfo.info_extra_OrigenFondo === "null" ? "" : leadInfo.info_extra_OrigenFondo,
             zona_residencia: leadInfo.info_extra_ZonaRecidencia === "null" ? "" : leadInfo.info_extra_ZonaRecidencia,
+            perfil_cliente_comprador:
+               leadInfo.info_extra_PerfilClienteComprador === "null" ? "" : leadInfo.info_extra_PerfilClienteComprador,
             vatregnumber: leadInfo.cedula_lead === "null" ? "" : leadInfo.cedula_lead,
             custentity1: leadInfo.Nacionalidad_lead === "null" ? "" : leadInfo.Nacionalidad_lead,
             custentityestado_civil: leadInfo.Estado_ciLead === "null" ? "" : leadInfo.Estado_ciLead,
@@ -522,13 +526,16 @@ export const View_edit_lead = () => {
 
          if (result.isConfirmed) {
             //mostrar un mensaje de espera pero sin el preload de espera pero que no se pueda cerrar
-            Swal.fire({
-               title: "Editando lead",
-               text: "Por favor, espere un momento...",
-               icon: "info",
-               showConfirmButton: false,
-               allowOutsideClick: false,
-            });
+                  Swal.fire({
+                     title: "Editando lead",
+                     text: "Por favor, espere un momento...",
+                     allowOutsideClick: false,
+                     allowEscapeKey: false,
+                     showConfirmButton: false,
+                     didOpen: () => {
+                        Swal.showLoading();
+                     },
+                  });
             console.clear();
 
             const response = await dispatch(editarInformacionLead(formData));
@@ -820,6 +827,19 @@ export const View_edit_lead = () => {
                      required
                   />
                </div>
+               <div className="mb-3">
+                  <label className="required form-label">Perfil del cliente comprador</label>
+                  <textarea
+                     id="perfil_cliente_comprador"
+                     name="perfil_cliente_comprador"
+                     value={formData.perfil_cliente_comprador}
+                     onChange={handleInputChange}
+                     className="form-control"
+                     rows="6"
+                     placeholder="Detalle tipo de cliente, motivaciones, objeciones, razones de compra y cualquier contexto cualitativo relevante"
+                     required
+                  />
+               </div>
             </div>
             <div className="col-sm-6">
                <div className="mb-3">
@@ -925,7 +945,7 @@ export const View_edit_lead = () => {
                   onChange={handleInputChange}
                   className="form-control"
                   maxLength="225"
-                  rows="3"
+                  rows="6"
                   placeholder="Introduzca una dirección"
                ></textarea>
             </div>

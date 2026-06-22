@@ -55,10 +55,11 @@ export const InfromacionCompleta = ({ leadDetails }) => {
         { label: "Ingresos Extra", value: leadDetails.info_extra_ingresos },
         { label: "Motivo de Compra", value: leadDetails.info_extra_MotivoCompra },
         { label: "Momento de Compra", value: leadDetails.info_extra_MomentodeCompra },
-        { label: "Lugar de Trabajo", value: leadDetails.info_extra_Trabajo },
-        { label: "Origen de Fondo", value: leadDetails.info_extra_OrigenFondo },
-        { label: "Zona de Residencia", value: leadDetails.info_extra_ZonaRecidencia },
-    ];
+ { label: "Lugar de Trabajo", value: leadDetails.info_extra_Trabajo },
+ { label: "Origen de Fondo", value: leadDetails.info_extra_OrigenFondo },
+ { label: "Zona de Residencia", value: leadDetails.info_extra_ZonaRecidencia },
+ { label: "Perfil del Cliente Comprador", value: leadDetails.info_extra_PerfilClienteComprador },
+ ];
 
 
     const renderInfoRows = (infoArray) =>

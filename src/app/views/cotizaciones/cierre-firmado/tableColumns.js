@@ -37,6 +37,7 @@ const VISIBLE_FIELDS = [
     "info_extra_Trabajo",
     "info_extra_OrigenFondo",
     "info_extra_ZonaRecidencia",
+    "info_extra_PerfilClienteComprador",
 ];
 
 const FILTERABLE_FIELDS = new Set([
