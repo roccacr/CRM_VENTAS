@@ -574,10 +574,8 @@ const SubMenu = ({ title, icon, isOpen, toggle, items }) => (
 );
 
 const MenuItems = ({ openMenu, toggleMenu, rol_admin }) => {
-   void rol_admin;
-
-   return (
-      <ul className="crm-navbar-list">
+return (
+<ul className="crm-navbar-list">
          <li className="crm-navbar-caption">
             <label>Menú Principal</label>
          </li>
@@ -621,15 +619,22 @@ const MenuItems = ({ openMenu, toggleMenu, rol_admin }) => {
             items={SALES_ORDER_ITEMS}
          />
 
-         <SubMenu
-            icon="ti ti-link"
-            title="Tickets"
-            isOpen={openMenu.linksExternosMenu}
-            toggle={() => toggleMenu("linksExternosMenu")}
-            items={TICKET_ITEMS}
-         />
-      </ul>
-   );
+<SubMenu
+icon="ti ti-link"
+title="Tickets"
+isOpen={openMenu.linksExternosMenu}
+toggle={() => toggleMenu("linksExternosMenu")}
+items={TICKET_ITEMS}
+/>
+{rol_admin === 1 && (
+<MenuItem
+to="/configuracion/kapso"
+icon="ti ti-brand-whatsapp"
+text="Configuración Kapso"
+/>
+)}
+</ul>
+);
 };
 
 const UserDropdown = ({ CreatedEvents }) => (

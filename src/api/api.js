@@ -7,9 +7,16 @@ import axios from "axios";
  * @returns {string} - The base API URL.
  */
 const getApiUrl = () => {
-    return window.location.hostname === "localhost" 
-        ? "http://localhost:7000/api/v2.0/" 
-        : "https://api-node-v2.roccacr.com/api/v2.0/";
+  return window.location.hostname === "localhost"
+    ? "http://localhost:7000/api/v2.0/"
+    : "https://api-node-v2.roccacr.com/api/v2.0/";
+};
+
+const getKapsoApiUrl = () => {
+  return window.location.hostname === "localhost" ||
+    window.location.hostname === "127.0.0.1"
+    ? "http://localhost:3000/api/v1/"
+    : "https://kapso-crmventas.rdghub.com/api/v1/";
 };
 
 const isLocalEnvironment = () => {
@@ -46,6 +53,7 @@ const getDatabaseName = () => {
 };
 
 const apiUrl = getApiUrl();
+const kapsoApiUrl = getKapsoApiUrl();
 const apiUrlImg = getApiUrlImg();
 const databaseuse = getDatabaseName();
 const frontendAccessToken = import.meta.env.VITE_TOKEN_ACCESS || "4jH6k-3m.b@s_T8";
@@ -109,7 +117,28 @@ const fetchDataFile = async (endpoint, requestData) => {
     }
 };
 
+const fetchKapsoData = async (endpoint) => {
+  try {
+    const url = `${kapsoApiUrl}${endpoint}`;
+    const response = await axios.get(url, {
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+
+    return { ok: true, data: response.data };
+  } catch (error) {
+    return { ok: false, errorMessage: error.message };
+  }
+};
+
 /********************************************** EXPORT FUNCTIONS AND DATA **********************************************/
 
 // Export functions and common data for use in other modules
-export { fetchData, commonRequestData, fetchDataFile, apiUrlImg };
+export {
+  fetchData,
+  fetchKapsoData,
+  commonRequestData,
+  fetchDataFile,
+  apiUrlImg,
+};

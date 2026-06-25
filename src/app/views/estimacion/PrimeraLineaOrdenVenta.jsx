@@ -178,6 +178,25 @@ const FieldInput = ({
   );
 };
 
+const ReservaToggle = ({ formValues, handleInputChange, className = "col-sm-3 d-flex align-items-center" }) => (
+  <div className={className}>
+    <div className="form-check mb-2">
+      <input
+        autoComplete="off"
+        className="form-check-input"
+        type="checkbox"
+        id="PRERESERVA"
+        name="pre_reserva"
+        checked={Boolean(formValues.pre_reserva)}
+        onChange={handleInputChange}
+      />
+      <label className="form-check-label" htmlFor="PRERESERVA">
+        Reserva
+      </label>
+    </div>
+  </div>
+);
+
 export const PrimeraLineaOrdenVenta = ({
   formValues,
   handleInputChange,
@@ -217,22 +236,6 @@ export const PrimeraLineaOrdenVenta = ({
               />
             ))}
 
-            <div className="col-sm-3 d-flex align-items-center">
-              <div className="form-check mb-2">
-                <input
-                  autoComplete="off"
-                  className="form-check-input"
-                  type="checkbox"
-                  id="PRERESERVA"
-                  name="pre_reserva"
-                  checked={Boolean(formValues.pre_reserva)}
-                  onChange={handleInputChange}
-                />
-                <label className="form-check-label" htmlFor="PRERESERVA">
-                  Reserva
-                </label>
-              </div>
-            </div>
           </div>
 
           <hr />
@@ -257,42 +260,63 @@ export const PrimeraLineaOrdenVenta = ({
         </div>
       ))}
 
-      <div className="row" hidden={!formValues.pre_reserva}>
-        <hr />
-        <h4>Agregar valores para Reserva</h4>
+      <hr />
 
-        {RESERVA_FIELDS.map((field) => (
-          <FieldInput
-            key={field.name}
-            field={field}
-            formValues={formValues}
-            handleInputChange={handleInputChange}
-            errors={errors}
-          />
-        ))}
-
-        <div className="col-sm-3">
-          <label className="form-label">Metodo de pago</label>
-          <select
-            className={`form-select ${errors.custbody188 ? "is-invalid" : ""}`}
-            value={formValues.custbody188 || ""}
-            name="custbody188"
-            onChange={handleInputChange}
-          >
-            {PAYMENT_METHOD_OPTIONS.map((option) => (
-              <option key={`custbody188-${option.value || "empty"}`} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-
-          {errors.custbody188 ? (
-            <div className="invalid-feedback">{errors.custbody188}</div>
-          ) : null}
+      <div className="row">
+        <div className="col-sm-12">
+          <h4>Asignar valores para Reserva</h4>
         </div>
+
+        <ReservaToggle
+          className="col-sm-12"
+          formValues={formValues}
+          handleInputChange={handleInputChange}
+        />
       </div>
 
-      <hr />
+      {formValues.pre_reserva ? (
+        <>
+          <div className="row">
+            <div className="col-sm-12">
+              <h4>Agregar valores para Reserva</h4>
+            </div>
+
+            {RESERVA_FIELDS.map((field) => (
+              <FieldInput
+                key={field.name}
+                field={field}
+                formValues={formValues}
+                handleInputChange={handleInputChange}
+                errors={errors}
+              />
+            ))}
+
+            <div className="col-sm-3">
+              <label className="form-label">Metodo de pago</label>
+              <select
+                className={`form-select ${errors.custbody188 ? "is-invalid" : ""}`}
+                value={formValues.custbody188 || ""}
+                name="custbody188"
+                onChange={handleInputChange}
+              >
+                {PAYMENT_METHOD_OPTIONS.map((option) => (
+                  <option key={`custbody188-${option.value || "empty"}`} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+
+              {errors.custbody188 ? (
+                <div className="invalid-feedback">{errors.custbody188}</div>
+              ) : null}
+            </div>
+          </div>
+
+          <hr />
+        </>
+      ) : (
+        <hr />
+      )}
 
       <div className="row">
         <h4>Asignar Valores para Mezzanine</h4>

@@ -8,6 +8,14 @@ import { Page_oportunidad } from "../pages/oportunidad/Page_oportunidad";
 import { Page_Estimaciones } from "../pages/estimaciones/Page_Estimaciones";
 import { Cotizaciones } from "../pages/cotizaciones/Cotizaciones";
 import { BuscadorPage } from "../pages/buscadorPage/BuscadorPage";
+import { Page_Kapso } from "../pages/kapso/Page_Kapso";
+import { useSelector } from "react-redux";
+
+const RoleAdminOnlyRoute = ({ element }) => {
+   const { rol_admin } = useSelector((state) => state.auth);
+
+   return rol_admin === 1 ? element : <Navigate to="/" replace />;
+};
 
 
 
@@ -33,6 +41,11 @@ export const RouterApp = () => {
           <Route path="/estimaciones/*" element={<Page_Estimaciones />} />
 
           <Route path="/orden/*" element={<Cotizaciones />} />
+
+          <Route
+             path="/configuracion/kapso"
+             element={<RoleAdminOnlyRoute element={<Page_Kapso />} />}
+          />
 
           {/** Cualquier ruta*/}
           <Route path="/*" element={<Navigate to="/" />} />
