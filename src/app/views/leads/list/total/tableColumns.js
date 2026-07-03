@@ -36,6 +36,13 @@ const getLeadStatus = (status) => {
     return statusMap[status] || statusMap.default;
 };
 
+const formatAnnouncement = (value) => {
+    if (value === null || value === undefined || value === "" || value === "undefined") {
+        return "N/A";
+    }
+    return value;
+};
+
 /**
  * Definición de columnas para la tabla de leads
  * Cada columna especifica cómo se debe mostrar y procesar la información
@@ -83,6 +90,14 @@ export const TABLE_COLUMNS = [
         title: "Campaña",
         data: "campana_lead",
         className: "text-left",
+        searchPanes: { show: true }
+    },
+    {
+        title: "Anuncio",
+        data: "custentityaccion_campana",
+        className: "text-left",
+        defaultContent: "N/A",
+        render: formatAnnouncement,
         searchPanes: { show: true }
     },
     {
