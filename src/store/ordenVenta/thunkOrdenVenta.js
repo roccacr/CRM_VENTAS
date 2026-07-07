@@ -273,8 +273,16 @@ export const obtenerOrndesPorcliente = (idTransaccion) => {
 
     return async () => {
         try {
-            const leads = idTransaccion.idinterno_lead;
-            const resultado = await extraerOrdenDeventaPorCLiente({ idTransaccion:leads });
+            const leadId =
+                typeof idTransaccion === "object" && idTransaccion !== null
+                    ? idTransaccion.idinterno_lead
+                    : idTransaccion;
+
+            if (!leadId) {
+                return [];
+            }
+
+            const resultado = await extraerOrdenDeventaPorCLiente({ idTransaccion: leadId });
 
             return resultado.data.data || [];
         } catch (error) {
