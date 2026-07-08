@@ -1711,7 +1711,8 @@ export const View_calendario_outlook = () => {
     const createEventDateTimeLabel = formatCreateEventDateTimeLabel(createEventScheduleRange);
     const createEventWeekLabel = `semana ${getIsoWeekNumber(createEventScheduleRange.start)}`;
     const hasCreateEventTitle = createEventTitle.trim().length > 0;
-    const shouldShowCreateEventLeadSelect = isCreateEventLeadEnabled;
+    const requiresCreateEventLeadAssignment = createEventType === "Cita" || isCreateEventLeadEnabled;
+    const shouldShowCreateEventLeadSelect = requiresCreateEventLeadAssignment;
     const shouldShowCreateEventProjectSelect = createEventType === "Cita";
     const shouldOpenAttendeeSuggestions = attendeeSearchText.trim().length >= PEOPLE_SEARCH_MIN_LENGTH;
     const createEventScheduleLabel = useMemo(
@@ -2655,12 +2656,20 @@ export const View_calendario_outlook = () => {
     const handleCreateEventTypeChange = (nextEventType) => {
         setCreateEventType(nextEventType);
 
+        if (nextEventType === "Cita") {
+            setIsCreateEventLeadEnabled(true);
+        }
+
         if (nextEventType !== "Cita") {
             setCreateEventProjectId("");
         }
     };
 
     const handleCreateEventLeadToggle = (isChecked) => {
+        if (createEventType === "Cita" && !isChecked) {
+            return;
+        }
+
         setIsCreateEventLeadEnabled(isChecked);
 
         if (!isChecked) {
@@ -3136,7 +3145,7 @@ export const View_calendario_outlook = () => {
             return;
         }
 
-        if (isCreateEventLeadEnabled && !createEventLeadId) {
+        if (requiresCreateEventLeadAssignment && !createEventLeadId) {
             setCreateEventSubmitError("Selecciona el lead del evento.");
             return;
         }
@@ -3248,7 +3257,7 @@ export const View_calendario_outlook = () => {
                         formatdateFin: toGraphDateTime(createEventScheduleRange.end),
                         horaInicio: createEventStartTimeValue,
                         horaFinal: createEventEndTimeValue,
-                        leadId: isCreateEventLeadEnabled ? Number(createEventLeadId || 0) : 0,
+                        leadId: requiresCreateEventLeadAssignment ? Number(createEventLeadId || 0) : 0,
                         colorEvento: getCreateEventColor(createEventType),
                         citaValue: createEventType === "Cita" ? 1 : 0,
                         id_proyecto: shouldShowCreateEventProjectSelect ? Number(createEventProjectId || 0) : 0,
@@ -3273,7 +3282,7 @@ export const View_calendario_outlook = () => {
                         formatdateFin: toGraphDateTime(createEventScheduleRange.end),
                         horaInicio: createEventStartTimeValue,
                         horaFinal: createEventEndTimeValue,
-                        leadId: isCreateEventLeadEnabled ? Number(createEventLeadId || 0) : 0,
+                        leadId: requiresCreateEventLeadAssignment ? Number(createEventLeadId || 0) : 0,
                         colorEvento: getCreateEventColor(createEventType),
                         citaValue: createEventType === "Cita" ? 1 : 0,
                         id_proyecto: shouldShowCreateEventProjectSelect ? Number(createEventProjectId || 0) : 0,
@@ -3329,7 +3338,7 @@ export const View_calendario_outlook = () => {
                     formatdateFin: toGraphDateTime(createEventScheduleRange.end),
                     horaInicio: createEventStartTimeValue,
                     horaFinal: createEventEndTimeValue,
-                    leadId: isCreateEventLeadEnabled ? Number(createEventLeadId || 0) : 0,
+                    leadId: requiresCreateEventLeadAssignment ? Number(createEventLeadId || 0) : 0,
                     colorEvento: getCreateEventColor(createEventType),
                     citaValue: createEventType === "Cita" ? 1 : 0,
                     id_proyecto: shouldShowCreateEventProjectSelect ? Number(createEventProjectId || 0) : 0,

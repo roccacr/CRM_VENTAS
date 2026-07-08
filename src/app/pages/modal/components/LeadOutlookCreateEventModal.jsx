@@ -371,6 +371,8 @@ export const LeadOutlookCreateEventModal = ({
     const createEventDateTimeLabel = formatCreateEventDateTimeLabel(createEventScheduleRange);
     const createEventWeekLabel = `semana ${getIsoWeekNumber(createEventScheduleRange.start)}`;
     const createEventScheduleLabel = `${createEventStartTimeValue} - ${createEventEndTimeValue}`;
+    const requiresCreateEventLeadAssignment = createEventType === "Cita" || isCreateEventLeadEnabled;
+    const shouldShowCreateEventLeadSelect = requiresCreateEventLeadAssignment;
     const shouldShowCreateEventProjectSelect = createEventType === "Cita";
     const openAttendeeSuggestions = attendeeSearchText.trim().length >= PEOPLE_SEARCH_MIN_LENGTH;
     const roomSuggestionSearchValue = roomSearchText.trim();
@@ -957,12 +959,20 @@ export const LeadOutlookCreateEventModal = ({
     const handleCreateEventTypeChange = (nextEventType) => {
         setCreateEventType(nextEventType);
 
+        if (nextEventType === "Cita") {
+            setIsCreateEventLeadEnabled(true);
+        }
+
         if (nextEventType !== "Cita") {
             setCreateEventProjectId("");
         }
     };
 
     const handleCreateEventLeadToggle = (isChecked) => {
+        if (createEventType === "Cita" && !isChecked) {
+            return;
+        }
+
         setIsCreateEventLeadEnabled(isChecked);
 
         if (!isChecked) {
@@ -1120,7 +1130,7 @@ export const LeadOutlookCreateEventModal = ({
             return;
         }
 
-        if (isCreateEventLeadEnabled && !createEventLeadId) {
+        if (requiresCreateEventLeadAssignment && !createEventLeadId) {
             setCreateEventSubmitError("Selecciona el lead del evento.");
             return;
         }
@@ -1220,7 +1230,7 @@ export const LeadOutlookCreateEventModal = ({
                         formatdateFin: toGraphDateTime(createEventScheduleRange.end),
                         horaInicio: createEventStartTimeValue,
                         horaFinal: createEventEndTimeValue,
-                        leadId: isCreateEventLeadEnabled ? Number(createEventLeadId || 0) : 0,
+                        leadId: requiresCreateEventLeadAssignment ? Number(createEventLeadId || 0) : 0,
                         colorEvento: getCreateEventColor(createEventType),
                         citaValue: createEventType === "Cita" ? 1 : 0,
                         id_proyecto: shouldShowCreateEventProjectSelect ? Number(createEventProjectId || 0) : 0,
