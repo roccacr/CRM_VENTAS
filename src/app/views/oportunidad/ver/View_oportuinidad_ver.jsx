@@ -108,6 +108,15 @@ const OPPORTUNITY_VIEW_STYLES = `
       color: rgba(255, 255, 255, 0.72);
    }
 
+   .opportunity-view-hero-copy p,
+   .opportunity-view-sidebar-copy,
+   .lead-profile-section-copy,
+   .lead-profile-page-copy,
+   .opportunity-view-main-card .text-muted,
+   .opportunity-view-main-card p.text-muted {
+      display: none !important;
+   }
+
    .opportunity-view-hero-figure {
       flex-shrink: 0;
       width: 82px;
@@ -568,7 +577,7 @@ export const View_oportuinidad_ver = () => {
                         Gestión comercial
                      </span>
                      <h1 className="opportunity-view-hero-title">
-                        Vista general de la oportunidad
+                        Oportunidad
                      </h1>
                      <p>
                         Revise el estado comercial, expediente, estimaciones y
@@ -602,7 +611,7 @@ export const View_oportuinidad_ver = () => {
                      <div className="opportunity-view-lead-actions">
                         <div className="lead-profile-section-head">
                            <span className="lead-profile-kicker">
-                              Acciones relacionadas
+                              Lead vinculado
                            </span>
                            <h5 className="lead-profile-section-title">
                               Gestión del lead vinculado
@@ -719,7 +728,7 @@ export const View_oportuinidad_ver = () => {
                      <div className="lead-profile-hero">
                         <div>
                            <span className="lead-profile-eyebrow">
-                              Vista consolidada
+                              Resumen
                            </span>
                            <h2 className="lead-profile-page-title">
                               Información detallada de la oportunidad

@@ -16,6 +16,12 @@ const OPPORTUNITY_LIST_THEME = `
     .opportunity-list-shell .lead-profile-panel {
         padding: 18px;
     }
+
+    .opportunity-list-mode-copy,
+    .lead-profile-section-copy,
+    .lead-profile-page-copy {
+        display: none;
+    }
 `;
 
 const LOCAL_STORAGE_START = "oportunidad_inputStartDate";
@@ -122,8 +128,8 @@ const FilterOptions = ({
 }) => (
    <section className="lead-profile-section">
       <div className="lead-profile-section-head">
-         <span className="lead-profile-kicker">Controles</span>
-         <h5 className="lead-profile-section-title">Filtros de consulta</h5>
+         <span className="lead-profile-kicker">Filtros</span>
+         <h5 className="lead-profile-section-title">Consulta</h5>
          <p className="lead-profile-section-copy">
             Filtre por estado y rango de fechas para revisar solo las oportunidades relevantes del período.
          </p>
@@ -156,7 +162,7 @@ const DataTableComponent = ({ tableData, tableRef, tableOptions }) => (
    <section className="lead-profile-section">
       <div className="lead-profile-section-head">
          <span className="lead-profile-kicker">Resultado</span>
-         <h5 className="lead-profile-section-title">Lista consolidada de oportunidades</h5>
+         <h5 className="lead-profile-section-title">Oportunidades</h5>
          <p className="lead-profile-section-copy">Seleccione una fila para abrir el detalle comercial de la oportunidad correspondiente.</p>
       </div>
 
@@ -269,7 +275,7 @@ const View_oportunidad_listas = () => {
                   <div className="lead-profile-hero">
                      <div>
                         <span className="lead-profile-eyebrow">Gestión comercial</span>
-                        <h1 className="lead-profile-page-title">Lista de oportunidades</h1>
+                        <h1 className="lead-profile-page-title">Oportunidades</h1>
                         <p className="lead-profile-page-copy">
                            Consulte en una sola vista las oportunidades activas, inactivas o totales, con filtros por fecha y acceso rápido al
                            detalle de cada registro.

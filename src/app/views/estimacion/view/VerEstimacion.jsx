@@ -85,6 +85,15 @@ const ESTIMATION_VIEW_STYLES = `
     color: #4b5563;
   }
 
+  .estimation-view-hero-copy,
+  .estimation-view-sidebar-copy,
+  .lead-profile-section-copy,
+  .lead-profile-page-copy,
+  .estimation-view-summary-banner-copy,
+  .estimation-view-table-head p {
+    display: none;
+  }
+
   .estimation-view-hero-figure {
     display: flex;
     align-items: center;
@@ -1044,7 +1053,7 @@ export const VerEstimacion = () => {
               <div className="estimation-view-lead-actions">
                 <div className="lead-profile-section-head">
                   <span className="lead-profile-kicker">
-                    Acciones relacionadas
+                    Lead vinculado
                   </span>
                   <h5 className="lead-profile-section-title">
                     Gestión del lead vinculado
@@ -1155,7 +1164,7 @@ export const VerEstimacion = () => {
               <div className="lead-profile-hero">
                 <div>
                   <span className="lead-profile-eyebrow">
-                    Vista consolidada
+                    Resumen
                   </span>
                   <h2 className="lead-profile-page-title">
                     Información integral de la estimación
