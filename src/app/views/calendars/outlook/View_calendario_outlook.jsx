@@ -4220,7 +4220,9 @@ const handleCalendarEventScheduleChange = async (info) => {
                                 contentHeight="auto"
                                 datesSet={(dateInfo) => {
                                     const calendarApi = calendarRef.current?.getApi();
-                                    const nextDate = calendarApi?.getDate() || dateInfo.start;
+                                    const nextDate = activeViewMode === "month"
+                                        ? (dateInfo.view.currentStart || calendarApi?.getDate() || dateInfo.start)
+                                        : (calendarApi?.getDate() || dateInfo.start);
                                     // Preservar workweek si ya estaba activo (FC solo reporta timeGridWeek)
                                     const nextViewMode = activeViewMode === "workweek"
                                         ? "workweek"
