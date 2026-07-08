@@ -89,6 +89,15 @@ const ORDER_VIEW_STYLES = `
     color: #4b5563;
   }
 
+  .order-view-hero-copy,
+  .order-view-sidebar-copy,
+  .lead-profile-section-copy,
+  .lead-profile-page-copy,
+  .order-view-summary-banner-copy,
+  .order-view-table-head p {
+    display: none;
+  }
+
   .order-view-hero-figure {
     display: flex;
     align-items: center;
@@ -1198,13 +1207,6 @@ const OrderProgress = ({ validarOrdenVenta, isLoading = false }) => {
   return (
     <div className="order-view-progress-shell">
       <div className="order-view-progress-head">
-        <div>
-          <h6>Estado de la orden de venta</h6>
-          <p>
-            Seguimiento secuencial de la reserva, aprobaciones internas y cierre
-            del negocio.
-          </p>
-        </div>
         <div className="order-view-progress-pill">{progressData.percentage}%</div>
       </div>
 
@@ -1713,7 +1715,7 @@ export const VistaOrdenVenta = () => {
                 <div className="lead-profile-section-head">
                   <span className="lead-profile-kicker">Lead vinculado</span>
                   <h5 className="lead-profile-section-title">
-                    Acciones relacionadas del cliente
+                    Acciones del cliente
                   </h5>
                   <p className="lead-profile-section-copy">
                     Mantenga a mano las acciones comerciales disponibles sobre el
@@ -1767,7 +1769,7 @@ export const VistaOrdenVenta = () => {
                 <div className="lead-profile-section-head">
                   <span className="lead-profile-kicker">Estados internos</span>
                   <h5 className="lead-profile-section-title">
-                    Aprobaciones y control
+                    Aprobaciones
                   </h5>
                   <p className="lead-profile-section-copy">
                     Visualización rápida de checks operativos y comerciales.
@@ -1791,7 +1793,7 @@ export const VistaOrdenVenta = () => {
             <div className="lead-profile-panel" style={PROFILE_PANEL_STYLES}>
               <div className="lead-profile-hero">
                 <div>
-                  <span className="lead-profile-eyebrow">Vista consolidada</span>
+                  <span className="lead-profile-eyebrow">Resumen</span>
                   <h2 className="lead-profile-page-title">
                     Información integral de la orden
                   </h2>
@@ -1826,7 +1828,7 @@ export const VistaOrdenVenta = () => {
               </div>
 
               <ProfileSection
-                eyebrow="Seguimiento operativo"
+                eyebrow="Estado"
                 title="Estado de avance de la orden"
                 description="Secuencia comercial y administrativa desde la creación de la orden hasta el contrato firmado."
               >
@@ -1837,7 +1839,7 @@ export const VistaOrdenVenta = () => {
               </ProfileSection>
 
               <ProfileSection
-                eyebrow="Resumen principal"
+                eyebrow="Base"
                 title="Información base de la orden"
                 description="Datos generales del pedido, cliente, expediente y oportunidad relacionada."
               >
@@ -1867,7 +1869,7 @@ export const VistaOrdenVenta = () => {
               </ProfileSection>
 
               <ProfileSection
-                eyebrow="Reserva aplicada"
+                eyebrow="Reserva"
                 title="Datos de reserva y pre-reserva"
                 description="Montos, fechas, referencia de pago y observaciones registradas para la confirmación."
               >
@@ -1887,7 +1889,7 @@ export const VistaOrdenVenta = () => {
               </ProfileSection>
 
               <ProfileSection
-                eyebrow="Detalle operativo"
+                eyebrow="Detalle"
                 title="Condiciones de la prima"
                 description="Líneas registradas en la orden con artículo, monto, fecha proyectada y descripción."
               >
