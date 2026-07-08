@@ -293,6 +293,7 @@ const INITIAL_FORM_STATE = {
    custentity78: "",
    custentity84: "",
    custentity79: "",
+   custentity85: "",
    infromacion_extra_dos: 1,
    corredor_extra: 0,
    informacion_Extra: 1,
@@ -517,6 +518,7 @@ export const View_edit_lead = () => {
             custentity78: leadInfo.cedula_extra_lead === "null" ? "" : leadInfo.cedula_extra_lead,
             custentity84: leadInfo.email_extra_lead === "null" ? "" : leadInfo.email_extra_lead,
             custentity79: leadInfo.profesion_extra_lead === "null" ? "" : leadInfo.profesion_extra_lead,
+            custentity85: leadInfo.lugar_residencia_extra_lead === "null" ? "" : leadInfo.lugar_residencia_extra_lead,
             comentario_clientes: leadInfo.comentario_lead === "null" ? "" : leadInfo.comentario_lead,
          }));
 
@@ -561,7 +563,7 @@ export const View_edit_lead = () => {
       // Validación para campos del segundo cliente
       const secondClientFields = [
          "custentity77", "custentity81", "custentityestado_civil_extra",
-         "custentity82", "custentity78", "custentity84", "custentity79"
+         "custentity82", "custentity78", "custentity84", "custentity79", "custentity85"
       ];
       
       // Validación para campos adicionales
@@ -673,7 +675,7 @@ export const View_edit_lead = () => {
       // Validación existente para campos del segundo cliente
       const secondClientFields = [
          "custentity77", "custentity81", "custentityestado_civil_extra",
-         "custentity82", "custentity78", "custentity84", "custentity79"
+         "custentity82", "custentity78", "custentity84", "custentity79", "custentity85"
       ];
 
       const hasAnySecondClientInfo = secondClientFields.some(field => 
@@ -1311,6 +1313,19 @@ export const View_edit_lead = () => {
                      onChange={handleInputChange}
                      className="form-control mb-2"
                      placeholder="PROFESIÓN 2"
+                     required
+                  />
+               </div>
+               <div className="mb-3">
+                  <label className="form-label">LUGAR DE RESIDENCIA 2</label>
+                  <input
+                     type="text"
+                     name="custentity85"
+                     id="custentity85"
+                     value={formData.custentity85}
+                     onChange={handleInputChange}
+                     className="form-control mb-2"
+                     placeholder="LUGAR DE RESIDENCIA 2"
                      required
                   />
                </div>
