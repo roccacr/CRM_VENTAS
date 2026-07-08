@@ -36,6 +36,12 @@ ${PROFILE_THEME_STYLES}
    padding: 18px;
 }
 
+.search-view-hint-copy,
+.lead-profile-section-copy,
+.lead-profile-page-copy {
+   display: none;
+}
+
 .search-view-toolbar {
    display: grid;
    gap: 12px;
@@ -486,10 +492,10 @@ const View_buscador = () => {
                <div className="lead-profile-hero">
                   <div>
                      <span className="lead-profile-eyebrow">
-                        Consulta global
+                        Resumen
                      </span>
                      <h1 className="lead-profile-page-title">
-                        Buscador consolidado
+                        Buscador
                      </h1>
                      <p className="lead-profile-page-copy">
                         Consulte leads, oportunidades, eventos y catálogos
@@ -581,7 +587,7 @@ const View_buscador = () => {
                   <div className="lead-profile-section-head">
                      <span className="lead-profile-kicker">Resultado</span>
                      <h5 className="lead-profile-section-title">
-                        Registros encontrados
+                        Registros
                      </h5>
                      <p className="lead-profile-section-copy">
                         Utilice los paneles de filtro para refinar la consulta y
