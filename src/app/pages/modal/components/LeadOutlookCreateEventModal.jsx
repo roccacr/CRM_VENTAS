@@ -371,6 +371,7 @@ export const LeadOutlookCreateEventModal = ({
     const createEventDateTimeLabel = formatCreateEventDateTimeLabel(createEventScheduleRange);
     const createEventWeekLabel = `semana ${getIsoWeekNumber(createEventScheduleRange.start)}`;
     const createEventScheduleLabel = `${createEventStartTimeValue} - ${createEventEndTimeValue}`;
+    const isLeadAssignmentLocked = Boolean(initialLead?.idinterno_lead);
     const requiresCreateEventLeadAssignment = createEventType === "Cita" || isCreateEventLeadEnabled;
     const shouldShowCreateEventLeadSelect = requiresCreateEventLeadAssignment;
     const shouldShowCreateEventProjectSelect = createEventType === "Cita";
@@ -969,6 +970,10 @@ export const LeadOutlookCreateEventModal = ({
     };
 
     const handleCreateEventLeadToggle = (isChecked) => {
+        if (isLeadAssignmentLocked) {
+            return;
+        }
+
         if (createEventType === "Cita" && !isChecked) {
             return;
         }
@@ -1253,7 +1258,7 @@ export const LeadOutlookCreateEventModal = ({
                         formatdateFin: toGraphDateTime(createEventScheduleRange.end),
                         horaInicio: createEventStartTimeValue,
                         horaFinal: createEventEndTimeValue,
-                        leadId: isCreateEventLeadEnabled ? Number(createEventLeadId || 0) : 0,
+                        leadId: requiresCreateEventLeadAssignment ? Number(createEventLeadId || 0) : 0,
                         colorEvento: getCreateEventColor(createEventType),
                         citaValue: createEventType === "Cita" ? 1 : 0,
                         id_proyecto: shouldShowCreateEventProjectSelect ? Number(createEventProjectId || 0) : 0,
@@ -1307,7 +1312,7 @@ export const LeadOutlookCreateEventModal = ({
                     formatdateFin: toGraphDateTime(createEventScheduleRange.end),
                     horaInicio: createEventStartTimeValue,
                     horaFinal: createEventEndTimeValue,
-                    leadId: isCreateEventLeadEnabled ? Number(createEventLeadId || 0) : 0,
+                    leadId: requiresCreateEventLeadAssignment ? Number(createEventLeadId || 0) : 0,
                     colorEvento: getCreateEventColor(createEventType),
                     citaValue: createEventType === "Cita" ? 1 : 0,
                     id_proyecto: shouldShowCreateEventProjectSelect ? Number(createEventProjectId || 0) : 0,
@@ -1445,7 +1450,8 @@ export const LeadOutlookCreateEventModal = ({
             setIsScheduleEditorOpen={setIsScheduleEditorOpen}
             setSelectedAttendees={setSelectedAttendees}
             setShowAllRoomSuggestions={() => {}}
-            shouldShowCreateEventLeadSelect={isCreateEventLeadEnabled}
+            isLeadAssignmentLocked={isLeadAssignmentLocked}
+            shouldShowCreateEventLeadSelect={shouldShowCreateEventLeadSelect}
             shouldShowCreateEventProjectSelect={shouldShowCreateEventProjectSelect}
             shiftCreateEventDate={shiftCreateEventDate}
             toGraphDateTime={toGraphDateTime}

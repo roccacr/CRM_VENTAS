@@ -102,6 +102,7 @@ export const OutlookCreateEventModal = ({
     hasCreateEventTitle,
     hasMoreRoomSuggestions,
     hasTouchedCreateEventTitle,
+    isLeadAssignmentLocked,
     isCreateEventLeadEnabled,
     isLeadInvitationEnabled,
     isCreateEventModalOpen,
@@ -792,6 +793,7 @@ export const OutlookCreateEventModal = ({
                                 <label className="outlook-create-extra-checkbox" htmlFor="create-event-assign-lead">
                                     <input
                                         checked={isCreateEventLeadEnabled}
+                                        disabled={isLeadAssignmentLocked}
                                         id="create-event-assign-lead"
                                         onChange={(event) => handleCreateEventLeadToggle(event.target.checked)}
                                         type="checkbox"
@@ -809,12 +811,23 @@ export const OutlookCreateEventModal = ({
                                                 <div className="outlook-create-line-field outlook-create-location-field">
                                                     <input
                                                         className="outlook-create-line-input"
+                                                        disabled={isLeadAssignmentLocked}
                                                         onChange={(event) => {
+                                                            if (isLeadAssignmentLocked) {
+                                                                return;
+                                                            }
+
                                                             setCreateEventLeadId("");
                                                             setLeadSearchText(event.target.value);
                                                             setIsLeadDropdownOpen(true);
                                                         }}
-                                                        onFocus={() => setIsLeadDropdownOpen(true)}
+                                                        onFocus={() => {
+                                                            if (isLeadAssignmentLocked) {
+                                                                return;
+                                                            }
+
+                                                            setIsLeadDropdownOpen(true);
+                                                        }}
                                                         placeholder="Seleccionar lead"
                                                         type="text"
                                                         value={leadSearchText}
