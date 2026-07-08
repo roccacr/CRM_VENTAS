@@ -179,7 +179,7 @@ leadNetsuite.editarInformacionLead_Netsuite = async ({ formData,    database }) 
     const corredor = corredorValue && corredorValue !== 0 ? 1 : formData.corredor_extra;
 
     // Validar información extra adicional
-    const camposInfoExtraDos = ['custentity77', 'custentity81', 'custentity82', 'custentity83'];
+    const camposInfoExtraDos = ['custentity77', 'custentity81', 'custentity82', 'custentity85'];
     const infromacion_extra = camposInfoExtraDos.some(campo => formData[campo] === '') ? 0 : formData.informacion_Extra;
 
 
@@ -218,6 +218,7 @@ leadNetsuite.editarInformacionLead_Netsuite = async ({ formData,    database }) 
         custentity81: formData.custentity81,
         custentity82: formData.custentity82,
         custentity84: formData.custentity84,
+        custentity85: formData.custentity85,
         defaultaddress: formData.defaultaddress
     };
 
@@ -349,7 +350,8 @@ const buildExtraLeadFields = (dataParams) => ({
     estado_civil_extra_lead: dataParams.custentityestado_civil_extra || "--",
     telefono_extra_lead: dataParams.custentity82 || "--",
     nacionalidad_extra_lead: dataParams.custentity81 || "--",
-    email_extra_lead: dataParams.custentity84 || "--"
+    email_extra_lead: dataParams.custentity84 || "--",
+    lugar_residencia_extra_lead: dataParams.custentity85 || "--"
 });
 
 /**
