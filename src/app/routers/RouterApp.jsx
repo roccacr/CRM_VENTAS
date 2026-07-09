@@ -9,6 +9,7 @@ import { Page_Estimaciones } from "../pages/estimaciones/Page_Estimaciones";
 import { Cotizaciones } from "../pages/cotizaciones/Cotizaciones";
 import { BuscadorPage } from "../pages/buscadorPage/BuscadorPage";
 import { Page_Kapso } from "../pages/kapso/Page_Kapso";
+import { ReportesPage } from "../pages/reportes/ReportesPage";
 import { useSelector } from "react-redux";
 
 const RoleAdminOnlyRoute = ({ element }) => {
@@ -41,6 +42,11 @@ export const RouterApp = () => {
           <Route path="/estimaciones/*" element={<Page_Estimaciones />} />
 
           <Route path="/orden/*" element={<Cotizaciones />} />
+
+          <Route
+             path="/reportes/*"
+             element={<RoleAdminOnlyRoute element={<ReportesPage />} />}
+          />
 
           <Route
              path="/configuracion/kapso"
