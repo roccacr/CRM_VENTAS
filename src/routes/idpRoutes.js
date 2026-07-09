@@ -26,6 +26,7 @@ const estimacion = require("../models/estimacion/estimacion");
 const ordenVenta = require("../models/ordenVenta/ordenVenta");
 
 const buscador = require("../models/buscador/Buscador");
+const reporte = require("../models/reporte/reporte");
 
 const campanas = require("../models/campanas/campanas");
 
@@ -313,6 +314,13 @@ module.exports = function (app) {
                 { path: "/buscador/getAll", method: "getAll" }, // buscador general
 
 
+            ],
+        },
+        {
+            category: "reporte", // Categoría: Gestión de reportes desde búsquedas guardadas de NetSuite
+            model: reporte,
+            routes: [
+                { path: "/reporte/obtenerBusquedaGuardada", method: "obtenerBusquedaGuardada" }, // obtener búsqueda guardada de NetSuite
             ],
         },
         {
