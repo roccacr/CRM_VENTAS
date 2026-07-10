@@ -605,7 +605,8 @@ const mapUnifiedEventsToCalendarEvents = (unifiedEvents) =>
             .filter(Boolean);
 
         // Extraer enlaces Teams del body o del campo onlineMeeting
-        const descriptionLinks = extractUrls(outlookEvent?.bodyPreview || "");
+        const outlookDescription = getOutlookDescriptionValue(outlookEvent);
+        const descriptionLinks = extractUrls(outlookEvent?.body?.content || outlookEvent?.bodyPreview || "");
         const teamsLink = outlookEvent?.onlineMeeting?.joinUrl
             || descriptionLinks.find((link) => link.includes("teams.microsoft.com"))
             || "";
@@ -705,8 +706,8 @@ const mapUnifiedEventsToCalendarEvents = (unifiedEvents) =>
                 accessCode: null, // Graph no expone código de acceso en el select actual
                 attendees: attendees.length ? attendees : [attendee],
                 meetingType,
-                description: crmEvent?.decrip_calendar || outlookEvent?.bodyPreview || "",
-                summaryText: crmEvent?.decrip_calendar || sanitizeEventDescription(outlookEvent?.bodyPreview || ""),
+                description: crmEvent?.decrip_calendar || outlookDescription,
+                summaryText: crmEvent?.decrip_calendar || outlookDescription,
                 descriptionLinks,
                 webLink: outlookEvent?.webLink || null,
             },
@@ -1299,6 +1300,16 @@ const extractUrls = (value) => {
     }
 
     return Array.from(value.matchAll(/https?:\/\/[^\s>]+/gi), (match) => match[0]);
+};
+
+const getOutlookDescriptionValue = (outlookEvent) => {
+    const fullBodyDescription = sanitizeEventDescription(outlookEvent?.body?.content || "");
+
+    if (fullBodyDescription) {
+        return fullBodyDescription;
+    }
+
+    return sanitizeEventDescription(outlookEvent?.bodyPreview || "");
 };
 
 /**
@@ -3673,6 +3684,7 @@ const handleCalendarEventScheduleChange = async (info) => {
                                 "location",
                                 "organizer",
                                 "attendees",
+                                "body",
                                 "bodyPreview",
                                 "webLink",
                                 "responseStatus",
