@@ -120,6 +120,16 @@ const stripHtmlTags = (value) => {
         .trim();
 };
 
+const resolveOutlookEventDescription = (eventItem) => {
+    const fullBodyDescription = stripHtmlTags(eventItem?.body?.content);
+
+    if (fullBodyDescription) {
+        return fullBodyDescription;
+    }
+
+    return normalizeStringValue(eventItem?.bodyPreview, "");
+};
+
 const normalizeGraphDateTimeValue = (value) => {
     if (typeof value !== "string") {
         return "";
@@ -149,10 +159,7 @@ const normalizeOutlookEventPayload = (eventItem) => {
     return {
         outlookEventId: normalizeStringValue(eventItem?.id),
         nombreCalendar: normalizeStringValue(eventItem?.subject, "Evento sin título"),
-        descripcionCalendar: normalizeStringValue(
-            eventItem?.bodyPreview || stripHtmlTags(eventItem?.body?.content),
-            "",
-        ),
+        descripcionCalendar: resolveOutlookEventDescription(eventItem),
         fechaInicioCalendar: startDateTime,
         fechaFinCalendar: endDateTime,
         horaInicioCalendar: normalizeGraphTimeValue(eventItem?.start?.dateTime),
@@ -512,7 +519,7 @@ const getInitialDeltaUrl = (syncWindowStart, syncWindowEnd) => {
     const searchParams = new URLSearchParams({
         startdatetime: `${syncWindowStart}T00:00:00`,
         enddatetime: `${syncWindowEnd}T23:59:59`,
-        $select: "id,subject,bodyPreview,start,end,lastModifiedDateTime",
+        $select: "id,subject,body,bodyPreview,start,end,lastModifiedDateTime",
     });
 
     return `${MICROSOFT_GRAPH_BASE_URL}/me/calendarView/delta?${searchParams.toString()}`;
@@ -831,6 +838,7 @@ outlookCalendarSync.__testables = {
     buildSyncWindowRange,
     buildClientState,
     normalizeOutlookEventPayload,
+    resolveOutlookEventDescription,
     normalizeGraphDateTimeValue,
     normalizeGraphTimeValue,
     isSubscriptionExpiringSoon,
