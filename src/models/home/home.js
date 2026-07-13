@@ -2,11 +2,81 @@ const { executeStoredProcedure, handleDatabaseOperation, executeQuery } = requir
 
 const home = {};
 
+const CALENDAR_DATE_EXPRESSION = (fieldName) => `
+    CASE
+        WHEN ${fieldName} LIKE '%:%:%'
+            THEN STR_TO_DATE(${fieldName}, '%Y-%m-%dT%H:%i:%s')
+        ELSE STR_TO_DATE(${fieldName}, '%Y-%m-%dT%H:%i')
+    END
+`;
+
+const DEDUPED_ADMINS_SUBQUERY = `
+    SELECT admin_rows.*
+    FROM admins AS admin_rows
+    INNER JOIN (
+        SELECT
+            idnetsuite_admin,
+            MIN(id_admin) AS canonical_admin_id
+        FROM admins
+        GROUP BY idnetsuite_admin
+    ) AS canonical_admin
+        ON canonical_admin.canonical_admin_id = admin_rows.id_admin
+`;
+
 home.getAllBanners = (dataParams) =>
     executeStoredProcedure("37_OBTENER_TODOS_LOS_BANNERS", [dataParams.rol_admin, dataParams.idnetsuite_admin], dataParams.database);
 
-home.getAllEventsHome = (dataParams) =>
-    executeStoredProcedure("17_EVENTOS_PENDIENTES_INICIO", [dataParams.rol_admin, dataParams.idnetsuite_admin], dataParams.database);
+home.getAllEventsHome = (dataParams) => {
+    const query = `
+        SELECT
+            c.*,
+            l.idinterno_lead,
+            l.nombre_lead,
+            l.proyecto_lead,
+            l.campana_lead,
+            l.segimineto_lead,
+            a.id_admin AS admin_id_admin,
+            a.idnetsuite_admin,
+            a.id_rol_admin,
+            a.name_admin,
+            a.email_admin
+        FROM (
+            SELECT filtered_calendars.*
+            FROM (
+                SELECT
+                    calendar_rows.*,
+                    ROW_NUMBER() OVER (
+                        PARTITION BY CASE
+                            WHEN TRIM(COALESCE(calendar_rows.outlook_event_id, '')) <> ''
+                                THEN TRIM(calendar_rows.outlook_event_id)
+                            ELSE CONCAT('crm-', calendar_rows.id_calendar)
+                        END
+                        ORDER BY calendar_rows.id_calendar DESC
+                    ) AS duplicate_rank
+                FROM calendars AS calendar_rows
+                WHERE calendar_rows.estado_calendar = 1
+                  AND calendar_rows.accion_calendar = 'Pendiente'
+                  AND ${CALENDAR_DATE_EXPRESSION("calendar_rows.fechaIni_calendar")} <= NOW()
+                  AND (
+                        ? = 1
+                        OR calendar_rows.id_admin = ?
+                    )
+            ) AS filtered_calendars
+            WHERE filtered_calendars.duplicate_rank = 1
+        ) AS c
+        LEFT JOIN leads AS l
+            ON l.idinterno_lead = c.id_lead
+        LEFT JOIN (${DEDUPED_ADMINS_SUBQUERY}) AS a
+            ON a.idnetsuite_admin = c.id_admin
+        ORDER BY ${CALENDAR_DATE_EXPRESSION("c.fechaIni_calendar")} DESC, c.id_calendar DESC
+    `;
+
+    return executeQuery(
+        query,
+        [dataParams.rol_admin, dataParams.idnetsuite_admin],
+        dataParams.database,
+    );
+};
 
 home.updateEventStatus = (dataParams) =>
     handleDatabaseOperation(async (connection) => {
