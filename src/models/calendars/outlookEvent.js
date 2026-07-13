@@ -501,4 +501,74 @@ outlookEvent.updateOutlookEventDetails = async (dataParams) => {
     return executeQuery(query, params, dataParams.database);
 };
 
+/**
+ * Cancela localmente un evento CRM vinculado con Outlook.
+ *
+ * Este flujo no elimina físicamente el registro del CRM; lo marca como
+ * cancelado/inactivo después de validar que el usuario autenticado sea el dueño
+ * del evento local.
+ *
+ * @param {Object} dataParams - Datos de cancelación.
+ * @param {number|string} dataParams.id_calendar - ID interno CRM.
+ * @returns {Promise<Object>} Resultado del UPDATE.
+ */
+outlookEvent.deleteOutlookEvent = async (dataParams) => {
+    const calendarId = normalizeIntegerValue(dataParams.id_calendar, 0);
+    const eventLookupQuery = `
+        SELECT
+            c.id_calendar,
+            c.id_admin,
+            c.outlook_event_id,
+            a.name_admin,
+            a.email_admin
+        FROM calendars AS c
+        LEFT JOIN (${DEDUPED_ADMINS_SUBQUERY}) AS a
+            ON a.idnetsuite_admin = c.id_admin
+        WHERE c.id_calendar = ?
+        LIMIT 1
+    `;
+    const eventLookupResult = await executeQuery(
+        eventLookupQuery,
+        [calendarId],
+        dataParams.database,
+    );
+
+    if (!eventLookupResult?.ok) {
+        return eventLookupResult;
+    }
+
+    const eventRecord = Array.isArray(eventLookupResult.data) ? eventLookupResult.data[0] : null;
+    const ownershipValidation = validateCrmCalendarOwnership(
+        eventRecord,
+        dataParams.idnetsuite_admin,
+    );
+
+    if (!ownershipValidation.ok) {
+        return {
+            ok: false,
+            statusCode: ownershipValidation.statusCode,
+            message: ownershipValidation.message,
+            data: {
+                ok: false,
+                code: ownershipValidation.code,
+                ownerName: ownershipValidation.ownerName,
+                ownerEmail: ownershipValidation.ownerEmail,
+            },
+        };
+    }
+
+    const query = `
+        UPDATE calendars
+        SET
+            estado_calendar = 0,
+            accion_calendar = 'Cancelado',
+            NotificarCliente = 4,
+            correoEnviado = 0
+        WHERE id_calendar = ?
+        LIMIT 1
+    `;
+
+    return executeQuery(query, [calendarId], dataParams.database);
+};
+
 module.exports = outlookEvent;

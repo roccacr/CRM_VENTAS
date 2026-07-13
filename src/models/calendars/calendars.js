@@ -90,6 +90,9 @@ calendars.updateOutlookEventSchedule = (dataParams) =>
 calendars.updateOutlookEventDetails = (dataParams) =>
     outlookEvent.updateOutlookEventDetails(dataParams);
 
+calendars.deleteOutlookEvent = (dataParams) =>
+    outlookEvent.deleteOutlookEvent(dataParams);
+
 calendars.registerOutlookCalendarSync = (dataParams) =>
     outlookCalendarSync.registerOutlookCalendarSync(dataParams);
 

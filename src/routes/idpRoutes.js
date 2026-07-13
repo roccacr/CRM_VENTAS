@@ -220,6 +220,7 @@ module.exports = function (app) {
                 { path: "/calendars/createOutlookEvent", method: "createOutlookEvent" }, // Ruta para crear evento CRM vinculado a Outlook
                 { path: "/calendars/updateOutlookEventSchedule", method: "updateOutlookEventSchedule" }, // Ruta para mover evento CRM vinculado a Outlook
                 { path: "/calendars/updateOutlookEventDetails", method: "updateOutlookEventDetails" }, // Ruta para editar evento CRM vinculado a Outlook
+                { path: "/calendars/deleteOutlookEvent", method: "deleteOutlookEvent" }, // Ruta para cancelar evento CRM vinculado a Outlook
                 { path: "/calendars/registerOutlookCalendarSync", method: "registerOutlookCalendarSync" }, // Ruta para registrar/renovar sincronización Outlook
                 { path: "/calendars/processOutlookCalendarSync", method: "processOutlookCalendarSync" }, // Ruta para ejecutar delta sync Outlook -> CRM
                 { path: "/calendars/getDataEevent", method: "getDataEevent" }, // Ruta para obtener información detallada de un evento
