@@ -1,69 +1,89 @@
 const { executeStoredProcedure, executeQuery } = require("../conectionPool/conectionPool");
+const { buildCalendarVisibilityScope } = require("./calendarVisibility");
 const outlookCalendarSync = require("./outlookCalendarSync");
 const outlookEvent = require("./outlookEvent");
-const calendars = {}; // Objeto para agrupar todas las funciones relacionadas con 'calendars'.
+
+const calendars = {};
 
 /**
- * Obtiene todos los eventos del calendario.
- * @async
- * @param {Object} dataParams - Objeto que contiene los parámetros necesarios para la consulta.
- * @returns {Promise<Object>} - Resultado de la consulta de eventos del calendario.
+ * Obtiene los eventos visibles del calendario CRM.
+ *
+ * La visibilidad se resuelve por jerarquía real:
+ * - usuario autenticado
+ * - cualquier colaborador que dependa de él en `admins.id_supervisor_admin`
+ *
+ * @param {Object} dataParams - Parámetros de consulta.
+ * @returns {Promise<Object>} Lista de eventos visibles.
  */
-calendars.get_Calendars = (dataParams) =>
-    executeStoredProcedure(
-        "03_OBTENER_CALENDARIOS", // Nombre del procedimiento almacenado que recupera los eventos del calendario.
-        [dataParams.rol_admin, dataParams.idnetsuite_admin], // Parámetros que identifican el rol y el ID del administrador.
-        dataParams.database, // Nombre de la base de datos a utilizar.
-    );
+calendars.get_Calendars = (dataParams) => {
+    const visibilityScope = buildCalendarVisibilityScope(dataParams.idnetsuite_admin);
+    const query = `
+        ${visibilityScope.cteSql}
+        SELECT
+            admins.name_admin,
+            leads.nombre_lead,
+            calendars.id_calendar,
+            calendars.nombre_calendar,
+            calendars.color_calendar,
+            calendars.id_lead,
+            calendars.fechaIni_calendar,
+            calendars.fechaFin_calendar,
+            calendars.horaInicio_calendar,
+            calendars.horaFinal_calendar,
+            calendars.decrip_calendar,
+            calendars.tipo_calendar,
+            calendars.cita_lead,
+            CASE
+                WHEN calendars.cita_lead = 1 OR calendars.masDeUnaCita_calendar = 1 THEN 'categoria5'
+                WHEN calendars.tipo_calendar = 'Cita' THEN 'categoria5'
+                WHEN calendars.tipo_calendar IN ('LLamada', 'Correo', 'Whatsapp') THEN 'categoria1'
+                WHEN calendars.tipo_calendar = 'Tarea' THEN 'categoria2'
+                WHEN calendars.tipo_calendar = 'Reunion' THEN 'categoria3'
+                WHEN calendars.tipo_calendar = 'Seguimientos' THEN 'categoria4'
+                ELSE NULL
+            END AS categoria
+        FROM calendars
+        INNER JOIN admins ON admins.idnetsuite_admin = calendars.id_admin
+        INNER JOIN leads ON leads.idinterno_lead = calendars.id_lead
+        WHERE calendars.estado_calendar = 1
+          AND calendars.accion_calendar = 'Pendiente'
+          AND ${visibilityScope.predicateSql("calendars.id_admin")}
+    `;
 
-/**
- * Obtiene todos los eventos del calendario.
- * @async
- * @param {Object} dataParams - Objeto que contiene los parámetros necesarios para la consulta.
- * @returns {Promise<Object>} - Resultado de la consulta de eventos del calendario.
- */
+    return executeQuery(query, visibilityScope.params, dataParams.database).then((result) => ({
+        ok: result.ok,
+        statusCode: result.statusCode,
+        0: result.data,
+    }));
+};
+
 calendars.createEvent = (dataParams) =>
     executeStoredProcedure(
-        "01_CREAR_EVENTO", // Nombre del procedimiento almacenado que recupera los eventos del calendario.
+        "01_CREAR_EVENTO",
         [
-            dataParams.nombreEvento, // Nombre descriptivo del evento
-            dataParams.colorEvento, // Color visual que se asigna al evento
-            dataParams.leadId, // ID del lead relacionado con el evento
-            dataParams.idnetsuite_admin, // ID del administrador que está creando el evento
-            dataParams.formatdateIni, // Fecha y hora de inicio en formato ISO
-            dataParams.formatdateFin, // Fecha y hora de finalización en formato ISO
-            dataParams.horaInicio, // Hora de inicio del evento
-            dataParams.horaFinal, // Hora de finalización del evento
-            dataParams.descripcionEvento, // Detalle adicional sobre el evento
-            dataParams.tipoEvento, // Tipo o categoría del evento (llamada, reunión, etc.)
-            dataParams.citaValue, // Color visual que se asigna al evento campo cita_lead
-            dataParams.citaValue, // Color visual que se asigna al evento campo citas_chek
-            dataParams.citaValue, // Color visual que se asigna al evento campo masDeUnaCita_calendar
-            dataParams.id_proyecto || 0, // ID del proyecto relacionado con el evento
-            dataParams.nombre_proyecto || 0, // Nombre del proyecto relacionado con el evento    
-            dataParams.copiaJefe || 0, // Si es true, copia al jefe de ventas (supervisor), en este caso a Fabián Mata.
-        ], // Parámetros que identifican el rol y el ID del administrador.
-        dataParams.database, // Nombre de la base de datos a utilizar.
+            dataParams.nombreEvento,
+            dataParams.colorEvento,
+            dataParams.leadId,
+            dataParams.idnetsuite_admin,
+            dataParams.formatdateIni,
+            dataParams.formatdateFin,
+            dataParams.horaInicio,
+            dataParams.horaFinal,
+            dataParams.descripcionEvento,
+            dataParams.tipoEvento,
+            dataParams.citaValue,
+            dataParams.citaValue,
+            dataParams.citaValue,
+            dataParams.id_proyecto || 0,
+            dataParams.nombre_proyecto || 0,
+            dataParams.copiaJefe || 0,
+        ],
+        dataParams.database,
     );
 
-/**
- * Crea evento del nuevo flujo Outlook -> CRM usando INSERT SQL dedicado.
- *
- * Se separa del SP legado para soportar `outlook_event_id`
- * sin alterar contratos existentes de otros módulos.
- *
- * @param {Object} dataParams - Datos del evento.
- * @returns {Promise<Object>} Resultado de inserción.
- */
 calendars.createOutlookEvent = (dataParams) =>
     outlookEvent.createOutlookEvent(dataParams);
 
-/**
- * Actualiza fecha/hora de evento CRM del flujo Outlook.
- *
- * @param {Object} dataParams - Datos de actualización.
- * @returns {Promise<Object>} Resultado de actualización.
- */
 calendars.updateOutlookEventSchedule = (dataParams) =>
     outlookEvent.updateOutlookEventSchedule(dataParams);
 
@@ -76,163 +96,125 @@ calendars.registerOutlookCalendarSync = (dataParams) =>
 calendars.processOutlookCalendarSync = (dataParams) =>
     outlookCalendarSync.processOutlookCalendarSync(dataParams);
 
-/**
- * Obtiene todos los eventos del calendario desde una base de datos específica.
- *
- * @function calendars.getDataEevent
- * @async
- * @param {Object} dataParams - Objeto que contiene los parámetros necesarios para la consulta.
- * @param {number|string} dataParams.id - El ID del evento que se desea obtener.
- * @param {string} dataParams.database - El nombre de la base de datos en la que se realizará la consulta.
- * @returns {Promise<Object>} - Promesa que se resuelve con el resultado de la consulta de eventos del calendario.
- *
- * @description
- * Esta función ejecuta un procedimiento almacenado llamado `getDataEevent` para obtener los eventos del calendario,
- * utilizando los parámetros proporcionados, como el ID del evento y el nombre de la base de datos.
- * El resultado de la consulta es retornado como una promesa que puede ser utilizada para manejar los datos en otras
- * partes de la aplicación.
- *
- * @example
- * const eventData = await calendars.getDataEevent({ id: 123, database: 'production_db' });
- */
 calendars.getDataEevent = (dataParams) =>
     executeStoredProcedure(
-        "28_OBTENER_DATOS_EVENTO", // Nombre del procedimiento almacenado a ejecutar.
-        [dataParams.id], // Parámetro que contiene el ID del evento a consultar.
-        dataParams.database, // Nombre de la base de datos a utilizar para la consulta.
+        "28_OBTENER_DATOS_EVENTO",
+        [dataParams.id],
+        dataParams.database,
     );
 
-/**
- * Llama al procedimiento almacenado 'get_event_Citas' para obtener las citas de un lead específico.
- *
- * @param {object} dataParams - Objeto que contiene los parámetros necesarios para la consulta.
- * @param {number} dataParams.id - El ID del evento para el cual se deben obtener las citas.
- * @param {string} dataParams.database - El nombre de la base de datos en la que se ejecutará la consulta.
- * @returns {Promise<object>} - Retorna los resultados de la ejecución del procedimiento almacenado.
- */
 calendars.get_event_Citas = (dataParams) =>
     executeStoredProcedure(
-        "04_OBTENER_EVENTOS_CITAS", // Nombre del procedimiento almacenado a ejecutar.
-        [dataParams.id], // Parámetro que contiene el ID del evento a consultar.
-        dataParams.database, // Nombre de la
+        "04_OBTENER_EVENTOS_CITAS",
+        [dataParams.id],
+        dataParams.database,
     );
 
-/**
- * Editar eventos del calendario.
- * @async
- * @param {Object} dataParams - Objeto que contiene los parámetros necesarios para la consulta.
- * @returns {Promise<Object>} - Resultado de la consulta de eventos del calendario.
- */
-calendars.editEvent = (dataParams) => {
-
-    return executeStoredProcedure(
-        "02_EDITAR_EVENTO", // Nombre del procedimiento almacenado que recupera los eventos del calendario.
-        [
-            dataParams.id_calendar, // Nombre descriptivo del evento
-            dataParams.nombreEvento, // Nombre descriptivo del evento
-            dataParams.colorEvento, // Color visual que se asigna al evento
-            dataParams.leadId, // ID del lead relacionado con el evento
-            dataParams.idnetsuite_admin, // ID del administrador que está creando el evento
-            dataParams.formatdateIni, // Fecha y hora de inicio en formato ISO
-            dataParams.formatdateFin, // Fecha y hora de finalización en formato ISO
-            dataParams.horaInicio, // Hora de inicio del evento
-            dataParams.horaFinal, // Hora de finalización del evento
-            dataParams.descripcionEvento, // Detalle adicional sobre el evento
-            dataParams.tipoEvento, // Tipo o categoría del evento (llamada, reunión, etc.)
-            dataParams.citaValue, // Color visual que se asigna al evento campo cita_lead
-            dataParams.citaValue, // Color visual que se asigna al evento campo citas_chek
-            dataParams.citaValue, // Color visual que se asigna al evento campo masDeUnaCita_calendar
-            dataParams.id_proyecto || 0, // ID del proyecto relacionado con el evento
-            dataParams.nombre_proyecto || 0, // Nombre del proyecto relacionado con el evento
-            dataParams.copiaJefe || 0, // Si es true, copia al jefe de ventas (supervisor), en este caso a Fabián Mata.
-        ], // Parámetros que identifican el rol y el ID del administrador.
-        dataParams.database, // Nombre de la base de datos a utilizar.
-    );
-};
-
-/**
- * Ejecuta el procedimiento almacenado para actualizar la fecha de un evento en el calendario.
- *
- * @param {object} dataParams - Parámetros necesarios para la ejecución del procedimiento almacenado.
- * @param {number} dataParams.id - ID del evento que se va a mover.
- * @param {string} dataParams.newDateSart - Nueva fecha de inicio para el evento (en formato YYYY-MM-DD).
- * @param {string} dataParams.newDateEnd - Nueva fecha de finalización para el evento (en formato YYYY-MM-DD).
- * @param {string} dataParams.database - Nombre de la base de datos en la que se va a ejecutar el procedimiento.
- *
- * @returns {Promise<object>} - Retorna el resultado de la ejecución del procedimiento almacenado.
- */
-calendars.update_event_MoveDate = (dataParams) =>
+calendars.editEvent = (dataParams) =>
     executeStoredProcedure(
-        "05_ACTUALIZAR_FECHA_EVENTO", // Nombre del procedimiento almacenado que se ejecuta en la base de datos.
+        "02_EDITAR_EVENTO",
         [
-            dataParams.id, // ID del evento que se va a actualizar.
-            dataParams.newDateStart, // Nueva fecha de inicio del evento.
-            dataParams.newDateEnd, // Nueva fecha de finalización del evento.
-        ],
-        dataParams.database, // Nombre de la base de datos en la que se realiza la operación.
-    );
-
-calendars.update_Status_Event = (dataParams) => {
-
-    let NotificarCliente = 0;
-    let correoEnviado = 0;
-
-    if (dataParams.EstadoAccion === 'Pendiente') {
-        NotificarCliente = 1;
-        correoEnviado = 0;
-    } else if (dataParams.EstadoAccion === 'Cancelado') {
-        NotificarCliente = 4;
-        correoEnviado = 0;
-    } else if (dataParams.EstadoAccion === 'Completado') {
-        NotificarCliente = 0;
-        correoEnviado = 1;
-    }
-
-    // Llamada al procedimiento almacenado
-    return executeStoredProcedure(
-        "06_MODIFICAR_ESTADO_EVENTO", // Nombre del procedimiento almacenado
-        [
-            dataParams.id, // ID del evento
-            dataParams.NewStatus, // Nuevo estado
-            dataParams.EstadoAccion, // Estado de la acción
-            NotificarCliente, // Notificar al cliente según el estado
-            correoEnviado // Enviar correo según el estado
-        ],
-        dataParams.database, // Nombre de la base de datos
-    );
-};
-
-/**
- * Obtiene todos los eventos del calendario.
- * @async
- * @param {Object} dataParams - Objeto que contiene los parámetros necesarios para la consulta.
- * @returns {Promise<Object>} - Resultado de la consulta de eventos del calendario.
- */
-calendars.getAll_ListEvent = (dataParams) =>
-    executeStoredProcedure(
-        "31_OBTENER_LISTA_COMPLETA_EVENTOS", // Nombre del procedimiento almacenado que recupera los eventos del calendario.
-        [
-            dataParams.rol_admin,
-            dataParams.idnetsuite_admin, // Parámetros que identifican el rol y el ID del administrador.
-            dataParams.dateStart,
-            dataParams.dateEnd,
+            dataParams.id_calendar,
+            dataParams.nombreEvento,
+            dataParams.colorEvento,
+            dataParams.leadId,
+            dataParams.idnetsuite_admin,
+            dataParams.formatdateIni,
+            dataParams.formatdateFin,
+            dataParams.horaInicio,
+            dataParams.horaFinal,
+            dataParams.descripcionEvento,
+            dataParams.tipoEvento,
+            dataParams.citaValue,
+            dataParams.citaValue,
+            dataParams.citaValue,
+            dataParams.id_proyecto || 0,
+            dataParams.nombre_proyecto || 0,
+            dataParams.copiaJefe || 0,
         ],
         dataParams.database,
     );
 
+calendars.update_event_MoveDate = (dataParams) =>
+    executeStoredProcedure(
+        "05_ACTUALIZAR_FECHA_EVENTO",
+        [
+            dataParams.id,
+            dataParams.newDateStart,
+            dataParams.newDateEnd,
+        ],
+        dataParams.database,
+    );
+
+calendars.update_Status_Event = (dataParams) => {
+    let notificarCliente = 0;
+    let correoEnviado = 0;
+
+    if (dataParams.EstadoAccion === "Pendiente") {
+        notificarCliente = 1;
+        correoEnviado = 0;
+    } else if (dataParams.EstadoAccion === "Cancelado") {
+        notificarCliente = 4;
+        correoEnviado = 0;
+    } else if (dataParams.EstadoAccion === "Completado") {
+        notificarCliente = 0;
+        correoEnviado = 1;
+    }
+
+    return executeStoredProcedure(
+        "06_MODIFICAR_ESTADO_EVENTO",
+        [
+            dataParams.id,
+            dataParams.NewStatus,
+            dataParams.EstadoAccion,
+            notificarCliente,
+            correoEnviado,
+        ],
+        dataParams.database,
+    );
+};
+
 /**
- * Cancela automáticamente eventos pendientes con más de 7 días de atraso.
+ * Obtiene la lista completa de eventos visibles en un rango.
  *
- * Reglas:
- * - Solo toma eventos activos (`estado_calendar = 1`)
- * - Excluye eventos ya `Completado` o `Cancelado`
- * - Soporta fechas en formato `YYYY-MM-DDTHH:mm` y `YYYY-MM-DDTHH:mm:ss`
- * - Marca el evento como cancelado para limpiar el CRM
+ * Conserva el contrato del SP antiguo, pero reemplaza la visibilidad por
+ * jerarquía real en lugar de depender de `rol_admin`.
  *
- * @param {Object} dataParams - Parámetros de la ejecución
- * @param {string} dataParams.database - Base de datos objetivo
- * @returns {Promise<Object>} Resultado del UPDATE
+ * @param {Object} dataParams - Parámetros de consulta.
+ * @returns {Promise<Object>} Lista completa de eventos visibles.
  */
+calendars.getAll_ListEvent = (dataParams) => {
+    const visibilityScope = buildCalendarVisibilityScope(dataParams.idnetsuite_admin);
+    const query = `
+        ${visibilityScope.cteSql}
+        SELECT
+            leads.*,
+            calendars.*,
+            admins.*
+        FROM calendars AS calendars
+        LEFT JOIN leads ON leads.idinterno_lead = calendars.id_lead
+        LEFT JOIN admins ON calendars.id_admin = admins.idnetsuite_admin
+        WHERE DATE_FORMAT(calendars.fechaIni_calendar, '%Y-%m-%dT%H:%i:%s')
+              BETWEEN STR_TO_DATE(?, '%Y-%m-%dT%H:%i:%s')
+                  AND STR_TO_DATE(CONCAT(?, ' 23:59:59'), '%Y-%m-%d %H:%i:%s')
+          AND ${visibilityScope.predicateSql("calendars.id_admin")}
+    `;
+
+    return executeQuery(
+        query,
+        [
+            ...visibilityScope.params,
+            dataParams.dateStart,
+            dataParams.dateEnd,
+        ],
+        dataParams.database,
+    ).then((result) => ({
+        ok: result.ok,
+        statusCode: result.statusCode,
+        0: result.data,
+    }));
+};
+
 calendars.cancelOverduePendingEvents = async (dataParams) => {
     const query = `
         UPDATE calendars
@@ -244,8 +226,6 @@ calendars.cancelOverduePendingEvents = async (dataParams) => {
         WHERE estado_calendar = 1
           AND accion_calendar NOT IN ('Completado', 'Cancelado')
           AND (
-                -- La data histórica mezcla eventos con fecha tipo 2026-05-16T11:00
-                -- y otros con 2026-05-16T11:00:00, por eso se contemplan ambos parseos.
                 CASE
                     WHEN fechaIni_calendar LIKE '%:%:%'
                         THEN STR_TO_DATE(fechaIni_calendar, '%Y-%m-%dT%H:%i:%s')
@@ -257,14 +237,7 @@ calendars.cancelOverduePendingEvents = async (dataParams) => {
     return executeQuery(query, [], dataParams.database);
 };
 
-/**
- * Obtiene eventos activos con accion `Pendiente` y sus relaciones basicas de lead y admin.
- *
- * @param {Object} dataParams - Parametros de la ejecucion.
- * @param {string} dataParams.database - Base de datos objetivo.
- * @returns {Promise<Object>} Resultado de la consulta.
- */
 calendars.getPendingActionCalendarEvents = (dataParams) =>
     outlookEvent.getPendingActionCalendarEvents(dataParams);
 
-module.exports = calendars; // Exporta el objeto 'calendars' que contiene todas las funciones relacionadas con eventos del calendario.
+module.exports = calendars;

@@ -1,4 +1,8 @@
 const { executeQuery } = require("../conectionPool/conectionPool");
+const {
+    ACTIVE_DEDUPED_ADMINS_SUBQUERY,
+    buildCalendarVisibilityScope,
+} = require("./calendarVisibility");
 const { validateCrmCalendarOwnership } = require("./outlookEventOwnership");
 
 const outlookEvent = {};
@@ -21,18 +25,7 @@ const CALENDAR_DATE_EXPRESSION = (fieldName) => `
     END
 `;
 
-const DEDUPED_ADMINS_SUBQUERY = `
-    SELECT admin_rows.*
-    FROM admins AS admin_rows
-    INNER JOIN (
-        SELECT
-            idnetsuite_admin,
-            MIN(id_admin) AS canonical_admin_id
-        FROM admins
-        GROUP BY idnetsuite_admin
-    ) AS canonical_admin
-        ON canonical_admin.canonical_admin_id = admin_rows.id_admin
-`;
+const DEDUPED_ADMINS_SUBQUERY = ACTIVE_DEDUPED_ADMINS_SUBQUERY;
 
 const normalizeIntegerValue = (value, fallback = 0) => {
     const parsedValue = Number(value);
@@ -68,11 +61,10 @@ const resolveEventColor = (tipoEvento, colorEvento) => {
  * @returns {Promise<Object>} Resultado de la consulta.
  */
 outlookEvent.getPendingActionCalendarEvents = async (dataParams) => {
-
-    const rolAdmin = dataParams.rol_admin ?? null;
-    const idNetsuiteAdmin = dataParams.idnetsuite_admin ?? null;
+    const visibilityScope = buildCalendarVisibilityScope(dataParams.idnetsuite_admin);
 
     const query = `
+        ${visibilityScope.cteSql}
         SELECT
             c.*,
             l.idnetsuite_lead,
@@ -102,10 +94,7 @@ outlookEvent.getPendingActionCalendarEvents = async (dataParams) => {
                 FROM calendars AS calendar_rows
                 WHERE calendar_rows.accion_calendar = ?
                   AND calendar_rows.estado_calendar = ?
-                  AND (
-                        ? = 1
-                        OR calendar_rows.id_admin = ?
-                      )
+                  AND ${visibilityScope.predicateSql("calendar_rows.id_admin")}
                   AND ${CALENDAR_DATE_EXPRESSION("calendar_rows.fechaIni_calendar")} >= STR_TO_DATE(?, '%Y-%m-%d')
                   AND ${CALENDAR_DATE_EXPRESSION("calendar_rows.fechaIni_calendar")} < DATE_ADD(STR_TO_DATE(?, '%Y-%m-%d'), INTERVAL 1 DAY)
             ) AS filtered_calendars
@@ -123,10 +112,9 @@ outlookEvent.getPendingActionCalendarEvents = async (dataParams) => {
     const result = await executeQuery(
         query,
         [
+            ...visibilityScope.params,
             "Pendiente",
             1,
-            rolAdmin,
-            idNetsuiteAdmin,
             dataParams.dateStart,
             dataParams.dateEnd,
         ],

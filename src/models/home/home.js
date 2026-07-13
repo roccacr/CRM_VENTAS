@@ -1,4 +1,8 @@
 const { executeStoredProcedure, handleDatabaseOperation, executeQuery } = require("../conectionPool/conectionPool");
+const {
+    ACTIVE_DEDUPED_ADMINS_SUBQUERY,
+    buildCalendarVisibilityScope,
+} = require("../calendars/calendarVisibility");
 
 const home = {};
 
@@ -10,24 +14,15 @@ const CALENDAR_DATE_EXPRESSION = (fieldName) => `
     END
 `;
 
-const DEDUPED_ADMINS_SUBQUERY = `
-    SELECT admin_rows.*
-    FROM admins AS admin_rows
-    INNER JOIN (
-        SELECT
-            idnetsuite_admin,
-            MIN(id_admin) AS canonical_admin_id
-        FROM admins
-        GROUP BY idnetsuite_admin
-    ) AS canonical_admin
-        ON canonical_admin.canonical_admin_id = admin_rows.id_admin
-`;
+const DEDUPED_ADMINS_SUBQUERY = ACTIVE_DEDUPED_ADMINS_SUBQUERY;
 
 home.getAllBanners = (dataParams) =>
     executeStoredProcedure("37_OBTENER_TODOS_LOS_BANNERS", [dataParams.rol_admin, dataParams.idnetsuite_admin], dataParams.database);
 
 home.getAllEventsHome = (dataParams) => {
+    const visibilityScope = buildCalendarVisibilityScope(dataParams.idnetsuite_admin);
     const query = `
+        ${visibilityScope.cteSql}
         SELECT
             c.*,
             l.idinterno_lead,
@@ -57,10 +52,7 @@ home.getAllEventsHome = (dataParams) => {
                 WHERE calendar_rows.estado_calendar = 1
                   AND calendar_rows.accion_calendar = 'Pendiente'
                   AND ${CALENDAR_DATE_EXPRESSION("calendar_rows.fechaIni_calendar")} <= NOW()
-                  AND (
-                        ? = 1
-                        OR calendar_rows.id_admin = ?
-                    )
+                  AND ${visibilityScope.predicateSql("calendar_rows.id_admin")}
             ) AS filtered_calendars
             WHERE filtered_calendars.duplicate_rank = 1
         ) AS c
@@ -73,7 +65,7 @@ home.getAllEventsHome = (dataParams) => {
 
     return executeQuery(
         query,
-        [dataParams.rol_admin, dataParams.idnetsuite_admin],
+        visibilityScope.params,
         dataParams.database,
     );
 };
