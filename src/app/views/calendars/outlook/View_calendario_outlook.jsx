@@ -624,6 +624,16 @@ const mapUnifiedEventsToCalendarEvents = (unifiedEvents, calendarOwner = {}) =>
                 : organizer
                     ? `outlook-admin-${organizer.toLowerCase()}`
                     : "";
+        const attendeeAdminFilterKeys = attendeeEmails
+            .map((attendeeEmail) => normalizeParticipantEmail(attendeeEmail))
+            .filter(Boolean)
+            .map((attendeeEmail) => `admin-email-${attendeeEmail}`);
+        const adminFilterKeys = Array.from(
+            new Set([
+                adminFilterKey,
+                ...attendeeAdminFilterKeys,
+            ].filter(Boolean)),
+        );
         const adminFilterLabel = toDisplayName(crmEvent?.name_admin, calendarOwnerName);
         const leadName = toDisplayName(
             crmEvent?.nombre_lead,
@@ -666,6 +676,7 @@ const mapUnifiedEventsToCalendarEvents = (unifiedEvents, calendarOwner = {}) =>
                 crm: crmEvent,
                 outlook: outlookEvent,
                 adminFilterKey,
+                adminFilterKeys,
                 adminFilterLabel,
                 adminFilterEmail: adminEmail,
                 adminFilterSource: item.source,
@@ -1406,13 +1417,15 @@ const shouldKeepEventByAdmin = (eventItem, selectedAdmins) => {
         return true;
     }
 
-    const eventAdminKey = eventItem?.extendedProps?.adminFilterKey;
+    const eventAdminKeys = Array.isArray(eventItem?.extendedProps?.adminFilterKeys)
+        ? eventItem.extendedProps.adminFilterKeys
+        : [];
 
-    if (!eventAdminKey) {
+    if (!eventAdminKeys.length) {
         return false;
     }
 
-    return selectedAdmins[eventAdminKey] === true;
+    return eventAdminKeys.some((eventAdminKey) => selectedAdmins[eventAdminKey] === true);
 };
 
 const buildVisibleCrmFilterOptions = (events) => {

@@ -11,10 +11,23 @@ import {
 import { ButtonActions } from "../buttonAccions/buttonAccions";
 
 const normalizeAdminName = (value) => (value || "").trim().toLowerCase();
+const normalizeAdminEmail = (value) => (value || "").trim().toLowerCase();
 
 const getAdminKey = (event) => {
     if (event?.id_admin !== undefined && event?.id_admin !== null && event?.id_admin !== "") {
         return `id:${event.id_admin}`;
+    }
+
+    if (event?.idnetsuite_admin !== undefined && event?.idnetsuite_admin !== null && event?.idnetsuite_admin !== "") {
+        return `id:${event.idnetsuite_admin}`;
+    }
+
+    if (event?.admin_id_admin !== undefined && event?.admin_id_admin !== null && event?.admin_id_admin !== "") {
+        return `id:${event.admin_id_admin}`;
+    }
+
+    if (normalizeAdminEmail(event?.email_admin)) {
+        return `email:${normalizeAdminEmail(event.email_admin)}`;
     }
 
     return `name:${normalizeAdminName(event?.name_admin)}`;
