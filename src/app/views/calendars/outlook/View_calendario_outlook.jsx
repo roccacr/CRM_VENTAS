@@ -244,19 +244,28 @@ const buildGraphAttendeeOption = (attendeeItem) => {
     };
 };
 
+const normalizeEventTypeToken = (value) => (
+    typeof value === "string"
+        ? value
+            .trim()
+            .toLowerCase()
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "")
+        : ""
+);
+
 const normalizeCreateEventTypeValue = (eventTypeValue) => {
     if (typeof eventTypeValue !== "string") {
         return "";
     }
 
-    const normalizedValue = eventTypeValue
-        .trim()
-        .toLowerCase()
-        .normalize("NFD")
-        .replace(/[\u0300-\u036f]/g, "");
+    const normalizedValue = normalizeEventTypeToken(eventTypeValue);
     const matchedOption = CREATE_EVENT_TYPE_OPTIONS.find(
         (option) => option.value
-            && option.value.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "") === normalizedValue,
+            && [
+                normalizeEventTypeToken(option.value),
+                normalizeEventTypeToken(option.label),
+            ].includes(normalizedValue),
     );
 
     return matchedOption?.value || "";
