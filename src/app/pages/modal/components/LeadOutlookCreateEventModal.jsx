@@ -9,6 +9,7 @@ import { loginRequest } from "../../../../config/msalConfig";
 import {
     getDataEevent,
     createOutlookEventForLead,
+    deleteOutlookEventForLead,
     updateOutlookEventForLeadDetails,
     updateStatusEvent,
 } from "../../../../store/calendar/thunkscalendar";
@@ -29,6 +30,7 @@ import {
     getIsoWeekNumber,
     OUTLOOK_CREATE_EVENT_SCOPE,
     toGraphDateTime,
+    deleteOutlookEventById,
 } from "../../../views/calendars/outlook/outlookCalendarUtils";
 
 import "../../../views/calendars/outlook/View_calendario_outlook.css";
@@ -1044,16 +1046,65 @@ export const LeadOutlookCreateEventModal = ({
         setCreateEventSubmitError("");
 
         try {
-            await dispatch(
-                updateStatusEvent(
-                    resolvedCalendarId,
-                    statusAction === "complete" ? 1 : 0,
-                    Number(createEventLeadId || initialEventData?.idinterno_lead || initialEventData?.id_lead || 0),
-                    leadStatusValue,
-                    0,
-                    statusAction === "complete" ? 2 : 3,
-                ),
-            );
+            const linkedOutlookEventId = typeof initialEventData?.outlook_event_id === "string"
+                ? initialEventData.outlook_event_id.trim()
+                : "";
+
+            if (statusAction === "cancel" && linkedOutlookEventId) {
+                if (!activeMicrosoftAccount) {
+                    throw new Error("No Microsoft account available for event deletion.");
+                }
+
+                let tokenResponse;
+
+                try {
+                    tokenResponse = await instance.acquireTokenSilent({
+                        scopes: [...new Set([...loginRequest.scopes, OUTLOOK_CREATE_EVENT_SCOPE])],
+                        account: activeMicrosoftAccount,
+                    });
+                } catch (error) {
+                    if (!(error instanceof InteractionRequiredAuthError)) {
+                        throw error;
+                    }
+
+                    tokenResponse = await instance.acquireTokenPopup({
+                        scopes: [...new Set([...loginRequest.scopes, OUTLOOK_CREATE_EVENT_SCOPE])],
+                        account: activeMicrosoftAccount || undefined,
+                        loginHint: expectedMicrosoftEmail || undefined,
+                        prompt: "select_account",
+                    });
+                }
+
+                const outlookDeleted = await deleteOutlookEventById(
+                    tokenResponse.accessToken,
+                    linkedOutlookEventId,
+                );
+
+                if (!outlookDeleted) {
+                    throw new Error("Outlook event delete failed.");
+                }
+
+                const crmDeleteResponse = await dispatch(deleteOutlookEventForLead({
+                    id_calendar: resolvedCalendarId,
+                    leadId: Number(createEventLeadId || initialEventData?.idinterno_lead || initialEventData?.id_lead || 0),
+                }, leadStatusValue));
+                const crmDeleteSucceeded = crmDeleteResponse?.ok && crmDeleteResponse?.data?.ok !== false;
+
+                if (!crmDeleteSucceeded) {
+                    throw new Error("CRM linked Outlook event delete failed.");
+                }
+            } else {
+                await dispatch(
+                    updateStatusEvent(
+                        resolvedCalendarId,
+                        statusAction === "complete" ? 1 : 0,
+                        Number(createEventLeadId || initialEventData?.idinterno_lead || initialEventData?.id_lead || 0),
+                        leadStatusValue,
+                        0,
+                        statusAction === "complete" ? 2 : 3,
+                    ),
+                );
+            }
 
             onClose();
 

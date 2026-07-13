@@ -1,6 +1,7 @@
 import { generateLeadBitacora } from "../leads/thunksLeads";
 import {
     createCalendarEvent,
+    deleteOutlookCalendarEvent,
     createOutlookCalendarEvent,
     editCalendarEvent,
     get_CalendarFetch,
@@ -211,6 +212,50 @@ export const updateOutlookEventForLeadDetails = (eventParams, valueStatus) => {
             return result;
         } catch (error) {
             console.error("Error al editar el evento Outlook para el lead:", error);
+            throw error;
+        }
+    };
+};
+
+/**
+ * Cancela localmente un evento Outlook/CRM y replica la bitácora del flujo legacy.
+ *
+ * @param {Object} eventParams - Datos mínimos del evento local.
+ * @param {string|number} valueStatus - `segimineto_lead` actual del lead.
+ * @returns {Function} Thunk Redux.
+ */
+export const deleteOutlookEventForLead = (eventParams, valueStatus) => {
+    return async (dispatch, getState) => {
+        const { idnetsuite_admin } = getState().auth;
+        const normalizedLeadId = Number(eventParams?.leadId || 0);
+        const descripcionEvento = "Modificaion de evento : Cancelado";
+        const additionalValues = {
+            valorDeCaida: 51,
+            tipo: "Se Edito un evento para el cliente",
+            estado_lead: 1,
+            accion_lead: 6,
+            seguimiento_calendar: 0,
+            valor_segimineto_lead: 3,
+        };
+
+        try {
+            const result = await deleteOutlookCalendarEvent(eventParams);
+
+            if (normalizedLeadId > 0) {
+                await dispatch(
+                    generateLeadBitacora(
+                        idnetsuite_admin,
+                        normalizedLeadId,
+                        additionalValues,
+                        descripcionEvento,
+                        valueStatus,
+                    ),
+                );
+            }
+
+            return result;
+        } catch (error) {
+            console.error("Error al cancelar el evento Outlook para el lead:", error);
             throw error;
         }
     };

@@ -358,6 +358,27 @@ export const getPendingActionCalendarEvents = async ({ dateStart, dateEnd }) => 
     return await fetchData("calendars/getPendingActionCalendarEvents", requestData);
 };
 
+/**
+ * Cancela el registro local CRM asociado a un evento Outlook ya eliminado en Graph.
+ *
+ * @param {Object} params - Datos mínimos del evento local.
+ * @returns {Promise<object>} Resultado del backend.
+ */
+export const deleteOutlookCalendarEvent = async (params) => {
+    const storedSession = readAuthSession();
+    const requestData = {
+        ...commonRequestData,
+        ...params,
+        rol_admin: storedSession?.id_rol_admin ?? null,
+        idnetsuite_admin: params.idnetsuite_admin ?? storedSession?.idnetsuite_admin ?? null,
+        transaccion: storedSession?.token_admin
+            ? { token_admin: storedSession.token_admin }
+            : undefined,
+    };
+
+    return await fetchData("calendars/deleteOutlookEvent", requestData);
+};
+
 
 export const obtener_EventosCliente = async ({ leadDetails }) => {
     // Construye el objeto de datos para la solicitud, combinando los datos comunes requeridos con el ID específico del cliente.

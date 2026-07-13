@@ -49,6 +49,7 @@ import {
 } from "../../../../store/calendar/Api_calendar_Providers";
 import {
     createOutlookEventForLead,
+    deleteOutlookEventForLead,
     updateOutlookEventForLeadDetails,
     updateStatusEvent,
 } from "../../../../store/calendar/thunkscalendar";
@@ -60,6 +61,7 @@ import { OutlookFilterMenuSection } from "./components/OutlookFilterMenuSection"
 import {
     buildCalendarMoveBlockedMessage,
     canAuthenticatedUserMoveCalendarEvent,
+    deleteOutlookEventById,
 } from "./outlookCalendarUtils";
 
 // --- Estilos scoped de la vista (layout Outlook, eventos, sidebar) ---
@@ -261,21 +263,6 @@ const normalizeCreateEventTypeValue = (eventTypeValue) => {
 };
 
 const getCreateEventColor = (eventType) => CREATE_EVENT_COLOR_BY_TYPE[eventType] || OUTLOOK_DEFAULT_COLOR;
-
-const deleteOutlookEventById = async (accessToken, outlookEventId) => {
-    if (!accessToken || !outlookEventId) {
-        return false;
-    }
-
-    const response = await fetch(`https://graph.microsoft.com/v1.0/me/events/${encodeURIComponent(outlookEventId)}`, {
-        method: "DELETE",
-        headers: {
-            Authorization: `Bearer ${accessToken}`,
-        },
-    });
-
-    return response.ok;
-};
 
 const updateOutlookEventScheduleById = async (accessToken, outlookEventId, rangeValue) => {
     if (!accessToken || !outlookEventId || !rangeValue?.start || !rangeValue?.end) {
@@ -1367,6 +1354,16 @@ const getEventSummaryText = (eventItem) => {
     return description;
 };
 
+const canDeleteCalendarEvent = (eventItem, canManageEvent) => {
+    const crmStatus = eventItem?.extendedProps?.crm?.accion_calendar || "";
+
+    if (!canManageEvent) {
+        return false;
+    }
+
+    return !crmStatus || crmStatus === "Pendiente";
+};
+
 const shouldKeepEventByOrigin = (source, originFilters) => {
     const showOnlyCrm = originFilters.crm;
     const showOnlyOutlook = originFilters.outlook;
@@ -1925,6 +1922,7 @@ export const View_calendario_outlook = () => {
         [currentOwnerEmail, idnetsuite_admin, selectedEvent],
     );
     const canEditSelectedEvent = Boolean(selectedEvent && selectedEventEditPermission.canMove);
+    const canDeleteSelectedEvent = canDeleteCalendarEvent(selectedEvent, canEditSelectedEvent);
     const canShowEditStatusActions = Boolean(
         createEventMode === "edit"
         && editingEventContext?.crmEventId
@@ -2668,6 +2666,122 @@ export const View_calendario_outlook = () => {
         setExpandedEvent(null);
     };
 
+    const deleteCalendarEventByItem = async (eventItem) => {
+        const crmEvent = eventItem?.extendedProps?.crm || null;
+        const outlookEvent = eventItem?.extendedProps?.outlook || null;
+        const crmEventId = crmEvent?.id_calendar || 0;
+        const crmLeadId = crmEvent?.idinterno_lead || crmEvent?.id_lead || 0;
+        const crmLeadStatus = crmEvent?.segimineto_lead || "";
+        const linkedOutlookEventId = typeof crmEvent?.outlook_event_id === "string"
+            ? crmEvent.outlook_event_id.trim()
+            : "";
+        const outlookEventId = outlookEvent?.id || linkedOutlookEventId || "";
+
+        if (!crmEventId && !outlookEventId) {
+            throw new Error("Event delete context missing.");
+        }
+
+        if (outlookEventId) {
+            if (!activeMicrosoftAccount) {
+                throw new Error("No Microsoft account available for event deletion.");
+            }
+
+            let tokenResponse;
+
+            try {
+                tokenResponse = await instance.acquireTokenSilent({
+                    scopes: [OUTLOOK_CREATE_EVENT_SCOPE],
+                    account: activeMicrosoftAccount,
+                });
+            } catch (error) {
+                if (!(error instanceof InteractionRequiredAuthError)) {
+                    throw error;
+                }
+
+                tokenResponse = await instance.acquireTokenPopup({
+                    scopes: [OUTLOOK_CREATE_EVENT_SCOPE],
+                    account: activeMicrosoftAccount,
+                });
+            }
+
+            const outlookDeleted = await deleteOutlookEventById(
+                tokenResponse.accessToken,
+                outlookEventId,
+            );
+
+            if (!outlookDeleted) {
+                throw new Error("Outlook event delete failed.");
+            }
+        }
+
+        if (crmEventId) {
+            if (outlookEventId) {
+                const crmDeleteResponse = await dispatch(deleteOutlookEventForLead({
+                    id_calendar: crmEventId,
+                    leadId: crmLeadId,
+                }, crmLeadStatus));
+                const crmDeleteSucceeded = crmDeleteResponse?.ok && crmDeleteResponse?.data?.ok !== false;
+
+                if (!crmDeleteSucceeded) {
+                    throw new Error("CRM linked Outlook event delete failed.");
+                }
+            } else {
+                await dispatch(
+                    updateStatusEvent(
+                        crmEventId,
+                        0,
+                        crmLeadId,
+                        crmLeadStatus,
+                        0,
+                        3,
+                    ),
+                );
+            }
+        }
+    };
+
+    const handleDeleteVisibleEvent = async (eventItem) => {
+        closeEventCard();
+        closeDayEventsPopover();
+        closeExpandedModal();
+        await new Promise((resolve) => window.setTimeout(resolve, 0));
+
+        const confirmation = await Swal.fire({
+            title: "Eliminar evento",
+            text: "Esta acción eliminará el evento de Outlook y lo cancelará en CRM cuando corresponda.",
+            icon: "warning",
+            showCancelButton: true,
+            confirmButtonText: "Sí, eliminar",
+            cancelButtonText: "Cancelar",
+            target: document.body,
+        });
+
+        if (!confirmation.isConfirmed) {
+            return;
+        }
+
+        try {
+            await deleteCalendarEventByItem(eventItem);
+            setSelectedEvent(null);
+            setSelectedPosition(null);
+            setEventsReloadToken((currentValue) => currentValue + 1);
+
+            await Swal.fire({
+                title: "Evento eliminado",
+                icon: "success",
+                target: document.body,
+            });
+        } catch (error) {
+            console.error("[outlook-calendar] no se pudo eliminar el evento", error);
+            await Swal.fire({
+                title: "No se pudo eliminar",
+                text: "No fue posible eliminar el evento desde Outlook y CRM.",
+                icon: "error",
+                target: document.body,
+            });
+        }
+    };
+
     const handleCreateEventTypeChange = (nextEventType) => {
         setCreateEventType(nextEventType);
 
@@ -3039,16 +3153,59 @@ export const View_calendario_outlook = () => {
         setCreateEventSubmitError("");
 
         try {
-            await dispatch(
-                updateStatusEvent(
-                    crmEventId,
-                    statusAction === "complete" ? 1 : 0,
-                    editingEventContext?.crmLeadId || 0,
-                    editingEventContext?.crmLeadStatus || "",
-                    0,
-                    statusAction === "complete" ? 2 : 3,
-                ),
-            );
+            if (statusAction === "cancel" && editingEventContext?.outlookEventId) {
+                if (!activeMicrosoftAccount) {
+                    throw new Error("No Microsoft account available for event deletion.");
+                }
+
+                let tokenResponse;
+
+                try {
+                    tokenResponse = await instance.acquireTokenSilent({
+                        scopes: [OUTLOOK_CREATE_EVENT_SCOPE],
+                        account: activeMicrosoftAccount,
+                    });
+                } catch (error) {
+                    if (!(error instanceof InteractionRequiredAuthError)) {
+                        throw error;
+                    }
+
+                    tokenResponse = await instance.acquireTokenPopup({
+                        scopes: [OUTLOOK_CREATE_EVENT_SCOPE],
+                        account: activeMicrosoftAccount,
+                    });
+                }
+
+                const outlookDeleted = await deleteOutlookEventById(
+                    tokenResponse.accessToken,
+                    editingEventContext.outlookEventId,
+                );
+
+                if (!outlookDeleted) {
+                    throw new Error("Outlook event delete failed.");
+                }
+
+                const crmDeleteResponse = await dispatch(deleteOutlookEventForLead({
+                    id_calendar: crmEventId,
+                    leadId: editingEventContext?.crmLeadId || 0,
+                }, editingEventContext?.crmLeadStatus || ""));
+                const crmDeleteSucceeded = crmDeleteResponse?.ok && crmDeleteResponse?.data?.ok !== false;
+
+                if (!crmDeleteSucceeded) {
+                    throw new Error("CRM linked Outlook event delete failed.");
+                }
+            } else {
+                await dispatch(
+                    updateStatusEvent(
+                        crmEventId,
+                        statusAction === "complete" ? 1 : 0,
+                        editingEventContext?.crmLeadId || 0,
+                        editingEventContext?.crmLeadStatus || "",
+                        0,
+                        statusAction === "complete" ? 2 : 3,
+                    ),
+                );
+            }
 
             closeCreateEventModal();
             setSelectedEvent(null);
@@ -3796,6 +3953,13 @@ const handleCalendarEventScheduleChange = async (info) => {
     const isTeamsEvent = selectedEvent?.extendedProps?.meetingType === "teams";
     const modalEvent = expandedEvent || selectedEvent; // Modal usa copia expandida si existe
     const isTeamsModalEvent = modalEvent?.extendedProps?.meetingType === "teams";
+    const modalEventEditPermission = canAuthenticatedUserMoveCalendarEvent({
+        crmEvent: modalEvent?.extendedProps?.crm || null,
+        outlookEvent: modalEvent?.extendedProps?.outlook || null,
+        currentAdminId: idnetsuite_admin,
+        currentUserEmail: currentOwnerEmail,
+    });
+    const canDeleteModalEvent = canDeleteCalendarEvent(modalEvent, Boolean(modalEvent && modalEventEditPermission.canMove));
 
     /**
      * Expande evento a modal full-screen.
@@ -4462,6 +4626,16 @@ const handleCalendarEventScheduleChange = async (info) => {
                                         <span className="ti ti-pencil outlook-hover-card-expand"></span>
                                     </button>
                                 )}
+                                {canDeleteSelectedEvent && (
+                                    <button
+                                        className="outlook-hover-card-expand-button"
+                                        onClick={() => handleDeleteVisibleEvent(selectedEvent)}
+                                        type="button"
+                                        title="Eliminar evento"
+                                    >
+                                        <span className="ti ti-trash outlook-hover-card-expand"></span>
+                                    </button>
+                                )}
                                 <button className="outlook-hover-card-expand-button" onClick={handleExpandModal} type="button">
                                     <span className="ti ti-arrow-up-right outlook-hover-card-expand"></span>
                                 </button>
@@ -4731,6 +4905,16 @@ const handleCalendarEventScheduleChange = async (info) => {
                                     <span className="ti ti-message-circle"></span>
                                     Chatear
                                 </button>
+                                {canDeleteModalEvent && (
+                                    <button
+                                        className="outlook-secondary-action"
+                                        onClick={() => handleDeleteVisibleEvent(modalEvent)}
+                                        type="button"
+                                    >
+                                        <span className="ti ti-trash"></span>
+                                        Eliminar evento
+                                    </button>
+                                )}
                             </Box>
                         </Box>
 

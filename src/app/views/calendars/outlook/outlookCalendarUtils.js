@@ -270,6 +270,28 @@ export const canAuthenticatedUserMoveCalendarEvent = ({
 export const buildCalendarMoveBlockedMessage = (owner) =>
     `Este evento no se puede mover porque pertenece a ${owner?.displayName || "otro usuario"}.`;
 
+/**
+ * Elimina un evento existente en Microsoft Graph.
+ *
+ * @param {string} accessToken - Token válido del usuario autenticado.
+ * @param {string} outlookEventId - ID del evento en Outlook.
+ * @returns {Promise<boolean>} `true` cuando Graph responde ok.
+ */
+export const deleteOutlookEventById = async (accessToken, outlookEventId) => {
+    if (!accessToken || !outlookEventId) {
+        return false;
+    }
+
+    const response = await fetch(`https://graph.microsoft.com/v1.0/me/events/${encodeURIComponent(outlookEventId)}`, {
+        method: "DELETE",
+        headers: {
+            Authorization: `Bearer ${accessToken}`,
+        },
+    });
+
+    return response.ok;
+};
+
 // =============================================================================
 // HELPERS DE VISTA Y FECHAS
 // =============================================================================
