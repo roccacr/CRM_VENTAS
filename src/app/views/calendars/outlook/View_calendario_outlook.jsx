@@ -588,9 +588,10 @@ const buildUnifiedDebugPayload = (crmEvents, microsoftEvents) => {
  * Prioriza fechas de Outlook cuando existen; CRM como fallback.
  *
  * @param {Array} unifiedEvents - Salida de buildUnifiedDebugPayload
+ * @param {{ email?: string, name?: string }} calendarOwner - Dueño del calendario Outlook cargado
  * @returns {Array} Eventos FC con extendedProps enriquecidos
  */
-const mapUnifiedEventsToCalendarEvents = (unifiedEvents) =>
+const mapUnifiedEventsToCalendarEvents = (unifiedEvents, calendarOwner = {}) =>
     unifiedEvents.map((item) => {
         const crmEvent = item.crm;
         const outlookEvent = item.outlook;
@@ -620,8 +621,11 @@ const mapUnifiedEventsToCalendarEvents = (unifiedEvents) =>
             outlookEvent?.organizer?.emailAddress?.name,
             toDisplayName(crmEvent?.name_admin, "Sin organizador"),
         );
+        const calendarOwnerEmail = (calendarOwner?.email || "").trim().toLowerCase();
+        const calendarOwnerName = toDisplayName(calendarOwner?.name, organizer);
         const adminEmail = (
             crmEvent?.email_admin
+            || calendarOwnerEmail
             || outlookEvent?.organizer?.emailAddress?.address
             || organizerEmail
             || ""
@@ -633,7 +637,7 @@ const mapUnifiedEventsToCalendarEvents = (unifiedEvents) =>
                 : organizer
                     ? `outlook-admin-${organizer.toLowerCase()}`
                     : "";
-        const adminFilterLabel = toDisplayName(crmEvent?.name_admin, organizer);
+        const adminFilterLabel = toDisplayName(crmEvent?.name_admin, calendarOwnerName);
         const leadName = toDisplayName(
             crmEvent?.nombre_lead,
             attendees[0] || organizer,
@@ -3731,7 +3735,10 @@ const handleCalendarEventScheduleChange = async (info) => {
 
                 // Unificar fuentes y transformar a eventos FullCalendar
                 const unifiedEvents = buildUnifiedDebugPayload(crmEvents, microsoftEvents);
-                const mappedEvents = mapUnifiedEventsToCalendarEvents(unifiedEvents);
+                const mappedEvents = mapUnifiedEventsToCalendarEvents(unifiedEvents, {
+                    email: activeMicrosoftAccount?.username || microsoftUser?.email || "",
+                    name: activeMicrosoftAccount?.name || microsoftUser?.displayName || "",
+                });
 
                 if (isMounted) {
                     setCalendarEvents(mappedEvents);

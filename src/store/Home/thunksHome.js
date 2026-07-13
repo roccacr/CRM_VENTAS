@@ -85,9 +85,14 @@ export const setGetEventsHome = () => {
         try {
             // Llamada a la API para obtener los eventos del home
             const result = await getAllEventsHome({ idnetsuite_admin, rol_admin });
+            const pendingEvents = Array.isArray(result?.data?.["0"])
+                ? result.data["0"]
+                : Array.isArray(result?.data?.data)
+                    ? result.data.data
+                    : [];
 
             // Actualiza el estado de Redux con los eventos pendientes
-            dispatch(setlistEventsPending(result.data["0"]));
+            dispatch(setlistEventsPending(pendingEvents));
         } catch (error) {
             // Maneja errores de la API y los muestra en la consola
             console.error("Error al cargar los eventos pendientes del home:", error);
@@ -240,7 +245,7 @@ export const updateEventDate = (eventId, newDate, oldDate) => {
             dispatch(updateDateCalendar({ id: eventId, selectedValue: newDate + oldDateResult }));
 
             // Realizar una llamada a la API para actualizar la fecha del evento en el servidor
-            const result = await fetchupdateEventDate({ eventId: eventId, selectedValue: newDate + oldDateResult });
+            await fetchupdateEventDate({ eventId: eventId, selectedValue: newDate + oldDateResult });
 
             // Devolver "ok" si la operación fue exitosa
             return "ok";
