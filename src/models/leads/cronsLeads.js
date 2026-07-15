@@ -1,9 +1,10 @@
 const cron = require("node-cron");
 const nodemailer = require("nodemailer");
-const fs = require("fs");
-const os = require("os");
-const path = require("path");
 const { executeQuery } = require("../conectionPool/conectionPool");
+const {
+    normalizeRecipients,
+    shouldSendIndividualReport,
+} = require("./leadEmailRules");
 const dotenv = require("dotenv");
 dotenv.config();
 
@@ -52,7 +53,7 @@ const CONFIG = {
         WARNING: 20    // Entre 10-19 = warning (amarillo), 20+ = danger (rojo)
     },
     ATTENTION_ALERT_THRESHOLD: 50,
-    EMAIL_DEDUP_DIR: path.join(os.tmpdir(), "crm-ventas-cron-mail-locks")
+    EMAIL_DELIVERY_TABLE: "crm_lead_email_delivery"
 };
 
 /**
@@ -80,6 +81,8 @@ let cronJobInstance = null;
  * @type {boolean}
  */
 let isRunning = false;
+
+let emailDeliveryTablePromise = null;
 
 /**
  * Transporter de nodemailer para envío de correos
@@ -174,31 +177,70 @@ const obtenerFechaClaveActual = () => {
 };
 
 /**
- * Crea una marca diaria para impedir envíos duplicados del mismo correo.
- *
- * @param {string} key - Clave lógica del envío.
- * @returns {{ok: boolean, filePath: string}} Resultado de deduplicación.
+ * Crea la tabla de control una sola vez por proceso.
+ * La clave única permite deduplicar entre múltiples instancias del API.
  */
-const registrarEnvioDiario = (key) => {
-    const safeKey = key.replace(/[^a-zA-Z0-9_-]/g, "_");
-    const fileName = `${obtenerFechaClaveActual()}_${safeKey}.lock`;
-    const filePath = path.join(CONFIG.EMAIL_DEDUP_DIR, fileName);
-
-    fs.mkdirSync(CONFIG.EMAIL_DEDUP_DIR, { recursive: true });
-
-    try {
-        fs.writeFileSync(filePath, `${obtenerFechaHoraActual()}|pid:${process.pid}`, {
-            flag: "wx",
-        });
-
-        return { ok: true, filePath };
-    } catch (error) {
-        if (error.code === "EEXIST") {
-            return { ok: false, filePath };
-        }
-
-        throw error;
+const asegurarTablaEnvios = async () => {
+    if (!emailDeliveryTablePromise) {
+        emailDeliveryTablePromise = executeQuery(`
+            CREATE TABLE IF NOT EXISTS ${CONFIG.EMAIL_DELIVERY_TABLE} (
+                id_delivery BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+                delivery_date DATE NOT NULL,
+                delivery_key VARCHAR(120) NOT NULL,
+                status ENUM('sending', 'sent') NOT NULL DEFAULT 'sending',
+                created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                sent_at DATETIME NULL,
+                UNIQUE KEY ux_crm_lead_email_delivery_date_key (delivery_date, delivery_key)
+            )
+        `, [], CONFIG.DB_ENVIRONMENT);
     }
+
+    const result = await emailDeliveryTablePromise;
+    if (!result?.ok) {
+        throw new Error("No fue posible preparar el control de envíos de correo");
+    }
+};
+
+/**
+ * Reclama un envío diario de forma atómica.
+ * Solo la instancia que inserta la fila puede enviar el correo.
+ */
+const registrarEnvioDiario = async (key) => {
+    try {
+        await asegurarTablaEnvios();
+
+        const result = await executeQuery(`
+            INSERT IGNORE INTO ${CONFIG.EMAIL_DELIVERY_TABLE} (
+                delivery_date,
+                delivery_key,
+                status
+            ) VALUES (?, ?, 'sending')
+        `, [obtenerFechaClaveActual(), key], CONFIG.DB_ENVIRONMENT);
+
+        return result?.ok && Number(result?.data?.affectedRows) === 1;
+    } catch (error) {
+        log('ERROR', 'No fue posible validar el envío diario del correo', {
+            key,
+            error: error.message,
+        });
+        return false;
+    }
+};
+
+/**
+ * Marca un correo como enviado o elimina la reserva cuando SMTP falla.
+ * El borrado permite reintentar el reporte en la siguiente ejecución.
+ */
+const finalizarEnvioDiario = async (key, enviado) => {
+    const params = [obtenerFechaClaveActual(), key];
+    const query = enviado
+        ? `UPDATE ${CONFIG.EMAIL_DELIVERY_TABLE}
+           SET status = 'sent', sent_at = CURRENT_TIMESTAMP
+           WHERE delivery_date = ? AND delivery_key = ?`
+        : `DELETE FROM ${CONFIG.EMAIL_DELIVERY_TABLE}
+           WHERE delivery_date = ? AND delivery_key = ?`;
+
+    await executeQuery(query, params, CONFIG.DB_ENVIRONMENT);
 };
 
 /**
@@ -386,10 +428,10 @@ const generarHTMLReporte = (vendedores, estadisticas) => {
  * @returns {Promise<Object>} Resultado del envío
  */
 const enviarReportePorCorreo = async (vendedores, estadisticas) => {
-    try {
-        const dedup = registrarEnvioDiario("resumen-gerencial-leads-nuevos");
+    const deliveryKey = "resumen-gerencial-leads-nuevos";
 
-        if (!dedup.ok) {
+    try {
+        if (!await registrarEnvioDiario(deliveryKey)) {
             return {
                 success: true,
                 skipped: true,
@@ -399,7 +441,9 @@ const enviarReportePorCorreo = async (vendedores, estadisticas) => {
 
         const htmlContent = generarHTMLReporte(vendedores, estadisticas);
 
-        const destinatarios = CONFIG.ATTENTION_ALERT_MANAGEMENT_RECIPIENTS.join(",");
+        const destinatarios = normalizeRecipients(
+            CONFIG.ATTENTION_ALERT_MANAGEMENT_RECIPIENTS,
+        ).join(",");
 
         const subject = `[ALERTA CRM] ${estadisticas.danger} Vendedor(es) con Alta Carga de Leads (${estadisticas.danger > 1 ? '20+ leads cada uno' : '20+ leads'})`;
 
@@ -411,6 +455,7 @@ const enviarReportePorCorreo = async (vendedores, estadisticas) => {
         };
 
         const info = await emailTransporter.sendMail(mailOptions);
+        await finalizarEnvioDiario(deliveryKey, true);
 
         log('INFO', `✉ Correo enviado exitosamente a: ${destinatarios}`);
 
@@ -425,6 +470,65 @@ const enviarReportePorCorreo = async (vendedores, estadisticas) => {
         return {
             success: false,
             error: error.message
+        };
+    }
+};
+
+/**
+ * Envía al asesor únicamente su fila de carga de leads.
+ * Claudio y Fabián reciben exclusivamente el consolidado gerencial.
+ */
+const enviarReporteCargaPorAsesor = async (vendedor) => {
+    const deliveryKey = `carga-leads-asesor-${vendedor.id_empleado_lead}`;
+
+    if (!shouldSendIndividualReport(
+        vendedor,
+        CONFIG.ATTENTION_ALERT_MANAGEMENT_RECIPIENTS,
+    )) {
+        return {
+            success: true,
+            skipped: true,
+            reason: "El asesor pertenece a los destinatarios gerenciales",
+        };
+    }
+
+    if (!await registrarEnvioDiario(deliveryKey)) {
+        return {
+            success: true,
+            skipped: true,
+            reason: "Reporte individual de carga ya enviado hoy",
+        };
+    }
+
+    try {
+        const htmlContent = generarHTMLReporte(
+            [vendedor],
+            { danger: 1 },
+        );
+
+        const info = await emailTransporter.sendMail({
+            from: `"ROCCA CRM" <${process.env.API_NOTIFICATION_EMAIL}>`,
+            to: vendedor.vendedor_email,
+            subject: `[ALERTA CRM] Carga de Leads - ${vendedor.cantidad_leads} leads`,
+            html: htmlContent,
+        });
+
+        await finalizarEnvioDiario(deliveryKey, true);
+
+        return {
+            success: true,
+            messageId: info.messageId,
+            destinatario: vendedor.vendedor_email,
+        };
+    } catch (error) {
+        log('ERROR', 'Error enviando reporte individual de carga de leads', {
+            asesor: vendedor.vendedor_nombre,
+            error: error.message,
+        });
+
+        return {
+            success: false,
+            error: error.message,
         };
     }
 };
@@ -516,10 +620,21 @@ const generarHTMLReporteAtencionPorAsesor = (asesor) => {
  * @returns {Promise<Object>} Resultado del envío.
  */
 const enviarReporteAtencionPorAsesor = async (asesor) => {
-    try {
-        const dedup = registrarEnvioDiario(`atencion-asesor-${asesor.id_empleado_lead}`);
+    const deliveryKey = `atencion-asesor-${asesor.id_empleado_lead}`;
 
-        if (!dedup.ok) {
+    try {
+        if (!shouldSendIndividualReport(
+            asesor,
+            CONFIG.ATTENTION_ALERT_MANAGEMENT_RECIPIENTS,
+        )) {
+            return {
+                success: true,
+                skipped: true,
+                reason: "El asesor pertenece a los destinatarios gerenciales",
+            };
+        }
+
+        if (!await registrarEnvioDiario(deliveryKey)) {
             return {
                 success: true,
                 skipped: true,
@@ -541,6 +656,7 @@ const enviarReporteAtencionPorAsesor = async (asesor) => {
             subject,
             html: htmlContent,
         });
+        await finalizarEnvioDiario(deliveryKey, true);
 
         return {
             success: true,
@@ -567,10 +683,10 @@ const enviarReporteAtencionPorAsesor = async (asesor) => {
  * @returns {Promise<Object>} Resultado del envío.
  */
 const enviarReporteAtencionGerencial = async (asesores) => {
-    try {
-        const dedup = registrarEnvioDiario("resumen-gerencial-leads-atencion");
+    const deliveryKey = "resumen-gerencial-leads-atencion";
 
-        if (!dedup.ok) {
+    try {
+        if (!await registrarEnvioDiario(deliveryKey)) {
             return {
                 success: true,
                 skipped: true,
@@ -642,7 +758,9 @@ const enviarReporteAtencionGerencial = async (asesores) => {
             </html>
         `;
 
-        const destinatarios = CONFIG.ATTENTION_ALERT_MANAGEMENT_RECIPIENTS.join(",");
+        const destinatarios = normalizeRecipients(
+            CONFIG.ATTENTION_ALERT_MANAGEMENT_RECIPIENTS,
+        ).join(",");
         const subject = `[ALERTA CRM] ${asesores.length} asesor(es) con más de ${CONFIG.ATTENTION_ALERT_THRESHOLD} leads en requiere atención`;
 
         const info = await emailTransporter.sendMail({
@@ -651,6 +769,7 @@ const enviarReporteAtencionGerencial = async (asesores) => {
             subject,
             html: htmlContent,
         });
+        await finalizarEnvioDiario(deliveryKey, true);
 
         return {
             success: true,
@@ -691,6 +810,7 @@ const QUERY_LEADS_INTERESADOS = `
     WHERE l.accion_lead IN (?, ?)
         AND l.estado_lead = ?
         AND l.segimineto_lead = ?
+        AND a.status_admin = 1
     GROUP BY l.id_empleado_lead, a.name_admin, a.email_admin
     ORDER BY cantidad_leads DESC, a.name_admin ASC
 `;
@@ -731,6 +851,7 @@ const QUERY_LEADS_REQUIEREN_ATENCION_POR_ASESOR = `
         AND c.accion_calendar = 'Pendiente'
     WHERE l.accion_lead = 6
         AND l.estado_lead = 1
+        AND a.status_admin = 1
         AND l.seguimiento_calendar = 0
         AND COALESCE(
             STR_TO_DATE(l.actualizadaaccion_lead, '%Y-%m-%d %H:%i:%s'),
@@ -901,6 +1022,15 @@ const procesarLeadsInteresados = async () => {
 
             resultado.emailEnviado = emailResult.success;
             resultado.emailMessageId = emailResult.messageId;
+
+            const reportesIndividuales = [];
+            for (const vendedor of porEstado.danger) {
+                reportesIndividuales.push({
+                    asesor: vendedor.vendedor_nombre,
+                    ...await enviarReporteCargaPorAsesor(vendedor),
+                });
+            }
+            resultado.reportesIndividuales = reportesIndividuales;
         } else {
             log('INFO', `✓ No hay vendedores con 20+ leads. No se envía correo.`);
             resultado.emailEnviado = false;
