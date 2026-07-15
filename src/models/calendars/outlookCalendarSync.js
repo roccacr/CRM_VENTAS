@@ -115,9 +115,19 @@ const stripHtmlTags = (value) => {
     }
 
     return value
-        .replace(/<[^>]*>/g, " ")
-        .replace(/\s+/g, " ")
-        .trim();
+        .replace(/<\s*br\s*\/?>/gi, "\n")
+        .replace(/<\s*(p|div|li|h[1-6])(?:\s[^>]*)?>/gi, "\n")
+        .replace(/<\s*\/\s*(p|div|li|h[1-6])\s*>/gi, "\n")
+        .replace(/<[^>]*>/g, "")
+        .replace(/&nbsp;/gi, " ")
+        .replace(/&amp;/gi, "&")
+        .replace(/&lt;/gi, "<")
+        .replace(/&gt;/gi, ">")
+        .replace(/&quot;/gi, '"')
+        .replace(/&#39;|&#x27;/gi, "'")
+        .replace(/\r\n?/g, "\n")
+        .replace(/^\n/, "")
+        .replace(/\n$/, "");
 };
 
 const resolveOutlookEventDescription = (eventItem) => {

@@ -36,6 +36,16 @@ test("resolveOutlookEventDescription usa bodyPreview cuando Graph no trae body c
     assert.equal(description, "Detalle corto");
 });
 
+test("resolveOutlookEventDescription conserva parrafos y espacios del HTML de Outlook", () => {
+    const description = __testables.resolveOutlookEventDescription({
+        body: {
+            content: "<p>Primero</p><p>Segundo</p><div>&nbsp;&nbsp;Tercero</div>",
+        },
+    });
+
+    assert.equal(description, "Primero\n\nSegundo\n\n  Tercero");
+});
+
 test("buildClientState genera valor estable por admin y correo", () => {
     const clientState = __testables.buildClientState(653055, "rzuniga@roccacr.com");
 

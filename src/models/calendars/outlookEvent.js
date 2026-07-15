@@ -37,6 +37,11 @@ const normalizeStringValue = (value, fallback = "") => (
     typeof value === "string" && value.trim() ? value.trim() : fallback
 );
 
+// Las descripciones son texto libre: se conservan espacios y saltos de linea.
+const preserveDescriptionValue = (value) => (
+    typeof value === "string" ? value : ""
+);
+
 const normalizeNullableStringValue = (value) => (
     typeof value === "string" && value.trim() ? value.trim() : null
 );
@@ -145,7 +150,7 @@ outlookEvent.getPendingActionCalendarEvents = async (dataParams) => {
 outlookEvent.createOutlookEvent = async (dataParams) => {
     const tipoEvento = normalizeStringValue(dataParams.tipoEvento);
     const nombreEvento = normalizeStringValue(dataParams.nombreEvento);
-    const descripcionEvento = normalizeStringValue(dataParams.descripcionEvento);
+    const descripcionEvento = preserveDescriptionValue(dataParams.descripcionEvento);
     const fechaInicio = normalizeStringValue(dataParams.formatdateIni);
     const fechaFin = normalizeStringValue(dataParams.formatdateFin);
     const horaInicio = normalizeStringValue(dataParams.horaInicio);
@@ -485,7 +490,7 @@ outlookEvent.updateOutlookEventDetails = async (dataParams) => {
         normalizeStringValue(dataParams.formatdateFin),
         normalizeStringValue(dataParams.horaInicio),
         normalizeStringValue(dataParams.horaFinal),
-        normalizeStringValue(dataParams.descripcionEvento),
+        preserveDescriptionValue(dataParams.descripcionEvento),
         tipoEvento,
         citaValue,
         citaValue,
