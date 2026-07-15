@@ -59,9 +59,11 @@ import { renderOutlookCalendarEventContent } from "./components/OutlookCalendarE
 import { OutlookCreateEventModal } from "./components/OutlookCreateEventModal";
 import { OutlookFilterMenuSection } from "./components/OutlookFilterMenuSection";
 import {
+    buildEventSummaryPreview,
     buildCalendarMoveBlockedMessage,
     canAuthenticatedUserMoveCalendarEvent,
     deleteOutlookEventById,
+    plainTextToOutlookHtml,
 } from "./outlookCalendarUtils";
 
 // --- Estilos scoped de la vista (layout Outlook, eventos, sidebar) ---
@@ -3399,7 +3401,9 @@ export const View_calendario_outlook = () => {
                 subject: createEventTitle.trim(),
                 body: {
                     contentType: "HTML",
-                    content: createEventDescription.trim() || "Evento creado desde CRM Ventas.",
+                    content: createEventDescription
+                        ? plainTextToOutlookHtml(createEventDescription)
+                        : "Evento creado desde CRM Ventas.",
                 },
                 start: {
                     dateTime: toGraphDateTime(createEventScheduleRange.start),
@@ -3446,7 +3450,7 @@ export const View_calendario_outlook = () => {
                         idnetsuite_admin,
                         nombreEvento: createEventTitle.trim(),
                         tipoEvento: createEventType,
-                        descripcionEvento: createEventDescription.trim(),
+                        descripcionEvento: createEventDescription,
                         formatdateIni: toGraphDateTime(createEventScheduleRange.start),
                         formatdateFin: toGraphDateTime(createEventScheduleRange.end),
                         horaInicio: createEventStartTimeValue,
@@ -3471,7 +3475,7 @@ export const View_calendario_outlook = () => {
                         idnetsuite_admin,
                         nombreEvento: createEventTitle.trim(),
                         tipoEvento: createEventType,
-                        descripcionEvento: createEventDescription.trim(),
+                        descripcionEvento: createEventDescription,
                         formatdateIni: toGraphDateTime(createEventScheduleRange.start),
                         formatdateFin: toGraphDateTime(createEventScheduleRange.end),
                         horaInicio: createEventStartTimeValue,
@@ -3527,7 +3531,7 @@ export const View_calendario_outlook = () => {
                     idnetsuite_admin,
                     nombreEvento: createEventTitle.trim(),
                     tipoEvento: createEventType,
-                    descripcionEvento: createEventDescription.trim(),
+                    descripcionEvento: createEventDescription,
                     formatdateIni: toGraphDateTime(createEventScheduleRange.start),
                     formatdateFin: toGraphDateTime(createEventScheduleRange.end),
                     horaInicio: createEventStartTimeValue,
@@ -4768,9 +4772,21 @@ const handleCalendarEventScheduleChange = async (info) => {
                                     </Typography>
                                 )}
                                 {!!getEventSummaryText(selectedEvent) && (
-                                    <Typography className="outlook-hover-card-text is-soft">
-                                        {getEventSummaryText(selectedEvent)}
-                                    </Typography>
+                                    <Box className="outlook-hover-card-summary-row">
+                                        <Typography className="outlook-hover-card-text is-soft outlook-hover-card-summary">
+                                            {buildEventSummaryPreview(getEventSummaryText(selectedEvent))}
+                                        </Typography>
+                                        <button
+                                            aria-label="Ver descripción completa"
+                                            className="outlook-hover-card-expand-button outlook-hover-card-summary-expand"
+                                            onClick={handleExpandModal}
+                                            title="Ver descripción completa"
+                                            type="button"
+                                        >
+                                            <span>Ver más detalles</span>
+                                            <span className="ti ti-arrow-up-right outlook-hover-card-expand"></span>
+                                        </button>
+                                    </Box>
                                 )}
                                 {!!selectedEvent.extendedProps.teamsLink && (
                                     <Box className="outlook-hover-card-link-row">
@@ -4994,7 +5010,7 @@ const handleCalendarEventScheduleChange = async (info) => {
                                             <Typography className="outlook-expanded-meta">
                                                 Responsable: {modalEvent.extendedProps.attendee}
                                             </Typography>
-                                            <Typography className="outlook-expanded-meta">
+                                            <Typography className="outlook-expanded-meta outlook-expanded-description-value">
                                                 Estado: {modalEvent.extendedProps.description || modalEvent.extendedProps.response}
                                             </Typography>
                                         </>

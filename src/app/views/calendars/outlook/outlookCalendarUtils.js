@@ -183,6 +183,46 @@ export const normalizeComparableEmail = (emailValue) => (
 );
 
 /**
+ * Convierte texto plano del textarea al HTML requerido por Microsoft Graph.
+ * Graph recibe el cuerpo como HTML y, sin estas etiquetas, colapsa espacios
+ * consecutivos y saltos de línea al mostrar el evento en Outlook.
+ */
+export const plainTextToOutlookHtml = (value) => {
+    if (typeof value !== "string") {
+        return "";
+    }
+
+    return value
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;")
+        .replace(/\r\n?/g, "\n")
+        .replace(/ /g, "&nbsp;")
+        .replace(/\t/g, "&nbsp;&nbsp;&nbsp;&nbsp;")
+        .replace(/\n/g, "<br />");
+};
+
+/**
+ * Genera el texto breve que se muestra en la tarjeta compacta del evento.
+ * El detalle completo permanece disponible en el modal expandido.
+ */
+export const buildEventSummaryPreview = (value, maxLength = 180) => {
+    if (typeof value !== "string") {
+        return "";
+    }
+
+    const compactValue = value.replace(/\s+/g, " ").trim();
+
+    if (compactValue.length <= maxLength) {
+        return compactValue;
+    }
+
+    return compactValue.slice(0, maxLength).trimEnd() + "...";
+};
+
+/**
  * Normaliza ID numérico para comparaciones de propiedad.
  *
  * @param {number|string|null|undefined} idValue - ID bruto.

@@ -2,10 +2,26 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+    buildEventSummaryPreview,
     buildCalendarMoveBlockedMessage,
     canAuthenticatedUserMoveCalendarEvent,
+    plainTextToOutlookHtml,
     resolveCalendarEventOwner,
 } from "./outlookCalendarUtils.js";
+
+test("buildEventSummaryPreview limita el resumen de la tarjeta compacta", () => {
+    assert.equal(
+        buildEventSummaryPreview("Primero\n\nSegundo", 10),
+        "Primero Se...",
+    );
+});
+
+test("plainTextToOutlookHtml conserva saltos de linea y espacios", () => {
+    assert.equal(
+        plainTextToOutlookHtml("Primero\n\n  Segundo"),
+        "Primero<br /><br />&nbsp;&nbsp;Segundo",
+    );
+});
 
 test("permite mover cuando admin autenticado es dueño CRM por id_admin", () => {
     const result = canAuthenticatedUserMoveCalendarEvent({

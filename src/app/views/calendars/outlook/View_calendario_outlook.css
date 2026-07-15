@@ -1045,6 +1045,38 @@
     margin-top: 2px !important;
 }
 
+.outlook-hover-card-summary-row {
+    align-items: flex-end;
+    display: flex;
+    gap: 8px;
+    margin-top: 2px;
+}
+
+.outlook-hover-card-summary {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    flex: 1;
+    overflow: hidden;
+}
+
+.outlook-hover-card-summary-expand {
+    align-items: center;
+    color: #266d98;
+    display: inline-flex;
+    flex: 0 0 auto;
+    font-size: 0.82rem;
+    gap: 4px;
+    margin-bottom: 1px;
+    white-space: nowrap;
+}
+
+.outlook-hover-card-summary-expand:hover,
+.outlook-hover-card-summary-expand:focus-visible {
+    color: #174d70;
+    text-decoration: underline;
+}
+
 .outlook-hover-card-person {
     align-items: flex-start;
     gap: 12px;
@@ -2548,6 +2580,11 @@
 .outlook-expanded-accepted {
     color: #566474;
     font-size: 0.9rem !important;
+}
+
+.outlook-expanded-description-value {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
 }
 
 .outlook-expanded-label {

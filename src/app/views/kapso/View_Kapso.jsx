@@ -60,23 +60,6 @@ const selectStyles = {
 // HELPERS
 // ============================================================================
 
-const formatDateTime = (value) => {
-   if (!value) {
-      return "Sin registro";
-   }
-
-   const date = new Date(value);
-
-   if (Number.isNaN(date.getTime())) {
-      return value;
-   }
-
-   return new Intl.DateTimeFormat("es-CR", {
-      dateStyle: "medium",
-      timeStyle: "short",
-   }).format(date);
-};
-
 const getRelationStatusBadgeClass = (status) => {
    return status === 1 ? "bg-success-subtle text-success" : "bg-secondary-subtle text-secondary";
 };
@@ -444,26 +427,17 @@ export const View_Kapso = () => {
                </div>
 
                <div className="row g-3 mt-3">
-                  <div className="col-md-4">
+                  <div className="col-md-6">
                      <div className="rounded-4 border bg-white p-3 h-100">
                         <small className="text-uppercase text-muted d-block mb-1">Visibles</small>
                         <div className="fs-3 fw-bold text-dark mb-0">{tableState.meta.total}</div>
                      </div>
                   </div>
 
-                  <div className="col-md-4">
+                  <div className="col-md-6">
                      <div className="rounded-4 border bg-white p-3 h-100">
                         <small className="text-uppercase text-muted d-block mb-1">Activas</small>
                         <div className="fs-3 fw-bold text-success mb-0">{activeRelations}</div>
-                     </div>
-                  </div>
-
-                  <div className="col-md-4">
-                     <div className="rounded-4 border bg-white p-3 h-100">
-                        <small className="text-uppercase text-muted d-block mb-1">Catálogo</small>
-                        <div className="fs-4 fw-bold text-dark mb-0">
-                           {administratorOptions.length} admins / {phoneNumberOptions.length} líneas
-                        </div>
                      </div>
                   </div>
                </div>
@@ -538,7 +512,7 @@ export const View_Kapso = () => {
                <div className="rounded-4 border bg-white mt-3 overflow-hidden">
                   <div className="d-flex justify-content-between align-items-center px-3 py-3 border-bottom">
                      <div>
-                        <h2 className="h5 mb-0 text-dark">Asignaciones</h2>
+                        <h2 className="h5 mb-0 text-dark">Números asignados</h2>
                      </div>
 
                      <span className="badge rounded-pill text-bg-light border">
@@ -569,8 +543,6 @@ export const View_Kapso = () => {
                                     <th>Administrador</th>
                                     <th>Línea Kapso</th>
                                     <th>Estado</th>
-                                    <th>Creada</th>
-                                    <th>Actualizada</th>
                                     <th className="text-end">Acciones</th>
                                  </tr>
                               </thead>
@@ -587,6 +559,7 @@ export const View_Kapso = () => {
                                                    onClick={() =>
                                                       setExpandedRowId((previous) => (previous === relation.id ? null : relation.id))
                                                    }
+                                                   aria-expanded={isExpanded}
                                                    title={isExpanded ? "Ocultar detalle" : "Ver detalle"}
                                                    type="button"
                                                 >
@@ -599,7 +572,6 @@ export const View_Kapso = () => {
                                                    {relation.administratorName || "Administrador sin nombre"}
                                                 </div>
                                                 <div className="text-muted small">{relation.administratorEmail || "Sin correo registrado"}</div>
-                                                <div className="text-muted small">NetSuite ID: {relation.idnetsuiteAdmin}</div>
                                              </td>
 
                                              <td>
@@ -609,7 +581,6 @@ export const View_Kapso = () => {
                                                 <div className="text-muted small">
                                                    {relation.phoneNumberName || relation.verifiedName || "Sin alias"}
                                                 </div>
-                                                <div className="text-muted small">Phone number ID: {relation.phoneNumberId}</div>
                                              </td>
 
                                              <td>
@@ -617,9 +588,6 @@ export const View_Kapso = () => {
                                                    {relation.status === 1 ? "Activa" : "Inactiva"}
                                                 </span>
                                              </td>
-
-                                             <td className="text-muted small">{formatDateTime(relation.createdAt)}</td>
-                                             <td className="text-muted small">{formatDateTime(relation.updatedAt)}</td>
 
                                              <td>
                                                 <div className="d-flex justify-content-end gap-2 flex-wrap">
@@ -655,45 +623,45 @@ export const View_Kapso = () => {
                                           {isExpanded ? (
                                              <tr key={`detail-${relation.id}`}>
                                                 <td></td>
-                                                <td colSpan={6}>
-                                                   <div className="rounded-4 border bg-light p-3 my-2">
-                                                      <div className="row g-3">
+                                                <td colSpan={4}>
+                                                   <div className="rounded-3 border bg-light px-3 py-2 my-1">
+                                                      <div className="row g-2">
                                                          <div className="col-lg-4 col-md-6">
-                                                            <div className="text-uppercase text-muted small mb-1">ID de relación</div>
-                                                            <div className="fw-semibold text-dark">{relation.id}</div>
+                                                            <div className="text-uppercase text-muted small">ID de relación</div>
+                                                            <div className="small fw-semibold text-dark text-break">{relation.id}</div>
                                                          </div>
 
                                                          <div className="col-lg-4 col-md-6">
-                                                            <div className="text-uppercase text-muted small mb-1">Estado admin</div>
-                                                            <div className="fw-semibold text-dark">
+                                                            <div className="text-uppercase text-muted small">Estado admin</div>
+                                                            <div className="small fw-semibold text-dark">
                                                                {relation.administratorStatus === 1 ? "Activo" : "Inactivo"}
                                                             </div>
                                                          </div>
 
                                                          <div className="col-lg-4 col-md-6">
-                                                            <div className="text-uppercase text-muted small mb-1">WABA ID</div>
-                                                            <div className="fw-semibold text-dark">
+                                                            <div className="text-uppercase text-muted small">WABA</div>
+                                                            <div className="small fw-semibold text-dark text-break">
                                                                {relation.businessAccountId || "Sin dato"}
                                                             </div>
                                                          </div>
 
                                                          <div className="col-lg-4 col-md-6">
-                                                            <div className="text-uppercase text-muted small mb-1">Estado Kapso</div>
-                                                            <div className="fw-semibold text-dark">
+                                                            <div className="text-uppercase text-muted small">Kapso</div>
+                                                            <div className="small fw-semibold text-dark">
                                                                {relation.kapsoIntegrationStatus || "Sin dato"}
                                                             </div>
                                                          </div>
 
                                                          <div className="col-lg-4 col-md-6">
-                                                            <div className="text-uppercase text-muted small mb-1">Estado setup</div>
-                                                            <div className="fw-semibold text-dark">
+                                                            <div className="text-uppercase text-muted small">Setup</div>
+                                                            <div className="small fw-semibold text-dark">
                                                                {relation.kapsoSetupStatus || "Sin dato"}
                                                             </div>
                                                          </div>
 
                                                          <div className="col-lg-4 col-md-6">
-                                                            <div className="text-uppercase text-muted small mb-1">Estado sync</div>
-                                                            <div className="fw-semibold text-dark">
+                                                            <div className="text-uppercase text-muted small">Sincronización</div>
+                                                            <div className="small fw-semibold text-dark">
                                                                {relation.kapsoSetupSyncStatus || "Sin dato"}
                                                             </div>
                                                          </div>
@@ -760,8 +728,8 @@ export const View_Kapso = () => {
                >
                   <div className="d-flex justify-content-between align-items-start p-4 border-bottom">
                      <div>
-                        <h3 className="h4 mb-1 text-dark">{modalMode === "edit" ? "Editar asignación Kapso" : "Asignar integración Kapso"}</h3>
-                        <p className="text-muted mb-0">Selecciona el administrador, la línea Kapso y el estado operativo de la relación.</p>
+                        <h3 className="h4 mb-1 text-dark">{modalMode === "edit" ? "Editar asignación" : "Asignar número Kapso"}</h3>
+                        <p className="text-muted mb-0">Elige quién puede usar esta línea.</p>
                      </div>
 
                      <button className="btn btn-sm btn-light" onClick={closeModal} type="button">
@@ -790,7 +758,7 @@ export const View_Kapso = () => {
                         </div>
 
                         <div className="col-md-6">
-                           <label className="form-label fw-semibold text-dark">Integración Kapso</label>
+                           <label className="form-label fw-semibold text-dark">Número Kapso</label>
                            <Select
                               isLoading={optionsLoading}
                               onChange={(option) =>
@@ -800,7 +768,7 @@ export const View_Kapso = () => {
                                  }))
                               }
                               options={phoneNumberOptions}
-                              placeholder="Seleccionar línea Kapso"
+                              placeholder="Seleccionar número"
                               styles={selectStyles}
                               value={form.phoneNumber}
                            />
@@ -824,12 +792,10 @@ export const View_Kapso = () => {
 
                         <div className="col-md-6">
                            <div className="rounded-4 border bg-light h-100 p-3">
-                              <div className="fw-semibold text-dark mb-2">Resumen</div>
-                              <div className="text-muted small">
-                                 {form.administrator ? form.administrator.label : "Sin administrador seleccionado"}
-                              </div>
+                              <div className="fw-semibold text-dark mb-2">Asignación</div>
+                              <div className="text-muted small">{form.administrator?.raw?.name || "Sin administrador seleccionado"}</div>
                               <div className="text-muted small mt-1">
-                                 {form.phoneNumber ? form.phoneNumber.label : "Sin línea Kapso seleccionada"}
+                                 {form.phoneNumber?.raw?.displayPhoneNumber || "Sin número Kapso seleccionado"}
                               </div>
                               <div className="mt-3">
                                  <span className={`badge rounded-pill ${getRelationStatusBadgeClass(form.status?.value)}`}>
@@ -848,7 +814,7 @@ export const View_Kapso = () => {
                         Cancelar
                      </button>
                      <button className="btn btn-success" disabled={modalLoading} onClick={saveRelation} type="button">
-                        {modalLoading ? "Guardando..." : modalMode === "edit" ? "Guardar cambios" : "Guardar asignación"}
+                        {modalLoading ? "Guardando..." : modalMode === "edit" ? "Guardar cambios" : "Asignar número"}
                      </button>
                   </div>
                </div>
