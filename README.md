@@ -38,16 +38,16 @@ flowchart LR
 
 ### Componentes principales
 
-| Componente | Responsabilidad |
-| --- | --- |
-| `src/main.ts` | Arranque, prefijo global, CORS, Helmet y `rawBody` para firmas. |
-| `src/config/` | Configuracion, variables de entorno y validacion Joi. |
-| `src/database/` | TypeORM, datasource y migraciones. |
-| `src/modules/kapso/controllers/` | Endpoints REST, redirects y webhooks. |
-| `src/modules/kapso/services/` | Cliente Kapso, sincronizacion, firmas y relaciones Admin-Kapso. |
-| `src/modules/kapso/repositories/` | Consultas y persistencia MySQL. |
-| `src/modules/kapso/entities/` | Modelo TypeORM de numeros y relaciones. |
-| `test/` | Pruebas unitarias, integracion y E2E. |
+| Componente                        | Responsabilidad                                                 |
+| --------------------------------- | --------------------------------------------------------------- |
+| `src/main.ts`                     | Arranque, prefijo global, CORS, Helmet y `rawBody` para firmas. |
+| `src/config/`                     | Configuracion, variables de entorno y validacion Joi.           |
+| `src/database/`                   | TypeORM, datasource y migraciones.                              |
+| `src/modules/kapso/controllers/`  | Endpoints REST, redirects y webhooks.                           |
+| `src/modules/kapso/services/`     | Cliente Kapso, sincronizacion, firmas y relaciones Admin-Kapso. |
+| `src/modules/kapso/repositories/` | Consultas y persistencia MySQL.                                 |
+| `src/modules/kapso/entities/`     | Modelo TypeORM de numeros y relaciones.                         |
+| `test/`                           | Pruebas unitarias, integracion y E2E.                           |
 
 ## Flujo de un numero nuevo
 
@@ -108,11 +108,11 @@ stateDiagram-v2
 
 Configura estas URLs en Kapso usando la base publica de ngrok o el dominio del entorno:
 
-| URL | Origen | Uso |
-| --- | --- | --- |
+| URL                               | Origen         | Uso                                |
+| --------------------------------- | -------------- | ---------------------------------- |
 | `/api/v1/webhooks/kapso/platform` | Kapso Platform | Creacion y eliminacion de numeros. |
-| `/api/v1/webhooks/kapso/events` | Kapso events | Mensajes y eventos de WhatsApp. |
-| `/api/v1/webhooks/kapso/meta` | Meta relay | Payload crudo reenviado por Kapso. |
+| `/api/v1/webhooks/kapso/events`   | Kapso events   | Mensajes y eventos de WhatsApp.    |
+| `/api/v1/webhooks/kapso/meta`     | Meta relay     | Payload crudo reenviado por Kapso. |
 
 Ejemplo local publicado por ngrok:
 
@@ -134,27 +134,27 @@ https://TU-DOMINIO-NGROK.ngrok-free.dev/api/v1/webhooks/kapso/meta
 
 ### Consulta y sincronizacion
 
-| Metodo | Ruta | Descripcion |
-| --- | --- | --- |
-| `GET` | `/api/v1/kapso/customers` | Lista customers derivados de numeros sincronizados. |
-| `GET` | `/api/v1/kapso/phone-numbers` | Lista numeros guardados localmente. |
-| `POST` | `/api/v1/kapso/bootstrap/sync` | Reconstruye el estado local desde Kapso. |
-| `POST` | `/api/v1/kapso/phone-numbers/:phoneNumberId/sync` | Reintenta un numero especifico. |
-| `GET` | `/api/v1/kapso/setup/success` | Recibe el redirect exitoso del setup link. |
-| `GET` | `/api/v1/kapso/setup/failure` | Recibe el redirect fallido del setup link. |
+| Metodo | Ruta                                              | Descripcion                                         |
+| ------ | ------------------------------------------------- | --------------------------------------------------- |
+| `GET`  | `/api/v1/kapso/customers`                         | Lista customers derivados de numeros sincronizados. |
+| `GET`  | `/api/v1/kapso/phone-numbers`                     | Lista numeros guardados localmente.                 |
+| `POST` | `/api/v1/kapso/bootstrap/sync`                    | Reconstruye el estado local desde Kapso.            |
+| `POST` | `/api/v1/kapso/phone-numbers/:phoneNumberId/sync` | Reintenta un numero especifico.                     |
+| `GET`  | `/api/v1/kapso/setup/success`                     | Recibe el redirect exitoso del setup link.          |
+| `GET`  | `/api/v1/kapso/setup/failure`                     | Recibe el redirect fallido del setup link.          |
 
 ### Relaciones Admin-Kapso
 
-| Metodo | Ruta | Descripcion |
-| --- | --- | --- |
-| `GET` | `/api/v1/kapso/admins/options` | Lista administradores seleccionables. |
-| `GET` | `/api/v1/kapso/phone-numbers/options` | Lista numeros seleccionables. |
-| `POST` | `/api/v1/kapso/admin-integrations` | Crea una asignacion Admin-Kapso. |
-| `GET` | `/api/v1/kapso/admin-integrations` | Lista asignaciones con filtros. |
-| `GET` | `/api/v1/kapso/admin-integrations/:id` | Consulta una asignacion. |
-| `PATCH` | `/api/v1/kapso/admin-integrations/:id` | Actualiza una asignacion. |
-| `PATCH` | `/api/v1/kapso/admin-integrations/:id/status` | Activa o desactiva una asignacion. |
-| `DELETE` | `/api/v1/kapso/admin-integrations/:id` | Elimina una asignacion. |
+| Metodo   | Ruta                                          | Descripcion                           |
+| -------- | --------------------------------------------- | ------------------------------------- |
+| `GET`    | `/api/v1/kapso/admins/options`                | Lista administradores seleccionables. |
+| `GET`    | `/api/v1/kapso/phone-numbers/options`         | Lista numeros seleccionables.         |
+| `POST`   | `/api/v1/kapso/admin-integrations`            | Crea una asignacion Admin-Kapso.      |
+| `GET`    | `/api/v1/kapso/admin-integrations`            | Lista asignaciones con filtros.       |
+| `GET`    | `/api/v1/kapso/admin-integrations/:id`        | Consulta una asignacion.              |
+| `PATCH`  | `/api/v1/kapso/admin-integrations/:id`        | Actualiza una asignacion.             |
+| `PATCH`  | `/api/v1/kapso/admin-integrations/:id/status` | Activa o desactiva una asignacion.    |
+| `DELETE` | `/api/v1/kapso/admin-integrations/:id`        | Elimina una asignacion.               |
 
 ## Persistencia
 
@@ -308,4 +308,3 @@ Una integracion se considera completa cuando:
 4. El webhook Kapso y el webhook Meta aparecen en `webhooks_json`.
 5. El estado termina en `processed` o `synced` sin warnings pendientes.
 6. La asignacion Admin-Kapso puede usar ese numero desde sus endpoints.
-
