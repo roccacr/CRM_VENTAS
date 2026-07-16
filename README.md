@@ -187,6 +187,155 @@ KAPSO_LEAD_TEMPLATE_INTERVAL_MS=60000
 KAPSO_LEAD_TEMPLATE_BATCH_SIZE=100
 ```
 
+## Flujo de leads y templates
+
+El envio de templates debe salir desde la API Kapso, no desde el frontend. El API toma el lead, valida el asesor, valida el proyecto habilitado y luego envia el template usando el numero Kapso asignado.
+
+```mermaid
+flowchart TD
+    A["Lead nuevo detectado"] --> B["Validar condicion del lead"]
+    B --> C["Buscar asesor por id_empleado_lead"]
+    C --> D["Validar numero Kapso asignado al asesor"]
+    D --> E["Validar proyecto habilitado"]
+    E --> F["Buscar template configurado para la accion"]
+    F --> G["Preparar parametros"]
+    G --> H["Enviar template por Kapso"]
+    H --> I["Registrar bitacora CRM"]
+```
+
+### Condicion inicial del lead
+
+Para la primera etapa, el worker solo considera leads que cumplan:
+
+| Campo                            | Valor esperado                |
+| -------------------------------- | ----------------------------- |
+| `segimineto_lead`                | `01-LEAD-INTERESADO`          |
+| `whatsapp_template_contact_sent` | `2`                           |
+| `estado_lead`                    | `1`                           |
+| `id_empleado_lead`               | Debe existir y no venir vacio |
+
+Mientras el envio real no este activo, el worker puede detectar el mismo lead en cada intervalo. Ese comportamiento es normal para monitoreo porque aun no se modifica el lead ni se registra un intento final de envio.
+
+### Validacion por asesor
+
+El asesor se identifica con `leads.id_empleado_lead` y se compara contra la configuracion Admin-Kapso. Si el asesor no tiene un numero Kapso activo asignado, el lead no puede avanzar al envio.
+
+La configuracion Admin-Kapso solo responde esta pregunta:
+
+```text
+Que numero Kapso usa cada asesor?
+```
+
+### Validacion por proyecto
+
+El proyecto se valida con `leads.idproyecto_lead` contra una configuracion futura de proyectos habilitados. Esta configuracion debe responder:
+
+```text
+Que proyectos pueden usar cada accion o template?
+```
+
+Ejemplo conceptual:
+
+| Proyecto | Accion                  | Template | Estado |
+| -------- | ----------------------- | -------- | ------ |
+| Andira   | `lead_initial_greeting` | `saludo` | Activo |
+
+Esta validacion permite habilitar templates por proyecto sin activar la automatizacion para todo el CRM.
+
+### Configuracion recomendada
+
+La pantalla `/configuracion/kapso` debe funcionar como entrada al modulo Kapso y separar las configuraciones:
+
+| Seccion                | Proposito                                                          |
+| ---------------------- | ------------------------------------------------------------------ |
+| Asesores y numeros     | Asignar que numero Kapso usa cada asesor.                          |
+| Proyectos habilitados  | Activar que proyectos pueden usar automatizaciones Kapso.          |
+| Templates y parametros | Definir que template usa cada accion y de donde salen sus valores. |
+
+Con esta separacion, el sistema puede crecer de forma ordenada: primero se habilita el asesor, luego el proyecto, luego el template y finalmente los parametros.
+
+### Primer template esperado
+
+Segun el documento de templates, el primer flujo automatico es `saludo`. Su objetivo es abrir la conversacion con un lead nuevo antes de enviar informacion del proyecto.
+
+Parametros iniciales:
+
+| Parametro           | Origen sugerido       |
+| ------------------- | --------------------- |
+| `nombre_cliente`    | `leads.nombre_lead`   |
+| `nombre_asesor`     | `admins.name_admin`   |
+| `nombre_condominio` | `leads.proyecto_lead` |
+
+El envio real debe usar:
+
+```http
+POST https://api.kapso.ai/meta/whatsapp/v24.0/{phone_number_id}/messages
+```
+
+Donde `{phone_number_id}` es el numero Kapso asignado al asesor.
+
+### Propiedad del template
+
+Los templates se asocian al WhatsApp Business Account, no a cada numero individual. Por eso no se debe duplicar el mismo template para cada numero si todos pertenecen a la misma WABA.
+
+```mermaid
+flowchart TD
+    WABA["Business Account / WABA"]
+    WABA --> N1["Numero Kapso: +506 7045 2242"]
+    WABA --> N2["Numero Kapso futuro"]
+    WABA --> N3["Numero Kapso futuro"]
+    WABA --> T["Template aprobado: saludo"]
+    T --> S1["Puede enviarse desde cualquier numero de esa WABA"]
+```
+
+La relacion operativa queda asi:
+
+```text
+Proyecto CRM -> Accion -> Business Account / Template
+```
+
+Y al momento de enviar:
+
+```text
+Numero Kapso del asesor + Template aprobado en la WABA de ese numero
+```
+
+### Hub de configuracion Kapso
+
+La ruta `/configuracion/kapso` debe ser la entrada visual del modulo. Cada configuracion debe vivir separada para evitar una pantalla gigante y para permitir que el sistema crezca por etapas.
+
+```mermaid
+flowchart LR
+    H["/configuracion/kapso"] --> A["Asesores y numeros"]
+    H --> P["Proyectos habilitados"]
+    H --> T["Templates y parametros"]
+    A --> A1["Asesor -> Numero Kapso"]
+    P --> P1["Proyecto -> Accion habilitada"]
+    T --> T1["Accion -> Template -> Parametros"]
+```
+
+### Flujo con botones del template saludo
+
+El template inicial puede incluir botones para que la respuesta del cliente sea clara y el siguiente paso no dependa solo de interpretar texto libre.
+
+```mermaid
+flowchart TD
+    A["Lead nuevo"] --> B["Enviar template saludo"]
+    B --> C{"Cliente responde"}
+    C -->|"Si, enviar informacion"| D["Enviar template intro"]
+    C -->|"No, gracias"| E["Registrar sin interes / detener automatizacion"]
+    C -->|"Texto libre positivo"| D
+    C -->|"Texto libre negativo"| E
+    C -->|"No responde"| F["Queda pendiente para seguimiento manual o futuro"]
+```
+
+Decision recomendada para la primera version:
+
+1. Enviar `saludo` automaticamente solo a leads nuevos habilitados.
+2. Avanzar a `intro` solo si el cliente presiona el boton positivo o responde claramente de forma positiva.
+3. Detener la automatizacion si el cliente presiona el boton negativo o responde de forma negativa.
+4. Mantener los siguientes templates del PDF como fases posteriores o acciones manuales hasta validar el flujo base.
+
 ## Tecnologia
 
 - Node.js 22+
