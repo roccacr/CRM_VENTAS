@@ -336,6 +336,182 @@ Decision recomendada para la primera version:
 3. Detener la automatizacion si el cliente presiona el boton negativo o responde de forma negativa.
 4. Mantener los siguientes templates del PDF como fases posteriores o acciones manuales hasta validar el flujo base.
 
+## Arquitectura del flujo conversacional
+
+El flujo del PDF no debe resolverse con mas columnas sueltas en `leads`. La tabla `leads` sirve para detectar candidatos, pero el estado real de la automatizacion debe vivir en tablas propias de Kapso. Asi el sistema puede saber donde quedo cada lead, cuando debe avanzar, cuando debe detenerse y por que no debe repetir un template.
+
+### Principio de diseno
+
+El CRM detecta el lead. Kapso API administra la conversacion automatizada.
+
+```mermaid
+flowchart LR
+    L["leads"] --> C["Detector de candidatos"]
+    C --> F["Instancia de flujo por lead"]
+    F --> S["Estado actual del flujo"]
+    S --> E["Motor de siguiente accion"]
+    E --> K["Kapso / Meta messages API"]
+    K --> W["Webhooks de respuesta y delivery"]
+    W --> F
+    F --> B["Bitacora CRM"]
+```
+
+### Tablas recomendadas
+
+Para mantenerlo simple y escalable, el nucleo necesita estas tablas:
+
+| Tabla                            | Proposito                                                                   |
+| -------------------------------- | --------------------------------------------------------------------------- |
+| `kapso_template_catalog`         | Catalogo local de templates aprobados por WABA, idioma, categoria y accion. |
+| `kapso_project_template_configs` | Habilita que proyecto puede usar que accion/template.                       |
+| `kapso_lead_flow_instances`      | Guarda en que paso del flujo esta cada lead.                                |
+| `kapso_lead_flow_events`         | Audita mensajes enviados, respuestas, botones, errores y decisiones.        |
+
+La tabla `bitacoras` del CRM debe seguir usandose para dejar trazabilidad visible al equipo comercial, pero no debe ser la fuente principal del estado del motor.
+
+### Identidad del lead y del cliente
+
+La identidad estable del proceso debe ser:
+
+| Dato                                  | Uso                                                                                       |
+| ------------------------------------- | ----------------------------------------------------------------------------------------- |
+| `leads.idinterno_lead`                | Identificador principal del lead para el CRM.                                             |
+| `leads.id_lead`                       | Identificador interno local cuando se necesite compatibilidad.                            |
+| `leads.telefono_lead`                 | Telefono destino normalizado.                                                             |
+| `kapso_phone_numbers.phone_number_id` | Numero remitente de WhatsApp usado por el asesor.                                         |
+| `waba_id`                             | Cuenta WhatsApp Business donde vive el template.                                          |
+| `wamid`                               | ID de cada mensaje enviado o recibido, solo para auditoria.                               |
+| `wa_id` / `contact_id`                | ID recibido por webhook, guardado como dato historico, no como llave principal del flujo. |
+
+No se debe depender de un ID temporal de conversacion, thread o contacto como llave principal. Si Meta o Kapso entregan un identificador nuevo para el mismo cliente, el flujo debe seguir encontrandose por lead + telefono normalizado + numero Kapso remitente.
+
+### Estado de una instancia de flujo
+
+Cada lead debe tener una sola instancia activa por accion principal, por ejemplo `lead_initial_sequence`. Esa instancia evita que el worker envie dos veces el mismo paso.
+
+```mermaid
+stateDiagram-v2
+    [*] --> candidate_detected
+    candidate_detected --> blocked_project: Proyecto no habilitado
+    candidate_detected --> blocked_advisor: Asesor sin numero Kapso
+    candidate_detected --> greeting_ready: Proyecto y asesor validos
+    greeting_ready --> greeting_sent: Template saludo enviado
+    greeting_sent --> waiting_customer_reply: Esperando respuesta
+    waiting_customer_reply --> intro_ready: Boton positivo o texto positivo
+    waiting_customer_reply --> stopped_customer_declined: Boton negativo o texto negativo
+    waiting_customer_reply --> stopped_manual_contact: Asesor tomo la conversacion
+    waiting_customer_reply --> waiting_customer_reply: Sin respuesta
+    intro_ready --> intro_sent: Template intro enviado
+    intro_sent --> advisor_follow_up: Asesor continua seguimiento
+    advisor_follow_up --> completed
+    blocked_project --> [*]
+    blocked_advisor --> [*]
+    stopped_customer_declined --> [*]
+    stopped_manual_contact --> [*]
+    completed --> [*]
+```
+
+Estados minimos para la primera version:
+
+| Estado                      | Significado                                                  |
+| --------------------------- | ------------------------------------------------------------ |
+| `candidate_detected`        | El lead cumple la condicion inicial.                         |
+| `blocked_project`           | El proyecto aun no esta habilitado para esta accion.         |
+| `blocked_advisor`           | El asesor no tiene numero Kapso activo asignado.             |
+| `greeting_sent`             | Se envio el template `saludo`.                               |
+| `waiting_customer_reply`    | El sistema espera boton o respuesta del cliente.             |
+| `intro_sent`                | Se envio el template `intro` despues de respuesta positiva.  |
+| `stopped_customer_declined` | El cliente no quiere informacion.                            |
+| `stopped_manual_contact`    | El asesor interrumpio la automatizacion por contacto manual. |
+| `completed`                 | El flujo automatico termino correctamente.                   |
+
+### Reglas para detener el flujo
+
+El sistema debe detener una instancia cuando ocurra cualquiera de estas condiciones:
+
+1. El cliente presiona `No, gracias`.
+2. El cliente responde con texto claramente negativo.
+3. El asesor marca contacto manual o toma la conversacion.
+4. El flujo llega al ultimo paso automatico permitido.
+5. El lead deja de estar activo en CRM.
+6. El proyecto o template se deshabilita.
+7. El telefono destino es invalido o Kapso/Meta devuelve error terminal.
+
+Cuando el flujo se detiene, no se debe borrar la instancia. Debe quedar cerrada con `stopped_reason` y eventos historicos.
+
+### Ventana de 24 horas de Meta
+
+La ventana de 24 horas aplica para mensajes no-template. Segun Meta, para contactar fuera de la ventana de servicio se deben usar templates aprobados. Cuando el cliente responde, se abre una ventana de atencion donde el asesor o el sistema pueden enviar mensajes de servicio.
+
+Regla practica para este sistema:
+
+| Situacion                           | Accion recomendada                                         |
+| ----------------------------------- | ---------------------------------------------------------- |
+| Lead nuevo sin conversacion abierta | Enviar template aprobado `saludo`.                         |
+| Cliente responde al template        | Registrar `last_inbound_at` y `service_window_expires_at`. |
+| Siguiente paso automatico aprobado  | Enviar template configurado, por ejemplo `intro`.          |
+| Mensaje libre dentro de ventana     | Permitido solo si se decide usar mensajes no-template.     |
+| Fuera de ventana                    | Usar solo templates aprobados.                             |
+
+### Secuencia completa esperada
+
+```mermaid
+sequenceDiagram
+    participant Worker as Worker lead template
+    participant DB as MySQL
+    participant Kapso as Kapso API
+    participant Cliente as Cliente WhatsApp
+    participant Webhook as Webhooks API
+    participant Asesor as Asesor CRM
+
+    Worker->>DB: Busca leads 01-LEAD-INTERESADO, estado 1, template flag 2
+    Worker->>DB: Valida asignacion Admin-Kapso
+    Worker->>DB: Valida proyecto + accion habilitada
+    Worker->>DB: Crea o recupera instancia lead_initial_sequence
+    Worker->>Kapso: Envia template saludo con botones
+    Worker->>DB: Guarda evento greeting_sent y wamid
+    Kapso-->>Cliente: Entrega mensaje
+    Cliente-->>Kapso: Responde boton o texto
+    Kapso-->>Webhook: Entrega webhook de respuesta
+    Webhook->>DB: Registra respuesta y actualiza ventana 24h
+    alt Respuesta positiva
+        Webhook->>DB: Marca intro_ready
+        Worker->>Kapso: Envia template intro
+        Worker->>DB: Marca intro_sent
+    else Respuesta negativa
+        Webhook->>DB: Marca stopped_customer_declined
+        Webhook->>DB: Registra bitacora CRM
+    else Asesor toma conversacion
+        Asesor->>DB: Marca stopped_manual_contact
+    end
+```
+
+### Camino de implementacion
+
+Checklist recomendado para construirlo sin perder control:
+
+1. Crear catalogo local de templates (`kapso_template_catalog`) y registrar `saludo`.
+2. Crear configuracion por proyecto y accion (`kapso_project_template_configs`).
+3. Crear instancia de flujo por lead (`kapso_lead_flow_instances`).
+4. Crear auditoria de eventos (`kapso_lead_flow_events`).
+5. Cambiar el worker de diagnostico para crear/consultar instancia sin enviar aun.
+6. Agregar envio real de `saludo` con botones.
+7. Procesar webhooks de botones y texto del cliente.
+8. Enviar `intro` solo si la respuesta es positiva.
+9. Agregar boton o endpoint para que el asesor detenga la automatizacion por contacto manual.
+10. Activar reglas de cierre para evitar ciclos infinitos.
+
+### Lo que debe configurar el usuario
+
+Antes de activar el envio real:
+
+1. Crear y aprobar el template `saludo` en Kapso/Meta con parametros `{{1}}`, `{{2}}`, `{{3}}`.
+2. Confirmar si `saludo` tendra botones: `Si, enviar informacion` y `No, gracias`.
+3. Crear y aprobar el template `intro`.
+4. Definir para que proyecto inicia la automatizacion, por ejemplo `Andira`.
+5. Confirmar que asesores participantes tengan numero Kapso asignado.
+6. Confirmar si el asesor tendra un control manual para detener el flujo desde CRM.
+
 ## Tecnologia
 
 - Node.js 22+
