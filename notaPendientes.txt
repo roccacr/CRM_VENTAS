@@ -1,1 +1,0 @@
-Recordar filtros: Asegurar que en todos los lugares donde haya un filtro, se recuerden los criterios aplicados al volver atrás.
