@@ -57,6 +57,9 @@ export default registerAs("kapso", () => {
     // URL base de Kapso Platform API.
     apiBaseUrl: process.env.KAPSO_API_BASE_URL ?? "https://api.kapso.ai/platform/v1",
 
+    // URL base del relay Meta/WhatsApp de Kapso para enviar mensajes normales.
+    metaApiBaseUrl: normalizeBaseUrl(process.env.KAPSO_META_API_BASE_URL ?? "https://api.kapso.ai/meta/whatsapp/v24.0"),
+
     // API key principal del proyecto activo; mantiene compatibilidad con alias legacy.
     apiKey: defaultApiKey,
 
@@ -68,6 +71,12 @@ export default registerAs("kapso", () => {
 
     // Base usada en redirects del setup OAuth / embedded signup.
     setupRedirectBaseUrl,
+
+    // Carpeta local donde se guardan adjuntos por flujo/proyecto.
+    mediaStoragePath: process.env.KAPSO_MEDIA_STORAGE_PATH ?? "archivos",
+
+    // Limite defensivo para uploads desde CRM.
+    mediaMaxFileSizeBytes: Number(process.env.KAPSO_MEDIA_MAX_FILE_SIZE_MB ?? 50) * 1024 * 1024,
 
     // Secret del webhook de plataforma.
     platformWebhookSecret: process.env.KAPSO_PLATFORM_WEBHOOK_SECRET ?? "",

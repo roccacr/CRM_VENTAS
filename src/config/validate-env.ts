@@ -45,11 +45,14 @@ const mysqlEnvSchema = {
 /** Variables especificas de integracion Kapso. */
 const kapsoEnvSchema = {
   KAPSO_API_BASE_URL: Joi.string().uri().optional(),
+  KAPSO_META_API_BASE_URL: Joi.string().uri().optional(),
   KAPSO_API_KEY: Joi.string().optional(),
   KAPSO_TEST_API_KEY: Joi.string().optional(),
   KAPSO_PROJECT_API_KEYS_JSON: Joi.string().optional(),
   KAPSO_PUBLIC_BASE_URL: Joi.string().uri().required(),
   KAPSO_SETUP_REDIRECT_BASE_URL: Joi.string().uri().optional(),
+  KAPSO_MEDIA_STORAGE_PATH: Joi.string().optional(),
+  KAPSO_MEDIA_MAX_FILE_SIZE_MB: Joi.number().integer().min(1).max(200).optional(),
   KAPSO_PLATFORM_WEBHOOK_SECRET: Joi.string().min(16).required(),
   KAPSO_WHATSAPP_WEBHOOK_SECRET: Joi.string().min(16).required(),
   KAPSO_PENDING_SYNC_INTERVAL_MS: Joi.number().integer().min(5000).optional(),

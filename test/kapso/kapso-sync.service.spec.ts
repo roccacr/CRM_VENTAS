@@ -38,6 +38,18 @@ const REMOTE_PHONE_NUMBER_DETAIL = {
   raw: { id: TEST_PHONE_NUMBER_ID },
 };
 
+const ANSWERED_YES_CONTEXT = {
+  executionId: 77,
+  internalLeadId: 3095911,
+  idnetsuiteAdmin: 653055,
+  idProyectoNetsuite: 38,
+  leadName: "PRUEBA ROBERTO OT",
+  projectName: "Andira",
+  phoneNumberId: TEST_PHONE_NUMBER_ID,
+  leadPhoneNumber: "50687515938",
+  projectExternalId: REMOTE_PHONE_NUMBER_DETAIL.projectId,
+};
+
 // ============================================================================
 // HELPERS DE TEST
 // ============================================================================
@@ -70,6 +82,7 @@ function createSyncServiceTestBed() {
     listPhoneNumberWebhooks: jest.fn(),
     createKapsoPhoneNumberWebhook: jest.fn(),
     createMetaPhoneNumberWebhook: jest.fn(),
+    sendWhatsappMessage: jest.fn(),
   };
 
   const kapsoRepositoryMock = {
@@ -85,6 +98,10 @@ function createSyncServiceTestBed() {
     listLeadTemplateCandidates: kapsoRepositoryMock.listLeadTemplateCandidates,
     markLeadTemplateCandidateSkipped: kapsoRepositoryMock.markLeadTemplateCandidateSkipped,
     markLeadFlowAnsweredNo: jest.fn(),
+    markLeadFlowAnsweredYes: jest.fn(),
+    listActiveFlowProjectMedia: jest.fn(),
+    markLeadFlowIntroSent: jest.fn(),
+    markLeadFlowIntroFailed: jest.fn(),
   };
 
   const service = new KapsoSyncService(
@@ -300,7 +317,7 @@ describe("KapsoSyncService", () => {
       ],
     });
 
-    expect(result).toEqual({ processed: 1, answeredNo: 1, ignored: 0 });
+    expect(result).toEqual({ processed: 1, answeredNo: 1, answeredYes: 0, introSent: 0, introFailed: 0, ignored: 0 });
     expect(repositoryMock.markLeadFlowAnsweredNo).toHaveBeenCalledWith({
       phoneNumberId: TEST_PHONE_NUMBER_ID,
       leadPhoneNumber: "50687515938",
@@ -308,6 +325,214 @@ describe("KapsoSyncService", () => {
         messageId: "wamid.no-response",
         replyText: "No, gracias",
       }),
+    });
+    expect(repositoryMock.markLeadFlowAnsweredYes).not.toHaveBeenCalled();
+  });
+
+  it("marca el flujo como aceptado cuando el cliente toca Si, enviar informacion", async () => {
+    const testBed = createSyncServiceTestBed();
+    service = testBed.service;
+    const repositoryMock = testBed.adminKapsoIntegrationsRepositoryMock;
+    const platformApiMock = testBed.kapsoPlatformApiServiceMock;
+    repositoryMock.markLeadFlowAnsweredYes.mockResolvedValue(ANSWERED_YES_CONTEXT);
+    repositoryMock.listActiveFlowProjectMedia.mockResolvedValue([]);
+    platformApiMock.sendWhatsappMessage.mockResolvedValue({ messages: [{ id: "wamid.intro" }] });
+
+    const result = await service.processInboundMessageWebhook({
+      object: "whatsapp_business_account",
+      entry: [
+        {
+          changes: [
+            {
+              value: {
+                metadata: {
+                  phone_number_id: TEST_PHONE_NUMBER_ID,
+                },
+                messages: [
+                  {
+                    from: "50687515938",
+                    id: "wamid.yes-response",
+                    timestamp: "1783009760",
+                    type: "button",
+                    button: {
+                      payload: "Sí, enviar información",
+                      text: "Sí, enviar información",
+                    },
+                  },
+                ],
+              },
+            },
+          ],
+        },
+      ],
+    });
+
+    expect(result).toEqual({ processed: 1, answeredNo: 0, answeredYes: 1, introSent: 1, introFailed: 0, ignored: 0 });
+    expect(repositoryMock.markLeadFlowAnsweredYes).toHaveBeenCalledWith({
+      phoneNumberId: TEST_PHONE_NUMBER_ID,
+      leadPhoneNumber: "50687515938",
+      responsePayload: expect.objectContaining({
+        messageId: "wamid.yes-response",
+        replyText: "Sí, enviar información",
+      }),
+    });
+    expect(repositoryMock.markLeadFlowAnsweredNo).not.toHaveBeenCalled();
+    expect(repositoryMock.listActiveFlowProjectMedia).toHaveBeenCalledWith("94d5c3b8-4b43-4c28-8c76-3d9eaf70ad01", 38, "intro");
+    expect(platformApiMock.sendWhatsappMessage).toHaveBeenCalledWith(
+      TEST_PHONE_NUMBER_ID,
+      expect.objectContaining({
+        to: "50687515938",
+        type: "interactive",
+        interactive: expect.objectContaining({
+          type: "button",
+          body: expect.objectContaining({
+            text: expect.stringContaining("Perfecto PRUEBA ROBERTO OT"),
+          }),
+        }),
+      }),
+      { projectId: REMOTE_PHONE_NUMBER_DETAIL.projectId },
+    );
+    expect(repositoryMock.markLeadFlowIntroSent).toHaveBeenCalledWith({ executionId: 77 });
+  });
+
+  it("envia adjuntos de intro antes del mensaje interactivo cuando el proyecto tiene media", async () => {
+    const testBed = createSyncServiceTestBed();
+    service = testBed.service;
+    const repositoryMock = testBed.adminKapsoIntegrationsRepositoryMock;
+    const platformApiMock = testBed.kapsoPlatformApiServiceMock;
+    repositoryMock.markLeadFlowAnsweredYes.mockResolvedValue(ANSWERED_YES_CONTEXT);
+    repositoryMock.listActiveFlowProjectMedia.mockResolvedValue([
+      {
+        id: 1,
+        flowUuid: "94d5c3b8-4b43-4c28-8c76-3d9eaf70ad01",
+        idProyectoNetsuite: 38,
+        projectName: "Andira",
+        stepCode: "intro",
+        mediaType: "video",
+        originalName: "intro.mp4",
+        storedFilename: "intro.mp4",
+        relativePath: "flow/38/intro/intro.mp4",
+        publicUrl: "https://crm.example.com/api/v1/kapso/media/intro.mp4",
+        mimeType: "video/mp4",
+        fileSize: 1234,
+        sortOrder: 1,
+        active: true,
+      },
+      {
+        id: 2,
+        flowUuid: "94d5c3b8-4b43-4c28-8c76-3d9eaf70ad01",
+        idProyectoNetsuite: 38,
+        projectName: "Andira",
+        stepCode: "intro",
+        mediaType: "image",
+        originalName: "foto.jpg",
+        storedFilename: "foto.jpg",
+        relativePath: "flow/38/intro/foto.jpg",
+        publicUrl: "https://crm.example.com/api/v1/kapso/media/foto.jpg",
+        mimeType: "image/jpeg",
+        fileSize: 567,
+        sortOrder: 2,
+        active: true,
+      },
+    ]);
+    platformApiMock.sendWhatsappMessage.mockResolvedValue({ messages: [{ id: "wamid.sent" }] });
+
+    const result = await service.processInboundMessageWebhook({
+      object: "whatsapp_business_account",
+      entry: [
+        {
+          changes: [
+            {
+              value: {
+                metadata: { phone_number_id: TEST_PHONE_NUMBER_ID },
+                messages: [
+                  {
+                    from: "50687515938",
+                    id: "wamid.yes-media-response",
+                    timestamp: "1783009761",
+                    type: "button",
+                    button: {
+                      payload: "Sí, enviar información",
+                      text: "Sí, enviar información",
+                    },
+                  },
+                ],
+              },
+            },
+          ],
+        },
+      ],
+    });
+
+    expect(result).toEqual({ processed: 1, answeredNo: 0, answeredYes: 1, introSent: 1, introFailed: 0, ignored: 0 });
+    expect(platformApiMock.sendWhatsappMessage).toHaveBeenCalledTimes(3);
+    expect(platformApiMock.sendWhatsappMessage).toHaveBeenNthCalledWith(
+      1,
+      TEST_PHONE_NUMBER_ID,
+      expect.objectContaining({
+        type: "video",
+        video: { link: "https://crm.example.com/api/v1/kapso/media/intro.mp4" },
+      }),
+      { projectId: REMOTE_PHONE_NUMBER_DETAIL.projectId },
+    );
+    expect(platformApiMock.sendWhatsappMessage).toHaveBeenNthCalledWith(
+      2,
+      TEST_PHONE_NUMBER_ID,
+      expect.objectContaining({
+        type: "image",
+        image: { link: "https://crm.example.com/api/v1/kapso/media/foto.jpg" },
+      }),
+      { projectId: REMOTE_PHONE_NUMBER_DETAIL.projectId },
+    );
+    expect(platformApiMock.sendWhatsappMessage).toHaveBeenNthCalledWith(
+      3,
+      TEST_PHONE_NUMBER_ID,
+      expect.objectContaining({ type: "interactive" }),
+      { projectId: REMOTE_PHONE_NUMBER_DETAIL.projectId },
+    );
+    expect(repositoryMock.markLeadFlowIntroSent).toHaveBeenCalledWith({ executionId: 77 });
+  });
+
+  it("marca intro_failed si Kapso no permite enviar el mensaje normal de intro", async () => {
+    const testBed = createSyncServiceTestBed();
+    service = testBed.service;
+    const repositoryMock = testBed.adminKapsoIntegrationsRepositoryMock;
+    const platformApiMock = testBed.kapsoPlatformApiServiceMock;
+    repositoryMock.markLeadFlowAnsweredYes.mockResolvedValue(ANSWERED_YES_CONTEXT);
+    repositoryMock.listActiveFlowProjectMedia.mockResolvedValue([]);
+    platformApiMock.sendWhatsappMessage.mockRejectedValue(new Error("Kapso send failed"));
+
+    const result = await service.processInboundMessageWebhook({
+      object: "whatsapp_business_account",
+      entry: [
+        {
+          changes: [
+            {
+              value: {
+                metadata: { phone_number_id: TEST_PHONE_NUMBER_ID },
+                messages: [
+                  {
+                    from: "50687515938",
+                    id: "wamid.yes-failed-response",
+                    timestamp: "1783009762",
+                    type: "button",
+                    button: {
+                      payload: "Sí, enviar información",
+                      text: "Sí, enviar información",
+                    },
+                  },
+                ],
+              },
+            },
+          ],
+        },
+      ],
+    });
+
+    expect(result).toEqual({ processed: 1, answeredNo: 0, answeredYes: 1, introSent: 0, introFailed: 1, ignored: 0 });
+    expect(repositoryMock.markLeadFlowIntroFailed).toHaveBeenCalledWith({
+      executionId: 77,
+      failureReason: "Kapso send failed",
     });
   });
 
@@ -344,8 +569,47 @@ describe("KapsoSyncService", () => {
       ],
     });
 
-    expect(result).toEqual({ processed: 1, answeredNo: 0, ignored: 1 });
+    expect(result).toEqual({ processed: 1, answeredNo: 0, answeredYes: 0, introSent: 0, introFailed: 0, ignored: 1 });
     expect(repositoryMock.markLeadFlowAnsweredNo).not.toHaveBeenCalled();
+    expect(repositoryMock.markLeadFlowAnsweredYes).not.toHaveBeenCalled();
+  });
+
+  it("ignora texto libre aunque diga si para evitar avances ambiguos", async () => {
+    const testBed = createSyncServiceTestBed();
+    service = testBed.service;
+    const repositoryMock = testBed.adminKapsoIntegrationsRepositoryMock;
+
+    const result = await service.processInboundMessageWebhook({
+      object: "whatsapp_business_account",
+      entry: [
+        {
+          changes: [
+            {
+              value: {
+                metadata: {
+                  phone_number_id: TEST_PHONE_NUMBER_ID,
+                },
+                messages: [
+                  {
+                    from: "50687515938",
+                    id: "wamid.free-text-yes",
+                    timestamp: "1783009760",
+                    type: "text",
+                    text: {
+                      body: "Si, enviar informacion",
+                    },
+                  },
+                ],
+              },
+            },
+          ],
+        },
+      ],
+    });
+
+    expect(result).toEqual({ processed: 1, answeredNo: 0, answeredYes: 0, introSent: 0, introFailed: 0, ignored: 1 });
+    expect(repositoryMock.markLeadFlowAnsweredNo).not.toHaveBeenCalled();
+    expect(repositoryMock.markLeadFlowAnsweredYes).not.toHaveBeenCalled();
   });
 
   it("no aborta el sync parcial si la creacion de un webhook falla", async () => {

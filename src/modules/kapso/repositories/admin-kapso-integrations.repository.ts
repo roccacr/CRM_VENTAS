@@ -34,6 +34,52 @@ export type KapsoPhoneNumberOptionRecord = {
   setupSyncStatus: string | null;
 };
 
+export type KapsoProjectOptionRecord = {
+  idProyecto: number;
+  idProNetsuite: number;
+  name: string;
+  nombreProyecto: string;
+  status: number;
+};
+
+export type KapsoBusinessFlowProjectRecord = {
+  id: number;
+  idProyecto: number | null;
+  idProyectoNetsuite: number;
+  nombreProyecto: string | null;
+  projectName: string | null;
+  enabled: 0 | 1;
+};
+
+export type KapsoBusinessFlowStepRecord = {
+  id: number;
+  stepCode: string;
+  stepName: string;
+  stepType: string;
+  sortOrder: number;
+  enabled: 0 | 1;
+  templateActionCode: string | null;
+  templateName: string | null;
+  templateExternalId: string | null;
+  templateLanguage: string | null;
+  templateCategory: string | null;
+  templateStatus: string | null;
+  templatePreview: string | null;
+  parameterCount: number | null;
+};
+
+export type KapsoBusinessFlowRecord = {
+  id: number;
+  flowUuid: string;
+  flowCode: string;
+  flowName: string;
+  description: string | null;
+  status: string;
+  enabled: 0 | 1;
+  projects: KapsoBusinessFlowProjectRecord[];
+  steps: KapsoBusinessFlowStepRecord[];
+};
+
 export type AdminKapsoIntegrationRow = {
   id: number;
   idnetsuiteAdmin: number;
@@ -73,6 +119,61 @@ export type MarkLeadFlowAnsweredNoInput = {
   phoneNumberId: string;
   leadPhoneNumber: string;
   responsePayload: Record<string, unknown>;
+};
+
+export type MarkLeadFlowAnsweredYesInput = {
+  phoneNumberId: string;
+  leadPhoneNumber: string;
+  responsePayload: Record<string, unknown>;
+};
+
+export type LeadFlowAnsweredYesContext = {
+  executionId: number;
+  internalLeadId: number;
+  idnetsuiteAdmin: number | null;
+  idProyectoNetsuite: number | null;
+  leadName: string | null;
+  projectName: string | null;
+  phoneNumberId: string;
+  leadPhoneNumber: string;
+  projectExternalId: string | null;
+};
+
+export type FlowProjectMediaRecord = {
+  id: number;
+  flowUuid: string;
+  idProyectoNetsuite: number;
+  stepCode: string;
+  mediaType: "image" | "video" | "document";
+  originalName: string;
+  storedFilename: string;
+  relativePath: string;
+  publicUrl: string;
+  mimeType: string;
+  fileSize: number;
+  sortOrder: number;
+  status: 0 | 1;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type SaveFlowProjectMediaInput = {
+  flowUuid: string;
+  idProyectoNetsuite: number;
+  stepCode: string;
+  mediaType: "image" | "video" | "document";
+  originalName: string;
+  storedFilename: string;
+  relativePath: string;
+  publicUrl: string;
+  mimeType: string;
+  fileSize: number;
+  sortOrder: number;
+};
+
+export type IntroFlowExecutionUpdateInput = {
+  executionId: number;
+  failureReason?: string | null;
 };
 
 // ============================================================================
@@ -236,6 +337,389 @@ export class AdminKapsoIntegrationsRepository {
     );
 
     return (rows[0] ?? null) as KapsoPhoneNumberOptionRecord | null;
+  }
+
+  /** Lista proyectos CRM activos para asociarlos a flujos Kapso. */
+  async listProjectOptions(params: { search?: string; includeInactive?: boolean }) {
+    const where: string[] = ["project.id_ProNetsuite IS NOT NULL"];
+    const queryParams: Array<string | number> = [];
+
+    if (!params.includeInactive) {
+      where.push("project.estado_proyecto = 1");
+    }
+
+    if (params.search) {
+      where.push("(project.Nombre_proyecto LIKE ? OR CAST(project.id_ProNetsuite AS CHAR) LIKE ?)");
+      queryParams.push(`%${params.search}%`, `%${params.search}%`);
+    }
+
+    const rows = await this.dataSource.query(
+      `
+        SELECT
+          project.id_proyecto AS idProyecto,
+          project.id_ProNetsuite AS idProNetsuite,
+          project.Nombre_proyecto AS name,
+          project.Nombre_proyecto AS nombreProyecto,
+          project.estado_proyecto AS status
+        FROM proyectos project
+        WHERE ${where.join(" AND ")}
+        ORDER BY project.Nombre_proyecto ASC, project.id_ProNetsuite ASC
+      `,
+      queryParams,
+    );
+
+    return rows as KapsoProjectOptionRecord[];
+  }
+
+  /** Lista flujos de negocio con sus pasos y proyectos permitidos. */
+  async listBusinessFlows() {
+    const flowRows = (await this.dataSource.query(
+      `
+        SELECT
+          flow.id_kapso_business_flow AS id,
+          flow.flow_uuid AS flowUuid,
+          flow.flow_code AS flowCode,
+          flow.flow_name AS flowName,
+          flow.description,
+          flow.status,
+          flow.enabled
+        FROM kapso_business_flows flow
+        WHERE flow.enabled = 1
+        ORDER BY flow.flow_name ASC, flow.id_kapso_business_flow ASC
+      `,
+    )) as Array<Omit<KapsoBusinessFlowRecord, "projects" | "steps">>;
+
+    if (flowRows.length === 0) {
+      return [];
+    }
+
+    const flowUuids = flowRows.map((flow) => flow.flowUuid);
+    const placeholders = flowUuids.map(() => "?").join(", ");
+
+    const projectRows = (await this.dataSource.query(
+      `
+        SELECT
+          project.id_kapso_business_flow_project AS id,
+          project.flow_uuid AS flowUuid,
+          project.id_proyecto AS idProyecto,
+          project.id_proyecto_netsuite AS idProyectoNetsuite,
+          project.project_name AS projectName,
+          COALESCE(crm_project.Nombre_proyecto, project.project_name) AS nombreProyecto,
+          project.enabled
+        FROM kapso_business_flow_projects project
+        LEFT JOIN proyectos crm_project
+          ON crm_project.id_ProNetsuite = project.id_proyecto_netsuite
+        WHERE project.flow_uuid IN (${placeholders})
+          AND project.enabled = 1
+        ORDER BY COALESCE(crm_project.Nombre_proyecto, project.project_name) ASC
+      `,
+      flowUuids,
+    )) as Array<KapsoBusinessFlowProjectRecord & { flowUuid: string }>;
+
+    const stepRows = (await this.dataSource.query(
+      `
+        SELECT
+          step.id_kapso_business_flow_step AS id,
+          step.flow_uuid AS flowUuid,
+          step.step_code AS stepCode,
+          step.step_name AS stepName,
+          step.step_type AS stepType,
+          step.sort_order AS sortOrder,
+          step.enabled,
+          step.template_action_code AS templateActionCode,
+          template.template_name AS templateName,
+          template.template_external_id AS templateExternalId,
+          template.template_language AS templateLanguage,
+          template.template_category AS templateCategory,
+          template.template_status AS templateStatus,
+          template.template_preview AS templatePreview,
+          template.parameter_count AS parameterCount
+        FROM kapso_business_flow_steps step
+        LEFT JOIN kapso_template_catalog template
+          ON template.action_code = step.template_action_code
+        WHERE step.flow_uuid IN (${placeholders})
+          AND step.enabled = 1
+        ORDER BY step.sort_order ASC, step.id_kapso_business_flow_step ASC
+      `,
+      flowUuids,
+    )) as Array<KapsoBusinessFlowStepRecord & { flowUuid: string }>;
+
+    return flowRows.map((flow) => ({
+      ...flow,
+      projects: projectRows
+        .filter((project) => project.flowUuid === flow.flowUuid)
+        .map(({ flowUuid: _flowUuid, ...project }) => project),
+      steps: stepRows.filter((step) => step.flowUuid === flow.flowUuid).map(({ flowUuid: _flowUuid, ...step }) => step),
+    }));
+  }
+
+  /** Habilita un proyecto CRM para ejecutar un flujo de negocio Kapso. */
+  async enableBusinessFlowProject(flowUuid: string, idProyecto: number) {
+    const project = await this.findProjectByInternalOrNetSuiteId(idProyecto);
+
+    if (!project) {
+      return null;
+    }
+
+    await this.dataSource.query(
+      `
+        INSERT INTO kapso_business_flow_projects (
+          flow_uuid,
+          id_proyecto,
+          id_proyecto_netsuite,
+          project_name,
+          enabled
+        ) VALUES (?, ?, ?, ?, ?)
+        ON DUPLICATE KEY UPDATE
+          id_proyecto = VALUES(id_proyecto),
+          project_name = VALUES(project_name),
+          enabled = VALUES(enabled)
+      `,
+      [flowUuid, project.idProyecto, project.idProNetsuite, project.nombreProyecto, 1],
+    );
+
+    return this.findBusinessFlowProject(flowUuid, project.idProNetsuite);
+  }
+
+  /** Deshabilita un proyecto del flujo sin borrar auditoria/configuracion historica. */
+  async disableBusinessFlowProject(flowUuid: string, idProyecto: number) {
+    const project = await this.findProjectByInternalOrNetSuiteId(idProyecto);
+    const idProyectoNetsuite = project?.idProNetsuite ?? idProyecto;
+
+    await this.dataSource.query(
+      `
+        UPDATE kapso_business_flow_projects
+        SET enabled = 0
+        WHERE flow_uuid = ?
+          AND id_proyecto_netsuite = ?
+      `,
+      [flowUuid, idProyectoNetsuite],
+    );
+
+    return { ok: true, flowUuid, idProyecto: project?.idProyecto ?? null, idProyectoNetsuite };
+  }
+
+  private async findProjectByInternalOrNetSuiteId(idProyecto: number) {
+    const rows = await this.dataSource.query(
+      `
+        SELECT
+          project.id_proyecto AS idProyecto,
+          project.id_ProNetsuite AS idProNetsuite,
+          project.Nombre_proyecto AS nombreProyecto,
+          project.estado_proyecto AS status
+        FROM proyectos project
+        WHERE project.id_proyecto = ?
+           OR project.id_ProNetsuite = ?
+        ORDER BY CASE WHEN project.id_proyecto = ? THEN 0 ELSE 1 END
+        LIMIT 1
+      `,
+      [idProyecto, idProyecto, idProyecto],
+    );
+
+    return (rows[0] ?? null) as KapsoProjectOptionRecord | null;
+  }
+
+  async findBusinessFlowProject(flowUuid: string, idProyectoNetsuite: number) {
+    const rows = await this.dataSource.query(
+      `
+        SELECT
+          project.id_kapso_business_flow_project AS id,
+          project.id_proyecto AS idProyecto,
+          project.id_proyecto_netsuite AS idProyectoNetsuite,
+          project.project_name AS projectName,
+          COALESCE(crm_project.Nombre_proyecto, project.project_name) AS nombreProyecto,
+          project.enabled
+        FROM kapso_business_flow_projects project
+        LEFT JOIN proyectos crm_project
+          ON crm_project.id_ProNetsuite = project.id_proyecto_netsuite
+        WHERE project.flow_uuid = ?
+          AND project.id_proyecto_netsuite = ?
+        LIMIT 1
+      `,
+      [flowUuid, idProyectoNetsuite],
+    );
+
+    return (rows[0] ?? null) as KapsoBusinessFlowProjectRecord | null;
+  }
+
+  /** Lista los adjuntos configurados para un paso de un flujo en un proyecto CRM. */
+  async listFlowProjectMedia(flowUuid: string, idProyectoNetsuite: number, stepCode = "intro") {
+    const rows = await this.dataSource.query(
+      `
+        SELECT
+          media.id_kapso_flow_project_media AS id,
+          media.flow_uuid AS flowUuid,
+          media.id_proyecto_netsuite AS idProyectoNetsuite,
+          media.step_code AS stepCode,
+          media.media_type AS mediaType,
+          media.original_name AS originalName,
+          media.stored_filename AS storedFilename,
+          media.relative_path AS relativePath,
+          media.public_url AS publicUrl,
+          media.mime_type AS mimeType,
+          media.file_size AS fileSize,
+          media.sort_order AS sortOrder,
+          media.status,
+          media.created_at AS createdAt,
+          media.updated_at AS updatedAt
+        FROM kapso_flow_project_media media
+        WHERE media.flow_uuid = ?
+          AND media.id_proyecto_netsuite = ?
+          AND media.step_code = ?
+          AND media.status = 1
+        ORDER BY media.sort_order ASC, media.id_kapso_flow_project_media ASC
+      `,
+      [flowUuid, idProyectoNetsuite, stepCode],
+    );
+
+    return rows as FlowProjectMediaRecord[];
+  }
+
+  /** Lista solo adjuntos activos para envio automatico del flujo. */
+  async listActiveFlowProjectMedia(flowUuid: string, idProyectoNetsuite: number, stepCode = "intro") {
+    const rows = await this.dataSource.query(
+      `
+        SELECT
+          media.id_kapso_flow_project_media AS id,
+          media.flow_uuid AS flowUuid,
+          media.id_proyecto_netsuite AS idProyectoNetsuite,
+          media.step_code AS stepCode,
+          media.media_type AS mediaType,
+          media.original_name AS originalName,
+          media.stored_filename AS storedFilename,
+          media.relative_path AS relativePath,
+          media.public_url AS publicUrl,
+          media.mime_type AS mimeType,
+          media.file_size AS fileSize,
+          media.sort_order AS sortOrder,
+          media.status,
+          media.created_at AS createdAt,
+          media.updated_at AS updatedAt
+        FROM kapso_flow_project_media media
+        WHERE media.flow_uuid = ?
+          AND media.id_proyecto_netsuite = ?
+          AND media.step_code = ?
+          AND media.status = 1
+        ORDER BY media.sort_order ASC, media.id_kapso_flow_project_media ASC
+      `,
+      [flowUuid, idProyectoNetsuite, stepCode],
+    );
+
+    return rows as FlowProjectMediaRecord[];
+  }
+
+  /** Guarda metadata de un adjunto subido desde el CRM. */
+  async createFlowProjectMedia(input: SaveFlowProjectMediaInput) {
+    const result = await this.dataSource.query(
+      `
+        INSERT INTO kapso_flow_project_media (
+          flow_uuid,
+          id_proyecto_netsuite,
+          step_code,
+          media_type,
+          original_name,
+          stored_filename,
+          relative_path,
+          public_url,
+          mime_type,
+          file_size,
+          sort_order,
+          status
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `,
+      [
+        input.flowUuid,
+        input.idProyectoNetsuite,
+        input.stepCode,
+        input.mediaType,
+        input.originalName,
+        input.storedFilename,
+        input.relativePath,
+        input.publicUrl,
+        input.mimeType,
+        input.fileSize,
+        input.sortOrder,
+        1,
+      ],
+    );
+
+    const insertId = Number(result?.insertId ?? 0);
+    return this.findFlowProjectMediaById(insertId);
+  }
+
+  /** Busca un adjunto por PK para servirlo o devolverlo al frontend. */
+  async findFlowProjectMediaById(id: number) {
+    const rows = await this.dataSource.query(
+      `
+        SELECT
+          media.id_kapso_flow_project_media AS id,
+          media.flow_uuid AS flowUuid,
+          media.id_proyecto_netsuite AS idProyectoNetsuite,
+          media.step_code AS stepCode,
+          media.media_type AS mediaType,
+          media.original_name AS originalName,
+          media.stored_filename AS storedFilename,
+          media.relative_path AS relativePath,
+          media.public_url AS publicUrl,
+          media.mime_type AS mimeType,
+          media.file_size AS fileSize,
+          media.sort_order AS sortOrder,
+          media.status,
+          media.created_at AS createdAt,
+          media.updated_at AS updatedAt
+        FROM kapso_flow_project_media media
+        WHERE media.id_kapso_flow_project_media = ?
+        LIMIT 1
+      `,
+      [id],
+    );
+
+    return (rows[0] ?? null) as FlowProjectMediaRecord | null;
+  }
+
+  /** Busca un adjunto por nombre fisico para servir archivos sin exponer rutas internas. */
+  async findFlowProjectMediaByStoredFilename(storedFilename: string) {
+    const rows = await this.dataSource.query(
+      `
+        SELECT
+          media.id_kapso_flow_project_media AS id,
+          media.flow_uuid AS flowUuid,
+          media.id_proyecto_netsuite AS idProyectoNetsuite,
+          media.step_code AS stepCode,
+          media.media_type AS mediaType,
+          media.original_name AS originalName,
+          media.stored_filename AS storedFilename,
+          media.relative_path AS relativePath,
+          media.public_url AS publicUrl,
+          media.mime_type AS mimeType,
+          media.file_size AS fileSize,
+          media.sort_order AS sortOrder,
+          media.status,
+          media.created_at AS createdAt,
+          media.updated_at AS updatedAt
+        FROM kapso_flow_project_media media
+        WHERE media.stored_filename = ?
+          AND media.status = 1
+        LIMIT 1
+      `,
+      [storedFilename],
+    );
+
+    return (rows[0] ?? null) as FlowProjectMediaRecord | null;
+  }
+
+  /** Desactiva un adjunto sin borrar el archivo fisico ni perder auditoria. */
+  async deactivateFlowProjectMedia(id: number) {
+    await this.dataSource.query(
+      `
+        UPDATE kapso_flow_project_media
+        SET status = 0
+        WHERE id_kapso_flow_project_media = ?
+      `,
+      [id],
+    );
+
+    return this.findFlowProjectMediaById(id);
   }
 
   // --------------------------------------------------------------------------
@@ -698,6 +1182,129 @@ export class AdminKapsoIntegrationsRepository {
 
       return true;
     });
+  }
+
+  /**
+   * Avanza de forma atomica el flujo cuando el cliente acepta recibir informacion.
+   * No completa el flujo: queda listo para que el siguiente template se configure y envie.
+   */
+  async markLeadFlowAnsweredYes(input: MarkLeadFlowAnsweredYesInput) {
+    return this.dataSource.transaction(async (manager) => {
+      const rows = await manager.query(
+        `
+          SELECT
+            execution.id_kapso_lead_flow_execution AS executionId,
+            execution.idinterno_lead AS internalLeadId,
+            execution.idnetsuite_admin AS idnetsuiteAdmin,
+            execution.id_proyecto_netsuite AS idProyectoNetsuite,
+            execution.phone_number_id AS phoneNumberId,
+            execution.lead_phone_number AS leadPhoneNumber,
+            lead.nombre_lead AS leadName,
+            lead.proyecto_lead AS projectName,
+            phone.project_external_id AS projectExternalId
+          FROM kapso_lead_flow_executions execution
+          LEFT JOIN leads lead
+            ON lead.idinterno_lead = execution.idinterno_lead
+          LEFT JOIN kapso_phone_numbers phone
+            ON phone.phone_number_id = execution.phone_number_id
+          WHERE execution.phone_number_id = ?
+            AND execution.lead_phone_number = ?
+            AND execution.execution_status = ?
+          ORDER BY execution.initial_template_sent_at DESC, execution.created_at DESC
+          LIMIT 1
+          FOR UPDATE
+        `,
+        [input.phoneNumberId, input.leadPhoneNumber, "initial_template_sent"],
+      );
+
+      const execution = rows[0] as LeadFlowAnsweredYesContext | undefined;
+
+      if (!execution) {
+        return null;
+      }
+
+      await manager.query(
+        `
+          UPDATE kapso_lead_flow_executions
+          SET
+            execution_status = ?,
+            last_response_json = ?,
+            last_response_at = CURRENT_TIMESTAMP,
+            completed_at = NULL,
+            failure_reason = NULL
+          WHERE id_kapso_lead_flow_execution = ?
+        `,
+        ["answered_yes", JSON.stringify(input.responsePayload), execution.executionId],
+      );
+
+      await manager.query(
+        `
+          UPDATE leads
+          SET
+            segimineto_lead = ?,
+            accion_lead = ?,
+            actualizadaaccion_lead = DATE_FORMAT(NOW(), '%Y-%m-%d %H:%i:%s'),
+            whatsapp_template_contact_sent = ?
+          WHERE idinterno_lead = ?
+        `,
+        ["08-LEAD-SEGUIMIENTO", 6, 0, execution.internalLeadId],
+      );
+
+      await manager.query(
+        `
+          INSERT INTO bitacoras (
+            id_lead_bit,
+            id_admin_bit,
+            id_caida_bit,
+            detalle_bit,
+            tipo_documento_bit,
+            estado_bit,
+            estado_lead,
+            fech_seg_bit
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        `,
+        [
+          execution.internalLeadId,
+          execution.idnetsuiteAdmin ?? 0,
+          69,
+          "Cliente acepto recibir informacion por WhatsApp.",
+          "Kapso",
+          "Acepto informacion WhatsApp",
+          1,
+          "",
+        ],
+      );
+
+      return execution;
+    });
+  }
+
+  /** Marca que la intro normal posterior al "Si" se envio correctamente. */
+  async markLeadFlowIntroSent(input: IntroFlowExecutionUpdateInput) {
+    await this.dataSource.query(
+      `
+        UPDATE kapso_lead_flow_executions
+        SET
+          execution_status = ?,
+          failure_reason = NULL
+        WHERE id_kapso_lead_flow_execution = ?
+      `,
+      ["intro_sent", input.executionId],
+    );
+  }
+
+  /** Marca que la intro normal no pudo enviarse, sin reabrir el saludo inicial. */
+  async markLeadFlowIntroFailed(input: IntroFlowExecutionUpdateInput) {
+    await this.dataSource.query(
+      `
+        UPDATE kapso_lead_flow_executions
+        SET
+          execution_status = ?,
+          failure_reason = ?
+        WHERE id_kapso_lead_flow_execution = ?
+      `,
+      ["intro_failed", input.failureReason ?? "Intro message failed", input.executionId],
+    );
   }
 
   // --------------------------------------------------------------------------

@@ -62,6 +62,7 @@ describe("KapsoWebhooksController (e2e)", () => {
     syncServiceMock.processInboundMessageWebhook.mockResolvedValue({
       processed: 0,
       answeredNo: 0,
+      answeredYes: 0,
       ignored: 0,
     });
   });
@@ -192,6 +193,7 @@ describe("KapsoWebhooksController (e2e)", () => {
     syncServiceMock.processInboundMessageWebhook.mockResolvedValue({
       processed: 1,
       answeredNo: 1,
+      answeredYes: 0,
       ignored: 0,
     });
 
@@ -208,6 +210,43 @@ describe("KapsoWebhooksController (e2e)", () => {
             type: "button",
             button: {
               text: "No, gracias",
+            },
+          },
+        ],
+      })
+      .expect(200)
+      .expect({ ok: true });
+
+    expect(syncServiceMock.processInboundMessageWebhook).toHaveBeenCalledWith(
+      expect.objectContaining({
+        phone_number_id: "1197677976762773",
+      }),
+    );
+  });
+
+  it("procesa respuestas afirmativas entrantes desde webhook Kapso sin cambiar la respuesta publica", async () => {
+    repositoryMock.findProcessedWebhookDuplicate.mockResolvedValue(null);
+    signatureServiceMock.verifySignature.mockReturnValue(true);
+    syncServiceMock.processInboundMessageWebhook.mockResolvedValue({
+      processed: 1,
+      answeredNo: 0,
+      answeredYes: 1,
+      ignored: 0,
+    });
+
+    await request(app.getHttpServer())
+      .post("/api/v1/webhooks/kapso/events")
+      .set("x-idempotency-key", "kapso-yes-001")
+      .set("x-webhook-signature", "valid-signature")
+      .set("x-webhook-event", "whatsapp.message.received")
+      .send({
+        phone_number_id: "1197677976762773",
+        messages: [
+          {
+            from: "50687515938",
+            type: "button",
+            button: {
+              text: "Sí, enviar información",
             },
           },
         ],

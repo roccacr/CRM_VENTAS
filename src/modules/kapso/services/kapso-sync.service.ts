@@ -30,7 +30,11 @@ import {
 // Dependencias principales del modulo para leer Kapso y persistir el estado local.
 import { KapsoPlatformApiService } from "./kapso-platform-api.service";
 import { KapsoRepository } from "../repositories/kapso.repository";
-import { AdminKapsoIntegrationsRepository } from "../repositories/admin-kapso-integrations.repository";
+import {
+  AdminKapsoIntegrationsRepository,
+  FlowProjectMediaRecord,
+  LeadFlowAnsweredYesContext,
+} from "../repositories/admin-kapso-integrations.repository";
 
 // ============================================================================
 // CONSTANTES DEL WORKER
@@ -47,6 +51,9 @@ const DEFAULT_LEAD_TEMPLATE_INTERVAL_MS = 60_000;
 
 /** Tamano de lote por defecto del diagnostico de leads nuevos. */
 const DEFAULT_LEAD_TEMPLATE_BATCH_SIZE = 100;
+
+/** Flujo operativo actual definido para saludo inicial y seguimiento de leads. */
+const LEAD_INITIAL_CONTACT_FLOW_UUID = "94d5c3b8-4b43-4c28-8c76-3d9eaf70ad01";
 
 // ============================================================================
 // TIPOS LOCALES
@@ -65,6 +72,9 @@ type InboundMessageCandidate = {
 type InboundWebhookProcessingSummary = {
   processed: number;
   answeredNo: number;
+  answeredYes: number;
+  introSent: number;
+  introFailed: number;
   ignored: number;
 };
 
@@ -250,45 +260,79 @@ export class KapsoSyncService implements OnModuleInit, OnModuleDestroy {
 
   /**
    * Procesa respuestas entrantes de WhatsApp reenviadas por Kapso o Meta.
-   * Por seguridad de negocio, solo una respuesta de boton exactamente `No, gracias`
-   * cierra el flujo y mueve el lead a perdido; texto libre queda fuera por ahora.
+   * Por seguridad de negocio, solo respuestas de botones aprobados cambian el flujo;
+   * texto libre queda fuera por ahora para evitar falsos avances o falsos perdidos.
    */
   async processInboundMessageWebhook(payload: JsonRecord): Promise<InboundWebhookProcessingSummary> {
     const messages = this.extractInboundMessageCandidates(payload);
-    const summary: InboundWebhookProcessingSummary = { processed: messages.length, answeredNo: 0, ignored: 0 };
+    const summary: InboundWebhookProcessingSummary = {
+      processed: messages.length,
+      answeredNo: 0,
+      answeredYes: 0,
+      introSent: 0,
+      introFailed: 0,
+      ignored: 0,
+    };
 
     for (const message of messages) {
-      if (!this.isExplicitNoThanksButtonReply(message) || !message.phoneNumberId || !message.leadPhoneNumber) {
+      if (!message.phoneNumberId || !message.leadPhoneNumber) {
         summary.ignored += 1;
         continue;
       }
 
-      const updated = await this.adminKapsoIntegrationsRepository.markLeadFlowAnsweredNo({
-        phoneNumberId: message.phoneNumberId,
-        leadPhoneNumber: message.leadPhoneNumber,
-        responsePayload: {
-          messageId: message.messageId,
-          timestamp: message.timestamp,
-          replyText: message.replyText,
-          replySource: message.replySource,
+      if (this.isExplicitNoThanksButtonReply(message)) {
+        const updated = await this.adminKapsoIntegrationsRepository.markLeadFlowAnsweredNo({
           phoneNumberId: message.phoneNumberId,
           leadPhoneNumber: message.leadPhoneNumber,
-          rawMessage: message.message,
-        },
-      });
+          responsePayload: this.buildInboundResponsePayload(message),
+        });
 
-      if (updated) {
-        summary.answeredNo += 1;
-        this.logger.log(
-          `Lead flow answered_no registered phoneNumberId=${message.phoneNumberId} leadPhoneNumber=${message.leadPhoneNumber}`,
+        if (updated) {
+          summary.answeredNo += 1;
+          this.logger.log(
+            `Lead flow answered_no registered phoneNumberId=${message.phoneNumberId} leadPhoneNumber=${message.leadPhoneNumber}`,
+          );
+          continue;
+        }
+
+        summary.ignored += 1;
+        this.logger.warn(
+          `No active lead flow found for No response phoneNumberId=${message.phoneNumberId} leadPhoneNumber=${message.leadPhoneNumber}`,
+        );
+        continue;
+      }
+
+      if (this.isExplicitYesSendInformationButtonReply(message)) {
+        const executionContext = await this.adminKapsoIntegrationsRepository.markLeadFlowAnsweredYes({
+          phoneNumberId: message.phoneNumberId,
+          leadPhoneNumber: message.leadPhoneNumber,
+          responsePayload: this.buildInboundResponsePayload(message),
+        });
+
+        if (executionContext) {
+          summary.answeredYes += 1;
+          const introWasSent = await this.sendIntroMessageForAcceptedLead(executionContext);
+
+          if (introWasSent) {
+            summary.introSent += 1;
+          } else {
+            summary.introFailed += 1;
+          }
+
+          this.logger.log(
+            `Lead flow answered_yes registered phoneNumberId=${message.phoneNumberId} leadPhoneNumber=${message.leadPhoneNumber}`,
+          );
+          continue;
+        }
+
+        summary.ignored += 1;
+        this.logger.warn(
+          `No active lead flow found for Yes response phoneNumberId=${message.phoneNumberId} leadPhoneNumber=${message.leadPhoneNumber}`,
         );
         continue;
       }
 
       summary.ignored += 1;
-      this.logger.warn(
-        `No active lead flow found for No response phoneNumberId=${message.phoneNumberId} leadPhoneNumber=${message.leadPhoneNumber}`,
-      );
     }
 
     if (summary.processed > 0) {
@@ -546,6 +590,19 @@ export class KapsoSyncService implements OnModuleInit, OnModuleDestroy {
     };
   }
 
+  /** Arma el snapshot de respuesta para auditoria y diagnostico del flujo. */
+  private buildInboundResponsePayload(message: InboundMessageCandidate) {
+    return {
+      messageId: message.messageId,
+      timestamp: message.timestamp,
+      replyText: message.replyText,
+      replySource: message.replySource,
+      phoneNumberId: message.phoneNumberId,
+      leadPhoneNumber: message.leadPhoneNumber,
+      rawMessage: message.message,
+    };
+  }
+
   /** Regla terminal actual: solo el boton literal `No, gracias` detiene el flujo. */
   private isExplicitNoThanksButtonReply(message: InboundMessageCandidate): boolean {
     if (message.replySource === "unsupported") {
@@ -553,6 +610,15 @@ export class KapsoSyncService implements OnModuleInit, OnModuleDestroy {
     }
 
     return this.normalizeReplyText(message.replyText) === "no gracias";
+  }
+
+  /** Regla de avance: solo el boton literal `Si, enviar informacion` habilita el siguiente paso. */
+  private isExplicitYesSendInformationButtonReply(message: InboundMessageCandidate): boolean {
+    if (message.replySource === "unsupported") {
+      return false;
+    }
+
+    return this.normalizeReplyText(message.replyText) === "si enviar informacion";
   }
 
   /** Normaliza acentos y puntuacion para comparar textos de botones aprobados. */
@@ -563,6 +629,121 @@ export class KapsoSyncService implements OnModuleInit, OnModuleDestroy {
       .replace(/[^\p{L}\p{N}]+/gu, " ")
       .trim()
       .toLowerCase();
+  }
+
+  // --------------------------------------------------------------------------
+  // INTRO NORMAL POST-ACEPTACION
+  // --------------------------------------------------------------------------
+
+  /**
+   * Envia la intro como mensaje normal porque el cliente ya abrio ventana de 24h.
+   * Los adjuntos son opcionales y dependen del proyecto permitido para el flujo.
+   */
+  private async sendIntroMessageForAcceptedLead(context: LeadFlowAnsweredYesContext): Promise<boolean> {
+    if (!context.idProyectoNetsuite) {
+      await this.markIntroFailed(context.executionId, "El flujo no tiene proyecto CRM asociado para resolver adjuntos.");
+      return false;
+    }
+
+    try {
+      const mediaItems = await this.adminKapsoIntegrationsRepository.listActiveFlowProjectMedia(
+        LEAD_INITIAL_CONTACT_FLOW_UUID,
+        context.idProyectoNetsuite,
+        "intro",
+      );
+      const apiOptions = this.toApiOptions({ projectId: context.projectExternalId });
+
+      for (const mediaItem of mediaItems) {
+        await this.kapsoPlatformApiService.sendWhatsappMessage(
+          context.phoneNumberId,
+          this.buildIntroMediaPayload(context, mediaItem),
+          apiOptions,
+        );
+      }
+
+      await this.kapsoPlatformApiService.sendWhatsappMessage(
+        context.phoneNumberId,
+        this.buildIntroInteractivePayload(context, mediaItems),
+        apiOptions,
+      );
+      await this.adminKapsoIntegrationsRepository.markLeadFlowIntroSent({
+        executionId: context.executionId,
+      });
+
+      this.logger.log(
+        `Intro message sent executionId=${context.executionId} phoneNumberId=${context.phoneNumberId} leadPhoneNumber=${context.leadPhoneNumber} mediaCount=${mediaItems.length}`,
+      );
+      return true;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown intro send error";
+      await this.markIntroFailed(context.executionId, message);
+      this.logger.error(`Intro message failed executionId=${context.executionId} reason=${message}`);
+      return false;
+    }
+  }
+
+  /** Payload de imagen/video/documento para el relay Meta de Kapso. */
+  private buildIntroMediaPayload(context: LeadFlowAnsweredYesContext, media: FlowProjectMediaRecord): JsonRecord {
+    const basePayload = {
+      messaging_product: "whatsapp",
+      recipient_type: "individual",
+      to: context.leadPhoneNumber,
+      type: media.mediaType,
+    };
+
+    if (media.mediaType === "document") {
+      return {
+        ...basePayload,
+        document: {
+          link: media.publicUrl,
+          filename: media.originalName,
+        },
+      };
+    }
+
+    return {
+      ...basePayload,
+      [media.mediaType]: {
+        link: media.publicUrl,
+      },
+    };
+  }
+
+  /** Payload interactivo de intro: conserva el texto del PDF y agrega botones para reducir ambiguedad. */
+  private buildIntroInteractivePayload(context: LeadFlowAnsweredYesContext, mediaItems: FlowProjectMediaRecord[]): JsonRecord {
+    const leadName = context.leadName?.trim() || "cliente";
+    const projectName = context.projectName?.trim() || "este proyecto";
+    const introText =
+      mediaItems.length > 0
+        ? `Perfecto ${leadName}, te comparto un video introductorio de ${projectName} y algunas fotos.\n\n¿Podrias contarme un poco sobre lo que estas buscando?`
+        : `Perfecto ${leadName}, te comparto informacion introductoria de ${projectName}.\n\n¿Podrias contarme un poco sobre lo que estas buscando?`;
+
+    return {
+      messaging_product: "whatsapp",
+      recipient_type: "individual",
+      to: context.leadPhoneNumber,
+      type: "interactive",
+      interactive: {
+        type: "button",
+        body: {
+          text: introText,
+        },
+        action: {
+          buttons: [
+            { type: "reply", reply: { id: "intro_ver_precios", title: "Ver precios" } },
+            { type: "reply", reply: { id: "intro_agendar", title: "Agendar visita" } },
+            { type: "reply", reply: { id: "intro_asesor", title: "Hablar con asesor" } },
+          ],
+        },
+      },
+    };
+  }
+
+  private async markIntroFailed(executionId: number, failureReason: string) {
+    await this.adminKapsoIntegrationsRepository.markLeadFlowIntroFailed({
+      executionId,
+      failureReason,
+    });
   }
 
   // --------------------------------------------------------------------------

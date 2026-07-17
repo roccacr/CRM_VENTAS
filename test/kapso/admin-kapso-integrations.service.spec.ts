@@ -3,6 +3,10 @@
 // ============================================================================
 
 import { BadRequestException, ConflictException, NotFoundException } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "fs/promises";
+import { tmpdir } from "os";
+import { join } from "path";
 
 import { AdminKapsoIntegrationsService } from "../../src/modules/kapso/services/admin-kapso-integrations.service";
 
@@ -49,6 +53,16 @@ function createServiceTestBed() {
   const repositoryMock = {
     listAdminOptions: jest.fn(),
     listKapsoPhoneNumberOptions: jest.fn(),
+    listProjectOptions: jest.fn(),
+    listBusinessFlows: jest.fn(),
+    enableBusinessFlowProject: jest.fn(),
+    disableBusinessFlowProject: jest.fn(),
+    findBusinessFlowProject: jest.fn(),
+    listFlowProjectMedia: jest.fn(),
+    createFlowProjectMedia: jest.fn(),
+    findFlowProjectMediaById: jest.fn(),
+    findFlowProjectMediaByStoredFilename: jest.fn(),
+    deactivateFlowProjectMedia: jest.fn(),
     findAdminOptionByNetSuiteId: jest.fn(),
     findKapsoPhoneNumberOptionById: jest.fn(),
     findDuplicateRelation: jest.fn(),
@@ -62,7 +76,32 @@ function createServiceTestBed() {
     listActiveIntegrationsByAdmin: jest.fn(),
   };
 
-  const service = new AdminKapsoIntegrationsService(repositoryMock as never);
+  const configServiceMock = {
+    get: jest.fn((key: string) => {
+      if (key === "kapso.mediaStoragePath") {
+        return undefined;
+      }
+
+      if (key === "kapso.mediaMaxFileSizeBytes") {
+        return 50 * 1024 * 1024;
+      }
+
+      return undefined;
+    }),
+    getOrThrow: jest.fn((key: string) => {
+      if (key === "kapso.publicBaseUrl") {
+        return "https://crm.example.com";
+      }
+
+      if (key === "app.apiPrefix") {
+        return "api/v1";
+      }
+
+      throw new Error(`Unexpected config key ${key}`);
+    }),
+  };
+
+  const service = new AdminKapsoIntegrationsService(repositoryMock as never, configServiceMock as unknown as ConfigService);
 
   return {
     service,
@@ -255,5 +294,221 @@ describe("AdminKapsoIntegrationsService", () => {
       },
     ]);
     expect(repositoryMock.listActiveIntegrationsByAdmin).toHaveBeenCalledWith(ACTIVE_ADMIN.idnetsuiteAdmin);
+  });
+
+  it("lista flujos de negocio configurables", async () => {
+    repositoryMock.listBusinessFlows.mockResolvedValue([
+      {
+        flowUuid: "flow-uuid",
+        flowName: "Saludo inicial y seguimiento de leads",
+        projects: [],
+        steps: [],
+      },
+    ]);
+
+    const result = await service.listBusinessFlows();
+
+    expect(result).toEqual([
+      {
+        flowUuid: "flow-uuid",
+        flowName: "Saludo inicial y seguimiento de leads",
+        projects: [],
+        steps: [],
+      },
+    ]);
+  });
+
+  it("habilita un proyecto para un flujo de negocio", async () => {
+    repositoryMock.enableBusinessFlowProject.mockResolvedValue({
+      idProyecto: 38,
+      idProyectoNetsuite: 38,
+      nombreProyecto: "Andira",
+      enabled: 1,
+    });
+
+    const result = await service.enableBusinessFlowProject("flow-uuid", 38);
+
+    expect(result).toEqual({
+      idProyecto: 38,
+      idProyectoNetsuite: 38,
+      nombreProyecto: "Andira",
+      enabled: 1,
+    });
+    expect(repositoryMock.enableBusinessFlowProject).toHaveBeenCalledWith("flow-uuid", 38);
+  });
+
+  it("rechaza habilitar un proyecto inexistente para un flujo de negocio", async () => {
+    repositoryMock.enableBusinessFlowProject.mockResolvedValue(null);
+
+    await expect(service.enableBusinessFlowProject("flow-uuid", 999999)).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  it("deshabilita un proyecto de un flujo de negocio", async () => {
+    repositoryMock.disableBusinessFlowProject.mockResolvedValue({
+      ok: true,
+      flowUuid: "flow-uuid",
+      idProyecto: 38,
+      idProyectoNetsuite: 38,
+    });
+
+    const result = await service.disableBusinessFlowProject("flow-uuid", 38);
+
+    expect(result).toEqual({
+      ok: true,
+      flowUuid: "flow-uuid",
+      idProyecto: 38,
+      idProyectoNetsuite: 38,
+    });
+    expect(repositoryMock.disableBusinessFlowProject).toHaveBeenCalledWith("flow-uuid", 38);
+  });
+
+  it("sube adjuntos dentro de la carpeta del flujo y proyecto habilitado", async () => {
+    const storagePath = await mkdtemp(join(tmpdir(), "kapso-media-"));
+
+    repositoryMock.findBusinessFlowProject.mockResolvedValue({
+      idProyectoNetsuite: 38,
+      nombreProyecto: "Andira",
+      projectName: "Andira",
+      enabled: 1,
+    });
+    repositoryMock.createFlowProjectMedia.mockImplementation(async (input) => ({
+      id: 7,
+      ...input,
+      status: 1,
+    }));
+
+    jest.spyOn(service["configService"], "get").mockImplementation((key: string) => {
+      if (key === "kapso.mediaStoragePath") {
+        return storagePath;
+      }
+
+      if (key === "kapso.mediaMaxFileSizeBytes") {
+        return 50 * 1024 * 1024;
+      }
+
+      return undefined;
+    });
+
+    try {
+      const result = await service.uploadFlowProjectMedia(
+        "flow-uuid",
+        38,
+        {
+          originalname: "foto-andira.jpg",
+          mimetype: "image/jpeg",
+          size: 10,
+          buffer: Buffer.from("fake image"),
+        },
+        { stepCode: "intro" },
+      );
+
+      expect(result).not.toBeNull();
+      const media = result!;
+
+      expect(media.relativePath).toMatch(/^flow-uuid\/proyectos\/38-andira\/[a-f0-9-]+\.jpg$/);
+      await expect(readFile(join(storagePath, media.relativePath))).resolves.toEqual(Buffer.from("fake image"));
+      expect(repositoryMock.createFlowProjectMedia).toHaveBeenCalledWith(
+        expect.objectContaining({
+          flowUuid: "flow-uuid",
+          idProyectoNetsuite: 38,
+          stepCode: "intro",
+          mediaType: "image",
+          originalName: "foto-andira.jpg",
+          relativePath: media.relativePath,
+        }),
+      );
+    } finally {
+      await rm(storagePath, {
+        recursive: true,
+        force: true,
+      });
+    }
+  });
+
+  it("oculta y desactiva adjuntos activos cuando el archivo fisico ya no existe", async () => {
+    const storagePath = await mkdtemp(join(tmpdir(), "kapso-media-"));
+    const existingRelativePath = "flow-uuid/proyectos/38-andira/existing.jpg";
+    const missingRelativePath = "flow-uuid/proyectos/38-andira/missing.jpg";
+
+    await mkdir(join(storagePath, "flow-uuid", "proyectos", "38-andira"), { recursive: true });
+    await writeFile(join(storagePath, existingRelativePath), Buffer.from("ok"));
+
+    repositoryMock.listFlowProjectMedia.mockResolvedValue([
+      {
+        id: 1,
+        relativePath: existingRelativePath,
+      },
+      {
+        id: 2,
+        relativePath: missingRelativePath,
+      },
+    ]);
+
+    jest.spyOn(service["configService"], "get").mockImplementation((key: string) => {
+      if (key === "kapso.mediaStoragePath") {
+        return storagePath;
+      }
+
+      return undefined;
+    });
+
+    try {
+      const result = await service.listFlowProjectMedia("flow-uuid", 38, "intro");
+
+      expect(result).toEqual([
+        {
+          id: 1,
+          relativePath: existingRelativePath,
+        },
+      ]);
+      expect(repositoryMock.deactivateFlowProjectMedia).toHaveBeenCalledWith(2);
+    } finally {
+      await rm(storagePath, {
+        recursive: true,
+        force: true,
+      });
+    }
+  });
+
+  it("desactiva metadata cuando el archivo fisico del adjunto no existe al servirlo", async () => {
+    const storagePath = await mkdtemp(join(tmpdir(), "kapso-media-"));
+
+    repositoryMock.findFlowProjectMediaByStoredFilename.mockResolvedValue({
+      id: 9,
+      relativePath: "flow-uuid/proyectos/38-andira/missing.jpg",
+      mimeType: "image/jpeg",
+      originalName: "missing.jpg",
+    });
+
+    jest.spyOn(service["configService"], "get").mockImplementation((key: string) => {
+      if (key === "kapso.mediaStoragePath") {
+        return storagePath;
+      }
+
+      return undefined;
+    });
+
+    try {
+      await expect(service.getMediaFileByStoredFilename("missing.jpg")).rejects.toBeInstanceOf(NotFoundException);
+      expect(repositoryMock.deactivateFlowProjectMedia).toHaveBeenCalledWith(9);
+    } finally {
+      await rm(storagePath, {
+        recursive: true,
+        force: true,
+      });
+    }
+  });
+
+  it("rechaza adjuntos para proyectos no habilitados en el flujo", async () => {
+    repositoryMock.findBusinessFlowProject.mockResolvedValue(null);
+
+    await expect(
+      service.uploadFlowProjectMedia("flow-uuid", 38, {
+        originalname: "foto.jpg",
+        mimetype: "image/jpeg",
+        size: 10,
+        buffer: Buffer.from("fake image"),
+      }),
+    ).rejects.toBeInstanceOf(NotFoundException);
   });
 });

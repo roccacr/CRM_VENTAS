@@ -82,6 +82,9 @@ export class KapsoPlatformApiService {
   // URL base de la API de Kapso, leída una sola vez en el constructor.
   private readonly apiBaseUrl: string;
 
+  // URL base del relay Meta/WhatsApp de Kapso para mensajes normales.
+  private readonly metaApiBaseUrl: string;
+
   // API key global/default, usada cuando no hay override ni key específica de proyecto.
   private readonly defaultApiKey: string;
 
@@ -97,6 +100,7 @@ export class KapsoPlatformApiService {
     // getOrThrow: lee la config y lanza error en boot si la variable no existe
     // (falla rápido al arrancar la app, no en medio de una request de usuario).
     this.apiBaseUrl = this.configService.getOrThrow<string>("kapso.apiBaseUrl");
+    this.metaApiBaseUrl = this.configService.getOrThrow<string>("kapso.metaApiBaseUrl");
     this.defaultApiKey = this.configService.getOrThrow<string>("kapso.apiKey");
     // get (sin Throw) + "?? {}": esta config es opcional, si no existe usamos objeto vacío.
     this.projectApiKeys = this.configService.get<Record<string, string>>("kapso.projectApiKeys") ?? {};
@@ -228,6 +232,14 @@ export class KapsoPlatformApiService {
   }
 
   /**
+   * Envia un mensaje normal de WhatsApp usando el relay Meta de Kapso.
+   * Se usa solo cuando el cliente ya abrió ventana de conversación al responder.
+   */
+  sendWhatsappMessage(phoneNumberId: string, payload: JsonRecord, options?: KapsoApiRequestOptions): Promise<JsonRecord> {
+    return this.request<JsonRecord>(`/${phoneNumberId}/messages`, "post", payload, options, this.metaApiBaseUrl);
+  }
+
+  /**
    * Lógica real y compartida de creación de webhooks de número.
    * "kapso" y "meta" solo difieren en el payload (ver buildPhoneNumberWebhookPayload),
    * por eso no hay dos métodos separados con el 90% del código duplicado.
@@ -311,6 +323,7 @@ export class KapsoPlatformApiService {
     method: Method = "get", // método HTTP, default GET.
     data?: JsonRecord, // body de la request (solo aplica a POST).
     options?: KapsoApiRequestOptions, // override de API key / projectId.
+    baseUrlOverride?: string, // permite reutilizar el wrapper para Platform y Meta relay.
   ): Promise<T> {
     try {
       // firstValueFrom espera el primer (y único) valor emitido por el Observable
@@ -320,7 +333,7 @@ export class KapsoPlatformApiService {
           url,
           method,
           data,
-          baseURL: this.apiBaseUrl, // se pasa por request, no hace falta instancia propia.
+          baseURL: baseUrlOverride ?? this.apiBaseUrl, // se pasa por request, no hace falta instancia propia.
           timeout: KAPSO_HTTP_TIMEOUT_MS,
           headers: {
             // Header propietario que exige la API de Kapso para autenticar.
