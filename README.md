@@ -18,6 +18,8 @@ API NestJS para conectar CRM Ventas con Kapso, sincronizar numeros de WhatsApp, 
 12. [Checklist Operativo](#checklist-operativo)
 13. [Pendientes](#pendientes)
 
+
+
 ## Objetivo del Sistema
 
 El sistema automatiza el primer contacto por WhatsApp para leads nuevos del CRM usando templates aprobados en Kapso/Meta.
@@ -32,7 +34,11 @@ La idea central es:
 - procesar respuestas del cliente;
 - registrar bitacoras CRM cuando el flujo no puede continuar o cuando el cliente responde negativamente.
 
+
+
 ## Estado Actual
+
+
 
 ### Listo
 
@@ -55,18 +61,25 @@ La idea central es:
 - Insercion de bitacora CRM para respuesta negativa.
 - Validacion de telefono para evitar envios repetidos sobre numeros invalidos.
 
+
+
 ### En Proceso
 
 - Envio real del siguiente template cuando el cliente responde `Si, enviar informacion`.
 - Definicion de los siguientes templates del flujo segun el documento funcional.
 - Regla final para detener el flujo por intervencion manual del asesor.
 
+
+
 ### No Implementado Todavia
 
 - Vista detallada de trazabilidad por lead. Por ahora la trazabilidad queda en `bitacoras` y en `kapso_lead_flow_executions`.
 - Automatizacion completa de todos los templates posteriores al saludo inicial.
 
+
+
 ## Tecnologia
+
 
 | Tecnologia         | Uso                                     |
 | ------------------ | --------------------------------------- |
@@ -79,6 +92,9 @@ La idea central es:
 | Jest               | Pruebas unitarias y e2e                 |
 | libphonenumber-js  | Validacion y normalizacion de telefonos |
 | BullMQ             | Base instalada para procesos asincronos |
+
+
+
 
 ## Como Correr
 
@@ -94,6 +110,8 @@ La API queda disponible en:
 http://localhost:8002/api/v1
 ```
 
+
+
 ### Comandos de Verificacion
 
 ```bash
@@ -105,7 +123,10 @@ npm run test:e2e
 npm run build
 ```
 
+
+
 ## Variables de Entorno
+
 
 | Variable                          | Uso                                                         |
 | --------------------------------- | ----------------------------------------------------------- |
@@ -120,6 +141,9 @@ npm run build
 | `KAPSO_PENDING_SYNC_INTERVAL_MS`  | Intervalo del worker de sincronizacion de numeros.          |
 | `KAPSO_LEAD_TEMPLATE_INTERVAL_MS` | Intervalo del worker de leads candidatos.                   |
 | `MYSQL_*`                         | Credenciales y conexion hacia MySQL CRM Ventas.             |
+
+
+
 
 ## Arquitectura General
 
@@ -138,7 +162,12 @@ flowchart TD
   DB --> CORE["leads / admins / proyectos / bitacoras"]
 ```
 
+
+
+
+
 ### Responsabilidades por Capa
+
 
 | Capa         | Responsabilidad                                                          |
 | ------------ | ------------------------------------------------------------------------ |
@@ -147,6 +176,9 @@ flowchart TD
 | Repositories | Consultas y persistencia en MySQL.                                       |
 | Entities     | Tablas locales de Kapso.                                                 |
 | Common       | Constantes, tipos y helpers de dominio.                                  |
+
+
+
 
 ## Modelo Operativo
 
@@ -169,7 +201,13 @@ flowchart TD
   I -- "No" --> J["Reservar y enviar template"]
 ```
 
+
+
+
+
 ## Flujos del Sistema
+
+
 
 ### Flujo 1: Onboarding de Numeros Kapso
 
@@ -199,6 +237,8 @@ sequenceDiagram
   end
 ```
 
+
+
 Punto confirmado por Kapso:
 
 ```text
@@ -220,17 +260,22 @@ flowchart LR
   D --> E["Numero Kapso activo"]
 ```
 
+
+
 Reglas:
 
 - Un asesor puede tener una o varias relaciones Admin-Kapso.
 - El flujo solo usa relaciones activas.
 - Si el asesor del lead no tiene numero Kapso activo, se registra bitacora y el flujo no continua.
 
+
+
 ### Flujo 3: Flujos de Negocio por Proyecto
 
 Un flujo de negocio representa una idea completa, no una regla aislada.
 
 Flujo actual:
+
 
 | Campo           | Valor                                   |
 | --------------- | --------------------------------------- |
@@ -239,6 +284,7 @@ Flujo actual:
 | Nombre          | `Saludo inicial y seguimiento de leads` |
 | Primer template | `saludo`                                |
 | Estado esperado | `active` cuando opera                   |
+
 
 Relacion de proyecto:
 
@@ -264,9 +310,12 @@ Adicionalmente:
 - `idinterno_lead` es el identificador operativo principal del lead.
 - El lead no debe tener una ejecucion previa para el mismo `flow_uuid`.
 
+
+
 ### Flujo 5: Template Inicial `saludo`
 
 Template creado y aprobado en Kapso/Meta.
+
 
 | Campo                 | Valor                   |
 | --------------------- | ----------------------- |
@@ -278,6 +327,7 @@ Template creado y aprobado en Kapso/Meta.
 | Categoria             | `MARKETING`             |
 | Estado local esperado | `approved`              |
 | Parametros            | 3                       |
+
 
 Texto:
 
@@ -291,18 +341,24 @@ Te parece bien si te comparto la informacion por este medio?
 
 Mapeo:
 
+
 | Parametro | Origen                |
 | --------- | --------------------- |
 | `{{1}}`   | `leads.nombre_lead`   |
 | `{{2}}`   | `admins.name_admin`   |
 | `{{3}}`   | `leads.proyecto_lead` |
 
+
 Botones:
+
 
 | Boton                    | Accion esperada                                    |
 | ------------------------ | -------------------------------------------------- |
 | `Si, enviar informacion` | Continuar al siguiente paso del flujo.             |
 | `No, gracias`            | Pasar lead a perdido y cerrar flujo para ese lead. |
+
+
+
 
 ### Flujo 6: Envio Inicial
 
@@ -320,6 +376,10 @@ flowchart TD
   J -- "Si" --> K["execution_status = initial_template_sent"]
   J -- "No" --> L["failed o invalid_phone segun respuesta"]
 ```
+
+
+
+
 
 ### Flujo 7: Respuesta `No, gracias`
 
@@ -344,6 +404,8 @@ sequenceDiagram
   API->>DB: Inserta bitacora CRM
 ```
 
+
+
 Regla importante:
 
 - Solo se procesa boton real `No, gracias`.
@@ -352,13 +414,16 @@ Regla importante:
 
 Actualizacion del lead:
 
+
 | Campo             | Valor             |
 | ----------------- | ----------------- |
 | `segimineto_lead` | `07-LEAD-PERDIDO` |
 | `estado_lead`     | `0`               |
 | `id_Caida`        | `67`              |
 
+
 Bitacora:
+
 
 | Campo          | Valor                                                        |
 | -------------- | ------------------------------------------------------------ |
@@ -368,6 +433,9 @@ Bitacora:
 | `detalle_bit`  | Cliente indico que no desea recibir informacion por WhatsApp |
 | `estado_bit`   | `No desea informacion`                                       |
 | `estado_lead`  | `0`                                                          |
+
+
+
 
 ### Flujo 8: Respuesta `Si, enviar informacion`
 
@@ -384,6 +452,8 @@ flowchart TD
   E --> F["Guardar nuevo estado del flujo"]
 ```
 
+
+
 Antes de implementarlo se debe definir:
 
 - nombre del siguiente template;
@@ -393,9 +463,14 @@ Antes de implementarlo se debe definir:
 - si el asesor puede detener el flujo manualmente;
 - que bitacora se debe crear por cada avance.
 
+
+
 ## Reglas de Negocio
 
+
+
 ### Identificadores Principales
+
 
 | Dato      | Campo                                                     |
 | --------- | --------------------------------------------------------- |
@@ -405,6 +480,9 @@ Antes de implementarlo se debe definir:
 | Flujo     | `kapso_business_flows.flow_uuid`                          |
 | Numero    | `kapso_phone_numbers.phone_number_id`                     |
 | Ejecucion | `kapso_lead_flow_executions.id_kapso_lead_flow_execution` |
+
+
+
 
 ### Anti-Repeticion
 
@@ -420,6 +498,7 @@ Si ya existe una ejecucion para ese lead y ese flujo, no se vuelve a iniciar.
 
 ### Estados de Ejecucion
 
+
 | Estado                  | Significado                               |
 | ----------------------- | ----------------------------------------- |
 | `reserved`              | Lead reservado para envio.                |
@@ -430,6 +509,9 @@ Si ya existe una ejecucion para ese lead y ese flujo, no se vuelve a iniciar.
 | `manual_intervention`   | Asesor tomo control manual.               |
 | `completed`             | Flujo terminado.                          |
 | `failed`                | Error tecnico terminal.                   |
+
+
+
 
 ### Telefonos Invalidos
 
@@ -443,6 +525,7 @@ Cuando el telefono no es valido:
 
 Ejemplos:
 
+
 | Valor CRM         | Resultado esperado |
 | ----------------- | ------------------ |
 | `87515938`        | `50687515938`      |
@@ -451,6 +534,9 @@ Ejemplos:
 | `+1 720 353 5091` | `17203535091`      |
 | `88888888`        | Invalido           |
 | Texto o vacio     | Invalido           |
+
+
+
 
 ### Ventana de 24 Horas
 
@@ -461,6 +547,8 @@ Una vez el cliente responde:
 - se abre o renueva la ventana de conversacion;
 - el sistema puede continuar con mensajes permitidos segun reglas de Meta/Kapso;
 - se debe registrar el estado del flujo para no perder contexto.
+
+
 
 ## Modelo de Datos
 
@@ -530,7 +618,12 @@ erDiagram
   }
 ```
 
+
+
+
+
 ### Tablas CRM Usadas
+
 
 | Tabla       | Uso                                            |
 | ----------- | ---------------------------------------------- |
@@ -540,7 +633,11 @@ erDiagram
 | `bitacoras` | Trazabilidad operativa dentro del CRM.         |
 | `caidas`    | Motivos comerciales de perdida o bloqueo.      |
 
+
+
+
 ## Rutas Principales
+
 
 | Ruta                                                   | Proposito                                |
 | ------------------------------------------------------ | ---------------------------------------- |
@@ -560,6 +657,9 @@ erDiagram
 | `GET /api/v1/kapso/admin-integrations`                 | Lista asignaciones admin-Kapso.          |
 | `POST /api/v1/kapso/admin-integrations`                | Crea asignacion admin-Kapso.             |
 
+
+
+
 ## Checklist Operativo
 
 Antes de enviar templates, debe cumplirse:
@@ -574,7 +674,11 @@ Antes de enviar templates, debe cumplirse:
 - [ ] El telefono del lead es valido.
 - [ ] No existe ejecucion previa para `flow_uuid + idinterno_lead`.
 
+
+
 ## Pendientes
+
+
 
 ### Siguiente Paso Recomendado
 
@@ -589,6 +693,8 @@ Para hacerlo bien se necesita definir:
 5. Bitacora que debe quedar en CRM.
 6. Regla de intervencion manual del asesor.
 
+
+
 ### Decisiones Pendientes de Negocio
 
 - Que informacion exacta se envia despues del `Si`.
@@ -596,3 +702,4 @@ Para hacerlo bien se necesita definir:
 - Que pasa si el cliente responde texto libre en vez de botones.
 - Como se identificara que el asesor ya tomo control manual.
 - Si el lead debe cambiar de estado por respuestas afirmativas o solo por respuestas negativas.
+
