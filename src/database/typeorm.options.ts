@@ -41,8 +41,7 @@ function readMysqlConnectionFromEnv() {
  * Construye las opciones TypeORM compartidas por Nest y por el CLI.
  * Asi evitamos divergencias entre la app en runtime y las migraciones.
  */
-export function buildTypeOrmOptions(): DataSourceOptions &
-  Pick<TypeOrmModuleOptions, "retryAttempts" | "retryDelay" | "verboseRetryLog"> {
+export function buildTypeOrmOptions(): DataSourceOptions & Pick<TypeOrmModuleOptions, "retryAttempts" | "retryDelay" | "verboseRetryLog"> {
   const connection = readMysqlConnectionFromEnv();
 
   return {

@@ -1,34 +1,84 @@
 # API Kapso - CRM Ventas
 
-API NestJS para integrar CRM Ventas con Kapso, administrar numeros de WhatsApp, asignar lineas Kapso a asesores y ejecutar flujos de templates por proyecto sin repetir leads.
+API NestJS para conectar CRM Ventas con Kapso, sincronizar numeros de WhatsApp, asignar lineas Kapso a asesores y ejecutar flujos de templates por proyecto con control anti-repeticion.
 
-## Resumen Ejecutivo
+## Tabla de Contenido
 
-El objetivo del sistema es automatizar el primer contacto por WhatsApp usando templates aprobados en Kapso/Meta, pero manteniendo control operativo dentro del CRM.
+1. [Objetivo del Sistema](#objetivo-del-sistema)
+2. [Estado Actual](#estado-actual)
+3. [Tecnologia](#tecnologia)
+4. [Como Correr](#como-correr)
+5. [Variables de Entorno](#variables-de-entorno)
+6. [Arquitectura General](#arquitectura-general)
+7. [Modelo Operativo](#modelo-operativo)
+8. [Flujos del Sistema](#flujos-del-sistema)
+9. [Reglas de Negocio](#reglas-de-negocio)
+10. [Modelo de Datos](#modelo-de-datos)
+11. [Rutas Principales](#rutas-principales)
+12. [Checklist Operativo](#checklist-operativo)
+13. [Pendientes](#pendientes)
 
-El flujo actual permite:
+## Objetivo del Sistema
 
-- sincronizar numeros creados en Kapso;
-- crear webhooks Kapso y Meta por numero;
-- asignar un numero Kapso a cada asesor;
-- habilitar flujos por proyecto;
-- detectar leads nuevos candidatos;
-- enviar el template inicial `saludo`;
-- guardar el estado del lead dentro del flujo;
-- procesar respuestas de botones;
-- detener el flujo cuando corresponde;
-- registrar bitacoras CRM cuando no se puede continuar.
+El sistema automatiza el primer contacto por WhatsApp para leads nuevos del CRM usando templates aprobados en Kapso/Meta.
+
+La idea central es:
+
+- tomar leads nuevos que cumplan la condicion definida por negocio;
+- validar si el proyecto permite el flujo;
+- validar si el asesor tiene una linea Kapso asignada;
+- enviar el template inicial aprobado;
+- registrar cada ejecucion para no repetir el mismo flujo sobre el mismo lead;
+- procesar respuestas del cliente;
+- registrar bitacoras CRM cuando el flujo no puede continuar o cuando el cliente responde negativamente.
+
+## Estado Actual
+
+### Listo
+
+- Sincronizacion de numeros Kapso.
+- Creacion y verificacion de webhooks Kapso events y Meta relay por numero.
+- Webhook Platform para altas y bajas de numeros.
+- Configuracion `Asesor -> Numero Kapso`.
+- Catalogo local de templates Kapso.
+- Flujo de negocio `Saludo inicial y seguimiento de leads`.
+- Habilitacion de proyectos por flujo.
+- Deteccion de leads candidatos.
+- Control anti-repeticion con `flow_uuid + idinterno_lead`.
+- Template inicial `saludo` registrado y aprobado.
+- Mapeo del template `saludo`:
+  - `{{1}} = leads.nombre_lead`
+  - `{{2}} = admins.name_admin`
+  - `{{3}} = leads.proyecto_lead`
+- Procesamiento de boton `No, gracias`.
+- Cambio del lead a perdido cuando responde `No, gracias`.
+- Insercion de bitacora CRM para respuesta negativa.
+- Validacion de telefono para evitar envios repetidos sobre numeros invalidos.
+
+### En Proceso
+
+- Envio real del siguiente template cuando el cliente responde `Si, enviar informacion`.
+- Definicion de los siguientes templates del flujo segun el documento funcional.
+- Regla final para detener el flujo por intervencion manual del asesor.
+
+### No Implementado Todavia
+
+- Vista detallada de trazabilidad por lead. Por ahora la trazabilidad queda en `bitacoras` y en `kapso_lead_flow_executions`.
+- Automatizacion completa de todos los templates posteriores al saludo inicial.
 
 ## Tecnologia
 
-- NestJS 11
-- TypeScript
-- TypeORM
-- MySQL
-- Kapso Platform API
-- Webhooks Kapso y Meta
-- Jest para pruebas unitarias y e2e
-- `libphonenumber-js` para validar y normalizar telefonos
+| Tecnologia         | Uso                                     |
+| ------------------ | --------------------------------------- |
+| NestJS 11          | Framework API                           |
+| TypeScript         | Lenguaje principal                      |
+| TypeORM            | Acceso a MySQL                          |
+| MySQL              | Base CRM Ventas                         |
+| Kapso Platform API | Numeros, templates, webhooks y mensajes |
+| Meta Webhooks      | Respuestas y eventos WhatsApp           |
+| Jest               | Pruebas unitarias y e2e                 |
+| libphonenumber-js  | Validacion y normalizacion de telefonos |
+| BullMQ             | Base instalada para procesos asincronos |
 
 ## Como Correr
 
@@ -44,59 +94,86 @@ La API queda disponible en:
 http://localhost:8002/api/v1
 ```
 
-Comandos de verificacion:
+### Comandos de Verificacion
 
 ```bash
-npm run typecheck
+npm run format:check
 npm run lint
+npm run typecheck
 npm test
 npm run test:e2e
 npm run build
 ```
 
-## Variables Principales
+## Variables de Entorno
 
-| Variable                          | Uso                                                               |
-| --------------------------------- | ----------------------------------------------------------------- |
-| `PORT`                            | Puerto local, normalmente `8002`                                  |
-| `GLOBAL_PREFIX`                   | Prefijo API, normalmente `api/v1`                                 |
-| `KAPSO_API_KEY`                   | API key default del proyecto Kapso                                |
-| `KAPSO_PROJECT_API_KEYS_JSON`     | Mapa `project.id -> apiKey` cuando existen varios proyectos Kapso |
-| `KAPSO_PUBLIC_BASE_URL`           | URL publica usada para webhooks, por ejemplo ngrok                |
-| `KAPSO_PLATFORM_WEBHOOK_SECRET`   | Secreto del webhook Platform                                      |
-| `KAPSO_WHATSAPP_WEBHOOK_SECRET`   | Secreto del webhook WhatsApp/Kapso events                         |
-| `KAPSO_PENDING_SYNC_INTERVAL_MS`  | Intervalo del worker de sincronizacion de numeros                 |
-| `KAPSO_LEAD_TEMPLATE_INTERVAL_MS` | Intervalo del worker de leads candidatos                          |
+| Variable                          | Uso                                                         |
+| --------------------------------- | ----------------------------------------------------------- |
+| `PORT`                            | Puerto local. Normalmente `8002`.                           |
+| `GLOBAL_PREFIX`                   | Prefijo API. Normalmente `api/v1`.                          |
+| `KAPSO_BASE_URL`                  | URL base de Kapso Platform API.                             |
+| `KAPSO_API_KEY`                   | API key default del proyecto Kapso.                         |
+| `KAPSO_PROJECT_API_KEYS_JSON`     | Mapa `project.id -> apiKey` para proyectos Kapso multiples. |
+| `KAPSO_PUBLIC_BASE_URL`           | URL publica usada por webhooks. Ejemplo: ngrok.             |
+| `KAPSO_PLATFORM_WEBHOOK_SECRET`   | Secreto del webhook Platform.                               |
+| `KAPSO_WHATSAPP_WEBHOOK_SECRET`   | Secreto del webhook WhatsApp/Kapso events.                  |
+| `KAPSO_PENDING_SYNC_INTERVAL_MS`  | Intervalo del worker de sincronizacion de numeros.          |
+| `KAPSO_LEAD_TEMPLATE_INTERVAL_MS` | Intervalo del worker de leads candidatos.                   |
+| `MYSQL_*`                         | Credenciales y conexion hacia MySQL CRM Ventas.             |
 
 ## Arquitectura General
 
 ```mermaid
 flowchart TD
-  A["Kapso / Meta"] --> B["Webhooks API"]
-  B --> C["KapsoSyncService"]
-  C --> D["Kapso Platform API"]
-  C --> E["MySQL CRM Ventas"]
-  E --> F["kapso_phone_numbers"]
-  E --> G["admin_kapso_integrations"]
-  E --> H["kapso_business_flows"]
-  E --> I["kapso_template_catalog"]
-  E --> J["kapso_lead_flow_executions"]
-  E --> K["leads / admins / proyectos / bitacoras"]
+  K["Kapso / Meta"] --> W["Webhooks API"]
+  CRM["CRM Ventas"] --> DB["MySQL"]
+  W --> S["KapsoSyncService"]
+  S --> KP["Kapso Platform API"]
+  S --> DB
+  DB --> PN["kapso_phone_numbers"]
+  DB --> AK["admin_kapso_integrations"]
+  DB --> BF["kapso_business_flows"]
+  DB --> TP["kapso_template_catalog"]
+  DB --> EX["kapso_lead_flow_executions"]
+  DB --> CORE["leads / admins / proyectos / bitacoras"]
 ```
 
-Responsabilidades:
+### Responsabilidades por Capa
 
-| Capa         | Responsabilidad                                                            |
-| ------------ | -------------------------------------------------------------------------- |
-| Controllers  | Exponer REST, redirects de setup y webhooks                                |
-| Services     | Orquestar sincronizacion, envio de templates y procesamiento de respuestas |
-| Repositories | Consultar y persistir datos en MySQL                                       |
-| Entities     | Representar tablas Kapso locales                                           |
-| Common       | Constantes, tipos y helpers de dominio                                     |
+| Capa         | Responsabilidad                                                          |
+| ------------ | ------------------------------------------------------------------------ |
+| Controllers  | REST, redirects de setup y recepcion de webhooks.                        |
+| Services     | Orquestacion, workers, envio de templates y procesamiento de respuestas. |
+| Repositories | Consultas y persistencia en MySQL.                                       |
+| Entities     | Tablas locales de Kapso.                                                 |
+| Common       | Constantes, tipos y helpers de dominio.                                  |
 
-## Flujo 1: Onboarding de Numeros Kapso
+## Modelo Operativo
 
-Cuando se crea o conecta un numero en Kapso, el sistema debe guardarlo localmente y asegurar que los webhooks por numero existan.
+El API no debe enviar templates solo porque existe un lead. Debe pasar por estas validaciones:
+
+```mermaid
+flowchart TD
+  A["Lead nuevo"] --> B{"Condicion CRM cumple?"}
+  B -- "No" --> X["No se procesa"]
+  B -- "Si" --> C{"Proyecto permitido?"}
+  C -- "No" --> X
+  C -- "Si" --> D{"Asesor tiene numero Kapso?"}
+  D -- "No" --> E["Bitacora: asesor sin Kapso"]
+  D -- "Si" --> F{"Template aprobado?"}
+  F -- "No" --> X
+  F -- "Si" --> G{"Telefono valido?"}
+  G -- "No" --> H["Bitacora id_caida 68"]
+  G -- "Si" --> I{"Ya existe ejecucion del flujo?"}
+  I -- "Si" --> X
+  I -- "No" --> J["Reservar y enviar template"]
+```
+
+## Flujos del Sistema
+
+### Flujo 1: Onboarding de Numeros Kapso
+
+Cuando Kapso crea o conecta un numero, el API lo guarda localmente y asegura los webhooks del numero.
 
 ```mermaid
 sequenceDiagram
@@ -105,48 +182,53 @@ sequenceDiagram
   participant DB as MySQL
   participant KP as Kapso Platform API
 
-  K->>API: POST /webhooks/kapso/platform<br/>whatsapp.phone_number.created
-  API->>API: Valida firma e idempotencia
-  API->>DB: Guarda phone_number_id, project.id, customer.id
+  K->>API: POST /webhooks/kapso/platform
+  API->>API: Validar firma e idempotencia
+  API->>DB: Guardar phone_number_id, project.id, customer.id
   API->>KP: GET /platform/v1/whatsapp/phone_numbers/{id}
   alt Detalle disponible
     KP-->>API: Detalle del numero
-    API->>DB: Upsert en kapso_phone_numbers
+    API->>DB: Upsert kapso_phone_numbers
     API->>KP: Crear webhook Kapso events
     API->>KP: Crear webhook Meta relay
     API->>DB: setup_sync_status = processed
-  else Kapso aun no expone detalle
+  else Detalle no disponible
     KP-->>API: WhatsApp configuration not found
     API->>DB: setup_sync_status = pending_remote_sync
     API->>API: Worker reintenta luego
   end
 ```
 
-Punto importante confirmado por Kapso:
+Punto confirmado por Kapso:
 
-`GET /platform/v1/whatsapp/phone_numbers/{phone_number_id}` es project-scoped. Por eso el API guarda `project.id` y usa el API key del mismo proyecto que genero el setup link.
+```text
+GET /platform/v1/whatsapp/phone_numbers/{phone_number_id}
+es project-scoped.
+```
 
-## Flujo 2: Configuracion Admin-Kapso
+Por eso se guarda `project.id` y se usa el API key del mismo proyecto que genero el setup link.
 
-Esta vista define que numero puede usar cada asesor.
+### Flujo 2: Configuracion Admin-Kapso
 
-Regla:
-
-- El lead trae `id_empleado_lead`.
-- Ese valor se compara contra `admins.idnetsuite_admin`.
-- El asesor debe tener una relacion activa en `admin_kapso_integrations`.
-- Si no existe relacion activa, el lead no puede usar Kapso.
+Define que numero Kapso puede usar cada asesor.
 
 ```mermaid
 flowchart LR
-  A["admins.idnetsuite_admin"] --> B["admin_kapso_integrations"]
-  B --> C["kapso_phone_numbers"]
-  C --> D["Numero Kapso activo"]
+  A["leads.id_empleado_lead"] --> B["admins.idnetsuite_admin"]
+  B --> C["admin_kapso_integrations"]
+  C --> D["kapso_phone_numbers"]
+  D --> E["Numero Kapso activo"]
 ```
 
-## Flujo 3: Flujos de Negocio por Proyecto
+Reglas:
 
-Un flujo representa una idea de negocio completa. No es solo una regla suelta.
+- Un asesor puede tener una o varias relaciones Admin-Kapso.
+- El flujo solo usa relaciones activas.
+- Si el asesor del lead no tiene numero Kapso activo, se registra bitacora y el flujo no continua.
+
+### Flujo 3: Flujos de Negocio por Proyecto
+
+Un flujo de negocio representa una idea completa, no una regla aislada.
 
 Flujo actual:
 
@@ -156,9 +238,7 @@ Flujo actual:
 | Codigo          | `lead_initial_contact`                  |
 | Nombre          | `Saludo inicial y seguimiento de leads` |
 | Primer template | `saludo`                                |
-| Estado esperado | `active` cuando este listo para operar  |
-
-La tabla `kapso_business_flow_projects` define que proyectos pueden ejecutar cada flujo.
+| Estado esperado | `active` cuando opera                   |
 
 Relacion de proyecto:
 
@@ -166,16 +246,25 @@ Relacion de proyecto:
 leads.idproyecto_lead -> proyectos.id_ProNetsuite
 ```
 
-Si un proyecto no esta permitido, ningun lead de ese proyecto debe ejecutar el flujo.
+Si un proyecto no esta habilitado en `kapso_business_flow_projects`, ningun lead de ese proyecto ejecuta el flujo.
 
-```mermaid
-flowchart TD
-  A["Lead candidato"] --> B{"Proyecto permitido para el flujo?"}
-  B -- "No" --> C["No ejecuta flujo"]
-  B -- "Si" --> D["Valida asesor y numero Kapso"]
+### Flujo 4: Lead Candidato
+
+Condicion actual:
+
+```sql
+leads.segimineto_lead = '01-LEAD-INTERESADO'
+AND leads.whatsapp_template_contact_sent = 2
+AND leads.estado_lead = 1
 ```
 
-## Template Inicial: saludo
+Adicionalmente:
+
+- `id_empleado_lead` debe venir definido.
+- `idinterno_lead` es el identificador operativo principal del lead.
+- El lead no debe tener una ejecucion previa para el mismo `flow_uuid`.
+
+### Flujo 5: Template Inicial `saludo`
 
 Template creado y aprobado en Kapso/Meta.
 
@@ -200,7 +289,7 @@ Vi que pediste informacion del proyecto.
 Te parece bien si te comparto la informacion por este medio?
 ```
 
-Mapeo de parametros:
+Mapeo:
 
 | Parametro | Origen                |
 | --------- | --------------------- |
@@ -210,84 +299,31 @@ Mapeo de parametros:
 
 Botones:
 
-| Boton                    | Accion del sistema                                             |
-| ------------------------ | -------------------------------------------------------------- |
-| `Si, enviar informacion` | Marcar ejecucion como `answered_yes` y continuar el flujo      |
-| `No, gracias`            | Marcar como `answered_no`, pasar lead a perdido y cerrar flujo |
+| Boton                    | Accion esperada                                    |
+| ------------------------ | -------------------------------------------------- |
+| `Si, enviar informacion` | Continuar al siguiente paso del flujo.             |
+| `No, gracias`            | Pasar lead a perdido y cerrar flujo para ese lead. |
 
-## Condicion Actual para Lead Nuevo
-
-El worker toma leads que cumplen:
-
-```sql
-leads.segimineto_lead = '01-LEAD-INTERESADO'
-AND leads.whatsapp_template_contact_sent = 2
-AND leads.estado_lead = 1
-```
-
-Adicionalmente:
-
-- `id_empleado_lead` no puede venir vacio;
-- el proyecto debe estar permitido para el flujo;
-- el asesor debe tener numero Kapso activo;
-- el template debe estar aprobado;
-- el lead no debe tener una ejecucion previa para el mismo `flow_uuid`.
-
-## Flujo 4: Envio del Template Inicial
+### Flujo 6: Envio Inicial
 
 ```mermaid
 flowchart TD
   A["Worker cada minuto"] --> B["Busca leads candidatos"]
-  B --> C{"Ya existe flow_uuid + idinterno_lead?"}
+  B --> C{"Existe flow_uuid + idinterno_lead?"}
   C -- "Si" --> D["No reprocesa"]
-  C -- "No" --> E{"Proyecto permitido?"}
-  E -- "No" --> F["Ignora flujo"]
-  E -- "Si" --> G{"Asesor tiene numero Kapso activo?"}
-  G -- "No" --> H["Bitacora CRM y no reintenta"]
-  G -- "Si" --> I{"Telefono valido?"}
-  I -- "No" --> J["Bitacora id_caida 68 y estado invalid_phone"]
-  I -- "Si" --> K["Reserva ejecucion"]
-  K --> L["Envia template saludo"]
-  L --> M{"Kapso acepta envio?"}
-  M -- "Si" --> N["execution_status = initial_template_sent"]
-  M -- "Telefono invalido" --> J
-  M -- "Error tecnico" --> O["execution_status = failed"]
+  C -- "No" --> E["Reserva ejecucion"]
+  E --> F["Normaliza telefono"]
+  F --> G{"Telefono valido?"}
+  G -- "No" --> H["invalid_phone + bitacora id_caida 68"]
+  G -- "Si" --> I["Envia template saludo"]
+  I --> J{"Kapso acepta envio?"}
+  J -- "Si" --> K["execution_status = initial_template_sent"]
+  J -- "No" --> L["failed o invalid_phone segun respuesta"]
 ```
 
-## Normalizacion de Telefonos
+### Flujo 7: Respuesta `No, gracias`
 
-El CRM tiene telefonos con multiples formatos. El sistema limpia y valida antes de enviar.
-
-Ejemplos soportados:
-
-| Valor CRM         | Resultado para Kapso |
-| ----------------- | -------------------- |
-| `87515938`        | `50687515938`        |
-| `50687515938`     | `50687515938`        |
-| `+506 8751 5938`  | `50687515938`        |
-| `+1 720 353 5091` | `17203535091`        |
-| `+57 311 5283868` | `573115283868`       |
-
-Ejemplos rechazados:
-
-| Valor CRM           | Motivo                     |
-| ------------------- | -------------------------- |
-| `88888888`          | Digitos repetidos          |
-| `50600000000`       | Numero no valido           |
-| `506982214`         | Longitud/formato no valido |
-| Texto, vacio o nulo | No hay telefono usable     |
-
-Cuando el telefono no es valido:
-
-- no se llama a Kapso;
-- no se modifica el lead;
-- se registra bitacora con `id_caida = 68`;
-- la ejecucion queda en `invalid_phone`;
-- no vuelve a ejecutarse ese flujo para ese lead.
-
-## Respuesta del Cliente
-
-Las respuestas entran por webhooks Kapso o Meta.
+Este flujo ya esta implementado para boton explicito.
 
 ```mermaid
 sequenceDiagram
@@ -296,36 +332,81 @@ sequenceDiagram
   participant API as API Kapso CRM
   participant DB as MySQL
 
-  Cliente->>K: Toca boton del template
-  K->>API: POST /webhooks/kapso/events o /meta
-  API->>API: Normaliza telefono entrante
-  API->>DB: Busca ejecucion initial_template_sent por phone_number_id + lead_phone_number
-  alt Responde Si
-    API->>DB: execution_status = answered_yes
-    API->>DB: Guarda payload de respuesta
-  else Responde No
-    API->>DB: execution_status = answered_no
-    API->>DB: leads.segimineto_lead = 07-LEAD-PERDIDO
-    API->>DB: leads.estado_lead = 0
-    API->>DB: leads.id_Caida = 67
-    API->>DB: Inserta bitacora CRM
-  end
+  Cliente->>K: Toca boton "No, gracias"
+  K->>API: POST webhook events/meta
+  API->>API: Extrae phone_number_id, from, button.text
+  API->>DB: Busca ejecucion initial_template_sent
+  DB-->>API: flow_uuid + idinterno_lead encontrado
+  API->>DB: execution_status = answered_no
+  API->>DB: leads.segimineto_lead = 07-LEAD-PERDIDO
+  API->>DB: leads.estado_lead = 0
+  API->>DB: leads.id_Caida = 67
+  API->>DB: Inserta bitacora CRM
 ```
 
-Regla para `No, gracias`:
+Regla importante:
 
-- el flujo se cierra para ese lead;
-- el lead pasa a perdido;
-- `id_Caida = 67`;
-- se inserta bitacora indicando que el cliente no desea recibir informacion por WhatsApp.
+- Solo se procesa boton real `No, gracias`.
+- Texto libre como `no`, `no gracias` o similares no marca perdido automaticamente.
+- Esto evita falsos positivos cuando el cliente escribe texto ambiguo.
 
-Regla para telefono invalido:
+Actualizacion del lead:
 
-- `id_Caida = 68`;
-- se inserta bitacora de numero no valido;
-- no se cambia el estado comercial del lead.
+| Campo             | Valor             |
+| ----------------- | ----------------- |
+| `segimineto_lead` | `07-LEAD-PERDIDO` |
+| `estado_lead`     | `0`               |
+| `id_Caida`        | `67`              |
 
-## Control Anti-Repeticion
+Bitacora:
+
+| Campo          | Valor                                                        |
+| -------------- | ------------------------------------------------------------ |
+| `id_lead_bit`  | `leads.idinterno_lead`                                       |
+| `id_admin_bit` | `admins.idnetsuite_admin`                                    |
+| `id_caida_bit` | `67`                                                         |
+| `detalle_bit`  | Cliente indico que no desea recibir informacion por WhatsApp |
+| `estado_bit`   | `No desea informacion`                                       |
+| `estado_lead`  | `0`                                                          |
+
+### Flujo 8: Respuesta `Si, enviar informacion`
+
+Este es el siguiente bloque funcional pendiente.
+
+La idea esperada:
+
+```mermaid
+flowchart TD
+  A["Cliente toca Si, enviar informacion"] --> B["Webhook events/meta"]
+  B --> C["Buscar ejecucion initial_template_sent"]
+  C --> D["execution_status = answered_yes"]
+  D --> E["Enviar siguiente template del flujo"]
+  E --> F["Guardar nuevo estado del flujo"]
+```
+
+Antes de implementarlo se debe definir:
+
+- nombre del siguiente template;
+- texto aprobado;
+- parametros;
+- reglas de cierre;
+- si el asesor puede detener el flujo manualmente;
+- que bitacora se debe crear por cada avance.
+
+## Reglas de Negocio
+
+### Identificadores Principales
+
+| Dato      | Campo                                                     |
+| --------- | --------------------------------------------------------- |
+| Lead      | `leads.idinterno_lead`                                    |
+| Asesor    | `admins.idnetsuite_admin`                                 |
+| Proyecto  | `leads.idproyecto_lead -> proyectos.id_ProNetsuite`       |
+| Flujo     | `kapso_business_flows.flow_uuid`                          |
+| Numero    | `kapso_phone_numbers.phone_number_id`                     |
+| Ejecucion | `kapso_lead_flow_executions.id_kapso_lead_flow_execution` |
+
+### Anti-Repeticion
 
 La tabla `kapso_lead_flow_executions` evita ciclos infinitos.
 
@@ -335,20 +416,53 @@ Clave funcional:
 flow_uuid + idinterno_lead
 ```
 
-Estados principales:
+Si ya existe una ejecucion para ese lead y ese flujo, no se vuelve a iniciar.
 
-| Estado                  | Significado                                  |
-| ----------------------- | -------------------------------------------- |
-| `reserved`              | Lead reservado para envio, aun no confirmado |
-| `initial_template_sent` | Template inicial enviado                     |
-| `answered_yes`          | Cliente acepto recibir informacion           |
-| `answered_no`           | Cliente rechazo informacion por WhatsApp     |
-| `invalid_phone`         | Telefono no valido; no se reintenta          |
-| `manual_intervention`   | Asesor intervino manualmente                 |
-| `completed`             | Flujo terminado                              |
-| `failed`                | Error tecnico terminal                       |
+### Estados de Ejecucion
 
-## Modelo de Datos Kapso
+| Estado                  | Significado                               |
+| ----------------------- | ----------------------------------------- |
+| `reserved`              | Lead reservado para envio.                |
+| `initial_template_sent` | Template inicial enviado.                 |
+| `answered_yes`          | Cliente acepto recibir informacion.       |
+| `answered_no`           | Cliente rechazo informacion por WhatsApp. |
+| `invalid_phone`         | Telefono invalido; no se reintenta.       |
+| `manual_intervention`   | Asesor tomo control manual.               |
+| `completed`             | Flujo terminado.                          |
+| `failed`                | Error tecnico terminal.                   |
+
+### Telefonos Invalidos
+
+Cuando el telefono no es valido:
+
+- no se llama a Kapso;
+- no se modifica el estado comercial del lead;
+- se inserta bitacora con `id_caida = 68`;
+- la ejecucion queda como `invalid_phone`;
+- no vuelve a ejecutarse el mismo flujo para ese lead.
+
+Ejemplos:
+
+| Valor CRM         | Resultado esperado |
+| ----------------- | ------------------ |
+| `87515938`        | `50687515938`      |
+| `50687515938`     | `50687515938`      |
+| `+506 8751 5938`  | `50687515938`      |
+| `+1 720 353 5091` | `17203535091`      |
+| `88888888`        | Invalido           |
+| Texto o vacio     | Invalido           |
+
+### Ventana de 24 Horas
+
+Los templates aprobados pueden iniciar conversacion fuera de la ventana de 24 horas.
+
+Una vez el cliente responde:
+
+- se abre o renueva la ventana de conversacion;
+- el sistema puede continuar con mensajes permitidos segun reglas de Meta/Kapso;
+- se debe registrar el estado del flujo para no perder contexto.
+
+## Modelo de Datos
 
 ```mermaid
 erDiagram
@@ -412,30 +526,43 @@ erDiagram
     varchar phone_number_id
     varchar lead_phone_number
     varchar execution_status
+    json last_response_json
   }
 ```
 
+### Tablas CRM Usadas
+
+| Tabla       | Uso                                            |
+| ----------- | ---------------------------------------------- |
+| `leads`     | Fuente de leads y estado comercial.            |
+| `admins`    | Datos del asesor y relacion con NetSuite.      |
+| `proyectos` | Validacion de proyectos habilitados por flujo. |
+| `bitacoras` | Trazabilidad operativa dentro del CRM.         |
+| `caidas`    | Motivos comerciales de perdida o bloqueo.      |
+
 ## Rutas Principales
 
-| Ruta                                                   | Proposito                               |
-| ------------------------------------------------------ | --------------------------------------- |
-| `GET /api/v1/kapso/customers`                          | Lista clientes sincronizados localmente |
-| `GET /api/v1/kapso/phone-numbers`                      | Lista numeros Kapso locales             |
-| `GET /api/v1/kapso/templates/catalog`                  | Lista templates locales                 |
-| `GET /api/v1/kapso/projects/options`                   | Lista proyectos CRM para configuracion  |
-| `GET /api/v1/kapso/business-flows`                     | Lista flujos y proyectos permitidos     |
-| `POST /api/v1/kapso/business-flows/:flowUuid/projects` | Habilita un proyecto para un flujo      |
-| `POST /api/v1/kapso/bootstrap/sync`                    | Reconstruye estado local desde Kapso    |
-| `POST /api/v1/kapso/phone-numbers/:phoneNumberId/sync` | Reintenta sync de un numero             |
-| `GET /api/v1/kapso/setup/success`                      | Recibe redirect exitoso del setup link  |
-| `GET /api/v1/kapso/setup/failure`                      | Recibe redirect fallido del setup link  |
-| `POST /api/v1/webhooks/kapso/platform`                 | Webhook de altas/bajas de numeros       |
-| `POST /api/v1/webhooks/kapso/events`                   | Webhook Kapso events                    |
-| `POST /api/v1/webhooks/kapso/meta`                     | Webhook relay Meta                      |
-| `GET /api/v1/kapso/admin-integrations`                 | Lista asignaciones admin-Kapso          |
-| `POST /api/v1/kapso/admin-integrations`                | Crea asignacion admin-Kapso             |
+| Ruta                                                   | Proposito                                |
+| ------------------------------------------------------ | ---------------------------------------- |
+| `GET /api/v1/kapso/customers`                          | Lista clientes sincronizados localmente. |
+| `GET /api/v1/kapso/phone-numbers`                      | Lista numeros Kapso locales.             |
+| `GET /api/v1/kapso/templates/catalog`                  | Lista templates locales.                 |
+| `GET /api/v1/kapso/projects/options`                   | Lista proyectos CRM para configuracion.  |
+| `GET /api/v1/kapso/business-flows`                     | Lista flujos y proyectos permitidos.     |
+| `POST /api/v1/kapso/business-flows/:flowUuid/projects` | Habilita un proyecto para un flujo.      |
+| `POST /api/v1/kapso/bootstrap/sync`                    | Reconstruye estado local desde Kapso.    |
+| `POST /api/v1/kapso/phone-numbers/:phoneNumberId/sync` | Reintenta sync de un numero.             |
+| `GET /api/v1/kapso/setup/success`                      | Recibe redirect exitoso del setup link.  |
+| `GET /api/v1/kapso/setup/failure`                      | Recibe redirect fallido del setup link.  |
+| `POST /api/v1/webhooks/kapso/platform`                 | Webhook de altas/bajas de numeros.       |
+| `POST /api/v1/webhooks/kapso/events`                   | Webhook Kapso events.                    |
+| `POST /api/v1/webhooks/kapso/meta`                     | Webhook relay Meta.                      |
+| `GET /api/v1/kapso/admin-integrations`                 | Lista asignaciones admin-Kapso.          |
+| `POST /api/v1/kapso/admin-integrations`                | Crea asignacion admin-Kapso.             |
 
-## Checklist Operativo Antes de Enviar Templates
+## Checklist Operativo
+
+Antes de enviar templates, debe cumplirse:
 
 - [ ] El numero existe en `kapso_phone_numbers`.
 - [ ] Los webhooks Kapso y Meta existen para ese numero.
@@ -447,36 +574,25 @@ erDiagram
 - [ ] El telefono del lead es valido.
 - [ ] No existe ejecucion previa para `flow_uuid + idinterno_lead`.
 
-## Que Sigue en el Flujo
+## Pendientes
 
-El sistema ya tiene el primer paso funcional. Los siguientes hitos logicos son:
+### Siguiente Paso Recomendado
 
-1. Definir que template se envia despues de `answered_yes`.
-2. Configurar el mapeo de parametros del segundo template.
-3. Definir cuando se detiene el flujo por respuesta, intervencion manual o fin comercial.
-4. Agregar trazabilidad visible en CRM para que el asesor sepa en que etapa va cada lead.
-5. Validar reglas de ventana de 24 horas de WhatsApp antes de mensajes libres.
+Implementar la continuacion cuando el cliente responde `Si, enviar informacion`.
 
-## Estado Actual del Proyecto
+Para hacerlo bien se necesita definir:
 
-Listo:
+1. Template siguiente.
+2. Texto aprobado por negocio.
+3. Parametros del template.
+4. Condicion para terminar el flujo.
+5. Bitacora que debe quedar en CRM.
+6. Regla de intervencion manual del asesor.
 
-- sincronizacion de numeros Kapso;
-- webhooks platform/events/meta;
-- asignacion Admin-Kapso;
-- flujo de negocio por proyecto;
-- catalogo local del template `saludo`;
-- envio inicial del template;
-- procesamiento de respuesta `Si` / `No`;
-- control anti-repeticion;
-- normalizacion y validacion de telefonos;
-- bitacora por asesor sin numero;
-- bitacora por telefono invalido (`id_caida = 68`);
-- perdida por respuesta negativa (`id_caida = 67`).
+### Decisiones Pendientes de Negocio
 
-Pendiente funcional:
-
-- definir el segundo template despues de respuesta afirmativa;
-- confirmar como se detiene el flujo por intervencion manual del asesor;
-- exponer en frontend la trazabilidad completa por lead;
-- cerrar reglas de seguimiento final segun ventas.
+- Que informacion exacta se envia despues del `Si`.
+- En que punto se considera que el flujo termino.
+- Que pasa si el cliente responde texto libre en vez de botones.
+- Como se identificara que el asesor ya tomo control manual.
+- Si el lead debe cambiar de estado por respuestas afirmativas o solo por respuestas negativas.

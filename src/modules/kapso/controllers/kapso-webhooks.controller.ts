@@ -148,6 +148,8 @@ export class KapsoWebhooksController {
       await this.persistWebhookTouch("kapso", payload, phoneNumberId, idempotencyKey, eventName, true, "processed");
     }
 
+    await this.kapsoSyncService.processInboundMessageWebhook(payload);
+
     return { ok: true };
   }
 
@@ -179,6 +181,8 @@ export class KapsoWebhooksController {
     if (phoneNumberId) {
       await this.persistWebhookTouch("meta", payload, phoneNumberId, idempotencyKey, "meta.forwarded", true, "processed");
     }
+
+    await this.kapsoSyncService.processInboundMessageWebhook(payload);
 
     return { ok: true };
   }

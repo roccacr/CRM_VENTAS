@@ -69,6 +69,12 @@ export type LeadTemplateCandidateRecord = Record<string, unknown> & {
   displayPhoneNumber: string | null;
 };
 
+export type MarkLeadFlowAnsweredNoInput = {
+  phoneNumberId: string;
+  leadPhoneNumber: string;
+  responsePayload: Record<string, unknown>;
+};
+
 // ============================================================================
 // REPOSITORIO
 // ============================================================================
@@ -605,6 +611,87 @@ export class AdminKapsoIntegrationsRepository {
           "Kapso",
           "No enviado",
           leadStatus,
+          "",
+        ],
+      );
+
+      return true;
+    });
+  }
+
+  /** Cierra de forma atomica el flujo cuando el cliente responde explicitamente `No, gracias`. */
+  async markLeadFlowAnsweredNo(input: MarkLeadFlowAnsweredNoInput) {
+    return this.dataSource.transaction(async (manager) => {
+      const rows = await manager.query(
+        `
+          SELECT
+            execution.id_kapso_lead_flow_execution AS executionId,
+            execution.idinterno_lead AS internalLeadId,
+            execution.idnetsuite_admin AS idnetsuiteAdmin
+          FROM kapso_lead_flow_executions execution
+          WHERE execution.phone_number_id = ?
+            AND execution.lead_phone_number = ?
+            AND execution.execution_status = ?
+          ORDER BY execution.initial_template_sent_at DESC, execution.created_at DESC
+          LIMIT 1
+          FOR UPDATE
+        `,
+        [input.phoneNumberId, input.leadPhoneNumber, "initial_template_sent"],
+      );
+
+      const execution = rows[0] as { executionId: number; internalLeadId: number; idnetsuiteAdmin: number | null } | undefined;
+
+      if (!execution) {
+        return false;
+      }
+
+      await manager.query(
+        `
+          UPDATE kapso_lead_flow_executions
+          SET
+            execution_status = ?,
+            last_response_json = ?,
+            last_response_at = CURRENT_TIMESTAMP,
+            completed_at = CURRENT_TIMESTAMP,
+            failure_reason = NULL
+          WHERE id_kapso_lead_flow_execution = ?
+        `,
+        ["answered_no", JSON.stringify(input.responsePayload), execution.executionId],
+      );
+
+      await manager.query(
+        `
+          UPDATE leads
+          SET
+            segimineto_lead = ?,
+            estado_lead = ?,
+            id_Caida = ?
+          WHERE idinterno_lead = ?
+        `,
+        ["07-LEAD-PERDIDO", 0, 67, execution.internalLeadId],
+      );
+
+      await manager.query(
+        `
+          INSERT INTO bitacoras (
+            id_lead_bit,
+            id_admin_bit,
+            id_caida_bit,
+            detalle_bit,
+            tipo_documento_bit,
+            estado_bit,
+            estado_lead,
+            fech_seg_bit
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        `,
+        [
+          execution.internalLeadId,
+          execution.idnetsuiteAdmin ?? 0,
+          67,
+          "Cliente indico que no desea recibir informacion por WhatsApp.",
+          "Kapso",
+          "No desea informacion",
+          0,
           "",
         ],
       );

@@ -8,7 +8,15 @@ import { ConfigService } from "@nestjs/config";
 
 // Constantes, helpers y tipos de dominio usados por la orquestacion del sync.
 import { KAPSO_DEFAULT_EVENTS } from "../common/kapso.constants";
-import { firstNonNullString, getNestedValue, isKapsoPhoneNumberAvailabilityError, summarizePayload } from "../common/kapso.helpers";
+import {
+  asArray,
+  asRecord,
+  firstNonNullString,
+  getNestedValue,
+  isKapsoPhoneNumberAvailabilityError,
+  pickString,
+  summarizePayload,
+} from "../common/kapso.helpers";
 import {
   BootstrapSyncSummary,
   EnsurePerNumberWebhooksResult,
@@ -39,6 +47,26 @@ const DEFAULT_LEAD_TEMPLATE_INTERVAL_MS = 60_000;
 
 /** Tamano de lote por defecto del diagnostico de leads nuevos. */
 const DEFAULT_LEAD_TEMPLATE_BATCH_SIZE = 100;
+
+// ============================================================================
+// TIPOS LOCALES
+// ============================================================================
+
+type InboundMessageCandidate = {
+  phoneNumberId: string | null;
+  leadPhoneNumber: string | null;
+  messageId: string | null;
+  timestamp: string | null;
+  replyText: string | null;
+  replySource: "button" | "interactive_button" | "unsupported";
+  message: JsonRecord;
+};
+
+type InboundWebhookProcessingSummary = {
+  processed: number;
+  answeredNo: number;
+  ignored: number;
+};
 
 // ============================================================================
 // SERVICIO DE ORQUESTACION
@@ -218,6 +246,56 @@ export class KapsoSyncService implements OnModuleInit, OnModuleDestroy {
     this.logger.log(`Processing deleted event for phoneNumberId=${phoneNumberId}`);
     this.logger.verbose(`Deleted event payload: ${summarizePayload(payload)}`);
     return this.kapsoRepository.deletePhoneNumber(phoneNumberId);
+  }
+
+  /**
+   * Procesa respuestas entrantes de WhatsApp reenviadas por Kapso o Meta.
+   * Por seguridad de negocio, solo una respuesta de boton exactamente `No, gracias`
+   * cierra el flujo y mueve el lead a perdido; texto libre queda fuera por ahora.
+   */
+  async processInboundMessageWebhook(payload: JsonRecord): Promise<InboundWebhookProcessingSummary> {
+    const messages = this.extractInboundMessageCandidates(payload);
+    const summary: InboundWebhookProcessingSummary = { processed: messages.length, answeredNo: 0, ignored: 0 };
+
+    for (const message of messages) {
+      if (!this.isExplicitNoThanksButtonReply(message) || !message.phoneNumberId || !message.leadPhoneNumber) {
+        summary.ignored += 1;
+        continue;
+      }
+
+      const updated = await this.adminKapsoIntegrationsRepository.markLeadFlowAnsweredNo({
+        phoneNumberId: message.phoneNumberId,
+        leadPhoneNumber: message.leadPhoneNumber,
+        responsePayload: {
+          messageId: message.messageId,
+          timestamp: message.timestamp,
+          replyText: message.replyText,
+          replySource: message.replySource,
+          phoneNumberId: message.phoneNumberId,
+          leadPhoneNumber: message.leadPhoneNumber,
+          rawMessage: message.message,
+        },
+      });
+
+      if (updated) {
+        summary.answeredNo += 1;
+        this.logger.log(
+          `Lead flow answered_no registered phoneNumberId=${message.phoneNumberId} leadPhoneNumber=${message.leadPhoneNumber}`,
+        );
+        continue;
+      }
+
+      summary.ignored += 1;
+      this.logger.warn(
+        `No active lead flow found for No response phoneNumberId=${message.phoneNumberId} leadPhoneNumber=${message.leadPhoneNumber}`,
+      );
+    }
+
+    if (summary.processed > 0) {
+      this.logger.log(`Inbound message webhook processed ${JSON.stringify(summary)}`);
+    }
+
+    return summary;
   }
 
   // --------------------------------------------------------------------------
@@ -400,6 +478,91 @@ export class KapsoSyncService implements OnModuleInit, OnModuleDestroy {
   /** Extrae `project.id` del payload de plataforma para GETs project-scoped. */
   private extractProjectIdFromPayload(payload: JsonRecord): string | null {
     return firstNonNullString(payload.project_id, getNestedValue(payload, "project", "id"));
+  }
+
+  // --------------------------------------------------------------------------
+  // RESPUESTAS ENTRANTES DE WHATSAPP
+  // --------------------------------------------------------------------------
+
+  /** Extrae mensajes tanto del shape Meta (`entry[].changes[].value`) como del shape directo de Kapso. */
+  private extractInboundMessageCandidates(payload: JsonRecord): InboundMessageCandidate[] {
+    const rootPhoneNumberId = this.extractPayloadPhoneNumberId(payload);
+    const directMessages = this.mapInboundMessages(asArray<JsonRecord>(payload.messages), rootPhoneNumberId);
+    const metaMessages = asArray<JsonRecord>(payload.entry).flatMap((entry) =>
+      asArray<JsonRecord>(entry.changes).flatMap((change) => {
+        const value = asRecord(change.value);
+        const phoneNumberId = this.extractPayloadPhoneNumberId(value) ?? rootPhoneNumberId;
+        return this.mapInboundMessages(asArray<JsonRecord>(value.messages), phoneNumberId);
+      }),
+    );
+
+    return [...directMessages, ...metaMessages];
+  }
+
+  /** Convierte cada mensaje crudo a un candidato normalizado para reglas de negocio. */
+  private mapInboundMessages(messages: JsonRecord[], phoneNumberId: string | null): InboundMessageCandidate[] {
+    return messages.map((message) => {
+      const reply = this.extractReplyText(message);
+
+      return {
+        phoneNumberId,
+        leadPhoneNumber: firstNonNullString(message.from),
+        messageId: firstNonNullString(message.id),
+        timestamp: firstNonNullString(message.timestamp),
+        replyText: reply.replyText,
+        replySource: reply.replySource,
+        message,
+      };
+    });
+  }
+
+  /** Obtiene el `phone_number_id` desde metadata o campos planos. */
+  private extractPayloadPhoneNumberId(payload: JsonRecord): string | null {
+    return firstNonNullString(payload.phone_number_id, payload.phoneNumberId, getNestedValue(payload, "metadata", "phone_number_id"));
+  }
+
+  /** Lee respuestas de botones quick reply o interactive button_reply segun Meta Cloud API. */
+  private extractReplyText(message: JsonRecord): Pick<InboundMessageCandidate, "replyText" | "replySource"> {
+    if (pickString(message.type) === "button") {
+      const button = asRecord(message.button);
+      return {
+        replyText: firstNonNullString(button.text, button.payload),
+        replySource: "button",
+      };
+    }
+
+    const interactive = asRecord(message.interactive);
+    if (pickString(message.type) === "interactive" && pickString(interactive.type) === "button_reply") {
+      const buttonReply = asRecord(interactive.button_reply);
+      return {
+        replyText: firstNonNullString(buttonReply.title, buttonReply.id),
+        replySource: "interactive_button",
+      };
+    }
+
+    return {
+      replyText: null,
+      replySource: "unsupported",
+    };
+  }
+
+  /** Regla terminal actual: solo el boton literal `No, gracias` detiene el flujo. */
+  private isExplicitNoThanksButtonReply(message: InboundMessageCandidate): boolean {
+    if (message.replySource === "unsupported") {
+      return false;
+    }
+
+    return this.normalizeReplyText(message.replyText) === "no gracias";
+  }
+
+  /** Normaliza acentos y puntuacion para comparar textos de botones aprobados. */
+  private normalizeReplyText(value: string | null): string {
+    return (value ?? "")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^\p{L}\p{N}]+/gu, " ")
+      .trim()
+      .toLowerCase();
   }
 
   // --------------------------------------------------------------------------

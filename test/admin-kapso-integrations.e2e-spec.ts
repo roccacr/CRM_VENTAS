@@ -145,14 +145,10 @@ describe("AdminKapsoIntegrationsController (e2e)", () => {
       status: 0,
     });
 
-    await request(app.getHttpServer())
-      .patch("/api/v1/kapso/admin-integrations/12/status")
-      .send({ status: 0 })
-      .expect(200)
-      .expect({
-        id: 12,
-        status: 0,
-      });
+    await request(app.getHttpServer()).patch("/api/v1/kapso/admin-integrations/12/status").send({ status: 0 }).expect(200).expect({
+      id: 12,
+      status: 0,
+    });
   });
 
   it("resuelve integraciones operativas por administrador", async () => {
@@ -183,13 +179,10 @@ describe("AdminKapsoIntegrationsController (e2e)", () => {
       message: "La relacion adminâ€“Kapso fue eliminada.",
     });
 
-    await request(app.getHttpServer())
-      .delete("/api/v1/kapso/admin-integrations/12")
-      .expect(200)
-      .expect({
-        ok: true,
-        id: 12,
-        message: "La relacion adminâ€“Kapso fue eliminada.",
-      });
+    await request(app.getHttpServer()).delete("/api/v1/kapso/admin-integrations/12").expect(200).expect({
+      ok: true,
+      id: 12,
+      message: "La relacion adminâ€“Kapso fue eliminada.",
+    });
   });
 });

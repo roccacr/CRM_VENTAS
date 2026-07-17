@@ -24,6 +24,7 @@ describe("KapsoWebhooksController (e2e)", () => {
   const syncServiceMock = {
     handlePhoneNumberCreatedEvent: jest.fn(),
     handlePhoneNumberDeletedEvent: jest.fn(),
+    processInboundMessageWebhook: jest.fn(),
   };
 
   const configServiceMock = {
@@ -58,6 +59,11 @@ describe("KapsoWebhooksController (e2e)", () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    syncServiceMock.processInboundMessageWebhook.mockResolvedValue({
+      processed: 0,
+      answeredNo: 0,
+      ignored: 0,
+    });
   });
 
   afterAll(async () => {
@@ -177,5 +183,42 @@ describe("KapsoWebhooksController (e2e)", () => {
       .expect({ ok: true });
 
     expect(repositoryMock.touchPhoneNumberWebhookEvent).toHaveBeenCalled();
+    expect(syncServiceMock.processInboundMessageWebhook).toHaveBeenCalled();
+  });
+
+  it("procesa respuestas entrantes desde webhook Kapso sin cambiar la respuesta publica", async () => {
+    repositoryMock.findProcessedWebhookDuplicate.mockResolvedValue(null);
+    signatureServiceMock.verifySignature.mockReturnValue(true);
+    syncServiceMock.processInboundMessageWebhook.mockResolvedValue({
+      processed: 1,
+      answeredNo: 1,
+      ignored: 0,
+    });
+
+    await request(app.getHttpServer())
+      .post("/api/v1/webhooks/kapso/events")
+      .set("x-idempotency-key", "kapso-no-001")
+      .set("x-webhook-signature", "valid-signature")
+      .set("x-webhook-event", "whatsapp.message.received")
+      .send({
+        phone_number_id: "1197677976762773",
+        messages: [
+          {
+            from: "50687515938",
+            type: "button",
+            button: {
+              text: "No, gracias",
+            },
+          },
+        ],
+      })
+      .expect(200)
+      .expect({ ok: true });
+
+    expect(syncServiceMock.processInboundMessageWebhook).toHaveBeenCalledWith(
+      expect.objectContaining({
+        phone_number_id: "1197677976762773",
+      }),
+    );
   });
 });

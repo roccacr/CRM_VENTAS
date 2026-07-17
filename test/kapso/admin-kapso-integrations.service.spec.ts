@@ -197,10 +197,7 @@ describe("AdminKapsoIntegrationsService", () => {
       kapsoPhoneNumberId: ACTIVE_PHONE_NUMBER.id,
       status: 0,
     });
-    expect(repositoryMock.updateRelation).toHaveBeenCalledWith(
-      expect.objectContaining({ id: 31 }),
-      expect.objectContaining({ status: 0 }),
-    );
+    expect(repositoryMock.updateRelation).toHaveBeenCalledWith(expect.objectContaining({ id: 31 }), expect.objectContaining({ status: 0 }));
   });
 
   it("activa o desactiva una relacion existente", async () => {
