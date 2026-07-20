@@ -86,3 +86,66 @@ export const TABLE_COLUMNS = [
     }
 ];
 
+export const ESTIMATE_PRE_RESERVE_COLUMNS = [
+    {
+        title: "ADMIN",
+        data: "name_admin",
+        className: "text-left",
+        searchPanes: { show: true }
+    },
+    {
+        title: "#ESTIMACION",
+        data: "tranid_est",
+        className: "text-left",
+        searchPanes: { show: true },
+        render: (tranid, type, row) => {
+            return renderCotizacionConAlerta(tranid, row);
+        }
+    },
+    {
+        title: "LEAD",
+        data: "nombre_lead",
+        className: "text-left",
+        searchPanes: { show: true }
+    },
+    {
+        title: "PROYECTO",
+        data: "proyecto_lead",
+        className: "text-left",
+        searchPanes: { show: true }
+    },
+    {
+        title: "#OPORTUNIDAD",
+        data: "tranid_oport",
+        className: "text-left",
+        searchPanes: { show: true }
+    },
+    {
+        title: "#EXPEDIENTE",
+        data: "codigo_exp",
+        className: "text-left",
+        searchPanes: { show: true }
+    },
+    {
+        title: "FECHA PRE-RESERVA",
+        data: "envioPreReserva",
+        className: "text-left",
+        render: formatDateTime,
+        searchPanes: { show: true }
+    },
+    {
+        title: "VENCE PRE-RESERVA",
+        data: "fecha_vencimiento_pre_reserva",
+        className: "text-left",
+        render: formatDateTime,
+        searchPanes: { show: true }
+    },
+    {
+        title: "FECHA DE CREACION",
+        data: "creado_est",
+        className: "text-left",
+        render: formatDateTime,
+        searchPanes: { show: true }
+    }
+];
+

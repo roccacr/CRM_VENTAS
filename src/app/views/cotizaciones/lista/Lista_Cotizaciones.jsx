@@ -8,7 +8,7 @@ import "../../FiltrosTabla/style.css";
 import { getDefaultDatesMeses } from "../../FiltrosTabla/dataTableConfig";
 import { useDispatch, useSelector } from "react-redux";
 import { apiUrlImg, commonRequestData } from "../../../../api";
-import { TABLE_COLUMNS } from "./tableColumns";
+import { ESTIMATE_PRE_RESERVE_COLUMNS, TABLE_COLUMNS } from "./tableColumns";
 import { useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
 import { AplicarComicion } from "../../../../store/ordenVenta/thunkOrdenVenta";
@@ -209,7 +209,8 @@ const handleCommissionAction = async (dispatch, orderId, rowApi = null) => {
  * @param {boolean} isCommissionView - Whether current URL is /orden/lista?data=2
  * @returns {Array<Object>}
  */
-const getColumnsConfig = (isCommissionView) => {
+const getColumnsConfig = (isCommissionView, isEstimatesListRoute) => {
+   if (isEstimatesListRoute) return ESTIMATE_PRE_RESERVE_COLUMNS;
    if (!isCommissionView) return TABLE_COLUMNS;
 
    return [
@@ -236,7 +237,7 @@ const getColumnsConfig = (isCommissionView) => {
  * @param {string} rol_admin - Rol del administrador
  * @returns {Object} Configuración completa de DataTables
  */
-const getDataTableConfig = (tableElement, inputStartDate, inputEndDate, filterOption, orderStage, tableStateKey, idnetsuite_admin, rol_admin, isCommissionView) => {
+const getDataTableConfig = (tableElement, inputStartDate, inputEndDate, filterOption, orderStage, tableStateKey, idnetsuite_admin, rol_admin, isCommissionView, isEstimatesListRoute) => {
    /** @type {boolean} Determina si el dispositivo es móvil basado en el ancho de la ventana */
    const isMobile = window.innerWidth <= 768;
    return {
@@ -261,7 +262,7 @@ const getDataTableConfig = (tableElement, inputStartDate, inputEndDate, filterOp
             return response.data || [];
          },
       },
-      columns: getColumnsConfig(isCommissionView),
+      columns: getColumnsConfig(isCommissionView, isEstimatesListRoute),
       searchPanes: {
          layout: isMobile ? "columns-1" : "columns-2",
          initCollapsed: true,
@@ -272,7 +273,7 @@ const getDataTableConfig = (tableElement, inputStartDate, inputEndDate, filterOp
             searching: true,
          },
          viewTotal: true,
-         columns: isCommissionView ? [1, 2, 3, 4, 5, 6, 7] : [0, 1, 2, 3, 4, 5, 6],
+         columns: isCommissionView ? [1, 2, 3, 4, 5, 6, 7] : isEstimatesListRoute ? [0, 1, 2, 3, 4, 5, 6, 7, 8] : [0, 1, 2, 3, 4, 5, 6],
       },
       processing: true,
       dom: "lPBfrtip",
@@ -346,7 +347,7 @@ const useDataTable = (
       }
 
       tableInstanceRef.current = $(tableRef.current).DataTable(
-         getDataTableConfig(tableRef.current, inputStartDate, inputEndDate, filterOption, orderStage, tableStateKey, idnetsuite_admin, rol_admin, isCommissionView),
+         getDataTableConfig(tableRef.current, inputStartDate, inputEndDate, filterOption, orderStage, tableStateKey, idnetsuite_admin, rol_admin, isCommissionView, isEstimatesListRoute),
       );
 
       if (isCommissionView) {
@@ -445,7 +446,8 @@ const Lista_Cotizaciones = () => {
    const isEstimatesListRoute = window.location.pathname === "/estimaciones/lista";
    const orderStage = dataParam === "pre-reserva" || dataParam === "reserva" ? dataParam : "";
    const tableStatePrefix = isEstimatesListRoute ? "estimaciones" : "ordenes";
-   const tableStateKey = `DataTables_state_${tableStatePrefix}_${dataParam || "default"}`;
+   const tableStateVersion = isEstimatesListRoute ? "v2" : "v1";
+   const tableStateKey = `DataTables_state_${tableStatePrefix}_${tableStateVersion}_${dataParam || "default"}`;
 
    /**  Estado para la opción de filtrado */
    const [filterOption, setFilterOption] = useState(() => {
@@ -510,16 +512,18 @@ const Lista_Cotizaciones = () => {
          <Header />
          <div className="table-border-style card-body">
             {/* Nuevo bloque de controles de filtro */}
-            <div className="card-body border-top">
-               <DateControls
-                  inputStartDate={inputStartDate}
-                  inputEndDate={inputEndDate}
-                  setInputStartDate={setInputStartDate}
-                  setInputEndDate={setInputEndDate}
-                  filterOption={filterOption}
-               />
-               <FilterControls filterOption={filterOption} handleCheckboxChange={handleCheckboxChange} onClearDates={handleClearDates} />
-            </div>
+            {!isEstimatesListRoute && (
+               <div className="card-body border-top">
+                  <DateControls
+                     inputStartDate={inputStartDate}
+                     inputEndDate={inputEndDate}
+                     setInputStartDate={setInputStartDate}
+                     setInputEndDate={setInputEndDate}
+                     filterOption={filterOption}
+                  />
+                  <FilterControls filterOption={filterOption} handleCheckboxChange={handleCheckboxChange} onClearDates={handleClearDates} />
+               </div>
+            )}
             {/* Fin del bloque de controles de filtro */}
             <div className="table-responsive">
                <LeadsTable tableRef={tableRef} />
