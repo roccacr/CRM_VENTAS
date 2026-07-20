@@ -179,13 +179,13 @@ flowchart TD
 
 ### Responsabilidades
 
-| Capa         | Responsabilidad                                                          |
-| ------------ | ------------------------------------------------------------------------ |
-| Controllers  | REST, redirects de setup y recepcion de webhooks.                        |
-| Services     | Orquestacion, workers, envio de templates, respuestas y adjuntos.        |
-| Repositories | Consultas y persistencia en MySQL.                                       |
-| Entities     | Tablas locales de Kapso.                                                 |
-| Common       | Constantes, tipos y helpers de dominio.                                  |
+| Capa         | Responsabilidad                                                   |
+| ------------ | ----------------------------------------------------------------- |
+| Controllers  | REST, redirects de setup y recepcion de webhooks.                 |
+| Services     | Orquestacion, workers, envio de templates, respuestas y adjuntos. |
+| Repositories | Consultas y persistencia en MySQL.                                |
+| Entities     | Tablas locales de Kapso.                                          |
+| Common       | Constantes, tipos y helpers de dominio.                           |
 
 ## Configuracion del CRM
 
@@ -415,11 +415,11 @@ Si no hay adjuntos, el mensaje no promete fotos ni video.
 
 Botones planeados:
 
-| Boton               | Proxima decision pendiente       |
-| ------------------- | -------------------------------- |
-| `Ver precios`       | Definir template o mensaje.      |
-| `Agendar visita`    | Definir integracion con agenda.  |
-| `Hablar con asesor` | Marcar intervencion manual.      |
+| Boton               | Proxima decision pendiente      |
+| ------------------- | ------------------------------- |
+| `Ver precios`       | Definir template o mensaje.     |
+| `Agendar visita`    | Definir integracion con agenda. |
+| `Hablar con asesor` | Marcar intervencion manual.     |
 
 ## Reglas de Ejecucion
 
@@ -437,13 +437,13 @@ Si ya existe una ejecucion para ese lead y ese flujo, el worker no lo vuelve a i
 
 ### Identificadores Principales
 
-| Dato      | Campo                                               |
-| --------- | --------------------------------------------------- |
-| Lead      | `leads.idinterno_lead`                              |
-| Asesor    | `admins.idnetsuite_admin`                           |
-| Proyecto  | `leads.idproyecto_lead -> proyectos.id_ProNetsuite` |
-| Flujo     | `kapso_business_flows.flow_uuid`                    |
-| Numero    | `kapso_phone_numbers.phone_number_id`               |
+| Dato     | Campo                                               |
+| -------- | --------------------------------------------------- |
+| Lead     | `leads.idinterno_lead`                              |
+| Asesor   | `admins.idnetsuite_admin`                           |
+| Proyecto | `leads.idproyecto_lead -> proyectos.id_ProNetsuite` |
+| Flujo    | `kapso_business_flows.flow_uuid`                    |
+| Numero   | `kapso_phone_numbers.phone_number_id`               |
 
 ### Estados de Ejecucion
 
@@ -534,6 +534,7 @@ Reglas:
 - En la interfaz no se muestra el nombre tecnico del archivo.
 - Se muestra una etiqueta amigable como `Imagen JPG`, `Video MP4` o `Documento PDF`.
 - Si el proyecto no tiene adjuntos, la intro sale solo con texto.
+- Al quitar un adjunto desde el CRM, el API desactiva la metadata y borra el archivo fisico en `archivos/`.
 - Si un archivo fisico fue borrado pero la metadata seguia activa, el API desactiva esa metadata automaticamente al listar o servir el archivo.
 
 Ruta publica:
@@ -650,11 +651,11 @@ erDiagram
 
 ### Caidas Usadas
 
-| ID | Uso                                         |
-| -- | ------------------------------------------- |
-| 67 | Cliente rechazo informacion por WhatsApp.   |
-| 68 | Numero de telefono no valido.               |
-| 69 | Cliente acepto recibir informacion WhatsApp |
+| ID  | Uso                                         |
+| --- | ------------------------------------------- |
+| 67  | Cliente rechazo informacion por WhatsApp.   |
+| 68  | Numero de telefono no valido.               |
+| 69  | Cliente acepto recibir informacion WhatsApp |
 
 ## Rutas Principales
 
@@ -669,7 +670,7 @@ erDiagram
 | `DELETE /api/v1/kapso/business-flows/:flowUuid/projects/:idProyecto` | Deshabilita un proyecto del flujo.       |
 | `GET /api/v1/kapso/flows/:flowUuid/projects/:id/media`               | Lista adjuntos del flujo por proyecto.   |
 | `POST /api/v1/kapso/flows/:flowUuid/projects/:id/media`              | Sube un adjunto para una etapa.          |
-| `DELETE /api/v1/kapso/flow-project-media/:id`                        | Desactiva un adjunto.                    |
+| `DELETE /api/v1/kapso/flow-project-media/:id`                        | Desactiva metadata y borra el archivo.   |
 | `GET /api/v1/kapso/media/:storedFilename`                            | Sirve adjuntos publicos para Kapso.      |
 | `POST /api/v1/kapso/bootstrap/sync`                                  | Reconstruye estado local desde Kapso.    |
 | `POST /api/v1/kapso/phone-numbers/:phoneNumberId/sync`               | Reintenta sync de un numero.             |

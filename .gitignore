@@ -3,3 +3,8 @@ dist
 .env
 coverage
 *.log
+
+
+archivos
+/archivos
+.archivos

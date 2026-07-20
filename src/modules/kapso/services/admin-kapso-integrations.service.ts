@@ -177,6 +177,8 @@ export class AdminKapsoIntegrationsService {
       throw new NotFoundException("El adjunto indicado no existe.");
     }
 
+    await fs.rm(this.resolveStoragePath(media.relativePath), { force: true });
+
     return media;
   }
 

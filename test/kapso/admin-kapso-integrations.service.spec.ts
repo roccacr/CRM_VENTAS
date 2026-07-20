@@ -470,6 +470,44 @@ describe("AdminKapsoIntegrationsService", () => {
     }
   });
 
+  it("elimina el archivo fisico cuando se retira un adjunto", async () => {
+    const storagePath = await mkdtemp(join(tmpdir(), "kapso-media-"));
+    const relativePath = "flow-uuid/proyectos/38-andira/delete-me.jpg";
+    const absolutePath = join(storagePath, relativePath);
+
+    await mkdir(join(storagePath, "flow-uuid", "proyectos", "38-andira"), { recursive: true });
+    await writeFile(absolutePath, Buffer.from("delete me"));
+
+    repositoryMock.deactivateFlowProjectMedia.mockResolvedValue({
+      id: 12,
+      relativePath,
+    });
+
+    jest.spyOn(service["configService"], "get").mockImplementation((key: string) => {
+      if (key === "kapso.mediaStoragePath") {
+        return storagePath;
+      }
+
+      return undefined;
+    });
+
+    try {
+      const result = await service.deleteFlowProjectMedia(12);
+
+      expect(result).toEqual({
+        id: 12,
+        relativePath,
+      });
+      await expect(readFile(absolutePath)).rejects.toMatchObject({ code: "ENOENT" });
+      expect(repositoryMock.deactivateFlowProjectMedia).toHaveBeenCalledWith(12);
+    } finally {
+      await rm(storagePath, {
+        recursive: true,
+        force: true,
+      });
+    }
+  });
+
   it("desactiva metadata cuando el archivo fisico del adjunto no existe al servirlo", async () => {
     const storagePath = await mkdtemp(join(tmpdir(), "kapso-media-"));
 

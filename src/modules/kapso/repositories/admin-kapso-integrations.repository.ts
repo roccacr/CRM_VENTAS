@@ -708,7 +708,7 @@ export class AdminKapsoIntegrationsRepository {
     return (rows[0] ?? null) as FlowProjectMediaRecord | null;
   }
 
-  /** Desactiva un adjunto sin borrar el archivo fisico ni perder auditoria. */
+  /** Desactiva la metadata de un adjunto; el servicio borra despues el archivo fisico. */
   async deactivateFlowProjectMedia(id: number) {
     await this.dataSource.query(
       `

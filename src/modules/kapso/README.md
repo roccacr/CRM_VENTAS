@@ -21,16 +21,16 @@ La documentacion completa del flujo de negocio esta en el README raiz del proyec
 
 ## Archivos Clave
 
-| Archivo                                               | Responsabilidad                                              |
-| ----------------------------------------------------- | ------------------------------------------------------------ |
-| `controllers/kapso.controller.ts`                     | REST de Kapso, setup redirects y catalogos.                  |
-| `controllers/kapso-webhooks.controller.ts`            | Webhooks Platform, Events y Meta.                            |
-| `controllers/admin-kapso-integrations.controller.ts`  | CRUD Admin-Kapso, flujos por proyecto y adjuntos.            |
-| `services/kapso-sync.service.ts`                      | Orquestacion, workers, envio de templates y respuestas.      |
-| `services/kapso-platform-api.service.ts`              | Cliente HTTP hacia Kapso.                                    |
-| `repositories/kapso.repository.ts`                    | Persistencia de numeros Kapso.                               |
+| Archivo                                               | Responsabilidad                                               |
+| ----------------------------------------------------- | ------------------------------------------------------------- |
+| `controllers/kapso.controller.ts`                     | REST de Kapso, setup redirects y catalogos.                   |
+| `controllers/kapso-webhooks.controller.ts`            | Webhooks Platform, Events y Meta.                             |
+| `controllers/admin-kapso-integrations.controller.ts`  | CRUD Admin-Kapso, flujos por proyecto y adjuntos.             |
+| `services/kapso-sync.service.ts`                      | Orquestacion, workers, envio de templates y respuestas.       |
+| `services/kapso-platform-api.service.ts`              | Cliente HTTP hacia Kapso.                                     |
+| `repositories/kapso.repository.ts`                    | Persistencia de numeros Kapso.                                |
 | `repositories/admin-kapso-integrations.repository.ts` | Consultas CRM, asignaciones, flujos, templates y ejecuciones. |
-| `common/phone-number.helpers.ts`                      | Normalizacion y validacion de telefonos para WhatsApp.       |
+| `common/phone-number.helpers.ts`                      | Normalizacion y validacion de telefonos para WhatsApp.        |
 
 ## Flujo Tecnico Principal
 
@@ -60,7 +60,7 @@ Estas rutas alimentan la pestana `Flujos por proyecto` del CRM.
 | `DELETE /api/v1/kapso/business-flows/:flowUuid/projects/:idProyecto` | Quita un proyecto permitido del flujo.      |
 | `GET /api/v1/kapso/flows/:flowUuid/projects/:id/media`               | Lista adjuntos del proyecto para una etapa. |
 | `POST /api/v1/kapso/flows/:flowUuid/projects/:id/media`              | Sube un adjunto por request.                |
-| `DELETE /api/v1/kapso/flow-project-media/:id`                        | Desactiva un adjunto.                       |
+| `DELETE /api/v1/kapso/flow-project-media/:id`                        | Desactiva metadata y borra el archivo.      |
 | `GET /api/v1/kapso/media/:storedFilename`                            | Sirve un adjunto por UUID de archivo.       |
 
 Regla de relacion:
@@ -73,13 +73,13 @@ El API puede recibir `id_proyecto` o `id_ProNetsuite`, pero guarda la configurac
 
 ## Template Inicial
 
-| Campo      | Valor                   |
-| ---------- | ----------------------- |
-| Accion     | `lead_initial_greeting` |
-| Template   | `saludo`                |
-| Idioma     | `es_ES`                 |
-| Categoria  | `MARKETING`             |
-| Estado     | `approved`              |
+| Campo      | Valor                     |
+| ---------- | ------------------------- |
+| Accion     | `lead_initial_greeting`   |
+| Template   | `saludo`                  |
+| Idioma     | `es_ES`                   |
+| Categoria  | `MARKETING`               |
+| Estado     | `approved`                |
 | Parametros | `{{1}}`, `{{2}}`, `{{3}}` |
 
 Mapeo:
@@ -92,18 +92,18 @@ Mapeo:
 
 ## Estados de Ejecucion del Lead
 
-| Estado                  | Significado                         |
-| ----------------------- | ----------------------------------- |
-| `reserved`              | Lead reservado para el flujo.       |
-| `initial_template_sent` | Template inicial enviado.           |
-| `answered_yes`          | Cliente acepto recibir informacion. |
+| Estado                  | Significado                          |
+| ----------------------- | ------------------------------------ |
+| `reserved`              | Lead reservado para el flujo.        |
+| `initial_template_sent` | Template inicial enviado.            |
+| `answered_yes`          | Cliente acepto recibir informacion.  |
 | `answered_no`           | Cliente rechazo recibir informacion. |
-| `intro_sent`            | Intro normal enviada.               |
-| `intro_failed`          | Intro normal fallo.                 |
-| `invalid_phone`         | Telefono invalido, no se reintenta. |
-| `manual_intervention`   | Asesor tomo el control.             |
-| `completed`             | Flujo finalizado.                   |
-| `failed`                | Error tecnico terminal.             |
+| `intro_sent`            | Intro normal enviada.                |
+| `intro_failed`          | Intro normal fallo.                  |
+| `invalid_phone`         | Telefono invalido, no se reintenta.  |
+| `manual_intervention`   | Asesor tomo el control.              |
+| `completed`             | Flujo finalizado.                    |
+| `failed`                | Error tecnico terminal.              |
 
 ## Reglas CRM Importantes
 
@@ -122,6 +122,7 @@ Mapeo:
 - Se relacionan por `flow_uuid + id_proyecto_netsuite + step_code`.
 - La etapa actual usa `step_code = intro`.
 - La metadata queda en `kapso_flow_project_media`.
+- Al eliminar un adjunto desde el CRM, se desactiva la metadata y se borra el archivo fisico.
 - El archivo se sirve por `GET /api/v1/kapso/media/:storedFilename`.
 - Si la metadata esta activa pero el archivo fisico ya no existe, el servicio desactiva esa metadata al listar o servir el archivo.
 
