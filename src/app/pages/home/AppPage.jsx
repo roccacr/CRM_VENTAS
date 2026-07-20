@@ -126,7 +126,7 @@ export const AppPage = () => {
                hasOutlook: true,
                leftLabel: "PRE-RESERVA",
                rightLabel: "RESERVA",
-               leftUrl: "/orden/lista?data=pre-reserva",
+               leftUrl: "/estimaciones/lista?data=pre-reserva",
                rightUrl: "/orden/lista?data=reserva",
             };
          }

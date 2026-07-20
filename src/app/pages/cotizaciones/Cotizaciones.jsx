@@ -1,5 +1,5 @@
 import { AppLayout } from "../../layout/AppLayout";
-import { useLocation } from "react-router-dom";
+import { Navigate, useLocation } from "react-router-dom";
 import { BotonVolveR } from "../../components/BotonVolveR";
 import Lista_Cotizaciones from "../../views/cotizaciones/lista/Lista_Cotizaciones";
 import Lista_Clientes_Cierre_Firmado from "../../views/cotizaciones/cierre-firmado/Lista_Clientes_Cierre_Firmado";
@@ -14,6 +14,10 @@ export const Cotizaciones = () => {
     const searchParams = new URLSearchParams(location.search);
     const dataValue = searchParams.get("data");
     const allowedListParams = new Set(["1", "2", "3", "4", "pre-reserva", "reserva"]);
+
+    if (path[1] === "orden" && path[2] === "lista" && dataValue === "pre-reserva") {
+        return <Navigate to="/estimaciones/lista?data=pre-reserva" replace />;
+    }
 
     // Determinar si se debe mostrar el contenedor pc-content
     const isCotizacionesListRoute = path[1] === "orden" && path[2] === "lista" &&

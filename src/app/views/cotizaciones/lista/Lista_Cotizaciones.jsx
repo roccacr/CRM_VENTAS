@@ -16,13 +16,19 @@ import { AplicarComicion } from "../../../../store/ordenVenta/thunkOrdenVenta";
  * Componente para el encabezado de la vista de leads
  * @returns {JSX.Element} Encabezado con mensaje informativo
  */
-const Header = () => (
-   <div className="card-header table-card-header">
-      <div role="alert" className="fade alert alert-success show">
-         Usted está en la vista de Cotizaciones
+const Header = () => {
+   const title = window.location.pathname === "/estimaciones/lista"
+      ? "Usted esta en la vista de Estimaciones en Pre-Reserva"
+      : "Usted esta en la vista de Cotizaciones";
+
+   return (
+      <div className="card-header table-card-header">
+         <div role="alert" className="fade alert alert-success show">
+            {title}
+         </div>
       </div>
-   </div>
-);
+   );
+};
 
 /**
  * Componente para los controles de fecha
@@ -329,6 +335,7 @@ const useDataTable = (
    setShowModal,
    isCommissionView,
    dispatch,
+   isEstimatesListRoute,
 ) => {
    const navigate = useNavigate();
    useEffect(() => {
@@ -355,7 +362,17 @@ const useDataTable = (
       $(tableRef.current).on("click", "tbody tr", function () {
          const data = tableInstanceRef.current.row(this).data();
          if (data) {
-            navigate(`/orden/view?data=${data.idinterno_lead}&data2=${data.id_ov_netsuite}`);
+            if (isEstimatesListRoute) {
+               navigate(`/estimaciones/view?data=${data.idinterno_lead}&data2=${data.idEstimacion_est}`);
+               return;
+            }
+
+            if (data.id_ov_netsuite) {
+               navigate(`/orden/view?data=${data.idinterno_lead}&data2=${data.id_ov_netsuite}`);
+               return;
+            }
+
+            navigate(`/estimaciones/view?data=${data.idinterno_lead}&data2=${data.idEstimacion_est}`);
          }
       });
 
@@ -367,7 +384,7 @@ const useDataTable = (
             tableInstanceRef.current = null;
          }
       };
-   }, [tableRef, inputStartDate, inputEndDate, filterOption, orderStage, tableStateKey, idnetsuite_admin, rol_admin, setSelectedLead, setShowModal, isCommissionView, dispatch, navigate]);
+   }, [tableRef, inputStartDate, inputEndDate, filterOption, orderStage, tableStateKey, idnetsuite_admin, rol_admin, setSelectedLead, setShowModal, isCommissionView, dispatch, navigate, isEstimatesListRoute]);
 };
 
 /**
@@ -425,8 +442,10 @@ const Lista_Cotizaciones = () => {
 
    const params = new URLSearchParams(window.location.search);
    const dataParam = params.get("data");
+   const isEstimatesListRoute = window.location.pathname === "/estimaciones/lista";
    const orderStage = dataParam === "pre-reserva" || dataParam === "reserva" ? dataParam : "";
-   const tableStateKey = `DataTables_state_ordenes_${dataParam || "default"}`;
+   const tableStatePrefix = isEstimatesListRoute ? "estimaciones" : "ordenes";
+   const tableStateKey = `DataTables_state_${tableStatePrefix}_${dataParam || "default"}`;
 
    /**  Estado para la opción de filtrado */
    const [filterOption, setFilterOption] = useState(() => {
@@ -483,6 +502,7 @@ const Lista_Cotizaciones = () => {
       setShowModal,
       isCommissionView,
       dispatch,
+      isEstimatesListRoute,
    );
 
    return (

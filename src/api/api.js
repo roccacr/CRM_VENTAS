@@ -188,13 +188,43 @@ const sendKapsoData = async (method, endpoint, requestData = null) => {
   }
 };
 
+/**
+ * Sends multipart/form-data requests to the dedicated Kapso API.
+ * @param {string} method - HTTP method to use.
+ * @param {string} endpoint - Relative endpoint inside the Kapso API.
+ * @param {FormData} formData - Multipart body.
+ * @returns {Object} - An object with properties 'ok', 'data', and 'errorMessage'.
+ */
+const sendKapsoFormData = async (method, endpoint, formData) => {
+  try {
+    const url = `${kapsoApiUrl}${endpoint}`;
+    const response = await axios({
+      method,
+      url,
+      data: formData,
+    });
+
+    return { ok: true, data: response.data };
+  } catch (error) {
+    return {
+      ok: false,
+      errorMessage:
+        error?.response?.data?.message ||
+        error?.response?.data?.error ||
+        error.message,
+    };
+  }
+};
+
 /********************************************** EXPORT FUNCTIONS AND DATA **********************************************/
 
 export {
   fetchData,
   fetchKapsoData,
   sendKapsoData,
+  sendKapsoFormData,
   commonRequestData,
   fetchDataFile,
   apiUrlImg,
+  kapsoApiUrl,
 };
