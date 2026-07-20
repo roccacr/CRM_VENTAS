@@ -7,6 +7,100 @@ const { executeStoredProcedure, executeQuery } = require("../conectionPool/conec
 
 const ordenVenta = {};
 
+const parseDateExpression = (fieldName) => `
+    CASE
+        WHEN ${fieldName} IS NULL OR TRIM(${fieldName}) = '' THEN NULL
+        WHEN ${fieldName} LIKE '%/%' THEN STR_TO_DATE(${fieldName}, '%d/%m/%Y')
+        ELSE STR_TO_DATE(${fieldName}, '%Y-%m-%d')
+    END
+`;
+
+const buildPreReserveEstimatesListQuery = (dataParams) => {
+    const isAdmin = dataParams.rol_admin === "1";
+    const ownerFilter = isAdmin ? "" : "AND e.idAdmin_est = ?";
+    const params = isAdmin ? [] : [dataParams.idnetsuite_admin];
+    const preReserveDueDate = parseDateExpression("COALESCE(e.envioPreReservaCaida, e.caduca)");
+
+    const query = `
+        SELECT
+            o.status_ov,
+            COALESCE(o.id_ov_tranid, e.tranid_est) AS id_ov_tranid,
+            o.id_ov_netsuite,
+            l.nombre_lead,
+            l.idinterno_lead,
+            l.proyecto_lead,
+            l.idproyecto_lead,
+            l.campana_lead,
+            l.idcampana_lead,
+            p.tranid_oport,
+            p.id_oportunidad_oport,
+            e.idEstimacion_est,
+            e.tranid_est,
+            ex.ID_interno_expediente,
+            ex.codigo_exp,
+            COALESCE(o.creado_ov, e.creado_est) AS creado_ov,
+            a.name_admin,
+            CASE
+                WHEN ${preReserveDueDate} IS NULL THEN FALSE
+                WHEN DATEDIFF(CURDATE(), ${preReserveDueDate}) BETWEEN -3 AND 0 THEN TRUE
+                WHEN DATEDIFF(CURDATE(), ${preReserveDueDate}) > 0 THEN TRUE
+                ELSE FALSE
+            END AS alerta,
+            CASE
+                WHEN ${preReserveDueDate} IS NULL THEN ''
+                WHEN DATEDIFF(CURDATE(), ${preReserveDueDate}) = 0 THEN 'Vence hoy'
+                WHEN DATEDIFF(CURDATE(), ${preReserveDueDate}) < 0
+                    AND DATEDIFF(CURDATE(), ${preReserveDueDate}) >= -3
+                    THEN CONCAT('Faltan ', -DATEDIFF(CURDATE(), ${preReserveDueDate}), ' dias para vencer')
+                WHEN DATEDIFF(CURDATE(), ${preReserveDueDate}) > 0
+                    THEN CONCAT('Lleva ', DATEDIFF(CURDATE(), ${preReserveDueDate}), ' dias vencido')
+                ELSE ''
+            END AS alerta_mensaje
+        FROM estimaciones AS e
+        INNER JOIN leads AS l ON l.idinterno_lead = e.idLead_est
+        INNER JOIN oportunidades AS p ON p.id_oportunidad_oport = e.idOportunidad_est
+        INNER JOIN expedientes AS ex ON ex.ID_interno_expediente = e.idExpediente_est
+        INNER JOIN admins AS a ON a.idnetsuite_admin = e.idAdmin_est
+        LEFT JOIN ordenventa AS o
+            ON o.id_ov_est = e.idEstimacion_est
+            AND o.caida_ov = 0
+            AND o.comision_cancelada_ov = 0
+            AND o.status_ov = 1
+            AND o.contrado_frima_ov = 0
+            AND o.pagadas_ov = 0
+            AND o.reserva_ov = 0
+        WHERE e.pre_reserva = 1
+            AND COALESCE(e.pre_caida, 0) = 0
+            AND NOT EXISTS (
+                SELECT 1
+                FROM ordenventa AS reserva
+                WHERE reserva.id_ov_est = e.idEstimacion_est
+                    AND reserva.status_ov = 1
+                    AND reserva.caida_ov = 0
+                    AND reserva.reserva_ov = 1
+            )
+            AND (
+                NOT EXISTS (
+                    SELECT 1
+                    FROM ordenventa AS ov_any
+                    WHERE ov_any.id_ov_est = e.idEstimacion_est
+                )
+                OR EXISTS (
+                    SELECT 1
+                    FROM ordenventa AS ov_pre
+                    WHERE ov_pre.id_ov_est = e.idEstimacion_est
+                        AND ov_pre.status_ov = 1
+                        AND ov_pre.caida_ov = 0
+                        AND COALESCE(ov_pre.reserva_ov, 0) = 0
+                )
+            )
+            ${ownerFilter}
+        ORDER BY COALESCE(o.creado_ov, e.creado_est) DESC
+    `;
+
+    return { query, params };
+};
+
 // Configuración de credenciales para acceder a NetSuite.
 var accountSettings = {
     accountId: config.oauthNetsuite.realm,
@@ -35,6 +129,11 @@ var accountSettings = {
  */
 ordenVenta.enlistarOrdenesVenta = async (dataParams) => {
 
+
+    if (dataParams.filterOption === "1" && dataParams.orderStage === "pre-reserva") {
+        const { query, params } = buildPreReserveEstimatesListQuery(dataParams);
+        return executeQuery(query, params, dataParams.database);
+    }
 
     const conditions = [];
     const isAdmin = dataParams.rol_admin === "1";
@@ -840,3 +939,4 @@ ordenVenta.modificarCierrreFirmando = async (dataParams) => {
 };
 
 module.exports = ordenVenta;
+module.exports.buildPreReserveEstimatesListQuery = buildPreReserveEstimatesListQuery;
