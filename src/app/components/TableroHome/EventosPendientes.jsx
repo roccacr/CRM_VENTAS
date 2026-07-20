@@ -1,5 +1,8 @@
 import { useEffect, useState } from "react";
+import { InteractionRequiredAuthError } from "@azure/msal-browser";
+import { useMsal } from "@azure/msal-react";
 import { useDispatch, useSelector } from "react-redux";
+import Swal from "sweetalert2";
 
 import { updateActionCalendar } from "../../../store/Home/HomeSlice";
 import { selectListEventsPending } from "../../../store/Home/selectorsHome";
@@ -8,10 +11,16 @@ import {
     updateEventDate,
     updateEventsStatusThunksHome,
 } from "../../../store/Home/thunksHome";
+import {
+    deleteOutlookEventById,
+    OUTLOOK_CREATE_EVENT_SCOPE,
+    updateOutlookEventScheduleById,
+} from "../../views/calendars/outlook/outlookCalendarUtils";
 import { ButtonActions } from "../buttonAccions/buttonAccions";
 
 const normalizeAdminName = (value) => (value || "").trim().toLowerCase();
 const normalizeAdminEmail = (value) => (value || "").trim().toLowerCase();
+const DEFAULT_EVENT_DURATION_MS = 30 * 60 * 1000;
 
 const getAdminKey = (event) => {
     if (event?.id_admin !== undefined && event?.id_admin !== null && event?.id_admin !== "") {
@@ -41,6 +50,47 @@ const getDisplayValue = (value) => {
     return value;
 };
 
+const getLinkedOutlookEventId = (event) => (
+    typeof event?.outlook_event_id === "string" ? event.outlook_event_id.trim() : ""
+);
+
+const parseCalendarDate = (value) => {
+    if (!value) {
+        return null;
+    }
+
+    const normalizedValue = `${value}`.trim().replace(" ", "T");
+    const parsedDate = new Date(normalizedValue);
+
+    return Number.isNaN(parsedDate.getTime()) ? null : parsedDate;
+};
+
+const buildMovedOutlookRange = (calendarEvent, newDateValue) => {
+    const currentStartDate = parseCalendarDate(calendarEvent?.fechaIni_calendar);
+
+    if (!currentStartDate || !newDateValue) {
+        return null;
+    }
+
+    const currentEndDate = parseCalendarDate(calendarEvent?.fechaFin_calendar);
+    const durationMs = currentEndDate && currentEndDate > currentStartDate
+        ? currentEndDate.getTime() - currentStartDate.getTime()
+        : DEFAULT_EVENT_DURATION_MS;
+    const [yearValue, monthValue, dayValue] = newDateValue.split("-").map(Number);
+
+    if (!yearValue || !monthValue || !dayValue) {
+        return null;
+    }
+
+    const nextStartDate = new Date(currentStartDate.getTime());
+    nextStartDate.setFullYear(yearValue, monthValue - 1, dayValue);
+
+    return {
+        start: nextStartDate,
+        end: new Date(nextStartDate.getTime() + durationMs),
+    };
+};
+
 /**
  * Lista de eventos pendientes con filtro por asesor.
  *
@@ -48,6 +98,7 @@ const getDisplayValue = (value) => {
  */
 export const EventosPendientes = () => {
     const dispatch = useDispatch();
+    const { instance, accounts } = useMsal();
     const { rol_admin } = useSelector((state) => state.auth);
     const listEventsPending = useSelector(selectListEventsPending);
 
@@ -59,11 +110,7 @@ export const EventosPendientes = () => {
             return "";
         }
 
-        if (dateString.includes("T")) {
-            return dateString.split("T")[0];
-        }
-
-        return dateString.split(":")[0];
+        return `${dateString}`.split(/[T ]/)[0];
     };
 
     useEffect(() => {
@@ -94,20 +141,124 @@ export const EventosPendientes = () => {
         return dateB - dateA;
     });
 
-    const handleSelectChange = (event, id, lead, estado) => {
-        const selectedValue = event.target.value;
-        dispatch(updateActionCalendar({ id, selectedValue }));
-        dispatch(updateEventsStatusThunksHome(id, selectedValue, lead, estado));
+    const acquireOutlookToken = async () => {
+        const activeMicrosoftAccount = instance.getActiveAccount?.() || accounts?.[0] || null;
+
+        if (!activeMicrosoftAccount) {
+            throw new Error("No hay una cuenta Microsoft activa para actualizar Outlook.");
+        }
+
+        try {
+            return await instance.acquireTokenSilent({
+                scopes: [OUTLOOK_CREATE_EVENT_SCOPE],
+                account: activeMicrosoftAccount,
+            });
+        } catch (error) {
+            if (!(error instanceof InteractionRequiredAuthError)) {
+                throw error;
+            }
+
+            return await instance.acquireTokenPopup({
+                scopes: [OUTLOOK_CREATE_EVENT_SCOPE],
+                account: activeMicrosoftAccount,
+            });
+        }
     };
 
-    const handleDateChange = (event, id, originalDate) => {
+    const handleSelectChange = async (event, calendarEvent) => {
+        const selectedValue = event.target.value;
+        const outlookEventId = getLinkedOutlookEventId(calendarEvent);
+
+        if (selectedValue === "Cancelado" && outlookEventId) {
+            try {
+                const tokenResponse = await acquireOutlookToken();
+                const outlookDeleted = await deleteOutlookEventById(tokenResponse.accessToken, outlookEventId);
+
+                if (!outlookDeleted) {
+                    throw new Error("Outlook no confirmó la cancelación del evento.");
+                }
+            } catch (error) {
+                await Swal.fire(
+                    "No se actualizó Outlook",
+                    error?.message || "No fue posible cancelar el evento conectado en Outlook.",
+                    "warning",
+                );
+                return;
+            }
+        }
+
+        dispatch(updateActionCalendar({ id: calendarEvent.id_calendar, selectedValue }));
+        dispatch(updateEventsStatusThunksHome(
+            calendarEvent.id_calendar,
+            selectedValue,
+            calendarEvent.idinterno_lead,
+            calendarEvent.segimineto_lead,
+        ));
+    };
+
+    const handleDateChange = async (event, calendarEvent) => {
         const newDate = event.target.value;
+        const eventId = calendarEvent.id_calendar;
+        const previousInputDate = formatDate(calendarEvent.fechaIni_calendar);
+        const outlookEventId = getLinkedOutlookEventId(calendarEvent);
+        let tokenResponse = null;
+        let nextOutlookRange = null;
+
         setEditedDates((prevDates) => ({
             ...prevDates,
-            [id]: newDate,
+            [eventId]: newDate,
         }));
 
-        dispatch(updateEventDate(id, newDate, originalDate));
+        try {
+            if (outlookEventId) {
+                nextOutlookRange = buildMovedOutlookRange(calendarEvent, newDate);
+
+                if (!nextOutlookRange) {
+                    throw new Error("No fue posible calcular el nuevo rango del evento.");
+                }
+
+                tokenResponse = await acquireOutlookToken();
+
+                const outlookUpdated = await updateOutlookEventScheduleById(
+                    tokenResponse.accessToken,
+                    outlookEventId,
+                    nextOutlookRange,
+                );
+
+                if (!outlookUpdated) {
+                    throw new Error("Outlook no confirmó la actualización de fecha.");
+                }
+            }
+
+            const crmUpdateResult = await dispatch(updateEventDate(eventId, newDate, calendarEvent.fechaIni_calendar));
+
+            if (crmUpdateResult !== "ok") {
+                throw new Error("No fue posible guardar la nueva fecha en el CRM.");
+            }
+        } catch (error) {
+            if (outlookEventId && tokenResponse?.accessToken && nextOutlookRange) {
+                const previousOutlookRange = buildMovedOutlookRange(calendarEvent, previousInputDate);
+
+                if (previousOutlookRange) {
+                    await updateOutlookEventScheduleById(
+                        tokenResponse.accessToken,
+                        outlookEventId,
+                        previousOutlookRange,
+                    );
+                }
+            }
+
+            setEditedDates((prevDates) => ({
+                ...prevDates,
+                [eventId]: previousInputDate,
+            }));
+
+            await Swal.fire(
+                "No se actualizó el evento",
+                error?.message || "No fue posible sincronizar la fecha con Outlook.",
+                "warning",
+            );
+        }
     };
 
     return (
@@ -164,20 +315,13 @@ export const EventosPendientes = () => {
                                                             className="form-control"
                                                             type="date"
                                                             value={editedDates[event.id_calendar] || formatDate(event.fechaIni_calendar)}
-                                                            onChange={(e) => handleDateChange(e, event.id_calendar, event.fechaIni_calendar)}
+                                                            onChange={(e) => handleDateChange(e, event)}
                                                         />
                                                     </td>
                                                     <td>
                                                         <select
                                                             value={event.accion_calendar}
-                                                            onChange={(e) =>
-                                                                handleSelectChange(
-                                                                    e,
-                                                                    event.id_calendar,
-                                                                    event.idinterno_lead,
-                                                                    event.segimineto_lead,
-                                                                )
-                                                            }
+                                                            onChange={(e) => handleSelectChange(e, event)}
                                                             className="form-select"
                                                         >
                                                             <option value="Pendiente">Pendiente</option>

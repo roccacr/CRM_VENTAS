@@ -236,7 +236,23 @@ export const updateEventDate = (eventId, newDate, oldDate) => {
     return async (dispatch) => {
         try {
 
-            const extractDatePart = (dateString) => (dateString ? (dateString.includes("T") ? "T" + dateString.split("T")[1] : dateString.includes(":") ? dateString.slice(dateString.indexOf(":")) : "") : "");
+            const extractDatePart = (dateString) => {
+                if (!dateString) {
+                    return "";
+                }
+
+                const normalizedDate = `${dateString}`.trim();
+
+                if (normalizedDate.includes("T")) {
+                    return `T${normalizedDate.split("T")[1]}`;
+                }
+
+                if (normalizedDate.includes(" ")) {
+                    return `T${normalizedDate.split(" ")[1]}`;
+                }
+
+                return "";
+            };
 
             // Extraer la parte de la hora de oldDate
             const oldDateResult = extractDatePart(oldDate);

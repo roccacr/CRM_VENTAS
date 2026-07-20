@@ -332,6 +332,41 @@ export const deleteOutlookEventById = async (accessToken, outlookEventId) => {
     return response.ok;
 };
 
+/**
+ * Actualiza fecha/hora de un evento existente en Microsoft Graph.
+ *
+ * @param {string} accessToken - Token valido del usuario autenticado.
+ * @param {string} outlookEventId - ID del evento en Outlook.
+ * @param {{start: Date, end: Date}} rangeValue - Nuevo rango local del evento.
+ * @returns {Promise<boolean>} `true` cuando Graph responde ok.
+ */
+export const updateOutlookEventScheduleById = async (accessToken, outlookEventId, rangeValue) => {
+    if (!accessToken || !outlookEventId || !rangeValue?.start || !rangeValue?.end) {
+        return false;
+    }
+
+    const response = await fetch(`https://graph.microsoft.com/v1.0/me/events/${encodeURIComponent(outlookEventId)}`, {
+        method: "PATCH",
+        headers: {
+            Authorization: `Bearer ${accessToken}`,
+            "Content-Type": "application/json",
+            Prefer: `outlook.timezone="${OUTLOOK_TIMEZONE}"`,
+        },
+        body: JSON.stringify({
+            start: {
+                dateTime: toGraphDateTime(rangeValue.start),
+                timeZone: OUTLOOK_TIMEZONE,
+            },
+            end: {
+                dateTime: toGraphDateTime(rangeValue.end),
+                timeZone: OUTLOOK_TIMEZONE,
+            },
+        }),
+    });
+
+    return response.ok;
+};
+
 // =============================================================================
 // HELPERS DE VISTA Y FECHAS
 // =============================================================================
