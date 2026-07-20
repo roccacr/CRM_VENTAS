@@ -198,8 +198,9 @@ const View_oportunidad_listas = () => {
    const searchParams = useMemo(() => new URLSearchParams(search), [search]);
    const oportunidadParam = searchParams.get("oportuinidad") || "7";
    const leadAsignado = searchParams.get("idLead");
-   const [inputStartDateState, setInputStartDateState] = useState(() => localStorage.getItem(LOCAL_STORAGE_START) || firstDay);
-   const [inputEndDateState, setInputEndDateState] = useState(() => localStorage.getItem(LOCAL_STORAGE_END) || lastDay);
+   const shouldStartWithoutDateFilters = leadAsignado === "0" && ["1", "10"].includes(oportunidadParam);
+   const [inputStartDateState, setInputStartDateState] = useState(() => shouldStartWithoutDateFilters ? "" : localStorage.getItem(LOCAL_STORAGE_START) || firstDay);
+   const [inputEndDateState, setInputEndDateState] = useState(() => shouldStartWithoutDateFilters ? "" : localStorage.getItem(LOCAL_STORAGE_END) || lastDay);
    const [isMode, setIsMode] = useState(1);
    const [botonesEstados, setBotonesEstados] = useState(Number.parseInt(oportunidadParam, 10) || 7);
    const [idOportunidad] = useState(1);
@@ -232,6 +233,13 @@ const View_oportunidad_listas = () => {
 
       localStorage.removeItem(LOCAL_STORAGE_END);
    };
+
+   useEffect(() => {
+      if (!shouldStartWithoutDateFilters) return;
+
+      setInputStartDateState("");
+      setInputEndDateState("");
+   }, [shouldStartWithoutDateFilters, oportunidadParam, leadAsignado]);
 
    const handleClearDates = () => {
       setInputStartDate("");
