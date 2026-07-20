@@ -19,7 +19,14 @@ const buildPreReserveEstimatesListQuery = (dataParams) => {
     const isAdmin = dataParams.rol_admin === "1";
     const ownerFilter = isAdmin ? "" : "AND e.idAdmin_est = ?";
     const params = isAdmin ? [] : [dataParams.idnetsuite_admin];
-    const preReserveDueDate = parseDateExpression("COALESCE(e.envioPreReservaCaida, e.caduca)");
+    const estimateExpirationDate = parseDateExpression("e.caduca");
+    const preReserveSentDate = `
+        COALESCE(
+            ${parseDateExpression("e.envioPreReserva")},
+            DATE_SUB(${estimateExpirationDate}, INTERVAL 15 DAY)
+        )
+    `;
+    const preReserveDueDate = `DATE_ADD(${preReserveSentDate}, INTERVAL 15 DAY)`;
 
     const query = `
         SELECT
@@ -38,22 +45,24 @@ const buildPreReserveEstimatesListQuery = (dataParams) => {
             e.tranid_est,
             ex.ID_interno_expediente,
             ex.codigo_exp,
+            ${preReserveSentDate} AS envioPreReserva,
+            ${preReserveDueDate} AS fecha_vencimiento_pre_reserva,
+            e.creado_est,
             COALESCE(o.creado_ov, e.creado_est) AS creado_ov,
             a.name_admin,
             CASE
-                WHEN ${preReserveDueDate} IS NULL THEN FALSE
-                WHEN DATEDIFF(CURDATE(), ${preReserveDueDate}) BETWEEN -3 AND 0 THEN TRUE
-                WHEN DATEDIFF(CURDATE(), ${preReserveDueDate}) > 0 THEN TRUE
+                WHEN ${preReserveSentDate} IS NULL THEN FALSE
+                WHEN DATEDIFF(${preReserveDueDate}, CURDATE()) <= 3 THEN TRUE
                 ELSE FALSE
             END AS alerta,
             CASE
-                WHEN ${preReserveDueDate} IS NULL THEN ''
-                WHEN DATEDIFF(CURDATE(), ${preReserveDueDate}) = 0 THEN 'Vence hoy'
-                WHEN DATEDIFF(CURDATE(), ${preReserveDueDate}) < 0
-                    AND DATEDIFF(CURDATE(), ${preReserveDueDate}) >= -3
-                    THEN CONCAT('Faltan ', -DATEDIFF(CURDATE(), ${preReserveDueDate}), ' dias para vencer')
-                WHEN DATEDIFF(CURDATE(), ${preReserveDueDate}) > 0
-                    THEN CONCAT('Lleva ', DATEDIFF(CURDATE(), ${preReserveDueDate}), ' dias vencido')
+                WHEN ${preReserveSentDate} IS NULL THEN ''
+                WHEN DATEDIFF(${preReserveDueDate}, CURDATE()) = 0 THEN 'Vence hoy'
+                WHEN DATEDIFF(${preReserveDueDate}, CURDATE()) > 0
+                    AND DATEDIFF(${preReserveDueDate}, CURDATE()) <= 3
+                    THEN CONCAT('Faltan ', DATEDIFF(${preReserveDueDate}, CURDATE()), ' dias para vencer')
+                WHEN DATEDIFF(${preReserveDueDate}, CURDATE()) < 0
+                    THEN CONCAT('Lleva ', ABS(DATEDIFF(${preReserveDueDate}, CURDATE())), ' dias vencida')
                 ELSE ''
             END AS alerta_mensaje
         FROM estimaciones AS e

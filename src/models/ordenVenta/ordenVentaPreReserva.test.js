@@ -15,6 +15,9 @@ test("la consulta de pre-reserva usa estimaciones como tabla base", () => {
     assert.match(query, /LEFT JOIN ordenventa AS o/);
     assert.match(query, /e\.pre_reserva = 1/);
     assert.match(query, /COALESCE\(e\.pre_caida, 0\) = 0/);
+    assert.match(query, /e\.envioPreReserva/);
+    assert.match(query, /DATE_SUB\(.+e\.caduca.+INTERVAL 15 DAY/s);
+    assert.match(query, /DATE_ADD\(.+INTERVAL 15 DAY/s);
     assert.match(query, /NOT EXISTS \(\s*SELECT 1\s*FROM ordenventa AS ov_any/s);
     assert.match(query, /EXISTS \(\s*SELECT 1\s*FROM ordenventa AS ov_pre/s);
     assert.match(query, /COALESCE\(ov_pre\.reserva_ov, 0\) = 0/);
