@@ -3985,7 +3985,8 @@ const handleCalendarEventScheduleChange = async (info) => {
         currentAdminId: idnetsuite_admin,
         currentUserEmail: currentOwnerEmail,
     });
-    const canDeleteModalEvent = canDeleteCalendarEvent(modalEvent, Boolean(modalEvent && modalEventEditPermission.canMove));
+    const canEditModalEvent = Boolean(modalEvent && modalEventEditPermission.canMove);
+    const canDeleteModalEvent = canDeleteCalendarEvent(modalEvent, canEditModalEvent);
 
     /**
      * Expande evento a modal full-screen.
@@ -4935,6 +4936,16 @@ const handleCalendarEventScheduleChange = async (info) => {
                                 <button className="outlook-toolbar-ghost" type="button">Viva Insights</button>
                             </Box>
                             <Box className="outlook-expanded-toolbar-right">
+                                {canEditModalEvent && (
+                                    <button
+                                        className="outlook-secondary-action"
+                                        onClick={() => openEditEventModal(modalEvent)}
+                                        type="button"
+                                    >
+                                        <span className="ti ti-pencil"></span>
+                                        Editar evento
+                                    </button>
+                                )}
                                 <button className="outlook-primary-action" type="button">
                                     <span className="ti ti-video"></span>
                                     Unirse
