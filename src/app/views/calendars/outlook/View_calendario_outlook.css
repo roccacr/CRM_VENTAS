@@ -940,6 +940,14 @@
     gap: 10px;
 }
 
+.outlook-hover-card-edit-row {
+    display: flex;
+}
+
+.outlook-hover-card-edit-action {
+    width: 100%;
+}
+
 .outlook-hover-card-title {
     color: #374151;
     font-size: 1rem !important;

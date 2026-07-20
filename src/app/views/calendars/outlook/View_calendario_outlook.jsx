@@ -4627,15 +4627,6 @@ const handleCalendarEventScheduleChange = async (info) => {
                                 <span className="outlook-hover-card-id-badge">
                                     Id# {selectedEvent.extendedProps.crm.id_calendar}
                                 </span>
-                                {canEditSelectedEvent && (
-                                    <button
-                                        className="outlook-hover-card-expand-button"
-                                        onClick={() => openEditEventModal(selectedEvent)}
-                                        type="button"
-                                    >
-                                        <span className="ti ti-pencil outlook-hover-card-expand"></span>
-                                    </button>
-                                )}
                             </Box>
                         )}
 
@@ -4644,15 +4635,6 @@ const handleCalendarEventScheduleChange = async (info) => {
                                 {selectedEvent.title}
                             </Typography>
                             <Box className="outlook-hover-card-title-actions">
-                                {canEditSelectedEvent && !selectedEvent.extendedProps.crm?.id_calendar && (
-                                    <button
-                                        className="outlook-hover-card-expand-button"
-                                        onClick={() => openEditEventModal(selectedEvent)}
-                                        type="button"
-                                    >
-                                        <span className="ti ti-pencil outlook-hover-card-expand"></span>
-                                    </button>
-                                )}
                                 {canDeleteSelectedEvent && (
                                     <button
                                         className="outlook-hover-card-expand-button"
@@ -4668,6 +4650,19 @@ const handleCalendarEventScheduleChange = async (info) => {
                                 </button>
                             </Box>
                         </Box>
+
+                        {canEditSelectedEvent && (
+                            <Box className="outlook-hover-card-edit-row">
+                                <button
+                                    className="outlook-secondary-action outlook-hover-card-edit-action"
+                                    onClick={() => openEditEventModal(selectedEvent)}
+                                    type="button"
+                                >
+                                    <span className="ti ti-pencil"></span>
+                                    Editar evento
+                                </button>
+                            </Box>
+                        )}
 
                         {/* Acciones rápidas Teams: Unirse y Chatear */}
                         {isTeamsEvent && (
