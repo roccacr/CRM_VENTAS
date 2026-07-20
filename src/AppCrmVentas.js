@@ -7,6 +7,7 @@ require("dotenv").config(); // Carga variables de entorno desde un archivo .env
 
 // Importar cron jobs para que se inicialicen
 require("./models/leads/cronsLeads");
+require("./models/leads/autoLoseUncontactedLeads");
 require("./models/calendars/cronsCalendars");
 require("./models/oportunidad/cronsOportunidad");
 
