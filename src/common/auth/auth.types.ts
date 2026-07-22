@@ -32,6 +32,23 @@ export type EntraAccessTokenPayload = JwtPayload & {
 };
 
 /**
+ * Payload de sesión legacy emitido por `CRM_VENTAS BACKEND`.
+ *
+ * Se conserva como compatibilidad porque el frontend CRM ya opera con
+ * `token_admin`; el API Kapso valida ese token contra `admins.token_admin`.
+ */
+export type CrmSessionTokenPayload = JwtPayload & {
+  data?: {
+    /** PK CRM del admin al momento de emitir el token. */
+    id?: number;
+    /** Nombre del admin guardado en el token legacy. */
+    name_admin?: string;
+    /** Correo usado para resolver la sesión activa. */
+    email?: string;
+  };
+};
+
+/**
  * Usuario CRM autenticado adjunto al request HTTP.
  *
  * Representa la identidad de negocio ya validada (Entra + admin activo),
@@ -50,4 +67,6 @@ export type AuthenticatedCrmUser = {
   name: string;
   /** Object ID de Entra; null si el token no lo trae. */
   entraObjectId: string | null;
+  /** Origen del token aceptado por el guard. */
+  authSource: "entra" | "crm";
 };

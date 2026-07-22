@@ -58,7 +58,7 @@ Estas rutas alimentan la pestana `Flujos por proyecto` del CRM.
 | `GET /api/v1/kapso/business-flows`                                   | Lista flujos, pasos y proyectos permitidos. |
 | `PATCH /api/v1/kapso/business-flows/:flowUuid/status`                | Activa o inactiva el flujo completo.        |
 | `POST /api/v1/kapso/business-flows/:flowUuid/projects`               | Permite un proyecto para ejecutar un flujo. |
-| `DELETE /api/v1/kapso/business-flows/:flowUuid/projects/:idProyecto` | Quita un proyecto permitido del flujo.      |
+| `DELETE /api/v1/kapso/business-flows/:flowUuid/projects/:idProyecto` | Retira el proyecto, su metadata de adjuntos y su carpeta fisica. |
 | `GET /api/v1/kapso/flows/:flowUuid/projects/:id/media`               | Lista adjuntos del proyecto para una etapa. |
 | `POST /api/v1/kapso/flows/:flowUuid/projects/:id/media`              | Sube un adjunto por request.                |
 | `DELETE /api/v1/kapso/flow-project-media/:id`                        | Desactiva metadata y borra el archivo.      |
@@ -127,6 +127,7 @@ Mapeo:
 - La etapa actual usa `step_code = intro`.
 - La metadata queda en `kapso_flow_project_media`.
 - Al eliminar un adjunto desde el CRM, se desactiva la metadata y se borra el archivo fisico.
+- Al quitar un proyecto permitido del flujo, se eliminan sus filas de configuracion, metadata de adjuntos y carpetas `archivos/{flow_uuid}/proyectos/{idProyectoNetsuite-*}`.
 - El archivo se sirve por `GET /api/v1/kapso/media/:storedFilename`.
 - Si la metadata esta activa pero el archivo fisico ya no existe, el servicio desactiva esa metadata al listar o servir el archivo.
 

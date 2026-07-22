@@ -99,7 +99,7 @@ export class AdminKapsoIntegrationsController {
   }
 
   /**
-   * Deshabilita un proyecto dentro de un flujo sin borrar el flujo completo.
+   * Retira un proyecto del flujo y limpia sus adjuntos sin borrar el flujo completo.
    *
    * @param flowUuid - UUID del flujo.
    * @param idProyecto - Id NetSuite del proyecto.

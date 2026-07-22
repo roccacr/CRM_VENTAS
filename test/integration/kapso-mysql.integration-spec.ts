@@ -396,6 +396,7 @@ describe("Kapso MySQL integration", () => {
     const issuer = `https://login.microsoftonline.com/${tenantId}/v2.0`;
     const configValues: Record<string, unknown> = {
       "security.entraTenantId": tenantId,
+      "security.entraAudiences": [audience],
       "security.entraAudience": audience,
       "security.entraIssuer": issuer,
       "security.entraRequiredScope": "Kapso.Access",

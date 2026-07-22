@@ -77,6 +77,8 @@ const securityEnvSchema = {
   ENTRA_API_AUDIENCE: Joi.string().required(),
   ENTRA_REQUIRED_SCOPE: Joi.string().default("Kapso.Access"),
   ENTRA_ALLOWED_CLIENT_IDS: Joi.string().required(),
+  CRM_JWT_SECRET: Joi.string().optional(),
+  JWT_SECRET: Joi.string().optional(),
 };
 
 /**

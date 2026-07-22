@@ -282,26 +282,120 @@ export class KapsoFlowProjectMediaRepository {
   }
 
   /**
-   * Deshabilita (soft) el vínculo flow↔proyecto sin borrar la fila.
+   * Lista todos los vínculos flow↔proyecto, incluidos inactivos/duplicados.
    *
    * Tablas: `proyectos` (resolución de ID), `kapso_business_flow_projects`.
-   * Por qué: `enabled = 0` conserva historial; acepta id interno o NetSuite.
+   * Por qué: la baja limpia necesita ubicar todas las filas y carpetas del
+   * proyecto, no solo la asociación activa que ve la pantalla.
    */
-  async disableBusinessFlowProject(flowUuid: string, idProyecto: number) {
+  async listBusinessFlowProjectsByIdentifier(flowUuid: string, idProyecto: number) {
     const project = await this.findProjectByInternalOrNetSuiteId(idProyecto);
     const idProyectoNetsuite = project?.idProNetsuite ?? idProyecto;
 
-    await this.dataSource.query(
+    const rows = await this.dataSource.query(
       `
-        UPDATE kapso_business_flow_projects
-        SET enabled = 0
-        WHERE flow_uuid = ?
-          AND id_proyecto_netsuite = ?
+        SELECT
+          flow_project.id_kapso_business_flow_project AS id,
+          flow_project.id_proyecto AS idProyecto,
+          flow_project.id_proyecto_netsuite AS idProyectoNetsuite,
+          flow_project.project_name AS projectName,
+          COALESCE(crm_project.Nombre_proyecto, flow_project.project_name) AS nombreProyecto,
+          flow_project.enabled
+        FROM kapso_business_flow_projects flow_project
+        LEFT JOIN proyectos crm_project
+          ON crm_project.id_ProNetsuite = flow_project.id_proyecto_netsuite
+        WHERE flow_project.flow_uuid = ?
+          AND flow_project.id_proyecto_netsuite = ?
+        ORDER BY flow_project.id_kapso_business_flow_project ASC
       `,
       [flowUuid, idProyectoNetsuite],
     );
 
-    return { ok: true, flowUuid, idProyecto: project?.idProyecto ?? null, idProyectoNetsuite };
+    return rows as KapsoBusinessFlowProjectRecord[];
+  }
+
+  /**
+   * Elimina definitivamente el vínculo flow↔proyecto.
+   *
+   * Tablas: `proyectos` (resolución de ID), `kapso_business_flow_projects`.
+   * Por qué: al quitar un proyecto del flujo no debe quedar basura funcional
+   * ni filas viejas que luego puedan mezclarse en la UI.
+   */
+  async deleteBusinessFlowProject(flowUuid: string, idProyecto: number) {
+    const project = await this.findProjectByInternalOrNetSuiteId(idProyecto);
+    const idProyectoNetsuite = project?.idProNetsuite ?? idProyecto;
+
+    const result = (await this.dataSource.query(
+      `
+        DELETE FROM kapso_business_flow_projects
+        WHERE flow_uuid = ?
+          AND id_proyecto_netsuite = ?
+      `,
+      [flowUuid, idProyectoNetsuite],
+    )) as { affectedRows?: number } | Array<{ affectedRows?: number }>;
+
+    const affectedRows = Array.isArray(result) ? result[0]?.affectedRows : result.affectedRows;
+
+    return {
+      ok: true,
+      flowUuid,
+      idProyecto: project?.idProyecto ?? null,
+      idProyectoNetsuite,
+      deletedProjects: Number(affectedRows ?? 0),
+    };
+  }
+
+  /**
+   * Retira definitivamente el proyecto del flujo.
+   *
+   * Por qué: conserva el nombre histórico del método para no cambiar rutas ni
+   * consumidores, pero ya no deja filas inactivas que ensucien la configuración.
+   */
+  async disableBusinessFlowProject(flowUuid: string, idProyecto: number) {
+    return this.deleteBusinessFlowProject(flowUuid, idProyecto);
+  }
+
+  /**
+   * Lista toda la media de un flow/proyecto, activa o retirada.
+   *
+   * Tablas: `kapso_flow_project_media`.
+   * Por qué: la baja limpia del proyecto debe eliminar metadata vieja y activa.
+   */
+  async listFlowProjectMediaForProject(flowUuid: string, idProyectoNetsuite: number) {
+    return this.queryFlowProjectMedia(
+      `
+        WHERE media.flow_uuid = ?
+          AND media.id_proyecto_netsuite = ?
+        ORDER BY media.step_code ASC, media.sort_order ASC, media.id_kapso_flow_project_media ASC
+      `,
+      [flowUuid, idProyectoNetsuite],
+    );
+  }
+
+  /**
+   * Elimina metadata de media asociada a un flow/proyecto.
+   *
+   * Tablas: `kapso_flow_project_media`.
+   * Por qué: al quitar el proyecto del flujo, los adjuntos dejan de existir
+   * para esa configuración y no deben reaparecer como registros huérfanos.
+   */
+  async deleteFlowProjectMediaForProject(flowUuid: string, idProyectoNetsuite: number) {
+    const result = (await this.dataSource.query(
+      `
+        DELETE FROM kapso_flow_project_media
+        WHERE flow_uuid = ?
+          AND id_proyecto_netsuite = ?
+      `,
+      [flowUuid, idProyectoNetsuite],
+    )) as { affectedRows?: number } | Array<{ affectedRows?: number }>;
+
+    const affectedRows = Array.isArray(result) ? result[0]?.affectedRows : result.affectedRows;
+
+    return {
+      flowUuid,
+      idProyectoNetsuite,
+      deletedMedia: Number(affectedRows ?? 0),
+    };
   }
 
   /**
@@ -325,6 +419,7 @@ export class KapsoFlowProjectMediaRepository {
           ON crm_project.id_ProNetsuite = project.id_proyecto_netsuite
         WHERE project.flow_uuid = ?
           AND project.id_proyecto_netsuite = ?
+        ORDER BY project.enabled DESC, project.id_kapso_business_flow_project DESC
         LIMIT 1
       `,
       [flowUuid, idProyectoNetsuite],

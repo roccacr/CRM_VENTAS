@@ -11,7 +11,16 @@ import { decode, verify } from "jsonwebtoken";
 import { JwksClient } from "jwks-rsa";
 import { DataSource } from "typeorm";
 
-import { AuthenticatedCrmUser, EntraAccessTokenPayload } from "./auth.types";
+import { AuthenticatedCrmUser, CrmSessionTokenPayload, EntraAccessTokenPayload } from "./auth.types";
+
+/**
+ * Normaliza `ENTRA_API_AUDIENCE` / config legacy a lista de audiences.
+ */
+const splitAudience = (value: string | undefined): string[] =>
+  (value ?? "")
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
 
 /**
  * Fila mínima de `admins` necesaria para construir `AuthenticatedCrmUser`.
@@ -33,7 +42,7 @@ type CrmAdminRow = {
 @Injectable()
 export class EntraAuthService {
   private readonly allowedClientIds: string[];
-  private readonly audience: string;
+  private readonly audiences: string[];
   private readonly issuer: string;
   private readonly jwks: JwksClient;
   private readonly requiredScope: string;
@@ -44,10 +53,16 @@ export class EntraAuthService {
     private readonly dataSource: DataSource,
   ) {
     this.tenantId = this.configService.getOrThrow<string>("security.entraTenantId");
-    this.audience = this.configService.getOrThrow<string>("security.entraAudience");
+    const configuredAudiences = this.configService.get<string[]>("security.entraAudiences", []);
+    const legacyAudience = this.configService.get<string>("security.entraAudience", "");
+    this.audiences = configuredAudiences.length > 0 ? configuredAudiences : splitAudience(legacyAudience);
     this.issuer = this.configService.getOrThrow<string>("security.entraIssuer");
     this.requiredScope = this.configService.getOrThrow<string>("security.entraRequiredScope");
     this.allowedClientIds = this.configService.get<string[]>("security.entraAllowedClientIds", []);
+
+    if (this.audiences.length === 0) {
+      throw new Error("security.entraAudiences / security.entraAudience debe definir al menos una audiencia.");
+    }
 
     this.jwks = new JwksClient({
       cache: true,
@@ -70,6 +85,10 @@ export class EntraAuthService {
    * @throws {UnauthorizedException} Si el token es inválido o el admin no está activo
    */
   async authenticate(token: string): Promise<AuthenticatedCrmUser> {
+    if (this.isCrmSessionToken(token)) {
+      return this.authenticateCrmSessionToken(token);
+    }
+
     const payload = await this.verifyAccessToken(token);
     const email = this.resolveEmail(payload);
     const crmUser = await this.findActiveCrmUser(email);
@@ -85,6 +104,60 @@ export class EntraAuthService {
       email: crmUser.emailAdmin,
       name: crmUser.nameAdmin,
       entraObjectId: payload.oid ?? null,
+      authSource: "entra",
+    };
+  }
+
+  /**
+   * Detecta tokens de sesión legacy del CRM antes de llamar JWKS.
+   *
+   * Un token CRM usa `data.email` y no trae issuer/audience Entra; esto evita
+   * disparar validaciones Microsoft para una sesión que ya existe en el CRM.
+   */
+  private isCrmSessionToken(token: string): boolean {
+    const payload = decode(token) as CrmSessionTokenPayload | null;
+
+    return Boolean(payload?.data?.email && !payload.iss && !payload.aud);
+  }
+
+  /**
+   * Valida `token_admin` igual que el backend CRM: firma JWT + sesión activa.
+   */
+  private async authenticateCrmSessionToken(token: string): Promise<AuthenticatedCrmUser> {
+    const secret = this.configService.get<string>("security.crmJwtSecret", "");
+
+    if (!secret) {
+      throw new UnauthorizedException("La autenticación por sesión CRM no está configurada.");
+    }
+
+    let payload: CrmSessionTokenPayload;
+
+    try {
+      payload = verify(token, secret) as CrmSessionTokenPayload;
+    } catch {
+      throw new UnauthorizedException("Token de sesión CRM inválido o vencido.");
+    }
+
+    const email = payload.data?.email?.trim().toLowerCase();
+
+    if (!email) {
+      throw new UnauthorizedException("El token CRM no identifica una cuenta de correo.");
+    }
+
+    const crmUser = await this.findActiveCrmSessionUser(email, token);
+
+    if (!crmUser) {
+      throw new UnauthorizedException("La sesión CRM ya no está activa.");
+    }
+
+    return {
+      idAdmin: crmUser.idAdmin,
+      idNetSuiteAdmin: crmUser.idNetSuiteAdmin,
+      roleId: crmUser.roleId,
+      email: crmUser.emailAdmin,
+      name: crmUser.nameAdmin,
+      entraObjectId: null,
+      authSource: "crm",
     };
   }
 
@@ -127,18 +200,21 @@ export class EntraAuthService {
    * @param publicKey - Clave pública JWKS correspondiente al `kid`
    */
   private verifySignature(token: string, publicKey: string): Promise<EntraAccessTokenPayload> {
+    const audienceOption =
+      this.audiences.length === 1 ? this.audiences[0] : ([this.audiences[0], ...this.audiences.slice(1)] as [string, ...string[]]);
+
     return new Promise((resolve, reject) => {
       verify(
         token,
         publicKey,
         {
           algorithms: ["RS256"],
-          audience: this.audience,
+          audience: audienceOption,
           // Tolerancia corta para desfase de reloj entre API e IdP.
           clockTolerance: 5,
           issuer: this.issuer,
         },
-        (error, payload) => {
+        (error: Error | null, payload) => {
           if (error || !payload || typeof payload === "string") {
             reject(error ?? new Error("Invalid access token payload"));
             return;
@@ -221,6 +297,33 @@ export class EntraAuthService {
         LIMIT 1
       `,
       [email],
+    )) as CrmAdminRow[];
+
+    return rows[0] ?? null;
+  }
+
+  /**
+   * Busca una sesión CRM vigente por correo y `token_admin` exacto.
+   *
+   * La comparación con el token persistido permite revocar sesiones desde el
+   * CRM legacy sin depender solo de la expiración del JWT.
+   */
+  private async findActiveCrmSessionUser(email: string, token: string): Promise<CrmAdminRow | null> {
+    const rows = (await this.dataSource.query(
+      `
+        SELECT
+          admin.id_admin AS idAdmin,
+          admin.idnetsuite_admin AS idNetSuiteAdmin,
+          admin.id_rol_admin AS roleId,
+          admin.email_admin AS emailAdmin,
+          admin.name_admin AS nameAdmin
+        FROM admins admin
+        WHERE LOWER(admin.email_admin) = ?
+          AND admin.token_admin = ?
+          AND admin.status_admin = 1
+        LIMIT 1
+      `,
+      [email, token],
     )) as CrmAdminRow[];
 
     return rows[0] ?? null;

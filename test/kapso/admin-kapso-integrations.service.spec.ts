@@ -58,6 +58,10 @@ function createServiceTestBed() {
     updateBusinessFlowStatus: jest.fn(),
     enableBusinessFlowProject: jest.fn(),
     disableBusinessFlowProject: jest.fn(),
+    listBusinessFlowProjectsByIdentifier: jest.fn(),
+    listFlowProjectMediaForProject: jest.fn(),
+    deleteFlowProjectMediaForProject: jest.fn(),
+    deleteBusinessFlowProject: jest.fn(),
     findBusinessFlowProject: jest.fn(),
     listFlowProjectMedia: jest.fn(),
     createFlowProjectMedia: jest.fn(),
@@ -390,11 +394,13 @@ describe("AdminKapsoIntegrationsService", () => {
   });
 
   it("deshabilita un proyecto de un flujo de negocio", async () => {
-    repositoryMock.disableBusinessFlowProject.mockResolvedValue({
+    repositoryMock.listBusinessFlowProjectsByIdentifier.mockResolvedValue([]);
+    repositoryMock.deleteBusinessFlowProject.mockResolvedValue({
       ok: true,
       flowUuid: "flow-uuid",
-      idProyecto: 38,
+      idProyecto: null,
       idProyectoNetsuite: 38,
+      deletedProjects: 0,
     });
 
     const result = await service.disableBusinessFlowProject("flow-uuid", 38);
@@ -402,10 +408,89 @@ describe("AdminKapsoIntegrationsService", () => {
     expect(result).toEqual({
       ok: true,
       flowUuid: "flow-uuid",
+      idProyecto: null,
+      idProyectoNetsuite: 38,
+      deletedProjects: 0,
+      deletedMedia: 0,
+    });
+    expect(repositoryMock.deleteBusinessFlowProject).toHaveBeenCalledWith("flow-uuid", 38);
+  });
+
+  it("retira metadata y carpeta fisica cuando se quita un proyecto de un flujo", async () => {
+    const storagePath = await mkdtemp(join(tmpdir(), "kapso-media-"));
+    const projectFolder = join(storagePath, "flow-uuid", "proyectos", "38-andira");
+    const orphanProjectFolder = join(storagePath, "flow-uuid", "proyectos", "38-andira-antigua");
+    const firstRelativePath = "flow-uuid/proyectos/38-andira/first.jpg";
+    const secondRelativePath = "flow-uuid/proyectos/38-andira/second.jpg";
+    const orphanRelativePath = "flow-uuid/proyectos/38-andira-antigua/orphan.jpg";
+
+    await mkdir(projectFolder, { recursive: true });
+    await mkdir(orphanProjectFolder, { recursive: true });
+    await writeFile(join(storagePath, firstRelativePath), Buffer.from("first"));
+    await writeFile(join(storagePath, secondRelativePath), Buffer.from("second"));
+    await writeFile(join(storagePath, orphanRelativePath), Buffer.from("orphan"));
+
+    repositoryMock.listBusinessFlowProjectsByIdentifier.mockResolvedValue([
+      {
+        idProyecto: 38,
+        idProyectoNetsuite: 38,
+        nombreProyecto: "Andira",
+        projectName: "Andira",
+      },
+    ]);
+    repositoryMock.listFlowProjectMediaForProject.mockResolvedValue([
+      {
+        id: 11,
+        relativePath: firstRelativePath,
+      },
+      {
+        id: 12,
+        relativePath: secondRelativePath,
+      },
+    ]);
+    repositoryMock.deleteFlowProjectMediaForProject.mockResolvedValue({
+      deletedMedia: 2,
+    });
+    repositoryMock.deleteBusinessFlowProject.mockResolvedValue({
+      ok: true,
+      flowUuid: "flow-uuid",
       idProyecto: 38,
       idProyectoNetsuite: 38,
+      deletedProjects: 1,
     });
-    expect(repositoryMock.disableBusinessFlowProject).toHaveBeenCalledWith("flow-uuid", 38);
+
+    jest.spyOn(service["configService"], "get").mockImplementation((key: string) => {
+      if (key === "kapso.mediaStoragePath") {
+        return storagePath;
+      }
+
+      return undefined;
+    });
+
+    try {
+      const result = await service.disableBusinessFlowProject("flow-uuid", 38);
+
+      expect(result).toEqual({
+        ok: true,
+        flowUuid: "flow-uuid",
+        idProyecto: 38,
+        idProyectoNetsuite: 38,
+        deletedProjects: 1,
+        deletedMedia: 2,
+      });
+      expect(repositoryMock.deleteFlowProjectMediaForProject).toHaveBeenCalledWith("flow-uuid", 38);
+      expect(repositoryMock.deleteBusinessFlowProject).toHaveBeenCalledWith("flow-uuid", 38);
+      await expect(readFile(join(storagePath, firstRelativePath))).rejects.toMatchObject({ code: "ENOENT" });
+      await expect(readFile(join(storagePath, secondRelativePath))).rejects.toMatchObject({ code: "ENOENT" });
+      await expect(readFile(join(storagePath, orphanRelativePath))).rejects.toMatchObject({ code: "ENOENT" });
+      await expect(readFile(projectFolder)).rejects.toMatchObject({ code: "ENOENT" });
+      await expect(readFile(orphanProjectFolder)).rejects.toMatchObject({ code: "ENOENT" });
+    } finally {
+      await rm(storagePath, {
+        recursive: true,
+        force: true,
+      });
+    }
   });
 
   it("sube adjuntos dentro de la carpeta del flujo y proyecto habilitado", async () => {
@@ -551,6 +636,39 @@ describe("AdminKapsoIntegrationsService", () => {
       });
       await expect(readFile(absolutePath)).rejects.toMatchObject({ code: "ENOENT" });
       expect(repositoryMock.deactivateFlowProjectMedia).toHaveBeenCalledWith(12);
+    } finally {
+      await rm(storagePath, {
+        recursive: true,
+        force: true,
+      });
+    }
+  });
+
+  it("mantiene el borrado como exitoso cuando el archivo fisico ya no existe", async () => {
+    const storagePath = await mkdtemp(join(tmpdir(), "kapso-media-"));
+    const relativePath = "flow-uuid/proyectos/38-andira/already-missing.jpg";
+
+    repositoryMock.deactivateFlowProjectMedia.mockResolvedValue({
+      id: 14,
+      relativePath,
+    });
+
+    jest.spyOn(service["configService"], "get").mockImplementation((key: string) => {
+      if (key === "kapso.mediaStoragePath") {
+        return storagePath;
+      }
+
+      return undefined;
+    });
+
+    try {
+      const result = await service.deleteFlowProjectMedia(14);
+
+      expect(result).toEqual({
+        id: 14,
+        relativePath,
+      });
+      expect(repositoryMock.deactivateFlowProjectMedia).toHaveBeenCalledWith(14);
     } finally {
       await rm(storagePath, {
         recursive: true,

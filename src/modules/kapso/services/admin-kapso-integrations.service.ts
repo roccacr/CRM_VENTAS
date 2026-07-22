@@ -138,13 +138,40 @@ export class AdminKapsoIntegrationsService {
   }
 
   /**
-   * Deshabilita un proyecto dentro de un flujo.
+   * Retira un proyecto dentro de un flujo y limpia sus adjuntos.
    *
    * @param flowUuid - UUID del flujo.
    * @param idProyecto - Id NetSuite del proyecto.
    */
   async disableBusinessFlowProject(flowUuid: string, idProyecto: number) {
-    return this.flowProjectMediaRepository.disableBusinessFlowProject(flowUuid, idProyecto);
+    const projects = await this.flowProjectMediaRepository.listBusinessFlowProjectsByIdentifier(flowUuid, idProyecto);
+    const projectIds = [...new Set(projects.map((project) => project.idProyectoNetsuite))];
+    const foldersToRemove = new Set<string>();
+    let deletedMedia = 0;
+
+    for (const idProyectoNetsuite of projectIds) {
+      const mediaItems = await this.flowProjectMediaRepository.listFlowProjectMediaForProject(flowUuid, idProyectoNetsuite);
+
+      for (const media of mediaItems) {
+        foldersToRemove.add(dirname(media.relativePath).replace(/\\/g, "/"));
+      }
+
+      await this.collectProjectMediaFolders(flowUuid, idProyectoNetsuite, foldersToRemove);
+
+      const mediaDeleteResult = await this.flowProjectMediaRepository.deleteFlowProjectMediaForProject(flowUuid, idProyectoNetsuite);
+      deletedMedia += mediaDeleteResult.deletedMedia;
+    }
+
+    const projectDeleteResult = await this.flowProjectMediaRepository.deleteBusinessFlowProject(flowUuid, idProyecto);
+
+    for (const folderRelativePath of foldersToRemove) {
+      await fs.rm(this.resolveStoragePath(folderRelativePath), { recursive: true, force: true });
+    }
+
+    return {
+      ...projectDeleteResult,
+      deletedMedia,
+    };
   }
 
   /**
@@ -542,6 +569,25 @@ export class AdminKapsoIntegrationsService {
         .replace(/^-+|-+$/g, "") || "proyecto";
 
     return `${idProyectoNetsuite}-${safeName}`;
+  }
+
+  private async collectProjectMediaFolders(flowUuid: string, idProyectoNetsuite: number, foldersToRemove: Set<string>) {
+    const projectsRootRelativePath = join(flowUuid, "proyectos").replace(/\\/g, "/");
+    const projectsRootPath = this.resolveStoragePath(projectsRootRelativePath);
+
+    try {
+      const entries = await fs.readdir(projectsRootPath, { withFileTypes: true });
+
+      for (const entry of entries) {
+        if (entry.isDirectory() && entry.name.startsWith(`${idProyectoNetsuite}-`)) {
+          foldersToRemove.add(join(projectsRootRelativePath, entry.name).replace(/\\/g, "/"));
+        }
+      }
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
+        throw error;
+      }
+    }
   }
 
   private async mediaFileExists(media: Pick<FlowProjectMediaRecord, "relativePath">) {
