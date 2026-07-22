@@ -1,28 +1,31 @@
-// ============================================================================
-// IMPORTS
-// ============================================================================
+/**
+ * Migración de consolidación del modelo Kapso en una sola tabla.
+ *
+ * Motivo: aplanar proyecto, customer, setup y auditoría de webhooks dentro de
+ * `kapso_phone_numbers`, eliminando el esquema relacional normalizado previo.
+ *
+ * Tablas que toca:
+ * - `kapso_phone_numbers` (añade columnas consolidadas; elimina FKs/columnas `project_id`/`customer_id`)
+ * - Elimina: `kapso_phone_number_webhooks`, `kapso_setup_link_audits`,
+ *   `kapso_webhook_event_logs`, `kapso_customers`, `kapso_projects`
+ *
+ * `down`: IRREVERSIBLE. Solo ejecuta un no-op (`SELECT 1`); no reconstruye
+ * tablas ni datos eliminados.
+ */
 
 import { MigrationInterface, QueryRunner } from "typeorm";
 
-// ============================================================================
-// MIGRACION
-// ============================================================================
-
 /**
- * Consolida el modelo Kapso en una sola tabla `kapso_phone_numbers`.
- *
- * Esta migracion:
- * - agrega columnas consolidadas al numero;
- * - elimina FKs y columnas del modelo viejo normalizado;
- * - elimina tablas auxiliares que ya no se usan en la version simplificada.
+ * Consolida el estado Kapso en `kapso_phone_numbers` y descarta tablas satélite.
  */
 export class ConsolidateKapsoIntoPhoneNumbers1752108000000 implements MigrationInterface {
   name = "ConsolidateKapsoIntoPhoneNumbers1752108000000";
 
-  // --------------------------------------------------------------------------
-  // APPLY
-  // --------------------------------------------------------------------------
-
+  /**
+   * Amplía `kapso_phone_numbers` y elimina tablas/relaciones del modelo normalizado.
+   *
+   * @param queryRunner - Ejecutor de consultas TypeORM de la migración.
+   */
   public async up(queryRunner: QueryRunner): Promise<void> {
     await this.ensureColumn(queryRunner, "kapso_phone_numbers", "project_external_id", "varchar(120) NULL AFTER raw_payload");
     await this.ensureColumn(queryRunner, "kapso_phone_numbers", "project_name", "varchar(255) NULL AFTER project_external_id");
@@ -61,20 +64,16 @@ export class ConsolidateKapsoIntoPhoneNumbers1752108000000 implements MigrationI
     await this.dropTableIfExists("kapso_projects", queryRunner);
   }
 
-  // --------------------------------------------------------------------------
-  // ROLLBACK
-  // --------------------------------------------------------------------------
-
+  /**
+   * No revierte la consolidación: el down es irreversible a propósito.
+   *
+   * @param queryRunner - Ejecutor de consultas TypeORM de la migración.
+   */
   public async down(queryRunner: QueryRunner): Promise<void> {
     // Esta consolidacion es deliberadamente de una sola via para este entorno.
     await queryRunner.query("SELECT 1");
   }
 
-  // --------------------------------------------------------------------------
-  // HELPERS
-  // --------------------------------------------------------------------------
-
-  /** Agrega una columna solo si la tabla aun no la tiene. */
   private async ensureColumn(queryRunner: QueryRunner, tableName: string, columnName: string, definition: string) {
     const table = await queryRunner.getTable(tableName);
 
@@ -83,7 +82,6 @@ export class ConsolidateKapsoIntoPhoneNumbers1752108000000 implements MigrationI
     }
   }
 
-  /** Elimina una columna si aun existe en el esquema actual. */
   private async dropColumnIfExists(tableName: string, columnName: string, queryRunner: QueryRunner) {
     const table = await queryRunner.getTable(tableName);
 
@@ -92,7 +90,6 @@ export class ConsolidateKapsoIntoPhoneNumbers1752108000000 implements MigrationI
     }
   }
 
-  /** Elimina una foreign key puntual si aun existe. */
   private async dropForeignKeyIfExists(tableName: string, foreignKeyName: string, queryRunner: QueryRunner) {
     const table = await queryRunner.getTable(tableName);
     const foreignKey = table?.foreignKeys.find((item) => item.name === foreignKeyName);
@@ -102,7 +99,6 @@ export class ConsolidateKapsoIntoPhoneNumbers1752108000000 implements MigrationI
     }
   }
 
-  /** Elimina una tabla si sigue presente en el schema actual. */
   private async dropTableIfExists(tableName: string, queryRunner: QueryRunner) {
     const hasTable = await queryRunner.hasTable(tableName);
 

@@ -1,8 +1,15 @@
+/**
+ * Helpers compartidos del módulo Kapso para normalizar payloads y logs.
+ *
+ * Funciones puras usadas al interpretar respuestas heterogéneas de la API
+ * Kapso y al serializar payloads para diagnóstico.
+ */
+
 // ============================================================================
 // IMPORTS
 // ============================================================================
 
-import { JsonRecord } from "./kapso.types";
+import { KapsoApiRequestOptions, KapsoProjectContext, JsonRecord } from "./kapso.types";
 
 // ============================================================================
 // CONSTANTES DE APOYO
@@ -13,6 +20,13 @@ const DEFAULT_PAYLOAD_LOG_MAX_LENGTH = 2500;
 
 /** Fragmento de error remoto que indica que el número aún no está disponible en Kapso. */
 const KAPSO_PHONE_NUMBER_UNAVAILABLE_MARKER = "WhatsApp configuration not found";
+
+/**
+ * Claves sensibles (credenciales y PII) que no deben aparecer en logs.
+ * Se redactan de forma recursiva antes de serializar el payload.
+ */
+const SENSITIVE_LOG_KEY =
+  /(?:authorization|password|secret|token|api_?key|email|leadname|adminname|customername|leadphonenumber|displayphonenumber|^from$|^to$|^text$|^body$)/i;
 
 // ============================================================================
 // NORMALIZADORES GENERICOS
@@ -104,11 +118,11 @@ export function firstNonNullString(...values: unknown[]): string | null {
 
 /**
  * Serializa un valor para logging y lo trunca si supera `maxLength`.
- * Evita inundar la consola con payloads grandes o profundamente anidados.
+ * Antes de serializar aplica redaccion de PII/secretos para no filtrar datos sensibles.
  */
 export function summarizePayload(value: unknown, maxLength = DEFAULT_PAYLOAD_LOG_MAX_LENGTH): string {
   try {
-    const serializedValue = JSON.stringify(value, null, 2);
+    const serializedValue = JSON.stringify(redactForLog(value), null, 2);
     if (serializedValue.length <= maxLength) {
       return serializedValue;
     }
@@ -117,6 +131,35 @@ export function summarizePayload(value: unknown, maxLength = DEFAULT_PAYLOAD_LOG
   } catch {
     return "[unserializable-payload]";
   }
+}
+
+/**
+ * Redacta de forma recursiva claves sensibles en objetos/arrays de log.
+ * Conserva la estructura del payload pero sustituye valores por `[REDACTED]`.
+ */
+export function redactForLog(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    return value.map((item) => redactForLog(item));
+  }
+
+  if (!value || typeof value !== "object") {
+    return value;
+  }
+
+  return Object.entries(value as JsonRecord).reduce<JsonRecord>((result, [key, nestedValue]) => {
+    result[key] = SENSITIVE_LOG_KEY.test(key) ? "[REDACTED]" : redactForLog(nestedValue);
+    return result;
+  }, {});
+}
+
+/**
+ * Traduce el contexto de proyecto Kapso a opciones de request HTTP saliente.
+ * Centraliza el mapeo para que sync y automatización usen la misma API key de proyecto.
+ */
+export function toKapsoApiOptions(projectContext?: KapsoProjectContext | null): KapsoApiRequestOptions {
+  return {
+    projectId: projectContext?.projectId ?? null,
+  };
 }
 
 // ============================================================================

@@ -1,13 +1,34 @@
-// ============================================================================
-// IMPORTS
-// ============================================================================
+/**
+ * Recepción de webhooks Kapso/Meta bajo `/{apiPrefix}/webhooks/kapso/*`.
+ *
+ * Seguridad:
+ * - `@Public`: Kapso/Meta no envían JWT del CRM.
+ * - HMAC sobre `rawBody` (requiere `rawBody: true` en `main.ts`).
+ * - Throttle alto (300/min) para absorber ráfagas legítimas sin abrir flood infinito.
+ *
+ * Idempotencia: reserva por `x-idempotency-key` o hash del payload; duplicados
+ * responden 200 sin reprocesar. Mismatch de payload con misma key → 409.
+ */
 
-// Decoradores y tipos HTTP usados para recibir webhooks firmados y rawBody.
-import { Body, Controller, Headers, HttpCode, Logger, Post, RawBodyRequest, Req, UnauthorizedException } from "@nestjs/common";
+import {
+  BadRequestException,
+  Body,
+  ConflictException,
+  Controller,
+  Headers,
+  HttpCode,
+  Logger,
+  Post,
+  RawBodyRequest,
+  Req,
+  UnauthorizedException,
+} from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
+import { Throttle } from "@nestjs/throttler";
+import { createHash } from "crypto";
 import { Request } from "express";
 
-// Tipos y helpers del dominio Kapso.
+import { Public } from "../../../common/auth/auth.decorators";
 import { KapsoWebhookScope } from "../entities/kapso-phone-number.entity";
 import {
   asRecord,
@@ -18,16 +39,10 @@ import {
 } from "../common/kapso.helpers";
 import { JsonRecord } from "../common/kapso.types";
 
-// Persistencia, verificación HMAC y orquestación del sync.
 import { KapsoRepository } from "../repositories/kapso.repository";
 import { KapsoSignatureService } from "../services/kapso-signature.service";
 import { KapsoSyncService } from "../services/kapso-sync.service";
 
-// ============================================================================
-// TIPOS LOCALES
-// ============================================================================
-
-/** Respuesta idempotente devuelta cuando Kapso reentrega exactamente el mismo webhook. */
 type DuplicateWebhookResponse = {
   ok: true;
   duplicate: true;
@@ -35,17 +50,12 @@ type DuplicateWebhookResponse = {
   status: string | null;
 };
 
-// ============================================================================
-// CONTROLADOR
-// ============================================================================
-
 /**
- * Recepción de webhooks de Kapso y Meta.
- * Rutas bajo `/{apiPrefix}/webhooks/kapso/*`.
- *
- * Requiere `rawBody: true` en `main.ts` para validar firmas HMAC.
+ * Handlers de webhooks de plataforma, eventos Kapso y reenvío Meta.
+ * Orquesta firma → idempotencia → procesamiento → cierre del receipt.
  */
 @Controller("webhooks/kapso")
+@Public()
 export class KapsoWebhooksController {
   private readonly logger = new Logger(KapsoWebhooksController.name);
 
@@ -56,16 +66,17 @@ export class KapsoWebhooksController {
     private readonly kapsoSyncService: KapsoSyncService,
   ) {}
 
-  // --------------------------------------------------------------------------
-  // WEBHOOKS DE PLATAFORMA
-  // --------------------------------------------------------------------------
-
   /**
-   * POST /webhooks/kapso/platform
-   * Eventos de ciclo de vida del número (`created` / `deleted`) enviados por Kapso.
+   * Webhook de plataforma (creación/borrado de números, etc.).
+   * Usa el secreto `kapso.platformWebhookSecret`.
+   *
+   * Errores de disponibilidad remota en `phone_number.created` se tratan como
+   * `pending_remote_sync` (200) para que Kapso no reintente indefinidamente
+   * mientras el worker local completa el detalle.
    */
   @Post("platform")
   @HttpCode(200)
+  @Throttle({ default: { limit: 300, ttl: 60_000 } })
   async handlePlatformWebhook(
     @Req() request: RawBodyRequest<Request>,
     @Body() body: Record<string, unknown>,
@@ -75,12 +86,7 @@ export class KapsoWebhooksController {
   ) {
     const payload = asRecord(body);
     const phoneNumberId = this.extractPhoneNumberId(payload);
-    const duplicatedResponse = await this.findDuplicateWebhook("platform", phoneNumberId, idempotencyKey);
-
-    if (duplicatedResponse) {
-      this.logDuplicateIgnored("platform", idempotencyKey, duplicatedResponse);
-      return duplicatedResponse;
-    }
+    const receiptKey = this.resolveReceiptKey(request, payload, idempotencyKey);
 
     this.assertSignedWebhook(
       request,
@@ -90,33 +96,45 @@ export class KapsoWebhooksController {
       "Firma de webhook de plataforma invalida.",
     );
 
+    const duplicatedResponse = await this.reserveWebhookReceipt("platform", request, payload, phoneNumberId, receiptKey);
+
+    if (duplicatedResponse) {
+      this.logDuplicateIgnored("platform", receiptKey, duplicatedResponse);
+      return duplicatedResponse;
+    }
+
     const eventName = firstNonNullString(payload.event, webhookEventHeader);
-    this.logWebhookReceived("Platform", eventName, phoneNumberId, idempotencyKey, payload);
+    this.logWebhookReceived("Platform", eventName, phoneNumberId, receiptKey, payload);
 
     if (phoneNumberId) {
-      await this.persistWebhookTouch("platform", payload, phoneNumberId, idempotencyKey, eventName, true, "received");
+      await this.persistWebhookTouch("platform", payload, phoneNumberId, receiptKey, eventName, true, "received");
     }
 
     try {
       await this.processPlatformEvent(eventName, payload, phoneNumberId);
+      await this.completeWebhookReceipt("platform", receiptKey, "processed");
 
       this.logger.log(`Platform webhook processed phoneNumberId=${phoneNumberId ?? "n/a"} event=${eventName ?? "unknown"}`);
       return { ok: true };
     } catch (error) {
-      return this.handlePlatformWebhookError(error, phoneNumberId, eventName);
+      try {
+        const response = await this.handlePlatformWebhookError(error, phoneNumberId, eventName);
+        await this.completeWebhookReceipt("platform", receiptKey, "processed");
+        return response;
+      } catch (handledError) {
+        await this.completeWebhookReceipt("platform", receiptKey, "failed", handledError);
+        throw handledError;
+      }
     }
   }
 
-  // --------------------------------------------------------------------------
-  // WEBHOOKS KAPSO POR NUMERO
-  // --------------------------------------------------------------------------
-
   /**
-   * POST /webhooks/kapso/events
-   * Eventos de mensajería WhatsApp (`kind: kapso`) enviados por Kapso.
+   * Webhook de eventos WhatsApp vía Kapso (mensajes entrantes normalizados).
+   * Usa `kapso.whatsappWebhookSecret` y delega a automatización de leads.
    */
   @Post("events")
   @HttpCode(200)
+  @Throttle({ default: { limit: 300, ttl: 60_000 } })
   async handleKapsoEventsWebhook(
     @Req() request: RawBodyRequest<Request>,
     @Body() body: Record<string, unknown>,
@@ -126,12 +144,7 @@ export class KapsoWebhooksController {
   ) {
     const payload = asRecord(body);
     const phoneNumberId = this.extractPhoneNumberId(payload);
-    const duplicatedResponse = await this.findDuplicateWebhook("kapso", phoneNumberId, idempotencyKey);
-
-    if (duplicatedResponse) {
-      this.logDuplicateIgnored("Kapso events", idempotencyKey, duplicatedResponse);
-      return duplicatedResponse;
-    }
+    const receiptKey = this.resolveReceiptKey(request, payload, idempotencyKey);
 
     this.assertSignedWebhook(
       request,
@@ -141,60 +154,81 @@ export class KapsoWebhooksController {
       "Firma de webhook de WhatsApp invalida.",
     );
 
-    const eventName = firstNonNullString(payload.event, webhookEventHeader);
-    this.logWebhookReceived("Kapso events", eventName, phoneNumberId, idempotencyKey, payload);
-
-    if (phoneNumberId) {
-      await this.persistWebhookTouch("kapso", payload, phoneNumberId, idempotencyKey, eventName, true, "processed");
-    }
-
-    await this.kapsoSyncService.processInboundMessageWebhook(payload);
-
-    return { ok: true };
-  }
-
-  // --------------------------------------------------------------------------
-  // REENVIO META
-  // --------------------------------------------------------------------------
-
-  /**
-   * POST /webhooks/kapso/meta
-   * Reenvío de eventos Meta desde Kapso. No valida firma Kapso porque su origen
-   * puede ser Meta o un relay proxy del lado de Kapso.
-   */
-  @Post("meta")
-  @HttpCode(200)
-  async handleMetaWebhook(@Body() body: Record<string, unknown>, @Headers("x-idempotency-key") idempotencyKey: string | undefined) {
-    const payload = asRecord(body);
-    const phoneNumberId = this.extractPhoneNumberId(payload, getNestedValue(payload, "metadata", "phone_number_id"));
-    const duplicatedResponse = await this.findDuplicateWebhook("meta", phoneNumberId, idempotencyKey);
+    const duplicatedResponse = await this.reserveWebhookReceipt("kapso", request, payload, phoneNumberId, receiptKey);
 
     if (duplicatedResponse) {
-      this.logDuplicateIgnored("Meta", idempotencyKey, duplicatedResponse);
+      this.logDuplicateIgnored("Kapso events", receiptKey, duplicatedResponse);
       return duplicatedResponse;
     }
 
-    this.logger.log(`Meta webhook received idempotencyKey=${idempotencyKey ?? "none"}`);
+    const eventName = firstNonNullString(payload.event, webhookEventHeader);
+    this.logWebhookReceived("Kapso events", eventName, phoneNumberId, receiptKey, payload);
+
+    try {
+      if (phoneNumberId) {
+        await this.persistWebhookTouch("kapso", payload, phoneNumberId, receiptKey, eventName, true, "processed");
+      }
+
+      await this.kapsoSyncService.processInboundMessageWebhook(payload);
+      await this.completeWebhookReceipt("kapso", receiptKey, "processed");
+      return { ok: true };
+    } catch (error) {
+      await this.completeWebhookReceipt("kapso", receiptKey, "failed", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Webhook estilo Meta (payload anidado `entry.changes.value`).
+   * Misma firma/idempotencia que events; extrae `metadata.phone_number_id`.
+   */
+  @Post("meta")
+  @HttpCode(200)
+  @Throttle({ default: { limit: 300, ttl: 60_000 } })
+  async handleMetaWebhook(
+    @Req() request: RawBodyRequest<Request>,
+    @Body() body: Record<string, unknown>,
+    @Headers("x-webhook-signature") signature: string | undefined,
+    @Headers("x-idempotency-key") idempotencyKey: string | undefined,
+  ) {
+    const payload = asRecord(body);
+    const phoneNumberId = this.extractPhoneNumberId(payload, getNestedValue(payload, "metadata", "phone_number_id"));
+    const receiptKey = this.resolveReceiptKey(request, payload, idempotencyKey);
+
+    this.assertSignedWebhook(
+      request,
+      payload,
+      signature,
+      this.configService.getOrThrow<string>("kapso.whatsappWebhookSecret"),
+      "Firma de webhook Meta invalida.",
+    );
+
+    const duplicatedResponse = await this.reserveWebhookReceipt("meta", request, payload, phoneNumberId, receiptKey);
+
+    if (duplicatedResponse) {
+      this.logDuplicateIgnored("Meta", receiptKey, duplicatedResponse);
+      return duplicatedResponse;
+    }
+
+    this.logger.log(`Meta webhook received idempotencyKey=${receiptKey}`);
     this.logger.verbose(`Meta payload keys=${Object.keys(payload).join(", ") || "[empty]"}`);
     this.logger.verbose(`Meta payload=${summarizePayload(payload)}`);
 
-    if (phoneNumberId) {
-      await this.persistWebhookTouch("meta", payload, phoneNumberId, idempotencyKey, "meta.forwarded", true, "processed");
+    try {
+      if (phoneNumberId) {
+        await this.persistWebhookTouch("meta", payload, phoneNumberId, receiptKey, "meta.forwarded", true, "processed");
+      }
+
+      await this.kapsoSyncService.processInboundMessageWebhook(payload);
+      await this.completeWebhookReceipt("meta", receiptKey, "processed");
+      return { ok: true };
+    } catch (error) {
+      await this.completeWebhookReceipt("meta", receiptKey, "failed", error);
+      throw error;
     }
-
-    await this.kapsoSyncService.processInboundMessageWebhook(payload);
-
-    return { ok: true };
   }
 
-  // --------------------------------------------------------------------------
-  // ORQUESTACION DE EVENTOS
-  // --------------------------------------------------------------------------
-
-  /**
-   * Enruta solo los eventos de plataforma con impacto directo sobre la fila local.
-   * El evento `created` delega completamente el estado final a `KapsoSyncService`.
-   */
+  /** Enruta eventos de plataforma a sync create/delete y marca touch si aplica. */
   private async processPlatformEvent(eventName: string | null, payload: JsonRecord, phoneNumberId: string | null) {
     if (eventName === "whatsapp.phone_number.created") {
       await this.kapsoSyncService.handlePhoneNumberCreatedEvent(payload);
@@ -232,11 +266,6 @@ export class KapsoWebhooksController {
     throw error;
   }
 
-  // --------------------------------------------------------------------------
-  // HELPERS DE EXTRACCION Y SEGURIDAD
-  // --------------------------------------------------------------------------
-
-  /** Obtiene `phone_number_id` tolerando nombres alternos y candidatos extra. */
   private extractPhoneNumberId(payload: JsonRecord, ...extraCandidates: unknown[]): string | null {
     return firstNonNullString(payload.phone_number_id, payload.phoneNumberId, ...extraCandidates);
   }
@@ -262,11 +291,7 @@ export class KapsoWebhooksController {
     }
   }
 
-  // --------------------------------------------------------------------------
-  // AUDITORIA E IDEMPOTENCIA
-  // --------------------------------------------------------------------------
-
-  /** Actualiza la auditoría local del último webhook visto para ese número. */
+  /** Persiste un “touch” de auditoría del webhook sobre el número afectado. */
   private async persistWebhookTouch(
     scope: KapsoWebhookScope,
     payload: JsonRecord,
@@ -292,7 +317,6 @@ export class KapsoWebhooksController {
     });
   }
 
-  /** Log estructurado común para platform y Kapso events. */
   private logWebhookReceived(
     label: string,
     eventName: string | null,
@@ -307,31 +331,66 @@ export class KapsoWebhooksController {
     this.logger.verbose(`${label} payload=${summarizePayload(payload)}`);
   }
 
-  /** Explica por log cuándo una reentrega fue ignorada por idempotencia. */
   private logDuplicateIgnored(label: string, idempotencyKey: string | undefined, response: DuplicateWebhookResponse) {
     this.logger.warn(`Duplicate ${label} webhook ignored idempotencyKey=${idempotencyKey ?? "none"} status=${response.status}`);
   }
 
-  /** Busca duplicados solo cuando Kapso envía idempotency key y el número ya fue identificado. */
-  private async findDuplicateWebhook(
+  /**
+   * Reserva el receipt de idempotencia.
+   * Si la misma key llegó con otro hash de payload → Conflict (posible replay malicioso o bug del emisor).
+   */
+  private async reserveWebhookReceipt(
     scope: KapsoWebhookScope,
-    phoneNumberId?: string | null,
-    idempotencyKey?: string,
+    request: RawBodyRequest<Request>,
+    payload: JsonRecord,
+    phoneNumberId: string | null,
+    idempotencyKey: string,
   ): Promise<DuplicateWebhookResponse | null> {
-    if (!idempotencyKey || !phoneNumberId) {
-      return null;
+    const payloadHash = createHash("sha256").update(this.getRawBody(request, payload)).digest("hex");
+    const reservation = await this.kapsoRepository.reserveWebhookReceipt(scope, idempotencyKey, phoneNumberId, payloadHash);
+
+    if (reservation.payloadMismatch) {
+      throw new ConflictException("La llave de idempotencia ya fue usada con un payload diferente.");
     }
 
-    const existingPhoneNumber = await this.kapsoRepository.findProcessedWebhookDuplicate(scope, phoneNumberId, idempotencyKey);
-    if (!existingPhoneNumber) {
+    if (reservation.acquired) {
       return null;
     }
 
     return {
       ok: true,
       duplicate: true,
-      phoneNumberId: existingPhoneNumber.phoneNumberId,
-      status: existingPhoneNumber.lastProcessingStatus,
+      phoneNumberId: reservation.phoneNumberId ?? phoneNumberId ?? "unknown",
+      status: reservation.status,
     };
+  }
+
+  private async completeWebhookReceipt(
+    scope: KapsoWebhookScope,
+    idempotencyKey: string,
+    status: "processed" | "failed",
+    error?: unknown,
+  ): Promise<void> {
+    const processingError = error instanceof Error ? error.message : error ? String(error) : undefined;
+    await this.kapsoRepository.completeWebhookReceipt(scope, idempotencyKey, status, processingError);
+  }
+
+  /**
+   * Resuelve la clave de idempotencia: header tipado o hash estable del raw body.
+   * Limita longitud del header para evitar abuse de storage en receipts.
+   */
+  private resolveReceiptKey(request: RawBodyRequest<Request>, payload: JsonRecord, providedKey: string | undefined): string {
+    const normalized = providedKey?.trim();
+
+    if (normalized) {
+      if (normalized.length > 120) {
+        throw new BadRequestException("La llave de idempotencia excede el tamaño permitido.");
+      }
+
+      return normalized;
+    }
+
+    const digest = createHash("sha256").update(this.getRawBody(request, payload)).digest("hex");
+    return `payload:${digest}`;
   }
 }

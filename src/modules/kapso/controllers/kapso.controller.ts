@@ -1,35 +1,32 @@
-// ============================================================================
-// IMPORTS
-// ============================================================================
+/**
+ * Controlador operativo Kapso: catálogo local, bootstrap/sync manual y redirects de setup.
+ *
+ * Las rutas de administración requieren rol CRM 1. Los redirects `setup/success|failure`
+ * son `@Public` porque Kapso redirige el navegador del usuario sin JWT del CRM;
+ * se registran en BD y disparan sync best-effort del número provisionado.
+ *
+ * Bootstrap y sync por número llevan throttle agresivo para no martillar la API Kapso.
+ */
 
-// Decoradores y utilidades HTTP de Nest usados por la superficie REST del módulo.
 import { Body, Controller, Get, Header, Logger, Param, Post, Query } from "@nestjs/common";
+import { Throttle } from "@nestjs/throttler";
 
-// DTO y tipos de estado del dominio.
+import { Public, RequireCrmRoles } from "../../../common/auth/auth.decorators";
+
 import { BootstrapSyncDto } from "../dto/bootstrap-sync.dto";
 import { KapsoSetupStatus, KapsoSyncStatus } from "../entities/kapso-phone-number.entity";
 
-// Helpers compartidos para normalizar query params y detectar errores transitorios.
 import { firstNonNullString, isKapsoPhoneNumberAvailabilityError, summarizePayload } from "../common/kapso.helpers";
 
-// Persistencia local y servicio orquestador del dominio Kapso.
 import { KapsoRepository } from "../repositories/kapso.repository";
 import { KapsoSyncService } from "../services/kapso-sync.service";
 
-// ============================================================================
-// TIPOS LOCALES DE PRESENTACION
-// ============================================================================
-
-/** Query string flexible que Kapso devuelve en redirects de setup. */
 type SetupQuery = Record<string, string | undefined>;
 
-/** Intensidad visual de la tarjeta HTML mostrada al terminar el setup. */
 type SetupPageTone = "success" | "warning" | "failure";
 
-/** Par etiqueta/valor renderizado dentro de la página HTML de resultado. */
 type SetupPageDetail = { label: string; value: string };
 
-/** Modelo interno de la página HTML devuelta al usuario tras el setup. */
 type SetupPageInput = {
   title: string;
   subtitle: string;
@@ -37,15 +34,22 @@ type SetupPageInput = {
   details: SetupPageDetail[];
 };
 
-// ============================================================================
-// CONTROLADOR
-// ============================================================================
+const HTML_ENTITIES: Record<string, string> = {
+  "&": "&amp;",
+  "<": "&lt;",
+  ">": "&gt;",
+  '"': "&quot;",
+  "'": "&#39;",
+};
+
+// Escape XSS: los query params de Kapso se renderizan en HTML al usuario final.
+const escapeHtml = (value: string): string => value.replace(/[&<>"']/g, (character) => HTML_ENTITIES[character]);
 
 /**
- * API REST de consulta y sincronización manual con Kapso.
- * Rutas bajo `/{apiPrefix}/kapso/*`.
+ * Endpoints bajo `/kapso` para operadores CRM y callbacks HTML de onboarding WhatsApp.
  */
 @Controller("kapso")
+@RequireCrmRoles(1)
 export class KapsoController {
   private readonly logger = new Logger(KapsoController.name);
 
@@ -54,55 +58,59 @@ export class KapsoController {
     private readonly kapsoRepository: KapsoRepository,
   ) {}
 
-  // --------------------------------------------------------------------------
-  // CONSULTAS LOCALES
-  // --------------------------------------------------------------------------
-
-  /** GET /kapso/customers — customers únicos derivados de números sincronizados. */
+  /**
+   * Lista customers Kapso ya persistidos/localizados vía repositorio.
+   */
   @Get("customers")
   listCustomers() {
     return this.kapsoRepository.listCustomers();
   }
 
-  /** GET /kapso/phone-numbers — todos los números persistidos localmente. */
+  /**
+   * Lista números WhatsApp sincronizados en la BD local.
+   */
   @Get("phone-numbers")
   listPhoneNumbers() {
     return this.kapsoRepository.listPhoneNumbers();
   }
 
-  // --------------------------------------------------------------------------
-  // OPERACIONES MANUALES DE SYNC
-  // --------------------------------------------------------------------------
-
   /**
-   * POST /kapso/bootstrap/sync
-   * Punto de entrada manual para reconstruir la vista local desde Kapso.
+   * Dispara un bootstrap completo: webhook de proyecto + sync de todos los números.
+   * Throttle 2/min porque es una operación cara contra Kapso y puede crear webhooks.
+   *
+   * @param body - Flag opcional `ensureProjectWebhook`.
    */
   @Post("bootstrap/sync")
+  @Throttle({ default: { limit: 2, ttl: 60_000 } })
   bootstrapSync(@Body() body: BootstrapSyncDto) {
     return this.kapsoSyncService.bootstrapSync(body.ensureProjectWebhook ?? true);
   }
 
   /**
-   * POST /kapso/phone-numbers/:phoneNumberId/sync
-   * Reintento puntual de sincronización para un número ya conocido.
+   * Sincroniza un número puntual por id externo Kapso.
+   * Throttle 10/min para acotar reintentos manuales desde el panel.
+   *
+   * @param phoneNumberId - Id externo del número.
    */
   @Post("phone-numbers/:phoneNumberId/sync")
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
   syncPhoneNumber(@Param("phoneNumberId") phoneNumberId: string) {
     return this.kapsoSyncService.syncPhoneNumberById(phoneNumberId);
   }
 
-  // --------------------------------------------------------------------------
-  // REDIRECTS DEL SETUP KAPSO
-  // --------------------------------------------------------------------------
-
   /**
-   * GET /kapso/setup/success
-   * Redirect de Kapso tras configuración exitosa; registra la auditoría, dispara sync
-   * y devuelve una página HTML simple para feedback del usuario.
+   * Callback público de setup exitoso (redirect Kapso → HTML).
+   *
+   * Registra el redirect, intenta sync inmediato del `phone_number_id` y muestra
+   * una página HTML con el resultado. Si Kapso aún no expone el detalle remoto,
+   * deja el número en pendiente para el worker BullMQ.
+   *
+   * @param query - Query params que Kapso envía en snake_case.
+   * @returns HTML escapado (Content-Type text/html).
    */
   @Get("setup/success")
   @Header("Content-Type", "text/html; charset=utf-8")
+  @Public()
   async handleSetupSuccess(@Query() query: SetupQuery): Promise<string> {
     this.logger.log(`Kapso setup success redirect received query=${summarizePayload(query)}`);
 
@@ -137,11 +145,15 @@ export class KapsoController {
   }
 
   /**
-   * GET /kapso/setup/failure
-   * Redirect de Kapso cuando el setup falla antes de completar la conexión.
+   * Callback público de setup fallido (redirect Kapso → HTML).
+   * Solo audita el fallo; no intenta sync porque no hay número usable.
+   *
+   * @param query - Query params con `error_code` y metadatos parciales.
+   * @returns HTML escapado (Content-Type text/html).
    */
   @Get("setup/failure")
   @Header("Content-Type", "text/html; charset=utf-8")
+  @Public()
   async handleSetupFailure(@Query() query: SetupQuery): Promise<string> {
     this.logger.warn(`Kapso setup failure redirect received query=${summarizePayload(query)}`);
 
@@ -161,10 +173,6 @@ export class KapsoController {
       ],
     });
   }
-
-  // --------------------------------------------------------------------------
-  // ORQUESTACION POST-SETUP
-  // --------------------------------------------------------------------------
 
   /**
    * Intenta completar la sincronización local inmediatamente después del redirect exitoso.
@@ -214,10 +222,7 @@ export class KapsoController {
     }
   }
 
-  /**
-   * Traduce el estado real de sync a un mensaje apto para usuario final.
-   * Mantiene separados éxito completo, estado pendiente y fallo terminal.
-   */
+  /** Traduce el estado de sync a copy/tono de la página HTML de éxito. */
   private buildSetupSuccessResponse(
     phoneNumberId: string,
     syncStatus: KapsoSyncStatus | string,
@@ -274,10 +279,7 @@ export class KapsoController {
     };
   }
 
-  /**
-   * Prioriza estados persistidos por `KapsoSyncService` para no inventar un resultado
-   * distinto al que ya quedó registrado en la fila local.
-   */
+  /** Normaliza setupSyncStatus / lastProcessingStatus a un estado de UI único. */
   private resolveSetupSyncStatus(
     syncResult: {
       setupSyncStatus?: string | null;
@@ -314,10 +316,6 @@ export class KapsoController {
     return "pending";
   }
 
-  // --------------------------------------------------------------------------
-  // HELPERS DE SETUP
-  // --------------------------------------------------------------------------
-
   /** Normaliza los nombres de query params que Kapso puede devolver en snake_case. */
   private parseSetupQuery(query: SetupQuery) {
     return {
@@ -331,7 +329,7 @@ export class KapsoController {
     };
   }
 
-  /** Construye el payload persistido en DB para auditar cada redirect de setup. */
+  /** Arma el DTO de auditoría del redirect de setup para el repositorio. */
   private buildSetupRedirectInput(
     query: SetupQuery,
     status: KapsoSetupStatus,
@@ -355,15 +353,18 @@ export class KapsoController {
     };
   }
 
-  /** Render HTML simple sin depender del frontend principal del CRM. */
+  /**
+   * Renderiza la página HTML de resultado de setup.
+   * Todos los textos dinámicos pasan por `escapeHtml` para evitar XSS vía query string.
+   */
   private renderSetupPage(input: SetupPageInput): string {
     const accentColor = input.tone === "success" ? "#198754" : input.tone === "warning" ? "#b7791f" : "#dc3545";
     const detailsHtml = input.details
       .map(
         (detail) => `
           <div style="padding:12px 0;border-bottom:1px solid #e9ecef;">
-            <div style="font-size:12px;color:#6c757d;text-transform:uppercase;letter-spacing:.04em;">${detail.label}</div>
-            <div style="font-size:15px;color:#212529;margin-top:4px;word-break:break-word;">${detail.value}</div>
+            <div style="font-size:12px;color:#6c757d;text-transform:uppercase;letter-spacing:.04em;">${escapeHtml(detail.label)}</div>
+            <div style="font-size:15px;color:#212529;margin-top:4px;word-break:break-word;">${escapeHtml(detail.value)}</div>
           </div>`,
       )
       .join("");
@@ -376,7 +377,7 @@ export class KapsoController {
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>${input.title}</title>
+    <title>${escapeHtml(input.title)}</title>
   </head>
   <body style="margin:0;background:#f5f7fb;font-family:Segoe UI,Arial,sans-serif;color:#212529;">
     <div style="max-width:720px;margin:48px auto;padding:0 20px;">
@@ -384,8 +385,8 @@ export class KapsoController {
         <div style="display:inline-block;padding:8px 12px;border-radius:999px;background:${accentColor}15;color:${accentColor};font-weight:700;font-size:12px;">
           ${badgeText}
         </div>
-        <h1 style="margin:18px 0 8px;font-size:32px;line-height:1.1;">${input.title}</h1>
-        <p style="margin:0 0 22px;font-size:16px;color:#4b5563;">${input.subtitle}</p>
+        <h1 style="margin:18px 0 8px;font-size:32px;line-height:1.1;">${escapeHtml(input.title)}</h1>
+        <p style="margin:0 0 22px;font-size:16px;color:#4b5563;">${escapeHtml(input.subtitle)}</p>
         <div>${detailsHtml}</div>
       </div>
     </div>

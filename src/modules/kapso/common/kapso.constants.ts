@@ -1,3 +1,9 @@
+/**
+ * Constantes de eventos webhook Kapso (por número y de plataforma).
+ *
+ * Listas centralizadas para registrar suscripciones y tipar nombres de evento.
+ */
+
 // ============================================================================
 // EVENTOS KAPSO
 // ============================================================================

@@ -1,3 +1,10 @@
+/**
+ * Entidad TypeORM de la relación admin CRM con un número WhatsApp Kapso.
+ *
+ * Tabla: admin_kapso_integrations. Unicidad por par
+ * (idnetsuite_admin, id_kapso_phone_number).
+ */
+
 // ============================================================================
 // IMPORTS
 // ============================================================================

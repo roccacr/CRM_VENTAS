@@ -1,40 +1,29 @@
-// ============================================================================
-// IMPORTS
-// ============================================================================
-
+/**
+ * Namespace de configuración general de la aplicación Nest.
+ *
+ * Expone puerto, prefijo API, CORS y trust proxy como valores tipados bajo
+ * la clave `app`, para que bootstrap y módulos no lean `process.env` a mano.
+ */
 import { registerAs } from "@nestjs/config";
 
-// ============================================================================
-// CONFIGURACION APP
-// ============================================================================
-
 /**
- * Namespace `app`.
+ * Registra el bloque `app` en ConfigModule.
  *
- * Agrupa configuracion transversal de la aplicacion:
- * - version expuesta en endpoints base;
- * - entorno de ejecucion;
- * - puerto HTTP;
- * - prefijo global de rutas;
- * - politicas CORS.
+ * Centraliza defaults de runtime (puerto, versión, orígenes CORS) para
+ * entornos locales y producción sin duplicar parsing en `main.ts`.
  */
 export default registerAs("app", () => ({
-  // Version del paquete npm; usa fallback cuando no corre bajo npm.
   version: process.env.npm_package_version ?? "0.1.0",
 
-  // Entorno principal de ejecucion.
   nodeEnv: process.env.NODE_ENV ?? "development",
 
-  // Puerto HTTP del servidor Nest.
   port: Number(process.env.PORT ?? 8002),
 
-  // Prefijo global de la API REST.
   apiPrefix: process.env.API_PREFIX ?? "api/v1",
 
-  /**
-   * Lista plana de origins permitidos.
-   * La variable acepta una cadena separada por comas.
-   */
+  // Número exacto de proxies confiables delante de Express (seguridad de IP real).
+  trustProxyHops: Number(process.env.TRUST_PROXY_HOPS ?? 0),
+
   corsOrigins: (process.env.CORS_ALLOWED_ORIGINS ?? "")
     .split(",")
     .map((origin) => origin.trim())

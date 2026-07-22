@@ -32,4 +32,12 @@ describe("buildTypeOrmOptions", () => {
     expect(options.retryAttempts).toBe(40);
     expect(options.retryDelay).toBe(10000);
   });
+
+  it("no ejecuta migraciones durante el arranque salvo habilitacion explicita", () => {
+    delete process.env.MYSQL_MIGRATIONS_RUN;
+    expect(buildTypeOrmOptions().migrationsRun).toBe(false);
+
+    process.env.MYSQL_MIGRATIONS_RUN = "true";
+    expect(buildTypeOrmOptions().migrationsRun).toBe(true);
+  });
 });

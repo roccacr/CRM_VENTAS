@@ -1,23 +1,25 @@
-// ============================================================================
-// IMPORTS
-// ============================================================================
+/**
+ * Servicio de administración Kapso: relaciones admin–número, flujos y media de proyectos.
+ *
+ * Encapsula validaciones de negocio (admin activo, número activo, sin duplicados),
+ * almacenamiento de adjuntos con sniffing de magic bytes (no confía en mimetype del cliente)
+ * y URLs firmadas para servir media en un endpoint público con TTL.
+ */
 
 import { randomUUID } from "crypto";
 import { promises as fs } from "fs";
-import { basename, dirname, extname, isAbsolute, join, resolve } from "path";
+import { basename, dirname, isAbsolute, join, resolve } from "path";
 
-import { BadRequestException, ConflictException, Injectable, NotFoundException } from "@nestjs/common";
+import { BadRequestException, ConflictException, Injectable, InternalServerErrorException, NotFoundException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 
 import { ListAdminKapsoIntegrationsDto } from "../dto/list-admin-kapso-integrations.dto";
 import { SaveAdminKapsoIntegrationDto } from "../dto/save-admin-kapso-integration.dto";
 import { UpdateAdminKapsoIntegrationStatusDto } from "../dto/update-admin-kapso-integration-status.dto";
 import { AdminKapsoIntegrationStatus } from "../entities/admin-kapso-integration.entity";
-import { AdminKapsoIntegrationsRepository, FlowProjectMediaRecord } from "../repositories/admin-kapso-integrations.repository";
-
-// ============================================================================
-// TIPOS LOCALES
-// ============================================================================
+import { AdminKapsoIntegrationsRepository } from "../repositories/admin-kapso-integrations.repository";
+import { FlowProjectMediaRecord, KapsoFlowProjectMediaRepository } from "../repositories/kapso-flow-project-media.repository";
+import { KapsoMediaUrlSignerService } from "./kapso-media-url-signer.service";
 
 type UploadedKapsoMediaFile = {
   originalname: string;
@@ -28,6 +30,12 @@ type UploadedKapsoMediaFile = {
 
 type MediaFileType = "image" | "video" | "document";
 
+type InspectedMediaFile = {
+  extension: string;
+  mediaType: MediaFileType;
+  mimeType: string;
+};
+
 type KapsoMediaFileResponse = {
   absolutePath: string;
   mimeType: string;
@@ -36,30 +44,24 @@ type KapsoMediaFileResponse = {
 
 const DEFAULT_INTRO_STEP_CODE = "intro";
 
-// ============================================================================
-// SERVICIO
-// ============================================================================
-
 /**
- * Reglas de negocio del modulo de asignacion admin–Kapso.
- *
- * Responsabilidades:
- * - validar existencia de admin e integracion;
- * - bloquear duplicados;
- * - impedir nuevas relaciones sobre integraciones inactivas;
- * - exponer listados y resolucion operativa por administrador.
+ * Orquestador de catálogos, CRUD de asignaciones y ciclo de vida de adjuntos de flujo.
  */
 @Injectable()
 export class AdminKapsoIntegrationsService {
   constructor(
     private readonly repository: AdminKapsoIntegrationsRepository,
+    private readonly flowProjectMediaRepository: KapsoFlowProjectMediaRepository,
     private readonly configService: ConfigService,
+    private readonly mediaUrlSigner: KapsoMediaUrlSignerService,
   ) {}
 
-  // --------------------------------------------------------------------------
-  // OPCIONES DE FORMULARIO
-  // --------------------------------------------------------------------------
-
+  /**
+   * Opciones de administradores para selectores del panel.
+   *
+   * @param search - Texto libre opcional.
+   * @param includeInactive - Si incluir administradores inactivos.
+   */
   async listAdministratorOptions(search?: string, includeInactive?: boolean) {
     return this.repository.listAdminOptions({
       search,
@@ -67,6 +69,12 @@ export class AdminKapsoIntegrationsService {
     });
   }
 
+  /**
+   * Opciones de números Kapso para selectores del panel.
+   *
+   * @param search - Texto libre opcional.
+   * @param includeInactive - Si incluir números inactivos.
+   */
   async listKapsoIntegrationOptions(search?: string, includeInactive?: boolean) {
     return this.repository.listKapsoPhoneNumberOptions({
       search,
@@ -74,19 +82,53 @@ export class AdminKapsoIntegrationsService {
     });
   }
 
+  /**
+   * Opciones de proyectos CRM para habilitar en un flujo.
+   *
+   * @param search - Texto libre opcional.
+   * @param includeInactive - Si incluir proyectos inactivos.
+   */
   async listProjectOptions(search?: string, includeInactive?: boolean) {
-    return this.repository.listProjectOptions({
+    return this.flowProjectMediaRepository.listProjectOptions({
       search,
       includeInactive,
     });
   }
 
+  /** Lista flujos de negocio con proyectos y estado de habilitación. */
   async listBusinessFlows() {
-    return this.repository.listBusinessFlows();
+    return this.flowProjectMediaRepository.listBusinessFlows();
   }
 
+  /**
+   * Activa/desactiva un flujo. Solo acepta 0/1/boolean para evitar estados ambiguos.
+   *
+   * @param flowUuid - UUID del flujo.
+   * @param enabled - Valor crudo del body.
+   */
+  async updateBusinessFlowStatus(flowUuid: string, enabled: unknown) {
+    if (enabled !== 0 && enabled !== 1 && enabled !== true && enabled !== false) {
+      throw new BadRequestException("El estado del flujo debe ser activo o inactivo.");
+    }
+
+    const nextEnabled = enabled === true || enabled === 1 ? 1 : 0;
+    const result = await this.flowProjectMediaRepository.updateBusinessFlowStatus(flowUuid, nextEnabled);
+
+    if (!result.ok) {
+      throw new NotFoundException("El flujo indicado no existe.");
+    }
+
+    return result;
+  }
+
+  /**
+   * Habilita un proyecto dentro de un flujo (precondición para subir media).
+   *
+   * @param flowUuid - UUID del flujo.
+   * @param idProyecto - Id NetSuite del proyecto.
+   */
   async enableBusinessFlowProject(flowUuid: string, idProyecto: number) {
-    const project = await this.repository.enableBusinessFlowProject(flowUuid, idProyecto);
+    const project = await this.flowProjectMediaRepository.enableBusinessFlowProject(flowUuid, idProyecto);
 
     if (!project) {
       throw new NotFoundException("El proyecto indicado no existe.");
@@ -95,55 +137,78 @@ export class AdminKapsoIntegrationsService {
     return project;
   }
 
+  /**
+   * Deshabilita un proyecto dentro de un flujo.
+   *
+   * @param flowUuid - UUID del flujo.
+   * @param idProyecto - Id NetSuite del proyecto.
+   */
   async disableBusinessFlowProject(flowUuid: string, idProyecto: number) {
-    return this.repository.disableBusinessFlowProject(flowUuid, idProyecto);
+    return this.flowProjectMediaRepository.disableBusinessFlowProject(flowUuid, idProyecto);
   }
 
-  // --------------------------------------------------------------------------
-  // ADJUNTOS POR FLUJO Y PROYECTO
-  // --------------------------------------------------------------------------
-
+  /**
+   * Lista media activa de un flujo/proyecto/paso.
+   * Si el archivo físico desapareció, desactiva el registro para no devolver links rotos
+   * y regenera `publicUrl` firmada para los que sí existen.
+   *
+   * @param flowUuid - UUID del flujo.
+   * @param idProyectoNetsuite - Id NetSuite del proyecto.
+   * @param stepCode - Paso del flujo (default `intro`).
+   */
   async listFlowProjectMedia(flowUuid: string, idProyectoNetsuite: number, stepCode = DEFAULT_INTRO_STEP_CODE) {
-    const mediaItems = await this.repository.listFlowProjectMedia(flowUuid, idProyectoNetsuite, stepCode);
+    const mediaItems = await this.flowProjectMediaRepository.listFlowProjectMedia(flowUuid, idProyectoNetsuite, stepCode);
     const availableMediaItems: FlowProjectMediaRecord[] = [];
 
     for (const media of mediaItems) {
       if (await this.mediaFileExists(media)) {
-        availableMediaItems.push(media);
+        availableMediaItems.push({
+          ...media,
+          publicUrl: this.mediaUrlSigner.createSignedUrl(media.storedFilename),
+        });
       } else {
-        await this.repository.deactivateFlowProjectMedia(media.id);
+        await this.flowProjectMediaRepository.deactivateFlowProjectMedia(media.id);
       }
     }
 
     return availableMediaItems;
   }
 
+  /**
+   * Sube un adjunto: valida tamaño, sniffing de contenido, proyecto habilitado,
+   * escribe a disco y persiste metadata. Si falla la BD, borra el archivo (compensación).
+   *
+   * @param flowUuid - UUID del flujo.
+   * @param idProyectoNetsuite - Proyecto habilitado.
+   * @param file - Archivo multipart en memoria.
+   * @param options - `stepCode` y `sortOrder` opcionales.
+   */
   async uploadFlowProjectMedia(
     flowUuid: string,
     idProyectoNetsuite: number,
     file: UploadedKapsoMediaFile | undefined,
     options?: { stepCode?: string; sortOrder?: number },
   ) {
-    if (!file) {
+    if (!file || !Buffer.isBuffer(file.buffer) || file.buffer.length === 0) {
       throw new BadRequestException("Debe adjuntar un archivo.");
     }
 
-    const mediaType = this.resolveMediaType(file.mimetype);
     const maxFileSizeBytes = this.configService.get<number>("kapso.mediaMaxFileSizeBytes") ?? 50 * 1024 * 1024;
     const sortOrder = Number.isFinite(options?.sortOrder) ? Number(options?.sortOrder) : 0;
 
-    if (file.size > maxFileSizeBytes) {
+    if (file.buffer.length > maxFileSizeBytes) {
       throw new BadRequestException("El archivo supera el tamano maximo permitido.");
     }
 
     const stepCode = this.normalizeStepCode(options?.stepCode);
-    const project = await this.repository.findBusinessFlowProject(flowUuid, idProyectoNetsuite);
+    const project = await this.flowProjectMediaRepository.findBusinessFlowProject(flowUuid, idProyectoNetsuite);
 
     if (!project || project.enabled !== 1) {
       throw new NotFoundException("El proyecto debe estar habilitado en el flujo antes de subir adjuntos.");
     }
 
-    const storedFilename = `${randomUUID()}${extname(file.originalname).toLowerCase() || ".bin"}`;
+    const inspectedFile = this.inspectMediaFile(file.buffer);
+    const storedFilename = `${randomUUID()}${inspectedFile.extension}`;
     const projectFolderName = this.buildProjectMediaFolderName(idProyectoNetsuite, project.nombreProyecto ?? project.projectName);
     const relativePath = join(flowUuid, "proyectos", projectFolderName, storedFilename).replace(/\\/g, "/");
     const absolutePath = this.resolveStoragePath(relativePath);
@@ -155,23 +220,43 @@ export class AdminKapsoIntegrationsService {
     const apiPrefix = this.configService.getOrThrow<string>("app.apiPrefix").replace(/^\/+|\/+$/g, "");
     const publicUrl = `${publicBaseUrl}/${apiPrefix}/kapso/media/${storedFilename}`;
 
-    return this.repository.createFlowProjectMedia({
-      flowUuid,
-      idProyectoNetsuite,
-      stepCode,
-      mediaType,
-      originalName: file.originalname,
-      storedFilename,
-      relativePath,
-      publicUrl,
-      mimeType: file.mimetype,
-      fileSize: file.size,
-      sortOrder,
-    });
+    try {
+      const created = await this.flowProjectMediaRepository.createFlowProjectMedia({
+        flowUuid,
+        idProyectoNetsuite,
+        stepCode,
+        mediaType: inspectedFile.mediaType,
+        originalName: this.sanitizeOriginalFilename(file.originalname),
+        storedFilename,
+        relativePath,
+        publicUrl,
+        mimeType: inspectedFile.mimeType,
+        fileSize: file.buffer.length,
+        sortOrder,
+      });
+
+      if (!created) {
+        throw new InternalServerErrorException("No se pudo persistir la metadata del archivo.");
+      }
+
+      return {
+        ...created,
+        publicUrl: this.mediaUrlSigner.createSignedUrl(created.storedFilename),
+      };
+    } catch (error) {
+      // Compensación: si falla la metadata, no dejar basura en disco.
+      await fs.rm(absolutePath, { force: true });
+      throw error;
+    }
   }
 
+  /**
+   * Soft-delete en BD y borrado físico del archivo.
+   *
+   * @param id - Id del registro de media.
+   */
   async deleteFlowProjectMedia(id: number) {
-    const media = await this.repository.deactivateFlowProjectMedia(id);
+    const media = await this.flowProjectMediaRepository.deactivateFlowProjectMedia(id);
 
     if (!media) {
       throw new NotFoundException("El adjunto indicado no existe.");
@@ -182,19 +267,25 @@ export class AdminKapsoIntegrationsService {
     return media;
   }
 
+  /**
+   * Resuelve ruta absoluta y mime para servir un archivo por `storedFilename`.
+   * Rechaza path traversal y nombres con caracteres peligrosos.
+   *
+   * @param storedFilename - Nombre físico seguro.
+   */
   async getMediaFileByStoredFilename(storedFilename: string): Promise<KapsoMediaFileResponse> {
     if (storedFilename !== basename(storedFilename) || !/^[a-zA-Z0-9._-]+$/.test(storedFilename)) {
       throw new BadRequestException("Nombre de archivo invalido.");
     }
 
-    const media = await this.repository.findFlowProjectMediaByStoredFilename(storedFilename);
+    const media = await this.flowProjectMediaRepository.findFlowProjectMediaByStoredFilename(storedFilename);
 
     if (!media) {
       throw new NotFoundException("El adjunto indicado no existe.");
     }
 
     if (!(await this.mediaFileExists(media))) {
-      await this.repository.deactivateFlowProjectMedia(media.id);
+      await this.flowProjectMediaRepository.deactivateFlowProjectMedia(media.id);
       throw new NotFoundException("El archivo fisico del adjunto ya no existe.");
     }
 
@@ -205,10 +296,22 @@ export class AdminKapsoIntegrationsService {
     };
   }
 
-  // --------------------------------------------------------------------------
-  // CRUD DE RELACIONES
-  // --------------------------------------------------------------------------
+  /**
+   * Valida la URL firmada (HMAC + TTL) antes de servir el archivo público.
+   *
+   * @param storedFilename - Nombre del archivo.
+   * @param expires - Epoch seconds.
+   * @param signature - Firma hex.
+   */
+  assertMediaUrlValid(storedFilename: string, expires: string | undefined, signature: string | undefined): void {
+    this.mediaUrlSigner.assertValid(storedFilename, expires, signature);
+  }
 
+  /**
+   * Crea relación admin↔Kapso tras validar entidades activas y unicidad.
+   *
+   * @param dto - Payload de creación.
+   */
   async createRelation(dto: SaveAdminKapsoIntegrationDto) {
     await this.assertValidAdministrator(dto.idnetsuiteAdmin);
     await this.assertValidKapsoPhoneNumber(dto.kapsoPhoneNumberId);
@@ -223,10 +326,20 @@ export class AdminKapsoIntegrationsService {
     return this.getRelationById(relation.id);
   }
 
+  /**
+   * Lista relaciones con filtros del DTO.
+   *
+   * @param query - Criterios de listado.
+   */
   async listRelations(query: ListAdminKapsoIntegrationsDto) {
     return this.repository.listRelations(query);
   }
 
+  /**
+   * Detalle de una relación o 404.
+   *
+   * @param id - Id interno.
+   */
   async getRelationById(id: number) {
     const relation = await this.repository.findRelationDetailById(id);
 
@@ -237,6 +350,12 @@ export class AdminKapsoIntegrationsService {
     return relation;
   }
 
+  /**
+   * Actualiza una relación existente con las mismas validaciones que el create.
+   *
+   * @param id - Id interno.
+   * @param dto - Nuevos valores.
+   */
   async updateRelation(id: number, dto: SaveAdminKapsoIntegrationDto) {
     const relation = await this.repository.findRelationById(id);
 
@@ -257,6 +376,12 @@ export class AdminKapsoIntegrationsService {
     return this.getRelationById(id);
   }
 
+  /**
+   * Cambia solo el status de la relación.
+   *
+   * @param id - Id interno.
+   * @param dto - Nuevo status.
+   */
   async updateRelationStatus(id: number, dto: UpdateAdminKapsoIntegrationStatusDto) {
     const relation = await this.repository.findRelationById(id);
 
@@ -268,6 +393,11 @@ export class AdminKapsoIntegrationsService {
     return this.getRelationById(id);
   }
 
+  /**
+   * Elimina una relación admin–Kapso.
+   *
+   * @param id - Id interno.
+   */
   async deleteRelation(id: number) {
     const relation = await this.repository.findRelationById(id);
 
@@ -284,19 +414,16 @@ export class AdminKapsoIntegrationsService {
     };
   }
 
-  // --------------------------------------------------------------------------
-  // USO OPERATIVO
-  // --------------------------------------------------------------------------
-
+  /**
+   * Integraciones activas de un administrador (para selección operativa en CRM).
+   *
+   * @param idnetsuiteAdmin - Id NetSuite del admin.
+   */
   async listActiveIntegrationsByAdmin(idnetsuiteAdmin: number) {
     await this.assertAdministratorExists(idnetsuiteAdmin);
 
     return this.repository.listActiveIntegrationsByAdmin(idnetsuiteAdmin);
   }
-
-  // --------------------------------------------------------------------------
-  // VALIDACIONES
-  // --------------------------------------------------------------------------
 
   private async assertAdministratorExists(idnetsuiteAdmin: number) {
     const administrator = await this.repository.findAdminOptionByNetSuiteId(idnetsuiteAdmin);
@@ -340,20 +467,59 @@ export class AdminKapsoIntegrationsService {
     }
   }
 
-  private resolveMediaType(mimeType: string): MediaFileType {
-    if (mimeType.startsWith("image/")) {
-      return "image";
+  /**
+   * Detecta tipo real por magic bytes (no confía en `file.mimetype` del cliente).
+   * Evita subir ejecutables o polyglots disfrazados de imagen/PDF.
+   */
+  private inspectMediaFile(buffer: Buffer): InspectedMediaFile {
+    const hasSignature = (signature: number[], offset = 0) =>
+      buffer.length >= offset + signature.length && buffer.subarray(offset, offset + signature.length).equals(Buffer.from(signature));
+
+    if (hasSignature([0xff, 0xd8, 0xff])) {
+      return { extension: ".jpg", mediaType: "image", mimeType: "image/jpeg" };
     }
 
-    if (mimeType.startsWith("video/")) {
-      return "video";
+    if (hasSignature([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])) {
+      return { extension: ".png", mediaType: "image", mimeType: "image/png" };
     }
 
-    if (mimeType === "application/pdf") {
-      return "document";
+    const gifHeader = buffer.subarray(0, 6).toString("ascii");
+
+    if (gifHeader === "GIF87a" || gifHeader === "GIF89a") {
+      return { extension: ".gif", mediaType: "image", mimeType: "image/gif" };
     }
 
-    throw new BadRequestException("Solo se permiten imagenes, videos o PDF.");
+    if (buffer.subarray(0, 4).toString("ascii") === "RIFF" && buffer.subarray(8, 12).toString("ascii") === "WEBP") {
+      return { extension: ".webp", mediaType: "image", mimeType: "image/webp" };
+    }
+
+    if (buffer.subarray(0, 5).toString("ascii") === "%PDF-") {
+      return { extension: ".pdf", mediaType: "document", mimeType: "application/pdf" };
+    }
+
+    if (buffer.subarray(4, 8).toString("ascii") === "ftyp") {
+      return { extension: ".mp4", mediaType: "video", mimeType: "video/mp4" };
+    }
+
+    if (hasSignature([0x1a, 0x45, 0xdf, 0xa3])) {
+      return { extension: ".webm", mediaType: "video", mimeType: "video/webm" };
+    }
+
+    throw new BadRequestException("El contenido del archivo no corresponde a un formato permitido.");
+  }
+
+  /** Limpia control chars del nombre original (header Content-Disposition). */
+  private sanitizeOriginalFilename(originalName: string): string {
+    const sanitized = Array.from(basename(originalName))
+      .filter((character) => {
+        const codePoint = character.codePointAt(0) ?? 0;
+        return codePoint >= 32 && codePoint !== 127;
+      })
+      .join("")
+      .trim()
+      .slice(0, 255);
+
+    return sanitized || "archivo";
   }
 
   private normalizeStepCode(stepCode?: string) {
@@ -387,6 +553,9 @@ export class AdminKapsoIntegrationsService {
     }
   }
 
+  /**
+   * Resuelve ruta absoluta bajo el storage root y bloquea path traversal (`../`).
+   */
   private resolveStoragePath(relativePath: string) {
     const configuredStoragePath = this.configService.get<string>("kapso.mediaStoragePath") ?? "archivos";
     const storageRoot = isAbsolute(configuredStoragePath) ? configuredStoragePath : resolve(process.cwd(), configuredStoragePath);

@@ -1,12 +1,20 @@
-// ============================================================================
-// IMPORTS
-// ============================================================================
+/**
+ * Migración de la relación admin CRM ↔ número Kapso.
+ *
+ * Motivo: permitir asignar números WhatsApp Kapso a administradores NetSuite
+ * del CRM con estado activo/inactivo y unicidad por par admin+número.
+ *
+ * Tablas que toca:
+ * - `admin_kapso_integrations` (crea tabla, índices y FK a `kapso_phone_numbers`)
+ *
+ * `down`: reversible (elimina la tabla completa, incluida la FK). Los datos se pierden.
+ *
+ * Nota de modelado:
+ * `admins.idnetsuite_admin` no es una PK unica en el schema actual, por eso la
+ * relacion se conserva como clave logica indexada y no como FK fisica.
+ */
 
 import { MigrationInterface, QueryRunner, Table, TableForeignKey, TableIndex } from "typeorm";
-
-// ============================================================================
-// MIGRACION
-// ============================================================================
 
 /**
  * Crea la tabla many-to-many entre administradores del CRM y numeros Kapso.
@@ -18,6 +26,11 @@ import { MigrationInterface, QueryRunner, Table, TableForeignKey, TableIndex } f
 export class CreateAdminKapsoIntegrationsTable1752200400000 implements MigrationInterface {
   name = "CreateAdminKapsoIntegrationsTable1752200400000";
 
+  /**
+   * Crea `admin_kapso_integrations` con índices y FK al número Kapso.
+   *
+   * @param queryRunner - Ejecutor de consultas TypeORM de la migración.
+   */
   public async up(queryRunner: QueryRunner): Promise<void> {
     const hasTable = await queryRunner.hasTable("admin_kapso_integrations");
 
@@ -114,6 +127,12 @@ export class CreateAdminKapsoIntegrationsTable1752200400000 implements Migration
     );
   }
 
+  /**
+   * Elimina `admin_kapso_integrations` si existe.
+   * Es reversible a nivel de schema; las asignaciones admin↔número no se recuperan.
+   *
+   * @param queryRunner - Ejecutor de consultas TypeORM de la migración.
+   */
   public async down(queryRunner: QueryRunner): Promise<void> {
     const hasTable = await queryRunner.hasTable("admin_kapso_integrations");
 

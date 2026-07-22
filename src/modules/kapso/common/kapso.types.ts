@@ -1,3 +1,10 @@
+/**
+ * Tipos compartidos del módulo Kapso (payloads, resúmenes de sync y API).
+ *
+ * Contratos internos entre clientes HTTP, servicios de sincronización
+ * y repositorios, sin acoplarlos a entidades TypeORM.
+ */
+
 // ============================================================================
 // TIPOS COMPARTIDOS DEL DOMINIO KAPSO
 // ============================================================================
@@ -70,13 +77,15 @@ export type KapsoPhoneNumberDetail = {
   raw: JsonRecord;
 };
 
-/** Configuración de webhook remoto, ya sea de tipo `kapso` o `meta`. */
+/**
+ * Configuración de webhook remoto, ya sea de tipo `kapso` o `meta`.
+ * No incluye `secret_key`: se elimina al mapear para no persistir ni loguear secretos.
+ */
 export type KapsoWebhookSummary = {
   webhookId: string;
   kind: "kapso" | "meta";
   url: string;
   active: boolean;
-  secretKey: string | null;
   events: string[];
   payloadVersion: string | null;
   raw: JsonRecord;

@@ -13,6 +13,8 @@ describe("KapsoWebhooksController (e2e)", () => {
 
   const repositoryMock = {
     findProcessedWebhookDuplicate: jest.fn(),
+    reserveWebhookReceipt: jest.fn(),
+    completeWebhookReceipt: jest.fn(),
     touchPhoneNumberWebhookEvent: jest.fn(),
     recordWebhookSyncResult: jest.fn(),
   };
@@ -59,6 +61,13 @@ describe("KapsoWebhooksController (e2e)", () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    signatureServiceMock.verifySignature.mockReturnValue(true);
+    repositoryMock.reserveWebhookReceipt.mockResolvedValue({
+      acquired: true,
+      payloadMismatch: false,
+      phoneNumberId: "1197677976762773",
+      status: "processing",
+    });
     syncServiceMock.processInboundMessageWebhook.mockResolvedValue({
       processed: 0,
       answeredNo: 0,
@@ -72,14 +81,17 @@ describe("KapsoWebhooksController (e2e)", () => {
   });
 
   it("evita reprocesar un webhook de plataforma duplicado", async () => {
-    repositoryMock.findProcessedWebhookDuplicate.mockResolvedValue({
+    repositoryMock.reserveWebhookReceipt.mockResolvedValue({
+      acquired: false,
+      payloadMismatch: false,
       phoneNumberId: "1197677976762773",
-      lastProcessingStatus: "processed",
+      status: "processed",
     });
 
     await request(app.getHttpServer())
       .post("/api/v1/webhooks/kapso/platform")
       .set("x-idempotency-key", "dup-123")
+      .set("x-webhook-signature", "valid-signature")
       .send({
         event: "whatsapp.phone_number.created",
         phone_number_id: "1197677976762773",
@@ -176,6 +188,7 @@ describe("KapsoWebhooksController (e2e)", () => {
     await request(app.getHttpServer())
       .post("/api/v1/webhooks/kapso/meta")
       .set("x-idempotency-key", "meta-001")
+      .set("x-webhook-signature", "valid-signature")
       .send({
         object: "whatsapp_business_account",
         phone_number_id: "1197677976762773",
@@ -185,6 +198,24 @@ describe("KapsoWebhooksController (e2e)", () => {
 
     expect(repositoryMock.touchPhoneNumberWebhookEvent).toHaveBeenCalled();
     expect(syncServiceMock.processInboundMessageWebhook).toHaveBeenCalled();
+  });
+
+  it("rechaza un webhook meta sin firma valida antes de consultar idempotencia", async () => {
+    signatureServiceMock.verifySignature.mockReturnValue(false);
+
+    await request(app.getHttpServer())
+      .post("/api/v1/webhooks/kapso/meta")
+      .set("x-idempotency-key", "meta-invalid-001")
+      .set("x-webhook-signature", "invalid-signature")
+      .send({
+        object: "whatsapp_business_account",
+        phone_number_id: "1197677976762773",
+      })
+      .expect(401);
+
+    expect(repositoryMock.reserveWebhookReceipt).not.toHaveBeenCalled();
+    expect(repositoryMock.touchPhoneNumberWebhookEvent).not.toHaveBeenCalled();
+    expect(syncServiceMock.processInboundMessageWebhook).not.toHaveBeenCalled();
   });
 
   it("procesa respuestas entrantes desde webhook Kapso sin cambiar la respuesta publica", async () => {

@@ -1,3 +1,10 @@
+/**
+ * DTO opcional del bootstrap de sincronización Kapso.
+ *
+ * Body de POST /kapso/bootstrap/sync para decidir si se asegura el webhook
+ * de plataforma a nivel proyecto.
+ */
+
 // ============================================================================
 // IMPORTS
 // ============================================================================

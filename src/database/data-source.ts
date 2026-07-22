@@ -1,3 +1,10 @@
+/**
+ * DataSource de TypeORM para el CLI de migraciones.
+ *
+ * Punto de entrada de migration:run / migration:revert. Reutiliza
+ * buildTypeOrmOptions() para compartir la misma configuración MySQL que NestJS.
+ */
+
 // ============================================================================
 // IMPORTS
 // ============================================================================

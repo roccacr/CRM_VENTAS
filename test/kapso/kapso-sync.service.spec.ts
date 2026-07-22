@@ -6,7 +6,11 @@ import { ConfigService } from "@nestjs/config";
 
 import { KapsoController } from "../../src/modules/kapso/controllers/kapso.controller";
 import { KapsoRepository } from "../../src/modules/kapso/repositories/kapso.repository";
-import { AdminKapsoIntegrationsRepository } from "../../src/modules/kapso/repositories/admin-kapso-integrations.repository";
+import { KapsoFlowProjectMediaRepository } from "../../src/modules/kapso/repositories/kapso-flow-project-media.repository";
+import { KapsoLeadAutomationRepository } from "../../src/modules/kapso/repositories/kapso-lead-automation.repository";
+import { KapsoLeadAutomationService } from "../../src/modules/kapso/services/kapso-lead-automation.service";
+import { KapsoMediaUrlSignerService } from "../../src/modules/kapso/services/kapso-media-url-signer.service";
+import { KapsoPhoneNumberSyncService } from "../../src/modules/kapso/services/kapso-phone-number-sync.service";
 import { KapsoPlatformApiService } from "../../src/modules/kapso/services/kapso-platform-api.service";
 import { KapsoSyncService } from "../../src/modules/kapso/services/kapso-sync.service";
 
@@ -15,6 +19,7 @@ import { KapsoSyncService } from "../../src/modules/kapso/services/kapso-sync.se
 // ============================================================================
 
 const TEST_PHONE_NUMBER_ID = "1197677976762773";
+const LEAD_INITIAL_CONTACT_FLOW_UUID = "94d5c3b8-4b43-4c28-8c76-3d9eaf70ad01";
 const KAPSO_UNAVAILABLE_ERROR = new Error('Kapso API error: {"error":"WhatsApp configuration not found"}');
 
 /** Detalle remoto simulado cuando Kapso ya expone el numero. */
@@ -92,11 +97,19 @@ function createSyncServiceTestBed() {
     findPhoneNumberByExternalId: jest.fn(),
     listLeadTemplateCandidates: jest.fn(),
     markLeadTemplateCandidateSkipped: jest.fn(),
+    markLeadTemplateCandidateInvalidPhone: jest.fn(),
+    reserveInitialTemplateSend: jest.fn(),
+    markInitialTemplateSent: jest.fn(),
+    markInitialTemplateFailed: jest.fn(),
   };
 
   const adminKapsoIntegrationsRepositoryMock = {
     listLeadTemplateCandidates: kapsoRepositoryMock.listLeadTemplateCandidates,
     markLeadTemplateCandidateSkipped: kapsoRepositoryMock.markLeadTemplateCandidateSkipped,
+    markLeadTemplateCandidateInvalidPhone: kapsoRepositoryMock.markLeadTemplateCandidateInvalidPhone,
+    reserveInitialTemplateSend: kapsoRepositoryMock.reserveInitialTemplateSend,
+    markInitialTemplateSent: kapsoRepositoryMock.markInitialTemplateSent,
+    markInitialTemplateFailed: kapsoRepositoryMock.markInitialTemplateFailed,
     markLeadFlowAnsweredNo: jest.fn(),
     markLeadFlowAnsweredYes: jest.fn(),
     listActiveFlowProjectMedia: jest.fn(),
@@ -104,18 +117,30 @@ function createSyncServiceTestBed() {
     markLeadFlowIntroFailed: jest.fn(),
   };
 
-  const service = new KapsoSyncService(
+  const mediaUrlSignerMock = {
+    createSignedUrl: jest.fn((storedFilename: string) => `https://crm.example.com/media/${storedFilename}?signed=true`),
+  };
+
+  const phoneNumberSyncService = new KapsoPhoneNumberSyncService(
     configServiceMock as unknown as ConfigService,
     kapsoPlatformApiServiceMock as unknown as KapsoPlatformApiService,
     kapsoRepositoryMock as unknown as KapsoRepository,
-    adminKapsoIntegrationsRepositoryMock as unknown as AdminKapsoIntegrationsRepository,
   );
+  const leadAutomationService = new KapsoLeadAutomationService(
+    configServiceMock as unknown as ConfigService,
+    kapsoPlatformApiServiceMock as unknown as KapsoPlatformApiService,
+    adminKapsoIntegrationsRepositoryMock as unknown as KapsoLeadAutomationRepository,
+    adminKapsoIntegrationsRepositoryMock as unknown as KapsoFlowProjectMediaRepository,
+    mediaUrlSignerMock as unknown as KapsoMediaUrlSignerService,
+  );
+  const service = new KapsoSyncService(phoneNumberSyncService, leadAutomationService);
 
   return {
     service,
     kapsoPlatformApiServiceMock,
     kapsoRepositoryMock,
     adminKapsoIntegrationsRepositoryMock,
+    mediaUrlSignerMock,
   };
 }
 
@@ -164,10 +189,6 @@ describe("KapsoSyncService", () => {
       phoneNumberId: TEST_PHONE_NUMBER_ID,
       projectExternalId: REMOTE_PHONE_NUMBER_DETAIL.projectId,
     });
-  });
-
-  afterEach(() => {
-    service.onModuleDestroy();
   });
 
   it("mantiene el numero en pending_remote_sync cuando Kapso aun no expone el detalle", async () => {
@@ -236,31 +257,153 @@ describe("KapsoSyncService", () => {
 
     const summary = await service.processLeadTemplateCandidates();
 
-    expect(summary).toEqual({ scanned: 2, configured: 0, skipped: 2, failed: 0 });
+    expect(summary).toEqual({ scanned: 2, configured: 0, sent: 0, skipped: 2, failed: 0 });
     expect(kapsoRepositoryMock.markLeadTemplateCandidateSkipped).toHaveBeenCalledTimes(2);
     expect(kapsoRepositoryMock.markLeadTemplateCandidateSkipped).toHaveBeenNthCalledWith(1, 101, 7001, 9001, 1);
     expect(kapsoRepositoryMock.markLeadTemplateCandidateSkipped).toHaveBeenNthCalledWith(2, 102, 7002, 0, 1);
   });
 
-  it("solo registra los leads con asesor y numero Kapso configurados sin enviarlos", async () => {
+  it("reserva y envia el template inicial cuando el lead tiene asesor, numero, proyecto y template aprobados", async () => {
     kapsoRepositoryMock.listLeadTemplateCandidates.mockResolvedValue([
       {
         leadId: 103,
-        internalLeadId: 7003,
-        idEmpleadoLead: 9002,
-        adminId: 9002,
-        adminName: "Asesor configurado",
+        internalLeadId: 3095911,
+        idEmpleadoLead: 653055,
+        adminId: 653055,
+        adminName: "Roberto Carlos Zuniga Altamirano",
         kapsoRelationId: 8,
         kapsoPhoneNumberId: 14,
-        phoneNumberId: "1197677976762773",
+        phoneNumberId: TEST_PHONE_NUMBER_ID,
+        leadPhoneNumberRaw: "50687515938",
+        nombre_lead: "PRUEBA ROBERTO OT",
+        idProyectoNetsuite: 38,
+        projectName: "Andira",
+        projectExternalId: REMOTE_PHONE_NUMBER_DETAIL.projectId,
+        flowUuid: LEAD_INITIAL_CONTACT_FLOW_UUID,
+        templateName: "saludo",
+        templateLanguage: "es_ES",
+        templateStatus: "approved",
       },
     ]);
+    kapsoRepositoryMock.reserveInitialTemplateSend.mockResolvedValue({ executionId: 44 });
+    kapsoPlatformApiServiceMock.sendWhatsappMessage.mockResolvedValue({ messages: [{ id: "wamid.saludo" }] });
 
     const summary = await service.processLeadTemplateCandidates();
 
-    expect(summary).toEqual({ scanned: 1, configured: 1, skipped: 0, failed: 0 });
+    expect(summary).toEqual({ scanned: 1, configured: 1, sent: 1, skipped: 0, failed: 0 });
     expect(kapsoRepositoryMock.markLeadTemplateCandidateSkipped).not.toHaveBeenCalled();
-    expect(kapsoPlatformApiServiceMock.getPhoneNumber).not.toHaveBeenCalled();
+    expect(kapsoRepositoryMock.reserveInitialTemplateSend).toHaveBeenCalledWith({
+      flowUuid: LEAD_INITIAL_CONTACT_FLOW_UUID,
+      leadId: 103,
+      internalLeadId: 3095911,
+      idnetsuiteAdmin: 653055,
+      idProyectoNetsuite: 38,
+      phoneNumberId: TEST_PHONE_NUMBER_ID,
+      leadPhoneNumber: "50687515938",
+    });
+    expect(kapsoPlatformApiServiceMock.sendWhatsappMessage).toHaveBeenCalledWith(
+      TEST_PHONE_NUMBER_ID,
+      {
+        messaging_product: "whatsapp",
+        recipient_type: "individual",
+        to: "50687515938",
+        type: "template",
+        template: {
+          name: "saludo",
+          language: { code: "es_ES" },
+          components: [
+            {
+              type: "body",
+              parameters: [
+                { type: "text", text: "PRUEBA ROBERTO OT" },
+                { type: "text", text: "Roberto Carlos Zuniga Altamirano" },
+                { type: "text", text: "Andira" },
+              ],
+            },
+          ],
+        },
+      },
+      { projectId: REMOTE_PHONE_NUMBER_DETAIL.projectId },
+    );
+    expect(kapsoRepositoryMock.markInitialTemplateSent).toHaveBeenCalledWith({
+      executionId: 44,
+      responsePayload: { messages: [{ id: "wamid.saludo" }] },
+    });
+  });
+
+  it("descarta el candidato y registra bitacora cuando el telefono no es valido", async () => {
+    kapsoRepositoryMock.listLeadTemplateCandidates.mockResolvedValue([
+      {
+        leadId: 103,
+        internalLeadId: 3095911,
+        idEmpleadoLead: 653055,
+        adminId: 653055,
+        adminName: "Roberto Carlos Zuniga Altamirano",
+        kapsoRelationId: 8,
+        kapsoPhoneNumberId: 14,
+        phoneNumberId: TEST_PHONE_NUMBER_ID,
+        leadPhoneNumberRaw: "telefono malo",
+        nombre_lead: "PRUEBA ROBERTO OT",
+        idProyectoNetsuite: 38,
+        projectName: "Andira",
+        projectExternalId: REMOTE_PHONE_NUMBER_DETAIL.projectId,
+        flowUuid: LEAD_INITIAL_CONTACT_FLOW_UUID,
+        templateName: "saludo",
+        templateLanguage: "es_ES",
+        templateStatus: "approved",
+      },
+    ]);
+    kapsoRepositoryMock.markLeadTemplateCandidateInvalidPhone.mockResolvedValue(true);
+
+    const summary = await service.processLeadTemplateCandidates();
+
+    expect(summary).toEqual({ scanned: 1, configured: 0, sent: 0, skipped: 1, failed: 0 });
+    expect(kapsoRepositoryMock.markLeadTemplateCandidateInvalidPhone).toHaveBeenCalledWith({
+      flowUuid: LEAD_INITIAL_CONTACT_FLOW_UUID,
+      leadId: 103,
+      internalLeadId: 3095911,
+      idnetsuiteAdmin: 653055,
+      idProyectoNetsuite: 38,
+      phoneNumberId: TEST_PHONE_NUMBER_ID,
+      leadPhoneNumber: "telefono malo",
+      leadStatus: 1,
+    });
+    expect(kapsoRepositoryMock.reserveInitialTemplateSend).not.toHaveBeenCalled();
+    expect(kapsoPlatformApiServiceMock.sendWhatsappMessage).not.toHaveBeenCalled();
+  });
+
+  it("marca la ejecucion como fallida cuando Kapso rechaza el envio inicial", async () => {
+    kapsoRepositoryMock.listLeadTemplateCandidates.mockResolvedValue([
+      {
+        leadId: 103,
+        internalLeadId: 3095911,
+        idEmpleadoLead: 653055,
+        adminId: 653055,
+        adminName: "Roberto Carlos Zuniga Altamirano",
+        kapsoRelationId: 8,
+        kapsoPhoneNumberId: 14,
+        phoneNumberId: TEST_PHONE_NUMBER_ID,
+        leadPhoneNumberRaw: "50687515938",
+        nombre_lead: "PRUEBA ROBERTO OT",
+        idProyectoNetsuite: 38,
+        projectName: "Andira",
+        projectExternalId: REMOTE_PHONE_NUMBER_DETAIL.projectId,
+        flowUuid: LEAD_INITIAL_CONTACT_FLOW_UUID,
+        templateName: "saludo",
+        templateLanguage: "es_ES",
+        templateStatus: "approved",
+      },
+    ]);
+    kapsoRepositoryMock.reserveInitialTemplateSend.mockResolvedValue({ executionId: 44 });
+    kapsoPlatformApiServiceMock.sendWhatsappMessage.mockRejectedValue(new Error("Kapso send failed"));
+
+    const summary = await service.processLeadTemplateCandidates();
+
+    expect(summary).toEqual({ scanned: 1, configured: 1, sent: 0, skipped: 0, failed: 1 });
+    expect(kapsoRepositoryMock.markInitialTemplateFailed).toHaveBeenCalledWith({
+      executionId: 44,
+      failureReason: "Kapso send failed",
+    });
   });
 
   it("evita dos corridas simultaneas del worker de leads", async () => {
@@ -276,7 +419,7 @@ describe("KapsoSyncService", () => {
     const firstRun = service.processLeadTemplateCandidates();
     const secondRun = await service.processLeadTemplateCandidates();
 
-    expect(secondRun).toEqual({ scanned: 0, configured: 0, skipped: 0, failed: 0 });
+    expect(secondRun).toEqual({ scanned: 0, configured: 0, sent: 0, skipped: 0, failed: 0 });
     releaseQuery();
     await firstRun;
     expect(kapsoRepositoryMock.listLeadTemplateCandidates).toHaveBeenCalledTimes(1);
@@ -471,7 +614,7 @@ describe("KapsoSyncService", () => {
       TEST_PHONE_NUMBER_ID,
       expect.objectContaining({
         type: "video",
-        video: { link: "https://crm.example.com/api/v1/kapso/media/intro.mp4" },
+        video: { link: "https://crm.example.com/media/intro.mp4?signed=true" },
       }),
       { projectId: REMOTE_PHONE_NUMBER_DETAIL.projectId },
     );
@@ -480,7 +623,7 @@ describe("KapsoSyncService", () => {
       TEST_PHONE_NUMBER_ID,
       expect.objectContaining({
         type: "image",
-        image: { link: "https://crm.example.com/api/v1/kapso/media/foto.jpg" },
+        image: { link: "https://crm.example.com/media/foto.jpg?signed=true" },
       }),
       { projectId: REMOTE_PHONE_NUMBER_DETAIL.projectId },
     );
@@ -894,7 +1037,7 @@ describe("KapsoController", () => {
     });
 
     expect(html).toContain("Sincronizacion fallida");
-    expect(html).toContain('la sincronizacion fallo: Kapso API error: {"error":"Forbidden"}');
+    expect(html).toContain("la sincronizacion fallo: Kapso API error: {&quot;error&quot;:&quot;Forbidden&quot;}");
     expect(kapsoRepositoryMock.recordSetupRedirect).toHaveBeenLastCalledWith(
       expect.objectContaining({
         phoneNumberId: TEST_PHONE_NUMBER_ID,

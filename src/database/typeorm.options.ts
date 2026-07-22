@@ -1,3 +1,10 @@
+/**
+ * Opciones TypeORM compartidas entre NestJS y el CLI de migraciones.
+ *
+ * Centraliza conexión MySQL, entidades, glob de migraciones y políticas
+ * (synchronize: false, reintentos, timezone UTC) para evitar divergencias.
+ */
+
 // ============================================================================
 // IMPORTS
 // ============================================================================
@@ -62,8 +69,9 @@ export function buildTypeOrmOptions(): DataSourceOptions & Pick<TypeOrmModuleOpt
     // El schema se modifica solo por migraciones, nunca por synchronize.
     synchronize: false,
 
-    // Aplica migraciones pendientes al iniciar la app.
-    migrationsRun: true,
+    // Por defecto false: las migraciones se corren como paso unico de despliegue
+    // (`npm run migration:run`) para evitar carreras entre replicas.
+    migrationsRun: process.env.MYSQL_MIGRATIONS_RUN === "true",
 
     // Tabla interna donde TypeORM registra migraciones aplicadas.
     migrationsTableName: "typeorm_migrations",

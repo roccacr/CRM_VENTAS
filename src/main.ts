@@ -1,8 +1,10 @@
-// ============================================================================
-// IMPORTS
-// ============================================================================
-
-// Primitivas base de Nest para arranque, validacion y lectura de configuracion.
+/**
+ * Punto de entrada HTTP de la API Kapso CRM.
+ *
+ * Arranca Nest con Express, aplica seguridad (helmet, CORS, trust proxy) y
+ * ValidationPipe global. Conserva `rawBody` para verificar firmas HMAC de
+ * webhooks Kapso/Meta sin alterar el payload original.
+ */
 import { Logger, ValidationPipe } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { NestFactory } from "@nestjs/core";
@@ -11,32 +13,29 @@ import helmet from "helmet";
 
 import { AppModule } from "./app.module";
 
-// ============================================================================
-// OPCIONES GLOBALES DE ARRANQUE
-// ============================================================================
-
 /**
  * `rawBody: true` conserva el cuerpo original del request para validar firmas
  * HMAC de Kapso y Meta sin depender de serializaciones posteriores.
  */
 const NEST_FACTORY_OPTIONS = { rawBody: true };
 
-/** Politica global de validacion aplicada a todos los DTOs de entrada. */
+/**
+ * Opciones del ValidationPipe global de DTO.
+ *
+ * `whitelist` elimina propiedades no declaradas; `transform` habilita class-transformer.
+ */
 const VALIDATION_PIPE_OPTIONS = {
-  // Elimina propiedades no declaradas en el DTO.
   whitelist: true,
-  // Convierte tipos primitivos cuando el DTO lo permite.
   transform: true,
   // Mantiene compatibilidad con payloads JSON que incluyan estructuras amplias.
   forbidUnknownValues: false,
 };
 
-// ============================================================================
-// BOOTSTRAP
-// ============================================================================
-
 /**
- * Inicializa la aplicacion Nest, aplica middleware de seguridad y levanta HTTP.
+ * Inicializa la aplicación Nest y abre el listener HTTP.
+ *
+ * Configura prefijo global, proxies confiables, CORS restringido a orígenes
+ * permitidos y shutdown hooks para drenar conexiones al apagar el proceso.
  */
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, NEST_FACTORY_OPTIONS);
@@ -46,20 +45,19 @@ async function bootstrap(): Promise<void> {
   const apiPrefix = configService.getOrThrow<string>("app.apiPrefix");
   const corsOrigins = configService.get<string[]>("app.corsOrigins", []);
   const port = configService.getOrThrow<number>("app.port");
+  const trustProxyHops = configService.get<number>("app.trustProxyHops", 0);
 
-  // Todas las rutas de la API viven bajo el prefijo configurado.
   app.setGlobalPrefix(apiPrefix);
+  app.set("trust proxy", trustProxyHops);
+  app.enableShutdownHooks();
 
-  // Helmet endurece headers HTTP comunes sin afectar la logica del dominio.
   app.use(helmet());
 
-  // CORS queda gobernado solo por la configuracion cargada desde env.
   app.enableCors({
     origin: corsOrigins,
     credentials: true,
   });
 
-  // La validacion global asegura entradas consistentes en DTOs y query params.
   app.useGlobalPipes(new ValidationPipe(VALIDATION_PIPE_OPTIONS));
 
   await app.listen(port);

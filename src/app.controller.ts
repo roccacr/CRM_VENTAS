@@ -1,58 +1,53 @@
-// ============================================================================
-// IMPORTS
-// ============================================================================
-
-// Decoradores HTTP basicos para exponer el endpoint raiz y el health check.
+/**
+ * Controlador raíz de salud y descubrimiento básico de la API.
+ *
+ * Expone endpoints públicos livianos para balanceadores y monitoreo, sin
+ * pasar por autenticación Entra ni throttling agresivo en `/health`.
+ */
 import { Controller, Get } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
+import { SkipThrottle } from "@nestjs/throttler";
 
-// ============================================================================
-// TIPOS DE RESPUESTA
-// ============================================================================
+import { Public } from "./common/auth/auth.decorators";
 
-/** Contrato del endpoint raiz usado como respuesta de bienvenida de la API. */
+/**
+ * Respuesta del endpoint raíz: confirma que la API está viva y su versión.
+ */
 interface RootResponse {
   ok: true;
   message: string;
   version: string;
 }
 
-/** Contrato minimo del endpoint de health para probes y monitoreo. */
+/**
+ * Respuesta mínima de health check para probes de infraestructura.
+ */
 interface HealthResponse {
   ok: true;
   status: string;
 }
 
-// ============================================================================
-// CONSTANTES DE PRESENTACION
-// ============================================================================
-
-/** Mensaje fijo que identifica rapidamente para que sirve esta API. */
+/** Mensaje fijo del GET `/` orientado a operadores del CRM. */
 const ROOT_MESSAGE = "API Kapso CRM lista para sincronizar proyectos, clientes y numeros.";
 
-// ============================================================================
-// CONTROLADOR
-// ============================================================================
-
 /**
- * Controlador raiz de la aplicacion.
+ * Endpoints públicos de estado de la aplicación.
  *
- * Mantiene endpoints pequenos y estables para:
- * - comprobar disponibilidad general;
- * - exponer la version desplegada;
- * - dar un probe simple a balanceadores y monitoreo.
+ * Marcado `@Public` a nivel de clase porque estos paths no deben exigir
+ * Bearer token (load balancers y uptime checks no envían JWT).
  */
 @Controller()
+@Public()
 export class AppController {
   constructor(private readonly configService: ConfigService) {}
 
-  // --------------------------------------------------------------------------
-  // ENDPOINTS PUBLICOS
-  // --------------------------------------------------------------------------
-
   /**
-   * GET /{apiPrefix}/
-   * Devuelve una respuesta simple de disponibilidad y version.
+   * Devuelve un mensaje de bienvenida y la versión empaquetada.
+   *
+   * Sirve como smoke test manual y como señal de que ConfigModule resolvió
+   * `app.version` correctamente tras el arranque.
+   *
+   * @returns Payload con `ok`, mensaje y versión
    */
   @Get()
   getRoot(): RootResponse {
@@ -64,10 +59,15 @@ export class AppController {
   }
 
   /**
-   * GET /{apiPrefix}/health
-   * Probe ligero para verificar que el proceso HTTP sigue levantado.
+   * Health check liviano para probes de orquestación.
+   *
+   * `@SkipThrottle` evita falsos negativos cuando el balanceador consulta
+   * el endpoint con alta frecuencia.
+   *
+   * @returns Estado `up` si el proceso Nest responde
    */
   @Get("health")
+  @SkipThrottle()
   getHealth(): HealthResponse {
     return {
       ok: true,

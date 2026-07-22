@@ -1,55 +1,45 @@
-// ============================================================================
-// IMPORTS
-// ============================================================================
-
-// Bloques base de Nest para configurar la app, la base de datos y el dominio.
+/**
+ * Módulo raíz de la API Kapso CRM.
+ *
+ * Compone ConfigModule, TypeORM, BullMQ, Throttler y KapsoModule, e instala
+ * guards globales de rate limit y autenticación Entra para proteger toda la API.
+ */
 import { Module } from "@nestjs/common";
-import { ConfigModule } from "@nestjs/config";
+import { BullModule } from "@nestjs/bullmq";
+import { ConfigModule, ConfigService } from "@nestjs/config";
+import { APP_GUARD } from "@nestjs/core";
+import { ThrottlerGuard, ThrottlerModule, seconds } from "@nestjs/throttler";
 import { TypeOrmModule } from "@nestjs/typeorm";
-import { config as loadDotenv } from "dotenv";
 
-// Namespaces de configuracion propios del proyecto.
+import { EntraAuthGuard } from "./common/auth/entra-auth.guard";
+import { EntraAuthService } from "./common/auth/entra-auth.service";
 import appConfig from "./config/app.config";
 import kapsoConfig from "./config/kapso.config";
 import mysqlConfig from "./config/mysql.config";
+import redisConfig from "./config/redis.config";
+import securityConfig from "./config/security.config";
 import { validateEnv } from "./config/validate-env";
 
-// Superficie HTTP raiz y wiring del dominio Kapso.
 import { AppController } from "./app.controller";
 import { buildTypeOrmOptions } from "./database/typeorm.options";
 import { KapsoModule } from "./modules/kapso/kapso.module";
 
-// ============================================================================
-// CONFIGURACION GLOBAL
-// ============================================================================
-
-/** Loaders registrados en `ConfigModule` para exponer namespaces tipados. */
-const CONFIG_LOADERS = [appConfig, kapsoConfig, mysqlConfig];
-
-// El .env del proyecto debe prevalecer sobre variables heredadas del sistema.
-loadDotenv({ override: true });
-
-// ============================================================================
-// MODULO RAIZ
-// ============================================================================
+/** Loaders de namespaces tipados registrados en ConfigModule. */
+const CONFIG_LOADERS = [appConfig, kapsoConfig, mysqlConfig, redisConfig, securityConfig];
 
 /**
- * Modulo raiz de la aplicacion NestJS.
+ * Ensambla la infraestructura transversal y el dominio Kapso.
  *
- * Centraliza:
- * - carga y validacion de variables de entorno;
- * - conexion TypeORM compartida con migraciones;
- * - registro del modulo funcional Kapso.
+ * Los providers `APP_GUARD` aplican Throttler y Entra a todos los endpoints
+ * (salvo excepciones explícitas como `@Public` / `@SkipThrottle`).
  */
 @Module({
   imports: [
     ConfigModule.forRoot({
-      // Disponible en toda la app sin reimportar ConfigModule.
       isGlobal: true,
       // Reutiliza valores resueltos para evitar releer process.env en cada acceso.
       cache: true,
       load: CONFIG_LOADERS,
-      // Corta el arranque si falta una variable critica o su formato es invalido.
       validate: validateEnv,
     }),
 
@@ -58,9 +48,51 @@ loadDotenv({ override: true });
       useFactory: () => buildTypeOrmOptions(),
     }),
 
-    // Modulo principal de integracion Kapso / WhatsApp / CRM.
+    BullModule.forRootAsync({
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService) => ({
+        connection: {
+          db: configService.get<number>("redis.db", 0),
+          host: configService.getOrThrow<string>("redis.host"),
+          password: configService.get<string>("redis.password"),
+          port: configService.get<number>("redis.port", 6379),
+          tls: configService.get<boolean>("redis.tls", false) ? {} : undefined,
+        },
+        defaultJobOptions: {
+          attempts: 3,
+          backoff: {
+            delay: 5_000,
+            type: "exponential",
+          },
+          removeOnComplete: 100,
+          removeOnFail: 500,
+        },
+      }),
+    }),
+
+    ThrottlerModule.forRootAsync({
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService) => [
+        {
+          limit: configService.get<number>("security.rateLimitPerMinute", 120),
+          ttl: seconds(60),
+        },
+      ],
+    }),
+
     KapsoModule,
   ],
   controllers: [AppController],
+  providers: [
+    EntraAuthService,
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
+    },
+    {
+      provide: APP_GUARD,
+      useClass: EntraAuthGuard,
+    },
+  ],
 })
 export class AppModule {}

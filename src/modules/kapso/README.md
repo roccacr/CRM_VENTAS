@@ -56,6 +56,7 @@ Estas rutas alimentan la pestana `Flujos por proyecto` del CRM.
 | Ruta                                                                 | Uso                                         |
 | -------------------------------------------------------------------- | ------------------------------------------- |
 | `GET /api/v1/kapso/business-flows`                                   | Lista flujos, pasos y proyectos permitidos. |
+| `PATCH /api/v1/kapso/business-flows/:flowUuid/status`                | Activa o inactiva el flujo completo.        |
 | `POST /api/v1/kapso/business-flows/:flowUuid/projects`               | Permite un proyecto para ejecutar un flujo. |
 | `DELETE /api/v1/kapso/business-flows/:flowUuid/projects/:idProyecto` | Quita un proyecto permitido del flujo.      |
 | `GET /api/v1/kapso/flows/:flowUuid/projects/:id/media`               | Lista adjuntos del proyecto para una etapa. |
@@ -70,6 +71,8 @@ leads.idproyecto_lead -> proyectos.id_ProNetsuite
 ```
 
 El API puede recibir `id_proyecto` o `id_ProNetsuite`, pero guarda la configuracion operativa con `id_ProNetsuite`.
+
+`kapso_business_flows.enabled` es el interruptor maestro del flujo. Si esta en `0`, el worker no ejecuta el flujo aunque el proyecto, el asesor, el template y los adjuntos existan.
 
 ## Template Inicial
 
@@ -92,18 +95,19 @@ Mapeo:
 
 ## Estados de Ejecucion del Lead
 
-| Estado                  | Significado                          |
-| ----------------------- | ------------------------------------ |
-| `reserved`              | Lead reservado para el flujo.        |
-| `initial_template_sent` | Template inicial enviado.            |
-| `answered_yes`          | Cliente acepto recibir informacion.  |
-| `answered_no`           | Cliente rechazo recibir informacion. |
-| `intro_sent`            | Intro normal enviada.                |
-| `intro_failed`          | Intro normal fallo.                  |
-| `invalid_phone`         | Telefono invalido, no se reintenta.  |
-| `manual_intervention`   | Asesor tomo el control.              |
-| `completed`             | Flujo finalizado.                    |
-| `failed`                | Error tecnico terminal.              |
+| Estado                    | Significado                                              |
+| ------------------------- | -------------------------------------------------------- |
+| `reserved`                | Lead reservado para el flujo.                            |
+| `initial_template_sent`   | Template inicial enviado.                                |
+| `initial_template_failed` | Template inicial fallo; no se reintenta automaticamente. |
+| `answered_yes`            | Cliente acepto recibir informacion.                      |
+| `answered_no`             | Cliente rechazo recibir informacion.                     |
+| `intro_sent`              | Intro normal enviada.                                    |
+| `intro_failed`            | Intro normal fallo.                                      |
+| `invalid_phone`           | Telefono invalido, no se reintenta.                      |
+| `manual_intervention`     | Asesor tomo el control.                                  |
+| `completed`               | Flujo finalizado.                                        |
+| `failed`                  | Error tecnico terminal.                                  |
 
 ## Reglas CRM Importantes
 
@@ -125,6 +129,21 @@ Mapeo:
 - Al eliminar un adjunto desde el CRM, se desactiva la metadata y se borra el archivo fisico.
 - El archivo se sirve por `GET /api/v1/kapso/media/:storedFilename`.
 - Si la metadata esta activa pero el archivo fisico ya no existe, el servicio desactiva esa metadata al listar o servir el archivo.
+
+## Logs de Diagnostico
+
+El modulo registra cada punto observable del flujo para poder ajustar la integracion con respuestas reales de Kapso y Meta.
+
+| Area                | Log principal                                                                                |
+| ------------------- | -------------------------------------------------------------------------------------------- |
+| Cliente HTTP Kapso  | `Kapso API request`, `Kapso API response` y `Kapso API error`.                               |
+| Webhooks entrantes  | `Platform webhook received`, `Kapso events webhook received` y `Meta webhook received`.      |
+| Template inicial    | `Initial template send started`, payload enviado y respuesta recibida.                       |
+| Respuestas cliente  | `Inbound message candidate`, decision `answered_yes`, `answered_no` o motivo de ignorado.    |
+| Intro normal        | Payload y respuesta por cada adjunto, mas payload y respuesta del mensaje interactivo final. |
+| Webhooks por numero | Deteccion de webhook faltante, creacion y respuesta cruda de Kapso.                          |
+
+Los logs usan `executionId`, `phoneNumberId`, `leadPhoneNumber`, `messageId` e `idinterno_lead` como claves para seguir una prueba de punta a punta.
 
 ## Verificacion Recomendada
 

@@ -2,29 +2,25 @@
 // IMPORTS
 // ============================================================================
 
-import { DataSource, Repository } from "typeorm";
+import { DataSource } from "typeorm";
 
-import { AdminKapsoIntegrationEntity } from "../../src/modules/kapso/entities/admin-kapso-integration.entity";
-import { AdminKapsoIntegrationsRepository } from "../../src/modules/kapso/repositories/admin-kapso-integrations.repository";
+import { KapsoFlowProjectMediaRepository } from "../../src/modules/kapso/repositories/kapso-flow-project-media.repository";
 
 // ============================================================================
 // SUITE
 // ============================================================================
 
-describe("AdminKapsoIntegrationsRepository", () => {
+describe("KapsoFlowProjectMediaRepository", () => {
   const dataSourceMock = {
     query: jest.fn(),
   };
 
-  let repository: AdminKapsoIntegrationsRepository;
+  let repository: KapsoFlowProjectMediaRepository;
 
   beforeEach(() => {
     jest.clearAllMocks();
 
-    repository = new AdminKapsoIntegrationsRepository(
-      dataSourceMock as unknown as DataSource,
-      {} as Repository<AdminKapsoIntegrationEntity>,
-    );
+    repository = new KapsoFlowProjectMediaRepository(dataSourceMock as unknown as DataSource);
   });
 
   it("lista solo adjuntos activos para evitar que reaparezcan archivos retirados", async () => {

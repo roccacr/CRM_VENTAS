@@ -1,12 +1,17 @@
-// ============================================================================
-// IMPORTS
-// ============================================================================
+/**
+ * Migración de deduplicación del catálogo local de templates Kapso.
+ *
+ * Motivo: tras compatibilizar esquemas antiguos podían existir varios registros
+ * por `action_code`; la API exige uno solo (prioriza `approved` y el id más reciente).
+ *
+ * Tablas que toca:
+ * - `kapso_template_catalog` (borra duplicados y asegura índice único `uq_kapso_template_catalog_action`)
+ *
+ * `down`: PARCIALMENTE irreversible. Solo elimina el índice único; no restaura
+ * las filas duplicadas borradas en el `up`.
+ */
 
 import { MigrationInterface, QueryRunner, TableIndex } from "typeorm";
-
-// ============================================================================
-// MIGRACION
-// ============================================================================
 
 /**
  * Normaliza el catalogo local de templates despues de compatibilizar esquemas
@@ -15,6 +20,11 @@ import { MigrationInterface, QueryRunner, TableIndex } from "typeorm";
 export class DeduplicateKapsoTemplateCatalog1752860000000 implements MigrationInterface {
   name = "DeduplicateKapsoTemplateCatalog1752860000000";
 
+  /**
+   * Elimina duplicados por `action_code` y asegura el índice único.
+   *
+   * @param queryRunner - Ejecutor de consultas TypeORM de la migración.
+   */
   public async up(queryRunner: QueryRunner): Promise<void> {
     if (!(await queryRunner.hasTable("kapso_template_catalog"))) {
       return;
@@ -61,6 +71,12 @@ export class DeduplicateKapsoTemplateCatalog1752860000000 implements MigrationIn
     }
   }
 
+  /**
+   * Quita el índice único de `action_code` si existe.
+   * No recupera las filas eliminadas en el `up` (down irreversible en datos).
+   *
+   * @param queryRunner - Ejecutor de consultas TypeORM de la migración.
+   */
   public async down(queryRunner: QueryRunner): Promise<void> {
     if (!(await queryRunner.hasTable("kapso_template_catalog"))) {
       return;

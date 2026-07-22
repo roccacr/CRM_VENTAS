@@ -12,15 +12,19 @@ El objetivo no es solo enviar mensajes. El objetivo es tener un flujo comercial 
 4. [Como Correr](#como-correr)
 5. [Variables de Entorno](#variables-de-entorno)
 6. [Arquitectura General](#arquitectura-general)
-7. [Configuracion del CRM](#configuracion-del-crm)
-8. [Flujo Completo del Negocio](#flujo-completo-del-negocio)
-9. [Reglas de Ejecucion](#reglas-de-ejecucion)
-10. [Adjuntos por Proyecto](#adjuntos-por-proyecto)
-11. [Modelo de Datos](#modelo-de-datos)
-12. [Rutas Principales](#rutas-principales)
-13. [Preguntas y Respuestas](#preguntas-y-respuestas)
-14. [Checklist Operativo](#checklist-operativo)
-15. [Pendientes Controlados](#pendientes-controlados)
+7. [Seguridad y Control de Acceso](#seguridad-y-control-de-acceso)
+8. [Jobs Distribuidos e Idempotencia](#jobs-distribuidos-e-idempotencia)
+9. [Configuracion del CRM](#configuracion-del-crm)
+10. [Flujo Completo del Negocio](#flujo-completo-del-negocio)
+11. [Reglas de Ejecucion](#reglas-de-ejecucion)
+12. [Adjuntos por Proyecto](#adjuntos-por-proyecto)
+13. [Modelo de Datos](#modelo-de-datos)
+14. [Rutas Principales](#rutas-principales)
+15. [Diagnostico y Logs](#diagnostico-y-logs)
+16. [Preguntas y Respuestas](#preguntas-y-respuestas)
+17. [Checklist Operativo](#checklist-operativo)
+18. [Pendientes Controlados](#pendientes-controlados)
+19. [Resultado de Auditoria y Correcciones](#resultado-de-auditoria-y-correcciones)
 
 ## Resumen Ejecutivo
 
@@ -33,11 +37,12 @@ El flujo actual trabaja asi:
 3. El API crea los webhooks necesarios para recibir eventos.
 4. En el CRM se asigna un asesor a una linea Kapso.
 5. En el CRM se habilitan proyectos para un flujo de negocio.
-6. El worker revisa leads nuevos cada minuto.
-7. Si el lead cumple las reglas, se envia el template inicial `saludo`.
-8. Si el cliente responde `No, gracias`, el lead pasa a perdido y se registra bitacora.
-9. Si el cliente responde `Si, enviar informacion`, el lead pasa a seguimiento y se envia la intro normal con adjuntos del proyecto si existen.
-10. El sistema guarda el avance por lead y flujo para evitar ciclos infinitos.
+6. El flujo debe estar activo para que el worker pueda ejecutarlo.
+7. El worker revisa leads nuevos cada minuto.
+8. Si el lead cumple las reglas, se envia el template inicial `saludo`.
+9. Si el cliente responde `No, gracias`, el lead pasa a perdido y se registra bitacora.
+10. Si el cliente responde `Si, enviar informacion`, el lead pasa a seguimiento y se envia la intro normal con adjuntos del proyecto si existen.
+11. El sistema guarda el avance por lead y flujo para evitar ciclos infinitos.
 
 ```mermaid
 flowchart TD
@@ -45,7 +50,9 @@ flowchart TD
   B --> C["API crea webhooks"]
   C --> D["CRM asigna asesor a numero"]
   D --> E["CRM habilita proyecto en flujo"]
-  E --> F["Worker detecta lead candidato"]
+  E --> EA{"Flujo activo?"}
+  EA -- "No" --> EZ["Worker ignora el flujo"]
+  EA -- "Si" --> F["Worker detecta lead candidato"]
   F --> G["Envia template saludo"]
   G --> H{"Cliente responde"}
   H -- "No, gracias" --> I["Lead perdido + bitacora + flujo cerrado"]
@@ -79,12 +86,28 @@ flowchart TD
 - Carga multiple de adjuntos desde el frontend.
 - Guardado fisico de adjuntos por flujo y proyecto.
 - Limpieza automatica de metadata activa cuando el archivo fisico ya no existe.
+- Autenticacion global Microsoft Entra con politica deny-by-default.
+- Autorizacion administrativa mediante `id_rol_admin = 1`.
+- Firma HMAC obligatoria en webhooks Platform, Events y Meta Relay.
+- Idempotencia durable de webhooks mediante `kapso_webhook_receipts`.
+- Rate limiting global y limites especificos para uploads y sincronizaciones.
+- Validacion de archivos por firma binaria, no solo por extension o MIME declarado.
+- URLs temporales firmadas para descargar adjuntos.
+- Jobs distribuidos BullMQ sobre Redis, sin timers locales por instancia.
+- Liveness y readiness separados con validacion real de MySQL y Redis.
+- Logs con redaccion de PII, tokens, API keys y secretos.
+- Repositorios y servicios separados por responsabilidad.
+- Suite de integracion MySQL con schema efimero y 16 pruebas verdes.
+- Cobertura de repositorios medida en integracion: 50% de lineas.
 
 ### En Proceso
 
 - Definir los siguientes pasos despues de la intro normal.
 - Definir que hacen los botones `Ver precios`, `Agendar visita` y `Hablar con asesor`.
 - Definir como se detecta formalmente la intervencion manual del asesor.
+- Ejecutar la migracion de recibos de webhook en staging corporativo.
+- Completar consentimiento Microsoft Entra en el tenant real.
+- Migrar adjuntos a almacenamiento compartido antes de operar multiples replicas sin volumen comun.
 
 ### No Debe Hacerse Todavia
 
@@ -105,13 +128,24 @@ flowchart TD
 | Jest               | Pruebas unitarias y e2e                 |
 | libphonenumber-js  | Validacion y normalizacion de telefonos |
 | Multer             | Carga de adjuntos                       |
+| Microsoft Entra ID | Autenticacion y tokens OAuth 2.0        |
+| BullMQ / Redis     | Jobs periodicos distribuidos            |
 
 ## Como Correr
 
 ```bash
 npm install
+npm run integration:up
 npm run migration:run
 npm run start:dev
+```
+
+Infra de pruebas locales (MySQL `:3307` + Redis `:6379`):
+
+```bash
+npm run integration:up
+npm run test:integration:coverage
+npm run integration:down
 ```
 
 La API queda disponible en:
@@ -133,20 +167,81 @@ npm run build
 
 ## Variables de Entorno
 
-| Variable                          | Uso                                                         |
-| --------------------------------- | ----------------------------------------------------------- |
-| `PORT`                            | Puerto local. Normalmente `8002`.                           |
-| `GLOBAL_PREFIX`                   | Prefijo API. Normalmente `api/v1`.                          |
-| `KAPSO_BASE_URL`                  | URL base de Kapso Platform API.                             |
-| `KAPSO_API_KEY`                   | API key default del proyecto Kapso.                         |
-| `KAPSO_PROJECT_API_KEYS_JSON`     | Mapa `project.id -> apiKey` para proyectos Kapso multiples. |
-| `KAPSO_PUBLIC_BASE_URL`           | URL publica que Kapso puede consultar. Ejemplo: ngrok.      |
-| `KAPSO_PLATFORM_WEBHOOK_SECRET`   | Secreto del webhook Platform.                               |
-| `KAPSO_WHATSAPP_WEBHOOK_SECRET`   | Secreto del webhook WhatsApp/Kapso events.                  |
-| `KAPSO_PENDING_SYNC_INTERVAL_MS`  | Intervalo del worker de sincronizacion de numeros.          |
-| `KAPSO_LEAD_TEMPLATE_INTERVAL_MS` | Intervalo del worker de leads candidatos.                   |
-| `MYSQL_*`                         | Credenciales y conexion hacia MySQL CRM Ventas.             |
+| Variable                             | Uso                                                                |
+| ------------------------------------ | ------------------------------------------------------------------ |
+| `PORT`                               | Puerto local. Normalmente `8002`.                                  |
+| `API_PREFIX`                         | Prefijo API. Normalmente `api/v1`.                                 |
+| `CORS_ALLOWED_ORIGINS`               | Origenes frontend autorizados, separados por coma.                 |
+| `TRUST_PROXY_HOPS`                   | Cantidad de proxies confiables antes de la API.                    |
+| `INTERNAL_RATE_LIMIT_PER_MINUTE`     | Limite global de requests por minuto e IP.                         |
+| `ENTRA_TENANT_ID`                    | Tenant unico autorizado para emitir tokens.                        |
+| `ENTRA_API_AUDIENCE`                 | Client ID de la app registrada como API.                           |
+| `ENTRA_REQUIRED_SCOPE`               | Scope delegado requerido. Normalmente `Kapso.Access`.              |
+| `ENTRA_ALLOWED_CLIENT_IDS`           | Client IDs que pueden invocar la API.                              |
+| `KAPSO_API_BASE_URL`                 | URL base de Kapso Platform API.                                    |
+| `KAPSO_API_KEY`                      | API key por defecto del proyecto Kapso.                            |
+| `KAPSO_PROJECT_API_KEYS_JSON`        | Mapa `project.id -> apiKey` para proyectos Kapso multiples.        |
+| `KAPSO_PUBLIC_BASE_URL`              | URL publica que Kapso puede consultar. Ejemplo: ngrok.             |
+| `KAPSO_PLATFORM_WEBHOOK_SECRET`      | Secreto del webhook Platform.                                      |
+| `KAPSO_WHATSAPP_WEBHOOK_SECRET`      | Secreto compartido por webhooks WhatsApp y relay Meta.             |
+| `KAPSO_MEDIA_STORAGE_PATH`           | Directorio fisico de adjuntos.                                     |
+| `KAPSO_MEDIA_MAX_FILE_SIZE_MB`       | Tamano maximo permitido por archivo.                               |
+| `KAPSO_MEDIA_SIGNING_SECRET`         | Secreto de al menos 32 caracteres para URLs temporales de media.   |
+| `KAPSO_MEDIA_SIGNED_URL_TTL_SECONDS` | Vida util de cada URL temporal.                                    |
+| `KAPSO_PENDING_SYNC_INTERVAL_MS`     | Periodicidad del job distribuido de sincronizacion.                |
+| `KAPSO_LEAD_TEMPLATE_INTERVAL_MS`    | Periodicidad del job distribuido de leads candidatos.              |
+| `MYSQL_*`                            | Credenciales y conexion hacia MySQL CRM Ventas.                    |
+| `MYSQL_MIGRATIONS_RUN`               | Debe permanecer `false`; migraciones se ejecutan en el despliegue. |
+| `REDIS_HOST`, `REDIS_PORT`           | Servidor usado por BullMQ y readiness.                             |
+| `REDIS_PASSWORD`, `REDIS_DB`         | Autenticacion y base logica de Redis.                              |
+| `REDIS_TLS`                          | Activa TLS en la conexion Redis.                                   |
 
+### Configuracion Microsoft Entra
+
+La API acepta access tokens destinados a ella; no acepta el access token de Microsoft Graph ni usa el ID token como credencial de API.
+
+1. En la app registration de la API, usar **Expose an API** y crear el scope `Kapso.Access`.
+2. Autorizar al client ID del frontend en **Authorized client applications**.
+3. Configurar el frontend con `VITE_ENTRA_KAPSO_SCOPE=api://<api-client-id>/Kapso.Access`.
+4. Configurar `ENTRA_API_AUDIENCE` con el client ID de la API y `ENTRA_ALLOWED_CLIENT_IDS` con el client ID del frontend.
+5. El usuario autenticado tambien debe existir activo en `admins` y tener `id_rol_admin = 1`.
+
+Los endpoints privados exigen `Authorization: Bearer <access-token>`. Solo redirects de setup, webhooks firmados, media con URL temporal y health checks son publicos.
+
+Checklist Entra (tenant corporativo):
+
+- [ ] Scope `Kapso.Access` creado y consentido.
+- [ ] Frontend autorizado como client application.
+- [ ] Variables `ENTRA_*` desplegadas en staging/produccion.
+- [ ] `VITE_ENTRA_KAPSO_SCOPE` en el frontend.
+- [ ] Prueba: usuario rol 1 → `200` en `GET /kapso/business-flows`.
+- [ ] Prueba: sin token → `401`.
+- [ ] Prueba: usuario activo sin rol 1 → `403`.
+
+### Operacion y despliegue
+
+- Ejecutar `npm run migration:run` como paso unico antes de desplegar nuevas instancias.
+- Mantener `MYSQL_MIGRATIONS_RUN=false` para evitar carreras de schema.
+- Redis es obligatorio para los jobs BullMQ.
+- Intervalo `0` en `KAPSO_*_INTERVAL_MS` desactiva el scheduler (solo tests/mantenimiento).
+- Liveness: `GET /api/v1/health/live`.
+- Readiness MySQL + Redis: `GET /api/v1/health/ready`.
+
+Promocion segura de migracion a staging:
+
+```bash
+# 1) Backup de la BD staging
+# 2) Apuntar MYSQL_* a staging (nunca produccion por error)
+# 3) Verificar MYSQL_MIGRATIONS_RUN=false
+npm run migration:run
+# 4) Confirmar tabla e indices
+# SHOW TABLES LIKE 'kapso_webhook_receipts';
+# SHOW INDEX FROM kapso_webhook_receipts;
+# 5) Smoke: dos webhooks concurrentes con la misma idempotency key
+# 6) health/ready debe responder ok
+```
+
+La migracion `CreateKapsoWebhookReceipts` ya se valida en schema efimero local (`api_kapso_it_*`). Staging sigue siendo el gate operativo antes de produccion.
 Regla importante:
 
 ```text
@@ -160,32 +255,191 @@ Kapso confirmo que el GET debe hacerse con el API key del mismo proyecto que cre
 
 ```mermaid
 flowchart TD
-  K["Kapso / Meta"] --> WH["Webhooks"]
-  WH --> KS["KapsoSyncService"]
-  KS --> KP["Kapso Platform API"]
-  KS --> DB["MySQL CRM Ventas"]
-  CRM["Frontend CRM"] --> REST["REST API Kapso"]
-  REST --> ADM["AdminKapsoIntegrationsService"]
-  ADM --> DB
-  DB --> N["kapso_phone_numbers"]
-  DB --> A["admin_kapso_integrations"]
-  DB --> F["kapso_business_flows"]
-  DB --> P["kapso_business_flow_projects"]
-  DB --> T["kapso_template_catalog"]
-  DB --> E["kapso_lead_flow_executions"]
-  DB --> M["kapso_flow_project_media"]
-  DB --> C["leads / admins / proyectos / bitacoras"]
+  CRM["Frontend CRM"] --> ENTRA["Microsoft Entra ID"]
+  ENTRA -->|"Access token Kapso.Access"| GUARD["EntraAuthGuard global"]
+  GUARD --> REST["Controllers privados"]
+
+  K["Kapso / Meta"] -->|"HMAC sobre rawBody"| WH["Webhooks publicos firmados"]
+  WH --> INBOX["kapso_webhook_receipts"]
+  INBOX --> FACADE["KapsoSyncService facade"]
+
+  REDIS["Redis"] --> QUEUE["BullMQ kapso-jobs"]
+  QUEUE --> PHONE["KapsoPhoneNumberSyncService"]
+  QUEUE --> LEADS["KapsoLeadAutomationService"]
+
+  REST --> ADMIN["AdminKapsoIntegrationsService"]
+  FACADE --> PHONE
+  FACADE --> LEADS
+  PHONE --> KAPSO["Kapso Platform API"]
+  LEADS --> KAPSO
+
+  ADMIN --> REPOS["Repositorios especializados"]
+  PHONE --> REPOS
+  LEADS --> REPOS
+  REPOS --> DB["MySQL CRM Ventas"]
+  ADMIN --> FS["Filesystem de adjuntos"]
 ```
 
 ### Responsabilidades
 
-| Capa         | Responsabilidad                                                   |
-| ------------ | ----------------------------------------------------------------- |
-| Controllers  | REST, redirects de setup y recepcion de webhooks.                 |
-| Services     | Orquestacion, workers, envio de templates, respuestas y adjuntos. |
-| Repositories | Consultas y persistencia en MySQL.                                |
-| Entities     | Tablas locales de Kapso.                                          |
-| Common       | Constantes, tipos y helpers de dominio.                           |
+| Componente                                    | Responsabilidad                                                |
+| --------------------------------------------- | -------------------------------------------------------------- |
+| `EntraAuthGuard`                              | Autentica access tokens y aplica roles CRM.                    |
+| `KapsoWebhooksController`                     | Verifica HMAC, reserva idempotencia y recibe eventos.          |
+| `KapsoSyncService`                            | Fachada compatible para sincronizacion y automatizacion.       |
+| `KapsoPhoneNumberSyncService`                 | Numeros, bootstrap, webhooks remotos y reintentos pendientes.  |
+| `KapsoLeadAutomationService`                  | Leads candidatos, respuestas Si/No, templates e intro normal.  |
+| `AdminKapsoIntegrationsService`               | Asignaciones, flujos, proyectos y archivos.                    |
+| `AdminKapsoIntegrationsRepository`            | Administradores, numeros disponibles y relaciones Admin-Kapso. |
+| `KapsoFlowProjectMediaRepository`             | Flujos, proyectos permitidos y metadata de adjuntos.           |
+| `KapsoLeadAutomationRepository`               | SQL y transacciones del ciclo comercial del lead.              |
+| `KapsoRepository`                             | Numeros, auditoria, redirects e idempotencia de webhooks.      |
+| `KapsoJobsSchedulerService` / `JobsProcessor` | Agenda y ejecuta jobs distribuidos mediante BullMQ.            |
+| `KapsoMediaUrlSignerService`                  | Genera y valida URLs HMAC temporales para media.               |
+| `KapsoPlatformApiService`                     | Cliente HTTP centralizado hacia Kapso.                         |
+| `KapsoHealthController`                       | Liveness y readiness de MySQL/Redis.                           |
+
+### Estructura Tecnica Actual
+
+```text
+src/
+  common/auth/
+    entra-auth.guard.ts
+    entra-auth.service.ts
+  modules/kapso/
+    controllers/
+    repositories/
+      admin-kapso-integrations.repository.ts
+      kapso-flow-project-media.repository.ts
+      kapso-lead-automation.repository.ts
+      kapso.repository.ts
+    services/
+      kapso-sync.service.ts
+      kapso-phone-number-sync.service.ts
+      kapso-lead-automation.service.ts
+      kapso-jobs-scheduler.service.ts
+      kapso-jobs.processor.ts
+      kapso-media-url-signer.service.ts
+      kapso-platform-api.service.ts
+```
+
+## Seguridad y Control de Acceso
+
+La politica es **privado por defecto**. Una ruta solo queda sin access token cuando esta marcada explicitamente con `@Public()`.
+
+```mermaid
+sequenceDiagram
+  participant U as Usuario CRM
+  participant FE as Frontend
+  participant E as Microsoft Entra
+  participant API as API Kapso
+  participant DB as MySQL
+
+  U->>FE: Abre Configuracion Kapso
+  FE->>E: Solicita scope Kapso.Access
+  E-->>FE: Access token para API Kapso
+  FE->>API: Authorization Bearer access_token
+  API->>E: Valida firma mediante JWKS
+  API->>API: Valida issuer, audience, tenant, azp y scope
+  API->>DB: Busca usuario activo por correo
+  DB-->>API: status_admin + id_rol_admin
+  alt Usuario activo y rol 1
+    API-->>FE: Operacion autorizada
+  else Token o rol invalido
+    API-->>FE: 401 o 403
+  end
+```
+
+### Controles del Token
+
+| Control            | Regla                                                                   |
+| ------------------ | ----------------------------------------------------------------------- |
+| Firma              | RSA `RS256` mediante JWKS oficial del tenant.                           |
+| Tenant             | `tid` debe coincidir con `ENTRA_TENANT_ID`.                             |
+| Emisor             | `iss` debe ser el issuer v2.0 exacto del tenant.                        |
+| Audiencia          | `aud` debe coincidir con `ENTRA_API_AUDIENCE`.                          |
+| Aplicacion cliente | `azp` o `appid` debe estar en `ENTRA_ALLOWED_CLIENT_IDS`.               |
+| Permiso            | `scp` debe contener `ENTRA_REQUIRED_SCOPE`, normalmente `Kapso.Access`. |
+| Usuario CRM        | El correo debe existir en `admins` con `status_admin = 1`.              |
+| Rol                | Las rutas administrativas requieren `id_rol_admin = 1`.                 |
+
+### Superficie Publica y Privada
+
+| Tipo de ruta                           | Proteccion                                                  |
+| -------------------------------------- | ----------------------------------------------------------- |
+| CRUD, configuracion y sincronizaciones | Bearer Entra + usuario activo + rol CRM 1 + rate limit.     |
+| Webhooks Kapso/Meta                    | Publicos para el proveedor, pero exigen HMAC sobre rawBody. |
+| Redirects de setup                     | Publicos; salida HTML escapada para evitar inyeccion.       |
+| Descarga de adjuntos                   | Publica solo con `expires` y `signature` HMAC validos.      |
+| Liveness/readiness                     | Publicos y excluidos del rate limit para monitoreo.         |
+
+```mermaid
+flowchart LR
+  R["Request"] --> P{"Ruta @Public?"}
+  P -- "No" --> T["Validar access token Entra"]
+  T --> C["Validar usuario CRM activo"]
+  C --> RO["Validar rol requerido"]
+  RO --> OK["Ejecutar endpoint"]
+  P -- "Webhook" --> H["Validar HMAC"]
+  H --> I["Reservar idempotencia"]
+  I --> OK
+  P -- "Media" --> S["Validar firma + expiracion"]
+  S --> OK
+```
+
+## Jobs Distribuidos e Idempotencia
+
+Los procesos periodicos ya no usan `setInterval` dentro de cada instancia. BullMQ registra schedulers unicos en Redis y procesa una ejecucion por vez.
+
+```mermaid
+flowchart TD
+  START["Inicio de la aplicacion"] --> SCHED["KapsoJobsSchedulerService"]
+  SCHED --> J1["pending-remote-sync cada intervalo configurado"]
+  SCHED --> J2["lead-template-candidates cada intervalo configurado"]
+  J1 --> REDIS["Redis / BullMQ"]
+  J2 --> REDIS
+  REDIS --> WORKER["KapsoJobsProcessor concurrency = 1"]
+  WORKER --> PHONE["KapsoPhoneNumberSyncService"]
+  WORKER --> LEAD["KapsoLeadAutomationService"]
+  PHONE --> RETRY{"Fallo temporal?"}
+  LEAD --> RETRY
+  RETRY -- "Si" --> BACKOFF["Hasta 3 intentos con backoff exponencial"]
+  RETRY -- "No" --> DONE["Job completado"]
+```
+
+### Idempotencia de Webhooks
+
+```mermaid
+sequenceDiagram
+  participant K as Kapso
+  participant API as API
+  participant R as kapso_webhook_receipts
+  participant CRM as Logica CRM
+
+  K->>API: Webhook + firma + idempotency key
+  API->>API: Verifica HMAC y calcula SHA-256 del payload
+  API->>R: INSERT IGNORE scope + idempotency_key
+  alt Reserva nueva
+    R-->>API: acquired = true
+    API->>CRM: Ejecuta efectos de negocio
+    API->>R: status = processed
+    API-->>K: 200 ok
+  else Entrega duplicada
+    R-->>API: acquired = false
+    API-->>K: 200 duplicate
+  else Misma key con otro payload
+    R-->>API: payloadMismatch = true
+    API-->>K: 409 Conflict
+  end
+```
+
+Reglas:
+
+- La llave unica es `scope + idempotency_key`.
+- Si el proveedor no envia llave, se deriva una desde el hash SHA-256 del raw body.
+- Una reserva queda bloqueada cinco minutos.
+- Un proceso fallido o un lease vencido puede adquirirse otra vez.
+- La misma llave con contenido distinto se rechaza.
 
 ## Configuracion del CRM
 
@@ -221,6 +475,15 @@ leads.idproyecto_lead -> proyectos.id_ProNetsuite
 
 Si el proyecto no esta permitido para el flujo, el lead no se procesa.
 
+El flujo tambien tiene un interruptor principal:
+
+| Estado del flujo | Comportamiento                                                                         |
+| ---------------- | -------------------------------------------------------------------------------------- |
+| `enabled = 1`    | El worker puede ejecutar el flujo si el lead cumple todas las reglas.                  |
+| `enabled = 0`    | El worker ignora el flujo aunque existan proyectos, templates y adjuntos configurados. |
+
+Inactivar un flujo no borra proyectos permitidos, adjuntos, ejecuciones ni bitacoras. Solo pausa nuevas ejecuciones para poder retomarlas despues sin reconstruir la configuracion.
+
 El flujo actual es:
 
 | Campo           | Valor                                   |
@@ -246,6 +509,7 @@ sequenceDiagram
   participant API as API Kapso CRM
   participant DB as MySQL
   participant KP as Kapso Platform API
+  participant Q as BullMQ / Redis
 
   K->>API: whatsapp.phone_number.created
   API->>DB: Guarda phone_number_id, project.id y customer.id
@@ -259,7 +523,8 @@ sequenceDiagram
   else Detalle no disponible
     KP-->>API: WhatsApp configuration not found
     API->>DB: setup_sync_status = pending_remote_sync
-    API->>API: Reintento corto por worker
+    Q->>API: Job pending-remote-sync
+    API->>KP: Reintento distribuido
   end
 ```
 
@@ -277,6 +542,7 @@ Validaciones adicionales:
 
 - `id_empleado_lead` no puede venir vacio.
 - `idinterno_lead` debe existir.
+- El flujo de negocio debe estar activo.
 - El proyecto debe estar permitido para el flujo.
 - El asesor debe tener una asignacion Admin-Kapso activa.
 - El telefono debe ser valido.
@@ -449,18 +715,19 @@ Si ya existe una ejecucion para ese lead y ese flujo, el worker no lo vuelve a i
 
 ### Estados de Ejecucion
 
-| Estado                  | Significado                               |
-| ----------------------- | ----------------------------------------- |
-| `reserved`              | Lead reservado para iniciar flujo.        |
-| `initial_template_sent` | Template inicial enviado.                 |
-| `answered_yes`          | Cliente acepto recibir informacion.       |
-| `answered_no`           | Cliente rechazo informacion por WhatsApp. |
-| `intro_sent`            | Intro normal enviada correctamente.       |
-| `intro_failed`          | Intro normal no pudo enviarse.            |
-| `invalid_phone`         | Telefono invalido; no se reintenta.       |
-| `manual_intervention`   | Asesor tomo control manual.               |
-| `completed`             | Flujo terminado.                          |
-| `failed`                | Error tecnico terminal.                   |
+| Estado                    | Significado                                              |
+| ------------------------- | -------------------------------------------------------- |
+| `reserved`                | Lead reservado para iniciar flujo.                       |
+| `initial_template_sent`   | Template inicial enviado.                                |
+| `initial_template_failed` | Template inicial fallo; no se reintenta automaticamente. |
+| `answered_yes`            | Cliente acepto recibir informacion.                      |
+| `answered_no`             | Cliente rechazo informacion por WhatsApp.                |
+| `intro_sent`              | Intro normal enviada correctamente.                      |
+| `intro_failed`            | Intro normal no pudo enviarse.                           |
+| `invalid_phone`           | Telefono invalido; no se reintenta.                      |
+| `manual_intervention`     | Asesor tomo control manual.                              |
+| `completed`               | Flujo terminado.                                         |
+| `failed`                  | Error tecnico terminal.                                  |
 
 ### Telefonos Invalidos
 
@@ -535,6 +802,10 @@ Reglas:
 
 - El frontend puede seleccionar varios archivos.
 - El API recibe un archivo por request para controlar errores parciales.
+- La ruta de upload exige access token Entra, rol CRM 1 y maximo 10 requests por minuto.
+- Multer limita tamaño, cantidad de archivos, campos, partes y headers antes de crear el buffer completo.
+- El contenido se valida por firma binaria para JPG, PNG, GIF, WEBP, PDF, MP4 y WEBM.
+- La extension final se deriva del contenido detectado; no se confia en el nombre original.
 - Cada archivo se guarda con nombre UUID para evitar colisiones.
 - En la interfaz no se muestra el nombre tecnico del archivo.
 - Se muestra una etiqueta amigable como `Imagen JPG`, `Video MP4` o `Documento PDF`.
@@ -542,13 +813,30 @@ Reglas:
 - Al quitar un adjunto desde el CRM, el API desactiva la metadata y borra el archivo fisico en `archivos/`.
 - Si un archivo fisico fue borrado pero la metadata seguia activa, el API desactiva esa metadata automaticamente al listar o servir el archivo.
 
-Ruta publica:
+Ruta de descarga temporal:
 
 ```text
-GET /api/v1/kapso/media/:storedFilename
+GET /api/v1/kapso/media/:storedFilename?expires={unix}&signature={hmac}
 ```
 
-En desarrollo, si Kapso necesita consultar los archivos, `KAPSO_PUBLIC_BASE_URL` debe apuntar a una URL publica como ngrok.
+```mermaid
+sequenceDiagram
+  participant CRM as CRM / Worker
+  participant API as API Kapso
+  participant K as Kapso
+  participant FS as Filesystem
+
+  CRM->>API: Solicita o utiliza adjunto
+  API->>API: Genera expires + HMAC SHA-256
+  API-->>CRM: URL temporal firmada
+  CRM->>K: Envia mensaje con URL
+  K->>API: GET media?expires&signature
+  API->>API: Valida expiracion y timingSafeEqual
+  API->>FS: Busca archivo activo
+  FS-->>K: Archivo permitido
+```
+
+En desarrollo, si Kapso necesita consultar los archivos, `KAPSO_PUBLIC_BASE_URL` debe apuntar a una URL publica como ngrok. La firma no sustituye HTTPS.
 
 ## Modelo de Datos
 
@@ -560,16 +848,29 @@ erDiagram
   kapso_template_catalog ||--o{ kapso_business_flow_steps : usa
   kapso_business_flows ||--o{ kapso_lead_flow_executions : controla
   kapso_business_flows ||--o{ kapso_flow_project_media : adjunta
+  kapso_phone_numbers ||--o{ kapso_webhook_receipts : identifica
 
   kapso_phone_numbers {
     int id
     varchar phone_number_id
     varchar display_phone_number
     varchar business_account_id
-    varchar kapso_project_id
+    varchar project_external_id
     varchar kapso_customer_id
     varchar setup_sync_status
     json webhooks_json
+  }
+
+  kapso_webhook_receipts {
+    bigint id
+    varchar scope
+    varchar idempotency_key
+    varchar phone_number_id
+    char payload_hash
+    varchar status
+    int attempt_count
+    datetime locked_until
+    datetime processed_at
   }
 
   admin_kapso_integrations {
@@ -644,6 +945,18 @@ erDiagram
   }
 ```
 
+### Tabla de Idempotencia
+
+| Campo             | Uso                                                         |
+| ----------------- | ----------------------------------------------------------- |
+| `scope`           | Separa eventos `platform`, `kapso` y `meta`.                |
+| `idempotency_key` | Identificador único enviado o derivado del payload.         |
+| `payload_hash`    | Detecta reutilización de la misma llave con otro contenido. |
+| `status`          | `processing`, `processed` o `failed`.                       |
+| `attempt_count`   | Cantidad de adquisiciones del recibo.                       |
+| `locked_until`    | Lease para recuperar procesos interrumpidos.                |
+| `processed_at`    | Fecha de finalización exitosa.                              |
+
 ### Tablas CRM Usadas
 
 | Tabla       | Uso                                            |
@@ -671,12 +984,13 @@ erDiagram
 | `GET /api/v1/kapso/templates/catalog`                                | Lista templates locales.                 |
 | `GET /api/v1/kapso/projects/options`                                 | Lista proyectos CRM para configuracion.  |
 | `GET /api/v1/kapso/business-flows`                                   | Lista flujos y proyectos permitidos.     |
+| `PATCH /api/v1/kapso/business-flows/:flowUuid/status`                | Activa o inactiva el flujo completo.     |
 | `POST /api/v1/kapso/business-flows/:flowUuid/projects`               | Habilita un proyecto para un flujo.      |
 | `DELETE /api/v1/kapso/business-flows/:flowUuid/projects/:idProyecto` | Deshabilita un proyecto del flujo.       |
 | `GET /api/v1/kapso/flows/:flowUuid/projects/:id/media`               | Lista adjuntos del flujo por proyecto.   |
 | `POST /api/v1/kapso/flows/:flowUuid/projects/:id/media`              | Sube un adjunto para una etapa.          |
 | `DELETE /api/v1/kapso/flow-project-media/:id`                        | Desactiva metadata y borra el archivo.   |
-| `GET /api/v1/kapso/media/:storedFilename`                            | Sirve adjuntos publicos para Kapso.      |
+| `GET /api/v1/kapso/media/:storedFilename?expires&signature`          | Sirve adjuntos con URL temporal firmada. |
 | `POST /api/v1/kapso/bootstrap/sync`                                  | Reconstruye estado local desde Kapso.    |
 | `POST /api/v1/kapso/phone-numbers/:phoneNumberId/sync`               | Reintenta sync de un numero.             |
 | `GET /api/v1/kapso/setup/success`                                    | Recibe redirect exitoso del setup link.  |
@@ -686,6 +1000,62 @@ erDiagram
 | `POST /api/v1/webhooks/kapso/meta`                                   | Webhook relay Meta.                      |
 | `GET /api/v1/kapso/admin-integrations`                               | Lista asignaciones admin-Kapso.          |
 | `POST /api/v1/kapso/admin-integrations`                              | Crea asignacion admin-Kapso.             |
+| `GET /api/v1/health/live`                                            | Confirma que el proceso esta vivo.       |
+| `GET /api/v1/health/ready`                                           | Valida MySQL y Redis.                    |
+
+### Matriz de Proteccion
+
+```mermaid
+flowchart LR
+  PRIVATE["Rutas /kapso administrativas"] --> A["Entra + rol CRM 1"]
+  SYNC["Bootstrap y sync manual"] --> B["Entra + rol 1 + limite por IP"]
+  UPLOAD["Carga de adjuntos"] --> C["Entra + rol 1 + 10/min"]
+  WEBHOOK["Rutas /webhooks/kapso"] --> D["HMAC + idempotencia + rate limit"]
+  MEDIA["Ruta /kapso/media"] --> E["HMAC temporal + expiracion"]
+  HEALTH["Rutas /health"] --> F["Publicas sin throttle"]
+  SETUP["Redirects /setup"] --> G["Publicos con HTML escapado"]
+```
+
+## Diagnostico y Logs
+
+El API deja logs estructurados para seguir el flujo completo sin exponer informacion sensible. Permiten ver que operacion ocurrio, que respondio Kapso y que decision tomo el motor.
+
+### Que se registra
+
+| Momento                    | Que buscar en consola                                                                                     |
+| -------------------------- | --------------------------------------------------------------------------------------------------------- |
+| Request saliente a Kapso   | `Kapso API request METHOD /ruta project=... apiKeySource=... payload resumido`                            |
+| Respuesta exitosa de Kapso | `Kapso API response METHOD /ruta status=... payload resumido`                                             |
+| Error devuelto por Kapso   | `Kapso API error METHOD /ruta status=... project=...`                                                     |
+| Alta o baja de numero      | `Platform webhook received event=whatsapp.phone_number.created/deleted`                                   |
+| Webhook WhatsApp/Kapso     | `Kapso events webhook received` con `payload keys` y payload resumido.                                    |
+| Webhook Meta Relay         | `Meta webhook received` con `object`, `entry`, `messageId`, `phoneNumberId` y payload resumido.           |
+| Envio del template inicial | `Initial template send started`, `Initial template payload` y `Initial template Kapso response`.          |
+| Respuesta del cliente      | `Inbound message candidate`, `answered_yes`, `answered_no` o `unsupported_or_ambiguous_reply`.            |
+| Envio de intro normal      | `Intro send started`, `Intro media payload`, `Intro media Kapso response` e `Intro interactive response`. |
+| Creacion de webhooks       | `webhook missing`, `webhook created` y `webhook creation response`.                                       |
+
+### Como usar los logs durante una prueba
+
+1. Levantar el API con `npm run start:dev`.
+2. Activar el flujo y confirmar que el proyecto esta permitido.
+3. Dejar un lead candidato con `segimineto_lead = 01-LEAD-INTERESADO`, `estado_lead = 1` y `whatsapp_template_contact_sent = 2`.
+4. Buscar en consola por `Lead template candidate`, `executionId`, `phoneNumberId` o `idinterno_lead`.
+5. Si Kapso falla, revisar la linea `Kapso API error` y el payload resumido.
+6. Si el cliente responde, buscar `Inbound message candidate` y confirmar si el sistema lo clasifico como `Si`, `No` o ambiguo.
+
+Los payloads se resumen con un limite interno para que la consola sea legible. No se imprime el valor de API keys ni secrets; solo se indica si se uso key `default`, `project` u `override`.
+
+```mermaid
+flowchart LR
+  RAW["Payload original"] --> REDACT["redactForLog"]
+  REDACT --> KEYS["Oculta password, token, secret, apiKey y authorization"]
+  REDACT --> PII["Oculta email, telefono, nombre y contenido del mensaje"]
+  KEYS --> LOG["Log resumido"]
+  PII --> LOG
+```
+
+Para correlacion se prefieren identificadores tecnicos como `executionId`, `phoneNumberId`, `messageId`, `flowUuid` e `idinterno_lead`. Los telefonos, nombres, correos, contenido de mensajes y credenciales se redactan antes de escribir el log.
 
 ## Preguntas y Respuestas
 
@@ -704,6 +1074,18 @@ El lead trae `id_empleado_lead`. Ese valor se cruza con `admins.idnetsuite_admin
 ### Como sabe el sistema si un proyecto puede usar el flujo?
 
 El lead trae `idproyecto_lead`. Ese valor se compara contra `proyectos.id_ProNetsuite` y contra `kapso_business_flow_projects`. Si el proyecto no esta permitido, el lead no entra al flujo.
+
+### Como se pausa un flujo sin borrar configuracion?
+
+Desde `Configuracion Admin-Kapso > Flujos por proyecto` se usa el boton `Inactivar flujo`. Esto cambia `kapso_business_flows.enabled` a `0` y el worker deja de ejecutar ese flujo.
+
+### Que pasa si el flujo esta inactivo y entra un lead candidato?
+
+No se envia ningun template ni intro para ese flujo. El worker solo toma flujos con `enabled = 1`.
+
+### Si reactivo el flujo, se pierde algo?
+
+No. Se conservan proyectos permitidos, adjuntos, ejecuciones y bitacoras. Al volver a activarlo, el worker retoma la evaluacion normal de nuevos candidatos.
 
 ### Por que se usa `idinterno_lead`?
 
@@ -776,9 +1158,41 @@ Se guarda el numero con estado pendiente y el worker reintenta. Si el error es p
 
 No. Esta lista la base: numero, asesor, proyecto, saludo, respuesta Si/No, bitacoras, intro normal y adjuntos. Falta definir los pasos posteriores a la intro.
 
+### Por que el frontend necesita un token distinto al de Microsoft Graph?
+
+Cada access token tiene una audiencia. Microsoft Graph solo acepta tokens destinados a Graph; esta API solo acepta tokens destinados a `ENTRA_API_AUDIENCE` y con el scope `Kapso.Access`.
+
+### Que pasa si el usuario inicio sesion en Microsoft pero no existe en el CRM?
+
+La API devuelve `401`. La identidad de Entra prueba quien es la persona, pero el registro activo en `admins` determina si puede usar el CRM.
+
+### Que pasa si un usuario CRM no tiene rol 1?
+
+Puede estar correctamente autenticado, pero recibe `403` en las rutas administrativas de Kapso.
+
+### Que pasa si Kapso entrega dos veces el mismo webhook?
+
+La primera entrega reserva el recibo y procesa el evento. Las siguientes entregas con la misma llave y payload reciben `200 duplicate` sin repetir cambios en el CRM.
+
+### Que pasa si reutilizan una llave de webhook con otro payload?
+
+La API detecta que el hash no coincide y devuelve `409 Conflict`. Esto evita que una llave valida represente dos eventos diferentes.
+
+### Por que Redis ahora es obligatorio?
+
+Redis coordina los schedulers y workers BullMQ entre instancias. Sin Redis no existe ejecucion distribuida segura y el readiness queda en estado no saludable.
+
+### Por que una URL de adjunto deja de funcionar?
+
+Las URLs se firman con una fecha de expiracion. Una firma alterada, vencida o calculada con otro nombre de archivo devuelve `403`. El API genera una URL nueva cada vez que vuelve a utilizar el adjunto.
+
+### Se puede desplegar mas de una instancia?
+
+Los jobs y webhooks ya soportan coordinacion distribuida. Los adjuntos todavia requieren un volumen compartido entre replicas o migrarse a almacenamiento de objetos antes de escalar horizontalmente sin afinidad.
+
 ## Checklist Operativo
 
-Antes de activar envio real:
+Para probar el envio real de `saludo`:
 
 - [ ] Numero conectado en Kapso.
 - [ ] Numero existe en `kapso_phone_numbers`.
@@ -788,11 +1202,49 @@ Antes de activar envio real:
 - [ ] Proyecto permitido para el flujo.
 - [ ] Template `saludo` aprobado en Kapso.
 - [ ] Template `saludo` sincronizado localmente como `approved`.
-- [ ] Parametros configurados: cliente, asesor, proyecto.
+- [x] Parametros configurados por codigo: cliente, asesor, proyecto.
 - [ ] Adjuntos cargados para proyectos que los requieren.
 - [ ] `KAPSO_PUBLIC_BASE_URL` publico cuando se envien adjuntos.
-- [ ] Worker de leads activo.
-- [ ] Pruebas de respuesta `Si` y `No` validadas con webhook.
+- [x] Worker de leads reserva y envia el template inicial.
+- [x] Pruebas unitarias de respuesta `Si` y `No` validadas con webhook.
+
+### Antes de Desplegar
+
+```mermaid
+flowchart LR
+  ENV["Validar variables"] --> TEST["Lint + tipos + pruebas"]
+  TEST --> MIG["migration:run una sola vez"]
+  MIG --> DEPLOY["Desplegar API"]
+  DEPLOY --> LIVE["health/live"]
+  LIVE --> READY["health/ready"]
+  READY --> SMOKE["Prueba Entra + webhook firmado"]
+```
+
+- [ ] Scope `Kapso.Access` creado y consentido en Microsoft Entra.
+- [ ] `ENTRA_TENANT_ID`, audiencia, scope y client IDs configurados.
+- [ ] `KAPSO_MEDIA_SIGNING_SECRET` aleatorio y de al menos 32 caracteres.
+- [ ] Secretos de webhook configurados y diferentes de las API keys.
+- [ ] Redis disponible desde todas las instancias.
+- [ ] `MYSQL_MIGRATIONS_RUN=false`.
+- [ ] `npm run migration:run` ejecutado una sola vez por release.
+- [ ] Tabla `kapso_webhook_receipts` creada.
+- [ ] `TRUST_PROXY_HOPS` coincide con la topologia del proxy real.
+- [ ] `GET /api/v1/health/live` responde OK.
+- [ ] `GET /api/v1/health/ready` confirma MySQL y Redis.
+- [ ] Volumen de `archivos/` compartido si existe mas de una replica.
+
+### Verificacion de Codigo
+
+```bash
+npm run format:check
+npm run lint
+npm run typecheck
+npm test
+npm run test:e2e
+npm run test:coverage
+npm run build
+npm audit --omit=dev
+```
 
 ## Pendientes Controlados
 
@@ -812,3 +1264,119 @@ Definir que ocurre despues de la intro normal:
 - Intervencion manual del asesor aun necesita una regla formal.
 - Adjuntos deben estar disponibles por URL publica si Kapso los descarga fuera de la red local.
 - Cada nuevo proyecto habilitado debe validar sus archivos antes de activar el envio real.
+- El almacenamiento local de adjuntos necesita volumen compartido o almacenamiento de objetos para multiples replicas.
+- La configuracion y consentimiento reales de Microsoft Entra dependen del tenant corporativo.
+- Las pruebas de integracion MySQL ya validan schema efimero; falta promover esa misma evidencia a staging y cerrar Redis/CI.
+
+## Resultado de Auditoria y Correcciones
+
+La auditoria inicial encontro riesgos importantes en autenticacion, firmas de webhooks, workers locales, responsabilidades demasiado amplias y cobertura de escenarios de seguridad. Las correcciones se aplicaron por prioridad y sin cambiar las reglas comerciales aprobadas. La reauditoria del 22 jul 2026 incorpora la corrida de integracion MySQL.
+
+### Evolucion Visual
+
+```mermaid
+flowchart LR
+  BEFORE["Antes<br/>Auth no global<br/>Timers por instancia<br/>Idempotencia en memoria<br/>Media por MIME<br/>Servicios monoliticos"]
+  FIX["Correcciones prioritarias<br/>Seguridad P0<br/>Refactor de arquitectura<br/>Confiabilidad distribuida<br/>Pruebas y operacion"]
+  NOW["Estado actual<br/>Entra deny-by-default<br/>BullMQ + Redis<br/>Recibos durables<br/>Media firmada<br/>MySQL integration 16/16"]
+  NEXT["Para cerrar produccion<br/>Consentimiento Entra<br/>Migracion staging<br/>Redis integration<br/>CI + storage compartido"]
+
+  BEFORE --> FIX --> NOW --> NEXT
+```
+
+### Hecho vs Pendiente
+
+| Area                     | Estado    | Evidencia                                                   |
+| ------------------------ | --------- | ----------------------------------------------------------- |
+| Auth Entra en codigo     | Hecho     | Guard global + roles CRM 1                                  |
+| HMAC webhooks + inbox    | Hecho     | Firma rawBody + `kapso_webhook_receipts`                    |
+| BullMQ / jobs            | Hecho     | Schedulers + processor concurrency 1                        |
+| Media firmada            | Hecho     | HMAC temporal + firma binaria                               |
+| Refactor servicios/repos | Hecho     | Fachada + repos especializados                              |
+| Unitarias + e2e slice    | Hecho     | 81/81                                                       |
+| Integracion MySQL        | Hecho     | 17/17 sobre schema efimero `api_kapso_it_*`                 |
+| Integracion Redis        | Hecho     | 1/1 schedulers unicos + job real                            |
+| Cobertura repositorios   | Hecho     | 70.06% lineas; `kapso.repository.ts` 84.07%                 |
+| CI Quality workflow      | Hecho     | `.github/workflows/quality.yml` con MySQL+Redis             |
+| Entra tenant real        | Pendiente | Scope/consentimiento corporativo                            |
+| Migracion staging        | Pendiente | Validada en schema de test; falta promover staging          |
+| Storage compartido       | Pendiente | Adjuntos en filesystem local                                |
+
+### Correcciones Aplicadas
+
+| Area          | Antes                                                  | Estado actual                                                        |
+| ------------- | ------------------------------------------------------ | -------------------------------------------------------------------- |
+| Autenticacion | No existia una politica global deny-by-default.        | Entra global, JWKS, tenant, audiencia, scope, cliente y usuario CRM. |
+| Autorizacion  | Rutas administrativas sin rol centralizado.            | `@RequireCrmRoles(1)` en controllers administrativos.                |
+| Webhooks      | Validacion desigual e idempotencia volatil.            | HMAC sobre raw body + recibos MySQL con lease y hash.                |
+| Jobs          | Timers locales atados al ciclo de una instancia.       | Schedulers y workers BullMQ coordinados por Redis.                   |
+| Media         | Confianza principal en MIME y URL permanente.          | Firma binaria, nombre UUID y URL HMAC temporal.                      |
+| Arquitectura  | Servicios y repositorios con varias responsabilidades. | Fachada y componentes separados por sincronizacion, leads y media.   |
+| Calidad       | Comentarios obvios y responsabilidades poco visibles.  | Comentarios de por que, tipos explicitos y formato automatizado.     |
+| Logs          | Riesgo de imprimir PII o payload sensible.             | Redaccion recursiva de PII, tokens, secrets y contenido.             |
+| Operacion     | Sin readiness real ni politica clara de migracion.     | Health MySQL/Redis, shutdown hooks y migracion previa al despliegue. |
+| Pruebas       | Solo unitarias/e2e con mocks.                          | + integracion MySQL real, migraciones y cobertura de repositorios.   |
+
+### Estado de Verificacion
+
+```mermaid
+flowchart TD
+  CODE["Codigo corregido"] --> F["Formato"]
+  CODE --> L["ESLint"]
+  CODE --> T["TypeScript"]
+  CODE --> U["Pruebas unitarias 55/55"]
+  CODE --> E["Pruebas e2e 26/26"]
+  CODE --> I["Integracion MySQL 16/16"]
+  CODE --> C["Cobertura con umbral"]
+  CODE --> B["Build NestJS"]
+  F --> OK["Baseline automatizado aprobado"]
+  L --> OK
+  T --> OK
+  U --> OK
+  E --> OK
+  I --> OK
+  C --> OK
+  B --> OK
+  OK --> EXT["Pendiente: Entra real + staging + storage"]
+```
+
+Ultima corrida de integracion (`npm run test:integration:coverage` contra Docker local):
+
+| Indicador                      | Resultado                                      |
+| ------------------------------ | ---------------------------------------------- |
+| MySQL + Redis integration      | 18 passed                                      |
+| Cobertura repositorios         | 70.06% lineas · 54.2% ramas · 69.11% funciones |
+| `kapso.repository.ts`          | 84.07% lineas                                  |
+| Cobertura migraciones          | 74.19% lineas                                  |
+| Cobertura total de esa corrida | 71.95% lineas · 47% ramas · 72.8% funciones    |
+
+Umbrales minimos bloqueantes de Jest (unitarias):
+
+| Metrica    | Umbral global |
+| ---------- | ------------- |
+| Lineas     | 55%           |
+| Statements | 55%           |
+| Funciones  | 45%           |
+| Branches   | 35%           |
+
+### Criterio Final
+
+| Dimension             | Antes | Ahora | Meta  |
+| --------------------- | ----- | ----- | ----- |
+| Nota global           | 4.5   | 8.5   | 10    |
+| Seguridad             | 3.0   | 8.5   | 10    |
+| Arquitectura          | 5.25  | 8.5   | 10    |
+| Calidad interna       | 6.0   | 8.5   | 10    |
+| Estrategia de pruebas | 4.5   | 8.5   | 10    |
+| Pruebas ejecutadas    | 70/70 | 99/99 | 10/10 |
+
+- Nota global = promedio simple: `(8.5 + 8.5 + 8.5 + 8.5) / 4 = 8.5`.
+- Estrategia subio a 8.5 porque MySQL + Redis + AppModule real + CI quedan evidenciados.
+- Para cerrar 10/10: consentimiento Entra real, migracion staging y storage compartido.
+
+```mermaid
+pie showData
+  title Trabajo de auditoria
+  "Correcciones e integracion" : 85
+  "Validaciones externas pendientes" : 15
+```

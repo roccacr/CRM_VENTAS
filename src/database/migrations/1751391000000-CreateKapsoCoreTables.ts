@@ -1,12 +1,25 @@
-// ============================================================================
-// IMPORTS
-// ============================================================================
+/**
+ * Migración inicial del schema Kapso normalizado (proyectos, customers, números).
+ *
+ * Motivo: establecer el modelo relacional original de Kapso antes de la
+ * consolidación posterior en `kapso_phone_numbers`.
+ *
+ * Tablas que toca (crea si no existen):
+ * - `kapso_projects`
+ * - `kapso_customers`
+ * - `kapso_phone_numbers`
+ * - `kapso_phone_number_webhooks`
+ * - `kapso_webhook_event_logs`
+ * - `kapso_setup_link_audits`
+ *
+ * `down`: reversible (elimina las tablas anteriores). Los datos se pierden.
+ *
+ * Aunque el sistema actual ya fue consolidado en una sola tabla, esta migracion
+ * se conserva para respetar la historia real del schema y permitir reconstruir
+ * entornos desde cero en el mismo orden en que evoluciono el proyecto.
+ */
 
 import { MigrationInterface, QueryRunner, Table, TableForeignKey, TableIndex } from "typeorm";
-
-// ============================================================================
-// MIGRACION
-// ============================================================================
 
 /**
  * Crea el modelo Kapso original normalizado.
@@ -18,10 +31,11 @@ import { MigrationInterface, QueryRunner, Table, TableForeignKey, TableIndex } f
 export class CreateKapsoCoreTables1751391000000 implements MigrationInterface {
   name = "CreateKapsoCoreTables1751391000000";
 
-  // --------------------------------------------------------------------------
-  // APPLY
-  // --------------------------------------------------------------------------
-
+  /**
+   * Asegura las tablas núcleo Kapso y sus índices/FK de forma idempotente.
+   *
+   * @param queryRunner - Ejecutor de consultas TypeORM de la migración.
+   */
   public async up(queryRunner: QueryRunner): Promise<void> {
     await this.ensureProjectsTable(queryRunner);
     await this.ensureCustomersTable(queryRunner);
@@ -31,10 +45,12 @@ export class CreateKapsoCoreTables1751391000000 implements MigrationInterface {
     await this.ensureSetupLinkAuditsTable(queryRunner);
   }
 
-  // --------------------------------------------------------------------------
-  // ROLLBACK
-  // --------------------------------------------------------------------------
-
+  /**
+   * Elimina las tablas núcleo creadas por esta migración.
+   * Es reversible a nivel de schema; los datos no se recuperan.
+   *
+   * @param queryRunner - Ejecutor de consultas TypeORM de la migración.
+   */
   public async down(queryRunner: QueryRunner): Promise<void> {
     const tableNames = [
       "kapso_webhook_event_logs",
@@ -54,11 +70,6 @@ export class CreateKapsoCoreTables1751391000000 implements MigrationInterface {
     }
   }
 
-  // --------------------------------------------------------------------------
-  // BLOQUES DE TABLAS
-  // --------------------------------------------------------------------------
-
-  /** Crea la tabla de proyectos Kapso si aun no existe. */
   private async ensureProjectsTable(queryRunner: QueryRunner): Promise<void> {
     const tableName = "kapso_projects";
     const hasTable = await queryRunner.hasTable(tableName);
@@ -107,7 +118,6 @@ export class CreateKapsoCoreTables1751391000000 implements MigrationInterface {
     await this.ensureUnique(queryRunner, tableName, "uq_kapso_projects_external_project_id", ["external_project_id"]);
   }
 
-  /** Crea la tabla de customers Kapso y sus dependencias de integridad. */
   private async ensureCustomersTable(queryRunner: QueryRunner): Promise<void> {
     const tableName = "kapso_customers";
     const hasTable = await queryRunner.hasTable(tableName);
@@ -167,7 +177,6 @@ export class CreateKapsoCoreTables1751391000000 implements MigrationInterface {
     await this.ensureForeignKey(queryRunner, tableName, "fk_kapso_customers_project_id", ["project_id"], "kapso_projects", ["id"]);
   }
 
-  /** Crea la tabla principal de numeros WhatsApp del modelo original. */
   private async ensurePhoneNumbersTable(queryRunner: QueryRunner): Promise<void> {
     const tableName = "kapso_phone_numbers";
     const hasTable = await queryRunner.hasTable(tableName);
@@ -263,7 +272,6 @@ export class CreateKapsoCoreTables1751391000000 implements MigrationInterface {
     await this.ensureForeignKey(queryRunner, tableName, "fk_kapso_phone_numbers_customer_id", ["customer_id"], "kapso_customers", ["id"]);
   }
 
-  /** Crea la tabla de webhooks por numero del modelo anterior. */
   private async ensurePhoneNumberWebhooksTable(queryRunner: QueryRunner): Promise<void> {
     const tableName = "kapso_phone_number_webhooks";
     const hasTable = await queryRunner.hasTable(tableName);
@@ -334,7 +342,6 @@ export class CreateKapsoCoreTables1751391000000 implements MigrationInterface {
     );
   }
 
-  /** Crea la tabla historica de logs de eventos webhook. */
   private async ensureWebhookLogsTable(queryRunner: QueryRunner): Promise<void> {
     const tableName = "kapso_webhook_event_logs";
     const hasTable = await queryRunner.hasTable(tableName);
@@ -412,7 +419,6 @@ export class CreateKapsoCoreTables1751391000000 implements MigrationInterface {
     await this.ensureUnique(queryRunner, tableName, "uq_kapso_webhook_event_logs_scope_idempotency", ["scope", "idempotency_key"]);
   }
 
-  /** Crea la tabla de auditoria del setup link del modelo original. */
   private async ensureSetupLinkAuditsTable(queryRunner: QueryRunner): Promise<void> {
     const tableName = "kapso_setup_link_audits";
     const hasTable = await queryRunner.hasTable(tableName);
@@ -512,11 +518,6 @@ export class CreateKapsoCoreTables1751391000000 implements MigrationInterface {
     await this.ensureIndex(queryRunner, tableName, "idx_kapso_setup_link_audits_phone_number_id", ["phone_number_id"]);
   }
 
-  // --------------------------------------------------------------------------
-  // HELPERS DE SCHEMA
-  // --------------------------------------------------------------------------
-
-  /** Agrega una columna int nullable si aun no existe. */
   private async ensureNullableIntColumn(queryRunner: QueryRunner, tableName: string, columnName: string): Promise<void> {
     const table = await queryRunner.getTable(tableName);
 
@@ -525,7 +526,6 @@ export class CreateKapsoCoreTables1751391000000 implements MigrationInterface {
     }
   }
 
-  /** Crea un indice comun si aun no existe. */
   private async ensureIndex(queryRunner: QueryRunner, tableName: string, indexName: string, columnNames: string[]): Promise<void> {
     const table = await queryRunner.getTable(tableName);
     const hasIndex = table?.indices.some((index) => index.name === indexName) ?? false;
@@ -535,7 +535,6 @@ export class CreateKapsoCoreTables1751391000000 implements MigrationInterface {
     }
   }
 
-  /** Crea un indice unico si aun no existe. */
   private async ensureUnique(queryRunner: QueryRunner, tableName: string, uniqueName: string, columnNames: string[]): Promise<void> {
     const table = await queryRunner.getTable(tableName);
     const hasUniqueIndex = table?.indices.some((index) => index.name === uniqueName && index.isUnique) ?? false;
@@ -552,7 +551,6 @@ export class CreateKapsoCoreTables1751391000000 implements MigrationInterface {
     }
   }
 
-  /** Crea una foreign key si aun no existe con el nombre indicado. */
   private async ensureForeignKey(
     queryRunner: QueryRunner,
     tableName: string,

@@ -1,12 +1,17 @@
-// ============================================================================
-// IMPORTS
-// ============================================================================
+/**
+ * Migración histórica de auditoría de setup links Kapso.
+ *
+ * Motivo: en un entorno previo la tabla `kapso_setup_link_audits` se introdujo
+ * como paso separado; se conserva para respetar el orden real de migraciones
+ * aunque la migración núcleo ya pueda crearla de forma idempotente.
+ *
+ * Tablas que toca:
+ * - `kapso_setup_link_audits` (crea si no existe e índices de consulta)
+ *
+ * `down`: reversible (elimina la tabla). Los datos de auditoría se pierden.
+ */
 
 import { MigrationInterface, QueryRunner, Table, TableIndex } from "typeorm";
-
-// ============================================================================
-// MIGRACION
-// ============================================================================
 
 /**
  * Crea la tabla historica de redirects de setup cuando aun existia separada.
@@ -15,10 +20,11 @@ import { MigrationInterface, QueryRunner, Table, TableIndex } from "typeorm";
 export class AddKapsoSetupLinkAudits1751391600000 implements MigrationInterface {
   name = "AddKapsoSetupLinkAudits1751391600000";
 
-  // --------------------------------------------------------------------------
-  // APPLY
-  // --------------------------------------------------------------------------
-
+  /**
+   * Crea `kapso_setup_link_audits` e índices asociados si aún no existen.
+   *
+   * @param queryRunner - Ejecutor de consultas TypeORM de la migración.
+   */
   public async up(queryRunner: QueryRunner): Promise<void> {
     const tableName = "kapso_setup_link_audits";
     const hasTable = await queryRunner.hasTable(tableName);
@@ -118,10 +124,12 @@ export class AddKapsoSetupLinkAudits1751391600000 implements MigrationInterface 
     await this.ensureIndex(queryRunner, tableName, "idx_kapso_setup_link_audits_phone_number_id", ["phone_number_id"]);
   }
 
-  // --------------------------------------------------------------------------
-  // ROLLBACK
-  // --------------------------------------------------------------------------
-
+  /**
+   * Elimina `kapso_setup_link_audits` si existe.
+   * Es reversible a nivel de schema; los registros de auditoría no se recuperan.
+   *
+   * @param queryRunner - Ejecutor de consultas TypeORM de la migración.
+   */
   public async down(queryRunner: QueryRunner): Promise<void> {
     const hasTable = await queryRunner.hasTable("kapso_setup_link_audits");
 
@@ -130,11 +138,6 @@ export class AddKapsoSetupLinkAudits1751391600000 implements MigrationInterface 
     }
   }
 
-  // --------------------------------------------------------------------------
-  // HELPERS
-  // --------------------------------------------------------------------------
-
-  /** Crea un indice si aun no existe en la tabla objetivo. */
   private async ensureIndex(queryRunner: QueryRunner, tableName: string, indexName: string, columnNames: string[]): Promise<void> {
     const table = await queryRunner.getTable(tableName);
     const hasIndex = table?.indices.some((index) => index.name === indexName) ?? false;

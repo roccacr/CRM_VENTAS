@@ -55,6 +55,7 @@ function createServiceTestBed() {
     listKapsoPhoneNumberOptions: jest.fn(),
     listProjectOptions: jest.fn(),
     listBusinessFlows: jest.fn(),
+    updateBusinessFlowStatus: jest.fn(),
     enableBusinessFlowProject: jest.fn(),
     disableBusinessFlowProject: jest.fn(),
     findBusinessFlowProject: jest.fn(),
@@ -101,11 +102,22 @@ function createServiceTestBed() {
     }),
   };
 
-  const service = new AdminKapsoIntegrationsService(repositoryMock as never, configServiceMock as unknown as ConfigService);
+  const mediaUrlSignerMock = {
+    createSignedUrl: jest.fn((storedFilename: string) => `https://crm.example.com/api/v1/kapso/media/${storedFilename}?signed=true`),
+    assertValid: jest.fn(),
+  };
+
+  const service = new AdminKapsoIntegrationsService(
+    repositoryMock as never,
+    repositoryMock as never,
+    configServiceMock as unknown as ConfigService,
+    mediaUrlSignerMock as never,
+  );
 
   return {
     service,
     repositoryMock,
+    mediaUrlSignerMock,
   };
 }
 
@@ -301,6 +313,7 @@ describe("AdminKapsoIntegrationsService", () => {
       {
         flowUuid: "flow-uuid",
         flowName: "Saludo inicial y seguimiento de leads",
+        enabled: 0,
         projects: [],
         steps: [],
       },
@@ -312,10 +325,43 @@ describe("AdminKapsoIntegrationsService", () => {
       {
         flowUuid: "flow-uuid",
         flowName: "Saludo inicial y seguimiento de leads",
+        enabled: 0,
         projects: [],
         steps: [],
       },
     ]);
+  });
+
+  it("activa o inactiva un flujo de negocio", async () => {
+    repositoryMock.updateBusinessFlowStatus.mockResolvedValue({
+      ok: true,
+      flowUuid: "flow-uuid",
+      enabled: 0,
+    });
+
+    const result = await service.updateBusinessFlowStatus("flow-uuid", false);
+
+    expect(result).toEqual({
+      ok: true,
+      flowUuid: "flow-uuid",
+      enabled: 0,
+    });
+    expect(repositoryMock.updateBusinessFlowStatus).toHaveBeenCalledWith("flow-uuid", 0);
+  });
+
+  it("rechaza estados invalidos para un flujo de negocio", async () => {
+    await expect(service.updateBusinessFlowStatus("flow-uuid", "pausado")).rejects.toBeInstanceOf(BadRequestException);
+    expect(repositoryMock.updateBusinessFlowStatus).not.toHaveBeenCalled();
+  });
+
+  it("rechaza actualizar un flujo de negocio inexistente", async () => {
+    repositoryMock.updateBusinessFlowStatus.mockResolvedValue({
+      ok: false,
+      flowUuid: "missing-flow",
+      enabled: 1,
+    });
+
+    await expect(service.updateBusinessFlowStatus("missing-flow", true)).rejects.toBeInstanceOf(NotFoundException);
   });
 
   it("habilita un proyecto para un flujo de negocio", async () => {
@@ -390,14 +436,15 @@ describe("AdminKapsoIntegrationsService", () => {
     });
 
     try {
+      const jpegBuffer = Buffer.from([0xff, 0xd8, 0xff, 0xdb, 0x00, 0x43]);
       const result = await service.uploadFlowProjectMedia(
         "flow-uuid",
         38,
         {
           originalname: "foto-andira.jpg",
           mimetype: "image/jpeg",
-          size: 10,
-          buffer: Buffer.from("fake image"),
+          size: jpegBuffer.length,
+          buffer: jpegBuffer,
         },
         { stepCode: "intro" },
       );
@@ -406,7 +453,7 @@ describe("AdminKapsoIntegrationsService", () => {
       const media = result!;
 
       expect(media.relativePath).toMatch(/^flow-uuid\/proyectos\/38-andira\/[a-f0-9-]+\.jpg$/);
-      await expect(readFile(join(storagePath, media.relativePath))).resolves.toEqual(Buffer.from("fake image"));
+      await expect(readFile(join(storagePath, media.relativePath!))).resolves.toEqual(jpegBuffer);
       expect(repositoryMock.createFlowProjectMedia).toHaveBeenCalledWith(
         expect.objectContaining({
           flowUuid: "flow-uuid",
@@ -437,10 +484,12 @@ describe("AdminKapsoIntegrationsService", () => {
       {
         id: 1,
         relativePath: existingRelativePath,
+        storedFilename: "existing.jpg",
       },
       {
         id: 2,
         relativePath: missingRelativePath,
+        storedFilename: "missing.jpg",
       },
     ]);
 
@@ -459,6 +508,8 @@ describe("AdminKapsoIntegrationsService", () => {
         {
           id: 1,
           relativePath: existingRelativePath,
+          storedFilename: "existing.jpg",
+          publicUrl: "https://crm.example.com/api/v1/kapso/media/existing.jpg?signed=true",
         },
       ]);
       expect(repositoryMock.deactivateFlowProjectMedia).toHaveBeenCalledWith(2);

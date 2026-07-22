@@ -1,3 +1,10 @@
+/**
+ * Entidad TypeORM del estado local consolidado de un número WhatsApp Kapso.
+ *
+ * Tabla: kapso_phone_numbers. Una fila por phone_number_id remoto;
+ * agrupa detalle, proyecto/customer, setup y auditoría del último webhook.
+ */
+
 // ============================================================================
 // IMPORTS
 // ============================================================================

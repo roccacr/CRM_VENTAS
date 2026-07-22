@@ -1,12 +1,23 @@
-// ============================================================================
-// IMPORTS
-// ============================================================================
+/**
+ * Migración de tablas de flujos de negocio Kapso (leads, templates y media).
+ *
+ * Motivo: modelar Kapso como flujos configurables con catálogo de templates,
+ * pasos, proyectos habilitados, ejecuciones por lead y adjuntos por proyecto.
+ * Además siembra el flujo inicial `lead_initial_contact`.
+ *
+ * Tablas que toca (crea o alinea columnas):
+ * - `kapso_business_flows`
+ * - `kapso_template_catalog`
+ * - `kapso_business_flow_projects`
+ * - `kapso_business_flow_steps`
+ * - `kapso_lead_flow_executions`
+ * - `kapso_flow_project_media`
+ *
+ * `down`: reversible a nivel de schema (drop de las 6 tablas). Los seeds y
+ * datos de ejecución/media se pierden; no restaura esquemas previos incompatibles.
+ */
 
 import { MigrationInterface, QueryRunner, Table, TableColumn, TableIndex } from "typeorm";
-
-// ============================================================================
-// MIGRACION
-// ============================================================================
 
 /**
  * Crea las tablas que permiten tratar Kapso como flujos de negocio configurables.
@@ -17,6 +28,11 @@ import { MigrationInterface, QueryRunner, Table, TableColumn, TableIndex } from 
 export class CreateKapsoBusinessFlowTables1752750000000 implements MigrationInterface {
   name = "CreateKapsoBusinessFlowTables1752750000000";
 
+  /**
+   * Crea/alinea tablas de flujos y siembra el flujo comercial inicial.
+   *
+   * @param queryRunner - Ejecutor de consultas TypeORM de la migración.
+   */
   public async up(queryRunner: QueryRunner): Promise<void> {
     await this.createBusinessFlowsTable(queryRunner);
     await this.createTemplateCatalogTable(queryRunner);
@@ -27,6 +43,12 @@ export class CreateKapsoBusinessFlowTables1752750000000 implements MigrationInte
     await this.seedInitialLeadFlow(queryRunner);
   }
 
+  /**
+   * Elimina las tablas de flujos de negocio creadas por esta migración.
+   * Es reversible a nivel de schema; seeds y datos operativos no se recuperan.
+   *
+   * @param queryRunner - Ejecutor de consultas TypeORM de la migración.
+   */
   public async down(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.dropTable("kapso_flow_project_media", true);
     await queryRunner.dropTable("kapso_lead_flow_executions", true);

@@ -16,12 +16,14 @@ describe("AdminKapsoIntegrationsController (e2e)", () => {
     listKapsoIntegrationOptions: jest.fn(),
     listProjectOptions: jest.fn(),
     listBusinessFlows: jest.fn(),
+    updateBusinessFlowStatus: jest.fn(),
     enableBusinessFlowProject: jest.fn(),
     disableBusinessFlowProject: jest.fn(),
     listFlowProjectMedia: jest.fn(),
     uploadFlowProjectMedia: jest.fn(),
     deleteFlowProjectMedia: jest.fn(),
     getMediaFileByStoredFilename: jest.fn(),
+    assertMediaUrlValid: jest.fn(),
     createRelation: jest.fn(),
     listRelations: jest.fn(),
     getRelationById: jest.fn(),
@@ -133,6 +135,7 @@ describe("AdminKapsoIntegrationsController (e2e)", () => {
         flowUuid: "flow-uuid",
         flowName: "Saludo inicial y seguimiento de leads",
         status: "draft",
+        enabled: 0,
         projects: [],
         steps: [
           {
@@ -152,6 +155,7 @@ describe("AdminKapsoIntegrationsController (e2e)", () => {
           flowUuid: "flow-uuid",
           flowName: "Saludo inicial y seguimiento de leads",
           status: "draft",
+          enabled: 0,
           projects: [],
           steps: [
             {
@@ -164,6 +168,22 @@ describe("AdminKapsoIntegrationsController (e2e)", () => {
       ]);
   });
 
+  it("activa o inactiva un flujo de negocio", async () => {
+    serviceMock.updateBusinessFlowStatus.mockResolvedValue({
+      ok: true,
+      flowUuid: "flow-uuid",
+      enabled: 0,
+    });
+
+    await request(app.getHttpServer()).patch("/api/v1/kapso/business-flows/flow-uuid/status").send({ enabled: false }).expect(200).expect({
+      ok: true,
+      flowUuid: "flow-uuid",
+      enabled: 0,
+    });
+
+    expect(serviceMock.updateBusinessFlowStatus).toHaveBeenCalledWith("flow-uuid", false);
+  });
+
   it("habilita un proyecto para un flujo de negocio", async () => {
     serviceMock.enableBusinessFlowProject.mockResolvedValue({
       idProyecto: 38,
@@ -172,16 +192,12 @@ describe("AdminKapsoIntegrationsController (e2e)", () => {
       enabled: 1,
     });
 
-    await request(app.getHttpServer())
-      .post("/api/v1/kapso/business-flows/flow-uuid/projects")
-      .send({ idProyecto: 38 })
-      .expect(201)
-      .expect({
-        idProyecto: 38,
-        idProyectoNetsuite: 38,
-        nombreProyecto: "Andira",
-        enabled: 1,
-      });
+    await request(app.getHttpServer()).post("/api/v1/kapso/business-flows/flow-uuid/projects").send({ idProyecto: 38 }).expect(201).expect({
+      idProyecto: 38,
+      idProyectoNetsuite: 38,
+      nombreProyecto: "Andira",
+      enabled: 1,
+    });
 
     expect(serviceMock.enableBusinessFlowProject).toHaveBeenCalledWith("flow-uuid", 38);
   });
@@ -194,15 +210,12 @@ describe("AdminKapsoIntegrationsController (e2e)", () => {
       idProyectoNetsuite: 38,
     });
 
-    await request(app.getHttpServer())
-      .delete("/api/v1/kapso/business-flows/flow-uuid/projects/38")
-      .expect(200)
-      .expect({
-        ok: true,
-        flowUuid: "flow-uuid",
-        idProyecto: 38,
-        idProyectoNetsuite: 38,
-      });
+    await request(app.getHttpServer()).delete("/api/v1/kapso/business-flows/flow-uuid/projects/38").expect(200).expect({
+      ok: true,
+      flowUuid: "flow-uuid",
+      idProyecto: 38,
+      idProyectoNetsuite: 38,
+    });
 
     expect(serviceMock.disableBusinessFlowProject).toHaveBeenCalledWith("flow-uuid", 38);
   });
@@ -244,10 +257,13 @@ describe("AdminKapsoIntegrationsController (e2e)", () => {
 
     try {
       await request(app.getHttpServer())
-        .get("/api/v1/kapso/media/preview.jpg")
+        .get("/api/v1/kapso/media/preview.jpg?expires=1800000060&signature=valid-signature")
         .expect(200)
         .expect("Cross-Origin-Resource-Policy", "cross-origin")
         .expect("Content-Type", /image\/jpeg/);
+
+      expect(serviceMock.assertMediaUrlValid).toHaveBeenCalledWith("preview.jpg", "1800000060", "valid-signature");
+      expect(serviceMock.getMediaFileByStoredFilename).toHaveBeenCalledWith("preview.jpg");
     } finally {
       rmSync(tempDirectory, { force: true, recursive: true });
     }

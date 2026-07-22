@@ -1,19 +1,23 @@
-// ============================================================================
-// IMPORTS
-// ============================================================================
-
+/**
+ * Namespace de configuración de la integración Kapso / Meta WhatsApp.
+ *
+ * Agrupa URLs, secretos de webhook/media, API keys por proyecto y parámetros
+ * de jobs de sincronización bajo la clave `kapso` consumida por el módulo Kapso.
+ */
 import { registerAs } from "@nestjs/config";
 
-// ============================================================================
-// HELPERS DE CONFIGURACION
-// ============================================================================
-
-/** Elimina barras finales para evitar URLs duplicadas al concatenar paths. */
+/**
+ * Elimina barras finales de una URL base.
+ *
+ * Evita dobles `//` al concatenar paths de callbacks y endpoints Meta/Kapso.
+ */
 const normalizeBaseUrl = (url: string): string => url.replace(/\/+$/, "");
 
 /**
  * Intenta parsear un mapa `project.id -> apiKey`.
- * Si el JSON es invalido, devuelve un objeto vacio para no romper el arranque.
+ *
+ * Si el JSON es inválido, devuelve un objeto vacío para no romper el arranque;
+ * las claves faltantes se resuelven en runtime con la API key por defecto.
  */
 const parseProjectApiKeys = (rawValue: string | undefined): Record<string, string> => {
   if (!rawValue?.trim()) {
@@ -34,19 +38,11 @@ const parseProjectApiKeys = (rawValue: string | undefined): Record<string, strin
   }
 };
 
-// ============================================================================
-// CONFIGURACION KAPSO
-// ============================================================================
-
 /**
- * Namespace `kapso`.
+ * Registra el bloque `kapso` en ConfigModule.
  *
- * Agrupa toda la configuracion de integracion contra Kapso Platform:
- * - base URL de la API;
- * - API key por defecto y opcionalmente por proyecto;
- * - URLs publicas para webhooks y redirects;
- * - secrets de verificacion;
- * - parametros del worker de reintentos.
+ * Unifica secretos de firma, URLs públicas de setup y cadencias de sync para
+ * que servicios de webhook, media y colas compartan la misma fuente tipada.
  */
 export default registerAs("kapso", () => {
   const publicBaseUrl = normalizeBaseUrl(process.env.KAPSO_PUBLIC_BASE_URL ?? "");
@@ -54,43 +50,34 @@ export default registerAs("kapso", () => {
   const setupRedirectBaseUrl = normalizeBaseUrl(process.env.KAPSO_SETUP_REDIRECT_BASE_URL ?? publicBaseUrl);
 
   return {
-    // URL base de Kapso Platform API.
     apiBaseUrl: process.env.KAPSO_API_BASE_URL ?? "https://api.kapso.ai/platform/v1",
 
-    // URL base del relay Meta/WhatsApp de Kapso para enviar mensajes normales.
     metaApiBaseUrl: normalizeBaseUrl(process.env.KAPSO_META_API_BASE_URL ?? "https://api.kapso.ai/meta/whatsapp/v24.0"),
 
     // API key principal del proyecto activo; mantiene compatibilidad con alias legacy.
     apiKey: defaultApiKey,
 
-    // Mapa opcional para resolver API keys distintas por `project.id`.
     projectApiKeys: parseProjectApiKeys(process.env.KAPSO_PROJECT_API_KEYS_JSON),
 
-    // Base publica del API local para webhooks y callbacks.
     publicBaseUrl,
 
-    // Base usada en redirects del setup OAuth / embedded signup.
     setupRedirectBaseUrl,
 
-    // Carpeta local donde se guardan adjuntos por flujo/proyecto.
     mediaStoragePath: process.env.KAPSO_MEDIA_STORAGE_PATH ?? "archivos",
 
-    // Limite defensivo para uploads desde CRM.
     mediaMaxFileSizeBytes: Number(process.env.KAPSO_MEDIA_MAX_FILE_SIZE_MB ?? 50) * 1024 * 1024,
 
-    // Secret del webhook de plataforma.
+    mediaSigningSecret: process.env.KAPSO_MEDIA_SIGNING_SECRET ?? "",
+    mediaSignedUrlTtlSeconds: Number(process.env.KAPSO_MEDIA_SIGNED_URL_TTL_SECONDS ?? 3600),
+
     platformWebhookSecret: process.env.KAPSO_PLATFORM_WEBHOOK_SECRET ?? "",
 
-    // Secret del webhook de eventos WhatsApp / Meta relay.
     whatsappWebhookSecret: process.env.KAPSO_WHATSAPP_WEBHOOK_SECRET ?? "",
 
-    // Intervalo del worker de `pending_remote_sync`.
     pendingSyncIntervalMs: Number(process.env.KAPSO_PENDING_SYNC_INTERVAL_MS ?? 30000),
 
-    // Limite de registros procesados por corrida del worker.
     pendingSyncBatchSize: Number(process.env.KAPSO_PENDING_SYNC_BATCH_SIZE ?? 10),
 
-    // Intervalo y limite del diagnostico de leads nuevos; el envio se implementara despues.
     leadTemplateIntervalMs: Number(process.env.KAPSO_LEAD_TEMPLATE_INTERVAL_MS ?? 60000),
     leadTemplateBatchSize: Number(process.env.KAPSO_LEAD_TEMPLATE_BATCH_SIZE ?? 100),
   };
