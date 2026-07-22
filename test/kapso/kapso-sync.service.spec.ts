@@ -536,10 +536,11 @@ describe("KapsoSyncService", () => {
     });
   });
 
-  it("ignora texto libre aunque diga no para evitar falsos perdidos", async () => {
+  it("marca el flujo y el lead como perdido cuando el cliente escribe No, gracias exacto", async () => {
     const testBed = createSyncServiceTestBed();
     service = testBed.service;
     const repositoryMock = testBed.adminKapsoIntegrationsRepositoryMock;
+    repositoryMock.markLeadFlowAnsweredNo.mockResolvedValue(true);
 
     const result = await service.processInboundMessageWebhook({
       object: "whatsapp_business_account",
@@ -569,15 +570,27 @@ describe("KapsoSyncService", () => {
       ],
     });
 
-    expect(result).toEqual({ processed: 1, answeredNo: 0, answeredYes: 0, introSent: 0, introFailed: 0, ignored: 1 });
-    expect(repositoryMock.markLeadFlowAnsweredNo).not.toHaveBeenCalled();
+    expect(result).toEqual({ processed: 1, answeredNo: 1, answeredYes: 0, introSent: 0, introFailed: 0, ignored: 0 });
+    expect(repositoryMock.markLeadFlowAnsweredNo).toHaveBeenCalledWith({
+      phoneNumberId: TEST_PHONE_NUMBER_ID,
+      leadPhoneNumber: "50687515938",
+      responsePayload: expect.objectContaining({
+        messageId: "wamid.free-text",
+        replyText: "No gracias",
+        replySource: "text",
+      }),
+    });
     expect(repositoryMock.markLeadFlowAnsweredYes).not.toHaveBeenCalled();
   });
 
-  it("ignora texto libre aunque diga si para evitar avances ambiguos", async () => {
+  it("marca el flujo como aceptado cuando el cliente escribe Si, enviar informacion exacto", async () => {
     const testBed = createSyncServiceTestBed();
     service = testBed.service;
     const repositoryMock = testBed.adminKapsoIntegrationsRepositoryMock;
+    const platformApiMock = testBed.kapsoPlatformApiServiceMock;
+    repositoryMock.markLeadFlowAnsweredYes.mockResolvedValue(ANSWERED_YES_CONTEXT);
+    repositoryMock.listActiveFlowProjectMedia.mockResolvedValue([]);
+    platformApiMock.sendWhatsappMessage.mockResolvedValue({ messages: [{ id: "wamid.intro-text" }] });
 
     const result = await service.processInboundMessageWebhook({
       object: "whatsapp_business_account",
@@ -597,6 +610,53 @@ describe("KapsoSyncService", () => {
                     type: "text",
                     text: {
                       body: "Si, enviar informacion",
+                    },
+                  },
+                ],
+              },
+            },
+          ],
+        },
+      ],
+    });
+
+    expect(result).toEqual({ processed: 1, answeredNo: 0, answeredYes: 1, introSent: 1, introFailed: 0, ignored: 0 });
+    expect(repositoryMock.markLeadFlowAnsweredNo).not.toHaveBeenCalled();
+    expect(repositoryMock.markLeadFlowAnsweredYes).toHaveBeenCalledWith({
+      phoneNumberId: TEST_PHONE_NUMBER_ID,
+      leadPhoneNumber: "50687515938",
+      responsePayload: expect.objectContaining({
+        messageId: "wamid.free-text-yes",
+        replyText: "Si, enviar informacion",
+        replySource: "text",
+      }),
+    });
+    expect(repositoryMock.markLeadFlowIntroSent).toHaveBeenCalledWith({ executionId: 77 });
+  });
+
+  it("ignora texto libre ambiguo para evitar falsos avances o falsos perdidos", async () => {
+    const testBed = createSyncServiceTestBed();
+    service = testBed.service;
+    const repositoryMock = testBed.adminKapsoIntegrationsRepositoryMock;
+
+    const result = await service.processInboundMessageWebhook({
+      object: "whatsapp_business_account",
+      entry: [
+        {
+          changes: [
+            {
+              value: {
+                metadata: {
+                  phone_number_id: TEST_PHONE_NUMBER_ID,
+                },
+                messages: [
+                  {
+                    from: "50687515938",
+                    id: "wamid.free-text-ambiguous",
+                    timestamp: "1783009763",
+                    type: "text",
+                    text: {
+                      body: "No estoy seguro, talvez si despues me manda algo",
                     },
                   },
                 ],

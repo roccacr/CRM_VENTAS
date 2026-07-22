@@ -324,11 +324,12 @@ Botones:
 
 ### Paso 3: Respuesta `No, gracias`
 
-Solo se procesa cuando llega el boton exacto. No se procesa texto libre para evitar errores.
+Solo se procesa cuando llega el boton exacto o el cliente escribe el texto exacto equivalente.
+Los textos largos o ambiguos se ignoran para evitar pasar leads a perdido por error.
 
 ```mermaid
 flowchart TD
-  A["Webhook con boton No, gracias"] --> B["Buscar ejecucion initial_template_sent"]
+  A["Webhook con boton o texto exacto No, gracias"] --> B["Buscar ejecucion initial_template_sent"]
   B --> C{"Existe ejecucion?"}
   C -- "No" --> X["Ignorar evento"]
   C -- "Si" --> D["execution_status = answered_no"]
@@ -351,11 +352,12 @@ Campos de bitacora:
 
 ### Paso 4: Respuesta `Si, enviar informacion`
 
-Solo se procesa cuando llega el boton exacto. No se procesa texto libre para evitar activar el flujo por intencion ambigua.
+Solo se procesa cuando llega el boton exacto o el cliente escribe el texto exacto equivalente.
+Los textos largos o ambiguos se ignoran para evitar activar el flujo por intencion ambigua.
 
 ```mermaid
 flowchart TD
-  A["Webhook con boton Si, enviar informacion"] --> B["Buscar ejecucion initial_template_sent"]
+  A["Webhook con boton o texto exacto Si, enviar informacion"] --> B["Buscar ejecucion initial_template_sent"]
   B --> C{"Existe ejecucion?"}
   C -- "No" --> X["Ignorar evento"]
   C -- "Si" --> D["execution_status = answered_yes"]
@@ -493,7 +495,10 @@ Cuando el cliente responde:
 
 ### Texto Libre
 
-Por ahora el sistema no interpreta texto libre como intencion comercial.
+Por seguridad, el sistema solo interpreta texto cuando coincide exactamente con una respuesta aprobada:
+`Si, enviar informacion` o `No, gracias`.
+
+Todo texto largo o ambiguo queda como mensaje recibido para analisis o atencion manual.
 
 Motivo:
 
@@ -714,7 +719,8 @@ No se llama a Kapso. Se registra bitacora con `id_caida_bit = 68`, la ejecucion 
 
 ### Que pasa si el cliente responde texto en lugar de tocar boton?
 
-Por ahora no se interpreta automaticamente. El sistema espera botones exactos para evitar falsos positivos. El texto libre queda como mensaje recibido para analisis o atencion manual.
+Si escribe exactamente `Si, enviar informacion` o `No, gracias`, el sistema lo procesa igual que el boton.
+Si escribe una respuesta larga o ambigua, no se interpreta automaticamente y queda para analisis o atencion manual.
 
 ### Que pasa si el cliente toca `No, gracias`?
 

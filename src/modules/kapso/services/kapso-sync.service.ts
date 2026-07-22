@@ -65,7 +65,7 @@ type InboundMessageCandidate = {
   messageId: string | null;
   timestamp: string | null;
   replyText: string | null;
-  replySource: "button" | "interactive_button" | "unsupported";
+  replySource: "button" | "interactive_button" | "text" | "unsupported";
   message: JsonRecord;
 };
 
@@ -260,8 +260,8 @@ export class KapsoSyncService implements OnModuleInit, OnModuleDestroy {
 
   /**
    * Procesa respuestas entrantes de WhatsApp reenviadas por Kapso o Meta.
-   * Por seguridad de negocio, solo respuestas de botones aprobados cambian el flujo;
-   * texto libre queda fuera por ahora para evitar falsos avances o falsos perdidos.
+   * Por seguridad de negocio, solo botones o textos exactos equivalentes cambian el flujo.
+   * Textos largos o ambiguos quedan fuera para evitar falsos avances o falsos perdidos.
    */
   async processInboundMessageWebhook(payload: JsonRecord): Promise<InboundWebhookProcessingSummary> {
     const messages = this.extractInboundMessageCandidates(payload);
@@ -280,7 +280,7 @@ export class KapsoSyncService implements OnModuleInit, OnModuleDestroy {
         continue;
       }
 
-      if (this.isExplicitNoThanksButtonReply(message)) {
+      if (this.isExplicitNoThanksReply(message)) {
         const updated = await this.adminKapsoIntegrationsRepository.markLeadFlowAnsweredNo({
           phoneNumberId: message.phoneNumberId,
           leadPhoneNumber: message.leadPhoneNumber,
@@ -302,7 +302,7 @@ export class KapsoSyncService implements OnModuleInit, OnModuleDestroy {
         continue;
       }
 
-      if (this.isExplicitYesSendInformationButtonReply(message)) {
+      if (this.isExplicitYesSendInformationReply(message)) {
         const executionContext = await this.adminKapsoIntegrationsRepository.markLeadFlowAnsweredYes({
           phoneNumberId: message.phoneNumberId,
           leadPhoneNumber: message.leadPhoneNumber,
@@ -565,7 +565,7 @@ export class KapsoSyncService implements OnModuleInit, OnModuleDestroy {
     return firstNonNullString(payload.phone_number_id, payload.phoneNumberId, getNestedValue(payload, "metadata", "phone_number_id"));
   }
 
-  /** Lee respuestas de botones quick reply o interactive button_reply segun Meta Cloud API. */
+  /** Lee botones quick reply, interactive button_reply o texto exacto enviado por el cliente. */
   private extractReplyText(message: JsonRecord): Pick<InboundMessageCandidate, "replyText" | "replySource"> {
     if (pickString(message.type) === "button") {
       const button = asRecord(message.button);
@@ -581,6 +581,14 @@ export class KapsoSyncService implements OnModuleInit, OnModuleDestroy {
       return {
         replyText: firstNonNullString(buttonReply.title, buttonReply.id),
         replySource: "interactive_button",
+      };
+    }
+
+    if (pickString(message.type) === "text") {
+      const text = asRecord(message.text);
+      return {
+        replyText: firstNonNullString(text.body),
+        replySource: "text",
       };
     }
 
@@ -603,8 +611,8 @@ export class KapsoSyncService implements OnModuleInit, OnModuleDestroy {
     };
   }
 
-  /** Regla terminal actual: solo el boton literal `No, gracias` detiene el flujo. */
-  private isExplicitNoThanksButtonReply(message: InboundMessageCandidate): boolean {
+  /** Regla terminal actual: solo `No, gracias` exacto detiene el flujo. */
+  private isExplicitNoThanksReply(message: InboundMessageCandidate): boolean {
     if (message.replySource === "unsupported") {
       return false;
     }
@@ -612,8 +620,8 @@ export class KapsoSyncService implements OnModuleInit, OnModuleDestroy {
     return this.normalizeReplyText(message.replyText) === "no gracias";
   }
 
-  /** Regla de avance: solo el boton literal `Si, enviar informacion` habilita el siguiente paso. */
-  private isExplicitYesSendInformationButtonReply(message: InboundMessageCandidate): boolean {
+  /** Regla de avance: solo `Si, enviar informacion` exacto habilita el siguiente paso. */
+  private isExplicitYesSendInformationReply(message: InboundMessageCandidate): boolean {
     if (message.replySource === "unsupported") {
       return false;
     }
