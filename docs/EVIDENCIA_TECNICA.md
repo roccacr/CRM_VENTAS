@@ -10,7 +10,7 @@ Este documento convierte el estado del API Kapso en evidencia reproducible. La r
 | Que reduce para ventas?                            | Reduce tiempo de primer contacto, evita bloqueos por contacto manual inicial y estandariza bitacoras. |
 | Como evita ciclos infinitos?                       | Usa ejecuciones por `flow_uuid + idinterno_lead` y estados terminales por respuesta/error.            |
 | Como se prueba que el sistema no duplica acciones? | Webhooks idempotentes, jobs BullMQ y pruebas e2e/unitarias sobre recepcion y procesamiento.           |
-| Que falta para declarar cierre 10/10 productivo?   | Prueba de carga en staging, migracion real validada, Entra productivo y storage compartido.           |
+| Que falta para declarar cierre 10/10 productivo?   | Prueba de carga en staging, migracion real validada, E2E real Kapso/CRM y storage compartido.         |
 
 ## Comandos de evidencia
 
@@ -64,7 +64,17 @@ Estos indicadores deben medirse en staging/produccion para demostrar impacto rea
 El proyecto puede considerarse 10/10 documentado si el README y anexos explican el flujo, riesgos, decisiones y pruebas. Para considerarlo 10/10 productivo verificable, hacen falta estas evidencias externas:
 
 - Migracion ejecutada en staging con respaldo y rollback probado.
-- Prueba de carga con datos y token reales.
-- Validacion de Entra con usuarios autorizados y no autorizados.
+- Prueba de carga con datos y token CRM reales.
+- Validacion de autenticacion actual con `token_admin` y, si se activa Entra, validacion adicional con usuarios autorizados y no autorizados.
 - Validacion de storage compartido si se despliega mas de una replica.
 - Ejecucion end-to-end real: lead candidato, template enviado, respuesta positiva/negativa y bitacora CRM.
+
+## Evidencia ejecutada el 2026-07-22
+
+| Validacion                  | Resultado                                                                                        |
+| --------------------------- | ------------------------------------------------------------------------------------------------ |
+| Autenticacion oficial       | Runtime permite operar con `token_admin` CRM sin exigir Microsoft Entra.                         |
+| Smoke local de rendimiento  | 50 requests, concurrencia 5, 50 OK, 0 fallos, 78.80 RPS, p95 184.33 ms.                          |
+| Flujo automatizado en tests | Lead detectado, template inicial enviado, respuesta `Si`/`No`, bitacora y estados finales pasan. |
+| Migracion staging           | No ejecutada: falta una base staging aislada con respaldo y rollback. No se uso la base actual.  |
+| E2E real Kapso/CRM          | Pendiente de ejecutar contra staging/live controlado con numero y lead de prueba.                |

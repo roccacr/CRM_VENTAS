@@ -1,5 +1,5 @@
 /**
- * Guard global de autenticación y autorización vía Microsoft Entra ID.
+ * Guard global de autenticación y autorización del API Kapso.
  *
  * Intercepta cada request (salvo rutas `@Public`) para exigir Bearer token,
  * resolver el usuario CRM y, si aplica, validar roles antes de llegar al handler.

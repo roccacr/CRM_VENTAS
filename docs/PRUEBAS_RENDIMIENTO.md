@@ -88,6 +88,11 @@ Antes de produccion completa:
 
 Copiar aqui los resultados reales cuando se ejecuten en local/staging.
 
-| Fecha     | Ambiente | Comando | Requests | Concurrencia | OK  | Fallos | RPS | p95 ms | Observacion                          |
-| --------- | -------- | ------- | -------- | ------------ | --- | ------ | --- | ------ | ------------------------------------ |
-| Pendiente | staging  | -       | -        | -            | -   | -      | -   | -      | Ejecutar antes de salida productiva. |
+| Fecha      | Ambiente | Comando                          | Requests | Concurrencia | OK  | Fallos | RPS   | p95 ms | Observacion                                            |
+| ---------- | -------- | -------------------------------- | -------- | ------------ | --- | ------ | ----- | ------ | ------------------------------------------------------ |
+| 2026-07-22 | local    | `npm run test:performance:smoke` | 50       | 5            | 50  | 0      | 78.80 | 184.33 | Smoke local contra `/health/live` y `/health/ready`.   |
+| Pendiente  | staging  | -                                | -        | -            | -   | -      | -     | -      | Requiere ambiente staging aislado antes de produccion. |
+
+## Nota sobre staging
+
+La migracion y la carga real de staging no deben ejecutarse contra la base actual si no existe una configuracion `STAGING_*` aislada, respaldo y plan de rollback. Mientras no exista ese ambiente, el resultado correcto es `pendiente por entorno`, no `aprobado`.

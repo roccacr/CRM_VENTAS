@@ -29,7 +29,8 @@ const percentile = (values, percentileValue) => {
 };
 
 const runRequest = async (path) => {
-  const url = new URL(path, baseUrl.endsWith("/") ? baseUrl : `${baseUrl}/`).toString();
+  const normalizedPath = path.replace(/^\/+/, "");
+  const url = new URL(normalizedPath, baseUrl.endsWith("/") ? baseUrl : `${baseUrl}/`).toString();
   const startedAt = performance.now();
 
   try {

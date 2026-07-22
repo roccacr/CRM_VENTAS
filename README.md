@@ -107,19 +107,19 @@ flowchart TD
 
 ## Tecnologia
 
-| Tecnologia                  | Uso                                          |
-| --------------------------- | -------------------------------------------- |
-| NestJS 11                   | API backend modular.                         |
-| TypeScript                  | Tipado y mantenibilidad.                     |
-| TypeORM                     | Acceso a MySQL y migraciones.                |
-| MySQL                       | Base CRM Ventas.                             |
-| Kapso Platform API          | Numeros, templates, webhooks y mensajes.     |
-| Meta/Kapso Webhooks         | Eventos de mensajes, respuestas y lifecycle. |
-| BullMQ + Redis              | Jobs distribuidos y control de concurrencia. |
-| Microsoft Entra / token CRM | Autenticacion del frontend CRM.              |
-| Multer                      | Carga de adjuntos.                           |
-| libphonenumber-js           | Normalizacion de telefonos.                  |
-| Jest                        | Unitarias, e2e e integracion.                |
+| Tecnologia                | Uso                                          |
+| ------------------------- | -------------------------------------------- |
+| NestJS 11                 | API backend modular.                         |
+| TypeScript                | Tipado y mantenibilidad.                     |
+| TypeORM                   | Acceso a MySQL y migraciones.                |
+| MySQL                     | Base CRM Ventas.                             |
+| Kapso Platform API        | Numeros, templates, webhooks y mensajes.     |
+| Meta/Kapso Webhooks       | Eventos de mensajes, respuestas y lifecycle. |
+| BullMQ + Redis            | Jobs distribuidos y control de concurrencia. |
+| Token CRM (`token_admin`) | Autenticacion oficial del frontend CRM.      |
+| Multer                    | Carga de adjuntos.                           |
+| libphonenumber-js         | Normalizacion de telefonos.                  |
+| Jest                      | Unitarias, e2e e integracion.                |
 
 ## Ejecucion local
 
@@ -219,7 +219,7 @@ La API es privada por defecto. Solo son publicos los endpoints que deben ser lla
 ```mermaid
 flowchart LR
   R["Request"] --> P{"Ruta publica?"}
-  P -- "No" --> A["Validar token CRM o Entra"]
+  P -- "No" --> A["Validar token CRM vigente"]
   A --> U["Validar usuario activo"]
   U --> ROLE["Validar rol requerido"]
   ROLE --> OK["Ejecutar"]
@@ -238,7 +238,7 @@ flowchart LR
 | Setup redirects           | Publicos, con salida HTML escapada.                 |
 | Health checks             | Publicos para monitoreo.                            |
 
-El frontend CRM actual reutiliza `token_admin`. Microsoft Entra queda soportado como alternativa futura si el tenant expone y consiente el scope de esta API.
+El frontend CRM actual reutiliza `token_admin`; esa es la autenticacion oficial vigente. Microsoft Entra queda soportado como alternativa futura solo si el tenant expone y consiente un scope dedicado para esta API.
 
 ## Flujo de negocio
 
@@ -635,11 +635,13 @@ La evidencia completa esta separada para no convertir el README en un informe in
 | Redis/BullMQ      | Jobs distribuidos y readiness Redis.                                            |
 | Seguridad         | HMAC webhooks, auth global, media firmada y rate limit.                         |
 | Auditoria         | Correcciones aplicadas sobre auth, idempotencia, workers, media y repositorios. |
-| Rendimiento       | Script `npm run test:performance:smoke` para medir RPS, p50, p95, p99 y fallos. |
+| Rendimiento       | Smoke local 2026-07-22: 50 requests, 0 fallos, 78.80 RPS y p95 184.33 ms.       |
 
 Ultima meta documentada:
 
 ```text
 Calidad objetivo: 10/10
-Estado verificable actual: alto, pero dependiente de staging, Entra real y storage compartido para cierre total.
+Estado verificable actual: alto, pero dependiente de staging, prueba de carga real y storage compartido para cierre total. Entra no bloquea el flujo actual porque el contrato oficial vigente es `token_admin`.
 ```
+
+Nota operativa: no se ejecuto migracion en staging porque no existe una configuracion `STAGING_*` aislada validada. La base actual no debe usarse como staging para demostrar cierre productivo.

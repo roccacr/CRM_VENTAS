@@ -1,5 +1,5 @@
 /**
- * Servicio de verificación de access tokens de Microsoft Entra ID.
+ * Servicio de verificación de sesiones CRM y access tokens Microsoft Entra.
  *
  * Valida firma JWKS, audience, issuer, tenant, cliente y scope; luego mapea
  * el correo del token a un admin activo del CRM. Así la API no confía solo
@@ -44,7 +44,7 @@ export class EntraAuthService {
   private readonly allowedClientIds: string[];
   private readonly audiences: string[];
   private readonly issuer: string;
-  private readonly jwks: JwksClient;
+  private readonly jwks: JwksClient | null;
   private readonly requiredScope: string;
   private readonly tenantId: string;
 
@@ -52,26 +52,26 @@ export class EntraAuthService {
     private readonly configService: ConfigService,
     private readonly dataSource: DataSource,
   ) {
-    this.tenantId = this.configService.getOrThrow<string>("security.entraTenantId");
+    this.tenantId = this.configService.get<string>("security.entraTenantId", "");
     const configuredAudiences = this.configService.get<string[]>("security.entraAudiences", []);
     const legacyAudience = this.configService.get<string>("security.entraAudience", "");
     this.audiences = configuredAudiences.length > 0 ? configuredAudiences : splitAudience(legacyAudience);
-    this.issuer = this.configService.getOrThrow<string>("security.entraIssuer");
-    this.requiredScope = this.configService.getOrThrow<string>("security.entraRequiredScope");
+    this.issuer = this.configService.get<string>("security.entraIssuer", "");
+    this.requiredScope = this.configService.get<string>("security.entraRequiredScope", "Kapso.Access");
     this.allowedClientIds = this.configService.get<string[]>("security.entraAllowedClientIds", []);
+    const jwksUri = this.configService.get<string>("security.entraJwksUri", "");
 
-    if (this.audiences.length === 0) {
-      throw new Error("security.entraAudiences / security.entraAudience debe definir al menos una audiencia.");
-    }
-
-    this.jwks = new JwksClient({
-      cache: true,
-      cacheMaxAge: 60 * 60 * 1000,
-      cacheMaxEntries: 5,
-      jwksRequestsPerMinute: 10,
-      jwksUri: this.configService.getOrThrow<string>("security.entraJwksUri"),
-      rateLimit: true,
-    });
+    this.jwks =
+      this.tenantId && this.issuer && jwksUri && this.audiences.length > 0
+        ? new JwksClient({
+            cache: true,
+            cacheMaxAge: 60 * 60 * 1000,
+            cacheMaxEntries: 5,
+            jwksRequestsPerMinute: 10,
+            jwksUri,
+            rateLimit: true,
+          })
+        : null;
   }
 
   /**
@@ -168,6 +168,10 @@ export class EntraAuthService {
    * @returns Payload tipado tras pasar tenant, cliente y scope
    */
   private async verifyAccessToken(token: string): Promise<EntraAccessTokenPayload> {
+    if (!this.jwks || !this.tenantId || !this.issuer || this.audiences.length === 0) {
+      throw new UnauthorizedException("Microsoft Entra no esta habilitado para esta API; use la sesion CRM vigente.");
+    }
+
     const decoded = decode(token, { complete: true });
     const keyId = decoded && typeof decoded !== "string" ? decoded.header.kid : undefined;
 

@@ -73,10 +73,10 @@ const kapsoEnvSchema = {
 
 /** Parámetros de Microsoft Entra ID para autenticación de la API. */
 const securityEnvSchema = {
-  ENTRA_TENANT_ID: Joi.string().guid().required(),
-  ENTRA_API_AUDIENCE: Joi.string().required(),
+  ENTRA_TENANT_ID: Joi.string().guid().allow("").optional().default(""),
+  ENTRA_API_AUDIENCE: Joi.string().allow("").optional().default(""),
   ENTRA_REQUIRED_SCOPE: Joi.string().default("Kapso.Access"),
-  ENTRA_ALLOWED_CLIENT_IDS: Joi.string().required(),
+  ENTRA_ALLOWED_CLIENT_IDS: Joi.string().allow("").optional().default(""),
   CRM_JWT_SECRET: Joi.string().optional(),
   JWT_SECRET: Joi.string().optional(),
 };
@@ -93,7 +93,9 @@ const schema = Joi.object({
   ...redisEnvSchema,
   ...kapsoEnvSchema,
   ...securityEnvSchema,
-}).unknown(true);
+})
+  .or("CRM_JWT_SECRET", "JWT_SECRET")
+  .unknown(true);
 
 /**
  * Valida y normaliza la configuración de entorno al arrancar Nest.

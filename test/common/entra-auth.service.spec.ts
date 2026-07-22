@@ -104,6 +104,87 @@ describe("EntraAuthService", () => {
     expect(dataSourceMock.query).toHaveBeenCalledWith(expect.stringContaining("admin.token_admin = ?"), ["admin@roccacr.com", token]);
   });
 
+  it("mantiene la autenticacion CRM aunque Microsoft Entra no este configurado", async () => {
+    const localConfigServiceMock = {
+      get: jest.fn((key: string, fallback?: unknown) => {
+        const localConfig: Record<string, unknown> = {
+          "security.entraTenantId": "",
+          "security.entraAudiences": [],
+          "security.entraAudience": "",
+          "security.entraIssuer": "",
+          "security.entraRequiredScope": "Kapso.Access",
+          "security.entraAllowedClientIds": [],
+          "security.entraJwksUri": "",
+          "security.crmJwtSecret": "crm-test-secret",
+        };
+
+        return localConfig[key] ?? fallback;
+      }),
+    };
+    const localDataSourceMock = {
+      query: jest.fn().mockResolvedValue([
+        {
+          idAdmin: 10,
+          idNetSuiteAdmin: 2146844,
+          roleId: 1,
+          emailAdmin: "admin@roccacr.com",
+          nameAdmin: "CRM Admin",
+        },
+      ]),
+    };
+    const localService = new EntraAuthService(
+      localConfigServiceMock as unknown as ConfigService,
+      localDataSourceMock as unknown as DataSource,
+    );
+    const token = sign(
+      {
+        data: {
+          email: "Admin@RoccaCR.com",
+          id: 10,
+          name_admin: "CRM Admin",
+        },
+      },
+      "crm-test-secret",
+      { expiresIn: "5h" },
+    );
+
+    await expect(localService.authenticate(token)).resolves.toMatchObject({
+      authSource: "crm",
+      email: "admin@roccacr.com",
+      idAdmin: 10,
+    });
+    expect(localDataSourceMock.query).toHaveBeenCalledWith(expect.stringContaining("admin.token_admin = ?"), ["admin@roccacr.com", token]);
+  });
+
+  it("rechaza tokens no CRM cuando Microsoft Entra no esta habilitado", async () => {
+    const localConfigServiceMock = {
+      get: jest.fn((key: string, fallback?: unknown) => {
+        const localConfig: Record<string, unknown> = {
+          "security.entraTenantId": "",
+          "security.entraAudiences": [],
+          "security.entraAudience": "",
+          "security.entraIssuer": "",
+          "security.entraRequiredScope": "Kapso.Access",
+          "security.entraAllowedClientIds": [],
+          "security.entraJwksUri": "",
+          "security.crmJwtSecret": "crm-test-secret",
+        };
+
+        return localConfig[key] ?? fallback;
+      }),
+    };
+    const localDataSourceMock = {
+      query: jest.fn(),
+    };
+    const localService = new EntraAuthService(
+      localConfigServiceMock as unknown as ConfigService,
+      localDataSourceMock as unknown as DataSource,
+    );
+
+    await expect(localService.authenticate("non-crm-token")).rejects.toBeInstanceOf(UnauthorizedException);
+    expect(localDataSourceMock.query).not.toHaveBeenCalled();
+  });
+
   it("rechaza un token de sesion CRM que ya no coincide con admins.token_admin", async () => {
     const token = sign(
       {
