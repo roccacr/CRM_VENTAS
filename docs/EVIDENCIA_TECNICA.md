@@ -69,6 +69,29 @@ El proyecto puede considerarse 10/10 documentado si el README y anexos explican 
 - Validacion de storage compartido si se despliega mas de una replica.
 - Ejecucion end-to-end real: lead candidato, template enviado, respuesta positiva/negativa y bitacora CRM.
 
+## Ruta para cerrar 10/10
+
+Esta es la diferencia entre un modulo bien construido y un modulo listo para operar como pieza critica de empresa.
+
+| Frente                 | Evidencia requerida                                                                                | Criterio de cierre                                                                                       |
+| ---------------------- | -------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| CI/CD                  | Workflow verde en `api-kapso`, incluyendo unitarias, e2e, integracion MySQL/Redis, build y audit.  | Ningun cambio entra si falla formato, lint, typecheck, tests, build o audit.                             |
+| Migraciones staging    | Ejecucion de `npm run migration:run` contra base staging aislada, con respaldo previo y rollback.  | Tablas Kapso creadas/actualizadas, seed esperado y `migration:revert` probado sin danar datos CRM.       |
+| Flujo funcional real   | Lead real/controlado entra al flujo, recibe `saludo`, responde `Si`/`No` y deja bitacora correcta. | Estado del lead, bitacora, ejecucion y no reprocesamiento coinciden con la matriz funcional.             |
+| Rendimiento            | Smoke/load test contra staging con lotes representativos y endpoints protegidos.                   | p95/p99, RPS, errores, duracion de worker y queue lag quedan registrados con umbrales aceptados.         |
+| Operacion e incidentes | Runbook validado para fallos Kapso, Redis, MySQL, webhooks duplicados, media faltante y tokens.    | Otro desarrollador puede diagnosticar y recuperar el modulo sin depender del autor original.             |
+| Liderazgo tecnico      | PRs revisables, decisiones ADR actualizadas y checklist de handoff para equipo.                    | El modulo puede ser mantenido por otro dev siguiendo documentacion, pruebas y criterios de arquitectura. |
+
+## Evidencia para jefatura tecnica
+
+La evaluacion senior no debe basarse en cantidad de codigo ni extension del README. Debe basarse en resultados medibles:
+
+- Si el CI falla, el modulo no esta listo para cerrar.
+- Si staging no se ha migrado, produccion no se debe tocar.
+- Si no hay carga real, no se debe afirmar escalabilidad.
+- Si el flujo no se prueba de extremo a extremo, no se debe afirmar cierre funcional.
+- Si otro desarrollador no puede operar el modulo con la documentacion actual, falta handoff tecnico.
+
 ## Evidencia ejecutada el 2026-07-22
 
 | Validacion                  | Resultado                                                                                        |
@@ -76,5 +99,8 @@ El proyecto puede considerarse 10/10 documentado si el README y anexos explican 
 | Autenticacion oficial       | Runtime permite operar con `token_admin` CRM sin exigir Microsoft Entra.                         |
 | Smoke local de rendimiento  | 50 requests, concurrencia 5, 50 OK, 0 fallos, 78.80 RPS, p95 184.33 ms.                          |
 | Flujo automatizado en tests | Lead detectado, template inicial enviado, respuesta `Si`/`No`, bitacora y estados finales pasan. |
+| Integracion MySQL/Redis     | `test:integration:coverage`: 2 suites, 18 tests, cobertura repository/migrations 70.65% lineas.  |
+| Seguridad dependencias      | `npm audit --audit-level=moderate`: 0 vulnerabilidades.                                          |
+| CI verify                   | Workflow ajustado con secreto JWT dummy de integracion; no se relajo `validateEnv`.              |
 | Migracion staging           | No ejecutada: falta una base staging aislada con respaldo y rollback. No se uso la base actual.  |
 | E2E real Kapso/CRM          | Pendiente de ejecutar contra staging/live controlado con numero y lead de prueba.                |

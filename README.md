@@ -629,6 +629,7 @@ La evidencia completa esta separada para no convertir el README en un informe in
 - [docs/EVIDENCIA_TECNICA.md](docs/EVIDENCIA_TECNICA.md): comandos, matriz codigo-comportamiento, KPI y criterio honesto de cierre.
 - [docs/DECISIONES_ARQUITECTURA.md](docs/DECISIONES_ARQUITECTURA.md): decisiones ADR, alternativas descartadas y riesgos.
 - [docs/PRUEBAS_RENDIMIENTO.md](docs/PRUEBAS_RENDIMIENTO.md): smoke test de performance, variables y escenarios de carga.
+- [docs/RUNBOOK_OPERACION.md](docs/RUNBOOK_OPERACION.md): diagnostico operativo para fallos Kapso, Redis, MySQL, media y webhooks.
 
 | Area              | Evidencia                                                                       |
 | ----------------- | ------------------------------------------------------------------------------- |
@@ -638,6 +639,18 @@ La evidencia completa esta separada para no convertir el README en un informe in
 | Seguridad         | HMAC webhooks, auth global, media firmada y rate limit.                         |
 | Auditoria         | Correcciones aplicadas sobre auth, idempotencia, workers, media y repositorios. |
 | Rendimiento       | Smoke local 2026-07-22: 50 requests, 0 fallos, 78.80 RPS y p95 184.33 ms.       |
+| CI/integracion    | `test:integration:coverage`: 2 suites, 18 tests, 70.65% lineas en repos/migs.   |
+
+### Ruta verificable para cerrar 10/10
+
+| Frente            | Evidencia que debe existir                                                          | Estado esperado antes de produccion completa                      |
+| ----------------- | ----------------------------------------------------------------------------------- | ----------------------------------------------------------------- |
+| CI/CD             | Workflow verde en `api-kapso` con formato, lint, typecheck, unit, e2e, integracion. | Ningun PR o push relevante puede quedar con `verify` fallando.    |
+| Staging           | Migraciones ejecutadas en base aislada, con respaldo y rollback probado.            | Evidencia guardada en release notes o ticket tecnico.             |
+| E2E real          | Lead controlado recibe `saludo`, responde `Si`/`No`, crea bitacora y no reprocesa.  | Resultado validado contra CRM y Kapso reales.                     |
+| Performance       | Smoke/load test con endpoints protegidos y lotes representativos.                   | p95, p99, RPS, errores, duracion worker y queue lag documentados. |
+| Operacion         | Runbook para fallos Kapso, Redis, MySQL, media, tokens y webhooks duplicados.       | Otro desarrollador puede diagnosticar sin depender del autor.     |
+| Liderazgo tecnico | ADRs, checklist de handoff y criterios de revision claros para nuevos cambios.      | El modulo puede ser mantenido y extendido por el equipo.          |
 
 Ultima meta documentada:
 
