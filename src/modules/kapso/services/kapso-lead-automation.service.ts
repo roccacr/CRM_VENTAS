@@ -6,8 +6,9 @@
  * - Tras un “Sí” explícito, el cliente abre ventana de 24h y se envía intro + media
  *   como mensajes normales (no template), con URLs firmadas de adjuntos.
  *
- * Idempotencia: reserva por `flow_uuid + idinterno_lead` antes de enviar plantillas;
- * lock en memoria evita corridas solapadas del worker en la misma instancia.
+ * Idempotencia: reserva por `flow_uuid + idinterno_lead` antes de enviar plantillas.
+ * BullMQ coordina jobs entre procesos; el lock local solo evita invocaciones directas
+ * simultaneas dentro de esta misma instancia.
  */
 
 import { Injectable, Logger } from "@nestjs/common";
@@ -57,7 +58,7 @@ export type InboundWebhookProcessingSummary = {
 @Injectable()
 export class KapsoLeadAutomationService {
   private readonly logger = new Logger(KapsoLeadAutomationService.name);
-  /** Lock en memoria: evita dos corridas del worker de plantillas en la misma instancia. */
+  /** Lock local: no reemplaza BullMQ ni la reserva durable en BD. */
   private leadTemplateWorkerRunning = false;
 
   constructor(
@@ -188,7 +189,7 @@ export class KapsoLeadAutomationService {
     const emptySummary = { scanned: 0, configured: 0, sent: 0, skipped: 0, failed: 0 };
 
     if (this.leadTemplateWorkerRunning) {
-      this.logger.verbose("Lead template diagnostic worker skipped because another run is already active");
+      this.logger.verbose("Lead template automation worker skipped because another run is already active");
       return emptySummary;
     }
 
@@ -324,13 +325,13 @@ export class KapsoLeadAutomationService {
           }
         } catch (error) {
           failed += 1;
-          const message = error instanceof Error ? error.message : "Unknown lead template diagnostic error";
+          const message = error instanceof Error ? error.message : "Unknown lead template automation error";
           this.logger.error(`Lead template candidate failed leadId=${candidate.leadId} reason=${message}`);
         }
       }
 
       const summary = { scanned: candidates.length, configured, sent, skipped, failed };
-      this.logger.log(`Lead template diagnostic worker finished ${JSON.stringify(summary)}`);
+      this.logger.log(`Lead template automation worker finished ${JSON.stringify(summary)}`);
       return summary;
     } finally {
       this.leadTemplateWorkerRunning = false;

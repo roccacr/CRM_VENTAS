@@ -67,7 +67,7 @@ Los valores reales dependen del ambiente. No deben copiarse de ejemplo.
 | p95 HTTP           | `test:performance:smoke`                         | Definir despues de baseline local/staging. |
 | RPS estable        | `test:performance:smoke`                         | Definir por necesidad operativa real.      |
 | Errores HTTP       | `byStatus` en salida JSON                        | 0 errores en smoke.                        |
-| Duracion worker    | Logs `Lead template diagnostic worker finished`. | Sin solapamiento entre lotes.              |
+| Duracion worker    | Logs `Lead template automation worker finished`. | Sin solapamiento entre lotes.              |
 | Queue lag          | BullMQ/Redis metrics o logs de procesamiento.    | Sin acumulacion sostenida.                 |
 | Query time MySQL   | Slow query log o instrumentation futura.         | Sin queries lentas en seleccion de leads.  |
 | Duplicados webhook | Conteo de recibos duplicados ignorados.          | Duplicados no deben producir doble efecto. |

@@ -6,6 +6,7 @@ on:
     branches:
       - main
       - master
+      - api-kapso
 
 jobs:
   verify:

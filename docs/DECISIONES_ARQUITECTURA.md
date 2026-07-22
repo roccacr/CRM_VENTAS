@@ -34,6 +34,8 @@ Este registro explica las decisiones importantes del API Kapso, sus motivos y la
 | Por que se descarto    | En despliegues con mas de una replica duplica trabajos y puede repetir envios.             |
 | Alternativa futura     | Kafka/RabbitMQ si el volumen supera las necesidades de BullMQ.                             |
 | Criterio para migrar   | Alto volumen, multiples consumidores heterogeneos o necesidad de streaming/event sourcing. |
+| Concurrencia inicial   | `concurrency 1` para evitar bloqueo operativo mientras se valida volumen real.             |
+| Cuando dividir colas   | Si sync de numeros bloquea leads, si sube el queue lag o si el p95 del worker supera SLA.  |
 
 ## ADR-004 · Idempotencia durable para webhooks
 

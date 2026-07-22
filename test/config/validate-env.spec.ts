@@ -42,4 +42,15 @@ describe("validateEnv", () => {
 
     expect(() => validateEnv(envWithoutCrmSecret)).toThrow(/CRM_JWT_SECRET|JWT_SECRET/);
   });
+
+  it("rechaza Microsoft Entra configurado sin clientes autorizados", () => {
+    expect(() =>
+      validateEnv({
+        ...validBaseEnv,
+        ENTRA_ALLOWED_CLIENT_IDS: "",
+        ENTRA_API_AUDIENCE: "api://kapso-test",
+        ENTRA_TENANT_ID: "00000000-0000-4000-8000-000000000001",
+      }),
+    ).toThrow(/ENTRA_ALLOWED_CLIENT_IDS/);
+  });
 });

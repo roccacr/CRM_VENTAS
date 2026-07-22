@@ -114,5 +114,13 @@ export function validateEnv(config: EnvShape): EnvShape {
     throw new Error(`Variables de entorno invalidas: ${error.message}`);
   }
 
+  const entraTenantId = String(value.ENTRA_TENANT_ID ?? "").trim();
+  const entraAudience = String(value.ENTRA_API_AUDIENCE ?? "").trim();
+  const entraAllowedClientIds = String(value.ENTRA_ALLOWED_CLIENT_IDS ?? "").trim();
+
+  if ((entraTenantId || entraAudience) && !entraAllowedClientIds) {
+    throw new Error("Variables de entorno invalidas: ENTRA_ALLOWED_CLIENT_IDS es requerido cuando Microsoft Entra esta configurado.");
+  }
+
   return value;
 }

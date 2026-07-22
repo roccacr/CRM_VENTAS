@@ -448,6 +448,7 @@ Si un archivo fisico ya no existe, el API no debe romper la vista. Desactiva la 
 ## Jobs, idempotencia y concurrencia
 
 BullMQ reemplaza timers locales para evitar ejecuciones duplicadas cuando existan varias instancias.
+La concurrencia inicial es `1` de forma intencional: prioriza orden e idempotencia mientras se mide volumen real. Si el queue lag crece o la sincronizacion de numeros bloquea leads, el siguiente paso es separar colas por responsabilidad.
 
 ```mermaid
 flowchart TD
@@ -483,21 +484,22 @@ sequenceDiagram
 
 ### Variables criticas
 
-| Variable                        | Uso                                |
-| ------------------------------- | ---------------------------------- |
-| `PORT`                          | Puerto de API. Normalmente `8002`. |
-| `API_PREFIX`                    | Prefijo. Normalmente `api/v1`.     |
-| `CRM_JWT_SECRET`                | Valida `token_admin` del CRM.      |
-| `KAPSO_API_BASE_URL`            | URL base de Kapso Platform API.    |
-| `KAPSO_API_KEY`                 | API key por defecto.               |
-| `KAPSO_PROJECT_API_KEYS_JSON`   | Mapa `project.id -> apiKey`.       |
-| `KAPSO_PUBLIC_BASE_URL`         | URL publica para webhooks/media.   |
-| `KAPSO_PLATFORM_WEBHOOK_SECRET` | Secreto HMAC Platform.             |
-| `KAPSO_WHATSAPP_WEBHOOK_SECRET` | Secreto HMAC WhatsApp/Meta.        |
-| `KAPSO_MEDIA_STORAGE_PATH`      | Ruta local de adjuntos.            |
-| `KAPSO_MEDIA_SIGNING_SECRET`    | Firma URLs temporales.             |
-| `MYSQL_*`                       | Conexion a CRM Ventas.             |
-| `REDIS_*`                       | Conexion a Redis BullMQ.           |
+| Variable                        | Uso                                                              |
+| ------------------------------- | ---------------------------------------------------------------- |
+| `PORT`                          | Puerto de API. Normalmente `8002`.                               |
+| `API_PREFIX`                    | Prefijo. Normalmente `api/v1`.                                   |
+| `CRM_JWT_SECRET`                | Valida `token_admin` del CRM.                                    |
+| `ENTRA_ALLOWED_CLIENT_IDS`      | Clientes Entra autorizados. Requerido si Entra esta configurado. |
+| `KAPSO_API_BASE_URL`            | URL base de Kapso Platform API.                                  |
+| `KAPSO_API_KEY`                 | API key por defecto.                                             |
+| `KAPSO_PROJECT_API_KEYS_JSON`   | Mapa `project.id -> apiKey`.                                     |
+| `KAPSO_PUBLIC_BASE_URL`         | URL publica para webhooks/media.                                 |
+| `KAPSO_PLATFORM_WEBHOOK_SECRET` | Secreto HMAC Platform.                                           |
+| `KAPSO_WHATSAPP_WEBHOOK_SECRET` | Secreto HMAC WhatsApp/Meta.                                      |
+| `KAPSO_MEDIA_STORAGE_PATH`      | Ruta local de adjuntos.                                          |
+| `KAPSO_MEDIA_SIGNING_SECRET`    | Firma URLs temporales.                                           |
+| `MYSQL_*`                       | Conexion a CRM Ventas.                                           |
+| `REDIS_*`                       | Conexion a Redis BullMQ.                                         |
 
 ### Checklist de despliegue
 

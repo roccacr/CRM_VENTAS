@@ -27,7 +27,7 @@ Este documento convierte el estado del API Kapso en evidencia reproducible. La r
 | Rendimiento smoke sin auth       | `npm run test:performance:smoke`                                                           | Latencia/RPS sobre liveness/readiness local.          |
 | Rendimiento endpoint autenticado | `PERF_AUTH_TOKEN=<token> PERF_PATHS=/kapso/business-flows npm run test:performance:smoke`  | Latencia/RPS sobre endpoint protegido.                |
 | Gate p95                         | `PERF_REQUESTS=200 PERF_CONCURRENCY=20 PERF_MAX_P95_MS=500 npm run test:performance:smoke` | Falla si p95 supera el umbral definido.               |
-| Worker con datos reales          | Revisar logs `Lead template diagnostic worker finished {...}`                              | Conteos `scanned`, `configured`, `sent`, `skipped`.   |
+| Worker con datos reales          | Revisar logs `Lead template automation worker finished {...}`                              | Conteos `scanned`, `configured`, `sent`, `skipped`.   |
 
 ## Matriz codigo contra comportamiento documentado
 
