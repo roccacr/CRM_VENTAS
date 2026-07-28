@@ -5,6 +5,7 @@ import { useTableData } from "./useTableData";
 import { useState } from "react";
 import { LeadOutlookCreateEventModal } from "../../../pages/modal/components/LeadOutlookCreateEventModal";
 import "../../leads/list/Imports/style.css";
+import { filterTodayPendingEvents, getEventListRequestRange } from "./eventListUtils";
 import { tableColumns } from "./tableColumns";
 
 DataTable.use(DT);
@@ -95,14 +96,7 @@ const View_events_listado = () => {
    const [filterOption, setFilterOption] = useState(1);
    const [selectedEvent, setSelectedEvent] = useState(null);
    const [searchParams] = useSearchParams();
-   const [tableData] = useTableData(true, inputStartDate, inputEndDate);
-
-   const filteredTableData = React.useMemo(() => {
-      if (!tableData) {
-         return [];
-      }
-
-      const dataParam = searchParams.get("data");
+   const todayDate = React.useMemo(() => {
       const today = new Date()
          .toLocaleString("en-US", {
             timeZone: "America/Costa_Rica",
@@ -111,17 +105,22 @@ const View_events_listado = () => {
             day: "2-digit",
          })
          .split("/");
-      const formattedToday = `${today[2]}-${today[0].padStart(2, "0")}-${today[1].padStart(2, "0")}`;
 
-      if (dataParam === "1" || dataParam === 1) {
-         return tableData.filter((item) => {
-            const itemDate = item.fechaIni_calendar.split("T")[0];
-            return itemDate === formattedToday && item.accion_calendar === "Pendiente";
-         });
-      }
+      return `${today[2]}-${today[0].padStart(2, "0")}-${today[1].padStart(2, "0")}`;
+   }, []);
+   const dataParam = searchParams.get("data");
+   const requestRange = React.useMemo(() => getEventListRequestRange({
+      dataParam,
+      defaultStartDate: inputStartDate,
+      defaultEndDate: inputEndDate,
+      todayDate,
+   }), [dataParam, inputEndDate, inputStartDate, todayDate]);
+   const [tableData] = useTableData(true, requestRange.dateStart, requestRange.dateEnd);
 
-      return tableData;
-   }, [tableData, searchParams]);
+   const filteredTableData = React.useMemo(
+      () => filterTodayPendingEvents(tableData, dataParam, todayDate),
+      [dataParam, tableData, todayDate],
+   );
 
    const tableRef = useRef(null);
 

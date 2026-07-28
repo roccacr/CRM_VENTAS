@@ -230,6 +230,20 @@ export const outlookHtmlToPlainText = (value) => {
         .replace(/^\n+|\n+$/g, "");
 };
 
+export const normalizeEditableEventDescription = (value) => {
+    if (typeof value !== "string") {
+        return "";
+    }
+
+    const normalizedValue = /<\/?[a-z][\s\S]*>/i.test(value)
+        ? outlookHtmlToPlainText(value)
+        : value.replace(/\r\n?/g, "\n");
+
+    return normalizedValue
+        .replace(/\n[ \t]*\n+/g, "\n")
+        .replace(/^\n+|\n+$/g, "");
+};
+
 /**
  * Genera el texto breve que se muestra en la tarjeta compacta del evento.
  * El detalle completo permanece disponible en el modal expandido.

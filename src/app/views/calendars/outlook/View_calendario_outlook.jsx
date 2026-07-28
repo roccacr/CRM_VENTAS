@@ -63,6 +63,7 @@ import {
     buildCalendarMoveBlockedMessage,
     canAuthenticatedUserMoveCalendarEvent,
     deleteOutlookEventById,
+    normalizeEditableEventDescription,
     outlookHtmlToPlainText,
     plainTextToOutlookHtml,
 } from "./outlookCalendarUtils";
@@ -3115,7 +3116,9 @@ export const View_calendario_outlook = () => {
         setCreateEventType(normalizeCreateEventTypeValue(crmEvent?.tipo_calendar || eventItem?.extendedProps?.eventType));
         setCreateEventLocation(outlookEvent?.location?.displayName || "");
         setRoomSearchText("");
-        setCreateEventDescription(crmEvent?.decrip_calendar || eventItem?.extendedProps?.description || "");
+        setCreateEventDescription(normalizeEditableEventDescription(
+            crmEvent?.decrip_calendar || eventItem?.extendedProps?.description || "",
+        ));
         setIsCreateEventLeadEnabled(Boolean(crmEvent?.id_lead));
         setCreateEventLeadId(crmEvent?.id_lead ? String(crmEvent.id_lead) : "");
         setIsLeadInvitationEnabled(shouldInviteLead);

@@ -5,6 +5,7 @@ import {
     buildEventSummaryPreview,
     buildCalendarMoveBlockedMessage,
     canAuthenticatedUserMoveCalendarEvent,
+    normalizeEditableEventDescription,
     outlookHtmlToPlainText,
     plainTextToOutlookHtml,
     resolveCalendarEventOwner,
@@ -28,6 +29,17 @@ test("outlookHtmlToPlainText evita acumular lineas vacias de Outlook", () => {
     assert.equal(
         outlookHtmlToPlainText("<div>1. Manual del Cliente.</div><div><br></div><div>2. Planos en expedientes.</div><div><br></div><div>3. Contrato de corredores.</div>"),
         "1. Manual del Cliente.\n2. Planos en expedientes.\n3. Contrato de corredores.",
+    );
+});
+
+test("normalizeEditableEventDescription limpia HTML y blancos heredados antes de editar", () => {
+    assert.equal(
+        normalizeEditableEventDescription("<div>1. Manual del Cliente.</div><div><br></div><div>2. Planos en expedientes.</div>"),
+        "1. Manual del Cliente.\n2. Planos en expedientes.",
+    );
+    assert.equal(
+        normalizeEditableEventDescription("1. Manual del Cliente.\n\n\n2. Planos en expedientes."),
+        "1. Manual del Cliente.\n2. Planos en expedientes.",
     );
 });
 

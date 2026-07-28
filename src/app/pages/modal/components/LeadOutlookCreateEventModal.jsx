@@ -31,6 +31,7 @@ import {
     OUTLOOK_CREATE_EVENT_SCOPE,
     toGraphDateTime,
     deleteOutlookEventById,
+    normalizeEditableEventDescription,
     plainTextToOutlookHtml,
 } from "../../../views/calendars/outlook/outlookCalendarUtils";
 
@@ -833,7 +834,7 @@ export const LeadOutlookCreateEventModal = ({
 
                 setCreateEventTitle(crmEvent?.nombre_calendar || "");
                 setCreateEventType(resolveCreateEventTypeValue(crmEvent?.tipo_calendar));
-                setCreateEventDescription(crmEvent?.decrip_calendar || "");
+                setCreateEventDescription(normalizeEditableEventDescription(crmEvent?.decrip_calendar || ""));
                 setCurrentCrmStatus(crmEvent?.accion_calendar || initialEventData?.accion_calendar || "");
                 setIsCreateEventLeadEnabled(Boolean(normalizedLeadId));
                 setCreateEventLeadId(normalizedLeadId ? String(normalizedLeadId) : "");
@@ -904,6 +905,9 @@ export const LeadOutlookCreateEventModal = ({
                 );
 
                 setCreateEventTitle(outlookEvent?.subject || crmEvent?.nombre_calendar || "");
+                setCreateEventDescription(
+                    normalizeEditableEventDescription(outlookEvent?.body?.content || crmEvent?.decrip_calendar || ""),
+                );
                 setCreateEventLocation(outlookEvent?.location?.displayName || "");
                 setRoomSearchText(outlookEvent?.location?.displayName || "");
                 setSelectedRoomOption(
