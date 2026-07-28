@@ -5,8 +5,10 @@
  * ejecutarse con alta frecuencia sin consumir cupo de rate-limit de la API de negocio.
  */
 
-import { InjectQueue } from "@nestjs/bullmq";
+import { getQueueToken } from "@nestjs/bullmq";
 import { Controller, Get } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
+import { ModuleRef } from "@nestjs/core";
 import { HealthCheck, HealthCheckService, HealthIndicatorResult, HealthIndicatorService, TypeOrmHealthIndicator } from "@nestjs/terminus";
 import { SkipThrottle } from "@nestjs/throttler";
 import { Queue } from "bullmq";
@@ -15,10 +17,10 @@ import { Public } from "../../../common/auth/auth.decorators";
 import { KAPSO_JOBS_QUEUE } from "../common/kapso-jobs.constants";
 
 /**
- * Distingue liveness (proceso vivo) de readiness (dependencias listas para tráfico).
+ * Distingue liveness (proceso vivo) de readiness (dependencias listas para trafico).
  *
- * Readiness valida MySQL y Redis/BullMQ porque sin ellos no se pueden persistir
- * webhooks ni ejecutar jobs de reintento/plantillas.
+ * Readiness valida MySQL y el driver de jobs activo. En modo local no exige Redis;
+ * Redis/BullMQ solo se valida cuando `KAPSO_JOBS_DRIVER=bullmq`.
  */
 @Controller("health")
 @Public()
@@ -28,12 +30,13 @@ export class KapsoHealthController {
     private readonly health: HealthCheckService,
     private readonly database: TypeOrmHealthIndicator,
     private readonly indicatorService: HealthIndicatorService,
-    @InjectQueue(KAPSO_JOBS_QUEUE) private readonly jobsQueue: Queue,
+    private readonly configService: ConfigService,
+    private readonly moduleRef: ModuleRef,
   ) {}
 
   /**
    * Liveness: confirma que el proceso Nest responde.
-   * No inspecciona dependencias externas a propósito (un DB caído no debe matar el pod
+   * No inspecciona dependencias externas a proposito (un DB caido no debe matar el pod
    * si el orquestador usa este endpoint como liveness).
    */
   @Get("live")
@@ -42,32 +45,43 @@ export class KapsoHealthController {
   }
 
   /**
-   * Readiness: MySQL + Redis (cola BullMQ). Si falla, el balanceador deja de enviar tráfico.
+   * Readiness: MySQL + jobs. Si falla, el balanceador deja de enviar trafico.
    */
   @Get("ready")
   @HealthCheck()
   readiness() {
-    return this.health.check([() => this.database.pingCheck("mysql"), () => this.checkRedis()]);
+    return this.health.check([() => this.database.pingCheck("mysql"), () => this.checkJobs()]);
   }
 
   /**
-   * Comprueba que la cola BullMQ puede conectar a Redis, con timeout corto (2s)
-   * para no colgar el probe de readiness.
+   * Comprueba que el driver de jobs actual esta listo.
+   *
+   * En `local`, los jobs viven dentro del mismo proceso API y no hay dependencia
+   * externa que validar. En `bullmq`, se valida Redis con timeout corto (2s).
    */
-  private async checkRedis(): Promise<HealthIndicatorResult> {
-    const indicator = this.indicatorService.check("redis");
+  private async checkJobs(): Promise<HealthIndicatorResult> {
+    const indicator = this.indicatorService.check("jobs");
+    const jobsDriver = this.configService.get<string>("kapso.jobsDriver", "local");
+
+    if (jobsDriver !== "bullmq") {
+      return indicator.up({ driver: "local" });
+    }
+
     let timeout: NodeJS.Timeout | undefined;
 
     try {
+      const jobsQueue = this.moduleRef.get<Queue>(getQueueToken(KAPSO_JOBS_QUEUE), { strict: false });
+
       await Promise.race([
-        this.jobsQueue.waitUntilReady(),
+        jobsQueue.waitUntilReady(),
         new Promise<never>((_, reject) => {
-          timeout = setTimeout(() => reject(new Error("Redis readiness timeout")), 2_000);
+          timeout = setTimeout(() => reject(new Error("BullMQ readiness timeout")), 2_000);
         }),
       ]);
-      return indicator.up();
+
+      return indicator.up({ driver: "bullmq" });
     } catch {
-      return indicator.down({ reason: "Redis no disponible" });
+      return indicator.down({ driver: "bullmq", reason: "BullMQ/Redis no disponible" });
     } finally {
       if (timeout) {
         clearTimeout(timeout);

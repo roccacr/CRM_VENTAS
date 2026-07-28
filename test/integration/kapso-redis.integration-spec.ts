@@ -1,22 +1,29 @@
 import { ConfigService } from "@nestjs/config";
+import { ModuleRef } from "@nestjs/core";
 import { Job, Queue, QueueEvents, Worker } from "bullmq";
 import { createConnection } from "net";
 
 import { KAPSO_JOB_SCHEDULERS } from "../../src/modules/kapso/common/kapso-jobs.constants";
 import { KapsoJobsSchedulerService } from "../../src/modules/kapso/services/kapso-jobs-scheduler.service";
+import { KapsoLeadAutomationService } from "../../src/modules/kapso/services/kapso-lead-automation.service";
+import { KapsoPhoneNumberSyncService } from "../../src/modules/kapso/services/kapso-phone-number-sync.service";
 
-const redisHost = process.env.REDIS_HOST ?? "127.0.0.1";
-const redisPort = Number(process.env.REDIS_PORT ?? 6379);
+const redisUrl = process.env.REDIS_URL ? new URL(process.env.REDIS_URL) : undefined;
+const redisUrlDb = redisUrl?.pathname.replace("/", "");
+const redisHost = redisUrl?.hostname ?? process.env.REDIS_HOST ?? "127.0.0.1";
+const redisPort = Number(redisUrl?.port || process.env.REDIS_PORT || 6379);
 const requireRedis = process.env.REQUIRE_REDIS_INTEGRATION === "true";
+const describeRedis = requireRedis ? describe : describe.skip;
 
-describe("Kapso Redis integration", () => {
+describeRedis("Kapso Redis integration", () => {
   const queueName = `kapso-jobs-integration-${process.pid}-${Date.now()}`;
   const connection = {
     host: redisHost,
     port: redisPort,
-    password: process.env.REDIS_PASSWORD || undefined,
-    db: Number(process.env.REDIS_DB ?? 0),
-    tls: process.env.REDIS_TLS === "true" ? {} : undefined,
+    username: redisUrl?.username ? decodeURIComponent(redisUrl.username) : undefined,
+    password: redisUrl?.password ? decodeURIComponent(redisUrl.password) : process.env.REDIS_PASSWORD || undefined,
+    db: Number(redisUrlDb || process.env.REDIS_DB || 0),
+    tls: redisUrl?.protocol === "rediss:" || process.env.REDIS_TLS === "true" ? {} : undefined,
     maxRetriesPerRequest: null,
   };
   let queue: Queue;
@@ -28,11 +35,7 @@ describe("Kapso Redis integration", () => {
     redisAvailable = await canConnectTcp(redisHost, redisPort);
 
     if (!redisAvailable) {
-      if (requireRedis) {
-        throw new Error(`Redis requerido en ${redisHost}:${redisPort} pero no responde.`);
-      }
-
-      return;
+      throw new Error(`Redis requerido en ${redisHost}:${redisPort} pero no responde.`);
     }
 
     queue = new Queue(queueName, { connection });
@@ -59,21 +62,22 @@ describe("Kapso Redis integration", () => {
     await Promise.all([worker?.close(), queueEvents?.close(), queue?.close()]);
   }, 20_000);
 
-  it("registra schedulers únicos y procesa un job real una sola vez", async () => {
-    if (!redisAvailable) {
-      return;
-    }
-
+  it("registra schedulers unicos y procesa un job real una sola vez", async () => {
     const configService = {
-      get: jest.fn((key: string, fallback: number) => {
-        const values: Record<string, number> = {
+      get: jest.fn((key: string, fallback?: unknown) => {
+        const values: Record<string, unknown> = {
+          "kapso.jobsDriver": "bullmq",
           "kapso.pendingSyncIntervalMs": 60_000,
           "kapso.leadTemplateIntervalMs": 90_000,
         };
+
         return values[key] ?? fallback;
       }),
     } as unknown as ConfigService;
-    const scheduler = new KapsoJobsSchedulerService(queue, configService);
+    const moduleRef = { get: jest.fn(() => queue) } as unknown as ModuleRef;
+    const phoneNumberSyncService = { processPendingRemoteSyncs: jest.fn() } as unknown as KapsoPhoneNumberSyncService;
+    const leadAutomationService = { processLeadTemplateCandidates: jest.fn() } as unknown as KapsoLeadAutomationService;
+    const scheduler = new KapsoJobsSchedulerService(configService, moduleRef, phoneNumberSyncService, leadAutomationService);
 
     await scheduler.onModuleInit();
     await scheduler.onModuleInit();

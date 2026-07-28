@@ -7,7 +7,8 @@
  *   como mensajes normales (no template), con URLs firmadas de adjuntos.
  *
  * Idempotencia: reserva por `flow_uuid + idinterno_lead` antes de enviar plantillas.
- * BullMQ coordina jobs entre procesos; el lock local solo evita invocaciones directas
+ * El scheduler local corre dentro del mismo API por defecto. Si se activa BullMQ,
+ * la cola coordina entre procesos; el lock local evita invocaciones directas
  * simultaneas dentro de esta misma instancia.
  */
 
@@ -26,7 +27,11 @@ import {
 } from "../common/kapso.helpers";
 import { JsonRecord } from "../common/kapso.types";
 import { FlowProjectMediaRecord, KapsoFlowProjectMediaRepository } from "../repositories/kapso-flow-project-media.repository";
-import { KapsoLeadAutomationRepository, LeadFlowAnsweredYesContext } from "../repositories/kapso-lead-automation.repository";
+import {
+  KapsoLeadAutomationRepository,
+  LeadFlowAnsweredYesContext,
+  LeadFlowIntroInteractiveContext,
+} from "../repositories/kapso-lead-automation.repository";
 import { KapsoMediaUrlSignerService } from "./kapso-media-url-signer.service";
 import { KapsoPlatformApiService } from "./kapso-platform-api.service";
 
@@ -37,10 +42,45 @@ type InboundMessageCandidate = {
   phoneNumberId: string | null;
   leadPhoneNumber: string | null;
   messageId: string | null;
+  contextMessageId: string | null;
   timestamp: string | null;
   replyText: string | null;
   replySource: "button" | "interactive_button" | "text" | "unsupported";
   message: JsonRecord;
+};
+
+type DeliveryFailureCandidate = {
+  phoneNumberId: string | null;
+  leadPhoneNumber: string | null;
+  messageId: string | null;
+  failureReason: string;
+  payload: JsonRecord;
+};
+
+type DeliverySuccessCandidate = {
+  phoneNumberId: string | null;
+  leadPhoneNumber: string | null;
+  messageId: string | null;
+  deliveryStatus: "delivered" | "read";
+  payload: JsonRecord;
+};
+
+type InitialTemplatePayload = JsonRecord & {
+  to: string;
+  type: "template";
+  template: {
+    name: string;
+    language: {
+      code: string;
+    };
+    components: Array<{
+      type: string;
+      parameters: Array<{
+        type: string;
+        text: string;
+      }>;
+    }>;
+  };
 };
 
 export type InboundWebhookProcessingSummary = {
@@ -48,9 +88,15 @@ export type InboundWebhookProcessingSummary = {
   answeredNo: number;
   answeredYes: number;
   introSent: number;
+  introPending: number;
   introFailed: number;
+  deliveryFailed: number;
+  deliveryConfirmed: number;
+  unidentifiedReplies: number;
   ignored: number;
 };
+
+type IntroSendOutcome = "sent" | "pending" | "failed";
 
 /**
  * Orquestador de contactos iniciales y avance de flujo según respuestas entrantes.
@@ -58,7 +104,7 @@ export type InboundWebhookProcessingSummary = {
 @Injectable()
 export class KapsoLeadAutomationService {
   private readonly logger = new Logger(KapsoLeadAutomationService.name);
-  /** Lock local: no reemplaza BullMQ ni la reserva durable en BD. */
+  /** Lock local: complementa la reserva durable en BD y evita ejecuciones solapadas. */
   private leadTemplateWorkerRunning = false;
 
   constructor(
@@ -71,22 +117,208 @@ export class KapsoLeadAutomationService {
 
   /**
    * Procesa respuestas entrantes de WhatsApp reenviadas por Kapso o Meta.
-   * Por seguridad de negocio, solo botones o textos exactos equivalentes cambian el flujo.
-   * Textos largos o ambiguos quedan fuera para evitar falsos avances o falsos perdidos.
+   * Por seguridad de negocio, solo botones o textos con intención clara cambian el flujo.
+   * Textos ambiguos generan bitácora para el asesor, pero no cambian el lead.
    */
   async processInboundMessageWebhook(payload: JsonRecord): Promise<InboundWebhookProcessingSummary> {
     const messages = this.extractInboundMessageCandidates(payload);
+    const deliveryFailures = this.extractDeliveryFailureCandidates(payload);
+    const deliverySuccesses = this.extractDeliverySuccessCandidates(payload);
     const summary: InboundWebhookProcessingSummary = {
-      processed: messages.length,
+      processed: messages.length + deliveryFailures.length + deliverySuccesses.length,
       answeredNo: 0,
       answeredYes: 0,
       introSent: 0,
+      introPending: 0,
       introFailed: 0,
+      deliveryFailed: 0,
+      deliveryConfirmed: 0,
+      unidentifiedReplies: 0,
       ignored: 0,
     };
 
     if (messages.length > 0) {
       this.logger.verbose(`Inbound message candidates extracted count=${messages.length}`);
+    }
+
+    if (deliveryFailures.length > 0) {
+      this.logger.verbose(`Delivery failure candidates extracted count=${deliveryFailures.length}`);
+    }
+
+    if (deliverySuccesses.length > 0) {
+      this.logger.verbose(`Delivery success candidates extracted count=${deliverySuccesses.length}`);
+    }
+
+    for (const deliveryFailure of deliveryFailures) {
+      this.logger.verbose(
+        `Delivery failure candidate=${summarizePayload({
+          phoneNumberId: deliveryFailure.phoneNumberId,
+          leadPhoneNumber: deliveryFailure.leadPhoneNumber,
+          messageId: deliveryFailure.messageId,
+          failureReason: deliveryFailure.failureReason,
+        })}`,
+      );
+
+      if (!deliveryFailure.phoneNumberId || !deliveryFailure.leadPhoneNumber) {
+        summary.ignored += 1;
+        this.logger.warn(
+          `Delivery failure ignored reason=missing_phone_context phoneNumberId=${deliveryFailure.phoneNumberId ?? "n/a"} messageId=${
+            deliveryFailure.messageId ?? "n/a"
+          }`,
+        );
+        continue;
+      }
+
+      const updated = await this.leadAutomationRepository.markInitialTemplateDeliveryFailed({
+        phoneNumberId: deliveryFailure.phoneNumberId,
+        leadPhoneNumber: deliveryFailure.leadPhoneNumber,
+        messageId: deliveryFailure.messageId,
+        failureReason: deliveryFailure.failureReason,
+        responsePayload: deliveryFailure.payload,
+      });
+
+      if (updated) {
+        summary.deliveryFailed += 1;
+        this.logger.warn(
+          `Initial template delivery failed registered phoneNumberId=${deliveryFailure.phoneNumberId} messageId=${
+            deliveryFailure.messageId ?? "n/a"
+          } reason=${deliveryFailure.failureReason}`,
+        );
+        continue;
+      }
+
+      const introMediaFailed = await this.leadAutomationRepository.markLeadFlowIntroMediaFailed({
+        phoneNumberId: deliveryFailure.phoneNumberId,
+        leadPhoneNumber: deliveryFailure.leadPhoneNumber,
+        messageId: deliveryFailure.messageId,
+        failureReason: deliveryFailure.failureReason,
+        responsePayload: deliveryFailure.payload,
+      });
+
+      if (introMediaFailed?.state === "updated_pending") {
+        summary.introPending += 1;
+        this.logger.warn(
+          `Intro media delivery failed pending_more_media phoneNumberId=${deliveryFailure.phoneNumberId} messageId=${
+            deliveryFailure.messageId ?? "n/a"
+          } reason=${deliveryFailure.failureReason}`,
+        );
+        continue;
+      }
+
+      if (introMediaFailed?.state === "ready") {
+        const introWasSent = await this.sendIntroInteractiveMessage(introMediaFailed.context);
+
+        if (introWasSent) {
+          summary.introSent += 1;
+        } else {
+          summary.introFailed += 1;
+        }
+
+        this.logger.warn(
+          `Intro media partially failed but terminal; interactive intro processed phoneNumberId=${deliveryFailure.phoneNumberId} messageId=${
+            deliveryFailure.messageId ?? "n/a"
+          } reason=${deliveryFailure.failureReason}`,
+        );
+        continue;
+      }
+
+      if (introMediaFailed?.state === "failed") {
+        summary.introFailed += 1;
+        this.logger.warn(
+          `Intro media delivery failed all_media_failed phoneNumberId=${deliveryFailure.phoneNumberId} messageId=${
+            deliveryFailure.messageId ?? "n/a"
+          } reason=${deliveryFailure.failureReason}`,
+        );
+        continue;
+      }
+
+      summary.ignored += 1;
+      this.logger.verbose(
+        `Delivery failure ignored reason=already_terminal_or_missing_flow phoneNumberId=${deliveryFailure.phoneNumberId} messageId=${
+          deliveryFailure.messageId ?? "n/a"
+        }`,
+      );
+    }
+
+    for (const deliverySuccess of deliverySuccesses) {
+      this.logger.verbose(
+        `Delivery success candidate=${summarizePayload({
+          phoneNumberId: deliverySuccess.phoneNumberId,
+          leadPhoneNumber: deliverySuccess.leadPhoneNumber,
+          messageId: deliverySuccess.messageId,
+          deliveryStatus: deliverySuccess.deliveryStatus,
+        })}`,
+      );
+
+      if (!deliverySuccess.phoneNumberId || !deliverySuccess.leadPhoneNumber) {
+        summary.ignored += 1;
+        this.logger.warn(
+          `Delivery success ignored reason=missing_phone_context phoneNumberId=${deliverySuccess.phoneNumberId ?? "n/a"} messageId=${
+            deliverySuccess.messageId ?? "n/a"
+          }`,
+        );
+        continue;
+      }
+
+      const updated = await this.leadAutomationRepository.markInitialTemplateDeliverySucceeded({
+        phoneNumberId: deliverySuccess.phoneNumberId,
+        leadPhoneNumber: deliverySuccess.leadPhoneNumber,
+        messageId: deliverySuccess.messageId,
+        deliveryStatus: deliverySuccess.deliveryStatus,
+        responsePayload: deliverySuccess.payload,
+      });
+
+      if (updated) {
+        summary.deliveryConfirmed += 1;
+        this.logger.log(
+          `Initial template delivery confirmed phoneNumberId=${deliverySuccess.phoneNumberId} messageId=${
+            deliverySuccess.messageId ?? "n/a"
+          } status=${deliverySuccess.deliveryStatus}`,
+        );
+        continue;
+      }
+
+      const introMediaDelivery = await this.leadAutomationRepository.markLeadFlowIntroMediaDelivered({
+        phoneNumberId: deliverySuccess.phoneNumberId,
+        leadPhoneNumber: deliverySuccess.leadPhoneNumber,
+        messageId: deliverySuccess.messageId,
+        deliveryStatus: deliverySuccess.deliveryStatus,
+        responsePayload: deliverySuccess.payload,
+      });
+
+      if (introMediaDelivery?.state === "updated_pending") {
+        summary.introPending += 1;
+        this.logger.log(
+          `Intro media delivery confirmed pending_more_media phoneNumberId=${deliverySuccess.phoneNumberId} messageId=${
+            deliverySuccess.messageId ?? "n/a"
+          } status=${deliverySuccess.deliveryStatus}`,
+        );
+        continue;
+      }
+
+      if (introMediaDelivery?.state === "ready") {
+        const introWasSent = await this.sendIntroInteractiveMessage(introMediaDelivery.context);
+
+        if (introWasSent) {
+          summary.introSent += 1;
+        } else {
+          summary.introFailed += 1;
+        }
+
+        this.logger.log(
+          `Intro media fully delivered; interactive intro processed phoneNumberId=${deliverySuccess.phoneNumberId} messageId=${
+            deliverySuccess.messageId ?? "n/a"
+          }`,
+        );
+        continue;
+      }
+
+      summary.ignored += 1;
+      this.logger.verbose(
+        `Delivery success ignored reason=already_confirmed_or_missing_flow phoneNumberId=${deliverySuccess.phoneNumberId} messageId=${
+          deliverySuccess.messageId ?? "n/a"
+        }`,
+      );
     }
 
     for (const message of messages) {
@@ -98,7 +330,6 @@ export class KapsoLeadAutomationService {
           timestamp: message.timestamp,
           replyText: message.replyText,
           replySource: message.replySource,
-          rawMessage: message.message,
         })}`,
       );
 
@@ -116,6 +347,7 @@ export class KapsoLeadAutomationService {
         const updated = await this.leadAutomationRepository.markLeadFlowAnsweredNo({
           phoneNumberId: message.phoneNumberId,
           leadPhoneNumber: message.leadPhoneNumber,
+          contextMessageId: message.contextMessageId,
           responsePayload: this.buildInboundResponsePayload(message),
         });
 
@@ -138,15 +370,18 @@ export class KapsoLeadAutomationService {
         const executionContext = await this.leadAutomationRepository.markLeadFlowAnsweredYes({
           phoneNumberId: message.phoneNumberId,
           leadPhoneNumber: message.leadPhoneNumber,
+          contextMessageId: message.contextMessageId,
           responsePayload: this.buildInboundResponsePayload(message),
         });
 
         if (executionContext) {
           summary.answeredYes += 1;
-          const introWasSent = await this.sendIntroMessageForAcceptedLead(executionContext);
+          const introOutcome = await this.sendIntroMessageForAcceptedLead(executionContext);
 
-          if (introWasSent) {
+          if (introOutcome === "sent") {
             summary.introSent += 1;
+          } else if (introOutcome === "pending") {
+            summary.introPending += 1;
           } else {
             summary.introFailed += 1;
           }
@@ -162,6 +397,26 @@ export class KapsoLeadAutomationService {
           `No active lead flow found for Yes response phoneNumberId=${message.phoneNumberId} messageId=${message.messageId ?? "n/a"}`,
         );
         continue;
+      }
+
+      if (message.replySource !== "unsupported" && message.replyText) {
+        const registered = await this.leadAutomationRepository.registerUnidentifiedInitialReply({
+          phoneNumberId: message.phoneNumberId,
+          leadPhoneNumber: message.leadPhoneNumber,
+          contextMessageId: message.contextMessageId,
+          replyText: message.replyText,
+          responsePayload: this.buildInboundResponsePayload(message),
+        });
+
+        if (registered) {
+          summary.unidentifiedReplies += 1;
+          this.logger.log(
+            `Lead flow unidentified reply registered phoneNumberId=${message.phoneNumberId} messageId=${
+              message.messageId ?? "n/a"
+            }`,
+          );
+          continue;
+        }
       }
 
       summary.ignored += 1;
@@ -209,7 +464,21 @@ export class KapsoLeadAutomationService {
       let failed = 0;
 
       for (const candidate of candidates) {
-        this.logger.verbose(`Lead template candidate payload=${summarizePayload(candidate)}`);
+        this.logger.verbose(
+          `Lead template candidate=${summarizePayload({
+            leadId: candidate.leadId,
+            internalLeadId: candidate.internalLeadId,
+            idEmpleadoLead: candidate.idEmpleadoLead,
+            idProyectoNetsuite: candidate.idProyectoNetsuite ?? candidate.idproyecto_lead,
+            projectName: candidate.projectName ?? candidate.proyecto_lead,
+            phoneNumberId: candidate.phoneNumberId,
+            flowUuid: candidate.flowUuid,
+            templateName: candidate.templateName,
+            templateLanguage: candidate.templateLanguage,
+            templateStatus: candidate.templateStatus,
+            templateParameterCount: candidate.templateParameterCount,
+          })}`,
+        );
 
         const hasAdvisor = candidate.idEmpleadoLead !== null && String(candidate.idEmpleadoLead).trim() !== "";
         const hasKapsoAssignment = candidate.kapsoRelationId !== null && candidate.phoneNumberId !== null;
@@ -276,7 +545,15 @@ export class KapsoLeadAutomationService {
               this.logger.log(
                 `Initial template send started leadId=${candidate.leadId} internalLeadId=${candidate.internalLeadId} executionId=${reservation.executionId} phoneNumberId=${candidate.phoneNumberId} template=${candidate.templateName}`,
               );
-              this.logger.verbose(`Initial template payload=${summarizePayload(initialTemplatePayload)}`);
+              this.logger.verbose(
+                `Initial template request=${summarizePayload({
+                  to: initialTemplatePayload.to,
+                  type: initialTemplatePayload.type,
+                  templateName: initialTemplatePayload.template?.name,
+                  templateLanguage: initialTemplatePayload.template?.language,
+                  parameterCount: initialTemplatePayload.template?.components?.[0]?.parameters?.length ?? 0,
+                })}`,
+              );
 
               const responsePayload = await this.kapsoPlatformApiService.sendWhatsappMessage(
                 candidate.phoneNumberId ?? "",
@@ -290,14 +567,17 @@ export class KapsoLeadAutomationService {
                 )}`,
               );
 
+              const initialTemplateMessageId = this.extractOutboundMessageId(responsePayload);
+
               await this.leadAutomationRepository.markInitialTemplateSent({
                 executionId: reservation.executionId,
+                messageId: initialTemplateMessageId,
                 responsePayload: this.toJsonRecord(responsePayload),
               });
 
               sent += 1;
               this.logger.log(
-                `Initial template sent leadId=${candidate.leadId} internalLeadId=${candidate.internalLeadId} phoneNumberId=${candidate.phoneNumberId}`,
+                `Initial template sent leadId=${candidate.leadId} internalLeadId=${candidate.internalLeadId} phoneNumberId=${candidate.phoneNumberId} messageId=${initialTemplateMessageId ?? "not_provided"}`,
               );
             } catch (error) {
               failed += 1;
@@ -353,13 +633,44 @@ export class KapsoLeadAutomationService {
     return [...directMessages, ...metaMessages];
   }
 
+  /** Admite fallos asincronicos de entrega emitidos por Kapso y por Meta. */
+  private extractDeliveryFailureCandidates(payload: JsonRecord): DeliveryFailureCandidate[] {
+    const rootPhoneNumberId = this.extractPayloadPhoneNumberId(payload);
+    const directFailures = this.mapKapsoDeliveryFailure(payload, rootPhoneNumberId);
+    const metaFailures = asArray<JsonRecord>(payload.entry).flatMap((entry) =>
+      asArray<JsonRecord>(entry.changes).flatMap((change) => {
+        const value = asRecord(change.value);
+        const phoneNumberId = this.extractPayloadPhoneNumberId(value) ?? rootPhoneNumberId;
+        return this.mapDeliveryStatuses(asArray<JsonRecord>(value.statuses), phoneNumberId);
+      }),
+    );
+
+    return [...directFailures, ...metaFailures];
+  }
+
+  /** Admite confirmaciones asincronicas de entrega emitidas por Kapso y por Meta. */
+  private extractDeliverySuccessCandidates(payload: JsonRecord): DeliverySuccessCandidate[] {
+    const rootPhoneNumberId = this.extractPayloadPhoneNumberId(payload);
+    const directSuccesses = this.mapKapsoDeliverySuccess(payload, rootPhoneNumberId);
+    const metaSuccesses = asArray<JsonRecord>(payload.entry).flatMap((entry) =>
+      asArray<JsonRecord>(entry.changes).flatMap((change) => {
+        const value = asRecord(change.value);
+        const phoneNumberId = this.extractPayloadPhoneNumberId(value) ?? rootPhoneNumberId;
+        return this.mapDeliverySuccessStatuses(asArray<JsonRecord>(value.statuses), phoneNumberId);
+      }),
+    );
+
+    return [...directSuccesses, ...metaSuccesses];
+  }
+
   private mapInboundMessages(messages: JsonRecord[], phoneNumberId: string | null): InboundMessageCandidate[] {
     return messages.map((message) => {
       const reply = this.extractReplyText(message);
 
       return {
         phoneNumberId,
-        leadPhoneNumber: firstNonNullString(message.from),
+        leadPhoneNumber: this.normalizeLeadPhoneNumber(message.from),
+        contextMessageId: this.extractInboundContextMessageId(message),
         messageId: firstNonNullString(message.id),
         timestamp: firstNonNullString(message.timestamp),
         replyText: reply.replyText,
@@ -367,6 +678,101 @@ export class KapsoLeadAutomationService {
         message,
       };
     });
+  }
+
+  private mapKapsoDeliveryFailure(payload: JsonRecord, phoneNumberId: string | null): DeliveryFailureCandidate[] {
+    const message = asRecord(payload.message);
+
+    if (Object.keys(message).length === 0) {
+      return this.mapDeliveryStatuses(asArray<JsonRecord>(payload.statuses), phoneNumberId);
+    }
+
+    const kapso = asRecord(message.kapso);
+    const statuses = asArray<JsonRecord>(kapso.statuses);
+    const failedStatus = statuses.find((status) => this.normalizeReplyText(firstNonNullString(status.status)) === "failed");
+    const messageStatus = firstNonNullString(kapso.status, message.status);
+
+    if (this.normalizeReplyText(messageStatus) !== "failed" && !failedStatus) {
+      return [];
+    }
+
+    return [
+      {
+        phoneNumberId,
+        leadPhoneNumber: this.normalizeLeadPhoneNumber(firstNonNullString(message.to, getNestedValue(payload, "conversation", "phone_number"))),
+        messageId: firstNonNullString(message.id, failedStatus?.id),
+        failureReason: this.extractDeliveryFailureReason(failedStatus ?? message),
+        payload,
+      },
+    ];
+  }
+
+  private mapDeliveryStatuses(statuses: JsonRecord[], phoneNumberId: string | null): DeliveryFailureCandidate[] {
+    return statuses
+      .filter((status) => this.normalizeReplyText(firstNonNullString(status.status)) === "failed")
+      .map((status) => ({
+        phoneNumberId,
+        leadPhoneNumber: this.normalizeLeadPhoneNumber(firstNonNullString(status.recipient_id, status.to)),
+        messageId: firstNonNullString(status.id),
+        failureReason: this.extractDeliveryFailureReason(status),
+        payload: status,
+      }));
+  }
+
+  private mapKapsoDeliverySuccess(payload: JsonRecord, phoneNumberId: string | null): DeliverySuccessCandidate[] {
+    const message = asRecord(payload.message);
+
+    if (Object.keys(message).length === 0) {
+      return this.mapDeliverySuccessStatuses(asArray<JsonRecord>(payload.statuses), phoneNumberId);
+    }
+
+    const kapso = asRecord(message.kapso);
+    const statuses = asArray<JsonRecord>(kapso.statuses);
+    const confirmedStatus = statuses.find((status) =>
+      this.isConfirmedDeliveryStatus(this.normalizeReplyText(firstNonNullString(status.status))),
+    );
+    const messageStatus = this.normalizeReplyText(firstNonNullString(kapso.status, message.status));
+
+    if (!this.isConfirmedDeliveryStatus(messageStatus) && !confirmedStatus) {
+      return [];
+    }
+
+    return [
+      {
+        phoneNumberId,
+        leadPhoneNumber: this.normalizeLeadPhoneNumber(firstNonNullString(message.to, getNestedValue(payload, "conversation", "phone_number"))),
+        messageId: firstNonNullString(message.id, confirmedStatus?.id),
+        deliveryStatus: confirmedStatus
+          ? (this.normalizeReplyText(firstNonNullString(confirmedStatus.status)) as "delivered" | "read")
+          : (messageStatus as "delivered" | "read"),
+        payload,
+      },
+    ];
+  }
+
+  private mapDeliverySuccessStatuses(statuses: JsonRecord[], phoneNumberId: string | null): DeliverySuccessCandidate[] {
+    return statuses
+      .filter((status) => this.isConfirmedDeliveryStatus(this.normalizeReplyText(firstNonNullString(status.status))))
+      .map((status) => ({
+        phoneNumberId,
+        leadPhoneNumber: this.normalizeLeadPhoneNumber(firstNonNullString(status.recipient_id, status.to)),
+        messageId: firstNonNullString(status.id),
+        deliveryStatus: this.normalizeReplyText(firstNonNullString(status.status)) as "delivered" | "read",
+        payload: status,
+      }));
+  }
+
+  private isConfirmedDeliveryStatus(status: string | null): status is "delivered" | "read" {
+    return status === "delivered" || status === "read";
+  }
+
+  private extractDeliveryFailureReason(payload: JsonRecord): string {
+    const firstError = asRecord(asArray<JsonRecord>(payload.errors)[0]);
+    return (
+      firstNonNullString(firstError.message, getNestedValue(firstError, "error_data", "details"), firstError.title) ??
+      firstNonNullString(payload.status) ??
+      "WhatsApp delivery failed"
+    );
   }
 
   private extractPayloadPhoneNumberId(payload: JsonRecord): string | null {
@@ -405,9 +811,18 @@ export class KapsoLeadAutomationService {
     };
   }
 
+  private extractInboundContextMessageId(message: JsonRecord): string | null {
+    const context = asRecord(message.context);
+    const kapso = asRecord(message.kapso);
+    const kapsoContext = asRecord(kapso.context);
+
+    return firstNonNullString(context.id, context.message_id, context.messageId, kapsoContext.id, kapsoContext.message_id, kapsoContext.messageId);
+  }
+
   private buildInboundResponsePayload(message: InboundMessageCandidate) {
     return {
       messageId: message.messageId,
+      contextMessageId: message.contextMessageId,
       timestamp: message.timestamp,
       replyText: message.replyText,
       replySource: message.replySource,
@@ -417,13 +832,37 @@ export class KapsoLeadAutomationService {
     };
   }
 
-  /** Regla terminal actual: solo `No, gracias` exacto detiene el flujo. */
+  /** Regla terminal: botón `No, gracias` o texto libre con rechazo claro detiene el flujo. */
   private isExplicitNoThanksReply(message: InboundMessageCandidate): boolean {
     if (message.replySource === "unsupported") {
       return false;
     }
 
-    return this.normalizeReplyText(message.replyText) === "no gracias";
+    const normalizedText = this.normalizeReplyText(message.replyText);
+
+    if (normalizedText === "no gracias") {
+      return true;
+    }
+
+    if (message.replySource !== "text") {
+      return false;
+    }
+
+    const clearNegativePhrases = [
+      "no quiero",
+      "no deseo",
+      "no necesito",
+      "no me interesa",
+      "esta equivocado",
+      "numero equivocado",
+      "equivocado",
+    ];
+
+    return (
+      normalizedText === "no" ||
+      normalizedText === "hola no" ||
+      clearNegativePhrases.some((phrase) => normalizedText.includes(phrase))
+    );
   }
 
   /** Regla de avance: solo `Si, enviar informacion` exacto habilita el siguiente paso. */
@@ -482,7 +921,7 @@ export class KapsoLeadAutomationService {
     return null;
   }
 
-  private buildInitialTemplatePayload(candidate: JsonRecord, leadPhoneNumber: string): JsonRecord {
+  private buildInitialTemplatePayload(candidate: JsonRecord, leadPhoneNumber: string): InitialTemplatePayload {
     return {
       messaging_product: "whatsapp",
       recipient_type: "individual",
@@ -520,14 +959,28 @@ export class KapsoLeadAutomationService {
     return { value };
   }
 
+  private extractOutboundMessageId(responsePayload: unknown): string | null {
+    const payload = this.toJsonRecord(responsePayload);
+    const messages = asArray(payload.messages);
+    const firstMessage = asRecord(messages[0]);
+
+    return firstNonNullString(
+      firstMessage.id,
+      getNestedValue(payload, "message", "id"),
+      payload.whatsapp_message_id,
+      payload.messageId,
+      payload.id,
+    );
+  }
+
   /**
    * Envia la intro como mensaje normal porque el cliente ya abrio ventana de 24h.
    * Los adjuntos son opcionales y dependen del proyecto permitido para el flujo.
    */
-  private async sendIntroMessageForAcceptedLead(context: LeadFlowAnsweredYesContext): Promise<boolean> {
+  private async sendIntroMessageForAcceptedLead(context: LeadFlowAnsweredYesContext): Promise<IntroSendOutcome> {
     if (!context.idProyectoNetsuite) {
       await this.markIntroFailed(context.executionId, "El flujo no tiene proyecto CRM asociado para resolver adjuntos.");
-      return false;
+      return "failed";
     }
 
     try {
@@ -543,6 +996,13 @@ export class KapsoLeadAutomationService {
       );
       this.logger.verbose(`Intro media items=${summarizePayload(mediaItems)}`);
 
+      if (mediaItems.length === 0) {
+        return (await this.sendIntroInteractiveMessage(context)) ? "sent" : "failed";
+      }
+
+      const mediaMessages: JsonRecord[] = [];
+      const interactivePayload = this.buildIntroInteractivePayload(context, mediaItems);
+
       for (const mediaItem of mediaItems) {
         const mediaPayload = this.buildIntroMediaPayload(context, mediaItem);
 
@@ -553,14 +1013,53 @@ export class KapsoLeadAutomationService {
         );
 
         const mediaResponse = await this.kapsoPlatformApiService.sendWhatsappMessage(context.phoneNumberId, mediaPayload, apiOptions);
+        const mediaMessageId = this.extractOutboundMessageId(mediaResponse);
+
+        if (!mediaMessageId) {
+          throw new Error(`Kapso no devolvio message id para el adjunto ${mediaItem.id}`);
+        }
+
+        mediaMessages.push({
+          mediaId: mediaItem.id,
+          mediaType: mediaItem.mediaType,
+          storedFilename: mediaItem.storedFilename,
+          originalName: mediaItem.originalName,
+          messageId: mediaMessageId,
+          status: "accepted",
+        });
 
         this.logger.verbose(
           `Intro media Kapso response executionId=${context.executionId} mediaId=${mediaItem.id} payload=${summarizePayload(mediaResponse)}`,
         );
       }
 
-      const interactivePayload = this.buildIntroInteractivePayload(context, mediaItems);
+      await this.leadAutomationRepository.markLeadFlowIntroMediaPending({
+        executionId: context.executionId,
+        pendingPayload: {
+          stage: "intro_media_pending",
+          mediaMessages,
+          interactivePayload,
+        },
+      });
 
+      this.logger.log(
+        `Intro media sent; interactive message pending delivery confirmation executionId=${context.executionId} mediaCount=${mediaMessages.length}`,
+      );
+      return "pending";
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown intro send error";
+      await this.markIntroFailed(context.executionId, message);
+      this.logger.error(`Intro message failed executionId=${context.executionId} reason=${message}`);
+      return "failed";
+    }
+  }
+
+  private async sendIntroInteractiveMessage(context: LeadFlowAnsweredYesContext | LeadFlowIntroInteractiveContext): Promise<boolean> {
+    const apiOptions = toKapsoApiOptions({ projectId: context.projectExternalId });
+    const interactivePayload =
+      "interactivePayload" in context ? this.toJsonRecord(context.interactivePayload) : this.buildIntroInteractivePayload(context, []);
+
+    try {
       this.logger.verbose(`Intro interactive payload executionId=${context.executionId} payload=${summarizePayload(interactivePayload)}`);
 
       const interactiveResponse = await this.kapsoPlatformApiService.sendWhatsappMessage(
@@ -577,9 +1076,7 @@ export class KapsoLeadAutomationService {
         executionId: context.executionId,
       });
 
-      this.logger.log(
-        `Intro message sent executionId=${context.executionId} phoneNumberId=${context.phoneNumberId} mediaCount=${mediaItems.length}`,
-      );
+      this.logger.log(`Intro interactive message sent executionId=${context.executionId} phoneNumberId=${context.phoneNumberId}`);
       return true;
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unknown intro send error";

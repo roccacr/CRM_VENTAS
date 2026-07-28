@@ -165,7 +165,7 @@ export class KapsoPhoneNumberSyncService {
   }
 
   /**
-   * Worker BullMQ: reintenta números en `pending_remote_sync`.
+   * Worker de sincronizacion: reintenta numeros en `pending_remote_sync`.
    * El lock en memoria evita dos corridas superpuestas dentro de esta instancia.
    * La reserva persistida en repositorio protege efectos cuando existen varias instancias.
    *

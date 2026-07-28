@@ -74,9 +74,14 @@ export default registerAs("kapso", () => {
 
     whatsappWebhookSecret: process.env.KAPSO_WHATSAPP_WEBHOOK_SECRET ?? "",
 
+    // El relay Meta puede tener un secret distinto al webhook Kapso Events.
+    metaWebhookSecret: process.env.KAPSO_META_WEBHOOK_SECRET ?? process.env.KAPSO_WHATSAPP_WEBHOOK_SECRET ?? "",
+
     pendingSyncIntervalMs: Number(process.env.KAPSO_PENDING_SYNC_INTERVAL_MS ?? 30000),
 
     pendingSyncBatchSize: Number(process.env.KAPSO_PENDING_SYNC_BATCH_SIZE ?? 10),
+
+    jobsDriver: (process.env.KAPSO_JOBS_DRIVER ?? "local").trim().toLowerCase(),
 
     leadTemplateIntervalMs: Number(process.env.KAPSO_LEAD_TEMPLATE_INTERVAL_MS ?? 60000),
     leadTemplateBatchSize: Number(process.env.KAPSO_LEAD_TEMPLATE_BATCH_SIZE ?? 100),

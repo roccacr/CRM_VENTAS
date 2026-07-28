@@ -87,7 +87,7 @@ flowchart TD
 - Carga multiple de imagenes/videos.
 - Limpieza de adjuntos al eliminar archivo o retirar proyecto del flujo.
 - URLs temporales firmadas para servir media.
-- Jobs distribuidos con BullMQ y Redis.
+- Jobs recurrentes dentro del mismo API, sin Docker ni Redis.
 - Health checks separados para liveness y readiness.
 - Tests unitarios, e2e e integracion documentados.
 
@@ -115,7 +115,7 @@ flowchart TD
 | MySQL                     | Base CRM Ventas.                             |
 | Kapso Platform API        | Numeros, templates, webhooks y mensajes.     |
 | Meta/Kapso Webhooks       | Eventos de mensajes, respuestas y lifecycle. |
-| BullMQ + Redis            | Jobs distribuidos y control de concurrencia. |
+| Scheduler local Kapso     | Jobs recurrentes y control anti-solape.      |
 | Token CRM (`token_admin`) | Autenticacion oficial del frontend CRM.      |
 | Multer                    | Carga de adjuntos.                           |
 | libphonenumber-js         | Normalizacion de telefonos.                  |
@@ -144,13 +144,15 @@ npm run test:e2e
 npm run build
 ```
 
-Infra local de integracion:
+Infra local de integracion sin Docker ni Redis:
 
 ```bash
-npm run integration:up
 npm run test:integration:coverage
-npm run integration:down
 ```
+
+El API ejecuta los jobs Kapso dentro del mismo proceso con `KAPSO_JOBS_DRIVER=local`.
+Ese es el modo operativo oficial para desarrollo, staging y produccion de una sola instancia: mantiene el flujo completo sin Docker ni Redis.
+Redis/BullMQ queda reservado como modo alternativo futuro y solo se usa si se activa explicitamente `KAPSO_JOBS_DRIVER=bullmq` para un despliegue con multiples replicas.
 
 Cuando Kapso debe llamar la maquina local se usa ngrok:
 
@@ -169,9 +171,9 @@ flowchart TD
   WH --> RECEIPTS["kapso_webhook_receipts"]
   RECEIPTS --> SYNC["KapsoSyncService"]
 
-  REDIS["Redis"] --> QUEUE["BullMQ kapso-jobs"]
-  QUEUE --> PHONE["PhoneNumberSyncService"]
-  QUEUE --> LEADS["LeadAutomationService"]
+  REST --> JOBS["Scheduler local Kapso"]
+  JOBS --> PHONE["PhoneNumberSyncService"]
+  JOBS --> LEADS["LeadAutomationService"]
 
   REST --> ADMIN["AdminKapsoIntegrationsService"]
   SYNC --> PHONE
@@ -269,7 +271,7 @@ Por eso el API guarda `project.id` y usa la API key del mismo proyecto mediante 
 
 ### 2. Candidato de lead
 
-El worker evalua leads nuevos cada minuto, coordinado por BullMQ para no duplicar procesamiento entre instancias.
+El scheduler local evalua leads nuevos cada minuto dentro del API, con bloqueo anti-solape y reserva durable en MySQL para no repetir procesamiento.
 
 ```sql
 segimineto_lead = '01-LEAD-INTERESADO'
@@ -447,16 +449,18 @@ Si un archivo fisico ya no existe, el API no debe romper la vista. Desactiva la 
 
 ## Jobs, idempotencia y concurrencia
 
-BullMQ reemplaza timers locales para evitar ejecuciones duplicadas cuando existan varias instancias.
-La concurrencia inicial es `1` de forma intencional: prioriza orden e idempotencia mientras se mide volumen real. Si el queue lag crece o la sincronizacion de numeros bloquea leads, el siguiente paso es separar colas por responsabilidad.
+El scheduler local evita que el despliegue actual dependa de Docker o Redis.
+La concurrencia inicial es `1` de forma intencional: prioriza orden e idempotencia mientras se mide volumen real.
+Si el sistema se despliega con multiples replicas, el siguiente paso es activar `KAPSO_JOBS_DRIVER=bullmq` con Redis administrado o separar colas por responsabilidad.
 
 ```mermaid
 flowchart TD
-  APP["Inicio API"] --> S["Scheduler BullMQ"]
-  S --> Q["Redis queue"]
-  Q --> W["Worker concurrency 1"]
-  W --> A["Sync numeros pendientes"]
-  W --> B["Evaluar leads candidatos"]
+  APP["Inicio API"] --> S["Scheduler local Kapso"]
+  S --> A["Sync numeros pendientes"]
+  S --> B["Evaluar leads candidatos"]
+  A --> DB["MySQL RDS"]
+  B --> DB
+  B --> KAPSO["Kapso API"]
 ```
 
 ### Idempotencia de webhooks
@@ -495,11 +499,14 @@ sequenceDiagram
 | `KAPSO_PROJECT_API_KEYS_JSON`   | Mapa `project.id -> apiKey`.                                     |
 | `KAPSO_PUBLIC_BASE_URL`         | URL publica para webhooks/media.                                 |
 | `KAPSO_PLATFORM_WEBHOOK_SECRET` | Secreto HMAC Platform.                                           |
-| `KAPSO_WHATSAPP_WEBHOOK_SECRET` | Secreto HMAC WhatsApp/Meta.                                      |
+| `KAPSO_WHATSAPP_WEBHOOK_SECRET` | Secreto HMAC del webhook Kapso Events.                           |
+| `KAPSO_META_WEBHOOK_SECRET`     | Secreto HMAC del webhook Meta Forward.                           |
 | `KAPSO_MEDIA_STORAGE_PATH`      | Ruta local de adjuntos.                                          |
 | `KAPSO_MEDIA_SIGNING_SECRET`    | Firma URLs temporales.                                           |
 | `MYSQL_*`                       | Conexion a CRM Ventas.                                           |
-| `REDIS_*`                       | Conexion a Redis BullMQ.                                         |
+| `KAPSO_JOBS_DRIVER`             | `local` es el modo oficial actual. `bullmq` solo para multiples replicas. |
+| `REDIS_URL`                     | No configurar en modo `local`. Requerido solo cuando `KAPSO_JOBS_DRIVER=bullmq`. |
+| `REDIS_HOST`, `REDIS_PORT`      | Alternativa a `REDIS_URL` solamente en modo `bullmq`.             |
 
 ### Checklist de despliegue
 
@@ -515,7 +522,8 @@ flowchart LR
 
 - `MYSQL_MIGRATIONS_RUN=false` en runtime.
 - Ejecutar `npm run migration:run` como paso controlado del release.
-- Redis disponible antes de levantar workers.
+- Confirmar `KAPSO_JOBS_DRIVER=local` para una sola instancia.
+- Si se cambia a `KAPSO_JOBS_DRIVER=bullmq`, validar Redis administrado antes del arranque.
 - `KAPSO_PUBLIC_BASE_URL` debe ser publico si Kapso descarga adjuntos.
 - Si hay mas de una replica, `archivos/` debe ser volumen compartido o migrarse a storage de objetos.
 
@@ -549,7 +557,7 @@ npm audit --omit=dev
 | `POST`   | `/api/v1/webhooks/kapso/events`                                     | Webhook de mensajes/eventos WhatsApp.          |
 | `POST`   | `/api/v1/webhooks/kapso/meta`                                       | Relay de payload Meta.                         |
 | `GET`    | `/api/v1/health/live`                                               | Liveness.                                      |
-| `GET`    | `/api/v1/health/ready`                                              | Readiness MySQL + Redis.                       |
+| `GET`    | `/api/v1/health/ready`                                              | Readiness MySQL + driver de jobs activo.       |
 
 ## Observabilidad
 
@@ -573,7 +581,7 @@ El resumen esta aqui para lectura rapida. El detalle ADR esta en [docs/DECISIONE
 
 | Decision                            | Motivo                                                                       | Alternativa descartada                          |
 | ----------------------------------- | ---------------------------------------------------------------------------- | ----------------------------------------------- |
-| BullMQ + Redis                      | Coordina jobs entre instancias y evita timers duplicados.                    | `setInterval` por instancia.                    |
+| Scheduler local por defecto         | Mantiene el flujo operativo en una sola instancia sin Docker ni Redis.       | BullMQ desde el inicio sin necesidad actual.    |
 | MySQL como fuente CRM               | El CRM ya opera sobre MySQL y las bitacoras viven ahi.                       | Base paralela sin sincronizacion.               |
 | Repository pattern                  | Aisla SQL complejo y facilita pruebas de servicios.                          | SQL directo en controllers/services.            |
 | Template para saludo                | Permite iniciar conversacion fuera de ventana de 24 horas.                   | Mensaje normal, no permitido si no hay ventana. |
@@ -612,7 +620,7 @@ No se llama a Kapso. Se registra bitacora con caida `68` y la ejecucion queda ce
 
 ### Que pasa si el cliente responde texto largo?
 
-No se interpreta automaticamente. Solo se procesan botones o textos exactos equivalentes a `Si, enviar informacion` y `No, gracias`.
+No se modifica el lead automaticamente. Si el texto tiene rechazo claro como `no quiero informacion`, se trata como `No, gracias`; si es ambiguo, se registra una bitacora con el mensaje exacto y el asesor decide.
 
 ### Que pasa si quito un proyecto del flujo?
 
@@ -629,13 +637,13 @@ La evidencia completa esta separada para no convertir el README en un informe in
 - [docs/EVIDENCIA_TECNICA.md](docs/EVIDENCIA_TECNICA.md): comandos, matriz codigo-comportamiento, KPI y criterio honesto de cierre.
 - [docs/DECISIONES_ARQUITECTURA.md](docs/DECISIONES_ARQUITECTURA.md): decisiones ADR, alternativas descartadas y riesgos.
 - [docs/PRUEBAS_RENDIMIENTO.md](docs/PRUEBAS_RENDIMIENTO.md): smoke test de performance, variables y escenarios de carga.
-- [docs/RUNBOOK_OPERACION.md](docs/RUNBOOK_OPERACION.md): diagnostico operativo para fallos Kapso, Redis, MySQL, media y webhooks.
+- [docs/RUNBOOK_OPERACION.md](docs/RUNBOOK_OPERACION.md): diagnostico operativo para fallos Kapso, jobs, MySQL, media y webhooks.
 
 | Area              | Evidencia                                                                       |
 | ----------------- | ------------------------------------------------------------------------------- |
 | Unitarias y e2e   | Suite Jest documentada en `test/`.                                              |
 | Integracion MySQL | Schema efimero para migraciones y repositorios.                                 |
-| Redis/BullMQ      | Jobs distribuidos y readiness Redis.                                            |
+| Jobs Kapso        | Scheduler local con anti-solape; BullMQ queda como modo futuro multi-replica.    |
 | Seguridad         | HMAC webhooks, auth global, media firmada y rate limit.                         |
 | Auditoria         | Correcciones aplicadas sobre auth, idempotencia, workers, media y repositorios. |
 | Rendimiento       | Smoke local 2026-07-22: 50 requests, 0 fallos, 78.80 RPS y p95 184.33 ms.       |
@@ -648,8 +656,8 @@ La evidencia completa esta separada para no convertir el README en un informe in
 | CI/CD             | Workflow verde en `api-kapso` con formato, lint, typecheck, unit, e2e, integracion. | Ningun PR o push relevante puede quedar con `verify` fallando.    |
 | Staging           | Migraciones ejecutadas en base aislada, con respaldo y rollback probado.            | Evidencia guardada en release notes o ticket tecnico.             |
 | E2E real          | Lead controlado recibe `saludo`, responde `Si`/`No`, crea bitacora y no reprocesa.  | Resultado validado contra CRM y Kapso reales.                     |
-| Performance       | Smoke/load test con endpoints protegidos y lotes representativos.                   | p95, p99, RPS, errores, duracion worker y queue lag documentados. |
-| Operacion         | Runbook para fallos Kapso, Redis, MySQL, media, tokens y webhooks duplicados.       | Otro desarrollador puede diagnosticar sin depender del autor.     |
+| Performance       | Smoke/load test con endpoints protegidos y lotes representativos.                   | p95, p99, RPS, errores, duracion worker y backlog documentados.   |
+| Operacion         | Runbook para fallos Kapso, scheduler local, MySQL, media, tokens y webhooks duplicados. | Otro desarrollador puede diagnosticar sin depender del autor.     |
 | Liderazgo tecnico | ADRs, checklist de handoff y criterios de revision claros para nuevos cambios.      | El modulo puede ser mantenido y extendido por el equipo.          |
 
 Ultima meta documentada:

@@ -35,7 +35,6 @@ import {
   firstNonNullString,
   getNestedValue,
   isKapsoPhoneNumberAvailabilityError,
-  summarizePayload,
 } from "../common/kapso.helpers";
 import { JsonRecord } from "../common/kapso.types";
 
@@ -180,7 +179,7 @@ export class KapsoWebhooksController {
 
   /**
    * Webhook estilo Meta (payload anidado `entry.changes.value`).
-   * Misma firma/idempotencia que events; extrae `metadata.phone_number_id`.
+   * Usa `kapso.metaWebhookSecret` y extrae `metadata.phone_number_id`.
    */
   @Post("meta")
   @HttpCode(200)
@@ -199,7 +198,7 @@ export class KapsoWebhooksController {
       request,
       payload,
       signature,
-      this.configService.getOrThrow<string>("kapso.whatsappWebhookSecret"),
+      this.configService.getOrThrow<string>("kapso.metaWebhookSecret"),
       "Firma de webhook Meta invalida.",
     );
 
@@ -210,9 +209,7 @@ export class KapsoWebhooksController {
       return duplicatedResponse;
     }
 
-    this.logger.log(`Meta webhook received idempotencyKey=${receiptKey}`);
-    this.logger.verbose(`Meta payload keys=${Object.keys(payload).join(", ") || "[empty]"}`);
-    this.logger.verbose(`Meta payload=${summarizePayload(payload)}`);
+    this.logWebhookReceived("Meta", "meta.forwarded", phoneNumberId, receiptKey, payload);
 
     try {
       if (phoneNumberId) {
@@ -328,7 +325,6 @@ export class KapsoWebhooksController {
       `${label} webhook received event=${eventName ?? "unknown"} phoneNumberId=${phoneNumberId ?? "n/a"} idempotencyKey=${idempotencyKey ?? "none"}`,
     );
     this.logger.verbose(`${label} payload keys=${Object.keys(payload).join(", ") || "[empty]"}`);
-    this.logger.verbose(`${label} payload=${summarizePayload(payload)}`);
   }
 
   private logDuplicateIgnored(label: string, idempotencyKey: string | undefined, response: DuplicateWebhookResponse) {

@@ -1,9 +1,11 @@
 /**
  * Módulo raíz de la API Kapso CRM.
  *
- * Compone ConfigModule, TypeORM, BullMQ, Throttler y KapsoModule, e instala
+ * Compone ConfigModule, TypeORM, jobs Kapso, Throttler y KapsoModule, e instala
  * guards globales de rate limit y autenticación Entra para proteger toda la API.
  */
+import "dotenv/config";
+
 import { Module } from "@nestjs/common";
 import { BullModule } from "@nestjs/bullmq";
 import { ConfigModule, ConfigService } from "@nestjs/config";
@@ -26,6 +28,34 @@ import { KapsoModule } from "./modules/kapso/kapso.module";
 
 /** Loaders de namespaces tipados registrados en ConfigModule. */
 const CONFIG_LOADERS = [appConfig, kapsoConfig, mysqlConfig, redisConfig, securityConfig];
+const KAPSO_JOBS_DRIVER = (process.env.KAPSO_JOBS_DRIVER ?? "local").trim().toLowerCase();
+const BULLMQ_IMPORTS =
+  KAPSO_JOBS_DRIVER === "bullmq"
+    ? [
+        BullModule.forRootAsync({
+          inject: [ConfigService],
+          useFactory: (configService: ConfigService) => ({
+            connection: {
+              db: configService.get<number>("redis.db", 0),
+              host: configService.getOrThrow<string>("redis.host"),
+              password: configService.get<string>("redis.password"),
+              port: configService.get<number>("redis.port", 6379),
+              tls: configService.get<boolean>("redis.tls", false) ? {} : undefined,
+              username: configService.get<string>("redis.username"),
+            },
+            defaultJobOptions: {
+              attempts: 3,
+              backoff: {
+                delay: 5_000,
+                type: "exponential",
+              },
+              removeOnComplete: 100,
+              removeOnFail: 500,
+            },
+          }),
+        }),
+      ]
+    : [];
 
 /**
  * Ensambla la infraestructura transversal y el dominio Kapso.
@@ -48,27 +78,7 @@ const CONFIG_LOADERS = [appConfig, kapsoConfig, mysqlConfig, redisConfig, securi
       useFactory: () => buildTypeOrmOptions(),
     }),
 
-    BullModule.forRootAsync({
-      inject: [ConfigService],
-      useFactory: (configService: ConfigService) => ({
-        connection: {
-          db: configService.get<number>("redis.db", 0),
-          host: configService.getOrThrow<string>("redis.host"),
-          password: configService.get<string>("redis.password"),
-          port: configService.get<number>("redis.port", 6379),
-          tls: configService.get<boolean>("redis.tls", false) ? {} : undefined,
-        },
-        defaultJobOptions: {
-          attempts: 3,
-          backoff: {
-            delay: 5_000,
-            type: "exponential",
-          },
-          removeOnComplete: 100,
-          removeOnFail: 500,
-        },
-      }),
-    }),
+    ...BULLMQ_IMPORTS,
 
     ThrottlerModule.forRootAsync({
       inject: [ConfigService],

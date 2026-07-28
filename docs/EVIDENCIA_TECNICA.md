@@ -9,7 +9,7 @@ Este documento convierte el estado del API Kapso en evidencia reproducible. La r
 | Que problema resuelve?                             | Automatiza el primer contacto de leads nuevos sin depender de escritura manual inicial por WhatsApp.  |
 | Que reduce para ventas?                            | Reduce tiempo de primer contacto, evita bloqueos por contacto manual inicial y estandariza bitacoras. |
 | Como evita ciclos infinitos?                       | Usa ejecuciones por `flow_uuid + idinterno_lead` y estados terminales por respuesta/error.            |
-| Como se prueba que el sistema no duplica acciones? | Webhooks idempotentes, jobs BullMQ y pruebas e2e/unitarias sobre recepcion y procesamiento.           |
+| Como se prueba que el sistema no duplica acciones? | Webhooks idempotentes, scheduler local con anti-solape y pruebas e2e/unitarias sobre recepcion y procesamiento. |
 | Que falta para declarar cierre 10/10 productivo?   | Prueba de carga en staging, migracion real validada, E2E real Kapso/CRM y storage compartido.         |
 
 ## Comandos de evidencia
@@ -23,7 +23,7 @@ Este documento convierte el estado del API Kapso en evidencia reproducible. La r
 | E2E HTTP                         | `npm run test:e2e -- --runInBand`                                                          | Endpoints publicos/webhooks responden segun contrato. |
 | Build                            | `npm run build`                                                                            | Nest compila a `dist/`.                               |
 | Cobertura                        | `npm run test:coverage`                                                                    | Reporte en `coverage/`.                               |
-| Integracion MySQL                | `npm run test:integration`                                                                 | Requiere MySQL/Redis de integracion disponibles.      |
+| Integracion MySQL                | `npm run test:integration`                                                                 | Requiere MySQL de integracion disponible.             |
 | Rendimiento smoke sin auth       | `npm run test:performance:smoke`                                                           | Latencia/RPS sobre liveness/readiness local.          |
 | Rendimiento endpoint autenticado | `PERF_AUTH_TOKEN=<token> PERF_PATHS=/kapso/business-flows npm run test:performance:smoke`  | Latencia/RPS sobre endpoint protegido.                |
 | Gate p95                         | `PERF_REQUESTS=200 PERF_CONCURRENCY=20 PERF_MAX_P95_MS=500 npm run test:performance:smoke` | Falla si p95 supera el umbral definido.               |
@@ -75,11 +75,11 @@ Esta es la diferencia entre un modulo bien construido y un modulo listo para ope
 
 | Frente                 | Evidencia requerida                                                                                | Criterio de cierre                                                                                       |
 | ---------------------- | -------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
-| CI/CD                  | Workflow verde en `api-kapso`, incluyendo unitarias, e2e, integracion MySQL/Redis, build y audit.  | Ningun cambio entra si falla formato, lint, typecheck, tests, build o audit.                             |
+| CI/CD                  | Workflow verde en `api-kapso`, incluyendo unitarias, e2e, integracion MySQL, build y audit.        | Ningun cambio entra si falla formato, lint, typecheck, tests, build o audit.                             |
 | Migraciones staging    | Ejecucion de `npm run migration:run` contra base staging aislada, con respaldo previo y rollback.  | Tablas Kapso creadas/actualizadas, seed esperado y `migration:revert` probado sin danar datos CRM.       |
 | Flujo funcional real   | Lead real/controlado entra al flujo, recibe `saludo`, responde `Si`/`No` y deja bitacora correcta. | Estado del lead, bitacora, ejecucion y no reprocesamiento coinciden con la matriz funcional.             |
-| Rendimiento            | Smoke/load test contra staging con lotes representativos y endpoints protegidos.                   | p95/p99, RPS, errores, duracion de worker y queue lag quedan registrados con umbrales aceptados.         |
-| Operacion e incidentes | Runbook validado para fallos Kapso, Redis, MySQL, webhooks duplicados, media faltante y tokens.    | Otro desarrollador puede diagnosticar y recuperar el modulo sin depender del autor original.             |
+| Rendimiento            | Smoke/load test contra staging con lotes representativos y endpoints protegidos.                   | p95/p99, RPS, errores, duracion de worker y backlog quedan registrados con umbrales aceptados.           |
+| Operacion e incidentes | Runbook validado para fallos Kapso, scheduler local, MySQL, webhooks duplicados, media faltante y tokens. | Otro desarrollador puede diagnosticar y recuperar el modulo sin depender del autor original.             |
 | Liderazgo tecnico      | PRs revisables, decisiones ADR actualizadas y checklist de handoff para equipo.                    | El modulo puede ser mantenido por otro dev siguiendo documentacion, pruebas y criterios de arquitectura. |
 
 ## Evidencia para jefatura tecnica
@@ -99,7 +99,7 @@ La evaluacion senior no debe basarse en cantidad de codigo ni extension del READ
 | Autenticacion oficial       | Runtime permite operar con `token_admin` CRM sin exigir Microsoft Entra.                         |
 | Smoke local de rendimiento  | 50 requests, concurrencia 5, 50 OK, 0 fallos, 78.80 RPS, p95 184.33 ms.                          |
 | Flujo automatizado en tests | Lead detectado, template inicial enviado, respuesta `Si`/`No`, bitacora y estados finales pasan. |
-| Integracion MySQL/Redis     | `test:integration:coverage`: 2 suites, 18 tests, cobertura repository/migrations 70.65% lineas.  |
+| Integracion MySQL           | `test:integration:coverage`: suites de repositorios/migraciones sobre MySQL de integracion.      |
 | Seguridad dependencias      | `npm audit --audit-level=moderate`: 0 vulnerabilidades.                                          |
 | CI verify                   | Workflow ajustado con secreto JWT dummy de integracion; no se relajo `validateEnv`.              |
 | Migracion staging           | No ejecutada: falta una base staging aislada con respaldo y rollback. No se uso la base actual.  |

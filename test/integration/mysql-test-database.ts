@@ -9,6 +9,7 @@ import { CreateAdminKapsoIntegrationsTable1752200400000 } from "../../src/databa
 import { CreateKapsoBusinessFlowTables1752750000000 } from "../../src/database/migrations/1752750000000-CreateKapsoBusinessFlowTables";
 import { DeduplicateKapsoTemplateCatalog1752860000000 } from "../../src/database/migrations/1752860000000-DeduplicateKapsoTemplateCatalog";
 import { CreateKapsoWebhookReceipts1784690000000 } from "../../src/database/migrations/1784690000000-CreateKapsoWebhookReceipts";
+import { AddInitialTemplateMessageIdToLeadExecutions1784900000000 } from "../../src/database/migrations/1784900000000-AddInitialTemplateMessageIdToLeadExecutions";
 import { AdminKapsoIntegrationEntity } from "../../src/modules/kapso/entities/admin-kapso-integration.entity";
 import { KapsoPhoneNumberEntity } from "../../src/modules/kapso/entities/kapso-phone-number.entity";
 
@@ -67,6 +68,15 @@ export async function createCrmFixtureTables(dataSource: DataSource): Promise<vo
     ) ENGINE=InnoDB
   `);
   await dataSource.query(`
+    CREATE TABLE caidas (
+      id_caida int NOT NULL AUTO_INCREMENT,
+      nombre_caida text NOT NULL,
+      estado_caida int NOT NULL DEFAULT 0,
+      segui int NOT NULL DEFAULT 0,
+      PRIMARY KEY (id_caida)
+    ) ENGINE=InnoDB
+  `);
+  await dataSource.query(`
     CREATE TABLE bitacoras (
       id_bitacora int NOT NULL AUTO_INCREMENT,
       id_lead_bit int NOT NULL,
@@ -105,6 +115,7 @@ export async function createMysqlTestDatabase(): Promise<MysqlTestDatabase> {
       CreateKapsoBusinessFlowTables1752750000000,
       DeduplicateKapsoTemplateCatalog1752860000000,
       CreateKapsoWebhookReceipts1784690000000,
+      AddInitialTemplateMessageIdToLeadExecutions1784900000000,
     ],
     migrationsTableName: "typeorm_migrations",
     migrationsTransactionMode: "none",

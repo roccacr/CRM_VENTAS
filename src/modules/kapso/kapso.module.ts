@@ -1,7 +1,7 @@
 /**
  * Módulo NestJS de integración Kapso (WhatsApp / Meta).
  *
- * Registra controladores HTTP, cola BullMQ, health checks, repositorios y
+ * Registra controladores HTTP, jobs Kapso, health checks, repositorios y
  * servicios del dominio: sync de números, automatización de leads, media firmada
  * e integraciones admin↔número.
  */
@@ -36,17 +36,26 @@ import { KapsoPlatformApiService } from "./services/kapso-platform-api.service";
 import { KapsoSignatureService } from "./services/kapso-signature.service";
 import { KapsoSyncService } from "./services/kapso-sync.service";
 
+const KAPSO_JOBS_DRIVER = (process.env.KAPSO_JOBS_DRIVER ?? "local").trim().toLowerCase();
+const BULLMQ_IMPORTS =
+  KAPSO_JOBS_DRIVER === "bullmq"
+    ? [
+        BullModule.registerQueue({
+          name: KAPSO_JOBS_QUEUE,
+        }),
+      ]
+    : [];
+const BULLMQ_PROVIDERS = KAPSO_JOBS_DRIVER === "bullmq" ? [KapsoJobsProcessor] : [];
+
 /**
- * Dominio Kapso completo: REST admin, webhooks firmados, jobs distribuidos y probes.
+ * Dominio Kapso completo: REST admin, webhooks firmados, jobs y probes.
  */
 @Module({
   imports: [
     HttpModule,
     TerminusModule,
     TypeOrmModule.forFeature([AdminKapsoIntegrationEntity, KapsoPhoneNumberEntity]),
-    BullModule.registerQueue({
-      name: KAPSO_JOBS_QUEUE,
-    }),
+    ...BULLMQ_IMPORTS,
     MulterModule.registerAsync({
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => {
@@ -80,7 +89,7 @@ import { KapsoSyncService } from "./services/kapso-sync.service";
     KapsoLeadAutomationService,
     KapsoSyncService,
     KapsoJobsSchedulerService,
-    KapsoJobsProcessor,
+    ...BULLMQ_PROVIDERS,
   ],
 })
 export class KapsoModule {}

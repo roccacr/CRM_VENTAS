@@ -15,7 +15,7 @@ La documentacion completa del flujo de negocio esta en el README raiz del proyec
 - Administrar adjuntos por flujo, proyecto y paso.
 - Detectar leads candidatos y enviar el template inicial `saludo`.
 - Procesar respuestas explicitas de botones.
-- Enviar intro normal por proyecto con adjuntos opcionales dentro de la ventana de conversacion.
+- Enviar intro normal por proyecto con adjuntos configurables dentro de la ventana de conversacion.
 - Evitar reprocesos usando `flow_uuid + idinterno_lead`.
 - Registrar bitacoras CRM cuando el flujo avanza, se detiene o no puede continuar.
 

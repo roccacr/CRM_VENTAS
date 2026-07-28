@@ -24,18 +24,18 @@ Este registro explica las decisiones importantes del API Kapso, sus motivos y la
 | Riesgo                 | Consultas productivas pueden impactar una base sensible.                           |
 | Mitigacion             | Repositorios enfocados, proyecciones explicitas, indices y pruebas de integracion. |
 
-## ADR-003 · BullMQ/Redis para jobs distribuidos
+## ADR-003 · Scheduler local para jobs Kapso
 
-| Campo                  | Detalle                                                                                    |
-| ---------------------- | ------------------------------------------------------------------------------------------ |
-| Decision               | Ejecutar sincronizacion y worker de leads con BullMQ/Redis.                                |
-| Motivo                 | Evita que dos instancias ejecuten el mismo timer y permite reintentos controlados.         |
-| Alternativa descartada | `setInterval` local.                                                                       |
-| Por que se descarto    | En despliegues con mas de una replica duplica trabajos y puede repetir envios.             |
-| Alternativa futura     | Kafka/RabbitMQ si el volumen supera las necesidades de BullMQ.                             |
-| Criterio para migrar   | Alto volumen, multiples consumidores heterogeneos o necesidad de streaming/event sourcing. |
-| Concurrencia inicial   | `concurrency 1` para evitar bloqueo operativo mientras se valida volumen real.             |
-| Cuando dividir colas   | Si sync de numeros bloquea leads, si sube el queue lag o si el p95 del worker supera SLA.  |
+| Campo                  | Detalle                                                                                                           |
+| ---------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| Decision               | Ejecutar sincronizacion y worker de leads dentro del mismo API con scheduler local y bloqueo anti-solapamiento.   |
+| Motivo                 | El primer despliegue corre una sola instancia Ubuntu; debe funcionar sin Docker ni Redis y mantener el flujo vivo. |
+| Alternativa descartada | Exigir Redis/BullMQ desde el inicio para un despliegue de una sola instancia.                                      |
+| Por que se descarto    | Agregaba una dependencia operativa innecesaria para el despliegue actual y provocaba fallos si Redis no existia.  |
+| Alternativa futura     | BullMQ/Redis, Kafka o RabbitMQ cuando existan multiples replicas o mayor volumen operativo.                       |
+| Criterio para migrar   | Alto volumen, multiples consumidores heterogeneos, streaming/event sourcing o mas de una replica activa.          |
+| Concurrencia inicial   | Un lote activo por proceso para evitar reenvios duplicados mientras se valida volumen real.                       |
+| Cuando dividir colas   | Si sync de numeros bloquea leads, si sube el backlog o si el p95 del worker supera SLA.                           |
 
 ## ADR-004 · Idempotencia durable para webhooks
 

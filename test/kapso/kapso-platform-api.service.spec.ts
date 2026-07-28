@@ -4,6 +4,7 @@
 
 import { HttpService } from "@nestjs/axios";
 import { ConfigService } from "@nestjs/config";
+import { throwError } from "rxjs";
 
 import { KapsoPlatformApiService } from "../../src/modules/kapso/services/kapso-platform-api.service";
 
@@ -24,6 +25,8 @@ function createKapsoConfigServiceMock(): ConfigService {
       switch (key) {
         case "kapso.apiBaseUrl":
           return "https://api.kapso.ai/platform/v1";
+        case "kapso.metaApiBaseUrl":
+          return "https://api.kapso.ai/meta/v1";
         case "kapso.apiKey":
           return "test-api-key";
         case "kapso.publicBaseUrl":
@@ -74,6 +77,28 @@ describe("KapsoPlatformApiService", () => {
         },
       },
       undefined,
+    );
+  });
+
+  it("propaga el error upstream de Kapso sin romper por variables internas", async () => {
+    const configServiceMock = createKapsoConfigServiceMock();
+    const httpServiceMock = createHttpServiceMock();
+    const axiosError = {
+      isAxiosError: true,
+      response: {
+        status: 400,
+        data: {
+          error: "Template rejected",
+        },
+      },
+    };
+
+    (httpServiceMock.request as jest.Mock).mockReturnValue(throwError(() => axiosError));
+
+    const service = new KapsoPlatformApiService(httpServiceMock, configServiceMock);
+
+    await expect(service.sendWhatsappMessage(TEST_PHONE_NUMBER_ID, { type: "template" })).rejects.toThrow(
+      'Kapso API error: {"error":"Template rejected"}',
     );
   });
 });

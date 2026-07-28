@@ -39,6 +39,10 @@ describe("KapsoWebhooksController (e2e)", () => {
         return "whatsapp-secret";
       }
 
+      if (key === "kapso.metaWebhookSecret") {
+        return "meta-secret";
+      }
+
       return "";
     }),
   };
@@ -72,6 +76,11 @@ describe("KapsoWebhooksController (e2e)", () => {
       processed: 0,
       answeredNo: 0,
       answeredYes: 0,
+      introSent: 0,
+      introFailed: 0,
+      deliveryFailed: 0,
+      deliveryConfirmed: 0,
+      unidentifiedReplies: 0,
       ignored: 0,
     });
   });
@@ -182,8 +191,9 @@ describe("KapsoWebhooksController (e2e)", () => {
     expect(repositoryMock.recordWebhookSyncResult).toHaveBeenCalledWith("1197677976762773", "processed");
   });
 
-  it("procesa un webhook meta y registra el evento", async () => {
+  it("procesa un webhook meta con el secreto Meta y registra el evento", async () => {
     repositoryMock.findProcessedWebhookDuplicate.mockResolvedValue(null);
+    signatureServiceMock.verifySignature.mockImplementation((_payload, _signature, secret) => secret === "meta-secret");
 
     await request(app.getHttpServer())
       .post("/api/v1/webhooks/kapso/meta")
@@ -225,6 +235,11 @@ describe("KapsoWebhooksController (e2e)", () => {
       processed: 1,
       answeredNo: 1,
       answeredYes: 0,
+      introSent: 0,
+      introFailed: 0,
+      deliveryFailed: 0,
+      deliveryConfirmed: 0,
+      unidentifiedReplies: 0,
       ignored: 0,
     });
 
@@ -262,6 +277,11 @@ describe("KapsoWebhooksController (e2e)", () => {
       processed: 1,
       answeredNo: 0,
       answeredYes: 1,
+      introSent: 0,
+      introFailed: 0,
+      deliveryFailed: 0,
+      deliveryConfirmed: 0,
+      unidentifiedReplies: 0,
       ignored: 0,
     });
 
@@ -290,5 +310,97 @@ describe("KapsoWebhooksController (e2e)", () => {
         phone_number_id: "1197677976762773",
       }),
     );
+  });
+
+  it("procesa fallos asincronicos de template desde webhook Kapso sin devolver error a Kapso", async () => {
+    repositoryMock.findProcessedWebhookDuplicate.mockResolvedValue(null);
+    signatureServiceMock.verifySignature.mockReturnValue(true);
+    syncServiceMock.processInboundMessageWebhook.mockResolvedValue({
+      processed: 1,
+      answeredNo: 0,
+      answeredYes: 0,
+      introSent: 0,
+      introFailed: 0,
+      deliveryFailed: 1,
+      deliveryConfirmed: 0,
+      unidentifiedReplies: 0,
+      ignored: 0,
+    });
+
+    await request(app.getHttpServer())
+      .post("/api/v1/webhooks/kapso/events")
+      .set("x-idempotency-key", "kapso-template-failed-001")
+      .set("x-webhook-signature", "valid-signature")
+      .set("x-webhook-event", "whatsapp.message.failed")
+      .send({
+        phone_number_id: "1197677976762773",
+        message: {
+          id: "wamid.HBgLNTA2ODc1MTU5MzgVAgARGBRDRTNCMzgxREZBMkQ4MjNEMUM4RAA=",
+          to: "50687515938",
+          type: "template",
+          kapso: {
+            status: "failed",
+            statuses: [
+              {
+                id: "wamid.HBgLNTA2ODc1MTU5MzgVAgARGBRDRTNCMzgxREZBMkQ4MjNEMUM4RAA=",
+                status: "failed",
+                recipient_id: "50687515938",
+                errors: [
+                  {
+                    code: 130472,
+                    title: "User's number is part of an experiment",
+                    message: "User's number is part of an experiment",
+                    error_data: {
+                      details: "Failed to send message because this user's phone number is part of an experiment",
+                    },
+                  },
+                ],
+              },
+            ],
+          },
+          template: {
+            name: "saludo",
+            language: {
+              code: "es_ES",
+            },
+          },
+        },
+        conversation: {
+          id: "e212c4d1-070d-48e3-b318-d4fd6fbce85d",
+          phone_number: "50687515938",
+          phone_number_id: "1197677976762773",
+        },
+      })
+      .expect(200)
+      .expect({ ok: true });
+
+    expect(syncServiceMock.processInboundMessageWebhook).toHaveBeenCalledWith(
+      expect.objectContaining({
+        phone_number_id: "1197677976762773",
+        message: expect.objectContaining({
+          id: "wamid.HBgLNTA2ODc1MTU5MzgVAgARGBRDRTNCMzgxREZBMkQ4MjNEMUM4RAA=",
+        }),
+      }),
+    );
+  });
+
+  it("rechaza eventos Kapso cuando la firma no coincide", async () => {
+    signatureServiceMock.verifySignature.mockReturnValue(false);
+
+    await request(app.getHttpServer())
+      .post("/api/v1/webhooks/kapso/events")
+      .set("x-idempotency-key", "kapso-invalid-signature-001")
+      .set("x-webhook-signature", "invalid-signature")
+      .set("x-webhook-event", "whatsapp.message.failed")
+      .send({
+        phone_number_id: "1197677976762773",
+        message: {
+          id: "wamid.HBgLNTA2ODc1MTU5MzgVAgARGBRDRTNCMzgxREZBMkQ4MjNEMUM4RAA=",
+        },
+      })
+      .expect(401);
+
+    expect(repositoryMock.reserveWebhookReceipt).not.toHaveBeenCalled();
+    expect(syncServiceMock.processInboundMessageWebhook).not.toHaveBeenCalled();
   });
 });

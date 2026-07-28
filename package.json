@@ -23,8 +23,6 @@
     "test:integration:coverage": "jest --config ./test/jest-integration.json --runInBand --coverage --coverageDirectory=coverage/integration --collectCoverageFrom=\"src/modules/kapso/repositories/*.ts\" --collectCoverageFrom=\"src/database/migrations/*.ts\"",
     "test:integration:redis": "jest --config ./test/jest-integration.json --runInBand --testPathPatterns=kapso-redis",
     "test:performance:smoke": "node scripts/performance-smoke.mjs",
-    "integration:up": "docker compose -f docker-compose.integration.yml up -d",
-    "integration:down": "docker compose -f docker-compose.integration.yml down -v",
     "test:watch": "jest --watch",
     "typecheck": "tsc --noEmit"
   },

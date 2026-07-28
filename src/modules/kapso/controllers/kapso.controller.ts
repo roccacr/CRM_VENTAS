@@ -103,7 +103,7 @@ export class KapsoController {
    *
    * Registra el redirect, intenta sync inmediato del `phone_number_id` y muestra
    * una página HTML con el resultado. Si Kapso aún no expone el detalle remoto,
-   * deja el número en pendiente para el worker BullMQ.
+   * deja el numero en pendiente para el reintento de sincronizacion.
    *
    * @param query - Query params que Kapso envía en snake_case.
    * @returns HTML escapado (Content-Type text/html).

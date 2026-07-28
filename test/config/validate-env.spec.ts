@@ -16,8 +16,7 @@ describe("validateEnv", () => {
     MYSQL_USER: "crm_user",
     NODE_ENV: "test",
     PORT: "8002",
-    REDIS_HOST: "127.0.0.1",
-    REDIS_PORT: "6379",
+    KAPSO_JOBS_DRIVER: "local",
   };
 
   it("permite arrancar con token CRM sin configurar Microsoft Entra", () => {
@@ -41,6 +40,37 @@ describe("validateEnv", () => {
     delete envWithoutCrmSecret.CRM_JWT_SECRET;
 
     expect(() => validateEnv(envWithoutCrmSecret)).toThrow(/CRM_JWT_SECRET|JWT_SECRET/);
+  });
+
+  it("permite arrancar en modo local sin Redis", () => {
+    const config = validateEnv(validBaseEnv);
+
+    expect(config).toMatchObject({
+      KAPSO_JOBS_DRIVER: "local",
+    });
+  });
+
+  it("permite configurar Redis por host y puerto cuando BullMQ esta activo", () => {
+    const envWithRedisHost = { ...validBaseEnv } as Record<string, string>;
+    envWithRedisHost.KAPSO_JOBS_DRIVER = "bullmq";
+    envWithRedisHost.REDIS_HOST = "127.0.0.1";
+    envWithRedisHost.REDIS_PORT = "6379";
+
+    const config = validateEnv(envWithRedisHost);
+
+    expect(config).toMatchObject({
+      REDIS_HOST: "127.0.0.1",
+      REDIS_PORT: 6379,
+    });
+  });
+
+  it("rechaza BullMQ sin REDIS_URL ni REDIS_HOST", () => {
+    const envWithoutRedis = {
+      ...validBaseEnv,
+      KAPSO_JOBS_DRIVER: "bullmq",
+    } as Record<string, string>;
+
+    expect(() => validateEnv(envWithoutRedis)).toThrow(/REDIS_URL|REDIS_HOST/);
   });
 
   it("rechaza Microsoft Entra configurado sin clientes autorizados", () => {

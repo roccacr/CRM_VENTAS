@@ -307,9 +307,10 @@ export class KapsoPlatformApiService {
       return response.data;
     } catch (error) {
       if (axios.isAxiosError(error)) {
+        const upstreamStatus = error.response?.status;
         const message = JSON.stringify(error.response?.data ?? error.message ?? "Kapso request failed");
-        this.logger.error(`Kapso API error ${methodLabel} ${url} status=${status} project=${projectLabel}: ${message}`);
-        throw new KapsoUpstreamException(`Kapso API error: ${message}`, error.response?.status);
+        this.logger.error(`Kapso API error ${methodLabel} ${url} status=${upstreamStatus ?? "n/a"} project=${projectLabel}: ${message}`);
+        throw new KapsoUpstreamException(`Kapso API error: ${message}`, upstreamStatus);
       }
 
       // Si el error NO vino de Axios (ej: bug de programación en este mismo método),

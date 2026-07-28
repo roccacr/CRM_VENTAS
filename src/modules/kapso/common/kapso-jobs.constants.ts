@@ -1,11 +1,11 @@
 /**
- * Constantes de la cola BullMQ y nombres de jobs/schedulers Kapso.
+ * Constantes compartidas por el scheduler local y el modo alternativo BullMQ.
  *
- * Centraliza identificadores para registrar la cola, encolar trabajos y
- * referenciar schedulers de sync pendiente y candidatos de template de lead.
+ * Centraliza identificadores para ejecutar sync pendiente y candidatos de
+ * template de lead sin duplicar nombres entre modos de ejecucion.
  */
 
-/** Nombre de la cola BullMQ dedicada a trabajos Kapso. */
+/** Nombre logico de la cola usada solo cuando `KAPSO_JOBS_DRIVER=bullmq`. */
 export const KAPSO_JOBS_QUEUE = "kapso-jobs";
 
 /** Nombres de jobs procesados por `KapsoJobsProcessor`. */

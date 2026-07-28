@@ -1,8 +1,8 @@
 /**
  * Validación de arranque de variables de entorno con Joi.
  *
- * Falla rápido si faltan secretos o conexiones críticas (MySQL, Redis, Entra,
- * Kapso), evitando levantar la API en un estado parcialmente configurado.
+ * Falla rápido si faltan secretos o conexiones críticas (MySQL, Entra, Kapso).
+ * Redis solo es obligatorio cuando los jobs usan `KAPSO_JOBS_DRIVER=bullmq`.
  */
 import * as Joi from "joi";
 
@@ -41,9 +41,12 @@ const mysqlEnvSchema = {
   MYSQL_MIGRATIONS_RUN: Joi.boolean().truthy("true").falsy("false").default(false),
 };
 
-/** Conexión Redis usada por BullMQ. */
+/** Conexión Redis usada solamente si se activa el modo alternativo BullMQ. */
 const redisEnvSchema = {
-  REDIS_HOST: Joi.string().hostname().required(),
+  REDIS_URL: Joi.string()
+    .uri({ scheme: ["redis", "rediss"] })
+    .optional(),
+  REDIS_HOST: Joi.alternatives().try(Joi.string().hostname(), Joi.string().ip()).optional(),
   REDIS_PORT: Joi.number().port().default(6379),
   REDIS_PASSWORD: Joi.string().allow("").optional(),
   REDIS_DB: Joi.number().integer().min(0).max(15).default(0),
@@ -66,6 +69,7 @@ const kapsoEnvSchema = {
   KAPSO_PLATFORM_WEBHOOK_SECRET: Joi.string().min(16).required(),
   KAPSO_WHATSAPP_WEBHOOK_SECRET: Joi.string().min(16).required(),
   // 0 desactiva el scheduler (tests / mantenimiento); >=5000 es operación normal.
+  KAPSO_JOBS_DRIVER: Joi.string().valid("local", "bullmq").default("local"),
   KAPSO_PENDING_SYNC_INTERVAL_MS: Joi.number().integer().min(0).optional(),
   KAPSO_LEAD_TEMPLATE_INTERVAL_MS: Joi.number().integer().min(0).optional(),
   KAPSO_PENDING_SYNC_BATCH_SIZE: Joi.number().integer().min(1).max(100).optional(),
@@ -112,6 +116,10 @@ export function validateEnv(config: EnvShape): EnvShape {
 
   if (error) {
     throw new Error(`Variables de entorno invalidas: ${error.message}`);
+  }
+
+  if (value.KAPSO_JOBS_DRIVER === "bullmq" && !value.REDIS_URL && !value.REDIS_HOST) {
+    throw new Error("Variables de entorno invalidas: REDIS_URL o REDIS_HOST es requerido cuando KAPSO_JOBS_DRIVER=bullmq.");
   }
 
   const entraTenantId = String(value.ENTRA_TENANT_ID ?? "").trim();

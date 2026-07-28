@@ -85,7 +85,7 @@ describe("Kapso MySQL integration", () => {
       flow_code: string;
     }>;
 
-    expect(migrations).toHaveLength(7);
+    expect(migrations).toHaveLength(8);
     expect(tableNames).toEqual(
       expect.arrayContaining([
         "admin_kapso_integrations",
@@ -108,13 +108,17 @@ describe("Kapso MySQL integration", () => {
     const queryRunner = dataSource.createQueryRunner();
 
     try {
-      expect(await queryRunner.hasTable("kapso_webhook_receipts")).toBe(false);
+      const rolledBackExecutionTable = await queryRunner.getTable("kapso_lead_flow_executions");
+
+      expect(rolledBackExecutionTable?.findColumnByName("initial_template_message_id")).toBeUndefined();
+      expect(await queryRunner.hasTable("kapso_webhook_receipts")).toBe(true);
       expect(await queryRunner.hasTable("kapso_phone_numbers")).toBe(true);
 
       const reapplied = await dataSource.runMigrations();
+      const reappliedExecutionTable = await queryRunner.getTable("kapso_lead_flow_executions");
 
       expect(reapplied).toHaveLength(1);
-      expect(await queryRunner.hasTable("kapso_webhook_receipts")).toBe(true);
+      expect(reappliedExecutionTable?.findColumnByName("initial_template_message_id")).toBeDefined();
     } finally {
       await queryRunner.release();
     }
@@ -372,7 +376,7 @@ describe("Kapso MySQL integration", () => {
       status: "ok",
       info: {
         mysql: { status: "up" },
-        redis: { status: "up" },
+        jobs: { status: "up" },
       },
     });
   });
@@ -470,7 +474,7 @@ describe("Kapso MySQL integration", () => {
       object: "whatsapp_business_account",
       metadata: { phone_number_id: "meta-http-phone" },
     });
-    const signature = createHmac("sha256", "integration_whatsapp_secret").update(rawPayload).digest("hex");
+    const signature = createHmac("sha256", "integration_meta_secret").update(rawPayload).digest("hex");
 
     await request(app.getHttpServer())
       .post("/api/v1/webhooks/kapso/meta")
@@ -587,6 +591,157 @@ describe("Kapso MySQL integration", () => {
     expect(executionRows).toEqual([{ status: "reserved" }]);
   });
 
+  it("no reserva ni toca el lead si el flujo se inactiva despues de detectar el candidato", async () => {
+    const fixture = await createLeadCandidateFixture(dataSource, {
+      internalLeadId: 8007,
+      leadPhone: "50670000007",
+    });
+
+    const candidates = await leadRepository.listLeadTemplateCandidates(10, FLOW_UUID);
+
+    await dataSource.query("UPDATE kapso_business_flows SET enabled = 0 WHERE flow_uuid = ?", [FLOW_UUID]);
+
+    const reservation = await leadRepository.reserveInitialTemplateSend({
+      flowUuid: FLOW_UUID,
+      leadId: fixture.leadId,
+      internalLeadId: fixture.internalLeadId,
+      idnetsuiteAdmin: fixture.idnetsuiteAdmin,
+      idProyectoNetsuite: fixture.idProyectoNetsuite,
+      phoneNumberId: fixture.phoneNumberId,
+      leadPhoneNumber: fixture.leadPhone,
+    });
+    const leadRows = (await dataSource.query("SELECT whatsapp_template_contact_sent AS sent FROM leads WHERE id_lead = ?", [
+      fixture.leadId,
+    ])) as Array<{ sent: number }>;
+    const executionRows = (await dataSource.query("SELECT COUNT(*) AS total FROM kapso_lead_flow_executions WHERE idinterno_lead = ?", [
+      fixture.internalLeadId,
+    ])) as Array<{ total: number | string }>;
+
+    expect(candidates).toHaveLength(1);
+    expect(reservation).toBeNull();
+    expect(leadRows[0].sent).toBe(2);
+    expect(Number(executionRows[0].total)).toBe(0);
+  });
+
+  it("no reserva ni toca el lead si el proyecto se deshabilita despues de detectar el candidato", async () => {
+    const fixture = await createLeadCandidateFixture(dataSource, {
+      internalLeadId: 8008,
+      leadPhone: "50670000008",
+    });
+
+    const candidates = await leadRepository.listLeadTemplateCandidates(10, FLOW_UUID);
+
+    await dataSource.query("UPDATE kapso_business_flow_projects SET enabled = 0 WHERE flow_uuid = ? AND id_proyecto_netsuite = ?", [
+      FLOW_UUID,
+      fixture.idProyectoNetsuite,
+    ]);
+
+    const reservation = await leadRepository.reserveInitialTemplateSend({
+      flowUuid: FLOW_UUID,
+      leadId: fixture.leadId,
+      internalLeadId: fixture.internalLeadId,
+      idnetsuiteAdmin: fixture.idnetsuiteAdmin,
+      idProyectoNetsuite: fixture.idProyectoNetsuite,
+      phoneNumberId: fixture.phoneNumberId,
+      leadPhoneNumber: fixture.leadPhone,
+    });
+    const leadRows = (await dataSource.query("SELECT whatsapp_template_contact_sent AS sent FROM leads WHERE id_lead = ?", [
+      fixture.leadId,
+    ])) as Array<{ sent: number }>;
+    const executionRows = (await dataSource.query("SELECT COUNT(*) AS total FROM kapso_lead_flow_executions WHERE idinterno_lead = ?", [
+      fixture.internalLeadId,
+    ])) as Array<{ total: number | string }>;
+
+    expect(candidates).toHaveLength(1);
+    expect(reservation).toBeNull();
+    expect(leadRows[0].sent).toBe(2);
+    expect(Number(executionRows[0].total)).toBe(0);
+  });
+
+  it("no marca telefono invalido si el flujo se inactiva despues de detectar el candidato", async () => {
+    const fixture = await createLeadCandidateFixture(dataSource, {
+      internalLeadId: 8009,
+      leadPhone: "telefono-malo",
+    });
+
+    const candidates = await leadRepository.listLeadTemplateCandidates(10, FLOW_UUID);
+
+    await dataSource.query("UPDATE kapso_business_flows SET enabled = 0 WHERE flow_uuid = ?", [FLOW_UUID]);
+
+    const marked = await leadRepository.markLeadTemplateCandidateInvalidPhone({
+      flowUuid: FLOW_UUID,
+      leadId: fixture.leadId,
+      internalLeadId: fixture.internalLeadId,
+      idnetsuiteAdmin: fixture.idnetsuiteAdmin,
+      idProyectoNetsuite: fixture.idProyectoNetsuite,
+      phoneNumberId: fixture.phoneNumberId,
+      leadPhoneNumber: fixture.leadPhone,
+      leadStatus: 1,
+    });
+    const leadRows = (await dataSource.query("SELECT whatsapp_template_contact_sent AS sent FROM leads WHERE id_lead = ?", [
+      fixture.leadId,
+    ])) as Array<{ sent: number }>;
+    const executionRows = (await dataSource.query("SELECT COUNT(*) AS total FROM kapso_lead_flow_executions WHERE idinterno_lead = ?", [
+      fixture.internalLeadId,
+    ])) as Array<{ total: number | string }>;
+    const bitacoraRows = (await dataSource.query("SELECT COUNT(*) AS total FROM bitacoras WHERE id_lead_bit = ?", [
+      fixture.internalLeadId,
+    ])) as Array<{ total: number | string }>;
+
+    expect(candidates).toHaveLength(1);
+    expect(marked).toBe(false);
+    expect(leadRows[0].sent).toBe(2);
+    expect(Number(executionRows[0].total)).toBe(0);
+    expect(Number(bitacoraRows[0].total)).toBe(0);
+  });
+
+  it("reutiliza una reserva incompleta para recuperar el envio inicial", async () => {
+    const fixture = await createLeadCandidateFixture(dataSource, {
+      internalLeadId: 8005,
+      leadPhone: "50670000005",
+    });
+
+    const firstReservation = await leadRepository.reserveInitialTemplateSend({
+      flowUuid: FLOW_UUID,
+      leadId: fixture.leadId,
+      internalLeadId: fixture.internalLeadId,
+      idnetsuiteAdmin: fixture.idnetsuiteAdmin,
+      idProyectoNetsuite: fixture.idProyectoNetsuite,
+      phoneNumberId: fixture.phoneNumberId,
+      leadPhoneNumber: fixture.leadPhone,
+    });
+
+    await dataSource.query("UPDATE leads SET whatsapp_template_contact_sent = 2 WHERE id_lead = ?", [fixture.leadId]);
+
+    const recoveredReservation = await leadRepository.reserveInitialTemplateSend({
+      flowUuid: FLOW_UUID,
+      leadId: fixture.leadId,
+      internalLeadId: fixture.internalLeadId,
+      idnetsuiteAdmin: fixture.idnetsuiteAdmin,
+      idProyectoNetsuite: fixture.idProyectoNetsuite,
+      phoneNumberId: fixture.phoneNumberId,
+      leadPhoneNumber: fixture.leadPhone,
+    });
+    const executionRows = (await dataSource.query(
+      `
+        SELECT
+          id_kapso_lead_flow_execution AS executionId,
+          execution_status AS status
+        FROM kapso_lead_flow_executions
+        WHERE idinterno_lead = ?
+      `,
+      [fixture.internalLeadId],
+    )) as Array<{ executionId: number; status: string }>;
+
+    expect(recoveredReservation).toEqual(firstReservation);
+    expect(executionRows).toEqual([
+      {
+        executionId: firstReservation!.executionId,
+        status: "reserved",
+      },
+    ]);
+  });
+
   it("revierte la actualización del lead cuando falla la inserción de ejecución", async () => {
     const fixture = await createLeadCandidateFixture(dataSource, {
       internalLeadId: 8002,
@@ -625,6 +780,454 @@ describe("Kapso MySQL integration", () => {
 
     expect(leads[0].sent).toBe(2);
     expect(Number(executions[0].total)).toBe(0);
+  });
+
+  it("cierra la ejecucion y registra bitacora cuando Meta rechaza la entrega del template inicial", async () => {
+    const fixture = await createLeadCandidateFixture(dataSource, {
+      internalLeadId: 8006,
+      leadPhone: "50670000006",
+      idnetsuiteAdmin: 503,
+      idProyectoNetsuite: 7003,
+      phoneNumberId: "kapso-phone-503",
+    });
+
+    const reservation = await reserveAndMarkSent(leadRepository, fixture, "wamid.failed.1");
+    const firstFailure = await leadRepository.markInitialTemplateDeliveryFailed({
+      phoneNumberId: fixture.phoneNumberId,
+      leadPhoneNumber: fixture.leadPhone,
+      messageId: "wamid.failed.1",
+      failureReason: "User's number is part of an experiment",
+      responsePayload: {
+        message: {
+          id: "wamid.failed.1",
+          kapso: {
+            status: "failed",
+          },
+        },
+      },
+    });
+    const duplicateFailure = await leadRepository.markInitialTemplateDeliveryFailed({
+      phoneNumberId: fixture.phoneNumberId,
+      leadPhoneNumber: fixture.leadPhone,
+      messageId: "wamid.failed.1",
+      failureReason: "User's number is part of an experiment",
+      responsePayload: { duplicate: true },
+    });
+
+    const executionRows = (await dataSource.query(
+      `
+        SELECT
+          id_kapso_lead_flow_execution AS executionId,
+          execution_status AS status,
+          failure_reason AS failureReason,
+          completed_at AS completedAt
+        FROM kapso_lead_flow_executions
+        WHERE idinterno_lead = ?
+      `,
+      [fixture.internalLeadId],
+    )) as Array<{
+      completedAt: Date | string | null;
+      executionId: number;
+      failureReason: string;
+      status: string;
+    }>;
+    const leadRows = (await dataSource.query(
+      `
+        SELECT
+          segimineto_lead AS followup,
+          estado_lead AS active,
+          id_Caida AS lossId
+        FROM leads
+        WHERE idinterno_lead = ?
+      `,
+      [fixture.internalLeadId],
+    )) as Array<{
+      active: number;
+      followup: string;
+      lossId: number | null;
+    }>;
+    const bitacoraRows = (await dataSource.query(
+      `
+        SELECT
+          id_lead_bit AS leadId,
+          id_admin_bit AS adminId,
+          id_caida_bit AS reasonId,
+          estado_bit AS state
+        FROM bitacoras
+        WHERE id_lead_bit = ?
+      `,
+      [fixture.internalLeadId],
+    )) as Array<{
+      adminId: number;
+      leadId: number;
+      reasonId: number;
+      state: string;
+    }>;
+
+    expect(firstFailure).toBe(true);
+    expect(duplicateFailure).toBe(false);
+    expect(executionRows).toEqual([
+      {
+        executionId: reservation.executionId,
+        status: "initial_template_failed",
+        failureReason: "User's number is part of an experiment",
+        completedAt: expect.anything(),
+      },
+    ]);
+    expect(leadRows).toEqual([
+      {
+        followup: "01-LEAD-INTERESADO",
+        active: 1,
+        lossId: null,
+      },
+    ]);
+    expect(bitacoraRows).toEqual([
+      {
+        leadId: fixture.internalLeadId,
+        adminId: fixture.idnetsuiteAdmin,
+        reasonId: 68,
+        state: "Template no entregado",
+      },
+    ]);
+  });
+
+  it("confirma la entrega del template inicial con caida de exito, lead y bitacora", async () => {
+    const fixture = await createLeadCandidateFixture(dataSource, {
+      internalLeadId: 8007,
+      leadPhone: "50670000007",
+      idnetsuiteAdmin: 504,
+      idProyectoNetsuite: 7004,
+      phoneNumberId: "kapso-phone-504",
+    });
+
+    const reservation = await reserveAndMarkSent(leadRepository, fixture, "wamid.delivered.1");
+    const firstSuccess = await leadRepository.markInitialTemplateDeliverySucceeded({
+      phoneNumberId: fixture.phoneNumberId,
+      leadPhoneNumber: fixture.leadPhone,
+      messageId: "wamid.delivered.1",
+      deliveryStatus: "delivered",
+      responsePayload: {
+        message: {
+          id: "wamid.delivered.1",
+          kapso: {
+            status: "delivered",
+          },
+        },
+      },
+    });
+    const duplicateSuccess = await leadRepository.markInitialTemplateDeliverySucceeded({
+      phoneNumberId: fixture.phoneNumberId,
+      leadPhoneNumber: fixture.leadPhone,
+      messageId: "wamid.delivered.1",
+      deliveryStatus: "delivered",
+      responsePayload: { duplicate: true },
+    });
+
+    const executionRows = (await dataSource.query(
+      `
+        SELECT
+          id_kapso_lead_flow_execution AS executionId,
+          execution_status AS status,
+          failure_reason AS failureReason,
+          completed_at AS completedAt
+        FROM kapso_lead_flow_executions
+        WHERE idinterno_lead = ?
+      `,
+      [fixture.internalLeadId],
+    )) as Array<{
+      completedAt: Date | string | null;
+      executionId: number;
+      failureReason: string | null;
+      status: string;
+    }>;
+    const successDropRows = (await dataSource.query(
+      `
+        SELECT
+          id_caida AS id,
+          estado_caida AS state,
+          segui AS followup
+        FROM caidas
+        WHERE nombre_caida = 'Template inicial entregado por WhatsApp'
+        LIMIT 1
+      `,
+    )) as Array<{
+      followup: number;
+      id: number;
+      state: number;
+    }>;
+    const leadRows = (await dataSource.query(
+      `
+        SELECT
+          segimineto_lead AS followup,
+          accion_lead AS action,
+          whatsapp_template_contact_sent AS pendingTemplate,
+          id_Caida AS successId
+        FROM leads
+        WHERE idinterno_lead = ?
+      `,
+      [fixture.internalLeadId],
+    )) as Array<{
+      action: number;
+      followup: string;
+      pendingTemplate: number;
+      successId: number | null;
+    }>;
+    const bitacoraRows = (await dataSource.query(
+      `
+        SELECT
+          id_lead_bit AS leadId,
+          id_admin_bit AS adminId,
+          id_caida_bit AS reasonId,
+          estado_bit AS state,
+          detalle_bit AS details
+        FROM bitacoras
+        WHERE id_lead_bit = ?
+      `,
+      [fixture.internalLeadId],
+    )) as Array<{
+      adminId: number;
+      details: string;
+      leadId: number;
+      reasonId: number;
+      state: string;
+    }>;
+
+    expect(firstSuccess).toBe(true);
+    expect(duplicateSuccess).toBe(false);
+    expect(successDropRows).toHaveLength(1);
+    expect(successDropRows[0]).toMatchObject({
+      state: 0,
+      followup: 0,
+    });
+    expect(executionRows).toEqual([
+      {
+        executionId: reservation.executionId,
+        status: "initial_template_delivered",
+        failureReason: null,
+        completedAt: expect.anything(),
+      },
+    ]);
+    expect(leadRows).toEqual([
+      {
+        followup: "08-LEAD-SEGUIMIENTO",
+        action: 3,
+        pendingTemplate: 0,
+        successId: successDropRows[0].id,
+      },
+    ]);
+    expect(bitacoraRows).toEqual([
+      {
+        leadId: fixture.internalLeadId,
+        adminId: fixture.idnetsuiteAdmin,
+        reasonId: successDropRows[0].id,
+        state: "Template inicial entregado",
+        details: "Template inicial de WhatsApp entregado correctamente al lead. Estado reportado: delivered.",
+      },
+    ]);
+  });
+
+  it("no confirma entrega por telefono si Meta/Kapso envia un messageId que no pertenece a la ejecucion", async () => {
+    const sharedPhone = "50670000020";
+    const sharedPhoneNumberId = "kapso-phone-shared-delivery";
+    const firstFixture = await createLeadCandidateFixture(dataSource, {
+      internalLeadId: 8020,
+      leadPhone: sharedPhone,
+      idnetsuiteAdmin: 520,
+      idProyectoNetsuite: 7020,
+      phoneNumberId: sharedPhoneNumberId,
+    });
+    const secondFixture = await createLeadCandidateFixture(dataSource, {
+      internalLeadId: 8021,
+      leadPhone: sharedPhone,
+      idnetsuiteAdmin: 521,
+      idProyectoNetsuite: 7021,
+      phoneNumberId: sharedPhoneNumberId,
+    });
+
+    await reserveAndMarkSent(leadRepository, firstFixture, "wamid.delivery.first");
+    await reserveAndMarkSent(leadRepository, secondFixture, "wamid.delivery.second");
+
+    const marked = await leadRepository.markInitialTemplateDeliverySucceeded({
+      phoneNumberId: sharedPhoneNumberId,
+      leadPhoneNumber: sharedPhone,
+      messageId: "wamid.delivery.unknown",
+      deliveryStatus: "delivered",
+      responsePayload: { status: "delivered" },
+    });
+    const executionRows = (await dataSource.query(
+      `
+        SELECT
+          idinterno_lead AS internalLeadId,
+          execution_status AS status
+        FROM kapso_lead_flow_executions
+        WHERE idinterno_lead IN (?, ?)
+        ORDER BY idinterno_lead ASC
+      `,
+      [firstFixture.internalLeadId, secondFixture.internalLeadId],
+    )) as Array<{ internalLeadId: number; status: string }>;
+    const leadRows = (await dataSource.query(
+      `
+        SELECT
+          idinterno_lead AS internalLeadId,
+          segimineto_lead AS followup,
+          whatsapp_template_contact_sent AS pendingTemplate
+        FROM leads
+        WHERE idinterno_lead IN (?, ?)
+        ORDER BY idinterno_lead ASC
+      `,
+      [firstFixture.internalLeadId, secondFixture.internalLeadId],
+    )) as Array<{ followup: string; internalLeadId: number; pendingTemplate: number }>;
+
+    expect(marked).toBe(false);
+    expect(executionRows).toEqual([
+      { internalLeadId: firstFixture.internalLeadId, status: "initial_template_sent" },
+      { internalLeadId: secondFixture.internalLeadId, status: "initial_template_sent" },
+    ]);
+    expect(leadRows).toEqual([
+      { internalLeadId: firstFixture.internalLeadId, followup: "01-LEAD-INTERESADO", pendingTemplate: 0 },
+      { internalLeadId: secondFixture.internalLeadId, followup: "01-LEAD-INTERESADO", pendingTemplate: 0 },
+    ]);
+  });
+
+  it("no confirma entrega si el flujo se inactiva despues del envio inicial", async () => {
+    const fixture = await createLeadCandidateFixture(dataSource, {
+      internalLeadId: 8010,
+      leadPhone: "50670000010",
+      idnetsuiteAdmin: 505,
+      idProyectoNetsuite: 7005,
+      phoneNumberId: "kapso-phone-505",
+    });
+    const reservation = await reserveAndMarkSent(leadRepository, fixture, "wamid.disabled.flow.delivered");
+
+    await dataSource.query("UPDATE kapso_business_flows SET enabled = 0 WHERE flow_uuid = ?", [FLOW_UUID]);
+
+    const marked = await leadRepository.markInitialTemplateDeliverySucceeded({
+      phoneNumberId: fixture.phoneNumberId,
+      leadPhoneNumber: fixture.leadPhone,
+      messageId: "wamid.disabled.flow.delivered",
+      deliveryStatus: "delivered",
+      responsePayload: { status: "delivered" },
+    });
+    const executionRows = (await dataSource.query(
+      `
+        SELECT execution_status AS status
+        FROM kapso_lead_flow_executions
+        WHERE id_kapso_lead_flow_execution = ?
+      `,
+      [reservation.executionId],
+    )) as Array<{ status: string }>;
+    const leadRows = (await dataSource.query(
+      `
+        SELECT
+          segimineto_lead AS followup,
+          whatsapp_template_contact_sent AS pendingTemplate
+        FROM leads
+        WHERE idinterno_lead = ?
+      `,
+      [fixture.internalLeadId],
+    )) as Array<{ followup: string; pendingTemplate: number }>;
+    const bitacoraRows = (await dataSource.query("SELECT COUNT(*) AS total FROM bitacoras WHERE id_lead_bit = ?", [
+      fixture.internalLeadId,
+    ])) as Array<{ total: number }>;
+
+    expect(marked).toBe(false);
+    expect(executionRows).toEqual([{ status: "initial_template_sent" }]);
+    expect(leadRows).toEqual([{ followup: "01-LEAD-INTERESADO", pendingTemplate: 0 }]);
+    expect(Number(bitacoraRows[0].total)).toBe(0);
+  });
+
+  it("no procesa respuesta No si el proyecto se deshabilita despues del envio inicial", async () => {
+    const fixture = await createLeadCandidateFixture(dataSource, {
+      internalLeadId: 8011,
+      leadPhone: "50670000011",
+      idnetsuiteAdmin: 506,
+      idProyectoNetsuite: 7006,
+      phoneNumberId: "kapso-phone-506",
+    });
+    const reservation = await reserveAndMarkSent(leadRepository, fixture, "wamid.disabled.project.no");
+
+    await dataSource.query("UPDATE kapso_business_flow_projects SET enabled = 0 WHERE flow_uuid = ? AND id_proyecto_netsuite = ?", [
+      FLOW_UUID,
+      fixture.idProyectoNetsuite,
+    ]);
+
+    const answeredNo = await leadRepository.markLeadFlowAnsweredNo({
+      phoneNumberId: fixture.phoneNumberId,
+      leadPhoneNumber: fixture.leadPhone,
+      responsePayload: { button: "No, gracias" },
+    });
+    const executionRows = (await dataSource.query(
+      `
+        SELECT execution_status AS status
+        FROM kapso_lead_flow_executions
+        WHERE id_kapso_lead_flow_execution = ?
+      `,
+      [reservation.executionId],
+    )) as Array<{ status: string }>;
+    const leadRows = (await dataSource.query(
+      `
+        SELECT
+          segimineto_lead AS followup,
+          estado_lead AS active,
+          id_Caida AS lossId
+        FROM leads
+        WHERE idinterno_lead = ?
+      `,
+      [fixture.internalLeadId],
+    )) as Array<{ active: number; followup: string; lossId: number | null }>;
+    const bitacoraRows = (await dataSource.query("SELECT COUNT(*) AS total FROM bitacoras WHERE id_lead_bit = ?", [
+      fixture.internalLeadId,
+    ])) as Array<{ total: number }>;
+
+    expect(answeredNo).toBe(false);
+    expect(executionRows).toEqual([{ status: "initial_template_sent" }]);
+    expect(leadRows).toEqual([{ followup: "01-LEAD-INTERESADO", active: 1, lossId: null }]);
+    expect(Number(bitacoraRows[0].total)).toBe(0);
+  });
+
+  it("no procesa respuesta Si si el flujo se inactiva despues del envio inicial", async () => {
+    const fixture = await createLeadCandidateFixture(dataSource, {
+      internalLeadId: 8012,
+      leadPhone: "50670000012",
+      idnetsuiteAdmin: 507,
+      idProyectoNetsuite: 7007,
+      phoneNumberId: "kapso-phone-507",
+    });
+    const reservation = await reserveAndMarkSent(leadRepository, fixture, "wamid.disabled.flow.yes");
+
+    await dataSource.query("UPDATE kapso_business_flows SET enabled = 0 WHERE flow_uuid = ?", [FLOW_UUID]);
+
+    const yesContext = await leadRepository.markLeadFlowAnsweredYes({
+      phoneNumberId: fixture.phoneNumberId,
+      leadPhoneNumber: fixture.leadPhone,
+      responsePayload: { button: "Si, enviar informacion" },
+    });
+    const executionRows = (await dataSource.query(
+      `
+        SELECT execution_status AS status
+        FROM kapso_lead_flow_executions
+        WHERE id_kapso_lead_flow_execution = ?
+      `,
+      [reservation.executionId],
+    )) as Array<{ status: string }>;
+    const leadRows = (await dataSource.query(
+      `
+        SELECT
+          segimineto_lead AS followup,
+          whatsapp_template_contact_sent AS pendingTemplate
+        FROM leads
+        WHERE idinterno_lead = ?
+      `,
+      [fixture.internalLeadId],
+    )) as Array<{ followup: string; pendingTemplate: number }>;
+    const bitacoraRows = (await dataSource.query("SELECT COUNT(*) AS total FROM bitacoras WHERE id_lead_bit = ?", [
+      fixture.internalLeadId,
+    ])) as Array<{ total: number }>;
+
+    expect(yesContext).toBeNull();
+    expect(executionRows).toEqual([{ status: "initial_template_sent" }]);
+    expect(leadRows).toEqual([{ followup: "01-LEAD-INTERESADO", pendingTemplate: 0 }]);
+    expect(Number(bitacoraRows[0].total)).toBe(0);
   });
 
   it("confirma de forma transaccional las respuestas Sí y No del cliente", async () => {
@@ -783,7 +1386,11 @@ async function createLeadCandidateFixture(
   };
 }
 
-async function reserveAndMarkSent(repository: KapsoLeadAutomationRepository, fixture: LeadFixture): Promise<{ executionId: number }> {
+async function reserveAndMarkSent(
+  repository: KapsoLeadAutomationRepository,
+  fixture: LeadFixture,
+  messageId = "wamid.test.initial",
+): Promise<{ executionId: number }> {
   const reservation = await repository.reserveInitialTemplateSend({
     flowUuid: FLOW_UUID,
     leadId: fixture.leadId,
@@ -800,7 +1407,8 @@ async function reserveAndMarkSent(repository: KapsoLeadAutomationRepository, fix
 
   await repository.markInitialTemplateSent({
     executionId: reservation.executionId,
-    responsePayload: { ok: true },
+    messageId,
+    responsePayload: { messages: [{ id: messageId }] },
   });
 
   return reservation;
@@ -816,12 +1424,12 @@ async function createRealApp(
 ): Promise<INestApplication> {
   process.env.MYSQL_DATABASE = databaseName;
   process.env.MYSQL_MIGRATIONS_RUN = "false";
-  process.env.REDIS_HOST ??= "127.0.0.1";
-  process.env.REDIS_PORT ??= "6379";
+  process.env.KAPSO_JOBS_DRIVER ??= "local";
   process.env.KAPSO_PUBLIC_BASE_URL ??= "http://localhost:8002";
   process.env.KAPSO_MEDIA_SIGNING_SECRET = "integration_media_signing_secret_32_chars";
   process.env.KAPSO_PLATFORM_WEBHOOK_SECRET = "integration_platform_secret";
   process.env.KAPSO_WHATSAPP_WEBHOOK_SECRET = "integration_whatsapp_secret";
+  process.env.KAPSO_META_WEBHOOK_SECRET = "integration_meta_secret";
   process.env.ENTRA_TENANT_ID = "00000000-0000-4000-8000-000000000001";
   process.env.ENTRA_API_AUDIENCE = "00000000-0000-4000-8000-000000000002";
   process.env.ENTRA_ALLOWED_CLIENT_IDS = "00000000-0000-4000-8000-000000000003";

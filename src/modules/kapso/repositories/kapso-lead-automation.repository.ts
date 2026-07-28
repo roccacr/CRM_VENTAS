@@ -6,7 +6,7 @@
  * Usa `FOR UPDATE` y UNIQUE `(flow_uuid, idinterno_lead)` para anti-repetición.
  */
 import { Injectable } from "@nestjs/common";
-import { DataSource } from "typeorm";
+import { DataSource, EntityManager } from "typeorm";
 
 export type LeadTemplateCandidateRecord = Record<string, unknown> & {
   leadId: number;
@@ -35,17 +35,28 @@ export type LeadTemplateCandidateRecord = Record<string, unknown> & {
 export type MarkLeadFlowAnsweredNoInput = {
   phoneNumberId: string;
   leadPhoneNumber: string;
+  contextMessageId?: string | null;
   responsePayload: Record<string, unknown>;
 };
 
 export type MarkLeadFlowAnsweredYesInput = {
   phoneNumberId: string;
   leadPhoneNumber: string;
+  contextMessageId?: string | null;
+  responsePayload: Record<string, unknown>;
+};
+
+export type RegisterUnidentifiedInitialReplyInput = {
+  phoneNumberId: string;
+  leadPhoneNumber: string;
+  contextMessageId?: string | null;
+  replyText: string;
   responsePayload: Record<string, unknown>;
 };
 
 export type LeadFlowAnsweredYesContext = {
   executionId: number;
+  flowUuid: string;
   internalLeadId: number;
   idnetsuiteAdmin: number | null;
   idProyectoNetsuite: number | null;
@@ -56,9 +67,21 @@ export type LeadFlowAnsweredYesContext = {
   projectExternalId: string | null;
 };
 
+export type LeadFlowIntroInteractiveContext = {
+  executionId: number;
+  phoneNumberId: string;
+  projectExternalId: string | null;
+  interactivePayload: Record<string, unknown>;
+};
+
 export type IntroFlowExecutionUpdateInput = {
   executionId: number;
   failureReason?: string | null;
+};
+
+export type LeadFlowIntroMediaPendingInput = {
+  executionId: number;
+  pendingPayload: Record<string, unknown>;
 };
 
 export type ReserveInitialTemplateSendInput = {
@@ -77,9 +100,40 @@ export type MarkLeadTemplateCandidateInvalidPhoneInput = ReserveInitialTemplateS
 
 export type InitialTemplateExecutionUpdateInput = {
   executionId: number;
+  messageId?: string | null;
   responsePayload?: Record<string, unknown>;
   failureReason?: string | null;
 };
+
+export type InitialTemplateDeliveryFailureInput = {
+  phoneNumberId: string;
+  leadPhoneNumber: string;
+  messageId: string | null;
+  failureReason: string;
+  responsePayload: Record<string, unknown>;
+};
+
+export type InitialTemplateDeliverySuccessInput = {
+  phoneNumberId: string;
+  leadPhoneNumber: string;
+  messageId: string | null;
+  deliveryStatus: "delivered" | "read";
+  responsePayload: Record<string, unknown>;
+};
+
+export type IntroMediaDeliveryInput = InitialTemplateDeliverySuccessInput;
+export type IntroMediaFailureInput = InitialTemplateDeliveryFailureInput;
+
+export type IntroMediaDeliveryResult =
+  | { state: "updated_pending" }
+  | { state: "ready"; context: LeadFlowIntroInteractiveContext }
+  | null;
+
+export type IntroMediaFailureResult =
+  | { state: "updated_pending" }
+  | { state: "ready"; context: LeadFlowIntroInteractiveContext }
+  | { state: "failed" }
+  | null;
 
 /**
  * Repositorio de automatización de leads vía flows Kapso (templates / respuestas).
@@ -92,6 +146,85 @@ export type InitialTemplateExecutionUpdateInput = {
 @Injectable()
 export class KapsoLeadAutomationRepository {
   constructor(private readonly dataSource: DataSource) {}
+
+  private resolveInboundExecution<T>(rows: T[], hasStrongCorrelationId: boolean): T | undefined {
+    if (hasStrongCorrelationId) {
+      return rows[0];
+    }
+
+    return rows.length === 1 ? rows[0] : undefined;
+  }
+
+  private async isInitialTemplateFlowReady(manager: EntityManager, flowUuid: string, idProyectoNetsuite: number | null) {
+    if (idProyectoNetsuite === null) {
+      return false;
+    }
+
+    const rows = await manager.query(
+      `
+        SELECT 1 AS ready
+        FROM kapso_business_flows business_flow
+        INNER JOIN kapso_business_flow_projects flow_project
+          ON flow_project.flow_uuid = business_flow.flow_uuid
+         AND flow_project.id_proyecto_netsuite = ?
+         AND flow_project.enabled = 1
+        INNER JOIN kapso_business_flow_steps step
+          ON step.flow_uuid = business_flow.flow_uuid
+         AND step.step_code = ?
+         AND step.step_type = ?
+         AND step.enabled = 1
+        INNER JOIN kapso_template_catalog template
+          ON template.action_code = step.template_action_code
+         AND LOWER(template.template_status) = ?
+        WHERE business_flow.flow_uuid = ?
+          AND business_flow.enabled = 1
+        LIMIT 1
+      `,
+      [idProyectoNetsuite, "saludo", "template", "approved", flowUuid],
+    );
+
+    return Boolean(rows[0]);
+  }
+
+  private parseJsonRecord(value: unknown): Record<string, unknown> {
+    if (!value) {
+      return {};
+    }
+
+    if (typeof value === "string") {
+      try {
+        const parsed = JSON.parse(value) as unknown;
+        return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? (parsed as Record<string, unknown>) : {};
+      } catch {
+        return {};
+      }
+    }
+
+    return typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : {};
+  }
+
+  private async isFlowProjectEnabled(manager: EntityManager, flowUuid: string, idProyectoNetsuite: number | null) {
+    if (idProyectoNetsuite === null) {
+      return false;
+    }
+
+    const rows = await manager.query(
+      `
+        SELECT 1 AS ready
+        FROM kapso_business_flows business_flow
+        INNER JOIN kapso_business_flow_projects flow_project
+          ON flow_project.flow_uuid = business_flow.flow_uuid
+         AND flow_project.id_proyecto_netsuite = ?
+         AND flow_project.enabled = 1
+        WHERE business_flow.flow_uuid = ?
+          AND business_flow.enabled = 1
+        LIMIT 1
+      `,
+      [idProyectoNetsuite, flowUuid],
+    );
+
+    return Boolean(rows[0]);
+  }
 
   /**
    * Selecciona un lote de leads candidatos al envío del template inicial.
@@ -250,6 +383,12 @@ export class KapsoLeadAutomationRepository {
    */
   async markLeadTemplateCandidateInvalidPhone(input: MarkLeadTemplateCandidateInvalidPhoneInput) {
     return this.dataSource.transaction(async (manager) => {
+      // Revalidacion defensiva: un flujo o proyecto apagado no debe tocar el lead,
+      // incluso cuando el candidato quedo en memoria antes del cambio operativo.
+      if (!(await this.isInitialTemplateFlowReady(manager, input.flowUuid, input.idProyectoNetsuite))) {
+        return false;
+      }
+
       // Anti-repetición: bloquea la pareja flow_uuid + idinterno_lead si ya existe.
       const existingRows = await manager.query(
         `
@@ -348,6 +487,12 @@ export class KapsoLeadAutomationRepository {
    */
   async reserveInitialTemplateSend(input: ReserveInitialTemplateSendInput) {
     return this.dataSource.transaction(async (manager) => {
+      // Revalidacion defensiva: si el flujo o el proyecto se apagan despues
+      // de leer candidatos, el envio debe detenerse antes de reclamar el lead.
+      if (!(await this.isInitialTemplateFlowReady(manager, input.flowUuid, input.idProyectoNetsuite))) {
+        return null;
+      }
+
       // Claim optimista del lead: solo un worker pasa si el flag sigue en 2.
       const updateResult = await manager.query(
         `
@@ -369,7 +514,9 @@ export class KapsoLeadAutomationRepository {
       const existingRows = await manager.query(
         `
           SELECT
-            execution.id_kapso_lead_flow_execution AS executionId
+            execution.id_kapso_lead_flow_execution AS executionId,
+            execution.execution_status AS executionStatus,
+            execution.initial_template_sent_at AS initialTemplateSentAt
           FROM kapso_lead_flow_executions execution
           WHERE execution.flow_uuid = ?
             AND execution.idinterno_lead = ?
@@ -379,7 +526,33 @@ export class KapsoLeadAutomationRepository {
         [input.flowUuid, input.internalLeadId],
       );
 
-      if (existingRows[0]) {
+      const existingExecution = existingRows[0] as
+        | {
+            executionId: number | string;
+            executionStatus: string | null;
+            initialTemplateSentAt: Date | string | null;
+          }
+        | undefined;
+
+      if (existingExecution?.executionStatus === "reserved" && !existingExecution.initialTemplateSentAt) {
+        await manager.query(
+          `
+            UPDATE kapso_lead_flow_executions
+            SET
+              idnetsuite_admin = ?,
+              id_proyecto_netsuite = ?,
+              phone_number_id = ?,
+              lead_phone_number = ?,
+              failure_reason = NULL
+            WHERE id_kapso_lead_flow_execution = ?
+          `,
+          [input.idnetsuiteAdmin, input.idProyectoNetsuite, input.phoneNumberId, input.leadPhoneNumber, existingExecution.executionId],
+        );
+
+        return { executionId: Number(existingExecution.executionId) };
+      }
+
+      if (existingExecution) {
         return null;
       }
 
@@ -422,13 +595,14 @@ export class KapsoLeadAutomationRepository {
         UPDATE kapso_lead_flow_executions
         SET
           execution_status = ?,
+          initial_template_message_id = ?,
           initial_template_sent_at = CURRENT_TIMESTAMP,
           last_response_json = ?,
           completed_at = NULL,
           failure_reason = NULL
         WHERE id_kapso_lead_flow_execution = ?
       `,
-      ["initial_template_sent", JSON.stringify(input.responsePayload ?? {}), input.executionId],
+      ["initial_template_sent", input.messageId ?? null, JSON.stringify(input.responsePayload ?? {}), input.executionId],
     );
   }
 
@@ -454,6 +628,256 @@ export class KapsoLeadAutomationRepository {
   }
 
   /**
+   * Marca como fallida una plantilla que Kapso acepto inicialmente, pero Meta
+   * rechazo luego por webhook asincronico.
+   *
+   * Tablas: `kapso_lead_flow_executions`, `leads`, `bitacoras`.
+   * Por que: no se reintenta automaticamente un fallo terminal de entrega, pero
+   * el asesor conserva trazabilidad del motivo dentro del CRM.
+   */
+  async markInitialTemplateDeliveryFailed(input: InitialTemplateDeliveryFailureInput) {
+    return this.dataSource.transaction(async (manager) => {
+      const rows = await manager.query(
+        `
+          SELECT
+            execution.id_kapso_lead_flow_execution AS executionId,
+            execution.flow_uuid AS flowUuid,
+            execution.id_proyecto_netsuite AS idProyectoNetsuite,
+            execution.idinterno_lead AS internalLeadId,
+            execution.idnetsuite_admin AS idnetsuiteAdmin,
+            crm_lead.estado_lead AS leadStatus
+          FROM kapso_lead_flow_executions execution
+          LEFT JOIN leads crm_lead
+            ON crm_lead.idinterno_lead = execution.idinterno_lead
+          WHERE execution.phone_number_id = ?
+            AND execution.execution_status = ?
+            AND (
+              (? IS NOT NULL AND execution.initial_template_message_id = ?)
+              OR (? IS NULL AND execution.lead_phone_number = ?)
+            )
+          ORDER BY execution.initial_template_sent_at DESC, execution.created_at DESC
+          LIMIT 2
+          FOR UPDATE
+        `,
+        [
+          input.phoneNumberId,
+          "initial_template_sent",
+          input.messageId,
+          input.messageId,
+          input.messageId,
+          input.leadPhoneNumber,
+        ],
+      );
+
+      const execution = this.resolveInboundExecution(rows, Boolean(input.messageId)) as
+        | {
+            executionId: number;
+            flowUuid: string;
+            idnetsuiteAdmin: number | null;
+            idProyectoNetsuite: number | null;
+            internalLeadId: number;
+            leadStatus: number | null;
+          }
+        | undefined;
+
+      if (!execution) {
+        return false;
+      }
+
+      if (!(await this.isFlowProjectEnabled(manager, execution.flowUuid, execution.idProyectoNetsuite))) {
+        return false;
+      }
+
+      await manager.query(
+        `
+          UPDATE kapso_lead_flow_executions
+          SET
+            execution_status = ?,
+            completed_at = CURRENT_TIMESTAMP,
+            failure_reason = ?,
+            last_response_json = ?,
+            last_response_at = CURRENT_TIMESTAMP
+          WHERE id_kapso_lead_flow_execution = ?
+        `,
+        ["initial_template_failed", input.failureReason, JSON.stringify(input.responsePayload), execution.executionId],
+      );
+
+      await manager.query(
+        `
+          INSERT INTO bitacoras (
+            id_lead_bit,
+            id_admin_bit,
+            id_caida_bit,
+            detalle_bit,
+            tipo_documento_bit,
+            estado_bit,
+            estado_lead,
+            fech_seg_bit
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        `,
+        [
+          execution.internalLeadId,
+          execution.idnetsuiteAdmin ?? 0,
+          68,
+          `No se logro entregar el template inicial por WhatsApp. Motivo: ${input.failureReason}. El flujo Kapso queda cerrado para evitar reintentos automaticos.`,
+          "Kapso",
+          "Template no entregado",
+          execution.leadStatus ?? 1,
+          "",
+        ],
+      );
+
+      return true;
+    });
+  }
+
+  /**
+   * Confirma entrega real del template inicial cuando Meta/Kapso reporta
+   * `delivered` o `read`.
+   *
+   * Tablas: `kapso_lead_flow_executions`, `leads`, `caidas`, `bitacoras`.
+   * Por que: el POST a Kapso puede devolver 200 antes del estado final; solo el
+   * webhook asincronico confirma que el lead recibio el mensaje.
+   */
+  async markInitialTemplateDeliverySucceeded(input: InitialTemplateDeliverySuccessInput) {
+    return this.dataSource.transaction(async (manager) => {
+      const rows = await manager.query(
+        `
+          SELECT
+            execution.id_kapso_lead_flow_execution AS executionId,
+            execution.flow_uuid AS flowUuid,
+            execution.id_proyecto_netsuite AS idProyectoNetsuite,
+            execution.idinterno_lead AS internalLeadId,
+            execution.idnetsuite_admin AS idnetsuiteAdmin,
+            crm_lead.estado_lead AS leadStatus
+          FROM kapso_lead_flow_executions execution
+          LEFT JOIN leads crm_lead
+            ON crm_lead.idinterno_lead = execution.idinterno_lead
+          WHERE execution.phone_number_id = ?
+            AND execution.execution_status = ?
+            AND (
+              (? IS NOT NULL AND execution.initial_template_message_id = ?)
+              OR (? IS NULL AND execution.lead_phone_number = ?)
+            )
+          ORDER BY execution.initial_template_sent_at DESC, execution.created_at DESC
+          LIMIT 2
+          FOR UPDATE
+        `,
+        [
+          input.phoneNumberId,
+          "initial_template_sent",
+          input.messageId,
+          input.messageId,
+          input.messageId,
+          input.leadPhoneNumber,
+        ],
+      );
+
+      const execution = this.resolveInboundExecution(rows, Boolean(input.messageId)) as
+        | {
+            executionId: number;
+            flowUuid: string;
+            idnetsuiteAdmin: number | null;
+            idProyectoNetsuite: number | null;
+            internalLeadId: number;
+            leadStatus: number | null;
+          }
+        | undefined;
+
+      if (!execution) {
+        return false;
+      }
+
+      if (!(await this.isFlowProjectEnabled(manager, execution.flowUuid, execution.idProyectoNetsuite))) {
+        return false;
+      }
+
+      const successDropRows = await manager.query(
+        `
+          SELECT id_caida AS idCaida
+          FROM caidas
+          WHERE nombre_caida = ?
+          LIMIT 1
+        `,
+        ["Template inicial entregado por WhatsApp"],
+      );
+
+      let successDropId = (successDropRows[0] as { idCaida?: number } | undefined)?.idCaida;
+
+      if (!successDropId) {
+        const insertResult = await manager.query(
+          `
+            INSERT INTO caidas (
+              nombre_caida,
+              estado_caida,
+              segui
+            ) VALUES (?, ?, ?)
+          `,
+          ["Template inicial entregado por WhatsApp", 0, 0],
+        );
+
+        successDropId = Number(insertResult.insertId);
+      }
+
+      await manager.query(
+        `
+          UPDATE kapso_lead_flow_executions
+          SET
+            execution_status = ?,
+            failure_reason = NULL,
+            completed_at = CURRENT_TIMESTAMP,
+            last_response_json = ?,
+            last_response_at = CURRENT_TIMESTAMP,
+            updated_at = CURRENT_TIMESTAMP
+          WHERE id_kapso_lead_flow_execution = ?
+        `,
+        ["initial_template_delivered", JSON.stringify(input.responsePayload), execution.executionId],
+      );
+
+      await manager.query(
+        `
+          UPDATE leads
+          SET
+            segimineto_lead = ?,
+            accion_lead = ?,
+            actualizadaaccion_lead = DATE_FORMAT(NOW(), '%Y-%m-%d %H:%i:%s'),
+            whatsapp_template_contact_sent = ?,
+            id_Caida = ?
+          WHERE idinterno_lead = ?
+        `,
+        ["08-LEAD-SEGUIMIENTO", 3, 0, successDropId, execution.internalLeadId],
+      );
+
+      await manager.query(
+        `
+          INSERT INTO bitacoras (
+            id_lead_bit,
+            id_admin_bit,
+            id_caida_bit,
+            detalle_bit,
+            tipo_documento_bit,
+            estado_bit,
+            estado_lead,
+            fech_seg_bit
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        `,
+        [
+          execution.internalLeadId,
+          execution.idnetsuiteAdmin ?? 0,
+          successDropId,
+          `Template inicial de WhatsApp entregado correctamente al lead. Estado reportado: ${input.deliveryStatus}.`,
+          "Kapso",
+          "Template inicial entregado",
+          execution.leadStatus ?? 1,
+          "",
+        ],
+      );
+
+      return true;
+    });
+  }
+
+  /**
    * Procesa respuesta "No" del lead: pierde el lead y cierra la ejecución.
    *
    * Tablas: `kapso_lead_flow_executions` (FOR UPDATE), `leads`, `bitacoras`.
@@ -467,22 +891,47 @@ export class KapsoLeadAutomationRepository {
         `
           SELECT
             execution.id_kapso_lead_flow_execution AS executionId,
+            execution.flow_uuid AS flowUuid,
+            execution.id_proyecto_netsuite AS idProyectoNetsuite,
             execution.idinterno_lead AS internalLeadId,
             execution.idnetsuite_admin AS idnetsuiteAdmin
           FROM kapso_lead_flow_executions execution
           WHERE execution.phone_number_id = ?
-            AND execution.lead_phone_number = ?
-            AND execution.execution_status = ?
+            AND execution.execution_status IN (?, ?)
+            AND (
+              (? IS NOT NULL AND execution.initial_template_message_id = ?)
+              OR (? IS NULL AND execution.lead_phone_number = ?)
+            )
           ORDER BY execution.initial_template_sent_at DESC, execution.created_at DESC
-          LIMIT 1
+          LIMIT 2
           FOR UPDATE
         `,
-        [input.phoneNumberId, input.leadPhoneNumber, "initial_template_sent"],
+        [
+          input.phoneNumberId,
+          "initial_template_sent",
+          "initial_template_delivered",
+          input.contextMessageId ?? null,
+          input.contextMessageId ?? null,
+          input.contextMessageId ?? null,
+          input.leadPhoneNumber,
+        ],
       );
 
-      const execution = rows[0] as { executionId: number; internalLeadId: number; idnetsuiteAdmin: number | null } | undefined;
+      const execution = this.resolveInboundExecution(rows, Boolean(input.contextMessageId)) as
+        | {
+            executionId: number;
+            flowUuid: string;
+            idProyectoNetsuite: number | null;
+            internalLeadId: number;
+            idnetsuiteAdmin: number | null;
+          }
+        | undefined;
 
       if (!execution) {
+        return false;
+      }
+
+      if (!(await this.isFlowProjectEnabled(manager, execution.flowUuid, execution.idProyectoNetsuite))) {
         return false;
       }
 
@@ -555,6 +1004,7 @@ export class KapsoLeadAutomationRepository {
         `
           SELECT
             execution.id_kapso_lead_flow_execution AS executionId,
+            execution.flow_uuid AS flowUuid,
             execution.idinterno_lead AS internalLeadId,
             execution.idnetsuite_admin AS idnetsuiteAdmin,
             execution.id_proyecto_netsuite AS idProyectoNetsuite,
@@ -569,18 +1019,33 @@ export class KapsoLeadAutomationRepository {
           LEFT JOIN kapso_phone_numbers phone
             ON phone.phone_number_id = execution.phone_number_id
           WHERE execution.phone_number_id = ?
-            AND execution.lead_phone_number = ?
-            AND execution.execution_status = ?
+            AND execution.execution_status IN (?, ?)
+            AND (
+              (? IS NOT NULL AND execution.initial_template_message_id = ?)
+              OR (? IS NULL AND execution.lead_phone_number = ?)
+            )
           ORDER BY execution.initial_template_sent_at DESC, execution.created_at DESC
-          LIMIT 1
+          LIMIT 2
           FOR UPDATE
         `,
-        [input.phoneNumberId, input.leadPhoneNumber, "initial_template_sent"],
+        [
+          input.phoneNumberId,
+          "initial_template_sent",
+          "initial_template_delivered",
+          input.contextMessageId ?? null,
+          input.contextMessageId ?? null,
+          input.contextMessageId ?? null,
+          input.leadPhoneNumber,
+        ],
       );
 
-      const execution = rows[0] as LeadFlowAnsweredYesContext | undefined;
+      const execution = this.resolveInboundExecution(rows, Boolean(input.contextMessageId)) as LeadFlowAnsweredYesContext | undefined;
 
       if (!execution) {
+        return null;
+      }
+
+      if (!(await this.isFlowProjectEnabled(manager, execution.flowUuid, execution.idProyectoNetsuite))) {
         return null;
       }
 
@@ -646,6 +1111,385 @@ export class KapsoLeadAutomationRepository {
    * Tablas: `kapso_lead_flow_executions`.
    * Por qué: avanza a `intro_sent` limpiando `failure_reason`.
    */
+  /**
+   * Registra una respuesta escrita que no permite decidir si el cliente acepta o rechaza.
+   *
+   * Tablas: `kapso_lead_flow_executions`, `leads`, `bitacoras`.
+   * Por que: deja trazabilidad para el asesor sin cambiar el lead ni cerrar el flujo.
+   */
+  async registerUnidentifiedInitialReply(input: RegisterUnidentifiedInitialReplyInput) {
+    return this.dataSource.transaction(async (manager) => {
+      const rows = await manager.query(
+        `
+          SELECT
+            execution.id_kapso_lead_flow_execution AS executionId,
+            execution.flow_uuid AS flowUuid,
+            execution.id_proyecto_netsuite AS idProyectoNetsuite,
+            execution.idinterno_lead AS internalLeadId,
+            execution.idnetsuite_admin AS idnetsuiteAdmin,
+            crm_lead.estado_lead AS leadStatus
+          FROM kapso_lead_flow_executions execution
+          LEFT JOIN leads crm_lead
+            ON crm_lead.idinterno_lead = execution.idinterno_lead
+          WHERE execution.phone_number_id = ?
+            AND execution.execution_status IN (?, ?)
+            AND (
+              (? IS NOT NULL AND execution.initial_template_message_id = ?)
+              OR (? IS NULL AND execution.lead_phone_number = ?)
+            )
+          ORDER BY execution.initial_template_sent_at DESC, execution.created_at DESC
+          LIMIT 2
+          FOR UPDATE
+        `,
+        [
+          input.phoneNumberId,
+          "initial_template_sent",
+          "initial_template_delivered",
+          input.contextMessageId ?? null,
+          input.contextMessageId ?? null,
+          input.contextMessageId ?? null,
+          input.leadPhoneNumber,
+        ],
+      );
+
+      const execution = this.resolveInboundExecution(rows, Boolean(input.contextMessageId)) as
+        | {
+            executionId: number;
+            flowUuid: string;
+            idProyectoNetsuite: number | null;
+            internalLeadId: number;
+            idnetsuiteAdmin: number | null;
+            leadStatus: number | null;
+          }
+        | undefined;
+
+      if (!execution) {
+        return false;
+      }
+
+      if (!(await this.isFlowProjectEnabled(manager, execution.flowUuid, execution.idProyectoNetsuite))) {
+        return false;
+      }
+
+      await manager.query(
+        `
+          UPDATE kapso_lead_flow_executions
+          SET
+            last_response_json = ?,
+            last_response_at = CURRENT_TIMESTAMP,
+            updated_at = CURRENT_TIMESTAMP
+          WHERE id_kapso_lead_flow_execution = ?
+        `,
+        [JSON.stringify(input.responsePayload), execution.executionId],
+      );
+
+      await manager.query(
+        `
+          INSERT INTO bitacoras (
+            id_lead_bit,
+            id_admin_bit,
+            id_caida_bit,
+            detalle_bit,
+            tipo_documento_bit,
+            estado_bit,
+            estado_lead,
+            fech_seg_bit
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        `,
+        [
+          execution.internalLeadId,
+          execution.idnetsuiteAdmin ?? 0,
+          null,
+          `No se logro identificar la intencion de la respuesta recibida por WhatsApp. Mensaje del cliente: "${input.replyText}". Revisar seguimiento manual antes de continuar el flujo.`,
+          "Kapso",
+          "Respuesta WhatsApp no identificada",
+          execution.leadStatus ?? 1,
+          "",
+        ],
+      );
+
+      return true;
+    });
+  }
+
+  async markLeadFlowIntroMediaPending(input: LeadFlowIntroMediaPendingInput) {
+    await this.dataSource.query(
+      `
+        UPDATE kapso_lead_flow_executions
+        SET
+          execution_status = ?,
+          failure_reason = NULL,
+          last_response_json = ?,
+          last_response_at = CURRENT_TIMESTAMP,
+          updated_at = CURRENT_TIMESTAMP
+        WHERE id_kapso_lead_flow_execution = ?
+      `,
+      ["intro_media_pending", JSON.stringify(input.pendingPayload), input.executionId],
+    );
+  }
+
+  async markLeadFlowIntroMediaDelivered(input: IntroMediaDeliveryInput): Promise<IntroMediaDeliveryResult> {
+    if (!input.messageId) {
+      return null;
+    }
+
+    return this.dataSource.transaction(async (manager) => {
+      const rows = await manager.query(
+        `
+          SELECT
+            execution.id_kapso_lead_flow_execution AS executionId,
+            execution.phone_number_id AS phoneNumberId,
+            execution.last_response_json AS lastResponseJson,
+            phone.project_external_id AS projectExternalId
+          FROM kapso_lead_flow_executions execution
+          LEFT JOIN kapso_phone_numbers phone
+            ON phone.phone_number_id = execution.phone_number_id
+          WHERE execution.phone_number_id = ?
+            AND execution.lead_phone_number = ?
+            AND execution.execution_status = ?
+          ORDER BY execution.updated_at DESC, execution.created_at DESC
+          LIMIT 10
+          FOR UPDATE
+        `,
+        [input.phoneNumberId, input.leadPhoneNumber, "intro_media_pending"],
+      );
+
+      const matchingRows = rows.filter((row: { lastResponseJson?: unknown }) => {
+        const payload = this.parseJsonRecord(row.lastResponseJson);
+        const mediaMessages = Array.isArray(payload.mediaMessages) ? payload.mediaMessages : [];
+
+        return mediaMessages.some((mediaMessage) => this.parseJsonRecord(mediaMessage).messageId === input.messageId);
+      });
+
+      if (matchingRows.length !== 1) {
+        return null;
+      }
+
+      const execution = matchingRows[0] as {
+        executionId: number;
+        phoneNumberId: string;
+        lastResponseJson: unknown;
+        projectExternalId: string | null;
+      };
+      const payload = this.parseJsonRecord(execution.lastResponseJson);
+      const mediaMessages = Array.isArray(payload.mediaMessages) ? payload.mediaMessages : [];
+      const updatedMessages = mediaMessages.map((mediaMessage) => {
+        const mediaMessageRecord = this.parseJsonRecord(mediaMessage);
+
+        if (mediaMessageRecord.messageId !== input.messageId) {
+          return mediaMessageRecord;
+        }
+
+        const currentStatus = String(mediaMessageRecord.status ?? "").toLowerCase();
+        const incomingStatus = String(input.deliveryStatus ?? "").toLowerCase();
+        const currentIsConfirmed = currentStatus === "delivered" || currentStatus === "read";
+        const incomingIsConfirmed = incomingStatus === "delivered" || incomingStatus === "read";
+        const deliveredAt =
+          incomingIsConfirmed || !mediaMessageRecord.deliveredAt
+            ? new Date().toISOString()
+            : mediaMessageRecord.deliveredAt;
+
+        return {
+          ...mediaMessageRecord,
+          status: currentIsConfirmed && !incomingIsConfirmed ? mediaMessageRecord.status : input.deliveryStatus,
+          deliveredAt,
+          deliveryPayload: incomingIsConfirmed || !currentIsConfirmed ? input.responsePayload : mediaMessageRecord.deliveryPayload,
+        };
+      });
+      const allMediaConfirmed =
+        updatedMessages.length > 0 &&
+        updatedMessages.every((mediaMessage) => {
+          const status = String(this.parseJsonRecord(mediaMessage).status ?? "").toLowerCase();
+          return status === "delivered" || status === "read";
+        });
+      const updatedPayload: Record<string, unknown> = {
+        ...payload,
+        mediaMessages: updatedMessages,
+        lastDeliveryPayload: input.responsePayload,
+      };
+
+      if (!allMediaConfirmed) {
+        await manager.query(
+          `
+            UPDATE kapso_lead_flow_executions
+            SET
+              last_response_json = ?,
+              last_response_at = CURRENT_TIMESTAMP,
+              updated_at = CURRENT_TIMESTAMP
+            WHERE id_kapso_lead_flow_execution = ?
+          `,
+          [JSON.stringify(updatedPayload), execution.executionId],
+        );
+
+        return { state: "updated_pending" };
+      }
+
+      await manager.query(
+        `
+          UPDATE kapso_lead_flow_executions
+          SET
+            execution_status = ?,
+            last_response_json = ?,
+            last_response_at = CURRENT_TIMESTAMP,
+            updated_at = CURRENT_TIMESTAMP
+          WHERE id_kapso_lead_flow_execution = ?
+        `,
+        ["intro_interactive_ready", JSON.stringify(updatedPayload), execution.executionId],
+      );
+
+      return {
+        state: "ready",
+        context: {
+          executionId: execution.executionId,
+          phoneNumberId: execution.phoneNumberId,
+          projectExternalId: execution.projectExternalId,
+          interactivePayload: this.parseJsonRecord(updatedPayload.interactivePayload),
+        },
+      };
+    });
+  }
+
+  async markLeadFlowIntroMediaFailed(input: IntroMediaFailureInput): Promise<IntroMediaFailureResult> {
+    if (!input.messageId) {
+      return null;
+    }
+
+    return this.dataSource.transaction(async (manager) => {
+      const rows = await manager.query(
+        `
+          SELECT
+            execution.id_kapso_lead_flow_execution AS executionId,
+            execution.phone_number_id AS phoneNumberId,
+            execution.last_response_json AS lastResponseJson,
+            phone.project_external_id AS projectExternalId
+          FROM kapso_lead_flow_executions execution
+          LEFT JOIN kapso_phone_numbers phone
+            ON phone.phone_number_id = execution.phone_number_id
+          WHERE execution.phone_number_id = ?
+            AND execution.lead_phone_number = ?
+            AND execution.execution_status = ?
+          ORDER BY execution.updated_at DESC, execution.created_at DESC
+          LIMIT 10
+          FOR UPDATE
+        `,
+        [input.phoneNumberId, input.leadPhoneNumber, "intro_media_pending"],
+      );
+
+      const matchingRows = rows.filter((row: { lastResponseJson?: unknown }) => {
+        const payload = this.parseJsonRecord(row.lastResponseJson);
+        const mediaMessages = Array.isArray(payload.mediaMessages) ? payload.mediaMessages : [];
+
+        return mediaMessages.some((mediaMessage) => this.parseJsonRecord(mediaMessage).messageId === input.messageId);
+      });
+
+      if (matchingRows.length !== 1) {
+        return null;
+      }
+
+      const execution = matchingRows[0] as {
+        executionId: number;
+        phoneNumberId: string;
+        lastResponseJson: unknown;
+        projectExternalId: string | null;
+      };
+      const payload = this.parseJsonRecord(execution.lastResponseJson);
+      const mediaMessages = Array.isArray(payload.mediaMessages) ? payload.mediaMessages : [];
+      const updatedMessages = mediaMessages.map((mediaMessage) => {
+        const mediaMessageRecord = this.parseJsonRecord(mediaMessage);
+
+        if (mediaMessageRecord.messageId !== input.messageId) {
+          return mediaMessageRecord;
+        }
+
+        return {
+          ...mediaMessageRecord,
+          status: "failed",
+          failedAt: new Date().toISOString(),
+          failureReason: input.failureReason,
+          failurePayload: input.responsePayload,
+        };
+      });
+      const updatedPayload: Record<string, unknown> = {
+        ...payload,
+        mediaMessages: updatedMessages,
+        lastFailurePayload: input.responsePayload,
+      };
+      const allMediaTerminal =
+        updatedMessages.length > 0 &&
+        updatedMessages.every((mediaMessage) => {
+          const status = String(this.parseJsonRecord(mediaMessage).status ?? "").toLowerCase();
+          return status === "delivered" || status === "read" || status === "failed";
+        });
+      const hasConfirmedMedia = updatedMessages.some((mediaMessage) => {
+        const status = String(this.parseJsonRecord(mediaMessage).status ?? "").toLowerCase();
+        return status === "delivered" || status === "read";
+      });
+
+      if (!allMediaTerminal) {
+        await manager.query(
+          `
+            UPDATE kapso_lead_flow_executions
+            SET
+              last_response_json = ?,
+              last_response_at = CURRENT_TIMESTAMP,
+              updated_at = CURRENT_TIMESTAMP
+            WHERE id_kapso_lead_flow_execution = ?
+          `,
+          [JSON.stringify(updatedPayload), execution.executionId],
+        );
+
+        return { state: "updated_pending" };
+      }
+
+      if (hasConfirmedMedia) {
+        await manager.query(
+          `
+            UPDATE kapso_lead_flow_executions
+            SET
+              execution_status = ?,
+              last_response_json = ?,
+              last_response_at = CURRENT_TIMESTAMP,
+              updated_at = CURRENT_TIMESTAMP
+            WHERE id_kapso_lead_flow_execution = ?
+          `,
+          ["intro_interactive_ready", JSON.stringify(updatedPayload), execution.executionId],
+        );
+
+        return {
+          state: "ready",
+          context: {
+            executionId: execution.executionId,
+            phoneNumberId: execution.phoneNumberId,
+            projectExternalId: execution.projectExternalId,
+            interactivePayload: this.parseJsonRecord(updatedPayload.interactivePayload),
+          },
+        };
+      }
+
+      await manager.query(
+        `
+          UPDATE kapso_lead_flow_executions
+          SET
+            execution_status = ?,
+            failure_reason = ?,
+            completed_at = CURRENT_TIMESTAMP,
+            last_response_json = ?,
+            last_response_at = CURRENT_TIMESTAMP,
+            updated_at = CURRENT_TIMESTAMP
+          WHERE id_kapso_lead_flow_execution = ?
+        `,
+        [
+          "intro_failed",
+          input.failureReason,
+          JSON.stringify(updatedPayload),
+          execution.executionId,
+        ],
+      );
+
+      return { state: "failed" };
+    });
+  }
+
   async markLeadFlowIntroSent(input: IntroFlowExecutionUpdateInput) {
     await this.dataSource.query(
       `

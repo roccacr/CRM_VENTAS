@@ -263,6 +263,7 @@ export class CreateKapsoBusinessFlowTables1752750000000 implements MigrationInte
         columnNames: ["phone_number_id", "lead_phone_number", "execution_status"],
       }),
     );
+
   }
 
   private async createFlowProjectMediaTable(queryRunner: QueryRunner) {
