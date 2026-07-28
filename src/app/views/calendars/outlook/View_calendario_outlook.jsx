@@ -63,6 +63,7 @@ import {
     buildCalendarMoveBlockedMessage,
     canAuthenticatedUserMoveCalendarEvent,
     deleteOutlookEventById,
+    outlookHtmlToPlainText,
     plainTextToOutlookHtml,
 } from "./outlookCalendarUtils";
 
@@ -1316,7 +1317,7 @@ const extractUrls = (value) => {
 };
 
 const getOutlookDescriptionValue = (outlookEvent) => {
-    const fullBodyDescription = sanitizeEventDescription(outlookEvent?.body?.content || "");
+    const fullBodyDescription = outlookHtmlToPlainText(outlookEvent?.body?.content || "");
 
     if (fullBodyDescription) {
         return fullBodyDescription;

@@ -31,6 +31,7 @@ import {
     OUTLOOK_CREATE_EVENT_SCOPE,
     toGraphDateTime,
     deleteOutlookEventById,
+    plainTextToOutlookHtml,
 } from "../../../views/calendars/outlook/outlookCalendarUtils";
 
 import "../../../views/calendars/outlook/View_calendario_outlook.css";
@@ -1238,7 +1239,9 @@ export const LeadOutlookCreateEventModal = ({
                 subject: createEventTitle.trim(),
                 body: {
                     contentType: "HTML",
-                    content: createEventDescription.trim() || "Evento creado desde CRM Ventas.",
+                    content: createEventDescription
+                        ? plainTextToOutlookHtml(createEventDescription)
+                        : "Evento creado desde CRM Ventas.",
                 },
                 start: {
                     dateTime: toGraphDateTime(createEventScheduleRange.start),
@@ -1281,7 +1284,7 @@ export const LeadOutlookCreateEventModal = ({
                         idnetsuite_admin,
                         nombreEvento: createEventTitle.trim(),
                         tipoEvento: createEventType,
-                        descripcionEvento: createEventDescription.trim(),
+                        descripcionEvento: createEventDescription,
                         formatdateIni: toGraphDateTime(createEventScheduleRange.start),
                         formatdateFin: toGraphDateTime(createEventScheduleRange.end),
                         horaInicio: createEventStartTimeValue,
@@ -1304,7 +1307,7 @@ export const LeadOutlookCreateEventModal = ({
                         idnetsuite_admin,
                         nombreEvento: createEventTitle.trim(),
                         tipoEvento: createEventType,
-                        descripcionEvento: createEventDescription.trim(),
+                        descripcionEvento: createEventDescription,
                         formatdateIni: toGraphDateTime(createEventScheduleRange.start),
                         formatdateFin: toGraphDateTime(createEventScheduleRange.end),
                         horaInicio: createEventStartTimeValue,
@@ -1358,7 +1361,7 @@ export const LeadOutlookCreateEventModal = ({
                     idnetsuite_admin,
                     nombreEvento: createEventTitle.trim(),
                     tipoEvento: createEventType,
-                    descripcionEvento: createEventDescription.trim(),
+                    descripcionEvento: createEventDescription,
                     formatdateIni: toGraphDateTime(createEventScheduleRange.start),
                     formatdateFin: toGraphDateTime(createEventScheduleRange.end),
                     horaInicio: createEventStartTimeValue,

@@ -5,6 +5,7 @@ import {
     buildEventSummaryPreview,
     buildCalendarMoveBlockedMessage,
     canAuthenticatedUserMoveCalendarEvent,
+    outlookHtmlToPlainText,
     plainTextToOutlookHtml,
     resolveCalendarEventOwner,
 } from "./outlookCalendarUtils.js";
@@ -20,6 +21,13 @@ test("plainTextToOutlookHtml conserva saltos de linea y espacios", () => {
     assert.equal(
         plainTextToOutlookHtml("Primero\n\n  Segundo"),
         "Primero<br /><br />&nbsp;&nbsp;Segundo",
+    );
+});
+
+test("outlookHtmlToPlainText evita acumular lineas vacias de Outlook", () => {
+    assert.equal(
+        outlookHtmlToPlainText("<div>1. Manual del Cliente.</div><div><br></div><div>2. Planos en expedientes.</div><div><br></div><div>3. Contrato de corredores.</div>"),
+        "1. Manual del Cliente.\n2. Planos en expedientes.\n3. Contrato de corredores.",
     );
 });
 

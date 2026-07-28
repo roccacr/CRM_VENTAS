@@ -205,6 +205,32 @@ export const plainTextToOutlookHtml = (value) => {
 };
 
 /**
+ * Convierte el HTML que devuelve Outlook a texto editable.
+ * Los bloques vacíos que Outlook inserta entre párrafos no deben volver al
+ * textarea como líneas en blanco, porque en cada guardado se materializan.
+ */
+export const outlookHtmlToPlainText = (value) => {
+    if (typeof value !== "string") {
+        return "";
+    }
+
+    return value
+        .replace(/\r\n?/g, "\n")
+        .replace(/<div[^>]*>\s*(?:<br\s*\/?>)?\s*<\/div>/gi, "")
+        .replace(/<br\s*\/?>/gi, "\n")
+        .replace(/<\/(?:div|p|li|tr|h[1-6])>/gi, "\n")
+        .replace(/<[^>]+>/g, "")
+        .replace(/&nbsp;/gi, " ")
+        .replace(/&amp;/gi, "&")
+        .replace(/&lt;/gi, "<")
+        .replace(/&gt;/gi, ">")
+        .replace(/&quot;/gi, "\"")
+        .replace(/&#39;/g, "'")
+        .replace(/\n{3,}/g, "\n\n")
+        .replace(/^\n+|\n+$/g, "");
+};
+
+/**
  * Genera el texto breve que se muestra en la tarjeta compacta del evento.
  * El detalle completo permanece disponible en el modal expandido.
  */
