@@ -21,6 +21,11 @@ const urlSettings = {
 
 // Creamos un objeto que contendrá las funciones relacionadas con NetSuite.
 const estimacion = {};
+
+const MARK_ESTIMATE_PRE_RESERVE_LOSS_QUERY =
+    "UPDATE estimaciones SET status=0, pre_caida=1, envioPreReservaCaida=? WHERE idEstimacion_est=?";
+const UPDATE_LEAD_STATUS_AFTER_PRE_RESERVE_LOSS_QUERY =
+    "UPDATE leads SET estado_lead=? WHERE idinterno_lead=?";
 const COSTA_RICA_TIME_ZONE = "America/Costa_Rica";
 const getCurrentCostaRicaDate = () => new Date().toLocaleDateString("en-CA", { timeZone: COSTA_RICA_TIME_ZONE });
 
@@ -639,14 +644,14 @@ estimacion.caidaReserva = (estimacion) => {
 
     // Actualiza la estimación marcándola como caída
     const result = await executeQuery(
-        "UPDATE estimaciones SET status=0, pre_caida=1, envioPreReservaCaida=? WHERE idEstimacion_est=?",
+        MARK_ESTIMATE_PRE_RESERVE_LOSS_QUERY,
         [formattedDate, idEstimacion],
         database
     );
 
     // Actualiza el estado del lead asociado
     const result2 = await executeQuery(
-        "UPDATE leads SET status=? WHERE idinterno_lead=?",
+        UPDATE_LEAD_STATUS_AFTER_PRE_RESERVE_LOSS_QUERY,
         [status, IdCliente],
         database
     );
@@ -656,4 +661,9 @@ estimacion.caidaReserva = (estimacion) => {
 
 
 // Exportamos el módulo para su uso en otras partes del proyecto.
+estimacion._private = {
+    MARK_ESTIMATE_PRE_RESERVE_LOSS_QUERY,
+    UPDATE_LEAD_STATUS_AFTER_PRE_RESERVE_LOSS_QUERY,
+};
+
 module.exports = estimacion;
