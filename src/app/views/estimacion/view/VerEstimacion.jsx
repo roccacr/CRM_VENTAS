@@ -749,10 +749,23 @@ export const VerEstimacion = () => {
       confirmButtonText: "Sí, perder",
     });
 
-    await dispatch(crearBitacoraEstimacionCaida(leadId, comentario));
-    await dispatch(
+    const crmUpdateResult = await dispatch(
       ModificarEstimacion(estimacionId, leadId, markAsLost.isConfirmed ? 1 : 0),
     );
+    const estimateUpdated = crmUpdateResult?.data?.result?.ok === true;
+    const leadUpdated = crmUpdateResult?.data?.result2?.ok === true;
+
+    if (!estimateUpdated || !leadUpdated) {
+      Swal.close();
+      await Swal.fire(
+        "Algo no está bien.",
+        "NetSuite respondió, pero no se pudo marcar la caída en CRM. Revise la lista antes de continuar.",
+        "warning",
+      );
+      return;
+    }
+
+    await dispatch(crearBitacoraEstimacionCaida(leadId, comentario));
 
     Swal.close();
     await Swal.fire(
