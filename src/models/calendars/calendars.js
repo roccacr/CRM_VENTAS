@@ -5,6 +5,12 @@ const outlookEvent = require("./outlookEvent");
 
 const calendars = {};
 
+const buildGetAllListEventParams = (visibilityParams, dataParams) => [
+    dataParams.dateStart,
+    dataParams.dateEnd,
+    ...visibilityParams,
+];
+
 /**
  * Obtiene los eventos visibles del calendario CRM.
  *
@@ -205,11 +211,7 @@ calendars.getAll_ListEvent = (dataParams) => {
 
     return executeQuery(
         query,
-        [
-            ...visibilityScope.params,
-            dataParams.dateStart,
-            dataParams.dateEnd,
-        ],
+        buildGetAllListEventParams(visibilityScope.params, dataParams),
         dataParams.database,
     ).then((result) => ({
         ok: result.ok,
@@ -242,5 +244,9 @@ calendars.cancelOverduePendingEvents = async (dataParams) => {
 
 calendars.getPendingActionCalendarEvents = (dataParams) =>
     outlookEvent.getPendingActionCalendarEvents(dataParams);
+
+calendars._private = {
+    buildGetAllListEventParams,
+};
 
 module.exports = calendars;
