@@ -607,6 +607,9 @@ const mapUnifiedEventsToCalendarEvents = (unifiedEvents, calendarOwner = {}) =>
 
         // Extraer enlaces Teams del body o del campo onlineMeeting
         const outlookDescription = getOutlookDescriptionValue(outlookEvent);
+        const eventDescription = normalizeEditableEventDescription(
+            crmEvent?.decrip_calendar || outlookDescription || "",
+        );
         const descriptionLinks = extractUrls(outlookEvent?.body?.content || outlookEvent?.bodyPreview || "");
         const teamsLink = outlookEvent?.onlineMeeting?.joinUrl
             || descriptionLinks.find((link) => link.includes("teams.microsoft.com"))
@@ -721,8 +724,8 @@ const mapUnifiedEventsToCalendarEvents = (unifiedEvents, calendarOwner = {}) =>
                 accessCode: null, // Graph no expone código de acceso en el select actual
                 attendees: attendees.length ? attendees : [attendee],
                 meetingType,
-                description: crmEvent?.decrip_calendar || outlookDescription,
-                summaryText: crmEvent?.decrip_calendar || outlookDescription,
+                description: eventDescription,
+                summaryText: eventDescription,
                 descriptionLinks,
                 webLink: outlookEvent?.webLink || null,
             },
