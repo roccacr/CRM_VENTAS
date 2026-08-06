@@ -22,6 +22,8 @@ export type KapsoBusinessFlowProjectRecord = {
   nombreProyecto: string | null;
   projectName: string | null;
   enabled: 0 | 1;
+  introMessageTemplate: string | null;
+  introOptionsJson: string | null;
 };
 
 export type KapsoBusinessFlowStepRecord = {
@@ -175,7 +177,9 @@ export class KapsoFlowProjectMediaRepository {
           project.project_name AS projectName,
           -- Preferir nombre vivo del CRM; fallback al snapshot guardado en Kapso.
           COALESCE(crm_project.Nombre_proyecto, project.project_name) AS nombreProyecto,
-          project.enabled
+          project.enabled,
+          project.intro_message_template AS introMessageTemplate,
+          project.intro_options_json AS introOptionsJson
         FROM kapso_business_flow_projects project
         LEFT JOIN proyectos crm_project
           ON crm_project.id_ProNetsuite = project.id_proyecto_netsuite
@@ -244,6 +248,36 @@ export class KapsoFlowProjectMediaRepository {
       flowUuid,
       enabled,
     };
+  }
+
+  /**
+   * Guarda copy y labels configurables de la intro por flow/proyecto.
+   *
+   * Tablas: `kapso_business_flow_projects`.
+   * Por qué: el proyecto define cómo se presenta su intro sin cambiar código.
+   */
+  async updateBusinessFlowProjectIntroConfig(
+    flowUuid: string,
+    idProyectoNetsuite: number,
+    introMessageTemplate: string,
+    introOptionsJson: string,
+  ) {
+    await this.dataSource.query(
+      `
+        UPDATE kapso_business_flow_projects
+        SET
+          intro_message_template = ?,
+          intro_options_json = ?,
+          updated_at = CURRENT_TIMESTAMP
+        WHERE flow_uuid = ?
+          AND id_proyecto_netsuite = ?
+          AND enabled = 1
+        LIMIT 1
+      `,
+      [introMessageTemplate, introOptionsJson, flowUuid, idProyectoNetsuite],
+    );
+
+    return this.findBusinessFlowProject(flowUuid, idProyectoNetsuite);
   }
 
   /**
@@ -413,7 +447,9 @@ export class KapsoFlowProjectMediaRepository {
           project.id_proyecto_netsuite AS idProyectoNetsuite,
           project.project_name AS projectName,
           COALESCE(crm_project.Nombre_proyecto, project.project_name) AS nombreProyecto,
-          project.enabled
+          project.enabled,
+          project.intro_message_template AS introMessageTemplate,
+          project.intro_options_json AS introOptionsJson
         FROM kapso_business_flow_projects project
         LEFT JOIN proyectos crm_project
           ON crm_project.id_ProNetsuite = project.id_proyecto_netsuite

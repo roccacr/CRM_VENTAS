@@ -59,13 +59,13 @@ const BULLMQ_PROVIDERS = KAPSO_JOBS_DRIVER === "bullmq" ? [KapsoJobsProcessor] :
     MulterModule.registerAsync({
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => {
-        const maxFileSizeMb = configService.get<number>("kapso.mediaMaxFileSizeMb", 50);
+        const maxFileSizeBytes = configService.get<number>("kapso.mediaMaxFileSizeBytes", 100 * 1024 * 1024);
 
         return {
           // memoryStorage: el servicio valida magic bytes sobre el buffer completo.
           storage: memoryStorage(),
           limits: {
-            fileSize: maxFileSizeMb * 1024 * 1024,
+            fileSize: maxFileSizeBytes,
             files: 1,
             fields: 20,
             parts: 25,

@@ -58,6 +58,7 @@ function createServiceTestBed() {
     updateBusinessFlowStatus: jest.fn(),
     enableBusinessFlowProject: jest.fn(),
     disableBusinessFlowProject: jest.fn(),
+    updateBusinessFlowProjectIntroConfig: jest.fn(),
     listBusinessFlowProjectsByIdentifier: jest.fn(),
     listFlowProjectMediaForProject: jest.fn(),
     deleteFlowProjectMediaForProject: jest.fn(),
@@ -393,6 +394,132 @@ describe("AdminKapsoIntegrationsService", () => {
     await expect(service.enableBusinessFlowProject("flow-uuid", 999999)).rejects.toBeInstanceOf(NotFoundException);
   });
 
+  it("guarda el mensaje de intro y los mensajes configurables por opcion", async () => {
+    repositoryMock.updateBusinessFlowProjectIntroConfig.mockResolvedValue({
+      flowUuid: "flow-uuid",
+      idProyecto: 38,
+      idProyectoNetsuite: 38,
+      nombreProyecto: "Andira",
+      enabled: 1,
+    });
+
+    await expect(
+      service.updateBusinessFlowProjectIntroConfig("flow-uuid", 38, {
+        introMessageTemplate: "Intro {{nombre_lead}}",
+        introOptions: [
+          {
+            label: "Ver precios",
+            messageTemplate: "Precios {{proyecto_lead}}",
+          },
+          {
+            label: "Agendar",
+            messageTemplate: "Agenda {{nombre_lead}}",
+          },
+          {
+            label: "Asesor",
+            messageTemplate: "Asesor {{nombre_asesor}}",
+          },
+        ],
+      }),
+    ).resolves.toEqual(
+      expect.objectContaining({
+        enabled: 1,
+        idProyectoNetsuite: 38,
+      }),
+    );
+
+    const [, , introMessageTemplate, introOptionsJson] = repositoryMock.updateBusinessFlowProjectIntroConfig.mock.calls[0];
+
+    expect(introMessageTemplate).toBe("Intro {{nombre_lead}}");
+    expect(JSON.parse(introOptionsJson)).toEqual([
+      {
+        id: "intro_ver_precios",
+        label: "Ver precios",
+        messageTemplate: "Precios {{proyecto_lead}}",
+      },
+      {
+        id: "intro_agendar",
+        label: "Agendar",
+        messageTemplate: "Agenda {{nombre_lead}}",
+      },
+      {
+        id: "intro_asesor",
+        label: "Asesor",
+        messageTemplate: "Asesor {{nombre_asesor}}",
+      },
+    ]);
+  });
+
+  it("guarda solo las opciones configuradas y conserva IDs personalizados", async () => {
+    repositoryMock.updateBusinessFlowProjectIntroConfig.mockResolvedValue({
+      flowUuid: "flow-uuid",
+      idProyecto: 38,
+      idProyectoNetsuite: 38,
+      nombreProyecto: "Andira",
+      enabled: 1,
+    });
+
+    await expect(
+      service.updateBusinessFlowProjectIntroConfig("flow-uuid", 38, {
+        introMessageTemplate: "Intro {{nombre_lead}}",
+        introOptions: [
+          {
+            id: "intro_ver_precios",
+            label: "Ver precios",
+            messageTemplate: "Precios {{proyecto_lead}}",
+          },
+          {
+            id: "intro_custom_financiamiento",
+            label: "Financiamiento",
+            messageTemplate: "Financiamiento {{nombre_lead}}",
+          },
+        ],
+      }),
+    ).resolves.toEqual(
+      expect.objectContaining({
+        enabled: 1,
+        idProyectoNetsuite: 38,
+      }),
+    );
+
+    const [, , , introOptionsJson] = repositoryMock.updateBusinessFlowProjectIntroConfig.mock.calls[0];
+
+    expect(JSON.parse(introOptionsJson)).toEqual([
+      {
+        id: "intro_ver_precios",
+        label: "Ver precios",
+        messageTemplate: "Precios {{proyecto_lead}}",
+      },
+      {
+        id: "intro_custom_financiamiento",
+        label: "Financiamiento",
+        messageTemplate: "Financiamiento {{nombre_lead}}",
+      },
+    ]);
+  });
+
+  it("rechaza mas de tres opciones de intro", async () => {
+    repositoryMock.updateBusinessFlowProjectIntroConfig.mockResolvedValue({
+      flowUuid: "flow-uuid",
+      idProyecto: 38,
+      idProyectoNetsuite: 38,
+      nombreProyecto: "Andira",
+      enabled: 1,
+    });
+
+    await expect(
+      service.updateBusinessFlowProjectIntroConfig("flow-uuid", 38, {
+        introMessageTemplate: "Intro {{nombre_lead}}",
+        introOptions: [
+          { label: "Uno", messageTemplate: "Uno" },
+          { label: "Dos", messageTemplate: "Dos" },
+          { label: "Tres", messageTemplate: "Tres" },
+          { label: "Cuatro", messageTemplate: "Cuatro" },
+        ],
+      }),
+    ).rejects.toThrow("solo puede tener hasta 3 opciones");
+  });
+
   it("deshabilita un proyecto de un flujo de negocio", async () => {
     repositoryMock.listBusinessFlowProjectsByIdentifier.mockResolvedValue([]);
     repositoryMock.deleteBusinessFlowProject.mockResolvedValue({
@@ -549,6 +676,123 @@ describe("AdminKapsoIntegrationsService", () => {
           relativePath: media.relativePath,
         }),
       );
+    } finally {
+      await rm(storagePath, {
+        recursive: true,
+        force: true,
+      });
+    }
+  });
+
+  it("sube videos MP4 dentro de la carpeta del flujo y proyecto habilitado", async () => {
+    const storagePath = await mkdtemp(join(tmpdir(), "kapso-media-"));
+
+    repositoryMock.findBusinessFlowProject.mockResolvedValue({
+      idProyectoNetsuite: 38,
+      nombreProyecto: "Andira",
+      projectName: "Andira",
+      enabled: 1,
+    });
+    repositoryMock.createFlowProjectMedia.mockImplementation(async (input) => ({
+      id: 8,
+      ...input,
+      status: 1,
+    }));
+
+    jest.spyOn(service["configService"], "get").mockImplementation((key: string) => {
+      if (key === "kapso.mediaStoragePath") {
+        return storagePath;
+      }
+
+      if (key === "kapso.mediaMaxFileSizeBytes") {
+        return 100 * 1024 * 1024;
+      }
+
+      return undefined;
+    });
+
+    try {
+      const mp4Buffer = Buffer.concat([Buffer.from([0x00, 0x00, 0x00, 0x18]), Buffer.from("ftypisom", "ascii"), Buffer.alloc(16)]);
+      const result = await service.uploadFlowProjectMedia(
+        "flow-uuid",
+        38,
+        {
+          originalname: "intro-andira.mp4",
+          mimetype: "video/mp4",
+          size: mp4Buffer.length,
+          buffer: mp4Buffer,
+        },
+        { stepCode: "intro" },
+      );
+
+      expect(result).not.toBeNull();
+      const media = result!;
+
+      expect(media.relativePath).toMatch(/^flow-uuid\/proyectos\/38-andira\/[a-f0-9-]+\.mp4$/);
+      await expect(readFile(join(storagePath, media.relativePath!))).resolves.toEqual(mp4Buffer);
+      expect(repositoryMock.createFlowProjectMedia).toHaveBeenCalledWith(
+        expect.objectContaining({
+          flowUuid: "flow-uuid",
+          idProyectoNetsuite: 38,
+          stepCode: "intro",
+          mediaType: "video",
+          mimeType: "video/mp4",
+          originalName: "intro-andira.mp4",
+          relativePath: media.relativePath,
+        }),
+      );
+    } finally {
+      await rm(storagePath, {
+        recursive: true,
+        force: true,
+      });
+    }
+  });
+
+  it("rechaza videos mayores al limite real de WhatsApp aunque entren en el limite general", async () => {
+    const storagePath = await mkdtemp(join(tmpdir(), "kapso-media-"));
+
+    repositoryMock.findBusinessFlowProject.mockResolvedValue({
+      idProyectoNetsuite: 38,
+      nombreProyecto: "Andira",
+      projectName: "Andira",
+      enabled: 1,
+    });
+
+    jest.spyOn(service["configService"], "get").mockImplementation((key: string) => {
+      if (key === "kapso.mediaStoragePath") {
+        return storagePath;
+      }
+
+      if (key === "kapso.mediaMaxFileSizeBytes") {
+        return 100 * 1024 * 1024;
+      }
+
+      return undefined;
+    });
+
+    try {
+      const oversizedMp4Buffer = Buffer.concat([
+        Buffer.from([0x00, 0x00, 0x00, 0x18]),
+        Buffer.from("ftypisom", "ascii"),
+        Buffer.alloc(16 * 1024 * 1024 + 1),
+      ]);
+
+      await expect(
+        service.uploadFlowProjectMedia(
+          "flow-uuid",
+          38,
+          {
+            originalname: "intro-andira.mp4",
+            mimetype: "video/mp4",
+            size: oversizedMp4Buffer.length,
+            buffer: oversizedMp4Buffer,
+          },
+          { stepCode: "intro" },
+        ),
+      ).rejects.toThrow("El video supera el limite permitido por WhatsApp/Kapso. Maximo: 16 MB.");
+
+      expect(repositoryMock.createFlowProjectMedia).not.toHaveBeenCalled();
     } finally {
       await rm(storagePath, {
         recursive: true,

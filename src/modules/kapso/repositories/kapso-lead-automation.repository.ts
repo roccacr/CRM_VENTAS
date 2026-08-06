@@ -54,6 +54,23 @@ export type RegisterUnidentifiedInitialReplyInput = {
   responsePayload: Record<string, unknown>;
 };
 
+export type MarkLeadFlowIntroOptionAnsweredInput = {
+  phoneNumberId: string;
+  leadPhoneNumber: string;
+  contextMessageId?: string | null;
+  optionId: string;
+  optionLabel: string;
+  keepInteractiveReady?: boolean;
+  nextInteractiveMessageId?: string | null;
+  responsePayload: Record<string, unknown>;
+};
+
+export type FindLeadFlowIntroOptionContextInput = {
+  phoneNumberId: string;
+  leadPhoneNumber: string;
+  contextMessageId?: string | null;
+};
+
 export type LeadFlowAnsweredYesContext = {
   executionId: number;
   flowUuid: string;
@@ -62,9 +79,12 @@ export type LeadFlowAnsweredYesContext = {
   idProyectoNetsuite: number | null;
   leadName: string | null;
   projectName: string | null;
+  adminName: string | null;
   phoneNumberId: string;
   leadPhoneNumber: string;
   projectExternalId: string | null;
+  introMessageTemplate: string | null;
+  introOptionsJson: string | null;
 };
 
 export type LeadFlowIntroInteractiveContext = {
@@ -76,6 +96,7 @@ export type LeadFlowIntroInteractiveContext = {
 
 export type IntroFlowExecutionUpdateInput = {
   executionId: number;
+  messageId?: string | null;
   failureReason?: string | null;
 };
 
@@ -1012,12 +1033,21 @@ export class KapsoLeadAutomationRepository {
             execution.lead_phone_number AS leadPhoneNumber,
             crm_lead.nombre_lead AS leadName,
             crm_lead.proyecto_lead AS projectName,
-            phone.project_external_id AS projectExternalId
+            admin.name_admin AS adminName,
+            phone.project_external_id AS projectExternalId,
+            flow_project.intro_message_template AS introMessageTemplate,
+            flow_project.intro_options_json AS introOptionsJson
           FROM kapso_lead_flow_executions execution
           LEFT JOIN leads crm_lead
             ON crm_lead.idinterno_lead = execution.idinterno_lead
+          LEFT JOIN admins admin
+            ON admin.idnetsuite_admin = execution.idnetsuite_admin
           LEFT JOIN kapso_phone_numbers phone
             ON phone.phone_number_id = execution.phone_number_id
+          LEFT JOIN kapso_business_flow_projects flow_project
+            ON flow_project.flow_uuid = execution.flow_uuid
+           AND flow_project.id_proyecto_netsuite = execution.id_proyecto_netsuite
+           AND flow_project.enabled = 1
           WHERE execution.phone_number_id = ?
             AND execution.execution_status IN (?, ?)
             AND (
@@ -1117,6 +1147,169 @@ export class KapsoLeadAutomationRepository {
    * Tablas: `kapso_lead_flow_executions`, `leads`, `bitacoras`.
    * Por que: deja trazabilidad para el asesor sin cambiar el lead ni cerrar el flujo.
    */
+  async findLeadFlowIntroOptionContext(input: FindLeadFlowIntroOptionContextInput): Promise<LeadFlowAnsweredYesContext | null> {
+    const rows = await this.dataSource.query(
+      `
+        SELECT
+          execution.id_kapso_lead_flow_execution AS executionId,
+          execution.flow_uuid AS flowUuid,
+          execution.idinterno_lead AS internalLeadId,
+          execution.idnetsuite_admin AS idnetsuiteAdmin,
+          execution.id_proyecto_netsuite AS idProyectoNetsuite,
+          execution.phone_number_id AS phoneNumberId,
+          execution.lead_phone_number AS leadPhoneNumber,
+          crm_lead.nombre_lead AS leadName,
+          crm_lead.proyecto_lead AS projectName,
+          admin.name_admin AS adminName,
+          phone.project_external_id AS projectExternalId,
+          flow_project.intro_message_template AS introMessageTemplate,
+          flow_project.intro_options_json AS introOptionsJson
+        FROM kapso_lead_flow_executions execution
+        INNER JOIN kapso_business_flows business_flow
+          ON business_flow.flow_uuid = execution.flow_uuid
+         AND business_flow.enabled = 1
+        INNER JOIN kapso_business_flow_projects flow_project
+          ON flow_project.flow_uuid = execution.flow_uuid
+         AND flow_project.id_proyecto_netsuite = execution.id_proyecto_netsuite
+         AND flow_project.enabled = 1
+        LEFT JOIN leads crm_lead
+          ON crm_lead.idinterno_lead = execution.idinterno_lead
+        LEFT JOIN admins admin
+          ON admin.idnetsuite_admin = execution.idnetsuite_admin
+        LEFT JOIN kapso_phone_numbers phone
+          ON phone.phone_number_id = execution.phone_number_id
+        WHERE execution.phone_number_id = ?
+          AND execution.execution_status IN (?, ?)
+          AND (
+            (? IS NOT NULL AND execution.intro_interactive_message_id = ?)
+            OR (? IS NULL AND execution.lead_phone_number = ?)
+          )
+        ORDER BY execution.last_response_at DESC, execution.created_at DESC
+        LIMIT 2
+      `,
+      [
+        input.phoneNumberId,
+        "intro_interactive_ready",
+        "intro_sent",
+        input.contextMessageId ?? null,
+        input.contextMessageId ?? null,
+        input.contextMessageId ?? null,
+        input.leadPhoneNumber,
+      ],
+    );
+
+    return (this.resolveInboundExecution(rows, Boolean(input.contextMessageId)) as LeadFlowAnsweredYesContext | undefined) ?? null;
+  }
+
+  async markLeadFlowIntroOptionAnswered(input: MarkLeadFlowIntroOptionAnsweredInput) {
+    return this.dataSource.transaction(async (manager) => {
+      const rows = await manager.query(
+        `
+          SELECT
+            execution.id_kapso_lead_flow_execution AS executionId,
+            execution.flow_uuid AS flowUuid,
+            execution.idinterno_lead AS internalLeadId,
+            execution.idnetsuite_admin AS idnetsuiteAdmin,
+            execution.id_proyecto_netsuite AS idProyectoNetsuite,
+            execution.phone_number_id AS phoneNumberId,
+            execution.lead_phone_number AS leadPhoneNumber,
+            crm_lead.nombre_lead AS leadName,
+            crm_lead.proyecto_lead AS projectName,
+            admin.name_admin AS adminName,
+            phone.project_external_id AS projectExternalId,
+            flow_project.intro_message_template AS introMessageTemplate,
+            flow_project.intro_options_json AS introOptionsJson
+          FROM kapso_lead_flow_executions execution
+          LEFT JOIN leads crm_lead
+            ON crm_lead.idinterno_lead = execution.idinterno_lead
+          LEFT JOIN admins admin
+            ON admin.idnetsuite_admin = execution.idnetsuite_admin
+          LEFT JOIN kapso_phone_numbers phone
+            ON phone.phone_number_id = execution.phone_number_id
+          LEFT JOIN kapso_business_flow_projects flow_project
+            ON flow_project.flow_uuid = execution.flow_uuid
+           AND flow_project.id_proyecto_netsuite = execution.id_proyecto_netsuite
+           AND flow_project.enabled = 1
+          WHERE execution.phone_number_id = ?
+            AND execution.execution_status IN (?, ?)
+            AND (
+              (? IS NOT NULL AND execution.intro_interactive_message_id = ?)
+              OR (? IS NULL AND execution.lead_phone_number = ?)
+            )
+          ORDER BY execution.last_response_at DESC, execution.created_at DESC
+          LIMIT 2
+          FOR UPDATE
+        `,
+        [
+          input.phoneNumberId,
+          "intro_interactive_ready",
+          "intro_sent",
+          input.contextMessageId ?? null,
+          input.contextMessageId ?? null,
+          input.contextMessageId ?? null,
+          input.leadPhoneNumber,
+        ],
+      );
+
+      const execution = this.resolveInboundExecution(rows, Boolean(input.contextMessageId)) as LeadFlowAnsweredYesContext | undefined;
+
+      if (!execution) {
+        return null;
+      }
+
+      if (!(await this.isFlowProjectEnabled(manager, execution.flowUuid, execution.idProyectoNetsuite))) {
+        return null;
+      }
+
+      await manager.query(
+        `
+          UPDATE kapso_lead_flow_executions
+          SET
+            execution_status = ?,
+            intro_interactive_message_id = COALESCE(?, intro_interactive_message_id),
+            last_response_json = ?,
+            last_response_at = CURRENT_TIMESTAMP,
+            updated_at = CURRENT_TIMESTAMP,
+            failure_reason = NULL
+          WHERE id_kapso_lead_flow_execution = ?
+        `,
+        [
+          input.keepInteractiveReady ? "intro_interactive_ready" : "intro_option_answered",
+          input.nextInteractiveMessageId ?? null,
+          JSON.stringify(input.responsePayload),
+          execution.executionId,
+        ],
+      );
+
+      await manager.query(
+        `
+          INSERT INTO bitacoras (
+            id_lead_bit,
+            id_admin_bit,
+            id_caida_bit,
+            detalle_bit,
+            tipo_documento_bit,
+            estado_bit,
+            estado_lead,
+            fech_seg_bit
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        `,
+        [
+          execution.internalLeadId,
+          execution.idnetsuiteAdmin ?? 0,
+          69,
+          `Cliente selecciono opcion de intro WhatsApp: ${input.optionLabel}.`,
+          "Kapso",
+          "Opcion intro WhatsApp",
+          1,
+          "",
+        ],
+      );
+
+      return execution;
+    });
+  }
+
   async registerUnidentifiedInitialReply(input: RegisterUnidentifiedInitialReplyInput) {
     return this.dataSource.transaction(async (manager) => {
       const rows = await manager.query(
@@ -1496,10 +1689,11 @@ export class KapsoLeadAutomationRepository {
         UPDATE kapso_lead_flow_executions
         SET
           execution_status = ?,
+          intro_interactive_message_id = COALESCE(?, intro_interactive_message_id),
           failure_reason = NULL
         WHERE id_kapso_lead_flow_execution = ?
       `,
-      ["intro_sent", input.executionId],
+      ["intro_sent", input.messageId ?? null, input.executionId],
     );
   }
 

@@ -400,6 +400,16 @@ Cada archivo se guarda con UUID para evitar colisiones y permitir borrado seguro
 archivos/94d5c3b8-.../proyectos/38-andira/4b394e42-...jpg
 ```
 
+Formatos permitidos por firma binaria:
+
+| Tipo      | Formatos            |
+| --------- | ------------------- |
+| Imagen    | JPG, PNG, GIF, WEBP |
+| Video     | MP4, M4V, MOV, WEBM |
+| Documento | PDF                 |
+
+El limite general por archivo se controla con `KAPSO_MEDIA_MAX_FILE_SIZE_MB`. El valor por defecto es 100 MB, pero los videos tienen una restriccion adicional de WhatsApp/Kapso: maximo 16 MB. La vista y el API rechazan videos mayores a ese limite; si queda un video antiguo excedido, el worker lo omite y continua con los demas adjuntos y el mensaje final.
+
 ```mermaid
 flowchart TD
   UP["Usuario sube archivos"] --> V["Validar cantidad, tamano y firma binaria"]
@@ -488,25 +498,26 @@ sequenceDiagram
 
 ### Variables criticas
 
-| Variable                        | Uso                                                              |
-| ------------------------------- | ---------------------------------------------------------------- |
-| `PORT`                          | Puerto de API. Normalmente `8002`.                               |
-| `API_PREFIX`                    | Prefijo. Normalmente `api/v1`.                                   |
-| `CRM_JWT_SECRET`                | Valida `token_admin` del CRM.                                    |
-| `ENTRA_ALLOWED_CLIENT_IDS`      | Clientes Entra autorizados. Requerido si Entra esta configurado. |
-| `KAPSO_API_BASE_URL`            | URL base de Kapso Platform API.                                  |
-| `KAPSO_API_KEY`                 | API key por defecto.                                             |
-| `KAPSO_PROJECT_API_KEYS_JSON`   | Mapa `project.id -> apiKey`.                                     |
-| `KAPSO_PUBLIC_BASE_URL`         | URL publica para webhooks/media.                                 |
-| `KAPSO_PLATFORM_WEBHOOK_SECRET` | Secreto HMAC Platform.                                           |
-| `KAPSO_WHATSAPP_WEBHOOK_SECRET` | Secreto HMAC del webhook Kapso Events.                           |
-| `KAPSO_META_WEBHOOK_SECRET`     | Secreto HMAC del webhook Meta Forward.                           |
-| `KAPSO_MEDIA_STORAGE_PATH`      | Ruta local de adjuntos.                                          |
-| `KAPSO_MEDIA_SIGNING_SECRET`    | Firma URLs temporales.                                           |
-| `MYSQL_*`                       | Conexion a CRM Ventas.                                           |
-| `KAPSO_JOBS_DRIVER`             | `local` es el modo oficial actual. `bullmq` solo para multiples replicas. |
+| Variable                        | Uso                                                                              |
+| ------------------------------- | -------------------------------------------------------------------------------- |
+| `PORT`                          | Puerto de API. Normalmente `8002`.                                               |
+| `API_PREFIX`                    | Prefijo. Normalmente `api/v1`.                                                   |
+| `CRM_JWT_SECRET`                | Valida `token_admin` del CRM.                                                    |
+| `ENTRA_ALLOWED_CLIENT_IDS`      | Clientes Entra autorizados. Requerido si Entra esta configurado.                 |
+| `KAPSO_API_BASE_URL`            | URL base de Kapso Platform API.                                                  |
+| `KAPSO_API_KEY`                 | API key por defecto.                                                             |
+| `KAPSO_PROJECT_API_KEYS_JSON`   | Mapa `project.id -> apiKey`.                                                     |
+| `KAPSO_PUBLIC_BASE_URL`         | URL publica para webhooks/media.                                                 |
+| `KAPSO_PLATFORM_WEBHOOK_SECRET` | Secreto HMAC Platform.                                                           |
+| `KAPSO_WHATSAPP_WEBHOOK_SECRET` | Secreto HMAC del webhook Kapso Events.                                           |
+| `KAPSO_META_WEBHOOK_SECRET`     | Secreto HMAC del webhook Meta Forward.                                           |
+| `KAPSO_MEDIA_STORAGE_PATH`      | Ruta local de adjuntos.                                                          |
+| `KAPSO_MEDIA_MAX_FILE_SIZE_MB`  | Tamano maximo general por adjunto. Default: `100`. Videos: maximo `16 MB`.       |
+| `KAPSO_MEDIA_SIGNING_SECRET`    | Firma URLs temporales.                                                           |
+| `MYSQL_*`                       | Conexion a CRM Ventas.                                                           |
+| `KAPSO_JOBS_DRIVER`             | `local` es el modo oficial actual. `bullmq` solo para multiples replicas.        |
 | `REDIS_URL`                     | No configurar en modo `local`. Requerido solo cuando `KAPSO_JOBS_DRIVER=bullmq`. |
-| `REDIS_HOST`, `REDIS_PORT`      | Alternativa a `REDIS_URL` solamente en modo `bullmq`.             |
+| `REDIS_HOST`, `REDIS_PORT`      | Alternativa a `REDIS_URL` solamente en modo `bullmq`.                            |
 
 ### Checklist de despliegue
 
@@ -643,7 +654,7 @@ La evidencia completa esta separada para no convertir el README en un informe in
 | ----------------- | ------------------------------------------------------------------------------- |
 | Unitarias y e2e   | Suite Jest documentada en `test/`.                                              |
 | Integracion MySQL | Schema efimero para migraciones y repositorios.                                 |
-| Jobs Kapso        | Scheduler local con anti-solape; BullMQ queda como modo futuro multi-replica.    |
+| Jobs Kapso        | Scheduler local con anti-solape; BullMQ queda como modo futuro multi-replica.   |
 | Seguridad         | HMAC webhooks, auth global, media firmada y rate limit.                         |
 | Auditoria         | Correcciones aplicadas sobre auth, idempotencia, workers, media y repositorios. |
 | Rendimiento       | Smoke local 2026-07-22: 50 requests, 0 fallos, 78.80 RPS y p95 184.33 ms.       |
@@ -651,14 +662,14 @@ La evidencia completa esta separada para no convertir el README en un informe in
 
 ### Ruta verificable para cerrar 10/10
 
-| Frente            | Evidencia que debe existir                                                          | Estado esperado antes de produccion completa                      |
-| ----------------- | ----------------------------------------------------------------------------------- | ----------------------------------------------------------------- |
-| CI/CD             | Workflow verde en `api-kapso` con formato, lint, typecheck, unit, e2e, integracion. | Ningun PR o push relevante puede quedar con `verify` fallando.    |
-| Staging           | Migraciones ejecutadas en base aislada, con respaldo y rollback probado.            | Evidencia guardada en release notes o ticket tecnico.             |
-| E2E real          | Lead controlado recibe `saludo`, responde `Si`/`No`, crea bitacora y no reprocesa.  | Resultado validado contra CRM y Kapso reales.                     |
-| Performance       | Smoke/load test con endpoints protegidos y lotes representativos.                   | p95, p99, RPS, errores, duracion worker y backlog documentados.   |
-| Operacion         | Runbook para fallos Kapso, scheduler local, MySQL, media, tokens y webhooks duplicados. | Otro desarrollador puede diagnosticar sin depender del autor.     |
-| Liderazgo tecnico | ADRs, checklist de handoff y criterios de revision claros para nuevos cambios.      | El modulo puede ser mantenido y extendido por el equipo.          |
+| Frente            | Evidencia que debe existir                                                              | Estado esperado antes de produccion completa                    |
+| ----------------- | --------------------------------------------------------------------------------------- | --------------------------------------------------------------- |
+| CI/CD             | Workflow verde en `api-kapso` con formato, lint, typecheck, unit, e2e, integracion.     | Ningun PR o push relevante puede quedar con `verify` fallando.  |
+| Staging           | Migraciones ejecutadas en base aislada, con respaldo y rollback probado.                | Evidencia guardada en release notes o ticket tecnico.           |
+| E2E real          | Lead controlado recibe `saludo`, responde `Si`/`No`, crea bitacora y no reprocesa.      | Resultado validado contra CRM y Kapso reales.                   |
+| Performance       | Smoke/load test con endpoints protegidos y lotes representativos.                       | p95, p99, RPS, errores, duracion worker y backlog documentados. |
+| Operacion         | Runbook para fallos Kapso, scheduler local, MySQL, media, tokens y webhooks duplicados. | Otro desarrollador puede diagnosticar sin depender del autor.   |
+| Liderazgo tecnico | ADRs, checklist de handoff y criterios de revision claros para nuevos cambios.          | El modulo puede ser mantenido y extendido por el equipo.        |
 
 Ultima meta documentada:
 

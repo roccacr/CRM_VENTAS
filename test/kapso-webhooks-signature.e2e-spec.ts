@@ -55,7 +55,7 @@ function kapsoFailedMessagePayload() {
         origin: "cloud_api",
         status: "failed",
         content:
-          "Hola PRUEBA ROBERTO OT, soy Roberto Carlos Zuniga Altamirano, asesor de Andira. Vi que pediste informacion del proyecto. Te parece bien si te comparto la informacion por este medio?",
+          "Hola Nombre del lead, soy Roberto Carlos Zuniga Altamirano, asesor de Andira. Vi que pediste informacion del proyecto. Te parece bien si te comparto la informacion por este medio?",
         statuses: [failedStatusPayload()],
         direction: "outbound",
         has_media: false,
@@ -70,7 +70,7 @@ function kapsoFailedMessagePayload() {
               parameters: [
                 {
                   type: "text",
-                  text: "PRUEBA ROBERTO OT",
+                  text: "Nombre del lead",
                 },
                 {
                   type: "text",

@@ -99,6 +99,26 @@ export class AdminKapsoIntegrationsController {
   }
 
   /**
+   * Actualiza mensaje y botones de intro para un proyecto ya habilitado en el flujo.
+   *
+   * @param flowUuid - UUID del flujo.
+   * @param idProyecto - Id NetSuite del proyecto.
+   * @param body - Mensaje y labels visibles de los botones.
+   */
+  @Patch("business-flows/:flowUuid/projects/:idProyecto/intro-config")
+  updateBusinessFlowProjectIntroConfig(
+    @Param("flowUuid") flowUuid: string,
+    @Param("idProyecto", ParseIntPipe) idProyecto: number,
+    @Body()
+    body: {
+      introMessageTemplate?: unknown;
+      introOptions?: unknown;
+    },
+  ) {
+    return this.service.updateBusinessFlowProjectIntroConfig(flowUuid, idProyecto, body);
+  }
+
+  /**
    * Retira un proyecto del flujo y limpia sus adjuntos sin borrar el flujo completo.
    *
    * @param flowUuid - UUID del flujo.

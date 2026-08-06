@@ -45,14 +45,18 @@ const REMOTE_PHONE_NUMBER_DETAIL = {
 
 const ANSWERED_YES_CONTEXT = {
   executionId: 77,
+  flowUuid: LEAD_INITIAL_CONTACT_FLOW_UUID,
   internalLeadId: 3095911,
   idnetsuiteAdmin: 653055,
   idProyectoNetsuite: 38,
-  leadName: "PRUEBA ROBERTO OT",
+  leadName: "Nombre del lead",
   projectName: "Andira",
+  adminName: "Roberto Carlos Zuniga",
   phoneNumberId: TEST_PHONE_NUMBER_ID,
   leadPhoneNumber: "50687515938",
   projectExternalId: REMOTE_PHONE_NUMBER_DETAIL.projectId,
+  introMessageTemplate: null,
+  introOptionsJson: null,
 };
 
 // ============================================================================
@@ -122,6 +126,8 @@ function createSyncServiceTestBed() {
     markLeadFlowIntroMediaPending: kapsoRepositoryMock.markLeadFlowIntroMediaPending,
     markLeadFlowAnsweredNo: jest.fn(),
     markLeadFlowAnsweredYes: jest.fn(),
+    findLeadFlowIntroOptionContext: jest.fn(),
+    markLeadFlowIntroOptionAnswered: jest.fn(),
     registerUnidentifiedInitialReply: jest.fn(),
     listActiveFlowProjectMedia: jest.fn(),
     markLeadFlowIntroSent: jest.fn(),
@@ -286,7 +292,7 @@ describe("KapsoSyncService", () => {
         kapsoPhoneNumberId: 14,
         phoneNumberId: TEST_PHONE_NUMBER_ID,
         leadPhoneNumberRaw: "50687515938",
-        nombre_lead: "PRUEBA ROBERTO OT",
+        nombre_lead: "Nombre del lead",
         idProyectoNetsuite: 38,
         projectName: "Andira",
         projectExternalId: REMOTE_PHONE_NUMBER_DETAIL.projectId,
@@ -326,7 +332,7 @@ describe("KapsoSyncService", () => {
             {
               type: "body",
               parameters: [
-                { type: "text", text: "PRUEBA ROBERTO OT" },
+                { type: "text", text: "Nombre del lead" },
                 { type: "text", text: "Roberto Carlos Zuniga Altamirano" },
                 { type: "text", text: "Andira" },
               ],
@@ -355,7 +361,7 @@ describe("KapsoSyncService", () => {
         kapsoPhoneNumberId: 14,
         phoneNumberId: TEST_PHONE_NUMBER_ID,
         leadPhoneNumberRaw: "telefono malo",
-        nombre_lead: "PRUEBA ROBERTO OT",
+        nombre_lead: "Nombre del lead",
         idProyectoNetsuite: 38,
         projectName: "Andira",
         projectExternalId: REMOTE_PHONE_NUMBER_DETAIL.projectId,
@@ -396,7 +402,7 @@ describe("KapsoSyncService", () => {
         kapsoPhoneNumberId: 14,
         phoneNumberId: TEST_PHONE_NUMBER_ID,
         leadPhoneNumberRaw: "50687515938",
-        nombre_lead: "PRUEBA ROBERTO OT",
+        nombre_lead: "Nombre del lead",
         idProyectoNetsuite: 38,
         projectName: "Andira",
         projectExternalId: REMOTE_PHONE_NUMBER_DETAIL.projectId,
@@ -565,13 +571,16 @@ describe("KapsoSyncService", () => {
         interactive: expect.objectContaining({
           type: "button",
           body: expect.objectContaining({
-            text: expect.stringContaining("Perfecto PRUEBA ROBERTO OT"),
+            text: expect.stringContaining("Perfecto Nombre del lead"),
           }),
         }),
       }),
       { projectId: REMOTE_PHONE_NUMBER_DETAIL.projectId },
     );
-    expect(repositoryMock.markLeadFlowIntroSent).toHaveBeenCalledWith({ executionId: 77 });
+    expect(repositoryMock.markLeadFlowIntroSent).toHaveBeenCalledWith({
+      executionId: 77,
+      messageId: "wamid.intro",
+    });
   });
 
   it("deja pendiente el mensaje interactivo hasta confirmar todos los adjuntos de intro", async () => {
@@ -688,6 +697,86 @@ describe("KapsoSyncService", () => {
       }),
     });
     expect(repositoryMock.markLeadFlowIntroSent).not.toHaveBeenCalled();
+  });
+
+  it("omite videos mayores al limite de WhatsApp y envia el mensaje interactivo si no quedan adjuntos validos", async () => {
+    const testBed = createSyncServiceTestBed();
+    service = testBed.service;
+    const repositoryMock = testBed.adminKapsoIntegrationsRepositoryMock;
+    const platformApiMock = testBed.kapsoPlatformApiServiceMock;
+    repositoryMock.markLeadFlowAnsweredYes.mockResolvedValue(ANSWERED_YES_CONTEXT);
+    repositoryMock.listActiveFlowProjectMedia.mockResolvedValue([
+      {
+        id: 99,
+        flowUuid: "94d5c3b8-4b43-4c28-8c76-3d9eaf70ad01",
+        idProyectoNetsuite: 38,
+        projectName: "Andira",
+        stepCode: "intro",
+        mediaType: "document",
+        originalName: "recorrido.mp4",
+        storedFilename: "recorrido.mp4",
+        relativePath: "flow/38/intro/recorrido.mp4",
+        publicUrl: "https://crm.example.com/api/v1/kapso/media/recorrido.mp4",
+        mimeType: "video/mp4",
+        fileSize: 77935229,
+        sortOrder: 1,
+        active: true,
+      },
+    ]);
+    platformApiMock.sendWhatsappMessage.mockResolvedValue({ messages: [{ id: "wamid.intro-text" }] });
+
+    const result = await service.processInboundMessageWebhook({
+      object: "whatsapp_business_account",
+      entry: [
+        {
+          changes: [
+            {
+              value: {
+                metadata: { phone_number_id: TEST_PHONE_NUMBER_ID },
+                messages: [
+                  {
+                    from: "50687515938",
+                    id: "wamid.yes-oversized-video-response",
+                    timestamp: "1783009761",
+                    type: "button",
+                    button: {
+                      payload: "Si, enviar informacion",
+                      text: "Si, enviar informacion",
+                    },
+                  },
+                ],
+              },
+            },
+          ],
+        },
+      ],
+    });
+
+    expect(result).toEqual({
+      processed: 1,
+      answeredNo: 0,
+      answeredYes: 1,
+      introSent: 1,
+      introPending: 0,
+      introFailed: 0,
+      deliveryFailed: 0,
+      deliveryConfirmed: 0,
+      unidentifiedReplies: 0,
+      ignored: 0,
+    });
+    expect(platformApiMock.sendWhatsappMessage).toHaveBeenCalledTimes(1);
+    expect(platformApiMock.sendWhatsappMessage).toHaveBeenCalledWith(
+      TEST_PHONE_NUMBER_ID,
+      expect.objectContaining({
+        type: "interactive",
+      }),
+      { projectId: REMOTE_PHONE_NUMBER_DETAIL.projectId },
+    );
+    expect(repositoryMock.markLeadFlowIntroMediaPending).not.toHaveBeenCalled();
+    expect(repositoryMock.markLeadFlowIntroSent).toHaveBeenCalledWith({
+      executionId: 77,
+      messageId: "wamid.intro-text",
+    });
   });
 
   it("marca intro_failed si Kapso no permite enviar el mensaje normal de intro", async () => {
@@ -924,7 +1013,10 @@ describe("KapsoSyncService", () => {
         replySource: "text",
       }),
     });
-    expect(repositoryMock.markLeadFlowIntroSent).toHaveBeenCalledWith({ executionId: 77 });
+    expect(repositoryMock.markLeadFlowIntroSent).toHaveBeenCalledWith({
+      executionId: 77,
+      messageId: "wamid.intro-text",
+    });
   });
 
   it("registra bitacora cuando el texto libre no permite identificar la intencion", async () => {
@@ -984,6 +1076,329 @@ describe("KapsoSyncService", () => {
         messageId: "wamid.free-text-ambiguous",
         replyText: "No estoy seguro, talvez si despues me manda algo",
         replySource: "text",
+      }),
+    });
+  });
+
+  it("envia el mensaje configurado cuando el cliente selecciona una opcion de intro", async () => {
+    const testBed = createSyncServiceTestBed();
+    service = testBed.service;
+    const repositoryMock = testBed.adminKapsoIntegrationsRepositoryMock;
+    const platformApiMock = testBed.kapsoPlatformApiServiceMock;
+    const optionContext = {
+      ...ANSWERED_YES_CONTEXT,
+      introOptionsJson: JSON.stringify([
+        {
+          id: "intro_ver_precios",
+          label: "Ver precios",
+          messageTemplate:
+            "Claro {{nombre_lead}}, te comparto la informacion de precios de {{proyecto_lead}}.",
+        },
+        {
+          id: "intro_agendar_visita",
+          label: "Agendar visita",
+          messageTemplate: "Perfecto {{nombre_lead}}, coordinemos una visita para que conozcas {{proyecto_lead}}.",
+        },
+        {
+          id: "intro_hablar_asesor",
+          label: "Hablar con asesor",
+          messageTemplate: "Con gusto {{nombre_lead}}, un asesor continuara la conversacion contigo.",
+        },
+      ]),
+    };
+    repositoryMock.findLeadFlowIntroOptionContext.mockResolvedValue(optionContext);
+    repositoryMock.markLeadFlowIntroOptionAnswered.mockResolvedValue(optionContext);
+    platformApiMock.sendWhatsappMessage.mockResolvedValue({ messages: [{ id: "wamid.option-response" }] });
+
+    const result = await service.processInboundMessageWebhook({
+      object: "whatsapp_business_account",
+      entry: [
+        {
+          changes: [
+            {
+              value: {
+                metadata: {
+                  phone_number_id: TEST_PHONE_NUMBER_ID,
+                },
+                messages: [
+                  {
+                    from: "50687515938",
+                    id: "wamid.intro-option",
+                    timestamp: "1783009764",
+                    type: "button",
+                    context: {
+                      id: "wamid.intro-interactive",
+                    },
+                    button: {
+                      text: "Selected: Ver precios",
+                      payload: "intro_ver_precios",
+                    },
+                  },
+                ],
+              },
+            },
+          ],
+        },
+      ],
+    });
+
+    expect(result.processed).toBe(1);
+    expect(result.unidentifiedReplies).toBe(0);
+    expect(result.ignored).toBe(0);
+    expect(repositoryMock.findLeadFlowIntroOptionContext).toHaveBeenCalledWith({
+      phoneNumberId: TEST_PHONE_NUMBER_ID,
+      leadPhoneNumber: "50687515938",
+      contextMessageId: "wamid.intro-interactive",
+    });
+    expect(platformApiMock.sendWhatsappMessage).toHaveBeenCalledWith(
+      TEST_PHONE_NUMBER_ID,
+      expect.objectContaining({
+        to: "50687515938",
+        type: "interactive",
+        interactive: expect.objectContaining({
+          body: {
+            text: "Claro Nombre del lead, te comparto la informacion de precios de Andira.",
+          },
+          action: {
+            buttons: [
+              {
+                type: "reply",
+                reply: {
+                  id: "intro_agendar_visita",
+                  title: "Agendar visita",
+                },
+              },
+              {
+                type: "reply",
+                reply: {
+                  id: "intro_hablar_asesor",
+                  title: "Hablar con asesor",
+                },
+              },
+            ],
+          },
+        }),
+      }),
+      { projectId: REMOTE_PHONE_NUMBER_DETAIL.projectId },
+    );
+    expect(repositoryMock.markLeadFlowIntroOptionAnswered).toHaveBeenCalledWith({
+      phoneNumberId: TEST_PHONE_NUMBER_ID,
+      leadPhoneNumber: "50687515938",
+      contextMessageId: "wamid.intro-interactive",
+      optionId: "intro_ver_precios",
+      optionLabel: "Ver precios",
+      keepInteractiveReady: true,
+      nextInteractiveMessageId: "wamid.option-response",
+      responsePayload: expect.objectContaining({
+        messageId: "wamid.intro-option",
+        remainingOptions: [
+          {
+            id: "intro_agendar_visita",
+            label: "Agendar visita",
+          },
+          {
+            id: "intro_hablar_asesor",
+            label: "Hablar con asesor",
+          },
+        ],
+        optionResponse: expect.objectContaining({
+          messages: [{ id: "wamid.option-response" }],
+        }),
+      }),
+    });
+    expect(repositoryMock.registerUnidentifiedInitialReply).not.toHaveBeenCalled();
+  });
+
+  it("mantiene activas las opciones restantes despues de una seleccion previa de intro", async () => {
+    const testBed = createSyncServiceTestBed();
+    service = testBed.service;
+    const repositoryMock = testBed.adminKapsoIntegrationsRepositoryMock;
+    const platformApiMock = testBed.kapsoPlatformApiServiceMock;
+    const optionContext = {
+      ...ANSWERED_YES_CONTEXT,
+      introOptionsJson: JSON.stringify([
+        {
+          id: "intro_ver_precios",
+          label: "Ver precios",
+          messageTemplate:
+            "Claro {{nombre_lead}}, te comparto la informacion de precios de {{proyecto_lead}}.",
+        },
+        {
+          id: "intro_agendar_visita",
+          label: "Agendar visita",
+          messageTemplate: "Perfecto {{nombre_lead}}, coordinemos una visita para que conozcas {{proyecto_lead}}.",
+        },
+        {
+          id: "intro_hablar_asesor",
+          label: "Hablar con asesor",
+          messageTemplate: "Con gusto {{nombre_lead}}, un asesor continuara la conversacion contigo.",
+        },
+      ]),
+    };
+    repositoryMock.findLeadFlowIntroOptionContext.mockResolvedValue(optionContext);
+    repositoryMock.markLeadFlowIntroOptionAnswered.mockResolvedValue(optionContext);
+    platformApiMock.sendWhatsappMessage.mockResolvedValue({ messages: [{ id: "wamid.visit-response" }] });
+
+    const result = await service.processInboundMessageWebhook({
+      object: "whatsapp_business_account",
+      entry: [
+        {
+          changes: [
+            {
+              value: {
+                metadata: {
+                  phone_number_id: TEST_PHONE_NUMBER_ID,
+                },
+                messages: [
+                  {
+                    from: "50687515938",
+                    id: "wamid.intro-option-visit",
+                    timestamp: "1783009765",
+                    type: "button",
+                    context: {
+                      id: "wamid.option-response",
+                    },
+                    button: {
+                      text: "Selected: Agendar visita",
+                      payload: "intro_agendar_visita",
+                    },
+                  },
+                ],
+              },
+            },
+          ],
+        },
+      ],
+    });
+
+    expect(result.processed).toBe(1);
+    expect(platformApiMock.sendWhatsappMessage).toHaveBeenCalledWith(
+      TEST_PHONE_NUMBER_ID,
+      expect.objectContaining({
+        to: "50687515938",
+        type: "interactive",
+        interactive: expect.objectContaining({
+          body: {
+            text: "Perfecto Nombre del lead, coordinemos una visita para que conozcas Andira.",
+          },
+          action: {
+            buttons: [
+              {
+                type: "reply",
+                reply: {
+                  id: "intro_ver_precios",
+                  title: "Ver precios",
+                },
+              },
+              {
+                type: "reply",
+                reply: {
+                  id: "intro_hablar_asesor",
+                  title: "Hablar con asesor",
+                },
+              },
+            ],
+          },
+        }),
+      }),
+      { projectId: REMOTE_PHONE_NUMBER_DETAIL.projectId },
+    );
+    expect(repositoryMock.markLeadFlowIntroOptionAnswered).toHaveBeenCalledWith({
+      phoneNumberId: TEST_PHONE_NUMBER_ID,
+      leadPhoneNumber: "50687515938",
+      contextMessageId: "wamid.option-response",
+      optionId: "intro_agendar_visita",
+      optionLabel: "Agendar visita",
+      keepInteractiveReady: true,
+      nextInteractiveMessageId: "wamid.visit-response",
+      responsePayload: expect.objectContaining({
+        messageId: "wamid.intro-option-visit",
+        remainingOptions: [
+          {
+            id: "intro_ver_precios",
+            label: "Ver precios",
+          },
+          {
+            id: "intro_hablar_asesor",
+            label: "Hablar con asesor",
+          },
+        ],
+      }),
+    });
+  });
+
+  it("registra como no identificada una opcion de intro que ya no existe en la configuracion", async () => {
+    const testBed = createSyncServiceTestBed();
+    service = testBed.service;
+    const repositoryMock = testBed.adminKapsoIntegrationsRepositoryMock;
+    const platformApiMock = testBed.kapsoPlatformApiServiceMock;
+    repositoryMock.findLeadFlowIntroOptionContext.mockResolvedValue({
+      ...ANSWERED_YES_CONTEXT,
+      introOptionsJson: JSON.stringify([
+        {
+          id: "intro_agendar",
+          label: "Agendar visita",
+          messageTemplate: "Perfecto {{nombre_lead}}, coordinemos una visita para que conozcas {{proyecto_lead}}.",
+        },
+      ]),
+    });
+    repositoryMock.registerUnidentifiedInitialReply.mockResolvedValue(true);
+
+    const result = await service.processInboundMessageWebhook({
+      object: "whatsapp_business_account",
+      entry: [
+        {
+          changes: [
+            {
+              value: {
+                metadata: {
+                  phone_number_id: TEST_PHONE_NUMBER_ID,
+                },
+                messages: [
+                  {
+                    from: "50687515938",
+                    id: "wamid.removed-intro-option",
+                    timestamp: "1783009765",
+                    type: "button",
+                    context: {
+                      id: "wamid.intro-interactive",
+                    },
+                    button: {
+                      text: "Selected: Ver precios",
+                      payload: "intro_ver_precios",
+                    },
+                  },
+                ],
+              },
+            },
+          ],
+        },
+      ],
+    });
+
+    expect(result).toEqual({
+      processed: 1,
+      answeredNo: 0,
+      answeredYes: 0,
+      introSent: 0,
+      introPending: 0,
+      introFailed: 0,
+      deliveryFailed: 0,
+      deliveryConfirmed: 0,
+      unidentifiedReplies: 1,
+      ignored: 0,
+    });
+    expect(platformApiMock.sendWhatsappMessage).not.toHaveBeenCalled();
+    expect(repositoryMock.markLeadFlowIntroOptionAnswered).not.toHaveBeenCalled();
+    expect(repositoryMock.registerUnidentifiedInitialReply).toHaveBeenCalledWith({
+      phoneNumberId: TEST_PHONE_NUMBER_ID,
+      leadPhoneNumber: "50687515938",
+      contextMessageId: "wamid.intro-interactive",
+      replyText: "Selected: Ver precios",
+      responsePayload: expect.objectContaining({
+        messageId: "wamid.removed-intro-option",
+        replyText: "Selected: Ver precios",
+        replySource: "button",
       }),
     });
   });
@@ -1284,7 +1699,7 @@ describe("KapsoSyncService", () => {
           interactive: {
             type: "button",
             body: {
-              text: "Perfecto PRUEBA ROBERTO OT, te comparto un video introductorio de Andira y algunas fotos.",
+              text: "Perfecto Nombre del lead, te comparto un video introductorio de Andira y algunas fotos.",
             },
             action: {
               buttons: [
@@ -1345,13 +1760,16 @@ describe("KapsoSyncService", () => {
         interactive: expect.objectContaining({
           type: "button",
           body: expect.objectContaining({
-            text: expect.stringContaining("Perfecto PRUEBA ROBERTO OT"),
+            text: expect.stringContaining("Perfecto Nombre del lead"),
           }),
         }),
       }),
       { projectId: REMOTE_PHONE_NUMBER_DETAIL.projectId },
     );
-    expect(repositoryMock.markLeadFlowIntroSent).toHaveBeenCalledWith({ executionId: 77 });
+    expect(repositoryMock.markLeadFlowIntroSent).toHaveBeenCalledWith({
+      executionId: 77,
+      messageId: "wamid.intro-interactive",
+    });
   });
 
   it("envia el texto interactivo cuando un adjunto falla pero el paquete de intro queda en estado terminal", async () => {
@@ -1374,7 +1792,7 @@ describe("KapsoSyncService", () => {
           interactive: {
             type: "button",
             body: {
-              text: "Perfecto PRUEBA ROBERTO OT, te comparto un video introductorio de Andira y algunas fotos.",
+              text: "Perfecto Nombre del lead, te comparto un video introductorio de Andira y algunas fotos.",
             },
             action: {
               buttons: [
@@ -1440,7 +1858,10 @@ describe("KapsoSyncService", () => {
       }),
       { projectId: REMOTE_PHONE_NUMBER_DETAIL.projectId },
     );
-    expect(repositoryMock.markLeadFlowIntroSent).toHaveBeenCalledWith({ executionId: 88 });
+    expect(repositoryMock.markLeadFlowIntroSent).toHaveBeenCalledWith({
+      executionId: 88,
+      messageId: "wamid.intro-interactive-after-partial-failure",
+    });
   });
 
   it("confirma entrega del template inicial cuando Meta reenvia statuses.read", async () => {

@@ -65,7 +65,7 @@ export default registerAs("kapso", () => {
 
     mediaStoragePath: process.env.KAPSO_MEDIA_STORAGE_PATH ?? "archivos",
 
-    mediaMaxFileSizeBytes: Number(process.env.KAPSO_MEDIA_MAX_FILE_SIZE_MB ?? 50) * 1024 * 1024,
+    mediaMaxFileSizeBytes: Number(process.env.KAPSO_MEDIA_MAX_FILE_SIZE_MB ?? 100) * 1024 * 1024,
 
     mediaSigningSecret: process.env.KAPSO_MEDIA_SIGNING_SECRET ?? "",
     mediaSignedUrlTtlSeconds: Number(process.env.KAPSO_MEDIA_SIGNED_URL_TTL_SECONDS ?? 3600),

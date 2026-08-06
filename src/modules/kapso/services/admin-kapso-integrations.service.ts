@@ -43,6 +43,28 @@ type KapsoMediaFileResponse = {
 };
 
 const DEFAULT_INTRO_STEP_CODE = "intro";
+const DEFAULT_INTRO_MESSAGE_TEMPLATE =
+  "Perfecto {{nombre_lead}}, te comparto un video introductorio de {{proyecto_lead}} y algunas fotos.\n\n" +
+  "¿Podrias contarme un poco sobre lo que estas buscando?";
+const MAX_INTRO_OPTIONS = 3;
+const WHATSAPP_VIDEO_MAX_FILE_SIZE_MB = 16;
+const WHATSAPP_VIDEO_MAX_FILE_SIZE_BYTES = WHATSAPP_VIDEO_MAX_FILE_SIZE_MB * 1024 * 1024;
+const DEFAULT_INTRO_OPTIONS = [
+  { id: "intro_ver_precios", label: "Ver precios" },
+  { id: "intro_agendar", label: "Agendar visita" },
+  { id: "intro_asesor", label: "Hablar con asesor" },
+];
+const DEFAULT_INTRO_OPTION_MESSAGES: Record<string, string> = {
+  intro_ver_precios: "Claro {{nombre_lead}}, te comparto la informacion de precios de {{proyecto_lead}}.",
+  intro_agendar: "Perfecto {{nombre_lead}}, coordinemos una visita para que conozcas {{proyecto_lead}}.",
+  intro_asesor: "Con gusto {{nombre_lead}}, un asesor continuara la conversacion contigo.",
+};
+
+type IntroOptionInput = {
+  id?: unknown;
+  label?: unknown;
+  messageTemplate?: unknown;
+};
 
 /**
  * Orquestador de catálogos, CRUD de asignaciones y ciclo de vida de adjuntos de flujo.
@@ -138,6 +160,39 @@ export class AdminKapsoIntegrationsService {
   }
 
   /**
+   * Guarda el mensaje normal de intro y sus botones editables para un proyecto habilitado.
+   *
+   * Los ids de botones no se editan porque los webhooks los usan para continuar el flujo.
+   *
+   * @param flowUuid - UUID del flujo.
+   * @param idProyecto - Id NetSuite del proyecto.
+   * @param input - Mensaje y labels visibles configurados en CRM.
+   */
+  async updateBusinessFlowProjectIntroConfig(
+    flowUuid: string,
+    idProyecto: number,
+    input: {
+      introMessageTemplate?: unknown;
+      introOptions?: unknown;
+    },
+  ) {
+    const introMessageTemplate = this.normalizeIntroMessageTemplate(input.introMessageTemplate);
+    const introOptionsJson = JSON.stringify(this.normalizeIntroOptions(input.introOptions));
+    const project = await this.flowProjectMediaRepository.updateBusinessFlowProjectIntroConfig(
+      flowUuid,
+      idProyecto,
+      introMessageTemplate,
+      introOptionsJson,
+    );
+
+    if (!project || Number(project.enabled) !== 1) {
+      throw new NotFoundException("El proyecto debe estar habilitado en el flujo antes de configurar la intro.");
+    }
+
+    return project;
+  }
+
+  /**
    * Retira un proyecto dentro de un flujo y limpia sus adjuntos.
    *
    * @param flowUuid - UUID del flujo.
@@ -220,7 +275,7 @@ export class AdminKapsoIntegrationsService {
       throw new BadRequestException("Debe adjuntar un archivo.");
     }
 
-    const maxFileSizeBytes = this.configService.get<number>("kapso.mediaMaxFileSizeBytes") ?? 50 * 1024 * 1024;
+    const maxFileSizeBytes = this.configService.get<number>("kapso.mediaMaxFileSizeBytes") ?? 100 * 1024 * 1024;
     const sortOrder = Number.isFinite(options?.sortOrder) ? Number(options?.sortOrder) : 0;
 
     if (file.buffer.length > maxFileSizeBytes) {
@@ -235,6 +290,11 @@ export class AdminKapsoIntegrationsService {
     }
 
     const inspectedFile = this.inspectMediaFile(file.buffer);
+
+    if (inspectedFile.mediaType === "video" && file.buffer.length > WHATSAPP_VIDEO_MAX_FILE_SIZE_BYTES) {
+      throw new BadRequestException(`El video supera el limite permitido por WhatsApp/Kapso. Maximo: ${WHATSAPP_VIDEO_MAX_FILE_SIZE_MB} MB.`);
+    }
+
     const storedFilename = `${randomUUID()}${inspectedFile.extension}`;
     const projectFolderName = this.buildProjectMediaFolderName(idProyectoNetsuite, project.nombreProyecto ?? project.projectName);
     const relativePath = join(flowUuid, "proyectos", projectFolderName, storedFilename).replace(/\\/g, "/");
@@ -525,6 +585,16 @@ export class AdminKapsoIntegrationsService {
     }
 
     if (buffer.subarray(4, 8).toString("ascii") === "ftyp") {
+      const brand = buffer.subarray(8, 12).toString("ascii");
+
+      if (brand === "qt  ") {
+        return { extension: ".mov", mediaType: "video", mimeType: "video/quicktime" };
+      }
+
+      if (brand === "M4V " || brand === "M4VH" || brand === "M4VP") {
+        return { extension: ".m4v", mediaType: "video", mimeType: "video/mp4" };
+      }
+
       return { extension: ".mp4", mediaType: "video", mimeType: "video/mp4" };
     }
 
@@ -557,6 +627,65 @@ export class AdminKapsoIntegrationsService {
     }
 
     return normalized;
+  }
+
+  private normalizeIntroMessageTemplate(value: unknown) {
+    const text = typeof value === "string" ? value.trim() : DEFAULT_INTRO_MESSAGE_TEMPLATE;
+
+    if (!text) {
+      throw new BadRequestException("El mensaje final de intro es requerido.");
+    }
+
+    if (text.length > 1024) {
+      throw new BadRequestException("El mensaje final de intro no puede superar 1024 caracteres.");
+    }
+
+    return text;
+  }
+
+  private normalizeIntroOptions(value: unknown) {
+    const options: IntroOptionInput[] = Array.isArray(value) && value.length > 0 ? (value as IntroOptionInput[]) : DEFAULT_INTRO_OPTIONS;
+
+    if (options.length > MAX_INTRO_OPTIONS) {
+      throw new BadRequestException("El mensaje de intro solo puede tener hasta 3 opciones.");
+    }
+
+    return options.map((option, index) => {
+      const defaultOption = DEFAULT_INTRO_OPTIONS[index];
+      const rawId = typeof option.id === "string" && option.id.trim() ? option.id.trim() : defaultOption?.id;
+      const id =
+        rawId
+          ?.toLowerCase()
+          .replace(/[^a-z0-9_-]/g, "_")
+          .replace(/^_+|_+$/g, "") || `intro_option_${index + 1}`;
+
+      const labelValue = option.label;
+      const label = typeof labelValue === "string" && labelValue.trim() ? labelValue.trim() : defaultOption?.label || `Opcion ${index + 1}`;
+
+      if (label.length > 25) {
+        throw new BadRequestException(`La opcion ${index + 1} no puede superar 25 caracteres.`);
+      }
+
+      const rawMessageTemplate = option.messageTemplate;
+      const messageTemplate =
+        typeof rawMessageTemplate === "string" && rawMessageTemplate.trim()
+          ? rawMessageTemplate.trim()
+          : DEFAULT_INTRO_OPTION_MESSAGES[id] || (defaultOption ? DEFAULT_INTRO_OPTION_MESSAGES[defaultOption.id] : undefined);
+
+      if (!messageTemplate) {
+        throw new BadRequestException(`El mensaje de la opcion ${index + 1} es requerido.`);
+      }
+
+      if (messageTemplate.length > 1024) {
+        throw new BadRequestException(`El mensaje de la opcion ${index + 1} no puede superar 1024 caracteres.`);
+      }
+
+      return {
+        id,
+        label,
+        messageTemplate,
+      };
+    });
   }
 
   private buildProjectMediaFolderName(idProyectoNetsuite: number, projectName: string | null) {
