@@ -1,0 +1,33 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+model KapsoIntegracionNumeroWhatsapp {
+  id                        BigInt    @id @default(autoincrement()) @db.UnsignedBigInt
+  kapsoPhoneNumberId        String    @unique(map: "uk_kapso_integracion_numero_whatsapp_phone_number_id") @map("kapso_phone_number_id") @db.VarChar(80)
+  kapsoProjectId            String?   @map("kapso_project_id") @db.VarChar(80)
+  kapsoCustomerId           String?   @map("kapso_customer_id") @db.VarChar(80)
+  displayPhoneNumber        String?   @map("display_phone_number") @db.VarChar(40)
+  phoneNumber               String?   @map("phone_number") @db.VarChar(40)
+  businessAccountId         String?   @map("business_account_id") @db.VarChar(80)
+  businessName              String?   @map("business_name") @db.VarChar(160)
+  status                    String    @default("created") @db.VarChar(40)
+  isActive                  Boolean   @default(true) @map("is_active")
+  idnetsuiteAdminAsignado   Int?      @map("idnetsuite_admin_asignado")
+  ultimoPayloadKapso        Json?     @map("ultimo_payload_kapso")
+  lastSyncAt                DateTime? @map("last_sync_at") @db.DateTime(0)
+  connectedAt               DateTime  @default(now()) @map("connected_at") @db.DateTime(0)
+  createdAt                 DateTime  @default(now()) @map("created_at") @db.DateTime(0)
+  updatedAt                 DateTime  @updatedAt @map("updated_at") @db.DateTime(0)
+
+  @@index([kapsoProjectId], map: "idx_kapso_integracion_numero_whatsapp_project")
+  @@index([kapsoCustomerId], map: "idx_kapso_integracion_numero_whatsapp_customer")
+  @@index([phoneNumber], map: "idx_kapso_integracion_numero_whatsapp_phone")
+  @@index([isActive], map: "idx_kapso_integracion_numero_whatsapp_active")
+  @@index([idnetsuiteAdminAsignado], map: "idx_kapso_integracion_numero_whatsapp_netsuite_admin")
+  @@map("kapso_integracion_numero_whatsapp")
+}

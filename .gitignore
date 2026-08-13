@@ -1,9 +1,13 @@
 node_modules
 dist
+tsconfig.*.tsbuildinfo
 .env
 coverage
 *.log
-logs/
+logs/*
+!logs/.gitkeep
+test-results/
+playwright-report/
 
 
 archivos
