@@ -6,8 +6,11 @@ import { KapsoWhatsappNumbersController } from './kapso-whatsapp-numbers.control
 import { KapsoWhatsappNumbersService } from './kapso-whatsapp-numbers.service';
 
 /**
- * Integraciones Kapso ↔ CRM: listado y activación de números WhatsApp.
- * Protegido con CrmInternalTokenGuard.
+ * Integraciones Kapso ↔ CRM (números WhatsApp).
+ *
+ * Exporta repository + service para que KapsoWebhooksModule reutilice la
+ * persistencia sin duplicar providers. El guard vive aquí porque solo esta
+ * API HTTP lo usa hoy (webhooks usan firma HMAC, no token CRM).
  */
 @Module({
   controllers: [KapsoWhatsappNumbersController],

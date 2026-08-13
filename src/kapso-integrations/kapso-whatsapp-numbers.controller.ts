@@ -15,7 +15,10 @@ import {
   KapsoWhatsappNumberStatusDto,
 } from './kapso-whatsapp-numbers.service';
 
-/** API interna CRM: `/api/v1/kapso/whatsapp-numbers`. */
+/**
+ * API interna CRM: `/api/v1/kapso/whatsapp-numbers`.
+ * Todas las rutas exigen CrmInternalTokenGuard (Bearer o x-crm-api-token).
+ */
 @ApiTags('Kapso WhatsApp numbers')
 @ApiBearerAuth()
 @UseGuards(CrmInternalTokenGuard)

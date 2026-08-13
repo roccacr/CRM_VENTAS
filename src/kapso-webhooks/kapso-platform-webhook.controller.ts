@@ -23,7 +23,19 @@ import { Request } from 'express';
 import { KapsoPlatformWebhookService } from './kapso-platform-webhook.service';
 import { KapsoWebhookSignatureService } from './kapso-webhook-signature.service';
 
-/** `POST /api/v1/webhooks/kapso/platform` — recibe eventos Kapso. */
+const WEBHOOK_SECRET_ENV = 'KAPSO_PLATFORM_WEBHOOK_SECRET';
+
+/**
+ * `POST /api/v1/webhooks/kapso/platform`
+ *
+ * Orden real del handler (doc = código):
+ *   1. Exigir X-Webhook-Event (400 si falta).
+ *   2. Verificar HMAC sobre rawBody (401 si falla).
+ *   3. Delegar al service de dominio.
+ *
+ * X-Idempotency-Key se acepta y se reenvía al service, pero hoy el service
+ * NO la persiste ni deduplica (deuda documentada, no silenciosa).
+ */
 @ApiTags('Kapso webhooks')
 @Controller('webhooks/kapso')
 export class KapsoPlatformWebhookController {
@@ -48,12 +60,14 @@ export class KapsoPlatformWebhookController {
     @Headers('x-idempotency-key') idempotencyKey: string | undefined,
     @Req() request: RawBodyRequest<Request>,
   ): Promise<{ ok: true; processed: boolean; action: 'created' | 'deleted' | 'ignored' }> {
-    if (!event) {
+    // Trim: un header "  " es truthy pero no es un evento usable
+    const eventName = event?.trim();
+    if (!eventName) {
       throw new BadRequestException('Missing X-Webhook-Event header');
     }
 
-    const secret = this.configService.get<string>('KAPSO_PLATFORM_WEBHOOK_SECRET');
-    // rawBody = bytes exactos; fallback a JSON.stringify si no hay buffer
+    const secret = this.configService.get<string>(WEBHOOK_SECRET_ENV);
+    // Preferir rawBody (bytes del wire). JSON.stringify es fallback de tests/mocks.
     const rawBody = request.rawBody?.toString('utf8') ?? JSON.stringify(payload);
 
     if (!this.signatureService.verify(rawBody, signature, secret)) {
@@ -61,7 +75,7 @@ export class KapsoPlatformWebhookController {
     }
 
     const result = await this.platformWebhookService.process({
-      event,
+      event: eventName,
       idempotencyKey,
       payload,
     });

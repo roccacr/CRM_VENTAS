@@ -4,8 +4,13 @@ import { KapsoIntegracionNumeroWhatsapp, Prisma } from '@prisma/client';
 import { runDatabaseCheck } from '../database/database-check';
 import { PrismaService } from '../database/prisma.service';
 
+/** Status inicial al upsert desde evento whatsapp.phone_number.created. */
+const STATUS_CREATED = 'created';
+
 /**
- * Superficie mínima de Prisma (facilita mocks en tests).
+ * Superficie mínima de Prisma para este repo.
+ * Tipar el client completo acoplaría los tests a todo el schema; este pick
+ * permite mocks literales en unit tests.
  */
 type KapsoWhatsappNumberReader = {
   readonly kapsoIntegracionNumeroWhatsapp: {
@@ -25,7 +30,7 @@ type KapsoWhatsappNumberReader = {
   };
 };
 
-/** Datos del evento Kapso whatsapp.phone_number.created. */
+/** Input del evento Kapso whatsapp.phone_number.created. */
 export type KapsoWhatsappNumberCreatedInput = {
   readonly kapsoPhoneNumberId: string;
   readonly kapsoProjectId?: string | undefined;
@@ -33,7 +38,10 @@ export type KapsoWhatsappNumberCreatedInput = {
   readonly rawPayload: Prisma.InputJsonValue;
 };
 
-/** Persistencia de KapsoIntegracionNumeroWhatsapp (API CRM + webhooks). */
+/**
+ * Persistencia de KapsoIntegracionNumeroWhatsapp.
+ * Usado por la API CRM y por el procesamiento de webhooks.
+ */
 @Injectable()
 export class KapsoWhatsappNumberRepository {
   constructor(@Inject(PrismaService) private readonly prisma: KapsoWhatsappNumberReader) {}
@@ -46,7 +54,10 @@ export class KapsoWhatsappNumberRepository {
     return this.table.count();
   }
 
-  /** True si un count() no lanza (reusa runDatabaseCheck). */
+  /**
+   * True si count() no lanza.
+   * Reusa runDatabaseCheck para no duplicar el try/catch del probe.
+   */
   async canReadTable(): Promise<boolean> {
     const result = await runDatabaseCheck(this);
     return result.canReadTable;
@@ -60,7 +71,7 @@ export class KapsoWhatsappNumberRepository {
     return this.list();
   }
 
-  /** Listado ordenado por createdAt desc, con filtro opcional. */
+  /** Listado por createdAt desc; `where` opcional (exactOptionalPropertyTypes). */
   private list(
     where?: Prisma.KapsoIntegracionNumeroWhatsappWhereInput,
   ): Promise<KapsoIntegracionNumeroWhatsapp[]> {
@@ -70,13 +81,16 @@ export class KapsoWhatsappNumberRepository {
     });
   }
 
-  /** Upsert por kapsoPhoneNumberId al evento created. */
+  /**
+   * Upsert por kapsoPhoneNumberId.
+   * create: fija connectedAt; update: refresca metadatos/payload sin tocar connectedAt.
+   */
   async upsertFromKapsoCreatedEvent(input: KapsoWhatsappNumberCreatedInput): Promise<void> {
     const shared = {
       isActive: true,
       kapsoCustomerId: input.kapsoCustomerId ?? null,
       kapsoProjectId: input.kapsoProjectId ?? null,
-      status: 'created',
+      status: STATUS_CREATED,
       ultimoPayloadKapso: input.rawPayload,
     };
 
@@ -91,11 +105,13 @@ export class KapsoWhatsappNumberRepository {
     });
   }
 
+  /** @returns filas eliminadas (0 = no existía). */
   async deleteByKapsoPhoneNumberId(kapsoPhoneNumberId: string): Promise<number> {
     const result = await this.table.deleteMany({ where: { kapsoPhoneNumberId } });
     return result.count;
   }
 
+  /** @returns filas afectadas (0 = id inexistente). */
   async setActiveById(id: bigint, isActive: boolean): Promise<number> {
     const result = await this.table.updateMany({ data: { isActive }, where: { id } });
     return result.count;

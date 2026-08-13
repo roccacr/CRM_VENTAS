@@ -5,7 +5,10 @@ import { KapsoPlatformWebhookController } from './kapso-platform-webhook.control
 import { KapsoPlatformWebhookService } from './kapso-platform-webhook.service';
 import { KapsoWebhookSignatureService } from './kapso-webhook-signature.service';
 
-/** Webhooks Kapso Platform: firma HMAC + eventos de números WhatsApp. */
+/**
+ * Webhooks Kapso Platform.
+ * Importa KapsoIntegrationsModule para reusar el repository (upsert/delete).
+ */
 @Module({
   controllers: [KapsoPlatformWebhookController],
   imports: [KapsoIntegrationsModule],

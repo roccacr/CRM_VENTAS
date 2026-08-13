@@ -3,7 +3,10 @@ import { ApiOkResponse, ApiTags } from '@nestjs/swagger';
 
 import { HealthService, HealthStatus } from './health.service';
 
-/** `GET /api/v1/health` — indica si el proceso Nest está vivo. */
+/**
+ * `GET /api/v1/health` — probe de liveness.
+ * Público (sin auth): lo consumen load balancers y Playwright.
+ */
 @ApiTags('health')
 @Controller('health')
 export class HealthController {

@@ -3,7 +3,13 @@ import { KapsoIntegracionNumeroWhatsapp } from '@prisma/client';
 
 import { KapsoWhatsappNumberRepository } from './kapso-whatsapp-number.repository';
 
-/** DTO CRM: fechas ISO e id como string. */
+/** Solo dígitos: el PK es bigint; ids no numéricos se tratan como 404 (no 400). */
+const NUMERIC_ID_PATTERN = /^\d+$/;
+
+/**
+ * DTO CRM: fechas en ISO-8601 e id como string (JSON no serializa bigint).
+ * El shape es contrato de API: no agregar secretos ni payloads crudos de Kapso.
+ */
 export type KapsoWhatsappNumberDto = {
   readonly id: string;
   readonly kapsoPhoneNumberId: string;
@@ -22,13 +28,16 @@ export type KapsoWhatsappNumberDto = {
   readonly updatedAt: string;
 };
 
-/** Respuesta corta de activate/deactivate. */
+/** Respuesta corta tras activate/deactivate. */
 export type KapsoWhatsappNumberStatusDto = {
   readonly id: string;
   readonly isActive: boolean;
 };
 
-/** Caso de uso: listar y cambiar isActive de números WhatsApp Kapso. */
+/**
+ * Caso de uso: listar y cambiar isActive de números WhatsApp Kapso.
+ * activate/deactivate son wrappers explícitos (API clara) sobre setActive.
+ */
 @Injectable()
 export class KapsoWhatsappNumbersService {
   constructor(
@@ -49,7 +58,10 @@ export class KapsoWhatsappNumbersService {
     return this.setActive(id, false);
   }
 
-  /** Actualiza isActive; 404 si el id no existe o no es numérico. */
+  /**
+   * Actualiza isActive.
+   * @throws {NotFoundException} si el id no es numérico o no existe en DB
+   */
   private async setActive(id: string, isActive: boolean): Promise<KapsoWhatsappNumberStatusDto> {
     const parsedId = this.parseId(id);
     const updated = await this.repository.setActiveById(parsedId, isActive);
@@ -61,9 +73,13 @@ export class KapsoWhatsappNumbersService {
     return { id: parsedId.toString(), isActive };
   }
 
-  /** Path param → bigint; ids no numéricos = 404. */
+  /**
+   * Path param → bigint.
+   * Truthy-check no basta: "abc" es truthy pero no es un id usable.
+   * Ids inválidos → 404 (mismo mensaje que "no existe") para no filtrar formato.
+   */
   private parseId(id: string): bigint {
-    if (!/^\d+$/.test(id)) {
+    if (!NUMERIC_ID_PATTERN.test(id)) {
       throw new NotFoundException('Kapso WhatsApp number integration not found');
     }
 
