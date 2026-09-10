@@ -10,6 +10,10 @@ import {
    getDataSelectProyect,
    getDataSelectSubsidiaria,
 } from "../../../../store/leads/thunksLeads";
+import {
+   getBankCompatibleLeadName,
+   isBankCompatibleLeadName,
+} from "./leadNameBankCompatibility";
 import { ButtonActions } from "../../../components/buttonAccions/buttonAccions";
 import Swal from "sweetalert2";
 import { useNavigate } from "react-router-dom";
@@ -737,6 +741,20 @@ export const View_edit_lead = () => {
             icon: "error",
          });
       } else {
+         if (!isBankCompatibleLeadName(formData.firstnames)) {
+            const nameElement = document.getElementById("firstnames");
+            if (nameElement) {
+               nameElement.style.border = "1px solid red";
+            }
+
+            Swal.fire({
+               title: "Nombre no compatible con pagos bancarios",
+               text: `Reemplace tildes, ñ y caracteres especiales antes de guardar. Nombre sugerido: ${getBankCompatibleLeadName(formData.firstnames) || "sin caracteres validos"}`,
+               icon: "error",
+            });
+            return;
+         }
+
          const result = await Swal.fire({
             title: "¿Estás seguro?",
             text: "Confirmar para editar la informacion del lead",
