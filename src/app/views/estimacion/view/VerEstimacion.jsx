@@ -18,7 +18,7 @@ import {
   extarerEstimacion,
   ModificarEstimacion,
 } from "../../../../store/estimacion/thunkEstimacion";
-import { getEstimateLossResponseStatus } from "./estimateLossResponse";
+import { isEstimateLossConfirmedByNetSuite } from "./estimateLossResponse";
 import { ButtonActions } from "../../../components/buttonAccions/buttonAccions";
 import {
   getDisplayText,
@@ -728,16 +728,23 @@ export const VerEstimacion = () => {
     const motivo = formValues[1];
     const comentario = formValues[0];
     const result = await dispatch(caidaReserva(estimacionId, motivo, comentario));
-    const caidaStatus = getEstimateLossResponseStatus(result);
 
-    if (caidaStatus !== 200) {
+    if (!isEstimateLossConfirmedByNetSuite(result)) {
       Swal.close();
-      Swal.fire(
-        "Algo no está bien.",
-        "No se pudo hacer la pre reserva caída.",
-        "question",
-      );
-      return;
+      const continueOnlyCrm = await Swal.fire({
+        title: "No se pudo confirmar la caída en NetSuite",
+        text: "Si la estimación ya aparece como caída en NetSuite, puede continuar para marcar la caída en CRM.",
+        icon: "warning",
+        showCancelButton: true,
+        confirmButtonColor: "#3085d6",
+        cancelButtonColor: "#d33",
+        confirmButtonText: "Marcar solo en CRM",
+        cancelButtonText: "Cancelar",
+      });
+
+      if (!continueOnlyCrm.isConfirmed) {
+        return;
+      }
     }
 
     const markAsLost = await Swal.fire({
