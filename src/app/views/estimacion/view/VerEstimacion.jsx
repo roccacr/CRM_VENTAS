@@ -18,6 +18,7 @@ import {
   extarerEstimacion,
   ModificarEstimacion,
 } from "../../../../store/estimacion/thunkEstimacion";
+import { getEstimateLossResponseStatus } from "./estimateLossResponse";
 import { ButtonActions } from "../../../components/buttonAccions/buttonAccions";
 import {
   getDisplayText,
@@ -727,9 +728,9 @@ export const VerEstimacion = () => {
     const motivo = formValues[1];
     const comentario = formValues[0];
     const result = await dispatch(caidaReserva(estimacionId, motivo, comentario));
-    const detalle = result?.data?.Detalle;
+    const caidaStatus = getEstimateLossResponseStatus(result);
 
-    if (detalle?.status !== 200) {
+    if (caidaStatus !== 200) {
       Swal.close();
       Swal.fire(
         "Algo no está bien.",
