@@ -1,45 +1,44 @@
-import { ValidationPipe } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import { NestFactory } from '@nestjs/core';
-import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
-import { Logger } from 'nestjs-pino';
+import "./config/load-env";
 
-import { AppModule } from './app.module';
-import { DEFAULT_APP_PORT } from './config/app-config';
+import { ConfigService } from "@nestjs/config";
+import { NestFactory } from "@nestjs/core";
+import { Logger } from "nestjs-pino";
 
-const GLOBAL_API_PREFIX = 'api/v1';
-const SWAGGER_PATH = 'api/docs';
+import { AppModule } from "./app.module";
+import { APP_ENV_KEYS, DEFAULT_APP_PORT } from "./config/app-config.constants";
+import { createCorsOptions } from "./config/cors-options";
+import { GLOBAL_API_PREFIX } from "./config/http.constants";
+import { setupSwagger } from "./config/setup-swagger";
+import { GLOBAL_VALIDATION_PIPE } from "./config/validation-pipe";
+
+/**
+ * `rawBody: true` es obligatorio para webhooks Kapso: la firma HMAC se calcula
+ * sobre los bytes exactos del wire, no sobre `JSON.stringify(body)`.
+ * `bufferLogs` espera a que Pino tome el logger para no perder el boot.
+ */
+const NEST_HTTP_ADAPTER_OPTIONS = {
+    bufferLogs: true,
+    rawBody: true,
+} as const;
 
 /**
  * Bootstrap de la API Nest.
  *
- * rawBody: true es obligatorio para webhooks Kapso: la firma HMAC se calcula
- * sobre los bytes exactos del body, no sobre el objeto JSON re-serializado.
- * validateEnvironment (en AppModule) ya corrió antes del listen; el PORT
- * leído aquí viene del ConfigService con default tipado.
+ * `load-env` va en la primera linea: dotenv tiene que existir ANTES de que
+ * `AppModule` lea `process.env` para Pino. `validateEnvironment` (ConfigModule)
+ * ya corrio al crear el modulo; el PORT de aqui es el valor ya validado.
  */
 async function bootstrap(): Promise<void> {
-  const app = await NestFactory.create(AppModule, { bufferLogs: true, rawBody: true });
+    const app = await NestFactory.create(AppModule, NEST_HTTP_ADAPTER_OPTIONS);
 
-  app.useLogger(app.get(Logger));
-  app.setGlobalPrefix(GLOBAL_API_PREFIX);
-  app.useGlobalPipes(
-    new ValidationPipe({
-      forbidNonWhitelisted: true,
-      transform: true,
-      whitelist: true,
-    }),
-  );
+    app.useLogger(app.get(Logger));
+    app.enableCors(createCorsOptions());
+    app.setGlobalPrefix(GLOBAL_API_PREFIX);
+    app.useGlobalPipes(GLOBAL_VALIDATION_PIPE);
+    setupSwagger(app);
 
-  const swagger = new DocumentBuilder()
-    .setTitle('API Kapso GIT')
-    .setDescription('API NestJS para integrar Kapso con CRM Ventas.')
-    .setVersion('0.1.0')
-    .build();
-  SwaggerModule.setup(SWAGGER_PATH, app, SwaggerModule.createDocument(app, swagger));
-
-  const port = Number(app.get(ConfigService).get('PORT', DEFAULT_APP_PORT));
-  await app.listen(port);
+    const port = Number(app.get(ConfigService).get(APP_ENV_KEYS.PORT, DEFAULT_APP_PORT));
+    await app.listen(port);
 }
 
 void bootstrap();

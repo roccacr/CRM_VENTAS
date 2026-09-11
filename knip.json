@@ -1,0 +1,6 @@
+{
+    "$schema": "https://unpkg.com/knip/schema.json",
+    "entry": ["src/main.ts", "scripts/**/*.ts", "nest-cli.json", "test/**/*.spec.ts", "test/**/*.e2e-spec.ts", "test/playwright/**/*.ts"],
+    "project": ["src/**/*.ts", "scripts/**/*.ts", "test/**/*.ts", "prisma/**/*.prisma", "*.ts", "*.js", "*.mjs"],
+    "ignoreDependencies": ["pino-pretty"]
+}

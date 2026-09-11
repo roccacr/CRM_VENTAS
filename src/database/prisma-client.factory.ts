@@ -1,22 +1,31 @@
-import { PrismaMariaDb } from '@prisma/adapter-mariadb';
-import { PrismaClient } from '@prisma/client';
+import { Prisma, PrismaClient } from "@prisma/client";
 
-import { buildMysqlPoolConfig } from './mysql-pool-config';
-import { MysqlEnv } from './mysql-env';
+import { buildRuntimeDatabaseUrl } from "./database-url";
+import { MysqlEnv } from "./mysql-env";
 
 /**
- * Factory del PrismaClient con adaptador MariaDB/MySQL.
+ * Factory del PrismaClient MySQL.
  *
- * Se mantiene separado de PrismaService para que scripts y Playwright puedan
- * crear un cliente sin arrancar Nest. Usa buildMysqlPoolConfig (precedencia
- * MYSQL_* > DATABASE_URL) porque es el camino de conexión runtime.
+ * Se mantiene separado de `PrismaService` para que scripts y Playwright
+ * creen un cliente sin arrancar Nest. Usa `buildRuntimeDatabaseUrl` (MYSQL_*
+ * primero) para no heredar un `DATABASE_URL` mal encodeado.
  *
- * @throws {MysqlConfigError} si el entorno no tiene credenciales usables
+ * Si no existe `DATABASE_URL` ni `MYSQL_*` completo, se instancia Prisma
+ * sin override: el error de configuracion lo lanza Prisma, no este factory.
  */
 export function createPrismaClient(env: MysqlEnv = process.env): PrismaClient {
-  const pool = buildMysqlPoolConfig(env);
+    return new PrismaClient(toPrismaClientOptions(buildRuntimeDatabaseUrl(env)));
+}
 
-  return new PrismaClient({
-    adapter: new PrismaMariaDb(pool, { database: pool.database }),
-  });
+/**
+ * Solo inyecta `datasources.db.url` cuando hay una URL usable.
+ * Pasar `{ datasources: { db: { url: undefined } } }` haria que Prisma
+ * ignore el env del schema y falle con un mensaje peor.
+ */
+function toPrismaClientOptions(databaseUrl: string | undefined): Prisma.PrismaClientOptions | undefined {
+    if (!databaseUrl) {
+        return undefined;
+    }
+
+    return { datasources: { db: { url: databaseUrl } } };
 }

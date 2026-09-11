@@ -1,22 +1,44 @@
-import { formatMysqlUrl, MysqlEnv, readMysqlCredentials } from './mysql-env';
+import { MYSQL_ENV_KEYS } from "./mysql-env.constants";
+import { formatMysqlUrl, MysqlEnv, readMysqlCredentials } from "./mysql-env";
 
 /**
- * Construye (o reutiliza) una DATABASE_URL a partir del entorno.
+ * Construye (o reutiliza) una `DATABASE_URL` a partir del entorno.
  *
- * Comportamiento real (el doc debe coincidir con el código):
- *   1. Si existe DATABASE_URL → se devuelve tal cual (passthrough, sin revalidar).
- *   2. Si no, y MYSQL_* está completo y con puerto válido → formatMysqlUrl(...).
- *   3. En cualquier otro caso → undefined (no lanza).
+ * Dos funciones, dos precedencias. No son intercambiables:
  *
- * No usa resolveMysqlCredentials() a propósito: los scripts/CI que consumen
- * esta función esperan `string | undefined`, no una excepción. La validación
- * estricta (protocolo, URL parseable) vive en parseMysqlUrl / resolveMysqlCredentials.
+ *   - `buildDatabaseUrlFromMysqlEnv` — scripts / orquestador.
+ *     Si ya hay `DATABASE_URL`, se respeta. No reescribe una URL inyectada.
+ *
+ *   - `buildRuntimeDatabaseUrl` — Nest / Prisma en este proyecto.
+ *     `MYSQL_*` gana porque `DATABASE_URL` a veces llega mal encodeada,
+ *     mientras que `MYSQL_PASSWORD` conserva el valor crudo.
+ *
+ * Ninguna lanza: `undefined` significa "Prisma usara el env de schema.prisma".
+ */
+
+/**
+ * Scripts y `db:check`: `DATABASE_URL` tiene prioridad.
+ *
+ * @returns URL lista para Prisma, o `undefined` si no hay ninguna fuente usable
  */
 export function buildDatabaseUrlFromMysqlEnv(env: MysqlEnv): string | undefined {
-  if (env.DATABASE_URL) {
-    return env.DATABASE_URL;
-  }
+    return readExistingDatabaseUrl(env) ?? formatUrlFromMysqlEnv(env);
+}
 
-  const credentials = readMysqlCredentials(env);
-  return credentials ? formatMysqlUrl(credentials) : undefined;
+/**
+ * Runtime Nest/Prisma: `MYSQL_*` tiene prioridad sobre `DATABASE_URL`.
+ *
+ * @returns URL lista para el factory, o `undefined` si no hay fuente usable
+ */
+export function buildRuntimeDatabaseUrl(env: MysqlEnv): string | undefined {
+    return formatUrlFromMysqlEnv(env) ?? readExistingDatabaseUrl(env);
+}
+
+function readExistingDatabaseUrl(env: MysqlEnv): string | undefined {
+    return env[MYSQL_ENV_KEYS.DATABASE_URL] || undefined;
+}
+
+function formatUrlFromMysqlEnv(env: MysqlEnv): string | undefined {
+    const credentials = readMysqlCredentials(env);
+    return credentials ? formatMysqlUrl(credentials) : undefined;
 }

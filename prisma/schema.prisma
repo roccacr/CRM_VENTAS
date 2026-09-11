@@ -4,25 +4,32 @@ generator client {
 
 datasource db {
   provider = "mysql"
+  url      = env("DATABASE_URL")
 }
 
 model KapsoIntegracionNumeroWhatsapp {
-  id                        BigInt    @id @default(autoincrement()) @db.UnsignedBigInt
-  kapsoPhoneNumberId        String    @unique(map: "uk_kapso_integracion_numero_whatsapp_phone_number_id") @map("kapso_phone_number_id") @db.VarChar(80)
-  kapsoProjectId            String?   @map("kapso_project_id") @db.VarChar(80)
-  kapsoCustomerId           String?   @map("kapso_customer_id") @db.VarChar(80)
-  displayPhoneNumber        String?   @map("display_phone_number") @db.VarChar(40)
-  phoneNumber               String?   @map("phone_number") @db.VarChar(40)
-  businessAccountId         String?   @map("business_account_id") @db.VarChar(80)
-  businessName              String?   @map("business_name") @db.VarChar(160)
-  status                    String    @default("created") @db.VarChar(40)
-  isActive                  Boolean   @default(true) @map("is_active")
-  idnetsuiteAdminAsignado   Int?      @map("idnetsuite_admin_asignado")
-  ultimoPayloadKapso        Json?     @map("ultimo_payload_kapso")
-  lastSyncAt                DateTime? @map("last_sync_at") @db.DateTime(0)
-  connectedAt               DateTime  @default(now()) @map("connected_at") @db.DateTime(0)
-  createdAt                 DateTime  @default(now()) @map("created_at") @db.DateTime(0)
-  updatedAt                 DateTime  @updatedAt @map("updated_at") @db.DateTime(0)
+  id                      BigInt    @id @default(autoincrement()) @db.UnsignedBigInt
+  kapsoPhoneNumberId      String    @unique(map: "uk_kapso_integracion_numero_whatsapp_phone_number_id") @map("kapso_phone_number_id") @db.VarChar(80)
+  kapsoProjectId          String?   @map("kapso_project_id") @db.VarChar(80)
+  kapsoCustomerId         String?   @map("kapso_customer_id") @db.VarChar(80)
+  displayPhoneNumber      String?   @map("display_phone_number") @db.VarChar(40)
+  phoneNumber             String?   @map("phone_number") @db.VarChar(40)
+  businessAccountId       String?   @map("business_account_id") @db.VarChar(80)
+  businessName            String?   @map("business_name") @db.VarChar(160)
+  status                  String    @default("created") @db.VarChar(40)
+  isActive                Boolean   @default(true) @map("is_active")
+  idnetsuiteAdminAsignado Int?      @map("idnetsuite_admin_asignado")
+  ultimoPayloadKapso      Json?     @map("ultimo_payload_kapso")
+  lastSyncAt              DateTime? @map("last_sync_at") @db.DateTime(0)
+  connectedAt             DateTime  @default(now()) @map("connected_at") @db.DateTime(0)
+  createdAt               DateTime  @default(now()) @map("created_at") @db.DateTime(0)
+  updatedAt               DateTime  @updatedAt @map("updated_at") @db.DateTime(0)
+
+  adminAssignments         KapsoIntegracionAdminAsignacion[]
+  cronjobConfigs           KapsoCronjobConfiguracion[]
+  cronjobProjectConfigs    KapsoCronjobProyectoConfiguracion[]
+  templateInicialAttempts  KapsoEnvioTemplateInicialIntento[]
+  legacyProjectAssignments KapsoIntegracionProyectoAsignacion[]
 
   @@index([kapsoProjectId], map: "idx_kapso_integracion_numero_whatsapp_project")
   @@index([kapsoCustomerId], map: "idx_kapso_integracion_numero_whatsapp_customer")
@@ -30,4 +37,152 @@ model KapsoIntegracionNumeroWhatsapp {
   @@index([isActive], map: "idx_kapso_integracion_numero_whatsapp_active")
   @@index([idnetsuiteAdminAsignado], map: "idx_kapso_integracion_numero_whatsapp_netsuite_admin")
   @@map("kapso_integracion_numero_whatsapp")
+}
+
+model KapsoEnvioTemplateInicialIntento {
+  id                               BigInt    @id @default(autoincrement()) @db.UnsignedBigInt
+  idLead                           Int       @unique(map: "uk_kapso_envio_template_inicial_lead") @map("id_lead")
+  idAdmin                          Int       @default(0) @map("id_admin")
+  idproyectoLead                   Int?      @map("idproyecto_lead")
+  kapsoIntegracionNumeroWhatsappId BigInt?   @map("kapso_integracion_numero_whatsapp_id") @db.UnsignedBigInt
+  kapsoPhoneNumberId               String?   @map("kapso_phone_number_id") @db.VarChar(80)
+  toPhoneNumber                    String?   @map("to_phone_number") @db.VarChar(20)
+  kapsoMessageIds                  Json?     @map("kapso_message_ids")
+  kapsoConversationId              String?   @map("kapso_conversation_id") @db.VarChar(120)
+  status                           String    @db.VarChar(40)
+  errorMessage                     String?   @map("error_message") @db.Text
+  rawResponse                      Json?     @map("raw_response")
+  createdAt                        DateTime  @default(now()) @map("created_at") @db.DateTime(0)
+  updatedAt                        DateTime  @updatedAt @map("updated_at") @db.DateTime(0)
+
+  integration KapsoIntegracionNumeroWhatsapp? @relation(fields: [kapsoIntegracionNumeroWhatsappId], references: [id], onDelete: SetNull)
+
+  @@index([idAdmin], map: "idx_kapso_envio_template_inicial_admin")
+  @@index([idproyectoLead], map: "idx_kapso_envio_template_inicial_project")
+  @@index([kapsoPhoneNumberId], map: "idx_kapso_envio_template_inicial_phone_number")
+  @@index([kapsoConversationId], map: "idx_kapso_envio_template_inicial_conversation")
+  @@index([status], map: "idx_kapso_envio_template_inicial_status")
+  @@map("kapso_envio_template_inicial_intento")
+}
+
+model KapsoIntegracionAdminAsignacion {
+  id                               BigInt   @id @default(autoincrement()) @db.UnsignedBigInt
+  kapsoIntegracionNumeroWhatsappId BigInt   @map("kapso_integracion_numero_whatsapp_id") @db.UnsignedBigInt
+  idnetsuiteAdmin                  Int      @map("idnetsuite_admin")
+  createdAt                        DateTime @default(now()) @map("created_at") @db.DateTime(0)
+  updatedAt                        DateTime @updatedAt @map("updated_at") @db.DateTime(0)
+
+  integration KapsoIntegracionNumeroWhatsapp @relation(fields: [kapsoIntegracionNumeroWhatsappId], references: [id], onDelete: Cascade)
+
+  @@unique([kapsoIntegracionNumeroWhatsappId, idnetsuiteAdmin], map: "uk_kapso_integracion_admin")
+  @@index([idnetsuiteAdmin], map: "idx_kapso_integracion_admin_netsuite")
+  @@map("kapso_integracion_admin_asignacion")
+}
+
+model KapsoIntegracionProyectoAsignacion {
+  id                               BigInt   @id @default(autoincrement()) @db.UnsignedBigInt
+  kapsoIntegracionNumeroWhatsappId BigInt   @map("kapso_integracion_numero_whatsapp_id") @db.UnsignedBigInt
+  idproyectoLead                   Int      @map("idproyecto_lead")
+  createdAt                        DateTime @default(now()) @map("created_at") @db.DateTime(0)
+  updatedAt                        DateTime @updatedAt @map("updated_at") @db.DateTime(0)
+
+  integration KapsoIntegracionNumeroWhatsapp @relation(fields: [kapsoIntegracionNumeroWhatsappId], references: [id], onDelete: Cascade)
+
+  @@unique([kapsoIntegracionNumeroWhatsappId, idproyectoLead], map: "uk_kapso_integracion_proyecto")
+  @@index([idproyectoLead], map: "idx_kapso_integracion_proyecto_lead")
+  @@map("kapso_integracion_proyecto_asignacion")
+}
+
+model KapsoCronjobConfiguracion {
+  id                               BigInt    @id @default(autoincrement()) @db.UnsignedBigInt
+  cronjobId                        String    @unique(map: "uk_kapso_cronjob_id") @map("cronjob_id") @db.VarChar(80)
+  kapsoIntegracionNumeroWhatsappId BigInt?   @map("kapso_integracion_numero_whatsapp_id") @db.UnsignedBigInt
+  idnetsuiteAdmin                  Int?      @map("idnetsuite_admin")
+  idproyectoLead                   Int?      @map("idproyecto_lead")
+  isActive                         Boolean   @default(true) @map("is_active")
+  config                           Json?
+  createdAt                        DateTime  @default(now()) @map("created_at") @db.DateTime(0)
+  updatedAt                        DateTime  @updatedAt @map("updated_at") @db.DateTime(0)
+
+  integration    KapsoIntegracionNumeroWhatsapp?      @relation(fields: [kapsoIntegracionNumeroWhatsappId], references: [id], onDelete: Cascade)
+  projectConfigs KapsoCronjobProyectoConfiguracion[]
+
+  @@index([kapsoIntegracionNumeroWhatsappId, idnetsuiteAdmin], map: "idx_kapso_cronjob_integracion_admin")
+  @@index([idproyectoLead], map: "idx_kapso_cronjob_proyecto")
+  @@index([isActive], map: "idx_kapso_cronjob_active")
+  @@map("kapso_cronjob_configuracion")
+}
+
+model KapsoCronjobProyectoConfiguracion {
+  id                               BigInt   @id @default(autoincrement()) @db.UnsignedBigInt
+  kapsoCronjobConfiguracionId      BigInt   @map("kapso_cronjob_configuracion_id") @db.UnsignedBigInt
+  kapsoIntegracionNumeroWhatsappId BigInt   @map("kapso_integracion_numero_whatsapp_id") @db.UnsignedBigInt
+  idproyectoLead                   Int      @map("idproyecto_lead")
+  idnetsuiteAdmin                  Int?     @map("idnetsuite_admin")
+  isActive                         Boolean  @default(true) @map("is_active")
+  config                           Json?
+  createdAt                        DateTime @default(now()) @map("created_at") @db.DateTime(0)
+  updatedAt                        DateTime @updatedAt @map("updated_at") @db.DateTime(0)
+
+  cronjob     KapsoCronjobConfiguracion      @relation(fields: [kapsoCronjobConfiguracionId], references: [id], onDelete: Cascade)
+  integration KapsoIntegracionNumeroWhatsapp @relation(fields: [kapsoIntegracionNumeroWhatsappId], references: [id], onDelete: Cascade)
+
+  @@index([kapsoCronjobConfiguracionId], map: "idx_kapso_cronjob_project_cronjob")
+  @@index([kapsoIntegracionNumeroWhatsappId], map: "idx_kapso_cronjob_project_integracion")
+  @@index([idnetsuiteAdmin], map: "idx_kapso_cronjob_project_admin")
+  @@index([idproyectoLead], map: "idx_kapso_cronjob_project_proyecto")
+  @@index([isActive], map: "idx_kapso_cronjob_project_active")
+  @@map("kapso_cronjob_proyecto_configuracion")
+}
+
+model Admin {
+  idAdmin         Int     @id @default(autoincrement()) @map("id_admin")
+  idnetsuiteAdmin Int?    @map("idnetsuite_admin")
+  nameAdmin       String? @map("name_admin") @db.VarChar(250)
+  emailAdmin      String? @map("email_admin") @db.Text
+  statusAdmin     Int     @default(1) @map("status_admin")
+
+  @@index([idnetsuiteAdmin], map: "fk_lead_admin")
+  @@map("admins")
+}
+
+model Lead {
+  idLead                       Int       @id @default(autoincrement()) @map("id_lead")
+  idAdminLead                  Int?      @map("id_admin_lead")
+  idEmpleadoLead               Int?      @map("id_empleado_lead")
+  idnetsuiteLead               String?   @map("idnetsuite_lead") @db.VarChar(50)
+  idinternoLead                Int?      @map("idinterno_lead")
+  nombreLead                   String?   @map("nombre_lead") @db.VarChar(250)
+  telefonoLead                 String?   @map("telefono_lead") @db.VarChar(50)
+  proyectoLead                 String?   @map("proyecto_lead") @db.VarChar(50)
+  idproyectoLead               Int?      @map("idproyecto_lead")
+  estadoLead                   Int?      @default(1) @map("estado_lead")
+  creadoLead                   DateTime? @default(now()) @map("creado_lead") @db.Timestamp(0)
+  actualizadoLead              DateTime? @default(now()) @map("actualizado_lead") @db.Timestamp(0)
+  accionLead                   Int       @default(0) @map("accion_lead")
+  actualizadaaccionLead        String?   @map("actualizadaaccion_lead") @db.VarChar(250)
+  segiminetoLead               String?   @default("01-LEAD-INTERESADO") @map("segimineto_lead") @db.VarChar(250)
+  idCaida                      Int?      @default(0) @map("id_Caida")
+  whatsappTemplateContactSent  Int       @default(0) @map("whatsapp_template_contact_sent") @db.TinyInt
+
+  @@index([idproyectoLead], map: "idx_leads_idproyecto_lead")
+  @@map("leads")
+}
+
+model Bitacora {
+  idBitacoraBit   Int       @id @default(autoincrement()) @map("id_bitacora_bit")
+  idLeadBit       Int       @map("id_lead_bit")
+  idAdminBit      Int       @map("id_admin_bit")
+  idCaidaBit      Int?      @map("id_caida_bit")
+  detalleBit      String?   @map("detalle_bit") @db.Text
+  tipoDocumentoBit String?  @map("tipo_documento_bit") @db.Text
+  estadoBit       String?   @map("estado_bit") @db.VarChar(250)
+  estadoLead      Int       @default(1) @map("estado_lead")
+  fechaCreadoBit  DateTime? @default(now()) @map("fecha_creado_bit") @db.Timestamp(0)
+  fechSegBit      String?   @default("") @map("fech_seg_bit") @db.VarChar(250)
+
+  @@index([idLeadBit], map: "id_lead_bit")
+  @@index([idAdminBit], map: "id_admin_bit")
+  @@index([idCaidaBit], map: "id_caida_bit")
+  @@map("bitacoras")
 }

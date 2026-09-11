@@ -2,6 +2,8 @@ $ErrorActionPreference = 'Stop'
 
 $checks = @(
   @{ Name = 'lint'; Command = 'npm.cmd'; Arguments = @('run', 'lint') },
+  @{ Name = 'knip'; Command = 'npm.cmd'; Arguments = @('run', 'knip') },
+  @{ Name = 'prisma generate'; Command = 'npm.cmd'; Arguments = @('run', 'prisma:generate') },
   @{ Name = 'typecheck'; Command = 'npm.cmd'; Arguments = @('run', 'typecheck') },
   @{ Name = 'unit tests'; Command = 'npm.cmd'; Arguments = @('run', 'test', '--', '--runInBand') },
   @{ Name = 'e2e tests'; Command = 'npm.cmd'; Arguments = @('run', 'test:e2e', '--', '--runInBand') },
@@ -9,6 +11,8 @@ $checks = @(
   @{ Name = 'format check'; Command = 'npm.cmd'; Arguments = @('run', 'format:check') },
   @{ Name = 'production audit'; Command = 'npm.cmd'; Arguments = @('audit', '--omit=dev') },
   @{ Name = 'database read check'; Command = 'npm.cmd'; Arguments = @('run', 'db:check') },
+  @{ Name = 'kapso numbers read check'; Command = 'npm.cmd'; Arguments = @('run', 'kapso:numbers') },
+  @{ Name = 'logs check'; Command = 'npm.cmd'; Arguments = @('run', 'logs:check') },
   @{ Name = 'playwright smoke'; Command = 'npm.cmd'; Arguments = @('run', 'test:playwright') },
   @{ Name = 'start dev health'; Command = 'npm.cmd'; Arguments = @('run', 'verify:start:dev') }
 )

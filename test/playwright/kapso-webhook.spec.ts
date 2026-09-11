@@ -1,56 +1,51 @@
-import 'dotenv/config';
+import "../../src/config/load-env";
 
-import { expect, test } from '@playwright/test';
-import { createHmac } from 'node:crypto';
+import { expect, test } from "@playwright/test";
 
-const sign = (payload: Record<string, unknown>): string => {
-  const secret = process.env.KAPSO_PLATFORM_WEBHOOK_SECRET;
+import { signJsonPayload } from "../common/crypto/hmac-sign";
+import { requireEnv } from "../common/env/require-env";
+import { TEST_PHONE_NUMBER_ID } from "../common/kapso/fixtures";
 
-  if (!secret) {
-    throw new Error('KAPSO_PLATFORM_WEBHOOK_SECRET is required for webhook Playwright tests');
-  }
+const signWithEnvSecret = (payload: unknown): string => signJsonPayload(payload, requireEnv("KAPSO_PLATFORM_WEBHOOK_SECRET"));
 
-  return createHmac('sha256', secret).update(JSON.stringify(payload)).digest('hex');
-};
+test.describe("Kapso platform webhook", () => {
+    test("accepts a signed unsupported event without touching integrations", async ({ request }) => {
+        const payload = { execution_id: "playwright-smoke" };
+        const response = await request.post("/api/v1/webhooks/kapso/platform", {
+            data: payload,
+            headers: {
+                "X-Idempotency-Key": "playwright-ignored-event",
+                "X-Webhook-Event": "workflow.execution.failed",
+                "X-Webhook-Signature": signWithEnvSecret(payload),
+            },
+        });
+        const body = (await response.json()) as Record<string, unknown>;
 
-test.describe('Kapso platform webhook', () => {
-  test('accepts a signed unsupported event without touching integrations', async ({ request }) => {
-    const payload = { execution_id: 'playwright-smoke' };
-    const response = await request.post('/api/v1/webhooks/kapso/platform', {
-      data: payload,
-      headers: {
-        'X-Idempotency-Key': 'playwright-ignored-event',
-        'X-Webhook-Event': 'workflow.execution.failed',
-        'X-Webhook-Signature': sign(payload),
-      },
-    });
-    const body = (await response.json()) as Record<string, unknown>;
-
-    expect(response.ok()).toBe(true);
-    expect(body).toEqual({ ok: true, processed: false, action: 'ignored' });
-  });
-
-  test('rejects an invalid webhook signature', async ({ request }) => {
-    const response = await request.post('/api/v1/webhooks/kapso/platform', {
-      data: { phone_number_id: '123456789012345' },
-      headers: {
-        'X-Webhook-Event': 'whatsapp.phone_number.created',
-        'X-Webhook-Signature': 'invalid',
-      },
+        expect(response.ok()).toBe(true);
+        expect(body).toEqual({ ok: true, processed: false, action: "ignored" });
     });
 
-    expect(response.status()).toBe(401);
-  });
+    test("rejects an invalid webhook signature", async ({ request }) => {
+        const response = await request.post("/api/v1/webhooks/kapso/platform", {
+            data: { phone_number_id: TEST_PHONE_NUMBER_ID },
+            headers: {
+                "X-Webhook-Event": "whatsapp.phone_number.created",
+                "X-Webhook-Signature": "invalid",
+            },
+        });
 
-  test('rejects a signed payload without event header', async ({ request }) => {
-    const payload = { phone_number_id: '123456789012345' };
-    const response = await request.post('/api/v1/webhooks/kapso/platform', {
-      data: payload,
-      headers: {
-        'X-Webhook-Signature': sign(payload),
-      },
+        expect(response.status()).toBe(401);
     });
 
-    expect(response.status()).toBe(400);
-  });
+    test("rejects a signed payload without event header", async ({ request }) => {
+        const payload = { phone_number_id: TEST_PHONE_NUMBER_ID };
+        const response = await request.post("/api/v1/webhooks/kapso/platform", {
+            data: payload,
+            headers: {
+                "X-Webhook-Signature": signWithEnvSecret(payload),
+            },
+        });
+
+        expect(response.status()).toBe(400);
+    });
 });

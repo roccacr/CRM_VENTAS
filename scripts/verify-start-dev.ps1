@@ -8,8 +8,8 @@ $stderr = Join-Path $logDir 'start-dev-verify.err.log'
 New-Item -ItemType Directory -Path $logDir -Force | Out-Null
 
 $process = Start-Process `
-  -FilePath 'npm.cmd' `
-  -ArgumentList 'run start:dev' `
+  -FilePath 'cmd.exe' `
+  -ArgumentList @('/d', '/s', '/c', 'set KAPSO_ENVIO_TEMPLATE_INICIAL_ENABLED=0&& npm.cmd run start:dev') `
   -PassThru `
   -WindowStyle Hidden `
   -RedirectStandardOutput $stdout `

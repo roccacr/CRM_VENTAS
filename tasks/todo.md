@@ -62,6 +62,8 @@
 - [x] Implementar `whatsapp.phone_number.deleted`.
 - [x] Responder `200 OK` en flujo correcto.
 - [x] Responder `401` si la firma no es valida.
+- [x] Validar webhook real Kapso por ngrok.
+- [x] Confirmar persistencia real en MySQL produccion.
 
 ## 7. API Interna Frontend
 
@@ -69,7 +71,7 @@
 - [x] Crear endpoint listar integraciones.
 - [x] Crear endpoint activar integracion.
 - [x] Crear endpoint inactivar integracion.
-- [ ] Crear endpoint base de sync futuro.
+- [x] Crear endpoint base de sync futuro.
 - [x] Documentar endpoints en Swagger.
 
 ## 8. Pruebas
@@ -77,6 +79,9 @@
 - [x] Definir regla permanente: toda funcion importante debe tener pruebas.
 - [x] Definir minimo 3 escenarios por funcion/flujo importante.
 - [x] Definir 4 escenarios preferibles para seguridad, BD, webhooks e integraciones.
+- [x] Agregar Knip para detectar archivos, exports y dependencias sin uso.
+- [x] Agregar `npm run knip`.
+- [x] Agregar Knip dentro de `npm run verify`.
 - [x] Unit test configuracion base.
 - [x] Unit test configuracion sin exponer secretos.
 - [x] Unit test configuracion con puerto invalido.
@@ -127,16 +132,64 @@
 
 ## 9. Frontend CRM
 
-- [ ] Buscar vista Kapso existente.
-- [ ] Limpiar implementacion previa de Kapso.
-- [ ] Dejar solo `h1` con `Kapso integracion`.
-- [ ] Verificar que el frontend compile.
+- [x] Buscar vista Kapso existente.
+- [x] Limpiar placeholder previo de Kapso.
+- [x] Crear tabla de integraciones Kapso en `View_Kapso.jsx`.
+- [x] Crear modal para asignar admin CRM a integracion.
+- [x] Permitir editar admin asignado.
+- [x] Permitir eliminar asignacion admin-integracion.
+- [x] Conectar vista con API protegida por token.
+- [x] Verificar que el frontend compile.
+- [ ] Probar flujo visual en navegador con datos reales.
 
 ## 10. Etapas Futuras
 
-- [ ] Investigar endpoint Kapso para detalle completo del numero.
-- [ ] Agregar sincronizacion manual/API.
-- [ ] Agregar WhatsApp webhooks por numero.
+- [x] Crear comando seguro `npm run kapso:numbers` para listar integraciones.
+- [x] Resolver vulnerabilidades transitivas Prisma/adapter MariaDB.
+- [x] Investigar endpoint Kapso para detalle completo del numero.
+- [x] Agregar sincronizacion manual/API.
+- [x] Agregar sync individual por integracion antes de asignar admin.
+- [x] Agregar boton `Sync` por fila en frontend CRM.
+- [x] Agregar WhatsApp webhooks por numero.
+- [x] Crear/actualizar webhook WhatsApp por numero en Kapso real.
+- [x] Agregar endpoint receptor `/api/v1/webhooks/kapso/whatsapp`.
+- [x] Probar endpoint WhatsApp por numero con E2E.
+- [x] Probar endpoint WhatsApp por numero con Playwright.
+- [x] Procesar respuesta "Sí, enviar información" del template saludo.
+- [x] Procesar respuesta "No, gracias" del template saludo.
+- [x] Registrar bitacora para respuestas no predeterminadas.
+- [x] Evitar duplicar bitacora por `X-Idempotency-Key` cuando Kapso reintenta.
+- [ ] Confirmar con Kapso el nombre tecnico del evento "Meta agent handover".
 - [ ] Guardar conversaciones/chats.
-- [ ] Asignar vendedor a integracion.
+- [x] Crear tabla puente para asignar admins a integracion.
+- [x] Crear API CRUD para asignar admins a integracion.
+- [x] Asignar vendedor/admin a integracion.
+- [x] Marcar asignacion directa de proyectos como enfoque legacy/no vigente.
+- [x] Crear tabla `kapso_cronjob_configuracion`.
+- [x] Crear API CRUD para configurar cronjobs.
+- [x] Reemplazar modelo directo cronjob + integracion + admin + proyecto por cronjob general.
+- [x] Crear tabla `kapso_cronjob_proyecto_configuracion` para proyectos ejecutables por cronjob.
+- [x] Quitar seleccion de admin en proyecto del cronjob desde la vista CRM.
+- [x] Dejar proyecto del cronjob como `Integracion Kapso` + `Proyecto CRM`.
+- [x] Ocultar en el selector los proyectos ya asignados al mismo cronjob e integracion.
+- [x] Separar la vista en `Integraciones` y `Cronjobs`.
+- [x] Permitir activar/inactivar cronjob general.
+- [x] Quitar eliminacion de cronjob desde la vista operativa.
+- [x] Quitar endpoint de eliminacion del cronjob general.
+- [x] Agregar prueba Playwright para impedir borrado de cronjob general.
+- [x] Permitir activar/inactivar proyecto dentro del cronjob.
+- [x] Crear carpeta separada para cronjob `envio_template_inicial`.
+- [x] Buscar leads pendientes por proyectos activos configurados en el cronjob.
+- [x] Validar admin, integracion Kapso activa y proyecto antes de enviar template.
+- [x] Enviar template Kapso `saludo` con 3 parametros.
+- [x] Crear normalizador global de telefonos WhatsApp.
+- [x] Analizar patron de telefonos en ultimos 2000 leads de produccion.
+- [x] Crear tabla `kapso_envio_template_inicial_intento`.
+- [x] Garantizar un solo intento de template inicial por lead.
+- [x] Guardar mensaje Kapso y conversacion relacionada cuando Kapso la informe.
+- [x] Actualizar lead y bitacora cuando el template se envia correctamente.
+- [x] Actualizar lead y bitacora cuando no hay integracion o falla el envio.
+- [x] Agregar comando manual `npm run kapso:cron:envio-template-inicial`.
+- [x] Auditoria adversarial de tests: HMAC, tokens, webhooks, ids, telefonos y cronjob.
+- [x] Corregir `parseKapsoRouteId` para no tratar `0n` como id ausente.
 - [ ] Mostrar chats desde CRM.

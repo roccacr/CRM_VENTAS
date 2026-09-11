@@ -219,6 +219,7 @@ flowchart LR
     U[Unit tests] --> I[Integration tests]
     I --> E[E2E API]
     E --> P[Playwright smoke]
+    P --> K[Knip]
 ```
 
 Regla:
@@ -226,10 +227,10 @@ Regla:
 - Toda funcion importante que haga una accion, consulte datos, modifique estado, valide seguridad o devuelva una respuesta debe tener pruebas.
 - Cada funcion/flujo importante debe tener minimo 3 escenarios y preferiblemente 4 cuando aplique.
 - Escenarios base:
-  - exito;
-  - fallo esperado o validacion;
-  - error externo/controlado;
-  - caso borde o dato incompleto.
+    - exito;
+    - fallo esperado o validacion;
+    - error externo/controlado;
+    - caso borde o dato incompleto.
 - Si una funcion nueva no tiene pruebas, no se considera terminada.
 - Cada etapa debe actualizar `docs/construccion.md` y `tasks/todo.md` con lo probado.
 
@@ -247,6 +248,13 @@ Playwright valida lo observable del sistema actual:
 - bloqueo de activacion sin token;
 - lectura segura de la tabla Kapso.
 
+Knip valida higiene estatica:
+
+- archivos no usados;
+- exports no usados;
+- dependencias no usadas;
+- dependencias importadas pero no declaradas.
+
 Comandos esperados:
 
 ```powershell
@@ -257,14 +265,15 @@ El comando anterior ejecuta toda la revision del proyecto:
 
 ```powershell
 npm run lint
-npm run format:check
+npm run knip
 npm run typecheck
 npm run test
 npm run test:e2e
-npm run test:playwright
 npm run build
+npm run format:check
 npm audit --omit=dev
 npm run db:check
+npm run test:playwright
 npm run verify:start:dev
 ```
 
