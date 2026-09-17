@@ -1,5 +1,6 @@
 import { Prisma } from "@prisma/client";
 
+import { createCostaRicaWallClockDate } from "../../common/datetime/costa-rica-wall-clock-date";
 import { BITACORA_DOCUMENT_TYPE, CAIDA_TEMPLATE_INICIAL_ENTREGADO, LEAD_POST_TEMPLATE_ACCION, LEAD_POST_TEMPLATE_SEGUIMIENTO, LEAD_TEMPLATE_PROCESSED_STATUS } from "./envio-template-inicial.constants";
 import { CreateBitacoraInput, EnvioTemplateInicialLead } from "./envio-template-inicial.repository";
 
@@ -20,6 +21,7 @@ export function toBitacoraInput(lead: EnvioTemplateInicialLead, input: BitacoraO
         detalleBit: input.detalleBit,
         estadoBit: input.estadoBit ?? lead.segiminetoLead ?? "",
         estadoLead: lead.estadoLead ?? 0,
+        fechaCreadoBit: createCostaRicaWallClockDate(),
         idAdminBit: input.idAdminBit,
         idLeadBit: lead.idinternoLead ?? lead.idLead,
         tipoDocumentoBit: BITACORA_DOCUMENT_TYPE,
@@ -33,10 +35,12 @@ export function toBitacoraInput(lead: EnvioTemplateInicialLead, input: BitacoraO
  * `actualizadaaccionLead` es DATETIME string (legado CRM), no Date.
  */
 export function toSuccessLeadUpdate(normalizedPhoneNumber: string, now = new Date()): Prisma.LeadUpdateManyMutationInput {
+    const costaRicaNow = createCostaRicaWallClockDate(now);
+
     return {
         accionLead: LEAD_POST_TEMPLATE_ACCION,
         actualizadaaccionLead: formatMysqlDateTime(now),
-        actualizadoLead: now,
+        actualizadoLead: costaRicaNow,
         idCaida: CAIDA_TEMPLATE_INICIAL_ENTREGADO,
         segiminetoLead: LEAD_POST_TEMPLATE_SEGUIMIENTO,
         telefonoLead: normalizedPhoneNumber,
@@ -55,7 +59,8 @@ export function toErrorMessage(error: unknown): string {
 }
 
 function formatMysqlDateTime(date: Date): string {
+    const costaRicaDate = createCostaRicaWallClockDate(date);
     const pad = (value: number): string => String(value).padStart(2, "0");
 
-    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
+    return `${costaRicaDate.getUTCFullYear()}-${pad(costaRicaDate.getUTCMonth() + 1)}-${pad(costaRicaDate.getUTCDate())} ${pad(costaRicaDate.getUTCHours())}:${pad(costaRicaDate.getUTCMinutes())}:${pad(costaRicaDate.getUTCSeconds())}`;
 }

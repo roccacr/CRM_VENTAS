@@ -28,6 +28,8 @@ export const KAPSO_PLATFORM_EVENTS = {
 } as const;
 
 export const KAPSO_WHATSAPP_EVENTS = {
+    MESSAGE_DELIVERED: "whatsapp.message.delivered",
+    MESSAGE_FAILED: "whatsapp.message.failed",
     MESSAGE_RECEIVED: "whatsapp.message.received",
 } as const;
 
@@ -37,4 +39,8 @@ export const WHATSAPP_RESPONSE_CAIDA = {
 } as const;
 
 export const BITACORA_DOCUMENT_TYPE = "WhatsApp Kapso";
+export const WHATSAPP_TEMPLATE_DELIVERED_CAIDA = 70;
+export const WHATSAPP_TEMPLATE_DELIVERED_EVENT = "kapso.whatsapp.template.delivered";
+export const WHATSAPP_TEMPLATE_FAILED_CAIDA = 68;
+export const WHATSAPP_TEMPLATE_FAILED_EVENT = "kapso.whatsapp.template.failed";
 export const WHATSAPP_RESPONSE_EVENT = "kapso.whatsapp.response.processed";

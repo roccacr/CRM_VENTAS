@@ -241,7 +241,7 @@ describe("EnvioTemplateInicialService", () => {
                 whatsappTemplateContactSent: 0,
             }) as Record<string, unknown>,
         );
-        expect(getLastBitacora(repository).detalleBit).toContain("Template saludo inicial enviado con exito");
+        expect(getLastBitacora(repository).detalleBit).toBe("Se inicio el envio del template inicial por WhatsApp.");
         expect(getLastBitacora(repository).idAdminBit).toBe(653055);
         expect(getLastBitacora(repository).idCaidaBit).toBe(70);
         expect(getLastBitacora(repository).idLeadBit).toBe(6430001);

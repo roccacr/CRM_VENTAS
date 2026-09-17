@@ -1,4 +1,4 @@
-import { extractLeadIdFromPayload, extractResponseText, normalizeResponseText, readStringPath } from "../../src/kapso-webhooks/kapso-whatsapp-webhook.payload";
+import { extractCustomerPhoneNumber, extractFailureReason, extractLeadIdFromPayload, extractPhoneNumberId, extractReplyContextMessageId, extractResponseText, extractWhatsappMessageId, normalizeResponseText, readStringPath } from "../../src/kapso-webhooks/kapso-whatsapp-webhook.payload";
 
 describe("normalizeResponseText", () => {
     it("collapses punctuation, case and accents", () => {
@@ -36,6 +36,86 @@ describe("extractResponseText", () => {
 
     it("reads message.text.body for free-text replies", () => {
         expect(extractResponseText({ message: { text: { body: "Mejor mañana" } } })).toBe("Mejor mañana");
+    });
+});
+
+describe("extractWhatsappMessageId", () => {
+    it("reads the simplified Kapso message id", () => {
+        expect(extractWhatsappMessageId({ message: { id: "wamid.123" } })).toBe("wamid.123");
+    });
+
+    it("finds a nested wamid when Kapso sends a raw Meta payload", () => {
+        expect(
+            extractWhatsappMessageId({
+                raw_payload: {
+                    entry: [{ changes: [{ value: { statuses: [{ id: "wamid.nested" }] } }] }],
+                },
+            }),
+        ).toBe("wamid.nested");
+    });
+
+    it("ignores non-WhatsApp ids", () => {
+        expect(extractWhatsappMessageId({ message: { id: "local-id" } })).toBeNull();
+    });
+});
+
+describe("extractReplyContextMessageId", () => {
+    it("reads the outbound message id from an inbound reply context", () => {
+        expect(extractReplyContextMessageId({ message: { context: { id: "wamid.outbound-template-1" } } })).toBe("wamid.outbound-template-1");
+    });
+
+    it("ignores local context ids that are not WhatsApp message ids", () => {
+        expect(extractReplyContextMessageId({ message: { context: { id: "local-message-id" } } })).toBeNull();
+    });
+});
+
+describe("extractPhoneNumberId", () => {
+    it("reads the Kapso phone number id from the simplified payload", () => {
+        expect(extractPhoneNumberId({ phone_number_id: "1197677976762773" })).toBe("1197677976762773");
+    });
+
+    it("reads the Kapso phone number id from conversation metadata", () => {
+        expect(extractPhoneNumberId({ conversation: { phone_number_id: "1197677976762773" } })).toBe("1197677976762773");
+    });
+});
+
+describe("extractCustomerPhoneNumber", () => {
+    it("reads the customer phone from the conversation payload", () => {
+        expect(extractCustomerPhoneNumber({ conversation: { phone_number: "+506 8832 5933" } })).toBe("+506 8832 5933");
+    });
+
+    it("reads the customer phone from Meta contacts", () => {
+        expect(extractCustomerPhoneNumber({ contacts: [{ wa_id: "50688325933" }] })).toBe("50688325933");
+    });
+});
+
+describe("extractFailureReason", () => {
+    it("reads a direct failure reason", () => {
+        expect(extractFailureReason({ message: { failure_reason: "User's number is part of an experiment" } })).toBe("User's number is part of an experiment");
+    });
+
+    it("reads Meta nested error details", () => {
+        expect(
+            extractFailureReason({
+                raw_payload: {
+                    entry: [
+                        {
+                            changes: [
+                                {
+                                    value: {
+                                        statuses: [
+                                            {
+                                                errors: [{ error_data: { details: "Failed to send message" } }],
+                                            },
+                                        ],
+                                    },
+                                },
+                            ],
+                        },
+                    ],
+                },
+            }),
+        ).toBe("Failed to send message");
     });
 });
 

@@ -10,6 +10,26 @@ const RESPONSE_TEXT_PATHS: readonly (readonly string[])[] = [
     ["message", "kapso", "content"],
 ];
 
+const WHATSAPP_MESSAGE_ID_PATHS: readonly (readonly string[])[] = [["message", "id"], ["whatsapp_message_id"], ["raw_payload", "entry", "0", "changes", "0", "value", "statuses", "0", "id"]];
+
+const WHATSAPP_REPLY_CONTEXT_MESSAGE_ID_PATHS: readonly (readonly string[])[] = [
+    ["message", "context", "id"],
+    ["raw_payload", "entry", "0", "changes", "0", "value", "messages", "0", "context", "id"],
+];
+
+const WHATSAPP_PHONE_NUMBER_ID_PATHS: readonly (readonly string[])[] = [["phone_number_id"], ["conversation", "phone_number_id"], ["raw_payload", "entry", "0", "changes", "0", "value", "metadata", "phone_number_id"]];
+
+const WHATSAPP_CUSTOMER_PHONE_PATHS: readonly (readonly string[])[] = [["conversation", "phone_number"], ["message", "from"], ["from"], ["contacts", "0", "wa_id"], ["raw_payload", "entry", "0", "changes", "0", "value", "messages", "0", "from"], ["raw_payload", "entry", "0", "changes", "0", "value", "contacts", "0", "wa_id"]];
+
+const FAILURE_REASON_PATHS: readonly (readonly string[])[] = [
+    ["error", "message"],
+    ["failure", "message"],
+    ["message", "error", "message"],
+    ["message", "failure_reason"],
+    ["raw_payload", "entry", "0", "changes", "0", "value", "statuses", "0", "errors", "0", "message"],
+    ["raw_payload", "entry", "0", "changes", "0", "value", "statuses", "0", "errors", "0", "error_data", "details"],
+];
+
 /**
  * Busca `crm_lead:{id}` en cualquier string del payload.
  * El template inicial lo mete en `biz_opaque_callback_data`; Kapso lo
@@ -33,15 +53,53 @@ export function extractResponseText(payload: unknown): string | null {
     return candidates.find((candidate): candidate is string => Boolean(candidate?.trim())) ?? null;
 }
 
+/** Id `wamid...` del mensaje WhatsApp. Kapso lo manda como `message.id` en eventos simplificados. */
+export function extractWhatsappMessageId(payload: unknown): string | null {
+    const direct = WHATSAPP_MESSAGE_ID_PATHS.map((path) => readStringPath(payload, path)).find((candidate): candidate is string => Boolean(candidate));
+
+    if (direct?.startsWith("wamid.")) {
+        return direct;
+    }
+
+    return collectStringValues(payload).find((value) => value.startsWith("wamid.")) ?? null;
+}
+
+/** `wamid...` del mensaje saliente original cuando el cliente responde sobre un template/boton. */
+export function extractReplyContextMessageId(payload: unknown): string | null {
+    const direct = WHATSAPP_REPLY_CONTEXT_MESSAGE_ID_PATHS.map((path) => readStringPath(payload, path)).find((candidate): candidate is string => Boolean(candidate));
+    return direct?.startsWith("wamid.") ? direct : null;
+}
+
+/** Numero de WhatsApp/Kapso que recibio el webhook. Sirve para distinguir integraciones. */
+export function extractPhoneNumberId(payload: unknown): string | null {
+    return WHATSAPP_PHONE_NUMBER_ID_PATHS.map((path) => readStringPath(payload, path)).find((candidate): candidate is string => Boolean(candidate?.trim())) ?? null;
+}
+
+/** Telefono del cliente en el webhook. La normalizacion final vive en `common/phone`. */
+export function extractCustomerPhoneNumber(payload: unknown): string | null {
+    return WHATSAPP_CUSTOMER_PHONE_PATHS.map((path) => readStringPath(payload, path)).find((candidate): candidate is string => Boolean(candidate?.trim())) ?? null;
+}
+
+/** Razon de fallo cuando Kapso/Meta la incluye; si no viene, el caller usa un fallback claro. */
+export function extractFailureReason(payload: unknown): string | null {
+    const fromKnownPaths = FAILURE_REASON_PATHS.map((path) => readStringPath(payload, path)).find((candidate): candidate is string => Boolean(candidate?.trim()));
+
+    if (fromKnownPaths) {
+        return fromKnownPaths;
+    }
+
+    return collectStringValues(payload).find((value) => /failed|error|experiment|invalid/i.test(value)) ?? null;
+}
+
 export function readStringPath(payload: unknown, path: readonly string[]): string | null {
     let current: unknown = payload;
 
     for (const segment of path) {
-        if (!current || Array.isArray(current) || typeof current !== "object") {
+        if (!current || typeof current !== "object") {
             return null;
         }
 
-        current = (current as Record<string, unknown>)[segment];
+        current = Array.isArray(current) ? current[Number(segment)] : (current as Record<string, unknown>)[segment];
     }
 
     return typeof current === "string" ? current : null;

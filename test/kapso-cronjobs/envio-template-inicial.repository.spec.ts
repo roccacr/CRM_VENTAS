@@ -180,7 +180,7 @@ describe("EnvioTemplateInicialRepository", () => {
             36640,
             { whatsappTemplateContactSent: 0 },
             {
-                detalleBit: "Template saludo inicial enviado con exito por Kapso.",
+                detalleBit: "Se inicio el envio del template inicial por WhatsApp.",
                 estadoBit: "08-LEAD-SEGUIMIENTO",
                 estadoLead: 2,
                 idAdminBit: 653055,
@@ -196,16 +196,17 @@ describe("EnvioTemplateInicialRepository", () => {
             where: { idLead: 36640 },
         });
         expect(transactionClient.bitacora.create).toHaveBeenCalledWith({
-            data: {
-                detalleBit: "Template saludo inicial enviado con exito por Kapso.",
+            data: expect.objectContaining({
+                detalleBit: "Se inicio el envio del template inicial por WhatsApp.",
                 estadoBit: "08-LEAD-SEGUIMIENTO",
                 estadoLead: 2,
+                fechaCreadoBit: expect.any(Date) as unknown,
                 fechSegBit: "",
                 idAdminBit: 653055,
                 idCaidaBit: 70,
                 idLeadBit: 6430001,
                 tipoDocumentoBit: "WhatsApp Kapso",
-            },
+            }) as object,
         });
     });
 });

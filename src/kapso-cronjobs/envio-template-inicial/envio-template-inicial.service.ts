@@ -154,7 +154,7 @@ export class EnvioTemplateInicialService {
                 phoneNumberId: projectConfig.integration.kapsoPhoneNumberId,
             });
 
-            await this.markLeadTemplateSent(lead, adminId, to, response.messageIds);
+            await this.markLeadTemplateSent(lead, adminId, to);
             return "sent";
         } catch (error) {
             const errorMessage = toErrorMessage(error);
@@ -197,12 +197,12 @@ export class EnvioTemplateInicialService {
         );
     }
 
-    private async markLeadTemplateSent(lead: EnvioTemplateInicialLead, adminId: number, normalizedPhoneNumber: string, messageIds: readonly string[]): Promise<void> {
+    private async markLeadTemplateSent(lead: EnvioTemplateInicialLead, adminId: number, normalizedPhoneNumber: string): Promise<void> {
         await this.repository.markLeadProcessedWithBitacora(
             lead.idLead,
             toSuccessLeadUpdate(normalizedPhoneNumber),
             toBitacoraInput(lead, {
-                detalleBit: `Template saludo inicial enviado con exito por Kapso. Mensaje: ${messageIds.join(", ")}.`,
+                detalleBit: "Se inicio el envio del template inicial por WhatsApp.",
                 estadoBit: LEAD_POST_TEMPLATE_SEGUIMIENTO,
                 idAdminBit: adminId,
                 idCaidaBit: CAIDA_TEMPLATE_INICIAL_ENTREGADO,

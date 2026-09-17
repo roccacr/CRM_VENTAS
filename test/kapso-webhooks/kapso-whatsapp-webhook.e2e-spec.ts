@@ -69,6 +69,42 @@ describe("Kapso WhatsApp number webhook endpoint", () => {
         expect(response.body).toEqual({ ok: true, processed: true, action: "accepted_info" });
     });
 
+    it("accepts a signed WhatsApp message failed event for template failure tracking", async () => {
+        service.process.mockResolvedValue({ processed: true, action: "template_failed" });
+        const payload = {
+            conversation: { id: "0ca1d18f-fe78-47d6-a148-87a6420a1af3" },
+            message: { id: "wamid.failed-1", type: "template" },
+            type: "whatsapp.message.failed",
+        };
+
+        const response = await request(httpServer(app)).post("/api/v1/webhooks/kapso/whatsapp").set("X-Webhook-Event", "whatsapp.message.failed").set("X-Webhook-Signature", signJsonPayload(payload, secret)).set("X-Idempotency-Key", "failed-idem-1").send(payload).expect(200);
+
+        expect(response.body).toEqual({ ok: true, processed: true, action: "template_failed" });
+        expect(service.process).toHaveBeenCalledWith({
+            event: "whatsapp.message.failed",
+            idempotencyKey: "failed-idem-1",
+            payload,
+        });
+    });
+
+    it("accepts a signed WhatsApp message delivered event for template delivery tracking", async () => {
+        service.process.mockResolvedValue({ processed: true, action: "template_delivered" });
+        const payload = {
+            conversation: { id: "0ca1d18f-fe78-47d6-a148-87a6420a1af3" },
+            message: { id: "wamid.delivered-1", type: "template" },
+            type: "whatsapp.message.delivered",
+        };
+
+        const response = await request(httpServer(app)).post("/api/v1/webhooks/kapso/whatsapp").set("X-Webhook-Event", "whatsapp.message.delivered").set("X-Webhook-Signature", signJsonPayload(payload, secret)).set("X-Idempotency-Key", "delivered-idem-1").send(payload).expect(200);
+
+        expect(response.body).toEqual({ ok: true, processed: true, action: "template_delivered" });
+        expect(service.process).toHaveBeenCalledWith({
+            event: "whatsapp.message.delivered",
+            idempotencyKey: "delivered-idem-1",
+            payload,
+        });
+    });
+
     it("rejects an invalid WhatsApp webhook signature", async () => {
         await request(httpServer(app)).post("/api/v1/webhooks/kapso/whatsapp").set("X-Webhook-Event", "whatsapp.message.received").set("X-Webhook-Signature", "invalid").send({ phone_number_id: "123456789012345" }).expect(401);
     });

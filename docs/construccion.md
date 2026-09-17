@@ -1374,3 +1374,52 @@ Verificacion:
 
 - `npm run test -- --runInBand`: 45 suites, 323 tests OK.
 - `npm run test:e2e -- --runInBand`: 6 suites, 33 tests OK.
+
+## 2026-09-11 - Manejo De Fallo Tardio Meta/Kapso
+
+Hallazgo real:
+
+- El API enviaba el template `saludo` correctamente y Kapso respondia `200`.
+- Segundos despues, Kapso enviaba `whatsapp.message.failed` cuando Meta rechazaba la entrega.
+- El webhook lo aceptaba con HTTP 200, pero la aplicacion lo ignoraba porque solo procesaba `whatsapp.message.received`.
+- Resultado anterior: el lead podia quedar con caida 70 aunque Meta hubiera fallado despues.
+
+Flujo corregido:
+
+```mermaid
+flowchart TD
+    A[Kapso webhook whatsapp.message.failed] --> B[Extraer wamid del payload]
+    B --> C[Buscar intento por kapso_message_ids]
+    C --> D{Existe intento?}
+    D -- no --> E[Ignorar sin tocar CRM]
+    D -- si --> F[Buscar lead CRM]
+    F --> G[Marcar intento failed + conversation_id]
+    G --> H[Actualizar lead id_Caida = 68]
+    H --> I[Crear bitacora WhatsApp Kapso con idempotency key]
+```
+
+Cambios:
+
+| Archivo                                                         | Cambio aplicado                                                            |
+| --------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| `src/kapso-webhooks/kapso-webhook.constants.ts`                 | Agrega `whatsapp.message.failed` y evento interno de fallo de template     |
+| `src/kapso-webhooks/kapso-whatsapp-webhook.payload.ts`          | Extrae `wamid`, `conversation.id` y razon de fallo de payload Kapso/Meta   |
+| `src/kapso-webhooks/kapso-whatsapp-webhook.repository.ts`       | Busca intento por `kapso_message_ids` y permite marcar intento como failed |
+| `src/kapso-webhooks/kapso-whatsapp-webhook.service.ts`          | Procesa fallo tardio, evita duplicados y registra bitacora                 |
+| `test/kapso-webhooks/kapso-whatsapp-webhook.repository.spec.ts` | Cubre busqueda por `wamid` y update failed                                 |
+| `test/kapso-webhooks/kapso-whatsapp-webhook.service.spec.ts`    | Cubre fallo procesado, duplicado, sin intento y sin message id             |
+| `test/kapso-webhooks/kapso-whatsapp-webhook.e2e-spec.ts`        | Cubre endpoint firmado para `whatsapp.message.failed`                      |
+
+Correccion aplicada al caso real:
+
+- Lead `36640`: intento `failed`, `kapso_conversation_id` guardado.
+- Lead CRM: `id_Caida = 68`, `whatsapp_template_contact_sent = 0`.
+- Bitacora nueva: fallo de template con marker de idempotencia Kapso.
+
+Verificacion:
+
+- `npm run test -- kapso-whatsapp-webhook.payload.spec.ts kapso-whatsapp-webhook.service.spec.ts kapso-whatsapp-webhook.repository.spec.ts --runInBand`: 3 suites, 29 tests OK.
+- `npm run test:e2e -- kapso-whatsapp-webhook.e2e-spec.ts --runInBand`: 1 suite, 5 tests OK.
+- `npm run typecheck`: OK.
+- `npm run lint`: OK.
+- `npm run format:check`: OK.

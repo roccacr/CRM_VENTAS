@@ -7,7 +7,8 @@ const REJECTED_RESPONSE = "no gracias";
 
 /**
  * Clasifica el texto del boton/mensaje del template `saludo`.
- * Cualquier otra frase queda `unmapped_response` (se bitacorea, no cambia caida).
+ * Cualquier otra frase queda `unmapped_response`: se bitacorea como respuesta
+ * no predeterminada y se toma como aceptacion porque el cliente abrio el hilo.
  */
 export function classifyCustomerResponse(responseText: string | null): CustomerResponseKind {
     const normalized = normalizeResponseText(responseText);

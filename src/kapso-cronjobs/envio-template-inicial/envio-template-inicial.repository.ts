@@ -2,6 +2,7 @@ import { Inject, Injectable } from "@nestjs/common";
 import { Admin, Bitacora, KapsoEnvioTemplateInicialIntento, KapsoCronjobConfiguracion, KapsoCronjobProyectoConfiguracion, KapsoIntegracionAdminAsignacion, KapsoIntegracionNumeroWhatsapp, Lead, Prisma } from "@prisma/client";
 
 import { PrismaService } from "../../database/prisma.service";
+import { createCostaRicaWallClockDate } from "../../common/datetime/costa-rica-wall-clock-date";
 import { LEAD_INTERESADO_SEGUIMIENTO, LEAD_INTERESADO_STATUS, LEAD_PENDING_TEMPLATE_SENT_STATUS, LEAD_TEMPLATE_PROCESSED_STATUS } from "./envio-template-inicial.constants";
 
 const EMPTY_FOLLOW_UP_DATE = "";
@@ -55,6 +56,7 @@ export type CreateBitacoraInput = {
     readonly detalleBit: string;
     readonly estadoBit: string;
     readonly estadoLead: number;
+    readonly fechaCreadoBit?: Date;
     readonly idAdminBit: number;
     readonly idCaidaBit?: number | null;
     readonly idLeadBit: number;
@@ -197,6 +199,7 @@ export class EnvioTemplateInicialRepository {
             detalleBit: input.detalleBit,
             estadoBit: input.estadoBit,
             estadoLead: input.estadoLead,
+            fechaCreadoBit: input.fechaCreadoBit ?? createCostaRicaWallClockDate(),
             fechSegBit: EMPTY_FOLLOW_UP_DATE,
             idAdminBit: input.idAdminBit,
             idCaidaBit: input.idCaidaBit ?? null,
