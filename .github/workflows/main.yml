@@ -1,0 +1,46 @@
+name: Deploy API Kapso
+
+on:
+  push:
+    branches:
+      - api-kapso
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Deploy API Kapso
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.SERVER_IP }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SCADMINAPIS }}
+          port: 22
+          script: |
+            set -e
+
+            sudo chown -R $USER:$USER /var/www/api-kapso
+            sudo chmod -R 755 /var/www/api-kapso
+
+            cd /var/www/api-kapso
+
+            git config --global user.email "soporte@roccacr.com"
+            git config --global user.name "roccacr"
+
+            git fetch https://${{ secrets.MY_GITHUB_TOKEN }}@github.com/roccacr/CRM_VENTAS.git api-kapso
+            git reset --hard FETCH_HEAD
+
+            export NVM_DIR="$HOME/.nvm"
+            [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+            nvm use 22
+
+            npm install --include=dev
+            npm run prisma:generate
+            npm run build
+
+            pm2 restart api-kapso --update-env || pm2 start dist/main.js --name api-kapso --interpreter "$(which node)"
+            pm2 save

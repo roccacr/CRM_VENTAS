@@ -116,7 +116,7 @@ export class KapsoWhatsappNumbersService {
 
         return {
             kapsoClient: this.kapsoClient,
-            upsertFromKapsoPhoneNumber: this.repository.upsertFromKapsoPhoneNumber,
+            upsertFromKapsoPhoneNumber: (phoneNumber) => this.repository.upsertFromKapsoPhoneNumber!(phoneNumber),
         };
     }
 

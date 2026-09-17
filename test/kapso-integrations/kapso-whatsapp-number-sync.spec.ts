@@ -87,6 +87,20 @@ describe("Kapso WhatsApp number sync", () => {
         expect(repository.upsertFromKapsoPhoneNumber).toHaveBeenCalledWith(expect.objectContaining({ displayPhoneNumber: "+1 555-123-4567" }));
     });
 
+    it("keeps repository method context while syncing one phone number", async () => {
+        const repository = createRepositoryMock();
+        const contextAwareUpsert = jest.fn(function (this: RepositoryMock) {
+            expect(this).toBe(repository);
+            return Promise.resolve();
+        });
+        Object.defineProperty(repository, "upsertFromKapsoPhoneNumber", { value: contextAwareUpsert });
+        const client = createClientMock();
+        const service = new KapsoWhatsappNumbersService(repository, client);
+
+        await expect(service.syncOneFromKapso("1")).resolves.toEqual({ synced: 1 });
+        expect(contextAwareUpsert).toHaveBeenCalledTimes(1);
+    });
+
     it("returns 404 when syncing a missing local integration", async () => {
         const repository = createRepositoryMock();
         repository.findById.mockResolvedValue(null);
