@@ -21,7 +21,7 @@ const getKapsoApiUrl = () => {
   return window.location.hostname === "localhost" ||
     window.location.hostname === "127.0.0.1"
     ? "http://localhost:8002/api/v1/"
-    : "https://kapso-crmventas.rdghub.com/api/v1/";
+    : "https://api-kapso.rdghub.com/api/v1/";
 };
 
 const isLocalEnvironment = () => {
@@ -62,6 +62,7 @@ const kapsoApiUrl = getKapsoApiUrl();
 const apiUrlImg = getApiUrlImg();
 const databaseuse = getDatabaseName();
 const frontendAccessToken = import.meta.env.VITE_TOKEN_ACCESS || "4jH6k-3m.b@s_T8";
+const kapsoAccessToken = import.meta.env.VITE_KAPSO_API_TOKEN || frontendAccessToken;
 
 /********************************************** COMMON REQUEST DATA **********************************************/
 
@@ -79,6 +80,12 @@ const getCommonRequestData = () => {
 };
 
 const commonRequestData = getCommonRequestData();
+
+const getKapsoHeaders = (contentType = "application/json") => ({
+  ...(contentType ? { "Content-Type": contentType } : {}),
+  Authorization: `Bearer ${kapsoAccessToken}`,
+  "x-crm-api-token": kapsoAccessToken,
+});
 
 /********************************************** FUNCTION TO MAKE API REQUESTS **********************************************/
 
@@ -133,9 +140,7 @@ const fetchKapsoData = async (endpoint) => {
   try {
     const url = `${kapsoApiUrl}${endpoint}`;
     const response = await axios.get(url, {
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers: getKapsoHeaders(),
     });
 
     return { ok: true, data: response.data };
@@ -163,9 +168,7 @@ const sendKapsoData = async (method, endpoint, requestData = null) => {
     const requestConfig = {
       method,
       url,
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers: getKapsoHeaders(),
     };
 
     if (requestData !== null) {
@@ -202,6 +205,7 @@ const sendKapsoFormData = async (method, endpoint, formData) => {
       method,
       url,
       data: formData,
+      headers: getKapsoHeaders(null),
     });
 
     return { ok: true, data: response.data };

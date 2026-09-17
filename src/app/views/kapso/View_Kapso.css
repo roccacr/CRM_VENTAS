@@ -1,0 +1,492 @@
+.kapso-admin-page {
+   display: grid;
+   gap: 18px;
+   width: 100%;
+   padding: 20px;
+}
+
+.kapso-admin-header,
+.kapso-admin-toolbar {
+   display: flex;
+   align-items: center;
+   justify-content: space-between;
+   gap: 16px;
+}
+
+.kapso-admin-kicker {
+   display: block;
+   margin-bottom: 4px;
+   color: #64748b;
+   font-size: 12px;
+   font-weight: 700;
+   text-transform: uppercase;
+}
+
+.kapso-admin-header h1 {
+   margin: 0;
+   color: #0f172a;
+   font-size: 28px;
+   font-weight: 800;
+}
+
+.kapso-admin-header p {
+   margin: 6px 0 0;
+   color: #475569;
+   font-size: 14px;
+}
+
+.kapso-admin-search {
+   display: flex;
+   align-items: center;
+   width: min(460px, 100%);
+   min-height: 44px;
+   gap: 10px;
+   padding: 0 14px;
+   border: 1px solid #dbe3ee;
+   border-radius: 8px;
+   background: #fff;
+}
+
+.kapso-admin-search i {
+   color: #64748b;
+   font-size: 18px;
+}
+
+.kapso-admin-search input {
+   width: 100%;
+   border: 0;
+   outline: 0;
+   color: #0f172a;
+   font-size: 14px;
+}
+
+.kapso-admin-count {
+   color: #475569;
+   font-size: 13px;
+   font-weight: 700;
+}
+
+.kapso-admin-switch {
+   display: inline-flex;
+   width: fit-content;
+   padding: 4px;
+   border: 1px solid #dbe3ee;
+   border-radius: 8px;
+   background: #f8fafc;
+}
+
+.kapso-admin-switch button {
+   min-height: 34px;
+   padding: 0 14px;
+   border: 0;
+   border-radius: 6px;
+   background: transparent;
+   color: #475569;
+   font-size: 13px;
+   font-weight: 800;
+}
+
+.kapso-admin-switch button.is-active {
+   background: #0f172a;
+   color: #fff;
+}
+
+.kapso-cronjob-layout {
+   display: grid;
+   gap: 12px;
+}
+
+.kapso-admin-table-wrap {
+   overflow-x: auto;
+   border: 1px solid #dbe3ee;
+   border-radius: 8px;
+   background: #fff;
+}
+
+.kapso-admin-table {
+   width: 100%;
+   min-width: 1180px;
+   border-collapse: collapse;
+}
+
+.kapso-admin-table th,
+.kapso-admin-table td {
+   padding: 14px 16px;
+   border-bottom: 1px solid #edf2f7;
+   text-align: left;
+   vertical-align: top;
+}
+
+.kapso-admin-table th {
+   background: #f8fafc;
+   color: #334155;
+   font-size: 12px;
+   font-weight: 800;
+   text-transform: uppercase;
+}
+
+.kapso-admin-table td {
+   color: #0f172a;
+   font-size: 14px;
+}
+
+.kapso-admin-table td strong,
+.kapso-admin-table td small {
+   display: block;
+}
+
+.kapso-admin-table td small {
+   margin-top: 4px;
+   color: #64748b;
+   font-size: 12px;
+}
+
+.kapso-status {
+   display: inline-flex;
+   align-items: center;
+   min-height: 28px;
+   padding: 0 10px;
+   border-radius: 999px;
+   font-size: 12px;
+   font-weight: 800;
+}
+
+.kapso-status.active {
+   background: #dcfce7;
+   color: #166534;
+}
+
+.kapso-status.inactive {
+   background: #fee2e2;
+   color: #991b1b;
+}
+
+.kapso-admin-chip-list {
+   display: flex;
+   flex-wrap: wrap;
+   gap: 8px;
+}
+
+.kapso-admin-chip {
+   display: inline-flex;
+   align-items: center;
+   min-height: 38px;
+   gap: 8px;
+   padding: 5px 7px 5px 12px;
+   border: 1px solid #dbe3ee;
+   border-radius: 8px;
+   background: #f8fafc;
+}
+
+.kapso-admin-chip.is-wide {
+   align-items: flex-start;
+   min-width: 280px;
+}
+
+.kapso-admin-chip span {
+   display: grid;
+   gap: 2px;
+   line-height: 1.2;
+}
+
+.kapso-admin-chip button,
+.kapso-admin-modal-header button {
+   display: inline-grid;
+   place-items: center;
+   width: 30px;
+   height: 30px;
+   border: 0;
+   border-radius: 8px;
+   background: transparent;
+   color: #475569;
+}
+
+.kapso-admin-chip button:hover,
+.kapso-admin-modal-header button:hover {
+   background: #e2e8f0;
+   color: #0f172a;
+}
+
+.kapso-admin-button {
+   display: inline-flex;
+   align-items: center;
+   justify-content: center;
+   min-height: 38px;
+   gap: 8px;
+   padding: 0 14px;
+   border: 0;
+   border-radius: 8px;
+   background: #0f172a;
+   color: #fff;
+   font-size: 13px;
+   font-weight: 800;
+}
+
+.kapso-admin-button.is-secondary {
+   border: 1px solid #dbe3ee;
+   background: #fff;
+   color: #0f172a;
+}
+
+.kapso-admin-button.is-danger {
+   background: #991b1b;
+}
+
+.kapso-admin-button.is-success {
+   background: #15803d;
+}
+
+.kapso-admin-button.is-warning {
+   background: #b45309;
+}
+
+.kapso-admin-button.is-flow {
+   background: #1d4ed8;
+}
+
+.kapso-admin-button:disabled {
+   cursor: not-allowed;
+   opacity: 0.65;
+}
+
+.kapso-admin-actions {
+   display: flex;
+   flex-wrap: wrap;
+   gap: 8px;
+}
+
+.kapso-admin-actions.is-end {
+   justify-content: flex-end;
+}
+
+.kapso-admin-empty {
+   padding: 26px;
+   color: #64748b;
+   text-align: center;
+}
+
+.kapso-admin-muted {
+   color: #64748b;
+   font-size: 13px;
+}
+
+.kapso-admin-modal-backdrop {
+   position: fixed;
+   z-index: 1080;
+   inset: 0;
+   display: grid;
+   place-items: center;
+   padding: 20px;
+   background: rgba(15, 23, 42, 0.48);
+}
+
+.kapso-admin-modal {
+   width: min(560px, 100%);
+   max-height: min(860px, calc(100vh - 40px));
+   border-radius: 8px;
+   background: #fff;
+   box-shadow: 0 24px 70px rgba(15, 23, 42, 0.26);
+   overflow: hidden;
+}
+
+.kapso-admin-flow-modal {
+   width: min(1180px, 100%);
+}
+
+.kapso-admin-modal-header {
+   display: flex;
+   align-items: flex-start;
+   justify-content: space-between;
+   gap: 16px;
+   padding: 20px 22px 14px;
+   border-bottom: 1px solid #edf2f7;
+}
+
+.kapso-admin-modal-header h2 {
+   margin: 0;
+   color: #0f172a;
+   font-size: 20px;
+   font-weight: 800;
+}
+
+.kapso-admin-modal-header p {
+   margin: 4px 0 0;
+   color: #64748b;
+   font-size: 13px;
+}
+
+.kapso-admin-modal form {
+   display: grid;
+   gap: 16px;
+   padding: 20px 22px 22px;
+}
+
+.kapso-admin-field {
+   display: grid;
+   gap: 8px;
+}
+
+.kapso-admin-field span {
+   color: #334155;
+   font-size: 13px;
+   font-weight: 800;
+}
+
+.kapso-admin-field input,
+.kapso-admin-field select {
+   min-height: 44px;
+   width: 100%;
+   border: 1px solid #dbe3ee;
+   border-radius: 8px;
+   background: #fff;
+   color: #0f172a;
+   font-size: 14px;
+   outline: 0;
+   padding: 0 12px;
+}
+
+.kapso-admin-toggle {
+   display: flex;
+   align-items: center;
+   gap: 10px;
+   color: #334155;
+   font-size: 13px;
+   font-weight: 800;
+}
+
+.kapso-admin-toggle input {
+   width: 18px;
+   height: 18px;
+   margin: 0;
+}
+
+.kapso-admin-note {
+   padding: 12px 14px;
+   border: 1px solid #bfdbfe;
+   border-radius: 8px;
+   background: #eff6ff;
+   color: #1e3a8a;
+   font-size: 13px;
+}
+
+.kapso-admin-modal-actions {
+   display: flex;
+   justify-content: flex-end;
+   gap: 10px;
+}
+
+.kapso-flow-body {
+   display: grid;
+   max-height: calc(100vh - 120px);
+   gap: 14px;
+   overflow-x: hidden;
+   overflow-y: auto;
+   padding: 20px 22px 22px;
+}
+
+.kapso-flow-summary {
+   display: flex;
+   flex-wrap: wrap;
+   align-items: center;
+   gap: 10px;
+   color: #475569;
+   font-size: 13px;
+   font-weight: 800;
+}
+
+.kapso-flow-projects {
+   display: grid;
+   gap: 10px;
+}
+
+.kapso-flow-projects h3 {
+   margin: 0;
+   color: #0f172a;
+   font-size: 14px;
+   font-weight: 800;
+}
+
+.kapso-flow-projects p {
+   margin: 0;
+   color: #64748b;
+   font-size: 13px;
+}
+
+.kapso-flow-project-grid {
+   display: grid;
+   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+   gap: 10px;
+}
+
+.kapso-flow-project {
+   display: grid;
+   gap: 3px;
+   min-height: 64px;
+   padding: 9px 12px;
+   border: 1px solid #dbe3ee;
+   border-left: 4px solid #94a3b8;
+   border-radius: 8px;
+   background: #f8fafc;
+}
+
+.kapso-flow-project.is-active {
+   border-left-color: #16a34a;
+}
+
+.kapso-flow-project.is-inactive {
+   border-left-color: #dc2626;
+}
+
+.kapso-flow-project strong {
+   color: #0f172a;
+   font-size: 13px;
+}
+
+.kapso-flow-project small {
+   color: #64748b;
+   font-size: 12px;
+}
+
+.kapso-flow-canvas {
+   height: clamp(360px, calc(100vh - 375px), 500px);
+   min-height: 360px;
+   overflow: hidden;
+   border: 1px solid #dbe3ee;
+   border-radius: 8px;
+   background: #f8fafc;
+}
+
+.kapso-flow-canvas .react-flow__node-default {
+   box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
+   white-space: pre-line;
+}
+
+.kapso-flow-canvas .react-flow__edge-textbg {
+   fill: #ffffff;
+}
+
+.kapso-flow-canvas .react-flow__edge-text {
+   fill: #334155;
+   font-size: 11px;
+   font-weight: 800;
+}
+
+@media (max-width: 768px) {
+   .kapso-admin-page {
+      padding: 14px 0;
+   }
+
+   .kapso-admin-header,
+   .kapso-admin-toolbar {
+      align-items: stretch;
+      flex-direction: column;
+   }
+
+   .kapso-admin-header h1 {
+      font-size: 24px;
+   }
+
+   .kapso-flow-canvas {
+      height: 420px;
+   }
+}

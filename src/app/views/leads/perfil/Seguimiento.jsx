@@ -1,10 +1,9 @@
-import { formatDate } from "../../../../hook/useFormatDate";
+import { formatDate, getDateSortValue } from "../../../../hook/useFormatDate";
+import { getKapsoReadableBitacoraDetail } from "../../../Utils/kapsoBitacoraDetail";
 import { ProfileEmptyState, ProfileSection, getDisplayText } from "./profileTheme";
 
 export const Seguimiento = ({ BitacoraLeads }) => {
-   const sortedBitacora = [...BitacoraLeads].sort(
-      (a, b) => new Date(b.fecha_creado_bit) - new Date(a.fecha_creado_bit)
-   );
+   const sortedBitacora = [...BitacoraLeads].sort((a, b) => getDateSortValue(b.fecha_creado_bit) - getDateSortValue(a.fecha_creado_bit));
 
    return (
       <ProfileSection
@@ -17,12 +16,9 @@ export const Seguimiento = ({ BitacoraLeads }) => {
          ) : (
             <div className="lead-profile-timeline">
                {sortedBitacora.map((entry, idx) => {
-                  const estadoTexto = getDisplayText(entry.estado_bit)
-                     .split("-")
-                     .slice(1)
-                     .join("-") || getDisplayText(entry.estado_bit);
+                  const estadoTexto = getDisplayText(entry.estado_bit).split("-").slice(1).join("-") || getDisplayText(entry.estado_bit);
                   const { formattedDate, formattedTime } = formatDate(entry.fecha_creado_bit);
-                  const accion = getDisplayText(entry.detalle_bit);
+                  const accion = getKapsoReadableBitacoraDetail(entry.detalle_bit, getDisplayText());
                   const motivo = getDisplayText(entry.nombre_caida);
 
                   return (

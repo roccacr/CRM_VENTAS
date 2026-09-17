@@ -63,6 +63,10 @@ export const getKapsoPhoneNumberOptions = async (search = "", includeInactive = 
    return await fetchKapsoData(`kapso/phone-numbers/options?${query.toString()}`);
 };
 
+export const syncKapsoPhoneNumber = async (id) => {
+   return await sendKapsoData("post", `kapso/whatsapp-numbers/${encodeURIComponent(id)}/sync`);
+};
+
 export const getAdminKapsoIntegrations = async (params = {}) => {
    const query = new URLSearchParams();
 
@@ -101,8 +105,42 @@ export const getKapsoBusinessFlows = async () => {
    return await fetchKapsoData("kapso/business-flows");
 };
 
-export const getKapsoProjectOptions = async () => {
-   return await fetchKapsoData("kapso/projects/options");
+export const getKapsoProjectOptions = async (search = "", idnetsuiteAdmin = "") => {
+   const query = new URLSearchParams();
+
+   if (search) {
+      query.set("search", search);
+   }
+
+   if (idnetsuiteAdmin) {
+      query.set("idnetsuiteAdmin", String(idnetsuiteAdmin));
+   }
+
+   return await fetchKapsoData(`kapso/projects/options?${query.toString()}`);
+};
+
+export const getKapsoCronjobConfigs = async () => {
+   return await fetchKapsoData("kapso/cronjob-configs");
+};
+
+export const createKapsoCronjobConfig = async (payload) => {
+   return await sendKapsoData("post", "kapso/cronjob-configs", payload);
+};
+
+export const updateKapsoCronjobConfig = async (id, payload) => {
+   return await sendKapsoData("patch", `kapso/cronjob-configs/${id}`, payload);
+};
+
+export const createKapsoCronjobProjectConfig = async (cronjobConfigId, payload) => {
+   return await sendKapsoData("post", `kapso/cronjob-configs/${cronjobConfigId}/projects`, payload);
+};
+
+export const updateKapsoCronjobProjectConfig = async (id, payload) => {
+   return await sendKapsoData("patch", `kapso/cronjob-project-configs/${id}`, payload);
+};
+
+export const deleteKapsoCronjobProjectConfig = async (id) => {
+   return await sendKapsoData("delete", `kapso/cronjob-project-configs/${id}`);
 };
 
 export const enableKapsoBusinessFlowProject = async (flowUuid, idProyecto) => {

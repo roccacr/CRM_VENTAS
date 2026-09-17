@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useLocation } from "react-router-dom";
 
-import { formatDate } from "../../../hook/useFormatDate";
+import { formatDate, getDateSortValue } from "../../../hook/useFormatDate";
 import { useLeadActions } from "../../../hooks/useLeadActions";
 import { useModalLeads } from "../../../hooks/useModalLeads";
 import { ActionButtons } from "./components/ActionButtons";
@@ -11,8 +11,7 @@ import { RecentActions } from "./components/RecentActions";
 import { BUTTON_DATA } from "./constants";
 
 export const ModalLeads = ({ leadData, onClose }) => {
-   const { showModal, isMobile, showPreload, bitacora, setShowModal } =
-      useModalLeads(leadData);
+   const { showModal, isMobile, showPreload, bitacora, setShowModal } = useModalLeads(leadData);
    const [isInlineCreateEventOpen, setIsInlineCreateEventOpen] = useState(false);
    const [selectedLeadForEvent, setSelectedLeadForEvent] = useState(null);
    const {
@@ -33,10 +32,7 @@ export const ModalLeads = ({ leadData, onClose }) => {
 
    const filteredButtonData = BUTTON_DATA.filter((button) => {
       if (button.action === "handleWhatsappAndNote") {
-         return (
-            location.pathname === "/leads/lista" &&
-            location.search === "?data=2"
-         );
+         return location.pathname === "/leads/lista" && location.search === "?data=2";
       }
 
       return true;
@@ -72,19 +68,14 @@ export const ModalLeads = ({ leadData, onClose }) => {
       navigator.clipboard.writeText(leadPhone);
    };
 
-   const sortedBitacora = [...bitacora].sort(
-      (a, b) =>
-         new Date(b.fecha_creado_bit) - new Date(a.fecha_creado_bit)
-   );
+   const sortedBitacora = [...bitacora].sort((a, b) => getDateSortValue(b.fecha_creado_bit) - getDateSortValue(a.fecha_creado_bit));
 
    const renderButtons = (forDropdown = false) =>
       filteredButtonData.map((button, index) => {
          const actionMap = {
-            handleWhatsappClick: () =>
-               handleWhatsappClick(leadData?.telefono_lead),
+            handleWhatsappClick: () => handleWhatsappClick(leadData?.telefono_lead),
             handleNote: () => handleNote(leadData),
-            handleEvents: () =>
-               handleEvents(leadData, handleOpenInlineCreateEvent),
+            handleEvents: () => handleEvents(leadData, handleOpenInlineCreateEvent),
             handleWhatsappAndNote: () => handleWhatsappAndNote(leadData),
             handleLoss: () => handleLoss(leadData),
             handfollow_up: () => handfollow_up(leadData),
@@ -99,11 +90,7 @@ export const ModalLeads = ({ leadData, onClose }) => {
          return (
             <li
                key={index}
-               className={
-                  forDropdown
-                     ? "dropdown-item lead-action-dropdown-item"
-                     : "btn btn-shadow lead-action-button"
-               }
+               className={forDropdown ? "dropdown-item lead-action-dropdown-item" : "btn btn-shadow lead-action-button"}
                style={
                   forDropdown
                      ? { "--lead-action-color": button.color }
@@ -152,25 +139,13 @@ export const ModalLeads = ({ leadData, onClose }) => {
                onClick={(event) => event.stopPropagation()}
             >
                <div className="modal-content">
-                  <ModalHeader
-                     leadData={leadData}
-                     handleClose={handleClose}
-                     handleCopy={handleCopy}
-                     handleCopyPhone={handleCopyPhone}
-                  />
+                  <ModalHeader leadData={leadData} handleClose={handleClose} handleCopy={handleCopy} handleCopyPhone={handleCopyPhone} />
 
                   <div className="modal-body">
-                     <ActionButtons
-                        buttonData={filteredButtonData}
-                        renderButtons={renderButtons}
-                     />
+                     <ActionButtons buttonData={filteredButtonData} renderButtons={renderButtons} />
                   </div>
 
-                  <RecentActions
-                     showPreload={showPreload}
-                     sortedBitacora={sortedBitacora}
-                     formatDate={formatDate}
-                  />
+                  <RecentActions showPreload={showPreload} sortedBitacora={sortedBitacora} formatDate={formatDate} />
                </div>
             </div>
          </div>

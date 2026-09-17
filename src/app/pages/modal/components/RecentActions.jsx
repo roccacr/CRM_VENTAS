@@ -1,5 +1,3 @@
-import React from "react";
-
 const STATUS_LABELS = {
    "01-LEAD-INTERESADO": "Lead interesado",
    "02-LEAD-OPORTUNIDAD": "Oportunidad",
@@ -86,23 +84,16 @@ export const RecentActions = ({ showPreload, sortedBitacora, formatDate }) => (
       <div className="card-header recent-actions-timeline__header text-start">
          <div className="w-100">
             <h5 className="recent-actions-timeline__title mb-0">
-               <i
-                  className="ph-duotone ph-clock-counter-clockwise me-2"
-                  aria-hidden="true"
-               />
+               <i className="ph-duotone ph-clock-counter-clockwise me-2" aria-hidden="true" />
                Últimas acciones del lead
             </h5>
-            <p className="recent-actions-timeline__subtitle mb-0">
-               Historial reciente de movimientos y seguimiento
-            </p>
+            <p className="recent-actions-timeline__subtitle mb-0">Historial reciente de movimientos y seguimiento</p>
          </div>
       </div>
 
       {showPreload ? (
          <div className="card-body pt-2 pb-3 text-start">
-            <p className="recent-actions-timeline__loading-text mb-3">
-               Cargando últimas acciones...
-            </p>
+            <p className="recent-actions-timeline__loading-text mb-3">Cargando últimas acciones...</p>
             <TimelineSkeleton />
          </div>
       ) : (
@@ -110,37 +101,22 @@ export const RecentActions = ({ showPreload, sortedBitacora, formatDate }) => (
             {sortedBitacora.length > 0 ? (
                <ol className="recent-actions-timeline__list mb-0">
                   {sortedBitacora.map((entry, idx) => {
-                     const { formattedDate, formattedTime } = formatDate(
-                        entry.fecha_creado_bit
-                     );
+                     const { formattedDate, formattedTime } = formatDate(entry.fecha_creado_bit);
                      const theme = getStatusTheme(entry.estado_bit);
                      const isLast = idx === sortedBitacora.length - 1;
-                     const detail =
-                        entry.detalle_bit?.trim() || "Sin detalle";
+                     const detail = getKapsoReadableBitacoraDetail(entry.detalle_bit);
 
                      return (
                         <li
-                           key={`${
-                              entry.id_bitacora_bit || idx
-                           }-${entry.estado_bit}-${entry.fecha_creado_bit}`}
+                           key={`${entry.id_bitacora_bit || idx}-${entry.estado_bit}-${entry.fecha_creado_bit}`}
                            className="recent-actions-timeline__item"
                         >
-                           <div
-                              className="recent-actions-timeline__time"
-                              aria-label={`Hora ${formattedTime}`}
-                           >
-                              <span className="recent-actions-timeline__clock">
-                                 {formattedTime}
-                              </span>
-                              <span className="recent-actions-timeline__date">
-                                 {formattedDate}
-                              </span>
+                           <div className="recent-actions-timeline__time" aria-label={`Hora ${formattedTime}`}>
+                              <span className="recent-actions-timeline__clock">{formattedTime}</span>
+                              <span className="recent-actions-timeline__date">{formattedDate}</span>
                            </div>
 
-                           <div
-                              className="recent-actions-timeline__rail"
-                              aria-hidden="true"
-                           >
+                           <div className="recent-actions-timeline__rail" aria-hidden="true">
                               <span
                                  className="recent-actions-timeline__dot"
                                  style={{
@@ -148,15 +124,10 @@ export const RecentActions = ({ showPreload, sortedBitacora, formatDate }) => (
                                     backgroundColor: theme.accent,
                                  }}
                               />
-                              {!isLast ? (
-                                 <span className="recent-actions-timeline__connector" />
-                              ) : null}
+                              {!isLast ? <span className="recent-actions-timeline__connector" /> : null}
                            </div>
 
-                           <article
-                              className="recent-actions-timeline__card"
-                              style={{ borderLeftColor: theme.accent }}
-                           >
+                           <article className="recent-actions-timeline__card" style={{ borderLeftColor: theme.accent }}>
                               <header className="recent-actions-timeline__card-header">
                                  <span
                                     className="recent-actions-timeline__pill"
@@ -169,9 +140,7 @@ export const RecentActions = ({ showPreload, sortedBitacora, formatDate }) => (
                                  </span>
                               </header>
 
-                              <p className="recent-actions-timeline__detail">
-                                 {detail}
-                              </p>
+                              <p className="recent-actions-timeline__detail">{detail}</p>
 
                               {entry.motivo_bit ? (
                                  <p className="recent-actions-timeline__reason">
@@ -184,9 +153,7 @@ export const RecentActions = ({ showPreload, sortedBitacora, formatDate }) => (
                   })}
                </ol>
             ) : (
-               <div className="recent-actions-timeline__empty">
-                  No hay acciones registradas para este lead.
-               </div>
+               <div className="recent-actions-timeline__empty">No hay acciones registradas para este lead.</div>
             )}
          </div>
       )}
@@ -429,3 +396,4 @@ export const RecentActions = ({ showPreload, sortedBitacora, formatDate }) => (
       `}</style>
    </div>
 );
+import { getKapsoReadableBitacoraDetail } from "../../../Utils/kapsoBitacoraDetail";

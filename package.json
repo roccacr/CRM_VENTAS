@@ -31,6 +31,7 @@
     "@mui/material": "^5.16.4",
     "@popperjs/core": "^2.11.8",
     "@reduxjs/toolkit": "^2.2.6",
+    "@xyflow/react": "^12.11.6",
     "add": "^2.0.6",
     "ag-grid-community": "^32.1.0",
     "ag-grid-react": "^32.1.0",
