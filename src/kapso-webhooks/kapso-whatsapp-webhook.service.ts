@@ -21,7 +21,12 @@ export type KapsoWhatsappWebhookResult = {
 type CustomerResponseRule = {
     readonly caidaId: number | null;
     readonly detail: string;
+    readonly leadStatus?: number;
+    readonly leadTrackingStatus?: string;
 };
+
+const REJECTED_RESPONSE_LEAD_STATUS = 0;
+const REJECTED_RESPONSE_LEAD_TRACKING_STATUS = "07-LEAD-PERDIDO";
 
 const CUSTOMER_RESPONSE_RULES: Record<CustomerResponseKind, CustomerResponseRule> = {
     accepted_info: {
@@ -31,6 +36,8 @@ const CUSTOMER_RESPONSE_RULES: Record<CustomerResponseKind, CustomerResponseRule
     rejected_info: {
         caidaId: WHATSAPP_RESPONSE_CAIDA.REJECTED_INFO,
         detail: "El cliente no quiso recibir informacion por WhatsApp.",
+        leadStatus: REJECTED_RESPONSE_LEAD_STATUS,
+        leadTrackingStatus: REJECTED_RESPONSE_LEAD_TRACKING_STATUS,
     },
     unmapped_response: {
         caidaId: WHATSAPP_RESPONSE_CAIDA.ACCEPTED_INFO,
@@ -251,8 +258,17 @@ export class KapsoWhatsappWebhookService {
 }
 
 function toLeadUpdate(kind: CustomerResponseKind): Prisma.LeadUpdateManyMutationInput | null {
-    const caidaId = CUSTOMER_RESPONSE_RULES[kind].caidaId;
-    return caidaId ? { idCaida: caidaId } : null;
+    const rule = CUSTOMER_RESPONSE_RULES[kind];
+
+    if (!rule.caidaId) {
+        return null;
+    }
+
+    return {
+        idCaida: rule.caidaId,
+        ...(rule.leadStatus !== undefined ? { estadoLead: rule.leadStatus } : {}),
+        ...(rule.leadTrackingStatus ? { segiminetoLead: rule.leadTrackingStatus } : {}),
+    };
 }
 
 function toBitacora(lead: KapsoWhatsappResponseLead, kindOrRule: CustomerResponseKind | CustomerResponseRule, responseText: string | null = null, idempotencyKey: string | undefined = undefined): CreateWhatsappResponseBitacoraInput {
@@ -262,8 +278,8 @@ function toBitacora(lead: KapsoWhatsappResponseLead, kindOrRule: CustomerRespons
 
     return {
         detalleBit: `${rule.detail}${response}${marker}`,
-        estadoBit: lead.segiminetoLead ?? "",
-        estadoLead: lead.estadoLead ?? 0,
+        estadoBit: rule.leadTrackingStatus ?? lead.segiminetoLead ?? "",
+        estadoLead: rule.leadStatus ?? lead.estadoLead ?? 0,
         idAdminBit: lead.idEmpleadoLead ?? 0,
         idCaidaBit: rule.caidaId,
         idLeadBit: lead.idinternoLead ?? lead.idLead,

@@ -221,7 +221,7 @@ describe("KapsoWhatsappWebhookService", () => {
         expect(repository.updateTemplateAttemptConversation).toHaveBeenCalledWith(36640, "conv_new_without_context");
     });
 
-    it("registers rejected initial information responses with caida 67", async () => {
+    it("registers rejected initial information responses as lost leads with caida 67", async () => {
         const repository = createRepository();
         const service = createService(repository);
 
@@ -233,9 +233,20 @@ describe("KapsoWhatsappWebhookService", () => {
             }),
         ).resolves.toEqual({ action: "rejected_info", processed: true });
 
-        expect(repository.registerWhatsappResponse).toHaveBeenCalledWith(36640, { idCaida: 67 }, expect.any(Object), { markTemplateAttemptResponseRegistered: true });
+        expect(repository.registerWhatsappResponse).toHaveBeenCalledWith(
+            36640,
+            {
+                estadoLead: 0,
+                idCaida: 67,
+                segiminetoLead: "07-LEAD-PERDIDO",
+            },
+            expect.any(Object),
+            { markTemplateAttemptResponseRegistered: true },
+        );
         const bitacora = getLastRegisteredBitacora(repository);
         expect(bitacora.detalleBit).toContain("cliente no quiso recibir informacion por WhatsApp");
+        expect(bitacora.estadoBit).toBe("07-LEAD-PERDIDO");
+        expect(bitacora.estadoLead).toBe(0);
         expect(bitacora.idCaidaBit).toBe(67);
     });
 
