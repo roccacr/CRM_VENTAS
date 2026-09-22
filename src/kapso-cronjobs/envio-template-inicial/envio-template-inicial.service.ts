@@ -176,7 +176,7 @@ export class EnvioTemplateInicialService {
                     await this.pauseLeadForInsufficientCredits(lead, adminId, errorMessage);
                 }
             } else {
-                await this.skipLead(lead, adminId, `No se envio template saludo inicial. Error Kapso: ${errorMessage}`);
+                await this.skipLead(lead, adminId, toManualContactBitacoraDetail(errorMessage));
             }
 
             return "failed";
@@ -267,4 +267,12 @@ function getProjectAdminScopes(projectConfigs: ActiveProjectConfig[]): EnvioTemp
 
 function findProjectConfigForLead(lead: EnvioTemplateInicialLead, adminId: number, activeProjectConfigs: ActiveProjectConfig[]): ActiveProjectConfig | null {
     return activeProjectConfigs.find((config) => config.idproyectoLead === lead.idproyectoLead && config.integration.adminAssignments.some((assignment) => assignment.idnetsuiteAdmin === adminId)) ?? null;
+}
+
+function toManualContactBitacoraDetail(errorMessage: string): string {
+    if (errorMessage.includes("User's number is part of an experiment")) {
+        return "El lead debe ser contactado manualmente. WhatsApp no permitio enviar el mensaje automatico a este numero por una restriccion del destinatario.";
+    }
+
+    return "El lead debe ser contactado manualmente. WhatsApp/Kapso no permitio completar el envio automatico del template inicial.";
 }

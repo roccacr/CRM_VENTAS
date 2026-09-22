@@ -376,7 +376,7 @@ describe("EnvioTemplateInicialService", () => {
         expect(getLastBitacora(repository).idCaidaBit).toBe(68);
     });
 
-    it("logs Kapso errors in bitacora and marks the lead as processed", async () => {
+    it("keeps technical Kapso errors in the attempt and writes a manual-contact bitacora", async () => {
         const repository = createRepository();
         const kapsoClient = createKapsoClient();
         kapsoClient.sendSaludoTemplate.mockRejectedValue(new Error("Kapso down"));
@@ -406,7 +406,24 @@ describe("EnvioTemplateInicialService", () => {
             status: "failed",
         });
         expect(getLastLeadUpdate(repository)).toEqual({ whatsappTemplateContactSent: 0 });
-        expect(getLastBitacora(repository).detalleBit).toContain("Kapso down");
+        expect(getLastBitacora(repository).detalleBit).toBe("El lead debe ser contactado manualmente. WhatsApp/Kapso no permitio completar el envio automatico del template inicial.");
+    });
+
+    it("writes a clear manual-contact bitacora for WhatsApp recipient restrictions", async () => {
+        const repository = createRepository();
+        const kapsoClient = createKapsoClient();
+        kapsoClient.sendSaludoTemplate.mockRejectedValue(new Error("Message failed: User's number is part of an experiment"));
+        const service = createService(repository, kapsoClient);
+
+        await service.runOnce(10);
+
+        expect(repository.updateTemplateAttemptResult).toHaveBeenCalledWith({
+            errorMessage: "Message failed: User's number is part of an experiment",
+            idLead: 36640,
+            kapsoMessageIds: [],
+            status: "failed",
+        });
+        expect(getLastBitacora(repository).detalleBit).toBe("El lead debe ser contactado manualmente. WhatsApp no permitio enviar el mensaje automatico a este numero por una restriccion del destinatario.");
     });
 
     it("pauses leads for retry when Kapso has insufficient credits", async () => {
