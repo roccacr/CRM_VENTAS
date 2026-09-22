@@ -9,7 +9,7 @@ export const ENVIO_TEMPLATE_INICIAL_TEMPLATE_LANGUAGE = "es_ES";
 
 /** Candidatos CRM que todavia necesitan intento de contacto por WhatsApp. */
 export const LEAD_PENDING_TEMPLATE_SENT_STATUS = 2;
-export const LEAD_INTERESADO_STATUS = 2;
+export const LEAD_INTERESADO_STATUS = 1;
 export const LEAD_INTERESADO_SEGUIMIENTO = "01-LEAD-INTERESADO";
 
 /** Estado CRM posterior a cualquier intento tecnico del template inicial. */

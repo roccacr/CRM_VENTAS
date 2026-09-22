@@ -103,7 +103,7 @@ describe("EnvioTemplateInicialRepository", () => {
             },
             take: 25,
             where: {
-                estadoLead: 2,
+                estadoLead: 1,
                 idproyectoLead: { in: [4, 38] },
                 segiminetoLead: "01-LEAD-INTERESADO",
                 whatsappTemplateContactSent: 2,

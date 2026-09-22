@@ -97,14 +97,12 @@ export class EnvioTemplateInicialService {
 
         // Sin admin CRM activo no hay integracion Kapso confiable para enviar a nombre del asesor.
         if (!admin || !activeAdminId) {
-            await this.skipLead(lead, 0, `No se envio template saludo inicial: no existe admin activo para id_empleado_lead ${adminId}.`);
             return "skipped";
         }
 
         const projectConfig = findProjectConfigForLead(lead, activeAdminId, activeProjectConfigs);
 
         if (!projectConfig) {
-            await this.skipLead(lead, activeAdminId, "No se envio template saludo inicial: no existe una integracion Kapso activa para el admin y proyecto del lead.");
             return "skipped";
         }
 

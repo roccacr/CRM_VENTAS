@@ -58,7 +58,7 @@ type KapsoClientMock = {
 
 const createLead = (overrides: Partial<LeadSnapshot> = {}): LeadSnapshot => ({
     accionLead: 0,
-    estadoLead: 2,
+    estadoLead: 1,
     idCaida: 0,
     idEmpleadoLead: 653055,
     idLead: 36640,
@@ -247,7 +247,7 @@ describe("EnvioTemplateInicialService", () => {
         expect(getLastBitacora(repository).idLeadBit).toBe(6430001);
     });
 
-    it("marks the lead when the admin has no active Kapso integration for that project", async () => {
+    it("does not modify the lead when the admin has no active Kapso integration for that project", async () => {
         const repository = createRepository();
         repository.findCronjobConfig.mockResolvedValue({
             isActive: true,
@@ -274,13 +274,10 @@ describe("EnvioTemplateInicialService", () => {
         });
         expect(kapsoClient.sendSaludoTemplate).not.toHaveBeenCalled();
         expect(repository.registerTemplateAttempt).not.toHaveBeenCalled();
-        expect(repository.markLeadProcessedWithBitacora.mock.calls.at(-1)?.[0]).toBe(36640);
-        expect(getLastLeadUpdate(repository)).toEqual({ whatsappTemplateContactSent: 0 });
-        expect(getLastBitacora(repository).detalleBit).toContain("no existe una integracion Kapso activa");
-        expect(getLastBitacora(repository).idAdminBit).toBe(653055);
+        expect(repository.markLeadProcessedWithBitacora).not.toHaveBeenCalled();
     });
 
-    it("marks the lead when the CRM admin does not exist or is inactive", async () => {
+    it("does not modify the lead when the CRM admin does not exist or is inactive", async () => {
         const repository = createRepository();
         repository.findActiveAdminByIdnetsuite.mockResolvedValue(null);
         const kapsoClient = createKapsoClient();
@@ -295,9 +292,7 @@ describe("EnvioTemplateInicialService", () => {
         });
         expect(kapsoClient.sendSaludoTemplate).not.toHaveBeenCalled();
         expect(repository.registerTemplateAttempt).not.toHaveBeenCalled();
-        expect(getLastLeadUpdate(repository)).toEqual({ whatsappTemplateContactSent: 0 });
-        expect(getLastBitacora(repository).detalleBit).toContain("no existe admin activo");
-        expect(getLastBitacora(repository).idAdminBit).toBe(0);
+        expect(repository.markLeadProcessedWithBitacora).not.toHaveBeenCalled();
     });
 
     it("marks invalid phone numbers with caida 68 and does not call Kapso", async () => {
@@ -428,8 +423,7 @@ describe("EnvioTemplateInicialService", () => {
         });
         expect(repository.findActiveAdminByIdnetsuite).not.toHaveBeenCalled();
         expect(kapsoClient.sendSaludoTemplate).not.toHaveBeenCalled();
-        expect(getLastBitacora(repository).detalleBit).toContain("no existe admin activo");
-        expect(getLastBitacora(repository).idAdminBit).toBe(0);
+        expect(repository.markLeadProcessedWithBitacora).not.toHaveBeenCalled();
     });
 
     it("marks placeholder phones like 88888888 with caida 68", async () => {
