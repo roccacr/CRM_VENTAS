@@ -463,6 +463,29 @@ describe("EnvioTemplateInicialService", () => {
         );
     });
 
+    it("does not write repeated bitacora entries when a credit retry still fails", async () => {
+        const repository = createRepository();
+        repository.findPendingLeads.mockResolvedValue([createLead({ whatsappTemplateContactSent: 3 })]);
+        const kapsoClient = createKapsoClient();
+        kapsoClient.sendSaludoTemplate.mockRejectedValue(new KapsoTemplateSendException(402, "insufficient_credits", { code: "insufficient_credits" }, "Kapso template send failed with 402 (insufficient_credits): balance low"));
+        const service = createService(repository, kapsoClient);
+
+        await expect(service.runOnce(10)).resolves.toEqual({
+            failed: 1,
+            processed: 1,
+            sent: 0,
+            skipped: 0,
+            status: "completed",
+        });
+        expect(repository.updateTemplateAttemptResult).toHaveBeenCalledWith({
+            errorMessage: "Kapso template send failed with 402 (insufficient_credits): balance low",
+            idLead: 36640,
+            kapsoMessageIds: [],
+            status: "insufficient_credits",
+        });
+        expect(repository.markLeadProcessedWithBitacora).not.toHaveBeenCalled();
+    });
+
     it("skips leads that already have a template attempt recorded", async () => {
         const repository = createRepository();
         repository.hasTemplateAttemptForLead.mockResolvedValue(true);

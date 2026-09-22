@@ -172,7 +172,9 @@ export class EnvioTemplateInicialService {
             });
 
             if (isInsufficientCredits) {
-                await this.pauseLeadForInsufficientCredits(lead, adminId, errorMessage);
+                if (lead.whatsappTemplateContactSent !== LEAD_RETRY_TEMPLATE_CREDITS_STATUS) {
+                    await this.pauseLeadForInsufficientCredits(lead, adminId, errorMessage);
+                }
             } else {
                 await this.skipLead(lead, adminId, `No se envio template saludo inicial. Error Kapso: ${errorMessage}`);
             }
