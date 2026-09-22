@@ -32,7 +32,7 @@ type RepositoryMock = {
     readonly findActiveAdminByIdnetsuite: jest.MockedFunction<(idnetsuiteAdmin: number) => Promise<{ readonly idnetsuiteAdmin: number; readonly nameAdmin: string } | null>>;
     readonly hasTemplateAttemptForLead: jest.MockedFunction<(idLead: number) => Promise<boolean>>;
     readonly findCronjobConfig: jest.MockedFunction<(cronjobId: string) => Promise<{ readonly isActive: boolean; readonly projectConfigs: ProjectConfig[] } | null>>;
-    readonly findPendingLeads: jest.MockedFunction<(projectIds: number[], limit: number) => Promise<LeadSnapshot[]>>;
+    readonly findPendingLeads: jest.MockedFunction<(scopes: readonly { readonly idnetsuiteAdmin: number; readonly idproyectoLead: number }[], limit: number) => Promise<LeadSnapshot[]>>;
     readonly registerTemplateAttempt: jest.MockedFunction<(input: { readonly idAdmin: number; readonly idLead: number; readonly idproyectoLead: number | null; readonly kapsoIntegracionNumeroWhatsappId: bigint | null; readonly kapsoPhoneNumberId: string | null; readonly normalizedPhoneNumber: string | null; readonly status: string }) => Promise<void>>;
     readonly updateTemplateAttemptResult: jest.MockedFunction<(input: { readonly errorMessage?: string | null; readonly idLead: number; readonly kapsoMessageIds?: readonly string[]; readonly rawResponse?: unknown; readonly status: string }) => Promise<void>>;
     readonly markLeadProcessedWithBitacora: jest.MockedFunction<
@@ -195,7 +195,7 @@ describe("EnvioTemplateInicialService", () => {
         expect(kapsoClient.sendSaludoTemplate).not.toHaveBeenCalled();
     });
 
-    it("sends saludo template only for leads from active configured projects", async () => {
+    it("sends saludo template only for leads from active configured project and admin pairs", async () => {
         const repository = createRepository();
         const kapsoClient = createKapsoClient();
         const service = createService(repository, kapsoClient);
@@ -207,7 +207,7 @@ describe("EnvioTemplateInicialService", () => {
             skipped: 0,
             status: "completed",
         });
-        expect(repository.findPendingLeads).toHaveBeenCalledWith([4], 10);
+        expect(repository.findPendingLeads).toHaveBeenCalledWith([{ idnetsuiteAdmin: 653055, idproyectoLead: 4 }], 10);
         expect(kapsoClient.sendSaludoTemplate).toHaveBeenCalledWith({
             adminName: "Roberto Carlos",
             leadId: 36640,
@@ -245,6 +245,54 @@ describe("EnvioTemplateInicialService", () => {
         expect(getLastBitacora(repository).idAdminBit).toBe(653055);
         expect(getLastBitacora(repository).idCaidaBit).toBe(70);
         expect(getLastBitacora(repository).idLeadBit).toBe(6430001);
+    });
+
+    it("queries only configured project and admin pairs so unassigned leads cannot block the batch", async () => {
+        const repository = createRepository();
+        repository.findCronjobConfig.mockResolvedValue({
+            isActive: true,
+            projectConfigs: [
+                createProjectConfig({
+                    idproyectoLead: 48,
+                    integration: {
+                        adminAssignments: [{ idnetsuiteAdmin: 3646210 }],
+                        id: 4n,
+                        isActive: true,
+                        kapsoPhoneNumberId: "330483533488366",
+                    },
+                }),
+                createProjectConfig({
+                    idproyectoLead: 48,
+                    integration: {
+                        adminAssignments: [{ idnetsuiteAdmin: 5411399 }],
+                        id: 6n,
+                        isActive: true,
+                        kapsoPhoneNumberId: "946913568515097",
+                    },
+                }),
+                createProjectConfig({
+                    idproyectoLead: 8,
+                    integration: {
+                        adminAssignments: [{ idnetsuiteAdmin: 3646210 }],
+                        id: 4n,
+                        isActive: true,
+                        kapsoPhoneNumberId: "330483533488366",
+                    },
+                }),
+            ],
+        });
+        const service = createService(repository);
+
+        await service.runOnce(10);
+
+        expect(repository.findPendingLeads).toHaveBeenCalledWith(
+            [
+                { idnetsuiteAdmin: 3646210, idproyectoLead: 48 },
+                { idnetsuiteAdmin: 5411399, idproyectoLead: 48 },
+                { idnetsuiteAdmin: 3646210, idproyectoLead: 8 },
+            ],
+            10,
+        );
     });
 
     it("does not modify the lead when the admin has no active Kapso integration for that project", async () => {

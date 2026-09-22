@@ -34,6 +34,11 @@ export type EnvioTemplateInicialLead = Pick<Lead, "accionLead" | "estadoLead" | 
 
 export type EnvioTemplateInicialAdmin = Pick<Admin, "idnetsuiteAdmin" | "nameAdmin">;
 
+export type EnvioTemplateInicialProjectAdminScope = {
+    readonly idnetsuiteAdmin: number;
+    readonly idproyectoLead: number;
+};
+
 export type RegisterTemplateAttemptInput = {
     readonly idAdmin: number;
     readonly idLead: number;
@@ -113,8 +118,8 @@ export class EnvioTemplateInicialRepository {
         }) as Promise<EnvioTemplateInicialCronjobConfig | null>;
     }
 
-    findPendingLeads(projectIds: number[], limit: number): Promise<EnvioTemplateInicialLead[]> {
-        if (projectIds.length === 0) {
+    findPendingLeads(scopes: readonly EnvioTemplateInicialProjectAdminScope[], limit: number): Promise<EnvioTemplateInicialLead[]> {
+        if (scopes.length === 0) {
             return Promise.resolve([]);
         }
 
@@ -122,7 +127,7 @@ export class EnvioTemplateInicialRepository {
             orderBy: { idLead: "asc" },
             select: PENDING_LEAD_SELECT,
             take: limit,
-            where: pendingLeadWhere(projectIds),
+            where: pendingLeadWhere(scopes),
         });
     }
 
@@ -209,10 +214,13 @@ export class EnvioTemplateInicialRepository {
     }
 }
 
-function pendingLeadWhere(projectIds: number[]): Prisma.LeadWhereInput {
+function pendingLeadWhere(scopes: readonly EnvioTemplateInicialProjectAdminScope[]): Prisma.LeadWhereInput {
     return {
+        OR: scopes.map((scope) => ({
+            idEmpleadoLead: scope.idnetsuiteAdmin,
+            idproyectoLead: scope.idproyectoLead,
+        })),
         estadoLead: LEAD_INTERESADO_STATUS,
-        idproyectoLead: { in: projectIds },
         segiminetoLead: LEAD_INTERESADO_SEGUIMIENTO,
         whatsappTemplateContactSent: LEAD_PENDING_TEMPLATE_SENT_STATUS,
     };

@@ -83,7 +83,13 @@ describe("EnvioTemplateInicialRepository", () => {
         prisma.lead.findMany.mockResolvedValue([]);
         const repository = createRepository(prisma);
 
-        await repository.findPendingLeads([4, 38], 25);
+        await repository.findPendingLeads(
+            [
+                { idnetsuiteAdmin: 653055, idproyectoLead: 4 },
+                { idnetsuiteAdmin: 5411399, idproyectoLead: 38 },
+            ],
+            25,
+        );
 
         expect(prisma.lead.findMany).toHaveBeenCalledWith({
             orderBy: { idLead: "asc" },
@@ -103,8 +109,17 @@ describe("EnvioTemplateInicialRepository", () => {
             },
             take: 25,
             where: {
+                OR: [
+                    {
+                        idEmpleadoLead: 653055,
+                        idproyectoLead: 4,
+                    },
+                    {
+                        idEmpleadoLead: 5411399,
+                        idproyectoLead: 38,
+                    },
+                ],
                 estadoLead: 1,
-                idproyectoLead: { in: [4, 38] },
                 segiminetoLead: "01-LEAD-INTERESADO",
                 whatsappTemplateContactSent: 2,
             },

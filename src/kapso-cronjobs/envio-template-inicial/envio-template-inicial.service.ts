@@ -3,7 +3,7 @@ import { Inject, Injectable, Logger } from "@nestjs/common";
 import { normalizeWhatsappPhoneNumber } from "../../common/phone/whatsapp-phone-number";
 import { CAIDA_NUMERO_TELEFONO_INVALIDO, CAIDA_TEMPLATE_INICIAL_ENTREGADO, ENVIO_TEMPLATE_INICIAL_CRONJOB_ID, LEAD_POST_TEMPLATE_SEGUIMIENTO, LEAD_TEMPLATE_PROCESSED_STATUS, TEMPLATE_ATTEMPT_STATUS, TEMPLATE_DEFAULTS, TEMPLATE_INITIAL_EVENTS } from "./envio-template-inicial.constants";
 import { toBitacoraInput, toErrorMessage, toSuccessLeadUpdate, valueOrFallback } from "./envio-template-inicial.mapping";
-import { EnvioTemplateInicialAdmin, EnvioTemplateInicialCronjobConfig, EnvioTemplateInicialLead, EnvioTemplateInicialRepository } from "./envio-template-inicial.repository";
+import { EnvioTemplateInicialAdmin, EnvioTemplateInicialCronjobConfig, EnvioTemplateInicialLead, EnvioTemplateInicialProjectAdminScope, EnvioTemplateInicialRepository } from "./envio-template-inicial.repository";
 import { EnvioTemplateInicialRunResult, ProcessLeadResult } from "./envio-template-inicial.types";
 import { KapsoTemplateMessageClient } from "./kapso-template-message.client";
 
@@ -72,7 +72,7 @@ export class EnvioTemplateInicialService {
         }
 
         const activeProjectConfigs = getRunnableProjectConfigs(cronjob);
-        const leads = await this.repository.findPendingLeads(getUniqueProjectIds(activeProjectConfigs), limit);
+        const leads = await this.repository.findPendingLeads(getProjectAdminScopes(activeProjectConfigs), limit);
         const counters = { failed: 0, sent: 0, skipped: 0 };
 
         for (const lead of leads) {
@@ -225,8 +225,25 @@ function getRunnableProjectConfigs(cronjob: EnvioTemplateInicialCronjobConfig): 
     return cronjob.projectConfigs.filter((config) => config.isActive && config.integration.isActive);
 }
 
-function getUniqueProjectIds(projectConfigs: ActiveProjectConfig[]): number[] {
-    return [...new Set(projectConfigs.map((config) => config.idproyectoLead))];
+function getProjectAdminScopes(projectConfigs: ActiveProjectConfig[]): EnvioTemplateInicialProjectAdminScope[] {
+    const scopes = projectConfigs.flatMap((config) =>
+        config.integration.adminAssignments.map((assignment) => ({
+            idnetsuiteAdmin: assignment.idnetsuiteAdmin,
+            idproyectoLead: config.idproyectoLead,
+        })),
+    );
+    const seen = new Set<string>();
+
+    return scopes.filter((scope) => {
+        const key = `${scope.idproyectoLead}:${scope.idnetsuiteAdmin}`;
+
+        if (seen.has(key)) {
+            return false;
+        }
+
+        seen.add(key);
+        return true;
+    });
 }
 
 function findProjectConfigForLead(lead: EnvioTemplateInicialLead, adminId: number, activeProjectConfigs: ActiveProjectConfig[]): ActiveProjectConfig | null {
