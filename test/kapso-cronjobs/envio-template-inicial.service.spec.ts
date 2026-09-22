@@ -449,6 +449,30 @@ describe("EnvioTemplateInicialService", () => {
         expect(getLastBitacora(repository).detalleBit).toContain("Se reintentara automaticamente cada 10 minutos");
     });
 
+    it("pauses leads for retry when Kapso has a temporary gateway error", async () => {
+        const repository = createRepository();
+        const kapsoClient = createKapsoClient();
+        kapsoClient.sendSaludoTemplate.mockRejectedValue(new KapsoTemplateSendException(502, null, {}, "Kapso template send failed with 502"));
+        const service = createService(repository, kapsoClient);
+
+        await expect(service.runOnce(10)).resolves.toEqual({
+            failed: 1,
+            processed: 1,
+            sent: 0,
+            skipped: 0,
+            status: "completed",
+        });
+        expect(repository.updateTemplateAttemptResult).toHaveBeenCalledWith({
+            errorMessage: "Kapso template send failed with 502",
+            idLead: 36640,
+            kapsoMessageIds: [],
+            status: "retryable_error",
+        });
+        expect(getLastLeadUpdate(repository)).toEqual({ whatsappTemplateContactSent: 3 });
+        expect(getLastBitacora(repository).detalleBit).toContain("falla temporal de WhatsApp/Kapso");
+        expect(getLastBitacora(repository).detalleBit).toContain("Se reintentara automaticamente cada 10 minutos");
+    });
+
     it("retries leads paused by insufficient credits even when an attempt already exists", async () => {
         const repository = createRepository();
         repository.hasTemplateAttemptForLead.mockResolvedValue(true);

@@ -52,6 +52,10 @@ export function isKapsoInsufficientCreditsError(error: unknown): boolean {
     return error instanceof KapsoTemplateSendException && error.kapsoStatus === 402 && error.kapsoCode === "insufficient_credits";
 }
 
+export function isKapsoRetryableTemplateSendError(error: unknown): boolean {
+    return error instanceof KapsoTemplateSendException && [502, 503, 504].includes(error.kapsoStatus);
+}
+
 /**
  * Cliente minimo para enviar el template aprobado `saludo`.
  *

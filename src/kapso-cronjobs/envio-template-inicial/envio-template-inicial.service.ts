@@ -5,7 +5,7 @@ import { CAIDA_NUMERO_TELEFONO_INVALIDO, CAIDA_TEMPLATE_INICIAL_ENTREGADO, ENVIO
 import { toBitacoraInput, toErrorMessage, toSuccessLeadUpdate, valueOrFallback } from "./envio-template-inicial.mapping";
 import { EnvioTemplateInicialAdmin, EnvioTemplateInicialCronjobConfig, EnvioTemplateInicialLead, EnvioTemplateInicialProjectAdminScope, EnvioTemplateInicialRepository } from "./envio-template-inicial.repository";
 import { EnvioTemplateInicialRunResult, ProcessLeadResult } from "./envio-template-inicial.types";
-import { isKapsoInsufficientCreditsError, KapsoTemplateMessageClient } from "./kapso-template-message.client";
+import { isKapsoInsufficientCreditsError, isKapsoRetryableTemplateSendError, KapsoTemplateMessageClient } from "./kapso-template-message.client";
 
 export type { EnvioTemplateInicialRunResult } from "./envio-template-inicial.types";
 
@@ -157,6 +157,7 @@ export class EnvioTemplateInicialService {
         } catch (error) {
             const errorMessage = toErrorMessage(error);
             const isInsufficientCredits = isKapsoInsufficientCreditsError(error);
+            const isRetryableTemplateSendError = isKapsoRetryableTemplateSendError(error);
 
             this.logger.warn({
                 error: errorMessage,
@@ -168,12 +169,16 @@ export class EnvioTemplateInicialService {
                 errorMessage,
                 idLead: lead.idLead,
                 kapsoMessageIds: [],
-                status: isInsufficientCredits ? TEMPLATE_ATTEMPT_STATUS.INSUFFICIENT_CREDITS : TEMPLATE_ATTEMPT_STATUS.FAILED,
+                status: getFailedAttemptStatus({ isInsufficientCredits, isRetryableTemplateSendError }),
             });
 
             if (isInsufficientCredits) {
                 if (lead.whatsappTemplateContactSent !== LEAD_RETRY_TEMPLATE_CREDITS_STATUS) {
                     await this.pauseLeadForInsufficientCredits(lead, adminId, errorMessage);
+                }
+            } else if (isRetryableTemplateSendError) {
+                if (lead.whatsappTemplateContactSent !== LEAD_RETRY_TEMPLATE_CREDITS_STATUS) {
+                    await this.pauseLeadForTemporarySendFailure(lead, adminId, errorMessage);
                 }
             } else {
                 await this.skipLead(lead, adminId, toManualContactBitacoraDetail(errorMessage));
@@ -209,6 +214,17 @@ export class EnvioTemplateInicialService {
             { whatsappTemplateContactSent: LEAD_RETRY_TEMPLATE_CREDITS_STATUS },
             toBitacoraInput(lead, {
                 detalleBit: `No se envio template saludo inicial: saldo insuficiente en Kapso. Se reintentara automaticamente cada 10 minutos. Error Kapso: ${errorMessage}`,
+                idAdminBit: adminId,
+            }),
+        );
+    }
+
+    private async pauseLeadForTemporarySendFailure(lead: EnvioTemplateInicialLead, adminId: number, errorMessage: string): Promise<void> {
+        await this.repository.markLeadProcessedWithBitacora(
+            lead.idLead,
+            { whatsappTemplateContactSent: LEAD_RETRY_TEMPLATE_CREDITS_STATUS },
+            toBitacoraInput(lead, {
+                detalleBit: `No se envio template saludo inicial por una falla temporal de WhatsApp/Kapso. Se reintentara automaticamente cada 10 minutos. Error tecnico: ${errorMessage}`,
                 idAdminBit: adminId,
             }),
         );
@@ -267,6 +283,18 @@ function getProjectAdminScopes(projectConfigs: ActiveProjectConfig[]): EnvioTemp
 
 function findProjectConfigForLead(lead: EnvioTemplateInicialLead, adminId: number, activeProjectConfigs: ActiveProjectConfig[]): ActiveProjectConfig | null {
     return activeProjectConfigs.find((config) => config.idproyectoLead === lead.idproyectoLead && config.integration.adminAssignments.some((assignment) => assignment.idnetsuiteAdmin === adminId)) ?? null;
+}
+
+function getFailedAttemptStatus(input: { readonly isInsufficientCredits: boolean; readonly isRetryableTemplateSendError: boolean }): string {
+    if (input.isInsufficientCredits) {
+        return TEMPLATE_ATTEMPT_STATUS.INSUFFICIENT_CREDITS;
+    }
+
+    if (input.isRetryableTemplateSendError) {
+        return TEMPLATE_ATTEMPT_STATUS.RETRYABLE_ERROR;
+    }
+
+    return TEMPLATE_ATTEMPT_STATUS.FAILED;
 }
 
 function toManualContactBitacoraDetail(errorMessage: string): string {

@@ -136,7 +136,7 @@ describe("EnvioTemplateInicialRepository", () => {
         });
     });
 
-    it("includes retry leads paused by insufficient Kapso credits after ten minutes", async () => {
+    it("includes retry leads paused by temporary Kapso errors after ten minutes", async () => {
         jest.useFakeTimers({ now: new Date("2026-09-22T18:30:00.000Z") });
         const prisma = createPrismaMock();
         prisma.kapsoEnvioTemplateInicialIntento.findMany.mockResolvedValue([{ idLead: 36640 }]);
@@ -148,7 +148,7 @@ describe("EnvioTemplateInicialRepository", () => {
         expect(prisma.kapsoEnvioTemplateInicialIntento.findMany).toHaveBeenCalledWith({
             select: { idLead: true },
             where: {
-                status: "insufficient_credits",
+                status: { in: ["insufficient_credits", "retryable_error"] },
                 updatedAt: { lte: new Date("2026-09-22T18:20:00.000Z") },
             },
         });

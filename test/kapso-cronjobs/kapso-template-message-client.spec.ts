@@ -1,6 +1,6 @@
 import { ServiceUnavailableException, UnauthorizedException } from "@nestjs/common";
 
-import { isKapsoInsufficientCreditsError, KapsoTemplateMessageClient } from "../../src/kapso-cronjobs/envio-template-inicial/kapso-template-message.client";
+import { isKapsoInsufficientCreditsError, isKapsoRetryableTemplateSendError, KapsoTemplateMessageClient } from "../../src/kapso-cronjobs/envio-template-inicial/kapso-template-message.client";
 import { createConfigServiceMock } from "../common/auth/mocks";
 
 const createFetchResponse = (options: { readonly body: unknown; readonly ok: boolean; readonly status: number }): Response =>
@@ -115,6 +115,15 @@ describe("KapsoTemplateMessageClient", () => {
 
         await client.sendSaludoTemplate(input).catch((error: unknown) => {
             expect(isKapsoInsufficientCreditsError(error)).toBe(true);
+        });
+    });
+
+    it("classifies gateway failures as retryable Kapso send errors", async () => {
+        expect.assertions(1);
+        const client = new KapsoTemplateMessageClient(createConfigServiceMock({ KAPSO_API_KEY: "kapso-key" }), jest.fn().mockResolvedValue(createFetchResponse({ body: {}, ok: false, status: 502 })));
+
+        await client.sendSaludoTemplate(input).catch((error: unknown) => {
+            expect(isKapsoRetryableTemplateSendError(error)).toBe(true);
         });
     });
 

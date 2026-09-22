@@ -3,7 +3,7 @@ import { Admin, Bitacora, KapsoEnvioTemplateInicialIntento, KapsoCronjobConfigur
 
 import { PrismaService } from "../../database/prisma.service";
 import { createCostaRicaWallClockDate } from "../../common/datetime/costa-rica-wall-clock-date";
-import { INSUFFICIENT_CREDITS_RETRY_DELAY_MS, LEAD_INTERESADO_SEGUIMIENTO, LEAD_INTERESADO_STATUS, LEAD_PENDING_TEMPLATE_SENT_STATUS, LEAD_RETRY_TEMPLATE_CREDITS_STATUS, LEAD_TEMPLATE_PROCESSED_STATUS, TEMPLATE_ATTEMPT_STATUS } from "./envio-template-inicial.constants";
+import { LEAD_INTERESADO_SEGUIMIENTO, LEAD_INTERESADO_STATUS, LEAD_PENDING_TEMPLATE_SENT_STATUS, LEAD_RETRY_TEMPLATE_CREDITS_STATUS, LEAD_TEMPLATE_PROCESSED_STATUS, TEMPLATE_ATTEMPT_STATUS, TEMPLATE_RETRY_DELAY_MS } from "./envio-template-inicial.constants";
 
 const EMPTY_FOLLOW_UP_DATE = "";
 
@@ -125,7 +125,7 @@ export class EnvioTemplateInicialRepository {
             return Promise.resolve([]);
         }
 
-        const retryableLeadIds = await this.findRetryableInsufficientCreditsLeadIds();
+        const retryableLeadIds = await this.findRetryableTemplateLeadIds();
 
         return this.prisma.lead.findMany({
             orderBy: { idLead: "asc" },
@@ -217,12 +217,14 @@ export class EnvioTemplateInicialRepository {
         });
     }
 
-    private async findRetryableInsufficientCreditsLeadIds(): Promise<number[]> {
-        const retryAfter = new Date(Date.now() - INSUFFICIENT_CREDITS_RETRY_DELAY_MS);
+    private async findRetryableTemplateLeadIds(): Promise<number[]> {
+        const retryAfter = new Date(Date.now() - TEMPLATE_RETRY_DELAY_MS);
         const attempts = await this.prisma.kapsoEnvioTemplateInicialIntento.findMany({
             select: { idLead: true },
             where: {
-                status: TEMPLATE_ATTEMPT_STATUS.INSUFFICIENT_CREDITS,
+                status: {
+                    in: [TEMPLATE_ATTEMPT_STATUS.INSUFFICIENT_CREDITS, TEMPLATE_ATTEMPT_STATUS.RETRYABLE_ERROR],
+                },
                 updatedAt: { lte: retryAfter },
             },
         });

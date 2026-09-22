@@ -25,7 +25,7 @@ export const CAIDA_TEMPLATE_INICIAL_ENTREGADO = 70;
 /** Defaults conservadores: el runner queda controlado por env y lote pequeno. */
 export const DEFAULT_ENVIO_TEMPLATE_INICIAL_INTERVAL_MS = 60_000;
 export const DEFAULT_ENVIO_TEMPLATE_INICIAL_BATCH_SIZE = 10;
-export const INSUFFICIENT_CREDITS_RETRY_DELAY_MS = 10 * 60 * 1000;
+export const TEMPLATE_RETRY_DELAY_MS = 10 * 60 * 1000;
 
 /**
  * Env vars del runner. Los nombres salen de `APP_ENV_KEYS` para no divergir
@@ -57,5 +57,6 @@ export const TEMPLATE_ATTEMPT_STATUS = {
     INVALID_PHONE: "invalid_phone",
     INSUFFICIENT_CREDITS: "insufficient_credits",
     PROCESSING: "processing",
+    RETRYABLE_ERROR: "retryable_error",
     SENT: "sent",
 } as const;
