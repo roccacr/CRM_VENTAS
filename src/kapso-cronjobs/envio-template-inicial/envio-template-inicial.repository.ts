@@ -3,7 +3,7 @@ import { Admin, Bitacora, KapsoEnvioTemplateInicialIntento, KapsoCronjobConfigur
 
 import { PrismaService } from "../../database/prisma.service";
 import { createCostaRicaWallClockDate } from "../../common/datetime/costa-rica-wall-clock-date";
-import { LEAD_INTERESADO_SEGUIMIENTO, LEAD_INTERESADO_STATUS, LEAD_PENDING_TEMPLATE_SENT_STATUS, LEAD_TEMPLATE_PROCESSED_STATUS } from "./envio-template-inicial.constants";
+import { INSUFFICIENT_CREDITS_RETRY_DELAY_MS, LEAD_INTERESADO_SEGUIMIENTO, LEAD_INTERESADO_STATUS, LEAD_PENDING_TEMPLATE_SENT_STATUS, LEAD_RETRY_TEMPLATE_CREDITS_STATUS, LEAD_TEMPLATE_PROCESSED_STATUS, TEMPLATE_ATTEMPT_STATUS } from "./envio-template-inicial.constants";
 
 const EMPTY_FOLLOW_UP_DATE = "";
 
@@ -80,8 +80,10 @@ type EnvioTemplateInicialPrismaPort = {
     };
     readonly kapsoEnvioTemplateInicialIntento: {
         readonly create: (args: Prisma.KapsoEnvioTemplateInicialIntentoCreateArgs) => Promise<KapsoEnvioTemplateInicialIntento>;
+        readonly findMany: (args: Prisma.KapsoEnvioTemplateInicialIntentoFindManyArgs) => Promise<KapsoEnvioTemplateInicialIntento[]>;
         readonly findUnique: (args: Prisma.KapsoEnvioTemplateInicialIntentoFindUniqueArgs) => Promise<KapsoEnvioTemplateInicialIntento | null>;
         readonly updateMany: (args: Prisma.KapsoEnvioTemplateInicialIntentoUpdateManyArgs) => Promise<Prisma.BatchPayload>;
+        readonly upsert: (args: Prisma.KapsoEnvioTemplateInicialIntentoUpsertArgs) => Promise<KapsoEnvioTemplateInicialIntento>;
     };
     readonly lead: {
         readonly findMany: (args: Prisma.LeadFindManyArgs) => Promise<EnvioTemplateInicialLead[]>;
@@ -118,16 +120,18 @@ export class EnvioTemplateInicialRepository {
         }) as Promise<EnvioTemplateInicialCronjobConfig | null>;
     }
 
-    findPendingLeads(scopes: readonly EnvioTemplateInicialProjectAdminScope[], limit: number): Promise<EnvioTemplateInicialLead[]> {
+    async findPendingLeads(scopes: readonly EnvioTemplateInicialProjectAdminScope[], limit: number): Promise<EnvioTemplateInicialLead[]> {
         if (scopes.length === 0) {
             return Promise.resolve([]);
         }
+
+        const retryableLeadIds = await this.findRetryableInsufficientCreditsLeadIds();
 
         return this.prisma.lead.findMany({
             orderBy: { idLead: "asc" },
             select: PENDING_LEAD_SELECT,
             take: limit,
-            where: pendingLeadWhere(scopes),
+            where: pendingLeadWhere(scopes, retryableLeadIds),
         });
     }
 
@@ -151,17 +155,31 @@ export class EnvioTemplateInicialRepository {
     }
 
     async registerTemplateAttempt(input: RegisterTemplateAttemptInput): Promise<void> {
-        await this.prisma.kapsoEnvioTemplateInicialIntento.create({
-            data: {
+        const data = {
+            idAdmin: input.idAdmin,
+            idLead: input.idLead,
+            idproyectoLead: input.idproyectoLead,
+            kapsoIntegracionNumeroWhatsappId: input.kapsoIntegracionNumeroWhatsappId,
+            kapsoMessageIds: [],
+            kapsoPhoneNumberId: input.kapsoPhoneNumberId,
+            rawResponse: Prisma.JsonNull,
+            status: input.status,
+            toPhoneNumber: input.normalizedPhoneNumber,
+        };
+
+        await this.prisma.kapsoEnvioTemplateInicialIntento.upsert({
+            create: data,
+            update: {
                 idAdmin: input.idAdmin,
-                idLead: input.idLead,
                 idproyectoLead: input.idproyectoLead,
                 kapsoIntegracionNumeroWhatsappId: input.kapsoIntegracionNumeroWhatsappId,
                 kapsoMessageIds: [],
                 kapsoPhoneNumberId: input.kapsoPhoneNumberId,
+                rawResponse: Prisma.JsonNull,
                 status: input.status,
                 toPhoneNumber: input.normalizedPhoneNumber,
             },
+            where: { idLead: input.idLead },
         });
     }
 
@@ -199,6 +217,19 @@ export class EnvioTemplateInicialRepository {
         });
     }
 
+    private async findRetryableInsufficientCreditsLeadIds(): Promise<number[]> {
+        const retryAfter = new Date(Date.now() - INSUFFICIENT_CREDITS_RETRY_DELAY_MS);
+        const attempts = await this.prisma.kapsoEnvioTemplateInicialIntento.findMany({
+            select: { idLead: true },
+            where: {
+                status: TEMPLATE_ATTEMPT_STATUS.INSUFFICIENT_CREDITS,
+                updatedAt: { lte: retryAfter },
+            },
+        });
+
+        return attempts.map((attempt) => attempt.idLead);
+    }
+
     private createBitacoraData(input: CreateBitacoraInput): Prisma.BitacoraCreateInput {
         return {
             detalleBit: input.detalleBit,
@@ -214,14 +245,27 @@ export class EnvioTemplateInicialRepository {
     }
 }
 
-function pendingLeadWhere(scopes: readonly EnvioTemplateInicialProjectAdminScope[]): Prisma.LeadWhereInput {
+function pendingLeadWhere(scopes: readonly EnvioTemplateInicialProjectAdminScope[], retryableInsufficientCreditsLeadIds: readonly number[]): Prisma.LeadWhereInput {
+    const templateStatusConditions: Prisma.LeadWhereInput[] = [{ whatsappTemplateContactSent: LEAD_PENDING_TEMPLATE_SENT_STATUS }];
+
+    if (retryableInsufficientCreditsLeadIds.length > 0) {
+        templateStatusConditions.push({
+            idLead: { in: [...retryableInsufficientCreditsLeadIds] },
+            whatsappTemplateContactSent: LEAD_RETRY_TEMPLATE_CREDITS_STATUS,
+        });
+    }
+
     return {
-        OR: scopes.map((scope) => ({
-            idEmpleadoLead: scope.idnetsuiteAdmin,
-            idproyectoLead: scope.idproyectoLead,
-        })),
+        AND: [
+            {
+                OR: scopes.map((scope) => ({
+                    idEmpleadoLead: scope.idnetsuiteAdmin,
+                    idproyectoLead: scope.idproyectoLead,
+                })),
+            },
+            { OR: templateStatusConditions },
+        ],
         estadoLead: LEAD_INTERESADO_STATUS,
         segiminetoLead: LEAD_INTERESADO_SEGUIMIENTO,
-        whatsappTemplateContactSent: LEAD_PENDING_TEMPLATE_SENT_STATUS,
     };
 }

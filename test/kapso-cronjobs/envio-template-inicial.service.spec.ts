@@ -1,4 +1,5 @@
 import { EnvioTemplateInicialService } from "../../src/kapso-cronjobs/envio-template-inicial/envio-template-inicial.service";
+import { KapsoTemplateSendException } from "../../src/kapso-cronjobs/envio-template-inicial/kapso-template-message.client";
 
 const now = new Date("2026-09-10T20:00:00.000Z");
 
@@ -406,6 +407,60 @@ describe("EnvioTemplateInicialService", () => {
         });
         expect(getLastLeadUpdate(repository)).toEqual({ whatsappTemplateContactSent: 0 });
         expect(getLastBitacora(repository).detalleBit).toContain("Kapso down");
+    });
+
+    it("pauses leads for retry when Kapso has insufficient credits", async () => {
+        const repository = createRepository();
+        const kapsoClient = createKapsoClient();
+        kapsoClient.sendSaludoTemplate.mockRejectedValue(new KapsoTemplateSendException(402, "insufficient_credits", { code: "insufficient_credits" }, "Kapso template send failed with 402 (insufficient_credits): balance low"));
+        const service = createService(repository, kapsoClient);
+
+        await expect(service.runOnce(10)).resolves.toEqual({
+            failed: 1,
+            processed: 1,
+            sent: 0,
+            skipped: 0,
+            status: "completed",
+        });
+        expect(repository.updateTemplateAttemptResult).toHaveBeenCalledWith({
+            errorMessage: "Kapso template send failed with 402 (insufficient_credits): balance low",
+            idLead: 36640,
+            kapsoMessageIds: [],
+            status: "insufficient_credits",
+        });
+        expect(getLastLeadUpdate(repository)).toEqual({ whatsappTemplateContactSent: 3 });
+        expect(getLastBitacora(repository).detalleBit).toContain("Se reintentara automaticamente cada 10 minutos");
+    });
+
+    it("retries leads paused by insufficient credits even when an attempt already exists", async () => {
+        const repository = createRepository();
+        repository.hasTemplateAttemptForLead.mockResolvedValue(true);
+        repository.findPendingLeads.mockResolvedValue([createLead({ whatsappTemplateContactSent: 3 })]);
+        const kapsoClient = createKapsoClient();
+        const service = createService(repository, kapsoClient);
+
+        await expect(service.runOnce(10)).resolves.toEqual({
+            failed: 0,
+            processed: 1,
+            sent: 1,
+            skipped: 0,
+            status: "completed",
+        });
+        expect(kapsoClient.sendSaludoTemplate).toHaveBeenCalledTimes(1);
+        expect(repository.registerTemplateAttempt).toHaveBeenCalledWith({
+            idAdmin: 653055,
+            idLead: 36640,
+            idproyectoLead: 4,
+            kapsoIntegracionNumeroWhatsappId: 1n,
+            kapsoPhoneNumberId: "1197677976762773",
+            normalizedPhoneNumber: "50670452222",
+            status: "processing",
+        });
+        expect(getLastLeadUpdate(repository)).toEqual(
+            expect.objectContaining({
+                whatsappTemplateContactSent: 0,
+            }) as Record<string, unknown>,
+        );
     });
 
     it("skips leads that already have a template attempt recorded", async () => {

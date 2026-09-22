@@ -1,11 +1,11 @@
 import { Inject, Injectable, Logger } from "@nestjs/common";
 
 import { normalizeWhatsappPhoneNumber } from "../../common/phone/whatsapp-phone-number";
-import { CAIDA_NUMERO_TELEFONO_INVALIDO, CAIDA_TEMPLATE_INICIAL_ENTREGADO, ENVIO_TEMPLATE_INICIAL_CRONJOB_ID, LEAD_POST_TEMPLATE_SEGUIMIENTO, LEAD_TEMPLATE_PROCESSED_STATUS, TEMPLATE_ATTEMPT_STATUS, TEMPLATE_DEFAULTS, TEMPLATE_INITIAL_EVENTS } from "./envio-template-inicial.constants";
+import { CAIDA_NUMERO_TELEFONO_INVALIDO, CAIDA_TEMPLATE_INICIAL_ENTREGADO, ENVIO_TEMPLATE_INICIAL_CRONJOB_ID, LEAD_POST_TEMPLATE_SEGUIMIENTO, LEAD_RETRY_TEMPLATE_CREDITS_STATUS, LEAD_TEMPLATE_PROCESSED_STATUS, TEMPLATE_ATTEMPT_STATUS, TEMPLATE_DEFAULTS, TEMPLATE_INITIAL_EVENTS } from "./envio-template-inicial.constants";
 import { toBitacoraInput, toErrorMessage, toSuccessLeadUpdate, valueOrFallback } from "./envio-template-inicial.mapping";
 import { EnvioTemplateInicialAdmin, EnvioTemplateInicialCronjobConfig, EnvioTemplateInicialLead, EnvioTemplateInicialProjectAdminScope, EnvioTemplateInicialRepository } from "./envio-template-inicial.repository";
 import { EnvioTemplateInicialRunResult, ProcessLeadResult } from "./envio-template-inicial.types";
-import { KapsoTemplateMessageClient } from "./kapso-template-message.client";
+import { isKapsoInsufficientCreditsError, KapsoTemplateMessageClient } from "./kapso-template-message.client";
 
 export type { EnvioTemplateInicialRunResult } from "./envio-template-inicial.types";
 
@@ -86,8 +86,8 @@ export class EnvioTemplateInicialService {
     private async processLead(lead: EnvioTemplateInicialLead, activeProjectConfigs: ActiveProjectConfig[]): Promise<ProcessLeadResult> {
         const adminId = lead.idEmpleadoLead ?? 0;
 
-        // Un lead solo puede tener un intento tecnico de template inicial.
-        if (await this.repository.hasTemplateAttemptForLead(lead.idLead)) {
+        // El estado 3 es una pausa temporal por creditos Kapso y permite reusar el intento tecnico.
+        if (lead.whatsappTemplateContactSent !== LEAD_RETRY_TEMPLATE_CREDITS_STATUS && (await this.repository.hasTemplateAttemptForLead(lead.idLead))) {
             await this.skipLead(lead, adminId, "No se envio template saludo inicial: el lead ya tiene un intento registrado.");
             return "skipped";
         }
@@ -156,6 +156,7 @@ export class EnvioTemplateInicialService {
             return "sent";
         } catch (error) {
             const errorMessage = toErrorMessage(error);
+            const isInsufficientCredits = isKapsoInsufficientCreditsError(error);
 
             this.logger.warn({
                 error: errorMessage,
@@ -167,10 +168,15 @@ export class EnvioTemplateInicialService {
                 errorMessage,
                 idLead: lead.idLead,
                 kapsoMessageIds: [],
-                status: TEMPLATE_ATTEMPT_STATUS.FAILED,
+                status: isInsufficientCredits ? TEMPLATE_ATTEMPT_STATUS.INSUFFICIENT_CREDITS : TEMPLATE_ATTEMPT_STATUS.FAILED,
             });
 
-            await this.skipLead(lead, adminId, `No se envio template saludo inicial. Error Kapso: ${errorMessage}`);
+            if (isInsufficientCredits) {
+                await this.pauseLeadForInsufficientCredits(lead, adminId, errorMessage);
+            } else {
+                await this.skipLead(lead, adminId, `No se envio template saludo inicial. Error Kapso: ${errorMessage}`);
+            }
+
             return "failed";
         }
     }
@@ -191,6 +197,17 @@ export class EnvioTemplateInicialService {
                 detalleBit: "No se envio template saludo inicial: numero de telefono no valido.",
                 idAdminBit: adminId,
                 idCaidaBit: CAIDA_NUMERO_TELEFONO_INVALIDO,
+            }),
+        );
+    }
+
+    private async pauseLeadForInsufficientCredits(lead: EnvioTemplateInicialLead, adminId: number, errorMessage: string): Promise<void> {
+        await this.repository.markLeadProcessedWithBitacora(
+            lead.idLead,
+            { whatsappTemplateContactSent: LEAD_RETRY_TEMPLATE_CREDITS_STATUS },
+            toBitacoraInput(lead, {
+                detalleBit: `No se envio template saludo inicial: saldo insuficiente en Kapso. Se reintentara automaticamente cada 10 minutos. Error Kapso: ${errorMessage}`,
+                idAdminBit: adminId,
             }),
         );
     }

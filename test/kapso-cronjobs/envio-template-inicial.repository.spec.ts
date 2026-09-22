@@ -12,8 +12,10 @@ type PrismaMock = {
     };
     readonly kapsoEnvioTemplateInicialIntento: {
         readonly create: jest.Mock;
+        readonly findMany: jest.Mock;
         readonly findUnique: jest.Mock;
         readonly updateMany: jest.Mock;
+        readonly upsert: jest.Mock;
     };
     readonly lead: {
         readonly findMany: jest.Mock;
@@ -34,8 +36,10 @@ const createPrismaMock = (): PrismaMock => ({
     },
     kapsoEnvioTemplateInicialIntento: {
         create: jest.fn(),
+        findMany: jest.fn().mockResolvedValue([]),
         findUnique: jest.fn(),
         updateMany: jest.fn(),
+        upsert: jest.fn(),
     },
     lead: {
         findMany: jest.fn(),
@@ -78,7 +82,7 @@ describe("EnvioTemplateInicialRepository", () => {
         expect(prisma.lead.findMany).not.toHaveBeenCalled();
     });
 
-    it("finds only pending interested leads from configured projects", async () => {
+    it("finds pending interested leads from configured project and admin pairs", async () => {
         const prisma = createPrismaMock();
         prisma.lead.findMany.mockResolvedValue([]);
         const repository = createRepository(prisma);
@@ -109,21 +113,72 @@ describe("EnvioTemplateInicialRepository", () => {
             },
             take: 25,
             where: {
-                OR: [
+                AND: [
                     {
-                        idEmpleadoLead: 653055,
-                        idproyectoLead: 4,
+                        OR: [
+                            {
+                                idEmpleadoLead: 653055,
+                                idproyectoLead: 4,
+                            },
+                            {
+                                idEmpleadoLead: 5411399,
+                                idproyectoLead: 38,
+                            },
+                        ],
                     },
                     {
-                        idEmpleadoLead: 5411399,
-                        idproyectoLead: 38,
+                        OR: [{ whatsappTemplateContactSent: 2 }],
                     },
                 ],
                 estadoLead: 1,
                 segiminetoLead: "01-LEAD-INTERESADO",
-                whatsappTemplateContactSent: 2,
             },
         });
+    });
+
+    it("includes retry leads paused by insufficient Kapso credits after ten minutes", async () => {
+        jest.useFakeTimers({ now: new Date("2026-09-22T18:30:00.000Z") });
+        const prisma = createPrismaMock();
+        prisma.kapsoEnvioTemplateInicialIntento.findMany.mockResolvedValue([{ idLead: 36640 }]);
+        prisma.lead.findMany.mockResolvedValue([]);
+        const repository = createRepository(prisma);
+
+        await repository.findPendingLeads([{ idnetsuiteAdmin: 653055, idproyectoLead: 4 }], 10);
+
+        expect(prisma.kapsoEnvioTemplateInicialIntento.findMany).toHaveBeenCalledWith({
+            select: { idLead: true },
+            where: {
+                status: "insufficient_credits",
+                updatedAt: { lte: new Date("2026-09-22T18:20:00.000Z") },
+            },
+        });
+        expect(prisma.lead.findMany).toHaveBeenCalledWith(
+            expect.objectContaining({
+                where: expect.objectContaining({
+                    AND: expect.arrayContaining([
+                        {
+                            OR: [
+                                {
+                                    idEmpleadoLead: 653055,
+                                    idproyectoLead: 4,
+                                },
+                            ],
+                        },
+                        {
+                            OR: [
+                                { whatsappTemplateContactSent: 2 },
+                                {
+                                    idLead: { in: [36640] },
+                                    whatsappTemplateContactSent: 3,
+                                },
+                            ],
+                        },
+                    ]) as unknown,
+                }) as object,
+            }),
+        );
+
+        jest.useRealTimers();
     });
 
     it("detects whether a lead already has a template attempt", async () => {
@@ -159,17 +214,29 @@ describe("EnvioTemplateInicialRepository", () => {
             status: "sent",
         });
 
-        expect(prisma.kapsoEnvioTemplateInicialIntento.create).toHaveBeenCalledWith({
-            data: {
+        expect(prisma.kapsoEnvioTemplateInicialIntento.upsert).toHaveBeenCalledWith({
+            create: {
                 idAdmin: 653055,
                 idLead: 36640,
                 idproyectoLead: 4,
                 kapsoIntegracionNumeroWhatsappId: 1n,
                 kapsoMessageIds: [],
                 kapsoPhoneNumberId: "1197677976762773",
+                rawResponse: expect.any(Object) as unknown,
                 status: "processing",
                 toPhoneNumber: "50670452222",
             },
+            update: {
+                idAdmin: 653055,
+                idproyectoLead: 4,
+                kapsoIntegracionNumeroWhatsappId: 1n,
+                kapsoMessageIds: [],
+                kapsoPhoneNumberId: "1197677976762773",
+                rawResponse: expect.any(Object) as unknown,
+                status: "processing",
+                toPhoneNumber: "50670452222",
+            },
+            where: { idLead: 36640 },
         });
         expect(prisma.kapsoEnvioTemplateInicialIntento.updateMany).toHaveBeenCalledWith({
             data: {

@@ -37,6 +37,21 @@ const kapsoErrorSchema = z
 
 type Fetcher = (input: string, init: RequestInit) => Promise<Response>;
 
+export class KapsoTemplateSendException extends ServiceUnavailableException {
+    constructor(
+        readonly kapsoStatus: number,
+        readonly kapsoCode: string | null,
+        readonly kapsoBody: unknown,
+        message: string,
+    ) {
+        super(message);
+    }
+}
+
+export function isKapsoInsufficientCreditsError(error: unknown): boolean {
+    return error instanceof KapsoTemplateSendException && error.kapsoStatus === 402 && error.kapsoCode === "insufficient_credits";
+}
+
 /**
  * Cliente minimo para enviar el template aprobado `saludo`.
  *
@@ -71,7 +86,9 @@ export class KapsoTemplateMessageClient {
 
         if (!response.ok) {
             this.logRejectedResponse(input, response.status, body);
-            throw new ServiceUnavailableException(formatKapsoError(response.status, body));
+            const kapsoError = parseKapsoError(response.status, body);
+
+            throw new KapsoTemplateSendException(response.status, kapsoError.code, body, kapsoError.message);
         }
 
         const parsed = sendMessageResponseSchema.safeParse(body);
@@ -148,17 +165,23 @@ async function readJsonBody(response: Response): Promise<unknown> {
     return (await response.json().catch(() => ({}))) as unknown;
 }
 
-function formatKapsoError(status: number, body: unknown): string {
+function parseKapsoError(status: number, body: unknown): { readonly code: string | null; readonly message: string } {
     const parsed = kapsoErrorSchema.safeParse(body);
 
     if (!parsed.success) {
-        return `Kapso template send failed with ${status}`;
+        return {
+            code: null,
+            message: `Kapso template send failed with ${status}`,
+        };
     }
 
     const error = typeof parsed.data.error === "string" ? parsed.data.error : parsed.data.error.message;
     const code = parsed.data.code ? ` (${parsed.data.code})` : "";
 
-    return `Kapso template send failed with ${status}${code}: ${error || "unknown error"}`;
+    return {
+        code: parsed.data.code ?? null,
+        message: `Kapso template send failed with ${status}${code}: ${error || "unknown error"}`,
+    };
 }
 
 function maskPhoneNumber(value: string): string {

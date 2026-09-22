@@ -1,6 +1,6 @@
 import { ServiceUnavailableException, UnauthorizedException } from "@nestjs/common";
 
-import { KapsoTemplateMessageClient } from "../../src/kapso-cronjobs/envio-template-inicial/kapso-template-message.client";
+import { isKapsoInsufficientCreditsError, KapsoTemplateMessageClient } from "../../src/kapso-cronjobs/envio-template-inicial/kapso-template-message.client";
 import { createConfigServiceMock } from "../common/auth/mocks";
 
 const createFetchResponse = (options: { readonly body: unknown; readonly ok: boolean; readonly status: number }): Response =>
@@ -95,6 +95,27 @@ describe("KapsoTemplateMessageClient", () => {
         );
 
         await expect(client.sendSaludoTemplate(input)).rejects.toThrow("Invalid phone number format");
+    });
+
+    it("classifies insufficient credits as a retryable Kapso billing error", async () => {
+        expect.assertions(1);
+        const client = new KapsoTemplateMessageClient(
+            createConfigServiceMock({ KAPSO_API_KEY: "kapso-key" }),
+            jest.fn().mockResolvedValue(
+                createFetchResponse({
+                    body: {
+                        code: "insufficient_credits",
+                        error: { message: "Your Kapso balance doesn't cover Meta's fee for this message." },
+                    },
+                    ok: false,
+                    status: 402,
+                }),
+            ),
+        );
+
+        await client.sendSaludoTemplate(input).catch((error: unknown) => {
+            expect(isKapsoInsufficientCreditsError(error)).toBe(true);
+        });
     });
 
     it("rejects unusable accepted responses", async () => {
