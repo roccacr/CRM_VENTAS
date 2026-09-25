@@ -1,0 +1,26 @@
+# Dependencias y salidas generadas
+node_modules/
+dist/
+coverage/
+*.log
+tsconfig.tsbuildinfo
+
+# Secretos locales
+.env
+.env.*
+!.env.example
+
+# Archivos de sistema
+.DS_Store
+Thumbs.db
+
+# Estado local de editores/agentes
+.cursor/
+**/.codex/
+**/.agents/
+
+# Reporte temporal de auditoria externa ya reemplazado por verificaciones vivas.
+AUDITORIA_PROFUNDA.md
+
+# PDFs fuente locales; la documentacion versionada vive en apps/*/Arquitectura.
+*.pdf

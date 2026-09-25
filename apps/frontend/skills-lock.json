@@ -1,0 +1,77 @@
+{
+    "version": 1,
+    "skills": {
+        "agent-browser": {
+            "source": "vercel-labs/agent-browser",
+            "sourceType": "github",
+            "skillPath": "skills/agent-browser/SKILL.md",
+            "computedHash": "80161e6836b3b40f4e83730a290deb40ac14d877d38c97ad5f6d71be37ce74c3"
+        },
+        "code-documenter": {
+            "source": "jeffallan/claude-skills",
+            "sourceType": "github",
+            "skillPath": "skills/code-documenter/SKILL.md",
+            "computedHash": "15ef3f7b9cd824bd1ade51ad6e519ad1339b6d585887c0ec69d0fe14889387d8"
+        },
+        "code-review": {
+            "source": "mattpocock/skills",
+            "sourceType": "github",
+            "skillPath": "skills/engineering/code-review/SKILL.md",
+            "computedHash": "b4f17857c85ca60af1df7d0b623dd03c2a48419f6123e714f3d9748ca744a1bf"
+        },
+        "git-guardrails-claude-code": {
+            "source": "mattpocock/skills",
+            "sourceType": "github",
+            "skillPath": "skills/misc/git-guardrails-claude-code/SKILL.md",
+            "computedHash": "fa22f1aa2708d95cc3149640f33e085381b184a0322609930f7971c1dca11835"
+        },
+        "react-testing": {
+            "source": "affaan-m/ecc",
+            "sourceType": "github",
+            "skillPath": "skills/react-testing/SKILL.md",
+            "computedHash": "59bd15f26f018d6629557108f936ab691af887508ae71b9d339855e49e337012"
+        },
+        "security-review": {
+            "source": "getsentry/skills",
+            "sourceType": "github",
+            "skillPath": "skills/security-review/SKILL.md",
+            "computedHash": "1eee1e41aa0a0e75dbbe0cac387e3d61bedf51af1888f184301a173731e6973e"
+        },
+        "shadcn": {
+            "source": "shadcn-ui/ui",
+            "sourceType": "github",
+            "skillPath": "skills/shadcn/SKILL.md",
+            "computedHash": "d04e43ec01e921558b93bb8046c14a42a22556689a2827243df900825a4e1604"
+        },
+        "simplify": {
+            "source": "brianlovin/agent-config",
+            "sourceType": "github",
+            "skillPath": "skills/simplify/SKILL.md",
+            "computedHash": "80ddf9f6ae4ad33f03b4e84e183c9458e19f6e13d85129261394634529aeb4b8"
+        },
+        "tanstack-query": {
+            "source": "tanstack-skills/tanstack-skills",
+            "sourceType": "github",
+            "skillPath": "plugins/tanstack-query/skills/tanstack-query/SKILL.md",
+            "computedHash": "bfe2977e92667b84efeb4b12e5c3010807934aab2f7ac2b059241cd3da2a3e6e"
+        },
+        "test-driven-development": {
+            "source": "obra/superpowers",
+            "sourceType": "github",
+            "skillPath": "skills/test-driven-development/SKILL.md",
+            "computedHash": "3cfe4ebb6fa7288f668d87880d279c8e48f7a92b63415e296857060f5ce22e05"
+        },
+        "typescript-best-practices": {
+            "source": "cursor/plugins",
+            "sourceType": "github",
+            "skillPath": "pstack/skills/typescript-best-practices/SKILL.md",
+            "computedHash": "9f0985815731c81253bbc9e856eb390ad0b08232bf016f84819b9a5adc52a150"
+        },
+        "vercel-react-best-practices": {
+            "source": "vercel-labs/agent-skills",
+            "sourceType": "github",
+            "skillPath": "skills/react-best-practices/SKILL.md",
+            "computedHash": "6b526d013e28073246a36f99b529bc43745d30832ecfa8217b359c34f260ca6b"
+        }
+    }
+}

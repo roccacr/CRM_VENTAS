@@ -1,0 +1,113 @@
+{
+    "version": 1,
+    "skills": {
+        "clean-architecture": {
+            "source": "wondelai/skills",
+            "sourceType": "github",
+            "skillPath": "clean-architecture/SKILL.md",
+            "computedHash": "41bc54cd69d52698ca747529a148d971e23587cc872db58f715b59de95ef51e6"
+        },
+        "code-documenter": {
+            "source": "jeffallan/claude-skills",
+            "sourceType": "github",
+            "skillPath": "skills/code-documenter/SKILL.md",
+            "computedHash": "15ef3f7b9cd824bd1ade51ad6e519ad1339b6d585887c0ec69d0fe14889387d8"
+        },
+        "code-review": {
+            "source": "mattpocock/skills",
+            "sourceType": "github",
+            "skillPath": "skills/engineering/code-review/SKILL.md",
+            "computedHash": "b4f17857c85ca60af1df7d0b623dd03c2a48419f6123e714f3d9748ca744a1bf"
+        },
+        "domain-driven-design": {
+            "source": "wondelai/skills",
+            "sourceType": "github",
+            "skillPath": "domain-driven-design/SKILL.md",
+            "computedHash": "59c101a9dc2e7b4cb1d20287bd2f0e9e5ef69315b7c25f477dd5cafb414f57cb"
+        },
+        "git-guardrails-claude-code": {
+            "source": "mattpocock/skills",
+            "sourceType": "github",
+            "skillPath": "skills/misc/git-guardrails-claude-code/SKILL.md",
+            "computedHash": "fa22f1aa2708d95cc3149640f33e085381b184a0322609930f7971c1dca11835"
+        },
+        "mysql": {
+            "source": "planetscale/database-skills",
+            "sourceType": "github",
+            "skillPath": "skills/mysql/SKILL.md",
+            "computedHash": "a74d7d018c4a9cfe4fd6e37f8758ef03272cde3f3dc2444c4f299636f4b3d275"
+        },
+        "mysql-best-practices": {
+            "source": "mindrally/skills",
+            "sourceType": "github",
+            "skillPath": "mysql-best-practices/SKILL.md",
+            "computedHash": "c393d46f0b1a4fec9795fd95c6f465f40528889b21451643ca7fd3c17ed89e3a"
+        },
+        "nestjs-best-practices": {
+            "source": "kadajett/agent-nestjs-skills",
+            "sourceType": "github",
+            "skillPath": "skills/nestjs-best-practices/SKILL.md",
+            "computedHash": "29c326e77d1462ed9526996acae5da0cf4003146982abc8c67378f5dbad6b181"
+        },
+        "nestjs-testing-expert": {
+            "source": "shipshitdev/skills",
+            "sourceType": "github",
+            "skillPath": "skills/nestjs-testing-expert/SKILL.md",
+            "computedHash": "ff641cc4e0547be247f2f4133577f68551f8d74486cb084441cbf281a8bfc90f"
+        },
+        "prisma-cli": {
+            "source": "prisma/skills",
+            "sourceType": "github",
+            "skillPath": "prisma-cli/SKILL.md",
+            "computedHash": "b92e55aef78f6796d81433c44738a6733211a04c16e65cbad6d42c5f71092aab"
+        },
+        "prisma-client-api": {
+            "source": "prisma/skills",
+            "sourceType": "github",
+            "skillPath": "prisma-client-api/SKILL.md",
+            "computedHash": "5dcc0793337151efa73a444e5adbc7e1c24180778e83b4fe94c9109c391bd333"
+        },
+        "prisma-database-setup": {
+            "source": "prisma/skills",
+            "sourceType": "github",
+            "skillPath": "prisma-database-setup/SKILL.md",
+            "computedHash": "0911d9454bd48df3badd23a50fd90a280eabb15dcbd472c14e7b729075dadefb"
+        },
+        "prisma-postgres": {
+            "source": "prisma/skills",
+            "sourceType": "github",
+            "skillPath": "prisma-postgres/SKILL.md",
+            "computedHash": "d669fbd0d8017d16c967f18b20e1c1345cd4a2a0076d762459bfef79f551f655"
+        },
+        "prisma-postgres-setup": {
+            "source": "prisma/skills",
+            "sourceType": "github",
+            "skillPath": "prisma-postgres-setup/SKILL.md",
+            "computedHash": "c89d3aa91285d8e4964fcaa5238c99a3d3c20b617e032e731cf632330a85a5a6"
+        },
+        "security-review": {
+            "source": "getsentry/skills",
+            "sourceType": "github",
+            "skillPath": "skills/security-review/SKILL.md",
+            "computedHash": "1eee1e41aa0a0e75dbbe0cac387e3d61bedf51af1888f184301a173731e6973e"
+        },
+        "simplify": {
+            "source": "brianlovin/agent-config",
+            "sourceType": "github",
+            "skillPath": "skills/simplify/SKILL.md",
+            "computedHash": "80ddf9f6ae4ad33f03b4e84e183c9458e19f6e13d85129261394634529aeb4b8"
+        },
+        "test-driven-development": {
+            "source": "obra/superpowers",
+            "sourceType": "github",
+            "skillPath": "skills/test-driven-development/SKILL.md",
+            "computedHash": "3cfe4ebb6fa7288f668d87880d279c8e48f7a92b63415e296857060f5ce22e05"
+        },
+        "typescript-best-practices": {
+            "source": "cursor/plugins",
+            "sourceType": "github",
+            "skillPath": "pstack/skills/typescript-best-practices/SKILL.md",
+            "computedHash": "9f0985815731c81253bbc9e856eb390ad0b08232bf016f84819b9a5adc52a150"
+        }
+    }
+}
