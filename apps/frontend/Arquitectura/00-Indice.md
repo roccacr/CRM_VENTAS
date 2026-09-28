@@ -39,18 +39,20 @@ Estos documentos se consultan solo cuando se revise seguridad, estado frontend o
 2. `23-Regla-IDs-Canonicos-y-Proveedores-Frontend.md`
 3. `18-P0-Direccion-Frontend-Construccion-Pausada.md`
 4. `19-Mapa-de-Implementacion-Frontend.md`
+5. `14-Modularizacion-Frontend-por-Areas-y-Roles.md`
 
 ## Lectura futura, fuera de P0-S1
 
 Estos documentos existen para conservar vision, no para autorizar implementacion en P0-S1:
 
-1. `14-Modularizacion-Frontend-por-Areas-y-Roles.md`
-2. `15-UX-Calendarios-por-Area-y-Supervision.md`
-3. `16-UX-Notas-Adhesivas-y-Anotaciones.md`
-4. `17-UX-Dashboard-Leads-SLA-y-Perdida.md`
-5. `20-Alcance-P0-Vertical-Leads-Frontend.md`
+1. `15-UX-Calendarios-por-Area-y-Supervision.md`
+2. `16-UX-Notas-Adhesivas-y-Anotaciones.md`
+3. `17-UX-Dashboard-Leads-SLA-y-Perdida.md`
+4. `20-Alcance-P0-Vertical-Leads-Frontend.md`
 
 Solo se leen cuando `00-Producto-CRM-TINK-y-P0-Frontend.md` o una decision aprobada por el dueno del producto habilite ese alcance.
+
+Nota: `14-Modularizacion-Frontend-por-Areas-y-Roles.md` se consulta desde P0-S1A solo para entender la separacion de `auth`, homes, menus y contextos operativos. Esa consulta no autoriza construir pantallas comerciales.
 
 ## Documentos
 
@@ -70,7 +72,7 @@ Solo se leen cuando `00-Producto-CRM-TINK-y-P0-Frontend.md` o una decision aprob
 | `11-UX-Bitacora-Acciones-y-Timeline-Lead.md` | Define timeline, bitacora y filtros del lead. |
 | `12-Diccionario-Funcional-y-Acciones-CRM.md` | Define como documentar acciones y flujos funcionales. |
 | `13-Flujo-Comercial-CRM.md` | Explica flujo Lead -> Oportunidad -> Estimacion -> Orden de Venta -> Contrato. |
-| `14-Modularizacion-Frontend-por-Areas-y-Roles.md` | Define separacion de UI por ventas, formalizaciones, cobros, modificaciones, jefatura y modulos compartidos. |
+| `14-Modularizacion-Frontend-por-Areas-y-Roles.md` | Define separacion de UI por contextos operativos, homes, menus, ventas, formalizaciones, cobros, mercadeo, soporte, jefatura y modulos compartidos. |
 | `15-UX-Calendarios-por-Area-y-Supervision.md` | Define calendarios separados por area y vista consolidada de jefatura. |
 | `16-UX-Notas-Adhesivas-y-Anotaciones.md` | Define UX, librerias y reglas para notas adhesivas/anotaciones contextuales por vista, entidad y accion. |
 | `17-UX-Dashboard-Leads-SLA-y-Perdida.md` | Define dashboard ejecutivo, bandejas de leads nuevos/atencion, pausa, perdida y reportes para jefatura. |
@@ -90,6 +92,7 @@ Antes de crear o modificar pantallas, componentes, hooks o clientes API, abrir:
 00-Producto-CRM-TINK-y-P0-Frontend.md
 22-UX-Identidad-Usuarios-Roles-P0-S1.md
 24-Contrato-Visual-Identidad-P0-S1.md
+14-Modularizacion-Frontend-por-Areas-y-Roles.md
 ```
 
 Esa lectura define:
@@ -97,6 +100,7 @@ Esa lectura define:
 - que puede mostrar el stub frontend;
 - que queda bloqueado;
 - que contrato visual de identidad manda;
+- como se separan `auth`, homes, menus y contextos operativos;
 - por que leads sigue fuera.
 
 El siguiente slice aprobado en papel es identidad P0-S1A. El documento `20-Alcance-P0-Vertical-Leads-Frontend.md` se consulta despues de aprobar avanzar mas alla de identidad.

@@ -83,6 +83,7 @@ Reglas:
 - local es alternativa controlada;
 - nunca guardar clave en texto plano;
 - el hash solo aplica a proveedor `local`;
+- el lockout local vive en esta identidad, no en el usuario completo;
 - no puede existir mas de una identidad con el mismo proveedor y correo normalizado.
 
 Campos principales:
@@ -95,6 +96,9 @@ Campos principales:
 | `email_auth_identity` | Si | Si | Correo usado para esta identidad. |
 | `normalized_email_auth_identity` | Si | Si | Correo normalizado usado para unicidad por proveedor y login local. |
 | `password_hash_auth_identity` | No | Si | Hash de password local. |
+| `failed_login_count_auth_identity` | Si | No | Contador persistente de intentos fallidos de login local. |
+| `locked_until_auth_identity` | No | No | Fecha hasta la que el login local queda bloqueado temporalmente. |
+| `last_failed_login_at_auth_identity` | No | No | Ultima fecha de intento fallido de login local. |
 | `status_auth_identity` | Si | No | Estado de la identidad de login. |
 
 ## sec_auth_session
@@ -106,12 +110,15 @@ Reglas:
 - la sesion identifica al usuario, no congela permisos;
 - las acciones sensibles comparan la version de permisos de la sesion contra `sec_user.permission_version_user`;
 - logout, bloqueo de usuario o sospecha de seguridad revocan la sesion;
-- el frontend no administra tokens.
+- el frontend no administra tokens;
+- la cookie de sesion lleva token opaco y la tabla guarda solo HMAC.
 
 Campos principales:
 
 | Campo | Obligatorio | Sensible | Descripcion |
 | --- | --- | --- | --- |
+| `public_id_auth_session` | Si | No | Identificador publico para soporte/auditoria; no es secreto de cookie. |
+| `token_hash_auth_session` | Si | Si | Hash HMAC del token opaco de sesion. |
 | `user_id_auth_session` | Si | No | Usuario interno propietario de la sesion. |
 | `auth_identity_id_auth_session` | Si | No | Metodo de login usado para crear la sesion. |
 | `permission_version_auth_session` | Si | No | Version de permisos al momento de emitir la sesion. |
@@ -127,7 +134,7 @@ Reglas:
 
 - nunca guardar refresh token plano;
 - cada refresh usado se rota;
-- reusar un refresh token anterior invalida la familia;
+- reusar un refresh token anterior invalida la familia y revoca todas las sesiones activas del usuario;
 - la cookie de refresh debe tener ruta restringida;
 - eventos relevantes se registran en `audit_security_event`.
 
@@ -140,6 +147,28 @@ Campos principales:
 | `token_hash_refresh_token` | Si | Si | Hash del refresh token. |
 | `status_refresh_token` | Si | No | Estado: active, rotated, reused, revoked o expired. |
 | `expires_at_refresh_token` | Si | No | Fecha de expiracion. |
+
+## sec_local_password_reset_token
+
+Proposito: guardar tokens opacos hasheados para activacion/reset local.
+
+Reglas:
+
+- nunca guardar token plano;
+- emitir uno nuevo revoca tokens activos previos de la misma identidad;
+- consumirlo marca `used` y actualiza el hash Argon2id;
+- el canal que entrega el token plano debe aprobarse aparte.
+
+Campos principales:
+
+| Campo | Obligatorio | Sensible | Descripcion |
+| --- | --- | --- | --- |
+| `auth_identity_id_local_password_reset_token` | Si | No | Identidad local dueña del reset. |
+| `token_hash_local_password_reset_token` | Si | Si | HMAC del token opaco de reset. |
+| `status_local_password_reset_token` | Si | No | Estado: active, used, revoked o expired. |
+| `requested_at_local_password_reset_token` | Si | No | Fecha de solicitud. |
+| `expires_at_local_password_reset_token` | Si | No | Fecha de expiracion. |
+| `used_at_local_password_reset_token` | No | No | Fecha de consumo exitoso. |
 
 ## sec_role
 

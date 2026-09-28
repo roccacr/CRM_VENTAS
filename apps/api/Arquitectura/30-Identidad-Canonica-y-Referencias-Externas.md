@@ -103,6 +103,26 @@ int_user_external_identity
 
 Motivo: usuarios tienen autenticacion, permisos, roles y trazabilidad de seguridad. Conviene documentar su crosswalk separado.
 
+## Crosswalk de usuarios por proveedor
+
+Cada usuario interno vive una sola vez en `sec_user`. Cada proveedor externo agrega, si existe, una fila propia en `int_user_external_identity`.
+
+Regla:
+
+```txt
+No se inventan ids externos. Si un proveedor aun no tiene id real, no se crea la referencia de usuario para ese proveedor.
+```
+
+Caso aprobado del owner Roberto:
+
+| Proveedor | Estado | Regla |
+| --- | --- | --- |
+| `legacy_crm` | activo | Referencia `14` tomada de `crmdatabase-api.admins.id_admin`, solo como crosswalk historico. |
+| `netsuite` | activo | Referencia `653055` tomada de `idnetsuite_admin`, solo como alias externo de Roberto. |
+| `odoo` | pendiente | No existe id de Odoo todavia; queda el sistema `odoo` en `int_external_system` como `pending`, pero no se crea fila falsa en `int_user_external_identity`. |
+
+Si despues aparece Odoo u otro tercer proveedor, se agrega el proveedor en `int_external_system` y se vincula el id real contra el mismo `sec_user.id_user`. No se cambia la persona interna ni las relaciones del CRM.
+
 ## int_external_reference
 
 Proposito: relacionar una entidad interna del CRM con un id externo de cualquier proveedor.

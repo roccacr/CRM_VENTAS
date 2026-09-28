@@ -86,7 +86,7 @@ Add design-system, testing, security, accessibility, or review skills only when 
 - Zod or equivalent typed validation for form schemas.
 - Tailwind CSS.
 - Accessible components based on Radix/shadcn when useful.
-- MSAL for Microsoft Entra ID authentication when login is implemented.
+- Microsoft login is initiated through the BFF API; do not run MSAL directly in React unless a new architecture decision explicitly changes this.
 - Authentication follows the BFF/session-cookie rule from `Arquitectura/21-Seguridad-Autenticacion-BFF-y-Sesion.md`; storing tokens in frontend storage is forbidden.
 - Use pnpm from this frontend folder for dependency installation and local scripts.
 - Never run npm commands, never create `package-lock.json`, and never create a root Node workspace for this CRM.
@@ -276,7 +276,7 @@ Do not load thousands of complete records into browser memory.
 - If the API revokes or rejects a permission, update visible actions from the API response; never retry by trusting stale frontend permission state.
 - Do not expose NetSuite/Odoo field names or payload structures in UI code, forms, labels, stores, or API clients.
 - Do not expose Kapso payloads, templates, webhook ids, or provider-specific communication fields in UI code, forms, labels, stores, or API clients.
-- Do not manually store sensitive tokens when MSAL can manage them.
+- Do not manually store sensitive tokens. In the approved BFF flow, React never owns CRM session, refresh, Microsoft access, Microsoft refresh, or ID tokens.
 - Do not expose secrets in `VITE_*` variables.
 - Sanitize HTML if any description supports rich text.
 
@@ -302,7 +302,7 @@ Do not load thousands of complete records into browser memory.
 
 ## Microsoft 365 Integration
 
-- Login uses MSAL.
+- Login uses the backend identity API. Microsoft/MSAL runs in the API adapter; React only follows API redirects/contracts.
 - Request only the minimum required scopes.
 - Use the backend API for calendar workflows that require business rules, audit, or internal permissions.
 - Do not call Microsoft Graph directly from components when backend audit or CRM authorization is required.

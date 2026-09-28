@@ -1,286 +1,270 @@
 import { Inject, Injectable } from "@nestjs/common";
 
-import { DatabaseService } from "../../../database/database.service.js";
-import { LOGOUT_REQUESTED_EVENT } from "../audit/security-audit.events.js";
-import { SecurityAuditService } from "../audit/security-audit.service.js";
-import { DEFAULT_DIRECT_OVERRIDE_SCOPE, EffectivePermissionService } from "../permissions/effective-permission.service.js";
-import type { PermissionInput, PermissionOverrideInput } from "../permissions/permission.types.js";
-import { resolveHighestPermissionScope } from "../permissions/permission-scope.js";
-import type { IdentityAuthSummary, IdentityOrgUnit, IdentityProfile, IdentityRole } from "./identity.types.js";
+import type { EncryptedMicrosoftCache } from "../../../common/security/microsoft-msal-cache-crypto.service.js";
+import type { IdentityActiveSession, IdentityProfile } from "./identity.types.js";
+import { IdentityLocalRepository } from "./identity-local.repository.js";
+import { IdentityMicrosoftRepository } from "./identity-microsoft.repository.js";
+import { IdentityProfileRepository } from "./identity-profile.repository.js";
+import { IdentitySessionRepository } from "./identity-session.repository.js";
 
-const ACTIVE_STATUS = "active";
-const REVOKED_STATUS = "revoked";
-const LOCAL_PROVIDER_CODE = "local";
-const MICROSOFT_PROVIDER_CODE = "microsoft";
-const PENDING_LOCAL_STATUS = "pending";
-const IDENTITY_RUNTIME_AUDIT_SOURCE = "identity_runtime";
-const UPDATE_RESULT_EMPTY_COUNT = 0;
-const LOCAL_PROVIDER_AVAILABLE_STATUSES = new Set([ACTIVE_STATUS, PENDING_LOCAL_STATUS]);
-
-type ActiveSessionRow = {
-    sessionPublicId: string;
-    sessionStatus: string;
-    sessionExpiresAt: Date | string;
-    sessionPermissionVersion: number;
+export type LocalLoginIdentity = {
+    authIdentityId: number;
+    failedLoginCount: number;
+    lockedUntil: Date | null;
+    passwordHash: string;
+    permissionVersion: number;
     userId: number;
-    userPublicId: string;
+};
+
+export type FailedLocalLoginRecord = {
+    failedLoginCount: number;
+    lockedUntil: Date | null;
+};
+
+export type ResettableLocalIdentity = {
+    authIdentityId: number;
+    userId: number;
+};
+
+export type MicrosoftLoginIdentity = {
+    authIdentityId: number;
+    permissionVersion: number;
+    userId: number;
+};
+
+export interface ProfileImageRecord {
+    bytes: Buffer;
+    mimeType: string;
+}
+
+export interface CreateIdentitySessionInput {
+    authIdentityId: number;
+    ipAddress?: string | undefined;
+    permissionVersion: number;
+    providerCode: string;
+    refreshExpiresAt: Date;
+    refreshFamilyId: string;
+    refreshTokenHash: string;
+    sessionExpiresAt: Date;
+    sessionPublicId: string;
+    sessionTokenHash: string;
+    userAgent?: string | undefined;
+    userId: number;
+}
+
+export interface RotateRefreshSessionInput {
+    refreshTokenHash: string;
+    nextRefreshExpiresAt: Date;
+    nextRefreshTokenHash: string;
+    nextSessionExpiresAt: Date;
+    nextSessionTokenHash: string;
+}
+
+export type RotateRefreshSessionResult =
+    | {
+          authIdentityId: number;
+          providerCode: string;
+          status: "rotated";
+          sessionPublicId: string;
+          userId: number;
+      }
+    | {
+          status: "expired" | "invalid" | "not_found" | "permission_stale" | "reused";
+          sessionPublicId?: string;
+          userId?: number;
+      };
+
+export interface CreateLocalPasswordResetTokenInput {
+    authIdentityId: number;
+    expiresAt: Date;
+    ipAddress?: string | undefined;
+    tokenHash: string;
+    userAgent?: string | undefined;
+}
+
+export interface CompleteLocalPasswordResetInput {
+    ipAddress?: string | undefined;
+    passwordHash: string;
+    tokenHash: string;
+    userAgent?: string | undefined;
+}
+
+export type CompleteLocalPasswordResetResult = { status: "completed"; userId: number } | { status: "expired" | "invalid" | "not_found" };
+
+export type RevokeOwnSessionResult = { status: "revoked" | "not_found" | "not_authenticated" };
+
+export interface MicrosoftAccountCache {
+    authIdentityId: number;
+    cache: EncryptedMicrosoftCache;
+    homeAccountId: string;
+}
+
+export interface MicrosoftIdentityInput {
+    cache: EncryptedMicrosoftCache;
     displayName: string;
     email: string;
-    userStatus: string;
-    permissionVersion: number;
-};
-
-type UpdateResultWithCount = {
-    numUpdatedRows?: bigint | number;
-};
-
-/**
- * Determina si un UPDATE realmente cambio una fila.
- *
- * Kysely devuelve `numUpdatedRows` como bigint en MySQL. Encapsular la lectura
- * evita que el logout audite dos veces en carreras concurrentes: solo la
- * peticion que revoca la sesion activa registra el evento.
- */
-const hasUpdatedRows = (result: UpdateResultWithCount | undefined): boolean => Number(result?.numUpdatedRows ?? UPDATE_RESULT_EMPTY_COUNT) > UPDATE_RESULT_EMPTY_COUNT;
+    graphSyncedAt: Date | null;
+    homeAccountId: string;
+    oid: string;
+    profileImage: {
+        bytes: Buffer;
+        mimeType: string;
+        publicUrl: string;
+        sourceSubject: string;
+    } | null;
+    subject: string;
+    tenantId: string;
+}
 
 /**
- * Frontera de persistencia para lecturas/escrituras de identidad.
+ * Fachada estable de persistencia de identidad.
  *
- * Todos los joins usan tablas canonicas CRM e IDs numericos internos solo en la
- * capa de base de datos. Las respuestas publicas exponen `publicId` y campos
- * neutrales. IDs de proveedores externos quedan fuera de este repository salvo
- * que un adapter futuro los mapee primero a usuarios canonicos.
+ * Mantiene el contrato que consume `IdentityService`, pero delega SQL concreto
+ * a repositorios internos por responsabilidad: perfil/permisos, sesiones,
+ * credenciales locales y Microsoft 365.
  */
 @Injectable()
 export class IdentityRepository {
     /**
-     * Inyecta base de datos y calculadora de permisos efectivos.
+     * Inyecta repositorios internos por responsabilidad.
      */
     constructor(
-        @Inject(DatabaseService) private readonly database: DatabaseService,
-        @Inject(EffectivePermissionService) private readonly permissions: EffectivePermissionService,
-        @Inject(SecurityAuditService) private readonly audit: SecurityAuditService,
+        @Inject(IdentityProfileRepository) private readonly profiles: IdentityProfileRepository,
+        @Inject(IdentitySessionRepository) private readonly sessions: IdentitySessionRepository,
+        @Inject(IdentityLocalRepository) private readonly local: IdentityLocalRepository,
+        @Inject(IdentityMicrosoftRepository) private readonly microsoft: IdentityMicrosoftRepository,
     ) {}
 
     /**
-     * Carga la sesion activa y recalcula permisos efectivos del usuario.
-     *
-     * Esto intencionalmente no se lee desde un payload cacheado de login. Quitar
-     * permisos, denies directos, cambios de rol y cambios de area deben afectar
-     * el siguiente request protegido bajo la regla P0-S1A.
+     * Carga identidad desde hash de token opaco de sesion.
      */
-    async findBySessionPublicId(sessionPublicId: string): Promise<IdentityProfile | null> {
-        const session = await this.findActiveSessionByPublicId(sessionPublicId);
-
-        if (!session) {
-            return null;
-        }
-
-        const [roles, orgUnits, overrides, localStatus] = await Promise.all([this.findRoles(session.userId), this.findOrgUnits(session.userId), this.findOverrides(session.userId), this.findLocalAuthStatus(session.userId)]);
-        const rolePermissionScope = resolveHighestPermissionScope(orgUnits.map((orgUnit) => orgUnit.scope));
-        const rolePermissions = await this.findRolePermissions(session.userId, rolePermissionScope);
-        const effective = this.permissions.calculate({ rolePermissions, overrides });
-
-        return this.buildIdentityProfile({
-            session,
-            roles,
-            orgUnits,
-            localStatus,
-            permissions: effective.permissions,
-        });
+    async findBySessionTokenHash(sessionTokenHash: string): Promise<IdentityProfile | null> {
+        return this.profiles.findBySessionTokenHash(sessionTokenHash);
     }
 
     /**
-     * Busca la sesion activa usando solo identidad canonica del CRM.
-     *
-     * La sesion debe estar activa, no expirada, y el usuario debe seguir activo y
-     * sin borrado logico. Esta consulta es la compuerta real antes de recalcular
-     * permisos efectivos.
+     * Busca una identidad local activa por correo normalizado para login.
      */
-    private async findActiveSessionByPublicId(sessionPublicId: string): Promise<ActiveSessionRow | null> {
-        const now = new Date();
-        const row = await this.database.db
-            .selectFrom("sec_auth_session as session")
-            .innerJoin("sec_user as user", "user.id_user", "session.user_id_auth_session")
-            .select(["session.public_id_auth_session as sessionPublicId", "session.status_auth_session as sessionStatus", "session.expires_at_auth_session as sessionExpiresAt", "session.permission_version_auth_session as sessionPermissionVersion", "user.id_user as userId", "user.public_id_user as userPublicId", "user.display_name_user as displayName", "user.email_user as email", "user.status_user as userStatus", "user.permission_version_user as permissionVersion"])
-            .where("session.public_id_auth_session", "=", sessionPublicId)
-            .where("session.status_auth_session", "=", ACTIVE_STATUS)
-            .where("session.expires_at_auth_session", ">", now)
-            .where("user.deleted_at_user", "is", null)
-            .where("user.status_user", "=", ACTIVE_STATUS)
-            .executeTakeFirst();
-
-        return row ?? null;
+    async findActiveLocalIdentity(normalizedEmail: string): Promise<LocalLoginIdentity | null> {
+        return this.local.findActiveLocalIdentity(normalizedEmail);
     }
 
     /**
-     * Arma el contrato publico de identidad sin exponer IDs internos.
+     * Busca una identidad local activa o pendiente para emitir reset neutral.
      */
-    private buildIdentityProfile(input: { session: ActiveSessionRow; roles: IdentityRole[]; orgUnits: IdentityOrgUnit[]; localStatus: string | null; permissions: IdentityProfile["permissions"] }): IdentityProfile {
-        const { session, roles, orgUnits, localStatus, permissions } = input;
-
-        return {
-            user: {
-                publicId: session.userPublicId,
-                displayName: session.displayName,
-                email: session.email,
-                status: session.userStatus,
-                permissionVersion: session.permissionVersion,
-            },
-            session: {
-                publicId: session.sessionPublicId,
-                status: session.sessionStatus,
-                expiresAt: new Date(session.sessionExpiresAt).toISOString(),
-                permissionVersion: session.sessionPermissionVersion,
-            },
-            auth: this.buildAuthSummary(localStatus),
-            roles,
-            orgUnits,
-            permissions,
-        };
+    async findResettableLocalIdentity(normalizedEmail: string): Promise<ResettableLocalIdentity | null> {
+        return this.local.findResettableLocalIdentity(normalizedEmail);
     }
 
     /**
-     * Traduce el estado local a un resumen de autenticacion provider-neutral.
+     * Busca una identidad Microsoft pre-provisionada.
      */
-    private buildAuthSummary(localStatus: string | null): IdentityAuthSummary {
-        const resolvedLocalStatus = localStatus ?? PENDING_LOCAL_STATUS;
-        const availableProviders = LOCAL_PROVIDER_AVAILABLE_STATUSES.has(resolvedLocalStatus) ? [MICROSOFT_PROVIDER_CODE, LOCAL_PROVIDER_CODE] : [MICROSOFT_PROVIDER_CODE];
-
-        return {
-            primaryProvider: MICROSOFT_PROVIDER_CODE,
-            availableProviders,
-            localStatus: resolvedLocalStatus,
-        };
+    async findActiveMicrosoftIdentity(input: { normalizedEmail: string; subject: string }): Promise<MicrosoftLoginIdentity | null> {
+        return this.microsoft.findActiveMicrosoftIdentity(input);
     }
 
     /**
-     * Revoca una sesion y registra auditoria de seguridad en una transaccion.
-     *
-     * Si la sesion no existe, logout sigue siendo idempotente y no crea fila de
-     * auditoria porque no hay usuario canonico para usar como actor/target.
+     * Persiste metadata Microsoft y cache MSAL cifrada.
      */
-    async revokeSessionByPublicId(sessionPublicId: string, ipAddress?: string, userAgent?: string): Promise<void> {
-        await this.database.db.transaction().execute(async (transaction) => {
-            const session = await transaction.selectFrom("sec_auth_session").select(["id_auth_session", "user_id_auth_session"]).where("public_id_auth_session", "=", sessionPublicId).where("status_auth_session", "=", ACTIVE_STATUS).executeTakeFirst();
-
-            if (!session) {
-                return;
-            }
-
-            const updateResult = await transaction
-                .updateTable("sec_auth_session")
-                .set({
-                    status_auth_session: REVOKED_STATUS,
-                    revoked_at_auth_session: new Date(),
-                    revoked_by_user_id_auth_session: session.user_id_auth_session,
-                })
-                .where("id_auth_session", "=", session.id_auth_session)
-                .where("status_auth_session", "=", ACTIVE_STATUS)
-                .executeTakeFirst();
-
-            if (!hasUpdatedRows(updateResult)) {
-                return;
-            }
-
-            await this.audit.record(
-                {
-                    eventType: LOGOUT_REQUESTED_EVENT.eventType,
-                    actorUserId: session.user_id_auth_session,
-                    targetUserId: session.user_id_auth_session,
-                    summary: LOGOUT_REQUESTED_EVENT.summary,
-                    reason: LOGOUT_REQUESTED_EVENT.reason,
-                    ...(ipAddress ? { ipAddress } : {}),
-                    ...(userAgent ? { userAgent } : {}),
-                    metadata: {
-                        source: IDENTITY_RUNTIME_AUDIT_SOURCE,
-                    },
-                },
-                transaction,
-            );
-        });
+    async saveMicrosoftAccount(input: MicrosoftIdentityInput & MicrosoftLoginIdentity): Promise<void> {
+        await this.microsoft.saveMicrosoftAccount(input);
     }
 
     /**
-     * Retorna roles activos asignados directamente al usuario canonico CRM.
+     * Lee cache MSAL cifrada para una identidad Microsoft.
      */
-    private async findRoles(userId: number): Promise<IdentityRole[]> {
-        const rows = await this.database.db.selectFrom("sec_user_role as userRole").innerJoin("sec_role as role", "role.id_role", "userRole.role_id_user_role").select(["role.code_role as code", "role.name_role as name", "role.status_role as status"]).where("userRole.user_id_user_role", "=", userId).where("userRole.status_user_role", "=", ACTIVE_STATUS).where("role.status_role", "=", ACTIVE_STATUS).where("role.deleted_at_role", "is", null).execute();
-
-        return rows;
+    async findMicrosoftAccountCache(authIdentityId: number): Promise<MicrosoftAccountCache | null> {
+        return this.microsoft.findMicrosoftAccountCache(authIdentityId);
     }
 
     /**
-     * Retorna membresias de area activas del usuario canonico CRM.
-     *
-     * La membresia de area determina el scope ABAC usado luego por resolucion
-     * de permisos: self, assigned, own area, area tree o all areas.
+     * Lee la foto cacheada asociada a una sesion activa.
      */
-    private async findOrgUnits(userId: number): Promise<IdentityOrgUnit[]> {
-        const rows = await this.database.db
-            .selectFrom("sec_user_org_unit as userOrg")
-            .innerJoin("sec_org_unit as org", "org.id_org_unit", "userOrg.org_unit_id_user_org_unit")
-            .select(["org.public_id_org_unit as publicId", "org.code_org_unit as code", "org.name_org_unit as name", "userOrg.membership_code_user_org_unit as membership", "userOrg.scope_code_user_org_unit as scope", "userOrg.status_user_org_unit as status"])
-            .where("userOrg.user_id_user_org_unit", "=", userId)
-            .where("userOrg.status_user_org_unit", "=", ACTIVE_STATUS)
-            .where("org.status_org_unit", "=", ACTIVE_STATUS)
-            .where("org.deleted_at_org_unit", "is", null)
-            .execute();
-
-        return rows;
+    async findProfileImageBySessionTokenHash(sessionTokenHash: string): Promise<ProfileImageRecord | null> {
+        return this.microsoft.findProfileImageBySessionTokenHash(sessionTokenHash);
     }
 
     /**
-     * Retorna permisos derivados de rol usando el scope organizacional activo mas amplio del usuario.
+     * Actualiza cache MSAL luego de una renovacion silenciosa exitosa.
      */
-    private async findRolePermissions(userId: number, scope: string): Promise<PermissionInput[]> {
-        const rows = await this.database.db
-            .selectFrom("sec_user_role as userRole")
-            .innerJoin("sec_role as role", "role.id_role", "userRole.role_id_user_role")
-            .innerJoin("sec_role_permission as rolePermission", "rolePermission.role_id_role_permission", "userRole.role_id_user_role")
-            .innerJoin("sec_permission as permission", "permission.id_permission", "rolePermission.permission_id_role_permission")
-            .select(["permission.code_permission as code"])
-            .where("userRole.user_id_user_role", "=", userId)
-            .where("userRole.status_user_role", "=", ACTIVE_STATUS)
-            .where("role.status_role", "=", ACTIVE_STATUS)
-            .where("role.deleted_at_role", "is", null)
-            .where("rolePermission.status_role_permission", "=", ACTIVE_STATUS)
-            .where("permission.status_permission", "=", ACTIVE_STATUS)
-            .execute();
-
-        return rows.map((row) => ({ code: row.code, scope }));
+    async updateMicrosoftCache(authIdentityId: number, cache: EncryptedMicrosoftCache): Promise<void> {
+        await this.microsoft.updateMicrosoftCache(authIdentityId, cache);
     }
 
     /**
-     * Retorna grants/denies directos activos del usuario canonico CRM.
-     *
-     * P0-S1A permite overrides directos, pero mantiene delegacion temporal fuera
-     * de alcance. Un deny aqui debe imponerse sobre un allow por rol en
-     * `EffectivePermissionService`.
+     * Marca Microsoft como requiere login y revoca las sesiones CRM de esa identidad.
      */
-    private async findOverrides(userId: number): Promise<PermissionOverrideInput[]> {
-        const now = new Date();
-        const rows = await this.database.db
-            .selectFrom("sec_user_permission_override as override")
-            .innerJoin("sec_permission as permission", "permission.id_permission", "override.permission_id_user_permission_override")
-            .select(["permission.code_permission as code", "override.effect_user_permission_override as effect"])
-            .where("override.user_id_user_permission_override", "=", userId)
-            .where("override.status_user_permission_override", "=", ACTIVE_STATUS)
-            .where("override.revoked_at_user_permission_override", "is", null)
-            .where("permission.status_permission", "=", ACTIVE_STATUS)
-            .where("override.starts_at_user_permission_override", "<=", now)
-            .where((expression) => expression.or([expression("override.ends_at_user_permission_override", "is", null), expression("override.ends_at_user_permission_override", ">", now)]))
-            .execute();
-
-        return rows.filter((row): row is { code: string; effect: "allow" | "deny" } => row.effect === "allow" || row.effect === "deny").map((row) => ({ code: row.code, effect: row.effect, scope: DEFAULT_DIRECT_OVERRIDE_SCOPE }));
+    async markMicrosoftInteractionRequiredAndRevokeSessions(authIdentityId: number, userId: number): Promise<void> {
+        await this.microsoft.markMicrosoftInteractionRequiredAndRevokeSessions(authIdentityId, userId);
     }
 
     /**
-     * Retorna estado de login local sin exponer detalles de credenciales.
+     * Incrementa contador persistente de intentos fallidos de forma atomica.
      */
-    private async findLocalAuthStatus(userId: number): Promise<string | null> {
-        const row = await this.database.db.selectFrom("sec_auth_identity").select("status_auth_identity").where("user_id_auth_identity", "=", userId).where("provider_code_auth_identity", "=", LOCAL_PROVIDER_CODE).where("deleted_at_auth_identity", "is", null).executeTakeFirst();
+    async recordFailedLocalLogin(authIdentityId: number, lockoutMaxFailures: number, lockUntil: Date): Promise<FailedLocalLoginRecord> {
+        return this.local.recordFailedLocalLogin(authIdentityId, lockoutMaxFailures, lockUntil);
+    }
 
-        return row?.status_auth_identity ?? null;
+    /**
+     * Limpia lockout y contador de intentos despues de autenticacion correcta.
+     */
+    async recordSuccessfulLocalLogin(authIdentityId: number, userId: number): Promise<void> {
+        await this.local.recordSuccessfulLocalLogin(authIdentityId, userId);
+    }
+
+    /**
+     * Crea sesion backend y refresh token inicial en una sola transaccion.
+     */
+    async createSession(input: CreateIdentitySessionInput): Promise<void> {
+        await this.sessions.createSession(input);
+    }
+
+    /**
+     * Emite un token opaco de activacion/reset guardando solo su HMAC.
+     */
+    async createLocalPasswordResetToken(input: CreateLocalPasswordResetTokenInput): Promise<void> {
+        await this.local.createLocalPasswordResetToken(input);
+    }
+
+    /**
+     * Verifica si un token de reset puede consumirse antes de gastar Argon2id.
+     */
+    async hasUsableLocalPasswordResetToken(tokenHash: string): Promise<boolean> {
+        return this.local.hasUsableLocalPasswordResetToken(tokenHash);
+    }
+
+    /**
+     * Consume un token de activacion/reset y actualiza la clave local con Argon2id.
+     */
+    async completeLocalPasswordReset(input: CompleteLocalPasswordResetInput): Promise<CompleteLocalPasswordResetResult> {
+        return this.local.completeLocalPasswordReset(input);
+    }
+
+    /**
+     * Rota refresh token y token de sesion en una transaccion.
+     */
+    async rotateRefreshSession(input: RotateRefreshSessionInput): Promise<RotateRefreshSessionResult> {
+        return this.sessions.rotateRefreshSession(input);
+    }
+
+    /**
+     * Lista sesiones activas del usuario autenticado.
+     */
+    async listActiveSessions(currentSessionTokenHash: string): Promise<IdentityActiveSession[] | null> {
+        return this.sessions.listActiveSessions(currentSessionTokenHash);
+    }
+
+    /**
+     * Revoca una sesion activa propia por publicId.
+     */
+    async revokeOwnSessionByPublicId(currentSessionTokenHash: string, targetSessionPublicId: string, ipAddress?: string, userAgent?: string): Promise<RevokeOwnSessionResult> {
+        return this.sessions.revokeOwnSessionByPublicId(currentSessionTokenHash, targetSessionPublicId, ipAddress, userAgent);
+    }
+
+    /**
+     * Revoca una sesion por hash del token opaco.
+     */
+    async revokeSessionByTokenHash(sessionTokenHash: string, ipAddress?: string, userAgent?: string): Promise<void> {
+        await this.sessions.revokeSessionByTokenHash(sessionTokenHash, ipAddress, userAgent);
     }
 }

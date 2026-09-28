@@ -10,7 +10,7 @@ Si voy a construir algo en el API, en que carpeta va y que reglas debo leer?
 
 Debe usarse antes de crear modulos, endpoints, repositorios, migraciones, integraciones, jobs o reglas de negocio.
 
-Estado actual: este documento describe donde va el codigo aprobado. Desde la ley `0.3.14`, solo se autoriza construir el runtime minimo de identidad; no existe autorizacion para modulos comerciales ni integraciones operativas.
+Estado actual: este documento describe donde va el codigo aprobado. Desde la ley `0.3.19`, solo se autoriza construir el runtime minimo de identidad; no existe autorizacion para modulos comerciales ni integraciones operativas.
 
 Para el primer corte ejecutable, identidad manda. `23-Alcance-P0-Vertical-Leads.md` aplica despues de cerrar identidad, usuarios, roles, permisos, contrato canonico y modelo MySQL minimo.
 
@@ -41,11 +41,11 @@ El frontend nunca decide permisos finales, estados finales, integraciones ni tra
 | `src/modules/crm/notes` | Notas persistidas, sticky notes, anotaciones y permisos de notas. | Envio directo por Kapso/correo/Microsoft. | `18`. |
 | `src/modules/crm/permissions` | Calculo de permisos efectivos, grants y denials. Delegacion temporal queda fuera de S1A. | Permisos calculados en frontend. | `05`, `09`, `21`. |
 | `src/modules/crm/audit` | Auditoria tecnica y eventos sensibles. | Timeline comercial de usuario si pertenece al modulo de lead. | `05`, `13`. |
-| `src/integrations/common/ports` | Interfaces estables para proveedores externos. | Implementaciones concretas. | `04`, `11`. |
+| `src/modules/crm/identity/ports` | Interfaces estables para proveedores externos usados por identidad. | Implementaciones concretas. | `04`, `11`. |
 | `src/integrations/netsuite` | Cliente, DTOs, mappers y errores especificos de NetSuite. | Reglas core del CRM. | `04`. |
 | `src/integrations/odoo` | Cliente, DTOs, mappers y errores especificos de Odoo. | Reglas core del CRM. | `04`. |
 | `src/integrations/kapso` | Mensajeria, templates, webhooks y mappers de Kapso. | UI o reglas de lead core. | `04`, `13`. |
-| `src/integrations/microsoft365` | Microsoft Graph, calendario externo y Entra ID. | Reglas CRM de calendario. | `04`, `17`. |
+| `src/integrations/microsoft365` | Entra ID OIDC, MSAL Node, Graph photo con timeout y adapters tecnicos Microsoft. | Reglas CRM de calendario, permisos o negocio. | `04`, `17`, `24`, `33`. |
 | `src/integrations/legacy-crm` | Lectura temporal del CRM viejo y mapeo a contrato canonico. | Nuevas reglas de negocio. | `10`, `11`. |
 | `src/database` | Conexion Kysely, tipos DB y utilidades de persistencia para `CRM_THINK_V2`. | SQL de negocio en controllers, lectura del CRM viejo o payloads de proveedores. | `12`. |
 | `database/migrations` | Migraciones SQL versionadas y revisables. | Datos sensibles o credenciales. | `03`, `12`, `21`. |
@@ -97,7 +97,7 @@ CRM nuevo -> query directa al CRM viejo
 
 ## Primer vertical slice aprobado ahora
 
-El desarrollo real aprobado por la ley `0.3.14` debe ser identidad:
+El desarrollo real aprobado por la ley `0.3.19` debe ser identidad:
 
 1. Leer `33-Contrato-API-Identidad-P0-S1.md`.
 2. Crear bootstrap NestJS minimo solo para identidad.
@@ -154,12 +154,12 @@ Antes de tocar codigo:
 
 | Elemento | Estado |
 | --- | --- |
-| Esqueleto NestJS | Autorizado solo como runtime minimo de identidad por ley `0.3.14`; no autoriza modulos comerciales. |
+| Esqueleto NestJS | Autorizado solo como runtime minimo de identidad por ley vigente `0.3.27`; no autoriza modulos comerciales. |
 | Kysely/mysql2 | Autorizado para runner schema-only y runtime minimo de identidad contra `CRM_THINK_V2`. |
 | SQL identidad P0-S1 | Esquema validado y seed de catalogos S1A ejecutado en `CRM_THINK_V2`; usuarios, credenciales y datos de negocio siguen fuera. |
 | Contrato API identidad | Creado como documento conceptual; no es OpenAPI ejecutable. |
 | OpenAPI identidad | Permitido solo si se limita al contrato minimo de identidad; OpenAPI comercial sigue prohibido. |
-| Primer vertical slice real | Identidad; aprobado como runtime minimo por ley `0.3.14`. |
-| MySQL `.env` local | Pendiente de configurar para ejecutar el runner; no guardar credenciales en disco sin control. |
-| Runner schema-only | Creado con pnpm/Kysely/mysql2; pasa typecheck; pendiente de prueba end-to-end con `.env` seguro. |
-| Migracion aplicada en DB | `SQL/001` aplicado manualmente via MCP en `CRM_THINK_V2`; `SQL/002` ejecutado solo como catalogos S1A; `conf_schema_migration` registra `001` por marca manual equivalente. |
+| Primer vertical slice real | Identidad; aprobado como runtime minimo por ley `0.3.19`. |
+| MySQL `.env` local | Existe para runtime minimo con usuario dedicado; no debe contener usuario master compartido ni usarse para DDL. |
+| Runner schema-only | Creado con pnpm/Kysely/mysql2; `SQL/003` aplicado por runner idempotente con usuario dedicado de migracion schema-only. |
+| Migracion aplicada en DB | `SQL/001` registrado por marca manual equivalente; `SQL/002` ejecutado solo como catalogos S1A; `SQL/003` aplicado y registrado como `202609250003_identity_login_readiness`. `SQL/004` queda creado y registrado en runner como `202609280004_identity_microsoft_session`; requiere ejecucion controlada antes de activar Microsoft real. |

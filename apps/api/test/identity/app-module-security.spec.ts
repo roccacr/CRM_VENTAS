@@ -4,14 +4,25 @@ import { Test } from "@nestjs/testing";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
 import { configureHttpApp } from "../../src/bootstrap/configure-http-app.js";
+import { CsrfGuard } from "../../src/common/security/csrf.guard.js";
 import { SESSION_COOKIE_NAME } from "../../src/common/security/http-security.constants.js";
+import { MicrosoftMsalCacheCryptoService } from "../../src/common/security/microsoft-msal-cache-crypto.service.js";
+import { APP_LOG_REDACT_PATHS } from "../../src/config/app-logging.constants.js";
 import { APPROVED_DATABASE_NAME } from "../../src/config/product.constants.js";
 import { DatabaseService } from "../../src/database/database.service.js";
 import { LegacyCrmDatabaseService } from "../../src/integrations/legacy-crm/legacy-crm-database.service.js";
+import { Microsoft365AuthService } from "../../src/integrations/microsoft365/microsoft365-auth.service.js";
 import { SecurityAuditService } from "../../src/modules/crm/audit/security-audit.service.js";
 import { IdentityController } from "../../src/modules/crm/identity/identity.controller.js";
 import { IdentityRepository } from "../../src/modules/crm/identity/identity.repository.js";
 import { IdentityService } from "../../src/modules/crm/identity/identity.service.js";
+import { IdentityAuditRecorder } from "../../src/modules/crm/identity/identity-audit-recorder.service.js";
+import { IdentityLocalRepository } from "../../src/modules/crm/identity/identity-local.repository.js";
+import { IdentityMicrosoftRepository } from "../../src/modules/crm/identity/identity-microsoft.repository.js";
+import { IdentityMicrosoftSessionService } from "../../src/modules/crm/identity/identity-microsoft-session.service.js";
+import { IdentityProfileRepository } from "../../src/modules/crm/identity/identity-profile.repository.js";
+import { IdentitySessionRepository } from "../../src/modules/crm/identity/identity-session.repository.js";
+import { IdentityTokenService } from "../../src/modules/crm/identity/identity-token.service.js";
 import { EffectivePermissionService } from "../../src/modules/crm/permissions/effective-permission.service.js";
 
 type ExplicitDependencyMetadata = {
@@ -31,6 +42,7 @@ const expectExplicitConstructorInjections = (target: object, expectedIndexes: nu
 type NoSessionSelectQuery = {
     executeTakeFirst: () => Promise<undefined>;
     innerJoin: () => NoSessionSelectQuery;
+    leftJoin: () => NoSessionSelectQuery;
     select: () => NoSessionSelectQuery;
     where: () => NoSessionSelectQuery;
 };
@@ -45,6 +57,7 @@ const createNoSessionDatabaseDouble = (): Pick<DatabaseService["db"], "selectFro
     const query: NoSessionSelectQuery = {
         executeTakeFirst: () => Promise.resolve(undefined),
         innerJoin: () => query,
+        leftJoin: () => query,
         select: () => query,
         where: () => query,
     };
@@ -84,6 +97,7 @@ const configureTestEnvironment = (): void => {
     process.env.FRONTEND_ORIGIN = "http://localhost:5173";
     process.env.COOKIE_SECRET = "test-cookie-secret-for-crm-think-v2";
     process.env.AUDIT_HASH_SECRET = "audit-hash-secret-for-tests-32-chars";
+    process.env.AUTH_TOKEN_HASH_SECRET = "auth-token-hash-secret-for-tests-32";
     process.env.DB_HOST = "127.0.0.1";
     process.env.DB_PORT = "3306";
     process.env.DB_USER = "test";
@@ -164,12 +178,27 @@ describe("Cableado de seguridad del AppModule", () => {
 
     it("declara @Inject explicito en cada provider con dependencias de constructor", () => {
         expectExplicitConstructorInjections(DatabaseService, [0]);
+        expectExplicitConstructorInjections(CsrfGuard, [0]);
         expectExplicitConstructorInjections(SecurityAuditService, [0]);
-        expectExplicitConstructorInjections(IdentityController, [0]);
-        expectExplicitConstructorInjections(IdentityService, [0, 1, 2]);
-        expectExplicitConstructorInjections(IdentityRepository, [0, 1, 2]);
+        expectExplicitConstructorInjections(IdentityController, [0, 1]);
+        expectExplicitConstructorInjections(IdentityService, [0, 1, 2, 3]);
+        expectExplicitConstructorInjections(IdentityAuditRecorder, [0, 1]);
+        expectExplicitConstructorInjections(IdentityMicrosoftSessionService, [0, 1, 2]);
+        expectExplicitConstructorInjections(IdentityRepository, [0, 1, 2, 3]);
+        expectExplicitConstructorInjections(IdentityProfileRepository, [0, 1]);
+        expectExplicitConstructorInjections(IdentitySessionRepository, [0, 1]);
+        expectExplicitConstructorInjections(IdentityLocalRepository, [0, 1]);
+        expectExplicitConstructorInjections(IdentityMicrosoftRepository, [0, 1]);
+        expectExplicitConstructorInjections(IdentityTokenService, [0]);
         expectExplicitConstructorInjections(LegacyCrmDatabaseService, [0]);
+        expectExplicitConstructorInjections(Microsoft365AuthService, [0]);
+        expectExplicitConstructorInjections(MicrosoftMsalCacheCryptoService, [0]);
         expectExplicitConstructorInjections(EffectivePermissionService, []);
+    });
+
+    it("redacta el header CSRF canonico antes de escribir logs", () => {
+        expect(APP_LOG_REDACT_PATHS).toContain("req.headers.x-crm-csrf-token");
+        expect(APP_LOG_REDACT_PATHS).not.toContain("req.headers.x-csrf-token");
     });
 
     it("activa el servicio legacy solo cuando la base vieja esta configurada", async () => {

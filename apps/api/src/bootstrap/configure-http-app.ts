@@ -87,10 +87,11 @@ const readHttpSecurityConfig = (config: ConfigService): HttpSecurityConfig => {
 };
 
 /**
- * Registra soporte de cookies firmadas en Fastify.
+ * Registra soporte de cookies en Fastify con secreto compartido.
  *
  * Responsabilidad unica:
- * - habilita parseo/firma de cookies;
+ * - habilita parseo de cookies;
+ * - deja disponible el secreto para funcionalidades que lo requieran;
  * - no decide nombres de cookies;
  * - no decide expiraciones;
  * - no decide politica de sesion.

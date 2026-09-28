@@ -23,7 +23,7 @@ const TEST_CONFIG: TestConfig = {
     LEGACY_CRM_DB_PASSWORD: "legacy-password",
 };
 
-const PROCESS_ENV_KEYS = ["NODE_ENV", "API_BIND_HOST", "PORT", "FRONTEND_ORIGIN", "COOKIE_SECRET", "AUDIT_HASH_SECRET", "DB_HOST", "DB_PORT", "DB_USER", "DB_PASSWORD", "DB_NAME", "DB_SSL", "OPENAPI_ENABLED", "LEGACY_CRM_DB_NAME", "LEGACY_CRM_DB_USER", "LEGACY_CRM_DB_PASSWORD"] as const;
+const PROCESS_ENV_KEYS = ["NODE_ENV", "API_BIND_HOST", "PORT", "FRONTEND_ORIGIN", "COOKIE_SECRET", "AUDIT_HASH_SECRET", "AUTH_TOKEN_HASH_SECRET", "DB_HOST", "DB_PORT", "DB_USER", "DB_PASSWORD", "DB_NAME", "DB_SSL", "OPENAPI_ENABLED", "LEGACY_CRM_DB_NAME", "LEGACY_CRM_DB_USER", "LEGACY_CRM_DB_PASSWORD"] as const;
 
 type ProcessEnvSnapshot = Record<(typeof PROCESS_ENV_KEYS)[number], string | undefined>;
 
@@ -54,6 +54,7 @@ const configureProcessEnvForLegacy = (): void => {
     process.env.FRONTEND_ORIGIN = "http://localhost:5173";
     process.env.COOKIE_SECRET = "test-cookie-secret-for-crm-think-v2";
     process.env.AUDIT_HASH_SECRET = "audit-hash-secret-for-tests-32-chars";
+    process.env.AUTH_TOKEN_HASH_SECRET = "auth-token-hash-secret-for-tests-32";
     process.env.DB_HOST = "127.0.0.1";
     process.env.DB_PORT = "3306";
     process.env.DB_USER = "test";

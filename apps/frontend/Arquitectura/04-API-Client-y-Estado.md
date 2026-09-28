@@ -16,6 +16,25 @@ Reglas:
 - usar contratos canonicos del CRM para requests y responses.
 - usar `publicId` canonico del CRM para rutas, query keys y acciones; nunca ids de proveedores externos.
 
+## Cliente de identidad BFF
+
+Cuando se apruebe construir login visual, `services/api` debe tener una capa unica para identidad:
+
+- enviar siempre `credentials: "include"`;
+- no aceptar ni guardar access token, refresh token, ID token ni token Microsoft;
+- obtener CSRF desde la cookie `crm_csrf` emitida por `/identity/session`;
+- enviar `X-CRM-CSRF-Token` automaticamente en requests mutables;
+- manejar `401` con refresh single-flight: una sola llamada a `/identity/refresh`, cola de requests concurrentes y un unico retry;
+- manejar `409` de `permissionVersion` limpiando cache/sesion visual y enviando a login nuevo;
+- limpiar cache de TanStack Query al cerrar sesion;
+- exponer funciones canonicas como `getSession`, `getMe`, `loginLocal`, `requestLocalReset`, `completeLocalReset`, `refreshSession` y `logout`.
+
+Regla:
+
+```txt
+Los componentes React nunca llaman `fetch` directo para identidad; consumen hooks/servicios aprobados encima de `services/api`.
+```
+
 ## TanStack Query
 
 Uso obligatorio para:
@@ -34,6 +53,10 @@ Uso obligatorio para:
 Definir query keys por modulo:
 
 ```txt
+identity.session()
+identity.me()
+identity.contexts()
+identity.contextHome(contextCode)
 leads.list(filters)
 leads.detail(leadPublicId)
 activities.byEntity(entityType, entityPublicId)
@@ -43,6 +66,13 @@ notes.byView(viewCode, filters)
 notes.history(notePublicId)
 reports.dashboard(filters)
 ```
+
+Reglas:
+
+- Las query keys de datos operativos deben incluir el `contextCode` cuando el resultado dependa del home, menu, area, rol activo o alcance visible.
+- `contextCode` es un contexto operativo del CRM, no un id de NetSuite, Odoo, Kapso ni legacy.
+- Si cambia `permissionVersion`, se invalidan `identity.me`, `identity.contexts` y cualquier cache que dependa del contexto activo.
+- No usar `roles[0]` como query key ni como destino inicial.
 
 ## Contrato canonico
 
@@ -86,10 +116,38 @@ Reglas:
 Usar solo para:
 
 - sidebar;
+- contexto operativo activo;
 - preferencias de tabla;
 - filtros persistentes;
 - layout;
 - estado UI no remoto.
+
+## Contexto operativo activo
+
+El contexto operativo activo es estado visual temporal. Sirve para decidir que home, sidebar, menu y filtros iniciales se muestran despues de autenticar al usuario.
+
+Fuente:
+
+```txt
+/identity/me -> roles + areas/equipos + permisos efectivos + contextos operativos visibles
+```
+
+Reglas:
+
+- si el usuario tiene un solo contexto, el shell puede enviarlo directo a ese home;
+- si el usuario tiene varios contextos, el shell debe mostrar selector en sidebar/navbar;
+- cambiar contexto no cambia sesion, usuario, token, permiso final ni proveedor de autenticacion;
+- el contexto activo puede recordarse como preferencia visual, pero debe validarse contra el API al cargar;
+- si el API ya no devuelve ese contexto, se limpia la preferencia y se envia al selector o al estado sin permisos;
+- cada modulo define su home y menu, pero el API decide si el usuario puede entrar.
+
+Prohibido:
+
+- guardar contexto activo como fuente permanente de autorizacion;
+- crear una sesion por rol;
+- decidir el home por `roles[0]`;
+- depender de ids internos, NetSuite, Odoo, Kapso o legacy para elegir home;
+- mezclar menus de modulos no autorizados solo porque el usuario tiene un rol alto.
 
 ## Seguridad de estado
 

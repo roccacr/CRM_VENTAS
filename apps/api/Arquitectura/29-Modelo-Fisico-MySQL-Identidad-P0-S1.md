@@ -180,7 +180,10 @@ Columnas:
 | `provider_subject_auth_identity` | `VARCHAR(255)` | No | Identificador unico del proveedor externo, por ejemplo subject de Microsoft. |
 | `email_auth_identity` | `VARCHAR(255)` | Si | Correo usado por esta identidad de login. |
 | `normalized_email_auth_identity` | `VARCHAR(255)` | Si | Correo normalizado usado para login y busqueda. |
-| `password_hash_auth_identity` | `VARCHAR(255)` | No | Hash Argon2id/bcrypt para login local; nunca texto plano. |
+| `password_hash_auth_identity` | `VARCHAR(255)` | No | Hash Argon2id para login local; nunca texto plano. |
+| `failed_login_count_auth_identity` | `INT UNSIGNED` | Si | Contador persistente de intentos fallidos de login local. |
+| `locked_until_auth_identity` | `DATETIME(3)` | No | Fecha hasta la que la identidad queda bloqueada temporalmente. |
+| `last_failed_login_at_auth_identity` | `DATETIME(3)` | No | Ultimo intento fallido de login local. |
 | `status_auth_identity` | `VARCHAR(40)` | Si | Estado de esta identidad: active, inactive o blocked. |
 | `last_used_at_auth_identity` | `DATETIME(3)` | No | Ultima fecha en que se uso esta identidad para autenticar. |
 | `created_at_auth_identity` | `DATETIME(3)` | Si | Fecha de creacion. |
@@ -202,6 +205,7 @@ Reglas:
 - Microsoft es el login principal.
 - Login local es alternativa controlada.
 - No puede existir mas de una identidad con el mismo `provider_code_auth_identity` y `normalized_email_auth_identity`.
+- Intentos fallidos de login local incrementan `failed_login_count_auth_identity` y pueden llenar `locked_until_auth_identity`.
 - El frontend nunca recibe hashes ni tokens.
 
 ## sec_auth_session
@@ -216,6 +220,7 @@ Columnas clave:
 | --- | --- | --- | --- |
 | `id_auth_session` | `BIGINT UNSIGNED` | Si | Identificador interno de la sesion backend. |
 | `public_id_auth_session` | `CHAR(26)` | Si | Identificador publico/tecnico de la sesion para auditoria interna. |
+| `token_hash_auth_session` | `VARCHAR(255)` | Si | Hash HMAC del token opaco de sesion; nunca guarda el token plano. |
 | `user_id_auth_session` | `BIGINT UNSIGNED` | Si | Usuario interno propietario de la sesion. |
 | `auth_identity_id_auth_session` | `BIGINT UNSIGNED` | Si | Identidad de autenticacion usada para crear la sesion. |
 | `permission_version_auth_session` | `INT UNSIGNED` | Si | Version de permisos del usuario al emitir la sesion. |
@@ -231,6 +236,7 @@ Indices:
 
 - `pk_sec_auth_session` (`id_auth_session`);
 - `uq_sec_auth_session_public_id_auth_session` (`public_id_auth_session`);
+- `uq_sec_auth_session_token_hash` (`token_hash_auth_session`);
 - `ix_sec_auth_session_user_status` (`user_id_auth_session`, `status_auth_session`);
 - `ix_sec_auth_session_expires_at` (`expires_at_auth_session`);
 
@@ -269,8 +275,42 @@ Indices:
 Reglas:
 
 - reusar un refresh token ya rotado marca la familia como comprometida;
+- reuso de refresh revoca todas las sesiones activas del usuario;
 - nunca guardar refresh token plano;
 - el frontend no conoce esta tabla ni administra tokens.
+
+## sec_local_password_reset_token
+
+Proposito: guardar tokens opacos hasheados para activacion/reset local.
+
+Columnas clave:
+
+| Columna | Tipo recomendado | Obligatorio | Comentario esperado |
+| --- | --- | --- | --- |
+| `id_local_password_reset_token` | `BIGINT UNSIGNED` | Si | Identificador interno del token de activacion/reset local. |
+| `auth_identity_id_local_password_reset_token` | `BIGINT UNSIGNED` | Si | Identidad local que solicito activacion o reset. |
+| `token_hash_local_password_reset_token` | `VARCHAR(255)` | Si | HMAC del token opaco; nunca token plano. |
+| `status_local_password_reset_token` | `VARCHAR(40)` | Si | Estado: active, used, revoked o expired. |
+| `requested_at_local_password_reset_token` | `DATETIME(3)` | Si | Fecha de solicitud. |
+| `expires_at_local_password_reset_token` | `DATETIME(3)` | Si | Fecha de expiracion. |
+| `used_at_local_password_reset_token` | `DATETIME(3)` | No | Fecha de consumo exitoso. |
+| `revoked_at_local_password_reset_token` | `DATETIME(3)` | No | Fecha de revocacion. |
+| `ip_address_local_password_reset_token` | `VARCHAR(80)` | No | IP desde donde se pidio el reset. |
+| `user_agent_local_password_reset_token` | `VARCHAR(500)` | No | User agent desde donde se pidio el reset. |
+
+Indices:
+
+- `pk_sec_local_password_reset_token` (`id_local_password_reset_token`);
+- `uq_sec_local_password_reset_token_hash` (`token_hash_local_password_reset_token`);
+- `ix_sec_local_password_reset_identity_status` (`auth_identity_id_local_password_reset_token`, `status_local_password_reset_token`);
+- `ix_sec_local_password_reset_expires_at` (`expires_at_local_password_reset_token`).
+
+Reglas:
+
+- no guarda token plano;
+- solo un canal aprobado de entrega puede recibir el token plano;
+- consumir el token actualiza el hash de password con Argon2id y marca el token como `used`;
+- emitir un token nuevo revoca tokens activos previos de la misma identidad.
 
 ## sec_role
 

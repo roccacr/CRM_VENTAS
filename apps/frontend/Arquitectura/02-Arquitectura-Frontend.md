@@ -29,10 +29,12 @@ src/
 │   │   ├── opportunities/
 │   │   ├── estimates/
 │   │   └── sales-orders/
+│   ├── marketing/
 │   ├── formalizations/
 │   ├── collections/
 │   ├── modifications/
 │   ├── management/
+│   ├── support/
 │   ├── customer-journey/
 │   ├── documents/
 │   ├── calendar/
@@ -64,6 +66,38 @@ src/
 | `stores` | Estado UI ligero. |
 | `hooks` | Composicion de logica UI. |
 
+## Auth y contextos operativos
+
+`auth` es global. No pertenece a ventas, mercadeo, finanzas, formalizaciones ni TI.
+
+Despues de `auth`, el shell de la aplicacion debe resolver el contexto operativo inicial usando datos del API:
+
+```txt
+sesion -> usuario actual -> roles -> areas/equipos -> permisos efectivos -> contexto inicial
+```
+
+Regla:
+
+- un usuario con un solo contexto entra directo al home de ese contexto;
+- un usuario con varios contextos ve selector de contexto en navbar/sidebar;
+- cambiar contexto no cambia usuario, no cambia sesion y no crea token nuevo;
+- cada contexto tiene home, menu y rutas propias;
+- el sidebar puede agrupar menus por contexto cuando el usuario tiene varios roles;
+- el frontend nunca decide que un rol puede ver todo por nombre; usa permisos efectivos y alcance devueltos por API.
+
+Mapa conceptual de contextos:
+
+| Contexto | Carpeta destino | Nota |
+| --- | --- | --- |
+| Ventas/vendedor | `modules/sales` | Leads, oportunidades, estimaciones y ordenes cuando se aprueben. |
+| Mercadeo | `modules/marketing` | Campanas, origenes y captacion cuando se aprueben. |
+| Finanzas/cobros | `modules/collections` | Cobros y bandejas financieras cuando se aprueben. |
+| Formalizaciones | `modules/formalizations` | Contrato, banco, traspaso y cierre cuando se aprueben. |
+| Jefatura/gerencia | `modules/management` | Supervision y accesos consolidados sin duplicar pantallas operativas. |
+| Sistemas/TI | `modules/support` | Herramientas de soporte aprobadas e identidad operativa. |
+
+No se crea una carpeta por cada rol literal si eso duplica pantallas. Se crea una carpeta por contexto operativo/dominio y los roles habilitan acceso a ese contexto.
+
 ## Regla de dependencias
 
 Componentes genericos no conocen modulos de negocio.
@@ -79,10 +113,14 @@ modules/notes -> usa contratos canonicos, no proveedores externos
 Regla de carpeta:
 
 - `modules/sales/leads` contiene solo pantallas y flujos de leads de ventas;
+- `modules/marketing` contiene flujos aprobados de mercadeo y no reemplaza ventas;
 - `modules/sales/opportunities` contiene oportunidades;
 - `modules/sales/estimates` contiene estimaciones;
 - `modules/sales/sales-orders` contiene ordenes de venta;
 - `modules/formalizations` no se mezcla con ventas;
+- `modules/collections` no se mezcla con ventas ni formalizaciones;
+- `modules/management` no duplica modulos operativos; enlaza y consolida segun permisos;
+- `modules/support` no se convierte en admin total por nombre; depende de permisos efectivos;
 - `modules/calendar` muestra calendarios por dominio usando datos del API;
 - `modules/notes` muestra notas persistidas en API;
 - `services/api` es la unica entrada HTTP para datos CRM;

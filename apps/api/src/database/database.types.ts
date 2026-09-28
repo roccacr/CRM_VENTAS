@@ -36,6 +36,9 @@ export interface SecAuthIdentityTable {
     email_auth_identity: string;
     normalized_email_auth_identity: string;
     password_hash_auth_identity: string | null;
+    failed_login_count_auth_identity: number;
+    locked_until_auth_identity: DateTime | null;
+    last_failed_login_at_auth_identity: DateTime | null;
     status_auth_identity: string;
     last_used_at_auth_identity: DateTime | null;
     created_at_auth_identity: DateTime;
@@ -46,8 +49,10 @@ export interface SecAuthIdentityTable {
 export interface SecAuthSessionTable {
     id_auth_session: GeneratedNumber;
     public_id_auth_session: string;
+    token_hash_auth_session: string;
     user_id_auth_session: number;
     auth_identity_id_auth_session: number;
+    provider_code_auth_session: string;
     permission_version_auth_session: number;
     status_auth_session: string;
     ip_address_auth_session: string | null;
@@ -56,6 +61,70 @@ export interface SecAuthSessionTable {
     expires_at_auth_session: DateTime;
     revoked_at_auth_session: DateTime | null;
     revoked_by_user_id_auth_session: number | null;
+}
+
+export interface SecMicrosoftAccountTable {
+    id_microsoft_account: GeneratedNumber;
+    auth_identity_id_microsoft_account: number;
+    home_account_id_microsoft_account: string;
+    tenant_id_microsoft_account: string;
+    oid_microsoft_account: string;
+    subject_microsoft_account: string;
+    cache_ciphertext_microsoft_account: string;
+    cache_iv_microsoft_account: string;
+    cache_tag_microsoft_account: string;
+    cache_key_version_microsoft_account: number;
+    cache_synced_at_microsoft_account: DateTime;
+    graph_synced_at_microsoft_account: DateTime | null;
+    interaction_required_at_microsoft_account: DateTime | null;
+    last_silent_token_at_microsoft_account: DateTime | null;
+    status_microsoft_account: string;
+    created_at_microsoft_account: DateTime;
+    updated_at_microsoft_account: DateTime;
+}
+
+export interface SecUserProfileImageTable {
+    id_user_profile_image: GeneratedNumber;
+    user_id_user_profile_image: number;
+    provider_code_user_profile_image: string;
+    source_subject_user_profile_image: string | null;
+    mime_type_user_profile_image: string;
+    image_sha256_user_profile_image: string;
+    image_bytes_user_profile_image: Buffer;
+    public_url_user_profile_image: string;
+    fetched_at_user_profile_image: DateTime;
+    expires_at_user_profile_image: DateTime | null;
+    status_user_profile_image: string;
+    active_key_user_profile_image: number | null;
+    created_at_user_profile_image: DateTime;
+    updated_at_user_profile_image: DateTime;
+}
+
+export interface SecRefreshTokenTable {
+    id_refresh_token: GeneratedNumber;
+    auth_session_id_refresh_token: number;
+    token_family_id_refresh_token: string;
+    token_hash_refresh_token: string;
+    status_refresh_token: string;
+    issued_at_refresh_token: DateTime;
+    expires_at_refresh_token: DateTime;
+    rotated_at_refresh_token: DateTime | null;
+    revoked_at_refresh_token: DateTime | null;
+    revoked_reason_refresh_token: string | null;
+}
+
+export interface SecLocalPasswordResetTokenTable {
+    id_local_password_reset_token: GeneratedNumber;
+    auth_identity_id_local_password_reset_token: number;
+    token_hash_local_password_reset_token: string;
+    status_local_password_reset_token: string;
+    requested_at_local_password_reset_token: DateTime;
+    expires_at_local_password_reset_token: DateTime;
+    used_at_local_password_reset_token: DateTime | null;
+    revoked_at_local_password_reset_token: DateTime | null;
+    ip_address_local_password_reset_token: string | null;
+    user_agent_local_password_reset_token: string | null;
+    active_key_local_password_reset_token: number | null;
 }
 
 export interface SecRoleTable {
@@ -162,6 +231,10 @@ export interface CrmDatabase {
     sec_user: SecUserTable;
     sec_auth_identity: SecAuthIdentityTable;
     sec_auth_session: SecAuthSessionTable;
+    sec_refresh_token: SecRefreshTokenTable;
+    sec_microsoft_account: SecMicrosoftAccountTable;
+    sec_user_profile_image: SecUserProfileImageTable;
+    sec_local_password_reset_token: SecLocalPasswordResetTokenTable;
     sec_role: SecRoleTable;
     sec_permission: SecPermissionTable;
     sec_user_role: SecUserRoleTable;

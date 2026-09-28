@@ -4,10 +4,12 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 import { readTargetTableNames, splitSqlStatements, stripDatabaseSelection, stripLineComments } from "../../migrations/schema-only/202609250001_identity_schema.js";
-import { readSchemaMigrationEnv } from "../../scripts/run-schema-migrations.js";
+import { readSchemaMigrationEnv, schemaMigrations } from "../../scripts/run-schema-migrations.js";
 import { APPROVED_DATABASE_NAME } from "../../src/config/product.constants.js";
 
 const identitySchemaPath = fileURLToPath(new URL("../../Arquitectura/SQL/001_identity_schema_p0_s1.sql", import.meta.url));
+const loginReadinessSchemaPath = fileURLToPath(new URL("../../Arquitectura/SQL/003_identity_login_readiness_p0_s1.sql", import.meta.url));
+const microsoftSessionSchemaPath = fileURLToPath(new URL("../../Arquitectura/SQL/004_identity_microsoft_session_p0_s1.sql", import.meta.url));
 
 /**
  * Entorno minimo para probar la validacion del runner sin abrir MySQL.
@@ -43,11 +45,36 @@ describe("identity schema migration parser", () => {
         expect(() => readTargetTableNames(["CREATE TABLE IF NOT EXISTS CRM_THINK_V2.sec_user (id_user BIGINT)"])).toThrow("nombre de tabla");
     });
 
-    it("extrae exactamente las 14 tablas del artefacto SQL aprobado", async () => {
+    it("extrae exactamente las 15 tablas del artefacto SQL aprobado", async () => {
         const sqlSource = await readFile(identitySchemaPath, "utf8");
         const statements = splitSqlStatements(stripLineComments(stripDatabaseSelection(sqlSource)));
 
-        expect(readTargetTableNames(statements)).toEqual(["sec_user", "sec_auth_identity", "sec_auth_session", "sec_refresh_token", "sec_role", "sec_permission", "sec_user_role", "sec_role_permission", "sec_org_unit", "sec_user_org_unit", "sec_user_permission_override", "int_external_system", "int_user_external_identity", "audit_security_event"]);
+        expect(readTargetTableNames(statements)).toEqual(["sec_user", "sec_auth_identity", "sec_auth_session", "sec_refresh_token", "sec_local_password_reset_token", "sec_role", "sec_permission", "sec_user_role", "sec_role_permission", "sec_org_unit", "sec_user_org_unit", "sec_user_permission_override", "int_external_system", "int_user_external_identity", "audit_security_event"]);
+    });
+
+    it("registra la migracion 003 de login readiness en el runner schema-only", () => {
+        expect(schemaMigrations.map((migration) => migration.name)).toEqual(["202609250001_identity_schema", "202609250003_identity_login_readiness", "202609280004_identity_microsoft_session"]);
+    });
+
+    it("documenta un unico token de reset activo por identidad en los artefactos SQL", async () => {
+        const initialSchema = await readFile(identitySchemaPath, "utf8");
+        const loginReadinessSchema = await readFile(loginReadinessSchemaPath, "utf8");
+
+        for (const sqlSource of [initialSchema, loginReadinessSchema]) {
+            expect(sqlSource).toContain("active_key_local_password_reset_token");
+            expect(sqlSource).toContain("UNIQUE KEY uq_sec_local_password_reset_active (auth_identity_id_local_password_reset_token, active_key_local_password_reset_token)");
+        }
+    });
+
+    it("documenta cache MSAL cifrada y foto de usuario en SQL/004", async () => {
+        const microsoftSessionSchema = await readFile(microsoftSessionSchemaPath, "utf8");
+
+        expect(microsoftSessionSchema).toContain("sec_microsoft_account");
+        expect(microsoftSessionSchema).toContain("cache_ciphertext_microsoft_account");
+        expect(microsoftSessionSchema).not.toContain("access_token");
+        expect(microsoftSessionSchema).not.toContain("refresh_token");
+        expect(microsoftSessionSchema).toContain("sec_user_profile_image");
+        expect(microsoftSessionSchema).toContain("provider_code_auth_session");
     });
 
     it("rechaza DB_SSL con casing distinto para no apagar TLS silenciosamente", () => {

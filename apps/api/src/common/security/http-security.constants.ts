@@ -14,12 +14,13 @@
 // usando ventanas distintas.
 export const HSTS_MAX_AGE_SECONDS = 15_552_000;
 
-// Cookies BFF. El frontend nunca lee tokens; solo interactua con el backend.
-// `crm_csrf` no es HttpOnly porque el navegador debe enviarlo tambien por
-// header en el patron double-submit.
+// Cookies BFF. El frontend nunca lee sesion, refresh ni tokens Microsoft.
+// `crm_csrf` no es HttpOnly porque el navegador debe repetirlo por header en
+// el patron double-submit.
 export const SESSION_COOKIE_NAME = "crm_session";
 export const REFRESH_COOKIE_NAME = "crm_refresh";
 export const CSRF_COOKIE_NAME = "crm_csrf";
+export const MICROSOFT_OIDC_CHALLENGE_COOKIE_NAME = "crm_ms_oidc";
 
 // Path raiz usado solo por cookies que deben aplicar a todo el BFF de identidad.
 // La cookie de refresh usa un path restringido declarado junto a su ruta HTTP.
@@ -45,7 +46,9 @@ export const CSRF_TOKEN_BYTES = 32;
 const calculateBase64UrlLength = (byteLength: number): number => Math.ceil((byteLength * 4) / 3);
 
 export const CSRF_TOKEN_BASE64URL_LENGTH = calculateBase64UrlLength(CSRF_TOKEN_BYTES);
-export const CSRF_TOKEN_FORMAT = new RegExp(`^[A-Za-z0-9_-]{${CSRF_TOKEN_BASE64URL_LENGTH.toString()}}$`);
+export const CSRF_TOKEN_SIGNATURE_LENGTH = calculateBase64UrlLength(32);
+export const CSRF_TOKEN_SEPARATOR = ".";
+export const CSRF_TOKEN_FORMAT = new RegExp(`^[A-Za-z0-9_-]{${CSRF_TOKEN_BASE64URL_LENGTH.toString()}}\\${CSRF_TOKEN_SEPARATOR}[A-Za-z0-9_-]{${CSRF_TOKEN_SIGNATURE_LENGTH.toString()}}$`);
 
 /**
  * Valida que un token CSRF tenga el formato que emite el BFF.

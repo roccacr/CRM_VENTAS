@@ -305,10 +305,10 @@ permission_version_user
 
 La sesion puede recordar con que version fue emitida, pero el guard de autorizacion debe comparar esa version contra la version actual antes de permitir acciones sensibles.
 
-Regla para JWT o payload de sesion:
+Regla para payload de sesion BFF o JWT futuro aprobado:
 
 - no guardar permisos largos como verdad permanente;
-- no confiar en un JWT viejo para autorizar acciones sensibles;
+- no confiar en un token, cookie o payload viejo para autorizar acciones sensibles;
 - usar la sesion para identificar al usuario;
 - usar el backend para decidir permisos efectivos actuales.
 

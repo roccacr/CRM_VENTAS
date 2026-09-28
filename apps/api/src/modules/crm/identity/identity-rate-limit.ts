@@ -3,8 +3,9 @@ import type { ConfigService } from "@nestjs/config";
 import type { NestFastifyApplication } from "@nestjs/platform-fastify";
 import type { FastifyReply, FastifyRequest } from "fastify";
 
+import { REFRESH_COOKIE_NAME } from "../../../common/security/http-security.constants.js";
 import { createAuditIdentifierHmac } from "../audit/audit-hash.js";
-import { IDENTITY_LOCAL_LOGIN_PATH, IDENTITY_LOCAL_REQUEST_RESET_PATH } from "./identity-route.constants.js";
+import { IDENTITY_LOCAL_COMPLETE_RESET_PATH, IDENTITY_LOCAL_LOGIN_PATH, IDENTITY_LOCAL_REQUEST_RESET_PATH, IDENTITY_REFRESH_PATH } from "./identity-route.constants.js";
 
 // ============================================================================
 // Rate limit para endpoints publicos sensibles de identidad.
@@ -19,10 +20,18 @@ import { IDENTITY_LOCAL_LOGIN_PATH, IDENTITY_LOCAL_REQUEST_RESET_PATH } from "./
 // ============================================================================
 
 interface IdentityRateLimitConfig {
+    completeResetCache: number;
+    completeResetIpMax: number;
+    completeResetTokenMax: number;
+    completeResetWindowMs: number;
     loginCache: number;
     loginEmailMax: number;
     loginIpMax: number;
     loginWindowMs: number;
+    refreshCache: number;
+    refreshIpMax: number;
+    refreshTokenMax: number;
+    refreshWindowMs: number;
     resetCache: number;
     resetEmailMax: number;
     resetIpMax: number;
@@ -32,13 +41,14 @@ interface IdentityRateLimitConfig {
 type IdentityRateLimitResult = { isAllowed: true } | { isAllowed: false; isExceeded: boolean };
 
 interface IdentityLimiterPair {
-    byEmail: IdentityRateLimiter;
+    byActor: IdentityRateLimiter;
     byIp: IdentityRateLimiter;
 }
 
 interface IdentityLimiterPairOptions {
     auditHashSecret: string;
-    emailMax: number;
+    actorKeyFactory: (request: FastifyRequest, auditHashSecret: string, prefix: string) => string;
+    actorMax: number;
     ipMax: number;
     prefix: string;
     timeWindow: number;
@@ -46,7 +56,15 @@ interface IdentityLimiterPairOptions {
 
 type IdentityRateLimiter = (request: FastifyRequest) => Promise<IdentityRateLimitResult>;
 
+interface IdentityRateLimitedRoute {
+    limiters: IdentityLimiterPair;
+    path: string;
+    sendLimitResponse: (reply: FastifyReply) => FastifyReply;
+}
+
 const RATE_LIMIT_EMAIL_FALLBACK = "missing-email";
+const RATE_LIMIT_REFRESH_FALLBACK = "missing-refresh-token";
+const RATE_LIMIT_RESET_TOKEN_FALLBACK = "missing-reset-token";
 
 /**
  * Lee un entero positivo desde `ConfigService`.
@@ -69,10 +87,18 @@ const readPositiveNumberConfig = (config: ConfigService, key: string): number =>
  * Lee limites aprobados para endpoints publicos de identidad.
  */
 const readIdentityRateLimitConfig = (config: ConfigService): IdentityRateLimitConfig => ({
+    completeResetCache: readPositiveNumberConfig(config, "LOCAL_COMPLETE_RESET_RATE_LIMIT_CACHE"),
+    completeResetIpMax: readPositiveNumberConfig(config, "LOCAL_COMPLETE_RESET_RATE_LIMIT_IP_MAX"),
+    completeResetTokenMax: readPositiveNumberConfig(config, "LOCAL_COMPLETE_RESET_RATE_LIMIT_TOKEN_MAX"),
+    completeResetWindowMs: readPositiveNumberConfig(config, "LOCAL_COMPLETE_RESET_RATE_LIMIT_WINDOW_MS"),
     loginCache: readPositiveNumberConfig(config, "LOCAL_LOGIN_RATE_LIMIT_CACHE"),
     loginEmailMax: readPositiveNumberConfig(config, "LOCAL_LOGIN_RATE_LIMIT_EMAIL_MAX"),
     loginIpMax: readPositiveNumberConfig(config, "LOCAL_LOGIN_RATE_LIMIT_IP_MAX"),
     loginWindowMs: readPositiveNumberConfig(config, "LOCAL_LOGIN_RATE_LIMIT_WINDOW_MS"),
+    refreshCache: readPositiveNumberConfig(config, "REFRESH_RATE_LIMIT_CACHE"),
+    refreshIpMax: readPositiveNumberConfig(config, "REFRESH_RATE_LIMIT_IP_MAX"),
+    refreshTokenMax: readPositiveNumberConfig(config, "REFRESH_RATE_LIMIT_TOKEN_MAX"),
+    refreshWindowMs: readPositiveNumberConfig(config, "REFRESH_RATE_LIMIT_WINDOW_MS"),
     resetCache: readPositiveNumberConfig(config, "LOCAL_RESET_RATE_LIMIT_CACHE"),
     resetEmailMax: readPositiveNumberConfig(config, "LOCAL_RESET_RATE_LIMIT_EMAIL_MAX"),
     resetIpMax: readPositiveNumberConfig(config, "LOCAL_RESET_RATE_LIMIT_IP_MAX"),
@@ -114,6 +140,26 @@ const createEmailRateLimitKey = (request: FastifyRequest, auditHashSecret: strin
 };
 
 /**
+ * Construye una llave por refresh token sin guardar el token crudo.
+ */
+const createRefreshTokenRateLimitKey = (request: FastifyRequest, auditHashSecret: string, prefix: string): string => {
+    const cookies = (request as { cookies?: Record<string, string | undefined> }).cookies;
+    const refreshToken = cookies?.[REFRESH_COOKIE_NAME] ?? RATE_LIMIT_REFRESH_FALLBACK;
+    const refreshHmac = createAuditIdentifierHmac(refreshToken, auditHashSecret);
+    return `${prefix}:refresh:${refreshHmac}`;
+};
+
+/**
+ * Construye una llave por token de reset sin guardar el token crudo.
+ */
+const createResetTokenRateLimitKey = (request: FastifyRequest, auditHashSecret: string, prefix: string): string => {
+    const body = request.body;
+    const resetToken = body && typeof body === "object" && "resetToken" in body && typeof (body as { resetToken?: unknown }).resetToken === "string" ? (body as { resetToken: string }).resetToken : RATE_LIMIT_RESET_TOKEN_FALLBACK;
+    const resetTokenHmac = createAuditIdentifierHmac(resetToken, auditHashSecret);
+    return `${prefix}:reset-token:${resetTokenHmac}`;
+};
+
+/**
  * `@fastify/rate-limit` marca `isAllowed` para allowlists internas. El bloqueo
  * real de seguridad ocurre solo cuando la llave excedio la cuota.
  */
@@ -124,9 +170,9 @@ const hasExceededLimit = (result: IdentityRateLimitResult): boolean => !result.i
  */
 const hasExceededLimiterPair = async (request: FastifyRequest, limiters: IdentityLimiterPair): Promise<boolean> => {
     const ipLimit = await limiters.byIp(request);
-    const emailLimit = await limiters.byEmail(request);
+    const actorLimit = await limiters.byActor(request);
 
-    return hasExceededLimit(ipLimit) || hasExceededLimit(emailLimit);
+    return hasExceededLimit(ipLimit) || hasExceededLimit(actorLimit);
 };
 
 /**
@@ -137,7 +183,7 @@ const sendNeutralResetLimitResponse = (reply: FastifyReply): FastifyReply => rep
 /**
  * Responde 429 para login local sin revelar si la cuenta existe.
  */
-const sendLoginLimitResponse = (reply: FastifyReply): FastifyReply =>
+const sendIdentityAttemptLimitResponse = (reply: FastifyReply): FastifyReply =>
     reply.code(429).send({
         error: "Too Many Requests",
         message: "Demasiados intentos. Intente mas tarde.",
@@ -145,16 +191,26 @@ const sendLoginLimitResponse = (reply: FastifyReply): FastifyReply =>
     });
 
 /**
+ * Responde 429 para refresh sin filtrar si el token existia o era valido.
+ */
+const sendRefreshLimitResponse = (reply: FastifyReply): FastifyReply =>
+    reply.code(429).send({
+        error: "Too Many Requests",
+        message: "Demasiadas renovaciones de sesion. Intente mas tarde.",
+        statusCode: 429,
+    });
+
+/**
  * Crea la pareja de limitadores IP/correo para un endpoint de identidad.
  */
 const createIdentityLimiterPair = (app: NestFastifyApplication, options: IdentityLimiterPairOptions): IdentityLimiterPair => {
-    const { auditHashSecret, emailMax, ipMax, prefix, timeWindow } = options;
+    const { actorKeyFactory, actorMax, auditHashSecret, ipMax, prefix, timeWindow } = options;
     const fastify = app.getHttpAdapter().getInstance();
 
     return {
-        byEmail: fastify.createRateLimit({
-            keyGenerator: (request) => createEmailRateLimitKey(request, auditHashSecret, prefix),
-            max: emailMax,
+        byActor: fastify.createRateLimit({
+            keyGenerator: (request) => actorKeyFactory(request, auditHashSecret, prefix),
+            max: actorMax,
             timeWindow,
         }),
         byIp: fastify.createRateLimit({
@@ -177,25 +233,65 @@ export const registerIdentityRateLimit = async (app: NestFastifyApplication, con
     const fastify = app.getHttpAdapter().getInstance();
 
     await app.register(rateLimit, {
-        cache: Math.max(rateLimitConfig.loginCache, rateLimitConfig.resetCache),
+        cache: Math.max(rateLimitConfig.loginCache, rateLimitConfig.resetCache, rateLimitConfig.refreshCache, rateLimitConfig.completeResetCache),
         global: false,
         hook: "preHandler",
     });
 
     const resetLimiters = createIdentityLimiterPair(app, {
         auditHashSecret,
-        emailMax: rateLimitConfig.resetEmailMax,
+        actorKeyFactory: createEmailRateLimitKey,
+        actorMax: rateLimitConfig.resetEmailMax,
         ipMax: rateLimitConfig.resetIpMax,
         prefix: "identity-reset",
         timeWindow: rateLimitConfig.resetWindowMs,
     });
     const loginLimiters = createIdentityLimiterPair(app, {
         auditHashSecret,
-        emailMax: rateLimitConfig.loginEmailMax,
+        actorKeyFactory: createEmailRateLimitKey,
+        actorMax: rateLimitConfig.loginEmailMax,
         ipMax: rateLimitConfig.loginIpMax,
         prefix: "identity-login",
         timeWindow: rateLimitConfig.loginWindowMs,
     });
+    const refreshLimiters = createIdentityLimiterPair(app, {
+        auditHashSecret,
+        actorKeyFactory: createRefreshTokenRateLimitKey,
+        actorMax: rateLimitConfig.refreshTokenMax,
+        ipMax: rateLimitConfig.refreshIpMax,
+        prefix: "identity-refresh",
+        timeWindow: rateLimitConfig.refreshWindowMs,
+    });
+    const completeResetLimiters = createIdentityLimiterPair(app, {
+        auditHashSecret,
+        actorKeyFactory: createResetTokenRateLimitKey,
+        actorMax: rateLimitConfig.completeResetTokenMax,
+        ipMax: rateLimitConfig.completeResetIpMax,
+        prefix: "identity-complete-reset",
+        timeWindow: rateLimitConfig.completeResetWindowMs,
+    });
+    const rateLimitedRoutes: IdentityRateLimitedRoute[] = [
+        {
+            path: IDENTITY_LOCAL_REQUEST_RESET_PATH,
+            limiters: resetLimiters,
+            sendLimitResponse: sendNeutralResetLimitResponse,
+        },
+        {
+            path: IDENTITY_LOCAL_LOGIN_PATH,
+            limiters: loginLimiters,
+            sendLimitResponse: sendIdentityAttemptLimitResponse,
+        },
+        {
+            path: IDENTITY_REFRESH_PATH,
+            limiters: refreshLimiters,
+            sendLimitResponse: sendRefreshLimitResponse,
+        },
+        {
+            path: IDENTITY_LOCAL_COMPLETE_RESET_PATH,
+            limiters: completeResetLimiters,
+            sendLimitResponse: sendIdentityAttemptLimitResponse,
+        },
+    ];
 
     fastify.addHook("preHandler", async (request, reply) => {
         if (request.method !== "POST") {
@@ -204,12 +300,10 @@ export const registerIdentityRateLimit = async (app: NestFastifyApplication, con
 
         const path = getResolvedRequestPath(request);
 
-        if (path === IDENTITY_LOCAL_REQUEST_RESET_PATH && (await hasExceededLimiterPair(request, resetLimiters))) {
-            return sendNeutralResetLimitResponse(reply);
-        }
-
-        if (path === IDENTITY_LOCAL_LOGIN_PATH && (await hasExceededLimiterPair(request, loginLimiters))) {
-            return sendLoginLimitResponse(reply);
+        for (const route of rateLimitedRoutes) {
+            if (path === route.path && (await hasExceededLimiterPair(request, route.limiters))) {
+                return route.sendLimitResponse(reply);
+            }
         }
     });
 };

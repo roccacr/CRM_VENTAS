@@ -10,6 +10,7 @@ export interface IdentityUser {
     publicId: string;
     displayName: string;
     email: string;
+    profileImageUrl: string | null;
     status: string;
     permissionVersion: number;
 }
@@ -24,7 +25,33 @@ export interface IdentitySession {
     publicId: string;
     status: string;
     expiresAt: string;
+    expiresInSeconds: number;
     permissionVersion: number;
+}
+
+/**
+ * Estado seguro de la vinculacion Microsoft.
+ */
+export interface IdentityMicrosoftStatus {
+    homeAccountId: string | null;
+    interactionRequired: boolean;
+    lastSyncedAt: string | null;
+    tenantId: string | null;
+}
+
+/**
+ * Sesion activa visible para gestion remota de dispositivos.
+ *
+ * No expone token opaco ni hashes. Solo muestra metadata segura para que el
+ * usuario reconozca sesiones y pueda revocarlas.
+ */
+export interface IdentityActiveSession {
+    publicId: string;
+    createdAt: string;
+    expiresAt: string;
+    ipAddress: string | null;
+    isCurrent: boolean;
+    userAgent: string | null;
 }
 
 /**
@@ -54,7 +81,9 @@ export interface IdentityOrgUnit {
 export interface IdentityAuthSummary {
     primaryProvider: "microsoft";
     availableProviders: string[];
+    currentProvider: string;
     localStatus: string;
+    microsoft: IdentityMicrosoftStatus | null;
 }
 
 /**
@@ -76,4 +105,11 @@ export interface SessionResponse {
     authenticated: boolean;
     session: IdentitySession | null;
     user: IdentityUser | null;
+}
+
+/**
+ * Respuesta del endpoint de sesiones activas.
+ */
+export interface ActiveSessionsResponse {
+    sessions: IdentityActiveSession[];
 }

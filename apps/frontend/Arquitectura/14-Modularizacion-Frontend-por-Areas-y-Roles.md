@@ -2,11 +2,17 @@
 
 ## Veredicto
 
-El frontend debe organizarse por areas de trabajo y flujos de usuario, no como una sola carpeta gigante de CRM.
+El frontend debe organizarse por contextos operativos, areas de trabajo y flujos de usuario, no como una sola carpeta gigante de CRM.
 
 Cada area debe tener su propia carpeta, pantallas, componentes de negocio, hooks, tipos y documentacion.
 
 Solo lo que realmente usan varios modulos debe vivir en carpetas compartidas.
+
+Regla clave:
+
+```txt
+No se duplica una aplicacion completa por cada rol. Se define un home/menu por contexto operativo y el API decide que contextos recibe cada usuario.
+```
 
 ## Fuentes internas revisadas
 
@@ -49,10 +55,12 @@ src/
 |   +-- feedback/
 +-- modules/
 |   +-- sales/
+|   +-- marketing/
 |   +-- formalizations/
 |   +-- collections/
 |   +-- modifications/
 |   +-- management/
+|   +-- support/
 |   +-- customer-journey/
 |   +-- documents/
 |   +-- calendar/
@@ -88,11 +96,80 @@ Regla:
 
 - si un componente solo sirve para Formalizaciones, vive en `modules/formalizations`;
 - si un hook solo sirve para vendedores, vive en `modules/sales`;
+- si una vista solo sirve para mercadeo, vive en `modules/marketing`;
+- si una vista solo sirve para soporte/TI, vive en `modules/support`;
 - si algo es visual y generico, vive en `components/ui`;
 - si algo es una consulta de API de un dominio, vive en `modules/<dominio>/queries`;
 - si algo aplica a permisos globales, vive en `modules/permissions` o `services/auth`;
 - si algo aplica a todos los formularios, vive en `components/forms` o `hooks`;
 - no crear `helpers` globales con reglas de negocio de un modulo.
+
+## Home y menu por contexto operativo
+
+Cada contexto operativo puede tener:
+
+```txt
+home/
+routes/
+navigation/
+components/
+hooks/
+queries/
+mutations/
+schemas/
+types/
+docs/
+```
+
+`home` es la primera vista despues del login para ese contexto.
+
+`navigation` define el menu visible de ese contexto, pero nunca autoriza acciones por si solo.
+
+Regla:
+
+- el menu se construye desde permisos efectivos y alcance recibidos del API;
+- el menu puede ocultar acciones por UX;
+- toda accion real vuelve al API y el API valida de nuevo;
+- si cambia `permissionVersion`, la UI limpia cache y obliga login nuevo segun la regla BFF;
+- si el usuario tiene varios contextos, el shell muestra selector de contexto;
+- si el usuario tiene un solo contexto, entra directo a su home;
+- si ningun contexto esta disponible, se muestra estado bloqueado/sin permisos.
+
+Ejemplos:
+
+| Usuario autenticado | Contextos posibles | Comportamiento visual |
+| --- | --- | --- |
+| Vendedor | `sales` | Entra al home de ventas. |
+| Finanzas/cobros | `collections` | Entra al home financiero cuando ese modulo se apruebe. |
+| Mercadeo | `marketing` | Entra al home de mercadeo cuando ese modulo se apruebe. |
+| Formalizaciones | `formalizations` | Entra al home de formalizaciones cuando ese modulo se apruebe. |
+| Jefatura superior | `management` + contextos supervisados | Ve home de gestion y accesos a contextos permitidos. |
+| TI/soporte | `support` + contextos autorizados | Puede cambiar de contexto solo si el API lo permite. |
+| Persona con mercadeo y formalizaciones | `marketing`, `formalizations` | Ve selector y menus separados para ambos contextos. |
+
+Anti-regla:
+
+```txt
+No crear `modules/vendedor`, `modules/jefe_mercadeo`, `modules/subjefe_formalizacion` si esos nombres solo cambian permisos sobre el mismo flujo.
+```
+
+Se crea modulo nuevo solo cuando existe dominio/home propio, lenguaje propio, menu propio o flujo operativo propio.
+
+## Integraciones y proveedores
+
+NetSuite, Odoo, Kapso, Microsoft 365 y CRM viejo se tratan como proveedores del backend.
+
+En frontend:
+
+- no existe `services/netsuite`;
+- no existe `services/odoo`;
+- no existe `services/kapso`;
+- no existe `services/legacy-crm`;
+- no existe adapter Microsoft Graph para reglas CRM.
+
+Si se aprueba una pantalla visual de integraciones, debe vivir como modulo CRM canonico, por ejemplo `modules/management/integrations` o `modules/support/integrations`, y consumir solo `services/api`.
+
+Esa pantalla puede mostrar estado, errores, ultima sincronizacion o acciones autorizadas, pero no contiene SDKs ni payloads crudos de proveedor.
 
 ## Modulos frontend
 
@@ -122,6 +199,29 @@ No debe contener:
 - extras;
 - revision fisica;
 - entrega de llaves.
+
+### marketing
+
+Usuarios principales:
+
+- mercadeo;
+- jefatura comercial autorizada;
+- gerencia con permisos de supervision.
+
+Responsabilidad futura:
+
+- campanas;
+- origenes;
+- captacion;
+- calidad de fuentes;
+- reportes de entrada;
+- acciones de marketing aprobadas por API.
+
+No debe contener:
+
+- seguimiento operativo completo de vendedores;
+- reglas de autorizacion final;
+- llamadas directas a Kapso, Meta, Google, Microsoft o proveedores externos.
 
 ### formalizations
 

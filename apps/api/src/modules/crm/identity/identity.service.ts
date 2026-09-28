@@ -1,18 +1,46 @@
-import { Inject, Injectable, NotImplementedException, UnauthorizedException } from "@nestjs/common";
-import { ConfigService } from "@nestjs/config";
+import { BadRequestException, ConflictException, Inject, Injectable, UnauthorizedException } from "@nestjs/common";
+import { argon2id, hash as hashArgon2Password, verify as verifyArgon2Hash } from "argon2";
 
-import { AUDIT_HASH_KEY_VERSION, createAuditIdentifierHmac } from "../audit/audit-hash.js";
-import { LOCAL_RESET_REQUESTED_EVENT } from "../audit/security-audit.events.js";
-import { SecurityAuditService } from "../audit/security-audit.service.js";
-import type { RequestLocalResetDto } from "./dto/local-auth.dto.js";
-import { IdentityRepository } from "./identity.repository.js";
-import type { IdentityProfile, SessionResponse } from "./identity.types.js";
+import { normalizeCaseInsensitiveIdentifier } from "../../../common/security/identifier-normalization.js";
+import type { CompleteLocalResetDto, LocalLoginDto, RequestLocalResetDto } from "./dto/local-auth.dto.js";
+import { type FailedLocalLoginRecord, IdentityRepository } from "./identity.repository.js";
+import type { ActiveSessionsResponse, IdentityProfile, SessionResponse } from "./identity.types.js";
+import { IdentityAuditRecorder } from "./identity-audit-recorder.service.js";
+import { MICROSOFT_PROVIDER_CODE } from "./identity-microsoft.constants.js";
+import { IdentityMicrosoftSessionService, type MicrosoftLoginStartResult } from "./identity-microsoft-session.service.js";
+import { IdentityTokenService, type IssuedIdentityTokens, type IssuedSessionToken, type RotatedRefreshToken } from "./identity-token.service.js";
 
 const ANONYMOUS_SESSION_RESPONSE: SessionResponse = {
     authenticated: false,
     session: null,
     user: null,
 };
+
+const LOCAL_LOGIN_LOCKOUT_MAX_FAILURES = 5;
+const LOCAL_LOGIN_LOCKOUT_DURATION_MS = 15 * 60 * 1000;
+const ARGON2_DUMMY_PASSWORD = "crm-tink-dummy-password-for-timing-only";
+const ARGON2_DUMMY_HASH = "$argon2id$v=19$m=19456,p=1,t=2$x4LIsYBb4u+XOPFMuBxIRw$mDnYVwKK/1vyxZmiLGl14UGszNfdgkG5b3ToVx0YB94";
+const COMMON_LOCAL_PASSWORDS = new Set(["password", "password123", "123456789", "1234567890", "qwerty123", "roccacr123", "crm123456", "admin123456"]);
+const LOCAL_PROVIDER_CODE = "local";
+
+export interface AuthenticatedSessionResult {
+    refreshToken: string;
+    refreshTokenExpiresAt: Date;
+    response: SessionResponse;
+    sessionToken: string;
+    sessionTokenExpiresAt: Date;
+}
+
+export interface ProfileImageResult {
+    bytes: Buffer;
+    mimeType: string;
+}
+
+interface LocalLoginFailureContext {
+    ipAddress: string | undefined;
+    normalizedEmail: string;
+    userAgent: string | undefined;
+}
 
 /**
  * Servicio de aplicacion para el corte aprobado de identidad.
@@ -27,15 +55,14 @@ export class IdentityService {
     /**
      * Inyecta las dependencias del caso de uso.
      *
-     * El repository lee/escribe identidad, el audit service registra eventos
-     * tecnicos y ConfigService entrega secretos aprobados para HMAC. Mantener
-     * esas responsabilidades separadas evita que el servicio conozca detalles
-     * SQL o de bootstrap HTTP.
+     * El repository lee/escribe identidad; tokens emite secretos opacos; audit
+     * registra eventos sin PII; Microsoft encapsula PKCE/MSAL.
      */
     constructor(
         @Inject(IdentityRepository) private readonly repository: IdentityRepository,
-        @Inject(SecurityAuditService) private readonly audit: SecurityAuditService,
-        @Inject(ConfigService) private readonly config: ConfigService,
+        @Inject(IdentityTokenService) private readonly tokens: IdentityTokenService,
+        @Inject(IdentityAuditRecorder) private readonly audit: IdentityAuditRecorder,
+        @Inject(IdentityMicrosoftSessionService) private readonly microsoftSession: IdentityMicrosoftSessionService,
     ) {}
 
     /**
@@ -45,16 +72,18 @@ export class IdentityService {
      * Retornar una forma anonima neutral evita exponer detalles internos de
      * busqueda.
      */
-    async getSession(sessionPublicId?: string): Promise<SessionResponse> {
-        if (!sessionPublicId) {
+    async getSession(sessionToken?: string): Promise<SessionResponse> {
+        if (!sessionToken) {
             return ANONYMOUS_SESSION_RESPONSE;
         }
 
-        const profile = await this.repository.findBySessionPublicId(sessionPublicId);
+        const profile = await this.repository.findBySessionTokenHash(this.tokens.hashToken(sessionToken));
 
         if (!profile) {
             return ANONYMOUS_SESSION_RESPONSE;
         }
+
+        this.assertPermissionVersionCurrent(profile);
 
         return {
             authenticated: true,
@@ -71,18 +100,33 @@ export class IdentityService {
      * funcionar en el siguiente request protegido, sin esperar que expire un
      * token de login largo.
      */
-    async getCurrentUser(sessionPublicId?: string): Promise<IdentityProfile> {
-        if (!sessionPublicId) {
+    async getCurrentUser(sessionToken?: string): Promise<IdentityProfile> {
+        if (!sessionToken) {
             throw new UnauthorizedException("No autenticado.");
         }
 
-        const profile = await this.repository.findBySessionPublicId(sessionPublicId);
+        const profile = await this.repository.findBySessionTokenHash(this.tokens.hashToken(sessionToken));
 
         if (!profile) {
             throw new UnauthorizedException("No autenticado.");
         }
 
+        this.assertPermissionVersionCurrent(profile);
+
         return profile;
+    }
+
+    /**
+     * Lee la foto cacheada del usuario autenticado desde almacenamiento interno.
+     *
+     * La respuesta nunca redirige a Microsoft Graph ni revela tokens Microsoft.
+     */
+    async getCurrentUserProfileImage(sessionToken?: string): Promise<ProfileImageResult | null> {
+        if (!sessionToken) {
+            throw new UnauthorizedException("No autenticado.");
+        }
+
+        return this.repository.findProfileImageBySessionTokenHash(this.tokens.hashToken(sessionToken));
     }
 
     /**
@@ -91,69 +135,391 @@ export class IdentityService {
      * Logout es idempotente a proposito. Llamarlo sin sesion conocida igual
      * retorna success para que el frontend limpie estado local de forma segura.
      */
-    async logout(sessionPublicId: string | undefined, ipAddress?: string, userAgent?: string): Promise<{ success: true }> {
-        if (sessionPublicId) {
-            await this.repository.revokeSessionByPublicId(sessionPublicId, ipAddress, userAgent);
+    async logout(sessionToken: string | undefined, ipAddress?: string, userAgent?: string): Promise<{ success: true }> {
+        if (sessionToken) {
+            await this.repository.revokeSessionByTokenHash(this.tokens.hashToken(sessionToken), ipAddress, userAgent);
         }
 
         return { success: true };
     }
 
     /**
-     * Deshabilitado hasta implementar rotacion y deteccion de reuso de refresh-token.
+     * Lista sesiones activas del usuario autenticado actual.
      */
-    refresh(): never {
-        throw new NotImplementedException("Refresh-token requiere rotacion segura antes de habilitarse.");
+    async listActiveSessions(sessionToken?: string): Promise<ActiveSessionsResponse> {
+        if (!sessionToken) {
+            throw new UnauthorizedException("No autenticado.");
+        }
+
+        const sessions = await this.repository.listActiveSessions(this.tokens.hashToken(sessionToken));
+
+        if (!sessions) {
+            throw new UnauthorizedException("No autenticado.");
+        }
+
+        return { sessions };
     }
 
     /**
-     * Deshabilitado hasta tener configuracion Microsoft OIDC con PKCE/state real.
+     * Revoca una sesion activa propia. La operacion es idempotente frente a una
+     * sesion objetivo inexistente, pero exige que la sesion actual sea valida.
      */
-    startMicrosoftLogin(): never {
-        throw new NotImplementedException("Microsoft OIDC queda preparado, pero requiere configuracion real antes de iniciar login.");
+    async revokeOwnSession(sessionPublicId: string, currentSessionToken?: string, ipAddress?: string, userAgent?: string): Promise<{ success: true }> {
+        if (!currentSessionToken) {
+            throw new UnauthorizedException("No autenticado.");
+        }
+
+        const result = await this.repository.revokeOwnSessionByPublicId(this.tokens.hashToken(currentSessionToken), sessionPublicId, ipAddress, userAgent);
+
+        if (result.status === "not_authenticated") {
+            throw new UnauthorizedException("No autenticado.");
+        }
+
+        return { success: true };
     }
 
     /**
-     * Deshabilitado hasta que callback Microsoft pueda crear sesiones opacas.
+     * Rota refresh token, emite nuevo token de sesion y mantiene cookies BFF opacas.
      */
-    completeMicrosoftCallback(): never {
-        throw new NotImplementedException("Microsoft OIDC queda preparado, pero requiere configuracion real antes de completar callback.");
+    async refresh(refreshToken?: string, ipAddress?: string, userAgent?: string): Promise<AuthenticatedSessionResult> {
+        if (!refreshToken) {
+            throw new UnauthorizedException("No autenticado.");
+        }
+
+        const nextSession = this.tokens.issueSessionToken();
+        const nextRefresh = this.tokens.rotateRefreshToken();
+        const rotation = await this.repository.rotateRefreshSession({
+            nextRefreshExpiresAt: nextRefresh.refreshExpiresAt,
+            nextRefreshTokenHash: nextRefresh.refreshTokenHash,
+            nextSessionExpiresAt: nextSession.sessionExpiresAt,
+            nextSessionTokenHash: nextSession.sessionTokenHash,
+            refreshTokenHash: this.tokens.hashToken(refreshToken),
+        });
+
+        if (rotation.status === "permission_stale") {
+            throw new ConflictException("La sesion requiere revalidacion de permisos.");
+        }
+
+        if (rotation.status === "reused") {
+            await this.audit.recordRefreshReuse(rotation.userId, rotation.sessionPublicId, ipAddress, userAgent);
+            throw new UnauthorizedException("No autenticado.");
+        }
+
+        if (rotation.status !== "rotated") {
+            throw new UnauthorizedException("No autenticado.");
+        }
+
+        if (rotation.providerCode === MICROSOFT_PROVIDER_CODE) {
+            await this.assertMicrosoftSessionStillValid(rotation.authIdentityId, rotation.userId, ipAddress, userAgent);
+        }
+
+        const profile = await this.readProfileAfterSessionIssue(nextSession);
+        await this.audit.recordRefreshRotated(rotation.userId, rotation.sessionPublicId, ipAddress, userAgent);
+
+        return this.buildAuthenticatedSessionResult(profile, nextSession, nextRefresh);
     }
 
     /**
-     * Deshabilitado hasta que credenciales locales usen activacion por invitacion/reset.
+     * Inicia Microsoft OIDC con PKCE/state/nonce y challenge server-side.
      */
-    localLogin(): never {
-        throw new NotImplementedException("Login local queda preparado, pero se activa solo por invitacion/reset seguro.");
+    async startMicrosoftLogin(): Promise<MicrosoftLoginStartResult> {
+        return this.microsoftSession.startLogin();
+    }
+
+    /**
+     * Completa Microsoft OIDC, sincroniza metadata/foto y crea sesion CRM.
+     */
+    async completeMicrosoftCallback(input: { challengeCookie?: string; code: string; ipAddress?: string; state: string; userAgent?: string }): Promise<AuthenticatedSessionResult> {
+        const microsoftResult = await this.microsoftSession.completeCallback({
+            challengeCookie: input.challengeCookie,
+            code: input.code,
+            state: input.state,
+        });
+        const account = microsoftResult.account;
+        const identity = await this.repository.findActiveMicrosoftIdentity({
+            normalizedEmail: normalizeCaseInsensitiveIdentifier(account.email),
+            subject: account.subject,
+        });
+
+        if (!identity) {
+            throw new UnauthorizedException("No autenticado.");
+        }
+
+        await this.repository.saveMicrosoftAccount({
+            ...identity,
+            cache: microsoftResult.encryptedCache,
+            displayName: account.displayName,
+            email: account.email,
+            graphSyncedAt: new Date(),
+            homeAccountId: account.homeAccountId,
+            oid: account.oid,
+            profileImage: account.profilePhoto
+                ? {
+                      bytes: account.profilePhoto.bytes,
+                      mimeType: account.profilePhoto.mimeType,
+                      publicUrl: "/identity/me/photo",
+                      sourceSubject: account.subject,
+                  }
+                : null,
+            subject: account.subject,
+            tenantId: account.tenantId,
+        });
+
+        const issuedTokens = this.tokens.issueInitialTokens();
+        await this.repository.createSession({
+            authIdentityId: identity.authIdentityId,
+            ipAddress: input.ipAddress,
+            permissionVersion: identity.permissionVersion,
+            providerCode: MICROSOFT_PROVIDER_CODE,
+            refreshExpiresAt: issuedTokens.refreshExpiresAt,
+            refreshFamilyId: issuedTokens.refreshFamilyId,
+            refreshTokenHash: issuedTokens.refreshTokenHash,
+            sessionExpiresAt: issuedTokens.sessionExpiresAt,
+            sessionPublicId: issuedTokens.sessionPublicId,
+            sessionTokenHash: issuedTokens.sessionTokenHash,
+            userAgent: input.userAgent,
+            userId: identity.userId,
+        });
+        await this.audit.recordMicrosoftLoginSucceeded(identity.userId, input.ipAddress, input.userAgent);
+
+        const profile = await this.readProfileAfterSessionIssue(issuedTokens);
+        return this.buildAuthenticatedSessionResult(profile, issuedTokens, issuedTokens);
+    }
+
+    /**
+     * Autentica una identidad local activa usando clave Argon2id.
+     */
+    async localLogin(payload: LocalLoginDto, ipAddress?: string, userAgent?: string): Promise<AuthenticatedSessionResult> {
+        const normalizedEmail = normalizeCaseInsensitiveIdentifier(payload.email);
+        const localIdentity = await this.repository.findActiveLocalIdentity(normalizedEmail);
+
+        if (!localIdentity) {
+            await this.verifyDummyPasswordForTiming();
+            await this.audit.recordLocalLoginFailure(normalizedEmail, ipAddress, userAgent);
+            throw new UnauthorizedException("Credenciales invalidas.");
+        }
+
+        if (this.isLocalIdentityLocked(localIdentity.lockedUntil)) {
+            await this.verifyDummyPasswordForTiming();
+            await this.audit.recordLocalLoginFailure(normalizedEmail, ipAddress, userAgent);
+            throw new UnauthorizedException("Credenciales invalidas.");
+        }
+
+        if (!(await this.isLocalPasswordValid(localIdentity.passwordHash, payload.password))) {
+            await this.recordFailedLocalLogin(localIdentity, {
+                ipAddress,
+                normalizedEmail,
+                userAgent,
+            });
+            await this.audit.recordLocalLoginFailure(normalizedEmail, ipAddress, userAgent);
+            throw new UnauthorizedException("Credenciales invalidas.");
+        }
+
+        const issuedTokens = this.tokens.issueInitialTokens();
+        await this.repository.recordSuccessfulLocalLogin(localIdentity.authIdentityId, localIdentity.userId);
+        await this.repository.createSession({
+            authIdentityId: localIdentity.authIdentityId,
+            ipAddress,
+            permissionVersion: localIdentity.permissionVersion,
+            providerCode: LOCAL_PROVIDER_CODE,
+            refreshExpiresAt: issuedTokens.refreshExpiresAt,
+            refreshFamilyId: issuedTokens.refreshFamilyId,
+            refreshTokenHash: issuedTokens.refreshTokenHash,
+            sessionExpiresAt: issuedTokens.sessionExpiresAt,
+            sessionPublicId: issuedTokens.sessionPublicId,
+            sessionTokenHash: issuedTokens.sessionTokenHash,
+            userAgent,
+            userId: localIdentity.userId,
+        });
+
+        await this.audit.recordLocalLoginSucceeded(localIdentity.userId, ipAddress, userAgent);
+
+        const profile = await this.readProfileAfterSessionIssue(issuedTokens);
+        return this.buildAuthenticatedSessionResult(profile, issuedTokens, issuedTokens);
     }
 
     /**
      * Respuesta neutral de reset. No debe revelar si el correo existe.
      */
     async requestLocalReset(payload: RequestLocalResetDto, ipAddress?: string, userAgent?: string): Promise<{ accepted: true }> {
-        const auditHashSecret = this.config.getOrThrow<string>("AUDIT_HASH_SECRET");
+        const normalizedEmail = normalizeCaseInsensitiveIdentifier(payload.email);
+        const resettableIdentity = await this.repository.findResettableLocalIdentity(normalizedEmail);
 
-        await this.audit.record({
-            eventType: LOCAL_RESET_REQUESTED_EVENT.eventType,
-            summary: LOCAL_RESET_REQUESTED_EVENT.summary,
-            actorUserId: null,
-            targetUserId: null,
-            reason: LOCAL_RESET_REQUESTED_EVENT.reason,
-            ipAddress: ipAddress ?? null,
-            userAgent: userAgent ?? null,
-            metadata: {
-                emailHmac: createAuditIdentifierHmac(payload.email, auditHashSecret),
-                hmacKeyVersion: AUDIT_HASH_KEY_VERSION,
-            },
-        });
+        if (resettableIdentity) {
+            const resetToken = this.tokens.issueLocalResetToken();
+            await this.repository.createLocalPasswordResetToken({
+                authIdentityId: resettableIdentity.authIdentityId,
+                expiresAt: resetToken.resetTokenExpiresAt,
+                ipAddress,
+                tokenHash: resetToken.resetTokenHash,
+                userAgent,
+            });
+        }
+
+        await this.audit.recordLocalResetRequested(normalizedEmail, ipAddress, userAgent);
 
         return { accepted: true };
     }
 
     /**
-     * Deshabilitado hasta emitir, hashear, expirar y auditar tokens de reset.
+     * Completa activacion/reset local con token opaco y Argon2id.
      */
-    completeLocalReset(): never {
-        throw new NotImplementedException("Reset local requiere flujo seguro con token emitido por el backend.");
+    async completeLocalReset(payload: CompleteLocalResetDto, ipAddress?: string, userAgent?: string): Promise<{ success: true }> {
+        this.assertLocalPasswordIsAllowed(payload.newPassword);
+        const tokenHash = this.tokens.hashToken(payload.resetToken);
+
+        if (!(await this.repository.hasUsableLocalPasswordResetToken(tokenHash))) {
+            throw new UnauthorizedException("Token de activacion/reset invalido.");
+        }
+
+        const result = await this.repository.completeLocalPasswordReset({
+            ipAddress,
+            passwordHash: await hashArgon2Password(payload.newPassword, { type: argon2id }),
+            tokenHash,
+            userAgent,
+        });
+
+        if (result.status !== "completed") {
+            throw new UnauthorizedException("Token de activacion/reset invalido.");
+        }
+
+        return { success: true };
+    }
+
+    /**
+     * Valida que Microsoft pueda renovar token en silencio para esta sesion.
+     */
+    private async assertMicrosoftSessionStillValid(authIdentityId: number, userId: number, ipAddress?: string, userAgent?: string): Promise<void> {
+        const accountCache = await this.repository.findMicrosoftAccountCache(authIdentityId);
+
+        if (!accountCache) {
+            await this.repository.markMicrosoftInteractionRequiredAndRevokeSessions(authIdentityId, userId);
+            await this.audit.recordMicrosoftInteractionRequired(userId, ipAddress, userAgent);
+            throw new UnauthorizedException("No autenticado.");
+        }
+
+        const renewedCache = await this.microsoftSession.renewSilentToken({
+            cache: accountCache.cache,
+            homeAccountId: accountCache.homeAccountId,
+        });
+
+        if (!renewedCache) {
+            await this.repository.markMicrosoftInteractionRequiredAndRevokeSessions(authIdentityId, userId);
+            await this.audit.recordMicrosoftInteractionRequired(userId, ipAddress, userAgent);
+            throw new UnauthorizedException("Microsoft requiere iniciar sesion nuevamente.");
+        }
+
+        await this.repository.updateMicrosoftCache(authIdentityId, renewedCache);
+    }
+
+    /**
+     * Rechaza claves locales triviales antes de gastar Argon2id.
+     *
+     * La verificacion contra brechas externas queda como adapter futuro; esta
+     * lista local cubre passwords comunes sin enviar datos a terceros.
+     */
+    private assertLocalPasswordIsAllowed(password: string): void {
+        const normalizedPassword = password.trim().toLowerCase();
+
+        if (COMMON_LOCAL_PASSWORDS.has(normalizedPassword)) {
+            throw new BadRequestException("La clave no cumple la politica de seguridad.");
+        }
+    }
+
+    /**
+     * Falla si la version de permisos de la sesion ya no coincide con el usuario.
+     */
+    private assertPermissionVersionCurrent(profile: IdentityProfile): void {
+        if (profile.session.permissionVersion !== profile.user.permissionVersion) {
+            throw new ConflictException("La sesion requiere revalidacion de permisos.");
+        }
+    }
+
+    /**
+     * Verifica Argon2id sin filtrar hashes corruptos como errores 500.
+     */
+    private async isLocalPasswordValid(passwordHash: string, password: string): Promise<boolean> {
+        try {
+            return await verifyArgon2Hash(passwordHash, password);
+        } catch {
+            return false;
+        }
+    }
+
+    /**
+     * Ejecuta una verificacion Argon2id dummy cuando la cuenta no existe.
+     *
+     * Esto reduce diferencias de timing entre "correo inexistente" y "clave
+     * incorrecta" sin guardar ni aceptar ninguna credencial real.
+     */
+    private async verifyDummyPasswordForTiming(): Promise<void> {
+        await this.isLocalPasswordValid(ARGON2_DUMMY_HASH, ARGON2_DUMMY_PASSWORD);
+    }
+
+    /**
+     * Indica si una identidad local esta temporalmente bloqueada.
+     */
+    private isLocalIdentityLocked(lockedUntil: Date | null): boolean {
+        return lockedUntil !== null && lockedUntil.getTime() > Date.now();
+    }
+
+    /**
+     * Incrementa contador persistente y bloquea al llegar al limite.
+     *
+     * El incremento vive en MySQL para no perder intentos paralelos; el service
+     * solo interpreta el resultado y emite la auditoria de lockout.
+     */
+    private async recordFailedLocalLogin(localIdentity: { authIdentityId: number; failedLoginCount: number; userId: number }, context: LocalLoginFailureContext): Promise<void> {
+        const lockUntil = new Date(Date.now() + LOCAL_LOGIN_LOCKOUT_DURATION_MS);
+        const failureRecord = await this.repository.recordFailedLocalLogin(localIdentity.authIdentityId, LOCAL_LOGIN_LOCKOUT_MAX_FAILURES, lockUntil);
+
+        if (this.shouldAuditLocalIdentityLocked(failureRecord)) {
+            await this.audit.recordLocalIdentityLocked({
+                failedLoginCount: failureRecord.failedLoginCount,
+                ipAddress: context.ipAddress,
+                lockedUntil: failureRecord.lockedUntil,
+                normalizedEmail: context.normalizedEmail,
+                userAgent: context.userAgent,
+                userId: localIdentity.userId,
+            });
+        }
+    }
+
+    /**
+     * Audita lockout solo cuando MySQL ya dejo la identidad bloqueada.
+     */
+    private shouldAuditLocalIdentityLocked(failureRecord: FailedLocalLoginRecord): failureRecord is FailedLocalLoginRecord & { lockedUntil: Date } {
+        return failureRecord.lockedUntil !== null && failureRecord.failedLoginCount >= LOCAL_LOGIN_LOCKOUT_MAX_FAILURES;
+    }
+
+    /**
+     * Lee el perfil recien emitido desde el hash del token opaco.
+     */
+    private async readProfileAfterSessionIssue(tokens: Pick<IssuedIdentityTokens, "sessionTokenHash"> | Pick<IssuedSessionToken, "sessionTokenHash">): Promise<IdentityProfile> {
+        const profile = await this.repository.findBySessionTokenHash(tokens.sessionTokenHash);
+
+        if (!profile) {
+            throw new UnauthorizedException("No autenticado.");
+        }
+
+        this.assertPermissionVersionCurrent(profile);
+        return profile;
+    }
+
+    /**
+     * Traduce perfil interno y tokens opacos al contrato que consume el controller.
+     */
+    private buildAuthenticatedSessionResult(profile: IdentityProfile, session: Pick<IssuedIdentityTokens, "sessionExpiresAt" | "sessionToken"> | IssuedSessionToken, refresh: Pick<IssuedIdentityTokens, "refreshExpiresAt" | "refreshToken"> | RotatedRefreshToken): AuthenticatedSessionResult {
+        return {
+            refreshToken: refresh.refreshToken,
+            refreshTokenExpiresAt: refresh.refreshExpiresAt,
+            response: {
+                authenticated: true,
+                session: profile.session,
+                user: profile.user,
+            },
+            sessionToken: session.sessionToken,
+            sessionTokenExpiresAt: session.sessionExpiresAt,
+        };
     }
 }

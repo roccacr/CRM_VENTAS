@@ -7,7 +7,7 @@ La primera experiencia visual permitida no es leads.
 La primera experiencia visual permitida es identidad:
 
 ```txt
-estado del sistema -> sesion -> usuario actual -> roles -> areas/equipos -> permisos visibles
+estado del sistema -> sesion -> usuario actual -> roles -> areas/equipos -> contextos operativos -> permisos visibles
 ```
 
 Este documento define que puede mostrar React antes de construir pantallas comerciales.
@@ -32,6 +32,7 @@ La UI debe dejar claro:
 - primero se define quien entra;
 - luego se define que rol tiene;
 - luego se define en que areas/equipos opera;
+- luego se define que contextos operativos puede abrir;
 - luego se muestran permisos efectivos;
 - leads viene despues.
 
@@ -151,6 +152,56 @@ Regla:
 El frontend puede ocultar botones por UX, pero el backend decide si la accion se ejecuta.
 ```
 
+### 6. Vista de contextos operativos disponibles
+
+Proposito:
+
+- mostrar a que home puede entrar el usuario despues de autenticarse;
+- separar la sesion global de la operacion diaria por area/rol;
+- permitir usuarios con varios roles o areas sin mezclar menus;
+- evitar carpetas duplicadas por cada nombre de rol.
+
+Campos visibles:
+
+| Campo UI | Fuente API | Regla |
+| --- | --- | --- |
+| Codigo contexto | `contexts[].code` | Usar solo como identificador visual/tecnico del CRM. |
+| Nombre | `contexts[].name` | Texto principal del selector. |
+| Modulo | `contexts[].module` | Debe corresponder a un modulo frontend aprobado. |
+| Home | `contexts[].homeRoute` | Ruta inicial del contexto. |
+| Estado | `contexts[].status` | Si no esta activo, no debe permitir entrar. |
+| Motivo | `contexts[].reason` | Explicacion opcional cuando no esta disponible. |
+
+Ejemplos de contexto:
+
+| Contexto | Home esperado | Regla |
+| --- | --- | --- |
+| `sales` | Home de ventas/vendedor | No contiene pantallas de cobros, mercadeo ni TI. |
+| `collections` | Home de finanzas/cobros | No duplica ventas ni formalizaciones. |
+| `marketing` | Home de mercadeo | Vive separado de ventas aunque comparta clientes o leads futuros. |
+| `formalizations` | Home de formalizaciones | Maneja su propio menu operativo. |
+| `management` | Home de jefatura/gerencia | Consolida accesos permitidos, no autoriza por si solo. |
+| `support` | Home de TI/soporte | Solo herramientas aprobadas por permisos efectivos. |
+
+Reglas:
+
+- si existe un solo contexto activo, la UI puede entrar directo a su home;
+- si existen dos o mas contextos activos, la UI debe mostrar selector en sidebar/navbar;
+- una persona con mercadeo y formalizaciones ve ambos contextos si el API los devuelve;
+- un jefe superior o TI puede ver varios contextos solo si el API los devuelve;
+- el contexto activo no reemplaza permisos efectivos ni guards backend;
+- no se debe deducir el contexto desde NetSuite, Odoo, Kapso ni legacy.
+- una URL directa a un home o vista no permite entrar si el API no devuelve ese contexto y permiso efectivo.
+
+Prohibido:
+
+- elegir el home por `roles[0]`;
+- asumir que `owner`, `jefe_general` o `soporte_sistemas` ven todo sin respuesta API;
+- crear un login separado por rol;
+- duplicar la misma pantalla en carpetas `vendedor`, `jefe_ventas`, `subjefe_ventas`;
+- guardar el contexto como autorizacion permanente.
+- renderizar una vista protegida solo porque la ruta existe o el usuario conoce la URL.
+
 ## Textos visibles recomendados
 
 Pantalla de estado:
@@ -185,6 +236,12 @@ Usuario bloqueado:
 Tu usuario no puede operar el CRM en este momento.
 ```
 
+Acceso no autorizado:
+
+```txt
+No tienes permiso para ver esta vista.
+```
+
 ## Estados visuales obligatorios
 
 Toda pantalla de identidad debe tener:
@@ -208,8 +265,15 @@ flowchart TD
   D --> E[Mostrar identidad]
   E --> F[Mostrar roles]
   F --> G[Mostrar areas/equipos]
-  G --> H[Mostrar permisos visibles]
-  H --> I[Leads sigue bloqueado hasta cerrar compuerta]
+  G --> H[Mostrar contextos operativos]
+  H --> I[Mostrar permisos visibles]
+  I --> J{Hay contexto autorizado?}
+  J -->|Uno| K[Entrar al home del contexto]
+  J -->|Varios| L[Mostrar selector en sidebar/navbar]
+  J -->|Ninguno| M[Mostrar estado sin permisos operativos]
+  K --> N[Leads sigue bloqueado hasta cerrar compuerta]
+  L --> N
+  M --> N
 ```
 
 ## Reglas de seguridad frontend
@@ -224,6 +288,7 @@ flowchart TD
 - No llamar Microsoft Graph directo para reglas CRM.
 - No llamar NetSuite/Odoo/Kapso directo.
 - No mostrar stack traces.
+- No usar contexto operativo como autorizacion final.
 
 ## Estado local permitido
 
@@ -235,6 +300,7 @@ Permitido:
 - preferencias de layout;
 - estado de loading/error;
 - seleccion visual temporal.
+- contexto operativo activo validado contra el API.
 
 No permitido:
 
@@ -244,6 +310,7 @@ No permitido:
 - roles como fuente permanente;
 - areas como fuente permanente;
 - reglas de negocio.
+- contexto operativo como permiso permanente.
 
 ## Componentes esperados cuando se apruebe implementar
 
@@ -255,6 +322,9 @@ CurrentUserPanel
 AuthStatusPanel
 RoleSummaryList
 OrgUnitScopeList
+OperatingContextSelector
+ContextHomePlaceholder
+ContextNavigationPreview
 EffectivePermissionList
 IdentityBlockedState
 IdentityPendingState
@@ -290,6 +360,7 @@ Este contrato visual queda listo para implementacion cuando:
 - no haya pantallas comerciales en el primer corte;
 - la UI no guarde tokens;
 - la UI no calcule permisos finales;
+- la UI pueda representar usuarios con uno, varios o ningun contexto operativo;
 - la UI tenga estados de sesion y permisos.
 
 ## Pendientes reales

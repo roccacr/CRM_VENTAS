@@ -90,7 +90,7 @@ Separacion obligatoria:
 | `src/integrations/odoo` | Preparar convivencia/migracion futura hacia Odoo. | Puede activarse sin renombrar core ni frontend. |
 | `src/integrations/kapso` | Mensajeria, WhatsApp, templates y webhooks Kapso. | No puede ser llamado directo por React. |
 | `src/integrations/microsoft365` | Entra ID, Graph y calendario externo. | No decide reglas CRM; solo adapta proveedor. |
-| `src/integrations/common/ports` | Interfaces que el core conoce. | No contiene implementaciones concretas. |
+| `src/modules/crm/identity/ports` | Interfaces de proveedor que identidad conoce. | No contiene implementaciones concretas. |
 
 Nueva regla para cualquier proveedor futuro:
 

@@ -2,11 +2,11 @@
 
 ## Veredicto
 
-Este documento define el contrato conceptual minimo que el API debe exponer en el runtime minimo de identidad autorizado por la ley `0.3.14`.
+Este documento define el contrato conceptual minimo que el API debe exponer en el runtime minimo de identidad autorizado por la ley vigente.
 
 No es OpenAPI ejecutable por si solo.
 
-Este documento no autoriza alcance por si mismo: la autorizacion vive en `00-Producto-CRM-TINK-y-P0.md`. La ley `0.3.14` permite convertir este contrato solo en runtime minimo de identidad; usuarios reales, credenciales seed y modulos comerciales siguen fuera.
+Este documento no autoriza alcance por si mismo: la autorizacion vive en `00-Producto-CRM-TINK-y-P0.md`. La ley vigente `0.3.27` permite convertir este contrato solo en runtime minimo de identidad, endurecer login seguro en API, crear el primer owner real por bootstrap controlado, fijar crosswalk de proveedores externos, implementar Microsoft OIDC en API con cache MSAL cifrado y fijar ventana absoluta de sesion de 8 horas; credenciales seed, frontend de login y modulos comerciales siguen fuera.
 
 La finalidad es evitar improvisar mientras se construye identidad.
 
@@ -79,6 +79,9 @@ Estos endpoints son nombres de contrato conceptual para el runtime minimo de ide
 | --- | --- | --- |
 | `GET` | `/identity/session` | Indicar si existe sesion backend valida. |
 | `GET` | `/identity/me` | Devolver usuario actual, roles, areas y permisos efectivos. |
+| `GET` | `/identity/me/photo` | Servir foto cacheada del usuario actual desde almacenamiento interno del CRM. |
+| `GET` | `/identity/sessions` | Listar sesiones activas del usuario actual sin exponer tokens. |
+| `POST` | `/identity/sessions/:sessionPublicId/revoke` | Revocar una sesion activa propia. |
 | `POST` | `/identity/logout` | Cerrar sesion backend y revocar cookies/sesion. |
 | `POST` | `/identity/refresh` | Refrescar sesion BFF cuando exista refresh token valido. |
 | `POST` | `/identity/microsoft/start` | Iniciar login Microsoft con PKCE/state. |
@@ -94,6 +97,72 @@ Reglas:
 - ningun endpoint devuelve access token, refresh token ni id token al frontend;
 - el frontend solo recibe datos de sesion y permisos, no secretos.
 
+## Decision de token del contrato actual
+
+Este contrato usa BFF con tokens opacos en cookies. No usa access token JWT entregado al frontend.
+
+Regla vigente:
+
+```txt
+El frontend no guarda tokens. El API mantiene sesion, refresh, CSRF, permisos y auditoria.
+```
+
+Implicacion practica:
+
+- `/identity/local/login` no devuelve JWT en JSON;
+- `/identity/refresh` no devuelve JWT en JSON;
+- `/identity/session` y `/identity/me` devuelven estado de sesion y datos de usuario/permisos;
+- la cookie `crm_session` representa la sesion corta;
+- la cookie `crm_refresh` representa la continuidad de sesion;
+- la cookie `crm_csrf` permite probar que las mutaciones vienen del navegador que recibio el token CSRF del BFF.
+
+Si en una fase futura se aprueba access token JWT efimero en memoria del frontend, este documento debe cambiar antes de tocar codigo.
+
+## Regla de validacion por proveedor de autenticacion
+
+Microsoft y login local son formas distintas de demostrar identidad antes de crear sesion CRM. Despues de autenticar, ambos terminan en la misma sesion BFF opaca del CRM.
+
+Regla:
+
+```txt
+Microsoft se valida solo durante el flujo Microsoft OIDC. Login local no valida Microsoft. Requests normales validan sesion CRM, CSRF, permisos efectivos y estado interno, no tokens Microsoft.
+```
+
+Implicaciones:
+
+- `/identity/microsoft/start` y `/identity/microsoft/callback` deben validar PKCE, `state`, issuer, audience, expiracion y claims del proveedor Microsoft antes de crear o vincular una identidad `microsoft`.
+- La identidad `microsoft` no se crea con correo solamente; necesita el identificador estable del proveedor, por ejemplo `sub`/`oid`, cuando Entra ID real este configurado.
+- `/identity/local/login` valida correo normalizado, estado de la identidad local, Argon2id, lockout, rate limit y auditoria interna. No consulta Microsoft.
+- `/identity/refresh` rota tokens propios del CRM. Si la sesion fue creada por Microsoft y toca revalidacion/renovacion, el backend usa cache MSAL cifrado para `acquireTokenSilent`; si Microsoft exige interaccion, la sesion CRM se revoca y el usuario vuelve a `/identity/microsoft/start`.
+- Un tercer proveedor futuro sigue la misma regla: valida su protocolo dentro de `src/integrations/<proveedor>` y luego emite sesion CRM propia, sin cambiar el contrato del frontend.
+
+## Flujo operativo de Microsoft
+
+1. El navegador llama `POST /identity/microsoft/start`.
+2. El API genera `state`, `nonce`, PKCE verifier/challenge y guarda solo lo necesario del challenge en storage servidor/cookie firmada de corta vida.
+3. El API redirige a Microsoft con scopes minimos `openid profile email offline_access`.
+4. Microsoft vuelve a `GET /identity/microsoft/callback` con authorization code.
+5. El API valida `state`, PKCE, `nonce`, issuer, audience, expiracion, tenant permitido y claims.
+6. El API resuelve la identidad por identificador estable (`oid`/`sub` + tenant o `homeAccountId`), no por correo solamente.
+7. Si la identidad existe y esta activa, el API crea sesion CRM propia y refresh CRM propio.
+8. El API persiste cache MSAL cifrado en servidor, particionado por la cuenta Microsoft estable.
+9. El controller redirige al `FRONTEND_ORIGIN` configurado sin entregar access token, refresh token, ID token ni cache Microsoft.
+
+Regla de continuidad:
+
+```txt
+Refrescar la pagina no debe romper Microsoft. La cookie CRM mantiene la sesion; si la sesion requiere renovacion, el API usa MSAL silencioso desde cache cifrado.
+```
+
+La continuidad Microsoft no elimina el vencimiento absoluto del CRM: despues de 8 horas desde el login, la sesion CRM expira y el usuario debe iniciar login de nuevo para regenerar sesion, refresh, CSRF y revalidar Microsoft.
+
+Si MSAL silencioso falla por `interaction_required`, cuenta revocada, consentimiento perdido o refresh Microsoft vencido/revocado:
+
+- revocar la sesion CRM creada por Microsoft;
+- revocar refresh tokens CRM asociados;
+- auditar el evento sin guardar tokens;
+- responder de forma neutral para que el frontend reinicie login Microsoft.
+
 ## Contrato de sesion
 
 Respuesta conceptual de `/identity/session`:
@@ -104,13 +173,15 @@ Respuesta conceptual de `/identity/session`:
   "session": {
     "publicId": "01KCRM00000000000000000001",
     "status": "active",
-    "expiresAt": "2026-09-25T22:00:00.000-06:00",
+    "expiresAt": "2026-09-25T22:00:00.000Z",
+    "expiresInSeconds": 28800,
     "permissionVersion": 7
   },
   "user": {
     "publicId": "01KCRM00000000000000000002",
     "displayName": "<nombre-oficial>",
     "email": "<correo-oficial>",
+    "profileImageUrl": null,
     "status": "active",
     "permissionVersion": 7
   }
@@ -134,9 +205,72 @@ Reglas:
 - `publicId` es identificador canonico para API/frontend;
 - no se usa `id_user` interno en respuestas publicas;
 - no se usa id de NetSuite, Odoo, legacy CRM ni Kapso;
+- `profileImageUrl` sera `null` cuando no exista foto cacheada; cuando Microsoft sincronice Graph, la foto se expone solo como referencia interna controlada por el API, no como URL temporal de Microsoft;
+- `expiresInSeconds` es informativo para UI; la autoridad real es `expiresAt` validado por backend;
 - `permissionVersion` sirve para detectar permisos desactualizados;
-- si la version de permisos cambia, la siguiente accion protegida debe validar permisos nuevamente.
-- cuando se implemente login real, la cookie de sesion no debe guardar `publicId` plano como secreto; debe usar un token opaco criptograficamente aleatorio, guardado solo como hash en base de datos.
+- si la version de permisos cambia, la sesion queda obsoleta y el cliente debe cerrar sesion local, limpiar cache y pedir login nuevo.
+- la cookie de sesion no guarda `publicId` plano como secreto; usa un token opaco criptograficamente aleatorio, guardado solo como HMAC en `token_hash_auth_session`.
+
+## Cookies del contrato
+
+| Cookie | Path | HttpOnly | Secure | SameSite | Persistencia | Regla |
+| --- | --- | --- | --- | --- | --- | --- |
+| `crm_session` | `/` | Si | Si | `Strict` | Maximo 8 horas absolutas desde el login. | Token opaco de sesion, hasheado en `sec_auth_session`. |
+| `crm_refresh` | `/identity/refresh` | Si | Si | `Strict` | Rota dentro de la misma ventana maxima de 8 horas. | Token opaco de refresh, hasheado en `sec_refresh_token`; no extiende la sesion. |
+| `crm_csrf` | `/` | No | Si | `Strict` | Mientras sea valido para el estado de sesion. | Token `nonce.firma`; el frontend lo repite en `X-CRM-CSRF-Token`. |
+| `crm_ms_oidc` | `/identity/microsoft/callback` | Si | Si | `Lax` | Corta vida, solo durante callback Microsoft. | Challenge OIDC firmado con PKCE verifier/state/nonce; usa `Lax` porque Microsoft vuelve al API desde otro sitio. |
+
+Ninguna cookie debe guardar correo, nombre, rol, permisos, ids de proveedor externo ni ids internos de MySQL.
+
+## Flujo operativo de login local
+
+1. El navegador llama `GET /identity/session`.
+2. El API responde sesion anonima/autenticada y emite `crm_csrf` firmado si falta o no corresponde al estado actual.
+3. El navegador llama `POST /identity/local/login` con body `{ email, password }`, cookie `crm_csrf` y header `X-CRM-CSRF-Token`.
+4. El rate limit revisa dos contadores independientes: IP efectiva y HMAC del correo.
+5. El DTO normaliza correo con `trim` + lowercase y valida limites de longitud/formato.
+6. El repository busca una identidad local `active` de un usuario `active`.
+7. El service verifica password con Argon2id.
+8. Si falla, audita `local_login_failed` con HMAC del correo y responde `401` neutral.
+9. Si pasa, emite token de sesion opaco, refresh opaco y familia de refresh.
+10. El repository crea `sec_auth_session` y `sec_refresh_token`.
+11. El service audita `local_login_succeeded`.
+12. El controller responde JSON de sesion/usuario y setea `crm_session`, `crm_refresh` y `crm_csrf`.
+
+No se permite:
+
+- devolver token en JSON;
+- guardar password plano;
+- diferenciar mensaje entre correo inexistente y clave incorrecta;
+- crear usuarios reales inventados;
+- seedear passwords.
+
+## Flujo operativo de refresh
+
+1. El navegador llama `POST /identity/refresh` con cookie `crm_refresh` y prueba CSRF.
+2. El service hashea el refresh recibido con `AUTH_TOKEN_HASH_SECRET`.
+3. El repository busca el refresh y cruza sesion, usuario e identidad.
+4. Si no existe o no puede rotar, responde `401`.
+5. Si el refresh ya no esta `active`, se trata como reuso: se revoca la familia y todas las sesiones activas del usuario.
+6. Si el refresh esta vencido, se marca `expired`.
+7. Si la sesion, usuario o identidad ya no esta activa, se revoca la familia y la sesion asociada.
+8. Si `permissionVersion` no coincide, responde `409` y el cliente debe cerrar sesion local; no debe intentar resolverlo llamando `/identity/me`.
+9. Si todo es valido, marca el refresh anterior como `rotated`, actualiza hash de sesion e inserta un nuevo refresh activo sin extender el vencimiento absoluto de 8 horas.
+10. El service audita `refresh_rotated` con el usuario canonico asociado.
+11. El controller devuelve JSON de sesion/usuario y setea nuevas cookies.
+
+Decision vigente: el sistema permite varias sesiones abiertas por usuario, pero el reuso de refresh token es senal de robo y revoca todas las sesiones activas del usuario.
+
+## Flujo operativo de logout
+
+1. El navegador llama `POST /identity/logout` con `crm_session` y prueba CSRF.
+2. El service hashea el token de sesion recibido.
+3. El repository revoca la sesion activa si existe.
+4. El repository revoca refresh tokens activos asociados a esa sesion.
+5. El repository registra auditoria de logout dentro de la misma transaccion.
+6. El controller limpia `crm_session`, `crm_refresh` y `crm_csrf`.
+
+Logout es idempotente: si no hay sesion valida, responde exito para permitir limpiar el navegador.
 
 ## Contrato de usuario actual
 
@@ -144,17 +278,32 @@ Respuesta conceptual de `/identity/me`:
 
 ```json
 {
+  "session": {
+    "publicId": "01KCRM00000000000000000001",
+    "status": "active",
+    "expiresAt": "2026-09-25T22:00:00.000Z",
+    "expiresInSeconds": 28800,
+    "permissionVersion": 7
+  },
   "user": {
     "publicId": "01KCRM00000000000000000002",
     "displayName": "<nombre-oficial>",
     "email": "<correo-oficial>",
+    "profileImageUrl": null,
     "status": "active",
     "permissionVersion": 7
   },
   "auth": {
     "primaryProvider": "microsoft",
     "availableProviders": ["microsoft", "local"],
-    "localStatus": "pending"
+    "currentProvider": "microsoft",
+    "localStatus": "pending",
+    "microsoft": {
+      "homeAccountId": "home.tenant",
+      "tenantId": "tenant",
+      "lastSyncedAt": "2026-09-28T18:00:00.000Z",
+      "interactionRequired": false
+    }
   },
   "roles": [
     {
@@ -202,7 +351,9 @@ Respuesta conceptual de `/identity/me`:
 | --- | --- | --- |
 | `primaryProvider` | string | `microsoft` por defecto. |
 | `availableProviders` | string[] | Proveedores permitidos para el usuario. |
+| `currentProvider` | string | Proveedor que creo la sesion actual: `local`, `microsoft` u otro futuro. |
 | `localStatus` | string | `active`, `pending`, `inactive` o `blocked`. |
+| `microsoft` | object/null | Estado seguro Microsoft: `homeAccountId`, `tenantId`, `lastSyncedAt`, `interactionRequired`. No contiene tokens. |
 
 Regla P0-S1A:
 
@@ -279,8 +430,7 @@ blocked
 | --- | --- | --- |
 | `401` | No autenticado. | No revelar si el correo existe. |
 | `403` | Sin permiso efectivo. | Respuesta clara sin exponer reglas internas completas. |
-| `409` | `permissionVersion` desactualizada. | El frontend debe refrescar `/identity/me`. |
-| `423` | Usuario bloqueado. | No permitir operar CRM. |
+| `409` | `permissionVersion` desactualizada. | El frontend debe limpiar cache, cerrar sesion local y pedir login nuevo. |
 
 Mensaje visible recomendado:
 
@@ -302,17 +452,18 @@ El rol X no tiene permiso Y por tabla Z.
 - Cookies `HttpOnly`, `Secure`, `SameSite`.
 - Prohibido tokens en frontend.
 - Microsoft OIDC con PKCE y `state`.
-- Login local con Argon2id preferido; bcrypt solo si se resuelve explicitamente su limite efectivo de 72 bytes antes de activar login real.
+- Login local con Argon2id. No se acepta bcrypt en este corte.
 - Login local por invitacion/reset seguro.
 - Correos locales normalizados con `trim` + lowercase y maximo 254 caracteres antes de validar, auditar, aplicar rate limit o autenticar.
 - Password local con minimo 12 y maximo 128 caracteres antes de hashear.
 - Token opaco de activacion/reset local con minimo 32 y maximo 256 caracteres.
 - `POST /identity/local/login` y `POST /identity/local/request-reset` deben tener rate limit local por proceso con dos contadores independientes por endpoint: IP efectiva y HMAC del correo. Si cualquiera se excede, el request no llega al caso de uso.
+- `POST /identity/local/complete-reset` debe tener rate limit por IP efectiva y HMAC del token opaco de reset, sin guardar el token crudo.
 - Las cuotas por IP y por correo deben configurarse por separado: `LOCAL_LOGIN_RATE_LIMIT_IP_MAX`, `LOCAL_LOGIN_RATE_LIMIT_EMAIL_MAX`, `LOCAL_RESET_RATE_LIMIT_IP_MAX` y `LOCAL_RESET_RATE_LIMIT_EMAIL_MAX`. El valor por IP debe ser mayor para soportar oficinas con NAT o proxy compartido.
 - Todo endpoint `/identity/*` debe responder `Cache-Control: no-store` para evitar cachear sesion, correo, roles, areas o permisos efectivos. Esto incluye respuestas tempranas de guard, rate limit y rutas inexistentes bajo `/identity/*`.
-- Refresh token rotado y guardado como hash.
+- Refresh token rotado y guardado como HMAC.
 - Reuso de refresh token revoca la familia.
-- Endpoints mutables protegidos contra CSRF; cookie/header deben coincidir y tener formato `base64url` de 43 caracteres o responder `403`. `/identity/session` solo conserva cookie CSRF con ese formato y `/identity/logout` limpia sesion, refresh y CSRF.
+- Endpoints mutables protegidos contra CSRF firmado; cookie/header deben coincidir, tener formato `nonce.firma` base64url y validar contra `COOKIE_SECRET`; si existe sesion, la firma queda ligada al token de sesion. Si falta, no coincide o no valida, responde `403`. `/identity/logout` limpia sesion, refresh y CSRF.
 - CORS solo desde origen exacto del frontend.
 - Errores sin stack traces ni SQL.
 
@@ -345,12 +496,23 @@ quien, cuando, desde donde, que cambio, a quien afecto, con que motivo
 
 ## Pendientes reales
 
-No bloquean este contrato conceptual, pero bloquean bootstrap real:
+No bloquean este contrato conceptual, pero bloquean bootstrap real adicional:
 
-1. Correo oficial del primer `owner`.
-2. Nombre visible del primer `owner`.
-3. Correo oficial del primer `jefe_general`.
-4. Nombre visible del primer `jefe_general`.
+1. Primer `owner` Roberto queda autorizado por la ley `0.3.21` y su crosswalk externo por la ley `0.3.22`, con login local `pending` hasta activacion/reset seguro.
+2. Correo oficial del primer `jefe_general`.
+3. Nombre visible del primer `jefe_general`.
+4. Canal aprobado para entregar tokens de activacion/reset local.
+
+## Bloqueantes antes de login productivo
+
+Estos puntos bloquean declarar el login como productivo aunque el API ya tenga la preparacion tecnica:
+
+1. Crear/bootstrap usuarios reales con correos oficiales aprobados; el primer `owner` Roberto queda autorizado por la ley `0.3.21` y su crosswalk externo por la ley `0.3.22`; no inventar usuarios.
+2. Aprobar canal de entrega para tokens de activacion/reset local; el backend ya guarda solo HMAC y completa Argon2id.
+3. Configurar Microsoft real con redirect URI oficial, app registration de Entra ID, variables `MICROSOFT_*`, `SQL/004` aplicado y cache MSAL cifrado persistente en servidor.
+4. Aprobar addendum frontend antes de construir pantalla de login.
+5. Validar login exitoso, refresh exitoso, reuso de refresh y lockout con una identidad local real aprobada.
+6. Validar Microsoft: callback exitoso, refresh CRM con renovacion silenciosa MSAL, cache persistido tras reinicio del API y fallo controlado cuando Microsoft exige login interactivo.
 
 ## Prohibido
 
@@ -372,4 +534,4 @@ Este contrato queda listo para convertirse en OpenAPI minimo de identidad cuando
 - no existan usuarios inventados;
 - el frontend tenga contrato visual alineado;
 - seguridad BFF siga siendo obligatoria;
-- el alcance se mantenga dentro de la ley `0.3.14`.
+- el alcance se mantenga dentro de la ley `0.3.19`.

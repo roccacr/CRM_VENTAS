@@ -22,9 +22,9 @@ const MAX_LOCAL_RESET_TOKEN_LENGTH = 256;
 /**
  * Body de request para login local.
  *
- * Login local es una ruta alternativa, no la primaria. El endpoint queda
- * preparado pero deshabilitado hasta implementar hashing, activacion y rate
- * limiting completos.
+ * Login local es una ruta alternativa, no la primaria. Solo autentica
+ * identidades locales activas, con password Argon2id y controles de abuso del
+ * runtime de identidad.
  */
 export class LocalLoginDto {
     @ApiProperty({ description: "Correo canonico del usuario CRM.", example: "usuario@roccacr.com", maxLength: MAX_EMAIL_LENGTH })
@@ -33,7 +33,7 @@ export class LocalLoginDto {
     @MaxLength(MAX_EMAIL_LENGTH)
     email!: string;
 
-    @ApiProperty({ description: "Clave local del usuario cuando el login local este activado.", minLength: MIN_LOCAL_PASSWORD_LENGTH, maxLength: MAX_LOCAL_PASSWORD_LENGTH })
+    @ApiProperty({ description: "Clave local de una identidad local activa.", minLength: MIN_LOCAL_PASSWORD_LENGTH, maxLength: MAX_LOCAL_PASSWORD_LENGTH })
     @IsString()
     @MinLength(MIN_LOCAL_PASSWORD_LENGTH)
     @MaxLength(MAX_LOCAL_PASSWORD_LENGTH)

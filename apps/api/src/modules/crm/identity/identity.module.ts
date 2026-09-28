@@ -5,6 +5,13 @@ import { PermissionsModule } from "../permissions/permissions.module.js";
 import { IdentityController } from "./identity.controller.js";
 import { IdentityRepository } from "./identity.repository.js";
 import { IdentityService } from "./identity.service.js";
+import { IdentityAuditRecorder } from "./identity-audit-recorder.service.js";
+import { IdentityLocalRepository } from "./identity-local.repository.js";
+import { IdentityMicrosoftRepository } from "./identity-microsoft.repository.js";
+import { IdentityMicrosoftSessionService } from "./identity-microsoft-session.service.js";
+import { IdentityProfileRepository } from "./identity-profile.repository.js";
+import { IdentitySessionRepository } from "./identity-session.repository.js";
+import { IdentityTokenService } from "./identity-token.service.js";
 
 /**
  * Modulo feature de identidad para P0-S1A.
@@ -15,6 +22,6 @@ import { IdentityService } from "./identity.service.js";
 @Module({
     imports: [AuditModule, PermissionsModule],
     controllers: [IdentityController],
-    providers: [IdentityService, IdentityRepository],
+    providers: [IdentityService, IdentityRepository, IdentityProfileRepository, IdentitySessionRepository, IdentityLocalRepository, IdentityMicrosoftRepository, IdentityTokenService, IdentityAuditRecorder, IdentityMicrosoftSessionService],
 })
 export class IdentityModule {}

@@ -15,6 +15,7 @@ import { APPROVED_DATABASE_NAME } from "./product.constants.js";
 
 /** Longitud minima para evitar secretos triviales. */
 const MIN_RUNTIME_SECRET_LENGTH = 32;
+const MICROSOFT_CACHE_KEY_BYTES = 32;
 const TRUST_ALL_PROXY_VALUES = new Set(["*", "0.0.0.0/0", "::/0"]);
 const IPV4_VERSION = 4;
 const IPV6_VERSION = 6;
@@ -25,11 +26,89 @@ const MIN_IPV6_TRUSTED_PROXY_PREFIX = 32;
 const IPV4_MAPPED_PREFIX_OFFSET = 96;
 const IPV4_MAPPED_SPACE = new BlockList();
 IPV4_MAPPED_SPACE.addSubnet("::ffff:0:0", IPV4_MAPPED_PREFIX_OFFSET, "ipv6");
+const REQUIRED_MICROSOFT_OIDC_KEYS = ["MICROSOFT_TENANT_ID", "MICROSOFT_CLIENT_ID", "MICROSOFT_CLIENT_SECRET", "MICROSOFT_REDIRECT_URI", "MICROSOFT_MSAL_CACHE_ENCRYPTION_KEY"] as const;
+
+type MicrosoftOidcConfig = {
+    AUDIT_HASH_SECRET: string;
+    AUTH_TOKEN_HASH_SECRET: string;
+    COOKIE_SECRET: string;
+    MICROSOFT_CLIENT_ID?: string | undefined;
+    MICROSOFT_CLIENT_SECRET?: string | undefined;
+    MICROSOFT_MSAL_CACHE_ENCRYPTION_KEY?: string | undefined;
+    MICROSOFT_REDIRECT_URI?: string | undefined;
+    MICROSOFT_TENANT_ID?: string | undefined;
+};
 
 /**
  * Entero positivo para limites operativos configurables.
  */
 const positiveIntegerSchema = z.coerce.number().int().positive();
+
+/**
+ * Valida claves base64 que se convierten exactamente en 32 bytes.
+ *
+ * La cache MSAL puede contener refresh tokens Microsoft. Aunque MSAL no expone
+ * esos tokens a nuestra app, el blob serializado debe persistirse cifrado con
+ * una llave de servidor fuerte y distinta de los secretos de cookies/HMAC.
+ */
+const microsoftCacheEncryptionKeySchema = z
+    .string()
+    .optional()
+    .superRefine((value, context) => {
+        if (!value) {
+            return;
+        }
+
+        const key = Buffer.from(value, "base64");
+
+        if (key.length !== MICROSOFT_CACHE_KEY_BYTES || key.toString("base64") !== value) {
+            context.addIssue({
+                code: "custom",
+                message: "MICROSOFT_MSAL_CACHE_ENCRYPTION_KEY debe ser base64 de 32 bytes.",
+            });
+        }
+    });
+
+/**
+ * Microsoft debe configurarse completo o no configurarse.
+ */
+const addMicrosoftOidcIssues = (config: MicrosoftOidcConfig, context: z.RefinementCtx): void => {
+    const microsoftValues = [config.MICROSOFT_TENANT_ID, config.MICROSOFT_CLIENT_ID, config.MICROSOFT_CLIENT_SECRET, config.MICROSOFT_REDIRECT_URI];
+
+    if (microsoftValues.some(Boolean)) {
+        addMissingMicrosoftConfigIssues(config, context);
+    }
+
+    addMicrosoftSecretSeparationIssue(config, context);
+};
+
+/**
+ * Evita arrancar con una app registration a medias.
+ */
+const addMissingMicrosoftConfigIssues = (config: MicrosoftOidcConfig, context: z.RefinementCtx): void => {
+    for (const key of REQUIRED_MICROSOFT_OIDC_KEYS) {
+        if (!config[key]) {
+            context.addIssue({
+                code: "custom",
+                message: `${key} es requerido cuando se configura Microsoft OIDC.`,
+                path: [key],
+            });
+        }
+    }
+};
+
+/**
+ * La llave que cifra cache MSAL no puede reutilizar secretos BFF/HMAC.
+ */
+const addMicrosoftSecretSeparationIssue = (config: MicrosoftOidcConfig, context: z.RefinementCtx): void => {
+    if (config.MICROSOFT_MSAL_CACHE_ENCRYPTION_KEY && [config.COOKIE_SECRET, config.AUDIT_HASH_SECRET, config.AUTH_TOKEN_HASH_SECRET].includes(config.MICROSOFT_MSAL_CACHE_ENCRYPTION_KEY)) {
+        context.addIssue({
+            code: "custom",
+            message: "MICROSOFT_MSAL_CACHE_ENCRYPTION_KEY debe ser distinto de los secretos BFF/HMAC.",
+            path: ["MICROSOFT_MSAL_CACHE_ENCRYPTION_KEY"],
+        });
+    }
+};
 
 /**
  * Valida que FRONTEND_ORIGIN sea un origin puro, sin path, query ni slash final.
@@ -186,9 +265,11 @@ const envSchema = z
         NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
         API_BIND_HOST: z.string().min(1).default("127.0.0.1"),
         PORT: tcpPortSchema.default(3000),
+        LOG_LEVEL: z.enum(["fatal", "error", "warn", "info", "debug", "trace", "silent"]).default("info"),
         FRONTEND_ORIGIN: frontendOriginSchema,
         COOKIE_SECRET: z.string().min(MIN_RUNTIME_SECRET_LENGTH),
         AUDIT_HASH_SECRET: z.string().min(MIN_RUNTIME_SECRET_LENGTH),
+        AUTH_TOKEN_HASH_SECRET: z.string().min(MIN_RUNTIME_SECRET_LENGTH),
         OPENAPI_ENABLED: booleanEnvSchema("false"),
         TRUSTED_PROXY_IPS: z
             .string()
@@ -202,10 +283,18 @@ const envSchema = z
         LOCAL_RESET_RATE_LIMIT_IP_MAX: positiveIntegerSchema.default(30),
         LOCAL_RESET_RATE_LIMIT_WINDOW_MS: positiveIntegerSchema.default(60_000),
         LOCAL_RESET_RATE_LIMIT_CACHE: positiveIntegerSchema.default(5_000),
+        LOCAL_COMPLETE_RESET_RATE_LIMIT_TOKEN_MAX: positiveIntegerSchema.default(5),
+        LOCAL_COMPLETE_RESET_RATE_LIMIT_IP_MAX: positiveIntegerSchema.default(30),
+        LOCAL_COMPLETE_RESET_RATE_LIMIT_WINDOW_MS: positiveIntegerSchema.default(60_000),
+        LOCAL_COMPLETE_RESET_RATE_LIMIT_CACHE: positiveIntegerSchema.default(5_000),
         LOCAL_LOGIN_RATE_LIMIT_EMAIL_MAX: positiveIntegerSchema.default(5),
         LOCAL_LOGIN_RATE_LIMIT_IP_MAX: positiveIntegerSchema.default(30),
         LOCAL_LOGIN_RATE_LIMIT_WINDOW_MS: positiveIntegerSchema.default(60_000),
         LOCAL_LOGIN_RATE_LIMIT_CACHE: positiveIntegerSchema.default(5_000),
+        REFRESH_RATE_LIMIT_TOKEN_MAX: positiveIntegerSchema.default(3),
+        REFRESH_RATE_LIMIT_IP_MAX: positiveIntegerSchema.default(60),
+        REFRESH_RATE_LIMIT_WINDOW_MS: positiveIntegerSchema.default(60_000),
+        REFRESH_RATE_LIMIT_CACHE: positiveIntegerSchema.default(5_000),
         DB_HOST: z.string().min(1),
         DB_PORT: tcpPortSchema.default(3306),
         DB_USER: z.string().min(1),
@@ -217,6 +306,8 @@ const envSchema = z
         MICROSOFT_CLIENT_ID: z.string().optional(),
         MICROSOFT_CLIENT_SECRET: z.string().optional(),
         MICROSOFT_REDIRECT_URI: z.string().optional(),
+        MICROSOFT_MSAL_CACHE_ENCRYPTION_KEY: microsoftCacheEncryptionKeySchema,
+        MICROSOFT_SCOPES: z.string().default("openid profile email offline_access User.Read"),
     })
     .superRefine((config, context) => {
         if (config.AUDIT_HASH_SECRET === config.COOKIE_SECRET) {
@@ -227,6 +318,15 @@ const envSchema = z
             });
         }
 
+        if (config.AUTH_TOKEN_HASH_SECRET === config.COOKIE_SECRET || config.AUTH_TOKEN_HASH_SECRET === config.AUDIT_HASH_SECRET) {
+            context.addIssue({
+                code: "custom",
+                message: "AUTH_TOKEN_HASH_SECRET debe ser distinto de COOKIE_SECRET y AUDIT_HASH_SECRET.",
+                path: ["AUTH_TOKEN_HASH_SECRET"],
+            });
+        }
+
+        addMicrosoftOidcIssues(config, context);
         addDatabaseTlsIssues(config, context);
     });
 

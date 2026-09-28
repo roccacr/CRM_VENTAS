@@ -35,7 +35,7 @@ Reglas:
 - no son migraciones aplicadas;
 - no autorizan ejecutar cambios en base de datos productiva;
 - no crean runtime NestJS;
-- no crean usuarios reales hasta confirmar correo y nombre del owner;
+- no crean usuarios reales por catalogo; el primer owner Roberto fue autorizado posteriormente por la ley `0.3.21` y su crosswalk externo fue precisado por la ley `0.3.22`;
 - cualquier cambio en esos SQL debe respetar este contrato, el diccionario y el estandar de nombres.
 
 ## Contrato API derivado
@@ -165,7 +165,7 @@ El CRM no crea roles como `jefe_mercadeo` o `jefe_formalizacion`.
 - `owner` gobierna configuracion, emergencia, administracion maxima y control tecnico/administrativo;
 - `jefe_general` supervisa operacion de negocio;
 - un usuario `owner` no debe usarse como cuenta diaria de ventas o supervision;
-- el primer `owner` y el primer `jefe_general` deben ser usuarios reales separados cuando existan los correos oficiales;
+- el primer `owner` real ya queda autorizado como Roberto por la ley `0.3.21`; NetSuite `653055` y Odoo pendiente quedan precisados por la ley `0.3.22`; el primer `jefe_general` debe ser otro usuario real separado cuando exista correo oficial;
 - si por emergencia la misma persona recibe ambos roles, debe quedar auditado como excepcion temporal y no como modelo normal.
 
 Modelo correcto:
@@ -274,7 +274,7 @@ Reglas:
 
 - no guardar tokens en frontend;
 - no guardar password plano;
-- hash local con Argon2id o bcrypt costo minimo 12;
+- hash local con Argon2id;
 - no incluir contrasenas reales en migraciones ni seeds;
 - activar login local por invitacion o reset seguro;
 - si el flujo de invitacion/reset no existe todavia, la identidad local queda `pending`;
@@ -348,4 +348,4 @@ Este contrato queda listo para SQL controlado cuando:
 - el diccionario respeta `Diccionario-Datos/01-Identidad-y-Permisos.md`;
 - ninguna tabla core usa nombres de NetSuite, Odoo, Kapso o legacy;
 - ninguna relacion interna depende de un id externo;
-- no se crean usuarios reales sin correo y nombre confirmados.
+- no se crean usuarios reales sin correo y nombre confirmados; Roberto owner es la excepcion ya cerrada por la ley `0.3.21` y su crosswalk externo queda cerrado por la ley `0.3.22`.

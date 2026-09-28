@@ -43,8 +43,9 @@ Estos documentos se consultan solo cuando se revise MySQL, seguridad o bootstrap
 5. `Diccionario-Datos/01-Identidad-y-Permisos.md`
 6. `SQL/001_identity_schema_p0_s1.sql`
 7. `SQL/002_identity_seed_p0_s1.sql`
-8. `21-P0-Direccion-Tecnica-Construccion-Pausada.md`
-9. `22-Mapa-de-Implementacion-API.md`
+8. `SQL/003_identity_login_readiness_p0_s1.sql`
+9. `21-P0-Direccion-Tecnica-Construccion-Pausada.md`
+10. `22-Mapa-de-Implementacion-API.md`
 
 ## Lectura futura, fuera de P0-S1
 
@@ -82,10 +83,10 @@ Solo se leen cuando `00-Producto-CRM-TINK-y-P0.md` o una decision aprobada por e
 | `18-Notas-Adhesivas-y-Anotaciones.md` | Define notas adhesivas/anotaciones como modulo transversal con permisos, auditoria, entidades relacionadas e integraciones. |
 | `19-Reglas-Operativas-Leads-SLA-y-Perdida.md` | Define leads nuevos, requiere atencion, pausa/reactivacion, perdida, SLA y explicacion gerencial de indicadores. |
 | `20-Pendientes-Decisiones-y-Preguntas-P0.md` | Lista decisiones cerradas, preguntas abiertas y pendientes criticos antes de codificar P0. |
-| `21-P0-Direccion-Tecnica-Construccion-Pausada.md` | Documento corto de referencia P0 tecnica; no autoriza runtime hasta cerrar producto/modelo/contrato. |
+| `21-P0-Direccion-Tecnica-Construccion-Pausada.md` | Documento corto de referencia P0 tecnica; el runtime minimo de identidad ya esta autorizado por la ley vigente, mientras modulos comerciales siguen prohibidos. |
 | `22-Mapa-de-Implementacion-API.md` | Mapa practico de carpetas futuras, responsabilidades, dependencias permitidas y primer vertical slice del API. |
 | `23-Alcance-P0-Vertical-Leads.md` | Alcance comercial futuro de leads: crear/listar/detalle con timeline y auditoria despues de cerrar identidad. |
-| `24-Seguridad-Autenticacion-BFF-OIDC-Local.md` | Regla obligatoria de autenticacion BFF, cookies, Microsoft OIDC, login local, CORS, CSRF, headers, validacion y errores. |
+| `24-Seguridad-Autenticacion-BFF-OIDC-Local.md` | Regla obligatoria y explicacion operativa de autenticacion BFF, cookies opacas, refresh rotation, Microsoft OIDC, login local, CORS, CSRF, headers, validacion y errores. |
 | `25-Contrato-Canonico-Minimo-Lead-P0-S1.md` | Contrato minimo vivo de lead/contacto antes de convertirlo en modelo MySQL o DTOs. |
 | `26-Estandar-Nombres-Base-Datos.md` | Regla oficial para nombres de base: prefijos por dominio, columnas con sufijo de entidad y cero nombres de proveedores externos. |
 | `27-Identidad-Usuarios-Roles-P0-S1.md` | Primera compuerta P0-S1: usuarios, autenticacion, roles, permisos minimos y auditoria de acceso antes de modelar leads. |
@@ -94,10 +95,11 @@ Solo se leen cuando `00-Producto-CRM-TINK-y-P0.md` o una decision aprobada por e
 | `30-Identidad-Canonica-y-Referencias-Externas.md` | Regla transversal: relaciones internas por IDs propios del CRM y proveedores externos solo como referencias `int_`. |
 | `31-Contrato-Identidad-y-Permisos-P0-S1.md` | Contrato aprobado de identidad P0-S1A: roles, areas, permisos efectivos, overrides directos, denegaciones y revocacion. Delegacion temporal queda fuera. |
 | `32-Seeds-Identidad-P0-S1.md` | Datos iniciales aprobables para roles, permisos, areas, sistemas externos y usuario owner. Los seeds no se ejecutan en la validacion schema-only. |
-| `33-Contrato-API-Identidad-P0-S1.md` | Contrato conceptual de sesion, usuario actual, roles, areas y permisos efectivos. No es OpenAPI ejecutable. |
+| `33-Contrato-API-Identidad-P0-S1.md` | Contrato conceptual y flujo operativo de sesion, usuario actual, login local, refresh, logout, roles, areas y permisos efectivos. No es OpenAPI ejecutable. |
 | `Diccionario-Datos/01-Identidad-y-Permisos.md` | Diccionario de datos de identidad y permisos en lenguaje claro para ingenieria y negocio. |
-| `SQL/001_identity_schema_p0_s1.sql` | Artefacto SQL controlado del esquema MySQL P0-S1 de identidad. Puede validarse mediante el runner schema-only autorizado por la ley vigente. |
-| `SQL/002_identity_seed_p0_s1.sql` | Artefacto SQL controlado de seeds P0-S1 de identidad. No crea usuarios reales hasta confirmar owner. |
+| `SQL/001_identity_schema_p0_s1.sql` | Artefacto SQL controlado del esquema MySQL P0-S1 de identidad para instalacion limpia. El baseline vigente ya incluye estructuras de login seguro; una base existente anterior debe evolucionar con `SQL/003`. |
+| `SQL/002_identity_seed_p0_s1.sql` | Artefacto SQL controlado de seeds P0-S1 de identidad. Los catalogos no crean usuarios; el primer owner Roberto fue autorizado por la ley `0.3.21` y su crosswalk externo fue precisado por la ley `0.3.22`. |
+| `SQL/003_identity_login_readiness_p0_s1.sql` | Artefacto SQL aplicado por el runner idempotente `202609250003_identity_login_readiness` para evolucionar la base `CRM_THINK_V2` creada antes del login seguro. Futuras migraciones siguen requiriendo autorizacion escrita. |
 
 ## Documentacion futura por carpeta
 

@@ -1,0 +1,204 @@
+import { type AccountInfo, type AuthenticationResult, ConfidentialClientApplication, type Configuration, CryptoProvider, InteractionRequiredAuthError } from "@azure/msal-node";
+import { Inject, Injectable, UnauthorizedException } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
+
+import type { MicrosoftAuthenticatedAccount, MicrosoftAuthProvider, MicrosoftCallbackInput, MicrosoftLoginChallenge, MicrosoftProfilePhoto, MicrosoftSilentTokenResult } from "../../modules/crm/identity/ports/microsoft-auth-provider.port.js";
+import { MICROSOFT_GRAPH_FETCH_TIMEOUT_MS, MICROSOFT_GRAPH_PROFILE_PHOTO_URL } from "./microsoft365.constants.js";
+
+const MICROSOFT_AUTHORITY_HOST = "https://login.microsoftonline.com";
+const CODE_CHALLENGE_METHOD = "S256";
+const PHOTO_NOT_FOUND_STATUS = 404;
+
+interface Microsoft365Config {
+    authority: string;
+    clientId: string;
+    clientSecret: string;
+    redirectUri: string;
+    scopes: string[];
+}
+
+/**
+ * Adapter real de Microsoft 365 sobre MSAL Node y Microsoft Graph.
+ *
+ * La cache MSAL viaja como string serializado hacia identity para cifrarse y
+ * persistirse. El adapter puede usar access tokens en memoria para Graph, pero
+ * nunca los devuelve al frontend ni los guarda en claro.
+ */
+@Injectable()
+export class Microsoft365AuthService implements MicrosoftAuthProvider {
+    private readonly crypto = new CryptoProvider();
+
+    /**
+     * Inyecta configuracion validada. No se conecta a Microsoft al arrancar.
+     */
+    constructor(@Inject(ConfigService) private readonly config: ConfigService) {}
+
+    /**
+     * Construye la URL de autorizacion Microsoft con PKCE, state y nonce.
+     */
+    async startLogin(): Promise<MicrosoftLoginChallenge> {
+        const microsoftConfig = this.readConfig();
+        const client = this.createClient(microsoftConfig);
+        const pkce = await this.crypto.generatePkceCodes();
+        const state = this.crypto.createNewGuid();
+        const nonce = this.crypto.createNewGuid();
+        const authorizationUrl = await client.getAuthCodeUrl({
+            codeChallenge: pkce.challenge,
+            codeChallengeMethod: CODE_CHALLENGE_METHOD,
+            nonce,
+            redirectUri: microsoftConfig.redirectUri,
+            scopes: microsoftConfig.scopes,
+            state,
+        });
+
+        return {
+            authorizationUrl,
+            codeVerifier: pkce.verifier,
+            nonce,
+            state,
+        };
+    }
+
+    /**
+     * Intercambia el authorization code por tokens MSAL y lee perfil/foto.
+     */
+    async completeCallback(input: MicrosoftCallbackInput): Promise<MicrosoftAuthenticatedAccount> {
+        const microsoftConfig = this.readConfig();
+        const client = this.createClient(microsoftConfig);
+        const result = await client.acquireTokenByCode({
+            code: input.code,
+            codeVerifier: input.codeVerifier,
+            nonce: input.nonce,
+            redirectUri: microsoftConfig.redirectUri,
+            scopes: microsoftConfig.scopes,
+        });
+
+        const account = this.assertAccount(result);
+        const profilePhoto = await this.readProfilePhoto(result.accessToken);
+
+        return {
+            displayName: result.account?.name ?? account.name ?? account.username,
+            email: account.username,
+            homeAccountId: account.homeAccountId,
+            msalCacheSerialized: client.getTokenCache().serialize(),
+            oid: account.localAccountId,
+            profilePhoto,
+            subject: account.localAccountId,
+            tenantId: account.tenantId,
+        };
+    }
+
+    /**
+     * Rehidrata cache MSAL cifrada fuera del adapter y renueva token en silencio.
+     */
+    async acquireTokenSilent(input: { homeAccountId: string; msalCacheSerialized: string }): Promise<MicrosoftSilentTokenResult> {
+        const microsoftConfig = this.readConfig();
+        const client = this.createClient(microsoftConfig);
+        client.getTokenCache().deserialize(input.msalCacheSerialized);
+
+        const account = await client.getTokenCache().getAccountByHomeId(input.homeAccountId);
+
+        if (!account) {
+            return { interactionRequired: true, reason: "microsoft_account_not_in_cache" };
+        }
+
+        try {
+            const result = await client.acquireTokenSilent({
+                account,
+                scopes: microsoftConfig.scopes,
+            });
+
+            if (!result.accessToken) {
+                return { interactionRequired: true, reason: "microsoft_silent_token_empty" };
+            }
+
+            return {
+                accessToken: result.accessToken,
+                interactionRequired: false,
+                msalCacheSerialized: client.getTokenCache().serialize(),
+            };
+        } catch (error) {
+            if (error instanceof InteractionRequiredAuthError) {
+                return { interactionRequired: true, reason: "microsoft_interaction_required" };
+            }
+
+            throw error;
+        }
+    }
+
+    /**
+     * Lee la foto de Graph. La ausencia de foto no falla login.
+     */
+    private async readProfilePhoto(accessToken: string): Promise<MicrosoftProfilePhoto | null> {
+        const response = await fetch(MICROSOFT_GRAPH_PROFILE_PHOTO_URL, {
+            headers: {
+                Authorization: `Bearer ${accessToken}`,
+            },
+            signal: AbortSignal.timeout(MICROSOFT_GRAPH_FETCH_TIMEOUT_MS),
+        });
+
+        if (response.status === PHOTO_NOT_FOUND_STATUS) {
+            return null;
+        }
+
+        if (!response.ok) {
+            throw new UnauthorizedException("No fue posible sincronizar Microsoft Graph.");
+        }
+
+        return {
+            bytes: Buffer.from(await response.arrayBuffer()),
+            mimeType: response.headers.get("content-type") ?? "image/jpeg",
+        };
+    }
+
+    /**
+     * Exige que MSAL devuelva una cuenta. Sin cuenta no hay identidad canonica
+     * segura para mapear contra CRM.
+     */
+    private assertAccount(result: AuthenticationResult | null): AccountInfo {
+        if (!result?.account?.homeAccountId || !result.account.tenantId || !result.account.localAccountId || !result.account.username || !result.accessToken) {
+            throw new UnauthorizedException("Microsoft no devolvio una cuenta valida.");
+        }
+
+        return result.account;
+    }
+
+    /**
+     * Crea un cliente MSAL por operacion para evitar cache compartida entre usuarios.
+     */
+    private createClient(config: Microsoft365Config): ConfidentialClientApplication {
+        const msalConfig: Configuration = {
+            auth: {
+                authority: config.authority,
+                clientId: config.clientId,
+                clientSecret: config.clientSecret,
+            },
+        };
+
+        return new ConfidentialClientApplication(msalConfig);
+    }
+
+    /**
+     * Lee configuracion Microsoft. Es fail-fast por request: si el operador no
+     * configuro Microsoft completo, el endpoint no inicia un flujo inseguro.
+     */
+    private readConfig(): Microsoft365Config {
+        const tenantId = this.config.getOrThrow<string>("MICROSOFT_TENANT_ID");
+        const clientId = this.config.getOrThrow<string>("MICROSOFT_CLIENT_ID");
+        const clientSecret = this.config.getOrThrow<string>("MICROSOFT_CLIENT_SECRET");
+        const redirectUri = this.config.getOrThrow<string>("MICROSOFT_REDIRECT_URI");
+        const scopes = this.config
+            .getOrThrow<string>("MICROSOFT_SCOPES")
+            .split(" ")
+            .map((scope) => scope.trim())
+            .filter(Boolean);
+
+        return {
+            authority: `${MICROSOFT_AUTHORITY_HOST}/${tenantId}`,
+            clientId,
+            clientSecret,
+            redirectUri,
+            scopes,
+        };
+    }
+}

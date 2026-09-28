@@ -33,10 +33,10 @@ Ya existe:
 - `pnpm-lock.yaml` local del frontend.
 - Regla para bloquear uso de npm.
 
-No existe todavia:
+No existe todavia en frontend:
 
-- contrato API ejecutable de sesion/usuario actual;
-- login real con Microsoft/BFF;
+- pantalla real de login ni consumo visual del BFF de identidad;
+- Microsoft real operativo desde la UI;
 - CRUD real de usuarios;
 - pantallas reales de roles/permisos;
 - pantallas reales de leads.

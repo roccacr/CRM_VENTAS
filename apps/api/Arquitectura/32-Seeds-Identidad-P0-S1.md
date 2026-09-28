@@ -10,7 +10,7 @@ No autoriza crear runtime NestJS, migraciones productivas, endpoints ni pantalla
 
 Sirve para que la primera migracion SQL no invente codigos, roles, areas ni permisos.
 
-La ley `00-Producto-CRM-TINK-y-P0.md` version `0.3.5` autorizo validar `SQL/001_identity_schema_p0_s1.sql` como migracion controlada de estructura y ejecutar `SQL/002_identity_seed_p0_s1.sql` solo como seed de catalogos S1A en `CRM_THINK_V2`. La version vigente `0.3.15` mantiene ese resultado, autoriza solo el runtime minimo de identidad y prohibe tocar credenciales productivas compartidas mientras existan servicios vivos dependientes.
+La ley `00-Producto-CRM-TINK-y-P0.md` version `0.3.5` autorizo validar `SQL/001_identity_schema_p0_s1.sql` como migracion controlada de estructura y ejecutar `SQL/002_identity_seed_p0_s1.sql` solo como seed de catalogos S1A en `CRM_THINK_V2`. La version vigente `0.3.27` mantiene ese resultado, autoriza solo el runtime minimo de identidad, autoriza el bootstrap controlado del primer owner Roberto, fija NetSuite `653055` como referencia externa activa, deja Odoo pendiente sin id inventado, prepara Microsoft OIDC real en API con cache MSAL cifrado y `SQL/004` antes de activacion productiva, fija sesion BFF maxima de 8 horas absolutas, define que `409 permissionVersion` obliga login nuevo y prohibe tocar credenciales productivas compartidas mientras existan servicios vivos dependientes.
 
 ## Artefacto SQL controlado
 
@@ -46,12 +46,40 @@ Primero se valido estructura. Luego se autoriza solo el seed de catalogos S1A. U
 | 2026-09-25 | Diff tecnico MySQL metadata | Pass estructural | `CRM_THINK_V2` tiene 14 tablas InnoDB con `utf8mb4_unicode_ci`; 27 FKs `ON UPDATE CASCADE` / `ON DELETE RESTRICT`; todas las columnas tienen comentario; todos los `DATETIME` usan precision 3; las 4 columnas `active_key_*` quedaron como `STORED GENERATED`; los unicos activos usan esas columnas generadas; las 14 tablas tienen 0 filas; `conf_schema_migration` no existe; `crmdatabase-api` no recibio tablas equivalentes. |
 | 2026-09-25 | Marca manual equivalente via MCP `mysql_crm_ventas` | Pass metadata-only | Se creo `CRM_THINK_V2.conf_schema_migration` y se registro una fila para `202609250001_identity_schema`. `conf_schema_migration` existe solo en `CRM_THINK_V2`, no en `crmdatabase-api`. Las 14 tablas de identidad siguen con 0 filas. No se ejecuto el runner por falta de `.env` seguro y para no exponer credenciales en archivos, comandos o logs. |
 | 2026-09-25 | Seed `SQL/002_identity_seed_p0_s1.sql` via MCP `mysql_crm_ventas` | Pass catalogos S1A | Autorizado por ley `0.3.5` y ejecutado solo en `CRM_THINK_V2`. El primer bloque multi-statement dejo una desviacion parcial: faltaban 5 areas hijas, 3 sistemas externos y 4 eventos de auditoria. Se completo con sentencias individuales totalmente calificadas contra `CRM_THINK_V2`. Conteos finales: 17 permisos, 8 roles, 80 relaciones rol-permiso, 6 areas, 3 sistemas externos, 4 eventos de auditoria, 0 usuarios, 0 identidades auth, 0 roles de usuario y 0 areas de usuario. `crmdatabase-api` no recibio tablas equivalentes ni inserts. |
+| 2026-09-28 | Runner `pnpm migrate:identity:schema` con `.env` runtime | Bloqueado por privilegio minimo | El runner apunto a `CRM_THINK_V2` y fallo antes de aplicar `SQL/003` porque el usuario `crm_think_v2_runtime` no tiene `CREATE` sobre `conf_schema_migration`. Este bloqueo es correcto: el usuario runtime no debe ejecutar migraciones. Inspeccion solo-lectura posterior confirmo que `202609250003_identity_login_readiness` no esta registrado y que no existen `token_hash_auth_session`, columnas de lockout ni `sec_local_password_reset_token`. No se toco `crmdatabase-api`. |
+| 2026-09-28 | Runner `pnpm migrate:identity:schema` con `.env` runtime | Bloqueado de nuevo por privilegio minimo | Nueva ejecucion solicitada para `SQL/003`. El `.env` sigue apuntando al usuario runtime y el runner volvio a fallar en `CREATE` sobre `conf_schema_migration`, antes de aplicar cambios. Verificacion posterior por `information_schema` confirmo `token_hash_auth_session = 0`, columnas de lockout = 0 y tabla `sec_local_password_reset_token = 0`. El conector MCP disponible selecciona `crmdatabase-api` por defecto y se uso solo con consultas metadata totalmente calificadas hacia `CRM_THINK_V2`; no se modifico `crmdatabase-api`. |
+| 2026-09-28 | Runner `pnpm migrate:identity:schema` con usuario dedicado `crm_think_v2_schema_migrator` | Pass `SQL/003` | Se preparo un usuario dedicado de migracion schema-only con secreto generado localmente y no impreso. El runner omitio `202609250001_identity_schema` por estar registrada y aplico `202609250003_identity_login_readiness`. Verificacion posterior confirmo `token_hash_auth_session = 1`, columnas de lockout = 3, tabla `sec_local_password_reset_token = 1` y registro `202609250003_identity_login_readiness = 1` en `conf_schema_migration`. El usuario admin configurado localmente no ejecuto el runner; solo preparo el usuario dedicado. No se toco `crmdatabase-api`. |
+| 2026-09-28 | Bootstrap owner Roberto via lectura minima legacy + escritura en `CRM_THINK_V2` | Pass owner inicial | Autorizado por ley `0.3.21` y precisado por ley `0.3.22`. Se leyo de `crmdatabase-api.admins` solo el registro activo corporativo de Roberto y campos no secretos. Se creo/aseguro `sec_user` activo, identidad local `pending` sin `password_hash`, roles `owner` y `soporte_sistemas`, area `sistemas` con `leader/all_areas`, referencias externas `legacy_crm:14` y `netsuite:653055`, y auditoria `bootstrap_owner_created`. Odoo queda pendiente sin fila falsa de usuario hasta tener id real del proveedor. No se copio `password_admin`, `token_admin`, `token_exp_admin` ni `pass_admin`. No se escribio en `crmdatabase-api`. |
+| 2026-09-28 | Runner `pnpm migrate:identity:schema` con usuario dedicado schema-only | Pass `SQL/004` | El runner omitio `202609250001_identity_schema` y `202609250003_identity_login_readiness` por estar registradas y aplico `202609280004_identity_microsoft_session` solo en `CRM_THINK_V2`. Verificacion posterior por `information_schema` confirmo `DATABASE() = CRM_THINK_V2`, registro `202609280004_identity_microsoft_session = 1`, columna `sec_auth_session.provider_code_auth_session = 1`, tablas `sec_microsoft_account = 1` y `sec_user_profile_image = 1`, y 0 filas en las dos tablas nuevas. No se toco `crmdatabase-api`, no se insertaron datos de negocio y no se guardaron tokens Microsoft en texto plano. |
 
-Registro pendiente:
+Estado de migracion:
 
 ```txt
-La migracion `202609250001_identity_schema` quedo registrada mediante marca manual equivalente en `CRM_THINK_V2.conf_schema_migration`. El `.env` local ya existe para runtime, pero el runner end-to-end sigue pendiente hasta tener un entorno no productivo o credenciales dedicadas de migracion que no dependan del usuario master compartido. No se debe usar `usuario_master_compartido` para probar runners.
+La migracion `202609250001_identity_schema` quedo registrada mediante marca manual equivalente en `CRM_THINK_V2.conf_schema_migration`.
+La migracion `202609250003_identity_login_readiness` quedo aplicada por el runner idempotente con usuario dedicado de migracion schema-only.
+La migracion `202609280004_identity_microsoft_session` quedo aplicada por el runner idempotente con usuario dedicado de migracion schema-only.
+El usuario runtime no tiene ni debe tener permisos DDL.
+No se debe usar `usuario_master_compartido` para correr runners.
 ```
+
+### Baseline `SQL/001` vs evolucion `SQL/003`
+
+Desde la version documental `0.3.19`, `SQL/001_identity_schema_p0_s1.sql` representa el baseline objetivo para una instalacion limpia de identidad. Por eso ya incluye columnas y tablas requeridas por login seguro:
+
+- `sec_auth_session.token_hash_auth_session`;
+- columnas de lockout en `sec_auth_identity`;
+- `sec_local_password_reset_token`.
+
+La base `CRM_THINK_V2` validada el `2026-09-25` fue creada con el corte anterior de identidad. Esa base existente ya fue evolucionada el `2026-09-28` mediante `SQL/003_identity_login_readiness_p0_s1.sql` y el runner idempotente `202609250003_identity_login_readiness`.
+
+Regla:
+
+```txt
+Instalacion limpia nueva: aplicar baseline vigente `SQL/001`.
+Base existente validada antes del login real: `SQL/003` ya aplicado; futuras re-ejecuciones deben omitirse por `conf_schema_migration`.
+```
+
+No se debe ejecutar `SQL/003` con el usuario runtime ni con `usuario_master_compartido`.
 
 ## Recuperacion ante fallo parcial de DDL
 
@@ -266,7 +294,7 @@ Reglas:
 - `local` queda habilitado desde P0-S1 como alternativa controlada.
 - un usuario puede tener identidad `microsoft` y tambien identidad `local`.
 - `local` no guarda password plano.
-- `local` solo usa hash Argon2id o bcrypt con costo minimo 12.
+- `local` solo usa hash Argon2id.
 - el frontend no recibe tokens ni hashes.
 - ninguna migracion puede incluir contrasenas reales.
 
@@ -543,25 +571,30 @@ Reglas:
 
 ## Usuario owner inicial
 
-No se debe crear usuario real sin correo confirmado.
+La version `0.3.21` autoriza el bootstrap controlado del primer owner real usando el registro activo de Roberto en `crmdatabase-api.admins` como fuente de lectura minima. La version `0.3.22` precisa que NetSuite `653055` es la referencia externa activa y que Odoo queda pendiente sin fila falsa.
 
-Plantilla pendiente:
+Datos aprobados:
 
 | Campo | Valor |
 | --- | --- |
-| `email_user` | Pendiente: correo oficial del primer `owner`. |
-| `display_name_user` | Pendiente: nombre visible del primer `owner`. |
-| `status_user` | `active` cuando sea confirmado. |
+| `email_user` | `rzuniga@roccacr.com`. |
+| `display_name_user` | `Roberto Carlos Zuñiga Altamirano`. |
+| `status_user` | `active`. |
 | rol inicial | `owner`. |
-| area inicial | `empresa`. |
+| rol semantico adicional | `soporte_sistemas`, solo para reflejar funcion TI sin quitar permisos maximos del `owner`. |
+| area inicial | `sistemas`. |
 | membership inicial | `leader`. |
 | scope inicial | `all_areas`. |
-| auth inicial | `microsoft`; `local` queda `pending` hasta invitacion/reset seguro. |
+| auth inicial | `microsoft` preparado; `local` queda `pending` hasta invitacion/reset seguro. |
+| referencia externa legacy | `int_user_external_identity` contra `legacy_crm` usando `id_admin=14`, sin copiar password ni token. |
+| referencia externa NetSuite | `int_user_external_identity` contra `netsuite` usando `idnetsuite_admin=653055` como referencia externa, no como FK interna. |
+| referencia externa Odoo | Pendiente. No se crea fila `odoo` en `int_user_external_identity` hasta tener id real de Odoo para Roberto. |
 
 Regla:
 
 ```txt
-No usar correos ficticios en la migracion.
+No usar correos ficticios ni copiar `password_admin`, `token_admin`, `token_exp_admin` o `pass_admin` desde el CRM viejo.
+No crear referencias externas con ids inventados. Odoo queda preparado como sistema `pending`, no como identidad de usuario falsa.
 ```
 
 ## Usuario jefe_general inicial
@@ -644,19 +677,18 @@ No incluir todavia:
 - tokens;
 - IDs externos dentro de `sec_user`.
 
-## Pendientes antes de bootstrap real de usuarios
+## Pendientes antes de bootstrap real restante
 
-Antes de crear usuarios reales o credenciales iniciales, el dueno debe confirmar:
+La version `0.3.21` cierra los datos del primer `owner` y la version `0.3.22` cierra su crosswalk externo. Antes de crear usuarios adicionales o credenciales iniciales, el dueno debe confirmar:
 
-1. Correo oficial del primer `owner`.
-2. Nombre visible del primer `owner`.
-3. Correo oficial del primer `jefe_general`.
-4. Nombre visible del primer `jefe_general`.
+1. Correo oficial del primer `jefe_general`.
+2. Nombre visible del primer `jefe_general`.
+3. Canal aprobado para entregar tokens de activacion/reset local sin exponerlos en chat, logs ni documentos.
 
 Regla:
 
 ```txt
-Sin correo y nombre reales, no se crea seed de usuario.
+Sin correo y nombre reales, no se crea seed de usuario. El owner Roberto es la unica excepcion cerrada por esta version.
 ```
 
 ## Criterio de salida
@@ -670,4 +702,4 @@ Este documento queda listo para SQL/seed controlado cuando:
 - los sistemas externos seed esten aceptados;
 - no haya correos, passwords ni usuarios inventados.
 
-Queda listo para bootstrap real de usuarios solo cuando existan correos y nombres oficiales de `owner` y `jefe_general`.
+Queda listo para bootstrap real adicional solo cuando existan correos y nombres oficiales de `jefe_general` y canal de activacion/reset aprobado.

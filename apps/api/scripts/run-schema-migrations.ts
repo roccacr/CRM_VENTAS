@@ -5,6 +5,8 @@ import { createPool } from "mysql2";
 import { z } from "zod";
 
 import { identitySchemaMigration } from "../migrations/schema-only/202609250001_identity_schema.js";
+import { identityLoginReadinessMigration } from "../migrations/schema-only/202609250003_identity_login_readiness.js";
+import { identityMicrosoftSessionMigration } from "../migrations/schema-only/202609280004_identity_microsoft_session.js";
 import { addDatabaseTlsIssues, booleanEnvSchema, tcpPortSchema } from "../src/config/database-env.schema.js";
 import { APPROVED_DATABASE_NAME } from "../src/config/product.constants.js";
 import { buildMysqlPoolOptions } from "../src/database/mysql-pool-options.js";
@@ -18,7 +20,7 @@ type Migration = {
     up: (db: Kysely<unknown>) => Promise<void>;
 };
 
-const migrations: Migration[] = [identitySchemaMigration];
+export const schemaMigrations: Migration[] = [identitySchemaMigration, identityLoginReadinessMigration, identityMicrosoftSessionMigration];
 const isExecutedDirectly = (): boolean => (process.argv[1] ? pathToFileURL(process.argv[1]).href === import.meta.url : false);
 
 /**
@@ -173,7 +175,7 @@ const run = async (): Promise<void> => {
         await acquireLock(db);
         await ensureMigrationTable(db);
 
-        for (const migration of migrations) {
+        for (const migration of schemaMigrations) {
             if (await hasMigration(db, migration.name)) {
                 console.log(`Migracion omitida porque ya esta aplicada: ${migration.name}`);
                 continue;

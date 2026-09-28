@@ -1,25 +1,25 @@
-import { randomBytes } from "node:crypto";
-
-import { Body, Controller, Get, Headers, HttpCode, Inject, Post, Req, Res } from "@nestjs/common";
+import { Body, Controller, Get, Headers, HttpCode, Inject, NotFoundException, Param, Post, Query, Req, Res } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
 import { ApiBody, ApiOkResponse, ApiOperation, ApiTags } from "@nestjs/swagger";
 import type { FastifyReply } from "fastify";
 
 import type { CookieRequest } from "../../../common/security/cookie-request.type.js";
-import { CSRF_COOKIE_NAME, CSRF_TOKEN_BYTES, isValidCsrfTokenFormat, REFRESH_COOKIE_NAME, ROOT_COOKIE_PATH, SESSION_COOKIE_NAME } from "../../../common/security/http-security.constants.js";
+import { createSignedCsrfToken, isValidSignedCsrfToken } from "../../../common/security/csrf-token.js";
+import { CSRF_COOKIE_NAME, MICROSOFT_OIDC_CHALLENGE_COOKIE_NAME, REFRESH_COOKIE_NAME, ROOT_COOKIE_PATH, SESSION_COOKIE_NAME } from "../../../common/security/http-security.constants.js";
 import { CompleteLocalResetDto, LocalLoginDto, RequestLocalResetDto } from "./dto/local-auth.dto.js";
-import { IdentityService } from "./identity.service.js";
-import { IDENTITY_CONTROLLER_PATH, IDENTITY_LOCAL_COMPLETE_RESET_ROUTE, IDENTITY_LOCAL_LOGIN_ROUTE, IDENTITY_LOCAL_REQUEST_RESET_ROUTE, IDENTITY_LOGOUT_ROUTE, IDENTITY_ME_ROUTE, IDENTITY_MICROSOFT_CALLBACK_ROUTE, IDENTITY_MICROSOFT_START_ROUTE, IDENTITY_REFRESH_PATH, IDENTITY_REFRESH_ROUTE, IDENTITY_SESSION_ROUTE } from "./identity-route.constants.js";
+import { MicrosoftCallbackDto } from "./dto/microsoft-auth.dto.js";
+import { type AuthenticatedSessionResult, IdentityService } from "./identity.service.js";
+import { IDENTITY_CONTROLLER_PATH, IDENTITY_LOCAL_COMPLETE_RESET_ROUTE, IDENTITY_LOCAL_LOGIN_ROUTE, IDENTITY_LOCAL_REQUEST_RESET_ROUTE, IDENTITY_LOGOUT_ROUTE, IDENTITY_ME_PHOTO_ROUTE, IDENTITY_ME_ROUTE, IDENTITY_MICROSOFT_CALLBACK_ROUTE, IDENTITY_MICROSOFT_START_ROUTE, IDENTITY_REFRESH_PATH, IDENTITY_REFRESH_ROUTE, IDENTITY_REVOKE_SESSION_ROUTE, IDENTITY_SESSION_ROUTE, IDENTITY_SESSIONS_ROUTE } from "./identity-route.constants.js";
 
 /**
  * Indica si el navegador ya tiene cookie CSRF con el formato que emite el BFF.
  *
- * La condicion de CSRF firmado y atado a sesion queda pendiente antes de login
- * real. Mientras tanto, este guardrail evita conservar valores invalidos o
- * plantados con forma distinta al token propio del BFF.
+ * La firma evita conservar valores invalidos o plantados por cliente. Cuando
+ * existe sesion, el token tambien queda ligado al token opaco de sesion.
  */
-const hasValidCsrfCookieFormat = (request: CookieRequest): boolean => {
+const hasValidCsrfCookie = (request: CookieRequest, cookieSecret: string): boolean => {
     const csrfCookie = request.cookies[CSRF_COOKIE_NAME];
-    return typeof csrfCookie === "string" && isValidCsrfTokenFormat(csrfCookie);
+    return typeof csrfCookie === "string" && isValidSignedCsrfToken(csrfCookie, cookieSecret, request.cookies[SESSION_COOKIE_NAME]);
 };
 
 /**
@@ -39,7 +39,10 @@ export class IdentityController {
     /**
      * Inyecta el servicio que ejecuta los casos de uso de identidad.
      */
-    constructor(@Inject(IdentityService) private readonly identity: IdentityService) {}
+    constructor(
+        @Inject(IdentityService) private readonly identity: IdentityService,
+        @Inject(ConfigService) private readonly config: ConfigService,
+    ) {}
 
     /**
      * Retorna el sobre de sesion anonima/autenticada que usa el frontend.
@@ -52,8 +55,8 @@ export class IdentityController {
     @ApiOperation({ summary: "Consultar si existe una sesion backend valida." })
     @ApiOkResponse({ description: "Estado de sesion bajo patron BFF." })
     async session(@Req() request: CookieRequest, @Res({ passthrough: true }) reply: FastifyReply) {
-        if (!hasValidCsrfCookieFormat(request)) {
-            this.setCsrfCookie(reply);
+        if (!hasValidCsrfCookie(request, this.config.getOrThrow<string>("COOKIE_SECRET"))) {
+            this.setCsrfCookie(reply, request.cookies[SESSION_COOKIE_NAME]);
         }
 
         return this.identity.getSession(request.cookies[SESSION_COOKIE_NAME]);
@@ -73,6 +76,41 @@ export class IdentityController {
     }
 
     /**
+     * Sirve la foto cacheada internamente para no exponer URLs ni tokens Graph.
+     */
+    @Get(IDENTITY_ME_PHOTO_ROUTE)
+    @ApiOperation({ summary: "Servir foto cacheada del usuario autenticado." })
+    async profilePhoto(@Req() request: CookieRequest, @Res({ passthrough: true }) reply: FastifyReply) {
+        const image = await this.identity.getCurrentUserProfileImage(request.cookies[SESSION_COOKIE_NAME]);
+
+        if (!image) {
+            throw new NotFoundException("Foto de perfil no disponible.");
+        }
+
+        reply.type(image.mimeType);
+        return image.bytes;
+    }
+
+    /**
+     * Lista sesiones activas del usuario actual para gestion de dispositivos.
+     */
+    @Get(IDENTITY_SESSIONS_ROUTE)
+    @ApiOperation({ summary: "Listar sesiones activas del usuario actual." })
+    async sessions(@Req() request: CookieRequest) {
+        return this.identity.listActiveSessions(request.cookies[SESSION_COOKIE_NAME]);
+    }
+
+    /**
+     * Revoca una sesion activa propia sin permitir cerrar sesiones de otros usuarios.
+     */
+    @Post(IDENTITY_REVOKE_SESSION_ROUTE)
+    @HttpCode(200)
+    @ApiOperation({ summary: "Revocar una sesion activa propia." })
+    async revokeSession(@Param("sessionPublicId") sessionPublicId: string, @Req() request: CookieRequest, @Headers("user-agent") userAgent?: string) {
+        return this.identity.revokeOwnSession(sessionPublicId, request.cookies[SESSION_COOKIE_NAME], request.ip, userAgent);
+    }
+
+    /**
      * Revoca la sesion backend y limpia cookies del navegador.
      *
      * El repository registra auditoria dentro de la transaccion de revocacion.
@@ -88,16 +126,19 @@ export class IdentityController {
     }
 
     /**
-     * Placeholder para rotacion de refresh-token.
+     * Rota refresh token opaco y renueva la sesion BFF.
      *
-     * La ruta existe en el contrato, pero la implementacion segura debe hashear,
-     * rotar e invalidar familias de refresh-token antes de habilitarse.
+     * El service hashea el refresh recibido, consume el token anterior de forma
+     * atomica y emite cookies nuevas. Ante reuso, revoca sesiones segun la regla
+     * de seguridad vigente.
      */
     @Post(IDENTITY_REFRESH_ROUTE)
     @HttpCode(200)
     @ApiOperation({ summary: "Refrescar sesion BFF si existe refresh token valido." })
-    refresh() {
-        return this.identity.refresh();
+    async refresh(@Req() request: CookieRequest, @Res({ passthrough: true }) reply: FastifyReply, @Headers("user-agent") userAgent?: string) {
+        const result = await this.identity.refresh(request.cookies[REFRESH_COOKIE_NAME], request.ip, userAgent);
+        this.setAuthenticatedCookies(reply, result);
+        return result.response;
     }
 
     /**
@@ -108,29 +149,52 @@ export class IdentityController {
     @Post(IDENTITY_MICROSOFT_START_ROUTE)
     @HttpCode(200)
     @ApiOperation({ summary: "Iniciar login Microsoft con PKCE/state cuando este configurado." })
-    startMicrosoftLogin() {
-        return this.identity.startMicrosoftLogin();
+    async startMicrosoftLogin(@Res({ passthrough: true }) reply: FastifyReply) {
+        const result = await this.identity.startMicrosoftLogin();
+        reply.setCookie(MICROSOFT_OIDC_CHALLENGE_COOKIE_NAME, result.challengeCookie, {
+            expires: result.challengeExpiresAt,
+            httpOnly: true,
+            path: `/${IDENTITY_CONTROLLER_PATH}/${IDENTITY_MICROSOFT_CALLBACK_ROUTE}`,
+            sameSite: "lax",
+            secure: true,
+        });
+
+        return { authorizationUrl: result.authorizationUrl };
     }
 
     /**
-     * Completa login Microsoft cuando PKCE/state este implementado.
+     * Completa login Microsoft y vuelve al frontend sin exponer tokens.
      */
     @Get(IDENTITY_MICROSOFT_CALLBACK_ROUTE)
     @ApiOperation({ summary: "Recibir callback Microsoft y crear sesion backend." })
-    completeMicrosoftCallback() {
-        return this.identity.completeMicrosoftCallback();
+    async completeMicrosoftCallback(@Query() query: MicrosoftCallbackDto, @Req() request: CookieRequest, @Res({ passthrough: true }) reply: FastifyReply, @Headers("user-agent") userAgent?: string) {
+        const challengeCookie = request.cookies[MICROSOFT_OIDC_CHALLENGE_COOKIE_NAME];
+        const result = await this.identity.completeMicrosoftCallback({
+            ...(challengeCookie ? { challengeCookie } : {}),
+            code: query.code,
+            ipAddress: request.ip,
+            state: query.state,
+            ...(userAgent ? { userAgent } : {}),
+        });
+        this.setAuthenticatedCookies(reply, result);
+        reply.clearCookie(MICROSOFT_OIDC_CHALLENGE_COOKIE_NAME, {
+            path: `/${IDENTITY_CONTROLLER_PATH}/${IDENTITY_MICROSOFT_CALLBACK_ROUTE}`,
+        });
+
+        reply.redirect(this.config.getOrThrow<string>("FRONTEND_ORIGIN"), 303);
     }
 
     /**
-     * Alternativa de login local, intencionalmente deshabilitada hasta que
-     * invitacion/reset exista con hashing de password y rate limiting.
+     * Alternativa de login local con Argon2id, lockout y rate limit.
      */
     @Post(IDENTITY_LOCAL_LOGIN_ROUTE)
     @HttpCode(200)
     @ApiOperation({ summary: "Login local alternativo controlado." })
     @ApiBody({ type: LocalLoginDto })
-    localLogin(@Body() _body: LocalLoginDto) {
-        return this.identity.localLogin();
+    async localLogin(@Body() body: LocalLoginDto, @Req() request: CookieRequest, @Res({ passthrough: true }) reply: FastifyReply, @Headers("user-agent") userAgent?: string) {
+        const result = await this.identity.localLogin(body, request.ip, userAgent);
+        this.setAuthenticatedCookies(reply, result);
+        return result.response;
     }
 
     /**
@@ -145,26 +209,47 @@ export class IdentityController {
     }
 
     /**
-     * Placeholder para completar activacion/reset de password local.
+     * Completa activacion/reset local con token opaco y nueva clave Argon2id.
      */
     @Post(IDENTITY_LOCAL_COMPLETE_RESET_ROUTE)
     @HttpCode(200)
     @ApiOperation({ summary: "Completar activacion o reset seguro de clave local." })
     @ApiBody({ type: CompleteLocalResetDto })
-    completeLocalReset(@Body() _body: CompleteLocalResetDto) {
-        return this.identity.completeLocalReset();
+    completeLocalReset(@Body() body: CompleteLocalResetDto, @Req() request: CookieRequest, @Headers("user-agent") userAgent?: string) {
+        return this.identity.completeLocalReset(body, request.ip, userAgent);
     }
 
     /**
      * Emite la cookie CSRF double-submit usada por endpoints mutables.
      */
-    private setCsrfCookie(reply: FastifyReply): void {
-        reply.setCookie(CSRF_COOKIE_NAME, randomBytes(CSRF_TOKEN_BYTES).toString("base64url"), {
+    private setCsrfCookie(reply: FastifyReply, sessionToken?: string): void {
+        reply.setCookie(CSRF_COOKIE_NAME, createSignedCsrfToken(this.config.getOrThrow<string>("COOKIE_SECRET"), sessionToken), {
             path: ROOT_COOKIE_PATH,
             sameSite: "strict",
             secure: true,
             httpOnly: false,
         });
+    }
+
+    /**
+     * Escribe cookies opacas despues de login o refresh exitoso.
+     */
+    private setAuthenticatedCookies(reply: FastifyReply, result: AuthenticatedSessionResult): void {
+        reply.setCookie(SESSION_COOKIE_NAME, result.sessionToken, {
+            expires: result.sessionTokenExpiresAt,
+            httpOnly: true,
+            path: ROOT_COOKIE_PATH,
+            sameSite: "strict",
+            secure: true,
+        });
+        reply.setCookie(REFRESH_COOKIE_NAME, result.refreshToken, {
+            expires: result.refreshTokenExpiresAt,
+            httpOnly: true,
+            path: IDENTITY_REFRESH_PATH,
+            sameSite: "strict",
+            secure: true,
+        });
+        this.setCsrfCookie(reply, result.sessionToken);
     }
 
     /**

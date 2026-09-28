@@ -2,13 +2,13 @@
 
 | Campo | Valor |
 | --- | --- |
-| Version | `0.3.5` |
-| Fecha | `2026-09-25` |
-| Estado | Addendum visual firmado, subordinado a la ley canonica de producto; frontend sigue como stub congelado. |
+| Version | `0.3.7` |
+| Fecha | `2026-09-28` |
+| Estado | Addendum visual firmado, subordinado a la ley canonica de producto; frontend sigue como stub congelado y documenta la arquitectura de homes por contexto operativo. |
 | Fuente canonica | `apps/api/Arquitectura/00-Producto-CRM-TINK-y-P0.md` |
 | Dueno de producto | CRM TINK <soporte@roccacr.com> |
 | Aprobado por | CRM TINK <soporte@roccacr.com> |
-| Ultimo cambio | Mantiene el frontend como stub congelado y exige enmienda visual propia antes de construir pantalla real de login/identidad. |
+| Ultimo cambio | Define que una URL/ruta directa nunca autoriza acceso: toda vista se valida contra sesion, contexto operativo y permisos efectivos del API. |
 
 ## Regla superior
 
@@ -58,6 +58,104 @@ Separacion aprobada:
 | UI reutilizable | `src/components/**`, `src/hooks`, `src/stores`, `src/types` | Piezas visuales, composicion UI, estado local y tipos canonicos. | Reglas de negocio finales o payloads de proveedores. |
 
 Si se agrega Kapso, Odoo, NetSuite u otro proveedor, el frontend no recibe carpeta de proveedor. La integracion vive en el API. El frontend solo ve acciones y estados canonicos devueltos por `services/api`.
+
+## Ley de homes por contexto operativo
+
+Despues de autenticarse, el usuario no entra a una pagina generica unica para todos. Entra a un contexto operativo permitido por el API.
+
+Regla:
+
+```txt
+auth global -> sesion/me -> contextos operativos permitidos -> home del contexto -> menus del contexto
+```
+
+Un contexto operativo es la combinacion visible de:
+
+- rol o roles activos;
+- area/equipo donde participa;
+- permisos efectivos;
+- alcance organizacional.
+
+No es una segunda cuenta, no es otro login y no es un token diferente.
+
+Ejemplos esperados:
+
+| Contexto operativo | Home esperado | Menu esperado |
+| --- | --- | --- |
+| `sales` | Home de vendedor/ventas. | Leads, seguimiento, oportunidades y acciones comerciales aprobadas. |
+| `finance` / `collections` | Home financiero/cobros cuando se apruebe. | Bandejas financieras, pagos, vencimientos y estados permitidos. |
+| `marketing` | Home de mercadeo cuando se apruebe. | Campanas, origenes, reportes de captacion y acciones aprobadas. |
+| `formalizations` | Home de formalizaciones cuando se apruebe. | Contrato, banco, traspaso, documentos y timeline de formalizacion. |
+| `management` | Home de jefatura/gerencia. | Supervision, vistas consolidadas, filtros por area y accesos al modulo propietario. |
+| `support` / `it` | Home de sistemas/soporte. | Identidad, diagnostico autorizado, configuracion visible y herramientas aprobadas. |
+
+Regla para usuarios con varios roles:
+
+```txt
+Si una persona tiene mas de un contexto permitido, la UI muestra un selector de contexto en navbar/sidebar.
+```
+
+Ese selector permite cambiar de home sin cerrar sesion. Ejemplo: una persona puede operar `marketing` y `formalizations`; el sidebar debe mostrar ambos contextos separados si el API devuelve permisos para ambos.
+
+Regla para jefatura superior o TI:
+
+```txt
+Jefatura superior y TI pueden ver varios contextos solo si el API devuelve permisos efectivos para esos contextos.
+```
+
+No se debe hardcodear que un rol ve todo por el nombre del rol. El API manda permisos y alcance; React solo renderiza.
+
+Regla de URL directa:
+
+```txt
+Tener la URL de una vista no autoriza acceso a esa vista.
+```
+
+Toda ruta protegida debe validar, antes de renderizar:
+
+1. sesion activa;
+2. usuario activo;
+3. contexto operativo permitido;
+4. permiso efectivo requerido para esa vista;
+5. alcance organizacional suficiente.
+
+Si falla cualquiera de esas validaciones, la UI no renderiza la vista y debe mostrar estado de no autorizado, redirigir al selector permitido o enviar a login segun corresponda. El API siempre vuelve a validar la accion real.
+
+Regla para jefe global:
+
+```txt
+Solo `owner`, `jefe_general` o un rol equivalente devuelto por el API con permisos efectivos vigentes puede acceder a vistas globales.
+```
+
+Si una persona no tiene ese rol/permiso vigente, no entra aunque conozca la URL, aunque tenga el menu cacheado o aunque haya entrado antes.
+
+Regla de carpetas:
+
+```txt
+Crear modulos por contexto operativo/dominio, no duplicar una pantalla completa por cada rol literal.
+```
+
+Correcto:
+
+- `src/modules/sales`;
+- `src/modules/marketing`;
+- `src/modules/formalizations`;
+- `src/modules/collections`;
+- `src/modules/management`;
+- `src/modules/support`;
+- `src/modules/auth`;
+- `src/modules/permissions`.
+
+Incorrecto:
+
+- copiar la misma pantalla en `src/modules/vendedor`, `src/modules/jefe_ventas` y `src/modules/supervisor`;
+- crear reglas finales de autorizacion en React;
+- crear `services/netsuite`, `services/odoo` o `services/kapso`;
+- crear un home que dependa de ids de proveedor.
+
+Regla para integraciones:
+
+NetSuite, Odoo, Kapso, Microsoft 365 y el CRM viejo se aislan en el API. Si algun dia existe una pantalla administrativa para ver estado de integraciones, sera una vista CRM canonica autorizada, no un adapter frontend ni una llamada directa al proveedor.
 
 ## Para quien
 

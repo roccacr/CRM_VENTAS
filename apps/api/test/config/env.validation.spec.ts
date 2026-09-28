@@ -8,6 +8,7 @@ import { APPROVED_DATABASE_NAME } from "../../src/config/product.constants.js";
  */
 const createValidEnv = (): Record<string, unknown> => ({
     AUDIT_HASH_SECRET: "audit-hash-secret-for-tests-32-chars",
+    AUTH_TOKEN_HASH_SECRET: "auth-token-hash-secret-for-tests-32",
     COOKIE_SECRET: "cookie-secret-for-tests-32-chars",
     DB_HOST: "127.0.0.1",
     DB_NAME: APPROVED_DATABASE_NAME,
@@ -63,6 +64,13 @@ describe("validateEnv", () => {
         env.AUDIT_HASH_SECRET = env.COOKIE_SECRET;
 
         expect(() => validateEnv(env)).toThrow("AUDIT_HASH_SECRET");
+    });
+
+    it("exige que AUTH_TOKEN_HASH_SECRET sea distinto de los demas secretos", () => {
+        const env = createValidEnv();
+        env.AUTH_TOKEN_HASH_SECRET = env.COOKIE_SECRET;
+
+        expect(() => validateEnv(env)).toThrow("AUTH_TOKEN_HASH_SECRET");
     });
 
     it("exige que FRONTEND_ORIGIN sea un origin puro", () => {
@@ -145,5 +153,26 @@ describe("validateEnv", () => {
         expect(config.LOCAL_LOGIN_RATE_LIMIT_IP_MAX).toBe(30);
         expect(config.LOCAL_RESET_RATE_LIMIT_EMAIL_MAX).toBe(5);
         expect(config.LOCAL_RESET_RATE_LIMIT_IP_MAX).toBe(30);
+    });
+
+    it("exige clave de cifrado MSAL cuando Microsoft esta configurado", () => {
+        const env = createValidEnv();
+        env.MICROSOFT_TENANT_ID = "tenant";
+        env.MICROSOFT_CLIENT_ID = "client";
+        env.MICROSOFT_CLIENT_SECRET = "secret";
+        env.MICROSOFT_REDIRECT_URI = "http://localhost:3000/identity/microsoft/callback";
+
+        expect(() => validateEnv(env)).toThrow("MICROSOFT_MSAL_CACHE_ENCRYPTION_KEY");
+    });
+
+    it("acepta Microsoft solo con llave MSAL base64 de 32 bytes", () => {
+        const env = createValidEnv();
+        env.MICROSOFT_TENANT_ID = "tenant";
+        env.MICROSOFT_CLIENT_ID = "client";
+        env.MICROSOFT_CLIENT_SECRET = "secret";
+        env.MICROSOFT_REDIRECT_URI = "http://localhost:3000/identity/microsoft/callback";
+        env.MICROSOFT_MSAL_CACHE_ENCRYPTION_KEY = Buffer.alloc(32, 1).toString("base64");
+
+        expect(validateEnv(env).MICROSOFT_MSAL_CACHE_ENCRYPTION_KEY).toBe(Buffer.alloc(32, 1).toString("base64"));
     });
 });

@@ -39,7 +39,11 @@ El frontend:
 | `src/modules/sales/opportunities` | Pipeline y vistas de oportunidad. | Formularios de lead puro. | `13`. |
 | `src/modules/sales/estimates` | Pantallas de estimaciones. | Ordenes de venta. | `13`. |
 | `src/modules/sales/sales-orders` | Pantallas de ordenes de venta, pre-reserva y reserva. | Formalizacion operativa completa. | `13`, `14`. |
+| `src/modules/marketing` | Home y flujos de mercadeo cuando se aprueben. | Seguimiento operativo de ventas o llamadas directas a proveedores. | `14`, `23`. |
 | `src/modules/formalizations` | Flujo de formalizacion cuando se apruebe alcance. | Leads iniciales o dashboard de ventas. | `14`. |
+| `src/modules/collections` | Home y flujos financieros/cobros cuando se aprueben. | Cobros directos contra ERP o NetSuite desde React. | `14`, `23`. |
+| `src/modules/management` | Home de jefatura, supervision y acceso consolidado por permisos. | Duplicar pantallas operativas de cada area. | `14`, `21`, `24`. |
+| `src/modules/support` | Home de TI/soporte y herramientas aprobadas. | Acceso total por nombre de rol o secretos de infraestructura. | `14`, `21`, `24`. |
 | `src/modules/calendar` | Calendarios por dominio, eventos, citas y estados de sync. | Llamadas directas a Microsoft Graph para reglas CRM. | `15`. |
 | `src/modules/notes` | Notas adhesivas, paneles, editor y canvas. | Envio directo por proveedores externos. | `16`. |
 | `src/modules/permissions` | Componentes para mostrar/ocultar acciones segun permisos efectivos. | Reglas finales de autorizacion. | `09`. |
@@ -49,6 +53,51 @@ El frontend:
 | `src/services/auth` | Helpers frontend de sesion visual aprobados. | Guardias backend, tokens persistidos, reglas finales de permisos o llamadas directas a Microsoft Graph. | `09`, `21`, `22`. |
 | `src/stores` | Estado UI pequeno: filtros, layout, preferencias. | Cache de servidor o permisos finales. | `04`. |
 | `src/types` | Tipos canonicos compartidos en frontend. | Tipos de proveedores externos. | `10`, `23`. |
+
+## Shell, home y sidebar por contexto
+
+Cuando se apruebe construir frontend real, la aplicacion debe tener un shell comun despues de `auth`.
+
+Ese shell debe resolver:
+
+1. sesion actual;
+2. usuario actual;
+3. roles visibles;
+4. areas/equipos visibles;
+5. permisos efectivos;
+6. contextos operativos disponibles;
+7. contexto inicial;
+8. home y menu del contexto.
+
+Regla:
+
+```txt
+El shell decide que home mostrar; el modulo decide como se ve ese home; el API decide si el usuario puede entrar.
+```
+
+Comportamiento esperado:
+
+- si el usuario solo tiene `sales`, entra a home de ventas;
+- si tiene `marketing` y `formalizations`, aparece selector y menus separados;
+- si tiene `management`, puede ver vistas consolidadas y enlaces a modulos permitidos;
+- si tiene `support`, puede acceder a herramientas de soporte solo con permisos efectivos;
+- si un permiso desaparece durante la sesion, el API bloquea y el frontend refresca/limpia segun `21`.
+
+No se permite:
+
+- elegir home solo por `roles[0]`;
+- hardcodear que `owner`, `jefe_general` o `support` ven todo;
+- copiar el mismo componente en carpetas por rol;
+- guardar el contexto como verdad permanente;
+- navegar por ids de NetSuite, Odoo, legacy CRM o Kapso.
+
+Regla de rutas protegidas:
+
+```txt
+El usuario puede conocer la URL, pero la ruta solo renderiza si el API confirma sesion, contexto, permiso efectivo y alcance.
+```
+
+Si la ruta pertenece a una vista global, solo `owner`, `jefe_general` o un rol equivalente con permiso efectivo vigente puede verla. Si no cumple, la UI debe responder como no autorizado y el API debe bloquear cualquier accion real.
 
 ## Flujo permitido de datos
 
@@ -85,6 +134,8 @@ No crear services/netsuite, services/odoo, services/kapso, services/legacy-crm n
 
 Si una vista necesita una accion relacionada con NetSuite, Odoo, Kapso, Microsoft 365 o CRM viejo, la vista llama `src/services/api` usando contrato canonico. El API enruta hacia el adapter correcto.
 
+Pantallas visuales futuras de integraciones, si se aprueban, deben vivir bajo `management` o `support` como vistas CRM canonicas. No son adapters frontend.
+
 ## Primer vertical slice aprobado ahora
 
 El siguiente desarrollo real de frontend debe acompanar la compuerta de identidad:
@@ -95,6 +146,8 @@ El siguiente desarrollo real de frontend debe acompanar la compuerta de identida
 4. Mostrar pasos de usuarios, autenticacion, areas/equipos, roles y permisos.
 5. Preparar cliente de sesion/usuario actual solo cuando exista contrato API.
 6. Mostrar permisos visibles solo cuando el API los devuelva.
+
+El API ya tiene aplicado y validado `SQL/003` en `CRM_THINK_V2`. Eso elimina la deuda estructural de login, pero no autoriza construir pantalla visual de login: todavia faltan usuarios reales aprobados, canal de activacion/reset, Microsoft real o decision explicita de habilitar solo login local, y autorizacion del addendum visual.
 
 No entra todavia:
 

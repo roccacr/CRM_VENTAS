@@ -1,16 +1,16 @@
-import { timingSafeEqual } from "node:crypto";
-
-import { type CanActivate, type ExecutionContext, ForbiddenException, Injectable } from "@nestjs/common";
+import { type CanActivate, type ExecutionContext, ForbiddenException, Inject, Injectable } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
 
 import type { CookieRequest } from "./cookie-request.type.js";
-import { CSRF_COOKIE_NAME, CSRF_HEADER_NAME_LOWERCASE, isValidCsrfTokenFormat } from "./http-security.constants.js";
+import { isValidSignedCsrfToken } from "./csrf-token.js";
+import { CSRF_COOKIE_NAME, CSRF_HEADER_NAME_LOWERCASE, SESSION_COOKIE_NAME } from "./http-security.constants.js";
 
 // ============================================================================
 // Guard CSRF para el patron BFF.
 //
 // SRP: el guard decide si deja pasar o bloquea. Las responsabilidades pequeñas
-// quedan separadas: detectar metodos mutables, leer header/cookie y comparar
-// tokens sin filtrar timing.
+// quedan separadas: detectar metodos mutables, leer header/cookie y validar la
+// firma CSRF ligada a la sesion.
 // ============================================================================
 
 /**
@@ -43,39 +43,22 @@ const readCsrfHeaderToken = (request: CookieRequest): string | undefined => {
 };
 
 /**
- * Compara tokens CSRF sin filtrar diferencias de timing.
- *
- * Primero se valida longitud porque `timingSafeEqual` lanza error si los
- * buffers tienen tamano distinto. Esa validacion no cambia el resultado de
- * seguridad: tokens de diferente longitud nunca son validos.
- */
-const tokensMatch = (cookieToken: string, headerToken: string): boolean => {
-    const cookieBuffer = Buffer.from(cookieToken);
-    const headerBuffer = Buffer.from(headerToken);
-
-    if (cookieBuffer.length !== headerBuffer.length) {
-        return false;
-    }
-
-    return timingSafeEqual(cookieBuffer, headerBuffer);
-};
-
-/**
  * Valida el par cookie/header del patron double-submit.
  */
-const hasValidCsrfProof = (request: CookieRequest): boolean => {
+const hasValidCsrfProof = (request: CookieRequest, cookieSecret: string): boolean => {
     const cookieToken = request.cookies[CSRF_COOKIE_NAME];
     const headerToken = readCsrfHeaderToken(request);
+    const sessionToken = request.cookies[SESSION_COOKIE_NAME];
 
     if (!cookieToken || !headerToken) {
         return false;
     }
 
-    if (!isValidCsrfTokenFormat(cookieToken) || !isValidCsrfTokenFormat(headerToken)) {
+    if (cookieToken !== headerToken) {
         return false;
     }
 
-    return tokensMatch(cookieToken, headerToken);
+    return isValidSignedCsrfToken(cookieToken, cookieSecret, sessionToken);
 };
 
 /**
@@ -84,11 +67,17 @@ const hasValidCsrfProof = (request: CookieRequest): boolean => {
 @Injectable()
 export class CsrfGuard implements CanActivate {
     /**
+     * Inyecta configuracion para validar firmas CSRF con el secreto de cookies.
+     */
+    constructor(@Inject(ConfigService) private readonly config: ConfigService) {}
+
+    /**
      * Aplica double-submit cookie para endpoints mutables.
      *
      * El guard no autentica usuarios; solo valida que un request que cambia
-     * estado incluya el mismo token en cookie y header. La autenticacion y los
-     * permisos efectivos viven en guards/servicios de identidad.
+     * estado incluya el token emitido por el BFF en cookie y header. La firma
+     * lo ata al secreto del servidor y, cuando existe sesion, al token de
+     * sesion actual. La autenticacion y permisos viven en identidad.
      */
     canActivate(context: ExecutionContext): boolean {
         const request = context.switchToHttp().getRequest<CookieRequest>();
@@ -97,7 +86,7 @@ export class CsrfGuard implements CanActivate {
             return true;
         }
 
-        if (!hasValidCsrfProof(request)) {
+        if (!hasValidCsrfProof(request, this.config.getOrThrow<string>("COOKIE_SECRET"))) {
             throw new ForbiddenException(FORBIDDEN_CSRF_MESSAGE);
         }
 

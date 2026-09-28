@@ -2,7 +2,7 @@
 
 ## Veredicto
 
-P0 queda aprobado como direccion tecnica del CRM nuevo. Desde la ley `0.3.14`, la unica construccion de runtime autorizada es el runtime minimo de identidad del API. El runtime comercial sigue prohibido hasta aprobacion explicita posterior.
+P0 queda aprobado como direccion tecnica del CRM nuevo. Desde la ley `0.3.19`, la unica construccion de runtime autorizada es el runtime minimo de identidad del API. El runtime comercial sigue prohibido hasta aprobacion explicita posterior.
 
 Este P0 no intenta copiar el CRM viejo tabla por tabla. La regla es construir el CRM nuevo con modelo canonico, base MySQL normalizada, API estable, frontend en espanol y adaptadores externos separados.
 
@@ -122,13 +122,13 @@ flowchart TD
 | Documento de producto en 2 paginas | Aprobado como ley superior en `00-Producto-CRM-TINK-y-P0.md`. |
 | Jerarquia de documentacion | Definida por `00-Producto-CRM-TINK-y-P0.md`, `00-Indice.md` y `AGENTS.md`. |
 | Modelo fisico de identidad | Cerrado como diseno en `29-Modelo-Fisico-MySQL-Identidad-P0-S1.md`. |
-| SQL identidad P0-S1 | Aplicado/validado en `CRM_THINK_V2`; catalogos S1A ejecutados sin usuarios ni datos de negocio. |
+| SQL identidad P0-S1 | `SQL/001` validado, `SQL/002` ejecutado como catalogos S1A, `SQL/003` login readiness aplicado por runner schema-only y primer owner Roberto creado por bootstrap controlado en `CRM_THINK_V2`; login real sigue pendiente de `jefe_general`, canal de activacion/reset, Microsoft y frontend. |
 | Modelo canonico minimo de lead | Pendiente; viene despues de identidad. |
 | OpenAPI identidad | Autorizado solo como contrato minimo de identidad. |
 | Esqueleto API | Autorizado solo para runtime minimo de identidad. |
 | Esqueleto frontend | Existe fuera de este documento; no autoriza construir API todavia. |
-| Credenciales MySQL en `.env` | Pendiente de configurar localmente. |
+| Credenciales MySQL en `.env` | Configuradas para runtime local; no deben documentarse, commitearse ni usarse para ejecutar DDL. |
 | Ejecutar migracion en MySQL | Ya validado para identidad bajo excepciones documentadas; no autoriza datos reales ni `crmdatabase-api`. |
 | Instalar dependencias API | Permitido solo para identidad. |
 | Typecheck/build API | Obligatorio para cada cambio de runtime de identidad. |
-| Primer vertical slice real | Identidad; runtime minimo autorizado por `00-Producto-CRM-TINK-y-P0.md` version `0.3.14`. |
+| Primer vertical slice real | Identidad; runtime minimo y bootstrap owner autorizados por `00-Producto-CRM-TINK-y-P0.md` version vigente `0.3.27`. |

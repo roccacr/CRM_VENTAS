@@ -130,7 +130,7 @@ If any live service still uses the shared credential, the only approved action i
 4. Do not place business rules in controllers.
 5. Do not place external API calls in the domain layer.
 6. Do not access NetSuite, Odoo, Microsoft 365, Kapso, or the legacy CRM directly from `src/modules/crm`.
-7. Every external integration must go through a port defined under `src/integrations/common`.
+7. Every external integration must go through a domain-owned port. Current identity Microsoft ports live under `src/modules/crm/identity/ports`; future ERP ports must be created only when an approved slice needs them.
 8. Prefer small vertical slices over broad scaffolding without executable behavior.
 9. Normalize the database by default and whenever possible: readable, logical, relational tables with clear foreign keys, lookup tables, and no duplicated data unless an approved ADR justifies denormalization with evidence.
 10. Public API DTOs, core domain models, and core database tables/columns must not use vendor-specific names such as NetSuite, Odoo, or Kapso.
@@ -193,13 +193,13 @@ import { NetSuiteClient } from '../../integrations/netsuite';
 import { OdooClient } from '../../integrations/odoo';
 ```
 
-Allowed inside CRM core modules:
+Allowed inside CRM core modules when an approved ERP slice exists:
 
 ```ts
-import { ERPIntegrationPort } from '../../integrations/common/ports/erp-integration.port';
+import { ERPIntegrationPort } from '../ports/erp-integration.port';
 ```
 
-The CRM core only speaks to ERP systems through stable ports.
+The CRM core only speaks to external systems through stable domain ports. Do not import adapter clients from `src/integrations/**` into CRM modules.
 
 ## Expected Structure
 

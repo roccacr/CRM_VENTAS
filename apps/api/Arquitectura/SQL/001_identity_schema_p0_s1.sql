@@ -43,7 +43,10 @@ CREATE TABLE IF NOT EXISTS sec_auth_identity (
   provider_subject_auth_identity VARCHAR(255) NULL COMMENT 'Identificador unico entregado por el proveedor de autenticacion, por ejemplo subject de Microsoft.',
   email_auth_identity VARCHAR(255) NOT NULL COMMENT 'Correo usado por esta identidad de autenticacion.',
   normalized_email_auth_identity VARCHAR(255) NOT NULL COMMENT 'Correo normalizado para login, soporte y busqueda.',
-  password_hash_auth_identity VARCHAR(255) NULL COMMENT 'Hash Argon2id o bcrypt para login local; nunca almacena contrasena en texto plano.',
+  password_hash_auth_identity VARCHAR(255) NULL COMMENT 'Hash Argon2id para login local; nunca almacena contrasena en texto plano.',
+  failed_login_count_auth_identity INT UNSIGNED NOT NULL DEFAULT 0 COMMENT 'Contador persistente de intentos fallidos de login local.',
+  locked_until_auth_identity DATETIME(3) NULL COMMENT 'Fecha y hora hasta la que queda bloqueada temporalmente la identidad local.',
+  last_failed_login_at_auth_identity DATETIME(3) NULL COMMENT 'Ultima fecha y hora de intento fallido de login local.',
   status_auth_identity VARCHAR(40) NOT NULL DEFAULT 'active' COMMENT 'Estado de esta identidad de login: active, inactive o blocked.',
   last_used_at_auth_identity DATETIME(3) NULL COMMENT 'Ultima fecha y hora en que se uso esta identidad para autenticar.',
   created_at_auth_identity DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) COMMENT 'Fecha y hora de creacion de la identidad de autenticacion.',
@@ -62,6 +65,7 @@ CREATE TABLE IF NOT EXISTS sec_auth_identity (
 CREATE TABLE IF NOT EXISTS sec_auth_session (
   id_auth_session BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT 'Identificador interno de la sesion backend.',
   public_id_auth_session CHAR(26) NOT NULL COMMENT 'Identificador publico de la sesion para soporte y auditoria interna.',
+  token_hash_auth_session VARCHAR(255) NOT NULL COMMENT 'Hash HMAC del token opaco de sesion; nunca almacena el token plano.',
   user_id_auth_session BIGINT UNSIGNED NOT NULL COMMENT 'Usuario interno propietario de la sesion.',
   auth_identity_id_auth_session BIGINT UNSIGNED NOT NULL COMMENT 'Identidad de autenticacion usada para crear la sesion.',
   permission_version_auth_session INT UNSIGNED NOT NULL COMMENT 'Version de permisos del usuario al emitir la sesion.',
@@ -74,6 +78,7 @@ CREATE TABLE IF NOT EXISTS sec_auth_session (
   revoked_by_user_id_auth_session BIGINT UNSIGNED NULL COMMENT 'Usuario que revoco la sesion, si aplica.',
   PRIMARY KEY (id_auth_session),
   UNIQUE KEY uq_sec_auth_session_public_id (public_id_auth_session),
+  UNIQUE KEY uq_sec_auth_session_token_hash (token_hash_auth_session),
   KEY ix_sec_auth_session_user_status (user_id_auth_session, status_auth_session),
   KEY ix_sec_auth_session_expires_at (expires_at_auth_session),
   CONSTRAINT fk_sec_auth_session_user FOREIGN KEY (user_id_auth_session) REFERENCES sec_user (id_user) ON DELETE RESTRICT ON UPDATE CASCADE,
@@ -104,6 +109,29 @@ CREATE TABLE IF NOT EXISTS sec_refresh_token (
   DEFAULT CHARSET=utf8mb4
   COLLATE=utf8mb4_unicode_ci
   COMMENT='Refresh tokens rotados y guardados como hash para sesiones BFF.';
+
+CREATE TABLE IF NOT EXISTS sec_local_password_reset_token (
+  id_local_password_reset_token BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT 'Identificador interno del token de activacion/reset local.',
+  auth_identity_id_local_password_reset_token BIGINT UNSIGNED NOT NULL COMMENT 'Identidad local que solicito activacion o reset de clave.',
+  token_hash_local_password_reset_token VARCHAR(255) NOT NULL COMMENT 'Hash HMAC del token opaco de reset; nunca almacena el token plano.',
+  status_local_password_reset_token VARCHAR(40) NOT NULL DEFAULT 'active' COMMENT 'Estado del token: active, used, revoked o expired.',
+  requested_at_local_password_reset_token DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) COMMENT 'Fecha y hora de solicitud del token.',
+  expires_at_local_password_reset_token DATETIME(3) NOT NULL COMMENT 'Fecha y hora de expiracion del token.',
+  used_at_local_password_reset_token DATETIME(3) NULL COMMENT 'Fecha y hora en que el token fue consumido correctamente.',
+  revoked_at_local_password_reset_token DATETIME(3) NULL COMMENT 'Fecha y hora de revocacion manual o automatica del token.',
+  ip_address_local_password_reset_token VARCHAR(80) NULL COMMENT 'Direccion IP desde donde se pidio el reset.',
+  user_agent_local_password_reset_token VARCHAR(500) NULL COMMENT 'User agent desde donde se pidio el reset.',
+  active_key_local_password_reset_token TINYINT AS (CASE WHEN status_local_password_reset_token = 'active' THEN 1 ELSE NULL END) STORED COMMENT 'Clave generada para permitir solo un token activo por identidad y conservar historicos usados, revocados o expirados.',
+  PRIMARY KEY (id_local_password_reset_token),
+  UNIQUE KEY uq_sec_local_password_reset_token_hash (token_hash_local_password_reset_token),
+  UNIQUE KEY uq_sec_local_password_reset_active (auth_identity_id_local_password_reset_token, active_key_local_password_reset_token),
+  KEY ix_sec_local_password_reset_identity_status (auth_identity_id_local_password_reset_token, status_local_password_reset_token),
+  KEY ix_sec_local_password_reset_expires_at (expires_at_local_password_reset_token),
+  CONSTRAINT fk_sec_local_password_reset_identity FOREIGN KEY (auth_identity_id_local_password_reset_token) REFERENCES sec_auth_identity (id_auth_identity) ON DELETE RESTRICT ON UPDATE CASCADE
+) ENGINE=InnoDB
+  DEFAULT CHARSET=utf8mb4
+  COLLATE=utf8mb4_unicode_ci
+  COMMENT='Tokens opacos hasheados para activacion y reset de login local.';
 
 CREATE TABLE IF NOT EXISTS sec_role (
   id_role BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT 'Identificador interno del rol.',
