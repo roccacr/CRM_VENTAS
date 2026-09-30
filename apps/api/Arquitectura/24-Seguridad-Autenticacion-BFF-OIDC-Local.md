@@ -166,7 +166,7 @@ Para acciones criticas, el guard de autorizacion debe revalidar contra la versio
 Decision P0-S1A:
 
 - bloquear o inactivar una identidad de autenticacion local/Microsoft no se anuncia como proveedor disponible;
-- la revocacion retroactiva de sesiones ya abiertas por bloqueo de identidad debe existir antes de activar login real, segun condicion 10 de la ley vigente, junto con token opaco hasheado, rotacion de refresh y validacion de version de permisos;
+- la revocacion retroactiva de sesiones ya abiertas por bloqueo de identidad es parte obligatoria del runtime, junto con token opaco hasheado, rotacion de refresh y validacion de version de permisos;
 - mientras tanto, el corte autorizado sigue revalidando usuario activo y permisos efectivos en cada request protegido.
 
 ## Cookies obligatorias
@@ -203,7 +203,7 @@ La cookie de refresh token debe tener ruta restringida, por ejemplo:
 | --- | --- | --- | --- | --- | --- |
 | `crm_session` | API | Si | `/` | Token opaco aleatorio. | Identifica la sesion corta del usuario. |
 | `crm_refresh` | API | Si | `/identity/refresh` | Token opaco aleatorio. | Permite rotar sesion sin pedir login otra vez. |
-| `crm_csrf` | API | No | `/` | `nonce.firma` base64url. | El frontend la repite en header CSRF para mutaciones. |
+| `crm_csrf` | API | Si | `/` | `nonce.firma` base64url. | El BFF la compara contra el header CSRF; el mismo valor vigente tambien viaja en JSON como `csrfToken`. |
 | `crm_ms_oidc` | API | Si | `/identity/microsoft/callback` | Challenge OIDC firmado. | Solo vive durante el redirect Microsoft; usa `SameSite=Lax`. |
 
 Reglas:
@@ -212,7 +212,7 @@ Reglas:
 - `crm_session` se guarda en base solo como HMAC en `sec_auth_session.token_hash_auth_session`;
 - `crm_refresh` se guarda en base solo como HMAC en `sec_refresh_token.token_hash_refresh_token`;
 - `crm_refresh` tiene path restringido a `/identity/refresh`;
-- `crm_csrf` no es `HttpOnly` porque el navegador debe poder copiarlo al header `X-CRM-CSRF-Token`;
+- `crm_csrf` es `HttpOnly`; el frontend no la lee con `document.cookie`, usa el `csrfToken` devuelto por `/identity/session`, login o refresh;
 - `crm_session`, `crm_refresh` y `crm_csrf` usan `Secure` y `SameSite=Strict`; `crm_ms_oidc` usa `Secure` y `SameSite=Lax` por el redirect OIDC cross-site controlado;
 - logout limpia `crm_session`, `crm_refresh` y `crm_csrf`.
 
@@ -234,15 +234,15 @@ sequenceDiagram
   participant API as API NestJS
   participant DB as CRM_THINK_V2
   FE->>API: GET /identity/session
-  API-->>FE: JSON de sesion + cookie crm_csrf
-  FE->>API: POST /identity/local/login + crm_csrf/header
+  API-->>FE: JSON de sesion + csrfToken + cookie crm_csrf HttpOnly
+  FE->>API: POST /identity/local/login + cookie crm_csrf + header X-CRM-CSRF-Token
   API->>API: Rate limit por IP y HMAC de correo
   API->>API: DTO normaliza/valida correo y password
   API->>DB: Buscar identidad local active
   API->>API: Verificar password con Argon2id
   API->>DB: Crear sec_auth_session + sec_refresh_token
   API->>DB: Auditar login exitoso
-  API-->>FE: JSON sesion/usuario + cookies crm_session, crm_refresh, crm_csrf
+  API-->>FE: JSON sesion/usuario + csrfToken + cookies crm_session, crm_refresh, crm_csrf
 ```
 
 Reglas del flujo:
@@ -281,14 +281,15 @@ Reglas de seguridad del refresh:
 
 - si no hay cookie `crm_refresh`, responde `401`;
 - si el refresh no existe, responde `401`;
-- si el refresh ya no esta `active`, se considera reuso y se revoca la familia de refresh tokens y todas las sesiones activas del usuario;
-- si el refresh esta vencido, se marca `expired`;
+- solo un refresh con estado `rotated` o `reused` se considera reuso real y revoca todas las sesiones activas del usuario;
+- un refresh `revoked`, `expired` o de una carrera ya consumida responde como invalido/expirado sin revocar sesiones ajenas;
+- si el refresh activo esta vencido, se marca `expired`;
 - si la sesion, usuario o identidad asociada ya no esta activa, se revoca la familia de refresh tokens y la sesion asociada;
-- si `permissionVersion` de la sesion no coincide con el usuario actual, responde `409` y el cliente debe limpiar sesion/cache local y pedir login nuevo;
+- si `permissionVersion` de la sesion no coincide con el usuario actual, responde `409`; el cliente intenta un refresh single-flight y solo si falla limpia sesion/cache local y pide login nuevo;
 - si rota correctamente, el refresh anterior queda `rotated` y se emite uno nuevo;
 - la auditoria de refresh se registra con el usuario canonico asociado.
 
-Decision vigente: multiples sesiones normales estan permitidas, pero reuso de refresh token se trata como posible robo y revoca todas las sesiones activas del usuario.
+Decision vigente: multiples sesiones normales estan permitidas, pero reuso real de refresh token (`rotated` o `reused`) se trata como posible robo y revoca todas las sesiones activas del usuario.
 
 ## Flujo de logout
 
@@ -378,7 +379,7 @@ Patrones permitidos:
 
 Reglas de emision:
 
-- `GET /identity/session` emite cookie CSRF firmada si el navegador no trae una vigente para el estado de sesion actual;
+- `GET /identity/session` emite cookie CSRF firmada si el navegador no trae una vigente para el estado de sesion actual, y devuelve el valor vigente como `csrfToken` en JSON;
 - todo endpoint mutable responde `403` si cookie/header CSRF faltan, no coinciden, no tienen formato `nonce.firma` base64url o no validan firma;
 - si existe cookie de sesion, la firma CSRF debe estar ligada a ese token de sesion;
 - `POST /identity/logout` limpia cookie de sesion, refresh y CSRF;
@@ -428,16 +429,16 @@ Reglas:
 | Token de sesion opaco con HMAC | Implementado en API; estructura `SQL/003` aplicada y validada contra MySQL. |
 | Refresh token opaco con HMAC | Implementado en API. |
 | Rotacion de refresh | Implementada en API. |
-| Deteccion de reuso | Implementada; revoca todas las sesiones activas del usuario. |
+| Deteccion de reuso | Implementada; solo `rotated`/`reused` revocan todas las sesiones activas del usuario. |
 | CSRF firmado y ligado a sesion | Implementado en API. |
 | Login local Argon2id | Preparado en API contra identidades locales activas. |
-| Microsoft real | Adapter API implementado con MSAL Node, PKCE/state/nonce, callback, cache cifrada, Graph photo con timeout y `acquireTokenSilent`; activacion productiva depende de Entra ID real, variables `MICROSOFT_*`, `SQL/004` aplicado y frontend autorizado. |
+| Microsoft real | Adapter API implementado con MSAL Node, PKCE/state/nonce, callback, cache cifrada, Graph photo con timeout y `acquireTokenSilent`; activacion productiva depende de Entra ID real, variables `MICROSOFT_*`, `SQL/004` aplicado en el ambiente objetivo y validacion operacional aprobada. |
 | Reset/activacion local backend | Implementado con token opaco hasheado y Argon2id; falta canal aprobado de entrega del token. |
-| Rate limit login/reset | Implementado por IP y HMAC de correo. |
-| Rate limit refresh | Implementado por IP y HMAC del refresh token. |
+| Rate limit login/reset | Implementado por IP y HMAC de correo, en memoria del proceso actual. Multi-instancia requiere store compartido. |
+| Rate limit refresh | Implementado por IP y HMAC del refresh token, en memoria del proceso actual. Multi-instancia requiere store compartido. |
 | Account lockout persistente | Implementado en API y estructura `SQL/003` aplicada; pendiente validar con identidad local real aprobada. |
 | Logger estructurado con redaccion | Implementado con Pino/nestjs-pino. |
-| Frontend login | No autorizado para construccion; las reglas de consumo React/BFF quedan documentadas para el corte visual futuro. |
+| Frontend login | Implementado para identidad: `/auth/login`, login local, Microsoft popup, verificacion de sesion, logout y shell `/home/global` consumen el BFF sin tokens en frontend. |
 
 ## Manejo de errores
 

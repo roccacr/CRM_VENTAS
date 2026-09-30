@@ -5,7 +5,7 @@ import type { FastifyReply, FastifyRequest } from "fastify";
 
 import { REFRESH_COOKIE_NAME } from "../../../common/security/http-security.constants.js";
 import { createAuditIdentifierHmac } from "../audit/audit-hash.js";
-import { IDENTITY_LOCAL_COMPLETE_RESET_PATH, IDENTITY_LOCAL_LOGIN_PATH, IDENTITY_LOCAL_REQUEST_RESET_PATH, IDENTITY_REFRESH_PATH } from "./identity-route.constants.js";
+import { IDENTITY_LOCAL_COMPLETE_RESET_PATH, IDENTITY_LOCAL_LOGIN_PATH, IDENTITY_LOCAL_REQUEST_RESET_PATH, IDENTITY_MICROSOFT_START_PATH, IDENTITY_REFRESH_PATH } from "./identity-route.constants.js";
 
 // ============================================================================
 // Rate limit para endpoints publicos sensibles de identidad.
@@ -28,6 +28,9 @@ interface IdentityRateLimitConfig {
     loginEmailMax: number;
     loginIpMax: number;
     loginWindowMs: number;
+    microsoftStartCache: number;
+    microsoftStartIpMax: number;
+    microsoftStartWindowMs: number;
     refreshCache: number;
     refreshIpMax: number;
     refreshTokenMax: number;
@@ -95,6 +98,9 @@ const readIdentityRateLimitConfig = (config: ConfigService): IdentityRateLimitCo
     loginEmailMax: readPositiveNumberConfig(config, "LOCAL_LOGIN_RATE_LIMIT_EMAIL_MAX"),
     loginIpMax: readPositiveNumberConfig(config, "LOCAL_LOGIN_RATE_LIMIT_IP_MAX"),
     loginWindowMs: readPositiveNumberConfig(config, "LOCAL_LOGIN_RATE_LIMIT_WINDOW_MS"),
+    microsoftStartCache: readPositiveNumberConfig(config, "MICROSOFT_START_RATE_LIMIT_CACHE"),
+    microsoftStartIpMax: readPositiveNumberConfig(config, "MICROSOFT_START_RATE_LIMIT_IP_MAX"),
+    microsoftStartWindowMs: readPositiveNumberConfig(config, "MICROSOFT_START_RATE_LIMIT_WINDOW_MS"),
     refreshCache: readPositiveNumberConfig(config, "REFRESH_RATE_LIMIT_CACHE"),
     refreshIpMax: readPositiveNumberConfig(config, "REFRESH_RATE_LIMIT_IP_MAX"),
     refreshTokenMax: readPositiveNumberConfig(config, "REFRESH_RATE_LIMIT_TOKEN_MAX"),
@@ -233,7 +239,7 @@ export const registerIdentityRateLimit = async (app: NestFastifyApplication, con
     const fastify = app.getHttpAdapter().getInstance();
 
     await app.register(rateLimit, {
-        cache: Math.max(rateLimitConfig.loginCache, rateLimitConfig.resetCache, rateLimitConfig.refreshCache, rateLimitConfig.completeResetCache),
+        cache: Math.max(rateLimitConfig.loginCache, rateLimitConfig.resetCache, rateLimitConfig.refreshCache, rateLimitConfig.completeResetCache, rateLimitConfig.microsoftStartCache),
         global: false,
         hook: "preHandler",
     });
@@ -261,6 +267,11 @@ export const registerIdentityRateLimit = async (app: NestFastifyApplication, con
         ipMax: rateLimitConfig.refreshIpMax,
         prefix: "identity-refresh",
         timeWindow: rateLimitConfig.refreshWindowMs,
+    });
+    const microsoftStartLimiter = fastify.createRateLimit({
+        keyGenerator: (request) => createIpRateLimitKey(request, "identity-microsoft-start"),
+        max: rateLimitConfig.microsoftStartIpMax,
+        timeWindow: rateLimitConfig.microsoftStartWindowMs,
     });
     const completeResetLimiters = createIdentityLimiterPair(app, {
         auditHashSecret,
@@ -299,6 +310,10 @@ export const registerIdentityRateLimit = async (app: NestFastifyApplication, con
         }
 
         const path = getResolvedRequestPath(request);
+
+        if (path === IDENTITY_MICROSOFT_START_PATH && hasExceededLimit(await microsoftStartLimiter(request))) {
+            return sendIdentityAttemptLimitResponse(reply);
+        }
 
         for (const route of rateLimitedRoutes) {
             if (path === route.path && (await hasExceededLimiterPair(request, route.limiters))) {

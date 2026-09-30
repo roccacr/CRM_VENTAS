@@ -15,8 +15,8 @@
 export const HSTS_MAX_AGE_SECONDS = 15_552_000;
 
 // Cookies BFF. El frontend nunca lee sesion, refresh ni tokens Microsoft.
-// `crm_csrf` no es HttpOnly porque el navegador debe repetirlo por header en
-// el patron double-submit.
+// `crm_csrf` tambien es HttpOnly; el BFF devuelve el valor CSRF vigente en JSON
+// para que el cliente lo repita por header en mutaciones.
 export const SESSION_COOKIE_NAME = "crm_session";
 export const REFRESH_COOKIE_NAME = "crm_refresh";
 export const CSRF_COOKIE_NAME = "crm_csrf";

@@ -23,6 +23,9 @@ const TEST_HTTP_CONFIG = {
     LOCAL_LOGIN_RATE_LIMIT_EMAIL_MAX: 1,
     LOCAL_LOGIN_RATE_LIMIT_IP_MAX: 1,
     LOCAL_LOGIN_RATE_LIMIT_WINDOW_MS: 60_000,
+    MICROSOFT_START_RATE_LIMIT_CACHE: 50,
+    MICROSOFT_START_RATE_LIMIT_IP_MAX: 1,
+    MICROSOFT_START_RATE_LIMIT_WINDOW_MS: 60_000,
     LOCAL_RESET_RATE_LIMIT_CACHE: 50,
     LOCAL_RESET_RATE_LIMIT_EMAIL_MAX: 1,
     LOCAL_RESET_RATE_LIMIT_IP_MAX: 1,
@@ -175,13 +178,15 @@ describe("IdentityController", () => {
 
         expect(response.statusCode).toBe(200);
         expect(response.headers["cache-control"]).toBe(IDENTITY_NO_STORE_CACHE_CONTROL);
-        expect(JSON.parse(response.payload)).toEqual({
-            authenticated: false,
-            session: null,
-            user: null,
-        });
+        const csrfToken = /"csrfToken":"([^"]+)"/u.exec(response.payload)?.[1] ?? "";
+
+        expect(response.payload).toContain('"authenticated":false');
+        expect(response.payload).toContain('"session":null');
+        expect(response.payload).toContain('"user":null');
+        expect(isValidCsrfTokenFormat(csrfToken)).toBe(true);
         expect(findSetCookieHeader(response.headers["set-cookie"], CSRF_COOKIE_NAME).startsWith(`${CSRF_COOKIE_NAME}=`)).toBe(true);
-        expect(response.payload).not.toContain("token");
+        expect(response.payload).not.toContain("session-token");
+        expect(response.payload).not.toContain("refresh-token");
     });
 
     it("retorna usuario actual con Cache-Control no-store", async () => {
@@ -242,7 +247,8 @@ describe("IdentityController", () => {
         expect(readCookieAttribute(csrfCookie, "Path")).toBe("/");
         expect(hasCookieAttribute(csrfCookie, "Secure")).toBe(true);
         expect(readCookieAttribute(csrfCookie, "SameSite")).toBe("Strict");
-        expect(hasCookieAttribute(csrfCookie, "HttpOnly")).toBe(false);
+        expect(hasCookieAttribute(csrfCookie, "HttpOnly")).toBe(true);
+        expect((JSON.parse(sessionResponse.payload) as { csrfToken: string }).csrfToken).toBe(csrfToken);
 
         const logoutResponse = await app.inject({
             method: "POST",
@@ -267,6 +273,7 @@ describe("IdentityController", () => {
 
         expect(response.statusCode).toBe(200);
         expect(response.headers["set-cookie"]).toBeUndefined();
+        expect((JSON.parse(response.payload) as { csrfToken: string }).csrfToken).toBe(CSRF_TEST_TOKEN);
     });
 
     it("reemite cookie CSRF si el navegador trae un valor con formato invalido", async () => {
@@ -279,7 +286,98 @@ describe("IdentityController", () => {
         });
 
         expect(response.statusCode).toBe(200);
-        expect(findSetCookieHeader(response.headers["set-cookie"], CSRF_COOKIE_NAME).startsWith(`${CSRF_COOKIE_NAME}=`)).toBe(true);
+        const csrfCookie = findSetCookieHeader(response.headers["set-cookie"], CSRF_COOKIE_NAME);
+        const csrfToken = readCookieValue(csrfCookie);
+
+        expect(csrfCookie.startsWith(`${CSRF_COOKIE_NAME}=`)).toBe(true);
+        expect((JSON.parse(response.payload) as { csrfToken: string }).csrfToken).toBe(csrfToken);
+    });
+
+    it("devuelve CSRF nuevo en el cuerpo despues de login local exitoso", async () => {
+        identity.localLogin.mockResolvedValue({
+            refreshToken: "refresh-token-local",
+            refreshTokenExpiresAt: new Date(Date.now() + 60_000),
+            response: {
+                authenticated: true,
+                session: {
+                    expiresAt: "2026-09-25T22:00:00.000Z",
+                    expiresInSeconds: 28800,
+                    permissionVersion: 1,
+                    publicId: "session-public-id",
+                    status: "active",
+                },
+                user: {
+                    displayName: "Usuario CRM",
+                    email: "usuario@roccacr.com",
+                    permissionVersion: 1,
+                    profileImageUrl: null,
+                    publicId: "user-public-id",
+                    status: "active",
+                },
+            },
+            sessionToken: "session-token-local",
+            sessionTokenExpiresAt: new Date(Date.now() + 60_000),
+        });
+
+        const response = await app.inject({
+            method: "POST",
+            url: "/identity/local/login",
+            headers: createMutableHeaders(),
+            payload: {
+                email: "usuario@roccacr.com",
+                password: "Password temporal 1",
+            },
+        });
+
+        const csrfCookie = findSetCookieHeader(response.headers["set-cookie"], CSRF_COOKIE_NAME);
+        const csrfToken = readCookieValue(csrfCookie);
+
+        expect(response.statusCode).toBe(200);
+        expect(hasCookieAttribute(csrfCookie, "HttpOnly")).toBe(true);
+        expect((JSON.parse(response.payload) as { csrfToken: string }).csrfToken).toBe(csrfToken);
+    });
+
+    it("devuelve CSRF nuevo en el cuerpo despues de refresh exitoso", async () => {
+        identity.refresh.mockResolvedValue({
+            refreshToken: "refresh-token-renovado",
+            refreshTokenExpiresAt: new Date(Date.now() + 60_000),
+            response: {
+                authenticated: true,
+                session: {
+                    expiresAt: "2026-09-25T22:00:00.000Z",
+                    expiresInSeconds: 28800,
+                    permissionVersion: 1,
+                    publicId: "session-public-id",
+                    status: "active",
+                },
+                user: {
+                    displayName: "Usuario CRM",
+                    email: "usuario@roccacr.com",
+                    permissionVersion: 1,
+                    profileImageUrl: null,
+                    publicId: "user-public-id",
+                    status: "active",
+                },
+            },
+            sessionToken: "session-token-renovado",
+            sessionTokenExpiresAt: new Date(Date.now() + 60_000),
+        });
+
+        const response = await app.inject({
+            method: "POST",
+            url: "/identity/refresh",
+            headers: {
+                ...createMutableHeaders(),
+                cookie: `${CSRF_COOKIE_NAME}=${CSRF_TEST_TOKEN}; ${REFRESH_COOKIE_NAME}=refresh-token-vigente`,
+            },
+        });
+
+        const csrfCookie = findSetCookieHeader(response.headers["set-cookie"], CSRF_COOKIE_NAME);
+        const csrfToken = readCookieValue(csrfCookie);
+
+        expect(response.statusCode).toBe(200);
+        expect(hasCookieAttribute(csrfCookie, "HttpOnly")).toBe(true);
+        expect((JSON.parse(response.payload) as { csrfToken: string }).csrfToken).toBe(csrfToken);
     });
 
     it("bloquea requests mutables de identidad sin prueba CSRF", async () => {
@@ -297,6 +395,7 @@ describe("IdentityController", () => {
             method: "POST",
             url: "/identity/microsoft/start",
             headers: createMutableHeaders(),
+            remoteAddress: "10.0.0.50",
         });
 
         expect(response.statusCode).toBe(200);
@@ -308,6 +407,25 @@ describe("IdentityController", () => {
         expect(readCookieAttribute(challengeCookie, "SameSite")).toBe("Lax");
         expect(hasCookieAttribute(challengeCookie, "HttpOnly")).toBe(true);
         expect(hasCookieAttribute(challengeCookie, "Secure")).toBe(true);
+    });
+
+    it("limita el inicio Microsoft por IP", async () => {
+        const firstResponse = await app.inject({
+            method: "POST",
+            url: "/identity/microsoft/start",
+            headers: createMutableHeaders(),
+            remoteAddress: "10.0.0.51",
+        });
+        const secondResponse = await app.inject({
+            method: "POST",
+            url: "/identity/microsoft/start",
+            headers: createMutableHeaders(),
+            remoteAddress: "10.0.0.51",
+        });
+
+        expect(firstResponse.statusCode).toBe(200);
+        expect(secondResponse.statusCode).toBe(429);
+        expect(identity.startMicrosoftLogin).toHaveBeenCalledTimes(1);
     });
 
     it("completa callback Microsoft con parametros extras de Entra ID y redirige sin exponer tokens", async () => {
@@ -345,7 +463,7 @@ describe("IdentityController", () => {
         });
 
         expect(response.statusCode).toBe(303);
-        expect(response.headers.location).toBe(TEST_HTTP_CONFIG.FRONTEND_ORIGIN);
+        expect(response.headers.location).toBe(`${TEST_HTTP_CONFIG.FRONTEND_ORIGIN}/auth/login`);
         expect(response.payload).not.toContain("session-token");
         expect(response.payload).not.toContain("refresh-token");
         expect(findSetCookieHeader(response.headers["set-cookie"], SESSION_COOKIE_NAME)).toContain(`${SESSION_COOKIE_NAME}=`);
@@ -356,6 +474,77 @@ describe("IdentityController", () => {
                 state: "estado",
             }),
         );
+    });
+
+    it("redirige al frontend con fallo controlado si Microsoft callback no puede crear sesion", async () => {
+        identity.completeMicrosoftCallback.mockRejectedValue(new Error("MSAL callback failed"));
+
+        const response = await app.inject({
+            method: "GET",
+            url: "/identity/microsoft/callback?code=codigo&state=estado",
+            headers: {
+                cookie: `${MICROSOFT_OIDC_CHALLENGE_COOKIE_NAME}=challenge.cookie`,
+            },
+        });
+
+        expect(response.statusCode).toBe(303);
+        expect(response.headers.location).toBe(`${TEST_HTTP_CONFIG.FRONTEND_ORIGIN}/auth/login?microsoftStatus=failed`);
+        expect(response.payload).not.toContain("MSAL callback failed");
+        expect(response.payload).not.toContain("codigo");
+        expect(response.payload).not.toContain("challenge.cookie");
+        expect(readCookieAttribute(findSetCookieHeader(response.headers["set-cookie"], MICROSOFT_OIDC_CHALLENGE_COOKIE_NAME), "Path")).toBe("/identity/microsoft/callback");
+    });
+
+    it("redirige con fallo controlado si Microsoft devuelve error sin code ni state", async () => {
+        const response = await app.inject({
+            method: "GET",
+            url: "/identity/microsoft/callback?error=access_denied&error_description=El%20usuario%20cancelo",
+            headers: {
+                cookie: `${MICROSOFT_OIDC_CHALLENGE_COOKIE_NAME}=challenge.cookie`,
+            },
+        });
+
+        expect(response.statusCode).toBe(303);
+        expect(response.headers.location).toBe(`${TEST_HTTP_CONFIG.FRONTEND_ORIGIN}/auth/login?microsoftStatus=failed`);
+        expect(identity.completeMicrosoftCallback).not.toHaveBeenCalled();
+        expect(response.payload).not.toContain("access_denied");
+        expect(response.payload).not.toContain("challenge.cookie");
+    });
+
+    it("redirige con estado no asignado cuando Microsoft autentica pero CRM no tiene identidad vinculada", async () => {
+        identity.completeMicrosoftCallback.mockRejectedValue(new UnauthorizedException("Cuenta Microsoft no asignada al CRM."));
+
+        const response = await app.inject({
+            method: "GET",
+            url: "/identity/microsoft/callback?code=codigo&state=estado",
+            headers: {
+                cookie: `${MICROSOFT_OIDC_CHALLENGE_COOKIE_NAME}=challenge.cookie`,
+            },
+        });
+
+        expect(response.statusCode).toBe(303);
+        expect(response.headers.location).toBe(`${TEST_HTTP_CONFIG.FRONTEND_ORIGIN}/auth/login?microsoftStatus=unassigned`);
+        expect(response.payload).not.toContain("Cuenta Microsoft no asignada");
+        expect(response.payload).not.toContain("codigo");
+        expect(response.payload).not.toContain("challenge.cookie");
+    });
+
+    it("redirige con estado no autorizado cuando el usuario CRM esta inactivo o bloqueado", async () => {
+        identity.completeMicrosoftCallback.mockRejectedValue(new UnauthorizedException("Usuario CRM no autorizado para iniciar sesión."));
+
+        const response = await app.inject({
+            method: "GET",
+            url: "/identity/microsoft/callback?code=codigo&state=estado",
+            headers: {
+                cookie: `${MICROSOFT_OIDC_CHALLENGE_COOKIE_NAME}=challenge.cookie`,
+            },
+        });
+
+        expect(response.statusCode).toBe(303);
+        expect(response.headers.location).toBe(`${TEST_HTTP_CONFIG.FRONTEND_ORIGIN}/auth/login?microsoftStatus=unauthorized`);
+        expect(response.payload).not.toContain("Usuario CRM no autorizado");
+        expect(response.payload).not.toContain("codigo");
+        expect(response.payload).not.toContain("challenge.cookie");
     });
 
     it("sirve la foto cacheada del usuario autenticado sin exponer Microsoft Graph", async () => {
@@ -375,7 +564,29 @@ describe("IdentityController", () => {
         expect(response.statusCode).toBe(200);
         expect(response.headers["content-type"]).toContain("image/jpeg");
         expect(response.payload).toBe("foto-cacheada");
-        expect(identity.getCurrentUserProfileImage).toHaveBeenCalledWith("session-token");
+        expect(response.headers["cache-control"]).toContain("no-store");
+        expect(response.headers["cross-origin-resource-policy"]).toBe("same-site");
+        expect(identity.getCurrentUserProfileImage).toHaveBeenCalledWith("session-token", { refresh: false });
+    });
+
+    it("solicita refrescar la foto cuando el cliente detecta imagen invalida", async () => {
+        identity.getCurrentUserProfileImage.mockResolvedValue({
+            bytes: Buffer.from("foto-refrescada"),
+            mimeType: "image/png",
+        });
+
+        const response = await app.inject({
+            method: "GET",
+            url: "/identity/me/photo?refresh=1",
+            headers: {
+                cookie: `${SESSION_COOKIE_NAME}=session-token`,
+            },
+        });
+
+        expect(response.statusCode).toBe(200);
+        expect(response.headers["content-type"]).toContain("image/png");
+        expect(response.payload).toBe("foto-refrescada");
+        expect(identity.getCurrentUserProfileImage).toHaveBeenCalledWith("session-token", { refresh: true });
     });
 
     it("bloquea requests mutables aunque cookie y header CSRF invalidos coincidan", async () => {

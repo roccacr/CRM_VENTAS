@@ -20,8 +20,10 @@ const LOCAL_LOGIN_LOCKOUT_MAX_FAILURES = 5;
 const LOCAL_LOGIN_LOCKOUT_DURATION_MS = 15 * 60 * 1000;
 const ARGON2_DUMMY_PASSWORD = "crm-tink-dummy-password-for-timing-only";
 const ARGON2_DUMMY_HASH = "$argon2id$v=19$m=19456,p=1,t=2$x4LIsYBb4u+XOPFMuBxIRw$mDnYVwKK/1vyxZmiLGl14UGszNfdgkG5b3ToVx0YB94";
-const COMMON_LOCAL_PASSWORDS = new Set(["password", "password123", "123456789", "1234567890", "qwerty123", "roccacr123", "crm123456", "admin123456"]);
+const COMMON_LOCAL_PASSWORDS = new Set(["password", "password123", "password1234", "123456789", "1234567890", "123456789012", "qwerty123", "qwerty123456", "roccacr123", "roccacr1234", "crm123456", "crm123456789", "admin123456", "admin123456789"]);
 const LOCAL_PROVIDER_CODE = "local";
+export const MICROSOFT_ACCOUNT_NOT_ASSIGNED_MESSAGE = "Cuenta Microsoft no asignada al CRM.";
+export const MICROSOFT_ACCOUNT_NOT_AUTHORIZED_MESSAGE = "Usuario CRM no autorizado para iniciar sesión.";
 
 export interface AuthenticatedSessionResult {
     refreshToken: string;
@@ -121,12 +123,22 @@ export class IdentityService {
      *
      * La respuesta nunca redirige a Microsoft Graph ni revela tokens Microsoft.
      */
-    async getCurrentUserProfileImage(sessionToken?: string): Promise<ProfileImageResult | null> {
+    async getCurrentUserProfileImage(sessionToken?: string, options: { refresh?: boolean } = {}): Promise<ProfileImageResult | null> {
         if (!sessionToken) {
             throw new UnauthorizedException("No autenticado.");
         }
 
-        return this.repository.findProfileImageBySessionTokenHash(this.tokens.hashToken(sessionToken));
+        const sessionTokenHash = this.tokens.hashToken(sessionToken);
+
+        if (options.refresh) {
+            const refreshedImage = await this.refreshCurrentUserProfileImage(sessionTokenHash);
+
+            if (refreshedImage) {
+                return refreshedImage;
+            }
+        }
+
+        return this.repository.findProfileImageBySessionTokenHash(sessionTokenHash);
     }
 
     /**
@@ -186,6 +198,9 @@ export class IdentityService {
             throw new UnauthorizedException("No autenticado.");
         }
 
+        const refreshTokenHash = this.tokens.hashToken(refreshToken);
+        await this.assertRefreshProviderStillValid(refreshTokenHash, ipAddress, userAgent);
+
         const nextSession = this.tokens.issueSessionToken();
         const nextRefresh = this.tokens.rotateRefreshToken();
         const rotation = await this.repository.rotateRefreshSession({
@@ -193,7 +208,7 @@ export class IdentityService {
             nextRefreshTokenHash: nextRefresh.refreshTokenHash,
             nextSessionExpiresAt: nextSession.sessionExpiresAt,
             nextSessionTokenHash: nextSession.sessionTokenHash,
-            refreshTokenHash: this.tokens.hashToken(refreshToken),
+            refreshTokenHash,
         });
 
         if (rotation.status === "permission_stale") {
@@ -209,14 +224,10 @@ export class IdentityService {
             throw new UnauthorizedException("No autenticado.");
         }
 
-        if (rotation.providerCode === MICROSOFT_PROVIDER_CODE) {
-            await this.assertMicrosoftSessionStillValid(rotation.authIdentityId, rotation.userId, ipAddress, userAgent);
-        }
-
         const profile = await this.readProfileAfterSessionIssue(nextSession);
         await this.audit.recordRefreshRotated(rotation.userId, rotation.sessionPublicId, ipAddress, userAgent);
 
-        return this.buildAuthenticatedSessionResult(profile, nextSession, nextRefresh);
+        return this.buildAuthenticatedSessionResult(profile, { ...nextSession, sessionExpiresAt: rotation.sessionExpiresAt }, { ...nextRefresh, refreshExpiresAt: rotation.refreshExpiresAt });
     }
 
     /**
@@ -236,14 +247,18 @@ export class IdentityService {
             state: input.state,
         });
         const account = microsoftResult.account;
-        const identity = await this.repository.findActiveMicrosoftIdentity({
-            normalizedEmail: normalizeCaseInsensitiveIdentifier(account.email),
+        const normalizedEmail = normalizeCaseInsensitiveIdentifier(account.email);
+        const identityResolution = await this.repository.findOrCreateActiveMicrosoftIdentityForVerifiedEmail({
+            email: account.email,
+            normalizedEmail,
             subject: account.subject,
         });
 
-        if (!identity) {
-            throw new UnauthorizedException("No autenticado.");
+        if (identityResolution.status !== "ready") {
+            throw new UnauthorizedException(identityResolution.status === "user_not_active" ? MICROSOFT_ACCOUNT_NOT_AUTHORIZED_MESSAGE : MICROSOFT_ACCOUNT_NOT_ASSIGNED_MESSAGE);
         }
+
+        const identity = identityResolution.identity;
 
         await this.repository.saveMicrosoftAccount({
             ...identity,
@@ -343,18 +358,6 @@ export class IdentityService {
      */
     async requestLocalReset(payload: RequestLocalResetDto, ipAddress?: string, userAgent?: string): Promise<{ accepted: true }> {
         const normalizedEmail = normalizeCaseInsensitiveIdentifier(payload.email);
-        const resettableIdentity = await this.repository.findResettableLocalIdentity(normalizedEmail);
-
-        if (resettableIdentity) {
-            const resetToken = this.tokens.issueLocalResetToken();
-            await this.repository.createLocalPasswordResetToken({
-                authIdentityId: resettableIdentity.authIdentityId,
-                expiresAt: resetToken.resetTokenExpiresAt,
-                ipAddress,
-                tokenHash: resetToken.resetTokenHash,
-                userAgent,
-            });
-        }
 
         await this.audit.recordLocalResetRequested(normalizedEmail, ipAddress, userAgent);
 
@@ -410,6 +413,60 @@ export class IdentityService {
         }
 
         await this.repository.updateMicrosoftCache(authIdentityId, renewedCache);
+    }
+
+    /**
+     * Valida proveedores externos antes de consumir el refresh BFF.
+     */
+    private async assertRefreshProviderStillValid(refreshTokenHash: string, ipAddress?: string, userAgent?: string): Promise<void> {
+        const refreshSession = await this.repository.findRefreshSessionForProviderValidation(refreshTokenHash);
+
+        if (refreshSession?.providerCode === MICROSOFT_PROVIDER_CODE) {
+            await this.assertMicrosoftSessionStillValid(refreshSession.authIdentityId, refreshSession.userId, ipAddress, userAgent);
+        }
+    }
+
+    /**
+     * Relee la foto Microsoft solo bajo demanda cuando el navegador detecta una
+     * imagen invalida o ausente. Si Microsoft exige login, la foto cae a fallback
+     * visual sin revocar la sesion CRM.
+     */
+    private async refreshCurrentUserProfileImage(sessionTokenHash: string): Promise<ProfileImageResult | null> {
+        const accountCache = await this.repository.findMicrosoftAccountCacheBySessionTokenHash(sessionTokenHash);
+
+        if (!accountCache) {
+            return null;
+        }
+
+        const refreshResult = await this.microsoftSession.refreshProfilePhoto({
+            cache: accountCache.cache,
+            homeAccountId: accountCache.homeAccountId,
+        });
+
+        if (!refreshResult) {
+            return null;
+        }
+
+        await this.repository.updateMicrosoftCache(accountCache.authIdentityId, refreshResult.encryptedCache);
+
+        if (!refreshResult.profilePhoto) {
+            return null;
+        }
+
+        await this.repository.updateUserProfileImage({
+            profileImage: {
+                bytes: refreshResult.profilePhoto.bytes,
+                mimeType: refreshResult.profilePhoto.mimeType,
+                publicUrl: "/identity/me/photo",
+                sourceSubject: accountCache.sourceSubject,
+            },
+            userId: accountCache.userId,
+        });
+
+        return {
+            bytes: refreshResult.profilePhoto.bytes,
+            mimeType: refreshResult.profilePhoto.mimeType,
+        };
     }
 
     /**

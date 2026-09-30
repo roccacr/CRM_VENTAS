@@ -2,12 +2,12 @@
 
 | Campo | Valor |
 | --- | --- |
-| Version | `0.3.27` |
-| Fecha | `2026-09-28` |
-| Estado | Ley vigente firmada de producto y alcance; P0-S1A aprobado en base de datos, runtime minimo de identidad autorizado, preparacion segura de login API validada contra `CRM_THINK_V2` y bootstrap controlado del primer owner autorizado sin frontend. |
+| Version | `0.3.28` |
+| Fecha | `2026-09-30` |
+| Estado | Ley vigente firmada de producto y alcance; P0-S1A aprobado en base de datos, runtime minimo de identidad implementado en API y frontend, login local/Microsoft verificado localmente, bootstrap controlado del primer owner autorizado. |
 | Dueno de producto | CRM TINK <soporte@roccacr.com> |
 | Aprobado por | CRM TINK <soporte@roccacr.com> |
-| Ultimo cambio | Corrige contrato Microsoft OIDC real: challenge `crm_ms_oidc` usa `SameSite=Lax`, callback acepta parametros esperados de Entra ID y redirige al frontend sin exponer tokens; identidad Microsoft se resuelve por subject estable, Graph usa timeout y foto cacheada se sirve por endpoint interno. |
+| Ultimo cambio | Cierra la fase de autenticacion local: login local, Microsoft OIDC con selector de cuenta, logout, refresh/CSRF, foto de perfil y shell autenticado quedan alineados entre API, frontend y documentacion. Produccion sigue condicionada por configuracion aprobada, usuarios reales faltantes y canal formal de activacion/reset. |
 
 ## Regla superior
 
@@ -15,7 +15,7 @@ Este documento se lee primero.
 
 Si este documento contradice a `AGENTS.md`, skills, modelos de datos, mapas de implementacion, documentos largos o notas futuras, gana este documento hasta que el dueno del producto apruebe una nueva version.
 
-Mientras este documento no apruebe ampliar runtime, esta prohibido crear API comercial, instalar dependencias fuera de identidad, agregar modulos comerciales, generar OpenAPI comercial o ampliar skills. Las unicas excepciones autorizadas por esta version son validar estructura de identidad, ejecutar el seed de catalogos S1A, construir el runtime minimo de identidad del API, preparar login local/refresh seguro solo en API, preparar Microsoft OIDC real solo en API dentro de `src/integrations/microsoft365`, preparar el wiring tecnico opcional de conexion legacy aislada para futura sync y crear el primer owner real por bootstrap controlado desde lectura minima de `crmdatabase-api.admins`, sin usuarios inventados, sin credenciales seed, sin datos reales de negocio fuera de identidad, sin dual-read, sin escritura sobre la base vieja y sin interfaz de login frontend.
+Mientras este documento no apruebe ampliar runtime, esta prohibido crear API comercial, instalar dependencias fuera de identidad, agregar modulos comerciales, generar OpenAPI comercial o ampliar skills. Las unicas excepciones autorizadas por esta version son validar estructura de identidad, ejecutar el seed de catalogos S1A, construir el runtime minimo de identidad del API, conectar la compuerta frontend de identidad contra el BFF, implementar login local/refresh seguro, implementar Microsoft OIDC real dentro de `src/integrations/microsoft365`, preparar el wiring tecnico opcional de conexion legacy aislada para futura sync y crear el primer owner real por bootstrap controlado desde lectura minima de `crmdatabase-api.admins`, sin usuarios inventados, sin credenciales seed, sin datos reales de negocio fuera de identidad, sin dual-read y sin escritura sobre la base vieja.
 
 ## Gobierno documental
 
@@ -179,7 +179,7 @@ Esto significa:
 Validacion SQL autorizada:
 
 - se autoriza validar `SQL/001_identity_schema_p0_s1.sql` como migracion controlada de estructura;
-- se autoriza crear un runner de migracion solo cuando sea necesario para validar estructura; esta regla no autoriza modulos comerciales, pero la version `0.3.19` si autoriza el runtime minimo de identidad descrito en este documento;
+- se autoriza crear un runner de migracion solo cuando sea necesario para validar estructura; esta regla no autoriza modulos comerciales, pero la version vigente `0.3.28` autoriza el runtime minimo de identidad descrito en este documento;
 - se autoriza ejecutar `SQL/002_identity_seed_p0_s1.sql` una vez como seed de catalogos S1A, exclusivamente en `CRM_THINK_V2`;
 - `SQL/002_identity_seed_p0_s1.sql` solo puede insertar catalogos de identidad: permisos, roles, matriz rol-permiso, areas, sistemas externos y eventos tecnicos de auditoria de seed;
 - `SQL/002_identity_seed_p0_s1.sql` no puede crear usuarios, identidades de autenticacion, asignaciones de usuario, contrasenas, tokens, datos personales, datos de negocio ni datos del CRM viejo;
@@ -215,7 +215,7 @@ Si cualquier conteo posterior a `SQL/002` difiere del esperado, se reporta como 
 
 ## Runtime minimo de identidad autorizado
 
-La version `0.3.19` mantiene autorizado el runtime minimo de identidad y autoriza endurecer en API el mecanismo de login local/refresh seguro. No autoriza login real productivo con usuarios reales, no autoriza Microsoft operativo y no autoriza pantalla de login frontend.
+La version `0.3.28` mantiene autorizado el runtime minimo de identidad y autoriza el cierre local de la compuerta de autenticacion en API y frontend. Esto incluye login local, Microsoft OIDC, refresh seguro, CSRF, logout y shell autenticado para identidad. No autoriza modulos comerciales ni declara produccion lista.
 
 Alcance permitido:
 
@@ -224,7 +224,7 @@ Alcance permitido:
 - configuracion segura de variables de entorno sin guardar secretos reales en documentos, codigo ni logs;
 - modulo de identidad/autenticacion;
 - patron BFF con cookies `HttpOnly`, `Secure` y `SameSite`;
-- flujo Microsoft Entra ID / OIDC implementado solo en API, condicionado a Entra ID real, variables `MICROSOFT_*`, `SQL/004` aplicado y frontend de identidad autorizado;
+- flujo Microsoft Entra ID / OIDC implementado en API y consumido por frontend de identidad, condicionado para produccion a Entra ID real, variables `MICROSOFT_*`, `SQL/004` aplicado y redirect URI oficial;
 - login local preparado contra identidades locales activas existentes, con Argon2id, lockout persistente, rechazo local de claves comunes, sin passwords en seed y sin bootstrap inventado;
 - endpoints minimos de identidad: sesion actual, usuario actual, sesiones activas, revocacion de sesion propia, logout, refresh, inicio/callback Microsoft y flujo local de invitacion/reset;
 - calculo de permisos efectivos con rol, area/jerarquia, `allow` directo y `deny` directo;
@@ -270,10 +270,10 @@ Sigue prohibido:
 - passwords o tokens en seeds;
 - datos de negocio;
 - datos reales de clientes;
-- activar Microsoft OIDC productivo antes de tener app registration Entra ID, redirect URI oficial, variables `MICROSOFT_*`, llave `MICROSOFT_MSAL_CACHE_ENCRYPTION_KEY`, `SQL/004` aplicado y frontend de identidad autorizado;
+- activar Microsoft OIDC productivo antes de tener app registration Entra ID, redirect URI oficial, variables `MICROSOFT_*`, llave `MICROSOFT_MSAL_CACHE_ENCRYPTION_KEY`, `SQL/004` aplicado y validacion operacional aprobada;
 - Microsoft OIDC real sin cache MSAL persistente cifrado en servidor, sin llave de cifrado dedicada o sin SQL/migracion aplicada para guardar el cache de proveedor;
 - guardar access token, refresh token, ID token o cache Microsoft en frontend, cookies legibles, logs, documentos o tablas sin cifrado;
-- pantalla real de login frontend antes de que el addendum frontend autorice ese corte visual;
+- pantallas frontend comerciales fuera de identidad;
 - bootstrap de usuarios reales sin correo oficial aprobado; el owner Roberto queda autorizado por esta version, pero el `jefe_general` de negocio sigue pendiente y debe ser una persona separada salvo aprobacion expresa posterior;
 - frontend comercial;
 - OpenAPI comercial;
@@ -316,29 +316,29 @@ Permiso efectivo P0-S1A = rol + area/jerarquia + allow directo - deny directo.
 
 Las delegaciones temporales quedan previstas para una fase posterior, pero no son obligatorias ni construibles en P0-S1A.
 
-## Condiciones antes de activar login real
+## Condiciones antes de activar login productivo
 
-Antes de convertir los stubs de identidad en login real, deben estar cerradas estas condiciones:
+Antes de declarar la autenticacion productiva para usuarios finales, deben estar cerradas estas condiciones:
 
 1. Token de sesion opaco: implementado en API como token aleatorio con hash HMAC; estructura `SQL/003` aplicada y validada contra MySQL.
-2. Fechas en UTC para sesiones, refresh-token y vencimientos: implementado en API con fechas ISO/Date UTC; pendiente validar con sesion real cuando exista usuario bootstrap aprobado.
-3. Rotacion de refresh-token con deteccion de reuso y revocacion de familia: implementado en API; pendiente validar con refresh real cuando exista usuario bootstrap aprobado.
+2. Fechas en UTC para sesiones, refresh-token y vencimientos: implementado en API con fechas ISO/Date UTC; validado en flujo local.
+3. Rotacion de refresh-token con deteccion de reuso y revocacion de familia: implementado en API y cubierto por tests; reuso real queda reservado a tokens `rotated`/`reused`.
 4. CSRF double-submit firmado y atado a sesion: implementado en API.
 5. Rate limit activo para login local y reset local: implementado en API.
-6. Rate limit especifico para `/identity/refresh`: implementado en API; pendiente validar en runtime real tras config definitiva.
-7. Account lockout persistente por usuario/identidad o politica equivalente ante abuso de password: implementado en API y estructura `SQL/003` aplicada; pendiente validar con identidad local real aprobada.
+6. Rate limit especifico para `/identity/refresh`: implementado en API; en multi-instancia requiere store compartido antes de equivaler a cuota global.
+7. Account lockout persistente por usuario/identidad o politica equivalente ante abuso de password: implementado en API y estructura `SQL/003` aplicada; probado por suite automatizada.
 8. Decision formal sobre reuso de refresh token con multiples sesiones: reuso revoca todas las sesiones activas del usuario; multiples sesiones normales siguen permitidas.
 9. Logger estructurado con redaccion de secretos, tokens y PII antes de produccion: implementado con `nestjs-pino`/Pino.
 10. Microsoft OIDC implementado solo dentro de `src/integrations/microsoft365`, detras de puertos del dominio en `src/modules/crm/identity/ports`; la validacion de Microsoft aplica al flujo Microsoft y a renovaciones controladas de sesiones creadas por Microsoft, no al login local ni a cada request normal del CRM.
-11. Addendum frontend aprobado para pantalla visual de identidad; mientras eso no exista, el frontend sigue como stub congelado.
+11. Addendum frontend de identidad conectado: implementado para `/auth/login`, `/home/global`, login local, Microsoft, logout, foto/avatar y estados de verificacion.
 12. Primer owner real definido y bootstrap autorizado para Roberto; correo oficial del primer `jefe_general` de negocio sigue pendiente. No se permiten usuarios inventados.
 13. Politica de retencion de datos personales de auditoria, incluyendo IP y metadatos seudonimizados.
 14. Revocacion de sesiones activas cuando una identidad de autenticacion quede `blocked`, `inactive` o eliminada logicamente.
 15. Crear una sesion nueva en cada login exitoso para evitar fijacion de sesion.
-16. Responder `409` cuando el `permissionVersion` de la sesion no coincida con la version actual del usuario; el cliente debe cerrar sesion local, limpiar cache y obligar login nuevo. No se revalida con `/identity/me` porque ese endpoint usa la misma compuerta.
+16. Responder `409` cuando el `permissionVersion` de la sesion no coincida con la version actual del usuario; el cliente debe intentar un refresh single-flight y, si no obtiene sesion vigente, limpiar cache visual y obligar login nuevo. No se revalida con `/identity/me` porque ese endpoint usa la misma compuerta.
 17. Cache MSAL persistente y cifrado para Microsoft real: implementado en API con cache cifrada en servidor y particion por `homeAccountId`/tenant; se usa para `acquireTokenSilent` antes de forzar login interactivo; si Microsoft requiere UI, revoca sesiones CRM creadas por Microsoft y pide reautenticacion.
-18. Ventana absoluta de sesion de 8 horas: implementada en API para tokens CRM; pendiente validar con login real. La rotacion de refresh no puede extender el vencimiento absoluto de `sec_auth_session`.
-19. Imagen/foto de usuario: SQL/004 y adapter Graph preparados; `/identity/session` y `/identity/me` pueden devolver `profileImageUrl` como referencia interna cuando exista foto cacheada. El frontend no recibe tokens ni URLs temporales de Microsoft.
+18. Ventana absoluta de sesion de 8 horas: implementada en API para tokens CRM y validada localmente; la rotacion de refresh no puede extender el vencimiento absoluto de `sec_auth_session`.
+19. Imagen/foto de usuario: SQL/004, adapter Graph y endpoint `/identity/me/photo` implementados; `/identity/session` y `/identity/me` pueden devolver `profileImageUrl` como referencia interna. El frontend no recibe tokens ni URLs temporales de Microsoft.
 
 S1A debe ser flaco. Su primer valor visible para negocio es:
 
@@ -358,7 +358,7 @@ Si S1A intenta construir administracion completa de usuarios, IAM empresarial, f
 | 6 | Reglas minimas de lista y detalle conceptual del lead. | Vendedor |
 | 7 | Reglas de auditoria basica para cambios sensibles. | Jefatura / Sistemas |
 
-P0-S1 no autoriza programar todo el CRM. Identidad P0-S1A queda cerrada en base de datos; el siguiente paso permitido es continuar solo el runtime minimo de identidad definido en la version `0.3.19`, no abrir modulos comerciales ni mas vision.
+P0-S1 no autoriza programar todo el CRM. Identidad P0-S1A queda cerrada en base de datos; el siguiente paso permitido es continuar solo el runtime minimo de identidad definido en la version `0.3.28`, no abrir modulos comerciales ni mas vision.
 
 ## Prohibido ahora
 
@@ -431,5 +431,5 @@ Se puede avanzar al modelo MySQL minimo solo cuando:
 - quede claro que `SQL/001` fue aplicado solo como validacion schema-only, no como migracion productiva;
 - quede claro que `conf_schema_migration` fue registrada por marca manual equivalente porque no existia `.env` seguro para probar el runner end-to-end;
 - quede claro que `SQL/002` solo fue autorizado como seed de catalogos S1A, sin usuarios ni inserts de negocio;
-- quede claro que solo el runtime minimo de identidad queda autorizado en la version `0.3.19`;
+- quede claro que solo el runtime minimo de identidad queda autorizado en la version `0.3.28`;
 - quede claro que NestJS/API comercial sigue prohibido hasta aprobacion explicita posterior.

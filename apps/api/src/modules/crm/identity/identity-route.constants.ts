@@ -56,3 +56,6 @@ export const IDENTITY_LOCAL_REQUEST_RESET_PATH = `/${IDENTITY_CONTROLLER_PATH}/$
 
 /** Path absoluto usado por hooks Fastify que reciben la URL completa. */
 export const IDENTITY_LOCAL_COMPLETE_RESET_PATH = `/${IDENTITY_CONTROLLER_PATH}/${IDENTITY_LOCAL_COMPLETE_RESET_ROUTE}`;
+
+/** Path absoluto usado por hooks Fastify que reciben la URL completa. */
+export const IDENTITY_MICROSOFT_START_PATH = `/${IDENTITY_CONTROLLER_PATH}/${IDENTITY_MICROSOFT_START_ROUTE}`;

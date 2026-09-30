@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Headers, HttpCode, Inject, NotFoundException, Param, Post, Query, Req, Res } from "@nestjs/common";
+import { Body, Controller, Get, Headers, HttpCode, Inject, Logger, NotFoundException, Param, Post, Query, Req, Res, UnauthorizedException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { ApiBody, ApiOkResponse, ApiOperation, ApiTags } from "@nestjs/swagger";
 import type { FastifyReply } from "fastify";
@@ -8,7 +8,7 @@ import { createSignedCsrfToken, isValidSignedCsrfToken } from "../../../common/s
 import { CSRF_COOKIE_NAME, MICROSOFT_OIDC_CHALLENGE_COOKIE_NAME, REFRESH_COOKIE_NAME, ROOT_COOKIE_PATH, SESSION_COOKIE_NAME } from "../../../common/security/http-security.constants.js";
 import { CompleteLocalResetDto, LocalLoginDto, RequestLocalResetDto } from "./dto/local-auth.dto.js";
 import { MicrosoftCallbackDto } from "./dto/microsoft-auth.dto.js";
-import { type AuthenticatedSessionResult, IdentityService } from "./identity.service.js";
+import { type AuthenticatedSessionResult, IdentityService, MICROSOFT_ACCOUNT_NOT_ASSIGNED_MESSAGE, MICROSOFT_ACCOUNT_NOT_AUTHORIZED_MESSAGE } from "./identity.service.js";
 import { IDENTITY_CONTROLLER_PATH, IDENTITY_LOCAL_COMPLETE_RESET_ROUTE, IDENTITY_LOCAL_LOGIN_ROUTE, IDENTITY_LOCAL_REQUEST_RESET_ROUTE, IDENTITY_LOGOUT_ROUTE, IDENTITY_ME_PHOTO_ROUTE, IDENTITY_ME_ROUTE, IDENTITY_MICROSOFT_CALLBACK_ROUTE, IDENTITY_MICROSOFT_START_ROUTE, IDENTITY_REFRESH_PATH, IDENTITY_REFRESH_ROUTE, IDENTITY_REVOKE_SESSION_ROUTE, IDENTITY_SESSION_ROUTE, IDENTITY_SESSIONS_ROUTE } from "./identity-route.constants.js";
 
 /**
@@ -21,6 +21,10 @@ const hasValidCsrfCookie = (request: CookieRequest, cookieSecret: string): boole
     const csrfCookie = request.cookies[CSRF_COOKIE_NAME];
     return typeof csrfCookie === "string" && isValidSignedCsrfToken(csrfCookie, cookieSecret, request.cookies[SESSION_COOKIE_NAME]);
 };
+
+const MICROSOFT_CALLBACK_STATUS_FAILED = "failed";
+const MICROSOFT_CALLBACK_STATUS_UNASSIGNED = "unassigned";
+const MICROSOFT_CALLBACK_STATUS_UNAUTHORIZED = "unauthorized";
 
 /**
  * Frontera HTTP del runtime de identidad aprobado para P0-S1A.
@@ -36,6 +40,8 @@ const hasValidCsrfCookie = (request: CookieRequest, cookieSecret: string): boole
 @ApiTags("identity")
 @Controller(IDENTITY_CONTROLLER_PATH)
 export class IdentityController {
+    private readonly logger = new Logger(IdentityController.name);
+
     /**
      * Inyecta el servicio que ejecuta los casos de uso de identidad.
      */
@@ -48,18 +54,18 @@ export class IdentityController {
      * Retorna el sobre de sesion anonima/autenticada que usa el frontend.
      *
      * Aqui se emite cookie CSRF porque el frontend necesita un primer endpoint
-     * seguro de lectura antes de hacer requests mutables. La cookie no es
-     * HttpOnly por diseno: el navegador debe repetir el valor en el header CSRF.
+     * seguro de lectura antes de hacer requests mutables. La cookie es HttpOnly;
+     * el valor que el cliente repite por header viaja en el JSON de respuesta.
      */
     @Get(IDENTITY_SESSION_ROUTE)
     @ApiOperation({ summary: "Consultar si existe una sesion backend valida." })
     @ApiOkResponse({ description: "Estado de sesion bajo patron BFF." })
     async session(@Req() request: CookieRequest, @Res({ passthrough: true }) reply: FastifyReply) {
-        if (!hasValidCsrfCookie(request, this.config.getOrThrow<string>("COOKIE_SECRET"))) {
-            this.setCsrfCookie(reply, request.cookies[SESSION_COOKIE_NAME]);
-        }
+        const sessionToken = request.cookies[SESSION_COOKIE_NAME];
+        const existingCsrfToken = request.cookies[CSRF_COOKIE_NAME];
+        const csrfToken = hasValidCsrfCookie(request, this.config.getOrThrow<string>("COOKIE_SECRET")) && existingCsrfToken ? existingCsrfToken : this.setCsrfCookie(reply, sessionToken);
 
-        return this.identity.getSession(request.cookies[SESSION_COOKIE_NAME]);
+        return this.withCsrfToken(await this.identity.getSession(sessionToken), csrfToken);
     }
 
     /**
@@ -80,13 +86,15 @@ export class IdentityController {
      */
     @Get(IDENTITY_ME_PHOTO_ROUTE)
     @ApiOperation({ summary: "Servir foto cacheada del usuario autenticado." })
-    async profilePhoto(@Req() request: CookieRequest, @Res({ passthrough: true }) reply: FastifyReply) {
-        const image = await this.identity.getCurrentUserProfileImage(request.cookies[SESSION_COOKIE_NAME]);
+    async profilePhoto(@Query("refresh") refresh: string | undefined, @Req() request: CookieRequest, @Res({ passthrough: true }) reply: FastifyReply) {
+        const image = await this.identity.getCurrentUserProfileImage(request.cookies[SESSION_COOKIE_NAME], { refresh: refresh === "1" || refresh === "true" });
 
         if (!image) {
             throw new NotFoundException("Foto de perfil no disponible.");
         }
 
+        reply.header("cache-control", "no-store");
+        reply.header("cross-origin-resource-policy", "same-site");
         reply.type(image.mimeType);
         return image.bytes;
     }
@@ -137,8 +145,8 @@ export class IdentityController {
     @ApiOperation({ summary: "Refrescar sesion BFF si existe refresh token valido." })
     async refresh(@Req() request: CookieRequest, @Res({ passthrough: true }) reply: FastifyReply, @Headers("user-agent") userAgent?: string) {
         const result = await this.identity.refresh(request.cookies[REFRESH_COOKIE_NAME], request.ip, userAgent);
-        this.setAuthenticatedCookies(reply, result);
-        return result.response;
+        const csrfToken = this.setAuthenticatedCookies(reply, result);
+        return this.withCsrfToken(result.response, csrfToken);
     }
 
     /**
@@ -169,19 +177,32 @@ export class IdentityController {
     @ApiOperation({ summary: "Recibir callback Microsoft y crear sesion backend." })
     async completeMicrosoftCallback(@Query() query: MicrosoftCallbackDto, @Req() request: CookieRequest, @Res({ passthrough: true }) reply: FastifyReply, @Headers("user-agent") userAgent?: string) {
         const challengeCookie = request.cookies[MICROSOFT_OIDC_CHALLENGE_COOKIE_NAME];
-        const result = await this.identity.completeMicrosoftCallback({
-            ...(challengeCookie ? { challengeCookie } : {}),
-            code: query.code,
-            ipAddress: request.ip,
-            state: query.state,
-            ...(userAgent ? { userAgent } : {}),
-        });
-        this.setAuthenticatedCookies(reply, result);
-        reply.clearCookie(MICROSOFT_OIDC_CHALLENGE_COOKIE_NAME, {
-            path: `/${IDENTITY_CONTROLLER_PATH}/${IDENTITY_MICROSOFT_CALLBACK_ROUTE}`,
-        });
+        this.prepareMicrosoftCallbackRedirect(reply);
 
-        reply.redirect(this.config.getOrThrow<string>("FRONTEND_ORIGIN"), 303);
+        if (query.error || !query.code || !query.state) {
+            this.logger.warn(`Microsoft callback rechazado: ${this.getMicrosoftCallbackQueryFailureLogReason(query)}`);
+            this.clearMicrosoftChallengeCookie(reply);
+            reply.redirect(this.getMicrosoftCallbackFailureUrl(new Error("Microsoft callback incompleto.")), 303);
+            return;
+        }
+
+        try {
+            const result = await this.identity.completeMicrosoftCallback({
+                ...(challengeCookie ? { challengeCookie } : {}),
+                code: query.code,
+                ipAddress: request.ip,
+                state: query.state,
+                ...(userAgent ? { userAgent } : {}),
+            });
+            this.setAuthenticatedCookies(reply, result);
+            this.clearMicrosoftChallengeCookie(reply);
+
+            reply.redirect(this.getMicrosoftCallbackSuccessUrl(), 303);
+        } catch (error) {
+            this.logger.warn(`Microsoft callback rechazado: ${this.getMicrosoftCallbackFailureLogReason(error)}`);
+            this.clearMicrosoftChallengeCookie(reply);
+            reply.redirect(this.getMicrosoftCallbackFailureUrl(error), 303);
+        }
     }
 
     /**
@@ -193,8 +214,8 @@ export class IdentityController {
     @ApiBody({ type: LocalLoginDto })
     async localLogin(@Body() body: LocalLoginDto, @Req() request: CookieRequest, @Res({ passthrough: true }) reply: FastifyReply, @Headers("user-agent") userAgent?: string) {
         const result = await this.identity.localLogin(body, request.ip, userAgent);
-        this.setAuthenticatedCookies(reply, result);
-        return result.response;
+        const csrfToken = this.setAuthenticatedCookies(reply, result);
+        return this.withCsrfToken(result.response, csrfToken);
     }
 
     /**
@@ -222,19 +243,30 @@ export class IdentityController {
     /**
      * Emite la cookie CSRF double-submit usada por endpoints mutables.
      */
-    private setCsrfCookie(reply: FastifyReply, sessionToken?: string): void {
-        reply.setCookie(CSRF_COOKIE_NAME, createSignedCsrfToken(this.config.getOrThrow<string>("COOKIE_SECRET"), sessionToken), {
+    private setCsrfCookie(reply: FastifyReply, sessionToken?: string): string {
+        const csrfToken = createSignedCsrfToken(this.config.getOrThrow<string>("COOKIE_SECRET"), sessionToken);
+
+        reply.setCookie(CSRF_COOKIE_NAME, csrfToken, {
             path: ROOT_COOKIE_PATH,
             sameSite: "strict",
             secure: true,
-            httpOnly: false,
+            httpOnly: true,
         });
+
+        return csrfToken;
+    }
+
+    private withCsrfToken<TResponse extends object>(response: TResponse, csrfToken: string): TResponse & { readonly csrfToken: string } {
+        return {
+            ...response,
+            csrfToken,
+        };
     }
 
     /**
      * Escribe cookies opacas despues de login o refresh exitoso.
      */
-    private setAuthenticatedCookies(reply: FastifyReply, result: AuthenticatedSessionResult): void {
+    private setAuthenticatedCookies(reply: FastifyReply, result: AuthenticatedSessionResult): string {
         reply.setCookie(SESSION_COOKIE_NAME, result.sessionToken, {
             expires: result.sessionTokenExpiresAt,
             httpOnly: true,
@@ -249,7 +281,64 @@ export class IdentityController {
             sameSite: "strict",
             secure: true,
         });
-        this.setCsrfCookie(reply, result.sessionToken);
+        return this.setCsrfCookie(reply, result.sessionToken);
+    }
+
+    private prepareMicrosoftCallbackRedirect(reply: FastifyReply): void {
+        reply.header("Cross-Origin-Opener-Policy", "unsafe-none");
+    }
+
+    /**
+     * Devuelve el popup al frontend sin filtrar codigo, state ni detalles MSAL.
+     */
+    private getMicrosoftCallbackSuccessUrl(): string {
+        return new URL("/auth/login", this.config.getOrThrow<string>("FRONTEND_ORIGIN")).toString();
+    }
+
+    private getMicrosoftCallbackFailureUrl(error: unknown): string {
+        const failureUrl = new URL("/auth/login", this.config.getOrThrow<string>("FRONTEND_ORIGIN"));
+        failureUrl.searchParams.set("microsoftStatus", this.getMicrosoftCallbackFailureStatus(error));
+        return failureUrl.toString();
+    }
+
+    private getMicrosoftCallbackFailureStatus(error: unknown): string {
+        if (error instanceof UnauthorizedException && error.message === MICROSOFT_ACCOUNT_NOT_ASSIGNED_MESSAGE) {
+            return MICROSOFT_CALLBACK_STATUS_UNASSIGNED;
+        }
+
+        if (error instanceof UnauthorizedException && error.message === MICROSOFT_ACCOUNT_NOT_AUTHORIZED_MESSAGE) {
+            return MICROSOFT_CALLBACK_STATUS_UNAUTHORIZED;
+        }
+
+        return MICROSOFT_CALLBACK_STATUS_FAILED;
+    }
+
+    private getMicrosoftCallbackFailureLogReason(error: unknown): string {
+        if (!(error instanceof Error)) {
+            return "error_desconocido";
+        }
+
+        return error.message.replaceAll(/[\r\n]/gu, " ").slice(0, 180) || error.name;
+    }
+
+    private getMicrosoftCallbackQueryFailureLogReason(query: MicrosoftCallbackDto): string {
+        if (query.error) {
+            return `entra_error:${query.error}`.replaceAll(/[\r\n]/gu, " ").slice(0, 180);
+        }
+
+        return "callback_sin_code_o_state";
+    }
+
+    /**
+     * Limpia el challenge temporal de Microsoft en exito y error.
+     */
+    private clearMicrosoftChallengeCookie(reply: FastifyReply): void {
+        reply.clearCookie(MICROSOFT_OIDC_CHALLENGE_COOKIE_NAME, {
+            path: `/${IDENTITY_CONTROLLER_PATH}/${IDENTITY_MICROSOFT_CALLBACK_ROUTE}`,
+            sameSite: "lax",
+            secure: true,
+            httpOnly: true,
+        });
     }
 
     /**
@@ -258,12 +347,21 @@ export class IdentityController {
     private clearSessionCookies(reply: FastifyReply): void {
         reply.clearCookie(SESSION_COOKIE_NAME, {
             path: ROOT_COOKIE_PATH,
+            sameSite: "strict",
+            secure: true,
+            httpOnly: true,
         });
         reply.clearCookie(REFRESH_COOKIE_NAME, {
             path: IDENTITY_REFRESH_PATH,
+            sameSite: "strict",
+            secure: true,
+            httpOnly: true,
         });
         reply.clearCookie(CSRF_COOKIE_NAME, {
             path: ROOT_COOKIE_PATH,
+            sameSite: "strict",
+            secure: true,
+            httpOnly: true,
         });
     }
 }

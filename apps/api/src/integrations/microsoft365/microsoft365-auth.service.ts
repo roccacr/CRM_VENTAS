@@ -1,5 +1,5 @@
 import { type AccountInfo, type AuthenticationResult, ConfidentialClientApplication, type Configuration, CryptoProvider, InteractionRequiredAuthError } from "@azure/msal-node";
-import { Inject, Injectable, UnauthorizedException } from "@nestjs/common";
+import { Inject, Injectable, Logger, UnauthorizedException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 
 import type { MicrosoftAuthenticatedAccount, MicrosoftAuthProvider, MicrosoftCallbackInput, MicrosoftLoginChallenge, MicrosoftProfilePhoto, MicrosoftSilentTokenResult } from "../../modules/crm/identity/ports/microsoft-auth-provider.port.js";
@@ -7,7 +7,9 @@ import { MICROSOFT_GRAPH_FETCH_TIMEOUT_MS, MICROSOFT_GRAPH_PROFILE_PHOTO_URL } f
 
 const MICROSOFT_AUTHORITY_HOST = "https://login.microsoftonline.com";
 const CODE_CHALLENGE_METHOD = "S256";
+const MICROSOFT_LOGIN_PROMPT = "select_account";
 const PHOTO_NOT_FOUND_STATUS = 404;
+const ALLOWED_GRAPH_PHOTO_MIME_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
 
 interface Microsoft365Config {
     authority: string;
@@ -15,6 +17,7 @@ interface Microsoft365Config {
     clientSecret: string;
     redirectUri: string;
     scopes: string[];
+    tenantId: string;
 }
 
 /**
@@ -27,6 +30,7 @@ interface Microsoft365Config {
 @Injectable()
 export class Microsoft365AuthService implements MicrosoftAuthProvider {
     private readonly crypto = new CryptoProvider();
+    private readonly logger = new Logger(Microsoft365AuthService.name);
 
     /**
      * Inyecta configuracion validada. No se conecta a Microsoft al arrancar.
@@ -46,6 +50,7 @@ export class Microsoft365AuthService implements MicrosoftAuthProvider {
             codeChallenge: pkce.challenge,
             codeChallengeMethod: CODE_CHALLENGE_METHOD,
             nonce,
+            prompt: MICROSOFT_LOGIN_PROMPT,
             redirectUri: microsoftConfig.redirectUri,
             scopes: microsoftConfig.scopes,
             state,
@@ -73,7 +78,7 @@ export class Microsoft365AuthService implements MicrosoftAuthProvider {
             scopes: microsoftConfig.scopes,
         });
 
-        const account = this.assertAccount(result);
+        const account = this.assertAccount(result, microsoftConfig.tenantId);
         const profilePhoto = await this.readProfilePhoto(result.accessToken);
 
         return {
@@ -129,38 +134,70 @@ export class Microsoft365AuthService implements MicrosoftAuthProvider {
     /**
      * Lee la foto de Graph. La ausencia de foto no falla login.
      */
-    private async readProfilePhoto(accessToken: string): Promise<MicrosoftProfilePhoto | null> {
-        const response = await fetch(MICROSOFT_GRAPH_PROFILE_PHOTO_URL, {
-            headers: {
-                Authorization: `Bearer ${accessToken}`,
-            },
-            signal: AbortSignal.timeout(MICROSOFT_GRAPH_FETCH_TIMEOUT_MS),
-        });
+    async readProfilePhoto(accessToken: string): Promise<MicrosoftProfilePhoto | null> {
+        try {
+            const response = await fetch(MICROSOFT_GRAPH_PROFILE_PHOTO_URL, {
+                headers: {
+                    Authorization: `Bearer ${accessToken}`,
+                },
+                signal: AbortSignal.timeout(MICROSOFT_GRAPH_FETCH_TIMEOUT_MS),
+            });
 
-        if (response.status === PHOTO_NOT_FOUND_STATUS) {
+            if (response.status === PHOTO_NOT_FOUND_STATUS) {
+                return null;
+            }
+
+            if (!response.ok) {
+                this.logger.warn(`Microsoft Graph no devolvio foto de perfil. status=${response.status.toString()}`);
+                return null;
+            }
+
+            const mimeType = this.normalizeGraphPhotoMimeType(response.headers.get("content-type"));
+
+            if (!mimeType) {
+                this.logger.warn("Microsoft Graph devolvio una foto con MIME no permitido.");
+                return null;
+            }
+
+            return {
+                bytes: Buffer.from(await response.arrayBuffer()),
+                mimeType,
+            };
+        } catch (error) {
+            this.logger.warn(`Microsoft Graph no pudo leer foto de perfil: ${error instanceof Error ? error.message : "error_desconocido"}`);
             return null;
         }
+    }
 
-        if (!response.ok) {
-            throw new UnauthorizedException("No fue posible sincronizar Microsoft Graph.");
-        }
-
-        return {
-            bytes: Buffer.from(await response.arrayBuffer()),
-            mimeType: response.headers.get("content-type") ?? "image/jpeg",
-        };
+    private normalizeGraphPhotoMimeType(contentType: string | null): string | null {
+        const mimeType = (contentType ?? "image/jpeg").split(";")[0]?.trim().toLowerCase() ?? "image/jpeg";
+        return ALLOWED_GRAPH_PHOTO_MIME_TYPES.has(mimeType) ? mimeType : null;
     }
 
     /**
      * Exige que MSAL devuelva una cuenta. Sin cuenta no hay identidad canonica
      * segura para mapear contra CRM.
      */
-    private assertAccount(result: AuthenticationResult | null): AccountInfo {
-        if (!result?.account?.homeAccountId || !result.account.tenantId || !result.account.localAccountId || !result.account.username || !result.accessToken) {
+    private assertAccount(result: AuthenticationResult | null, expectedTenantId: string): AccountInfo {
+        const account = result?.account;
+
+        if (!account || !result.accessToken || !this.hasRequiredAccountFields(account) || !this.isExpectedTenant(account, expectedTenantId) || this.isGuestAccount(account)) {
             throw new UnauthorizedException("Microsoft no devolvio una cuenta valida.");
         }
 
-        return result.account;
+        return account;
+    }
+
+    private hasRequiredAccountFields(account: AccountInfo): boolean {
+        return Boolean(account.homeAccountId && account.tenantId && account.localAccountId && account.username);
+    }
+
+    private isExpectedTenant(account: AccountInfo, expectedTenantId: string): boolean {
+        return account.tenantId.toLowerCase() === expectedTenantId.toLowerCase();
+    }
+
+    private isGuestAccount(account: AccountInfo): boolean {
+        return account.username.toLowerCase().includes("#ext#");
     }
 
     /**
@@ -199,6 +236,7 @@ export class Microsoft365AuthService implements MicrosoftAuthProvider {
             clientSecret,
             redirectUri,
             scopes,
+            tenantId,
         };
     }
 }

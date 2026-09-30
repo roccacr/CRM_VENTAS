@@ -51,5 +51,6 @@ export type MicrosoftSilentTokenResult =
 export interface MicrosoftAuthProvider {
     acquireTokenSilent(input: { homeAccountId: string; msalCacheSerialized: string }): Promise<MicrosoftSilentTokenResult>;
     completeCallback(input: MicrosoftCallbackInput): Promise<MicrosoftAuthenticatedAccount>;
+    readProfilePhoto(accessToken: string): Promise<MicrosoftProfilePhoto | null>;
     startLogin(): Promise<MicrosoftLoginChallenge>;
 }

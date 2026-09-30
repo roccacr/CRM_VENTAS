@@ -1,4 +1,4 @@
-# 18 - P0 direccion frontend, construccion pausada
+# 18 - P0 direccion frontend, identidad activa
 
 ## Veredicto
 
@@ -14,9 +14,10 @@ La fuente de verdad del primer corte ejecutable actual es `22-UX-Identidad-Usuar
 
 Estado del runtime frontend:
 
-- existe un esqueleto React/Vite minimo;
-- se considera stub congelado;
-- no prueba que el CRM este construido;
+- existe un runtime React/Vite minimo;
+- la compuerta de identidad esta conectada al BFF;
+- login local, Microsoft, logout y shell `/home/global` son parte del corte de identidad;
+- no prueba que el CRM comercial este construido;
 - no autoriza leads, dashboard ni administracion avanzada.
 
 ## Decisiones cerradas
@@ -26,7 +27,7 @@ Estado del runtime frontend:
 | Stack | React + Vite + TypeScript. |
 | Server state | TanStack Query. |
 | Estado UI local | Zustand solo para filtros, preferencias y layout. |
-| Autenticacion | Microsoft Entra ID como principal; correo/clave como alternativa controlada por API. |
+| Autenticacion | Microsoft Entra ID como principal; correo/contrasena como alternativa controlada por API. |
 | Permisos visibles | Usar permisos efectivos devueltos por API. |
 | Proveedores externos | No mostrar nombres ni payloads de proveedores en componentes, stores o formularios. |
 | Primer modulo comercial | Ventas: listar leads, crear lead, detalle basico y timeline despues de cerrar identidad. Dashboard/pausa/perdida entran en P0-S2. |

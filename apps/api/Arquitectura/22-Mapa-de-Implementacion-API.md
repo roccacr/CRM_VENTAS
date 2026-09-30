@@ -154,12 +154,12 @@ Antes de tocar codigo:
 
 | Elemento | Estado |
 | --- | --- |
-| Esqueleto NestJS | Autorizado solo como runtime minimo de identidad por ley vigente `0.3.27`; no autoriza modulos comerciales. |
+| Esqueleto NestJS | Autorizado solo como runtime minimo de identidad por ley vigente `0.3.28`; no autoriza modulos comerciales. |
 | Kysely/mysql2 | Autorizado para runner schema-only y runtime minimo de identidad contra `CRM_THINK_V2`. |
 | SQL identidad P0-S1 | Esquema validado y seed de catalogos S1A ejecutado en `CRM_THINK_V2`; usuarios, credenciales y datos de negocio siguen fuera. |
 | Contrato API identidad | Creado como documento conceptual; no es OpenAPI ejecutable. |
 | OpenAPI identidad | Permitido solo si se limita al contrato minimo de identidad; OpenAPI comercial sigue prohibido. |
-| Primer vertical slice real | Identidad; aprobado como runtime minimo por ley `0.3.19`. |
+| Primer vertical slice real | Identidad; aprobado como runtime minimo por ley `0.3.28`. |
 | MySQL `.env` local | Existe para runtime minimo con usuario dedicado; no debe contener usuario master compartido ni usarse para DDL. |
 | Runner schema-only | Creado con pnpm/Kysely/mysql2; `SQL/003` aplicado por runner idempotente con usuario dedicado de migracion schema-only. |
-| Migracion aplicada en DB | `SQL/001` registrado por marca manual equivalente; `SQL/002` ejecutado solo como catalogos S1A; `SQL/003` aplicado y registrado como `202609250003_identity_login_readiness`. `SQL/004` queda creado y registrado en runner como `202609280004_identity_microsoft_session`; requiere ejecucion controlada antes de activar Microsoft real. |
+| Migracion aplicada en DB | `SQL/001` registrado por marca manual equivalente; `SQL/002` ejecutado solo como catalogos S1A; `SQL/003` aplicado y registrado como `202609250003_identity_login_readiness`. `SQL/004` queda creado y registrado en runner como `202609280004_identity_microsoft_session`; para produccion debe verificarse su aplicacion en el ambiente objetivo antes de activar Microsoft. |

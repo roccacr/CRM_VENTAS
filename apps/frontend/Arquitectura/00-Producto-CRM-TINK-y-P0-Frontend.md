@@ -2,13 +2,13 @@
 
 | Campo | Valor |
 | --- | --- |
-| Version | `0.3.7` |
-| Fecha | `2026-09-28` |
-| Estado | Addendum visual firmado, subordinado a la ley canonica de producto; frontend sigue como stub congelado y documenta la arquitectura de homes por contexto operativo. |
+| Version | `0.3.17` |
+| Fecha | `2026-09-30` |
+| Estado | Addendum frontend firmado, subordinado a la ley canonica de producto; autoriza y documenta la compuerta de identidad conectada al BFF, login local, Microsoft OIDC, logout, foto/avatar y shell global autenticado. |
 | Fuente canonica | `apps/api/Arquitectura/00-Producto-CRM-TINK-y-P0.md` |
 | Dueno de producto | CRM TINK <soporte@roccacr.com> |
 | Aprobado por | CRM TINK <soporte@roccacr.com> |
-| Ultimo cambio | Define que una URL/ruta directa nunca autoriza acceso: toda vista se valida contra sesion, contexto operativo y permisos efectivos del API. |
+| Ultimo cambio | Cierra el corte de autenticacion frontend: `/auth/login` consume el BFF con CSRF, login local y Microsoft; `/home/global` muestra sesion autenticada, proveedor actual, permisos devueltos por API, foto/avatar y logout. Sigue prohibido crear modulos comerciales o decidir autorizacion final en React. |
 
 ## Regla superior
 
@@ -21,6 +21,32 @@ Si este documento contradice a `apps/api/Arquitectura/00-Producto-CRM-TINK-y-P0.
 Si este documento contradice a `AGENTS.md`, skills, mapas de implementacion, documentos de UX, componentes futuros o notas largas, gana este documento dentro del frontend hasta que la ley canonica de producto apruebe una nueva version.
 
 Mientras este documento no apruebe construir una pantalla o flujo, esta prohibido crear nuevas pantallas, modulos, rutas, clientes API, flujos de login o experiencias fuera del P0-S1.
+
+Excepcion vigente de esta version:
+
+```txt
+Se autoriza mantener y evolucionar la compuerta de identidad en `src/modules/auth`.
+Se autoriza mantener el shell global autenticado en `src/modules/home` expuesto en `/home/global`.
+```
+
+Alcance exacto:
+
+- formulario funcional de correo y contrasena contra `POST /identity/local/login`;
+- boton funcional de Microsoft contra `POST /identity/microsoft/start`;
+- enlace visual de recuperacion de contrasena;
+- ruta publica canonica `/auth/login` para la pantalla de acceso requerida por Azure/Entra;
+- ruta protegida `/home/global` para revisar barra superior, menu global, datos de sesion y permisos efectivos devueltos por API;
+- canvas inicial de identidad con datos de sesion reales y sin datos comerciales;
+- selector visual de perfiles/contextos asignados en la barra superior, filtrable por permisos cuando el API lo entregue;
+- menu visual por perfil activo, basado en configuracion local mock;
+- estilos responsive de la pantalla;
+- soporte responsive y zoom del navegador sin bloquear accesibilidad;
+- sin tokens;
+- sin llamadas directas a Microsoft Graph desde React;
+- sin home comercial operativo por rol/contexto;
+- sin guards finales de rol o permisos en React;
+- sin rutas comerciales;
+- sin KPIs reales.
 
 Regla de no duplicacion:
 
@@ -203,20 +229,21 @@ No se debe avanzar a pantallas de leads hasta cerrar primero identidad, usuarios
 
 ## Estado actual del runtime frontend
 
-El frontend puede tener `package.json`, `src/` y `pnpm-lock.yaml` porque existe un esqueleto React/Vite minimo.
+El frontend ya tiene `package.json`, `src/` y `pnpm-lock.yaml` porque existe un runtime React/Vite minimo para identidad.
 
-Eso no significa producto funcional.
+Eso no significa CRM comercial funcional.
 
 Regla:
 
 ```txt
-El frontend actual es stub congelado hasta que esta ley autorice el siguiente corte visual.
+El frontend actual solo puede operar identidad y shell global autenticado; pantallas comerciales siguen cerradas.
 ```
 
 Permitido:
 
-- mantener el stub;
-- correrlo para validar que abre;
+- mantener login local y Microsoft contra el BFF;
+- correrlo para validar autenticacion, logout, refresh visual y foto/avatar;
+- revisar `/home/global` con usuario, roles, areas y permisos devueltos por API;
 - ajustar documentacion de arquitectura.
 
 Prohibido:
@@ -226,16 +253,14 @@ Prohibido:
 - crear rutas nuevas de negocio;
 - crear administracion avanzada;
 - conectar integraciones externas;
-- usar el stub como prueba de que P0-S1 esta construido.
+- usar el runtime de identidad como prueba de que P0-S1 comercial esta construido.
 
 La diferencia con el API es intencional:
 
 - API: runtime comercial prohibido; el runtime minimo de identidad lo regula la ley canonica del API;
-- frontend: stub React/Vite congelado, no CRM operativo.
+- frontend: compuerta de identidad conectada y shell global autenticado, no CRM comercial operativo.
 
-El stub no autoriza nuevas pantallas. Su unico valor permitido ahora es validar que el proyecto frontend abre y que la futura compuerta de identidad podra montarse sin mezclar leads.
-
-La pantalla real de login/identidad no queda autorizada por el hardening del API. Antes de crearla, este addendum debe aprobar un corte visual explicito que defina pantalla, estados, errores, consumo del contrato canonico y reglas BFF sin tokens en frontend.
+El runtime de identidad no autoriza nuevas pantallas comerciales. Su valor permitido ahora es validar que la compuerta BFF funciona sin tokens en frontend y que el shell global base puede mostrar sesion, permisos y contexto sin mezclar leads.
 
 | Numero | Si entra | Dueno principal |
 | --- | --- | --- |
@@ -262,7 +287,7 @@ Identidad P0-S1A visual queda cerrada en papel cuando la UI se limite a:
 
 Hasta que P0-S1 quede cerrado por producto, queda prohibido:
 
-- crear nuevas pantallas fuera de la compuerta de identidad aprobada;
+- crear nuevas pantallas fuera de la compuerta de identidad aprobada y el shell `/home/global`;
 - crear pantallas de lead antes de cerrar identidad/usuarios/roles;
 - crear modulo de calendario;
 - crear notas adhesivas;
@@ -280,7 +305,7 @@ Hasta que P0-S1 quede cerrado por producto, queda prohibido:
 
 ## Definition of Done visual minima
 
-Cuando se apruebe construir UI real, ninguna pantalla se considera lista si no cumple:
+En cualquier UI real del corte aprobado, ninguna pantalla se considera lista si no cumple:
 
 1. Usa solo contratos canonicos del API.
 2. No guarda tokens en `localStorage`, `sessionStorage` ni variables globales.
@@ -319,4 +344,4 @@ Se puede avanzar a pantallas React solo cuando:
 - identidad/usuarios/roles este cerrado;
 - el contrato canonico minimo del API este listo para consumo visual.
 
-Mientras tanto, el stub React/Vite no autoriza construir pantallas de lead ni administracion avanzada.
+Mientras tanto, el runtime React/Vite de identidad no autoriza construir pantallas de lead ni administracion avanzada.

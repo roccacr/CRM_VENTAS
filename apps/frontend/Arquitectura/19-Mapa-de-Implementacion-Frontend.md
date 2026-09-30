@@ -34,6 +34,7 @@ El frontend:
 | Carpeta | Que va aqui | Que no va aqui | Leer antes |
 | --- | --- | --- | --- |
 | `src/modules/auth` | Compuerta visual de identidad, sesion, usuario actual y permisos visibles. | Reglas finales de autorizacion del backend. | `21`, `22`. |
+| `src/modules/home` | Shell global autenticado aprobado para `/home/global`, selector visual de perfiles/contextos, menu dinamico y vista tecnica de sesion/permisos devueltos por API. | Mostrar dashboards comerciales reales, decidir autorizacion final o crear acciones de negocio. | `00`, `14`, `24`. |
 | `src/modules/sales/dashboard` | Dashboard de ventas, tarjetas, filtros y drill-down. | Reglas de conteo calculadas en UI. | `03`, `17`, `18`. |
 | `src/modules/sales/leads` | Lista, detalle, formularios y acciones de leads. | Oportunidades, estimaciones u ordenes completas. | `10`, `11`, `12`, `17`, `18`, `23`. |
 | `src/modules/sales/opportunities` | Pipeline y vistas de oportunidad. | Formularios de lead puro. | `13`. |
@@ -56,7 +57,7 @@ El frontend:
 
 ## Shell, home y sidebar por contexto
 
-Cuando se apruebe construir frontend real, la aplicacion debe tener un shell comun despues de `auth`.
+La aplicacion vigente tiene un shell comun despues de `auth` para identidad. Las pantallas comerciales por contexto siguen bloqueadas hasta una fase posterior.
 
 Ese shell debe resolver:
 
@@ -138,20 +139,22 @@ Pantallas visuales futuras de integraciones, si se aprueban, deben vivir bajo `m
 
 ## Primer vertical slice aprobado ahora
 
-El siguiente desarrollo real de frontend debe acompanar la compuerta de identidad:
+El desarrollo real aprobado de frontend acompana la compuerta de identidad:
 
 1. Leer `24-Contrato-Visual-Identidad-P0-S1.md`.
-2. Mostrar estado del proyecto: identidad y acceso.
-3. Preparar layout base sin datos comerciales.
-4. Mostrar pasos de usuarios, autenticacion, areas/equipos, roles y permisos.
-5. Preparar cliente de sesion/usuario actual solo cuando exista contrato API.
-6. Mostrar permisos visibles solo cuando el API los devuelva.
+2. Mantener login real en `src/modules/auth`, siempre expuesto en la ruta publica `/auth/login`.
+3. Mantener shell global autenticado en `src/modules/home`, expuesto en `/home/global`, con datos de sesion, usuario, roles, areas y permisos devueltos por API.
+4. Mantener layout base de identidad sin KPIs comerciales reales.
+5. Mostrar estados de usuarios, autenticacion, areas/equipos, roles y permisos recibidos por el API.
+6. Centralizar cliente de sesion/usuario actual en `services/api` y `services/auth`.
+7. Mostrar permisos visibles solo como UX; el API decide autorizacion final.
 
-El API ya tiene aplicado y validado `SQL/003` en `CRM_THINK_V2`. Eso elimina la deuda estructural de login, pero no autoriza construir pantalla visual de login: todavia faltan usuarios reales aprobados, canal de activacion/reset, Microsoft real o decision explicita de habilitar solo login local, y autorizacion del addendum visual.
+El API ya tiene aplicado y validado `SQL/003` en `CRM_THINK_V2`. La version `0.3.17` del addendum visual autoriza la compuerta conectada de identidad y el shell global `/home/global`, con selector visual de perfiles asignados, menus por perfil y datos de sesion/permisos. Todavia no autoriza crear home comercial operativo por contexto ni pantallas de leads.
 
 No entra todavia:
 
 - pantallas de leads;
+- home operativo por contexto;
 - formalizacion completa;
 - cobros;
 - modificaciones;
@@ -191,10 +194,10 @@ Antes de tocar codigo:
 | --- | --- |
 | Esqueleto React/Vite | Creado. |
 | Pantalla comercial real | No aprobada todavia. |
-| Cliente API real | Pendiente de contrato API aprobado. |
+| Cliente API identidad | Implementado para BFF, CSRF, refresh, login local, Microsoft y logout. |
 | Contrato visual identidad | Creado; manda antes de cualquier pantalla comercial. |
-| Compuerta visual de identidad | Siguiente paso permitido. |
+| Compuerta de identidad | Implementada y conectada al BFF. |
 | Listado real de leads | Pendiente. |
 | Formulario real de crear lead | Pendiente. |
 | Timeline visual | Pendiente. |
-| Login real MSAL | Pendiente. |
+| Login Microsoft OIDC | Implementado via API/BFF con selector de cuenta; produccion depende de configuracion aprobada. |

@@ -169,7 +169,7 @@ Regla:
 
 ## Preguntas criticas despues del schema inicial
 
-1. Quien puede crear usuarios: administrador del CRM, TI, sincronizacion desde Microsoft 365 o todos?
+1. Fuera del callback de login Microsoft, quien puede crear usuarios: administrador del CRM, TI, sincronizacion administrativa aprobada desde Microsoft 365 o todos?
 2. Cuales son los permisos atomicos iniciales definitivos?
 3. Que permisos puede delegar un gerente?
 4. Que permisos puede delegar un supervisor?

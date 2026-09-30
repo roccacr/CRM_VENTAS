@@ -135,6 +135,16 @@ Regla:
 - si el usuario tiene un solo contexto, entra directo a su home;
 - si ningun contexto esta disponible, se muestra estado bloqueado/sin permisos.
 
+Regla de configuracion visual:
+
+- cada modulo/contexto define sus opciones de menu en una estructura de datos con `code`, texto visible, descripcion y permiso futuro esperado;
+- agregar o quitar una opcion debe modificar esa configuracion, no duplicar componentes ni condicionales sueltos;
+- la configuracion del frontend es presentacional: los contextos y permisos reales siempre vienen del API.
+- el selector superior representa los perfiles/contextos asignados al usuario; cambiarlo actualiza el menu visible del shell;
+- `Todos` puede existir como perfil visual de revision global durante la maqueta; al conectar API solo se muestra para TI/jefatura global si el backend lo autoriza;
+- `CRM Tink` es un contexto propio y su menu visual base contiene Leads, Calendario Outlook, Expedientes, Lista de Eventos, Reporte de Comisiones, Oportunidades, Ordenes de Venta y Tickets;
+- otros perfiles pueden tener menus distintos, pero solo se muestran si el API los devuelve como contextos/permisos efectivos cuando exista conexion real.
+
 Ejemplos:
 
 | Usuario autenticado | Contextos posibles | Comportamiento visual |

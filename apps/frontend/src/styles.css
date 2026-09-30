@@ -1,21 +1,35 @@
-/*
- * Estilos minimos del shell para el stub frontend congelado.
- *
- * Este archivo evita intencionalmente un design system completo. Pantallas CRM
- * comerciales, tokens Tailwind, componentes shadcn, tablas y estilos de
- * dashboard empiezan solo cuando la ley frontend autorice el siguiente corte
- * visual.
- */
+/* Tokens visuales y estados de acceso. El spinner se detiene si el usuario pide menos movimiento. */
 :root {
-    color: #111827;
-    background: #f8fafc;
+    --radius-container-lg: 24px;
+    --radius-card-md: 16px;
+    --radius-element-sm: 12px;
+    --radius-subelement-xs: 8px;
+    --radius-pill: 9999px;
+    --radius-xl: var(--radius-container-lg);
+    --radius-lg: var(--radius-card-md);
+    --radius-md: var(--radius-element-sm);
+    --radius-sm: var(--radius-subelement-xs);
+    --radius-full: var(--radius-pill);
+    --glass-light-bg: rgba(255, 255, 255, 0.82);
+    --glass-light-border: 1px solid rgba(255, 255, 255, 0.5);
+    --glass-light-shadow: 0 16px 32px -8px rgba(15, 23, 42, 0.08);
+    --glass-dark-bg: rgba(15, 23, 42, 0.88);
+    --glass-dark-border: 1px solid rgba(255, 255, 255, 0.12);
+    --glass-dark-shadow: 0 20px 40px rgba(0, 0, 0, 0.35);
+    --glass-blur: blur(20px) saturate(180%);
+    --color-navy-primary: #0f172a;
+    --color-blue-accent: #6672ad;
+    --color-blue-surface: #f3f4fa;
+    --color-text-main: #1e293b;
+    --color-text-muted: #64748b;
+    color: #111318;
+    background: #eaedf7;
     font-family:
-        Inter,
-        ui-sans-serif,
+        Aptos,
+        "Segoe UI",
         system-ui,
         -apple-system,
         BlinkMacSystemFont,
-        "Segoe UI",
         sans-serif;
 }
 
@@ -23,34 +37,318 @@
     box-sizing: border-box;
 }
 
+html {
+    min-width: 320px;
+    background: #eaedf7;
+}
+
 body {
+    min-width: 320px;
+    min-height: 100svh;
     margin: 0;
+    background: #eaedf7;
 }
 
-.app-shell {
+button,
+input {
+    letter-spacing: 0;
+}
+
+.glass-panel-light {
+    border: var(--glass-light-border);
+    border-radius: var(--radius-container-lg);
+    background: var(--glass-light-bg);
+    -webkit-backdrop-filter: var(--glass-blur);
+    backdrop-filter: var(--glass-blur);
+    box-shadow: var(--glass-light-shadow);
+}
+
+.glass-panel-dark {
+    border: var(--glass-dark-border);
+    border-radius: var(--radius-card-md);
+    background: var(--glass-dark-bg);
+    -webkit-backdrop-filter: var(--glass-blur);
+    backdrop-filter: var(--glass-blur);
+    box-shadow: var(--glass-dark-shadow);
+}
+
+.glass-input {
+    border: 1px solid #e2e8f0;
+    border-radius: var(--radius-element-sm);
+    background: rgba(255, 255, 255, 0.9);
+    transition:
+        border-color 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+        box-shadow 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+        background 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.glass-input:focus {
+    border-color: #6672ad;
+    box-shadow: 0 0 0 4px rgba(102, 114, 173, 0.14);
+}
+
+.app-auth-state {
     display: grid;
-    min-height: 100vh;
+    min-height: 100dvh;
     place-items: center;
-    padding: 32px;
-}
-
-.blank-state {
+    padding: 24px max(16px, env(safe-area-inset-right)) 24px max(16px, env(safe-area-inset-left));
+    background: #eaedf7;
+    color: #0f172a;
     text-align: center;
 }
 
-.blank-state p {
-    margin: 0 0 8px;
-    color: #64748b;
-    font-size: 12px;
-    font-weight: 700;
-    letter-spacing: 0;
-    text-transform: uppercase;
+.app-auth-state--loading {
+    background: radial-gradient(circle at 50% 24%, rgba(255, 255, 255, 0.92), transparent 34%), #eaedf7;
 }
 
-.blank-state h1 {
-    margin: 0;
-    color: #0f172a;
-    font-size: 32px;
+.app-auth-loader,
+.app-auth-card {
+    display: grid;
+    justify-items: center;
+}
+
+.app-auth-loader {
+    width: min(100%, 448px);
+    gap: 32px;
+    border: 1px solid rgba(255, 255, 255, 0.62);
+    border-radius: 24px;
+    padding: 44px;
+    background: rgba(255, 255, 255, 0.88);
+    -webkit-backdrop-filter: blur(24px) saturate(180%);
+    backdrop-filter: blur(24px) saturate(180%);
+    box-shadow:
+        0 24px 56px rgba(15, 23, 42, 0.1),
+        0 2px 8px rgba(17, 24, 39, 0.04),
+        inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+.app-auth-card {
+    width: min(100%, 440px);
+    gap: 20px;
+    border: 1px solid rgba(226, 232, 240, 0.9);
+    border-radius: 24px;
+    padding: 32px;
+    background: rgba(255, 255, 255, 0.9);
+    box-shadow:
+        0 24px 60px rgba(15, 23, 42, 0.08),
+        0 1px 2px rgba(15, 23, 42, 0.05);
+}
+
+.app-auth-state__logo {
+    display: block;
+    width: 154px;
+    height: auto;
+}
+
+.app-auth-loader__spinner-shell {
+    display: grid;
+    position: relative;
+    width: 64px;
+    height: 64px;
+    place-items: center;
+    overflow: hidden;
+    border-radius: 999px;
+    background: #eef2ff;
+    box-shadow: inset 0 0 0 1px rgba(102, 114, 173, 0.16);
+}
+
+.app-auth-loader__spinner-shell--user {
+    width: 76px;
+    height: 76px;
+    padding: 6px;
+    background: #f8fafc;
+    box-shadow:
+        inset 0 0 0 1px rgba(102, 114, 173, 0.18),
+        0 10px 24px rgba(15, 23, 42, 0.08);
+}
+
+.app-auth-loader__spinner-shell--validated {
+    background: #f0fdf4;
+    box-shadow:
+        inset 0 0 0 1px rgba(22, 163, 74, 0.2),
+        0 12px 28px rgba(22, 163, 74, 0.1);
+}
+
+.app-auth-loader__spinner {
+    width: 32px;
+    height: 32px;
+    border: 3px solid #ccd4ef;
+    border-top-color: #6672ad;
+    border-radius: 999px;
+    animation: app-auth-spin 0.8s linear infinite;
+}
+
+.app-auth-loader__spinner-shell--user .app-auth-loader__spinner {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    border-color: #d9def3;
+    border-top-color: #6672ad;
+}
+
+.app-auth-loader__spinner-shell--validated .app-auth-loader__spinner {
+    border-color: #bbf7d0;
+    border-top-color: #16a34a;
+    animation-duration: 1s;
+}
+
+.app-auth-loader__avatar-image,
+.app-auth-loader__avatar-initials {
+    position: relative;
+    z-index: 1;
+    display: inline-grid;
+    width: 58px;
+    height: 58px;
+    place-items: center;
+    border-radius: 999px;
+}
+
+.app-auth-loader__avatar-image {
+    background: #ffffff;
+    object-fit: cover;
+}
+
+.app-auth-loader__avatar-initials {
+    background: #0f172a;
+    color: #ffffff;
+    font-size: 16px;
+    font-weight: 750;
+    line-height: 1;
+}
+
+.app-auth-loader__validated-badge {
+    position: absolute;
+    right: -1px;
+    bottom: -1px;
+    z-index: 2;
+    display: inline-grid;
+    width: 24px;
+    height: 24px;
+    place-items: center;
+    border: 3px solid #ffffff;
+    border-radius: 999px;
+    background: #16a34a;
+    color: #ffffff;
+    box-shadow: 0 8px 16px rgba(22, 163, 74, 0.22);
+    font-size: 11px;
+}
+
+.app-auth-loader__copy {
+    display: grid;
+    gap: 8px;
+}
+
+.app-auth-loader__user-name {
+    color: #1f2937;
     font-weight: 700;
-    letter-spacing: 0;
+}
+
+.app-auth-card__icon {
+    display: inline-grid;
+    width: 64px;
+    height: 64px;
+    place-items: center;
+    border-radius: 999px;
+    background: #f3f4fa;
+    color: #6672ad;
+    font-size: 28px;
+}
+
+.app-auth-card__copy {
+    display: grid;
+    gap: 8px;
+}
+
+.app-auth-state h1 {
+    margin: 0;
+    font-size: clamp(20px, 3vw, 24px);
+    font-weight: 750;
+    line-height: 1.15;
+}
+
+.app-auth-state p {
+    max-width: 440px;
+    margin: 0;
+    color: #5b6478;
+    font-size: 14px;
+    line-height: 1.45;
+}
+
+.app-auth-state button {
+    min-height: 44px;
+    border: 0;
+    border-radius: 12px;
+    padding: 0 20px;
+    cursor: pointer;
+    font: inherit;
+    font-size: 14px;
+    font-weight: 720;
+}
+
+.app-auth-state button:disabled {
+    cursor: not-allowed;
+    opacity: 0.58;
+}
+
+.app-auth-card__primary {
+    width: 100%;
+    background: #6672ad;
+    color: #ffffff;
+    box-shadow: 0 12px 24px rgba(102, 114, 173, 0.22);
+    transition:
+        background-color 0.18s ease,
+        box-shadow 0.18s ease,
+        transform 0.18s ease;
+}
+
+.app-auth-card__secondary {
+    min-height: auto;
+    background: transparent;
+    color: #64748b;
+    transition:
+        background-color 0.18s ease,
+        color 0.18s ease;
+}
+
+.app-auth-card__primary:not(:disabled):hover {
+    background: #566199;
+    box-shadow: 0 14px 28px rgba(102, 114, 173, 0.28);
+}
+
+.app-auth-card__primary:not(:disabled):active {
+    transform: translateY(1px);
+}
+
+.app-auth-card__secondary:not(:disabled):hover,
+.app-auth-card__secondary:not(:disabled):focus-visible {
+    background: #f8fafc;
+    color: #0f172a;
+}
+
+.app-auth-card__feedback {
+    width: 100%;
+    border: 1px solid rgba(102, 114, 173, 0.22);
+    border-radius: 12px;
+    padding: 12px 14px;
+    background: #f3f4fa;
+    color: #48537f;
+    font-weight: 650;
+}
+
+.app-auth-state button:focus-visible {
+    outline: 3px solid rgba(102, 114, 173, 0.26);
+    outline-offset: 3px;
+}
+
+@keyframes app-auth-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .app-auth-loader__spinner {
+        animation: none;
+    }
 }

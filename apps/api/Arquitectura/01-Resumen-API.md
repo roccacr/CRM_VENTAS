@@ -10,9 +10,9 @@ Estado de fase:
 vision completa del API != alcance autorizado actual
 ```
 
-`apps/api` ya tiene runtime NestJS autorizado solo para identidad. El alcance vigente es API de identidad: usuarios, autenticacion BFF, areas/equipos, roles, permisos, referencias externas de usuarios, auditoria de seguridad, login local preparado, refresh rotation y CSRF firmado. Leads y modulos comerciales vienen despues.
+`apps/api` ya tiene runtime NestJS autorizado solo para identidad. El alcance vigente es API de identidad: usuarios, autenticacion BFF, areas/equipos, roles, permisos, referencias externas de usuarios, auditoria de seguridad, login local, Microsoft OIDC, refresh rotation, foto de perfil y CSRF firmado. Leads y modulos comerciales vienen despues.
 
-No significa login productivo listo. `SQL/003` ya fue aplicado y validado contra `CRM_THINK_V2`, y el primer owner Roberto ya fue creado por bootstrap controlado. Antes de activar login real faltan `jefe_general` real de negocio, Microsoft real con Entra ID y cache MSAL cifrado persistente en servidor, canal aprobado para entregar tokens de activacion/reset y frontend autorizado. Rate limit de refresh, lockout persistente, logger estructurado y decision de reuso ya estan definidos en API.
+No significa login productivo listo. `SQL/003` ya fue aplicado y validado contra `CRM_THINK_V2`, `SQL/004` existe para Microsoft/cache/foto, y el primer owner Roberto ya fue creado por bootstrap controlado. El flujo local fue verificado con frontend y API levantados; para produccion siguen pendientes la aprobacion operacional de Entra ID/redirect URI oficial, el `jefe_general` real de negocio, el canal aprobado para entregar tokens de activacion/reset y la politica final de despliegue. Rate limit de refresh, lockout persistente, logger estructurado, decision de reuso y selector de cuenta Microsoft ya estan definidos.
 
 ## Stack API
 

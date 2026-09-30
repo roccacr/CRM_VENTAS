@@ -5,7 +5,7 @@ import { ConfigService } from "@nestjs/config";
 
 import { type EncryptedMicrosoftCache, MicrosoftMsalCacheCryptoService } from "../../../common/security/microsoft-msal-cache-crypto.service.js";
 import { MICROSOFT_OIDC_CHALLENGE_TTL_MS } from "./identity-microsoft.constants.js";
-import { MICROSOFT_AUTH_PROVIDER, type MicrosoftAuthenticatedAccount, type MicrosoftAuthProvider, type MicrosoftCallbackInput } from "./ports/microsoft-auth-provider.port.js";
+import { MICROSOFT_AUTH_PROVIDER, type MicrosoftAuthenticatedAccount, type MicrosoftAuthProvider, type MicrosoftCallbackInput, type MicrosoftProfilePhoto } from "./ports/microsoft-auth-provider.port.js";
 
 const MICROSOFT_CHALLENGE_SEPARATOR = ".";
 
@@ -13,6 +13,11 @@ export interface MicrosoftLoginStartResult {
     authorizationUrl: string;
     challengeCookie: string;
     challengeExpiresAt: Date;
+}
+
+export interface MicrosoftProfilePhotoRefreshResult {
+    encryptedCache: EncryptedMicrosoftCache;
+    profilePhoto: MicrosoftProfilePhoto | null;
 }
 
 interface MicrosoftChallengePayload extends Omit<MicrosoftCallbackInput, "code"> {
@@ -84,6 +89,25 @@ export class IdentityMicrosoftSessionService {
         }
 
         return this.microsoftCacheCrypto.encrypt(silentResult.msalCacheSerialized);
+    }
+
+    /**
+     * Renueva token silencioso y relee la foto de Microsoft Graph bajo demanda.
+     */
+    async refreshProfilePhoto(input: { cache: EncryptedMicrosoftCache; homeAccountId: string }): Promise<MicrosoftProfilePhotoRefreshResult | null> {
+        const silentResult = await this.microsoft.acquireTokenSilent({
+            homeAccountId: input.homeAccountId,
+            msalCacheSerialized: this.microsoftCacheCrypto.decrypt(input.cache),
+        });
+
+        if (silentResult.interactionRequired) {
+            return null;
+        }
+
+        return {
+            encryptedCache: this.microsoftCacheCrypto.encrypt(silentResult.msalCacheSerialized),
+            profilePhoto: await this.microsoft.readProfilePhoto(silentResult.accessToken),
+        };
     }
 
     /**

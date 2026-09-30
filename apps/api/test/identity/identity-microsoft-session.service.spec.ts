@@ -20,6 +20,7 @@ const createMicrosoftSessionService = () => {
     const microsoft = {
         acquireTokenSilent: vi.fn(),
         completeCallback: vi.fn(),
+        readProfilePhoto: vi.fn(),
         startLogin: vi.fn().mockResolvedValue({
             authorizationUrl: "https://login.microsoftonline.com/tenant/oauth2/v2.0/authorize?state=estado",
             codeVerifier: "verifier-secreto",
@@ -43,6 +44,7 @@ const createMicrosoftSessionService = () => {
         microsoft: microsoft as unknown as {
             acquireTokenSilent: ReturnType<typeof vi.fn>;
             completeCallback: ReturnType<typeof vi.fn>;
+            readProfilePhoto: ReturnType<typeof vi.fn>;
             startLogin: ReturnType<typeof vi.fn>;
         },
         service,
@@ -96,5 +98,29 @@ describe("IdentityMicrosoftSessionService", () => {
         microsoft.acquireTokenSilent.mockResolvedValue({ interactionRequired: true, reason: "microsoft_interaction_required" });
 
         await expect(service.renewSilentToken({ cache: ENCRYPTED_CACHE, homeAccountId: "home.tenant" })).resolves.toBeNull();
+    });
+
+    it("relee la foto de perfil con token silencioso y devuelve cache cifrada nueva", async () => {
+        const { microsoft, service } = createMicrosoftSessionService();
+        microsoft.acquireTokenSilent.mockResolvedValue({
+            accessToken: "access-token",
+            interactionRequired: false,
+            msalCacheSerialized: '{"cache":"next"}',
+        });
+        microsoft.readProfilePhoto.mockResolvedValue({
+            bytes: Buffer.from("foto"),
+            mimeType: "image/jpeg",
+        });
+
+        const result = await service.refreshProfilePhoto({ cache: ENCRYPTED_CACHE, homeAccountId: "home.tenant" });
+
+        expect(microsoft.readProfilePhoto).toHaveBeenCalledWith("access-token");
+        expect(result).toEqual({
+            encryptedCache: ENCRYPTED_CACHE,
+            profilePhoto: {
+                bytes: Buffer.from("foto"),
+                mimeType: "image/jpeg",
+            },
+        });
     });
 });

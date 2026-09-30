@@ -76,7 +76,7 @@ Comportamiento esperado:
 
 - `401`: enviar a login o iniciar flujo de refresh segun la regla BFF;
 - `403`: mostrar estado no autorizado y no renderizar la vista;
-- `409`: limpiar cache visual y exigir login nuevo por cambio de `permissionVersion`;
+- `409`: intentar un unico refresh igual que con `401`; si el refresh tambien falla o vuelve obsoleto, limpiar cache visual y exigir login nuevo;
 - contexto no permitido: enviar al selector de contexto o mostrar estado sin permisos.
 
 Regla critica:
@@ -138,17 +138,17 @@ Aplica a:
 
 El cliente API debe centralizar el envio del header/token CSRF. No duplicar esta logica en cada componente.
 
-## Cliente React aprobado cuando se autorice login visual
+## Cliente React aprobado para login visual
 
-Cuando la ley frontend autorice construir la pantalla real de identidad, el cliente React debe seguir este flujo:
+La pantalla real de identidad ya esta autorizada para el corte BFF. El cliente React debe seguir este flujo:
 
 1. `GET /identity/session` al iniciar la aplicacion, siempre con `credentials: "include"`.
-2. Leer la cookie `crm_csrf` no-HttpOnly y enviar su valor en `X-CRM-CSRF-Token` para `POST`, `PUT`, `PATCH` y `DELETE`.
+2. Guardar en memoria el `csrfToken` devuelto por JSON y enviarlo en `X-CRM-CSRF-Token` para `POST`, `PUT`, `PATCH` y `DELETE`; no leer `crm_csrf` con `document.cookie` porque esa cookie es `HttpOnly`.
 3. Consultar `GET /identity/me` para usuario, roles, areas y permisos efectivos.
 4. Resolver contextos operativos visibles desde roles, areas y permisos devueltos por el API.
 5. Ejecutar login local o Microsoft siempre contra el API, nunca contra Microsoft Graph directo desde componentes.
 6. Ante `401`, ejecutar un unico refresh en vuelo contra `POST /identity/refresh`, encolar requests concurrentes y reintentar una sola vez.
-7. Ante `409` por `permissionVersion`, limpiar sesion visual/cache local y enviar al usuario a login nuevo; no recargar `/identity/me`, porque usa la misma compuerta de version.
+7. Ante `409` por `permissionVersion`, usar el mismo refresh single-flight; si no se obtiene sesion vigente, limpiar sesion visual/cache local y enviar al usuario a login nuevo.
 8. En logout, llamar `POST /identity/logout`, limpiar cache de server state y no borrar tokens manualmente porque React no los posee.
 
 Regla:
@@ -157,7 +157,7 @@ Regla:
 El frontend puede coordinar estado visual de sesion, pero no puede custodiar secretos ni decidir autorizacion final.
 ```
 
-Librerias recomendadas para ese corte:
+Librerias recomendadas para evolucionar este corte:
 
 | Uso | Decision |
 | --- | --- |

@@ -12,7 +12,7 @@ estado del sistema -> sesion -> usuario actual -> roles -> areas/equipos -> cont
 
 Este documento define que puede mostrar React antes de construir pantallas comerciales.
 
-No autoriza crear login real, CRUD completo de usuarios, pantallas de leads, calendario, notas ni dashboard comercial.
+Autoriza la compuerta de identidad conectada al BFF y el shell global autenticado cuando la ley frontend lo indique. No autoriza CRUD completo de usuarios, pantallas de leads, calendario, notas ni dashboard comercial.
 
 ## Fuente API obligatoria
 
@@ -37,6 +37,135 @@ La UI debe dejar claro:
 - leads viene despues.
 
 ## Pantallas permitidas ahora
+
+### 0. Pantalla de login BFF
+
+Proposito:
+
+- mostrar la primera experiencia visual y funcional de acceso;
+- preparar el lenguaje visual de identidad;
+- mantener separado login local y Microsoft;
+- validar responsive, accesibilidad basica y estilo enterprise.
+
+Permitido:
+
+- formulario funcional de correo y contrasena contra el BFF;
+- boton funcional de Microsoft contra el BFF;
+- enlace visual de recuperacion de contrasena;
+- ruta publica canonica `/auth/login` para abrir la pantalla de acceso;
+- uso de Ant Design para componentes base;
+- estilos propios del modulo `auth`.
+
+Reglas visuales del formulario:
+
+- Microsoft 365 debe verse como metodo principal de acceso corporativo.
+- La pantalla de acceso siempre debe estar disponible en `/auth/login`; `/` redirige a esa ruta mientras no exista home operativo autorizado.
+- La maqueta `/home/global` no reemplaza el flujo de acceso ni autoriza entrar al sistema sin sesion.
+- El acceso local debe verse como alternativa secundaria y agrupada con correo, contrasena, recordarme, recuperacion e ingresar.
+- Usar un solo termino visible para la credencial local: `Contrasena`. No mezclar sinonimos en labels, placeholders, enlaces ni errores.
+- Los campos deben tener label visible fuera del placeholder.
+- Los errores inline deben ir alineados a la izquierda del input.
+- El formulario debe reservar espacio suficiente para errores y evitar saltos de layout.
+- El error no puede depender solo del color: debe tener texto accionable y senal visual adicional.
+- El color de error debe cumplir contraste AA para texto pequeno.
+- La validacion no debe aparecer mientras el usuario escribe por primera vez; puede aparecer al perder foco o al enviar.
+- Una vez mostrado un error, debe limpiarse en tiempo real cuando el campo queda valido.
+- Si no hay conexion durante el submit real, el mensaje visible debe ser especifico: `Sin conexion a Internet`.
+- La pantalla publica no debe mostrar version del sistema ni informacion util para fingerprinting.
+- El flujo real futuro debe contemplar proteccion anti-bot no intrusiva y manejo visual de sesion concurrente si el API lo exige.
+
+No permitido:
+
+- llamar endpoints inexistentes como `/identity/login`;
+- llamar Microsoft Graph directo desde React;
+- guardar tokens;
+- crear home operativo;
+- redirigir a contextos operativos;
+- crear rutas comerciales;
+- fingir proveedores no aprobados como Google o Apple.
+
+### 0.1. Shell global autenticado
+
+Proposito:
+
+- validar la composicion visual de la barra superior, menu horizontal y fondo base del CRM con sesion real;
+- usar el mismo logo corporativo que el login;
+- mantener el color de fondo aprobado `#eaedf7`;
+- preparar una direccion visual enterprise antes de abrir modulos comerciales.
+
+Permitido:
+
+- ruta `/home/global` protegida por sesion para revision del shell;
+- barra superior blanca con logo, selector visual, command bar neutra y acciones globales minimas sin efecto;
+- el selector superior debe representar perfiles/contextos asignados, no un filtro decorativo;
+- cambiar el perfil seleccionado debe cambiar el menu visible del shell;
+- puede existir un perfil visual `Todos` para revision de producto, agrupando las opciones mock de todos los perfiles asignados;
+- cuando exista conexion real, `Todos` solo puede mostrarse si el API devuelve un contexto o permiso efectivo de TI/jefatura global que permita ver todos los modulos;
+- el perfil `CRM Tink` debe mostrar como opciones visuales Leads, Calendario Outlook, Expedientes, Lista de Eventos, Reporte de Comisiones, Oportunidades, Ordenes de Venta y Tickets;
+- pueden existir perfiles visuales mock adicionales, como Finanzas, Mercadeo, Formalizacion y Administracion, solo para validar el patron de cambio de contexto;
+- menu horizontal oscuro con color base `#0f172a`;
+- header y menu deben compartir un ancho maximo comun para alinear bordes con el futuro canvas central;
+- el menu global se lee de izquierda a derecha, alineado al contenedor comun, no flotando al centro cuando queda espacio sobrante;
+- labels de menu de alto contraste, visibles y responsive;
+- maximo 7 modulos principales de negocio en la barra secundaria: Dashboard, CRM & Clientes, Ventas, Operaciones, Mercadeo, Reportes y Configuracion;
+- cada modulo puede declarar opciones hijas en una estructura de datos, por ejemplo Mercadeo -> Campanas, Origenes de Leads, Leads Entrantes y Metricas de Captacion;
+- cada opcion hija puede llevar metadata de permiso futuro, pero esa metadata no autoriza acceso por si sola;
+- cada opcion hija debe usar microcopy orientado al usuario final, no notas internas de desarrollo;
+- el menu desplegable debe incluir iconos de anclaje visual, estado hover/focus visible, borde sutil, sombra suave, conector al item disparador y chevron rotado cuando este abierto;
+- Configuracion puede mostrar como ejemplo visual Usuarios y Cuentas, Roles y Seguridad, Catalogos del CRM, Integraciones API y Auditoria y Logs;
+- al conectar identidad real, el menu visible debe salir de contextos/permisos efectivos del API; React solo filtra/renderiza por UX y el API valida cada accion real;
+- agregar o quitar una opcion visual debe hacerse modificando la configuracion del menu, no duplicando JSX por cada modulo;
+- sin flechas laterales para revelar opciones ocultas en desktop;
+- las opciones que no quepan deben pasar a `Mas` usando navegacion Priority Plus; no se permite scroll horizontal para resolver zoom o viewport reducido;
+- si la vista activa vive dentro de `Mas`, el disparador `Mas` debe mostrarse como activo;
+- el shortcut visible del command bar debe mostrar `Ctrl K` o `⌘K` segun el sistema operativo del navegador;
+- el selector superior de modulo debe mantener un min-width estable para evitar saltos al cambiar de contexto;
+- los labels visibles del menu usan Title Case en subnav, desplegables y titulos relacionados;
+- en mobile `<768px`, el header de escritorio y la subnav horizontal se sustituyen por una top app bar compacta de 56px;
+- en mobile, la navegacion principal debe vivir en un drawer lateral con backdrop, modulos en acordeon y touch targets minimos de 44px;
+- el drawer mobile sigue siendo visual y no autoriza accesos; al conectar identidad real debe filtrarse por contextos/permisos efectivos del API;
+- el item activo debe tener una senal visual estable, como pastilla o linea de acento, sin depender de cambiar el ancho por negrita;
+- usar un solo acento sobrio para foco, activo y estados clicables; no volver a morado brillante ni salmon de plantilla;
+- respetar el zoom del navegador; queda prohibido desactivar `user-scalable` o fijar una composicion que solo funcione a 100%;
+- si el viewport efectivo se reduce por zoom, el header y el menu deben compactar, truncar texto secundario o envolver lineas antes de ocultar campos criticos;
+- no debe existir overflow horizontal en desktop, tablet ni mobile por culpa del logo, command bar, avatar, badges o labels de menu;
+- sin opciones de plantilla o UI kit como Elementos, Paginas, Utilidades, Autenticacion, Formularios o Graficos;
+- sin acentos violeta/salmon en busqueda, badges o avatar;
+- fondo inferior sin datos, con marca de agua corporativa tenue.
+
+No permitido:
+
+- consultar proveedores externos directo desde React;
+- decidir autorizacion final;
+- renderizar home comercial por contexto operativo real;
+- tratar los perfiles mock como permisos reales;
+- proteger rutas con logica incompleta en React;
+- crear dashboards, tarjetas de metricas, leads, ventas reales o acciones funcionales;
+- cambiar `/auth/login` como ruta canonica de autenticacion.
+
+### 0.2. Canvas visual inicial del dashboard
+
+La estructura visual del cuerpo central queda autorizada solo como maqueta estatica para validar jerarquia, densidad y responsive. No autoriza datos reales, permisos, navegacion comercial ni acciones funcionales.
+
+Permitido:
+
+- header de vista con titulo, subtitulo, filtros globales visuales y accion principal visual;
+- fila de KPIs mock de negocio;
+- cuerpo asimetrico con seccion principal de operacion y panel lateral de productividad;
+- embudo comercial mock;
+- tabla mock de negociaciones recientes;
+- lista mock de tareas del dia;
+- bloque mock de proyectos con mayor movimiento;
+- usar el mismo ancho maximo del header y menu para alinear todo el canvas.
+
+No permitido:
+
+- consumir API;
+- calcular metricas reales;
+- crear acciones funcionales;
+- abrir formularios reales;
+- resolver permisos en React;
+- permitir entrada a una vista por URL sin validacion futura del API.
 
 ### 1. Pantalla de estado de identidad
 
@@ -312,7 +441,7 @@ No permitido:
 - reglas de negocio.
 - contexto operativo como permiso permanente.
 
-## Componentes esperados cuando se apruebe implementar
+## Componentes esperados para evolucionar identidad
 
 Nombres conceptuales, no obligan a crear archivos todavia:
 

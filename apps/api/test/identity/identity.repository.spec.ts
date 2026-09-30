@@ -102,6 +102,7 @@ const createQueryBuilder = (executeRows: unknown[] = [], executeTakeFirstRows: u
 const createRepository = (builder: QueryBuilderResult["builder"]): IdentityRepository => {
     const database = {
         db: {
+            insertInto: builder.insertInto,
             selectFrom: builder.selectFrom,
             transaction: () => ({
                 execute: async <T>(callback: (transaction: unknown) => Promise<T>) => callback(builder),
@@ -179,6 +180,61 @@ describe("IdentityRepository", () => {
 
         expect(hasWhere(calls, "identity.provider_subject_auth_identity", "=", "oid-estable")).toBe(true);
         expect(hasWhere(calls, "identity.normalized_email_auth_identity", "=", "roberto@roccacr.com")).toBe(false);
+    });
+
+    it("crea identidad Microsoft para usuario CRM activo encontrado por correo verificado", async () => {
+        const { builder, calls } = createQueryBuilder([], [undefined, { deletedAt: null, permissionVersion: 7, status: "active", userId: 20 }, {}, { authIdentityId: 30, permissionVersion: 7, userId: 20 }]);
+        const repository = createRepository(builder);
+
+        const result = await repository.findOrCreateActiveMicrosoftIdentityForVerifiedEmail({
+            email: "Roberto@RoccaCR.com",
+            normalizedEmail: "roberto@roccacr.com",
+            subject: "oid-estable",
+        });
+
+        const identityValues = readValuesAfterInsertInto(calls, "sec_auth_identity");
+
+        expect(result).toEqual({ identity: { authIdentityId: 30, permissionVersion: 7, userId: 20 }, status: "ready" });
+        expect(hasWhere(calls, "user.normalized_email_user", "=", "roberto@roccacr.com")).toBe(true);
+        expect(identityValues).toEqual(
+            expect.objectContaining({
+                email_auth_identity: "Roberto@RoccaCR.com",
+                normalized_email_auth_identity: "roberto@roccacr.com",
+                provider_code_auth_identity: "microsoft",
+                provider_subject_auth_identity: "oid-estable",
+                status_auth_identity: "active",
+                user_id_auth_identity: 20,
+            }),
+        );
+    });
+
+    it("no resuelve una identidad Microsoft existente solo por correo cuando el subject no coincide", async () => {
+        const { builder, calls } = createQueryBuilder([], [undefined, { deletedAt: null, permissionVersion: 7, status: "active", userId: 20 }, {}, { authIdentityId: 30, permissionVersion: 7, userId: 20 }]);
+        const repository = createRepository(builder);
+
+        await repository.findOrCreateActiveMicrosoftIdentityForVerifiedEmail({
+            email: "Roberto@RoccaCR.com",
+            normalizedEmail: "roberto@roccacr.com",
+            subject: "oid-estable",
+        });
+
+        expect(calls.some((call) => call.method === "where" && typeof call.args[0] === "function")).toBe(false);
+        expect(hasWhere(calls, "identity.provider_subject_auth_identity", "=", "oid-estable")).toBe(true);
+    });
+
+    it("no crea identidad Microsoft cuando el usuario CRM encontrado por correo esta bloqueado", async () => {
+        const { builder, calls } = createQueryBuilder([], [undefined, { deletedAt: null, status: "blocked" }]);
+        const repository = createRepository(builder);
+
+        const result = await repository.findOrCreateActiveMicrosoftIdentityForVerifiedEmail({
+            email: "Roberto@RoccaCR.com",
+            normalizedEmail: "roberto@roccacr.com",
+            subject: "oid-estable",
+        });
+
+        expect(result).toEqual({ status: "user_not_active" });
+        expect(hasWhere(calls, "user.normalized_email_user", "=", "roberto@roccacr.com")).toBe(true);
+        expect(calls.some((call) => call.method === "insertInto" && call.args[0] === "sec_auth_identity")).toBe(false);
     });
 
     it("normaliza correo Microsoft con el helper canonico antes de persistirlo", async () => {
@@ -347,7 +403,7 @@ describe("IdentityRepository", () => {
         expect(calls.some((call) => call.method === "updateTable" && call.args[0] === "sec_auth_session")).toBe(true);
     });
 
-    it("trata como reuso una carrera que ya consumio el refresh token activo", async () => {
+    it("no trata como reuso una carrera que ya consumio el refresh token activo", async () => {
         const refreshRow = {
             refreshTokenId: 1,
             refreshStatus: "active",
@@ -374,8 +430,137 @@ describe("IdentityRepository", () => {
             refreshTokenHash: "current-refresh-hash",
         });
 
-        expect(result).toEqual({ sessionPublicId: "session-public-id", status: "reused", userId: 20 });
+        expect(result).toEqual({ sessionPublicId: "session-public-id", status: "invalid", userId: 20 });
         expect(calls.some((call) => call.method === "insertInto" && call.args[0] === "sec_refresh_token")).toBe(false);
+        expect(calls.some((call) => call.method === "selectFrom" && call.args[0] === "sec_auth_session")).toBe(false);
+    });
+
+    it("no trata como reuso un refresh revocado porque Microsoft pidio login interactivo", async () => {
+        const refreshRow = {
+            refreshTokenId: 1,
+            refreshStatus: "revoked",
+            refreshRevokedReason: "microsoft_interaction_required",
+            refreshExpiresAt: new Date(Date.now() + 60_000),
+            refreshFamilyId: "refresh-family",
+            sessionId: 10,
+            sessionStatus: "revoked",
+            sessionExpiresAt: new Date(Date.now() + 60_000),
+            sessionPublicId: "session-public-id",
+            sessionPermissionVersion: 1,
+            userId: 20,
+            userPermissionVersion: 1,
+            userStatus: "active",
+            identityStatus: "active",
+        };
+        const { builder, calls } = createQueryBuilder([], [refreshRow]);
+        const repository = createRepository(builder);
+
+        const result = await repository.rotateRefreshSession({
+            nextRefreshExpiresAt: new Date(Date.now() + 120_000),
+            nextRefreshTokenHash: "next-refresh-hash",
+            nextSessionExpiresAt: new Date(Date.now() + 120_000),
+            nextSessionTokenHash: "next-session-hash",
+            refreshTokenHash: "current-refresh-hash",
+        });
+
+        expect(result).toEqual({ sessionPublicId: "session-public-id", status: "invalid", userId: 20 });
+        expect(calls.some((call) => call.method === "insertInto" && call.args[0] === "sec_refresh_token")).toBe(false);
+    });
+
+    it("no trata como reuso un refresh revocado por logout del usuario", async () => {
+        const refreshRow = {
+            refreshTokenId: 1,
+            refreshStatus: "revoked",
+            refreshRevokedReason: "logout_requested",
+            refreshExpiresAt: new Date(Date.now() + 60_000),
+            refreshFamilyId: "refresh-family",
+            sessionId: 10,
+            sessionStatus: "revoked",
+            sessionExpiresAt: new Date(Date.now() + 60_000),
+            sessionPublicId: "session-public-id",
+            sessionPermissionVersion: 1,
+            userId: 20,
+            userPermissionVersion: 1,
+            userStatus: "active",
+            identityStatus: "active",
+        };
+        const { builder, calls } = createQueryBuilder([], [refreshRow]);
+        const repository = createRepository(builder);
+
+        const result = await repository.rotateRefreshSession({
+            nextRefreshExpiresAt: new Date(Date.now() + 120_000),
+            nextRefreshTokenHash: "next-refresh-hash",
+            nextSessionExpiresAt: new Date(Date.now() + 120_000),
+            nextSessionTokenHash: "next-session-hash",
+            refreshTokenHash: "current-refresh-hash",
+        });
+
+        expect(result).toEqual({ sessionPublicId: "session-public-id", status: "invalid", userId: 20 });
+        expect(calls.some((call) => call.method === "selectFrom" && call.args[0] === "sec_auth_session")).toBe(false);
+    });
+
+    it("no trata como reuso un refresh revocado por cierre de una sesion propia", async () => {
+        const refreshRow = {
+            refreshTokenId: 1,
+            refreshStatus: "revoked",
+            refreshRevokedReason: "user_session_revoke",
+            refreshExpiresAt: new Date(Date.now() + 60_000),
+            refreshFamilyId: "refresh-family",
+            sessionId: 10,
+            sessionStatus: "revoked",
+            sessionExpiresAt: new Date(Date.now() + 60_000),
+            sessionPublicId: "session-public-id",
+            sessionPermissionVersion: 1,
+            userId: 20,
+            userPermissionVersion: 1,
+            userStatus: "active",
+            identityStatus: "active",
+        };
+        const { builder, calls } = createQueryBuilder([], [refreshRow]);
+        const repository = createRepository(builder);
+
+        const result = await repository.rotateRefreshSession({
+            nextRefreshExpiresAt: new Date(Date.now() + 120_000),
+            nextRefreshTokenHash: "next-refresh-hash",
+            nextSessionExpiresAt: new Date(Date.now() + 120_000),
+            nextSessionTokenHash: "next-session-hash",
+            refreshTokenHash: "current-refresh-hash",
+        });
+
+        expect(result).toEqual({ sessionPublicId: "session-public-id", status: "invalid", userId: 20 });
+        expect(calls.some((call) => call.method === "selectFrom" && call.args[0] === "sec_auth_session")).toBe(false);
+    });
+
+    it("no trata como reuso un refresh ya marcado como expirado", async () => {
+        const refreshRow = {
+            refreshTokenId: 1,
+            refreshStatus: "expired",
+            refreshRevokedReason: "expired",
+            refreshExpiresAt: new Date(Date.now() - 60_000),
+            refreshFamilyId: "refresh-family",
+            sessionId: 10,
+            sessionStatus: "revoked",
+            sessionExpiresAt: new Date(Date.now() - 60_000),
+            sessionPublicId: "session-public-id",
+            sessionPermissionVersion: 1,
+            userId: 20,
+            userPermissionVersion: 1,
+            userStatus: "active",
+            identityStatus: "active",
+        };
+        const { builder, calls } = createQueryBuilder([], [refreshRow]);
+        const repository = createRepository(builder);
+
+        const result = await repository.rotateRefreshSession({
+            nextRefreshExpiresAt: new Date(Date.now() + 120_000),
+            nextRefreshTokenHash: "next-refresh-hash",
+            nextSessionExpiresAt: new Date(Date.now() + 120_000),
+            nextSessionTokenHash: "next-session-hash",
+            refreshTokenHash: "current-refresh-hash",
+        });
+
+        expect(result).toEqual({ sessionPublicId: "session-public-id", status: "invalid", userId: 20 });
+        expect(calls.some((call) => call.method === "selectFrom" && call.args[0] === "sec_auth_session")).toBe(false);
     });
 
     it("no extiende el vencimiento absoluto de 8 horas al rotar refresh token", async () => {
@@ -410,7 +595,7 @@ describe("IdentityRepository", () => {
         const sessionUpdate = readSetAfterUpdateTable(calls, "sec_auth_session");
         const refreshInsert = readValuesAfterInsertInto(calls, "sec_refresh_token");
 
-        expect(result).toEqual({ sessionPublicId: "session-public-id", status: "rotated", userId: 20 });
+        expect(result).toEqual({ refreshExpiresAt: absoluteSessionExpiresAt, sessionExpiresAt: absoluteSessionExpiresAt, sessionPublicId: "session-public-id", status: "rotated", userId: 20 });
         expect(new Date(sessionUpdate.expires_at_auth_session as Date).toISOString()).toBe(absoluteSessionExpiresAt.toISOString());
         expect(new Date(refreshInsert.expires_at_refresh_token as Date).toISOString()).toBe(absoluteSessionExpiresAt.toISOString());
     });

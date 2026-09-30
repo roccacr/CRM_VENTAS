@@ -5,7 +5,7 @@ import { Inject, Injectable } from "@nestjs/common";
 import { normalizeCaseInsensitiveIdentifier } from "../../../common/security/identifier-normalization.js";
 import type { EncryptedMicrosoftCache } from "../../../common/security/microsoft-msal-cache-crypto.service.js";
 import { DatabaseService } from "../../../database/database.service.js";
-import type { MicrosoftAccountCache, MicrosoftIdentityInput, MicrosoftLoginIdentity, ProfileImageRecord } from "./identity.repository.js";
+import type { MicrosoftAccountCache, MicrosoftIdentityInput, MicrosoftIdentityResolution, MicrosoftLoginIdentity, MicrosoftSessionAccountCache, ProfileImageRecord } from "./identity.repository.js";
 import { MICROSOFT_PROVIDER_CODE } from "./identity-microsoft.constants.js";
 import { ACTIVE_STATUS, type IdentityTransaction } from "./identity-repository.shared.js";
 import { IdentitySessionRepository } from "./identity-session.repository.js";
@@ -47,6 +47,58 @@ export class IdentityMicrosoftRepository {
             .executeTakeFirst();
 
         return row ?? null;
+    }
+
+    /**
+     * Vincula Microsoft al usuario CRM activo que ya existe por correo verificado.
+     *
+     * Microsoft autentica a la persona; CRM solo crea la identidad del proveedor
+     * cuando el correo ya pertenece a un usuario interno activo. No crea usuarios
+     * internos desde el callback.
+     */
+    async findOrCreateActiveMicrosoftIdentityForVerifiedEmail(input: { email: string; normalizedEmail: string; subject: string }): Promise<MicrosoftIdentityResolution> {
+        const existingIdentity = await this.findActiveMicrosoftIdentity(input);
+
+        if (existingIdentity) {
+            return { identity: existingIdentity, status: "ready" };
+        }
+
+        const user = await this.database.db.selectFrom("sec_user as user").select(["user.deleted_at_user as deletedAt", "user.id_user as userId", "user.permission_version_user as permissionVersion", "user.status_user as status"]).where("user.normalized_email_user", "=", input.normalizedEmail).executeTakeFirst();
+
+        if (!user) {
+            return { status: "not_found" };
+        }
+
+        if (user.status !== ACTIVE_STATUS || user.deletedAt !== null) {
+            return { status: "user_not_active" };
+        }
+
+        const now = new Date();
+        await this.database.db
+            .insertInto("sec_auth_identity")
+            .values({
+                created_at_auth_identity: now,
+                email_auth_identity: input.email,
+                failed_login_count_auth_identity: 0,
+                last_failed_login_at_auth_identity: null,
+                last_used_at_auth_identity: null,
+                locked_until_auth_identity: null,
+                normalized_email_auth_identity: input.normalizedEmail,
+                password_hash_auth_identity: null,
+                provider_code_auth_identity: MICROSOFT_PROVIDER_CODE,
+                provider_subject_auth_identity: input.subject,
+                status_auth_identity: ACTIVE_STATUS,
+                updated_at_auth_identity: now,
+                user_id_auth_identity: user.userId,
+            })
+            .onDuplicateKeyUpdate({
+                updated_at_auth_identity: now,
+            })
+            .executeTakeFirstOrThrow();
+
+        const identity = await this.findActiveMicrosoftIdentity(input);
+
+        return identity ? { identity, status: "ready" } : { status: "not_found" };
     }
 
     /**
@@ -140,6 +192,42 @@ export class IdentityMicrosoftRepository {
     }
 
     /**
+     * Lee cache Microsoft desde la sesion activa actual.
+     */
+    async findMicrosoftAccountCacheBySessionTokenHash(sessionTokenHash: string): Promise<MicrosoftSessionAccountCache | null> {
+        const now = new Date();
+        const row = await this.database.db
+            .selectFrom("sec_auth_session as session")
+            .innerJoin("sec_user as user", "user.id_user", "session.user_id_auth_session")
+            .innerJoin("sec_microsoft_account as account", "account.auth_identity_id_microsoft_account", "session.auth_identity_id_auth_session")
+            .select(["account.auth_identity_id_microsoft_account as authIdentityId", "account.cache_ciphertext_microsoft_account as ciphertext", "account.cache_iv_microsoft_account as iv", "account.cache_key_version_microsoft_account as keyVersion", "account.cache_tag_microsoft_account as tag", "account.home_account_id_microsoft_account as homeAccountId", "account.subject_microsoft_account as sourceSubject", "user.id_user as userId"])
+            .where("session.token_hash_auth_session", "=", sessionTokenHash)
+            .where("session.status_auth_session", "=", ACTIVE_STATUS)
+            .where("session.expires_at_auth_session", ">", now)
+            .where("user.status_user", "=", ACTIVE_STATUS)
+            .where("user.deleted_at_user", "is", null)
+            .where("account.status_microsoft_account", "=", ACTIVE_STATUS)
+            .executeTakeFirst();
+
+        if (!row) {
+            return null;
+        }
+
+        return {
+            authIdentityId: row.authIdentityId,
+            cache: {
+                ciphertext: row.ciphertext,
+                iv: row.iv,
+                keyVersion: row.keyVersion,
+                tag: row.tag,
+            },
+            homeAccountId: row.homeAccountId,
+            sourceSubject: row.sourceSubject,
+            userId: row.userId,
+        };
+    }
+
+    /**
      * Lee la foto cacheada asociada a una sesion activa.
      *
      * El API sirve bytes internos del CRM; no devuelve ni firma URLs de Graph.
@@ -182,6 +270,15 @@ export class IdentityMicrosoftRepository {
             .where("auth_identity_id_microsoft_account", "=", authIdentityId)
             .where("status_microsoft_account", "=", ACTIVE_STATUS)
             .executeTakeFirst();
+    }
+
+    /**
+     * Actualiza la foto interna de perfil para una sesion Microsoft valida.
+     */
+    async updateUserProfileImage(input: { profileImage: NonNullable<MicrosoftIdentityInput["profileImage"]>; userId: number }): Promise<void> {
+        await this.database.db.transaction().execute(async (transaction) => {
+            await this.upsertProfileImage(transaction, input.userId, input.profileImage);
+        });
     }
 
     /**

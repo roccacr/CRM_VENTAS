@@ -151,6 +151,7 @@ describe("validateEnv", () => {
 
         expect(config.LOCAL_LOGIN_RATE_LIMIT_EMAIL_MAX).toBe(5);
         expect(config.LOCAL_LOGIN_RATE_LIMIT_IP_MAX).toBe(30);
+        expect(config.MICROSOFT_START_RATE_LIMIT_IP_MAX).toBe(30);
         expect(config.LOCAL_RESET_RATE_LIMIT_EMAIL_MAX).toBe(5);
         expect(config.LOCAL_RESET_RATE_LIMIT_IP_MAX).toBe(30);
     });

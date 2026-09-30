@@ -10,7 +10,7 @@ No autoriza crear runtime NestJS, migraciones productivas, endpoints ni pantalla
 
 Sirve para que la primera migracion SQL no invente codigos, roles, areas ni permisos.
 
-La ley `00-Producto-CRM-TINK-y-P0.md` version `0.3.5` autorizo validar `SQL/001_identity_schema_p0_s1.sql` como migracion controlada de estructura y ejecutar `SQL/002_identity_seed_p0_s1.sql` solo como seed de catalogos S1A en `CRM_THINK_V2`. La version vigente `0.3.27` mantiene ese resultado, autoriza solo el runtime minimo de identidad, autoriza el bootstrap controlado del primer owner Roberto, fija NetSuite `653055` como referencia externa activa, deja Odoo pendiente sin id inventado, prepara Microsoft OIDC real en API con cache MSAL cifrado y `SQL/004` antes de activacion productiva, fija sesion BFF maxima de 8 horas absolutas, define que `409 permissionVersion` obliga login nuevo y prohibe tocar credenciales productivas compartidas mientras existan servicios vivos dependientes.
+La ley `00-Producto-CRM-TINK-y-P0.md` version `0.3.5` autorizo validar `SQL/001_identity_schema_p0_s1.sql` como migracion controlada de estructura y ejecutar `SQL/002_identity_seed_p0_s1.sql` solo como seed de catalogos S1A en `CRM_THINK_V2`. La version vigente `0.3.28` mantiene ese resultado, autoriza el runtime minimo de identidad en API y frontend BFF, autoriza el bootstrap controlado del primer owner Roberto, fija NetSuite `653055` como referencia externa activa, deja Odoo pendiente sin id inventado, mantiene Microsoft OIDC en API con cache MSAL cifrado y `SQL/004`, fija sesion BFF maxima de 8 horas absolutas, define que `409 permissionVersion` intenta renovar sesion antes de mandar al login y prohibe tocar credenciales productivas compartidas mientras existan servicios vivos dependientes.
 
 ## Artefacto SQL controlado
 
@@ -76,7 +76,7 @@ Regla:
 
 ```txt
 Instalacion limpia nueva: aplicar baseline vigente `SQL/001`.
-Base existente validada antes del login real: `SQL/003` ya aplicado; futuras re-ejecuciones deben omitirse por `conf_schema_migration`.
+Base existente validada antes del login productivo: `SQL/003` ya aplicado; futuras re-ejecuciones deben omitirse por `conf_schema_migration`.
 ```
 
 No se debe ejecutar `SQL/003` con el usuario runtime ni con `usuario_master_compartido`.

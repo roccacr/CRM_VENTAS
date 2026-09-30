@@ -32,6 +32,8 @@ export type MicrosoftLoginIdentity = {
     userId: number;
 };
 
+export type MicrosoftIdentityResolution = { identity: MicrosoftLoginIdentity; status: "ready" } | { status: "not_found" | "user_not_active" };
+
 export interface ProfileImageRecord {
     bytes: Buffer;
     mimeType: string;
@@ -64,7 +66,9 @@ export type RotateRefreshSessionResult =
     | {
           authIdentityId: number;
           providerCode: string;
+          refreshExpiresAt: Date;
           status: "rotated";
+          sessionExpiresAt: Date;
           sessionPublicId: string;
           userId: number;
       }
@@ -73,6 +77,13 @@ export type RotateRefreshSessionResult =
           sessionPublicId?: string;
           userId?: number;
       };
+
+export interface RefreshProviderValidation {
+    authIdentityId: number;
+    providerCode: string;
+    sessionPublicId: string;
+    userId: number;
+}
 
 export interface CreateLocalPasswordResetTokenInput {
     authIdentityId: number;
@@ -97,6 +108,11 @@ export interface MicrosoftAccountCache {
     authIdentityId: number;
     cache: EncryptedMicrosoftCache;
     homeAccountId: string;
+}
+
+export interface MicrosoftSessionAccountCache extends MicrosoftAccountCache {
+    sourceSubject: string;
+    userId: number;
 }
 
 export interface MicrosoftIdentityInput {
@@ -164,6 +180,13 @@ export class IdentityRepository {
     }
 
     /**
+     * Busca o crea la identidad Microsoft para un usuario CRM activo por correo.
+     */
+    async findOrCreateActiveMicrosoftIdentityForVerifiedEmail(input: { email: string; normalizedEmail: string; subject: string }): Promise<MicrosoftIdentityResolution> {
+        return this.microsoft.findOrCreateActiveMicrosoftIdentityForVerifiedEmail(input);
+    }
+
+    /**
      * Persiste metadata Microsoft y cache MSAL cifrada.
      */
     async saveMicrosoftAccount(input: MicrosoftIdentityInput & MicrosoftLoginIdentity): Promise<void> {
@@ -178,10 +201,24 @@ export class IdentityRepository {
     }
 
     /**
+     * Lee cache MSAL Microsoft desde una sesion CRM activa.
+     */
+    async findMicrosoftAccountCacheBySessionTokenHash(sessionTokenHash: string): Promise<MicrosoftSessionAccountCache | null> {
+        return this.microsoft.findMicrosoftAccountCacheBySessionTokenHash(sessionTokenHash);
+    }
+
+    /**
      * Lee la foto cacheada asociada a una sesion activa.
      */
     async findProfileImageBySessionTokenHash(sessionTokenHash: string): Promise<ProfileImageRecord | null> {
         return this.microsoft.findProfileImageBySessionTokenHash(sessionTokenHash);
+    }
+
+    /**
+     * Actualiza la foto cacheada del usuario desde Microsoft Graph.
+     */
+    async updateUserProfileImage(input: { profileImage: NonNullable<MicrosoftIdentityInput["profileImage"]>; userId: number }): Promise<void> {
+        await this.microsoft.updateUserProfileImage(input);
     }
 
     /**
@@ -245,6 +282,13 @@ export class IdentityRepository {
      */
     async rotateRefreshSession(input: RotateRefreshSessionInput): Promise<RotateRefreshSessionResult> {
         return this.sessions.rotateRefreshSession(input);
+    }
+
+    /**
+     * Lee una sesion de refresh vigente sin consumirla para validar al proveedor externo.
+     */
+    async findRefreshSessionForProviderValidation(refreshTokenHash: string): Promise<RefreshProviderValidation | null> {
+        return this.sessions.findRefreshSessionForProviderValidation(refreshTokenHash);
     }
 
     /**

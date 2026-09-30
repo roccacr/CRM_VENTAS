@@ -76,7 +76,7 @@ Nota: `14-Modularizacion-Frontend-por-Areas-y-Roles.md` se consulta desde P0-S1A
 | `15-UX-Calendarios-por-Area-y-Supervision.md` | Define calendarios separados por area y vista consolidada de jefatura. |
 | `16-UX-Notas-Adhesivas-y-Anotaciones.md` | Define UX, librerias y reglas para notas adhesivas/anotaciones contextuales por vista, entidad y accion. |
 | `17-UX-Dashboard-Leads-SLA-y-Perdida.md` | Define dashboard ejecutivo, bandejas de leads nuevos/atencion, pausa, perdida y reportes para jefatura. |
-| `18-P0-Direccion-Frontend-Construccion-Pausada.md` | Documento corto de direccion P0 frontend; mantiene el stub congelado hasta aprobacion de runtime. |
+| `18-P0-Direccion-Frontend-Construccion-Pausada.md` | Documento corto de direccion P0 frontend; identidad esta activa y el alcance comercial sigue bloqueado. |
 | `19-Mapa-de-Implementacion-Frontend.md` | Mapa practico de carpetas, responsabilidades, dependencias permitidas y primer vertical slice del frontend. |
 | `20-Alcance-P0-Vertical-Leads-Frontend.md` | Alcance comercial futuro de leads: listar, crear, detalle y timeline despues de cerrar identidad. |
 | `21-Seguridad-Autenticacion-BFF-y-Sesion.md` | Regla obligatoria de sesion frontend: BFF, cookies seguras, prohibicion de tokens en storage y manejo CSRF. |
@@ -97,13 +97,13 @@ Antes de crear o modificar pantallas, componentes, hooks o clientes API, abrir:
 
 Esa lectura define:
 
-- que puede mostrar el stub frontend;
+- que puede mostrar el runtime frontend de identidad;
 - que queda bloqueado;
 - que contrato visual de identidad manda;
 - como se separan `auth`, homes, menus y contextos operativos;
 - por que leads sigue fuera.
 
-El siguiente slice aprobado en papel es identidad P0-S1A. El documento `20-Alcance-P0-Vertical-Leads-Frontend.md` se consulta despues de aprobar avanzar mas alla de identidad.
+El slice aprobado actual es identidad P0-S1A conectada al BFF. El documento `20-Alcance-P0-Vertical-Leads-Frontend.md` se consulta despues de aprobar avanzar mas alla de identidad.
 
 ## Flujo comercial oficial
 

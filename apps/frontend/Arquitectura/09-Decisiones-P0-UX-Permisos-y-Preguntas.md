@@ -4,7 +4,7 @@
 
 1. La UI sera en espanol.
 2. La localidad principal es Costa Rica.
-3. Los usuarios entraran con cuenta Microsoft o con correo y clave, segun la politica que se confirme en el API.
+3. Los usuarios entraran con cuenta Microsoft o con correo y contrasena, segun la politica que se confirme en el API.
 4. El frontend no decide permisos finales.
 5. El frontend consume permisos efectivos desde el API.
 6. El frontend no debe saber si un lead viene de la base nueva o del CRM legacy.
@@ -59,7 +59,7 @@ Reglas:
 5. Que texto exacto se usara para estados de leads?
 6. Que campos debe ver un vendedor en la tabla principal?
 7. Que campos solo deben ver supervisor/gerente?
-8. El login por correo y clave sera visible junto al boton de Microsoft o solo como alternativa secundaria?
+8. El login por correo y contrasena sera visible junto al boton de Microsoft o solo como alternativa secundaria?
 9. Que debe pasar si un usuario Microsoft existe en Entra pero no tiene permisos en el CRM?
 10. Que mensaje debe ver un usuario cuando no tiene permiso para una accion?
 

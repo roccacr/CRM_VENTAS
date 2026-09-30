@@ -3,7 +3,7 @@ import { Inject, Injectable } from "@nestjs/common";
 import { DatabaseService } from "../../../database/database.service.js";
 import { LOGOUT_REQUESTED_EVENT, SESSION_REVOKED_EVENT } from "../audit/security-audit.events.js";
 import { SecurityAuditService } from "../audit/security-audit.service.js";
-import type { CreateIdentitySessionInput, RevokeOwnSessionResult, RotateRefreshSessionInput, RotateRefreshSessionResult } from "./identity.repository.js";
+import type { CreateIdentitySessionInput, RefreshProviderValidation, RevokeOwnSessionResult, RotateRefreshSessionInput, RotateRefreshSessionResult } from "./identity.repository.js";
 import type { IdentityActiveSession } from "./identity.types.js";
 import { ACTIVE_STATUS, earliestDate, EXPIRED_STATUS, hasUpdatedRows, IDENTITY_RUNTIME_AUDIT_SOURCE, type IdentityTransaction, REUSED_STATUS, REVOKED_STATUS, ROTATED_STATUS } from "./identity-repository.shared.js";
 
@@ -15,6 +15,7 @@ type RefreshRotationRow = {
     identityStatus: string;
     refreshExpiresAt: Date | string;
     refreshFamilyId: string;
+    refreshRevokedReason: string | null;
     refreshStatus: string;
     refreshTokenId: number;
     sessionExpiresAt: Date | string;
@@ -102,6 +103,7 @@ export class IdentitySessionRepository {
                 .select([
                     "refresh.id_refresh_token as refreshTokenId",
                     "refresh.status_refresh_token as refreshStatus",
+                    "refresh.revoked_reason_refresh_token as refreshRevokedReason",
                     "refresh.expires_at_refresh_token as refreshExpiresAt",
                     "refresh.token_family_id_refresh_token as refreshFamilyId",
                     "session.id_auth_session as sessionId",
@@ -131,7 +133,7 @@ export class IdentitySessionRepository {
             const consumeRefreshResult = await transaction.updateTable("sec_refresh_token").set({ rotated_at_refresh_token: now, status_refresh_token: ROTATED_STATUS }).where("id_refresh_token", "=", refresh.refreshTokenId).where("status_refresh_token", "=", ACTIVE_STATUS).executeTakeFirst();
 
             if (!hasUpdatedRows(consumeRefreshResult)) {
-                return this.applyRefreshRotationFailure(transaction, refresh, "reused");
+                return this.applyRefreshRotationFailure(transaction, refresh, "invalid");
             }
 
             const absoluteSessionExpiresAt = new Date(refresh.sessionExpiresAt);
@@ -154,8 +156,55 @@ export class IdentitySessionRepository {
                 })
                 .executeTakeFirstOrThrow();
 
-            return { authIdentityId: refresh.authIdentityId, providerCode: refresh.providerCode, sessionPublicId: refresh.sessionPublicId, status: "rotated", userId: refresh.userId };
+            return { authIdentityId: refresh.authIdentityId, providerCode: refresh.providerCode, refreshExpiresAt: nextRefreshExpiresAt, sessionExpiresAt: nextSessionExpiresAt, sessionPublicId: refresh.sessionPublicId, status: "rotated", userId: refresh.userId };
         });
+    }
+
+    /**
+     * Lee una sesion de refresh vigente sin consumir el token.
+     *
+     * Se usa antes de rotar para validar proveedores externos como Microsoft.
+     * Si el token ya no es rotables, `rotateRefreshSession` conserva la unica
+     * autoridad para aplicar la reaccion de seguridad correspondiente.
+     */
+    async findRefreshSessionForProviderValidation(refreshTokenHash: string): Promise<RefreshProviderValidation | null> {
+        const now = new Date();
+        const refresh = await this.database.db
+            .selectFrom("sec_refresh_token as refresh")
+            .innerJoin("sec_auth_session as session", "session.id_auth_session", "refresh.auth_session_id_refresh_token")
+            .innerJoin("sec_user as user", "user.id_user", "session.user_id_auth_session")
+            .innerJoin("sec_auth_identity as identity", "identity.id_auth_identity", "session.auth_identity_id_auth_session")
+            .select([
+                "refresh.id_refresh_token as refreshTokenId",
+                "refresh.status_refresh_token as refreshStatus",
+                "refresh.revoked_reason_refresh_token as refreshRevokedReason",
+                "refresh.expires_at_refresh_token as refreshExpiresAt",
+                "refresh.token_family_id_refresh_token as refreshFamilyId",
+                "session.id_auth_session as sessionId",
+                "session.status_auth_session as sessionStatus",
+                "session.expires_at_auth_session as sessionExpiresAt",
+                "session.auth_identity_id_auth_session as authIdentityId",
+                "session.provider_code_auth_session as providerCode",
+                "session.public_id_auth_session as sessionPublicId",
+                "session.permission_version_auth_session as sessionPermissionVersion",
+                "user.id_user as userId",
+                "user.permission_version_user as userPermissionVersion",
+                "user.status_user as userStatus",
+                "identity.status_auth_identity as identityStatus",
+            ])
+            .where("refresh.token_hash_refresh_token", "=", refreshTokenHash)
+            .executeTakeFirst();
+
+        if (!refresh || this.resolveRefreshRotationFailure(refresh, now)) {
+            return null;
+        }
+
+        return {
+            authIdentityId: refresh.authIdentityId,
+            providerCode: refresh.providerCode,
+            sessionPublicId: refresh.sessionPublicId,
+            userId: refresh.userId,
+        };
     }
 
     /**
@@ -264,15 +313,19 @@ export class IdentitySessionRepository {
      * Decide si un refresh puede rotar sin mezclar la decision con escrituras.
      */
     private resolveRefreshRotationFailure(refresh: RefreshRotationRow, now: Date): RefreshRotationFailureStatus | null {
-        if (refresh.refreshStatus !== ACTIVE_STATUS) {
+        if (this.isRefreshTokenReuse(refresh)) {
             return "reused";
+        }
+
+        if (refresh.refreshStatus !== ACTIVE_STATUS) {
+            return "invalid";
         }
 
         if (new Date(refresh.refreshExpiresAt) <= now) {
             return "expired";
         }
 
-        if (refresh.sessionStatus !== ACTIVE_STATUS || new Date(refresh.sessionExpiresAt) <= now || refresh.userStatus !== ACTIVE_STATUS || refresh.identityStatus !== ACTIVE_STATUS) {
+        if (this.isRefreshSessionInvalid(refresh, now)) {
             return "invalid";
         }
 
@@ -281,6 +334,14 @@ export class IdentitySessionRepository {
         }
 
         return null;
+    }
+
+    private isRefreshTokenReuse(refresh: RefreshRotationRow): boolean {
+        return refresh.refreshStatus === ROTATED_STATUS || refresh.refreshStatus === REUSED_STATUS;
+    }
+
+    private isRefreshSessionInvalid(refresh: RefreshRotationRow, now: Date): boolean {
+        return refresh.sessionStatus !== ACTIVE_STATUS || new Date(refresh.sessionExpiresAt) <= now || refresh.userStatus !== ACTIVE_STATUS || refresh.identityStatus !== ACTIVE_STATUS;
     }
 
     /**

@@ -1,6 +1,6 @@
 -- CRM_THINK_V2 - P0-S1 identity seeds.
 -- Controlled architecture artifact only. Do not execute in production without owner approval.
--- This seed intentionally does not create owner or jefe_general users because real email/name are still pending.
+-- This seed intentionally does not create or activate users. User bootstrap and local password activation live in controlled flows.
 
 USE `CRM_THINK_V2`;
 
@@ -29,7 +29,40 @@ INSERT INTO sec_permission (
   ('org.view', 'org', 'view', 'Permite ver areas y equipos.', 'active'),
   ('org.manage', 'org', 'manage', 'Permite crear, editar, activar o desactivar areas.', 'active'),
   ('org.assign_user', 'org', 'assign_user', 'Permite asignar usuarios a areas o equipos.', 'active'),
-  ('audit.security.view', 'audit', 'security_view', 'Permite ver auditoria de seguridad.', 'active')
+  ('audit.security.view', 'audit', 'security_view', 'Permite ver auditoria de seguridad.', 'active'),
+  ('global.dashboard.read', 'global', 'dashboard_read', 'Permite ver el resumen global autorizado.', 'active'),
+  ('crm.dashboard.read', 'crm', 'dashboard_read', 'Permite ver el resumen comercial de CRM Tink.', 'active'),
+  ('crm.leads.read', 'crm', 'leads_read', 'Permite ver la opcion de leads del CRM.', 'active'),
+  ('crm.outlook_calendar.read', 'crm', 'outlook_calendar_read', 'Permite ver el calendario Outlook comercial.', 'active'),
+  ('crm.customer_files.read', 'crm', 'customer_files_read', 'Permite ver expedientes comerciales.', 'active'),
+  ('crm.events.read', 'crm', 'events_read', 'Permite ver lista de eventos comerciales.', 'active'),
+  ('crm.commissions.read', 'crm', 'commissions_read', 'Permite ver reportes de comisiones.', 'active'),
+  ('crm.opportunities.read', 'crm', 'opportunities_read', 'Permite ver oportunidades comerciales.', 'active'),
+  ('crm.sales_orders.read', 'crm', 'sales_orders_read', 'Permite ver ordenes de venta.', 'active'),
+  ('crm.tickets.read', 'crm', 'tickets_read', 'Permite ver tickets operativos del CRM.', 'active'),
+  ('finance.dashboard.read', 'finance', 'dashboard_read', 'Permite ver el resumen financiero.', 'active'),
+  ('finance.collections.read', 'finance', 'collections_read', 'Permite ver cobros pendientes.', 'active'),
+  ('finance.account_status.read', 'finance', 'account_status_read', 'Permite ver estados de cuenta.', 'active'),
+  ('finance.invoices.read', 'finance', 'invoices_read', 'Permite ver facturacion.', 'active'),
+  ('finance.portfolio.read', 'finance', 'portfolio_read', 'Permite ver cartera vencida.', 'active'),
+  ('finance.reconciliation.read', 'finance', 'reconciliation_read', 'Permite ver conciliacion bancaria.', 'active'),
+  ('marketing.dashboard.read', 'marketing', 'dashboard_read', 'Permite ver el resumen de mercadeo.', 'active'),
+  ('marketing.campaigns.read', 'marketing', 'campaigns_read', 'Permite ver campanas de mercadeo.', 'active'),
+  ('marketing.sources.read', 'marketing', 'sources_read', 'Permite ver origenes de leads.', 'active'),
+  ('marketing.incoming_leads.read', 'marketing', 'incoming_leads_read', 'Permite ver leads entrantes de mercadeo.', 'active'),
+  ('marketing.content.read', 'marketing', 'content_read', 'Permite ver piezas y materiales de mercadeo.', 'active'),
+  ('marketing.metrics.read', 'marketing', 'metrics_read', 'Permite ver metricas de captacion.', 'active'),
+  ('formalization.dashboard.read', 'formalization', 'dashboard_read', 'Permite ver el resumen de formalizacion.', 'active'),
+  ('formalization.contracts.read', 'formalization', 'contracts_read', 'Permite ver revision de contratos.', 'active'),
+  ('formalization.bank.read', 'formalization', 'bank_read', 'Permite ver aprobaciones bancarias.', 'active'),
+  ('formalization.signatures.read', 'formalization', 'signatures_read', 'Permite ver firmas pendientes.', 'active'),
+  ('formalization.handover.read', 'formalization', 'handover_read', 'Permite ver entrega y traspaso.', 'active'),
+  ('admin.dashboard.read', 'admin', 'dashboard_read', 'Permite ver el resumen de administracion.', 'active'),
+  ('settings.users.read', 'settings', 'users_read', 'Permite ver usuarios y cuentas.', 'active'),
+  ('settings.permissions.read', 'settings', 'permissions_read', 'Permite ver roles y seguridad.', 'active'),
+  ('settings.catalogs.read', 'settings', 'catalogs_read', 'Permite ver catalogos del CRM.', 'active'),
+  ('settings.integrations.read', 'settings', 'integrations_read', 'Permite ver integraciones API.', 'active'),
+  ('settings.audit.read', 'settings', 'audit_read', 'Permite ver auditoria y logs del sistema.', 'active')
 ON DUPLICATE KEY UPDATE
   module_code_permission = VALUES(module_code_permission),
   action_code_permission = VALUES(action_code_permission),
@@ -196,12 +229,22 @@ INSERT INTO sec_org_unit (
   name_org_unit,
   status_org_unit,
   sort_order_org_unit
-) VALUES
-  ('01KCRM00000000000000000002', (SELECT id_org_unit FROM sec_org_unit WHERE code_org_unit = 'empresa'), 'ventas', 'Ventas', 'active', 20),
-  ('01KCRM00000000000000000003', (SELECT id_org_unit FROM sec_org_unit WHERE code_org_unit = 'empresa'), 'formalizacion', 'Formalizacion', 'active', 30),
-  ('01KCRM00000000000000000004', (SELECT id_org_unit FROM sec_org_unit WHERE code_org_unit = 'empresa'), 'contabilidad', 'Contabilidad', 'active', 40),
-  ('01KCRM00000000000000000005', (SELECT id_org_unit FROM sec_org_unit WHERE code_org_unit = 'empresa'), 'mercadeo', 'Mercadeo', 'active', 50),
-  ('01KCRM00000000000000000006', (SELECT id_org_unit FROM sec_org_unit WHERE code_org_unit = 'empresa'), 'sistemas', 'Sistemas', 'active', 60)
+)
+SELECT
+  child.public_id_org_unit,
+  parent.id_org_unit,
+  child.code_org_unit,
+  child.name_org_unit,
+  child.status_org_unit,
+  child.sort_order_org_unit
+FROM (
+  SELECT '01KCRM00000000000000000002' AS public_id_org_unit, 'ventas' AS code_org_unit, 'Ventas' AS name_org_unit, 'active' AS status_org_unit, 20 AS sort_order_org_unit
+  UNION ALL SELECT '01KCRM00000000000000000003', 'formalizacion', 'Formalizacion', 'active', 30
+  UNION ALL SELECT '01KCRM00000000000000000004', 'contabilidad', 'Contabilidad', 'active', 40
+  UNION ALL SELECT '01KCRM00000000000000000005', 'mercadeo', 'Mercadeo', 'active', 50
+  UNION ALL SELECT '01KCRM00000000000000000006', 'sistemas', 'Sistemas', 'active', 60
+) AS child
+JOIN sec_org_unit AS parent ON parent.code_org_unit = 'empresa'
 ON DUPLICATE KEY UPDATE
   parent_org_unit_id_org_unit = VALUES(parent_org_unit_id_org_unit),
   name_org_unit = VALUES(name_org_unit),

@@ -57,6 +57,29 @@ describe("Microsoft365AuthService", () => {
         serializeCache.mockReturnValue('{"cache":true}');
     });
 
+    it("pide siempre selector de cuenta al iniciar Microsoft", async () => {
+        getAuthCodeUrl.mockResolvedValue("https://login.microsoftonline.com/tenant/oauth2/v2.0/authorize?prompt=select_account");
+        const service = new Microsoft365AuthService(createConfigService() as ConfigService);
+
+        await expect(service.startLogin()).resolves.toEqual({
+            authorizationUrl: "https://login.microsoftonline.com/tenant/oauth2/v2.0/authorize?prompt=select_account",
+            codeVerifier: "pkce-verifier",
+            nonce: "guid",
+            state: "guid",
+        });
+        expect(getAuthCodeUrl).toHaveBeenCalledWith(
+            expect.objectContaining({
+                codeChallenge: "pkce-challenge",
+                codeChallengeMethod: "S256",
+                nonce: "guid",
+                prompt: "select_account",
+                redirectUri: "http://localhost:3000/identity/microsoft/callback",
+                scopes: ["openid", "profile", "email", "offline_access", "User.Read"],
+                state: "guid",
+            }),
+        );
+    });
+
     it("lee foto de Graph con timeout y no expone tokens Microsoft", async () => {
         acquireTokenByCode.mockResolvedValue({
             accessToken: "access-token-msal",
@@ -96,5 +119,139 @@ describe("Microsoft365AuthService", () => {
         expect(result.profilePhoto?.mimeType).toBe("image/jpeg");
         expect(result.msalCacheSerialized).toBe('{"cache":true}');
         expect(JSON.stringify(result)).not.toContain("access-token-msal");
+    });
+
+    it("no falla el login si Graph rechaza la foto del perfil", async () => {
+        acquireTokenByCode.mockResolvedValue({
+            accessToken: "access-token-msal",
+            account: {
+                homeAccountId: "home.tenant",
+                localAccountId: "oid",
+                name: "Roberto",
+                tenantId: "tenant",
+                username: "roberto@roccacr.com",
+            },
+        });
+        vi.stubGlobal(
+            "fetch",
+            vi.fn().mockResolvedValue({
+                ok: false,
+                status: 500,
+            }),
+        );
+        const service = new Microsoft365AuthService(createConfigService() as ConfigService);
+
+        await expect(
+            service.completeCallback({
+                code: "codigo",
+                codeVerifier: "verifier",
+                nonce: "nonce",
+                state: "state",
+            }),
+        ).resolves.toEqual(expect.objectContaining({ profilePhoto: null }));
+    });
+
+    it("descarta fotos con MIME no permitido por defensa en profundidad", async () => {
+        acquireTokenByCode.mockResolvedValue({
+            accessToken: "access-token-msal",
+            account: {
+                homeAccountId: "home.tenant",
+                localAccountId: "oid",
+                name: "Roberto",
+                tenantId: "tenant",
+                username: "roberto@roccacr.com",
+            },
+        });
+        vi.stubGlobal(
+            "fetch",
+            vi.fn().mockResolvedValue({
+                arrayBuffer: () => Promise.resolve(Buffer.from("<svg />").buffer),
+                headers: {
+                    get: () => "image/svg+xml",
+                },
+                ok: true,
+                status: 200,
+            }),
+        );
+        const service = new Microsoft365AuthService(createConfigService() as ConfigService);
+
+        await expect(
+            service.completeCallback({
+                code: "codigo",
+                codeVerifier: "verifier",
+                nonce: "nonce",
+                state: "state",
+            }),
+        ).resolves.toEqual(expect.objectContaining({ profilePhoto: null }));
+    });
+
+    it("no falla el login si la lectura de foto agota timeout o red", async () => {
+        acquireTokenByCode.mockResolvedValue({
+            accessToken: "access-token-msal",
+            account: {
+                homeAccountId: "home.tenant",
+                localAccountId: "oid",
+                name: "Roberto",
+                tenantId: "tenant",
+                username: "roberto@roccacr.com",
+            },
+        });
+        vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("Graph timeout")));
+        const service = new Microsoft365AuthService(createConfigService() as ConfigService);
+
+        await expect(
+            service.completeCallback({
+                code: "codigo",
+                codeVerifier: "verifier",
+                nonce: "nonce",
+                state: "state",
+            }),
+        ).resolves.toEqual(expect.objectContaining({ profilePhoto: null }));
+    });
+
+    it("rechaza cuentas invitadas EXT aunque Microsoft entregue tokens", async () => {
+        acquireTokenByCode.mockResolvedValue({
+            accessToken: "access-token-msal",
+            account: {
+                homeAccountId: "home.tenant",
+                localAccountId: "oid",
+                name: "Invitado",
+                tenantId: "tenant",
+                username: "usuario_dominio.com#EXT#@tenant.onmicrosoft.com",
+            },
+        });
+        const service = new Microsoft365AuthService(createConfigService() as ConfigService);
+
+        await expect(
+            service.completeCallback({
+                code: "codigo",
+                codeVerifier: "verifier",
+                nonce: "nonce",
+                state: "state",
+            }),
+        ).rejects.toThrow("Microsoft no devolvio una cuenta valida.");
+    });
+
+    it("rechaza tokens Microsoft de otro tenant", async () => {
+        acquireTokenByCode.mockResolvedValue({
+            accessToken: "access-token-msal",
+            account: {
+                homeAccountId: "home.otro-tenant",
+                localAccountId: "oid",
+                name: "Roberto",
+                tenantId: "otro-tenant",
+                username: "roberto@roccacr.com",
+            },
+        });
+        const service = new Microsoft365AuthService(createConfigService() as ConfigService);
+
+        await expect(
+            service.completeCallback({
+                code: "codigo",
+                codeVerifier: "verifier",
+                nonce: "nonce",
+                state: "state",
+            }),
+        ).rejects.toThrow("Microsoft no devolvio una cuenta valida.");
     });
 });

@@ -4,7 +4,7 @@
 
 Este documento queda actualizado al estado real del proyecto.
 
-El frontend ya tiene esqueleto React/Vite creado dentro de `apps/frontend`. Eso no autoriza construir pantallas comerciales todavia.
+El frontend ya tiene runtime React/Vite creado dentro de `apps/frontend` y la compuerta de identidad conectada al BFF. Eso no autoriza construir pantallas comerciales todavia.
 
 La conclusion practica actual es:
 
@@ -32,30 +32,31 @@ Ya existe:
 - `package.json` local del frontend.
 - `pnpm-lock.yaml` local del frontend.
 - Regla para bloquear uso de npm.
+- Login local contra BFF con CSRF.
+- Login Microsoft via API/BFF.
+- Logout.
+- Shell `/home/global` con sesion, usuario, roles, areas, permisos y foto/avatar.
 
 No existe todavia en frontend:
 
-- pantalla real de login ni consumo visual del BFF de identidad;
-- Microsoft real operativo desde la UI;
 - CRUD real de usuarios;
 - pantallas reales de roles/permisos;
 - pantallas reales de leads.
 
 ## Siguiente paso permitido
 
-El siguiente corte frontend debe ser una compuerta visual minima de identidad:
+El siguiente corte frontend debe salir de identidad hacia el primer alcance comercial solo cuando producto lo apruebe. Mientras tanto, se permite endurecer la compuerta de identidad:
 
-- mostrar estado del proyecto: identidad y acceso;
-- preparar layout base sin datos comerciales;
-- mostrar pasos: usuarios, autenticacion, areas/equipos, roles y permisos;
-- consumir solo contratos aprobados por el API cuando existan;
+- mantener login/logout/refresh visual;
+- mejorar estados de sesion, error y permiso;
+- consumir solo contratos aprobados por el API;
 - no mostrar tarjetas, listas ni formularios de lead.
 
 ## Pantallas permitidas ahora
 
-- pantalla de estado de identidad;
+- pantalla de login/estado de identidad;
 - layout base;
-- placeholders de usuarios/roles/permisos sin CRUD real, si el API aun no existe;
+- lectura de usuarios/roles/permisos devueltos por API sin CRUD real;
 - mensajes claros de "leads viene despues".
 
 No permitidas ahora:
@@ -80,7 +81,7 @@ El siguiente agente no debe comenzar creando mas teoria. Debe leer:
 6. `Arquitectura/04-API-Client-y-Estado.md`
 7. Este documento.
 
-Luego debe construir solo la compuerta visual de identidad con el menor alcance posible y dejar evidencia de:
+Luego debe mantener/evolucionar solo la compuerta de identidad con el menor alcance posible y dejar evidencia de:
 
 - comandos ejecutados;
 - archivos creados;

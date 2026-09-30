@@ -18,15 +18,15 @@ Reglas:
 
 ## Cliente de identidad BFF
 
-Cuando se apruebe construir login visual, `services/api` debe tener una capa unica para identidad:
+La capa vigente de identidad vive en `services/api` y `services/auth`. Todo login, logout, refresh y lectura de sesion pasa por esa capa:
 
 - enviar siempre `credentials: "include"`;
 - no aceptar ni guardar access token, refresh token, ID token ni token Microsoft;
-- obtener CSRF desde la cookie `crm_csrf` emitida por `/identity/session`;
+- obtener CSRF desde el campo `csrfToken` que devuelve `/identity/session`; la cookie `crm_csrf` es `HttpOnly` y solo sirve para que el BFF compare cookie/header;
 - enviar `X-CRM-CSRF-Token` automaticamente en requests mutables;
 - manejar `401` con refresh single-flight: una sola llamada a `/identity/refresh`, cola de requests concurrentes y un unico retry;
-- manejar `409` de `permissionVersion` limpiando cache/sesion visual y enviando a login nuevo;
-- limpiar cache de TanStack Query al cerrar sesion;
+- manejar `409` de `permissionVersion` igual que `401`: un solo refresh single-flight y, si tambien falla, limpiar cache/sesion visual y enviar a login nuevo;
+- limpiar cache visual/server state al cerrar sesion;
 - exponer funciones canonicas como `getSession`, `getMe`, `loginLocal`, `requestLocalReset`, `completeLocalReset`, `refreshSession` y `logout`.
 
 Regla:

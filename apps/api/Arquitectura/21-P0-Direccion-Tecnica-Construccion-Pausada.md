@@ -122,7 +122,7 @@ flowchart TD
 | Documento de producto en 2 paginas | Aprobado como ley superior en `00-Producto-CRM-TINK-y-P0.md`. |
 | Jerarquia de documentacion | Definida por `00-Producto-CRM-TINK-y-P0.md`, `00-Indice.md` y `AGENTS.md`. |
 | Modelo fisico de identidad | Cerrado como diseno en `29-Modelo-Fisico-MySQL-Identidad-P0-S1.md`. |
-| SQL identidad P0-S1 | `SQL/001` validado, `SQL/002` ejecutado como catalogos S1A, `SQL/003` login readiness aplicado por runner schema-only y primer owner Roberto creado por bootstrap controlado en `CRM_THINK_V2`; login real sigue pendiente de `jefe_general`, canal de activacion/reset, Microsoft y frontend. |
+| SQL identidad P0-S1 | `SQL/001` validado, `SQL/002` ejecutado como catalogos S1A, `SQL/003` login readiness aplicado por runner schema-only, `SQL/004` preparado para Microsoft/cache/foto y primer owner Roberto creado por bootstrap controlado en `CRM_THINK_V2`; login productivo sigue pendiente de `jefe_general`, canal de activacion/reset y aprobacion operacional. |
 | Modelo canonico minimo de lead | Pendiente; viene despues de identidad. |
 | OpenAPI identidad | Autorizado solo como contrato minimo de identidad. |
 | Esqueleto API | Autorizado solo para runtime minimo de identidad. |
@@ -131,4 +131,4 @@ flowchart TD
 | Ejecutar migracion en MySQL | Ya validado para identidad bajo excepciones documentadas; no autoriza datos reales ni `crmdatabase-api`. |
 | Instalar dependencias API | Permitido solo para identidad. |
 | Typecheck/build API | Obligatorio para cada cambio de runtime de identidad. |
-| Primer vertical slice real | Identidad; runtime minimo y bootstrap owner autorizados por `00-Producto-CRM-TINK-y-P0.md` version vigente `0.3.27`. |
+| Primer vertical slice real | Identidad; runtime minimo, frontend BFF y bootstrap owner autorizados por `00-Producto-CRM-TINK-y-P0.md` version vigente `0.3.28`. |
