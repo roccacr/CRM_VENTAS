@@ -1,0 +1,201 @@
+/* Alta de usuario en panel lateral. Footer fijo: las acciones nunca quedan bajo el scroll. */
+.create-user-drawer .ant-drawer-content-wrapper {
+    max-width: 100vw;
+}
+
+.create-user-drawer .ant-drawer-header {
+    border-bottom: 1px solid #d9e0ec;
+    padding: 16px 22px;
+}
+
+.create-user-drawer .ant-drawer-title {
+    color: #0f172a;
+    font-size: 18px;
+    font-weight: 780;
+    letter-spacing: -0.01em;
+}
+
+.create-user-drawer .ant-drawer-body {
+    padding: 0 22px 22px;
+    overscroll-behavior: contain;
+}
+
+.create-user-drawer .ant-drawer-footer {
+    border-top: 1px solid #d9e0ec;
+    padding: 12px 22px;
+    background: #f8fafc;
+}
+
+.create-user-drawer__section {
+    padding: 18px 0 2px;
+}
+
+.create-user-drawer__section + .create-user-drawer__section {
+    border-top: 1px solid #edf0f6;
+}
+
+.create-user-drawer__section-header {
+    display: flex;
+    min-height: 24px;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 14px;
+}
+
+.create-user-drawer__section-header h3 {
+    margin: 0;
+    color: #1f2937;
+    font-size: 13px;
+    font-weight: 800;
+    letter-spacing: 0.01em;
+    line-height: 1.25;
+}
+
+.create-user-drawer__step {
+    display: inline-grid;
+    width: 22px;
+    height: 22px;
+    flex: 0 0 auto;
+    border-radius: 6px;
+    background: #eef1f6;
+    color: #0f172a;
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+    font-weight: 800;
+    place-items: center;
+}
+
+.create-user-drawer .ant-form-item-label > label {
+    font-size: 12px;
+    font-weight: 720;
+}
+
+.create-user-drawer .ant-form-item-tooltip {
+    color: #8792a8;
+}
+
+.create-user-drawer__compact-item {
+    margin-bottom: 14px;
+}
+
+.create-user-drawer__compact-item .ant-checkbox-group {
+    gap: 6px 20px;
+}
+
+.create-user-drawer__role-option {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.create-user-drawer__role-option small {
+    flex: 0 0 auto;
+    color: #5b6478;
+    font-weight: 500;
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+}
+
+.create-user-drawer__scope {
+    display: block;
+    padding-top: 2px;
+    color: #475467;
+    font-size: 12px;
+}
+
+.create-user-drawer__scope strong {
+    color: #0f172a;
+    font-weight: 650;
+}
+
+/* Opciones avanzadas */
+.create-user-drawer__advanced {
+    margin-top: 18px;
+    background: #fbfcff;
+}
+
+.create-user-drawer__advanced .ant-collapse-content-box {
+    padding-bottom: 0 !important;
+}
+
+.create-user-drawer__advanced-label {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 8px;
+    color: #1f2937;
+    font-size: 13px;
+    font-weight: 760;
+}
+
+.create-user-drawer__advanced-label small {
+    color: #667085;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+/* Footer fijo */
+.create-user-drawer__footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+}
+
+.create-user-drawer__footer-status {
+    min-width: 0;
+    flex: 1 1 auto;
+}
+
+.create-user-drawer__footer-status .ant-alert {
+    padding: 6px 10px;
+}
+
+.create-user-drawer__summary {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: #475467;
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+}
+
+.create-user-drawer__summary strong {
+    color: #172033;
+    font-weight: 760;
+}
+
+.create-user-drawer__summary--empty {
+    color: #8792a8;
+}
+
+.create-user-drawer__initial-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-left: 6px;
+    padding-left: 12px;
+    border-left: 1px solid #d9e0ec;
+    color: #5b6478;
+}
+
+@media (max-width: 720px) {
+    .create-user-drawer .ant-drawer-header,
+    .create-user-drawer .ant-drawer-footer {
+        padding-inline: 16px;
+    }
+
+    .create-user-drawer .ant-drawer-body {
+        padding-inline: 16px;
+    }
+
+    .create-user-drawer__footer {
+        align-items: stretch;
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .create-user-drawer__footer .ant-space {
+        justify-content: flex-end;
+    }
+}

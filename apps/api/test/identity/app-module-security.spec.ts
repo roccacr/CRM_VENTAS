@@ -16,6 +16,9 @@ import { SecurityAuditService } from "../../src/modules/crm/audit/security-audit
 import { IdentityController } from "../../src/modules/crm/identity/identity.controller.js";
 import { IdentityRepository } from "../../src/modules/crm/identity/identity.repository.js";
 import { IdentityService } from "../../src/modules/crm/identity/identity.service.js";
+import { IdentityAccessManagementController } from "../../src/modules/crm/identity/identity-access-management.controller.js";
+import { IdentityAccessManagementRepository } from "../../src/modules/crm/identity/identity-access-management.repository.js";
+import { IdentityAccessManagementService } from "../../src/modules/crm/identity/identity-access-management.service.js";
 import { IdentityAuditRecorder } from "../../src/modules/crm/identity/identity-audit-recorder.service.js";
 import { IdentityLocalRepository } from "../../src/modules/crm/identity/identity-local.repository.js";
 import { IdentityMicrosoftRepository } from "../../src/modules/crm/identity/identity-microsoft.repository.js";
@@ -23,6 +26,7 @@ import { IdentityMicrosoftSessionService } from "../../src/modules/crm/identity/
 import { IdentityProfileRepository } from "../../src/modules/crm/identity/identity-profile.repository.js";
 import { IdentitySessionRepository } from "../../src/modules/crm/identity/identity-session.repository.js";
 import { IdentityTokenService } from "../../src/modules/crm/identity/identity-token.service.js";
+import { IdentityUserDirectoryRepository } from "../../src/modules/crm/identity/identity-user-directory.repository.js";
 import { EffectivePermissionService } from "../../src/modules/crm/permissions/effective-permission.service.js";
 
 type ExplicitDependencyMetadata = {
@@ -181,14 +185,18 @@ describe("Cableado de seguridad del AppModule", () => {
         expectExplicitConstructorInjections(CsrfGuard, [0]);
         expectExplicitConstructorInjections(SecurityAuditService, [0]);
         expectExplicitConstructorInjections(IdentityController, [0, 1]);
+        expectExplicitConstructorInjections(IdentityAccessManagementController, [0]);
+        expectExplicitConstructorInjections(IdentityAccessManagementService, [0, 1]);
+        expectExplicitConstructorInjections(IdentityAccessManagementRepository, [0, 1]);
         expectExplicitConstructorInjections(IdentityService, [0, 1, 2, 3]);
         expectExplicitConstructorInjections(IdentityAuditRecorder, [0, 1]);
         expectExplicitConstructorInjections(IdentityMicrosoftSessionService, [0, 1, 2]);
-        expectExplicitConstructorInjections(IdentityRepository, [0, 1, 2, 3]);
+        expectExplicitConstructorInjections(IdentityRepository, [0, 1, 2, 3, 4]);
         expectExplicitConstructorInjections(IdentityProfileRepository, [0, 1]);
         expectExplicitConstructorInjections(IdentitySessionRepository, [0, 1]);
         expectExplicitConstructorInjections(IdentityLocalRepository, [0, 1]);
         expectExplicitConstructorInjections(IdentityMicrosoftRepository, [0, 1]);
+        expectExplicitConstructorInjections(IdentityUserDirectoryRepository, [0, 1]);
         expectExplicitConstructorInjections(IdentityTokenService, [0]);
         expectExplicitConstructorInjections(LegacyCrmDatabaseService, [0]);
         expectExplicitConstructorInjections(Microsoft365AuthService, [0]);

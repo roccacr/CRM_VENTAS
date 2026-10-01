@@ -18,50 +18,52 @@ const getWorkspace = (workspaces: readonly WorkspaceProfile[], code: string): Wo
 
 const getMenuLabels = (items: readonly GlobalMenuItem[]): readonly string[] => items.map((item) => item.label);
 
-const getChildLabels = (workspace: WorkspaceProfile, label: string): readonly string[] => {
-    const item = workspace.menuItems.find((menuItem) => menuItem.label === label);
-
-    expect(item).toBeDefined();
-
-    return item?.children?.map((child) => child.label) ?? [];
-};
-
 describe("navigation permissions", () => {
     it("mantiene el catalogo visual alineado con el seed de permisos del API", () => {
         const seedPath = resolve(process.cwd(), "../api/Arquitectura/SQL/002_identity_seed_p0_s1.sql");
         const seedSql = readFileSync(seedPath, "utf8");
-        const seedPermissionCodes = new Set(Array.from(seedSql.matchAll(/'([a-z][a-z0-9_.]*\.read)'/giu), (match) => match[1]));
+        const seedPermissionCodes = new Set(Array.from(seedSql.matchAll(/\('([a-z][a-z0-9_.]*)',\s*'[a-z][a-z0-9_]*'/giu), (match) => match[1]));
         const visualPermissionCodes = DEMO_EFFECTIVE_NAVIGATION_PERMISSIONS.map((permission) => permission.code);
 
         expect(visualPermissionCodes.filter((permissionCode) => !seedPermissionCodes.has(permissionCode))).toEqual([]);
     });
 
-    it("mantiene el modulo Mercadeo pero oculta Origenes de Leads cuando falta ese permiso", () => {
-        const visibleWorkspaces = getVisibleNavigationWorkspaces([allow("marketing.dashboard.read"), allow("marketing.campaigns.read"), allow("marketing.incoming_leads.read"), allow("marketing.content.read"), allow("marketing.metrics.read")]);
-        const marketingWorkspace = getWorkspace(visibleWorkspaces, "marketing");
-        const allWorkspace = getWorkspace(visibleWorkspaces, "all");
+    it("muestra solo usuarios de Administracion cuando existe permiso de lista de usuarios", () => {
+        const visibleWorkspaces = getVisibleNavigationWorkspaces([allow("user.view_list")]);
+        const administrationWorkspace = getWorkspace(visibleWorkspaces, "administration");
 
-        expect(getMenuLabels(marketingWorkspace.menuItems)).toContain("Campañas");
-        expect(getMenuLabels(marketingWorkspace.menuItems)).not.toContain("Orígenes de Leads");
-        expect(getChildLabels(allWorkspace, "Mercadeo")).toContain("Campañas");
-        expect(getChildLabels(allWorkspace, "Mercadeo")).not.toContain("Orígenes de Leads");
+        expect(visibleWorkspaces.map((workspace) => workspace.code)).toEqual(["administration"]);
+        expect(getMenuLabels(administrationWorkspace.menuItems)).toEqual(["Usuarios"]);
+    });
+
+    it("muestra roles y auditoria de Administracion cuando existe permiso de seguridad", () => {
+        const visibleWorkspaces = getVisibleNavigationWorkspaces([allow("role.assign")]);
+        const administrationWorkspace = getWorkspace(visibleWorkspaces, "administration");
+
+        expect(visibleWorkspaces.map((workspace) => workspace.code)).toEqual(["administration"]);
+        expect(getMenuLabels(administrationWorkspace.menuItems)).toEqual(["Roles y seguridad", "Auditoría"]);
+    });
+
+    it("muestra solo los modulos operativos con permisos accionables efectivos", () => {
+        const visibleWorkspaces = getVisibleNavigationWorkspaces([allow("lead.read"), allow("campaign.read")]);
+        const salesWorkspace = getWorkspace(visibleWorkspaces, "sales");
+        const marketingWorkspace = getWorkspace(visibleWorkspaces, "marketing");
+
+        expect(visibleWorkspaces.map((workspace) => workspace.code)).toEqual(["all", "sales", "marketing"]);
+        expect(getMenuLabels(salesWorkspace.menuItems)).toEqual(["Resumen", "Leads"]);
+        expect(getMenuLabels(marketingWorkspace.menuItems)).toEqual(["Resumen", "Campañas"]);
     });
 
     it("aplica deny por encima de allow en permisos directos y de rol", () => {
-        const visibleWorkspaces = getVisibleNavigationWorkspaces([allow("marketing.dashboard.read"), allow("marketing.campaigns.read"), allow("marketing.sources.read"), deny("marketing.sources.read")]);
-        const marketingWorkspace = getWorkspace(visibleWorkspaces, "marketing");
+        const visibleWorkspaces = getVisibleNavigationWorkspaces([allow("user.view_list"), deny("user.view_list")]);
 
-        expect(getMenuLabels(marketingWorkspace.menuItems)).toContain("Campañas");
-        expect(getMenuLabels(marketingWorkspace.menuItems)).not.toContain("Orígenes de Leads");
+        expect(visibleWorkspaces).toEqual([]);
     });
 
-    it("muestra Todos y el unico perfil permitido cuando solo existe un frente asignado", () => {
-        const visibleWorkspaces = getVisibleNavigationWorkspaces([allow("finance.collections.read")]);
-        const financeWorkspace = getWorkspace(visibleWorkspaces, "finance");
+    it("oculta Administracion cuando faltan permisos de usuario", () => {
+        const visibleWorkspaces = getVisibleNavigationWorkspaces([allow("user.create")]);
 
-        expect(visibleWorkspaces.map((workspace) => workspace.code)).toEqual(["all", "finance"]);
-        expect(getChildLabels(getWorkspace(visibleWorkspaces, "all"), "Finanzas")).toEqual(["Cobros Pendientes"]);
-        expect(getMenuLabels(financeWorkspace.menuItems)).toEqual(["Cobros Pendientes"]);
+        expect(visibleWorkspaces).toEqual([]);
     });
 
     it("no expone perfiles cuando no hay permisos efectivos", () => {

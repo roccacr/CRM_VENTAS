@@ -22,7 +22,7 @@ import { IDENTITY_CONTROLLER_PATH } from "../modules/crm/identity/identity-route
 interface HttpSecurityConfig {
     auditHashSecret: string;
     cookieSecret: string;
-    frontendOrigin: string;
+    frontendOrigins: readonly string[];
 }
 
 const IDENTITY_PATH_PREFIX = `/${IDENTITY_CONTROLLER_PATH}`;
@@ -53,6 +53,29 @@ const readNoStoreRequestPath = (requestUrl: string, resolvedRouteUrl: string | u
 };
 
 /**
+ * Construye la allowlist exacta de frontends autorizados para CORS.
+ *
+ * `FRONTEND_ORIGIN` sigue siendo el origin canonico usado por redirects. La
+ * lista adicional solo permite navegadores de desarrollo aprobados, como una IP
+ * de red local servida por Vite, sin caer en wildcard ni reflection del Origin.
+ */
+const readFrontendOrigins = (frontendOrigin: string, allowedOrigins?: string): readonly string[] => {
+    const origins = new Set<string>([frontendOrigin]);
+
+    if (allowedOrigins) {
+        for (const origin of allowedOrigins.split(",")) {
+            const normalizedOrigin = origin.trim();
+
+            if (normalizedOrigin) {
+                origins.add(normalizedOrigin);
+            }
+        }
+    }
+
+    return [...origins];
+};
+
+/**
  * Lee la configuracion critica del hardening HTTP.
  *
  * Regla de seguridad:
@@ -70,6 +93,7 @@ const readHttpSecurityConfig = (config: ConfigService): HttpSecurityConfig => {
     const auditHashSecret = config.get<string>("AUDIT_HASH_SECRET");
     const cookieSecret = config.get<string>("COOKIE_SECRET");
     const frontendOrigin = config.get<string>("FRONTEND_ORIGIN");
+    const frontendAllowedOrigins = config.get<string>("FRONTEND_ALLOWED_ORIGINS");
 
     if (!auditHashSecret) {
         throw new Error("AUDIT_HASH_SECRET es obligatorio para hashear identificadores sensibles de auditoria y rate limit.");
@@ -83,7 +107,7 @@ const readHttpSecurityConfig = (config: ConfigService): HttpSecurityConfig => {
         throw new Error("FRONTEND_ORIGIN es obligatorio para configurar CORS con credenciales.");
     }
 
-    return { auditHashSecret, cookieSecret, frontendOrigin };
+    return { auditHashSecret, cookieSecret, frontendOrigins: readFrontendOrigins(frontendOrigin, frontendAllowedOrigins) };
 };
 
 /**
@@ -159,9 +183,9 @@ const registerIdentityNoStoreHeader = (app: NestFastifyApplication): void => {
  * prohibido usar wildcard (`*`) y obliga a tomar el origin desde configuracion
  * validada por `readHttpSecurityConfig`.
  */
-const configureCors = (app: NestFastifyApplication, frontendOrigin: string): void => {
+const configureCors = (app: NestFastifyApplication, frontendOrigins: readonly string[]): void => {
     app.enableCors({
-        origin: frontendOrigin, // Unico frontend autorizado para enviar cookies.
+        origin: [...frontendOrigins], // Allowlist exacta de frontends autorizados para enviar cookies.
         credentials: true, // Requerido para BFF con cookies HttpOnly.
         methods: CORS_ALLOWED_METHODS,
         allowedHeaders: CORS_ALLOWED_HEADERS, // Incluye CSRF header en casing canonico y lowercase.
@@ -225,13 +249,13 @@ const registerOpenApiDocs = (app: NestFastifyApplication, config: ConfigService)
  */
 export const configureHttpApp = async (app: NestFastifyApplication): Promise<void> => {
     const config = app.get(ConfigService);
-    const { auditHashSecret, cookieSecret, frontendOrigin } = readHttpSecurityConfig(config);
+    const { auditHashSecret, cookieSecret, frontendOrigins } = readHttpSecurityConfig(config);
 
     await registerCookieSupport(app, cookieSecret);
     await registerSecurityHeaders(app);
     registerIdentityNoStoreHeader(app);
     await registerIdentityRateLimit(app, config, auditHashSecret);
-    configureCors(app, frontendOrigin);
+    configureCors(app, frontendOrigins);
     registerGlobalValidation(app);
     registerOpenApiDocs(app, config);
 };

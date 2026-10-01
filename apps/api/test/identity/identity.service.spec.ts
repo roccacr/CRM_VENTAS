@@ -1,4 +1,4 @@
-import { BadRequestException, ConflictException, UnauthorizedException } from "@nestjs/common";
+import { BadRequestException, ConflictException, ForbiddenException, UnauthorizedException } from "@nestjs/common";
 import { describe, expect, it, vi } from "vitest";
 
 import type { IdentityRepository } from "../../src/modules/crm/identity/identity.repository.js";
@@ -28,6 +28,21 @@ const createIdentityService = () => {
     const repository = {
         createLocalPasswordResetToken: vi.fn().mockResolvedValue(undefined),
         createSession: vi.fn().mockResolvedValue(undefined),
+        createSystemUser: vi.fn().mockResolvedValue({
+            email: "nuevo@roccacr.com",
+            invitedBy: "Usuario Prueba",
+            isCurrentUser: false,
+            lastActivityAt: null,
+            mfaStatus: "not_configured",
+            name: "Nuevo Usuario",
+            orgUnit: { code: "ventas", name: "Ventas", publicId: "ORG-VENTAS" },
+            profileImageUrl: null,
+            provider: "local",
+            publicId: "01KCRMNEWUSER000000000001",
+            roleChangedAt: "2026-09-30T16:00:00.000Z",
+            roles: [{ code: "ventas", name: "Ventas" }],
+            status: "active",
+        }),
         completeLocalPasswordReset: vi.fn().mockResolvedValue({ status: "completed", userId: 20 }),
         findActiveLocalIdentity: vi.fn().mockResolvedValue(null),
         findActiveMicrosoftIdentity: vi.fn().mockResolvedValue(null),
@@ -38,6 +53,21 @@ const createIdentityService = () => {
         findMicrosoftAccountCacheBySessionTokenHash: vi.fn().mockResolvedValue(null),
         findRefreshSessionForProviderValidation: vi.fn().mockResolvedValue(null),
         findResettableLocalIdentity: vi.fn().mockResolvedValue(null),
+        listSystemUsers: vi.fn().mockResolvedValue({
+            items: [],
+            page: {
+                limit: 25,
+                nextCursor: null,
+                total: 0,
+            },
+            summary: {
+                active: 0,
+                all: 0,
+                blocked: 0,
+                inactive: 0,
+                pending: 0,
+            },
+        }),
         hasUsableLocalPasswordResetToken: vi.fn().mockResolvedValue(true),
         markMicrosoftInteractionRequiredAndRevokeSessions: vi.fn().mockResolvedValue(undefined),
         recordFailedLocalLogin: vi.fn().mockResolvedValue({ failedLoginCount: 1, lockedUntil: null }),
@@ -89,6 +119,7 @@ const createIdentityService = () => {
         repository: repository as unknown as {
             createLocalPasswordResetToken: ReturnType<typeof vi.fn>;
             createSession: ReturnType<typeof vi.fn>;
+            createSystemUser: ReturnType<typeof vi.fn>;
             completeLocalPasswordReset: ReturnType<typeof vi.fn>;
             findActiveLocalIdentity: ReturnType<typeof vi.fn>;
             findActiveMicrosoftIdentity: ReturnType<typeof vi.fn>;
@@ -99,6 +130,7 @@ const createIdentityService = () => {
             findMicrosoftAccountCacheBySessionTokenHash: ReturnType<typeof vi.fn>;
             findRefreshSessionForProviderValidation: ReturnType<typeof vi.fn>;
             findResettableLocalIdentity: ReturnType<typeof vi.fn>;
+            listSystemUsers: ReturnType<typeof vi.fn>;
             hasUsableLocalPasswordResetToken: ReturnType<typeof vi.fn>;
             markMicrosoftInteractionRequiredAndRevokeSessions: ReturnType<typeof vi.fn>;
             recordFailedLocalLogin: ReturnType<typeof vi.fn>;
@@ -148,6 +180,30 @@ const createProfile = (): IdentityProfile => ({
         publicId: "user-public-id",
         status: "active",
     },
+});
+
+const createProfileWithUserListPermission = (): IdentityProfile => ({
+    ...createProfile(),
+    permissions: [
+        {
+            code: "user.view_list",
+            effect: "allow",
+            scope: "all_areas",
+            source: "role",
+        },
+    ],
+});
+
+const createProfileWithUserCreatePermission = (): IdentityProfile => ({
+    ...createProfile(),
+    permissions: [
+        {
+            code: "user.create",
+            effect: "allow",
+            scope: "all_areas",
+            source: "role",
+        },
+    ],
 });
 
 describe("IdentityService", () => {
@@ -588,6 +644,91 @@ describe("IdentityService", () => {
         await expect(service.completeLocalReset({ resetToken: "r".repeat(43), newPassword: "password1234" }, "127.0.0.1", "vitest")).rejects.toThrow(BadRequestException);
 
         expect(repository.completeLocalPasswordReset).not.toHaveBeenCalled();
+    });
+
+    it("normaliza el limite de usuarios cuando el querystring llega como texto", async () => {
+        const { repository, service } = createIdentityService();
+        repository.findBySessionTokenHash.mockResolvedValue(createProfileWithUserListPermission());
+
+        await service.listSystemUsers("session-token", {
+            direction: "asc",
+            limit: "25" as unknown as number,
+            sort: "name",
+        });
+
+        expect(repository.listSystemUsers).toHaveBeenCalledWith(
+            expect.objectContaining({
+                limit: 25,
+            }),
+        );
+    });
+
+    it("crea usuario con rol, area y referencias externas cuando tiene permiso", async () => {
+        const { repository, service } = createIdentityService();
+        repository.findBySessionTokenHash.mockResolvedValue(createProfileWithUserCreatePermission());
+
+        const result = await service.createSystemUser(
+            "session-token",
+            {
+                accessMethods: ["microsoft", "local"],
+                displayName: " Nuevo Usuario ",
+                email: " NUEVO@RoccaCR.com ",
+                externalReferences: [
+                    { externalUserId: "653999", systemCode: "netsuite" },
+                    { externalUserId: "ODOO-77", systemCode: "odoo" },
+                ],
+                initialStatus: "active",
+                orgUnitCode: "ventas",
+                reason: "Alta solicitada por TI",
+                roleCode: "ventas",
+                roleCodes: ["ventas", "mercadeo"],
+            },
+            "127.0.0.1",
+            "vitest",
+        );
+
+        expect(repository.createSystemUser).toHaveBeenCalledWith(
+            expect.objectContaining({
+                actorPublicId: "user-public-id",
+                accessMethods: ["microsoft", "local"],
+                displayName: "Nuevo Usuario",
+                email: "NUEVO@RoccaCR.com",
+                externalReferences: [
+                    { externalUserId: "653999", systemCode: "netsuite" },
+                    { externalUserId: "ODOO-77", systemCode: "odoo" },
+                ],
+                initialStatus: "active",
+                normalizedEmail: "nuevo@roccacr.com",
+                orgUnitCodes: ["ventas"],
+                reason: "Alta solicitada por TI",
+                roleCode: "ventas",
+                roleCodes: ["ventas", "mercadeo"],
+            }),
+        );
+        expect(result.publicId).toBe("01KCRMNEWUSER000000000001");
+    });
+
+    it("rechaza crear usuario sin permiso user.create", async () => {
+        const { repository, service } = createIdentityService();
+        repository.findBySessionTokenHash.mockResolvedValue(createProfileWithUserListPermission());
+
+        await expect(
+            service.createSystemUser(
+                "session-token",
+                {
+                    displayName: "Nuevo Usuario",
+                    email: "nuevo@roccacr.com",
+                    initialStatus: "active",
+                    orgUnitCode: "ventas",
+                    reason: "Alta solicitada por TI",
+                    roleCode: "ventas",
+                },
+                "127.0.0.1",
+                "vitest",
+            ),
+        ).rejects.toThrow(ForbiddenException);
+
+        expect(repository.createSystemUser).not.toHaveBeenCalled();
     });
 
     it("rechaza reset local con token inexistente antes de actualizar la clave", async () => {

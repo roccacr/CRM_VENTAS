@@ -7,6 +7,8 @@ import { z } from "zod";
 import { identitySchemaMigration } from "../migrations/schema-only/202609250001_identity_schema.js";
 import { identityLoginReadinessMigration } from "../migrations/schema-only/202609250003_identity_login_readiness.js";
 import { identityMicrosoftSessionMigration } from "../migrations/schema-only/202609280004_identity_microsoft_session.js";
+import { identityUserDirectoryMigration } from "../migrations/schema-only/202609300005_identity_user_directory.js";
+import { identityRoleSecurityModelMigration } from "../migrations/schema-only/202610010006_identity_role_security_model.js";
 import { addDatabaseTlsIssues, booleanEnvSchema, tcpPortSchema } from "../src/config/database-env.schema.js";
 import { APPROVED_DATABASE_NAME } from "../src/config/product.constants.js";
 import { buildMysqlPoolOptions } from "../src/database/mysql-pool-options.js";
@@ -20,7 +22,7 @@ type Migration = {
     up: (db: Kysely<unknown>) => Promise<void>;
 };
 
-export const schemaMigrations: Migration[] = [identitySchemaMigration, identityLoginReadinessMigration, identityMicrosoftSessionMigration];
+export const schemaMigrations: Migration[] = [identitySchemaMigration, identityLoginReadinessMigration, identityMicrosoftSessionMigration, identityUserDirectoryMigration, identityRoleSecurityModelMigration];
 const isExecutedDirectly = (): boolean => (process.argv[1] ? pathToFileURL(process.argv[1]).href === import.meta.url : false);
 
 /**

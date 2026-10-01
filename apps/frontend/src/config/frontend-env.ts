@@ -5,6 +5,7 @@
  */
 const DEFAULT_DEVELOPMENT_API_ORIGIN = "http://localhost:3000";
 const LOCAL_DEVELOPMENT_CANONICAL_HOSTNAME = "localhost";
+const LOCAL_DEVELOPMENT_HOSTNAMES = new Set(["localhost", "127.0.0.1"]);
 const LOCAL_DEVELOPMENT_HOST_ALIASES = new Set(["127.0.0.1"]);
 
 /**
@@ -23,6 +24,36 @@ const normalizeOrigin = (value: string): string => {
     return parsedUrl.origin;
 };
 
+const readCurrentHref = (): string | null => {
+    if (typeof window === "undefined") {
+        return null;
+    }
+
+    return window.location.href;
+};
+
+/**
+ * En `vite dev`, si la app se abre por IP de red local, el API debe usar esa
+ * misma IP con el puerto del BFF. Si no, un telefono u otra PC intentaria
+ * llamar a su propio `localhost:3000`.
+ */
+export const getDevelopmentNetworkApiOrigin = (apiOrigin: string, currentHref: string | null, isDevelopment = import.meta.env.DEV): string | null => {
+    if (!isDevelopment || !currentHref) {
+        return null;
+    }
+
+    const parsedApiOrigin = new URL(apiOrigin);
+    const currentUrl = new URL(currentHref);
+
+    if (LOCAL_DEVELOPMENT_HOSTNAMES.has(currentUrl.hostname) || !LOCAL_DEVELOPMENT_HOSTNAMES.has(parsedApiOrigin.hostname)) {
+        return null;
+    }
+
+    parsedApiOrigin.hostname = currentUrl.hostname;
+
+    return parsedApiOrigin.origin;
+};
+
 /**
  * Resuelve el origin del BFF al cargar el módulo.
  *
@@ -33,11 +64,12 @@ const resolveApiOrigin = (): string => {
     const configuredOrigin = import.meta.env.VITE_API_ORIGIN?.trim();
 
     if (configuredOrigin) {
-        return normalizeOrigin(configuredOrigin);
+        const apiOrigin = normalizeOrigin(configuredOrigin);
+        return getDevelopmentNetworkApiOrigin(apiOrigin, readCurrentHref()) ?? apiOrigin;
     }
 
     if (import.meta.env.DEV || import.meta.env.MODE === "test") {
-        return DEFAULT_DEVELOPMENT_API_ORIGIN;
+        return getDevelopmentNetworkApiOrigin(DEFAULT_DEVELOPMENT_API_ORIGIN, readCurrentHref()) ?? DEFAULT_DEVELOPMENT_API_ORIGIN;
     }
 
     throw new Error("VITE_API_ORIGIN es obligatorio para conectar el frontend con el BFF de identidad.");

@@ -21,7 +21,7 @@ El API debe responder siempre con identidad canonica del CRM:
 - usuario interno;
 - sesion backend;
 - roles activos;
-- areas/equipos activos;
+- areas operativas/modulos activos;
 - permisos efectivos;
 - version de permisos;
 - estado operativo del usuario.
@@ -48,7 +48,7 @@ Entra en este contrato:
 - consultar estado de sesion;
 - consultar usuario actual;
 - consultar roles visibles del usuario actual;
-- consultar areas/equipos del usuario actual;
+- consultar areas operativas/modulos del usuario actual;
 - consultar permisos efectivos del usuario actual;
 - refrescar sesion bajo patron BFF;
 - cerrar sesion;
@@ -370,14 +370,14 @@ Regla P0-S1A:
 | `name` | string | Nombre visible. |
 | `status` | string | Estado del rol. |
 
-### Area/equipo
+### Area operativa / modulo
 
 | Campo API | Tipo | Regla |
 | --- | --- | --- |
-| `publicId` | string | Public id canonico del area/equipo. |
-| `code` | string | Codigo canonico del area/equipo. |
+| `publicId` | string | Public id canonico del area operativa/modulo. |
+| `code` | string | Codigo canonico del area operativa/modulo. |
 | `name` | string | Nombre visible. |
-| `membership` | string | `member`, `leader`, `assistant_leader` o `supervisor`. |
+| `membership` | string | `member`, `leader` o `assistant_leader`; `supervisor` solo puede aparecer por compatibilidad legacy, no como rol nuevo. |
 | `scope` | string | `self`, `assigned`, `own_area`, `own_area_and_children` o `all_areas`. |
 | `status` | string | Estado de la asignacion. |
 
@@ -479,7 +479,7 @@ Debe generar auditoria:
 - refresh token reutilizado;
 - usuario bloqueado;
 - cambio de rol;
-- cambio de area/equipo;
+- cambio de area operativa/modulo;
 - cambio de permiso personal;
 - delegacion temporal queda prevista para una fase posterior, no para P0-S1A;
 - denegacion aplicada;

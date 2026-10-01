@@ -16,6 +16,7 @@
         "format:check": "node ./scripts/ensure-pnpm.mjs && prettier \"{src,scripts,migrations,test}/**/*.{ts,js,mjs}\" \"*.{json,mjs}\" --check",
         "lint": "node ./scripts/ensure-pnpm.mjs && eslint .",
         "lint:fix": "node ./scripts/ensure-pnpm.mjs && eslint . --fix",
+        "import:legacy-admin-users": "node ./scripts/ensure-pnpm.mjs && tsx ./scripts/import-legacy-admin-users.ts",
         "migrate:identity:schema": "node ./scripts/ensure-pnpm.mjs && tsx ./scripts/run-schema-migrations.ts",
         "test": "node ./scripts/ensure-pnpm.mjs && vitest run --dir test",
         "typecheck": "node ./scripts/ensure-pnpm.mjs && tsc --noEmit"

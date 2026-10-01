@@ -54,6 +54,14 @@ const LOGIN_ERROR_IDS = {
     password: "login-password-error",
 } as const;
 
+const LOCAL_DEVELOPMENT_LOGIN_DEFAULTS: LoginFormValues | undefined =
+    import.meta.env.DEV && import.meta.env.MODE !== "test"
+        ? {
+              email: "rzuniga@roccacr.com",
+              password: "RoccaLocal-2026!7Qm4",
+          }
+        : undefined;
+
 const renderFieldError = (messageKey: keyof typeof LOGIN_ERROR_TEXT, errorId: string) => (
     <span id={errorId} className="login-field-error" role="alert">
         <WarningOutlined aria-hidden="true" />
@@ -290,7 +298,7 @@ export function LoginPage({ authError = null, isSubmitting = false, onLocalLogin
                             </div>
                         ) : null}
 
-                        <Form<LoginFormValues> form={form} className="login-form" layout="vertical" requiredMark={false} onValuesChange={clearResolvedFieldError}>
+                        <Form<LoginFormValues> form={form} className="login-form" layout="vertical" requiredMark={false} initialValues={LOCAL_DEVELOPMENT_LOGIN_DEFAULTS ?? {}} onValuesChange={clearResolvedFieldError}>
                             <Form.Item label={LOGIN_COPY.emailLabel} name="email" validateStatus={fieldErrors.email ? "error" : ""} help={fieldErrors.email ? renderFieldError(fieldErrors.email, LOGIN_ERROR_IDS.email) : null}>
                                 <Input
                                     aria-describedby={fieldErrors.email ? LOGIN_ERROR_IDS.email : undefined}

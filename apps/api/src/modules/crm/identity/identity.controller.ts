@@ -8,8 +8,9 @@ import { createSignedCsrfToken, isValidSignedCsrfToken } from "../../../common/s
 import { CSRF_COOKIE_NAME, MICROSOFT_OIDC_CHALLENGE_COOKIE_NAME, REFRESH_COOKIE_NAME, ROOT_COOKIE_PATH, SESSION_COOKIE_NAME } from "../../../common/security/http-security.constants.js";
 import { CompleteLocalResetDto, LocalLoginDto, RequestLocalResetDto } from "./dto/local-auth.dto.js";
 import { MicrosoftCallbackDto } from "./dto/microsoft-auth.dto.js";
+import { CreateSystemUserDto, ListSystemUsersQueryDto } from "./dto/system-users.dto.js";
 import { type AuthenticatedSessionResult, IdentityService, MICROSOFT_ACCOUNT_NOT_ASSIGNED_MESSAGE, MICROSOFT_ACCOUNT_NOT_AUTHORIZED_MESSAGE } from "./identity.service.js";
-import { IDENTITY_CONTROLLER_PATH, IDENTITY_LOCAL_COMPLETE_RESET_ROUTE, IDENTITY_LOCAL_LOGIN_ROUTE, IDENTITY_LOCAL_REQUEST_RESET_ROUTE, IDENTITY_LOGOUT_ROUTE, IDENTITY_ME_PHOTO_ROUTE, IDENTITY_ME_ROUTE, IDENTITY_MICROSOFT_CALLBACK_ROUTE, IDENTITY_MICROSOFT_START_ROUTE, IDENTITY_REFRESH_PATH, IDENTITY_REFRESH_ROUTE, IDENTITY_REVOKE_SESSION_ROUTE, IDENTITY_SESSION_ROUTE, IDENTITY_SESSIONS_ROUTE } from "./identity-route.constants.js";
+import { IDENTITY_CONTROLLER_PATH, IDENTITY_LOCAL_COMPLETE_RESET_ROUTE, IDENTITY_LOCAL_LOGIN_ROUTE, IDENTITY_LOCAL_REQUEST_RESET_ROUTE, IDENTITY_LOGOUT_ROUTE, IDENTITY_ME_PHOTO_ROUTE, IDENTITY_ME_ROUTE, IDENTITY_MICROSOFT_CALLBACK_ROUTE, IDENTITY_MICROSOFT_START_ROUTE, IDENTITY_REFRESH_PATH, IDENTITY_REFRESH_ROUTE, IDENTITY_REVOKE_SESSION_ROUTE, IDENTITY_SESSION_ROUTE, IDENTITY_SESSIONS_ROUTE, IDENTITY_USER_DETAIL_ROUTE, IDENTITY_USERS_ROUTE } from "./identity-route.constants.js";
 
 /**
  * Indica si el navegador ya tiene cookie CSRF con el formato que emite el BFF.
@@ -79,6 +80,34 @@ export class IdentityController {
     @ApiOperation({ summary: "Consultar usuario actual, roles, areas y permisos efectivos." })
     async me(@Req() request: CookieRequest) {
         return this.identity.getCurrentUser(request.cookies[SESSION_COOKIE_NAME]);
+    }
+
+    /**
+     * Lista usuarios administrativos con filtros server-side.
+     */
+    @Get(IDENTITY_USERS_ROUTE)
+    @ApiOperation({ summary: "Listar usuarios del sistema con filtros y paginacion." })
+    async users(@Query() query: ListSystemUsersQueryDto, @Req() request: CookieRequest) {
+        return this.identity.listSystemUsers(request.cookies[SESSION_COOKIE_NAME], query);
+    }
+
+    /**
+     * Crea un usuario administrativo con rol, area y referencias externas.
+     */
+    @Post(IDENTITY_USERS_ROUTE)
+    @ApiOperation({ summary: "Crear usuario interno del sistema." })
+    @ApiBody({ type: CreateSystemUserDto })
+    async createUser(@Body() body: CreateSystemUserDto, @Req() request: CookieRequest, @Headers("user-agent") userAgent?: string) {
+        return this.identity.createSystemUser(request.cookies[SESSION_COOKIE_NAME], body, request.ip, userAgent);
+    }
+
+    /**
+     * Lee el detalle administrativo de un usuario por identificador publico.
+     */
+    @Get(IDENTITY_USER_DETAIL_ROUTE)
+    @ApiOperation({ summary: "Consultar detalle administrativo de usuario." })
+    async userDetail(@Param("userPublicId") userPublicId: string, @Req() request: CookieRequest) {
+        return this.identity.getSystemUserDetail(request.cookies[SESSION_COOKIE_NAME], userPublicId);
     }
 
     /**
@@ -164,7 +193,7 @@ export class IdentityController {
             httpOnly: true,
             path: `/${IDENTITY_CONTROLLER_PATH}/${IDENTITY_MICROSOFT_CALLBACK_ROUTE}`,
             sameSite: "lax",
-            secure: true,
+            secure: this.shouldUseSecureCookies(),
         });
 
         return { authorizationUrl: result.authorizationUrl };
@@ -249,7 +278,7 @@ export class IdentityController {
         reply.setCookie(CSRF_COOKIE_NAME, csrfToken, {
             path: ROOT_COOKIE_PATH,
             sameSite: "strict",
-            secure: true,
+            secure: this.shouldUseSecureCookies(),
             httpOnly: true,
         });
 
@@ -272,16 +301,24 @@ export class IdentityController {
             httpOnly: true,
             path: ROOT_COOKIE_PATH,
             sameSite: "strict",
-            secure: true,
+            secure: this.shouldUseSecureCookies(),
         });
         reply.setCookie(REFRESH_COOKIE_NAME, result.refreshToken, {
             expires: result.refreshTokenExpiresAt,
             httpOnly: true,
             path: IDENTITY_REFRESH_PATH,
             sameSite: "strict",
-            secure: true,
+            secure: this.shouldUseSecureCookies(),
         });
         return this.setCsrfCookie(reply, result.sessionToken);
+    }
+
+    /**
+     * En desarrollo local por IP (`http://192.168...`) los navegadores no
+     * guardan cookies `Secure`. Produccion y test conservan el contrato estricto.
+     */
+    private shouldUseSecureCookies(): boolean {
+        return this.config.get<string>("NODE_ENV") !== "development";
     }
 
     private prepareMicrosoftCallbackRedirect(reply: FastifyReply): void {
@@ -336,7 +373,7 @@ export class IdentityController {
         reply.clearCookie(MICROSOFT_OIDC_CHALLENGE_COOKIE_NAME, {
             path: `/${IDENTITY_CONTROLLER_PATH}/${IDENTITY_MICROSOFT_CALLBACK_ROUTE}`,
             sameSite: "lax",
-            secure: true,
+            secure: this.shouldUseSecureCookies(),
             httpOnly: true,
         });
     }
@@ -348,19 +385,19 @@ export class IdentityController {
         reply.clearCookie(SESSION_COOKIE_NAME, {
             path: ROOT_COOKIE_PATH,
             sameSite: "strict",
-            secure: true,
+            secure: this.shouldUseSecureCookies(),
             httpOnly: true,
         });
         reply.clearCookie(REFRESH_COOKIE_NAME, {
             path: IDENTITY_REFRESH_PATH,
             sameSite: "strict",
-            secure: true,
+            secure: this.shouldUseSecureCookies(),
             httpOnly: true,
         });
         reply.clearCookie(CSRF_COOKIE_NAME, {
             path: ROOT_COOKIE_PATH,
             sameSite: "strict",
-            secure: true,
+            secure: this.shouldUseSecureCookies(),
             httpOnly: true,
         });
     }

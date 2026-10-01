@@ -10,6 +10,7 @@ import { APPROVED_DATABASE_NAME } from "../../src/config/product.constants.js";
 const identitySchemaPath = fileURLToPath(new URL("../../Arquitectura/SQL/001_identity_schema_p0_s1.sql", import.meta.url));
 const loginReadinessSchemaPath = fileURLToPath(new URL("../../Arquitectura/SQL/003_identity_login_readiness_p0_s1.sql", import.meta.url));
 const microsoftSessionSchemaPath = fileURLToPath(new URL("../../Arquitectura/SQL/004_identity_microsoft_session_p0_s1.sql", import.meta.url));
+const userDirectorySchemaPath = fileURLToPath(new URL("../../Arquitectura/SQL/005_identity_user_directory_p0_s1.sql", import.meta.url));
 
 /**
  * Entorno minimo para probar la validacion del runner sin abrir MySQL.
@@ -52,8 +53,8 @@ describe("identity schema migration parser", () => {
         expect(readTargetTableNames(statements)).toEqual(["sec_user", "sec_auth_identity", "sec_auth_session", "sec_refresh_token", "sec_local_password_reset_token", "sec_role", "sec_permission", "sec_user_role", "sec_role_permission", "sec_org_unit", "sec_user_org_unit", "sec_user_permission_override", "int_external_system", "int_user_external_identity", "audit_security_event"]);
     });
 
-    it("registra la migracion 003 de login readiness en el runner schema-only", () => {
-        expect(schemaMigrations.map((migration) => migration.name)).toEqual(["202609250001_identity_schema", "202609250003_identity_login_readiness", "202609280004_identity_microsoft_session"]);
+    it("registra las migraciones schema-only aprobadas en orden", () => {
+        expect(schemaMigrations.map((migration) => migration.name)).toEqual(["202609250001_identity_schema", "202609250003_identity_login_readiness", "202609280004_identity_microsoft_session", "202609300005_identity_user_directory", "202610010006_identity_role_security_model"]);
     });
 
     it("documenta un unico token de reset activo por identidad en los artefactos SQL", async () => {
@@ -75,6 +76,14 @@ describe("identity schema migration parser", () => {
         expect(microsoftSessionSchema).not.toContain("refresh_token");
         expect(microsoftSessionSchema).toContain("sec_user_profile_image");
         expect(microsoftSessionSchema).toContain("provider_code_auth_session");
+    });
+
+    it("documenta indices del directorio de usuarios en SQL/005", async () => {
+        const userDirectorySchema = await readFile(userDirectorySchemaPath, "utf8");
+
+        expect(userDirectorySchema).toContain("ix_sec_user_directory_status_name");
+        expect(userDirectorySchema).toContain("ix_sec_user_directory_status_activity");
+        expect(userDirectorySchema).toContain("ft_sec_user_directory_search");
     });
 
     it("rechaza DB_SSL con casing distinto para no apagar TLS silenciosamente", () => {

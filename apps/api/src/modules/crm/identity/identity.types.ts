@@ -113,3 +113,70 @@ export interface SessionResponse {
 export interface ActiveSessionsResponse {
     sessions: IdentityActiveSession[];
 }
+
+export type SystemUserStatus = "active" | "blocked" | "inactive" | "pending";
+export type SystemUserProvider = "local" | "microsoft" | "mixed";
+export type SystemUserMfaStatus = "enabled" | "not_configured" | "pending";
+
+export interface SystemUserDirectoryRole {
+    code: string;
+    name: string;
+}
+
+export interface SystemUserDirectoryOrgUnit {
+    code: string;
+    name: string;
+    publicId: string;
+}
+
+/**
+ * Fila del directorio administrativo.
+ *
+ * El estado es el que ya resolvió el API. `isCurrentUser` marca la sesión
+ * abierta para que la UI no ofrezca bloquear esa cuenta.
+ */
+export interface SystemUserDirectoryItem {
+    email: string;
+    invitedBy: string | null;
+    isCurrentUser: boolean;
+    lastActivityAt: string | null;
+    mfaStatus: SystemUserMfaStatus;
+    name: string;
+    orgUnit: SystemUserDirectoryOrgUnit | null;
+    profileImageUrl: string | null;
+    provider: SystemUserProvider;
+    publicId: string;
+    roleChangedAt: string | null;
+    roles: SystemUserDirectoryRole[];
+    status: SystemUserStatus;
+}
+
+/**
+ * Conteos del directorio completo, no de la página visible.
+ *
+ * Los KPI no deben cambiar solo porque el cursor avanzó.
+ */
+export interface SystemUsersSummary {
+    active: number;
+    all: number;
+    blocked: number;
+    inactive: number;
+    pending: number;
+}
+
+/**
+ * Cursor opaco de la página siguiente.
+ *
+ * No es un offset. Si el orden cambia, el cursor anterior deja de ser válido.
+ */
+export interface SystemUsersPageInfo {
+    limit: number;
+    nextCursor: string | null;
+    total: number;
+}
+
+export interface SystemUsersListResponse {
+    items: SystemUserDirectoryItem[];
+    page: SystemUsersPageInfo;
+    summary: SystemUsersSummary;
+}

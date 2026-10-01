@@ -7,7 +7,7 @@ import type { CreateIdentitySessionInput, RefreshProviderValidation, RevokeOwnSe
 import type { IdentityActiveSession } from "./identity.types.js";
 import { ACTIVE_STATUS, earliestDate, EXPIRED_STATUS, hasUpdatedRows, IDENTITY_RUNTIME_AUDIT_SOURCE, type IdentityTransaction, REUSED_STATUS, REVOKED_STATUS, ROTATED_STATUS } from "./identity-repository.shared.js";
 
-type RefreshRotationFailureStatus = "expired" | "invalid" | "permission_stale" | "reused";
+type RefreshRotationFailureStatus = "expired" | "invalid" | "reused";
 
 type RefreshRotationRow = {
     authIdentityId: number;
@@ -140,7 +140,16 @@ export class IdentitySessionRepository {
             const nextSessionExpiresAt = earliestDate(input.nextSessionExpiresAt, absoluteSessionExpiresAt);
             const nextRefreshExpiresAt = earliestDate(input.nextRefreshExpiresAt, absoluteSessionExpiresAt);
 
-            await transaction.updateTable("sec_auth_session").set({ expires_at_auth_session: nextSessionExpiresAt, token_hash_auth_session: input.nextSessionTokenHash }).where("id_auth_session", "=", refresh.sessionId).where("status_auth_session", "=", ACTIVE_STATUS).executeTakeFirst();
+            await transaction
+                .updateTable("sec_auth_session")
+                .set({
+                    expires_at_auth_session: nextSessionExpiresAt,
+                    permission_version_auth_session: refresh.userPermissionVersion,
+                    token_hash_auth_session: input.nextSessionTokenHash,
+                })
+                .where("id_auth_session", "=", refresh.sessionId)
+                .where("status_auth_session", "=", ACTIVE_STATUS)
+                .executeTakeFirst();
             await transaction
                 .insertInto("sec_refresh_token")
                 .values({
@@ -329,10 +338,6 @@ export class IdentitySessionRepository {
             return "invalid";
         }
 
-        if (refresh.sessionPermissionVersion !== refresh.userPermissionVersion) {
-            return "permission_stale";
-        }
-
         return null;
     }
 
@@ -359,12 +364,8 @@ export class IdentitySessionRepository {
             return { status };
         }
 
-        if (status === "invalid") {
-            await this.revokeRefreshFamily(transaction, refresh.refreshFamilyId, REVOKED_STATUS);
-            await this.revokeSessionById(transaction, refresh.sessionId, refresh.userId);
-            return { sessionPublicId: refresh.sessionPublicId, status, userId: refresh.userId };
-        }
-
+        await this.revokeRefreshFamily(transaction, refresh.refreshFamilyId, REVOKED_STATUS);
+        await this.revokeSessionById(transaction, refresh.sessionId, refresh.userId);
         return { sessionPublicId: refresh.sessionPublicId, status, userId: refresh.userId };
     }
 

@@ -80,6 +80,20 @@ describe("validateEnv", () => {
         expect(() => validateEnv(env)).toThrow("FRONTEND_ORIGIN");
     });
 
+    it("acepta una allowlist exacta adicional de frontends locales", () => {
+        const env = createValidEnv();
+        env.FRONTEND_ALLOWED_ORIGINS = "http://localhost:5173,http://192.168.100.8:5173";
+
+        expect(validateEnv(env).FRONTEND_ALLOWED_ORIGINS).toBe(env.FRONTEND_ALLOWED_ORIGINS);
+    });
+
+    it("rechaza FRONTEND_ALLOWED_ORIGINS con rutas o queries", () => {
+        const env = createValidEnv();
+        env.FRONTEND_ALLOWED_ORIGINS = "http://192.168.100.8:5173/auth/login";
+
+        expect(() => validateEnv(env)).toThrow("FRONTEND_ALLOWED_ORIGINS");
+    });
+
     it("rechaza proxies confiables que equivalen a confiar en todo el trafico", () => {
         const env = createValidEnv();
         env.TRUSTED_PROXY_IPS = "0.0.0.0/0";

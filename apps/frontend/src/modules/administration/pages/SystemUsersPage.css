@@ -1,0 +1,542 @@
+/* Directorio de usuarios. El detalle y el alta abren el mismo panel lateral; la tabla no autoriza acciones. */
+.administration-users-page-header {
+    margin-bottom: 14px;
+}
+
+.administration-users-page-header h1 {
+    margin-top: 0;
+}
+
+.administration-users-main {
+    min-width: 0;
+}
+
+.administration-users-panel {
+    display: flex;
+    min-height: 0;
+    flex-direction: column;
+    overflow: hidden;
+    border: 1px solid #cfd7e6;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.94);
+    box-shadow:
+        0 1px 3px rgba(15, 23, 42, 0.05),
+        0 1px 2px rgba(15, 23, 42, 0.03);
+}
+
+/* Encabezado de la tabla en dos niveles: estado arriba; búsqueda, filtros y densidad abajo. */
+.administration-users-toolbar {
+    display: grid;
+    gap: 10px;
+    border-bottom: 1px solid #d9e0ec;
+    padding: 12px 16px;
+}
+
+.administration-users-toolbar__status {
+    display: flex;
+    min-width: 0;
+}
+
+.administration-users-toolbar__query,
+.administration-users-bulkbar {
+    display: flex;
+    min-height: 32px;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+}
+
+.administration-users-toolbar__density.ant-btn {
+    margin-left: auto;
+}
+
+/* Con filas seleccionadas, la línea de búsqueda cambia a acciones masivas a la misma altura. */
+.administration-users-bulkbar {
+    border: 1px solid #dfe3fb;
+    border-radius: 6px;
+    padding: 0 8px 0 12px;
+    background: #f7f8ff;
+    color: #273044;
+}
+
+.administration-users-bulkbar strong {
+    margin-right: 4px;
+    font-size: 13px;
+    font-weight: 760;
+}
+
+.administration-users-search.ant-input-affix-wrapper {
+    min-width: min(100%, 16rem);
+    max-width: 28rem;
+    flex: 1 1 18rem;
+}
+
+.administration-users-search .ant-input-prefix {
+    color: #7b8496;
+}
+
+.administration-users-status-filter {
+    max-width: 100%;
+    overflow-x: auto;
+    scrollbar-width: none;
+}
+
+/* Conteo como texto secundario junto a la etiqueta: sin cápsulas que compitan con la opción activa. */
+.administration-users-status-filter__option {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 6px;
+    font-weight: 650;
+}
+
+.administration-users-status-filter__count {
+    color: #5b6478;
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+}
+
+.administration-users-status-filter .ant-segmented-item-selected .administration-users-status-filter__count {
+    color: #344054;
+}
+
+/* Estados sin usuarios: peso menor, pero con contraste AA para seguir siendo legibles. */
+.administration-users-status-filter__option--empty {
+    color: #5b6478;
+    font-weight: 500;
+}
+
+.administration-users-refresh-status {
+    display: inline-flex;
+    width: fit-content;
+    align-items: center;
+    gap: 8px;
+    margin: 10px 16px 0;
+    border: 1px solid #cbd5f6;
+    border-radius: 999px;
+    padding: 6px 10px;
+    background: #f4f6ff;
+    color: #344054;
+    font-size: 12px;
+    font-weight: 720;
+}
+
+.administration-users-refresh-status__dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 999px;
+    background: #6672ad;
+    box-shadow: 0 0 0 4px rgba(102, 114, 173, 0.14);
+    animation: administration-users-refresh-pulse 1s ease-in-out infinite;
+}
+
+/* Tabla AntD: los tokens viven en ADMINISTRATION_THEME; aquí solo lo que el tema no cubre. */
+.administration-users-table .ant-table-thead > tr > th {
+    font-size: 12px;
+    font-weight: 720;
+}
+
+.administration-users-table .ant-table-tbody > tr {
+    cursor: pointer;
+}
+
+/* El foco se dibuja dentro de la fila: no se extiende fuera del ancho de la tabla. */
+.administration-users-table .ant-table-tbody > tr:focus-visible {
+    outline: 2px solid #4f5fb8;
+    outline-offset: -2px;
+}
+
+.administration-users-table .ant-table-tbody > tr:focus-visible > td {
+    background: #f1f4ff;
+}
+
+.administration-users-table .ant-table-tbody > tr.administration-users-table__row--selected > td {
+    background: #eef1ff;
+}
+
+.administration-users-table .ant-table-tbody > tr.administration-users-table__row--selected > td:first-child {
+    box-shadow: inset 3px 0 0 #4f5fb8;
+}
+
+/* Fila recién creada: se destaca unos segundos y luego vuelve al fondo normal. */
+.administration-users-table .ant-table-tbody > tr.administration-users-table__row--new > td {
+    animation: administration-users-new-row 6s ease-out forwards;
+}
+
+.administration-users-table .ant-table-tbody > tr.administration-users-table__row--new > td:first-child {
+    box-shadow: inset 3px 0 0 #12b76a;
+}
+
+.administration-users-person {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    gap: 10px;
+}
+
+.administration-users-person__copy {
+    display: grid;
+    min-width: 0;
+    gap: 1px;
+}
+
+.administration-users-person__name {
+    display: inline-flex;
+    min-width: 0;
+    max-width: 100%;
+    align-items: center;
+    gap: 6px;
+    border: 0;
+    border-radius: 4px;
+    padding: 0;
+    background: transparent;
+    color: #0f172a;
+    cursor: pointer;
+    font: inherit;
+    font-size: 13px;
+    font-weight: 720;
+    line-height: 1.3;
+    text-align: left;
+}
+
+.administration-users-person__name > span:first-child {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.administration-users-person__name:hover > span:first-child,
+.administration-users-person__name:focus-visible > span:first-child {
+    color: #4f5fb8;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+
+.administration-users-person__name:focus-visible {
+    outline: 2px solid #6672ad;
+    outline-offset: 2px;
+}
+
+.administration-users-person__email {
+    min-width: 0;
+    font-size: 12px;
+}
+
+.administration-users-person__email .ant-typography {
+    max-width: 100%;
+    font-size: 12px;
+}
+
+.administration-users-avatar {
+    display: inline-grid;
+    width: 36px;
+    height: 36px;
+    flex: 0 0 auto;
+    overflow: hidden;
+    border: 2px solid #ffffff;
+    border-radius: 999px;
+    place-items: center;
+    background: linear-gradient(135deg, rgba(102, 114, 173, 0.28), rgba(15, 23, 42, 0.08)), #f8fafc;
+    box-shadow: 0 0 0 1px #cfd7e6;
+    color: #273044;
+    font-size: 12px;
+    font-weight: 820;
+    line-height: 1;
+}
+
+/* El menú de fila aparece al pasar, al enfocar la fila o con el menú abierto; en pantallas táctiles siempre. */
+.administration-users-row-menu .ant-btn {
+    opacity: 0;
+    transition: opacity 120ms ease;
+}
+
+.administration-users-table .ant-table-tbody > tr:hover .administration-users-row-menu .ant-btn,
+.administration-users-table .ant-table-tbody > tr:focus-within .administration-users-row-menu .ant-btn,
+.administration-users-table .ant-table-tbody > tr.administration-users-table__row--selected .administration-users-row-menu .ant-btn,
+.administration-users-row-menu .ant-btn.ant-dropdown-open,
+.administration-users-row-menu .ant-btn:focus-visible {
+    opacity: 1;
+}
+
+@media (hover: none) {
+    .administration-users-row-menu .ant-btn {
+        opacity: 1;
+    }
+}
+
+.administration-users-avatar--tone-0 {
+    background: linear-gradient(135deg, rgba(102, 114, 173, 0.24), rgba(79, 93, 159, 0.08)), #eef2ff;
+    color: #374151;
+}
+
+.administration-users-avatar--tone-1 {
+    background: linear-gradient(135deg, rgba(22, 101, 52, 0.18), rgba(15, 23, 42, 0.06)), #ecfdf3;
+    color: #28533c;
+}
+
+.administration-users-avatar--tone-2 {
+    background: linear-gradient(135deg, rgba(138, 97, 0, 0.18), rgba(15, 23, 42, 0.06)), #fff7df;
+    color: #6b4b00;
+}
+
+.administration-users-avatar--tone-3 {
+    background: linear-gradient(135deg, rgba(180, 35, 24, 0.14), rgba(15, 23, 42, 0.05)), #fff1f0;
+    color: #7a3f3b;
+}
+
+.administration-users-avatar--tone-4 {
+    background: linear-gradient(135deg, rgba(8, 126, 164, 0.16), rgba(15, 23, 42, 0.06)), #eaf8fb;
+    color: #225466;
+}
+
+.administration-users-avatar--tone-5 {
+    background: linear-gradient(135deg, rgba(94, 92, 230, 0.18), rgba(15, 23, 42, 0.06)), #f1f0ff;
+    color: #3e3c72;
+}
+
+.administration-users-avatar--tone-6 {
+    background: linear-gradient(135deg, rgba(154, 86, 20, 0.16), rgba(15, 23, 42, 0.06)), #fff3e8;
+    color: #704214;
+}
+
+.administration-users-avatar--tone-7 {
+    background: linear-gradient(135deg, rgba(71, 85, 105, 0.18), rgba(15, 23, 42, 0.05)), #eef2f7;
+    color: #334155;
+}
+
+.administration-users-avatar img {
+    width: 100%;
+    height: 100%;
+    display: block;
+    object-fit: cover;
+}
+
+.administration-users-tag.ant-tag {
+    max-width: 9rem;
+    margin-inline-end: 0;
+    overflow: hidden;
+    font-size: 12px;
+    font-weight: 650;
+    text-overflow: ellipsis;
+    vertical-align: middle;
+    white-space: nowrap;
+}
+
+.administration-users-current-user.ant-tag {
+    padding-inline: 6px;
+    font-size: 11px;
+    line-height: 18px;
+}
+
+.administration-users-status .ant-badge-status-text {
+    color: #273044;
+    font-size: 12.5px;
+    font-weight: 650;
+}
+
+.administration-users-provider {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: #344054;
+    font-size: 12.5px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.administration-users-provider .anticon {
+    color: #6672ad;
+}
+
+.administration-users-provider__microsoft-mark {
+    display: grid;
+    width: 12px;
+    height: 12px;
+    flex: 0 0 auto;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.5px;
+}
+
+.administration-users-provider__microsoft-mark span:nth-child(1) {
+    background: #f25022;
+}
+
+.administration-users-provider__microsoft-mark span:nth-child(2) {
+    background: #7fba00;
+}
+
+.administration-users-provider__microsoft-mark span:nth-child(3) {
+    background: #00a4ef;
+}
+
+.administration-users-provider__microsoft-mark span:nth-child(4) {
+    background: #ffb900;
+}
+
+.administration-users-roles {
+    display: inline-flex;
+    max-width: 100%;
+    flex-wrap: nowrap;
+    gap: 4px;
+}
+
+.administration-users-roles--wrap {
+    flex-wrap: wrap;
+}
+
+.administration-users-scope {
+    display: grid;
+    min-width: 0;
+    justify-items: start;
+    gap: 3px;
+}
+
+.administration-users-scope__area.ant-typography {
+    max-width: 100%;
+    font-size: 12px;
+}
+
+.administration-users-muted {
+    color: #8792a8;
+    font-size: 12.5px;
+}
+
+.administration-users-activity {
+    color: #344054;
+    font-size: 12.5px;
+    font-variant-numeric: tabular-nums;
+    text-decoration: underline dotted #b4bccb;
+    text-underline-offset: 3px;
+}
+
+.administration-users-empty {
+    display: grid;
+    justify-items: center;
+    gap: 6px;
+    padding: 28px 16px;
+    color: #5b6478;
+    text-align: center;
+}
+
+.administration-users-empty .ant-skeleton {
+    width: min(420px, 100%);
+    margin-bottom: 8px;
+    text-align: left;
+}
+
+.administration-users-empty strong,
+.administration-users-empty .ant-empty-description strong {
+    display: block;
+    color: #172033;
+    font-size: 14px;
+    font-weight: 760;
+}
+
+.administration-users-empty .ant-empty-description span span {
+    display: block;
+    margin-top: 2px;
+    font-size: 12.5px;
+}
+
+.administration-users-visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+}
+
+.administration-users-footer {
+    display: flex;
+    min-height: 44px;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    border-top: 1px solid #d9e0ec;
+    padding: 8px 16px;
+    background: rgba(255, 255, 255, 0.98);
+    color: #5b6478;
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+}
+
+@keyframes administration-users-refresh-pulse {
+    50% {
+        transform: scale(0.76);
+        opacity: 0.58;
+    }
+}
+
+@keyframes administration-users-new-row {
+    0%,
+    60% {
+        background: #e7f8ef;
+    }
+
+    100% {
+        background: transparent;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .administration-users-refresh-status__dot {
+        animation: none;
+        transform: none;
+    }
+
+    .administration-users-table .ant-table-tbody > tr.administration-users-table__row--new > td {
+        animation: none;
+        background: #e7f8ef;
+    }
+}
+
+@media (max-width: 1536px), (max-height: 800px) {
+    .administration-users-page-header {
+        margin-bottom: 10px;
+    }
+
+    .administration-users-toolbar {
+        gap: 8px;
+        padding: 8px 12px;
+    }
+}
+
+@media (max-width: 720px) {
+    .administration-users-page-header {
+        display: grid;
+        gap: 10px;
+    }
+
+    .administration-users-page-header .global-home-page-header__actions {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+        width: 100%;
+    }
+
+    .administration-users-page-header .global-home-page-header__actions button {
+        min-width: 0;
+        justify-content: center;
+    }
+
+    .administration-users-toolbar,
+    .administration-users-footer {
+        padding-right: 12px;
+        padding-left: 12px;
+    }
+
+    .administration-users-search.ant-input-affix-wrapper {
+        max-width: none;
+        flex-basis: 100%;
+    }
+
+    .administration-users-toolbar__query > .ant-btn {
+        flex: 1 1 0;
+    }
+
+    .administration-users-toolbar__density.ant-btn {
+        margin-left: 0;
+    }
+}

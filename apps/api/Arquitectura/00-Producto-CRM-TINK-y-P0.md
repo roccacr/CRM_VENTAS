@@ -196,9 +196,9 @@ Conteos esperados de `SQL/002_identity_seed_p0_s1.sql`:
 
 | Tabla | Conteo esperado |
 | --- | --- |
-| `sec_permission` | 17 |
-| `sec_role` | 8 |
-| `sec_role_permission` | 80 |
+| `sec_permission` | 8 |
+| `sec_role` | 5 |
+| `sec_role_permission` | 24 |
 | `sec_org_unit` | 6 |
 | `int_external_system` | 3 |
 | `audit_security_event` | 4 |

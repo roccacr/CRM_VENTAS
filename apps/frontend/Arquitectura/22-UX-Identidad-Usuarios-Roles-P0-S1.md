@@ -7,7 +7,7 @@ La primera experiencia del frontend no debe ser ventas ni leads.
 La primera compuerta visual de P0-S1 es identidad:
 
 ```txt
-usuarios -> autenticacion -> areas/equipos -> roles -> permisos -> luego leads
+usuarios -> autenticacion -> areas operativas/modulos -> roles -> permisos -> luego leads
 ```
 
 Motivo: la UI no puede construir pantallas comerciales serias si antes no sabe quien entra, que rol tiene y que permisos efectivos devuelve el API.
@@ -19,7 +19,7 @@ Esta fase solo prepara la experiencia minima para:
 - mostrar que el proyecto esta en compuerta de identidad;
 - alinear la UI con Microsoft 365 / BFF;
 - definir usuarios internos;
-- definir estructura minima de areas/equipos;
+- definir estructura minima de areas operativas/modulos;
 - definir roles iniciales;
 - definir permisos visibles basicos;
 - evitar pantallas de leads antes de tiempo.
@@ -49,7 +49,7 @@ La pantalla inicial puede mostrar:
 
 - nombre del sistema;
 - estado de fase: identidad y acceso;
-- pasos esperados: usuarios, autenticacion, areas/equipos, roles, permisos;
+- pasos esperados: usuarios, autenticacion, areas operativas/modulos, roles, permisos;
 - mensaje claro de que leads viene despues.
 
 No debe mostrar:
@@ -82,9 +82,6 @@ Los roles visibles de referencia son:
 ```txt
 owner
 jefe_general
-gerente
-supervisor
-jefe_area
 subjefe_area
 vendedor
 soporte_sistemas
@@ -99,14 +96,13 @@ La UI futura debe poder mostrar la estructura de la empresa como arbol.
 Ejemplo:
 
 ```txt
-jefe_general
-├── jefe_formalizacion
-│   └── empleados
-├── jefe_contabilidad
-│   └── empleados
-└── jefe_mercadeo
-    └── subjefe_mercadeo
-        └── empleados
+sistema
+├── owner
+└── areas operativas
+    ├── ventas
+    ├── formalizacion
+    ├── contabilidad
+    └── mercadeo
 ```
 
 La pantalla no debe confundir rol con area.
@@ -115,26 +111,26 @@ Regla visual:
 
 ```txt
 rol = accion permitida
-area/equipo = alcance de datos y personas
+area operativa/modulo = donde aplica esa accion
 ```
 
-El jefe general puede ver todas las areas solo si el API devuelve ese alcance.
+El jefe general puede ver todas las areas solo si el API devuelve esas areas asignadas o un alcance global aprobado.
 
-Un jefe de area o subjefe solo debe ver lo que el API indique como alcance efectivo.
+Un subjefe solo debe ver lo que el API indique como alcance efectivo.
 
-Un mismo usuario puede tener varias areas asignadas. La UI debe permitir mostrar esa situacion sin duplicar personas.
+Un mismo usuario puede tener varias areas operativas asignadas. La UI debe permitir mostrar esa situacion sin duplicar personas.
 
 Ejemplo:
 
 ```txt
 Maria
-rol: jefe_area
-areas: mercadeo, formalizacion
+rol: jefe_general
+areas operativas: mercadeo, formalizacion
 ```
 
 En ese caso, Maria puede aparecer como responsable en mas de una rama del arbol organizacional, pero sigue siendo una sola usuaria.
 
-La UI debe evitar textos o pantallas que den a entender que un usuario solo puede pertenecer a una unica area.
+La UI debe evitar textos o pantallas que den a entender que un usuario solo puede pertenecer a una unica area operativa.
 
 ## Criterio de salida
 
@@ -144,6 +140,6 @@ Se puede volver al flujo visual de leads cuando:
 - el documento API `31-Contrato-Identidad-y-Permisos-P0-S1.md` este aprobado;
 - exista contrato minimo de sesion/usuario actual;
 - existan roles iniciales aprobados;
-- exista estructura minima de areas/equipos aprobada;
+- exista estructura minima de areas operativas/modulos aprobada;
 - existan permisos minimos aprobados;
 - el frontend sepa consumir permisos efectivos sin guardar tokens.

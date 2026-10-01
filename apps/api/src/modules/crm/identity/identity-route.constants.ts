@@ -15,6 +15,27 @@ export const IDENTITY_SESSION_ROUTE = "session";
 /** Ruta relativa para consultar el perfil autenticado actual. */
 export const IDENTITY_ME_ROUTE = "me";
 
+/** Ruta relativa para administrar el directorio de usuarios del sistema. */
+export const IDENTITY_USERS_ROUTE = "users";
+
+/** Ruta relativa para administrar roles del sistema. */
+export const IDENTITY_ROLES_ROUTE = "roles";
+
+/** Ruta relativa para leer catalogo completo de roles, modulos, permisos y auditoria. */
+export const IDENTITY_SECURITY_CATALOG_ROUTE = `${IDENTITY_ROLES_ROUTE}/security-catalog`;
+
+/** Ruta relativa para administrar un rol por codigo estable. */
+export const IDENTITY_ROLE_DETAIL_ROUTE = `${IDENTITY_ROLES_ROUTE}/:roleCode`;
+
+/** Ruta relativa para administrar permisos de un rol por codigo estable. */
+export const IDENTITY_ROLE_PERMISSIONS_ROUTE = `${IDENTITY_ROLE_DETAIL_ROUTE}/permissions`;
+
+/** Ruta relativa para consultar detalle de un usuario por publicId. */
+export const IDENTITY_USER_DETAIL_ROUTE = `${IDENTITY_USERS_ROUTE}/:userPublicId`;
+
+/** Ruta relativa para administrar roles, modulos y overrides de un usuario. */
+export const IDENTITY_USER_ACCESS_ROUTE = `${IDENTITY_USER_DETAIL_ROUTE}/access`;
+
 /** Ruta relativa para servir la foto cacheada del usuario autenticado. */
 export const IDENTITY_ME_PHOTO_ROUTE = `${IDENTITY_ME_ROUTE}/photo`;
 

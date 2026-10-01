@@ -125,6 +125,33 @@ const frontendOriginSchema = z.url().superRefine((value, context) => {
 });
 
 /**
+ * Allowlist extra de origins, separada por comas.
+ *
+ * Cada origen pasa por la misma regla que `FRONTEND_ORIGIN`: sin path, query
+ * ni slash final. Un valor inválido rechaza toda la variable. Un hueco entre
+ * comas se ignora. No admite `*`.
+ */
+const frontendAllowedOriginsSchema = z.string().superRefine((value, context) => {
+    for (const origin of value.split(",")) {
+        const normalizedOrigin = origin.trim();
+
+        if (!normalizedOrigin) {
+            continue;
+        }
+
+        const result = frontendOriginSchema.safeParse(normalizedOrigin);
+
+        if (!result.success) {
+            context.addIssue({
+                code: "custom",
+                message: "FRONTEND_ALLOWED_ORIGINS debe listar origins exactos separados por coma, sin path, query ni slash final.",
+            });
+            return;
+        }
+    }
+});
+
+/**
  * Divide TRUSTED_PROXY_IPS preservando una sola regla para Zod y main.ts.
  */
 const splitTrustedProxyEntries = (value: string): string[] =>
@@ -267,6 +294,7 @@ const envSchema = z
         PORT: tcpPortSchema.default(3000),
         LOG_LEVEL: z.enum(["fatal", "error", "warn", "info", "debug", "trace", "silent"]).default("info"),
         FRONTEND_ORIGIN: frontendOriginSchema,
+        FRONTEND_ALLOWED_ORIGINS: frontendAllowedOriginsSchema.optional(),
         COOKIE_SECRET: z.string().min(MIN_RUNTIME_SECRET_LENGTH),
         AUDIT_HASH_SECRET: z.string().min(MIN_RUNTIME_SECRET_LENGTH),
         AUTH_TOKEN_HASH_SECRET: z.string().min(MIN_RUNTIME_SECRET_LENGTH),

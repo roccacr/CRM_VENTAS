@@ -135,7 +135,7 @@ CREATE TABLE IF NOT EXISTS sec_local_password_reset_token (
 
 CREATE TABLE IF NOT EXISTS sec_role (
   id_role BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT 'Identificador interno del rol.',
-  code_role VARCHAR(80) NOT NULL COMMENT 'Codigo estable del rol, por ejemplo owner, jefe_area o vendedor.',
+  code_role VARCHAR(80) NOT NULL COMMENT 'Codigo estable del rol, por ejemplo owner, jefe_general, subjefe_area, ventas, mercadeo, formalizacion o contabilidad.',
   name_role VARCHAR(120) NOT NULL COMMENT 'Nombre visible del rol para administracion.',
   description_role VARCHAR(255) NULL COMMENT 'Explicacion funcional del rol.',
   status_role VARCHAR(40) NOT NULL DEFAULT 'active' COMMENT 'Estado del rol: active o inactive.',
@@ -148,7 +148,7 @@ CREATE TABLE IF NOT EXISTS sec_role (
 ) ENGINE=InnoDB
   DEFAULT CHARSET=utf8mb4
   COLLATE=utf8mb4_unicode_ci
-  COMMENT='Catalogo de roles generales sin nombres de areas.';
+  COMMENT='Catalogo de roles administrativos y operativos preestablecidos.';
 
 CREATE TABLE IF NOT EXISTS sec_permission (
   id_permission BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT 'Identificador interno del permiso atomico.',
@@ -207,11 +207,11 @@ CREATE TABLE IF NOT EXISTS sec_role_permission (
   COMMENT='Permisos incluidos por cada rol.';
 
 CREATE TABLE IF NOT EXISTS sec_org_unit (
-  id_org_unit BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT 'Identificador interno del area o equipo.',
-  public_id_org_unit CHAR(26) NOT NULL COMMENT 'Identificador publico del area o equipo usado por API y frontend.',
-  parent_org_unit_id_org_unit BIGINT UNSIGNED NULL COMMENT 'Area padre para construir la jerarquia organizacional.',
-  code_org_unit VARCHAR(80) NOT NULL COMMENT 'Codigo estable del area, por ejemplo ventas o mercadeo.',
-  name_org_unit VARCHAR(160) NOT NULL COMMENT 'Nombre visible del area o equipo.',
+  id_org_unit BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT 'Identificador interno del area operativa o modulo.',
+  public_id_org_unit CHAR(26) NOT NULL COMMENT 'Identificador publico del area operativa usado por API y frontend.',
+  parent_org_unit_id_org_unit BIGINT UNSIGNED NULL COMMENT 'Area padre para construir la jerarquia operativa.',
+  code_org_unit VARCHAR(80) NOT NULL COMMENT 'Codigo estable del area operativa, por ejemplo ventas o mercadeo.',
+  name_org_unit VARCHAR(160) NOT NULL COMMENT 'Nombre visible del area operativa o modulo.',
   status_org_unit VARCHAR(40) NOT NULL DEFAULT 'active' COMMENT 'Estado del area: active o inactive.',
   sort_order_org_unit INT UNSIGNED NOT NULL DEFAULT 0 COMMENT 'Orden visual dentro del mismo nivel de la jerarquia.',
   created_at_org_unit DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) COMMENT 'Fecha y hora de creacion del area.',
@@ -225,20 +225,20 @@ CREATE TABLE IF NOT EXISTS sec_org_unit (
 ) ENGINE=InnoDB
   DEFAULT CHARSET=utf8mb4
   COLLATE=utf8mb4_unicode_ci
-  COMMENT='Areas y equipos de la empresa en estructura de arbol.';
+  COMMENT='Areas operativas y modulos de la empresa en estructura de arbol.';
 
 CREATE TABLE IF NOT EXISTS sec_user_org_unit (
-  id_user_org_unit BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT 'Identificador interno de la asignacion usuario-area.',
-  user_id_user_org_unit BIGINT UNSIGNED NOT NULL COMMENT 'Usuario asignado al area o equipo.',
-  org_unit_id_user_org_unit BIGINT UNSIGNED NOT NULL COMMENT 'Area o equipo asignado al usuario.',
-  membership_code_user_org_unit VARCHAR(40) NOT NULL COMMENT 'Tipo de participacion: member, leader, assistant_leader o supervisor.',
+  id_user_org_unit BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT 'Identificador interno de la asignacion usuario-area operativa.',
+  user_id_user_org_unit BIGINT UNSIGNED NOT NULL COMMENT 'Usuario asignado al area operativa.',
+  org_unit_id_user_org_unit BIGINT UNSIGNED NOT NULL COMMENT 'Area operativa o modulo asignado al usuario.',
+  membership_code_user_org_unit VARCHAR(40) NOT NULL COMMENT 'Tipo de participacion: member, leader, assistant_leader o supervisor legacy.',
   scope_code_user_org_unit VARCHAR(40) NOT NULL COMMENT 'Alcance: self, assigned, own_area, own_area_and_children o all_areas.',
-  status_user_org_unit VARCHAR(40) NOT NULL DEFAULT 'active' COMMENT 'Estado de la asignacion usuario-area: active o inactive.',
+  status_user_org_unit VARCHAR(40) NOT NULL DEFAULT 'active' COMMENT 'Estado de la asignacion usuario-area operativa: active o inactive.',
   active_key_user_org_unit TINYINT AS (CASE WHEN status_user_org_unit = 'active' THEN 1 ELSE NULL END) STORED COMMENT 'Clave generada para permitir solo una asignacion activa y conservar multiples historicos inactivos.',
-  assigned_at_user_org_unit DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) COMMENT 'Fecha y hora de asignacion al area.',
-  assigned_by_user_id_user_org_unit BIGINT UNSIGNED NULL COMMENT 'Usuario que asigno el area.',
-  revoked_at_user_org_unit DATETIME(3) NULL COMMENT 'Fecha y hora de revocacion de la asignacion al area.',
-  revoked_by_user_id_user_org_unit BIGINT UNSIGNED NULL COMMENT 'Usuario que revoco la asignacion al area.',
+  assigned_at_user_org_unit DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) COMMENT 'Fecha y hora de asignacion al area operativa.',
+  assigned_by_user_id_user_org_unit BIGINT UNSIGNED NULL COMMENT 'Usuario que asigno el area operativa.',
+  revoked_at_user_org_unit DATETIME(3) NULL COMMENT 'Fecha y hora de revocacion de la asignacion al area operativa.',
+  revoked_by_user_id_user_org_unit BIGINT UNSIGNED NULL COMMENT 'Usuario que revoco la asignacion al area operativa.',
   PRIMARY KEY (id_user_org_unit),
   UNIQUE KEY uq_sec_user_org_unit_active (user_id_user_org_unit, org_unit_id_user_org_unit, membership_code_user_org_unit, scope_code_user_org_unit, active_key_user_org_unit),
   KEY ix_sec_user_org_unit_org_status (org_unit_id_user_org_unit, status_user_org_unit),

@@ -57,7 +57,7 @@ export const isValidCsrfTokenFormat = (token: string): boolean => CSRF_TOKEN_FOR
 
 // CORS del BFF. `credentials: true` se configura en bootstrap; por eso aqui
 // solo viven los metodos y headers permitidos.
-export const CORS_ALLOWED_METHODS = ["GET", "POST", "OPTIONS"];
+export const CORS_ALLOWED_METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"];
 export const CORS_ALLOWED_HEADERS = ["Content-Type", CSRF_HEADER_NAME, CSRF_HEADER_NAME_LOWERCASE];
 
 // OpenAPI autorizado solo para identidad. No mover estos valores a controllers:

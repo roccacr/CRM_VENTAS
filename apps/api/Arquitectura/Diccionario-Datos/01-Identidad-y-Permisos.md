@@ -45,7 +45,7 @@ Reglas de negocio:
 - no guarda password;
 - no guarda id de NetSuite;
 - no guarda id de Odoo;
-- no guarda supervisor fijo;
+- no guarda jefe, subjefe ni supervisor fijo dentro de `sec_user`;
 - el estado se guarda como palabra, no como numero;
 - `permission_version_user` cambia cuando cambian roles, areas, permisos o bloqueo del usuario.
 
@@ -68,7 +68,7 @@ Relaciones:
 | `sec_auth_identity` | 1:N | Una persona puede tener Microsoft y login local. |
 | `sec_auth_session` | 1:N | Una persona puede tener sesiones backend activas o revocadas. |
 | `sec_user_role` | 1:N | Una persona puede tener varios roles. |
-| `sec_user_org_unit` | 1:N | Una persona puede estar en varias areas/equipos. |
+| `sec_user_org_unit` | 1:N | Una persona puede estar en varias areas operativas/modulos. |
 | `sec_user_permission_override` | 1:N | Una persona puede tener permisos agregados o quitados. |
 | `int_user_external_identity` | 1:N | Una persona puede tener ids externos por sistema. |
 | `audit_security_event` | 1:N | La persona puede ejecutar o recibir eventos de seguridad. |
@@ -177,19 +177,17 @@ Proposito: catalogo de roles generales.
 Reglas:
 
 - el rol no debe incluir el nombre del area;
-- correcto: `jefe_area`;
+- correcto: `jefe_general`, `subjefe_area`, `vendedor`;
 - incorrecto: `jefe_mercadeo`;
-- el rol define acciones base, no alcance geografico/organizacional.
+- el rol define acciones base, no el modulo donde se pueden aplicar.
+- el area operativa asignada define en que modulos/contextos puede operar el usuario.
 
 Roles iniciales:
 
 ```txt
 owner
 jefe_general
-gerente
-jefe_area
 subjefe_area
-supervisor
 vendedor
 soporte_sistemas
 ```
@@ -236,7 +234,7 @@ Reglas:
 
 ## sec_org_unit
 
-Proposito: areas/equipos de la empresa.
+Proposito: areas operativas/modulos de la empresa.
 
 Ejemplos iniciales:
 
@@ -254,11 +252,12 @@ Reglas:
 - se guarda en forma de arbol;
 - un area puede tener subareas;
 - desactivar un area no borra historico;
-- el area no define permisos por si sola.
+- el area no define permisos por si sola;
+- el area asignada define los modulos que el usuario puede seleccionar al iniciar sesion.
 
 ## sec_user_org_unit
 
-Proposito: definir donde puede actuar un usuario.
+Proposito: definir en que areas operativas/modulos puede actuar un usuario.
 
 Ejemplo:
 
@@ -269,9 +268,10 @@ Maria -> formalizacion -> leader -> own_area_and_children
 
 Reglas:
 
-- una persona puede estar en varias areas;
-- una persona puede ser jefa en un area y miembro normal en otra;
-- supervisar depende de area + rol + alcance;
+- una persona puede estar en varias areas operativas;
+- una persona puede ser jefatura en un area y miembro normal en otra;
+- supervisar depende de rol + area operativa + alcance;
+- cada area operativa activa equivale a un modulo/contexto que el frontend puede ofrecer;
 - no se usa `manager_user_id` dentro de `sec_user`.
 
 ## sec_user_permission_override

@@ -213,6 +213,38 @@ export interface SecUserPermissionOverrideTable {
     revoked_at_user_permission_override: DateTime | null;
 }
 
+/**
+ * Catálogo de sistemas externos enlazados al CRM.
+ *
+ * No guarda secretos ni tokens. Solo identifica el sistema, por ejemplo el CRM legado.
+ */
+export interface IntExternalSystemTable {
+    id_external_system: GeneratedNumber;
+    code_external_system: string;
+    name_external_system: string;
+    status_external_system: string;
+    created_at_external_system: DateTime;
+    updated_at_external_system: DateTime;
+}
+
+/**
+ * Vínculo entre un usuario CRM y un id externo.
+ *
+ * `metadata` queda como texto. Este mapa no lo interpreta ni lo usa para autorizar.
+ */
+export interface IntUserExternalIdentityTable {
+    id_user_external_identity: GeneratedNumber;
+    user_id_user_external_identity: number;
+    external_system_id_user_external_identity: number;
+    external_user_id_user_external_identity: string;
+    external_username_user_external_identity: string | null;
+    status_user_external_identity: string;
+    metadata_user_external_identity: string | null;
+    created_at_user_external_identity: DateTime;
+    updated_at_user_external_identity: DateTime;
+    deleted_at_user_external_identity: DateTime | null;
+}
+
 export interface AuditSecurityEventTable {
     id_security_event: GeneratedNumber;
     public_id_security_event: string;
@@ -242,6 +274,8 @@ export interface CrmDatabase {
     sec_org_unit: SecOrgUnitTable;
     sec_user_org_unit: SecUserOrgUnitTable;
     sec_user_permission_override: SecUserPermissionOverrideTable;
+    int_external_system: IntExternalSystemTable;
+    int_user_external_identity: IntUserExternalIdentityTable;
     audit_security_event: AuditSecurityEventTable;
 }
 

@@ -356,9 +356,14 @@ Access-Control-Allow-Origin: *
 Reglas:
 
 - origin allowlist exacta del frontend;
+- `FRONTEND_ORIGIN` define el origin canonico usado por redirects; `FRONTEND_ALLOWED_ORIGINS` puede agregar origins exactos adicionales para pruebas locales por IP de red, sin wildcard ni reflection automatica;
 - `credentials: true` cuando se usen cookies;
 - no reflejar automaticamente el `Origin` recibido;
 - no habilitar origenes comodin por ambiente.
+
+En `NODE_ENV=development`, las cookies BFF pueden emitirse sin atributo `Secure`
+para permitir pruebas HTTP desde IP local (`http://192.168...`). En `test` y
+`production` deben conservar `Secure`.
 
 ## CSRF
 

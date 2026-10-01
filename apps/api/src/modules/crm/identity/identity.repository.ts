@@ -2,10 +2,12 @@ import { Inject, Injectable } from "@nestjs/common";
 
 import type { EncryptedMicrosoftCache } from "../../../common/security/microsoft-msal-cache-crypto.service.js";
 import type { IdentityActiveSession, IdentityProfile } from "./identity.types.js";
+import type { SystemUserDirectoryItem, SystemUsersListResponse } from "./identity.types.js";
 import { IdentityLocalRepository } from "./identity-local.repository.js";
 import { IdentityMicrosoftRepository } from "./identity-microsoft.repository.js";
 import { IdentityProfileRepository } from "./identity-profile.repository.js";
 import { IdentitySessionRepository } from "./identity-session.repository.js";
+import { type CreateSystemUserInput, IdentityUserDirectoryRepository, type ListSystemUsersInput } from "./identity-user-directory.repository.js";
 
 export type LocalLoginIdentity = {
     authIdentityId: number;
@@ -73,7 +75,7 @@ export type RotateRefreshSessionResult =
           userId: number;
       }
     | {
-          status: "expired" | "invalid" | "not_found" | "permission_stale" | "reused";
+          status: "expired" | "invalid" | "not_found" | "reused";
           sessionPublicId?: string;
           userId?: number;
       };
@@ -137,18 +139,20 @@ export interface MicrosoftIdentityInput {
  *
  * Mantiene el contrato que consume `IdentityService`, pero delega SQL concreto
  * a repositorios internos por responsabilidad: perfil/permisos, sesiones,
- * credenciales locales y Microsoft 365.
+ * credenciales locales, Microsoft 365 y el directorio administrativo.
  */
 @Injectable()
 export class IdentityRepository {
     /**
      * Inyecta repositorios internos por responsabilidad.
      */
+    // eslint-disable-next-line max-params -- Fachada de persistencia: cada dependencia representa un repositorio interno existente.
     constructor(
         @Inject(IdentityProfileRepository) private readonly profiles: IdentityProfileRepository,
         @Inject(IdentitySessionRepository) private readonly sessions: IdentitySessionRepository,
         @Inject(IdentityLocalRepository) private readonly local: IdentityLocalRepository,
         @Inject(IdentityMicrosoftRepository) private readonly microsoft: IdentityMicrosoftRepository,
+        @Inject(IdentityUserDirectoryRepository) private readonly userDirectory: IdentityUserDirectoryRepository,
     ) {}
 
     /**
@@ -310,5 +314,31 @@ export class IdentityRepository {
      */
     async revokeSessionByTokenHash(sessionTokenHash: string, ipAddress?: string, userAgent?: string): Promise<void> {
         await this.sessions.revokeSessionByTokenHash(sessionTokenHash, ipAddress, userAgent);
+    }
+
+    /**
+     * Delega el directorio.
+     *
+     * Este repositorio no autoriza. Quien exige `user.view_list` es el servicio.
+     */
+    async listSystemUsers(input: ListSystemUsersInput): Promise<SystemUsersListResponse> {
+        return this.userDirectory.list(input);
+    }
+
+    /**
+     * Detalle por `publicId`.
+     *
+     * Null significa que no hay usuario visible, no un error de SQL. El servicio
+     * lo convierte en 404 después de comprobar el permiso.
+     */
+    async findSystemUserByPublicId(currentUserPublicId: string, userPublicId: string): Promise<SystemUserDirectoryItem | null> {
+        return this.userDirectory.findByPublicId(currentUserPublicId, userPublicId);
+    }
+
+    /**
+     * Crea usuario administrativo y devuelve su ficha pública.
+     */
+    async createSystemUser(input: CreateSystemUserInput): Promise<SystemUserDirectoryItem> {
+        return this.userDirectory.create(input);
     }
 }

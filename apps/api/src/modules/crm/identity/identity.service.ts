@@ -1,10 +1,11 @@
-import { BadRequestException, ConflictException, Inject, Injectable, UnauthorizedException } from "@nestjs/common";
+import { BadRequestException, ConflictException, ForbiddenException, Inject, Injectable, NotFoundException, UnauthorizedException } from "@nestjs/common";
 import { argon2id, hash as hashArgon2Password, verify as verifyArgon2Hash } from "argon2";
 
 import { normalizeCaseInsensitiveIdentifier } from "../../../common/security/identifier-normalization.js";
 import type { CompleteLocalResetDto, LocalLoginDto, RequestLocalResetDto } from "./dto/local-auth.dto.js";
+import type { CreateSystemUserAccessMethod, CreateSystemUserDto, ListSystemUsersQueryDto } from "./dto/system-users.dto.js";
 import { type FailedLocalLoginRecord, IdentityRepository } from "./identity.repository.js";
-import type { ActiveSessionsResponse, IdentityProfile, SessionResponse } from "./identity.types.js";
+import type { ActiveSessionsResponse, IdentityProfile, SessionResponse, SystemUserDirectoryItem, SystemUsersListResponse } from "./identity.types.js";
 import { IdentityAuditRecorder } from "./identity-audit-recorder.service.js";
 import { MICROSOFT_PROVIDER_CODE } from "./identity-microsoft.constants.js";
 import { IdentityMicrosoftSessionService, type MicrosoftLoginStartResult } from "./identity-microsoft-session.service.js";
@@ -22,6 +23,11 @@ const ARGON2_DUMMY_PASSWORD = "crm-tink-dummy-password-for-timing-only";
 const ARGON2_DUMMY_HASH = "$argon2id$v=19$m=19456,p=1,t=2$x4LIsYBb4u+XOPFMuBxIRw$mDnYVwKK/1vyxZmiLGl14UGszNfdgkG5b3ToVx0YB94";
 const COMMON_LOCAL_PASSWORDS = new Set(["password", "password123", "password1234", "123456789", "1234567890", "123456789012", "qwerty123", "qwerty123456", "roccacr123", "roccacr1234", "crm123456", "crm123456789", "admin123456", "admin123456789"]);
 const LOCAL_PROVIDER_CODE = "local";
+const USER_VIEW_LIST_PERMISSION = "user.view_list";
+const USER_VIEW_DETAIL_PERMISSION = "user.view_detail";
+const USER_CREATE_PERMISSION = "user.create";
+const SYSTEM_USERS_DEFAULT_LIMIT = 25;
+const SYSTEM_USERS_MAX_LIMIT = 100;
 export const MICROSOFT_ACCOUNT_NOT_ASSIGNED_MESSAGE = "Cuenta Microsoft no asignada al CRM.";
 export const MICROSOFT_ACCOUNT_NOT_AUTHORIZED_MESSAGE = "Usuario CRM no autorizado para iniciar sesión.";
 
@@ -43,6 +49,22 @@ interface LocalLoginFailureContext {
     normalizedEmail: string;
     userAgent: string | undefined;
 }
+
+/**
+ * Tope de la página del directorio.
+ *
+ * El DTO ya limita 1–100. Esta función vuelve a cerrar el rango por si el
+ * servicio recibe el valor sin pasar por el pipe.
+ */
+const normalizeSystemUsersLimit = (value: unknown): number => {
+    const numericLimit = value === undefined ? SYSTEM_USERS_DEFAULT_LIMIT : Number(value);
+
+    if (!Number.isInteger(numericLimit) || numericLimit < 1 || numericLimit > SYSTEM_USERS_MAX_LIMIT) {
+        throw new BadRequestException("Limite de usuarios invalido.");
+    }
+
+    return numericLimit;
+};
 
 /**
  * Servicio de aplicacion para el corte aprobado de identidad.
@@ -173,6 +195,77 @@ export class IdentityService {
     }
 
     /**
+     * Lista usuarios sin exponer ids internos.
+     *
+     * Exige `user.view_list` en el API. El permiso de la pantalla no reemplaza esta compuerta.
+     */
+    async listSystemUsers(sessionToken: string | undefined, query: ListSystemUsersQueryDto): Promise<SystemUsersListResponse> {
+        const profile = await this.getCurrentUser(sessionToken);
+        this.assertCan(profile, USER_VIEW_LIST_PERMISSION);
+
+        return this.repository.listSystemUsers({
+            currentUserPublicId: profile.user.publicId,
+            cursor: query.cursor,
+            direction: query.direction,
+            limit: normalizeSystemUsersLimit(query.limit),
+            search: query.search,
+            sort: query.sort,
+            status: query.status,
+        });
+    }
+
+    /**
+     * Detalle administrativo de un usuario.
+     *
+     * Exige `user.view_detail`. No reutiliza el permiso de la lista: ver el
+     * directorio no autoriza abrir una ficha.
+     */
+    async getSystemUserDetail(sessionToken: string | undefined, userPublicId: string): Promise<SystemUserDirectoryItem> {
+        const profile = await this.getCurrentUser(sessionToken);
+        this.assertCan(profile, USER_VIEW_DETAIL_PERMISSION);
+
+        const user = await this.repository.findSystemUserByPublicId(profile.user.publicId, userPublicId);
+
+        if (!user) {
+            throw new NotFoundException("Usuario no encontrado.");
+        }
+
+        return user;
+    }
+
+    /**
+     * Crea un usuario interno del CRM.
+     *
+     * La contraseña no viaja aquí. El alta deja identidad local pendiente para
+     * activación/reset controlado y Microsoft se vincula después por OIDC si el
+     * correo verificado coincide.
+     */
+    async createSystemUser(sessionToken: string | undefined, payload: CreateSystemUserDto, ipAddress?: string, userAgent?: string): Promise<SystemUserDirectoryItem> {
+        const profile = await this.getCurrentUser(sessionToken);
+        this.assertCan(profile, USER_CREATE_PERMISSION);
+        const orgUnitCodes = [...new Set((payload.orgUnitCodes ?? (payload.orgUnitCode ? [payload.orgUnitCode] : [])).map((orgUnitCode) => orgUnitCode.trim()).filter((orgUnitCode) => orgUnitCode.length > 0))];
+        const roleCodes = [...new Set((payload.roleCodes ?? [payload.roleCode]).map((roleCode) => roleCode.trim()).filter((roleCode) => roleCode.length > 0))];
+        const defaultAccessMethods: readonly CreateSystemUserAccessMethod[] = ["microsoft", "local"];
+        const accessMethods = [...new Set(payload.accessMethods && payload.accessMethods.length > 0 ? payload.accessMethods : defaultAccessMethods)];
+
+        return this.repository.createSystemUser({
+            accessMethods,
+            actorPublicId: profile.user.publicId,
+            displayName: payload.displayName.trim(),
+            email: payload.email.trim(),
+            externalReferences: payload.externalReferences ?? [],
+            initialStatus: payload.initialStatus,
+            ipAddress,
+            normalizedEmail: normalizeCaseInsensitiveIdentifier(payload.email),
+            orgUnitCodes,
+            reason: payload.reason.trim(),
+            roleCode: roleCodes[0] ?? payload.roleCode.trim(),
+            roleCodes,
+            userAgent,
+        });
+    }
+
+    /**
      * Revoca una sesion activa propia. La operacion es idempotente frente a una
      * sesion objetivo inexistente, pero exige que la sesion actual sea valida.
      */
@@ -210,10 +303,6 @@ export class IdentityService {
             nextSessionTokenHash: nextSession.sessionTokenHash,
             refreshTokenHash,
         });
-
-        if (rotation.status === "permission_stale") {
-            throw new ConflictException("La sesion requiere revalidacion de permisos.");
-        }
 
         if (rotation.status === "reused") {
             await this.audit.recordRefreshReuse(rotation.userId, rotation.sessionPublicId, ipAddress, userAgent);
@@ -489,6 +578,12 @@ export class IdentityService {
     private assertPermissionVersionCurrent(profile: IdentityProfile): void {
         if (profile.session.permissionVersion !== profile.user.permissionVersion) {
             throw new ConflictException("La sesion requiere revalidacion de permisos.");
+        }
+    }
+
+    private assertCan(profile: IdentityProfile, permissionCode: string): void {
+        if (!profile.permissions.some((permission) => permission.code === permissionCode && permission.effect === "allow")) {
+            throw new ForbiddenException("Permiso insuficiente.");
         }
     }
 

@@ -101,8 +101,8 @@ Ejemplos:
 
 ```txt
 owner
-gerente
-supervisor
+jefe_general
+subjefe_area
 vendedor
 soporte_sistemas
 ```
@@ -116,30 +116,28 @@ Un permiso representa una capacidad puntual.
 Ejemplos:
 
 ```txt
-lead.create
-lead.view_assigned
-lead.view_team
-lead.edit_assigned
-lead.change_status
-user.manage
-role.assign
+user.view_list
+user.view_detail
+user.create
+user.update
+user.activate
+user.deactivate
 ```
 
 Regla: el rol agrupa permisos, pero el backend decide el permiso efectivo.
 
-### Area organizacional
+### Area operativa / modulo
 
-Un area organizacional representa una parte real de la empresa.
+Un area operativa representa una parte real de la empresa y tambien actua como modulo/contexto visible para el usuario.
 
 Ejemplos:
 
 ```txt
-empresa
-sistemas
 ventas
 formalizacion
 contabilidad
 mercadeo
+sistemas
 ```
 
 El area no es un rol.
@@ -148,29 +146,29 @@ Regla:
 
 ```txt
 rol = que acciones puede ejecutar
-area = sobre que grupo/personas/datos tiene alcance
+area operativa = en que modulo/contexto puede aplicar esas acciones
 ```
 
 Ejemplo:
 
 ```txt
-usuario A tiene rol jefe_area
-usuario A esta asignado al area formalizacion
-resultado: puede ejecutar acciones de jefe solo sobre formalizacion y sus subareas
+usuario A tiene rol jefe_general
+usuario A esta asignado a las areas ventas y formalizacion
+resultado: puede ejecutar acciones de jefatura solo sobre ventas y formalizacion
 ```
 
-Un mismo usuario puede tener varios vinculos de area al mismo tiempo.
+Un mismo usuario puede tener varios vinculos de area operativa al mismo tiempo.
 
 Ejemplo:
 
 ```txt
-usuario B tiene rol jefe_area
-usuario B esta asignado al area mercadeo con alcance own_area_and_children
-usuario B esta asignado al area formalizacion con alcance own_area_and_children
-resultado: puede ejecutar acciones de jefe sobre mercadeo y formalizacion
+usuario B tiene rol vendedor
+usuario B esta asignado al area ventas con alcance self
+usuario B esta asignado al area mercadeo con alcance self
+resultado: puede cambiar entre esos modulos al iniciar sesion y operar solo con permisos de vendedor
 ```
 
-Esto no significa que el usuario tenga dos roles distintos. Significa que tiene el mismo rol con mas de un alcance organizacional.
+Esto no significa que el usuario tenga dos roles distintos. Significa que tiene el mismo rol con mas de un alcance operativo.
 
 ### Jerarquia organizacional
 
@@ -179,14 +177,17 @@ La empresa debe poder representarse como arbol.
 Ejemplo conceptual:
 
 ```txt
-sistemas / owner tecnico
+sistema
+├── owner tecnico
 └── jefe_general
-    ├── jefe_formalizacion
-    │   └── empleados_formalizacion
-    ├── jefe_contabilidad
-    │   └── empleados_contabilidad
-    └── jefe_mercadeo
-        └── empleados_mercadeo
+    ├── ventas
+    │   └── vendedores
+    ├── formalizacion
+    │   └── formalizadores
+    ├── contabilidad
+    │   └── contadores
+    └── mercadeo
+        └── equipo_mercadeo
 ```
 
 Tambien debe soportar subjefes.
@@ -194,18 +195,17 @@ Tambien debe soportar subjefes.
 Ejemplo:
 
 ```txt
-jefe_mercadeo
-└── subjefe_mercadeo
-    └── empleados_mercadeo
+area: mercadeo
+rol: subjefe_area
+usuarios: empleados_mercadeo
 ```
 
 Regla de visibilidad:
 
-- jefe general puede ver todas las areas bajo su alcance;
-- jefe de area puede ver su area y subareas;
-- jefe de area con varias areas asignadas puede ver cada area asignada y sus subareas, segun alcance efectivo;
-- subjefe puede ver el area/subarea asignada segun permiso y alcance;
-- subjefe con varias areas/subareas asignadas puede operar en cada una solo con los permisos efectivos que conserve;
+- owner gobierna el sistema completo;
+- jefe general puede ver una, varias o todas las areas solo si esas areas estan asignadas;
+- subjefe puede operar en una o varias areas asignadas segun permiso y alcance;
+- vendedor puede operar solo en las areas operativas asignadas y con permisos de vendedor;
 - empleado normal ve solo lo propio o lo asignado;
 - soporte_sistemas no gana acceso comercial por estar en sistemas, salvo permiso explicito.
 
@@ -215,13 +215,13 @@ El permiso efectivo final se calcula combinando:
 
 ```txt
 roles asignados
-+ vinculos de area/equipo
++ vinculos de area operativa/modulo
 + permisos personales agregados
 - permisos personales revocados
 = permiso efectivo para una accion exacta
 ```
 
-Si una persona es jefa de dos areas, el API no debe duplicar usuarios ni inventar roles. Debe registrar dos vinculos en `sec_user_org_unit`.
+Si una persona trabaja o supervisa dos areas, el API no debe duplicar usuarios ni inventar roles. Debe registrar dos vinculos activos en `sec_user_org_unit`.
 
 No se debe resolver esto creando un rol distinto para cada jefe de cada area.
 
@@ -236,12 +236,19 @@ rol_jefe_formalizacion
 Mejor enfoque:
 
 ```txt
-rol: jefe_area
+rol: jefe_general | subjefe_area | vendedor
 areas: mercadeo, formalizacion
 alcance: own_area | own_area_and_children | all_areas
 ```
 
 Asi el sistema escala sin crear roles infinitos.
+
+Regla de login/modulos:
+
+```txt
+El usuario solo puede cambiarse a los modulos que existan como areas operativas activas en sec_user_org_unit.
+El rol no abre modulos por si solo; el rol define permisos, y el area operativa define donde aplican.
+```
 
 ## Regla obligatoria de autorizacion dinamica
 
@@ -394,12 +401,10 @@ Estos roles son punto de partida, no implementacion cerrada:
 
 | Rol | Para que sirve |
 | --- | --- |
-| `owner` | Rol mas alto. Puede supervisar todo el CRM y configurar roles/permisos. |
-| `gerente` | Supervisa operacion comercial amplia segun alcance asignado. |
-| `supervisor` | Supervisa equipo o grupo de vendedores. |
-| `jefe_area` | Supervisa un area especifica y sus subareas segun alcance asignado. |
-| `subjefe_area` | Apoya supervision de un area/subarea segun alcance asignado. |
-| `vendedor` | Atiende leads asignados y registra acciones comerciales. |
+| `owner` | Rol maximo de gobierno del sistema. No representa Formalizacion, Ventas ni otra area operativa. |
+| `jefe_general` | Supervisa una, varias o todas las areas operativas asignadas. |
+| `subjefe_area` | Apoya supervision de una o varias areas operativas asignadas. |
+| `vendedor` | Atiende operacion comercial dentro de las areas operativas asignadas. |
 | `soporte_sistemas` | Apoya soporte tecnico, integraciones y diagnostico sin convertirse en vendedor. |
 
 Reglas:
@@ -410,30 +415,24 @@ Reglas:
 - el frontend solo muestra lo que el API autoriza;
 - el API revalida permiso efectivo en cada accion protegida;
 - si se quita un permiso, el usuario autenticado no puede seguir usando esa accion;
-- el alcance de jefatura depende de area organizacional, no solo del nombre del rol;
-- un jefe o subjefe puede tener permisos de accion, pero solo sobre el area/subarea autorizada;
+- el alcance de jefatura depende de areas operativas asignadas, no solo del nombre del rol;
+- un jefe general o subjefe puede tener permisos de accion, pero solo sobre las areas autorizadas;
 - si manana se agregan delegaciones temporales, se agregan cuando el negocio lo pida.
 
 ## Permisos minimos propuestos
 
-Estos permisos permiten iniciar la discusion sin entrar todavia al modulo de lead completo.
+Estos permisos permiten construir la primera vista real de TI: Usuarios del sistema.
 
 | Permiso | Para que sirve |
 | --- | --- |
-| `auth.login` | Permite iniciar sesion en el CRM. |
-| `auth.logout` | Permite cerrar sesion. |
-| `user.view_self` | Permite ver el propio perfil. |
-| `user.view_all` | Permite ver usuarios del sistema. |
-| `user.manage` | Permite crear, activar, desactivar o modificar usuarios. |
-| `role.view` | Permite ver roles y permisos. |
-| `role.assign` | Permite asignar roles a usuarios. |
-| `permission.view` | Permite ver permisos disponibles. |
-| `audit.security.view` | Permite revisar eventos de seguridad. |
-| `org.view` | Permite ver la estructura de areas. |
-| `org.manage` | Permite crear, editar, activar o desactivar areas. |
-| `org.assign_user` | Permite asignar usuarios a areas y definir su alcance. |
+| `user.view_list` | Permite ver la opcion y futura lista de usuarios del sistema. |
+| `user.view_detail` | Permite ver el detalle de un usuario dentro del alcance. |
+| `user.create` | Permite crear usuarios. |
+| `user.update` | Permite editar datos administrativos de usuarios. |
+| `user.activate` | Permite activar usuarios. |
+| `user.deactivate` | Permite inactivar usuarios. |
 
-Los permisos de lead se definen despues, cuando vuelva el contrato del lead.
+Los permisos de roles, areas, auditoria, leads y otros modulos se definen despues, junto con la vista que los necesite.
 
 ## Reglas de autenticacion
 
@@ -472,15 +471,15 @@ Antes de pasar a modelo fisico, se deben responder:
 1. Cual sera el correo oficial del primer usuario `owner`.
 2. Cual sera el procedimiento seguro para activar login local sin guardar contrasenas reales en migracion.
 3. Si `soporte_sistemas` puede ver datos comerciales o solo datos tecnicos.
-4. Si gerente y supervisor se diferencian por permisos o por alcance de equipo.
+4. Si mas adelante se necesita un rol nuevo entre `jefe_general`, `subjefe_area` y `vendedor`, debe aprobarse como rol nuevo y no como nombre de area.
 5. Si un usuario sin rol debe poder entrar a una pantalla bloqueada o no entrar del todo.
 6. Cuales usuarios iniciales se cargaran como seed.
 7. Cual sera el tiempo maximo permitido de cache de permisos para acciones no criticas.
 8. Cuales acciones se consideran criticas y deben revalidar permisos contra datos actuales sin confiar solo en cache.
 9. Cuales areas iniciales existen: ventas, formalizacion, contabilidad, mercadeo, sistemas u otras.
-10. Quien sera jefe general y que alcance tendra.
-11. Si cada area tendra jefe y subjefe desde P0-S1 o solo quedara preparado.
-12. Si el alcance `all_areas` sera exclusivo del owner/jefe general.
+10. Quien sera jefe general y que areas operativas tendra asignadas.
+11. Si cada area tendra subjefe desde P0-S1 o solo quedara preparado.
+12. Si el alcance `all_areas` sera exclusivo del owner o tambien podra aprobarse para algun jefe general.
 
 ## Criterio de salida
 

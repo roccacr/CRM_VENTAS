@@ -18,6 +18,7 @@ const TEST_HTTP_CONFIG = {
     AUDIT_HASH_SECRET: "audit-hash-secret-for-tests-32-chars",
     AUTH_TOKEN_HASH_SECRET: "auth-token-hash-secret-for-tests-32",
     COOKIE_SECRET: "test-cookie-secret-for-crm-think-v2",
+    FRONTEND_ALLOWED_ORIGINS: "http://192.168.100.8:5173",
     FRONTEND_ORIGIN: "http://localhost:5173",
     LOCAL_LOGIN_RATE_LIMIT_CACHE: 50,
     LOCAL_LOGIN_RATE_LIMIT_EMAIL_MAX: 1,
@@ -44,8 +45,11 @@ const TEST_HTTP_CONFIG = {
 type IdentityServiceMock = Pick<IdentityService, "getSession" | "getCurrentUser" | "logout" | "requestLocalReset"> & {
     completeLocalReset: MockedFunction<IdentityService["completeLocalReset"]>;
     completeMicrosoftCallback: MockedFunction<IdentityService["completeMicrosoftCallback"]>;
+    createSystemUser: MockedFunction<IdentityService["createSystemUser"]>;
     getCurrentUserProfileImage: MockedFunction<IdentityService["getCurrentUserProfileImage"]>;
+    getSystemUserDetail: MockedFunction<IdentityService["getSystemUserDetail"]>;
     listActiveSessions: MockedFunction<IdentityService["listActiveSessions"]>;
+    listSystemUsers: MockedFunction<IdentityService["listSystemUsers"]>;
     refresh: MockedFunction<IdentityService["refresh"]>;
     localLogin: MockedFunction<IdentityService["localLogin"]>;
     revokeOwnSession: MockedFunction<IdentityService["revokeOwnSession"]>;
@@ -89,12 +93,15 @@ const createTestConfigService = (): Pick<ConfigService, "get" | "getOrThrow"> =>
 const createIdentityServiceMock = (): IdentityServiceMock => ({
     getSession: vi.fn(),
     getCurrentUser: vi.fn(),
+    createSystemUser: vi.fn(),
     getCurrentUserProfileImage: vi.fn(),
+    getSystemUserDetail: vi.fn(),
     refresh: vi.fn(),
     localLogin: vi.fn(),
     completeLocalReset: vi.fn(),
     completeMicrosoftCallback: vi.fn(),
     listActiveSessions: vi.fn(),
+    listSystemUsers: vi.fn(),
     logout: vi.fn(),
     requestLocalReset: vi.fn(),
     revokeOwnSession: vi.fn(),
@@ -165,9 +172,58 @@ describe("IdentityController", () => {
             throw new NotImplementedException("Microsoft deshabilitado en pruebas.");
         });
         identity.listActiveSessions.mockRejectedValue(new UnauthorizedException("No autenticado."));
+        identity.listSystemUsers.mockResolvedValue({
+            items: [],
+            page: {
+                limit: 25,
+                nextCursor: null,
+                total: 0,
+            },
+            summary: {
+                active: 0,
+                all: 0,
+                blocked: 0,
+                inactive: 0,
+                pending: 0,
+            },
+        });
+        identity.createSystemUser.mockResolvedValue({
+            email: "nuevo@roccacr.com",
+            invitedBy: "Usuario CRM",
+            isCurrentUser: false,
+            lastActivityAt: null,
+            mfaStatus: "not_configured",
+            name: "Nuevo Usuario",
+            orgUnit: {
+                code: "ventas",
+                name: "Ventas",
+                publicId: "ORG-VENTAS",
+            },
+            profileImageUrl: null,
+            provider: "local",
+            publicId: "01KCRMNEWUSER000000000001",
+            roleChangedAt: "2026-09-30T16:00:00.000Z",
+            roles: [{ code: "ventas", name: "Ventas" }],
+            status: "active",
+        });
+        identity.getSystemUserDetail.mockRejectedValue(new UnauthorizedException("No autenticado."));
         identity.revokeOwnSession.mockResolvedValue({ success: true });
         vi.mocked(identity.logout).mockResolvedValue({ success: true });
         vi.mocked(identity.requestLocalReset).mockResolvedValue({ accepted: true });
+    });
+
+    it("permite CORS con credenciales desde un origin adicional exacto", async () => {
+        const response = await app.inject({
+            headers: {
+                "access-control-request-method": "GET",
+                origin: "http://192.168.100.8:5173",
+            },
+            method: "OPTIONS",
+            url: "/identity/session",
+        });
+
+        expect(response.headers["access-control-allow-origin"]).toBe("http://192.168.100.8:5173");
+        expect(response.headers["access-control-allow-credentials"]).toBe("true");
     });
 
     it("retorna sesion anonima sin exponer tokens", async () => {
@@ -233,6 +289,107 @@ describe("IdentityController", () => {
 
         expect(response.statusCode).toBe(200);
         expect(response.headers["cache-control"]).toBe(IDENTITY_NO_STORE_CACHE_CONTROL);
+    });
+
+    it("lista usuarios del sistema con filtros paginados sin exponer tokens", async () => {
+        identity.listSystemUsers.mockResolvedValue({
+            items: [
+                {
+                    email: "usuario@roccacr.com",
+                    invitedBy: null,
+                    isCurrentUser: true,
+                    lastActivityAt: "2026-09-30T15:18:00.000Z",
+                    mfaStatus: "enabled",
+                    name: "Usuario CRM",
+                    orgUnit: {
+                        code: "sistemas",
+                        name: "Sistemas",
+                        publicId: "01KCRM00000000000000000006",
+                    },
+                    profileImageUrl: null,
+                    provider: "mixed",
+                    publicId: "01KCRMUSER000000000000001",
+                    roleChangedAt: "2026-09-30T14:54:00.000Z",
+                    roles: [{ code: "owner", name: "Owner" }],
+                    status: "active",
+                },
+            ],
+            page: {
+                limit: 25,
+                nextCursor: null,
+                total: 1,
+            },
+            summary: {
+                active: 1,
+                all: 1,
+                blocked: 0,
+                inactive: 0,
+                pending: 0,
+            },
+        });
+
+        const response = await app.inject({
+            method: "GET",
+            url: "/identity/users?status=active&limit=25&sort=name&direction=asc",
+            headers: {
+                cookie: `${SESSION_COOKIE_NAME}=session-token`,
+            },
+        });
+
+        expect(response.statusCode).toBe(200);
+        expect(response.headers["cache-control"]).toBe(IDENTITY_NO_STORE_CACHE_CONTROL);
+        expect(response.payload).toContain('"items"');
+        expect(response.payload).not.toContain("session-token");
+        expect(identity.listSystemUsers).toHaveBeenCalledWith(
+            "session-token",
+            expect.objectContaining({
+                direction: "asc",
+                limit: 25,
+                sort: "name",
+                status: "active",
+            }),
+        );
+    });
+
+    it("crea usuarios del sistema con CSRF y delega contexto HTTP", async () => {
+        const sessionCsrfToken = createSignedCsrfToken(TEST_HTTP_CONFIG.COOKIE_SECRET, "session-token");
+        const response = await app.inject({
+            method: "POST",
+            url: "/identity/users",
+            headers: {
+                [CSRF_HEADER_NAME_LOWERCASE]: sessionCsrfToken,
+                cookie: `${CSRF_COOKIE_NAME}=${sessionCsrfToken}; ${SESSION_COOKIE_NAME}=session-token`,
+                "user-agent": "vitest-agent",
+            },
+            remoteAddress: "10.0.0.44",
+            payload: {
+                accessMethods: ["microsoft", "local"],
+                displayName: "Nuevo Usuario",
+                email: "nuevo@roccacr.com",
+                externalReferences: [{ externalUserId: "653999", systemCode: "netsuite" }],
+                initialStatus: "active",
+                orgUnitCode: "ventas",
+                reason: "Alta solicitada por TI",
+                roleCode: "ventas",
+                roleCodes: ["ventas", "mercadeo"],
+            },
+        });
+
+        expect(response.statusCode).toBe(201);
+        expect(response.headers["cache-control"]).toBe(IDENTITY_NO_STORE_CACHE_CONTROL);
+        expect(response.payload).toContain("01KCRMNEWUSER000000000001");
+        expect(response.payload).not.toContain("session-token");
+        expect(identity.createSystemUser).toHaveBeenCalledWith(
+            "session-token",
+            expect.objectContaining({
+                accessMethods: ["microsoft", "local"],
+                email: "nuevo@roccacr.com",
+                roleCode: "ventas",
+                roleCodes: ["ventas", "mercadeo"],
+            }),
+            "10.0.0.44",
+            "vitest-agent",
+        );
     });
 
     it("emite una cookie CSRF valida que funciona en un POST real", async () => {

@@ -1,0 +1,161 @@
+.security-audit-page {
+    display: grid;
+    gap: 16px;
+    padding: 24px;
+}
+
+.security-audit-header {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 16px;
+}
+
+.security-audit-header span {
+    color: #566079;
+    font-size: 12px;
+    font-weight: 760;
+}
+
+.security-audit-header h1 {
+    margin: 4px 0 0;
+    color: #111827;
+    font-size: 28px;
+    line-height: 1.1;
+}
+
+.security-audit-header p {
+    margin: 8px 0 0;
+    color: #566079;
+    font-size: 14px;
+    font-weight: 560;
+}
+
+.security-audit-toolbar {
+    display: grid;
+    grid-template-columns: minmax(260px, 1fr) minmax(180px, 220px) minmax(180px, 220px);
+    gap: 10px;
+    border: 1px solid #ccd6e7;
+    border-radius: 8px;
+    background: #ffffff;
+    padding: 12px;
+    box-shadow: 0 8px 22px rgba(15, 23, 42, 0.05);
+}
+
+.security-audit-search {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    background: #ffffff;
+    color: #667085;
+    padding: 0 12px;
+}
+
+.security-audit-search input,
+.security-audit-toolbar select {
+    width: 100%;
+    min-height: 38px;
+    border: 0;
+    background: transparent;
+    color: #1f2937;
+    font: inherit;
+    font-size: 13px;
+    font-weight: 620;
+    outline: 0;
+}
+
+.security-audit-toolbar select {
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    background: #ffffff;
+    padding: 0 10px;
+}
+
+.security-audit-table {
+    overflow: hidden;
+    border: 1px solid #ccd6e7;
+    border-radius: 8px;
+    background: #ffffff;
+    box-shadow: 0 8px 22px rgba(15, 23, 42, 0.05);
+}
+
+.security-audit-table header,
+.security-audit-row {
+    display: grid;
+    grid-template-columns: minmax(280px, 1.2fr) minmax(220px, 0.9fr) minmax(220px, 0.9fr) minmax(160px, 0.55fr);
+    gap: 16px;
+    align-items: center;
+}
+
+.security-audit-table header {
+    border-bottom: 1px solid #dce3ef;
+    background: #f8fafc;
+    color: #566079;
+    font-size: 12px;
+    font-weight: 780;
+    padding: 12px 16px;
+}
+
+.security-audit-row {
+    border-bottom: 1px solid #e3e8f0;
+    padding: 14px 16px;
+}
+
+.security-audit-row:last-child {
+    border-bottom: 0;
+}
+
+.security-audit-row div {
+    display: grid;
+    gap: 4px;
+    min-width: 0;
+}
+
+.security-audit-row strong,
+.security-audit-row time {
+    overflow: hidden;
+    color: #111827;
+    font-size: 13px;
+    font-weight: 760;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.security-audit-row small {
+    overflow: hidden;
+    color: #566079;
+    font-size: 12px;
+    font-weight: 560;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.security-audit-state {
+    color: #566079;
+    font-size: 13px;
+    font-weight: 650;
+    padding: 18px;
+}
+
+.security-audit-state--error {
+    color: #b42318;
+}
+
+@media (max-width: 860px) {
+    .security-audit-page {
+        padding: 16px;
+    }
+
+    .security-audit-toolbar,
+    .security-audit-table header,
+    .security-audit-row {
+        grid-template-columns: 1fr;
+    }
+
+    .security-audit-table header {
+        display: none;
+    }
+}

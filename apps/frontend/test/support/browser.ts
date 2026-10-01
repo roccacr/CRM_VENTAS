@@ -18,4 +18,23 @@ export const installBrowserApiDoubles = (): void => {
             dispatchEvent: () => false,
         }),
     });
+
+    if (typeof window.ResizeObserver === "undefined") {
+        Object.defineProperty(window, "ResizeObserver", {
+            writable: true,
+            value: class {
+                observe(): void {
+                    return undefined;
+                }
+
+                unobserve(): void {
+                    return undefined;
+                }
+
+                disconnect(): void {
+                    return undefined;
+                }
+            },
+        });
+    }
 };

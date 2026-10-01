@@ -1,6 +1,6 @@
 import "@testing-library/jest-dom/vitest";
 
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 
@@ -13,9 +13,9 @@ import { installBrowserApiDoubles } from "../support/browser";
 beforeAll(() => {
     installBrowserApiDoubles();
 });
-
 afterEach(() => {
     cleanup();
+    vi.useRealTimers();
     vi.unstubAllGlobals();
     Object.defineProperty(window, "opener", {
         configurable: true,
@@ -80,6 +80,143 @@ const authenticatedProfile: IdentityProfile = {
     user: sessionUser,
 };
 
+const systemUsersResponse = {
+    items: [
+        {
+            email: "avalverde@roccacr.com",
+            invitedBy: "Sistemas",
+            isCurrentUser: false,
+            lastActivityAt: null,
+            mfaStatus: "not_configured",
+            name: "Andrea Valverde",
+            orgUnit: { code: "finanzas", name: "Finanzas", publicId: "ORG-FIN" },
+            profileImageUrl: null,
+            provider: "microsoft",
+            publicId: "USR-ROCCA-0004",
+            roleChangedAt: "2026-09-29T21:10:00.000Z",
+            roles: [{ code: "consulta", name: "Consulta" }],
+            status: "inactive",
+        },
+    ],
+    page: {
+        limit: 25,
+        nextCursor: null,
+        total: 1,
+    },
+    summary: {
+        active: 0,
+        all: 1,
+        blocked: 0,
+        inactive: 1,
+        pending: 0,
+    },
+} as const;
+
+const securityCatalogResponse = {
+    auditEvents: [],
+    modules: [
+        {
+            code: "ventas",
+            name: "Ventas",
+            views: [
+                {
+                    code: "leads",
+                    name: "Leads",
+                    permissions: [
+                        { code: "lead.read", description: "Permite leer la tabla de prospectos.", name: "Ver lista de leads", sensitive: false },
+                        { code: "lead.create", description: "Habilita el botón Nuevo lead.", name: "Crear lead", sensitive: false },
+                        { code: "lead.update", description: "Permite modificar datos del expediente.", name: "Editar lead", sensitive: false },
+                        { code: "lead.status", description: "Permite mover etapa en el pipeline.", name: "Cambiar estado", sensitive: false },
+                        { code: "lead.assign", description: "Permite reasignar responsable.", name: "Asignar responsable", sensitive: false },
+                    ],
+                },
+                {
+                    code: "opportunities",
+                    name: "Oportunidades",
+                    permissions: [
+                        { code: "opportunity.read", description: "Permite consultar oportunidades abiertas.", name: "Ver oportunidades", sensitive: false },
+                        { code: "opportunity.create", description: "Habilita creación de oportunidades.", name: "Crear oportunidad", sensitive: false },
+                        { code: "opportunity.close", description: "Permite cerrar oportunidad ganada o perdida.", name: "Cerrar oportunidad", sensitive: false },
+                    ],
+                },
+                {
+                    code: "estimates",
+                    name: "Estimaciones",
+                    permissions: [
+                        { code: "estimate.read", description: "Permite ver estimaciones asociadas.", name: "Ver estimaciones", sensitive: false },
+                        { code: "estimate.create", description: "Habilita cálculo y guardado de estimaciones.", name: "Crear estimación", sensitive: false },
+                        { code: "estimate.approve", description: "Permiso sensible para aprobar estimaciones.", name: "Aprobar estimación", sensitive: true },
+                    ],
+                },
+            ],
+        },
+        {
+            code: "mercadeo",
+            name: "Mercadeo",
+            views: [
+                {
+                    code: "campaigns",
+                    name: "Campañas",
+                    permissions: [
+                        { code: "campaign.read", description: "Permite ver campañas activas.", name: "Ver campañas", sensitive: false },
+                        { code: "campaign.create", description: "Permite crear campañas.", name: "Crear campaña", sensitive: false },
+                        { code: "source.update", description: "Permite modificar fuentes de tráfico.", name: "Editar fuentes", sensitive: false },
+                    ],
+                },
+            ],
+        },
+        {
+            code: "formalizacion",
+            name: "Formalización",
+            views: [
+                {
+                    code: "files",
+                    name: "Expedientes",
+                    permissions: [
+                        { code: "file.read", description: "Permite ver expedientes.", name: "Ver expedientes", sensitive: false },
+                        { code: "contract.review", description: "Permite revisar contratos.", name: "Revisar contrato", sensitive: false },
+                        { code: "signature.manage", description: "Permite gestionar firmas.", name: "Gestionar firmas", sensitive: false },
+                    ],
+                },
+            ],
+        },
+        {
+            code: "contabilidad",
+            name: "Contabilidad",
+            views: [
+                {
+                    code: "billing",
+                    name: "Cobros",
+                    permissions: [
+                        { code: "wallet.read", description: "Permite ver cartera.", name: "Ver cartera", sensitive: false },
+                        { code: "invoice.read", description: "Permite consultar facturas.", name: "Ver facturas", sensitive: false },
+                        { code: "payment.reconcile", description: "Permiso sensible para conciliación.", name: "Conciliar pago", sensitive: true },
+                    ],
+                },
+            ],
+        },
+    ],
+    rolePermissions: {
+        ventas: ["lead.read", "lead.create", "lead.update"],
+    },
+    roles: [
+        { code: "owner", description: null, locked: true, name: "Owner", status: "active", users: 1 },
+        { code: "jefe_general", description: null, locked: false, name: "Jefe general", status: "active", users: 5 },
+        { code: "subjefe_area", description: null, locked: false, name: "Subjefe", status: "active", users: 8 },
+        {
+            code: "ventas",
+            description: null,
+            locked: false,
+            name: "Ventas",
+            status: "active",
+            users: 31,
+        },
+        { code: "mercadeo", description: null, locked: false, name: "Mercadeo", status: "active", users: 0 },
+        { code: "formalizacion", description: null, locked: false, name: "Formalización", status: "active", users: 0 },
+        { code: "contabilidad", description: null, locked: false, name: "Contabilidad", status: "active", users: 0 },
+    ],
+} as const;
+
 const createJsonResponse = (body: unknown, status = 200): Response =>
     new Response(JSON.stringify(body), {
         headers: {
@@ -100,17 +237,34 @@ const getRequestPath = (input: RequestInfo | URL): string => {
     return new URL(input.url).pathname;
 };
 
+const getMockIdentityResponse = (path: string, options: { readonly profile?: IdentityProfile; readonly session: SessionResponse }): Response | null => {
+    if (path === "/identity/session") {
+        return createJsonResponse(options.session);
+    }
+
+    if (path === "/identity/me") {
+        return options.profile ? createJsonResponse(options.profile) : createJsonResponse({ message: "No autenticado" }, 401);
+    }
+
+    if (path === "/identity/users") {
+        return createJsonResponse(systemUsersResponse);
+    }
+
+    if (path === "/identity/roles/security-catalog") {
+        return createJsonResponse(securityCatalogResponse);
+    }
+
+    return null;
+};
+
 const mockIdentityFetch = (options: { readonly profile?: IdentityProfile; readonly session: SessionResponse }) => {
     let currentSession = options.session;
     const fetchMock = vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
         const path = getRequestPath(input);
+        const identityResponse = getMockIdentityResponse(path, { ...options, session: currentSession });
 
-        if (path === "/identity/session") {
-            return createJsonResponse(currentSession);
-        }
-
-        if (path === "/identity/me") {
-            return options.profile ? createJsonResponse(options.profile) : createJsonResponse({ message: "No autenticado" }, 401);
+        if (identityResponse) {
+            return identityResponse;
         }
 
         if (path === "/identity/local/login" && init?.method === "POST") {
@@ -151,10 +305,13 @@ const mockAuthenticatedSessionWithPendingProfile = (session: SessionResponse) =>
     return fetchMock;
 };
 
-const expectGlobalSummaryHeading = () =>
-    waitFor(() => {
-        expect(screen.getByRole("heading", { name: "Resumen Global" })).toBeInTheDocument();
-    }, { timeout: 4_000 });
+const expectAdministrationHomeHeading = () =>
+    waitFor(
+        () => {
+            expect(screen.getByRole("heading", { name: "Hola Roberto Carlos al módulo Administración" })).toBeInTheDocument();
+        },
+        { timeout: 4_000 },
+    );
 
 const installDesktopPointerDouble = (): void => {
     Object.defineProperty(window, "matchMedia", {
@@ -178,7 +335,7 @@ describe("App", () => {
             "fetch",
             vi.fn(() => new Promise<Response>(() => undefined)),
         );
-        window.history.replaceState(null, "", "/home/global");
+        window.history.replaceState(null, "", "/home/administration");
 
         render(<App />);
 
@@ -198,7 +355,7 @@ describe("App", () => {
             },
         };
         mockAuthenticatedSessionWithPendingProfile(sessionWithPhoto);
-        window.history.replaceState(null, "", "/home/global");
+        window.history.replaceState(null, "", "/home/administration");
 
         render(<App />);
 
@@ -209,7 +366,7 @@ describe("App", () => {
 
     it("muestra iniciales y nombre del usuario durante la verificacion si no hay foto", async () => {
         mockAuthenticatedSessionWithPendingProfile(authenticatedSession);
-        window.history.replaceState(null, "", "/home/global");
+        window.history.replaceState(null, "", "/home/administration");
 
         render(<App />);
 
@@ -293,9 +450,12 @@ describe("App", () => {
 
         render(<App />);
 
-        await waitFor(() => {
-            expect(closeSpy).toHaveBeenCalledTimes(1);
-        }, { timeout: 2_000 });
+        await waitFor(
+            () => {
+                expect(closeSpy).toHaveBeenCalledTimes(1);
+            },
+            { timeout: 2_000 },
+        );
         expect(screen.queryByRole("heading", { name: "Bienvenido" })).not.toBeInTheDocument();
     });
 
@@ -329,9 +489,12 @@ describe("App", () => {
         render(<App />);
 
         expect(closeSpy).not.toHaveBeenCalled();
-        await waitFor(() => {
-            expect(closeSpy).toHaveBeenCalledTimes(1);
-        }, { timeout: 2_000 });
+        await waitFor(
+            () => {
+                expect(closeSpy).toHaveBeenCalledTimes(1);
+            },
+            { timeout: 2_000 },
+        );
         expect(screen.queryByRole("heading", { name: "Bienvenido" })).not.toBeInTheDocument();
     });
 
@@ -344,20 +507,23 @@ describe("App", () => {
         });
         window.name = "";
         window.sessionStorage.setItem("rocca.microsoftPopup", "1");
-        window.history.replaceState(null, "", "/home/global");
+        window.history.replaceState(null, "", "/home/administration");
 
         render(<App />);
 
         expect(await screen.findByRole("heading", { name: "Verificando sesión" })).toBeInTheDocument();
-        expect(screen.queryByRole("heading", { name: "Resumen Global" })).not.toBeInTheDocument();
-        await waitFor(() => {
-            expect(closeSpy).toHaveBeenCalledTimes(1);
-        }, { timeout: 2_000 });
+        expect(screen.queryByRole("heading", { name: "Hola Roberto Carlos al módulo Administración" })).not.toBeInTheDocument();
+        await waitFor(
+            () => {
+                expect(closeSpy).toHaveBeenCalledTimes(1);
+            },
+            { timeout: 2_000 },
+        );
     });
 
-    it("bloquea el acceso directo a /home/global si no hay sesion backend", async () => {
+    it("bloquea el acceso directo a /home/administration si no hay sesion backend", async () => {
         mockIdentityFetch({ session: anonymousSession });
-        window.history.replaceState(null, "", "/home/global");
+        window.history.replaceState(null, "", "/home/administration");
 
         render(<App />);
 
@@ -366,17 +532,17 @@ describe("App", () => {
         expect(screen.queryByRole("banner", { name: "Barra superior global CRM TINK" })).not.toBeInTheDocument();
     });
 
-    it("renderiza /home/global solo con sesion y permiso efectivo de Resumen Global", async () => {
+    it("renderiza /home/administration como home del modulo de administracion", async () => {
         mockIdentityFetch({ profile: authenticatedProfile, session: authenticatedSession });
-        window.history.replaceState(null, "", "/home/global");
+        window.history.replaceState(null, "", "/home/administration");
 
         render(<App />);
 
         expect(await screen.findByRole("heading", { name: "Sesión validada" })).toBeInTheDocument();
         expect(await screen.findByRole("banner", { name: "Barra superior global CRM TINK" })).toBeInTheDocument();
-        expect(screen.getByRole("heading", { name: "Resumen Global" })).toBeInTheDocument();
-        expect(screen.getByLabelText("Datos de sesion recibidos desde el API")).toHaveTextContent('"displayName": "Roberto Carlos"');
-        expect(screen.getByLabelText("Datos de sesion recibidos desde el API")).toHaveTextContent('"permissions"');
+        expect(screen.getByRole("heading", { name: "Hola Roberto Carlos al módulo Administración" })).toBeInTheDocument();
+        expect(screen.queryByRole("heading", { name: "Usuarios del sistema" })).not.toBeInTheDocument();
+        expect(screen.queryByLabelText("Datos de sesion recibidos desde el API")).not.toBeInTheDocument();
     });
 
     it("muestra la foto Microsoft en el avatar y reconsulta si la imagen falla", async () => {
@@ -388,7 +554,7 @@ describe("App", () => {
             },
         };
         mockIdentityFetch({ profile: profileWithPhoto, session: authenticatedSession });
-        window.history.replaceState(null, "", "/home/global");
+        window.history.replaceState(null, "", "/home/administration");
 
         render(<App />);
 
@@ -396,7 +562,7 @@ describe("App", () => {
         const firstImage = avatarButton.querySelector("img");
 
         expect(firstImage).toHaveAttribute("src", buildApiUrl("/identity/me/photo"));
-        expect(avatarButton.querySelector(".global-home-user-avatar__presence")).toBeInTheDocument();
+        expect(avatarButton.querySelector(".global-home-user-avatar__presence")).not.toBeInTheDocument();
 
         fireEvent.error(firstImage as HTMLImageElement);
 
@@ -412,14 +578,14 @@ describe("App", () => {
         expect(avatarButton).toHaveTextContent("RC");
     });
 
-    it("no renderiza el shell cuando la sesion existe pero falta global.dashboard.read", async () => {
-        const profileWithoutGlobalAccess: IdentityProfile = {
+    it("no renderiza el shell cuando la sesion existe pero no hay modulos permitidos", async () => {
+        const profileWithoutVisibleModules: IdentityProfile = {
             ...authenticatedProfile,
-            permissions: authenticatedProfile.permissions.filter((permission) => permission.code !== "global.dashboard.read"),
+            permissions: [],
         };
 
-        mockIdentityFetch({ profile: profileWithoutGlobalAccess, session: authenticatedSession });
-        window.history.replaceState(null, "", "/home/global");
+        mockIdentityFetch({ profile: profileWithoutVisibleModules, session: authenticatedSession });
+        window.history.replaceState(null, "", "/home/administration");
 
         render(<App />);
 
@@ -427,12 +593,12 @@ describe("App", () => {
         expect(screen.queryByRole("banner", { name: "Barra superior global CRM TINK" })).not.toBeInTheDocument();
     });
 
-    it("permite una ruta interna cuando existe algun permiso efectivo del perfil", async () => {
-        const financeOnlyProfile: IdentityProfile = {
+    it("permite la ruta de administracion cuando existe permiso de usuarios", async () => {
+        const userAdministrationProfile: IdentityProfile = {
             ...authenticatedProfile,
             permissions: [
                 {
-                    code: "finance.collections.read",
+                    code: "user.view_list",
                     effect: "allow",
                     scope: "all_areas",
                     source: "role",
@@ -440,36 +606,234 @@ describe("App", () => {
             ],
         };
 
-        mockIdentityFetch({ profile: financeOnlyProfile, session: authenticatedSession });
-        window.history.replaceState(null, "", "/home/finance");
+        mockIdentityFetch({ profile: userAdministrationProfile, session: authenticatedSession });
+        window.history.replaceState(null, "", "/home/administration");
 
         render(<App />);
 
-        expect(await screen.findByRole("heading", { name: "Resumen Financiero" })).toBeInTheDocument();
-        expect(window.location.pathname).toBe("/home/finance");
-        expect(screen.queryByText("Orígenes de Leads")).not.toBeInTheDocument();
+        expect(await screen.findByRole("heading", { name: "Hola Roberto Carlos al módulo Administración" })).toBeInTheDocument();
+        expect(window.location.pathname).toBe("/home/administration");
+        expect(screen.getByRole("button", { name: "Usuarios" })).toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: "Roles y seguridad" })).not.toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: "Catálogos" })).not.toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: "Integraciones" })).not.toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: "Auditoría" })).not.toBeInTheDocument();
     });
 
-    it("bloquea /home/global cuando el usuario solo tiene permisos de otro perfil", async () => {
-        const financeOnlyProfile: IdentityProfile = {
+    it("navega a la vista de usuarios desde el menu del modulo administracion", async () => {
+        const user = userEvent.setup();
+        const fetchMock = mockIdentityFetch({ profile: authenticatedProfile, session: authenticatedSession });
+
+        window.history.replaceState(null, "", "/home/administration");
+
+        render(<App />);
+
+        expect(await screen.findByRole("heading", { name: "Hola Roberto Carlos al módulo Administración" })).toBeInTheDocument();
+        const sessionCallsBeforeNavigation = fetchMock.mock.calls.filter(([input]) => getRequestPath(input) === "/identity/session").length;
+        const profileCallsBeforeNavigation = fetchMock.mock.calls.filter(([input]) => getRequestPath(input) === "/identity/me").length;
+
+        await user.click(screen.getByRole("button", { name: "Usuarios" }));
+
+        expect(window.location.pathname).toBe("/home/administration/users");
+        expect(await screen.findByRole("heading", { name: "Usuarios" })).toBeInTheDocument();
+        expect(screen.queryByRole("heading", { name: "Verificando sesión" })).not.toBeInTheDocument();
+        expect(screen.queryByRole("heading", { name: "Sesión validada" })).not.toBeInTheDocument();
+        expect(fetchMock.mock.calls.filter(([input]) => getRequestPath(input) === "/identity/session")).toHaveLength(sessionCallsBeforeNavigation);
+        expect(fetchMock.mock.calls.filter(([input]) => getRequestPath(input) === "/identity/me")).toHaveLength(profileCallsBeforeNavigation);
+    });
+
+    it("cambia a todos los modulos sin salir de la pagina y muestra menus sin textos de ayuda", async () => {
+        const user = userEvent.setup();
+        mockIdentityFetch({ profile: authenticatedProfile, session: authenticatedSession });
+        window.history.replaceState(null, "", "/home/administration/users");
+
+        render(<App />);
+
+        expect(await screen.findByRole("heading", { name: "Usuarios" })).toBeInTheDocument();
+        for (const notificationsButton of screen.getAllByRole("button", { name: "Notificaciones" })) {
+            expect(notificationsButton).not.toHaveTextContent(/\d/u);
+        }
+
+        await user.click(screen.getByRole("button", { name: "Administración" }));
+        await user.click(screen.getByRole("button", { name: "Todos" }));
+
+        expect(window.location.pathname).toBe("/home/administration/users");
+        expect(screen.getByRole("heading", { name: "Usuarios" })).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "Todos" })).toBeInTheDocument();
+        expect(screen.queryByText(/El módulo elegido/u)).not.toBeInTheDocument();
+
+        const administrationMenuButton = screen.getByRole("button", { name: "Administración" });
+        expect(administrationMenuButton).toHaveClass("global-home-menu__item--active");
+        await user.click(administrationMenuButton);
+
+        const administrationMenu = screen.getByRole("menu", { name: "Opciones de Administración" });
+        expect(within(administrationMenu).getByRole("button", { name: "Usuarios" })).toHaveAttribute("aria-current", "page");
+        expect(
+            within(administrationMenu)
+                .getAllByRole("button")
+                .map((option) => option.textContent),
+        ).toEqual(["Usuarios", "Roles y seguridad", "Auditoría"]);
+    });
+
+    it("mantiene abierto el modulo actual aunque venza el cierre diferido de otro modulo", async () => {
+        const user = userEvent.setup();
+        mockIdentityFetch({ profile: authenticatedProfile, session: authenticatedSession });
+        window.history.replaceState(null, "", "/home/administration/users");
+
+        render(<App />);
+
+        expect(await screen.findByRole("heading", { name: "Usuarios" })).toBeInTheDocument();
+        await user.click(screen.getByRole("button", { name: "Administración" }));
+        await user.click(screen.getByRole("button", { name: "Todos" }));
+
+        const administrationButton = screen.getByRole("button", { name: "Administración" });
+        const salesButton = screen.getByRole("button", { name: "Ventas" });
+        const administrationGroup = administrationButton.closest(".global-home-menu__group");
+        const salesGroup = salesButton.closest(".global-home-menu__group");
+
+        if (!administrationGroup || !salesGroup) {
+            throw new Error("No se encontraron grupos del menú principal.");
+        }
+
+        vi.useFakeTimers();
+        fireEvent.pointerEnter(administrationGroup);
+        expect(screen.getByRole("menu", { name: "Opciones de Administración" })).toBeInTheDocument();
+        fireEvent.pointerLeave(administrationGroup);
+        fireEvent.pointerEnter(salesGroup);
+        expect(screen.getByRole("menu", { name: "Opciones de Ventas" })).toBeInTheDocument();
+
+        act(() => {
+            vi.advanceTimersByTime(450);
+        });
+
+        expect(screen.getByRole("menu", { name: "Opciones de Ventas" })).toBeInTheDocument();
+        expect(screen.queryByRole("menu", { name: "Opciones de Administración" })).not.toBeInTheDocument();
+    });
+
+    it("abre roles y seguridad desde el menu administracion sin revalidar la sesion", async () => {
+        const user = userEvent.setup();
+        const fetchMock = mockIdentityFetch({ profile: authenticatedProfile, session: authenticatedSession });
+
+        window.history.replaceState(null, "", "/home/administration");
+
+        render(<App />);
+
+        expect(await screen.findByRole("heading", { name: "Hola Roberto Carlos al módulo Administración" })).toBeInTheDocument();
+        const sessionCallsBeforeNavigation = fetchMock.mock.calls.filter(([input]) => getRequestPath(input) === "/identity/session").length;
+        const profileCallsBeforeNavigation = fetchMock.mock.calls.filter(([input]) => getRequestPath(input) === "/identity/me").length;
+
+        await user.click(screen.getByRole("button", { name: "Roles y seguridad" }));
+
+        expect(window.location.pathname).toBe("/home/administration/roles-security");
+        expect(screen.getByRole("heading", { name: "Roles" })).toBeInTheDocument();
+        expect(screen.getAllByRole("heading", { name: "Ventas" })).toHaveLength(2);
+        expect(screen.queryByRole("button", { name: "Nuevo módulo" })).not.toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: "Nuevo rol" })).not.toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "Guardar cambios 0" })).toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: "Nueva acción" })).not.toBeInTheDocument();
+        expect(screen.getByRole("button", { name: /Ventas.*3\/11/ })).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: /Mercadeo.*0\/3/ })).toBeInTheDocument();
+        expect(screen.getByRole("region", { name: "Leads" })).toBeInTheDocument();
+        expect(screen.getByRole("region", { name: "Oportunidades" })).toBeInTheDocument();
+        expect(screen.getByRole("region", { name: "Estimaciones" })).toBeInTheDocument();
+        expect(screen.getAllByText("Mercadeo").length).toBeGreaterThan(0);
+        expect(screen.getAllByText("Formalización").length).toBeGreaterThan(0);
+        expect(screen.getAllByText("Contabilidad").length).toBeGreaterThan(0);
+        expect(screen.queryByRole("checkbox", { name: /Crear lead/i })).not.toBeInTheDocument();
+        await user.click(screen.getByRole("button", { name: /Leads.*5 acciones/i }));
+        expect(screen.getByRole("checkbox", { name: /Crear lead/i })).toBeChecked();
+
+        await user.click(screen.getByRole("button", { name: /Mercadeo.*0\/3/ }));
+
+        expect(screen.getByRole("heading", { name: "Mercadeo" })).toBeInTheDocument();
+        expect(screen.getByRole("region", { name: "Campañas" })).toBeInTheDocument();
+        expect(screen.queryByRole("checkbox", { name: /Ver campañas/i })).not.toBeInTheDocument();
+        await user.click(screen.getByRole("button", { name: /Campañas.*3 acciones/i }));
+        expect(screen.getByRole("checkbox", { name: /Ver campañas/i })).not.toBeChecked();
+        expect(screen.queryByText("Sistemas")).not.toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "Auditoría" })).toBeInTheDocument();
+
+        expect(fetchMock.mock.calls.filter(([input]) => getRequestPath(input) === "/identity/session")).toHaveLength(sessionCallsBeforeNavigation);
+        expect(fetchMock.mock.calls.filter(([input]) => getRequestPath(input) === "/identity/me")).toHaveLength(profileCallsBeforeNavigation);
+    });
+
+    it("abre el panel de detalle de usuario con accion coherente al estado", async () => {
+        const user = userEvent.setup();
+
+        mockIdentityFetch({ profile: authenticatedProfile, session: authenticatedSession });
+        window.history.replaceState(null, "", "/home/administration/users");
+
+        render(<App />);
+
+        expect(await screen.findByRole("heading", { name: "Usuarios" })).toBeInTheDocument();
+
+        await user.click(await screen.findByRole("button", { name: "Abrir detalle de Andrea Valverde" }));
+
+        expect(screen.getByRole("heading", { name: "Andrea Valverde" })).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "Reactivar usuario" })).toBeInTheDocument();
+        expect(screen.queryByText("Control de riesgo")).not.toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: "Acción no disponible" })).not.toBeInTheDocument();
+        expect(screen.queryByText("Este usuario no admite una acción de bloqueo directa por su estado actual.")).not.toBeInTheDocument();
+    });
+
+    it("bloquea /home/administration cuando el usuario no tiene permisos visibles", async () => {
+        const profileWithoutVisibleModules: IdentityProfile = {
             ...authenticatedProfile,
-            permissions: [
-                {
-                    code: "finance.collections.read",
-                    effect: "allow",
-                    scope: "all_areas",
-                    source: "role",
-                },
-            ],
+            permissions: [],
         };
 
-        mockIdentityFetch({ profile: financeOnlyProfile, session: authenticatedSession });
-        window.history.replaceState(null, "", "/home/global");
+        mockIdentityFetch({ profile: profileWithoutVisibleModules, session: authenticatedSession });
+        window.history.replaceState(null, "", "/home/administration");
 
         render(<App />);
 
         expect(await screen.findByRole("heading", { name: "Acceso no autorizado" })).toBeInTheDocument();
-        expect(screen.queryByRole("heading", { name: "Resumen Global" })).not.toBeInTheDocument();
+        expect(screen.queryByRole("heading", { name: "Usuarios del sistema" })).not.toBeInTheDocument();
+    });
+
+    it("renueva la sesion cuando la ruta privada recibe sesion anonima pero conserva refresh vigente", async () => {
+        let currentSession = anonymousSession;
+        const fetchMock = vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+            const path = getRequestPath(input);
+
+            if (path === "/identity/session") {
+                return createJsonResponse(currentSession);
+            }
+
+            if (path === "/identity/refresh" && init?.method === "POST") {
+                currentSession = authenticatedSession;
+                return createJsonResponse(authenticatedSession);
+            }
+
+            if (path === "/identity/me") {
+                return createJsonResponse(authenticatedProfile);
+            }
+
+            if (path === "/identity/users") {
+                return createJsonResponse(systemUsersResponse);
+            }
+
+            if (path === "/identity/roles/security-catalog") {
+                return createJsonResponse(securityCatalogResponse);
+            }
+
+            return createJsonResponse({ message: `Ruta no mockeada: ${path}` }, 404);
+        });
+
+        vi.stubGlobal("fetch", fetchMock);
+        window.history.replaceState(null, "", "/home/administration");
+
+        render(<App />);
+
+        expect(await screen.findByRole("heading", { name: "Hola Roberto Carlos al módulo Administración" })).toBeInTheDocument();
+        expect(fetchMock).toHaveBeenCalledWith(
+            buildApiUrl("/identity/refresh"),
+            expect.objectContaining({
+                credentials: "include",
+                method: "POST",
+            }),
+        );
+        expect(window.location.pathname).toBe("/home/administration");
     });
 
     it("conecta el login local con el BFF y navega al sistema autenticado", async () => {
@@ -483,10 +847,13 @@ describe("App", () => {
         await user.type(screen.getByLabelText("Contraseña", { selector: "input" }), "PasswordSeguro123!");
         await user.click(screen.getByRole("button", { name: "Ingresar" }));
 
-        await waitFor(() => {
-            expect(window.location.pathname).toBe("/home/global");
-        }, { timeout: 2_500 });
-        await expectGlobalSummaryHeading();
+        await waitFor(
+            () => {
+                expect(window.location.pathname).toBe("/home/administration");
+            },
+            { timeout: 2_500 },
+        );
+        expect(await screen.findByRole("heading", { name: "Hola Roberto Carlos al módulo Administración" })).toBeInTheDocument();
         expect(fetchMock).toHaveBeenCalledWith(
             buildApiUrl("/identity/local/login"),
             expect.objectContaining({
@@ -503,13 +870,13 @@ describe("App", () => {
     it("cierra sesion desde el menu movil y vuelve al login", async () => {
         const user = userEvent.setup();
         const fetchMock = mockIdentityFetch({ profile: authenticatedProfile, session: authenticatedSession });
-        window.history.replaceState(null, "", "/home/global");
+        window.history.replaceState(null, "", "/home/administration");
 
         render(<App />);
 
-        await expectGlobalSummaryHeading();
+        await expectAdministrationHomeHeading();
         await user.click(screen.getByRole("button", { name: "Abrir menú de navegación" }));
-        await user.click(await screen.findByRole("button", { name: "Cerrar Sesión" }));
+        await user.click(within(await screen.findByRole("dialog", { name: "Menú móvil de navegación" })).getByRole("button", { name: "Cerrar sesión" }));
 
         await waitFor(() => {
             expect(window.location.pathname).toBe("/auth/login");
@@ -527,11 +894,11 @@ describe("App", () => {
     it("cierra sesion desde el boton de salida de escritorio", async () => {
         const user = userEvent.setup();
         const fetchMock = mockIdentityFetch({ profile: authenticatedProfile, session: authenticatedSession });
-        window.history.replaceState(null, "", "/home/global");
+        window.history.replaceState(null, "", "/home/administration");
 
         render(<App />);
 
-        await expectGlobalSummaryHeading();
+        await expectAdministrationHomeHeading();
         await user.click(screen.getByRole("button", { name: "Cerrar sesión" }));
 
         await waitFor(() => {
@@ -592,10 +959,13 @@ describe("App", () => {
         await waitFor(() => {
             expect(popupWindow.location.href).toBe(authorizationUrl);
         });
-        await waitFor(() => {
-            expect(window.location.pathname).toBe("/home/global");
-        }, { timeout: 2_500 });
-        await expectGlobalSummaryHeading();
+        await waitFor(
+            () => {
+                expect(window.location.pathname).toBe("/home/administration");
+            },
+            { timeout: 2_500 },
+        );
+        expect(await screen.findByRole("heading", { name: "Hola Roberto Carlos al módulo Administración" })).toBeInTheDocument();
         expect(popupWindow.close).toHaveBeenCalledTimes(1);
     });
 
@@ -688,13 +1058,16 @@ describe("App", () => {
         });
 
         currentSession = authenticatedSession;
-        popupWindow.location.href = `${window.location.origin}/home/global`;
+        popupWindow.location.href = `${window.location.origin}/home/administration`;
         popupWindow.closed = true;
 
-        await waitFor(() => {
-            expect(window.location.pathname).toBe("/home/global");
-        }, { timeout: 2_500 });
-        await expectGlobalSummaryHeading();
+        await waitFor(
+            () => {
+                expect(window.location.pathname).toBe("/home/administration");
+            },
+            { timeout: 2_500 },
+        );
+        expect(await screen.findByRole("heading", { name: "Hola Roberto Carlos al módulo Administración" })).toBeInTheDocument();
         expect(screen.queryByText("No pudimos completar el inicio con Microsoft. Inténtalo de nuevo o selecciona otra cuenta.")).not.toBeInTheDocument();
     });
 
@@ -752,10 +1125,13 @@ describe("App", () => {
         popupWindow.location.href = `${window.location.origin}/auth/login`;
         popupWindow.closed = true;
 
-        await waitFor(() => {
-            expect(window.location.pathname).toBe("/home/global");
-        }, { timeout: 3_000 });
-        await expectGlobalSummaryHeading();
+        await waitFor(
+            () => {
+                expect(window.location.pathname).toBe("/home/administration");
+            },
+            { timeout: 3_000 },
+        );
+        expect(await screen.findByRole("heading", { name: "Hola Roberto Carlos al módulo Administración" })).toBeInTheDocument();
         expect(screen.queryByText("No pudimos completar el inicio con Microsoft. Inténtalo de nuevo o selecciona otra cuenta.")).not.toBeInTheDocument();
     });
 
@@ -935,7 +1311,7 @@ describe("App", () => {
             "fetch",
             vi.fn(() => Promise.reject(new TypeError("network unavailable"))),
         );
-        window.history.replaceState(null, "", "/home/global");
+        window.history.replaceState(null, "", "/home/administration");
 
         render(<App />);
 
@@ -953,7 +1329,7 @@ describe("App", () => {
             "fetch",
             vi.fn(() => Promise.reject(new TypeError("network unavailable"))),
         );
-        window.history.replaceState(null, "", "/home/global");
+        window.history.replaceState(null, "", "/home/administration");
 
         render(<App />);
 
@@ -968,7 +1344,7 @@ describe("App", () => {
         const fetchMock = vi.fn(() => Promise.reject(new TypeError("network unavailable")));
 
         vi.stubGlobal("fetch", fetchMock);
-        window.history.replaceState(null, "", "/home/global");
+        window.history.replaceState(null, "", "/home/administration");
 
         render(<App />);
 
@@ -999,7 +1375,7 @@ describe("App", () => {
                 return createJsonResponse({ message: `Ruta no mockeada: ${path}` }, 404);
             }),
         );
-        window.history.replaceState(null, "", "/home/global");
+        window.history.replaceState(null, "", "/home/administration");
 
         render(<App />);
 
@@ -1025,7 +1401,7 @@ describe("App", () => {
         });
 
         vi.stubGlobal("fetch", fetchMock);
-        window.history.replaceState(null, "", "/home/global");
+        window.history.replaceState(null, "", "/home/administration");
 
         render(<App />);
 
@@ -1057,7 +1433,7 @@ describe("App", () => {
         });
 
         vi.stubGlobal("fetch", fetchMock);
-        window.history.replaceState(null, "", "/home/global");
+        window.history.replaceState(null, "", "/home/administration");
 
         render(<App />);
 

@@ -183,9 +183,9 @@ Ejemplo:
 
 ```txt
 usuario: Maria
-rol: jefe_area
-area 1: mercadeo
-area 2: formalizacion
+rol: jefe_general
+area operativa 1: mercadeo
+area operativa 2: formalizacion
 alcance: own_area_and_children
 ```
 

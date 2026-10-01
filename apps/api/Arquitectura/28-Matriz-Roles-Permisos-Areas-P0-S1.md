@@ -7,7 +7,7 @@ La forma correcta de manejar permisos en el CRM no es crear un rol distinto por 
 La decision aprobada para P0-S1 es:
 
 ```txt
-usuario + rol + area/equipo + alcance + excepciones personales = permiso efectivo
+usuario + rol + area operativa/modulo + alcance + excepciones personales = permiso efectivo
 ```
 
 Motivo: el sistema debe ser facil de gestionar por jefatura, pero internamente debe quedar normalizado, auditable y preparado para crecer.
@@ -41,7 +41,7 @@ Pero tambien puede pasar esto:
 
 ```txt
 Maria
-rol: jefe_area
+rol: jefe_general
 areas: mercadeo, formalizacion
 ```
 
@@ -53,7 +53,7 @@ Se crean dos vinculos de area para la misma persona.
 
 ```txt
 rol = que puede hacer
-area/equipo = donde puede hacerlo
+area operativa/modulo = donde puede hacerlo
 permiso personal = ajuste puntual sobre esa persona
 ```
 
@@ -61,7 +61,7 @@ Ejemplo:
 
 ```txt
 usuario: Maria
-rol: jefe_area
+rol: jefe_general
 areas: mercadeo, formalizacion
 alcance: own_area_and_children
 ```
@@ -92,13 +92,13 @@ Problemas:
 - complica reportes;
 - dificulta quitar un permiso puntual sin tocar a todos los usuarios del rol.
 
-### Opcion aprobada: rol generico + area
+### Opcion aprobada: rol generico + areas operativas
 
 Ejemplo correcto:
 
 ```txt
-rol: jefe_area
-area: mercadeo
+rol: jefe_general
+areas operativas: mercadeo, formalizacion
 alcance: own_area_and_children
 ```
 
@@ -117,23 +117,21 @@ Estos roles son de referencia inicial. No significan pantallas completas todavia
 
 | Rol | Para que sirve | Puede tener areas asignadas |
 | --- | --- | --- |
-| `owner` | Control maximo del CRM. Debe ser limitado a muy pocas personas. | Si, normalmente `all_areas`. |
-| `jefe_general` | Supervision general de negocio. Puede ver varias o todas las areas segun alcance. | Si. |
-| `gerente` | Gestion amplia de operacion segun areas asignadas. | Si. |
-| `jefe_area` | Supervision de una o varias areas especificas. | Si. |
-| `subjefe_area` | Apoyo de supervision en una o varias areas/subareas. | Si. |
-| `supervisor` | Supervision operativa de equipo o vendedores asignados. | Si. |
-| `vendedor` | Atiende registros comerciales asignados. | Si, pero normalmente como miembro, no como jefe. |
-| `soporte_sistemas` | Soporte tecnico, diagnostico e integraciones. No implica acceso comercial automatico. | Si, si negocio lo autoriza. |
+| `owner` | Control maximo del sistema. No pertenece a Ventas, Formalizacion ni otra area operativa. | No como seleccion manual; su alcance es global de sistema. |
+| `jefe_general` | Supervision de negocio sobre una o varias areas operativas asignadas. | Si, multiple. |
+| `subjefe_area` | Apoyo de supervision sobre una o varias areas operativas asignadas. | Si, multiple. |
+| `vendedor` | Atiende operacion comercial dentro de las areas operativas asignadas. | Si, multiple. |
+| `soporte_sistemas` | Soporte tecnico, diagnostico e integraciones. No implica acceso comercial automatico. | No como seleccion manual; queda en Sistemas. |
 
 Reglas:
 
 - un usuario puede tener varios roles;
-- un usuario puede tener varias areas;
+- un usuario puede tener varias areas operativas;
 - un rol no debe tener nombre de area;
 - un area no debe definir por si sola que acciones puede hacer la persona;
 - `soporte_sistemas` no ve datos comerciales solo por ser sistemas;
 - `owner` no debe usarse como rol operativo diario;
+- al iniciar sesion, el selector de modulos solo debe ofrecer las areas operativas activas asignadas al usuario;
 - las acciones finales siempre se autorizan por permiso efectivo.
 
 ## Areas iniciales P0-S1
@@ -156,7 +154,7 @@ Reglas:
 - un usuario puede estar en una o varias areas;
 - una persona puede ser jefa en un area y miembro normal en otra;
 - desactivar un area no debe borrar historico;
-- cambiar un jefe de area debe dejar auditoria.
+- cambiar la jefatura o subjefatura de un area debe dejar auditoria.
 
 ## Alcances permitidos
 
@@ -170,10 +168,10 @@ Reglas:
 
 Reglas:
 
-- `all_areas` queda reservado para `owner` y `jefe_general`, salvo aprobacion expresa;
-- `jefe_area` normalmente usa `own_area_and_children`;
+- `all_areas` queda reservado para `owner` y casos aprobados de `jefe_general`;
+- `jefe_general` normalmente usa `own_area_and_children` sobre las areas seleccionadas;
 - `subjefe_area` normalmente usa `own_area` o `own_area_and_children` segun decision de jefatura;
-- `vendedor` normalmente usa `assigned`;
+- `vendedor` normalmente usa `self` o `assigned` dentro de las areas operativas asignadas;
 - el frontend no decide el alcance, solo muestra lo que el API devuelve.
 
 ## Permisos minimos P0-S1
@@ -195,9 +193,9 @@ Estos permisos son atomicos. La UI puede mostrarlos agrupados para que jefatura 
 | `role.assign` | Permite asignar roles dentro del alcance permitido. |
 | `permission.view` | Permite ver permisos. |
 | `permission.override` | Permite agregar o quitar permisos puntuales a un usuario dentro del alcance. |
-| `org.view` | Permite ver areas/equipos. |
-| `org.manage` | Permite crear, editar, activar o desactivar areas. |
-| `org.assign_user` | Permite asignar usuarios a areas/equipos. |
+| `org.view` | Permite ver areas operativas/modulos. |
+| `org.manage` | Permiso legado inactivo; organizacion no se expone como modulo editable en P0-S1. |
+| `org.assign_user` | Permite asignar usuarios a areas operativas/modulos. |
 | `audit.security.view` | Permite ver auditoria de seguridad. |
 
 No se aprueban aqui permisos comerciales de lead. Esos se cierran cuando vuelva el contrato canonico del lead.
@@ -206,25 +204,25 @@ No se aprueban aqui permisos comerciales de lead. Esos se cierran cuando vuelva 
 
 Esta matriz es el punto de partida para P0-S1. No reemplaza la validacion del API.
 
-| Permiso | owner | jefe_general | gerente | jefe_area | subjefe_area | supervisor | vendedor | soporte_sistemas |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `auth.login` | Si | Si | Si | Si | Si | Si | Si | Si |
-| `auth.logout` | Si | Si | Si | Si | Si | Si | Si | Si |
-| `user.view_self` | Si | Si | Si | Si | Si | Si | Si | Si |
-| `user.view_list` | Si | Si | Si | Si, por area | Si, por area | Si, por equipo | No | Si, tecnico |
-| `user.view_detail` | Si | Si | Si | Si, por area | Si, por area | Si, por equipo | No | Si, tecnico |
-| `user.create` | Si | Si | No por defecto | No por defecto | No | No | No | No por defecto |
-| `user.update` | Si | Si | Si, por alcance | Si, por area | No por defecto | No | No | No por defecto |
-| `user.activate` | Si | Si | No por defecto | No por defecto | No | No | No | No por defecto |
-| `user.deactivate` | Si | Si | No por defecto | No por defecto | No | No | No | No por defecto |
-| `role.view` | Si | Si | Si | Si | Si | No | No | Si, tecnico |
-| `role.assign` | Si | Si | No por defecto | No por defecto | No | No | No | No |
-| `permission.view` | Si | Si | Si | Si | Si | No | No | Si, tecnico |
-| `permission.override` | Si | Si | No por defecto | No por defecto | No | No | No | No |
-| `org.view` | Si | Si | Si | Si | Si | Si | No | Si, tecnico |
-| `org.manage` | Si | Si | No | No | No | No | No | No por defecto |
-| `org.assign_user` | Si | Si | Si, por alcance | Si, por area | No por defecto | No | No | No |
-| `audit.security.view` | Si | Si | No por defecto | No por defecto | No | No | No | Si, tecnico |
+| Permiso | owner | jefe_general | subjefe_area | vendedor | soporte_sistemas |
+| --- | --- | --- | --- | --- | --- |
+| `auth.login` | Si | Si | Si | Si | Si |
+| `auth.logout` | Si | Si | Si | Si | Si |
+| `user.view_self` | Si | Si | Si | Si | Si |
+| `user.view_list` | Si | No por defecto | No por defecto | No | Si, tecnico |
+| `user.view_detail` | Si | No por defecto | No por defecto | No | Si, tecnico |
+| `user.create` | Si | No por defecto | No por defecto | No | No por defecto |
+| `user.update` | Si | No por defecto | No por defecto | No | No por defecto |
+| `user.activate` | Si | No por defecto | No por defecto | No | No por defecto |
+| `user.deactivate` | Si | No por defecto | No por defecto | No | No por defecto |
+| `role.view` | Si | No por defecto | No por defecto | No | Si, tecnico |
+| `role.assign` | Si | No por defecto | No por defecto | No | No |
+| `permission.view` | Si | No por defecto | No por defecto | No | Si, tecnico |
+| `permission.override` | Si | No por defecto | No por defecto | No | No |
+| `org.view` | Si | No por defecto | No por defecto | No | Si, tecnico |
+| `org.manage` | No se expone | No se expone | No se expone | No se expone | No se expone |
+| `org.assign_user` | No por defecto | No por defecto | No por defecto | No | No |
+| `audit.security.view` | Si | No por defecto | No por defecto | No | Si, tecnico |
 
 Reglas de lectura:
 
@@ -241,8 +239,8 @@ La UI futura debe mostrar algo parecido a:
 
 ```txt
 Usuario: Maria
-Roles: jefe_area
-Areas: mercadeo, formalizacion
+Roles: jefe_general
+Areas operativas: mercadeo, formalizacion
 Alcance: area y subareas
 
 Permisos agregados:
@@ -277,8 +275,8 @@ No es SQL final. Es la estructura logica que debe respetar la futura migracion M
 | `sec_permission` | Catalogo de permisos atomicos. |
 | `sec_user_role` | Relacion muchos-a-muchos entre usuario y rol. |
 | `sec_role_permission` | Permisos incluidos por cada rol. |
-| `sec_org_unit` | Arbol de areas/equipos. |
-| `sec_user_org_unit` | Areas/equipos asignados a un usuario y alcance de ese vinculo. |
+| `sec_org_unit` | Arbol de areas operativas/modulos. |
+| `sec_user_org_unit` | Areas operativas/modulos asignados a un usuario y alcance de ese vinculo. |
 | `sec_user_permission_override` | Permisos agregados o quitados a una persona especifica. |
 | `int_external_system` | Catalogo generico de sistemas externos. |
 | `int_user_external_identity` | Relacion entre usuario interno e ids externos como NetSuite, Odoo o CRM viejo. |
@@ -310,7 +308,7 @@ El API debe calcular asi:
 1. identificar usuario autenticado
 2. leer roles activos
 3. leer permisos de roles activos
-4. leer areas/equipos activos del usuario
+4. leer areas operativas activas del usuario
 5. aplicar permisos personales agregados
 6. aplicar permisos personales denegados
 7. validar alcance contra el recurso solicitado
@@ -327,8 +325,8 @@ Una denegacion personal gana sobre un permiso de rol.
 Ejemplo:
 
 ```txt
-Maria tiene rol jefe_area.
-El rol jefe_area permite user.update por area.
+Maria tiene rol jefe_general.
+El rol jefe_general permite user.update por areas asignadas.
 Pero Maria tiene deny user.update.
 Resultado: Maria no puede modificar usuarios, aunque conserve el rol.
 ```
@@ -341,7 +339,7 @@ Resultado: Maria no puede modificar usuarios, aunque conserve el rol.
 - Quitar un permiso puntual no debe obligar a crear otro rol.
 - Agregar un permiso puntual no debe cambiar el rol base.
 - Cambiar de area no debe borrar usuario ni historico.
-- Una persona puede tener multiples areas.
+- Una persona puede tener multiples areas operativas.
 - Una persona puede tener multiples roles.
 - Todo cambio debe quedar en `audit_security_event`.
 
@@ -367,9 +365,9 @@ Antes de convertir esto a SQL final:
 
 1. Cual usuario sera `owner` inicial.
 2. Quien sera `jefe_general` inicial.
-3. Si `gerente` queda activo desde P0-S1 o preparado.
-4. Si `jefe_area` podra crear usuarios o solo asignar usuarios existentes.
-5. Si `jefe_area` podra quitar permisos puntuales o eso queda solo para `jefe_general`.
+3. Si `jefe_general` podra operar todas las areas o solo las seleccionadas por usuario.
+4. Si `subjefe_area` podra crear usuarios o solo ver/apoyar usuarios existentes.
+5. Si `subjefe_area` podra quitar permisos puntuales o eso queda solo para `jefe_general`.
 6. Si `soporte_sistemas` puede ver usuarios comerciales o solo diagnostico tecnico.
 7. Cuales areas iniciales se cargan como seed.
 8. Cual sera el motivo obligatorio minimo al cambiar permisos.

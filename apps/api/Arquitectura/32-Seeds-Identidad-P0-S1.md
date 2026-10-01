@@ -45,7 +45,7 @@ Primero se valido estructura. Luego se autoriza solo el seed de catalogos S1A. U
 | 2026-09-25 | MySQL 8.0.45 via MCP `mysql_crm_ventas` | Pass schema-only manual | Se valido estructura en `CRM_THINK_V2` con 14 tablas, 27 llaves foraneas, 0 columnas sin comentario y 0 filas insertadas. La aplicacion fue manual por MCP, no por el runner; por eso `conf_schema_migration` no quedo creada ni registrada. No se ejecuto `SQL/002_identity_seed_p0_s1.sql`; no se tocaron tablas equivalentes en `crmdatabase-api`. |
 | 2026-09-25 | Diff tecnico MySQL metadata | Pass estructural | `CRM_THINK_V2` tiene 14 tablas InnoDB con `utf8mb4_unicode_ci`; 27 FKs `ON UPDATE CASCADE` / `ON DELETE RESTRICT`; todas las columnas tienen comentario; todos los `DATETIME` usan precision 3; las 4 columnas `active_key_*` quedaron como `STORED GENERATED`; los unicos activos usan esas columnas generadas; las 14 tablas tienen 0 filas; `conf_schema_migration` no existe; `crmdatabase-api` no recibio tablas equivalentes. |
 | 2026-09-25 | Marca manual equivalente via MCP `mysql_crm_ventas` | Pass metadata-only | Se creo `CRM_THINK_V2.conf_schema_migration` y se registro una fila para `202609250001_identity_schema`. `conf_schema_migration` existe solo en `CRM_THINK_V2`, no en `crmdatabase-api`. Las 14 tablas de identidad siguen con 0 filas. No se ejecuto el runner por falta de `.env` seguro y para no exponer credenciales en archivos, comandos o logs. |
-| 2026-09-25 | Seed `SQL/002_identity_seed_p0_s1.sql` via MCP `mysql_crm_ventas` | Pass catalogos S1A | Autorizado por ley `0.3.5` y ejecutado solo en `CRM_THINK_V2`. El primer bloque multi-statement dejo una desviacion parcial: faltaban 5 areas hijas, 3 sistemas externos y 4 eventos de auditoria. Se completo con sentencias individuales totalmente calificadas contra `CRM_THINK_V2`. Conteos finales: 17 permisos, 8 roles, 80 relaciones rol-permiso, 6 areas, 3 sistemas externos, 4 eventos de auditoria, 0 usuarios, 0 identidades auth, 0 roles de usuario y 0 areas de usuario. `crmdatabase-api` no recibio tablas equivalentes ni inserts. |
+| 2026-09-25 | Seed `SQL/002_identity_seed_p0_s1.sql` via MCP `mysql_crm_ventas` | Pass catalogos S1A historico | Autorizado por ley `0.3.5` y ejecutado solo en `CRM_THINK_V2`. El primer bloque multi-statement dejo una desviacion parcial: faltaban 5 areas hijas, 3 sistemas externos y 4 eventos de auditoria. Se completo con sentencias individuales totalmente calificadas contra `CRM_THINK_V2`. Ese corte historico creo 17 permisos, 8 roles, 80 relaciones rol-permiso, 6 areas, 3 sistemas externos, 4 eventos de auditoria, 0 usuarios, 0 identidades auth, 0 roles de usuario y 0 areas de usuario. La version vigente recorta el catalogo de permisos a la vista `Usuarios` hasta que cada nueva vista sea construida. `crmdatabase-api` no recibio tablas equivalentes ni inserts. |
 | 2026-09-28 | Runner `pnpm migrate:identity:schema` con `.env` runtime | Bloqueado por privilegio minimo | El runner apunto a `CRM_THINK_V2` y fallo antes de aplicar `SQL/003` porque el usuario `crm_think_v2_runtime` no tiene `CREATE` sobre `conf_schema_migration`. Este bloqueo es correcto: el usuario runtime no debe ejecutar migraciones. Inspeccion solo-lectura posterior confirmo que `202609250003_identity_login_readiness` no esta registrado y que no existen `token_hash_auth_session`, columnas de lockout ni `sec_local_password_reset_token`. No se toco `crmdatabase-api`. |
 | 2026-09-28 | Runner `pnpm migrate:identity:schema` con `.env` runtime | Bloqueado de nuevo por privilegio minimo | Nueva ejecucion solicitada para `SQL/003`. El `.env` sigue apuntando al usuario runtime y el runner volvio a fallar en `CREATE` sobre `conf_schema_migration`, antes de aplicar cambios. Verificacion posterior por `information_schema` confirmo `token_hash_auth_session = 0`, columnas de lockout = 0 y tabla `sec_local_password_reset_token = 0`. El conector MCP disponible selecciona `crmdatabase-api` por defecto y se uso solo con consultas metadata totalmente calificadas hacia `CRM_THINK_V2`; no se modifico `crmdatabase-api`. |
 | 2026-09-28 | Runner `pnpm migrate:identity:schema` con usuario dedicado `crm_think_v2_schema_migrator` | Pass `SQL/003` | Se preparo un usuario dedicado de migracion schema-only con secreto generado localmente y no impreso. El runner omitio `202609250001_identity_schema` por estar registrada y aplico `202609250003_identity_login_readiness`. Verificacion posterior confirmo `token_hash_auth_session = 1`, columnas de lockout = 3, tabla `sec_local_password_reset_token = 1` y registro `202609250003_identity_login_readiness = 1` en `conf_schema_migration`. El usuario admin configurado localmente no ejecuto el runner; solo preparo el usuario dedicado. No se toco `crmdatabase-api`. |
@@ -305,12 +305,9 @@ Tabla destino: `sec_role`.
 | code_role | name_role | status_role | Proposito |
 | --- | --- | --- | --- |
 | `owner` | Owner | `active` | Control maximo del CRM. Uso limitado a muy pocas personas. |
-| `jefe_general` | Jefe General | `active` | Supervision general de negocio sobre varias o todas las areas segun alcance. |
-| `gerente` | Gerente | `active` | Gestion amplia de operacion segun areas asignadas. |
-| `jefe_area` | Jefe de Area | `active` | Supervision de una o varias areas especificas. |
-| `subjefe_area` | Subjefe de Area | `active` | Apoyo de supervision en una o varias areas/subareas. |
-| `supervisor` | Supervisor | `active` | Supervision operativa de equipo o vendedores asignados. |
-| `vendedor` | Vendedor | `active` | Atiende registros comerciales asignados. |
+| `jefe_general` | Jefe General | `active` | Supervision de negocio sobre una o varias areas operativas segun alcance asignado. |
+| `subjefe_area` | Subjefe | `active` | Apoyo de supervision sobre una o varias areas operativas asignadas. |
+| `vendedor` | Vendedor | `active` | Atiende operacion comercial dentro de las areas operativas asignadas. |
 | `soporte_sistemas` | Soporte Sistemas | `active` | Soporte tecnico, diagnostico e integraciones sin acceso comercial automatico. |
 
 Reglas:
@@ -325,31 +322,22 @@ Tabla destino: `sec_permission`.
 
 | code_permission | module_code_permission | action_code_permission | status_permission | Proposito |
 | --- | --- | --- | --- | --- |
-| `auth.login` | `auth` | `login` | `active` | Permite iniciar sesion. |
-| `auth.logout` | `auth` | `logout` | `active` | Permite cerrar sesion. |
-| `user.view_self` | `user` | `view_self` | `active` | Permite ver el propio perfil. |
 | `user.view_list` | `user` | `view_list` | `active` | Permite ver lista de usuarios dentro del alcance. |
 | `user.view_detail` | `user` | `view_detail` | `active` | Permite ver detalle de usuario dentro del alcance. |
 | `user.create` | `user` | `create` | `active` | Permite crear usuarios. |
 | `user.update` | `user` | `update` | `active` | Permite modificar usuarios. |
 | `user.activate` | `user` | `activate` | `active` | Permite activar usuarios. |
 | `user.deactivate` | `user` | `deactivate` | `active` | Permite desactivar usuarios. |
-| `role.view` | `role` | `view` | `active` | Permite ver roles. |
-| `role.assign` | `role` | `assign` | `active` | Permite asignar roles dentro del alcance permitido. |
-| `permission.view` | `permission` | `view` | `active` | Permite ver permisos. |
-| `permission.override` | `permission` | `override` | `active` | Permite agregar o quitar permisos puntuales a un usuario dentro del alcance. |
-| `org.view` | `org` | `view` | `active` | Permite ver areas/equipos. |
-| `org.manage` | `org` | `manage` | `active` | Permite crear, editar, activar o desactivar areas. |
-| `org.assign_user` | `org` | `assign_user` | `active` | Permite asignar usuarios a areas/equipos. |
-| `audit.security.view` | `audit` | `security_view` | `active` | Permite ver auditoria de seguridad. |
+| `role.assign` | `role` | `assign` | `active` | Permite administrar roles y asignaciones dentro del alcance permitido. |
+| `org.manage` | `org` | `manage` | `inactive` | Permiso legado; organizacion no se expone como modulo editable en P0-S1. |
 
 Regla:
 
 ```txt
-No seedear permisos comerciales de lead todavia.
+No seedear permisos de vistas no construidas todavia. `role.assign` pertenece a la vista de Roles y seguridad del modulo Administracion; `org.manage` queda inactivo y no debe mostrarse en el catalogo operativo.
 ```
 
-Los permisos de lead se definen despues de cerrar identidad y volver al contrato canonico del lead.
+Cada vista nueva debe traer sus permisos atomicos en el mismo corte que la construye.
 
 ## Role permissions seed
 
@@ -357,137 +345,64 @@ Tabla destino: `sec_role_permission`.
 
 Esta tabla se inserta usando `code_role` y `code_permission` como referencia logica. La migracion SQL real debe resolver los IDs internos.
 
-Regla operativa: si se agrega un permiso al catalogo P0-S1A, el seed de `owner` y `jefe_general` debe re-ejecutarse o actualizarse en el mismo cambio para que ambos roles reciban el catalogo completo vigente.
+Regla operativa: si se agrega un permiso al catalogo P0-S1A, el seed de `owner` debe re-ejecutarse o actualizarse en el mismo cambio para que conserve el catalogo completo vigente. Los demas roles reciben solo permisos operativos o permisos explicitamente aprobados.
+
+Roles descartados del catalogo activo actual:
+
+```txt
+gerente
+jefe_area
+supervisor
+```
+
+Si ya existen en una base real, deben migrarse o inactivarse con auditoria despues de reasignar usuarios activos. No deben volver a aparecer como opcion de creacion de usuario.
 
 ### owner
 
-`owner` recibe todos los permisos P0-S1:
+`owner` recibe todos los permisos vigentes de la vista Usuarios:
 
 ```txt
-auth.login
-auth.logout
-user.view_self
 user.view_list
 user.view_detail
 user.create
 user.update
 user.activate
 user.deactivate
-role.view
 role.assign
-permission.view
-permission.override
-org.view
-org.manage
-org.assign_user
-audit.security.view
 ```
 
 ### jefe_general
 
-`jefe_general` recibe todos los permisos P0-S1 igual que `owner`, pero su uso operativo debe ser gobernado por alcance y auditoria.
+`jefe_general` no recibe permisos administrativos por defecto. Puede tener uno o varios modulos operativos asignados y, dentro de cada modulo, permisos accionables propios.
 
-Regla: puede tener `all_areas` si negocio lo confirma.
-
-### gerente
-
-Permisos base:
-
-```txt
-auth.login
-auth.logout
-user.view_self
-user.view_list
-user.view_detail
-user.update
-role.view
-permission.view
-org.view
-org.assign_user
-```
-
-Regla: opera por alcance asignado.
-
-### jefe_area
-
-Permisos base:
-
-```txt
-auth.login
-auth.logout
-user.view_self
-user.view_list
-user.view_detail
-user.update
-role.view
-permission.view
-org.view
-org.assign_user
-```
-
-Regla: normalmente usa `own_area_and_children`.
+Regla: puede operar todas las areas solo si se le asignan todas las areas o si negocio aprueba expresamente `all_areas`.
 
 ### subjefe_area
 
-Permisos base:
-
-```txt
-auth.login
-auth.logout
-user.view_self
-user.view_list
-user.view_detail
-role.view
-permission.view
-org.view
-```
+Sin permisos base en este corte.
 
 Regla: acciones de escritura quedan por override si negocio lo aprueba.
 
-### supervisor
-
-Permisos base:
-
-```txt
-auth.login
-auth.logout
-user.view_self
-user.view_list
-user.view_detail
-org.view
-```
-
-Regla: normalmente usa alcance por equipo o asignados.
-
 ### vendedor
 
-Permisos base:
+Sin permisos base en este corte.
 
-```txt
-auth.login
-auth.logout
-user.view_self
-```
-
-Regla: permisos comerciales de lead se agregan despues, no en este seed.
+Regla: permisos comerciales de lead se agregan despues, no en este seed. Sus areas operativas definen los modulos donde podra trabajar.
 
 ### soporte_sistemas
 
 Permisos base:
 
 ```txt
-auth.login
-auth.logout
-user.view_self
 user.view_list
 user.view_detail
-role.view
-permission.view
-org.view
-audit.security.view
+user.create
+user.update
+user.activate
+user.deactivate
 ```
 
-Regla: soporte tecnico no recibe acceso comercial automatico.
+Regla: soporte tecnico no recibe acceso comercial automatico ni administracion de roles por defecto.
 
 ## Areas seed
 
@@ -518,8 +433,8 @@ Reglas:
 - no borrar areas con historico;
 - desactivar antes que borrar;
 - una persona puede pertenecer a varias areas;
-- el jefe general puede ver todo solo si tiene alcance `all_areas`;
-- jefes/subjefes se modelan con `sec_user_org_unit`, no con columnas dentro de `sec_user`.
+- el jefe general puede ver todo solo si tiene todas las areas operativas asignadas o alcance `all_areas` aprobado;
+- jefaturas, subjefaturas y vendedores se modelan con `sec_user_org_unit`, no con columnas dentro de `sec_user`.
 
 ## Alcances seed
 
@@ -536,7 +451,7 @@ No existe tabla separada para alcances en P0-S1A. Estos codigos son valores perm
 Regla:
 
 ```txt
-all_areas queda reservado para owner y jefe_general, salvo aprobacion expresa.
+all_areas queda reservado para owner y casos aprobados de jefe_general.
 ```
 
 ## Membership seed
@@ -548,7 +463,6 @@ No existe tabla separada para membership en P0-S1. Estos codigos son valores per
 | `member` | Usuario miembro normal de un area. |
 | `leader` | Responsable principal de un area. |
 | `assistant_leader` | Subjefe o apoyo de supervision del area. |
-| `supervisor` | Supervisor operativo de equipo/personas asignadas. |
 
 ## Sistemas externos seed
 

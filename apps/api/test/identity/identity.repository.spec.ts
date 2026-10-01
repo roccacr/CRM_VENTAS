@@ -7,6 +7,7 @@ import { IdentityLocalRepository } from "../../src/modules/crm/identity/identity
 import { IdentityMicrosoftRepository } from "../../src/modules/crm/identity/identity-microsoft.repository.js";
 import { IdentityProfileRepository } from "../../src/modules/crm/identity/identity-profile.repository.js";
 import { IdentitySessionRepository } from "../../src/modules/crm/identity/identity-session.repository.js";
+import { IdentityUserDirectoryRepository } from "../../src/modules/crm/identity/identity-user-directory.repository.js";
 import { EffectivePermissionService } from "../../src/modules/crm/permissions/effective-permission.service.js";
 
 type QueryCall = {
@@ -40,6 +41,11 @@ type RepositoryPrivateApi = {
 };
 
 type ProfileRepositoryPrivateApi = RepositoryPrivateApi;
+
+type UserDirectoryRepositoryPrivateApi = {
+    countMatchingUsers: (input: { readonly search?: string; readonly status?: string }) => Promise<number>;
+    resolveScopeForRoleCodes: (roleCodes: readonly string[]) => string;
+};
 
 /**
  * Doble minimo de query builder fluido.
@@ -116,8 +122,11 @@ const createRepository = (builder: QueryBuilderResult["builder"]): IdentityRepos
     const sessions = new IdentitySessionRepository(database, audit);
     const local = new IdentityLocalRepository(database, audit);
     const microsoft = new IdentityMicrosoftRepository(database, sessions);
+    const userDirectory = new IdentityUserDirectoryRepository(database, audit);
 
-    return new IdentityRepository(profiles, sessions, local, microsoft);
+    const repository = new IdentityRepository(profiles, sessions, local, microsoft, userDirectory);
+
+    return repository;
 };
 
 /**
@@ -137,6 +146,11 @@ const createProfileRepository = (builder: QueryBuilderResult["builder"]): Identi
  * Accede a metodos privados solo para fijar regresiones de queries sensibles.
  */
 const getPrivateProfileRepositoryApi = (repository: IdentityProfileRepository): ProfileRepositoryPrivateApi => repository as unknown as ProfileRepositoryPrivateApi;
+
+/**
+ * Accede a reglas internas del directorio para fijar contratos de alcance.
+ */
+const getPrivateUserDirectoryRepositoryApi = (repository: IdentityUserDirectoryRepository): UserDirectoryRepositoryPrivateApi => repository as unknown as UserDirectoryRepositoryPrivateApi;
 
 /**
  * Indica si el query aplico un filtro where exacto.
@@ -169,6 +183,33 @@ const readValuesAfterInsertInto = (calls: QueryCall[], table: string): Record<st
 };
 
 describe("IdentityRepository", () => {
+    it("limita jefatura general a las areas operativas asignadas, no a todo el sistema", () => {
+        const { builder } = createQueryBuilder();
+        const database = {
+            db: {
+                selectFrom: builder.selectFrom,
+            },
+        } as unknown as DatabaseService;
+        const userDirectory = new IdentityUserDirectoryRepository(database, new SecurityAuditService(database));
+
+        expect(getPrivateUserDirectoryRepositoryApi(userDirectory).resolveScopeForRoleCodes(["owner"])).toBe("all_areas");
+        expect(getPrivateUserDirectoryRepositoryApi(userDirectory).resolveScopeForRoleCodes(["jefe_general"])).toBe("own_area_and_children");
+        expect(getPrivateUserDirectoryRepositoryApi(userDirectory).resolveScopeForRoleCodes(["subjefe_area"])).toBe("own_area_and_children");
+        expect(getPrivateUserDirectoryRepositoryApi(userDirectory).resolveScopeForRoleCodes(["ventas"])).toBe("self");
+    });
+
+    it("normaliza el total del directorio a number aunque MySQL devuelva bigint", async () => {
+        const { builder } = createQueryBuilder([], [{ total: 44n }]);
+        const database = {
+            db: {
+                selectFrom: builder.selectFrom,
+            },
+        } as unknown as DatabaseService;
+        const userDirectory = new IdentityUserDirectoryRepository(database, new SecurityAuditService(database));
+
+        await expect(getPrivateUserDirectoryRepositoryApi(userDirectory).countMatchingUsers({})).resolves.toBe(44);
+    });
+
     it("resuelve identidad Microsoft por subject estable y no por correo", async () => {
         const { builder, calls } = createQueryBuilder([], [{ authIdentityId: 30, permissionVersion: 1, userId: 20 }]);
         const repository = createRepository(builder);
@@ -598,6 +639,44 @@ describe("IdentityRepository", () => {
         expect(result).toEqual({ refreshExpiresAt: absoluteSessionExpiresAt, sessionExpiresAt: absoluteSessionExpiresAt, sessionPublicId: "session-public-id", status: "rotated", userId: 20 });
         expect(new Date(sessionUpdate.expires_at_auth_session as Date).toISOString()).toBe(absoluteSessionExpiresAt.toISOString());
         expect(new Date(refreshInsert.expires_at_refresh_token as Date).toISOString()).toBe(absoluteSessionExpiresAt.toISOString());
+    });
+
+    it("revalida la version de permisos de la sesion al rotar un refresh vigente", async () => {
+        const absoluteSessionExpiresAt = new Date(Date.now() + 8 * 60 * 60 * 1000);
+        const proposedExpiresAt = new Date(Date.now() + 120_000);
+        const refreshRow = {
+            authIdentityId: 30,
+            providerCode: "local",
+            refreshTokenId: 1,
+            refreshStatus: "active",
+            refreshExpiresAt: absoluteSessionExpiresAt,
+            refreshFamilyId: "refresh-family",
+            sessionId: 10,
+            sessionStatus: "active",
+            sessionExpiresAt: absoluteSessionExpiresAt,
+            sessionPublicId: "session-public-id",
+            sessionPermissionVersion: 2,
+            userId: 20,
+            userPermissionVersion: 3,
+            userStatus: "active",
+            identityStatus: "active",
+        };
+        const { builder, calls } = createQueryBuilder([], [refreshRow, { numUpdatedRows: 1n }, { numUpdatedRows: 1n }, {}]);
+        const repository = createRepository(builder);
+
+        const result = await repository.rotateRefreshSession({
+            nextRefreshExpiresAt: proposedExpiresAt,
+            nextRefreshTokenHash: "next-refresh-hash",
+            nextSessionExpiresAt: proposedExpiresAt,
+            nextSessionTokenHash: "next-session-hash",
+            refreshTokenHash: "current-refresh-hash",
+        });
+
+        const sessionUpdate = readSetAfterUpdateTable(calls, "sec_auth_session");
+
+        expect(result).toEqual({ authIdentityId: 30, providerCode: "local", refreshExpiresAt: proposedExpiresAt, sessionExpiresAt: proposedExpiresAt, sessionPublicId: "session-public-id", status: "rotated", userId: 20 });
+        expect(sessionUpdate.permission_version_auth_session).toBe(3);
+        expect(calls.some((call) => call.method === "insertInto" && call.args[0] === "sec_refresh_token")).toBe(true);
     });
 
     it("no actualiza la clave si otra peticion ya consumio el token de reset", async () => {

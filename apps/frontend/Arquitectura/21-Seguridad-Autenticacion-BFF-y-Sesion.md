@@ -151,6 +151,11 @@ La pantalla real de identidad ya esta autorizada para el corte BFF. El cliente R
 7. Ante `409` por `permissionVersion`, usar el mismo refresh single-flight; si no se obtiene sesion vigente, limpiar sesion visual/cache local y enviar al usuario a login nuevo.
 8. En logout, llamar `POST /identity/logout`, limpiar cache de server state y no borrar tokens manualmente porque React no los posee.
 
+En `vite dev`, si la aplicacion se abre desde una IP de red local, el cliente
+puede resolver el BFF con ese mismo hostname y el puerto aprobado del API para
+que cookies, CSRF y CORS operen sobre la misma maquina de desarrollo. Produccion
+sigue requiriendo `VITE_API_ORIGIN` explicito.
+
 Regla:
 
 ```txt

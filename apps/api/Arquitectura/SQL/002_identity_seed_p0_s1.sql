@@ -6,6 +6,73 @@ USE `CRM_THINK_V2`;
 
 START TRANSACTION;
 
+DELETE FROM sec_role_permission;
+
+DELETE override_permission
+FROM sec_user_permission_override AS override_permission
+INNER JOIN sec_permission AS permission
+  ON permission.id_permission = override_permission.permission_id_user_permission_override
+WHERE permission.code_permission NOT IN (
+  'user.view_list',
+  'user.view_detail',
+  'user.create',
+  'user.update',
+  'user.activate',
+  'user.deactivate',
+  'role.assign',
+  'lead.read',
+  'lead.create',
+  'lead.update',
+  'lead.status',
+  'lead.assign',
+  'opportunity.read',
+  'opportunity.create',
+  'opportunity.close',
+  'estimate.read',
+  'estimate.create',
+  'estimate.approve',
+  'campaign.read',
+  'campaign.create',
+  'source.update',
+  'file.read',
+  'contract.review',
+  'signature.manage',
+  'wallet.read',
+  'invoice.read',
+  'payment.reconcile'
+);
+
+DELETE FROM sec_permission
+WHERE code_permission NOT IN (
+  'user.view_list',
+  'user.view_detail',
+  'user.create',
+  'user.update',
+  'user.activate',
+  'user.deactivate',
+  'role.assign',
+  'lead.read',
+  'lead.create',
+  'lead.update',
+  'lead.status',
+  'lead.assign',
+  'opportunity.read',
+  'opportunity.create',
+  'opportunity.close',
+  'estimate.read',
+  'estimate.create',
+  'estimate.approve',
+  'campaign.read',
+  'campaign.create',
+  'source.update',
+  'file.read',
+  'contract.review',
+  'signature.manage',
+  'wallet.read',
+  'invoice.read',
+  'payment.reconcile'
+);
+
 INSERT INTO sec_permission (
   code_permission,
   module_code_permission,
@@ -13,56 +80,33 @@ INSERT INTO sec_permission (
   description_permission,
   status_permission
 ) VALUES
-  ('auth.login', 'auth', 'login', 'Permite iniciar sesion.', 'active'),
-  ('auth.logout', 'auth', 'logout', 'Permite cerrar sesion.', 'active'),
-  ('user.view_self', 'user', 'view_self', 'Permite ver el propio perfil.', 'active'),
   ('user.view_list', 'user', 'view_list', 'Permite ver lista de usuarios dentro del alcance.', 'active'),
   ('user.view_detail', 'user', 'view_detail', 'Permite ver detalle de usuario dentro del alcance.', 'active'),
   ('user.create', 'user', 'create', 'Permite crear usuarios.', 'active'),
   ('user.update', 'user', 'update', 'Permite modificar usuarios.', 'active'),
   ('user.activate', 'user', 'activate', 'Permite activar usuarios.', 'active'),
   ('user.deactivate', 'user', 'deactivate', 'Permite desactivar usuarios.', 'active'),
-  ('role.view', 'role', 'view', 'Permite ver roles.', 'active'),
-  ('role.assign', 'role', 'assign', 'Permite asignar roles dentro del alcance permitido.', 'active'),
-  ('permission.view', 'permission', 'view', 'Permite ver permisos.', 'active'),
-  ('permission.override', 'permission', 'override', 'Permite agregar o quitar permisos puntuales a un usuario dentro del alcance.', 'active'),
-  ('org.view', 'org', 'view', 'Permite ver areas y equipos.', 'active'),
-  ('org.manage', 'org', 'manage', 'Permite crear, editar, activar o desactivar areas.', 'active'),
-  ('org.assign_user', 'org', 'assign_user', 'Permite asignar usuarios a areas o equipos.', 'active'),
-  ('audit.security.view', 'audit', 'security_view', 'Permite ver auditoria de seguridad.', 'active'),
-  ('global.dashboard.read', 'global', 'dashboard_read', 'Permite ver el resumen global autorizado.', 'active'),
-  ('crm.dashboard.read', 'crm', 'dashboard_read', 'Permite ver el resumen comercial de CRM Tink.', 'active'),
-  ('crm.leads.read', 'crm', 'leads_read', 'Permite ver la opcion de leads del CRM.', 'active'),
-  ('crm.outlook_calendar.read', 'crm', 'outlook_calendar_read', 'Permite ver el calendario Outlook comercial.', 'active'),
-  ('crm.customer_files.read', 'crm', 'customer_files_read', 'Permite ver expedientes comerciales.', 'active'),
-  ('crm.events.read', 'crm', 'events_read', 'Permite ver lista de eventos comerciales.', 'active'),
-  ('crm.commissions.read', 'crm', 'commissions_read', 'Permite ver reportes de comisiones.', 'active'),
-  ('crm.opportunities.read', 'crm', 'opportunities_read', 'Permite ver oportunidades comerciales.', 'active'),
-  ('crm.sales_orders.read', 'crm', 'sales_orders_read', 'Permite ver ordenes de venta.', 'active'),
-  ('crm.tickets.read', 'crm', 'tickets_read', 'Permite ver tickets operativos del CRM.', 'active'),
-  ('finance.dashboard.read', 'finance', 'dashboard_read', 'Permite ver el resumen financiero.', 'active'),
-  ('finance.collections.read', 'finance', 'collections_read', 'Permite ver cobros pendientes.', 'active'),
-  ('finance.account_status.read', 'finance', 'account_status_read', 'Permite ver estados de cuenta.', 'active'),
-  ('finance.invoices.read', 'finance', 'invoices_read', 'Permite ver facturacion.', 'active'),
-  ('finance.portfolio.read', 'finance', 'portfolio_read', 'Permite ver cartera vencida.', 'active'),
-  ('finance.reconciliation.read', 'finance', 'reconciliation_read', 'Permite ver conciliacion bancaria.', 'active'),
-  ('marketing.dashboard.read', 'marketing', 'dashboard_read', 'Permite ver el resumen de mercadeo.', 'active'),
-  ('marketing.campaigns.read', 'marketing', 'campaigns_read', 'Permite ver campanas de mercadeo.', 'active'),
-  ('marketing.sources.read', 'marketing', 'sources_read', 'Permite ver origenes de leads.', 'active'),
-  ('marketing.incoming_leads.read', 'marketing', 'incoming_leads_read', 'Permite ver leads entrantes de mercadeo.', 'active'),
-  ('marketing.content.read', 'marketing', 'content_read', 'Permite ver piezas y materiales de mercadeo.', 'active'),
-  ('marketing.metrics.read', 'marketing', 'metrics_read', 'Permite ver metricas de captacion.', 'active'),
-  ('formalization.dashboard.read', 'formalization', 'dashboard_read', 'Permite ver el resumen de formalizacion.', 'active'),
-  ('formalization.contracts.read', 'formalization', 'contracts_read', 'Permite ver revision de contratos.', 'active'),
-  ('formalization.bank.read', 'formalization', 'bank_read', 'Permite ver aprobaciones bancarias.', 'active'),
-  ('formalization.signatures.read', 'formalization', 'signatures_read', 'Permite ver firmas pendientes.', 'active'),
-  ('formalization.handover.read', 'formalization', 'handover_read', 'Permite ver entrega y traspaso.', 'active'),
-  ('admin.dashboard.read', 'admin', 'dashboard_read', 'Permite ver el resumen de administracion.', 'active'),
-  ('settings.users.read', 'settings', 'users_read', 'Permite ver usuarios y cuentas.', 'active'),
-  ('settings.permissions.read', 'settings', 'permissions_read', 'Permite ver roles y seguridad.', 'active'),
-  ('settings.catalogs.read', 'settings', 'catalogs_read', 'Permite ver catalogos del CRM.', 'active'),
-  ('settings.integrations.read', 'settings', 'integrations_read', 'Permite ver integraciones API.', 'active'),
-  ('settings.audit.read', 'settings', 'audit_read', 'Permite ver auditoria y logs del sistema.', 'active')
+  ('role.assign', 'role', 'assign', 'Permite administrar roles y asignaciones dentro del alcance permitido.', 'active'),
+  ('lead.read', 'ventas', 'read', 'Permite leer la tabla de prospectos.', 'active'),
+  ('lead.create', 'ventas', 'create', 'Habilita la creacion de leads.', 'active'),
+  ('lead.update', 'ventas', 'update', 'Permite modificar datos del expediente comercial.', 'active'),
+  ('lead.status', 'ventas', 'status', 'Permite mover etapa en el pipeline.', 'active'),
+  ('lead.assign', 'ventas', 'assign', 'Permite reasignar responsable.', 'active'),
+  ('opportunity.read', 'ventas', 'read', 'Permite consultar oportunidades abiertas.', 'active'),
+  ('opportunity.create', 'ventas', 'create', 'Habilita la creacion de oportunidades.', 'active'),
+  ('opportunity.close', 'ventas', 'close', 'Permite cerrar oportunidad ganada o perdida.', 'active'),
+  ('estimate.read', 'ventas', 'read', 'Permite ver estimaciones asociadas.', 'active'),
+  ('estimate.create', 'ventas', 'create', 'Habilita calculo y guardado de estimaciones.', 'active'),
+  ('estimate.approve', 'ventas', 'approve', 'Permiso sensible para aprobar estimaciones.', 'active'),
+  ('campaign.read', 'mercadeo', 'read', 'Permite ver campanas activas.', 'active'),
+  ('campaign.create', 'mercadeo', 'create', 'Permite crear campanas.', 'active'),
+  ('source.update', 'mercadeo', 'update', 'Permite modificar fuentes de trafico.', 'active'),
+  ('file.read', 'formalizacion', 'read', 'Permite ver expedientes.', 'active'),
+  ('contract.review', 'formalizacion', 'review', 'Permite revisar contratos.', 'active'),
+  ('signature.manage', 'formalizacion', 'manage', 'Permite gestionar firmas.', 'active'),
+  ('wallet.read', 'contabilidad', 'read', 'Permite ver cartera.', 'active'),
+  ('invoice.read', 'contabilidad', 'read', 'Permite consultar facturas.', 'active'),
+  ('payment.reconcile', 'contabilidad', 'reconcile', 'Permiso sensible para conciliacion.', 'active')
 ON DUPLICATE KEY UPDATE
   module_code_permission = VALUES(module_code_permission),
   action_code_permission = VALUES(action_code_permission),
@@ -76,28 +120,43 @@ INSERT INTO sec_role (
   status_role
 ) VALUES
   ('owner', 'Owner', 'Control maximo del CRM. Uso limitado a muy pocas personas.', 'active'),
-  ('jefe_general', 'Jefe General', 'Supervision general de negocio sobre varias o todas las areas segun alcance.', 'active'),
-  ('gerente', 'Gerente', 'Gestion amplia de operacion segun areas asignadas.', 'active'),
-  ('jefe_area', 'Jefe de Area', 'Supervision de una o varias areas especificas.', 'active'),
-  ('subjefe_area', 'Subjefe de Area', 'Apoyo de supervision en una o varias areas o subareas.', 'active'),
-  ('supervisor', 'Supervisor', 'Supervision operativa de equipo o vendedores asignados.', 'active'),
-  ('vendedor', 'Vendedor', 'Atiende registros comerciales asignados.', 'active'),
-  ('soporte_sistemas', 'Soporte Sistemas', 'Soporte tecnico, diagnostico e integraciones sin acceso comercial automatico.', 'active')
+  ('jefe_general', 'Jefe General', 'Supervision de negocio sobre una o varias areas operativas segun alcance asignado.', 'active'),
+  ('subjefe_area', 'Subjefe', 'Apoyo de supervision sobre una o varias areas operativas asignadas.', 'active'),
+  ('ventas', 'Ventas', 'Rol operativo del modulo Ventas.', 'active'),
+  ('mercadeo', 'Mercadeo', 'Rol operativo del modulo Mercadeo.', 'active'),
+  ('formalizacion', 'Formalizacion', 'Rol operativo del modulo Formalizacion.', 'active'),
+  ('contabilidad', 'Contabilidad', 'Rol operativo del modulo Contabilidad.', 'active')
 ON DUPLICATE KEY UPDATE
   name_role = VALUES(name_role),
   description_role = VALUES(description_role),
   status_role = VALUES(status_role);
+
+-- Roles descartados para el modelo actual. Si existen usuarios activos con
+-- estos roles en una base real, deben reasignarse por flujo auditado antes de
+-- inactivarlos definitivamente.
+UPDATE sec_role
+SET
+  status_role = 'inactive',
+  deleted_at_role = COALESCE(deleted_at_role, CURRENT_TIMESTAMP(3))
+WHERE code_role IN ('gerente', 'jefe_area', 'supervisor', 'vendedor', 'soporte_sistemas')
+  AND NOT EXISTS (
+    SELECT 1
+    FROM sec_user_role ur
+    WHERE ur.role_id_user_role = sec_role.id_role
+      AND ur.status_user_role = 'active'
+      AND ur.revoked_at_user_role IS NULL
+  );
 
 INSERT INTO sec_role_permission (
   role_id_role_permission,
   permission_id_role_permission,
   status_role_permission
 )
--- Re-run this seed after adding identity permissions so owner and jefe_general receive the updated catalog.
+-- Owner nace con todo el catalogo administrativo y operativo.
 SELECT r.id_role, p.id_permission, 'active'
 FROM sec_role r
 CROSS JOIN sec_permission p
-WHERE r.code_role IN ('owner', 'jefe_general')
+WHERE r.code_role = 'owner'
 ON DUPLICATE KEY UPDATE
   status_role_permission = VALUES(status_role_permission);
 
@@ -106,22 +165,12 @@ INSERT INTO sec_role_permission (
   permission_id_role_permission,
   status_role_permission
 )
+-- Jefatura general solo hereda modulos operativos. Administracion queda reservada a Owner.
 SELECT r.id_role, p.id_permission, 'active'
 FROM sec_role r
 CROSS JOIN sec_permission p
-WHERE r.code_role IN ('gerente', 'jefe_area')
-  AND p.code_permission IN (
-    'auth.login',
-    'auth.logout',
-    'user.view_self',
-    'user.view_list',
-    'user.view_detail',
-    'user.update',
-    'role.view',
-    'permission.view',
-    'org.view',
-    'org.assign_user'
-  )
+WHERE r.code_role = 'jefe_general'
+  AND p.module_code_permission IN ('ventas', 'mercadeo', 'formalizacion', 'contabilidad')
 ON DUPLICATE KEY UPDATE
   status_role_permission = VALUES(status_role_permission);
 
@@ -134,16 +183,7 @@ SELECT r.id_role, p.id_permission, 'active'
 FROM sec_role r
 CROSS JOIN sec_permission p
 WHERE r.code_role = 'subjefe_area'
-  AND p.code_permission IN (
-    'auth.login',
-    'auth.logout',
-    'user.view_self',
-    'user.view_list',
-    'user.view_detail',
-    'role.view',
-    'permission.view',
-    'org.view'
-  )
+  AND p.module_code_permission IN ('ventas', 'mercadeo', 'formalizacion', 'contabilidad')
 ON DUPLICATE KEY UPDATE
   status_role_permission = VALUES(status_role_permission);
 
@@ -154,16 +194,9 @@ INSERT INTO sec_role_permission (
 )
 SELECT r.id_role, p.id_permission, 'active'
 FROM sec_role r
-CROSS JOIN sec_permission p
-WHERE r.code_role = 'supervisor'
-  AND p.code_permission IN (
-    'auth.login',
-    'auth.logout',
-    'user.view_self',
-    'user.view_list',
-    'user.view_detail',
-    'org.view'
-  )
+INNER JOIN sec_permission p
+  ON p.code_permission IN ('lead.read', 'lead.create', 'lead.update')
+WHERE r.code_role = 'ventas'
 ON DUPLICATE KEY UPDATE
   status_role_permission = VALUES(status_role_permission);
 
@@ -174,13 +207,9 @@ INSERT INTO sec_role_permission (
 )
 SELECT r.id_role, p.id_permission, 'active'
 FROM sec_role r
-CROSS JOIN sec_permission p
-WHERE r.code_role = 'vendedor'
-  AND p.code_permission IN (
-    'auth.login',
-    'auth.logout',
-    'user.view_self'
-  )
+INNER JOIN sec_permission p
+  ON p.code_permission IN ('campaign.read', 'campaign.create', 'source.update')
+WHERE r.code_role = 'mercadeo'
 ON DUPLICATE KEY UPDATE
   status_role_permission = VALUES(status_role_permission);
 
@@ -191,19 +220,22 @@ INSERT INTO sec_role_permission (
 )
 SELECT r.id_role, p.id_permission, 'active'
 FROM sec_role r
-CROSS JOIN sec_permission p
-WHERE r.code_role = 'soporte_sistemas'
-  AND p.code_permission IN (
-    'auth.login',
-    'auth.logout',
-    'user.view_self',
-    'user.view_list',
-    'user.view_detail',
-    'role.view',
-    'permission.view',
-    'org.view',
-    'audit.security.view'
-  )
+INNER JOIN sec_permission p
+  ON p.code_permission IN ('file.read', 'contract.review', 'signature.manage')
+WHERE r.code_role = 'formalizacion'
+ON DUPLICATE KEY UPDATE
+  status_role_permission = VALUES(status_role_permission);
+
+INSERT INTO sec_role_permission (
+  role_id_role_permission,
+  permission_id_role_permission,
+  status_role_permission
+)
+SELECT r.id_role, p.id_permission, 'active'
+FROM sec_role r
+INNER JOIN sec_permission p
+  ON p.code_permission IN ('wallet.read', 'invoice.read', 'payment.reconcile')
+WHERE r.code_role = 'contabilidad'
 ON DUPLICATE KEY UPDATE
   status_role_permission = VALUES(status_role_permission);
 
@@ -242,7 +274,6 @@ FROM (
   UNION ALL SELECT '01KCRM00000000000000000003', 'formalizacion', 'Formalizacion', 'active', 30
   UNION ALL SELECT '01KCRM00000000000000000004', 'contabilidad', 'Contabilidad', 'active', 40
   UNION ALL SELECT '01KCRM00000000000000000005', 'mercadeo', 'Mercadeo', 'active', 50
-  UNION ALL SELECT '01KCRM00000000000000000006', 'sistemas', 'Sistemas', 'active', 60
 ) AS child
 JOIN sec_org_unit AS parent ON parent.code_org_unit = 'empresa'
 ON DUPLICATE KEY UPDATE
