@@ -178,7 +178,7 @@ const View_events_listado = () => {
    };
 
    const tableOptions = {
-      ...useTableOptions([0, 1, 2, 5, 6, 8, 9]),
+      ...useTableOptions([0, 1, 2, 5, 6, 7, 8, 9]),
       rowCallback: function (row, data) {
          row.addEventListener("click", () => handleOpenModal(data));
          return false;

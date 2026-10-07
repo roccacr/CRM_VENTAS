@@ -23,14 +23,6 @@ export const tableColumns = [
     { title: "ESTADO", data: "accion_calendar", className: "text-left" }, // ESTADO
     { title: "TIPO", data: "tipo_calendar", className: "text-left" }, // TIPO
     {
-        title: "CITA TIPO VIEJO",
-        data: "cita_lead",
-        className: "text-left",
-        render: function (data) {
-            return data === 1 ? "Cita" : "No aplica";
-        },
-    }, // CITA
-    {
         title: "PROYECTO", data: "proyecto_lead", className: "text-left", render: function (data) {
 
             return data === "0" || data === null || data === 0 ? "No aplica" : data;
@@ -42,4 +34,10 @@ export const tableColumns = [
             return data === "0" || data === null || data === 0 ? "No aplica" : data;
         },
     }, // CAMPAÑA.
+    {
+        title: "ANUNCIO", data: "custentityaccion_campana", className: "text-left", render: function (data) {
+
+            return data === "0" || data === null || data === 0 ? "No aplica" : data;
+        },
+    }, // ANUNCIO.
 ];
