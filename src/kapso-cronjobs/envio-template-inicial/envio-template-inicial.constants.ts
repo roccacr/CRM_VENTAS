@@ -16,7 +16,7 @@ export const LEAD_INTERESADO_SEGUIMIENTO = "01-LEAD-INTERESADO";
 /** Estado CRM posterior a cualquier intento tecnico del template inicial. */
 export const LEAD_TEMPLATE_PROCESSED_STATUS = 0;
 export const LEAD_POST_TEMPLATE_SEGUIMIENTO = "08-LEAD-SEGUIMIENTO";
-export const LEAD_POST_TEMPLATE_ACCION = 3;
+export const LEAD_POST_TEMPLATE_ACCION = 6;
 
 /** Caidas CRM usadas por el flujo automatico de template inicial. */
 export const CAIDA_NUMERO_TELEFONO_INVALIDO = 68;

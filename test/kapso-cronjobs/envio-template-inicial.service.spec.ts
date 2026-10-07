@@ -235,7 +235,7 @@ describe("EnvioTemplateInicialService", () => {
         expect(repository.markLeadProcessedWithBitacora.mock.calls.at(-1)?.[0]).toBe(36640);
         expect(getLastLeadUpdate(repository)).toEqual(
             expect.objectContaining({
-                accionLead: 3,
+                accionLead: 6,
                 idCaida: 70,
                 segiminetoLead: "08-LEAD-SEGUIMIENTO",
                 telefonoLead: "50670452222",
