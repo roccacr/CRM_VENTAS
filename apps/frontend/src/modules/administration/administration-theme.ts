@@ -12,9 +12,9 @@ export const ADMINISTRATION_THEME: ThemeConfig = {
     components: {
         Descriptions: { itemPaddingBottom: 12, labelColor: "#5b6478", titleColor: "#0f172a" },
         Form: { itemMarginBottom: 16, labelColor: "#344054", verticalLabelPadding: "0 0 4px" },
-        Segmented: { itemSelectedBg: "#ffffff", trackBg: "#eef1f6" },
-        Select: { optionActiveBg: "#f2f4f7", optionSelectedBg: "#eef1f6", optionSelectedColor: "#0f172a", optionSelectedFontWeight: 600 },
-        Table: { bodySortBg: "transparent", headerBg: "#f6f8fc", headerColor: "#475467", headerSortActiveBg: "#f6f8fc", headerSortHoverBg: "#eef1f6", rowHoverBg: "#f7f8fd", rowSelectedBg: "#f1f4ff", rowSelectedHoverBg: "#e8edff" },
+        Segmented: { itemSelectedBg: "#ffffff", trackBg: "#e6eaf1" },
+        Select: { optionActiveBg: "#f2f4f7", optionSelectedBg: "#e6eaf1", optionSelectedColor: "#0f172a", optionSelectedFontWeight: 600 },
+        Table: { bodySortBg: "transparent", headerBg: "#f2f4f7", headerColor: "#475467", headerSortActiveBg: "#f2f4f7", headerSortHoverBg: "#e6eaf1", rowHoverBg: "#f5f7fa", rowSelectedBg: "#eaefff", rowSelectedHoverBg: "#e0e7ff" },
         Tabs: { inkBarColor: "#4f5fb8", itemColor: "#475467", itemHoverColor: "#4f5fb8", itemSelectedColor: "#0b1020" },
     },
     token: {
@@ -31,6 +31,9 @@ export const ADMINISTRATION_THEME: ThemeConfig = {
     },
 };
 
+export const ADMINISTRATION_DRAWER_Z_INDEX = 1300;
+export const ADMINISTRATION_MODAL_Z_INDEX = ADMINISTRATION_DRAWER_Z_INDEX + 100;
+
 /**
  * Panel lateral común de Administración.
  *
@@ -45,7 +48,7 @@ export const ADMINISTRATION_DRAWER_PROPS = {
         mask: { backdropFilter: "blur(2px)", backgroundColor: "rgba(0, 0, 0, 0.25)" },
         wrapper: { borderLeft: "1px solid #c6cedd", boxShadow: "-16px 0 40px rgba(15, 23, 42, 0.24), -2px 0 6px rgba(15, 23, 42, 0.08)" },
     },
-    zIndex: 1300,
+    zIndex: ADMINISTRATION_DRAWER_Z_INDEX,
 } as const satisfies DrawerProps;
 
 /** La X de cierre va en la esquina superior derecha, como en el resto de paneles. */

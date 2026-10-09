@@ -162,24 +162,41 @@ export interface MicrosoftStartResponse {
  * no se acepta como activo ni como Microsoft.
  */
 export type SystemUserDirectoryStatus = "active" | "blocked" | "inactive" | "pending";
+/** Proveedor de acceso del directorio. Un texto nuevo no se acepta como Microsoft. */
 export type SystemUserDirectoryProvider = "local" | "microsoft" | "mixed";
+/** MFA informado por el API. El cliente no lo activa ni lo desactiva. */
 export type SystemUserDirectoryMfaStatus = "enabled" | "not_configured" | "pending";
+/** Columnas por las que `/identity/users` puede ordenar. */
 export type SystemUserDirectorySortKey = "lastActivity" | "name" | "status";
+/** Sentido del orden del directorio. */
 export type SystemUserDirectorySortDirection = "asc" | "desc";
 
+/** Rol visible en una fila del directorio. No sirve para calcular permisos. */
 export interface SystemUserDirectoryRole {
     readonly code: string;
     readonly name: string;
 }
 
+/** Área principal que el directorio muestra. `null` en la fila significa que no hay área. */
 export interface SystemUserDirectoryOrgUnit {
     readonly code: string;
     readonly name: string;
     readonly publicId: string;
 }
 
+/** Vínculo con un usuario de un sistema externo. No trae credenciales de ese sistema. */
+export interface SystemUserExternalReference {
+    readonly externalUserId: string;
+    readonly externalUsername: string | null;
+    readonly status: string;
+    readonly systemCode: string;
+    readonly systemName: string;
+}
+
+/** Fila de `/identity/users`. `isCurrentUser` marca al actor para que la UI no ofrezca bloquearse a sí mismo por error de lectura. */
 export interface SystemUserDirectoryItem {
     readonly email: string;
+    readonly externalReferences: readonly SystemUserExternalReference[];
     readonly invitedBy: string | null;
     readonly isCurrentUser: boolean;
     readonly lastActivityAt: string | null;
@@ -194,6 +211,7 @@ export interface SystemUserDirectoryItem {
     readonly status: SystemUserDirectoryStatus;
 }
 
+/** Conteos del directorio completo, no solo de la página cargada. */
 export interface SystemUsersSummary {
     readonly active: number;
     readonly all: number;
@@ -202,18 +220,21 @@ export interface SystemUsersSummary {
     readonly pending: number;
 }
 
+/** Cursor de la página siguiente. `null` significa que no hay más filas. */
 export interface SystemUsersPageInfo {
     readonly limit: number;
     readonly nextCursor: string | null;
     readonly total: number;
 }
 
+/** Respuesta paginada del directorio. Items, resumen y cursor se validan juntos. */
 export interface SystemUsersListResponse {
     readonly items: readonly SystemUserDirectoryItem[];
     readonly page: SystemUsersPageInfo;
     readonly summary: SystemUsersSummary;
 }
 
+/** Filtros opcionales. Los vacíos no se serializan en el query. */
 export interface ListSystemUsersOptions {
     readonly cursor?: string;
     readonly direction?: SystemUserDirectorySortDirection;
@@ -223,15 +244,22 @@ export interface ListSystemUsersOptions {
     readonly status?: SystemUserDirectoryStatus;
 }
 
+/** Estado con el que nace el usuario. El alta actual envía `pending`. */
 export type CreateSystemUserInitialStatus = "active" | "inactive" | "pending";
+/** Sistemas externos cuyas referencias se pueden vincular al crear. */
 export type CreateSystemUserExternalSystem = "netsuite" | "odoo";
+/** Métodos de ingreso que el alta puede habilitar. */
 export type CreateSystemUserAccessMethod = "microsoft" | "local";
+/** Estados a los que se puede pasar un usuario ya existente. `pending` no se asigna aquí. */
+export type UpdateSystemUserStatus = "active" | "blocked" | "inactive";
 
+/** Id externo que se envía al crear o editar. No incluye secretos del otro sistema. */
 export interface CreateSystemUserExternalReference {
     readonly externalUserId: string;
     readonly systemCode: CreateSystemUserExternalSystem;
 }
 
+/** Cuerpo de alta. `reason` queda en la auditoría del API. */
 export interface CreateSystemUserPayload {
     readonly accessMethods?: readonly CreateSystemUserAccessMethod[];
     readonly displayName: string;
@@ -245,6 +273,26 @@ export interface CreateSystemUserPayload {
     readonly roleCodes?: readonly string[];
 }
 
+/** Cuerpo de edición. No cambia el estado operativo: eso va en otra llamada. */
+export interface UpdateSystemUserPayload {
+    readonly accessMethods?: readonly CreateSystemUserAccessMethod[];
+    readonly displayName: string;
+    readonly email: string;
+    readonly externalReferences?: readonly CreateSystemUserExternalReference[];
+    readonly orgUnitCode?: string;
+    readonly orgUnitCodes: readonly string[];
+    readonly reason: string;
+    readonly roleCode: string;
+    readonly roleCodes?: readonly string[];
+}
+
+/** Cambio de estado. El motivo es obligatorio para que el API pueda auditarlo. */
+export interface UpdateSystemUserStatusPayload {
+    readonly reason: string;
+    readonly status: UpdateSystemUserStatus;
+}
+
+/** Rol del catálogo de seguridad. El código no cambia al renombrarlo. */
 export interface IdentityRoleCatalogItem {
     readonly code: string;
     readonly description: string | null;
@@ -252,39 +300,46 @@ export interface IdentityRoleCatalogItem {
     readonly status: string;
 }
 
+/** Nuevo nombre del rol y motivo. El código estable no viaja en el cuerpo. */
 export interface UpdateIdentityRolePayload {
     readonly description?: string;
     readonly name: string;
     readonly reason: string;
 }
 
+/** Reemplazo completo de los permisos activos de un rol, con motivo de auditoría. */
 export interface ReplaceIdentityRolePermissionsPayload {
     readonly permissionCodes: readonly string[];
     readonly reason: string;
 }
 
+/** Permisos que quedaron activos y el rol al que pertenecen. */
 export interface ReplaceIdentityRolePermissionsResponse {
     readonly permissionCodes: readonly string[];
     readonly role: IdentityRoleCatalogItem;
 }
 
+/** Rol asignado a un usuario en la vista de acceso. */
 export interface IdentityUserAccessRole {
     readonly code: string;
     readonly name: string;
     readonly status: string;
 }
 
+/** Área asignada al usuario. El alcance efectivo lo resuelve el API. */
 export interface IdentityUserAccessOrgUnit {
     readonly code: string;
     readonly name: string;
     readonly publicId: string;
 }
 
+/** Excepción directa. `deny` gana sobre el permiso que vendría del rol. */
 export interface IdentityUserPermissionOverride {
     readonly code: string;
     readonly effect: PermissionEffect;
 }
 
+/** Roles, áreas y excepciones de un usuario. No es la lista de permisos efectivos de la sesión. */
 export interface IdentityUserAccessSummary {
     readonly orgUnits: readonly IdentityUserAccessOrgUnit[];
     readonly permissionOverrides: readonly IdentityUserPermissionOverride[];
@@ -297,6 +352,7 @@ export interface IdentityUserAccessSummary {
     };
 }
 
+/** Reemplazo de roles, áreas y excepciones. El motivo audita el cambio completo. */
 export interface ReplaceIdentityUserAccessPayload {
     readonly orgUnitCodes: readonly string[];
     readonly permissionOverrides: readonly IdentityUserPermissionOverride[];
@@ -304,6 +360,7 @@ export interface ReplaceIdentityUserAccessPayload {
     readonly roleCodes: readonly string[];
 }
 
+/** Acción del catálogo. `sensitive` advierte en la UI; el API sigue siendo quien la concede. */
 export interface IdentityPermissionCatalogItem {
     readonly code: string;
     readonly description: string;
@@ -311,23 +368,27 @@ export interface IdentityPermissionCatalogItem {
     readonly sensitive: boolean;
 }
 
+/** Vista de un módulo y las acciones que agrupa. */
 export interface IdentityModuleViewCatalogItem {
     readonly code: string;
     readonly name: string;
     readonly permissions: readonly IdentityPermissionCatalogItem[];
 }
 
+/** Módulo del catálogo de seguridad, con sus vistas. */
 export interface IdentityModuleCatalogItem {
     readonly code: string;
     readonly name: string;
     readonly views: readonly IdentityModuleViewCatalogItem[];
 }
 
+/** Rol del catálogo con bloqueo y cantidad de usuarios. Un rol bloqueado no se renombra desde la UI. */
 export interface IdentitySecurityRoleCatalogItem extends IdentityRoleCatalogItem {
     readonly locked: boolean;
     readonly users: number;
 }
 
+/** Evento de auditoría ya redactado por el API. La UI no reconstruye el resumen. */
 export interface IdentitySecurityAuditItem {
     readonly actorName: string | null;
     readonly createdAt: string;
@@ -340,6 +401,7 @@ export interface IdentitySecurityAuditItem {
     readonly targetName: string | null;
 }
 
+/** Catálogo persistido: roles, módulos, permisos por rol y auditoría reciente. */
 export interface IdentitySecurityCatalog {
     readonly auditEvents: readonly IdentitySecurityAuditItem[];
     readonly modules: readonly IdentityModuleCatalogItem[];
@@ -517,6 +579,22 @@ const parseSystemUserDirectoryOrgUnit = (value: unknown): SystemUserDirectoryOrg
     };
 };
 
+const parseSystemUserExternalReference = (value: unknown): SystemUserExternalReference => {
+    const record = assertRecord(value, "SystemUserExternalReference");
+
+    if (!isString(record.externalUserId) || !isString(record.status) || !isString(record.systemCode) || !isString(record.systemName)) {
+        throw new TypeError("Respuesta SystemUserExternalReference inválida.");
+    }
+
+    return {
+        externalUserId: record.externalUserId,
+        externalUsername: parseNullableString(record.externalUsername),
+        status: record.status,
+        systemCode: record.systemCode,
+        systemName: record.systemName,
+    };
+};
+
 type SystemUserIdentityRecord = Record<string, unknown> & {
     email: string;
     isCurrentUser: boolean;
@@ -544,6 +622,7 @@ const parseSystemUserDirectoryItem = (value: unknown): SystemUserDirectoryItem =
 
     return {
         email: record.email,
+        externalReferences: Array.isArray(record.externalReferences) ? record.externalReferences.map(parseSystemUserExternalReference) : [],
         invitedBy: parseNullableString(record.invitedBy),
         isCurrentUser: record.isCurrentUser,
         lastActivityAt: parseNullableString(record.lastActivityAt),
@@ -919,6 +998,12 @@ export const parseSystemUsersListResponse = (value: unknown): SystemUsersListRes
 
 /** Valida el usuario devuelto tras crearlo. */
 export const parseCreatedSystemUser = (value: unknown): SystemUserDirectoryItem => parseSystemUserDirectoryItem(value);
+
+/** Valida el usuario devuelto tras editarlo. */
+export const parseUpdatedSystemUser = (value: unknown): SystemUserDirectoryItem => parseSystemUserDirectoryItem(value);
+
+/** Valida el usuario devuelto tras cambiar su estado operativo. */
+export const parseUpdatedSystemUserStatus = (value: unknown): SystemUserDirectoryItem => parseSystemUserDirectoryItem(value);
 
 /** Valida el rol devuelto tras renombrarlo. */
 export const parseUpdatedIdentityRole = (value: unknown): IdentityRoleCatalogItem => parseIdentityRoleCatalogItem(value);

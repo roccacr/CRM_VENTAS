@@ -4,6 +4,7 @@ import { ArrayMaxSize, ArrayMinSize, IsArray, IsEmail, IsIn, IsInt, IsOptional, 
 
 const SYSTEM_USER_STATUSES = ["active", "blocked", "inactive", "pending"] as const;
 const CREATE_SYSTEM_USER_STATUSES = ["active", "inactive", "pending"] as const;
+const UPDATE_SYSTEM_USER_STATUSES = ["active", "blocked", "inactive"] as const;
 const CREATE_SYSTEM_USER_EXTERNAL_SYSTEMS = ["netsuite", "odoo"] as const;
 const CREATE_SYSTEM_USER_ACCESS_METHODS = ["microsoft", "local"] as const;
 const SYSTEM_USER_SORT_KEYS = ["lastActivity", "name", "status"] as const;
@@ -11,6 +12,7 @@ const SYSTEM_USER_SORT_DIRECTIONS = ["asc", "desc"] as const;
 
 export type SystemUserStatusFilter = (typeof SYSTEM_USER_STATUSES)[number];
 export type CreateSystemUserStatus = (typeof CREATE_SYSTEM_USER_STATUSES)[number];
+export type UpdateSystemUserStatus = (typeof UPDATE_SYSTEM_USER_STATUSES)[number];
 export type CreateSystemUserExternalSystem = (typeof CREATE_SYSTEM_USER_EXTERNAL_SYSTEMS)[number];
 export type CreateSystemUserAccessMethod = (typeof CREATE_SYSTEM_USER_ACCESS_METHODS)[number];
 export type SystemUserSortKey = (typeof SYSTEM_USER_SORT_KEYS)[number];
@@ -191,4 +193,105 @@ export class CreateSystemUserDto {
     @ValidateNested({ each: true })
     @Type(() => CreateSystemUserExternalReferenceDto)
     externalReferences?: CreateSystemUserExternalReferenceDto[];
+}
+
+/**
+ * Edición administrativa de usuario interno.
+ *
+ * Reutiliza los mismos campos editables del alta, salvo el estado inicial:
+ * activar, bloquear o desactivar sigue siendo una acción separada y auditada.
+ */
+export class UpdateSystemUserDto {
+    @ApiProperty({ description: "Nombre visible del usuario.", maxLength: 180 })
+    @Transform(toTrimmedString)
+    @IsString()
+    @MinLength(2)
+    @MaxLength(180)
+    displayName!: string;
+
+    @ApiProperty({ description: "Correo corporativo principal.", maxLength: 255 })
+    @Transform(toTrimmedString)
+    @IsEmail()
+    @MaxLength(255)
+    email!: string;
+
+    @ApiPropertyOptional({ description: "Metodos de acceso habilitados.", enum: CREATE_SYSTEM_USER_ACCESS_METHODS, isArray: true })
+    @Transform(toTrimmedStringArray)
+    @IsOptional()
+    @IsArray()
+    @ArrayMinSize(1)
+    @ArrayMaxSize(2)
+    @IsIn(CREATE_SYSTEM_USER_ACCESS_METHODS, { each: true })
+    accessMethods?: CreateSystemUserAccessMethod[];
+
+    @ApiProperty({ description: "Rol principal del usuario. Se mantiene por compatibilidad.", maxLength: 80 })
+    @Transform(toTrimmedString)
+    @IsString()
+    @MinLength(1)
+    @MaxLength(80)
+    roleCode!: string;
+
+    @ApiPropertyOptional({ description: "Roles asignados al usuario.", maxItems: 20, type: [String] })
+    @Transform(toTrimmedStringArray)
+    @IsOptional()
+    @IsArray()
+    @ArrayMinSize(1)
+    @ArrayMaxSize(20)
+    @IsString({ each: true })
+    @MinLength(1, { each: true })
+    @MaxLength(80, { each: true })
+    roleCodes?: string[];
+
+    @ApiPropertyOptional({ description: "Area principal del usuario. Se mantiene por compatibilidad; preferir orgUnitCodes.", maxLength: 80 })
+    @Transform(toTrimmedString)
+    @IsOptional()
+    @IsString()
+    @MinLength(1)
+    @MaxLength(80)
+    orgUnitCode?: string;
+
+    @ApiPropertyOptional({ description: "Areas donde queda asignado.", maxItems: 20, type: [String] })
+    @Transform(toTrimmedStringArray)
+    @IsOptional()
+    @IsArray()
+    @ArrayMinSize(1)
+    @ArrayMaxSize(20)
+    @IsString({ each: true })
+    @MinLength(1, { each: true })
+    @MaxLength(80, { each: true })
+    orgUnitCodes?: string[];
+
+    @ApiProperty({ description: "Motivo auditable de la edición.", maxLength: 255 })
+    @Transform(toTrimmedString)
+    @IsString()
+    @MinLength(5)
+    @MaxLength(255)
+    reason!: string;
+
+    @ApiPropertyOptional({ description: "Referencias externas opcionales.", type: [CreateSystemUserExternalReferenceDto] })
+    @IsOptional()
+    @IsArray()
+    @ArrayMaxSize(2)
+    @ValidateNested({ each: true })
+    @Type(() => CreateSystemUserExternalReferenceDto)
+    externalReferences?: CreateSystemUserExternalReferenceDto[];
+}
+
+/**
+ * Cambio administrativo de estado operativo.
+ *
+ * `pending` no se asigna desde esta accion: pendiente nace del alta local y se
+ * completa activando la cuenta cuando el proceso operativo lo aprueba.
+ */
+export class UpdateSystemUserStatusDto {
+    @ApiProperty({ description: "Nuevo estado operativo del usuario.", enum: UPDATE_SYSTEM_USER_STATUSES })
+    @IsIn(UPDATE_SYSTEM_USER_STATUSES)
+    status!: UpdateSystemUserStatus;
+
+    @ApiProperty({ description: "Motivo auditable del cambio.", maxLength: 255 })
+    @Transform(toTrimmedString)
+    @IsString()
+    @MinLength(5)
+    @MaxLength(255)
+    reason!: string;
 }

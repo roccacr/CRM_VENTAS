@@ -1,3 +1,10 @@
+/**
+ * Decisión de qué pantalla puede abrirse.
+ *
+ * Lee sesión y perfil en el BFF. La visibilidad del menú es solo UX: el API
+ * vuelve a autorizar cada llamada. Un fallo en login deja ver el formulario;
+ * un fallo en una ruta privada muestra el problema de acceso.
+ */
 import { getVisibleNavigationWorkspaces } from "../modules/home/GlobalHomeShell";
 import { ApiClientError, refreshAuthenticatedSession } from "../services/api/api-client";
 import { getIdentityProfile, getIdentitySession } from "../services/auth/auth-service";
@@ -33,7 +40,7 @@ const hasAccessToRoute = (profile: IdentityProfile, path: string): boolean => {
         return true;
     }
 
-    return getVisibleNavigationWorkspaces(profile.permissions).some((workspace) => workspace.code === workspaceCode);
+    return getVisibleNavigationWorkspaces(profile.permissions, profile.orgUnits).some((workspace) => workspace.code === workspaceCode);
 };
 
 /**
@@ -43,7 +50,7 @@ const hasAccessToRoute = (profile: IdentityProfile, path: string): boolean => {
  * hay ningún perfil visible: el usuario está autenticado pero sin acceso.
  */
 export const getDefaultAuthenticatedPath = (profile: IdentityProfile): string | null => {
-    const visibleWorkspaces = getVisibleNavigationWorkspaces(profile.permissions);
+    const visibleWorkspaces = getVisibleNavigationWorkspaces(profile.permissions, profile.orgUnits);
     const firstOperationalWorkspace = visibleWorkspaces.find((workspace) => workspace.code !== "all") ?? visibleWorkspaces[0];
 
     return firstOperationalWorkspace ? getWorkspaceHomePath(firstOperationalWorkspace.code) : null;

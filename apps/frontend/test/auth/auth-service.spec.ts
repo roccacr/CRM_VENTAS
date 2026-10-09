@@ -137,4 +137,114 @@ describe("auth-service", () => {
             }),
         );
     });
+
+    it("actualiza estado de usuario por PATCH contra el API de identidad", async () => {
+        const updatedUser = {
+            email: "usuario@roccacr.com",
+            externalReferences: [
+                { externalUserId: "653055", externalUsername: "usuario@roccacr.com", status: "active", systemCode: "netsuite", systemName: "NetSuite" },
+                { externalUserId: "ODOO-77", externalUsername: null, status: "active", systemCode: "odoo", systemName: "Odoo" },
+            ],
+            invitedBy: null,
+            isCurrentUser: false,
+            lastActivityAt: null,
+            mfaStatus: "not_configured",
+            name: "Usuario CRM",
+            orgUnit: { code: "ventas", name: "Ventas", publicId: "ORG-VENTAS" },
+            profileImageUrl: null,
+            provider: "local",
+            publicId: "USR-001",
+            roleChangedAt: null,
+            roles: [{ code: "ventas", name: "Ventas" }],
+            status: "blocked",
+        };
+        const fetchMock = vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+            const path = getRequestPath(input);
+
+            if (path === "/identity/session") {
+                return createJsonResponse(anonymousSession);
+            }
+
+            if (path === "/identity/users/USR-001/status" && init?.method === "PATCH") {
+                const headers = new Headers(init.headers);
+
+                if (headers.get("X-CRM-CSRF-Token") !== "fresh-csrf") {
+                    return createJsonResponse({ message: "CSRF requerido" }, 403);
+                }
+
+                return createJsonResponse(updatedUser);
+            }
+
+            return createJsonResponse({ message: `Ruta no mockeada: ${path}` }, 404);
+        });
+
+        vi.stubGlobal("fetch", fetchMock);
+        const { updateSystemUserStatus } = await import("../../src/services/auth/auth-service");
+
+        await expect(updateSystemUserStatus("USR-001", { reason: "Bloqueo solicitado por seguridad", status: "blocked" })).resolves.toEqual(updatedUser);
+        expect(fetchMock).toHaveBeenNthCalledWith(
+            2,
+            buildApiUrl("/identity/users/USR-001/status"),
+            expect.objectContaining({
+                body: JSON.stringify({ reason: "Bloqueo solicitado por seguridad", status: "blocked" }),
+                credentials: "include",
+                method: "PATCH",
+            }),
+        );
+    });
+
+    it("edita usuario por PATCH contra el API de identidad", async () => {
+        const updatedUser = {
+            email: "usuario@roccacr.com",
+            externalReferences: [],
+            invitedBy: null,
+            isCurrentUser: false,
+            lastActivityAt: null,
+            mfaStatus: "not_configured",
+            name: "Usuario Editado",
+            orgUnit: { code: "ventas", name: "Ventas", publicId: "ORG-VENTAS" },
+            profileImageUrl: null,
+            provider: "mixed",
+            publicId: "USR-001",
+            roleChangedAt: null,
+            roles: [{ code: "ventas", name: "Ventas" }],
+            status: "active",
+        };
+        const fetchMock = vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+            const path = getRequestPath(input);
+
+            if (path === "/identity/session") {
+                return createJsonResponse(anonymousSession);
+            }
+
+            if (path === "/identity/users/USR-001" && init?.method === "PATCH") {
+                return createJsonResponse(updatedUser);
+            }
+
+            return createJsonResponse({ message: `Ruta no mockeada: ${path}` }, 404);
+        });
+
+        vi.stubGlobal("fetch", fetchMock);
+        const { updateSystemUser } = await import("../../src/services/auth/auth-service");
+
+        await expect(
+            updateSystemUser("USR-001", {
+                accessMethods: ["microsoft", "local"],
+                displayName: "Usuario Editado",
+                email: "usuario@roccacr.com",
+                orgUnitCodes: ["ventas"],
+                reason: "Cambio autorizado por TI",
+                roleCode: "ventas",
+                roleCodes: ["ventas"],
+            }),
+        ).resolves.toEqual(updatedUser);
+        expect(fetchMock).toHaveBeenNthCalledWith(
+            2,
+            buildApiUrl("/identity/users/USR-001"),
+            expect.objectContaining({
+                credentials: "include",
+                method: "PATCH",
+            }),
+        );
+    });
 });

@@ -1,5 +1,13 @@
-import type { ComponentType } from "react";
+/**
+ * Registro único de rutas privadas del CRM.
+ *
+ * Cada ruta declara perfil, ítem de menú y página. Login queda fuera de este
+ * mapa porque es pública. Una URL que no está aquí se trata como no encontrada.
+ */
+import { type ComponentType, createElement } from "react";
 
+import { ADMINISTRATION_CATALOGS } from "../modules/administration/catalogs/catalog-definitions";
+import { CatalogItemsPage } from "../modules/administration/catalogs/CatalogItemsPage";
 import { AdministrationHomePage } from "../modules/administration/pages/AdministrationHomePage";
 import { RolesSecurityPage } from "../modules/administration/pages/RolesSecurityPage";
 import { SecurityAuditPage } from "../modules/administration/pages/SecurityAuditPage";
@@ -28,6 +36,28 @@ export interface AppRoute {
     readonly Page?: ComponentType<{ readonly currentUser: IdentityUser }>;
 }
 
+const CATALOG_CONTEXT_ROUTES = [
+    { contextLabel: "Ventas", moduleCode: "ventas", pathPrefix: "/home/sales/catalogs", workspaceCode: "sales" },
+    { contextLabel: "Mercadeo", moduleCode: "mercadeo", pathPrefix: "/home/marketing/catalogs", workspaceCode: "marketing" },
+    { contextLabel: "Formalización", moduleCode: "formalizacion", pathPrefix: "/home/formalization/catalogs", workspaceCode: "formalization" },
+    { contextLabel: "Contabilidad", moduleCode: "contabilidad", pathPrefix: "/home/accounting/catalogs", workspaceCode: "accounting" },
+] as const;
+
+const OPERATIONAL_CATALOG_ROUTES = CATALOG_CONTEXT_ROUTES.flatMap((context) =>
+    ADMINISTRATION_CATALOGS.map(
+        (catalog) =>
+            [
+                `${context.pathPrefix}/${catalog.code}`,
+                {
+                    menuItemCode: `${context.workspaceCode}-${catalog.menuItemCode}`,
+                    Page: () => createElement(CatalogItemsPage, { catalog, contextLabel: context.contextLabel, contextModuleCode: context.moduleCode }),
+                    title: catalog.label,
+                    workspaceCode: context.workspaceCode,
+                },
+            ] as const,
+    ),
+);
+
 const APP_ROUTES: ReadonlyMap<string, AppRoute> = new Map<string, AppRoute>([
     ["/home/sales", { menuItemCode: "sales-home", title: "Ventas", workspaceCode: "sales" }],
     ["/home/marketing", { menuItemCode: "marketing-home", title: "Mercadeo", workspaceCode: "marketing" }],
@@ -37,6 +67,8 @@ const APP_ROUTES: ReadonlyMap<string, AppRoute> = new Map<string, AppRoute>([
     ["/home/administration/users", { menuItemCode: "users", Page: SystemUsersPage, title: "Usuarios", workspaceCode: "administration" }],
     ["/home/administration/roles-security", { menuItemCode: "roles-permissions", Page: RolesSecurityPage, title: "Roles y seguridad", workspaceCode: "administration" }],
     ["/home/administration/catalogs", { menuItemCode: "catalogs", title: "Catálogos", workspaceCode: "administration" }],
+    ...ADMINISTRATION_CATALOGS.map((catalog) => [catalog.path, { menuItemCode: catalog.menuItemCode, Page: () => createElement(CatalogItemsPage, { catalog }), title: catalog.label, workspaceCode: "administration" }] as const),
+    ...OPERATIONAL_CATALOG_ROUTES,
     ["/home/administration/integrations", { menuItemCode: "integrations", title: "Integraciones", workspaceCode: "administration" }],
     ["/home/administration/audit-logs", { menuItemCode: "audit-log", Page: SecurityAuditPage, title: "Auditoría", workspaceCode: "administration" }],
 ]);

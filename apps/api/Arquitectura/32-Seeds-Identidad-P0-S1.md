@@ -339,13 +339,34 @@ No seedear permisos de vistas no construidas todavia. `role.assign` pertenece a 
 
 Cada vista nueva debe traer sus permisos atomicos en el mismo corte que la construye.
 
+Los catalogos CRM se agregan como vistas compartidas en la migracion incremental `202610030007_crm_catalogs`. Cada catalogo activo agrega cuatro permisos por cada modulo consumidor permitido:
+
+```txt
+<modulo>.catalog_*.read
+<modulo>.catalog_*.create
+<modulo>.catalog_*.update
+<modulo>.catalog_*.inactivate
+```
+
+Modulos consumidores iniciales:
+
+```txt
+ventas
+mercadeo
+formalizacion
+contabilidad
+administration
+```
+
+Los valores de catalogo no se duplican por modulo operativo. Si la UI muestra Proyectos dentro de Ventas y Formalizacion, ambos leen `crm_catalog_item`, pero autorizan con permisos distintos: `ventas.catalog_project.*` y `formalizacion.catalog_project.*`.
+
 ## Role permissions seed
 
 Tabla destino: `sec_role_permission`.
 
 Esta tabla se inserta usando `code_role` y `code_permission` como referencia logica. La migracion SQL real debe resolver los IDs internos.
 
-Regla operativa: si se agrega un permiso al catalogo P0-S1A, el seed de `owner` debe re-ejecutarse o actualizarse en el mismo cambio para que conserve el catalogo completo vigente. Los demas roles reciben solo permisos operativos o permisos explicitamente aprobados.
+Regla operativa: si se agrega un permiso al catalogo P0-S1A o un permiso scoped `<modulo>.catalog_*`, el seed de `owner` debe re-ejecutarse o actualizarse en el mismo cambio para que conserve el catalogo completo vigente. Los demas roles reciben solo permisos operativos o permisos explicitamente aprobados.
 
 Roles descartados del catalogo activo actual:
 
@@ -370,6 +391,8 @@ user.activate
 user.deactivate
 role.assign
 ```
+
+La migracion incremental de catalogos tambien debe asignarle a `owner` el modulo visible `administration` en `sec_user_org_unit` y todos los permisos scoped de catalogos para `ventas`, `mercadeo`, `formalizacion`, `contabilidad` y `administration`.
 
 ### jefe_general
 

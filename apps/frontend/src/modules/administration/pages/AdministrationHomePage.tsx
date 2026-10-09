@@ -1,3 +1,9 @@
+/**
+ * Inicio del módulo Administración.
+ *
+ * Solo saluda al usuario de la sesión. No consulta el directorio ni calcula
+ * permisos: el shell ya resolvió qué puede verse.
+ */
 import type { GlobalHomeCurrentUser } from "../../home/GlobalHomeShell";
 
 const getDisplayName = (user: GlobalHomeCurrentUser): string => user.displayName.trim() || user.email.trim() || "Usuario";

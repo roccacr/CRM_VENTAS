@@ -10,6 +10,24 @@ Este documento conserva el alcance comercial de leads para la fase posterior.
 
 Cuando identidad este cerrada y se apruebe runtime, este documento manda sobre documentos de vision para el primer corte comercial de leads.
 
+## Decision vigente despues de Administracion
+
+Leads no se construye todavia.
+
+Antes de crear pantalla, tabla runtime nueva o endpoint operativo de leads, Administracion debe quedar validada con evidencia: usuarios, roles, permisos scoped, catalogos y auditoria.
+
+Cuando Administracion quede cerrada, el primer trabajo de Leads sera contrato de integracion NetSuite -> API. Ese contrato debe responder:
+
+- que evento de NetSuite dispara el envio;
+- que payload llega al API nuevo;
+- que campos son obligatorios;
+- como se normalizan contacto, proyecto, campana, origen y responsable;
+- como se manejan reintentos y fallos;
+- como se evita o marca un duplicado;
+- que auditoria/timeline queda cuando el actor es una integracion.
+
+El CRM viejo solo puede consultarse en lectura para evidencia de campos, conteos y conceptos. Este documento no autoriza migracion historica ni escritura sobre datos reales.
+
 ## Objetivo
 
 Construir el minimo flujo comercial que demuestra que la arquitectura funciona despues de identidad:
@@ -65,7 +83,9 @@ No implementar en el primer corte:
 
 ## ERP en create lead
 
-La decision P0 es:
+Esta seccion es futura y no habilita sincronizacion ni runtime ahora.
+
+La decision P0 para el slice comercial, cuando se apruebe construirlo, es:
 
 ```txt
 El lead se guarda primero en CRM_THINK_V2.

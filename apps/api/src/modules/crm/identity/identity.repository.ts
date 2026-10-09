@@ -7,7 +7,7 @@ import { IdentityLocalRepository } from "./identity-local.repository.js";
 import { IdentityMicrosoftRepository } from "./identity-microsoft.repository.js";
 import { IdentityProfileRepository } from "./identity-profile.repository.js";
 import { IdentitySessionRepository } from "./identity-session.repository.js";
-import { type CreateSystemUserInput, IdentityUserDirectoryRepository, type ListSystemUsersInput } from "./identity-user-directory.repository.js";
+import { type CreateSystemUserInput, IdentityUserDirectoryRepository, type ListSystemUsersInput, type UpdateSystemUserInput, type UpdateSystemUserStatusInput } from "./identity-user-directory.repository.js";
 
 export type LocalLoginIdentity = {
     authIdentityId: number;
@@ -340,5 +340,19 @@ export class IdentityRepository {
      */
     async createSystemUser(input: CreateSystemUserInput): Promise<SystemUserDirectoryItem> {
         return this.userDirectory.create(input);
+    }
+
+    /**
+     * Edita datos administrativos, relaciones base y referencias externas.
+     */
+    async updateSystemUser(input: UpdateSystemUserInput): Promise<SystemUserDirectoryItem | null> {
+        return this.userDirectory.update(input);
+    }
+
+    /**
+     * Cambia estado operativo de usuario y devuelve la ficha actualizada.
+     */
+    async updateSystemUserStatus(input: UpdateSystemUserStatusInput): Promise<SystemUserDirectoryItem | null> {
+        return this.userDirectory.updateStatus(input);
     }
 }

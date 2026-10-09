@@ -1,3 +1,8 @@
+/*
+ * Consola de roles y permisos.
+ * Separa el listado de roles, el árbol de módulos y los diálogos de guardado.
+ * Un permiso sensible se marca en la propia fila; ocultarlo no lo revoca.
+ */
 .roles-security-page {
     display: grid;
     gap: 16px;
@@ -6,7 +11,7 @@
 
 .roles-security-header {
     display: flex;
-    align-items: flex-start;
+    align-items: center;
     justify-content: space-between;
     gap: 16px;
 }
@@ -20,17 +25,21 @@
     gap: 10px;
 }
 
-.roles-security-breadcrumb,
-.roles-security-toolbar__eyebrow {
+.roles-security-breadcrumb {
     display: inline-flex;
+    margin-bottom: 8px;
     color: #566176;
     font-size: 12px;
     font-weight: 720;
     line-height: 1.2;
 }
 
-.roles-security-breadcrumb {
-    margin-bottom: 8px;
+.roles-security-header p {
+    margin: 6px 0 0;
+    color: #5b6478;
+    font-size: 13px;
+    font-weight: 520;
+    line-height: 1.45;
 }
 
 .roles-security-header h1,
@@ -46,15 +55,6 @@
     font-size: 24px;
     font-weight: 780;
     line-height: 1.1;
-}
-
-.roles-security-header p,
-.roles-security-permissions p {
-    margin: 6px 0 0;
-    color: #5b6478;
-    font-size: 13px;
-    font-weight: 520;
-    line-height: 1.45;
 }
 
 .roles-security-primary-action,
@@ -91,9 +91,12 @@
     box-shadow: 0 10px 22px rgba(15, 23, 42, 0.12);
 }
 
-.roles-security-primary-action.is-dirty {
-    border-color: #1d4ed8;
-    background: #1d4ed8;
+.roles-security-primary-action:disabled {
+    border-color: #dde3ee;
+    background: #eef1f6;
+    color: #5b6478;
+    box-shadow: none;
+    opacity: 1;
 }
 
 .roles-security-secondary-action,
@@ -130,7 +133,7 @@
 .roles-security-toolbar,
 .roles-security-permissions__header {
     display: flex;
-    align-items: flex-start;
+    align-items: center;
     justify-content: space-between;
     gap: 12px;
     border-bottom: 1px solid #d9e0ec;
@@ -145,7 +148,6 @@
 }
 
 .roles-security-toolbar h2 {
-    margin-top: 4px;
     font-size: 20px;
     font-weight: 780;
     line-height: 1.15;
@@ -158,48 +160,11 @@
     font-weight: 650;
 }
 
-.roles-security-user-picker {
-    display: grid;
-    min-width: 260px;
-    gap: 5px;
-    color: #5b6478;
-    font-size: 11px;
-    font-weight: 760;
+.roles-security-user-picker.ant-select {
+    width: 240px;
+    height: 40px;
 }
 
-.roles-security-user-picker input,
-.roles-security-user-picker select {
-    min-height: 40px;
-    border: 1px solid #c6d0e1;
-    border-radius: 8px;
-    background: #ffffff;
-    color: #172033;
-    font: inherit;
-    font-size: 13px;
-    font-weight: 650;
-    outline: 0;
-    padding: 0 12px;
-}
-
-.roles-security-user-picker input {
-    min-height: 34px;
-}
-
-.roles-security-user-picker input::placeholder {
-    color: #7a8599;
-}
-
-.roles-security-user-picker select {
-    min-width: 260px;
-}
-
-.roles-security-user-picker input:focus,
-.roles-security-user-picker select:focus {
-    border-color: #6875c7;
-    box-shadow: 0 0 0 3px rgba(104, 117, 199, 0.16);
-}
-
-.roles-security-role-search,
 .roles-security-filter {
     display: flex;
     min-height: 38px;
@@ -212,10 +177,6 @@
     font-size: 12px;
     font-weight: 650;
     padding: 0 12px;
-}
-
-.roles-security-role-search {
-    margin: 12px 12px 0;
 }
 
 .roles-security-filter input {
@@ -236,7 +197,7 @@
 .roles-security-list-item {
     display: flex;
     width: 100%;
-    min-height: 58px;
+    min-height: 52px;
     align-items: center;
     justify-content: space-between;
     gap: 10px;
@@ -254,9 +215,9 @@
 .roles-security-list-item:hover,
 .roles-security-list-item--active,
 .roles-security-list-item--checked {
-    border-color: #9aa7d9;
-    border-left-color: #5965a6;
-    background: #eef2ff;
+    border-color: #dde3ee;
+    border-left-color: #0f172a;
+    background: #eef1f6;
 }
 
 .roles-security-list-item input {
@@ -306,19 +267,18 @@
     align-items: center;
     gap: 4px 12px;
     margin: 16px 16px 0;
-    border: 1px solid #bfd0ff;
+    border: 1px solid #dde3ee;
     border-radius: 8px;
-    background: #eff4ff;
-    color: #273a70;
+    background: #f6f8fc;
+    color: #344054;
     padding: 12px 14px;
 }
 
 .roles-security-loading-state__spinner {
-    grid-row: span 2;
     width: 18px;
     height: 18px;
-    border: 2px solid rgba(39, 58, 112, 0.24);
-    border-top-color: #273a70;
+    border: 2px solid rgba(15, 23, 42, 0.18);
+    border-top-color: #0f172a;
     border-radius: 999px;
     animation: roles-security-spin 760ms linear infinite;
 }
@@ -339,16 +299,21 @@
 
 .roles-security-effective-summary {
     display: grid;
-    gap: 5px;
+    gap: 12px;
     margin: 16px 16px 0;
-    border: 1px solid #bfd0ff;
+    border: 1px solid #dde3ee;
     border-radius: 8px;
-    background: #f8fbff;
+    background: #f6f8fc;
     color: #4c5870;
     padding: 12px 14px;
 }
 
-.roles-security-effective-summary strong,
+.roles-security-effective-summary__header {
+    display: grid;
+    gap: 3px;
+}
+
+.roles-security-effective-summary__header strong,
 .roles-security-save-summary strong {
     color: #172033;
     font-size: 13px;
@@ -356,11 +321,67 @@
     line-height: 1.25;
 }
 
-.roles-security-effective-summary span {
+.roles-security-effective-summary__header span {
     color: #4c5870;
     font-size: 12px;
     font-weight: 620;
     line-height: 1.4;
+}
+
+.roles-security-effective-summary__grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 10px;
+}
+
+.roles-security-effective-summary__grid article {
+    display: grid;
+    align-content: start;
+    gap: 6px;
+    min-height: 72px;
+    border: 1px solid #d8e0ed;
+    border-radius: 8px;
+    background: #ffffff;
+    padding: 10px 12px;
+}
+
+.roles-security-effective-summary__grid small {
+    color: #667085;
+    font-size: 11px;
+    font-weight: 760;
+    letter-spacing: 0.04em;
+    line-height: 1.2;
+    text-transform: uppercase;
+}
+
+.roles-security-effective-summary__grid article > strong {
+    color: #172033;
+    font-size: 13px;
+    font-weight: 740;
+    line-height: 1.35;
+}
+
+.roles-security-effective-summary__chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.roles-security-effective-summary__chips span {
+    border: 1px solid #c6d0e1;
+    border-radius: 999px;
+    background: #f8fafc;
+    color: #344054;
+    font-size: 12px;
+    font-weight: 720;
+    line-height: 1.2;
+    padding: 4px 8px;
+}
+
+.roles-security-effective-summary__chips span.is-empty {
+    border-color: #f0d9a8;
+    background: #fff8e6;
+    color: #7a4b00;
 }
 
 @keyframes roles-security-spin {
@@ -375,29 +396,91 @@
     padding: 16px 16px 0;
 }
 
-.roles-security-module-group {
+.roles-security-module-groups__header {
     display: grid;
-    gap: 8px;
+    grid-template-columns: minmax(0, 1fr) minmax(220px, 360px);
+    align-items: center;
+    gap: 12px;
 }
 
-.roles-security-module-group__title {
-    color: #667085;
-    font-size: 11px;
+.roles-security-module-groups__header > strong {
+    color: #172033;
+    font-size: 14px;
     font-weight: 780;
-    letter-spacing: 0.08em;
+    line-height: 1.25;
+}
+
+.roles-security-module-group {
+    display: grid;
+    overflow: hidden;
+    border: 1px solid #d8e0ed;
+    border-radius: 8px;
+    background: #ffffff;
+}
+
+.roles-security-module-group__trigger {
+    display: flex;
+    width: 100%;
+    min-height: 52px;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    border: 0;
+    background: #ffffff;
+    color: #172033;
+    cursor: pointer;
+    font: inherit;
+    padding: 12px 14px;
+    text-align: left;
+}
+
+.roles-security-module-group__trigger:hover {
+    background: #f6f8fc;
+}
+
+.roles-security-module-group__trigger > span {
+    display: grid;
+    gap: 3px;
+}
+
+.roles-security-module-group__trigger strong {
+    color: #172033;
+    font-size: 13px;
+    font-weight: 780;
     line-height: 1.2;
-    text-transform: uppercase;
+}
+
+.roles-security-module-group__trigger small {
+    color: #5b6478;
+    font-size: 12px;
+    font-weight: 620;
+    line-height: 1.25;
+}
+
+.roles-security-module-group__trigger svg {
+    color: #667085;
+    transition: transform 160ms ease;
+}
+
+.roles-security-module-group__trigger[aria-expanded="true"] {
+    border-bottom: 1px solid #dbe1ea;
+    background: #f6f8fc;
+}
+
+.roles-security-module-group__trigger[aria-expanded="true"] svg {
+    transform: rotate(180deg);
 }
 
 .roles-security-module-grid {
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 10px;
+    padding: 12px;
 }
 
 .roles-security-module-card {
     display: flex;
-    min-height: 70px;
+    min-height: 52px;
     align-items: center;
     justify-content: space-between;
     gap: 10px;
@@ -412,9 +495,9 @@
 }
 
 .roles-security-module-card--active {
-    border-color: #6875c7;
-    background: #eef2ff;
-    box-shadow: inset 3px 0 0 #5965a6;
+    border-color: #0f172a;
+    background: #f6f8fc;
+    box-shadow: inset 3px 0 0 #0f172a;
 }
 
 .roles-security-module-card--off {
@@ -429,10 +512,28 @@
     gap: 8px;
 }
 
+.roles-security-module-card > span > span {
+    display: grid;
+    min-width: 0;
+    gap: 3px;
+}
+
 .roles-security-module-card input {
     width: 18px;
     height: 18px;
     accent-color: #111827;
+}
+
+.roles-security-module-card em {
+    color: #667085;
+    font-size: 11px;
+    font-style: normal;
+    font-weight: 720;
+    line-height: 1.2;
+}
+
+.roles-security-module-card em.is-warning {
+    color: #7a4b00;
 }
 
 .roles-security-module-card small {
@@ -443,6 +544,10 @@
     color: #344054;
     font-weight: 760;
     padding: 4px 8px;
+}
+
+.roles-security-filter--compact {
+    min-height: 38px;
 }
 
 .roles-security-permissions {
@@ -479,11 +584,23 @@
 }
 
 .roles-security-view-group__trigger:hover {
-    background: #eef2ff;
+    background: #eef1f6;
+}
+
+.roles-security-view-group__trigger > span:first-child {
+    display: grid;
+    gap: 3px;
+}
+
+.roles-security-view-group__trigger small {
+    color: #667085;
+    font-size: 12px;
+    font-weight: 620;
+    line-height: 1.25;
 }
 
 .roles-security-view-group__trigger[aria-expanded="true"] {
-    border-bottom: 1px solid #e3e8f0;
+    border-bottom: 1px solid #dbe1ea;
 }
 
 .roles-security-view-group__trigger[aria-expanded="true"] .roles-security-view-group__meta svg {
@@ -501,19 +618,31 @@
     transition: transform 160ms ease;
 }
 
+.roles-security-view-group--shared-catalogs {
+    background: #f8fafc;
+}
+
+.roles-security-shared-catalogs {
+    display: grid;
+    gap: 10px;
+    border-top: 1px solid #d8e0ed;
+    background: #ffffff;
+    padding: 10px;
+}
+
 .roles-security-permission-list {
     display: grid;
 }
 
 .roles-security-permission-row {
     display: flex;
-    min-height: 64px;
+    min-height: 44px;
     align-items: center;
     justify-content: space-between;
     gap: 16px;
-    border-bottom: 1px solid #e3e8f0;
+    border-bottom: 1px solid #dbe1ea;
     cursor: pointer;
-    padding: 12px 14px;
+    padding: 10px 14px;
 }
 
 .roles-security-permission-row:last-child {
@@ -705,10 +834,10 @@
     display: flex;
     min-height: 40px;
     align-items: center;
-    border: 1px solid #bfd0ff;
+    border: 1px solid #dde3ee;
     border-radius: 8px;
-    background: #eff4ff;
-    color: #273a70;
+    background: #f6f8fc;
+    color: #344054;
     font-size: 12px;
     font-weight: 700;
     line-height: 1.35;
@@ -718,6 +847,10 @@
 @media (max-width: 1280px) {
     .roles-security-workbench {
         grid-template-columns: 260px minmax(0, 1fr);
+    }
+
+    .roles-security-effective-summary__grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 }
 
@@ -729,6 +862,7 @@
     .roles-security-header,
     .roles-security-toolbar,
     .roles-security-permissions__header,
+    .roles-security-module-groups__header,
     .roles-security-workbench {
         display: grid;
         grid-template-columns: 1fr;
@@ -737,6 +871,7 @@
     .roles-security-header__actions,
     .roles-security-toolbar__actions,
     .roles-security-permissions__actions,
+    .roles-security-effective-summary__grid,
     .roles-security-module-grid {
         display: grid;
         grid-template-columns: 1fr;

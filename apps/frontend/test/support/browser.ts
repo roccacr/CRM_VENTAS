@@ -5,6 +5,13 @@
  * rutas ni validaciones de los componentes probados.
  */
 export const installBrowserApiDoubles = (): void => {
+    const originalGetComputedStyle = window.getComputedStyle.bind(window);
+    Object.defineProperty(window, "getComputedStyle", {
+        configurable: true,
+        writable: true,
+        value: (element: Element, pseudoElt?: string | null) => originalGetComputedStyle(element, pseudoElt ? undefined : pseudoElt),
+    });
+
     Object.defineProperty(window, "matchMedia", {
         writable: true,
         value: (query: string) => ({

@@ -1,5 +1,6 @@
 import { ConflictException, ForbiddenException, Inject, Injectable, NotFoundException } from "@nestjs/common";
 
+import { getCatalogPermissionCodesForContext } from "../catalogs/catalogs.constants.js";
 import type { ReplaceIdentityRolePermissionsDto, ReplaceIdentityUserAccessDto, UpdateIdentityRoleDto } from "./dto/access-management.dto.js";
 import { IdentityService } from "./identity.service.js";
 import type { IdentityProfile } from "./identity.types.js";
@@ -7,7 +8,7 @@ import { IdentityAccessManagementRepository, type IdentityRoleCatalogItem, type 
 
 const OWNER_ROLE_CODE = "owner";
 const ROLE_ASSIGN_PERMISSION = "role.assign";
-const ADMINISTRATION_PERMISSION_CODES = new Set(["org.manage", "role.assign", "user.activate", "user.create", "user.deactivate", "user.update", "user.view_detail", "user.view_list"]);
+const ADMINISTRATION_PERMISSION_CODES = new Set(["org.manage", "role.assign", "user.activate", "user.create", "user.deactivate", "user.update", "user.view_detail", "user.view_list", ...getCatalogPermissionCodesForContext("administration")]);
 
 interface AccessRequestContext<TPayload> {
     ipAddress?: string | undefined;

@@ -245,6 +245,37 @@ export interface IntUserExternalIdentityTable {
     deleted_at_user_external_identity: DateTime | null;
 }
 
+export interface CrmCatalogItemTable {
+    id_catalog_item: GeneratedNumber;
+    public_id_catalog_item: string;
+    catalog_code_catalog_item: string;
+    native_code_catalog_item: string;
+    name_catalog_item: string;
+    detail_catalog_item: string | null;
+    status_catalog_item: string;
+    created_at_catalog_item: DateTime;
+    created_by_user_id_catalog_item: number | null;
+    updated_at_catalog_item: DateTime;
+    updated_by_user_id_catalog_item: number | null;
+    inactivated_at_catalog_item: DateTime | null;
+    inactivated_by_user_id_catalog_item: number | null;
+    deleted_at_catalog_item: DateTime | null;
+    deleted_by_user_id_catalog_item: number | null;
+}
+
+export interface CrmCatalogItemExternalReferenceTable {
+    id_catalog_item_external_reference: GeneratedNumber;
+    catalog_item_id_catalog_item_external_reference: number;
+    catalog_code_catalog_item_external_reference: string;
+    external_system_id_catalog_item_external_reference: number;
+    external_id_catalog_item_external_reference: string;
+    status_catalog_item_external_reference: string;
+    metadata_catalog_item_external_reference: string | null;
+    created_at_catalog_item_external_reference: DateTime;
+    updated_at_catalog_item_external_reference: DateTime;
+    deleted_at_catalog_item_external_reference: DateTime | null;
+}
+
 export interface AuditSecurityEventTable {
     id_security_event: GeneratedNumber;
     public_id_security_event: string;
@@ -276,6 +307,8 @@ export interface CrmDatabase {
     sec_user_permission_override: SecUserPermissionOverrideTable;
     int_external_system: IntExternalSystemTable;
     int_user_external_identity: IntUserExternalIdentityTable;
+    crm_catalog_item: CrmCatalogItemTable;
+    crm_catalog_item_external_reference: CrmCatalogItemExternalReferenceTable;
     audit_security_event: AuditSecurityEventTable;
 }
 

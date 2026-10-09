@@ -43,6 +43,36 @@ const createIdentityService = () => {
             roles: [{ code: "ventas", name: "Ventas" }],
             status: "active",
         }),
+        updateSystemUser: vi.fn().mockResolvedValue({
+            email: "usuario.editado@roccacr.com",
+            invitedBy: null,
+            isCurrentUser: false,
+            lastActivityAt: null,
+            mfaStatus: "not_configured",
+            name: "Usuario Editado",
+            orgUnit: { code: "ventas", name: "Ventas", publicId: "ORG-VENTAS" },
+            profileImageUrl: null,
+            provider: "mixed",
+            publicId: "target-user-public-id",
+            roleChangedAt: null,
+            roles: [{ code: "ventas", name: "Ventas" }],
+            status: "active",
+        }),
+        updateSystemUserStatus: vi.fn().mockResolvedValue({
+            email: "usuario@roccacr.com",
+            invitedBy: null,
+            isCurrentUser: false,
+            lastActivityAt: null,
+            mfaStatus: "not_configured",
+            name: "Usuario CRM",
+            orgUnit: { code: "ventas", name: "Ventas", publicId: "ORG-VENTAS" },
+            profileImageUrl: null,
+            provider: "local",
+            publicId: "target-user-public-id",
+            roleChangedAt: null,
+            roles: [{ code: "ventas", name: "Ventas" }],
+            status: "blocked",
+        }),
         completeLocalPasswordReset: vi.fn().mockResolvedValue({ status: "completed", userId: 20 }),
         findActiveLocalIdentity: vi.fn().mockResolvedValue(null),
         findActiveMicrosoftIdentity: vi.fn().mockResolvedValue(null),
@@ -120,6 +150,8 @@ const createIdentityService = () => {
             createLocalPasswordResetToken: ReturnType<typeof vi.fn>;
             createSession: ReturnType<typeof vi.fn>;
             createSystemUser: ReturnType<typeof vi.fn>;
+            updateSystemUser: ReturnType<typeof vi.fn>;
+            updateSystemUserStatus: ReturnType<typeof vi.fn>;
             completeLocalPasswordReset: ReturnType<typeof vi.fn>;
             findActiveLocalIdentity: ReturnType<typeof vi.fn>;
             findActiveMicrosoftIdentity: ReturnType<typeof vi.fn>;
@@ -199,6 +231,42 @@ const createProfileWithUserCreatePermission = (): IdentityProfile => ({
     permissions: [
         {
             code: "user.create",
+            effect: "allow",
+            scope: "all_areas",
+            source: "role",
+        },
+    ],
+});
+
+const createProfileWithUserUpdatePermission = (): IdentityProfile => ({
+    ...createProfile(),
+    permissions: [
+        {
+            code: "user.update",
+            effect: "allow",
+            scope: "all_areas",
+            source: "role",
+        },
+    ],
+});
+
+const createProfileWithUserActivatePermission = (): IdentityProfile => ({
+    ...createProfile(),
+    permissions: [
+        {
+            code: "user.activate",
+            effect: "allow",
+            scope: "all_areas",
+            source: "role",
+        },
+    ],
+});
+
+const createProfileWithUserDeactivatePermission = (): IdentityProfile => ({
+    ...createProfile(),
+    permissions: [
+        {
+            code: "user.deactivate",
             effect: "allow",
             scope: "all_areas",
             source: "role",
@@ -584,7 +652,7 @@ describe("IdentityService", () => {
             authIdentityId: 10,
             failedLoginCount: 0,
             lockedUntil: null,
-            passwordHash: "$argon2id$v=19$m=65536,p=4,t=3$Ml2lap+RCFxJ2YniWLzTWA$wDMu74Cjrlz6vF1TjL9chj0/lwDl2YtMHw9JYPK97Q4",
+            passwordHash: "$argon2id$v=19$m=65536,p=4,t=3$+4nuTcNMp3/7IzXBvbEQZg$HncPly+rH89Soc8AyZMY0GdN3R1ahqYJb2qgbKGP0F8",
             permissionVersion: 1,
             userId: 20,
         });
@@ -599,7 +667,7 @@ describe("IdentityService", () => {
             sessionTokenHash: "session-token-hash",
         });
 
-        const result = await service.localLogin({ email: " Usuario@RoccaCR.com ", password: "RoccaLocal-2026!7Qm4" }, "127.0.0.1", "vitest");
+        const result = await service.localLogin({ email: " Usuario@RoccaCR.com ", password: "Vitest-Only-Local-Password-2026!" }, "127.0.0.1", "vitest");
 
         expect(repository.findActiveLocalIdentity).toHaveBeenCalledWith("usuario@roccacr.com");
         expect(repository.recordSuccessfulLocalLogin).toHaveBeenCalledWith(10, 20);
@@ -729,6 +797,119 @@ describe("IdentityService", () => {
         ).rejects.toThrow(ForbiddenException);
 
         expect(repository.createSystemUser).not.toHaveBeenCalled();
+    });
+
+    it("edita usuario con permiso user.update y motivo auditable", async () => {
+        const { repository, service } = createIdentityService();
+        repository.findBySessionTokenHash.mockResolvedValue(createProfileWithUserUpdatePermission());
+
+        await service.updateSystemUser(
+            "session-token",
+            "target-user-public-id",
+            {
+                accessMethods: ["microsoft", "local"],
+                displayName: " Usuario Editado ",
+                email: " EDITADO@RoccaCR.com ",
+                externalReferences: [{ externalUserId: "653055", systemCode: "netsuite" }],
+                orgUnitCodes: ["ventas"],
+                reason: "Cambio autorizado por TI",
+                roleCode: "ventas",
+                roleCodes: ["ventas"],
+            },
+            {
+                ipAddress: "127.0.0.1",
+                userAgent: "vitest",
+            },
+        );
+
+        expect(repository.updateSystemUser).toHaveBeenCalledWith(
+            expect.objectContaining({
+                actorPublicId: "user-public-id",
+                accessMethods: ["microsoft", "local"],
+                displayName: "Usuario Editado",
+                email: "EDITADO@RoccaCR.com",
+                normalizedEmail: "editado@roccacr.com",
+                reason: "Cambio autorizado por TI",
+                roleCode: "ventas",
+                roleCodes: ["ventas"],
+                userPublicId: "target-user-public-id",
+            }),
+        );
+    });
+
+    it("rechaza editar usuario sin permiso o sobre la propia cuenta", async () => {
+        const { repository, service } = createIdentityService();
+        repository.findBySessionTokenHash.mockResolvedValue(createProfileWithUserListPermission());
+        const payload = {
+            displayName: "Usuario Editado",
+            email: "editado@roccacr.com",
+            orgUnitCodes: ["ventas"],
+            reason: "Cambio autorizado por TI",
+            roleCode: "ventas",
+            roleCodes: ["ventas"],
+        };
+
+        await expect(service.updateSystemUser("session-token", "target-user-public-id", payload, { ipAddress: "127.0.0.1", userAgent: "vitest" })).rejects.toThrow(ForbiddenException);
+        await expect(service.updateSystemUser("session-token", "user-public-id", payload, { ipAddress: "127.0.0.1", userAgent: "vitest" })).rejects.toThrow(ForbiddenException);
+
+        expect(repository.updateSystemUser).not.toHaveBeenCalled();
+    });
+
+    it("actualiza estado de usuario con permiso segun la accion y motivo", async () => {
+        const { repository, service } = createIdentityService();
+        repository.findBySessionTokenHash.mockResolvedValue(createProfileWithUserDeactivatePermission());
+
+        await service.updateSystemUserStatus(
+            "session-token",
+            "target-user-public-id",
+            {
+                reason: "Bloqueo temporal solicitado por seguridad",
+                status: "blocked",
+            },
+            {
+                ipAddress: "127.0.0.1",
+                userAgent: "vitest",
+            },
+        );
+
+        expect(repository.updateSystemUserStatus).toHaveBeenCalledWith({
+            actorPublicId: "user-public-id",
+            ipAddress: "127.0.0.1",
+            reason: "Bloqueo temporal solicitado por seguridad",
+            status: "blocked",
+            userAgent: "vitest",
+            userPublicId: "target-user-public-id",
+        });
+    });
+
+    it("exige permiso user.activate para activar o desbloquear usuarios", async () => {
+        const { repository, service } = createIdentityService();
+        repository.findBySessionTokenHash.mockResolvedValue(createProfileWithUserActivatePermission());
+
+        await service.updateSystemUserStatus(
+            "session-token",
+            "target-user-public-id",
+            {
+                reason: "Reactivacion autorizada por jefatura",
+                status: "active",
+            },
+            {
+                ipAddress: "127.0.0.1",
+                userAgent: "vitest",
+            },
+        );
+
+        expect(repository.updateSystemUserStatus).toHaveBeenCalledWith(expect.objectContaining({ status: "active" }));
+    });
+
+    it("rechaza actualizar estado sin permiso o sobre la propia cuenta", async () => {
+        const { repository, service } = createIdentityService();
+        repository.findBySessionTokenHash.mockResolvedValue(createProfileWithUserListPermission());
+
+        await expect(service.updateSystemUserStatus("session-token", "target-user-public-id", { reason: "Sin permiso operativo", status: "inactive" }, { ipAddress: "127.0.0.1", userAgent: "vitest" })).rejects.toThrow(ForbiddenException);
+        await expect(service.updateSystemUserStatus("session-token", "user-public-id", { reason: "No debe degradarse a si mismo", status: "blocked" }, { ipAddress: "127.0.0.1", userAgent: "vitest" })).rejects.toThrow(ForbiddenException);
+
+        expect(repository.updateSystemUserStatus).not.toHaveBeenCalled();
     });
 
     it("rechaza reset local con token inexistente antes de actualizar la clave", async () => {

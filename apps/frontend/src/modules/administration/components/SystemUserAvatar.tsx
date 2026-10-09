@@ -1,3 +1,9 @@
+/**
+ * Avatar de una fila del directorio.
+ *
+ * Si la foto falla, recuerda usuario y URL juntos. Una foto nueva vuelve a
+ * intentarse; un error anterior no esconde la imagen siguiente.
+ */
 import { useState } from "react";
 
 import { buildSystemUserPhotoUrl, getAvatarTone, getInitials, type SystemUserListItem } from "../system-users.model";

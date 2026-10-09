@@ -1,3 +1,10 @@
+/**
+ * Consola de roles, módulos y permisos.
+ *
+ * Permite revisar un rol o un empleado y proponer cambios. Guardar exige un
+ * motivo auditable. Los permisos efectivos los calcula el API; lo que se ve
+ * aquí es el catálogo persistido más las excepciones que el usuario está editando.
+ */
 import "./RolesSecurityPage.css";
 
 import CloseOutlined from "@ant-design/icons/CloseOutlined";
@@ -6,11 +13,15 @@ import EditOutlined from "@ant-design/icons/EditOutlined";
 import SaveOutlined from "@ant-design/icons/SaveOutlined";
 import SearchOutlined from "@ant-design/icons/SearchOutlined";
 import { notification } from "antd";
+import ConfigProvider from "antd/es/config-provider";
+import esES from "antd/es/locale/es_ES";
+import Select from "antd/es/select";
 import type { Dispatch, SetStateAction } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { getIdentitySecurityCatalog, getIdentityUserAccess, getSystemUsers, replaceIdentityRolePermissions, replaceIdentityUserAccess, updateIdentityRole } from "../../../services/auth/auth-service";
 import type { IdentityUserPermissionOverride, SystemUserDirectoryItem } from "../../../services/auth/identity-contracts";
+import { ADMINISTRATION_THEME } from "../administration-theme";
 
 interface RoleCatalogItem {
     readonly code: string;
@@ -54,6 +65,30 @@ interface SavePermissionsFormState {
 interface ViewExpansionState {
     readonly openViewCodes: ReadonlySet<string>;
     readonly scopeKey: string;
+}
+
+interface ModuleDisplayGroup {
+    readonly key: string;
+    readonly modules: readonly ModuleCatalogItem[];
+    readonly title: string;
+}
+
+interface UserModuleAccessSummary {
+    readonly baseGranted: number;
+    readonly directOverrideCount: number;
+    readonly effectiveGranted: number;
+    readonly isVisible: boolean;
+    readonly module: ModuleCatalogItem;
+    readonly total: number;
+}
+
+interface PermissionViewSection extends ModuleViewCatalogItem {
+    readonly moduleCode: string;
+}
+
+interface PermissionViewSections {
+    readonly catalogViews: readonly PermissionViewSection[];
+    readonly moduleViews: readonly PermissionViewSection[];
 }
 
 const INITIAL_ROLES: readonly RoleCatalogItem[] = [
@@ -159,13 +194,26 @@ const EMPTY_SAVE_PERMISSIONS_FORM: SavePermissionsFormState = {
 };
 
 const EMPTY_OPEN_VIEW_CODES: ReadonlySet<string> = new Set();
+/** El motivo de un cambio de rol exige al menos dos palabras para que la auditoría diga algo. */
 const AUDIT_REASON_MIN_WORDS = 2;
+/** Rol con alcance de empresa. Sus módulos de administración no se ofrecen al resto. */
 const OWNER_ROLE_CODE = "owner";
-const ADMINISTRATION_MODULE_CODES = ["role", "user"] as const;
-const MODULE_DISPLAY_ORDER = ["ventas", "mercadeo", "formalizacion", "contabilidad", "user", "role"] as const;
+/** Grupo visual de los catálogos compartidos. No es un código de módulo del API. */
+const SHARED_CATALOGS_GROUP_CODE = "__shared_catalogs__";
+const ADMINISTRATION_MODULE_CODES = ["administration", "role", "user"] as const;
+const OPERATIONAL_MODULE_CODES = ["ventas", "mercadeo", "formalizacion", "contabilidad"] as const;
+/** Grupo que nace abierto: el trabajo diario está en los módulos operativos. */
+const DEFAULT_EXPANDED_MODULE_GROUP_KEY = "operational";
+const MODULE_DISPLAY_ORDER = ["ventas", "mercadeo", "formalizacion", "contabilidad", "administration", "user", "role"] as const;
 
+/** Módulos de estructura. Fuera del contexto Owner no se muestran como áreas asignables. */
 const isAdministrationModuleCode = (moduleCode: string): boolean => ADMINISTRATION_MODULE_CODES.includes(moduleCode as (typeof ADMINISTRATION_MODULE_CODES)[number]);
+/** Los catálogos se agrupan aparte porque se comparten entre perfiles. */
+const isCatalogModuleCode = (moduleCode: string): boolean => moduleCode.startsWith("catalog_");
+/** Perfiles de trabajo diario, distintos de administración y de catálogos. */
+const isOperationalModuleCode = (moduleCode: string): boolean => OPERATIONAL_MODULE_CODES.includes(moduleCode as (typeof OPERATIONAL_MODULE_CODES)[number]);
 
+/** Orden fijo del menú. Un módulo desconocido queda al final, ordenado por nombre. */
 const sortModulesForDisplay = (items: readonly ModuleCatalogItem[]): readonly ModuleCatalogItem[] =>
     [...items]
         .filter((module) => module.code !== "org")
@@ -176,20 +224,28 @@ const sortModulesForDisplay = (items: readonly ModuleCatalogItem[]): readonly Mo
             return (firstIndex === -1 ? Number.MAX_SAFE_INTEGER : firstIndex) - (secondIndex === -1 ? Number.MAX_SAFE_INTEGER : secondIndex) || first.name.localeCompare(second.name);
         });
 
+/** Rechaza un motivo de una sola palabra: no alcanza para explicar el cambio. */
 const hasValidAuditReason = (reason: string): boolean => reason.trim().split(/\s+/u).filter(Boolean).length >= AUDIT_REASON_MIN_WORDS;
 
+/** Acciones de un módulo. Si el código no existe, no se inventan permisos. */
 const getModulePermissionCodes = (modules: readonly ModuleCatalogItem[], moduleCode: string): PermissionCode[] => {
     const module = modules.find((item) => item.code === moduleCode);
 
     return module ? module.views.flatMap((view) => view.permissions.map((permission) => permission.code)) : [];
 };
 
+/** Reparte una lista plana de permisos en el módulo al que pertenece cada código. */
 const groupPermissionCodesByModule = (modules: readonly ModuleCatalogItem[], permissionCodes: readonly string[]): Record<string, readonly PermissionCode[]> => {
     const grantedCodes = new Set(permissionCodes);
 
     return Object.fromEntries(modules.map((module) => [module.code, getModulePermissionCodes(modules, module.code).filter((permissionCode) => grantedCodes.has(permissionCode))]));
 };
 
+/**
+ * Matriz de respaldo mientras el catálogo del API no llega.
+ *
+ * No autoriza: en cuanto responde el BFF, este estado se reemplaza por el persistido.
+ */
 const DEFAULT_ROLE_PERMISSIONS: RolePermissionState = {
     jefe_general: {
         contabilidad: ["wallet.read", "invoice.read", "payment.reconcile"],
@@ -235,22 +291,27 @@ const DEFAULT_ROLE_PERMISSIONS: RolePermissionState = {
     },
 };
 
+/** Rol y módulo de respaldo para no dejar la consola sin selección si el código ya no existe. */
 const FALLBACK_ROLE = INITIAL_ROLES[0] as RoleCatalogItem;
 const FALLBACK_MODULE = INITIAL_MODULES[0] as ModuleCatalogItem;
 
 const getRole = (roles: readonly RoleCatalogItem[], code: string): RoleCatalogItem => roles.find((role) => role.code === code) ?? FALLBACK_ROLE;
 const getModule = (modules: readonly ModuleCatalogItem[], code: string): ModuleCatalogItem => modules.find((module) => module.code === code) ?? FALLBACK_MODULE;
 
+/** Texto del fallo. Un valor que no sea `Error` no muestra el objeto crudo. */
 const getErrorMessage = (error: unknown): string => (error instanceof Error ? error.message : "No se pudo completar la acción.");
 
+/** Compara listas sin importar el orden: lo que cuenta es el conjunto de códigos. */
 const arePermissionListsEqual = (first: readonly string[], second: readonly string[]): boolean => first.length === second.length && first.every((code) => second.includes(code));
 
+/** Cuenta módulos cuyo conjunto de permisos cambió respecto de lo último guardado. */
 const countRolePermissionChanges = (current: RolePermissionState, saved: RolePermissionState, roleCode: string): number => {
     const moduleCodes = new Set([...Object.keys(current[roleCode] ?? {}), ...Object.keys(saved[roleCode] ?? {})]);
 
     return [...moduleCodes].filter((moduleCode) => !arePermissionListsEqual(current[roleCode]?.[moduleCode] ?? [], saved[roleCode]?.[moduleCode] ?? [])).length;
 };
 
+/** Permisos del rol limitados a los módulos que la consola está mostrando. */
 const getRolePermissionCodesForModules = (state: RolePermissionState, roleCode: string, visibleModules: readonly ModuleCatalogItem[]): readonly string[] => {
     const visibleModuleCodes = new Set(visibleModules.map((module) => module.code));
 
@@ -263,8 +324,15 @@ const getRolePermissionCodesForModules = (state: RolePermissionState, roleCode: 
     ].sort();
 };
 
+/** Unión de lo que aportan los roles del empleado, antes de aplicar excepciones. */
 const getUserBasePermissionCodes = (state: RolePermissionState, roleCodes: ReadonlySet<string>, moduleCode: string): readonly string[] => [...new Set([...roleCodes].flatMap((roleCode) => state[roleCode]?.[moduleCode] ?? []))];
 
+/**
+ * Permisos del empleado en un módulo.
+ *
+ * `allow` suma y `deny` quita. Es una vista previa de la consola; el efecto
+ * final lo vuelve a calcular el API al guardar.
+ */
 const getEffectiveUserPermissionCodes = (state: RolePermissionState, roleCodes: ReadonlySet<string>, overrides: PermissionOverrideState, moduleCode: string): readonly string[] => {
     const codes = new Set(getUserBasePermissionCodes(state, roleCodes, moduleCode));
 
@@ -279,6 +347,7 @@ const getEffectiveUserPermissionCodes = (state: RolePermissionState, roleCodes: 
     return [...codes].sort();
 };
 
+/** Dos conjuntos iguales aunque el orden de inserción sea distinto. */
 const areStringSetsEqual = (first: ReadonlySet<string> | undefined, second: ReadonlySet<string> | undefined): boolean => {
     if (!first || !second) {
         return first === second;
@@ -287,12 +356,14 @@ const areStringSetsEqual = (first: ReadonlySet<string> | undefined, second: Read
     return first.size === second.size && [...first].every((value) => second.has(value));
 };
 
+/** Una excepción cuenta como cambio si aparece, desaparece o pasa de allow a deny. */
 const areOverrideStatesEqual = (first: PermissionOverrideState, second: PermissionOverrideState): boolean => {
     const codes = new Set([...Object.keys(first), ...Object.keys(second)]);
 
     return [...codes].every((code) => first[code] === second[code]);
 };
 
+/** Roles, áreas y excepciones actuales frente a lo último que confirmó el API. */
 interface UserAccessComparisonInput {
     readonly currentOrgUnits: ReadonlySet<string>;
     readonly currentOverrides: PermissionOverrideState;
@@ -302,6 +373,7 @@ interface UserAccessComparisonInput {
     readonly savedRoles: ReadonlySet<string>;
 }
 
+/** Hasta tres cambios: roles, áreas y excepciones. No cuenta cada permiso por separado. */
 const countUserAccessChanges = ({ currentOrgUnits, currentOverrides, currentRoles, savedOrgUnits, savedOverrides, savedRoles }: UserAccessComparisonInput): number => {
     let changes = 0;
 
@@ -320,27 +392,33 @@ const countUserAccessChanges = ({ currentOrgUnits, currentOverrides, currentRole
     return changes;
 };
 
+/** Quita la excepción para que el permiso vuelva a salir solo del rol. */
 const withoutPermissionOverride = (state: PermissionOverrideState, permissionCode: string): PermissionOverrideState => Object.fromEntries(Object.entries(state).filter(([code]) => code !== permissionCode));
 
+/** Fija allow o deny directo. Deny gana sobre lo que el rol concedería. */
 const withPermissionOverride = (state: PermissionOverrideState, permissionCode: string, effect: "allow" | "deny"): PermissionOverrideState => ({
     ...state,
     [permissionCode]: effect,
 });
 
+/** Pasa la lista del API a un mapa por código para editarla en la consola. */
 const mapOverridesToState = (overrides: readonly IdentityUserPermissionOverride[]): PermissionOverrideState => Object.fromEntries(overrides.map((override) => [override.code, override.effect]));
 
+/** Vuelve al cuerpo que el API espera, ordenado para que el diff sea estable. */
 const mapOverrideStateToList = (overrides: PermissionOverrideState): readonly IdentityUserPermissionOverride[] =>
     Object.entries(overrides)
         .map(([code, effect]) => ({ code, effect }))
         .sort((first, second) => first.code.localeCompare(second.code));
 
+/** Texto que el diálogo muestra antes de guardar el acceso de un empleado. */
 const buildUserSaveSummary = (input: { readonly modules: readonly ModuleCatalogItem[]; readonly roles: readonly RoleCatalogItem[]; readonly selectedUser: SystemUserDirectoryItem; readonly userOrgUnitCodes: ReadonlySet<string>; readonly userPermissionOverrides: PermissionOverrideState; readonly userRoleCodes: ReadonlySet<string> }): readonly string[] => {
     const selectedRoleNames = input.roles.filter((role) => input.userRoleCodes.has(role.code)).map((role) => role.name);
-    const selectedModuleNames = input.modules.filter((module) => input.userOrgUnitCodes.has(module.code)).map((module) => module.name);
+    const selectedModuleNames = input.modules.filter((module) => !isCatalogModuleCode(module.code) && input.userOrgUnitCodes.has(module.code)).map((module) => module.name);
 
-    return [`Empleado: ${input.selectedUser.name}`, `Roles: ${selectedRoleNames.length > 0 ? selectedRoleNames.join(", ") : "Sin roles"}`, `Modulos: ${selectedModuleNames.length > 0 ? selectedModuleNames.join(", ") : "Sin modulos"}`, `Excepciones directas: ${String(Object.keys(input.userPermissionOverrides).length)}`];
+    return [`Empleado: ${input.selectedUser.name}`, `Roles: ${selectedRoleNames.length > 0 ? selectedRoleNames.join(", ") : "Sin roles"}`, `Módulos visibles: ${selectedModuleNames.length > 0 ? selectedModuleNames.join(", ") : "Sin módulos"}`, `Excepciones directas: ${String(Object.keys(input.userPermissionOverrides).length)}`];
 };
 
+/** Resumen del rol: cuántas acciones quedan concedidas en cada módulo. */
 const buildRoleSaveSummary = (input: { readonly modules: readonly ModuleCatalogItem[]; readonly permissionState: RolePermissionState; readonly selectedRole: RoleCatalogItem; readonly selectedRoleCode: string }): readonly string[] => {
     const moduleSummary = input.modules
         .map((module) => {
@@ -354,8 +432,102 @@ const buildRoleSaveSummary = (input: { readonly modules: readonly ModuleCatalogI
     return [`Rol: ${input.selectedRole.name}`, moduleSummary];
 };
 
+/** Owner ve administración. El resto no asigna módulos de estructura. */
 const getVisibleModulesForContext = (modules: readonly ModuleCatalogItem[], isOwnerContext: boolean): readonly ModuleCatalogItem[] => modules.filter((module) => isOwnerContext || !isAdministrationModuleCode(module.code));
 
+/** La búsqueda mira nombre y código del módulo y de sus vistas. */
+const matchesModuleQuery = (module: ModuleCatalogItem, normalizedQuery: string): boolean => {
+    if (!normalizedQuery) {
+        return true;
+    }
+
+    return [module.name, module.code, ...module.views.flatMap((view) => [view.name, view.code])].some((value) => value.toLocaleLowerCase("es").includes(normalizedQuery));
+};
+
+/** Agrupa lo visible en operativos, administración y el resto. Un grupo vacío no se pinta. */
+const buildModuleDisplayGroups = (modules: readonly ModuleCatalogItem[], normalizedQuery: string): readonly ModuleDisplayGroup[] => {
+    const visibleModules = modules.filter((module) => !isCatalogModuleCode(module.code) && matchesModuleQuery(module, normalizedQuery));
+    const operational = visibleModules.filter((module) => isOperationalModuleCode(module.code));
+    const administration = visibleModules.filter((module) => isAdministrationModuleCode(module.code));
+    const other = visibleModules.filter((module) => !isOperationalModuleCode(module.code) && !isAdministrationModuleCode(module.code) && !isCatalogModuleCode(module.code));
+
+    return [
+        { key: "operational", modules: operational, title: "Módulos operativos" },
+        { key: "administration", modules: administration, title: "Administración del sistema" },
+        { key: "other", modules: other, title: "Otros módulos" },
+    ].filter((group) => group.modules.length > 0);
+};
+
+/** Deja solo las acciones cuyo nombre, vista o descripción coinciden con la búsqueda. */
+const filterPermissionViews = (views: readonly PermissionViewSection[], normalizedQuery: string): readonly PermissionViewSection[] =>
+    views
+        .map((view) => ({
+            ...view,
+            permissions: view.permissions.filter((permission) => {
+                const haystack = `${view.name} ${permission.name} ${permission.description}`.toLowerCase();
+
+                return normalizedQuery.length === 0 || haystack.includes(normalizedQuery);
+            }),
+        }))
+        .filter((view) => view.permissions.length > 0);
+
+/** El código de vista de un catálogo se prefija con el módulo para no chocar entre catálogos. */
+const getViewBaseCode = (viewCode: string): string => viewCode.split(":").pop() ?? viewCode;
+
+/** Separa las vistas propias del módulo y las de catálogos compartidos. */
+const buildPermissionViewSections = (selectedModule: ModuleCatalogItem, normalizedQuery: string): PermissionViewSections => {
+    const views = selectedModule.views.map((view) => ({ ...view, code: isCatalogModuleCode(view.code) ? `${selectedModule.code}:${view.code}` : view.code, moduleCode: selectedModule.code }));
+
+    return {
+        catalogViews: filterPermissionViews(
+            views.filter((view) => isCatalogModuleCode(getViewBaseCode(view.code))),
+            normalizedQuery,
+        ),
+        moduleViews: filterPermissionViews(
+            views.filter((view) => !isCatalogModuleCode(getViewBaseCode(view.code))),
+            normalizedQuery,
+        ),
+    };
+};
+
+/** Por módulo: visibilidad en el menú, permisos del rol y excepciones directas. */
+const buildUserModuleAccessSummaries = (input: { readonly modules: readonly ModuleCatalogItem[]; readonly permissionState: RolePermissionState; readonly userOrgUnitCodes: ReadonlySet<string>; readonly userPermissionOverrides: PermissionOverrideState; readonly userRoleCodes: ReadonlySet<string> }): readonly UserModuleAccessSummary[] =>
+    input.modules.map((module) => {
+        const permissionCodes = getModulePermissionCodes(input.modules, module.code);
+
+        return {
+            baseGranted: getUserBasePermissionCodes(input.permissionState, input.userRoleCodes, module.code).length,
+            directOverrideCount: permissionCodes.filter((permissionCode) => input.userPermissionOverrides[permissionCode]).length,
+            effectiveGranted: getEffectiveUserPermissionCodes(input.permissionState, input.userRoleCodes, input.userPermissionOverrides, module.code).length,
+            isVisible: input.userOrgUnitCodes.has(module.code),
+            module,
+            total: permissionCodes.length,
+        };
+    });
+
+/**
+ * Etiqueta de cómo llega el acceso.
+ *
+ * "Por rol" y "Permiso directo" no autorizan: describen el origen que la
+ * consola está editando.
+ */
+const getUserModuleAccessLabel = (summary: UserModuleAccessSummary): string => {
+    if (!summary.isVisible) {
+        return "Oculto del menú";
+    }
+
+    if (summary.effectiveGranted === 0) {
+        return "Visible sin permisos";
+    }
+
+    if (summary.directOverrideCount > 0) {
+        return "Con excepciones";
+    }
+
+    return summary.baseGranted > 0 ? "Por rol" : "Permiso directo";
+};
+
+/** Estado de los dos diálogos: renombrar el rol o confirmar los permisos. */
 interface RoleSecurityDialogsProps {
     readonly changes: number;
     readonly isRenameRoleDialogOpen: boolean;
@@ -384,6 +556,8 @@ export function RolesSecurityPage() {
     const [permissionState, setPermissionState] = useState<RolePermissionState>(DEFAULT_ROLE_PERMISSIONS);
     const [savedPermissionState, setSavedPermissionState] = useState<RolePermissionState>(DEFAULT_ROLE_PERMISSIONS);
     const [query, setQuery] = useState("");
+    const [moduleQuery, setModuleQuery] = useState("");
+    const [expandedModuleGroupKey, setExpandedModuleGroupKey] = useState<string | null>(DEFAULT_EXPANDED_MODULE_GROUP_KEY);
     const [isRenameRoleDialogOpen, setIsRenameRoleDialogOpen] = useState(false);
     const [isSavePermissionsDialogOpen, setIsSavePermissionsDialogOpen] = useState(false);
     const [renameRoleForm, setRenameRoleForm] = useState<RenameRoleFormState>(EMPTY_RENAME_ROLE_FORM);
@@ -407,11 +581,11 @@ export function RolesSecurityPage() {
     const isUserMode = Boolean(selectedUser);
     const isOwnerContext = isUserMode ? userRoleCodes.has(OWNER_ROLE_CODE) : selectedRoleCode === OWNER_ROLE_CODE;
     const visibleModules = useMemo(() => getVisibleModulesForContext(modules, isOwnerContext), [isOwnerContext, modules]);
-    const operationalModules = useMemo(() => visibleModules.filter((module) => !isAdministrationModuleCode(module.code)), [visibleModules]);
-    const administrationModules = useMemo(() => visibleModules.filter((module) => isAdministrationModuleCode(module.code)), [visibleModules]);
+    const normalizedModuleQuery = moduleQuery.trim().toLocaleLowerCase("es");
+    const moduleDisplayGroups = useMemo(() => buildModuleDisplayGroups(visibleModules, normalizedModuleQuery), [normalizedModuleQuery, visibleModules]);
+    const activeExpandedModuleGroupKey = expandedModuleGroupKey === null ? null : moduleDisplayGroups.some((group) => group.key === expandedModuleGroupKey) ? expandedModuleGroupKey : (moduleDisplayGroups[0]?.key ?? null);
     const selectedModule = visibleModules.find((module) => module.code === selectedModuleCode) ?? visibleModules[0] ?? getModule(modules, selectedModuleCode);
     const activeModuleCode = selectedModule.code;
-    const selectedRolePermissions = isUserMode ? getEffectiveUserPermissionCodes(permissionState, userRoleCodes, userPermissionOverrides, activeModuleCode) : (permissionState[selectedRoleCode]?.[activeModuleCode] ?? []);
     const isSystemRole = !isUserMode && selectedRole.locked;
     const isAccessEditorBusy = isLoadingUserAccess;
     const roleDirtyCount = countRolePermissionChanges(permissionState, savedPermissionState, selectedRoleCode);
@@ -426,6 +600,11 @@ export function RolesSecurityPage() {
     const dirtyCount = isUserMode ? userDirtyCount : roleDirtyCount;
     const viewScopeKey = `${isUserMode ? selectedUserPublicId : selectedRoleCode}:${activeModuleCode}`;
     const openViewCodes = viewExpansion.scopeKey === viewScopeKey ? viewExpansion.openViewCodes : EMPTY_OPEN_VIEW_CODES;
+    const userModuleAccessSummaries = useMemo(() => buildUserModuleAccessSummaries({ modules: visibleModules, permissionState, userOrgUnitCodes, userPermissionOverrides, userRoleCodes }), [permissionState, userOrgUnitCodes, userPermissionOverrides, userRoleCodes, visibleModules]);
+    const userModuleAccessSummaryByCode = useMemo(() => new Map(userModuleAccessSummaries.map((summary) => [summary.module.code, summary])), [userModuleAccessSummaries]);
+    const userTopModuleAccessSummaries = useMemo(() => userModuleAccessSummaries.filter((summary) => !isCatalogModuleCode(summary.module.code)), [userModuleAccessSummaries]);
+    const selectedUserRoleNames = useMemo(() => roles.filter((role) => userRoleCodes.has(role.code)).map((role) => role.name), [roles, userRoleCodes]);
+    const visibleUserModuleNames = useMemo(() => userTopModuleAccessSummaries.filter((summary) => summary.isVisible).map((summary) => summary.module.name), [userTopModuleAccessSummaries]);
     const saveSummary = useMemo(() => {
         if (isUserMode && selectedUser) {
             return buildUserSaveSummary({ modules: visibleModules, roles, selectedUser, userOrgUnitCodes, userPermissionOverrides, userRoleCodes });
@@ -575,29 +754,16 @@ export function RolesSecurityPage() {
     }, [selectedUserPublicId, showErrorNotification]);
 
     const normalizedQuery = query.trim().toLowerCase();
-    const filteredViews = useMemo(
-        () =>
-            selectedModule.views
-                .map((view) => ({
-                    ...view,
-                    permissions: view.permissions.filter((permission) => {
-                        const haystack = `${view.name} ${permission.name} ${permission.description}`.toLowerCase();
+    const permissionViewSections = useMemo(() => buildPermissionViewSections(selectedModule, normalizedQuery), [normalizedQuery, selectedModule]);
 
-                        return normalizedQuery.length === 0 || haystack.includes(normalizedQuery);
-                    }),
-                }))
-                .filter((view) => view.permissions.length > 0),
-        [normalizedQuery, selectedModule],
-    );
-
-    const togglePermission = (permissionCode: PermissionCode) => {
+    const togglePermission = (permissionCode: PermissionCode, moduleCode: string) => {
         if (isSystemRole) {
             return;
         }
 
         if (isUserMode) {
-            const basePermissions = new Set(getUserBasePermissionCodes(permissionState, userRoleCodes, activeModuleCode));
-            const currentlyEnabled = selectedRolePermissions.includes(permissionCode);
+            const basePermissions = new Set(getUserBasePermissionCodes(permissionState, userRoleCodes, moduleCode));
+            const currentlyEnabled = getEffectiveUserPermissionCodes(permissionState, userRoleCodes, userPermissionOverrides, moduleCode).includes(permissionCode);
 
             setUserPermissionOverrides((current) => {
                 if (currentlyEnabled) {
@@ -615,14 +781,14 @@ export function RolesSecurityPage() {
 
         setPermissionState((current) => {
             const modulesByRole = current[selectedRoleCode] ?? {};
-            const currentPermissions = modulesByRole[activeModuleCode] ?? [];
+            const currentPermissions = modulesByRole[moduleCode] ?? [];
             const nextPermissions = currentPermissions.includes(permissionCode) ? currentPermissions.filter((code) => code !== permissionCode) : [...currentPermissions, permissionCode];
 
             return {
                 ...current,
                 [selectedRoleCode]: {
                     ...modulesByRole,
-                    [activeModuleCode]: nextPermissions,
+                    [moduleCode]: nextPermissions,
                 },
             };
         });
@@ -816,76 +982,85 @@ export function RolesSecurityPage() {
         }
     };
 
+    const getGrantedPermissionCountForView = (view: PermissionViewSection): number => {
+        const viewPermissionCodes = isUserMode ? getEffectiveUserPermissionCodes(permissionState, userRoleCodes, userPermissionOverrides, view.moduleCode) : (permissionState[selectedRoleCode]?.[view.moduleCode] ?? []);
+
+        return isSystemRole ? view.permissions.length : view.permissions.filter((permission) => viewPermissionCodes.includes(permission.code)).length;
+    };
+
+    const catalogPermissionTotals = permissionViewSections.catalogViews.reduce(
+        (totals, view) => ({
+            granted: totals.granted + getGrantedPermissionCountForView(view),
+            total: totals.total + view.permissions.length,
+        }),
+        { granted: 0, total: 0 },
+    );
+    const isSharedCatalogsOpen = openViewCodes.has(SHARED_CATALOGS_GROUP_CODE);
+    const hasPermissionViews = permissionViewSections.moduleViews.length > 0 || permissionViewSections.catalogViews.length > 0;
+
     return (
-        <div className="roles-security-page">
-            {notificationContextHolder}
-            <section className="roles-security-header" aria-labelledby="roles-security-title">
-                <div>
-                    <span className="roles-security-breadcrumb">Administración / Roles y seguridad</span>
-                    <h1 id="roles-security-title">Roles y seguridad</h1>
-                    <p>Configura qué puede hacer cada rol por módulo, vista y acción.</p>
-                </div>
-            </section>
-
-            <section className="roles-security-workbench" aria-label="Gestor de permisos por rol">
-                <aside className="roles-security-sidebar" aria-labelledby="roles-security-roles-title">
-                    <div className="roles-security-panel__header">
-                        <h2 id="roles-security-roles-title">Roles</h2>
+        <ConfigProvider locale={esES} theme={ADMINISTRATION_THEME}>
+            <div className="roles-security-page">
+                {notificationContextHolder}
+                <section className="roles-security-header" aria-labelledby="roles-security-title">
+                    <div>
+                        <span className="roles-security-breadcrumb">Administración / Roles y seguridad</span>
+                        <h1 id="roles-security-title">Roles y seguridad</h1>
+                        <p>Configura qué puede hacer cada rol por módulo, vista y acción.</p>
                     </div>
-                    <div className="roles-security-role-search">
-                        <SearchOutlined />
-                        <span>Buscar rol</span>
-                    </div>
-                    <div className="roles-security-list">
-                        {roles.map((role) => (
-                            <button
-                                className={`roles-security-list-item${!isUserMode && role.code === selectedRoleCode ? " roles-security-list-item--active" : ""}${isUserMode && userRoleCodes.has(role.code) ? " roles-security-list-item--checked" : ""}`}
-                                key={role.code}
-                                type="button"
-                                disabled={isAccessEditorBusy}
-                                onClick={() => {
-                                    if (isAccessEditorBusy) {
-                                        return;
-                                    }
+                </section>
 
-                                    if (isUserMode) {
-                                        toggleUserRole(role.code);
-                                    } else {
-                                        setSelectedRoleCode(role.code);
-                                    }
-                                }}
-                            >
-                                <span>
-                                    <strong>{role.name}</strong>
-                                    <small>{role.users} usuarios</small>
-                                </span>
-                                {isUserMode ? <input checked={userRoleCodes.has(role.code)} disabled={isAccessEditorBusy} readOnly type="checkbox" /> : <EditOutlined aria-hidden="true" />}
-                            </button>
-                        ))}
-                    </div>
-                </aside>
-
-                <main className={`roles-security-editor${isAccessEditorBusy ? " roles-security-editor--busy" : ""}`}>
-                    <section className="roles-security-toolbar" aria-labelledby="roles-security-editor-title">
-                        <div>
-                            <span className="roles-security-toolbar__eyebrow">{isUserMode ? "Empleado seleccionado" : "Rol seleccionado"}</span>
-                            <h2 id="roles-security-editor-title">{selectedUser?.name ?? selectedRole.name}</h2>
-                            {selectedUser ? <p className="roles-security-toolbar__subtext">{selectedUser.email}</p> : null}
+                <section className="roles-security-workbench" aria-label="Gestor de permisos por rol">
+                    <aside className="roles-security-sidebar" aria-labelledby="roles-security-roles-title">
+                        <div className="roles-security-panel__header">
+                            <h2 id="roles-security-roles-title">Roles</h2>
                         </div>
-                        <div className="roles-security-toolbar__actions">
-                            <label className="roles-security-user-picker">
-                                <span>Empleado</span>
-                                <input
-                                    placeholder="Buscar empleado"
-                                    value={userQuery}
-                                    onChange={(event) => {
-                                        setUserQuery(event.target.value);
+                        <div className="roles-security-list">
+                            {roles.map((role) => (
+                                <button
+                                    className={`roles-security-list-item${!isUserMode && role.code === selectedRoleCode ? " roles-security-list-item--active" : ""}${isUserMode && userRoleCodes.has(role.code) ? " roles-security-list-item--checked" : ""}`}
+                                    key={role.code}
+                                    type="button"
+                                    disabled={isAccessEditorBusy}
+                                    onClick={() => {
+                                        if (isAccessEditorBusy) {
+                                            return;
+                                        }
+
+                                        if (isUserMode) {
+                                            toggleUserRole(role.code);
+                                        } else {
+                                            setSelectedRoleCode(role.code);
+                                        }
                                     }}
-                                />
-                                <select
-                                    value={selectedUserPublicId}
-                                    onChange={(event) => {
-                                        const nextUserPublicId = event.target.value;
+                                >
+                                    <span>
+                                        <strong>{role.name}</strong>
+                                        <small>{role.users} usuarios</small>
+                                    </span>
+                                    {isUserMode ? <input checked={userRoleCodes.has(role.code)} disabled={isAccessEditorBusy} readOnly type="checkbox" /> : null}
+                                </button>
+                            ))}
+                        </div>
+                    </aside>
+
+                    <main className={`roles-security-editor${isAccessEditorBusy ? " roles-security-editor--busy" : ""}`}>
+                        <section className="roles-security-toolbar" aria-labelledby="roles-security-editor-title">
+                            <div>
+                                <h2 id="roles-security-editor-title">{selectedUser?.name ?? selectedRole.name}</h2>
+                                {selectedUser ? <p className="roles-security-toolbar__subtext">{selectedUser.email}</p> : null}
+                            </div>
+                            <div className="roles-security-toolbar__actions">
+                                <Select<string>
+                                    className="roles-security-user-picker"
+                                    aria-label="Empleado"
+                                    allowClear
+                                    placeholder="Ver por empleado"
+                                    showSearch={{ filterOption: false, onSearch: setUserQuery }}
+                                    value={selectedUserPublicId || null}
+                                    options={users.map((user) => ({ label: user.name, value: user.publicId }))}
+                                    onChange={(value: string | undefined) => {
+                                        const nextUserPublicId = value ?? "";
                                         notificationApi.destroy();
                                         setIsLoadingUserAccess(Boolean(nextUserPublicId));
                                         resetUserAccessState();
@@ -895,208 +1070,337 @@ export function RolesSecurityPage() {
                                             setIsLoadingUserAccess(false);
                                         }
                                     }}
-                                >
-                                    <option value="">Gestionar rol base</option>
-                                    {users.map((user) => (
-                                        <option key={user.publicId} value={user.publicId}>
-                                            {user.name}
-                                        </option>
-                                    ))}
-                                </select>
-                            </label>
-                            <button className="roles-security-secondary-action" disabled={isUserMode} type="button" aria-label="Renombrar rol" onClick={openRenameRoleDialog}>
-                                <EditOutlined />
-                                Renombrar
-                            </button>
-                            <button className={`roles-security-primary-action${dirtyCount > 0 ? " is-dirty" : ""}`} disabled={isLoadingUserAccess || dirtyCount === 0 || (isSystemRole && dirtyCount === 0)} type="button" aria-label={`Guardar cambios ${String(dirtyCount)}`} onClick={openSavePermissionsDialog}>
-                                <SaveOutlined />
-                                Guardar cambios ({dirtyCount})
-                            </button>
-                        </div>
-                    </section>
-
-                    {isAccessEditorBusy ? (
-                        <div className="roles-security-loading-state" role="status" aria-live="polite">
-                            <span className="roles-security-loading-state__spinner" aria-hidden="true" />
-                            <strong>Cargando acceso del empleado...</strong>
-                            <small>Estamos trayendo roles, módulos y permisos directos desde el API.</small>
-                        </div>
-                    ) : null}
-
-                    {isUserMode ? (
-                        <section className="roles-security-effective-summary" aria-label="Permisos efectivos del empleado">
-                            <strong>Permisos efectivos antes de guardar</strong>
-                            <span>{saveSummary.join(" | ")}</span>
-                        </section>
-                    ) : null}
-
-                    <section className="roles-security-module-groups" aria-label="Módulos del sistema">
-                        {[
-                            { modules: operationalModules, title: "Módulos operativos" },
-                            { modules: administrationModules, title: "Administración del sistema" },
-                        ]
-                            .filter((group) => group.modules.length > 0)
-                            .map((group) => (
-                                <div className="roles-security-module-group" key={group.title}>
-                                    <span className="roles-security-module-group__title">{group.title}</span>
-                                    <div className="roles-security-module-grid">
-                                        {/* eslint-disable-next-line complexity -- Cada tarjeta calcula estado rol/empleado para evitar duplicar el markup. */}
-                                        {group.modules.map((module) => {
-                                            const granted = permissionState[selectedRoleCode]?.[module.code]?.length ?? 0;
-                                            const userGranted = getEffectiveUserPermissionCodes(permissionState, userRoleCodes, userPermissionOverrides, module.code).length;
-                                            const total = getModulePermissionCodes(modules, module.code).length;
-                                            const enabled = isUserMode ? userOrgUnitCodes.has(module.code) : granted > 0;
-                                            const visibleGranted = isUserMode ? userGranted : granted;
-
-                                            return (
-                                                <button
-                                                    className={`roles-security-module-card${module.code === activeModuleCode ? " roles-security-module-card--active" : ""}${enabled ? "" : " roles-security-module-card--off"}`}
-                                                    key={module.code}
-                                                    type="button"
-                                                    disabled={isAccessEditorBusy}
-                                                    onClick={() => {
-                                                        setSelectedModuleCode(module.code);
-                                                    }}
-                                                >
-                                                    <span>
-                                                        <input
-                                                            checked={enabled}
-                                                            disabled={isSystemRole || isAccessEditorBusy}
-                                                            type="checkbox"
-                                                            onChange={(event) => {
-                                                                event.stopPropagation();
-                                                                toggleModule(module.code);
-                                                            }}
-                                                            onClick={(event) => {
-                                                                event.stopPropagation();
-                                                            }}
-                                                        />
-                                                        <strong>{module.name}</strong>
-                                                    </span>
-                                                    <small>
-                                                        {visibleGranted}/{total}
-                                                    </small>
-                                                </button>
-                                            );
-                                        })}
-                                    </div>
-                                </div>
-                            ))}
-                    </section>
-
-                    <section className="roles-security-permissions" aria-labelledby="roles-security-permissions-title">
-                        <div className="roles-security-permissions__header">
-                            <div>
-                                <h2 id="roles-security-permissions-title">{selectedModule.name}</h2>
-                                <p>Permisos agrupados por vista</p>
+                                />
+                                {isUserMode ? null : (
+                                    <button className="roles-security-secondary-action" type="button" aria-label="Renombrar rol" onClick={openRenameRoleDialog}>
+                                        <EditOutlined />
+                                        Renombrar
+                                    </button>
+                                )}
+                                <button className={`roles-security-primary-action${dirtyCount > 0 ? " is-dirty" : ""}`} disabled={isLoadingUserAccess || dirtyCount === 0 || (isSystemRole && dirtyCount === 0)} type="button" aria-label={`Guardar cambios ${String(dirtyCount)}`} onClick={openSavePermissionsDialog}>
+                                    <SaveOutlined />
+                                    {dirtyCount > 0 ? `Guardar · ${String(dirtyCount)}` : "Guardar"}
+                                </button>
                             </div>
-                            <div className="roles-security-permissions__actions">
-                                <label className="roles-security-filter">
+                        </section>
+
+                        {isAccessEditorBusy ? (
+                            <div className="roles-security-loading-state" role="status" aria-live="polite">
+                                <span className="roles-security-loading-state__spinner" aria-hidden="true" />
+                                <strong>Cargando acceso del empleado…</strong>
+                            </div>
+                        ) : null}
+
+                        {isUserMode ? (
+                            <section className="roles-security-effective-summary" aria-label="Permisos efectivos del empleado">
+                                <div className="roles-security-effective-summary__header">
+                                    <strong>Resumen operativo antes de guardar</strong>
+                                    <span>Separa rol, menú visible y permisos reales para evitar confusiones.</span>
+                                </div>
+                                <div className="roles-security-effective-summary__grid">
+                                    <article>
+                                        <small>Roles asignados</small>
+                                        <strong>{selectedUserRoleNames.length > 0 ? selectedUserRoleNames.join(", ") : "Sin roles"}</strong>
+                                    </article>
+                                    <article>
+                                        <small>Módulos habilitados en menú</small>
+                                        <strong>{visibleUserModuleNames.length > 0 ? visibleUserModuleNames.join(", ") : "Sin módulos visibles"}</strong>
+                                    </article>
+                                    <article>
+                                        <small>Permisos efectivos por módulo</small>
+                                        <div className="roles-security-effective-summary__chips">
+                                            {userTopModuleAccessSummaries.map((summary) => (
+                                                <span className={summary.effectiveGranted === 0 ? "is-empty" : ""} key={summary.module.code}>
+                                                    {summary.module.name} {summary.effectiveGranted}/{summary.total}
+                                                </span>
+                                            ))}
+                                        </div>
+                                    </article>
+                                    <article>
+                                        <small>Excepciones directas</small>
+                                        <strong>{Object.keys(userPermissionOverrides).length}</strong>
+                                    </article>
+                                </div>
+                            </section>
+                        ) : null}
+
+                        <section className="roles-security-module-groups" aria-label="Módulos del sistema">
+                            <div className="roles-security-module-groups__header">
+                                <strong>Módulos</strong>
+                                <label className="roles-security-filter roles-security-filter--compact">
                                     <SearchOutlined />
                                     <input
-                                        placeholder="Buscar vista o permiso"
-                                        value={query}
+                                        aria-label="Buscar módulo o vista"
+                                        placeholder="Buscar módulo o vista"
+                                        value={moduleQuery}
                                         onChange={(event) => {
-                                            setQuery(event.target.value);
+                                            setModuleQuery(event.target.value);
                                         }}
                                     />
                                 </label>
                             </div>
-                        </div>
-
-                        <div className="roles-security-view-list">
-                            {filteredViews.length > 0 ? (
-                                filteredViews.map((view) => {
-                                    const isViewOpen = openViewCodes.has(view.code);
-                                    const grantedInView = isSystemRole ? view.permissions.length : view.permissions.filter((permission) => selectedRolePermissions.includes(permission.code)).length;
-                                    const permissionListId = `roles-security-view-${activeModuleCode}-${view.code}`;
+                            {moduleDisplayGroups.length > 0 ? (
+                                moduleDisplayGroups.map((group) => {
+                                    const isGroupExpanded = activeExpandedModuleGroupKey === group.key;
+                                    const groupPanelId = `roles-security-module-group-${group.key}`;
 
                                     return (
-                                        <section className="roles-security-view-group" key={view.code} aria-label={view.name}>
+                                        <div className={`roles-security-module-group${isGroupExpanded ? " roles-security-module-group--expanded" : ""}`} key={group.key}>
                                             <button
-                                                className="roles-security-view-group__trigger"
+                                                className="roles-security-module-group__trigger"
                                                 type="button"
-                                                aria-controls={permissionListId}
-                                                aria-expanded={isViewOpen}
+                                                aria-controls={groupPanelId}
+                                                aria-expanded={isGroupExpanded}
                                                 onClick={() => {
-                                                    toggleView(view.code);
+                                                    setExpandedModuleGroupKey(activeExpandedModuleGroupKey === group.key ? null : group.key);
                                                 }}
                                             >
                                                 <span>
-                                                    <strong>{view.name}</strong>
-                                                    <small>
-                                                        {grantedInView}/{view.permissions.length} permitidos
-                                                    </small>
+                                                    <strong>{group.title}</strong>
+                                                    <small>{group.modules.length} módulos</small>
                                                 </span>
-                                                <span className="roles-security-view-group__meta">
-                                                    {view.permissions.length} acciones
-                                                    <DownOutlined aria-hidden="true" />
-                                                </span>
+                                                <DownOutlined aria-hidden="true" />
                                             </button>
-                                            {isViewOpen ? (
-                                                <div id={permissionListId} className="roles-security-permission-list">
-                                                    {view.permissions.map((permission) => {
-                                                        const enabled = isSystemRole || selectedRolePermissions.includes(permission.code);
+                                            {isGroupExpanded ? (
+                                                <div id={groupPanelId} className="roles-security-module-grid">
+                                                    {/* eslint-disable-next-line complexity -- Cada tarjeta calcula estado rol/empleado para evitar duplicar el markup. */}
+                                                    {group.modules.map((module) => {
+                                                        const granted = permissionState[selectedRoleCode]?.[module.code]?.length ?? 0;
+                                                        const total = getModulePermissionCodes(modules, module.code).length;
+                                                        const userModuleSummary = userModuleAccessSummaryByCode.get(module.code);
+                                                        const enabled = isUserMode ? Boolean(userModuleSummary?.isVisible) : granted > 0;
+                                                        const visibleGranted = isUserMode ? (userModuleSummary?.effectiveGranted ?? 0) : granted;
+                                                        const accessLabel = isUserMode && userModuleSummary ? getUserModuleAccessLabel(userModuleSummary) : "Permisos del rol";
 
                                                         return (
-                                                            <label className="roles-security-permission-row" key={permission.code}>
+                                                            <button
+                                                                className={`roles-security-module-card${module.code === activeModuleCode ? " roles-security-module-card--active" : ""}${enabled ? "" : " roles-security-module-card--off"}`}
+                                                                key={module.code}
+                                                                type="button"
+                                                                disabled={isAccessEditorBusy}
+                                                                onClick={() => {
+                                                                    setSelectedModuleCode(module.code);
+                                                                }}
+                                                            >
                                                                 <span>
-                                                                    <strong>
-                                                                        {permission.name}
-                                                                        {permission.sensitive ? <em>Sensible</em> : null}
-                                                                    </strong>
-                                                                    <small>{permission.description}</small>
+                                                                    <input
+                                                                        checked={enabled}
+                                                                        disabled={isSystemRole || isAccessEditorBusy}
+                                                                        type="checkbox"
+                                                                        onChange={(event) => {
+                                                                            event.stopPropagation();
+                                                                            toggleModule(module.code);
+                                                                        }}
+                                                                        onClick={(event) => {
+                                                                            event.stopPropagation();
+                                                                        }}
+                                                                    />
+                                                                    <span>
+                                                                        <strong>{module.name}</strong>
+                                                                        {isUserMode ? <em className={visibleGranted === 0 && enabled ? "is-warning" : ""}>{accessLabel}</em> : null}
+                                                                    </span>
                                                                 </span>
-                                                                <input
-                                                                    checked={enabled}
-                                                                    disabled={isSystemRole || isAccessEditorBusy}
-                                                                    type="checkbox"
-                                                                    onChange={() => {
-                                                                        togglePermission(permission.code);
-                                                                    }}
-                                                                />
-                                                            </label>
+                                                                <small>
+                                                                    {visibleGranted}/{total}
+                                                                </small>
+                                                            </button>
                                                         );
                                                     })}
                                                 </div>
                                             ) : null}
-                                        </section>
+                                        </div>
                                     );
                                 })
                             ) : (
                                 <div className="roles-security-empty-state">
-                                    <strong>Sin acciones configuradas</strong>
-                                    <span>Las vistas y acciones se agregan por migración del sistema.</span>
+                                    <strong>Sin módulos coincidentes</strong>
                                 </div>
                             )}
-                        </div>
-                    </section>
-                </main>
-            </section>
+                        </section>
 
-            <RoleSecurityDialogs
-                changes={dirtyCount}
-                isRenameRoleDialogOpen={isRenameRoleDialogOpen}
-                isSavePermissionsDialogOpen={isSavePermissionsDialogOpen}
-                isSubmitting={isSubmitting}
-                renameRoleForm={renameRoleForm}
-                roleName={selectedUser?.name ?? selectedRole.name}
-                savePermissionsForm={savePermissionsForm}
-                saveSummary={saveSummary}
-                setRenameRoleForm={setRenameRoleForm}
-                setSavePermissionsForm={setSavePermissionsForm}
-                onClose={closeDialog}
-                onRenameRole={() => {
-                    void handleRenameRole();
-                }}
-                onSavePermissions={() => {
-                    void handleSavePermissions();
-                }}
-            />
-        </div>
+                        <section className="roles-security-permissions" aria-labelledby="roles-security-permissions-title">
+                            <div className="roles-security-permissions__header">
+                                <h2 id="roles-security-permissions-title">{selectedModule.name}</h2>
+                                <div className="roles-security-permissions__actions">
+                                    <label className="roles-security-filter">
+                                        <SearchOutlined />
+                                        <input
+                                            aria-label="Buscar permiso"
+                                            placeholder="Buscar permiso"
+                                            value={query}
+                                            onChange={(event) => {
+                                                setQuery(event.target.value);
+                                            }}
+                                        />
+                                    </label>
+                                </div>
+                            </div>
+
+                            <div className="roles-security-view-list">
+                                {hasPermissionViews ? (
+                                    <>
+                                        {permissionViewSections.moduleViews.map((view) => {
+                                            const isViewOpen = openViewCodes.has(view.code);
+                                            const viewPermissionCodes = isUserMode ? getEffectiveUserPermissionCodes(permissionState, userRoleCodes, userPermissionOverrides, view.moduleCode) : (permissionState[selectedRoleCode]?.[view.moduleCode] ?? []);
+                                            const grantedInView = getGrantedPermissionCountForView(view);
+                                            const permissionListId = `roles-security-view-${activeModuleCode}-${view.moduleCode}-${view.code}`;
+
+                                            return (
+                                                <section className="roles-security-view-group" key={view.code} aria-label={view.name}>
+                                                    <button
+                                                        className="roles-security-view-group__trigger"
+                                                        type="button"
+                                                        aria-controls={permissionListId}
+                                                        aria-expanded={isViewOpen}
+                                                        onClick={() => {
+                                                            toggleView(view.code);
+                                                        }}
+                                                    >
+                                                        <strong>{view.name}</strong>
+                                                        <span className="roles-security-view-group__meta">
+                                                            {grantedInView}/{view.permissions.length}
+                                                            <DownOutlined aria-hidden="true" />
+                                                        </span>
+                                                    </button>
+                                                    {isViewOpen ? (
+                                                        <div id={permissionListId} className="roles-security-permission-list">
+                                                            {view.permissions.map((permission) => {
+                                                                const enabled = isSystemRole || viewPermissionCodes.includes(permission.code);
+
+                                                                return (
+                                                                    <label className="roles-security-permission-row" key={permission.code} title={permission.description}>
+                                                                        <strong>
+                                                                            {permission.name}
+                                                                            {permission.sensitive ? <em>Sensible</em> : null}
+                                                                        </strong>
+                                                                        <input
+                                                                            checked={enabled}
+                                                                            disabled={isSystemRole || isAccessEditorBusy}
+                                                                            type="checkbox"
+                                                                            onChange={() => {
+                                                                                togglePermission(permission.code, view.moduleCode);
+                                                                            }}
+                                                                        />
+                                                                    </label>
+                                                                );
+                                                            })}
+                                                        </div>
+                                                    ) : null}
+                                                </section>
+                                            );
+                                        })}
+                                        {permissionViewSections.catalogViews.length > 0 ? (
+                                            <section className="roles-security-view-group roles-security-view-group--shared-catalogs" aria-label="Catálogos compartidos">
+                                                <button
+                                                    className="roles-security-view-group__trigger"
+                                                    type="button"
+                                                    aria-controls={`roles-security-view-${activeModuleCode}-shared-catalogs`}
+                                                    aria-expanded={isSharedCatalogsOpen}
+                                                    onClick={() => {
+                                                        toggleView(SHARED_CATALOGS_GROUP_CODE);
+                                                    }}
+                                                >
+                                                    <span>
+                                                        <strong>Catálogos compartidos</strong>
+                                                        <small>Vistas reutilizables disponibles para este módulo</small>
+                                                    </span>
+                                                    <span className="roles-security-view-group__meta">
+                                                        {catalogPermissionTotals.granted}/{catalogPermissionTotals.total}
+                                                        <DownOutlined aria-hidden="true" />
+                                                    </span>
+                                                </button>
+                                                {isSharedCatalogsOpen ? (
+                                                    <div id={`roles-security-view-${activeModuleCode}-shared-catalogs`} className="roles-security-shared-catalogs">
+                                                        {permissionViewSections.catalogViews.map((view) => {
+                                                            const isViewOpen = openViewCodes.has(view.code);
+                                                            const viewPermissionCodes = isUserMode ? getEffectiveUserPermissionCodes(permissionState, userRoleCodes, userPermissionOverrides, view.moduleCode) : (permissionState[selectedRoleCode]?.[view.moduleCode] ?? []);
+                                                            const grantedInView = getGrantedPermissionCountForView(view);
+                                                            const permissionListId = `roles-security-view-${activeModuleCode}-${view.moduleCode}-${view.code}`;
+
+                                                            return (
+                                                                <section className="roles-security-view-group" key={view.code} aria-label={view.name}>
+                                                                    <button
+                                                                        className="roles-security-view-group__trigger"
+                                                                        type="button"
+                                                                        aria-controls={permissionListId}
+                                                                        aria-expanded={isViewOpen}
+                                                                        onClick={() => {
+                                                                            toggleView(view.code);
+                                                                        }}
+                                                                    >
+                                                                        <strong>{view.name}</strong>
+                                                                        <span className="roles-security-view-group__meta">
+                                                                            {grantedInView}/{view.permissions.length}
+                                                                            <DownOutlined aria-hidden="true" />
+                                                                        </span>
+                                                                    </button>
+                                                                    {isViewOpen ? (
+                                                                        <div id={permissionListId} className="roles-security-permission-list">
+                                                                            {view.permissions.map((permission) => {
+                                                                                const enabled = isSystemRole || viewPermissionCodes.includes(permission.code);
+
+                                                                                return (
+                                                                                    <label className="roles-security-permission-row" key={permission.code} title={permission.description}>
+                                                                                        <strong>
+                                                                                            {permission.name}
+                                                                                            {permission.sensitive ? <em>Sensible</em> : null}
+                                                                                        </strong>
+                                                                                        <input
+                                                                                            checked={enabled}
+                                                                                            disabled={isSystemRole || isAccessEditorBusy}
+                                                                                            type="checkbox"
+                                                                                            onChange={() => {
+                                                                                                togglePermission(permission.code, view.moduleCode);
+                                                                                            }}
+                                                                                        />
+                                                                                    </label>
+                                                                                );
+                                                                            })}
+                                                                        </div>
+                                                                    ) : null}
+                                                                </section>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                ) : null}
+                                            </section>
+                                        ) : null}
+                                    </>
+                                ) : (
+                                    <div className="roles-security-empty-state">
+                                        <strong>Sin acciones configuradas</strong>
+                                    </div>
+                                )}
+                            </div>
+                        </section>
+                    </main>
+                </section>
+
+                <RoleSecurityDialogs
+                    changes={dirtyCount}
+                    isRenameRoleDialogOpen={isRenameRoleDialogOpen}
+                    isSavePermissionsDialogOpen={isSavePermissionsDialogOpen}
+                    isSubmitting={isSubmitting}
+                    renameRoleForm={renameRoleForm}
+                    roleName={selectedUser?.name ?? selectedRole.name}
+                    savePermissionsForm={savePermissionsForm}
+                    saveSummary={saveSummary}
+                    setRenameRoleForm={setRenameRoleForm}
+                    setSavePermissionsForm={setSavePermissionsForm}
+                    onClose={closeDialog}
+                    onRenameRole={() => {
+                        void handleRenameRole();
+                    }}
+                    onSavePermissions={() => {
+                        void handleSavePermissions();
+                    }}
+                />
+            </div>
+        </ConfigProvider>
     );
 }
 
+/** Elige el diálogo abierto. Solo uno puede estar visible: renombrar o guardar permisos. */
 function RoleSecurityDialogs({ changes, isRenameRoleDialogOpen, isSavePermissionsDialogOpen, isSubmitting, onClose, onRenameRole, onSavePermissions, renameRoleForm, roleName, savePermissionsForm, saveSummary, setRenameRoleForm, setSavePermissionsForm }: RoleSecurityDialogsProps) {
     return (
         <>
@@ -1106,6 +1410,7 @@ function RoleSecurityDialogs({ changes, isRenameRoleDialogOpen, isSavePermission
     );
 }
 
+/** Campos del renombre. El código del rol no se edita. */
 interface RenameRoleDialogProps {
     readonly form: RenameRoleFormState;
     readonly isSubmitting: boolean;
@@ -1114,6 +1419,7 @@ interface RenameRoleDialogProps {
     readonly setForm: Dispatch<SetStateAction<RenameRoleFormState>>;
 }
 
+/** Pide el nombre nuevo y un motivo antes de llamar al API. */
 function RenameRoleDialog({ form, isSubmitting, onClose, onSubmit, setForm }: RenameRoleDialogProps) {
     return (
         <div className="roles-security-modal-backdrop" role="presentation" onMouseDown={onClose}>
@@ -1170,6 +1476,7 @@ function RenameRoleDialog({ form, isSubmitting, onClose, onSubmit, setForm }: Re
     );
 }
 
+/** Confirmación del guardado: resumen de cambios y motivo auditable. */
 interface SavePermissionsDialogProps {
     readonly changes: number;
     readonly form: SavePermissionsFormState;
@@ -1181,6 +1488,7 @@ interface SavePermissionsDialogProps {
     readonly setForm: Dispatch<SetStateAction<SavePermissionsFormState>>;
 }
 
+/** Muestra qué va a quedar guardado y no envía hasta que el motivo sea válido. */
 function SavePermissionsDialog({ changes, form, isSubmitting, onClose, onSubmit, roleName, saveSummary, setForm }: SavePermissionsDialogProps) {
     return (
         <div className="roles-security-modal-backdrop" role="presentation" onMouseDown={onClose}>

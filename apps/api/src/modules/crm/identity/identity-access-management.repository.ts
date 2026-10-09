@@ -4,10 +4,12 @@ import { type Kysely, sql } from "kysely";
 import { DatabaseService } from "../../../database/database.service.js";
 import type { CrmDatabase } from "../../../database/database.types.js";
 import { SecurityAuditService } from "../audit/security-audit.service.js";
+import { CATALOG_CONTEXT_MODULES, CATALOG_PERMISSION_ACTIONS, type CatalogPermissionAction, findCatalogDefinitionByModuleCode, getCatalogPermissionName } from "../catalogs/catalogs.constants.js";
 import { ACTIVE_STATUS } from "./identity-repository.shared.js";
+import { IdentitySessionRepository } from "./identity-session.repository.js";
 
 const INACTIVE_STATUS = "inactive";
-const VISIBLE_SECURITY_MODULE_CODES = ["contabilidad", "formalizacion", "mercadeo", "role", "user", "ventas"] as const;
+const VISIBLE_SECURITY_MODULE_CODES = [...CATALOG_CONTEXT_MODULES, "role", "user"] as const;
 
 type AccessManagementExecutor = Pick<Kysely<CrmDatabase>, "insertInto" | "selectFrom" | "updateTable">;
 
@@ -226,6 +228,7 @@ export class IdentityAccessManagementRepository {
     constructor(
         @Inject(DatabaseService) private readonly database: DatabaseService,
         @Inject(SecurityAuditService) private readonly audit: SecurityAuditService,
+        @Inject(IdentitySessionRepository) private readonly sessions: IdentitySessionRepository,
     ) {}
 
     /**
@@ -246,13 +249,14 @@ export class IdentityAccessManagementRepository {
      */
     async replaceUserAccess(input: ReplaceIdentityUserAccessInput): Promise<IdentityUserAccessSummary> {
         return this.database.db.transaction().execute(async (transaction) => {
-            const actor = await this.readActor(transaction, input.actorPublicId);
-            const targetUser = await this.findUserRowByPublicId(transaction, input.userPublicId);
+            // Lock before snapshot reads so concurrent access edits see the committed predecessor.
+            const targetUser = await this.findUserRowByPublicId(transaction, input.userPublicId, true);
 
             if (!targetUser) {
                 throw new BadRequestException("Usuario no disponible.");
             }
 
+            const actor = await this.readActor(transaction, input.actorPublicId);
             const roleCodes = [...new Set(input.roleCodes)].sort();
             const orgUnitCodes = [...new Set(input.orgUnitCodes)].sort();
             const overrides = this.normalizePermissionOverrides(input.permissionOverrides);
@@ -288,6 +292,8 @@ export class IdentityAccessManagementRepository {
                 .set({ permission_version_user: sql<number>`permission_version_user + 1`, updated_at_user: now, updated_by_user_id_user: actor.id })
                 .where("id_user", "=", targetUser.id)
                 .executeTakeFirst();
+            // Access replacement invalidates both cookies atomically; refresh must not revive old access.
+            await this.sessions.revokeAllActiveSessionsForUser(transaction, targetUser.id, "user_access_replaced", actor.id);
             await this.audit.record(
                 {
                     actorUserId: actor.id,
@@ -559,8 +565,14 @@ export class IdentityAccessManagementRepository {
         return actor;
     }
 
-    private async findUserRowByPublicId(executor: AccessManagementExecutor, publicId: string): Promise<UserRow | null> {
-        const user = await executor.selectFrom("sec_user").select(["display_name_user as name", "email_user as email", "id_user as id", "public_id_user as publicId", "status_user as status"]).where("public_id_user", "=", publicId).where("deleted_at_user", "is", null).executeTakeFirst();
+    private async findUserRowByPublicId(executor: AccessManagementExecutor, publicId: string, lock = false): Promise<UserRow | null> {
+        const user = await executor
+            .selectFrom("sec_user")
+            .select(["display_name_user as name", "email_user as email", "id_user as id", "public_id_user as publicId", "status_user as status"])
+            .where("public_id_user", "=", publicId)
+            .where("deleted_at_user", "is", null)
+            .$if(lock, (query) => query.forUpdate())
+            .executeTakeFirst();
 
         return user ?? null;
     }
@@ -875,7 +887,13 @@ export class IdentityAccessManagementRepository {
     }
 
     private resolveModuleName(moduleCode: string): string {
+        const catalogDefinition = findCatalogDefinitionByModuleCode(moduleCode);
+        if (catalogDefinition) {
+            return catalogDefinition.label;
+        }
+
         const names: Record<string, string> = {
+            administration: "Administracion",
             contabilidad: "Contabilidad",
             formalizacion: "Formalizacion",
             mercadeo: "Mercadeo",
@@ -889,7 +907,9 @@ export class IdentityAccessManagementRepository {
     }
 
     private resolvePermissionViewCode(permissionCode: string): string {
-        return permissionCode.split(".")[0] ?? permissionCode;
+        const parts = permissionCode.split(".");
+
+        return parts.length >= 3 && findCatalogDefinitionByModuleCode(parts[1] ?? "") ? (parts[1] as string) : (parts[0] ?? permissionCode);
     }
 
     private parseAuditMetadata(metadata: string | null): Record<string, unknown> {
@@ -950,6 +970,11 @@ export class IdentityAccessManagementRepository {
     }
 
     private resolveModuleCodeForPermissionCode(permissionCode: string): string {
+        const prefix = permissionCode.split(".")[0] ?? permissionCode;
+        if (this.isVisibleSecurityModule(prefix)) {
+            return prefix;
+        }
+
         const moduleByPrefix: Record<string, string> = {
             campaign: "mercadeo",
             contract: "formalizacion",
@@ -965,12 +990,16 @@ export class IdentityAccessManagementRepository {
             user: "user",
             wallet: "contabilidad",
         };
-        const prefix = permissionCode.split(".")[0] ?? permissionCode;
 
         return moduleByPrefix[prefix] ?? prefix;
     }
 
     private resolvePermissionViewName(viewCode: string): string {
+        const catalogDefinition = findCatalogDefinitionByModuleCode(viewCode);
+        if (catalogDefinition) {
+            return catalogDefinition.label;
+        }
+
         const names: Record<string, string> = {
             campaign: "Campanas",
             contract: "Contratos",
@@ -992,6 +1021,13 @@ export class IdentityAccessManagementRepository {
     }
 
     private resolvePermissionName(permissionCode: string, actionCode: string): string {
+        const parts = permissionCode.split(".");
+        const catalogModuleCode = parts.length >= 3 ? parts[1] : parts[0];
+        const catalogDefinition = catalogModuleCode ? findCatalogDefinitionByModuleCode(catalogModuleCode) : undefined;
+        if (catalogDefinition && this.isCatalogPermissionAction(actionCode)) {
+            return getCatalogPermissionName(catalogDefinition, actionCode);
+        }
+
         const names: Record<string, string> = {
             "campaign.create": "Crear campana",
             "campaign.read": "Ver campanas",
@@ -1026,7 +1062,11 @@ export class IdentityAccessManagementRepository {
         return names[permissionCode] ?? actionCode.replace(/_/gu, " ");
     }
 
+    private isCatalogPermissionAction(actionCode: string): actionCode is CatalogPermissionAction {
+        return CATALOG_PERMISSION_ACTIONS.includes(actionCode as CatalogPermissionAction);
+    }
+
     private isSensitivePermission(permissionCode: string): boolean {
-        return permissionCode.includes("approve") || permissionCode.includes("reconcile") || permissionCode === "role.assign";
+        return permissionCode.includes("approve") || permissionCode.includes("inactivate") || permissionCode.includes("reconcile") || permissionCode === "role.assign";
     }
 }

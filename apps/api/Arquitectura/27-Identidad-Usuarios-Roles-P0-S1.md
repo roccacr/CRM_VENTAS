@@ -250,6 +250,19 @@ El usuario solo puede cambiarse a los modulos que existan como areas operativas 
 El rol no abre modulos por si solo; el rol define permisos, y el area operativa define donde aplican.
 ```
 
+Modelo mental obligatorio para UI y API:
+
+```txt
+rol asignado = paquete base de permisos
+modulo visible = menu/area operativa donde la persona puede trabajar
+permiso efectivo = roles + overrides personales allow/deny
+catalogo = vista compartida reutilizable, con permisos scoped por modulo consumidor
+```
+
+Los catalogos compartidos pueden mostrarse dentro de Ventas, Mercadeo, Formalizacion, Contabilidad o Administracion cuando la pantalla los necesite. Sus valores no se duplican por modulo, pero su autorizacion si queda scoped por contexto: `mercadeo.catalog_project.read` no autoriza `formalizacion.catalog_project.read`.
+
+Regla vigente: para ver u operar un catalogo dentro de un modulo, el usuario necesita el modulo activo en `sec_user_org_unit` y el permiso scoped correspondiente. El permiso global viejo `catalog_project.read` queda deprecado y no autoriza endpoints nuevos.
+
 ## Regla obligatoria de autorizacion dinamica
 
 Autenticacion y autorizacion no son lo mismo.

@@ -1,3 +1,8 @@
+/*
+ * Auditoría de roles y permisos.
+ * La cabecera explica la consulta, la barra filtra en local y la tabla muestra
+ * actor, alcance y fecha sin acciones de edición.
+ */
 .security-audit-page {
     display: grid;
     gap: 16px;

@@ -1,5 +1,16 @@
 # 00 - Ley de Producto CRM TINK y P0
 
+## Corte de continuidad 2026-10-08
+
+La cabecera 0.3.28 siguiente conserva el corte historico de autenticacion. Las instrucciones posteriores del propietario en la conversacion aprobaron usuarios administrativos, roles/permisos, auditoria y siete catalogos compartidos con permisos scoped por modulo. Este addendum registra ese alcance sin atribuir una nueva firma o aprobacion de produccion.
+
+Regla actual de catalogos: contexto activo y permiso {modulo}.catalog_{entidad}.{accion}; datos nativos compartidos. La propuesta anterior de permisos globales queda sustituida. Owner tiene actualmente bypass en servicio: su politica y limitaciones estan descritas en [34 - Cierre](34-Cierre-Operativo-Administracion-P0-S1.md).
+
+Prioridad: cerrar Administracion con QA real y pruebas; despues contrato NetSuite -> API para Leads. Legacy solo lectura; UI Leads, migracion de negocio y deploy siguen pendientes de su autorizacion. Los documentos de vision comercial no amplian el alcance ejecutable.
+
+Estado, hallazgos, tareas, pruebas y preguntas vigentes: documento 34. No interpretar las menciones historicas a runtime minimo o pausas como ausencia del codigo administrativo ya construido.
+
+
 | Campo | Valor |
 | --- | --- |
 | Version | `0.3.28` |
@@ -192,7 +203,7 @@ Validacion SQL autorizada:
 - las credenciales nunca se guardan en documentos, codigo, commits, logs ni capturas; deben vivir solo en variables de entorno locales o gestor de secretos;
 - las migraciones no deben ejecutarse automaticamente al iniciar NestJS; deben ejecutarse por comando explicito, revisable y separado del arranque de la aplicacion.
 
-Conteos esperados de `SQL/002_identity_seed_p0_s1.sql`:
+Conteos esperados de `SQL/002_identity_seed_p0_s1.sql` antes de migraciones incrementales:
 
 | Tabla | Conteo esperado |
 | --- | --- |
@@ -207,10 +218,23 @@ Conteos esperados de `SQL/002_identity_seed_p0_s1.sql`:
 | `sec_user_role` | 0 |
 | `sec_user_org_unit` | 0 |
 
+Conteos adicionales esperados despues de `202610030007_crm_catalogs`:
+
+| Tabla | Incremento esperado |
+| --- | --- |
+| `sec_org_unit` | +1 modulo visible `administration` |
+| `sec_user_org_unit` | +1 vinculo `administration` para usuarios `owner` activos |
+| `sec_permission` | +140 permisos scoped `modulo.catalog_*` |
+| `sec_role_permission` | +140 permisos scoped para `owner` |
+| `crm_catalog_item` | 0; los valores se crean desde la UI/API |
+| `crm_catalog_item_external_reference` | 0; las referencias externas se agregan por valor |
+
+Regla vigente: los valores de catalogo son compartidos en `crm_catalog_item`, pero la autorizacion no es global. El permiso debe incluir el modulo consumidor, por ejemplo `mercadeo.catalog_project.read` o `formalizacion.catalog_project.read`.
+
 Regla de validacion:
 
 ```txt
-Si cualquier conteo posterior a `SQL/002` difiere del esperado, se reporta como desviacion y no se ajusta el registro para esconderla.
+Si cualquier conteo posterior a `SQL/002` o a una migracion incremental difiere del esperado para ese corte, se reporta como desviacion y no se ajusta el registro para esconderla.
 ```
 
 ## Runtime minimo de identidad autorizado

@@ -1,6 +1,13 @@
+/**
+ * Detalle lateral de un usuario del directorio.
+ *
+ * Muestra el estado que ya devolvió el API y ofrece editar o cambiar estado.
+ * Esas acciones abren otro flujo con motivo; este panel no las ejecuta solo.
+ */
 import "./UserDetailDrawer.css";
 
 import CopyOutlined from "@ant-design/icons/CopyOutlined";
+import EditOutlined from "@ant-design/icons/EditOutlined";
 import EllipsisOutlined from "@ant-design/icons/EllipsisOutlined";
 import IdcardOutlined from "@ant-design/icons/IdcardOutlined";
 import KeyOutlined from "@ant-design/icons/KeyOutlined";
@@ -22,14 +29,16 @@ import Typography from "antd/es/typography";
 import { useEffect, useState } from "react";
 
 import { ADMINISTRATION_DRAWER_CLOSE_PLACEMENT, ADMINISTRATION_DRAWER_PROPS } from "../administration-theme";
-import { copyTextToClipboard, getDrawerPrimaryActionLabel, getDrawerRiskActionLabel, getPrimaryActionIcon, getRelativeActivityLabel, type SystemUserListItem } from "../system-users.model";
+import { copyTextToClipboard, getDrawerPrimaryActionLabel, getDrawerRiskActionLabel, getPrimaryActionIcon, getPrimaryStatusUpdateTarget, getRelativeActivityLabel, getRiskStatusUpdateTarget, type SystemUserListItem, type SystemUserStatusUpdateTarget } from "../system-users.model";
 import { SystemUserAvatar } from "./SystemUserAvatar";
 import { SystemUserMfaTag, SystemUserProviderBadge, SystemUserStatusBadge } from "./SystemUserBadges";
 
 interface UserDetailDrawerProps {
     readonly onClose: () => void;
+    readonly onEditUser: (user: SystemUserListItem) => void;
     readonly onSelectNext: () => void;
     readonly onSelectPrevious: () => void;
+    readonly onStatusAction: (user: SystemUserListItem, status: SystemUserStatusUpdateTarget) => void;
     readonly position: number;
     readonly total: number;
     readonly user: SystemUserListItem | null;
@@ -65,7 +74,6 @@ function UserDrawerHeader({ user }: { readonly user: SystemUserListItem }) {
  * Acciones de baja frecuencia en el menú del encabezado.
  *
  * Bloquear solo aplica a activo y bloqueado, y nunca a la cuenta propia.
- * Copiar actúa hoy; el resto todavía no llama al API.
  */
 const buildOverflowItems = (user: SystemUserListItem): NonNullable<MenuProps["items"]> => {
     const items: NonNullable<MenuProps["items"]> = [{ icon: <TeamOutlined />, key: "roles", label: "Cambiar roles" }, { icon: <KeyOutlined />, key: "reset", label: "Restablecer acceso" }, { type: "divider" }, { icon: <CopyOutlined />, key: "copy-email", label: "Copiar correo" }, { icon: <IdcardOutlined />, key: "copy-id", label: "Copiar ID de usuario" }];
@@ -77,14 +85,22 @@ const buildOverflowItems = (user: SystemUserListItem): NonNullable<MenuProps["it
     return items;
 };
 
-function UserOverflowMenu({ user }: { readonly user: SystemUserListItem }) {
+function UserOverflowMenu({ onEditUser, onStatusAction, user }: { readonly onEditUser: (user: SystemUserListItem) => void; readonly onStatusAction: (user: SystemUserListItem, status: SystemUserStatusUpdateTarget) => void; readonly user: SystemUserListItem }) {
     const handleMenuClick: MenuProps["onClick"] = ({ key }) => {
+        if (key === "roles") {
+            onEditUser(user);
+        }
+
         if (key === "copy-email") {
             copyTextToClipboard(user.email);
         }
 
         if (key === "copy-id") {
             copyTextToClipboard(user.publicId);
+        }
+
+        if (key === "risk") {
+            onStatusAction(user, getRiskStatusUpdateTarget(user));
         }
     };
 
@@ -126,6 +142,25 @@ function UserRoleTags({ roles }: { readonly roles: readonly string[] }) {
     );
 }
 
+function UserExternalReferences({ user }: { readonly user: SystemUserListItem }) {
+    if (user.externalReferences.length === 0) {
+        return <Typography.Text type="secondary">Sin referencias registradas</Typography.Text>;
+    }
+
+    return (
+        <div className="user-detail-drawer__external-references">
+            {user.externalReferences.map((reference) => (
+                <div className="user-detail-drawer__external-reference" key={`${reference.systemCode}:${reference.externalUserId}`}>
+                    <Typography.Text className="user-detail-drawer__external-system">{reference.systemName}</Typography.Text>
+                    <Typography.Text code copyable={{ text: reference.externalUserId, tooltips: ["Copiar ID externo", "ID copiado"] }}>
+                        {reference.externalUserId}
+                    </Typography.Text>
+                </div>
+            ))}
+        </div>
+    );
+}
+
 /**
  * Cuerpo del detalle, de lo más consultado a lo menos.
  *
@@ -144,6 +179,7 @@ function UserDetailSections({ user }: { readonly user: SystemUserListItem }) {
             label: "ID de usuario",
         },
         { children: user.roleChangedAtLabel, key: "roleChangedAt", label: "Cambio de rol" },
+        { children: <UserExternalReferences user={user} />, key: "externalReferences", label: "Referencias externas" },
     ];
 
     if (user.invitedBy) {
@@ -183,6 +219,8 @@ interface UserDrawerFooterProps {
     readonly canSelectPrevious: boolean;
     readonly onSelectNext: () => void;
     readonly onSelectPrevious: () => void;
+    readonly onEditUser: (user: SystemUserListItem) => void;
+    readonly onStatusAction: (user: SystemUserListItem, status: SystemUserStatusUpdateTarget) => void;
     readonly position: number;
     readonly total: number;
     readonly user: SystemUserListItem | null;
@@ -192,7 +230,7 @@ interface UserDrawerFooterProps {
  * Pie del panel: posición como contexto a la izquierda; navegación y acción
  * principal agrupadas a la derecha, todas con la misma altura.
  */
-function UserDrawerFooter({ canSelectNext, canSelectPrevious, onSelectNext, onSelectPrevious, position, total, user }: UserDrawerFooterProps) {
+function UserDrawerFooter({ canSelectNext, canSelectPrevious, onEditUser, onSelectNext, onSelectPrevious, onStatusAction, position, total, user }: UserDrawerFooterProps) {
     const primaryActionLabel = user ? getDrawerPrimaryActionLabel(user) : null;
 
     return (
@@ -209,8 +247,27 @@ function UserDrawerFooter({ canSelectNext, canSelectPrevious, onSelectNext, onSe
                         <Button icon={<RightOutlined aria-hidden="true" />} aria-label="Usuario siguiente" disabled={!canSelectNext} onClick={onSelectNext} />
                     </Tooltip>
                 </Space.Compact>
+                {user ? (
+                    <Button
+                        icon={<EditOutlined aria-hidden="true" />}
+                        disabled={Boolean(user.isCurrentUser)}
+                        onClick={() => {
+                            onEditUser(user);
+                        }}
+                    >
+                        Editar usuario
+                    </Button>
+                ) : null}
                 {user && primaryActionLabel ? (
-                    <Button type="primary" icon={getPrimaryActionIcon(user)} aria-label={primaryActionLabel}>
+                    <Button
+                        type="primary"
+                        icon={getPrimaryActionIcon(user)}
+                        aria-label={primaryActionLabel}
+                        disabled={Boolean(user.isCurrentUser)}
+                        onClick={() => {
+                            onStatusAction(user, getPrimaryStatusUpdateTarget(user));
+                        }}
+                    >
                         {primaryActionLabel}
                     </Button>
                 ) : null}
@@ -226,7 +283,7 @@ function UserDrawerFooter({ canSelectNext, canSelectPrevious, onSelectNext, onSe
  * animación no muestre un panel vacío. Flecha arriba y abajo recorren la
  * página visible; Escape o clic en la máscara cierran.
  */
-export function UserDetailDrawer({ onClose, onSelectNext, onSelectPrevious, position, total, user }: UserDetailDrawerProps) {
+export function UserDetailDrawer({ onClose, onEditUser, onSelectNext, onSelectPrevious, onStatusAction, position, total, user }: UserDetailDrawerProps) {
     const [displayedUser, setDisplayedUser] = useState(user);
     const canSelectPrevious = position > 1;
     const canSelectNext = position > 0 && position < total;
@@ -270,8 +327,8 @@ export function UserDetailDrawer({ onClose, onSelectNext, onSelectPrevious, posi
             open={user !== null}
             closable={{ "aria-label": "Cerrar detalle", placement: ADMINISTRATION_DRAWER_CLOSE_PLACEMENT }}
             title={displayedUser ? <UserDrawerHeader user={displayedUser} /> : null}
-            extra={displayedUser ? <UserOverflowMenu user={displayedUser} /> : null}
-            footer={<UserDrawerFooter canSelectNext={canSelectNext} canSelectPrevious={canSelectPrevious} position={position} total={total} user={displayedUser} onSelectNext={onSelectNext} onSelectPrevious={onSelectPrevious} />}
+            extra={displayedUser ? <UserOverflowMenu user={displayedUser} onEditUser={onEditUser} onStatusAction={onStatusAction} /> : null}
+            footer={<UserDrawerFooter canSelectNext={canSelectNext} canSelectPrevious={canSelectPrevious} position={position} total={total} user={displayedUser} onEditUser={onEditUser} onSelectNext={onSelectNext} onSelectPrevious={onSelectPrevious} onStatusAction={onStatusAction} />}
             onClose={onClose}
         >
             {displayedUser ? <UserDetailSections user={displayedUser} /> : null}

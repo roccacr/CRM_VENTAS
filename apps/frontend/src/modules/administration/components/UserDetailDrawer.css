@@ -1,4 +1,4 @@
-/* Detalle de usuario: mismo contenedor y ritmo visual que el alta (CreateSystemUserDrawer). */
+/* Canonical detail layout shared by Users and catalogs; keep spacing and typography in one place. */
 .user-detail-drawer .ant-drawer-content-wrapper {
     max-width: 100vw;
 }
@@ -12,6 +12,9 @@
 
 .user-detail-drawer .ant-drawer-body {
     padding: 18px 22px 20px;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
 }
 
 .user-detail-drawer .ant-drawer-footer {
@@ -150,6 +153,34 @@
     font-weight: 600;
 }
 
+.user-detail-drawer__external-references {
+    display: grid;
+    gap: 8px;
+}
+
+.user-detail-drawer__external-reference {
+    display: flex;
+    min-width: 0;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+}
+
+.user-detail-drawer__external-system.ant-typography {
+    min-width: 74px;
+    color: #475467;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.user-detail-drawer__external-reference code {
+    border: 0;
+    background: #eef1f6;
+    color: #0f172a;
+    font-size: 12px;
+    font-weight: 600;
+}
+
 .user-detail-drawer__activity {
     display: grid;
     gap: 2px;
@@ -162,9 +193,16 @@
 
 .user-detail-drawer__footer {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
     justify-content: space-between;
     gap: 12px;
+}
+
+.user-detail-drawer__footer > .ant-space {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    margin-left: auto;
 }
 
 .user-detail-drawer__position.ant-typography {
@@ -174,6 +212,13 @@
 }
 
 @media (max-width: 720px) {
+    .user-detail-drawer .ant-drawer-close,
+    .user-detail-drawer__header-button.ant-btn,
+    .user-detail-drawer__footer .ant-btn {
+        min-width: 44px;
+        min-height: 44px;
+    }
+
     .user-detail-drawer .ant-drawer-header {
         padding: 14px 12px 14px 16px;
     }

@@ -27,5 +27,6 @@ import { IdentityUserDirectoryRepository } from "./identity-user-directory.repos
     imports: [AuditModule, PermissionsModule],
     controllers: [IdentityController, IdentityAccessManagementController],
     providers: [IdentityService, IdentityRepository, IdentityProfileRepository, IdentitySessionRepository, IdentityLocalRepository, IdentityMicrosoftRepository, IdentityUserDirectoryRepository, IdentityAccessManagementService, IdentityAccessManagementRepository, IdentityTokenService, IdentityAuditRecorder, IdentityMicrosoftSessionService],
+    exports: [IdentityService],
 })
 export class IdentityModule {}

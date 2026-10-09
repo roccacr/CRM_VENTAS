@@ -1,3 +1,10 @@
+/**
+ * Llamadas de identidad del BFF.
+ *
+ * Sesión, perfil, login, usuarios, roles y permisos pasan por aquí. Ninguna
+ * función guarda tokens: la cookie HttpOnly la maneja el navegador y el CSRF
+ * lo lleva el cliente HTTP.
+ */
 import { apiRequest } from "../api/api-client";
 import {
     type CreateSystemUserPayload,
@@ -16,6 +23,8 @@ import {
     parseSessionResponse,
     parseSystemUsersListResponse,
     parseUpdatedIdentityRole,
+    parseUpdatedSystemUser,
+    parseUpdatedSystemUserStatus,
     type ReplaceIdentityRolePermissionsPayload,
     type ReplaceIdentityRolePermissionsResponse,
     type ReplaceIdentityUserAccessPayload,
@@ -23,6 +32,8 @@ import {
     type SystemUserDirectoryItem,
     type SystemUsersListResponse,
     type UpdateIdentityRolePayload,
+    type UpdateSystemUserPayload,
+    type UpdateSystemUserStatusPayload,
 } from "./identity-contracts";
 
 /**
@@ -132,6 +143,24 @@ export const createSystemUser = async (payload: CreateSystemUserPayload): Promis
         await apiRequest<unknown>(IDENTITY_USERS_PATH, {
             body: payload,
             method: "POST",
+        }),
+    );
+
+/** Edita un usuario del sistema. El API valida permisos y audita al actor. */
+export const updateSystemUser = async (userPublicId: string, payload: UpdateSystemUserPayload): Promise<SystemUserDirectoryItem> =>
+    parseUpdatedSystemUser(
+        await apiRequest<unknown>(`${IDENTITY_USERS_PATH}/${encodeURIComponent(userPublicId)}`, {
+            body: payload,
+            method: "PATCH",
+        }),
+    );
+
+/** Cambia el estado operativo de un usuario. El API valida permisos y audita el motivo. */
+export const updateSystemUserStatus = async (userPublicId: string, payload: UpdateSystemUserStatusPayload): Promise<SystemUserDirectoryItem> =>
+    parseUpdatedSystemUserStatus(
+        await apiRequest<unknown>(`${IDENTITY_USERS_PATH}/${encodeURIComponent(userPublicId)}/status`, {
+            body: payload,
+            method: "PATCH",
         }),
     );
 

@@ -1,3 +1,9 @@
+/**
+ * Indicadores compartidos del directorio de usuarios.
+ *
+ * Estado, proveedor y MFA usan las mismas etiquetas en la tabla, el detalle
+ * y el alta para que un mismo código del API se lea igual en todas las vistas.
+ */
 import KeyOutlined from "@ant-design/icons/KeyOutlined";
 import Badge from "antd/es/badge";
 import Tag from "antd/es/tag";
@@ -10,7 +16,10 @@ export function SystemUserStatusBadge({ status }: { readonly status: SystemUserS
 }
 
 /**
+ * Método de acceso.
  *
+ * Microsoft y mixto muestran la marca de Microsoft. Local y mixto muestran
+ * la llave. El texto sale de `PROVIDER_LABELS`, no del código crudo.
  */
 export function SystemUserProviderBadge({ provider }: { readonly provider: SystemUserProvider }) {
     const showMicrosoftMark = provider === "microsoft" || provider === "mixed";
@@ -31,9 +40,7 @@ export function SystemUserProviderBadge({ provider }: { readonly provider: Syste
     );
 }
 
-/**
- *
- */
+/** Etiqueta MFA. El color acompaña al texto; no es el único indicador del estado. */
 export function SystemUserMfaTag({ status }: { readonly status: SystemUserMfaStatus }) {
     return (
         <Tag className="administration-users-tag" color={MFA_TAG_COLORS[status]} variant="filled">

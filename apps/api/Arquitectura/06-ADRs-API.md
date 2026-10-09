@@ -1,5 +1,10 @@
 # 06 - ADRs API
 
+## Decision de continuidad: catalogos por contexto (2026-10-08)
+
+Decision aprobada por el propietario en los planes posteriores: un dato nativo compartido y permisos {modulo}.catalog_{entidad}.{accion}. Sustituye permisos globales de catalogos; no duplica tablas por modulo. Mantener crm_catalog_item y referencias externas. Modulo activo y permiso scoped son requisitos ordinarios. Owner tiene bypass actual pendiente de confirmar como politica. Ver [34 - Traspaso](34-Cierre-Operativo-Administracion-P0-S1.md) para limites y evidencia; Leads comienza despues del cierre administrativo como contrato NetSuite -> API.
+
+
 ## ADR-API-001 - Backend NestJS
 
 Estado: aprobado.

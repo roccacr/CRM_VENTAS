@@ -6,8 +6,8 @@ import { normalizeCaseInsensitiveIdentifier } from "../../../common/security/ide
 import { DatabaseService } from "../../../database/database.service.js";
 import type { CrmDatabase } from "../../../database/database.types.js";
 import { SecurityAuditService } from "../audit/security-audit.service.js";
-import type { CreateSystemUserAccessMethod, CreateSystemUserExternalSystem, CreateSystemUserStatus, SystemUserSortDirection, SystemUserSortKey, SystemUserStatusFilter } from "./dto/system-users.dto.js";
-import type { SystemUserDirectoryItem, SystemUserDirectoryOrgUnit, SystemUserProvider, SystemUsersListResponse, SystemUsersSummary } from "./identity.types.js";
+import type { CreateSystemUserAccessMethod, CreateSystemUserExternalSystem, CreateSystemUserStatus, SystemUserSortDirection, SystemUserSortKey, SystemUserStatusFilter, UpdateSystemUserStatus } from "./dto/system-users.dto.js";
+import type { SystemUserDirectoryItem, SystemUserDirectoryOrgUnit, SystemUserExternalReference, SystemUserProvider, SystemUsersListResponse, SystemUsersSummary } from "./identity.types.js";
 import { MICROSOFT_PROVIDER_CODE } from "./identity-microsoft.constants.js";
 import { ACTIVE_STATUS, LOCAL_PROVIDER_CODE, PENDING_LOCAL_STATUS } from "./identity-repository.shared.js";
 
@@ -19,8 +19,10 @@ const DEFAULT_DIRECTION: SystemUserSortDirection = "asc";
 const ACTIVE_RELATION_STATUS = ACTIVE_STATUS;
 const PROVIDER_ACTIVE_STATUSES = [ACTIVE_STATUS, PENDING_LOCAL_STATUS] as const;
 const USER_CREATED_EVENT_TYPE = "user_created";
+const USER_UPDATED_EVENT_TYPE = "user_updated";
+const USER_STATUS_UPDATED_EVENT_TYPE = "user_status_updated";
 
-type IdentityDirectoryExecutor = Pick<Kysely<CrmDatabase>, "insertInto" | "selectFrom">;
+type IdentityDirectoryExecutor = Pick<Kysely<CrmDatabase>, "insertInto" | "selectFrom" | "updateTable">;
 
 type DirectoryCursor = {
     direction: SystemUserSortDirection;
@@ -59,6 +61,28 @@ type UserProviderRow = {
     userId: number;
 };
 
+type UserExternalReferenceRow = {
+    externalUserId: string;
+    externalUsername: string | null;
+    status: string;
+    systemCode: string;
+    systemName: string;
+    userId: number;
+};
+
+type ExistingExternalReferenceRow = {
+    id: number;
+    userId: number;
+};
+
+type UpsertExternalReferenceInput = {
+    executor: IdentityDirectoryExecutor;
+    input: Pick<CreateSystemUserInput, "email" | "reason">;
+    now: Date;
+    reference: SystemUserExternalReferenceInput;
+    userId: number;
+};
+
 type StatusCountRow = {
     status: string;
     total: string | number | bigint;
@@ -74,6 +98,18 @@ type UserCreationCatalog = {
         code: string;
         id: number;
     }[];
+};
+
+type SystemUserExternalReferenceInput = {
+    externalUserId: string;
+    systemCode: CreateSystemUserExternalSystem;
+};
+
+type UserAccessCatalogInput = {
+    actorPublicId: string;
+    orgUnitCodes: readonly string[];
+    roleCode: string;
+    roleCodes: readonly string[];
 };
 
 export interface ListSystemUsersInput {
@@ -103,6 +139,31 @@ export interface CreateSystemUserInput {
     roleCode: string;
     roleCodes: readonly string[];
     userAgent?: string | undefined;
+}
+
+export interface UpdateSystemUserInput {
+    accessMethods: readonly CreateSystemUserAccessMethod[];
+    actorPublicId: string;
+    displayName: string;
+    email: string;
+    externalReferences: readonly SystemUserExternalReferenceInput[];
+    ipAddress?: string | undefined;
+    normalizedEmail: string;
+    orgUnitCodes: readonly string[];
+    reason: string;
+    roleCode: string;
+    roleCodes: readonly string[];
+    userAgent?: string | undefined;
+    userPublicId: string;
+}
+
+export interface UpdateSystemUserStatusInput {
+    actorPublicId: string;
+    ipAddress?: string | undefined;
+    reason: string;
+    status: UpdateSystemUserStatus;
+    userAgent?: string | undefined;
+    userPublicId: string;
 }
 
 interface FindUserPageInput {
@@ -264,12 +325,13 @@ export class IdentityUserDirectoryRepository {
         const hasNextPage = rows.length > limit;
         const pageRows = hasNextPage ? rows.slice(0, limit) : rows;
         const userIds = pageRows.map((row) => row.id);
-        const [rolesByUser, orgUnitsByUser, providersByUser, total, summary] = await Promise.all([this.findRolesByUser(userIds), this.findOrgUnitsByUser(userIds), this.findProvidersByUser(userIds), this.countMatchingUsers(input), this.countUsersByStatus()]);
+        const [rolesByUser, orgUnitsByUser, providersByUser, externalReferencesByUser, total, summary] = await Promise.all([this.findRolesByUser(userIds), this.findOrgUnitsByUser(userIds), this.findProvidersByUser(userIds), this.findExternalReferencesByUser(userIds), this.countMatchingUsers(input), this.countUsersByStatus()]);
 
         return {
             items: pageRows.map((row) =>
                 this.mapDirectoryItem({
                     currentUserPublicId: input.currentUserPublicId,
+                    externalReferences: externalReferencesByUser.get(row.id) ?? [],
                     orgUnits: orgUnitsByUser.get(row.id) ?? [],
                     providers: providersByUser.get(row.id) ?? [],
                     roles: rolesByUser.get(row.id) ?? [],
@@ -301,10 +363,11 @@ export class IdentityUserDirectoryRepository {
             return null;
         }
 
-        const [[, roles], [, orgUnits], [, providers]] = await Promise.all([this.findRolesByUser([row.id]).then((map) => [row.id, map.get(row.id) ?? []] as const), this.findOrgUnitsByUser([row.id]).then((map) => [row.id, map.get(row.id) ?? []] as const), this.findProvidersByUser([row.id]).then((map) => [row.id, map.get(row.id) ?? []] as const)]);
+        const [[, roles], [, orgUnits], [, providers], [, externalReferences]] = await Promise.all([this.findRolesByUser([row.id]).then((map) => [row.id, map.get(row.id) ?? []] as const), this.findOrgUnitsByUser([row.id]).then((map) => [row.id, map.get(row.id) ?? []] as const), this.findProvidersByUser([row.id]).then((map) => [row.id, map.get(row.id) ?? []] as const), this.findExternalReferencesByUser([row.id]).then((map) => [row.id, map.get(row.id) ?? []] as const)]);
 
         return this.mapDirectoryItem({
             currentUserPublicId,
+            externalReferences,
             orgUnits,
             providers,
             roles,
@@ -312,7 +375,120 @@ export class IdentityUserDirectoryRepository {
         });
     }
 
+    /**
+     * Edita la ficha administrativa completa en una sola transacción.
+     *
+     * Roles, áreas y referencias externas se revocan con historial y se vuelven
+     * a insertar. Así la vista efectiva queda simple y auditoría conserva quién
+     * hizo el cambio.
+     */
+    async update(input: UpdateSystemUserInput): Promise<SystemUserDirectoryItem | null> {
+        await this.database.db.transaction().execute(async (transaction) => {
+            const now = new Date();
+            const catalog = await this.readUserAccessCatalog(transaction, input);
+            const target = await transaction.selectFrom("sec_user").select(["id_user as id", "display_name_user as name", "email_user as email"]).where("public_id_user", "=", input.userPublicId).where("deleted_at_user", "is", null).executeTakeFirst();
+
+            if (!target) {
+                return;
+            }
+
+            await this.assertEmailIsAvailable(transaction, input.normalizedEmail, target.id);
+            await this.assertExternalReferencesAreAvailable(transaction, input.externalReferences, target.id);
+
+            await transaction
+                .updateTable("sec_user")
+                .set({
+                    display_name_user: input.displayName,
+                    email_user: input.email,
+                    normalized_email_user: input.normalizedEmail,
+                    permission_version_user: sql<number>`permission_version_user + 1`,
+                    updated_at_user: now,
+                    updated_by_user_id_user: catalog.actorUserId,
+                })
+                .where("id_user", "=", target.id)
+                .executeTakeFirst();
+
+            await this.syncLocalAccessMethod(transaction, target.id, input, now);
+            await this.revokeActiveRoles(transaction, target.id, catalog.actorUserId, now);
+            await this.insertActiveRoles(transaction, target.id, catalog, now);
+            await this.revokeActiveOrgUnits(transaction, target.id, catalog.actorUserId, now);
+            await this.insertActiveOrgUnits(transaction, target.id, catalog, now);
+            await this.replaceExternalReferences(transaction, target.id, input, now);
+            await this.audit.record(
+                {
+                    actorUserId: catalog.actorUserId,
+                    eventType: USER_UPDATED_EVENT_TYPE,
+                    ipAddress: input.ipAddress ?? null,
+                    metadata: {
+                        accessMethods: input.accessMethods,
+                        emailChanged: target.email !== input.email,
+                        nextOrgUnitCodes: catalog.orgUnits.map((orgUnit) => orgUnit.code),
+                        nextRoleCodes: catalog.roles.map((role) => role.code),
+                        previousEmail: target.email,
+                        previousName: target.name,
+                    },
+                    reason: input.reason,
+                    summary: "Usuario interno actualizado.",
+                    targetUserId: target.id,
+                    userAgent: input.userAgent ?? null,
+                },
+                transaction,
+            );
+        });
+
+        return this.findByPublicId(input.actorPublicId, input.userPublicId);
+    }
+
+    /**
+     * Cambia el estado operativo e invalida sesiones vigentes al subir la
+     * version de permisos. Las siguientes llamadas protegidas exigiran refresh.
+     */
+    async updateStatus(input: UpdateSystemUserStatusInput): Promise<SystemUserDirectoryItem | null> {
+        await this.database.db.transaction().execute(async (transaction) => {
+            const now = new Date();
+            const [actor, target] = await Promise.all([transaction.selectFrom("sec_user").select("id_user as id").where("public_id_user", "=", input.actorPublicId).where("deleted_at_user", "is", null).executeTakeFirst(), transaction.selectFrom("sec_user").select(["id_user as id", "status_user as status"]).where("public_id_user", "=", input.userPublicId).where("deleted_at_user", "is", null).executeTakeFirst()]);
+
+            if (!actor || !target) {
+                return;
+            }
+
+            await transaction
+                .updateTable("sec_user")
+                .set({
+                    permission_version_user: sql<number>`permission_version_user + 1`,
+                    status_user: input.status,
+                    updated_at_user: now,
+                    updated_by_user_id_user: actor.id,
+                })
+                .where("id_user", "=", target.id)
+                .executeTakeFirst();
+
+            await this.audit.record(
+                {
+                    actorUserId: actor.id,
+                    eventType: USER_STATUS_UPDATED_EVENT_TYPE,
+                    ipAddress: input.ipAddress ?? null,
+                    metadata: {
+                        nextStatus: input.status,
+                        previousStatus: target.status,
+                    },
+                    reason: input.reason,
+                    summary: "Estado operativo de usuario actualizado.",
+                    targetUserId: target.id,
+                    userAgent: input.userAgent ?? null,
+                },
+                transaction,
+            );
+        });
+
+        return this.findByPublicId(input.actorPublicId, input.userPublicId);
+    }
+
     private async readUserCreationCatalog(executor: IdentityDirectoryExecutor, input: CreateSystemUserInput): Promise<UserCreationCatalog> {
+        return this.readUserAccessCatalog(executor, input);
+    }
+
+    private async readUserAccessCatalog(executor: IdentityDirectoryExecutor, input: UserAccessCatalogInput): Promise<UserCreationCatalog> {
         const requestedOrgUnitCodes = [...new Set(input.orgUnitCodes.map((orgUnitCode) => orgUnitCode.trim()).filter((orgUnitCode) => orgUnitCode.length > 0))];
         const requestedRoleCodes = [...new Set((input.roleCodes.length > 0 ? input.roleCodes : [input.roleCode]).map((roleCode) => roleCode.trim()).filter((roleCode) => roleCode.length > 0))];
 
@@ -349,24 +525,34 @@ export class IdentityUserDirectoryRepository {
         };
     }
 
-    private async assertEmailIsAvailable(executor: IdentityDirectoryExecutor, normalizedEmail: string): Promise<void> {
-        const existing = await executor.selectFrom("sec_user").select("id_user").where("normalized_email_user", "=", normalizedEmail).where("deleted_at_user", "is", null).executeTakeFirst();
+    private async assertEmailIsAvailable(executor: IdentityDirectoryExecutor, normalizedEmail: string, excludedUserId?: number): Promise<void> {
+        let query = executor.selectFrom("sec_user").select("id_user").where("normalized_email_user", "=", normalizedEmail).where("deleted_at_user", "is", null);
+
+        if (excludedUserId) {
+            query = query.where("id_user", "!=", excludedUserId);
+        }
+
+        const existing = await query.executeTakeFirst();
 
         if (existing) {
             throw new ConflictException("Ya existe un usuario con ese correo.");
         }
     }
 
-    private async assertExternalReferencesAreAvailable(executor: IdentityDirectoryExecutor, references: CreateSystemUserInput["externalReferences"]): Promise<void> {
+    private async assertExternalReferencesAreAvailable(executor: IdentityDirectoryExecutor, references: readonly SystemUserExternalReferenceInput[], excludedUserId?: number): Promise<void> {
         for (const reference of references) {
-            const existing = await executor
+            let query = executor
                 .selectFrom("int_user_external_identity as externalIdentity")
                 .innerJoin("int_external_system as externalSystem", "externalSystem.id_external_system", "externalIdentity.external_system_id_user_external_identity")
-                .select("externalIdentity.id_user_external_identity")
+                .select(["externalIdentity.id_user_external_identity", "externalIdentity.user_id_user_external_identity"])
                 .where("externalSystem.code_external_system", "=", reference.systemCode)
-                .where("externalIdentity.external_user_id_user_external_identity", "=", reference.externalUserId)
-                .where("externalIdentity.deleted_at_user_external_identity", "is", null)
-                .executeTakeFirst();
+                .where("externalIdentity.external_user_id_user_external_identity", "=", reference.externalUserId);
+
+            if (excludedUserId) {
+                query = query.where("externalIdentity.user_id_user_external_identity", "!=", excludedUserId);
+            }
+
+            const existing = await query.executeTakeFirst();
 
             if (existing) {
                 throw new ConflictException("Ya existe un usuario con una referencia externa indicada.");
@@ -374,7 +560,7 @@ export class IdentityUserDirectoryRepository {
         }
     }
 
-    private async insertExternalReferences(executor: IdentityDirectoryExecutor, userId: number, input: CreateSystemUserInput): Promise<void> {
+    private async insertExternalReferences(executor: IdentityDirectoryExecutor, userId: number, input: Pick<CreateSystemUserInput, "email" | "externalReferences" | "reason">): Promise<void> {
         if (input.externalReferences.length === 0) {
             return;
         }
@@ -402,6 +588,136 @@ export class IdentityUserDirectoryRepository {
                     user_id_user_external_identity: userId,
                 })
                 .executeTakeFirstOrThrow();
+        }
+    }
+
+    private async syncLocalAccessMethod(executor: IdentityDirectoryExecutor, userId: number, input: UpdateSystemUserInput, now: Date): Promise<void> {
+        const localIdentity = await executor.selectFrom("sec_auth_identity").select("id_auth_identity as id").where("user_id_auth_identity", "=", userId).where("provider_code_auth_identity", "=", LOCAL_PROVIDER_CODE).where("deleted_at_auth_identity", "is", null).executeTakeFirst();
+
+        if (!input.accessMethods.includes(LOCAL_PROVIDER_CODE)) {
+            if (localIdentity) {
+                await executor
+                    .updateTable("sec_auth_identity")
+                    .set({
+                        deleted_at_auth_identity: now,
+                        email_auth_identity: input.email,
+                        normalized_email_auth_identity: input.normalizedEmail,
+                        status_auth_identity: INACTIVE_STATUS,
+                        updated_at_auth_identity: now,
+                    })
+                    .where("id_auth_identity", "=", localIdentity.id)
+                    .executeTakeFirst();
+            }
+
+            return;
+        }
+
+        if (localIdentity) {
+            await executor
+                .updateTable("sec_auth_identity")
+                .set({
+                    email_auth_identity: input.email,
+                    normalized_email_auth_identity: input.normalizedEmail,
+                    updated_at_auth_identity: now,
+                })
+                .where("id_auth_identity", "=", localIdentity.id)
+                .executeTakeFirst();
+            return;
+        }
+
+        await executor
+            .insertInto("sec_auth_identity")
+            .values({
+                created_at_auth_identity: now,
+                email_auth_identity: input.email,
+                failed_login_count_auth_identity: 0,
+                last_failed_login_at_auth_identity: null,
+                last_used_at_auth_identity: null,
+                locked_until_auth_identity: null,
+                normalized_email_auth_identity: input.normalizedEmail,
+                password_hash_auth_identity: null,
+                provider_code_auth_identity: LOCAL_PROVIDER_CODE,
+                provider_subject_auth_identity: null,
+                status_auth_identity: PENDING_LOCAL_STATUS,
+                updated_at_auth_identity: now,
+                user_id_auth_identity: userId,
+            })
+            .executeTakeFirstOrThrow();
+    }
+
+    private async revokeActiveRoles(executor: IdentityDirectoryExecutor, userId: number, actorUserId: number, now: Date): Promise<void> {
+        await executor.updateTable("sec_user_role").set({ revoked_at_user_role: now, revoked_by_user_id_user_role: actorUserId, status_user_role: INACTIVE_STATUS }).where("user_id_user_role", "=", userId).where("status_user_role", "=", ACTIVE_RELATION_STATUS).executeTakeFirst();
+    }
+
+    private async insertActiveRoles(executor: IdentityDirectoryExecutor, userId: number, catalog: UserCreationCatalog, now: Date): Promise<void> {
+        await executor
+            .insertInto("sec_user_role")
+            .values(catalog.roles.map((role) => ({ assigned_at_user_role: now, assigned_by_user_id_user_role: catalog.actorUserId, revoked_at_user_role: null, revoked_by_user_id_user_role: null, role_id_user_role: role.id, status_user_role: ACTIVE_RELATION_STATUS, user_id_user_role: userId })))
+            .executeTakeFirstOrThrow();
+    }
+
+    private async revokeActiveOrgUnits(executor: IdentityDirectoryExecutor, userId: number, actorUserId: number, now: Date): Promise<void> {
+        await executor.updateTable("sec_user_org_unit").set({ revoked_at_user_org_unit: now, revoked_by_user_id_user_org_unit: actorUserId, status_user_org_unit: INACTIVE_STATUS }).where("user_id_user_org_unit", "=", userId).where("status_user_org_unit", "=", ACTIVE_RELATION_STATUS).executeTakeFirst();
+    }
+
+    private async insertActiveOrgUnits(executor: IdentityDirectoryExecutor, userId: number, catalog: UserCreationCatalog, now: Date): Promise<void> {
+        const roleCodes = catalog.roles.map((role) => role.code);
+
+        await executor
+            .insertInto("sec_user_org_unit")
+            .values(catalog.orgUnits.map((orgUnit) => ({ assigned_at_user_org_unit: now, assigned_by_user_id_user_org_unit: catalog.actorUserId, membership_code_user_org_unit: this.resolveMembershipForRoleCodes(roleCodes), org_unit_id_user_org_unit: orgUnit.id, revoked_at_user_org_unit: null, revoked_by_user_id_user_org_unit: null, scope_code_user_org_unit: this.resolveScopeForRoleCodes(roleCodes), status_user_org_unit: ACTIVE_RELATION_STATUS, user_id_user_org_unit: userId })))
+            .executeTakeFirstOrThrow();
+    }
+
+    private async upsertExternalReference({ executor, input, now, reference, userId }: UpsertExternalReferenceInput): Promise<void> {
+        const externalSystem = await executor.selectFrom("int_external_system").select("id_external_system as id").where("code_external_system", "=", reference.systemCode).executeTakeFirst();
+
+        if (!externalSystem) {
+            throw new BadRequestException("Sistema externo no disponible.");
+        }
+
+        const existingReference = (await executor.selectFrom("int_user_external_identity").select(["id_user_external_identity as id", "user_id_user_external_identity as userId"]).where("external_system_id_user_external_identity", "=", externalSystem.id).where("external_user_id_user_external_identity", "=", reference.externalUserId).executeTakeFirst()) as ExistingExternalReferenceRow | undefined;
+
+        if (existingReference) {
+            if (existingReference.userId !== userId) {
+                throw new ConflictException("Ya existe un usuario con una referencia externa indicada.");
+            }
+
+            await executor
+                .updateTable("int_user_external_identity")
+                .set({
+                    deleted_at_user_external_identity: null,
+                    external_username_user_external_identity: input.email,
+                    metadata_user_external_identity: JSON.stringify({ updatedReason: input.reason }),
+                    status_user_external_identity: ACTIVE_STATUS,
+                    updated_at_user_external_identity: now,
+                })
+                .where("id_user_external_identity", "=", existingReference.id)
+                .executeTakeFirst();
+            return;
+        }
+
+        await executor
+            .insertInto("int_user_external_identity")
+            .values({
+                created_at_user_external_identity: now,
+                deleted_at_user_external_identity: null,
+                external_system_id_user_external_identity: externalSystem.id,
+                external_user_id_user_external_identity: reference.externalUserId,
+                external_username_user_external_identity: input.email,
+                metadata_user_external_identity: JSON.stringify({ updatedReason: input.reason }),
+                status_user_external_identity: ACTIVE_STATUS,
+                updated_at_user_external_identity: now,
+                user_id_user_external_identity: userId,
+            })
+            .executeTakeFirstOrThrow();
+    }
+
+    private async replaceExternalReferences(executor: IdentityDirectoryExecutor, userId: number, input: UpdateSystemUserInput, now: Date): Promise<void> {
+        await executor.updateTable("int_user_external_identity").set({ deleted_at_user_external_identity: now, status_user_external_identity: INACTIVE_STATUS, updated_at_user_external_identity: now }).where("user_id_user_external_identity", "=", userId).where("deleted_at_user_external_identity", "is", null).executeTakeFirst();
+
+        for (const reference of input.externalReferences) {
+            await this.upsertExternalReference({ executor, input, now, reference, userId });
         }
     }
 
@@ -585,6 +901,28 @@ export class IdentityUserDirectoryRepository {
         return this.groupByUser(rows);
     }
 
+    /**
+     * Referencias externas activas del usuario.
+     *
+     * Son crosswalks para soporte e integraciones. No reemplazan `publicId` ni
+     * se convierten en identidad principal del CRM.
+     */
+    private async findExternalReferencesByUser(userIds: readonly number[]): Promise<Map<number, UserExternalReferenceRow[]>> {
+        if (userIds.length === 0) {
+            return new Map();
+        }
+
+        const rows = await this.database.db
+            .selectFrom("int_user_external_identity as externalIdentity")
+            .innerJoin("int_external_system as externalSystem", "externalSystem.id_external_system", "externalIdentity.external_system_id_user_external_identity")
+            .select(["externalIdentity.external_user_id_user_external_identity as externalUserId", "externalIdentity.external_username_user_external_identity as externalUsername", "externalIdentity.status_user_external_identity as status", "externalIdentity.user_id_user_external_identity as userId", "externalSystem.code_external_system as systemCode", "externalSystem.name_external_system as systemName"])
+            .where("externalIdentity.user_id_user_external_identity", "in", [...userIds])
+            .where("externalIdentity.deleted_at_user_external_identity", "is", null)
+            .execute();
+
+        return this.groupByUser(rows);
+    }
+
     private groupByUser<TRow extends { readonly userId: number }>(rows: readonly TRow[]): Map<number, TRow[]> {
         const map = new Map<number, TRow[]>();
 
@@ -603,12 +941,13 @@ export class IdentityUserDirectoryRepository {
      * como habilitado y el resto como no configurado. Si hay varias áreas, se
      * muestra la primera.
      */
-    private mapDirectoryItem(input: { currentUserPublicId: string; orgUnits: readonly UserOrgUnitRow[]; providers: readonly UserProviderRow[]; roles: readonly UserRoleRow[]; row: UserDirectoryRow }): SystemUserDirectoryItem {
+    private mapDirectoryItem(input: { currentUserPublicId: string; externalReferences: readonly UserExternalReferenceRow[]; orgUnits: readonly UserOrgUnitRow[]; providers: readonly UserProviderRow[]; roles: readonly UserRoleRow[]; row: UserDirectoryRow }): SystemUserDirectoryItem {
         const provider = this.resolveProvider(input.providers);
         const roleChangedAt = this.resolveLatestRoleChangedAt(input.roles);
 
         return {
             email: input.row.email,
+            externalReferences: input.externalReferences.map((reference) => this.mapExternalReference(reference)),
             invitedBy: null,
             isCurrentUser: input.row.publicId === input.currentUserPublicId,
             lastActivityAt: this.toIsoString(input.row.lastActivityAt),
@@ -629,6 +968,16 @@ export class IdentityUserDirectoryRepository {
             code: orgUnit.code,
             name: orgUnit.name,
             publicId: orgUnit.publicId,
+        };
+    }
+
+    private mapExternalReference(reference: UserExternalReferenceRow): SystemUserExternalReference {
+        return {
+            externalUserId: reference.externalUserId,
+            externalUsername: reference.externalUsername,
+            status: reference.status,
+            systemCode: reference.systemCode,
+            systemName: reference.systemName,
         };
     }
 

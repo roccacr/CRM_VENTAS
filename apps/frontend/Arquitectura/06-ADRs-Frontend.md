@@ -1,5 +1,10 @@
 # 06 - ADRs Frontend
 
+## Estado de implementacion al 2026-10-08
+
+ADR-FE-002/003/004 conservan propuestas de arquitectura, pendientes de adopcion; no describen dependencias instaladas. Runtime administrativo actual: React/Vite/TypeScript, Ant Design y DataTables SearchPanes. No introducir TanStack Query/Zustand/Tailwind sin necesidad aprobada. Ver [25 - Continuidad](25-Continuidad-Administracion.md). Catalogos usan permiso scoped y modulo activo; menu no sustituye autorizacion API.
+
+
 ## ADR-FE-001 - React + Vite
 
 Estado: aprobado.

@@ -10,20 +10,21 @@
     --page-max: 150rem;
     --page-pad: clamp(1.25rem, 2vw, 2.5rem);
     --section-gap: clamp(1rem, 1.4vw, 1.5rem);
-    /* Paleta del shell: negro y blanco de marca ROCCA con los grises de Administración. Superficies sólidas, sin transparencias. */
+    /* Paleta del shell: negro y blanco de marca ROCCA con los grises de Administración. Superficies sólidas, sin transparencias.
+       El lienzo debe separarse del blanco al menos ~8% de luminancia: con menos, en monitores brillantes o sin calibrar todo se ve blanco. */
     --shell-ink: #0e1116;
     --shell-ink-hover: #1b1f27;
     --shell-ink-active: #2a2f3a;
     --shell-on-ink: #c9ced8;
-    --shell-canvas: #f2f4f7;
+    --shell-canvas: #eaedf2;
     --shell-surface: #ffffff;
-    --shell-border: #dde3ee;
+    --shell-border: #d3dae5;
     --shell-border-strong: #c6cedd;
     --shell-text: #0f172a;
     --shell-text-secondary: #475467;
     --shell-text-muted: #5b6478;
     --shell-hover: #f2f4f7;
-    --shell-selected: #eef1f6;
+    --shell-selected: #e6eaf1;
     --shell-focus: #4f5fb8;
     --shell-popover-shadow: 0 12px 32px rgba(15, 23, 42, 0.14), 0 2px 6px rgba(15, 23, 42, 0.06);
     display: flex;
@@ -466,7 +467,7 @@
 .global-home-menu__dropdown-bridge {
     position: absolute;
     top: 100%;
-    left: -12px;
+    left: var(--dropdown-left, 0px);
     z-index: 29;
     width: min(324px, calc(100vw - 24px));
     height: 18px;
@@ -588,6 +589,10 @@
 
 /* Panel sólido: el contenido de la página no debe verse a través del menú. */
 .global-home-menu__dropdown {
+    box-sizing: border-box;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
     position: absolute;
     top: calc(100% + 6px);
     left: 0;
@@ -610,16 +615,6 @@
     width: calc(100% + 16px);
     height: 14px;
     content: "";
-}
-
-.global-home-menu__group:nth-last-child(-n + 2) .global-home-menu__dropdown {
-    right: 0;
-    left: auto;
-}
-
-.global-home-menu__group:nth-last-child(-n + 2) .global-home-menu__dropdown-bridge {
-    right: -12px;
-    left: auto;
 }
 
 .global-home-menu__dropdown-item {
@@ -1447,6 +1442,7 @@
 }
 
 .global-home-mobile-drawer__section:not(.global-home-mobile-drawer__section--secondary) {
+    min-height: 0;
     flex: 1 1 auto;
     padding-bottom: 100px;
     overflow-y: auto;
@@ -1634,6 +1630,39 @@
     background: var(--shell-selected);
     box-shadow: inset 3px 0 0 var(--shell-ink);
     font-weight: 600;
+}
+
+.global-home-mobile-drawer__group {
+    min-width: 0;
+}
+
+.global-home-mobile-drawer__group-trigger > span:nth-child(2) {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.global-home-mobile-drawer__group-trigger--expanded {
+    background: #f8fafc;
+    color: #0f172a;
+}
+
+.global-home-mobile-drawer__child .global-home-mobile-drawer__group-chevron {
+    font-size: 11px;
+    transition: transform 250ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.global-home-mobile-drawer__group-trigger[aria-expanded="true"] .global-home-mobile-drawer__group-chevron {
+    transform: rotate(180deg);
+}
+
+.global-home-mobile-drawer__children--nested {
+    margin-left: 18px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .global-home-mobile-drawer__child .global-home-mobile-drawer__group-chevron {
+        transition: none;
+    }
 }
 
 .global-home-mobile-drawer__child .anticon,

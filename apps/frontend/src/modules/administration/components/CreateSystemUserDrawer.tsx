@@ -1,6 +1,14 @@
+/**
+ * Panel de alta y edición de un usuario.
+ *
+ * El mismo formulario crea o actualiza. Cerrar con cambios sin guardar pide
+ * confirmación. Los módulos visibles salen de los roles elegidos; Owner no
+ * asigna áreas operativas porque su alcance es la empresa.
+ */
 import "./CreateSystemUserDrawer.css";
 
 import PlusOutlined from "@ant-design/icons/PlusOutlined";
+import SaveOutlined from "@ant-design/icons/SaveOutlined";
 import Alert from "antd/es/alert";
 import Button from "antd/es/button";
 import Checkbox from "antd/es/checkbox";
@@ -12,11 +20,12 @@ import Input from "antd/es/input";
 import Row from "antd/es/row";
 import Select from "antd/es/select";
 import Space from "antd/es/space";
-import type { ReactNode } from "react";
+import { type ReactNode, useEffect } from "react";
 
-import type { CreateSystemUserPayload } from "../../../services/auth/identity-contracts";
+import type { CreateSystemUserPayload, UpdateSystemUserPayload } from "../../../services/auth/identity-contracts";
 import { ADMINISTRATION_DRAWER_CLOSE_PLACEMENT, ADMINISTRATION_DRAWER_PROPS } from "../administration-theme";
-import { ACCESS_METHOD_OPTIONS, buildCreateUserPayload, createInitialUserFormValues, type CreateUserFormValues, type CreateUserModuleOption, type CreateUserRoleOption, type CreateUserRolePermissions, getRoleModules, hasOwnerRole, normalizeEmail } from "../create-system-user.model";
+import { ACCESS_METHOD_OPTIONS, buildCreateUserPayload, buildUpdateUserPayload, createEditUserFormValues, createInitialUserFormValues, type CreateUserFormValues, type CreateUserModuleOption, type CreateUserRoleOption, type CreateUserRolePermissions, getRoleModules, hasOwnerRole, normalizeEmail } from "../create-system-user.model";
+import type { SystemUserListItem } from "../system-users.model";
 import { SystemUserStatusBadge } from "./SystemUserBadges";
 
 const FORM_NAME = "createSystemUser";
@@ -24,10 +33,12 @@ const DISCARD_CONFIRMATION = "Hay datos sin guardar. ¿Quieres cerrar el formula
 
 interface CreateSystemUserDrawerProps {
     readonly error: string | null;
+    readonly initialUser?: SystemUserListItem | null;
     readonly isSaving: boolean;
+    readonly mode?: "create" | "edit";
     readonly moduleOptions: readonly CreateUserModuleOption[];
     readonly onClose: () => void;
-    readonly onSubmit: (payload: CreateSystemUserPayload) => void;
+    readonly onSubmit: (payload: CreateSystemUserPayload | UpdateSystemUserPayload) => void;
     readonly open: boolean;
     readonly roleOptions: readonly CreateUserRoleOption[];
     readonly rolePermissions: CreateUserRolePermissions;
@@ -65,7 +76,7 @@ function RoleScope({ isOwner, roleCount, roleModules }: { readonly isOwner: bool
     );
 }
 
-function AccessSummary({ isOwner, moduleCount, roleCount }: { readonly isOwner: boolean; readonly moduleCount: number; readonly roleCount: number }) {
+function AccessSummary({ isEditMode, isOwner, moduleCount, roleCount }: { readonly isEditMode: boolean; readonly isOwner: boolean; readonly moduleCount: number; readonly roleCount: number }) {
     const initialStatus = (
         <span className="create-user-drawer__initial-status" title="El usuario queda Pendiente hasta su primer inicio de sesión.">
             Estado inicial <SystemUserStatusBadge status="pending" />
@@ -76,7 +87,7 @@ function AccessSummary({ isOwner, moduleCount, roleCount }: { readonly isOwner: 
         return (
             <span className="create-user-drawer__summary create-user-drawer__summary--empty">
                 Sin roles asignados
-                {initialStatus}
+                {isEditMode ? null : initialStatus}
             </span>
         );
     }
@@ -89,21 +100,24 @@ function AccessSummary({ isOwner, moduleCount, roleCount }: { readonly isOwner: 
             <strong>{roleLabel}</strong>
             <span aria-hidden="true">·</span>
             <strong>{scopeLabel}</strong>
-            {initialStatus}
+            {isEditMode ? null : initialStatus}
         </span>
     );
 }
 
-function CreateUserDrawerFooter({ error, isOwner, isSaving, moduleCount, onCancel, onSubmit, roleCount }: { readonly error: string | null; readonly isOwner: boolean; readonly isSaving: boolean; readonly moduleCount: number; readonly onCancel: () => void; readonly onSubmit: () => void; readonly roleCount: number }) {
+function CreateUserDrawerFooter({ error, isEditMode, isOwner, isSaving, moduleCount, onCancel, onSubmit, roleCount }: { readonly error: string | null; readonly isEditMode: boolean; readonly isOwner: boolean; readonly isSaving: boolean; readonly moduleCount: number; readonly onCancel: () => void; readonly onSubmit: () => void; readonly roleCount: number }) {
+    const savingLabel = isEditMode ? "Guardando cambios..." : "Creando usuario...";
+    const actionLabel = isEditMode ? "Guardar cambios" : "Crear usuario";
+
     return (
         <div className="create-user-drawer__footer">
-            <div className="create-user-drawer__footer-status">{error ? <Alert type="error" showIcon title={error} role="alert" /> : <AccessSummary isOwner={isOwner} moduleCount={moduleCount} roleCount={roleCount} />}</div>
+            <div className="create-user-drawer__footer-status">{error ? <Alert type="error" showIcon title={error} role="alert" /> : <AccessSummary isEditMode={isEditMode} isOwner={isOwner} moduleCount={moduleCount} roleCount={roleCount} />}</div>
             <Space size={8}>
                 <Button disabled={isSaving} onClick={onCancel}>
                     Cancelar
                 </Button>
-                <Button type="primary" icon={<PlusOutlined aria-hidden="true" />} loading={isSaving} onClick={onSubmit}>
-                    {isSaving ? "Creando usuario..." : "Crear usuario"}
+                <Button type="primary" icon={isEditMode ? <SaveOutlined aria-hidden="true" /> : <PlusOutlined aria-hidden="true" />} loading={isSaving} onClick={onSubmit}>
+                    {isSaving ? savingLabel : actionLabel}
                 </Button>
             </Space>
         </div>
@@ -120,11 +134,20 @@ const toWatchedList = (value: readonly string[] | undefined): readonly string[] 
  * plegadas al final porque son opcionales. Los módulos no se eligen: salen de
  * los roles asignados y el API calcula los permisos efectivos al guardar.
  */
-export function CreateSystemUserDrawer({ error, isSaving, moduleOptions, onClose, onSubmit, open, roleOptions, rolePermissions }: CreateSystemUserDrawerProps) {
+export function CreateSystemUserDrawer({ error, initialUser = null, isSaving, mode = "create", moduleOptions, onClose, onSubmit, open, roleOptions, rolePermissions }: CreateSystemUserDrawerProps) {
     const [form] = Form.useForm<CreateUserFormValues>();
+    const isEditMode = mode === "edit";
     const roleCodes = toWatchedList(Form.useWatch("roleCodes", form));
     const isOwner = hasOwnerRole(roleCodes);
     const roleModules = getRoleModules(roleCodes, rolePermissions, moduleOptions);
+
+    useEffect(() => {
+        if (!open) {
+            return;
+        }
+
+        form.setFieldsValue(isEditMode && initialUser ? createEditUserFormValues(initialUser) : createInitialUserFormValues());
+    }, [form, initialUser, isEditMode, open]);
 
     const validateRoleScope = (_: unknown, value: readonly string[] | undefined): Promise<void> => {
         const selectedRoles = value ?? [];
@@ -158,12 +181,14 @@ export function CreateSystemUserDrawer({ error, isSaving, moduleOptions, onClose
 
     /** `getFieldsValue(true)` incluye las integraciones aunque su panel siga plegado. */
     const handleFinish = (): void => {
-        onSubmit(buildCreateUserPayload(form.getFieldsValue(true) as CreateUserFormValues, roleModules));
+        const values = form.getFieldsValue(true) as CreateUserFormValues;
+        onSubmit(isEditMode ? buildUpdateUserPayload(values, roleModules) : buildCreateUserPayload(values, roleModules));
     };
 
     const footer = (
         <CreateUserDrawerFooter
             error={error}
+            isEditMode={isEditMode}
             isOwner={isOwner}
             isSaving={isSaving}
             moduleCount={roleModules.length}
@@ -176,7 +201,7 @@ export function CreateSystemUserDrawer({ error, isSaving, moduleOptions, onClose
     );
 
     return (
-        <Drawer {...ADMINISTRATION_DRAWER_PROPS} rootClassName="create-user-drawer" open={open} title="Nuevo usuario" closable={{ "aria-label": "Cerrar creación de usuario", placement: ADMINISTRATION_DRAWER_CLOSE_PLACEMENT }} keyboard={!isSaving} mask={{ closable: !isSaving }} footer={footer} afterOpenChange={handleAfterOpenChange} onClose={requestClose}>
+        <Drawer {...ADMINISTRATION_DRAWER_PROPS} rootClassName="create-user-drawer" open={open} title={isEditMode ? "Editar usuario" : "Nuevo usuario"} closable={{ "aria-label": isEditMode ? "Cerrar edición de usuario" : "Cerrar creación de usuario", placement: ADMINISTRATION_DRAWER_CLOSE_PLACEMENT }} keyboard={!isSaving} mask={{ closable: !isSaving }} footer={footer} afterOpenChange={handleAfterOpenChange} onClose={requestClose}>
             <Form<CreateUserFormValues> form={form} name={FORM_NAME} layout="vertical" initialValues={createInitialUserFormValues()} scrollToFirstError={{ behavior: "smooth", block: "center" }} disabled={isSaving} onFinish={handleFinish}>
                 <FormSection step={1} title="Identificación">
                     <Row gutter={16}>
@@ -239,14 +264,14 @@ export function CreateSystemUserDrawer({ error, isSaving, moduleOptions, onClose
 
                 <FormSection step={3} title="Auditoría">
                     <Form.Item<CreateUserFormValues>
-                        label="Motivo del alta"
+                        label={isEditMode ? "Motivo de la edición" : "Motivo del alta"}
                         name="reason"
                         rules={[
-                            { message: "Indica el motivo del alta.", required: true, whitespace: true },
+                            { message: isEditMode ? "Indica el motivo de la edición." : "Indica el motivo del alta.", required: true, whitespace: true },
                             { message: "Usa al menos 5 caracteres.", min: 5 },
                         ]}
                     >
-                        <Input.TextArea autoSize={{ maxRows: 4, minRows: 2 }} maxLength={500} placeholder="Alta autorizada por jefatura de ventas." />
+                        <Input.TextArea autoSize={{ maxRows: 4, minRows: 2 }} maxLength={500} placeholder={isEditMode ? "Cambio autorizado por jefatura." : "Alta autorizada por jefatura de ventas."} />
                     </Form.Item>
                 </FormSection>
 

@@ -10,6 +10,7 @@ import { DatabaseModule } from "./database/database.module.js";
 import { LegacyCrmModule } from "./integrations/legacy-crm/legacy-crm.module.js";
 import { Microsoft365Module } from "./integrations/microsoft365/microsoft365.module.js";
 import { AuditModule } from "./modules/crm/audit/audit.module.js";
+import { CatalogsModule } from "./modules/crm/catalogs/catalogs.module.js";
 import { IdentityModule } from "./modules/crm/identity/identity.module.js";
 import { PermissionsModule } from "./modules/crm/permissions/permissions.module.js";
 
@@ -44,6 +45,7 @@ import { PermissionsModule } from "./modules/crm/permissions/permissions.module.
         AuditModule,
         PermissionsModule,
         IdentityModule,
+        CatalogsModule,
     ],
     providers: [
         {

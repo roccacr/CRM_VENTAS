@@ -3,7 +3,7 @@ import { argon2id, hash as hashArgon2Password, verify as verifyArgon2Hash } from
 
 import { normalizeCaseInsensitiveIdentifier } from "../../../common/security/identifier-normalization.js";
 import type { CompleteLocalResetDto, LocalLoginDto, RequestLocalResetDto } from "./dto/local-auth.dto.js";
-import type { CreateSystemUserAccessMethod, CreateSystemUserDto, ListSystemUsersQueryDto } from "./dto/system-users.dto.js";
+import type { CreateSystemUserAccessMethod, CreateSystemUserDto, ListSystemUsersQueryDto, UpdateSystemUserDto, UpdateSystemUserStatusDto } from "./dto/system-users.dto.js";
 import { type FailedLocalLoginRecord, IdentityRepository } from "./identity.repository.js";
 import type { ActiveSessionsResponse, IdentityProfile, SessionResponse, SystemUserDirectoryItem, SystemUsersListResponse } from "./identity.types.js";
 import { IdentityAuditRecorder } from "./identity-audit-recorder.service.js";
@@ -26,8 +26,12 @@ const LOCAL_PROVIDER_CODE = "local";
 const USER_VIEW_LIST_PERMISSION = "user.view_list";
 const USER_VIEW_DETAIL_PERMISSION = "user.view_detail";
 const USER_CREATE_PERMISSION = "user.create";
+const USER_UPDATE_PERMISSION = "user.update";
+const USER_ACTIVATE_PERMISSION = "user.activate";
+const USER_DEACTIVATE_PERMISSION = "user.deactivate";
 const SYSTEM_USERS_DEFAULT_LIMIT = 25;
 const SYSTEM_USERS_MAX_LIMIT = 100;
+const DEFAULT_SYSTEM_USER_ACCESS_METHODS: readonly CreateSystemUserAccessMethod[] = ["microsoft", "local"];
 export const MICROSOFT_ACCOUNT_NOT_ASSIGNED_MESSAGE = "Cuenta Microsoft no asignada al CRM.";
 export const MICROSOFT_ACCOUNT_NOT_AUTHORIZED_MESSAGE = "Usuario CRM no autorizado para iniciar sesión.";
 
@@ -42,6 +46,25 @@ export interface AuthenticatedSessionResult {
 export interface ProfileImageResult {
     bytes: Buffer;
     mimeType: string;
+}
+
+type SystemUserAccessMutationPayload = Pick<CreateSystemUserDto | UpdateSystemUserDto, "accessMethods" | "orgUnitCode" | "orgUnitCodes" | "roleCode" | "roleCodes">;
+
+const normalizeSystemUserAccessMutation = (payload: SystemUserAccessMutationPayload): { accessMethods: readonly CreateSystemUserAccessMethod[]; orgUnitCodes: readonly string[]; roleCodes: readonly string[] } => {
+    const orgUnitCodes = [...new Set((payload.orgUnitCodes ?? (payload.orgUnitCode ? [payload.orgUnitCode] : [])).map((orgUnitCode) => orgUnitCode.trim()).filter((orgUnitCode) => orgUnitCode.length > 0))];
+    const roleCodes = [...new Set((payload.roleCodes ?? [payload.roleCode]).map((roleCode) => roleCode.trim()).filter((roleCode) => roleCode.length > 0))];
+    const accessMethods = [...new Set(payload.accessMethods && payload.accessMethods.length > 0 ? payload.accessMethods : DEFAULT_SYSTEM_USER_ACCESS_METHODS)];
+
+    return {
+        accessMethods,
+        orgUnitCodes,
+        roleCodes,
+    };
+};
+
+export interface IdentityRequestAuditContext {
+    ipAddress?: string | undefined;
+    userAgent?: string | undefined;
 }
 
 interface LocalLoginFailureContext {
@@ -243,10 +266,7 @@ export class IdentityService {
     async createSystemUser(sessionToken: string | undefined, payload: CreateSystemUserDto, ipAddress?: string, userAgent?: string): Promise<SystemUserDirectoryItem> {
         const profile = await this.getCurrentUser(sessionToken);
         this.assertCan(profile, USER_CREATE_PERMISSION);
-        const orgUnitCodes = [...new Set((payload.orgUnitCodes ?? (payload.orgUnitCode ? [payload.orgUnitCode] : [])).map((orgUnitCode) => orgUnitCode.trim()).filter((orgUnitCode) => orgUnitCode.length > 0))];
-        const roleCodes = [...new Set((payload.roleCodes ?? [payload.roleCode]).map((roleCode) => roleCode.trim()).filter((roleCode) => roleCode.length > 0))];
-        const defaultAccessMethods: readonly CreateSystemUserAccessMethod[] = ["microsoft", "local"];
-        const accessMethods = [...new Set(payload.accessMethods && payload.accessMethods.length > 0 ? payload.accessMethods : defaultAccessMethods)];
+        const { accessMethods, orgUnitCodes, roleCodes } = normalizeSystemUserAccessMutation(payload);
 
         return this.repository.createSystemUser({
             accessMethods,
@@ -263,6 +283,76 @@ export class IdentityService {
             roleCodes,
             userAgent,
         });
+    }
+
+    /**
+     * Edita datos administrativos, roles, areas y referencias externas.
+     *
+     * No permite editar la cuenta propia: un cambio de roles/acceso puede dejar
+     * al actor sin permisos o sin metodo de entrada antes de terminar la sesión.
+     */
+    async updateSystemUser(sessionToken: string | undefined, userPublicId: string, payload: UpdateSystemUserDto, context: IdentityRequestAuditContext = {}): Promise<SystemUserDirectoryItem> {
+        const profile = await this.getCurrentUser(sessionToken);
+
+        if (userPublicId === profile.user.publicId) {
+            throw new ForbiddenException("No puedes editar tu propia cuenta desde Administracion.");
+        }
+
+        this.assertCan(profile, USER_UPDATE_PERMISSION);
+        const { accessMethods, orgUnitCodes, roleCodes } = normalizeSystemUserAccessMutation(payload);
+        const user = await this.repository.updateSystemUser({
+            accessMethods,
+            actorPublicId: profile.user.publicId,
+            displayName: payload.displayName.trim(),
+            email: payload.email.trim(),
+            externalReferences: payload.externalReferences ?? [],
+            ipAddress: context.ipAddress,
+            normalizedEmail: normalizeCaseInsensitiveIdentifier(payload.email),
+            orgUnitCodes,
+            reason: payload.reason.trim(),
+            roleCode: roleCodes[0] ?? payload.roleCode.trim(),
+            roleCodes,
+            userAgent: context.userAgent,
+            userPublicId,
+        });
+
+        if (!user) {
+            throw new NotFoundException("Usuario no encontrado.");
+        }
+
+        return user;
+    }
+
+    /**
+     * Cambia el estado operativo de otro usuario.
+     *
+     * Activar/desbloquear exige `user.activate`; desactivar/bloquear exige
+     * `user.deactivate`. La propia cuenta no puede modificarse desde aqui para
+     * evitar auto-bloqueos o degradaciones accidentales de Owner.
+     */
+    async updateSystemUserStatus(sessionToken: string | undefined, userPublicId: string, payload: UpdateSystemUserStatusDto, context: IdentityRequestAuditContext = {}): Promise<SystemUserDirectoryItem> {
+        const profile = await this.getCurrentUser(sessionToken);
+
+        if (userPublicId === profile.user.publicId) {
+            throw new ForbiddenException("No puedes cambiar el estado de tu propia cuenta.");
+        }
+
+        this.assertCan(profile, payload.status === "active" ? USER_ACTIVATE_PERMISSION : USER_DEACTIVATE_PERMISSION);
+
+        const user = await this.repository.updateSystemUserStatus({
+            actorPublicId: profile.user.publicId,
+            ipAddress: context.ipAddress,
+            reason: payload.reason.trim(),
+            status: payload.status,
+            userAgent: context.userAgent,
+            userPublicId,
+        });
+
+        if (!user) {
+            throw new NotFoundException("Usuario no encontrado.");
+        }
+
+        return user;
     }
 
     /**

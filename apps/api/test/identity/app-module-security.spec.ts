@@ -187,7 +187,7 @@ describe("Cableado de seguridad del AppModule", () => {
         expectExplicitConstructorInjections(IdentityController, [0, 1]);
         expectExplicitConstructorInjections(IdentityAccessManagementController, [0]);
         expectExplicitConstructorInjections(IdentityAccessManagementService, [0, 1]);
-        expectExplicitConstructorInjections(IdentityAccessManagementRepository, [0, 1]);
+        expectExplicitConstructorInjections(IdentityAccessManagementRepository, [0, 1, 2]);
         expectExplicitConstructorInjections(IdentityService, [0, 1, 2, 3]);
         expectExplicitConstructorInjections(IdentityAuditRecorder, [0, 1]);
         expectExplicitConstructorInjections(IdentityMicrosoftSessionService, [0, 1, 2]);

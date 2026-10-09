@@ -1,3 +1,9 @@
+/**
+ * Catálogo de roles y módulos para el alta de usuarios.
+ *
+ * Si el API no responde, deja un catálogo mínimo para que el formulario abra.
+ * El BFF vuelve a validar roles y áreas al guardar.
+ */
 import { useEffect, useState } from "react";
 
 import { getIdentitySecurityCatalog } from "../../../services/auth/auth-service";

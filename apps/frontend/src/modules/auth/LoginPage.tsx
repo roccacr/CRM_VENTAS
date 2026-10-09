@@ -1,3 +1,9 @@
+/**
+ * Pantalla pública de ingreso.
+ *
+ * Ofrece Microsoft, que abre el flujo del BFF, y credenciales locales. No guarda
+ * tokens ni decide si la sesión es válida: eso lo confirma el API después del POST.
+ */
 import "./LoginPage.css";
 
 import LockOutlined from "@ant-design/icons/LockOutlined";
@@ -53,14 +59,6 @@ const LOGIN_ERROR_IDS = {
     email: "login-email-error",
     password: "login-password-error",
 } as const;
-
-const LOCAL_DEVELOPMENT_LOGIN_DEFAULTS: LoginFormValues | undefined =
-    import.meta.env.DEV && import.meta.env.MODE !== "test"
-        ? {
-              email: "rzuniga@roccacr.com",
-              password: "RoccaLocal-2026!7Qm4",
-          }
-        : undefined;
 
 const renderFieldError = (messageKey: keyof typeof LOGIN_ERROR_TEXT, errorId: string) => (
     <span id={errorId} className="login-field-error" role="alert">
@@ -298,7 +296,7 @@ export function LoginPage({ authError = null, isSubmitting = false, onLocalLogin
                             </div>
                         ) : null}
 
-                        <Form<LoginFormValues> form={form} className="login-form" layout="vertical" requiredMark={false} initialValues={LOCAL_DEVELOPMENT_LOGIN_DEFAULTS ?? {}} onValuesChange={clearResolvedFieldError}>
+                        <Form<LoginFormValues> form={form} className="login-form" layout="vertical" requiredMark={false} initialValues={{}} onValuesChange={clearResolvedFieldError}>
                             <Form.Item label={LOGIN_COPY.emailLabel} name="email" validateStatus={fieldErrors.email ? "error" : ""} help={fieldErrors.email ? renderFieldError(fieldErrors.email, LOGIN_ERROR_IDS.email) : null}>
                                 <Input
                                     aria-describedby={fieldErrors.email ? LOGIN_ERROR_IDS.email : undefined}

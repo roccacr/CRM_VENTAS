@@ -1,3 +1,9 @@
+/**
+ * Consulta de auditoría de roles y permisos.
+ *
+ * Lee el catálogo de seguridad y filtra en pantalla los eventos que el API ya
+ * devolvió. No autoriza cambios: esta vista solo muestra actor, alcance y motivo.
+ */
 import "./SecurityAuditPage.css";
 
 import SearchOutlined from "@ant-design/icons/SearchOutlined";
@@ -6,15 +12,19 @@ import { useEffect, useMemo, useState } from "react";
 import { getIdentitySecurityCatalog } from "../../../services/auth/auth-service";
 import type { IdentitySecurityAuditItem, IdentityUser } from "../../../services/auth/identity-contracts";
 
+/** Opción de los filtros de módulo y rol. El código es el del API; el nombre es el visible. */
 interface AuditOption {
     readonly code: string;
     readonly name: string;
 }
 
+/** Fecha del evento en formato de Costa Rica. El valor original se conserva en `dateTime`. */
 const formatAuditDate = (value: string): string => new Date(value).toLocaleString("es-CR");
 
+/** Mensaje de carga. Si el fallo no es un `Error`, se usa un texto neutro. */
 const getErrorMessage = (error: unknown): string => (error instanceof Error ? error.message : "No se pudo cargar la auditoría.");
 
+/** Nombres de rol separados por coma. Un código desconocido se muestra tal cual. */
 const formatRoleScope = (roleCode: string | null, roleNameByCode: ReadonlyMap<string, string>): string => {
     if (!roleCode) {
         return "Sin rol específico";
@@ -26,6 +36,7 @@ const formatRoleScope = (roleCode: string | null, roleNameByCode: ReadonlyMap<st
         .join(", ");
 };
 
+/** Búsqueda local sobre actor, motivo, rol, resumen y módulos. No vuelve a llamar al API. */
 const matchesFilter = (event: IdentitySecurityAuditItem, query: string): boolean => {
     if (!query) {
         return true;
@@ -34,7 +45,12 @@ const matchesFilter = (event: IdentitySecurityAuditItem, query: string): boolean
     return [event.actorName, event.eventType, event.reason, event.roleCode, event.summary, event.targetName, ...event.moduleCodes].filter(Boolean).join(" ").toLowerCase().includes(query);
 };
 
-/** Vista operativa de respaldo para cambios de roles, modulos y permisos. */
+/**
+ * Vista de cambios de roles, módulos y permisos.
+ *
+ * `currentUser` llega por el contrato de ruta y no se usa: la auditoría muestra
+ * al actor de cada evento, no al usuario que está consultando.
+ */
 export function SecurityAuditPage({ currentUser: _currentUser }: { readonly currentUser: IdentityUser }) {
     const [events, setEvents] = useState<readonly IdentitySecurityAuditItem[]>([]);
     const [modules, setModules] = useState<readonly AuditOption[]>([]);

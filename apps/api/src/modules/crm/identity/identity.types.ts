@@ -129,6 +129,14 @@ export interface SystemUserDirectoryOrgUnit {
     publicId: string;
 }
 
+export interface SystemUserExternalReference {
+    externalUserId: string;
+    externalUsername: string | null;
+    status: string;
+    systemCode: string;
+    systemName: string;
+}
+
 /**
  * Fila del directorio administrativo.
  *
@@ -137,6 +145,7 @@ export interface SystemUserDirectoryOrgUnit {
  */
 export interface SystemUserDirectoryItem {
     email: string;
+    externalReferences: SystemUserExternalReference[];
     invitedBy: string | null;
     isCurrentUser: boolean;
     lastActivityAt: string | null;

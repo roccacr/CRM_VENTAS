@@ -1,4 +1,4 @@
-import { ConflictException, NotFoundException } from "@nestjs/common";
+import { ConflictException, ForbiddenException, NotFoundException } from "@nestjs/common";
 import { describe, expect, it, vi } from "vitest";
 
 import type { IdentityService } from "../../src/modules/crm/identity/identity.service.js";
@@ -119,6 +119,16 @@ const createService = (profile: IdentityProfile = createProfile({ roles: ["owner
 };
 
 describe("IdentityAccessManagementService", () => {
+    it("resolves authorization again on the next request after an Owner downgrade", async () => {
+        const { identity, repository, service } = createService();
+        await service.readSecurityCatalog("same-session-token");
+        identity.getCurrentUser.mockResolvedValue(createProfile({ roles: ["ventas"], permissions: ["lead.read"] }));
+
+        await expect(service.readSecurityCatalog("same-session-token")).rejects.toThrow(ForbiddenException);
+        expect(identity.getCurrentUser).toHaveBeenCalledTimes(2);
+        expect(repository.readSecurityCatalog).toHaveBeenCalledTimes(1);
+    });
+
     it("renombra roles con permiso role.assign", async () => {
         const { repository, service } = createService(createProfile({ permissions: ["role.assign"] }));
 

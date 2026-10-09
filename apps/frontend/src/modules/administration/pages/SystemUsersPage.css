@@ -7,6 +7,21 @@
     margin-top: 0;
 }
 
+.administration-users-breadcrumb {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    margin-bottom: 8px;
+    color: #5b6478;
+    font-size: 12px;
+    font-weight: 650;
+    line-height: 1.2;
+}
+
+.administration-users-breadcrumb span:last-child {
+    color: #28304a;
+}
+
 .administration-users-main {
     min-width: 0;
 }
@@ -16,12 +31,12 @@
     min-height: 0;
     flex-direction: column;
     overflow: hidden;
-    border: 1px solid #cfd7e6;
-    border-radius: 8px;
-    background: rgba(255, 255, 255, 0.94);
+    border: 1px solid #d0d5dd;
+    border-radius: 10px;
+    background: #ffffff;
     box-shadow:
-        0 1px 3px rgba(15, 23, 42, 0.05),
-        0 1px 2px rgba(15, 23, 42, 0.03);
+        0 1px 3px rgba(16, 24, 40, 0.1),
+        0 1px 2px rgba(16, 24, 40, 0.06);
 }
 
 /* Encabezado de la tabla en dos niveles: estado arriba; búsqueda, filtros y densidad abajo. */
@@ -130,6 +145,186 @@
     animation: administration-users-refresh-pulse 1s ease-in-out infinite;
 }
 
+.administration-users-refresh-status__compat {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+}
+
+.administration-users-status-modal.ant-modal {
+    width: min(560px, calc(100vw - 32px)) !important;
+}
+
+.administration-users-status-modal .ant-modal-content {
+    overflow: hidden;
+    border: 1px solid #cfd7e6;
+    border-radius: 10px;
+    padding: 0;
+    background: #ffffff;
+    box-shadow: 0 28px 60px rgba(15, 23, 42, 0.28);
+}
+
+.administration-users-status-modal .ant-modal-header {
+    margin: 0;
+    border-bottom: 1px solid #d9e0ec;
+    padding: 18px 20px;
+}
+
+.administration-users-status-modal .ant-modal-title {
+    color: inherit;
+}
+
+.administration-users-status-modal .ant-modal-close {
+    top: 18px;
+    right: 20px;
+    width: 34px;
+    height: 34px;
+    border: 1px solid #c6d0e1;
+    border-radius: 8px;
+    background: #ffffff;
+    color: #25324a;
+}
+
+.administration-users-status-modal .ant-modal-body {
+    display: grid;
+    gap: 14px;
+    padding: 20px;
+}
+
+.administration-users-status-modal .ant-modal-footer {
+    margin: 0;
+    border-top: 1px solid #d9e0ec;
+    padding: 18px 20px;
+    background: #f8fafc;
+}
+
+.administration-users-status-dialog__title {
+    padding-right: 46px;
+}
+
+.administration-users-status-dialog__title h2 {
+    margin: 0;
+    color: #101828;
+    font-size: 20px;
+    font-weight: 780;
+    line-height: 1.15;
+}
+
+.administration-users-status-dialog__title p {
+    margin: 6px 0 0;
+    color: #5b6478;
+    font-size: 13px;
+    font-weight: 560;
+    line-height: 1.4;
+}
+
+.administration-users-status-dialog__summary {
+    display: grid;
+    gap: 10px;
+    border: 1px solid #d8e0ed;
+    border-radius: 8px;
+    background: #f8fafc;
+    padding: 12px;
+}
+
+.administration-users-status-dialog__summary strong {
+    color: #172033;
+    font-size: 13px;
+    font-weight: 780;
+    line-height: 1.25;
+}
+
+.administration-users-status-dialog__summary ul {
+    display: grid;
+    gap: 8px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.administration-users-status-dialog__summary li {
+    color: #5b6478;
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 1.35;
+}
+
+.administration-users-status-dialog__label {
+    display: block;
+    color: #182136;
+    font-size: 12px;
+    font-weight: 760;
+}
+
+.administration-users-status-modal textarea.ant-input {
+    min-height: 96px;
+    border-color: #c6d0e1;
+    border-radius: 8px;
+    color: #172033;
+    font-size: 13px;
+    font-weight: 600;
+    padding: 9px 11px;
+}
+
+.administration-users-status-modal textarea.ant-input:focus {
+    border-color: #6875c7;
+    box-shadow: 0 0 0 3px rgba(104, 117, 199, 0.16);
+}
+
+.administration-users-status-dialog__footer {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 16px;
+}
+
+.administration-users-status-dialog__primary.ant-btn,
+.administration-users-status-dialog__secondary.ant-btn {
+    min-height: 40px;
+    border-radius: 8px;
+    padding: 0 16px;
+    font-size: 13px;
+    font-weight: 760;
+}
+
+.administration-users-status-dialog__primary.ant-btn {
+    border-color: #111827;
+    background: #111827;
+    color: #ffffff;
+    box-shadow: 0 10px 22px rgba(15, 23, 42, 0.12);
+}
+
+.administration-users-status-dialog__primary.ant-btn:not(:disabled):hover,
+.administration-users-status-dialog__primary.ant-btn:not(:disabled):focus-visible {
+    border-color: #111827;
+    background: #111827;
+    color: #ffffff;
+}
+
+.administration-users-status-dialog__primary.ant-btn:disabled {
+    border-color: #dde3ee;
+    background: #eef1f6;
+    color: #5b6478;
+    box-shadow: none;
+    opacity: 1;
+}
+
+.administration-users-status-dialog__secondary.ant-btn {
+    border-color: #c6d0e1;
+    background: #ffffff;
+    color: #25324a;
+}
+
+.administration-users-status-dialog__secondary.ant-btn:not(:disabled):hover,
+.administration-users-status-dialog__secondary.ant-btn:not(:disabled):focus-visible {
+    border-color: #98a2b3;
+    background: #ffffff;
+    color: #0f172a;
+}
+
 /* Tabla AntD: los tokens viven en ADMINISTRATION_THEME; aquí solo lo que el tema no cubre. */
 .administration-users-table .ant-table-thead > tr > th {
     font-size: 12px;
@@ -148,6 +343,638 @@
 
 .administration-users-table .ant-table-tbody > tr:focus-visible > td {
     background: #f1f4ff;
+}
+
+/*
+ * Tabla de usuarios (DataTables) con criterio enterprise:
+ * texto alineado a la izquierda y encabezado alineado con su contenido,
+ * filas separadas por líneas finas (sin cebra), altura regular de 56px,
+ * orden junto al título y acciones de fila discretas hasta el hover.
+ */
+.administration-users-datatable-wrap {
+    position: relative;
+    min-width: 0;
+    padding: 0;
+}
+
+.administration-users-datatable-wrap .dt-container {
+    color: #101828;
+    font-family: Aptos, "Segoe UI", system-ui, sans-serif;
+    font-size: 13px;
+}
+
+.administration-users-datatable-wrap .dt-layout-row {
+    margin: 0;
+    padding: 12px 16px;
+}
+
+.administration-users-datatable-wrap .dt-layout-row.dt-layout-table {
+    padding: 0;
+}
+
+.administration-users-datatable-wrap .dt-layout-row:not(.dt-layout-table):not(:has(.dt-paging)) {
+    border-bottom: 1px solid #e4e7ec;
+}
+
+.administration-users-datatable-wrap .dt-layout-row:has(.dt-paging) {
+    border-top: 1px solid #e4e7ec;
+    padding-block: 10px;
+}
+
+/* Búsqueda: la etiqueta queda para lectores de pantalla; el placeholder basta visualmente. */
+.administration-users-datatable-wrap .dt-search {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.administration-users-datatable-wrap .dt-search label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+}
+
+.administration-users-datatable-wrap .dt-search .dt-input {
+    width: min(360px, 60vw);
+    min-height: 36px;
+    margin-left: 0;
+    border: 1px solid #d0d5dd;
+    border-radius: 8px;
+    padding: 0 12px 0 34px;
+    background: #ffffff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16' fill='none'%3E%3Ccircle cx='7' cy='7' r='4.75' stroke='%23667085' stroke-width='1.5'/%3E%3Cpath d='m10.5 10.5 3 3' stroke='%23667085' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E") no-repeat 12px center;
+    color: #101828;
+    font: inherit;
+    font-size: 13px;
+    transition:
+        border-color 120ms ease,
+        box-shadow 120ms ease;
+}
+
+.administration-users-datatable-wrap .dt-search .dt-input::placeholder {
+    color: #667085;
+}
+
+.administration-users-datatable-wrap .dt-input:focus-visible {
+    border-color: #0f172a;
+    box-shadow: 0 0 0 3px rgba(15, 23, 42, 0.08);
+    outline: none;
+}
+
+/* Filtros por columna (SearchPanes) en paneles sobrios del mismo lenguaje que la tabla. */
+.administration-users-datatable-wrap div.dtsp-panesContainer {
+    width: 100%;
+    margin: 0;
+    border: 0;
+    padding: 0;
+    background: transparent;
+}
+
+.administration-users-datatable-wrap div.dtsp-panesContainer div.dtsp-titleRow {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 10px;
+}
+
+.administration-users-datatable-wrap div.dtsp-title {
+    margin-right: auto;
+    color: #475467;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.administration-users-datatable-wrap div.dtsp-panesContainer button.dtsp-clearAll,
+.administration-users-datatable-wrap div.dtsp-panesContainer button.dtsp-collapseAll,
+.administration-users-datatable-wrap div.dtsp-panesContainer button.dtsp-showAll {
+    min-height: 28px;
+    border: 1px solid #d0d5dd;
+    border-radius: 6px;
+    padding: 0 10px;
+    background: #ffffff;
+    color: #344054;
+    font: inherit;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.administration-users-datatable-wrap div.dtsp-panesContainer button.dtsp-clearAll:not(:disabled):hover,
+.administration-users-datatable-wrap div.dtsp-panesContainer button.dtsp-collapseAll:not(:disabled):hover,
+.administration-users-datatable-wrap div.dtsp-panesContainer button.dtsp-showAll:not(:disabled):hover {
+    border-color: #98a2b3;
+    background: #f9fafb;
+}
+
+.administration-users-datatable-wrap div.dtsp-panesContainer button:disabled {
+    opacity: 0.45;
+}
+
+.administration-users-datatable-wrap div.dtsp-panesContainer div.dtsp-searchPanes {
+    align-items: flex-start;
+    gap: 12px;
+}
+
+.administration-users-datatable-wrap div.dtsp-panesContainer div.dtsp-searchPane {
+    margin: 0;
+    padding: 0;
+}
+
+.administration-users-datatable-wrap div.dtsp-panesContainer div.dtsp-searchPane div.dtsp-topRow {
+    border: 1px solid #d0d5dd;
+    border-radius: 8px;
+    background: #ffffff;
+}
+
+.administration-users-datatable-wrap div.dtsp-panesContainer div.dtsp-searchPane div.dtsp-topRow input {
+    border: 0;
+    color: #101828;
+    font: inherit;
+    font-size: 13px;
+}
+
+.administration-users-datatable-wrap div.dtsp-panesContainer div.dtsp-searchPane div.dtsp-topRow input::placeholder {
+    color: #475467;
+    font-weight: 600;
+}
+
+.administration-users-datatable-wrap div.dtsp-panesContainer div.dtsp-searchPane div.dtsp-topRow button {
+    opacity: 0.6;
+}
+
+.administration-users-datatable-wrap div.dtsp-panesContainer div.dtsp-searchPane div.dt-container {
+    margin-top: 6px;
+    border: 1px solid #eaecf0;
+    border-radius: 8px;
+    background: #ffffff;
+}
+
+.administration-users-datatable-wrap div.dtsp-searchPane table.dataTable > tbody > tr > td {
+    border: 0;
+    padding: 7px 10px;
+    font-size: 13px;
+}
+
+.administration-users-datatable-wrap div.dtsp-searchPane table.dataTable > tbody > tr:hover > td {
+    background: #f9fafb;
+}
+
+.administration-users-datatable-wrap div.dtsp-searchPane table.dataTable > tbody > tr.selected > td {
+    background: #eef1f6;
+    box-shadow: none;
+    color: #0f172a;
+    font-weight: 600;
+}
+
+.administration-users-datatable-wrap div.dtsp-searchPane span.dtsp-pill {
+    min-width: 22px;
+    border: 0;
+    border-radius: 999px;
+    background: #f2f4f7;
+    color: #475467;
+    font-size: 11px;
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+    text-align: center;
+}
+
+/* Tabla principal. */
+.administration-users-datatable-wrap table.dataTable.administration-users-datatable {
+    width: 100% !important;
+    margin: 0;
+    border: 0;
+    border-collapse: separate;
+    border-spacing: 0;
+}
+
+.administration-users-datatable-wrap table.administration-users-datatable > thead > tr > th {
+    height: 40px;
+    border-bottom: 1px solid #d0d5dd;
+    padding: 0 12px;
+    background: #f2f4f7;
+    color: #475467;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    text-align: left;
+    white-space: nowrap;
+}
+
+.administration-users-datatable-wrap table.administration-users-datatable > thead > tr > th:hover {
+    outline: none;
+}
+
+.administration-users-datatable-wrap table.administration-users-datatable > thead > tr > th.dt-orderable-asc:hover,
+.administration-users-datatable-wrap table.administration-users-datatable > thead > tr > th.dt-orderable-desc:hover {
+    color: #101828;
+}
+
+.administration-users-datatable-wrap table.administration-users-datatable > thead > tr > th.dt-ordering-asc,
+.administration-users-datatable-wrap table.administration-users-datatable > thead > tr > th.dt-ordering-desc {
+    color: #101828;
+}
+
+/* El indicador de orden va pegado al título, no al borde de la columna. */
+.administration-users-datatable-wrap table.administration-users-datatable > thead > tr > th div.dt-column-header {
+    justify-content: flex-start;
+    gap: 6px;
+}
+
+.administration-users-datatable-wrap table.administration-users-datatable > thead > tr > th div.dt-column-header .dt-column-title {
+    flex-grow: 0;
+}
+
+.administration-users-datatable-wrap table.administration-users-datatable > thead > tr > th .dt-column-order {
+    width: 8px;
+    height: 14px;
+    opacity: 0;
+    transition: opacity 120ms ease;
+}
+
+.administration-users-datatable-wrap table.administration-users-datatable > thead > tr > th:hover .dt-column-order,
+.administration-users-datatable-wrap table.administration-users-datatable > thead > tr > th.dt-ordering-asc .dt-column-order,
+.administration-users-datatable-wrap table.administration-users-datatable > thead > tr > th.dt-ordering-desc .dt-column-order {
+    opacity: 1;
+}
+
+.administration-users-datatable-wrap table.administration-users-datatable > thead > tr > th .dt-column-order::before,
+.administration-users-datatable-wrap table.administration-users-datatable > thead > tr > th .dt-column-order::after {
+    font-size: 8px;
+    line-height: 7px;
+}
+
+.administration-users-datatable-wrap table.administration-users-datatable > tbody > tr > td {
+    height: 56px;
+    border-bottom: 1px solid #e4e7ec;
+    padding: 8px 12px;
+    background: #ffffff;
+    color: #344054;
+    font-size: 13px;
+    text-align: left;
+    vertical-align: middle;
+}
+
+.administration-users-datatable-wrap table.administration-users-datatable > tbody > tr[data-user-email] {
+    cursor: pointer;
+}
+
+.administration-users-datatable-wrap table.administration-users-datatable > tbody > tr:last-child > td {
+    border-bottom: 0;
+}
+
+.administration-users-datatable-wrap table.administration-users-datatable > tbody > tr:hover > td {
+    background: #f5f7fa;
+}
+
+/* Fila con el menú o el detalle abierto: verde suave para saber sobre quién se actúa. */
+.administration-users-datatable-wrap table.administration-users-datatable > tbody > tr.administration-users-table__row--menu-open > td,
+.administration-users-datatable-wrap table.administration-users-datatable > tbody > tr.administration-users-table__row--selected > td {
+    background: #ecfdf3;
+}
+
+.administration-users-datatable-wrap table.administration-users-datatable > tbody > tr.administration-users-table__row--menu-open > td:first-child,
+.administration-users-datatable-wrap table.administration-users-datatable > tbody > tr.administration-users-table__row--selected > td:first-child {
+    box-shadow: inset 3px 0 0 #17b26a;
+}
+
+.administration-users-datatable-wrap table.administration-users-datatable > tbody > tr.administration-users-table__row--new > td {
+    animation: administration-users-new-row 6s ease-out forwards;
+}
+
+/* Anchos fijos para columnas cortas; Usuario y Rol absorben el espacio restante. */
+.administration-users-datatable-wrap table.administration-users-datatable .administration-users-col-user {
+    padding-left: 16px;
+}
+
+.administration-users-datatable-wrap table.administration-users-datatable .administration-users-col-status {
+    width: 132px;
+}
+
+.administration-users-datatable-wrap table.administration-users-datatable .administration-users-col-access {
+    width: 176px;
+}
+
+.administration-users-datatable-wrap table.administration-users-datatable .administration-users-col-activity {
+    width: 160px;
+}
+
+.administration-users-datatable-wrap table.administration-users-datatable .administration-users-col-actions {
+    width: 56px;
+    padding-right: 16px;
+    text-align: right;
+}
+
+/* Celda de usuario: nombre como dato principal y correo como dato secundario. */
+.administration-users-datatable-wrap .administration-users-person {
+    display: grid;
+    min-width: 0;
+    gap: 2px;
+}
+
+.administration-users-datatable-wrap .administration-users-person__name {
+    display: inline-flex;
+    width: fit-content;
+    min-width: 0;
+    max-width: 100%;
+    align-items: center;
+    gap: 8px;
+    border: 0;
+    border-radius: 4px;
+    padding: 0;
+    background: transparent;
+    color: #101828;
+    cursor: pointer;
+    font: inherit;
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 1.35;
+    text-align: left;
+}
+
+.administration-users-datatable-wrap .administration-users-person__name > span:first-child {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.administration-users-datatable-wrap .administration-users-person__name:hover > span:first-child,
+.administration-users-datatable-wrap .administration-users-person__name:focus-visible > span:first-child {
+    color: #0f172a;
+    text-decoration: underline;
+    text-decoration-color: #98a2b3;
+    text-underline-offset: 3px;
+}
+
+.administration-users-datatable-wrap .administration-users-person__name:focus-visible {
+    outline: 2px solid #0f172a;
+    outline-offset: 2px;
+}
+
+.administration-users-datatable-wrap .administration-users-person__email {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    gap: 8px;
+    color: #667085;
+    font-size: 12.5px;
+    line-height: 1.35;
+}
+
+.administration-users-datatable-wrap .administration-users-person__email > span:first-child {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.administration-users-current-user {
+    display: inline-flex;
+    align-items: center;
+    border: 1px solid #d0d5dd;
+    border-radius: 4px;
+    padding: 0 5px;
+    background: #f9fafb;
+    color: #344054;
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 16px;
+}
+
+/* Copiar aparece al pasar por la fila o al enfocarlo con teclado. */
+.administration-users-copy-inline {
+    border: 0;
+    border-radius: 4px;
+    padding: 0 4px;
+    background: transparent;
+    color: #475467;
+    cursor: pointer;
+    font: inherit;
+    font-size: 12px;
+    font-weight: 600;
+    opacity: 0;
+    transition: opacity 120ms ease;
+}
+
+.administration-users-copy-inline:hover {
+    color: #0f172a;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+
+.administration-users-datatable-wrap tbody > tr:hover .administration-users-copy-inline,
+.administration-users-copy-inline:focus-visible {
+    opacity: 1;
+}
+
+.administration-users-copy-inline:focus-visible {
+    outline: 2px solid #0f172a;
+    outline-offset: 1px;
+}
+
+/* Rol como texto plano; el conteo de roles extra es la única marca. */
+.administration-users-datatable-wrap .administration-users-scope {
+    display: grid;
+    min-width: 0;
+    gap: 2px;
+}
+
+.administration-users-datatable-wrap .administration-users-roles {
+    display: inline-flex;
+    min-width: 0;
+    align-items: center;
+    gap: 6px;
+}
+
+.administration-users-role {
+    overflow: hidden;
+    color: #101828;
+    font-size: 13px;
+    font-weight: 500;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.administration-users-role-count {
+    flex: 0 0 auto;
+    border-radius: 999px;
+    padding: 0 6px;
+    background: #f2f4f7;
+    color: #475467;
+    font-size: 11px;
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+    line-height: 18px;
+}
+
+.administration-users-datatable-wrap .administration-users-scope__area {
+    overflow: hidden;
+    color: #667085;
+    font-size: 12.5px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Acciones de fila: icono neutro, más visible al pasar por la fila. */
+.administration-users-row-menu {
+    display: inline-grid;
+    width: 32px;
+    height: 32px;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    background: transparent;
+    color: #667085;
+    cursor: pointer;
+    place-items: center;
+    transition:
+        background-color 120ms ease,
+        color 120ms ease;
+}
+
+.administration-users-datatable-wrap tbody > tr:hover .administration-users-row-menu {
+    color: #344054;
+}
+
+.administration-users-datatable-wrap tbody > tr.administration-users-table__row--menu-open .administration-users-row-menu {
+    border-color: #abefc6;
+    background: #ffffff;
+    color: #067647;
+}
+
+.administration-users-row-menu:hover {
+    border-color: #eaecf0;
+    background: #f2f4f7;
+    color: #101828;
+}
+
+.administration-users-row-menu:focus-visible {
+    outline: 2px solid #0f172a;
+    outline-offset: 1px;
+}
+
+/* Pie de tabla: conteo a la izquierda; filas por página y paginación a la derecha. */
+.administration-users-datatable-wrap .dt-info {
+    color: #475467;
+    font-size: 12.5px;
+    font-variant-numeric: tabular-nums;
+}
+
+.administration-users-datatable-wrap .dt-layout-end {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.administration-users-datatable-wrap .dt-length {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    color: #475467;
+    font-size: 12.5px;
+}
+
+.administration-users-datatable-wrap .dt-length .dt-input {
+    min-height: 32px;
+    border: 1px solid #d0d5dd;
+    border-radius: 6px;
+    padding: 0 6px;
+    background: #ffffff;
+    color: #101828;
+    font: inherit;
+}
+
+.administration-users-datatable-wrap .dt-paging nav {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+}
+
+.administration-users-datatable-wrap .dt-paging .dt-paging-button {
+    min-width: 32px;
+    height: 32px;
+    margin: 0;
+    border: 1px solid transparent !important;
+    border-radius: 6px;
+    padding: 0 8px !important;
+    background: transparent !important;
+    color: #344054 !important;
+    font-size: 13px;
+    font-variant-numeric: tabular-nums;
+    font-weight: 500;
+    line-height: 30px;
+}
+
+.administration-users-datatable-wrap .dt-paging .dt-paging-button:not(.disabled, .current):hover {
+    background: #f2f4f7 !important;
+    color: #101828 !important;
+}
+
+.administration-users-datatable-wrap .dt-paging .dt-paging-button.current {
+    border-color: #d0d5dd !important;
+    background: #ffffff !important;
+    color: #101828 !important;
+    font-weight: 600;
+}
+
+.administration-users-datatable-wrap .dt-paging .dt-paging-button.disabled {
+    color: #d0d5dd !important;
+}
+
+/* Menú contextual de fila. */
+.administration-users-datatable-menu {
+    position: absolute;
+    z-index: 5;
+    display: grid;
+    min-width: 200px;
+    overflow: hidden;
+    border: 1px solid #eaecf0;
+    border-radius: 8px;
+    padding: 4px;
+    background: #ffffff;
+    box-shadow:
+        0 12px 24px -6px rgba(16, 24, 40, 0.12),
+        0 4px 8px -4px rgba(16, 24, 40, 0.06);
+}
+
+.administration-users-datatable-menu button {
+    border: 0;
+    border-radius: 6px;
+    padding: 8px 10px;
+    background: transparent;
+    color: #344054;
+    cursor: pointer;
+    font: inherit;
+    font-size: 13px;
+    font-weight: 500;
+    text-align: left;
+}
+
+.administration-users-datatable-menu button:hover,
+.administration-users-datatable-menu button:focus-visible {
+    background: #f2f4f7;
+    color: #101828;
+    outline: none;
+}
+
+.administration-users-datatable-menu button:disabled {
+    background: transparent;
+    color: #98a2b3;
+    cursor: not-allowed;
+}
+
+.administration-users-datatable-menu__divider {
+    height: 1px;
+    margin: 4px 0;
+    background: #eaecf0;
+}
+
+.administration-users-datatable-menu button.administration-users-datatable-menu__danger:not(:disabled) {
+    color: #b42318;
+}
+
+.administration-users-datatable-menu button.administration-users-datatable-menu__danger:not(:disabled):hover {
+    background: #fef3f2;
 }
 
 .administration-users-table .ant-table-tbody > tr.administration-users-table__row--selected > td {
@@ -335,13 +1162,43 @@
     font-weight: 650;
 }
 
+/* Estado: punto semántico pequeño y texto neutro; el color nunca es la única señal. */
+.administration-users-dt-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    color: #344054;
+    font-size: 13px;
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+.administration-users-dt-status > span:first-child {
+    width: 6px;
+    height: 6px;
+    border-radius: 999px;
+    background: #98a2b3;
+}
+
+.administration-users-dt-status--active > span:first-child {
+    background: #17b26a;
+}
+
+.administration-users-dt-status--blocked > span:first-child {
+    background: #d92d20;
+}
+
+.administration-users-dt-status--pending > span:first-child {
+    background: #f79009;
+}
+
 .administration-users-provider {
     display: inline-flex;
     align-items: center;
-    gap: 6px;
+    gap: 8px;
     color: #344054;
-    font-size: 12.5px;
-    font-weight: 600;
+    font-size: 13px;
+    font-weight: 500;
     white-space: nowrap;
 }
 
@@ -398,16 +1255,15 @@
 }
 
 .administration-users-muted {
-    color: #8792a8;
-    font-size: 12.5px;
+    color: #98a2b3;
+    font-size: 13px;
 }
 
 .administration-users-activity {
     color: #344054;
-    font-size: 12.5px;
+    font-size: 13px;
     font-variant-numeric: tabular-nums;
-    text-decoration: underline dotted #b4bccb;
-    text-underline-offset: 3px;
+    white-space: nowrap;
 }
 
 .administration-users-empty {
@@ -454,13 +1310,13 @@
     align-items: center;
     justify-content: space-between;
     gap: 12px;
-    border-top: 1px solid #d9e0ec;
+    border-top: 1px solid #eaecf0;
     padding: 8px 16px;
-    background: rgba(255, 255, 255, 0.98);
-    color: #5b6478;
+    background: #f9fafb;
+    color: #667085;
     font-size: 12px;
     font-variant-numeric: tabular-nums;
-    font-weight: 600;
+    font-weight: 500;
 }
 
 @keyframes administration-users-refresh-pulse {
@@ -487,9 +1343,37 @@
         transform: none;
     }
 
-    .administration-users-table .ant-table-tbody > tr.administration-users-table__row--new > td {
+    .administration-users-table .ant-table-tbody > tr.administration-users-table__row--new > td,
+    .administration-users-datatable-wrap table.administration-users-datatable > tbody > tr.administration-users-table__row--new > td {
         animation: none;
         background: #e7f8ef;
+    }
+
+    .administration-users-copy-inline,
+    .administration-users-datatable-wrap table.administration-users-datatable > thead > tr > th .dt-column-order {
+        transition: none;
+    }
+}
+
+@media (hover: none) {
+    .administration-users-copy-inline {
+        opacity: 1;
+    }
+}
+
+/* En pantallas angostas la tabla se desplaza en horizontal y el pie se apila. */
+@media (max-width: 960px) {
+    .administration-users-datatable-wrap .dt-layout-table {
+        overflow-x: auto;
+    }
+
+    .administration-users-datatable-wrap table.administration-users-datatable {
+        min-width: 860px;
+    }
+
+    .administration-users-datatable-wrap .dt-layout-row:has(.dt-paging) {
+        flex-wrap: wrap;
+        gap: 8px;
     }
 }
 

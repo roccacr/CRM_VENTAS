@@ -283,6 +283,14 @@ No es SQL final. Es la estructura logica que debe respetar la futura migracion M
 | `int_external_reference` | Relacion entre entidades internas e ids externos como NetSuite, Odoo o CRM viejo. |
 | `audit_security_event` | Auditoria de login, cambios de rol, permisos, areas y seguridad. |
 
+Regla de catalogos compartidos:
+
+- los valores de catalogo viven una sola vez en `crm_catalog_item`;
+- los permisos de catalogo son scoped por modulo consumidor;
+- formato vigente: `ventas.catalog_project.read`, `mercadeo.catalog_project.read`, `formalizacion.catalog_project.read`, `contabilidad.catalog_project.read`, `administration.catalog_project.read`;
+- la pantalla de roles muestra cada catalogo dentro del modulo real como "Catalogos compartidos";
+- la autorizacion real exige modulo activo en `sec_user_org_unit` y permiso scoped; `catalog_project.read` global queda deprecado y no autoriza endpoints nuevos.
+
 Reglas fisicas obligatorias cuando se cree SQL:
 
 - toda columna debe llevar `COMMENT`;

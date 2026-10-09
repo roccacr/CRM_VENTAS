@@ -8,6 +8,8 @@ import type { IdentityAuthSummary, IdentityOrgUnit, IdentityProfile, IdentityRol
 import { MICROSOFT_PROVIDER_CODE } from "./identity-microsoft.constants.js";
 import { ACTIVE_STATUS, LOCAL_PROVIDER_AVAILABLE_STATUSES, LOCAL_PROVIDER_CODE, PENDING_LOCAL_STATUS } from "./identity-repository.shared.js";
 
+const OWNER_ROLE_CODE = "owner";
+
 type ActiveSessionRow = {
     authIdentityStatus: string;
     currentProvider: string;
@@ -29,6 +31,10 @@ type ActiveSessionRow = {
 };
 
 type RolePermissionRow = {
+    code: string;
+};
+
+type ActivePermissionRow = {
     code: string;
 };
 
@@ -75,7 +81,7 @@ export class IdentityProfileRepository {
 
         const [roles, orgUnits, localStatus] = await Promise.all([this.findRoles(session.userId), this.findOrgUnits(session.userId), this.findLocalAuthStatus(session.userId)]);
         const scope = orgUnits.length ? resolveHighestPermissionScope(orgUnits.map((unit) => unit.scope)) : DEFAULT_DIRECT_OVERRIDE_SCOPE;
-        const [rolePermissions, overrides] = await Promise.all([this.findRolePermissions(session.userId, scope), this.findOverrides(session.userId)]);
+        const { rolePermissions, overrides } = await this.findEffectivePermissionInputs(session.userId, scope, roles);
         const effectivePermissions = this.permissions.calculate({ rolePermissions, overrides });
 
         return this.buildIdentityProfile({
@@ -242,6 +248,43 @@ export class IdentityProfileRepository {
             .where("rolePermission.status_role_permission", "=", ACTIVE_STATUS)
             .where("permission.status_permission", "=", ACTIVE_STATUS)
             .execute();
+
+        return rows.map((row) => ({
+            code: row.code,
+            scope,
+        }));
+    }
+
+    /**
+     * Owner no admite degradaciones por overrides directos: sus permisos base
+     * son todos los permisos activos del sistema.
+     */
+    private async findEffectivePermissionInputs(
+        userId: number,
+        scope: string,
+        roles: readonly IdentityRole[],
+    ): Promise<{
+        rolePermissions: PermissionInput[];
+        overrides: PermissionOverrideInput[];
+    }> {
+        if (roles.some((role) => role.code === OWNER_ROLE_CODE)) {
+            return {
+                overrides: [],
+                rolePermissions: await this.findAllActivePermissions(scope),
+            };
+        }
+
+        const [rolePermissions, overrides] = await Promise.all([this.findRolePermissions(userId, scope), this.findOverrides(userId)]);
+
+        return { overrides, rolePermissions };
+    }
+
+    /**
+     * Owner conserva acceso administrativo global: cualquier permiso activo nuevo
+     * queda disponible al perfil sin depender de una fila rol-permiso historica.
+     */
+    private async findAllActivePermissions(scope: string): Promise<PermissionInput[]> {
+        const rows: ActivePermissionRow[] = await this.database.db.selectFrom("sec_permission as permission").select("permission.code_permission as code").where("permission.status_permission", "=", ACTIVE_STATUS).execute();
 
         return rows.map((row) => ({
             code: row.code,

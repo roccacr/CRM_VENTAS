@@ -1,3 +1,9 @@
+/**
+ * Filtro de estado del directorio.
+ *
+ * Un solo control segmentado. El conteo sale del resumen del API, no de las
+ * filas que ya están cargadas en la página.
+ */
 import Segmented from "antd/es/segmented";
 
 import type { SystemUsersSummary } from "../../../services/auth/identity-contracts";

@@ -31,6 +31,10 @@
     "dependencies": {
         "@ant-design/icons": "^6.3.4",
         "antd": "^6.6.5",
+        "datatables.net-dt": "^2.3.8",
+        "datatables.net-react": "^1.0.2",
+        "datatables.net-searchpanes-dt": "2.3.5",
+        "datatables.net-select-dt": "^3.1.2",
         "react": "^19.3.0",
         "react-dom": "^19.3.0"
     },

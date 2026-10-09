@@ -4,24 +4,33 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-li
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { buildApiUrl } from "../../src/config/frontend-env";
+import { SYSTEM_USERS_DATATABLE_STATE_KEY } from "../../src/modules/administration/hooks/useDataTableSearchPanes";
 import { SystemUsersPage } from "../../src/modules/administration/pages/SystemUsersPage";
-import { createSystemUser, getIdentitySecurityCatalog, getSystemUsers } from "../../src/services/auth/auth-service";
+import { createSystemUser, getIdentitySecurityCatalog, getSystemUsers, updateSystemUser, updateSystemUserStatus } from "../../src/services/auth/auth-service";
 import { installBrowserApiDoubles } from "../support/browser";
 
 vi.mock("../../src/services/auth/auth-service", () => ({
     createSystemUser: vi.fn(),
     getIdentitySecurityCatalog: vi.fn(),
     getSystemUsers: vi.fn(),
+    updateSystemUser: vi.fn(),
+    updateSystemUserStatus: vi.fn(),
 }));
 
 const mockCreateSystemUser = vi.mocked(createSystemUser);
 const mockGetIdentitySecurityCatalog = vi.mocked(getIdentitySecurityCatalog);
 const mockGetSystemUsers = vi.mocked(getSystemUsers);
+const mockUpdateSystemUser = vi.mocked(updateSystemUser);
+const mockUpdateSystemUserStatus = vi.mocked(updateSystemUserStatus);
 
 const mockUsersResponse = {
     items: [
         {
             email: "avalverde@roccacr.com",
+            externalReferences: [
+                { externalUserId: "654321", externalUsername: "avalverde@roccacr.com", status: "active", systemCode: "netsuite", systemName: "NetSuite" },
+                { externalUserId: "ODOO-77", externalUsername: null, status: "active", systemCode: "odoo", systemName: "Odoo" },
+            ],
             invitedBy: "Sistemas",
             isCurrentUser: false,
             lastActivityAt: null,
@@ -37,6 +46,7 @@ const mockUsersResponse = {
         },
         {
             email: "jcastro@roccacr.com",
+            externalReferences: [],
             invitedBy: "Sistemas",
             isCurrentUser: false,
             lastActivityAt: null,
@@ -52,6 +62,7 @@ const mockUsersResponse = {
         },
         {
             email: "mflores@roccacr.com",
+            externalReferences: [],
             invitedBy: null,
             isCurrentUser: false,
             lastActivityAt: "2026-09-29T22:42:00.000Z",
@@ -67,6 +78,7 @@ const mockUsersResponse = {
         },
         {
             email: "rzuniga@roccacr.com",
+            externalReferences: [],
             invitedBy: null,
             isCurrentUser: true,
             lastActivityAt: "2026-09-30T15:18:00.000Z",
@@ -86,6 +98,7 @@ const mockUsersResponse = {
         },
         {
             email: "soporte.externo@roccacr.com",
+            externalReferences: [],
             invitedBy: "Sistemas",
             isCurrentUser: false,
             lastActivityAt: "2026-09-20T20:00:00.000Z",
@@ -155,6 +168,7 @@ const mockSecurityCatalog = {
 afterEach(() => {
     cleanup();
     vi.clearAllMocks();
+    window.localStorage.clear();
     window.history.replaceState(null, "", "/");
 });
 
@@ -163,6 +177,8 @@ beforeEach(() => {
     mockCreateSystemUser.mockResolvedValue(mockUsersResponse.items[0]);
     mockGetIdentitySecurityCatalog.mockResolvedValue(mockSecurityCatalog);
     mockGetSystemUsers.mockResolvedValue(mockUsersResponse);
+    mockUpdateSystemUser.mockResolvedValue({ ...mockUsersResponse.items[0], name: "Andrea Valverde Actualizada", roles: [{ code: "ventas", name: "Ventas" }] });
+    mockUpdateSystemUserStatus.mockResolvedValue({ ...mockUsersResponse.items[0], status: "active" });
 });
 
 const openUserDetail = async (name: string): Promise<void> => {
@@ -190,8 +206,27 @@ const getDetailPanel = (name: string): HTMLElement => {
     return panel;
 };
 
+const getRectValue = (value: number | undefined, fallback = 0): number => value ?? fallback;
+
+const buildDomRect = (rect: Partial<DOMRect>): DOMRect => {
+    const left = getRectValue(rect.left);
+    const top = getRectValue(rect.top);
+
+    return {
+        bottom: getRectValue(rect.bottom),
+        height: getRectValue(rect.height),
+        left,
+        right: getRectValue(rect.right),
+        top,
+        width: getRectValue(rect.width),
+        x: getRectValue(rect.x, left),
+        y: getRectValue(rect.y, top),
+        toJSON: () => ({}),
+    };
+};
+
 const openCreateUserDrawer = async (): Promise<void> => {
-    await screen.findByRole("button", { name: "Exportar 5 usuarios visibles" });
+    await screen.findByRole("button", { name: "Abrir detalle de Andrea Valverde" });
     fireEvent.click(screen.getByRole("button", { name: "Nuevo usuario" }));
     await screen.findByRole("heading", { name: "Identificación" });
 };
@@ -244,7 +279,7 @@ describe("SystemUsersPage", () => {
 
         await screen.findByRole("button", { name: "Abrir detalle de Andrea Valverde" });
 
-        expect(screen.getAllByRole("columnheader", { name: "Rol y área" }).length).toBeGreaterThan(0);
+        expect(screen.getAllByRole("columnheader", { name: "Rol" }).length).toBeGreaterThan(0);
         expect(screen.queryByRole("columnheader", { name: "Área" })).not.toBeInTheDocument();
         expect(within(getUserRow("Andrea Valverde")).getByText("Consulta")).toBeInTheDocument();
         expect(within(getUserRow("Andrea Valverde")).getByText("Finanzas")).toBeInTheDocument();
@@ -278,22 +313,37 @@ describe("SystemUsersPage", () => {
         expect(screen.queryByRole("button", { name: /Cargar .* más/u })).not.toBeInTheDocument();
     });
 
-    it("pide una pagina nueva y muestra actualizacion al cambiar filtro de estado", async () => {
-        mockGetSystemUsers.mockResolvedValueOnce(mockUsersResponse).mockReturnValueOnce(new Promise(() => undefined));
-
+    it("usa DataTables como única capa visible de búsqueda y filtros", async () => {
         render(<SystemUsersPage />);
 
         await screen.findByRole("button", { name: "Abrir detalle de Andrea Valverde" });
-        fireEvent.click(screen.getByRole("radio", { name: /Activos/u }));
+
+        expect(screen.queryByRole("button", { name: /Exportar/u })).not.toBeInTheDocument();
+        expect(screen.queryByLabelText("Buscar usuarios")).not.toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: /^Filtros/u })).not.toBeInTheDocument();
+        expect(screen.getByRole("searchbox", { name: "Buscar:" })).toBeInTheDocument();
+    });
+
+    it("restaura la búsqueda local de DataTables al refrescar la vista", async () => {
+        window.localStorage.setItem(
+            SYSTEM_USERS_DATATABLE_STATE_KEY,
+            JSON.stringify({
+                columns: [{ search: { search: "" } }, { search: { search: "" } }, { search: { search: "" } }, { search: { search: "" } }, { search: { search: "" } }, { search: { search: "" } }],
+                length: 10,
+                order: [[0, "asc"]],
+                search: { search: "Javier" },
+                start: 0,
+                time: Date.now(),
+            }),
+        );
+
+        render(<SystemUsersPage />);
 
         await waitFor(() => {
-            expect(mockGetSystemUsers).toHaveBeenLastCalledWith(expect.objectContaining({ status: "active" }));
+            expect(screen.getByRole("searchbox", { name: "Buscar:" })).toHaveValue("Javier");
         });
-        expect(screen.getByText("Actualizando usuarios...")).toBeInTheDocument();
-        await waitFor(() => {
-            expect(document.querySelector(".administration-users-panel .ant-spin-spinning")).toBeInTheDocument();
-        });
-        expect(window.location.search).toBe("?estado=active");
+        expect(screen.getByRole("button", { name: "Abrir detalle de Javier Castro" })).toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: "Abrir detalle de Andrea Valverde" })).not.toBeInTheDocument();
     });
 
     it("restaura estado y búsqueda desde la URL para compartir la vista filtrada", async () => {
@@ -304,16 +354,30 @@ describe("SystemUsersPage", () => {
         await waitFor(() => {
             expect(mockGetSystemUsers).toHaveBeenCalledWith(expect.objectContaining({ search: "soporte", status: "blocked" }));
         });
-        expect(screen.getByRole("radio", { name: /Bloqueados/u })).toBeChecked();
-        expect(screen.getByLabelText("Buscar usuarios")).toHaveValue("soporte");
+        expect(screen.queryByRole("radio", { name: /Bloqueados/u })).not.toBeInTheDocument();
+        expect(screen.queryByLabelText("Buscar usuarios")).not.toBeInTheDocument();
     });
 
     it("concentra las acciones de la fila en un menú contextual", async () => {
         render(<SystemUsersPage />);
 
-        fireEvent.click(await screen.findByRole("button", { name: "Más acciones para Andrea Valverde" }));
+        const actionButton = await screen.findByRole("button", { name: "Más acciones para Andrea Valverde" });
+        const tableWrapper = actionButton.closest<HTMLElement>(".administration-users-datatable-wrap");
 
-        expect(await screen.findByRole("menuitem", { name: /Ver detalle/u })).toBeInTheDocument();
+        if (!tableWrapper) {
+            throw new Error("No se encontro el contenedor de la tabla.");
+        }
+
+        vi.spyOn(tableWrapper, "getBoundingClientRect").mockReturnValue(buildDomRect({ right: 900, top: 200 }));
+        vi.spyOn(actionButton, "getBoundingClientRect").mockReturnValue(buildDomRect({ bottom: 480, right: 850 }));
+
+        fireEvent.click(actionButton);
+
+        const menu = await screen.findByRole("menu", { name: "Acciones para Andrea Valverde" });
+        expect(menu).toHaveStyle({ right: "50px", top: "286px" });
+        expect(getUserRow("Andrea Valverde")).toHaveClass("administration-users-table__row--menu-open");
+        expect(getUserRow("Javier Castro")).not.toHaveClass("administration-users-table__row--menu-open");
+        expect(screen.getByRole("menuitem", { name: /Ver detalle/u })).toBeInTheDocument();
         expect(screen.getByRole("menuitem", { name: /Copiar ID de usuario/u })).toBeInTheDocument();
         expect(screen.queryByRole("heading", { name: "Andrea Valverde" })).not.toBeInTheDocument();
 
@@ -322,7 +386,7 @@ describe("SystemUsersPage", () => {
         expect(await screen.findByRole("heading", { name: "Andrea Valverde" })).toBeInTheDocument();
     });
 
-    it("muestra ayuda de estados, alcance de exportacion y datos de detalle coherentes", async () => {
+    it("muestra ayuda de estados y datos de detalle coherentes", async () => {
         mockGetSystemUsers.mockResolvedValueOnce({
             ...mockUsersResponse,
             items: mockUsersResponse.items.map((user) => (user.email === "mflores@roccacr.com" ? { ...user, lastActivityAt: null } : user)),
@@ -334,12 +398,12 @@ describe("SystemUsersPage", () => {
 
         render(<SystemUsersPage />);
 
-        expect(await screen.findByRole("button", { name: "Exportar 5 usuarios visibles" })).toBeInTheDocument();
-        expect(screen.getByLabelText("Filtrar por estado")).toBeInTheDocument();
+        await screen.findByRole("button", { name: "Abrir detalle de Andrea Valverde" });
+        expect(screen.queryByRole("button", { name: /Exportar/u })).not.toBeInTheDocument();
+        expect(screen.queryByLabelText("Filtrar por estado")).not.toBeInTheDocument();
         expect((await screen.findAllByTitle(/Pendiente: invitación enviada/u)).length).toBeGreaterThan(0);
         expect(screen.getAllByRole("columnheader", { name: "Estado" }).length).toBeGreaterThan(0);
-        expect(screen.getAllByRole("checkbox", { name: "Seleccionar usuarios visibles" }).length).toBeGreaterThan(0);
-        expect(screen.getByText("Bloqueados").closest(".administration-users-status-filter__option")).toHaveClass("administration-users-status-filter__option--empty");
+        expect(screen.queryByRole("checkbox", { name: "Seleccionar usuarios visibles" })).not.toBeInTheDocument();
         expect(screen.getAllByText("Sin inicio registrado").length).toBeGreaterThan(0);
 
         await openUserDetail("Andrea Valverde");
@@ -349,9 +413,77 @@ describe("SystemUsersPage", () => {
         expect(within(getDetailPanel("Andrea Valverde")).getByText("Rol")).toBeInTheDocument();
         expect(screen.getByText("USR-ROCCA-0004")).toBeInTheDocument();
         expect(screen.getByRole("button", { name: "Copiar ID de usuario" })).toBeInTheDocument();
+        expect(screen.getByText("Referencias externas")).toBeInTheDocument();
+        expect(screen.getByText("NetSuite")).toBeInTheDocument();
+        expect(screen.getByText("654321")).toBeInTheDocument();
+        expect(screen.getByText("Odoo")).toBeInTheDocument();
+        expect(screen.getByText("ODOO-77")).toBeInTheDocument();
         expect(screen.getByText("No configurado")).toBeInTheDocument();
         expect(screen.getByText("Invitado por")).toBeInTheDocument();
         expect(screen.queryByText("Este usuario no admite una acción de bloqueo directa por su estado actual.")).not.toBeInTheDocument();
+    });
+
+    it("edita un usuario desde el detalle y guarda roles contra el API", async () => {
+        mockGetSystemUsers.mockResolvedValueOnce({
+            ...mockUsersResponse,
+            items: mockUsersResponse.items.map((user) => (user.publicId === "USR-ROCCA-0004" ? { ...user, orgUnit: { code: "ventas", name: "Ventas", publicId: "ORG-VENTAS" }, roles: [{ code: "ventas", name: "Ventas" }] } : user)),
+        });
+        mockGetIdentitySecurityCatalog.mockResolvedValue({ ...mockSecurityCatalog, rolePermissions: { ventas: ["lead.read"] } });
+        render(<SystemUsersPage />);
+
+        await openUserDetail("Andrea Valverde");
+        expect(await screen.findByRole("heading", { name: "Andrea Valverde" })).toBeInTheDocument();
+        fireEvent.click(within(getDetailPanel("Andrea Valverde")).getByRole("button", { name: "Editar usuario" }));
+
+        expect(await screen.findByRole("heading", { name: "Identificación" })).toBeInTheDocument();
+        expect(screen.getAllByText("Editar usuario").length).toBeGreaterThan(0);
+        expect(screen.getByLabelText("Nombre completo")).toHaveValue("Andrea Valverde");
+        expect(screen.getByLabelText("Correo")).toHaveValue("avalverde@roccacr.com");
+        fireEvent.click(screen.getByRole("button", { name: /Opciones avanzadas/u }));
+        expect(screen.getByLabelText("ID NetSuite")).toHaveValue("654321");
+
+        fireEvent.change(screen.getByLabelText("Nombre completo"), { target: { value: "Andrea Ventas" } });
+        fireEvent.change(screen.getByLabelText("Motivo de la edición"), { target: { value: "Cambio autorizado por jefatura" } });
+        fireEvent.click(screen.getByRole("button", { name: "Guardar cambios" }));
+
+        await waitFor(() => {
+            expect(mockUpdateSystemUser).toHaveBeenCalledWith("USR-ROCCA-0004", {
+                accessMethods: ["microsoft"],
+                displayName: "Andrea Ventas",
+                email: "avalverde@roccacr.com",
+                externalReferences: [
+                    { externalUserId: "654321", systemCode: "netsuite" },
+                    { externalUserId: "ODOO-77", systemCode: "odoo" },
+                ],
+                orgUnitCodes: ["ventas"],
+                reason: "Cambio autorizado por jefatura",
+                roleCode: "ventas",
+                roleCodes: ["ventas"],
+            });
+        });
+    });
+
+    it("abre el detalle al hacer clic en cualquier columna de la fila", async () => {
+        render(<SystemUsersPage />);
+
+        await screen.findByRole("button", { name: "Abrir detalle de Andrea Valverde" });
+        fireEvent.click(within(getUserRow("Andrea Valverde")).getByText("Consulta"));
+
+        expect(await screen.findByRole("heading", { name: "Andrea Valverde" })).toBeInTheDocument();
+        expect(getUserRow("Andrea Valverde")).toHaveClass("administration-users-table__row--selected");
+        expect(getUserRow("Javier Castro")).not.toHaveClass("administration-users-table__row--selected");
+    });
+
+    it("no abre el detalle al copiar el correo desde la fila", async () => {
+        const writeText = vi.fn(() => Promise.resolve());
+        Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText } });
+        render(<SystemUsersPage />);
+
+        fireEvent.click(await screen.findByRole("button", { name: "Copiar correo de Andrea Valverde" }));
+
+        expect(writeText).toHaveBeenCalledWith("avalverde@roccacr.com");
+        expect(screen.queryByRole("heading", { name: "Andrea Valverde" })).not.toBeInTheDocument();
+        Reflect.deleteProperty(navigator, "clipboard");
     });
 
     it("navega el panel de detalle con flechas de teclado segun la lista visible", async () => {
@@ -402,11 +534,77 @@ describe("SystemUsersPage", () => {
         expect(within(panel).getAllByText("Microsoft")).toHaveLength(1);
         expect(within(panel).queryByRole("button", { name: "Bloquear usuario" })).not.toBeInTheDocument();
         expect(within(panel).queryByRole("tab")).not.toBeInTheDocument();
-        expect(within(panel).getByRole("button", { name: "Editar usuario" }).closest(".ant-drawer-footer")).toBeInTheDocument();
+        expect(within(panel).getByRole("button", { name: "Desactivar usuario" }).closest(".ant-drawer-footer")).toBeInTheDocument();
 
         fireEvent.click(within(panel).getByRole("button", { name: "Más acciones para Mariana Flores" }));
 
         expect(await screen.findByRole("menuitem", { name: /Bloquear usuario/u })).toBeInTheDocument();
+    });
+
+    it("cambia estado desde el menu de fila con motivo auditable y refresca", async () => {
+        mockUpdateSystemUserStatus.mockResolvedValue({ ...mockUsersResponse.items[0], status: "active" });
+        render(<SystemUsersPage />);
+
+        fireEvent.click(await screen.findByRole("button", { name: "Más acciones para Andrea Valverde" }));
+        fireEvent.click(await screen.findByRole("menuitem", { name: "Reactivar" }));
+        fireEvent.change(await screen.findByLabelText(/Motivo de auditoría/u), { target: { value: "Reactivación autorizada por jefatura" } });
+        fireEvent.click(screen.getByRole("button", { name: "Confirmar acción" }));
+
+        await waitFor(() => {
+            expect(mockUpdateSystemUserStatus).toHaveBeenCalledWith("USR-ROCCA-0004", {
+                reason: "Reactivación autorizada por jefatura",
+                status: "active",
+            });
+        });
+        await waitFor(() => {
+            expect(mockGetSystemUsers).toHaveBeenCalledTimes(2);
+        });
+    });
+
+    it("bloquea y desbloquea desde el menu de fila usando el API", async () => {
+        mockUpdateSystemUserStatus.mockResolvedValue({ ...mockUsersResponse.items[2], status: "blocked" });
+        render(<SystemUsersPage />);
+
+        fireEvent.click(await screen.findByRole("button", { name: "Más acciones para Mariana Flores" }));
+        fireEvent.click(await screen.findByRole("menuitem", { name: "Bloquear" }));
+        fireEvent.change(await screen.findByLabelText(/Motivo de auditoría/u), { target: { value: "Bloqueo temporal solicitado por seguridad" } });
+        fireEvent.click(screen.getByRole("button", { name: "Confirmar acción" }));
+
+        await waitFor(() => {
+            expect(mockUpdateSystemUserStatus).toHaveBeenCalledWith("USR-ROCCA-0002", {
+                reason: "Bloqueo temporal solicitado por seguridad",
+                status: "blocked",
+            });
+        });
+    });
+
+    it("ejecuta la accion principal desde el detalle del usuario", async () => {
+        mockUpdateSystemUserStatus.mockResolvedValue({ ...mockUsersResponse.items[4], status: "active" });
+        render(<SystemUsersPage />);
+
+        await openUserDetail("Soporte Externo");
+        fireEvent.click(screen.getByRole("button", { name: "Desbloquear usuario" }));
+        const modalWrap = (await screen.findByLabelText(/Motivo de auditoría/u)).closest<HTMLElement>(".ant-modal-wrap");
+
+        if (!modalWrap) {
+            throw new Error("No se encontro la capa del modal de accion.");
+        }
+
+        expect(modalWrap).toHaveStyle({ zIndex: "1400" });
+        expect(screen.getByRole("heading", { name: "Desbloquear usuario" })).toBeInTheDocument();
+        expect(screen.getByText("Resumen efectivo")).toBeInTheDocument();
+        expect(screen.getByText("Usuario: Soporte Externo")).toBeInTheDocument();
+        expect(screen.getByText("Estado: Bloqueado -> Activo")).toBeInTheDocument();
+
+        fireEvent.change(await screen.findByLabelText(/Motivo de auditoría/u), { target: { value: "Acceso restaurado por soporte interno" } });
+        fireEvent.click(screen.getByRole("button", { name: "Confirmar acción" }));
+
+        await waitFor(() => {
+            expect(mockUpdateSystemUserStatus).toHaveBeenCalledWith("USR-ROCCA-0005", {
+                reason: "Acceso restaurado por soporte interno",
+                status: "active",
+            });
+        });
     });
 
     it("muestra un guion en actividad vacía sin perder el motivo para lectores de pantalla", async () => {
@@ -561,7 +759,6 @@ describe("SystemUsersPage", () => {
         expect(await screen.findByText("Ingresa el nombre completo.")).toBeInTheDocument();
         expect(screen.getByText("Ingresa el correo.")).toBeInTheDocument();
         expect(screen.getByText("Selecciona al menos un rol.")).toBeInTheDocument();
-        expect(screen.getByText("Indica el motivo del alta.")).toBeInTheDocument();
         expect(mockCreateSystemUser).not.toHaveBeenCalled();
 
         fireEvent.change(screen.getByLabelText("Correo"), { target: { value: "rocca@" } });

@@ -1,3 +1,9 @@
+/**
+ * Filtro y búsqueda del directorio reflejados en la URL.
+ *
+ * Usa `replaceState` para no llenar el historial con cada tecla. Escribe en
+ * una microtarea porque la raíz limpia la query de la ruta en su propio efecto.
+ */
 import { useEffect, useState } from "react";
 
 import { parseSystemUserFilter, type SystemUserFilter } from "../system-users.model";

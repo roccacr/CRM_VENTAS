@@ -33,6 +33,9 @@ export const IDENTITY_ROLE_PERMISSIONS_ROUTE = `${IDENTITY_ROLE_DETAIL_ROUTE}/pe
 /** Ruta relativa para consultar detalle de un usuario por publicId. */
 export const IDENTITY_USER_DETAIL_ROUTE = `${IDENTITY_USERS_ROUTE}/:userPublicId`;
 
+/** Ruta relativa para cambiar estado operativo de un usuario. */
+export const IDENTITY_USER_STATUS_ROUTE = `${IDENTITY_USER_DETAIL_ROUTE}/status`;
+
 /** Ruta relativa para administrar roles, modulos y overrides de un usuario. */
 export const IDENTITY_USER_ACCESS_ROUTE = `${IDENTITY_USER_DETAIL_ROUTE}/access`;
 

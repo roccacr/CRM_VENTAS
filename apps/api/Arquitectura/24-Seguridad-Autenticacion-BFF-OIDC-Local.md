@@ -169,6 +169,14 @@ Decision P0-S1A:
 - la revocacion retroactiva de sesiones ya abiertas por bloqueo de identidad es parte obligatoria del runtime, junto con token opaco hasheado, rotacion de refresh y validacion de version de permisos;
 - mientras tanto, el corte autorizado sigue revalidando usuario activo y permisos efectivos en cada request protegido.
 
+### Access replacement revocation: 2026-10-08
+
+Replacing a user's access through the access-management API now locks the target user, replaces role/module/override assignments, increments permission_version_user, revokes active CRM sessions and refresh tokens, and records user_access_replaced in one MySQL transaction. Audit failure rolls back the entire mutation. Successful access replacement requires a new login, including when the replacement retains the same role; old refresh cookies cannot resume the previous session.
+
+Authorization remains database-backed on every protected request through IdentityService.getCurrentUser and IdentityProfileRepository. The opaque cookie identifies a session; it does not carry authoritative role claims. This is a stateful BFF, not a stateless JWT design. No permission cache or additional parallel authorization guard is introduced. Requests already authorized before the transaction commits are in flight; this change does not cancel them retroactively.
+
+Removed user-role mappings, memberships, and overrides are retained as inactive, revoked history. Shared sec_role_permission rows remain valid for other users assigned to the role. They must not be deleted when one user loses Owner. An exclusively Sales replacement specifies roleCodes=[ventas], orgUnitCodes=[ventas], and permissionOverrides=[]; explicit unrelated overrides or memberships are separate access inputs, not implicitly inherited Owner grants. Existing self-demotion protection for Owner remains unchanged.
+
 ## Cookies obligatorias
 
 Toda cookie de sesion o token debe usar:

@@ -1,3 +1,9 @@
+/**
+ * Única salida visual de la raíz.
+ *
+ * Elige login, verificación, problema de acceso, no encontrada, prohibido o el
+ * shell. Ninguna vista privada se pinta mientras la sesión sigue en duda.
+ */
 import { AccessProblemScreen, ForbiddenScreen, NotFoundScreen, SessionStatusScreen } from "../components/feedback/AuthStateScreens";
 import { AdministrationSectionPage } from "../modules/administration/pages/AdministrationSectionPage";
 import { type LoginCredentials, LoginPage } from "../modules/auth/LoginPage";
@@ -6,19 +12,31 @@ import type { IdentityUser } from "../services/auth/identity-contracts";
 import { type AppRoute, AUTH_LOGIN_PATH, DEFAULT_HOME_PATH, getAppRoute, getWorkspaceHomePath, isKnownPath } from "./app-routes";
 import type { AuthState, SessionStatusPhase } from "./auth-state";
 
+/** Datos que la raíz ya resolvió. Este componente solo elige qué pantalla pintar. */
 export interface AppRouteContentProps {
+    /** Aviso del reintento de sesión. `null` cuando no hay un intento en curso. */
     readonly authRetryFeedback: string | null;
+    /** Estado de autenticación ya clasificado. */
     readonly authState: AuthState;
+    /** Evita disparar otro reintento mientras el anterior no termina. */
     readonly isAuthRetryDisabled: boolean;
     /** Login Microsoft en curso o esta ventana es el popup que vuelve del callback. */
     readonly isMicrosoftSessionPending: boolean;
+    /** El POST de credenciales locales todavía no respondió. */
     readonly isSubmittingLogin: boolean;
+    /** Error visible del login. `null` cuando no hay fallo. */
     readonly loginError: string | null;
+    /** Envía correo y contraseña al BFF. No guarda la contraseña. */
     readonly onLocalLogin: (credentials: LoginCredentials) => Promise<void>;
+    /** Cierra la sesión en el BFF. */
     readonly onLogout: () => void;
+    /** Pide la URL de Microsoft y abre popup o redirect. */
     readonly onMicrosoftLogin: () => Promise<void>;
+    /** Cambia la ruta privada sin decidir si el usuario puede verla. */
     readonly onNavigate: (nextPath: string) => void;
+    /** Vuelve a leer sesión y perfil. */
     readonly onRetryAuthCheck: () => void;
+    /** Ruta actual, sin query ni hash. */
     readonly path: string;
 }
 
@@ -81,6 +99,7 @@ export function AppRouteContent({ authRetryFeedback, authState, isAuthRetryDisab
                 currentUser={authState.profile.user}
                 effectivePermissions={authState.profile.permissions}
                 initialWorkspaceCode={route.workspaceCode}
+                orgUnits={authState.profile.orgUnits}
                 onLogout={onLogout}
                 onMenuItemSelect={onNavigate}
                 onWorkspaceChange={(nextWorkspaceCode) => {

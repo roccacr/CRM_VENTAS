@@ -1,3 +1,10 @@
+/**
+ * Carga paginada del directorio de usuarios.
+ *
+ * Filtro, búsqueda y orden se resuelven en el BFF. La búsqueda espera un
+ * instante para no consultar en cada tecla. Una respuesta de una consulta
+ * anterior se descarta si el usuario ya cambió los filtros.
+ */
 import { useEffect, useRef, useState } from "react";
 
 import { getSystemUsers } from "../../../services/auth/auth-service";

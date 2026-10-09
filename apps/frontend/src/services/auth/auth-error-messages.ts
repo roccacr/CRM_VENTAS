@@ -1,3 +1,10 @@
+/**
+ * Mensajes visibles de login.
+ *
+ * Unifica 400, 401, 403 y 429 para no revelar si el correo existe o si la
+ * cuenta está bloqueada. El fallo de CSRF sí se distingue, porque la acción
+ * correcta es recargar, no reescribir la contraseña.
+ */
 import { ApiClientError } from "../api/api-client";
 import { isMicrosoftLoginErrorMessage } from "./microsoft-popup-login";
 

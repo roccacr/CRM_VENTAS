@@ -1,3 +1,9 @@
+/**
+ * Barra del directorio: búsqueda, estado y densidad.
+ *
+ * La búsqueda y el filtro viajan a la URL y de ahí al API. La densidad solo
+ * cambia el ritmo visual de la tabla.
+ */
 import ColumnHeightOutlined from "@ant-design/icons/ColumnHeightOutlined";
 import FilterOutlined from "@ant-design/icons/FilterOutlined";
 import SearchOutlined from "@ant-design/icons/SearchOutlined";

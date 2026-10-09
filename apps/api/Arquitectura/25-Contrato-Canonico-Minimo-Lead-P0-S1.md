@@ -28,6 +28,27 @@ Cada campo queda clasificado asi:
 
 El objetivo no es tener todos los campos perfectos desde el dia uno. El objetivo es evitar que el nuevo CRM copie nombres malos, estructuras mezcladas o decisiones heredadas sin entenderlas.
 
+## Decision vigente sobre origen del lead
+
+El siguiente trabajo de Leads no empieza por pantalla. Empieza, despues de cerrar Administracion, por el contrato de entrada NetSuite -> API.
+
+Reglas vigentes:
+
+- NetSuite sera tratado como proveedor externo de entrada, no como modelo interno del CRM;
+- el adapter de integracion traducira el payload externo a este contrato canonico;
+- el core del CRM no recibe nombres de proveedor, IDs numericos heredados ni estructuras legacy;
+- el CRM viejo solo se revisa en lectura para entender datos reales y decidir mapeos;
+- esta definicion no autoriza crear tablas, DTOs, endpoints, jobs ni migraciones de Leads todavia.
+
+El contrato NetSuite -> API debe quedar respondido antes de implementar runtime:
+
+1. evento que dispara el envio;
+2. payload exacto;
+3. campos obligatorios y opcionales;
+4. regla de duplicados;
+5. comportamiento si responsable o catalogos no existen;
+6. actor de auditoria y texto visible en timeline.
+
 ## Que es un lead
 
 Un lead es un expediente comercial inicial.

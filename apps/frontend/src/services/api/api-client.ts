@@ -1,3 +1,10 @@
+/**
+ * Cliente HTTP del BFF.
+ *
+ * Envía la cookie de sesión y el token CSRF solo en métodos que cambian estado.
+ * Un 401 o 409 renueva la sesión una sola vez. El cliente no lee ni guarda
+ * access tokens, refresh tokens ni secretos de Microsoft.
+ */
 import { buildApiUrl } from "../../config/frontend-env";
 
 const CSRF_HEADER_NAME = "X-CRM-CSRF-Token";
@@ -40,8 +47,10 @@ export interface ApiRequestOptions {
 
 /** Una sola renovación en vuelo. Las llamadas que reciben 401 esperan esta promesa. */
 let refreshPromise: Promise<void> | null = null;
+/** Token CSRF en memoria. No se persiste: se vuelve a leer de la sesión del BFF. */
 let csrfToken: string | null = null;
 
+/** POST, PUT, PATCH y DELETE exigen CSRF. GET no cambia estado. */
 const isMutableMethod = (method: string): boolean => MUTABLE_METHODS.has(method.toUpperCase());
 
 /**
@@ -60,6 +69,7 @@ const parseResponseBody = async (response: Response): Promise<unknown> => {
     return response.json();
 };
 
+/** Acepta solo un `csrfToken` string no vacío. Un cuerpo sin ese campo no inventa uno. */
 const readCsrfTokenFromBody = (body: unknown): string | null => {
     if (!body || typeof body !== "object" || !("csrfToken" in body)) {
         return null;
@@ -69,6 +79,7 @@ const readCsrfTokenFromBody = (body: unknown): string | null => {
     return typeof nextCsrfToken === "string" && nextCsrfToken.length > 0 ? nextCsrfToken : null;
 };
 
+/** Actualiza el token en memoria cuando el BFF lo rota en una respuesta JSON. */
 const rememberCsrfTokenFromBody = (body: unknown): void => {
     const nextCsrfToken = readCsrfTokenFromBody(body);
 
@@ -77,10 +88,12 @@ const rememberCsrfTokenFromBody = (body: unknown): void => {
     }
 };
 
+/** Tras logout el token deja de servir. La siguiente mutación tendrá que pedir sesión de nuevo. */
 const clearCsrfToken = (): void => {
     csrfToken = null;
 };
 
+/** Pide `/identity/session` solo para obtener el CSRF. No abre el shell ni guarda la sesión en estado de React. */
 const fetchIdentitySessionForCsrf = async (): Promise<void> => {
     const response = await fetch(buildApiUrl(IDENTITY_SESSION_PATH), {
         cache: "no-store",
@@ -96,6 +109,12 @@ const fetchIdentitySessionForCsrf = async (): Promise<void> => {
     rememberCsrfTokenFromBody(responseBody);
 };
 
+/**
+ * Garantiza CSRF antes de una mutación.
+ *
+ * No lo pide si el método es de lectura, si ya hay token, o si la propia
+ * llamada es la de sesión: esa respuesta es la que lo entrega.
+ */
 const ensureCsrfTokenForMutableRequest = async (method: string, path: string): Promise<void> => {
     if (!isMutableMethod(method) || csrfToken || path === IDENTITY_SESSION_PATH) {
         return;

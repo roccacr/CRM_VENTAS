@@ -1,5 +1,18 @@
 # 00 - Indice de Arquitectura API
 
+## Implementation Update - 2026-10-09
+
+Read [catalog API/schema](35-Catalog-API-and-Schema.md), [migration runbook](03-Base-Datos-y-Migracion.md), [release notes](../../../CHANGELOG.md) and [closure evidence](34-Cierre-Operativo-Administracion-P0-S1.md) for current Administration behavior. Complete ETL and Owner acceptance remain separate pending gates.
+
+## Entrada de continuidad 2026-10-08
+
+Comenzar con [README raiz](../../../README.md), ley de producto y [34 - Traspaso y cierre](34-Cierre-Operativo-Administracion-P0-S1.md). Para frontend: [25 - Continuidad](../../frontend/Arquitectura/25-Continuidad-Administracion.md).
+
+El documento 34 consolida estado inspeccionado, contratos HTTP reales, decisiones scoped, migraciones, hallazgos y backlog. Los mapas 08/21/22 quedan como antecedentes de planificacion cuando describen pausas o carpetas futuras; no son inventario runtime. Documentos comerciales 10-20 y 23/25 conservan analisis y vision, no acreditan implementacion ni autorizan avanzar antes del cierre.
+
+Los SQL/seed iniciales son baselines historicos; cambios posteriores viven en migrations/schema-only y deben contrastarse con historial real antes de ejecutar. No usar conteos seed iniciales como total vigente.
+
+
 ## Proposito
 
 Este indice permite navegar la documentacion tecnica del API del CRM.
@@ -40,12 +53,13 @@ Estos documentos se consultan solo cuando se revise MySQL, seguridad o bootstrap
 2. `29-Modelo-Fisico-MySQL-Identidad-P0-S1.md`
 3. `30-Identidad-Canonica-y-Referencias-Externas.md`
 4. `32-Seeds-Identidad-P0-S1.md`
-5. `Diccionario-Datos/01-Identidad-y-Permisos.md`
-6. `SQL/001_identity_schema_p0_s1.sql`
-7. `SQL/002_identity_seed_p0_s1.sql`
-8. `SQL/003_identity_login_readiness_p0_s1.sql`
-9. `21-P0-Direccion-Tecnica-Construccion-Pausada.md`
-10. `22-Mapa-de-Implementacion-API.md`
+5. `34-Cierre-Operativo-Administracion-P0-S1.md`
+6. `Diccionario-Datos/01-Identidad-y-Permisos.md`
+7. `SQL/001_identity_schema_p0_s1.sql`
+8. `SQL/002_identity_seed_p0_s1.sql`
+9. `SQL/003_identity_login_readiness_p0_s1.sql`
+10. `21-P0-Direccion-Tecnica-Construccion-Pausada.md`
+11. `22-Mapa-de-Implementacion-API.md`
 
 ## Lectura futura, fuera de P0-S1
 
@@ -96,6 +110,7 @@ Solo se leen cuando `00-Producto-CRM-TINK-y-P0.md` o una decision aprobada por e
 | `31-Contrato-Identidad-y-Permisos-P0-S1.md` | Contrato aprobado de identidad P0-S1A: roles, areas, permisos efectivos, overrides directos, denegaciones y revocacion. Delegacion temporal queda fuera. |
 | `32-Seeds-Identidad-P0-S1.md` | Datos iniciales aprobables para roles, permisos, areas, sistemas externos y usuario owner. Los seeds no se ejecutan en la validacion schema-only. |
 | `33-Contrato-API-Identidad-P0-S1.md` | Contrato conceptual y flujo operativo de sesion, usuario actual, login local, refresh, logout, roles, areas y permisos efectivos. No es OpenAPI ejecutable. |
+| `34-Cierre-Operativo-Administracion-P0-S1.md` | Guia de cierre operativo para validar usuarios, roles, catalogos, auditoria, permisos scoped, pruebas automaticas y validacion manual antes de construir mas pantallas. |
 | `Diccionario-Datos/01-Identidad-y-Permisos.md` | Diccionario de datos de identidad y permisos en lenguaje claro para ingenieria y negocio. |
 | `SQL/001_identity_schema_p0_s1.sql` | Artefacto SQL controlado del esquema MySQL P0-S1 de identidad para instalacion limpia. El baseline vigente ya incluye estructuras de login seguro; una base existente anterior debe evolucionar con `SQL/003`. |
 | `SQL/002_identity_seed_p0_s1.sql` | Artefacto SQL controlado de seeds P0-S1 de identidad. Los catalogos no crean usuarios; el primer owner Roberto fue autorizado por la ley `0.3.21` y su crosswalk externo fue precisado por la ley `0.3.22`. |
@@ -124,6 +139,7 @@ Antes de crear o modificar codigo del API, abrir:
 28-Matriz-Roles-Permisos-Areas-P0-S1.md
 31-Contrato-Identidad-y-Permisos-P0-S1.md
 33-Contrato-API-Identidad-P0-S1.md
+34-Cierre-Operativo-Administracion-P0-S1.md
 ```
 
 Esa lectura define:
@@ -133,7 +149,9 @@ Esa lectura define:
 - que contrato API conceptual debe respetarse;
 - por que solo el runtime minimo de identidad esta autorizado y el runtime comercial sigue prohibido.
 
-El siguiente slice aprobado en papel es identidad P0-S1A. El documento `23-Alcance-P0-Vertical-Leads.md` se consulta despues de aprobar avanzar mas alla de identidad.
+Antes de pasar a cualquier contrato comercial, cerrar `34-Cierre-Operativo-Administracion-P0-S1.md` con evidencia.
+
+El siguiente slice aprobado en papel es identidad/Administracion P0-S1A. El documento `23-Alcance-P0-Vertical-Leads.md` se consulta despues de aprobar avanzar mas alla de Administracion. Para Leads, el primer paso posterior sera contrato NetSuite -> API, no pantalla.
 
 ## Flujo comercial oficial
 

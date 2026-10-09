@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Headers, HttpCode, Inject, Logger, NotFoundException, Param, Post, Query, Req, Res, UnauthorizedException } from "@nestjs/common";
+import { Body, Controller, Get, Headers, HttpCode, Inject, Logger, NotFoundException, Param, Patch, Post, Query, Req, Res, UnauthorizedException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { ApiBody, ApiOkResponse, ApiOperation, ApiTags } from "@nestjs/swagger";
 import type { FastifyReply } from "fastify";
@@ -8,9 +8,27 @@ import { createSignedCsrfToken, isValidSignedCsrfToken } from "../../../common/s
 import { CSRF_COOKIE_NAME, MICROSOFT_OIDC_CHALLENGE_COOKIE_NAME, REFRESH_COOKIE_NAME, ROOT_COOKIE_PATH, SESSION_COOKIE_NAME } from "../../../common/security/http-security.constants.js";
 import { CompleteLocalResetDto, LocalLoginDto, RequestLocalResetDto } from "./dto/local-auth.dto.js";
 import { MicrosoftCallbackDto } from "./dto/microsoft-auth.dto.js";
-import { CreateSystemUserDto, ListSystemUsersQueryDto } from "./dto/system-users.dto.js";
+import { CreateSystemUserDto, ListSystemUsersQueryDto, UpdateSystemUserDto, UpdateSystemUserStatusDto } from "./dto/system-users.dto.js";
 import { type AuthenticatedSessionResult, IdentityService, MICROSOFT_ACCOUNT_NOT_ASSIGNED_MESSAGE, MICROSOFT_ACCOUNT_NOT_AUTHORIZED_MESSAGE } from "./identity.service.js";
-import { IDENTITY_CONTROLLER_PATH, IDENTITY_LOCAL_COMPLETE_RESET_ROUTE, IDENTITY_LOCAL_LOGIN_ROUTE, IDENTITY_LOCAL_REQUEST_RESET_ROUTE, IDENTITY_LOGOUT_ROUTE, IDENTITY_ME_PHOTO_ROUTE, IDENTITY_ME_ROUTE, IDENTITY_MICROSOFT_CALLBACK_ROUTE, IDENTITY_MICROSOFT_START_ROUTE, IDENTITY_REFRESH_PATH, IDENTITY_REFRESH_ROUTE, IDENTITY_REVOKE_SESSION_ROUTE, IDENTITY_SESSION_ROUTE, IDENTITY_SESSIONS_ROUTE, IDENTITY_USER_DETAIL_ROUTE, IDENTITY_USERS_ROUTE } from "./identity-route.constants.js";
+import {
+    IDENTITY_CONTROLLER_PATH,
+    IDENTITY_LOCAL_COMPLETE_RESET_ROUTE,
+    IDENTITY_LOCAL_LOGIN_ROUTE,
+    IDENTITY_LOCAL_REQUEST_RESET_ROUTE,
+    IDENTITY_LOGOUT_ROUTE,
+    IDENTITY_ME_PHOTO_ROUTE,
+    IDENTITY_ME_ROUTE,
+    IDENTITY_MICROSOFT_CALLBACK_ROUTE,
+    IDENTITY_MICROSOFT_START_ROUTE,
+    IDENTITY_REFRESH_PATH,
+    IDENTITY_REFRESH_ROUTE,
+    IDENTITY_REVOKE_SESSION_ROUTE,
+    IDENTITY_SESSION_ROUTE,
+    IDENTITY_SESSIONS_ROUTE,
+    IDENTITY_USER_DETAIL_ROUTE,
+    IDENTITY_USER_STATUS_ROUTE,
+    IDENTITY_USERS_ROUTE,
+} from "./identity-route.constants.js";
 
 /**
  * Indica si el navegador ya tiene cookie CSRF con el formato que emite el BFF.
@@ -99,6 +117,28 @@ export class IdentityController {
     @ApiBody({ type: CreateSystemUserDto })
     async createUser(@Body() body: CreateSystemUserDto, @Req() request: CookieRequest, @Headers("user-agent") userAgent?: string) {
         return this.identity.createSystemUser(request.cookies[SESSION_COOKIE_NAME], body, request.ip, userAgent);
+    }
+
+    /**
+     * Edita datos administrativos, roles, areas y referencias externas.
+     */
+    @Patch(IDENTITY_USER_DETAIL_ROUTE)
+    @HttpCode(200)
+    @ApiOperation({ summary: "Editar usuario interno del sistema." })
+    @ApiBody({ type: UpdateSystemUserDto })
+    async updateUser(@Param("userPublicId") userPublicId: string, @Body() body: UpdateSystemUserDto, @Req() request: CookieRequest, @Headers("user-agent") userAgent?: string) {
+        return this.identity.updateSystemUser(request.cookies[SESSION_COOKIE_NAME], userPublicId, body, { ipAddress: request.ip, userAgent });
+    }
+
+    /**
+     * Cambia estado operativo de un usuario con motivo auditable.
+     */
+    @Patch(IDENTITY_USER_STATUS_ROUTE)
+    @HttpCode(200)
+    @ApiOperation({ summary: "Cambiar estado operativo de un usuario." })
+    @ApiBody({ type: UpdateSystemUserStatusDto })
+    async updateUserStatus(@Param("userPublicId") userPublicId: string, @Body() body: UpdateSystemUserStatusDto, @Req() request: CookieRequest, @Headers("user-agent") userAgent?: string) {
+        return this.identity.updateSystemUserStatus(request.cookies[SESSION_COOKIE_NAME], userPublicId, body, { ipAddress: request.ip, userAgent });
     }
 
     /**

@@ -1,5 +1,10 @@
 # 00 - Ley de Producto CRM TINK y P0 Frontend
 
+## Continuidad vigente 2026-10-08
+
+La cabecera siguiente conserva su corte historico. Administracion ya incluye usuarios, roles, auditoria y catalogos compartidos scoped por modulo. El inventario runtime, decisiones y pendientes estan en [25 - Continuidad](25-Continuidad-Administracion.md) y en el cierre API 34. Los planes posteriores del propietario sustituyen la propuesta inicial de permisos catalogo globales. La prioridad sigue siendo cerrar Administracion antes del contrato NetSuite -> API y de UI Leads.
+
+
 | Campo | Valor |
 | --- | --- |
 | Version | `0.3.17` |

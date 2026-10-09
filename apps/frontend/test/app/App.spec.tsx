@@ -148,6 +148,16 @@ const securityCatalogResponse = {
                         { code: "estimate.approve", description: "Permiso sensible para aprobar estimaciones.", name: "Aprobar estimación", sensitive: true },
                     ],
                 },
+                {
+                    code: "catalog_project",
+                    name: "Proyectos",
+                    permissions: [
+                        { code: "ventas.catalog_project.read", description: "Permite ver proyectos.", name: "Ver proyectos", sensitive: false },
+                        { code: "ventas.catalog_project.create", description: "Permite crear proyectos.", name: "Crear proyecto", sensitive: false },
+                        { code: "ventas.catalog_project.update", description: "Permite editar proyectos.", name: "Editar proyecto", sensitive: false },
+                        { code: "ventas.catalog_project.inactivate", description: "Permite inactivar proyectos.", name: "Inactivar proyecto", sensitive: false },
+                    ],
+                },
             ],
         },
         {
@@ -161,6 +171,16 @@ const securityCatalogResponse = {
                         { code: "campaign.read", description: "Permite ver campañas activas.", name: "Ver campañas", sensitive: false },
                         { code: "campaign.create", description: "Permite crear campañas.", name: "Crear campaña", sensitive: false },
                         { code: "source.update", description: "Permite modificar fuentes de tráfico.", name: "Editar fuentes", sensitive: false },
+                    ],
+                },
+                {
+                    code: "catalog_project",
+                    name: "Proyectos",
+                    permissions: [
+                        { code: "mercadeo.catalog_project.read", description: "Permite ver proyectos.", name: "Ver proyectos", sensitive: false },
+                        { code: "mercadeo.catalog_project.create", description: "Permite crear proyectos.", name: "Crear proyecto", sensitive: false },
+                        { code: "mercadeo.catalog_project.update", description: "Permite editar proyectos.", name: "Editar proyecto", sensitive: false },
+                        { code: "mercadeo.catalog_project.inactivate", description: "Permite inactivar proyectos.", name: "Inactivar proyecto", sensitive: false },
                     ],
                 },
             ],
@@ -672,7 +692,7 @@ describe("App", () => {
             within(administrationMenu)
                 .getAllByRole("button")
                 .map((option) => option.textContent),
-        ).toEqual(["Usuarios", "Roles y seguridad", "Auditoría"]);
+        ).toEqual(["Usuarios", "Roles y seguridad", "Auditoría", "Catálogos"]);
     });
 
     it("mantiene abierto el modulo actual aunque venza el cierre diferido de otro modulo", async () => {
@@ -731,27 +751,49 @@ describe("App", () => {
         expect(screen.queryByRole("button", { name: "Nuevo rol" })).not.toBeInTheDocument();
         expect(screen.getByRole("button", { name: "Guardar cambios 0" })).toBeInTheDocument();
         expect(screen.queryByRole("button", { name: "Nueva acción" })).not.toBeInTheDocument();
-        expect(screen.getByRole("button", { name: /Ventas.*3\/11/ })).toBeInTheDocument();
-        expect(screen.getByRole("button", { name: /Mercadeo.*0\/3/ })).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: /Ventas.*3\/15/ })).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: /Mercadeo.*0\/7/ })).toBeInTheDocument();
+        const moduleGroups = screen.getByRole("region", { name: "Módulos del sistema" });
+        const operationalGroupTrigger = within(moduleGroups).getByRole("button", { name: /Módulos operativos.*4 módulos/ });
+        expect(operationalGroupTrigger).toHaveAttribute("aria-expanded", "true");
+        expect(within(moduleGroups).queryByRole("button", { name: /Catálogos/ })).not.toBeInTheDocument();
+        expect(within(moduleGroups).queryByRole("button", { name: /Proyectos.*0\/4/ })).not.toBeInTheDocument();
         expect(screen.getByRole("region", { name: "Leads" })).toBeInTheDocument();
         expect(screen.getByRole("region", { name: "Oportunidades" })).toBeInTheDocument();
         expect(screen.getByRole("region", { name: "Estimaciones" })).toBeInTheDocument();
+        const sharedCatalogsButton = screen.getByRole("button", { name: /Catálogos compartidos.*0\/4/i });
+        expect(sharedCatalogsButton).toHaveAttribute("aria-expanded", "false");
+        expect(screen.queryByRole("region", { name: "Proyectos" })).not.toBeInTheDocument();
+        await user.click(sharedCatalogsButton);
+        expect(screen.getByRole("region", { name: "Proyectos" })).toBeInTheDocument();
         expect(screen.getAllByText("Mercadeo").length).toBeGreaterThan(0);
         expect(screen.getAllByText("Formalización").length).toBeGreaterThan(0);
         expect(screen.getAllByText("Contabilidad").length).toBeGreaterThan(0);
         expect(screen.queryByRole("checkbox", { name: /Crear lead/i })).not.toBeInTheDocument();
-        await user.click(screen.getByRole("button", { name: /Leads.*5 acciones/i }));
+        expect(screen.queryByText(/Permisos agrupados por vista/u)).not.toBeInTheDocument();
+        expect(screen.getByText("Administración / Roles y seguridad")).toBeInTheDocument();
+        await user.click(screen.getByRole("button", { name: /Leads.*\/5/i }));
         expect(screen.getByRole("checkbox", { name: /Crear lead/i })).toBeChecked();
 
-        await user.click(screen.getByRole("button", { name: /Mercadeo.*0\/3/ }));
+        expect(operationalGroupTrigger).toHaveAttribute("aria-expanded", "true");
+        await user.click(screen.getByRole("button", { name: /Mercadeo.*0\/7/ }));
 
         expect(screen.getByRole("heading", { name: "Mercadeo" })).toBeInTheDocument();
         expect(screen.getByRole("region", { name: "Campañas" })).toBeInTheDocument();
         expect(screen.queryByRole("checkbox", { name: /Ver campañas/i })).not.toBeInTheDocument();
-        await user.click(screen.getByRole("button", { name: /Campañas.*3 acciones/i }));
+        await user.click(screen.getByRole("button", { name: /Campañas.*\/3/i }));
         expect(screen.getByRole("checkbox", { name: /Ver campañas/i })).not.toBeChecked();
         expect(screen.queryByText("Sistemas")).not.toBeInTheDocument();
         expect(screen.getByRole("button", { name: "Auditoría" })).toBeInTheDocument();
+
+        await user.clear(screen.getByLabelText("Buscar permiso"));
+        await user.type(screen.getByLabelText("Buscar permiso"), "proy");
+        const filteredSharedCatalogsButton = await screen.findByRole("button", { name: /Catálogos compartidos.*0\/4/i });
+        await user.click(filteredSharedCatalogsButton);
+        await waitFor(() => {
+            expect(screen.queryByRole("region", { name: "Campañas" })).not.toBeInTheDocument();
+            expect(screen.getByRole("region", { name: "Proyectos" })).toBeInTheDocument();
+        });
 
         expect(fetchMock.mock.calls.filter(([input]) => getRequestPath(input) === "/identity/session")).toHaveLength(sessionCallsBeforeNavigation);
         expect(fetchMock.mock.calls.filter(([input]) => getRequestPath(input) === "/identity/me")).toHaveLength(profileCallsBeforeNavigation);
@@ -865,6 +907,31 @@ describe("App", () => {
                 method: "POST",
             }),
         );
+    });
+
+    it("despliega las opciones de catalogos en el menu movil de administracion", async () => {
+        const user = userEvent.setup();
+        mockIdentityFetch({ profile: authenticatedProfile, session: authenticatedSession });
+        window.history.replaceState(null, "", "/home/administration");
+
+        render(<App />);
+
+        await expectAdministrationHomeHeading();
+        await user.click(screen.getByRole("button", { name: "Abrir menú de navegación" }));
+        const mobileDrawer = await screen.findByRole("dialog", { name: "Menú móvil de navegación" });
+        const catalogsTrigger = within(mobileDrawer).getByRole("button", { name: "Catálogos" });
+
+        expect(catalogsTrigger).toHaveAttribute("aria-expanded", "false");
+        expect(within(mobileDrawer).queryByRole("button", { name: "Proyectos" })).not.toBeInTheDocument();
+
+        await user.click(catalogsTrigger);
+
+        expect(catalogsTrigger).toHaveAttribute("aria-expanded", "true");
+        expect(
+            within(within(mobileDrawer).getByRole("group", { name: "Opciones de Catálogos" }))
+                .getAllByRole("button")
+                .map((button) => button.textContent),
+        ).toEqual(["Proyectos", "Campañas", "Clases", "Corredores", "Expedientes", "Subsidiarias", "Ubicaciones"]);
     });
 
     it("cierra sesion desde el menu movil y vuelve al login", async () => {

@@ -1,3 +1,9 @@
+/**
+ * Tabla de usuarios con Ant Design.
+ *
+ * El cuerpo hace scroll y el encabezado queda fijo. Abrir el menú de una fila
+ * no abre el detalle: esas acciones viven en controles separados.
+ */
 import CopyOutlined from "@ant-design/icons/CopyOutlined";
 import EllipsisOutlined from "@ant-design/icons/EllipsisOutlined";
 import EyeOutlined from "@ant-design/icons/EyeOutlined";

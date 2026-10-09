@@ -1,3 +1,4 @@
+import { ConflictException } from "@nestjs/common";
 import { describe, expect, it } from "vitest";
 
 import type { DatabaseService } from "../../src/database/database.service.js";
@@ -7,6 +8,7 @@ import { IdentityLocalRepository } from "../../src/modules/crm/identity/identity
 import { IdentityMicrosoftRepository } from "../../src/modules/crm/identity/identity-microsoft.repository.js";
 import { IdentityProfileRepository } from "../../src/modules/crm/identity/identity-profile.repository.js";
 import { IdentitySessionRepository } from "../../src/modules/crm/identity/identity-session.repository.js";
+import type { UpdateSystemUserInput } from "../../src/modules/crm/identity/identity-user-directory.repository.js";
 import { IdentityUserDirectoryRepository } from "../../src/modules/crm/identity/identity-user-directory.repository.js";
 import { EffectivePermissionService } from "../../src/modules/crm/permissions/effective-permission.service.js";
 
@@ -34,6 +36,7 @@ type QueryBuilderResult = {
 };
 
 type RepositoryPrivateApi = {
+    findAllActivePermissions: (scope: string) => Promise<unknown[]>;
     findRoles: (userId: number) => Promise<unknown[]>;
     findOrgUnits: (userId: number) => Promise<unknown[]>;
     findRolePermissions: (userId: number, scope: string) => Promise<unknown[]>;
@@ -44,6 +47,7 @@ type ProfileRepositoryPrivateApi = RepositoryPrivateApi;
 
 type UserDirectoryRepositoryPrivateApi = {
     countMatchingUsers: (input: { readonly search?: string; readonly status?: string }) => Promise<number>;
+    replaceExternalReferences: (executor: QueryBuilderResult["builder"], userId: number, input: UpdateSystemUserInput, now: Date) => Promise<void>;
     resolveScopeForRoleCodes: (roleCodes: readonly string[]) => string;
 };
 
@@ -183,6 +187,77 @@ const readValuesAfterInsertInto = (calls: QueryCall[], table: string): Record<st
 };
 
 describe("IdentityRepository", () => {
+    it("reactiva la referencia externa existente al editar el mismo NetSuite del usuario", async () => {
+        const { builder, calls } = createQueryBuilder([], [{}, { id: 8 }, { id: 55, userId: 20 }]);
+        const database = {
+            db: {
+                insertInto: builder.insertInto,
+                selectFrom: builder.selectFrom,
+                updateTable: builder.updateTable,
+            },
+        } as unknown as DatabaseService;
+        const userDirectory = new IdentityUserDirectoryRepository(database, new SecurityAuditService(database));
+
+        await getPrivateUserDirectoryRepositoryApi(userDirectory).replaceExternalReferences(
+            builder,
+            20,
+            {
+                accessMethods: ["local"],
+                actorPublicId: "actor-public-id",
+                displayName: "Usuario editado",
+                email: "usuario@roccacr.com",
+                externalReferences: [{ externalUserId: "252150004", systemCode: "netsuite" }],
+                normalizedEmail: "usuario@roccacr.com",
+                orgUnitCodes: ["ventas"],
+                reason: "Cambio autorizado",
+                roleCode: "ventas",
+                roleCodes: ["ventas"],
+                userPublicId: "target-public-id",
+            },
+            new Date("2026-10-03T18:00:00.000Z"),
+        );
+
+        const externalReferenceUpdate = calls.filter((call) => call.method === "updateTable" && call.args[0] === "int_user_external_identity");
+        const reactivationSet = calls.find((call) => call.method === "set" && (call.args[0] as Record<string, unknown>).deleted_at_user_external_identity === null)?.args[0] as Record<string, unknown>;
+
+        expect(calls.some((call) => call.method === "insertInto" && call.args[0] === "int_user_external_identity")).toBe(false);
+        expect(externalReferenceUpdate.length).toBeGreaterThanOrEqual(2);
+        expect(reactivationSet).toEqual(expect.objectContaining({ deleted_at_user_external_identity: null, status_user_external_identity: "active" }));
+    });
+
+    it("rechaza una referencia externa historica que pertenece a otro usuario", async () => {
+        const { builder } = createQueryBuilder([], [{}, { id: 8 }, { id: 55, userId: 99 }]);
+        const database = {
+            db: {
+                insertInto: builder.insertInto,
+                selectFrom: builder.selectFrom,
+                updateTable: builder.updateTable,
+            },
+        } as unknown as DatabaseService;
+        const userDirectory = new IdentityUserDirectoryRepository(database, new SecurityAuditService(database));
+
+        await expect(
+            getPrivateUserDirectoryRepositoryApi(userDirectory).replaceExternalReferences(
+                builder,
+                20,
+                {
+                    accessMethods: ["local"],
+                    actorPublicId: "actor-public-id",
+                    displayName: "Usuario editado",
+                    email: "usuario@roccacr.com",
+                    externalReferences: [{ externalUserId: "252150004", systemCode: "netsuite" }],
+                    normalizedEmail: "usuario@roccacr.com",
+                    orgUnitCodes: ["ventas"],
+                    reason: "Cambio autorizado",
+                    roleCode: "ventas",
+                    roleCodes: ["ventas"],
+                    userPublicId: "target-public-id",
+                },
+                new Date("2026-10-03T18:00:00.000Z"),
+            ),
+        ).rejects.toThrow(ConflictException);
+    });
+
     it("limita jefatura general a las areas operativas asignadas, no a todo el sistema", () => {
         const { builder } = createQueryBuilder();
         const database = {
@@ -328,6 +403,21 @@ describe("IdentityRepository", () => {
         expect(hasJoin(calls, "sec_role as role")).toBe(true);
         expect(hasWhere(calls, "role.status_role", "=", "active")).toBe(true);
         expect(hasWhere(calls, "role.deleted_at_role", "is", null)).toBe(true);
+        expect(hasWhere(calls, "permission.status_permission", "=", "active")).toBe(true);
+    });
+
+    it("lee todos los permisos activos para resolver el perfil Owner", async () => {
+        const { builder, calls } = createQueryBuilder([{ code: "administration.catalog_project.read" }]);
+        const repository = createProfileRepository(builder);
+
+        await expect(getPrivateProfileRepositoryApi(repository).findAllActivePermissions("all_areas")).resolves.toEqual([
+            {
+                code: "administration.catalog_project.read",
+                scope: "all_areas",
+            },
+        ]);
+
+        expect(calls.some((call) => call.method === "selectFrom" && call.args[0] === "sec_permission as permission")).toBe(true);
         expect(hasWhere(calls, "permission.status_permission", "=", "active")).toBe(true);
     });
 

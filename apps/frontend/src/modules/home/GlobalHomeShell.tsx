@@ -1,14 +1,24 @@
+/**
+ * Shell operativo del CRM.
+ *
+ * Arma el menú visible a partir de los permisos efectivos que ya devolvió el
+ * API. Ocultar un ítem es solo UX: cada pantalla vuelve a autorizarse en el BFF.
+ * "Todos" cambia el alcance del menú y no navega a otra ruta.
+ */
 import "./GlobalHomeShell.css";
 
 import AccountBookOutlined from "@ant-design/icons/AccountBookOutlined";
 import AppstoreOutlined from "@ant-design/icons/AppstoreOutlined";
 import AuditOutlined from "@ant-design/icons/AuditOutlined";
+import BankOutlined from "@ant-design/icons/BankOutlined";
 import BellOutlined from "@ant-design/icons/BellOutlined";
 import CalculatorOutlined from "@ant-design/icons/CalculatorOutlined";
 import CheckOutlined from "@ant-design/icons/CheckOutlined";
 import CloseOutlined from "@ant-design/icons/CloseOutlined";
 import DashboardOutlined from "@ant-design/icons/DashboardOutlined";
+import DatabaseOutlined from "@ant-design/icons/DatabaseOutlined";
 import DownOutlined from "@ant-design/icons/DownOutlined";
+import EnvironmentOutlined from "@ant-design/icons/EnvironmentOutlined";
 import FileDoneOutlined from "@ant-design/icons/FileDoneOutlined";
 import FileProtectOutlined from "@ant-design/icons/FileProtectOutlined";
 import FileTextOutlined from "@ant-design/icons/FileTextOutlined";
@@ -19,19 +29,24 @@ import LogoutOutlined from "@ant-design/icons/LogoutOutlined";
 import MenuOutlined from "@ant-design/icons/MenuOutlined";
 import MoreOutlined from "@ant-design/icons/MoreOutlined";
 import NotificationOutlined from "@ant-design/icons/NotificationOutlined";
+import ProjectOutlined from "@ant-design/icons/ProjectOutlined";
 import QuestionCircleOutlined from "@ant-design/icons/QuestionCircleOutlined";
 import RiseOutlined from "@ant-design/icons/RiseOutlined";
 import SafetyOutlined from "@ant-design/icons/SafetyOutlined";
 import SearchOutlined from "@ant-design/icons/SearchOutlined";
 import SettingOutlined from "@ant-design/icons/SettingOutlined";
+import SolutionOutlined from "@ant-design/icons/SolutionOutlined";
+import TagsOutlined from "@ant-design/icons/TagsOutlined";
 import TeamOutlined from "@ant-design/icons/TeamOutlined";
 import UserAddOutlined from "@ant-design/icons/UserAddOutlined";
 import WalletOutlined from "@ant-design/icons/WalletOutlined";
 import Tooltip from "antd/es/tooltip";
 import type { FocusEvent, KeyboardEvent, MouseEvent as ReactMouseEvent, ReactNode } from "react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 
 import { buildApiUrl } from "../../config/frontend-env";
+import type { IdentityOrgUnit } from "../../services/auth/identity-contracts";
+import { ADMINISTRATION_CATALOGS } from "../administration/catalogs/catalog-definitions";
 
 /** Ruta pública del logo. El shell no la resuelve por entorno. */
 const ROCCA_LOGO_SRC = "/Logo/logo2.jpg";
@@ -65,6 +80,42 @@ const SALES_HOME_PATH = "/home/sales";
 const MARKETING_HOME_PATH = "/home/marketing";
 const FORMALIZATION_HOME_PATH = "/home/formalization";
 const ACCOUNTING_HOME_PATH = "/home/accounting";
+
+const WORKSPACE_MODULE_CODE_BY_WORKSPACE_CODE: Readonly<Record<string, string>> = {
+    accounting: "contabilidad",
+    administration: "administration",
+    formalization: "formalizacion",
+    marketing: "mercadeo",
+    sales: "ventas",
+};
+const CATALOG_CONTEXT_BY_WORKSPACE_CODE: Readonly<Record<string, string>> = {
+    accounting: "contabilidad",
+    administration: "administration",
+    formalization: "formalizacion",
+    marketing: "mercadeo",
+    sales: "ventas",
+};
+const getCatalogPath = (workspaceCode: string, code: string): string => (workspaceCode === "administration" ? (ADMINISTRATION_CATALOGS.find((catalog) => catalog.code === code)?.path ?? "/home/administration/catalogs") : `/home/${workspaceCode}/catalogs/${code}`);
+const CATALOG_ICON_BY_CODE: Readonly<Record<string, ReactNode>> = {
+    brokers: <SolutionOutlined />,
+    campaigns: <FlagOutlined />,
+    classes: <TagsOutlined />,
+    files: <FolderOpenOutlined />,
+    locations: <EnvironmentOutlined />,
+    projects: <ProjectOutlined />,
+    subsidiaries: <BankOutlined />,
+};
+const buildCatalogMenuOptions = (workspaceCode: string): readonly GlobalMenuOption[] => {
+    const contextModuleCode = CATALOG_CONTEXT_BY_WORKSPACE_CODE[workspaceCode] ?? workspaceCode;
+
+    return ADMINISTRATION_CATALOGS.map((catalog) => ({
+        code: `${workspaceCode}-${catalog.menuItemCode}`,
+        icon: CATALOG_ICON_BY_CODE[catalog.code] ?? <DatabaseOutlined />,
+        label: catalog.label,
+        requiredPermission: `${contextModuleCode}.${catalog.moduleCode}.read`,
+        routePath: getCatalogPath(workspaceCode, catalog.code),
+    }));
+};
 
 /**
  * Perfil "Todos": cambia el alcance del menú, no la página visible.
@@ -126,6 +177,8 @@ export interface EffectiveNavigationPermission {
     readonly code: string;
     readonly effect: "allow" | "deny";
 }
+
+type NavigationOrgUnit = Pick<IdentityOrgUnit, "code" | "status">;
 
 /**
  * Contratos internos de la vista.
@@ -209,6 +262,7 @@ export interface GlobalHomeShellProps {
     readonly onMenuItemSelect?: (routePath: string) => void;
     readonly onLogout?: () => void;
     readonly onWorkspaceChange?: (code: string) => void;
+    readonly orgUnits?: readonly NavigationOrgUnit[];
 }
 
 /**
@@ -234,6 +288,12 @@ export const ASSIGNED_WORKSPACES: readonly [WorkspaceProfile, ...WorkspaceProfil
             { code: "users", label: "Usuarios", icon: <TeamOutlined />, requiredPermission: ADMINISTRATION_NAVIGATION_PERMISSION, routePath: ADMINISTRATION_USERS_PATH },
             { code: "roles-permissions", label: "Roles y seguridad", icon: <SafetyOutlined />, requiredPermission: ADMINISTRATION_SECURITY_PERMISSION, routePath: ADMINISTRATION_ROLES_SECURITY_PATH },
             { code: "audit-log", label: "Auditoría", icon: <AuditOutlined />, requiredPermission: ADMINISTRATION_SECURITY_PERMISSION, routePath: ADMINISTRATION_AUDIT_LOGS_PATH },
+            {
+                code: "catalogs",
+                label: "Catálogos",
+                icon: <DatabaseOutlined />,
+                children: buildCatalogMenuOptions("administration"),
+            },
         ],
     },
     {
@@ -245,6 +305,7 @@ export const ASSIGNED_WORKSPACES: readonly [WorkspaceProfile, ...WorkspaceProfil
             { code: "sales-leads", label: "Leads", icon: <UserAddOutlined />, requiredPermission: "lead.read", routePath: SALES_HOME_PATH },
             { code: "sales-opportunities", label: "Oportunidades", icon: <FunnelPlotOutlined />, requiredPermission: "opportunity.read", routePath: SALES_HOME_PATH },
             { code: "sales-estimates", label: "Estimaciones", icon: <CalculatorOutlined />, requiredPermission: "estimate.read", routePath: SALES_HOME_PATH },
+            { code: "sales-catalogs", label: "Catálogos", icon: <DatabaseOutlined />, children: buildCatalogMenuOptions("sales") },
         ],
     },
     {
@@ -254,6 +315,7 @@ export const ASSIGNED_WORKSPACES: readonly [WorkspaceProfile, ...WorkspaceProfil
         menuItems: [
             { code: "marketing-home", label: "Resumen", icon: <DashboardOutlined />, requiredPermission: "campaign.read", routePath: MARKETING_HOME_PATH },
             { code: "marketing-campaigns", label: "Campañas", icon: <FlagOutlined />, requiredPermission: "campaign.read", routePath: MARKETING_HOME_PATH },
+            { code: "marketing-catalogs", label: "Catálogos", icon: <DatabaseOutlined />, children: buildCatalogMenuOptions("marketing") },
         ],
     },
     {
@@ -264,6 +326,7 @@ export const ASSIGNED_WORKSPACES: readonly [WorkspaceProfile, ...WorkspaceProfil
             { code: "formalization-home", label: "Resumen", icon: <DashboardOutlined />, requiredPermission: "file.read", routePath: FORMALIZATION_HOME_PATH },
             { code: "formalization-files", label: "Expedientes", icon: <FolderOpenOutlined />, requiredPermission: "file.read", routePath: FORMALIZATION_HOME_PATH },
             { code: "formalization-contracts", label: "Contratos", icon: <FileDoneOutlined />, requiredPermission: "contract.review", routePath: FORMALIZATION_HOME_PATH },
+            { code: "formalization-catalogs", label: "Catálogos", icon: <DatabaseOutlined />, children: buildCatalogMenuOptions("formalization") },
         ],
     },
     {
@@ -274,6 +337,7 @@ export const ASSIGNED_WORKSPACES: readonly [WorkspaceProfile, ...WorkspaceProfil
             { code: "accounting-home", label: "Resumen", icon: <DashboardOutlined />, requiredPermission: "wallet.read", routePath: ACCOUNTING_HOME_PATH },
             { code: "accounting-wallet", label: "Cartera", icon: <WalletOutlined />, requiredPermission: "wallet.read", routePath: ACCOUNTING_HOME_PATH },
             { code: "accounting-invoices", label: "Facturas", icon: <FileTextOutlined />, requiredPermission: "invoice.read", routePath: ACCOUNTING_HOME_PATH },
+            { code: "accounting-catalogs", label: "Catálogos", icon: <DatabaseOutlined />, children: buildCatalogMenuOptions("accounting") },
         ],
     },
 ];
@@ -331,6 +395,7 @@ const isPermissionAllowed = (permissionCode: string | undefined, allowedPermissi
  * Un padre sin permiso propio sigue visible si queda al menos un hijo. Un
  * padre sin `requiredPermission` se muestra y sus hijos se filtran uno a uno.
  */
+// eslint-disable-next-line complexity -- El filtro combina padre, hijos y ruta para evitar menus vacios por permisos parciales.
 const filterMenuItemByPermissions = (item: GlobalMenuItem, allowedPermissions: ReadonlySet<string>): GlobalMenuItem | null => {
     const visibleChildren = item.children?.filter((child) => isPermissionAllowed(child.requiredPermission, allowedPermissions)) ?? [];
     const hasVisibleChildren = visibleChildren.length > 0;
@@ -342,6 +407,10 @@ const filterMenuItemByPermissions = (item: GlobalMenuItem, allowedPermissions: R
 
     if (!item.children) {
         return item;
+    }
+
+    if (!hasVisibleChildren && !item.routePath) {
+        return null;
     }
 
     return {
@@ -370,6 +439,40 @@ const filterWorkspaceByPermissions = (workspace: WorkspaceProfile, allowedPermis
     };
 };
 
+const getMenuItemFirstVisibleChild = (item: GlobalMenuItem): GlobalMenuOption | undefined => item.children?.[0];
+
+const getAllWorkspaceOptionPermission = (item: GlobalMenuItem): string | undefined => item.requiredPermission ?? getMenuItemFirstVisibleChild(item)?.requiredPermission;
+
+const getAllWorkspaceOptionRoutePath = (item: GlobalMenuItem): string | undefined => item.routePath ?? getMenuItemFirstVisibleChild(item)?.routePath;
+
+const buildAllWorkspaceMenuOption = (item: GlobalMenuItem, requiredPermission: string, routePath: string | undefined): GlobalMenuOption => {
+    const option = {
+        code: item.code,
+        icon: item.icon,
+        label: item.label,
+        ...(item.isActive === undefined ? {} : { isActive: item.isActive }),
+        requiredPermission,
+    };
+
+    return routePath === undefined ? option : { ...option, routePath };
+};
+
+const toAllWorkspaceMenuOption = (item: GlobalMenuItem, allowedPermissions: ReadonlySet<string>): GlobalMenuOption | null => {
+    const visibleItem = filterMenuItemByPermissions(item, allowedPermissions);
+
+    if (!visibleItem) {
+        return null;
+    }
+
+    const requiredPermission = getAllWorkspaceOptionPermission(visibleItem);
+
+    if (!requiredPermission) {
+        return null;
+    }
+
+    return buildAllWorkspaceMenuOption(visibleItem, requiredPermission, getAllWorkspaceOptionRoutePath(visibleItem));
+};
+
 /**
  * Reconstruye "Todos" desde los perfiles ya filtrados.
  *
@@ -380,7 +483,11 @@ const buildAllWorkspace = (allWorkspace: WorkspaceProfile, moduleWorkspaces: rea
     const visibleGlobalItems: readonly GlobalMenuItem[] = globalSummaryItem && isPermissionAllowed(globalSummaryItem.requiredPermission, allowedPermissions) ? [globalSummaryItem] : [];
     const moduleMenuItems = moduleWorkspaces.map((workspace): GlobalMenuItem => {
         const primaryMenuItem = workspace.menuItems[0];
-        const visibleChildren = workspace.menuItems.flatMap(({ code, label, icon, isActive, requiredPermission, routePath }): readonly GlobalMenuOption[] => (requiredPermission ? [{ code, label, icon, ...(isActive === undefined ? {} : { isActive }), ...(routePath === undefined ? {} : { routePath }), requiredPermission }] : []));
+        const visibleChildren = workspace.menuItems.flatMap((item): readonly GlobalMenuOption[] => {
+            const option = toAllWorkspaceMenuOption(item, allowedPermissions);
+
+            return option ? [option] : [];
+        });
 
         return {
             code: `all-${workspace.code}`,
@@ -409,10 +516,18 @@ const buildAllWorkspace = (allWorkspace: WorkspaceProfile, moduleWorkspaces: rea
  * vacía todos los módulos, la lista sale vacía: no se rellena con el catálogo sin filtrar.
  */
 // eslint-disable-next-line react-refresh/only-export-components -- Funcion pura cubierta por pruebas para el contrato de permisos efectivos.
-export const getVisibleNavigationWorkspaces = (permissions: readonly EffectiveNavigationPermission[], workspaces: readonly [WorkspaceProfile, ...WorkspaceProfile[]] = ASSIGNED_WORKSPACES): readonly WorkspaceProfile[] => {
+export const getVisibleNavigationWorkspaces = (permissions: readonly EffectiveNavigationPermission[], orgUnits: readonly NavigationOrgUnit[] = [], workspaces: readonly [WorkspaceProfile, ...WorkspaceProfile[]] = ASSIGNED_WORKSPACES): readonly WorkspaceProfile[] => {
     const allowedPermissions = getAllowedPermissionCodes(permissions);
+    const activeOrgUnitCodes = new Set(orgUnits.filter((orgUnit) => orgUnit.status === "active").map((orgUnit) => orgUnit.code));
+    const shouldFilterByOrgUnit = activeOrgUnitCodes.size > 0;
     const [allWorkspace, ...moduleWorkspaces] = workspaces;
     const visibleModuleWorkspaces = moduleWorkspaces.flatMap((workspace) => {
+        const moduleCode = WORKSPACE_MODULE_CODE_BY_WORKSPACE_CODE[workspace.code];
+
+        if (shouldFilterByOrgUnit && moduleCode && !activeOrgUnitCodes.has(moduleCode)) {
+            return [];
+        }
+
         const visibleWorkspace = filterWorkspaceByPermissions(workspace, allowedPermissions);
 
         return visibleWorkspace ? [visibleWorkspace] : [];
@@ -749,6 +864,41 @@ const renderDrawerChildItem = (item: GlobalMenuItem | GlobalMenuOption, activeCo
     );
 };
 
+/**
+ * Submenú del cajón móvil: replica en acordeón el dropdown del escritorio.
+ * Arranca abierto si una de sus opciones es la vista activa.
+ */
+function MobileDrawerMenuGroup({ activeCode, isFocusable, item, onMenuItemSelect }: { readonly activeCode: string | undefined; readonly isFocusable: boolean; readonly item: GlobalMenuItem; readonly onMenuItemSelect: (routePath: string) => void }) {
+    const options = item.children ?? EMPTY_MENU_OPTIONS;
+    const [isOpen, setIsOpen] = useState(() => options.some((option) => option.code === activeCode));
+    const panelId = `global-home-mobile-drawer-group-${item.code}`;
+
+    return (
+        <div className="global-home-mobile-drawer__group">
+            <button
+                className={`global-home-mobile-drawer__child global-home-mobile-drawer__group-trigger${isOpen ? " global-home-mobile-drawer__group-trigger--expanded" : ""}`}
+                type="button"
+                tabIndex={isFocusable ? undefined : -1}
+                data-permission={item.requiredPermission}
+                aria-controls={panelId}
+                aria-expanded={isOpen}
+                onClick={() => {
+                    setIsOpen((current) => !current);
+                }}
+            >
+                <span aria-hidden="true">{item.icon}</span>
+                <span>{item.label}</span>
+                <DownOutlined className="global-home-mobile-drawer__group-chevron" aria-hidden="true" />
+            </button>
+            <div id={panelId} className={`global-home-mobile-drawer__children global-home-mobile-drawer__children--nested${isOpen ? " global-home-mobile-drawer__children--open" : ""}`} role="group" aria-label={`Opciones de ${item.label}`} aria-hidden={!isOpen}>
+                <div className="global-home-mobile-drawer__children-inner">{options.map((option) => renderDrawerChildItem(option, activeCode, isFocusable && isOpen, onMenuItemSelect))}</div>
+            </div>
+        </div>
+    );
+}
+
+const renderDrawerMenuItem = (item: GlobalMenuItem, activeCode: string | undefined, isFocusable: boolean, onMenuItemSelect: (routePath: string) => void) => (item.children && item.children.length > 0 ? <MobileDrawerMenuGroup key={item.code} activeCode={activeCode} isFocusable={isFocusable} item={item} onMenuItemSelect={onMenuItemSelect} /> : renderDrawerChildItem(item, activeCode, isFocusable, onMenuItemSelect));
+
 function MobileGlobalSummaryLink({ activeWorkspace, globalWorkspace, onSelect, onWorkspaceToggle }: { readonly activeWorkspace: WorkspaceProfile; readonly globalWorkspace: WorkspaceProfile | undefined; readonly onSelect: (code: string) => void; readonly onWorkspaceToggle: (code: string) => void }) {
     const globalSummaryItem = globalWorkspace?.menuItems[0];
 
@@ -807,7 +957,7 @@ function MobileWorkspaceSection({ activeMenuItemCode, activeWorkspace, onMenuIte
             </button>
 
             <div id={drawerPanelId} className={`global-home-mobile-drawer__children${isExpanded ? " global-home-mobile-drawer__children--open" : ""}`} role="group" aria-label={`Opciones de ${workspace.label}`} aria-hidden={!isExpanded}>
-                <div className="global-home-mobile-drawer__children-inner">{workspace.menuItems.map((item) => renderDrawerChildItem(item, activeMenuItemCode, isExpanded, onMenuItemSelect))}</div>
+                <div className="global-home-mobile-drawer__children-inner">{workspace.menuItems.map((item) => renderDrawerMenuItem(item, activeMenuItemCode, isExpanded, onMenuItemSelect))}</div>
             </div>
         </section>
     );
@@ -944,12 +1094,38 @@ function GlobalMenuChevron({ isVisible }: GlobalMenuChevronProps) {
  * Panel del ítem. Cerrado no se monta, así el `role="menu"` no queda expuesto.
  */
 function GlobalMenuDropdown({ id, isOpen, label, onPointerEnter, onPointerLeave, onSelectRoute, options }: GlobalMenuDropdownProps) {
+    const panelRef = useRef<HTMLDivElement>(null);
+
+    useLayoutEffect(() => {
+        const panel = panelRef.current;
+        const group = panel?.parentElement;
+        if (!panel || !group) return;
+
+        // Permission filtering changes group counts; align by geometry, not item order.
+        const positionPanel = () => {
+            const trigger = group.getBoundingClientRect();
+            const width = panel.getBoundingClientRect().width;
+            const left = Math.max(16, Math.min(trigger.left, window.innerWidth - width - 16));
+            panel.style.left = `${String(left - trigger.left)}px`;
+            panel.style.maxHeight = `${String(Math.max(0, window.innerHeight - trigger.bottom - 6 - 16))}px`;
+            group.style.setProperty("--dropdown-left", `${String(left - trigger.left)}px`);
+        };
+        positionPanel();
+        const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(positionPanel);
+        observer?.observe(group);
+        window.addEventListener("resize", positionPanel);
+        return () => {
+            observer?.disconnect();
+            window.removeEventListener("resize", positionPanel);
+        };
+    }, [isOpen]);
+
     if (!isOpen) {
         return null;
     }
 
     return (
-        <div id={id} className="global-home-menu__dropdown" role="menu" aria-label={`Opciones de ${label}`} onPointerEnter={onPointerEnter} onPointerLeave={onPointerLeave}>
+        <div ref={panelRef} id={id} className="global-home-menu__dropdown" role="menu" aria-label={`Opciones de ${label}`} onPointerEnter={onPointerEnter} onPointerLeave={onPointerLeave}>
             {options.map((option) => renderMenuOption(option, onSelectRoute))}
         </div>
     );
@@ -1190,8 +1366,8 @@ const getInitialWorkspaceProfile = (assignedWorkspaces: readonly WorkspaceProfil
  * sigue autorizando cada ruta. Si el filtro no deja perfiles, la cabecera usa
  * el primero del catálogo para no quedar vacía; eso no concede esos permisos.
  */
-export function GlobalHomeShell({ activeMenuItemCode, children, currentUser, effectivePermissions = DEMO_EFFECTIVE_NAVIGATION_PERMISSIONS, initialWorkspaceCode, onLogout, onMenuItemSelect, onWorkspaceChange }: GlobalHomeShellProps) {
-    const assignedWorkspaces = getVisibleNavigationWorkspaces(effectivePermissions);
+export function GlobalHomeShell({ activeMenuItemCode, children, currentUser, effectivePermissions = DEMO_EFFECTIVE_NAVIGATION_PERMISSIONS, initialWorkspaceCode, onLogout, onMenuItemSelect, onWorkspaceChange, orgUnits }: GlobalHomeShellProps) {
+    const assignedWorkspaces = getVisibleNavigationWorkspaces(effectivePermissions, orgUnits);
     const fallbackWorkspace = assignedWorkspaces[0] ?? ASSIGNED_WORKSPACES[0];
     const initialWorkspace = getInitialWorkspaceProfile(assignedWorkspaces, fallbackWorkspace, initialWorkspaceCode);
     const [openMenuCode, setOpenMenuCode] = useState<string | null>(null);

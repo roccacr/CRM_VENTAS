@@ -446,10 +446,11 @@ export class IdentitySessionRepository {
     }
 
     /**
-     * Revoca todas las sesiones activas de un usuario ante senales de robo.
+     * Revoca sesiones y refresh activos dentro de la transaccion del caller.
+     * Tambien se usa al reemplazar acceso para impedir refrescar tokens anteriores.
      */
-    private async revokeAllActiveSessionsForUser(transaction: IdentityTransaction, userId: number, reason: string): Promise<void> {
-        const sessions = await transaction.selectFrom("sec_auth_session").select("id_auth_session").where("user_id_auth_session", "=", userId).where("status_auth_session", "=", ACTIVE_STATUS).execute();
+    async revokeAllActiveSessionsForUser(transaction: IdentityTransaction, userId: number, reason: string, revokedByUserId = userId): Promise<void> {
+        const sessions = await transaction.selectFrom("sec_auth_session").select("id_auth_session").where("user_id_auth_session", "=", userId).execute();
         const sessionIds = sessions.map((session) => session.id_auth_session);
 
         if (sessionIds.length === 0) {
@@ -460,10 +461,11 @@ export class IdentitySessionRepository {
             .updateTable("sec_auth_session")
             .set({
                 revoked_at_auth_session: new Date(),
-                revoked_by_user_id_auth_session: userId,
+                revoked_by_user_id_auth_session: revokedByUserId,
                 status_auth_session: REVOKED_STATUS,
             })
             .where("id_auth_session", "in", sessionIds)
+            .where("status_auth_session", "=", ACTIVE_STATUS)
             .executeTakeFirst();
 
         await transaction
@@ -471,7 +473,7 @@ export class IdentitySessionRepository {
             .set({
                 revoked_at_refresh_token: new Date(),
                 revoked_reason_refresh_token: reason,
-                status_refresh_token: reason,
+                status_refresh_token: reason === REUSED_STATUS ? REUSED_STATUS : REVOKED_STATUS,
             })
             .where("auth_session_id_refresh_token", "in", sessionIds)
             .where("status_refresh_token", "=", ACTIVE_STATUS)

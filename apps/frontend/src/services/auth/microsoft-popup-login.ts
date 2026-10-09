@@ -1,3 +1,9 @@
+/**
+ * Inicio de sesión con Microsoft en escritorio.
+ *
+ * El popup no devuelve tokens a React. El callback del BFF deja la cookie y
+ * la ventana principal confirma la sesión consultando `/identity/session`.
+ */
 import { getIdentitySession } from "./auth-service";
 import { isAuthenticatedSession } from "./identity-contracts";
 

@@ -6,6 +6,7 @@ import { describe, expect, it } from "vitest";
 import { readTargetTableNames, splitSqlStatements, stripDatabaseSelection, stripLineComments } from "../../migrations/schema-only/202609250001_identity_schema.js";
 import { readSchemaMigrationEnv, schemaMigrations } from "../../scripts/run-schema-migrations.js";
 import { APPROVED_DATABASE_NAME } from "../../src/config/product.constants.js";
+import { CATALOG_DEFINITIONS, CATALOG_PERMISSION_ACTIONS, getCatalogPermissionCodes } from "../../src/modules/crm/catalogs/catalogs.constants.js";
 
 const identitySchemaPath = fileURLToPath(new URL("../../Arquitectura/SQL/001_identity_schema_p0_s1.sql", import.meta.url));
 const loginReadinessSchemaPath = fileURLToPath(new URL("../../Arquitectura/SQL/003_identity_login_readiness_p0_s1.sql", import.meta.url));
@@ -54,7 +55,43 @@ describe("identity schema migration parser", () => {
     });
 
     it("registra las migraciones schema-only aprobadas en orden", () => {
-        expect(schemaMigrations.map((migration) => migration.name)).toEqual(["202609250001_identity_schema", "202609250003_identity_login_readiness", "202609280004_identity_microsoft_session", "202609300005_identity_user_directory", "202610010006_identity_role_security_model"]);
+        expect(schemaMigrations.map((migration) => migration.name)).toEqual(["202609250001_identity_schema", "202609250003_identity_login_readiness", "202609280004_identity_microsoft_session", "202609300005_identity_user_directory", "202610010006_identity_role_security_model", "202610030007_crm_catalogs", "202610080008_administration_owner_repair"]);
+    });
+
+    it("mantiene permisos atomicos globales para cada catalogo CRM", () => {
+        const catalogPermissionCodes = getCatalogPermissionCodes();
+
+        expect(catalogPermissionCodes).toHaveLength(CATALOG_DEFINITIONS.length * CATALOG_PERMISSION_ACTIONS.length * 5);
+        expect(catalogPermissionCodes).not.toContain("catalog_project.read");
+        expect(catalogPermissionCodes).toContain("administration.catalog_project.read");
+        expect(catalogPermissionCodes).toContain("mercadeo.catalog_project.read");
+        expect(catalogPermissionCodes).toContain("formalizacion.catalog_project.read");
+        expect(catalogPermissionCodes.slice(0, 24)).toEqual([
+            "ventas.catalog_project.read",
+            "ventas.catalog_project.create",
+            "ventas.catalog_project.update",
+            "ventas.catalog_project.inactivate",
+            "mercadeo.catalog_project.read",
+            "mercadeo.catalog_project.create",
+            "mercadeo.catalog_project.update",
+            "mercadeo.catalog_project.inactivate",
+            "formalizacion.catalog_project.read",
+            "formalizacion.catalog_project.create",
+            "formalizacion.catalog_project.update",
+            "formalizacion.catalog_project.inactivate",
+            "contabilidad.catalog_project.read",
+            "contabilidad.catalog_project.create",
+            "contabilidad.catalog_project.update",
+            "contabilidad.catalog_project.inactivate",
+            "administration.catalog_project.read",
+            "administration.catalog_project.create",
+            "administration.catalog_project.update",
+            "administration.catalog_project.inactivate",
+            "ventas.catalog_campaign.read",
+            "ventas.catalog_campaign.create",
+            "ventas.catalog_campaign.update",
+            "ventas.catalog_campaign.inactivate",
+        ]);
     });
 
     it("documenta un unico token de reset activo por identidad en los artefactos SQL", async () => {

@@ -1,0 +1,213 @@
+/*
+ * Valores de un catálogo.
+ * La tabla, los filtros y los modales de alta, edición y cambio de estado
+ * comparten este archivo. El motivo de auditoría queda siempre visible.
+ */
+.catalog-items-page {
+    min-width: 0;
+}
+
+.catalog-items-row {
+    cursor: pointer;
+}
+.catalog-items-row:focus-visible {
+    outline: 2px solid #4f5fb8;
+    outline-offset: -2px;
+}
+.catalog-items-row--selected > td {
+    background: #eaefff;
+}
+.catalog-item-detail-drawer .ant-drawer-body {
+    overflow-wrap: anywhere;
+}
+.catalog-item-detail-drawer .ant-descriptions-item-content .ant-typography {
+    max-width: 100%;
+    overflow-wrap: anywhere;
+}
+.catalog-item-detail-drawer__avatar {
+    display: inline-grid;
+    flex: 0 0 auto;
+    width: 48px;
+    height: 48px;
+    place-items: center;
+    border: 2px solid #ffffff;
+    border-radius: 999px;
+    background: #eef1f6;
+    box-shadow: 0 0 0 1px #cfd7e6;
+    color: #273044;
+    font-size: 15px;
+}
+
+.catalog-items-panel {
+    overflow: hidden;
+    border: 1px solid #d9e0ec;
+    border-radius: 10px;
+    background: #ffffff;
+    box-shadow: 0 1px 2px rgba(16, 24, 40, 0.05);
+}
+
+.catalog-items-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+    border-bottom: 1px solid #e4e7ec;
+    padding: 14px 16px;
+}
+
+.catalog-items-search.ant-input-search {
+    min-width: min(100%, 18rem);
+    max-width: 28rem;
+    flex: 1 1 20rem;
+}
+
+.catalog-items-name {
+    display: grid;
+    gap: 3px;
+}
+
+.catalog-items-name strong {
+    color: #101828;
+    font-weight: 760;
+    line-height: 1.2;
+}
+
+.catalog-items-name small {
+    color: #667085;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.catalog-items-reference-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.catalog-items-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: #172033;
+    font-weight: 720;
+}
+
+.catalog-items-status::before {
+    width: 6px;
+    height: 6px;
+    border-radius: 999px;
+    content: "";
+}
+
+.catalog-items-status--active::before {
+    background: #22c55e;
+}
+
+.catalog-items-status--inactive::before {
+    background: #98a2b3;
+}
+
+.catalog-items-error {
+    margin: 12px 16px;
+    border: 1px solid #fecaca;
+    border-radius: 8px;
+    padding: 10px 12px;
+    background: #fff1f2;
+    color: #991b1b;
+    font-size: 13px;
+    font-weight: 650;
+}
+
+.catalog-items-modal.ant-modal {
+    width: min(620px, calc(100vw - 32px)) !important;
+}
+
+.catalog-items-modal .ant-modal-content {
+    overflow: hidden;
+    border: 1px solid #cfd7e6;
+    border-radius: 10px;
+    padding: 0;
+    box-shadow: 0 28px 60px rgba(15, 23, 42, 0.28);
+}
+
+.catalog-items-modal .ant-modal-header {
+    margin: 0;
+    border-bottom: 1px solid #d9e0ec;
+    padding: 18px 20px;
+}
+
+.catalog-items-modal .ant-modal-body {
+    display: grid;
+    gap: 14px;
+    padding: 20px;
+}
+
+.catalog-items-modal .ant-modal-footer {
+    margin: 0;
+    border-top: 1px solid #d9e0ec;
+    padding: 18px 20px;
+    background: #f8fafc;
+}
+
+.catalog-items-modal .ant-modal-close {
+    top: 18px;
+    right: 20px;
+    width: 34px;
+    height: 34px;
+    border: 1px solid #c6d0e1;
+    border-radius: 8px;
+    background: #ffffff;
+    color: #25324a;
+}
+
+.catalog-items-modal__title h2 {
+    margin: 0;
+    color: #101828;
+    font-size: 20px;
+    font-weight: 780;
+    line-height: 1.15;
+}
+
+.catalog-items-modal__title p {
+    margin: 6px 0 0;
+    color: #5b6478;
+    font-size: 13px;
+    font-weight: 560;
+    line-height: 1.4;
+}
+
+.catalog-items-modal__grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.catalog-items-modal__footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+.catalog-items-summary {
+    display: grid;
+    gap: 8px;
+    border: 1px solid #d8e0ed;
+    border-radius: 8px;
+    background: #f8fafc;
+    padding: 12px;
+    color: #5b6478;
+    font-size: 13px;
+    font-weight: 620;
+}
+
+.catalog-items-summary strong,
+.catalog-items-label {
+    color: #172033;
+    font-weight: 760;
+}
+
+@media (max-width: 720px) {
+    .catalog-items-modal__grid {
+        grid-template-columns: 1fr;
+    }
+}

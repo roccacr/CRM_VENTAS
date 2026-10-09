@@ -1,5 +1,19 @@
 # 03 - Base de Datos y Migracion
 
+## Current Migration Runbook - 2026-10-09
+
+This describes implemented operations, not permission to execute. See [catalog schema/API](35-Catalog-API-and-Schema.md) and [Administration closure/phased ETL](34-Cierre-Operativo-Administracion-P0-S1.md).
+
+1. Validate `.env` with `src/config/env.validation.ts`. Target `DB_NAME` stays `CRM_THINK_V2`; legacy is separate/read-only. Actual keys are `DB_USER`/`DB_NAME`, not `DB_USERNAME`/`DB_DATABASE`. No Docker. Never commit credentials or source snapshots.
+2. Confirm environment, backup/recovery, migration ledger and explicit authorization. Existing `pnpm migrate:identity:schema` also writes security seeds and can invalidate sessions. Catalog migration `202610030007_crm_catalogs` and repair `202610080008_administration_owner_repair` are incremental; preserve history. MySQL DDL can auto-commit, so schema rollback is not guaranteed by transactions.
+3. Profile source read-only and freeze a validated extraction. Deduplicate by canonical provider identity, not names. Resolve contradictory fields before writes. Validate lengths/statuses, FK ownership, unique indexes and InnoDB item/reference/audit tables.
+4. The implemented runner is projects-only. From `apps/api`: `pnpm exec tsx scripts/sync-legacy-projects.ts --actor=approved-actor@example.com` defaults to rollback. It requires approved `LEGACY_CRM_DB_NAME=crmdatabase-api` and an active target actor/provider. Optional `--source-json=C:/secure/project-snapshot.json` reads an approved frozen local JSON; keep it outside Git. Preview executes transactional writes before rollback and still needs an approved target environment.
+5. After reviewing counts/conflicts and obtaining execution approval, repeat with `--apply`. Input is validated first; provider locking, identity-preserving upserts and audit run atomically. Missing-source rows are not deleted; archived/inconsistent ownership is rejected. Repeat preview against the same snapshot to verify zero additional changes. Retain reconciliation and use audited compensation for committed data.
+6. The project mapper currently requires positive integer IDs. Do not reuse it for campaigns: valid IDs -5, -4, -6, -3 must be preserved exactly. No general seven-catalog importer exists. Subsidiary 63 naming, broker identifier columns and Files property/status/project mapping remain unresolved. Absent Odoo stays unassigned.
+7. Run `.\check-all.cmd`. Explicit MySQL flags `CATALOG_MYSQL_TESTS`, `IDENTITY_ACCESS_MYSQL_TESTS`, `ADMINISTRATION_MYSQL_TESTS` use direct `.env` rollback fixtures; catalog tests do not migrate schema. Suites are serial when enabled. Record actual coverage and audit/ownership reconciliation separately from pass counts.
+
+Architectural/future tables below are not an inventory of implemented commercial runtime.
+
 ## Motor recomendado
 
 MySQL.
