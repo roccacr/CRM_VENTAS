@@ -96,6 +96,20 @@ Con usuario operativo: Mercadeo permitido, Formalizacion prohibida; URL directa 
 
 Usuarios: buscar/seleccionar/refrescar; abrir detalle; editar nombre/correo/roles; probar estados; duplicados y motivo invalido; comprobar menu y modal sobre drawer. No modificar personas reales como prueba sin autorizacion.
 
+### Projects-only presentation refinement - 2026-10-09
+
+The projects catalog opts into `ProjectsView.css` and explicit table/drawer variants. Other catalogs and Users retain their existing presentation; global navigation, theme, API contracts, authorization and audited mutation flows are unchanged. The existing DataTables/SearchPanes engine, saved-state keys, column indices and batch loading remain authoritative.
+
+The table prioritizes project names over internal codes, retains native-code searching, displays descriptions and the API last-update date, and separates NetSuite/Odoo identifiers with explicit `Sin asignar` placeholders. Additional returned providers remain visible. Internal CRM/native identifiers remain copyable in the drawer. Reference status is not presented as a fabricated synchronization status. Provider cards are siblings, never nested or mixed.
+
+Design foundations: existing Aptos/system typography and Administration colors, 4px spacing cadence, restrained borders, 8px card radii, 140ms row feedback, visible keyboard focus and reduced-motion support. Narrow screens stack filter panes and drawer labels; the table owns horizontal scrolling and the drawer body owns vertical scrolling. Mobile drawer actions and table action buttons have 44px targets.
+
+All ten requested design skills were available locally and inspected. Product-interface, responsive, interaction and design-token guidance applies; marketing-only prescriptions (oversized typography, pill navigation, gradients and excessive whitespace) are excluded. The read-only `improve-ui` workflow informed the inspection only; implementation follows the owner's explicit authorization.
+
+Regression tests explicitly compare all seven catalog definitions so the projects variant cannot silently propagate to sibling catalogs. Existing drawer keyboard, provider fallback, loading/error/retry, row-action isolation and audited editor tests remain in the focused suite. Automated checks and browser evidence are reported separately from database migration and broader Administration acceptance.
+
+Verification: test-first failure observed, then 26 focused catalog tests passed. The final sequential `check-all.cmd` passed formatting, lint, typechecking, tests and builds: API 227 passed / 12 opt-in database tests skipped; frontend 127 passed. The existing bundle-size warning remains non-blocking. Chrome validation covered desktop, 390px and 320px widths, search/empty results, pane selection/clearing/expand/collapse, page length/pagination, row selection, drawer navigation, provider fallbacks, independent scrolling and edit/cancel without persistence. No console warnings/errors were captured. Desktop/mobile screenshots are stored outside the repository under the task visualization directory; no production records were changed. Real-device testing and broader Administration acceptance remain separate.
+
 ## Continuidad
 
 1. Cerrar riesgos backend del documento 34, especialmente referencias y migraciones.

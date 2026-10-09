@@ -88,6 +88,7 @@ function CatalogDetailReferences({ references }: { readonly references: CatalogI
 
 /** Datos del valor abierto y las acciones que la página todavía tiene que confirmar. */
 interface CatalogItemDetailDrawerProps {
+    readonly projectView?: boolean;
     readonly catalogLabel: string;
     readonly error: string | null;
     readonly isLoading: boolean;
@@ -159,11 +160,11 @@ function CatalogDetailFooter({ item, error, isLoading, onEdit, onStatusAction, p
  * Las flechas del teclado cambian de registro. No actúan si el foco está en un
  * campo o en un menú, para no saltar de fila mientras se escribe.
  */
-export function CatalogItemDetailDrawer({ catalogLabel, error, isLoading, item, onClose, onEdit, onRefresh, onStatusAction, open, position, total, onSelectPrevious, onSelectNext }: CatalogItemDetailDrawerProps) {
+export function CatalogItemDetailDrawer({ projectView, catalogLabel, error, isLoading, item, onClose, onEdit, onRefresh, onStatusAction, open, position, total, onSelectPrevious, onSelectNext }: CatalogItemDetailDrawerProps) {
     return (
         <Drawer
             {...ADMINISTRATION_DRAWER_PROPS}
-            rootClassName="user-detail-drawer catalog-item-detail-drawer"
+            rootClassName={["user-detail-drawer catalog-item-detail-drawer", projectView && "catalog-item-detail-drawer--projects"].filter(Boolean).join(" ")}
             closable={{ "aria-label": "Cerrar detalle", placement: ADMINISTRATION_DRAWER_CLOSE_PLACEMENT }}
             destroyOnHidden
             open={open}

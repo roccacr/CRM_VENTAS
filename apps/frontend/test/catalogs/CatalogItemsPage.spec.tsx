@@ -40,6 +40,24 @@ describe("CatalogItemsPage", () => {
         vi.clearAllMocks();
     });
 
+    it.each(ADMINISTRATION_CATALOGS)("isolates the projects presentation from $code", async (catalog) => {
+        mockListCatalogItems.mockResolvedValue({ catalog: { code: catalog.code, label: catalog.label, moduleCode: catalog.moduleCode }, items: [item], total: 1 });
+        render(<CatalogItemsPage catalog={catalog} />);
+        const row = (await screen.findByText(item.name)).closest("tr");
+        if (!row) throw new Error("Row missing");
+        const projects = catalog.code === "projects";
+        expect(Boolean(row.closest(".catalog-items-page--projects"))).toBe(projects);
+        await waitFor(() => {
+            expect(Boolean(within(row).queryByText("Odoo"))).toBe(projects);
+            expect(Boolean(within(row).queryByText(item.nativeCode))).toBe(!projects);
+            expect(row.querySelector("time")?.getAttribute("datetime") ?? null).toBe(projects ? item.updatedAt : null);
+            expect(row).toHaveAttribute("tabindex", "0");
+        });
+        fireEvent.click(row);
+        const drawer = await screen.findByRole("dialog");
+        expect(Boolean(drawer.closest(".catalog-item-detail-drawer--projects"))).toBe(projects);
+    });
+
     it("uses the users DataTables search pattern and loads the next catalog batch", async () => {
         const catalog = ADMINISTRATION_CATALOGS[0];
         if (!catalog) throw new Error("Catalog missing");

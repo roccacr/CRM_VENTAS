@@ -18,6 +18,7 @@ import { useEffect, useMemo, useRef } from "react";
 
 import type { CatalogItem, CatalogItemStatus } from "../../../services/catalogs/catalog-service";
 import { readDataTableState, useDataTableSearchPanes, writeDataTableState } from "../hooks/useDataTableSearchPanes";
+import { CATALOG_REFERENCE_PROVIDERS } from "./catalog-definitions";
 
 const registerDataTable = DataTable.use;
 registerDataTable(DT);
@@ -28,6 +29,7 @@ const COLUMNS = [{ data: "name" }, { data: "detail", defaultContent: "Sin asigna
 const paneText = (type: string, value: string): string => (type === "pane" ? DT.util.escapeHtml(value) : value);
 
 interface CatalogItemsDataTableProps {
+    readonly projectView?: boolean;
     readonly items: readonly CatalogItem[];
     readonly label: string;
     readonly isLoading: boolean;
@@ -39,7 +41,7 @@ interface CatalogItemsDataTableProps {
 }
 
 /** Uses the users table's SearchPanes, layout and persistence without sharing catalog state. */
-export function CatalogItemsDataTable({ items, label, isLoading, storageKey, selectedPublicId, onSelect, onEdit, onStatusAction }: CatalogItemsDataTableProps) {
+export function CatalogItemsDataTable({ projectView = false, items, label, isLoading, storageKey, selectedPublicId, onSelect, onEdit, onStatusAction }: CatalogItemsDataTableProps) {
     const data = useMemo(() => [...items], [items]);
     const container = useRef<HTMLDivElement>(null);
     const selected = useRef(selectedPublicId);
@@ -128,23 +130,46 @@ export function CatalogItemsDataTable({ items, label, isLoading, storageKey, sel
                         type === "display" ? (
                             <div className="catalog-items-name">
                                 <strong>{item.name}</strong>
-                                <small>{item.nativeCode}</small>
+                                {!projectView && <small>{item.nativeCode}</small>}
                             </div>
                         ) : (
                             paneText(type, `${item.name}${type === "filter" ? ` ${item.nativeCode}` : ""}`)
                         ),
-                    1: (_value: unknown, type: string, item: CatalogItem) => (type === "display" ? <span>{item.detail || "Sin asignar"}</span> : item.detail || "Sin asignar"),
+                    1: (_value: unknown, type: string, item: CatalogItem) =>
+                        type === "display" ? (
+                            projectView ? (
+                                <div className="projects-view-description">
+                                    <span>{item.detail?.trim() || "Sin asignar"}</span>
+                                    {item.updatedAt.trim() && <time dateTime={item.updatedAt}>Actualizado {new Date(item.updatedAt).toLocaleDateString("es-CR")}</time>}
+                                </div>
+                            ) : (
+                                <span>{item.detail || "Sin asignar"}</span>
+                            )
+                        ) : (
+                            item.detail || "Sin asignar"
+                        ),
                     2: (_value: unknown, type: string, item: CatalogItem) =>
                         type === "display" ? (
-                            <div className="catalog-items-reference-list">
-                                {item.externalReferences.length
-                                    ? item.externalReferences.map((reference) => (
-                                          <Tag key={`${reference.systemCode}:${reference.externalId}`}>
-                                              {reference.systemName}: {reference.externalId}
-                                          </Tag>
-                                      ))
-                                    : "Sin asignar"}
-                            </div>
+                            projectView ? (
+                                <div className="projects-view-integrations">
+                                    {[...item.externalReferences, ...CATALOG_REFERENCE_PROVIDERS.filter((provider) => !item.externalReferences.some((reference) => reference.systemCode === provider.systemCode)).map((provider) => ({ ...provider, externalId: null }))].map((reference) => (
+                                        <div key={`${reference.systemCode}:${reference.externalId ?? "unassigned"}`} className="projects-view-integration">
+                                            <span>{reference.systemName}</span>
+                                            <span className={reference.externalId?.trim() ? "projects-view-integration__id" : "projects-view-unassigned"}>{reference.externalId?.trim() || "Sin asignar"}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="catalog-items-reference-list">
+                                    {item.externalReferences.length
+                                        ? item.externalReferences.map((reference) => (
+                                              <Tag key={`${reference.systemCode}:${reference.externalId}`}>
+                                                  {reference.systemName}: {reference.externalId}
+                                              </Tag>
+                                          ))
+                                        : "Sin asignar"}
+                                </div>
+                            )
                         ) : (
                             paneText(type, item.externalReferences.map((reference) => `${reference.systemName}: ${reference.externalId}`).join(", ") || "Sin asignar")
                         ),
@@ -178,9 +203,9 @@ export function CatalogItemsDataTable({ items, label, isLoading, storageKey, sel
             >
                 <thead>
                     <tr>
-                        <th>Nombre</th>
-                        <th>Detalle</th>
-                        <th>Referencias</th>
+                        <th>{projectView ? "Proyecto" : "Nombre"}</th>
+                        <th>{projectView ? "Descripción" : "Detalle"}</th>
+                        <th>{projectView ? "Integraciones" : "Referencias"}</th>
                         <th>Estado</th>
                         <th aria-label="Acciones" />
                     </tr>

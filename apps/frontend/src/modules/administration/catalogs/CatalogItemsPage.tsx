@@ -7,6 +7,7 @@
  * calcula permisos; el BFF rechaza la llamada si el usuario no puede actuar.
  */
 import "./CatalogItemsPage.css";
+import "./ProjectsView.css";
 
 import PlusOutlined from "@ant-design/icons/PlusOutlined";
 import SaveOutlined from "@ant-design/icons/SaveOutlined";
@@ -439,7 +440,7 @@ export function CatalogItemsPage({ catalog, contextLabel = "Administración", co
 
     return (
         <ConfigProvider theme={ADMINISTRATION_THEME}>
-            <div className="global-home-dashboard catalog-items-page">
+            <div className={`global-home-dashboard catalog-items-page catalog-items-page--${catalog.code}`}>
                 <section className="global-home-page-header administration-users-page-header" aria-labelledby="catalog-items-page-title">
                     <div>
                         <nav className="administration-users-breadcrumb" aria-label="Ruta">
@@ -462,6 +463,7 @@ export function CatalogItemsPage({ catalog, contextLabel = "Administración", co
 
                 <section className="catalog-items-panel" aria-label={`Listado de ${catalog.label}`}>
                     <CatalogItemsDataTable
+                        projectView={catalog.code === "projects"}
                         key={`${contextModuleCode}:${catalog.code}`}
                         items={items}
                         label={catalog.label}
@@ -478,6 +480,7 @@ export function CatalogItemsPage({ catalog, contextLabel = "Administración", co
                 </section>
 
                 <CatalogItemDetailDrawer
+                    projectView={catalog.code === "projects"}
                     catalogLabel={catalog.label}
                     error={error}
                     isLoading={isLoading}

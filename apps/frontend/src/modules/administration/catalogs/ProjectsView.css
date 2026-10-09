@@ -1,0 +1,240 @@
+/* Explicit opt-in: shared catalog and Users surfaces retain their canonical layout. */
+.catalog-items-page--projects,
+.catalog-item-detail-drawer--projects {
+    --project-border: #d9e0ec;
+    --project-muted: #5b6478;
+    --project-focus: #4f5fb8;
+    letter-spacing: 0;
+}
+
+.catalog-items-page--projects .catalog-items-panel {
+    min-width: 0;
+    border-radius: 8px;
+    box-shadow: none;
+}
+
+.catalog-items-page--projects .dt-layout-row:not(.dt-layout-table) {
+    padding: 16px 20px;
+}
+
+.catalog-items-page--projects .administration-users-datatable-wrap .dt-search {
+    width: 440px;
+    max-width: 100%;
+}
+
+.catalog-items-page--projects .administration-users-datatable-wrap .dt-search .dt-input {
+    width: 100%;
+    min-height: 40px;
+    background-color: #f9fafb;
+}
+
+.catalog-items-page--projects div.dtsp-panesContainer div.dtsp-titleRow {
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.catalog-items-page--projects div.dtsp-panesContainer div.dtsp-searchPanes {
+    gap: 16px;
+}
+
+.catalog-items-page--projects .dt-layout-table {
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+}
+
+.catalog-items-page--projects .administration-users-datatable-wrap table.dataTable.administration-users-datatable {
+    min-width: 760px;
+    table-layout: fixed;
+}
+
+.catalog-items-page--projects .administration-users-datatable-wrap table.dataTable.administration-users-datatable > thead > tr > th {
+    padding: 12px 16px;
+    background: #f2f4f7;
+    color: var(--project-muted);
+    font-size: 12px;
+    font-weight: 650;
+}
+
+.catalog-items-page--projects table.administration-users-datatable > thead > tr > th:first-child {
+    width: 29%;
+}
+.catalog-items-page--projects table.administration-users-datatable > thead > tr > th:nth-child(2) {
+    width: 30%;
+}
+.catalog-items-page--projects table.administration-users-datatable > thead > tr > th:nth-child(3) {
+    width: 23%;
+}
+.catalog-items-page--projects table.administration-users-datatable > thead > tr > th:nth-child(4) {
+    width: 12%;
+}
+.catalog-items-page--projects table.administration-users-datatable > thead > tr > th:last-child {
+    width: 6%;
+}
+
+.catalog-items-page--projects .administration-users-datatable-wrap table.dataTable.administration-users-datatable > tbody > tr > td {
+    padding: 12px 16px;
+    overflow-wrap: anywhere;
+    vertical-align: middle;
+    transition: background-color 140ms ease;
+}
+
+.catalog-items-page--projects .catalog-items-name strong {
+    font-size: 14px;
+    font-weight: 650;
+    line-height: 1.5;
+}
+
+.catalog-items-page--projects .catalog-items-row:hover > td,
+.catalog-items-page--projects .catalog-items-row:focus-visible > td {
+    background: #f5f7fa;
+}
+
+.catalog-items-page--projects .catalog-items-row--selected > td {
+    background: #eaefff;
+}
+
+.catalog-items-page--projects .catalog-items-row:focus-visible {
+    outline: 2px solid var(--project-focus);
+    outline-offset: -2px;
+}
+
+.catalog-items-page--projects .projects-view-description {
+    display: grid;
+    gap: 6px;
+    line-height: 1.5;
+    white-space: normal;
+}
+
+.catalog-items-page--projects .projects-view-description time {
+    color: var(--project-muted);
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+}
+
+.catalog-items-page--projects .projects-view-integrations {
+    display: grid;
+    gap: 8px;
+}
+
+.catalog-items-page--projects .projects-view-integration {
+    display: grid;
+    grid-template-columns: 64px minmax(0, 1fr);
+    gap: 8px;
+    font-size: 12px;
+    line-height: 1.4;
+}
+
+.catalog-items-page--projects .projects-view-integration > span:first-child,
+.catalog-items-page--projects .projects-view-unassigned {
+    color: var(--project-muted);
+}
+
+.catalog-items-page--projects .projects-view-integration__id {
+    font-weight: 650;
+    font-variant-numeric: tabular-nums;
+}
+
+.catalog-item-detail-drawer--projects .ant-drawer-header,
+.catalog-item-detail-drawer--projects .ant-drawer-footer {
+    padding: 20px 24px;
+}
+
+.catalog-item-detail-drawer--projects .ant-drawer-body {
+    padding: 20px 24px;
+    background: #f6f8fc;
+}
+
+.catalog-item-detail-drawer--projects .user-detail-drawer__identity-copy h4.ant-typography {
+    white-space: normal;
+    overflow-wrap: anywhere;
+    font-size: 20px;
+    line-height: 1.4;
+}
+
+.catalog-item-detail-drawer--projects .user-detail-drawer__sections {
+    gap: 16px;
+}
+
+.catalog-item-detail-drawer--projects .user-detail-drawer__sections > .ant-card {
+    border: 1px solid var(--project-border);
+    border-radius: 8px;
+    box-shadow: none;
+    overflow: hidden;
+}
+
+.catalog-item-detail-drawer--projects .user-detail-drawer__sections .ant-card-head {
+    padding-inline: 20px;
+    min-height: 48px;
+    background: #fafbfc;
+}
+
+.catalog-item-detail-drawer--projects .user-detail-drawer__sections .ant-card-body {
+    padding: 16px 20px;
+}
+
+.catalog-item-detail-drawer--projects .ant-descriptions-item-content {
+    font-weight: 500;
+    line-height: 1.6;
+}
+
+@media (max-width: 720px) {
+    .catalog-items-page--projects .dt-layout-row:not(.dt-layout-table) {
+        padding: 12px;
+    }
+    .catalog-items-page--projects .dt-layout-cell,
+    .catalog-items-page--projects .dt-search,
+    .catalog-items-page--projects .administration-users-datatable-wrap .dt-search .dt-input {
+        width: 100%;
+        min-width: 0;
+    }
+    .catalog-items-page--projects div.dtsp-panesContainer div.dtsp-searchPanes {
+        flex-direction: column;
+    }
+    .catalog-items-page--projects div.dtsp-panesContainer div.dtsp-searchPane {
+        width: 100%;
+        flex-basis: auto;
+    }
+    .catalog-items-page--projects div.dtsp-panesContainer button,
+    .catalog-items-page--projects .dt-paging .dt-paging-button,
+    .catalog-items-page--projects .catalog-items-row .ant-btn {
+        min-width: 44px;
+        min-height: 44px;
+    }
+    .catalog-item-detail-drawer--projects .ant-drawer-header,
+    .catalog-item-detail-drawer--projects .ant-drawer-body,
+    .catalog-item-detail-drawer--projects .ant-drawer-footer {
+        padding: 16px;
+    }
+    .catalog-item-detail-drawer--projects .user-detail-drawer__sections .ant-card-head {
+        padding-inline: 16px;
+    }
+    .catalog-item-detail-drawer--projects .user-detail-drawer__sections .ant-card-body {
+        padding: 16px;
+    }
+    .catalog-item-detail-drawer--projects .ant-descriptions-item-container {
+        flex-direction: column;
+        gap: 4px;
+    }
+    .catalog-item-detail-drawer--projects.user-detail-drawer .ant-descriptions-item-label {
+        flex-basis: auto;
+    }
+    .catalog-item-detail-drawer--projects .ant-drawer-close,
+    .catalog-item-detail-drawer--projects .ant-btn {
+        min-width: 44px;
+        min-height: 44px;
+    }
+    .catalog-item-detail-drawer--projects .user-detail-drawer__footer {
+        flex-wrap: wrap;
+        gap: 12px;
+    }
+    .catalog-item-detail-drawer--projects .user-detail-drawer__footer > .ant-space {
+        flex-wrap: wrap;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .catalog-items-page--projects .catalog-items-row > td {
+        transition: none;
+    }
+}
