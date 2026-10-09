@@ -4,6 +4,7 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-li
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ADMINISTRATION_CATALOGS } from "../../src/modules/administration/catalogs/catalog-definitions";
+import { CatalogItemDetailDrawer } from "../../src/modules/administration/catalogs/CatalogItemDetailDrawer";
 import { CatalogItemsPage } from "../../src/modules/administration/catalogs/CatalogItemsPage";
 import type * as CatalogServiceModule from "../../src/services/catalogs/catalog-service";
 import { listCatalogItems, updateCatalogItem } from "../../src/services/catalogs/catalog-service";
@@ -40,22 +41,164 @@ describe("CatalogItemsPage", () => {
         vi.clearAllMocks();
     });
 
+    it("aligns project filter tracks with measured table headers", async () => {
+        const geometry = vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (this: HTMLElement) {
+            const index = this instanceof HTMLTableCellElement ? this.cellIndex : 0;
+            return this.tagName === "TH" ? new DOMRect(100 + index * 200, 0, 200, 40) : new DOMRect(100, 0, 1000, 40);
+        });
+        try {
+            const catalog = ADMINISTRATION_CATALOGS.find((catalog) => catalog.code === "projects");
+            if (!catalog) throw new Error("Projects catalog missing");
+            mockListCatalogItems.mockResolvedValue({ catalog: { code: catalog.code, label: catalog.label, moduleCode: catalog.moduleCode }, items: [item], total: 1 });
+            render(<CatalogItemsPage catalog={catalog} />);
+            const row = (await screen.findByText(item.name)).closest(".administration-users-datatable-wrap");
+            if (!(row instanceof HTMLElement)) throw new Error("Table wrapper missing");
+            await waitFor(() => {
+                expect(row.style.getPropertyValue("--projects-filter-tracks")).toBe("200px 200px 200px 200px 200px");
+                expect(row.style.getPropertyValue("--projects-filter-offset")).toBe("0px");
+            });
+        } finally {
+            geometry.mockRestore();
+        }
+    });
+
     it.each(ADMINISTRATION_CATALOGS)("isolates the projects presentation from $code", async (catalog) => {
         mockListCatalogItems.mockResolvedValue({ catalog: { code: catalog.code, label: catalog.label, moduleCode: catalog.moduleCode }, items: [item], total: 1 });
         render(<CatalogItemsPage catalog={catalog} />);
         const row = (await screen.findByText(item.name)).closest("tr");
         if (!row) throw new Error("Row missing");
         const projects = catalog.code === "projects";
+        expect(screen.getByRole("button", { name: projects ? /Nuevo proyecto/ : /Nuevo valor/ })).toBeInTheDocument();
+        expect(Boolean(screen.queryByRole("button", { name: "Actualizar proyectos" }))).toBe(projects);
         expect(Boolean(row.closest(".catalog-items-page--projects"))).toBe(projects);
         await waitFor(() => {
             expect(Boolean(within(row).queryByText("Odoo"))).toBe(projects);
             expect(Boolean(within(row).queryByText(item.nativeCode))).toBe(!projects);
             expect(row.querySelector("time")?.getAttribute("datetime") ?? null).toBe(projects ? item.updatedAt : null);
+            expect(row.querySelectorAll("[data-project-field]")).toHaveLength(projects ? 5 : 0);
             expect(row).toHaveAttribute("tabindex", "0");
         });
         fireEvent.click(row);
         const drawer = await screen.findByRole("dialog");
         expect(Boolean(drawer.closest(".catalog-item-detail-drawer--projects"))).toBe(projects);
+        expect(drawer.querySelectorAll(".projects-view-reference-status")).toHaveLength(projects ? 2 : 0);
+    });
+
+    it("groups project search and create/edit fields without changing optional references", async () => {
+        const catalog = ADMINISTRATION_CATALOGS[0];
+        if (!catalog) throw new Error("Catalog missing");
+        mockListCatalogItems.mockResolvedValue({ catalog: { code: catalog.code, label: catalog.label, moduleCode: catalog.moduleCode }, items: [item], total: 1 });
+        render(<CatalogItemsPage catalog={catalog} />);
+        await screen.findByText(item.name);
+        expect(screen.getByRole("searchbox").closest(".projects-view-search-section")).not.toBeNull();
+        fireEvent.click(screen.getByRole("button", { name: /Nuevo proyecto/ }));
+        const create = await screen.findByRole("dialog");
+        expect(create.closest(".catalog-items-modal--projects")).not.toBeNull();
+        expect(within(create).getByRole("group", { name: "Información del registro" })).toContainElement(within(create).getByLabelText("Nombre"));
+        expect(within(create).getByRole("group", { name: "NetSuite" })).toContainElement(within(create).getByRole("textbox", { name: /ID NetSuite/ }));
+        expect(within(create).getByRole("group", { name: "Odoo" })).toContainElement(within(create).getByRole("textbox", { name: /ID Odoo/ }));
+        expect(within(create).getByRole("group", { name: "Auditoría" })).toContainElement(within(create).getByLabelText("Motivo de auditoría"));
+        expect(within(create).getByRole("textbox", { name: /ID Odoo/ })).not.toHaveAttribute("aria-required", "true");
+        cleanup();
+        render(<CatalogItemsPage catalog={catalog} />);
+        await screen.findByText(item.name);
+        fireEvent.click(screen.getByRole("row", { name: `Ver detalle de ${item.name}` }));
+        const drawer = await screen.findByRole("dialog");
+        fireEvent.click(within(drawer).getByRole("button", { name: "Editar" }));
+        const edit = (await screen.findByRole("button", { name: /Guardar cambios/ })).closest('[role="dialog"]');
+        if (!(edit instanceof HTMLElement)) throw new Error("Edit dialog missing");
+        expect(within(edit).getByRole("group", { name: "NetSuite" })).toContainElement(within(edit).getByRole("textbox", { name: /ID NetSuite/ }));
+        expect(within(edit).getByRole("textbox", { name: /ID NetSuite/ })).toHaveValue("1");
+    });
+
+    it("centers the enterprise projects loader while the initial request is pending", () => {
+        const catalog = ADMINISTRATION_CATALOGS[0];
+        if (!catalog) throw new Error("Catalog missing");
+        mockListCatalogItems.mockReturnValue(new Promise(() => {}));
+        render(<CatalogItemsPage catalog={catalog} />);
+        const loading = screen.getByRole("status", { name: "Cargando proyectos" });
+        expect(within(loading).getByText("Cargando proyectos...")).toBeInTheDocument();
+        expect(within(loading).getByText("Sincronizando registros y catálogo CRM")).toBeInTheDocument();
+        expect(loading.querySelector(".projects-view-loader__ring")).toBeInTheDocument();
+        expect(loading.querySelector(".ant-skeleton")).not.toBeInTheDocument();
+        expect(screen.getByRole("region", { name: "Listado de Proyectos" })).toHaveAttribute("aria-busy", "true");
+        expect(screen.getByRole("button", { name: "Actualizar proyectos" })).toBeDisabled();
+    });
+
+    it("uses airy label/value placeholders in the project drawer only", () => {
+        const props = { catalogLabel: "Proyectos", error: null, isLoading: true, item: null, open: true, position: 0, total: 0, onClose: vi.fn(), onEdit: vi.fn(), onRefresh: vi.fn(), onStatusAction: vi.fn(), onSelectPrevious: vi.fn(), onSelectNext: vi.fn() };
+        const view = render(<CatalogItemDetailDrawer {...props} projectView />);
+        const loading = screen.getByRole("status", { name: "Cargando detalle" });
+        expect(loading.querySelectorAll(".projects-view-detail-loading__pair")).toHaveLength(5);
+        expect(loading.querySelectorAll(".ant-skeleton")).toHaveLength(10);
+        view.rerender(<CatalogItemDetailDrawer {...props} projectView={false} />);
+        expect(screen.getByRole("status", { name: "Cargando detalle" }).querySelector(".ant-skeleton-paragraph")).toBeInTheDocument();
+    });
+
+    it("crossfades the project loader into resolved data", async () => {
+        const catalog = ADMINISTRATION_CATALOGS[0];
+        if (!catalog) throw new Error("Catalog missing");
+        let resolveRequest: ((value: Awaited<ReturnType<typeof listCatalogItems>>) => void) | undefined;
+        mockListCatalogItems.mockReturnValue(
+            new Promise((resolve) => {
+                resolveRequest = resolve;
+            }),
+        );
+        render(<CatalogItemsPage catalog={catalog} />);
+        expect(screen.getByRole("status", { name: "Cargando proyectos" })).toBeInTheDocument();
+        resolveRequest?.({ catalog: { code: catalog.code, label: catalog.label, moduleCode: catalog.moduleCode }, items: [item], total: 1 });
+        await screen.findByRole("row", { name: `Ver detalle de ${item.name}` });
+        await waitFor(() => {
+            expect(screen.queryByRole("status", { name: "Cargando proyectos" })).not.toBeInTheDocument();
+        });
+        expect(screen.getByRole("region", { name: "Listado de Proyectos" })).toHaveAttribute("aria-busy", "false");
+    });
+
+    it("does not apply the project skeleton to other catalogs", () => {
+        const catalog = ADMINISTRATION_CATALOGS.find((entry) => entry.code !== "projects");
+        if (!catalog) throw new Error("Catalog missing");
+        mockListCatalogItems.mockReturnValue(new Promise(() => {}));
+        render(<CatalogItemsPage catalog={catalog} />);
+        expect(screen.queryByRole("status", { name: "Cargando proyectos" })).not.toBeInTheDocument();
+    });
+
+    it("recovers an initial projects failure from the list refresh control", async () => {
+        const catalog = ADMINISTRATION_CATALOGS[0];
+        if (!catalog) throw new Error("Catalog missing");
+        mockListCatalogItems.mockRejectedValueOnce(new Error("Network failure"));
+        mockListCatalogItems.mockResolvedValueOnce({ catalog: { code: catalog.code, label: catalog.label, moduleCode: catalog.moduleCode }, items: [item], total: 1 });
+        render(<CatalogItemsPage catalog={catalog} />);
+        expect(await screen.findByRole("alert")).toHaveTextContent("No pudimos cargar el catálogo");
+        const refresh = screen.getByRole("button", { name: "Actualizar proyectos" });
+        await waitFor(() => expect(refresh).toBeEnabled());
+        fireEvent.click(refresh);
+        expect(await screen.findByText(item.name)).toBeInTheDocument();
+        expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+        expect(screen.getByRole("region", { name: "Listado de Proyectos" })).toHaveAttribute("aria-busy", "false");
+        expect(mockListCatalogItems).toHaveBeenCalledTimes(2);
+    });
+
+    it("keeps mobile sorting bound to the same table order", async () => {
+        const catalog = ADMINISTRATION_CATALOGS[0];
+        if (!catalog) throw new Error("Catalog missing");
+        mockListCatalogItems.mockResolvedValue({ catalog: { code: catalog.code, label: catalog.label, moduleCode: catalog.moduleCode }, items: [item, { ...item, name: "Zulu", publicId: "second" }], total: 2 });
+        render(<CatalogItemsPage catalog={catalog} />);
+        await screen.findByText(item.name);
+        const sort = screen.getByLabelText("Ordenar proyectos");
+        fireEvent.change(sort, { target: { value: "0,desc" } });
+        await waitFor(() => expect(screen.getAllByRole("row", { name: /Ver detalle de/ })[0]).toHaveTextContent("Zulu"));
+        expect(sort).toHaveValue("0,desc");
+    });
+
+    it.each(["Odoo", item.nativeCode, "NetSuite: 1"])("keeps displayed provider fallbacks and native identifiers searchable: %s", async (search) => {
+        const catalog = ADMINISTRATION_CATALOGS[0];
+        if (!catalog) throw new Error("Catalog missing");
+        const key = `rocca.administration.catalogs.${catalog.code}.datatable.v1`;
+        window.localStorage.setItem(key, JSON.stringify({ time: Date.now(), start: 0, length: 10, order: [[0, "asc"]], search: { search }, columns: Array.from({ length: 5 }, () => ({ search: { search: "" }, visible: true })) }));
+        mockListCatalogItems.mockResolvedValue({ catalog: { code: catalog.code, label: catalog.label, moduleCode: catalog.moduleCode }, items: [item], total: 1 });
+        render(<CatalogItemsPage catalog={catalog} />);
+        expect(await screen.findByText(item.name)).toBeInTheDocument();
+        expect(screen.getByRole("table", { name: "Proyectos" })).toBeInTheDocument();
     });
 
     it("uses the users DataTables search pattern and loads the next catalog batch", async () => {

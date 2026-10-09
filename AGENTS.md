@@ -16,6 +16,10 @@ The command currently accepts no arguments. If arguments are needed later, add e
 
 Do not create another `check-all.cmd` under `scripts/` or inside an app. API and frontend remain separate projects with their own `pnpm-lock.yaml`, package scripts, and local rules.
 
+## Project Skills
+
+Project-local skills are installed under `.agents/skills/`. Source revisions, installation verification, applicability and design precedence are recorded in [SKILLS.md](SKILLS.md). Consult relevant entrypoints before using them; installing a skill does not authorize unrelated workflows, dependency changes, production actions or fabricated business data.
+
 ## Scope
 
 - API rules live in `apps/api/AGENTS.md`.

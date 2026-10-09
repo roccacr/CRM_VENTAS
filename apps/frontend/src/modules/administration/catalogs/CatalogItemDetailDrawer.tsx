@@ -53,7 +53,7 @@ function CatalogDetailIdentifier({ value }: { readonly value: string | null | un
  * Si NetSuite u Odoo no tienen vínculo, se muestra la fila vacía. Esa fila no
  * se envía al API: solo explica que el sistema todavía no está asignado.
  */
-function CatalogDetailReferences({ references }: { readonly references: CatalogItem["externalReferences"] }) {
+function CatalogDetailReferences({ references, projectView }: { readonly references: CatalogItem["externalReferences"]; readonly projectView?: boolean }) {
     const missing = CATALOG_REFERENCE_PROVIDERS.filter((provider) => !references.some((reference) => reference.systemCode === provider.systemCode));
     const displayedReferences = [...references, ...missing.map((provider) => ({ ...provider, externalId: null, status: null }))];
     const providerCodes = [...new Set(displayedReferences.map((reference) => reference.systemCode))];
@@ -74,7 +74,17 @@ function CatalogDetailReferences({ references }: { readonly references: CatalogI
                                     items={[
                                         { key: "systemCode", label: "Código del sistema", children: displayValue(reference.systemCode) },
                                         { key: "id", label: "Identificador", children: <CatalogDetailIdentifier value={reference.externalId} /> },
-                                        { key: "status", label: "Estado de referencia", children: REFERENCE_STATUS_LABELS[reference.status ?? ""] ?? displayValue(reference.status) },
+                                        {
+                                            key: "status",
+                                            label: "Estado de referencia",
+                                            children: projectView ? (
+                                                <span className="projects-view-reference-status" data-status={reference.status ?? "unassigned"}>
+                                                    {REFERENCE_STATUS_LABELS[reference.status ?? ""] ?? displayValue(reference.status)}
+                                                </span>
+                                            ) : (
+                                                (REFERENCE_STATUS_LABELS[reference.status ?? ""] ?? displayValue(reference.status))
+                                            ),
+                                        },
                                     ]}
                                 />
                             ))}
@@ -154,6 +164,26 @@ function CatalogDetailFooter({ item, error, isLoading, onEdit, onStatusAction, p
     );
 }
 
+/** Projects uses sparse label/value lines; other catalogs keep their existing loader. */
+function CatalogDetailLoading({ projectView }: { readonly projectView: boolean | undefined }) {
+    return (
+        <div role="status" aria-label="Cargando detalle" className={projectView ? "projects-view-detail-loading" : undefined}>
+            {projectView ? (
+                <div aria-hidden="true">
+                    {Array.from({ length: 5 }, (_, index) => (
+                        <div key={index} className="projects-view-detail-loading__pair">
+                            <Skeleton.Node active className="projects-view-detail-loading__label" />
+                            <Skeleton.Node active className="projects-view-detail-loading__value" />
+                        </div>
+                    ))}
+                </div>
+            ) : (
+                <Skeleton active paragraph={{ rows: 8 }} />
+            )}
+        </div>
+    );
+}
+
 /**
  * Panel de lectura de un valor.
  *
@@ -209,9 +239,7 @@ export function CatalogItemDetailDrawer({ projectView, catalogLabel, error, isLo
             }}
         >
             {isLoading ? (
-                <div role="status" aria-label="Cargando detalle">
-                    <Skeleton active paragraph={{ rows: 8 }} />
-                </div>
+                <CatalogDetailLoading projectView={projectView} />
             ) : error || !item ? (
                 <Alert type="error" showIcon title={error ?? "Este registro ya no está disponible en el listado actual."} action={<Button onClick={onRefresh}>Reintentar</Button>} />
             ) : (
@@ -249,7 +277,7 @@ export function CatalogItemDetailDrawer({ projectView, catalogLabel, error, isLo
                             ]}
                         />
                     </Card>
-                    <CatalogDetailReferences references={item.externalReferences} />
+                    <CatalogDetailReferences references={item.externalReferences} projectView={Boolean(projectView)} />
                 </div>
             )}
         </Drawer>

@@ -10,6 +10,7 @@ import "./CatalogItemsPage.css";
 import "./ProjectsView.css";
 
 import PlusOutlined from "@ant-design/icons/PlusOutlined";
+import ReloadOutlined from "@ant-design/icons/ReloadOutlined";
 import SaveOutlined from "@ant-design/icons/SaveOutlined";
 import Button from "antd/es/button";
 import ConfigProvider from "antd/es/config-provider";
@@ -17,7 +18,8 @@ import Form from "antd/es/form";
 import Input from "antd/es/input";
 import message from "antd/es/message";
 import Modal from "antd/es/modal";
-import { useCallback, useEffect, useRef, useState } from "react";
+import Tooltip from "antd/es/tooltip";
+import { type ReactNode, useCallback, useEffect, useRef, useState } from "react";
 
 import { ApiClientError } from "../../../services/api/api-client";
 import { type CatalogContextModuleCode, type CatalogExternalReferencePayload, type CatalogItem, type CatalogItemPayload, type CatalogItemStatus, createCatalogItem, listCatalogItems, updateCatalogItem, updateCatalogItemStatus } from "../../../services/catalogs/catalog-service";
@@ -89,6 +91,18 @@ const buildExternalReferences = (values: CatalogItemFormValues): CatalogExternal
 /** Id externo ya guardado, para precargar el formulario de edición. */
 const getReferenceValue = (item: CatalogItem | null, systemCode: "netsuite" | "odoo"): string | undefined => item?.externalReferences.find((reference) => reference.systemCode === systemCode)?.externalId;
 
+/** Projects share drawer section hierarchy without changing sibling catalog forms. */
+function CatalogFormSection({ projectView, title, children }: { readonly projectView: boolean; readonly title: string; readonly children: ReactNode }) {
+    return projectView ? (
+        <fieldset className="projects-view-form-section">
+            <legend>{title}</legend>
+            <div>{children}</div>
+        </fieldset>
+    ) : (
+        <>{children}</>
+    );
+}
+
 /**
  * Alta o edición de un valor.
  *
@@ -98,6 +112,7 @@ const getReferenceValue = (item: CatalogItem | null, systemCode: "netsuite" | "o
 function CatalogItemModal({ catalog, initialItem, isSaving, open, error, onClose, onSubmit }: { readonly catalog: AdministrationCatalogDefinition; readonly error: string | null; readonly initialItem: CatalogItem | null; readonly isSaving: boolean; readonly onClose: () => void; readonly onSubmit: (payload: CatalogItemFormPayload) => void; readonly open: boolean }) {
     const [form] = Form.useForm<CatalogItemFormValues>();
     const isEdit = initialItem !== null;
+    const projectView = catalog.code === "projects";
 
     useEffect(() => {
         if (!open) {
@@ -129,7 +144,7 @@ function CatalogItemModal({ catalog, initialItem, isSaving, open, error, onClose
         <Modal
             centered
             forceRender
-            className="catalog-items-modal"
+            className={`catalog-items-modal${projectView ? " catalog-items-modal--projects" : ""}`}
             footer={
                 <div className="catalog-items-modal__footer">
                     <Button disabled={isSaving} onClick={onClose}>
@@ -153,37 +168,45 @@ function CatalogItemModal({ catalog, initialItem, isSaving, open, error, onClose
         >
             <Form form={form} layout="vertical" requiredMark="optional">
                 {error ? <div className="catalog-items-error">{error}</div> : null}
-                <Form.Item<CatalogItemFormValues>
-                    label="Nombre"
-                    name="name"
-                    rules={[
-                        { min: 2, message: "Agrega un nombre válido." },
-                        { required: true, message: "El nombre es obligatorio." },
-                    ]}
-                >
-                    <Input placeholder={`Ej. ${catalog.label} principal`} />
-                </Form.Item>
-                <Form.Item<CatalogItemFormValues> label="Detalle" name="detail">
-                    <Input.TextArea rows={3} maxLength={500} showCount placeholder="Detalle operativo visible para administración." />
-                </Form.Item>
+                <CatalogFormSection projectView={projectView} title="Información del registro">
+                    <Form.Item<CatalogItemFormValues>
+                        label="Nombre"
+                        name="name"
+                        rules={[
+                            { min: 2, message: "Agrega un nombre válido." },
+                            { required: true, message: "El nombre es obligatorio." },
+                        ]}
+                    >
+                        <Input placeholder={`Ej. ${catalog.label} principal`} />
+                    </Form.Item>
+                    <Form.Item<CatalogItemFormValues> label="Detalle" name="detail">
+                        <Input.TextArea rows={3} maxLength={500} showCount placeholder="Detalle operativo visible para administración." />
+                    </Form.Item>
+                </CatalogFormSection>
                 <div className="catalog-items-modal__grid">
-                    <Form.Item<CatalogItemFormValues> label="ID NetSuite" name="netsuiteId">
-                        <Input />
-                    </Form.Item>
-                    <Form.Item<CatalogItemFormValues> label="ID Odoo" name="odooId">
-                        <Input />
-                    </Form.Item>
+                    <CatalogFormSection projectView={projectView} title="NetSuite">
+                        <Form.Item<CatalogItemFormValues> label="ID NetSuite" name="netsuiteId">
+                            <Input />
+                        </Form.Item>
+                    </CatalogFormSection>
+                    <CatalogFormSection projectView={projectView} title="Odoo">
+                        <Form.Item<CatalogItemFormValues> label="ID Odoo" name="odooId">
+                            <Input />
+                        </Form.Item>
+                    </CatalogFormSection>
                 </div>
-                <Form.Item<CatalogItemFormValues>
-                    label="Motivo de auditoría"
-                    name="reason"
-                    rules={[
-                        { min: MIN_REASON_LENGTH, message: "Agrega un motivo auditable de al menos 5 caracteres." },
-                        { required: true, message: "El motivo es obligatorio." },
-                    ]}
-                >
-                    <Input.TextArea rows={4} maxLength={255} showCount placeholder="Ej. Alta autorizada por jefatura." />
-                </Form.Item>
+                <CatalogFormSection projectView={projectView} title="Auditoría">
+                    <Form.Item<CatalogItemFormValues>
+                        label="Motivo de auditoría"
+                        name="reason"
+                        rules={[
+                            { min: MIN_REASON_LENGTH, message: "Agrega un motivo auditable de al menos 5 caracteres." },
+                            { required: true, message: "El motivo es obligatorio." },
+                        ]}
+                    >
+                        <Input.TextArea rows={4} maxLength={255} showCount placeholder="Ej. Alta autorizada por jefatura." />
+                    </Form.Item>
+                </CatalogFormSection>
             </Form>
         </Modal>
     );
@@ -195,12 +218,12 @@ function CatalogItemModal({ catalog, initialItem, isSaving, open, error, onClose
  * El botón permanece deshabilitado hasta que el motivo alcanza el mínimo:
  * el API rechazaría un cambio sin texto auditable.
  */
-function CatalogStatusModal({ action, isSaving, onClose, onReasonChange, onSubmit, reason }: { readonly action: StatusAction | null; readonly isSaving: boolean; readonly onClose: () => void; readonly onReasonChange: (value: string) => void; readonly onSubmit: () => void; readonly reason: string }) {
+function CatalogStatusModal({ action, isSaving, onClose, onReasonChange, onSubmit, reason, projectView }: { readonly action: StatusAction | null; readonly isSaving: boolean; readonly onClose: () => void; readonly onReasonChange: (value: string) => void; readonly onSubmit: () => void; readonly reason: string; readonly projectView: boolean }) {
     return (
         <Modal
             centered
             destroyOnHidden
-            className="catalog-items-modal"
+            className={`catalog-items-modal${projectView ? " catalog-items-modal--projects" : ""}`}
             footer={
                 <div className="catalog-items-modal__footer">
                     <Button disabled={isSaving} onClick={onClose}>
@@ -249,7 +272,7 @@ function CatalogStatusModal({ action, isSaving, onClose, onReasonChange, onSubmi
     );
 }
 
-function CatalogLoadState({ error, isLoading, hasMore, isLoadingMore, loaded, total, onLoadMore }: { readonly error: string | null; readonly isLoading: boolean; readonly hasMore: boolean; readonly isLoadingMore: boolean; readonly loaded: number; readonly total: number; readonly onLoadMore: () => void }) {
+function CatalogLoadState({ error, isLoading, projectView, hasMore, isLoadingMore, loaded, total, onLoadMore }: { readonly error: string | null; readonly isLoading: boolean; readonly projectView: boolean; readonly hasMore: boolean; readonly isLoadingMore: boolean; readonly loaded: number; readonly total: number; readonly onLoadMore: () => void }) {
     return (
         <>
             {error ? (
@@ -257,7 +280,7 @@ function CatalogLoadState({ error, isLoading, hasMore, isLoadingMore, loaded, to
                     {error}
                 </div>
             ) : null}
-            {isLoading ? <div role="status">Cargando catálogo…</div> : null}
+            {isLoading && !projectView ? <div role="status">Cargando catálogo…</div> : null}
             {hasMore ? (
                 <div className="catalog-items-toolbar">
                     <span>
@@ -272,9 +295,33 @@ function CatalogLoadState({ error, isLoading, hasMore, isLoadingMore, loaded, to
     );
 }
 
-/**
- * Pantalla administrativa reutilizable para administrar un catálogo CRM desde el módulo autorizado.
- */
+/** Domain-aware header actions; block refresh while a request or mutation is active. */
+function CatalogHeaderActions({ catalogCode, isLoading, isLoadingMore, isSaving, isSavingStatus, onRefresh, onCreate }: { readonly catalogCode: string; readonly isLoading: boolean; readonly isLoadingMore: boolean; readonly isSaving: boolean; readonly isSavingStatus: boolean; readonly onRefresh: () => void; readonly onCreate: () => void }) {
+    return (
+        <div className="global-home-page-header__actions">
+            {catalogCode === "projects" && (
+                <Tooltip title="Actualizar proyectos">
+                    <Button className="projects-view-refresh" aria-label="Actualizar proyectos" icon={<ReloadOutlined spin={isLoading} />} disabled={isLoading || isLoadingMore || isSaving || isSavingStatus} onClick={onRefresh} />
+                </Tooltip>
+            )}
+            <button className="global-home-page-header__primary" type="button" onClick={onCreate}>
+                <PlusOutlined />
+                {catalogCode === "projects" ? "Nuevo proyecto" : "Nuevo valor"}
+            </button>
+        </div>
+    );
+}
+
+/** Projects announce list updates without changing sibling catalogs' presentation. */
+function CatalogListPanel({ catalog, isLoading, isLoadingMore, children }: { readonly catalog: AdministrationCatalogDefinition; readonly isLoading: boolean; readonly isLoadingMore: boolean; readonly children: ReactNode }) {
+    return (
+        <section className="catalog-items-panel" aria-label={`Listado de ${catalog.label}`} aria-busy={catalog.code === "projects" ? isLoading || isLoadingMore : undefined}>
+            {children}
+        </section>
+    );
+}
+
+/** Pantalla administrativa scoped por catalogo y modulo autorizado. */
 export function CatalogItemsPage({ catalog, contextLabel = "Administración", contextModuleCode = "administration" }: CatalogItemsPageProps) {
     const [error, setError] = useState<string | null>(null);
     const [formError, setFormError] = useState<string | null>(null);
@@ -453,15 +500,10 @@ export function CatalogItemsPage({ catalog, contextLabel = "Administración", co
                         <h1 id="catalog-items-page-title">{catalog.label}</h1>
                         <p>Gestión de valores nativos CRM y sus referencias externas.</p>
                     </div>
-                    <div className="global-home-page-header__actions">
-                        <button className="global-home-page-header__primary" type="button" onClick={openCreate}>
-                            <PlusOutlined />
-                            Nuevo valor
-                        </button>
-                    </div>
+                    <CatalogHeaderActions catalogCode={catalog.code} isLoading={isLoading} isLoadingMore={isLoadingMore} isSaving={isSaving} isSavingStatus={isSavingStatus} onRefresh={loadItems} onCreate={openCreate} />
                 </section>
 
-                <section className="catalog-items-panel" aria-label={`Listado de ${catalog.label}`}>
+                <CatalogListPanel catalog={catalog} isLoading={isLoading} isLoadingMore={isLoadingMore}>
                     <CatalogItemsDataTable
                         projectView={catalog.code === "projects"}
                         key={`${contextModuleCode}:${catalog.code}`}
@@ -476,8 +518,8 @@ export function CatalogItemsPage({ catalog, contextLabel = "Administración", co
                             setSelection({ publicId: item.publicId, catalogCode: catalog.code, context: contextModuleCode, open: true });
                         }}
                     />
-                    <CatalogLoadState error={error} isLoading={isLoading} hasMore={hasMore} isLoadingMore={isLoadingMore} loaded={items.length} total={total} onLoadMore={loadMore} />
-                </section>
+                    <CatalogLoadState error={error} isLoading={isLoading} projectView={catalog.code === "projects"} hasMore={hasMore} isLoadingMore={isLoadingMore} loaded={items.length} total={total} onLoadMore={loadMore} />
+                </CatalogListPanel>
 
                 <CatalogItemDetailDrawer
                     projectView={catalog.code === "projects"}
@@ -504,7 +546,7 @@ export function CatalogItemsPage({ catalog, contextLabel = "Administración", co
                     onStatusAction={openStatusAction}
                 />
                 <CatalogItemModal catalog={catalog} error={formError} initialItem={editingItem} isSaving={isSaving} open={isFormOpen} onClose={closeForm} onSubmit={submitForm} />
-                <CatalogStatusModal action={pendingStatusAction} isSaving={isSavingStatus} reason={reason} onClose={closeStatusAction} onReasonChange={setReason} onSubmit={submitStatusAction} />
+                <CatalogStatusModal action={pendingStatusAction} isSaving={isSavingStatus} reason={reason} onClose={closeStatusAction} onReasonChange={setReason} onSubmit={submitStatusAction} projectView={catalog.code === "projects"} />
             </div>
         </ConfigProvider>
     );

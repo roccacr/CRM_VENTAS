@@ -307,6 +307,14 @@ Do not load thousands of complete records into browser memory.
 - Use the backend API for calendar workflows that require business rules, audit, or internal permissions.
 - Do not call Microsoft Graph directly from components when backend audit or CRM authorization is required.
 
+## Projects Color Contract
+
+Before changing Projects styling, read `Arquitectura/26-Projects-Design-System.md`.
+Its exact neutral tokens, semantic roles, component matrix and accessibility
+overrides are mandatory for the Projects grid, toolbar, filters, drawer and modals.
+Use scoped CSS variables; do not propagate this palette to other modules. Record
+contrast exceptions and verification in `Arquitectura/25-Continuidad-Administracion.md`.
+
 ## Performance
 
 - Code split by module.
