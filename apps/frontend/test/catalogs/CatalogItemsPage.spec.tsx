@@ -117,7 +117,7 @@ describe("CatalogItemsPage", () => {
         mockListCatalogItems.mockResolvedValue({ catalog: { code: catalog.code, label: catalog.label, moduleCode: catalog.moduleCode }, items: [item], total: 1 });
         render(<CatalogItemsPage catalog={catalog} />);
         await screen.findByText(item.name);
-        expect(screen.getByRole("searchbox").closest(".projects-view-search-section")).not.toBeNull();
+        expect(screen.getByRole("searchbox").closest(".projects-view-toolbar")).not.toBeNull();
         fireEvent.click(screen.getByRole("button", { name: /Nuevo proyecto/ }));
         const create = await screen.findByRole("dialog");
         expect(create.closest(".catalog-items-modal--projects")).not.toBeNull();
@@ -136,6 +136,21 @@ describe("CatalogItemsPage", () => {
         if (!(edit instanceof HTMLElement)) throw new Error("Edit dialog missing");
         expect(within(edit).getByRole("group", { name: "NetSuite" })).toContainElement(within(edit).getByRole("textbox", { name: /ID NetSuite/ }));
         expect(within(edit).getByRole("textbox", { name: /ID NetSuite/ })).toHaveValue("1");
+    });
+
+    it("shows the API total beside the title and a quiet placeholder for missing grid values", async () => {
+        const catalog = ADMINISTRATION_CATALOGS[0];
+        if (!catalog) throw new Error("Catalog missing");
+        mockListCatalogItems.mockResolvedValue({ catalog: { code: catalog.code, label: catalog.label, moduleCode: catalog.moduleCode }, items: [{ ...item, detail: null }], total: 37 });
+        render(<CatalogItemsPage catalog={catalog} />);
+        const row = (await screen.findByText(item.name)).closest("tr");
+        if (!row) throw new Error("Row missing");
+        expect(screen.getByText("37 proyectos")).toHaveClass("projects-view-total");
+        await waitFor(() => {
+            expect(row.querySelectorAll(".projects-view-empty")).toHaveLength(2);
+        });
+        expect(within(row).getAllByText("Sin asignar")).toHaveLength(2);
+        expect(within(row).getByText("1")).toHaveClass("projects-view-integration__id");
     });
 
     it("centers the enterprise projects loader while the initial request is pending", () => {

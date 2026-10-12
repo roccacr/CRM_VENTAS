@@ -16,6 +16,7 @@ import Button from "antd/es/button";
 import ConfigProvider from "antd/es/config-provider";
 import Form from "antd/es/form";
 import Input from "antd/es/input";
+import esES from "antd/es/locale/es_ES";
 import message from "antd/es/message";
 import Modal from "antd/es/modal";
 import Tooltip from "antd/es/tooltip";
@@ -27,6 +28,7 @@ import { ADMINISTRATION_MODAL_Z_INDEX, ADMINISTRATION_THEME } from "../administr
 import { type AdministrationCatalogDefinition, CATALOG_REFERENCE_PROVIDERS, getCatalogPresentation } from "./catalog-definitions";
 import { CatalogItemDetailDrawer } from "./CatalogItemDetailDrawer";
 import { CatalogItemsDataTable } from "./CatalogItemsDataTable";
+import { PROJECTS_THEME } from "./projects-theme";
 
 /** Mínimo que el formulario exige antes de enviar un motivo auditable. */
 const MIN_REASON_LENGTH = 5;
@@ -314,6 +316,24 @@ function CatalogHeaderActions({ catalogCode, isLoading, isLoadingMore, isSaving,
     );
 }
 
+/** Projects shows the API total beside the title; it counts every record, not only the loaded batch. */
+function CatalogPageTitle({ catalog, isLoading, total }: { readonly catalog: AdministrationCatalogDefinition; readonly isLoading: boolean; readonly total: number }) {
+    const presentation = getCatalogPresentation(catalog.code);
+    const title = <h1 id="catalog-items-page-title">{catalog.label}</h1>;
+    if (!presentation.enhanced) return title;
+    const noun = (total === 1 ? presentation.entity : catalog.label).toLocaleLowerCase("es-CR");
+    return (
+        <div className="projects-view-title-row">
+            {title}
+            {!isLoading && (
+                <span className="projects-view-total">
+                    {total} {noun}
+                </span>
+            )}
+        </div>
+    );
+}
+
 /** Approved catalog opt-ins announce list updates without changing other catalogs. */
 function CatalogListPanel({ catalog, isLoading, isLoadingMore, children }: { readonly catalog: AdministrationCatalogDefinition; readonly isLoading: boolean; readonly isLoadingMore: boolean; readonly children: ReactNode }) {
     return (
@@ -322,6 +342,9 @@ function CatalogListPanel({ catalog, isLoading, isLoadingMore, children }: { rea
         </section>
     );
 }
+
+/** Proyectos usa la escala Bunker y textos AntD en español; los demás catálogos conservan el tema de Administración. */
+const getCatalogProviderProps = (projectView: boolean) => (projectView ? { locale: esES, theme: PROJECTS_THEME } : { theme: ADMINISTRATION_THEME });
 
 /** Pantalla administrativa scoped por catalogo y modulo autorizado. */
 export function CatalogItemsPage({ catalog, contextLabel = "Administración", contextModuleCode = "administration" }: CatalogItemsPageProps) {
@@ -492,7 +515,7 @@ export function CatalogItemsPage({ catalog, contextLabel = "Administración", co
     };
 
     return (
-        <ConfigProvider theme={ADMINISTRATION_THEME}>
+        <ConfigProvider {...getCatalogProviderProps(projectView)}>
             <div className={`global-home-dashboard catalog-items-page catalog-items-page--${catalog.code} ${presentation.scopeClass}`}>
                 <section className="global-home-page-header administration-users-page-header" aria-labelledby="catalog-items-page-title">
                     <div>
@@ -503,7 +526,7 @@ export function CatalogItemsPage({ catalog, contextLabel = "Administración", co
                             <span aria-hidden="true">/</span>
                             <span>{catalog.label}</span>
                         </nav>
-                        <h1 id="catalog-items-page-title">{catalog.label}</h1>
+                        <CatalogPageTitle catalog={catalog} isLoading={isLoading} total={total} />
                         <p>Gestión de valores nativos CRM y sus referencias externas.</p>
                     </div>
                     <CatalogHeaderActions catalogCode={catalog.code} isLoading={isLoading} isLoadingMore={isLoadingMore} isSaving={isSaving} isSavingStatus={isSavingStatus} onRefresh={loadItems} onCreate={openCreate} />

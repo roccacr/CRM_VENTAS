@@ -17,7 +17,7 @@ import DataTable, { type DataTableProps, type DataTableRef } from "datatables.ne
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import type { CatalogItem, CatalogItemStatus } from "../../../services/catalogs/catalog-service";
-import { readDataTableState, useDataTableSearchPanes, writeDataTableState } from "../hooks/useDataTableSearchPanes";
+import { type DataTableSearchPanesConfig, readDataTableState, useDataTableSearchPanes, writeDataTableState } from "../hooks/useDataTableSearchPanes";
 import { CATALOG_REFERENCE_PROVIDERS } from "./catalog-definitions";
 
 const registerDataTable = DataTable.use;
@@ -27,6 +27,36 @@ const DISABLED_FIELDS = [1, 4];
 const STATUS_LABELS = { active: "Activo", inactive: "Inactivo" };
 const COLUMNS = [{ data: "name" }, { data: "detail", defaultContent: "Sin asignar" }, { data: "externalReferences" }, { data: "status" }, { data: null, orderable: false, searchable: false, defaultContent: "" }];
 const paneText = (type: string, value: string): string => (type === "pane" ? DT.util.escapeHtml(value) : value);
+
+const FILTER_TITLE = "Filtros activos: %d";
+const TEST_LAYOUT = { topStart: null, topEnd: null, bottomStart: "info", bottomEnd: ["pageLength", "paging"] };
+const PROJECT_TOOLBAR_ROW_CLASS = "dt-layout-row projects-view-toolbar";
+
+/**
+ * Projects renders search and its panes in one toolbar row and drops the vendor
+ * sort buttons; filtering, cascade and totals are unchanged. jsdom cannot run
+ * SearchPanes, so tests receive the same row with search only.
+ */
+const getTableLayout = (layout: DataTableSearchPanesConfig["layout"], projectView: boolean) => {
+    const testMode = import.meta.env.MODE === "test";
+    if (!projectView) return { ...(testMode ? TEST_LAYOUT : layout), top1Start: "search" };
+    if (testMode) return { ...TEST_LAYOUT, top: { features: ["search"], rowClass: PROJECT_TOOLBAR_ROW_CLASS } };
+    const top = (layout as { readonly top?: { readonly searchPanes?: Record<string, unknown> } }).top;
+    return { ...layout, top1Start: null, top: { features: ["search", { searchPanes: { ...top?.searchPanes, orderable: false } }], rowClass: PROJECT_TOOLBAR_ROW_CLASS } };
+};
+
+/** An empty title lets Projects hide the counter until a filter is active. */
+const getFilterTitle = (projectView: boolean) => (projectView ? { 0: "", _: FILTER_TITLE } : FILTER_TITLE);
+
+/** Compact grid placeholder; screen readers and search still receive "Sin asignar". */
+function ProjectEmptyValue() {
+    return (
+        <span className="projects-view-empty" title="Sin asignar">
+            <span aria-hidden="true">—</span>
+            <span className="administration-users-visually-hidden">Sin asignar</span>
+        </span>
+    );
+}
 
 /** Missing providers are read-only placeholders, shared by display and search; never mutation data. */
 function projectReferences(references: CatalogItem["externalReferences"]) {
@@ -95,10 +125,7 @@ function CatalogItemsTableContent({ projectView = false, entityLabel, items, lab
                 autoWidth: false,
                 // Pane labels need escaped text, not the DOM nodes returned by React display slots.
                 columnDefs: import.meta.env.MODE === "test" ? [] : [{ targets: [0, 2, 3], searchPanes: { show: true, orthogonal: { display: "pane", search: "filter", sort: "filter", type: "filter" } } }, ...(panes.columnDefs ?? [])],
-                layout: {
-                    ...(import.meta.env.MODE === "test" ? { topStart: null, topEnd: null, bottomStart: "info", bottomEnd: ["pageLength", "paging"] } : panes.layout),
-                    top1Start: projectView ? { features: ["search"], rowClass: "dt-layout-row projects-view-search-section" } : "search",
-                },
+                layout: getTableLayout(panes.layout, projectView),
                 lengthMenu: [10, 25, 50, 100],
                 pageLength: 10,
                 order: [[0, "asc"]],
@@ -127,7 +154,7 @@ function CatalogItemsTableContent({ projectView = false, entityLabel, items, lab
                     emptyTable: "Sin resultados.",
                     zeroRecords: "Sin resultados para los filtros seleccionados.",
                     paginate: { first: "«", last: "»", next: "›", previous: "‹" },
-                    searchPanes: { clearMessage: "Limpiar", collapse: { 0: "Filtros", _: "Filtros (%d)" }, collapseMessage: "Contraer", count: "{total}", countFiltered: "{shown} de {total}", emptyPanes: "No hay filtros disponibles", loadMessage: "Cargando filtros...", showMessage: "Expandir", title: "Filtros activos: %d" },
+                    searchPanes: { clearMessage: "Limpiar", collapse: { 0: "Filtros", _: "Filtros (%d)" }, collapseMessage: "Contraer", count: "{total}", countFiltered: "{shown} de {total}", emptyPanes: "No hay filtros disponibles", loadMessage: "Cargando filtros...", showMessage: "Expandir", title: getFilterTitle(projectView) },
                 },
             }) as unknown as NonNullable<DataTableProps["options"]>,
         [entityLabel, label, panes, projectView, storageKey],
@@ -247,7 +274,7 @@ function CatalogItemsTableContent({ projectView = false, entityLabel, items, lab
                         type === "display" ? (
                             projectView ? (
                                 <div className="projects-view-description">
-                                    <span>{item.detail?.trim() || "Sin asignar"}</span>
+                                    {item.detail?.trim() ? <span>{item.detail.trim()}</span> : <ProjectEmptyValue />}
                                     {item.updatedAt.trim() && <time dateTime={item.updatedAt}>Actualizado {new Date(item.updatedAt).toLocaleDateString("es-CR")}</time>}
                                 </div>
                             ) : (
@@ -263,7 +290,7 @@ function CatalogItemsTableContent({ projectView = false, entityLabel, items, lab
                                     {projectReferences(item.externalReferences).map((reference) => (
                                         <div key={`${reference.systemCode}:${reference.externalId ?? "unassigned"}`} className="projects-view-integration">
                                             <span>{reference.systemName}</span>
-                                            <span className={reference.externalId?.trim() ? "projects-view-integration__id" : "projects-view-unassigned"}>{reference.externalId?.trim() || "Sin asignar"}</span>
+                                            {reference.externalId?.trim() ? <span className="projects-view-integration__id">{reference.externalId.trim()}</span> : <ProjectEmptyValue />}
                                         </div>
                                     ))}
                                 </div>
@@ -285,6 +312,7 @@ function CatalogItemsTableContent({ projectView = false, entityLabel, items, lab
                     4: (_value: unknown, _type: string, item: CatalogItem) => (
                         <Dropdown
                             trigger={["click"]}
+                            {...(projectView ? { rootClassName: "catalog-items-dropdown--projects" } : {})}
                             menu={{
                                 items: [
                                     { key: "edit", icon: <EditOutlined />, label: "Editar", disabled: item.publicId.startsWith("legacy:") && !item.publicId.startsWith("legacy:projects:") },

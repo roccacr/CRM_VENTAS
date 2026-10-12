@@ -1,7 +1,8 @@
 /* Explicit opt-in: shared catalog and Users surfaces retain their canonical layout. */
 .catalog-items-page--projects,
 .catalog-item-detail-drawer--projects,
-.catalog-items-modal--projects {
+.catalog-items-modal--projects,
+.catalog-items-dropdown--projects {
     /* Owner-supplied Bunker scale; shared Administration tokens remain unchanged. */
     --color-primary: #0e1116;
     --color-primary-light: #ebeef3;
@@ -46,16 +47,46 @@
 .catalog-items-page--projects {
     max-width: 1440px;
     margin-inline: auto;
-    color: var(--color-neutral-950);
+    color: var(--color-neutral-700);
 }
 
 .catalog-items-page--projects .global-home-page-header h1,
 .catalog-item-detail-drawer--projects .user-detail-drawer__identity-copy h4.ant-typography {
-    color: var(--color-neutral-950);
+    color: var(--color-neutral-900);
+}
+
+.catalog-items-page--projects .global-home-page-header p,
+.catalog-items-page--projects .administration-users-breadcrumb {
+    color: var(--project-muted);
+}
+
+.catalog-items-page--projects .administration-users-breadcrumb span:last-child {
+    color: var(--color-neutral-900);
 }
 
 .catalog-item-detail-drawer--projects.user-detail-drawer .ant-descriptions-item-label {
     color: var(--color-neutral-600);
+}
+
+.catalog-item-detail-drawer--projects .user-detail-drawer__identity-copy .ant-typography-secondary,
+.catalog-item-detail-drawer--projects .user-detail-drawer__position.ant-typography {
+    color: var(--project-muted);
+}
+
+.catalog-item-detail-drawer--projects .catalog-item-detail-drawer__avatar {
+    border-color: var(--color-surface);
+    background: var(--color-neutral-100);
+    box-shadow: 0 0 0 1px var(--project-border);
+    color: var(--color-neutral-800);
+}
+
+.catalog-item-detail-drawer--projects .user-detail-drawer__header-button.ant-btn {
+    color: var(--color-secondary);
+}
+
+.catalog-item-detail-drawer--projects .user-detail-drawer__header-button.ant-btn:not(:disabled):hover {
+    background: var(--color-hover);
+    color: var(--color-primary);
 }
 
 /* The shared drawer stylesheet may load lazily after this projects stylesheet. */
@@ -69,22 +100,92 @@
 }
 
 .catalog-item-detail-drawer--projects.user-detail-drawer .ant-descriptions-item-content {
-    color: var(--color-neutral-950);
+    color: var(--color-neutral-700);
 }
 
 .catalog-item-detail-drawer--projects .user-detail-drawer__sections .ant-card-head-title {
-    color: var(--color-neutral-900);
+    color: var(--color-neutral-800);
 }
 
 .catalog-item-detail-drawer--projects .user-detail-drawer__public-id.ant-typography code {
+    border-color: var(--project-border);
     background: var(--color-neutral-100);
-    color: var(--color-neutral-950);
+    color: var(--color-neutral-700);
 }
 
 .catalog-item-detail-drawer--projects .ant-typography-copy,
 .catalog-item-detail-drawer--projects .ant-drawer-close,
 .catalog-items-modal--projects .ant-modal-close {
     color: var(--color-secondary);
+}
+
+.catalog-items-modal--projects .ant-modal-close {
+    border-color: var(--color-control-border);
+    background: var(--color-surface);
+}
+
+.catalog-items-modal--projects .ant-input,
+.catalog-items-page--projects .dt-search input,
+.catalog-items-page--projects div.dtsp-searchPane input.dtsp-search {
+    color: var(--color-neutral-900);
+}
+
+.catalog-items-modal--projects .ant-input::placeholder,
+.catalog-items-page--projects .dt-search input::placeholder,
+.catalog-items-page--projects div.dtsp-searchPane input.dtsp-search::placeholder {
+    color: var(--project-muted);
+    opacity: 1;
+}
+
+.catalog-items-modal--projects .ant-form-item-optional,
+.catalog-items-modal--projects .ant-input-data-count {
+    color: var(--project-muted);
+}
+
+.catalog-items-modal--projects .catalog-items-summary {
+    border-color: var(--project-border);
+    background: var(--color-neutral-50);
+    color: var(--project-muted);
+}
+
+.catalog-items-modal--projects .catalog-items-summary strong {
+    color: var(--color-neutral-800);
+}
+
+.catalog-items-modal--projects .catalog-items-label {
+    color: var(--color-neutral-700);
+}
+
+.catalog-items-page--projects .catalog-items-toolbar {
+    border-color: var(--project-border);
+    color: var(--project-muted);
+}
+
+.catalog-items-page--projects .administration-users-datatable-wrap .dt-info,
+.catalog-items-page--projects .administration-users-datatable-wrap .dt-length label {
+    color: var(--project-muted);
+}
+
+/* Portal menu from table cells: DataTables slots do not inherit the Projects AntD theme. */
+.catalog-items-dropdown--projects .ant-dropdown-menu {
+    border: 1px solid var(--project-border);
+    border-radius: var(--radius);
+    padding: var(--space-1);
+    font-family: var(--font-body);
+}
+
+.catalog-items-dropdown--projects .ant-dropdown-menu-item:not(.ant-dropdown-menu-item-danger):not(.ant-dropdown-menu-item-disabled) {
+    color: var(--color-neutral-700);
+}
+
+.catalog-items-dropdown--projects .ant-dropdown-menu-item:not(.ant-dropdown-menu-item-danger):not(.ant-dropdown-menu-item-disabled):hover {
+    background: var(--color-hover);
+    color: var(--color-primary);
+}
+
+.catalog-items-dropdown--projects .ant-dropdown-menu-item:focus-visible {
+    outline: 2px solid var(--project-focus);
+    outline-offset: -2px;
 }
 
 .catalog-item-detail-drawer--projects .ant-typography-copy:hover,
@@ -176,7 +277,7 @@
     flex: 0 0 44px;
     border-color: var(--color-control-border);
     border-radius: var(--radius);
-    color: var(--color-neutral-900);
+    color: var(--color-secondary);
 }
 
 .catalog-items-page--projects ::selection,
@@ -234,6 +335,10 @@
 .catalog-items-page--projects div.dtsp-searchCont,
 .catalog-items-page--projects div.dtsp-titleRow button:not(:disabled) {
     border-color: var(--color-control-border);
+}
+
+.catalog-items-page--projects .dt-length select,
+.catalog-items-page--projects div.dtsp-titleRow button:not(:disabled) {
     color: var(--color-neutral-600);
 }
 
@@ -273,16 +378,12 @@
     margin-block: 0;
 }
 
-.catalog-items-page--projects .administration-users-datatable-wrap .dt-container > .projects-view-search-section {
-    border-block: 1px solid var(--project-border);
+/* One continuous work surface: search, filters, grid and paging share a single frame. */
+.catalog-items-page--projects .administration-users-datatable-wrap .dt-container {
+    overflow: clip;
+    border: 1px solid var(--project-border);
+    border-radius: var(--radius);
     background: var(--color-surface);
-    margin-bottom: var(--space-4);
-}
-
-.catalog-items-page--projects .dt-layout-row:has(> .dt-layout-full > .dtsp-panesContainer) {
-    border-block: 1px solid var(--project-border);
-    background: var(--color-neutral-50);
-    margin-bottom: var(--space-4);
 }
 
 .catalog-items-page--projects .administration-users-datatable-wrap div.dtsp-panesContainer {
@@ -305,7 +406,7 @@
     width: auto;
     margin: 0;
     text-align: left;
-    color: var(--color-neutral-900);
+    color: var(--color-neutral-700);
     padding: var(--space-1) var(--space-3);
     border: 1px solid var(--project-border);
     border-radius: 999px;
@@ -323,26 +424,28 @@
 
 .catalog-items-page--projects .administration-users-datatable-wrap div.dtsp-titleRow .dtsp-clearAll {
     order: 1;
-    margin-inline-end: auto;
+}
+
+/* Spacer keeps expand/collapse on the right while the counter and clear stay hidden. */
+.catalog-items-page--projects .administration-users-datatable-wrap div.dtsp-titleRow::before {
+    flex: 1 1 auto;
+    order: 2;
+    content: "";
 }
 
 .catalog-items-page--projects div.dtsp-titleRow .dtsp-showAll {
-    order: 2;
-}
-.catalog-items-page--projects div.dtsp-titleRow .dtsp-collapseAll {
     order: 3;
 }
-
-.catalog-items-page--projects .dt-layout-row:has(> .dt-layout-full > .dtsp-panesContainer) {
-    padding: 0;
+.catalog-items-page--projects div.dtsp-titleRow .dtsp-collapseAll {
+    order: 4;
 }
 
-.catalog-items-page--projects .administration-users-datatable-wrap .projects-view-search-section {
-    padding: var(--space-4);
-}
-
-.catalog-items-page--projects .administration-users-datatable-wrap .projects-view-search-section .dt-layout-cell {
-    width: 100%;
+/* Controls with nothing to act on are hidden instead of shown disabled. */
+.catalog-items-page--projects .administration-users-datatable-wrap div.dtsp-titleRow .dtsp-title:empty,
+.catalog-items-page--projects .administration-users-datatable-wrap div.dtsp-titleRow button:disabled,
+.catalog-items-page--projects .administration-users-datatable-wrap div.dtsp-searchPane button.clearButton:disabled,
+.catalog-items-page--projects .administration-users-datatable-wrap div.dtsp-searchPane .dtsp-searchIcon {
+    display: none;
 }
 
 .catalog-items-page--projects .administration-users-datatable-wrap div.dtsp-panesContainer div.dtsp-searchPanes {
@@ -384,13 +487,11 @@
 }
 
 .catalog-items-page--projects .dt-layout-row.dt-layout-table {
-    border: 1px solid var(--project-border);
-    border-bottom: 0;
     background: var(--color-surface);
 }
 
 .catalog-items-page--projects .dt-layout-row.dt-layout-table + .dt-layout-row {
-    border: 1px solid var(--project-border);
+    border-top: 1px solid var(--project-border);
     background: var(--color-neutral-50);
     gap: var(--space-4);
 }
@@ -426,7 +527,7 @@
     overflow: auto;
     overscroll-behavior-x: contain;
     scroll-padding-top: 48px;
-    scrollbar-color: var(--color-neutral-600) var(--color-neutral-100);
+    scrollbar-color: var(--color-neutral-300) transparent;
     scrollbar-width: thin;
 }
 
@@ -436,10 +537,82 @@
     margin-block: 0;
 }
 
-.catalog-items-page--projects .administration-users-datatable-wrap .dt-layout-full:has(> .dtsp-panesContainer) {
+/*
+ * Search and the three filters share one toolbar row above the grid. SearchPanes'
+ * wrappers become `display: contents` so its panes join the same grid as the search.
+ */
+.catalog-items-page--projects .administration-users-datatable-wrap .dt-container > .projects-view-toolbar {
+    padding: var(--space-3) var(--space-4);
+    border-bottom: 1px solid var(--project-border);
     background: var(--color-neutral-50);
 }
 
+.catalog-items-page--projects .administration-users-datatable-wrap .projects-view-toolbar > .dt-layout-cell {
+    display: grid;
+    grid-template-columns: minmax(220px, 1.4fr) repeat(3, minmax(0, 1fr)) auto;
+    align-items: start;
+    gap: var(--space-3);
+    width: 100%;
+    min-width: 0;
+    padding: 0;
+    background: transparent;
+}
+
+.catalog-items-page--projects .administration-users-datatable-wrap .projects-view-toolbar div.dtsp-panesContainer,
+.catalog-items-page--projects .administration-users-datatable-wrap .projects-view-toolbar div.dtsp-panesContainer div.dtsp-searchPanes {
+    display: contents;
+}
+
+.catalog-items-page--projects .administration-users-datatable-wrap .projects-view-toolbar .dt-search {
+    grid-column: 1;
+    grid-row: 1;
+    width: auto;
+    min-width: 0;
+    margin: 0;
+}
+
+.catalog-items-page--projects .administration-users-datatable-wrap .projects-view-toolbar .dt-search .dt-input {
+    box-sizing: border-box;
+    height: 40px;
+    margin: 0;
+    background-color: var(--color-surface);
+}
+
+.catalog-items-page--projects .administration-users-datatable-wrap .projects-view-toolbar div.dtsp-panesContainer div.dtsp-searchPanes div.dtsp-searchPane {
+    grid-row: 1;
+}
+
+.catalog-items-page--projects .administration-users-datatable-wrap .projects-view-toolbar div.dtsp-panesContainer div.dtsp-searchPane div.dtsp-topRow {
+    box-sizing: border-box;
+    min-height: 40px;
+    background: var(--color-surface);
+}
+
+.catalog-items-page--projects .administration-users-datatable-wrap .projects-view-toolbar div.dtsp-panesContainer div.dtsp-titleRow {
+    grid-column: 5;
+    grid-row: 1;
+    flex-wrap: nowrap;
+    min-height: 40px;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: transparent;
+}
+
+@media (max-width: 1099px) {
+    .catalog-items-page--projects .administration-users-datatable-wrap .projects-view-toolbar > .dt-layout-cell {
+        grid-template-columns: repeat(3, minmax(0, 1fr)) auto;
+    }
+    .catalog-items-page--projects .administration-users-datatable-wrap .projects-view-toolbar .dt-search {
+        grid-column: 1 / 4;
+    }
+    .catalog-items-page--projects .administration-users-datatable-wrap .projects-view-toolbar div.dtsp-panesContainer div.dtsp-titleRow {
+        grid-column: 4;
+    }
+    .catalog-items-page--projects .administration-users-datatable-wrap .projects-view-toolbar div.dtsp-panesContainer div.dtsp-searchPanes div.dtsp-searchPane {
+        grid-row: 2;
+    }
+}
 .catalog-items-modal--projects .ant-modal-content,
 .catalog-items-modal--projects .ant-modal-container {
     border-color: var(--project-border);
@@ -485,7 +658,7 @@
     border-bottom: 1px solid var(--project-border);
     padding: var(--space-3) var(--space-4);
     background: var(--color-neutral-50);
-    color: var(--color-primary-dark);
+    color: var(--color-neutral-800);
     font-size: 14px;
     font-weight: 650;
     line-height: 24px;
@@ -526,7 +699,7 @@
 }
 
 .catalog-item-detail-drawer--projects .ant-drawer-body {
-    scrollbar-color: var(--color-neutral-600) var(--color-canvas);
+    scrollbar-color: var(--color-neutral-300) transparent;
     scrollbar-width: thin;
     overscroll-behavior-y: contain;
 }
@@ -542,7 +715,7 @@
     z-index: 1;
     padding: var(--space-3) var(--space-4);
     background: var(--color-neutral-100);
-    color: var(--project-muted);
+    color: var(--color-neutral-700);
     font-size: 12px;
     font-weight: 650;
 }
@@ -568,11 +741,12 @@
     overflow-wrap: anywhere;
     vertical-align: middle;
     border-color: var(--project-border);
-    color: var(--color-neutral-900);
+    color: var(--color-neutral-700);
     transition: background-color 140ms ease;
 }
 
 .catalog-items-page--projects .catalog-items-name strong {
+    color: var(--color-neutral-900);
     font-size: 14px;
     font-weight: 650;
     line-height: 1.5;
@@ -618,15 +792,52 @@
     line-height: 1.4;
 }
 
-.catalog-items-page--projects .projects-view-integration > span:first-child,
-.catalog-items-page--projects .projects-view-unassigned {
+.catalog-items-page--projects .projects-view-integration > span:first-child {
     color: var(--project-muted);
 }
 
 .catalog-items-page--projects .projects-view-integration__id {
+    color: var(--color-neutral-900);
     font-weight: 650;
     font-variant-numeric: tabular-nums;
-    text-align: right;
+}
+
+.catalog-items-page--projects .projects-view-empty {
+    color: var(--color-neutral-500);
+}
+
+.catalog-items-page--projects .projects-view-title-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: var(--space-2) var(--space-3);
+}
+
+.catalog-items-page--projects .projects-view-total {
+    padding: 0 var(--space-2);
+    border: 1px solid var(--project-border);
+    border-radius: 999px;
+    background: var(--color-surface);
+    color: var(--project-muted);
+    font-size: 12px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    line-height: 22px;
+}
+
+/* Row actions stay quiet until the row is hovered or focused; touch layouts keep the outline. */
+@media (min-width: 768px) {
+    .catalog-items-page--projects .catalog-items-row .ant-btn-default:not(:disabled) {
+        border-color: transparent;
+        background: transparent;
+        box-shadow: none;
+    }
+    .catalog-items-page--projects .catalog-items-row:hover .ant-btn-default:not(:disabled):not(:hover),
+    .catalog-items-page--projects .catalog-items-row:focus-within .ant-btn-default:not(:disabled):not(:hover),
+    .catalog-items-page--projects .catalog-items-row--selected .ant-btn-default:not(:disabled):not(:hover) {
+        border-color: var(--color-control-border);
+        background: var(--color-surface);
+    }
 }
 
 .catalog-item-detail-drawer--projects .ant-drawer-header,
@@ -663,7 +874,7 @@
     min-height: 48px;
     background: var(--color-neutral-50);
     border-bottom-color: var(--project-border);
-    color: var(--color-primary-dark);
+    color: var(--color-neutral-800);
 }
 
 .catalog-item-detail-drawer--projects .user-detail-drawer__sections .ant-card-body {
@@ -693,6 +904,14 @@
 .catalog-item-detail-drawer--projects .projects-view-reference-status[data-status="active"] {
     background: var(--color-success-light);
     color: var(--color-success);
+}
+
+.catalog-items-page--projects .catalog-items-status--active::before {
+    background: var(--color-success);
+}
+
+.catalog-items-page--projects .catalog-items-status--inactive::before {
+    background: var(--color-neutral-500);
 }
 
 .catalog-item-detail-drawer--projects .projects-view-reference-status[data-status="pending"] {
@@ -755,6 +974,18 @@
         grid-template-columns: minmax(0, 1fr) auto auto;
         gap: var(--space-2);
     }
+    .catalog-items-page--projects .administration-users-datatable-wrap div.dtsp-titleRow::before {
+        display: none;
+    }
+    .catalog-items-page--projects .administration-users-datatable-wrap .projects-view-toolbar > .dt-layout-cell {
+        grid-template-columns: minmax(0, 1fr);
+    }
+    .catalog-items-page--projects .administration-users-datatable-wrap .projects-view-toolbar .dt-search,
+    .catalog-items-page--projects .administration-users-datatable-wrap .projects-view-toolbar div.dtsp-panesContainer div.dtsp-titleRow,
+    .catalog-items-page--projects .administration-users-datatable-wrap .projects-view-toolbar div.dtsp-panesContainer div.dtsp-searchPanes div.dtsp-searchPane {
+        grid-column: 1;
+        grid-row: auto;
+    }
     .catalog-items-page--projects .administration-users-datatable-wrap div.dtsp-titleRow .dtsp-title {
         grid-column: 1 / 3;
         justify-self: start;
@@ -810,7 +1041,7 @@
     .catalog-items-page--projects .projects-view-mobile-sort select {
         width: 100%;
         min-height: 44px;
-        border: 1px solid var(--project-border);
+        border: 1px solid var(--color-control-border);
         border-radius: var(--radius);
         padding: var(--space-2);
         background: var(--color-surface);
@@ -953,7 +1184,7 @@
         border-top: 1px solid var(--color-neutral-100);
         padding-top: 10px;
         font-size: 14px;
-        color: var(--color-neutral-900);
+        color: var(--color-neutral-700);
     }
     .catalog-items-page--projects .catalog-items-row > td:nth-child(2)::before,
     .catalog-items-page--projects .catalog-items-row > td:nth-child(3)::before {

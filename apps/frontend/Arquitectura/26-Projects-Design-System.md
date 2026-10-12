@@ -69,6 +69,25 @@ accessibility take priority over generic examples or defaults from any skill.
 - Radius is 8px for record cards and panels, not the requested 12px mobile variant.
 - Meaningful small labels use 600, not inaccessible shade 400.
 
+Owner refinement (2026-10-12) supersedes conflicting rules below:
+
+- Search, filters, grid and paging form one framed surface (1px 200 border, 8px
+  radius, 200 separators). Search and the three panes share a single neutral-50
+  toolbar row (`projects-view-toolbar`): grid `minmax(220px, 1.4fr) repeat(3,
+  minmax(0, 1fr)) auto`, with SearchPanes' wrappers set to `display: contents` and
+  expand/collapse/counter in the last track. Below 1100px search spans the first
+  row and panes move to the second; below 768px everything stacks.
+- Filter panes omit SearchPanes' sort buttons (`orderable: false`) and the
+  magnifier icon; pane clear, `Limpiar`, `Expandir` and `Contraer` are hidden
+  while disabled; the counter is hidden at zero active filters.
+- Grid integrations show the identifier beside its provider label, left aligned.
+- Missing grid values show a 500 em dash with visually hidden `Sin asignar`; pane
+  and search text still use `Sin asignar`. The drawer keeps visible `Sin asignar`.
+- Desktop row action buttons are borderless until row hover/focus/selection;
+  touch layouts below 768px keep the 500 outline.
+- The page title shows the API total (`37 proyectos`) as a 600 pill.
+- Table and drawer scrollbars use thin 300 thumbs on a transparent track.
+
 ## Scope and Precedence
 
 This is the normative color contract for the Projects data grid, search header,
@@ -201,11 +220,9 @@ Before accepting a Projects styling change:
 
 The existing palette test protects exact primitive values across the three scope
 roots and selected contrast pairs; it does not prove every component follows this
-matrix. At adoption, runtime still uses 950 for page/drawer titles, 600 for table
-headers and 900 for table cell text. Those are readable but differ from the new
-hierarchy mapping. Idle input outlines deliberately use 500 for accessibility.
-This documentation-only change does not silently restyle components or claim full
-conformance. Integrated visual verification remains pending authentication.
+matrix. The 2026-10-12 alignment applies the 700/800/900 hierarchy described in
+the source inventory below. Idle input outlines deliberately use 500 for
+accessibility. Integrated visual verification remains pending authentication.
 
 ES: Los tokens y sus funciones quedan como regla de desarrollo. Las excepciones
 de contraste son obligatorias; las diferencias actuales se registran sin afirmar
@@ -558,12 +575,15 @@ not prerequisites for understanding the visual rules above.
 | `test/catalogs/projects-palette.spec.ts` | Token/contrast/layout regressions, not browser pixel measurements |
 | `test/catalogs/CatalogItemsPage.spec.tsx` | Component interaction/loading/modal regression coverage |
 
-Exact current implementation and normative matrix are not identical everywhere:
-page/drawer titles and some drawer values use 950; table header 600; cell values
-900; drawer card headings 900. These are accessible but not the matrix's intended
-700/800/900 hierarchy. Shared avatar/overlay shadows still contain Administration
-colors outside the local neutral scale. Do not claim that every rendered pixel is
-tokenized or silently repair these differences during documentation work.
+Runtime alignment (2026-10-12): page/drawer titles 900, table headers and cell
+values 700, project name 900, drawer card headings and form legends 800, drawer
+values 700, breadcrumb/caption/position 600, refresh icon 600, avatar 100/200/800,
+mobile select boundary 500. Inputs type in 900 with 600 placeholders, optional
+markers and counters. Projects wraps its AntD portals in `PROJECTS_THEME`
+(`projects-theme.ts`, values asserted equal to the CSS scale) plus `esES` locale.
+DataTables cell slots mount separate React roots, so the row action menu opts into
+the scale through `catalog-items-dropdown--projects`. Remaining exception: the
+shared drawer/modal overlay shadows keep Administration rgba values.
 
 Latest preceding runtime verification (2026-10-09, recorded in document 25):
 51 focused tests; frontend 152 passed; API 227 passed / 12 opt-in tests skipped;

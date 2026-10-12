@@ -3,6 +3,8 @@ import { resolve } from "node:path";
 
 import { afterEach, describe, expect, it } from "vitest";
 
+import { PROJECTS_NEUTRAL, PROJECTS_THEME } from "../../src/modules/administration/catalogs/projects-theme";
+
 const stylesheet = readFileSync(resolve(process.cwd(), "src/modules/administration/catalogs/ProjectsView.css"), "utf8");
 
 function luminance(hex: string): number {
@@ -85,6 +87,74 @@ describe("projects palette contrast", () => {
     afterEach(() => {
         document.head.querySelector("style[data-project-palette]")?.remove();
         document.body.replaceChildren();
+    });
+
+    it("keeps the AntD theme scale identical to the stylesheet scale", () => {
+        const style = document.createElement("style");
+        style.dataset.projectPalette = "";
+        style.textContent = stylesheet;
+        document.head.append(style);
+        const root = document.createElement("div");
+        root.className = "catalog-items-modal--projects";
+        document.body.append(root);
+        const tokens = getComputedStyle(root);
+        Object.entries(PROJECTS_NEUTRAL).forEach(([shade, color]) => {
+            expect(tokens.getPropertyValue(`--color-neutral-${shade}`).trim()).toBe(color);
+        });
+        expect(PROJECTS_THEME.token).toMatchObject({ colorPrimary: PROJECTS_NEUTRAL[950], colorText: PROJECTS_NEUTRAL[700], colorTextPlaceholder: PROJECTS_NEUTRAL[600], colorBorder: PROJECTS_NEUTRAL[500] });
+    });
+
+    it("applies the documented text hierarchy to the grid", () => {
+        const style = document.createElement("style");
+        style.dataset.projectPalette = "";
+        style.textContent = stylesheet;
+        document.head.append(style);
+        document.body.innerHTML =
+            '<div class="catalog-items-page--projects"><div class="administration-users-datatable-wrap"><table class="dataTable administration-users-datatable"><thead><tr><th>Proyecto</th></tr></thead><tbody><tr class="catalog-items-row"><td><div class="catalog-items-name"><strong>Nombre</strong></div></td></tr></tbody></table></div></div>';
+        expect(getComputedStyle(document.querySelector("th") as Element).color).toBe("var(--color-neutral-700)");
+        expect(getComputedStyle(document.querySelector("td") as Element).color).toBe("var(--color-neutral-700)");
+        expect(getComputedStyle(document.querySelector("strong") as Element).color).toBe("var(--color-neutral-900)");
+    });
+
+    it("places search, the three filters and filter controls in one toolbar row", () => {
+        const style = document.createElement("style");
+        style.dataset.projectPalette = "";
+        style.textContent = stylesheet;
+        document.head.append(style);
+        document.body.innerHTML =
+            '<div class="catalog-items-page--projects"><div class="administration-users-datatable-wrap"><div class="dt-container"><div class="dt-layout-row projects-view-toolbar"><div class="dt-layout-cell dt-layout-full"><div class="dt-search"></div><div class="dtsp-panesContainer"><div class="dtsp-titleRow"></div><div class="dtsp-searchPanes"><div class="dtsp-searchPane"></div><div class="dtsp-searchPane"></div><div class="dtsp-searchPane"></div></div></div></div></div></div></div></div>';
+        expect(getComputedStyle(document.querySelector(".dt-layout-cell") as Element).gridTemplateColumns).toBe("minmax(220px, 1.4fr) repeat(3, minmax(0, 1fr)) auto");
+        expect(getComputedStyle(document.querySelector(".dtsp-panesContainer") as Element).display).toBe("contents");
+        expect(getComputedStyle(document.querySelector(".dtsp-searchPanes") as Element).display).toBe("contents");
+        expect(getComputedStyle(document.querySelector(".dt-search") as Element).gridColumn).toBe("1");
+        expect(getComputedStyle(document.querySelector(".dtsp-titleRow") as Element).gridColumn).toBe("5");
+        document.querySelectorAll(".dtsp-searchPane").forEach((pane) => {
+            expect(getComputedStyle(pane).gridRow).toBe("1");
+        });
+    });
+
+    it("hides idle filter controls and pane icons instead of showing them disabled", () => {
+        const style = document.createElement("style");
+        style.dataset.projectPalette = "";
+        style.textContent = stylesheet;
+        document.head.append(style);
+        document.body.innerHTML =
+            '<div class="catalog-items-page--projects"><div class="administration-users-datatable-wrap"><div class="dtsp-panesContainer"><div class="dtsp-titleRow"><div class="dtsp-title"></div><button class="dtsp-clearAll" disabled>Limpiar</button><button class="dtsp-showAll">Expandir</button><button class="dtsp-collapseAll" disabled>Contraer</button></div><div class="dtsp-searchPane"><button class="dtsp-searchIcon"></button><button class="clearButton" disabled></button></div></div></div></div>';
+        [".dtsp-title", ".dtsp-clearAll", ".dtsp-collapseAll", ".dtsp-searchIcon", ".clearButton"].forEach((selector) => {
+            expect(getComputedStyle(document.querySelector(selector) as Element).display).toBe("none");
+        });
+        expect(getComputedStyle(document.querySelector(".dtsp-showAll") as Element).display).not.toBe("none");
+    });
+
+    it("scopes the row action menu portal to the Projects palette", () => {
+        const style = document.createElement("style");
+        style.dataset.projectPalette = "";
+        style.textContent = stylesheet;
+        document.head.append(style);
+        const root = document.createElement("div");
+        root.className = "catalog-items-dropdown--projects";
+        document.body.append(root);
+        expect(getComputedStyle(root).getPropertyValue("--color-hover").trim()).toBe(PROJECTS_NEUTRAL[100]);
     });
 
     it.each([
