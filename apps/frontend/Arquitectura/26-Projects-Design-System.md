@@ -1,12 +1,15 @@
 # 26 - Enterprise UX Rules: Projects Reference and Replication Guide
 
-Effective: 2026-10-09. Owner-directed rule for Projects only.
+Effective: 2026-10-09. Last updated: 2026-10-12 (owner-approved final state, rated
+10/10). Owner-directed rule for Projects only.
 
 ## How to Use This Single Reference
 
 This document consolidates the current Projects experience: colors, fonts, density,
 search, filters, desktop grid, mobile cards, detail drawer, forms, loading states,
 interaction, accessibility and verification. It is sufficient as a design brief;
+"Library Integration Notes" lists the DataTables/SearchPanes/Ant Design quirks the
+design depends on, "Replicating in Another Module" is the step-by-step recipe, and
 the source inventory at the end identifies the existing implementations to reuse.
 No chat history or instruction to "look at Projects" is required.
 
@@ -62,31 +65,37 @@ accessibility take priority over generic examples or defaults from any skill.
 
 ### Superseded Directions
 
+Do not reintroduce any of these; each was tried and rejected by the owner.
+
 - The final primary action is dark neutral, not saturated blue or teal.
-- Filters form three contiguous tracks, not table-column-aligned tracks with gaps.
+- Filters are not aligned to table columns with empty Description/action tracks.
 - Initial table loading uses a centered ring, not table/search/filter skeletons.
 - Drawer loading retains sparse label/value skeleton pairs, not the table ring.
 - Radius is 8px for record cards and panels, not the requested 12px mobile variant.
 - Meaningful small labels use 600, not inaccessible shade 400.
-
-Owner refinement (2026-10-12) supersedes conflicting rules below:
-
-- Search, filters, grid and paging form one framed surface (1px 200 border, 8px
-  radius, 200 separators). Search and the three panes share a single neutral-50
-  toolbar row (`projects-view-toolbar`): grid `minmax(220px, 1.4fr) repeat(3,
-  minmax(0, 1fr)) auto`, with SearchPanes' wrappers set to `display: contents` and
-  expand/collapse/counter in the last track. Below 1100px search spans the first
-  row and panes move to the second; below 768px everything stacks.
-- Filter panes omit SearchPanes' sort buttons (`orderable: false`) and the
-  magnifier icon; pane clear, `Limpiar`, `Expandir` and `Contraer` are hidden
-  while disabled; the counter is hidden at zero active filters.
-- Grid integrations show the identifier beside its provider label, left aligned.
-- Missing grid values show a 500 em dash with visually hidden `Sin asignar`; pane
-  and search text still use `Sin asignar`. The drawer keeps visible `Sin asignar`.
-- Desktop row action buttons are borderless until row hover/focus/selection;
-  touch layouts below 768px keep the 500 outline.
-- The page title shows the API total (`37 proyectos`) as a 600 pill.
-- Table and drawer scrollbars use thin 300 thumbs on a transparent track.
+- Search is not a separate white band above the filters; it shares the toolbar row.
+- The filter toolbar is not a separate band with left (counter/clear) and right
+  (expand/collapse) groups; those commands live in the toolbar's last track.
+- Open filter lists never float over the grid (absolute dropdowns covered rows and
+  paging when several were open). They expand the toolbar in flow.
+- Expanded filter lists do not leave an empty area under search (see
+  "Unified Toolbar and Filter Panel").
+- `Expandir` and `Contraer` are never visible together.
+- No vendor `^`/`v` text carets, sort buttons or magnifier glyphs in filters.
+- No native browser focus ring on the inner pane input (it drew a second black box).
+- No horizontal scrollbar inside a filter list.
+- No `Actualizado …` line under the description; it belongs under the name.
+- No plural entity copy in modals (`Editar Proyectos`).
+- No repeated visible `Sin asignar` across the grid; use the quiet dash.
+- Drawer labels are never as heavy as their values (the shared 650/600 pairing).
+- No `Estado de referencia` row inside a single-reference provider card; the
+  status pill lives in the card header.
+- No 10.2px ID chips (AntD `code` default inside 12px text).
+- No `Registro X de Y` counted over the loaded list while the table is filtered
+  or re-sorted.
+- No horizontal scrollbar in the grid at a ~930px viewport (900px minimum width).
+- No create/edit modal scroll on desktop (`max-height: 65dvh` body); scroll is
+  only for mobile or genuinely short windows.
 
 ## Scope and Precedence
 
@@ -105,8 +114,12 @@ del producto prevalecen sobre decisiones decorativas. No modifica otros modulos.
 Runtime source: `src/modules/administration/catalogs/ProjectsView.css`.
 Use `var(--color-neutral-N)` rather than repeating hex values in component styles.
 These primitives are scoped to `.catalog-items-page--projects`,
-`.catalog-item-detail-drawer--projects`, and `.catalog-items-modal--projects`.
-Portal-rendered drawers and modals must retain their Projects scope class.
+`.catalog-item-detail-drawer--projects`, `.catalog-items-modal--projects` and
+`.catalog-items-dropdown--projects` (row action menu). Portal-rendered drawers,
+modals and menus must retain their Projects scope class. Ant Design cannot read
+CSS variables for derived tokens, so the same values are repeated once in
+`projects-theme.ts` (`PROJECTS_NEUTRAL`/`PROJECTS_THEME`); a test asserts both
+scales are identical.
 
 | Shade / Token Suffix | Exact Value | Functional Role | Accessibility Constraint |
 | --- | --- | --- | --- |
@@ -148,12 +161,12 @@ or introduce a global theme as part of a local Projects change.
 
 | Surface | Background / Structure | Text / Interaction |
 | --- | --- | --- |
-| Page and search header | 50 canvas; white search surface; 200 dividers | Page title 900; body 700; auxiliary copy 600 |
-| Filter action toolbar | 50 band; 100 counter badge; 200 separator | Counter 700; secondary commands 600; disabled states remain distinguishable |
-| Horizontal filters | White controls; 300 idle treatment with accessible boundary override to 500 | Labels 700; meaningful placeholders 600; interactive icons 600 on hover |
-| Data grid | White rows; 100 header/hover; 200 perimeter/grid lines | Column titles and cell values 700; metadata 600; hierarchy text 900 |
-| Detail drawer | 50 body; white record/provider cards; 200 dividers | Record title 900; section titles 800; labels 600/700; values 700 |
-| Create/Edit/status modals | 50 body; white grouped fields; 200 section borders | Modal title 900; subheaders 800; labels 600/700; essential input outline 500 override |
+| Page header | 50 canvas; white 200-bordered total pill beside the title | Page title 900; caption/breadcrumb 600 (last crumb 900); total pill 600 |
+| Unified toolbar (search + filters + commands) | 50 band inside the 200 table frame; white 40px controls with 500 boundary | Typed text 900; search placeholder 600; filter labels 700/600 weight; commands 600, hover 950 on 100 |
+| Open filter lists | White, 200 border, 8px radius, no shadow; 100 count pills | Values 700; selected row 100/200; count 600 11px |
+| Data grid | White rows; 100 header/hover; 200 perimeter/grid lines | Column titles and cell values 700; name 900; metadata 600; empty dash 500 |
+| Detail drawer | 50 body; white record/provider cards; 200 dividers; 100 code chips | Record title 900; card titles 900 weight 600; labels 600 weight 500; values 900 weight 500; empty values 600 weight 400; status pill as grid; provider status pill in the card header |
+| Create/Edit/status modals | 50 body; white grouped fields; 200 section borders | Modal title 900; legends 800; labels 700 weight 600; inputs 900; placeholders 600; outline 500 |
 | Primary actions | 950 resting; 900 hover/active | White label and icon; inherit icon color; visible 600 focus ring |
 | Secondary actions | White resting; 100 hover; accessible 500 border | 600 resting; 900/950 emphasis; retain visible keyboard focus |
 | Table loading | White canvas; 200 border; 100 ring with 600 accent | Centered 34px ring, 400px minimum height; 900 primary message, accessible 600 caption; 400ms crossfade and 4px grid reveal; static under reduced motion |
@@ -164,17 +177,49 @@ blank or invisible fields. Typography stays compact: body 13-14px, metadata 12px
 section headings 14px, drawer/modal title 18px, page title 22px. Do not enlarge type
 or change padding to compensate for weak color contrast.
 
-## Filter Grouping Rule
+## Unified Toolbar and Filter Panel
 
-Projects filters form one contiguous three-column grid with equal flexible tracks,
-16px gaps and shared 16px side padding inside the neutral-50 filter band. Search
-and filter tools remain inline with a shared baseline. Below 768px, the same group
-stacks into one column to avoid horizontal page overflow. Expanded value lists
-remain attached to their respective control and retain independent scrolling.
-The initial table loader replaces filter placeholders with a centered indicator. This supersedes the
-earlier five-table-column placement with empty Description/action tracks; filters
-must not be scattered across those unused tracks. Preserve the outer 200 dividers
-and accessible stronger input outlines described above.
+Search, filters, grid and paging form one framed work surface: the DataTables
+container has a 1px 200 border and 8px radius (no overflow clip, so nothing inside
+is cut), the toolbar row has top radius and the paging row bottom radius.
+
+Toolbar row (`projects-view-toolbar`, created through DataTables `layout.top` with
+`rowClass`): neutral-50 band, 12px vertical / 16px horizontal padding, 200 bottom
+divider. Its cell is a CSS grid:
+
+| Width | Grid columns | Row 1 | Row 2 (open lists) |
+| --- | --- | --- | --- |
+| >= 1100px | `minmax(220px, 1.4fr) repeat(3, minmax(0, 1fr)) auto`, 12px gap | search col 1; triggers cols 2/3/4; commands col 5 | list 1 `1 / 3`; list 2 `3`; list 3 `4 / -1` |
+| 768-1099px | `repeat(3, minmax(0, 1fr)) auto` | search `1 / 4`; commands col 4 | triggers row 2 cols 1/2/3; lists row 3: `1`, `2`, `3 / -1` |
+| < 768px | one column | search, commands, then trigger/list pairs in DOM order | lists shrink to content, 4px above / 8px below |
+
+`dtsp-panesContainer`, `dtsp-searchPanes` and every `dtsp-searchPane` are
+`display: contents`, so each pane's trigger (`dtsp-topRow`) and list (`dt-container`)
+become direct grid items. The first list extends under search and the last under
+the commands, so the expanded panel spans the full width with no empty area, while
+each list still starts or ends under its own trigger. Open lists are in flow: the
+toolbar grows and pushes the grid down; they never overlay rows or paging.
+
+Controls: search input, pane triggers and toolbar commands are exactly 40px high,
+1px 500 border, 8px radius, white. Focus is on the box only: 600 border plus
+`0 0 0 3px rgba(73, 97, 128, 0.16)`; the inner pane input has no outline, border
+or shadow. Trigger label is the pane placeholder (700, weight 600). The collapse
+caret is a 7px stroke chevron (1.5px 600 borders, 950 on hover).
+
+Lists: white, 200 border, 8px radius, no shadow, SearchPanes' 200px body on
+desktop so the three columns align. No horizontal overflow: the inner table is
+`table-layout: fixed` at 100%, values truncate with an ellipsis and the count pill
+(100 fill, 600 text, 11px/600, tabular numerals, 999px radius) never shrinks.
+Thin 300 scrollbar.
+
+Commands (last track): `Filtros activos: N` counter (hidden at zero), `Limpiar`,
+and a single `Expandir`/`Contraer` (whichever applies; `Expandir` hides while
+`Contraer` is enabled). Disabled commands and pane clear buttons are hidden, not
+shown greyed. Buttons: 40px (44px on mobile), 500 border, 600 text, 13px/600;
+hover 950 border and text on 100.
+
+The initial table loader replaces the whole surface with the centered ring; do not
+render toolbar placeholders.
 
 ## Accessibility Gate
 
@@ -213,16 +258,18 @@ Before accepting a Projects styling change:
 1. Use scoped primitives/aliases and the component matrix; no unrelated modules.
 2. Verify computed styles for page, drawer and both modal modes, including portals.
 3. Run `pnpm exec vitest run test/catalogs/projects-palette.spec.ts test/catalogs/CatalogItemsPage.spec.tsx`
-   in `apps/frontend`, followed by the repository `check-all.cmd` when runtime code changes.
+   in `apps/frontend`, then `pnpm check` there, then the repository `check-all.cmd`
+   when runtime code changes.
 4. Verify keyboard focus, hover/selected/disabled/error states, responsive overflow,
-   missing values and reduced-motion loading in the integrated Codex preview.
+   missing values and reduced-motion loading in the integrated browser with an
+   authenticated session, at 1440px, ~930px and 390px, with all filters expanded.
 5. Record evidence and exceptions in `25-Continuidad-Administracion.md`.
 
-The existing palette test protects exact primitive values across the three scope
-roots and selected contrast pairs; it does not prove every component follows this
-matrix. The 2026-10-12 alignment applies the 700/800/900 hierarchy described in
-the source inventory below. Idle input outlines deliberately use 500 for
-accessibility. Integrated visual verification remains pending authentication.
+The palette test protects exact primitive values across the scope roots, the AntD
+theme scale, selected contrast pairs and the toolbar/filter geometry; it does not
+prove pixel output. Idle input outlines deliberately use 500 for accessibility.
+Integrated visual verification was completed on 2026-10-12 (page, open filters,
+drawer and edit modal at 1440/929/390px; see document 25).
 
 ES: Los tokens y sus funciones quedan como regla de desarrollo. Las excepciones
 de contraste son obligatorias; las diferencias actuales se registran sin afirmar
@@ -239,13 +286,21 @@ new font or scale typography with viewport width. Base size is 13px, line-height
 | Page title | 22px / inherited heading weight / 1.3 | One main entity heading |
 | Drawer and modal title | 18px / inherited heading weight / 1.4 | Compact, wrapping panel heading |
 | Form section legend | 14px / 650 / 20px | 8px vertical, 16px horizontal padding |
-| Drawer card heading | 14px / inherited card weight | Minimum 40px heading band |
-| Desktop project name | 14px / 650 / 1.5 | Primary row identity |
+| Drawer card heading | 14px / 600 | Shade 900, minimum 40px heading band |
+| Drawer label | 12px / 500 | Shade 600; never heavier than its value |
+| Drawer value | 13px / 500 | Shade 900; empty values (`Sin asignar`, `Pendiente de migración`) 600 / 400 |
+| Drawer ID and system-code chip | 12px / 500 / 20px, monospace, tabular numerals | 100 fill, 200 border, 4px radius, 1px 6px padding |
+| Page total pill | 12px / 600 | `37 proyectos`, 600 text, tabular numerals |
+| Desktop project name | 14px / 650 / 1.5 | Shade 900, primary row identity |
+| `Actualizado …` under the name | 12px / regular | Shade 600, semantic `time` |
 | Mobile project name | 16px / 600 / 1.5 | Shade 950, wrap rather than collide |
 | Inputs, buttons, drawer values | 13px / component default | Do not enlarge to compensate for contrast |
+| Form labels | 13px / 600 | `(opcional)` stays 400 |
+| Filter trigger label | 13px / 600 | Shade 700 (pane placeholder) |
 | Mobile metadata values | 14px / component default | Label above content |
-| Table column titles | 12px / 650 | Current runtime uses shade 600 |
+| Table column titles | 12px / 650 | Shade 700 |
 | Metadata, timestamps, filter counter | 12px | Readable 600 or darker |
+| Filter count pill | 11px / 600 | Shade 600 on 100 |
 | Status badges | 12px / 600 / 1.5 | Text plus semantic state cue |
 
 Spacing tokens: `--space-1:4px`, `--space-2:8px`, `--space-3:12px`,
@@ -254,42 +309,41 @@ Use 16px panel/form/card padding, 16px section gaps, 8px action gaps.
 Documented component exceptions are 6px integration gaps, 10px mobile divider
 padding and 24px loader padding. Do not invent per-screen spacing scales.
 
-Administration control height is 36px unless overridden: global table search
-minimum 40px, refresh 44px square, mobile controls/targets minimum 44px.
+Administration control height is 36px unless overridden: toolbar search, filter
+triggers and filter commands exactly 40px, refresh 44px square, mobile
+controls/targets minimum 44px.
 Textarea heights follow configured row counts; not every control is a fixed height.
 
 ## Page Structure and Search
 
 Resolved hierarchy, in order:
 
-1. Breadcrumb, entity title and existing supporting caption.
+1. Breadcrumb, entity title with the API total pill (`37 proyectos`; singular
+   uses the entity name), and the existing supporting caption.
 2. Header actions: icon-only refresh and `Nuevo proyecto` with leading plus.
-3. Dedicated white search band with 200 dividers and 16px padding.
-4. Neutral-50 filter band containing action toolbar and contiguous filter row.
-5. Independently bounded data grid with pagination/info band below.
-6. Optional loaded-record count and `Cargar más` when the API has another batch.
+3. One framed work surface: unified toolbar (search + three filters + commands),
+   then the independently bounded grid, then the pagination/info row.
+4. Optional loaded-record count and `Cargar más` when the API has another batch.
 
 Page content is centered with maximum width 1440px and shrinkable children.
-Do not wrap all bands in an additional decorative floating card. Individual
-drawer records/provider groups and form sections are legitimately framed.
-Search width is 440px maximum 100%; mobile width is 100%. Placeholder is
-`Buscar en Proyectos`. Search remains DataTables' existing search; do not add
-a parallel state store or duplicate filtering implementation.
+Do not add another decorative card around the work surface. Individual drawer
+records/provider groups and form sections are legitimately framed.
+The search is the toolbar's first track (full row width below 1100px). Placeholder
+is `Buscar en Proyectos`. Search remains DataTables' existing search; do not add a
+parallel state store or duplicate filtering implementation.
 
 ## Filter Toolbar and State
 
-The filter toolbar uses vertically centered flex layout with 8px gaps. Left group:
-`Filtros activos: N` and `Limpiar`. Right group: `Expandir` and `Contraer`.
-Clear's trailing auto margin separates the groups. Counter is a state badge:
-100 fill, 200 border, 999px radius, 12px/600 text, 4px by 12px padding,
-24px line-height. Do not center it in otherwise empty space.
+Geometry lives in "Unified Toolbar and Filter Panel". The commands track is a
+non-wrapping flex row with 8px gaps: counter, `Limpiar`, then the single
+expand/collapse command. Counter is a state badge: 100 fill, 200 border, 999px
+radius, 12px/600 text, 4px by 12px padding, 24px line-height; its plural title
+`{0: "", _: "Filtros activos: %d"}` leaves it empty (hidden) at zero.
 
-Three filters: `Proyecto`, `Integraciones`, `Estado`. Grid:
-`repeat(3, minmax(0, 1fr))`, 16px gap, 12px vertical/16px horizontal padding.
-Every pane has `min-width:0`, shared baseline and no independent top margin.
-Input and tool controls use non-wrapping horizontal flex even in SearchPanes'
-narrow mode. Open value lists remain attached and independently scrollable.
-Do not revive the unused measured table-track spacing.
+Three filters: `Proyecto`, `Integraciones`, `Estado`. SearchPanes options:
+`orderable: false` (no sort buttons) plus the shared defaults. Every trigger has
+`min-width:0`, a shared baseline and no independent top margin; the vendor
+magnifier is hidden and the pane clear `×` appears only while a value is selected.
 
 Reuse `useDataTableSearchPanes`: collapsed initial panes, cascading options,
 visible totals, columns 0/2/3 enabled and Description/actions excluded. The active
@@ -309,7 +363,8 @@ records have already been fetched.
 Columns: Project, Description, Integrations, Status, Actions. Current widths are
 26%, 29%, 25%, 220px and 64px respectively; DataTables/table layout resolves their
 combined allocation. These are not five percentages adding to 100%.
-Table minimum width 900px, fixed layout. Local scroll canvas maximum height 640px,
+Table minimum width 840px, fixed layout (900px overflowed the 887px frame at a
+929px viewport and showed a horizontal scrollbar). Local scroll canvas maximum height 640px,
 `overflow:auto`, thin scrollbar, 48px scroll padding. Sticky headers use `top:0`
 and local `z-index:1`. Align the scroll flex child at `flex-start`: centering an
 oversized table previously placed its first rows above the scroll origin.
@@ -327,12 +382,24 @@ must not accidentally trigger row navigation. The ellipsis menu provides Edit
 and Inactivate/Reactivate and stops propagation; do not duplicate mutations in
 the drawer component. Escape display strings for SearchPanes text output.
 
-Project name is the primary identity. Description falls back to `Sin asignar`;
-last-updated metadata uses `es-CR` dates and a semantic `time` element. Integration
-rows show provider name and identifier, including explicit unassigned providers.
-External IDs use tabular numerals; do not cast to positive numbers or invent IDs.
-Status is visible text (`Activo`/`Inactivo`) with a compact badge and existing dot.
-Do not rely on color alone or confuse reference status with project status.
+Project name is the primary identity (900); directly under it,
+`Actualizado DD/MM/AAAA` in a semantic `time` element (`es-CR`, 600, 12px). The
+description column shows only the detail. Integration rows show each provider
+label (600) with its identifier immediately beside it, left aligned (900, tabular
+numerals), including explicit unassigned providers. Do not cast IDs to numbers or
+invent IDs.
+
+Missing grid values (description, provider ID) render a quiet 500 em dash with
+`title="Sin asignar"` and a visually hidden `Sin asignar` for screen readers; pane
+options and search still use the text `Sin asignar`. The drawer keeps the visible
+text `Sin asignar`. Status is visible text (`Activo`/`Inactivo`) in a compact pill
+with the existing dot (success / 500). Do not rely on color alone or confuse
+reference status with project status.
+
+Row actions (`⋯`) are borderless ghost buttons on desktop until the row is hovered,
+focused or selected (or the button itself is hovered); below 768px they keep the
+500 outline and 44px target. The row action menu is a portal: it opts into the
+scale with `rootClassName="catalog-items-dropdown--projects"`.
 
 Default sort: project ascending. Page size: 10; choices: 10/25/50/100. Preserve
 saved order/search/page/panes and empty/filtered counts. Loaded batches and page
@@ -376,24 +443,46 @@ Body has `min-height:0`, independent vertical scrolling and contained overscroll
 Header/footer remain separate from the scrolling record body; padding is 16px.
 
 Header order: existing 48px entity avatar/icon, wrapping title, catalog label,
-status. Section order: `Información del registro` (name/detail), `Registro`
+status. The header status uses the same `catalog-items-status` pill as the grid
+(not the shared Users badge), so the record reads identically in both places.
+Section order: `Información del registro` (name/detail), `Registro`
 (CRM ID/native code/update time), then a distinct card per provider (NetSuite,
 Odoo, other returned providers). Cards are white, radius 8px, 200 border;
 40px heading band with 50 fill, 16px body padding and 16px between cards.
 Descriptions use one column, horizontal label/value layout and no colon.
 
+Hierarchy mirrors the grid: the value is the data, the label is metadata. Labels
+are 600 at weight 500, values 900 at weight 500 (the shared Users drawer uses
+650/600, which made both compete). Empty values render through
+`Typography.Text type="secondary"` and are styled 600 at weight 400, so
+`Sin asignar` never reads like real data. Do not use shade 500 for that text: it
+measures 4.49:1 on white, below AA.
+
 Each provider owns its system code, external identifier and reference status.
 Never mix providers in one card or infer synchronization success from a missing
-reference. NetSuite/Odoo placeholders are read-only display data. Missing/null/
-undefined/blank strings display `Sin asignar`; real identifiers are copyable,
-unassigned placeholders are not. Do not submit fabricated placeholder references.
-IDs use compact code styling on 100 fill. Record timestamps use `es-CR` date/time.
+reference. When a provider has exactly one reference, its status pill
+(`projects-view-reference-status`, including the neutral `Sin asignar` state) sits
+in the card header (`Card extra`) with visually hidden `Estado de referencia: `
+text; the body keeps `Identificador` first, then `Código del sistema` as a
+non-copyable code chip (`projects-view-system-code`). A provider with several
+references keeps the status row inside each reference. NetSuite/Odoo placeholders
+are read-only display data. Missing/null/undefined/blank strings display
+`Sin asignar`; real identifiers are copyable, unassigned placeholders are not. Do
+not submit fabricated placeholder references. ID and code chips share one style
+(12px monospace, 100 fill, 200 border); the default AntD `code` renders at 85% of
+12px (10.2px) and must be overridden. `Última actualización` uses `es-CR`
+`DD/MM/AAAA, h:mm a. m.` without seconds.
 
 Footer: `Registro X de Y`, adjacent previous/next icon controls, Edit, and
 Inactivate/Reactivate. Boundary arrows are disabled; actions disappear while
 loading or in error. ArrowUp/ArrowDown navigate records except when focus is
-inside an input, textarea, select, dropdown/menu/listbox. Preserve list ordering
-and context rather than inventing a new drawer-only ordering.
+inside an input, textarea, select, dropdown/menu/listbox. Position, total and
+arrows follow the table's visible order: the table reports the public IDs of
+`rows({ search: "applied", order: "applied" })` on each draw
+(`onVisibleOrderChange`, only when the sequence changes) and the page navigates
+that list (`getNavigationItems`). A filtered table showing 1 row therefore reads
+`Registro 1 de 1`, never `1 de 37` with arrows jumping to hidden records. If the
+open record is no longer visible, navigation falls back to the loaded list.
 
 Loading uses the drawer skeleton defined below. Error/missing record uses an
 error Alert and `Reintentar`. Never show failure as an unassigned field or offer
@@ -409,16 +498,46 @@ above the drawer. No custom modal width is declared here: the installed Ant Desi
 default applies; verify rather than inventing a fixed width.
 
 Modal shell: radius 8px, 200 perimeter, 50 header/body/footer, 16px padding.
-Body maximum height 65dvh, independent vertical scroll and contained overscroll.
 Header title 18px; supporting text uses 600. Form has 16px section gaps;
 white fieldsets with 200 border, compact 14px section legend and 16px field area.
 Desktop provider groups share two columns; mobile uses one. Footer is right-aligned
 with 8px button gaps. Preserve visible validation and danger colors.
 
+No scroll on desktop; scroll only on mobile. The owner rejected the earlier
+`max-height: 65dvh` body: at a 906px window it capped the body at 589px for a
+658px form. Rules:
+
+- Body `max-height: calc(100dvh - 200px)` (header, footer and centered margins),
+  with independent vertical scroll and contained overscroll as a fallback only.
+- Projects textareas use `autoSize` (detail 2-6 rows, audit reason 2-4 rows)
+  through `getTextAreaSizes`; other catalogs keep fixed 3/4 rows.
+- Short desktop windows, `@media (min-width: 768px) and (max-height: 820px)`:
+  12px header/body/footer/section padding and form gaps, 6px legend padding,
+  12px field gaps, 2px label padding, 32px fields (`padding-block: 4px` and
+  `.ant-form-item-control-input` min-height 32px, which AntD otherwise keeps at
+  36px), character counters moved to the label row (`top: -22px`) and body
+  `max-height: calc(100dvh - 150px)`.
+- Measured result: 929x906 modal 746px with body 595/595 (no overflow);
+  1366x657 (1366x768 laptop) modal 633px at 12px from both edges, body 497/497;
+  390x844 mobile keeps the internal body scroll inside the screen.
+- Do not grow content (new sections, fixed tall textareas) without re-measuring at
+  1366x657.
+
+Field styling: labels 700 at weight 600, `(opcional)` 400 in 600; inputs and
+textareas type in 900 (the textarea wrapper must be set too, it otherwise inherits
+700); placeholders, character counters and optional markers 600. The page wraps
+the modal and drawer in `ConfigProvider` with `PROJECTS_THEME` and the `esES`
+locale, which is what turns AntD's `(optional)` into `(opcional)`.
+
+Copy is singular and entity-specific, resolved by one helper: titles
+`Nuevo proyecto` / `Editar proyecto`, submit `Crear proyecto`, name placeholder
+`Ej. Proyecto principal` (Campaigns: `Nueva campaña` / `Editar campaña` /
+`Crear campaña`).
+
 Sections: record information, isolated NetSuite/Odoo inputs, audit reason.
-Name required/minimum 2 characters; detail textarea 3 rows/maximum 500;
-external reference inputs optional; audit textarea 4 rows/maximum 255 and required
-minimum 5 characters. These describe current UI validation, not authorization to
+Name required/minimum 2 characters; detail textarea 2-6 rows (autoSize)/maximum
+500; external reference inputs optional; audit textarea 2-4 rows (autoSize)/maximum
+255 and required minimum 5 characters. These describe current UI validation, not authorization to
 relax backend rules. Trim submitted text, omit empty external references, preserve
 provider identities, and display controlled API conflicts/errors without closing
 the form as if successful. Never create provider records from empty fields.
@@ -428,10 +547,11 @@ existing submit/close lifecycle. Status confirmation shows effective old/new sta
 requires trimmed reason of at least 5 characters and marks inactivation dangerous.
 UI permissions are not a substitute for server authorization.
 
-Current copy exceptions: header primary is exactly `Nuevo proyecto`; modal titles
-still interpolate the catalog label (for example `Nuevo Proyectos`), create submit
-is `Crear valor`, and status titles contain `valor`. Document these as existing
-copy debt, not desired domain terminology. An exact clone preserves them until
+Current copy exceptions: header primary is exactly `Nuevo proyecto`; Projects
+modal titles/submit are now singular (`Nuevo proyecto`, `Editar proyecto`,
+`Crear proyecto`), while other catalogs still interpolate the catalog label and
+submit `Crear valor`; status titles contain `valor`. Document the remaining ones as
+existing copy debt, not desired domain terminology. An exact clone preserves them until
 copy cleanup is authorized; a new module brief must explicitly name its entity.
 
 ## Buttons, Icons and Interaction States
@@ -446,9 +566,12 @@ mutation activity. Its spinning icon follows list loading, not an arbitrary dela
 Secondary: white fill, accessible 500 outline, 600 text/icon; hover 100 fill with
 stronger 950 text/border. Visible focus: 2px 600 outline, 2px offset. Disabled
 controls retain component semantics; never style them as active controls.
-SearchPanes' raster tools are an existing vendor exception: 15px background glyph,
-grayscale opacity 0.65 idle / 0.85 hover or focus. Essential icons need adequate
-contrast regardless of the decorative token suggestion.
+Text inputs inside a bordered box (search, filter triggers) show focus on the box
+(600 border + soft ring), never as a native ring on the inner input.
+SearchPanes' raster tools (sort and magnifier glyphs) are removed or hidden in
+Projects; if a replicated module must keep one, use a 15px glyph at grayscale
+opacity 0.65 idle / 0.85 hover or focus. Essential icons need adequate contrast
+regardless of the decorative token suggestion.
 
 Active status: success text/fill defined above. Inactive/unassigned: neutral100
 fill/600 text. Pending reference: warning pair. Keep error/danger separate from
@@ -531,12 +654,13 @@ and unconfigured integration are four different states.
 1. Inspect target module and reuse its existing data and permission lifecycle.
 2. Apply scoped primitive/semantic tokens to page, drawer and modal portal roots.
 3. Establish typography, spacing and geometry before adding interactive polish.
-4. Compose search band, cohesive filter toolbar, contiguous panes and bounded grid.
+4. Compose the framed work surface: unified toolbar (search, filters, commands),
+   in-flow filter panel and bounded grid.
 5. Reuse one row dataset for desktop/mobile, one detail drawer and connected forms.
 6. Implement every state above, including empty providers, errors and reduced motion.
 7. Add regressions first; verify isolated scope and existing contracts after changes.
 8. Run focused tests, then full project checks sequentially; review the complete diff.
-9. Inspect in Codex integrated preview with an authenticated account. Do not open
+9. Inspect in the integrated browser with an authenticated account. Do not open
    external browsers to bypass the requested workflow or bypass authentication.
 
 Acceptance must cover: long names/IDs; 200% text zoom; narrow viewports; first row
@@ -557,6 +681,71 @@ For runtime changes run `.\check-all.cmd` from the repository root. Do not intro
 mutations to validate a documentation/design-only change. Database assertions,
 when independently required, follow the existing isolated direct-MySQL workflow.
 
+## Library Integration Notes (Read Before Replicating)
+
+These are verified behaviors of the installed versions (React 19, Ant Design 6,
+DataTables 2.3.8, SearchPanes 2.3.5) that the design depends on. Each one cost a
+correction round; reuse the solution instead of rediscovering it.
+
+| Problem | Cause | Solution in Projects |
+| --- | --- | --- |
+| Search and filters in one row | Default layout puts them in separate rows | `layout.top = { features: ["search", { searchPanes: {...} }], rowClass: "dt-layout-row projects-view-toolbar" }`, `top1Start: null`; CSS grid on the row's cell |
+| Pane parts must join the toolbar grid | SearchPanes nests panes in wrappers | `display: contents` on `dtsp-panesContainer`, `dtsp-searchPanes` and `dtsp-searchPane`; place `dtsp-topRow`/`dt-container` with `:nth-child` |
+| Sort buttons inside each filter | SearchPanes default | `orderable: false` in the pane options |
+| Counter `Filtros activos: 0` always visible | Fixed title string | Plural title `{ 0: "", _: "Filtros activos: %d" }` and hide `.dtsp-title:empty` |
+| Disabled commands clutter the toolbar | SearchPanes toggles the `disabled` attribute | Hide `button:disabled`; hide `.dtsp-showAll` with `:has(> .dtsp-collapseAll:not(:disabled))` |
+| `^`/`v` text caret | Vendor markup `<span class="dtsp-caret">^</span>`, button rotated 180deg when collapsed | Hide the glyph (`font-size: 0`) and draw borders rotated -135deg; the vendor rotation still flips it |
+| Black double border on filter focus | Native focus ring on the inner pane input | `outline/border/box-shadow: none` on the input; focus ring on `dtsp-topRow:focus-within` |
+| Horizontal scrollbar in a list | DataTables writes inline `col`/table widths measured before the vertical scrollbar | `table { width: 100% !important; table-layout: fixed }`, `col { width: auto !important }`, `overflow-x: hidden !important`, ellipsis on `.dtsp-name` |
+| List height | SearchPanes writes inline `height: 200px` on `dt-scroll-body` | Keep it on desktop (equal columns); `height: auto !important` below 768px |
+| Shared Users styles leak in | `SystemUsersPage.css` styles `.administration-users-datatable-wrap .dt-container` (also the pane lists) and 28px titleRow buttons | Scope the frame to `.dt-container:has(> .projects-view-toolbar)`; override buttons to 40px under the Projects scope |
+| English ARIA / tooltips | DataTables and SearchPanes defaults | `language.aria.{orderable, orderableReverse, orderableRemove, paginate}` and `language.searchPanes.buttons.{clearPane, clearSearch, collapse, orderByCount, orderByLabel}`, `emptyMessage: "Sin asignar"` |
+| Language changes not visible | DataTables reads `language` only at initialization | Reload the page when verifying |
+| Cell components ignore the AntD theme | `datatables.net-react` renders slots with separate `createRoot` | Style cells with scoped CSS; portals (Dropdown) need `rootClassName` |
+| AntD shows `(optional)` | Missing locale | `ConfigProvider locale={esES}` with the module theme |
+| Tests see `var(--…)` not colors | jsdom does not resolve custom properties | Assert the `var(--color-neutral-N)` strings |
+| SearchPanes absent in tests | jsdom cannot run it | Test layout keeps the toolbar row with search only; CSS geometry is tested by injecting the stylesheet and fixture markup |
+| Mobile CSS test reads the wrong block | Tests slice from the first `@media (max-width: 767px)` | Keep all mobile rules in the main 767px block |
+| ESLint `complexity` 8 | Inline ternaries in components | Extract small helpers (`getModalCopy`, `getTableLayout`, `getAriaLanguage`, `getNavigationItems`, `referenceItems`) |
+| Drawer overrides ignored | `UserDetailDrawer.css` is imported by the drawer and can load after `ProjectsView.css` with equal specificity (labels 650, values 600, card title 760) | Prefix overrides with `.catalog-item-detail-drawer--projects.user-detail-drawer` |
+| Modal fields stay 36px after reducing padding | AntD sets `min-height: 36px` on `.ant-form-item-control-input` | Lower that min-height together with the input padding |
+| Drawer navigation disagrees with the table | The page navigated the loaded array, ignoring DataTables filter and sort | Report visible IDs from `onDraw` and navigate that list |
+
+## Replicating in Another Module
+
+1. Get explicit owner approval for the target module; this guide alone does not
+   authorize restyling.
+2. Presentation opt-in: add the module to `getCatalogPresentation` in
+   `catalog-definitions.ts` (or the module's equivalent) with `enhanced: true`, its
+   entity name, `create` and `refresh` labels. Catalogs reuse the Projects scope
+   classes as-is (Campaigns does); a non-catalog module copies `ProjectsView.css`
+   selectors under its own scope root and portal classes instead of adding its
+   routes to Projects selectors.
+3. Theme: wrap the page, drawer and modals in `ConfigProvider` with the module
+   theme (start from `PROJECTS_THEME`) and `esES`. Give every portal (drawer,
+   modal, dropdown) its scope class via `rootClassName`/`className`.
+4. Table: reuse `useDataTableSearchPanes` and the `getTableLayout` pattern
+   (toolbar row class, `orderable: false`, plural counter title, Spanish ARIA).
+   Choose the filter columns; with a different number of filters, update the grid
+   track count and the `:nth-child` placements (first list spans under search, last
+   under the commands) for all three breakpoints.
+5. Cells: name 900 with `Actualizado` under it, quiet dash for missing values,
+   provider ID beside its label, status pill, ghost row actions.
+6. Drawer and form: same sections and provider cards, header status pill,
+   provider status in the card header, label/value hierarchy, muted empty values,
+   12px ID chips, date without seconds, navigation in the table's visible order,
+   singular copy through a `getModalCopy`-style helper, field styling from this
+   document, auto-sized textareas and the short-window compact density so the
+   form never scrolls on desktop.
+7. Tests: copy the palette tests (scale parity, toolbar grid, open-list placement,
+   hidden idle controls, single expand/collapse) and the page tests (total pill,
+   empty dash, singular copy, drawer pill, Spanish ARIA) for the new scope.
+8. Verify live with an authenticated session at 1440px, ~930px and 390px: all
+   filters expanded, a filter selected, focus on a filter, drawer, create and edit
+   modals. Measure (control heights, list placement, no horizontal overflow),
+   not only screenshots. Record evidence in document 25 and update this document
+   with any new decision.
+
 ## Source Inventory and Known Differences
 
 All paths below are relative to `apps/frontend`. They are implementation pointers,
@@ -564,10 +753,12 @@ not prerequisites for understanding the visual rules above.
 
 | Source | Responsibility |
 | --- | --- |
-| `src/modules/administration/catalogs/ProjectsView.css` | Local tokens, responsive geometry, states and animations |
-| `src/modules/administration/catalogs/CatalogItemsPage.tsx` | Header, forms, request/mutation lifecycle and error presentation |
-| `src/modules/administration/catalogs/CatalogItemsDataTable.tsx` | Preloader, grid, row actions, sorting, preferences and SearchPanes |
-| `src/modules/administration/catalogs/CatalogItemDetailDrawer.tsx` | Record/provider sections, fallback values, navigation and detail loading |
+| `src/modules/administration/catalogs/ProjectsView.css` | Local tokens, toolbar/filter panel geometry, responsive rules, states and animations |
+| `src/modules/administration/catalogs/projects-theme.ts` | `PROJECTS_NEUTRAL` and the AntD `PROJECTS_THEME` for page and portals |
+| `src/modules/administration/catalogs/catalog-definitions.ts` | `getCatalogPresentation`: opt-in, scope class, entity and action labels |
+| `src/modules/administration/catalogs/CatalogItemsPage.tsx` | Header and total pill, theme/locale provider, forms and `getModalCopy`, request/mutation lifecycle |
+| `src/modules/administration/catalogs/CatalogItemsDataTable.tsx` | Preloader, toolbar layout, Spanish ARIA, cells (dash, date, integrations), row actions, preferences and SearchPanes |
+| `src/modules/administration/catalogs/CatalogItemDetailDrawer.tsx` | Record/provider sections, header status pill, fallback values, navigation and detail loading |
 | `src/modules/administration/hooks/useDataTableSearchPanes.ts` | Cascading panes and safe table-state storage |
 | `src/modules/administration/administration-theme.ts` | Shared controls, drawer size/layers and overlay chrome |
 | `src/modules/administration/components/UserDetailDrawer.css` | Inherited drawer composition |
@@ -576,8 +767,8 @@ not prerequisites for understanding the visual rules above.
 | `test/catalogs/CatalogItemsPage.spec.tsx` | Component interaction/loading/modal regression coverage |
 
 Runtime alignment (2026-10-12): page/drawer titles 900, table headers and cell
-values 700, project name 900, drawer card headings and form legends 800, drawer
-values 700, breadcrumb/caption/position 600, refresh icon 600, avatar 100/200/800,
+values 700, project name 900, form legends 800, drawer card headings 900/600,
+drawer labels 600/500, drawer values 900/500, drawer chips 12px, breadcrumb/caption/position 600, refresh icon 600, avatar 100/200/800,
 mobile select boundary 500. Inputs type in 900 with 600 placeholders, optional
 markers and counters. Projects wraps its AntD portals in `PROJECTS_THEME`
 (`projects-theme.ts`, values asserted equal to the CSS scale) plus `esES` locale.
@@ -585,12 +776,15 @@ DataTables cell slots mount separate React roots, so the row action menu opts in
 the scale through `catalog-items-dropdown--projects`. Remaining exception: the
 shared drawer/modal overlay shadows keep Administration rgba values.
 
-Latest preceding runtime verification (2026-10-09, recorded in document 25):
-51 focused tests; frontend 152 passed; API 227 passed / 12 opt-in tests skipped;
-format/lint/typecheck and both builds passed after a formatting correction.
-Existing bundle-size warning remains. Those results are historical evidence,
-not a new test run for this document. Authenticated integrated visual verification,
-device overflow checks, CLS measurements and full WCAG audit remain unconfirmed.
+Latest runtime verification (2026-10-12, recorded in document 25): frontend
+format/lint/typecheck, 168 tests and build passed (existing bundle-size warning);
+authenticated integrated browser check of page, expanded filters, filter focus,
+drawer and edit modal at 1440px, 929px and 390px with measured geometry. Drawer
+pass: computed label 12px/500/600, value 13px/500/900, filtered table opens
+`Registro 1 de 1` with both arrows disabled, unfiltered order Administrativo edit
+then Amara (`Registro 2 de 37`), no horizontal overflow at 929px. Root
+`check-all.cmd` stops at pre-existing API `jsdoc/require-jsdoc` errors outside this
+work. CLS measurements and a full WCAG audit remain unconfirmed.
 
 ### Roles and Security Adoption
 

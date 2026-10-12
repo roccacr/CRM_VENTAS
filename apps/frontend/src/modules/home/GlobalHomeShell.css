@@ -1792,27 +1792,15 @@
 }
 
 @media (max-width: 1024px) {
-    .global-home-shell {
-        --global-home-header-height: 126px;
-    }
-
+    /* Tablet keeps the desktop single row and 72px height; only the search field shrinks. */
     .global-home-header__inner {
-        height: auto;
-        min-height: 64px;
-        grid-template-columns: minmax(112px, 150px) 1fr;
-        gap: 10px 16px;
+        grid-template-columns: max-content minmax(0, 1fr) max-content;
+        gap: 12px;
         padding: 12px var(--page-pad);
     }
 
-    .global-home-header__workspace {
-        grid-column: 1 / -1;
-        grid-row: 2;
-    }
-
-    .global-home-header__actions {
-        grid-column: 2;
-        grid-row: 1;
-        justify-content: flex-end;
+    .global-home-header__logo {
+        width: 112px;
     }
 
     .global-home-menu__track {
@@ -1842,6 +1830,12 @@
 
     .global-home-kpis {
         grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
+    }
+}
+
+@media (max-width: 900px) {
+    .global-home-header__avatar-name {
+        display: none;
     }
 }
 

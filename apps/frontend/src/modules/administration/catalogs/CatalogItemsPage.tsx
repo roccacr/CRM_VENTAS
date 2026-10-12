@@ -93,6 +93,27 @@ const buildExternalReferences = (values: CatalogItemFormValues): CatalogExternal
 /** Id externo ya guardado, para precargar el formulario de edición. */
 const getReferenceValue = (item: CatalogItem | null, systemCode: "netsuite" | "odoo"): string | undefined => item?.externalReferences.find((reference) => reference.systemCode === systemCode)?.externalId;
 
+/** Titulo, boton de alta y ejemplo del modal; Proyectos y Campañas usan su sustantivo en singular. */
+/** El detalle recorre el orden y filtro visibles de la tabla; si el registro abierto quedó fuera, usa el listado cargado. */
+const getNavigationItems = (items: readonly CatalogItem[], visibleOrder: readonly string[] | null, selectedItem: CatalogItem | null, projectView: boolean): readonly CatalogItem[] => {
+    if (!projectView || !visibleOrder || !selectedItem || !visibleOrder.includes(selectedItem.publicId)) return items;
+    const byId = new Map(items.map((item) => [item.publicId, item]));
+    return visibleOrder.flatMap((publicId) => byId.get(publicId) ?? []);
+};
+
+const getModalCopy = (catalog: AdministrationCatalogDefinition, isEdit: boolean) => {
+    if (catalog.code === "campaigns") {
+        return { placeholder: `Ej. ${catalog.label} principal`, submit: "Crear campaña", title: isEdit ? "Editar campaña" : "Nueva campaña" };
+    }
+    if (catalog.code === "projects") {
+        return { placeholder: "Ej. Proyecto principal", submit: "Crear proyecto", title: isEdit ? "Editar proyecto" : "Nuevo proyecto" };
+    }
+    return { placeholder: `Ej. ${catalog.label} principal`, submit: "Crear valor", title: isEdit ? `Editar ${catalog.label}` : `Nuevo ${catalog.label}` };
+};
+
+/** Proyectos arranca con dos líneas y crece con el texto, para que el formulario quepa sin scroll en escritorio. */
+const getTextAreaSizes = (projectView: boolean) => (projectView ? { detail: { autoSize: { minRows: 2, maxRows: 6 } }, reason: { autoSize: { minRows: 2, maxRows: 4 } } } : { detail: { rows: 3 }, reason: { rows: 4 } });
+
 /** Approved catalog opt-ins share the drawer hierarchy without changing other forms. */
 function CatalogFormSection({ projectView, title, children }: { readonly projectView: boolean; readonly title: string; readonly children: ReactNode }) {
     return projectView ? (
@@ -115,6 +136,8 @@ function CatalogItemModal({ catalog, initialItem, isSaving, open, error, onClose
     const [form] = Form.useForm<CatalogItemFormValues>();
     const isEdit = initialItem !== null;
     const projectView = getCatalogPresentation(catalog.code).enhanced;
+    const copy = getModalCopy(catalog, isEdit);
+    const textAreaSizes = getTextAreaSizes(projectView);
 
     useEffect(() => {
         if (!open) {
@@ -154,14 +177,14 @@ function CatalogItemModal({ catalog, initialItem, isSaving, open, error, onClose
                     </Button>
                     <Button type="primary" loading={isSaving} onClick={submit}>
                         <SaveOutlined />
-                        {isEdit ? "Guardar cambios" : catalog.code === "campaigns" ? "Crear campaña" : "Crear valor"}
+                        {isEdit ? "Guardar cambios" : copy.submit}
                     </Button>
                 </div>
             }
             open={open}
             title={
                 <div className="catalog-items-modal__title">
-                    <h2>{catalog.code === "campaigns" ? (isEdit ? "Editar campaña" : "Nueva campaña") : isEdit ? `Editar ${catalog.label}` : `Nuevo ${catalog.label}`}</h2>
+                    <h2>{copy.title}</h2>
                     <p>Valor nativo CRM con referencias opcionales de NetSuite, Odoo u otros proveedores.</p>
                 </div>
             }
@@ -179,10 +202,10 @@ function CatalogItemModal({ catalog, initialItem, isSaving, open, error, onClose
                             { required: true, message: "El nombre es obligatorio." },
                         ]}
                     >
-                        <Input placeholder={`Ej. ${catalog.label} principal`} />
+                        <Input placeholder={copy.placeholder} />
                     </Form.Item>
                     <Form.Item<CatalogItemFormValues> label="Detalle" name="detail">
-                        <Input.TextArea rows={3} maxLength={500} showCount placeholder="Detalle operativo visible para administración." />
+                        <Input.TextArea {...textAreaSizes.detail} maxLength={500} showCount placeholder="Detalle operativo visible para administración." />
                     </Form.Item>
                 </CatalogFormSection>
                 <div className="catalog-items-modal__grid">
@@ -206,7 +229,7 @@ function CatalogItemModal({ catalog, initialItem, isSaving, open, error, onClose
                             { required: true, message: "El motivo es obligatorio." },
                         ]}
                     >
-                        <Input.TextArea rows={4} maxLength={255} showCount placeholder="Ej. Alta autorizada por jefatura." />
+                        <Input.TextArea {...textAreaSizes.reason} maxLength={255} showCount placeholder="Ej. Alta autorizada por jefatura." />
                     </Form.Item>
                 </CatalogFormSection>
             </Form>
@@ -368,7 +391,9 @@ export function CatalogItemsPage({ catalog, contextLabel = "Administración", co
     const [selection, setSelection] = useState<{ publicId: string; catalogCode: string; context: string; open: boolean } | null>(null);
     const isDetailOpen = selection?.catalogCode === catalog.code && selection.context === contextModuleCode && selection.open;
     const selectedItem = items.find((item) => item.publicId === selection?.publicId) ?? null;
-    const selectedIndex = items.findIndex((item) => item === selectedItem);
+    const [visibleOrder, setVisibleOrder] = useState<readonly string[] | null>(null);
+    const navigationItems = getNavigationItems(items, visibleOrder, selectedItem, projectView);
+    const selectedIndex = navigationItems.findIndex((item) => item === selectedItem);
     // A late response from an older filter/context must not replace the visible details.
     const loadSequence = useRef(0);
 
@@ -547,6 +572,7 @@ export function CatalogItemsPage({ catalog, contextLabel = "Administración", co
                         onSelect={(item) => {
                             setSelection({ publicId: item.publicId, catalogCode: catalog.code, context: contextModuleCode, open: true });
                         }}
+                        onVisibleOrderChange={setVisibleOrder}
                     />
                     <CatalogLoadState error={error} isLoading={isLoading} projectView={projectView} hasMore={hasMore} isLoadingMore={isLoadingMore} loaded={items.length} total={total} onLoadMore={loadMore} />
                 </CatalogListPanel>
@@ -559,13 +585,13 @@ export function CatalogItemsPage({ catalog, contextLabel = "Administración", co
                     item={selectedItem}
                     open={isDetailOpen}
                     position={selectedIndex + 1}
-                    total={items.length}
+                    total={navigationItems.length}
                     onSelectPrevious={() => {
-                        const previous = items[selectedIndex - 1];
+                        const previous = navigationItems[selectedIndex - 1];
                         if (previous) setSelection({ publicId: previous.publicId, catalogCode: catalog.code, context: contextModuleCode, open: true });
                     }}
                     onSelectNext={() => {
-                        const next = items[selectedIndex + 1];
+                        const next = navigationItems[selectedIndex + 1];
                         if (next) setSelection({ publicId: next.publicId, catalogCode: catalog.code, context: contextModuleCode, open: true });
                     }}
                     onClose={() => {

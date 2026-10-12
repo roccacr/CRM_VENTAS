@@ -25,6 +25,15 @@ vi.mock("../../src/services/catalogs/catalog-service", async (importOriginal) =>
 const mockListCatalogItems = vi.mocked(listCatalogItems);
 const item = { publicId: "project_001", nativeCode: "projects_native", name: "Lomas del Valle", detail: "Project details", status: "active" as const, updatedAt: "2026-10-08T12:00:00.000Z", externalReferences: [{ externalId: "1", systemCode: "netsuite", systemName: "NetSuite", status: "active" }] };
 
+/** Projects moves each provider status into its card header and shows the system code as a chip. */
+const expectDrawerReferenceLayout = (drawer: HTMLElement, projects: boolean) => {
+    const projectCount = projects ? 2 : 0;
+    expect(drawer.querySelectorAll(".projects-view-reference-status")).toHaveLength(projectCount);
+    expect(drawer.querySelectorAll(".ant-card-extra .projects-view-reference-status")).toHaveLength(projectCount);
+    expect(drawer.querySelectorAll(".projects-view-system-code")).toHaveLength(projectCount);
+    expect(within(drawer).queryAllByText("Estado de referencia")).toHaveLength(2 - projectCount);
+};
+
 describe("CatalogItemsPage", () => {
     it("keeps legacy Campaigns read-only even when using the enhanced Projects presentation", () => {
         render(<CatalogItemDetailDrawer catalogLabel="Campañas" error={null} isLoading={false} item={{ ...item, publicId: "legacy:campaigns:42" }} open position={1} total={1} onClose={vi.fn()} onEdit={vi.fn()} onRefresh={vi.fn()} onStatusAction={vi.fn()} onSelectPrevious={vi.fn()} onSelectNext={vi.fn()} projectView />);
@@ -108,7 +117,9 @@ describe("CatalogItemsPage", () => {
         fireEvent.click(row);
         const drawer = await screen.findByRole("dialog");
         expect(Boolean(drawer.closest(".catalog-item-detail-drawer--projects"))).toBe(projects);
-        expect(drawer.querySelectorAll(".projects-view-reference-status")).toHaveLength(projects ? 2 : 0);
+        expectDrawerReferenceLayout(drawer, projects);
+        expect(Boolean(drawer.querySelector(".user-detail-drawer__identity-meta .catalog-items-status--active"))).toBe(projects);
+        expect(Boolean(drawer.querySelector(".user-detail-drawer__identity-meta .administration-users-status"))).toBe(!projects);
     });
 
     it("groups project search and create/edit fields without changing optional references", async () => {
@@ -118,9 +129,15 @@ describe("CatalogItemsPage", () => {
         render(<CatalogItemsPage catalog={catalog} />);
         await screen.findByText(item.name);
         expect(screen.getByRole("searchbox").closest(".projects-view-toolbar")).not.toBeNull();
+        await waitFor(() => {
+            expect(document.querySelector('[aria-label="Descripción: activar para ordenar"]')).not.toBeNull();
+        });
         fireEvent.click(screen.getByRole("button", { name: /Nuevo proyecto/ }));
         const create = await screen.findByRole("dialog");
         expect(create.closest(".catalog-items-modal--projects")).not.toBeNull();
+        expect(within(create).getByRole("heading", { name: "Nuevo proyecto" })).toBeInTheDocument();
+        expect(within(create).getByRole("button", { name: /Crear proyecto/ })).toBeInTheDocument();
+        expect(within(create).getByPlaceholderText("Ej. Proyecto principal")).toBeInTheDocument();
         expect(within(create).getByRole("group", { name: "Información del registro" })).toContainElement(within(create).getByLabelText("Nombre"));
         expect(within(create).getByRole("group", { name: "NetSuite" })).toContainElement(within(create).getByRole("textbox", { name: /ID NetSuite/ }));
         expect(within(create).getByRole("group", { name: "Odoo" })).toContainElement(within(create).getByRole("textbox", { name: /ID Odoo/ }));
@@ -417,7 +434,7 @@ describe("CatalogItemsPage", () => {
         expect(within(drawer).getByText("Odoo")).toBeInTheDocument();
         expect(within(drawer).getAllByText("Sin asignar")).toHaveLength(4);
         fireEvent.click(within(drawer).getByRole("button", { name: "Editar" }));
-        expect(await screen.findByRole("heading", { name: "Editar Proyectos" })).toBeInTheDocument();
+        expect(await screen.findByRole("heading", { name: "Editar proyecto" })).toBeInTheDocument();
         expect(screen.getByRole("textbox", { name: "Nombre" })).toHaveValue(item.name);
         fireEvent.keyDown(screen.getByRole("textbox", { name: "Nombre" }), { key: "ArrowDown" });
         expect(within(drawer).getByRole("heading", { name: item.name })).toBeInTheDocument();
@@ -497,9 +514,29 @@ describe("CatalogItemsPage", () => {
         fireEvent.keyDown(drawer, { key: "ArrowUp" });
         expect(within(drawer).getByRole("heading", { name: item.name })).toBeInTheDocument();
         fireEvent.click(within(drawer).getByRole("button", { name: "Editar" }));
-        expect(await screen.findByRole("heading", { name: "Editar Proyectos" })).toBeInTheDocument();
+        expect(await screen.findByRole("heading", { name: "Editar proyecto" })).toBeInTheDocument();
         fireEvent.keyDown(screen.getByRole("button", { name: "Cancelar" }), { key: "ArrowDown" });
         expect(within(drawer).getByRole("heading", { name: item.name })).toBeInTheDocument();
+    });
+
+    it("navigates project details in the table's visible order", async () => {
+        const catalog = ADMINISTRATION_CATALOGS[0];
+        if (!catalog) throw new Error("Catalog missing");
+        const zeta = { ...item, publicId: "project_zeta", name: "Zeta" };
+        const alfa = { ...item, publicId: "project_alfa", name: "Alfa" };
+        mockListCatalogItems.mockResolvedValue({ catalog: { code: catalog.code, label: catalog.label, moduleCode: catalog.moduleCode }, items: [zeta, alfa], total: 2 });
+        render(<CatalogItemsPage catalog={catalog} />);
+        const row = (await screen.findByText(alfa.name)).closest("tr");
+        if (!row) throw new Error("Row missing");
+        await waitFor(() => {
+            expect(row).toHaveAttribute("tabindex", "0");
+        });
+        fireEvent.click(row);
+        const drawer = await screen.findByRole("dialog");
+        expect(within(drawer).getByText("Registro 1 de 2")).toBeInTheDocument();
+        expect(within(drawer).getByRole("button", { name: "Registro anterior" })).toBeDisabled();
+        fireEvent.click(within(drawer).getByRole("button", { name: "Registro siguiente" }));
+        expect(within(drawer).getByRole("heading", { name: zeta.name })).toBeInTheDocument();
     });
 
     it("submits legacy project edits without blank Odoo references and follows the promoted identity", async () => {

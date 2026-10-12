@@ -15,6 +15,13 @@ it("keeps dropdowns outside the tablet navigation clipping area", () => {
     expect(tablet).not.toContain("mask-image: linear-gradient");
 });
 
+it("keeps the tablet header in the desktop single row and height", () => {
+    const tablet = navigationStyles.slice(navigationStyles.indexOf("@media (max-width: 1024px)"), navigationStyles.indexOf("@media (max-width: 560px)"));
+    expect(tablet).not.toContain("--global-home-header-height:");
+    expect(tablet).not.toContain("grid-row: 2");
+    expect(tablet).toContain("grid-template-columns: max-content minmax(0, 1fr) max-content");
+});
+
 it("applies the enterprise palette only to navigation surfaces", () => {
     const tokenStart = navigationStyles.indexOf("/* Explicit navigation adoption");
     expect(tokenStart).toBeGreaterThan(0);

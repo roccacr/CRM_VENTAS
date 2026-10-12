@@ -48,6 +48,22 @@ const getTableLayout = (layout: DataTableSearchPanesConfig["layout"], projectVie
 /** An empty title lets Projects hide the counter until a filter is active. */
 const getFilterTitle = (projectView: boolean) => (projectView ? { 0: "", _: FILTER_TITLE } : FILTER_TITLE);
 
+/** Screen-reader and tooltip strings that DataTables and SearchPanes otherwise announce in English. */
+const PROJECT_ARIA_LANGUAGE = {
+    aria: {
+        orderable: ": activar para ordenar",
+        orderableRemove: ": activar para quitar el orden",
+        orderableReverse: ": activar para invertir el orden",
+        paginate: { first: "Primera página", last: "Última página", next: "Página siguiente", previous: "Página anterior" },
+    },
+};
+const PROJECT_PANE_LANGUAGE = {
+    buttons: { clearPane: "Limpiar selección", clearSearch: "Limpiar búsqueda", collapse: "Mostrar u ocultar filtro", orderByCount: "Ordenar por cantidad", orderByLabel: "Ordenar por nombre" },
+    emptyMessage: "Sin asignar",
+};
+const getAriaLanguage = (projectView: boolean) => (projectView ? PROJECT_ARIA_LANGUAGE : {});
+const getPaneLanguage = (projectView: boolean) => (projectView ? PROJECT_PANE_LANGUAGE : {});
+
 /** Compact grid placeholder; screen readers and search still receive "Sin asignar". */
 function ProjectEmptyValue() {
     return (
@@ -74,6 +90,8 @@ interface CatalogItemsDataTableProps {
     readonly onSelect: (item: CatalogItem) => void;
     readonly onEdit: (item: CatalogItem) => void;
     readonly onStatusAction: (item: CatalogItem, status: CatalogItemStatus) => void;
+    /** Ids en el orden y filtro aplicados, para que el detalle recorra lo mismo que se ve. */
+    readonly onVisibleOrderChange?: (publicIds: readonly string[]) => void;
 }
 
 /** Keep the outgoing loader mounted only for its crossfade; requests are never delayed. */
@@ -112,7 +130,7 @@ export function CatalogItemsDataTable(props: CatalogItemsDataTableProps) {
 }
 
 /** Uses the users table's SearchPanes, layout and persistence without sharing catalog state. */
-function CatalogItemsTableContent({ projectView = false, entityLabel, items, label, isLoading, storageKey, selectedPublicId, onSelect, onEdit, onStatusAction }: CatalogItemsDataTableProps) {
+function CatalogItemsTableContent({ projectView = false, entityLabel, items, label, isLoading, storageKey, selectedPublicId, onSelect, onEdit, onStatusAction, onVisibleOrderChange }: CatalogItemsDataTableProps) {
     const data = useMemo(() => [...items], [items]);
     const container = useRef<HTMLDivElement>(null);
     const table = useRef<DataTableRef>(null);
@@ -145,6 +163,7 @@ function CatalogItemsTableContent({ projectView = false, entityLabel, items, lab
                         });
                 },
                 language: {
+                    ...getAriaLanguage(projectView),
                     search: "Buscar:",
                     searchPlaceholder: `Buscar en ${label}`,
                     lengthMenu: "Filas por página _MENU_",
@@ -154,7 +173,7 @@ function CatalogItemsTableContent({ projectView = false, entityLabel, items, lab
                     emptyTable: "Sin resultados.",
                     zeroRecords: "Sin resultados para los filtros seleccionados.",
                     paginate: { first: "«", last: "»", next: "›", previous: "‹" },
-                    searchPanes: { clearMessage: "Limpiar", collapse: { 0: "Filtros", _: "Filtros (%d)" }, collapseMessage: "Contraer", count: "{total}", countFiltered: "{shown} de {total}", emptyPanes: "No hay filtros disponibles", loadMessage: "Cargando filtros...", showMessage: "Expandir", title: getFilterTitle(projectView) },
+                    searchPanes: { clearMessage: "Limpiar", collapse: { 0: "Filtros", _: "Filtros (%d)" }, collapseMessage: "Contraer", count: "{total}", countFiltered: "{shown} de {total}", emptyPanes: "No hay filtros disponibles", loadMessage: "Cargando filtros...", showMessage: "Expandir", title: getFilterTitle(projectView), ...getPaneLanguage(projectView) },
                 },
             }) as unknown as NonNullable<DataTableProps["options"]>,
         [entityLabel, label, panes, projectView, storageKey],
@@ -200,6 +219,16 @@ function CatalogItemsTableContent({ projectView = false, entityLabel, items, lab
         selected.current = selectedPublicId;
         syncRows();
     });
+    const reportedOrder = useRef("");
+    const reportVisibleOrder = (): void => {
+        const rows = table.current?.dt()?.rows({ search: "applied", order: "applied" });
+        if (!onVisibleOrderChange || !rows) return;
+        const publicIds = (rows.data().toArray() as CatalogItem[]).map((item) => item.publicId);
+        const signature = publicIds.join("|");
+        if (signature === reportedOrder.current) return;
+        reportedOrder.current = signature;
+        onVisibleOrderChange(publicIds);
+    };
 
     // SearchPanes must initialize with data, and rebuild when a batch or a mutation changes it.
     if (data.length === 0) return <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={isLoading ? "Cargando catálogo…" : "Sin resultados"} />;
@@ -259,30 +288,22 @@ function CatalogItemsTableContent({ projectView = false, entityLabel, items, lab
                 columns={COLUMNS}
                 data={data}
                 options={options}
-                onDraw={syncRows}
+                onDraw={() => {
+                    syncRows();
+                    reportVisibleOrder();
+                }}
                 slots={{
                     0: (_value: unknown, type: string, item: CatalogItem) =>
                         type === "display" ? (
                             <div className="catalog-items-name">
                                 <strong>{item.name}</strong>
                                 {!projectView && <small>{item.nativeCode}</small>}
+                                {projectView && item.updatedAt.trim() && <time dateTime={item.updatedAt}>Actualizado {new Date(item.updatedAt).toLocaleDateString("es-CR")}</time>}
                             </div>
                         ) : (
                             paneText(type, `${item.name}${type === "filter" ? ` ${item.nativeCode}` : ""}`)
                         ),
-                    1: (_value: unknown, type: string, item: CatalogItem) =>
-                        type === "display" ? (
-                            projectView ? (
-                                <div className="projects-view-description">
-                                    {item.detail?.trim() ? <span>{item.detail.trim()}</span> : <ProjectEmptyValue />}
-                                    {item.updatedAt.trim() && <time dateTime={item.updatedAt}>Actualizado {new Date(item.updatedAt).toLocaleDateString("es-CR")}</time>}
-                                </div>
-                            ) : (
-                                <span>{item.detail || "Sin asignar"}</span>
-                            )
-                        ) : (
-                            item.detail || "Sin asignar"
-                        ),
+                    1: (_value: unknown, type: string, item: CatalogItem) => (type === "display" ? projectView ? <div className="projects-view-description">{item.detail?.trim() ? <span>{item.detail.trim()}</span> : <ProjectEmptyValue />}</div> : <span>{item.detail || "Sin asignar"}</span> : item.detail || "Sin asignar"),
                     2: (_value: unknown, type: string, item: CatalogItem) =>
                         type === "display" ? (
                             projectView ? (

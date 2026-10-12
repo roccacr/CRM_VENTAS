@@ -35,6 +35,11 @@ const UNASSIGNED_VALUE = "Sin asignar";
 /** Recorta el texto. Vacío o solo espacios se lee como no asignado. */
 const displayValue = (value: string | null | undefined): string => value?.trim() || UNASSIGNED_VALUE;
 
+/** Proyectos usa la misma pastilla de estado que su tabla; los demás catálogos conservan el badge compartido. */
+function CatalogItemStatusLabel({ projectView, status }: { readonly projectView: boolean; readonly status: CatalogItemStatus }) {
+    return projectView ? <span className={`catalog-items-status catalog-items-status--${status}`}>{REFERENCE_STATUS_LABELS[status]}</span> : <SystemUserStatusBadge status={status} />;
+}
+
 /** Identificador copiable. Sin texto, no ofrece un botón de copiar vacío. */
 function CatalogDetailIdentifier({ value, pendingMigration = false }: { readonly value: string | null | undefined; readonly pendingMigration?: boolean }) {
     const text = pendingMigration ? undefined : value?.trim();
@@ -47,46 +52,61 @@ function CatalogDetailIdentifier({ value, pendingMigration = false }: { readonly
     );
 }
 
+/** Texto libre del registro. Vacío se atenúa igual que el identificador sin valor. */
+function CatalogDetailText({ value }: { readonly value: string | null | undefined }) {
+    return value?.trim() ? <>{value.trim()}</> : <Typography.Text type="secondary">{UNASSIGNED_VALUE}</Typography.Text>;
+}
+
+type DisplayedReference = Omit<CatalogItem["externalReferences"][number], "externalId" | "status"> & { readonly externalId: string | null; readonly status?: string | null };
+
+const referenceStatusText = (status: string | null | undefined): string => REFERENCE_STATUS_LABELS[status ?? ""] ?? displayValue(status);
+
+function ReferenceStatusPill({ status }: { readonly status: string | null | undefined }) {
+    return (
+        <span className="projects-view-reference-status" data-status={status ?? "unassigned"}>
+            {referenceStatusText(status)}
+        </span>
+    );
+}
+
+/** Proyectos lleva el estado al encabezado de la tarjeta cuando el proveedor tiene una sola referencia. */
+function referenceItems(reference: DisplayedReference, projectView: boolean, statusInHeader: boolean) {
+    return [
+        { key: "id", label: "Identificador", children: <CatalogDetailIdentifier value={reference.externalId} /> },
+        { key: "systemCode", label: "Código del sistema", children: projectView ? <code className="projects-view-system-code">{displayValue(reference.systemCode)}</code> : displayValue(reference.systemCode) },
+        ...(statusInHeader ? [] : [{ key: "status", label: "Estado de referencia", children: projectView ? <ReferenceStatusPill status={reference.status} /> : referenceStatusText(reference.status) }]),
+    ];
+}
+
+function ProviderCardStatus({ reference }: { readonly reference: DisplayedReference }) {
+    return (
+        <span className="projects-view-provider-status">
+            <span className="projects-view-visually-hidden">Estado de referencia: </span>
+            <ReferenceStatusPill status={reference.status} />
+        </span>
+    );
+}
+
 /**
  * Referencias externas del valor.
  *
  * Si NetSuite u Odoo no tienen vínculo, se muestra la fila vacía. Esa fila no
  * se envía al API: solo explica que el sistema todavía no está asignado.
  */
-function CatalogDetailReferences({ references, projectView }: { readonly references: CatalogItem["externalReferences"]; readonly projectView?: boolean }) {
+function CatalogDetailReferences({ references, projectView = false }: { readonly references: CatalogItem["externalReferences"]; readonly projectView?: boolean }) {
     const missing = CATALOG_REFERENCE_PROVIDERS.filter((provider) => !references.some((reference) => reference.systemCode === provider.systemCode));
-    const displayedReferences = [...references, ...missing.map((provider) => ({ ...provider, externalId: null, status: null }))];
+    const displayedReferences: DisplayedReference[] = [...references, ...missing.map((provider) => ({ ...provider, externalId: null, status: null }))];
     const providerCodes = [...new Set(displayedReferences.map((reference) => reference.systemCode))];
     return (
         <>
             {providerCodes.map((systemCode) => {
                 const providerReferences = displayedReferences.filter((reference) => reference.systemCode === systemCode);
+                const headerReference = projectView && providerReferences.length === 1 ? providerReferences[0] : undefined;
                 return (
-                    <Card size="small" key={systemCode} title={displayValue(providerReferences[0]?.systemName || systemCode)}>
+                    <Card size="small" key={systemCode} title={displayValue(providerReferences[0]?.systemName || systemCode)} extra={headerReference ? <ProviderCardStatus reference={headerReference} /> : undefined}>
                         <div className="user-detail-drawer__external-references">
                             {providerReferences.map((reference) => (
-                                <Descriptions
-                                    key={`${reference.systemCode}:${reference.externalId ?? "unassigned"}`}
-                                    column={1}
-                                    colon={false}
-                                    size="small"
-                                    layout="horizontal"
-                                    items={[
-                                        { key: "systemCode", label: "Código del sistema", children: displayValue(reference.systemCode) },
-                                        { key: "id", label: "Identificador", children: <CatalogDetailIdentifier value={reference.externalId} /> },
-                                        {
-                                            key: "status",
-                                            label: "Estado de referencia",
-                                            children: projectView ? (
-                                                <span className="projects-view-reference-status" data-status={reference.status ?? "unassigned"}>
-                                                    {REFERENCE_STATUS_LABELS[reference.status ?? ""] ?? displayValue(reference.status)}
-                                                </span>
-                                            ) : (
-                                                (REFERENCE_STATUS_LABELS[reference.status ?? ""] ?? displayValue(reference.status))
-                                            ),
-                                        },
-                                    ]}
-                                />
+                                <Descriptions key={`${reference.systemCode}:${reference.externalId ?? "unassigned"}`} column={1} colon={false} size="small" layout="horizontal" items={referenceItems(reference, projectView, Boolean(headerReference))} />
                             ))}
                         </div>
                     </Card>
@@ -95,6 +115,9 @@ function CatalogDetailReferences({ references, projectView }: { readonly referen
         </>
     );
 }
+
+/** Proyectos muestra fecha y hora sin segundos; los demás catálogos conservan el formato completo. */
+const formatUpdatedAt = (value: string, projectView: boolean): string => new Date(value).toLocaleString("es-CR", projectView ? { day: "2-digit", month: "2-digit", year: "numeric", hour: "numeric", minute: "2-digit" } : undefined);
 
 /** Datos del valor abierto y las acciones que la página todavía tiene que confirmar. */
 interface CatalogItemDetailDrawerProps {
@@ -216,7 +239,7 @@ export function CatalogItemDetailDrawer({ projectView, catalogLabel, error, isLo
                                 {catalogLabel}
                             </Typography.Text>
                             <span className="user-detail-drawer__identity-meta">
-                                <SystemUserStatusBadge status={item.status} />
+                                <CatalogItemStatusLabel projectView={Boolean(projectView)} status={item.status} />
                             </span>
                         </div>
                     </div>
@@ -257,8 +280,8 @@ export function CatalogItemDetailDrawer({ projectView, catalogLabel, error, isLo
                             size="small"
                             layout="horizontal"
                             items={[
-                                { key: "name", label: "Nombre", children: displayValue(item.name) },
-                                { key: "detail", label: "Detalle", children: displayValue(item.detail) },
+                                { key: "name", label: "Nombre", children: <CatalogDetailText value={item.name} /> },
+                                { key: "detail", label: "Detalle", children: <CatalogDetailText value={item.detail} /> },
                             ]}
                         />
                     </Card>
@@ -279,7 +302,7 @@ export function CatalogItemDetailDrawer({ projectView, catalogLabel, error, isLo
                                     label: "Código nativo",
                                     children: <CatalogDetailIdentifier value={item.nativeCode} pendingMigration={item.publicId.startsWith("legacy:")} />,
                                 },
-                                { key: "updatedAt", label: "Última actualización", children: item.updatedAt.trim() ? <time dateTime={item.updatedAt}>{new Date(item.updatedAt).toLocaleString("es-CR")}</time> : UNASSIGNED_VALUE },
+                                { key: "updatedAt", label: "Última actualización", children: item.updatedAt.trim() ? <time dateTime={item.updatedAt}>{formatUpdatedAt(item.updatedAt, Boolean(projectView))}</time> : <CatalogDetailText value={null} /> },
                             ]}
                         />
                     </Card>

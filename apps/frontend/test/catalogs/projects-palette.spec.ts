@@ -109,8 +109,7 @@ describe("projects palette contrast", () => {
         style.dataset.projectPalette = "";
         style.textContent = stylesheet;
         document.head.append(style);
-        document.body.innerHTML =
-            '<div class="catalog-items-page--projects"><div class="administration-users-datatable-wrap"><table class="dataTable administration-users-datatable"><thead><tr><th>Proyecto</th></tr></thead><tbody><tr class="catalog-items-row"><td><div class="catalog-items-name"><strong>Nombre</strong></div></td></tr></tbody></table></div></div>';
+        document.body.innerHTML = '<div class="catalog-items-page--projects"><div class="administration-users-datatable-wrap"><table class="dataTable administration-users-datatable"><thead><tr><th>Proyecto</th></tr></thead><tbody><tr class="catalog-items-row"><td><div class="catalog-items-name"><strong>Nombre</strong></div></td></tr></tbody></table></div></div>';
         expect(getComputedStyle(document.querySelector("th") as Element).color).toBe("var(--color-neutral-700)");
         expect(getComputedStyle(document.querySelector("td") as Element).color).toBe("var(--color-neutral-700)");
         expect(getComputedStyle(document.querySelector("strong") as Element).color).toBe("var(--color-neutral-900)");
@@ -122,15 +121,33 @@ describe("projects palette contrast", () => {
         style.textContent = stylesheet;
         document.head.append(style);
         document.body.innerHTML =
-            '<div class="catalog-items-page--projects"><div class="administration-users-datatable-wrap"><div class="dt-container"><div class="dt-layout-row projects-view-toolbar"><div class="dt-layout-cell dt-layout-full"><div class="dt-search"></div><div class="dtsp-panesContainer"><div class="dtsp-titleRow"></div><div class="dtsp-searchPanes"><div class="dtsp-searchPane"></div><div class="dtsp-searchPane"></div><div class="dtsp-searchPane"></div></div></div></div></div></div></div></div>';
+            '<div class="catalog-items-page--projects"><div class="administration-users-datatable-wrap"><div class="dt-container"><div class="dt-layout-row projects-view-toolbar"><div class="dt-layout-cell dt-layout-full"><div class="dt-search"></div><div class="dtsp-panesContainer"><div class="dtsp-titleRow"></div><div class="dtsp-searchPanes"><div class="dtsp-searchPane"><div class="dtsp-topRow"></div></div><div class="dtsp-searchPane"><div class="dtsp-topRow"></div></div><div class="dtsp-searchPane"><div class="dtsp-topRow"></div></div></div></div></div></div></div></div></div>';
         expect(getComputedStyle(document.querySelector(".dt-layout-cell") as Element).gridTemplateColumns).toBe("minmax(220px, 1.4fr) repeat(3, minmax(0, 1fr)) auto");
-        expect(getComputedStyle(document.querySelector(".dtsp-panesContainer") as Element).display).toBe("contents");
-        expect(getComputedStyle(document.querySelector(".dtsp-searchPanes") as Element).display).toBe("contents");
+        [".dtsp-panesContainer", ".dtsp-searchPanes", ".dtsp-searchPane"].forEach((selector) => {
+            expect(getComputedStyle(document.querySelector(selector) as Element).display).toBe("contents");
+        });
         expect(getComputedStyle(document.querySelector(".dt-search") as Element).gridColumn).toBe("1");
         expect(getComputedStyle(document.querySelector(".dtsp-titleRow") as Element).gridColumn).toBe("5");
-        document.querySelectorAll(".dtsp-searchPane").forEach((pane) => {
-            expect(getComputedStyle(pane).gridRow).toBe("1");
+        document.querySelectorAll(".dtsp-topRow").forEach((trigger, index) => {
+            expect(getComputedStyle(trigger).gridRow).toBe("1");
+            expect(getComputedStyle(trigger).gridColumn).toBe(String(index + 2));
         });
+    });
+
+    it("expands open filter lists in flow across the full toolbar width under their triggers", () => {
+        const style = document.createElement("style");
+        style.dataset.projectPalette = "";
+        style.textContent = stylesheet;
+        document.head.append(style);
+        const pane = '<div class="dtsp-searchPane"><div class="dtsp-topRow"></div><div class="dt-container"><div class="dt-scroll-body"></div></div></div>';
+        document.body.innerHTML = `<div class="catalog-items-page--projects"><div class="administration-users-datatable-wrap"><div class="dt-container"><div class="dt-layout-row projects-view-toolbar"><div class="dt-layout-cell"><div class="dtsp-panesContainer"><div class="dtsp-searchPanes">${pane}${pane}${pane}</div></div></div></div></div></div></div>`;
+        const lists = Array.from(document.querySelectorAll(".dtsp-searchPane > .dt-container"));
+        lists.forEach((list) => {
+            expect(getComputedStyle(list).position).toBe("static");
+            expect(getComputedStyle(list).boxShadow).toBe("none");
+            expect(getComputedStyle(list).gridRow).toBe("2");
+        });
+        expect(lists.map((list) => getComputedStyle(list).gridColumn)).toEqual(["1 / 3", "3", "4 / -1"]);
     });
 
     it("hides idle filter controls and pane icons instead of showing them disabled", () => {
@@ -144,6 +161,23 @@ describe("projects palette contrast", () => {
             expect(getComputedStyle(document.querySelector(selector) as Element).display).toBe("none");
         });
         expect(getComputedStyle(document.querySelector(".dtsp-showAll") as Element).display).not.toBe("none");
+        document.querySelector(".dtsp-collapseAll")?.removeAttribute("disabled");
+        expect(getComputedStyle(document.querySelector(".dtsp-showAll") as Element).display).toBe("none");
+        expect(getComputedStyle(document.querySelector(".dtsp-collapseAll") as Element).display).not.toBe("none");
+    });
+
+    it("fits the project form on desktop and only scrolls on genuinely short windows", () => {
+        const opener = "@media (min-width: 768px) and (max-height: 820px) {";
+        const start = stylesheet.indexOf(opener) + opener.length;
+        const compact = stylesheet.slice(start, stylesheet.indexOf("@media (prefers-reduced-motion: reduce)", start));
+        expect(stylesheet).not.toContain("65dvh");
+        const style = document.createElement("style");
+        style.dataset.projectPalette = "";
+        style.textContent = `${stylesheet}\n${compact.slice(0, compact.lastIndexOf("}"))}`;
+        document.head.append(style);
+        document.body.innerHTML = '<div class="catalog-items-modal--projects"><div class="ant-modal-body"><span class="ant-input-textarea-show-count"><span class="ant-input-data-count">0 / 500</span></span></div></div>';
+        expect(getComputedStyle(document.querySelector(".ant-modal-body") as Element).maxHeight).toBe("calc(100dvh - 150px)");
+        expect(getComputedStyle(document.querySelector(".ant-input-data-count") as Element).top).toBe("-22px");
     });
 
     it("scopes the row action menu portal to the Projects palette", () => {

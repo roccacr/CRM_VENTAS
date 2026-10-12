@@ -97,6 +97,7 @@ Permitido:
 
 - ruta `/home/global` protegida por sesion para revision del shell;
 - barra superior blanca con logo, selector visual, command bar neutra y acciones globales minimas sin efecto;
+- la barra superior conserva una sola fila de 72px desde 768px en adelante (decision del owner 2026-10-12: el salto a dos filas de 126px en tablet "se deforma"); entre 768px y 1024px el logo baja a 112px, el selector conserva 196px para no cortar el nombre del modulo, solo la command bar se encoge y a 900px o menos el avatar oculta el nombre (la etiqueta accesible lo conserva); bajo 768px la reemplaza la barra movil;
 - el selector superior debe representar perfiles/contextos asignados, no un filtro decorativo;
 - cambiar el perfil seleccionado debe cambiar el menu visible del shell;
 - puede existir un perfil visual `Todos` para revision de producto, agrupando las opciones mock de todos los perfiles asignados;
