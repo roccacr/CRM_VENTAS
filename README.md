@@ -31,6 +31,8 @@ No ejecutar migraciones, importaciones, commit, push o deploy sin autorizacion e
 
 ## Estado de entrega
 
+Projects architecture update (2026-10-09): native projects now use dedicated `crm_project` and `crm_project_external_reference` tables. Other catalogs retain shared storage pending their own cutovers. The bulk project importer was removed. See [catalog schema/API](apps/api/Arquitectura/35-Catalog-API-and-Schema.md) for the targeted migration command and rollback-only MySQL tests. Identity remains empty after the separately authorized full data reset; do not replay the entire migration chain to test this Projects-only change.
+
 El codigo administrativo existe y tiene pruebas; su cierre operativo sigue pendiente de sesion Owner, navegador, API y MySQL reales. Consultar el registro de verificaciones del documento 34 para resultados de esta entrega.
 
 Git history and remote branch status determine what is backed up. A commit/push is not a deployment, database migration, or operational acceptance.

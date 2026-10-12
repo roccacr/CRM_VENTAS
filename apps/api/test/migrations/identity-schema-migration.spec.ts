@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 import { readTargetTableNames, splitSqlStatements, stripDatabaseSelection, stripLineComments } from "../../migrations/schema-only/202609250001_identity_schema.js";
-import { readSchemaMigrationEnv, schemaMigrations } from "../../scripts/run-schema-migrations.js";
+import { readSchemaMigrationEnv, schemaMigrations, selectSchemaMigrations } from "../../scripts/run-schema-migrations.js";
 import { APPROVED_DATABASE_NAME } from "../../src/config/product.constants.js";
 import { CATALOG_DEFINITIONS, CATALOG_PERMISSION_ACTIONS, getCatalogPermissionCodes } from "../../src/modules/crm/catalogs/catalogs.constants.js";
 
@@ -24,6 +24,11 @@ const createValidMigrationEnv = (): NodeJS.ProcessEnv => ({
 });
 
 describe("identity schema migration parser", () => {
+    it("selects only the requested migration and rejects unknown names", () => {
+        expect(selectSchemaMigrations("202610090009_projects_domain").map((migration) => migration.name)).toEqual(["202610090009_projects_domain"]);
+        expect(() => selectSchemaMigrations("unknown")).toThrow("Unknown migration");
+        expect(selectSchemaMigrations()).toEqual(schemaMigrations);
+    });
     it("divide sentencias sin cortar punto y coma dentro de literales SQL", () => {
         const statements = splitSqlStatements(`
             CREATE TABLE IF NOT EXISTS audit_security_event (
@@ -55,7 +60,7 @@ describe("identity schema migration parser", () => {
     });
 
     it("registra las migraciones schema-only aprobadas en orden", () => {
-        expect(schemaMigrations.map((migration) => migration.name)).toEqual(["202609250001_identity_schema", "202609250003_identity_login_readiness", "202609280004_identity_microsoft_session", "202609300005_identity_user_directory", "202610010006_identity_role_security_model", "202610030007_crm_catalogs", "202610080008_administration_owner_repair"]);
+        expect(schemaMigrations.map((migration) => migration.name)).toEqual(["202609250001_identity_schema", "202609250003_identity_login_readiness", "202609280004_identity_microsoft_session", "202609300005_identity_user_directory", "202610010006_identity_role_security_model", "202610030007_crm_catalogs", "202610080008_administration_owner_repair", "202610090009_projects_domain"]);
     });
 
     it("mantiene permisos atomicos globales para cada catalogo CRM", () => {

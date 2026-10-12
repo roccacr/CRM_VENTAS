@@ -236,6 +236,16 @@ Centered-loader verification: the initial-loader regression failed before implem
 
 ## Continuidad
 
+### Navigation Enterprise Styling (2026-10-09)
+
+EN: Owner-authorized adoption of document 26 for navigation only. Scoped header/menu/mobile aliases use the established neutral palette and typography; menu/popover corners and option spacing are normalized. Existing routes, permission visibility, viewport-aware dropdowns and mobile mechanics are preserved. No backend, authentication or content-module behavior changed. Thirteen focused navigation tests passed. Production deployment is not independently verified; the earlier Git push is not deployment evidence.
+
+ES: Navegacion adaptada al lenguaje visual establecido, sin modificar rutas, permisos ni contenido de otros modulos.
+
+Integrated local preview: authenticated Administration menu inspected on desktop and at 390px. Catalog dropdown and mobile catalog accordion open with expected entries; mobile drawer closes and viewport override was reset. Desktop screenshot captured. This is a limited local visual check, not production deployment evidence or exhaustive accessibility/device certification.
+
+Verification: `check-all.cmd` passed formatting, lint, typecheck, tests and both builds; frontend 153 passed. Thirteen focused navigation tests passed. Existing bundle-size warning remains. `git diff --check` passed. No commit, push, database mutation or deployment performed for this navigation change.
+
 ### Consolidated UX Reference (2026-10-09)
 
 EN: Expanded document 26 into a standalone Enterprise UX Rules and Replication Guide. Covers the complete palette, accessible overrides, fonts/density, spacing, page/search/filter hierarchy, table/mobile cards, drawer/provider separation, forms/status dialogs, icons, loading lifecycle, reduced motion and acceptance checklist. Includes a copyable implementation brief, source traceability and explicit current deviations; preserves the existing color contract rather than creating a competing document. Documentation only; no runtime changes or new test execution are claimed. Previous runtime results are labeled historical. Authenticated visual validation remains pending.
@@ -254,6 +264,40 @@ TDD: mobile structural regression failed against the previous two-track layout, 
 
 Verification: final `check-all.cmd` passed formatting, lint, typecheck, tests and both builds: frontend 152 passed; API 227 passed / 12 opt-in tests skipped. An initial frontend formatting failure was corrected with Prettier only. Existing bundle-size warning remains. `git diff --check` passed. No database changes, dependencies, commit or push.
 
+### Roles and Security Visual Adoption (2026-10-09)
+
+EN: Scoped `RolesSecurityPage.css` adopts Projects neutral tokens, compact type,
+consistent panel/dialog chrome, keyboard focus and mobile touch targets. A tablet
+preview exposed module-name/count collisions; the module grid now uses two columns
+at 1280px and one at 900px. Permission persistence and authorization are unchanged.
+
+ES: Misma base visual de Proyectos aplicada a Roles y seguridad. Verificacion
+local en el panel integrado: escritorio/tablet, movil de 390px y dialogo de
+renombrado, cerrado sin guardar. No se modificaron accesos durante la revision.
+
+Verification: `check-all.cmd` passed format, lint, typecheck and both builds;
+frontend 154 tests passed, API 227 passed / 12 opt-in tests skipped. Existing
+bundle-size warning remains. Visual evidence is local, not production or a full
+WCAG/security acceptance audit. No database changes, dependencies, commit or push.
+
+### Campaigns Design Replication (2026-10-09)
+
+EN: Campaigns opts into the existing Projects presentation rather than copying
+CSS/components. Domain labels, loader, accessible filter toolbar and mobile sorting
+use campaign text. Campaign-specific API context and preference key are preserved.
+Regression coverage includes populated rows, drawer/edit fields, optional provider
+groups and a signed NetSuite identifier (`-5`). No migrations or mutations performed.
+
+ES: Vista integrada revisada en escritorio y movil de 390px; formulario de alta
+cerrado sin guardar. El API devolvio una lista vacia: la tabla poblada y el Drawer
+se verifican con fixtures automatizados, no con datos reales en el navegador.
+
+Verification: frontend format/lint/typecheck, 156 tests and production build passed;
+API format/lint/typecheck, 227 tests and build passed, with 12 opt-in tests skipped.
+An initial complexity failure was resolved by shared presentation metadata; a new
+table assertion was corrected to await asynchronous React cell rendering.
+The existing bundle-size warning remains. No commit, push or deployment performed.
+
 1. Cerrar riesgos backend del documento 34, especialmente referencias y migraciones.
 2. Completar QA Owner y operativo con evidencia Network.
 3. Cubrir CRUD real y auditoria; considerar Playwright con fixtures aislados.
@@ -262,3 +306,8 @@ Verification: final `check-all.cmd` passed formatting, lint, typecheck, tests an
 6. Construir UI Leads solo con contrato y fase aprobados.
 
 Ver [cierre API](../../api/Arquitectura/34-Cierre-Operativo-Administracion-P0-S1.md) para decisiones, migraciones, preguntas y registro de pruebas.
+# Projects Editing Continuity - 2026-10-09
+
+Navigation breakpoint correction, 2026-10-12: global menu dropdowns use viewport-fixed coordinates, bounded by 16px viewport gutters and the remaining height. Resize and captured scroll events re-anchor the panel to its trigger. Tablet horizontal scrolling remains; the track mask is removed because it clips descendant dropdowns. Do not revert dropdowns to absolute positioning inside the clipped tablet track. Existing keyboard, blur, pointer tolerance, permissions and mobile drawer behavior remain unchanged.
+
+Projects drawer and row actions allow editing and status changes for legacy identities as well as native identities, subject to existing permissions and request validation. Other legacy catalog identities remain read-only. No delete action is available. After promotion, follow the canonical public ID returned by save/status before reloading so the drawer remains associated with the migrated record. Legacy synchronization is controlled only by the API global gate; the frontend must not choose a database or implement dual writes.

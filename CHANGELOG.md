@@ -4,13 +4,25 @@
 
 ### Added
 
+- Guarded, checksum-pinned recovery of Roberto's original Owner identity without other users, business seeds or session/token restoration; owner-only seed policy documented.
+
 - Administration catalog API, typed Kysely persistence, scoped permissions and atomic security audit for seven catalogs.
 - Incremental catalog schema and Administration Owner-linkage repair migrations, preserving prior history.
-- Project-only legacy sync keyed by NetSuite identity, rollback by default, validated atomic upserts and audit.
+- Independent project aggregate and provider-reference tables, with targeted empty-schema migration and rollback-only MySQL tests.
 - Catalog detail Drawer matching users, separate provider sections and explicit unassigned values.
 - Opt-in rollback-only MySQL regressions for catalog persistence, access replacement and Administration repair.
 
 ### Changed
+
+- Projects legacy records are editable with lazy native promotion and atomic same-server synchronization, gated together with reads by one global legacy switch. Creates retain generated legacy IDs; native-only edits do not create legacy counterparts. Existing permissions/audit remain mandatory and no delete route is introduced.
+
+- Projects now owns its Nest controller/service/repository and fallback in a dedicated feature folder. Legacy Projects and Campaigns own separate readers and mappers; shared pools, permission policy and existing HTTP contracts are preserved without schema/data changes.
+
+- Legacy reads now reuse DB credentials in an isolated read-only transaction pool; Projects append unmigrated legacy rows with native precedence and native-first pagination. The optional adapter remains removable and local fallback is explicitly enabled.
+
+- Removed the unrestricted legacy administrator importer. Active security configuration remains separate from business catalog seeds.
+
+- Projects persistence now uses dedicated tables; shared tables reject project records and remain for the other six domains. Retired bulk importer and obsolete importer tests removed. API contracts and audit transactions preserved.
 
 - Catalog listing supports offset and authoritative filtered totals. Shared screens reuse users SearchPanes, isolated saved state and incremental loading.
 - Responsive navigation, authorization-aware routes, user/role management and audit views are included in the Administration delivery.

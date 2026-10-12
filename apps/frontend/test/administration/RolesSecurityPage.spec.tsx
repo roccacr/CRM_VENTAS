@@ -1,5 +1,8 @@
 import "@testing-library/jest-dom/vitest";
 
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+
 import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -18,6 +21,18 @@ vi.mock("../../src/services/auth/auth-service", () => ({
 
 const mockGetIdentitySecurityCatalog = vi.mocked(getIdentitySecurityCatalog);
 const mockGetSystemUsers = vi.mocked(getSystemUsers);
+
+it("uses scoped enterprise tokens, compact hierarchy and accessible focus", () => {
+    const css = readFileSync(resolve(process.cwd(), "src/modules/administration/pages/RolesSecurityPage.css"), "utf8");
+    expect(css).toContain("--color-neutral-50: #f5f7fa");
+    expect(css).toContain("--color-neutral-950: #0e1116");
+    expect(css).toContain("font-size: 22px");
+    expect(css).toContain("outline: 2px solid var(--color-neutral-600)");
+    expect(css).toContain("@media (prefers-reduced-motion: reduce)");
+    const pageLayout = css.match(/\.roles-security-page\s*\{([^}]+)\}/)?.[1];
+    expect(pageLayout).toContain("width: 100%");
+    expect(pageLayout).not.toContain("max-width:");
+});
 
 const mockSecurityCatalog = {
     auditEvents: [],

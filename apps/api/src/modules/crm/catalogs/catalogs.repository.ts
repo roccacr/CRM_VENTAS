@@ -1,3 +1,11 @@
+/**
+ * Persistencia de `crm_catalog_item` y sus referencias.
+ *
+ * Varios catálogos comparten estas tablas y se distinguen por
+ * `catalog_code_catalog_item`. Proyectos no: tiene agregado propio y esta
+ * clase lo rechaza para no escribirlo en la tabla genérica. Alta, edición,
+ * estado y auditoría van en la misma transacción.
+ */
 import { BadRequestException, ConflictException, Inject, Injectable } from "@nestjs/common";
 import type { Kysely } from "kysely";
 import { ulid } from "ulid";
@@ -9,12 +17,17 @@ import { ACTIVE_STATUS } from "../identity/identity-repository.shared.js";
 import { type CatalogRouteCode, type CatalogStatus, findCatalogDefinition } from "./catalogs.constants.js";
 import type { CatalogExternalReference, CatalogExternalReferenceInput, CatalogItem, CatalogItemsResponse, CatalogMutationInput, CatalogStatusMutationInput } from "./catalogs.types.js";
 
+/** Estado que limpia la fecha de inactivación al reactivar. */
 const INACTIVE_STATUS = "inactive";
+/** Página cuando el cliente no pide un tamaño. */
 const DEFAULT_LIMIT = 100;
+/** Tope para no devolver el catálogo completo en una sola respuesta. */
 const MAX_LIMIT = 200;
 
+/** Conexión o transacción. Las lecturas de mutación usan la transacción para ver lo que todavía no se confirmó. */
 type CatalogExecutor = Pick<Kysely<CrmDatabase>, "deleteFrom" | "insertInto" | "selectFrom" | "transaction" | "updateTable">;
 
+/** Fila viva de `crm_catalog_item`. El id interno no sale en la respuesta pública. */
 interface CatalogItemRow {
     detail: string | null;
     id: number;
@@ -25,6 +38,7 @@ interface CatalogItemRow {
     updatedAt: Date | string;
 }
 
+/** Referencia activa unida al nombre del sistema externo. */
 interface ExternalReferenceRow {
     catalogItemId: number;
     externalId: string;
@@ -33,16 +47,20 @@ interface ExternalReferenceRow {
     systemName: string;
 }
 
+/** Id interno del usuario que firma la auditoría. El público no se guarda en la fila del catálogo. */
 interface ActorRow {
     id: number;
 }
 
+/** Fecha del contrato. MySQL puede devolver `Date` o texto según el driver. */
 const toIsoString = (value: Date | string): string => (value instanceof Date ? value.toISOString() : new Date(value).toISOString());
+/** Omite IP o user agent vacíos para no guardar campos de auditoría en blanco. */
 const auditRequestContext = (input: { readonly ipAddress?: string | undefined; readonly userAgent?: string | undefined }): { readonly ipAddress?: string; readonly userAgent?: string } => ({
     ...(input.ipAddress ? { ipAddress: input.ipAddress } : {}),
     ...(input.userAgent ? { userAgent: input.userAgent } : {}),
 });
 
+/** Límite de la consulta. El caso de uso ya validó el query; esta segunda revisión cubre llamadas internas. */
 const normalizeLimit = (limit?: number): number => {
     if (limit === undefined) {
         return DEFAULT_LIMIT;
@@ -55,13 +73,11 @@ const normalizeLimit = (limit?: number): number => {
     return limit;
 };
 
-/**
- *
- */
 @Injectable()
 export class CatalogsRepository {
     /**
-     *
+     * @param database - Base del CRM nuevo
+     * @param audit - Evento que debe revertirse si la mutación falla
      */
     constructor(
         @Inject(DatabaseService) private readonly database: DatabaseService,
@@ -69,9 +85,17 @@ export class CatalogsRepository {
     ) {}
 
     /**
+     * Lista un catálogo compartido.
      *
+     * Proyectos se rechaza para no devolverlos como si vivieran en `crm_catalog_item`.
      */
     async listCatalogItems(input: { catalogCode: CatalogRouteCode; limit?: number; offset?: number; search?: string; status?: CatalogStatus }): Promise<CatalogItemsResponse> {
+        if (input.catalogCode === "projects") throw new BadRequestException("Use the Projects module.");
+        return this.listSharedCatalogItems(input);
+    }
+
+    /** Filtra por código, estado y texto. La búsqueda también mira ids externos que no estén archivados. */
+    private async listSharedCatalogItems(input: { catalogCode: CatalogRouteCode; limit?: number; offset?: number; search?: string; status?: CatalogStatus }): Promise<CatalogItemsResponse> {
         const definition = findCatalogDefinition(input.catalogCode);
 
         if (!definition) {
@@ -116,9 +140,12 @@ export class CatalogsRepository {
     }
 
     /**
+     * Inserta el valor, sus referencias y la auditoría.
      *
+     * El ULID es la identidad pública. El código nativo solo la repite con el prefijo del catálogo.
      */
     async createCatalogItem(input: CatalogMutationInput): Promise<CatalogItem> {
+        if (input.catalogCode === "projects") throw new BadRequestException("Use the Projects module.");
         return this.database.db.transaction().execute(async (transaction) => {
             const actor = await this.readActor(transaction, input.actorPublicId);
             await this.assertExternalReferencesAreAvailable(transaction, input.catalogCode, input.externalReferences);
@@ -166,9 +193,12 @@ export class CatalogsRepository {
     }
 
     /**
+     * Actualiza nombre y detalle, y deja activas solo las referencias recibidas.
      *
+     * Las que salen del cuerpo se archivan. No se borran, porque la clave única incluye filas archivadas.
      */
     async updateCatalogItem(itemPublicId: string, input: CatalogMutationInput): Promise<CatalogItem | null> {
+        if (input.catalogCode === "projects") throw new BadRequestException("Use the Projects module.");
         return this.database.db.transaction().execute(async (transaction) => {
             const actor = await this.readActor(transaction, input.actorPublicId);
             const current = await this.findCatalogItemRowByPublicId(transaction, input.catalogCode, itemPublicId);
@@ -207,9 +237,12 @@ export class CatalogsRepository {
     }
 
     /**
+     * Cambia el estado sin tocar las referencias.
      *
+     * Inactivar guarda actor y fecha. Reactivar los limpia para no dejar un cierre vigente.
      */
     async updateCatalogItemStatus(input: CatalogStatusMutationInput): Promise<CatalogItem | null> {
+        if (input.catalogCode === "projects") throw new BadRequestException("Use the Projects module.");
         return this.database.db.transaction().execute(async (transaction) => {
             const actor = await this.readActor(transaction, input.actorPublicId);
             const current = await this.findCatalogItemRowByPublicId(transaction, input.catalogCode, input.itemPublicId);
@@ -246,6 +279,7 @@ export class CatalogsRepository {
         });
     }
 
+    /** Resuelve al usuario vivo de la sesión. Un actor borrado no administra catálogos. */
     private async readActor(executor: CatalogExecutor, actorPublicId: string): Promise<ActorRow> {
         const actor = await executor.selectFrom("sec_user").select("id_user as id").where("public_id_user", "=", actorPublicId).where("deleted_at_user", "is", null).executeTakeFirst();
 
@@ -256,6 +290,11 @@ export class CatalogsRepository {
         return actor;
     }
 
+    /**
+     * Comprueba sistemas activos y que el id externo no sea de otro valor del mismo catálogo.
+     *
+     * `excludedItemId` permite conservar las referencias que ya pertenecen al valor que se edita.
+     */
     private async assertExternalReferencesAreAvailable(executor: CatalogExecutor, catalogCode: CatalogRouteCode, references: readonly CatalogExternalReferenceInput[], excludedItemId?: number): Promise<void> {
         const seen = new Set<string>();
 
@@ -281,6 +320,7 @@ export class CatalogsRepository {
         }
     }
 
+    /** Archiva las referencias que este reemplazo no conservó. */
     // eslint-disable-next-line max-params -- Operacion transaccional local; agruparlo agregaria un tipo sin reutilizacion real.
     private async replaceExternalReferences(executor: CatalogExecutor, itemId: number, catalogCode: CatalogRouteCode, references: readonly CatalogExternalReferenceInput[], now: Date): Promise<void> {
         const retainedIds = await this.insertExternalReferences(executor, itemId, catalogCode, references, now);
@@ -291,12 +331,17 @@ export class CatalogsRepository {
         await removed.execute();
     }
 
+    /**
+     * Inserta o reactiva cada referencia.
+     *
+     * La clave única incluye filas archivadas, así que una referencia vieja del mismo valor se restaura en lugar de insertarse de nuevo.
+     */
     // eslint-disable-next-line max-params -- Operacion transaccional local; los parametros describen el mismo write atomico.
     private async insertExternalReferences(executor: CatalogExecutor, itemId: number, catalogCode: CatalogRouteCode, references: readonly CatalogExternalReferenceInput[], now: Date): Promise<number[]> {
         const retainedIds: number[] = [];
         for (const reference of references) {
             const system = await executor.selectFrom("int_external_system").select("id_external_system as id").where("code_external_system", "=", reference.systemCode).where("status_external_system", "=", ACTIVE_STATUS).executeTakeFirstOrThrow();
-            // The unique key includes soft-deleted rows; retain or restore them instead of reinserting.
+            // La clave única incluye filas archivadas: se reactivan en lugar de volver a insertarlas.
             const existing = await executor
                 .selectFrom("crm_catalog_item_external_reference")
                 .select(["id_catalog_item_external_reference as id", "catalog_item_id_catalog_item_external_reference as itemId", "deleted_at_catalog_item_external_reference as deletedAt", "status_catalog_item_external_reference as status"])
@@ -327,7 +372,7 @@ export class CatalogsRepository {
                 })
                 .executeTakeFirstOrThrow()
                 .catch((error: unknown) => {
-                    // A competing transaction can claim the key after the availability check.
+                    // Otra transacción pudo tomar la clave después de la comprobación previa.
                     if (error instanceof Error && "code" in error && error.code === "ER_DUP_ENTRY") {
                         throw new ConflictException("Una referencia externa ya pertenece a otro valor del catálogo.");
                     }
@@ -338,6 +383,7 @@ export class CatalogsRepository {
         return retainedIds;
     }
 
+    /** Lee el valor y sus referencias dentro del ejecutor de la transacción. */
     private async findCatalogItemByPublicId(executor: CatalogExecutor, catalogCode: CatalogRouteCode, publicId: string): Promise<CatalogItem | null> {
         const row = await this.findCatalogItemRowByPublicId(executor, catalogCode, publicId);
 
@@ -349,12 +395,14 @@ export class CatalogsRepository {
         return this.mapCatalogItem(row, references.get(row.id) ?? []);
     }
 
+    /** Bloquea la fila viva. El código de catálogo evita editar un valor de otro catálogo con el mismo público. */
     private async findCatalogItemRowByPublicId(executor: CatalogExecutor, catalogCode: CatalogRouteCode, publicId: string): Promise<CatalogItemRow | null> {
         const row = await executor.selectFrom("crm_catalog_item").select(["detail_catalog_item as detail", "id_catalog_item as id", "name_catalog_item as name", "native_code_catalog_item as nativeCode", "public_id_catalog_item as publicId", "status_catalog_item as status", "updated_at_catalog_item as updatedAt"]).where("catalog_code_catalog_item", "=", catalogCode).where("public_id_catalog_item", "=", publicId).where("deleted_at_catalog_item", "is", null).forUpdate().executeTakeFirst();
 
         return (row as CatalogItemRow | undefined) ?? null;
     }
 
+    /** Referencias activas de varios valores, en una sola consulta, para no leerlas fila por fila. */
     private async findExternalReferencesByItemIds(itemIds: readonly number[], executor: CatalogExecutor = this.database.db): Promise<Map<number, ExternalReferenceRow[]>> {
         if (itemIds.length === 0) {
             return new Map();
@@ -378,6 +426,7 @@ export class CatalogsRepository {
         return grouped;
     }
 
+    /** Arma el contrato público. El id interno de la fila no se copia. */
     private mapCatalogItem(row: CatalogItemRow, externalReferences: readonly CatalogExternalReference[]): CatalogItem {
         return {
             detail: row.detail,

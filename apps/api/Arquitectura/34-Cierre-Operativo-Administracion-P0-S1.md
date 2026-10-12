@@ -523,7 +523,7 @@ Scope: seven Administration catalogs only. Legacy production remains read-only. 
 1. Extract catalog-by-catalog using deterministic primary-key order and a read-only consistent snapshot. Save a restricted local snapshot and manifest with extraction time, source database/table, row count, checksum and mapping version. Retain all source attributes in staging; never print broker contact data or credentials in logs.
 2. Validate the entire catalog snapshot before opening a target write transaction: primary identities, signed external-ID representation, required names, length/type limits, statuses, duplicate identity groups and any logical parent references. Abort a contradictory group; do not silently select the first row.
 3. Use the target `.env` connection directly, no Docker. Verify database identity, active authorized actor, active NetSuite provider, InnoDB tables, existing UNIQUE indexes and foreign keys. Odoo remains unassigned (no reference row), without requiring an Odoo provider or credentials. Uniqueness stays catalog + provider + external ID until a separate cross-catalog decision is approved.
-4. Reuse the existing sync-legacy-projects transaction/audit/upsert approach instead of a second persistence architecture. Extend only after mapping decisions are resolved; preserve unrelated references, native IDs and fields. Revalidate the existing projects import against the fresh snapshot rather than blindly reinserting it.
+4. Superseded for Projects on 2026-10-09: the bulk importer was removed. Projects now uses a dedicated repository and project/reference tables, with optional legacy reads only. Future import work requires a separate approved design; do not resurrect shared project persistence.
 
 #### Phase 4: controlled application and reconciliation
 
@@ -546,6 +546,8 @@ Execution status: production schema/count profiling only; no target ETL writes i
 - Sequential root `check-all.cmd` passed API formatting/lint/typecheck, 226 tests and build (11 opt-in tests skipped), followed by frontend formatting/lint/typecheck, 117 tests and build. The separately executed six-test MySQL suite is the persistence evidence; the default suite alone is not. Initial runs caught strict lint errors in the added test typings; these were corrected before the successful run. Frontend build retains its existing large-chunk warning. `git diff --check` passed.
 
 ### Project catalog import evidence - 2026-10-08
+
+Historical evidence only: the importer and its tests below were removed on 2026-10-09. The owner subsequently authorized a full target-data reset; the imported rows, identities and audit events described below no longer exist in `CRM_THINK_V2`. Do not execute the historical commands. Current project architecture and targeted migration are documented in 35-Catalog-API-and-Schema.md.
 
 - Explicit owner instruction authorized a one-time project sync keyed by the NetSuite identifier. This does not authorize Leads implementation, deployment, or writes to legacy production.
 - Source: all 36 rows from `crmdatabase-api.proyectos`; target: `CRM_THINK_V2`. The configured legacy account returned MySQL `ER_ACCESS_DENIED_ERROR` (1045). No credentials were changed. Extraction used the working read-only CRM database connector and a local JSON snapshot instead.

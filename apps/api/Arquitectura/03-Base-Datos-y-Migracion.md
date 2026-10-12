@@ -7,12 +7,32 @@ This describes implemented operations, not permission to execute. See [catalog s
 1. Validate `.env` with `src/config/env.validation.ts`. Target `DB_NAME` stays `CRM_THINK_V2`; legacy is separate/read-only. Actual keys are `DB_USER`/`DB_NAME`, not `DB_USERNAME`/`DB_DATABASE`. No Docker. Never commit credentials or source snapshots.
 2. Confirm environment, backup/recovery, migration ledger and explicit authorization. Existing `pnpm migrate:identity:schema` also writes security seeds and can invalidate sessions. Catalog migration `202610030007_crm_catalogs` and repair `202610080008_administration_owner_repair` are incremental; preserve history. MySQL DDL can auto-commit, so schema rollback is not guaranteed by transactions.
 3. Profile source read-only and freeze a validated extraction. Deduplicate by canonical provider identity, not names. Resolve contradictory fields before writes. Validate lengths/statuses, FK ownership, unique indexes and InnoDB item/reference/audit tables.
-4. The implemented runner is projects-only. From `apps/api`: `pnpm exec tsx scripts/sync-legacy-projects.ts --actor=approved-actor@example.com` defaults to rollback. It requires approved `LEGACY_CRM_DB_NAME=crmdatabase-api` and an active target actor/provider. Optional `--source-json=C:/secure/project-snapshot.json` reads an approved frozen local JSON; keep it outside Git. Preview executes transactional writes before rollback and still needs an approved target environment.
-5. After reviewing counts/conflicts and obtaining execution approval, repeat with `--apply`. Input is validated first; provider locking, identity-preserving upserts and audit run atomically. Missing-source rows are not deleted; archived/inconsistent ownership is rejected. Repeat preview against the same snapshot to verify zero additional changes. Retain reconciliation and use audited compensation for committed data.
-6. The project mapper currently requires positive integer IDs. Do not reuse it for campaigns: valid IDs -5, -4, -6, -3 must be preserved exactly. No general seven-catalog importer exists. Subsidiary 63 naming, broker identifier columns and Files property/status/project mapping remain unresolved. Absent Odoo stays unassigned.
+4. The retired project bulk importer and its tests were removed. Use only the optional read-only legacy fallback; no automatic import or legacy mutation is provided.
+5. Projects cutover: set `MIGRATION_CONFIRM_SCHEMA_ONLY=CRM_THINK_V2` securely, then run `pnpm migrate:identity:schema --only=202610090009_projects_domain`. This targets only the new project migration; it does not replay identity seeds or Owner repair. It refuses non-empty shared project records. It creates dedicated project/reference tables and blocks project records in shared tables. Preserve historical migrations while the other six domains still use them.
+6. The isolated read-only mapper preserves signed NetSuite IDs, including -5, -4, -6, -3 for Campaigns. No general seven-catalog importer exists. Subsidiary 63 naming, broker identifier columns and Files property/status/project mapping remain unresolved. Absent Odoo stays unassigned.
 7. Run `.\check-all.cmd`. Explicit MySQL flags `CATALOG_MYSQL_TESTS`, `IDENTITY_ACCESS_MYSQL_TESTS`, `ADMINISTRATION_MYSQL_TESTS` use direct `.env` rollback fixtures; catalog tests do not migrate schema. Suites are serial when enabled. Record actual coverage and audit/ownership reconciliation separately from pass counts.
 
 Architectural/future tables below are not an inventory of implemented commercial runtime.
+
+### Authorized Full Data Reset - 2026-10-09
+
+At the owner's explicit request, all 20 existing tables in `CRM_THINK_V2` were emptied with transactional DELETE, including identity, permissions, sessions, audit and migration history. All table structures and auto-increment counters were retained. A separate post-commit connection confirmed zero rows in every table. No connection to the legacy database was opened by the reset operation.
+
+A local SQL backup and SHA-256 manifest were saved outside Git under the current user's `AppData/Local/CRM-TINK/backups`. File integrity was verified before deletion; restoration has not been tested. Post-reset review identified a backup limitation: the column filter excluded `DEFAULT_GENERATED` timestamps as well as computed columns. Restoring this export would regenerate those timestamps rather than recover their original values; it is not a byte-exact archival backup. Login and authenticated catalog access cannot work until identity is deliberately re-established. The fallback flag remains disabled and dedicated legacy reader access remains a separate prerequisite. Do not automatically rerun migrations or imports after this reset: cleared migration history no longer records the existing schema, and seed operations would repopulate intentionally empty tables.
+
+### Owner-Only Recovery and Seed Policy - 2026-10-09
+
+The approved identity bootstrap contains only `rzuniga@roccacr.com` with the active `owner` role. Active permission definitions, organizational modules and their Owner grants are required authorization configuration, not business seeds. No projects, campaigns, other catalog records, additional users or secondary roles may be seeded. Schema migrations never create users; there is no startup bootstrap.
+
+`pnpm recover:owner` is an explicit recovery operation, not a general production seed. It requires `DB_NAME=CRM_THINK_V2`, `MIGRATION_CONFIRM_SCHEMA_ONLY=CRM_THINK_V2`, `OWNER_RECOVERY_CONFIRM=rzuniga@roccacr.com` and `OWNER_RECOVERY_BACKUP` pointing to the approved local pre-reset SQL artifact. Its SHA-256 is pinned in the script. It refuses nonempty identity configuration and restores only Roberto's original user/authentication rows, one Owner role and active permissions/modules in one transaction. It grants Owner every active permission and every active module with `all_areas` scope. Original password hashes and stable Microsoft identity subjects are preserved without logging them. Sessions, refresh/reset tokens and Microsoft token caches are not restored; sign in again. Backup-generated default timestamps are not original timestamps.
+
+The unrestricted legacy administrator importer was removed. Historical `SQL/002_identity_seed_p0_s1.sql` is not an approved bootstrap and must not be executed: it inserts multiple roles and obsolete permission definitions. Historical migrations remain immutable for existing installations. Migrations 001/003/004/005 are structural, 006 changes security policy, 007 creates shared catalog storage and scoped permissions, 008 repairs Administration/Owner configuration, and 009 creates dedicated Projects storage without business seeds. Do not replay all migrations merely because the ledger was emptied. Use the targeted 009 command above after reviewing actual schema.
+
+The shared `crm_catalog_item` and `crm_catalog_item_external_reference` tables remain required by six non-Projects catalog routes. They are empty but not deprecated until those domains are individually migrated. Projects are excluded by database CHECK constraints and use only `crm_project` / `crm_project_external_reference`. Removing the shared tables now would break those routes.
+
+For a fresh production installation, use a separately approved secure owner bootstrap; do not distribute the backup, create a default password, or bulk-import administrators. Future permissions must be granted to Owner in their reviewed migration. A repository push does not prove deployment or authentication acceptance.
+
+Execution evidence: owner-only recovery committed on 2026-10-09. An independent connection verified one active Roberto user, two active authentication methods (local with the original hash and Microsoft), one Owner role, 195 active permissions with zero missing Owner grants, seven active module memberships, and zero rows in both project tables and both shared catalog tables. The targeted 009 runner confirmed the migration was already applied. No legacy connection was opened. This proves selective identity restoration, not full-backup recovery or a successful interactive login.
 
 ## Motor recomendado
 
@@ -90,10 +110,10 @@ Regla de conexion:
 ```txt
 DB_NAME = CRM_THINK_V2
 LEGACY_CRM_DB_NAME = nombre de la base vieja, opcional
-LEGACY_CRM_DB_USER = usuario separado de solo lectura, obligatorio si legacy esta activo
+ENABLE_LEGACY_FALLBACK = true para activar; false para retirar sin queries legacy
 ```
 
-No se cambia `DB_NAME` para leer legacy. Si ambas bases viven en el mismo servidor MySQL, legacy reutiliza `DB_HOST`, `DB_PORT`, `DB_SSL` y `DB_SSL_CA`; el schema/base vive en `LEGACY_CRM_DB_NAME` y las credenciales de lectura viven en `LEGACY_CRM_DB_USER` / `LEGACY_CRM_DB_PASSWORD`.
+No se cambia `DB_NAME` para leer legacy. Por instruccion explicita del propietario, el pool independiente reutiliza `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_SSL` y `DB_SSL_CA`; solo cambia el nombre de base a `crmdatabase-api`. Las variables anteriores `LEGACY_CRM_DB_USER` / `LEGACY_CRM_DB_PASSWORD` se ignoran. Todas las consultas del adapter se ejecutan en transacciones de solo lectura. La cuenta compartida no tiene privilegios exclusivamente de lectura: no cambiar sus grants ni credenciales. Ver contrato y retiro en documento 35.
 
 Fases:
 

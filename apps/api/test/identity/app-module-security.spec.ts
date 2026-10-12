@@ -1,4 +1,5 @@
 import { SELF_DECLARED_DEPS_METADATA } from "@nestjs/common/constants.js";
+import { ConfigService } from "@nestjs/config";
 import { FastifyAdapter, type NestFastifyApplication } from "@nestjs/platform-fastify";
 import { Test } from "@nestjs/testing";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
@@ -28,6 +29,9 @@ import { IdentitySessionRepository } from "../../src/modules/crm/identity/identi
 import { IdentityTokenService } from "../../src/modules/crm/identity/identity-token.service.js";
 import { IdentityUserDirectoryRepository } from "../../src/modules/crm/identity/identity-user-directory.repository.js";
 import { EffectivePermissionService } from "../../src/modules/crm/permissions/effective-permission.service.js";
+import { ProjectsController } from "../../src/modules/crm/projects/projects.controller.js";
+import { ProjectsRepository } from "../../src/modules/crm/projects/projects.repository.js";
+import { ProjectsService } from "../../src/modules/crm/projects/projects.service.js";
 
 type ExplicitDependencyMetadata = {
     index: number;
@@ -168,6 +172,18 @@ describe("Cableado de seguridad del AppModule", () => {
         expect(getApp()).toBeDefined();
     });
 
+    it("resolves the dedicated Projects controller on the existing URL", async () => {
+        const service = getApp().get(ProjectsService);
+        const handler = vi.spyOn(service, "listCatalogItems");
+        try {
+            const response = await getApp().inject({ method: "GET", url: "/catalogs/projects/items?moduleCode=administration" });
+            expect(response.statusCode).toBe(401);
+            expect(handler).toHaveBeenCalledOnce();
+        } finally {
+            handler.mockRestore();
+        }
+    });
+
     it("recorre controller, servicio y repository reales antes de responder sesion no autorizada", async () => {
         const response = await getApp().inject({
             headers: {
@@ -182,6 +198,9 @@ describe("Cableado de seguridad del AppModule", () => {
 
     it("declara @Inject explicito en cada provider con dependencias de constructor", () => {
         expectExplicitConstructorInjections(DatabaseService, [0]);
+        expectExplicitConstructorInjections(ProjectsController, [0]);
+        expectExplicitConstructorInjections(ProjectsService, [0, 1, 2]);
+        expectExplicitConstructorInjections(ProjectsRepository, [0, 1, 2]);
         expectExplicitConstructorInjections(CsrfGuard, [0]);
         expectExplicitConstructorInjections(SecurityAuditService, [0]);
         expectExplicitConstructorInjections(IdentityController, [0, 1]);
@@ -209,22 +228,27 @@ describe("Cableado de seguridad del AppModule", () => {
         expect(APP_LOG_REDACT_PATHS).not.toContain("req.headers.x-csrf-token");
     });
 
-    it("activa el servicio legacy solo cuando la base vieja esta configurada", async () => {
+    it.each([false, true])("gates the configured legacy pool with ENABLE_LEGACY_FALLBACK=%s", async (enabled) => {
         configureTestEnvironment();
         configureLegacyTestEnvironment();
+        process.env.ENABLE_LEGACY_FALLBACK = String(enabled);
 
         const { AppModule } = await import("../../src/app.module.js");
         const moduleRef = await Test.createTestingModule({
             imports: [AppModule],
         })
+            // AppModule metadata is cached after beforeAll; give each case its own validated flag.
+            .overrideProvider(ConfigService)
+            .useValue(new ConfigService({ ...process.env, DB_PORT: 3306, DB_SSL: false, ENABLE_LEGACY_FALLBACK: enabled }))
             .overrideProvider(DatabaseService)
             .useValue(databaseServiceStub)
             .compile();
 
         const legacyService = moduleRef.get(LegacyCrmDatabaseService);
 
-        expect(legacyService.isConfigured()).toBe(true);
+        expect(legacyService.isConfigured()).toBe(enabled);
 
         await moduleRef.close();
+        delete process.env.ENABLE_LEGACY_FALLBACK;
     });
 });

@@ -1,5 +1,9 @@
 # 32 - Seeds de Identidad P0-S1
 
+## Superseding Owner-Only Policy - 2026-10-09
+
+The seed descriptions below are historical, not executable bootstrap instructions. Only Roberto (`rzuniga@roccacr.com`) may be bootstrapped as Owner; no other users, secondary roles or business catalog rows. Required active permissions/modules and Owner relations are security configuration. Use the guarded recovery procedure and migration audit in [03 - Migration Runbook](03-Base-Datos-y-Migracion.md). Do not run historical SQL/002 or a bulk administrator importer.
+
 ## Veredicto
 
 Este documento define los datos iniciales que la futura migracion de `CRM_THINK_V2` debe insertar para identidad, roles, permisos, areas y sistemas externos.

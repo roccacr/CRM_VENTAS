@@ -1,9 +1,17 @@
+/**
+ * Entrada HTTP de los catálogos.
+ *
+ * `moduleCode` es obligatorio porque el permiso se evalúa en el módulo que
+ * consume el catálogo. El motivo mínimo existe para que la auditoría diga algo.
+ * Un id externo vacío no se guarda: se descarta antes de llegar al repositorio.
+ */
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { Transform, Type } from "class-transformer";
 import { ArrayMaxSize, IsArray, IsIn, IsInt, IsOptional, IsString, Max, MaxLength, Min, MinLength, ValidateNested } from "class-validator";
 
 import { CATALOG_CONTEXT_MODULES, CATALOG_STATUSES, type CatalogContextModuleCode, type CatalogStatus } from "../catalogs.constants.js";
 
+/** Un texto opcional vacío se vuelve ausente, para no guardar espacios como detalle o búsqueda. */
 const toOptionalTrimmedString = ({ value }: { readonly value: unknown }): string | undefined => {
     if (typeof value !== "string") {
         return undefined;
@@ -13,8 +21,10 @@ const toOptionalTrimmedString = ({ value }: { readonly value: unknown }): string
     return trimmed.length > 0 ? trimmed : undefined;
 };
 
+/** Recorta obligatorios. Si no es texto, el validador siguiente lo rechaza. */
 const toTrimmedString = ({ value }: { readonly value: unknown }): unknown => (typeof value === "string" ? value.trim() : value);
 
+/** La query llega como texto. Vacío significa que el cliente no pidió límite ni desplazamiento. */
 const toInteger = ({ value }: { readonly value: unknown }): number | undefined => {
     if (value === undefined || value === null || value === "") {
         return undefined;
@@ -23,9 +33,7 @@ const toInteger = ({ value }: { readonly value: unknown }): number | undefined =
     return Number(value);
 };
 
-/**
- *
- */
+/** Filtros del listado. El módulo de contexto no es un filtro de datos: define qué permiso se exige. */
 export class ListCatalogItemsQueryDto {
     @ApiPropertyOptional({ description: "Desplazamiento de la siguiente tanda del catálogo.", minimum: 0, maximum: 2147483647 })
     @Transform(toInteger)
@@ -62,9 +70,7 @@ export class ListCatalogItemsQueryDto {
     limit?: number;
 }
 
-/**
- *
- */
+/** Par sistema e id. Si el id llega vacío, esta referencia no se persiste. */
 export class CatalogExternalReferenceDto {
     @ApiProperty({ description: "Código del sistema externo configurado en CRM.", maxLength: 80 })
     @Transform(toTrimmedString)
@@ -82,9 +88,7 @@ export class CatalogExternalReferenceDto {
     externalId?: string | null;
 }
 
-/**
- *
- */
+/** Alta. El nombre y el motivo se recortan; el permiso lo vuelve a comprobar el caso de uso. */
 export class CreateCatalogItemDto {
     @ApiProperty({ description: "Módulo desde el que se administra el catálogo.", enum: CATALOG_CONTEXT_MODULES })
     @Transform(toTrimmedString)
@@ -122,14 +126,10 @@ export class CreateCatalogItemDto {
     externalReferences?: CatalogExternalReferenceDto[];
 }
 
-/**
- *
- */
+/** Edición. Usa el mismo cuerpo del alta, incluido un motivo nuevo para este cambio. */
 export class UpdateCatalogItemDto extends CreateCatalogItemDto {}
 
-/**
- *
- */
+/** Cambio de estado. Inactivar pide su propio permiso, no el de editar. */
 export class UpdateCatalogItemStatusDto {
     @ApiProperty({ description: "Módulo desde el que se administra el catálogo.", enum: CATALOG_CONTEXT_MODULES })
     @Transform(toTrimmedString)

@@ -18,6 +18,15 @@ export const CATALOG_REFERENCE_PROVIDERS = [
     { systemCode: "odoo", systemName: "Odoo" },
 ] as const;
 
+/** Approved opt-ins reuse the Projects design without changing catalog identity or permissions. */
+export function getCatalogPresentation(code: string) {
+    const presentations: Record<string, { enhanced: boolean; scopeClass: string; entity: string; create: string; refresh: string }> = {
+        projects: { enhanced: true, scopeClass: "catalog-items-page--projects", entity: "Proyecto", create: "Nuevo proyecto", refresh: "Actualizar proyectos" },
+        campaigns: { enhanced: true, scopeClass: "catalog-items-page--projects", entity: "Campaña", create: "Nueva campaña", refresh: "Actualizar campañas" },
+    };
+    return presentations[code] ?? { enhanced: false, scopeClass: "", entity: "Nombre", create: "Nuevo valor", refresh: "Actualizar catálogo" };
+}
+
 /**
  * Definición de un catálogo CRM visible desde Administración.
  *

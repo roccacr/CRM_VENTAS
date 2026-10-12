@@ -11,6 +11,7 @@ import { identityUserDirectoryMigration } from "../migrations/schema-only/202609
 import { identityRoleSecurityModelMigration } from "../migrations/schema-only/202610010006_identity_role_security_model.js";
 import { crmCatalogsMigration } from "../migrations/schema-only/202610030007_crm_catalogs.js";
 import { administrationOwnerRepairMigration } from "../migrations/schema-only/202610080008_administration_owner_repair.js";
+import { projectsDomainMigration } from "../migrations/schema-only/202610090009_projects_domain.js";
 import { addDatabaseTlsIssues, booleanEnvSchema, tcpPortSchema } from "../src/config/database-env.schema.js";
 import { APPROVED_DATABASE_NAME } from "../src/config/product.constants.js";
 import { buildMysqlPoolOptions } from "../src/database/mysql-pool-options.js";
@@ -24,7 +25,15 @@ type Migration = {
     up: (db: Kysely<unknown>) => Promise<void>;
 };
 
-export const schemaMigrations: Migration[] = [identitySchemaMigration, identityLoginReadinessMigration, identityMicrosoftSessionMigration, identityUserDirectoryMigration, identityRoleSecurityModelMigration, crmCatalogsMigration, administrationOwnerRepairMigration];
+export const schemaMigrations: Migration[] = [identitySchemaMigration, identityLoginReadinessMigration, identityMicrosoftSessionMigration, identityUserDirectoryMigration, identityRoleSecurityModelMigration, crmCatalogsMigration, administrationOwnerRepairMigration, projectsDomainMigration];
+
+/** Targeted cutovers avoid replaying unrelated security repairs after a deliberate ledger reset. */
+export const selectSchemaMigrations = (name?: string): Migration[] => {
+    if (name === undefined) return schemaMigrations;
+    const migration = schemaMigrations.find((candidate) => candidate.name === name);
+    if (!migration) throw new Error("Unknown migration selection");
+    return [migration];
+};
 const isExecutedDirectly = (): boolean => (process.argv[1] ? pathToFileURL(process.argv[1]).href === import.meta.url : false);
 
 /**
@@ -173,13 +182,14 @@ const recordMigration = async (db: Kysely<unknown>, migrationName: string): Prom
  * debe ejecutar migraciones automaticamente.
  */
 const run = async (): Promise<void> => {
+    const selected = selectSchemaMigrations(process.argv.find((arg) => arg.startsWith("--only="))?.slice(7));
     const db = createDatabase();
 
     try {
         await acquireLock(db);
         await ensureMigrationTable(db);
 
-        for (const migration of schemaMigrations) {
+        for (const migration of selected) {
             if (await hasMigration(db, migration.name)) {
                 console.log(`Migracion omitida porque ya esta aplicada: ${migration.name}`);
                 continue;

@@ -100,11 +100,13 @@ Si manana se apaga el CRM viejo, solo debe retirarse `src/integrations/legacy-cr
 
 Regla de conexion legacy aprobada:
 
+Owner-authorized exception, 2026-10-09: Projects supports editable legacy records and same-server transactional synchronization. Enabled creates write both databases; legacy-only edits promote into CRM_THINK_V2 and update the existing legacy row; linked native edits synchronize that row. Native-only edits do not create legacy rows. No deletes are allowed. All reads and writes use the single `legacy-crm-access.ts` gate; `ENABLE_LEGACY_FALLBACK=false` disables new legacy operations after API restart. The separate reader pool remains read-only. Shared credentials/grants must not change. This exception supersedes earlier blanket read-only/no-dual-write wording for Projects only; other entities retain their existing scope. See document 35 for transaction, validation and removal requirements.
+
 ```txt
 DB_NAME siempre apunta a CRM_THINK_V2. La base vieja solo se nombra con LEGACY_CRM_DB_NAME dentro de src/integrations/legacy-crm.
 ```
 
-El wiring legacy queda apagado si `LEGACY_CRM_DB_NAME` esta vacio. Cuando se active, puede reutilizar `DB_HOST`, `DB_PORT`, `DB_SSL` y `DB_SSL_CA` si ambas bases viven en el mismo servidor MySQL, pero debe usar `LEGACY_CRM_DB_USER` y `LEGACY_CRM_DB_PASSWORD` de un usuario MySQL separado y solo lectura, distinto de `DB_USER`. El pool legacy debe marcar cada conexion con `SET SESSION TRANSACTION READ ONLY`; esto es defensa adicional y no sustituye permisos MySQL de solo lectura. Eso no autoriza queries, dual-read ni sync activa; solo deja preparada la frontera tecnica aislada.
+Actualizacion autorizada por el propietario el 2026-10-09: el pool legacy independiente reutiliza `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_SSL` y `DB_SSL_CA`, cambiando solo el nombre a `crmdatabase-api`. Se autoriza lectura temporal Projects/Campaigns mediante el adapter aislado; Projects combina nativos y legacy no migrados por `id_old_produccion`, con precedencia nativa. Todas las consultas legacy se ejecutan dentro de transacciones de solo lectura, con `SET SESSION TRANSACTION READ ONLY` al abrir cada conexion. Esto no reduce los privilegios de la cuenta compartida y no autoriza DML/DDL legacy, cambios de credenciales/grants, sincronizacion ni importacion automatica. `ENABLE_LEGACY_FALLBACK=false` desactiva el adapter sin abrir pool; para retirar fisicamente la carpeta, eliminar primero su import/registro en `AppModule`. El core conserva su puerto opcional y funciona solo con CRM_THINK_V2.
 
 ## Ley de credenciales productivas compartidas
 

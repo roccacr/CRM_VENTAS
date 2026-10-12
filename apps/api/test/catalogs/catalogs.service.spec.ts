@@ -96,6 +96,13 @@ const createService = (profile: IdentityProfile) => {
 };
 
 describe("CatalogsService", () => {
+    it("rejects mutations of legacy preview identities before persistence", async () => {
+        const { repository, service } = createService(createProfile({ roles: ["owner"] }));
+        await expect(service.updateCatalogItem("token", "projects", "legacy:projects:42", { moduleCode: "administration", name: "Edited project", reason: "Approved test" })).rejects.toBeInstanceOf(ForbiddenException);
+        await expect(service.updateCatalogItemStatus("token", "projects", "legacy:projects:42", { moduleCode: "administration", status: "inactive", reason: "Approved test" })).rejects.toBeInstanceOf(ForbiddenException);
+        expect(repository.updateCatalogItem).not.toHaveBeenCalled();
+        expect(repository.updateCatalogItemStatus).not.toHaveBeenCalled();
+    });
     it("validates and forwards catalog pagination offsets", async () => {
         const { repository, service } = createService(createProfile({ roles: ["owner"] }));
         const pipe = new ValidationPipe({ transform: true, whitelist: true });

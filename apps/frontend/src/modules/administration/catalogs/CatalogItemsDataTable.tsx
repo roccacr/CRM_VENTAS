@@ -27,7 +27,6 @@ const DISABLED_FIELDS = [1, 4];
 const STATUS_LABELS = { active: "Activo", inactive: "Inactivo" };
 const COLUMNS = [{ data: "name" }, { data: "detail", defaultContent: "Sin asignar" }, { data: "externalReferences" }, { data: "status" }, { data: null, orderable: false, searchable: false, defaultContent: "" }];
 const paneText = (type: string, value: string): string => (type === "pane" ? DT.util.escapeHtml(value) : value);
-const PROJECT_FIELDS = ["Proyecto", "Descripción", "Integraciones", "Estado", "Acciones"];
 
 /** Missing providers are read-only placeholders, shared by display and search; never mutation data. */
 function projectReferences(references: CatalogItem["externalReferences"]) {
@@ -35,6 +34,7 @@ function projectReferences(references: CatalogItem["externalReferences"]) {
 }
 
 interface CatalogItemsDataTableProps {
+    readonly entityLabel: string;
     readonly projectView?: boolean;
     readonly items: readonly CatalogItem[];
     readonly label: string;
@@ -66,9 +66,9 @@ export function CatalogItemsDataTable(props: CatalogItemsDataTableProps) {
     return (
         <div className="projects-view-load-canvas" aria-busy={props.isLoading}>
             {(showLoader || pending) && (
-                <div className="projects-view-loader" data-loading={props.isLoading} role="status" aria-label="Cargando proyectos">
+                <div className="projects-view-loader" data-loading={props.isLoading} role="status" aria-label={`Cargando ${props.label.toLocaleLowerCase("es-CR")}`}>
                     <span className="projects-view-loader__ring" aria-hidden="true" />
-                    <span className="projects-view-loader__title">Cargando proyectos...</span>
+                    <span className="projects-view-loader__title">Cargando {props.label.toLocaleLowerCase("es-CR")}...</span>
                     <span className="projects-view-loader__caption">Sincronizando registros y catálogo CRM</span>
                 </div>
             )}
@@ -82,7 +82,7 @@ export function CatalogItemsDataTable(props: CatalogItemsDataTableProps) {
 }
 
 /** Uses the users table's SearchPanes, layout and persistence without sharing catalog state. */
-function CatalogItemsTableContent({ projectView = false, items, label, isLoading, storageKey, selectedPublicId, onSelect, onEdit, onStatusAction }: CatalogItemsDataTableProps) {
+function CatalogItemsTableContent({ projectView = false, entityLabel, items, label, isLoading, storageKey, selectedPublicId, onSelect, onEdit, onStatusAction }: CatalogItemsDataTableProps) {
     const data = useMemo(() => [...items], [items]);
     const container = useRef<HTMLDivElement>(null);
     const table = useRef<DataTableRef>(null);
@@ -114,7 +114,7 @@ function CatalogItemsTableContent({ projectView = false, items, label, isLoading
                     row.classList.add("catalog-items-row");
                     if (projectView)
                         Array.from(row.cells).forEach((cell, index) => {
-                            cell.dataset.projectField = PROJECT_FIELDS[index] ?? "";
+                            cell.dataset.projectField = [entityLabel, "Descripción", "Integraciones", "Estado", "Acciones"][index] ?? "";
                         });
                 },
                 language: {
@@ -130,7 +130,7 @@ function CatalogItemsTableContent({ projectView = false, items, label, isLoading
                     searchPanes: { clearMessage: "Limpiar", collapse: { 0: "Filtros", _: "Filtros (%d)" }, collapseMessage: "Contraer", count: "{total}", countFiltered: "{shown} de {total}", emptyPanes: "No hay filtros disponibles", loadMessage: "Cargando filtros...", showMessage: "Expandir", title: "Filtros activos: %d" },
                 },
             }) as unknown as NonNullable<DataTableProps["options"]>,
-        [label, panes, projectView, storageKey],
+        [entityLabel, label, panes, projectView, storageKey],
     );
 
     const syncProjectFilterTracks = useCallback((): void => {
@@ -145,9 +145,9 @@ function CatalogItemsTableContent({ projectView = false, items, label, isLoading
         root.style.setProperty("--projects-filter-offset", `${String(first.left - root.getBoundingClientRect().left)}px`);
         const toolbar = root.querySelector(".dtsp-titleRow");
         toolbar?.setAttribute("role", "group");
-        toolbar?.setAttribute("aria-label", "Controles de filtros de proyectos");
+        toolbar?.setAttribute("aria-label", `Controles de filtros de ${label.toLocaleLowerCase("es-CR")}`);
         root.querySelector(".dtsp-title")?.setAttribute("aria-live", "polite");
-    }, [projectView]);
+    }, [label, projectView]);
 
     useEffect(() => {
         if (!projectView || !container.current) return;
@@ -199,7 +199,7 @@ function CatalogItemsTableContent({ projectView = false, items, label, isLoading
             }}
         >
             <label className="projects-view-mobile-sort" hidden={!projectView}>
-                Ordenar proyectos
+                Ordenar {label.toLocaleLowerCase("es-CR")}
                 <select
                     ref={mobileSort}
                     disabled={isLoading}
@@ -215,8 +215,8 @@ function CatalogItemsTableContent({ projectView = false, items, label, isLoading
                     <option value="" disabled>
                         Orden personalizado
                     </option>
-                    <option value="0,asc">Proyecto: A a Z</option>
-                    <option value="0,desc">Proyecto: Z a A</option>
+                    <option value="0,asc">{entityLabel}: A a Z</option>
+                    <option value="0,desc">{entityLabel}: Z a A</option>
                     <option value="1,asc">Descripción: A a Z</option>
                     <option value="1,desc">Descripción: Z a A</option>
                     <option value="2,asc">Integraciones: ascendente</option>
@@ -287,8 +287,8 @@ function CatalogItemsTableContent({ projectView = false, items, label, isLoading
                             trigger={["click"]}
                             menu={{
                                 items: [
-                                    { key: "edit", icon: <EditOutlined />, label: "Editar" },
-                                    { key: item.status === "active" ? "inactive" : "active", icon: <StopOutlined />, label: item.status === "active" ? "Inactivar" : "Reactivar", danger: item.status === "active" },
+                                    { key: "edit", icon: <EditOutlined />, label: "Editar", disabled: item.publicId.startsWith("legacy:") && !item.publicId.startsWith("legacy:projects:") },
+                                    { key: item.status === "active" ? "inactive" : "active", icon: <StopOutlined />, label: item.status === "active" ? "Inactivar" : "Reactivar", danger: item.status === "active", disabled: item.publicId.startsWith("legacy:") && !item.publicId.startsWith("legacy:projects:") },
                                 ],
                                 onClick: ({ key, domEvent }) => {
                                     domEvent.stopPropagation();
@@ -312,7 +312,7 @@ function CatalogItemsTableContent({ projectView = false, items, label, isLoading
                 {projectView && <caption className="administration-users-visually-hidden">{label}</caption>}
                 <thead>
                     <tr>
-                        <th>{projectView ? "Proyecto" : "Nombre"}</th>
+                        <th>{projectView ? entityLabel : "Nombre"}</th>
                         <th>{projectView ? "Descripción" : "Detalle"}</th>
                         <th>{projectView ? "Integraciones" : "Referencias"}</th>
                         <th>Estado</th>

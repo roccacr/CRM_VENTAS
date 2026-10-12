@@ -7,7 +7,7 @@ import { afterEach, describe, expect, it } from "vitest";
 
 import { validateEnv } from "../../src/config/env.validation.js";
 import { APPROVED_DATABASE_NAME } from "../../src/config/product.constants.js";
-import { createLegacyCrmDatabase, registerLegacyReadOnlySession } from "../../src/integrations/legacy-crm/legacy-crm.config.js";
+import { buildLegacyPoolOptions, createLegacyCrmDatabase, registerLegacyReadOnlySession } from "../../src/integrations/legacy-crm/legacy-crm.config.js";
 import { LegacyCrmDatabaseService } from "../../src/integrations/legacy-crm/legacy-crm-database.service.js";
 
 type TestConfig = Record<string, boolean | number | string>;
@@ -110,17 +110,15 @@ describe("LegacyCrmDatabaseService", () => {
         expect(() => createLegacyCrmDatabase(createConfigService({ LEGACY_CRM_DB_NAME: APPROVED_DATABASE_NAME }))).toThrow(APPROVED_DATABASE_NAME);
     });
 
-    it("falla si legacy esta activo sin usuario separado", () => {
-        expect(() => createLegacyCrmDatabase(createConfigService({ LEGACY_CRM_DB_USER: "" }))).toThrow("LEGACY_CRM_DB_USER");
+    it("reuses primary credentials and ignores obsolete legacy credentials", () => {
+        const options = buildLegacyPoolOptions(createConfigService(), "crmdatabase-api");
+        expect(options).toMatchObject({ host: TEST_CONFIG.DB_HOST, port: TEST_CONFIG.DB_PORT, user: TEST_CONFIG.DB_USER, password: TEST_CONFIG.DB_PASSWORD, database: "crmdatabase-api", multipleStatements: false });
     });
 
-    it("falla si el usuario legacy intenta reutilizar el usuario principal", () => {
-        expect(() => createLegacyCrmDatabase(createConfigService({ LEGACY_CRM_DB_USER: TEST_CONFIG.DB_USER }))).toThrow("LEGACY_CRM_DB_USER");
-    });
-
-    it("lee variables legacy desde ConfigModule real aunque el schema global no las declare", async () => {
+    it("preserves the legacy database name through global environment validation", async () => {
         const snapshot = readProcessEnvSnapshot();
         configureProcessEnvForLegacy();
+        expect(validateEnv(process.env)).toHaveProperty("LEGACY_CRM_DB_NAME", "crmdatabase-api");
 
         const moduleRef = await Test.createTestingModule({
             imports: [

@@ -25,6 +25,29 @@ conservar textos de interfaz en espanol y declarar diferencias verificables.
 
 ### Replication Boundary
 
+Approved Campaigns adoption (2026-10-09): `/home/administration/catalogs/campaigns`
+reuses the existing Projects presentation classes and shared catalog components,
+including their portal scopes. These class names identify reusable presentation,
+not API routing or record identity. The campaign code, authorization context and
+table storage key remain campaign-specific. Use `Campaña`, `Nueva campaña`,
+`Crear campaña`, `Editar campaña`, `Actualizar campañas` and `Cargando campañas...`.
+The same three filters, row drawer, provider cards, optional references, audited
+forms, mobile cards and reduced-motion transitions apply. Other catalogs retain
+their existing presentation. No new styling copy or separate token scale is needed.
+
+ES: Campañas reutiliza el diseno de Proyectos con sus propios datos y etiquetas.
+No cambia permisos, contratos, auditoria ni referencias externas firmadas.
+
+Approved navigation adoption (2026-10-09): the owner authorized the same visual
+language for the desktop header/menu/workspace selector and mobile navigation.
+`GlobalHomeShell.css` overrides existing shell aliases only at those navigation
+roots: 50 canvas, 100 hover/selection, 200 separators, 500 control boundaries,
+600 secondary text/focus, 900 text/hover, 800 dark active and 950 dark menu.
+Typography is Aptos/Segoe UI/system, 13px, line-height 1.5; menu/popover corners
+are 8px. Existing route, permission, dropdown positioning, responsive drawer and
+keyboard behavior remain authoritative. This exception does not apply the palette
+to every module's content or introduce Projects-only loaders into navigation.
+
 Reading this guide does not automatically authorize restyling other modules.
 For an approved replication, opt the new page and its portals into a local scope;
 do not add Projects selectors to unrelated routes or globally override Ant Design.
@@ -466,6 +489,13 @@ or a dense skeleton table alongside this loader.
 
 ## Drawer Loading and Other States
 
+Legacy-only records have no assigned native CRM ID/code yet. In the Registro section,
+display `Pendiente de migración` for both fields, without copy buttons. Never present
+`legacy:projects:<id>` or `legacy_projects_<id>` routing keys as native identity;
+retain those keys internally for edit/status requests. After promotion, display and
+allow copying the canonical ID/code returned by the API. Edit and status buttons
+must remain separate controls with an explicit 8px gap and wrap on narrow screens.
+
 Drawer status label: `Cargando detalle`. Render five airy pairs hidden from the
 accessibility tree beneath that announcement. Pair: tiny 6px-high label at 24%
 width, value 8px-high at 62% width, 12px between, 16px vertical padding and 16px
@@ -541,6 +571,25 @@ format/lint/typecheck and both builds passed after a formatting correction.
 Existing bundle-size warning remains. Those results are historical evidence,
 not a new test run for this document. Authenticated integrated visual verification,
 device overflow checks, CLS measurements and full WCAG audit remain unconfirmed.
+
+### Roles and Security Adoption
+
+EN: The approved `/home/administration/roles-security` adaptation uses the same
+neutral 50-950 scale, Aptos/Segoe UI typography, 13px body, 22px page title,
+8px panel corners, restrained dark primary actions and visible keyboard focus.
+Tokens are scoped to `.roles-security-page` and `.roles-security-modal-backdrop`
+in `RolesSecurityPage.css`. Preserve the role workbench and permission accordions;
+do not replace them with a catalog table. The page fills the available content
+width without a desktop max-width cap, retaining its responsive side padding.
+Module cards use four columns on wide
+screens, two at 1280px and below, and one at 900px and below. Mobile controls
+retain 44px touch targets. Audit dialogs use matching surfaces and spacing,
+with an overlay above navigation. The existing access-loading ring is 34px,
+neutral 100/600, and stops animating for reduced-motion preferences.
+
+ES: Roles y seguridad adopta la paleta y densidad de Proyectos sin modificar
+asignaciones, permisos, validaciones ni guardado auditado. Conservar colores
+semanticos de advertencia y el flujo propio del editor de permisos.
 
 Update this document whenever approved behavior or design rules change. Record
 test/browser evidence separately in `25-Continuidad-Administracion.md`. Do not

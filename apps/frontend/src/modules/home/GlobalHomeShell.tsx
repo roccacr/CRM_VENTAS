@@ -1101,12 +1101,13 @@ function GlobalMenuDropdown({ id, isOpen, label, onPointerEnter, onPointerLeave,
         const group = panel?.parentElement;
         if (!panel || !group) return;
 
-        // Permission filtering changes group counts; align by geometry, not item order.
+        // Viewport positioning escapes the tablet scroll track's clipping.
         const positionPanel = () => {
             const trigger = group.getBoundingClientRect();
             const width = panel.getBoundingClientRect().width;
             const left = Math.max(16, Math.min(trigger.left, window.innerWidth - width - 16));
-            panel.style.left = `${String(left - trigger.left)}px`;
+            panel.style.left = `${String(left)}px`;
+            panel.style.top = `${String(trigger.bottom + 6)}px`;
             panel.style.maxHeight = `${String(Math.max(0, window.innerHeight - trigger.bottom - 6 - 16))}px`;
             group.style.setProperty("--dropdown-left", `${String(left - trigger.left)}px`);
         };
@@ -1114,9 +1115,11 @@ function GlobalMenuDropdown({ id, isOpen, label, onPointerEnter, onPointerLeave,
         const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(positionPanel);
         observer?.observe(group);
         window.addEventListener("resize", positionPanel);
+        window.addEventListener("scroll", positionPanel, true);
         return () => {
             observer?.disconnect();
             window.removeEventListener("resize", positionPanel);
+            window.removeEventListener("scroll", positionPanel, true);
         };
     }, [isOpen]);
 

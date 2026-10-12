@@ -36,14 +36,14 @@ const UNASSIGNED_VALUE = "Sin asignar";
 const displayValue = (value: string | null | undefined): string => value?.trim() || UNASSIGNED_VALUE;
 
 /** Identificador copiable. Sin texto, no ofrece un botón de copiar vacío. */
-function CatalogDetailIdentifier({ value }: { readonly value: string | null | undefined }) {
-    const text = value?.trim();
+function CatalogDetailIdentifier({ value, pendingMigration = false }: { readonly value: string | null | undefined; readonly pendingMigration?: boolean }) {
+    const text = pendingMigration ? undefined : value?.trim();
     return text ? (
         <Typography.Text className="user-detail-drawer__public-id" code copyable>
             {text}
         </Typography.Text>
     ) : (
-        <Typography.Text type="secondary">{UNASSIGNED_VALUE}</Typography.Text>
+        <Typography.Text type="secondary">{pendingMigration ? "Pendiente de migración" : UNASSIGNED_VALUE}</Typography.Text>
     );
 }
 
@@ -118,9 +118,13 @@ interface CatalogItemDetailDrawerProps {
 function CatalogDetailActions({ item, error, isLoading, onEdit, onStatusAction }: Pick<CatalogItemDetailDrawerProps, "item" | "error" | "isLoading" | "onEdit" | "onStatusAction">) {
     if (!item || error || isLoading) return null;
     const active = item.status === "active";
+    const readOnlyLegacy = item.publicId.startsWith("legacy:") && !item.publicId.startsWith("legacy:projects:");
+    const readOnlyTitle = readOnlyLegacy ? "Registro legacy de solo lectura" : undefined;
     return (
-        <>
+        <Space size={8} wrap className="catalog-item-detail-drawer__actions">
             <Button
+                disabled={readOnlyLegacy}
+                title={readOnlyTitle}
                 icon={<EditOutlined aria-hidden="true" />}
                 onClick={() => {
                     onEdit(item);
@@ -130,6 +134,8 @@ function CatalogDetailActions({ item, error, isLoading, onEdit, onStatusAction }
             </Button>
             <Button
                 type="primary"
+                disabled={readOnlyLegacy}
+                title={readOnlyTitle}
                 icon={active ? <StopOutlined aria-hidden="true" /> : <ReloadOutlined aria-hidden="true" />}
                 onClick={() => {
                     onStatusAction(item, active ? "inactive" : "active");
@@ -137,7 +143,7 @@ function CatalogDetailActions({ item, error, isLoading, onEdit, onStatusAction }
             >
                 {active ? "Inactivar" : "Reactivar"}
             </Button>
-        </>
+        </Space>
     );
 }
 
@@ -266,12 +272,12 @@ export function CatalogItemDetailDrawer({ projectView, catalogLabel, error, isLo
                                 {
                                     key: "publicId",
                                     label: "ID CRM",
-                                    children: <CatalogDetailIdentifier value={item.publicId} />,
+                                    children: <CatalogDetailIdentifier value={item.publicId} pendingMigration={item.publicId.startsWith("legacy:")} />,
                                 },
                                 {
                                     key: "nativeCode",
                                     label: "Código nativo",
-                                    children: <CatalogDetailIdentifier value={item.nativeCode} />,
+                                    children: <CatalogDetailIdentifier value={item.nativeCode} pendingMigration={item.publicId.startsWith("legacy:")} />,
                                 },
                                 { key: "updatedAt", label: "Última actualización", children: item.updatedAt.trim() ? <time dateTime={item.updatedAt}>{new Date(item.updatedAt).toLocaleString("es-CR")}</time> : UNASSIGNED_VALUE },
                             ]}

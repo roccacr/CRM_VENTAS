@@ -263,6 +263,36 @@ export interface CrmCatalogItemTable {
     deleted_by_user_id_catalog_item: number | null;
 }
 
+export interface CrmProjectTable {
+    id_project: GeneratedNumber;
+    public_id_project: string;
+    native_code_project: string;
+    id_old_produccion_project: number | null;
+    name_project: string;
+    detail_project: string | null;
+    status_project: "active" | "inactive";
+    created_at_project: DateTime;
+    created_by_user_id_project: number | null;
+    updated_at_project: DateTime;
+    updated_by_user_id_project: number | null;
+    inactivated_at_project: DateTime | null;
+    inactivated_by_user_id_project: number | null;
+    deleted_at_project: DateTime | null;
+    deleted_by_user_id_project: number | null;
+}
+
+export interface CrmProjectExternalReferenceTable {
+    id_project_external_reference: GeneratedNumber;
+    project_id_project_external_reference: number;
+    external_system_id_project_external_reference: number;
+    external_id_project_external_reference: string;
+    status_project_external_reference: "active" | "inactive";
+    metadata_project_external_reference: string | null;
+    created_at_project_external_reference: DateTime;
+    updated_at_project_external_reference: DateTime;
+    deleted_at_project_external_reference: DateTime | null;
+}
+
 export interface CrmCatalogItemExternalReferenceTable {
     id_catalog_item_external_reference: GeneratedNumber;
     catalog_item_id_catalog_item_external_reference: number;
@@ -308,6 +338,8 @@ export interface CrmDatabase {
     int_external_system: IntExternalSystemTable;
     int_user_external_identity: IntUserExternalIdentityTable;
     crm_catalog_item: CrmCatalogItemTable;
+    crm_project: CrmProjectTable;
+    crm_project_external_reference: CrmProjectExternalReferenceTable;
     crm_catalog_item_external_reference: CrmCatalogItemExternalReferenceTable;
     audit_security_event: AuditSecurityEventTable;
 }

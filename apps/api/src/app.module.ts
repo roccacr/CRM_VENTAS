@@ -13,6 +13,7 @@ import { AuditModule } from "./modules/crm/audit/audit.module.js";
 import { CatalogsModule } from "./modules/crm/catalogs/catalogs.module.js";
 import { IdentityModule } from "./modules/crm/identity/identity.module.js";
 import { PermissionsModule } from "./modules/crm/permissions/permissions.module.js";
+import { ProjectsModule } from "./modules/crm/projects/projects.module.js";
 
 /**
  * Modulo raiz del runtime de identidad aprobado.
@@ -46,6 +47,7 @@ import { PermissionsModule } from "./modules/crm/permissions/permissions.module.
         PermissionsModule,
         IdentityModule,
         CatalogsModule,
+        ProjectsModule,
     ],
     providers: [
         {

@@ -26,6 +26,33 @@ const mockListCatalogItems = vi.mocked(listCatalogItems);
 const item = { publicId: "project_001", nativeCode: "projects_native", name: "Lomas del Valle", detail: "Project details", status: "active" as const, updatedAt: "2026-10-08T12:00:00.000Z", externalReferences: [{ externalId: "1", systemCode: "netsuite", systemName: "NetSuite", status: "active" }] };
 
 describe("CatalogItemsPage", () => {
+    it("keeps legacy Campaigns read-only even when using the enhanced Projects presentation", () => {
+        render(<CatalogItemDetailDrawer catalogLabel="Campañas" error={null} isLoading={false} item={{ ...item, publicId: "legacy:campaigns:42" }} open position={1} total={1} onClose={vi.fn()} onEdit={vi.fn()} onRefresh={vi.fn()} onStatusAction={vi.fn()} onSelectPrevious={vi.fn()} onSelectNext={vi.fn()} projectView />);
+        expect(screen.getByRole("button", { name: "Editar" })).toBeDisabled();
+        expect(screen.getByRole("button", { name: "Inactivar" })).toBeDisabled();
+    });
+
+    it("allows editing and changing status of legacy Projects without a delete action", () => {
+        const onEdit = vi.fn();
+        const onStatusAction = vi.fn();
+        render(<CatalogItemDetailDrawer catalogLabel="Proyectos" error={null} isLoading={false} item={{ ...item, publicId: "legacy:projects:42", nativeCode: "legacy_projects_42", updatedAt: "" }} open position={1} total={1} onClose={vi.fn()} onEdit={onEdit} onRefresh={vi.fn()} onStatusAction={onStatusAction} onSelectPrevious={vi.fn()} onSelectNext={vi.fn()} projectView />);
+        const edit = screen.getByRole("button", { name: "Editar" });
+        const deactivate = screen.getByRole("button", { name: "Inactivar" });
+        expect(edit).toBeEnabled();
+        expect(deactivate).toBeEnabled();
+        fireEvent.click(edit);
+        fireEvent.click(deactivate);
+        expect(onEdit).toHaveBeenCalledOnce();
+        expect(onStatusAction).toHaveBeenCalledOnce();
+        expect(screen.queryByRole("button", { name: /eliminar/i })).not.toBeInTheDocument();
+        expect(screen.queryByText("legacy:projects:42")).not.toBeInTheDocument();
+        expect(screen.queryByText("legacy_projects_42")).not.toBeInTheDocument();
+        expect(screen.getAllByText("Pendiente de migración")).toHaveLength(2);
+        expect(screen.getAllByRole("button", { name: "Copy" })).toHaveLength(1);
+        expect(onEdit).toHaveBeenCalledWith(expect.objectContaining({ publicId: "legacy:projects:42", nativeCode: "legacy_projects_42" }));
+        expect(edit.closest(".catalog-item-detail-drawer__actions")).toContainElement(deactivate);
+    });
+
     beforeEach(() => {
         installBrowserApiDoubles();
         window.localStorage.clear();
@@ -62,14 +89,14 @@ describe("CatalogItemsPage", () => {
         }
     });
 
-    it.each(ADMINISTRATION_CATALOGS)("isolates the projects presentation from $code", async (catalog) => {
+    it.each(ADMINISTRATION_CATALOGS)("limits enterprise presentation to approved catalogs: $code", async (catalog) => {
         mockListCatalogItems.mockResolvedValue({ catalog: { code: catalog.code, label: catalog.label, moduleCode: catalog.moduleCode }, items: [item], total: 1 });
         render(<CatalogItemsPage catalog={catalog} />);
         const row = (await screen.findByText(item.name)).closest("tr");
         if (!row) throw new Error("Row missing");
-        const projects = catalog.code === "projects";
-        expect(screen.getByRole("button", { name: projects ? /Nuevo proyecto/ : /Nuevo valor/ })).toBeInTheDocument();
-        expect(Boolean(screen.queryByRole("button", { name: "Actualizar proyectos" }))).toBe(projects);
+        const projects = catalog.code === "projects" || catalog.code === "campaigns";
+        expect(screen.getByRole("button", { name: catalog.code === "campaigns" ? /Nueva campaña/ : projects ? /Nuevo proyecto/ : /Nuevo valor/ })).toBeInTheDocument();
+        expect(Boolean(screen.queryByRole("button", { name: `Actualizar ${catalog.label.toLocaleLowerCase("es-CR")}` }))).toBe(projects);
         expect(Boolean(row.closest(".catalog-items-page--projects"))).toBe(projects);
         await waitFor(() => {
             expect(Boolean(within(row).queryByText("Odoo"))).toBe(projects);
@@ -155,11 +182,46 @@ describe("CatalogItemsPage", () => {
     });
 
     it("does not apply the project skeleton to other catalogs", () => {
-        const catalog = ADMINISTRATION_CATALOGS.find((entry) => entry.code !== "projects");
+        const catalog = ADMINISTRATION_CATALOGS.find((entry) => entry.code !== "projects" && entry.code !== "campaigns");
         if (!catalog) throw new Error("Catalog missing");
         mockListCatalogItems.mockReturnValue(new Promise(() => {}));
         render(<CatalogItemsPage catalog={catalog} />);
         expect(screen.queryByRole("status", { name: "Cargando proyectos" })).not.toBeInTheDocument();
+    });
+
+    it("uses campaign-specific loading and create form with the shared enterprise layout", async () => {
+        const catalog = ADMINISTRATION_CATALOGS.find((entry) => entry.code === "campaigns");
+        if (!catalog) throw new Error("Campaigns catalog missing");
+        mockListCatalogItems.mockReturnValue(new Promise(() => {}));
+        render(<CatalogItemsPage catalog={catalog} />);
+        expect(screen.getByRole("status", { name: "Cargando campañas" })).toHaveTextContent("Cargando campañas...");
+        fireEvent.click(screen.getByRole("button", { name: /Nueva campaña/ }));
+        const dialog = await screen.findByRole("dialog");
+        expect(dialog.closest(".catalog-items-modal--projects")).not.toBeNull();
+        expect(within(dialog).getByRole("group", { name: "NetSuite" })).toBeInTheDocument();
+        expect(within(dialog).getByRole("group", { name: "Odoo" })).toBeInTheDocument();
+    });
+
+    it("renders campaign data and signed NetSuite identifiers in the table and drawer", async () => {
+        const catalog = ADMINISTRATION_CATALOGS.find((entry) => entry.code === "campaigns");
+        if (!catalog) throw new Error("Campaigns catalog missing");
+        const campaign = { ...item, publicId: "campaign_001", nativeCode: "campaigns_default", name: "Campaña predeterminada", externalReferences: [{ externalId: "-5", systemCode: "netsuite", systemName: "NetSuite", status: "active" }] };
+        mockListCatalogItems.mockResolvedValue({ catalog: { code: catalog.code, label: catalog.label, moduleCode: catalog.moduleCode }, items: [campaign], total: 1 });
+        render(<CatalogItemsPage catalog={catalog} />);
+        const row = await screen.findByRole("row", { name: `Ver detalle de ${campaign.name}` });
+        expect(screen.getByRole("columnheader", { name: /^Campaña/ })).toBeInTheDocument();
+        expect(screen.getByPlaceholderText("Buscar en Campañas")).toBeInTheDocument();
+        expect(await within(row).findByText("-5")).toBeInTheDocument();
+        expect(within(row).getByText("Odoo")).toBeInTheDocument();
+        fireEvent.click(row);
+        const drawer = await screen.findByRole("dialog");
+        expect(within(drawer).getByText("-5")).toBeInTheDocument();
+        expect(drawer.closest(".catalog-item-detail-drawer--projects")).not.toBeNull();
+        fireEvent.click(within(drawer).getByRole("button", { name: "Editar" }));
+        const edit = (await screen.findByRole("button", { name: /Guardar cambios/ })).closest('[role="dialog"]');
+        if (!(edit instanceof HTMLElement)) throw new Error("Edit dialog missing");
+        expect(within(edit).getByRole("heading", { name: "Editar campaña" })).toBeInTheDocument();
+        expect(within(edit).getByRole("textbox", { name: /ID NetSuite/ })).toHaveValue("-5");
     });
 
     it("recovers an initial projects failure from the list refresh control", async () => {
@@ -425,11 +487,13 @@ describe("CatalogItemsPage", () => {
         expect(within(drawer).getByRole("heading", { name: item.name })).toBeInTheDocument();
     });
 
-    it("submits project edits without blank Odoo references and keeps the form connected", async () => {
+    it("submits legacy project edits without blank Odoo references and follows the promoted identity", async () => {
         const warning = vi.spyOn(console, "error");
         const catalog = ADMINISTRATION_CATALOGS[0];
         if (!catalog) throw new Error("Catalog missing");
-        mockListCatalogItems.mockResolvedValue({ catalog: { code: catalog.code, label: catalog.label, moduleCode: catalog.moduleCode }, items: [item], total: 1 });
+        const legacyItem = { ...item, publicId: "legacy:projects:42" };
+        const responseCatalog = { code: catalog.code, label: catalog.label, moduleCode: catalog.moduleCode };
+        mockListCatalogItems.mockResolvedValueOnce({ catalog: responseCatalog, items: [legacyItem], total: 1 }).mockResolvedValue({ catalog: responseCatalog, items: [item], total: 1 });
         vi.mocked(updateCatalogItem).mockResolvedValue(item);
         render(<CatalogItemsPage catalog={catalog} />);
         const row = (await screen.findByText(item.name)).closest("tr");
@@ -445,7 +509,11 @@ describe("CatalogItemsPage", () => {
         fireEvent.change(within(form).getByRole("textbox", { name: "Motivo de auditoría" }), { target: { value: "Project correction authorized" } });
         fireEvent.click(screen.getByRole("button", { name: /Guardar cambios/ }));
         await waitFor(() => {
-            expect(updateCatalogItem).toHaveBeenCalledWith(catalog.code, item.publicId, expect.objectContaining({ externalReferences: [{ systemCode: "netsuite", externalId: "1" }], reason: "Project correction authorized" }));
+            expect(updateCatalogItem).toHaveBeenCalledWith(catalog.code, legacyItem.publicId, expect.objectContaining({ externalReferences: [{ systemCode: "netsuite", externalId: "1" }], reason: "Project correction authorized" }));
+        });
+        await waitFor(() => {
+            expect(screen.queryByRole("button", { name: /Guardar cambios/ })).not.toBeInTheDocument();
+            expect(screen.getByText(item.publicId)).toBeInTheDocument();
         });
         expect(warning.mock.calls.flat().join(" ")).not.toContain("is not connected to any Form element");
         warning.mockRestore();

@@ -171,7 +171,11 @@ export const listCatalogItems = async (catalogCode: CatalogCode, options: ListCa
     }
 
     const path = `/catalogs/${encodeURIComponent(catalogCode)}/items${query.size > 0 ? `?${query.toString()}` : ""}`;
-    return parseCatalogItemsResponse(await apiRequest<unknown>(path));
+    const response = await apiRequest<unknown>(path);
+    if (import.meta.env.DEV) {
+        console.log(`[Catalog API: ${catalogCode}] Incoming JSON`, response);
+    }
+    return parseCatalogItemsResponse(response);
 };
 
 /**

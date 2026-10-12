@@ -299,6 +299,8 @@ const envSchema = z
         AUDIT_HASH_SECRET: z.string().min(MIN_RUNTIME_SECRET_LENGTH),
         AUTH_TOKEN_HASH_SECRET: z.string().min(MIN_RUNTIME_SECRET_LENGTH),
         OPENAPI_ENABLED: booleanEnvSchema("false"),
+        ENABLE_LEGACY_FALLBACK: booleanEnvSchema("false"),
+        LEGACY_CRM_DB_NAME: z.preprocess((value) => (value === "" ? undefined : value), z.literal("crmdatabase-api").optional()),
         TRUSTED_PROXY_IPS: z
             .string()
             .optional()
