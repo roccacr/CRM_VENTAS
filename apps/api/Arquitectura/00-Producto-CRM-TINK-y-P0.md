@@ -1,5 +1,19 @@
 # 00 - Ley de Producto CRM TINK y P0
 
+## Owner-Authorized Campaigns Parity - 2026-10-12
+
+The owner explicitly extends the existing Projects exception to Campaigns in this
+request. Campaigns owns `crm_campaign`, `crm_campaign_external_reference`, and
+`src/modules/crm/campaigns/`; legacy SQL stays under
+`src/integrations/legacy-crm/campaigns/`. Native-first merging excludes migrated
+legacy IDs. Create, edit/promotion and status changes follow Projects through the
+same `ENABLE_LEGACY_FALLBACK` gate and optional domain-owned port. Same-server
+InnoDB transactions cover native data, legacy data and audit; no delete operation,
+credential changes, business seeds or unrelated domains are authorized. The
+separate legacy reader pool remains read-only. This scoped approval supersedes
+older Campaigns read-only/shared-storage wording; it does not authorize deployment.
+See document 35 for the exact schema, nullable legacy reference and verification.
+
 ## Corte de continuidad 2026-10-08
 
 La cabecera 0.3.28 siguiente conserva el corte historico de autenticacion. Las instrucciones posteriores del propietario en la conversacion aprobaron usuarios administrativos, roles/permisos, auditoria y siete catalogos compartidos con permisos scoped por modulo. Este addendum registra ese alcance sin atribuir una nueva firma o aprobacion de produccion.
@@ -443,6 +457,25 @@ producto -> identidad/usuarios/roles -> contrato canonico minimo -> modelo MySQL
 ```
 
 Invertir el orden se considera volver a empujar codigo antes de entender el producto.
+
+## Brokers Scoped Approval (2026-10-12)
+
+The owner explicitly authorized Brokers parity with Projects, Campaigns, Classes,
+Locations and Subsidiaries: dedicated native tables, API, legacy adapter and UI.
+Only the four essential legacy `corredores` fields participate. No obsolete-field
+import, seed, cleanup, deployment or actual legacy-write verification is included.
+Authentication, scoped permissions, audit and the global legacy switch remain
+mandatory. This approval does not extend to other business modules.
+
+## Unit Files Scoped Approval (2026-10-12)
+
+The owner authorized the migration plan, dedicated Unit Files native schema,
+canonical project/provider resolution, read/search/detail/comparison API and
+view. Legacy `expedientes` remains read-only. Preserve all source information;
+do not fabricate unresolved project relationships. Only verified native project
+identity preparation is included. Unit mutation, legacy writes, production
+index changes, deployment and inventory migration require later approval.
+See architecture 35 for the applied migrations and reconciliation blockers.
 
 ## Criterio de salida
 

@@ -13,10 +13,9 @@ import "datatables.net-select-dt";
 
 import Button from "antd/es/button";
 import Empty from "antd/es/empty";
-import Skeleton from "antd/es/skeleton";
 import DT from "datatables.net-dt";
-import DataTable, { type DataTableProps } from "datatables.net-react";
-import { type CSSProperties, type Dispatch, type MouseEvent, type SetStateAction, useEffect, useRef, useState } from "react";
+import DataTable, { type DataTableProps, type DataTableRef } from "datatables.net-react";
+import { type CSSProperties, type Dispatch, type MouseEvent, type RefObject, type SetStateAction, useEffect, useMemo, useRef, useState } from "react";
 
 import { type DataTableSearchPaneField, type DataTableSearchPanesConfig, readDataTableState, SYSTEM_USERS_DATATABLE_STATE_KEY, useDataTableSearchPanes, writeDataTableState } from "../hooks/useDataTableSearchPanes";
 import { copyTextToClipboard, getPrimaryActionLabel, getPrimaryStatusUpdateTarget, getRelativeActivityLabel, getRiskStatusUpdateTarget, PROVIDER_LABELS, STATUS_HELP_TEXT, STATUS_LABELS, type SystemUserListItem, type SystemUsersLoadState, type SystemUserStatusUpdateTarget } from "../system-users.model";
@@ -32,6 +31,8 @@ interface SystemUsersDataTableProps {
     readonly onEditUser: (user: SystemUserListItem) => void;
     readonly onOpenUser: (user: SystemUserListItem) => void;
     readonly onStatusAction: (user: SystemUserListItem, status: SystemUserStatusUpdateTarget) => void;
+    /** Correos en el orden y filtro aplicados, para que el detalle recorra lo mismo que se ve. */
+    readonly onVisibleOrderChange?: ((emails: readonly string[]) => void) | undefined;
     readonly selectedUserEmail: string | null;
     readonly users: readonly SystemUserListItem[];
 }
@@ -45,6 +46,8 @@ type SystemUserDataTableRow = SystemUserListItem & {
 };
 
 type DataTableColumn = NonNullable<DataTableProps["columns"]>[number];
+type DataTableSettings = ConstructorParameters<typeof DT.Api>[0];
+type DataTableApi = InstanceType<typeof DT.Api>;
 
 interface DataTableClickContext {
     readonly onOpenUser: (user: SystemUserListItem) => void;
@@ -67,6 +70,29 @@ const MENU_OPEN_ROW_CLASS = "administration-users-table__row--menu-open";
 const SELECTED_ROW_CLASS = "administration-users-table__row--selected";
 const PAGE_LENGTH_OPTIONS = [10, 25, 50, 100];
 const IS_TEST_RUNTIME = import.meta.env.MODE === "test";
+const TOOLBAR_ROW_CLASS = "dt-layout-row projects-view-toolbar";
+/** Etiquetas de cada celda en la tarjeta móvil, en el orden de las columnas. */
+const COLUMN_FIELD_LABELS = ["Usuario", "Estado", "Rol", "Acceso", "Última actividad", "Acciones"];
+const MOBILE_SORT_OPTIONS = [
+    { label: "Usuario: A a Z", value: "0,asc" },
+    { label: "Usuario: Z a A", value: "0,desc" },
+    { label: "Estado: A a Z", value: "1,asc" },
+    { label: "Estado: Z a A", value: "1,desc" },
+    { label: "Rol: A a Z", value: "2,asc" },
+    { label: "Rol: Z a A", value: "2,desc" },
+    { label: "Acceso: A a Z", value: "3,asc" },
+    { label: "Acceso: Z a A", value: "3,desc" },
+    { label: "Última actividad: más reciente", value: "4,desc" },
+    { label: "Última actividad: más antigua", value: "4,asc" },
+];
+/** Textos de lector de pantalla y tooltips que DataTables y SearchPanes anuncian en inglés por defecto. */
+const ARIA_LANGUAGE = {
+    orderable: ": activar para ordenar",
+    orderableRemove: ": activar para quitar el orden",
+    orderableReverse: ": activar para invertir el orden",
+    paginate: { first: "Primera página", last: "Última página", next: "Página siguiente", previous: "Página anterior" },
+};
+const PANE_BUTTON_LANGUAGE = { clearPane: "Limpiar selección", clearSearch: "Limpiar búsqueda", collapse: "Mostrar u ocultar filtro", orderByCount: "Ordenar por cantidad", orderByLabel: "Ordenar por nombre" };
 const ELLIPSIS_ICON = '<svg aria-hidden="true" viewBox="0 0 16 16" width="16" height="16" fill="currentColor"><circle cx="3.5" cy="8" r="1.3"/><circle cx="8" cy="8" r="1.3"/><circle cx="12.5" cy="8" r="1.3"/></svg>';
 const MICROSOFT_MARK = '<span class="administration-users-provider__microsoft-mark" aria-hidden="true"><span></span><span></span><span></span><span></span></span>';
 
@@ -136,10 +162,12 @@ const DATATABLE_COLUMNS: DataTableColumn[] = [
 function SystemUsersDataTableEmptyState({ loadState, onClearFilters }: { readonly loadState: SystemUsersLoadState; readonly onClearFilters: () => void }) {
     if (loadState === "loading") {
         return (
-            <div className="administration-users-empty" role="status" aria-live="polite">
-                <Skeleton active avatar title={false} paragraph={{ rows: 3 }} />
-                <strong>Cargando información de usuarios</strong>
-                <span>Preparando el directorio antes de mostrar resultados.</span>
+            <div className="projects-view-load-canvas" aria-busy="true">
+                <div className="projects-view-loader" data-loading="true" role="status" aria-live="polite">
+                    <span className="projects-view-loader__ring" aria-hidden="true" />
+                    <span className="projects-view-loader__title">Cargando información de usuarios</span>
+                    <span className="projects-view-loader__caption">Sincronizando directorio, roles y accesos</span>
+                </div>
             </div>
         );
     }
@@ -164,6 +192,17 @@ function SystemUsersDataTableEmptyState({ loadState, onClearFilters }: { readonl
     );
 }
 
+/**
+ * Búsqueda y filtros en una sola fila de herramientas sobre la tabla, sin los
+ * botones de orden del plugin. jsdom no ejecuta SearchPanes: en pruebas la
+ * misma fila lleva solo la búsqueda.
+ */
+const getTableLayout = (layout: DataTableSearchPanesConfig["layout"]) => {
+    if (IS_TEST_RUNTIME) return { bottomEnd: ["pageLength", "paging"], bottomStart: "info", top: { features: ["search"], rowClass: TOOLBAR_ROW_CLASS }, topEnd: null, topStart: null };
+    const top = (layout as { readonly top?: { readonly searchPanes?: Record<string, unknown> } }).top;
+    return { ...layout, top: { features: ["search", { searchPanes: { ...top?.searchPanes, orderable: false } }], rowClass: TOOLBAR_ROW_CLASS }, top1Start: null };
+};
+
 const getDatatableOptions = (loadState: SystemUsersLoadState, highlightedPublicId: string | null, searchPanesConfig: DataTableSearchPanesConfig): NonNullable<DataTableProps["options"]> => {
     const options = {
         autoWidth: false,
@@ -171,17 +210,13 @@ const getDatatableOptions = (loadState: SystemUsersLoadState, highlightedPublicI
         createdRow: (row: HTMLTableRowElement, data: SystemUserDataTableRow) => {
             row.dataset.userEmail = data.email;
             row.classList.toggle("administration-users-table__row--new", data.publicId === highlightedPublicId);
+            Array.from(row.cells).forEach((cell, index) => {
+                cell.dataset.projectField = COLUMN_FIELD_LABELS[index] ?? "";
+            });
         },
         destroy: true,
         language: {
-            aria: {
-                paginate: {
-                    first: "Primera página",
-                    last: "Última página",
-                    next: "Página siguiente",
-                    previous: "Página anterior",
-                },
-            },
+            aria: ARIA_LANGUAGE,
             emptyTable: loadState === "error" ? "No pudimos cargar usuarios." : "Sin resultados.",
             info: "_START_–_END_ de _TOTAL_ usuarios",
             infoEmpty: "0 usuarios",
@@ -196,6 +231,7 @@ const getDatatableOptions = (loadState: SystemUsersLoadState, highlightedPublicI
             },
             search: "Buscar:",
             searchPanes: {
+                buttons: PANE_BUTTON_LANGUAGE,
                 clearMessage: "Limpiar",
                 collapse: {
                     0: "Filtros",
@@ -204,23 +240,17 @@ const getDatatableOptions = (loadState: SystemUsersLoadState, highlightedPublicI
                 collapseMessage: "Contraer",
                 count: "{total}",
                 countFiltered: "{shown} de {total}",
+                emptyMessage: "Sin asignar",
                 emptyPanes: "No hay filtros disponibles",
                 loadMessage: "Cargando filtros...",
                 showMessage: "Expandir",
-                title: "Filtros activos: %d",
+                // Un título vacío oculta el contador hasta que haya un filtro activo.
+                title: { 0: "", _: "Filtros activos: %d" },
             },
             searchPlaceholder: "Buscar usuarios",
             zeroRecords: "Sin usuarios para los filtros seleccionados.",
         },
-        layout: IS_TEST_RUNTIME
-            ? {
-                  bottomEnd: ["pageLength", "paging"],
-                  bottomStart: "info",
-                  top1Start: "search",
-                  topEnd: null,
-                  topStart: null,
-              }
-            : searchPanesConfig.layout,
+        layout: getTableLayout(searchPanesConfig.layout),
         lengthMenu: PAGE_LENGTH_OPTIONS,
         order: [[0, "asc"]],
         pageLength: 10,
@@ -413,22 +443,64 @@ function SystemUsersOpenActionMenu({ actionMenu, onClose, onEditUser, onOpenUser
     return <SystemUsersActionMenu position={actionMenu.position} user={actionMenuUser} onEditUser={onEditUser} onOpenUser={onOpenUser} onStatusAction={onStatusAction} onClose={onClose} />;
 }
 
+/** La fila de filtros se anuncia como un grupo y su contador como región viva. */
+const labelFilterToolbar = (container: HTMLElement | null): void => {
+    const titleRow = container?.querySelector(".dtsp-titleRow");
+    titleRow?.setAttribute("role", "group");
+    titleRow?.setAttribute("aria-label", "Controles de filtros de usuarios");
+    container?.querySelector(".dtsp-title")?.setAttribute("aria-live", "polite");
+};
+
+/** Sin encabezados visibles en móvil, este selector reemplaza el orden por columna. */
+function SystemUsersMobileSort({ selectRef, tableRef }: { readonly selectRef: RefObject<HTMLSelectElement | null>; readonly tableRef: RefObject<DataTableRef | null> }) {
+    return (
+        <label className="projects-view-mobile-sort">
+            Ordenar usuarios
+            <select
+                ref={selectRef}
+                defaultValue="0,asc"
+                onChange={(event) => {
+                    const [column, direction] = event.currentTarget.value.split(",");
+                    tableRef.current
+                        ?.dt()
+                        ?.order([Number(column), direction === "desc" ? "desc" : "asc"])
+                        .draw();
+                }}
+            >
+                <option value="" disabled>
+                    Orden personalizado
+                </option>
+                {MOBILE_SORT_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                        {option.label}
+                    </option>
+                ))}
+            </select>
+        </label>
+    );
+}
+
 /** Tabla de usuarios con DataTables, paginación local y SearchPanes en runtime real. */
-export function SystemUsersDataTable({ highlightedPublicId, loadState, onClearFilters, onEditUser, onOpenUser, onStatusAction, selectedUserEmail, users }: SystemUsersDataTableProps) {
-    const tableRows = users.map(toDataTableRow);
+export function SystemUsersDataTable({ highlightedPublicId, loadState, onClearFilters, onEditUser, onOpenUser, onStatusAction, onVisibleOrderChange, selectedUserEmail, users }: SystemUsersDataTableProps) {
+    // Un arreglo nuevo hace que el wrapper borre y vuelva a crear todas las filas en cada render del padre.
+    const tableRows = useMemo(() => users.map(toDataTableRow), [users]);
 
     if (tableRows.length === 0) {
         return <SystemUsersDataTableEmptyState loadState={loadState} onClearFilters={onClearFilters} />;
     }
 
-    return <SystemUsersDataTableContent highlightedPublicId={highlightedPublicId} loadState={loadState} selectedUserEmail={selectedUserEmail} tableRows={tableRows} onEditUser={onEditUser} onOpenUser={onOpenUser} onStatusAction={onStatusAction} />;
+    return <SystemUsersDataTableContent highlightedPublicId={highlightedPublicId} loadState={loadState} selectedUserEmail={selectedUserEmail} tableRows={tableRows} onEditUser={onEditUser} onOpenUser={onOpenUser} onStatusAction={onStatusAction} onVisibleOrderChange={onVisibleOrderChange} />;
 }
 
-function SystemUsersDataTableContent({ highlightedPublicId, loadState, onEditUser, onOpenUser, onStatusAction, selectedUserEmail, tableRows }: SystemUsersDataTableContentProps & { readonly loadState: SystemUsersLoadState }) {
+function SystemUsersDataTableContent({ highlightedPublicId, loadState, onEditUser, onOpenUser, onStatusAction, onVisibleOrderChange, selectedUserEmail, tableRows }: SystemUsersDataTableContentProps & { readonly loadState: SystemUsersLoadState }) {
     const [actionMenu, setActionMenu] = useState<ActionMenuState | null>(null);
     const wrapRef = useRef<HTMLDivElement>(null);
+    const tableRef = useRef<DataTableRef>(null);
+    const mobileSortRef = useRef<HTMLSelectElement>(null);
+    const reportedOrderRef = useRef("");
     const searchPanesConfig = useDataTableSearchPanes({ disabledColumnIndexes: SEARCH_PANE_DISABLED_COLUMNS, fields: SEARCH_PANE_FIELDS, panesPerRow: 3 });
     const userByEmail = new Map(tableRows.map((user) => [user.email, user]));
+    const tableData = useMemo(() => [...tableRows], [tableRows]);
     const menuOpenEmail = actionMenu?.email ?? null;
 
     const activeEmailsRef = useRef({ menuOpenEmail, selectedUserEmail });
@@ -439,8 +511,22 @@ function SystemUsersDataTableContent({ highlightedPublicId, loadState, onEditUse
         syncActiveRows(wrapRef.current, menuOpenEmail, selectedUserEmail);
     });
 
-    const syncActiveRowsOnDraw = (): void => {
+    const reportVisibleOrder = (api: DataTableApi): void => {
+        if (!onVisibleOrderChange) return;
+        const emails = (api.rows({ order: "applied", search: "applied" }).data().toArray() as SystemUserDataTableRow[]).map((user) => user.email);
+        const signature = emails.join("|");
+        if (signature === reportedOrderRef.current) return;
+        reportedOrderRef.current = signature;
+        onVisibleOrderChange(emails);
+    };
+
+    // El wrapper enlaza este handler una sola vez y el primer draw ocurre antes de asignar su ref: la API sale de los settings del evento.
+    const syncActiveRowsOnDraw = (_event: unknown, settings: DataTableSettings): void => {
+        const api = new DT.Api(settings);
         syncActiveRows(wrapRef.current, activeEmailsRef.current.menuOpenEmail, activeEmailsRef.current.selectedUserEmail);
+        labelFilterToolbar(wrapRef.current);
+        if (mobileSortRef.current) mobileSortRef.current.value = api.order().toString();
+        reportVisibleOrder(api);
     };
 
     return (
@@ -461,7 +547,8 @@ function SystemUsersDataTableContent({ highlightedPublicId, loadState, onEditUse
                     setActionMenu(null);
                 }}
             />
-            <DataTable key={`${tableRows.map((user) => user.publicId).join("|")}:${highlightedPublicId ?? ""}`} className="administration-users-datatable" columns={DATATABLE_COLUMNS} data={[...tableRows]} options={getDatatableOptions(loadState, highlightedPublicId, searchPanesConfig)} onDraw={syncActiveRowsOnDraw}>
+            <SystemUsersMobileSort selectRef={mobileSortRef} tableRef={tableRef} />
+            <DataTable ref={tableRef} key={`${tableRows.map((user) => user.publicId).join("|")}:${highlightedPublicId ?? ""}`} className="administration-users-datatable" columns={DATATABLE_COLUMNS} data={tableData} options={getDatatableOptions(loadState, highlightedPublicId, searchPanesConfig)} onDraw={syncActiveRowsOnDraw}>
                 <thead>
                     <tr>
                         <th>Usuario</th>

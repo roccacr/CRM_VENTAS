@@ -12,6 +12,13 @@ import { identityRoleSecurityModelMigration } from "../migrations/schema-only/20
 import { crmCatalogsMigration } from "../migrations/schema-only/202610030007_crm_catalogs.js";
 import { administrationOwnerRepairMigration } from "../migrations/schema-only/202610080008_administration_owner_repair.js";
 import { projectsDomainMigration } from "../migrations/schema-only/202610090009_projects_domain.js";
+import { campaignsDomainMigration } from "../migrations/schema-only/202610120010_campaigns_domain.js";
+import { classesDomainMigration } from "../migrations/schema-only/202610120011_classes_domain.js";
+import { locationsDomainMigration } from "../migrations/schema-only/202610120012_locations_domain.js";
+import { subsidiariesDomainMigration } from "../migrations/schema-only/202610120013_subsidiaries_domain.js";
+import { brokersDomainMigration } from "../migrations/schema-only/202610120014_brokers_domain.js";
+import { unitFilesDomainMigration } from "../migrations/schema-only/202610120015_unit_files_domain.js";
+import { unitFilesNamingMigration } from "../migrations/schema-only/202610120016_unit_files_naming.js";
 import { addDatabaseTlsIssues, booleanEnvSchema, tcpPortSchema } from "../src/config/database-env.schema.js";
 import { APPROVED_DATABASE_NAME } from "../src/config/product.constants.js";
 import { buildMysqlPoolOptions } from "../src/database/mysql-pool-options.js";
@@ -25,7 +32,7 @@ type Migration = {
     up: (db: Kysely<unknown>) => Promise<void>;
 };
 
-export const schemaMigrations: Migration[] = [identitySchemaMigration, identityLoginReadinessMigration, identityMicrosoftSessionMigration, identityUserDirectoryMigration, identityRoleSecurityModelMigration, crmCatalogsMigration, administrationOwnerRepairMigration, projectsDomainMigration];
+export const schemaMigrations: Migration[] = [identitySchemaMigration, identityLoginReadinessMigration, identityMicrosoftSessionMigration, identityUserDirectoryMigration, identityRoleSecurityModelMigration, crmCatalogsMigration, administrationOwnerRepairMigration, projectsDomainMigration, campaignsDomainMigration, classesDomainMigration, locationsDomainMigration, subsidiariesDomainMigration, brokersDomainMigration, unitFilesDomainMigration, unitFilesNamingMigration];
 
 /** Targeted cutovers avoid replaying unrelated security repairs after a deliberate ledger reset. */
 export const selectSchemaMigrations = (name?: string): Migration[] => {

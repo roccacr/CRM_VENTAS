@@ -1,194 +1,242 @@
-/**
- * Consulta de auditoría de roles y permisos.
- *
- * Lee el catálogo de seguridad y filtra en pantalla los eventos que el API ya
- * devolvió. No autoriza cambios: esta vista solo muestra actor, alcance y motivo.
- */
+/** Criteria-first audit history; reads only the selected module/section batch. */
 import "./SecurityAuditPage.css";
 
+import LeftOutlined from "@ant-design/icons/LeftOutlined";
+import ReloadOutlined from "@ant-design/icons/ReloadOutlined";
+import RightOutlined from "@ant-design/icons/RightOutlined";
 import SearchOutlined from "@ant-design/icons/SearchOutlined";
-import { useEffect, useMemo, useState } from "react";
+import Button from "antd/es/button";
+import ConfigProvider from "antd/es/config-provider";
+import Input from "antd/es/input";
+import Select from "antd/es/select";
+import { useEffect, useRef, useState } from "react";
 
-import { getIdentitySecurityCatalog } from "../../../services/auth/auth-service";
-import type { IdentitySecurityAuditItem, IdentityUser } from "../../../services/auth/identity-contracts";
+import type { IdentityUser } from "../../../services/auth/identity-contracts";
+import { PROJECTS_THEME } from "../catalogs/projects-theme";
+import { type AuditFilter, type AuditOptions, type AuditPage, getAuditOptions, getAuditPage } from "./security-audit.api";
+import { SecurityAuditDataTable } from "./SecurityAuditDataTable";
+import { SecurityAuditDetailDrawer } from "./SecurityAuditDetailDrawer";
 
-/** Opción de los filtros de módulo y rol. El código es el del API; el nombre es el visible. */
-interface AuditOption {
-    readonly code: string;
-    readonly name: string;
+/** Session-owned caches are memory-only and expire; no log data enters localStorage. */
+export function SecurityAuditPage({ currentUser }: { readonly currentUser: IdentityUser }) {
+    return (
+        <ConfigProvider theme={PROJECTS_THEME}>
+            <AuditContent key={currentUser.publicId} />
+        </ConfigProvider>
+    );
 }
-
-/** Fecha del evento en formato de Costa Rica. El valor original se conserva en `dateTime`. */
-const formatAuditDate = (value: string): string => new Date(value).toLocaleString("es-CR");
-
-/** Mensaje de carga. Si el fallo no es un `Error`, se usa un texto neutro. */
-const getErrorMessage = (error: unknown): string => (error instanceof Error ? error.message : "No se pudo cargar la auditoría.");
-
-/** Nombres de rol separados por coma. Un código desconocido se muestra tal cual. */
-const formatRoleScope = (roleCode: string | null, roleNameByCode: ReadonlyMap<string, string>): string => {
-    if (!roleCode) {
-        return "Sin rol específico";
-    }
-
-    return roleCode
-        .split(", ")
-        .map((code) => roleNameByCode.get(code) ?? code)
-        .join(", ");
-};
-
-/** Búsqueda local sobre actor, motivo, rol, resumen y módulos. No vuelve a llamar al API. */
-const matchesFilter = (event: IdentitySecurityAuditItem, query: string): boolean => {
-    if (!query) {
-        return true;
-    }
-
-    return [event.actorName, event.eventType, event.reason, event.roleCode, event.summary, event.targetName, ...event.moduleCodes].filter(Boolean).join(" ").toLowerCase().includes(query);
-};
-
-/**
- * Vista de cambios de roles, módulos y permisos.
- *
- * `currentUser` llega por el contrato de ruta y no se usa: la auditoría muestra
- * al actor de cada evento, no al usuario que está consultando.
- */
-export function SecurityAuditPage({ currentUser: _currentUser }: { readonly currentUser: IdentityUser }) {
-    const [events, setEvents] = useState<readonly IdentitySecurityAuditItem[]>([]);
-    const [modules, setModules] = useState<readonly AuditOption[]>([]);
-    const [roles, setRoles] = useState<readonly AuditOption[]>([]);
-    const [moduleFilter, setModuleFilter] = useState("");
-    const [query, setQuery] = useState("");
-    const [roleFilter, setRoleFilter] = useState("");
-    const [errorMessage, setErrorMessage] = useState<string | null>(null);
-    const [isLoading, setIsLoading] = useState(true);
-
+// Loading, independent primary filters and bounded pagination are separate UI states.
+// eslint-disable-next-line complexity
+function AuditContent() {
+    const [options, setOptions] = useState<AuditOptions>();
+    const [detailId, setDetailId] = useState<string>();
+    const [moduleCode, setModule] = useState("");
+    const [sectionCode, setSection] = useState("");
+    const [catalogCode, setCatalog] = useState<string>();
+    const [search, setSearch] = useState("");
+    const [limit, setLimit] = useState(100);
+    const [active, setActive] = useState<AuditFilter>();
+    const [page, setPage] = useState<AuditPage>();
+    const [index, setIndex] = useState(0);
+    const [cursors, setCursors] = useState<(string | undefined)[]>([undefined]);
+    const [busy, setBusy] = useState(false);
+    const [error, setError] = useState("");
+    const sequence = useRef(0);
+    const cache = useRef(new Map<string, { at: number; page: AuditPage }>());
     useEffect(() => {
-        let cancelled = false;
-
-        getIdentitySecurityCatalog()
-            .then((catalog) => {
-                if (cancelled) {
-                    return;
-                }
-
-                setEvents(catalog.auditEvents);
-                setModules(catalog.modules.map((module) => ({ code: module.code, name: module.name })));
-                setRoles(catalog.roles.map((role) => ({ code: role.code, name: role.name })));
-                setErrorMessage(null);
+        let live = true;
+        getAuditOptions()
+            .then((result) => {
+                if (live) setOptions(result);
             })
-            .catch((error: unknown) => {
-                if (!cancelled) {
-                    setErrorMessage(getErrorMessage(error));
-                }
-            })
-            .finally(() => {
-                if (!cancelled) {
-                    setIsLoading(false);
-                }
+            .catch(() => {
+                if (live) setError("No pudimos cargar los módulos de auditoría.");
             });
-
         return () => {
-            cancelled = true;
+            live = false;
+            // Request ownership, not a DOM ref: invalidate the latest in-flight request on unmount.
+            // eslint-disable-next-line react-hooks/exhaustive-deps
+            sequence.current++;
         };
     }, []);
-
-    const moduleNameByCode = useMemo(() => new Map(modules.map((module) => [module.code, module.name])), [modules]);
-    const roleNameByCode = useMemo(() => new Map(roles.map((role) => [role.code, role.name])), [roles]);
-    const normalizedQuery = query.trim().toLowerCase();
-    const filteredEvents = useMemo(
-        () =>
-            events.filter((event) => {
-                const matchesModule = !moduleFilter || event.moduleCodes.includes(moduleFilter);
-                const matchesRole = !roleFilter || event.roleCode === roleFilter || event.roleCode?.split(", ").includes(roleFilter);
-
-                return matchesModule && matchesRole && matchesFilter(event, normalizedQuery);
-            }),
-        [events, moduleFilter, normalizedQuery, roleFilter],
-    );
-
+    function clearView() {
+        setDetailId(undefined);
+        sequence.current++;
+        setPage(undefined);
+        setActive(undefined);
+        setBusy(false);
+        setError("");
+        setIndex(0);
+        setCursors([undefined]);
+    }
+    // Cache freshness, eviction, request ownership and failure/loading states are independent.
+    // eslint-disable-next-line complexity
+    async function load(filter: AuditFilter, nextIndex: number, history: (string | undefined)[], refresh = false) {
+        const request = ++sequence.current;
+        if (refresh) cache.current.clear();
+        const key = JSON.stringify(filter);
+        const cached = cache.current.get(key);
+        const reusable = cached && Date.now() - cached.at < 30_000;
+        setError("");
+        setBusy(!reusable);
+        try {
+            const result = reusable ? cached.page : await getAuditPage(filter);
+            if (request !== sequence.current) return;
+            cache.current.delete(key);
+            cache.current.set(key, { at: Date.now(), page: result });
+            if (cache.current.size > 20) {
+                const oldest = cache.current.keys().next().value;
+                if (oldest !== undefined) cache.current.delete(oldest);
+            }
+            setActive(filter);
+            setPage(result);
+            setIndex(nextIndex);
+            setCursors(history);
+        } catch {
+            if (request === sequence.current) setError("No pudimos cargar esta página de auditoría. Intenta nuevamente.");
+        } finally {
+            if (request === sequence.current) setBusy(false);
+        }
+    }
+    const module = options?.modules.find((item) => item.code === moduleCode);
     return (
         <div className="security-audit-page">
-            <section className="security-audit-header" aria-labelledby="security-audit-title">
+            <header className="security-audit-header">
                 <div>
                     <span>Administración / Auditoría</span>
-                    <h1 id="security-audit-title">Auditoría de roles y permisos</h1>
-                    <p>Consulta quién cambió roles, módulos y permisos, con motivo auditable.</p>
+                    <h1>Auditoría</h1>
+                    <p>Consulta de eventos por módulo y sección.</p>
                 </div>
-            </section>
-
-            <section className="security-audit-toolbar" aria-label="Filtros de auditoría">
-                <label className="security-audit-search">
-                    <SearchOutlined />
-                    <input
-                        placeholder="Buscar actor, usuario, motivo o evento"
-                        value={query}
-                        onChange={(event) => {
-                            setQuery(event.target.value);
+                <Button
+                    aria-label="Actualizar auditoría"
+                    title="Actualizar auditoría"
+                    icon={<ReloadOutlined />}
+                    disabled={!active || busy}
+                    onClick={() => {
+                        if (active) void load({ ...active, cursor: undefined }, 0, [undefined], true);
+                    }}
+                />
+            </header>
+            <form
+                className="security-audit-toolbar"
+                onSubmit={(event) => {
+                    event.preventDefault();
+                    if (moduleCode && sectionCode && !busy) void load({ moduleCode, sectionCode, limit, ...(sectionCode === "catalogs" && catalogCode ? { catalogCode } : {}), ...(search.trim() ? { search: search.trim() } : {}) }, 0, [undefined]);
+                }}
+            >
+                <label>
+                    Módulo
+                    <Select<string>
+                        aria-label="Módulo de auditoría"
+                        placeholder="Seleccionar módulo"
+                        value={moduleCode || null}
+                        options={(options?.modules ?? []).map((item) => ({ value: item.code, label: item.name }))}
+                        onChange={(value) => {
+                            setModule(value);
+                            setSection("");
+                            setCatalog(undefined);
+                            clearView();
                         }}
                     />
                 </label>
-                <select
-                    aria-label="Filtrar por módulo"
-                    value={moduleFilter}
-                    onChange={(event) => {
-                        setModuleFilter(event.target.value);
-                    }}
-                >
-                    <option value="">Todos los módulos</option>
-                    {modules.map((module) => (
-                        <option key={module.code} value={module.code}>
-                            {module.name}
-                        </option>
-                    ))}
-                </select>
-                <select
-                    aria-label="Filtrar por rol"
-                    value={roleFilter}
-                    onChange={(event) => {
-                        setRoleFilter(event.target.value);
-                    }}
-                >
-                    <option value="">Todos los roles</option>
-                    {roles.map((role) => (
-                        <option key={role.code} value={role.code}>
-                            {role.name}
-                        </option>
-                    ))}
-                </select>
+                <label>
+                    Sección
+                    <Select<string>
+                        aria-label="Sección de auditoría"
+                        placeholder="Seleccionar sección"
+                        disabled={!module}
+                        value={sectionCode || null}
+                        options={(module?.sections ?? []).map((item) => ({ value: item.code, label: item.name }))}
+                        onChange={(value) => {
+                            setSection(value);
+                            setCatalog(undefined);
+                            clearView();
+                        }}
+                    />
+                </label>
+                {sectionCode === "catalogs" ? (
+                    <label>
+                        Catálogo
+                        <Select<string>
+                            aria-label="Catálogo de auditoría"
+                            placeholder="Todos los catálogos"
+                            allowClear
+                            value={catalogCode ?? null}
+                            options={(options?.catalogs ?? []).map((item) => ({ value: item.code, label: item.name }))}
+                            onChange={(value) => {
+                                setCatalog(value);
+                                clearView();
+                            }}
+                        />
+                    </label>
+                ) : null}
+                <label>
+                    Buscar
+                    <Input
+                        aria-label="Buscar en auditoría"
+                        placeholder="Actor, usuario, motivo o evento"
+                        value={search}
+                        maxLength={100}
+                        onChange={(event) => {
+                            setSearch(event.target.value);
+                        }}
+                    />
+                </label>
+                <Button aria-label="Buscar eventos" type="primary" htmlType="submit" icon={<SearchOutlined />} disabled={!moduleCode || !sectionCode || busy}>
+                    Buscar eventos
+                </Button>
+            </form>
+            {error ? (
+                <p role="alert" className="security-audit-state--error">
+                    {error}
+                </p>
+            ) : null}
+            <section className="security-audit-results" aria-label="Eventos auditados" aria-busy={busy}>
+                {page ? <SecurityAuditDataTable items={page.items} onDetail={setDetailId} /> : <div className="security-audit-state">Selecciona un módulo y una sección.</div>}
+                {busy ? (
+                    <div className="security-audit-progress" role="status">
+                        <ReloadOutlined spin /> Cargando auditoría...
+                    </div>
+                ) : null}
             </section>
-
-            <section className="security-audit-table" aria-label="Eventos auditados">
-                <header>
-                    <span>Evento</span>
-                    <span>Actor</span>
-                    <span>Alcance</span>
-                    <span>Fecha</span>
-                </header>
-                {isLoading ? (
-                    <div className="security-audit-state">Cargando auditoría...</div>
-                ) : errorMessage ? (
-                    <div className="security-audit-state security-audit-state--error">{errorMessage}</div>
-                ) : filteredEvents.length > 0 ? (
-                    filteredEvents.map((event) => (
-                        <article className="security-audit-row" key={event.publicId}>
-                            <div>
-                                <strong>{event.summary}</strong>
-                                <small>{event.reason ?? "Sin motivo registrado"}</small>
-                            </div>
-                            <div>
-                                <strong>{event.actorName ?? "Sistema"}</strong>
-                                <small>{event.targetName ?? "Cambio sobre rol base"}</small>
-                            </div>
-                            <div>
-                                <strong>{formatRoleScope(event.roleCode, roleNameByCode)}</strong>
-                                <small>{event.moduleCodes.length > 0 ? event.moduleCodes.map((code) => moduleNameByCode.get(code) ?? code).join(", ") : "Sin módulo específico"}</small>
-                            </div>
-                            <time dateTime={event.createdAt}>{formatAuditDate(event.createdAt)}</time>
-                        </article>
-                    ))
-                ) : (
-                    <div className="security-audit-state">No hay eventos con esos filtros.</div>
-                )}
-            </section>
+            {detailId ? (
+                <SecurityAuditDetailDrawer
+                    key={detailId}
+                    publicId={detailId}
+                    onClose={() => {
+                        setDetailId(undefined);
+                    }}
+                />
+            ) : null}
+            <footer className="security-audit-pagination">
+                <span>{page ? `${String(page.items.length)} eventos · Página ${String(index + 1)}` : "0 eventos"}</span>
+                <Select
+                    aria-label="Filas por página"
+                    value={limit}
+                    disabled={busy}
+                    options={[10, 50, 100, 200].map((value) => ({ value, label: String(value) }))}
+                    onChange={(value) => {
+                        setLimit(value);
+                        if (active) void load({ ...active, limit: value, cursor: undefined }, 0, [undefined]);
+                    }}
+                />
+                <Button
+                    aria-label="Página anterior"
+                    icon={<LeftOutlined />}
+                    disabled={!active || busy || index === 0}
+                    onClick={() => {
+                        if (active) void load({ ...active, cursor: cursors[index - 1] }, index - 1, cursors);
+                    }}
+                />
+                <Button
+                    aria-label="Página siguiente"
+                    icon={<RightOutlined />}
+                    disabled={!active || busy || !page?.pagination.hasNext}
+                    onClick={() => {
+                        if (active && page?.pagination.nextCursor) void load({ ...active, cursor: page.pagination.nextCursor }, index + 1, [...cursors.slice(0, index + 1), page.pagination.nextCursor]);
+                    }}
+                />
+            </footer>
         </div>
     );
 }

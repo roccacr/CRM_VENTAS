@@ -60,7 +60,23 @@ describe("identity schema migration parser", () => {
     });
 
     it("registra las migraciones schema-only aprobadas en orden", () => {
-        expect(schemaMigrations.map((migration) => migration.name)).toEqual(["202609250001_identity_schema", "202609250003_identity_login_readiness", "202609280004_identity_microsoft_session", "202609300005_identity_user_directory", "202610010006_identity_role_security_model", "202610030007_crm_catalogs", "202610080008_administration_owner_repair", "202610090009_projects_domain"]);
+        expect(schemaMigrations.map((migration) => migration.name)).toEqual([
+            "202609250001_identity_schema",
+            "202609250003_identity_login_readiness",
+            "202609280004_identity_microsoft_session",
+            "202609300005_identity_user_directory",
+            "202610010006_identity_role_security_model",
+            "202610030007_crm_catalogs",
+            "202610080008_administration_owner_repair",
+            "202610090009_projects_domain",
+            "202610120010_campaigns_domain",
+            "202610120011_classes_domain",
+            "202610120012_locations_domain",
+            "202610120013_subsidiaries_domain",
+            "202610120014_brokers_domain",
+            "202610120015_unit_files_domain",
+            "202610120016_unit_files_naming",
+        ]);
     });
 
     it("mantiene permisos atomicos globales para cada catalogo CRM", () => {

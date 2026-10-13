@@ -10,10 +10,14 @@ import { ConfigService } from "@nestjs/config";
 
 import type { CatalogFallbackReader, CatalogReadInput } from "../../modules/crm/catalogs/catalog-fallback.js";
 import type { CatalogItemsResponse } from "../../modules/crm/catalogs/catalogs.types.js";
+import { LegacyBrokersReader } from "./brokers/legacy-brokers.reader.js";
 import { LegacyCampaignsReader } from "./campaigns/legacy-campaigns.reader.js";
+import { LegacyClassesReader } from "./classes/legacy-classes.reader.js";
 import { isLegacyCrmEnabled } from "./legacy-crm-access.js";
 import { LegacyCrmDatabaseService } from "./legacy-crm-database.service.js";
+import { LegacyLocationsReader } from "./locations/legacy-locations.reader.js";
 import { LegacyProjectsReader } from "./projects/legacy-projects.reader.js";
+import { LegacySubsidiariesReader } from "./subsidiaries/legacy-subsidiaries.reader.js";
 
 /**
  *
@@ -22,6 +26,10 @@ import { LegacyProjectsReader } from "./projects/legacy-projects.reader.js";
 export class LegacyCatalogReader implements CatalogFallbackReader {
     private readonly projects: LegacyProjectsReader;
     private readonly campaigns: LegacyCampaignsReader;
+    private readonly classes: LegacyClassesReader;
+    private readonly locations: LegacyLocationsReader;
+    private readonly subsidiaries: LegacySubsidiariesReader;
+    private readonly brokers: LegacyBrokersReader;
 
     /**
      * Arma los readers aquí para que el core no los registre uno por uno.
@@ -35,6 +43,10 @@ export class LegacyCatalogReader implements CatalogFallbackReader {
     ) {
         this.projects = new LegacyProjectsReader(config, database);
         this.campaigns = new LegacyCampaignsReader(config, database);
+        this.classes = new LegacyClassesReader(config, database);
+        this.locations = new LegacyLocationsReader(config, database);
+        this.subsidiaries = new LegacySubsidiariesReader(config, database);
+        this.brokers = new LegacyBrokersReader(config, database);
     }
 
     /**
@@ -56,6 +68,10 @@ export class LegacyCatalogReader implements CatalogFallbackReader {
         if (!this.enabled()) throw new ServiceUnavailableException("Legacy fallback is disabled.");
         if (input.catalogCode === "projects") return this.projects.list(input);
         if (input.catalogCode === "campaigns") return this.campaigns.list(input);
+        if (input.catalogCode === "classes") return this.classes.list(input);
+        if (input.catalogCode === "locations") return this.locations.list(input);
+        if (input.catalogCode === "subsidiaries") return this.subsidiaries.list(input);
+        if (input.catalogCode === "brokers") return this.brokers.list(input);
         throw new ServiceUnavailableException("Legacy catalog is unsupported.");
     }
 }

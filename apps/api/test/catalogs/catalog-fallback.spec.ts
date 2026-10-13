@@ -17,31 +17,14 @@ describe("optional catalog fallback", () => {
         expect(await readCatalogWithFallback(primary, input, legacy)).toEqual(response);
         expect(legacy.list).not.toHaveBeenCalled();
     });
-    it("falls back only after the entire native catalog is confirmed empty", async () => {
-        const primary = { listCatalogItems: vi.fn().mockResolvedValue(response) };
+    it("reads legacy even when the filtered native page is empty", async () => {
+        const primary = { listCatalogItems: vi.fn().mockResolvedValue(response), listMigratedCampaignIds: vi.fn().mockResolvedValue([42]) };
         const legacy = { enabled: () => true, list: vi.fn().mockResolvedValue({ ...response, total: 2 }) };
-        expect((await readCatalogWithFallback(primary, input, legacy)).total).toBe(2);
-        expect(primary.listCatalogItems).toHaveBeenLastCalledWith({ catalogCode: "campaigns", limit: 1 });
-    });
-    it("does not fall back for empty searches or out-of-range pages", async () => {
-        const primary = {
-            listCatalogItems: vi
-                .fn()
-                .mockResolvedValueOnce(response)
-                .mockResolvedValueOnce({ ...response, total: 1 }),
-        };
-        const legacy = { enabled: () => true, list: vi.fn() };
-        expect(await readCatalogWithFallback(primary, { ...input, search: "missing", offset: 100 }, legacy)).toEqual(response);
-        expect(legacy.list).not.toHaveBeenCalled();
-    });
-    it("never merges partially populated catalogs", async () => {
-        const primary = { listCatalogItems: vi.fn().mockResolvedValue({ ...response, total: 1 }) };
-        const legacy = { enabled: () => true, list: vi.fn() };
-        expect((await readCatalogWithFallback(primary, input, legacy)).total).toBe(1);
-        expect(legacy.list).not.toHaveBeenCalled();
+        expect((await readCatalogWithFallback(primary, { ...input, search: "missing", offset: 100 }, legacy)).total).toBe(2);
+        expect(legacy.list).toHaveBeenCalledWith({ ...input, search: "missing", offset: 100, limit: 100, excludedLegacyIds: [42] });
     });
     it("does not hide legacy connection failures as empty results", async () => {
-        const primary = { listCatalogItems: vi.fn().mockResolvedValue(response) };
+        const primary = { listCatalogItems: vi.fn().mockResolvedValue(response), listMigratedCampaignIds: vi.fn().mockResolvedValue([]) };
         const legacy = { enabled: () => true, list: vi.fn().mockRejectedValue(new Error("unavailable")) };
         await expect(readCatalogWithFallback(primary, input, legacy)).rejects.toThrow("unavailable");
     });

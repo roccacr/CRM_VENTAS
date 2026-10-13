@@ -26,7 +26,7 @@ import type { CreateSystemUserPayload, UpdateSystemUserPayload } from "../../../
 import { ADMINISTRATION_DRAWER_CLOSE_PLACEMENT, ADMINISTRATION_DRAWER_PROPS } from "../administration-theme";
 import { ACCESS_METHOD_OPTIONS, buildCreateUserPayload, buildUpdateUserPayload, createEditUserFormValues, createInitialUserFormValues, type CreateUserFormValues, type CreateUserModuleOption, type CreateUserRoleOption, type CreateUserRolePermissions, getRoleModules, hasOwnerRole, normalizeEmail } from "../create-system-user.model";
 import type { SystemUserListItem } from "../system-users.model";
-import { SystemUserStatusBadge } from "./SystemUserBadges";
+import { SystemUserStatusPill } from "./SystemUserBadges";
 
 const FORM_NAME = "createSystemUser";
 const DISCARD_CONFIRMATION = "Hay datos sin guardar. ¿Quieres cerrar el formulario y descartarlos?";
@@ -79,7 +79,7 @@ function RoleScope({ isOwner, roleCount, roleModules }: { readonly isOwner: bool
 function AccessSummary({ isEditMode, isOwner, moduleCount, roleCount }: { readonly isEditMode: boolean; readonly isOwner: boolean; readonly moduleCount: number; readonly roleCount: number }) {
     const initialStatus = (
         <span className="create-user-drawer__initial-status" title="El usuario queda Pendiente hasta su primer inicio de sesión.">
-            Estado inicial <SystemUserStatusBadge status="pending" />
+            Estado inicial <SystemUserStatusPill status="pending" />
         </span>
     );
 
@@ -201,7 +201,7 @@ export function CreateSystemUserDrawer({ error, initialUser = null, isSaving, mo
     );
 
     return (
-        <Drawer {...ADMINISTRATION_DRAWER_PROPS} rootClassName="create-user-drawer" open={open} title={isEditMode ? "Editar usuario" : "Nuevo usuario"} closable={{ "aria-label": isEditMode ? "Cerrar edición de usuario" : "Cerrar creación de usuario", placement: ADMINISTRATION_DRAWER_CLOSE_PLACEMENT }} keyboard={!isSaving} mask={{ closable: !isSaving }} footer={footer} afterOpenChange={handleAfterOpenChange} onClose={requestClose}>
+        <Drawer {...ADMINISTRATION_DRAWER_PROPS} rootClassName="create-user-drawer catalog-items-modal--projects users-view-form" open={open} title={isEditMode ? "Editar usuario" : "Nuevo usuario"} closable={{ "aria-label": isEditMode ? "Cerrar edición de usuario" : "Cerrar creación de usuario", placement: ADMINISTRATION_DRAWER_CLOSE_PLACEMENT }} keyboard={!isSaving} mask={{ closable: !isSaving }} footer={footer} afterOpenChange={handleAfterOpenChange} onClose={requestClose}>
             <Form<CreateUserFormValues> form={form} name={FORM_NAME} layout="vertical" initialValues={createInitialUserFormValues()} scrollToFirstError={{ behavior: "smooth", block: "center" }} disabled={isSaving} onFinish={handleFinish}>
                 <FormSection step={1} title="Identificación">
                     <Row gutter={16}>

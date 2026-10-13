@@ -1,0 +1,186 @@
+.unit-comparison {
+    --comparison-field-width: 190px;
+    color: #2f3a4b;
+    font-size: 13px;
+}
+.unit-comparison-toolbar {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 16px;
+    padding: 12px 0 16px;
+    border-bottom: 1px solid #d2dae5;
+}
+.unit-comparison-count {
+    font-weight: 600;
+    margin-right: auto;
+}
+.unit-comparison-toolbar label {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 12px;
+    color: #496180;
+}
+.unit-comparison-toolbar .ant-select {
+    width: 170px;
+}
+.unit-comparison-scroll {
+    max-height: 68vh;
+    overflow: auto;
+    overscroll-behavior: contain;
+    border: 1px solid #d2dae5;
+    border-top: 0;
+    border-radius: 0 0 8px 8px;
+}
+.unit-comparison table {
+    width: 100%;
+    table-layout: fixed;
+    border-spacing: 0;
+    border-collapse: separate;
+}
+.unit-comparison-field-column {
+    width: var(--comparison-field-width);
+}
+.unit-comparison th,
+.unit-comparison td {
+    min-width: 190px;
+    padding: 14px 18px;
+    border-bottom: 1px solid #ebeef3;
+    border-right: 1px solid #ebeef3;
+    text-align: left;
+    vertical-align: top;
+    overflow-wrap: anywhere;
+    background: white;
+}
+.unit-comparison thead th {
+    position: sticky;
+    top: 0;
+    z-index: 3;
+    background: #f5f7fa;
+    border-bottom-color: #d2dae5;
+}
+.unit-comparison thead strong {
+    display: block;
+    font-size: 16px;
+    color: #0e1116;
+}
+.unit-comparison thead span,
+.unit-comparison thead small {
+    display: block;
+    margin-top: 5px;
+    font-size: 12px;
+    font-weight: 400;
+    color: #496180;
+}
+.unit-comparison thead th[data-reference="true"] {
+    box-shadow: inset 0 3px #496180;
+}
+.unit-comparison th[scope="row"] {
+    position: sticky;
+    left: 0;
+    z-index: 1;
+    width: 190px;
+    font-size: 12px;
+    font-weight: 500;
+    color: #496180;
+}
+.unit-comparison thead th:first-child {
+    left: 0;
+    z-index: 4;
+}
+.unit-comparison .unit-comparison-section th {
+    padding: 9px 18px;
+    background: #ebeef3;
+    font-size: 12px;
+    color: #2f3a4b;
+    font-weight: 600;
+}
+.unit-comparison-value {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+    font-variant-numeric: tabular-nums;
+}
+.unit-comparison tr[data-key-metric="true"] .unit-comparison-value > span:first-child {
+    font-size: 18px;
+    font-weight: 600;
+}
+.unit-comparison .unit-comparison-missing {
+    color: #7d96b3;
+    font-size: 12px !important;
+    font-weight: 400 !important;
+}
+.unit-comparison-rank {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 6px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 500;
+    background: var(--rank-background);
+    white-space: nowrap;
+}
+.unit-comparison td[data-rank="best"] {
+    --rank-color: #067647;
+    --rank-background: #ecfdf3;
+}
+.unit-comparison td[data-rank="middle"] {
+    --rank-color: #93370d;
+    --rank-background: #fffaeb;
+}
+.unit-comparison td[data-rank="worst"] {
+    --rank-color: #b42318;
+    --rank-background: #fef3f2;
+}
+.unit-comparison td[data-rank] .unit-comparison-value {
+    color: var(--rank-color);
+}
+.unit-comparison-track {
+    height: 3px;
+    margin-top: 10px;
+    background: #ebeef3;
+}
+.unit-comparison-track span {
+    display: block;
+    height: 100%;
+    background: #496180;
+}
+.unit-comparison td[data-rank] .unit-comparison-track span {
+    background: var(--rank-color);
+}
+.unit-comparison-delta {
+    display: block;
+    margin-top: 7px;
+    font-size: 11px;
+    color: #496180;
+    font-variant-numeric: tabular-nums;
+}
+.unit-comparison-caption {
+    caption-side: bottom;
+    padding: 12px 18px;
+    text-align: left;
+    font-size: 12px;
+    color: #496180;
+}
+@media (max-width: 600px) {
+    .unit-comparison {
+        --comparison-field-width: 130px;
+    }
+    .unit-comparison-toolbar label:not(.unit-comparison-toggle) {
+        width: 100%;
+        justify-content: space-between;
+    }
+    .unit-comparison th[scope="row"],
+    .unit-comparison thead th:first-child {
+        width: 130px;
+        min-width: 130px;
+        max-width: 130px;
+    }
+    .unit-comparison th,
+    .unit-comparison td {
+        padding: 12px;
+    }
+}

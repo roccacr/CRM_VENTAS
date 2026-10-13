@@ -6,13 +6,20 @@
  */
 import { type ComponentType, createElement } from "react";
 
+import { BrokersPage } from "../modules/administration/brokers/BrokersPage";
+import { CampaignsPage } from "../modules/administration/campaigns/CampaignsPage";
 import { ADMINISTRATION_CATALOGS } from "../modules/administration/catalogs/catalog-definitions";
 import { CatalogItemsPage } from "../modules/administration/catalogs/CatalogItemsPage";
+import { ClassesPage } from "../modules/administration/classes/ClassesPage";
+import { LocationsPage } from "../modules/administration/locations/LocationsPage";
 import { AdministrationHomePage } from "../modules/administration/pages/AdministrationHomePage";
 import { RolesSecurityPage } from "../modules/administration/pages/RolesSecurityPage";
 import { SecurityAuditPage } from "../modules/administration/pages/SecurityAuditPage";
 import { SystemUsersPage } from "../modules/administration/pages/SystemUsersPage";
+import { SubsidiariesPage } from "../modules/administration/subsidiaries/SubsidiariesPage";
+import { UnitFilesPage } from "../modules/administration/unit-files/UnitFilesPage";
 import type { IdentityUser } from "../services/auth/identity-contracts";
+import type { CatalogCode } from "../services/catalogs/catalog-service";
 
 /**
  * Mapa de rutas del CRM.
@@ -43,6 +50,15 @@ const CATALOG_CONTEXT_ROUTES = [
     { contextLabel: "Contabilidad", moduleCode: "contabilidad", pathPrefix: "/home/accounting/catalogs", workspaceCode: "accounting" },
 ] as const;
 
+const CATALOG_PAGES: Partial<Record<CatalogCode, typeof BrokersPage>> = {
+    brokers: BrokersPage,
+    campaigns: CampaignsPage,
+    classes: ClassesPage,
+    files: UnitFilesPage,
+    locations: LocationsPage,
+    subsidiaries: SubsidiariesPage,
+};
+
 const OPERATIONAL_CATALOG_ROUTES = CATALOG_CONTEXT_ROUTES.flatMap((context) =>
     ADMINISTRATION_CATALOGS.map(
         (catalog) =>
@@ -50,7 +66,7 @@ const OPERATIONAL_CATALOG_ROUTES = CATALOG_CONTEXT_ROUTES.flatMap((context) =>
                 `${context.pathPrefix}/${catalog.code}`,
                 {
                     menuItemCode: `${context.workspaceCode}-${catalog.menuItemCode}`,
-                    Page: () => createElement(CatalogItemsPage, { catalog, contextLabel: context.contextLabel, contextModuleCode: context.moduleCode }),
+                    Page: () => createElement(CATALOG_PAGES[catalog.code] ?? CatalogItemsPage, { catalog, contextLabel: context.contextLabel, contextModuleCode: context.moduleCode }),
                     title: catalog.label,
                     workspaceCode: context.workspaceCode,
                 },
@@ -67,7 +83,7 @@ const APP_ROUTES: ReadonlyMap<string, AppRoute> = new Map<string, AppRoute>([
     ["/home/administration/users", { menuItemCode: "users", Page: SystemUsersPage, title: "Usuarios", workspaceCode: "administration" }],
     ["/home/administration/roles-security", { menuItemCode: "roles-permissions", Page: RolesSecurityPage, title: "Roles y seguridad", workspaceCode: "administration" }],
     ["/home/administration/catalogs", { menuItemCode: "catalogs", title: "Catálogos", workspaceCode: "administration" }],
-    ...ADMINISTRATION_CATALOGS.map((catalog) => [catalog.path, { menuItemCode: catalog.menuItemCode, Page: () => createElement(CatalogItemsPage, { catalog }), title: catalog.label, workspaceCode: "administration" }] as const),
+    ...ADMINISTRATION_CATALOGS.map((catalog) => [catalog.path, { menuItemCode: catalog.menuItemCode, Page: () => createElement(CATALOG_PAGES[catalog.code] ?? CatalogItemsPage, { catalog }), title: catalog.label, workspaceCode: "administration" }] as const),
     ...OPERATIONAL_CATALOG_ROUTES,
     ["/home/administration/integrations", { menuItemCode: "integrations", title: "Integraciones", workspaceCode: "administration" }],
     ["/home/administration/audit-logs", { menuItemCode: "audit-log", Page: SecurityAuditPage, title: "Auditoría", workspaceCode: "administration" }],

@@ -5,6 +5,7 @@ import { ulid } from "ulid";
 import { normalizeCaseInsensitiveIdentifier } from "../../../common/security/identifier-normalization.js";
 import { DatabaseService } from "../../../database/database.service.js";
 import type { CrmDatabase } from "../../../database/database.types.js";
+import { buildAuditChangeSet } from "../audit/audit-change-set.js";
 import { SecurityAuditService } from "../audit/security-audit.service.js";
 import type { CreateSystemUserAccessMethod, CreateSystemUserExternalSystem, CreateSystemUserStatus, SystemUserSortDirection, SystemUserSortKey, SystemUserStatusFilter, UpdateSystemUserStatus } from "./dto/system-users.dto.js";
 import type { SystemUserDirectoryItem, SystemUserDirectoryOrgUnit, SystemUserExternalReference, SystemUserProvider, SystemUsersListResponse, SystemUsersSummary } from "./identity.types.js";
@@ -197,6 +198,7 @@ export class IdentityUserDirectoryRepository {
         await this.database.db.transaction().execute(async (transaction) => {
             const now = new Date();
             const catalog = await this.readUserCreationCatalog(transaction, input);
+            const actorSnapshot = await this.audit.captureActor(catalog.actorUserId, transaction);
 
             await this.assertEmailIsAvailable(transaction, input.normalizedEmail);
             await this.assertExternalReferencesAreAvailable(transaction, input.externalReferences);
@@ -277,10 +279,14 @@ export class IdentityUserDirectoryRepository {
             await this.insertExternalReferences(transaction, userId, input);
             await this.audit.record(
                 {
+                    actorSnapshot,
                     actorUserId: catalog.actorUserId,
                     eventType: USER_CREATED_EVENT_TYPE,
                     ipAddress: input.ipAddress ?? null,
                     metadata: {
+                        moduleCode: "administration",
+                        sectionCode: "users",
+                        changeSet: buildAuditChangeSet({ entity: "user", recordId: createdPublicId, action: "create", before: null, after: await this.readAuditSnapshot(transaction, userId) }),
                         externalSystems: input.externalReferences.map((reference) => reference.systemCode),
                         initialStatus: input.initialStatus,
                         accessMethods: input.accessMethods,
@@ -385,13 +391,16 @@ export class IdentityUserDirectoryRepository {
     async update(input: UpdateSystemUserInput): Promise<SystemUserDirectoryItem | null> {
         await this.database.db.transaction().execute(async (transaction) => {
             const now = new Date();
+            // Lock first: ordinary reads before this could freeze a stale REPEATABLE READ snapshot.
+            const target = await transaction.selectFrom("sec_user").select(["public_id_user as publicId", "id_user as id", "display_name_user as name", "email_user as email"]).where("public_id_user", "=", input.userPublicId).where("deleted_at_user", "is", null).forUpdate().executeTakeFirst();
             const catalog = await this.readUserAccessCatalog(transaction, input);
-            const target = await transaction.selectFrom("sec_user").select(["id_user as id", "display_name_user as name", "email_user as email"]).where("public_id_user", "=", input.userPublicId).where("deleted_at_user", "is", null).executeTakeFirst();
 
             if (!target) {
                 return;
             }
 
+            const before = await this.readAuditSnapshot(transaction, target.id);
+            const actorSnapshot = await this.audit.captureActor(catalog.actorUserId, transaction);
             await this.assertEmailIsAvailable(transaction, input.normalizedEmail, target.id);
             await this.assertExternalReferencesAreAvailable(transaction, input.externalReferences, target.id);
 
@@ -416,11 +425,15 @@ export class IdentityUserDirectoryRepository {
             await this.replaceExternalReferences(transaction, target.id, input, now);
             await this.audit.record(
                 {
+                    actorSnapshot,
                     actorUserId: catalog.actorUserId,
                     eventType: USER_UPDATED_EVENT_TYPE,
                     ipAddress: input.ipAddress ?? null,
                     metadata: {
+                        moduleCode: "administration",
+                        sectionCode: "users",
                         accessMethods: input.accessMethods,
+                        changeSet: buildAuditChangeSet({ entity: "user", recordId: target.publicId, action: "update", before, after: await this.readAuditSnapshot(transaction, target.id) }),
                         emailChanged: target.email !== input.email,
                         nextOrgUnitCodes: catalog.orgUnits.map((orgUnit) => orgUnit.code),
                         nextRoleCodes: catalog.roles.map((role) => role.code),
@@ -446,12 +459,16 @@ export class IdentityUserDirectoryRepository {
     async updateStatus(input: UpdateSystemUserStatusInput): Promise<SystemUserDirectoryItem | null> {
         await this.database.db.transaction().execute(async (transaction) => {
             const now = new Date();
-            const [actor, target] = await Promise.all([transaction.selectFrom("sec_user").select("id_user as id").where("public_id_user", "=", input.actorPublicId).where("deleted_at_user", "is", null).executeTakeFirst(), transaction.selectFrom("sec_user").select(["id_user as id", "status_user as status"]).where("public_id_user", "=", input.userPublicId).where("deleted_at_user", "is", null).executeTakeFirst()]);
+            // Parent locking must precede even the actor read to serialize relationship snapshots.
+            const target = await transaction.selectFrom("sec_user").select(["public_id_user as publicId", "id_user as id", "status_user as status"]).where("public_id_user", "=", input.userPublicId).where("deleted_at_user", "is", null).forUpdate().executeTakeFirst();
+            const actor = await transaction.selectFrom("sec_user").select("id_user as id").where("public_id_user", "=", input.actorPublicId).where("deleted_at_user", "is", null).executeTakeFirst();
 
             if (!actor || !target) {
                 return;
             }
 
+            const before = await this.readAuditSnapshot(transaction, target.id);
+            const actorSnapshot = await this.audit.captureActor(actor.id, transaction);
             await transaction
                 .updateTable("sec_user")
                 .set({
@@ -465,10 +482,14 @@ export class IdentityUserDirectoryRepository {
 
             await this.audit.record(
                 {
+                    actorSnapshot,
                     actorUserId: actor.id,
                     eventType: USER_STATUS_UPDATED_EVENT_TYPE,
                     ipAddress: input.ipAddress ?? null,
                     metadata: {
+                        moduleCode: "administration",
+                        sectionCode: "users",
+                        changeSet: buildAuditChangeSet({ entity: "user", recordId: target.publicId, action: input.status === INACTIVE_STATUS ? "deactivate" : input.status === ACTIVE_STATUS ? "reactivate" : "update", before, after: await this.readAuditSnapshot(transaction, target.id) }),
                         nextStatus: input.status,
                         previousStatus: target.status,
                     },
@@ -482,6 +503,35 @@ export class IdentityUserDirectoryRepository {
         });
 
         return this.findByPublicId(input.actorPublicId, input.userPublicId);
+    }
+
+    /** Explicit business projection: authentication secrets never enter audit metadata. */
+    private async readAuditSnapshot(executor: IdentityDirectoryExecutor, userId: number): Promise<Record<string, unknown>> {
+        const user = await executor.selectFrom("sec_user").select(["display_name_user as name", "email_user as email", "status_user as status"]).where("id_user", "=", userId).executeTakeFirstOrThrow();
+        const [roles, orgUnits, providers, references] = await Promise.all([this.findRolesByUser([userId], executor), this.findOrgUnitsByUser([userId], executor), this.findProvidersByUser([userId], executor), this.findExternalReferencesByUser([userId], executor)]);
+        const now = new Date();
+        const permissionOverrides = await executor
+            .selectFrom("sec_user_permission_override as override")
+            .innerJoin("sec_permission as permission", "permission.id_permission", "override.permission_id_user_permission_override")
+            .select(["permission.code_permission as code", "override.effect_user_permission_override as effect"])
+            .where("override.user_id_user_permission_override", "=", userId)
+            .where("override.status_user_permission_override", "=", ACTIVE_STATUS)
+            .where("override.revoked_at_user_permission_override", "is", null)
+            .where("override.starts_at_user_permission_override", "<=", now)
+            .where((expression) => expression.or([expression("override.ends_at_user_permission_override", "is", null), expression("override.ends_at_user_permission_override", ">", now)]))
+            .where("permission.status_permission", "=", ACTIVE_STATUS)
+            .orderBy("permission.code_permission")
+            .execute();
+        return {
+            name: user.name,
+            email: user.email,
+            status: user.status,
+            roleCodes: (roles.get(userId) ?? []).map(({ code }) => code).sort(),
+            orgUnitCodes: (orgUnits.get(userId) ?? []).map(({ code }) => code).sort(),
+            permissionOverrides,
+            accessMethods: (providers.get(userId) ?? []).map(({ provider, status }) => ({ code: provider, status })).sort((a, b) => a.code.localeCompare(b.code)),
+            externalReferences: (references.get(userId) ?? []).map(({ externalUserId, externalUsername, status, systemCode }) => ({ externalUserId, externalUsername, status, systemCode })).sort((a, b) => a.systemCode.localeCompare(b.systemCode) || a.externalUserId.localeCompare(b.externalUserId)),
+        };
     }
 
     private async readUserCreationCatalog(executor: IdentityDirectoryExecutor, input: CreateSystemUserInput): Promise<UserCreationCatalog> {
@@ -842,12 +892,12 @@ export class IdentityUserDirectoryRepository {
      *
      * Una lista vacía no arma un `IN ()`. Roles o asignaciones inactivas no se muestran.
      */
-    private async findRolesByUser(userIds: readonly number[]): Promise<Map<number, UserRoleRow[]>> {
+    private async findRolesByUser(userIds: readonly number[], executor: IdentityDirectoryExecutor = this.database.db): Promise<Map<number, UserRoleRow[]>> {
         if (userIds.length === 0) {
             return new Map();
         }
 
-        const rows = await this.database.db
+        const rows = await executor
             .selectFrom("sec_user_role as userRole")
             .innerJoin("sec_role as role", "role.id_role", "userRole.role_id_user_role")
             .select(["role.code_role as code", "role.name_role as name", "userRole.assigned_at_user_role as assignedAt", "userRole.user_id_user_role as userId"])
@@ -861,12 +911,12 @@ export class IdentityUserDirectoryRepository {
     }
 
     /** Áreas activas de la página. La membresía borrada o inactiva no cuenta como alcance visible. */
-    private async findOrgUnitsByUser(userIds: readonly number[]): Promise<Map<number, UserOrgUnitRow[]>> {
+    private async findOrgUnitsByUser(userIds: readonly number[], executor: IdentityDirectoryExecutor = this.database.db): Promise<Map<number, UserOrgUnitRow[]>> {
         if (userIds.length === 0) {
             return new Map();
         }
 
-        const rows = await this.database.db
+        const rows = await executor
             .selectFrom("sec_user_org_unit as membership")
             .innerJoin("sec_org_unit as orgUnit", "orgUnit.id_org_unit", "membership.org_unit_id_user_org_unit")
             .select(["membership.user_id_user_org_unit as userId", "orgUnit.code_org_unit as code", "orgUnit.name_org_unit as name", "orgUnit.public_id_org_unit as publicId"])
@@ -885,12 +935,12 @@ export class IdentityUserDirectoryRepository {
      * Solo entran local activo o pendiente y Microsoft activo. Un proveedor
      * borrado no debe verse como método de acceso.
      */
-    private async findProvidersByUser(userIds: readonly number[]): Promise<Map<number, UserProviderRow[]>> {
+    private async findProvidersByUser(userIds: readonly number[], executor: IdentityDirectoryExecutor = this.database.db): Promise<Map<number, UserProviderRow[]>> {
         if (userIds.length === 0) {
             return new Map();
         }
 
-        const rows = await this.database.db
+        const rows = await executor
             .selectFrom("sec_auth_identity")
             .select(["provider_code_auth_identity as provider", "status_auth_identity as status", "user_id_auth_identity as userId"])
             .where("user_id_auth_identity", "in", [...userIds])
@@ -907,12 +957,12 @@ export class IdentityUserDirectoryRepository {
      * Son crosswalks para soporte e integraciones. No reemplazan `publicId` ni
      * se convierten en identidad principal del CRM.
      */
-    private async findExternalReferencesByUser(userIds: readonly number[]): Promise<Map<number, UserExternalReferenceRow[]>> {
+    private async findExternalReferencesByUser(userIds: readonly number[], executor: IdentityDirectoryExecutor = this.database.db): Promise<Map<number, UserExternalReferenceRow[]>> {
         if (userIds.length === 0) {
             return new Map();
         }
 
-        const rows = await this.database.db
+        const rows = await executor
             .selectFrom("int_user_external_identity as externalIdentity")
             .innerJoin("int_external_system as externalSystem", "externalSystem.id_external_system", "externalIdentity.external_system_id_user_external_identity")
             .select(["externalIdentity.external_user_id_user_external_identity as externalUserId", "externalIdentity.external_username_user_external_identity as externalUsername", "externalIdentity.status_user_external_identity as status", "externalIdentity.user_id_user_external_identity as userId", "externalSystem.code_external_system as systemCode", "externalSystem.name_external_system as systemName"])

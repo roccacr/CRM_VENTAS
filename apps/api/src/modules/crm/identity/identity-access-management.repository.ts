@@ -3,6 +3,7 @@ import { type Kysely, sql } from "kysely";
 
 import { DatabaseService } from "../../../database/database.service.js";
 import type { CrmDatabase } from "../../../database/database.types.js";
+import { buildAuditChangeSet } from "../audit/audit-change-set.js";
 import { SecurityAuditService } from "../audit/security-audit.service.js";
 import { CATALOG_CONTEXT_MODULES, CATALOG_PERMISSION_ACTIONS, type CatalogPermissionAction, findCatalogDefinitionByModuleCode, getCatalogPermissionName } from "../catalogs/catalogs.constants.js";
 import { ACTIVE_STATUS } from "./identity-repository.shared.js";
@@ -282,6 +283,8 @@ export class IdentityAccessManagementRepository {
             }
 
             const previousAccess = await this.readUserAccessByRow(transaction, targetUser);
+            const before = await this.readUserAuditSnapshot(transaction, targetUser, previousAccess);
+            const actorSnapshot = await this.audit.captureActor(actor.id, transaction);
             const now = new Date();
             await this.replaceUserRoles({ actorUserId: actor.id, executor: transaction, now, roles, userId: targetUser.id });
             await this.replaceUserOrgUnits({ actorUserId: actor.id, executor: transaction, now, orgUnits, roleCodes: roles.map((role) => role.code), userId: targetUser.id });
@@ -294,12 +297,17 @@ export class IdentityAccessManagementRepository {
                 .executeTakeFirst();
             // Access replacement invalidates both cookies atomically; refresh must not revive old access.
             await this.sessions.revokeAllActiveSessionsForUser(transaction, targetUser.id, "user_access_replaced", actor.id);
+            const nextAccess = await this.readUserAccessByRow(transaction, targetUser);
             await this.audit.record(
                 {
+                    actorSnapshot,
                     actorUserId: actor.id,
                     eventType: "user_access_replaced",
                     ipAddress: input.ipAddress ?? null,
                     metadata: {
+                        moduleCode: "administration",
+                        sectionCode: "roles",
+                        changeSet: buildAuditChangeSet({ entity: "user", recordId: targetUser.publicId, action: "update", before, after: await this.readUserAuditSnapshot(transaction, targetUser, nextAccess) }),
                         nextOrgUnitCodes: orgUnitCodes,
                         nextOverrides: overrides,
                         nextRoleCodes: roleCodes,
@@ -315,7 +323,7 @@ export class IdentityAccessManagementRepository {
                 transaction,
             );
 
-            return this.readUserAccessByRow(transaction, targetUser);
+            return nextAccess;
         });
     }
 
@@ -324,8 +332,8 @@ export class IdentityAccessManagementRepository {
      */
     async deleteRole(input: DeleteIdentityRoleInput): Promise<DeleteIdentityRoleResult> {
         return this.database.db.transaction().execute(async (transaction) => {
+            const role = await this.findRoleRowByCode(transaction, input.code, true);
             const actor = await this.readActor(transaction, input.actorPublicId);
-            const role = await this.findRoleRowByCode(transaction, input.code);
 
             if (!role) {
                 return { status: "not_found" };
@@ -341,6 +349,8 @@ export class IdentityAccessManagementRepository {
                 };
             }
 
+            const before = await this.readRoleAuditSnapshot(transaction, role);
+            const actorSnapshot = await this.audit.captureActor(actor.id, transaction);
             const now = new Date();
 
             await transaction
@@ -356,10 +366,14 @@ export class IdentityAccessManagementRepository {
 
             await this.audit.record(
                 {
+                    actorSnapshot,
                     actorUserId: actor.id,
                     eventType: "role_deleted",
                     ipAddress: input.ipAddress ?? null,
                     metadata: {
+                        moduleCode: "administration",
+                        sectionCode: "roles",
+                        changeSet: buildAuditChangeSet({ entity: "role", recordId: role.code, action: "delete", before, after: { ...before, status: INACTIVE_STATUS, deleted: true } }),
                         roleCode: role.code,
                     },
                     reason: input.reason ?? "Rol eliminado por administracion.",
@@ -381,13 +395,15 @@ export class IdentityAccessManagementRepository {
      */
     async updateRole(input: UpdateIdentityRoleInput): Promise<IdentityRoleCatalogItem> {
         return this.database.db.transaction().execute(async (transaction) => {
+            const role = await this.findRoleRowByCode(transaction, input.code, true);
             const actor = await this.readActor(transaction, input.actorPublicId);
-            const role = await this.findRoleRowByCode(transaction, input.code);
 
             if (!role) {
                 throw new BadRequestException("Rol no disponible.");
             }
 
+            const before = await this.readRoleAuditSnapshot(transaction, role);
+            const actorSnapshot = await this.audit.captureActor(actor.id, transaction);
             const now = new Date();
 
             await transaction
@@ -403,10 +419,14 @@ export class IdentityAccessManagementRepository {
             await this.bumpUsersWithRolePermissionVersion(transaction, role.id, now);
             await this.audit.record(
                 {
+                    actorSnapshot,
                     actorUserId: actor.id,
                     eventType: "role_updated",
                     ipAddress: input.ipAddress ?? null,
                     metadata: {
+                        moduleCode: "administration",
+                        sectionCode: "roles",
+                        changeSet: buildAuditChangeSet({ entity: "role", recordId: role.code, action: "update", before, after: { ...before, name: input.name, description: input.description ?? null } }),
                         nextName: input.name,
                         previousName: role.name,
                         roleCode: role.code,
@@ -431,8 +451,8 @@ export class IdentityAccessManagementRepository {
      */
     async replaceRolePermissions(input: ReplaceIdentityRolePermissionsInput): Promise<IdentityRolePermissionsUpdateResult> {
         return this.database.db.transaction().execute(async (transaction) => {
+            const role = await this.findRoleRowByCode(transaction, input.code, true);
             const actor = await this.readActor(transaction, input.actorPublicId);
-            const role = await this.findRoleRowByCode(transaction, input.code);
 
             if (!role) {
                 throw new BadRequestException("Rol no disponible.");
@@ -450,6 +470,7 @@ export class IdentityAccessManagementRepository {
             const currentPermissionIds = new Set(currentPermissions.map((permission) => permission.id));
             const removedPermissionIds = currentPermissions.filter((permission) => !nextPermissionIds.has(permission.id)).map((permission) => permission.id);
             const permissionsToInsert = permissions.filter((permission) => !currentPermissionIds.has(permission.id));
+            const actorSnapshot = await this.audit.captureActor(actor.id, transaction);
 
             if (removedPermissionIds.length > 0) {
                 await transaction.updateTable("sec_role_permission").set({ status_role_permission: INACTIVE_STATUS }).where("role_id_role_permission", "=", role.id).where("permission_id_role_permission", "in", removedPermissionIds).where("status_role_permission", "=", ACTIVE_STATUS).executeTakeFirst();
@@ -467,10 +488,14 @@ export class IdentityAccessManagementRepository {
             await this.bumpUsersWithRolePermissionVersion(transaction, role.id, now);
             await this.audit.record(
                 {
+                    actorSnapshot,
                     actorUserId: actor.id,
                     eventType: "role_permissions_replaced",
                     ipAddress: input.ipAddress ?? null,
                     metadata: {
+                        moduleCode: "administration",
+                        sectionCode: "roles",
+                        changeSet: buildAuditChangeSet({ entity: "role", recordId: role.code, action: "update", before: { ...this.mapRole(role), deleted: false, permissionCodes: currentPermissions.map((permission) => permission.code).sort() }, after: { ...this.mapRole(role), deleted: false, permissionCodes } }),
                         nextPermissionCodes: permissionCodes,
                         previousPermissionCodes: currentPermissions.map((permission) => permission.code).sort(),
                         roleCode: role.code,
@@ -814,10 +839,36 @@ export class IdentityAccessManagementRepository {
             .execute();
     }
 
-    private async findRoleRowByCode(executor: AccessManagementExecutor, code: string): Promise<RoleRow | null> {
-        const role = await executor.selectFrom("sec_role").select(["code_role as code", "description_role as description", "id_role as id", "name_role as name", "status_role as status"]).where("code_role", "=", code).where("deleted_at_role", "is", null).executeTakeFirst();
+    private async findRoleRowByCode(executor: AccessManagementExecutor, code: string, lock = false): Promise<RoleRow | null> {
+        const role = await executor
+            .selectFrom("sec_role")
+            .select(["code_role as code", "description_role as description", "id_role as id", "name_role as name", "status_role as status"])
+            .where("code_role", "=", code)
+            .where("deleted_at_role", "is", null)
+            .$if(lock, (query) => query.forUpdate())
+            .executeTakeFirst();
 
         return role ?? null;
+    }
+
+    private async readRoleAuditSnapshot(executor: AccessManagementExecutor, role: RoleRow): Promise<Record<string, unknown>> {
+        const permissions = await this.findActiveRolePermissions(executor, role.id);
+        return { ...this.mapRole(role), deleted: false, permissionCodes: permissions.map((permission) => permission.code).sort() };
+    }
+
+    /** Keep provider credentials and external metadata outside the business audit projection. */
+    private async readUserAuditSnapshot(executor: AccessManagementExecutor, user: UserRow, access: IdentityUserAccessSummary): Promise<Record<string, unknown>> {
+        const accessMethods = await executor.selectFrom("sec_auth_identity").select(["provider_code_auth_identity as code", "status_auth_identity as status"]).where("user_id_auth_identity", "=", user.id).where("deleted_at_auth_identity", "is", null).orderBy("provider_code_auth_identity").execute();
+        const externalReferences = await executor
+            .selectFrom("int_user_external_identity as reference")
+            .innerJoin("int_external_system as system", "system.id_external_system", "reference.external_system_id_user_external_identity")
+            .select(["system.code_external_system as systemCode", "reference.external_user_id_user_external_identity as externalUserId", "reference.external_username_user_external_identity as externalUsername", "reference.status_user_external_identity as status"])
+            .where("reference.user_id_user_external_identity", "=", user.id)
+            .where("reference.deleted_at_user_external_identity", "is", null)
+            .orderBy("system.code_external_system")
+            .orderBy("reference.external_user_id_user_external_identity")
+            .execute();
+        return { name: access.user.name, email: access.user.email, status: access.user.status, roleCodes: access.roles.map(({ code }) => code).sort(), orgUnitCodes: access.orgUnits.map(({ code }) => code).sort(), permissionOverrides: [...access.permissionOverrides].sort((a, b) => a.code.localeCompare(b.code)), accessMethods, externalReferences };
     }
 
     private mapRole(role: Pick<RoleRow, "code" | "description" | "name" | "status">): IdentityRoleCatalogItem {

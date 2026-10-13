@@ -745,55 +745,28 @@ describe("App", () => {
         await user.click(screen.getByRole("button", { name: "Roles y seguridad" }));
 
         expect(window.location.pathname).toBe("/home/administration/roles-security");
-        expect(screen.getByRole("heading", { name: "Roles" })).toBeInTheDocument();
-        expect(screen.getAllByRole("heading", { name: "Ventas" })).toHaveLength(2);
+        expect(screen.getByRole("heading", { level: 1, name: "Roles y seguridad" })).toBeInTheDocument();
+        expect(await screen.findByText("Ventas (31 usuarios)")).toBeInTheDocument();
         expect(screen.queryByRole("button", { name: "Nuevo módulo" })).not.toBeInTheDocument();
         expect(screen.queryByRole("button", { name: "Nuevo rol" })).not.toBeInTheDocument();
         expect(screen.getByRole("button", { name: "Guardar cambios 0" })).toBeInTheDocument();
         expect(screen.queryByRole("button", { name: "Nueva acción" })).not.toBeInTheDocument();
-        expect(screen.getByRole("button", { name: /Ventas.*3\/15/ })).toBeInTheDocument();
-        expect(screen.getByRole("button", { name: /Mercadeo.*0\/7/ })).toBeInTheDocument();
-        const moduleGroups = screen.getByRole("region", { name: "Módulos del sistema" });
-        const operationalGroupTrigger = within(moduleGroups).getByRole("button", { name: /Módulos operativos.*4 módulos/ });
-        expect(operationalGroupTrigger).toHaveAttribute("aria-expanded", "true");
-        expect(within(moduleGroups).queryByRole("button", { name: /Catálogos/ })).not.toBeInTheDocument();
-        expect(within(moduleGroups).queryByRole("button", { name: /Proyectos.*0\/4/ })).not.toBeInTheDocument();
-        expect(screen.getByRole("region", { name: "Leads" })).toBeInTheDocument();
-        expect(screen.getByRole("region", { name: "Oportunidades" })).toBeInTheDocument();
-        expect(screen.getByRole("region", { name: "Estimaciones" })).toBeInTheDocument();
-        const sharedCatalogsButton = screen.getByRole("button", { name: /Catálogos compartidos.*0\/4/i });
-        expect(sharedCatalogsButton).toHaveAttribute("aria-expanded", "false");
-        expect(screen.queryByRole("region", { name: "Proyectos" })).not.toBeInTheDocument();
-        await user.click(sharedCatalogsButton);
-        expect(screen.getByRole("region", { name: "Proyectos" })).toBeInTheDocument();
-        expect(screen.getAllByText("Mercadeo").length).toBeGreaterThan(0);
-        expect(screen.getAllByText("Formalización").length).toBeGreaterThan(0);
-        expect(screen.getAllByText("Contabilidad").length).toBeGreaterThan(0);
-        expect(screen.queryByRole("checkbox", { name: /Crear lead/i })).not.toBeInTheDocument();
-        expect(screen.queryByText(/Permisos agrupados por vista/u)).not.toBeInTheDocument();
-        expect(screen.getByText("Administración / Roles y seguridad")).toBeInTheDocument();
-        await user.click(screen.getByRole("button", { name: /Leads.*\/5/i }));
-        expect(screen.getByRole("checkbox", { name: /Crear lead/i })).toBeChecked();
+        expect(screen.getByRole("heading", { level: 2 })).toHaveTextContent("Ventas/Leads");
+        expect(screen.getByRole("switch", { name: "Crear lead" })).toBeChecked();
+        expect(screen.getByRole("switch", { name: "Cambiar estado" })).not.toBeChecked();
+        expect(screen.getByText("3 / 5")).toBeInTheDocument();
 
-        expect(operationalGroupTrigger).toHaveAttribute("aria-expanded", "true");
-        await user.click(screen.getByRole("button", { name: /Mercadeo.*0\/7/ }));
+        fireEvent.mouseDown(screen.getByRole("combobox", { name: "Sección" }));
+        await user.click(await screen.findByText("Catálogos", { selector: ".roles-security-option > span" }));
+        expect(screen.getByRole("table", { name: "Permisos de Proyectos" })).toBeInTheDocument();
 
-        expect(screen.getByRole("heading", { name: "Mercadeo" })).toBeInTheDocument();
-        expect(screen.getByRole("region", { name: "Campañas" })).toBeInTheDocument();
-        expect(screen.queryByRole("checkbox", { name: /Ver campañas/i })).not.toBeInTheDocument();
-        await user.click(screen.getByRole("button", { name: /Campañas.*\/3/i }));
-        expect(screen.getByRole("checkbox", { name: /Ver campañas/i })).not.toBeChecked();
-        expect(screen.queryByText("Sistemas")).not.toBeInTheDocument();
+        fireEvent.mouseDown(screen.getByRole("combobox", { name: "Módulo" }));
+        await user.click(await screen.findByText("Mercadeo", { selector: ".roles-security-option > span" }));
+        expect(screen.getByRole("heading", { level: 2 })).toHaveTextContent("Mercadeo/Campañas");
+        expect(screen.getByRole("switch", { name: "Ver campañas" })).not.toBeChecked();
+        expect(screen.getByText("Sin acceso")).toBeInTheDocument();
+        expect(screen.getByRole("navigation", { name: "Ruta" })).toHaveTextContent("Administración/Roles y seguridad");
         expect(screen.getByRole("button", { name: "Auditoría" })).toBeInTheDocument();
-
-        await user.clear(screen.getByLabelText("Buscar permiso"));
-        await user.type(screen.getByLabelText("Buscar permiso"), "proy");
-        const filteredSharedCatalogsButton = await screen.findByRole("button", { name: /Catálogos compartidos.*0\/4/i });
-        await user.click(filteredSharedCatalogsButton);
-        await waitFor(() => {
-            expect(screen.queryByRole("region", { name: "Campañas" })).not.toBeInTheDocument();
-            expect(screen.getByRole("region", { name: "Proyectos" })).toBeInTheDocument();
-        });
 
         expect(fetchMock.mock.calls.filter(([input]) => getRequestPath(input) === "/identity/session")).toHaveLength(sessionCallsBeforeNavigation);
         expect(fetchMock.mock.calls.filter(([input]) => getRequestPath(input) === "/identity/me")).toHaveLength(profileCallsBeforeNavigation);
@@ -810,7 +783,6 @@ describe("App", () => {
         expect(await screen.findByRole("heading", { name: "Usuarios" })).toBeInTheDocument();
 
         await user.click(await screen.findByRole("button", { name: "Abrir detalle de Andrea Valverde" }));
-
         expect(screen.getByRole("heading", { name: "Andrea Valverde" })).toBeInTheDocument();
         expect(screen.getByRole("button", { name: "Reactivar usuario" })).toBeInTheDocument();
         expect(screen.queryByText("Control de riesgo")).not.toBeInTheDocument();

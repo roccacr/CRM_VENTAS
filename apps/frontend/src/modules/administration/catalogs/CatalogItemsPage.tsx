@@ -9,8 +9,12 @@
 import "./CatalogItemsPage.css";
 import "./ProjectsView.css";
 
+import DoubleLeftOutlined from "@ant-design/icons/DoubleLeftOutlined";
+import DoubleRightOutlined from "@ant-design/icons/DoubleRightOutlined";
+import LeftOutlined from "@ant-design/icons/LeftOutlined";
 import PlusOutlined from "@ant-design/icons/PlusOutlined";
 import ReloadOutlined from "@ant-design/icons/ReloadOutlined";
+import RightOutlined from "@ant-design/icons/RightOutlined";
 import SaveOutlined from "@ant-design/icons/SaveOutlined";
 import Button from "antd/es/button";
 import ConfigProvider from "antd/es/config-provider";
@@ -25,6 +29,11 @@ import { type ReactNode, useCallback, useEffect, useRef, useState } from "react"
 import { ApiClientError } from "../../../services/api/api-client";
 import { type CatalogContextModuleCode, type CatalogExternalReferencePayload, type CatalogItem, type CatalogItemPayload, type CatalogItemStatus, createCatalogItem, listCatalogItems, updateCatalogItem, updateCatalogItemStatus } from "../../../services/catalogs/catalog-service";
 import { ADMINISTRATION_MODAL_Z_INDEX, ADMINISTRATION_THEME } from "../administration-theme";
+import { BROKERS_FORM_COPY, BROKERS_NAME_MAX_LENGTH } from "../brokers/brokers-definition";
+import { CAMPAIGNS_FORM_COPY } from "../campaigns/campaigns-definition";
+import { CLASSES_FORM_COPY, CLASSES_NAME_MAX_LENGTH } from "../classes/classes-definition";
+import { LOCATIONS_FORM_COPY, LOCATIONS_NAME_MAX_LENGTH } from "../locations/locations-definition";
+import { SUBSIDIARIES_FORM_COPY, SUBSIDIARIES_NAME_MAX_LENGTH } from "../subsidiaries/subsidiaries-definition";
 import { type AdministrationCatalogDefinition, CATALOG_REFERENCE_PROVIDERS, getCatalogPresentation } from "./catalog-definitions";
 import { CatalogItemDetailDrawer } from "./CatalogItemDetailDrawer";
 import { CatalogItemsDataTable } from "./CatalogItemsDataTable";
@@ -102,8 +111,10 @@ const getNavigationItems = (items: readonly CatalogItem[], visibleOrder: readonl
 };
 
 const getModalCopy = (catalog: AdministrationCatalogDefinition, isEdit: boolean) => {
-    if (catalog.code === "campaigns") {
-        return { placeholder: `Ej. ${catalog.label} principal`, submit: "Crear campaña", title: isEdit ? "Editar campaña" : "Nueva campaña" };
+    const domainCopy: Partial<Record<AdministrationCatalogDefinition["code"], typeof CAMPAIGNS_FORM_COPY>> = { campaigns: CAMPAIGNS_FORM_COPY, classes: CLASSES_FORM_COPY, locations: LOCATIONS_FORM_COPY, subsidiaries: SUBSIDIARIES_FORM_COPY, brokers: BROKERS_FORM_COPY };
+    const copy = domainCopy[catalog.code];
+    if (copy) {
+        return { placeholder: copy.placeholder, submit: copy.submit, title: isEdit ? copy.editTitle : copy.createTitle };
     }
     if (catalog.code === "projects") {
         return { placeholder: "Ej. Proyecto principal", submit: "Crear proyecto", title: isEdit ? "Editar proyecto" : "Nuevo proyecto" };
@@ -137,6 +148,8 @@ function CatalogItemModal({ catalog, initialItem, isSaving, open, error, onClose
     const isEdit = initialItem !== null;
     const projectView = getCatalogPresentation(catalog.code).enhanced;
     const copy = getModalCopy(catalog, isEdit);
+    const nameLimits: Partial<Record<AdministrationCatalogDefinition["code"], number>> = { locations: LOCATIONS_NAME_MAX_LENGTH, classes: CLASSES_NAME_MAX_LENGTH, subsidiaries: SUBSIDIARIES_NAME_MAX_LENGTH, brokers: BROKERS_NAME_MAX_LENGTH };
+    const nameMaxLength = nameLimits[catalog.code];
     const textAreaSizes = getTextAreaSizes(projectView);
 
     useEffect(() => {
@@ -194,15 +207,8 @@ function CatalogItemModal({ catalog, initialItem, isSaving, open, error, onClose
             <Form form={form} layout="vertical" requiredMark="optional">
                 {error ? <div className="catalog-items-error">{error}</div> : null}
                 <CatalogFormSection projectView={projectView} title="Información del registro">
-                    <Form.Item<CatalogItemFormValues>
-                        label="Nombre"
-                        name="name"
-                        rules={[
-                            { min: 2, message: "Agrega un nombre válido." },
-                            { required: true, message: "El nombre es obligatorio." },
-                        ]}
-                    >
-                        <Input placeholder={copy.placeholder} />
+                    <Form.Item<CatalogItemFormValues> label="Nombre" name="name" rules={[{ min: 2, message: "Agrega un nombre válido." }, { required: true, message: "El nombre es obligatorio." }, ...(nameMaxLength ? [{ max: nameMaxLength, message: `El nombre admite hasta ${String(nameMaxLength)} caracteres.` }] : [])]}>
+                        <Input placeholder={copy.placeholder} {...(nameMaxLength ? { maxLength: nameMaxLength } : {})} />
                     </Form.Item>
                     <Form.Item<CatalogItemFormValues> label="Detalle" name="detail">
                         <Input.TextArea {...textAreaSizes.detail} maxLength={500} showCount placeholder="Detalle operativo visible para administración." />
@@ -297,7 +303,7 @@ function CatalogStatusModal({ action, isSaving, onClose, onReasonChange, onSubmi
     );
 }
 
-function CatalogLoadState({ error, isLoading, projectView, hasMore, isLoadingMore, loaded, total, onLoadMore }: { readonly error: string | null; readonly isLoading: boolean; readonly projectView: boolean; readonly hasMore: boolean; readonly isLoadingMore: boolean; readonly loaded: number; readonly total: number; readonly onLoadMore: () => void }) {
+function CatalogLoadState({ error, isLoading, projectView }: { readonly error: string | null; readonly isLoading: boolean; readonly projectView: boolean }) {
     return (
         <>
             {error ? (
@@ -306,29 +312,87 @@ function CatalogLoadState({ error, isLoading, projectView, hasMore, isLoadingMor
                 </div>
             ) : null}
             {isLoading && !projectView ? <div role="status">Cargando catálogo…</div> : null}
-            {hasMore ? (
-                <div className="catalog-items-toolbar">
-                    <span>
-                        {loaded} de {total} valores cargados
-                    </span>
-                    <Button aria-label="Cargar más" loading={isLoadingMore} disabled={isLoading} onClick={onLoadMore}>
-                        Cargar más
-                    </Button>
-                </div>
-            ) : null}
         </>
     );
 }
 
+/** One API-backed pager; DataTables renders only this page, never a second local page. */
+function CatalogPagination({ page, pageSize, total, loaded, disabled, isLoading, onChange }: { readonly page: number; readonly pageSize: number; readonly total: number; readonly loaded: number; readonly disabled: boolean; readonly isLoading: boolean; readonly onChange: (page: number, pageSize: number) => void }) {
+    const lastPage = Math.max(1, Math.ceil(total / pageSize));
+    const start = total === 0 ? 0 : (page - 1) * pageSize + 1;
+    return (
+        <nav className="catalog-items-pagination" aria-label="Paginación del catálogo">
+            <span aria-live="polite">
+                {start}–{total === 0 ? 0 : Math.min(total, start + loaded - 1)} de {total} valores
+            </span>
+            <div className="catalog-items-pagination__controls">
+                <span className="catalog-items-pagination__loading">{isLoading && <ReloadOutlined spin aria-label="Cargando página" />}</span>
+                <label>
+                    Filas por página
+                    <select
+                        aria-label="Filas por página"
+                        disabled={disabled}
+                        value={pageSize}
+                        onChange={(event) => {
+                            onChange(1, Number(event.target.value));
+                        }}
+                    >
+                        {[10, 50, 100, 200].map((size) => (
+                            <option key={size} value={size}>
+                                {size}
+                            </option>
+                        ))}
+                    </select>
+                </label>
+                <Button
+                    aria-label="Primera página"
+                    icon={<DoubleLeftOutlined />}
+                    disabled={disabled || page <= 1}
+                    onClick={() => {
+                        onChange(1, pageSize);
+                    }}
+                />
+                <Button
+                    aria-label="Página anterior"
+                    icon={<LeftOutlined />}
+                    disabled={disabled || page <= 1}
+                    onClick={() => {
+                        onChange(page - 1, pageSize);
+                    }}
+                />
+                <span>
+                    Página {page} de {lastPage}
+                </span>
+                <Button
+                    aria-label="Página siguiente"
+                    icon={<RightOutlined />}
+                    disabled={disabled || page >= lastPage}
+                    onClick={() => {
+                        onChange(page + 1, pageSize);
+                    }}
+                />
+                <Button
+                    aria-label="Última página"
+                    icon={<DoubleRightOutlined />}
+                    disabled={disabled || page >= lastPage}
+                    onClick={() => {
+                        onChange(lastPage, pageSize);
+                    }}
+                />
+            </div>
+        </nav>
+    );
+}
+
 /** Domain-aware header actions; block refresh while a request or mutation is active. */
-function CatalogHeaderActions({ catalogCode, isLoading, isLoadingMore, isSaving, isSavingStatus, onRefresh, onCreate }: { readonly catalogCode: string; readonly isLoading: boolean; readonly isLoadingMore: boolean; readonly isSaving: boolean; readonly isSavingStatus: boolean; readonly onRefresh: () => void; readonly onCreate: () => void }) {
+function CatalogHeaderActions({ catalogCode, isLoading, isSaving, isSavingStatus, onRefresh, onCreate }: { readonly catalogCode: string; readonly isLoading: boolean; readonly isSaving: boolean; readonly isSavingStatus: boolean; readonly onRefresh: () => void; readonly onCreate: () => void }) {
     const presentation = getCatalogPresentation(catalogCode);
     const refreshLabel = presentation.refresh;
     return (
         <div className="global-home-page-header__actions">
             {presentation.enhanced && (
                 <Tooltip title={refreshLabel}>
-                    <Button className="projects-view-refresh" aria-label={refreshLabel} icon={<ReloadOutlined spin={isLoading} />} disabled={isLoading || isLoadingMore || isSaving || isSavingStatus} onClick={onRefresh} />
+                    <Button className="projects-view-refresh" aria-label={refreshLabel} icon={<ReloadOutlined spin={isLoading} />} disabled={isLoading || isSaving || isSavingStatus} onClick={onRefresh} />
                 </Tooltip>
             )}
             <button className="global-home-page-header__primary" type="button" onClick={onCreate}>
@@ -358,9 +422,9 @@ function CatalogPageTitle({ catalog, isLoading, total }: { readonly catalog: Adm
 }
 
 /** Approved catalog opt-ins announce list updates without changing other catalogs. */
-function CatalogListPanel({ catalog, isLoading, isLoadingMore, children }: { readonly catalog: AdministrationCatalogDefinition; readonly isLoading: boolean; readonly isLoadingMore: boolean; readonly children: ReactNode }) {
+function CatalogListPanel({ catalog, isLoading, children }: { readonly catalog: AdministrationCatalogDefinition; readonly isLoading: boolean; readonly children: ReactNode }) {
     return (
-        <section className="catalog-items-panel" aria-label={`Listado de ${catalog.label}`} aria-busy={getCatalogPresentation(catalog.code).enhanced ? isLoading || isLoadingMore : undefined}>
+        <section className="catalog-items-panel" aria-label={`Listado de ${catalog.label}`} aria-busy={getCatalogPresentation(catalog.code).enhanced ? isLoading : undefined}>
             {children}
         </section>
     );
@@ -384,10 +448,8 @@ export function CatalogItemsPage({ catalog, contextLabel = "Administración", co
     const [pendingStatusAction, setPendingStatusAction] = useState<StatusAction | null>(null);
     const [reason, setReason] = useState("");
     const [total, setTotal] = useState(0);
-    const [hasMore, setHasMore] = useState(false);
-    const [isLoadingMore, setIsLoadingMore] = useState(false);
-    const nextOffset = useRef(0);
-    const loadingMore = useRef(false);
+    const [pagination, setPagination] = useState({ page: 1, pageSize: 100 });
+    const currentPage = useRef(pagination);
     const [selection, setSelection] = useState<{ publicId: string; catalogCode: string; context: string; open: boolean } | null>(null);
     const isDetailOpen = selection?.catalogCode === catalog.code && selection.context === contextModuleCode && selection.open;
     const selectedItem = items.find((item) => item.publicId === selection?.publicId) ?? null;
@@ -396,63 +458,59 @@ export function CatalogItemsPage({ catalog, contextLabel = "Administración", co
     const selectedIndex = navigationItems.findIndex((item) => item === selectedItem);
     // A late response from an older filter/context must not replace the visible details.
     const loadSequence = useRef(0);
+    // Session-local batches only: never persist CRM data or share it between mounted users.
+    const pageCache = useRef(new Map<string, Awaited<ReturnType<typeof listCatalogItems>>>());
+    const showPage = useCallback((target: { page: number; pageSize: number }, response: Awaited<ReturnType<typeof listCatalogItems>>) => {
+        if (target.page !== currentPage.current.page || target.pageSize !== currentPage.current.pageSize) setSelection(null);
+        currentPage.current = target;
+        setPagination(target);
+        setItems(response.items);
+        setTotal(response.total);
+    }, []);
 
-    const loadItems = useCallback(() => {
-        const sequence = ++loadSequence.current;
-        setIsLoading(true);
-        setError(null);
-        nextOffset.current = 0;
-        loadingMore.current = false;
-        setIsLoadingMore(false);
-        void listCatalogItems(catalog.code, { limit: 100, moduleCode: contextModuleCode, status: "all" })
-            .then((response) => {
-                if (sequence !== loadSequence.current) return;
-                setItems(response.items);
-                nextOffset.current = response.items.length;
-                setTotal(response.total);
-                setHasMore(nextOffset.current < response.total);
-            })
-            .catch((loadError: unknown) => {
-                if (sequence !== loadSequence.current) return;
-                setError(getApiErrorMessage(loadError, "No pudimos cargar el catálogo."));
-            })
-            .finally(() => {
-                if (sequence !== loadSequence.current) return;
+    const loadItems = useCallback(
+        function loadPage(target = { page: 1, pageSize: 100 }, refresh = false) {
+            const sequence = ++loadSequence.current;
+            if (refresh) pageCache.current.clear();
+            const key = JSON.stringify([catalog.code, contextModuleCode, target.pageSize, target.page]);
+            const cached = pageCache.current.get(key);
+            setError(null);
+            if (cached) {
+                showPage(target, cached);
                 setIsLoading(false);
-            });
-    }, [catalog.code, contextModuleCode]);
-
-    const loadMore = (): void => {
-        if (loadingMore.current || isLoading || nextOffset.current >= total) return;
-        const sequence = loadSequence.current;
-        loadingMore.current = true;
-        setIsLoadingMore(true);
-        setError(null);
-        void listCatalogItems(catalog.code, { limit: 100, offset: nextOffset.current, moduleCode: contextModuleCode, status: "all" })
-            .then((response) => {
-                if (sequence !== loadSequence.current) return;
-                if (response.items.length === 0 && nextOffset.current < response.total) throw new Error("Catalog pagination did not advance");
-                nextOffset.current += response.items.length;
-                setItems((current) => {
-                    const known = new Set(current.map((item) => item.publicId));
-                    return [...current, ...response.items.filter((item) => !known.has(item.publicId))];
+                return;
+            }
+            setIsLoading(true);
+            void listCatalogItems(catalog.code, { limit: target.pageSize, offset: (target.page - 1) * target.pageSize, moduleCode: contextModuleCode, status: "all" })
+                .then((response) => {
+                    if (sequence !== loadSequence.current) return;
+                    if ([...pageCache.current.values()].some((page) => page.total !== response.total)) pageCache.current.clear();
+                    const lastPage = Math.max(1, Math.ceil(response.total / target.pageSize));
+                    if (target.page > lastPage) {
+                        loadPage({ ...target, page: lastPage });
+                        return;
+                    }
+                    pageCache.current.set(key, response);
+                    // Bound retained batches to 20 (at most 4,000 records).
+                    if (pageCache.current.size > 20) {
+                        const oldest = pageCache.current.keys().next().value;
+                        if (oldest !== undefined) pageCache.current.delete(oldest);
+                    }
+                    showPage(target, response);
+                })
+                .catch((loadError: unknown) => {
+                    if (sequence !== loadSequence.current) return;
+                    setError(getApiErrorMessage(loadError, "No pudimos cargar el catálogo."));
+                })
+                .finally(() => {
+                    if (sequence !== loadSequence.current) return;
+                    setIsLoading(false);
                 });
-                setTotal(response.total);
-                setHasMore(nextOffset.current < response.total);
-            })
-            .catch(() => {
-                if (sequence === loadSequence.current) setError("No pudimos cargar más valores. Intenta nuevamente.");
-            })
-            .finally(() => {
-                if (sequence === loadSequence.current) {
-                    loadingMore.current = false;
-                    setIsLoadingMore(false);
-                }
-            });
-    };
+        },
+        [catalog.code, contextModuleCode, showPage],
+    );
 
     useEffect(() => {
-        // eslint-disable-next-line react-hooks/set-state-in-effect -- Reload the initial batch when the catalog or authorized module changes.
         loadItems();
         return () => {
             // eslint-disable-next-line react-hooks/exhaustive-deps -- Invalidate the latest request counter, not a captured DOM ref.
@@ -494,7 +552,7 @@ export function CatalogItemsPage({ catalog, contextLabel = "Administración", co
                 setIsFormOpen(false);
                 setEditingItem(null);
                 void message.success(`${catalog.label} guardado y auditado.`);
-                loadItems();
+                loadItems(currentPage.current, true);
             })
             .catch((saveError: unknown) => {
                 setFormError(getApiErrorMessage(saveError, "No pudimos guardar el catálogo. Revisa permisos, duplicados y motivo de auditoría."));
@@ -529,7 +587,7 @@ export function CatalogItemsPage({ catalog, contextLabel = "Administración", co
                 setSelection((current) => (current?.publicId === pendingStatusAction.item.publicId ? { ...current, publicId: saved.publicId } : current));
                 void message.success(`${pendingStatusAction.item.name} actualizado.`);
                 closeStatusAction();
-                loadItems();
+                loadItems(currentPage.current, true);
             })
             .catch(() => {
                 void message.error("No pudimos actualizar el estado del catálogo.");
@@ -554,10 +612,19 @@ export function CatalogItemsPage({ catalog, contextLabel = "Administración", co
                         <CatalogPageTitle catalog={catalog} isLoading={isLoading} total={total} />
                         <p>Gestión de valores nativos CRM y sus referencias externas.</p>
                     </div>
-                    <CatalogHeaderActions catalogCode={catalog.code} isLoading={isLoading} isLoadingMore={isLoadingMore} isSaving={isSaving} isSavingStatus={isSavingStatus} onRefresh={loadItems} onCreate={openCreate} />
+                    <CatalogHeaderActions
+                        catalogCode={catalog.code}
+                        isLoading={isLoading}
+                        isSaving={isSaving}
+                        isSavingStatus={isSavingStatus}
+                        onRefresh={() => {
+                            loadItems(currentPage.current, true);
+                        }}
+                        onCreate={openCreate}
+                    />
                 </section>
 
-                <CatalogListPanel catalog={catalog} isLoading={isLoading} isLoadingMore={isLoadingMore}>
+                <CatalogListPanel catalog={catalog} isLoading={isLoading}>
                     <CatalogItemsDataTable
                         entityLabel={presentation.entity}
                         projectView={projectView}
@@ -574,7 +641,17 @@ export function CatalogItemsPage({ catalog, contextLabel = "Administración", co
                         }}
                         onVisibleOrderChange={setVisibleOrder}
                     />
-                    <CatalogLoadState error={error} isLoading={isLoading} projectView={projectView} hasMore={hasMore} isLoadingMore={isLoadingMore} loaded={items.length} total={total} onLoadMore={loadMore} />
+                    <CatalogLoadState error={error} isLoading={isLoading} projectView={projectView} />
+                    <CatalogPagination
+                        {...pagination}
+                        total={total}
+                        loaded={items.length}
+                        isLoading={isLoading}
+                        disabled={[isLoading, isSaving, isSavingStatus].some(Boolean)}
+                        onChange={(page, pageSize) => {
+                            loadItems({ page, pageSize });
+                        }}
+                    />
                 </CatalogListPanel>
 
                 <CatalogItemDetailDrawer
@@ -598,7 +675,9 @@ export function CatalogItemsPage({ catalog, contextLabel = "Administración", co
                         setSelection((current) => (current ? { ...current, open: false } : null));
                     }}
                     onEdit={openEdit}
-                    onRefresh={loadItems}
+                    onRefresh={() => {
+                        loadItems(currentPage.current, true);
+                    }}
                     onStatusAction={openStatusAction}
                 />
                 <CatalogItemModal catalog={catalog} error={formError} initialItem={editingItem} isSaving={isSaving} open={isFormOpen} onClose={closeForm} onSubmit={submitForm} />

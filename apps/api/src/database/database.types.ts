@@ -1,5 +1,12 @@
 import type { ColumnType, Generated, Insertable, Selectable, Updateable } from "kysely";
 
+import type { CrmBrokerExternalReferenceTable, CrmBrokerTable } from "../modules/crm/brokers/brokers.tables.js";
+import type { CrmCampaignExternalReferenceTable, CrmCampaignTable } from "../modules/crm/campaigns/campaigns.tables.js";
+import type { CrmClassExternalReferenceTable, CrmClassTable } from "../modules/crm/classes/classes.tables.js";
+import type { CrmLocationExternalReferenceTable, CrmLocationTable } from "../modules/crm/locations/locations.tables.js";
+import type { CrmSubsidiaryExternalReferenceTable, CrmSubsidiaryTable } from "../modules/crm/subsidiaries/subsidiaries.tables.js";
+import type { CrmUnitFileExternalReferenceTable, CrmUnitFileTable } from "../modules/crm/unit-files/unit-files.tables.js";
+
 /**
  * Mapa de tablas Kysely para el esquema de identidad aprobado en CRM_THINK_V2.
  *
@@ -339,6 +346,18 @@ export interface CrmDatabase {
     int_user_external_identity: IntUserExternalIdentityTable;
     crm_catalog_item: CrmCatalogItemTable;
     crm_project: CrmProjectTable;
+    crm_campaign: CrmCampaignTable;
+    crm_class: CrmClassTable;
+    crm_location: CrmLocationTable;
+    crm_subsidiary: CrmSubsidiaryTable;
+    crm_broker: CrmBrokerTable;
+    crm_broker_external_reference: CrmBrokerExternalReferenceTable;
+    crm_unit_file: CrmUnitFileTable;
+    crm_unit_file_external_reference: CrmUnitFileExternalReferenceTable;
+    crm_subsidiary_external_reference: CrmSubsidiaryExternalReferenceTable;
+    crm_location_external_reference: CrmLocationExternalReferenceTable;
+    crm_class_external_reference: CrmClassExternalReferenceTable;
+    crm_campaign_external_reference: CrmCampaignExternalReferenceTable;
     crm_project_external_reference: CrmProjectExternalReferenceTable;
     crm_catalog_item_external_reference: CrmCatalogItemExternalReferenceTable;
     audit_security_event: AuditSecurityEventTable;

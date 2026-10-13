@@ -141,7 +141,7 @@ interface CatalogItemDetailDrawerProps {
 function CatalogDetailActions({ item, error, isLoading, onEdit, onStatusAction }: Pick<CatalogItemDetailDrawerProps, "item" | "error" | "isLoading" | "onEdit" | "onStatusAction">) {
     if (!item || error || isLoading) return null;
     const active = item.status === "active";
-    const readOnlyLegacy = item.publicId.startsWith("legacy:") && !item.publicId.startsWith("legacy:projects:");
+    const readOnlyLegacy = item.publicId.startsWith("legacy:") && !/^legacy:(projects|campaigns|classes|locations|subsidiaries|brokers):[1-9]\d*$/.test(item.publicId);
     const readOnlyTitle = readOnlyLegacy ? "Registro legacy de solo lectura" : undefined;
     return (
         <Space size={8} wrap className="catalog-item-detail-drawer__actions">

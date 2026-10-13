@@ -11,6 +11,7 @@ import { ulid } from "ulid";
 
 import { DatabaseService } from "../../../database/database.service.js";
 import type { CrmDatabase } from "../../../database/database.types.js";
+import { buildAuditChangeSet } from "../audit/audit-change-set.js";
 import { SecurityAuditService } from "../audit/security-audit.service.js";
 import type { CatalogReadInput } from "../catalogs/catalog-fallback.js";
 import type { CatalogExternalReference, CatalogExternalReferenceInput, CatalogItem, CatalogItemsResponse, CatalogMutationInput, CatalogStatusMutationInput } from "../catalogs/catalogs.types.js";
@@ -43,6 +44,7 @@ const validatePagination = (limit: number, offset: number): void => {
 /** La clave única de la referencia choca cuando otro proyecto ya posee ese id externo. */
 const isDuplicateKeyError = (error: unknown): boolean => error instanceof Error && "code" in error && error.code === "ER_DUP_ENTRY";
 
+/** Persists projects, provider references and their transactional changelog. */
 @Injectable()
 export class ProjectsRepository {
     /**
@@ -98,14 +100,16 @@ export class ProjectsRepository {
     async createCatalogItem(input: CatalogMutationInput): Promise<CatalogItem> {
         return this.database.db.transaction().execute(async (transaction) => {
             const actor = await this.actor(transaction, input.actorPublicId);
+            const auditInput = { ...input, actorSnapshot: await this.audit.captureActor(actor, transaction) };
             const publicId = ulid();
             const legacyId = this.legacy?.enabled() ? await this.legacy.create(transaction, { name: input.name, status: "active", externalReferences: input.externalReferences }) : null;
             const result = await sql`INSERT INTO crm_project (public_id_project,native_code_project,id_old_produccion_project,name_project,detail_project,created_by_user_id_project,updated_by_user_id_project) VALUES (${publicId},${`projects_${publicId.toLowerCase()}`},${legacyId},${input.name},${input.detail ?? null},${actor},${actor})`.execute(transaction);
             await this.replaceReferences(transaction, Number(result.insertId), input.externalReferences);
-            await this.recordAudit(transaction, actor, input, "catalog_item_created", { externalReferences: input.externalReferences.map((reference) => reference.systemCode) });
             const item = await this.find(transaction, publicId);
             if (!item) throw new BadRequestException("Created project could not be read.");
-            return this.mapItem(item, transaction);
+            const after = await this.mapItem(item, transaction);
+            await this.recordAudit(transaction, actor, auditInput, "catalog_item_created", { externalReferences: input.externalReferences.map((reference) => reference.systemCode), changeSet: buildAuditChangeSet({ entity: "catalog", recordId: publicId, action: "create", before: null, after: { ...after } }) });
+            return after;
         });
     }
 
@@ -118,14 +122,18 @@ export class ProjectsRepository {
     async updateCatalogItem(publicId: string, input: CatalogMutationInput): Promise<CatalogItem | null> {
         return this.database.db.transaction().execute(async (transaction) => {
             const actor = await this.actor(transaction, input.actorPublicId);
+            const auditInput = { ...input, actorSnapshot: await this.audit.captureActor(actor, transaction) };
             const current = await this.resolveForMutation(transaction, publicId, actor);
             if (!current) return null;
+            const before = await this.mapItem(current, transaction, (await this.loadReferences([current.id], transaction, true)).get(current.id) ?? []);
             await this.replaceReferences(transaction, current.id, input.externalReferences);
             await sql`UPDATE crm_project SET name_project=${input.name}, detail_project=${input.detail ?? null}, updated_by_user_id_project=${actor}, updated_at_project=CURRENT_TIMESTAMP(3) WHERE id_project=${current.id}`.execute(transaction);
             await this.synchronize(transaction, { ...current, name: input.name }, input.externalReferences);
-            await this.recordAudit(transaction, actor, input, "catalog_item_updated", { itemPublicId: publicId });
             const updated = await this.find(transaction, current.publicId);
-            return updated ? this.mapItem(updated, transaction) : null;
+            if (!updated) throw new BadRequestException("Updated project could not be read.");
+            const after = await this.mapItem(updated, transaction, (await this.loadReferences([current.id], transaction, true)).get(current.id) ?? []);
+            await this.recordAudit(transaction, actor, auditInput, "catalog_item_updated", { itemPublicId: current.publicId, changeSet: buildAuditChangeSet({ entity: "catalog", recordId: current.publicId, action: "update", before: { ...before }, after: { ...after } }) });
+            return after;
         });
     }
 
@@ -137,15 +145,19 @@ export class ProjectsRepository {
     async updateCatalogItemStatus(input: CatalogStatusMutationInput): Promise<CatalogItem | null> {
         return this.database.db.transaction().execute(async (transaction) => {
             const actor = await this.actor(transaction, input.actorPublicId);
+            const auditInput = { ...input, actorSnapshot: await this.audit.captureActor(actor, transaction) };
             const current = await this.resolveForMutation(transaction, input.itemPublicId, actor);
             if (!current) return null;
+            const references = (await this.loadReferences([current.id], transaction, true)).get(current.id) ?? [];
+            const before = await this.mapItem(current, transaction, references);
             const inactive = input.status === "inactive";
             await sql`UPDATE crm_project SET status_project=${input.status}, inactivated_at_project=${inactive ? new Date() : null}, inactivated_by_user_id_project=${inactive ? actor : null}, updated_by_user_id_project=${actor}, updated_at_project=CURRENT_TIMESTAMP(3) WHERE id_project=${current.id}`.execute(transaction);
-            const references = (await this.loadReferences([current.id], transaction)).get(current.id) ?? [];
             await this.synchronize(transaction, { ...current, status: input.status }, references);
-            await this.recordAudit(transaction, actor, input, "catalog_item_status_changed", { itemPublicId: input.itemPublicId, nextStatus: input.status, previousStatus: current.status });
             const updated = await this.find(transaction, current.publicId);
-            return updated ? this.mapItem(updated, transaction) : null;
+            if (!updated) throw new BadRequestException("Updated project could not be read.");
+            const after = await this.mapItem(updated, transaction, references);
+            await this.recordAudit(transaction, actor, auditInput, "catalog_item_status_changed", { itemPublicId: current.publicId, nextStatus: input.status, previousStatus: current.status, changeSet: buildAuditChangeSet({ entity: "catalog", recordId: current.publicId, action: inactive ? "deactivate" : "reactivate", before: { ...before }, after: { ...after } }) });
+            return after;
         });
     }
 
@@ -210,12 +222,13 @@ export class ProjectsRepository {
     }
 
     /** Referencias activas de la página, agrupadas por proyecto para no consultar una por fila. */
-    private async loadReferences(ids: readonly number[], executor: DatabaseService["db"]): Promise<Map<number, CatalogExternalReference[]>> {
+    // Mutation snapshots need current reads even when an earlier actor lookup established REPEATABLE READ.
+    private async loadReferences(ids: readonly number[], executor: DatabaseService["db"], lock = false): Promise<Map<number, CatalogExternalReference[]>> {
         const grouped = new Map<number, CatalogExternalReference[]>();
         if (ids.length === 0) return grouped;
         const result = await sql<
             CatalogExternalReference & { projectId: number }
-        >`SELECT r.project_id_project_external_reference AS projectId, r.external_id_project_external_reference AS externalId, r.status_project_external_reference AS status, s.code_external_system AS systemCode, s.name_external_system AS systemName FROM crm_project_external_reference r JOIN int_external_system s ON s.id_external_system=r.external_system_id_project_external_reference WHERE r.project_id_project_external_reference IN (${sql.join(ids)}) AND r.deleted_at_project_external_reference IS NULL ORDER BY s.code_external_system`.execute(
+        >`SELECT r.project_id_project_external_reference AS projectId, r.external_id_project_external_reference AS externalId, r.status_project_external_reference AS status, s.code_external_system AS systemCode, s.name_external_system AS systemName FROM crm_project_external_reference r JOIN int_external_system s ON s.id_external_system=r.external_system_id_project_external_reference WHERE r.project_id_project_external_reference IN (${sql.join(ids)}) AND r.deleted_at_project_external_reference IS NULL ORDER BY s.code_external_system ${lock ? sql`FOR UPDATE OF r` : sql``}`.execute(
             executor,
         );
         for (const { projectId, ...reference } of result.rows) grouped.set(projectId, [...(grouped.get(projectId) ?? []), reference]);
@@ -270,6 +283,6 @@ export class ProjectsRepository {
     /** La auditoría entra en la transacción del cambio. Si el cambio revierte, el evento también. */
     // eslint-disable-next-line max-params -- Audit shares the same transaction as the domain mutation.
     private async recordAudit(transaction: Transaction<CrmDatabase>, actor: number, input: CatalogMutationInput | CatalogStatusMutationInput, eventType: string, metadata: Record<string, unknown> = {}): Promise<void> {
-        await this.audit.record({ actorUserId: actor, eventType, reason: input.reason, summary: `Project ${eventType}.`, metadata: { catalogCode: "projects", ...metadata }, ...(input.ipAddress ? { ipAddress: input.ipAddress } : {}), ...(input.userAgent ? { userAgent: input.userAgent } : {}) }, transaction);
+        await this.audit.record({ actorUserId: actor, actorSnapshot: input.actorSnapshot, eventType, reason: input.reason, summary: `Project ${eventType}.`, metadata: { catalogCode: "projects", moduleCode: input.moduleCode ?? null, sectionCode: "catalogs", ...metadata }, ...(input.ipAddress ? { ipAddress: input.ipAddress } : {}), ...(input.userAgent ? { userAgent: input.userAgent } : {}) }, transaction);
     }
 }

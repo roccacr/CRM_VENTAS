@@ -70,7 +70,7 @@ describe.skipIf(process.env.CATALOG_MYSQL_TESTS !== "1")("CatalogsRepository MyS
 
     const input = (suffix = ulid()): CatalogMutationInput => ({
         actorPublicId,
-        catalogCode: "campaigns",
+        catalogCode: "files",
         externalReferences: [{ systemCode, externalId: `${fixturePrefix}-${suffix}` }],
         name: `${fixturePrefix}-${suffix}`,
         reason: "Catalog reference integration regression",
@@ -144,16 +144,16 @@ describe.skipIf(process.env.CATALOG_MYSQL_TESTS !== "1")("CatalogsRepository MyS
         await withRollback(async (repository) => {
             const first = await repository.createCatalogItem(input("page-a"));
             const second = await repository.createCatalogItem(input("page-b"));
-            const query = { catalogCode: "campaigns" as const, search: `${fixturePrefix}-page-`, limit: 1 };
+            const query = { catalogCode: "files" as const, search: `${fixturePrefix}-page-`, limit: 1 };
             const page1 = await repository.listCatalogItems(query);
             const page2 = await repository.listCatalogItems({ ...query, offset: 1 });
             const end = await repository.listCatalogItems({ ...query, offset: 2 });
             expect(page1).toMatchObject({ total: 2, items: [{ publicId: first.publicId }] });
             expect(page2).toMatchObject({ total: 2, items: [{ publicId: second.publicId }] });
             expect(end).toMatchObject({ total: 2, items: [] });
-            expect(await repository.listCatalogItems({ catalogCode: "campaigns", search: query.search, status: "inactive" })).toMatchObject({ total: 0, items: [] });
+            expect(await repository.listCatalogItems({ catalogCode: "files", search: query.search, status: "inactive" })).toMatchObject({ total: 0, items: [] });
             await expect(repository.listCatalogItems({ ...query, limit: 0 })).rejects.toBeInstanceOf(BadRequestException);
-            await expect(repository.listCatalogItems({ ...query, catalogCode: "invalid" as "campaigns" })).rejects.toBeInstanceOf(BadRequestException);
+            await expect(repository.listCatalogItems({ ...query, catalogCode: "invalid" as "files" })).rejects.toBeInstanceOf(BadRequestException);
             await expect(repository.listCatalogItems({ ...query, offset: -1 })).rejects.toBeInstanceOf(BadRequestException);
         });
     }, 30_000);
@@ -165,11 +165,11 @@ describe.skipIf(process.env.CATALOG_MYSQL_TESTS !== "1")("CatalogsRepository MyS
             const pipe = new ValidationPipe({ transform: true, whitelist: true });
             const mutation = input();
             const create = (await pipe.transform({ ...mutation, moduleCode: "administration", externalReferences: [...mutation.externalReferences, { systemCode: "odoo", externalId: null }] }, { type: "body", metatype: CreateCatalogItemDto })) as CreateCatalogItemDto;
-            const item = await service.createCatalogItem("test-session", "campaigns", create);
+            const item = await service.createCatalogItem("test-session", "files", create);
             const original = await references(transaction, item.publicId);
             for (const externalId of [undefined, null, "", "   "]) {
                 const update = (await pipe.transform({ moduleCode: "administration", name: `${mutation.name}-edited`, detail: "Changed project details", reason: mutation.reason, externalReferences: [...mutation.externalReferences, { systemCode: "odoo", externalId }] }, { type: "body", metatype: UpdateCatalogItemDto })) as UpdateCatalogItemDto;
-                await expect(service.updateCatalogItem("test-session", "campaigns", item.publicId, update)).resolves.toMatchObject({ name: `${mutation.name}-edited`, detail: "Changed project details", externalReferences: mutation.externalReferences });
+                await expect(service.updateCatalogItem("test-session", "files", item.publicId, update)).resolves.toMatchObject({ name: `${mutation.name}-edited`, detail: "Changed project details", externalReferences: mutation.externalReferences });
                 expect(await references(transaction, item.publicId)).toEqual(original);
             }
             expect(await events(transaction, item.publicId)).toHaveLength(4);

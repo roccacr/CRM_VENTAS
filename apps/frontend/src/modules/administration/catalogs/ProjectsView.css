@@ -604,6 +604,8 @@
 }
 
 .catalog-items-page--projects .dt-layout-table {
+    /* Keep vendor row overflow inside the scroll viewport, not the page canvas. */
+    contain: layout paint;
     max-height: 640px;
     overflow: auto;
     overscroll-behavior-x: contain;
@@ -1585,6 +1587,7 @@
 .catalog-items-page--projects .projects-view-load-canvas {
     position: relative;
     min-height: 400px;
+    overflow-anchor: none;
 }
 
 .catalog-items-page--projects .projects-view-loader {
@@ -1634,6 +1637,12 @@
 
 .catalog-items-page--projects .projects-view-grid-reveal {
     animation: projects-grid-reveal 400ms ease-out both;
+}
+
+@media (max-width: 767px) {
+    .catalog-items-page--projects .dt-layout-table {
+        contain: none;
+    }
 }
 
 @keyframes projects-loader-spin {

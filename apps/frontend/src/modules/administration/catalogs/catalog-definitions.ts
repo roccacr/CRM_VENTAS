@@ -7,6 +7,11 @@
  * el mismo `code` con otro prefijo de ruta.
  */
 import type { CatalogCode } from "../../../services/catalogs/catalog-service";
+import { BROKERS_CATALOG, BROKERS_PRESENTATION } from "../brokers/brokers-definition";
+import { CAMPAIGNS_CATALOG, CAMPAIGNS_PRESENTATION } from "../campaigns/campaigns-definition";
+import { CLASSES_CATALOG, CLASSES_PRESENTATION } from "../classes/classes-definition";
+import { LOCATIONS_CATALOG, LOCATIONS_PRESENTATION } from "../locations/locations-definition";
+import { SUBSIDIARIES_CATALOG, SUBSIDIARIES_PRESENTATION } from "../subsidiaries/subsidiaries-definition";
 
 /**
  * Sistemas externos que el formulario y el detalle saben mostrar.
@@ -22,7 +27,11 @@ export const CATALOG_REFERENCE_PROVIDERS = [
 export function getCatalogPresentation(code: string) {
     const presentations: Record<string, { enhanced: boolean; scopeClass: string; entity: string; create: string; refresh: string }> = {
         projects: { enhanced: true, scopeClass: "catalog-items-page--projects", entity: "Proyecto", create: "Nuevo proyecto", refresh: "Actualizar proyectos" },
-        campaigns: { enhanced: true, scopeClass: "catalog-items-page--projects", entity: "Campaña", create: "Nueva campaña", refresh: "Actualizar campañas" },
+        campaigns: CAMPAIGNS_PRESENTATION,
+        classes: CLASSES_PRESENTATION,
+        locations: LOCATIONS_PRESENTATION,
+        subsidiaries: SUBSIDIARIES_PRESENTATION,
+        brokers: BROKERS_PRESENTATION,
     };
     return presentations[code] ?? { enhanced: false, scopeClass: "", entity: "Nombre", create: "Nuevo valor", refresh: "Actualizar catálogo" };
 }
@@ -58,12 +67,12 @@ export interface AdministrationCatalogDefinition {
  */
 export const ADMINISTRATION_CATALOGS: readonly AdministrationCatalogDefinition[] = [
     { code: "projects", createPermission: "administration.catalog_project.create", label: "Proyectos", menuItemCode: "catalog-projects", moduleCode: "catalog_project", path: "/home/administration/catalogs/projects", readPermission: "administration.catalog_project.read" },
-    { code: "campaigns", createPermission: "administration.catalog_campaign.create", label: "Campañas", menuItemCode: "catalog-campaigns", moduleCode: "catalog_campaign", path: "/home/administration/catalogs/campaigns", readPermission: "administration.catalog_campaign.read" },
-    { code: "classes", createPermission: "administration.catalog_class.create", label: "Clases", menuItemCode: "catalog-classes", moduleCode: "catalog_class", path: "/home/administration/catalogs/classes", readPermission: "administration.catalog_class.read" },
-    { code: "brokers", createPermission: "administration.catalog_broker.create", label: "Corredores", menuItemCode: "catalog-brokers", moduleCode: "catalog_broker", path: "/home/administration/catalogs/brokers", readPermission: "administration.catalog_broker.read" },
+    CAMPAIGNS_CATALOG,
+    CLASSES_CATALOG,
+    BROKERS_CATALOG,
     { code: "files", createPermission: "administration.catalog_file.create", label: "Expedientes", menuItemCode: "catalog-files", moduleCode: "catalog_file", path: "/home/administration/catalogs/files", readPermission: "administration.catalog_file.read" },
-    { code: "subsidiaries", createPermission: "administration.catalog_subsidiary.create", label: "Subsidiarias", menuItemCode: "catalog-subsidiaries", moduleCode: "catalog_subsidiary", path: "/home/administration/catalogs/subsidiaries", readPermission: "administration.catalog_subsidiary.read" },
-    { code: "locations", createPermission: "administration.catalog_location.create", label: "Ubicaciones", menuItemCode: "catalog-locations", moduleCode: "catalog_location", path: "/home/administration/catalogs/locations", readPermission: "administration.catalog_location.read" },
+    SUBSIDIARIES_CATALOG,
+    LOCATIONS_CATALOG,
 ];
 
 /**

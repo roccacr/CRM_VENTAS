@@ -499,6 +499,54 @@ describe("SystemUsersPage", () => {
         expect(screen.getByRole("heading", { name: "Javier Castro" })).toBeInTheDocument();
     });
 
+    it("adopta la presentación de Proyectos en página, tabla, detalle y diálogo", async () => {
+        const { container } = render(<SystemUsersPage />);
+
+        fireEvent.click(await screen.findByRole("button", { name: "Más acciones para Andrea Valverde" }));
+        fireEvent.click(await screen.findByRole("menuitem", { name: "Reactivar" }));
+
+        const reason = await screen.findByLabelText(/Motivo de auditoría/u);
+        expect(reason.closest(".ant-modal")).toHaveClass("catalog-items-modal--projects", "users-view-modal");
+        expect(reason).not.toHaveAttribute("rows", "4");
+        fireEvent.click(screen.getByRole("button", { name: "Cancelar" }));
+
+        expect(container.querySelector(".users-view.catalog-items-page--projects")).toBeInTheDocument();
+        expect(screen.getByText("5 usuarios")).toHaveClass("projects-view-total");
+        expect(screen.getByRole("button", { name: "Actualizar usuarios" })).toHaveClass("projects-view-refresh");
+        expect(container.querySelector(".projects-view-toolbar .dt-search")).toBeInTheDocument();
+        expect(getUserRow("Andrea Valverde").querySelector("td.administration-users-col-role")).toHaveAttribute("data-project-field", "Rol");
+        expect(within(getUserRow("Soporte Externo")).getByText("Bloqueado").closest(".administration-users-dt-status--blocked")).toBeInTheDocument();
+
+        await openUserDetail("Andrea Valverde");
+
+        const panel = getDetailPanel("Andrea Valverde");
+        expect(panel).toHaveClass("catalog-item-detail-drawer--projects", "users-view-drawer");
+        expect(panel.querySelector(".user-detail-drawer__identity-meta .administration-users-dt-status--inactive")).toHaveTextContent("Inactivo");
+    });
+
+    it("recorre el detalle en el orden que muestra la tabla", async () => {
+        render(<SystemUsersPage />);
+
+        const header = (await screen.findAllByRole("columnheader", { name: /Usuario/ }))[0];
+
+        if (!header) {
+            throw new Error("No se encontro el encabezado Usuario.");
+        }
+
+        fireEvent.click(header);
+        await waitFor(() => {
+            expect(document.querySelector("tbody tr[data-user-email]")).toHaveAttribute("data-user-email", "soporte.externo@roccacr.com");
+        });
+        await openUserDetail("Soporte Externo");
+
+        expect(screen.getByText("Usuario 1 de 5")).toBeInTheDocument();
+
+        fireEvent.click(screen.getByRole("button", { name: "Usuario siguiente" }));
+
+        expect(screen.getByRole("heading", { name: "Roberto Carlos Zúñiga Altamirano" })).toBeInTheDocument();
+        expect(screen.getByText("Usuario 2 de 5")).toBeInTheDocument();
+    });
+
     it("recorre usuarios desde el pie del panel y cierra al hacer clic en la máscara", async () => {
         render(<SystemUsersPage />);
 

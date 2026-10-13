@@ -38,6 +38,22 @@ const createDatabaseDouble = () => {
 };
 
 describe("SecurityAuditService", () => {
+    it("freezes the safe actor identity instead of depending on a future display-name join", async () => {
+        const { database, readInsertedRow } = createDatabaseDouble();
+        const actor = { name: "Roberto", publicId: "canonical-user" };
+        const select = { select: () => select, where: () => select, innerJoin: () => select, orderBy: () => select, execute: () => Promise.resolve([{ code: "owner", name: "Owner" }]), executeTakeFirst: () => Promise.resolve({ ...actor }) };
+        Object.assign(database.db, { selectFrom: () => select });
+        await new SecurityAuditService(database).record({ eventType: "user_updated", summary: "Updated", actorUserId: 1, metadata: { actor: { password: "secret" } } });
+        actor.name = "Roberto Carlos";
+        expect(JSON.parse(String(readInsertedRow()?.metadata_security_event))).toEqual({ actor: { name: "Roberto", publicId: "canonical-user", roles: [{ code: "owner", name: "Owner" }] } });
+    });
+    it("keeps the pre-mutation roles supplied by the business transaction", async () => {
+        const { database, readInsertedRow } = createDatabaseDouble();
+        const actorSnapshot = { publicId: "actor", name: "Roberto", roles: [{ code: "owner", name: "Owner" }] };
+        await new SecurityAuditService(database).record({ eventType: "user_access_replaced", summary: "Access changed", actorUserId: 1, actorSnapshot });
+        actorSnapshot.roles.splice(0);
+        expect(JSON.parse(String(readInsertedRow()?.metadata_security_event))).toMatchObject({ actor: { roles: [{ code: "owner", name: "Owner" }] } });
+    });
     it("recorta IP y User-Agent al largo fisico de la tabla de auditoria", async () => {
         const { database, readInsertedRow } = createDatabaseDouble();
         const service = new SecurityAuditService(database);

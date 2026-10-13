@@ -2,13 +2,14 @@
  * Cliente HTTP del BFF.
  *
  * Envía la cookie de sesión y el token CSRF solo en métodos que cambian estado.
- * Un 401 o 409 renueva la sesión una sola vez. El cliente no lee ni guarda
+ * Un 401 o un conflicto de sesion obsoleta renueva la sesión una sola vez. El cliente no lee ni guarda
  * access tokens, refresh tokens ni secretos de Microsoft.
  */
 import { buildApiUrl } from "../../config/frontend-env";
 
 const CSRF_HEADER_NAME = "X-CRM-CSRF-Token";
 const JSON_CONTENT_TYPE = "application/json";
+const STALE_PERMISSION_SESSION_MESSAGE = "La sesion requiere revalidacion de permisos.";
 const IDENTITY_SESSION_PATH = "/identity/session";
 const IDENTITY_REFRESH_PATH = "/identity/refresh";
 const IDENTITY_LOGOUT_PATH = "/identity/logout";
@@ -69,6 +70,15 @@ const parseResponseBody = async (response: Response): Promise<unknown> => {
     return response.json();
 };
 
+/** Business conflicts must not refresh the session or replay a mutation. */
+const readConflictMessage = (body: unknown): string | null => {
+    if (!body || typeof body !== "object" || !("message" in body)) return null;
+    return typeof body.message === "string" && body.message.trim().length > 0 ? body.message : null;
+};
+
+/** Only this confirmed API conflict denotes stale authorization, not a rejected business operation. */
+const isPermissionVersionConflict = (error: ApiClientError): boolean => error.status === 409 && readConflictMessage(error.responseBody) === STALE_PERMISSION_SESSION_MESSAGE;
+
 /** Acepta solo un `csrfToken` string no vacío. Un cuerpo sin ese campo no inventa uno. */
 const readCsrfTokenFromBody = (body: unknown): string | null => {
     if (!body || typeof body !== "object" || !("csrfToken" in body)) {
@@ -103,7 +113,7 @@ const fetchIdentitySessionForCsrf = async (): Promise<void> => {
     const responseBody = await parseResponseBody(response);
 
     if (!response.ok) {
-        throw new ApiClientError(`Request BFF falló con estado ${String(response.status)}.`, response.status, responseBody);
+        throw new ApiClientError((response.status === 409 ? readConflictMessage(responseBody) : null) ?? `Request BFF falló con estado ${String(response.status)}.`, response.status, responseBody);
     }
 
     rememberCsrfTokenFromBody(responseBody);
@@ -170,7 +180,7 @@ const executeApiRequest = async <TResponse>(path: string, options: ApiRequestOpt
     const responseBody = await parseResponseBody(response);
 
     if (!response.ok) {
-        throw new ApiClientError(`Request BFF falló con estado ${String(response.status)}.`, response.status, responseBody);
+        throw new ApiClientError((response.status === 409 ? readConflictMessage(responseBody) : null) ?? `Request BFF falló con estado ${String(response.status)}.`, response.status, responseBody);
     }
 
     rememberCsrfTokenFromBody(responseBody);
@@ -214,9 +224,12 @@ export const apiRequest = async <TResponse>(path: string, options: ApiRequestOpt
     try {
         return await executeApiRequest<TResponse>(path, options);
     } catch (error) {
-        if (!(error instanceof ApiClientError) || ![401, 409].includes(error.status) || options.retryOnUnauthorized === false || path === IDENTITY_REFRESH_PATH) {
+        if (!(error instanceof ApiClientError) || options.retryOnUnauthorized === false || path === IDENTITY_REFRESH_PATH) {
             throw error;
         }
+
+        const needsSessionRenewal = error.status === 401 || isPermissionVersionConflict(error);
+        if (!needsSessionRenewal) throw error;
 
         await refreshAuthenticatedSession();
         return executeApiRequest<TResponse>(path, {

@@ -1,5 +1,22 @@
 # Changelog
 
+## Unreleased - Consolidacion 2026-10-13
+
+### Implementado
+
+- Campanas, Clases, Ubicaciones, Subsidiarias y Corredores adoptan el patron dedicado de Proyectos: carpeta de dominio, referencias multiproveedor, lazy promotion y sincronizacion legacy autorizada. Corredores excluye columnas obsoletas.
+- Catalogos pasan a paginas acotadas con cache local, sin Cargar mas; Expedientes usa criterios previos, cursor, facetas del alcance completo y detalle bajo demanda.
+- Expedientes conserva 27 valores de negocio y FK al proyecto CRM; comparacion visual por campo, semaforo/flechas y enlace seguro a Planos. Lectura solamente, sin importacion masiva ni escrituras de inventario.
+- Roles y seguridad usa selectores modulo/seccion y pestanas de catalogo, tanto por rol como por empleado.
+- Auditoria incorpora snapshots seguros antes/despues, diferencias, actor/roles historicos, contexto y registro, consulta paginada y textos comprensibles.
+- Cliente API deja de repetir conflictos 409 de negocio; conserva un reintento para sesion de permisos obsoleta, protecciones Owner y CSRF. Errores de red no repiten mutaciones y advierten resultado incierto. Notification usa title.
+
+### Documentacion y limites
+
+- Registro integral API 36, contrato de auditoria 37 y guia frontend 27 enlazan solicitudes, codigo, pruebas, reglas, decisiones y pendientes. README e indices actualizados; entradas anteriores permanecen como evidencia historica.
+- Ultima evidencia anterior a esta consolidacion: frontend check con 257 pruebas y 13 pruebas API de acceso aprobadas. Check global bloqueado por formato preexistente en unit-files-search.spec.ts; reset de conexion no reproducido. No son resultados de una ejecucion documental nueva.
+- Pendientes: aceptacion manual, reconciliacion externa, relaciones ambiguas e importacion de inventario, optimizacion medida de indices, conectores ERP y despliegue. No se hicieron cambios productivos por documentar.
+
 ## Unreleased - 2026-10-09
 
 ### Added

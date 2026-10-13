@@ -28,6 +28,14 @@ conservar textos de interfaz en espanol y declarar diferencias verificables.
 
 ### Replication Boundary
 
+Campaigns functional parity, 2026-10-12: the route now enters through
+`src/modules/administration/campaigns/CampaignsPage.tsx`. Campaign identity and
+copy live in that folder; approved catalog visual primitives are reused without
+forking CSS or the token scale. Legacy campaign edits/status changes are enabled,
+subject to API authorization, and follow the returned native identity after
+promotion. No delete action is introduced. All loading, drawer, form, filter,
+responsive and accessibility rules below remain identical to Projects.
+
 Approved Campaigns adoption (2026-10-09): `/home/administration/catalogs/campaigns`
 reuses the existing Projects presentation classes and shared catalog components,
 including their portal scopes. These class names identify reusable presentation,
@@ -323,7 +331,12 @@ Resolved hierarchy, in order:
 2. Header actions: icon-only refresh and `Nuevo proyecto` with leading plus.
 3. One framed work surface: unified toolbar (search + three filters + commands),
    then the independently bounded grid, then the pagination/info row.
-4. Optional loaded-record count and `Cargar más` when the API has another batch.
+4. One API-backed pagination footer; no accumulated-record count or `Cargar más`.
+   Default page size is 100; available sizes are 10, 50, 100 and 200.
+   Page requests retain outgoing rows, disable navigation and show the loading
+   overlay plus a reserved 16px footer spinner slot without moving controls.
+   The bounded desktop table uses layout/paint containment so vendor row overflow
+   cannot extend the document scroll area. Mobile cards remain unconstrained.
 
 Page content is centered with maximum width 1440px and shrinkable children.
 Do not add another decorative card around the work surface. Individual drawer
@@ -401,9 +414,25 @@ focused or selected (or the button itself is hovered); below 768px they keep the
 500 outline and 44px target. The row action menu is a portal: it opts into the
 scale with `rootClassName="catalog-items-dropdown--projects"`.
 
-Default sort: project ascending. Page size: 10; choices: 10/25/50/100. Preserve
-saved order/search/page/panes and empty/filtered counts. Loaded batches and page
-size are different concepts; `Cargar más` must not falsely represent all records.
+Default sort: project ascending. API page size: 100; choices: 10/50/100/200.
+Request exactly `limit=pageSize` and `offset=(page-1)*pageSize` on navigation;
+replace the current batch rather than append it. A size change resets to page 1.
+DataTables paging and its footer are disabled: the shared page owns the only
+pager. Its range uses the API total, not a count of accumulated client records.
+Keep saved local order/search/panes; these apply only to the fetched page, not
+the full database. Do not claim full-dataset filtering or globally sorted pages.
+Failed page requests retain the previous page and allow retry; stale responses
+must never overwrite a later page/context. Refresh reloads the current API page.
+Fetched pages live in a component-local, in-memory cache keyed by catalog,
+module, page size and page. Returning to a retained page makes no request and
+does not start a loader. Keep at most 20 batches (4,000 records maximum); oldest
+batches may be fetched again after eviction. Nothing is written to localStorage.
+Explicit refresh, successful create/edit/status changes and a changed API total
+invalidate cached batches. External edits become visible on explicit refresh;
+there is no background polling. Unmounting the view discards its cache.
+Keep the DataTable instance mounted across batch changes. Update its data through
+the installed React wrapper and rebuild SearchPanes without destroying the grid,
+so headers, toolbar and rows cannot disappear during teardown/reinitialization.
 
 ## Responsive Mobile Cards
 
@@ -643,8 +672,11 @@ bottom margin. Reserved detail area minimum height 520px. Rounded-full placehold
 use neutral200 with a 2-second ease-in-out opacity pulse from 0.15 to 0.20; no
 high-contrast sweep or dense solid slabs. Reduced-motion is static neutral100.
 
-Do not reuse the initial-table ring for saving, pagination, provider status or
-error handling. Save/load-more buttons use their existing loading affordances;
+The table ring also covers page requests and refreshes, retaining outgoing rows
+until the requested batch resolves and fading out over 400ms. A footer spinner
+keeps feedback visible when the table center is outside the viewport.
+Do not reuse this ring for saving, provider status or error handling.
+Save buttons use their existing loading affordances;
 modals do not have an invented full-form preloader. Errors retain actionable copy;
 absent values retain `Sin asignar`. A loading field, absent value, failed request
 and unconfigured integration are four different states.
@@ -710,6 +742,8 @@ correction round; reuse the solution instead of rediscovering it.
 | Drawer overrides ignored | `UserDetailDrawer.css` is imported by the drawer and can load after `ProjectsView.css` with equal specificity (labels 650, values 600, card title 760) | Prefix overrides with `.catalog-item-detail-drawer--projects.user-detail-drawer` |
 | Modal fields stay 36px after reducing padding | AntD sets `min-height: 36px` on `.ant-form-item-control-input` | Lower that min-height together with the input padding |
 | Drawer navigation disagrees with the table | The page navigated the loaded array, ignoring DataTables filter and sort | Report visible IDs from `onDraw` and navigate that list |
+| Rows rebuilt on every parent render; clicks land on detached buttons | `datatables.net-react` clears and re-adds rows whenever the `data` array identity changes | Memoize the rows (`useMemo`) and the array passed to `data`; report the visible order only when its signature changes |
+| `onDraw` handler cannot reach the table on the first draw | The wrapper binds `on*` handlers once and fires the first `draw` before `ref.dt()` exists | Build the API from the event settings: `new DT.Api(settings)` |
 
 ## Replicating in Another Module
 
@@ -792,11 +826,11 @@ EN: The approved `/home/administration/roles-security` adaptation uses the same
 neutral 50-950 scale, Aptos/Segoe UI typography, 13px body, 22px page title,
 8px panel corners, restrained dark primary actions and visible keyboard focus.
 Tokens are scoped to `.roles-security-page` and `.roles-security-modal-backdrop`
-in `RolesSecurityPage.css`. Preserve the role workbench and permission accordions;
-do not replace them with a catalog table. The page fills the available content
-width without a desktop max-width cap, retaining its responsive side padding.
-Module cards use four columns on wide
-screens, two at 1280px and below, and one at 900px and below. Mobile controls
+in `RolesSecurityPage.css`. Since 2026-10-13 the editor is the cascade console
+described in "Roles and Security Cascade Console" below; the earlier role
+sidebar, module cards and permission accordions are retired. Do not replace it
+with a catalog table. The page fills the available content width without a
+desktop max-width cap, retaining its responsive side padding. Mobile controls
 retain 44px touch targets. Audit dialogs use matching surfaces and spacing,
 with an overlay above navigation. The existing access-loading ring is 34px,
 neutral 100/600, and stops animating for reduced-motion preferences.
@@ -804,6 +838,345 @@ neutral 100/600, and stops animating for reduced-motion preferences.
 ES: Roles y seguridad adopta la paleta y densidad de Proyectos sin modificar
 asignaciones, permisos, validaciones ni guardado auditado. Conservar colores
 semanticos de advertencia y el flujo propio del editor de permisos.
+
+Projects/Users alignment (2026-10-12). `RolesSecurityPage.css` keeps its own
+scope (it does not import `ProjectsView.css`) but carries the same semantic
+tokens (`--color-primary*`, `--color-secondary`, `--color-control-border`,
+`--color-hover`, `--color-canvas`, warning pair, `--radius`, `--space-*`) with
+`--roles-border`, `--roles-muted` and `--roles-focus` as the local equivalents of
+`--project-*`. The page uses `PROJECTS_THEME` for its AntD controls.
+
+- Header as Users: `nav.roles-security-breadcrumb` (`aria-label="Ruta"`, last
+  segment neutral-900, 12px/650), h1 22px/720 neutral-900, a `roles-security-total`
+  pill (`N rol(es)`) shown only after the API catalog arrives (before that the roles
+  are the local fallback), description 13px/450 muted.
+- Selection: selected role, checked role (employee mode) and selected module card
+  use the slate focus border on primary-light, exactly like the selected user card;
+  no black border, no 3px left bar, no inset shadow. Hover is the quiet
+  `--color-hover` fill. Unassigned module cards stay neutral-50 with 500 names.
+- Hierarchy: panel headings 14px/600, editor title 18px/600, names 13px/600,
+  permission names 13px/500 (values), secondary text 12px/500 muted. Odd weights
+  (520-740) are gone.
+- Counters (`39/39`, effective permission chips) use the total-pill shape:
+  project border, white, 12px/600 tabular, 22px line. Empty employee modules and the
+  `Sensible` tag use the warning pill (`--color-warning-light` / `--color-warning`).
+- Search fields 40px with the control border, secondary border on hover and the
+  focus ring on the wrapper; inputs type at 400.
+- Dialogs use the Projects modal anatomy: neutral-50 header (24px) and footer
+  (16px 24px), canvas body, 32px bordered close button, 13px/600 labels, 400
+  inputs, white summary card, `max-height: calc(100dvh - 48px)`, compact padding on
+  short desktop windows, bottom sheet below 900px.
+- Editor toolbar wraps: the title has a 180px basis and the actions move to a
+  second line; otherwise the non-shrinking actions collapsed the role name to one
+  letter per line at about 900px.
+
+The selection, module-card and accordion bullets above describe the retired
+2026-10-12 layout; tokens, header, buttons and dialog anatomy still apply.
+
+### Roles and Security Cascade Console (2026-10-13)
+
+Pattern for any permission editor: context, then module, then section, and only
+one section on screen. It replaces long accordions in which every module and
+view was open at once.
+
+Files (all in `src/modules/administration/pages/`):
+
+| File | Role |
+| --- | --- |
+| `roles-security-sections.ts` | Pure mapping from the API catalog to modules, sections and catalog tabs, plus level and switch semantics. No React. |
+| `RolePermissionSection.tsx` | `RolesSecurityNavigator` (Módulo and Sección selects) and `RolePermissionSection` (section card). Stateless; reports the desired codes per view. |
+| `RolesSecurityPage.tsx` | Context bar, state, effective permission, dirty count, audited save and dialogs. |
+| `RolesSecurityPage.css` | Scoped tokens and every class below. |
+
+Layout, top to bottom:
+
+1. Context bar `section.roles-security-context` (`aria-label="Contexto de
+   permisos"`): Segmented `Modo de revisión` (Por rol / Por empleado), then the
+   `Rol` select labelled `Owner (1 usuario)` or the `Empleado` search select
+   labelled `Nombre (roles)`, and on the right Renombrar (role mode only) and
+   Guardar cambios (`Guardar cambios · n`, `n` = modules changed). A locked role,
+   or an employee holding one, shows the warning note `p.roles-security-protected`
+   (`role="note"`): "Rol protegido · Control máximo del CRM. Uso limitado a muy
+   pocas personas." In employee mode a second strip holds the `Roles asignados`
+   multi-select and a facts list (email, modules visible in the menu, direct
+   exceptions).
+2. `RolesSecurityNavigator`: two labelled AntD selects, `Módulo` and `Sección`,
+   340px max each, side by side (stacked at 900px and below). Options show
+   coverage `granted/total` through `optionRender`; the selected value shows only
+   the name. Changing the module resets the section and the catalog tab.
+3. Section card `section.roles-security-section`: neutral-50 header with
+   `Módulo / Sección` (h2 14px/600, module muted) and, in employee mode, the
+   switch "X visible en el menú" (org unit). For the Catálogos section a Segmented
+   `Catálogo` shows one pill per catalog with its coverage; the pills wrap to a
+   second line instead of scrolling horizontally.
+4. Access bar: master switch `Acceso a la sección` with "Acceso permitido" or "Sin
+   acceso", the counter "Permisos **n / t** activos" and a secondary "Marcar todos"
+   button (disabled when read-only or everything is already on).
+5. Table `roles-security-permission-table` with a visually hidden caption
+   "Permisos de {vista}" and columns Acción / Permiso, Nivel, Estado. Rows are
+   56px with name 13px/500 plus description 12px muted; the state cell has a small
+   switch named after the permission, "Habilitado" or "Deshabilitado", and in
+   employee mode the origin.
+
+Mapping from the API catalog (never invent sections):
+
+- Administración merges API modules `user` (section Usuarios), `role` (a
+  single-view admin module takes the module name, Roles y seguridad) and
+  `administration` (its views are all catalogs, so the section is Catálogos).
+- Every other module keeps its own views as sections, in API order, and groups
+  all `catalog_*` views into one final Catálogos section.
+- Visible names come from `MODULE_LABELS` because the API returns
+  "Formalizacion" or "Administracion" without accents; codes stay untouched.
+- A section the API does not expose does not appear. Auditoría has no permission
+  codes today, so it is not in the Sección list even though the menu has it.
+
+Semantics:
+
+- Level: `sensitive: true` → Sensible (warning pill); codes ending in `.read`,
+  `.view_list` or `.view_detail` → Lectura; anything else → Estándar (both
+  neutral-100 pills).
+- Master switch on grants only the view's read-level codes (all codes if the view
+  has none); off revokes every code of the view; Marcar todos grants all of them.
+- Role mode edits the role matrix through `replaceViewPermissionCodes`, which
+  replaces only that view's codes inside the module list.
+- Employee mode keeps the product-law rule: effective = role + direct allow −
+  direct deny. `applyUserViewPermissions` stores an exception only when the
+  desired state differs from the roles and removes it when it matches again. The
+  origin reads "Por rol", "Sin permiso del rol", "Excepción: permitido" or
+  "Excepción: denegado".
+- A locked role (Owner) shows everything granted with every switch and Marcar
+  todos disabled. Hiding a module from the menu never revokes permissions.
+- With no employee selected, the editor shows "Selecciona un empleado"; Renombrar,
+  the protected note and the role's pending count are hidden.
+
+Styling rules:
+
+- Switches checked = `--color-primary` (hover primary-dark); disabled at 0.45
+  opacity so locked values stay legible. No black borders or 3px bars on
+  selection; selects keep the `PROJECTS_THEME` border and focus.
+- At 640px and below each permission row becomes a grid card: name and
+  description on the left, the level below it, the switch with its state text on
+  the right spanning both lines; the table head is visually hidden.
+- Context selectors, mode Segmented and actions take the full width at 900px and
+  below; switches keep their native height (excluded from the 44px button rule).
+
+Tests: `test/administration/RolesSecurityPage.spec.tsx` covers role label with a
+singular user, a section with levels, the master switch, Marcar todos and the
+dirty count, catalog tabs, the protected read-only role and the employee empty
+state. The `App.spec.tsx` roles test walks Sección and Módulo selects and checks
+that navigation does not revalidate the session.
+
+### Users Adoption (2026-10-12)
+
+`/home/administration/users` is a non-catalog module that reuses the Projects
+presentation without forking `ProjectsView.css`. The page imports
+`ProjectsView.css` and its own `pages/UsersView.css`, wraps everything in
+`PROJECTS_THEME`, and stacks a Users class next to each Projects scope class.
+Users rules use compound selectors (`.users-view.catalog-items-page--projects`)
+so they win regardless of lazy CSS load order.
+
+| Surface | Classes |
+| --- | --- |
+| Page root | `catalog-items-page--projects users-view` |
+| Detail drawer | `catalog-item-detail-drawer--projects users-view-drawer` |
+| Create/edit drawer | `catalog-items-modal--projects users-view-form` |
+| Status modal | `catalog-items-modal--projects users-view-modal` |
+| Row and drawer menus | `catalog-items-dropdown--projects` (via `rootClassName`) |
+
+`UsersView.css` only owns what Projects does not have:
+
+- Header: title row with the `projects-view-total` pill (`N usuario(s)`) and the
+  icon-only `projects-view-refresh` button (tooltip `Actualizar usuarios`) next to
+  `Nuevo usuario`. Below 720px both share one row (refresh 44px, primary fills),
+  overriding the shell's 100% button width.
+- Panel: the Users panel is the single frame; the inner DataTables frame and
+  loader border are removed. The footer (`Mostrando X de Y usuarios`, server batch
+  and `Cargar N más`) stays as neutral-50 band because it reports the server batch,
+  not the DataTables page.
+- Six columns instead of five: table `min-width: 960px` (reset to 0 in the mobile
+  block), Usuario takes the remaining width, then 120px / 20% / 164px / 140px /
+  64px, 60px rows. The visually hidden caption is pinned to `top: 0; left: 0`; at
+  its default position it extended the grid viewport and caused a vertical
+  scrollbar.
+- Status: `SystemUserStatusPill` (dot + label) replaces the AntD tag in the grid,
+  drawer header and form footer. Active = success, pending = warning, blocked =
+  `--users-danger` `#b42318` on `#fef3f2`, inactive = neutral-100/600. The own
+  account shows a neutral `Tu cuenta` chip.
+- Drawer MFA tags reuse the same pill palette; the AntD preset green
+  (`#52c41a` on `#f6ffed`) fails AA at 12px.
+- Create/edit drawer: Projects modal anatomy (neutral-50 header/footer, canvas
+  body, bordered white sections with a neutral-50 band and step badge, 13px/600
+  labels). Hide empty `.ant-form-item-extra` (RoleScope renders nothing until a
+  role is selected). The footer summary wraps into lines (`1 rol · Alcance global`
+  / `Estado inicial · Pendiente`) instead of breaking words beside the buttons.
+- Status modal: same shell as the Projects form modal, auto-sized textarea
+  (2-4 rows), body `max-height: calc(100dvh - 200px)`, compact
+  `calc(100dvh - 150px)` on short desktop windows, 44px controls on phones. The
+  summary keeps `Estado: X -> Y`, as in Projects.
+- Mobile (767px): each row is a card, grid `minmax(0, 1fr) auto auto`; name,
+  status pill and 44px menu on the first line, then Rol, Acceso and Última
+  actividad as full-width blocks labelled from `data-project-field` (written by
+  `createdRow`). Status drops the divider ProjectsView applies to the second cell.
+  A native `Ordenar usuarios` select drives DataTables ordering on phones.
+- Detail navigation follows the table's visible order: `onVisibleOrderChange`
+  reports emails from the draw event and the page navigates that list.
+
+Tests: `test/administration/users-view.spec.ts` (column tracks, pill palette,
+mobile card, mobile min-width/divider reset, one-row phone header, modal height)
+and the presentation/visible-order cases in `SystemUsersPage.spec.tsx`.
+
+ES: Usuarios adopta el estilo de Proyectos sin cambiar permisos, auditoría,
+paginación del servidor ni contratos. Para otra vista no catálogo, repetir este
+patrón: importar `ProjectsView.css`, sumar una clase propia a cada clase de alcance
+y poner solo las diferencias del dominio en una hoja propia.
+
+### Classes Parity (2026-10-12)
+
+Classes owns `src/modules/administration/classes/ClassesPage.tsx` and
+`classes-definition.ts`. Reuse the shared approved catalog presentation rather
+than forking CSS, modals, table or drawer components. Classes opts into the same
+token palette, compact typography, horizontal filters, centered loading state,
+mobile cards, editable legacy drawer and separate edit/status actions.
+
+Use Clase / Clases copy, Nueva clase / Crear clase / Editar clase, and enforce
+the verified 100-character name limit. Provider sections remain independent.
+Legacy routing keys stay internal; native identity is pending until promotion.
+Keep scoped permissions, validation and audit; never expose deletion.
+
+Server pagination defaults to 100 with 10/50/100/200 choices. Reuse the existing
+bounded in-memory page cache: revisiting a cached batch avoids another request;
+refresh and mutations invalidate it. This is a page-instance cache, not permanent
+storage or a guarantee of cross-system freshness. Unknown pages show the shared
+loading indicator without unmounting the table or expanding page whitespace.
+
+### Locations Parity (2026-10-12)
+
+Locations owns `modules/administration/locations/LocationsPage.tsx` and
+`locations-definition.ts`. It opts into the same Projects presentation without
+forking shared CSS, loaders, table, drawer or form components. Use Ubicación /
+Ubicaciones, Nueva ubicación / Crear ubicación / Editar ubicación and a
+100-character name limit, matching the verified legacy schema.
+
+All palette, typography, density, horizontal-filter, mobile-card, provider,
+loading-transition and action-spacing rules above apply unchanged. Native and
+legacy items can be edited or activated/inactivated with scoped permission and
+audit; deletion is unavailable. Legacy CRM IDs display pending migration.
+Use the same default-100 server pagination, 10/50/100/200 choices, bounded
+page-instance cache and explicit refresh/mutation invalidation as Classes.
+The frontend never selects a database or performs dual writes itself.
+
+### Subsidiaries Parity (2026-10-12)
+
+Subsidiaries owns `modules/administration/subsidiaries/SubsidiariesPage.tsx`
+and `subsidiaries-definition.ts`, reusing the approved Projects presentation,
+not separate CSS or duplicated table/drawer/modal implementations. Use
+Subsidiaria / Subsidiarias, Nueva subsidiaria / Crear subsidiaria /
+Editar subsidiaria. Names support 250 characters, matching the verified schema.
+
+Apply the same tokens, compact typography, horizontal filters, centered loader,
+mobile cards, separate provider sections and spaced edit/status actions.
+Legacy identities display pending migration and remain editable with existing
+permissions. No deletion. Default server page size is 100 with 10/50/100/200
+choices; use the same bounded page-instance cache and refresh/mutation
+invalidation. Database selection and synchronization belong exclusively to API.
+
+### Brokers Parity (2026-10-12)
+
+Brokers uses the same approved palette, typography, density, horizontal filter
+toolbar, centered loader, responsive cards, detail drawer and create/edit modal.
+Its own `administration/brokers` folder owns domain copy and configuration while
+reusing the approved components. Use Corredor/Corredores labels and a 250-character
+name limit. Do not expose obsolete legacy contact/company/category fields.
+Provider references remain separate; legacy routing identities remain internal.
+Default page size is 100 (10/50/100/200 options). The existing bounded page cache
+avoids requests when returning to a loaded page; refresh and mutations invalidate
+cached data. Authentication, permissions and no-delete behavior are unchanged.
+
+## Unit Files Adoption (2026-10-12)
+
+Unit Files owns `administration/unit-files` and consumes the dedicated
+`/unit-files` API. Keep the official palette, 13-14px body, 12px labels,
+36px controls, 8px corners and full-width restrained layout. On mobile,
+stack label/value pairs inside white bordered unit cards; no page overflow.
+Detail and comparison use bounded, scrollable Ant Design panels.
+
+The desktop projection is ordered: Codigo, Proyecto, Tipo de vivienda,
+Precio de venta, Estado, Entrega estimada, Area total (m2), Lote (m2),
+Area de parqueo (m2). The separate leading checkbox remains comparison-only.
+Preserve source strings rather than inventing numeric/currency conversions.
+Use the Projects token scope and theme, white toolbar/grid, neutral-50 table
+header, neutral-200 boundaries and restrained status pills. Nine fields may
+scroll horizontally inside the table at intermediate widths; never overflow
+the page. On phones the same fields become stacked label/value cards.
+The detail drawer groups all 27 business values into information, pricing,
+areas and documentation sections, followed by canonical/source identities and
+provider sections with reference status. Do not drop null-valued fields.
+
+Primary criteria are Projects, Status and a case-insensitive code substring.
+At least one criterion and explicit Search are required; status/code-only searches
+resolve the available CRM project scope. After explicit Search resolves,
+render the dedicated UnitFilesDataTable using the installed DataTables React
+wrapper and shared toolbar styles. Reuse the native SearchPanes column filters
+and useDataTableSearchPanes hook from the catalog views, not AntD Select controls.
+Code, Project, Housing Type and Status form a two-column native pane grid
+inside the DataTable toolbar after loading, never in a separate outer strip.
+Panes start collapsed and retain native search, expand/collapse and clear controls;
+omit the standalone DataTable search bar. Place the selection count and
+comparison/clear actions below all filter rows, inside the toolbar.
+All four panes use DataTables native server-side SearchPanes protocol. Labels and
+aggregate counts come from all bounded pages of the scoped facets API across both
+sources, not the loaded inventory batch. Project option values are canonical CRM
+IDs; labels are escaped names. Missing values use an empty-string identity and
+display as Sin asignar. Native selection supports multiple choices (including the
+native modifier-key behavior), OR within each pane and AND across panes. Cascading
+counts omit only the pane's own secondary selection. Base totals remain visible.
+Inventory remains cursor-paginated; no full unit details are fetched for facets.
+Page changes preserve selections and reuse facets without refetching. Header
+sorting remains page-local and does not issue SQL. Native redraws during Clear All
+are coalesced and header draws share in-flight filter requests.
+Repeating an unchanged primary search preserves pane criteria. Canonical project
+IDs, not display names, identify native pane rows. Disable pane controls and
+native user-select events while inventory requests are pending. Failed filtering
+invalidates the table rather than displaying old rows under new selections.
+Refresh reloads base options and cascade counts as well as inventory; ordinary
+back navigation uses the bounded in-memory page cache.
+Already fetched inventory is retained in a view-scoped map capped at 2,000 rows.
+Pane refinements run locally without a loading overlay only when base aggregate
+totals prove complete coverage for both matches and every cascading pane, and the
+result fits one page. Otherwise cursor-based server filtering remains authoritative.
+Cached rows and facets are applied without entering loading state. Refresh and
+changed primary criteria clear the inventory snapshot; refresh reconciles external
+changes while browsing that snapshot.
+Code uses exact code; primary code matching uses a separate codeMatch substring.
+
+This high-volume domain intentionally differs from small catalogs: require
+resolved CRM project IDs, without a selection cap, and explicit Search before any inventory request. Default
+50 rows, selectable 10/50/100, cursor Next/Back without total/last/load-all.
+All criteria apply server-side before keyset pagination, across the complete scope.
+Keep old rows visible under a centered slim spinner during uncached paging.
+The canvas retains a 400px minimum height with a bounded inner scroll area.
+Cache at most 20 pages and 24 details in component memory for 30 seconds;
+refresh invalidates both, context changes remount the view, no localStorage.
+Back is query-free only while its cached page remains fresh. Do not imply
+permanent freshness when another API can edit the source.
+Compare 2-8 selected units across loaded pages/projects; fetch only those full
+details. Unmigrated CRM identity/native code display pending migration.
+The comparison modal uses a dedicated UnitFilesComparison presentation:
+sticky unit headings and field labels, prominent price/area metrics first,
+then the existing full field groups. A selectable reference unit controls signed
+numeric differences; Solo diferencias hides identical source values.
+Rank numeric fields independently: lower prices, price per square meter and
+maintenance costs are better; larger areas are better. Use green for best,
+yellow for intermediate and red for least favorable, with explicit text labels.
+Arrows indicate numeric extrema (up for maximum, down for minimum); intermediate
+values use a neutral dash. Ties share a tier; equal-only rows remain neutral.
+Do not rank categorical fields, statuses or dates, or invent an overall score.
+Preserve raw values and do not invent currency.
+Only strict dot-decimal/optional thousands-comma numbers participate in ranking;
+missing or ambiguous values never become zero. Keep horizontal scrolling inside
+the modal for up to eight units, including narrow screens. No extra API queries
+are made by changing the reference or difference toggle.
+No create/edit/delete controls are exposed in this approved read-only phase.
 
 Update this document whenever approved behavior or design rules change. Record
 test/browser evidence separately in `25-Continuidad-Administracion.md`. Do not

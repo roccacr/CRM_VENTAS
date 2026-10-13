@@ -1,6 +1,9 @@
 import { Module } from "@nestjs/common";
 
 import { AuditModule } from "../audit/audit.module.js";
+import { AuditReadController } from "../audit/audit-read.controller.js";
+import { AuditReadRepository } from "../audit/audit-read.repository.js";
+import { AuditReadService } from "../audit/audit-read.service.js";
 import { PermissionsModule } from "../permissions/permissions.module.js";
 import { IdentityController } from "./identity.controller.js";
 import { IdentityRepository } from "./identity.repository.js";
@@ -25,8 +28,8 @@ import { IdentityUserDirectoryRepository } from "./identity-user-directory.repos
  */
 @Module({
     imports: [AuditModule, PermissionsModule],
-    controllers: [IdentityController, IdentityAccessManagementController],
-    providers: [IdentityService, IdentityRepository, IdentityProfileRepository, IdentitySessionRepository, IdentityLocalRepository, IdentityMicrosoftRepository, IdentityUserDirectoryRepository, IdentityAccessManagementService, IdentityAccessManagementRepository, IdentityTokenService, IdentityAuditRecorder, IdentityMicrosoftSessionService],
+    controllers: [IdentityController, IdentityAccessManagementController, AuditReadController],
+    providers: [IdentityService, IdentityRepository, IdentityProfileRepository, IdentitySessionRepository, IdentityLocalRepository, IdentityMicrosoftRepository, IdentityUserDirectoryRepository, IdentityAccessManagementService, IdentityAccessManagementRepository, IdentityTokenService, IdentityAuditRecorder, IdentityMicrosoftSessionService, AuditReadRepository, AuditReadService],
     exports: [IdentityService],
 })
 export class IdentityModule {}

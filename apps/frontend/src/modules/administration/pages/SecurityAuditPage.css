@@ -1,166 +1,203 @@
-/*
- * Auditoría de roles y permisos.
- * La cabecera explica la consulta, la barra filtra en local y la tabla muestra
- * actor, alcance y fecha sin acciones de edición.
- */
+/* Scope-first read-only audit grid; catalog-sized controls and bounded scroll. */
 .security-audit-page {
     display: grid;
     gap: 16px;
     padding: 24px;
+    min-width: 0;
+    color: #25354c;
 }
-
 .security-audit-header {
     display: flex;
-    align-items: flex-end;
+    align-items: center;
     justify-content: space-between;
     gap: 16px;
 }
-
 .security-audit-header span {
-    color: #566079;
     font-size: 12px;
-    font-weight: 760;
 }
-
 .security-audit-header h1 {
-    margin: 4px 0 0;
-    color: #111827;
-    font-size: 28px;
-    line-height: 1.1;
+    font-size: 22px;
+    margin: 8px 0;
 }
-
 .security-audit-header p {
-    margin: 8px 0 0;
-    color: #566079;
-    font-size: 14px;
-    font-weight: 560;
+    font-size: 13px;
+    margin: 0;
 }
-
 .security-audit-toolbar {
     display: grid;
-    grid-template-columns: minmax(260px, 1fr) minmax(180px, 220px) minmax(180px, 220px);
-    gap: 10px;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    align-items: end;
+    gap: 12px;
     border: 1px solid #ccd6e7;
-    border-radius: 8px;
-    background: #ffffff;
-    padding: 12px;
-    box-shadow: 0 8px 22px rgba(15, 23, 42, 0.05);
+    border-radius: 6px;
+    background: white;
+    padding: 16px;
 }
-
-.security-audit-search {
-    display: inline-flex;
-    align-items: center;
+.security-audit-toolbar label {
+    display: grid;
     gap: 8px;
     min-width: 0;
-    border: 1px solid #cbd5e1;
-    border-radius: 8px;
-    background: #ffffff;
-    color: #667085;
-    padding: 0 12px;
-}
-
-.security-audit-search input,
-.security-audit-toolbar select {
-    width: 100%;
-    min-height: 38px;
-    border: 0;
-    background: transparent;
-    color: #1f2937;
-    font: inherit;
-    font-size: 13px;
-    font-weight: 620;
-    outline: 0;
-}
-
-.security-audit-toolbar select {
-    border: 1px solid #cbd5e1;
-    border-radius: 8px;
-    background: #ffffff;
-    padding: 0 10px;
-}
-
-.security-audit-table {
-    overflow: hidden;
-    border: 1px solid #ccd6e7;
-    border-radius: 8px;
-    background: #ffffff;
-    box-shadow: 0 8px 22px rgba(15, 23, 42, 0.05);
-}
-
-.security-audit-table header,
-.security-audit-row {
-    display: grid;
-    grid-template-columns: minmax(280px, 1.2fr) minmax(220px, 0.9fr) minmax(220px, 0.9fr) minmax(160px, 0.55fr);
-    gap: 16px;
-    align-items: center;
-}
-
-.security-audit-table header {
-    border-bottom: 1px solid #dce3ef;
-    background: #f8fafc;
-    color: #566079;
     font-size: 12px;
-    font-weight: 780;
-    padding: 12px 16px;
 }
-
-.security-audit-row {
-    border-bottom: 1px solid #e3e8f0;
-    padding: 14px 16px;
-}
-
-.security-audit-row:last-child {
-    border-bottom: 0;
-}
-
-.security-audit-row div {
-    display: grid;
-    gap: 4px;
+.security-audit-toolbar .ant-select {
+    width: 100%;
     min-width: 0;
 }
-
-.security-audit-row strong,
-.security-audit-row time {
-    overflow: hidden;
-    color: #111827;
-    font-size: 13px;
-    font-weight: 760;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+.security-audit-toolbar .ant-input {
+    height: 36px;
 }
-
-.security-audit-row small {
-    overflow: hidden;
-    color: #566079;
-    font-size: 12px;
-    font-weight: 560;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+.security-audit-results {
+    position: relative;
+    min-height: 200px;
+    min-width: 0;
+    border: 1px solid #ccd6e7;
+    background: white;
+    border-radius: 6px;
+    overflow: auto;
+    max-height: 65vh;
 }
-
 .security-audit-state {
-    color: #566079;
+    padding: 24px;
     font-size: 13px;
-    font-weight: 650;
-    padding: 18px;
 }
-
 .security-audit-state--error {
     color: #b42318;
+    margin: 0;
 }
-
-@media (max-width: 860px) {
+.security-audit-progress {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    background: #ffffffdd;
+    z-index: 2;
+}
+.security-audit-grid {
+    min-width: 800px;
+    width: 100%;
+}
+.security-audit-grid .dt-container {
+    width: 100%;
+    max-width: none;
+    margin: 0;
+}
+.security-audit-grid .dt-layout-row,
+.security-audit-grid .dt-layout-cell {
+    width: 100%;
+}
+.security-audit-grid .security-audit-record-button {
+    height: auto;
+    padding: 0;
+    white-space: normal;
+    text-align: left;
+    justify-content: flex-start;
+    overflow-wrap: anywhere;
+}
+.security-audit-grid table {
+    width: 100%;
+    table-layout: fixed;
+    border-collapse: collapse;
+}
+.security-audit-grid th,
+.security-audit-grid td {
+    text-align: left;
+    padding: 14px 16px;
+    border-bottom: 1px solid #ccd6e7;
+    overflow-wrap: anywhere;
+    vertical-align: top;
+    font-size: 13px;
+}
+.security-audit-grid th {
+    background: #f5f7fa;
+    font-weight: 600;
+}
+.security-audit-grid small {
+    display: block;
+    margin-top: 6px;
+    font-size: 12px;
+}
+.security-audit-grid th:first-child {
+    width: 18%;
+}
+.security-audit-grid th:nth-child(2) {
+    width: 18%;
+}
+.security-audit-grid th:nth-child(3) {
+    width: 22%;
+}
+.security-audit-grid th:nth-child(4) {
+    width: 24%;
+}
+.security-audit-grid th:nth-child(5) {
+    width: 12%;
+}
+.security-audit-grid th:last-child {
+    width: 6%;
+}
+.security-audit-pagination {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+    padding: 12px 16px;
+    border-top: 1px solid #ccd6e7;
+    background: #f5f7fa;
+}
+.security-audit-pagination > span:first-child {
+    margin-right: auto;
+    font-size: 12px;
+}
+.security-audit-pagination .ant-select {
+    width: 80px;
+}
+.security-audit-detail h2 {
+    font-size: 18px;
+}
+.security-audit-detail h3 {
+    font-size: 15px;
+}
+.security-audit-detail dl {
+    display: grid;
+    grid-template-columns: 140px minmax(0, 1fr);
+    gap: 10px;
+}
+.security-audit-detail dt {
+    font-weight: 600;
+}
+.security-audit-detail dd {
+    margin: 0;
+    overflow-wrap: anywhere;
+}
+.security-audit-detail-scroll {
+    overflow: auto;
+}
+.security-audit-detail table {
+    width: 100%;
+    table-layout: fixed;
+    border-collapse: collapse;
+}
+.security-audit-detail th,
+.security-audit-detail td {
+    padding: 12px 8px;
+    text-align: left;
+    vertical-align: top;
+    border-bottom: 1px solid #ccd6e7;
+    overflow-wrap: anywhere;
+    white-space: pre-wrap;
+}
+.security-audit-detail thead {
+    background: #f5f7fa;
+}
+@media (max-width: 600px) {
     .security-audit-page {
-        padding: 16px;
+        padding: 12px;
     }
-
-    .security-audit-toolbar,
-    .security-audit-table header,
-    .security-audit-row {
-        grid-template-columns: 1fr;
+    .security-audit-toolbar {
+        grid-template-columns: minmax(0, 1fr);
     }
-
-    .security-audit-table header {
-        display: none;
+    .security-audit-pagination {
+        flex-wrap: wrap;
     }
 }

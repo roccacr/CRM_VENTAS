@@ -87,6 +87,7 @@
     align-items: baseline;
     justify-content: space-between;
     gap: 12px;
+    padding-right: 8px;
 }
 
 .create-user-drawer__role-option small {

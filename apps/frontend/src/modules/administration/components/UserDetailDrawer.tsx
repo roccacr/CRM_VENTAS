@@ -31,7 +31,7 @@ import { useEffect, useState } from "react";
 import { ADMINISTRATION_DRAWER_CLOSE_PLACEMENT, ADMINISTRATION_DRAWER_PROPS } from "../administration-theme";
 import { copyTextToClipboard, getDrawerPrimaryActionLabel, getDrawerRiskActionLabel, getPrimaryActionIcon, getPrimaryStatusUpdateTarget, getRelativeActivityLabel, getRiskStatusUpdateTarget, type SystemUserListItem, type SystemUserStatusUpdateTarget } from "../system-users.model";
 import { SystemUserAvatar } from "./SystemUserAvatar";
-import { SystemUserMfaTag, SystemUserProviderBadge, SystemUserStatusBadge } from "./SystemUserBadges";
+import { SystemUserMfaTag, SystemUserProviderBadge, SystemUserStatusPill } from "./SystemUserBadges";
 
 interface UserDetailDrawerProps {
     readonly onClose: () => void;
@@ -58,12 +58,8 @@ function UserDrawerHeader({ user }: { readonly user: SystemUserListItem }) {
                     {user.email}
                 </Typography.Text>
                 <span className="user-detail-drawer__identity-meta">
-                    <SystemUserStatusBadge status={user.status} />
-                    {user.isCurrentUser ? (
-                        <Tag className="administration-users-tag" variant="filled">
-                            Tu cuenta
-                        </Tag>
-                    ) : null}
+                    <SystemUserStatusPill status={user.status} />
+                    {user.isCurrentUser ? <span className="administration-users-current-user">Tu cuenta</span> : null}
                 </span>
             </div>
         </div>
@@ -105,7 +101,7 @@ function UserOverflowMenu({ onEditUser, onStatusAction, user }: { readonly onEdi
     };
 
     return (
-        <Dropdown menu={{ items: buildOverflowItems(user), onClick: handleMenuClick }} trigger={["click"]} placement="bottomRight">
+        <Dropdown menu={{ items: buildOverflowItems(user), onClick: handleMenuClick }} trigger={["click"]} placement="bottomRight" rootClassName="catalog-items-dropdown--projects">
             <Tooltip title="Más acciones" placement="bottom">
                 <Button className="user-detail-drawer__header-button" type="text" icon={<EllipsisOutlined aria-hidden="true" />} aria-label={`Más acciones para ${user.name}`} />
             </Tooltip>
@@ -323,7 +319,7 @@ export function UserDetailDrawer({ onClose, onEditUser, onSelectNext, onSelectPr
     return (
         <Drawer
             {...ADMINISTRATION_DRAWER_PROPS}
-            rootClassName="user-detail-drawer"
+            rootClassName="user-detail-drawer catalog-item-detail-drawer--projects users-view-drawer"
             open={user !== null}
             closable={{ "aria-label": "Cerrar detalle", placement: ADMINISTRATION_DRAWER_CLOSE_PLACEMENT }}
             title={displayedUser ? <UserDrawerHeader user={displayedUser} /> : null}

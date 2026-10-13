@@ -537,3 +537,108 @@ Este contrato queda listo para convertirse en OpenAPI minimo de identidad cuando
 - el frontend tenga contrato visual alineado;
 - seguridad BFF siga siendo obligatoria;
 - el alcance se mantenga dentro de la ley vigente `0.3.28`.
+
+## Consulta paginada de auditoria
+
+### Escritura transaccional del historial
+
+Se reutiliza la columna JSON `audit_security_event.metadata_security_event`;
+no se requiere una migracion ni modificar logs existentes. Las escrituras de
+usuarios (alta, edicion, estado y acceso), roles (edicion, permisos y baja logica)
+y catalogos (alta, edicion y estado) guardan `metadata.changeSet` version 1.
+La identidad canonica del registro se guarda en `recordId`; el catalogo y el
+modulo autorizado viajan fuera del snapshot como contexto del evento.
+
+`before` y `after` son snapshots seguros completos de los campos de negocio del
+agregado. Creacion usa `before:null`; `changes` contiene solo los campos que
+cambiaron, con sus valores anterior y nuevo. Las relaciones se ordenan para no
+registrar diferencias debidas solo al orden. Roles, areas, metodos de acceso,
+excepciones y referencias externas forman parte del historial cuando aplican.
+Nunca se copian contrasenas, hashes, tokens, cookies ni metadata arbitraria de
+proveedores. Los eventos de autenticacion existentes siguen siendo eventos de
+seguridad, no snapshots de credenciales.
+
+El snapshot anterior se captura antes de mutar, bajo bloqueo del agregado.
+Las lecturas de referencias de catalogos son lecturas actuales con bloqueo para
+evitar antecesores obsoletos bajo REPEATABLE READ. Cambio y evento usan el mismo
+executor transaccional: si falla cualquiera, ambos se revierten. No hay endpoint
+de edicion o borrado de eventos. La inmutabilidad es del contrato del API; no se
+afirma que un administrador de MySQL no pueda alterar la tabla.
+
+La cobertura corresponde a los writers implementados de este API. Cambios
+directos por SQL, integraciones u otros APIs no quedan capturados automaticamente:
+requieren instrumentar esos writers o una estrategia CDC/outbox autorizada.
+Expedientes de unidades es actualmente una consulta; no se inventan acciones CRUD.
+Logs historicos sin snapshots no pueden recuperar valores anteriores perdidos.
+
+Validacion MySQL opt-in, limitada a fixtures con rollback en `CRM_THINK_V2`:
+`AUDIT_MYSQL_TESTS=1 pnpm exec vitest run test/audit/catalog-changelog.mysql.spec.ts test/audit/identity-changelog.mysql.spec.ts --maxWorkers=1`.
+No ejecuta DDL, migraciones, adaptadores legacy ni deja registros de negocio.
+
+- actorName en lista, detalle y busqueda prioriza metadata.actor.name solo si
+  JSON_TYPE es STRING. El snapshot conserva el nombre al momento del evento
+  aunque el usuario se renombre despues. Eventos antiguos sin snapshot o con
+  nombre JSON no string usan el join actual de sec_user como fallback; ese
+  fallback no garantiza un nombre historico inmutable. No se expone actor ni
+  metadata cruda ni se modifica el historial existente.
+
+- GET /audit/:publicId carga un detalle bajo demanda, con sesion y role.assign
+  u Owner activo. Valida ULID antes del SELECT; devuelve 400 si es invalido y
+  404 si no existe. /audit/options conserva su ruta estatica.
+- Detalle: publicId, eventType, summary, reason, actorName, targetName,
+  createdAt ISO, contexto publico descrito abajo y changeSet. Extrae campos
+  especificos de contexto y metadata.changeSet, nunca metadata
+  cruda, IP, User-Agent, HMAC o credenciales. Acepta JSON objeto/texto, valida
+  version 1, entity, recordId, action y snapshots; reconstruye los cambios con
+  buildAuditChangeSet y su whitelist de campos de negocio y relaciones.
+- changeSet incluye version, entity, recordId, action, before, after y changes
+  [{field,before,after}]. Sin snapshots validos devuelve changeSet:null; no
+  reconstruye historia desde datos actuales. La lista no descarga snapshots.
+
+- GET /audit/options requiere sesion y role.assign (o Owner activo). Devuelve
+  modulos, secciones y catalogos, sin consultar filas de audit_security_event.
+- GET /audit exige moduleCode y sectionCode; catalogCode y search son opcionales.
+  limit es 100 por defecto y como maximo 200. No hay consulta global sin alcance.
+- Respuesta: items con publicId, eventType, summary, reason, actorName, targetName,
+  actorPublicId, actorRoles, recordedModule, recordedSection, moduleName,
+  sectionName, catalogCode, catalogName, contextKnown, record, action, actionLabel
+  y createdAt ISO; pagination contiene
+  limit, returned, hasNext y nextCursor. No expone PK, metadata cruda, IP, HMAC ni
+  User-Agent.
+- Cursor base64url validado y ligado al alcance; seek por id_security_event
+  descendente, LIMIT limit+1, sin COUNT ni OFFSET. No es un token de autorizacion:
+  cada pagina vuelve a validar sesion y permiso.
+- El modulo/seccion registrados tienen prioridad. Usuarios/Roles/Auditoria usan
+  tipos de evento antiguos solo cuando falta sectionCode y el modulo es nulo o
+  administracion. user_access_replaced con sectionCode=roles aparece en Roles,
+  no en Usuarios. El fallback nunca inventa etiquetas de ubicacion historica.
+  Auditoria y sistema incluye login, refresh, sesiones, logout y preparacion de identidades.
+  Catalogos usa metadata.catalogCode; el modulo explicito debe coincidir. Una
+  fila antigua sin modulo se muestra en los contextos compartidos de catalogos
+  con contextKnown=false. No se reconstruye ni inventa su modulo historico.
+- moduleCode y catalogCode se extraen con NULLIF(JSON_UNQUOTE(...), 'null'):
+  JSON null y campos ausentes se leen como SQL NULL. Un modulo desconocido no
+  se excluye por compararse con el texto 'null' ni se marca como conocido por
+  la conversion booleana de ese texto. No se modifica metadata almacenada.
+- Las demas secciones operativas requieren metadata.moduleCode y sectionCode.
+  Un writer sin auditoria no genera filas ficticias en esta consulta.
+- actorRoles proviene exclusivamente de metadata.actor.roles: pares code/name
+  validados y sin claves adicionales. null significa no registrado/malformado;
+  [] significa que no habia roles. Nunca se consultan membresias actuales.
+  actorPublicId prefiere snapshot y admite fallback al ID canonico por FK.
+- record={id,entity,name} usa referencias escalares de changeSet version 1 y
+  nombre after.name/displayName o before.name/displayName; lista no descarga
+  before/after completos. Sin snapshot, itemPublicId solo identifica catalogos,
+  roleCode solo eventos role_*, o targetPublicId canonico por FK identifica
+  usuario. roleCode de user_created es un rol asignado, no el registro afectado.
+  Sin nombre historico se devuelve name:null; no se consulta nombre actual.
+- action/actionLabel describen la mutacion registrada o el tipo de evento
+  conocido; catalog_item_status_changed se presenta como Cambio de estado.
+  search incluye ID/nombres historicos escalares y referencias antiguas, sin
+  descargar snapshots ni metadata cruda. No se genera URL de registro.
+- Consulta limitada con MAX_EXECUTION_TIME(1500). EXPLAIN local verificado:
+  backward index scan de PRIMARY, joins actor/target eq_ref. Los predicados JSON
+  no tienen un indice de alcance dedicado: un resultado pequeno no garantiza un
+  escaneo pequeno en historiales grandes. Medir antes de agregar indices
+  compuestos/generados por modulo/seccion/catalogo; no se ejecuta DDL ni backfill
+  de logs en este cambio.

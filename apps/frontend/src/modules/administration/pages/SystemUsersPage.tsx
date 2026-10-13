@@ -6,7 +6,10 @@
  * editar o cambiar el estado.
  */
 import "./SystemUsersPage.css";
+import "../catalogs/ProjectsView.css";
+import "./UsersView.css";
 
+import ReloadOutlined from "@ant-design/icons/ReloadOutlined";
 import SaveOutlined from "@ant-design/icons/SaveOutlined";
 import UserAddOutlined from "@ant-design/icons/UserAddOutlined";
 import Button from "antd/es/button";
@@ -15,12 +18,14 @@ import Input from "antd/es/input";
 import esES from "antd/es/locale/es_ES";
 import message from "antd/es/message";
 import Modal from "antd/es/modal";
+import Tooltip from "antd/es/tooltip";
 import { useEffect, useState } from "react";
 
 import { ApiClientError } from "../../../services/api/api-client";
 import { createSystemUser, updateSystemUser, updateSystemUserStatus } from "../../../services/auth/auth-service";
 import type { CreateSystemUserPayload, UpdateSystemUserPayload } from "../../../services/auth/identity-contracts";
-import { ADMINISTRATION_MODAL_Z_INDEX, ADMINISTRATION_THEME } from "../administration-theme";
+import { ADMINISTRATION_MODAL_Z_INDEX } from "../administration-theme";
+import { PROJECTS_THEME } from "../catalogs/projects-theme";
 import { CreateSystemUserDrawer } from "../components/CreateSystemUserDrawer";
 import { SystemUsersDataTable } from "../components/SystemUsersDataTable";
 import { UserDetailDrawer } from "../components/UserDetailDrawer";
@@ -97,7 +102,7 @@ function StatusActionDialog({ action, isSubmitting, onClose, onReasonChange, onS
         <Modal
             centered
             destroyOnHidden
-            className="administration-users-status-modal"
+            className="administration-users-status-modal catalog-items-modal--projects users-view-modal"
             footer={
                 <div className="administration-users-status-dialog__footer">
                     <Button className="administration-users-status-dialog__secondary" disabled={isSubmitting} onClick={onClose}>
@@ -138,7 +143,7 @@ function StatusActionDialog({ action, isSubmitting, onClose, onReasonChange, onS
             </label>
             <Input.TextArea
                 id="system-user-status-reason"
-                rows={4}
+                autoSize={{ maxRows: 4, minRows: 2 }}
                 maxLength={255}
                 showCount
                 autoFocus
@@ -162,6 +167,41 @@ function SystemUsersRefreshStatus() {
         </div>
     );
 }
+
+/** Total del API junto al título; cuenta todo el directorio, no solo el lote cargado. */
+function UsersPageTitle({ isLoading, total }: { readonly isLoading: boolean; readonly total: number }) {
+    return (
+        <div className="projects-view-title-row">
+            <h1 id="administration-users-page-title">Usuarios</h1>
+            {isLoading ? null : (
+                <span className="projects-view-total">
+                    {total} {total === 1 ? "usuario" : "usuarios"}
+                </span>
+            )}
+        </div>
+    );
+}
+
+function UsersHeaderActions({ isLoading, onCreate, onRefresh }: { readonly isLoading: boolean; readonly onCreate: () => void; readonly onRefresh: () => void }) {
+    return (
+        <div className="global-home-page-header__actions">
+            <Tooltip title="Actualizar usuarios">
+                <Button className="projects-view-refresh" aria-label="Actualizar usuarios" icon={<ReloadOutlined spin={isLoading} />} disabled={isLoading} onClick={onRefresh} />
+            </Tooltip>
+            <button className="global-home-page-header__primary" type="button" aria-label="Nuevo usuario" onClick={onCreate}>
+                <UserAddOutlined />
+                Nuevo usuario
+            </button>
+        </div>
+    );
+}
+
+/** El detalle recorre los usuarios en el orden y filtro que muestra la tabla. */
+const getNavigationUsers = (users: readonly SystemUserListItem[], visibleOrder: readonly string[] | null, selectedEmail: string | null): readonly SystemUserListItem[] => {
+    if (!visibleOrder || !selectedEmail || !visibleOrder.includes(selectedEmail)) return users;
+    const byEmail = new Map(users.map((user) => [user.email, user]));
+    return visibleOrder.flatMap((email) => byEmail.get(email) ?? []);
+};
 
 /**
  * Directorio de usuarios del sistema.
@@ -188,9 +228,11 @@ export function SystemUsersPage() {
     const createUserCatalog = useCreateUserCatalog();
     const { hasMore, isLoadingMore, loadMore, loadState, pageTotal, selectedUser, setSelectedUser, users } = useSystemUsersDirectory({ activeFilter, reloadToken, searchQuery, sortDirection, sortKey });
 
+    const [visibleOrder, setVisibleOrder] = useState<readonly string[] | null>(null);
     const isRefreshing = loadState === "loading" && users.length > 0;
     const selectedUserEmail = selectedUser?.email ?? null;
-    const selectedUserIndex = users.findIndex((user) => user.email === selectedUserEmail);
+    const navigationUsers = getNavigationUsers(users, visibleOrder, selectedUserEmail);
+    const selectedUserIndex = navigationUsers.findIndex((user) => user.email === selectedUserEmail);
 
     useEffect(() => {
         if (!highlightedPublicId) {
@@ -207,7 +249,7 @@ export function SystemUsersPage() {
     }, [highlightedPublicId]);
 
     const selectUserByOffset = (offset: -1 | 1): void => {
-        const nextUser = getUserAtOffset(users, selectedUserIndex, offset);
+        const nextUser = getUserAtOffset(navigationUsers, selectedUserIndex, offset);
 
         if (nextUser) {
             setSelectedUser(nextUser);
@@ -338,8 +380,8 @@ export function SystemUsersPage() {
     };
 
     return (
-        <ConfigProvider locale={esES} theme={ADMINISTRATION_THEME}>
-            <div className="global-home-dashboard administration-users-dashboard">
+        <ConfigProvider locale={esES} theme={PROJECTS_THEME}>
+            <div className="global-home-dashboard administration-users-dashboard catalog-items-page--projects users-view">
                 <div className="administration-users-main">
                     <section className="global-home-page-header administration-users-page-header" aria-labelledby="administration-users-page-title">
                         <div>
@@ -348,21 +390,22 @@ export function SystemUsersPage() {
                                 <span aria-hidden="true">/</span>
                                 <span>Usuarios</span>
                             </nav>
-                            <h1 id="administration-users-page-title">Usuarios</h1>
+                            <UsersPageTitle isLoading={loadState === "loading"} total={pageTotal} />
                             <p>Gestión de personas, accesos y estado operativo dentro del CRM.</p>
                         </div>
-                        <div className="global-home-page-header__actions">
-                            <button className="global-home-page-header__primary" type="button" aria-label="Nuevo usuario" onClick={openCreateUserDrawer}>
-                                <UserAddOutlined />
-                                Nuevo usuario
-                            </button>
-                        </div>
+                        <UsersHeaderActions
+                            isLoading={loadState === "loading"}
+                            onCreate={openCreateUserDrawer}
+                            onRefresh={() => {
+                                setReloadToken((currentToken) => currentToken + 1);
+                            }}
+                        />
                     </section>
 
                     <section className="administration-users-panel" aria-label="Listado de usuarios" aria-busy={loadState === "loading"}>
                         {isRefreshing ? <SystemUsersRefreshStatus /> : null}
 
-                        <SystemUsersDataTable highlightedPublicId={highlightedPublicId} loadState={loadState} selectedUserEmail={selectedUserEmail} users={users} onClearFilters={clearFilters} onEditUser={openEditUserDrawer} onOpenUser={setSelectedUser} onStatusAction={openStatusAction} />
+                        <SystemUsersDataTable highlightedPublicId={highlightedPublicId} loadState={loadState} selectedUserEmail={selectedUserEmail} users={users} onClearFilters={clearFilters} onEditUser={openEditUserDrawer} onOpenUser={setSelectedUser} onStatusAction={openStatusAction} onVisibleOrderChange={setVisibleOrder} />
 
                         <footer className="administration-users-footer">
                             <span>{getUsersRangeLabel(loadState, users.length, pageTotal)}</span>
@@ -377,7 +420,7 @@ export function SystemUsersPage() {
 
                 <UserDetailDrawer
                     position={selectedUserIndex + 1}
-                    total={users.length}
+                    total={navigationUsers.length}
                     user={selectedUser}
                     onClose={() => {
                         setSelectedUser(null);

@@ -5,7 +5,8 @@
  * `externalReferences` y no la reemplaza. `id_old_produccion` solo aparece
  * cuando la fila ya se vinculó con el CRM viejo.
  */
-import type { CatalogRouteCode, CatalogStatus } from "./catalogs.constants.js";
+import type { AuditActorSnapshot } from "../audit/security-audit.service.js";
+import type { CatalogContextModuleCode, CatalogRouteCode, CatalogStatus } from "./catalogs.constants.js";
 
 /** Vínculo ya resuelto con un sistema externo configurado en el CRM. */
 export interface CatalogExternalReference {
@@ -46,6 +47,8 @@ export interface CatalogExternalReferenceInput {
 
 /** Alta o edición ya autorizada. El motivo queda en la auditoría. */
 export interface CatalogMutationInput {
+    actorSnapshot?: AuditActorSnapshot | undefined;
+    moduleCode?: CatalogContextModuleCode;
     actorPublicId: string;
     catalogCode: CatalogRouteCode;
     detail?: string | undefined;
@@ -58,6 +61,8 @@ export interface CatalogMutationInput {
 
 /** Cambio de estado. El permiso de inactivar es distinto del de editar. */
 export interface CatalogStatusMutationInput {
+    actorSnapshot?: AuditActorSnapshot | undefined;
+    moduleCode?: CatalogContextModuleCode;
     actorPublicId: string;
     catalogCode: CatalogRouteCode;
     ipAddress?: string | undefined;

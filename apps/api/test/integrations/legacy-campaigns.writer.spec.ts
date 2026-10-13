@@ -1,0 +1,63 @@
+import { ConfigService } from "@nestjs/config";
+import { type CompiledQuery, DummyDriver, Kysely, MysqlAdapter, MysqlIntrospector, MysqlQueryCompiler, type QueryResult, type Transaction } from "kysely";
+import { describe, expect, it } from "vitest";
+
+import type { CrmDatabase } from "../../src/database/database.types.js";
+import { LegacyCampaignsWriter } from "../../src/integrations/legacy-crm/campaigns/legacy-campaigns.writer.js";
+
+const setup = (enabled = true, results: QueryResult<unknown>[] = []) => {
+    const queries: CompiledQuery[] = [];
+    class RecordingDriver extends DummyDriver {
+        override async acquireConnection() {
+            const connection = await super.acquireConnection();
+            connection.executeQuery = <R>(query: CompiledQuery): Promise<QueryResult<R>> => {
+                queries.push(query);
+                return Promise.resolve((results.shift() ?? { rows: [] }) as QueryResult<R>);
+            };
+            return connection;
+        }
+    }
+    const database = new Kysely<CrmDatabase>({
+        dialect: {
+            createDriver: () => new RecordingDriver(),
+            createAdapter: () => new MysqlAdapter(),
+            createIntrospector: (db) => new MysqlIntrospector(db),
+            createQueryCompiler: () => new MysqlQueryCompiler(),
+        },
+    });
+    return { writer: new LegacyCampaignsWriter(new ConfigService({ ENABLE_LEGACY_FALLBACK: enabled })), transaction: database as unknown as Transaction<CrmDatabase>, queries, database };
+};
+const payload = { name: "Campaign", status: "active" as const, externalReferences: [{ systemCode: "netsuite", externalId: "-5" }] };
+
+describe("isolated legacy Campaigns writer", () => {
+    it("performs no reads or writes when the global switch is off", async () => {
+        const { writer, transaction, queries, database } = setup(false);
+        expect(await writer.find(transaction, 42)).toBeNull();
+        expect(await writer.create(transaction, payload)).toBeNull();
+        await writer.update(transaction, 42, payload);
+        expect(queries).toEqual([]);
+        await database.destroy();
+    });
+    it("creates using bound values and maps Active to 1", async () => {
+        const { writer, transaction, queries, database } = setup(true, [{ rows: [] }, { rows: [], insertId: 42n }]);
+        expect(await writer.create(transaction, payload)).toBe(42);
+        expect(queries[1]?.sql).toContain("INSERT INTO `crmdatabase-api`.campanas");
+        expect(queries[1]?.parameters).toEqual([-5, "Campaign", 1]);
+        await database.destroy();
+    });
+    it("updates the existing identity and maps Inactive to 0 without delete SQL", async () => {
+        const { writer, transaction, queries, database } = setup(true, [{ rows: [{ legacyId: 42, externalId: -5, name: "Before", status: 1 }] }, { rows: [] }, { rows: [] }]);
+        await writer.update(transaction, 42, { ...payload, status: "inactive" });
+        expect(queries[2]?.parameters).toEqual(["Campaign", -5, 0, 42]);
+        expect(queries.every((query) => !/DELETE|TRUNCATE|DROP/i.test(query.sql))).toBe(true);
+        await database.destroy();
+    });
+    it("rejects duplicates and missing or invalid NOT NULL NetSuite IDs without insertion", async () => {
+        const { writer, transaction, queries, database } = setup(true, [{ rows: [{ id_Campana: 8 }] }]);
+        await expect(writer.create(transaction, payload)).rejects.toThrow("ya existe");
+
+        await expect(writer.create(transaction, { ...payload, externalReferences: [{ systemCode: "netsuite", externalId: "2147483648" }] })).rejects.toThrow("rango");
+        expect(queries).toHaveLength(1);
+        await database.destroy();
+    });
+});

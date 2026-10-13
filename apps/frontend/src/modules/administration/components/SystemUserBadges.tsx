@@ -15,6 +15,16 @@ export function SystemUserStatusBadge({ status }: { readonly status: SystemUserS
     return <Badge className="administration-users-status" status={STATUS_BADGE_STATUS[status]} text={STATUS_LABELS[status]} />;
 }
 
+/** Píldora de estado del directorio; misma marca que la celda Estado de la tabla. */
+export function SystemUserStatusPill({ status }: { readonly status: SystemUserStatus }) {
+    return (
+        <span className={`administration-users-dt-status administration-users-dt-status--${status}`}>
+            <span aria-hidden="true" />
+            {STATUS_LABELS[status]}
+        </span>
+    );
+}
+
 /**
  * Método de acceso.
  *

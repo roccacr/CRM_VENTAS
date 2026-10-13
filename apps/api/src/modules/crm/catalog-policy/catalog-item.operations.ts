@@ -131,6 +131,7 @@ export class CatalogItemOperations {
         this.assertCan(profile, moduleCode, getCatalogPermissionCode(moduleCode, definition, "create"));
 
         return this.repository.createCatalogItem({
+            moduleCode,
             actorPublicId: profile.user.publicId,
             catalogCode: definition.routeCode,
             detail: payload.detail,
@@ -156,6 +157,7 @@ export class CatalogItemOperations {
         this.assertMutableIdentity(itemPublicId);
 
         const item = await this.repository.updateCatalogItem(itemPublicId, {
+            moduleCode,
             actorPublicId: profile.user.publicId,
             catalogCode: definition.routeCode,
             detail: payload.detail,
@@ -187,6 +189,7 @@ export class CatalogItemOperations {
         this.assertMutableIdentity(itemPublicId);
 
         const item = await this.repository.updateCatalogItemStatus({
+            moduleCode,
             actorPublicId: profile.user.publicId,
             catalogCode: definition.routeCode,
             ipAddress: context.ipAddress,

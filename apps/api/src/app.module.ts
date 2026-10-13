@@ -10,10 +10,16 @@ import { DatabaseModule } from "./database/database.module.js";
 import { LegacyCrmModule } from "./integrations/legacy-crm/legacy-crm.module.js";
 import { Microsoft365Module } from "./integrations/microsoft365/microsoft365.module.js";
 import { AuditModule } from "./modules/crm/audit/audit.module.js";
+import { BrokersModule } from "./modules/crm/brokers/brokers.module.js";
+import { CampaignsModule } from "./modules/crm/campaigns/campaigns.module.js";
 import { CatalogsModule } from "./modules/crm/catalogs/catalogs.module.js";
+import { ClassesModule } from "./modules/crm/classes/classes.module.js";
 import { IdentityModule } from "./modules/crm/identity/identity.module.js";
+import { LocationsModule } from "./modules/crm/locations/locations.module.js";
 import { PermissionsModule } from "./modules/crm/permissions/permissions.module.js";
 import { ProjectsModule } from "./modules/crm/projects/projects.module.js";
+import { SubsidiariesModule } from "./modules/crm/subsidiaries/subsidiaries.module.js";
+import { UnitFilesModule } from "./modules/crm/unit-files/unit-files.module.js";
 
 /**
  * Modulo raiz del runtime de identidad aprobado.
@@ -48,6 +54,12 @@ import { ProjectsModule } from "./modules/crm/projects/projects.module.js";
         IdentityModule,
         CatalogsModule,
         ProjectsModule,
+        CampaignsModule,
+        ClassesModule,
+        LocationsModule,
+        SubsidiariesModule,
+        BrokersModule,
+        UnitFilesModule,
     ],
     providers: [
         {

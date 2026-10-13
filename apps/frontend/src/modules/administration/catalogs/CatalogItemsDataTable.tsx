@@ -96,7 +96,7 @@ interface CatalogItemsDataTableProps {
 
 /** Keep the outgoing loader mounted only for its crossfade; requests are never delayed. */
 export function CatalogItemsDataTable(props: CatalogItemsDataTableProps) {
-    const pending = props.isLoading && props.items.length === 0;
+    const pending = props.isLoading;
     const [showLoader, setShowLoader] = useState(pending);
     useEffect(() => {
         if (!props.projectView || (!pending && !showLoader)) return;
@@ -137,13 +137,21 @@ function CatalogItemsTableContent({ projectView = false, entityLabel, items, lab
     const mobileSort = useRef<HTMLSelectElement>(null);
     const selected = useRef(selectedPublicId);
     const panes = useDataTableSearchPanes({ fields: FIELDS, disabledColumnIndexes: DISABLED_FIELDS });
+    useEffect(() => {
+        // The React wrapper updates rows before this parent effect; rebuild pane values
+        // without destroying the table, toolbar or its scroll viewport on every page.
+        const api = table.current?.dt() as unknown as { searchPanes?: { rebuildPane(index?: number, maintainSelect?: boolean): unknown } } | undefined;
+        if (import.meta.env.MODE !== "test") api?.searchPanes?.rebuildPane(undefined, true);
+    }, [data]);
     const options = useMemo<NonNullable<DataTableProps["options"]>>(
         () =>
             ({
                 autoWidth: false,
                 // Pane labels need escaped text, not the DOM nodes returned by React display slots.
                 columnDefs: import.meta.env.MODE === "test" ? [] : [{ targets: [0, 2, 3], searchPanes: { show: true, orthogonal: { display: "pane", search: "filter", sort: "filter", type: "filter" } } }, ...(panes.columnDefs ?? [])],
-                layout: getTableLayout(panes.layout, projectView),
+                layout: { ...getTableLayout(panes.layout, projectView), bottomStart: null, bottomEnd: null },
+                // The page owns API pagination; never paginate this batch a second time.
+                paging: false,
                 lengthMenu: [10, 25, 50, 100],
                 pageLength: 10,
                 order: [[0, "asc"]],
@@ -230,7 +238,7 @@ function CatalogItemsTableContent({ projectView = false, entityLabel, items, lab
         onVisibleOrderChange(publicIds);
     };
 
-    // SearchPanes must initialize with data, and rebuild when a batch or a mutation changes it.
+    // SearchPanes initializes with data; later batches update the same mounted table.
     if (data.length === 0) return <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={isLoading ? "Cargando catálogo…" : "Sin resultados"} />;
 
     return (
@@ -283,7 +291,7 @@ function CatalogItemsTableContent({ projectView = false, entityLabel, items, lab
             </label>
             <DataTable
                 ref={table}
-                key={`${storageKey}:${JSON.stringify(data)}`}
+                key={storageKey}
                 className="administration-users-datatable"
                 columns={COLUMNS}
                 data={data}
@@ -336,8 +344,8 @@ function CatalogItemsTableContent({ projectView = false, entityLabel, items, lab
                             {...(projectView ? { rootClassName: "catalog-items-dropdown--projects" } : {})}
                             menu={{
                                 items: [
-                                    { key: "edit", icon: <EditOutlined />, label: "Editar", disabled: item.publicId.startsWith("legacy:") && !item.publicId.startsWith("legacy:projects:") },
-                                    { key: item.status === "active" ? "inactive" : "active", icon: <StopOutlined />, label: item.status === "active" ? "Inactivar" : "Reactivar", danger: item.status === "active", disabled: item.publicId.startsWith("legacy:") && !item.publicId.startsWith("legacy:projects:") },
+                                    { key: "edit", icon: <EditOutlined />, label: "Editar", disabled: item.publicId.startsWith("legacy:") && !/^legacy:(projects|campaigns|classes|locations|subsidiaries|brokers):[1-9]\d*$/.test(item.publicId) },
+                                    { key: item.status === "active" ? "inactive" : "active", icon: <StopOutlined />, label: item.status === "active" ? "Inactivar" : "Reactivar", danger: item.status === "active", disabled: item.publicId.startsWith("legacy:") && !/^legacy:(projects|campaigns|classes|locations|subsidiaries|brokers):[1-9]\d*$/.test(item.publicId) },
                                 ],
                                 onClick: ({ key, domEvent }) => {
                                     domEvent.stopPropagation();

@@ -1,0 +1,845 @@
+/*
+ * Users adopts the Projects presentation (catalogs/ProjectsView.css): tokens, toolbar,
+ * grid frame, detail drawer and modal. This file only holds what Users has and Projects
+ * does not: six columns, person/role/access cells, four statuses, the row menu, the
+ * create/edit drawer and the status dialog. Compound selectors keep it independent of
+ * the order in which lazy route stylesheets load.
+ */
+.users-view,
+.users-view-drawer,
+.users-view-form,
+.users-view-modal {
+    --users-danger: #b42318;
+    --users-danger-light: #fef3f2;
+}
+
+/* Status pill: same shape as the Projects status, with the four directory states. */
+.users-view .administration-users-dt-status,
+.users-view-drawer .administration-users-dt-status,
+.users-view-form .administration-users-dt-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    width: fit-content;
+    max-width: 100%;
+    padding: var(--space-1) var(--space-2);
+    border-radius: var(--radius);
+    background: var(--color-neutral-100);
+    color: var(--color-neutral-600);
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 1.5;
+    white-space: nowrap;
+}
+
+.users-view .administration-users-dt-status > span:first-child,
+.users-view-drawer .administration-users-dt-status > span:first-child,
+.users-view-form .administration-users-dt-status > span:first-child {
+    width: 6px;
+    height: 6px;
+    flex: 0 0 auto;
+    border-radius: 999px;
+    background: var(--color-neutral-500);
+}
+
+.users-view .administration-users-dt-status--active,
+.users-view-drawer .administration-users-dt-status--active {
+    background: var(--color-success-light);
+    color: var(--color-success);
+}
+
+.users-view .administration-users-dt-status--active > span:first-child,
+.users-view-drawer .administration-users-dt-status--active > span:first-child {
+    background: var(--color-success);
+}
+
+.users-view .administration-users-dt-status--pending,
+.users-view-drawer .administration-users-dt-status--pending,
+.users-view-form .administration-users-dt-status--pending {
+    background: var(--color-warning-light);
+    color: var(--color-warning);
+}
+
+.users-view .administration-users-dt-status--pending > span:first-child,
+.users-view-drawer .administration-users-dt-status--pending > span:first-child,
+.users-view-form .administration-users-dt-status--pending > span:first-child {
+    background: var(--color-warning);
+}
+
+.users-view .administration-users-dt-status--blocked,
+.users-view-drawer .administration-users-dt-status--blocked {
+    background: var(--users-danger-light);
+    color: var(--users-danger);
+}
+
+.users-view .administration-users-dt-status--blocked > span:first-child,
+.users-view-drawer .administration-users-dt-status--blocked > span:first-child {
+    background: var(--users-danger);
+}
+
+.users-view .administration-users-current-user,
+.users-view-drawer .administration-users-current-user {
+    display: inline-flex;
+    align-items: center;
+    border: 1px solid var(--project-border);
+    border-radius: 4px;
+    padding: 0 6px;
+    background: var(--color-neutral-50);
+    color: var(--color-neutral-700);
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 18px;
+}
+
+/* One work surface: the panel frames toolbar, grid, paging and the batch footer together. */
+.users-view.catalog-items-page--projects .administration-users-panel {
+    overflow: visible;
+    border: 1px solid var(--project-border);
+    border-radius: var(--radius);
+    background: var(--color-surface);
+    box-shadow: none;
+}
+
+.users-view.catalog-items-page--projects .administration-users-datatable-wrap .dt-container:has(> .projects-view-toolbar) {
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+}
+
+.users-view.catalog-items-page--projects .projects-view-loader {
+    border: 0;
+}
+
+.users-view.catalog-items-page--projects .administration-users-footer {
+    min-height: 48px;
+    border-top: 1px solid var(--project-border);
+    border-radius: 0 0 var(--radius) var(--radius);
+    padding: var(--space-3) var(--space-6);
+    background: var(--color-neutral-50);
+    color: var(--project-muted);
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.users-view.catalog-items-page--projects .administration-users-refresh-status {
+    margin: var(--space-3) var(--space-6) 0;
+    border-color: var(--project-border);
+    background: var(--color-neutral-50);
+    color: var(--color-neutral-700);
+    font-weight: 600;
+}
+
+.users-view.catalog-items-page--projects .administration-users-refresh-status__dot {
+    background: var(--color-secondary);
+    box-shadow: 0 0 0 4px rgba(73, 97, 128, 0.16);
+}
+
+.users-view.catalog-items-page--projects .administration-users-empty {
+    color: var(--project-muted);
+}
+
+.users-view.catalog-items-page--projects .administration-users-empty strong {
+    color: var(--color-neutral-900);
+    font-weight: 600;
+}
+
+/* Six columns: Usuario absorbs the remaining width (about 280px at the minimum); short columns keep fixed tracks. */
+.users-view.catalog-items-page--projects .administration-users-datatable-wrap table.dataTable.administration-users-datatable {
+    min-width: 960px;
+}
+
+/* The visually hidden caption otherwise sits below the rows and adds vertical scroll to the grid viewport. */
+.users-view.catalog-items-page--projects table.administration-users-datatable > caption {
+    top: 0;
+    left: 0;
+}
+
+.users-view.catalog-items-page--projects table.administration-users-datatable > thead > tr > th:first-child {
+    width: auto;
+}
+.users-view.catalog-items-page--projects table.administration-users-datatable > thead > tr > th:nth-child(2) {
+    width: 120px;
+}
+.users-view.catalog-items-page--projects table.administration-users-datatable > thead > tr > th:nth-child(3) {
+    width: 20%;
+}
+.users-view.catalog-items-page--projects table.administration-users-datatable > thead > tr > th:nth-child(4) {
+    width: 164px;
+}
+.users-view.catalog-items-page--projects table.administration-users-datatable > thead > tr > th:nth-child(5) {
+    width: 140px;
+}
+.users-view.catalog-items-page--projects table.administration-users-datatable > thead > tr > th:last-child {
+    width: 64px;
+}
+
+.users-view.catalog-items-page--projects .administration-users-datatable-wrap table.dataTable.administration-users-datatable > tbody > tr > td {
+    height: 60px;
+    overflow-wrap: normal;
+}
+
+.users-view.catalog-items-page--projects .administration-users-datatable-wrap table.dataTable.administration-users-datatable > tbody > tr:hover > td {
+    background: var(--color-hover);
+}
+
+.users-view.catalog-items-page--projects .administration-users-datatable-wrap table.dataTable.administration-users-datatable > tbody > tr.administration-users-table__row--selected > td,
+.users-view.catalog-items-page--projects .administration-users-datatable-wrap table.dataTable.administration-users-datatable > tbody > tr.administration-users-table__row--menu-open > td {
+    background: var(--color-primary-light);
+}
+
+.users-view.catalog-items-page--projects .administration-users-datatable-wrap table.dataTable.administration-users-datatable > tbody > tr.administration-users-table__row--selected > td:first-child,
+.users-view.catalog-items-page--projects .administration-users-datatable-wrap table.dataTable.administration-users-datatable > tbody > tr.administration-users-table__row--menu-open > td:first-child {
+    box-shadow: none;
+}
+
+/* Person cell: name is the primary datum (Projects name weight); email reads as secondary. */
+.users-view.catalog-items-page--projects .administration-users-datatable-wrap .administration-users-person__name {
+    color: var(--color-neutral-900);
+    font-size: 14px;
+    font-weight: 650;
+    line-height: 1.5;
+}
+
+.users-view.catalog-items-page--projects .administration-users-datatable-wrap .administration-users-person__name:hover > span:first-child,
+.users-view.catalog-items-page--projects .administration-users-datatable-wrap .administration-users-person__name:focus-visible > span:first-child {
+    color: var(--color-neutral-950);
+    text-decoration-color: var(--color-neutral-400);
+}
+
+.users-view.catalog-items-page--projects .administration-users-datatable-wrap .administration-users-person__name:focus-visible,
+.users-view.catalog-items-page--projects .administration-users-copy-inline:focus-visible,
+.users-view.catalog-items-page--projects .administration-users-row-menu:focus-visible {
+    outline: 2px solid var(--project-focus);
+    outline-offset: 2px;
+}
+
+.users-view.catalog-items-page--projects .administration-users-datatable-wrap .administration-users-person__email {
+    color: var(--project-muted);
+    font-size: 12px;
+    line-height: 1.5;
+}
+
+.users-view.catalog-items-page--projects .administration-users-copy-inline {
+    color: var(--color-secondary);
+}
+
+.users-view.catalog-items-page--projects .administration-users-copy-inline:hover {
+    color: var(--color-primary);
+}
+
+.users-view.catalog-items-page--projects .administration-users-role {
+    color: var(--color-neutral-900);
+    font-weight: 500;
+}
+
+.users-view.catalog-items-page--projects .administration-users-role-count {
+    background: var(--color-neutral-100);
+    color: var(--color-neutral-600);
+}
+
+.users-view.catalog-items-page--projects .administration-users-datatable-wrap .administration-users-scope__area {
+    color: var(--project-muted);
+    font-size: 12px;
+    line-height: 1.5;
+}
+
+.users-view.catalog-items-page--projects .administration-users-provider,
+.users-view.catalog-items-page--projects .administration-users-activity {
+    color: var(--color-neutral-700);
+    font-weight: 500;
+}
+
+.users-view.catalog-items-page--projects .administration-users-muted {
+    color: var(--color-neutral-500);
+}
+
+/* Row action: quiet until the row is hovered, focused or selected (Projects row actions). */
+.users-view.catalog-items-page--projects .administration-users-row-menu {
+    border: 1px solid transparent;
+    border-radius: var(--radius);
+    background: transparent;
+    color: var(--color-secondary);
+}
+
+.users-view.catalog-items-page--projects .administration-users-datatable-wrap tbody > tr:hover .administration-users-row-menu,
+.users-view.catalog-items-page--projects .administration-users-datatable-wrap tbody > tr:focus-within .administration-users-row-menu,
+.users-view.catalog-items-page--projects .administration-users-datatable-wrap tbody > tr.administration-users-table__row--selected .administration-users-row-menu {
+    border-color: var(--color-control-border);
+    background: var(--color-surface);
+    color: var(--color-secondary);
+}
+
+.users-view.catalog-items-page--projects .administration-users-datatable-wrap tbody > tr .administration-users-row-menu:hover,
+.users-view.catalog-items-page--projects .administration-users-datatable-wrap tbody > tr.administration-users-table__row--menu-open .administration-users-row-menu {
+    border-color: var(--color-primary);
+    background: var(--color-primary-light);
+    color: var(--color-primary);
+}
+
+/* Row menu: the Projects dropdown surface (it renders inside the table wrap, not a portal). */
+.users-view.catalog-items-page--projects .administration-users-datatable-menu {
+    border: 1px solid var(--project-border);
+    border-radius: var(--radius);
+    padding: var(--space-1);
+    background: var(--color-surface);
+    box-shadow: 0 12px 24px -6px rgba(14, 17, 22, 0.14);
+    font-family: var(--font-body);
+}
+
+.users-view.catalog-items-page--projects .administration-users-datatable-menu button {
+    color: var(--color-neutral-700);
+}
+
+.users-view.catalog-items-page--projects .administration-users-datatable-menu button:not(:disabled):hover {
+    background: var(--color-hover);
+    color: var(--color-primary);
+}
+
+.users-view.catalog-items-page--projects .administration-users-datatable-menu button:focus-visible {
+    background: var(--color-hover);
+    color: var(--color-primary);
+    outline: 2px solid var(--project-focus);
+    outline-offset: -2px;
+}
+
+.users-view.catalog-items-page--projects .administration-users-datatable-menu button:disabled {
+    color: var(--color-neutral-400);
+}
+
+.users-view.catalog-items-page--projects .administration-users-datatable-menu__divider {
+    background: var(--project-border);
+}
+
+.users-view.catalog-items-page--projects .administration-users-datatable-menu button.administration-users-datatable-menu__danger:not(:disabled) {
+    color: var(--users-danger);
+}
+
+.users-view.catalog-items-page--projects .administration-users-datatable-menu button.administration-users-datatable-menu__danger:not(:disabled):hover {
+    background: var(--users-danger-light);
+    color: var(--users-danger);
+}
+
+/* Detail drawer: Projects hierarchy plus the Users-only values (roles, access, references). */
+.users-view-drawer .user-detail-drawer__identity .administration-users-avatar:not(:has(img)) {
+    border-color: var(--color-surface);
+    background: var(--color-neutral-100);
+    box-shadow: 0 0 0 1px var(--project-border);
+    color: var(--color-neutral-800);
+    font-weight: 600;
+}
+
+.users-view-drawer .user-detail-drawer__identity-copy > .ant-typography:not(h4) {
+    color: var(--project-muted);
+    font-weight: 400;
+}
+
+.users-view-drawer .administration-users-roles .administration-users-tag.ant-tag {
+    border: 1px solid var(--project-border);
+    border-radius: 4px;
+    background: var(--color-neutral-50);
+    color: var(--color-neutral-800);
+    font-weight: 500;
+}
+
+/* MFA uses the status pill palette; the AntD preset green fails AA contrast at 12px. */
+.users-view-drawer .administration-users-tag.ant-tag-success,
+.users-view-drawer .administration-users-tag.ant-tag-warning,
+.users-view-drawer .administration-users-tag.ant-tag-default {
+    border: 0;
+    border-radius: var(--radius);
+    padding: 2px var(--space-2);
+    background: var(--color-neutral-100);
+    color: var(--color-neutral-600);
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 1.5;
+}
+
+.users-view-drawer .administration-users-tag.ant-tag-success {
+    background: var(--color-success-light);
+    color: var(--color-success);
+}
+
+.users-view-drawer .administration-users-tag.ant-tag-warning {
+    background: var(--color-warning-light);
+    color: var(--color-warning);
+}
+
+.users-view-drawer .administration-users-provider {
+    color: var(--color-neutral-900);
+    font-weight: 500;
+}
+
+.users-view-drawer .user-detail-drawer__activity .ant-typography {
+    color: var(--project-muted);
+    font-weight: 400;
+}
+
+.users-view-drawer .user-detail-drawer__external-system.ant-typography {
+    color: var(--project-muted);
+    font-weight: 500;
+}
+
+.users-view-drawer .user-detail-drawer__external-reference code {
+    display: inline-block;
+    margin: 0;
+    padding: 1px 6px;
+    border: 1px solid var(--project-border);
+    border-radius: 4px;
+    background: var(--color-neutral-100);
+    color: var(--color-neutral-700);
+    font-family: var(--font-mono, ui-monospace, SFMono-Regular, Consolas, monospace);
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+    font-weight: 500;
+    line-height: 20px;
+}
+
+/* Create/edit drawer: the Projects form modal surface (bordered sections over the canvas). */
+.users-view-form.create-user-drawer .ant-drawer-header,
+.users-view-form.create-user-drawer .ant-drawer-footer {
+    border-color: var(--project-border);
+    padding: var(--space-4) var(--space-6);
+    background: var(--color-neutral-50);
+}
+
+.users-view-form.create-user-drawer .ant-drawer-title {
+    color: var(--color-neutral-900);
+    font-size: 18px;
+    font-weight: 600;
+    line-height: 1.4;
+    letter-spacing: 0;
+}
+
+.users-view-form.create-user-drawer .ant-drawer-close {
+    color: var(--color-secondary);
+}
+
+.users-view-form.create-user-drawer .ant-drawer-close:hover {
+    background: var(--color-primary-light);
+    color: var(--color-primary);
+}
+
+.users-view-form.create-user-drawer .ant-drawer-body {
+    padding: var(--space-6);
+    background: var(--color-canvas);
+    scrollbar-color: var(--color-neutral-300) transparent;
+    scrollbar-width: thin;
+}
+
+.users-view-form.create-user-drawer .create-user-drawer__section,
+.users-view-form.create-user-drawer .create-user-drawer__section + .create-user-drawer__section {
+    min-width: 0;
+    overflow: hidden;
+    border: 1px solid var(--project-border);
+    border-radius: var(--radius);
+    padding: 0 var(--space-4);
+    background: var(--color-surface);
+}
+
+.users-view-form.create-user-drawer .create-user-drawer__section-header {
+    min-height: 48px;
+    margin: 0 calc(var(--space-4) * -1) var(--space-4);
+    border-bottom: 1px solid var(--project-border);
+    padding: var(--space-3) var(--space-4);
+    background: var(--color-neutral-50);
+}
+
+.users-view-form.create-user-drawer .create-user-drawer__section-header h3 {
+    color: var(--color-neutral-800);
+    font-size: 14px;
+    font-weight: 650;
+    line-height: 24px;
+    letter-spacing: 0;
+}
+
+.users-view-form.create-user-drawer .create-user-drawer__step {
+    border: 1px solid var(--project-border);
+    background: var(--color-surface);
+    color: var(--color-neutral-700);
+    font-weight: 600;
+}
+
+/* Section padding comes from each field's bottom margin, so Row/Col grids keep even spacing. */
+.users-view-form.create-user-drawer .create-user-drawer__section .ant-form-item,
+.users-view-form.create-user-drawer .create-user-drawer__section .ant-form-item:last-child {
+    margin-bottom: var(--space-4);
+}
+
+.users-view-form.create-user-drawer .ant-form-item-label > label {
+    color: var(--color-neutral-700);
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.users-view-form.create-user-drawer .ant-input,
+.users-view-form.create-user-drawer .ant-select-selection-item,
+.users-view-form.create-user-drawer .ant-checkbox-label {
+    color: var(--color-neutral-900);
+}
+
+.users-view-form.create-user-drawer .ant-select-selection-placeholder {
+    color: var(--project-muted);
+}
+
+.users-view-form.create-user-drawer .create-user-drawer__scope,
+.users-view-form.create-user-drawer .create-user-drawer__summary,
+.users-view-form.create-user-drawer .create-user-drawer__initial-status {
+    color: var(--project-muted);
+}
+
+.users-view-form.create-user-drawer .create-user-drawer__scope strong,
+.users-view-form.create-user-drawer .create-user-drawer__summary strong {
+    color: var(--color-neutral-900);
+    font-weight: 600;
+}
+
+/* RoleScope renders nothing until roles are chosen; AntD would still reserve its extra line. */
+.users-view-form.create-user-drawer .ant-form-item-extra:empty {
+    display: none;
+}
+
+/* The footer shares its row with two buttons: the summary breaks into lines instead of squeezing words. */
+.users-view-form.create-user-drawer .create-user-drawer__summary {
+    flex-wrap: wrap;
+    gap: var(--space-1) var(--space-2);
+    white-space: nowrap;
+}
+
+.users-view-form.create-user-drawer .create-user-drawer__initial-status {
+    margin-left: 0;
+    border-left: 0;
+    padding-left: 0;
+}
+
+.users-view-form.create-user-drawer .create-user-drawer__advanced {
+    margin-top: 0;
+    border-color: var(--project-border);
+    border-radius: var(--radius);
+    background: var(--color-surface);
+}
+
+.users-view-form.create-user-drawer .create-user-drawer__advanced > .ant-collapse-item > .ant-collapse-header {
+    border-radius: var(--radius);
+    background: var(--color-neutral-50);
+}
+
+.users-view-form.create-user-drawer .create-user-drawer__advanced-label {
+    color: var(--color-neutral-800);
+    font-size: 14px;
+    font-weight: 650;
+}
+
+.users-view-form.create-user-drawer .create-user-drawer__advanced-label small {
+    color: var(--project-muted);
+    font-weight: 500;
+}
+
+/* Status dialog: Projects modal shell; compound selectors beat the canonical Users dialog rules. */
+.users-view-modal.catalog-items-modal--projects .ant-modal-content,
+.users-view-modal.catalog-items-modal--projects .ant-modal-container {
+    overflow: hidden;
+    border: 1px solid var(--project-border);
+    border-radius: var(--radius);
+    padding: 0;
+    box-shadow: 0 24px 48px -12px rgba(14, 17, 22, 0.24);
+}
+
+.users-view-modal.catalog-items-modal--projects .ant-modal-header {
+    margin: 0;
+    border-bottom: 1px solid var(--project-border);
+    padding: var(--space-6);
+    background: var(--color-neutral-50);
+}
+
+.users-view-modal.catalog-items-modal--projects .ant-modal-body {
+    display: grid;
+    gap: var(--space-4);
+    max-height: calc(100dvh - 200px);
+    overflow-y: auto;
+    padding: var(--space-6);
+    background: var(--color-canvas);
+}
+
+.users-view-modal.catalog-items-modal--projects .ant-modal-footer {
+    margin: 0;
+    border-top: 1px solid var(--project-border);
+    padding: var(--space-4) var(--space-6);
+    background: var(--color-neutral-50);
+}
+
+.users-view-modal.catalog-items-modal--projects .ant-modal-close {
+    top: var(--space-6);
+    right: var(--space-6);
+    width: 32px;
+    height: 32px;
+    border: 1px solid var(--color-control-border);
+    border-radius: var(--radius);
+    background: var(--color-surface);
+    color: var(--color-secondary);
+}
+
+.users-view-modal.catalog-items-modal--projects .ant-modal-close:hover {
+    border-color: var(--color-primary);
+    background: var(--color-primary-light);
+    color: var(--color-primary);
+}
+
+.users-view-modal.catalog-items-modal--projects .administration-users-status-dialog__title h2 {
+    color: var(--color-neutral-900);
+    font-size: 18px;
+    font-weight: 600;
+    line-height: 1.4;
+}
+
+.users-view-modal.catalog-items-modal--projects .administration-users-status-dialog__title p {
+    margin-top: var(--space-1);
+    color: var(--project-muted);
+    font-weight: 400;
+}
+
+.users-view-modal.catalog-items-modal--projects .administration-users-status-dialog__summary {
+    gap: var(--space-2);
+    border-color: var(--project-border);
+    padding: var(--space-3) var(--space-4);
+    background: var(--color-surface);
+}
+
+.users-view-modal.catalog-items-modal--projects .administration-users-status-dialog__summary strong {
+    color: var(--color-neutral-800);
+    font-weight: 650;
+}
+
+.users-view-modal.catalog-items-modal--projects .administration-users-status-dialog__summary li {
+    color: var(--color-neutral-700);
+    font-size: 13px;
+    font-weight: 500;
+}
+
+.users-view-modal.catalog-items-modal--projects .administration-users-status-dialog__label {
+    color: var(--color-neutral-700);
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.users-view-modal.catalog-items-modal--projects textarea.ant-input {
+    min-height: 0;
+    border-color: var(--color-control-border);
+    border-radius: var(--radius);
+    padding: var(--space-2) var(--space-3);
+    color: var(--color-neutral-900);
+    font-weight: 400;
+}
+
+.users-view-modal.catalog-items-modal--projects textarea.ant-input:focus {
+    border-color: var(--project-focus);
+    outline: 2px solid var(--project-focus);
+    outline-offset: 2px;
+    box-shadow: none;
+}
+
+.users-view-modal.catalog-items-modal--projects .administration-users-status-dialog__footer {
+    gap: var(--space-2);
+}
+
+.users-view-modal.catalog-items-modal--projects .administration-users-status-dialog__primary.ant-btn,
+.users-view-modal.catalog-items-modal--projects .administration-users-status-dialog__secondary.ant-btn {
+    border-radius: var(--radius);
+    box-shadow: none;
+    font-weight: 600;
+}
+
+.users-view-modal.catalog-items-modal--projects .administration-users-status-dialog__primary.ant-btn:not(:disabled) {
+    border-color: var(--color-primary);
+    background: var(--color-primary);
+    color: var(--color-surface);
+}
+
+.users-view-modal.catalog-items-modal--projects .administration-users-status-dialog__primary.ant-btn:not(:disabled):hover {
+    border-color: var(--color-primary-dark);
+    background: var(--color-primary-dark);
+}
+
+.users-view-modal.catalog-items-modal--projects .administration-users-status-dialog__primary.ant-btn:disabled {
+    border-color: var(--project-border);
+    background: var(--color-neutral-100);
+    color: var(--color-neutral-500);
+}
+
+.users-view-modal.catalog-items-modal--projects .administration-users-status-dialog__secondary.ant-btn:not(:disabled) {
+    border-color: var(--color-control-border);
+    background: var(--color-surface);
+    color: var(--color-neutral-700);
+}
+
+.users-view-modal.catalog-items-modal--projects .administration-users-status-dialog__secondary.ant-btn:not(:disabled):hover {
+    border-color: var(--color-primary);
+    background: var(--color-primary-light);
+    color: var(--color-primary);
+}
+
+.users-view-modal.catalog-items-modal--projects .ant-btn:focus-visible {
+    outline: 2px solid var(--project-focus);
+    outline-offset: 2px;
+}
+
+/* Short desktop windows: same compact density as the Projects form modal. */
+@media (min-width: 768px) and (max-height: 820px) {
+    .users-view-modal.catalog-items-modal--projects .ant-modal-header,
+    .users-view-modal.catalog-items-modal--projects .ant-modal-footer {
+        padding-block: var(--space-3);
+    }
+    .users-view-modal.catalog-items-modal--projects .ant-modal-body {
+        max-height: calc(100dvh - 150px);
+        gap: var(--space-3);
+        padding-block: var(--space-3);
+    }
+    .users-view-modal.catalog-items-modal--projects .ant-modal-close {
+        top: var(--space-3);
+    }
+    .users-view-form.create-user-drawer .ant-drawer-body {
+        padding-block: var(--space-4);
+    }
+    .users-view-form.create-user-drawer .create-user-drawer__section .ant-form-item,
+    .users-view-form.create-user-drawer .create-user-drawer__section .ant-form-item:last-child {
+        margin-bottom: var(--space-3);
+    }
+    .users-view-form.create-user-drawer .create-user-drawer__section-header {
+        min-height: 40px;
+        margin-bottom: var(--space-3);
+        padding-block: 6px;
+    }
+}
+
+@media (max-width: 720px) {
+    /* The shell stretches header buttons to 100% on phones; refresh and create share one row instead. */
+    .users-view.catalog-items-page--projects .administration-users-page-header .global-home-page-header__actions {
+        display: flex;
+        flex-wrap: nowrap;
+    }
+    .users-view.catalog-items-page--projects .administration-users-page-header .global-home-page-header__actions .projects-view-refresh {
+        flex: 0 0 44px;
+        width: 44px;
+    }
+    .users-view.catalog-items-page--projects .administration-users-page-header .global-home-page-header__actions .global-home-page-header__primary {
+        flex: 1 1 auto;
+        width: auto;
+        min-width: 0;
+    }
+}
+
+/* Mobile: each user becomes a card; DataTables keeps owning the filtered, paged rows. */
+@media (max-width: 767px) {
+    .users-view.catalog-items-page--projects .administration-users-datatable-wrap table.dataTable.administration-users-datatable {
+        min-width: 0;
+    }
+
+    .users-view.catalog-items-page--projects .administration-users-datatable-wrap table.dataTable.administration-users-datatable > tbody > tr[data-user-email] {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto auto;
+        align-items: start;
+        gap: var(--space-3) var(--space-2);
+        border: 1px solid var(--project-border);
+        border-radius: var(--radius);
+        padding: var(--space-4);
+        background: var(--color-surface);
+    }
+    .users-view.catalog-items-page--projects .administration-users-datatable-wrap table.dataTable.administration-users-datatable > tbody > tr > td {
+        width: auto;
+        height: auto;
+    }
+    .users-view.catalog-items-page--projects .administration-users-datatable-wrap table.dataTable.administration-users-datatable > tbody > tr > td.administration-users-col-user {
+        grid-column: 1;
+        grid-row: 1;
+        align-self: center;
+        min-width: 0;
+    }
+    /* Status shares the header row with the name, so it drops the divider ProjectsView gives later cells. */
+    .users-view.catalog-items-page--projects .administration-users-datatable-wrap table.dataTable.administration-users-datatable > tbody > tr > td.administration-users-col-status {
+        grid-column: 2;
+        grid-row: 1;
+        align-self: center;
+        border-top: 0;
+        padding-top: 0;
+    }
+    .users-view.catalog-items-page--projects .administration-users-datatable-wrap table.dataTable.administration-users-datatable > tbody > tr > td.administration-users-col-actions {
+        display: flex;
+        grid-column: 3;
+        grid-row: 1;
+        justify-content: flex-end;
+    }
+    .users-view.catalog-items-page--projects .administration-users-datatable-wrap table.dataTable.administration-users-datatable > tbody > tr > td.administration-users-col-role,
+    .users-view.catalog-items-page--projects .administration-users-datatable-wrap table.dataTable.administration-users-datatable > tbody > tr > td.administration-users-col-access,
+    .users-view.catalog-items-page--projects .administration-users-datatable-wrap table.dataTable.administration-users-datatable > tbody > tr > td.administration-users-col-activity {
+        display: grid;
+        grid-column: 1 / -1;
+        gap: var(--space-2);
+        border-top: 1px solid var(--color-neutral-100);
+        padding-top: 10px;
+        overflow-wrap: anywhere;
+    }
+    .users-view.catalog-items-page--projects td.administration-users-col-role::before,
+    .users-view.catalog-items-page--projects td.administration-users-col-access::before,
+    .users-view.catalog-items-page--projects td.administration-users-col-activity::before {
+        content: attr(data-project-field);
+        color: var(--project-muted);
+        font-size: 12px;
+        font-weight: 500;
+        line-height: 1.5;
+    }
+    .users-view.catalog-items-page--projects .administration-users-datatable-wrap .administration-users-person__name {
+        color: var(--color-neutral-950);
+        font-size: 16px;
+        font-weight: 600;
+    }
+    .users-view.catalog-items-page--projects .administration-users-datatable-wrap .administration-users-person__name > span:first-child {
+        overflow-wrap: anywhere;
+        white-space: normal;
+    }
+    .users-view.catalog-items-page--projects .administration-users-copy-inline {
+        min-height: 44px;
+        opacity: 1;
+    }
+    .users-view.catalog-items-page--projects .administration-users-row-menu {
+        width: 44px;
+        height: 44px;
+        border-color: var(--color-control-border);
+        background: var(--color-surface);
+    }
+    .users-view.catalog-items-page--projects .administration-users-datatable-wrap table.dataTable.administration-users-datatable > tbody > tr.administration-users-table__row--selected,
+    .users-view.catalog-items-page--projects .administration-users-datatable-wrap table.dataTable.administration-users-datatable > tbody > tr.administration-users-table__row--menu-open {
+        border-color: var(--project-focus);
+        background: var(--color-primary-light);
+    }
+    .users-view.catalog-items-page--projects .administration-users-datatable-wrap table.dataTable.administration-users-datatable > tbody > tr:hover > td,
+    .users-view.catalog-items-page--projects .administration-users-datatable-wrap table.dataTable.administration-users-datatable > tbody > tr.administration-users-table__row--selected > td,
+    .users-view.catalog-items-page--projects .administration-users-datatable-wrap table.dataTable.administration-users-datatable > tbody > tr.administration-users-table__row--menu-open > td {
+        background: transparent;
+    }
+    .users-view.catalog-items-page--projects .administration-users-footer {
+        flex-wrap: wrap;
+        padding: var(--space-3);
+    }
+    .users-view.catalog-items-page--projects .administration-users-footer .ant-btn {
+        min-height: 44px;
+    }
+    .users-view-modal.catalog-items-modal--projects .ant-modal-header,
+    .users-view-modal.catalog-items-modal--projects .ant-modal-body,
+    .users-view-modal.catalog-items-modal--projects .ant-modal-footer {
+        padding: var(--space-4);
+    }
+    .users-view-modal.catalog-items-modal--projects .ant-modal-close {
+        top: var(--space-3);
+        right: var(--space-3);
+        width: 44px;
+        height: 44px;
+    }
+    .users-view-modal.catalog-items-modal--projects .administration-users-status-dialog__footer .ant-btn {
+        min-height: 44px;
+    }
+    .users-view-form.create-user-drawer .ant-drawer-header,
+    .users-view-form.create-user-drawer .ant-drawer-body,
+    .users-view-form.create-user-drawer .ant-drawer-footer {
+        padding: var(--space-4);
+    }
+}

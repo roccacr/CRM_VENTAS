@@ -1,8 +1,39 @@
 # 25 - Continuidad de Administracion frontend
 
+Consolidacion 2026-10-13: consultar [27 - Entrega y QA](27-Entrega-Administracion-y-QA.md) para comportamiento vigente y [36 - Registro API](../../api/Arquitectura/36-Registro-Entrega-Administracion.md) para trazabilidad, decisiones y pendientes. Esta bitacora conserva etapas historicas: los Select secundarios de Expedientes y la exposicion simultanea de modulos fueron sustituidos por SearchPanes y navegacion focalizada respectivamente.
+
 Fecha de corte: 2026-10-08. Guia de traspaso basada en archivos inspeccionados. Sustituye como entrada operativa los mapas iniciales 18/19; estos quedan como antecedentes de direccion. La ley de producto sigue siendo la autoridad de alcance.
 
 ## Producto y lenguaje
+
+### Detalle de auditoria 2026-10-13
+
+La accion Ver detalle de cada evento abre un drawer de Administracion y carga
+GET /audit/:publicId solo al abrirlo. Muestra actor, fecha, motivo y cambios por
+campo con columnas Anterior/Actual y etiquetas en espanol. Creacion muestra el
+snapshot inicial; valores nulos y booleanos se distinguen de texto vacio.
+Eventos historicos sin changeSet valido indican que no existe comparacion
+registrada. No consulta registros actuales para inventar diferencias. Incluye
+carga, error/reintento y descarte de respuestas al cerrar/cambiar evento.
+Filtros, paginacion por cursor y cache de paginas permanecen independientes;
+snapshots no entran en la lista ni en almacenamiento persistente del navegador.
+La validacion UI de este cambio no requiere crear/editar datos de negocio.
+
+La tabla de ancho completo presenta Actor y roles, Ubicacion, Registro,
+Accion y motivo, Fecha y Detalle. Roles historicos no registrados (null) se
+distinguen de Sin roles al momento del evento ([]); no usa roles actuales.
+Modulo/seccion/catalogo proceden del evento; contexto desconocido permanece
+explicito. Registro muestra nombre historico e identificador cuando existen.
+Su boton abre el detalle de auditoria, incluso para referencias eliminadas;
+no inventa una URL de registro ni carga datos actuales para reconstruir historia.
+El drawer incluye identidad del actor, roles historicos, ubicacion, entidad en
+espanol, nombre/ID del registro y diff seguro. Abrir seccion es un enlace solo
+para contexto conocido a rutas existentes: administration/users o
+administration/roles-security, y catalogos de administration/sales/marketing/
+formalization/accounting. Valida el catalogo contra ADMINISTRATION_CATALOGS;
+los guards existentes siguen autorizando el destino. Sin contexto, no enlaza.
+Busqueda acepta tambien ID y nombre historico del registro. Paginacion, cache
+de paginas y carga de detalle bajo demanda permanecen independientes.
 
 Rol asignado es un paquete de permisos; modulo habilitado es un contexto visible; permiso efectivo es el resultado de roles y overrides; catalogo es una vista compartida. Tener rol Formalizacion no obliga a tener rol Mercadeo para operar alli: se necesita modulo mercadeo activo y el permiso de esa accion.
 
@@ -42,11 +73,42 @@ Runtime instalado: React, Vite, TypeScript, Ant Design y DataTables con SearchPa
 
 Codigos: projects, campaigns, classes, brokers, files, subsidiaries, locations. Workspace -> modulo: sales -> ventas; marketing -> mercadeo; formalization -> formalizacion; accounting -> contabilidad; administration -> administration.
 
-Each catalog page calls GET /catalogs/{code}/items with moduleCode and limit=100; subsequent explicit batches add offset. The API returns the authoritative filtered total, not just the batch length. Create/edit/status retain moduleCode in the body. The frontend consumes only canonical BFF responses and cookie sessions, never direct ERP calls or stored tokens.
+Each catalog page calls GET /catalogs/{code}/items with moduleCode, limit=pageSize and offset=(page-1)*pageSize. The initial size is 10; choices are 10/50/100/200. Next/previous/first/last fetch and replace a page; changing size resets to page 1. The API returns the authoritative total, not just the batch length. Create/edit/status retain moduleCode in the body. The frontend consumes only canonical BFF responses and cookie sessions, never direct ERP calls or stored tokens.
 
-SecurityAuditPage consume /identity/roles/security-catalog y sus auditEvents. No existe en esta pantalla un endpoint de auditoria independiente ni prueba de que muestre todos los eventos historicos de negocio. La ruta /home/administration/audit que aparecio en planes anteriores no es la registrada.
+SecurityAuditPage usa GET /audit/options (sin leer eventos) y GET /audit.
+Modulo y seccion son obligatorios antes de consultar; Catalogos permite acotar
+ademas por catalogo. El API aplica alcance y busqueda antes de paginar, conserva
+role.assign/Owner y devuelve como maximo 200 filas por pagina mas una fila interna
+de look-ahead. El cursor esta ligado al alcance y busca por PK descendente, sin
+OFFSET ni COUNT global. La tabla reutiliza DataTables; no filtra solo una pagina
+como si fuera toda la historia. Paginas en memoria: maximo 20, TTL 30 segundos,
+sin localStorage; Actualizar invalida la cache. El catalogo de seguridad conserva
+su contrato anterior, pero Auditoria ya no depende de sus ultimos 25 eventos.
+
+Los eventos de catalogos sin metadata.moduleCode son compartidos por los
+contextos de catalogo y se marcan "Contexto historico no registrado"; no se
+inventa su modulo de origen. Eventos con modulo explicito solo aparecen en ese
+modulo. Las secciones operativas usan metadata.moduleCode/sectionCode; si sus
+writers aun no generan auditoria, la seccion queda vacia. Auditoria y sistema
+incluye login, refresh, sesiones, logout y la preparacion existente de identidades
+de proyectos. No se publican IP, User-Agent, HMAC ni metadata cruda.
+La ruta real sigue siendo /home/administration/audit-logs.
+
+La tabla y el titulo del detalle usan `auditEventDescription` para presentar
+acciones en lenguaje de usuario, por ejemplo "Se actualizo la campana" (con
+acentos en pantalla). Incluyen el nombre historico si existe; nunca inventan uno.
+No muestran `summary` ni codigos como `catalog_item_updated`: esos valores siguen
+intactos en el API y la base. Motivos, referencias, contexto y valores anteriores
+y nuevos se conservan. Eventos desconocidos usan una etiqueta legible generica.
 
 ## Comportamiento administrativo construido
+
+El cliente BFF renueva una vez ante 401 o el 409 explicito de sesion con version
+de permisos obsoleta (mensaje "La sesion requiere revalidacion de permisos.").
+Otros 409, incluidas las protecciones Owner, muestran el motivo del API y no
+renuevan ni repiten la mutacion. Un corte de red nunca dispara un reenvio automatico:
+Roles y seguridad informa que el resultado del guardado no esta confirmado.
+Las notificaciones usan title, conforme al contrato instalado de Ant Design 6.
 
 - Usuarios: directorio, detalle, crear/editar, roles/acceso y cambios de estado conectados mediante servicios HTTP. Confirmar cada accion en entorno real antes de cerrar.
 - Exportar usuarios fue descartado por requerimiento: no reincorporarlo.
@@ -54,12 +116,18 @@ SecurityAuditPage consume /identity/roles/security-catalog y sus auditEvents. No
 - Revisar que abrir un pane no estire visualmente los cerrados y que refresh conserve seleccion efectiva.
 - Menus de fila deben anclarse al disparador. Modales de auditoria deben quedar por encima del drawer, con foco y cierre correctos.
 - Detalle: IDs propios y referencias externas disponibles; no inventar ID Odoo cuando no exista.
-- Roles: separar resumen de roles, modulos y permisos; agrupaciones contraibles; catalogos compartidos dentro de cada modulo, sin tarjetas principales por cada catalogo.
+- Roles: encabezado con descripcion y usuarios asignados; acordeon por modulo principal.
+  Administracion agrupa Usuarios, Roles y seguridad, Auditoria y Catalogos.
+  Cada seccion muestra sus vistas y acciones reales del API, con seleccion global
+  e indicador parcial. La agrupacion visual conserva los codigos originales al
+  guardar. Owner sigue protegido. Auditoria comparte role.assign con Roles y
+  seguridad y no ofrece un permiso independiente ficticio. El modo por empleado
+  conserva su editor de excepciones y el guardado exige motivo auditable.
 - Catalogos: buscar, estados, crear, editar, inactivar/reactivar con motivo. No existe eliminacion fisica de valores.
 
 ## Limitaciones y deuda visible
 
-1. Catalogs now support explicit incremental batches with offset and a real total. As in Users, DataTables search, SearchPanes, sorting and pagination operate locally on loaded rows. Loaded/total counts and Cargar más expose incomplete results; this is not full-dataset/server-side SearchPanes. Offset pagination is not a frozen snapshot under concurrent catalog mutations; refresh reloads from the beginning.
+1. Catalog pagination now fetches exactly one API page and never accumulates batches. DataTables paging is disabled; search, SearchPanes and sorting remain local to that page, not full-dataset server filters/order. The API total describes the server result. Offset pagination is not a frozen snapshot under concurrent mutations; refresh reloads the current page. No Cargar más control remains.
 2. API y frontend mantienen definiciones separadas de catalogos. Hace falta contrato de metadata compartida o endpoint para evitar divergencia.
 3. El formulario actual ofrece IDs NetSuite/Odoo y construye referencias desde esos dos campos. El backend admite sistemas activos genericos (hasta 12 referencias por payload); no hay editor dinamico de N proveedores en UI. Editar un valor con otros proveedores requiere revisar preservacion para no omitirlos.
 4. Ant Design reporto advertencias de message/Notification en el chat. No declarar resueltas sin reproducirlas y revisar uso de contexto App.
@@ -82,7 +150,7 @@ All seven catalog views and their operational contexts reuse `CatalogItemsPage` 
 
 The panel displays all fields currently returned by the catalog contract: name, detail, CRM public ID, native code, status, last update, and each external reference's system name/code, identifier and status. NetSuite and Odoo remain visible using the provider definitions shared with the editor; missing identifiers/status and empty optional detail show `Sin asignar`. These are display-only placeholders, not fabricated domain references or mutation payloads. Additional API-returned providers remain visible. Empty identifiers have no copy action. Null/omitted optional detail and reference collections retain the existing client normalization; malformed assigned reference payloads still fail validation instead of being disguised as missing data. Actor history and reference metadata are not fabricated. No new detail endpoint was added.
 
-Details use the current loaded list response. Refresh reloads the existing scoped list; loading hides stale content/actions, errors offer retry, and a record absent from the current result shows an unavailable state. A sequence guard discards responses from obsolete contexts. Selection is scoped to the catalog and module. Explicit batch loading now replaces the former 100-row cutoff; drawer navigation traverses loaded rows, independently of local DataTables filters.
+Details use the current API page response. Refresh reloads the existing scoped page; loading hides stale content/actions, errors offer retry, and a record absent from the current result shows an unavailable state. A sequence guard discards obsolete page/context responses. Selection is scoped to the catalog and module and closes after successful page/size changes. Drawer navigation traverses the fetched page; enhanced views use its visible local ordering.
 
 The drawer directly reuses the Users detail stylesheet and component hierarchy: identity header, gray body with small titled cards, horizontal label/value descriptions, code identifiers, and position/navigation/edit/primary-status footer. Each reference provider has its own top-level titled card (NetSuite, Odoo, and any additional returned system); fields from different providers never share a card. Multiple references for one system stay together in that provider's card. The card title identifies the provider, replacing the redundant system-name field. Reference status remains the API-returned reference status, not an inferred synchronization state. Catalog-specific content replaces user-only fields; no user permissions or security fields are fabricated. Previous/next buttons and Up/Down keys traverse the loaded catalog result. Keyboard handling stays inside the drawer so an overlaid edit modal does not change selection. Shared footer wrapping and mobile touch targets apply equally to Users and catalogs.
 
@@ -90,7 +158,7 @@ Administration sizing, mask, close placement and modal layering are preserved; w
 
 Ejecutar pnpm check desde apps/frontend. Tests en test/; no en src/. Referencias: test/administration/SystemUsersPage.spec.tsx, RolesSecurityPage.spec.tsx; test/catalogs/CatalogItemsPage.spec.tsx, catalog-service.spec.ts; test/home/navigation-permissions.spec.tsx; test/app/App.spec.tsx y test/auth/.
 
-Manual validation per catalog: sign in as Owner, verify moduleCode/limit/offset in Network, search, select/clear/expand/collapse panes, change page/page length, refresh and verify isolated saved state. Where total exceeds loaded rows, load another batch and verify counts. Create/edit/inactivate/reactivate only disposable authorized test records, preserving references and audit reasons. Record responses, audit events and results.
+Manual validation per catalog: sign in as Owner, verify moduleCode/limit/offset in Network, search, select/clear/expand/collapse panes, change page/page length, refresh and verify isolated local filter state. Check next/previous/last requests, selected batch size, replacement rather than accumulation, and failure/retry without losing the previous page. Create/edit/inactivate/reactivate only disposable authorized test records, preserving references and audit reasons. Record responses, audit events and results.
 
 Con usuario operativo: Mercadeo permitido, Formalizacion prohibida; URL directa tambien prohibida; permiso sin modulo prohibido; deny oculta solo su contexto. El backend debe rechazar la misma operacion aunque se fabrique el request.
 
@@ -326,4 +394,221 @@ Projects create/edit modal without desktop scroll, same day: the owner rejected 
 
 Global top bar without the tablet two-row jump, same day (owner: "se deforma"). This is a shell-wide change, not Projects-only: at 1024px or less the header no longer moves module selector and search to a second row nor grows to 126px; it keeps the desktop single 72px row (`max-content minmax(0, 1fr) max-content`), 112px logo, 196px selector (172px truncated `Administración` and was reverted) and a shrinking command bar; at 900px or less the avatar hides its visible name. Measured live: 768px search 251px, no overflow, menu at 72px; 929px search 314px with the name visible. Rule recorded in document 24; navigation regression test added.
 
-Projects drawer and row actions allow editing and status changes for legacy identities as well as native identities, subject to existing permissions and request validation. Other legacy catalog identities remain read-only. No delete action is available. After promotion, follow the canonical public ID returned by save/status before reloading so the drawer remains associated with the migrated record. Legacy synchronization is controlled only by the API global gate; the frontend must not choose a database or implement dual writes.
+Projects, Campaigns, Classes, Locations and Subsidiaries drawer and row actions allow editing and status changes for legacy identities as well as native identities, subject to existing permissions and request validation. Other legacy catalog identities remain read-only. No delete action is available. After promotion, follow the canonical public ID returned by save/status before reloading so the drawer remains associated with the migrated record. Legacy synchronization is controlled only by the API global gate; the frontend must not choose a database or implement dual writes.
+
+## Classes Validation - 2026-10-12
+
+Classes now owns its route wrapper and domain copy in `modules/administration/classes`, reusing the approved enterprise catalog presentation. Native persistence and the legacy adapter also own independent Classes folders. The native-only migration created `crm_class` and `crm_class_external_reference` without seeding records or users. Read-only inspection confirmed both native tables empty, 22 legacy Classes rows, one existing native user, and InnoDB for all three domain tables.
+
+Integrated Codex preview displayed all 22 legacy records. Verified desktop horizontal filters, Classes-specific create form, 100-character name limit, separate provider sections and enabled legacy edit/status controls. Unmigrated CRM identity displays pending migration instead of internal routing keys. Pagination at size 10 fetched page two with a visible loading indicator and returned to cached page one without it. Desktop and mobile document widths matched their viewport widths, with no horizontal page overflow. No live record was saved or deactivated during browser validation.
+
+Validation: frontend formatting/lint/typecheck, 181 tests and production build; API typecheck/build and default unit suite; 12 passing Classes native-MySQL/writer tests with actual legacy-write smoke test skipped. The full API lint retains seven pre-existing missing-JSDoc findings in Catalogs/Projects; Classes introduces none. Screenshots: `C:/codex-data/visualizations/classes/desktop.png` and `C:/codex-data/visualizations/classes/mobile.png`. This is local/database validation, not deployment evidence or a live legacy dual-write smoke test.
+
+## Locations Validation - 2026-10-12
+
+Locations owns `modules/administration/locations`, `modules/crm/locations` and `integrations/legacy-crm/locations`, reusing shared presentation/security utilities. Native-only migration `202610120012_locations_domain` created `crm_location` and `crm_location_external_reference`, with shared-storage exclusion checks and no business/user seeds. Read-only inspection confirmed both native tables empty, 23 legacy records and one existing user; both native tables and legacy `ubicaciones` are InnoDB.
+
+Integrated preview verified HTTP 200, 23 canonical legacy items, Locations-specific create/edit labels, 100-character name limits, separate NetSuite/Odoo sections, editable legacy drawer and pending native identities. Pagination at 10 fetched `limit=10&offset=10`; returning to page one emitted no new Locations request or loading indicator. Desktop and mobile document widths matched viewport widths. No browser save/status mutation was performed. The initial request during watch-server rebuild failed; refresh after rebuild returned the verified 200 response.
+
+Frontend `pnpm check` passed: formatting, lint, typecheck, 183 tests and build (existing chunk-size warning). API typecheck/build/formatting and 282 default tests passed; seven existing Catalogs/Projects JSDoc lint errors remain. Twelve focused native-MySQL/writer tests passed, with actual legacy DML smoke test skipped. Three additional real integration tests passed for read-only legacy connection, native rollback merge/exclusion and disabled fallback. Actual legacy writes were not executed. Screenshots: `C:/codex-data/visualizations/locations/desktop.png` and `C:/codex-data/visualizations/locations/mobile.png`. No commit, push or deployment was performed.
+
+## Subsidiaries Validation - 2026-10-12
+
+Subsidiaries owns frontend, API and legacy folders, with dedicated native tables from migration `202610120013_subsidiaries_domain`. The migration was applied only to CRM_THINK_V2, without seeds or cleanup. Read-only inspection confirmed zero native Subsidiaries/reference rows, 44 legacy rows, one preserved user, and InnoDB for both native tables and legacy `subsidiarias`. Domain-specific DTOs and create/edit forms support the verified 250-character name limit without changing other catalogs.
+
+Integrated preview verified HTTP 200, canonical response keys and 44 legacy records, horizontal desktop filters, separate provider sections, editable legacy drawer, pending native identities and 250-character create/edit inputs. Page size 10 fetched `limit=10&offset=10` with a visible loading indicator. Returning to cached page one made zero Subsidiaries requests and showed no loading indicator. Desktop width/scrollWidth were 1440/1440; mobile 375/375. No browser save/status mutation was performed.
+
+Frontend `pnpm check` passed formatting, lint, typecheck, 185 tests and build (existing chunk-size warning). API default suite passed 297 tests; formatting, typecheck and build passed. Seven existing Catalogs/Projects missing-JSDoc lint errors remain; focused Subsidiaries lint passed. Ten opt-in database tests passed for rollback-only native persistence and read-only legacy/merge/kill-switch behavior; actual legacy DML test was skipped. Fifteen focused unit tests passed for routing, merge, writer, mapper and DTO validation.
+
+Legacy contains duplicate NetSuite ID 63 on two subsidiaries. Ownership validation rejects this conflict; no legacy cleanup was attempted. Writer SQL was verified without executing actual legacy writes. Screenshots: `C:/codex-data/visualizations/subsidiaries/desktop.png` and `C:/codex-data/visualizations/subsidiaries/mobile.png`. No commit, push or deployment was performed.
+
+## Brokers Verification (2026-10-12)
+
+Brokers owns dedicated frontend/API/legacy folders. Migration
+`202610120014_brokers_domain` was applied only to CRM_THINK_V2 without seeds or
+cleanup. Final read-only inspection confirmed zero native Broker/reference rows,
+105 legacy rows, one preserved user, InnoDB for both native tables and legacy
+`corredores`, and no duplicate non-null legacy NetSuite identifiers.
+
+The embedded preview displayed 105 records. Next-page navigation returned HTTP
+200 with `limit=10&offset=10` and a visible loading indicator. Returning to cached
+page one made zero requests. Create/edit inputs enforce 250 characters; legacy
+drawer actions are enabled and native identities show pending migration.
+Separate provider sections and responsive cards reuse the approved design.
+Desktop width/scrollWidth: 1440/1440; mobile: 375/375. No browser save/status
+mutation was performed. Screenshots: `C:/codex-data/visualizations/brokers/desktop.png`
+and `C:/codex-data/visualizations/brokers/mobile.png`.
+
+Frontend `pnpm check` passed formatting, lint, typecheck, 187 tests and build
+(existing chunk-size warning). API default tests passed 313 with 69 opt-in skips;
+formatting, typecheck and build passed. API lint still reports seven existing
+Catalogs/Projects missing-JSDoc errors. Database verification passed 17 native,
+read-only legacy/merge/kill-switch and generic persistence tests; actual legacy
+DML remained skipped. Writer unit tests record SQL only. No credentials, user
+permissions or legacy records were changed; no commit, push or deployment.
+
+## Unit Files Read View and Migration Preparation - 2026-10-12
+
+Dedicated native API/legacy reader/frontend folders now implement criteria-first
+Unit Files search, cursor pagination, full 27-business-field detail, provider
+references and comparison of up to eight units. The source is `expedientes`.
+Native project identities are resolved by the verified historical provider
+namespace, never by project name or an unrelated legacy PK. Migrations 015/016
+and verified project preparation touched only CRM_THINK_V2. Native units remain
+empty; 21 project identities were added, preserving the two existing projects.
+Preflight reports six blocked mapping groups covering 1,332 of 3,358 units.
+No unresolved link was guessed and no legacy record/schema/index was changed.
+
+The actual browser failure was query transformation under tsx: explicit DTO
+query pipes now validate/transform project IDs and limits before SQL. HTTP
+regression tests cover valid criteria and 400 rejection for missing/oversized
+criteria. Source failures remain explicit, not successful empty payloads.
+
+Embedded preview showed a 50-unit Amara batch, one inventory request for Next,
+zero requests for fresh cached Back, complete detail and two-unit comparison.
+Desktop viewport/body width was 1440/1440; mobile was 390 with no horizontal
+overflow. The first mobile detail inspection exposed global-header overlap;
+the drawer/modal now reuse the approved 1300/1400 layer settings and Projects
+theme. Screenshots are under `C:/codex-data/visualizations/unit-files/`.
+
+Frontend formatting/lint/typecheck, 189 tests and build passed; the existing
+large-chunk warning remains. API default suite passed 328 tests with bounded
+workers after an initial resource-contention timeout. Focused live/unit suite
+passed 19 tests, including rollback-only native persistence, source read-only
+transactions and a native-replacement anti-join test. One live connection timed
+out transiently and passed on sequential rerun. API typecheck/build/formatting
+passed; global lint retains seven existing Catalogs/Projects missing-JSDoc errors.
+Unit Files code passes scoped lint. No unit mutation, inventory import, legacy
+write, credential/user-permission change, commit, push or deployment occurred.
+
+### Unit Files Presentation Alignment - 2026-10-12
+
+The dedicated view now opts into the Projects tokens/theme and displays the
+nine requested business columns, with comparison selection kept separate.
+The summary contract adds delivery, total/lot/parking areas from both sources.
+All 27 business values remain visible in grouped drawer sections, including
+nulls; canonical project identity, original source references and provider
+statuses are also displayed. No fake CRM identity is exposed for legacy units.
+
+Housing Type and Unit are lazy, searchable dropdowns scoped to the selected
+projects/status; Unit also follows the selected housing type. The new options
+endpoint returns distinct values in bounded batches without full unit payloads.
+Opening the page or selecting a project still does not fetch unit inventory.
+Source values are submitted verbatim, including leading whitespace, and
+selection/clear resets the visible and server search state. Review findings
+for hidden search state and whitespace normalization were fixed with regressions.
+
+Embedded preview verified the nine-column desktop table at 1600px and stacked
+cards/full-width detail at 390px, with document width equal to viewport width.
+Live Housing Type options A/B/C and server search for AM-FF051 were verified;
+reopening the selected unit restored the initial choices. Evidence:
+`C:/codex-data/visualizations/unit-files/desktop-aligned.png` and
+`mobile-detail-aligned.png`. API default suite passed 330 tests; the focused
+live/unit suite passed 22. API formatting, typecheck/build and scoped lint pass;
+global API lint retains the same seven unrelated missing-JSDoc errors.
+Frontend focused tests passed five cases covering criteria-first loading,
+cached Back, all columns, exact dropdown values/search reset and complete detail.
+Final frontend `pnpm check` passed formatting, lint, typecheck, all 192 tests
+and build; only the pre-existing large-vendor-chunk warning remains.
+This update changes no schema, persistent business data, credentials or permissions.
+
+## Users Projects Presentation - 2026-10-12
+
+`/home/administration/users` now uses the Projects presentation (rules in
+document 26, "Users Adoption"). Changed: `SystemUsersPage.tsx`,
+`SystemUsersDataTable.tsx`, `UserDetailDrawer.tsx`, `CreateSystemUserDrawer.tsx`
+(+ `.css` option spacing), `SystemUserBadges.tsx` (`SystemUserStatusPill`) and the
+new `pages/UsersView.css`. `ProjectsView.css`, catalogs, API and other modules
+were not edited.
+
+Defects found and fixed while verifying:
+
+- App test opening the user drawer failed after reporting the visible order: the
+  state update re-rendered the page, the new `data` array made
+  `datatables.net-react` rebuild the rows and the click hit a detached button.
+  Rows and `data` are memoized; the draw handler reads `new DT.Api(settings)`.
+- 906px: phantom vertical scrollbar from the visually hidden caption, and a 152px
+  Usuario column truncating names. Caption pinned to the top, columns rebalanced,
+  table minimum 960px.
+- Drawer MFA tag used AntD green at about 2:1 contrast; now the success pill.
+- Create drawer: 27px empty space under Roles asignados (empty AntD extra) and a
+  footer summary broken word by word at 274px; extra hidden, summary wraps by item.
+- 390px: the 960px desktop minimum stretched each card to 936px and cut off status
+  and actions; the shell put refresh and create on separate rows; status inherited
+  the Projects divider. All three fixed in the mobile blocks.
+
+Live, authenticated, integrated browser (environment has one user, the current
+account, so own-account edit/status actions are disabled and the status modal was
+covered by tests, not live): loader ring; 1440px single toolbar row, columns
+616/120/276/164/140/64, no document overflow, Spanish ARIA; 906px tablet header,
+detail drawer hierarchy and MFA pill; create drawer with and without a role; 390px
+card (332px wide inside the 390px viewport, document width 390), refresh 44px +
+primary 306px on one row, mobile sort select.
+
+Frontend `pnpm check` passed formatting, lint, typecheck, 222 tests and build
+(pre-existing large-chunk warning only). Root `check-all.cmd` still stops at the
+seven pre-existing API missing-JSDoc errors. No data, permission or contract
+changes; no commit.
+
+## Roles and Security Projects Alignment - 2026-10-12
+
+`/home/administration/roles-security` now follows the Projects/Users
+presentation (rules in document 26, "Roles and Security Adoption"). Changed:
+`RolesSecurityPage.tsx` (breadcrumb navigation, `N rol(es)` total pill after the
+catalog loads, singular `1 usuario`, `PROJECTS_THEME`) and `RolesSecurityPage.css`
+(semantic tokens, selection, hierarchy, pills, dialogs). Permission logic, audit
+reasons and API calls are unchanged.
+
+Defects found while verifying: at 906px the editor title collapsed to one letter
+per line (non-shrinking actions plus inherited `overflow-wrap: anywhere`); fixed by
+wrapping the toolbar. The first fix right-aligned the mobile actions; reset in the
+900px block so picker and Guardar span the full width again.
+
+Live, authenticated, integrated browser (environment exposes one role, Owner,
+which is locked, so permission checkboxes are read-only): 1440px header, pill,
+selected role/module, expanded views and `Sensible` pill; 906px toolbar wrap,
+Renombrar dialog (opened and cancelled, nothing saved) and employee mode summary;
+390px header, full-width actions, stacked module cards and permission rows with
+document width 390. Save-permissions dialog covered by markup shared with
+Renombrar, not opened live (no unsaved changes possible on Owner).
+
+Frontend `pnpm check` passed formatting, lint, typecheck, 224 tests and build
+(pre-existing large-chunk warning only). The App navigation test now reads the
+breadcrumb through its `Ruta` navigation landmark. No commit.
+
+## Roles and Security Cascade Console - 2026-10-13
+
+The permission editor changed from a role sidebar plus open accordions to a
+cascade: context (Por rol / Por empleado) → Módulo → Sección, one section at a
+time. Rules, mapping and semantics are in document 26, "Roles and Security
+Cascade Console".
+
+Changed: `RolesSecurityPage.tsx` (context bar, mode, role/employee selects,
+protected note, employee strip; sidebar, module cards, accordions, searches and
+effective summary removed), new `RolePermissionSection.tsx` and
+`roles-security-sections.ts`, `RolesSecurityPage.css` rewritten for the new
+classes, `test/administration/RolesSecurityPage.spec.tsx` and the roles test in
+`test/app/App.spec.tsx`. Matrix state, effective permission (role + allow −
+deny), audited save dialogs and API calls are unchanged.
+
+Scope decisions: Administración groups Usuarios, Roles y seguridad and its
+catalogs; Auditoría is not a section because the API catalog exposes no audit
+permission codes. Catalog pills come from the live views (Corredores, Campañas,
+Clases, Expedientes, Ubicaciones, Proyectos, Subsidiarias), four actions each.
+
+Defects found while verifying: in employee mode with nobody selected the
+Renombrar button, the role's pending count and the protected note still came
+from the previously selected role; now driven by the mode. The catalog pills
+showed a horizontal scrollbar at 906px; they wrap instead.
+
+Live, authenticated, integrated browser (environment exposes only Owner, locked):
+1440px Owner role with protected note, Administración / Usuarios 6 / 6, all
+switches read-only; 906px Sección options with coverage (6/6, 1/1, 28/28),
+Administración / Catálogos with seven pills and Estándar, Sensible and Lectura
+levels; employee mode with Roberto Carlos Zuñiga Altamirano (Owner): roles
+select, facts (5 de 7 módulos, 0 exceptions), menu-visibility switch and origin
+"Por rol"; 390px stacked context, full-width actions, wrapped pills and
+permission row cards, document width 390. Nothing was saved.
+
+Frontend `pnpm check` passed formatting, lint, typecheck, 230 tests and build
+(pre-existing large-chunk warning only). No commit.

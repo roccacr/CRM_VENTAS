@@ -12,6 +12,7 @@ import { ulid } from "ulid";
 
 import { DatabaseService } from "../../../database/database.service.js";
 import type { CrmDatabase } from "../../../database/database.types.js";
+import { buildAuditChangeSet } from "../audit/audit-change-set.js";
 import { SecurityAuditService } from "../audit/security-audit.service.js";
 import { ACTIVE_STATUS } from "../identity/identity-repository.shared.js";
 import { type CatalogRouteCode, type CatalogStatus, findCatalogDefinition } from "./catalogs.constants.js";
@@ -73,6 +74,7 @@ const normalizeLimit = (limit?: number): number => {
     return limit;
 };
 
+/** Persists remaining shared catalogs and their transactional changelog. */
 @Injectable()
 export class CatalogsRepository {
     /**
@@ -90,7 +92,12 @@ export class CatalogsRepository {
      * Proyectos se rechaza para no devolverlos como si vivieran en `crm_catalog_item`.
      */
     async listCatalogItems(input: { catalogCode: CatalogRouteCode; limit?: number; offset?: number; search?: string; status?: CatalogStatus }): Promise<CatalogItemsResponse> {
+        if (input.catalogCode === "brokers") throw new BadRequestException("Use the Brokers module.");
         if (input.catalogCode === "projects") throw new BadRequestException("Use the Projects module.");
+        if (input.catalogCode === "campaigns") throw new BadRequestException("Use the Campaigns module.");
+        if (input.catalogCode === "classes") throw new BadRequestException("Use the Classes module.");
+        if (input.catalogCode === "locations") throw new BadRequestException("Use the Locations module.");
+        if (input.catalogCode === "subsidiaries") throw new BadRequestException("Use the Subsidiaries module.");
         return this.listSharedCatalogItems(input);
     }
 
@@ -145,9 +152,15 @@ export class CatalogsRepository {
      * El ULID es la identidad pública. El código nativo solo la repite con el prefijo del catálogo.
      */
     async createCatalogItem(input: CatalogMutationInput): Promise<CatalogItem> {
+        if (input.catalogCode === "brokers") throw new BadRequestException("Use the Brokers module.");
         if (input.catalogCode === "projects") throw new BadRequestException("Use the Projects module.");
+        if (input.catalogCode === "campaigns") throw new BadRequestException("Use the Campaigns module.");
+        if (input.catalogCode === "classes") throw new BadRequestException("Use the Classes module.");
+        if (input.catalogCode === "locations") throw new BadRequestException("Use the Locations module.");
+        if (input.catalogCode === "subsidiaries") throw new BadRequestException("Use the Subsidiaries module.");
         return this.database.db.transaction().execute(async (transaction) => {
             const actor = await this.readActor(transaction, input.actorPublicId);
+            const actorSnapshot = await this.audit.captureActor(actor.id, transaction);
             await this.assertExternalReferencesAreAvailable(transaction, input.catalogCode, input.externalReferences);
             const now = new Date();
             const publicId = ulid();
@@ -171,22 +184,20 @@ export class CatalogsRepository {
 
             const itemId = Number(result.insertId);
             await this.insertExternalReferences(transaction, itemId, input.catalogCode, input.externalReferences, now);
+            const item = await this.findCatalogItemByPublicId(transaction, input.catalogCode, publicId);
+            if (!item) throw new BadRequestException("No se pudo leer el catalogo creado.");
             await this.audit.record(
                 {
                     actorUserId: actor.id,
+                    actorSnapshot,
                     eventType: "catalog_item_created",
-                    metadata: { catalogCode: input.catalogCode, externalReferences: input.externalReferences.map((reference) => reference.systemCode) },
+                    metadata: { catalogCode: input.catalogCode, externalReferences: input.externalReferences.map((reference) => reference.systemCode), moduleCode: input.moduleCode ?? null, sectionCode: "catalogs", changeSet: buildAuditChangeSet({ entity: "catalog", recordId: publicId, action: "create", before: null, after: { ...item } }) },
                     reason: input.reason,
                     summary: `Valor de catálogo ${input.name} creado.`,
                     ...auditRequestContext(input),
                 },
                 transaction,
             );
-
-            const item = await this.findCatalogItemByPublicId(transaction, input.catalogCode, publicId);
-            if (!item) {
-                throw new BadRequestException("No se pudo leer el catálogo creado.");
-            }
 
             return item;
         });
@@ -198,9 +209,15 @@ export class CatalogsRepository {
      * Las que salen del cuerpo se archivan. No se borran, porque la clave única incluye filas archivadas.
      */
     async updateCatalogItem(itemPublicId: string, input: CatalogMutationInput): Promise<CatalogItem | null> {
+        if (input.catalogCode === "brokers") throw new BadRequestException("Use the Brokers module.");
         if (input.catalogCode === "projects") throw new BadRequestException("Use the Projects module.");
+        if (input.catalogCode === "campaigns") throw new BadRequestException("Use the Campaigns module.");
+        if (input.catalogCode === "classes") throw new BadRequestException("Use the Classes module.");
+        if (input.catalogCode === "locations") throw new BadRequestException("Use the Locations module.");
+        if (input.catalogCode === "subsidiaries") throw new BadRequestException("Use the Subsidiaries module.");
         return this.database.db.transaction().execute(async (transaction) => {
             const actor = await this.readActor(transaction, input.actorPublicId);
+            const actorSnapshot = await this.audit.captureActor(actor.id, transaction);
             const current = await this.findCatalogItemRowByPublicId(transaction, input.catalogCode, itemPublicId);
 
             if (!current) {
@@ -208,6 +225,8 @@ export class CatalogsRepository {
             }
 
             await this.assertExternalReferencesAreAvailable(transaction, input.catalogCode, input.externalReferences, current.id);
+            const before = await this.findCatalogItemByPublicId(transaction, input.catalogCode, itemPublicId);
+            if (!before) throw new BadRequestException("No se pudo leer el catalogo actual.");
             const now = new Date();
             await transaction
                 .updateTable("crm_catalog_item")
@@ -220,11 +239,14 @@ export class CatalogsRepository {
                 .where("id_catalog_item", "=", current.id)
                 .executeTakeFirst();
             await this.replaceExternalReferences(transaction, current.id, input.catalogCode, input.externalReferences, now);
+            const after = await this.findCatalogItemByPublicId(transaction, input.catalogCode, itemPublicId);
+            if (!after) throw new BadRequestException("No se pudo leer el catalogo actualizado.");
             await this.audit.record(
                 {
                     actorUserId: actor.id,
+                    actorSnapshot,
                     eventType: "catalog_item_updated",
-                    metadata: { catalogCode: input.catalogCode, itemPublicId },
+                    metadata: { catalogCode: input.catalogCode, moduleCode: input.moduleCode ?? null, sectionCode: "catalogs", itemPublicId: current.publicId, changeSet: buildAuditChangeSet({ entity: "catalog", recordId: current.publicId, action: "update", before: { ...before }, after: { ...after } }) },
                     reason: input.reason,
                     summary: `Valor de catálogo ${input.name} actualizado.`,
                     ...auditRequestContext(input),
@@ -232,7 +254,7 @@ export class CatalogsRepository {
                 transaction,
             );
 
-            return this.findCatalogItemByPublicId(transaction, input.catalogCode, itemPublicId);
+            return after;
         });
     }
 
@@ -242,14 +264,23 @@ export class CatalogsRepository {
      * Inactivar guarda actor y fecha. Reactivar los limpia para no dejar un cierre vigente.
      */
     async updateCatalogItemStatus(input: CatalogStatusMutationInput): Promise<CatalogItem | null> {
+        if (input.catalogCode === "brokers") throw new BadRequestException("Use the Brokers module.");
         if (input.catalogCode === "projects") throw new BadRequestException("Use the Projects module.");
+        if (input.catalogCode === "campaigns") throw new BadRequestException("Use the Campaigns module.");
+        if (input.catalogCode === "classes") throw new BadRequestException("Use the Classes module.");
+        if (input.catalogCode === "locations") throw new BadRequestException("Use the Locations module.");
+        if (input.catalogCode === "subsidiaries") throw new BadRequestException("Use the Subsidiaries module.");
         return this.database.db.transaction().execute(async (transaction) => {
             const actor = await this.readActor(transaction, input.actorPublicId);
+            const actorSnapshot = await this.audit.captureActor(actor.id, transaction);
             const current = await this.findCatalogItemRowByPublicId(transaction, input.catalogCode, input.itemPublicId);
 
             if (!current) {
                 return null;
             }
+
+            const before = await this.findCatalogItemByPublicId(transaction, input.catalogCode, input.itemPublicId);
+            if (!before) throw new BadRequestException("No se pudo leer el catalogo actual.");
 
             const now = new Date();
             await transaction
@@ -263,11 +294,14 @@ export class CatalogsRepository {
                 })
                 .where("id_catalog_item", "=", current.id)
                 .executeTakeFirst();
+            const after = await this.findCatalogItemByPublicId(transaction, input.catalogCode, input.itemPublicId);
+            if (!after) throw new BadRequestException("No se pudo leer el catalogo actualizado.");
             await this.audit.record(
                 {
                     actorUserId: actor.id,
+                    actorSnapshot,
                     eventType: "catalog_item_status_changed",
-                    metadata: { catalogCode: input.catalogCode, nextStatus: input.status, previousStatus: current.status },
+                    metadata: { catalogCode: input.catalogCode, moduleCode: input.moduleCode ?? null, sectionCode: "catalogs", nextStatus: input.status, previousStatus: current.status, changeSet: buildAuditChangeSet({ entity: "catalog", recordId: current.publicId, action: input.status === INACTIVE_STATUS ? "deactivate" : "reactivate", before: { ...before }, after: { ...after } }) },
                     reason: input.reason,
                     summary: `Valor de catálogo ${current.name} marcado como ${input.status}.`,
                     ...auditRequestContext(input),
@@ -275,7 +309,7 @@ export class CatalogsRepository {
                 transaction,
             );
 
-            return this.findCatalogItemByPublicId(transaction, input.catalogCode, input.itemPublicId);
+            return after;
         });
     }
 
@@ -391,7 +425,8 @@ export class CatalogsRepository {
             return null;
         }
 
-        const references = await this.findExternalReferencesByItemIds([row.id], executor);
+        // Read the committed predecessor after waiting for the parent lock, not an older MVCC snapshot.
+        const references = await this.findExternalReferencesByItemIds([row.id], executor, true);
         return this.mapCatalogItem(row, references.get(row.id) ?? []);
     }
 
@@ -403,7 +438,7 @@ export class CatalogsRepository {
     }
 
     /** Referencias activas de varios valores, en una sola consulta, para no leerlas fila por fila. */
-    private async findExternalReferencesByItemIds(itemIds: readonly number[], executor: CatalogExecutor = this.database.db): Promise<Map<number, ExternalReferenceRow[]>> {
+    private async findExternalReferencesByItemIds(itemIds: readonly number[], executor: CatalogExecutor = this.database.db, lock = false): Promise<Map<number, ExternalReferenceRow[]>> {
         if (itemIds.length === 0) {
             return new Map();
         }
@@ -415,6 +450,7 @@ export class CatalogsRepository {
             .where("reference.catalog_item_id_catalog_item_external_reference", "in", [...itemIds])
             .where("reference.deleted_at_catalog_item_external_reference", "is", null)
             .orderBy("system.code_external_system", "asc")
+            .$if(lock, (query) => query.forUpdate("reference"))
             .execute()) as ExternalReferenceRow[];
 
         const grouped = new Map<number, ExternalReferenceRow[]>();
