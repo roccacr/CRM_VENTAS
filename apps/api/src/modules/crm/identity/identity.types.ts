@@ -152,6 +152,7 @@ export interface SystemUserDirectoryItem {
     mfaStatus: SystemUserMfaStatus;
     name: string;
     orgUnit: SystemUserDirectoryOrgUnit | null;
+    orgUnits?: SystemUserDirectoryOrgUnit[];
     profileImageUrl: string | null;
     provider: SystemUserProvider;
     publicId: string;

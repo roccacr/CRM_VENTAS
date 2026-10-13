@@ -76,6 +76,8 @@ describe("identity schema migration parser", () => {
             "202610120014_brokers_domain",
             "202610120015_unit_files_domain",
             "202610120016_unit_files_naming",
+            "202610130017_formalization_home_role",
+            "202610130018_user_assign_password_permission",
         ]);
     });
 

@@ -2,8 +2,8 @@
  * Directorio de usuarios del sistema.
  *
  * Orquesta filtros de URL, tabla, detalle y alta. Cada mutación pide un motivo
- * y el API vuelve a autorizarla. Esta página no decide si el actor puede crear,
- * editar o cambiar el estado.
+ * y el API vuelve a autorizarla. Los controles visuales usan permisos efectivos
+ * exactos y se revalidan antes de abrir o confirmar acciones.
  */
 import "./SystemUsersPage.css";
 import "../catalogs/ProjectsView.css";
@@ -19,10 +19,10 @@ import esES from "antd/es/locale/es_ES";
 import message from "antd/es/message";
 import Modal from "antd/es/modal";
 import Tooltip from "antd/es/tooltip";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { ApiClientError } from "../../../services/api/api-client";
-import { createSystemUser, updateSystemUser, updateSystemUserStatus } from "../../../services/auth/auth-service";
+import { createSystemUser, getIdentityProfile, updateSystemUser, updateSystemUserStatus } from "../../../services/auth/auth-service";
 import type { CreateSystemUserPayload, UpdateSystemUserPayload } from "../../../services/auth/identity-contracts";
 import { ADMINISTRATION_MODAL_Z_INDEX } from "../administration-theme";
 import { PROJECTS_THEME } from "../catalogs/projects-theme";
@@ -34,6 +34,7 @@ import { clearSystemUsersDataTableState } from "../hooks/useDataTableSearchPanes
 import { useSystemUsersDirectory } from "../hooks/useSystemUsersDirectory";
 import { useSystemUsersUrlState } from "../hooks/useSystemUsersUrlState";
 import { getLoadMoreLabel, getUserAtOffset, getUsersRangeLabel, mapApiUserToListItem, STATUS_LABELS, type SystemUserListItem, type SystemUserSortDirection, type SystemUserSortKey, type SystemUserStatusUpdateTarget } from "../system-users.model";
+import { canChangeUserStatus, getUsersPermissions, NO_USERS_PERMISSIONS, type UsersPermissions } from "../users-permissions";
 
 /** Tiempo que la fila recién creada queda resaltada en la tabla. */
 const NEW_USER_HIGHLIGHT_MS = 6000;
@@ -182,16 +183,18 @@ function UsersPageTitle({ isLoading, total }: { readonly isLoading: boolean; rea
     );
 }
 
-function UsersHeaderActions({ isLoading, onCreate, onRefresh }: { readonly isLoading: boolean; readonly onCreate: () => void; readonly onRefresh: () => void }) {
+function UsersHeaderActions({ canCreate, isLoading, onCreate, onRefresh }: { readonly canCreate: boolean; readonly isLoading: boolean; readonly onCreate: () => void; readonly onRefresh: () => void }) {
     return (
         <div className="global-home-page-header__actions">
             <Tooltip title="Actualizar usuarios">
                 <Button className="projects-view-refresh" aria-label="Actualizar usuarios" icon={<ReloadOutlined spin={isLoading} />} disabled={isLoading} onClick={onRefresh} />
             </Tooltip>
-            <button className="global-home-page-header__primary" type="button" aria-label="Nuevo usuario" onClick={onCreate}>
-                <UserAddOutlined />
-                Nuevo usuario
-            </button>
+            {canCreate ? (
+                <button className="global-home-page-header__primary" type="button" aria-label="Nuevo usuario" onClick={onCreate}>
+                    <UserAddOutlined />
+                    Nuevo usuario
+                </button>
+            ) : null}
         </div>
     );
 }
@@ -207,15 +210,20 @@ const getNavigationUsers = (users: readonly SystemUserListItem[], visibleOrder: 
  * Directorio de usuarios del sistema.
  *
  * El filtro, la búsqueda y el orden se resuelven en el BFF y quedan en la URL.
- * Esta pantalla orquesta la tabla, el detalle lateral y el alta; no autoriza
- * acciones: el API valida cada una.
+ * Esta pantalla protege visualmente tabla, detalle y acciones con permisos
+ * efectivos. La autorización definitiva de cada operación permanece en el API.
  */
+// eslint-disable-next-line complexity -- Coordinates independent permission gates, directory state and mutation dialogs.
 export function SystemUsersPage() {
     const { activeFilter, searchQuery, setActiveFilter, setSearchQuery } = useSystemUsersUrlState();
     const [createError, setCreateError] = useState<string | null>(null);
     const [editError, setEditError] = useState<string | null>(null);
     const [editingUser, setEditingUser] = useState<SystemUserListItem | null>(null);
     const [isCreateUserOpen, setIsCreateUserOpen] = useState(false);
+    const [permissions, setPermissions] = useState<UsersPermissions>(NO_USERS_PERMISSIONS);
+    const [isCheckingPermissions, setIsCheckingPermissions] = useState(true);
+    const permissionsRef = useRef<UsersPermissions>(NO_USERS_PERMISSIONS);
+    const permissionRequest = useRef(0);
     const [isCreatingUser, setIsCreatingUser] = useState(false);
     const [isUpdatingUser, setIsUpdatingUser] = useState(false);
     const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
@@ -225,14 +233,43 @@ export function SystemUsersPage() {
     const [statusReason, setStatusReason] = useState("");
     const [sortDirection, setSortDirection] = useState<SystemUserSortDirection>("asc");
     const [sortKey, setSortKey] = useState<SystemUserSortKey>("name");
-    const createUserCatalog = useCreateUserCatalog();
-    const { hasMore, isLoadingMore, loadMore, loadState, pageTotal, selectedUser, setSelectedUser, users } = useSystemUsersDirectory({ activeFilter, reloadToken, searchQuery, sortDirection, sortKey });
+    const createUserCatalog = useCreateUserCatalog(permissions.create || permissions.update);
+    const { hasMore, isLoadingMore, loadMore, loadState, pageTotal, selectedUser, setSelectedUser, users } = useSystemUsersDirectory({ enabled: permissions.list, activeFilter, reloadToken, searchQuery, sortDirection, sortKey });
 
     const [visibleOrder, setVisibleOrder] = useState<readonly string[] | null>(null);
     const isRefreshing = loadState === "loading" && users.length > 0;
     const selectedUserEmail = selectedUser?.email ?? null;
     const navigationUsers = getNavigationUsers(users, visibleOrder, selectedUserEmail);
     const selectedUserIndex = navigationUsers.findIndex((user) => user.email === selectedUserEmail);
+
+    const refreshPermissions = useCallback(async (): Promise<UsersPermissions> => {
+        const request = ++permissionRequest.current;
+        const next = await getIdentityProfile()
+            .then((profile) => getUsersPermissions(profile.permissions))
+            .catch(() => NO_USERS_PERMISSIONS);
+        if (request !== permissionRequest.current) return NO_USERS_PERMISSIONS;
+        permissionsRef.current = next;
+        setPermissions(next);
+        setIsCheckingPermissions(false);
+        if (!next.detail) setSelectedUser(null);
+        if (!next.create) setIsCreateUserOpen(false);
+        if (!next.update) setEditingUser(null);
+        setPendingStatusAction((action) => (action && canChangeUserStatus(next, action.user, action.status) ? action : null));
+        return next;
+    }, [setSelectedUser]);
+
+    useEffect(() => {
+        const requestRef = permissionRequest;
+        void Promise.resolve().then(refreshPermissions);
+        const onFocus = () => {
+            void refreshPermissions();
+        };
+        window.addEventListener("focus", onFocus);
+        return () => {
+            requestRef.current++;
+            window.removeEventListener("focus", onFocus);
+        };
+    }, [refreshPermissions]);
 
     useEffect(() => {
         if (!highlightedPublicId) {
@@ -251,9 +288,7 @@ export function SystemUsersPage() {
     const selectUserByOffset = (offset: -1 | 1): void => {
         const nextUser = getUserAtOffset(navigationUsers, selectedUserIndex, offset);
 
-        if (nextUser) {
-            setSelectedUser(nextUser);
-        }
+        if (nextUser) openUserDetail(nextUser);
     };
 
     const clearFilters = (): void => {
@@ -263,8 +298,11 @@ export function SystemUsersPage() {
     };
 
     const openCreateUserDrawer = (): void => {
-        setCreateError(null);
-        setIsCreateUserOpen(true);
+        void refreshPermissions().then((next) => {
+            if (!next.create || createUserCatalog.roleOptions.length === 0) return;
+            setCreateError(null);
+            setIsCreateUserOpen(true);
+        });
     };
 
     const closeCreateUserDrawer = (): void => {
@@ -273,8 +311,18 @@ export function SystemUsersPage() {
     };
 
     const openEditUserDrawer = (user: SystemUserListItem): void => {
-        setEditError(null);
-        setEditingUser(user);
+        if (user.isCurrentUser) return;
+        void refreshPermissions().then((next) => {
+            if (!next.update) return;
+            setEditError(null);
+            setEditingUser(user);
+        });
+    };
+
+    const openUserDetail = (user: SystemUserListItem): void => {
+        void refreshPermissions().then((next) => {
+            if (next.detail) setSelectedUser(user);
+        });
     };
 
     const closeEditUserDrawer = (): void => {
@@ -287,8 +335,11 @@ export function SystemUsersPage() {
     };
 
     const openStatusAction = (user: SystemUserListItem, status: SystemUserStatusUpdateTarget): void => {
-        setStatusReason("");
-        setPendingStatusAction({ status, user });
+        void refreshPermissions().then((next) => {
+            if (!canChangeUserStatus(next, user, status)) return;
+            setStatusReason("");
+            setPendingStatusAction({ status, user });
+        });
     };
 
     const closeStatusAction = (): void => {
@@ -312,71 +363,82 @@ export function SystemUsersPage() {
             return;
         }
 
-        setIsUpdatingStatus(true);
-        void updateSystemUserStatus(pendingStatusAction.user.publicId, {
-            reason,
-            status: pendingStatusAction.status,
-        })
-            .then((updatedUser) => {
-                const nextSelectedUser = mapApiUserToListItem(updatedUser);
-                setSelectedUser(selectedUser?.publicId === nextSelectedUser.publicId ? nextSelectedUser : selectedUser);
-                setReloadToken((currentToken) => currentToken + 1);
-                setPendingStatusAction(null);
-                setStatusReason("");
-                void message.success(`Estado de ${updatedUser.name} actualizado a ${STATUS_LABELS[updatedUser.status]}.`);
+        void refreshPermissions().then((next) => {
+            if (!canChangeUserStatus(next, pendingStatusAction.user, pendingStatusAction.status)) return;
+            setIsUpdatingStatus(true);
+            void updateSystemUserStatus(pendingStatusAction.user.publicId, {
+                reason,
+                status: pendingStatusAction.status,
             })
-            .catch(() => {
-                void message.error("No pudimos actualizar el estado del usuario. Revisa permisos y vuelve a intentar.");
-            })
-            .finally(() => {
-                setIsUpdatingStatus(false);
-            });
+                .then((updatedUser) => {
+                    const nextSelectedUser = mapApiUserToListItem(updatedUser);
+                    setSelectedUser((current) => (permissionsRef.current.detail && current?.publicId === nextSelectedUser.publicId ? nextSelectedUser : permissionsRef.current.detail ? current : null));
+                    setReloadToken((currentToken) => currentToken + 1);
+                    setPendingStatusAction(null);
+                    setStatusReason("");
+                    void message.success(`Estado de ${updatedUser.name} actualizado a ${STATUS_LABELS[updatedUser.status]}.`);
+                })
+                .catch(() => {
+                    void message.error("No pudimos actualizar el estado del usuario. Revisa permisos y vuelve a intentar.");
+                })
+                .finally(() => {
+                    setIsUpdatingStatus(false);
+                });
+        });
     };
 
     /** Al crear, vuelve a la vista base y resalta la fila nueva para confirmar el alta sin recargar la página. */
     const submitCreateUser = (payload: CreateSystemUserPayload): void => {
-        setIsCreatingUser(true);
-        setCreateError(null);
-        void createSystemUser(payload)
-            .then((createdUser) => {
-                setSelectedUser(null);
-                clearFilters();
-                setSortKey("name");
-                setSortDirection("asc");
-                setIsCreateUserOpen(false);
-                setHighlightedPublicId(createdUser.publicId);
-                setReloadToken((currentToken) => currentToken + 1);
-                void message.success(`Usuario creado: ${createdUser.name}. Queda Pendiente hasta su primer acceso.`);
-            })
-            .catch(() => {
-                setCreateError("No pudimos crear el usuario. Revisa duplicados, permisos y datos obligatorios.");
-            })
-            .finally(() => {
-                setIsCreatingUser(false);
-            });
+        void refreshPermissions().then((next) => {
+            if (!next.create || createUserCatalog.roleOptions.length === 0) return;
+            if (payload.password && !next.assignPassword) return;
+            setIsCreatingUser(true);
+            setCreateError(null);
+            void createSystemUser(payload)
+                .then((createdUser) => {
+                    setSelectedUser(null);
+                    clearFilters();
+                    setSortKey("name");
+                    setSortDirection("asc");
+                    setIsCreateUserOpen(false);
+                    setHighlightedPublicId(createdUser.publicId);
+                    setReloadToken((currentToken) => currentToken + 1);
+                    void message.success(`Usuario creado: ${createdUser.name}. Estado: ${STATUS_LABELS[createdUser.status]}.`);
+                })
+                .catch(() => {
+                    setCreateError("No pudimos crear el usuario. Revisa duplicados, permisos y datos obligatorios.");
+                })
+                .finally(() => {
+                    setIsCreatingUser(false);
+                });
+        });
     };
 
     const submitEditUser = (payload: CreateSystemUserPayload | UpdateSystemUserPayload): void => {
-        if (!editingUser) {
+        if (!editingUser || editingUser.isCurrentUser) {
             return;
         }
 
-        setIsUpdatingUser(true);
-        setEditError(null);
-        void updateSystemUser(editingUser.publicId, payload)
-            .then((updatedUser) => {
-                const nextSelectedUser = mapApiUserToListItem(updatedUser);
-                setSelectedUser(nextSelectedUser);
-                setEditingUser(null);
-                setReloadToken((currentToken) => currentToken + 1);
-                void message.success(`Usuario actualizado: ${updatedUser.name}.`);
-            })
-            .catch((error: unknown) => {
-                setEditError(getApiErrorMessage(error, "No pudimos editar el usuario. Revisa permisos, duplicados y motivo de auditoría."));
-            })
-            .finally(() => {
-                setIsUpdatingUser(false);
-            });
+        void refreshPermissions().then((next) => {
+            if (!next.update) return;
+            const safePayload = next.assignRoles ? payload : { ...payload, roleCode: editingUser.roleCodes[0] ?? "", roleCodes: editingUser.roleCodes, orgUnitCodes: editingUser.orgUnitCodes };
+            setIsUpdatingUser(true);
+            setEditError(null);
+            void updateSystemUser(editingUser.publicId, safePayload)
+                .then((updatedUser) => {
+                    const nextSelectedUser = mapApiUserToListItem(updatedUser);
+                    setSelectedUser(permissionsRef.current.detail ? nextSelectedUser : null);
+                    setEditingUser(null);
+                    setReloadToken((currentToken) => currentToken + 1);
+                    void message.success(`Usuario actualizado: ${updatedUser.name}.`);
+                })
+                .catch((error: unknown) => {
+                    setEditError(getApiErrorMessage(error, "No pudimos editar el usuario. Revisa permisos, duplicados y motivo de auditoría."));
+                })
+                .finally(() => {
+                    setIsUpdatingUser(false);
+                });
+        });
     };
 
     return (
@@ -390,14 +452,17 @@ export function SystemUsersPage() {
                                 <span aria-hidden="true">/</span>
                                 <span>Usuarios</span>
                             </nav>
-                            <UsersPageTitle isLoading={loadState === "loading"} total={pageTotal} />
+                            <UsersPageTitle isLoading={loadState === "loading"} total={permissions.list ? pageTotal : 0} />
                             <p>Gestión de personas, accesos y estado operativo dentro del CRM.</p>
                         </div>
                         <UsersHeaderActions
-                            isLoading={loadState === "loading"}
+                            canCreate={permissions.create && createUserCatalog.roleOptions.length > 0}
+                            isLoading={isCheckingPermissions || (permissions.list && loadState === "loading")}
                             onCreate={openCreateUserDrawer}
                             onRefresh={() => {
-                                setReloadToken((currentToken) => currentToken + 1);
+                                void refreshPermissions().then(() => {
+                                    setReloadToken((currentToken) => currentToken + 1);
+                                });
                             }}
                         />
                     </section>
@@ -405,12 +470,24 @@ export function SystemUsersPage() {
                     <section className="administration-users-panel" aria-label="Listado de usuarios" aria-busy={loadState === "loading"}>
                         {isRefreshing ? <SystemUsersRefreshStatus /> : null}
 
-                        <SystemUsersDataTable highlightedPublicId={highlightedPublicId} loadState={loadState} selectedUserEmail={selectedUserEmail} users={users} onClearFilters={clearFilters} onEditUser={openEditUserDrawer} onOpenUser={setSelectedUser} onStatusAction={openStatusAction} onVisibleOrderChange={setVisibleOrder} />
+                        {permissions.list ? (
+                            <SystemUsersDataTable permissions={permissions} highlightedPublicId={highlightedPublicId} loadState={loadState} selectedUserEmail={selectedUserEmail} users={users} onClearFilters={clearFilters} onEditUser={openEditUserDrawer} onOpenUser={openUserDetail} onStatusAction={openStatusAction} onVisibleOrderChange={setVisibleOrder} />
+                        ) : (
+                            <p role="status">{isCheckingPermissions ? "Cargando información de usuarios" : "No tienes permiso para consultar la lista de usuarios."}</p>
+                        )}
 
                         <footer className="administration-users-footer">
-                            <span>{getUsersRangeLabel(loadState, users.length, pageTotal)}</span>
-                            {hasMore ? (
-                                <Button size="small" loading={isLoadingMore} onClick={loadMore}>
+                            <span>{permissions.list ? getUsersRangeLabel(loadState, users.length, pageTotal) : ""}</span>
+                            {permissions.list && hasMore ? (
+                                <Button
+                                    size="small"
+                                    loading={isLoadingMore}
+                                    onClick={() => {
+                                        void refreshPermissions().then((next) => {
+                                            if (next.list) loadMore();
+                                        });
+                                    }}
+                                >
                                     {getLoadMoreLabel(users.length, pageTotal)}
                                 </Button>
                             ) : null}
@@ -419,9 +496,10 @@ export function SystemUsersPage() {
                 </div>
 
                 <UserDetailDrawer
+                    permissions={permissions}
                     position={selectedUserIndex + 1}
                     total={navigationUsers.length}
-                    user={selectedUser}
+                    user={permissions.detail ? selectedUser : null}
                     onClose={() => {
                         setSelectedUser(null);
                     }}
@@ -435,10 +513,11 @@ export function SystemUsersPage() {
                     onEditUser={openEditUserDrawer}
                 />
                 <CreateSystemUserDrawer
+                    canAssignPassword={permissions.assignPassword}
                     error={createError}
                     isSaving={isCreatingUser}
                     moduleOptions={createUserCatalog.moduleOptions}
-                    open={isCreateUserOpen}
+                    open={permissions.create && isCreateUserOpen}
                     roleOptions={createUserCatalog.roleOptions}
                     rolePermissions={createUserCatalog.rolePermissions}
                     onClose={closeCreateUserDrawer}
@@ -446,8 +525,8 @@ export function SystemUsersPage() {
                         submitCreateUser(payload as CreateSystemUserPayload);
                     }}
                 />
-                <CreateSystemUserDrawer error={editError} initialUser={editingUser} isSaving={isUpdatingUser} mode="edit" moduleOptions={createUserCatalog.moduleOptions} open={editingUser !== null} roleOptions={createUserCatalog.roleOptions} rolePermissions={createUserCatalog.rolePermissions} onClose={closeEditUserDrawer} onSubmit={submitEditUser} />
-                <StatusActionDialog action={pendingStatusAction} isSubmitting={isUpdatingStatus} reason={statusReason} onClose={closeStatusAction} onReasonChange={setStatusReason} onSubmit={submitStatusAction} />
+                <CreateSystemUserDrawer canAssignRoles={permissions.assignRoles} error={editError} initialUser={editingUser} isSaving={isUpdatingUser} mode="edit" moduleOptions={createUserCatalog.moduleOptions} open={permissions.update && editingUser !== null} roleOptions={createUserCatalog.roleOptions} rolePermissions={createUserCatalog.rolePermissions} onClose={closeEditUserDrawer} onSubmit={submitEditUser} />
+                {pendingStatusAction ? <StatusActionDialog action={pendingStatusAction} isSubmitting={isUpdatingStatus} reason={statusReason} onClose={closeStatusAction} onReasonChange={setStatusReason} onSubmit={submitStatusAction} /> : null}
             </div>
         </ConfigProvider>
     );

@@ -6,9 +6,22 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ADMINISTRATION_CATALOGS } from "../../src/modules/administration/catalogs/catalog-definitions";
 import { CatalogItemDetailDrawer } from "../../src/modules/administration/catalogs/CatalogItemDetailDrawer";
 import { CatalogItemsPage } from "../../src/modules/administration/catalogs/CatalogItemsPage";
+import { getIdentityProfile } from "../../src/services/auth/auth-service";
+import type { IdentityProfile } from "../../src/services/auth/identity-contracts";
 import type * as CatalogServiceModule from "../../src/services/catalogs/catalog-service";
-import { listCatalogItems, updateCatalogItem } from "../../src/services/catalogs/catalog-service";
+import { createCatalogItem, listCatalogItems, updateCatalogItem, updateCatalogItemStatus } from "../../src/services/catalogs/catalog-service";
 import { installBrowserApiDoubles } from "../support/browser";
+
+vi.mock("../../src/services/auth/auth-service", () => ({ getIdentityProfile: vi.fn() }));
+const mockProfile = vi.mocked(getIdentityProfile);
+const effectiveProfile = (codes: readonly string[]): IdentityProfile => ({
+    user: { publicId: "actor", displayName: "Actor", email: "actor@example.invalid", profileImageUrl: null, status: "active", permissionVersion: 1 },
+    session: { publicId: "session", status: "active", expiresAt: "2026-10-14T00:00:00Z", expiresInSeconds: 3600, permissionVersion: 1 },
+    auth: { primaryProvider: "microsoft", availableProviders: ["local"], currentProvider: "local", localStatus: "active", microsoft: null },
+    roles: [{ code: "owner", name: "Owner", status: "active" }],
+    orgUnits: [],
+    permissions: codes.map((code) => ({ code, effect: "allow", scope: "self", source: "role" })),
+});
 
 vi.mock("../../src/services/catalogs/catalog-service", async (importOriginal) => {
     const actual = await importOriginal<typeof CatalogServiceModule>();
@@ -36,7 +49,7 @@ const expectDrawerReferenceLayout = (drawer: HTMLElement, projects: boolean) => 
 
 describe("CatalogItemsPage", () => {
     it("allows legacy Campaigns editing and status changes with the Projects presentation", () => {
-        render(<CatalogItemDetailDrawer catalogLabel="Campañas" error={null} isLoading={false} item={{ ...item, publicId: "legacy:campaigns:42" }} open position={1} total={1} onClose={vi.fn()} onEdit={vi.fn()} onRefresh={vi.fn()} onStatusAction={vi.fn()} onSelectPrevious={vi.fn()} onSelectNext={vi.fn()} projectView />);
+        render(<CatalogItemDetailDrawer canEdit canInactivate catalogLabel="Campañas" error={null} isLoading={false} item={{ ...item, publicId: "legacy:campaigns:42" }} open position={1} total={1} onClose={vi.fn()} onEdit={vi.fn()} onRefresh={vi.fn()} onStatusAction={vi.fn()} onSelectPrevious={vi.fn()} onSelectNext={vi.fn()} projectView />);
         expect(screen.getByRole("button", { name: "Editar" })).toBeEnabled();
         expect(screen.getByRole("button", { name: "Inactivar" })).toBeEnabled();
     });
@@ -44,7 +57,7 @@ describe("CatalogItemsPage", () => {
     it("allows editing and changing status of legacy Projects without a delete action", () => {
         const onEdit = vi.fn();
         const onStatusAction = vi.fn();
-        render(<CatalogItemDetailDrawer catalogLabel="Proyectos" error={null} isLoading={false} item={{ ...item, publicId: "legacy:projects:42", nativeCode: "legacy_projects_42", updatedAt: "" }} open position={1} total={1} onClose={vi.fn()} onEdit={onEdit} onRefresh={vi.fn()} onStatusAction={onStatusAction} onSelectPrevious={vi.fn()} onSelectNext={vi.fn()} projectView />);
+        render(<CatalogItemDetailDrawer canEdit canInactivate catalogLabel="Proyectos" error={null} isLoading={false} item={{ ...item, publicId: "legacy:projects:42", nativeCode: "legacy_projects_42", updatedAt: "" }} open position={1} total={1} onClose={vi.fn()} onEdit={onEdit} onRefresh={vi.fn()} onStatusAction={onStatusAction} onSelectPrevious={vi.fn()} onSelectNext={vi.fn()} projectView />);
         const edit = screen.getByRole("button", { name: "Editar" });
         const deactivate = screen.getByRole("button", { name: "Inactivar" });
         expect(edit).toBeEnabled();
@@ -63,6 +76,7 @@ describe("CatalogItemsPage", () => {
     });
 
     beforeEach(() => {
+        mockProfile.mockResolvedValue(effectiveProfile(["administration", "formalizacion", "ventas", "mercadeo", "contabilidad"].flatMap((context) => ADMINISTRATION_CATALOGS.flatMap((catalog) => ["read", "create", "update", "inactivate"].map((action) => `${context}.${catalog.moduleCode}.${action}`)))));
         installBrowserApiDoubles();
         window.localStorage.clear();
         mockListCatalogItems.mockResolvedValue({
@@ -75,6 +89,53 @@ describe("CatalogItemsPage", () => {
     afterEach(() => {
         cleanup();
         vi.clearAllMocks();
+    });
+
+    it("hides creation for a read-only Formalization broker profile", async () => {
+        const catalog = ADMINISTRATION_CATALOGS.find(({ code }) => code === "brokers");
+        if (!catalog) throw new Error("Broker definition missing");
+        mockProfile.mockResolvedValue(effectiveProfile(["formalizacion.catalog_broker.read"]));
+        render(<CatalogItemsPage catalog={catalog} contextModuleCode="formalizacion" />);
+        await waitFor(() => {
+            expect(mockListCatalogItems).toHaveBeenCalled();
+        });
+        expect(screen.queryByRole("button", { name: /Nuevo corredor/ })).not.toBeInTheDocument();
+    });
+    it.each(["edit-context", "edit-catalog", "status-context", "status-catalog"] as const)("discards an open dialog on scope change: %s", async (scenario) => {
+        const action = scenario.startsWith("edit") ? "edit" : "status";
+        const submitName = action === "edit" ? /Guardar cambios/ : /Confirmar acción/;
+        const catalog = ADMINISTRATION_CATALOGS[0];
+        const otherCatalog = ADMINISTRATION_CATALOGS[1];
+        if (!catalog || !otherCatalog) throw new Error("Catalog definitions missing");
+        mockListCatalogItems.mockResolvedValue({ catalog: { code: catalog.code, label: catalog.label, moduleCode: catalog.moduleCode }, items: [item], total: 1 });
+        const view = render(<CatalogItemsPage catalog={catalog} />);
+        fireEvent.click(await screen.findByRole("row", { name: `Ver detalle de ${item.name}` }));
+        const drawer = await screen.findByRole("dialog");
+        fireEvent.click(within(drawer).getByRole("button", { name: action === "edit" ? "Editar" : "Inactivar" }));
+        const submit = await screen.findByRole("button", { name: submitName });
+        const modal = submit.closest('[role="dialog"]') as HTMLElement;
+        fireEvent.change(within(modal).getByLabelText(/Motivo de auditoría/), { target: { value: "Cambio autorizado" } });
+        view.rerender(<CatalogItemsPage catalog={scenario.endsWith("catalog") ? otherCatalog : catalog} contextModuleCode={scenario.endsWith("context") ? "formalizacion" : "administration"} />);
+        expect(screen.queryByRole("button", { name: submitName })).not.toBeInTheDocument();
+        fireEvent.click(submit);
+        await waitFor(() => {
+            expect(mockListCatalogItems).toHaveBeenCalledTimes(2);
+        });
+        expect(vi.mocked(updateCatalogItem)).not.toHaveBeenCalled();
+        expect(vi.mocked(updateCatalogItemStatus)).not.toHaveBeenCalled();
+        expect(vi.mocked(createCatalogItem)).not.toHaveBeenCalled();
+    });
+    it("does not read or expose cached detail when the effective profile fails", async () => {
+        mockProfile.mockRejectedValue(new Error("Profile unavailable"));
+        const catalog = ADMINISTRATION_CATALOGS[0];
+        if (!catalog) throw new Error("Catalog definition missing");
+        render(<CatalogItemsPage catalog={catalog} />);
+        await waitFor(() => {
+            expect(mockProfile).toHaveBeenCalled();
+        });
+        expect(mockListCatalogItems).not.toHaveBeenCalled();
+        expect(screen.queryByRole("button", { name: /Nuevo proyecto/ })).not.toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: "Actualizar proyectos" })).not.toBeInTheDocument();
     });
 
     it("aligns project filter tracks with measured table headers", async () => {
@@ -171,12 +232,12 @@ describe("CatalogItemsPage", () => {
         expect(within(row).getByText("1")).toHaveClass("projects-view-integration__id");
     });
 
-    it("centers the enterprise projects loader while the initial request is pending", () => {
+    it("centers the enterprise projects loader while the initial request is pending", async () => {
         const catalog = ADMINISTRATION_CATALOGS[0];
         if (!catalog) throw new Error("Catalog missing");
         mockListCatalogItems.mockReturnValue(new Promise(() => {}));
         render(<CatalogItemsPage catalog={catalog} />);
-        const loading = screen.getByRole("status", { name: "Cargando proyectos" });
+        const loading = await screen.findByRole("status", { name: "Cargando proyectos" });
         expect(within(loading).getByText("Cargando proyectos...")).toBeInTheDocument();
         expect(within(loading).getByText("Sincronizando registros y catálogo CRM")).toBeInTheDocument();
         expect(loading.querySelector(".projects-view-loader__ring")).toBeInTheDocument();
@@ -205,7 +266,7 @@ describe("CatalogItemsPage", () => {
             }),
         );
         render(<CatalogItemsPage catalog={catalog} />);
-        expect(screen.getByRole("status", { name: "Cargando proyectos" })).toBeInTheDocument();
+        expect(await screen.findByRole("status", { name: "Cargando proyectos" })).toBeInTheDocument();
         resolveRequest?.({ catalog: { code: catalog.code, label: catalog.label, moduleCode: catalog.moduleCode }, items: [item], total: 1 });
         await screen.findByRole("row", { name: `Ver detalle de ${item.name}` });
         await waitFor(() => {
@@ -227,7 +288,7 @@ describe("CatalogItemsPage", () => {
         if (!catalog) throw new Error("Campaigns catalog missing");
         mockListCatalogItems.mockReturnValue(new Promise(() => {}));
         render(<CatalogItemsPage catalog={catalog} />);
-        expect(screen.getByRole("status", { name: "Cargando campañas" })).toHaveTextContent("Cargando campañas...");
+        expect(await screen.findByRole("status", { name: "Cargando campañas" })).toHaveTextContent("Cargando campañas...");
         fireEvent.click(screen.getByRole("button", { name: /Nueva campaña/ }));
         const dialog = await screen.findByRole("dialog");
         expect(dialog.closest(".catalog-items-modal--projects")).not.toBeNull();
@@ -245,7 +306,7 @@ describe("CatalogItemsPage", () => {
         if (!catalog) throw new Error("Catalog missing");
         mockListCatalogItems.mockReturnValue(new Promise(() => {}));
         render(<CatalogItemsPage catalog={catalog} />);
-        expect(screen.getByRole("status", { name: loading })).toHaveTextContent(`${loading}...`);
+        expect(await screen.findByRole("status", { name: loading })).toHaveTextContent(`${loading}...`);
         fireEvent.click(screen.getByRole("button", { name: create }));
         const dialog = await screen.findByRole("dialog");
         expect(dialog.closest(".catalog-items-modal--projects")).not.toBeNull();
@@ -343,10 +404,12 @@ describe("CatalogItemsPage", () => {
         await screen.findByText("Second project");
         await waitFor(() => expect(screen.queryByRole("status", { name: "Cargando proyectos" })).not.toBeInTheDocument());
         expect(screen.getByRole("table", { name: "Proyectos" })).toBe(grid);
+        const profileReads = mockProfile.mock.calls.length;
         fireEvent.click(screen.getByRole("button", { name: "Página anterior" }));
         expect(await screen.findByText(item.name)).toBeInTheDocument();
         expect(screen.queryByRole("status", { name: "Cargando proyectos" })).not.toBeInTheDocument();
         expect(mockListCatalogItems).toHaveBeenCalledTimes(2);
+        expect(mockProfile).toHaveBeenCalledTimes(profileReads);
         fireEvent.click(screen.getByRole("button", { name: "Página siguiente" }));
         expect(await screen.findByText("Second project")).toBeInTheDocument();
         expect(mockListCatalogItems).toHaveBeenCalledTimes(2);
@@ -561,9 +624,15 @@ describe("CatalogItemsPage", () => {
         });
         fireEvent.keyDown(row, { key: " " });
         const drawer = await screen.findByRole("dialog");
-        mockListCatalogItems.mockRejectedValueOnce(new Error("private error"));
+        let rejectRefresh: (error: Error) => void = () => {};
+        mockListCatalogItems.mockReturnValueOnce(
+            new Promise((_, reject) => {
+                rejectRefresh = reject;
+            }),
+        );
         fireEvent.click(within(drawer).getByRole("button", { name: "Actualizar detalle" }));
-        expect(within(drawer).getByRole("status", { name: "Cargando detalle" })).toBeInTheDocument();
+        expect(await within(drawer).findByRole("status", { name: "Cargando detalle" })).toBeInTheDocument();
+        rejectRefresh(new Error("private error"));
         expect(await within(drawer).findByText("No pudimos cargar el catálogo.")).toBeInTheDocument();
         expect(within(drawer).queryByText(item.publicId)).not.toBeInTheDocument();
         mockListCatalogItems.mockResolvedValueOnce({ ...response, items: [{ ...item, detail: "Updated detail", externalReferences: [] }] });
@@ -647,11 +716,11 @@ describe("CatalogItemsPage", () => {
         fireEvent.click(row);
         const drawer = await screen.findByRole("dialog");
         fireEvent.click(within(drawer).getByRole("button", { name: "Registro siguiente" }));
-        expect(within(drawer).getByRole("heading", { name: nextItem.name })).toBeInTheDocument();
+        expect(await within(drawer).findByRole("heading", { name: nextItem.name })).toBeInTheDocument();
         expect(within(drawer).getByText("Registro 2 de 2")).toBeInTheDocument();
         expect(within(drawer).getByRole("button", { name: "Registro siguiente" })).toBeDisabled();
         fireEvent.keyDown(drawer, { key: "ArrowUp" });
-        expect(within(drawer).getByRole("heading", { name: item.name })).toBeInTheDocument();
+        expect(await within(drawer).findByRole("heading", { name: item.name })).toBeInTheDocument();
         fireEvent.click(within(drawer).getByRole("button", { name: "Editar" }));
         expect(await screen.findByRole("heading", { name: "Editar proyecto" })).toBeInTheDocument();
         fireEvent.keyDown(screen.getByRole("button", { name: "Cancelar" }), { key: "ArrowDown" });
@@ -675,7 +744,7 @@ describe("CatalogItemsPage", () => {
         expect(within(drawer).getByText("Registro 1 de 2")).toBeInTheDocument();
         expect(within(drawer).getByRole("button", { name: "Registro anterior" })).toBeDisabled();
         fireEvent.click(within(drawer).getByRole("button", { name: "Registro siguiente" }));
-        expect(within(drawer).getByRole("heading", { name: zeta.name })).toBeInTheDocument();
+        expect(await within(drawer).findByRole("heading", { name: zeta.name })).toBeInTheDocument();
     });
 
     it.each(["projects", "campaigns", "classes", "locations", "subsidiaries", "brokers"])("submits legacy %s edits without blank Odoo references and follows the promoted identity", async (code) => {
@@ -694,7 +763,7 @@ describe("CatalogItemsPage", () => {
         });
         fireEvent.click(row);
         fireEvent.click(within(await screen.findByRole("dialog")).getByRole("button", { name: "Editar" }));
-        const form = screen.getByRole("textbox", { name: "Nombre" }).closest("form");
+        const form = (await screen.findByRole("textbox", { name: "Nombre" })).closest("form");
         if (!form) throw new Error("Form missing");
         fireEvent.change(within(form).getByRole("textbox", { name: /ID Odoo/ }), { target: { value: "   " } });
         fireEvent.change(within(form).getByRole("textbox", { name: "Motivo de auditoría" }), { target: { value: "Project correction authorized" } });

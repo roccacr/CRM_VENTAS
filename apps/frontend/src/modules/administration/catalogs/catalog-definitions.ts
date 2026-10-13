@@ -2,8 +2,8 @@
  * Catálogos administrativos que el frontend puede abrir.
  *
  * Cada entrada une el código del API, la ruta, el ítem de menú y los permisos
- * de lectura y alta. La pantalla de valores no autoriza: solo usa estos datos
- * para pedir al BFF el catálogo correcto. Los perfiles operativos reutilizan
+ * de lectura y alta. La pantalla usa permisos efectivos para ocultar acciones;
+ * el BFF siempre autoriza de nuevo. Los perfiles operativos reutilizan
  * el mismo `code` con otro prefijo de ruta.
  */
 import type { CatalogCode } from "../../../services/catalogs/catalog-service";

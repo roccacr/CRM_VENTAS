@@ -59,9 +59,13 @@ describe.skipIf(process.env.IDENTITY_ACCESS_MYSQL_TESTS !== "1")("Access replace
 
     for (const failAudit of [false, true]) {
         it(
-            failAudit ? "rolls back access, session and refresh revocation when audit fails" : "removes Owner authority and rejects both old session and refresh tokens immediately",
+            failAudit ? "rolls back access changes when audit fails" : "removes Owner authority and refreshes the retained session into current grants",
             async () => {
                 await withRollback(async (service) => {
+                    const currentDatabase = await sql<{ name: string }>`SELECT DATABASE() AS name`.execute(service.db);
+                    expect(currentDatabase.rows[0]?.name).toBe("CRM_THINK_V2");
+                    const replacementRoleCode = `access_${ulid().toLowerCase()}`;
+                    await sql`INSERT INTO sec_role (code_role,name_role,description_role,status_role) VALUES (${replacementRoleCode},'Rollback access role','Authorization regression fixture','active')`.execute(service.db);
                     const owner = await service.db
                         .selectFrom("sec_user as u")
                         .innerJoin("sec_user_role as ur", "ur.user_id_user_role", "u.id_user")
@@ -113,7 +117,7 @@ describe.skipIf(process.env.IDENTITY_ACCESS_MYSQL_TESTS !== "1")("Access replace
                     const failure = new Error("audit unavailable");
                     if (failAudit) vi.spyOn(audit, "record").mockRejectedValue(failure);
                     const repository = new IdentityAccessManagementRepository(service, audit, sessions);
-                    const operation = repository.replaceUserAccess({ actorPublicId: owner.public_id_user, userPublicId: owner.public_id_user, roleCodes: ["ventas"], orgUnitCodes: ["ventas"], permissionOverrides: [], reason: "Owner downgrade regression" });
+                    const operation = repository.replaceUserAccess({ actorPublicId: owner.public_id_user, userPublicId: owner.public_id_user, roleCodes: [replacementRoleCode], orgUnitCodes: [], permissionOverrides: [], reason: "Owner downgrade regression" });
                     if (failAudit) {
                         await expect(operation).rejects.toBe(failure);
                         expect(await profiles.findBySessionTokenHash(token)).toMatchObject({ roles: original.roles, orgUnits: original.orgUnits, permissions: original.permissions, user: original.user });
@@ -122,24 +126,23 @@ describe.skipIf(process.env.IDENTITY_ACCESS_MYSQL_TESTS !== "1")("Access replace
                         expect(await service.db.selectFrom("sec_user_permission_override").selectAll().where("user_id_user_permission_override", "=", owner.id_user).execute()).toEqual(overridesBefore);
                     } else {
                         const result = await operation;
-                        expect(result.roles.map((role) => role.code)).toEqual(["ventas"]);
-                        expect(result.orgUnits.map((unit) => unit.code)).toEqual(["ventas"]);
+                        expect(result.roles.map((role) => role.code)).toEqual([replacementRoleCode]);
+                        expect(result.orgUnits.map((unit) => unit.code)).toEqual([]);
                         expect(result.permissionOverrides).toEqual([]);
                         const removedOwnerRoles = await service.db.selectFrom("sec_user_role as ur").innerJoin("sec_role as r", "r.id_role", "ur.role_id_user_role").select(["ur.status_user_role", "ur.revoked_at_user_role"]).where("ur.user_id_user_role", "=", owner.id_user).where("r.code_role", "=", "owner").execute();
                         expect(removedOwnerRoles.every((role) => role.status_user_role === "inactive" && role.revoked_at_user_role !== null)).toBe(true);
                         expect(await profiles.findBySessionTokenHash(token)).toBeNull();
                         const oldSession = await service.db.selectFrom("sec_auth_session").select(["status_auth_session", "revoked_by_user_id_auth_session"]).where("token_hash_auth_session", "=", token).executeTakeFirstOrThrow();
-                        expect(oldSession).toMatchObject({ status_auth_session: "revoked", revoked_by_user_id_auth_session: owner.id_user });
-                        expect(await sessions.findRefreshSessionForProviderValidation(refresh)).toBeNull();
+                        expect(oldSession).toMatchObject({ status_auth_session: "active", revoked_by_user_id_auth_session: null });
+                        expect(await sessions.findRefreshSessionForProviderValidation(refresh)).not.toBeNull();
                         const oldRefresh = await service.db.selectFrom("sec_refresh_token").select(["status_refresh_token", "revoked_reason_refresh_token"]).where("token_hash_refresh_token", "=", refresh).executeTakeFirstOrThrow();
-                        expect(oldRefresh).toMatchObject({ status_refresh_token: "revoked", revoked_reason_refresh_token: "user_access_replaced" });
-                        expect(await service.db.selectFrom("sec_refresh_token").select("status_refresh_token").where("token_hash_refresh_token", "=", previouslyRevokedRefresh).executeTakeFirstOrThrow()).toEqual({ status_refresh_token: "revoked" });
-                        expect(await sessions.rotateRefreshSession({ refreshTokenHash: refresh, nextRefreshExpiresAt: expiresAt, nextRefreshTokenHash: ulid(), nextSessionExpiresAt: expiresAt, nextSessionTokenHash: ulid() })).toMatchObject({ status: "invalid" });
-                        const user = await service.db.selectFrom("sec_user").select("permission_version_user").where("id_user", "=", owner.id_user).executeTakeFirstOrThrow();
+                        expect(oldRefresh).toMatchObject({ status_refresh_token: "active", revoked_reason_refresh_token: null });
+                        expect(await service.db.selectFrom("sec_refresh_token").select("status_refresh_token").where("token_hash_refresh_token", "=", previouslyRevokedRefresh).executeTakeFirstOrThrow()).toEqual({ status_refresh_token: "active" });
                         const freshToken = ulid();
-                        await sessions.createSession({ authIdentityId: owner.id_auth_identity, userId: owner.id_user, permissionVersion: user.permission_version_user, providerCode: owner.provider_code_auth_identity, sessionTokenHash: freshToken, refreshTokenHash: ulid(), refreshFamilyId: ulid(), sessionPublicId: ulid(), sessionExpiresAt: expiresAt, refreshExpiresAt: expiresAt });
+                        expect(await sessions.rotateRefreshSession({ refreshTokenHash: refresh, nextRefreshExpiresAt: expiresAt, nextRefreshTokenHash: ulid(), nextSessionExpiresAt: expiresAt, nextSessionTokenHash: freshToken })).toMatchObject({ status: "rotated" });
+                        expect(await profiles.findBySessionTokenHash(token)).toBeNull();
                         const fresh = await profiles.findBySessionTokenHash(freshToken);
-                        expect(fresh?.roles.map((role) => role.code)).toEqual(["ventas"]);
+                        expect(fresh?.roles.map((role) => role.code)).toEqual([replacementRoleCode]);
                         expect(fresh?.permissions.some((permission) => permission.code === "role.assign" || permission.code.startsWith("user.") || permission.code.startsWith("administration."))).toBe(false);
                         const events = await service.db.selectFrom("audit_security_event").select("id_security_event").where("event_type_security_event", "=", "user_access_replaced").where("target_user_id_security_event", "=", owner.id_user).where("reason_security_event", "=", "Owner downgrade regression").execute();
                         expect(events).toHaveLength(1);

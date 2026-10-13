@@ -18,10 +18,10 @@ import esES from "antd/es/locale/es_ES";
 import Segmented from "antd/es/segmented";
 import Select from "antd/es/select";
 import type { Dispatch, SetStateAction } from "react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { getIdentitySecurityCatalog, getIdentityUserAccess, getSystemUsers, replaceIdentityRolePermissions, replaceIdentityUserAccess, updateIdentityRole } from "../../../services/auth/auth-service";
-import type { IdentityUserPermissionOverride, SystemUserDirectoryItem } from "../../../services/auth/identity-contracts";
+import { getIdentityProfile, getIdentitySecurityCatalog, getIdentityUserAccess, getSystemUsers, replaceIdentityRolePermissions, replaceIdentityUserAccess, updateIdentityRole } from "../../../services/auth/auth-service";
+import type { IdentityProfile, IdentitySecurityCatalog, IdentityUserPermissionOverride, SystemUserDirectoryItem } from "../../../services/auth/identity-contracts";
 import { PROJECTS_THEME } from "../catalogs/projects-theme";
 import { type PermissionCoverage, RolePermissionSection, RolesSecurityNavigator } from "./RolePermissionSection";
 import { applyUserViewPermissions, buildDisplayModules, findByKeyOrFirst, getUserPermissionOrigin, isCatalogModuleCode, type ModuleCatalogItem, type PermissionDisplayModule, type PermissionOverrideState, type PermissionSection, type PermissionSectionView, replaceViewPermissionCodes } from "./roles-security-sections";
@@ -45,99 +45,6 @@ interface RenameRoleFormState {
 interface SavePermissionsFormState {
     readonly reason: string;
 }
-
-const INITIAL_ROLES: readonly RoleCatalogItem[] = [
-    { code: "owner", locked: true, name: "Owner", users: 1 },
-    { code: "jefe_general", locked: false, name: "Jefe general", users: 5 },
-    { code: "subjefe_area", locked: false, name: "Subjefe", users: 8 },
-    { code: "ventas", locked: false, name: "Ventas", users: 31 },
-    { code: "mercadeo", locked: false, name: "Mercadeo", users: 0 },
-    { code: "formalizacion", locked: false, name: "Formalización", users: 0 },
-    { code: "contabilidad", locked: false, name: "Contabilidad", users: 0 },
-] as const satisfies readonly RoleCatalogItem[];
-
-const INITIAL_MODULES: readonly ModuleCatalogItem[] = [
-    {
-        code: "ventas",
-        name: "Ventas",
-        views: [
-            {
-                code: "leads",
-                name: "Leads",
-                permissions: [
-                    { code: "lead.read", description: "Permite leer la tabla de prospectos.", name: "Ver lista de leads" },
-                    { code: "lead.create", description: "Habilita el botón Nuevo lead.", name: "Crear lead" },
-                    { code: "lead.update", description: "Permite modificar datos del expediente.", name: "Editar lead" },
-                    { code: "lead.status", description: "Permite mover etapa en el pipeline.", name: "Cambiar estado" },
-                    { code: "lead.assign", description: "Permite reasignar responsable.", name: "Asignar responsable" },
-                ],
-            },
-            {
-                code: "opportunities",
-                name: "Oportunidades",
-                permissions: [
-                    { code: "opportunity.read", description: "Permite consultar oportunidades abiertas.", name: "Ver oportunidades" },
-                    { code: "opportunity.create", description: "Habilita creación de oportunidades.", name: "Crear oportunidad" },
-                    { code: "opportunity.close", description: "Permite cerrar oportunidad ganada o perdida.", name: "Cerrar oportunidad" },
-                ],
-            },
-            {
-                code: "estimates",
-                name: "Estimaciones",
-                permissions: [
-                    { code: "estimate.read", description: "Permite ver estimaciones asociadas.", name: "Ver estimaciones" },
-                    { code: "estimate.create", description: "Habilita cálculo y guardado de estimaciones.", name: "Crear estimación" },
-                    { code: "estimate.approve", description: "Permiso sensible para aprobar estimaciones.", name: "Aprobar estimación", sensitive: true },
-                ],
-            },
-        ],
-    },
-    {
-        code: "mercadeo",
-        name: "Mercadeo",
-        views: [
-            {
-                code: "campaigns",
-                name: "Campañas",
-                permissions: [
-                    { code: "campaign.read", description: "Permite ver campañas activas.", name: "Ver campañas" },
-                    { code: "campaign.create", description: "Permite crear campañas.", name: "Crear campaña" },
-                    { code: "source.update", description: "Permite modificar fuentes de tráfico.", name: "Editar fuentes" },
-                ],
-            },
-        ],
-    },
-    {
-        code: "formalizacion",
-        name: "Formalización",
-        views: [
-            {
-                code: "files",
-                name: "Expedientes",
-                permissions: [
-                    { code: "file.read", description: "Permite ver expedientes.", name: "Ver expedientes" },
-                    { code: "contract.review", description: "Permite revisar contratos.", name: "Revisar contrato" },
-                    { code: "signature.manage", description: "Permite gestionar firmas.", name: "Gestionar firmas" },
-                ],
-            },
-        ],
-    },
-    {
-        code: "contabilidad",
-        name: "Contabilidad",
-        views: [
-            {
-                code: "billing",
-                name: "Cobros",
-                permissions: [
-                    { code: "wallet.read", description: "Permite ver cartera.", name: "Ver cartera" },
-                    { code: "invoice.read", description: "Permite consultar facturas.", name: "Ver facturas" },
-                    { code: "payment.reconcile", description: "Permiso sensible para conciliación.", name: "Conciliar pago", sensitive: true },
-                ],
-            },
-        ],
-    },
-] as const satisfies readonly ModuleCatalogItem[];
 
 const EMPTY_RENAME_ROLE_FORM: RenameRoleFormState = {
     name: "",
@@ -191,61 +98,6 @@ const groupPermissionCodesByModule = (modules: readonly ModuleCatalogItem[], per
     return Object.fromEntries(modules.map((module) => [module.code, getModulePermissionCodes(modules, module.code).filter((permissionCode) => grantedCodes.has(permissionCode))]));
 };
 
-/**
- * Matriz de respaldo mientras el catálogo del API no llega.
- *
- * No autoriza: en cuanto responde el BFF, este estado se reemplaza por el persistido.
- */
-const DEFAULT_ROLE_PERMISSIONS: RolePermissionState = {
-    jefe_general: {
-        contabilidad: ["wallet.read", "invoice.read", "payment.reconcile"],
-        formalizacion: ["file.read", "contract.review", "signature.manage"],
-        mercadeo: ["campaign.read", "campaign.create", "source.update"],
-        ventas: getModulePermissionCodes(INITIAL_MODULES, "ventas"),
-    },
-    owner: {
-        contabilidad: getModulePermissionCodes(INITIAL_MODULES, "contabilidad"),
-        formalizacion: getModulePermissionCodes(INITIAL_MODULES, "formalizacion"),
-        mercadeo: getModulePermissionCodes(INITIAL_MODULES, "mercadeo"),
-        ventas: getModulePermissionCodes(INITIAL_MODULES, "ventas"),
-    },
-    subjefe_area: {
-        contabilidad: getModulePermissionCodes(INITIAL_MODULES, "contabilidad"),
-        formalizacion: getModulePermissionCodes(INITIAL_MODULES, "formalizacion"),
-        mercadeo: getModulePermissionCodes(INITIAL_MODULES, "mercadeo"),
-        ventas: getModulePermissionCodes(INITIAL_MODULES, "ventas"),
-    },
-    contabilidad: {
-        contabilidad: getModulePermissionCodes(INITIAL_MODULES, "contabilidad"),
-        formalizacion: [],
-        mercadeo: [],
-        ventas: [],
-    },
-    formalizacion: {
-        contabilidad: [],
-        formalizacion: getModulePermissionCodes(INITIAL_MODULES, "formalizacion"),
-        mercadeo: [],
-        ventas: [],
-    },
-    mercadeo: {
-        contabilidad: [],
-        formalizacion: [],
-        mercadeo: getModulePermissionCodes(INITIAL_MODULES, "mercadeo"),
-        ventas: [],
-    },
-    ventas: {
-        contabilidad: [],
-        formalizacion: [],
-        mercadeo: [],
-        ventas: ["lead.read", "lead.create", "lead.update"],
-    },
-};
-
-/** Rol de respaldo para no dejar la consola sin selección si el código ya no existe. */
-const FALLBACK_ROLE = INITIAL_ROLES[0] as RoleCatalogItem;
-
-const getRole = (roles: readonly RoleCatalogItem[], code: string): RoleCatalogItem => roles.find((role) => role.code === code) ?? FALLBACK_ROLE;
-
 const formatCount = (count: number, singular: string, plural: string): string => `${String(count)} ${count === 1 ? singular : plural}`;
 
 /** Texto del fallo. Un valor que no sea `Error` no muestra el objeto crudo. */
@@ -253,6 +105,85 @@ const getErrorMessage = (error: unknown): string => {
     if (error instanceof TypeError && ["Failed to fetch", "NetworkError when attempting to fetch resource.", "Load failed"].includes(error.message)) return "No pudimos conectar con el servidor. Si estabas guardando, el resultado no está confirmado; verifica los permisos antes de volver a intentar.";
     return error instanceof Error ? error.message : "No se pudo completar la acción.";
 };
+
+/** Only the effective API grant authorizes editing; an explicit deny always wins. */
+const hasEffectivePermission = (profile: IdentityProfile, code: string): boolean => profile.permissions.some((permission) => permission.code === code && permission.effect === "allow") && !profile.permissions.some((permission) => permission.code === code && permission.effect === "deny");
+
+const getRole = (roles: readonly RoleCatalogItem[], code: string): RoleCatalogItem => {
+    const role = roles.find((item) => item.code === code) ?? roles[0];
+    if (!role) throw new Error("No hay roles disponibles.");
+    return role;
+};
+
+type RolesLoadState = { status: "loading" } | { status: "error"; message: string } | { status: "empty" } | { status: "ready"; catalog: IdentitySecurityCatalog; canListUsers: boolean };
+
+/** Fail closed before mounting the editor and after any failed permission revalidation. */
+export function RolesSecurityPage() {
+    const [state, setState] = useState<RolesLoadState>({ status: "loading" });
+    const mounted = useRef(false);
+    const authorizationRequest = useRef(0);
+    const [isRevalidating, setIsRevalidating] = useState(false);
+    useEffect(() => {
+        let live = true;
+        const isCurrent = () => live;
+        mounted.current = true;
+        async function load() {
+            try {
+                const profile = await getIdentityProfile();
+                if (!isCurrent()) return;
+                if (!hasEffectivePermission(profile, "role.assign")) {
+                    setState({ status: "error", message: "Permiso insuficiente para administrar roles." });
+                    return;
+                }
+                const catalog = await getIdentitySecurityCatalog();
+                if (!isCurrent()) return;
+                setState(catalog.roles.length > 0 && catalog.modules.length > 0 ? { status: "ready", catalog, canListUsers: hasEffectivePermission(profile, "user.view_list") } : { status: "empty" });
+            } catch (error) {
+                if (isCurrent()) setState({ status: "error", message: getErrorMessage(error) });
+            }
+        }
+        void load();
+        return () => {
+            live = false;
+            mounted.current = false;
+        };
+    }, []);
+    const revalidate = useCallback(async (requireUserList = false): Promise<boolean> => {
+        const request = ++authorizationRequest.current;
+        const isCurrent = () => mounted.current && request === authorizationRequest.current;
+        setIsRevalidating(true);
+        try {
+            const profile = await getIdentityProfile();
+            if (!isCurrent()) return false;
+            if (!hasEffectivePermission(profile, "role.assign")) throw new Error("Permiso insuficiente para administrar roles.");
+            const canListUsers = hasEffectivePermission(profile, "user.view_list");
+            setState((current) => (current.status === "ready" ? { ...current, canListUsers } : current));
+            return !requireUserList || canListUsers;
+        } catch (error) {
+            if (isCurrent()) setState({ status: "error", message: getErrorMessage(error) });
+        } finally {
+            if (isCurrent()) setIsRevalidating(false);
+        }
+        return false;
+    }, []);
+    useEffect(() => {
+        if (state.status !== "ready") return;
+        const onFocus = () => {
+            void revalidate();
+        };
+        window.addEventListener("focus", onFocus);
+        return () => {
+            window.removeEventListener("focus", onFocus);
+        };
+    }, [revalidate, state.status]);
+    if (state.status === "ready") return <RolesSecurityEditor key={String(state.canListUsers)} catalog={state.catalog} canListUsers={state.canListUsers} isRevalidating={isRevalidating} revalidate={revalidate} />;
+    return (
+        <div className="roles-security-page">
+            <h1>Roles y seguridad</h1>
+            {state.status === "loading" ? <p role="status">Cargando roles y permisos...</p> : <p role="alert">{state.status === "error" ? state.message : "Sin catálogo de roles y permisos disponible."}</p>}
+        </div>
+    );
+}
 
 /** Compara listas sin importar el orden: lo que cuenta es el conjunto de códigos. */
 const arePermissionListsEqual = (first: readonly string[], second: readonly string[]): boolean => first.length === second.length && first.every((code) => second.includes(code));
@@ -435,17 +366,17 @@ interface RoleSecurityDialogsProps {
  * Consola visual para gestionar permisos desde el rol o el empleado hacia módulo, sección y acción.
  */
 // eslint-disable-next-line complexity, sonarjs/cognitive-complexity -- Pantalla operativa con modo rol y modo empleado; separar ahora seria un refactor mayor.
-export function RolesSecurityPage() {
-    const [roles, setRoles] = useState<readonly RoleCatalogItem[]>(INITIAL_ROLES);
-    const [isCatalogLoaded, setIsCatalogLoaded] = useState(false);
-    const [modules, setModules] = useState<readonly ModuleCatalogItem[]>(INITIAL_MODULES);
+function RolesSecurityEditor({ catalog, canListUsers, isRevalidating, revalidate }: { readonly catalog: IdentitySecurityCatalog; readonly canListUsers: boolean; readonly isRevalidating: boolean; readonly revalidate: (requireUserList?: boolean) => Promise<boolean> }) {
+    const [roles, setRoles] = useState<readonly RoleCatalogItem[]>(() => catalog.roles.map((role) => ({ code: role.code, locked: role.locked, name: role.name, users: role.users })));
+    const modules = useMemo(() => sortModulesForDisplay(catalog.modules), [catalog]);
+    const initialPermissions = useMemo(() => Object.fromEntries(catalog.roles.map((role) => [role.code, groupPermissionCodesByModule(modules, catalog.rolePermissions[role.code] ?? [])])), [catalog, modules]);
     const [mode, setMode] = useState<AccessMode>("role");
-    const [selectedRoleCode, setSelectedRoleCode] = useState("ventas");
+    const [selectedRoleCode, setSelectedRoleCode] = useState(() => getRole(roles, "ventas").code);
     const [selectedModuleKey, setSelectedModuleKey] = useState("");
     const [selectedSectionKey, setSelectedSectionKey] = useState("");
     const [selectedViewKey, setSelectedViewKey] = useState("");
-    const [permissionState, setPermissionState] = useState<RolePermissionState>(DEFAULT_ROLE_PERMISSIONS);
-    const [savedPermissionState, setSavedPermissionState] = useState<RolePermissionState>(DEFAULT_ROLE_PERMISSIONS);
+    const [permissionState, setPermissionState] = useState<RolePermissionState>(initialPermissions);
+    const [savedPermissionState, setSavedPermissionState] = useState<RolePermissionState>(initialPermissions);
     const [isRenameRoleDialogOpen, setIsRenameRoleDialogOpen] = useState(false);
     const [isSavePermissionsDialogOpen, setIsSavePermissionsDialogOpen] = useState(false);
     const [renameRoleForm, setRenameRoleForm] = useState<RenameRoleFormState>(EMPTY_RENAME_ROLE_FORM);
@@ -457,6 +388,8 @@ export function RolesSecurityPage() {
     // Se guarda el empleado elegido, no solo su id: la búsqueda puede sacarlo de la lista visible.
     const [selectedUser, setSelectedUser] = useState<SystemUserDirectoryItem | null>(null);
     const [isLoadingUserAccess, setIsLoadingUserAccess] = useState(false);
+    const [loadedUserPublicId, setLoadedUserPublicId] = useState("");
+    const [userAccessError, setUserAccessError] = useState("");
     const [userRoleCodes, setUserRoleCodes] = useState<ReadonlySet<string>>(new Set());
     const [savedUserRoleCodes, setSavedUserRoleCodes] = useState<ReadonlySet<string>>(new Set());
     const [userOrgUnitCodes, setUserOrgUnitCodes] = useState<ReadonlySet<string>>(new Set());
@@ -475,7 +408,8 @@ export function RolesSecurityPage() {
     const activeView = activeSection ? findByKeyOrFirst(activeSection.views, selectedViewKey) : undefined;
     const isSystemRole = !isUserMode && selectedRole.locked;
     const hasProtectedRole = mode === "user" ? isUserMode && roles.some((role) => role.locked && userRoleCodes.has(role.code)) : selectedRole.locked;
-    const isAccessEditorBusy = isLoadingUserAccess;
+    const isAccessEditorBusy = isLoadingUserAccess || isSubmitting || isRevalidating || Boolean(selectedUserPublicId && loadedUserPublicId !== selectedUserPublicId);
+    const isRoleEditBlocked = isAccessEditorBusy || isSystemRole;
     const roleDirtyCount = countRolePermissionChanges(permissionState, savedPermissionState, selectedRoleCode);
     const userDirtyCount = countUserAccessChanges({
         currentOrgUnits: userOrgUnitCodes,
@@ -531,37 +465,6 @@ export function RolesSecurityPage() {
         [notificationApi],
     );
 
-    useEffect(() => {
-        let cancelled = false;
-
-        getIdentitySecurityCatalog()
-            .then((catalog) => {
-                if (cancelled) {
-                    return;
-                }
-
-                const nextModules = sortModulesForDisplay(catalog.modules.length > 0 ? catalog.modules : INITIAL_MODULES);
-                const nextRoles = catalog.roles.length > 0 ? catalog.roles.map((role) => ({ code: role.code, locked: role.locked, name: role.name, users: role.users })) : INITIAL_ROLES;
-                const nextPermissionState = Object.fromEntries(nextRoles.map((role) => [role.code, groupPermissionCodesByModule(nextModules, catalog.rolePermissions[role.code] ?? [])]));
-
-                setModules(nextModules);
-                setRoles(nextRoles);
-                setIsCatalogLoaded(true);
-                setPermissionState(nextPermissionState);
-                setSavedPermissionState(nextPermissionState);
-                setSelectedRoleCode((current) => (nextRoles.some((role) => role.code === current) ? current : (nextRoles[0]?.code ?? "owner")));
-            })
-            .catch((error: unknown) => {
-                if (!cancelled) {
-                    showErrorNotification(getErrorMessage(error));
-                }
-            });
-
-        return () => {
-            cancelled = true;
-        };
-    }, [showErrorNotification]);
-
     const resetUserAccessState = () => {
         setUserRoleCodes(new Set());
         setSavedUserRoleCodes(new Set());
@@ -572,6 +475,7 @@ export function RolesSecurityPage() {
     };
 
     useEffect(() => {
+        if (mode !== "user" || !canListUsers) return;
         let cancelled = false;
 
         const timeout = window.setTimeout(() => {
@@ -594,10 +498,10 @@ export function RolesSecurityPage() {
             cancelled = true;
             window.clearTimeout(timeout);
         };
-    }, [showErrorNotification, userQuery]);
+    }, [canListUsers, mode, showErrorNotification, userQuery]);
 
     useEffect(() => {
-        if (!selectedUserPublicId) {
+        if (!selectedUserPublicId || !canListUsers) {
             return;
         }
 
@@ -618,10 +522,12 @@ export function RolesSecurityPage() {
                 setSavedUserOrgUnitCodes(new Set(orgUnitCodes));
                 setUserPermissionOverrides(overrides);
                 setSavedUserPermissionOverrides({ ...overrides });
+                setLoadedUserPublicId(selectedUserPublicId);
+                setUserAccessError("");
             })
             .catch((error: unknown) => {
                 if (!cancelled) {
-                    showErrorNotification(getErrorMessage(error));
+                    setUserAccessError(getErrorMessage(error));
                 }
             })
             .finally(() => {
@@ -633,7 +539,7 @@ export function RolesSecurityPage() {
         return () => {
             cancelled = true;
         };
-    }, [selectedUserPublicId, showErrorNotification]);
+    }, [canListUsers, selectedUserPublicId]);
 
     /** Permisos concedidos en el módulo de la vista. Un rol protegido se muestra con todo concedido. */
     const getGrantedCodes = (view: PermissionSectionView): ReadonlySet<string> => {
@@ -648,7 +554,7 @@ export function RolesSecurityPage() {
 
     /** Fija qué acciones de la vista quedan activas: matriz del rol o excepciones del empleado. */
     const setViewPermissions = (view: PermissionSectionView, enabledCodes: ReadonlySet<string>) => {
-        if (isSystemRole || isAccessEditorBusy) {
+        if (isRoleEditBlocked) {
             return;
         }
 
@@ -673,6 +579,7 @@ export function RolesSecurityPage() {
 
     /** Visibilidad del módulo en el menú del empleado. Ocultarlo niega lo que sus roles concedían. */
     const toggleUserModuleVisibility = (moduleCode: string) => {
+        if (isAccessEditorBusy) return;
         const enabled = userOrgUnitCodes.has(moduleCode);
         const modulePermissionCodes = getModulePermissionCodes(modules, moduleCode);
         const basePermissions = getUserBaseCodes(moduleCode);
@@ -707,6 +614,8 @@ export function RolesSecurityPage() {
         notificationApi.destroy();
         setIsLoadingUserAccess(Boolean(user));
         resetUserAccessState();
+        setLoadedUserPublicId("");
+        setUserAccessError("");
         setSelectedUser(user);
     };
 
@@ -726,6 +635,7 @@ export function RolesSecurityPage() {
     };
 
     const openRenameRoleDialog = () => {
+        if (isRoleEditBlocked) return;
         if (isUserMode) {
             showWarningNotification("Quita el empleado seleccionado para renombrar roles base.");
             return;
@@ -737,6 +647,7 @@ export function RolesSecurityPage() {
     };
 
     const openSavePermissionsDialog = () => {
+        if (isRoleEditBlocked) return;
         if (dirtyCount === 0) {
             showWarningNotification("No hay cambios de permisos para guardar.");
             return;
@@ -748,6 +659,7 @@ export function RolesSecurityPage() {
     };
 
     const handleRenameRole = async () => {
+        if (isRoleEditBlocked || isUserMode) return;
         const name = renameRoleForm.name.trim();
         const reason = renameRoleForm.reason.trim();
 
@@ -759,6 +671,7 @@ export function RolesSecurityPage() {
         setIsSubmitting(true);
 
         try {
+            if (!(await revalidate())) return;
             const updatedRole = await updateIdentityRole(selectedRoleCode, { name, reason });
 
             setRoles((current) => current.map((role) => (role.code === updatedRole.code ? { ...role, name: updatedRole.name } : role)));
@@ -772,6 +685,7 @@ export function RolesSecurityPage() {
     };
 
     const handleSavePermissions = async () => {
+        if (isRoleEditBlocked) return;
         const reason = savePermissionsForm.reason.trim();
 
         if (!hasValidAuditReason(reason)) {
@@ -782,6 +696,7 @@ export function RolesSecurityPage() {
         setIsSubmitting(true);
 
         try {
+            if (!(await revalidate(isUserMode))) return;
             if (isUserMode && selectedUser) {
                 if (userRoleCodes.size === 0) {
                     showWarningNotification("Selecciona al menos un rol para el empleado.");
@@ -845,8 +760,7 @@ export function RolesSecurityPage() {
                         </nav>
                         <div className="roles-security-title-row">
                             <h1 id="roles-security-title">Roles y seguridad</h1>
-                            {/* Hasta que responde el API los roles son el respaldo local; contarlos mentiría. */}
-                            {isCatalogLoaded ? <span className="roles-security-total">{formatCount(roles.length, "rol", "roles")}</span> : null}
+                            <span className="roles-security-total">{formatCount(roles.length, "rol", "roles")}</span>
                         </div>
                         <p>Configura qué puede hacer cada rol por módulo, vista y acción.</p>
                     </div>
@@ -855,11 +769,12 @@ export function RolesSecurityPage() {
                 <section className="roles-security-context" aria-label="Contexto de permisos">
                     <div className="roles-security-context__row">
                         <div className="roles-security-context__selectors">
-                            <Segmented<AccessMode> className="roles-security-mode" aria-label="Modo de revisión" options={[...ACCESS_MODE_OPTIONS]} value={mode} onChange={changeMode} />
+                            <Segmented<AccessMode> disabled={isSubmitting || isRevalidating} className="roles-security-mode" aria-label="Modo de revisión" options={canListUsers ? [...ACCESS_MODE_OPTIONS] : [ACCESS_MODE_OPTIONS[0]]} value={mode} onChange={changeMode} />
                             {mode === "role" ? (
                                 <Select<string>
                                     className="roles-security-context__select"
                                     aria-label="Rol"
+                                    disabled={isAccessEditorBusy}
                                     value={selectedRoleCode}
                                     options={roles.map((role) => ({ label: `${role.name} (${formatCount(role.users, "usuario", "usuarios")})`, value: role.code }))}
                                     onChange={(value) => {
@@ -871,6 +786,7 @@ export function RolesSecurityPage() {
                                 <Select<string>
                                     className="roles-security-context__select roles-security-user-picker"
                                     aria-label="Empleado"
+                                    disabled={isSubmitting || isRevalidating}
                                     allowClear
                                     placeholder="Buscar empleado"
                                     showSearch={{ filterOption: false, onSearch: setUserQuery }}
@@ -884,12 +800,12 @@ export function RolesSecurityPage() {
                         </div>
                         <div className="roles-security-toolbar__actions">
                             {mode === "user" ? null : (
-                                <button className="roles-security-secondary-action" type="button" aria-label="Renombrar rol" onClick={openRenameRoleDialog}>
+                                <button className="roles-security-secondary-action" disabled={isAccessEditorBusy || isSystemRole} type="button" aria-label="Renombrar rol" onClick={openRenameRoleDialog}>
                                     <EditOutlined />
                                     Renombrar
                                 </button>
                             )}
-                            <button className={`roles-security-primary-action${dirtyCount > 0 ? " is-dirty" : ""}`} disabled={isLoadingUserAccess || dirtyCount === 0} type="button" aria-label={`Guardar cambios ${String(dirtyCount)}`} onClick={openSavePermissionsDialog}>
+                            <button className={`roles-security-primary-action${dirtyCount > 0 ? " is-dirty" : ""}`} disabled={isAccessEditorBusy || isSystemRole || dirtyCount === 0} type="button" aria-label={`Guardar cambios ${String(dirtyCount)}`} onClick={openSavePermissionsDialog}>
                                 <SaveOutlined />
                                 {dirtyCount > 0 ? `Guardar cambios · ${String(dirtyCount)}` : "Guardar cambios"}
                             </button>
@@ -914,6 +830,7 @@ export function RolesSecurityPage() {
                                     value={[...userRoleCodes]}
                                     options={roles.map((role) => ({ label: role.name, value: role.code }))}
                                     onChange={(codes) => {
+                                        if (isAccessEditorBusy) return;
                                         setUserRoleCodes(new Set(codes));
                                     }}
                                 />
@@ -939,7 +856,8 @@ export function RolesSecurityPage() {
                 </section>
 
                 <main className={`roles-security-editor${isAccessEditorBusy ? " roles-security-editor--busy" : ""}`} aria-label="Permisos por sección">
-                    {isAccessEditorBusy ? (
+                    {userAccessError ? <p role="alert">{userAccessError}</p> : null}
+                    {isLoadingUserAccess ? (
                         <div className="roles-security-loading-state" role="status" aria-live="polite">
                             <span className="roles-security-loading-state__spinner" aria-hidden="true" />
                             <strong>Cargando acceso del empleado…</strong>
@@ -951,7 +869,7 @@ export function RolesSecurityPage() {
                             <span>Busca a la persona para revisar sus roles, el menú visible y sus excepciones directas.</span>
                         </div>
                     ) : null}
-                    {!isAwaitingEmployee && activeModule && activeSection && activeView ? (
+                    {!isAwaitingEmployee && !userAccessError && activeModule && activeSection && activeView ? (
                         <>
                             <RolesSecurityNavigator
                                 activeModule={activeModule}

@@ -80,6 +80,9 @@ function projectReferences(references: CatalogItem["externalReferences"]) {
 }
 
 interface CatalogItemsDataTableProps {
+    /** Exact current-context update/inactivate grants; omitted grants fail closed. */
+    readonly canEdit?: boolean;
+    readonly canInactivate?: boolean;
     readonly entityLabel: string;
     readonly projectView?: boolean;
     readonly items: readonly CatalogItem[];
@@ -130,12 +133,18 @@ export function CatalogItemsDataTable(props: CatalogItemsDataTableProps) {
 }
 
 /** Uses the users table's SearchPanes, layout and persistence without sharing catalog state. */
-function CatalogItemsTableContent({ projectView = false, entityLabel, items, label, isLoading, storageKey, selectedPublicId, onSelect, onEdit, onStatusAction, onVisibleOrderChange }: CatalogItemsDataTableProps) {
+function CatalogItemsTableContent({ canEdit: editPermission, canInactivate: inactivatePermission, projectView = false, entityLabel, items, label, isLoading, storageKey, selectedPublicId, onSelect, onEdit, onStatusAction, onVisibleOrderChange }: CatalogItemsDataTableProps) {
+    const canEdit = editPermission === true;
+    const canInactivate = inactivatePermission === true;
     const data = useMemo(() => [...items], [items]);
     const container = useRef<HTMLDivElement>(null);
     const table = useRef<DataTableRef>(null);
     const mobileSort = useRef<HTMLSelectElement>(null);
     const selected = useRef(selectedPublicId);
+    const actionGrants = useRef({ canEdit, canInactivate, isLoading });
+    useEffect(() => {
+        actionGrants.current = { canEdit, canInactivate, isLoading };
+    }, [canEdit, canInactivate, isLoading]);
     const panes = useDataTableSearchPanes({ fields: FIELDS, disabledColumnIndexes: DISABLED_FIELDS });
     useEffect(() => {
         // The React wrapper updates rows before this parent effect; rebuild pane values
@@ -291,7 +300,7 @@ function CatalogItemsTableContent({ projectView = false, entityLabel, items, lab
             </label>
             <DataTable
                 ref={table}
-                key={storageKey}
+                key={`${storageKey}:${String(canEdit)}:${String(canInactivate)}`}
                 className="administration-users-datatable"
                 columns={COLUMNS}
                 data={data}
@@ -339,30 +348,20 @@ function CatalogItemsTableContent({ projectView = false, entityLabel, items, lab
                         ),
                     3: (_value: unknown, type: string, item: CatalogItem) => (type === "display" ? <span className={`catalog-items-status catalog-items-status--${item.status}`}>{STATUS_LABELS[item.status]}</span> : STATUS_LABELS[item.status]),
                     4: (_value: unknown, _type: string, item: CatalogItem) => (
-                        <Dropdown
-                            trigger={["click"]}
-                            {...(projectView ? { rootClassName: "catalog-items-dropdown--projects" } : {})}
-                            menu={{
-                                items: [
-                                    { key: "edit", icon: <EditOutlined />, label: "Editar", disabled: item.publicId.startsWith("legacy:") && !/^legacy:(projects|campaigns|classes|locations|subsidiaries|brokers):[1-9]\d*$/.test(item.publicId) },
-                                    { key: item.status === "active" ? "inactive" : "active", icon: <StopOutlined />, label: item.status === "active" ? "Inactivar" : "Reactivar", danger: item.status === "active", disabled: item.publicId.startsWith("legacy:") && !/^legacy:(projects|campaigns|classes|locations|subsidiaries|brokers):[1-9]\d*$/.test(item.publicId) },
-                                ],
-                                onClick: ({ key, domEvent }) => {
-                                    domEvent.stopPropagation();
-                                    if (key === "edit") onEdit(item);
-                                    else onStatusAction(item, key as CatalogItemStatus);
-                                },
+                        <CatalogRowActions
+                            item={item}
+                            projectView={projectView}
+                            canEdit={canEdit}
+                            canInactivate={canInactivate}
+                            onEdit={(record) => {
+                                if (actionGrants.current.canEdit && !actionGrants.current.isLoading) onEdit(record);
                             }}
-                        >
-                            <Button
-                                size="small"
-                                aria-label={`Acciones de ${item.name}`}
-                                icon={<EllipsisOutlined />}
-                                onClick={(event) => {
-                                    event.stopPropagation();
-                                }}
-                            />
-                        </Dropdown>
+                            onStatusAction={(record, status) => {
+                                if (actionGrants.current.isLoading) return;
+                                const allowed = status === "inactive" ? actionGrants.current.canInactivate : actionGrants.current.canEdit;
+                                if (allowed) onStatusAction(record, status);
+                            }}
+                        />
                     ),
                 }}
             >
@@ -378,5 +377,43 @@ function CatalogItemsTableContent({ projectView = false, entityLabel, items, lab
                 </thead>
             </DataTable>
         </div>
+    );
+}
+
+/** Only authorized actions enter the menu; reactivation uses update, never inactivate. */
+function CatalogRowActions({ item, projectView, canEdit: editPermission, canInactivate: inactivatePermission, onEdit, onStatusAction }: Pick<CatalogItemsDataTableProps, "projectView" | "canEdit" | "canInactivate" | "onEdit" | "onStatusAction"> & { readonly item: CatalogItem }) {
+    const canEdit = editPermission === true;
+    const canInactivate = inactivatePermission === true;
+    const active = item.status === "active";
+    const canChangeStatus = active ? canInactivate : canEdit;
+    const nextStatus: CatalogItemStatus = ({ active: "inactive", inactive: "active" } as const)[item.status];
+    const immutable = item.publicId.startsWith("legacy:") && !/^legacy:(projects|campaigns|classes|locations|subsidiaries|brokers):[1-9]\d*$/.test(item.publicId);
+    if (!canEdit && !canChangeStatus) return null;
+    return (
+        <Dropdown
+            trigger={["click"]}
+            {...(projectView ? { rootClassName: "catalog-items-dropdown--projects" } : {})}
+            menu={{
+                items: [...(canEdit ? [{ key: "edit", icon: <EditOutlined />, label: "Editar", disabled: immutable }] : []), ...(canChangeStatus ? [{ key: nextStatus, icon: <StopOutlined />, label: { active: "Inactivar", inactive: "Reactivar" }[item.status], danger: active, disabled: immutable }] : [])],
+                onClick: ({ key, domEvent }) => {
+                    domEvent.stopPropagation();
+                    if (immutable) return;
+                    if (key === "edit") {
+                        if (canEdit) onEdit(item);
+                        return;
+                    }
+                    if (key === nextStatus && canChangeStatus) onStatusAction(item, nextStatus);
+                },
+            }}
+        >
+            <Button
+                size="small"
+                aria-label={`Acciones de ${item.name}`}
+                icon={<EllipsisOutlined />}
+                onClick={(event) => {
+                    event.stopPropagation();
+                }}
+            />
+        </Dropdown>
     );
 }

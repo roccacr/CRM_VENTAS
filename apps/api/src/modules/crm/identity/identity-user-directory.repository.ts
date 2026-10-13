@@ -124,6 +124,7 @@ export interface ListSystemUsersInput {
 }
 
 export interface CreateSystemUserInput {
+    passwordHash?: string;
     accessMethods: readonly CreateSystemUserAccessMethod[];
     actorPublicId: string;
     displayName: string;
@@ -143,6 +144,8 @@ export interface CreateSystemUserInput {
 }
 
 export interface UpdateSystemUserInput {
+    /** Trusted service decision; never accepted from the HTTP DTO. */
+    preserveAssignments: boolean;
     accessMethods: readonly CreateSystemUserAccessMethod[];
     actorPublicId: string;
     displayName: string;
@@ -234,10 +237,10 @@ export class IdentityUserDirectoryRepository {
                         last_used_at_auth_identity: null,
                         locked_until_auth_identity: null,
                         normalized_email_auth_identity: input.normalizedEmail,
-                        password_hash_auth_identity: null,
+                        password_hash_auth_identity: input.passwordHash ?? null,
                         provider_code_auth_identity: LOCAL_PROVIDER_CODE,
                         provider_subject_auth_identity: null,
-                        status_auth_identity: PENDING_LOCAL_STATUS,
+                        status_auth_identity: input.passwordHash ? ACTIVE_STATUS : PENDING_LOCAL_STATUS,
                         updated_at_auth_identity: now,
                         user_id_auth_identity: userId,
                     })
@@ -289,6 +292,7 @@ export class IdentityUserDirectoryRepository {
                         changeSet: buildAuditChangeSet({ entity: "user", recordId: createdPublicId, action: "create", before: null, after: await this.readAuditSnapshot(transaction, userId) }),
                         externalSystems: input.externalReferences.map((reference) => reference.systemCode),
                         initialStatus: input.initialStatus,
+                        localPasswordAssigned: Boolean(input.passwordHash),
                         accessMethods: input.accessMethods,
                         orgUnitCodes: catalog.orgUnits.map((orgUnit) => orgUnit.code),
                         roleCode: input.roleCode,
@@ -400,6 +404,11 @@ export class IdentityUserDirectoryRepository {
             }
 
             const before = await this.readAuditSnapshot(transaction, target.id);
+            if (input.preserveAssignments) {
+                const codes = (values: readonly string[]): string => JSON.stringify([...new Set(values.map(normalizeCaseInsensitiveIdentifier))].sort());
+                const changed = [codes(input.roleCodes.length ? input.roleCodes : [input.roleCode]) !== codes(before.roleCodes as string[]), codes(input.orgUnitCodes) !== codes(before.orgUnitCodes as string[])].includes(true);
+                if (changed) throw new ConflictException("Las asignaciones cambiaron; se requiere role.assign.");
+            }
             const actorSnapshot = await this.audit.captureActor(catalog.actorUserId, transaction);
             await this.assertEmailIsAvailable(transaction, input.normalizedEmail, target.id);
             await this.assertExternalReferencesAreAvailable(transaction, input.externalReferences, target.id);
@@ -418,10 +427,12 @@ export class IdentityUserDirectoryRepository {
                 .executeTakeFirst();
 
             await this.syncLocalAccessMethod(transaction, target.id, input, now);
-            await this.revokeActiveRoles(transaction, target.id, catalog.actorUserId, now);
-            await this.insertActiveRoles(transaction, target.id, catalog, now);
-            await this.revokeActiveOrgUnits(transaction, target.id, catalog.actorUserId, now);
-            await this.insertActiveOrgUnits(transaction, target.id, catalog, now);
+            if (!input.preserveAssignments) {
+                await this.revokeActiveRoles(transaction, target.id, catalog.actorUserId, now);
+                await this.insertActiveRoles(transaction, target.id, catalog, now);
+                await this.revokeActiveOrgUnits(transaction, target.id, catalog.actorUserId, now);
+                await this.insertActiveOrgUnits(transaction, target.id, catalog, now);
+            }
             await this.replaceExternalReferences(transaction, target.id, input, now);
             await this.audit.record(
                 {
@@ -1004,6 +1015,7 @@ export class IdentityUserDirectoryRepository {
             mfaStatus: provider === MICROSOFT_PROVIDER_CODE || provider === "mixed" ? "enabled" : "not_configured",
             name: input.row.name,
             orgUnit: input.orgUnits[0] ? this.mapOrgUnit(input.orgUnits[0]) : null,
+            orgUnits: input.orgUnits.map((unit) => this.mapOrgUnit(unit)),
             profileImageUrl: input.row.profileImageUrl,
             provider,
             publicId: input.row.publicId,

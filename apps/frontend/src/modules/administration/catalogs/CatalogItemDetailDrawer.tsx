@@ -121,6 +121,9 @@ const formatUpdatedAt = (value: string, projectView: boolean): string => new Dat
 
 /** Datos del valor abierto y las acciones que la página todavía tiene que confirmar. */
 interface CatalogItemDetailDrawerProps {
+    /** Exact current-context grants. Reactivation requires update (canEdit). */
+    readonly canEdit?: boolean;
+    readonly canInactivate?: boolean;
     readonly projectView?: boolean;
     readonly catalogLabel: string;
     readonly error: string | null;
@@ -138,40 +141,41 @@ interface CatalogItemDetailDrawerProps {
 }
 
 /** Editar o cambiar estado. No se muestran mientras el detalle carga o falló. */
-function CatalogDetailActions({ item, error, isLoading, onEdit, onStatusAction }: Pick<CatalogItemDetailDrawerProps, "item" | "error" | "isLoading" | "onEdit" | "onStatusAction">) {
+function CatalogDetailActions({ canEdit, canInactivate, item, error, isLoading, onEdit, onStatusAction }: Pick<CatalogItemDetailDrawerProps, "canEdit" | "canInactivate" | "item" | "error" | "isLoading" | "onEdit" | "onStatusAction">) {
     if (!item || error || isLoading) return null;
+    return <CatalogRecordActions item={item} canEdit={canEdit === true} canInactivate={canInactivate === true} onEdit={onEdit} onStatusAction={onStatusAction} />;
+}
+
+/** Permission visibility and the existing legacy immutability constraint are independent. */
+function CatalogRecordActions({ item, canEdit, canInactivate, onEdit, onStatusAction }: { readonly item: CatalogItem; readonly canEdit: boolean; readonly canInactivate: boolean; readonly onEdit: (item: CatalogItem) => void; readonly onStatusAction: (item: CatalogItem, status: CatalogItemStatus) => void }) {
     const active = item.status === "active";
+    const canChangeStatus = active ? canInactivate : canEdit;
     const readOnlyLegacy = item.publicId.startsWith("legacy:") && !/^legacy:(projects|campaigns|classes|locations|subsidiaries|brokers):[1-9]\d*$/.test(item.publicId);
     const readOnlyTitle = readOnlyLegacy ? "Registro legacy de solo lectura" : undefined;
+    const handleEdit = () => {
+        if (canEdit && !readOnlyLegacy) onEdit(item);
+    };
+    const handleStatusAction = () => {
+        if (canChangeStatus && !readOnlyLegacy) onStatusAction(item, active ? "inactive" : "active");
+    };
     return (
         <Space size={8} wrap className="catalog-item-detail-drawer__actions">
-            <Button
-                disabled={readOnlyLegacy}
-                title={readOnlyTitle}
-                icon={<EditOutlined aria-hidden="true" />}
-                onClick={() => {
-                    onEdit(item);
-                }}
-            >
-                Editar
-            </Button>
-            <Button
-                type="primary"
-                disabled={readOnlyLegacy}
-                title={readOnlyTitle}
-                icon={active ? <StopOutlined aria-hidden="true" /> : <ReloadOutlined aria-hidden="true" />}
-                onClick={() => {
-                    onStatusAction(item, active ? "inactive" : "active");
-                }}
-            >
-                {active ? "Inactivar" : "Reactivar"}
-            </Button>
+            {canEdit ? (
+                <Button disabled={readOnlyLegacy} title={readOnlyTitle} icon={<EditOutlined aria-hidden="true" />} onClick={handleEdit}>
+                    Editar
+                </Button>
+            ) : null}
+            {canChangeStatus ? (
+                <Button type="primary" disabled={readOnlyLegacy} title={readOnlyTitle} icon={active ? <StopOutlined aria-hidden="true" /> : <ReloadOutlined aria-hidden="true" />} onClick={handleStatusAction}>
+                    {active ? "Inactivar" : "Reactivar"}
+                </Button>
+            ) : null}
         </Space>
     );
 }
 
 /** Posición en el listado y acciones. Las flechas se deshabilitan en los extremos. */
-function CatalogDetailFooter({ item, error, isLoading, onEdit, onStatusAction, position, total, onSelectPrevious, onSelectNext }: Omit<CatalogItemDetailDrawerProps, "catalogLabel" | "onClose" | "onRefresh" | "open">) {
+function CatalogDetailFooter({ canEdit = false, canInactivate = false, item, error, isLoading, onEdit, onStatusAction, position, total, onSelectPrevious, onSelectNext }: Omit<CatalogItemDetailDrawerProps, "catalogLabel" | "onClose" | "onRefresh" | "open">) {
     const unavailable = isLoading || Boolean(error);
     return (
         <div className="user-detail-drawer__footer">
@@ -187,7 +191,7 @@ function CatalogDetailFooter({ item, error, isLoading, onEdit, onStatusAction, p
                         <Button icon={<RightOutlined aria-hidden="true" />} aria-label="Registro siguiente" disabled={unavailable || position < 1 || position >= total} onClick={onSelectNext} />
                     </Tooltip>
                 </Space.Compact>
-                <CatalogDetailActions item={item} error={error} isLoading={isLoading} onEdit={onEdit} onStatusAction={onStatusAction} />
+                <CatalogDetailActions canEdit={canEdit} canInactivate={canInactivate} item={item} error={error} isLoading={isLoading} onEdit={onEdit} onStatusAction={onStatusAction} />
             </Space>
         </div>
     );
@@ -219,7 +223,9 @@ function CatalogDetailLoading({ projectView }: { readonly projectView: boolean |
  * Las flechas del teclado cambian de registro. No actúan si el foco está en un
  * campo o en un menú, para no saltar de fila mientras se escribe.
  */
-export function CatalogItemDetailDrawer({ projectView, catalogLabel, error, isLoading, item, onClose, onEdit, onRefresh, onStatusAction, open, position, total, onSelectPrevious, onSelectNext }: CatalogItemDetailDrawerProps) {
+export function CatalogItemDetailDrawer({ canEdit: editPermission, canInactivate: inactivatePermission, projectView, catalogLabel, error, isLoading, item, onClose, onEdit, onRefresh, onStatusAction, open, position, total, onSelectPrevious, onSelectNext }: CatalogItemDetailDrawerProps) {
+    const canEdit = editPermission === true;
+    const canInactivate = inactivatePermission === true;
     return (
         <Drawer
             {...ADMINISTRATION_DRAWER_PROPS}
@@ -254,7 +260,7 @@ export function CatalogItemDetailDrawer({ projectView, catalogLabel, error, isLo
                     <Button className="user-detail-drawer__header-button" type="text" aria-label="Actualizar detalle" icon={<ReloadOutlined aria-hidden="true" />} disabled={isLoading} onClick={onRefresh} />
                 </Tooltip>
             }
-            footer={<CatalogDetailFooter item={item} error={error} isLoading={isLoading} onEdit={onEdit} onStatusAction={onStatusAction} position={position} total={total} onSelectPrevious={onSelectPrevious} onSelectNext={onSelectNext} />}
+            footer={<CatalogDetailFooter canEdit={canEdit} canInactivate={canInactivate} item={item} error={error} isLoading={isLoading} onEdit={onEdit} onStatusAction={onStatusAction} position={position} total={total} onSelectPrevious={onSelectPrevious} onSelectNext={onSelectNext} />}
             onKeyDown={(event) => {
                 if (isLoading || error || !item || (event.target as HTMLElement).closest("input, textarea, select, [role='menu'], [role='listbox'], .ant-dropdown")) return;
                 if (event.key === "ArrowUp") {

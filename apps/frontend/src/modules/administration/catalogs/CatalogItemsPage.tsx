@@ -3,8 +3,9 @@
  *
  * La misma página sirve en Administración y en los perfiles operativos: el
  * catálogo y el módulo de contexto llegan por props. Crear, editar y cambiar
- * estado exigen un motivo porque el API audita cada cambio. Esta pantalla no
- * calcula permisos; el BFF rechaza la llamada si el usuario no puede actuar.
+ * estado exigen un motivo porque el API audita cada cambio. Esta pantalla
+ * protege visualmente cada acción con permisos efectivos; el BFF conserva la
+ * autorización definitiva de cada llamada.
  */
 import "./CatalogItemsPage.css";
 import "./ProjectsView.css";
@@ -27,6 +28,7 @@ import Tooltip from "antd/es/tooltip";
 import { type ReactNode, useCallback, useEffect, useRef, useState } from "react";
 
 import { ApiClientError } from "../../../services/api/api-client";
+import { getIdentityProfile } from "../../../services/auth/auth-service";
 import { type CatalogContextModuleCode, type CatalogExternalReferencePayload, type CatalogItem, type CatalogItemPayload, type CatalogItemStatus, createCatalogItem, listCatalogItems, updateCatalogItem, updateCatalogItemStatus } from "../../../services/catalogs/catalog-service";
 import { ADMINISTRATION_MODAL_Z_INDEX, ADMINISTRATION_THEME } from "../administration-theme";
 import { BROKERS_FORM_COPY, BROKERS_NAME_MAX_LENGTH } from "../brokers/brokers-definition";
@@ -35,6 +37,7 @@ import { CLASSES_FORM_COPY, CLASSES_NAME_MAX_LENGTH } from "../classes/classes-d
 import { LOCATIONS_FORM_COPY, LOCATIONS_NAME_MAX_LENGTH } from "../locations/locations-definition";
 import { SUBSIDIARIES_FORM_COPY, SUBSIDIARIES_NAME_MAX_LENGTH } from "../subsidiaries/subsidiaries-definition";
 import { type AdministrationCatalogDefinition, CATALOG_REFERENCE_PROVIDERS, getCatalogPresentation } from "./catalog-definitions";
+import { type CatalogPermissions, getCatalogPermissions, NO_CATALOG_PERMISSIONS } from "./catalog-permissions";
 import { CatalogItemDetailDrawer } from "./CatalogItemDetailDrawer";
 import { CatalogItemsDataTable } from "./CatalogItemsDataTable";
 import { PROJECTS_THEME } from "./projects-theme";
@@ -385,20 +388,22 @@ function CatalogPagination({ page, pageSize, total, loaded, disabled, isLoading,
 }
 
 /** Domain-aware header actions; block refresh while a request or mutation is active. */
-function CatalogHeaderActions({ catalogCode, isLoading, isSaving, isSavingStatus, onRefresh, onCreate }: { readonly catalogCode: string; readonly isLoading: boolean; readonly isSaving: boolean; readonly isSavingStatus: boolean; readonly onRefresh: () => void; readonly onCreate: () => void }) {
+function CatalogHeaderActions({ canRead, canCreate, catalogCode, isLoading, isSaving, isSavingStatus, onRefresh, onCreate }: { readonly canRead: boolean; readonly canCreate: boolean; readonly catalogCode: string; readonly isLoading: boolean; readonly isSaving: boolean; readonly isSavingStatus: boolean; readonly onRefresh: () => void; readonly onCreate: () => void }) {
     const presentation = getCatalogPresentation(catalogCode);
     const refreshLabel = presentation.refresh;
     return (
         <div className="global-home-page-header__actions">
-            {presentation.enhanced && (
+            {canRead && presentation.enhanced && (
                 <Tooltip title={refreshLabel}>
                     <Button className="projects-view-refresh" aria-label={refreshLabel} icon={<ReloadOutlined spin={isLoading} />} disabled={isLoading || isSaving || isSavingStatus} onClick={onRefresh} />
                 </Tooltip>
             )}
-            <button className="global-home-page-header__primary" type="button" onClick={onCreate}>
-                <PlusOutlined />
-                {presentation.create}
-            </button>
+            {canCreate ? (
+                <button className="global-home-page-header__primary" type="button" onClick={onCreate}>
+                    <PlusOutlined />
+                    {presentation.create}
+                </button>
+            ) : null}
         </div>
     );
 }
@@ -434,7 +439,16 @@ function CatalogListPanel({ catalog, isLoading, children }: { readonly catalog: 
 const getCatalogProviderProps = (projectView: boolean) => (projectView ? { locale: esES, theme: PROJECTS_THEME } : { theme: ADMINISTRATION_THEME });
 
 /** Pantalla administrativa scoped por catalogo y modulo autorizado. */
+// eslint-disable-next-line complexity, sonarjs/cognitive-complexity -- Keep explicit permission gates and scope-bound dialogs beside the existing page state.
 export function CatalogItemsPage({ catalog, contextLabel = "Administración", contextModuleCode = "administration" }: CatalogItemsPageProps) {
+    const scope = `${contextModuleCode}:${catalog.code}`;
+    const scopeRef = useRef(scope);
+    scopeRef.current = scope;
+    const permissionSequence = useRef(0);
+    const [permissionState, setPermissionState] = useState({ scope: "", permissions: NO_CATALOG_PERMISSIONS });
+    const permissions = permissionState.scope === scope ? permissionState.permissions : NO_CATALOG_PERMISSIONS;
+    const permissionsRef = useRef<CatalogPermissions>(NO_CATALOG_PERMISSIONS);
+    const permissionScopeRef = useRef("");
     const presentation = getCatalogPresentation(catalog.code);
     const projectView = presentation.enhanced;
     const [error, setError] = useState<string | null>(null);
@@ -442,6 +456,7 @@ export function CatalogItemsPage({ catalog, contextLabel = "Administración", co
     const [items, setItems] = useState<readonly CatalogItem[]>([]);
     const [editingItem, setEditingItem] = useState<CatalogItem | null>(null);
     const [isFormOpen, setIsFormOpen] = useState(false);
+    const [dialogScope, setDialogScope] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
     const [isSavingStatus, setIsSavingStatus] = useState(false);
@@ -460,6 +475,33 @@ export function CatalogItemsPage({ catalog, contextLabel = "Administración", co
     const loadSequence = useRef(0);
     // Session-local batches only: never persist CRM data or share it between mounted users.
     const pageCache = useRef(new Map<string, Awaited<ReturnType<typeof listCatalogItems>>>());
+    const editingRef = useRef(editingItem);
+    editingRef.current = editingItem;
+
+    const refreshPermissions = useCallback(async (): Promise<CatalogPermissions> => {
+        const request = ++permissionSequence.current;
+        const next = await getIdentityProfile()
+            .then((profile) => getCatalogPermissions(profile, catalog, contextModuleCode))
+            .catch(() => NO_CATALOG_PERMISSIONS);
+        if (request !== permissionSequence.current || scopeRef.current !== scope) return NO_CATALOG_PERMISSIONS;
+        permissionsRef.current = next;
+        permissionScopeRef.current = scope;
+        setPermissionState({ scope, permissions: next });
+        if (!next.read) {
+            loadSequence.current++;
+            pageCache.current.clear();
+            setItems([]);
+            setTotal(0);
+            setSelection(null);
+            setIsLoading(false);
+        }
+        if (!(editingRef.current ? next.read && next.update : next.create)) {
+            setIsFormOpen(false);
+            setEditingItem(null);
+        }
+        setPendingStatusAction((action) => (action && next.read && (action.status === "inactive" ? next.inactivate : next.update) ? action : null));
+        return next;
+    }, [catalog, contextModuleCode, scope]);
     const showPage = useCallback((target: { page: number; pageSize: number }, response: Awaited<ReturnType<typeof listCatalogItems>>) => {
         if (target.page !== currentPage.current.page || target.pageSize !== currentPage.current.pageSize) setSelection(null);
         currentPage.current = target;
@@ -470,6 +512,7 @@ export function CatalogItemsPage({ catalog, contextLabel = "Administración", co
 
     const loadItems = useCallback(
         function loadPage(target = { page: 1, pageSize: 100 }, refresh = false) {
+            if (scopeRef.current !== scope || permissionScopeRef.current !== scope || !permissionsRef.current.read) return;
             const sequence = ++loadSequence.current;
             if (refresh) pageCache.current.clear();
             const key = JSON.stringify([catalog.code, contextModuleCode, target.pageSize, target.page]);
@@ -507,27 +550,59 @@ export function CatalogItemsPage({ catalog, contextLabel = "Administración", co
                     setIsLoading(false);
                 });
         },
-        [catalog.code, contextModuleCode, showPage],
+        [catalog.code, contextModuleCode, showPage, scope],
     );
 
     useEffect(() => {
-        loadItems();
+        // Dialog targets cannot carry over into another catalog or module.
+        setDialogScope(null);
+        setIsFormOpen(false);
+        setEditingItem(null);
+        setPendingStatusAction(null);
+        setReason("");
+        setFormError(null);
+        setIsSaving(false);
+        setIsSavingStatus(false);
+        void refreshPermissions().then((next) => {
+            if (next.read) loadItems();
+        });
+        const onFocus = () => {
+            void refreshPermissions();
+        };
+        window.addEventListener("focus", onFocus);
         return () => {
             // eslint-disable-next-line react-hooks/exhaustive-deps -- Invalidate the latest request counter, not a captured DOM ref.
             loadSequence.current++;
+            // eslint-disable-next-line react-hooks/exhaustive-deps -- This is a request counter, not a DOM ref.
+            permissionSequence.current++;
+            window.removeEventListener("focus", onFocus);
         };
-    }, [loadItems]);
+    }, [loadItems, refreshPermissions]);
+
+    const refreshItems = (): void => {
+        void refreshPermissions().then((next) => {
+            if (next.read) loadItems(currentPage.current, true);
+        });
+    };
 
     const openCreate = (): void => {
-        setFormError(null);
-        setEditingItem(null);
-        setIsFormOpen(true);
+        void refreshPermissions().then((next) => {
+            if (!next.create) return;
+            setFormError(null);
+            setEditingItem(null);
+            setDialogScope(scope);
+            setIsFormOpen(true);
+        });
     };
 
     const openEdit = (item: CatalogItem): void => {
-        setFormError(null);
-        setEditingItem(item);
-        setIsFormOpen(true);
+        void refreshPermissions().then((next) => {
+            if (!next.read || !next.update) return;
+            setFormError(null);
+            setEditingItem(item);
+            setDialogScope(scope);
+            setIsFormOpen(true);
+        });
     };
 
     const closeForm = (): void => {
@@ -541,30 +616,43 @@ export function CatalogItemsPage({ catalog, contextLabel = "Administración", co
     };
 
     const submitForm = (payload: CatalogItemFormPayload): void => {
-        setIsSaving(true);
-        setFormError(null);
-        const scopedPayload = { ...payload, moduleCode: contextModuleCode };
-        const request = editingItem ? updateCatalogItem(catalog.code, editingItem.publicId, scopedPayload) : createCatalogItem(catalog.code, scopedPayload);
+        const origin = dialogScope;
+        if (!isFormOpen || origin !== scope || origin !== scopeRef.current) return;
+        void refreshPermissions().then((next) => {
+            if (scopeRef.current !== origin) return;
+            if (!(editingItem ? next.read && next.update : next.create)) return;
+            setIsSaving(true);
+            setFormError(null);
+            const scopedPayload = { ...payload, moduleCode: contextModuleCode };
+            const request = editingItem ? updateCatalogItem(catalog.code, editingItem.publicId, scopedPayload) : createCatalogItem(catalog.code, scopedPayload);
 
-        void request
-            .then((saved) => {
-                if (editingItem) setSelection((current) => (current?.publicId === editingItem.publicId ? { ...current, publicId: saved.publicId } : current));
-                setIsFormOpen(false);
-                setEditingItem(null);
-                void message.success(`${catalog.label} guardado y auditado.`);
-                loadItems(currentPage.current, true);
-            })
-            .catch((saveError: unknown) => {
-                setFormError(getApiErrorMessage(saveError, "No pudimos guardar el catálogo. Revisa permisos, duplicados y motivo de auditoría."));
-            })
-            .finally(() => {
-                setIsSaving(false);
-            });
+            void request
+                .then((saved) => {
+                    if (scopeRef.current !== origin) return;
+                    if (editingItem) setSelection((current) => (current?.publicId === editingItem.publicId ? { ...current, publicId: saved.publicId } : current));
+                    setIsFormOpen(false);
+                    setEditingItem(null);
+                    void message.success(`${catalog.label} guardado y auditado.`);
+                    loadItems(currentPage.current, true);
+                })
+                .catch((saveError: unknown) => {
+                    if (scopeRef.current !== origin) return;
+                    setFormError(getApiErrorMessage(saveError, "No pudimos guardar el catálogo. Revisa permisos, duplicados y motivo de auditoría."));
+                })
+                .finally(() => {
+                    if (scopeRef.current !== origin) return;
+                    setIsSaving(false);
+                });
+        });
     };
 
     const openStatusAction = (item: CatalogItem, status: CatalogItemStatus): void => {
-        setReason("");
-        setPendingStatusAction({ item, status });
+        void refreshPermissions().then((next) => {
+            if (!next.read || !(status === "inactive" ? next.inactivate : next.update)) return;
+            setReason("");
+            setDialogScope(scope);
+            setPendingStatusAction({ item, status });
+        });
     };
 
     const closeStatusAction = (): void => {
@@ -576,25 +664,40 @@ export function CatalogItemsPage({ catalog, contextLabel = "Administración", co
         setReason("");
     };
 
+    const openDetail = (item: CatalogItem): void => {
+        void refreshPermissions().then((next) => {
+            if (next.read) setSelection({ publicId: item.publicId, catalogCode: catalog.code, context: contextModuleCode, open: true });
+        });
+    };
+
     const submitStatusAction = (): void => {
         if (!pendingStatusAction) {
             return;
         }
 
-        setIsSavingStatus(true);
-        void updateCatalogItemStatus(catalog.code, pendingStatusAction.item.publicId, { moduleCode: contextModuleCode, reason: reason.trim(), status: pendingStatusAction.status })
-            .then((saved) => {
-                setSelection((current) => (current?.publicId === pendingStatusAction.item.publicId ? { ...current, publicId: saved.publicId } : current));
-                void message.success(`${pendingStatusAction.item.name} actualizado.`);
-                closeStatusAction();
-                loadItems(currentPage.current, true);
-            })
-            .catch(() => {
-                void message.error("No pudimos actualizar el estado del catálogo.");
-            })
-            .finally(() => {
-                setIsSavingStatus(false);
-            });
+        const origin = dialogScope;
+        if (origin !== scope || origin !== scopeRef.current) return;
+        void refreshPermissions().then((next) => {
+            if (scopeRef.current !== origin) return;
+            if (!next.read || !(pendingStatusAction.status === "inactive" ? next.inactivate : next.update) || reason.trim().length < MIN_REASON_LENGTH) return;
+            setIsSavingStatus(true);
+            void updateCatalogItemStatus(catalog.code, pendingStatusAction.item.publicId, { moduleCode: contextModuleCode, reason: reason.trim(), status: pendingStatusAction.status })
+                .then((saved) => {
+                    if (scopeRef.current !== origin) return;
+                    setSelection((current) => (current?.publicId === pendingStatusAction.item.publicId ? { ...current, publicId: saved.publicId } : current));
+                    void message.success(`${pendingStatusAction.item.name} actualizado.`);
+                    closeStatusAction();
+                    loadItems(currentPage.current, true);
+                })
+                .catch(() => {
+                    if (scopeRef.current !== origin) return;
+                    void message.error("No pudimos actualizar el estado del catálogo.");
+                })
+                .finally(() => {
+                    if (scopeRef.current !== origin) return;
+                    setIsSavingStatus(false);
+                });
+        });
     };
 
     return (
@@ -609,79 +712,74 @@ export function CatalogItemsPage({ catalog, contextLabel = "Administración", co
                             <span aria-hidden="true">/</span>
                             <span>{catalog.label}</span>
                         </nav>
-                        <CatalogPageTitle catalog={catalog} isLoading={isLoading} total={total} />
+                        <CatalogPageTitle catalog={catalog} isLoading={isLoading} total={permissions.read ? total : 0} />
                         <p>Gestión de valores nativos CRM y sus referencias externas.</p>
                     </div>
-                    <CatalogHeaderActions
-                        catalogCode={catalog.code}
-                        isLoading={isLoading}
-                        isSaving={isSaving}
-                        isSavingStatus={isSavingStatus}
-                        onRefresh={() => {
-                            loadItems(currentPage.current, true);
-                        }}
-                        onCreate={openCreate}
-                    />
+                    <CatalogHeaderActions canRead={permissions.read} canCreate={permissions.create} catalogCode={catalog.code} isLoading={isLoading} isSaving={isSaving} isSavingStatus={isSavingStatus} onRefresh={refreshItems} onCreate={openCreate} />
                 </section>
 
-                <CatalogListPanel catalog={catalog} isLoading={isLoading}>
-                    <CatalogItemsDataTable
-                        entityLabel={presentation.entity}
-                        projectView={projectView}
-                        key={`${contextModuleCode}:${catalog.code}`}
-                        items={items}
-                        label={catalog.label}
-                        isLoading={isLoading}
-                        storageKey={`rocca.${contextModuleCode}.catalogs.${catalog.code}.datatable.v1`}
-                        selectedPublicId={isDetailOpen ? selection.publicId : null}
-                        onEdit={openEdit}
-                        onStatusAction={openStatusAction}
-                        onSelect={(item) => {
-                            setSelection({ publicId: item.publicId, catalogCode: catalog.code, context: contextModuleCode, open: true });
-                        }}
-                        onVisibleOrderChange={setVisibleOrder}
-                    />
-                    <CatalogLoadState error={error} isLoading={isLoading} projectView={projectView} />
-                    <CatalogPagination
-                        {...pagination}
-                        total={total}
-                        loaded={items.length}
-                        isLoading={isLoading}
-                        disabled={[isLoading, isSaving, isSavingStatus].some(Boolean)}
-                        onChange={(page, pageSize) => {
-                            loadItems({ page, pageSize });
-                        }}
-                    />
-                </CatalogListPanel>
+                {permissions.read ? (
+                    <CatalogListPanel catalog={catalog} isLoading={isLoading}>
+                        <CatalogItemsDataTable
+                            canEdit={permissions.update}
+                            canInactivate={permissions.inactivate}
+                            entityLabel={presentation.entity}
+                            projectView={projectView}
+                            key={`${contextModuleCode}:${catalog.code}`}
+                            items={items}
+                            label={catalog.label}
+                            isLoading={isLoading}
+                            storageKey={`rocca.${contextModuleCode}.catalogs.${catalog.code}.datatable.v1`}
+                            selectedPublicId={isDetailOpen ? selection.publicId : null}
+                            onEdit={openEdit}
+                            onStatusAction={openStatusAction}
+                            onSelect={openDetail}
+                            onVisibleOrderChange={setVisibleOrder}
+                        />
+                        <CatalogLoadState error={error} isLoading={isLoading} projectView={projectView} />
+                        <CatalogPagination
+                            {...pagination}
+                            total={total}
+                            loaded={items.length}
+                            isLoading={isLoading}
+                            disabled={[isLoading, isSaving, isSavingStatus].some(Boolean)}
+                            onChange={(page, pageSize) => {
+                                loadItems({ page, pageSize });
+                            }}
+                        />
+                    </CatalogListPanel>
+                ) : (
+                    <p role="status">{permissionState.scope === scope ? "No tienes permiso para consultar este catálogo." : "Verificando permisos del catálogo..."}</p>
+                )}
 
                 <CatalogItemDetailDrawer
+                    canEdit={permissions.update}
+                    canInactivate={permissions.inactivate}
                     projectView={projectView}
                     catalogLabel={catalog.label}
                     error={error}
                     isLoading={isLoading}
-                    item={selectedItem}
-                    open={isDetailOpen}
+                    item={permissions.read ? selectedItem : null}
+                    open={permissions.read && isDetailOpen}
                     position={selectedIndex + 1}
                     total={navigationItems.length}
                     onSelectPrevious={() => {
                         const previous = navigationItems[selectedIndex - 1];
-                        if (previous) setSelection({ publicId: previous.publicId, catalogCode: catalog.code, context: contextModuleCode, open: true });
+                        if (previous) openDetail(previous);
                     }}
                     onSelectNext={() => {
                         const next = navigationItems[selectedIndex + 1];
-                        if (next) setSelection({ publicId: next.publicId, catalogCode: catalog.code, context: contextModuleCode, open: true });
+                        if (next) openDetail(next);
                     }}
                     onClose={() => {
                         setSelection((current) => (current ? { ...current, open: false } : null));
                     }}
                     onEdit={openEdit}
-                    onRefresh={() => {
-                        loadItems(currentPage.current, true);
-                    }}
+                    onRefresh={refreshItems}
                     onStatusAction={openStatusAction}
                 />
-                <CatalogItemModal catalog={catalog} error={formError} initialItem={editingItem} isSaving={isSaving} open={isFormOpen} onClose={closeForm} onSubmit={submitForm} />
-                <CatalogStatusModal action={pendingStatusAction} isSaving={isSavingStatus} reason={reason} onClose={closeStatusAction} onReasonChange={setReason} onSubmit={submitStatusAction} projectView={projectView} />
+                {isFormOpen && dialogScope === scope ? <CatalogItemModal catalog={catalog} error={formError} initialItem={editingItem} isSaving={isSaving} open={isFormOpen} onClose={closeForm} onSubmit={submitForm} /> : null}
+                {pendingStatusAction && dialogScope === scope ? <CatalogStatusModal action={pendingStatusAction} isSaving={isSavingStatus} reason={reason} onClose={closeStatusAction} onReasonChange={setReason} onSubmit={submitStatusAction} projectView={projectView} /> : null}
             </div>
         </ConfigProvider>
     );

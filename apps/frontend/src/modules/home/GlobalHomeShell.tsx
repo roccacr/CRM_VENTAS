@@ -323,9 +323,10 @@ export const ASSIGNED_WORKSPACES: readonly [WorkspaceProfile, ...WorkspaceProfil
         label: "Formalización",
         icon: <FileProtectOutlined />,
         menuItems: [
-            { code: "formalization-home", label: "Resumen", icon: <DashboardOutlined />, requiredPermission: "file.read", routePath: FORMALIZATION_HOME_PATH },
-            { code: "formalization-files", label: "Expedientes", icon: <FolderOpenOutlined />, requiredPermission: "file.read", routePath: FORMALIZATION_HOME_PATH },
-            { code: "formalization-contracts", label: "Contratos", icon: <FileDoneOutlined />, requiredPermission: "contract.review", routePath: FORMALIZATION_HOME_PATH },
+            { code: "formalization-home", label: "Inicio", icon: <DashboardOutlined />, requiredPermission: "formalizacion.home.read", routePath: FORMALIZATION_HOME_PATH },
+            { code: "formalization-summary", label: "Resumen", icon: <DashboardOutlined />, requiredPermission: "file.read", routePath: `${FORMALIZATION_HOME_PATH}/summary` },
+            { code: "formalization-files", label: "Expedientes", icon: <FolderOpenOutlined />, requiredPermission: "file.read", routePath: `${FORMALIZATION_HOME_PATH}/files` },
+            { code: "formalization-contracts", label: "Contratos", icon: <FileDoneOutlined />, requiredPermission: "contract.review", routePath: `${FORMALIZATION_HOME_PATH}/contracts` },
             { code: "formalization-catalogs", label: "Catálogos", icon: <DatabaseOutlined />, children: buildCatalogMenuOptions("formalization") },
         ],
     },
@@ -1367,11 +1368,11 @@ const getInitialWorkspaceProfile = (assignedWorkspaces: readonly WorkspaceProfil
  * Filtra el menú con los permisos efectivos recibidos. Sin esa lista usa el
  * set demo, que hoy permite todo el catálogo. Ocultar un ítem es UX: el API
  * sigue autorizando cada ruta. Si el filtro no deja perfiles, la cabecera usa
- * el primero del catálogo para no quedar vacía; eso no concede esos permisos.
+ * el primero del catálogo sin ítems de menú para no mostrar accesos inexistentes.
  */
 export function GlobalHomeShell({ activeMenuItemCode, children, currentUser, effectivePermissions = DEMO_EFFECTIVE_NAVIGATION_PERMISSIONS, initialWorkspaceCode, onLogout, onMenuItemSelect, onWorkspaceChange, orgUnits }: GlobalHomeShellProps) {
     const assignedWorkspaces = getVisibleNavigationWorkspaces(effectivePermissions, orgUnits);
-    const fallbackWorkspace = assignedWorkspaces[0] ?? ASSIGNED_WORKSPACES[0];
+    const fallbackWorkspace = assignedWorkspaces[0] ?? { ...ASSIGNED_WORKSPACES[0], menuItems: [] };
     const initialWorkspace = getInitialWorkspaceProfile(assignedWorkspaces, fallbackWorkspace, initialWorkspaceCode);
     const [openMenuCode, setOpenMenuCode] = useState<string | null>(null);
     const [isWorkspaceSelectorOpen, setIsWorkspaceSelectorOpen] = useState(false);
@@ -1384,7 +1385,6 @@ export function GlobalHomeShell({ activeMenuItemCode, children, currentUser, eff
     const activeWorkspaceWithCurrentRoute = setActiveMenuItem(activeWorkspace, activeMenuItemCode);
     const safeOpenMobileWorkspaceCode = getWorkspaceProfile(openMobileWorkspaceCode, assignedWorkspaces)?.code ?? activeWorkspace.code;
     const menuItems = getResponsiveMenuItems(activeWorkspaceWithCurrentRoute, menuTrackWidth);
-    const isSingleMenuItemMode = menuItems.length === 1;
     const selectMenuItemRoute = (routePath: string) => {
         setOpenMenuCode(null);
         setIsMobileDrawerOpen(false);
@@ -1508,7 +1508,7 @@ export function GlobalHomeShell({ activeMenuItemCode, children, currentUser, eff
                 </div>
             </header>
 
-            <nav className={`global-home-menu${isSingleMenuItemMode ? " global-home-menu--single" : ""}`} aria-label="Navegación principal">
+            <nav className="global-home-menu" aria-label="Navegación principal">
                 <div ref={menuTrackRef} className="global-home-menu__track">
                     {menuItems.map((item) => (
                         <GlobalMenuNode

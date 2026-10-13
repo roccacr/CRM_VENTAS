@@ -3,6 +3,7 @@ import { validate } from "class-validator";
 import { describe, expect, it } from "vitest";
 
 import { CompleteLocalResetDto, LocalLoginDto, RequestLocalResetDto } from "../../src/modules/crm/identity/dto/local-auth.dto.js";
+import { CreateSystemUserDto } from "../../src/modules/crm/identity/dto/system-users.dto.js";
 
 /**
  * Retorna las constraints de validacion para un campo especifico.
@@ -16,6 +17,9 @@ const getFieldConstraints = async (dto: object, property: string): Promise<Recor
  * Valida reglas de entrada locales sin levantar HTTP.
  */
 describe("local auth DTOs", () => {
+    it.each([null, "", "short", "x".repeat(129)])("rejects invalid initial passwords without exposing their values (%#)", async (password) => {
+        expect(Object.keys(await getFieldConstraints(plainToInstance(CreateSystemUserDto, { password }), "password")).length).toBeGreaterThan(0);
+    });
     it("normaliza correos y limita su longitud maxima", async () => {
         const dto = plainToInstance(RequestLocalResetDto, {
             email: "  USUARIO@ROCCACR.COM  ",

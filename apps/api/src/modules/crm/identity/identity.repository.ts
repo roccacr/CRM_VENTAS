@@ -57,6 +57,8 @@ export interface CreateIdentitySessionInput {
 }
 
 export interface RotateRefreshSessionInput {
+    ipAddress?: string | undefined;
+    userAgent?: string | undefined;
     refreshTokenHash: string;
     nextRefreshExpiresAt: Date;
     nextRefreshTokenHash: string;
@@ -72,6 +74,7 @@ export type RotateRefreshSessionResult =
           status: "rotated";
           sessionExpiresAt: Date;
           sessionPublicId: string;
+          snapshot: Pick<IdentityProfile, "session" | "user">;
           userId: number;
       }
     | {

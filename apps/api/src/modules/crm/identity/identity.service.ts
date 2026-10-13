@@ -2,7 +2,7 @@ import { BadRequestException, ConflictException, ForbiddenException, Inject, Inj
 import { argon2id, hash as hashArgon2Password, verify as verifyArgon2Hash } from "argon2";
 
 import { normalizeCaseInsensitiveIdentifier } from "../../../common/security/identifier-normalization.js";
-import type { CompleteLocalResetDto, LocalLoginDto, RequestLocalResetDto } from "./dto/local-auth.dto.js";
+import { type CompleteLocalResetDto, type LocalLoginDto, MAX_LOCAL_PASSWORD_LENGTH, MIN_LOCAL_PASSWORD_LENGTH, type RequestLocalResetDto } from "./dto/local-auth.dto.js";
 import type { CreateSystemUserAccessMethod, CreateSystemUserDto, ListSystemUsersQueryDto, UpdateSystemUserDto, UpdateSystemUserStatusDto } from "./dto/system-users.dto.js";
 import { type FailedLocalLoginRecord, IdentityRepository } from "./identity.repository.js";
 import type { ActiveSessionsResponse, IdentityProfile, SessionResponse, SystemUserDirectoryItem, SystemUsersListResponse } from "./identity.types.js";
@@ -26,6 +26,8 @@ const LOCAL_PROVIDER_CODE = "local";
 const USER_VIEW_LIST_PERMISSION = "user.view_list";
 const USER_VIEW_DETAIL_PERMISSION = "user.view_detail";
 const USER_CREATE_PERMISSION = "user.create";
+const USER_ASSIGN_PASSWORD_PERMISSION = "user.assign_password";
+const ROLE_ASSIGN_PERMISSION = "role.assign";
 const USER_UPDATE_PERMISSION = "user.update";
 const USER_ACTIVATE_PERMISSION = "user.activate";
 const USER_DEACTIVATE_PERMISSION = "user.deactivate";
@@ -259,14 +261,15 @@ export class IdentityService {
     /**
      * Crea un usuario interno del CRM.
      *
-     * La contraseña no viaja aquí. El alta deja identidad local pendiente para
-     * activación/reset controlado y Microsoft se vincula después por OIDC si el
-     * correo verificado coincide.
+     * La clave inicial es opcional y exige un privilegio adicional. Solo su hash
+     * llega a persistencia; sin clave sigue pendiente de activacion/reset.
      */
     async createSystemUser(sessionToken: string | undefined, payload: CreateSystemUserDto, ipAddress?: string, userAgent?: string): Promise<SystemUserDirectoryItem> {
         const profile = await this.getCurrentUser(sessionToken);
         this.assertCan(profile, USER_CREATE_PERMISSION);
+        this.assertCan(profile, ROLE_ASSIGN_PERMISSION);
         const { accessMethods, orgUnitCodes, roleCodes } = normalizeSystemUserAccessMutation(payload);
+        const passwordHash = await this.hashAssignedInitialPassword(profile, payload.password, accessMethods);
 
         return this.repository.createSystemUser({
             accessMethods,
@@ -274,10 +277,12 @@ export class IdentityService {
             displayName: payload.displayName.trim(),
             email: payload.email.trim(),
             externalReferences: payload.externalReferences ?? [],
-            initialStatus: payload.initialStatus,
+            initialStatus: passwordHash && payload.initialStatus === "pending" ? "active" : payload.initialStatus,
+            ...(passwordHash ? { passwordHash } : {}),
             ipAddress,
             normalizedEmail: normalizeCaseInsensitiveIdentifier(payload.email),
-            orgUnitCodes,
+            // Only creation supplies the profile default; edits can explicitly remove module access.
+            orgUnitCodes: orgUnitCodes.length === 0 && roleCodes.includes("formalizacion") ? ["formalizacion"] : orgUnitCodes,
             reason: payload.reason.trim(),
             roleCode: roleCodes[0] ?? payload.roleCode.trim(),
             roleCodes,
@@ -294,13 +299,17 @@ export class IdentityService {
     async updateSystemUser(sessionToken: string | undefined, userPublicId: string, payload: UpdateSystemUserDto, context: IdentityRequestAuditContext = {}): Promise<SystemUserDirectoryItem> {
         const profile = await this.getCurrentUser(sessionToken);
 
-        if (userPublicId === profile.user.publicId) {
+        if (normalizeCaseInsensitiveIdentifier(userPublicId) === normalizeCaseInsensitiveIdentifier(profile.user.publicId)) {
             throw new ForbiddenException("No puedes editar tu propia cuenta desde Administracion.");
         }
 
         this.assertCan(profile, USER_UPDATE_PERMISSION);
         const { accessMethods, orgUnitCodes, roleCodes } = normalizeSystemUserAccessMutation(payload);
+        const current = await this.repository.findSystemUserByPublicId(profile.user.publicId, userPublicId);
+        if (!current) throw new NotFoundException("Usuario no encontrado.");
+        this.assertAssignmentChangeAllowed(profile, current, roleCodes, orgUnitCodes);
         const user = await this.repository.updateSystemUser({
+            preserveAssignments: !this.hasEffectivePermission(profile, ROLE_ASSIGN_PERMISSION),
             accessMethods,
             actorPublicId: profile.user.publicId,
             displayName: payload.displayName.trim(),
@@ -333,7 +342,7 @@ export class IdentityService {
     async updateSystemUserStatus(sessionToken: string | undefined, userPublicId: string, payload: UpdateSystemUserStatusDto, context: IdentityRequestAuditContext = {}): Promise<SystemUserDirectoryItem> {
         const profile = await this.getCurrentUser(sessionToken);
 
-        if (userPublicId === profile.user.publicId) {
+        if (normalizeCaseInsensitiveIdentifier(userPublicId) === normalizeCaseInsensitiveIdentifier(profile.user.publicId)) {
             throw new ForbiddenException("No puedes cambiar el estado de tu propia cuenta.");
         }
 
@@ -387,6 +396,8 @@ export class IdentityService {
         const nextSession = this.tokens.issueSessionToken();
         const nextRefresh = this.tokens.rotateRefreshToken();
         const rotation = await this.repository.rotateRefreshSession({
+            ipAddress,
+            userAgent,
             nextRefreshExpiresAt: nextRefresh.refreshExpiresAt,
             nextRefreshTokenHash: nextRefresh.refreshTokenHash,
             nextSessionExpiresAt: nextSession.sessionExpiresAt,
@@ -403,10 +414,8 @@ export class IdentityService {
             throw new UnauthorizedException("No autenticado.");
         }
 
-        const profile = await this.readProfileAfterSessionIssue(nextSession);
-        await this.audit.recordRefreshRotated(rotation.userId, rotation.sessionPublicId, ipAddress, userAgent);
-
-        return this.buildAuthenticatedSessionResult(profile, { ...nextSession, sessionExpiresAt: rotation.sessionExpiresAt }, { ...nextRefresh, refreshExpiresAt: rotation.refreshExpiresAt });
+        // A later access edit must not discard tokens already rotated successfully.
+        return this.buildAuthenticatedSessionResult(rotation.snapshot, { ...nextSession, sessionExpiresAt: rotation.sessionExpiresAt }, { ...nextRefresh, refreshExpiresAt: rotation.refreshExpiresAt });
     }
 
     /**
@@ -662,6 +671,16 @@ export class IdentityService {
         }
     }
 
+    /** Initial assignment never changes existing users and requires an explicit effective grant. */
+    private async hashAssignedInitialPassword(profile: IdentityProfile, password: string | undefined, accessMethods: readonly CreateSystemUserAccessMethod[]): Promise<string | undefined> {
+        if (password === undefined) return undefined;
+        this.assertCan(profile, USER_ASSIGN_PASSWORD_PERMISSION);
+        if (!accessMethods.includes("local")) throw new BadRequestException("La clave inicial requiere acceso local.");
+        if (typeof password !== "string" || password.length < MIN_LOCAL_PASSWORD_LENGTH || password.length > MAX_LOCAL_PASSWORD_LENGTH || password.trim().length === 0) throw new BadRequestException("La clave debe contener entre 12 y 128 caracteres y no puede estar en blanco.");
+        this.assertLocalPasswordIsAllowed(password);
+        return hashArgon2Password(password, { type: argon2id });
+    }
+
     /**
      * Falla si la version de permisos de la sesion ya no coincide con el usuario.
      */
@@ -672,9 +691,21 @@ export class IdentityService {
     }
 
     private assertCan(profile: IdentityProfile, permissionCode: string): void {
-        if (!profile.permissions.some((permission) => permission.code === permissionCode && permission.effect === "allow")) {
+        if (!this.hasEffectivePermission(profile, permissionCode)) {
             throw new ForbiddenException("Permiso insuficiente.");
         }
+    }
+
+    private hasEffectivePermission(profile: IdentityProfile, permissionCode: string): boolean {
+        return profile.permissions.some((permission) => permission.code === permissionCode && permission.effect === "allow") && !profile.permissions.some((permission) => permission.code === permissionCode && permission.effect === "deny");
+    }
+
+    /** Data-only edits need no assignment grant; the writer rechecks the locked snapshot. */
+    private assertAssignmentChangeAllowed(profile: IdentityProfile, current: SystemUserDirectoryItem, roleCodes: readonly string[], orgUnitCodes: readonly string[]): void {
+        const currentOrgUnits = current.orgUnits ?? (current.orgUnit ? [current.orgUnit] : []);
+        const codes = (values: readonly string[]): string => JSON.stringify([...new Set(values.map(normalizeCaseInsensitiveIdentifier))].sort());
+        const changed = [codes(roleCodes) !== codes(current.roles.map((role) => role.code)), codes(orgUnitCodes) !== codes(currentOrgUnits.map((unit) => unit.code))].includes(true);
+        if (changed) this.assertCan(profile, ROLE_ASSIGN_PERMISSION);
     }
 
     /**
@@ -751,7 +782,7 @@ export class IdentityService {
     /**
      * Traduce perfil interno y tokens opacos al contrato que consume el controller.
      */
-    private buildAuthenticatedSessionResult(profile: IdentityProfile, session: Pick<IssuedIdentityTokens, "sessionExpiresAt" | "sessionToken"> | IssuedSessionToken, refresh: Pick<IssuedIdentityTokens, "refreshExpiresAt" | "refreshToken"> | RotatedRefreshToken): AuthenticatedSessionResult {
+    private buildAuthenticatedSessionResult(profile: Pick<IdentityProfile, "session" | "user">, session: Pick<IssuedIdentityTokens, "sessionExpiresAt" | "sessionToken"> | IssuedSessionToken, refresh: Pick<IssuedIdentityTokens, "refreshExpiresAt" | "refreshToken"> | RotatedRefreshToken): AuthenticatedSessionResult {
         return {
             refreshToken: refresh.refreshToken,
             refreshTokenExpiresAt: refresh.refreshExpiresAt,

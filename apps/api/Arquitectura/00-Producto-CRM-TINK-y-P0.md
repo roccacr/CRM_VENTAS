@@ -1,5 +1,33 @@
 # 00 - Ley de Producto CRM TINK y P0
 
+## Clave inicial manual con privilegio dedicado - 2026-10-13
+
+El propietario autoriza un campo opcional de contrasena inicial en el alta de
+usuarios, exclusivamente con permisos efectivos `user.create` y
+`user.assign_password`. Solo aplica a acceso local; el backend valida y hashea
+con Argon2id, nunca devuelve ni audita claves/hashes. Sin clave se conserva el
+flujo pendiente de activacion. Con clave autorizada, pending se convierte en
+active para permitir login; inactive explicito se conserva. No es password
+temporal ni incluye cambio obligatorio, reset de usuarios existentes, envio de
+correo o escrituras legacy. Migracion puntual 018 en CRM_THINK_V2, otorgada
+inicialmente solo a Owner. El permiso es sensible y delegable por las reglas
+administrativas existentes, no implicito en user.create.
+
+## Formalizacion: perfil e Inicio autorizados - 2026-10-13
+
+El propietario autoriza en esta conversacion agregar el rol `formalizacion`, su
+modulo operativo existente y exclusivamente la seccion Inicio con permiso
+`formalizacion.home.read`. Esta ampliacion de identidad permite crear usuarios
+del perfil y asignar por defecto el modulo Formalizacion. No autoriza Resumen,
+Expedientes, Contratos, Firmas, Catalogos, datos comerciales, jobs ni integraciones
+para ese rol. El permiso Inicio no debe reutilizar `file.read` ni permisos de
+catalogo. Owner conserva su politica actual. Migracion incremental 017 solamente
+en CRM_THINK_V2; sin cuentas ficticias persistentes ni escrituras legacy. El
+registro operativo y los requisitos para habilitar secciones futuras estan en
+documento 36. La version 0.3.28 posterior sigue siendo el corte historico de
+autenticacion; este addendum registra el alcance nuevo sin atribuir aprobacion
+de despliegue ni firma productiva.
+
 ## Owner-Authorized Campaigns Parity - 2026-10-12
 
 The owner explicitly extends the existing Projects exception to Campaigns in this
@@ -18,7 +46,7 @@ See document 35 for the exact schema, nullable legacy reference and verification
 
 La cabecera 0.3.28 siguiente conserva el corte historico de autenticacion. Las instrucciones posteriores del propietario en la conversacion aprobaron usuarios administrativos, roles/permisos, auditoria y siete catalogos compartidos con permisos scoped por modulo. Este addendum registra ese alcance sin atribuir una nueva firma o aprobacion de produccion.
 
-Regla actual de catalogos: contexto activo y permiso {modulo}.catalog_{entidad}.{accion}; datos nativos compartidos. La propuesta anterior de permisos globales queda sustituida. Owner tiene actualmente bypass en servicio: su politica y limitaciones estan descritas en [34 - Cierre](34-Cierre-Operativo-Administracion-P0-S1.md).
+Regla actual de catalogos: contexto activo y permiso {modulo}.catalog_{entidad}.{accion}; datos nativos compartidos. La propuesta anterior de permisos globales queda sustituida. Owner no omite el permiso efectivo ni un deny; solo conserva la exencion de membresia de area. La UI oculta las acciones sin permiso y la API revalida cada operacion: [36 - Registro](36-Registro-Entrega-Administracion.md).
 
 Prioridad: cerrar Administracion con QA real y pruebas; despues contrato NetSuite -> API para Leads. Legacy solo lectura; UI Leads, migracion de negocio y deploy siguen pendientes de su autorizacion. Los documentos de vision comercial no amplian el alcance ejecutable.
 

@@ -348,7 +348,7 @@ export const mapApiUserToListItem = (user: SystemUserDirectoryItem): SystemUserL
     mfaStatus: user.mfaStatus,
     name: user.name,
     orgUnit: user.orgUnit?.name ?? "Sin área",
-    orgUnitCodes: user.orgUnit ? [user.orgUnit.code] : [],
+    orgUnitCodes: user.orgUnits ? user.orgUnits.map(({ code }) => code) : user.orgUnit ? [user.orgUnit.code] : [],
     profileImageUrl: user.profileImageUrl,
     provider: user.provider,
     publicId: user.publicId,

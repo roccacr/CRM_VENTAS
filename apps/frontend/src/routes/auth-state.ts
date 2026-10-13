@@ -5,7 +5,7 @@
  * vuelve a autorizar cada llamada. Un fallo en login deja ver el formulario;
  * un fallo en una ruta privada muestra el problema de acceso.
  */
-import { getVisibleNavigationWorkspaces } from "../modules/home/GlobalHomeShell";
+import { ASSIGNED_WORKSPACES, getVisibleNavigationWorkspaces } from "../modules/home/GlobalHomeShell";
 import { ApiClientError, refreshAuthenticatedSession } from "../services/api/api-client";
 import { getIdentityProfile, getIdentitySession } from "../services/auth/auth-service";
 import { type IdentityProfile, type IdentityUser, isAuthenticatedSession, type SessionResponse } from "../services/auth/identity-contracts";
@@ -29,18 +29,30 @@ export type AuthState = { readonly status: "anonymous" } | { readonly status: "a
 const toProfileState = (profile: IdentityProfile, canEnter: boolean): AuthState => (canEnter ? { profile, status: "authenticated" } : { profile, status: "forbidden" });
 
 /**
- * Comprueba que el perfil operativo de la ruta sea visible con los permisos efectivos.
+ * Comprueba la vista exacta contra los items y URLs del menu filtrado.
  *
  * Login no pertenece a ningún perfil, así que no se bloquea aquí.
  */
 const hasAccessToRoute = (profile: IdentityProfile, path: string): boolean => {
-    const workspaceCode = getAppRoute(path)?.workspaceCode;
+    const route = getAppRoute(path);
+    const workspaceCode = route?.workspaceCode;
 
     if (!workspaceCode) {
         return true;
     }
 
-    return getVisibleNavigationWorkspaces(profile.permissions, profile.orgUnits).some((workspace) => workspace.code === workspaceCode);
+    const workspace = getVisibleNavigationWorkspaces(profile.permissions, profile.orgUnits).find((item) => item.code === workspaceCode);
+    if (!workspace) return false;
+
+    const homePath = getWorkspaceHomePath(workspaceCode);
+    const definition = ASSIGNED_WORKSPACES.find((item) => item.code === workspaceCode);
+    const hasHomeMenuItem = definition?.menuItems.some((item) => item.routePath === homePath);
+    // Administration has a landing page but no home menu item or separate home permission.
+    if (path === homePath && !hasHomeMenuItem) return true;
+
+    const menuItems = workspace.menuItems.flatMap((item) => [item, ...(item.children ?? [])]);
+    // Legacy Sales/Accounting items share a home URL despite having different item codes.
+    return menuItems.some((item) => item.code === route.menuItemCode || item.routePath === path);
 };
 
 /**
@@ -49,11 +61,15 @@ const hasAccessToRoute = (profile: IdentityProfile, path: string): boolean => {
  * Se prefiere un perfil operativo real sobre "all". Devuelve null cuando no
  * hay ningún perfil visible: el usuario está autenticado pero sin acceso.
  */
-export const getDefaultAuthenticatedPath = (profile: IdentityProfile): string | null => {
+export const getDefaultAuthenticatedPath = (profile: IdentityProfile, workspaceCode?: string): string | null => {
     const visibleWorkspaces = getVisibleNavigationWorkspaces(profile.permissions, profile.orgUnits);
-    const firstOperationalWorkspace = visibleWorkspaces.find((workspace) => workspace.code !== "all") ?? visibleWorkspaces[0];
+    const workspace = visibleWorkspaces.find((item) => (workspaceCode ? item.code === workspaceCode : item.code !== "all"));
+    if (!workspace) return null;
+    const homePath = getWorkspaceHomePath(workspace.code);
+    if (hasAccessToRoute(profile, homePath)) return homePath;
 
-    return firstOperationalWorkspace ? getWorkspaceHomePath(firstOperationalWorkspace.code) : null;
+    const paths = workspace.menuItems.flatMap((item) => [item.routePath, ...(item.children?.map((child) => child.routePath) ?? [])]);
+    return paths.find((path) => path !== undefined && getAppRoute(path) !== undefined && hasAccessToRoute(profile, path)) ?? null;
 };
 
 /** Reevalúa una ruta con el perfil ya cargado, sin volver a pedir sesión al API. */
@@ -72,14 +88,18 @@ export const resolveAuthState = async (path: string, onAuthenticatedSession?: (u
     let session = await getIdentitySession();
 
     if (!isAuthenticatedSession(session)) {
-        if (path === AUTH_LOGIN_PATH || !isKnownPath(path)) {
+        // Login and unknown URLs have no registered private page to recover.
+        if (!getAppRoute(path)) {
             return { status: "anonymous" };
         }
 
         try {
             await refreshAuthenticatedSession();
-        } catch {
-            return { status: "anonymous" };
+        } catch (error) {
+            // Only an explicit rejection proves the refresh is invalid. Transport,
+            // server and CSRF failures must not force login or replay a rotation.
+            if (error instanceof ApiClientError && error.status === 401) return { status: "anonymous" };
+            throw error;
         }
 
         session = await getIdentitySession();

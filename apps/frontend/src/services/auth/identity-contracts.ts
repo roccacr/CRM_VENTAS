@@ -203,6 +203,7 @@ export interface SystemUserDirectoryItem {
     readonly mfaStatus: SystemUserDirectoryMfaStatus;
     readonly name: string;
     readonly orgUnit: SystemUserDirectoryOrgUnit | null;
+    readonly orgUnits?: readonly SystemUserDirectoryOrgUnit[];
     readonly profileImageUrl: string | null;
     readonly provider: SystemUserDirectoryProvider;
     readonly publicId: string;
@@ -261,6 +262,7 @@ export interface CreateSystemUserExternalReference {
 
 /** Cuerpo de alta. `reason` queda en la auditoría del API. */
 export interface CreateSystemUserPayload {
+    readonly password?: string;
     readonly accessMethods?: readonly CreateSystemUserAccessMethod[];
     readonly displayName: string;
     readonly email: string;
@@ -629,6 +631,15 @@ const parseSystemUserDirectoryItem = (value: unknown): SystemUserDirectoryItem =
         mfaStatus: record.mfaStatus,
         name: record.name,
         orgUnit: parseSystemUserDirectoryOrgUnit(record.orgUnit),
+        ...(Array.isArray(record.orgUnits)
+            ? {
+                  orgUnits: record.orgUnits.map((item) => {
+                      const unit = parseSystemUserDirectoryOrgUnit(item);
+                      if (!unit) throw new TypeError("Unidad del directorio inválida.");
+                      return unit;
+                  }),
+              }
+            : {}),
         profileImageUrl: parseNullableString(record.profileImageUrl),
         provider: record.provider,
         publicId: record.publicId,

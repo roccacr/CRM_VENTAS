@@ -1,7 +1,7 @@
 import { Inject, Injectable } from "@nestjs/common";
 
 import { DatabaseService } from "../../../database/database.service.js";
-import { LOGOUT_REQUESTED_EVENT, SESSION_REVOKED_EVENT } from "../audit/security-audit.events.js";
+import { LOGOUT_REQUESTED_EVENT, REFRESH_ROTATED_EVENT, SESSION_REVOKED_EVENT } from "../audit/security-audit.events.js";
 import { SecurityAuditService } from "../audit/security-audit.service.js";
 import type { CreateIdentitySessionInput, RefreshProviderValidation, RevokeOwnSessionResult, RotateRefreshSessionInput, RotateRefreshSessionResult } from "./identity.repository.js";
 import type { IdentityActiveSession } from "./identity.types.js";
@@ -26,7 +26,15 @@ type RefreshRotationRow = {
     userId: number;
     userPermissionVersion: number;
     userStatus: string;
+    userPublicId: string;
+    userDisplayName: string;
+    userEmail: string;
+    profileImageUrl: string | null;
+    userDeletedAt: Date | string | null;
+    identityDeletedAt: Date | string | null;
 };
+
+type RefreshValidationRow = Omit<RefreshRotationRow, "userPublicId" | "userDisplayName" | "userEmail" | "profileImageUrl">;
 
 /**
  * Persistencia de sesiones BFF, refresh tokens y revocaciones.
@@ -116,9 +124,26 @@ export class IdentitySessionRepository {
                     "user.id_user as userId",
                     "user.permission_version_user as userPermissionVersion",
                     "user.status_user as userStatus",
+                    "user.deleted_at_user as userDeletedAt",
+                    "identity.deleted_at_auth_identity as identityDeletedAt",
+                    "user.public_id_user as userPublicId",
+                    "user.display_name_user as userDisplayName",
+                    "user.email_user as userEmail",
                     "identity.status_auth_identity as identityStatus",
                 ])
+                .select((expression) =>
+                    expression
+                        .selectFrom("sec_user_profile_image as image")
+                        .select("image.public_url_user_profile_image")
+                        .whereRef("image.user_id_user_profile_image", "=", "user.id_user")
+                        .where("image.status_user_profile_image", "=", ACTIVE_STATUS)
+                        .where((condition) => condition.or([condition("image.expires_at_user_profile_image", "is", null), condition("image.expires_at_user_profile_image", ">", now)]))
+                        .limit(1)
+                        .as("profileImageUrl"),
+                )
                 .where("refresh.token_hash_refresh_token", "=", input.refreshTokenHash)
+                // Current locking read serializes refresh consumption with permission-version changes.
+                .forUpdate()
                 .executeTakeFirst();
 
             if (!refresh) {
@@ -140,7 +165,7 @@ export class IdentitySessionRepository {
             const nextSessionExpiresAt = earliestDate(input.nextSessionExpiresAt, absoluteSessionExpiresAt);
             const nextRefreshExpiresAt = earliestDate(input.nextRefreshExpiresAt, absoluteSessionExpiresAt);
 
-            await transaction
+            const sessionUpdate = await transaction
                 .updateTable("sec_auth_session")
                 .set({
                     expires_at_auth_session: nextSessionExpiresAt,
@@ -150,6 +175,8 @@ export class IdentitySessionRepository {
                 .where("id_auth_session", "=", refresh.sessionId)
                 .where("status_auth_session", "=", ACTIVE_STATUS)
                 .executeTakeFirst();
+            // Throwing rolls back refresh consumption rather than stranding the browser's old token.
+            if (!hasUpdatedRows(sessionUpdate)) throw new Error("Session changed during refresh rotation.");
             await transaction
                 .insertInto("sec_refresh_token")
                 .values({
@@ -165,7 +192,22 @@ export class IdentitySessionRepository {
                 })
                 .executeTakeFirstOrThrow();
 
-            return { authIdentityId: refresh.authIdentityId, providerCode: refresh.providerCode, refreshExpiresAt: nextRefreshExpiresAt, sessionExpiresAt: nextSessionExpiresAt, sessionPublicId: refresh.sessionPublicId, status: "rotated", userId: refresh.userId };
+            await this.audit.record({ eventType: REFRESH_ROTATED_EVENT.eventType, summary: REFRESH_ROTATED_EVENT.summary, actorUserId: refresh.userId, targetUserId: refresh.userId, reason: REFRESH_ROTATED_EVENT.reason, ipAddress: input.ipAddress ?? null, userAgent: input.userAgent ?? null, metadata: { sessionPublicId: refresh.sessionPublicId } }, transaction);
+
+            return {
+                authIdentityId: refresh.authIdentityId,
+                providerCode: refresh.providerCode,
+                refreshExpiresAt: nextRefreshExpiresAt,
+                sessionExpiresAt: nextSessionExpiresAt,
+                sessionPublicId: refresh.sessionPublicId,
+                status: "rotated",
+                userId: refresh.userId,
+                // No grants leave this transaction: protected requests still resolve effective permissions.
+                snapshot: {
+                    session: { expiresAt: nextSessionExpiresAt.toISOString(), expiresInSeconds: Math.max(0, Math.floor((nextSessionExpiresAt.getTime() - now.getTime()) / 1000)), permissionVersion: refresh.userPermissionVersion, publicId: refresh.sessionPublicId, status: ACTIVE_STATUS },
+                    user: { displayName: refresh.userDisplayName, email: refresh.userEmail, permissionVersion: refresh.userPermissionVersion, profileImageUrl: refresh.profileImageUrl ?? null, publicId: refresh.userPublicId, status: refresh.userStatus },
+                },
+            };
         });
     }
 
@@ -199,6 +241,8 @@ export class IdentitySessionRepository {
                 "user.id_user as userId",
                 "user.permission_version_user as userPermissionVersion",
                 "user.status_user as userStatus",
+                "user.deleted_at_user as userDeletedAt",
+                "identity.deleted_at_auth_identity as identityDeletedAt",
                 "identity.status_auth_identity as identityStatus",
             ])
             .where("refresh.token_hash_refresh_token", "=", refreshTokenHash)
@@ -321,7 +365,7 @@ export class IdentitySessionRepository {
     /**
      * Decide si un refresh puede rotar sin mezclar la decision con escrituras.
      */
-    private resolveRefreshRotationFailure(refresh: RefreshRotationRow, now: Date): RefreshRotationFailureStatus | null {
+    private resolveRefreshRotationFailure(refresh: RefreshValidationRow, now: Date): RefreshRotationFailureStatus | null {
         if (this.isRefreshTokenReuse(refresh)) {
             return "reused";
         }
@@ -341,12 +385,12 @@ export class IdentitySessionRepository {
         return null;
     }
 
-    private isRefreshTokenReuse(refresh: RefreshRotationRow): boolean {
+    private isRefreshTokenReuse(refresh: RefreshValidationRow): boolean {
         return refresh.refreshStatus === ROTATED_STATUS || refresh.refreshStatus === REUSED_STATUS;
     }
 
-    private isRefreshSessionInvalid(refresh: RefreshRotationRow, now: Date): boolean {
-        return refresh.sessionStatus !== ACTIVE_STATUS || new Date(refresh.sessionExpiresAt) <= now || refresh.userStatus !== ACTIVE_STATUS || refresh.identityStatus !== ACTIVE_STATUS;
+    private isRefreshSessionInvalid(refresh: RefreshValidationRow, now: Date): boolean {
+        return refresh.sessionStatus !== ACTIVE_STATUS || new Date(refresh.sessionExpiresAt) <= now || refresh.userStatus !== ACTIVE_STATUS || refresh.identityStatus !== ACTIVE_STATUS || refresh.userDeletedAt != null || refresh.identityDeletedAt != null;
     }
 
     /**

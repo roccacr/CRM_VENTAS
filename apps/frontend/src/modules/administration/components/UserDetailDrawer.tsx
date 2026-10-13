@@ -30,10 +30,12 @@ import { useEffect, useState } from "react";
 
 import { ADMINISTRATION_DRAWER_CLOSE_PLACEMENT, ADMINISTRATION_DRAWER_PROPS } from "../administration-theme";
 import { copyTextToClipboard, getDrawerPrimaryActionLabel, getDrawerRiskActionLabel, getPrimaryActionIcon, getPrimaryStatusUpdateTarget, getRelativeActivityLabel, getRiskStatusUpdateTarget, type SystemUserListItem, type SystemUserStatusUpdateTarget } from "../system-users.model";
+import { canChangeUserStatus, NO_USERS_PERMISSIONS, type UsersPermissions } from "../users-permissions";
 import { SystemUserAvatar } from "./SystemUserAvatar";
 import { SystemUserMfaTag, SystemUserProviderBadge, SystemUserStatusPill } from "./SystemUserBadges";
 
 interface UserDetailDrawerProps {
+    readonly permissions?: UsersPermissions;
     readonly onClose: () => void;
     readonly onEditUser: (user: SystemUserListItem) => void;
     readonly onSelectNext: () => void;
@@ -71,19 +73,25 @@ function UserDrawerHeader({ user }: { readonly user: SystemUserListItem }) {
  *
  * Bloquear solo aplica a activo y bloqueado, y nunca a la cuenta propia.
  */
-const buildOverflowItems = (user: SystemUserListItem): NonNullable<MenuProps["items"]> => {
+const buildOverflowItems = (user: SystemUserListItem, permissions: UsersPermissions): NonNullable<MenuProps["items"]> => {
     const items: NonNullable<MenuProps["items"]> = [{ icon: <TeamOutlined />, key: "roles", label: "Cambiar roles" }, { icon: <KeyOutlined />, key: "reset", label: "Restablecer acceso" }, { type: "divider" }, { icon: <CopyOutlined />, key: "copy-email", label: "Copiar correo" }, { icon: <IdcardOutlined />, key: "copy-id", label: "Copiar ID de usuario" }];
 
     if (user.status === "active" || user.status === "blocked") {
         items.push({ type: "divider" }, { danger: true, disabled: Boolean(user.isCurrentUser), icon: <LockOutlined />, key: "risk", label: user.isCurrentUser ? "No puedes bloquear tu propia cuenta" : getDrawerRiskActionLabel(user) });
     }
 
-    return items;
+    return items.filter((item) => {
+        if (!item || !("key" in item)) return true;
+        if (item.key === "reset") return false;
+        if (item.key === "roles") return permissions.update && permissions.assignRoles && !user.isCurrentUser;
+        if (item.key === "risk") return canChangeUserStatus(permissions, user, getRiskStatusUpdateTarget(user));
+        return true;
+    });
 };
 
-function UserOverflowMenu({ onEditUser, onStatusAction, user }: { readonly onEditUser: (user: SystemUserListItem) => void; readonly onStatusAction: (user: SystemUserListItem, status: SystemUserStatusUpdateTarget) => void; readonly user: SystemUserListItem }) {
+function UserOverflowMenu({ permissions, onEditUser, onStatusAction, user }: { readonly permissions: UsersPermissions; readonly onEditUser: (user: SystemUserListItem) => void; readonly onStatusAction: (user: SystemUserListItem, status: SystemUserStatusUpdateTarget) => void; readonly user: SystemUserListItem }) {
     const handleMenuClick: MenuProps["onClick"] = ({ key }) => {
-        if (key === "roles") {
+        if (key === "roles" && buildOverflowItems(user, permissions).some((item) => item && "key" in item && item.key === "roles")) {
             onEditUser(user);
         }
 
@@ -95,13 +103,13 @@ function UserOverflowMenu({ onEditUser, onStatusAction, user }: { readonly onEdi
             copyTextToClipboard(user.publicId);
         }
 
-        if (key === "risk") {
+        if (key === "risk" && canChangeUserStatus(permissions, user, getRiskStatusUpdateTarget(user))) {
             onStatusAction(user, getRiskStatusUpdateTarget(user));
         }
     };
 
     return (
-        <Dropdown menu={{ items: buildOverflowItems(user), onClick: handleMenuClick }} trigger={["click"]} placement="bottomRight" rootClassName="catalog-items-dropdown--projects">
+        <Dropdown menu={{ items: buildOverflowItems(user, permissions), onClick: handleMenuClick }} trigger={["click"]} placement="bottomRight" rootClassName="catalog-items-dropdown--projects">
             <Tooltip title="Más acciones" placement="bottom">
                 <Button className="user-detail-drawer__header-button" type="text" icon={<EllipsisOutlined aria-hidden="true" />} aria-label={`Más acciones para ${user.name}`} />
             </Tooltip>
@@ -211,6 +219,7 @@ function UserDetailSections({ user }: { readonly user: SystemUserListItem }) {
 }
 
 interface UserDrawerFooterProps {
+    readonly permissions: UsersPermissions;
     readonly canSelectNext: boolean;
     readonly canSelectPrevious: boolean;
     readonly onSelectNext: () => void;
@@ -226,7 +235,7 @@ interface UserDrawerFooterProps {
  * Pie del panel: posición como contexto a la izquierda; navegación y acción
  * principal agrupadas a la derecha, todas con la misma altura.
  */
-function UserDrawerFooter({ canSelectNext, canSelectPrevious, onEditUser, onSelectNext, onSelectPrevious, onStatusAction, position, total, user }: UserDrawerFooterProps) {
+function UserDrawerFooter({ permissions, canSelectNext, canSelectPrevious, onEditUser, onSelectNext, onSelectPrevious, onStatusAction, position, total, user }: UserDrawerFooterProps) {
     const primaryActionLabel = user ? getDrawerPrimaryActionLabel(user) : null;
 
     return (
@@ -243,7 +252,7 @@ function UserDrawerFooter({ canSelectNext, canSelectPrevious, onEditUser, onSele
                         <Button icon={<RightOutlined aria-hidden="true" />} aria-label="Usuario siguiente" disabled={!canSelectNext} onClick={onSelectNext} />
                     </Tooltip>
                 </Space.Compact>
-                {user ? (
+                {user && permissions.update ? (
                     <Button
                         icon={<EditOutlined aria-hidden="true" />}
                         disabled={Boolean(user.isCurrentUser)}
@@ -254,7 +263,7 @@ function UserDrawerFooter({ canSelectNext, canSelectPrevious, onEditUser, onSele
                         Editar usuario
                     </Button>
                 ) : null}
-                {user && primaryActionLabel ? (
+                {user && primaryActionLabel && canChangeUserStatus(permissions, user, getPrimaryStatusUpdateTarget(user)) ? (
                     <Button
                         type="primary"
                         icon={getPrimaryActionIcon(user)}
@@ -279,7 +288,8 @@ function UserDrawerFooter({ canSelectNext, canSelectPrevious, onEditUser, onSele
  * animación no muestre un panel vacío. Flecha arriba y abajo recorren la
  * página visible; Escape o clic en la máscara cierran.
  */
-export function UserDetailDrawer({ onClose, onEditUser, onSelectNext, onSelectPrevious, onStatusAction, position, total, user }: UserDetailDrawerProps) {
+// eslint-disable-next-line complexity -- Keeps keyboard navigation, closing animation and the detail permission gate together.
+export function UserDetailDrawer({ permissions = NO_USERS_PERMISSIONS, onClose, onEditUser, onSelectNext, onSelectPrevious, onStatusAction, position, total, user }: UserDetailDrawerProps) {
     const [displayedUser, setDisplayedUser] = useState(user);
     const canSelectPrevious = position > 1;
     const canSelectNext = position > 0 && position < total;
@@ -316,6 +326,7 @@ export function UserDetailDrawer({ onClose, onEditUser, onSelectNext, onSelectPr
         };
     }, [canSelectNext, canSelectPrevious, onSelectNext, onSelectPrevious, user]);
 
+    if (!permissions.detail) return null;
     return (
         <Drawer
             {...ADMINISTRATION_DRAWER_PROPS}
@@ -323,8 +334,8 @@ export function UserDetailDrawer({ onClose, onEditUser, onSelectNext, onSelectPr
             open={user !== null}
             closable={{ "aria-label": "Cerrar detalle", placement: ADMINISTRATION_DRAWER_CLOSE_PLACEMENT }}
             title={displayedUser ? <UserDrawerHeader user={displayedUser} /> : null}
-            extra={displayedUser ? <UserOverflowMenu user={displayedUser} onEditUser={onEditUser} onStatusAction={onStatusAction} /> : null}
-            footer={<UserDrawerFooter canSelectNext={canSelectNext} canSelectPrevious={canSelectPrevious} position={position} total={total} user={displayedUser} onEditUser={onEditUser} onSelectNext={onSelectNext} onSelectPrevious={onSelectPrevious} onStatusAction={onStatusAction} />}
+            extra={displayedUser ? <UserOverflowMenu permissions={permissions} user={displayedUser} onEditUser={onEditUser} onStatusAction={onStatusAction} /> : null}
+            footer={<UserDrawerFooter permissions={permissions} canSelectNext={canSelectNext} canSelectPrevious={canSelectPrevious} position={position} total={total} user={displayedUser} onEditUser={onEditUser} onSelectNext={onSelectNext} onSelectPrevious={onSelectPrevious} onStatusAction={onStatusAction} />}
             onClose={onClose}
         >
             {displayedUser ? <UserDetailSections user={displayedUser} /> : null}

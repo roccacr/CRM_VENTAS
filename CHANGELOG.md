@@ -1,5 +1,73 @@
 # Changelog
 
+## Unreleased - Continuidad de sesion local y cambios de acceso - 2026-10-13
+
+- Los cambios de acceso invalidan la autorizacion anterior mediante la version
+  de permisos, sin cerrar una identidad todavia activa. El refresh valida los
+  estados vigentes y la siguiente lectura obtiene los permisos actuales.
+- Se conservan el vencimiento absoluto, la rotacion y las revocaciones por
+  logout, bloqueo, desactivacion o reutilizacion de tokens. No se rehabilitan
+  sesiones ya revocadas bajo la regla anterior.
+- Regresiones de login local, recarga, errores de red y renovacion de permisos;
+  pruebas HTTP con MySQL y cookie jar aislado, usando rollback.
+- Solo un refresh rechazado con 401 produce anonimato. Errores de red, servidor
+  o CSRF conservan la URL y muestran el problema de acceso sin forzar login ni
+  repetir automaticamente el POST de rotacion.
+
+## Unreleased - Avisos de acceso dentro del layout - 2026-10-13
+
+- Una sesion valida conserva cabecera y menu ante una vista sin permiso o una
+  URL inexistente; el aviso aparece exclusivamente dentro del contenido.
+- El aviso no cierra sesion ni solicita iniciar sesion nuevamente. El retorno
+  utiliza una ruta permitida del perfil, sin montar la pagina protegida.
+- La autorizacion de rutas reutiliza el menu filtrado por permisos efectivos;
+  las validaciones del API y el tratamiento de sesiones expiradas se conservan.
+- Sin modificaciones de la linea grafica del menu, permisos persistidos o DB.
+
+## Unreleased - Acciones de catalogos por permiso - 2026-10-13
+
+- Cabecera, tabla y detalle ocultan las acciones sin permiso efectivo scoped;
+  lectura no concede alta, edicion o cambio de estado. Reactivar usa update;
+  inactivar usa inactivate. Revalidacion al abrir/enviar y ante foco.
+- Formularios vinculados a su modulo/catalogo; se descartan al cambiar de
+  contexto. Volver a paginas cacheadas no consulta perfil ni listado nuevamente.
+- API exige grant exacto incluso para Owner, conservando solo su exencion de
+  membresia. Deny prevalece; rutas compartidas y dedicadas cubiertas por HTTP.
+- Sin cambios de estilos/menu, grants persistidos, migraciones o datos legacy.
+
+## Unreleased - Autorizacion de Usuarios y Roles - 2026-10-13
+
+- Controles de Usuarios y Roles dependen de permisos efectivos, sin conceder
+  acciones por nombre de rol ni datos de demostracion ante errores de carga.
+- Alta con roles requiere `user.create` y `role.assign`; editar datos requiere
+  `user.update` y cambiar roles/modulos requiere tambien `role.assign`.
+- Activar exige `user.activate`; bloquear/inactivar exige `user.deactivate`.
+  Se preservan las restricciones de autoedicion y proteccion de Owner.
+- Regresiones de interfaz, servicios y HTTP con servicios reales verifican
+  rechazos y ausencia de escrituras no autorizadas. Evidencia y limites en API 36.
+
+## Unreleased - Clave inicial privilegiada - 2026-10-13
+
+- Alta de usuario admite clave inicial manual opcional con privilegio sensible
+  `user.assign_password` ademas de `user.create`, solo para acceso local.
+- Argon2id y activacion local transaccional; password/hash no se devuelven ni
+  entran al snapshot auditable. Sin clave se conserva el flujo pendiente.
+- Migracion 018 registra el permiso, lo concede inicialmente solo a Owner y
+  versiona sus perfiles para revalidacion. No modifica claves existentes ni
+  implementa claves temporales/cambio obligatorio.
+
+## Unreleased - Formalizacion Inicio - 2026-10-13
+
+- Rol `formalizacion` y permiso exclusivo `formalizacion.home.read`, agrupado
+  bajo Formalizacion / Inicio. Migracion puntual 017 transaccional y auditable,
+  sin altas de usuarios, cambios legacy ni grants de secciones operativas.
+- Alta de perfil con modulo Formalizacion por defecto si no se especifica area;
+  Inicio separado de permisos de Expedientes/Resumen y sin datos comerciales.
+- Regresiones de navegacion, alta, catalogo de permisos, denegacion de inventario
+  y catalogos; MySQL opt-in rollback-only para idempotencia, grants y auditoria.
+- Requisitos de habilitacion futura documentados en API 36 y frontend 27. No
+  habilita contratos, expedientes, catalogos, integraciones o despliegue.
+
 ## Unreleased - Consolidacion 2026-10-13
 
 ### Implementado

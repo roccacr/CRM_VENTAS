@@ -8,6 +8,20 @@ import { GlobalHomeShell } from "../../src/modules/home/GlobalHomeShell";
 import { installBrowserApiDoubles } from "../support/browser";
 const navigationStyles = readFileSync(resolve(process.cwd(), "src/modules/home/GlobalHomeShell.css"), "utf8");
 
+it("preserves the standard navigation styling for a Home-only Formalization profile", () => {
+    installBrowserApiDoubles();
+    render(
+        <GlobalHomeShell initialWorkspaceCode="formalization" activeMenuItemCode="formalization-home" effectivePermissions={[{ code: "formalizacion.home.read", effect: "allow" }]} orgUnits={[{ code: "formalizacion", status: "active" }]}>
+            Content
+        </GlobalHomeShell>,
+    );
+    expect(screen.getByRole("navigation", { name: "Navegación principal" }).className).toBe("global-home-menu");
+    expect(screen.getByRole("button", { name: "Inicio" }).getAttribute("aria-current")).toBe("page");
+    expect(screen.queryByRole("button", { name: "Contratos" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Expedientes" })).toBeNull();
+    expect(navigationStyles).not.toContain(".global-home-menu--single");
+});
+
 it("keeps dropdowns outside the tablet navigation clipping area", () => {
     const panel = navigationStyles.slice(navigationStyles.indexOf(".global-home-menu__dropdown {"));
     expect(panel.slice(0, panel.indexOf("}"))).toContain("position: fixed");

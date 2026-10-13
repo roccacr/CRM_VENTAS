@@ -5,7 +5,7 @@
  * instante para no consultar en cada tecla. Una respuesta de una consulta
  * anterior se descarta si el usuario ya cambió los filtros.
  */
-import { useEffect, useRef, useState } from "react";
+import { type Dispatch, type SetStateAction, useEffect, useRef, useState } from "react";
 
 import { getSystemUsers } from "../../../services/auth/auth-service";
 import type { ListSystemUsersOptions, SystemUsersSummary } from "../../../services/auth/identity-contracts";
@@ -14,6 +14,7 @@ import { EMPTY_SUMMARY, mapApiUserToListItem, normalizeSearchText, SYSTEM_USERS_
 const SEARCH_DEBOUNCE_MS = 250;
 
 interface SystemUsersDirectoryInput {
+    readonly enabled: boolean;
     readonly activeFilter: SystemUserFilter;
     readonly reloadToken: number;
     readonly searchQuery: string;
@@ -28,7 +29,7 @@ interface SystemUsersDirectoryState {
     readonly loadState: SystemUsersLoadState;
     readonly pageTotal: number;
     readonly selectedUser: SystemUserListItem | null;
-    readonly setSelectedUser: (user: SystemUserListItem | null) => void;
+    readonly setSelectedUser: Dispatch<SetStateAction<SystemUserListItem | null>>;
     readonly summary: SystemUsersSummary;
     readonly users: readonly SystemUserListItem[];
 }
@@ -75,6 +76,7 @@ export const useSystemUsersDirectory = (input: SystemUsersDirectoryInput): Syste
         const isTyping = lastSearchQueryRef.current !== input.searchQuery;
         lastSearchQueryRef.current = input.searchQuery;
         queryVersionRef.current += 1;
+        if (!input.enabled) return undefined;
         let isCancelled = false;
         const timeoutId = window.setTimeout(
             () => {
@@ -118,11 +120,11 @@ export const useSystemUsersDirectory = (input: SystemUsersDirectoryInput): Syste
             window.clearTimeout(timeoutId);
         };
         // eslint-disable-next-line react-hooks/exhaustive-deps -- `input` se lee completo, pero solo estos campos cambian la consulta.
-    }, [input.activeFilter, input.reloadToken, input.searchQuery, input.sortDirection, input.sortKey]);
+    }, [input.enabled, input.activeFilter, input.reloadToken, input.searchQuery, input.sortDirection, input.sortKey]);
 
     /** Pide la página siguiente con los mismos filtros. Una respuesta de filtros viejos se descarta. */
     const loadMore = (): void => {
-        if (!nextCursor || isLoadingMore) {
+        if (!input.enabled || !nextCursor || isLoadingMore) {
             return;
         }
 

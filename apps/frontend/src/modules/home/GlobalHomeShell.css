@@ -551,47 +551,6 @@
     content: "";
 }
 
-.global-home-menu--single {
-    padding: 0;
-    background: var(--shell-canvas);
-}
-
-.global-home-menu--single .global-home-menu__track {
-    border: 0;
-    border-radius: 0;
-    padding: 0;
-    background: transparent;
-    box-shadow: none;
-}
-
-.global-home-menu--single .global-home-menu__item {
-    height: 44px;
-    padding: 0;
-    color: var(--shell-text-secondary);
-}
-
-.global-home-menu--single .global-home-menu__item:hover,
-.global-home-menu--single .global-home-menu__item--open {
-    background: transparent;
-    color: var(--shell-text);
-}
-
-.global-home-menu--single .global-home-menu__item:focus-visible {
-    color: var(--shell-text);
-    outline-color: var(--shell-focus);
-}
-
-.global-home-menu--single .global-home-menu__item--active {
-    background: transparent;
-    color: var(--shell-text);
-}
-
-.global-home-menu--single .global-home-menu__item--active::after {
-    right: 0;
-    left: 0;
-    background: var(--shell-ink);
-}
-
 .global-home-menu__icon {
     display: inline-grid;
     width: 16px;

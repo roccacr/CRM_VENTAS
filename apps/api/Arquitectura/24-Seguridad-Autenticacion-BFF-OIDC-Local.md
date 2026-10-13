@@ -171,7 +171,13 @@ Decision P0-S1A:
 
 ### Access replacement revocation: 2026-10-08
 
-Replacing a user's access through the access-management API now locks the target user, replaces role/module/override assignments, increments permission_version_user, revokes active CRM sessions and refresh tokens, and records user_access_replaced in one MySQL transaction. Audit failure rolls back the entire mutation. Successful access replacement requires a new login, including when the replacement retains the same role; old refresh cookies cannot resume the previous session.
+Historical policy, superseded on 2026-10-13 by explicit user decision: access replacement revoked active CRM sessions and refresh tokens and required a new login, even when retaining the same role. This explains the reported local-session revocation at 15:32 Costa Rica time on 2026-10-13; it is not the current required behavior.
+
+Current contract (implemented and verified locally on 2026-10-13): replacing access locks the target user, replaces role/module/override assignments, increments permission_version_user, and records user_access_replaced in one MySQL transaction. Audit failure rolls back the entire mutation. Permission changes alone retain the active identity session and refresh capability, without forced logout. Obsolete authorization is rejected and renewed before continuing: refresh rotates cookies to the current permission version and returns only a minimal user/session snapshot, without roles or permissions. The subsequent /identity/me or protected request resolves canonical current grants before continuing; refresh does not query the full profile after commit. Removed grants are not preserved. This does not promise a 409 for every stale-session path; the frontend also handles anonymous session responses and 401 through renewal. Logout, identity blocking/inactivation, and refresh replay retain hard revocation.
+
+Final local verification reported on 2026-10-13: permission snapshots and row locking protect against the post-commit permission race; refresh auditing is transactional so audit failure rolls back renewal. API suite: 4,430 passed, 102 skipped; eight SQL rollback tests passed, with an independent run of 92 core unit tests and six new HTTP/MySQL tests also passing. Typecheck, build, scoped lint and format passed. Global format remains blocked only by pre-existing unit-files-search.spec.ts formatting; global lint reports five pre-existing missing JSDoc findings in Catalogs/Projects.
+
+Three final stable browser reloads for a local Formalizacion login passed: both cookies remained present with unchanged values and expiry, without exposing their contents. DB inspection reported an active session at permission version 4/4 without revocation. A real manual permission edit was not performed; access-update behavior was verified through rollback HTTP/MySQL tests. See delivery 36 for frontend verification limits; these results do not claim production deployment.
 
 Authorization remains database-backed on every protected request through IdentityService.getCurrentUser and IdentityProfileRepository. The opaque cookie identifies a session; it does not carry authoritative role claims. This is a stateful BFF, not a stateless JWT design. No permission cache or additional parallel authorization guard is introduced. Requests already authorized before the transaction commits are in flight; this change does not cancel them retroactively.
 
@@ -293,7 +299,7 @@ Reglas de seguridad del refresh:
 - un refresh `revoked`, `expired` o de una carrera ya consumida responde como invalido/expirado sin revocar sesiones ajenas;
 - si el refresh activo esta vencido, se marca `expired`;
 - si la sesion, usuario o identidad asociada ya no esta activa, se revoca la familia de refresh tokens y la sesion asociada;
-- si `permissionVersion` de la sesion no coincide con el usuario actual, responde `409`; el cliente intenta un refresh single-flight y solo si falla limpia sesion/cache local y pide login nuevo;
+- la autorizacion obsoleta se rechaza; el cliente intenta renovacion single-flight sin asumir siempre un `409`. Refresh rota cookies a la version vigente y devuelve solo usuario/sesion minimos, sin roles ni permisos; `/identity/me` o la solicitud protegida posterior resuelve los grants canonicos actuales. Solo si falla la renovacion se limpia sesion/cache local y se pide login nuevo;
 - si rota correctamente, el refresh anterior queda `rotated` y se emite uno nuevo;
 - la auditoria de refresh se registra con el usuario canonico asociado.
 

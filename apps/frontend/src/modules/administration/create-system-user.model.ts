@@ -57,6 +57,7 @@ export type CreateUserRolePermissions = Readonly<Record<string, readonly string[
 
 /** Valores del formulario. El motivo se pide de nuevo en cada guardado. */
 export interface CreateUserFormValues {
+    readonly password?: string | undefined;
     readonly accessMethods: readonly CreateSystemUserAccessMethod[];
     readonly displayName: string;
     readonly email: string;
@@ -160,6 +161,9 @@ export const getRoleModules = (roleCodes: readonly string[], rolePermissions: Cr
 /** Owner viaja con la unidad raíz. El resto viaja con los módulos donde sus roles tienen acciones. */
 const getPayloadOrgUnitCodes = (roleCodes: readonly string[], roleModules: readonly CreateUserModuleOption[]): readonly string[] => (hasOwnerRole(roleCodes) ? [GLOBAL_ORG_UNIT_CODE] : roleModules.map((module) => module.code));
 
+/** Both visibility and transport require an open creation form with local access and an effective grant. */
+export const canAssignInitialPassword = (mode: "create" | "edit", open: boolean, allowed: boolean | undefined, accessMethods: readonly string[]): boolean => Boolean(open && mode === "create" && allowed && accessMethods.includes("local"));
+
 /**
  * Arma el alta.
  *
@@ -168,14 +172,16 @@ const getPayloadOrgUnitCodes = (roleCodes: readonly string[], roleModules: reado
  *
  * @param values - Formulario ya validado en pantalla
  * @param roleModules - Módulos derivados de los roles elegidos
+ * @param canAssignPassword - Permiso efectivo del actor; nunca se infiere del rol Owner
  */
-export const buildCreateUserPayload = (values: CreateUserFormValues, roleModules: readonly CreateUserModuleOption[]): CreateSystemUserPayload => {
+export const buildCreateUserPayload = (values: CreateUserFormValues, roleModules: readonly CreateUserModuleOption[], canAssignPassword?: boolean): CreateSystemUserPayload => {
     const externalReferences = [
         { externalUserId: values.netsuiteId?.trim() ?? "", systemCode: "netsuite" as const },
         { externalUserId: values.odooId?.trim() ?? "", systemCode: "odoo" as const },
     ].filter((reference) => reference.externalUserId.length > 0);
 
     return {
+        ...(canAssignInitialPassword("create", true, canAssignPassword, values.accessMethods) && values.password ? { password: values.password } : {}),
         accessMethods: values.accessMethods,
         displayName: values.displayName.trim(),
         email: normalizeEmail(values.email),
@@ -194,6 +200,6 @@ export const buildCreateUserPayload = (values: CreateUserFormValues, roleModules
  * Cambiar el estado operativo es otra llamada: no se mezcla con el perfil.
  */
 export const buildUpdateUserPayload = (values: CreateUserFormValues, roleModules: readonly CreateUserModuleOption[]): UpdateSystemUserPayload => {
-    const { initialStatus: _initialStatus, ...payload } = buildCreateUserPayload(values, roleModules);
+    const { initialStatus: _initialStatus, password: _password, ...payload } = buildCreateUserPayload(values, roleModules);
     return payload;
 };

@@ -43,7 +43,7 @@ const createProfile = (input: { permissions?: string[]; roles?: string[] } = {})
     },
 });
 
-const createService = (profile: IdentityProfile = createProfile({ roles: ["owner"] })) => {
+const createService = (profile: IdentityProfile = createProfile({ roles: ["owner"], permissions: ["role.assign"] })) => {
     const identity = {
         getCurrentUser: vi.fn().mockResolvedValue(profile),
     } as unknown as IdentityService;
@@ -119,6 +119,26 @@ const createService = (profile: IdentityProfile = createProfile({ roles: ["owner
 };
 
 describe("IdentityAccessManagementService", () => {
+    it("does not authorize an Owner label without the exact effective grant", async () => {
+        const { repository, service } = createService(createProfile({ roles: ["owner"] }));
+        await expect(service.readSecurityCatalog("token")).rejects.toBeInstanceOf(ForbiddenException);
+        expect(repository.readSecurityCatalog).not.toHaveBeenCalled();
+    });
+
+    it("an exact deny wins over an allow even for Owner", async () => {
+        const profile = createProfile({ roles: ["owner"], permissions: ["role.assign"] });
+        profile.permissions.push({ code: "role.assign", effect: "deny", scope: null, source: "override" });
+        const { repository, service } = createService(profile);
+        await expect(service.readSecurityCatalog("token")).rejects.toBeInstanceOf(ForbiddenException);
+        expect(repository.readSecurityCatalog).not.toHaveBeenCalled();
+    });
+
+    it("keeps the initial-password privilege delegable to a non-Owner role", async () => {
+        const { repository, service } = createService(createProfile({ permissions: ["role.assign"] }));
+        await service.replaceRolePermissions("token", { roleCode: "ventas", payload: { permissionCodes: ["user.assign_password"], reason: "Delegated password privilege" } });
+        expect(repository.replaceRolePermissions).toHaveBeenCalledWith(expect.objectContaining({ permissionCodes: ["user.assign_password"] }));
+    });
+
     it("resolves authorization again on the next request after an Owner downgrade", async () => {
         const { identity, repository, service } = createService();
         await service.readSecurityCatalog("same-session-token");
@@ -260,7 +280,7 @@ describe("IdentityAccessManagementService", () => {
     });
 
     it("bloquea que un Owner se quite su propio rol Owner", async () => {
-        const { repository, service } = createService(createProfile({ roles: ["owner"] }));
+        const { repository, service } = createService(createProfile({ roles: ["owner"], permissions: ["role.assign"] }));
 
         await expect(
             service.replaceUserAccess("session-token", {
@@ -270,14 +290,14 @@ describe("IdentityAccessManagementService", () => {
                     reason: "Ajuste solicitado por soporte",
                     roleCodes: ["ventas"],
                 },
-                userPublicId: "user-public-id",
+                userPublicId: "USER-PUBLIC-ID",
             }),
         ).rejects.toThrow(ConflictException);
         expect(repository.replaceUserAccess).not.toHaveBeenCalled();
     });
 
     it("bloquea que un Owner se deniegue permisos directos a si mismo", async () => {
-        const { repository, service } = createService(createProfile({ roles: ["owner"] }));
+        const { repository, service } = createService(createProfile({ roles: ["owner"], permissions: ["role.assign"] }));
 
         await expect(
             service.replaceUserAccess("session-token", {

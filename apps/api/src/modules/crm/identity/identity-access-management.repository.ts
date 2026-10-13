@@ -229,7 +229,7 @@ export class IdentityAccessManagementRepository {
     constructor(
         @Inject(DatabaseService) private readonly database: DatabaseService,
         @Inject(SecurityAuditService) private readonly audit: SecurityAuditService,
-        @Inject(IdentitySessionRepository) private readonly sessions: IdentitySessionRepository,
+        @Inject(IdentitySessionRepository) _sessions: IdentitySessionRepository,
     ) {}
 
     /**
@@ -295,8 +295,7 @@ export class IdentityAccessManagementRepository {
                 .set({ permission_version_user: sql<number>`permission_version_user + 1`, updated_at_user: now, updated_by_user_id_user: actor.id })
                 .where("id_user", "=", targetUser.id)
                 .executeTakeFirst();
-            // Access replacement invalidates both cookies atomically; refresh must not revive old access.
-            await this.sessions.revokeAllActiveSessionsForUser(transaction, targetUser.id, "user_access_replaced", actor.id);
+            // Version mismatch rejects old access; a valid refresh reloads the new effective grants.
             const nextAccess = await this.readUserAccessByRow(transaction, targetUser);
             await this.audit.record(
                 {
@@ -958,6 +957,7 @@ export class IdentityAccessManagementRepository {
     }
 
     private resolvePermissionViewCode(permissionCode: string): string {
+        if (permissionCode === "formalizacion.home.read") return "home";
         const parts = permissionCode.split(".");
 
         return parts.length >= 3 && findCatalogDefinitionByModuleCode(parts[1] ?? "") ? (parts[1] as string) : (parts[0] ?? permissionCode);
@@ -1053,6 +1053,7 @@ export class IdentityAccessManagementRepository {
 
         const names: Record<string, string> = {
             campaign: "Campanas",
+            home: "Inicio",
             contract: "Contratos",
             estimate: "Estimaciones",
             file: "Expedientes",
@@ -1081,6 +1082,7 @@ export class IdentityAccessManagementRepository {
 
         const names: Record<string, string> = {
             "campaign.create": "Crear campana",
+            "formalizacion.home.read": "Ver inicio de Formalizacion",
             "campaign.read": "Ver campanas",
             "contract.review": "Revisar contrato",
             "estimate.approve": "Aprobar estimacion",
@@ -1103,6 +1105,7 @@ export class IdentityAccessManagementRepository {
             "source.update": "Editar fuentes",
             "user.activate": "Activar usuario",
             "user.create": "Crear usuario",
+            "user.assign_password": "Asignar contrase\u00f1a inicial",
             "user.deactivate": "Desactivar usuario",
             "user.update": "Editar usuario",
             "user.view_detail": "Ver detalle de usuario",
@@ -1118,6 +1121,6 @@ export class IdentityAccessManagementRepository {
     }
 
     private isSensitivePermission(permissionCode: string): boolean {
-        return permissionCode.includes("approve") || permissionCode.includes("inactivate") || permissionCode.includes("reconcile") || permissionCode === "role.assign";
+        return permissionCode.includes("approve") || permissionCode.includes("inactivate") || permissionCode.includes("reconcile") || permissionCode === "role.assign" || permissionCode === "user.assign_password";
     }
 }

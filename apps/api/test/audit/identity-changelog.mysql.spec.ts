@@ -1,4 +1,5 @@
 import { ConfigService } from "@nestjs/config";
+import { argon2id, hash, verify } from "argon2";
 import { config } from "dotenv";
 import { sql, type Transaction } from "kysely";
 import { ulid } from "ulid";
@@ -10,6 +11,7 @@ import type { CrmDatabase } from "../../src/database/database.types.js";
 import type { AuditChangeSet } from "../../src/modules/crm/audit/audit-change-set.js";
 import { SecurityAuditService } from "../../src/modules/crm/audit/security-audit.service.js";
 import { IdentityAccessManagementRepository } from "../../src/modules/crm/identity/identity-access-management.repository.js";
+import { IdentityLocalRepository } from "../../src/modules/crm/identity/identity-local.repository.js";
 import { IdentitySessionRepository } from "../../src/modules/crm/identity/identity-session.repository.js";
 import { IdentityUserDirectoryRepository } from "../../src/modules/crm/identity/identity-user-directory.repository.js";
 
@@ -67,6 +69,74 @@ describe.skipIf(process.env.AUDIT_MYSQL_TESTS !== "1")("identity changelog on CR
         expect(await database.db.selectFrom("sec_user").select("id_user").where("public_id_user", "=", actorPublicId).execute()).toEqual([]);
     };
 
+    it.each(["roles", "areas", "unchanged"] as const)(
+        "preserve assignments validates locked state and retains multi-area relations (%s)",
+        async (kind) => {
+            await withRollback(async ({ service, actorPublicId, roleCodes, orgUnitCodes }) => {
+                const audit = new SecurityAuditService(service);
+                const directory = new IdentityUserDirectoryRepository(service, audit);
+                const access = new IdentityAccessManagementRepository(service, audit, new IdentitySessionRepository(service, audit));
+                const email = `${ulid()}@example.invalid`;
+                const initial = { actorPublicId, displayName: "Preserve fixture", email, normalizedEmail: email, accessMethods: ["local"] as const, externalReferences: [], initialStatus: "active" as const, roleCode: roleCodes[0] as string, roleCodes: [roleCodes[0] as string], orgUnitCodes, reason: "Rollback preserve assignments regression" };
+                const user = await directory.create(initial);
+                expect(user.orgUnits?.map((unit) => unit.code).sort()).toEqual([...orgUnitCodes].sort());
+                if (kind !== "unchanged") await access.replaceUserAccess({ actorPublicId, userPublicId: user.publicId, roleCodes: kind === "roles" ? [roleCodes[1] as string] : initial.roleCodes, orgUnitCodes: kind === "areas" ? [orgUnitCodes[1] as string] : orgUnitCodes, permissionOverrides: [], reason: initial.reason });
+                const userId = (await service.db.selectFrom("sec_user").select("id_user").where("public_id_user", "=", user.publicId).executeTakeFirstOrThrow()).id_user;
+                const beforeUser = await service.db.selectFrom("sec_user").selectAll().where("id_user", "=", userId).executeTakeFirstOrThrow();
+                const beforeRoles = await service.db.selectFrom("sec_user_role").selectAll().where("user_id_user_role", "=", userId).execute();
+                const beforeAreas = await service.db.selectFrom("sec_user_org_unit").selectAll().where("user_id_user_org_unit", "=", userId).execute();
+                const beforeAuth = await service.db.selectFrom("sec_auth_identity").selectAll().where("user_id_auth_identity", "=", userId).execute();
+                const beforeAudit = await service.db.selectFrom("audit_security_event").selectAll().where("target_user_id_security_event", "=", userId).execute();
+                const update = { ...initial, preserveAssignments: true, userPublicId: user.publicId, displayName: "Changed data only", orgUnitCodes: [...orgUnitCodes].reverse() };
+                if (kind === "unchanged") {
+                    const updated = await directory.update(update);
+                    expect(updated).toMatchObject({ name: "Changed data only" });
+                    expect(updated?.orgUnits?.map((unit) => unit.code).sort()).toEqual([...orgUnitCodes].sort());
+                } else {
+                    await expect(directory.update(update)).rejects.toThrow("Las asignaciones cambiaron");
+                    expect(await service.db.selectFrom("sec_user").selectAll().where("id_user", "=", userId).executeTakeFirstOrThrow()).toEqual(beforeUser);
+                    expect(await service.db.selectFrom("sec_auth_identity").selectAll().where("user_id_auth_identity", "=", userId).execute()).toEqual(beforeAuth);
+                    expect(await service.db.selectFrom("audit_security_event").selectAll().where("target_user_id_security_event", "=", userId).execute()).toEqual(beforeAudit);
+                }
+                expect(await service.db.selectFrom("sec_user_role").selectAll().where("user_id_user_role", "=", userId).execute()).toEqual(beforeRoles);
+                expect(await service.db.selectFrom("sec_user_org_unit").selectAll().where("user_id_user_org_unit", "=", userId).execute()).toEqual(beforeAreas);
+            });
+        },
+        90_000,
+    );
+
+    it.each([false, true])(
+        "persists only the assigned password hash and keeps credentials out of audit (audit failure=%s)",
+        async (failAudit) => {
+            await withRollback(async ({ service, actorPublicId, roleCodes, orgUnitCodes }) => {
+                const audit = new SecurityAuditService(service);
+                const password = "Rollback-only-initial-passphrase";
+                const passwordHash = await hash(password, { type: argon2id });
+                const email = `${ulid()}@example.invalid`;
+                const input = { actorPublicId, displayName: "Password rollback fixture", email, normalizedEmail: email, accessMethods: ["local"] as const, externalReferences: [], initialStatus: "active" as const, passwordHash, roleCode: roleCodes[0] as string, roleCodes: [roleCodes[0] as string], orgUnitCodes: [orgUnitCodes[0] as string], reason: "Authorized initial password rollback test" };
+                if (failAudit) {
+                    vi.spyOn(audit, "record").mockRejectedValue(new Error("password audit unavailable"));
+                    await expect(new IdentityUserDirectoryRepository(service, audit).create(input)).rejects.toThrow("password audit unavailable");
+                    expect(await service.db.selectFrom("sec_user").select("id_user").where("normalized_email_user", "=", email).execute()).toEqual([]);
+                    expect(await service.db.selectFrom("sec_auth_identity").select("id_auth_identity").where("normalized_email_auth_identity", "=", email).execute()).toEqual([]);
+                    return;
+                }
+                const created = await new IdentityUserDirectoryRepository(service, audit).create(input);
+                expect(JSON.stringify(created)).not.toContain(passwordHash);
+                expect(JSON.stringify(created)).not.toContain(password);
+                const identity = await new IdentityLocalRepository(service, audit).findActiveLocalIdentity(email);
+                expect(identity).not.toBeNull();
+                expect(await verify(identity?.passwordHash ?? "", password)).toBe(true);
+                const user = await service.db.selectFrom("sec_user").select("id_user").where("public_id_user", "=", created.publicId).executeTakeFirstOrThrow();
+                const row = await service.db.selectFrom("audit_security_event").selectAll().where("target_user_id_security_event", "=", user.id_user).executeTakeFirstOrThrow();
+                expect(JSON.stringify(row)).not.toContain(passwordHash);
+                expect(JSON.stringify(row)).not.toContain(password);
+                expect(typeof row.metadata_security_event === "string" ? JSON.parse(row.metadata_security_event) : row.metadata_security_event).toMatchObject({ localPasswordAssigned: true });
+            });
+        },
+        60_000,
+    );
+
     it.each(["update", "replaceUserAccess", "updateRole"] as const)(
         "preserves original actor roles and canonical references during self %s",
         async (method) => {
@@ -80,7 +150,7 @@ describe.skipIf(process.env.AUDIT_MYSQL_TESTS !== "1")("identity changelog on CR
                 const directory = new IdentityUserDirectoryRepository(service, audit);
                 const access = new IdentityAccessManagementRepository(service, audit, new IdentitySessionRepository(service, audit));
                 const input = { actorPublicId: actorPublicId.toLowerCase(), userPublicId: actorPublicId.toLowerCase(), roleCodes: [replacementCode], orgUnitCodes: [orgUnitCodes[0] as string], permissionOverrides: [], reason: "Rollback self audit regression" };
-                if (method === "update") await directory.update({ ...input, displayName: "Renamed self", email: actor.email_user, normalizedEmail: actor.email_user, roleCode: replacementCode, accessMethods: ["local"], externalReferences: [] });
+                if (method === "update") await directory.update({ ...input, preserveAssignments: false, displayName: "Renamed self", email: actor.email_user, normalizedEmail: actor.email_user, roleCode: replacementCode, accessMethods: ["local"], externalReferences: [] });
                 else if (method === "replaceUserAccess") await access.replaceUserAccess(input);
                 else await access.updateRole({ actorPublicId: input.actorPublicId, code: roleCode.toUpperCase(), name: "Renamed own role", reason: input.reason });
                 const row = await service.db.selectFrom("audit_security_event").select("metadata_security_event").where("actor_user_id_security_event", "=", actor.id_user).executeTakeFirstOrThrow();
@@ -112,7 +182,7 @@ describe.skipIf(process.env.AUDIT_MYSQL_TESTS !== "1")("identity changelog on CR
             const system = await service.db.selectFrom("int_external_system").select("id_external_system").where("code_external_system", "=", "netsuite").executeTakeFirst();
             if (!system) await sql`INSERT INTO int_external_system (code_external_system,name_external_system,status_external_system) VALUES ('netsuite','Rollback external system','active')`.execute(service.db);
             const reference = { systemCode: "netsuite" as const, externalUserId: ulid() };
-            const update = { ...input, userPublicId: user.publicId, displayName: "Updated person", roleCode: nextRoleCode, roleCodes: [nextRoleCode], orgUnitCodes: [nextOrgUnitCode], externalReferences: [reference] };
+            const update = { ...input, preserveAssignments: false, userPublicId: user.publicId, displayName: "Updated person", roleCode: nextRoleCode, roleCodes: [nextRoleCode], orgUnitCodes: [nextOrgUnitCode], externalReferences: [reference] };
             await directory.update(update);
             await directory.updateStatus({ actorPublicId, userPublicId: user.publicId, status: "inactive", reason: input.reason });
             await directory.updateStatus({ actorPublicId, userPublicId: user.publicId, status: "active", reason: input.reason });

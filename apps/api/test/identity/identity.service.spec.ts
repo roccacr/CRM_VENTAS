@@ -26,6 +26,7 @@ const createIdentityService = () => {
         recordRefreshRotated: vi.fn().mockResolvedValue(undefined),
     } as unknown as IdentityAuditRecorder;
     const repository = {
+        findSystemUserByPublicId: vi.fn().mockResolvedValue({ publicId: "target-user-public-id", roles: [{ code: "ventas" }], orgUnit: { code: "ventas" } }),
         createLocalPasswordResetToken: vi.fn().mockResolvedValue(undefined),
         createSession: vi.fn().mockResolvedValue(undefined),
         createSystemUser: vi.fn().mockResolvedValue({
@@ -129,6 +130,7 @@ const createIdentityService = () => {
         }),
     } as unknown as IdentityMicrosoftSessionService;
 
+    const service = new IdentityService(repository, tokens, audit, microsoftSession);
     return {
         audit: audit as unknown as {
             recordLocalIdentityLocked: ReturnType<typeof vi.fn>;
@@ -147,6 +149,7 @@ const createIdentityService = () => {
             startLogin: ReturnType<typeof vi.fn>;
         },
         repository: repository as unknown as {
+            findSystemUserByPublicId: ReturnType<typeof vi.fn>;
             createLocalPasswordResetToken: ReturnType<typeof vi.fn>;
             createSession: ReturnType<typeof vi.fn>;
             createSystemUser: ReturnType<typeof vi.fn>;
@@ -172,7 +175,7 @@ const createIdentityService = () => {
             updateMicrosoftCache: ReturnType<typeof vi.fn>;
             updateUserProfileImage: ReturnType<typeof vi.fn>;
         },
-        service: new IdentityService(repository, tokens, audit, microsoftSession),
+        service,
         tokens: tokens as unknown as {
             hashToken: ReturnType<typeof vi.fn>;
             issueInitialTokens: ReturnType<typeof vi.fn>;
@@ -229,6 +232,7 @@ const createProfileWithUserListPermission = (): IdentityProfile => ({
 const createProfileWithUserCreatePermission = (): IdentityProfile => ({
     ...createProfile(),
     permissions: [
+        { code: "role.assign", effect: "allow", scope: "all_areas", source: "role" },
         {
             code: "user.create",
             effect: "allow",
@@ -776,6 +780,67 @@ describe("IdentityService", () => {
         expect(result.publicId).toBe("01KCRMNEWUSER000000000001");
     });
 
+    it("requires role.assign for user creation even with user.create", async () => {
+        const { repository, service } = createIdentityService();
+        const profile = createProfileWithUserCreatePermission();
+        repository.findBySessionTokenHash.mockResolvedValue({ ...profile, permissions: profile.permissions.filter((permission) => permission.code !== "role.assign") });
+        await expect(service.createSystemUser("session-token", { displayName: "User", email: "user@example.test", initialStatus: "pending", roleCode: "ventas", reason: "Creation permission regression" })).rejects.toBeInstanceOf(ForbiddenException);
+        expect(repository.createSystemUser).not.toHaveBeenCalled();
+    });
+
+    it("asigna Formalizacion por defecto al crear su perfil sin areas explicitas", async () => {
+        const { repository, service } = createIdentityService();
+        repository.findBySessionTokenHash.mockResolvedValue(createProfileWithUserCreatePermission());
+        await service.createSystemUser("session-token", { displayName: "Formalizacion Test", email: "formalization@example.test", initialStatus: "pending", roleCode: "formalizacion", reason: "Alta perfil formalizacion" });
+        expect(repository.createSystemUser).toHaveBeenCalledWith(expect.objectContaining({ roleCodes: ["formalizacion"], orgUnitCodes: ["formalizacion"] }));
+    });
+
+    it("rejects an initial password without the dedicated privilege", async () => {
+        const { repository, service } = createIdentityService();
+        repository.findBySessionTokenHash.mockResolvedValue(createProfileWithUserCreatePermission());
+        const payload = { displayName: "Password fixture", email: "password@example.test", initialStatus: "pending" as const, roleCode: "formalizacion", password: "Fixture-only-passphrase-2026", reason: "Password privilege regression" };
+        await expect(service.createSystemUser("session-token", payload)).rejects.toThrow("Permiso insuficiente");
+        expect(repository.createSystemUser).not.toHaveBeenCalled();
+    });
+
+    it("hashes an authorized initial password and makes a pending new account active", async () => {
+        const { repository, service } = createIdentityService();
+        const profile = createProfileWithUserCreatePermission();
+        repository.findBySessionTokenHash.mockResolvedValue({ ...profile, permissions: [...profile.permissions, { code: "user.assign_password", effect: "allow", scope: "all_areas", source: "role" }] });
+        const payload = { displayName: "Password fixture", email: "password@example.test", initialStatus: "pending" as const, accessMethods: ["local" as const], roleCode: "formalizacion", password: "Fixture-only-passphrase-2026", reason: "Password privilege regression" };
+        await service.createSystemUser("session-token", payload);
+        const input = repository.createSystemUser.mock.calls[0]?.[0] as { password?: string; passwordHash?: string; initialStatus: string };
+        expect(input.password).toBeUndefined();
+        expect(input.passwordHash).toMatch(/^\$argon2id\$/);
+        expect(input.initialStatus).toBe("active");
+    });
+
+    it("rejects password assignment for Microsoft-only users", async () => {
+        const { repository, service } = createIdentityService();
+        const profile = createProfileWithUserCreatePermission();
+        repository.findBySessionTokenHash.mockResolvedValue({ ...profile, permissions: [...profile.permissions, { code: "user.assign_password", effect: "allow", scope: "all_areas", source: "role" }] });
+        const payload = { displayName: "Password fixture", email: "password@example.test", initialStatus: "pending" as const, accessMethods: ["microsoft" as const], roleCode: "formalizacion", password: "Fixture-only-passphrase-2026", reason: "Password privilege regression" };
+        await expect(service.createSystemUser("session-token", payload)).rejects.toThrow("local");
+        expect(repository.createSystemUser).not.toHaveBeenCalled();
+    });
+
+    it.each(["short", "x".repeat(129), "password1234", " ".repeat(12)])("rejects weak or oversized assigned passwords (%#)", async (password) => {
+        const { repository, service } = createIdentityService();
+        const profile = createProfileWithUserCreatePermission();
+        repository.findBySessionTokenHash.mockResolvedValue({ ...profile, permissions: [...profile.permissions, { code: "user.assign_password", effect: "allow", scope: "all_areas", source: "role" }] });
+        const payload = { displayName: "Password fixture", email: "password@example.test", initialStatus: "pending" as const, roleCode: "formalizacion", password, reason: "Password policy regression" };
+        await expect(service.createSystemUser("session-token", payload)).rejects.toBeInstanceOf(BadRequestException);
+        expect(repository.createSystemUser).not.toHaveBeenCalled();
+    });
+
+    it("assign-password alone never grants user creation", async () => {
+        const { repository, service } = createIdentityService();
+        repository.findBySessionTokenHash.mockResolvedValue({ ...createProfile(), permissions: [{ code: "user.assign_password", effect: "allow", scope: "self", source: "role" }] });
+        const payload = { displayName: "Password fixture", email: "password@example.test", initialStatus: "pending" as const, roleCode: "formalizacion", password: "Fixture-only-passphrase-2026", reason: "Password privilege regression" };
+        await expect(service.createSystemUser("session-token", payload)).rejects.toBeInstanceOf(ForbiddenException);
+        expect(repository.createSystemUser).not.toHaveBeenCalled();
+    });
+
     it("rechaza crear usuario sin permiso user.create", async () => {
         const { repository, service } = createIdentityService();
         repository.findBySessionTokenHash.mockResolvedValue(createProfileWithUserListPermission());
@@ -796,6 +861,64 @@ describe("IdentityService", () => {
             ),
         ).rejects.toThrow(ForbiddenException);
 
+        expect(repository.createSystemUser).not.toHaveBeenCalled();
+    });
+
+    it.each(["roles", "areas"] as const)("requires role.assign when persisted %s change", async (kind) => {
+        const { repository, service } = createIdentityService();
+        repository.findBySessionTokenHash.mockResolvedValue(createProfileWithUserUpdatePermission());
+        const payload = { displayName: "Changed", email: "changed@example.test", roleCode: kind === "roles" ? "owner" : "ventas", orgUnitCodes: [kind === "areas" ? "formalizacion" : "ventas"], reason: "Access permission regression" };
+        await expect(service.updateSystemUser("token", "target-user-public-id", payload)).rejects.toBeInstanceOf(ForbiddenException);
+        expect(repository.updateSystemUser).not.toHaveBeenCalled();
+    });
+
+    it("allows changed assignments with role.assign and user.update", async () => {
+        const { repository, service } = createIdentityService();
+        const profile = createProfileWithUserUpdatePermission();
+        repository.findBySessionTokenHash.mockResolvedValue({ ...profile, permissions: [...profile.permissions, { code: "role.assign", effect: "allow", scope: "all_areas", source: "role" }] });
+        await service.updateSystemUser("token", "target-user-public-id", { displayName: "Changed", email: "changed@example.test", roleCode: "formalizacion", orgUnitCodes: ["formalizacion"], reason: "Authorized access change" });
+        expect(repository.updateSystemUser).toHaveBeenCalledOnce();
+    });
+
+    it("ignores assignment ordering, casing and duplicates for data-only edits", async () => {
+        const { repository, service } = createIdentityService();
+        repository.findBySessionTokenHash.mockResolvedValue(createProfileWithUserUpdatePermission());
+        repository.findSystemUserByPublicId.mockResolvedValue({ publicId: "target-user-public-id", roles: [{ code: "ventas" }, { code: "formalizacion" }], orgUnits: [{ code: "ventas" }, { code: "formalizacion" }] });
+        await service.updateSystemUser("token", "target-user-public-id", { displayName: "Changed", email: "changed@example.test", roleCode: "ventas", roleCodes: ["FORMALIZACION", "ventas", "ventas"], orgUnitCodes: ["formalizacion", "VENTAS"], reason: "Data-only assignment comparison" });
+        expect(repository.updateSystemUser).toHaveBeenCalledOnce();
+    });
+
+    it("rejects an exact role.assign deny when assignments change", async () => {
+        const { repository, service } = createIdentityService();
+        const profile = createProfileWithUserUpdatePermission();
+        repository.findBySessionTokenHash.mockResolvedValue({ ...profile, permissions: [...profile.permissions, { code: "role.assign", effect: "allow", scope: "all_areas", source: "role" }, { code: "role.assign", effect: "deny", scope: "all_areas", source: "override" }] });
+        await expect(service.updateSystemUser("token", "target-user-public-id", { displayName: "Changed", email: "changed@example.test", roleCode: "owner", orgUnitCodes: ["ventas"], reason: "Exact assignment deny regression" })).rejects.toBeInstanceOf(ForbiddenException);
+        expect(repository.updateSystemUser).not.toHaveBeenCalled();
+    });
+
+    it("compares all persisted areas instead of only the first directory area", async () => {
+        const { repository, service } = createIdentityService();
+        repository.findBySessionTokenHash.mockResolvedValue(createProfileWithUserUpdatePermission());
+        repository.findSystemUserByPublicId.mockResolvedValue({ publicId: "target-user-public-id", roles: [{ code: "ventas" }], orgUnit: { code: "ventas" }, orgUnits: [{ code: "ventas" }, { code: "formalizacion" }] });
+        await expect(service.updateSystemUser("token", "target-user-public-id", { displayName: "Changed", email: "changed@example.test", roleCode: "ventas", orgUnitCodes: ["ventas"], reason: "Access permission regression" })).rejects.toBeInstanceOf(ForbiddenException);
+        expect(repository.updateSystemUser).not.toHaveBeenCalled();
+    });
+
+    it.each(["update", "status"] as const)("rejects case-insensitive self %s", async (method) => {
+        const { repository, service } = createIdentityService();
+        const profile = createProfileWithUserUpdatePermission();
+        repository.findBySessionTokenHash.mockResolvedValue({ ...profile, permissions: [...profile.permissions, { code: "user.deactivate", effect: "allow", scope: "all_areas", source: "role" }] });
+        if (method === "update") await expect(service.updateSystemUser("token", "USER-PUBLIC-ID", { displayName: "Changed", email: "changed@example.test", roleCode: "ventas", orgUnitCodes: ["ventas"], reason: "Self protection regression" })).rejects.toBeInstanceOf(ForbiddenException);
+        else await expect(service.updateSystemUserStatus("token", "USER-PUBLIC-ID", { status: "inactive", reason: "Self protection regression" })).rejects.toBeInstanceOf(ForbiddenException);
+        expect(repository.updateSystemUser).not.toHaveBeenCalled();
+        expect(repository.updateSystemUserStatus).not.toHaveBeenCalled();
+    });
+
+    it("denies creation when an exact deny accompanies an allow", async () => {
+        const { repository, service } = createIdentityService();
+        const profile = createProfileWithUserCreatePermission();
+        repository.findBySessionTokenHash.mockResolvedValue({ ...profile, permissions: [...profile.permissions, { code: "user.create", effect: "deny", scope: "all_areas", source: "override" }] });
+        await expect(service.createSystemUser("token", { displayName: "User", email: "user@example.test", initialStatus: "pending", roleCode: "ventas", reason: "Exact deny regression" })).rejects.toBeInstanceOf(ForbiddenException);
         expect(repository.createSystemUser).not.toHaveBeenCalled();
     });
 
@@ -922,7 +1045,7 @@ describe("IdentityService", () => {
         expect(repository.completeLocalPasswordReset).not.toHaveBeenCalled();
     });
 
-    it("audita la rotacion de refresh con el usuario canonico asociado", async () => {
+    it("passes refresh audit context to atomic rotation without a post-commit profile read or audit", async () => {
         const { audit, repository, service, tokens } = createIdentityService();
         repository.rotateRefreshSession.mockResolvedValue({
             authIdentityId: 10,
@@ -931,6 +1054,7 @@ describe("IdentityService", () => {
             sessionPublicId: "session-public-id",
             sessionExpiresAt: new Date(Date.now() + 60_000),
             status: "rotated",
+            snapshot: { user: createProfile().user, session: createProfile().session },
             userId: 20,
         });
         tokens.issueSessionToken.mockReturnValue({
@@ -946,7 +1070,9 @@ describe("IdentityService", () => {
 
         await service.refresh("current-refresh-token", "127.0.0.1", "vitest");
 
-        expect(audit.recordRefreshRotated).toHaveBeenCalledWith(20, "session-public-id", "127.0.0.1", "vitest");
+        expect(repository.rotateRefreshSession).toHaveBeenCalledWith(expect.objectContaining({ ipAddress: "127.0.0.1", userAgent: "vitest" }));
+        expect(audit.recordRefreshRotated).not.toHaveBeenCalled();
+        expect(repository.findBySessionTokenHash).not.toHaveBeenCalled();
     });
 
     it("devuelve las expiraciones reales de la rotacion para escribir cookies", async () => {
@@ -960,6 +1086,7 @@ describe("IdentityService", () => {
             sessionPublicId: "session-public-id",
             sessionExpiresAt: clippedSessionExpiresAt,
             status: "rotated",
+            snapshot: { user: createProfile().user, session: createProfile().session },
             userId: 20,
         });
         tokens.issueSessionToken.mockReturnValue({

@@ -24,7 +24,7 @@ import { type ReactNode, useEffect } from "react";
 
 import type { CreateSystemUserPayload, UpdateSystemUserPayload } from "../../../services/auth/identity-contracts";
 import { ADMINISTRATION_DRAWER_CLOSE_PLACEMENT, ADMINISTRATION_DRAWER_PROPS } from "../administration-theme";
-import { ACCESS_METHOD_OPTIONS, buildCreateUserPayload, buildUpdateUserPayload, createEditUserFormValues, createInitialUserFormValues, type CreateUserFormValues, type CreateUserModuleOption, type CreateUserRoleOption, type CreateUserRolePermissions, getRoleModules, hasOwnerRole, normalizeEmail } from "../create-system-user.model";
+import { ACCESS_METHOD_OPTIONS, buildCreateUserPayload, buildUpdateUserPayload, canAssignInitialPassword, createEditUserFormValues, createInitialUserFormValues, type CreateUserFormValues, type CreateUserModuleOption, type CreateUserRoleOption, type CreateUserRolePermissions, getRoleModules, hasOwnerRole, normalizeEmail } from "../create-system-user.model";
 import type { SystemUserListItem } from "../system-users.model";
 import { SystemUserStatusPill } from "./SystemUserBadges";
 
@@ -32,6 +32,8 @@ const FORM_NAME = "createSystemUser";
 const DISCARD_CONFIRMATION = "Hay datos sin guardar. ¿Quieres cerrar el formulario y descartarlos?";
 
 interface CreateSystemUserDrawerProps {
+    readonly canAssignRoles?: boolean;
+    readonly canAssignPassword?: boolean;
     readonly error: string | null;
     readonly initialUser?: SystemUserListItem | null;
     readonly isSaving: boolean;
@@ -76,10 +78,10 @@ function RoleScope({ isOwner, roleCount, roleModules }: { readonly isOwner: bool
     );
 }
 
-function AccessSummary({ isEditMode, isOwner, moduleCount, roleCount }: { readonly isEditMode: boolean; readonly isOwner: boolean; readonly moduleCount: number; readonly roleCount: number }) {
+function AccessSummary({ hasAssignedPassword, isEditMode, isOwner, moduleCount, roleCount }: { readonly hasAssignedPassword: boolean; readonly isEditMode: boolean; readonly isOwner: boolean; readonly moduleCount: number; readonly roleCount: number }) {
     const initialStatus = (
-        <span className="create-user-drawer__initial-status" title="El usuario queda Pendiente hasta su primer inicio de sesión.">
-            Estado inicial <SystemUserStatusPill status="pending" />
+        <span className="create-user-drawer__initial-status">
+            Estado inicial <SystemUserStatusPill status={hasAssignedPassword ? "active" : "pending"} />
         </span>
     );
 
@@ -105,13 +107,13 @@ function AccessSummary({ isEditMode, isOwner, moduleCount, roleCount }: { readon
     );
 }
 
-function CreateUserDrawerFooter({ error, isEditMode, isOwner, isSaving, moduleCount, onCancel, onSubmit, roleCount }: { readonly error: string | null; readonly isEditMode: boolean; readonly isOwner: boolean; readonly isSaving: boolean; readonly moduleCount: number; readonly onCancel: () => void; readonly onSubmit: () => void; readonly roleCount: number }) {
+function CreateUserDrawerFooter({ error, hasAssignedPassword, isEditMode, isOwner, isSaving, moduleCount, onCancel, onSubmit, roleCount }: { readonly error: string | null; readonly hasAssignedPassword: boolean; readonly isEditMode: boolean; readonly isOwner: boolean; readonly isSaving: boolean; readonly moduleCount: number; readonly onCancel: () => void; readonly onSubmit: () => void; readonly roleCount: number }) {
     const savingLabel = isEditMode ? "Guardando cambios..." : "Creando usuario...";
     const actionLabel = isEditMode ? "Guardar cambios" : "Crear usuario";
 
     return (
         <div className="create-user-drawer__footer">
-            <div className="create-user-drawer__footer-status">{error ? <Alert type="error" showIcon title={error} role="alert" /> : <AccessSummary isEditMode={isEditMode} isOwner={isOwner} moduleCount={moduleCount} roleCount={roleCount} />}</div>
+            <div className="create-user-drawer__footer-status">{error ? <Alert type="error" showIcon title={error} role="alert" /> : <AccessSummary hasAssignedPassword={hasAssignedPassword} isEditMode={isEditMode} isOwner={isOwner} moduleCount={moduleCount} roleCount={roleCount} />}</div>
             <Space size={8}>
                 <Button disabled={isSaving} onClick={onCancel}>
                     Cancelar
@@ -127,6 +129,23 @@ function CreateUserDrawerFooter({ error, isEditMode, isOwner, isSaving, moduleCo
 /** `Form.useWatch` devuelve `undefined` en el primer render, antes de conectar el formulario, aunque su tipo no lo diga. */
 const toWatchedList = (value: readonly string[] | undefined): readonly string[] => value ?? [];
 
+function InitialPasswordField({ visible }: { readonly visible: boolean }) {
+    if (!visible) return null;
+    return (
+        <Form.Item<CreateUserFormValues>
+            label="Contraseña inicial"
+            name="password"
+            preserve={false}
+            rules={[
+                { min: 12, max: 128, message: "Usa entre 12 y 128 caracteres." },
+                { whitespace: true, message: "La contraseña no puede contener solo espacios." },
+            ]}
+        >
+            <Input.Password autoComplete="new-password" maxLength={128} />
+        </Form.Item>
+    );
+}
+
 /**
  * Alta de usuario en panel lateral.
  *
@@ -134,12 +153,20 @@ const toWatchedList = (value: readonly string[] | undefined): readonly string[] 
  * plegadas al final porque son opcionales. Los módulos no se eligen: salen de
  * los roles asignados y el API calcula los permisos efectivos al guardar.
  */
-export function CreateSystemUserDrawer({ error, initialUser = null, isSaving, mode = "create", moduleOptions, onClose, onSubmit, open, roleOptions, rolePermissions }: CreateSystemUserDrawerProps) {
+// eslint-disable-next-line complexity -- Creation/edit lifecycle and independent role/password gates share the same form state.
+export function CreateSystemUserDrawer({ canAssignPassword, canAssignRoles, error, initialUser = null, isSaving, mode = "create", moduleOptions, onClose, onSubmit, open, roleOptions, rolePermissions }: CreateSystemUserDrawerProps) {
     const [form] = Form.useForm<CreateUserFormValues>();
     const isEditMode = mode === "edit";
     const roleCodes = toWatchedList(Form.useWatch("roleCodes", form));
     const isOwner = hasOwnerRole(roleCodes);
     const roleModules = getRoleModules(roleCodes, rolePermissions, moduleOptions);
+    const accessMethods = toWatchedList(Form.useWatch("accessMethods", form));
+    const showPassword = canAssignInitialPassword(mode, open, canAssignPassword, accessMethods);
+    const password = Form.useWatch("password", form);
+
+    useEffect(() => {
+        if (!showPassword) form.setFieldValue("password", undefined);
+    }, [form, showPassword]);
 
     useEffect(() => {
         if (!open) {
@@ -150,6 +177,7 @@ export function CreateSystemUserDrawer({ error, initialUser = null, isSaving, mo
     }, [form, initialUser, isEditMode, open]);
 
     const validateRoleScope = (_: unknown, value: readonly string[] | undefined): Promise<void> => {
+        if (isEditMode && !canAssignRoles) return Promise.resolve();
         const selectedRoles = value ?? [];
 
         if (selectedRoles.length === 0 || hasOwnerRole(selectedRoles) || getRoleModules(selectedRoles, rolePermissions, moduleOptions).length > 0) {
@@ -168,6 +196,7 @@ export function CreateSystemUserDrawer({ error, initialUser = null, isSaving, mo
             return;
         }
 
+        form.setFieldValue("password", undefined);
         onClose();
     };
 
@@ -182,11 +211,12 @@ export function CreateSystemUserDrawer({ error, initialUser = null, isSaving, mo
     /** `getFieldsValue(true)` incluye las integraciones aunque su panel siga plegado. */
     const handleFinish = (): void => {
         const values = form.getFieldsValue(true) as CreateUserFormValues;
-        onSubmit(isEditMode ? buildUpdateUserPayload(values, roleModules) : buildCreateUserPayload(values, roleModules));
+        onSubmit(isEditMode ? buildUpdateUserPayload(values, roleModules) : buildCreateUserPayload(values, roleModules, showPassword));
     };
 
     const footer = (
         <CreateUserDrawerFooter
+            hasAssignedPassword={Boolean(password)}
             error={error}
             isEditMode={isEditMode}
             isOwner={isOwner}
@@ -235,6 +265,7 @@ export function CreateSystemUserDrawer({ error, initialUser = null, isSaving, mo
                             <Form.Item<CreateUserFormValues> className="create-user-drawer__compact-item" label="Métodos de acceso" name="accessMethods" rules={[{ message: "Selecciona al menos un método de acceso.", min: 1, required: true, type: "array" }]}>
                                 <Checkbox.Group options={[...ACCESS_METHOD_OPTIONS]} />
                             </Form.Item>
+                            <InitialPasswordField visible={showPassword} />
                         </Col>
                     </Row>
                 </FormSection>
@@ -242,6 +273,7 @@ export function CreateSystemUserDrawer({ error, initialUser = null, isSaving, mo
                 <FormSection step={2} title="Acceso y permisos">
                     <Form.Item<CreateUserFormValues> label="Roles asignados" name="roleCodes" extra={<RoleScope isOwner={isOwner} roleCount={roleCodes.length} roleModules={roleModules} />} rules={[{ message: "Selecciona al menos un rol.", min: 1, required: true, type: "array" }, { validator: validateRoleScope }]}>
                         <Select
+                            disabled={isEditMode && !canAssignRoles}
                             mode="multiple"
                             allowClear
                             virtual={false}

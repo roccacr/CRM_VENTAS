@@ -15,6 +15,17 @@ function setup(enabled = true) {
     return { identity, repository, legacy, service: new UnitFilesService(identity as unknown as IdentityService, repository as unknown as UnitFilesRepository, legacy) };
 }
 describe("Unit Files native-first service", () => {
+    it("rejects the Home-only Formalization profile before reading any inventory", async () => {
+        const { identity, service, repository, legacy } = setup();
+        identity.getCurrentUser.mockResolvedValue({ roles: [{ code: "formalizacion", status: "active" }], orgUnits: [{ code: "formalizacion", status: "active" }], permissions: [{ code: "formalizacion.home.read", effect: "allow" }] });
+        await expect(service.list("session", { ...filter, moduleCode: "formalizacion" })).rejects.toThrow("Permiso");
+        await expect(service.projects("session", "formalizacion")).rejects.toThrow("Permiso");
+        await expect(service.detail("session", project.id, "formalizacion")).rejects.toThrow("Permiso");
+        expect(repository.projects).not.toHaveBeenCalled();
+        expect(repository.list).not.toHaveBeenCalled();
+        expect(legacy.list).not.toHaveBeenCalled();
+    });
+
     it("merges full-scope facet counts and does not query disabled legacy", async () => {
         const { service, repository, legacy } = setup();
         repository.facets.mockResolvedValue([

@@ -96,15 +96,21 @@ const createService = (profile: IdentityProfile) => {
 };
 
 describe("CatalogsService", () => {
+    it.each(["projects", "campaigns", "classes", "locations", "subsidiaries", "brokers", "files"])("Home-only Formalization cannot read %s", async (catalogCode) => {
+        const { repository, service } = createService(createProfile({ roles: ["formalizacion"], orgUnits: ["formalizacion"], permissions: ["formalizacion.home.read"] }));
+        await expect(service.listCatalogItems("session", catalogCode, { moduleCode: "formalizacion", limit: 10, offset: 0 })).rejects.toBeInstanceOf(ForbiddenException);
+        expect(repository.listCatalogItems).not.toHaveBeenCalled();
+    });
+
     it("rejects mutations of legacy preview identities before persistence", async () => {
-        const { repository, service } = createService(createProfile({ roles: ["owner"] }));
+        const { repository, service } = createService(createProfile({ roles: ["owner"], permissions: ["administration.catalog_project.update", "administration.catalog_project.inactivate"] }));
         await expect(service.updateCatalogItem("token", "projects", "legacy:projects:42", { moduleCode: "administration", name: "Edited project", reason: "Approved test" })).rejects.toBeInstanceOf(ForbiddenException);
         await expect(service.updateCatalogItemStatus("token", "projects", "legacy:projects:42", { moduleCode: "administration", status: "inactive", reason: "Approved test" })).rejects.toBeInstanceOf(ForbiddenException);
         expect(repository.updateCatalogItem).not.toHaveBeenCalled();
         expect(repository.updateCatalogItemStatus).not.toHaveBeenCalled();
     });
     it("validates and forwards catalog pagination offsets", async () => {
-        const { repository, service } = createService(createProfile({ roles: ["owner"] }));
+        const { repository, service } = createService(createProfile({ roles: ["owner"], permissions: ["administration.catalog_project.read"] }));
         const pipe = new ValidationPipe({ transform: true, whitelist: true });
         const query = (await pipe.transform({ moduleCode: "administration", offset: "100", limit: "100" }, { type: "query", metatype: ListCatalogItemsQueryDto })) as ListCatalogItemsQueryDto;
         await service.listCatalogItems("session", "projects", query);
@@ -112,7 +118,7 @@ describe("CatalogsService", () => {
         await expect(pipe.transform({ moduleCode: "administration", offset: "-1" }, { type: "query", metatype: ListCatalogItemsQueryDto })).rejects.toBeInstanceOf(BadRequestException);
     });
     it.each([undefined, null, "", "   "])("omits unassigned Odoo references on create and update (%s)", async (externalId) => {
-        const { repository, service } = createService(createProfile({ roles: ["owner"] }));
+        const { repository, service } = createService(createProfile({ roles: ["owner"], permissions: ["administration.catalog_project.create", "administration.catalog_project.update"] }));
         const payload = {
             moduleCode: "administration" as const,
             name: "Proyecto Sur",
@@ -134,7 +140,7 @@ describe("CatalogsService", () => {
     });
 
     it("rejects duplicate assigned references with 409 before repository calls", async () => {
-        const { repository, service } = createService(createProfile({ roles: ["owner"] }));
+        const { repository, service } = createService(createProfile({ roles: ["owner"], permissions: ["administration.catalog_project.create", "administration.catalog_project.update"] }));
         const payload = {
             moduleCode: "administration" as const,
             name: "Proyecto Sur",
@@ -204,8 +210,8 @@ describe("CatalogsService", () => {
         expect(repository.listCatalogItems).not.toHaveBeenCalled();
     });
 
-    it("permite al Owner administrar catalogos aunque no traiga permisos explicitos", async () => {
-        const { repository, service } = createService(createProfile({ roles: ["owner"] }));
+    it("permite al Owner con grant efectivo exacto sin membresia de contexto", async () => {
+        const { repository, service } = createService(createProfile({ roles: ["owner"], permissions: ["administration.catalog_campaign.create"] }));
 
         await service.createCatalogItem(
             "session-token",

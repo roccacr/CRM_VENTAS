@@ -1,6 +1,8 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { Transform, Type } from "class-transformer";
-import { ArrayMaxSize, ArrayMinSize, IsArray, IsEmail, IsIn, IsInt, IsOptional, IsString, Max, MaxLength, Min, MinLength, ValidateNested } from "class-validator";
+import { ArrayMaxSize, ArrayMinSize, IsArray, IsEmail, IsIn, IsInt, IsOptional, IsString, Max, MaxLength, Min, MinLength, ValidateIf, ValidateNested } from "class-validator";
+
+import { MAX_LOCAL_PASSWORD_LENGTH, MIN_LOCAL_PASSWORD_LENGTH } from "./local-auth.dto.js";
 
 const SYSTEM_USER_STATUSES = ["active", "blocked", "inactive", "pending"] as const;
 const CREATE_SYSTEM_USER_STATUSES = ["active", "inactive", "pending"] as const;
@@ -116,6 +118,13 @@ export class CreateSystemUserExternalReferenceDto {
  * Alta administrativa de usuario interno del CRM.
  */
 export class CreateSystemUserDto {
+    @ApiPropertyOptional({ description: "Clave inicial local, solo con user.assign_password. Solo escritura; nunca se devuelve.", minLength: MIN_LOCAL_PASSWORD_LENGTH, maxLength: MAX_LOCAL_PASSWORD_LENGTH, writeOnly: true, format: "password" })
+    @ValidateIf((_object, value: unknown) => value !== undefined)
+    @IsString()
+    @MinLength(MIN_LOCAL_PASSWORD_LENGTH)
+    @MaxLength(MAX_LOCAL_PASSWORD_LENGTH)
+    password?: string;
+
     @ApiProperty({ description: "Nombre visible del usuario.", maxLength: 180 })
     @Transform(toTrimmedString)
     @IsString()

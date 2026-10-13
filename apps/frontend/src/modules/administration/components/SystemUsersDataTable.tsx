@@ -19,12 +19,14 @@ import { type CSSProperties, type Dispatch, type MouseEvent, type RefObject, typ
 
 import { type DataTableSearchPaneField, type DataTableSearchPanesConfig, readDataTableState, SYSTEM_USERS_DATATABLE_STATE_KEY, useDataTableSearchPanes, writeDataTableState } from "../hooks/useDataTableSearchPanes";
 import { copyTextToClipboard, getPrimaryActionLabel, getPrimaryStatusUpdateTarget, getRelativeActivityLabel, getRiskStatusUpdateTarget, PROVIDER_LABELS, STATUS_HELP_TEXT, STATUS_LABELS, type SystemUserListItem, type SystemUsersLoadState, type SystemUserStatusUpdateTarget } from "../system-users.model";
+import { canChangeUserStatus, NO_USERS_PERMISSIONS, type UsersPermissions } from "../users-permissions";
 
 const registerDataTable = DataTable.use;
 
 registerDataTable(DT);
 
 interface SystemUsersDataTableProps {
+    readonly permissions?: UsersPermissions;
     readonly highlightedPublicId: string | null;
     readonly loadState: SystemUsersLoadState;
     readonly onClearFilters: () => void;
@@ -38,6 +40,7 @@ interface SystemUsersDataTableProps {
 }
 
 type SystemUserDataTableRow = SystemUserListItem & {
+    readonly canReadDetail: boolean;
     readonly accessLabel: string;
     readonly activitySortValue: string;
     readonly primaryRole: string;
@@ -99,8 +102,9 @@ const MICROSOFT_MARK = '<span class="administration-users-provider__microsoft-ma
 /** Escapa texto de usuario antes de meterlo en el HTML de una celda de DataTables. */
 const escapeHtml = (value: string): string => value.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;").replaceAll("'", "&#39;");
 
-const toDataTableRow = (user: SystemUserListItem): SystemUserDataTableRow => ({
+const toDataTableRow = (user: SystemUserListItem, canReadDetail: boolean): SystemUserDataTableRow => ({
     ...user,
+    canReadDetail,
     accessLabel: PROVIDER_LABELS[user.provider],
     activitySortValue: user.lastActivityIso ?? "",
     primaryRole: user.roles[0] ?? "Sin rol",
@@ -112,10 +116,10 @@ const isAreaRepeatedByRole = (user: SystemUserDataTableRow): boolean => user.rol
 
 const renderUserCell = (user: SystemUserDataTableRow): string => `
     <div class="administration-users-person">
-        <button class="administration-users-person__name" type="button" aria-label="Abrir detalle de ${escapeHtml(user.name)}" title="${escapeHtml(user.name)}" data-user-open-email="${escapeHtml(user.email)}">
+        <${user.canReadDetail ? "button" : "span"} class="administration-users-person__name" ${user.canReadDetail ? `type="button" aria-label="Abrir detalle de ${escapeHtml(user.name)}" data-user-open-email="${escapeHtml(user.email)}"` : ""} title="${escapeHtml(user.name)}">
             <span>${escapeHtml(user.name)}</span>
             ${user.isCurrentUser ? '<span class="administration-users-current-user">Tú</span>' : ""}
-        </button>
+        </${user.canReadDetail ? "button" : "span"}>
         <span class="administration-users-person__email">
             <span title="${escapeHtml(user.email)}">${escapeHtml(user.email)}</span>
             <button class="administration-users-copy-inline" type="button" aria-label="Copiar correo de ${escapeHtml(user.name)}" data-user-copy-email="${escapeHtml(user.email)}">Copiar</button>
@@ -357,41 +361,47 @@ const syncActiveRows = (container: HTMLElement | null, menuOpenEmail: string | n
     });
 };
 
-function SystemUsersActionMenu({ onClose, onEditUser, onOpenUser, onStatusAction, position, user }: { readonly onClose: () => void; readonly onEditUser: (user: SystemUserListItem) => void; readonly onOpenUser: (user: SystemUserListItem) => void; readonly onStatusAction: (user: SystemUserListItem, status: SystemUserStatusUpdateTarget) => void; readonly position: CSSProperties; readonly user: SystemUserDataTableRow }) {
+function SystemUsersActionMenu({ permissions, onClose, onEditUser, onOpenUser, onStatusAction, position, user }: { readonly permissions: UsersPermissions; readonly onClose: () => void; readonly onEditUser: (user: SystemUserListItem) => void; readonly onOpenUser: (user: SystemUserListItem) => void; readonly onStatusAction: (user: SystemUserListItem, status: SystemUserStatusUpdateTarget) => void; readonly position: CSSProperties; readonly user: SystemUserDataTableRow }) {
     return (
         <div className="administration-users-datatable-menu" role="menu" style={position} aria-label={`Acciones para ${user.name}`}>
-            <button
-                type="button"
-                role="menuitem"
-                onClick={() => {
-                    onOpenUser(user);
-                    onClose();
-                }}
-            >
-                Ver detalle
-            </button>
-            <button
-                type="button"
-                role="menuitem"
-                disabled={Boolean(user.isCurrentUser)}
-                onClick={() => {
-                    onEditUser(user);
-                    onClose();
-                }}
-            >
-                Editar usuario
-            </button>
-            <button
-                type="button"
-                role="menuitem"
-                disabled={Boolean(user.isCurrentUser)}
-                onClick={() => {
-                    onStatusAction(user, getPrimaryStatusUpdateTarget(user));
-                    onClose();
-                }}
-            >
-                {getPrimaryActionLabel(user)}
-            </button>
+            {permissions.detail ? (
+                <button
+                    type="button"
+                    role="menuitem"
+                    onClick={() => {
+                        onOpenUser(user);
+                        onClose();
+                    }}
+                >
+                    Ver detalle
+                </button>
+            ) : null}
+            {permissions.update ? (
+                <button
+                    type="button"
+                    role="menuitem"
+                    disabled={Boolean(user.isCurrentUser)}
+                    onClick={() => {
+                        onEditUser(user);
+                        onClose();
+                    }}
+                >
+                    Editar usuario
+                </button>
+            ) : null}
+            {canChangeUserStatus(permissions, user, getPrimaryStatusUpdateTarget(user)) ? (
+                <button
+                    type="button"
+                    role="menuitem"
+                    disabled={Boolean(user.isCurrentUser)}
+                    onClick={() => {
+                        onStatusAction(user, getPrimaryStatusUpdateTarget(user));
+                        onClose();
+                    }}
+                >
+                    {getPrimaryActionLabel(user)}
+                </button>
+            ) : null}
             <button
                 type="button"
                 role="menuitem"
@@ -413,23 +423,41 @@ function SystemUsersActionMenu({ onClose, onEditUser, onOpenUser, onStatusAction
                 Copiar ID de usuario
             </button>
             <span className="administration-users-datatable-menu__divider" role="separator" />
-            <button
-                className="administration-users-datatable-menu__danger"
-                type="button"
-                role="menuitem"
-                disabled={Boolean(user.isCurrentUser)}
-                onClick={() => {
-                    onStatusAction(user, getRiskStatusUpdateTarget(user));
-                    onClose();
-                }}
-            >
-                {user.status === "blocked" ? "Desbloquear" : "Bloquear"}
-            </button>
+            {canChangeUserStatus(permissions, user, getRiskStatusUpdateTarget(user)) ? (
+                <button
+                    className="administration-users-datatable-menu__danger"
+                    type="button"
+                    role="menuitem"
+                    disabled={Boolean(user.isCurrentUser)}
+                    onClick={() => {
+                        onStatusAction(user, getRiskStatusUpdateTarget(user));
+                        onClose();
+                    }}
+                >
+                    {user.status === "blocked" ? "Desbloquear" : "Bloquear"}
+                </button>
+            ) : null}
         </div>
     );
 }
 
-function SystemUsersOpenActionMenu({ actionMenu, onClose, onEditUser, onOpenUser, onStatusAction, userByEmail }: { readonly actionMenu: ActionMenuState | null; readonly onClose: () => void; readonly onEditUser: (user: SystemUserListItem) => void; readonly onOpenUser: (user: SystemUserListItem) => void; readonly onStatusAction: (user: SystemUserListItem, status: SystemUserStatusUpdateTarget) => void; readonly userByEmail: ReadonlyMap<string, SystemUserDataTableRow> }) {
+function SystemUsersOpenActionMenu({
+    permissions,
+    actionMenu,
+    onClose,
+    onEditUser,
+    onOpenUser,
+    onStatusAction,
+    userByEmail,
+}: {
+    readonly permissions: UsersPermissions;
+    readonly actionMenu: ActionMenuState | null;
+    readonly onClose: () => void;
+    readonly onEditUser: (user: SystemUserListItem) => void;
+    readonly onOpenUser: (user: SystemUserListItem) => void;
+    readonly onStatusAction: (user: SystemUserListItem, status: SystemUserStatusUpdateTarget) => void;
+    readonly userByEmail: ReadonlyMap<string, SystemUserDataTableRow>;
+}) {
     if (!actionMenu) {
         return null;
     }
@@ -440,7 +468,7 @@ function SystemUsersOpenActionMenu({ actionMenu, onClose, onEditUser, onOpenUser
         return null;
     }
 
-    return <SystemUsersActionMenu position={actionMenu.position} user={actionMenuUser} onEditUser={onEditUser} onOpenUser={onOpenUser} onStatusAction={onStatusAction} onClose={onClose} />;
+    return <SystemUsersActionMenu permissions={permissions} position={actionMenu.position} user={actionMenuUser} onEditUser={onEditUser} onOpenUser={onOpenUser} onStatusAction={onStatusAction} onClose={onClose} />;
 }
 
 /** La fila de filtros se anuncia como un grupo y su contador como región viva. */
@@ -481,18 +509,19 @@ function SystemUsersMobileSort({ selectRef, tableRef }: { readonly selectRef: Re
 }
 
 /** Tabla de usuarios con DataTables, paginación local y SearchPanes en runtime real. */
-export function SystemUsersDataTable({ highlightedPublicId, loadState, onClearFilters, onEditUser, onOpenUser, onStatusAction, onVisibleOrderChange, selectedUserEmail, users }: SystemUsersDataTableProps) {
+export function SystemUsersDataTable({ permissions = NO_USERS_PERMISSIONS, highlightedPublicId, loadState, onClearFilters, onEditUser, onOpenUser, onStatusAction, onVisibleOrderChange, selectedUserEmail, users }: SystemUsersDataTableProps) {
     // Un arreglo nuevo hace que el wrapper borre y vuelva a crear todas las filas en cada render del padre.
-    const tableRows = useMemo(() => users.map(toDataTableRow), [users]);
+    const tableRows = useMemo(() => users.map((user) => toDataTableRow(user, permissions.detail)), [users, permissions.detail]);
+    if (!permissions.list) return null;
 
     if (tableRows.length === 0) {
         return <SystemUsersDataTableEmptyState loadState={loadState} onClearFilters={onClearFilters} />;
     }
 
-    return <SystemUsersDataTableContent highlightedPublicId={highlightedPublicId} loadState={loadState} selectedUserEmail={selectedUserEmail} tableRows={tableRows} onEditUser={onEditUser} onOpenUser={onOpenUser} onStatusAction={onStatusAction} onVisibleOrderChange={onVisibleOrderChange} />;
+    return <SystemUsersDataTableContent key={JSON.stringify(permissions)} permissions={permissions} highlightedPublicId={highlightedPublicId} loadState={loadState} selectedUserEmail={selectedUserEmail} tableRows={tableRows} onEditUser={onEditUser} onOpenUser={onOpenUser} onStatusAction={onStatusAction} onVisibleOrderChange={onVisibleOrderChange} />;
 }
 
-function SystemUsersDataTableContent({ highlightedPublicId, loadState, onEditUser, onOpenUser, onStatusAction, onVisibleOrderChange, selectedUserEmail, tableRows }: SystemUsersDataTableContentProps & { readonly loadState: SystemUsersLoadState }) {
+function SystemUsersDataTableContent({ permissions = NO_USERS_PERMISSIONS, highlightedPublicId, loadState, onEditUser, onOpenUser, onStatusAction, onVisibleOrderChange, selectedUserEmail, tableRows }: SystemUsersDataTableContentProps & { readonly loadState: SystemUsersLoadState }) {
     const [actionMenu, setActionMenu] = useState<ActionMenuState | null>(null);
     const wrapRef = useRef<HTMLDivElement>(null);
     const tableRef = useRef<DataTableRef>(null);
@@ -534,10 +563,17 @@ function SystemUsersDataTableContent({ highlightedPublicId, loadState, onEditUse
             ref={wrapRef}
             className="administration-users-datatable-wrap"
             onClick={(event) => {
-                handleDataTableClick(event, { onOpenUser, setActionMenu, userByEmail });
+                handleDataTableClick(event, {
+                    onOpenUser: (user) => {
+                        if (permissions.detail) onOpenUser(user);
+                    },
+                    setActionMenu,
+                    userByEmail,
+                });
             }}
         >
             <SystemUsersOpenActionMenu
+                permissions={permissions}
                 actionMenu={actionMenu}
                 userByEmail={userByEmail}
                 onEditUser={onEditUser}

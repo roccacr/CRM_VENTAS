@@ -1,14 +1,14 @@
 /**
  * Catálogo de roles y módulos para el alta de usuarios.
  *
- * Si el API no responde, deja un catálogo mínimo para que el formulario abra.
+ * Si el API no responde, no ofrece roles o módulos inventados.
  * El BFF vuelve a validar roles y áreas al guardar.
  */
 import { useEffect, useState } from "react";
 
 import { getIdentitySecurityCatalog } from "../../../services/auth/auth-service";
 import type { IdentitySecurityCatalog } from "../../../services/auth/identity-contracts";
-import { type CreateUserModuleOption, type CreateUserRoleOption, type CreateUserRolePermissions, FALLBACK_CREATE_MODULE_OPTIONS, FALLBACK_CREATE_ROLE_OPTIONS, NON_OPERATIVE_MODULE_CODES } from "../create-system-user.model";
+import { type CreateUserModuleOption, type CreateUserRoleOption, type CreateUserRolePermissions, NON_OPERATIVE_MODULE_CODES } from "../create-system-user.model";
 
 interface CreateUserCatalogState {
     readonly moduleOptions: readonly CreateUserModuleOption[];
@@ -16,9 +16,9 @@ interface CreateUserCatalogState {
     readonly rolePermissions: CreateUserRolePermissions;
 }
 
-const FALLBACK_CATALOG_STATE: CreateUserCatalogState = {
-    moduleOptions: FALLBACK_CREATE_MODULE_OPTIONS,
-    roleOptions: FALLBACK_CREATE_ROLE_OPTIONS,
+const EMPTY_CATALOG_STATE: CreateUserCatalogState = {
+    moduleOptions: [],
+    roleOptions: [],
     rolePermissions: {},
 };
 
@@ -37,8 +37,8 @@ const mapCatalogToCreateUserState = (catalog: IdentitySecurityCatalog): CreateUs
         }));
 
     return {
-        moduleOptions: moduleOptions.length > 0 ? moduleOptions : FALLBACK_CREATE_MODULE_OPTIONS,
-        roleOptions: roleOptions.length > 0 ? roleOptions : FALLBACK_CREATE_ROLE_OPTIONS,
+        moduleOptions,
+        roleOptions,
         rolePermissions: catalog.rolePermissions,
     };
 };
@@ -46,13 +46,14 @@ const mapCatalogToCreateUserState = (catalog: IdentitySecurityCatalog): CreateUs
 /**
  * Catálogo para el alta de usuarios: roles, módulos operativos y permisos por rol.
  *
- * Si el API falla se usa un catálogo mínimo sin permisos, para que el alta siga
- * disponible; el API valida de nuevo roles y módulos al crear.
+ * Un fallo deja opciones vacías y bloquea el alta hasta recuperar el catálogo.
+ * El API valida de nuevo roles y módulos al crear.
  */
-export const useCreateUserCatalog = (): CreateUserCatalogState => {
-    const [catalogState, setCatalogState] = useState<CreateUserCatalogState>(FALLBACK_CATALOG_STATE);
+export const useCreateUserCatalog = (enabled = true): CreateUserCatalogState => {
+    const [catalogState, setCatalogState] = useState<CreateUserCatalogState>(EMPTY_CATALOG_STATE);
 
     useEffect(() => {
+        if (!enabled) return undefined;
         let cancelled = false;
 
         getIdentitySecurityCatalog()
@@ -63,14 +64,14 @@ export const useCreateUserCatalog = (): CreateUserCatalogState => {
             })
             .catch(() => {
                 if (!cancelled) {
-                    setCatalogState(FALLBACK_CATALOG_STATE);
+                    setCatalogState(EMPTY_CATALOG_STATE);
                 }
             });
 
         return () => {
             cancelled = true;
         };
-    }, []);
+    }, [enabled]);
 
     return catalogState;
 };

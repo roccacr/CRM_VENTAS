@@ -6,11 +6,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { buildApiUrl } from "../../src/config/frontend-env";
 import { SYSTEM_USERS_DATATABLE_STATE_KEY } from "../../src/modules/administration/hooks/useDataTableSearchPanes";
 import { SystemUsersPage } from "../../src/modules/administration/pages/SystemUsersPage";
-import { createSystemUser, getIdentitySecurityCatalog, getSystemUsers, updateSystemUser, updateSystemUserStatus } from "../../src/services/auth/auth-service";
+import { createSystemUser, getIdentityProfile, getIdentitySecurityCatalog, getSystemUsers, updateSystemUser, updateSystemUserStatus } from "../../src/services/auth/auth-service";
+import type { IdentityProfile } from "../../src/services/auth/identity-contracts";
 import { installBrowserApiDoubles } from "../support/browser";
 
 vi.mock("../../src/services/auth/auth-service", () => ({
     createSystemUser: vi.fn(),
+    getIdentityProfile: vi.fn(),
     getIdentitySecurityCatalog: vi.fn(),
     getSystemUsers: vi.fn(),
     updateSystemUser: vi.fn(),
@@ -18,6 +20,9 @@ vi.mock("../../src/services/auth/auth-service", () => ({
 }));
 
 const mockCreateSystemUser = vi.mocked(createSystemUser);
+const mockGetIdentityProfile = vi.mocked(getIdentityProfile);
+const userPermissions = ["user.view_list", "user.view_detail", "user.create", "user.update", "user.activate", "user.deactivate", "role.assign"];
+const profileWithPermissions = (codes: readonly string[]) => ({ permissions: codes.map((code) => ({ code, effect: "allow" })), roles: [{ code: "owner", name: "Owner", status: "active" }] }) as unknown as IdentityProfile;
 const mockGetIdentitySecurityCatalog = vi.mocked(getIdentitySecurityCatalog);
 const mockGetSystemUsers = vi.mocked(getSystemUsers);
 const mockUpdateSystemUser = vi.mocked(updateSystemUser);
@@ -174,6 +179,7 @@ afterEach(() => {
 
 beforeEach(() => {
     installBrowserApiDoubles();
+    mockGetIdentityProfile.mockResolvedValue(profileWithPermissions(userPermissions));
     mockCreateSystemUser.mockResolvedValue(mockUsersResponse.items[0]);
     mockGetIdentitySecurityCatalog.mockResolvedValue(mockSecurityCatalog);
     mockGetSystemUsers.mockResolvedValue(mockUsersResponse);
@@ -183,6 +189,7 @@ beforeEach(() => {
 
 const openUserDetail = async (name: string): Promise<void> => {
     fireEvent.click(await screen.findByRole("button", { name: `Abrir detalle de ${name}` }));
+    await screen.findByRole("heading", { name });
 };
 
 const getUserRow = (name: string): HTMLElement => {
@@ -253,6 +260,104 @@ const selectRole = async (roleName: string): Promise<void> => {
 };
 
 describe("SystemUsersPage", () => {
+    it("fails closed without permissions or when the profile cannot be loaded", async () => {
+        mockGetIdentityProfile.mockRejectedValue(new Error("Profile unavailable"));
+        render(<SystemUsersPage />);
+        await waitFor(() => {
+            expect(mockGetIdentityProfile).toHaveBeenCalled();
+        });
+        expect(mockGetSystemUsers).not.toHaveBeenCalled();
+        expect(screen.queryByRole("button", { name: "Nuevo usuario" })).not.toBeInTheDocument();
+    });
+    it("isolates list permission from detail and mutation permissions", async () => {
+        mockGetIdentityProfile.mockResolvedValue(profileWithPermissions(["user.view_list"]));
+        render(<SystemUsersPage />);
+        await screen.findByText("Andrea Valverde");
+        expect(screen.queryByRole("button", { name: "Abrir detalle de Andrea Valverde" })).not.toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: "Nuevo usuario" })).not.toBeInTheDocument();
+        fireEvent.click(screen.getByRole("button", { name: "Más acciones para Andrea Valverde" }));
+        expect(screen.queryByRole("menuitem", { name: "Editar usuario" })).not.toBeInTheDocument();
+        expect(screen.queryByRole("menuitem", { name: "Reactivar usuario" })).not.toBeInTheDocument();
+    });
+    it.each(["user.create", "role.assign"])("does not offer creation with %s alone", async (grant) => {
+        mockGetIdentityProfile.mockResolvedValue(profileWithPermissions(["user.view_list", grant]));
+        render(<SystemUsersPage />);
+        await screen.findByText("Andrea Valverde");
+        expect(screen.queryByRole("button", { name: "Nuevo usuario" })).not.toBeInTheDocument();
+    });
+    it("offers no invented creation options when the security catalog fails", async () => {
+        mockGetIdentitySecurityCatalog.mockRejectedValue(new Error("Catalog unavailable"));
+        render(<SystemUsersPage />);
+        await screen.findByRole("button", { name: "Abrir detalle de Andrea Valverde" });
+        expect(screen.queryByRole("button", { name: "Nuevo usuario" })).not.toBeInTheDocument();
+        expect(mockCreateSystemUser).not.toHaveBeenCalled();
+    });
+    it("clears cached list and detail when a focus recheck fails", async () => {
+        render(<SystemUsersPage />);
+        await openUserDetail("Andrea Valverde");
+        mockGetIdentityProfile.mockRejectedValue(new Error("Revoked session"));
+        fireEvent.focus(window);
+        await waitFor(() => {
+            expect(screen.queryByRole("heading", { name: "Andrea Valverde" })).not.toBeInTheDocument();
+        });
+        expect(screen.queryByText("Andrea Valverde")).not.toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: "Nuevo usuario" })).not.toBeInTheDocument();
+    });
+    it("keeps update-only edits isolated from detail and preserves all target modules", async () => {
+        mockGetIdentityProfile.mockResolvedValue(profileWithPermissions(["user.view_list", "user.update"]));
+        mockGetSystemUsers.mockResolvedValue({
+            ...mockUsersResponse,
+            items: mockUsersResponse.items.map((user) => ({
+                ...user,
+                orgUnits: [
+                    { code: "ventas", name: "Ventas", publicId: "ventas" },
+                    { code: "formalizacion", name: "Formalización", publicId: "formalizacion" },
+                ],
+            })),
+        });
+        render(<SystemUsersPage />);
+        fireEvent.click(await screen.findByRole("button", { name: "Más acciones para Andrea Valverde" }));
+        fireEvent.click(screen.getByRole("menuitem", { name: "Editar usuario" }));
+        const name = await screen.findByLabelText("Nombre completo");
+        expect(screen.getByRole("combobox", { name: /Roles asignados/u })).toBeDisabled();
+        fireEvent.change(name, { target: { value: "Andrea Edited" } });
+        fireEvent.change(screen.getByLabelText("Motivo de la edición"), { target: { value: "Profile correction" } });
+        fireEvent.click(screen.getByRole("button", { name: "Guardar cambios" }));
+        await waitFor(() => {
+            expect(mockUpdateSystemUser).toHaveBeenCalledWith("USR-ROCCA-0004", expect.objectContaining({ roleCodes: ["consulta"], orgUnitCodes: ["ventas", "formalizacion"] }));
+        });
+        expect(screen.queryByRole("heading", { name: "Andrea Valverde Actualizada" })).not.toBeInTheDocument();
+    });
+    it("does not fetch the list with detail-only permission", async () => {
+        mockGetIdentityProfile.mockResolvedValue(profileWithPermissions(["user.view_detail"]));
+        render(<SystemUsersPage />);
+        await waitFor(() => {
+            expect(mockGetIdentityProfile).toHaveBeenCalled();
+        });
+        expect(mockGetSystemUsers).not.toHaveBeenCalled();
+    });
+    it.each([
+        ["user.update", "Editar usuario"],
+        ["user.view_detail", "Ver detalle"],
+        ["user.activate", "Reactivar"],
+        ["user.deactivate", "Bloquear"],
+    ])("offers only the exact %s action in the row menu", async (grant, label) => {
+        mockGetIdentityProfile.mockResolvedValue(profileWithPermissions(["user.view_list", grant]));
+        render(<SystemUsersPage />);
+        fireEvent.click(await screen.findByRole("button", { name: "Más acciones para Andrea Valverde" }));
+        expect(screen.getByRole("menuitem", { name: label })).toBeInTheDocument();
+        for (const other of ["Editar usuario", "Ver detalle", "Reactivar", "Bloquear"].filter((name) => name !== label)) expect(screen.queryByRole("menuitem", { name: other })).not.toBeInTheDocument();
+    });
+    it("rechecks confirmation and closes a status action when access was revoked", async () => {
+        render(<SystemUsersPage />);
+        await openUserDetail("Andrea Valverde");
+        fireEvent.click(await screen.findByRole("button", { name: "Reactivar usuario" }));
+        fireEvent.change(await screen.findByLabelText(/Motivo de auditoría/u), { target: { value: "Approved change" } });
+        mockGetIdentityProfile.mockResolvedValue(profileWithPermissions([]));
+        fireEvent.click(screen.getByRole("button", { name: "Confirmar acción" }));
+        await waitFor(() => expect(screen.queryByRole("heading", { name: "Reactivar usuario" })).not.toBeInTheDocument());
+        expect(mockUpdateSystemUserStatus).not.toHaveBeenCalled();
+    });
     it("muestra preload inicial antes de confirmar que no hay resultados", () => {
         mockGetSystemUsers.mockReturnValue(new Promise(() => undefined));
 
@@ -309,7 +414,7 @@ describe("SystemUsersPage", () => {
 
         expect(await screen.findByText("Mostrando 5 de 5 usuarios")).toBeInTheDocument();
         expect(mockGetSystemUsers).toHaveBeenLastCalledWith(expect.objectContaining({ cursor: "cursor-2" }));
-        expect(screen.getAllByRole("button", { name: "Abrir detalle de Andrea Valverde" })).toHaveLength(1);
+        expect(await screen.findAllByRole("button", { name: "Abrir detalle de Andrea Valverde" })).toHaveLength(1);
         expect(screen.queryByRole("button", { name: /Cargar .* más/u })).not.toBeInTheDocument();
     });
 
@@ -496,7 +601,7 @@ describe("SystemUsersPage", () => {
 
         fireEvent.keyDown(getDetailPanel("Andrea Valverde"), { key: "ArrowDown" });
 
-        expect(screen.getByRole("heading", { name: "Javier Castro" })).toBeInTheDocument();
+        expect(await screen.findByRole("heading", { name: "Javier Castro" })).toBeInTheDocument();
     });
 
     it("adopta la presentación de Proyectos en página, tabla, detalle y diálogo", async () => {
@@ -543,7 +648,7 @@ describe("SystemUsersPage", () => {
 
         fireEvent.click(screen.getByRole("button", { name: "Usuario siguiente" }));
 
-        expect(screen.getByRole("heading", { name: "Roberto Carlos Zúñiga Altamirano" })).toBeInTheDocument();
+        expect(await screen.findByRole("heading", { name: "Roberto Carlos Zúñiga Altamirano" })).toBeInTheDocument();
         expect(screen.getByText("Usuario 2 de 5")).toBeInTheDocument();
     });
 
@@ -555,7 +660,7 @@ describe("SystemUsersPage", () => {
 
         fireEvent.click(screen.getByRole("button", { name: "Usuario siguiente" }));
 
-        expect(screen.getByRole("heading", { name: "Javier Castro" })).toBeInTheDocument();
+        expect(await screen.findByRole("heading", { name: "Javier Castro" })).toBeInTheDocument();
         expect(screen.getByText("Usuario 2 de 5")).toBeInTheDocument();
 
         const mask = document.querySelector(".user-detail-drawer .ant-drawer-mask");
@@ -665,9 +770,11 @@ describe("SystemUsersPage", () => {
     });
 
     it("crea un usuario con rol, modulo, ids externos y refresca el directorio", async () => {
+        mockGetIdentityProfile.mockResolvedValue(profileWithPermissions([...userPermissions, "user.assign_password"]));
         mockGetIdentitySecurityCatalog.mockResolvedValue({ ...mockSecurityCatalog, rolePermissions: { ventas: ["lead.read"] } });
         render(<SystemUsersPage />);
         await openCreateUserDrawer();
+        fireEvent.change(await screen.findByLabelText("Contraseña inicial"), { target: { value: "Initial secret 123" } });
 
         expect(screen.getByRole("heading", { name: "Identificación" })).toBeInTheDocument();
         expect(screen.getByRole("heading", { name: "Acceso y permisos" })).toBeInTheDocument();
@@ -693,6 +800,7 @@ describe("SystemUsersPage", () => {
 
         await waitFor(() => {
             expect(mockCreateSystemUser).toHaveBeenCalledWith({
+                password: "Initial secret 123",
                 accessMethods: ["microsoft", "local"],
                 displayName: "Laura Ventas",
                 email: "lventas@roccacr.com",

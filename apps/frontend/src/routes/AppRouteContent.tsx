@@ -4,13 +4,18 @@
  * Elige login, verificación, problema de acceso, no encontrada, prohibido o el
  * shell. Ninguna vista privada se pinta mientras la sesión sigue en duda.
  */
-import { AccessProblemScreen, ForbiddenScreen, NotFoundScreen, SessionStatusScreen } from "../components/feedback/AuthStateScreens";
+import LockOutlined from "@ant-design/icons/LockOutlined";
+import QuestionCircleOutlined from "@ant-design/icons/QuestionCircleOutlined";
+import Button from "antd/es/button";
+import Result from "antd/es/result";
+
+import { AccessProblemScreen, NotFoundScreen, SessionStatusScreen } from "../components/feedback/AuthStateScreens";
 import { AdministrationSectionPage } from "../modules/administration/pages/AdministrationSectionPage";
 import { type LoginCredentials, LoginPage } from "../modules/auth/LoginPage";
 import { ALL_WORKSPACE_CODE, GlobalHomeShell } from "../modules/home/GlobalHomeShell";
-import type { IdentityUser } from "../services/auth/identity-contracts";
-import { type AppRoute, AUTH_LOGIN_PATH, DEFAULT_HOME_PATH, getAppRoute, getWorkspaceHomePath, isKnownPath } from "./app-routes";
-import type { AuthState, SessionStatusPhase } from "./auth-state";
+import type { IdentityProfile, IdentityUser } from "../services/auth/identity-contracts";
+import { type AppRoute, AUTH_LOGIN_PATH, getAppRoute, isKnownPath } from "./app-routes";
+import { type AuthState, getDefaultAuthenticatedPath, resolveRouteState, type SessionStatusPhase } from "./auth-state";
 
 /** Datos que la raíz ya resolvió. Este componente solo elige qué pantalla pintar. */
 export interface AppRouteContentProps {
@@ -47,12 +52,71 @@ function RoutePage({ currentUser, route }: { readonly currentUser: IdentityUser;
 
 const getSessionStatusView = (authState: AuthState): { readonly phase: SessionStatusPhase; readonly user: IdentityUser | null } => (authState.status === "checking" ? { phase: authState.phase ?? "checking", user: authState.user ?? null } : { phase: "checking", user: null });
 
+/** Authenticated feedback stays inside the original shell; denied pages never mount. */
+function AuthenticatedRouteContent({ profile, path, onLogout, onNavigate }: { readonly profile: IdentityProfile; readonly path: string; readonly onLogout: () => void; readonly onNavigate: (path: string) => void }) {
+    const route = getAppRoute(path);
+    // Navigation props can precede App's effect: authorize the current URL now.
+    const permittedRoute = resolveRouteState(profile, path).status === "authenticated" ? route : undefined;
+    const defaultPath = getDefaultAuthenticatedPath(profile);
+    const shellRoute = permittedRoute ?? getAppRoute(defaultPath ?? "");
+    const workspaceCode = shellRoute?.workspaceCode ?? ALL_WORKSPACE_CODE;
+    return (
+        <GlobalHomeShell
+            activeMenuItemCode={shellRoute?.menuItemCode}
+            key={workspaceCode}
+            currentUser={profile.user}
+            effectivePermissions={profile.permissions}
+            initialWorkspaceCode={workspaceCode}
+            orgUnits={profile.orgUnits}
+            onLogout={onLogout}
+            onMenuItemSelect={onNavigate}
+            onWorkspaceChange={(code) => {
+                if (code === ALL_WORKSPACE_CODE) return;
+                const destination = getDefaultAuthenticatedPath(profile, code);
+                if (destination) onNavigate(destination);
+            }}
+        >
+            {permittedRoute ? <RoutePage currentUser={profile.user} route={permittedRoute} /> : <AuthenticatedRouteFeedback unknown={!isKnownPath(path)} defaultPath={defaultPath} onNavigate={onNavigate} />}
+        </GlobalHomeShell>
+    );
+}
+
+/** A missing permitted landing page offers no invented navigation destination. */
+function AuthenticatedRouteFeedback({ unknown, defaultPath, onNavigate }: { readonly unknown: boolean; readonly defaultPath: string | null; readonly onNavigate: (path: string) => void }) {
+    return (
+        <section className="global-home-dashboard" role="alert" aria-labelledby="route-feedback-title">
+            <Result
+                icon={unknown ? <QuestionCircleOutlined /> : <LockOutlined />}
+                status="warning"
+                title={
+                    <span id="route-feedback-title" role="heading" aria-level={1}>
+                        {unknown ? "Ruta no encontrada" : "Acceso no autorizado"}
+                    </span>
+                }
+                subTitle={unknown ? "La dirección solicitada no existe o fue movida dentro del CRM." : "Tu usuario está autenticado, pero no tiene permiso para abrir esta vista."}
+                extra={
+                    defaultPath ? (
+                        <Button
+                            onClick={() => {
+                                onNavigate(defaultPath);
+                            }}
+                        >
+                            Volver al inicio
+                        </Button>
+                    ) : undefined
+                }
+            />
+        </section>
+    );
+}
+
 /**
  * Elige la única pantalla visible según estado de sesión y ruta.
  *
  * El orden importa: la verificación y los fallos de acceso se resuelven antes
  * de mirar la ruta, para que ninguna vista privada se pinte con un estado
- * dudoso. El shell solo aparece con sesión autenticada y ruta registrada.
+ * dudoso. Una sesión válida conserva el shell incluso ante una URL denegada
+ * o desconocida; la página privada nunca se monta antes de comprobar la ruta.
  */
 export function AppRouteContent({ authRetryFeedback, authState, isAuthRetryDisabled, isMicrosoftSessionPending, isSubmittingLogin, loginError, onLocalLogin, onLogout, onMicrosoftLogin, onNavigate, onRetryAuthCheck, path }: AppRouteContentProps) {
     if (authState.status === "checking" || isMicrosoftSessionPending) {
@@ -74,43 +138,17 @@ export function AppRouteContent({ authRetryFeedback, authState, isAuthRetryDisab
         );
     }
 
+    if (authState.status === "authenticated" || authState.status === "forbidden") {
+        return <AuthenticatedRouteContent profile={authState.profile} path={path} onLogout={onLogout} onNavigate={onNavigate} />;
+    }
+
     if (!isKnownPath(path)) {
         return (
             <NotFoundScreen
                 onNavigateHome={() => {
-                    onNavigate(authState.status === "authenticated" ? DEFAULT_HOME_PATH : AUTH_LOGIN_PATH);
+                    onNavigate(AUTH_LOGIN_PATH);
                 }}
             />
-        );
-    }
-
-    if (authState.status === "forbidden") {
-        return <ForbiddenScreen onLogout={onLogout} />;
-    }
-
-    const route = getAppRoute(path);
-
-    if (authState.status === "authenticated" && route) {
-        return (
-            <GlobalHomeShell
-                activeMenuItemCode={route.menuItemCode}
-                // `initialWorkspaceCode` solo se lee al montar; la key remonta el shell cuando la ruta cambia de perfil operativo.
-                key={route.workspaceCode}
-                currentUser={authState.profile.user}
-                effectivePermissions={authState.profile.permissions}
-                initialWorkspaceCode={route.workspaceCode}
-                orgUnits={authState.profile.orgUnits}
-                onLogout={onLogout}
-                onMenuItemSelect={onNavigate}
-                onWorkspaceChange={(nextWorkspaceCode) => {
-                    // "Todos" cambia el alcance del menú, no la página visible.
-                    if (nextWorkspaceCode !== ALL_WORKSPACE_CODE) {
-                        onNavigate(getWorkspaceHomePath(nextWorkspaceCode));
-                    }
-                }}
-            >
-                <RoutePage currentUser={authState.profile.user} route={route} />
-            </GlobalHomeShell>
         );
     }
 

@@ -8,10 +8,10 @@ import { transformCaseInsensitiveIdentifier } from "../../../../common/security/
 const MAX_EMAIL_LENGTH = 254;
 
 /** Longitud minima aprobada para claves locales del CRM. */
-const MIN_LOCAL_PASSWORD_LENGTH = 12;
+export const MIN_LOCAL_PASSWORD_LENGTH = 12;
 
 /** Longitud maxima para evitar payloads excesivos antes del hashing de password. */
-const MAX_LOCAL_PASSWORD_LENGTH = 128;
+export const MAX_LOCAL_PASSWORD_LENGTH = 128;
 
 /** Longitud minima de token opaco de activacion/reset local. */
 const MIN_LOCAL_RESET_TOKEN_LENGTH = 32;

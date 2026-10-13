@@ -113,7 +113,7 @@ export class IdentityController {
      * Crea un usuario administrativo con rol, area y referencias externas.
      */
     @Post(IDENTITY_USERS_ROUTE)
-    @ApiOperation({ summary: "Crear usuario interno del sistema." })
+    @ApiOperation({ summary: "Crear usuario interno del sistema.", description: "Requiere user.create y role.assign para asignar roles o modulos iniciales; una clave inicial requiere ademas user.assign_password." })
     @ApiBody({ type: CreateSystemUserDto })
     async createUser(@Body() body: CreateSystemUserDto, @Req() request: CookieRequest, @Headers("user-agent") userAgent?: string) {
         return this.identity.createSystemUser(request.cookies[SESSION_COOKIE_NAME], body, request.ip, userAgent);
@@ -124,7 +124,7 @@ export class IdentityController {
      */
     @Patch(IDENTITY_USER_DETAIL_ROUTE)
     @HttpCode(200)
-    @ApiOperation({ summary: "Editar usuario interno del sistema." })
+    @ApiOperation({ summary: "Editar usuario interno del sistema.", description: "Requiere user.update. Cambiar roles o modulos requiere ademas role.assign. No permite autoedicion administrativa." })
     @ApiBody({ type: UpdateSystemUserDto })
     async updateUser(@Param("userPublicId") userPublicId: string, @Body() body: UpdateSystemUserDto, @Req() request: CookieRequest, @Headers("user-agent") userAgent?: string) {
         return this.identity.updateSystemUser(request.cookies[SESSION_COOKIE_NAME], userPublicId, body, { ipAddress: request.ip, userAgent });
@@ -135,7 +135,7 @@ export class IdentityController {
      */
     @Patch(IDENTITY_USER_STATUS_ROUTE)
     @HttpCode(200)
-    @ApiOperation({ summary: "Cambiar estado operativo de un usuario." })
+    @ApiOperation({ summary: "Cambiar estado operativo de un usuario.", description: "Activar requiere user.activate; bloquear o inactivar requiere user.deactivate. No permite cambiar el estado propio." })
     @ApiBody({ type: UpdateSystemUserStatusDto })
     async updateUserStatus(@Param("userPublicId") userPublicId: string, @Body() body: UpdateSystemUserStatusDto, @Req() request: CookieRequest, @Headers("user-agent") userAgent?: string) {
         return this.identity.updateSystemUserStatus(request.cookies[SESSION_COOKIE_NAME], userPublicId, body, { ipAddress: request.ip, userAgent });

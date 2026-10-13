@@ -9,7 +9,7 @@ import { IdentityAccessManagementRepository } from "../../src/modules/crm/identi
 import type { IdentitySessionRepository } from "../../src/modules/crm/identity/identity-session.repository.js";
 import { IdentityUserDirectoryRepository } from "../../src/modules/crm/identity/identity-user-directory.repository.js";
 
-function fixture(publicId = "user") {
+function fixture(publicId = "user", orgUnitCodes = ["ventas"]) {
     const queries: CompiledQuery[] = [];
     let mutated = false;
     class Driver extends DummyDriver {
@@ -24,7 +24,7 @@ function fixture(publicId = "user") {
                     sec_org_unit: [{ id: 5, code: "ventas" }],
                     sec_role_permission: [{ id: 9, code: "lead.read", moduleCode: "ventas" }],
                     sec_user_role: query.sql.includes("COUNT") ? [{ total: 0 }] : [{ userId: 7, code: "sales", name: "Sales", status: "active", assignedAt: new Date("2026-10-13T12:00:00Z") }],
-                    sec_user_org_unit: [{ userId: 7, code: "ventas", name: "Sales", publicId: "area" }],
+                    sec_user_org_unit: orgUnitCodes.map((code) => ({ userId: 7, code, name: code, publicId: code })),
                     sec_auth_identity: [{ id: 11, userId: 7, provider: "local", code: "local", status: "pending" }],
                     int_user_external_identity: [{ userId: 7, systemCode: "erp", systemName: "ERP", externalUserId: "42", externalUsername: "person", status: "active" }],
                 };
@@ -44,6 +44,37 @@ function fixture(publicId = "user") {
 }
 
 describe("identity transactional change history", () => {
+    it("returns every directory area while preserving the singular compatibility field", async () => {
+        const f = fixture("user", ["ventas", "formalizacion"]);
+        try {
+            const detail = await f.directory.findByPublicId("actor", "user");
+            expect(detail).toMatchObject({ orgUnit: { code: "ventas" }, orgUnits: [{ code: "ventas" }, { code: "formalizacion" }] });
+        } finally {
+            await f.db.destroy();
+        }
+    });
+    it.each(["roles", "areas"] as const)("rejects stale preserved %s under the lock before any write", async (kind) => {
+        const f = fixture();
+        try {
+            await expect(f.directory.update({ actorPublicId: "actor", userPublicId: "user", preserveAssignments: true, displayName: "Changed", email: "changed@example.test", normalizedEmail: "changed@example.test", roleCode: "sales", roleCodes: kind === "roles" ? ["owner"] : ["sales"], orgUnitCodes: kind === "areas" ? ["formalizacion"] : ["ventas"], accessMethods: ["local"], externalReferences: [], reason: "Stale access regression" })).rejects.toThrow();
+            expect(f.queries.filter((query) => /^(update|insert|delete)/.test(query.sql))).toEqual([]);
+            expect(f.record).not.toHaveBeenCalled();
+        } finally {
+            await f.db.destroy();
+        }
+    });
+
+    it("preserves role and area relationship rows during a data-only update", async () => {
+        const f = fixture();
+        try {
+            await f.directory.update({ actorPublicId: "actor", userPublicId: "user", preserveAssignments: true, displayName: "Changed", email: "changed@example.test", normalizedEmail: "changed@example.test", roleCode: "sales", roleCodes: ["SALES"], orgUnitCodes: ["VENTAS"], accessMethods: ["local"], externalReferences: [], reason: "Preserve assignments regression" });
+            expect(f.queries.filter((query) => /^(update|insert|delete)/.test(query.sql) && /sec_user_(role|org_unit)/.test(query.sql))).toEqual([]);
+            expect(f.record).toHaveBeenCalledOnce();
+        } finally {
+            await f.db.destroy();
+        }
+    });
+
     it.each(["create", "update", "updateStatus", "replaceUserAccess", "updateRole", "deleteRole", "replaceRolePermissions"] as const)("captures original actor roles and administration context before %s", async (method) => {
         const canonicalId = "01M4V30BJ9BKQF85AWVNHFJNS2";
         const f = fixture(canonicalId);
@@ -51,7 +82,7 @@ describe("identity transactional change history", () => {
         const isUserDirectory = ["create", "update", "updateStatus"].includes(method);
         const isRole = ["updateRole", "deleteRole", "replaceRolePermissions"].includes(method);
         try {
-            if (method === "create" || method === "update" || method === "updateStatus") await f.directory[method](input);
+            if (method === "create" || method === "update" || method === "updateStatus") await f.directory[method]({ ...input, preserveAssignments: false });
             else await f.access[method](input);
             expect(f.record).toHaveBeenCalledOnce();
             const call = f.record.mock.calls[0];
@@ -71,7 +102,7 @@ describe("identity transactional change history", () => {
         const canonicalId = "01M4V30BJ9BKQF85AWVNHFJNS2";
         const f = fixture(canonicalId);
         const input = { actorPublicId: "actor", userPublicId: canonicalId.toLowerCase(), displayName: "Changed", email: "changed@example.test", normalizedEmail: "changed@example.test", roleCode: "sales", roleCodes: ["sales"], orgUnitCodes: ["ventas"], accessMethods: ["local"] as const, externalReferences: [], status: "inactive" as const, reason: "Reason" };
-        await f.directory[method](input);
+        await f.directory[method]({ ...input, preserveAssignments: false });
         const changeSet = f.record.mock.calls[0]?.[0].metadata?.changeSet as AuditChangeSet;
         expect(changeSet.recordId).toBe(canonicalId);
         const lookup = f.queries.find((query) => query.sql.includes("for update"));
@@ -112,7 +143,7 @@ describe("identity transactional change history", () => {
     it.each(["update", "replaceUserAccess"] as const)("locks parent before actor/catalog/snapshot reads for %s", async (method) => {
         const f = fixture();
         const input = { actorPublicId: "actor", userPublicId: "user", displayName: "Changed", email: "changed@example.test", normalizedEmail: "changed@example.test", roleCode: "sales", roleCodes: ["sales"], orgUnitCodes: ["ventas"], accessMethods: ["local"] as const, externalReferences: [], permissionOverrides: [], reason: "Reason" };
-        if (method === "update") await f.directory.update(input);
+        if (method === "update") await f.directory.update({ ...input, preserveAssignments: false });
         else await f.access.replaceUserAccess(input);
         const first = f.queries.find((query) => /^select/.test(query.sql));
         expect(first?.sql).toContain("from `sec_user`");

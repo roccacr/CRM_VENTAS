@@ -1,5 +1,59 @@
 # 37 - Auditoria, trazabilidad y conflictos
 
+## Asignacion de clave inicial en alta - 2026-10-13
+
+`POST /identity/users` admite `password` opcional de solo escritura; OpenAPI
+marca writeOnly/password y limites 12-128. Solo `CreateSystemUserDto` lo admite;
+no existe cambio de clave por el DTO de edicion. El actor necesita ambos
+permisos `user.create` y `user.assign_password`, y el destino debe tener metodo
+local. Password ausente conserva la activacion pendiente; vacio, null, solo
+espacios, comun o fuera de limites se rechaza, sin recortar una clave valida.
+
+La clave se hashea antes de llegar al repositorio. Persistencia recibe solamente
+`passwordHash` e inserta la identidad local activa en la misma transaccion que
+usuario, roles, modulos y auditoria. El usuario pending pasa a active si se
+asigna clave; inactive explicito no se activa. Sin clave no cambia el flujo
+anterior. La respuesta publica no incluye clave ni hash. Auditoria registra
+`localPasswordAssigned: true/false`, actor, motivo y snapshot seguro del alta;
+no se incluye el secreto en cambios antes/despues. Pino ya censura
+`req.body.password`; no registrar cuerpos ni inputs del repositorio manualmente.
+
+Migracion `202610130018_user_assign_password_permission`: permiso sensible en
+Usuarios, grant inicial solo Owner, version de permisos de titulares Owner
+incrementada una vez para revalidacion, auditoria transaccional y rerun no-op.
+No agrega grants al rol Formalizacion. Rechaza semantica incompatible de un
+codigo preexistente; no reemplaza seeds ni modifica claves existentes.
+
+Pruebas: `identity.service.spec.ts` verifica privilegios separados, hash y
+politica; `local-auth-dto.spec.ts` entradas invalidas;
+`test/audit/identity-changelog.mysql.spec.ts` con AUDIT_MYSQL_TESTS=1 comprueba
+hash verificable, identidad local elegible para login, exclusiones de auditoria
+y respuesta, y rollback de usuario/credencial ante fallo de auditoria.
+`test/migrations/user-password-permission.mysql.spec.ts` con
+PASSWORD_PERMISSION_MYSQL_TESTS=1 comprueba grant exclusivo, versiones,
+idempotencia y rollback. Son fixtures revertidos, no cuentas duraderas.
+
+No se implementa aqui clave temporal, caducidad especial o cambio forzado. Si
+se requieren despues, deben disenarse como flujo restringido propio; no simular
+que ya existen por llamar temporal a una clave inicial.
+
+Evidencia 2026-10-13: migracion 018 aplicada exclusivamente en CRM_THINK_V2;
+consulta posterior confirma grant activo solo Owner. API: 404 pruebas aprobadas,
+typecheck/build y lint/formato de archivos modificados aprobados. MySQL: dos
+casos de migracion y dos de credencial/auditoria aprobados, todos rollback-only.
+Frontend check completo: 273 pruebas y formato/lint/typecheck/build aprobados.
+Check global sigue bloqueado por formato preexistente de
+`test/unit-files/unit-files-search.spec.ts`; no se corrigio ese archivo ajeno.
+El primer typecheck simultaneo con la suite API encontro un fixture temporal
+ya eliminado por la prueba; reejecutado despues de terminar la suite aprobo.
+
+Navegador real Owner: campo Contraseña inicial visible al abrir Nuevo usuario,
+sin ingresar secretos ni enviar el formulario. Captura:
+`C:/codex-data/visualizations/initial-password/authorized-input.png`. Revision
+de seguridad independiente sin hallazgos bloqueantes tras corregir blancos y
+versionado de permisos. Login real con una cuenta nueva queda a prueba manual
+del propietario; ninguna cuenta real ni contrasena existente fue modificada.
+
 Actualizado: 2026-10-13. Implementacion: `src/modules/crm/audit`, repositorios de identidad y de catalogos; UI en `apps/frontend/src/modules/administration/pages`. Alcance: escritores instrumentados del nuevo API, no un registro universal de todas las escrituras externas a MySQL.
 
 ## Que se registra y por que
@@ -27,15 +81,13 @@ Ejemplo ilustrativo del cambio guardado, no un evento real ni una respuesta comp
 
 ```json
 {
-  "version": 1,
-  "entity": "user",
-  "recordId": "ID_PUBLICO_CRM",
-  "action": "update",
-  "before": { "displayName": "Roberto" },
-  "after": { "displayName": "Roberto Carlos" },
-  "changes": [
-    { "field": "displayName", "before": "Roberto", "after": "Roberto Carlos" }
-  ]
+    "version": 1,
+    "entity": "user",
+    "recordId": "ID_PUBLICO_CRM",
+    "action": "update",
+    "before": { "displayName": "Roberto" },
+    "after": { "displayName": "Roberto Carlos" },
+    "changes": [{ "field": "displayName", "before": "Roberto", "after": "Roberto Carlos" }]
 }
 ```
 
@@ -43,11 +95,11 @@ Escritores cubiertos: creacion/edicion/estado de usuarios, reemplazo de acceso d
 
 ## Contrato de lectura y rendimiento
 
-| Endpoint | Funcion |
-| --- | --- |
-| `GET /audit/options` | Modulos, secciones y catalogos; no descarga eventos |
+| Endpoint                                                           | Funcion                                                                 |
+| ------------------------------------------------------------------ | ----------------------------------------------------------------------- |
+| `GET /audit/options`                                               | Modulos, secciones y catalogos; no descarga eventos                     |
 | `GET /audit?moduleCode=administration&sectionCode=users&limit=100` | Pagina obligatoriamente scoped; search, catalogCode y cursor opcionales |
-| `GET /audit/:publicId` | Detalle bajo demanda y changeSet seguro, o null cuando no existe |
+| `GET /audit/:publicId`                                             | Detalle bajo demanda y changeSet seguro, o null cuando no existe        |
 
 Autorizacion: Owner activo o permiso efectivo `role.assign`. Modulo/seccion se validan juntos; catalogCode solo aplica a catalogs. Limite default 100, maximo 200. El cursor vincula modulo, seccion, catalogo y busqueda; cambiar el alcance invalida el cursor. El lector ordena por PK descendente, obtiene limit+1, devuelve `items` y `pagination: {limit, returned, hasNext, nextCursor}`. No ejecuta COUNT global ni trae todo el historial.
 
@@ -59,18 +111,18 @@ Historial antiguo: se admite clasificacion compatible por tipo de evento/codigo 
 
 La vista exige elegir modulo y seccion antes de buscar. Tabla y drawer separan actor/roles, ubicacion, registro, accion, fecha, motivo y comparacion anterior/nuevo. El frontend usa `audit-event-description.ts`: "Se actualizo la campana" en vez de "Campaign catalog_item_updated.". Los codigos tecnicos se conservan para trazabilidad interna; las etiquetas no modifican eventos guardados.
 
-Los enlaces al registro se construyen solo para rutas/contextos conocidos y conservan su identificador. No asumir que el registro aun existe ni que su nombre actual es el historico. La autorizacion del destino se vuelve a comprobar; un enlace no concede acceso. Cuando faltan datos historicos, mostrarlo explicitamente.
+El drawer muestra el ID y nombre historico del registro exacto, pero el enlace actual Abrir seccion navega solo a una ruta de seccion conocida: no es un deep link que abra automaticamente ese registro. La navegacion directa al registro queda pendiente si se requiere. No asumir que el registro aun existe ni que su nombre actual es el historico. La autorizacion del destino se vuelve a comprobar; un enlace no concede acceso. Cuando faltan datos historicos, mostrarlo explicitamente.
 
 ## Conflictos de Roles y seguridad
 
 La causa confirmada del doble 409 fue `services/api/api-client.ts`: trataba todo 409 como sesion obsoleta y repetia la solicitud. Ahora distingue:
 
-| Respuesta | Comportamiento |
-| --- | --- |
-| 401 | Flujo existente de renovacion compartida y un solo reintento |
-| 409 con mensaje exacto `La sesion requiere revalidacion de permisos.` | Revalida/renueva una vez y reintenta |
-| Otro 409 | No renueva ni repite; muestra el mensaje controlado del API |
-| Error nativo de red/reset | No repite la mutacion; resultado de guardado no confirmado |
+| Respuesta                                                             | Comportamiento                                               |
+| --------------------------------------------------------------------- | ------------------------------------------------------------ |
+| 401                                                                   | Flujo existente de renovacion compartida y un solo reintento |
+| 409 con mensaje exacto `La sesion requiere revalidacion de permisos.` | Revalida/renueva una vez y reintenta                         |
+| Otro 409                                                              | No renueva ni repite; muestra el mensaje controlado del API  |
+| Error nativo de red/reset                                             | No repite la mutacion; resultado de guardado no confirmado   |
 
 La coincidencia de mensaje es un acoplamiento explicito al contrato actual: cambiarlo en API exige actualizar cliente y regresiones. Se preservan CSRF y la renovacion compartida entre solicitudes. No se implemento idempotency key ni se garantiza exactly-once ante cortes de red.
 

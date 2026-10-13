@@ -2,11 +2,13 @@ import "@testing-library/jest-dom/vitest";
 
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { StrictMode } from "react";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 
 import { App } from "../../src/App";
 import { buildApiUrl } from "../../src/config/frontend-env";
 import { DEMO_EFFECTIVE_NAVIGATION_PERMISSIONS } from "../../src/modules/home/GlobalHomeShell";
+import { AppRouteContent, type AppRouteContentProps } from "../../src/routes/AppRouteContent";
 import type { IdentityProfile, SessionResponse } from "../../src/services/auth/identity-contracts";
 import { installBrowserApiDoubles } from "../support/browser";
 
@@ -297,6 +299,10 @@ const mockIdentityFetch = (options: { readonly profile?: IdentityProfile; readon
             return createJsonResponse({ success: true });
         }
 
+        if (path === "/identity/refresh") {
+            return createJsonResponse({ message: "No autenticado." }, 401);
+        }
+
         return createJsonResponse({ message: `Ruta no mockeada: ${path}` }, 404);
     });
 
@@ -350,6 +356,27 @@ const installDesktopPointerDouble = (): void => {
 };
 
 describe("App", () => {
+    it.each(["authenticated", "forbidden"] as const)("rechecks route synchronously with a cached %s state", (status) => {
+        const profile: IdentityProfile = { ...authenticatedProfile, permissions: [{ code: "formalizacion.home.read", effect: "allow", scope: "self", source: "role" }], orgUnits: [{ publicId: "formalization", code: "formalizacion", name: "Formalización", membership: "member", scope: "self", status: "active" }] };
+        const fetchMock = vi.fn();
+        vi.stubGlobal("fetch", fetchMock);
+        const props: AppRouteContentProps = { authState: { status, profile }, authRetryFeedback: null, isAuthRetryDisabled: false, isMicrosoftSessionPending: false, isSubmittingLogin: false, loginError: null, onLocalLogin: vi.fn(), onLogout: vi.fn(), onMicrosoftLogin: vi.fn(), onNavigate: vi.fn(), onRetryAuthCheck: vi.fn(), path: "/home/formalization/catalogs/brokers" };
+        const view = render(<AppRouteContent {...props} />);
+        expect(screen.getByRole("heading", { name: "Acceso no autorizado" })).toBeInTheDocument();
+        expect(within(screen.getByRole("alert")).getByRole("img", { name: "lock" })).toBeInTheDocument();
+        expect(fetchMock).not.toHaveBeenCalled();
+        view.rerender(<AppRouteContent {...props} path="/home/formalization" />);
+        expect(screen.queryByRole("heading", { name: "Acceso no autorizado" })).not.toBeInTheDocument();
+        expect(screen.getByRole("heading", { name: "Formalización" })).toBeInTheDocument();
+        expect(fetchMock).not.toHaveBeenCalled();
+    });
+    it("keeps a valid profile without grants inside the shell at login", () => {
+        render(<AppRouteContent authState={{ status: "forbidden", profile: { ...authenticatedProfile, permissions: [] } }} authRetryFeedback={null} isAuthRetryDisabled={false} isMicrosoftSessionPending={false} isSubmittingLogin={false} loginError={null} onLocalLogin={vi.fn()} onLogout={vi.fn()} onMicrosoftLogin={vi.fn()} onNavigate={vi.fn()} onRetryAuthCheck={vi.fn()} path="/auth/login" />);
+        expect(screen.getByRole("heading", { name: "Acceso no autorizado" })).toBeInTheDocument();
+        expect(screen.getByRole("banner", { name: "Barra superior global CRM TINK" })).toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: "Volver a iniciar sesión" })).not.toBeInTheDocument();
+        expect(screen.queryByRole("textbox", { name: /correo/i })).not.toBeInTheDocument();
+    });
     it("muestra un loader de marca mientras verifica la sesion", () => {
         vi.stubGlobal(
             "fetch",
@@ -598,7 +625,7 @@ describe("App", () => {
         expect(avatarButton).toHaveTextContent("RC");
     });
 
-    it("no renderiza el shell cuando la sesion existe pero no hay modulos permitidos", async () => {
+    it("mantiene el shell sin navegacion cuando no hay modulos permitidos", async () => {
         const profileWithoutVisibleModules: IdentityProfile = {
             ...authenticatedProfile,
             permissions: [],
@@ -610,7 +637,10 @@ describe("App", () => {
         render(<App />);
 
         expect(await screen.findByRole("heading", { name: "Acceso no autorizado" })).toBeInTheDocument();
-        expect(screen.queryByRole("banner", { name: "Barra superior global CRM TINK" })).not.toBeInTheDocument();
+        expect(screen.getByRole("banner", { name: "Barra superior global CRM TINK" })).toBeInTheDocument();
+        expect(within(screen.getByRole("navigation", { name: "Navegación principal" })).queryAllByRole("button")).toHaveLength(0);
+        expect(screen.queryByRole("button", { name: "Volver a iniciar sesión" })).not.toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: "Volver al inicio" })).not.toBeInTheDocument();
     });
 
     it("permite la ruta de administracion cuando existe permiso de usuarios", async () => {
@@ -659,7 +689,7 @@ describe("App", () => {
         expect(screen.queryByRole("heading", { name: "Verificando sesión" })).not.toBeInTheDocument();
         expect(screen.queryByRole("heading", { name: "Sesión validada" })).not.toBeInTheDocument();
         expect(fetchMock.mock.calls.filter(([input]) => getRequestPath(input) === "/identity/session")).toHaveLength(sessionCallsBeforeNavigation);
-        expect(fetchMock.mock.calls.filter(([input]) => getRequestPath(input) === "/identity/me")).toHaveLength(profileCallsBeforeNavigation);
+        expect(fetchMock.mock.calls.filter(([input]) => getRequestPath(input) === "/identity/me")).toHaveLength(profileCallsBeforeNavigation + 1);
     });
 
     it("cambia a todos los modulos sin salir de la pagina y muestra menus sin textos de ayuda", async () => {
@@ -730,7 +760,7 @@ describe("App", () => {
         expect(screen.queryByRole("menu", { name: "Opciones de Administración" })).not.toBeInTheDocument();
     });
 
-    it("abre roles y seguridad desde el menu administracion sin revalidar la sesion", async () => {
+    it("abre roles y seguridad revalidando permisos sin reiniciar la sesion", async () => {
         const user = userEvent.setup();
         const fetchMock = mockIdentityFetch({ profile: authenticatedProfile, session: authenticatedSession });
 
@@ -769,13 +799,14 @@ describe("App", () => {
         expect(screen.getByRole("button", { name: "Auditoría" })).toBeInTheDocument();
 
         expect(fetchMock.mock.calls.filter(([input]) => getRequestPath(input) === "/identity/session")).toHaveLength(sessionCallsBeforeNavigation);
-        expect(fetchMock.mock.calls.filter(([input]) => getRequestPath(input) === "/identity/me")).toHaveLength(profileCallsBeforeNavigation);
+        expect(fetchMock.mock.calls.filter(([input]) => getRequestPath(input) === "/identity/me")).toHaveLength(profileCallsBeforeNavigation + 1);
     });
 
     it("abre el panel de detalle de usuario con accion coherente al estado", async () => {
         const user = userEvent.setup();
 
-        mockIdentityFetch({ profile: authenticatedProfile, session: authenticatedSession });
+        const profile: IdentityProfile = { ...authenticatedProfile, permissions: [...authenticatedProfile.permissions, ...["user.view_detail", "user.activate"].map((code) => ({ code, effect: "allow" as const, scope: "all_areas" as const, source: "role" as const }))] };
+        mockIdentityFetch({ profile, session: authenticatedSession });
         window.history.replaceState(null, "", "/home/administration/users");
 
         render(<App />);
@@ -783,7 +814,7 @@ describe("App", () => {
         expect(await screen.findByRole("heading", { name: "Usuarios" })).toBeInTheDocument();
 
         await user.click(await screen.findByRole("button", { name: "Abrir detalle de Andrea Valverde" }));
-        expect(screen.getByRole("heading", { name: "Andrea Valverde" })).toBeInTheDocument();
+        expect(await screen.findByRole("heading", { name: "Andrea Valverde" })).toBeInTheDocument();
         expect(screen.getByRole("button", { name: "Reactivar usuario" })).toBeInTheDocument();
         expect(screen.queryByText("Control de riesgo")).not.toBeInTheDocument();
         expect(screen.queryByRole("button", { name: "Acción no disponible" })).not.toBeInTheDocument();
@@ -806,6 +837,17 @@ describe("App", () => {
     });
 
     it("renueva la sesion cuando la ruta privada recibe sesion anonima pero conserva refresh vigente", async () => {
+        const refreshedUser = { ...sessionUser, displayName: "Perfil renovado", permissionVersion: 2 };
+        const refreshedSession: SessionResponse = { ...authenticatedSession, user: refreshedUser, session: { ...authenticatedProfile.session, permissionVersion: 2 } };
+        const refreshedProfile: IdentityProfile = {
+            ...authenticatedProfile,
+            user: refreshedUser,
+            session: { ...authenticatedProfile.session, permissionVersion: 2 },
+            auth: { ...authenticatedProfile.auth, currentProvider: "local", availableProviders: ["local"], localStatus: "active", microsoft: null },
+            roles: [{ code: "formalizacion", name: "Formalización", status: "active" }],
+            orgUnits: [{ publicId: "formalization", code: "formalizacion", name: "Formalización", membership: "member", scope: "self", status: "active" }],
+            permissions: [{ code: "formalizacion.home.read", effect: "allow", scope: "self", source: "role" }],
+        };
         let currentSession = anonymousSession;
         const fetchMock = vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
             const path = getRequestPath(input);
@@ -815,12 +857,12 @@ describe("App", () => {
             }
 
             if (path === "/identity/refresh" && init?.method === "POST") {
-                currentSession = authenticatedSession;
-                return createJsonResponse(authenticatedSession);
+                currentSession = refreshedSession;
+                return createJsonResponse(refreshedSession);
             }
 
             if (path === "/identity/me") {
-                return createJsonResponse(authenticatedProfile);
+                return createJsonResponse(refreshedProfile);
             }
 
             if (path === "/identity/users") {
@@ -835,11 +877,15 @@ describe("App", () => {
         });
 
         vi.stubGlobal("fetch", fetchMock);
-        window.history.replaceState(null, "", "/home/administration");
+        window.history.replaceState(null, "", "/home/formalization");
 
         render(<App />);
 
-        expect(await screen.findByRole("heading", { name: "Hola Roberto Carlos al módulo Administración" })).toBeInTheDocument();
+        expect(await screen.findByRole("heading", { name: "Formalización" })).toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: "Catálogos" })).not.toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: "Resumen" })).not.toBeInTheDocument();
+        expect(fetchMock.mock.calls.filter(([input]) => getRequestPath(input) === "/identity/refresh")).toHaveLength(1);
+        expect(fetchMock.mock.calls.filter(([input]) => getRequestPath(input) === "/identity/session")).toHaveLength(2);
         expect(fetchMock).toHaveBeenCalledWith(
             buildApiUrl("/identity/refresh"),
             expect.objectContaining({
@@ -847,15 +893,26 @@ describe("App", () => {
                 method: "POST",
             }),
         );
-        expect(window.location.pathname).toBe("/home/administration");
+        expect(window.location.pathname).toBe("/home/formalization");
     });
 
-    it("conecta el login local con el BFF y navega al sistema autenticado", async () => {
+    it("conecta el login local y conserva la sesion al remontar la aplicacion", async () => {
         const user = userEvent.setup();
-        const fetchMock = mockIdentityFetch({ profile: authenticatedProfile, session: anonymousSession });
+        const localProfile: IdentityProfile = {
+            ...authenticatedProfile,
+            auth: { ...authenticatedProfile.auth, currentProvider: "local", availableProviders: ["local"], localStatus: "active", microsoft: null },
+            roles: [{ code: "formalizacion", name: "Formalización", status: "active" }],
+            orgUnits: [{ publicId: "formalization", code: "formalizacion", name: "Formalización", membership: "member", scope: "self", status: "active" }],
+            permissions: [{ code: "formalizacion.home.read", effect: "allow", scope: "self", source: "role" }],
+        };
+        const fetchMock = mockIdentityFetch({ profile: localProfile, session: anonymousSession });
         window.history.replaceState(null, "", "/auth/login");
 
-        render(<App />);
+        const view = render(
+            <StrictMode>
+                <App />
+            </StrictMode>,
+        );
 
         await user.type(await screen.findByLabelText("Correo administrativo", { selector: "input" }), "roberto@roccacr.com");
         await user.type(screen.getByLabelText("Contraseña", { selector: "input" }), "PasswordSeguro123!");
@@ -863,11 +920,11 @@ describe("App", () => {
 
         await waitFor(
             () => {
-                expect(window.location.pathname).toBe("/home/administration");
+                expect(window.location.pathname).toBe("/home/formalization");
             },
             { timeout: 2_500 },
         );
-        expect(await screen.findByRole("heading", { name: "Hola Roberto Carlos al módulo Administración" })).toBeInTheDocument();
+        expect(await screen.findByRole("heading", { name: "Formalización" })).toBeInTheDocument();
         expect(fetchMock).toHaveBeenCalledWith(
             buildApiUrl("/identity/local/login"),
             expect.objectContaining({
@@ -879,6 +936,97 @@ describe("App", () => {
                 method: "POST",
             }),
         );
+        const previousSessionReads = fetchMock.mock.calls.filter(([input]) => getRequestPath(input) === "/identity/session").length;
+        view.unmount();
+        render(
+            <StrictMode>
+                <App />
+            </StrictMode>,
+        );
+        expect(await screen.findByRole("heading", { name: "Formalización" })).toBeInTheDocument();
+        expect(window.location.pathname).toBe("/home/formalization");
+        expect(screen.getByRole("banner", { name: "Barra superior global CRM TINK" })).toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: "Resumen" })).not.toBeInTheDocument();
+        expect(fetchMock.mock.calls.filter(([input]) => getRequestPath(input) === "/identity/session")).toHaveLength(previousSessionReads + 2);
+        expect(fetchMock.mock.calls.some(([input]) => getRequestPath(input) === "/identity/refresh")).toBe(false);
+        expect(fetchMock).toHaveBeenCalledWith(buildApiUrl("/identity/session"), expect.objectContaining({ credentials: "include", cache: "no-store", method: "GET" }));
+        expect(screen.queryByRole("button", { name: "Ingresar" })).not.toBeInTheDocument();
+    }, 10_000);
+
+    it("no restaura acceso cuando session devuelve anonimo 200 y refresh rechaza con 401", async () => {
+        const fetchMock = vi.fn((input: RequestInfo | URL) => {
+            const path = getRequestPath(input);
+            if (path === "/identity/session") return createJsonResponse(anonymousSession);
+            if (path === "/identity/refresh") return createJsonResponse({ message: "No autenticado." }, 401);
+            return createJsonResponse({ message: "Unexpected request" }, 500);
+        });
+        vi.stubGlobal("fetch", fetchMock);
+        window.history.replaceState(null, "", "/home/administration");
+        render(<App />);
+        expect(await screen.findByRole("button", { name: "Ingresar" })).toBeInTheDocument();
+        expect(window.location.pathname).toBe("/auth/login");
+        expect(screen.queryByRole("banner", { name: "Barra superior global CRM TINK" })).not.toBeInTheDocument();
+        expect(fetchMock.mock.calls.filter(([input]) => getRequestPath(input) === "/identity/refresh")).toHaveLength(1);
+        expect(fetchMock.mock.calls.some(([input]) => getRequestPath(input) === "/identity/me")).toBe(false);
+    });
+
+    it.each([
+        { failure: "network", title: "Sin conexión", status: null },
+        { failure: "server", title: "Error inesperado", status: 500 },
+        { failure: "csrf", title: "Acceso requerido", status: 403 },
+    ])("does not force login or replay refresh after an anonymous session and $failure renewal failure", async ({ status, title }) => {
+        const fetchMock = vi.fn((input: RequestInfo | URL) => {
+            const path = getRequestPath(input);
+            if (path === "/identity/session") return createJsonResponse(anonymousSession);
+            if (path === "/identity/refresh") return status === null ? Promise.reject(new TypeError("network unavailable")) : createJsonResponse({ message: "Renewal failed" }, status);
+            return createJsonResponse({ message: "Unexpected request" }, 500);
+        });
+        vi.stubGlobal("fetch", fetchMock);
+        window.history.replaceState(null, "", "/home/formalization");
+        render(<App />);
+        expect(await screen.findByRole("heading", { name: title })).toBeInTheDocument();
+        expect(window.location.pathname).toBe("/home/formalization");
+        expect(screen.queryByRole("button", { name: "Ingresar" })).not.toBeInTheDocument();
+        expect(screen.queryByRole("banner", { name: "Barra superior global CRM TINK" })).not.toBeInTheDocument();
+        expect(fetchMock.mock.calls.filter(([input]) => getRequestPath(input) === "/identity/refresh")).toHaveLength(1);
+        expect(fetchMock.mock.calls.some(([input]) => /\/identity\/(?:me|logout|local\/login)$/u.test(getRequestPath(input)))).toBe(false);
+    });
+
+    it.each([200, 409])("refreshes a stale local permission version (%s) once and displays only fresh Formalization grants", async (staleStatus) => {
+        const freshProfile: IdentityProfile = {
+            ...authenticatedProfile,
+            auth: { ...authenticatedProfile.auth, currentProvider: "local", availableProviders: ["local"], localStatus: "active", microsoft: null },
+            user: { ...sessionUser, permissionVersion: 2 },
+            session: { ...authenticatedProfile.session, permissionVersion: 2 },
+            roles: [{ code: "formalizacion", name: "Formalización", status: "active" }],
+            orgUnits: [{ publicId: "formalization", code: "formalizacion", name: "Formalización", membership: "member", scope: "self", status: "active" }],
+            permissions: [{ code: "formalizacion.home.read", effect: "allow", scope: "self", source: "role" }],
+        };
+        const staleBody = staleStatus === 200 ? anonymousSession : { message: "La sesion requiere revalidacion de permisos." };
+        let stale = true;
+        const fetchMock = vi.fn((input: RequestInfo | URL) => {
+            const path = getRequestPath(input);
+            if (path === "/identity/session") return stale ? createJsonResponse(staleBody, staleStatus) : createJsonResponse({ ...authenticatedSession, user: freshProfile.user, session: freshProfile.session });
+            if (path === "/identity/refresh") {
+                stale = false;
+                return createJsonResponse({ ...authenticatedSession, user: freshProfile.user, session: freshProfile.session });
+            }
+            if (path === "/identity/me") return createJsonResponse(freshProfile);
+            return createJsonResponse({ message: "Unexpected business request" }, 500);
+        });
+        vi.stubGlobal("fetch", fetchMock);
+        window.history.replaceState(null, "", "/home/formalization");
+        render(
+            <StrictMode>
+                <App />
+            </StrictMode>,
+        );
+        expect(await screen.findByRole("heading", { name: "Formalización" })).toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: "Ingresar" })).not.toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: "Catálogos" })).not.toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: "Resumen" })).not.toBeInTheDocument();
+        expect(fetchMock.mock.calls.filter(([input]) => getRequestPath(input) === "/identity/refresh")).toHaveLength(1);
+        expect(fetchMock.mock.calls.some(([input]) => getRequestPath(input).includes("/catalogs/"))).toBe(false);
     });
 
     it("despliega las opciones de catalogos en el menu movil de administracion", async () => {
@@ -1361,6 +1509,41 @@ describe("App", () => {
         expect(screen.queryByText(/API/iu)).not.toBeInTheDocument();
     });
 
+    it.each(["/identity/session", "/identity/me"])("recovers current local session after transient bootstrap network failure at %s", async (failedPath) => {
+        const profile: IdentityProfile = {
+            ...authenticatedProfile,
+            auth: { ...authenticatedProfile.auth, currentProvider: "local", availableProviders: ["local"], localStatus: "active", microsoft: null },
+            roles: [{ code: "formalizacion", name: "Formalización", status: "active" }],
+            orgUnits: [{ publicId: "formalization", code: "formalizacion", name: "Formalización", membership: "member", scope: "self", status: "active" }],
+            permissions: [{ code: "formalizacion.home.read", effect: "allow", scope: "self", source: "role" }],
+        };
+        let offline = true;
+        const identityFetch = mockIdentityFetch({ profile, session: authenticatedSession });
+        const fetchMock = vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+            if (offline && getRequestPath(input) === failedPath) return Promise.reject(new TypeError("network unavailable"));
+            return identityFetch(input, init);
+        });
+        vi.stubGlobal("fetch", fetchMock);
+        window.history.replaceState(null, "", "/home/formalization");
+        render(
+            <StrictMode>
+                <App />
+            </StrictMode>,
+        );
+        expect(await screen.findByRole("heading", { name: "Sin conexión" })).toBeInTheDocument();
+        expect(screen.queryByRole("banner", { name: "Barra superior global CRM TINK" })).not.toBeInTheDocument();
+        expect(window.location.pathname).toBe("/home/formalization");
+        offline = false;
+        fireEvent.click(screen.getByRole("button", { name: "Reintentar conexión" }));
+        expect(await screen.findByRole("heading", { name: "Formalización" })).toBeInTheDocument();
+        expect(screen.getByRole("banner", { name: "Barra superior global CRM TINK" })).toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: "Ingresar" })).not.toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: "Catálogos" })).not.toBeInTheDocument();
+        expect(window.location.pathname).toBe("/home/formalization");
+        expect(fetchMock.mock.calls.every(([, init]) => init?.credentials === "include" && init.method === "GET")).toBe(true);
+        expect(fetchMock.mock.calls.some(([input]) => /\/identity\/(?:refresh|logout|local\/login)/u.test(getRequestPath(input)))).toBe(false);
+    });
+
     it("muestra una explicacion persistente cuando falla el reintento de sesion", async () => {
         const user = userEvent.setup();
 
@@ -1494,8 +1677,31 @@ describe("App", () => {
         render(<App />);
 
         expect(await screen.findByRole("heading", { name: "Ruta no encontrada" })).toBeInTheDocument();
+        expect(within(screen.getByRole("alert")).getByRole("img", { name: "question-circle" })).toBeInTheDocument();
         expect(screen.getByText("La dirección solicitada no existe o fue movida dentro del CRM.")).toBeInTheDocument();
         expect(window.location.pathname).toBe("/home/no-existe");
-        expect(screen.queryByRole("banner", { name: "Barra superior global CRM TINK" })).not.toBeInTheDocument();
+        expect(screen.getByRole("banner", { name: "Barra superior global CRM TINK" })).toBeInTheDocument();
+    });
+    it("mantiene navegacion autorizada desde una ruta denegada y prioriza una URL desconocida", async () => {
+        const profile: IdentityProfile = { ...authenticatedProfile, permissions: [{ code: "formalizacion.home.read", effect: "allow", scope: "self", source: "role" }], orgUnits: [{ publicId: "formalization", code: "formalizacion", name: "Formalización", membership: "member", scope: "self", status: "active" }] };
+        const fetchMock = mockIdentityFetch({ profile, session: authenticatedSession });
+        window.history.replaceState(null, "", "/home/formalization/catalogs/brokers");
+        render(<App />);
+        expect(await screen.findByRole("heading", { name: "Acceso no autorizado" })).toBeInTheDocument();
+        const header = screen.getByRole("banner", { name: "Barra superior global CRM TINK" });
+        expect(screen.queryByRole("button", { name: "Volver a iniciar sesión" })).not.toBeInTheDocument();
+        act(() => {
+            window.history.pushState(null, "", "/home/no-existe");
+            window.dispatchEvent(new PopStateEvent("popstate"));
+        });
+        expect(await screen.findByRole("heading", { name: "Ruta no encontrada" })).toBeInTheDocument();
+        expect(screen.getByRole("banner", { name: "Barra superior global CRM TINK" })).toBe(header);
+        fireEvent.click(screen.getByRole("button", { name: "Volver al inicio" }));
+        await waitFor(() => {
+            expect(window.location.pathname).toBe("/home/formalization");
+        });
+        expect(screen.queryByRole("heading", { name: "Ruta no encontrada" })).not.toBeInTheDocument();
+        expect(screen.getByRole("banner", { name: "Barra superior global CRM TINK" })).toBe(header);
+        expect(fetchMock.mock.calls.some(([input]) => getRequestPath(input).includes("/catalogs/"))).toBe(false);
     });
 });

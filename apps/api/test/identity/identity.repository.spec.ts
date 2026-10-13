@@ -20,6 +20,8 @@ type QueryCall = {
 type QueryBuilderResult = {
     calls: QueryCall[];
     builder: {
+        orderBy: (...args: unknown[]) => QueryBuilderResult["builder"];
+        forUpdate: () => QueryBuilderResult["builder"];
         innerJoin: (...args: unknown[]) => QueryBuilderResult["builder"];
         insertInto: (...args: unknown[]) => QueryBuilderResult["builder"];
         onDuplicateKeyUpdate: (...args: unknown[]) => QueryBuilderResult["builder"];
@@ -62,6 +64,14 @@ const createQueryBuilder = (executeRows: unknown[] = [], executeTakeFirstRows: u
     const takeFirstQueue = [...executeTakeFirstRows];
 
     const builder = {
+        orderBy: (...args: unknown[]) => {
+            calls.push({ method: "orderBy", args });
+            return builder;
+        },
+        forUpdate: () => {
+            calls.push({ method: "forUpdate", args: [] });
+            return builder;
+        },
         innerJoin: (...args: unknown[]) => {
             calls.push({ method: "innerJoin", args });
             return builder;
@@ -202,6 +212,7 @@ describe("IdentityRepository", () => {
             builder,
             20,
             {
+                preserveAssignments: false,
                 accessMethods: ["local"],
                 actorPublicId: "actor-public-id",
                 displayName: "Usuario editado",
@@ -241,6 +252,7 @@ describe("IdentityRepository", () => {
                 builder,
                 20,
                 {
+                    preserveAssignments: false,
                     accessMethods: ["local"],
                     actorPublicId: "actor-public-id",
                     displayName: "Usuario editado",
@@ -726,7 +738,7 @@ describe("IdentityRepository", () => {
         const sessionUpdate = readSetAfterUpdateTable(calls, "sec_auth_session");
         const refreshInsert = readValuesAfterInsertInto(calls, "sec_refresh_token");
 
-        expect(result).toEqual({ refreshExpiresAt: absoluteSessionExpiresAt, sessionExpiresAt: absoluteSessionExpiresAt, sessionPublicId: "session-public-id", status: "rotated", userId: 20 });
+        expect(result).toMatchObject({ refreshExpiresAt: absoluteSessionExpiresAt, sessionExpiresAt: absoluteSessionExpiresAt, sessionPublicId: "session-public-id", status: "rotated", userId: 20 });
         expect(new Date(sessionUpdate.expires_at_auth_session as Date).toISOString()).toBe(absoluteSessionExpiresAt.toISOString());
         expect(new Date(refreshInsert.expires_at_refresh_token as Date).toISOString()).toBe(absoluteSessionExpiresAt.toISOString());
     });
@@ -764,9 +776,21 @@ describe("IdentityRepository", () => {
 
         const sessionUpdate = readSetAfterUpdateTable(calls, "sec_auth_session");
 
-        expect(result).toEqual({ authIdentityId: 30, providerCode: "local", refreshExpiresAt: proposedExpiresAt, sessionExpiresAt: proposedExpiresAt, sessionPublicId: "session-public-id", status: "rotated", userId: 20 });
+        expect(result).toMatchObject({ authIdentityId: 30, providerCode: "local", refreshExpiresAt: proposedExpiresAt, sessionExpiresAt: proposedExpiresAt, sessionPublicId: "session-public-id", status: "rotated", userId: 20 });
         expect(sessionUpdate.permission_version_auth_session).toBe(3);
+        const lockIndex = calls.findIndex((call) => call.method === "forUpdate");
+        expect(lockIndex).toBeGreaterThanOrEqual(0);
+        expect(lockIndex).toBeLessThan(calls.findIndex((call) => call.method === "updateTable" && call.args[0] === "sec_refresh_token"));
         expect(calls.some((call) => call.method === "insertInto" && call.args[0] === "sec_refresh_token")).toBe(true);
+    });
+
+    it.each(["userDeletedAt", "identityDeletedAt"] as const)("rejects refresh for an active but deleted %s", async (field) => {
+        const refreshRow = { authIdentityId: 30, providerCode: "local", refreshTokenId: 1, refreshStatus: "active", refreshExpiresAt: new Date(Date.now() + 60_000), refreshFamilyId: "family", sessionId: 10, sessionStatus: "active", sessionExpiresAt: new Date(Date.now() + 60_000), sessionPublicId: "session", sessionPermissionVersion: 1, userId: 20, userPermissionVersion: 1, userStatus: "active", identityStatus: "active", userDeletedAt: null, identityDeletedAt: null, [field]: new Date() };
+        const { builder, calls } = createQueryBuilder([], [refreshRow]);
+        const result = await createRepository(builder).rotateRefreshSession({ refreshTokenHash: "old", nextRefreshTokenHash: "new", nextSessionTokenHash: "new-session", nextRefreshExpiresAt: new Date(Date.now() + 60_000), nextSessionExpiresAt: new Date(Date.now() + 60_000) });
+        expect(result.status).toBe("invalid");
+        expect(calls.some((call) => call.method === "insertInto" && call.args[0] === "sec_refresh_token")).toBe(false);
+        expect(calls.some((call) => call.method === "set" && typeof call.args[0] === "object" && call.args[0] !== null && "token_hash_auth_session" in call.args[0])).toBe(false);
     });
 
     it("no actualiza la clave si otra peticion ya consumio el token de reset", async () => {

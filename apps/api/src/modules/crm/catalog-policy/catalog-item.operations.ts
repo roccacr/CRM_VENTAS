@@ -14,7 +14,7 @@ import type { CreateCatalogItemDto, ListCatalogItemsQueryDto, UpdateCatalogItemD
 import { type IdentityRequestAuditContext, type IdentityService } from "../identity/identity.service.js";
 import type { IdentityProfile } from "../identity/identity.types.js";
 
-/** Rol que atraviesa el módulo de contexto. El permiso del catálogo sigue existiendo para el resto. */
+/** Owner skips context membership only; every operation still requires its effective grant. */
 const OWNER_ROLE_CODE = "owner";
 
 /** Lo que cualquier repositorio de catálogo debe ofrecer. No nombra tablas ni sistemas externos. */
@@ -236,19 +236,16 @@ export class CatalogItemOperations {
     /**
      * Autoriza con el perfil que acaba de devolver identidad.
      *
-     * Owner activo no pasa por el módulo. El resto necesita el área activa y un
-     * `allow` sin `deny`: la denegación directa gana sobre el permiso del rol.
+     * Every profile needs an exact allow without deny. Active Owner only skips
+     * module membership; other profiles also need the active context area.
      */
     private assertCan(profile: IdentityProfile, moduleCode: CatalogContextModuleCode, permissionCode: string): void {
-        if (profile.roles.some((role) => role.code === OWNER_ROLE_CODE && role.status === "active")) {
-            return;
-        }
-
-        if (!profile.orgUnits.some((orgUnit) => orgUnit.code === moduleCode && orgUnit.status === "active")) {
+        if (profile.permissions.some((permission) => permission.code === permissionCode && permission.effect === "deny") || !profile.permissions.some((permission) => permission.code === permissionCode && permission.effect === "allow")) {
             throw new ForbiddenException("Permiso insuficiente.");
         }
 
-        if (profile.permissions.some((permission) => permission.code === permissionCode && permission.effect === "deny") || !profile.permissions.some((permission) => permission.code === permissionCode && permission.effect === "allow")) {
+        const owner = profile.roles.some((role) => role.code === OWNER_ROLE_CODE && role.status === "active");
+        if (!owner && !profile.orgUnits.some((orgUnit) => orgUnit.code === moduleCode && orgUnit.status === "active")) {
             throw new ForbiddenException("Permiso insuficiente.");
         }
     }

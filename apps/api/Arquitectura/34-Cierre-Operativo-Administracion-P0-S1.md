@@ -1,5 +1,10 @@
 # 34 - Cierre Operativo Administracion P0-S1
 
+Regla vigente 2026-10-13: las referencias historicas siguientes a bypass Owner
+de catalogos/seguridad no describen la autorizacion actual. Cada operacion
+requiere permiso efectivo exacto; Owner solo conserva la exencion de membresia
+de area en catalogos. La UI oculta acciones denegadas. Ver documento 36.
+
 Actualizacion de continuidad 2026-10-13: [36 - Registro de entrega](36-Registro-Entrega-Administracion.md) consolida estado, solicitudes, decisiones, evidencias y pendientes actuales; [37 - Auditoria y conflictos](37-Auditoria-Trazabilidad-y-Conflictos.md) documenta historial antes/despues y 409. Los resultados y conteos fechados de este documento son historicos y no sustituyen una nueva aceptacion Owner ni verifican el estado actual de produccion.
 
 ## Catalog verification evidence - 2026-10-09

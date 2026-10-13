@@ -1,5 +1,6 @@
 import { ConflictException, ForbiddenException, Inject, Injectable, NotFoundException } from "@nestjs/common";
 
+import { normalizeCaseInsensitiveIdentifier } from "../../../common/security/identifier-normalization.js";
 import { getCatalogPermissionCodesForContext } from "../catalogs/catalogs.constants.js";
 import type { ReplaceIdentityRolePermissionsDto, ReplaceIdentityUserAccessDto, UpdateIdentityRoleDto } from "./dto/access-management.dto.js";
 import { IdentityService } from "./identity.service.js";
@@ -160,18 +161,14 @@ export class IdentityAccessManagementService {
     }
 
     private assertCan(profile: IdentityProfile, permissionCode: string): void {
-        if (profile.roles.some((role) => role.code === OWNER_ROLE_CODE && role.status === "active")) {
-            return;
-        }
-
-        if (!profile.permissions.some((permission) => permission.code === permissionCode && permission.effect === "allow")) {
+        if (profile.permissions.some((permission) => permission.code === permissionCode && permission.effect === "deny") || !profile.permissions.some((permission) => permission.code === permissionCode && permission.effect === "allow")) {
             throw new ForbiddenException("Permiso insuficiente.");
         }
     }
 
     private assertOwnerSelfProtection(profile: IdentityProfile, targetPublicId: string, payload: ReplaceIdentityUserAccessDto): void {
         const isActiveOwner = profile.roles.some((role) => role.code === OWNER_ROLE_CODE && role.status === "active");
-        const isSelfChange = profile.user.publicId === targetPublicId.trim();
+        const isSelfChange = normalizeCaseInsensitiveIdentifier(profile.user.publicId) === normalizeCaseInsensitiveIdentifier(targetPublicId);
 
         if (!isActiveOwner || !isSelfChange) {
             return;
