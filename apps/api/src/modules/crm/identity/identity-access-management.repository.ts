@@ -911,11 +911,11 @@ export class IdentityAccessManagementRepository {
         const modules = new Map<string, Map<string, IdentityModuleViewCatalogItem & { permissions: IdentityPermissionCatalogItem[] }>>();
 
         for (const permission of permissions) {
-            const viewCode = this.resolvePermissionViewCode(permission.code);
+            const viewCode = this.resolvePermissionViewCode(permission.code, permission.moduleCode);
             const moduleViews = modules.get(permission.moduleCode) ?? new Map<string, IdentityModuleViewCatalogItem & { permissions: IdentityPermissionCatalogItem[] }>();
             const view = moduleViews.get(viewCode) ?? {
                 code: viewCode,
-                name: this.resolvePermissionViewName(viewCode),
+                name: permission.moduleCode === "formalizacion" && viewCode === "home" ? "Pantalla de inicio" : this.resolvePermissionViewName(viewCode),
                 permissions: [],
             };
 
@@ -929,10 +929,11 @@ export class IdentityAccessManagementRepository {
             modules.set(permission.moduleCode, moduleViews);
         }
 
+        const formalizationOrder: Record<string, number> = { home: 0, sales_order: 1 };
         return [...modules.entries()].map(([moduleCode, views]) => ({
             code: moduleCode,
             name: this.resolveModuleName(moduleCode),
-            views: [...views.values()],
+            views: moduleCode === "formalizacion" ? [...views.values()].sort((left, right) => (formalizationOrder[left.code] ?? 2) - (formalizationOrder[right.code] ?? 2)) : [...views.values()],
         }));
     }
 
@@ -956,9 +957,11 @@ export class IdentityAccessManagementRepository {
         return names[moduleCode] ?? moduleCode;
     }
 
-    private resolvePermissionViewCode(permissionCode: string): string {
-        if (permissionCode === "formalizacion.home.read") return "home";
+    private resolvePermissionViewCode(permissionCode: string, moduleCode: string): string {
+        if (permissionCode.startsWith("formalizacion.home.")) return "home";
         const parts = permissionCode.split(".");
+        // One order workspace, preserving the exact existing permission codes and grants.
+        if (moduleCode === "formalizacion" && /^(contract|file|signature)\./u.test(permissionCode)) return "sales_order";
 
         return parts.length >= 3 && findCatalogDefinitionByModuleCode(parts[1] ?? "") ? (parts[1] as string) : (parts[0] ?? permissionCode);
     }
@@ -1064,6 +1067,7 @@ export class IdentityAccessManagementRepository {
             payment: "Pagos",
             role: "Roles",
             signature: "Firmas",
+            sales_order: "Orden de venta",
             source: "Fuentes",
             user: "Usuarios",
             wallet: "Cartera",
@@ -1082,7 +1086,7 @@ export class IdentityAccessManagementRepository {
 
         const names: Record<string, string> = {
             "campaign.create": "Crear campana",
-            "formalizacion.home.read": "Ver inicio de Formalizacion",
+            "formalizacion.home.approvals.read": "Banner pendiente de aprobaci\u00f3n de Formalizaci\u00f3n",
             "campaign.read": "Ver campanas",
             "contract.review": "Revisar contrato",
             "estimate.approve": "Aprobar estimacion",

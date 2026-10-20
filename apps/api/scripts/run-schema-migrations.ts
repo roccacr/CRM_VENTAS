@@ -21,6 +21,8 @@ import { unitFilesDomainMigration } from "../migrations/schema-only/202610120015
 import { unitFilesNamingMigration } from "../migrations/schema-only/202610120016_unit_files_naming.js";
 import { formalizationHomeRoleMigration } from "../migrations/schema-only/202610130017_formalization_home_role.js";
 import { userAssignPasswordPermissionMigration } from "../migrations/schema-only/202610130018_user_assign_password_permission.js";
+import { formalizationSupervisorRoleMigration } from "../migrations/schema-only/202610200019_formalization_supervisor_role.js";
+import { formalizationHomeBannerMigration } from "../migrations/schema-only/202610200020_formalization_home_banner.js";
 import { addDatabaseTlsIssues, booleanEnvSchema, tcpPortSchema } from "../src/config/database-env.schema.js";
 import { APPROVED_DATABASE_NAME } from "../src/config/product.constants.js";
 import { buildMysqlPoolOptions } from "../src/database/mysql-pool-options.js";
@@ -52,6 +54,8 @@ export const schemaMigrations: Migration[] = [
     unitFilesNamingMigration,
     formalizationHomeRoleMigration,
     userAssignPasswordPermissionMigration,
+    formalizationSupervisorRoleMigration,
+    formalizationHomeBannerMigration,
 ];
 
 /** Targeted cutovers avoid replaying unrelated security repairs after a deliberate ledger reset. */

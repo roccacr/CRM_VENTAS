@@ -328,3 +328,88 @@ Las pruebas MySQL son opt-in y usan configuracion local segura; consultar docume
 | Despliegue y retiro legacy            | Release, migraciones y smoke tests explicitamente aprobados; ninguna dependencia ni dato sin migrar                                                                              |
 
 No considerar Administracion cerrada ni avanzar a Leads por el solo hecho de que existen pantallas o pasan pruebas locales.
+
+## Rol complementario autorizado - 2026-10-20
+
+Migracion `202610200019_formalization_supervisor_role`: agrega exclusivamente
+`jefe_formalizaciones` (Jefe de Formalizaciones), activo, sin permisos ni usuarios.
+El listado de roles existente lo obtiene desde `sec_role`; no se cambia frontend.
+No concede acceso a Inicio por si solo: para funciones operativas se asignara
+explicitamente junto con Formalizacion. No hay aprobaciones, herencia ni cambios
+de permisos existentes. Auditoria transaccional con estado anterior nulo y nuevo
+rol sin grants; no se invalidan sesiones porque no cambia acceso de ningun usuario.
+Pruebas MySQL rollback-only cubren creacion sin grants/asignaciones, idempotencia,
+rechazo de reactivacion y rollback por fallo de auditoria.
+Siguiente paso: definir permisos atomicos de supervision y su alcance antes de
+otorgarlos al rol. No se asume acceso por nombres de personas o puestos.
+
+Verificacion 20/10: TypeScript, build y ESLint de los cuatro archivos TS tocados
+aprobados; diff sin errores de espacios. Las tres pruebas nuevas pasaron en la
+primera corrida serial. La suite anterior de Home fallo por conexion cerrada y
+timeouts; una repeticion posterior tambien encontro esperas. El runner puntual
+se intento pero fallo con Lock wait timeout exceeded. Una consulta posterior
+confirmo que el rol no existe y una transaccion abierta conserva bloqueos;
+no se mataron conexiones ajenas. Aplicacion persistente pendiente de liberar
+el bloqueo y volver a verificar. No afirmar que el rol ya esta disponible.
+El check global se detuvo por formato previo en unit-files-search.spec.ts;
+lint global reporto cinco JSDoc faltantes ajenos al cambio. Tests API generales:
+4429 aprobados, 105 omitidos y un timeout en module-import-boundary.spec.ts.
+
+Aplicacion posterior confirmada 20/10: el propietario autorizo cerrar la conexion
+bloqueante 418234, pero la consulta previa encontro que su transaccion ya no
+existia; no se mato ninguna conexion. El runner oficial con --only de la 019
+termino con codigo 0. SELECT posterior confirma jefe_formalizaciones activo,
+nombre Jefe de Formalizaciones, cero permisos y cero asignaciones. Una segunda
+ejecucion omitio la migracion ya aplicada. Esto resuelve el bloqueo de aplicacion
+anterior, no los fallos globales de validacion ni la aceptacion visual pendiente.
+
+## Secciones de Formalizacion - 2026-10-20
+
+Por instruccion del propietario, el catalogo de seguridad organiza Formalizacion
+en Pantalla de inicio, Orden de venta y Catalogos, comun a todos los roles,
+incluidos Formalizacion y Jefe de Formalizaciones. Inicio conserva su permiso
+formalizacion.home.read. La vista sales_order agrupa contract.review, file.read
+y signature.manage existentes; no crea permisos, transiciones ni grants.
+Catalogos conserva sus siete pestanas y permisos scoped. Contratos, Expedientes
+y Firmas dejan de ser secciones independientes en esta matriz, no se borran
+permisos ni se modifica su validacion backend. Tampoco cambia el menu operativo.
+Prueba de catalogo verifica orden, nombres, conservacion exacta de codigos y
+aislamiento de Ventas. Suite de identidad: 327 aprobadas y 8 omitidas.
+Comprobacion en Chrome autenticado: Jefe de Formalizaciones muestra exactamente
+las tres secciones, con 0/1, 0/3 y 0/28 permisos; no se guardaron cambios de acceso.
+El check global sigue bloqueado por formato previo en unit-files-search.spec.ts.
+
+## Permiso de banner de aprobacion - 2026-10-20
+
+Aplicada migracion puntual 020: formalizacion.home.read queda inactivo;
+formalizacion.home.approvals.read queda activo sin grants nuevos. El permiso se
+presenta primero en Pantalla de inicio: Ver pendientes de aprobacion de
+Formalizacion. No habilita aprobar ni devolver. No se elimina historia ni se
+transfiere el permiso antiguo a una facultad diferente. No se cambian versiones
+de usuario ni se revocan sesiones; el perfil efectivo filtra permisos inactivos.
+Home y las maquetas existentes son accesibles por pertenencia activa al modulo;
+un permiso aislado de banner sin modulo no habilita la entrada. Denegar el banner
+no bloquea Inicio ni habilita Catalogos. En esta seccion el control maestro indica
+Banners visibles/ocultos, no Acceso permitido/Sin acceso.
+El alta frontend conserva el modulo inicial del rol Formalizacion incluso sin
+permisos de banner, en concordancia con el fallback existente del API.
+La entrega es configuracion del permiso, no implementacion del nuevo banner,
+una bandeja de aprobaciones ni escritura de checks NetSuite.
+Pruebas MySQL rollback-only: retiro/alta, ausencia de transferencia de grants,
+idempotencia y rollback por fallo de auditoria. SELECT posterior confirma permiso
+nuevo activo con cero grants y anterior inactivo. Pruebas API de identidad y
+registro: 341 aprobadas, 8 omitidas; pruebas App/navegacion: 101 aprobadas.
+El check global API conserva el bloqueo de formato previo; frontend check
+tambien encuentra formato previo en FormalizationHomeInsights.tsx y
+FormalizationStatusPill.tsx. No se modifican esos archivos ajenos.
+Verificacion final: frontend completo 416 pruebas en 29 archivos aprobadas;
+TypeScript y build frontend/API aprobados. Lint y formato de los archivos
+modificados aprobados. Repeticion MySQL posterior a aplicar: 3 pruebas aprobadas
+(catalogo y dos persistentes rollback-only); runner 020 repetido la omite.
+En Chrome autenticado se verifico el permiso nuevo, ausencia del anterior y
+control Visibilidad de banners en Pantalla de inicio, sin guardar grants.
+Nombre visible ajustado posteriormente por el propietario: Banner pendiente de
+aprobacion de Formalizacion. Su finalidad es consultar el banner y la cantidad
+pendiente; no cambia el codigo formalizacion.home.approvals.read ni concede
+permiso para marcar el check de aprobacion. Se conserva la descripcion que
+distingue lectura de aprobar/devolver; no hay cambios de grants ni migraciones.

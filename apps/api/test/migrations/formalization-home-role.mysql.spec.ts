@@ -5,6 +5,7 @@ import { ulid } from "ulid";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { formalizationHomeRoleMigration } from "../../migrations/schema-only/202610130017_formalization_home_role.js";
+import { formalizationSupervisorRoleMigration } from "../../migrations/schema-only/202610200019_formalization_supervisor_role.js";
 import { validateEnv } from "../../src/config/env.validation.js";
 import { DatabaseService } from "../../src/database/database.service.js";
 import type { CrmDatabase } from "../../src/database/database.types.js";
@@ -64,6 +65,43 @@ describe.skipIf(process.env.FORMALIZATION_MYSQL_TESTS !== "1")("Formalization Ho
             if (error !== rollback) throw error;
         }
     }
+
+    it("creates an unassigned complementary supervisor role without grants and is idempotent", async () => {
+        await withRollback(async (service, migrationDb) => {
+            const usersBefore = await service.db.selectFrom("sec_user").select(["id_user", "permission_version_user"]).execute();
+            await formalizationSupervisorRoleMigration.up(migrationDb);
+            const role = await service.db.selectFrom("sec_role").selectAll().where("code_role", "=", "jefe_formalizaciones").executeTakeFirstOrThrow();
+            expect(role.name_role).toBe("Jefe de Formalizaciones");
+            expect(role.status_role).toBe("active");
+            expect(await service.db.selectFrom("sec_role_permission").selectAll().where("role_id_role_permission", "=", role.id_role).execute()).toEqual([]);
+            expect(await service.db.selectFrom("sec_user_role").selectAll().where("role_id_user_role", "=", role.id_role).execute()).toEqual([]);
+            const audits = await service.db.selectFrom("audit_security_event").select("id_security_event").execute();
+            await formalizationSupervisorRoleMigration.up(migrationDb);
+            expect(await service.db.selectFrom("audit_security_event").select("id_security_event").execute()).toEqual(audits);
+            expect(await service.db.selectFrom("sec_user").select(["id_user", "permission_version_user"]).execute()).toEqual(usersBefore);
+        });
+    });
+
+    it("does not reactivate an inactive supervisor role", async () => {
+        await withRollback(async (service, migrationDb) => {
+            await formalizationSupervisorRoleMigration.up(migrationDb);
+            await service.db.updateTable("sec_role").set({ status_role: "inactive" }).where("code_role", "=", "jefe_formalizaciones").execute();
+            await expect(formalizationSupervisorRoleMigration.up(migrationDb)).rejects.toThrow("inactive");
+            expect((await service.db.selectFrom("sec_role").select("status_role").where("code_role", "=", "jefe_formalizaciones").executeTakeFirstOrThrow()).status_role).toBe("inactive");
+        });
+    });
+
+    it("rolls back supervisor role creation if its audit fails", async () => {
+        await withRollback(async (service, migrationDb) => {
+            await service.db
+                .updateTable("sec_role")
+                .set({ code_role: `fixture-${ulid()}` })
+                .where("code_role", "=", "jefe_formalizaciones")
+                .execute();
+            await expect(formalizationSupervisorRoleMigration.up(migrationDb)).rejects.toThrow("forced Formalization audit failure");
+            expect(await service.db.selectFrom("sec_role").select("id_role").where("code_role", "=", "jefe_formalizaciones").execute()).toEqual([]);
+        }, true);
+    });
 
     it("creates only Home, is idempotent, and new users resolve only that permission", async () => {
         const userCount = await database.db

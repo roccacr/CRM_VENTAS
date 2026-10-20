@@ -21,7 +21,7 @@ import { UnitFilesPage } from "../modules/administration/unit-files/UnitFilesPag
 import { FormalizationCalendarPage } from "../modules/home/FormalizationCalendarPage";
 import { FormalizationHomePage } from "../modules/home/FormalizationHomePage";
 import { FormalizationSummaryPage } from "../modules/home/FormalizationSummaryPage";
-import type { IdentityUser } from "../services/auth/identity-contracts";
+import type { IdentityProfile, IdentityUser } from "../services/auth/identity-contracts";
 import type { CatalogCode } from "../services/catalogs/catalog-service";
 
 /**
@@ -43,7 +43,7 @@ export interface AppRoute {
     readonly workspaceCode: string;
     /** Título de la sección; se usa como placeholder mientras la ruta no tenga `Page` propia. */
     readonly title: string;
-    readonly Page?: ComponentType<{ readonly currentUser: IdentityUser; readonly onNavigate?: (path: string) => void }>;
+    readonly Page?: ComponentType<{ readonly currentUser: IdentityUser; readonly effectivePermissions?: IdentityProfile["permissions"]; readonly onNavigate?: (path: string) => void }>;
 }
 
 const CATALOG_CONTEXT_ROUTES = [

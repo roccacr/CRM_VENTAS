@@ -1,10 +1,31 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
 
+import { FormalizationHomePage } from "../../src/modules/home/FormalizationHomePage";
 import { getAppRoute } from "../../src/routes/app-routes";
 import { installBrowserApiDoubles } from "../support/browser";
 
 afterEach(cleanup);
+
+it("shows a separate approval strip only with an effective grant and preserves the six-banner grid", () => {
+    installBrowserApiDoubles();
+    const permission = { code: "formalizacion.home.approvals.read", effect: "allow" as const };
+    const { container, rerender } = render(<FormalizationHomePage />);
+    expect(screen.queryByRole("button", { name: "Ver pendientes de aprobación de Formalización" })).toBeNull();
+    expect(container.querySelectorAll(".formalization-home__banners > article")).toHaveLength(6);
+    rerender(<FormalizationHomePage effectivePermissions={[permission, { ...permission, effect: "deny" }]} />);
+    expect(screen.queryByRole("button", { name: "Ver pendientes de aprobación de Formalización" })).toBeNull();
+    rerender(<FormalizationHomePage effectivePermissions={[permission]} />);
+    expect(screen.getByRole("button", { name: "Ver pendientes de aprobación de Formalización" }).closest(".formalization-home__header")).toBeTruthy();
+    expect(container.querySelectorAll(".formalization-home__banners > article")).toHaveLength(6);
+    expect(screen.getByLabelText("Órdenes pendientes de aprobación: 0")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Ver pendientes de aprobación de Formalización" }));
+    expect(screen.getByRole("heading", { name: "Pendientes de aprobación", level: 1 })).toBeTruthy();
+    expect(screen.queryAllByRole("button", { name: /^Ver seguimiento de/ })).toHaveLength(0);
+    rerender(<FormalizationHomePage effectivePermissions={[]} />);
+    expect(screen.queryByRole("heading", { name: "Pendientes de aprobación", level: 1 })).toBeNull();
+    expect(screen.getByRole("heading", { name: "Formalización", level: 1 })).toBeTruthy();
+});
 
 it("opens management directly on all orders and returns Home through app navigation", () => {
     installBrowserApiDoubles();

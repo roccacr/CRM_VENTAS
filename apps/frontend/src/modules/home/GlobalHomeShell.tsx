@@ -324,11 +324,12 @@ export const ASSIGNED_WORKSPACES: readonly [WorkspaceProfile, ...WorkspaceProfil
         label: "Formalización",
         icon: <FileProtectOutlined />,
         menuItems: [
-            { code: "formalization-home", label: "Inicio", icon: <DashboardOutlined />, requiredPermission: "formalizacion.home.read", routePath: FORMALIZATION_HOME_PATH },
-            // La ruta abre solo la maqueta local; no habilita operaciones ni permisos de negocio.
-            { code: "formalization-management", label: "Gestión de formalizaciones", icon: <FileDoneOutlined />, requiredPermission: "formalizacion.home.read", routePath: `${FORMALIZATION_HOME_PATH}/orders` },
-            { code: "formalization-calendar", label: "Calendario", icon: <CalendarOutlined />, requiredPermission: "formalizacion.home.read", routePath: `${FORMALIZATION_HOME_PATH}/calendar` },
-            { code: "formalization-summary", label: "Resumen", icon: <AuditOutlined />, requiredPermission: "formalizacion.home.read", routePath: `${FORMALIZATION_HOME_PATH}/summary` },
+            // Active module membership opens Home; individual banners have their own permissions.
+            { code: "formalization-home", label: "Inicio", icon: <DashboardOutlined />, routePath: FORMALIZATION_HOME_PATH },
+            // Existing local previews remain accessible; this does not authorize business API operations.
+            { code: "formalization-management", label: "Gestión de formalizaciones", icon: <FileDoneOutlined />, routePath: `${FORMALIZATION_HOME_PATH}/orders` },
+            { code: "formalization-calendar", label: "Calendario", icon: <CalendarOutlined />, routePath: `${FORMALIZATION_HOME_PATH}/calendar` },
+            { code: "formalization-summary", label: "Resumen", icon: <AuditOutlined />, routePath: `${FORMALIZATION_HOME_PATH}/summary` },
             { code: "formalization-catalogs", label: "Catálogos", icon: <DatabaseOutlined />, children: buildCatalogMenuOptions("formalization") },
         ],
     },
@@ -526,6 +527,9 @@ export const getVisibleNavigationWorkspaces = (permissions: readonly EffectiveNa
     const [allWorkspace, ...moduleWorkspaces] = workspaces;
     const visibleModuleWorkspaces = moduleWorkspaces.flatMap((workspace) => {
         const moduleCode = WORKSPACE_MODULE_CODE_BY_WORKSPACE_CODE[workspace.code];
+
+        // A permissionless Home must never expose Formalization without active module membership.
+        if (workspace.code === "formalization" && !activeOrgUnitCodes.has("formalizacion")) return [];
 
         if (shouldFilterByOrgUnit && moduleCode && !activeOrgUnitCodes.has(moduleCode)) {
             return [];

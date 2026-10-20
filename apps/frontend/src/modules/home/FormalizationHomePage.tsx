@@ -1,10 +1,12 @@
 import "./FormalizationHomePage.css";
 
 import ArrowLeftOutlined from "@ant-design/icons/ArrowLeftOutlined";
+import ArrowRightOutlined from "@ant-design/icons/ArrowRightOutlined";
 import BankOutlined from "@ant-design/icons/BankOutlined";
 import CheckCircleOutlined from "@ant-design/icons/CheckCircleOutlined";
 import FileDoneOutlined from "@ant-design/icons/FileDoneOutlined";
 import FileTextOutlined from "@ant-design/icons/FileTextOutlined";
+import SafetyCertificateOutlined from "@ant-design/icons/SafetyCertificateOutlined";
 import SwapOutlined from "@ant-design/icons/SwapOutlined";
 import WalletOutlined from "@ant-design/icons/WalletOutlined";
 import Button from "antd/es/button";
@@ -20,6 +22,51 @@ import { FormalizationHomeInsights } from "./FormalizationHomeInsights";
 import { FormalizationOrderPreview } from "./FormalizationOrderPreview";
 import { FormalizationPreviewBoundary } from "./FormalizationPreviewSession";
 import { FormalizationTimingPreview } from "./FormalizationTimingPreview";
+import type { EffectiveNavigationPermission } from "./GlobalHomeShell";
+
+interface FormalizationHomeProps {
+    readonly effectivePermissions?: readonly EffectiveNavigationPermission[];
+    readonly initialView?: "home" | "orders";
+    readonly onNavigate?: ((path: string) => void) | undefined;
+}
+
+/** Misma esquina en la franja de aprobación y en los seis banners. */
+function BannerCorner() {
+    return (
+        <span className="formalization-banner__pattern" aria-hidden="true">
+            {Array.from({ length: 6 }, (_, index) => (
+                <i key={index} />
+            ))}
+        </span>
+    );
+}
+
+/** Deny wins; revocation also removes an already opened approval queue. */
+function resolveApprovalVisibility(permissions: readonly EffectiveNavigationPermission[] | undefined, selectedQueue: PreviewQueue | null) {
+    const entries = (permissions ?? []).filter((permission) => permission.code === "formalizacion.home.approvals.read");
+    const canView = entries.some((permission) => permission.effect === "allow") && !entries.some((permission) => permission.effect === "deny");
+    return { canView, queue: selectedQueue?.filter === "approvals" && !canView ? null : selectedQueue };
+}
+
+function ApprovalStrip({ count, onOpen }: { readonly count: number; readonly onOpen: () => void }) {
+    return (
+        <button type="button" className="formalization-approval-strip" aria-label="Ver pendientes de aprobación de Formalización" onClick={onOpen}>
+            <span className="formalization-banner__icon" aria-hidden="true">
+                <SafetyCertificateOutlined />
+            </span>
+            <span className="formalization-approval-strip__heading">
+                <span className="formalization-approval-strip__title">Pendientes de aprobación</span>
+                <span className="formalization-approval-strip__caption">Formalización</span>
+            </span>
+            <span className="formalization-approval-strip__count" aria-label={`Órdenes pendientes de aprobación: ${String(count)}`}>
+                <strong>{count}</strong>
+                <span>Por revisar</span>
+            </span>
+            <ArrowRightOutlined aria-hidden="true" />
+            <BannerCorner />
+        </button>
+    );
+}
 
 const banners = [
     {
@@ -83,9 +130,10 @@ function QueueHeader({ queue, onHome, onAll }: { readonly queue: PreviewQueue; r
 }
 
 /** Propuesta visual del Inicio: no consulta datos ni habilita acciones operativas. */
-function FormalizationHomeContent({ initialView = "home", onNavigate }: { readonly initialView?: "home" | "orders"; readonly onNavigate?: ((path: string) => void) | undefined }) {
+function FormalizationHomeContent({ effectivePermissions, initialView = "home", onNavigate }: FormalizationHomeProps) {
     const { orders } = useFormalizationPreview();
-    const [queue, setQueue] = useState<PreviewQueue | null>(() => (initialView === "orders" ? { filter: "all" } : null));
+    const [selectedQueue, setQueue] = useState<PreviewQueue | null>(() => (initialView === "orders" ? { filter: "all" } : null));
+    const { canView: canViewApprovals, queue } = resolveApprovalVisibility(effectivePermissions, selectedQueue);
     const [selected, setSelected] = useState<FormalizationExample | null>(null);
     return (
         <ConfigProvider locale={esES} theme={PROJECTS_THEME}>
@@ -100,10 +148,18 @@ function FormalizationHomeContent({ initialView = "home", onNavigate }: { readon
                     />
                 )}
                 <div hidden={selected !== null || queue !== null}>
-                    <section className="global-home-page-header" aria-labelledby="formalization-home-title">
+                    <section className="global-home-page-header formalization-home__header" aria-labelledby="formalization-home-title">
                         <div>
                             <h1 id="formalization-home-title">Formalización</h1>
                         </div>
+                        {canViewApprovals && (
+                            <ApprovalStrip
+                                count={countQueue({ filter: "approvals" }, orders)}
+                                onOpen={() => {
+                                    setQueue({ filter: "approvals" });
+                                }}
+                            />
+                        )}
                     </section>
                     <section className="formalization-home__banners" aria-label="Resumen de formalización">
                         {banners.map((banner) => (
@@ -132,11 +188,7 @@ function FormalizationHomeContent({ initialView = "home", onNavigate }: { readon
                                         ))}
                                     </div>
                                 </div>
-                                <span className="formalization-banner__pattern" aria-hidden="true">
-                                    {Array.from({ length: 6 }, (_, index) => (
-                                        <i key={index} style={{ inset: `${String(index * 9)}px ${String(-index * 9)}px auto auto` }} />
-                                    ))}
-                                </span>
+                                <BannerCorner />
                             </article>
                         ))}
                     </section>
@@ -172,7 +224,7 @@ function FormalizationHomeContent({ initialView = "home", onNavigate }: { readon
 }
 
 /** Inicio y bandejas comparten la misma simulación durante el recorrido del módulo. */
-export function FormalizationHomePage(props: { readonly initialView?: "home" | "orders"; readonly onNavigate?: ((path: string) => void) | undefined }) {
+export function FormalizationHomePage(props: FormalizationHomeProps) {
     return (
         <FormalizationPreviewBoundary>
             <FormalizationHomeContent {...props} />

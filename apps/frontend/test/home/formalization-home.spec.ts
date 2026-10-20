@@ -15,7 +15,7 @@ const profile = (codes: readonly string[]): IdentityProfile => ({
 });
 
 describe("Formalization Home-only access", () => {
-    const homeOnly = profile(["formalizacion.home.read"]);
+    const homeOnly = profile([]);
     it("shows Inicio and the visual management option and selects a valid login destination", () => {
         const workspaces = getVisibleNavigationWorkspaces(homeOnly.permissions, homeOnly.orgUnits);
         expect(workspaces.map(({ code }) => code)).toEqual(["formalization"]);
@@ -24,19 +24,25 @@ describe("Formalization Home-only access", () => {
         expect(resolveRouteState(homeOnly, "/home/formalization").status).toBe("authenticated");
         expect(resolveRouteState(homeOnly, "/home/formalization/orders").status).toBe("authenticated");
         expect(resolveRouteState(homeOnly, "/home/formalization/calendar").status).toBe("authenticated");
-        expect(resolveRouteState(profile([]), "/home/formalization/calendar").status).toBe("forbidden");
-        expect(resolveRouteState(profile([]), "/home/formalization/orders").status).toBe("forbidden");
+        expect(resolveRouteState(profile([]), "/home/formalization/calendar").status).toBe("authenticated");
+        expect(resolveRouteState(profile([]), "/home/formalization/orders").status).toBe("authenticated");
     });
     it.each(["projects", "campaigns", "classes", "locations", "subsidiaries", "brokers", "files"])("denies the %s catalog URL", (catalog) => {
         expect(resolveRouteState(homeOnly, `/home/formalization/catalogs/${catalog}`).status).toBe("forbidden");
     });
-    it("gates the visual Resumen checklist by Home permission, never the legacy file permission", () => {
+    it("opens the existing preview through module membership without a Home permission", () => {
         const legacy = profile(["file.read"]);
-        expect(getDefaultAuthenticatedPath(legacy)).toBeNull();
-        expect(getDefaultAuthenticatedPath(legacy, "formalization")).toBeNull();
-        expect(resolveRouteState(legacy, "/home/formalization/summary").status).toBe("forbidden");
+        expect(getDefaultAuthenticatedPath(legacy)).toBe("/home/formalization");
+        expect(getDefaultAuthenticatedPath(legacy, "formalization")).toBe("/home/formalization");
+        expect(resolveRouteState(legacy, "/home/formalization/summary").status).toBe("authenticated");
         expect(resolveRouteState(homeOnly, "/home/formalization/summary").status).toBe("authenticated");
-        expect(resolveRouteState(profile([]), "/home/formalization/summary").status).toBe("forbidden");
+        expect(resolveRouteState(profile([]), "/home/formalization/summary").status).toBe("authenticated");
+    });
+    it("does not admit users without active module membership even with the banner permission", () => {
+        const outsider = { ...profile(["formalizacion.home.approvals.read"]), orgUnits: [] };
+        expect(resolveRouteState(outsider, "/home/formalization").status).toBe("forbidden");
+        const deniedBanner = { ...profile([]), permissions: [{ code: "formalizacion.home.approvals.read", effect: "deny" as const, scope: "self", source: "override" as const }] };
+        expect(resolveRouteState(deniedBanner, "/home/formalization").status).toBe("authenticated");
     });
     it.each([
         ["file.read", "files"],
@@ -49,9 +55,9 @@ describe("Formalization Home-only access", () => {
         expect(resolveRouteState(legacy, `/home/formalization/${section}`).status).toBe("forbidden");
         expect(resolveRouteState(homeOnly, `/home/formalization/${section}`).status).toBe("forbidden");
     });
-    it("derives the Formalization module and creation payload from the Home-only role", () => {
+    it("derives Formalization membership from its role without requiring any banner grants", () => {
         const modules = [{ code: "formalizacion", name: "Formalización", views: [{ code: "home", name: "Inicio", permissions: [{ code: "formalizacion.home.read", name: "Ver inicio", sensitive: false }] }] }];
-        const selected = getRoleModules(["formalizacion"], { formalizacion: ["formalizacion.home.read"] }, modules);
+        const selected = getRoleModules(["formalizacion"], { formalizacion: [] }, modules);
         expect(selected.map(({ code }) => code)).toEqual(["formalizacion"]);
         expect(buildCreateUserPayload({ ...createInitialUserFormValues(), roleCodes: ["formalizacion"] }, selected)).toMatchObject({ roleCode: "formalizacion", roleCodes: ["formalizacion"], orgUnitCodes: ["formalizacion"] });
     });

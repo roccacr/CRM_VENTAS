@@ -48,8 +48,8 @@ export interface AppRouteContentProps {
 }
 
 /** Página propia de la ruta o, si todavía no existe, el placeholder de sección. */
-function RoutePage({ currentUser, route, onNavigate }: { readonly currentUser: IdentityUser; readonly route: AppRoute; readonly onNavigate: (path: string) => void }) {
-    return route.Page ? <route.Page currentUser={currentUser} onNavigate={onNavigate} /> : <AdministrationSectionPage title={route.title} />;
+function RoutePage({ currentUser, effectivePermissions, route, onNavigate }: { readonly currentUser: IdentityUser; readonly effectivePermissions: IdentityProfile["permissions"]; readonly route: AppRoute; readonly onNavigate: (path: string) => void }) {
+    return route.Page ? <route.Page currentUser={currentUser} effectivePermissions={effectivePermissions} onNavigate={onNavigate} /> : <AdministrationSectionPage title={route.title} />;
 }
 
 const getSessionStatusView = (authState: AuthState): { readonly phase: SessionStatusPhase; readonly user: IdentityUser | null } => (authState.status === "checking" ? { phase: authState.phase ?? "checking", user: authState.user ?? null } : { phase: "checking", user: null });
@@ -62,7 +62,7 @@ function AuthenticatedRouteContent({ profile, path, onLogout, onNavigate }: { re
     const defaultPath = getDefaultAuthenticatedPath(profile);
     const shellRoute = permittedRoute ?? getAppRoute(defaultPath ?? "");
     const workspaceCode = shellRoute?.workspaceCode ?? ALL_WORKSPACE_CODE;
-    const page = permittedRoute ? <RoutePage currentUser={profile.user} route={permittedRoute} onNavigate={onNavigate} /> : <AuthenticatedRouteFeedback unknown={!isKnownPath(path)} defaultPath={defaultPath} onNavigate={onNavigate} />;
+    const page = permittedRoute ? <RoutePage currentUser={profile.user} effectivePermissions={profile.permissions} route={permittedRoute} onNavigate={onNavigate} /> : <AuthenticatedRouteFeedback unknown={!isKnownPath(path)} defaultPath={defaultPath} onNavigate={onNavigate} />;
     return (
         <GlobalHomeShell
             activeMenuItemCode={shellRoute?.menuItemCode}

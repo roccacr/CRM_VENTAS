@@ -1,5 +1,46 @@
 # Formalizacion: recorrido visual y trazabilidad
 
+## Banner de aprobaciones autorizado - 20/10/2026
+
+Distribucion vigente tras el ultimo ajuste del propietario: bloque a la izquierda,
+debajo del titulo, con el mismo ancho de una columna de los seis indicadores.
+Usa los mismos cortes de tres/dos/una columnas. Chrome confirma igualdad de
+posicion izquierda y ancho (598.734375px en escritorio). Sustituye el bloque
+de 360px a la derecha descrito como antecedente a continuacion.
+
+Ajuste visual posterior: el propietario rechazo la franja de ancho completo.
+Se sustituye por un bloque de 360px junto al titulo, alineado a la derecha,
+sin fila adicional de indicadores. Los seis banners mantienen 3x2. Bajo 640px
+el encabezado apila titulo y bloque, limitado al ancho disponible. No cambia
+conteo, permisos ni navegacion. Prueba de ubicacion en encabezado observada
+fallida antes del ajuste; Chrome confirma escritorio y movil sin overflow.
+La descripcion de franja que sigue se conserva como antecedente de la primera
+version y no representa la distribucion actual.
+
+Inicio incorpora una franja compacta de supervision, anterior y externa a la
+cuadricula existente de seis banners. En escritorio conserva tres columnas y
+dos filas; en movil la franja se adapta sin alterar los banners operativos.
+La ruta transmite los permisos efectivos del perfil a la pagina. Solo se
+renderiza con allow de formalizacion.home.approvals.read y sin deny explicito;
+no depende del nombre del rol. Sin permiso no reserva espacio ni monta la
+bandeja; retirar el permiso con la bandeja abierta devuelve el contenido a Inicio.
+El clic abre la tabla local filtrada por approvalPending === true. Ninguna de
+las cinco ordenes existentes tiene ese indicador; el contador inicia en cero,
+sin duplicar ordenes aprobadas ni inventar pendientes. No hay botones de aprobar,
+escritura de checks, acceso NetSuite ni cambios API/BD en esta entrega.
+La aprobacion gestionable sigue pendiente: este avance solo cubre banner y
+bandeja visual con permiso. No sustituye las decisiones de negocio de reunion.
+
+Verificacion: prueba previa fallida y luego suite frontend completa con 417
+pruebas aprobadas en 29 archivos. Pruebas del banner cubren ausencia de permiso,
+deny sobre allow, seis banners intactos, contador, clic y revocacion en memoria.
+TypeScript, build y lint de archivos tocados aprobados; el check global sigue
+detenido por formato previo en HomeInsights y StatusPill, no modificados.
+Chrome autenticado: cuadricula 3x2 con anchos iguales en 1920px, apertura de
+bandeja vacia y retorno. A 390x844, ancho cliente/documento 375px sin overflow;
+franja de 343px. El viewport temporal se restauro. No certifica aprobaciones
+reales ni implementacion de permisos API para futuros datos comerciales.
+
 > Registro posterior: [29-Formalizacion-Reunion-Ajustes.md](29-Formalizacion-Reunion-Ajustes.md).
 > La reunion incorpora necesidades que cambian el alcance anterior (supervision,
 > traspaso firmado, llaves como requisito de cierre, cierre anual y adendas).

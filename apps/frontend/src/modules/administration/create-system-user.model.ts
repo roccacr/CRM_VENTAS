@@ -143,7 +143,8 @@ export const normalizeEmail = (value: unknown): string => (typeof value === "str
 const collectRolePermissionCodes = (roleCodes: readonly string[], rolePermissions: CreateUserRolePermissions): ReadonlySet<string> => new Set(roleCodes.flatMap((roleCode) => rolePermissions[roleCode] ?? []));
 
 /**
- * Módulos operativos donde los roles elegidos tienen al menos una acción.
+ * Modulos operativos donde los roles elegidos tienen acciones; Formalizacion
+ * conserva su pertenencia inicial aunque aun no tenga banners autorizados.
  *
  * El alta no pide módulos: el usuario queda asignado a estas áreas. Owner no
  * lleva módulos porque su alcance es la empresa completa.
@@ -155,7 +156,7 @@ export const getRoleModules = (roleCodes: readonly string[], rolePermissions: Cr
 
     const rolePermissionCodes = collectRolePermissionCodes(roleCodes, rolePermissions);
 
-    return modules.filter((module) => module.views.some((view) => view.permissions.some((permission) => rolePermissionCodes.has(permission.code))));
+    return modules.filter((module) => (module.code === "formalizacion" && roleCodes.includes("formalizacion")) || module.views.some((view) => view.permissions.some((permission) => rolePermissionCodes.has(permission.code))));
 };
 
 /** Owner viaja con la unidad raíz. El resto viaja con los módulos donde sus roles tienen acciones. */

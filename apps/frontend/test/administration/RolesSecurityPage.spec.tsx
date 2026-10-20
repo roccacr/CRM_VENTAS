@@ -6,6 +6,7 @@ import { resolve } from "node:path";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { RolePermissionSection } from "../../src/modules/administration/pages/RolePermissionSection";
 import { RolesSecurityPage } from "../../src/modules/administration/pages/RolesSecurityPage";
 import { getIdentityProfile, getIdentitySecurityCatalog, getIdentityUserAccess, getSystemUsers, replaceIdentityRolePermissions, replaceIdentityUserAccess, updateIdentityRole } from "../../src/services/auth/auth-service";
 import type { IdentityProfile, SystemUserDirectoryItem } from "../../src/services/auth/identity-contracts";
@@ -97,6 +98,14 @@ const chooseOption = async (combobox: string, option: string, selector: string) 
 };
 
 describe("RolesSecurityPage", () => {
+    it("labels Home controls as banner visibility instead of denying access to the page", () => {
+        installBrowserApiDoubles();
+        const view = { key: "formalizacion:home", moduleCode: "formalizacion", code: "home", name: "Pantalla de inicio", permissions: [{ code: "formalizacion.home.approvals.read", name: "Ver pendientes de aprobacion de Formalizacion", description: "Solo visibilidad del banner" }] };
+        render(<RolePermissionSection activeView={view} section={{ key: view.key, moduleCode: "formalizacion", name: view.name, isCatalog: false, views: [view] }} moduleName="Formalizacion" getGrantedCodes={() => new Set()} isBusy={false} isLocked={false} onSelectView={vi.fn()} onSetViewPermissions={vi.fn()} />);
+        expect(screen.getByRole("switch", { name: "Visibilidad de banners" })).not.toBeChecked();
+        expect(screen.queryByText("Sin acceso")).not.toBeInTheDocument();
+        expect(screen.getByText("Banners ocultos")).toBeInTheDocument();
+    });
     beforeEach(() => {
         installBrowserApiDoubles();
         vi.mocked(getIdentityProfile).mockResolvedValue(allowedProfile);

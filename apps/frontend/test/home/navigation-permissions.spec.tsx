@@ -50,11 +50,11 @@ describe("exact registered route access", () => {
     });
     it.each(contexts)("chooses an authorized default route in $workspace when only a catalog is visible", ({ module, workspace }) => {
         const profile = routeProfile([allow(`${module}.catalog_project.read`)], module);
-        const expected = workspace === "administration" ? "/home/administration" : `/home/${workspace}/catalogs/projects`;
+        const expected = ["administration", "formalization"].includes(workspace) ? `/home/${workspace}` : `/home/${workspace}/catalogs/projects`;
         expect(getDefaultAuthenticatedPath(profile, workspace)).toBe(expected);
         expect(getDefaultAuthenticatedPath(profile)).toBe(expected);
         expect(resolveRouteState(profile, expected).status).toBe("authenticated");
-        expect(resolveRouteState(profile, `/home/${workspace}`).status).toBe(workspace === "administration" ? "authenticated" : "forbidden");
+        expect(resolveRouteState(profile, `/home/${workspace}`).status).toBe(["administration", "formalization"].includes(workspace) ? "authenticated" : "forbidden");
     });
     it("keeps the administration landing page and visible catalog parent without granting hidden views", () => {
         const profile = routeProfile([allow("user.view_list")]);
@@ -133,7 +133,8 @@ describe("navigation permissions", () => {
     it("aplica deny directo solo al contexto scoped indicado", () => {
         const visibleWorkspaces = getVisibleNavigationWorkspaces([allow("mercadeo.catalog_project.read"), allow("formalizacion.catalog_project.read"), deny("formalizacion.catalog_project.read")], orgUnits("mercadeo", "formalizacion"));
 
-        expect(visibleWorkspaces.map((workspace) => workspace.code)).toEqual(["marketing"]);
+        expect(visibleWorkspaces.map((workspace) => workspace.code)).toEqual(["all", "marketing", "formalization"]);
+        expect(getMenuLabels(getWorkspace(visibleWorkspaces, "formalization").menuItems)).not.toContain("Catálogos");
     });
 
     it("muestra roles y auditoria de Administracion cuando existe permiso de seguridad", () => {

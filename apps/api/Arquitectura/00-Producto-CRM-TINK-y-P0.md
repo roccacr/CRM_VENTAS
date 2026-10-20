@@ -1,5 +1,31 @@
 # 00 - Ley de Producto CRM TINK y P0
 
+## Inicio por modulo y permiso de banner - 2026-10-20
+
+El propietario sustituye el permiso de entrada formalizacion.home.read por
+acceso a Inicio mediante pertenencia activa al modulo Formalizacion. La migracion
+020 conserva el permiso anterior inactivo y sus relaciones historicas, sin borrar
+historial ni copiar grants. Registra formalizacion.home.approvals.read, visible
+en Pantalla de inicio como Ver pendientes de aprobacion de Formalizacion.
+Solo representa lectura del banner, no aprobar, devolver ni modificar checks.
+No se conceden permisos automaticamente a Formalizacion ni a Jefe de
+Formalizaciones. Las maquetas existentes de gestion, calendario y resumen
+conservan su acceso local dentro del modulo; no autorizan API de negocio.
+Esta entrega registra el permiso: la nueva bandeja/banner y las acciones reales
+de aprobacion continuan pendientes de definicion e implementacion.
+
+## Rol complementario Jefe de Formalizaciones - 2026-10-20
+
+El propietario autoriza exclusivamente crear el rol activo `jefe_formalizaciones`,
+nombre Jefe de Formalizaciones, mediante la migracion incremental 019 en
+CRM_THINK_V2. No otorga permisos, asigna usuarios, crea modulos ni altera sesiones.
+Es complementario a `formalizacion`, no una copia ni una herencia automatica.
+Un jefe con funciones operativas requerira ambos roles, con asignacion explicita.
+Las aprobaciones, supervision, alcance de cartera y reasignacion quedan pendientes
+de definicion y autorizacion; el nombre del rol no habilita ninguna accion.
+La creacion y su auditoria son atomicas; repetirla no duplica el rol y una
+configuracion inactiva no se reactiva silenciosamente.
+
 ## Clave inicial manual con privilegio dedicado - 2026-10-13
 
 El propietario autoriza un campo opcional de contrasena inicial en el alta de

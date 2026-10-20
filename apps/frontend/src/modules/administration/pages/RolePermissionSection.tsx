@@ -108,6 +108,7 @@ export function RolePermissionSection({ activeView, getGrantedCodes, getOrigin, 
             {section.isCatalog ? <CatalogTabs activeView={activeView} getGrantedCodes={getGrantedCodes} section={section} onSelectView={onSelectView} /> : null}
             <SectionAccessBar
                 enabledCount={enabledCodes.size}
+                isBannerSection={activeView.moduleCode === "formalizacion" && activeView.code === "home"}
                 isReadOnly={isReadOnly}
                 total={activeView.permissions.length}
                 onGrantAll={() => {
@@ -159,20 +160,22 @@ function CatalogTabs({ activeView, getGrantedCodes, onSelectView, section }: { r
 
 interface SectionAccessBarProps {
     readonly enabledCount: number;
+    readonly isBannerSection: boolean;
     readonly isReadOnly: boolean;
     readonly onGrantAll: () => void;
     readonly onToggleAccess: (isOn: boolean) => void;
     readonly total: number;
 }
 
-function SectionAccessBar({ enabledCount, isReadOnly, onGrantAll, onToggleAccess, total }: SectionAccessBarProps) {
+function SectionAccessBar({ enabledCount, isBannerSection, isReadOnly, onGrantAll, onToggleAccess, total }: SectionAccessBarProps) {
     const hasAccess = enabledCount > 0;
+    const stateLabel = isBannerSection ? (hasAccess ? "Banners visibles" : "Banners ocultos") : hasAccess ? "Acceso permitido" : "Sin acceso";
 
     return (
         <div className="roles-security-access">
             <span className="roles-security-access__state">
-                <Switch checked={hasAccess} disabled={isReadOnly} aria-label="Acceso a la sección" onChange={onToggleAccess} />
-                <strong>{hasAccess ? "Acceso permitido" : "Sin acceso"}</strong>
+                <Switch checked={hasAccess} disabled={isReadOnly} aria-label={isBannerSection ? "Visibilidad de banners" : "Acceso a la sección"} onChange={onToggleAccess} />
+                <strong>{stateLabel}</strong>
             </span>
             <span className="roles-security-access__coverage">
                 Permisos
