@@ -13,7 +13,7 @@ import type { IdentityUser } from "../../services/auth/identity-contracts";
  * Ninguna muestra datos del CRM ni detalle técnico del BFF.
  */
 
-const ROCCA_LOGO_SRC = "/Logo/rocca-official.svg";
+const ROCCA_LOGO_SRC = "/Logo/rocca-concept.png";
 
 /** Textos de cada fallo de acceso. No incluyen estado HTTP, stack ni detalle del BFF. */
 const ACCESS_PROBLEM_COPY: Record<AccessProblemKind, { readonly description: string; readonly title: string }> = {
@@ -107,7 +107,7 @@ export function SessionStatusScreen({ phase, user }: { readonly phase: SessionSt
     return (
         <main className="app-auth-state app-auth-state--loading">
             <section className="app-auth-loader" role="status" aria-live="polite" aria-labelledby="app-auth-loader-title">
-                <img className="app-auth-state__logo" src={ROCCA_LOGO_SRC} width="352.13" height="107.51" alt="ROCCA Development Group" />
+                <img className="app-auth-state__logo" src={ROCCA_LOGO_SRC} width="2170" height="725" alt="ROCCA Development Group" />
                 {/* La key reinicia el avatar al cambiar de fase o de foto, para reintentar la imagen. */}
                 <SessionStatusAvatar key={`${phase}-${user?.profileImageUrl ?? "profile-fallback"}`} phase={phase} user={user} />
                 <div className="app-auth-loader__copy">
@@ -136,7 +136,7 @@ function AuthStateCard({ description, isSecondaryActionDisabled = false, onPrima
     return (
         <main className="app-auth-state">
             <section className="app-auth-card" aria-labelledby="app-auth-card-title">
-                <img className="app-auth-state__logo" src={ROCCA_LOGO_SRC} width="352.13" height="107.51" alt="ROCCA Development Group" />
+                <img className="app-auth-state__logo" src={ROCCA_LOGO_SRC} width="2170" height="725" alt="ROCCA Development Group" />
                 <span className="app-auth-card__icon" aria-hidden="true">
                     <LockOutlined />
                 </span>
