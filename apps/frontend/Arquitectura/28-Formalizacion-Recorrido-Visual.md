@@ -1,5 +1,24 @@
 # Formalizacion: recorrido visual y trazabilidad
 
+## Ajuste de jerarquia visual - 20/10/2026
+
+Se reduce el peso de las esquinas decorativas (opacidad 0.1), sombras y
+cifras (26px, peso 500). Las descripciones usan gris neutro; se conservan
+los acentos semanticos de cada etapa. Bienvenida compacta de 128px minimo
+y aprobaciones centradas verticalmente, sin cambiar contenido, permisos,
+iconos, acciones ni disposicion responsive. Menos reserva lateral para
+decoracion permite mas espacio a los titulos largos.
+
+## Iconos propios de indicadores - 20/10/2026
+
+Siete SVG locales en public/illustrations/formalization-icons sustituyen los
+iconos genericos: documento aprobado, contrato, banco, saldo, vivienda con
+flechas, firma y vivienda cerrada. Paleta clara con acentos verdes sobre
+el contenedor negro existente, sin modificar sus dimensiones. Ilustraciones
+originales de interfaz, no logotipos oficiales. Render a 24x24 con viewBox
+32x32; decorativos (alt vacio), pues cada indicador conserva su titulo.
+Sin cambios en permisos, cifras, colas ni operaciones.
+
 ## Bienvenida actual: ilustracion original - 20/10/2026
 
 Se sustituye la fotografia de Andira por

@@ -1,13 +1,6 @@
 import "./FormalizationHomePage.css";
 
 import ArrowLeftOutlined from "@ant-design/icons/ArrowLeftOutlined";
-import BankOutlined from "@ant-design/icons/BankOutlined";
-import CheckCircleOutlined from "@ant-design/icons/CheckCircleOutlined";
-import FileDoneOutlined from "@ant-design/icons/FileDoneOutlined";
-import FileTextOutlined from "@ant-design/icons/FileTextOutlined";
-import SafetyCertificateOutlined from "@ant-design/icons/SafetyCertificateOutlined";
-import SwapOutlined from "@ant-design/icons/SwapOutlined";
-import WalletOutlined from "@ant-design/icons/WalletOutlined";
 import Button from "antd/es/button";
 import ConfigProvider from "antd/es/config-provider";
 import esES from "antd/es/locale/es_ES";
@@ -58,7 +51,7 @@ function ApprovalStrip({ count, onOpen }: { readonly count: number; readonly onO
     return (
         <button type="button" className="formalization-banner formalization-banner--pending formalization-approval-strip" aria-label="Ver pendientes de aprobación de Formalización" onClick={onOpen}>
             <span className="formalization-banner__icon" aria-hidden="true">
-                <SafetyCertificateOutlined />
+                <img src={`${import.meta.env.BASE_URL}illustrations/formalization-icons/approvals.svg`} width={24} height={24} alt="" />
             </span>
             <span className="formalization-banner__content">
                 <span className="formalization-approval-strip__title">Pendientes de aprobación</span>
@@ -80,18 +73,18 @@ const banners = [
     {
         code: "contracts",
         label: "Contratos pendientes",
-        icon: <FileTextOutlined />,
+        icon: "contracts",
         tone: "pending",
         parts: [
             { label: "Por enviar", value: 1, filter: "send" },
             { label: "Pendientes de firma", value: 1, filter: "signature" },
         ],
     },
-    { code: "bank", label: "Gestión bancaria", icon: <BankOutlined />, tone: "neutral", parts: [{ label: "Sin iniciar / En proceso", value: 1, filter: "bank" }] },
-    { code: "balance", label: "Pendientes de saldo", icon: <WalletOutlined />, tone: "neutral", parts: [{ label: "Consulta financiera", value: 1, filter: "balance" }] },
-    { code: "transfer", label: "Traspasos pendientes", icon: <SwapOutlined />, tone: "pending", parts: [{ label: "Por gestionar", value: 1, filter: "transfer" }] },
-    { code: "signed", label: "Traspaso firmado", icon: <FileDoneOutlined />, tone: "success", parts: [{ label: "Firma registrada · Llaves pendientes", value: 3, filter: "signed" }] },
-    { code: "closed", label: "Formalizaciones cerradas este año", icon: <CheckCircleOutlined />, tone: "success", parts: [{ label: "Proceso finalizado", value: 0, filter: "closed" }] },
+    { code: "bank", label: "Gestión bancaria", icon: "bank", tone: "neutral", parts: [{ label: "Sin iniciar / En proceso", value: 1, filter: "bank" }] },
+    { code: "balance", label: "Pendientes de saldo", icon: "balance", tone: "neutral", parts: [{ label: "Consulta financiera", value: 1, filter: "balance" }] },
+    { code: "transfer", label: "Traspasos pendientes", icon: "transfer", tone: "pending", parts: [{ label: "Por gestionar", value: 1, filter: "transfer" }] },
+    { code: "signed", label: "Traspaso firmado", icon: "signed", tone: "success", parts: [{ label: "Firma registrada · Llaves pendientes", value: 3, filter: "signed" }] },
+    { code: "closed", label: "Formalizaciones cerradas este año", icon: "closed", tone: "success", parts: [{ label: "Proceso finalizado", value: 0, filter: "closed" }] },
 ] as const;
 
 const getQueueTitle = (queue: PreviewQueue) => `${PREVIEW_FILTER_TITLES[queue.filter]}${queue.project ? ` · ${queue.project}` : ""}`;
@@ -190,7 +183,7 @@ function FormalizationHomeContent({ currentUser, effectivePermissions, initialVi
                         {banners.map((banner) => (
                             <article key={banner.code} className={`formalization-banner formalization-banner--${banner.tone}`} aria-labelledby={`formalization-${banner.code}`}>
                                 <span className="formalization-banner__icon" aria-hidden="true">
-                                    {banner.icon}
+                                    <img src={`${import.meta.env.BASE_URL}illustrations/formalization-icons/${banner.icon}.svg`} width={24} height={24} alt="" />
                                 </span>
                                 <div className="formalization-banner__content">
                                     <h2 id={`formalization-${banner.code}`}>{banner.label}</h2>

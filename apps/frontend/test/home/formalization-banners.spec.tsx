@@ -7,6 +7,20 @@ import { installBrowserApiDoubles } from "../support/browser";
 
 afterEach(cleanup);
 
+it("uses distinct decorative SVG artwork in the seven unchanged icon containers", () => {
+    installBrowserApiDoubles();
+    const { container } = render(<FormalizationHomePage effectivePermissions={[{ code: "formalizacion.home.approvals.read", effect: "allow" }]} />);
+    const icons = [...container.querySelectorAll(".formalization-banner__icon img")];
+    expect(icons).toHaveLength(7);
+    expect(icons.map((icon) => icon.getAttribute("src")?.split("/").pop())).toEqual(["approvals.svg", "contracts.svg", "bank.svg", "balance.svg", "transfer.svg", "signed.svg", "closed.svg"]);
+    for (const icon of icons) {
+        expect(icon.getAttribute("alt")).toBe("");
+        expect(icon.getAttribute("width")).toBe("24");
+        expect(icon.getAttribute("height")).toBe("24");
+        expect(icon.parentElement?.getAttribute("aria-hidden")).toBe("true");
+    }
+});
+
 it("uses the formalization artwork in the personalized welcome and keeps order navigation", () => {
     installBrowserApiDoubles();
     render(<FormalizationHomePage currentUser={{ displayName: "Roberto", email: "roberto@example.test" }} />);
