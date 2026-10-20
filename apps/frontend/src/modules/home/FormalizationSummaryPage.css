@@ -1,0 +1,192 @@
+/* Resumen con el patrón de Proyectos: encabezado de página, superficie de avance y una tarjeta por punto. */
+.formalization-summary__page {
+    display: grid;
+    gap: var(--space-4);
+    min-width: 0;
+    color: var(--color-neutral-700);
+    font-family: var(--font-body);
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+.formalization-summary__page[hidden] {
+    display: none;
+}
+
+.formalization-summary__progress {
+    justify-content: space-between;
+}
+
+.formalization-summary__progress p {
+    margin: 0;
+    color: var(--color-neutral-700);
+    font-size: 13px;
+}
+
+.formalization-summary__progress strong {
+    color: var(--color-neutral-900);
+    font-weight: 650;
+    font-variant-numeric: tabular-nums;
+}
+
+.formalization-summary__meter {
+    display: block;
+    flex: 0 1 240px;
+    height: 6px;
+    overflow: hidden;
+    border-radius: 999px;
+    background: var(--color-neutral-200);
+}
+
+.formalization-summary__meter > span {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: var(--color-neutral-950);
+    transition: width 140ms ease;
+}
+
+.formalization-summary__intro {
+    display: grid;
+    gap: var(--space-1);
+    padding: var(--space-3) var(--space-4);
+    color: var(--formalization-muted);
+    font-size: 12px;
+}
+
+.formalization-summary__intro p {
+    margin: 0;
+}
+
+.formalization-summary__list {
+    display: grid;
+    gap: var(--space-4);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    counter-reset: formalization-summary;
+}
+
+.formalization-summary__item {
+    counter-increment: formalization-summary;
+}
+
+.formalization-summary__item .formalization-card__head h2 {
+    display: flex;
+    align-items: baseline;
+    gap: var(--space-2);
+}
+
+.formalization-summary__item .formalization-card__head h2::before {
+    color: var(--formalization-muted);
+    font-size: 12px;
+    font-weight: 650;
+    font-variant-numeric: tabular-nums;
+    content: counter(formalization-summary, decimal-leading-zero);
+}
+
+.formalization-summary .formalization-summary__status--visual {
+    background: var(--color-success-light);
+    color: var(--color-success);
+}
+
+.formalization-summary .formalization-summary__status--visual::before {
+    background: var(--color-success);
+}
+
+.formalization-summary__body {
+    display: grid;
+    gap: var(--space-3);
+    padding: var(--space-3) var(--space-4) var(--space-4);
+}
+
+.formalization-summary__source {
+    margin: 0;
+    color: var(--formalization-muted);
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.formalization-summary__body dl {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--space-4);
+    margin: 0;
+}
+
+.formalization-summary__body dt {
+    color: var(--formalization-muted);
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.formalization-summary__body dd {
+    margin: 2px 0 0;
+    color: var(--color-neutral-900);
+    font-weight: 500;
+    overflow-wrap: anywhere;
+}
+
+.formalization-summary__review {
+    margin: 0;
+    padding: var(--space-2) var(--space-3);
+    border: 1px solid var(--formalization-border);
+    border-radius: var(--radius);
+    background: var(--color-neutral-50);
+    color: var(--color-neutral-700);
+}
+
+.formalization-summary__review strong {
+    color: var(--color-neutral-900);
+    font-weight: 600;
+}
+
+.formalization-summary__actions {
+    align-items: center;
+    justify-content: space-between;
+}
+
+.formalization-summary__check {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    min-height: 36px;
+    color: var(--color-neutral-700);
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.formalization-summary__check input {
+    width: 16px;
+    height: 16px;
+    margin: 0;
+    accent-color: var(--color-neutral-950);
+}
+
+.formalization-summary__check input:focus-visible {
+    outline: 2px solid var(--formalization-focus);
+    outline-offset: 2px;
+}
+
+.formalization-summary__item.is-reviewed .formalization-card__head {
+    background: var(--color-neutral-100);
+}
+
+@media (max-width: 767px) {
+    .formalization-summary__meter {
+        flex-basis: 100%;
+    }
+    .formalization-summary__body dl {
+        grid-template-columns: minmax(0, 1fr);
+        gap: var(--space-3);
+    }
+    .formalization-summary__check {
+        min-height: 44px;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .formalization-summary__meter > span {
+        transition: none;
+    }
+}

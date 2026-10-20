@@ -18,6 +18,9 @@ import { SecurityAuditPage } from "../modules/administration/pages/SecurityAudit
 import { SystemUsersPage } from "../modules/administration/pages/SystemUsersPage";
 import { SubsidiariesPage } from "../modules/administration/subsidiaries/SubsidiariesPage";
 import { UnitFilesPage } from "../modules/administration/unit-files/UnitFilesPage";
+import { FormalizationCalendarPage } from "../modules/home/FormalizationCalendarPage";
+import { FormalizationHomePage } from "../modules/home/FormalizationHomePage";
+import { FormalizationSummaryPage } from "../modules/home/FormalizationSummaryPage";
 import type { IdentityUser } from "../services/auth/identity-contracts";
 import type { CatalogCode } from "../services/catalogs/catalog-service";
 
@@ -40,7 +43,7 @@ export interface AppRoute {
     readonly workspaceCode: string;
     /** Título de la sección; se usa como placeholder mientras la ruta no tenga `Page` propia. */
     readonly title: string;
-    readonly Page?: ComponentType<{ readonly currentUser: IdentityUser }>;
+    readonly Page?: ComponentType<{ readonly currentUser: IdentityUser; readonly onNavigate?: (path: string) => void }>;
 }
 
 const CATALOG_CONTEXT_ROUTES = [
@@ -77,8 +80,10 @@ const OPERATIONAL_CATALOG_ROUTES = CATALOG_CONTEXT_ROUTES.flatMap((context) =>
 const APP_ROUTES: ReadonlyMap<string, AppRoute> = new Map<string, AppRoute>([
     ["/home/sales", { menuItemCode: "sales-home", title: "Ventas", workspaceCode: "sales" }],
     ["/home/marketing", { menuItemCode: "marketing-home", title: "Mercadeo", workspaceCode: "marketing" }],
-    ["/home/formalization", { menuItemCode: "formalization-home", title: "Formalización", workspaceCode: "formalization" }],
-    ["/home/formalization/summary", { menuItemCode: "formalization-summary", title: "Resumen", workspaceCode: "formalization" }],
+    ["/home/formalization", { menuItemCode: "formalization-home", Page: FormalizationHomePage, title: "Formalización", workspaceCode: "formalization" }],
+    ["/home/formalization/calendar", { menuItemCode: "formalization-calendar", Page: FormalizationCalendarPage, title: "Calendario", workspaceCode: "formalization" }],
+    ["/home/formalization/orders", { menuItemCode: "formalization-management", Page: (props) => createElement(FormalizationHomePage, { ...props, initialView: "orders" }), title: "Gestión de formalizaciones", workspaceCode: "formalization" }],
+    ["/home/formalization/summary", { menuItemCode: "formalization-summary", Page: FormalizationSummaryPage, title: "Resumen", workspaceCode: "formalization" }],
     ["/home/formalization/files", { menuItemCode: "formalization-files", title: "Expedientes", workspaceCode: "formalization" }],
     ["/home/formalization/contracts", { menuItemCode: "formalization-contracts", title: "Contratos", workspaceCode: "formalization" }],
     ["/home/accounting", { menuItemCode: "accounting-home", title: "Contabilidad", workspaceCode: "accounting" }],

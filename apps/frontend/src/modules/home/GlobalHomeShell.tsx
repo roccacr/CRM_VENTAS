@@ -13,6 +13,7 @@ import AuditOutlined from "@ant-design/icons/AuditOutlined";
 import BankOutlined from "@ant-design/icons/BankOutlined";
 import BellOutlined from "@ant-design/icons/BellOutlined";
 import CalculatorOutlined from "@ant-design/icons/CalculatorOutlined";
+import CalendarOutlined from "@ant-design/icons/CalendarOutlined";
 import CheckOutlined from "@ant-design/icons/CheckOutlined";
 import CloseOutlined from "@ant-design/icons/CloseOutlined";
 import DashboardOutlined from "@ant-design/icons/DashboardOutlined";
@@ -324,9 +325,10 @@ export const ASSIGNED_WORKSPACES: readonly [WorkspaceProfile, ...WorkspaceProfil
         icon: <FileProtectOutlined />,
         menuItems: [
             { code: "formalization-home", label: "Inicio", icon: <DashboardOutlined />, requiredPermission: "formalizacion.home.read", routePath: FORMALIZATION_HOME_PATH },
-            { code: "formalization-summary", label: "Resumen", icon: <DashboardOutlined />, requiredPermission: "file.read", routePath: `${FORMALIZATION_HOME_PATH}/summary` },
-            { code: "formalization-files", label: "Expedientes", icon: <FolderOpenOutlined />, requiredPermission: "file.read", routePath: `${FORMALIZATION_HOME_PATH}/files` },
-            { code: "formalization-contracts", label: "Contratos", icon: <FileDoneOutlined />, requiredPermission: "contract.review", routePath: `${FORMALIZATION_HOME_PATH}/contracts` },
+            // La ruta abre solo la maqueta local; no habilita operaciones ni permisos de negocio.
+            { code: "formalization-management", label: "Gestión de formalizaciones", icon: <FileDoneOutlined />, requiredPermission: "formalizacion.home.read", routePath: `${FORMALIZATION_HOME_PATH}/orders` },
+            { code: "formalization-calendar", label: "Calendario", icon: <CalendarOutlined />, requiredPermission: "formalizacion.home.read", routePath: `${FORMALIZATION_HOME_PATH}/calendar` },
+            { code: "formalization-summary", label: "Resumen", icon: <AuditOutlined />, requiredPermission: "formalizacion.home.read", routePath: `${FORMALIZATION_HOME_PATH}/summary` },
             { code: "formalization-catalogs", label: "Catálogos", icon: <DatabaseOutlined />, children: buildCatalogMenuOptions("formalization") },
         ],
     },

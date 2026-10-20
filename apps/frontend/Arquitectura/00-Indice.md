@@ -126,6 +126,11 @@ Esa lectura define:
 
 El slice aprobado actual es identidad P0-S1A conectada al BFF. El documento `20-Alcance-P0-Vertical-Leads-Frontend.md` se consulta despues de aprobar avanzar mas alla de identidad.
 
+## Formalizacion: reunion y ajustes pendientes
+
+- [29-Formalizacion-Reunion-Ajustes.md](29-Formalizacion-Reunion-Ajustes.md): registro de los once puntos aportados en reunion, diferencias frente a la maqueta y definiciones pendientes. Solo documentacion; no implementacion.
+- [28-Formalizacion-Recorrido-Visual.md](28-Formalizacion-Recorrido-Visual.md): alcance y comprobacion de la maqueta anterior. No acredita cumplimiento de los nuevos ajustes de reunion.
+
 ## Flujo comercial oficial
 
 ```mermaid

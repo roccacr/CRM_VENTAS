@@ -16,32 +16,37 @@ const profile = (codes: readonly string[]): IdentityProfile => ({
 
 describe("Formalization Home-only access", () => {
     const homeOnly = profile(["formalizacion.home.read"]);
-    it("shows Inicio alone and selects a valid login destination", () => {
+    it("shows Inicio and the visual management option and selects a valid login destination", () => {
         const workspaces = getVisibleNavigationWorkspaces(homeOnly.permissions, homeOnly.orgUnits);
         expect(workspaces.map(({ code }) => code)).toEqual(["formalization"]);
-        expect(workspaces[0]?.menuItems.map(({ label }) => label)).toEqual(["Inicio"]);
+        expect(workspaces[0]?.menuItems.map(({ label }) => label)).toEqual(["Inicio", "Gestión de formalizaciones", "Calendario", "Resumen"]);
         expect(getDefaultAuthenticatedPath(homeOnly)).toBe("/home/formalization");
         expect(resolveRouteState(homeOnly, "/home/formalization").status).toBe("authenticated");
+        expect(resolveRouteState(homeOnly, "/home/formalization/orders").status).toBe("authenticated");
+        expect(resolveRouteState(homeOnly, "/home/formalization/calendar").status).toBe("authenticated");
+        expect(resolveRouteState(profile([]), "/home/formalization/calendar").status).toBe("forbidden");
+        expect(resolveRouteState(profile([]), "/home/formalization/orders").status).toBe("forbidden");
     });
     it.each(["projects", "campaigns", "classes", "locations", "subsidiaries", "brokers", "files"])("denies the %s catalog URL", (catalog) => {
         expect(resolveRouteState(homeOnly, `/home/formalization/catalogs/${catalog}`).status).toBe("forbidden");
     });
-    it("keeps the older Resumen permission separate from Inicio", () => {
+    it("gates the visual Resumen checklist by Home permission, never the legacy file permission", () => {
         const legacy = profile(["file.read"]);
-        expect(getDefaultAuthenticatedPath(legacy)).toBe("/home/formalization/summary");
-        expect(getDefaultAuthenticatedPath(legacy, "formalization")).toBe("/home/formalization/summary");
-        expect(resolveRouteState(legacy, "/home/formalization/summary").status).toBe("authenticated");
-        expect(resolveRouteState(homeOnly, "/home/formalization/summary").status).toBe("forbidden");
+        expect(getDefaultAuthenticatedPath(legacy)).toBeNull();
+        expect(getDefaultAuthenticatedPath(legacy, "formalization")).toBeNull();
+        expect(resolveRouteState(legacy, "/home/formalization/summary").status).toBe("forbidden");
+        expect(resolveRouteState(homeOnly, "/home/formalization/summary").status).toBe("authenticated");
+        expect(resolveRouteState(profile([]), "/home/formalization/summary").status).toBe("forbidden");
     });
     it.each([
         ["file.read", "files"],
         ["contract.review", "contracts"],
-    ])("preserves the %s business entry without granting Inicio", (permission, section) => {
+    ])("does not expose the removed %s business entry or grant Inicio", (permission, section) => {
         const legacy = profile([permission]);
         const workspace = getVisibleNavigationWorkspaces(legacy.permissions, legacy.orgUnits)[0];
         const item = workspace?.menuItems.find(({ code }) => code === `formalization-${section}`);
-        expect(item?.routePath).toBe(`/home/formalization/${section}`);
-        expect(resolveRouteState(legacy, item?.routePath ?? "").status).toBe("authenticated");
+        expect(item).toBeUndefined();
+        expect(resolveRouteState(legacy, `/home/formalization/${section}`).status).toBe("forbidden");
         expect(resolveRouteState(homeOnly, `/home/formalization/${section}`).status).toBe("forbidden");
     });
     it("derives the Formalization module and creation payload from the Home-only role", () => {

@@ -1092,6 +1092,55 @@ Default page size is 100 (10/50/100/200 options). The existing bounded page cach
 avoids requests when returning to a loaded page; refresh and mutations invalidate
 cached data. Authentication, permissions and no-delete behavior are unchanged.
 
+### Formalization Home Adoption (2026-10-14)
+
+Owner-requested for `/home/formalization` demo views only. The page title and the
+six banners keep their own styles; everything below them opts in. Tokens live on
+`.formalization-home` in `home/FormalizationHomePage.css` (Roles and Security
+pattern: own scope, same values, no `ProjectsView.css` import); AntD controls use
+`PROJECTS_THEME` with `esES`. No DataTables: the data is a local fictitious sample.
+
+- Home queue: one framed surface (200 border, 8px, no shadow) with a white header
+  (14px/600 title, total pill, warning-pair demo note), a 50 toolbar (40px search
+  plus queue segmented control with 11px count pills), the grid and a 50 footer.
+- Filtered list: Projects page header (breadcrumb, 22px title, total pill,
+  secondary `Todas las órdenes` hidden when already unfiltered), then the same
+  surface with Proyecto/Responsable 40px fields, `Filtros activos: N` and `Limpiar`
+  (both hidden when idle).
+- Grid: 100 header 12px/650, 12px/16px cells, 200 dividers, 140ms 100 hover, order
+  ID 14px/650 900, metadata 12px 600, quiet dash for an unassigned owner, ghost row
+  action shown on hover/focus. Status pills are neutral 100/600; only an unassigned
+  order uses the warning pair (no per-stage hues).
+- Cards (project summary, recent movements, order sections): 40px 50 heading band,
+  labels 12px/500 600, values 13px/500 900, sample/absent values 600/400, ID chips
+  12px monospace. Order header mirrors the drawer header: breadcrumb, title, status.
+- Below 768px rows become cards labelled from `data-label`; controls and row
+  actions are 44px. Transitions stop under reduced motion.
+- Every Formalization view (home, order list, order, calendar, summary) uses the
+  same page header: breadcrumb with `aria-hidden` separators, 22px title, total
+  pill, caption, and actions on the right (`Restablecer ejemplo`, `Nuevo evento`).
+- Order: one `role="status"` warning-pair notice for the simulated state; process
+  guide is a card with a 50 step band (current step 950, completed steps success
+  pair with their number) and a white next-action row; card actions sit in a 50
+  footer band with one 950 primary and white/500 secondaries.
+- Calendar: one framed surface with a 50 toolbar (Segmented, 40px Tipo/Orden
+  fields, `Filtros activos: N` + `Limpiar`), the month and the agenda column in the
+  same frame. Events are neutral (meeting 950 marker, task 500 marker, kind always
+  written); completed uses the success pair, cancelled is struck through.
+- Summary: header + progress surface (status line and neutral meter), then one
+  card per requirement with a 40px band, status pill (success = represented,
+  warning = pending policy/partial, neutral = out of scope) and a 50 footer with
+  `Revisado` and the open action.
+- Modals (`className="formalization-modal"`, tokens re-declared on that scope
+  because the portal sits outside the page): 8px radius, 200 perimeter, 50
+  header/body/footer with 16px padding, 18px title, white form section, labels
+  13px/600 700, `· Opcional` in 400 600, 40px controls with 500 border and the
+  Projects focus ring, errors in the danger pair `#b42318`/`#fef3f2`.
+- Bank timing table: `scope="col"` headers, `es-CR` dates, order ID as 14px/650
+  900 identity button (no blue links).
+
+Not verified in an authenticated browser session; tests cover behavior only.
+
 ## Unit Files Adoption (2026-10-12)
 
 Unit Files owns `administration/unit-files` and consumes the dedicated

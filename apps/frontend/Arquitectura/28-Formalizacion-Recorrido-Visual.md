@@ -1,0 +1,110 @@
+# Formalizacion: recorrido visual y trazabilidad
+
+> Registro posterior: [29-Formalizacion-Reunion-Ajustes.md](29-Formalizacion-Reunion-Ajustes.md).
+> La reunion incorpora necesidades que cambian el alcance anterior (supervision,
+> traspaso firmado, llaves como requisito de cierre, cierre anual y adendas).
+> Se registraron solo en documentacion; no estan acreditadas como implementadas
+> por las pruebas o capturas de esta entrega visual.
+
+Actualizacion de textos 15/10/2026: los banners y bandejas ahora se titulan
+Traspaso firmado y Formalizaciones cerradas este anio. Es un cambio exclusivo
+de nomenclatura, no de conteos: firmado aun agrupa contratos firmados de ejemplo
+y cerrado aun no aplica periodo anual. Una nota visible aclara ambas limitaciones.
+Ver el avance acotado en el documento 29; el resto de esta entrega conserva
+su contexto historico.
+
+Limpieza visual posterior solicitada el 15/10/2026: se quitaron los avisos
+generales de demostracion y la nota de nomenclatura. Los datos de prueba y
+las limitaciones tecnicas permanecen: sin nuevas integraciones, conteo anual
+ni validacion de llaves. Ver el registro de limpieza en el documento 29.
+Las referencias historicas a avisos visibles mas abajo no describen la UI
+posterior a esta limpieza.
+
+## Resumen dentro de la aplicacion - 2026-10-15
+
+El menu agrega Resumen en /home/formalization/summary, con la misma linea grafica
+y el permiso de maqueta formalizacion.home.read. No utiliza el antiguo permiso
+file.read ni agrega permisos de negocio. La pagina presenta 15 puntos numerados:
+que pide el PDF, fuente/pagina, que representamos, donde esta y como comprobarlo.
+Los botones abren la misma orden de ejemplo dentro de Resumen o navegan a Inicio
+y Calendario. La ficha vuelve con Volver al resumen.
+
+Las casillas son revision manual, inicialmente vacias; no certifican cumplimiento
+ni permisos. Conservan su estado al abrir/cerrar una ficha y se reinician al
+abandonar la ruta o recargar. Los estados de cobertura son independientes:
+representado visualmente, politica pendiente, cobertura parcial y fuera de fase.
+Indicadores comerciales/SLA restantes y politicas de excepcion/cierre no aparecen
+como trabajo terminado. No hay API, BD, almacenamiento persistente ni integraciones.
+
+Pruebas nuevas: contenido numerado, referencias, casilla/contador, abrir orden y
+volver conservando revision, acceso al calendario y guard por permiso. Revision
+visual en escritorio 1440x1000 y movil 390x844, sin desbordamiento horizontal.
+Evidencias: resumen-escritorio.png y resumen-movil.png, en la misma carpeta de
+evidencias indicada al final de este documento.
+
+Verificacion final de Resumen: `pnpm check` aprobado (formato, lint, TypeScript,
+414 pruebas en 29 archivos y build). Se actualizaron las expectativas de menu
+en pruebas de sesion sin retirar verificaciones de refresh ni de denegacion de
+Catalogos. Permanecen avisos no bloqueantes de jsdom y bundle mayor a 500 kB.
+`git diff --check` aprobado. Sin cambios API/BD, integraciones ni despliegues.
+
+## Alcance y criterio
+
+Revision del 2026-10-14. Solo frontend con datos DEMO; no implementa operaciones reales, permisos nuevos, servicios, correos, carga documental, API ni BD. Se preservan la linea grafica del menu y la apariencia de los seis banners.
+
+Fuentes releidas: CRM IDEA.pdf (15 paginas) y RESUMEN_EJECUTIVO_CRM_TINK AJUSTADO (1).pdf (3 paginas), en la raiz del proyecto. El resumen ajustado delimita esta primera fase: Formalizacion contractual, bancaria, condicion financiera de consulta, traspaso/excepcion y cierre. Las entregas fisicas/llaves, Cobros y Modificaciones del planteamiento general no se convierten en acciones de esta fase.
+
+## Recorrido operativo
+
+1. Inicio resume la carga de trabajo; cada contador abre las mismas ordenes filtradas.
+2. Gestion de formalizaciones abre la bandeja general: buscar, filtrar etapa/proyecto/responsable, limpiar, abrir fila.
+3. La ficha mantiene visibles identidad de orden/cliente/unidad, responsable, etapa, pendiente y siguiente accion. Una guia de seis pasos distingue Contrato, Firma, Banco, Condicion financiera, Traspaso y Cierre. Recursos propios muestra Banco como no aplicable.
+4. La accion principal propone el siguiente paso. Los botones de cada seccion permanecen disponibles como referencia, explicando su bloqueo; cancelar no avanza el proceso.
+5. Una orden sin responsable ofrece asignarlo. Adjuntar, enviar y registrar firma mantienen su secuencia. Firmar no equivale a finalizar el credito. Cambiar asesor tampoco cambia la etapa.
+6. El traspaso normal requiere firma, credito finalizado cuando aplica y condicion totalmente cancelada. Desconocido no significa saldo cero. Solicitud de excepcion no equivale a autorizacion. Los resultados de autorizacion/cierre son propuestas ficticias, no autoridad efectiva.
+7. La ficha ofrece Agendar seguimiento; abre Calendario con la orden seleccionada. Cada evento puede volver a la misma ficha.
+8. Volver conserva los filtros de la lista montada y los resultados simulados. Inicio/Gestion/Calendario comparten estado React por usuario mientras Formalizacion esta montada. Recargar, cerrar sesion o cambiar de modulo lo descarta. No hay almacenamiento persistente.
+
+Los documentos de contrato, firma, traspaso y excepcion se conservan como referencias navegables dentro de la simulacion. Un archivo seleccionado solo aporta nombre/tamano, no su contenido. Una orden cerrada permanece consultable pero sus acciones de cambio quedan bloqueadas; Restablecer ejemplo permite repetir el recorrido.
+
+## Trazabilidad de los PDF
+
+| Necesidad y fuente | Representacion visual | Limite o pendiente |
+| --- | --- | --- |
+| Orden unica y aprobaciones; IDEA p2, resumen p1/p3 | Identidad estable, cliente/unidad, condiciones comerciales y aprobaciones Jefatura/RDR de ejemplo | Sin recepcion real ni edicion comercial |
+| Backlog por estado y bloqueos; resumen p1/p2 | Banners, bandejas, filtros, responsable y siguiente paso; Por cerrar/Cerradas/Fase posterior | No SLA aprobado |
+| Contrato existente obligatorio; resumen p1/p2 | Adjuntar, hoja de muestra, envio bloqueado sin documento | Sin generacion legal ni carga a repositorio |
+| Enviar contrato y registrar firma; IDEA p4 | Compositor destinatario/asunto/mensaje/adjunto; confirmaciones, fechas e historial | No correo ni firma electronica real |
+| Recursos propios/financiado; IDEA p5 | Modalidad y credito no aplicable; cambio limpia datos incompatibles | Validacion comercial pendiente |
+| Banco/asesor y Otro asesor; IDEA p5 | Banco ficticio, asesores filtrados por banco, formulario de otro asesor asociado | Maestro administrado por TI; no alta de bancos |
+| Credito Sin iniciar/En proceso/Formalizado; IDEA p5, resumen p3 | Botones, requisitos y fechas automaticas; guia no salta credito por saldo pagado | Solo transicion local |
+| Finanzas fuente NetSuite; IDEA p2/p5, resumen p1/p3 | Consulta ficticia desconocido/pendiente/100% cancelado | Sin movimientos de dinero ni conexion ERP |
+| Traspaso/excepcion; IDEA p5, resumen p3 | Respaldo, solicitud pendiente/autorizacion ficticia diferenciadas y bloqueo de avance normal | Criterios, autorizante, evidencia y permisos pendientes de aprobacion |
+| Cierre y fase posterior; resumen p3 | Dos resultados, observaciones, historial y consulta posterior sin mutaciones | No entrega fisica ni llaves |
+| Documentos por orden; IDEA p3/p14, resumen p1 | Selector de referencias y hoja de muestra; contratos y respaldos separados | Sin OneDrive real ni duplicacion de contenido |
+| Fechas/actor/antes-despues; IDEA p2/p13 | Historial local de acciones, orden identificada y fechas por hito | No auditoria persistente |
+| Calendario vinculado e historial; IDEA p3/p13 | Mes/agenda, tareas/reuniones, orden, responsable, reprogramar/completar/cancelar; historial anterior/nuevo | Sin invitaciones ni recordatorios |
+| Indicadores; IDEA p5/p13, resumen p2 | Firma-inicio, duracion bancaria y firma-formalizado; backlog por etapa/proyecto | Fechas iniciales fijas de ejemplo, no recalculadas; tiempos comerciales/SLA y reportes productivos posteriores |
+| Entregas fisicas y preparacion; IDEA p6 | Excluidas de esta primera fase por resumen p1/p3 | No declarar cubierto todo el CRM original |
+
+## Implementacion y pruebas
+
+- Modelo de escenarios: prioridad del pendiente, requisitos, documentos, historial, proyeccion de la misma orden a bandejas/contadores.
+- Contexto local: FormalizationPreviewSession y formalization-preview-session. AppRouteContent lo monta solo para Formalizacion con clave de usuario, sin modificar autenticacion.
+- Componentes existentes de ficha, acciones, formularios, calendario, tabla e indicadores reutilizados; sin dependencias nuevas.
+- Pruebas: asignacion inicial, secuencia contractual, credito antes del traspaso, desconocido no pagado, excepcion pendiente vs autorizada, documentos retenidos, cierre sin mutaciones y retorno a bandeja/banner coherente.
+- Calendario: crear/reprogramar, horarios invalidos, estados, filtros, enlace a orden e historial con valores anteriores/nuevos.
+
+Esta maqueta permite revisar operatividad y jerarquia. No acredita reglas productivas aprobadas, datos comerciales existentes ni cobertura de integraciones. La aceptacion del usuario y las politicas pendientes deben resolverse antes de construir backend.
+
+### Comprobacion visual del recorrido
+
+En navegador autenticado: Inicio -> Por enviar -> DEMO-OV-101 -> asignar gestor -> adjuntar muestra. La guia paso a Enviar contrato y el responsable aparecio en ficha. Agendar seguimiento abrio Calendario filtrado por esa orden y Nuevo evento la precargo. Se creo una reunion ficticia, se regreso por el menu a Gestion y la misma orden conservo contrato y gestor. No se invocaron operaciones comerciales reales.
+
+Se revisaron escritorio 1440x1000 y movil 390x844. La guia movil dispone sus seis pasos en dos columnas y mantiene visibles las dos acciones principales; ancho de pagina 375 px dentro de viewport 390 px, sin desbordamiento horizontal de pagina. Los anchos temporales del navegador se restablecieron.
+
+Evidencias: C:/codex-data/visualizations/2026/10/14/formalization/flujo-orden-escritorio.png, flujo-orden-movil.png y flujo-guia-movil.png. Los resultados de formato, analisis estatico, pruebas y build se registran por separado; una comprobacion visual no sustituye las pruebas.
+
+### Resultado automatizado final
+
+`pnpm check` completo aprobado: formato, ESLint, TypeScript, 411 pruebas en 28 archivos y build Vite. La corrida final no tuvo pruebas fallidas. Permanecen los avisos no bloqueantes de jsdom sobre getComputedStyle/pseudo-elementos y de bundles mayores a 500 kB. `git diff --check` aprobado. No se ejecutaron pruebas API/BD porque esas capas no fueron modificadas. No se hizo commit, despliegue ni cambio de integraciones.

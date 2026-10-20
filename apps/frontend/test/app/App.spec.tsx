@@ -883,7 +883,7 @@ describe("App", () => {
 
         expect(await screen.findByRole("heading", { name: "Formalización" })).toBeInTheDocument();
         expect(screen.queryByRole("button", { name: "Catálogos" })).not.toBeInTheDocument();
-        expect(screen.queryByRole("button", { name: "Resumen" })).not.toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "Resumen" })).toHaveAttribute("data-permission", "formalizacion.home.read");
         expect(fetchMock.mock.calls.filter(([input]) => getRequestPath(input) === "/identity/refresh")).toHaveLength(1);
         expect(fetchMock.mock.calls.filter(([input]) => getRequestPath(input) === "/identity/session")).toHaveLength(2);
         expect(fetchMock).toHaveBeenCalledWith(
@@ -946,7 +946,7 @@ describe("App", () => {
         expect(await screen.findByRole("heading", { name: "Formalización" })).toBeInTheDocument();
         expect(window.location.pathname).toBe("/home/formalization");
         expect(screen.getByRole("banner", { name: "Barra superior global CRM TINK" })).toBeInTheDocument();
-        expect(screen.queryByRole("button", { name: "Resumen" })).not.toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "Resumen" })).toHaveAttribute("data-permission", "formalizacion.home.read");
         expect(fetchMock.mock.calls.filter(([input]) => getRequestPath(input) === "/identity/session")).toHaveLength(previousSessionReads + 2);
         expect(fetchMock.mock.calls.some(([input]) => getRequestPath(input) === "/identity/refresh")).toBe(false);
         expect(fetchMock).toHaveBeenCalledWith(buildApiUrl("/identity/session"), expect.objectContaining({ credentials: "include", cache: "no-store", method: "GET" }));
@@ -1024,7 +1024,7 @@ describe("App", () => {
         expect(await screen.findByRole("heading", { name: "Formalización" })).toBeInTheDocument();
         expect(screen.queryByRole("button", { name: "Ingresar" })).not.toBeInTheDocument();
         expect(screen.queryByRole("button", { name: "Catálogos" })).not.toBeInTheDocument();
-        expect(screen.queryByRole("button", { name: "Resumen" })).not.toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "Resumen" })).toHaveAttribute("data-permission", "formalizacion.home.read");
         expect(fetchMock.mock.calls.filter(([input]) => getRequestPath(input) === "/identity/refresh")).toHaveLength(1);
         expect(fetchMock.mock.calls.some(([input]) => getRequestPath(input).includes("/catalogs/"))).toBe(false);
     });

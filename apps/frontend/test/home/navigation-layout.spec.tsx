@@ -4,7 +4,7 @@ import { resolve } from "node:path";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
 
-import { GlobalHomeShell } from "../../src/modules/home/GlobalHomeShell";
+import { ASSIGNED_WORKSPACES, GlobalHomeShell } from "../../src/modules/home/GlobalHomeShell";
 import { installBrowserApiDoubles } from "../support/browser";
 const navigationStyles = readFileSync(resolve(process.cwd(), "src/modules/home/GlobalHomeShell.css"), "utf8");
 
@@ -19,7 +19,14 @@ it("preserves the standard navigation styling for a Home-only Formalization prof
     expect(screen.getByRole("button", { name: "Inicio" }).getAttribute("aria-current")).toBe("page");
     expect(screen.queryByRole("button", { name: "Contratos" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Expedientes" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Gestión de formalizaciones" })).toBeTruthy();
     expect(navigationStyles).not.toContain(".global-home-menu--single");
+});
+
+it("connects the approved management menu to the preview orders route", () => {
+    const workspace = ASSIGNED_WORKSPACES.find((item) => item.code === "formalization");
+    expect(workspace?.menuItems.map((item) => item.label)).toEqual(["Inicio", "Gestión de formalizaciones", "Calendario", "Resumen", "Catálogos"]);
+    expect(workspace?.menuItems.find((item) => item.code === "formalization-management")?.routePath).toBe("/home/formalization/orders");
 });
 
 it("keeps dropdowns outside the tablet navigation clipping area", () => {

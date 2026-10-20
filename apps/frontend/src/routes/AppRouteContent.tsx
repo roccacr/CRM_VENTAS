@@ -8,10 +8,12 @@ import LockOutlined from "@ant-design/icons/LockOutlined";
 import QuestionCircleOutlined from "@ant-design/icons/QuestionCircleOutlined";
 import Button from "antd/es/button";
 import Result from "antd/es/result";
+import type { ReactNode } from "react";
 
 import { AccessProblemScreen, NotFoundScreen, SessionStatusScreen } from "../components/feedback/AuthStateScreens";
 import { AdministrationSectionPage } from "../modules/administration/pages/AdministrationSectionPage";
 import { type LoginCredentials, LoginPage } from "../modules/auth/LoginPage";
+import { FormalizationPreviewBoundary } from "../modules/home/FormalizationPreviewSession";
 import { ALL_WORKSPACE_CODE, GlobalHomeShell } from "../modules/home/GlobalHomeShell";
 import type { IdentityProfile, IdentityUser } from "../services/auth/identity-contracts";
 import { type AppRoute, AUTH_LOGIN_PATH, getAppRoute, isKnownPath } from "./app-routes";
@@ -46,8 +48,8 @@ export interface AppRouteContentProps {
 }
 
 /** Página propia de la ruta o, si todavía no existe, el placeholder de sección. */
-function RoutePage({ currentUser, route }: { readonly currentUser: IdentityUser; readonly route: AppRoute }) {
-    return route.Page ? <route.Page currentUser={currentUser} /> : <AdministrationSectionPage title={route.title} />;
+function RoutePage({ currentUser, route, onNavigate }: { readonly currentUser: IdentityUser; readonly route: AppRoute; readonly onNavigate: (path: string) => void }) {
+    return route.Page ? <route.Page currentUser={currentUser} onNavigate={onNavigate} /> : <AdministrationSectionPage title={route.title} />;
 }
 
 const getSessionStatusView = (authState: AuthState): { readonly phase: SessionStatusPhase; readonly user: IdentityUser | null } => (authState.status === "checking" ? { phase: authState.phase ?? "checking", user: authState.user ?? null } : { phase: "checking", user: null });
@@ -60,6 +62,7 @@ function AuthenticatedRouteContent({ profile, path, onLogout, onNavigate }: { re
     const defaultPath = getDefaultAuthenticatedPath(profile);
     const shellRoute = permittedRoute ?? getAppRoute(defaultPath ?? "");
     const workspaceCode = shellRoute?.workspaceCode ?? ALL_WORKSPACE_CODE;
+    const page = permittedRoute ? <RoutePage currentUser={profile.user} route={permittedRoute} onNavigate={onNavigate} /> : <AuthenticatedRouteFeedback unknown={!isKnownPath(path)} defaultPath={defaultPath} onNavigate={onNavigate} />;
     return (
         <GlobalHomeShell
             activeMenuItemCode={shellRoute?.menuItemCode}
@@ -76,9 +79,15 @@ function AuthenticatedRouteContent({ profile, path, onLogout, onNavigate }: { re
                 if (destination) onNavigate(destination);
             }}
         >
-            {permittedRoute ? <RoutePage currentUser={profile.user} route={permittedRoute} /> : <AuthenticatedRouteFeedback unknown={!isKnownPath(path)} defaultPath={defaultPath} onNavigate={onNavigate} />}
+            <PreviewWorkspace workspaceCode={workspaceCode} userId={profile.user.publicId}>
+                {page}
+            </PreviewWorkspace>
         </GlobalHomeShell>
     );
+}
+
+function PreviewWorkspace({ workspaceCode, userId, children }: { readonly workspaceCode: string; readonly userId: string; readonly children: ReactNode }) {
+    return workspaceCode === "formalization" ? <FormalizationPreviewBoundary key={userId}>{children}</FormalizationPreviewBoundary> : children;
 }
 
 /** A missing permitted landing page offers no invented navigation destination. */

@@ -1,5 +1,10 @@
 # 27 - Entrega de Administracion y QA
 
+Estado vigente de Formalizacion: [28-Formalizacion-Recorrido-Visual.md](28-Formalizacion-Recorrido-Visual.md).
+Las entradas de validacion siguientes conservan el historial de entregas; los
+contadores navegables y la sesion visual compartida del documento 28 sustituyen
+las limitaciones iniciales de banners estaticos y descarte al salir de la orden.
+
 ## Clave inicial manual - 2026-10-13
 
 Nuevo usuario incluye un campo opcional de clave inicial solamente si el actor
@@ -286,3 +291,72 @@ reejecutaron suites API porque esta revision no modifica el backend.
 Suites frontend: `test/catalogs`, `test/unit-files`, `test/administration`, `test/app/api-client-conflicts.spec.ts`. Ultimo check frontend registrado antes de esta consolidacion: 257 pruebas, lint/typecheck/formato/build aprobados; 13 regresiones API de acceso aprobadas. No se reejecutaron esas pruebas por escribir Markdown. Las verificaciones realizadas para esta consolidacion se reportan en la entrega, sin alterar retrospectivamente la evidencia anterior.
 
 Pendientes: aceptacion manual completa, drift externo, mapeos bloqueados/importacion de inventario, EXPLAIN/indices y carga representativa, conectores ERP operativos, captura de cambios fuera del API y despliegue. No convertir pruebas mock o rollback en confirmacion de DML productivo. Advertencia de bundle y bloqueo global de formato se conservan como limites conocidos.
+
+## Inicio de Formalizacion: propuesta visual 2026-10-13
+
+### Calendario de Formalizacion: ampliacion visual 2026-10-14
+
+El menu conserva su estilo y agrega Calendario en `/home/formalization/calendar`, despues de Gestion de formalizaciones. La maqueta reutiliza `formalizacion.home.read` y el guard de rutas existente; no crea ni amplia permisos operativos de backend. Un perfil sin ese permiso no puede abrir esta ruta.
+
+`FormalizationCalendarPage` reutiliza el calendario mensual de Ant Design instalado, con mes anterior/siguiente, Hoy, seleccion de dia y vista Agenda. Muestra tres eventos ficticios relativos al dia del dispositivo. Los filtros por tipo y orden operan en memoria. El formulario permite reuniones o tareas con titulo, fecha, inicio/fin, orden, responsable, participantes, lugar/enlace, notas y estado Programado/Completado/Cancelado. La hora final debe ser posterior a la inicial y la orden es obligatoria.
+
+Crear, reprogramar o editar actualiza solamente estado React. Guardar muestra el dia correspondiente y limpia los filtros para que el evento quede visible. El acceso Ver orden de venta abre la misma ficha ficticia existente. La revision operativa posterior comparte eventos y escenarios entre Inicio, Gestion y Calendario mientras el modulo siga montado. Recargar, cerrar sesion o salir de Formalizacion descarta los cambios; navegar entre sus tres rutas ya no los descarta. No cambia el estado comercial de la orden por crear un evento. No hay API, BD, localStorage, sincronizacion con Outlook/Microsoft, invitados reales ni envio de notificaciones o recordatorios.
+
+La vista mensual mantiene sus columnas con desplazamiento horizontal propio en pantallas estrechas; la vista Agenda y los formularios se adaptan a movil. Esta ampliacion no modifica Inicio, banners, flujo de Formalizacion ni secciones ajenas.
+
+Verificacion del calendario: formato, lint, TypeScript y build aprobados; seis pruebas nuevas de ruta, creacion, horario invalido, edicion/estados, cambio de mes y filtros/acceso a orden aprobadas. Las pruebas de acceso y navegacion tambien aprobaron. La corrida global registro 406 aprobadas y un fallo en CatalogItemsPage (espera de project_001 al promover una ubicacion); ese caso aprobo al repetirse aisladamente, sin cambiar Catalogos. No se declara la corrida global completamente verde. Sigue la advertencia no bloqueante de chunks superiores a 500 kB.
+
+En navegador autenticado se verificaron el nuevo menu y URL, navegacion mensual/Hoy, creacion y reprogramacion por fecha/hora, agenda, enlace a la orden y descarte de ejemplos al cambiar de ruta. Medidas revisadas: escritorio 1440x1000 y movil 390x844, sin desbordamiento de pagina/formulario. Evidencias calendario-escritorio.png y calendario-movil.png en C:/codex-data/visualizations/2026/10/14/formalization. No se ejecutan pruebas API/BD porque no se modifican esas capas.
+
+`FormalizationHomePage` reemplaza solo el placeholder de `/home/formalization` con seis banners: contratos pendientes (por enviar y pendientes de firma), gestion bancaria, pendientes de saldo, traspasos pendientes, contratos firmados y formalizaciones cerradas. Conserva el shell y el permiso `formalizacion.home.read`. Distribucion responsive: tres columnas en escritorio, dos en tablet y una en movil.
+
+Desde la solicitud visual del 2026-10-14, los contadores muestran cifras ficticias coherentes con las cinco operaciones de ejemplo: por enviar 1, pendiente de firma 1, bancaria 1, saldo 1, traspaso 1, firmados 3 y cerrados 0. Los tres firmados corresponden a banco, saldo y traspaso; no se suman como operaciones adicionales. Cada contador tiene nombre accesible `Valor ficticio` y el banner identifica datos de demostracion mediante tooltip; el aviso de ejemplos sigue visible en la pagina. No consultan servicios. Los banners no ejecutan acciones ni habilitan permisos. Permanecen pendientes las fuentes, periodos, criterios de conteo, autorizacion granular y navegacion a bandejas. Cerrado se refiere a Formalizacion, no a entrega fisica de la unidad.
+
+### Seguimiento inferior: demostracion local
+
+#### Botones documentales de la orden (2026-10-14)
+
+`FormalizationOrderActions` ubica los controles en la seccion correspondiente. Fuentes releidas: `CRM IDEA.pdf`, paginas 4, 5 y 14; resumen ejecutivo ajustado, paginas 1 a 3. Nombres expresos del original: Enviar contrato, Contrato firmado y Traspaso realizado. Adjuntar contrato es requisito expreso del resumen ajustado. Cambiar modalidad, seleccionar banco/asesor, Otro asesor, iniciar gestion bancaria, marcar credito formalizado, consultar condicion financiera, registrar excepcion y cerrar Formalizacion son etiquetas de interfaz propuestas para representar las operaciones/estados descritos, no nomenclatura definitiva aprobada.
+
+Actualizacion visual 2026-10-14: los botones abren formularios locales y permiten confirmar un resultado ficticio. Adjuntar acepta PDF/Word o documento de ejemplo; del archivo seleccionado solo conserva nombre y tamano, nunca lee su contenido ni lo carga. La hoja documental es una muestra sin validez legal, no un generador de contratos. Enviar presenta destinatario, asunto, mensaje y adjunto; no envia correo. Firma exige referencia del documento firmado. Modalidad, banco y asesor usan ejemplos; Otro asesor recoge nombre, correo y telefono sin crear bancos.
+
+Excepcion y cierre ahora abren formularios de propuesta: solicitud pendiente o autorizacion ficticia, motivo, responsable y respaldo; cierre por Formalizaciones o pendiente por fase posterior. Se advierte que criterios, permisos, responsables y evidencia requieren aprobacion. Simular autorizacion nunca concede privilegios reales. El cierre completo de ejemplo requiere traspaso realizado o excepcion ficticia autorizada. Un saldo desconocido o pendiente no habilita el traspaso normal. Cobros, registro de pagos, entrega de llaves, gestion del maestro de bancos y generacion automatica de contratos siguen excluidos. Ningun permiso real fue agregado o ampliado.
+
+`formalization-scenario.model.ts` mantiene el estado descartable compartido por `FormalizationPreviewSession` dentro del modulo. Cada resultado simulado actualiza campos, estado visible, fechas automaticas y un historial con antes/despues, actor ficticio y detalles del formulario. Abrir o cancelar no registra resultados. Volver a la lista y cambiar entre Inicio/Gestion/Calendario conserva la simulacion; bandejas y contadores reflejan el resultado. Restablecer reinicia solamente la orden; recargar o abandonar el modulo descarta la sesion visual. Los fixtures originales no se mutan. No usa API, backend, BD, almacenamiento local ni integraciones. Estas compuertas de maqueta no constituyen reglas productivas aprobadas.
+
+`FormalizationTimingPreview` muestra firma a inicio bancario, duracion bancaria y firma a formalizacion por orden, con acceso al mismo detalle. Corte ficticio fijo 14/10/2026: DEMO-OV-103 acumula 18 dias en proceso; DEMO-OV-105 registra 2 dias hasta inicio, 5 bancarios y 7 totales. Son dias naturales de ejemplo, no SLA ni fechas reales. La bandeja y los contadores existentes mantienen el seguimiento por estado/proyecto/responsable.
+
+Cobertura visual de esta ampliacion:
+
+| Solicitud | Presentacion implementada | Limite |
+| --- | --- | --- |
+| Adjuntar y presentar contrato | Selector PDF/Word, nombre y hoja ficticia sin validez legal | Sin lectura del contenido ni carga |
+| Enviar contrato | Destinatario, asunto, mensaje y adjunto | Confirmacion solo simulada |
+| Modalidad, banco y Otro asesor | Recursos propios/financiado, catalogo ficticio y formulario del asesor | No administra bancos ni guarda contactos |
+| Excepciones y cierre | Solicitud/autorizacion ficticia y dos resultados de cierre | Politicas y autoridad pendientes de aprobacion |
+| Fechas e historial | Fechas automaticas, antes/despues, actor ficticio y detalles | Estado React descartable, no auditoria real |
+| Indicadores y seguimiento | Duraciones bancarias y acceso a orden; bandejas por estado | Corte fijo, sin SLA; tabla desplazable en movil |
+
+Verificacion de formularios e indicadores: formato, lint, TypeScript y build final aprobados. Una corrida global aprobo 401 pruebas en 27 archivos; la ultima repeticion, despues del ajuste movil, aprobo 398 y fallo en tres casos de CatalogItemsPage/UnitFilesPage (timeout y espera de boton AM-101). Esos dos archivos, sin modificarlos, aprobaron sus 77 pruebas al repetirse con un solo worker. Las pruebas de Formalizacion aprobaron en ambas corridas. No se declara la ultima corrida global completamente verde ni se atribuye una causa definitiva a esos fallos intermitentes. Permanece la advertencia no bloqueante de chunks mayores de 500 kB y avisos jsdom getComputedStyle con pseudo-elementos.
+
+En navegador autenticado se comprobaron adjunto, correo, firma, banco/asesor, traspaso, cierre, historial y acceso desde indicador a orden. Escritorio 1440x1000 y movil 390x844: formularios sin desbordamiento; tabla bancaria con desplazamiento horizontal propio para conservar columnas legibles. Evidencias locales: documento-ejemplo.png y tiempos-movil.png en C:/codex-data/visualizations/2026/10/14/formalization. No se ejecutaron pruebas de integraciones, API o BD porque no forman parte del alcance visual.
+
+Validacion final de botones: corregidas dos opciones `exact` no soportadas por Testing Library en las pruebas. `pnpm check` aprobado: formato, lint, TypeScript, 391 pruebas en 26 archivos y build; advertencia de bundle Ant Design no bloqueante. Las 21 pruebas especificas de navegacion/botones tambien pasaron. En navegador se comprobaron los controles de contrato y el modal explicito de vista previa, sin cambiar la orden, y medidas sin desbordamiento de pagina ni grupos de botones en escritorio/movil. No se probaron integraciones reales, que siguen fuera de esta entrega.
+
+Recorrido visual 2026-10-14: los siete contadores abren una vista de tabla con su filtro correspondiente, incluida una bandeja vacia para cerrados. Cada fila (clic, Enter o espacio), su flecha y los movimientos recientes abren la misma pagina completa de orden; los contadores por proyecto abren la bandeja de etapa/proyecto. `formalization-preview.model.ts` centraliza la muestra y los filtros; `FormalizationOrderPreview` presenta cliente/unidad, condiciones comerciales, aprobaciones, contrato/documentos, banco, condicion financiera, traspaso/cierre e historial. Los valores adicionales son ficticios o explicitamente no incluidos; no acreditan un modelo comercial real ni datos existentes en BD.
+
+Inicio permanece en `/home/formalization`; el menu Gestion de formalizaciones abre ahora `/home/formalization/orders`, mostrando directamente la tabla general de ejemplos y marcando el item activo correspondiente. La ruta reutiliza `FormalizationHomePage` con vista inicial de ordenes. `AppRouteContent` facilita a las paginas el callback opcional de navegacion existente para volver a Inicio sin recargar ni mostrar Inicio bajo la URL de Gestion.
+
+Validacion de la conexion del menu: `pnpm check` completo aprobado con 392 pruebas en 26 archivos, formato, lint, TypeScript y build. En navegador autenticado se confirmaron el clic del menu, la URL de Gestion, `aria-current=page` y el retorno a Inicio con su URL correcta. Las pruebas cubren entrada directa a la ruta y denegacion sin permiso de Inicio. La advertencia de bundle Ant Design sigue siendo no bloqueante.
+
+Dentro de cada ruta, el paso bandeja-detalle sigue siendo estado local, sin enlaces profundos de orden ni rutas comerciales operativas. Volver a la lista conserva busqueda y filtros mientras la pagina siga montada; recargar reinicia la maqueta (en Gestion vuelve a la tabla general). Los anclajes internos solo desplazan a las secciones de detalle. La ruta de maqueta conserva `formalizacion.home.read`, sin nuevos permisos, API ni escritura; sin ese permiso la ruta se deniega. Firmados reutiliza las mismas tres ordenes de banco/saldo/traspaso, sin duplicar registros. La integracion futura requiere contratos, permisos y rutas especificas de negocio.
+
+Verificacion de este recorrido: las once pruebas de Formalizacion pasaron dentro de la suite global (380 aprobadas y una fallida en ordenamiento del detalle de Usuarios). Esa prueba ajena al cambio paso al repetirse de forma aislada, sin modificar Usuarios; no se declara la corrida global completamente verde. Formato, lint, TypeScript y build aprobados; se verifico en navegador autenticado el contador Por enviar, clic de fila, orden completa, retorno a lista y ausencia de desbordamiento de pagina/paneles en escritorio y movil. No se ejecutaron pruebas API porque no cambia backend. Permanece la advertencia de bundle Ant Design mayor a 500 kB.
+
+Ajuste visual 2026-10-14: se preservan titulo y seis banners sin cambios. Solo la zona inferior agrupa responsable/tiempo, integra el acceso al detalle en siguiente paso y reduce la bandeja a cinco columnas. Fondos blancos, tipografia y separaciones refuerzan la jerarquia; el resumen por proyecto y los movimientos conservan los mismos datos ficticios, filtros y comportamiento local. Alineación con Proyectos 2026-10-14: bandeja, lista filtrada y orden completa adoptan la escala, densidad y anatomía de `26-Projects-Design-System.md` (ver "Formalization Home Adoption"). Título y banners se conservan sin cambios. Sin nuevos datos, columnas ni acciones.
+
+`FormalizationFollowUpPreview` incorpora cinco operaciones ficticias identificadas con `DEMO-OV-*`, busqueda y bandejas locales, detalle, pendientes por proyecto y movimientos recientes. El aviso visible distingue estos ejemplos de registros reales; los banners superiores muestran la misma muestra ficticia, no KPIs reales. Solo hay transiciones de estado React para revisar pantallas; no hay fetch, mutaciones remotas, persistencia ni operaciones reales. Recargar reinicia la demostracion.
+
+La propuesta responde a responsable, bloqueo, documentos y trazabilidad solicitados en `CRM IDEA.pdf` (paginas 3 a 5) y `RESUMEN_EJECUTIVO_CRM_TINK AJUSTADO (1).pdf` (paginas 1 y 3). Ordenar por dias en etapa y agrupar pendientes por proyecto son decisiones de presentacion, no reglas de SLA aprobadas. El resumen ajustado delimita la fase: sin cobros, pagos ni entrega de llaves. El saldo no consultado se muestra como pendiente de consulta, nunca como cero.
+
+Se inspeccionaron solo metadatos del esquema legacy `crmdatabase-api`: `ordenventa` contiene referencias de cliente/unidad, aprobaciones y flags contractuales; `expedientes` corresponde a unidades; `bitacoras` contiene actor, detalle y fecha. No se interpretaron valores numericos ni se extrajeron registros personales. Los tipos actuales de la nueva API cubren identidad, catalogos y auditoria, pero no un agregado operativo completo de Formalizacion. Quedan pendientes el modelo nuevo, el mapeo validado de estados legacy, las reglas de ingreso/cierre/excepciones, el contrato financiero, los permisos y la integracion de datos. Esta maqueta no acredita esos pendientes como implementados.
