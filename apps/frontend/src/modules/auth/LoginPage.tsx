@@ -33,7 +33,7 @@ const LOGIN_COPY = {
     authenticating: "Verificando credenciales...",
 } as const;
 
-const ROCCA_LOGO_SRC = "/Logo/logo2.jpg";
+const ROCCA_LOGO_SRC = "/Logo/rocca-official.svg";
 
 /**
  * Filtro mínimo para avisar un correo mal formado antes de salir del campo.
@@ -263,7 +263,7 @@ export function LoginPage({ authError = null, isSubmitting = false, onLocalLogin
             <main className="login-shell" aria-labelledby="login-title">
                 <section className="login-card">
                     <div className="login-card__body">
-                        <img className="login-logo" src={ROCCA_LOGO_SRC} width="1121" height="405" alt="ROCCA Development Group" fetchPriority="high" />
+                        <img className="login-logo" src={ROCCA_LOGO_SRC} width="352.13" height="107.51" alt="ROCCA Development Group" fetchPriority="high" />
 
                         <Typography.Title id="login-title" className="login-title" level={1}>
                             {LOGIN_COPY.title}

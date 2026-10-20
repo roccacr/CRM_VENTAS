@@ -50,7 +50,7 @@ import type { IdentityOrgUnit } from "../../services/auth/identity-contracts";
 import { ADMINISTRATION_CATALOGS } from "../administration/catalogs/catalog-definitions";
 
 /** Ruta pública del logo. El shell no la resuelve por entorno. */
-const ROCCA_LOGO_SRC = "/Logo/logo2.jpg";
+const ROCCA_LOGO_SRC = "/Logo/rocca-official.svg";
 
 /**
  * Anchos heurísticos del menú de escritorio, en píxeles.
@@ -828,7 +828,7 @@ function MobileAppBar({ onMenuOpen, user }: MobileAppBarProps) {
             <button className="global-home-mobile-bar__icon-button" type="button" aria-label="Abrir menú de navegación" onClick={onMenuOpen}>
                 <MenuOutlined aria-hidden="true" />
             </button>
-            <img className="global-home-mobile-bar__logo" src={ROCCA_LOGO_SRC} width="1121" height="405" alt="ROCCA Development Group" />
+            <img className="global-home-mobile-bar__logo" src={ROCCA_LOGO_SRC} width="352.13" height="107.51" alt="ROCCA Development Group" />
 
             <div className="global-home-mobile-bar__actions" aria-label="Acciones rápidas móviles">
                 <button className="global-home-mobile-bar__icon-button" type="button" aria-label="Notificaciones">
@@ -1483,7 +1483,7 @@ export function GlobalHomeShell({ activeMenuItemCode, children, currentUser, eff
             <header className="global-home-header" role="banner" aria-label="Barra superior global CRM TINK">
                 <div className="global-home-header__inner">
                     <div className="global-home-header__brand">
-                        <img className="global-home-header__logo" src={ROCCA_LOGO_SRC} width="1121" height="405" alt="ROCCA Development Group" />
+                        <img className="global-home-header__logo" src={ROCCA_LOGO_SRC} width="352.13" height="107.51" alt="ROCCA Development Group" />
                     </div>
 
                     <div className="global-home-header__workspace" role="group" aria-label="Módulo y búsqueda">
@@ -1533,7 +1533,7 @@ export function GlobalHomeShell({ activeMenuItemCode, children, currentUser, eff
             </nav>
 
             <main className="global-home-stage" aria-label="Contenido principal">
-                <img className="global-home-stage__watermark" src={ROCCA_LOGO_SRC} width="1121" height="405" alt="" aria-hidden="true" />
+                <img className="global-home-stage__watermark" src={ROCCA_LOGO_SRC} width="352.13" height="107.51" alt="" aria-hidden="true" />
                 {children}
             </main>
         </div>

@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <title>Bienvenida Formalización</title>
+  <link rel="stylesheet" href="./FormalizationHomePage.css" />
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; background: #eef2f6; font-family: Aptos, "Segoe UI", system-ui, sans-serif; }
+    .page { max-width: 1180px; margin: 24px auto; padding: 24px; background: #fff; }
+    h1 { font-size: 22px; font-weight: 650; }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <div class="global-home-dashboard formalization-home">
+      <section class="global-home-page-header formalization-home__header">
+        <div><h1>Formalización</h1></div>
+        <div class="formalization-home__intro">
+          <button class="formalization-banner formalization-banner--pending formalization-approval-strip" type="button">
+            <span class="formalization-banner__icon">✓</span>
+            <span class="formalization-banner__content">
+              <span class="formalization-approval-strip__title">Pendientes de aprobación</span>
+              <span class="formalization-banner__value">0</span>
+              <span class="formalization-banner__caption">Por revisar</span>
+            </span>
+            <span class="formalization-banner__pattern" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></span>
+          </button>
+          <section class="formalization-welcome" aria-label="Bienvenida a Formalización">
+            <div class="formalization-welcome__copy">
+              <p class="formalization-welcome__title">Hola, Jannie</p>
+              <p class="formalization-welcome__text">Las colas de abajo muestran cuántas órdenes hay en cada etapa.</p>
+            </div>
+            <button class="ant-btn formalization-command" type="button">Ver todas las órdenes</button>
+            <span class="formalization-banner__pattern" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></span>
+          </section>
+        </div>
+      </section>
+      <section class="formalization-home__banners">
+        <article class="formalization-banner"><span class="formalization-banner__icon">C</span><span class="formalization-banner__content"><h2>Contratos pendientes</h2><span class="formalization-banner__value">0</span><span class="formalization-banner__caption">Por enviar</span></span><span class="formalization-banner__pattern"><i></i><i></i><i></i><i></i><i></i><i></i></span></article>
+        <article class="formalization-banner"><span class="formalization-banner__icon">B</span><span class="formalization-banner__content"><h2>Gestión bancaria</h2><span class="formalization-banner__value">0</span><span class="formalization-banner__caption">En banco</span></span><span class="formalization-banner__pattern"><i></i><i></i><i></i><i></i><i></i><i></i></span></article>
+        <article class="formalization-banner"><span class="formalization-banner__icon">S</span><span class="formalization-banner__content"><h2>Pendientes de saldo</h2><span class="formalization-banner__value">0</span><span class="formalization-banner__caption">Por cobrar</span></span><span class="formalization-banner__pattern"><i></i><i></i><i></i><i></i><i></i><i></i></span></article>
+      </section>
+    </div>
+  </div>
+</body>
+</html>

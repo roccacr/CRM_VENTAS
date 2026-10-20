@@ -1,7 +1,6 @@
 import "./FormalizationHomePage.css";
 
 import ArrowLeftOutlined from "@ant-design/icons/ArrowLeftOutlined";
-import ArrowRightOutlined from "@ant-design/icons/ArrowRightOutlined";
 import BankOutlined from "@ant-design/icons/BankOutlined";
 import CheckCircleOutlined from "@ant-design/icons/CheckCircleOutlined";
 import FileDoneOutlined from "@ant-design/icons/FileDoneOutlined";
@@ -14,6 +13,7 @@ import ConfigProvider from "antd/es/config-provider";
 import esES from "antd/es/locale/es_ES";
 import { useState } from "react";
 
+import type { IdentityUser } from "../../services/auth/identity-contracts";
 import { PROJECTS_THEME } from "../administration/catalogs/projects-theme";
 import { type FormalizationExample, formatOrderTotal, matchesPreviewFilter, PREVIEW_FILTER_TITLES, type PreviewQueue } from "./formalization-preview.model";
 import { useFormalizationPreview } from "./formalization-preview-session";
@@ -25,12 +25,18 @@ import { FormalizationTimingPreview } from "./FormalizationTimingPreview";
 import type { EffectiveNavigationPermission } from "./GlobalHomeShell";
 
 interface FormalizationHomeProps {
+    readonly currentUser?: Pick<IdentityUser, "displayName" | "email">;
     readonly effectivePermissions?: readonly EffectiveNavigationPermission[];
     readonly initialView?: "home" | "orders";
     readonly onNavigate?: ((path: string) => void) | undefined;
 }
 
-/** Misma esquina en la franja de aprobación y en los seis banners. */
+const greetingFor = (user: FormalizationHomeProps["currentUser"]) => {
+    const name = user?.displayName.trim() || user?.email.trim() || "";
+    return name ? `Hola, ${name}` : "Hola";
+};
+
+/** Misma esquina, mismo recorte, en la aprobación y en las seis etapas. */
 function BannerCorner() {
     return (
         <span className="formalization-banner__pattern" aria-hidden="true">
@@ -50,19 +56,21 @@ function resolveApprovalVisibility(permissions: readonly EffectiveNavigationPerm
 
 function ApprovalStrip({ count, onOpen }: { readonly count: number; readonly onOpen: () => void }) {
     return (
-        <button type="button" className="formalization-approval-strip" aria-label="Ver pendientes de aprobación de Formalización" onClick={onOpen}>
+        <button type="button" className="formalization-banner formalization-banner--pending formalization-approval-strip" aria-label="Ver pendientes de aprobación de Formalización" onClick={onOpen}>
             <span className="formalization-banner__icon" aria-hidden="true">
                 <SafetyCertificateOutlined />
             </span>
-            <span className="formalization-approval-strip__heading">
+            <span className="formalization-banner__content">
                 <span className="formalization-approval-strip__title">Pendientes de aprobación</span>
-                <span className="formalization-approval-strip__caption">Formalización</span>
+                <span className="formalization-banner__metrics">
+                    <span className="formalization-banner__metric">
+                        <span className="formalization-banner__value" aria-label={`Órdenes pendientes de aprobación: ${String(count)}`}>
+                            {count}
+                        </span>
+                        <span className="formalization-banner__caption">Por revisar</span>
+                    </span>
+                </span>
             </span>
-            <span className="formalization-approval-strip__count" aria-label={`Órdenes pendientes de aprobación: ${String(count)}`}>
-                <strong>{count}</strong>
-                <span>Por revisar</span>
-            </span>
-            <ArrowRightOutlined aria-hidden="true" />
             <BannerCorner />
         </button>
     );
@@ -130,7 +138,7 @@ function QueueHeader({ queue, onHome, onAll }: { readonly queue: PreviewQueue; r
 }
 
 /** Propuesta visual del Inicio: no consulta datos ni habilita acciones operativas. */
-function FormalizationHomeContent({ effectivePermissions, initialView = "home", onNavigate }: FormalizationHomeProps) {
+function FormalizationHomeContent({ currentUser, effectivePermissions, initialView = "home", onNavigate }: FormalizationHomeProps) {
     const { orders } = useFormalizationPreview();
     const [selectedQueue, setQueue] = useState<PreviewQueue | null>(() => (initialView === "orders" ? { filter: "all" } : null));
     const { canView: canViewApprovals, queue } = resolveApprovalVisibility(effectivePermissions, selectedQueue);
@@ -152,14 +160,31 @@ function FormalizationHomeContent({ effectivePermissions, initialView = "home", 
                         <div>
                             <h1 id="formalization-home-title">Formalización</h1>
                         </div>
-                        {canViewApprovals && (
-                            <ApprovalStrip
-                                count={countQueue({ filter: "approvals" }, orders)}
-                                onOpen={() => {
-                                    setQueue({ filter: "approvals" });
-                                }}
-                            />
-                        )}
+                        <div className="formalization-home__intro" data-has-approvals={canViewApprovals}>
+                            {canViewApprovals && (
+                                <ApprovalStrip
+                                    count={countQueue({ filter: "approvals" }, orders)}
+                                    onOpen={() => {
+                                        setQueue({ filter: "approvals" });
+                                    }}
+                                />
+                            )}
+                            <section className="formalization-welcome" aria-label="Bienvenida a Formalización">
+                                <div className="formalization-welcome__copy">
+                                    <p className="formalization-welcome__title">{greetingFor(currentUser)}</p>
+                                    <p className="formalization-welcome__text">Gestión contractual</p>
+                                    <Button
+                                        className="formalization-command"
+                                        onClick={() => {
+                                            setQueue({ filter: "all" });
+                                        }}
+                                    >
+                                        Ver todas las órdenes
+                                    </Button>
+                                </div>
+                                <img className="formalization-welcome__art" src={`${import.meta.env.BASE_URL}illustrations/rocca-formalization-generated.png`} alt="" width={1754} height={897} decoding="async" />
+                            </section>
+                        </div>
                     </section>
                     <section className="formalization-home__banners" aria-label="Resumen de formalización">
                         {banners.map((banner) => (

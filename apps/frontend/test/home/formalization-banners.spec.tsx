@@ -7,11 +7,25 @@ import { installBrowserApiDoubles } from "../support/browser";
 
 afterEach(cleanup);
 
+it("uses the formalization artwork in the personalized welcome and keeps order navigation", () => {
+    installBrowserApiDoubles();
+    render(<FormalizationHomePage currentUser={{ displayName: "Roberto", email: "roberto@example.test" }} />);
+    const welcome = screen.getByRole("region", { name: "Bienvenida a Formalización" });
+    expect(welcome.querySelector("img")?.getAttribute("src")).toContain("rocca-formalization-generated.png");
+    expect(welcome.querySelector("img")?.getAttribute("alt")).toBe("");
+    expect(screen.getByText("Hola, Roberto")).toBeTruthy();
+    expect(screen.queryByText("Las colas de abajo muestran cuántas órdenes hay en cada etapa.")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Ver todas las órdenes" }));
+    expect(screen.getByRole("heading", { name: "Todas las órdenes", level: 1 })).toBeTruthy();
+});
+
 it("shows a separate approval strip only with an effective grant and preserves the six-banner grid", () => {
     installBrowserApiDoubles();
     const permission = { code: "formalizacion.home.approvals.read", effect: "allow" as const };
     const { container, rerender } = render(<FormalizationHomePage />);
     expect(screen.queryByRole("button", { name: "Ver pendientes de aprobación de Formalización" })).toBeNull();
+    expect(screen.getByRole("region", { name: "Bienvenida a Formalización" })).toBeTruthy();
+    expect(screen.getByText("Hola")).toBeTruthy();
     expect(container.querySelectorAll(".formalization-home__banners > article")).toHaveLength(6);
     rerender(<FormalizationHomePage effectivePermissions={[permission, { ...permission, effect: "deny" }]} />);
     expect(screen.queryByRole("button", { name: "Ver pendientes de aprobación de Formalización" })).toBeNull();

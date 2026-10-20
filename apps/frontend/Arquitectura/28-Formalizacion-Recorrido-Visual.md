@@ -1,5 +1,50 @@
 # Formalizacion: recorrido visual y trazabilidad
 
+## Bienvenida actual: ilustracion original - 20/10/2026
+
+Se sustituye la fotografia de Andira por
+public/illustrations/rocca-formalization-generated.png, PNG transparente
+generado para este dashboard: arquitectura residencial contemporanea,
+documentos y llaves. Inspirado en las referencias de ROCCA, sin representar
+un proyecto real ni alterar el logo oficial. Se presenta completo con contain,
+sin recortes; es decorativo y utiliza alt vacio. Se conservan saludo, boton,
+permisos y tamanos adaptables. Los apartados siguientes son antecedentes.
+
+## Referencia ROCCA en bienvenida - 20/10/2026
+
+La bienvenida utiliza ahora public/illustrations/rocca-andira.webp, imagen
+publicada por ROCCA para Andira. Fuente: https://www.roccacr.com/proyectos/andira
+y https://www.roccacr.com/images/proyectosNUEVOS/andira1.webp.
+Se conserva localmente para evitar dependencias externas durante la navegacion.
+El texto alternativo identifica el proyecto; la imagen es una referencia de
+marca y no indica que las ordenes mostradas pertenezcan a Andira. No se altera
+el logo del encabezado, los permisos, contadores ni la navegacion.
+La ilustracion generada descrita a continuacion queda como antecedente,
+conservada en disco pero ya no utilizada por la bienvenida.
+
+## Imagen de bienvenida - 20/10/2026
+
+Se integra public/illustrations/formalization-welcome.png, generada para el
+proyecto con fondo transparente: maqueta residencial, documentos, pluma y llave.
+Es una ilustracion decorativa, no un proyecto ROCCA real ni un contrato valido.
+La imagen conserva el PNG original y se sirve localmente usando BASE_URL;
+no depende de servicios externos al visualizar la pagina. Alt vacio evita
+repetir informacion que no aporta al lector de pantalla.
+El saludo personalizado y Ver todas las ordenes se conservan; el texto
+instructivo sobre las colas se sustituye por Gestion contractual. La imagen
+reemplaza el patron de esquina solo en la bienvenida; los indicadores mantienen
+su contenido, permisos y navegacion. Tamano de imagen y grilla adaptables,
+sin posicionamiento sobre el texto. Correccion tipografica scoped para evitar
+que el estilo global del encabezado reduzca el saludo.
+Chrome confirma PNG cargado a 1774x887, saludo de 18px en escritorio y ausencia
+de overflow de pagina en escritorio y movil 390x844. Se restauro el viewport.
+La prueba de bienvenida verifica imagen, saludo y apertura de todas las ordenes.
+No se modifica el HTML de previsualizacion preexistente ni API/BD.
+Verificacion final: 418 pruebas frontend aprobadas; lint/formato de archivos
+tocados, TypeScript y build aprobados. El check agregado conserva los problemas
+de formato preexistentes de HomeInsights/StatusPill; no se alteraron para esta
+entrega. Permanece el aviso de tamano del bundle, no bloqueante.
+
 ## Banner de aprobaciones autorizado - 20/10/2026
 
 Distribucion vigente tras el ultimo ajuste del propietario: bloque a la izquierda,
