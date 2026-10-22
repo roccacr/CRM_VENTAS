@@ -356,7 +356,85 @@ const installDesktopPointerDouble = (): void => {
 };
 
 describe("App", () => {
-    it.each(["authenticated", "forbidden"] as const)("rechecks route synchronously with a cached %s state", (status) => {
+    it("replaces the login entry when an existing session resolves its permitted home", async () => {
+        mockIdentityFetch({ profile: authenticatedProfile, session: authenticatedSession });
+        window.history.replaceState(null, "", "/auth/login");
+        const push = vi.spyOn(window.history, "pushState");
+        const replace = vi.spyOn(window.history, "replaceState");
+        try {
+            render(<App />);
+            await expectAdministrationHomeHeading();
+            expect(replace).toHaveBeenCalledExactlyOnceWith(null, "", "/home/administration");
+            expect(push).not.toHaveBeenCalled();
+        } finally {
+            push.mockRestore();
+            replace.mockRestore();
+        }
+    });
+    it("renders the authenticated route without waiting for presentation timers", async () => {
+        vi.useFakeTimers();
+        mockIdentityFetch({ profile: authenticatedProfile, session: authenticatedSession });
+        window.history.replaceState(null, "", "/home/administration");
+        render(<App />);
+        await act(async () => {
+            await vi.advanceTimersByTimeAsync(0);
+        });
+        expect(screen.getByRole("banner", { name: "Barra superior global CRM TINK" })).toBeInTheDocument();
+        expect(screen.queryByRole("status", { name: /sesión/i })).not.toBeInTheDocument();
+        await act(async () => {
+            await vi.dynamicImportSettled();
+            await vi.advanceTimersByTimeAsync(0);
+        });
+    });
+
+    it("pushes menu navigation and follows browser back and forward without rewriting history", async () => {
+        mockIdentityFetch({ profile: authenticatedProfile, session: authenticatedSession });
+        window.history.replaceState(null, "", "/home/administration");
+        render(<App />);
+        await expectAdministrationHomeHeading();
+        const push = vi.spyOn(window.history, "pushState");
+        const replace = vi.spyOn(window.history, "replaceState");
+        try {
+            fireEvent.click(screen.getByRole("button", { name: "Usuarios" }));
+            await act(async () => {
+                await vi.dynamicImportSettled();
+            });
+            expect(screen.getByRole("heading", { name: "Usuarios" })).toBeInTheDocument();
+            expect(push).toHaveBeenCalledExactlyOnceWith(null, "", "/home/administration/users");
+            await act(async () => {
+                await new Promise<void>((resolve) => {
+                    window.addEventListener(
+                        "popstate",
+                        () => {
+                            resolve();
+                        },
+                        { once: true },
+                    );
+                    window.history.back();
+                });
+            });
+            await expectAdministrationHomeHeading();
+            await act(async () => {
+                await new Promise<void>((resolve) => {
+                    window.addEventListener(
+                        "popstate",
+                        () => {
+                            resolve();
+                        },
+                        { once: true },
+                    );
+                    window.history.forward();
+                });
+            });
+            expect(await screen.findByRole("heading", { name: "Usuarios" })).toBeInTheDocument();
+            expect(replace).not.toHaveBeenCalled();
+            expect(push).toHaveBeenCalledTimes(1);
+        } finally {
+            push.mockRestore();
+            replace.mockRestore();
+        }
+    });
+    it.each(["authenticated", "forbidden"] as const)("rechecks route synchronously with a cached %s state", async (status) => {
         const profile: IdentityProfile = { ...authenticatedProfile, permissions: [{ code: "formalizacion.home.read", effect: "allow", scope: "self", source: "role" }], orgUnits: [{ publicId: "formalization", code: "formalizacion", name: "Formalización", membership: "member", scope: "self", status: "active" }] };
         const fetchMock = vi.fn();
         vi.stubGlobal("fetch", fetchMock);
@@ -367,7 +445,7 @@ describe("App", () => {
         expect(fetchMock).not.toHaveBeenCalled();
         view.rerender(<AppRouteContent {...props} path="/home/formalization" />);
         expect(screen.queryByRole("heading", { name: "Acceso no autorizado" })).not.toBeInTheDocument();
-        expect(screen.getByRole("heading", { name: "Formalización" })).toBeInTheDocument();
+        expect(await screen.findByRole("heading", { name: "Formalización" })).toBeInTheDocument();
         expect(fetchMock).not.toHaveBeenCalled();
     });
     it("keeps a valid profile without grants inside the shell at login", () => {
@@ -585,7 +663,7 @@ describe("App", () => {
 
         render(<App />);
 
-        expect(await screen.findByRole("heading", { name: "Sesión validada" })).toBeInTheDocument();
+        await expectAdministrationHomeHeading();
         expect(await screen.findByRole("banner", { name: "Barra superior global CRM TINK" })).toBeInTheDocument();
         expect(screen.getByRole("heading", { name: "Hola Roberto Carlos al módulo Administración" })).toBeInTheDocument();
         expect(screen.queryByRole("heading", { name: "Usuarios del sistema" })).not.toBeInTheDocument();
@@ -775,6 +853,9 @@ describe("App", () => {
         await user.click(screen.getByRole("button", { name: "Roles y seguridad" }));
 
         expect(window.location.pathname).toBe("/home/administration/roles-security");
+        await act(async () => {
+            await vi.dynamicImportSettled();
+        });
         expect(screen.getByRole("heading", { level: 1, name: "Roles y seguridad" })).toBeInTheDocument();
         expect(await screen.findByText("Ventas (31 usuarios)")).toBeInTheDocument();
         expect(screen.queryByRole("button", { name: "Nuevo módulo" })).not.toBeInTheDocument();

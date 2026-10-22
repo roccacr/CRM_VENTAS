@@ -4,25 +4,38 @@
  * Cada ruta declara perfil, ítem de menú y página. Login queda fuera de este
  * mapa porque es pública. Una URL que no está aquí se trata como no encontrada.
  */
-import { type ComponentType, createElement } from "react";
+import { type ComponentProps, type ComponentType, createElement } from "react";
 
-import { BrokersPage } from "../modules/administration/brokers/BrokersPage";
-import { CampaignsPage } from "../modules/administration/campaigns/CampaignsPage";
+import type { BrokersPage as BrokersPageComponent } from "../modules/administration/brokers/BrokersPage";
+import type { CampaignsPage as CampaignsPageComponent } from "../modules/administration/campaigns/CampaignsPage";
 import { ADMINISTRATION_CATALOGS } from "../modules/administration/catalogs/catalog-definitions";
-import { CatalogItemsPage } from "../modules/administration/catalogs/CatalogItemsPage";
-import { ClassesPage } from "../modules/administration/classes/ClassesPage";
-import { LocationsPage } from "../modules/administration/locations/LocationsPage";
-import { AdministrationHomePage } from "../modules/administration/pages/AdministrationHomePage";
-import { RolesSecurityPage } from "../modules/administration/pages/RolesSecurityPage";
-import { SecurityAuditPage } from "../modules/administration/pages/SecurityAuditPage";
-import { SystemUsersPage } from "../modules/administration/pages/SystemUsersPage";
-import { SubsidiariesPage } from "../modules/administration/subsidiaries/SubsidiariesPage";
-import { UnitFilesPage } from "../modules/administration/unit-files/UnitFilesPage";
-import { FormalizationCalendarPage } from "../modules/home/FormalizationCalendarPage";
-import { FormalizationHomePage } from "../modules/home/FormalizationHomePage";
-import { FormalizationSummaryPage } from "../modules/home/FormalizationSummaryPage";
+import type { CatalogItemsPage as CatalogItemsPageComponent } from "../modules/administration/catalogs/CatalogItemsPage";
+import type { ClassesPage as ClassesPageComponent } from "../modules/administration/classes/ClassesPage";
+import type { LocationsPage as LocationsPageComponent } from "../modules/administration/locations/LocationsPage";
+import type { AdministrationHomePage as AdministrationHomePageComponent } from "../modules/administration/pages/AdministrationHomePage";
+import type { SecurityAuditPage as SecurityAuditPageComponent } from "../modules/administration/pages/SecurityAuditPage";
+import type { SubsidiariesPage as SubsidiariesPageComponent } from "../modules/administration/subsidiaries/SubsidiariesPage";
+import type { UnitFilesPage as UnitFilesPageComponent } from "../modules/administration/unit-files/UnitFilesPage";
+import type { FormalizationHomePage as FormalizationHomePageComponent } from "../modules/home/FormalizationHomePage";
+import type { FormalizationSummaryPage as FormalizationSummaryPageComponent } from "../modules/home/FormalizationSummaryPage";
 import type { IdentityProfile, IdentityUser } from "../services/auth/identity-contracts";
 import type { CatalogCode } from "../services/catalogs/catalog-service";
+import { createLazyRoute } from "./LazyRoute";
+
+const BrokersPage = createLazyRoute<ComponentProps<typeof BrokersPageComponent>>(() => import("../modules/administration/brokers/BrokersPage").then((module) => ({ default: module.BrokersPage })));
+const CampaignsPage = createLazyRoute<ComponentProps<typeof CampaignsPageComponent>>(() => import("../modules/administration/campaigns/CampaignsPage").then((module) => ({ default: module.CampaignsPage })));
+const CatalogItemsPage = createLazyRoute<ComponentProps<typeof CatalogItemsPageComponent>>(() => import("../modules/administration/catalogs/CatalogItemsPage").then((module) => ({ default: module.CatalogItemsPage })));
+const ClassesPage = createLazyRoute<ComponentProps<typeof ClassesPageComponent>>(() => import("../modules/administration/classes/ClassesPage").then((module) => ({ default: module.ClassesPage })));
+const LocationsPage = createLazyRoute<ComponentProps<typeof LocationsPageComponent>>(() => import("../modules/administration/locations/LocationsPage").then((module) => ({ default: module.LocationsPage })));
+const AdministrationHomePage = createLazyRoute<ComponentProps<typeof AdministrationHomePageComponent>>(() => import("../modules/administration/pages/AdministrationHomePage").then((module) => ({ default: module.AdministrationHomePage })));
+const RolesSecurityPage = createLazyRoute<object>(() => import("../modules/administration/pages/RolesSecurityPage").then((module) => ({ default: module.RolesSecurityPage })));
+const SecurityAuditPage = createLazyRoute<ComponentProps<typeof SecurityAuditPageComponent>>(() => import("../modules/administration/pages/SecurityAuditPage").then((module) => ({ default: module.SecurityAuditPage })));
+const SystemUsersPage = createLazyRoute<object>(() => import("../modules/administration/pages/SystemUsersPage").then((module) => ({ default: module.SystemUsersPage })));
+const SubsidiariesPage = createLazyRoute<ComponentProps<typeof SubsidiariesPageComponent>>(() => import("../modules/administration/subsidiaries/SubsidiariesPage").then((module) => ({ default: module.SubsidiariesPage })));
+const UnitFilesPage = createLazyRoute<ComponentProps<typeof UnitFilesPageComponent>>(() => import("../modules/administration/unit-files/UnitFilesPage").then((module) => ({ default: module.UnitFilesPage })));
+const FormalizationCalendarPage = createLazyRoute<object>(() => import("../modules/home/FormalizationCalendarPage").then((module) => ({ default: module.FormalizationCalendarPage })));
+const FormalizationHomePage = createLazyRoute<ComponentProps<typeof FormalizationHomePageComponent>>(() => import("../modules/home/FormalizationHomePage").then((module) => ({ default: module.FormalizationHomePage })));
+const FormalizationSummaryPage = createLazyRoute<ComponentProps<typeof FormalizationSummaryPageComponent>>(() => import("../modules/home/FormalizationSummaryPage").then((module) => ({ default: module.FormalizationSummaryPage })));
 
 /**
  * Mapa de rutas del CRM.
@@ -124,5 +137,12 @@ export const getWorkspaceHomePath = (workspaceCode: string): string => WORKSPACE
 export const replaceBrowserPath = (path: string): void => {
     if (window.location.pathname !== path || window.location.search || window.location.hash) {
         window.history.replaceState(null, "", path);
+    }
+};
+
+/** User navigation adds an entry; selecting the current path never duplicates it. */
+export const pushBrowserPath = (path: string): void => {
+    if (window.location.pathname !== path) {
+        window.history.pushState(null, "", path);
     }
 };

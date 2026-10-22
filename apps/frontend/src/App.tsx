@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { RouteErrorBoundary } from "./components/feedback/RouteErrorBoundary";
 import { useCooldown } from "./hooks/useCooldown";
 import type { LoginCredentials } from "./modules/auth/LoginPage";
-import { AUTH_LOGIN_PATH, DEFAULT_HOME_PATH, isKnownPath, replaceBrowserPath } from "./routes/app-routes";
+import { AUTH_LOGIN_PATH, DEFAULT_HOME_PATH, isKnownPath, pushBrowserPath, replaceBrowserPath } from "./routes/app-routes";
 import { AppRouteContent } from "./routes/AppRouteContent";
 import { assertAuthenticatedLoginSession, type AuthState, getDefaultAuthenticatedPath, getRedirectPath, resolveAuthState, resolveBootstrapFailureState, resolveLoginState, resolveRouteState } from "./routes/auth-state";
 import { getLoginErrorMessage, getMicrosoftLoginErrorMessage } from "./services/auth/auth-error-messages";
@@ -12,18 +13,6 @@ import { closePopupIfOpen, finishMicrosoftPopupReturn, getMicrosoftCallbackStatu
 const AUTH_RETRY_FAILURE_MESSAGE = "No se pudo reintentar la verificación. La sesión expiró, terminó o ya no es válida; inicia sesión nuevamente para continuar.";
 /** Evita ráfagas de reintentos contra un servicio de identidad que acaba de fallar. */
 const AUTH_RETRY_COOLDOWN_MS = 2500;
-/** Evita que el loader parpadee cuando la sesión responde casi al instante. */
-const SESSION_STATUS_MIN_VISIBLE_MS = 900;
-/** Tiempo mínimo del check de "Sesión validada" para que llegue a percibirse. */
-const SESSION_STATUS_VALIDATED_VISIBLE_MS = 550;
-
-const wait = (durationMs: number): Promise<void> =>
-    new Promise((resolve) => {
-        window.setTimeout(resolve, durationMs);
-    });
-
-/** Respeta la duración mínima total del loader y siempre deja ver el check final. */
-const waitForSessionStatusExit = (startedAt: number): Promise<void> => wait(Math.max(SESSION_STATUS_VALIDATED_VISIBLE_MS, SESSION_STATUS_MIN_VISIBLE_MS - (Date.now() - startedAt)));
 
 /**
  * Raíz segura: ninguna vista privada se renderiza sin sesión BFF vigente.
@@ -69,8 +58,8 @@ export function App() {
     }, []);
 
     useEffect(() => {
-        replaceBrowserPath(path);
-    }, [path]);
+        replaceBrowserPath(window.location.pathname);
+    }, []);
 
     useEffect(() => {
         if (isMicrosoftPopupReturn) {
@@ -79,6 +68,12 @@ export function App() {
     }, [isMicrosoftPopupReturn, microsoftCallbackStatus]);
 
     const navigate = useCallback((nextPath: string): void => {
+        pushBrowserPath(nextPath);
+        setPath(nextPath);
+    }, []);
+
+    /** Access corrections and login/logout replace the current history entry. */
+    const redirect = useCallback((nextPath: string): void => {
         replaceBrowserPath(nextPath);
         setPath(nextPath);
     }, []);
@@ -104,7 +99,7 @@ export function App() {
             }
 
             if (redirectPath) {
-                navigate(redirectPath);
+                redirect(redirectPath);
             }
 
             return;
@@ -138,24 +133,17 @@ export function App() {
             const redirectPath = getRedirectPath(nextState, path);
 
             if (redirectPath) {
-                navigate(redirectPath);
+                redirect(redirectPath);
             }
         };
 
         const bootstrapSession = async (): Promise<void> => {
-            const startedAt = Date.now();
-
             try {
                 const nextState = await resolveAuthState(path, (user) => {
                     if (!isCancelled) {
                         setAuthState({ status: "checking", user });
                     }
                 });
-
-                if (nextState.status === "authenticated" && !isCancelled) {
-                    setAuthState({ phase: "validated", status: "checking", user: nextState.profile.user });
-                    await waitForSessionStatusExit(startedAt);
-                }
 
                 applyResolvedAuthState(nextState, false);
             } catch (error) {
@@ -169,7 +157,7 @@ export function App() {
         return () => {
             isCancelled = true;
         };
-    }, [authCheckAttempt, navigate, path, releaseAuthRetry, startAuthRetryCooldown]);
+    }, [authCheckAttempt, redirect, path, releaseAuthRetry, startAuthRetryCooldown]);
 
     /**
      * Tras un login exitoso, el perfil decide la pantalla.
@@ -178,19 +166,13 @@ export function App() {
      * operativo visible, el usuario queda autenticado pero en acceso denegado.
      */
     const completeAuthenticatedLogin = async (): Promise<void> => {
-        const startedAt = Date.now();
         const profile = await getIdentityProfile();
         const nextState = resolveLoginState(profile);
         const nextPath = getDefaultAuthenticatedPath(profile) ?? DEFAULT_HOME_PATH;
 
-        if (nextState.status === "authenticated") {
-            setAuthState({ phase: "validated", status: "checking", user: profile.user });
-            await waitForSessionStatusExit(startedAt);
-        }
-
         setAuthState(nextState);
         skipNextAuthBootstrapPathRef.current = nextPath;
-        navigate(nextPath);
+        redirect(nextPath);
     };
 
     /** Login local. El error se relanza para que el formulario no lo tome como éxito. */
@@ -251,7 +233,7 @@ export function App() {
     const handleLogout = (): void => {
         void logoutIdentitySession().finally(() => {
             setAuthState({ status: "anonymous" });
-            navigate(AUTH_LOGIN_PATH);
+            redirect(AUTH_LOGIN_PATH);
         });
     };
 
@@ -267,5 +249,9 @@ export function App() {
         setAuthCheckAttempt((currentAttempt) => currentAttempt + 1);
     };
 
-    return <AppRouteContent authRetryFeedback={authRetryFeedback} authState={authState} isAuthRetryDisabled={isAuthRetryDisabled} isMicrosoftSessionPending={isMicrosoftPopupReturn || isMicrosoftLoginPending} isSubmittingLogin={isSubmittingLogin} loginError={loginError} onLocalLogin={handleLocalLogin} onLogout={handleLogout} onMicrosoftLogin={handleMicrosoftLogin} onNavigate={navigate} onRetryAuthCheck={handleRetryAuthCheck} path={path} />;
+    return (
+        <RouteErrorBoundary resetKey={path}>
+            <AppRouteContent authRetryFeedback={authRetryFeedback} authState={authState} isAuthRetryDisabled={isAuthRetryDisabled} isMicrosoftSessionPending={isMicrosoftPopupReturn || isMicrosoftLoginPending} isSubmittingLogin={isSubmittingLogin} loginError={loginError} onLocalLogin={handleLocalLogin} onLogout={handleLogout} onMicrosoftLogin={handleMicrosoftLogin} onNavigate={navigate} onRetryAuthCheck={handleRetryAuthCheck} path={path} />
+        </RouteErrorBoundary>
+    );
 }
