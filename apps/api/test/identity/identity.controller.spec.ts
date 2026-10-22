@@ -1,4 +1,5 @@
 import { NotImplementedException, ServiceUnavailableException, UnauthorizedException } from "@nestjs/common";
+import { HTTP_CODE_METADATA } from "@nestjs/common/constants.js";
 import { ConfigService } from "@nestjs/config";
 import { APP_GUARD } from "@nestjs/core";
 import { FastifyAdapter, type NestFastifyApplication } from "@nestjs/platform-fastify";
@@ -113,6 +114,9 @@ const createIdentityServiceMock = (): IdentityServiceMock => ({
 });
 
 describe("IdentityController", () => {
+    it("declares the disabled reset status in its HTTP/OpenAPI metadata", () => {
+        expect(Reflect.getMetadata(HTTP_CODE_METADATA, IdentityController.prototype.requestLocalReset)).toBe(503);
+    });
     let app: NestFastifyApplication;
     let identity: IdentityServiceMock;
 

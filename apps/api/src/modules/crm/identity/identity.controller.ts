@@ -311,7 +311,7 @@ export class IdentityController {
      */
     @Post(IDENTITY_LOCAL_REQUEST_RESET_ROUTE)
     @RouteSecurity("public")
-    @HttpCode(202)
+    @HttpCode(503)
     @ApiOperation({ summary: "Recuperacion de clave local no disponible.", description: 'Canal de entrega pospuesto. Con CSRF y DTO validos devuelve 503 Service Unavailable con "Servicio no disponible.", independientemente del correo y de la cuota. No emite tokens ni envia correo; complete-reset conserva los tokens existentes.' })
     @ApiBody({ type: RequestLocalResetDto })
     requestLocalReset(@Body() body: RequestLocalResetDto, @Req() request: CookieRequest, @Headers("user-agent") userAgent?: string) {
