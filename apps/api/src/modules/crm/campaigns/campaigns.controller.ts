@@ -9,6 +9,7 @@ import { ApiBody, ApiOperation, ApiTags } from "@nestjs/swagger";
 
 import type { CookieRequest } from "../../../common/security/cookie-request.type.js";
 import { SESSION_COOKIE_NAME } from "../../../common/security/http-security.constants.js";
+import { RequirePermission } from "../../../common/security/require-permission.decorator.js";
 import { RouteSecurity } from "../../../common/security/route-security.decorator.js";
 import { CreateCatalogItemDto, ListCatalogItemsQueryDto, UpdateCatalogItemDto, UpdateCatalogItemStatusDto } from "../catalogs/dto/catalog-items.dto.js";
 import { CampaignsService } from "./campaigns.service.js";
@@ -29,6 +30,7 @@ export class CampaignsController {
      */
     @Get("items")
     @RouteSecurity("permission")
+    @RequirePermission({ kind: "catalog", catalog: "campaigns", action: "read" })
     @ApiOperation({ summary: "Listar campañas." })
     async list(@Query() query: ListCatalogItemsQueryDto, @Req() request: CookieRequest) {
         return this.catalogs.listCatalogItems(request.cookies[SESSION_COOKIE_NAME], "campaigns", query);
@@ -41,6 +43,7 @@ export class CampaignsController {
      */
     @Post("items")
     @RouteSecurity("permission")
+    @RequirePermission({ kind: "catalog", catalog: "campaigns", action: "create" })
     @ApiOperation({ summary: "Crear campaña." })
     @ApiBody({ type: CreateCatalogItemDto })
     async create(@Body() body: CreateCatalogItemDto, @Req() request: CookieRequest, @Headers("user-agent") userAgent?: string) {
@@ -54,6 +57,7 @@ export class CampaignsController {
      */
     @Patch("items/:itemPublicId")
     @RouteSecurity("permission")
+    @RequirePermission({ kind: "catalog", catalog: "campaigns", action: "update" })
     @HttpCode(200)
     @ApiOperation({ summary: "Editar campaña." })
     @ApiBody({ type: UpdateCatalogItemDto })
@@ -68,6 +72,7 @@ export class CampaignsController {
      */
     @Patch("items/:itemPublicId/status")
     @RouteSecurity("permission")
+    @RequirePermission({ kind: "catalog", catalog: "campaigns", action: "status" })
     @HttpCode(200)
     @ApiOperation({ summary: "Cambiar estado de una campaña." })
     @ApiBody({ type: UpdateCatalogItemStatusDto })

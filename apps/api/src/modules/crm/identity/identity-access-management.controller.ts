@@ -3,6 +3,7 @@ import { ApiBody, ApiOperation, ApiTags } from "@nestjs/swagger";
 
 import type { CookieRequest } from "../../../common/security/cookie-request.type.js";
 import { SESSION_COOKIE_NAME } from "../../../common/security/http-security.constants.js";
+import { RequirePermission } from "../../../common/security/require-permission.decorator.js";
 import { RouteSecurity } from "../../../common/security/route-security.decorator.js";
 import { ReplaceIdentityRolePermissionsDto, ReplaceIdentityUserAccessDto, UpdateIdentityRoleDto } from "./dto/access-management.dto.js";
 import { IdentityAccessManagementService } from "./identity-access-management.service.js";
@@ -24,6 +25,7 @@ export class IdentityAccessManagementController {
      */
     @Get(IDENTITY_SECURITY_CATALOG_ROUTE)
     @RouteSecurity("permission")
+    @RequirePermission({ kind: "all", codes: ["role.assign"] })
     @ApiOperation({ summary: "Consultar catalogo de seguridad y auditoria reciente." })
     readSecurityCatalog(@Req() request: CookieRequest) {
         return this.accessManagement.readSecurityCatalog(request.cookies[SESSION_COOKIE_NAME]);
@@ -34,6 +36,7 @@ export class IdentityAccessManagementController {
      */
     @Patch(IDENTITY_ROLE_DETAIL_ROUTE)
     @RouteSecurity("permission")
+    @RequirePermission({ kind: "all", codes: ["role.assign"] })
     @ApiOperation({ summary: "Renombrar rol del sistema." })
     @ApiBody({ type: UpdateIdentityRoleDto })
     updateRole(@Param("roleCode") roleCode: string, @Body() body: UpdateIdentityRoleDto, @Req() request: CookieRequest, @Headers("user-agent") userAgent?: string) {
@@ -50,6 +53,7 @@ export class IdentityAccessManagementController {
      */
     @Get(IDENTITY_ROLE_PERMISSIONS_ROUTE)
     @RouteSecurity("permission")
+    @RequirePermission({ kind: "all", codes: ["role.assign"] })
     @ApiOperation({ summary: "Consultar permisos activos de un rol." })
     readRolePermissions(@Param("roleCode") roleCode: string, @Req() request: CookieRequest) {
         return this.accessManagement.readRolePermissions(request.cookies[SESSION_COOKIE_NAME], roleCode);
@@ -60,6 +64,7 @@ export class IdentityAccessManagementController {
      */
     @Put(IDENTITY_ROLE_PERMISSIONS_ROUTE)
     @RouteSecurity("permission")
+    @RequirePermission({ kind: "all", codes: ["role.assign"] })
     @ApiOperation({ summary: "Guardar permisos activos de un rol." })
     @ApiBody({ type: ReplaceIdentityRolePermissionsDto })
     replaceRolePermissions(@Param("roleCode") roleCode: string, @Body() body: ReplaceIdentityRolePermissionsDto, @Req() request: CookieRequest, @Headers("user-agent") userAgent?: string) {
@@ -76,6 +81,7 @@ export class IdentityAccessManagementController {
      */
     @Get(IDENTITY_USER_ACCESS_ROUTE)
     @RouteSecurity("permission")
+    @RequirePermission({ kind: "all", codes: ["role.assign"] })
     @ApiOperation({ summary: "Consultar acceso administrativo de un usuario." })
     readUserAccess(@Param("userPublicId") userPublicId: string, @Req() request: CookieRequest) {
         return this.accessManagement.readUserAccess(request.cookies[SESSION_COOKIE_NAME], userPublicId);
@@ -86,6 +92,7 @@ export class IdentityAccessManagementController {
      */
     @Put(IDENTITY_USER_ACCESS_ROUTE)
     @RouteSecurity("permission")
+    @RequirePermission({ kind: "all", codes: ["role.assign"] })
     @ApiOperation({ summary: "Guardar acceso administrativo de un usuario." })
     @ApiBody({ type: ReplaceIdentityUserAccessDto })
     replaceUserAccess(@Param("userPublicId") userPublicId: string, @Body() body: ReplaceIdentityUserAccessDto, @Req() request: CookieRequest, @Headers("user-agent") userAgent?: string) {
@@ -102,6 +109,7 @@ export class IdentityAccessManagementController {
      */
     @Delete(IDENTITY_ROLE_DETAIL_ROUTE)
     @RouteSecurity("permission")
+    @RequirePermission({ kind: "all", codes: ["role.assign"] })
     @HttpCode(200)
     @ApiOperation({ summary: "Eliminar rol si no esta asignado a usuarios." })
     deleteRole(@Param("roleCode") roleCode: string, @Req() request: CookieRequest, @Headers("user-agent") userAgent?: string) {

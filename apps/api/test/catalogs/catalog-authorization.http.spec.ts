@@ -8,6 +8,8 @@ import { FastifyAdapter, type NestFastifyApplication } from "@nestjs/platform-fa
 import { Test } from "@nestjs/testing";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { AuthGuard } from "../../src/common/security/auth.guard.js";
+import { AuthenticatedReadRateLimit } from "../../src/common/security/authenticated-read-rate-limit.js";
 import { CsrfGuard } from "../../src/common/security/csrf.guard.js";
 import { createSignedCsrfToken } from "../../src/common/security/csrf-token.js";
 import { CSRF_COOKIE_NAME, CSRF_HEADER_NAME_LOWERCASE, SESSION_COOKIE_NAME } from "../../src/common/security/http-security.constants.js";
@@ -29,6 +31,7 @@ import { IdentityService } from "../../src/modules/crm/identity/identity.service
 import type { IdentityProfile } from "../../src/modules/crm/identity/identity.types.js";
 import { IdentityAuditRecorder } from "../../src/modules/crm/identity/identity-audit-recorder.service.js";
 import { IdentityMicrosoftSessionService } from "../../src/modules/crm/identity/identity-microsoft-session.service.js";
+import { identityRequestContextMiddleware } from "../../src/modules/crm/identity/identity-request-context.js";
 import { IdentityTokenService } from "../../src/modules/crm/identity/identity-token.service.js";
 import { LocationsController } from "../../src/modules/crm/locations/locations.controller.js";
 import { LocationsRepository } from "../../src/modules/crm/locations/locations.repository.js";
@@ -96,10 +99,13 @@ describe.each(["dedicated", "shared"] as const)("catalog exact HTTP authorizatio
                 { provide: CatalogsRepository, useValue: shared },
                 ...domains.map((domain, index) => ({ provide: domain.repository, useValue: stores[index] })),
                 { provide: APP_GUARD, useClass: CsrfGuard },
+                { provide: APP_GUARD, useClass: AuthGuard },
+                { provide: AuthenticatedReadRateLimit, useValue: { enforceAuthenticatedReadLimit: () => Promise.resolve(true) } },
             ],
         }).compile();
         app = module.createNestApplication<NestFastifyApplication>(new FastifyAdapter(), { logger: false });
         await app.register(cookie);
+        app.use(identityRequestContextMiddleware);
         app.useGlobalPipes(new ValidationPipe({ transform: true, whitelist: true, forbidNonWhitelisted: true }));
         await app.init();
         await app.getHttpAdapter().getInstance().ready();

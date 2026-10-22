@@ -9,6 +9,7 @@ import { ApiBody, ApiOperation, ApiTags } from "@nestjs/swagger";
 
 import type { CookieRequest } from "../../../common/security/cookie-request.type.js";
 import { SESSION_COOKIE_NAME } from "../../../common/security/http-security.constants.js";
+import { RequirePermission } from "../../../common/security/require-permission.decorator.js";
 import { RouteSecurity } from "../../../common/security/route-security.decorator.js";
 import { ListCatalogItemsQueryDto, UpdateCatalogItemStatusDto } from "../catalogs/dto/catalog-items.dto.js";
 import { CreateSubsidiaryDto, UpdateSubsidiaryDto } from "./subsidiaries.dto.js";
@@ -30,6 +31,7 @@ export class SubsidiariesController {
      */
     @Get("items")
     @RouteSecurity("permission")
+    @RequirePermission({ kind: "catalog", catalog: "subsidiaries", action: "read" })
     @ApiOperation({ summary: "Listar subsidiarias." })
     async list(@Query() query: ListCatalogItemsQueryDto, @Req() request: CookieRequest) {
         return this.catalogs.listCatalogItems(request.cookies[SESSION_COOKIE_NAME], "subsidiaries", query);
@@ -42,6 +44,7 @@ export class SubsidiariesController {
      */
     @Post("items")
     @RouteSecurity("permission")
+    @RequirePermission({ kind: "catalog", catalog: "subsidiaries", action: "create" })
     @ApiOperation({ summary: "Crear subsidiaria." })
     @ApiBody({ type: CreateSubsidiaryDto })
     async create(@Body() body: CreateSubsidiaryDto, @Req() request: CookieRequest, @Headers("user-agent") userAgent?: string) {
@@ -55,6 +58,7 @@ export class SubsidiariesController {
      */
     @Patch("items/:itemPublicId")
     @RouteSecurity("permission")
+    @RequirePermission({ kind: "catalog", catalog: "subsidiaries", action: "update" })
     @HttpCode(200)
     @ApiOperation({ summary: "Editar subsidiaria." })
     @ApiBody({ type: UpdateSubsidiaryDto })
@@ -69,6 +73,7 @@ export class SubsidiariesController {
      */
     @Patch("items/:itemPublicId/status")
     @RouteSecurity("permission")
+    @RequirePermission({ kind: "catalog", catalog: "subsidiaries", action: "status" })
     @HttpCode(200)
     @ApiOperation({ summary: "Cambiar estado de una subsidiaria." })
     @ApiBody({ type: UpdateCatalogItemStatusDto })

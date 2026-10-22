@@ -3,6 +3,7 @@ import { ApiBody, ApiOperation, ApiTags } from "@nestjs/swagger";
 
 import type { CookieRequest } from "../../../common/security/cookie-request.type.js";
 import { SESSION_COOKIE_NAME } from "../../../common/security/http-security.constants.js";
+import { RequirePermission } from "../../../common/security/require-permission.decorator.js";
 import { RouteSecurity } from "../../../common/security/route-security.decorator.js";
 import { CatalogsService } from "./catalogs.service.js";
 import { CreateCatalogItemDto, ListCatalogItemsQueryDto, UpdateCatalogItemDto, UpdateCatalogItemStatusDto } from "./dto/catalog-items.dto.js";
@@ -22,6 +23,7 @@ export class CatalogsController {
     /** Lista valores del catálogo indicado. El módulo de la query decide el permiso de lectura. */
     @Get(":catalogCode/items")
     @RouteSecurity("permission")
+    @RequirePermission({ kind: "catalog", action: "read" })
     @ApiOperation({ summary: "Listar valores de un catálogo administrativo." })
     async list(@Param("catalogCode") catalogCode: string, @Query() query: ListCatalogItemsQueryDto, @Req() request: CookieRequest) {
         return this.catalogs.listCatalogItems(request.cookies[SESSION_COOKIE_NAME], catalogCode, query);
@@ -30,6 +32,7 @@ export class CatalogsController {
     /** Crea un valor nativo. IP y user agent viajan solo a la auditoría. */
     @Post(":catalogCode/items")
     @RouteSecurity("permission")
+    @RequirePermission({ kind: "catalog", action: "create" })
     @ApiOperation({ summary: "Crear valor de catálogo administrativo." })
     @ApiBody({ type: CreateCatalogItemDto })
     async create(@Param("catalogCode") catalogCode: string, @Body() body: CreateCatalogItemDto, @Req() request: CookieRequest, @Headers("user-agent") userAgent?: string) {
@@ -40,6 +43,7 @@ export class CatalogsController {
     // eslint-disable-next-line max-params -- Handler Nest: los parametros vienen de decoradores HTTP separados.
     @Patch(":catalogCode/items/:itemPublicId")
     @RouteSecurity("permission")
+    @RequirePermission({ kind: "catalog", action: "update" })
     @HttpCode(200)
     @ApiOperation({ summary: "Editar valor de catálogo administrativo." })
     @ApiBody({ type: UpdateCatalogItemDto })
@@ -51,6 +55,7 @@ export class CatalogsController {
     // eslint-disable-next-line max-params -- Handler Nest: los parametros vienen de decoradores HTTP separados.
     @Patch(":catalogCode/items/:itemPublicId/status")
     @RouteSecurity("permission")
+    @RequirePermission({ kind: "catalog", action: "status" })
     @HttpCode(200)
     @ApiOperation({ summary: "Cambiar estado de un valor de catálogo administrativo." })
     @ApiBody({ type: UpdateCatalogItemStatusDto })

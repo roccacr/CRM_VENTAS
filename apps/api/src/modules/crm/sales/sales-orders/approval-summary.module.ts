@@ -2,6 +2,7 @@ import { Controller, Get, Header, Inject, Module, Req } from "@nestjs/common";
 
 import type { CookieRequest } from "../../../../common/security/cookie-request.type.js";
 import { SESSION_COOKIE_NAME } from "../../../../common/security/http-security.constants.js";
+import { RequirePermission } from "../../../../common/security/require-permission.decorator.js";
 import { RouteSecurity } from "../../../../common/security/route-security.decorator.js";
 import { IdentityModule } from "../../identity/identity.module.js";
 import { ApprovalSummaryRepository } from "./approval-summary.repository.js";
@@ -16,6 +17,7 @@ export class ApprovalSummaryController {
     /** Aggregate response shared by all configured sources. */
     @Get("summary")
     @RouteSecurity("permission")
+    @RequirePermission({ kind: "all", codes: ["formalizacion.home.approvals.read"] })
     @Header("Cache-Control", "no-store")
     summary(@Req() request: CookieRequest) {
         return this.service.summary(request.cookies[SESSION_COOKIE_NAME]);

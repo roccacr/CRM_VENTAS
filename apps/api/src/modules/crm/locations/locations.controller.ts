@@ -9,6 +9,7 @@ import { ApiBody, ApiOperation, ApiTags } from "@nestjs/swagger";
 
 import type { CookieRequest } from "../../../common/security/cookie-request.type.js";
 import { SESSION_COOKIE_NAME } from "../../../common/security/http-security.constants.js";
+import { RequirePermission } from "../../../common/security/require-permission.decorator.js";
 import { RouteSecurity } from "../../../common/security/route-security.decorator.js";
 import { CreateCatalogItemDto, ListCatalogItemsQueryDto, UpdateCatalogItemDto, UpdateCatalogItemStatusDto } from "../catalogs/dto/catalog-items.dto.js";
 import { LocationsService } from "./locations.service.js";
@@ -29,6 +30,7 @@ export class LocationsController {
      */
     @Get("items")
     @RouteSecurity("permission")
+    @RequirePermission({ kind: "catalog", catalog: "locations", action: "read" })
     @ApiOperation({ summary: "Listar ubicaciones." })
     async list(@Query() query: ListCatalogItemsQueryDto, @Req() request: CookieRequest) {
         return this.catalogs.listCatalogItems(request.cookies[SESSION_COOKIE_NAME], "locations", query);
@@ -41,6 +43,7 @@ export class LocationsController {
      */
     @Post("items")
     @RouteSecurity("permission")
+    @RequirePermission({ kind: "catalog", catalog: "locations", action: "create" })
     @ApiOperation({ summary: "Crear ubicación." })
     @ApiBody({ type: CreateCatalogItemDto })
     async create(@Body() body: CreateCatalogItemDto, @Req() request: CookieRequest, @Headers("user-agent") userAgent?: string) {
@@ -54,6 +57,7 @@ export class LocationsController {
      */
     @Patch("items/:itemPublicId")
     @RouteSecurity("permission")
+    @RequirePermission({ kind: "catalog", catalog: "locations", action: "update" })
     @HttpCode(200)
     @ApiOperation({ summary: "Editar ubicación." })
     @ApiBody({ type: UpdateCatalogItemDto })
@@ -68,6 +72,7 @@ export class LocationsController {
      */
     @Patch("items/:itemPublicId/status")
     @RouteSecurity("permission")
+    @RequirePermission({ kind: "catalog", catalog: "locations", action: "status" })
     @HttpCode(200)
     @ApiOperation({ summary: "Cambiar estado de una ubicación." })
     @ApiBody({ type: UpdateCatalogItemStatusDto })

@@ -9,6 +9,7 @@ import { ApiBody, ApiOperation, ApiTags } from "@nestjs/swagger";
 
 import type { CookieRequest } from "../../../common/security/cookie-request.type.js";
 import { SESSION_COOKIE_NAME } from "../../../common/security/http-security.constants.js";
+import { RequirePermission } from "../../../common/security/require-permission.decorator.js";
 import { RouteSecurity } from "../../../common/security/route-security.decorator.js";
 import { CreateCatalogItemDto, ListCatalogItemsQueryDto, UpdateCatalogItemDto, UpdateCatalogItemStatusDto } from "../catalogs/dto/catalog-items.dto.js";
 import { ClassesService } from "./classes.service.js";
@@ -29,6 +30,7 @@ export class ClassesController {
      */
     @Get("items")
     @RouteSecurity("permission")
+    @RequirePermission({ kind: "catalog", catalog: "classes", action: "read" })
     @ApiOperation({ summary: "Listar clases." })
     async list(@Query() query: ListCatalogItemsQueryDto, @Req() request: CookieRequest) {
         return this.catalogs.listCatalogItems(request.cookies[SESSION_COOKIE_NAME], "classes", query);
@@ -41,6 +43,7 @@ export class ClassesController {
      */
     @Post("items")
     @RouteSecurity("permission")
+    @RequirePermission({ kind: "catalog", catalog: "classes", action: "create" })
     @ApiOperation({ summary: "Crear clase." })
     @ApiBody({ type: CreateCatalogItemDto })
     async create(@Body() body: CreateCatalogItemDto, @Req() request: CookieRequest, @Headers("user-agent") userAgent?: string) {
@@ -54,6 +57,7 @@ export class ClassesController {
      */
     @Patch("items/:itemPublicId")
     @RouteSecurity("permission")
+    @RequirePermission({ kind: "catalog", catalog: "classes", action: "update" })
     @HttpCode(200)
     @ApiOperation({ summary: "Editar clase." })
     @ApiBody({ type: UpdateCatalogItemDto })
@@ -68,6 +72,7 @@ export class ClassesController {
      */
     @Patch("items/:itemPublicId/status")
     @RouteSecurity("permission")
+    @RequirePermission({ kind: "catalog", catalog: "classes", action: "status" })
     @HttpCode(200)
     @ApiOperation({ summary: "Cambiar estado de una clase." })
     @ApiBody({ type: UpdateCatalogItemStatusDto })

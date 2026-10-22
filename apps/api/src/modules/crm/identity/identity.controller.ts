@@ -6,6 +6,7 @@ import type { FastifyReply } from "fastify";
 import type { CookieRequest } from "../../../common/security/cookie-request.type.js";
 import { createSignedCsrfToken, isValidSignedCsrfToken } from "../../../common/security/csrf-token.js";
 import { CSRF_COOKIE_NAME, MICROSOFT_OIDC_CHALLENGE_COOKIE_NAME, REFRESH_COOKIE_NAME, ROOT_COOKIE_PATH, SESSION_COOKIE_NAME } from "../../../common/security/http-security.constants.js";
+import { RequirePermission } from "../../../common/security/require-permission.decorator.js";
 import { RouteSecurity } from "../../../common/security/route-security.decorator.js";
 import { CompleteLocalResetDto, LocalLoginDto, RequestLocalResetDto } from "./dto/local-auth.dto.js";
 import { MicrosoftCallbackDto } from "./dto/microsoft-auth.dto.js";
@@ -108,6 +109,7 @@ export class IdentityController {
      */
     @Get(IDENTITY_USERS_ROUTE)
     @RouteSecurity("permission")
+    @RequirePermission({ kind: "all", codes: ["user.view_list"] })
     @ApiOperation({ summary: "Listar usuarios del sistema con filtros y paginacion." })
     async users(@Query() query: ListSystemUsersQueryDto, @Req() request: CookieRequest) {
         return this.identity.listSystemUsers(request.cookies[SESSION_COOKIE_NAME], query);
@@ -118,6 +120,7 @@ export class IdentityController {
      */
     @Post(IDENTITY_USERS_ROUTE)
     @RouteSecurity("permission")
+    @RequirePermission({ kind: "all", codes: ["user.create", "role.assign"] })
     @ApiOperation({ summary: "Crear usuario interno del sistema.", description: "Requiere user.create y role.assign para asignar roles o modulos iniciales; una clave inicial requiere ademas user.assign_password." })
     @ApiBody({ type: CreateSystemUserDto })
     async createUser(@Body() body: CreateSystemUserDto, @Req() request: CookieRequest, @Headers("user-agent") userAgent?: string) {
@@ -129,6 +132,7 @@ export class IdentityController {
      */
     @Patch(IDENTITY_USER_DETAIL_ROUTE)
     @RouteSecurity("permission")
+    @RequirePermission({ kind: "all", codes: ["user.update"] })
     @HttpCode(200)
     @ApiOperation({ summary: "Editar usuario interno del sistema.", description: "Requiere user.update. Cambiar roles o modulos requiere ademas role.assign. No permite autoedicion administrativa." })
     @ApiBody({ type: UpdateSystemUserDto })
@@ -141,6 +145,7 @@ export class IdentityController {
      */
     @Patch(IDENTITY_USER_STATUS_ROUTE)
     @RouteSecurity("permission")
+    @RequirePermission({ kind: "user-status" })
     @HttpCode(200)
     @ApiOperation({ summary: "Cambiar estado operativo de un usuario.", description: "Activar requiere user.activate; bloquear o inactivar requiere user.deactivate. No permite cambiar el estado propio." })
     @ApiBody({ type: UpdateSystemUserStatusDto })
@@ -153,6 +158,7 @@ export class IdentityController {
      */
     @Get(IDENTITY_USER_DETAIL_ROUTE)
     @RouteSecurity("permission")
+    @RequirePermission({ kind: "all", codes: ["user.view_detail"] })
     @ApiOperation({ summary: "Consultar detalle administrativo de usuario." })
     async userDetail(@Param("userPublicId") userPublicId: string, @Req() request: CookieRequest) {
         return this.identity.getSystemUserDetail(request.cookies[SESSION_COOKIE_NAME], userPublicId);

@@ -35,10 +35,18 @@ const COOKIE_SECRET = "http-authorization-test-cookie-secret";
 @Controller("synthetic-security")
 class SecurityProbeController {
     static authenticatedCalls = 0;
+    static permissionCalls = 0;
     constructor(@Inject(IdentityService) private readonly identity: IdentityService) {}
 
     @Get("unknown")
     unknown() {
+        return { exposed: true };
+    }
+
+    @Get("missing-permission")
+    @RouteSecurity("permission")
+    missingPermission() {
+        SecurityProbeController.permissionCalls++;
         return { exposed: true };
     }
 
@@ -179,6 +187,31 @@ describe("identity HTTP authorization with real services and CSRF, persistence o
     }
 
     describe.each(endpoints)("$name", (endpoint) => {
+        it("rejects before entering the domain service", async () => {
+            const identity = app.get(IdentityService);
+            const access = app.get(IdentityAccessManagementService);
+            const methods = [
+                vi.spyOn(identity, "listSystemUsers"),
+                vi.spyOn(identity, "getSystemUserDetail"),
+                vi.spyOn(identity, "createSystemUser"),
+                vi.spyOn(identity, "updateSystemUser"),
+                vi.spyOn(identity, "updateSystemUserStatus"),
+                vi.spyOn(access, "readSecurityCatalog"),
+                vi.spyOn(access, "readRolePermissions"),
+                vi.spyOn(access, "updateRole"),
+                vi.spyOn(access, "replaceRolePermissions"),
+                vi.spyOn(access, "deleteRole"),
+                vi.spyOn(access, "readUserAccess"),
+                vi.spyOn(access, "replaceUserAccess"),
+            ];
+            try {
+                expect((await request(endpoint)).statusCode).toBe(403);
+                for (const method of methods) expect(method).not.toHaveBeenCalled();
+                for (const call of businessCalls) expect(call).not.toHaveBeenCalled();
+            } finally {
+                for (const method of methods) method.mockRestore();
+            }
+        });
         it.each(["missing", "wrong", "deny", "owner-label"] as const)("rejects %s permissions without persistence calls", async (mode) => {
             const profiles = { missing: createProfile(), wrong: createProfile(["lead.read"]), deny: createProfile(endpoint.permissions, "deny"), "owner-label": { ...createProfile(), roles: [{ code: "owner", name: "Owner", status: "active" }] } };
             profile = profiles[mode];
@@ -229,6 +262,13 @@ describe("identity HTTP authorization with real services and CSRF, persistence o
         expect(response.statusCode).toBe(403);
         expect(repository.findBySessionTokenHash).not.toHaveBeenCalled();
         expect(readLimit.enforceAuthenticatedReadLimit).not.toHaveBeenCalled();
+    });
+
+    it("fails closed before a permission handler with no descriptor", async () => {
+        const before = SecurityProbeController.permissionCalls;
+        const response = await app.inject({ method: "GET", url: "/synthetic-security/missing-permission", headers: { cookie: `${SESSION_COOKIE_NAME}=${SESSION_TOKEN}` } });
+        expect(response.statusCode).toBe(403);
+        expect(SecurityProbeController.permissionCalls).toBe(before);
     });
 
     it("skips authentication on explicit public routes, including invalid access cookies", async () => {
