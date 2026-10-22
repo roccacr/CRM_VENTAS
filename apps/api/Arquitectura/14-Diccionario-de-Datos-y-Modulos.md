@@ -1,5 +1,10 @@
 # 14 - Diccionario de Datos y Modulos
 
+Ampliacion autorizada de ordenes de venta (20/10/2026):
+[modelo y alcance](38-Ordenes-Venta-Estados-Auditoria.md) y
+[diccionario fisico aplicado](39-Diccionario-Ordenes-Venta.md).
+El alcance es esquema y persistencia interna; no habilita endpoints comerciales.
+
 ## Veredicto
 
 El API debe mantener un diccionario de datos vivo.

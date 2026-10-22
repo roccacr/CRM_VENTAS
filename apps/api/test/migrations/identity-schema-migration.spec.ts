@@ -80,6 +80,8 @@ describe("identity schema migration parser", () => {
             "202610130018_user_assign_password_permission",
             "202610200019_formalization_supervisor_role",
             "202610200020_formalization_home_banner",
+            "202610200021_sales_orders",
+            "202610200022_sales_order_utc_defaults",
         ]);
     });
 

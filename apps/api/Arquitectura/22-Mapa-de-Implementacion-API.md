@@ -1,5 +1,10 @@
 # 22 - Mapa de Implementacion API
 
+Actualizacion autorizada 20/10/2026: el usuario habilito el esquema de ordenes
+de venta y su persistencia interna de estados/aprobaciones. Ver documento 38.
+No se registran endpoints, reglas operativas completas ni integraciones de
+escritura; el resto del alcance futuro descrito aqui se conserva.
+
 ## Proposito
 
 Este documento responde una pregunta practica:

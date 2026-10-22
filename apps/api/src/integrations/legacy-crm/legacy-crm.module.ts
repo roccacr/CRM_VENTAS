@@ -15,11 +15,13 @@ import { CATALOG_FALLBACK_READER } from "../../modules/crm/catalogs/catalog-fall
 import { CLASSES_LEGACY_ACCESS } from "../../modules/crm/classes/classes-legacy.port.js";
 import { LOCATIONS_LEGACY_ACCESS } from "../../modules/crm/locations/locations-legacy.port.js";
 import { PROJECTS_LEGACY_ACCESS } from "../../modules/crm/projects/projects-legacy.port.js";
+import { APPROVAL_LEGACY_READER } from "../../modules/crm/sales/sales-orders/approval-summary.port.js";
 import { SUBSIDIARIES_LEGACY_ACCESS } from "../../modules/crm/subsidiaries/subsidiaries-legacy.port.js";
 import { UNIT_FILES_LEGACY } from "../../modules/crm/unit-files/unit-files-legacy.port.js";
 import { LegacyBrokersWriter } from "./brokers/legacy-brokers.writer.js";
 import { LegacyCampaignsWriter } from "./campaigns/legacy-campaigns.writer.js";
 import { LegacyClassesWriter } from "./classes/legacy-classes.writer.js";
+import { LegacyApprovalReader } from "./legacy-approval.reader.js";
 import { LegacyCatalogReader } from "./legacy-catalog.reader.js";
 import { createLegacyCrmDatabase, LEGACY_CRM_DATABASE } from "./legacy-crm.config.js";
 import { isLegacyCrmEnabled } from "./legacy-crm-access.js";
@@ -41,6 +43,7 @@ import { LegacyUnitFilesReader } from "./unit-files/legacy-unit-files.reader.js"
             useFactory: (config: ConfigService) => (isLegacyCrmEnabled(config) ? createLegacyCrmDatabase(config) : null),
         },
         LegacyCrmDatabaseService,
+        { provide: APPROVAL_LEGACY_READER, useClass: LegacyApprovalReader },
         { provide: CATALOG_FALLBACK_READER, useClass: LegacyCatalogReader },
         { provide: PROJECTS_LEGACY_ACCESS, useClass: LegacyProjectsWriter },
         { provide: CAMPAIGNS_LEGACY_ACCESS, useClass: LegacyCampaignsWriter },
@@ -50,6 +53,6 @@ import { LegacyUnitFilesReader } from "./unit-files/legacy-unit-files.reader.js"
         { provide: BROKERS_LEGACY_ACCESS, useClass: LegacyBrokersWriter },
         { provide: UNIT_FILES_LEGACY, useClass: LegacyUnitFilesReader },
     ],
-    exports: [LegacyCrmDatabaseService, CATALOG_FALLBACK_READER, PROJECTS_LEGACY_ACCESS, CAMPAIGNS_LEGACY_ACCESS, CLASSES_LEGACY_ACCESS, LOCATIONS_LEGACY_ACCESS, SUBSIDIARIES_LEGACY_ACCESS, BROKERS_LEGACY_ACCESS, UNIT_FILES_LEGACY],
+    exports: [APPROVAL_LEGACY_READER, LegacyCrmDatabaseService, CATALOG_FALLBACK_READER, PROJECTS_LEGACY_ACCESS, CAMPAIGNS_LEGACY_ACCESS, CLASSES_LEGACY_ACCESS, LOCATIONS_LEGACY_ACCESS, SUBSIDIARIES_LEGACY_ACCESS, BROKERS_LEGACY_ACCESS, UNIT_FILES_LEGACY],
 })
 export class LegacyCrmModule {}

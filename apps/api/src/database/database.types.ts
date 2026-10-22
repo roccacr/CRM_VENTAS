@@ -4,11 +4,12 @@ import type { CrmBrokerExternalReferenceTable, CrmBrokerTable } from "../modules
 import type { CrmCampaignExternalReferenceTable, CrmCampaignTable } from "../modules/crm/campaigns/campaigns.tables.js";
 import type { CrmClassExternalReferenceTable, CrmClassTable } from "../modules/crm/classes/classes.tables.js";
 import type { CrmLocationExternalReferenceTable, CrmLocationTable } from "../modules/crm/locations/locations.tables.js";
+import type { AuditSalesOrderApprovalEventTable, AuditSalesOrderChangeTable, AuditSalesOrderStateEventTable, ConfSalesOrderApprovalTypeTable, ConfSalesOrderStateTable, CrmSalesOrderApprovalTable, CrmSalesOrderExternalReferenceTable, CrmSalesOrderTable, IntSalesOrderSourceSnapshotTable } from "../modules/crm/sales/sales-orders/sales-orders.tables.js";
 import type { CrmSubsidiaryExternalReferenceTable, CrmSubsidiaryTable } from "../modules/crm/subsidiaries/subsidiaries.tables.js";
 import type { CrmUnitFileExternalReferenceTable, CrmUnitFileTable } from "../modules/crm/unit-files/unit-files.tables.js";
 
 /**
- * Mapa de tablas Kysely para el esquema de identidad aprobado en CRM_THINK_V2.
+ * Mapa de tablas Kysely para identidad y dominios CRM implementados en CRM_THINK_V2.
  *
  * Este archivo replica nombres fisicos SQL para que los repositories queden
  * tipados. No es el diccionario de negocio. El significado de columnas y los
@@ -328,6 +329,15 @@ export interface AuditSecurityEventTable {
 }
 
 export interface CrmDatabase {
+    conf_sales_order_state: ConfSalesOrderStateTable;
+    conf_sales_order_approval_type: ConfSalesOrderApprovalTypeTable;
+    crm_sales_order: CrmSalesOrderTable;
+    crm_sales_order_external_reference: CrmSalesOrderExternalReferenceTable;
+    crm_sales_order_approval: CrmSalesOrderApprovalTable;
+    audit_sales_order_state_event: AuditSalesOrderStateEventTable;
+    audit_sales_order_approval_event: AuditSalesOrderApprovalEventTable;
+    int_sales_order_source_snapshot: IntSalesOrderSourceSnapshotTable;
+    audit_sales_order_change: AuditSalesOrderChangeTable;
     sec_user: SecUserTable;
     sec_auth_identity: SecAuthIdentityTable;
     sec_auth_session: SecAuthSessionTable;

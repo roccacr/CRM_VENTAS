@@ -6,6 +6,19 @@ import { resolveHighestPermissionScope } from "../../src/modules/crm/permissions
 describe("EffectivePermissionService", () => {
     const service = new EffectivePermissionService();
 
+    it("resuelve el banner de aprobaciones por rol o grant directo, sin otorgar acciones adicionales", () => {
+        const code = "formalizacion.home.approvals.read";
+        const roleGrant = service.calculate({ rolePermissions: [{ code, scope: "all_areas" }], overrides: [] });
+        const directGrant = service.calculate({ rolePermissions: [], overrides: [{ code, scope: "self", effect: "allow" }] });
+        const denied = service.calculate({ rolePermissions: [{ code, scope: "all_areas" }], overrides: [{ code, scope: "self", effect: "deny" }] });
+        expect(roleGrant.can(code)).toBe(true);
+        expect(roleGrant.permissions).toEqual([{ code, scope: "all_areas", effect: "allow", source: "role" }]);
+        expect(directGrant.can(code)).toBe(true);
+        expect(directGrant.permissions).toEqual([{ code, scope: "self", effect: "allow", source: "override" }]);
+        expect(denied.can(code)).toBe(false);
+        expect(service.calculate({ rolePermissions: [], overrides: [] }).can(code)).toBe(false);
+    });
+
     it("mantiene permisos de rol cuando no existe deny personal", () => {
         const result = service.calculate({
             rolePermissions: [{ code: "user.view_self", scope: "self" }],

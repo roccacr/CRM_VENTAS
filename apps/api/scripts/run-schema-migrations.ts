@@ -23,6 +23,8 @@ import { formalizationHomeRoleMigration } from "../migrations/schema-only/202610
 import { userAssignPasswordPermissionMigration } from "../migrations/schema-only/202610130018_user_assign_password_permission.js";
 import { formalizationSupervisorRoleMigration } from "../migrations/schema-only/202610200019_formalization_supervisor_role.js";
 import { formalizationHomeBannerMigration } from "../migrations/schema-only/202610200020_formalization_home_banner.js";
+import { salesOrdersMigration } from "../migrations/schema-only/202610200021_sales_orders.js";
+import { salesOrderUtcDefaultsMigration } from "../migrations/schema-only/202610200022_sales_order_utc_defaults.js";
 import { addDatabaseTlsIssues, booleanEnvSchema, tcpPortSchema } from "../src/config/database-env.schema.js";
 import { APPROVED_DATABASE_NAME } from "../src/config/product.constants.js";
 import { buildMysqlPoolOptions } from "../src/database/mysql-pool-options.js";
@@ -56,6 +58,8 @@ export const schemaMigrations: Migration[] = [
     userAssignPasswordPermissionMigration,
     formalizationSupervisorRoleMigration,
     formalizationHomeBannerMigration,
+    salesOrdersMigration,
+    salesOrderUtcDefaultsMigration,
 ];
 
 /** Targeted cutovers avoid replaying unrelated security repairs after a deliberate ledger reset. */
