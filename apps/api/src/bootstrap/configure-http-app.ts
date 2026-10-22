@@ -5,6 +5,7 @@ import { ConfigService } from "@nestjs/config";
 import type { NestFastifyApplication } from "@nestjs/platform-fastify";
 import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
 
+import { SanitizedErrorFilter } from "../common/filters/sanitized-error.filter.js";
 import { CORS_ALLOWED_HEADERS, CORS_ALLOWED_METHODS, HSTS_MAX_AGE_SECONDS, IDENTITY_CACHE_CONTROL_HEADER, IDENTITY_NO_STORE_CACHE_CONTROL, OPENAPI_DESCRIPTION, OPENAPI_DOC_PATH, OPENAPI_TAG, OPENAPI_TITLE, OPENAPI_VERSION, SESSION_COOKIE_NAME } from "../common/security/http-security.constants.js";
 import { registerIdentityRateLimit } from "../modules/crm/identity/identity-rate-limit.js";
 import { IDENTITY_CONTROLLER_PATH } from "../modules/crm/identity/identity-route.constants.js";
@@ -242,7 +243,8 @@ const registerOpenApiDocs = (app: NestFastifyApplication, config: ConfigService)
  * 5. Aplicar rate limit de identidad antes de rutas sensibles.
  * 6. Restringir CORS al frontend aprobado.
  * 7. Activar validacion global.
- * 8. Publicar OpenAPI de identidad si esta habilitado.
+ * 8. Sanitizar errores globales sin alterar contratos 4xx.
+ * 9. Publicar OpenAPI de identidad si esta habilitado.
  *
  * La funcion publica solo orquesta. Si aparece un nuevo concern, debe entrar
  * como modulo/funcion enfocada, no como logica inline mezclada.
@@ -257,5 +259,6 @@ export const configureHttpApp = async (app: NestFastifyApplication): Promise<voi
     await registerIdentityRateLimit(app, config, auditHashSecret);
     configureCors(app, frontendOrigins);
     registerGlobalValidation(app);
+    app.useGlobalFilters(new SanitizedErrorFilter(app.getHttpAdapter()));
     registerOpenApiDocs(app, config);
 };

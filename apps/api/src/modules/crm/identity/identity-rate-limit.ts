@@ -182,9 +182,14 @@ const hasExceededLimiterPair = async (request: FastifyRequest, limiters: Identit
 };
 
 /**
- * Responde de forma neutral cuando reset local excede limite.
+ * Conserva la indisponibilidad uniforme del reset sin ejecutar el servicio.
  */
-const sendNeutralResetLimitResponse = (reply: FastifyReply): FastifyReply => reply.code(202).send({ accepted: true });
+const sendNeutralResetLimitResponse = (reply: FastifyReply): FastifyReply =>
+    reply.code(503).send({
+        error: "Service Unavailable",
+        message: "Servicio no disponible.",
+        statusCode: 503,
+    });
 
 /**
  * Responde 429 para login local sin revelar si la cuenta existe.

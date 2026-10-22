@@ -87,7 +87,7 @@ Estos endpoints son nombres de contrato conceptual para el runtime minimo de ide
 | `POST` | `/identity/microsoft/start` | Iniciar login Microsoft con PKCE/state. |
 | `GET` | `/identity/microsoft/callback` | Recibir callback Microsoft y crear sesion backend. |
 | `POST` | `/identity/local/login` | Login local solo si la identidad local esta activa. |
-| `POST` | `/identity/local/request-reset` | Solicitar activacion/reset seguro de clave local. |
+| `POST` | `/identity/local/request-reset` | Deshabilitado: 503 uniforme mientras el canal de entrega esta pospuesto. |
 | `POST` | `/identity/local/complete-reset` | Completar activacion/reset seguro de clave local. |
 
 Reglas:
@@ -459,6 +459,7 @@ El rol X no tiene permiso Y por tabla Z.
 - Password local con minimo 12 y maximo 128 caracteres antes de hashear.
 - Token opaco de activacion/reset local con minimo 32 y maximo 256 caracteres.
 - `POST /identity/local/login` y `POST /identity/local/request-reset` deben tener rate limit local por proceso con dos contadores independientes por endpoint: IP efectiva y HMAC del correo. Si cualquiera se excede, el request no llega al caso de uso.
+- S01: con CSRF y DTO validos, `request-reset` responde `503` con `{ "statusCode": 503, "error": "Service Unavailable", "message": "Servicio no disponible." }`, incluso al exceder la cuota. Es un mensaje publico estatico; el filtro sanitiza la excepcion especifica del servicio. No consulta existencia de correo, no emite tokens y no afirma aceptacion ni entrega. El proveedor de correo esta pospuesto. CSRF/validacion conservan sus errores; `complete-reset` conserva la finalizacion con tokens existentes de un solo uso.
 - `POST /identity/local/complete-reset` debe tener rate limit por IP efectiva y HMAC del token opaco de reset, sin guardar el token crudo.
 - El rate limit actual es por memoria de proceso; si se opera mas de una instancia del API detras de un balanceador, se debe configurar un store compartido antes de considerar equivalentes las cuotas globales.
 - Las cuotas por IP y por correo deben configurarse por separado: `LOCAL_LOGIN_RATE_LIMIT_IP_MAX`, `LOCAL_LOGIN_RATE_LIMIT_EMAIL_MAX`, `LOCAL_RESET_RATE_LIMIT_IP_MAX` y `LOCAL_RESET_RATE_LIMIT_EMAIL_MAX`. El valor por IP debe ser mayor para soportar oficinas con NAT o proxy compartido.

@@ -4,8 +4,9 @@
  * Queda apagada si no hay nombre de base. Cuando se abre, reutiliza las
  * credenciales `DB_*` del entorno, pero con otro pool y otra base. La cuenta
  * compartida no es de solo lectura a nivel de privilegio, así que cada
- * conexión de este pool se marca `READ ONLY` antes de usarse. Projects sincroniza
- * escrituras autorizadas mediante la transacción nativa, nunca mediante este pool.
+ * conexión de este pool se marca `READ ONLY` antes de usarse. Los seis catalogos
+ * solo sincronizan escrituras con el opt-in productivo de escritura separado,
+ * mediante la transacción nativa, nunca mediante este pool.
  */
 import type { ConfigService } from "@nestjs/config";
 import { Kysely, MysqlDialect } from "kysely";

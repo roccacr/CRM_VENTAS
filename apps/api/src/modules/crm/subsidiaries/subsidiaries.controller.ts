@@ -9,6 +9,7 @@ import { ApiBody, ApiOperation, ApiTags } from "@nestjs/swagger";
 
 import type { CookieRequest } from "../../../common/security/cookie-request.type.js";
 import { SESSION_COOKIE_NAME } from "../../../common/security/http-security.constants.js";
+import { RouteSecurity } from "../../../common/security/route-security.decorator.js";
 import { ListCatalogItemsQueryDto, UpdateCatalogItemStatusDto } from "../catalogs/dto/catalog-items.dto.js";
 import { CreateSubsidiaryDto, UpdateSubsidiaryDto } from "./subsidiaries.dto.js";
 import { SubsidiariesService } from "./subsidiaries.service.js";
@@ -28,6 +29,7 @@ export class SubsidiariesController {
      * La cookie identifica la sesión. El permiso de lectura lo resuelve el servicio.
      */
     @Get("items")
+    @RouteSecurity("permission")
     @ApiOperation({ summary: "Listar subsidiarias." })
     async list(@Query() query: ListCatalogItemsQueryDto, @Req() request: CookieRequest) {
         return this.catalogs.listCatalogItems(request.cookies[SESSION_COOKIE_NAME], "subsidiaries", query);
@@ -39,6 +41,7 @@ export class SubsidiariesController {
      * IP y user agent viajan solo para la auditoría. No se guardan como dato de la subsidiaria.
      */
     @Post("items")
+    @RouteSecurity("permission")
     @ApiOperation({ summary: "Crear subsidiaria." })
     @ApiBody({ type: CreateSubsidiaryDto })
     async create(@Body() body: CreateSubsidiaryDto, @Req() request: CookieRequest, @Headers("user-agent") userAgent?: string) {
@@ -51,6 +54,7 @@ export class SubsidiariesController {
      * Un `itemPublicId` con forma `legacy:subsidiaries:N` promueve esa fila al CRM nuevo.
      */
     @Patch("items/:itemPublicId")
+    @RouteSecurity("permission")
     @HttpCode(200)
     @ApiOperation({ summary: "Editar subsidiaria." })
     @ApiBody({ type: UpdateSubsidiaryDto })
@@ -64,6 +68,7 @@ export class SubsidiariesController {
      * El motivo va en el cuerpo porque el cambio queda auditado en la misma transacción.
      */
     @Patch("items/:itemPublicId/status")
+    @RouteSecurity("permission")
     @HttpCode(200)
     @ApiOperation({ summary: "Cambiar estado de una subsidiaria." })
     @ApiBody({ type: UpdateCatalogItemStatusDto })

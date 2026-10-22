@@ -294,7 +294,7 @@ Cada endpoint sensible tiene **dos contadores independientes**:
 
 **Detalle de seguridad:** Las llaves de rate limit nunca guardan el correo o token en texto plano. Usan HMAC-SHA256 con `AUDIT_HASH_SECRET`. Si alguien lee la memoria del proceso, no ve correos reales.
 
-**Respuestas neutrales:** El endpoint de reset (`request-reset`) responde `202 Accepted` incluso cuando excede el rate limit. Esto evita que un atacante sepa si el correo existe al observar diferencias entre 429 y 202.
+**Reset deshabilitado (S01):** El canal de entrega de correo esta pospuesto. Con CSRF y DTO validos, `request-reset` responde `503 Service Unavailable` con el mensaje publico estatico `Servicio no disponible.`, incluso cuando excede el rate limit. El filtro sanitiza el detalle especifico de la excepcion del servicio. No consulta si existe el correo, no emite tokens ni afirma aceptacion o entrega. Los contadores por IP y HMAC siguen activos. `complete-reset` conserva el comportamiento de tokens existentes de un solo uso.
 
 ---
 

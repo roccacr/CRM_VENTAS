@@ -9,9 +9,11 @@ import { ApiBody, ApiOperation, ApiTags } from "@nestjs/swagger";
 
 import type { CookieRequest } from "../../../common/security/cookie-request.type.js";
 import { SESSION_COOKIE_NAME } from "../../../common/security/http-security.constants.js";
+import { RouteSecurity } from "../../../common/security/route-security.decorator.js";
 import { CreateCatalogItemDto, ListCatalogItemsQueryDto, UpdateCatalogItemDto, UpdateCatalogItemStatusDto } from "../catalogs/dto/catalog-items.dto.js";
 import { ProjectsService } from "./projects.service.js";
 
+/** Expone operaciones de proyectos y delega autorizacion al servicio. */
 @ApiTags("projects")
 @Controller("catalogs/projects")
 export class ProjectsController {
@@ -24,6 +26,7 @@ export class ProjectsController {
      * La cookie identifica la sesión. El permiso de lectura lo resuelve el servicio.
      */
     @Get("items")
+    @RouteSecurity("permission")
     @ApiOperation({ summary: "Listar proyectos." })
     async list(@Query() query: ListCatalogItemsQueryDto, @Req() request: CookieRequest) {
         return this.catalogs.listCatalogItems(request.cookies[SESSION_COOKIE_NAME], "projects", query);
@@ -35,6 +38,7 @@ export class ProjectsController {
      * IP y user agent viajan solo para la auditoría. No se guardan como dato del proyecto.
      */
     @Post("items")
+    @RouteSecurity("permission")
     @ApiOperation({ summary: "Crear proyecto." })
     @ApiBody({ type: CreateCatalogItemDto })
     async create(@Body() body: CreateCatalogItemDto, @Req() request: CookieRequest, @Headers("user-agent") userAgent?: string) {
@@ -47,6 +51,7 @@ export class ProjectsController {
      * Un `itemPublicId` con forma `legacy:projects:N` promueve esa fila al CRM nuevo.
      */
     @Patch("items/:itemPublicId")
+    @RouteSecurity("permission")
     @HttpCode(200)
     @ApiOperation({ summary: "Editar proyecto." })
     @ApiBody({ type: UpdateCatalogItemDto })
@@ -60,6 +65,7 @@ export class ProjectsController {
      * El motivo va en el cuerpo porque el cambio queda auditado en la misma transacción.
      */
     @Patch("items/:itemPublicId/status")
+    @RouteSecurity("permission")
     @HttpCode(200)
     @ApiOperation({ summary: "Cambiar estado de un proyecto." })
     @ApiBody({ type: UpdateCatalogItemStatusDto })

@@ -6,6 +6,7 @@ import { IdentityService, MICROSOFT_ACCOUNT_NOT_AUTHORIZED_MESSAGE } from "../..
 import type { IdentityProfile } from "../../src/modules/crm/identity/identity.types.js";
 import type { IdentityAuditRecorder } from "../../src/modules/crm/identity/identity-audit-recorder.service.js";
 import type { IdentityMicrosoftSessionService } from "../../src/modules/crm/identity/identity-microsoft-session.service.js";
+import { runIdentityRequestScope } from "../../src/modules/crm/identity/identity-request-context.js";
 import type { IdentityTokenService } from "../../src/modules/crm/identity/identity-token.service.js";
 
 /**
@@ -185,6 +186,77 @@ const createIdentityService = () => {
         },
     };
 };
+
+describe("request-local identity profile reuse", () => {
+    it("shares in-flight reads only for the same service and exact token", async () => {
+        const first = createIdentityService();
+        const second = createIdentityService();
+        await runIdentityRequestScope(async () => {
+            await Promise.all([first.service.getCurrentUser("token"), first.service.getCurrentUser("token")]);
+            expect(first.repository.findBySessionTokenHash).toHaveBeenCalledOnce();
+            await first.service.getCurrentUser(" token");
+            await second.service.getCurrentUser("token");
+            expect(first.repository.findBySessionTokenHash).toHaveBeenCalledTimes(2);
+            expect(second.repository.findBySessionTokenHash).toHaveBeenCalledOnce();
+        });
+    });
+
+    it("isolates overlapping requests with the same token and reloads on the next request", async () => {
+        const { service, repository } = createIdentityService();
+        let release!: () => void;
+        const pending = new Promise<void>((resolve) => {
+            release = resolve;
+        });
+        const one = createProfile();
+        const two = createProfile();
+        repository.findBySessionTokenHash.mockReturnValueOnce(pending.then(() => one)).mockResolvedValueOnce(two);
+        const first = runIdentityRequestScope(async () => {
+            const result = service.getCurrentUser("same");
+            await pending;
+            expect(await service.getCurrentUser("same")).toBe(one);
+            return result;
+        });
+        await runIdentityRequestScope(async () => {
+            expect(await service.getCurrentUser("same")).toBe(two);
+            expect(await service.getCurrentUser("same")).toBe(two);
+        });
+        release();
+        expect(await first).toBe(one);
+        expect(repository.findBySessionTokenHash).toHaveBeenCalledTimes(2);
+        await runIdentityRequestScope(() => service.getCurrentUser("same"));
+        expect(repository.findBySessionTokenHash).toHaveBeenCalledTimes(3);
+    });
+
+    it("scopes rejections and never hides next-request revocation or permissionVersion changes", async () => {
+        const { service, repository } = createIdentityService();
+        repository.findBySessionTokenHash.mockResolvedValueOnce(null);
+        await runIdentityRequestScope(async () => {
+            await expect(service.getCurrentUser("same")).rejects.toBeInstanceOf(UnauthorizedException);
+            await expect(service.getCurrentUser("same")).rejects.toBeInstanceOf(UnauthorizedException);
+        });
+        expect(repository.findBySessionTokenHash).toHaveBeenCalledOnce();
+        await runIdentityRequestScope(() => service.getCurrentUser("same"));
+        const stale = createProfile();
+        stale.user.permissionVersion = stale.session.permissionVersion + 1;
+        repository.findBySessionTokenHash.mockResolvedValueOnce(stale);
+        await expect(runIdentityRequestScope(() => service.getCurrentUser("same"))).rejects.toBeInstanceOf(ConflictException);
+        repository.findBySessionTokenHash.mockResolvedValueOnce(null);
+        await expect(runIdentityRequestScope(() => service.getCurrentUser("same"))).rejects.toBeInstanceOf(UnauthorizedException);
+        expect(repository.findBySessionTokenHash).toHaveBeenCalledTimes(4);
+    });
+
+    it("never memoizes getSession or calls outside a request scope", async () => {
+        const { service, repository } = createIdentityService();
+        await runIdentityRequestScope(async () => {
+            await service.getCurrentUser("same");
+            await service.getSession("same");
+            await service.getSession("same");
+        });
+        await service.getCurrentUser("same");
+        await service.getCurrentUser("same");
+        expect(repository.findBySessionTokenHash).toHaveBeenCalledTimes(5);
+    });
+});
 
 /**
  * Perfil minimo autenticado para pruebas de casos de uso.
@@ -610,7 +682,7 @@ describe("IdentityService", () => {
     it("audita la solicitud de reset local usando correo normalizado", async () => {
         const { audit, service } = createIdentityService();
 
-        await service.requestLocalReset({ email: " Usuario@RoccaCR.com " }, "127.0.0.1", "vitest");
+        await expect(service.requestLocalReset({ email: " Usuario@RoccaCR.com " }, "127.0.0.1", "vitest")).rejects.toMatchObject({ status: 503, message: "La recuperacion de clave local no esta disponible." });
 
         expect(audit.recordLocalResetRequested).toHaveBeenCalledWith("usuario@roccacr.com", "127.0.0.1", "vitest");
     });
@@ -622,13 +694,12 @@ describe("IdentityService", () => {
             userId: 20,
         });
 
-        const result = await service.requestLocalReset({ email: "usuario@roccacr.com" }, "127.0.0.1", "vitest");
-
-        expect(result).toEqual({ accepted: true });
+        await expect(service.requestLocalReset({ email: "usuario@roccacr.com" }, "127.0.0.1", "vitest")).rejects.toMatchObject({ status: 503, message: "La recuperacion de clave local no esta disponible." });
+        repository.findResettableLocalIdentity.mockResolvedValue(null);
+        await expect(service.requestLocalReset({ email: "inexistente@roccacr.com" }, "127.0.0.1", "vitest")).rejects.toMatchObject({ status: 503, message: "La recuperacion de clave local no esta disponible." });
         expect(repository.findResettableLocalIdentity).not.toHaveBeenCalled();
         expect(tokens.issueLocalResetToken).not.toHaveBeenCalled();
         expect(repository.createLocalPasswordResetToken).not.toHaveBeenCalled();
-        expect(JSON.stringify(result)).not.toContain("reset-token-no-se-devuelve");
     });
 
     it("rechaza login local bloqueado con respuesta neutral sin crear sesion", async () => {

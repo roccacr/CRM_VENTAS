@@ -5,7 +5,9 @@ import { FastifyAdapter, type NestFastifyApplication } from "@nestjs/platform-fa
 import { Test } from "@nestjs/testing";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
+import { IdentityService } from "../../src/modules/crm/identity/identity.service.js";
 import { UnitFilesController } from "../../src/modules/crm/unit-files/unit-files.controller.js";
+import { UnitFilesRepository } from "../../src/modules/crm/unit-files/unit-files.repository.js";
 import { UnitFilesService } from "../../src/modules/crm/unit-files/unit-files.service.js";
 
 describe("Unit Files HTTP criteria validation without emitted decorator metadata", () => {
@@ -44,5 +46,36 @@ describe("Unit Files HTTP criteria validation without emitted decorator metadata
         expect(result.json()).toMatchObject({ projectIds: ["01M4RCK911NS2ZNCRYPBD40B9W"], kind: "housingType", search: "A", limit: 50 });
         expect((await app.inject({ method: "GET", url: url + "&kind=unknown" })).statusCode).toBe(400);
         expect((await app.inject({ method: "GET", url: "/unit-files/options?moduleCode=administration&kind=code" })).statusCode).toBe(400);
+    });
+});
+
+describe("Unit Files HTTP effective permission enforcement", () => {
+    let app: NestFastifyApplication;
+    const identity = { getCurrentUser: vi.fn() };
+    const repository = { projects: vi.fn(), list: vi.fn(), detail: vi.fn(), findPromotedId: vi.fn(), options: vi.fn(), facets: vi.fn() };
+    beforeAll(async () => {
+        const module = await Test.createTestingModule({ controllers: [UnitFilesController], providers: [UnitFilesService, { provide: IdentityService, useValue: identity }, { provide: UnitFilesRepository, useValue: repository }] }).compile();
+        app = module.createNestApplication<NestFastifyApplication>(new FastifyAdapter(), { logger: false });
+        await app.register(cookie);
+        await app.init();
+        await app.getHttpAdapter().getInstance().ready();
+    });
+    afterAll(async () => {
+        await app.close();
+    });
+    const query = "moduleCode=administration&projectIds=01M4RCK911NS2ZNCRYPBD40B9W";
+    const urls = [`/unit-files?${query}`, "/unit-files/legacy:unit-files:1?moduleCode=administration", `/unit-files/options?${query}&kind=code`, `/unit-files/facets?${query}&kind=code`, "/unit-files/projects?moduleCode=administration"];
+    it.each(urls)("returns 403 for Owner without allow or with explicit deny before data reads: %s", async (url) => {
+        for (const permissions of [
+            [],
+            [
+                { code: "administration.catalog_file.read", effect: "allow" },
+                { code: "administration.catalog_file.read", effect: "deny" },
+            ],
+        ]) {
+            identity.getCurrentUser.mockResolvedValue({ roles: [{ code: "owner", status: "active" }], orgUnits: [], permissions });
+            expect((await app.inject({ method: "GET", url })).statusCode).toBe(403);
+            for (const read of Object.values(repository)) expect(read).not.toHaveBeenCalled();
+        }
     });
 });

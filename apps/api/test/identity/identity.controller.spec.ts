@@ -1,4 +1,4 @@
-import { NotImplementedException, UnauthorizedException } from "@nestjs/common";
+import { NotImplementedException, ServiceUnavailableException, UnauthorizedException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { APP_GUARD } from "@nestjs/core";
 import { FastifyAdapter, type NestFastifyApplication } from "@nestjs/platform-fastify";
@@ -254,7 +254,7 @@ describe("IdentityController", () => {
         identity.getSystemUserDetail.mockRejectedValue(new UnauthorizedException("No autenticado."));
         identity.revokeOwnSession.mockResolvedValue({ success: true });
         vi.mocked(identity.logout).mockResolvedValue({ success: true });
-        vi.mocked(identity.requestLocalReset).mockResolvedValue({ accepted: true });
+        vi.mocked(identity.requestLocalReset).mockRejectedValue(new ServiceUnavailableException("La recuperacion de clave local no esta disponible."));
     });
 
     it("permite CORS con credenciales desde un origin adicional exacto", async () => {
@@ -924,6 +924,31 @@ describe("IdentityController", () => {
         expect(response.headers["cache-control"]).toBe(IDENTITY_NO_STORE_CACHE_CONTROL);
     });
 
+    it("mantiene CSRF obligatorio para solicitar reset deshabilitado", async () => {
+        const response = await app.inject({
+            method: "POST",
+            url: "/identity/local/request-reset",
+            remoteAddress: "10.0.0.90",
+            payload: { email: "csrf-reset@roccacr.com" },
+        });
+
+        expect(response.statusCode).toBe(403);
+        expect(identity.requestLocalReset).not.toHaveBeenCalled();
+    });
+
+    it("mantiene validacion de correo para solicitar reset deshabilitado", async () => {
+        const response = await app.inject({
+            method: "POST",
+            url: "/identity/local/request-reset",
+            headers: createMutableHeaders(),
+            remoteAddress: "10.0.0.91",
+            payload: { email: "correo-invalido" },
+        });
+
+        expect(response.statusCode).toBe(400);
+        expect(identity.requestLocalReset).not.toHaveBeenCalled();
+    });
+
     it("limita reset local y no ejecuta auditoria de servicio cuando se excede", async () => {
         const request = {
             method: "POST",
@@ -937,11 +962,12 @@ describe("IdentityController", () => {
         const firstResponse = await app.inject(request);
         const secondResponse = await app.inject(request);
 
-        expect(firstResponse.statusCode).toBe(202);
+        expect(firstResponse.statusCode).toBe(503);
         expect(firstResponse.headers["cache-control"]).toBe(IDENTITY_NO_STORE_CACHE_CONTROL);
-        expect(secondResponse.statusCode).toBe(202);
+        expect(secondResponse.statusCode).toBe(503);
         expect(secondResponse.headers["cache-control"]).toBe(IDENTITY_NO_STORE_CACHE_CONTROL);
-        expect(JSON.parse(secondResponse.payload)).toEqual({ accepted: true });
+        expect(JSON.parse(firstResponse.payload)).toEqual({ error: "Service Unavailable", message: "Servicio no disponible.", statusCode: 503 });
+        expect(JSON.parse(secondResponse.payload)).toEqual(JSON.parse(firstResponse.payload));
         expect(identity.requestLocalReset).toHaveBeenCalledTimes(1);
     });
 
@@ -965,9 +991,10 @@ describe("IdentityController", () => {
             },
         });
 
-        expect(firstResponse.statusCode).toBe(202);
-        expect(secondResponse.statusCode).toBe(202);
-        expect(JSON.parse(secondResponse.payload)).toEqual({ accepted: true });
+        expect(firstResponse.statusCode).toBe(503);
+        expect(secondResponse.statusCode).toBe(503);
+        expect(JSON.parse(firstResponse.payload)).toEqual({ error: "Service Unavailable", message: "Servicio no disponible.", statusCode: 503 });
+        expect(JSON.parse(secondResponse.payload)).toEqual(JSON.parse(firstResponse.payload));
         expect(identity.requestLocalReset).toHaveBeenCalledTimes(1);
     });
 
@@ -991,9 +1018,10 @@ describe("IdentityController", () => {
             },
         });
 
-        expect(firstResponse.statusCode).toBe(202);
-        expect(secondResponse.statusCode).toBe(202);
-        expect(JSON.parse(secondResponse.payload)).toEqual({ accepted: true });
+        expect(firstResponse.statusCode).toBe(503);
+        expect(secondResponse.statusCode).toBe(503);
+        expect(JSON.parse(firstResponse.payload)).toEqual({ error: "Service Unavailable", message: "Servicio no disponible.", statusCode: 503 });
+        expect(JSON.parse(secondResponse.payload)).toEqual(JSON.parse(firstResponse.payload));
         expect(identity.requestLocalReset).toHaveBeenCalledTimes(1);
     });
 
@@ -1017,9 +1045,10 @@ describe("IdentityController", () => {
             },
         });
 
-        expect(firstResponse.statusCode).toBe(202);
-        expect(secondResponse.statusCode).toBe(202);
-        expect(JSON.parse(secondResponse.payload)).toEqual({ accepted: true });
+        expect(firstResponse.statusCode).toBe(503);
+        expect(secondResponse.statusCode).toBe(503);
+        expect(JSON.parse(firstResponse.payload)).toEqual({ error: "Service Unavailable", message: "Servicio no disponible.", statusCode: 503 });
+        expect(JSON.parse(secondResponse.payload)).toEqual(JSON.parse(firstResponse.payload));
         expect(identity.requestLocalReset).toHaveBeenCalledTimes(1);
     });
 

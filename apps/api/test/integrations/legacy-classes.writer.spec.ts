@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 import type { CrmDatabase } from "../../src/database/database.types.js";
 import { LegacyClassesWriter } from "../../src/integrations/legacy-crm/classes/legacy-classes.writer.js";
 
-const setup = (enabled = true, results: QueryResult<unknown>[] = []) => {
+const setup = (enabled = true, results: QueryResult<unknown>[] = [], environment = "production", writes = true) => {
     const queries: CompiledQuery[] = [];
     class RecordingDriver extends DummyDriver {
         override async acquireConnection() {
@@ -25,11 +25,22 @@ const setup = (enabled = true, results: QueryResult<unknown>[] = []) => {
             createQueryCompiler: () => new MysqlQueryCompiler(),
         },
     });
-    return { writer: new LegacyClassesWriter(new ConfigService({ ENABLE_LEGACY_FALLBACK: enabled })), transaction: database as unknown as Transaction<CrmDatabase>, queries, database };
+    return { writer: new LegacyClassesWriter(new ConfigService({ NODE_ENV: environment, LEGACY_CRM_DB_NAME: "crmdatabase-api", ENABLE_LEGACY_FALLBACK: enabled, ENABLE_LEGACY_WRITES: writes })), transaction: database as unknown as Transaction<CrmDatabase>, queries, database };
 };
 const payload = { name: "Class", status: "active" as const, externalReferences: [{ systemCode: "netsuite", externalId: "-5" }] };
 
 describe("isolated legacy Classes writer", () => {
+    it.each([
+        ["development", true],
+        ["production", false],
+    ] as const)("executes no SQL in %s with writes=%s", async (environment, writes) => {
+        const { writer, transaction, queries, database } = setup(true, [], environment, writes);
+        expect(await writer.find(transaction, 42)).toBeNull();
+        expect(await writer.create(transaction, payload)).toBeNull();
+        await writer.update(transaction, 42, payload);
+        expect(queries).toEqual([]);
+        await database.destroy();
+    });
     it("performs no reads or writes when the global switch is off", async () => {
         const { writer, transaction, queries, database } = setup(false);
         expect(await writer.find(transaction, 42)).toBeNull();

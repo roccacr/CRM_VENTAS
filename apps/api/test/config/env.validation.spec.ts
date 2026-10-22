@@ -17,6 +17,17 @@ const createValidEnv = (): Record<string, unknown> => ({
 });
 
 describe("validateEnv", () => {
+    it("defaults authenticated reads to initial per-process quotas", () => {
+        expect(validateEnv(createValidEnv())).toMatchObject({ AUTH_READ_USER_MAX: 120, AUTH_READ_IP_MAX: 600, AUTH_READ_WINDOW_MS: 60_000, AUTH_READ_CACHE: 5_000 });
+    });
+
+    it.each(["AUTH_READ_USER_MAX", "AUTH_READ_IP_MAX", "AUTH_READ_WINDOW_MS", "AUTH_READ_CACHE"])("requires a positive integer for %s", (key) => {
+        for (const value of ["0", "-1", "1.5", "invalid"]) {
+            expect(() => validateEnv({ ...createValidEnv(), [key]: value })).toThrow(key);
+        }
+        expect(validateEnv({ ...createValidEnv(), [key]: "2" })).toHaveProperty(key, 2);
+    });
+
     it("falla rapido si falta AUDIT_HASH_SECRET", () => {
         const env = createValidEnv();
         delete env.AUDIT_HASH_SECRET;

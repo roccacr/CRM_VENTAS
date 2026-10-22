@@ -9,6 +9,7 @@ import { ApiBody, ApiOperation, ApiTags } from "@nestjs/swagger";
 
 import type { CookieRequest } from "../../../common/security/cookie-request.type.js";
 import { SESSION_COOKIE_NAME } from "../../../common/security/http-security.constants.js";
+import { RouteSecurity } from "../../../common/security/route-security.decorator.js";
 import { CreateCatalogItemDto, ListCatalogItemsQueryDto, UpdateCatalogItemDto, UpdateCatalogItemStatusDto } from "../catalogs/dto/catalog-items.dto.js";
 import { ClassesService } from "./classes.service.js";
 
@@ -27,6 +28,7 @@ export class ClassesController {
      * La cookie identifica la sesión. El permiso de lectura lo resuelve el servicio.
      */
     @Get("items")
+    @RouteSecurity("permission")
     @ApiOperation({ summary: "Listar clases." })
     async list(@Query() query: ListCatalogItemsQueryDto, @Req() request: CookieRequest) {
         return this.catalogs.listCatalogItems(request.cookies[SESSION_COOKIE_NAME], "classes", query);
@@ -38,6 +40,7 @@ export class ClassesController {
      * IP y user agent viajan solo para la auditoría. No se guardan como dato de la clase.
      */
     @Post("items")
+    @RouteSecurity("permission")
     @ApiOperation({ summary: "Crear clase." })
     @ApiBody({ type: CreateCatalogItemDto })
     async create(@Body() body: CreateCatalogItemDto, @Req() request: CookieRequest, @Headers("user-agent") userAgent?: string) {
@@ -50,6 +53,7 @@ export class ClassesController {
      * Un `itemPublicId` con forma `legacy:classes:N` promueve esa fila al CRM nuevo.
      */
     @Patch("items/:itemPublicId")
+    @RouteSecurity("permission")
     @HttpCode(200)
     @ApiOperation({ summary: "Editar clase." })
     @ApiBody({ type: UpdateCatalogItemDto })
@@ -63,6 +67,7 @@ export class ClassesController {
      * El motivo va en el cuerpo porque el cambio queda auditado en la misma transacción.
      */
     @Patch("items/:itemPublicId/status")
+    @RouteSecurity("permission")
     @HttpCode(200)
     @ApiOperation({ summary: "Cambiar estado de una clase." })
     @ApiBody({ type: UpdateCatalogItemStatusDto })

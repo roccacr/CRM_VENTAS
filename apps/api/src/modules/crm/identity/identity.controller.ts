@@ -6,6 +6,7 @@ import type { FastifyReply } from "fastify";
 import type { CookieRequest } from "../../../common/security/cookie-request.type.js";
 import { createSignedCsrfToken, isValidSignedCsrfToken } from "../../../common/security/csrf-token.js";
 import { CSRF_COOKIE_NAME, MICROSOFT_OIDC_CHALLENGE_COOKIE_NAME, REFRESH_COOKIE_NAME, ROOT_COOKIE_PATH, SESSION_COOKIE_NAME } from "../../../common/security/http-security.constants.js";
+import { RouteSecurity } from "../../../common/security/route-security.decorator.js";
 import { CompleteLocalResetDto, LocalLoginDto, RequestLocalResetDto } from "./dto/local-auth.dto.js";
 import { MicrosoftCallbackDto } from "./dto/microsoft-auth.dto.js";
 import { CreateSystemUserDto, ListSystemUsersQueryDto, UpdateSystemUserDto, UpdateSystemUserStatusDto } from "./dto/system-users.dto.js";
@@ -77,6 +78,7 @@ export class IdentityController {
      * el valor que el cliente repite por header viaja en el JSON de respuesta.
      */
     @Get(IDENTITY_SESSION_ROUTE)
+    @RouteSecurity("public")
     @ApiOperation({ summary: "Consultar si existe una sesion backend valida." })
     @ApiOkResponse({ description: "Estado de sesion bajo patron BFF." })
     async session(@Req() request: CookieRequest, @Res({ passthrough: true }) reply: FastifyReply) {
@@ -95,6 +97,7 @@ export class IdentityController {
      * autorizar el siguiente request protegido.
      */
     @Get(IDENTITY_ME_ROUTE)
+    @RouteSecurity("authenticated")
     @ApiOperation({ summary: "Consultar usuario actual, roles, areas y permisos efectivos." })
     async me(@Req() request: CookieRequest) {
         return this.identity.getCurrentUser(request.cookies[SESSION_COOKIE_NAME]);
@@ -104,6 +107,7 @@ export class IdentityController {
      * Lista usuarios administrativos con filtros server-side.
      */
     @Get(IDENTITY_USERS_ROUTE)
+    @RouteSecurity("permission")
     @ApiOperation({ summary: "Listar usuarios del sistema con filtros y paginacion." })
     async users(@Query() query: ListSystemUsersQueryDto, @Req() request: CookieRequest) {
         return this.identity.listSystemUsers(request.cookies[SESSION_COOKIE_NAME], query);
@@ -113,6 +117,7 @@ export class IdentityController {
      * Crea un usuario administrativo con rol, area y referencias externas.
      */
     @Post(IDENTITY_USERS_ROUTE)
+    @RouteSecurity("permission")
     @ApiOperation({ summary: "Crear usuario interno del sistema.", description: "Requiere user.create y role.assign para asignar roles o modulos iniciales; una clave inicial requiere ademas user.assign_password." })
     @ApiBody({ type: CreateSystemUserDto })
     async createUser(@Body() body: CreateSystemUserDto, @Req() request: CookieRequest, @Headers("user-agent") userAgent?: string) {
@@ -123,6 +128,7 @@ export class IdentityController {
      * Edita datos administrativos, roles, areas y referencias externas.
      */
     @Patch(IDENTITY_USER_DETAIL_ROUTE)
+    @RouteSecurity("permission")
     @HttpCode(200)
     @ApiOperation({ summary: "Editar usuario interno del sistema.", description: "Requiere user.update. Cambiar roles o modulos requiere ademas role.assign. No permite autoedicion administrativa." })
     @ApiBody({ type: UpdateSystemUserDto })
@@ -134,6 +140,7 @@ export class IdentityController {
      * Cambia estado operativo de un usuario con motivo auditable.
      */
     @Patch(IDENTITY_USER_STATUS_ROUTE)
+    @RouteSecurity("permission")
     @HttpCode(200)
     @ApiOperation({ summary: "Cambiar estado operativo de un usuario.", description: "Activar requiere user.activate; bloquear o inactivar requiere user.deactivate. No permite cambiar el estado propio." })
     @ApiBody({ type: UpdateSystemUserStatusDto })
@@ -145,6 +152,7 @@ export class IdentityController {
      * Lee el detalle administrativo de un usuario por identificador publico.
      */
     @Get(IDENTITY_USER_DETAIL_ROUTE)
+    @RouteSecurity("permission")
     @ApiOperation({ summary: "Consultar detalle administrativo de usuario." })
     async userDetail(@Param("userPublicId") userPublicId: string, @Req() request: CookieRequest) {
         return this.identity.getSystemUserDetail(request.cookies[SESSION_COOKIE_NAME], userPublicId);
@@ -154,6 +162,7 @@ export class IdentityController {
      * Sirve la foto cacheada internamente para no exponer URLs ni tokens Graph.
      */
     @Get(IDENTITY_ME_PHOTO_ROUTE)
+    @RouteSecurity("authenticated")
     @ApiOperation({ summary: "Servir foto cacheada del usuario autenticado." })
     async profilePhoto(@Query("refresh") refresh: string | undefined, @Req() request: CookieRequest, @Res({ passthrough: true }) reply: FastifyReply) {
         const image = await this.identity.getCurrentUserProfileImage(request.cookies[SESSION_COOKIE_NAME], { refresh: refresh === "1" || refresh === "true" });
@@ -172,6 +181,7 @@ export class IdentityController {
      * Lista sesiones activas del usuario actual para gestion de dispositivos.
      */
     @Get(IDENTITY_SESSIONS_ROUTE)
+    @RouteSecurity("authenticated")
     @ApiOperation({ summary: "Listar sesiones activas del usuario actual." })
     async sessions(@Req() request: CookieRequest) {
         return this.identity.listActiveSessions(request.cookies[SESSION_COOKIE_NAME]);
@@ -181,6 +191,7 @@ export class IdentityController {
      * Revoca una sesion activa propia sin permitir cerrar sesiones de otros usuarios.
      */
     @Post(IDENTITY_REVOKE_SESSION_ROUTE)
+    @RouteSecurity("authenticated")
     @HttpCode(200)
     @ApiOperation({ summary: "Revocar una sesion activa propia." })
     async revokeSession(@Param("sessionPublicId") sessionPublicId: string, @Req() request: CookieRequest, @Headers("user-agent") userAgent?: string) {
@@ -194,6 +205,7 @@ export class IdentityController {
      * El controller solo pasa contexto propio de HTTP: IP y user-agent.
      */
     @Post(IDENTITY_LOGOUT_ROUTE)
+    @RouteSecurity("public")
     @HttpCode(200)
     @ApiOperation({ summary: "Cerrar sesion backend y limpiar cookies BFF." })
     async logout(@Req() request: CookieRequest, @Res({ passthrough: true }) reply: FastifyReply, @Headers("user-agent") userAgent?: string) {
@@ -210,6 +222,7 @@ export class IdentityController {
      * de seguridad vigente.
      */
     @Post(IDENTITY_REFRESH_ROUTE)
+    @RouteSecurity("public")
     @HttpCode(200)
     @ApiOperation({ summary: "Refrescar sesion BFF si existe refresh token valido." })
     async refresh(@Req() request: CookieRequest, @Res({ passthrough: true }) reply: FastifyReply, @Headers("user-agent") userAgent?: string) {
@@ -224,6 +237,7 @@ export class IdentityController {
      * P0-S1A permite el contrato de ruta, no una implementacion Microsoft falsa.
      */
     @Post(IDENTITY_MICROSOFT_START_ROUTE)
+    @RouteSecurity("public")
     @HttpCode(200)
     @ApiOperation({ summary: "Iniciar login Microsoft con PKCE/state cuando este configurado." })
     async startMicrosoftLogin(@Res({ passthrough: true }) reply: FastifyReply) {
@@ -243,6 +257,7 @@ export class IdentityController {
      * Completa login Microsoft y vuelve al frontend sin exponer tokens.
      */
     @Get(IDENTITY_MICROSOFT_CALLBACK_ROUTE)
+    @RouteSecurity("public")
     @ApiOperation({ summary: "Recibir callback Microsoft y crear sesion backend." })
     async completeMicrosoftCallback(@Query() query: MicrosoftCallbackDto, @Req() request: CookieRequest, @Res({ passthrough: true }) reply: FastifyReply, @Headers("user-agent") userAgent?: string) {
         const challengeCookie = request.cookies[MICROSOFT_OIDC_CHALLENGE_COOKIE_NAME];
@@ -278,6 +293,7 @@ export class IdentityController {
      * Alternativa de login local con Argon2id, lockout y rate limit.
      */
     @Post(IDENTITY_LOCAL_LOGIN_ROUTE)
+    @RouteSecurity("public")
     @HttpCode(200)
     @ApiOperation({ summary: "Login local alternativo controlado." })
     @ApiBody({ type: LocalLoginDto })
@@ -288,11 +304,15 @@ export class IdentityController {
     }
 
     /**
-     * Acepta solicitudes de reset sin filtrar si el correo existe.
+     * Recuperacion local deshabilitada mientras el canal de entrega esta pospuesto.
+     * Devuelve 503 Service Unavailable con el mensaje publico estatico "Servicio no disponible."
+     * para cualquier correo valido, incluso al exceder la cuota, sin emitir tokens ni enviar correo.
+     * CSRF y validacion siguen vigentes; complete-reset conserva los tokens existentes.
      */
     @Post(IDENTITY_LOCAL_REQUEST_RESET_ROUTE)
+    @RouteSecurity("public")
     @HttpCode(202)
-    @ApiOperation({ summary: "Solicitar activacion o reset seguro de clave local." })
+    @ApiOperation({ summary: "Recuperacion de clave local no disponible.", description: 'Canal de entrega pospuesto. Con CSRF y DTO validos devuelve 503 Service Unavailable con "Servicio no disponible.", independientemente del correo y de la cuota. No emite tokens ni envia correo; complete-reset conserva los tokens existentes.' })
     @ApiBody({ type: RequestLocalResetDto })
     requestLocalReset(@Body() body: RequestLocalResetDto, @Req() request: CookieRequest, @Headers("user-agent") userAgent?: string) {
         return this.identity.requestLocalReset(body, request.ip, userAgent);
@@ -302,6 +322,7 @@ export class IdentityController {
      * Completa activacion/reset local con token opaco y nueva clave Argon2id.
      */
     @Post(IDENTITY_LOCAL_COMPLETE_RESET_ROUTE)
+    @RouteSecurity("public")
     @HttpCode(200)
     @ApiOperation({ summary: "Completar activacion o reset seguro de clave local." })
     @ApiBody({ type: CompleteLocalResetDto })

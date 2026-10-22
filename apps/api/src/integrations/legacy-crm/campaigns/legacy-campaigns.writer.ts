@@ -4,7 +4,7 @@ import { sql, type Transaction } from "kysely";
 
 import type { CrmDatabase } from "../../../database/database.types.js";
 import type { CampaignLegacyPayload, CampaignsLegacyAccess } from "../../../modules/crm/campaigns/campaigns-legacy.port.js";
-import { isLegacyCrmEnabled } from "../legacy-crm-access.js";
+import { isLegacyCrmWriteEnabled } from "../legacy-crm-access.js";
 import { mapLegacyCampaign } from "./legacy-campaigns.mapper.js";
 
 /** Campaign-only DML on the native transaction: both schemas commit or roll back together. */
@@ -15,7 +15,7 @@ export class LegacyCampaignsWriter implements CampaignsLegacyAccess {
 
     /** Rechecked before every operation, including reads needed by mutations. */
     enabled(): boolean {
-        return isLegacyCrmEnabled(this.config);
+        return isLegacyCrmWriteEnabled(this.config);
     }
 
     /** Locks the source row until its native promotion and audit finish. */

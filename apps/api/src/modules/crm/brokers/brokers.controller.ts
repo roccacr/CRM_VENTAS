@@ -9,6 +9,7 @@ import { ApiBody, ApiOperation, ApiTags } from "@nestjs/swagger";
 
 import type { CookieRequest } from "../../../common/security/cookie-request.type.js";
 import { SESSION_COOKIE_NAME } from "../../../common/security/http-security.constants.js";
+import { RouteSecurity } from "../../../common/security/route-security.decorator.js";
 import { ListCatalogItemsQueryDto, UpdateCatalogItemStatusDto } from "../catalogs/dto/catalog-items.dto.js";
 import { CreateBrokerDto, UpdateBrokerDto } from "./brokers.dto.js";
 import { BrokersService } from "./brokers.service.js";
@@ -28,6 +29,7 @@ export class BrokersController {
      * La cookie identifica la sesión. El permiso de lectura lo resuelve el servicio.
      */
     @Get("items")
+    @RouteSecurity("permission")
     @ApiOperation({ summary: "Listar corredores." })
     async list(@Query() query: ListCatalogItemsQueryDto, @Req() request: CookieRequest) {
         return this.catalogs.listCatalogItems(request.cookies[SESSION_COOKIE_NAME], "brokers", query);
@@ -39,6 +41,7 @@ export class BrokersController {
      * IP y user agent viajan solo para la auditoría. No se guardan como dato del corredor.
      */
     @Post("items")
+    @RouteSecurity("permission")
     @ApiOperation({ summary: "Crear corredor." })
     @ApiBody({ type: CreateBrokerDto })
     async create(@Body() body: CreateBrokerDto, @Req() request: CookieRequest, @Headers("user-agent") userAgent?: string) {
@@ -51,6 +54,7 @@ export class BrokersController {
      * Un `itemPublicId` con forma `legacy:brokers:N` promueve esa fila al CRM nuevo.
      */
     @Patch("items/:itemPublicId")
+    @RouteSecurity("permission")
     @HttpCode(200)
     @ApiOperation({ summary: "Editar corredor." })
     @ApiBody({ type: UpdateBrokerDto })
@@ -64,6 +68,7 @@ export class BrokersController {
      * El motivo va en el cuerpo porque el cambio queda auditado en la misma transacción.
      */
     @Patch("items/:itemPublicId/status")
+    @RouteSecurity("permission")
     @HttpCode(200)
     @ApiOperation({ summary: "Cambiar estado de un corredor." })
     @ApiBody({ type: UpdateCatalogItemStatusDto })

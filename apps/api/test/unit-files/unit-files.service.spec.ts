@@ -9,12 +9,69 @@ const project = { id: "01M4RCK911NS2ZNCRYPBD40B9W", name: "Project", externalRef
 const filter: UnitFilter = { projectIds: [project.id], moduleCode: "administration", limit: 2 };
 const row = (position: number) => ({ position, item: { id: String(position) } as UnitSummary });
 function setup(enabled = true) {
-    const identity = { getCurrentUser: vi.fn().mockResolvedValue({ roles: [{ code: "owner", status: "active" }], orgUnits: [], permissions: [] }) };
-    const repository = { projects: vi.fn().mockResolvedValue([project]), facets: vi.fn().mockResolvedValue([]), options: vi.fn().mockResolvedValue([]), list: vi.fn().mockResolvedValue([]), findPromotedId: vi.fn().mockResolvedValue(null), detail: vi.fn().mockResolvedValue(null) };
+    const identity = { getCurrentUser: vi.fn().mockResolvedValue({ roles: [{ code: "owner", status: "active" }], orgUnits: [], permissions: [{ code: "administration.catalog_file.read", effect: "allow" }] }) };
+    const repository = { projects: vi.fn((ids?: readonly string[]) => Promise.resolve([project].filter((entry) => !ids || ids.includes(entry.id)))), facets: vi.fn().mockResolvedValue([]), options: vi.fn().mockResolvedValue([]), list: vi.fn().mockResolvedValue([]), findPromotedId: vi.fn().mockResolvedValue(null), detail: vi.fn().mockResolvedValue(null) };
     const legacy = { enabled: vi.fn(() => enabled), facets: vi.fn().mockResolvedValue([]), options: vi.fn().mockResolvedValue([]), list: vi.fn().mockResolvedValue([]), detail: vi.fn().mockResolvedValue(null) };
     return { identity, repository, legacy, service: new UnitFilesService(identity as unknown as IdentityService, repository as unknown as UnitFilesRepository, legacy) };
 }
 describe("Unit Files native-first service", () => {
+    it("passes the selected projects to SQL before lists, options and facets", async () => {
+        const { service, repository } = setup(false);
+        await service.list("session", filter);
+        await service.options("session", { ...filter, kind: "code" });
+        await service.facets("session", { ...filter, kind: "code" });
+        expect(repository.projects.mock.calls).toEqual([[filter.projectIds], [filter.projectIds], [filter.projectIds]]);
+    });
+    const operations = ["list", "detail", "options", "facets", "projects"] as const;
+    const profiles = [
+        { name: "Owner without a grant", roles: [{ code: "owner", status: "active" }], orgUnits: [], permissions: [] },
+        {
+            name: "Owner with allow and deny",
+            roles: [{ code: "owner", status: "active" }],
+            orgUnits: [],
+            permissions: [
+                { code: "administration.catalog_file.read", effect: "allow" },
+                { code: "administration.catalog_file.read", effect: "deny" },
+            ],
+        },
+        { name: "Owner with another module grant", roles: [{ code: "owner", status: "active" }], orgUnits: [], permissions: [{ code: "formalizacion.catalog_file.read", effect: "allow" }] },
+        { name: "Owner with another action grant", roles: [{ code: "owner", status: "active" }], orgUnits: [], permissions: [{ code: "administration.catalog_file.update", effect: "allow" }] },
+        { name: "inactive Owner without membership", roles: [{ code: "owner", status: "inactive" }], orgUnits: [], permissions: [{ code: "administration.catalog_file.read", effect: "allow" }] },
+        { name: "non-Owner without membership", roles: [], orgUnits: [], permissions: [{ code: "administration.catalog_file.read", effect: "allow" }] },
+        {
+            name: "member with allow and deny",
+            roles: [],
+            orgUnits: [{ code: "administration", status: "active" }],
+            permissions: [
+                { code: "administration.catalog_file.read", effect: "allow" },
+                { code: "administration.catalog_file.read", effect: "deny" },
+            ],
+        },
+    ];
+    for (const profile of profiles) {
+        it.each(operations)(`rejects ${profile.name} before any data access: %s`, async (operation) => {
+            const { identity, service, repository, legacy } = setup();
+            identity.getCurrentUser.mockResolvedValue(profile);
+            const requests = {
+                list: () => service.list("session", filter),
+                detail: () => service.detail("session", "legacy:unit-files:1", filter.moduleCode),
+                options: () => service.options("session", { ...filter, kind: "code" }),
+                facets: () => service.facets("session", { ...filter, kind: "code" }),
+                projects: () => service.projects("session", filter.moduleCode),
+            };
+            await expect(requests[operation]()).rejects.toThrow("Permiso");
+            for (const read of Object.values(repository)) expect(read).not.toHaveBeenCalled();
+            for (const read of Object.values(legacy)) expect(read).not.toHaveBeenCalled();
+        });
+    }
+
+    it("allows active members with the exact grant and preserves Owner membership exemption", async () => {
+        const { identity, service } = setup();
+        await expect(service.projects("session", "administration")).resolves.toHaveProperty("items");
+        identity.getCurrentUser.mockResolvedValue({ roles: [], orgUnits: [{ code: "administration", status: "active" }], permissions: [{ code: "administration.catalog_file.read", effect: "allow" }] });
+        await expect(service.projects("session", "administration")).resolves.toHaveProperty("items");
+    });
+
     it("rejects the Home-only Formalization profile before reading any inventory", async () => {
         const { identity, service, repository, legacy } = setup();
         identity.getCurrentUser.mockResolvedValue({ roles: [{ code: "formalizacion", status: "active" }], orgUnits: [{ code: "formalizacion", status: "active" }], permissions: [{ code: "formalizacion.home.read", effect: "allow" }] });

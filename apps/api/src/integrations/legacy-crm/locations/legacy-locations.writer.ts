@@ -4,7 +4,7 @@ import { sql, type Transaction } from "kysely";
 
 import type { CrmDatabase } from "../../../database/database.types.js";
 import type { LocationLegacyPayload, LocationsLegacyAccess } from "../../../modules/crm/locations/locations-legacy.port.js";
-import { isLegacyCrmEnabled } from "../legacy-crm-access.js";
+import { isLegacyCrmWriteEnabled } from "../legacy-crm-access.js";
 import { mapLegacyLocation } from "./legacy-locations.mapper.js";
 
 /** Location-only DML on the native transaction: both schemas commit or roll back together. */
@@ -15,7 +15,7 @@ export class LegacyLocationsWriter implements LocationsLegacyAccess {
 
     /** Rechecked before every operation, including reads needed by mutations. */
     enabled(): boolean {
-        return isLegacyCrmEnabled(this.config);
+        return isLegacyCrmWriteEnabled(this.config);
     }
 
     /** Locks the source row until its native promotion and audit finish. */

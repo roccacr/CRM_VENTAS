@@ -1,8 +1,11 @@
-import { Module } from "@nestjs/common";
+import { type MiddlewareConsumer, Module, type NestModule } from "@nestjs/common";
 import { ConfigModule } from "@nestjs/config";
 import { APP_GUARD } from "@nestjs/core";
 import { LoggerModule } from "nestjs-pino";
 
+import { HealthModule } from "./common/health/health.module.js";
+import { AuthGuard } from "./common/security/auth.guard.js";
+import { AuthenticatedReadRateLimit } from "./common/security/authenticated-read-rate-limit.js";
 import { CsrfGuard } from "./common/security/csrf.guard.js";
 import { APP_LOG_REDACT_PATHS } from "./config/app-logging.constants.js";
 import { validateEnv } from "./config/env.validation.js";
@@ -15,18 +18,19 @@ import { CampaignsModule } from "./modules/crm/campaigns/campaigns.module.js";
 import { CatalogsModule } from "./modules/crm/catalogs/catalogs.module.js";
 import { ClassesModule } from "./modules/crm/classes/classes.module.js";
 import { IdentityModule } from "./modules/crm/identity/identity.module.js";
+import { identityRequestContextMiddleware } from "./modules/crm/identity/identity-request-context.js";
 import { LocationsModule } from "./modules/crm/locations/locations.module.js";
 import { PermissionsModule } from "./modules/crm/permissions/permissions.module.js";
 import { ProjectsModule } from "./modules/crm/projects/projects.module.js";
+import { ApprovalSummaryModule } from "./modules/crm/sales/sales-orders/approval-summary.module.js";
 import { SubsidiariesModule } from "./modules/crm/subsidiaries/subsidiaries.module.js";
 import { UnitFilesModule } from "./modules/crm/unit-files/unit-files.module.js";
 
 /**
  * Modulo raiz del runtime de identidad aprobado.
  *
- * Importa solo la infraestructura necesaria para identidad P0-S1A. Los modulos
- * comerciales del CRM quedan fuera hasta que la ley de producto autorice su
- * corte.
+ * Incluye identidad, catalogos y la lectura autorizada del contador de
+ * aprobaciones. No expone las mutaciones del ciclo de vida de ordenes.
  */
 @Module({
     imports: [
@@ -47,6 +51,7 @@ import { UnitFilesModule } from "./modules/crm/unit-files/unit-files.module.js";
             },
         }),
         DatabaseModule,
+        HealthModule,
         LegacyCrmModule,
         Microsoft365Module,
         AuditModule,
@@ -60,12 +65,23 @@ import { UnitFilesModule } from "./modules/crm/unit-files/unit-files.module.js";
         SubsidiariesModule,
         BrokersModule,
         UnitFilesModule,
+        ApprovalSummaryModule,
     ],
     providers: [
+        AuthenticatedReadRateLimit,
         {
             provide: APP_GUARD,
             useClass: CsrfGuard,
         },
+        {
+            provide: APP_GUARD,
+            useClass: AuthGuard,
+        },
     ],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+    /** Context starts before guards; CSRF remains the first global guard. */
+    configure(consumer: MiddlewareConsumer): void {
+        consumer.apply(identityRequestContextMiddleware).forRoutes("{*path}");
+    }
+}

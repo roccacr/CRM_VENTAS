@@ -18,14 +18,16 @@ export class UnitFilesRepository {
     /** Uses the existing native pool. */
     constructor(@Inject(DatabaseService) private readonly database: DatabaseService) {}
 
-    /** Small project selector, independent of unit volume. */
-    async projects(): Promise<UnitProjectBinding[]> {
+    /** Selected bindings are filtered in SQL; omitted IDs retain the project selector contract. */
+    async projects(projectIds?: readonly string[]): Promise<UnitProjectBinding[]> {
+        if (projectIds?.length === 0) return [];
+        const selected = projectIds ? sql`AND p.public_id_project IN (${sql.join(projectIds)})` : sql``;
         const result = await sql<{
             id: string;
             name: string;
             systemCode: string | null;
             externalId: string | null;
-        }>`SELECT p.public_id_project AS id,p.name_project AS name,s.code_external_system AS systemCode,r.external_id_project_external_reference AS externalId FROM crm_project p LEFT JOIN crm_project_external_reference r ON r.project_id_project_external_reference=p.id_project AND r.deleted_at_project_external_reference IS NULL AND r.status_project_external_reference='active' LEFT JOIN int_external_system s ON s.id_external_system=r.external_system_id_project_external_reference WHERE p.deleted_at_project IS NULL ORDER BY p.name_project,p.id_project`.execute(
+        }>`SELECT p.public_id_project AS id,p.name_project AS name,s.code_external_system AS systemCode,r.external_id_project_external_reference AS externalId FROM crm_project p LEFT JOIN crm_project_external_reference r ON r.project_id_project_external_reference=p.id_project AND r.deleted_at_project_external_reference IS NULL AND r.status_project_external_reference='active' LEFT JOIN int_external_system s ON s.id_external_system=r.external_system_id_project_external_reference WHERE p.deleted_at_project IS NULL ${selected} ORDER BY p.name_project,p.id_project`.execute(
             this.database.db,
         );
         const projects = new Map<string, UnitProjectBinding>();

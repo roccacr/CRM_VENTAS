@@ -300,6 +300,7 @@ const envSchema = z
         AUTH_TOKEN_HASH_SECRET: z.string().min(MIN_RUNTIME_SECRET_LENGTH),
         OPENAPI_ENABLED: booleanEnvSchema("false"),
         ENABLE_LEGACY_FALLBACK: booleanEnvSchema("false"),
+        ENABLE_LEGACY_WRITES: booleanEnvSchema("false"),
         LEGACY_CRM_DB_NAME: z.preprocess((value) => (value === "" ? undefined : value), z.literal("crmdatabase-api").optional()),
         TRUSTED_PROXY_IPS: z
             .string()
@@ -328,6 +329,10 @@ const envSchema = z
         REFRESH_RATE_LIMIT_IP_MAX: positiveIntegerSchema.default(60),
         REFRESH_RATE_LIMIT_WINDOW_MS: positiveIntegerSchema.default(60_000),
         REFRESH_RATE_LIMIT_CACHE: positiveIntegerSchema.default(5_000),
+        AUTH_READ_USER_MAX: positiveIntegerSchema.default(120),
+        AUTH_READ_IP_MAX: positiveIntegerSchema.default(600),
+        AUTH_READ_WINDOW_MS: positiveIntegerSchema.default(60_000),
+        AUTH_READ_CACHE: positiveIntegerSchema.default(5_000),
         DB_HOST: z.string().min(1),
         DB_PORT: tcpPortSchema.default(3306),
         DB_USER: z.string().min(1),

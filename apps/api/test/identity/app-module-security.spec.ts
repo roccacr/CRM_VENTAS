@@ -1,13 +1,17 @@
-import { SELF_DECLARED_DEPS_METADATA } from "@nestjs/common/constants.js";
+import { Controller, Get, RequestMethod, type Type } from "@nestjs/common";
+import { METHOD_METADATA, PATH_METADATA, SELF_DECLARED_DEPS_METADATA } from "@nestjs/common/constants.js";
 import { ConfigService } from "@nestjs/config";
+import { MetadataScanner, ModulesContainer } from "@nestjs/core";
 import { FastifyAdapter, type NestFastifyApplication } from "@nestjs/platform-fastify";
 import { Test } from "@nestjs/testing";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
 import { configureHttpApp } from "../../src/bootstrap/configure-http-app.js";
+import { AuthGuard } from "../../src/common/security/auth.guard.js";
 import { CsrfGuard } from "../../src/common/security/csrf.guard.js";
 import { SESSION_COOKIE_NAME } from "../../src/common/security/http-security.constants.js";
 import { MicrosoftMsalCacheCryptoService } from "../../src/common/security/microsoft-msal-cache-crypto.service.js";
+import { ROUTE_SECURITY_METADATA } from "../../src/common/security/route-security.decorator.js";
 import { APP_LOG_REDACT_PATHS } from "../../src/config/app-logging.constants.js";
 import { APPROVED_DATABASE_NAME } from "../../src/config/product.constants.js";
 import { DatabaseService } from "../../src/database/database.service.js";
@@ -17,6 +21,7 @@ import { SecurityAuditService } from "../../src/modules/crm/audit/security-audit
 import { IdentityController } from "../../src/modules/crm/identity/identity.controller.js";
 import { IdentityRepository } from "../../src/modules/crm/identity/identity.repository.js";
 import { IdentityService } from "../../src/modules/crm/identity/identity.service.js";
+import type { IdentityProfile } from "../../src/modules/crm/identity/identity.types.js";
 import { IdentityAccessManagementController } from "../../src/modules/crm/identity/identity-access-management.controller.js";
 import { IdentityAccessManagementRepository } from "../../src/modules/crm/identity/identity-access-management.repository.js";
 import { IdentityAccessManagementService } from "../../src/modules/crm/identity/identity-access-management.service.js";
@@ -37,6 +42,43 @@ type ExplicitDependencyMetadata = {
     index: number;
     param: unknown;
 };
+
+// Read the compiled Nest module graph, not a maintained list of controller imports.
+// Method-only classification prevents new handlers inheriting an accidental public default.
+const registeredRoutes = (controllers: Type<object>[]) =>
+    controllers.flatMap((controller) => {
+        const prototype = controller.prototype as object;
+        const prefixes = Reflect.getMetadata(PATH_METADATA, controller) as string | string[];
+        return new MetadataScanner().getAllMethodNames(prototype).flatMap((name) => {
+            const handler = Reflect.get(prototype, name) as object;
+            const method = Reflect.getMetadata(METHOD_METADATA, handler) as RequestMethod | undefined;
+            if (method === undefined) return [];
+            const paths = Reflect.getMetadata(PATH_METADATA, handler) as string | string[];
+            const classification = Reflect.getOwnMetadata(ROUTE_SECURITY_METADATA, handler) as unknown;
+            return [prefixes].flat().flatMap((prefix) =>
+                [paths].flat().map((path) => ({
+                    route: `${RequestMethod[method]} /${[prefix, path]
+                        .flatMap((part) => part.split("/"))
+                        .filter(Boolean)
+                        .join("/")}`,
+                    classification,
+                })),
+            );
+        });
+    });
+
+const requireClassifiedRoutes = (routes: ReturnType<typeof registeredRoutes>): void => {
+    const missing = routes.filter(({ classification }) => !["public", "authenticated", "permission"].includes(String(classification)));
+    if (missing.length) throw new Error(`Unclassified routes: ${missing.map(({ route }) => route).join(", ")}`);
+};
+
+@Controller(["synthetic", "alias"])
+class UnclassifiedController {
+    @Get(["missing", "second"])
+    missing() {
+        return null;
+    }
+}
 
 const readExplicitInjectionIndexes = (target: object): number[] => {
     const metadata = Reflect.getMetadata(SELF_DECLARED_DEPS_METADATA, target) as ExplicitDependencyMetadata[] | undefined;
@@ -172,15 +214,79 @@ describe("Cableado de seguridad del AppModule", () => {
         expect(getApp()).toBeDefined();
     });
 
-    it("resolves the dedicated Projects controller on the existing URL", async () => {
+    it("rejects synthetic unclassified routes with every controller/method path", () => {
+        const routes = registeredRoutes([UnclassifiedController]);
+        expect(routes.map(({ route }) => route)).toEqual(["GET /synthetic/missing", "GET /synthetic/second", "GET /alias/missing", "GET /alias/second"]);
+        expect(() => {
+            requireClassifiedRoutes(routes);
+        }).toThrow("Unclassified routes: GET /synthetic/missing");
+    });
+
+    it("requires explicit security classification on every actually registered Nest handler", () => {
+        const controllers = [...getApp().get(ModulesContainer).values()].flatMap((module) =>
+            [...module.controllers.values()].map(({ metatype }) => {
+                if (!metatype) throw new Error("Registered controller has no metatype");
+                return metatype as Type<object>;
+            }),
+        );
+        const routes = registeredRoutes(controllers);
+        expect(routes.length).toBeGreaterThan(50);
+        requireClassifiedRoutes(routes);
+        expect(routes).toContainEqual({ route: "GET /identity/me", classification: "authenticated" });
+        expect(routes).toContainEqual({ route: "GET /catalogs/projects/items", classification: "permission" });
+        expect(routes).toContainEqual({ route: "GET /formalization/approvals/summary", classification: "permission" });
+        expect(routes).toContainEqual({ route: "GET /audit", classification: "permission" });
+        expect(routes).toContainEqual({ route: "GET /unit-files", classification: "permission" });
+        expect(
+            routes
+                .filter(({ classification }) => classification === "public")
+                .map(({ route }) => route)
+                .sort(),
+        ).toEqual(["GET /health/live", "GET /health/ready", "GET /identity/microsoft/callback", "GET /identity/session", "POST /identity/local/complete-reset", "POST /identity/local/login", "POST /identity/local/request-reset", "POST /identity/logout", "POST /identity/microsoft/start", "POST /identity/refresh"].sort());
+    });
+
+    it("authenticates before reaching the dedicated Projects controller", async () => {
         const service = getApp().get(ProjectsService);
         const handler = vi.spyOn(service, "listCatalogItems");
         try {
             const response = await getApp().inject({ method: "GET", url: "/catalogs/projects/items?moduleCode=administration" });
             expect(response.statusCode).toBe(401);
-            expect(handler).toHaveBeenCalledOnce();
+            expect(handler).not.toHaveBeenCalled();
         } finally {
             handler.mockRestore();
+        }
+    });
+
+    it("starts request-local reuse before global guards in the real AppModule", async () => {
+        const profile: IdentityProfile = {
+            auth: { availableProviders: ["local"], currentProvider: "local", localStatus: "active", microsoft: null, primaryProvider: "microsoft" },
+            orgUnits: [],
+            permissions: [],
+            roles: [],
+            session: { expiresAt: new Date(Date.now() + 60_000).toISOString(), expiresInSeconds: 60, permissionVersion: 1, publicId: "request-session", status: "active" },
+            user: { displayName: "Actor", email: "actor@example.test", permissionVersion: 1, profileImageUrl: null, publicId: "request-actor", status: "active" },
+        };
+        const read = vi.spyOn(getApp().get(IdentityRepository), "findBySessionTokenHash").mockResolvedValue(profile);
+        try {
+            const options = { method: "GET" as const, url: "/identity/me", headers: { cookie: `${SESSION_COOKIE_NAME}=request-token` } };
+            expect((await getApp().inject(options)).statusCode).toBe(200);
+            expect(read).toHaveBeenCalledOnce();
+            read.mockResolvedValueOnce(null);
+            expect((await getApp().inject(options)).statusCode).toBe(401);
+            expect(read).toHaveBeenCalledTimes(2);
+        } finally {
+            read.mockRestore();
+        }
+    });
+
+    it("keeps public health GET and HEAD outside authentication and read quotas", async () => {
+        const current = vi.spyOn(getApp().get(IdentityService), "getCurrentUser");
+        try {
+            expect((await getApp().inject({ method: "GET", url: "/health/live" })).statusCode).toBe(200);
+            expect((await getApp().inject({ method: "HEAD", url: "/health/live" })).statusCode).toBe(200);
+            expect(current).not.toHaveBeenCalled();
+        } finally {
+            current.mockRestore();
         }
     });
 
@@ -202,6 +308,7 @@ describe("Cableado de seguridad del AppModule", () => {
         expectExplicitConstructorInjections(ProjectsService, [0, 1, 2]);
         expectExplicitConstructorInjections(ProjectsRepository, [0, 1, 2]);
         expectExplicitConstructorInjections(CsrfGuard, [0]);
+        expectExplicitConstructorInjections(AuthGuard, [0, 1, 2]);
         expectExplicitConstructorInjections(SecurityAuditService, [0]);
         expectExplicitConstructorInjections(IdentityController, [0, 1]);
         expectExplicitConstructorInjections(IdentityAccessManagementController, [0]);

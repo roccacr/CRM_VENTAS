@@ -1,4 +1,4 @@
-import { BadRequestException, ConflictException, ForbiddenException, Inject, Injectable, NotFoundException, UnauthorizedException } from "@nestjs/common";
+import { BadRequestException, ConflictException, ForbiddenException, Inject, Injectable, NotFoundException, ServiceUnavailableException, UnauthorizedException } from "@nestjs/common";
 import { argon2id, hash as hashArgon2Password, verify as verifyArgon2Hash } from "argon2";
 
 import { normalizeCaseInsensitiveIdentifier } from "../../../common/security/identifier-normalization.js";
@@ -9,6 +9,7 @@ import type { ActiveSessionsResponse, IdentityProfile, SessionResponse, SystemUs
 import { IdentityAuditRecorder } from "./identity-audit-recorder.service.js";
 import { MICROSOFT_PROVIDER_CODE } from "./identity-microsoft.constants.js";
 import { IdentityMicrosoftSessionService, type MicrosoftLoginStartResult } from "./identity-microsoft-session.service.js";
+import { reuseRequestProfile } from "./identity-request-context.js";
 import { IdentityTokenService, type IssuedIdentityTokens, type IssuedSessionToken, type RotatedRefreshToken } from "./identity-token.service.js";
 
 const ANONYMOUS_SESSION_RESPONSE: SessionResponse = {
@@ -147,22 +148,22 @@ export class IdentityService {
      * El repository recarga roles activos, areas, overrides directos y permisos
      * efectivos. Eso conserva la regla: permisos removidos deben dejar de
      * funcionar en el siguiente request protegido, sin esperar que expire un
-     * token de login largo.
+     * token de login largo. Guard y servicio comparten una sola lectura por
+     * request, instancia de servicio y token exacto; nunca entre requests.
      */
     async getCurrentUser(sessionToken?: string): Promise<IdentityProfile> {
         if (!sessionToken) {
             throw new UnauthorizedException("No autenticado.");
         }
 
-        const profile = await this.repository.findBySessionTokenHash(this.tokens.hashToken(sessionToken));
-
-        if (!profile) {
-            throw new UnauthorizedException("No autenticado.");
-        }
-
-        this.assertPermissionVersionCurrent(profile);
-
-        return profile;
+        return reuseRequestProfile(this, sessionToken, async () => {
+            const profile = await this.repository.findBySessionTokenHash(this.tokens.hashToken(sessionToken));
+            if (!profile) {
+                throw new UnauthorizedException("No autenticado.");
+            }
+            this.assertPermissionVersionCurrent(profile);
+            return profile;
+        });
     }
 
     /**
@@ -542,14 +543,15 @@ export class IdentityService {
     }
 
     /**
-     * Respuesta neutral de reset. No debe revelar si el correo existe.
+     * Canal de entrega pospuesto: rechaza sin consultar identidades ni emitir tokens.
+     * La respuesta uniforme no revela si el correo existe.
      */
-    async requestLocalReset(payload: RequestLocalResetDto, ipAddress?: string, userAgent?: string): Promise<{ accepted: true }> {
+    async requestLocalReset(payload: RequestLocalResetDto, ipAddress?: string, userAgent?: string): Promise<never> {
         const normalizedEmail = normalizeCaseInsensitiveIdentifier(payload.email);
 
         await this.audit.recordLocalResetRequested(normalizedEmail, ipAddress, userAgent);
 
-        return { accepted: true };
+        throw new ServiceUnavailableException("La recuperacion de clave local no esta disponible.");
     }
 
     /**

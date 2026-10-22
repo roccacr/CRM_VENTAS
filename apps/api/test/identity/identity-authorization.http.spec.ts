@@ -1,15 +1,22 @@
 import "reflect-metadata";
 
 import cookie from "@fastify/cookie";
+import rateLimit from "@fastify/rate-limit";
+import { Controller, Get, Inject, Req } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { APP_GUARD } from "@nestjs/core";
 import { FastifyAdapter, type NestFastifyApplication } from "@nestjs/platform-fastify";
 import { Test } from "@nestjs/testing";
+import type { FastifyInstance } from "fastify";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { AuthGuard } from "../../src/common/security/auth.guard.js";
+import { AuthenticatedReadRateLimit } from "../../src/common/security/authenticated-read-rate-limit.js";
+import type { CookieRequest } from "../../src/common/security/cookie-request.type.js";
 import { CsrfGuard } from "../../src/common/security/csrf.guard.js";
 import { createSignedCsrfToken } from "../../src/common/security/csrf-token.js";
 import { CSRF_COOKIE_NAME, CSRF_HEADER_NAME_LOWERCASE, SESSION_COOKIE_NAME } from "../../src/common/security/http-security.constants.js";
+import { RouteSecurity } from "../../src/common/security/route-security.decorator.js";
 import { IdentityController } from "../../src/modules/crm/identity/identity.controller.js";
 import { IdentityRepository } from "../../src/modules/crm/identity/identity.repository.js";
 import { IdentityService } from "../../src/modules/crm/identity/identity.service.js";
@@ -19,10 +26,43 @@ import { IdentityAccessManagementRepository } from "../../src/modules/crm/identi
 import { IdentityAccessManagementService } from "../../src/modules/crm/identity/identity-access-management.service.js";
 import { IdentityAuditRecorder } from "../../src/modules/crm/identity/identity-audit-recorder.service.js";
 import { IdentityMicrosoftSessionService } from "../../src/modules/crm/identity/identity-microsoft-session.service.js";
+import { identityRequestContextMiddleware } from "../../src/modules/crm/identity/identity-request-context.js";
 import { IdentityTokenService } from "../../src/modules/crm/identity/identity-token.service.js";
 
 const SESSION_TOKEN = "http-authorization-test-session";
 const COOKIE_SECRET = "http-authorization-test-cookie-secret";
+
+@Controller("synthetic-security")
+class SecurityProbeController {
+    static authenticatedCalls = 0;
+    constructor(@Inject(IdentityService) private readonly identity: IdentityService) {}
+
+    @Get("unknown")
+    unknown() {
+        return { exposed: true };
+    }
+
+    @Get("public")
+    @RouteSecurity("public")
+    publicRoute() {
+        return { public: true };
+    }
+
+    @Get("authenticated")
+    @RouteSecurity("authenticated")
+    authenticated() {
+        SecurityProbeController.authenticatedCalls++;
+        return { authenticated: true };
+    }
+
+    @Get("twice")
+    @RouteSecurity("authenticated")
+    async twice(@Req() request: CookieRequest) {
+        const token = request.cookies[SESSION_COOKIE_NAME];
+        const [one, two] = await Promise.all([this.identity.getCurrentUser(token), this.identity.getCurrentUser(token)]);
+        return { same: one === two, publicId: one.user.publicId };
+    }
+}
 const userPayload = { displayName: "Target person", email: "target@example.test", roleCode: "ventas", roleCodes: ["ventas"], orgUnitCodes: ["ventas"], accessMethods: ["local"], externalReferences: [], reason: "Authorization regression" };
 
 interface Endpoint {
@@ -88,24 +128,35 @@ describe("identity HTTP authorization with real services and CSRF, persistence o
     const writes = [repository.createSystemUser, repository.updateSystemUser, repository.updateSystemUserStatus, accessRepository.updateRole, accessRepository.replaceRolePermissions, accessRepository.deleteRole, accessRepository.replaceUserAccess];
     const businessCalls = [...writes, repository.listSystemUsers, repository.findSystemUserByPublicId, accessRepository.readSecurityCatalog, accessRepository.readRolePermissions, accessRepository.readUserAccess];
     const writeCount = () => writes.reduce((total, write) => total + write.mock.calls.length, 0);
+    const readLimit = { enforceAuthenticatedReadLimit: vi.fn<AuthenticatedReadRateLimit["enforceAuthenticatedReadLimit"]>().mockResolvedValue(true) };
+    const sentResponses = vi.fn();
 
     beforeAll(async () => {
         const module = await Test.createTestingModule({
-            controllers: [IdentityController, IdentityAccessManagementController],
+            controllers: [IdentityController, IdentityAccessManagementController, SecurityProbeController],
             providers: [
                 IdentityService,
                 IdentityAccessManagementService,
                 IdentityTokenService,
+                { provide: AuthenticatedReadRateLimit, useValue: readLimit },
                 { provide: ConfigService, useValue: new ConfigService({ COOKIE_SECRET, AUTH_TOKEN_HASH_SECRET: "http-test-hash-secret" }) },
                 { provide: IdentityRepository, useValue: repository },
                 { provide: IdentityAccessManagementRepository, useValue: accessRepository },
                 { provide: IdentityAuditRecorder, useValue: {} },
                 { provide: IdentityMicrosoftSessionService, useValue: {} },
                 { provide: APP_GUARD, useClass: CsrfGuard },
+                { provide: APP_GUARD, useClass: AuthGuard },
             ],
         }).compile();
         app = module.createNestApplication<NestFastifyApplication>(new FastifyAdapter(), { logger: false });
         await app.register(cookie);
+        await app.register(rateLimit, { global: false });
+        const server: FastifyInstance = app.getHttpAdapter().getInstance();
+        server.addHook("onSend", (_request, _reply, payload, done) => {
+            sentResponses();
+            done(null, payload);
+        });
+        app.use(identityRequestContextMiddleware);
         await app.init();
         await app.getHttpAdapter().getInstance().ready();
     });
@@ -171,6 +222,114 @@ describe("identity HTTP authorization with real services and CSRF, persistence o
             expect(repository.findBySessionTokenHash).toHaveBeenCalledTimes(2);
             expect(repository.findBySessionTokenHash.mock.calls[0]).toEqual(repository.findBySessionTokenHash.mock.calls[1]);
         });
+    });
+
+    it("denies an unclassified HTTP handler even with a session", async () => {
+        const response = await app.inject({ method: "GET", url: "/synthetic-security/unknown", headers: { cookie: `${SESSION_COOKIE_NAME}=${SESSION_TOKEN}` } });
+        expect(response.statusCode).toBe(403);
+        expect(repository.findBySessionTokenHash).not.toHaveBeenCalled();
+        expect(readLimit.enforceAuthenticatedReadLimit).not.toHaveBeenCalled();
+    });
+
+    it("skips authentication on explicit public routes, including invalid access cookies", async () => {
+        repository.findBySessionTokenHash.mockResolvedValueOnce(null);
+        expect((await app.inject({ method: "GET", url: "/synthetic-security/public", headers: { cookie: `${SESSION_COOKIE_NAME}=invalid` } })).statusCode).toBe(200);
+        expect(repository.findBySessionTokenHash).not.toHaveBeenCalled();
+        repository.findBySessionTokenHash.mockReset().mockImplementation(() => Promise.resolve(profile));
+    });
+
+    it("authenticates a classified handler even when the handler performs no identity read", async () => {
+        expect((await app.inject({ method: "GET", url: "/synthetic-security/authenticated" })).statusCode).toBe(401);
+        expect((await app.inject({ method: "GET", url: "/synthetic-security/authenticated", headers: { cookie: `${SESSION_COOKIE_NAME}=${SESSION_TOKEN}` } })).statusCode).toBe(200);
+        expect(repository.findBySessionTokenHash).toHaveBeenCalledOnce();
+        expect(readLimit.enforceAuthenticatedReadLimit).toHaveBeenCalledOnce();
+        expect(readLimit.enforceAuthenticatedReadLimit).toHaveBeenCalledWith(expect.objectContaining({ method: "GET" }), expect.anything(), "actor");
+    });
+
+    it("preserves the real limiter 429 and Retry-After without invoking the protected handler", async () => {
+        const limiter = new AuthenticatedReadRateLimit(new ConfigService({ AUTH_READ_USER_MAX: 1, AUTH_READ_IP_MAX: 100, AUTH_READ_WINDOW_MS: 60_000, AUTH_READ_CACHE: 100 }));
+        readLimit.enforceAuthenticatedReadLimit.mockImplementationOnce((...args) => limiter.enforceAuthenticatedReadLimit(...args)).mockImplementationOnce((...args) => limiter.enforceAuthenticatedReadLimit(...args));
+        const options = { method: "GET" as const, url: "/synthetic-security/authenticated", headers: { cookie: `${SESSION_COOKIE_NAME}=${SESSION_TOKEN}` } };
+        const before = SecurityProbeController.authenticatedCalls;
+        expect((await app.inject(options)).statusCode).toBe(200);
+        const sentBefore = sentResponses.mock.calls.length;
+        const blocked = await app.inject(options);
+        expect(blocked.statusCode).toBe(429);
+        expect(Number(blocked.headers["retry-after"])).toBeGreaterThan(0);
+        expect(blocked.json()).toEqual({ statusCode: 429, error: "Too Many Requests", message: "Demasiadas consultas. Intente mas tarde." });
+        expect(SecurityProbeController.authenticatedCalls).toBe(before + 1);
+        expect(sentResponses.mock.calls.length).toBe(sentBefore + 1);
+    });
+
+    it("skips read quotas on public HEAD and on protected writes", async () => {
+        expect((await app.inject({ method: "HEAD", url: "/synthetic-security/public" })).statusCode).toBe(200);
+        profile = createProfile(["user.create", "role.assign"]);
+        const endpoint = endpoints.find((item) => item.name === "user create");
+        if (!endpoint) throw new Error("Missing create endpoint");
+        expect((await request(endpoint)).statusCode).toBe(201);
+        expect(readLimit.enforceAuthenticatedReadLimit).not.toHaveBeenCalled();
+    });
+
+    it("shares the guard profile with concurrent service reads but reloads for the next HTTP request", async () => {
+        const options = { method: "GET" as const, url: "/synthetic-security/twice", headers: { cookie: `${SESSION_COOKIE_NAME}=${SESSION_TOKEN}` } };
+        const first = await app.inject(options);
+        expect(first.statusCode).toBe(200);
+        expect(first.json()).toEqual({ same: true, publicId: "actor" });
+        expect(repository.findBySessionTokenHash).toHaveBeenCalledOnce();
+        repository.findBySessionTokenHash.mockResolvedValueOnce(null);
+        expect((await app.inject(options)).statusCode).toBe(401);
+        expect(repository.findBySessionTokenHash).toHaveBeenCalledTimes(2);
+    });
+
+    it("isolates concurrent HTTP requests carrying the same token", async () => {
+        let release!: () => void;
+        let entered!: () => void;
+        const pending = new Promise<void>((resolve) => {
+            release = resolve;
+        });
+        const started = new Promise<void>((resolve) => {
+            entered = resolve;
+        });
+        const firstProfile = createProfile();
+        firstProfile.user.publicId = "first-request";
+        const secondProfile = createProfile();
+        secondProfile.user.publicId = "second-request";
+        repository.findBySessionTokenHash
+            .mockImplementationOnce(async () => {
+                entered();
+                await pending;
+                return firstProfile;
+            })
+            .mockResolvedValueOnce(secondProfile);
+        const options = { method: "GET" as const, url: "/synthetic-security/twice", headers: { cookie: `${SESSION_COOKIE_NAME}=${SESSION_TOKEN}` } };
+        const first = app.inject(options).then((response) => response);
+        await started;
+        try {
+            const second = await app.inject(options);
+            expect(second.json()).toEqual({ same: true, publicId: "second-request" });
+        } finally {
+            release();
+        }
+        expect((await first).json()).toEqual({ same: true, publicId: "first-request" });
+        expect(repository.findBySessionTokenHash).toHaveBeenCalledTimes(2);
+    });
+
+    it("keeps logout, refresh and anonymous session outside the authenticated-profile cache", async () => {
+        const logout = vi.spyOn(app.get(IdentityService), "logout").mockResolvedValue({ success: true });
+        const refresh = vi.spyOn(app.get(IdentityService), "refresh").mockRejectedValue(new Error("refresh stand-in"));
+        try {
+            expect((await app.inject({ method: "GET", url: "/identity/session" })).statusCode).toBe(200);
+            const csrf = createSignedCsrfToken(COOKIE_SECRET);
+            const headers = { cookie: `${CSRF_COOKIE_NAME}=${csrf}`, [CSRF_HEADER_NAME_LOWERCASE]: csrf };
+            expect((await app.inject({ method: "POST", url: "/identity/logout", headers })).statusCode).toBe(200);
+            expect((await app.inject({ method: "POST", url: "/identity/refresh", headers })).statusCode).toBe(500);
+            expect(logout).toHaveBeenCalledOnce();
+            expect(refresh).toHaveBeenCalledOnce();
+            expect(repository.findBySessionTokenHash).not.toHaveBeenCalled();
+        } finally {
+            logout.mockRestore();
+            refresh.mockRestore();
+        }
     });
 
     describe.each(endpoints.filter((endpoint) => endpoint.method !== "GET"))("$name CSRF", (endpoint) => {

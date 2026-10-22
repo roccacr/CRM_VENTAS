@@ -14,7 +14,11 @@ function pageResult(rows: UnitSeekRow[], limit: number, nativeCount: number, cur
     return { items: selected.map((row) => row.item), pagination: { limit, returned: selected.length, hasNext, nextCursor: hasNext && last ? encodeUnitCursor({ key: cursor.key, phase, after: last.position }) : null } };
 }
 
-/** Authenticated native-first reader. Missing/disabled legacy never blocks native operation. */
+/**
+ * Authenticated native-first reader. Missing/disabled legacy never blocks native operation.
+ * User/project authorization scope remains pending an approved scope model; project filters
+ * and existence checks below are search constraints, not user/project access enforcement.
+ */
 @Injectable()
 export class UnitFilesService {
     /** Reuses session authorization and injects legacy only through the optional port. */
@@ -24,14 +28,15 @@ export class UnitFilesService {
         @Optional() @Inject(UNIT_FILES_LEGACY) private readonly legacy?: UnitFilesLegacy,
     ) {}
 
+    /** Owner skips module membership only; the exact effective grant and deny still apply. */
     private async authorize(session: string | undefined, moduleCode: string): Promise<void> {
         const profile = await this.identity.getCurrentUser(session);
-        if (profile.roles.some((role) => role.code === "owner" && role.status === "active")) return;
+        const owner = profile.roles.some((role) => role.code === "owner" && role.status === "active");
         const permission = `${moduleCode}.catalog_file.read`;
         const active = profile.orgUnits.some((unit) => unit.code === moduleCode && unit.status === "active");
         const allowed = profile.permissions.some((entry) => entry.code === permission && entry.effect === "allow");
         const denied = profile.permissions.some((entry) => entry.code === permission && entry.effect === "deny");
-        if (!active || !allowed || denied) throw new ForbiddenException("Permiso insuficiente.");
+        if ((!owner && !active) || !allowed || denied) throw new ForbiddenException("Permiso insuficiente.");
     }
 
     /** No inventory query is performed for project options. */
@@ -43,7 +48,7 @@ export class UnitFilesService {
     /** A bounded, binary-ordered union supports distinct choice continuation across both sources. */
     async options(session: string | undefined, filter: UnitOptionFilter) {
         await this.authorize(session, filter.moduleCode);
-        const projects = (await this.repository.projects()).filter((project) => filter.projectIds.includes(project.id));
+        const projects = await this.repository.projects(filter.projectIds);
         if (projects.length !== filter.projectIds.length) throw new NotFoundException("Proyecto CRM no encontrado.");
         const native = await this.repository.options(filter, filter.limit + 1);
         const legacy = this.legacy?.enabled() ? await this.legacy.options(filter, filter.limit + 1) : [];
@@ -57,7 +62,7 @@ export class UnitFilesService {
     /** Aggregated choices share authorization, native precedence and the global legacy gate. */
     async facets(session: string | undefined, filter: UnitFacetFilter) {
         await this.authorize(session, filter.moduleCode);
-        const projects = (await this.repository.projects()).filter((project) => filter.projectIds.includes(project.id));
+        const projects = await this.repository.projects(filter.projectIds);
         if (projects.length !== filter.projectIds.length) throw new NotFoundException("Proyecto CRM no encontrado.");
         const native = await this.repository.facets(filter, filter.limit + 1);
         const legacy = this.legacy?.enabled() && this.legacy.facets ? await this.legacy.facets(filter, filter.limit + 1) : [];
@@ -69,7 +74,7 @@ export class UnitFilesService {
         await this.authorize(session, filter.moduleCode);
         const key = unitFilterKey(filter);
         const cursor = decodeUnitCursor(filter.cursor, key);
-        const projects = (await this.repository.projects()).filter((project) => filter.projectIds.includes(project.id));
+        const projects = await this.repository.projects(filter.projectIds);
         if (projects.length !== filter.projectIds.length) throw new NotFoundException("Proyecto CRM no encontrado.");
         let rows: UnitSeekRow[] = [];
         let nativeCount = 0;
