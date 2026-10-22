@@ -13,6 +13,7 @@ import { ProjectsController } from "./projects.controller.js";
 import { ProjectsRepository } from "./projects.repository.js";
 import { ProjectsService } from "./projects.service.js";
 
+/** Registra el agregado de proyectos y sus dependencias de identidad y auditoria. */
 @Module({
     imports: [AuditModule, IdentityModule],
     controllers: [ProjectsController],

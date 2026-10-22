@@ -13,6 +13,7 @@ import type { CatalogDefinition } from "../catalogs/catalogs.constants.js";
 import { IdentityService } from "../identity/identity.service.js";
 import { ProjectsRepository } from "./projects.repository.js";
 
+/** Especializa la politica de catalogos para el agregado de proyectos. */
 @Injectable()
 export class ProjectsService extends CatalogItemOperations {
     /**

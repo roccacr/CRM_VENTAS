@@ -12,6 +12,7 @@ import { CatalogsController } from "./catalogs.controller.js";
 import { CatalogsRepository } from "./catalogs.repository.js";
 import { CatalogsService } from "./catalogs.service.js";
 
+/** Registra los catalogos compartidos con identidad y auditoria. */
 @Module({
     imports: [AuditModule, IdentityModule],
     controllers: [CatalogsController],

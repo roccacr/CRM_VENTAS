@@ -211,7 +211,9 @@ describe.skipIf(process.env.AUDIT_MYSQL_TESTS !== "1")("identity changelog on CR
             expect(changeSets[6]).toMatchObject({ before: { name: "Original role", description: "Original description", permissionCodes: [] }, after: { name: "Updated role", description: "Updated description" } });
             expect(changeSets[7]).toMatchObject({ before: { permissionCodes: [] }, after: { permissionCodes: [permissionCode] } });
             expect(changeSets[8]).toMatchObject({ action: "delete", before: { deleted: false, permissionCodes: [permissionCode] }, after: { deleted: true, status: "inactive", permissionCodes: [permissionCode] } });
-            expect(JSON.stringify(events)).not.toMatch(/password|token|secret|provider_subject/i);
+            // This boolean is intentional audit metadata, never a password or hash.
+            const sensitivePayload = JSON.stringify(events, (key, value: unknown) => (key === "localPasswordAssigned" && typeof value === "boolean" ? undefined : value));
+            expect(sensitivePayload).not.toMatch(/password|token|secret|provider_subject/i);
             const beforeUser = await service.db.selectFrom("sec_user").selectAll().where("id_user", "=", userId).executeTakeFirstOrThrow();
             const beforeRoles = await service.db.selectFrom("sec_user_role").selectAll().where("user_id_user_role", "=", userId).execute();
             const beforeAreas = await service.db.selectFrom("sec_user_org_unit").selectAll().where("user_id_user_org_unit", "=", userId).execute();

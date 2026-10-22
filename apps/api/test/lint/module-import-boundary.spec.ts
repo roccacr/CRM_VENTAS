@@ -1,27 +1,28 @@
-import { rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
-import { ESLint } from "eslint";
+import { ESLint, type Linter } from "eslint";
 import { describe, expect, it } from "vitest";
 
 const apiRoot = process.cwd();
 const fixturePath = join(apiRoot, "src/modules/crm/identity/prohibited-import.fixture.ts");
 
 /**
- * Ejecuta ESLint contra un fixture real bajo `src/modules`.
+ * Resuelve la regla real del proyecto y la ejecuta sin iniciar TypeScript.
  *
- * El typed linting usa project service de TypeScript; por eso el archivo debe
- * existir temporalmente para que ESLint llegue a la regla de frontera.
+ * La frontera solo necesita sintaxis de imports. El lint tipado completo sigue
+ * ejecutandose en pnpm lint; no se crean fixtures temporales dentro de src.
  */
 const lintModuleSource = async (source: string) => {
-    const eslint = new ESLint({ cwd: apiRoot });
-    await writeFile(fixturePath, source, "utf8");
-
-    try {
-        return await eslint.lintFiles([fixturePath]);
-    } finally {
-        await rm(fixturePath, { force: true });
-    }
+    const configured = new ESLint({ cwd: apiRoot });
+    const config = (await configured.calculateConfigForFile(fixturePath)) as Linter.Config | undefined;
+    const rule = config?.rules?.["no-restricted-imports"];
+    if (!rule) throw new Error("La frontera core/integrations no esta configurada.");
+    const isolated = new ESLint({
+        cwd: apiRoot,
+        overrideConfigFile: true,
+        overrideConfig: [{ files: ["**/*.ts"], rules: { "no-restricted-imports": rule } }],
+    });
+    return isolated.lintText(source, { filePath: fixturePath });
 };
 
 describe("module import boundary", () => {
@@ -34,4 +35,16 @@ describe("module import boundary", () => {
 
         expect(result?.messages.some((message) => message.ruleId === "no-restricted-imports")).toBe(true);
     }, 15_000);
+
+    it("permite puertos del dominio sin errores de parser", async () => {
+        const [result] = await lintModuleSource('import { PORT } from "../ports/domain.port.js"; export const port = PORT;');
+        expect(result?.messages).toEqual([]);
+    });
+
+    it("aplica la frontera solo a core, sin impedir adapters de integracion", async () => {
+        const configured = new ESLint({ cwd: apiRoot });
+        const config = (await configured.calculateConfigForFile(join(apiRoot, "src/integrations/legacy-crm/legacy-catalog.reader.ts"))) as Linter.Config | undefined;
+        expect(config).toBeDefined();
+        expect(config?.rules?.["no-restricted-imports"]).toBeUndefined();
+    });
 });

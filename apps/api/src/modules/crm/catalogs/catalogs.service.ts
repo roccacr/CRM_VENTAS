@@ -12,6 +12,7 @@ import { IdentityService } from "../identity/identity.service.js";
 import { CATALOG_FALLBACK_READER, type CatalogFallbackReader } from "./catalog-fallback.js";
 import { CatalogsRepository } from "./catalogs.repository.js";
 
+/** Aplica la politica compartida usando el repositorio de catalogos. */
 @Injectable()
 export class CatalogsService extends CatalogItemOperations {
     /**
