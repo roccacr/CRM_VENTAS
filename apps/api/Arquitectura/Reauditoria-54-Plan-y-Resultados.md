@@ -1,0 +1,193 @@
+# Reauditoria: plan y resultados verificables
+
+Fecha: 2026-10-22. Fuente: auditoria adjunta de 54/100. Esa nota usa una escala
+distinta de la anterior; no demuestra una regresion. Este informe no asigna nota.
+
+## Plan de ejecucion
+
+1. Contener acceso productivo desde desarrollo: revisar `.env`, gate compartido,
+   seis writers y pruebas existentes. Mantener lectura separada de escritura.
+2. Corregir reset simulado y bypass Owner reutilizando contratos y pruebas HTTP.
+3. Inventariar rutas reales antes de autenticacion global; reutilizar perfil solo
+   dentro de una peticion, sin cache global ni persistencia de permisos obsoletos.
+4. Corregir historial, aislamiento de errores, carga diferida y esperas del cliente.
+   No cambiar el diseno del dashboard ni inventar flujo comercial.
+5. Incorporar salud, errores sanitizados, cobertura, dependencias y runbook.
+6. Verificar cambios completos, separar commits locales autorizados y comprobar
+   instalacion frozen y checks desde clon limpio. No push ni despliegue.
+
+Archivos: adaptadores `integrations/legacy-crm`, identidad, seguridad comun,
+expedientes, bootstrap, App/rutas/frontend, configuracion Vitest/CI y documentacion.
+Se reutilizan Kysely, Fastify, validacion Zod, permisos efectivos y tests existentes.
+No se ejecutan fixtures, DDL, migraciones, grants ni cambios en datos reales.
+
+## Alcance y clasificacion
+
+- `CRM_THINK_V2`: desarrollo con datos importantes, no instancia desechable.
+- `crmdatabase-api`: produccion. Comparten host; no constituye aislamiento.
+- Las pruebas reales previas consumieron AUTO_INCREMENT pese al rollback. No se
+  repitieron en esta entrega ni se reiniciaron secuencias.
+- Un cambio local no demuestra despliegue activo, usuario MySQL read-only,
+  cabeceras reales del frontend o disponibilidad de servicios externos.
+- Un archivo grande, OFFSET o dos librerias no es por si mismo una vulnerabilidad.
+  Requieren medicion y comparacion funcional, no reescritura por una nota.
+- Leads/clientes/oportunidades no definidos para esta fase no se implementan
+  como una supuesta correccion tecnica de Formalizacion.
+
+## Matriz de hallazgos
+
+| Hallazgo | Entrega y criterio de cierre |
+| --- | --- |
+| Desarrollo expuesto y escritura legacy | `.env` local vuelve a loopback/fallback=false; seis writers requieren entorno production y opt-in de escritura booleano, aparte de lectura. Pruebas sin SQL en desarrollo. Reiniciar proceso existente para aplicar bind/entorno. |
+| Credenciales compartidas | Pendiente DBA: preparar cuentas separadas con SELECT sobre legado, permisos nativos minimos y prueba de compatibilidad antes de rotar. No alterar credenciales compartidas ni grants desde este trabajo. |
+| Reset aceptado sin envio | S01: opcion honesta deshabilitada, 503 uniforme incluso al alcanzar limites; sin buscar cuenta ni simular entrega. Completar token valido conserva contrato. Correo real pendiente del proveedor pospuesto. |
+| Bypass Owner | S05 parcial: permiso exacto obligatorio y deny prevalece antes de lecturas; exencion de pertenencia de Owner se conserva. |
+| Scopes proyecto/area | Pendiente decision de modelo usuario/proyecto; filtrar proyectos no equivale a autorizarlos. Aceptacion: lista/detalle/opciones/facetas de ambas fuentes impiden acceso cruzado. |
+| Rutas sin clasificar | Q08: inventario del grafo real Nest, metodos y aliases; falla con handler nuevo sin clasificacion. |
+| Guard global / permisos | S03 implementado y probado: denegacion por defecto, excepciones publicas explicitas, CSRF primero. F07 intrapeticion comparte perfil por instancia/token exacto y recarga en siguiente request. S04 sigue parcial: permiso exacto y fila se validan en servicios; la etiqueta permission no sustituye esas comprobaciones. |
+| Lockout 5 fallos/15 min | S02 pendiente: preservar defensa distribuida hasta acordar recuperacion segura del ultimo administrador y probar enfriamiento. No eliminar lockout para mejorar una nota. |
+| Passwords / inactividad | S06/S08 pendientes de politica y criterios de compatibilidad; no imponer plazos arbitrarios ni invalidar sesiones existentes. |
+| Rate limit memoria / lecturas | S09 implementado por proceso para GET/HEAD protegidos: cuotas independientes por usuario verificado e IP, 429/Retry-After. Defaults iniciales 120/600 por minuto, cache 5000 por contador, sin benchmark de capacidad. S10 pendiente: reinicio/eviccion/replicas no comparten contadores; autenticacion se valida antes del limite, no limita su propio costo de DB. |
+| Microsoft | Vinculo existente usa subject; diagnostico de identidades reales solo lectura y con autorizacion. No migracion automatica de cuentas. |
+| Consulta completa de proyectos | D06 parcial: seleccion por IDs en SQL para lista/opciones/facetas; selector conserva contrato. Falta EXPLAIN y carga representativa aislada. |
+| OFFSET / pool fijo | Medicion pendiente; cambiar cursor o pool sin volumen/topologia puede romper contratos o saturar servidor compartido. |
+| Frontend historial / errores / lazy / espera | F01-F04 implementados con pruebas de Atras/Adelante, redireccion replace, recuperacion de render/chunk y retry explicito. Loader solo mientras existe trabajo real. Build genera paginas separadas; ver mediciones debajo. |
+| Formalizacion DEMO | F05: retirar datos demostrativos de vistas operativas, sin convertir cero provisional en metrica conectada. P02-P04 siguen pendientes de flujo real. |
+| Cobertura ausente | Q06: proveedor V8 dev-only, scripts y artefactos CI para src; registrar medicion antes de decidir umbrales. |
+| Dependencias | S12: audit completo y de produccion, analizar avisos antes de parches dirigidos; ninguna actualizacion automatica masiva. |
+| MySQL sin verificar | Q05 bloqueado por instancia aislada preparada; 113 omisiones no son aprobaciones. Runner/preflight solo dobles en esta entrega. |
+| CI / checkout | Q04: workflow local; usuario autoriza commits separados, no push. Clon limpio local no equivale a CI remoto activo. Solo Quality/api y Quality/frontend obligatorios; MySQL informativo. |
+| Health/readiness | O01 implementado: liveness sin IO, readiness SELECT nativo con respuesta de un segundo y una consulta pendiente maxima, sin requerir legacy; pruebas con dobles. El timeout no cancela el driver ni comprueba esquema. |
+| Errores globales | O02 implementado: conserva 4xx y sanitiza 5xx, correlacion generada/log seguro sin SQL ni secretos. 503 estatico compartido entre filtro y hook de reset. |
+| Operacion / rollback | O03: runbook basado en scripts reales, supervisor e infraestructura pendientes de validacion. No down destructivo ni restauraciones ejecutadas. |
+| Catalogos duplicados / archivos grandes / CSS / supresiones | A01-A06 pendientes: piloto con contratos equivalentes y diff visual, no mezclar refactor estructural con seguridad ni borrar documentacion util. |
+| DataTables/Ant Design | F06 requiere prueba de equivalencia, accesibilidad y rendimiento antes de retirar dependencia. |
+| CSP frontend | S11 requiere respuesta del servidor real, que no vive en este checkout; Helmet API no certifica el host frontend. |
+| Producto comercial | P01 matriz en runbook; P02-P05 requieren reglas y alcance aceptados. Persistencia de estados no es flujo completo implementado. |
+
+## Evidencia de ejecucion
+
+Comando oficial desde raiz: `.\check-all.cmd`, salida 0 en arbol de trabajo y
+clon limpio de `7572b97`. Tras el ultimo ajuste de metadatos de reset, `pnpm check`
+API paso de nuevo en el clon actualizado a `056f9d0`, con una prueba adicional.
+El frontend no cambio entre esos commits. Todos los flags de
+suites MySQL se fijaron a 0 y ambos flags legacy a false en el proceso de pruebas.
+
+| Verificacion | API | Frontend |
+| --- | --- | --- |
+| Formato / ESLint / TypeScript | Aprobados | Aprobados |
+| Pruebas generales | 4583 aprobadas; 113 MySQL omitidas, 21 archivos | 428 aprobadas, 31 archivos |
+| Build | Aprobado | Aprobado |
+| `pnpm test:coverage` | Aprobado; mismas 4583 pruebas y 113 omitidas | Aprobado; mismas 428 pruebas |
+| Cobertura lineas | 69.99% (2715/3879) | 84.77% (3459/4080) |
+| Cobertura statements | 67.61% | 83.08% |
+| Cobertura branches | 53.40% | 74.86% |
+| Cobertura funciones | 73.82% | 82.97% |
+| `pnpm audit --prod` | Sin avisos conocidos | Sin avisos conocidos |
+| `pnpm audit` completo | Sin avisos conocidos | Sin avisos conocidos |
+
+Cobertura V8 incluye src; excluye entradas main y tipos declarativos API o .d.ts
+frontend. No incluye persistencia real omitida. Reportes locales en
+`apps/api/coverage` y `apps/frontend/coverage`, ignorados por Git; CI prepara
+artefactos. No hay umbral minimo inventado: Q06 medicion/configuracion resuelto,
+politica de umbrales pendiente de linea base revisada. En fallos de checks o
+tests puede no generarse reporte; upload always no garantiza archivo existente.
+
+Pruebas focalizadas adicionales: 51 para gate y seis writers, 50 para seleccion
+de proyectos/servicio de expedientes. Los tests HTTP del guard verifican 401,
+403, 429/Retry-After, ausencia de ejecucion del handler bloqueado, permiso
+revocado en la siguiente peticion y una sola carga de perfil compartida con el
+servicio. Inventario comprueba el grafo registrado, aliases y allowlist publica.
+
+Se observaron fallos transitorios durante integracion: cobertura frontend inicial
+tuvo 13 fallos (timing/importaciones/interacciones), y API inicial cuatro por
+respuesta 503 no uniforme entre hook y filtro. Se corrigieron la sincronizacion
+de tests de navegacion y el contrato 503; cobertura usa dos workers para limitar
+contencion, sin subir timeouts. Las corridas finales anteriores pasan completas.
+No se ocultan esas primeras corridas ni se atribuyen a defectos productivos sin
+reproduccion. Persisten avisos no bloqueantes jsdom/pseudo-elementos y chunk
+Ant Design de 1050.81 kB (gzip 332.61).
+
+Ultimo ajuste: `@HttpCode` del reset seguia declarando 202 aunque respondia 503.
+Prueba nueva reprodujo el metadato incorrecto y se cambio a 503. Se corrigio
+tambien una referencia de metodo sin binding en esa prueba, sin supresiones;
+check API completo y cobertura finales incluyen la prueba adicional.
+
+Build del arbol de trabajo: entrada JS 85.09 kB (gzip 25.00); clon limpio:
+84.74 kB (gzip 24.89). Antes 546.14 kB segun build
+previo registrado; el total no desaparece, pasa a chunks por ruta. No es una
+medicion controlada de latencia. Vite tambien cambio de patch entre builds.
+
+Dependencias: la consulta completa detecto nueve avisos dev-only al incorporar
+medicion (incluida una dependencia nueva del proveedor). Se revisaron y aplicaron
+parches dirigidos: Vitest/coverage-v8 5.0.3, Vite 8.3.3, source-map-js 1.2.2.
+Vite explicito en API fija el peer de Vitest que pnpm mantenia en 8.3.1; no es
+un servidor nuevo en runtime. Se conservaron las versiones previas de logging.
+No hubo upgrade masivo, audit fix automatico ni cambios de version mayor.
+Referencia primaria: [aviso de Vitest](https://github.com/vitest-dev/vitest/security/advisories/GHSA-qxg6-89mg-rqv8).
+Un audit limpio no es pentest ni prueba de ausencia de vulnerabilidades.
+
+Contencion local: `.env` permanece ignorado y fuera de commits; fallback=false,
+bind loopback. Consulta de sockets confirmo API en `127.0.0.1:3000`, no 0.0.0.0.
+No se llamo readiness real ni se abrio conexion DB para estas verificaciones.
+Importante: con fallback apagado, el contador devuelve solo fuente nativa y
+`legacyEnabled=false`, no un total combinado certificado. Rehabilitar lectura
+requiere revisar el usuario read-only con DBA; lectura no habilita escritura.
+Writer exige tambien destino legacy configurado; vacio/invalido no ejecuta SQL.
+Editar nativo con escrituras legacy apagadas puede producir divergencia: D04
+sigue abierto, no se presenta esta contencion como conciliacion implementada.
+
+Revision cruzada: otro responsable reviso gate/writers/D06 sin nuevas regresiones;
+otro reviso guard/contexto (lectura estatica, confianza moderada); otro reviso
+health/filtro y ejecuto pruebas enfocadas con dobles. No sustituyen pentest ni
+verificacion de grants, motores InnoDB o atomicidad real cross-schema.
+
+### Commits y reproducibilidad
+
+Usuario autoriza commits locales separados; sin push ni despliegue:
+
+| Commit | Contenido |
+| --- | --- |
+| `3d45912` | Calidad, prueba de frontera y asercion de auditoria |
+| `4b4118f` | Fundamentos previos de ordenes, auditoria y contador |
+| `4807ec3` | Integracion/visual previo de Formalizacion y retiro DEMO Inicio |
+| `989e96c` | Historial, limites de error, lazy y espera real frontend |
+| `855742c` | Seguridad, contencion legacy, expedientes, salud y errores |
+| `7572b97` | CI, gate MySQL, cobertura y dependencias dirigidas |
+| `25521fc`, `056f9d0` | Alineacion final de metadatos HTTP del reset y regresion sin supresion de lint |
+
+Estos commits separan la remediacion de calidad del producto previo; algunos
+archivos compartidos y wiring dependen de commits de la misma serie. No se
+certifica cada commit intermedio como release independiente.
+
+Clon de verificacion: `C:/codex-data/tmp/crm-tink-audit-20261022`, creado vacio
+con `git clone --no-hardlinks` de `7572b97`. Ambas instalaciones
+`pnpm install --frozen-lockfile` y `.\check-all.cmd` aprobaron; no se copio `.env`.
+`git status --porcelain` vacio antes/despues de instalar y verificar. El clon se
+actualizo sin cambios locales a `056f9d0` y su `pnpm check` API volvio a aprobar
+con 4583 pruebas. `git diff 7572b97..056f9d0 --name-only` contiene solo controller
+de identidad y su test; frontend/lockfiles permanecen identicos.
+
+Entorno local verificado: Windows, Node v22.20.0, pnpm 10.28.2. Esto acredita
+instalacion/checks reproducibles de la serie versionada en esta maquina, no
+artefactos byte-identicos ni ejecucion del runner Linux/GitHub. El commit posterior
+de este informe/plan/runbook/README es documental y no cambia codigo ni lockfiles.
+CI remoto, proteccion de ramas, despliegue y MySQL aislado permanecen abiertos.
+
+## Orden restante sin cierre ficticio
+
+1. DBA: cuenta nativa minima y lectura legacy separada; instancia de pruebas
+   aislada con UUID/marcador y dataset autorizado. Ejecutar MySQL solo entonces.
+2. Responsable funcional: scopes de expedientes y recuperacion ultimo Owner;
+   luego S02/S05 integral, politica password/inactividad y limites por capacidad.
+3. Responsable CI: push aprobado y environment/secretos de pruebas; ejecutar
+   workflow remoto y activar solo checks de calidad como obligatorios.
+4. Equipo backend/DBA: volumen sintetico, EXPLAIN, carga, tiempos y pools; despues
+   evaluar cursores y cache entre requests con invalidacion demostrada.
+5. Catalogos: piloto de dos dominios con contratos comparados y regresion HTTP;
+   ampliar solo si reduce duplicacion real sin perder reglas particulares.
+6. Producto: aprobar transiciones/acciones/actores y concurrencia de ordenes;
+   implementar flujo conectado antes de ampliar a leads u otras areas.
+
+El plan completo sigue abierto mientras existan estos prerequisitos. Ningun
+resultado unitario sustituye pruebas de persistencia, despliegue o pentest.

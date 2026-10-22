@@ -20,6 +20,15 @@ Prioridad vigente: cerrar Administracion (usuarios, roles, permisos, auditoria y
 
 ## Ejecutar y verificar
 
+CI preparado en [.github/workflows/quality.yml](.github/workflows/quality.yml).
+El [runbook CI/MySQL](apps/api/Arquitectura/CI-MySQL-Pruebas.md) distingue los
+checks de calidad de la persistencia real. Sin infraestructura de pruebas
+habilitada, el gate MySQL queda bloqueado, no aprobado por omision.
+
+La [remediacion de auditoria](apps/api/Arquitectura/Reauditoria-54-Plan-y-Resultados.md)
+registra cambios, verificaciones y pendientes. Ver tambien el
+[runbook de operacion y rollback](apps/api/Arquitectura/Operacion-Despliegue-Rollback.md).
+
 Node >=22 y pnpm >=10.28.2. No hay package.json raiz ni workspace Node conjunto. Cada app tiene su lockfile.
 
 Desde cada carpeta: `pnpm install --frozen-lockfile`, luego `pnpm dev`. Configurar primero el entorno con los responsables; no copiar secretos a documentacion.
