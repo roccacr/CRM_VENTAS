@@ -4,7 +4,7 @@ Actualizado: 2026-10-22. Este repositorio contiene el CRM nuevo NestJS/React. El
 
 ## Estado vigente y limites
 
-La [remediacion y evidencia de verificacion](apps/api/Arquitectura/Reauditoria-54-Plan-y-Resultados.md) es la referencia del corte actual. Incluye autenticacion global por defecto denegada (los permisos concretos siguen en servicios), limites de lectura por proceso, recuperacion de clave deshabilitada con 503, salud HTTP, navegacion con historial/carga diferida y errores recuperables. No acredita despliegue ni cierre completo de seguridad.
+La [remediacion y evidencia de verificacion](apps/api/Arquitectura/Reauditoria-54-Plan-y-Resultados.md) es la referencia del corte actual. Incluye autenticacion global por defecto denegada, permisos declarativos de ruta con comprobaciones adicionales en servicios/recursos, limites de lectura por proceso, recuperacion de clave deshabilitada con 503, salud HTTP, navegacion con historial/carga diferida y errores recuperables. No acredita despliegue ni cierre completo de seguridad.
 
 Formalizacion tiene persistencia interna normalizada de ordenes e historial y un contador real de aprobaciones protegido por `formalizacion.home.approvals.read`; no existe todavia API de aprobacion/cambio de etapa. El banner no dispara consultas sin permiso. Los otros seis indicadores siguen en cero provisional; seguimiento y movimientos del Home no tienen fuente operacional. Calendario/resumen y recorridos de gestion conservan simulaciones, no operaciones reales.
 

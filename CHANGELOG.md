@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased - Continuidad de auditoria - 2026-10-22
+
+- Fastify fijado en 5.12.6 tanto directo como dentro del adapter Nest; override acotado de ip-address 10.7.4 en rate-limit. Sin actualizacion masiva de dependencias.
+- RequirePermission agrega comprobacion declarativa antes de handlers protegidos; se conservan validaciones condicionales, de pertenencia, recurso y transaccion en servicios. Evidencia y limites en el informe de reauditoria.
+- Regla confirmada de Formalizacion: tres aprobaciones completas inician Contratos pendientes / Por enviar; si la orden existe en nativo se gestiona solo alli, de lo contrario en legacy. Regla documentada, sin escrituras ni flujo operativo implementado por esta entrega.
+- Cache entre peticiones queda como candidata a medir, no defecto automatico. CI remoto, MySQL aislado y transiciones posteriores mantienen sus prerequisitos.
+
 ## Unreleased - Consolidacion verificada - 2026-10-22
 
 - Compuertas independientes de lectura/escritura legacy; escritura bloqueada fuera de produccion o con destino distinto de `crmdatabase-api`.

@@ -330,6 +330,7 @@ Each integration must include:
 - The current model supports RBAC + ABAC, multiple roles, direct grants, explicit denies, and scoped revocation. Temporal delegated permissions remain future scope.
 - Do not implement the full IAM target model before the first lead vertical works.
 - Never trust frontend-provided permissions.
+- Every `RouteSecurity("permission")` handler must declare method-local `RequirePermission` metadata. Reuse the bounded descriptors and preserve conditional, membership, row and transaction checks in services. Missing descriptors fail closed; update the route inventory and behavioral denial tests for new handlers.
 - Never authorize sensitive actions only from permissions captured at login time.
 - Sanitize logs.
 - Never log tokens, secrets, or raw credentials.

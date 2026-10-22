@@ -281,6 +281,8 @@ GET/HEAD protegidos tambien tienen cuotas por proceso: defaults 120 por usuario 
 
 La seguridad Nest aplica CsrfGuard antes del AuthGuard global default-deny. Cada handler declara RouteSecurity; solo la allowlist explicita es publica. El servicio conserva la comprobacion del permiso exacto. AsyncLocalStorage reutiliza perfil solo dentro del request, instancia de servicio y token exacto; no es cache global de permisos.
 
+Continuidad posterior al corte `f2dc4f1`: los 49 handlers `permission` declaran tambien `RequirePermission`. El guard verifica el descriptor antes de entrar al handler; faltante, grant incorrecto o deny rechazan con 403. Se mantienen comprobaciones condicionales y por recurso en servicios. Auditoria conserva la excepcion de Owner activo, pero un deny explicito de `role.assign` bloquea el acceso HTTP. Los contextos de seguridad no resolubles rechazan con 403; DTOs conservan validacion cuando el contexto se puede autorizar.
+
 Cada endpoint sensible tiene **dos contadores independientes**:
 
 | Contador | Protege contra |

@@ -1,6 +1,6 @@
 # 05 - Seguridad, Auditoria y Observabilidad
 
-Estado implementado 2026-10-22: `CsrfGuard` precede al `AuthGuard` global default-deny. Cada handler Nest registrado declara `RouteSecurity`; las rutas publicas forman una allowlist explicita. La clasificacion `permission` no sustituye el permiso exacto y las validaciones del servicio. Perfil reutilizado solo dentro del request por AsyncLocalStorage, instancia de servicio y token exacto; no cache global de autorizacion.
+Estado implementado 2026-10-22: `CsrfGuard` precede al `AuthGuard` global default-deny. Cada handler Nest registrado declara `RouteSecurity`; las rutas publicas forman una allowlist explicita. Los handlers `permission` requieren ademas `RequirePermission`: el guard resuelve el descriptor y rechaza ausencia de grant o deny antes del handler. No sustituye membresia, controles condicionales, de fila o transaccion del servicio. Perfil reutilizado solo dentro del request por AsyncLocalStorage, instancia de servicio y token exacto; no cache global de autorizacion.
 
 GET/HEAD protegidos: defaults 120 consultas/usuario y 600/IP por 60 segundos, cache 5000 por store, por proceso; respuesta 429 con Retry-After. No es cuota distribuida. `/health/live` no hace IO; `/health/ready` prueba SELECT 1 nativo con plazo de respuesta de 1 segundo y una sonda pendiente compartida, sin cancelar el driver. Legacy no determina readiness. Errores 5xx usan respuestas publicas sanitizadas. Metricas ERP, jobs y atributos comerciales siguientes son direccion futura, no capacidades verificadas en produccion.
 

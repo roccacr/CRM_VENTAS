@@ -3,6 +3,66 @@
 Fecha: 2026-10-22. Fuente: auditoria adjunta de 54/100. Esa nota usa una escala
 distinta de la anterior; no demuestra una regresion. Este informe no asigna nota.
 
+## Continuidad tras reauditoria de 65 puntos - 2026-10-22
+
+Este corte posterior prevalece sobre el estado inicial de S04 y los conteos de
+pruebas de las secciones historicas siguientes. No asigna una nota nueva ni
+acredita despliegue, BD real o ejecucion remota de CI.
+
+- Dependencias: audit reprodujo un aviso bajo de Fastify y uno moderado de
+  ip-address. Commit `936a51a` fija Fastify 5.12.6 directo y dentro de Nest, e
+  ip-address 10.7.4 solo dentro de rate-limit. Ambos audits API (completo y prod)
+  pasan sin avisos conocidos; frontend completo y prod tambien. El lockfile solo cambia
+  esas versiones/overrides. No se atribuye una fecha de publicacion nueva a los
+  avisos ni se convierte el resultado anterior en garantia permanente.
+- Documentacion: `f02e9f5` confirma las 78 revisiones pendientes de la pasada
+  anterior. Se normalizaron cinco Markdown con CRLF a LF conforme a la regla
+  existente; no se modifico la politica de finales de linea ni archivos ajenos.
+- Autorizacion: `f9ba243` agrega RequirePermission y resolver acotado a los 49
+  handlers permission. Sin descriptor o sin grant correcto se rechaza antes
+  del handler; deny gana. Los controles de servicio, membresia, recursos,
+  asignacion condicional y transacciones no se retiran. Auditoria conserva la
+  excepcion previa de Owner activo, pero deny explicito de role.assign ahora
+  bloquea HTTP. No se otorgan permisos nuevos ni se resuelven scopes por proyecto.
+- Las regresiones HTTP prueban permiso ausente/ajeno, deny incluido Owner,
+  aliases, metadatos faltantes, mapas positivos, estados condicionales y siguiente
+  request tras revocacion. La matriz usa controladores registrados y servicios
+  sustituidos para comprobar cero ejecucion del handler/dominio denegado;
+  las suites de identidad/catalogos reales complementan esos dobles. No prueba
+  persistencia ni revocacion en una BD real. Contexto de seguridad no resoluble
+  devuelve 403; DTOs mantienen validacion cuando el contexto es autorizable.
+- Verificacion propia: check-all completo con salida 0, API 4866 aprobadas y
+  113 MySQL omitidas; frontend 428 aprobadas. Formato/lint/tipos/build aprobados
+  en ambas apps. Dos intentos iniciales se detuvieron por formato de archivos
+  nuevos y fueron corregidos antes de la corrida completa; no hubo fallo de
+  tests ocultado. Las 24 banderas de fixtures detectadas se forzaron a 0 y
+  lectura/escritura legacy a false en los procesos de pruebas.
+- Cobertura API V8 completa: lineas 70.48% (2758/3913), ramas 54.36%
+  (1612/2965), statements 68.18%, funciones 75.17%. AuthGuard tiene 100% de ramas
+  (14/14), resolver de permisos 92.18% (59/64), IdentityService 78.76% (115/146).
+  El global sigue limitado; estos porcentajes no equivalen a seguridad probada
+  de todas las reglas ni cierran Q05. Frontend no cambio funcionalmente.
+- Revision independiente estatica del guard, mapas y pruebas: sin hallazgos
+  accionables; no sustituye las corridas propias ni un pentest.
+- Cache entre requests queda como candidata a medir, no falta automatica. El
+  supuesto costo de cinco consultas no se presenta como benchmark realizado.
+
+Regla de producto confirmada en este turno: las tres aprobaciones completas
+inician Contratos pendientes / Por enviar, solo en CRM. Existencia en nativo
+implica gestion/escritura solo nativa; ausencia implica gestion en legacy, no
+doble escritura. Ver [regla y limites](38-Ordenes-Venta-Estados-Auditoria.md).
+Se documenta sin ejecutar mutaciones: quedan por definir permiso de aprobacion,
+acciones posteriores y concurrencia de migracion antes de habilitar el flujo.
+No se hicieron push, cambios remotos, SQL, fixtures, grants ni conexiones DB.
+
+Clon candidato preparado en `C:/codex-data/tmp/crm-tink-permissions-20261022`
+desde commits locales, sin copiar .env ni archivos no versionados. Instalaciones
+frozen/offline de ambas apps aprobadas. Check-all del clon en `f9ba243` tambien
+paso con 4866 pruebas API, 113 MySQL omitidas y 428 frontend, formato/lint/tipos
+y ambos builds. Git status vacio antes y despues; no es CI remoto ni prueba
+del runner Linux. El cierre documental posterior no cambia codigo ni lockfiles.
+Persisten avisos no bloqueantes de jsdom y chunk Ant Design de 1050.81 kB.
+
 ## Plan de ejecucion
 
 1. Contener acceso productivo desde desarrollo: revisar `.env`, gate compartido,
@@ -34,7 +94,7 @@ No se ejecutan fixtures, DDL, migraciones, grants ni cambios en datos reales.
 - Leads/clientes/oportunidades no definidos para esta fase no se implementan
   como una supuesta correccion tecnica de Formalizacion.
 
-## Matriz de hallazgos
+## Matriz de hallazgos del corte inicial (ver continuidad anterior)
 
 | Hallazgo | Entrega y criterio de cierre |
 | --- | --- |
@@ -65,7 +125,7 @@ No se ejecutan fixtures, DDL, migraciones, grants ni cambios en datos reales.
 | CSP frontend | S11 requiere respuesta del servidor real, que no vive en este checkout; Helmet API no certifica el host frontend. |
 | Producto comercial | P01 matriz en runbook; P02-P05 requieren reglas y alcance aceptados. Persistencia de estados no es flujo completo implementado. |
 
-## Evidencia de ejecucion
+## Evidencia de ejecucion del corte inicial
 
 Consolidacion posterior del mismo cierre: `.\check-all.cmd` tambien paso en el
 clon actualizado al commit documental `f2dc4f1`, con estado Git limpio. Los

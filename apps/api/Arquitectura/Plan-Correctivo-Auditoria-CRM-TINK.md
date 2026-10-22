@@ -81,9 +81,12 @@ de infraestructura explicitamente registrado, nunca presentado como aprobado.
 - [x] S03. Inventariar rutas publicas y privadas; introducir autenticacion global
   de denegacion por defecto con excepciones publicas explicitas.
   Cubrir login, callbacks, CSRF, refresh y recuperacion sin romper sus contratos.
-- [ ] S04. Metadatos de permisos/guard y politica reutilizable, implantados por
+- [x] S04. Metadatos de permisos/guard y politica reutilizable, implantados por
   modulo. Conservar validaciones de dominio, de fila y de transaccion en servicio.
   Probar acceso directo HTTP; ocultar UI no sustituye autorizacion del backend.
+  Continuidad: los 49 handlers permission llevan RequirePermission; el guard
+  rechaza falta de descriptor, grant incorrecto y deny antes del handler.
+  Scopes usuario/proyecto siguen en S05, no quedan cerrados por este cambio.
 - [ ] S05. Expedientes: retirar bypass implicito owner, respetar deny y definir
   scopes reales por proyecto/area/asignacion. Aplicar los mismos filtros a lista,
   detalle, opciones, facetas y ambas fuentes; no inventar relaciones inexistentes.
@@ -360,9 +363,10 @@ limitaciones y resultados actuales sin asignar nota nueva.
 S01 se cierra por la alternativa explicitamente aprobada: recuperacion
 deshabilitada con 503 uniforme, sin simular envios. No se implemento correo real.
 Q08/S03 incluyen inventario real, allowlist publica, default-deny y perfil
-compartido solo dentro de cada request. F07 sigue parcial: no cache entre
-requests ni benchmark de consultas. S04 conserva permiso/fila en servicios;
-clasificacion permission no equivale a metadatos de permisos completos.
+compartido solo dentro de cada request. F07 sigue parcial por falta de medicion
+de consultas/carga, no por ausencia de cache entre requests.
+En ese corte S04 conservaba permiso/fila en servicios sin metadatos completos;
+la continuidad posterior incorpora descriptores declarativos sin retirarlos.
 
 S05 retira bypass Owner y respeta deny; alcance usuario/proyecto no esta definido.
 D06 filtra seleccion por IDs en SQL; selector completo y EXPLAIN siguen pendientes.

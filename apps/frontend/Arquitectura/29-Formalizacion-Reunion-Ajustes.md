@@ -1,5 +1,11 @@
 # Formalizacion: registro de ajustes surgidos en reunion
 
+## Confirmacion posterior del propietario - 2026-10-22
+
+Se resuelve parte del punto 1: cuando Jefatura, Formalizacion y Desarrolladora estan aprobadas, inicia Contratos pendientes / Por enviar. Es una etapa CRM, no una instruccion para modificar el ERP. Desarrolladora corresponde a `aprobacion__rdr_ov`, Jefatura a `chekJefeVenta` y Formalizacion a `aprobacion_forma_ov`; la duda historica RDR/desarrolladora queda resuelta para este mapeo.
+
+Autoridad de gestion confirmada: orden existente en `CRM_THINK_V2` se modifica solo en nativo; si no existe, se gestiona en `crmdatabase-api`, con su historial. No duplicar mutaciones ni cambiar a legacy ante errores de la fuente nativa. Detalle y limites: [38 - Ordenes e historial](../../api/Arquitectura/38-Ordenes-Venta-Estados-Auditoria.md). Esta decision no resuelve el resto de transiciones ni acredita implementacion operativa o escrituras ejecutadas.
+
 ## Clasificacion al corte f2dc4f1 - 2026-10-22
 
 Registro de necesidades y dudas de reunion, no autoridad nueva de producto. Las decisiones abiertas de aprobaciones, llaves, adendas, cartera, tickets, notificaciones y cierre anual no quedan resueltas por la remediacion tecnica. Los apartados fechados de implementacion/QA conservan su evidencia original; no se ejecutaron de nuevo. Estado de Inicio/seguimiento y permisos: [29 - Remediacion](29-Navegacion-Recuperacion-y-Seguimiento.md). El contador es una lectura autorizada; no implementa la bandeja gestionable ni concede aprobar/devolver. Los seis banners son provisionales y seguimiento/movimientos no estan disponibles; Calendario/Resumen siguen DEMO.

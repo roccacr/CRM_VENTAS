@@ -1,5 +1,14 @@
 # Ordenes de venta: esquema y trayectoria - 20/10/2026
 
+## Regla funcional confirmada por el propietario - 2026-10-22
+
+- Con Aprobacion Jefe de Ventas, Aprobacion Formalizacion y Aprobacion Desarrolladora aprobadas, la orden inicia el ciclo CRM en Contratos pendientes / Por enviar. Este cambio de etapa es interno del CRM: no ordena actualizar un check del ERP.
+- La existencia de la identidad de orden en `CRM_THINK_V2` decide la autoridad de gestion. Si existe, gestionar exclusivamente en nativo; no modificar su contraparte en `crmdatabase-api`. Si no existe, la gestion e historial permanecen en legacy. No es escritura simultanea a ambas BD ni promocion automatica obligatoria.
+- Correlacionar con la identidad legacy `id_ov` conservada en la referencia de migracion; los IDs o numeros de NetSuite/Odoo no sustituyen esa correspondencia. Una identidad nativa existente no debe volver a legacy por error de lectura, estado inactivo o error de escritura. Ante indisponibilidad no inferir ausencia ni usar fallback de escritura.
+- Conservar auditoria de actor, origen, momento y transicion en la fuente autoritativa. No inventar trayectoria anterior al estado observado. La aplicacion concreta requiere controlar concurrencia entre migracion y mutaciones para no escribir en ambas fuentes.
+
+Esta confirmacion define el ingreso y la autoridad de escritura; no acredita endpoints, cambios de checks, SQL/021 aplicado en legacy ni operaciones productivas ejecutadas. Las compuertas actuales siguen vigentes. Las reglas posteriores de firma, banco, saldo, llaves y cierre siguen pendientes de confirmacion. El contador de pendientes de aprobacion conserva su criterio anterior: Jefatura/Desarrolladora aprobadas y Formalizacion sin aprobar.
+
 Estado documental 2026-10-22: nueve tablas de lifecycle/auditoria/referencias y persistencia interna, sin rutas HTTP de mutacion. Existe el contador real `GET /formalization/approvals/summary` descrito al final; sustituye el escenario local solo para ese indicador. Las aprobaciones son independientes de las etapas. Conteos, ejecuciones de migraciones, errores de conexion y pruebas fechadas son evidencia historica; SQL/021 no se ejecuto en esta revision. Ver [36 - Registro vigente](36-Registro-Entrega-Administracion.md) y [reauditoria](Reauditoria-54-Plan-y-Resultados.md).
 
 ## Resultado historico de la entrega 2026-10-20

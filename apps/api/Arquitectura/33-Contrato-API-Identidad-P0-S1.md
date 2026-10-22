@@ -1,6 +1,6 @@
 # 33 - Contrato API de Identidad P0-S1
 
-Estado documental 2026-10-22: `CsrfGuard` primero y `AuthGuard` global default-deny; `RouteSecurity` explicito por handler Nest, allowlist publica y permisos exactos en servicios. AsyncLocalStorage reutiliza perfil solo en el request/servicio/token; no cache global. GET/HEAD protegidos tienen cuotas locales 120/usuario y 600/IP por minuto, cache 5000 por store (defaults); exceso 429 con Retry-After, sin coordinacion distribuida. El request-reset declara tambien 503 en metadata HTTP/OpenAPI. Ver [36 - Estado vigente y registro](36-Registro-Entrega-Administracion.md).
+Estado documental 2026-10-22: `CsrfGuard` primero y `AuthGuard` global default-deny; `RouteSecurity` explicito por handler Nest y allowlist publica. Los handlers `permission` exigen `RequirePermission` verificable por el guard antes del handler; los servicios mantienen permisos condicionales y controles por recurso. AsyncLocalStorage reutiliza perfil solo en el request/servicio/token; no cache global. GET/HEAD protegidos tienen cuotas locales 120/usuario y 600/IP por minuto, cache 5000 por store (defaults); exceso 429 con Retry-After, sin coordinacion distribuida. El request-reset declara tambien 503 en metadata HTTP/OpenAPI. Ver [36 - Estado vigente y registro](36-Registro-Entrega-Administracion.md).
 
 ## Veredicto
 
