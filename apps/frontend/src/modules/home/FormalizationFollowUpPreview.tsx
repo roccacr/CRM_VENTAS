@@ -4,25 +4,24 @@ import SearchOutlined from "@ant-design/icons/SearchOutlined";
 import Button from "antd/es/button";
 import { type KeyboardEvent, useId, useState } from "react";
 
-import { type FormalizationExample, formatOrderTotal, isUnassigned, matchesPreviewFilter, PREVIEW_OWNERS, PREVIEW_PROJECTS, type PreviewQueue } from "./formalization-preview.model";
-import { useFormalizationPreview } from "./formalization-preview-session";
+import { type FormalizationExample, formatOrderTotal, isUnassigned, matchesPreviewFilter, type PreviewFilter, type PreviewQueue } from "./formalization-preview.model";
 import { FormalizationEmptyValue, FormalizationStatusPill } from "./FormalizationStatusPill";
 
-const queues = ["Todas", "Contratos", "Gestión bancaria", "Pendientes de saldo", "Traspasos", "Por cerrar", "Cerradas", "Fase posterior"] as const;
+const queues = ["Todas", "Pendientes de aprobación", "Contratos pendientes", "Gestión bancaria", "Pendientes de saldo", "Traspasos pendientes", "Traspaso firmado", "Formalizaciones cerradas este año"] as const;
 const columns = ["Orden / Cliente", "Proyecto / Unidad", "Etapa / Pendiente", "Responsable / Tiempo", "Siguiente paso"] as const;
+
+// Pending a canonical follow-up source. Preview session fixtures are not business results.
+const examples: readonly FormalizationExample[] = [];
+const projects = [...new Set(examples.map((item) => item.project))];
+const owners = [...new Set(examples.map((item) => item.owner))];
 
 type Example = FormalizationExample;
 type Queue = (typeof queues)[number];
 
-const matchesQueue = (item: Example, queue: Queue) => queue === "Todas" || item.stage === queue;
+const queueFilters: Record<Queue, PreviewFilter> = { Todas: "all", "Pendientes de aprobación": "approvals", "Contratos pendientes": "contracts", "Gestión bancaria": "bank", "Pendientes de saldo": "balance", "Traspasos pendientes": "transfer", "Traspaso firmado": "signed", "Formalizaciones cerradas este año": "closed" };
+const matchesQueue = (item: Example, queue: Queue) => matchesPreviewFilter(item, queueFilters[queue]);
 const matchesQuery = (item: Example, query: string) => `${item.id} ${item.client} ${item.project} ${item.unit} ${item.owner}`.toLocaleLowerCase("es").includes(query.trim().toLocaleLowerCase("es"));
 const matchesFilter = (value: string, expected: string) => !expected || value === expected;
-
-/** La bandeja de Inicio usa pestañas; la lista filtrada expone una región con filtros propios. */
-function getPanelProps(tableOnly: boolean, prefix: string, queue: Queue) {
-    if (tableOnly) return { role: "region", "aria-label": "Órdenes filtradas" } as const;
-    return { role: "tabpanel", "aria-labelledby": `${prefix}-tab-${String(queues.indexOf(queue))}` } as const;
-}
 
 function onRowKey(event: KeyboardEvent<HTMLTableRowElement>, open: () => void) {
     if (event.target !== event.currentTarget || (event.key !== "Enter" && event.key !== " ")) return;
@@ -47,38 +46,29 @@ function SearchBox({ value, onChange }: { readonly value: string; readonly onCha
     );
 }
 
-function QueueTabs({ prefix, queue, counts, onChange }: { readonly prefix: string; readonly queue: Queue; readonly counts: (name: Queue) => number; readonly onChange: (queue: Queue) => void }) {
+function QueueSelect({ queue, counts, onChange, options }: { readonly queue: Queue; readonly counts: (name: Queue) => number; readonly onChange: (queue: Queue) => void; readonly options: readonly Queue[] }) {
     return (
-        <div className="formalization-queues" role="tablist" aria-label="Bandejas de seguimiento">
-            {queues.map((name, index) => (
-                <button
-                    key={name}
-                    id={`${prefix}-tab-${String(index)}`}
-                    type="button"
-                    role="tab"
-                    aria-selected={queue === name}
-                    aria-controls={`${prefix}-panel`}
-                    tabIndex={queue === name ? 0 : -1}
-                    onClick={() => {
-                        onChange(name);
-                    }}
-                    onKeyDown={(event) => {
-                        const positions: Record<string, number> = { ArrowRight: (index + 1) % queues.length, ArrowLeft: (index + queues.length - 1) % queues.length, Home: 0, End: queues.length - 1 };
-                        const next = positions[event.key];
-                        if (next === undefined) return;
-                        event.preventDefault();
-                        onChange(queues[next] ?? "Todas");
-                        event.currentTarget.parentElement?.querySelectorAll<HTMLButtonElement>("button")[next]?.focus();
-                    }}
-                >
-                    {name} <span className="formalization-count-pill">{counts(name)}</span>
-                </button>
-            ))}
-        </div>
+        <label className="formalization-field formalization-field--queue">
+            <span>Bandeja</span>
+            <select
+                aria-label="Bandeja de seguimiento"
+                value={queue}
+                onChange={(event) => {
+                    onChange(options.find((name) => name === event.target.value) ?? "Todas");
+                }}
+            >
+                {options.map((name) => (
+                    <option key={name} value={name}>
+                        {name} ({counts(name)})
+                    </option>
+                ))}
+            </select>
+        </label>
     );
 }
 
 interface OrderFiltersProps {
+    readonly options: readonly Queue[];
     readonly queue: Queue;
     readonly onQueue: (queue: Queue) => void;
     readonly project: string;
@@ -89,7 +79,7 @@ interface OrderFiltersProps {
     readonly onClear: () => void;
 }
 
-function OrderFilters({ queue, onQueue, project, owner, hasCriteria, onProject, onOwner, onClear }: OrderFiltersProps) {
+function OrderFilters({ queue, onQueue, project, owner, hasCriteria, onProject, onOwner, onClear, options }: OrderFiltersProps) {
     const active = [project, owner, queue !== "Todas"].filter(Boolean).length;
     return (
         <>
@@ -99,10 +89,10 @@ function OrderFilters({ queue, onQueue, project, owner, hasCriteria, onProject, 
                     aria-label="Filtrar etapa de Formalización"
                     value={queue}
                     onChange={(event) => {
-                        onQueue(queues.find((name) => name === event.target.value) ?? "Todas");
+                        onQueue(options.find((name) => name === event.target.value) ?? "Todas");
                     }}
                 >
-                    {queues.map((name) => (
+                    {options.map((name) => (
                         <option key={name}>{name}</option>
                     ))}
                 </select>
@@ -116,7 +106,7 @@ function OrderFilters({ queue, onQueue, project, owner, hasCriteria, onProject, 
                     }}
                 >
                     <option value="">Todos</option>
-                    {PREVIEW_PROJECTS.map((name) => (
+                    {projects.map((name) => (
                         <option key={name}>{name}</option>
                     ))}
                 </select>
@@ -130,7 +120,7 @@ function OrderFilters({ queue, onQueue, project, owner, hasCriteria, onProject, 
                     }}
                 >
                     <option value="">Todos</option>
-                    {PREVIEW_OWNERS.map((name) => (
+                    {owners.map((name) => (
                         <option key={name}>{name}</option>
                     ))}
                 </select>
@@ -201,24 +191,25 @@ function FollowUpRow({ item, onOpenOrder }: { readonly item: Example; readonly o
 function FollowUpHeader({ titleId, total }: { readonly titleId: string; readonly total: number }) {
     return (
         <div className="formalization-surface__header">
-            <div>
+            <span className="formalization-followup__icon" aria-hidden="true">
+                <img src={`${import.meta.env.BASE_URL}illustrations/formalization-icons/contracts.svg`} width={24} height={24} alt="" />
+            </span>
+            <div className="formalization-followup__heading">
                 <div className="formalization-title-row">
                     <h2 id={titleId}>Pendientes de seguimiento</h2>
                     <span className="formalization-total">{formatOrderTotal(total)}</span>
                 </div>
-                <p>
-                    <ClockCircleOutlined aria-hidden="true" /> Mayor antigüedad primero · Días en la etapa actual
-                </p>
             </div>
         </div>
     );
 }
 
-/** Bandeja demostrativa; búsqueda, bandejas y filtros operan solo sobre datos locales. */
-export function FormalizationFollowUpPreview({ onOpenOrder, tableOnly, scope }: { readonly onOpenOrder: (order: Example) => void; readonly tableOnly: boolean; readonly scope: PreviewQueue }) {
-    const { orders: examples } = useFormalizationPreview();
+/** Keeps follow-up empty until a real source is connected; never falls back to preview fixtures. */
+export function FormalizationFollowUpPreview({ onOpenOrder, tableOnly, scope, canViewApprovals = false }: { readonly onOpenOrder: (order: Example) => void; readonly tableOnly: boolean; readonly scope: PreviewQueue; readonly canViewApprovals?: boolean }) {
     const prefix = useId();
-    const [queue, setQueue] = useState<Queue>("Todas");
+    const [selectedQueue, setQueue] = useState<Queue>("Todas");
+    const options = queues.filter((name) => canViewApprovals || name !== "Pendientes de aprobación");
+    const queue = options.includes(selectedQueue) ? selectedQueue : "Todas";
     const [query, setQuery] = useState("");
     const [project, setProject] = useState(() => scope.project ?? "");
     const [owner, setOwner] = useState("");
@@ -236,10 +227,11 @@ export function FormalizationFollowUpPreview({ onOpenOrder, tableOnly, scope }: 
             ) : (
                 <FollowUpHeader titleId={`${prefix}-title`} total={scoped.length} />
             )}
-            <div className="formalization-toolbar">
+            <div className="formalization-toolbar" data-home={!tableOnly}>
                 <SearchBox value={query} onChange={setQuery} />
                 {tableOnly ? (
                     <OrderFilters
+                        options={options}
                         queue={queue}
                         onQueue={setQueue}
                         project={project}
@@ -255,10 +247,29 @@ export function FormalizationFollowUpPreview({ onOpenOrder, tableOnly, scope }: 
                         }}
                     />
                 ) : (
-                    <QueueTabs prefix={prefix} queue={queue} counts={(name) => searched.filter((item) => matchesQueue(item, name)).length} onChange={setQueue} />
+                    <>
+                        <label className="formalization-field">
+                            <span>Proyecto</span>
+                            <select
+                                aria-label="Filtrar por proyecto"
+                                value={project}
+                                onChange={(event) => {
+                                    setProject(event.target.value);
+                                }}
+                            >
+                                <option value="">Todos los proyectos</option>
+                                {projects.map((name) => (
+                                    <option key={name} value={name}>
+                                        {name}
+                                    </option>
+                                ))}
+                            </select>
+                        </label>
+                        <QueueSelect options={options} queue={queue} counts={(name) => searched.filter((item) => matchesQueue(item, name)).length} onChange={setQueue} />
+                    </>
                 )}
             </div>
-            <div id={`${prefix}-panel`} {...getPanelProps(tableOnly, prefix, queue)} className="formalization-grid-scroll" tabIndex={0}>
+            <div id={`${prefix}-panel`} role="region" aria-label="Órdenes filtradas" className="formalization-grid-scroll" tabIndex={0}>
                 <table className="formalization-grid formalization-grid--orders">
                     <caption className="formalization-sr">Operaciones pendientes de seguimiento</caption>
                     <thead>
@@ -277,8 +288,8 @@ export function FormalizationFollowUpPreview({ onOpenOrder, tableOnly, scope }: 
                         {filtered.length === 0 && (
                             <tr>
                                 <td colSpan={columns.length} className="formalization-grid__empty">
-                                    <strong>Sin resultados</strong>
-                                    <span>No hay operaciones con estos criterios.</span>
+                                    <strong>Seguimiento no disponible</strong>
+                                    <span>El seguimiento de órdenes aún no está disponible.</span>
                                 </td>
                             </tr>
                         )}

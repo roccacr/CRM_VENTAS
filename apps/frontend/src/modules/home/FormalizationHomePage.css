@@ -266,6 +266,13 @@
     line-height: 1.4;
 }
 
+.formalization-banner__preload {
+    display: inline-flex;
+    align-items: center;
+    width: 26px;
+    height: 26px;
+}
+
 /* Misma esquina, pegada arriba a la derecha, para que no baje cuando la tarjeta crece. */
 .formalization-banner__pattern {
     position: absolute;
@@ -486,6 +493,67 @@
 }
 
 /* Superficie de trabajo: un marco 200, barra de herramientas 50, grilla y pie. */
+.formalization-followup .formalization-surface__header {
+    align-items: center;
+    justify-content: flex-start;
+    gap: 14px;
+    padding: 16px 18px;
+}
+
+.formalization-followup__icon {
+    display: grid;
+    flex: 0 0 34px;
+    width: 34px;
+    height: 34px;
+    place-items: center;
+    border-radius: 5px;
+    background: #0e1116;
+}
+
+.formalization-followup__heading {
+    min-width: 0;
+}
+
+.formalization-followup .formalization-toolbar[data-home="true"] {
+    display: grid;
+    grid-template-columns: minmax(240px, 1.2fr) minmax(200px, 0.8fr) minmax(280px, 1fr);
+    gap: 12px;
+    padding: 12px 18px;
+}
+
+.formalization-followup .formalization-toolbar[data-home="true"] > label {
+    width: 100%;
+    min-width: 0;
+    max-width: none;
+    border-color: var(--banner-border);
+}
+
+.formalization-followup .formalization-grid__meta,
+.formalization-followup .formalization-surface__footer {
+    color: #596779;
+}
+
+.formalization-followup .formalization-grid__value,
+.formalization-followup .formalization-grid__next > span {
+    color: #3e4b5b;
+}
+
+@media (max-width: 1100px) {
+    .formalization-followup .formalization-toolbar[data-home="true"] {
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    }
+
+    .formalization-followup .formalization-toolbar[data-home="true"] > .formalization-search {
+        grid-column: 1 / -1;
+    }
+}
+
+@media (max-width: 600px) {
+    .formalization-followup .formalization-toolbar[data-home="true"] {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+
 .formalization-surface,
 .formalization-card {
     min-width: 0;
@@ -588,6 +656,12 @@
     font-size: 13px;
     font-weight: 600;
     white-space: nowrap;
+}
+
+.formalization-field--queue {
+    flex: 1 1 360px;
+    max-width: 460px;
+    min-width: 0;
 }
 
 .formalization-field select {

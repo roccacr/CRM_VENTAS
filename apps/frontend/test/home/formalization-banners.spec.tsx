@@ -1,11 +1,118 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import { afterEach, expect, it, vi } from "vitest";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
+
+import { getApprovalCount } from "../../src/services/formalization/approval-summary-service";
+
+vi.mock("../../src/services/formalization/approval-summary-service", () => ({ getApprovalCount: vi.fn() }));
+beforeEach(() => {
+    vi.mocked(getApprovalCount).mockReset().mockResolvedValue(0);
+});
 
 import { FormalizationHomePage } from "../../src/modules/home/FormalizationHomePage";
 import { getAppRoute } from "../../src/routes/app-routes";
 import { installBrowserApiDoubles } from "../support/browser";
 
 afterEach(cleanup);
+
+it("shows an accessible preload until the approval response arrives", async () => {
+    installBrowserApiDoubles();
+    let resolveCount: (count: number) => void = () => {};
+    vi.mocked(getApprovalCount).mockImplementation(
+        () =>
+            new Promise<number>((resolve) => {
+                resolveCount = resolve;
+            }),
+    );
+    render(<FormalizationHomePage effectivePermissions={[{ code: "formalizacion.home.approvals.read", effect: "allow" }]} />);
+    expect(screen.getByRole("status", { name: "Cargando pendientes de aprobación" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Ver pendientes de aprobación de Formalización" }).getAttribute("aria-busy")).toBe("true");
+    resolveCount(2);
+    await waitFor(() => {
+        expect(screen.getByLabelText("Órdenes pendientes de aprobación: 2")).toBeTruthy();
+    });
+    expect(screen.queryByRole("status", { name: "Cargando pendientes de aprobación" })).toBeNull();
+});
+
+it("loads the real count only with permission", async () => {
+    installBrowserApiDoubles();
+    vi.mocked(getApprovalCount).mockResolvedValue(17);
+    const { rerender } = render(<FormalizationHomePage />);
+    expect(getApprovalCount).not.toHaveBeenCalled();
+    rerender(<FormalizationHomePage effectivePermissions={[{ code: "formalizacion.home.approvals.read", effect: "allow" }]} />);
+    await waitFor(() => {
+        expect(screen.getByLabelText("Órdenes pendientes de aprobación: 17")).toBeTruthy();
+    });
+});
+
+it("shows unavailable rather than zero on source failure", async () => {
+    installBrowserApiDoubles();
+    vi.mocked(getApprovalCount).mockRejectedValue(new Error("offline"));
+    render(<FormalizationHomePage effectivePermissions={[{ code: "formalizacion.home.approvals.read", effect: "allow" }]} />);
+    await waitFor(() => {
+        expect(screen.getByText("No disponible")).toBeTruthy();
+    });
+    expect(screen.queryByLabelText("Órdenes pendientes de aprobación: 0")).toBeNull();
+});
+
+it("keeps project filtering and an empty recent-activity surface", () => {
+    installBrowserApiDoubles();
+    render(<FormalizationHomePage />);
+    expect(screen.queryByRole("heading", { name: "Pendientes por proyecto" })).toBeNull();
+    expect(screen.queryByText("Órdenes por proyecto y etapa")).toBeNull();
+    expect(screen.queryByRole("heading", { name: "Tiempos de gestión bancaria" })).toBeNull();
+    expect(screen.queryByText("Duración por orden financiada")).toBeNull();
+    expect(screen.getByRole("heading", { name: "Movimientos recientes" })).toBeTruthy();
+    expect(screen.getByRole("combobox", { name: "Filtrar por proyecto" })).toBeTruthy();
+    expect(screen.queryAllByRole("button", { name: /^Ver movimiento de/ })).toHaveLength(0);
+    expect(screen.getByText("Los movimientos recientes aún no están disponibles.")).toBeTruthy();
+});
+
+it("aligns follow-up select with banners and removes unauthorized approvals including after revocation", () => {
+    installBrowserApiDoubles();
+    const { rerender } = render(<FormalizationHomePage />);
+    const select = () => screen.getByRole<HTMLSelectElement>("combobox", { name: "Bandeja de seguimiento" });
+    const labels = () => [...select().options].map((option) => option.value);
+    const expected = ["Todas", "Contratos pendientes", "Gestión bancaria", "Pendientes de saldo", "Traspasos pendientes", "Traspaso firmado", "Formalizaciones cerradas este año"];
+    expect(labels()).toEqual(expected);
+    expect(screen.queryByText("Mayor antigüedad primero · Días en la etapa actual")).toBeNull();
+    expect(select().value).toBe("Todas");
+    expect(screen.getByRole("option", { name: "Todas (0)" })).toBeTruthy();
+    fireEvent.change(select(), { target: { value: "Traspaso firmado" } });
+    expect(screen.queryAllByRole("button", { name: /^Ver seguimiento de/ })).toHaveLength(0);
+    const permission = { code: "formalizacion.home.approvals.read", effect: "allow" as const };
+    rerender(<FormalizationHomePage effectivePermissions={[permission]} />);
+    expect(labels()).toEqual(["Todas", "Pendientes de aprobación", ...expected.slice(1)]);
+    fireEvent.change(select(), { target: { value: "Pendientes de aprobación" } });
+    expect(screen.getByText("Seguimiento no disponible")).toBeTruthy();
+    rerender(<FormalizationHomePage effectivePermissions={[]} />);
+    expect(labels()).toEqual(expected);
+    expect(select().value).toBe("Todas");
+    expect(screen.queryAllByRole("button", { name: /^Ver seguimiento de/ })).toHaveLength(0);
+    expect(screen.queryByRole("option", { name: "Amara" })).toBeNull();
+    expect(screen.getByRole("option", { name: "Todas (0)" })).toBeTruthy();
+    expect(screen.getByRole("option", { name: "Gestión bancaria (0)" })).toBeTruthy();
+    expect(screen.queryAllByRole("button", { name: /^Ver seguimiento de/ })).toHaveLength(0);
+    fireEvent.change(select(), { target: { value: "Contratos pendientes" } });
+    expect(screen.queryAllByRole("button", { name: /^Ver seguimiento de/ })).toHaveLength(0);
+});
+
+it.each(["role", "override"] as const)("keeps approvals unmounted until an effective %s permission arrives", (source) => {
+    installBrowserApiDoubles();
+    const { rerender } = render(<FormalizationHomePage />);
+    const bannerName = "Ver pendientes de aprobación de Formalización";
+    expect(screen.queryByRole("button", { name: bannerName })).toBeNull();
+    rerender(<FormalizationHomePage effectivePermissions={[]} />);
+    expect(screen.queryByRole("button", { name: bannerName })).toBeNull();
+    rerender(<FormalizationHomePage effectivePermissions={[{ code: "contract.review", effect: "allow" }]} />);
+    expect(screen.queryByRole("button", { name: bannerName })).toBeNull();
+    const grant = { code: "formalizacion.home.approvals.read", effect: "allow" as const, source };
+    rerender(<FormalizationHomePage effectivePermissions={[grant]} />);
+    expect(screen.getByRole("button", { name: bannerName })).toBeTruthy();
+    rerender(<FormalizationHomePage effectivePermissions={[grant, { ...grant, effect: "deny" }]} />);
+    expect(screen.queryByRole("button", { name: bannerName })).toBeNull();
+    rerender(<FormalizationHomePage />);
+    expect(screen.queryByRole("button", { name: bannerName })).toBeNull();
+});
 
 it("uses distinct decorative SVG artwork in the seven unchanged icon containers", () => {
     installBrowserApiDoubles();
@@ -46,7 +153,7 @@ it("shows a separate approval strip only with an effective grant and preserves t
     rerender(<FormalizationHomePage effectivePermissions={[permission]} />);
     expect(screen.getByRole("button", { name: "Ver pendientes de aprobación de Formalización" }).closest(".formalization-home__header")).toBeTruthy();
     expect(container.querySelectorAll(".formalization-home__banners > article")).toHaveLength(6);
-    expect(screen.getByLabelText("Órdenes pendientes de aprobación: 0")).toBeTruthy();
+    expect(screen.getByLabelText("Órdenes pendientes de aprobación: Consultando…")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Ver pendientes de aprobación de Formalización" }));
     expect(screen.getByRole("heading", { name: "Pendientes de aprobación", level: 1 })).toBeTruthy();
     expect(screen.queryAllByRole("button", { name: /^Ver seguimiento de/ })).toHaveLength(0);
@@ -55,53 +162,30 @@ it("shows a separate approval strip only with an effective grant and preserves t
     expect(screen.getByRole("heading", { name: "Formalización", level: 1 })).toBeTruthy();
 });
 
-it("opens management directly on all orders and returns Home through app navigation", () => {
+it("opens management directly on all orders and returns Home through app navigation", async () => {
     installBrowserApiDoubles();
     const Page = getAppRoute("/home/formalization/orders")?.Page;
     expect(Page).toBeDefined();
     if (!Page) throw new Error("Missing management route");
     const navigate = vi.fn();
     render(<Page currentUser={{ publicId: "user", displayName: "Test", email: "test@example.invalid", profileImageUrl: null, status: "active", permissionVersion: 1 }} onNavigate={navigate} />);
-    expect(screen.getByRole("heading", { name: "Todas las órdenes", level: 1 })).toBeTruthy();
-    expect(screen.getAllByRole("button", { name: /^Ver seguimiento de/ })).toHaveLength(5);
+    expect(await screen.findByRole("heading", { name: "Todas las órdenes", level: 1 })).toBeTruthy();
+    expect(screen.queryAllByRole("button", { name: /^Ver seguimiento de/ })).toHaveLength(0);
     fireEvent.click(screen.getByRole("button", { name: "Volver a Inicio" }));
     expect(navigate).toHaveBeenCalledWith("/home/formalization");
 });
 
-it("renders six visual banners with explicit demo totals and no operational actions", () => {
+it("renders six banners with zero totals instead of demo counts", async () => {
     const Page = getAppRoute("/home/formalization")?.Page;
     expect(Page).toBeDefined();
     if (!Page) return;
     render(<Page currentUser={{ publicId: "user", displayName: "Test", email: "test@example.invalid", profileImageUrl: null, status: "active", permissionVersion: 1 }} />);
-    expect(screen.getAllByRole("article")).toHaveLength(6);
+    expect(await screen.findAllByRole("article")).toHaveLength(6);
     for (const label of ["Contratos pendientes", "Gestión bancaria", "Pendientes de saldo", "Traspasos pendientes", "Traspaso firmado", "Formalizaciones cerradas este año"]) expect(screen.getByRole("heading", { name: label })).toBeTruthy();
     expect(screen.queryByText(/aún cuenta contratos firmados/)).toBeNull();
-    expect(screen.getAllByLabelText(/^Valor:/).map((element) => element.textContent.trim())).toEqual(["1", "1", "1", "1", "1", "3", "0"]);
+    expect(screen.getAllByLabelText(/^Valor:/).map((element) => element.textContent.trim())).toEqual(["0", "0", "0", "0", "0", "0", "0"]);
     expect(screen.queryByLabelText("Dato no disponible")).toBeNull();
     expect(screen.queryByRole("button", { name: "Enviar contrato" })).toBeNull();
-});
-
-it("labels fictional records and filters the local pending queue without operational actions", () => {
-    installBrowserApiDoubles();
-    const Page = getAppRoute("/home/formalization")?.Page;
-    if (!Page) throw new Error("Missing Formalization Home");
-    render(<Page currentUser={{ publicId: "user", displayName: "Test", email: "test@example.invalid", profileImageUrl: null, status: "active", permissionVersion: 1 }} />);
-    expect(screen.queryByText("Datos de ejemplo. No corresponden a operaciones reales.")).toBeNull();
-    expect(screen.getByRole("heading", { name: "Pendientes de seguimiento" })).toBeTruthy();
-    expect(screen.getByRole("columnheader", { name: "Responsable / Tiempo" })).toBeTruthy();
-    expect(screen.queryByRole("columnheader", { name: "Detalle" })).toBeNull();
-    expect(screen.getByRole("tab", { name: "Gestión bancaria 1" })).toBeTruthy();
-    fireEvent.click(screen.getByRole("tab", { name: /^Gestión bancaria/ }));
-    expect(screen.getByRole("button", { name: "Ver seguimiento de DEMO-OV-103" })).toBeTruthy();
-    expect(screen.queryByRole("button", { name: "Ver seguimiento de DEMO-OV-101" })).toBeNull();
-    fireEvent.click(screen.getByRole("tab", { name: /^Todas/ }));
-    fireEvent.change(screen.getByRole("searchbox", { name: "Buscar operación" }), { target: { value: "DEMO-OV-101" } });
-    expect(screen.getByRole("button", { name: "Ver seguimiento de DEMO-OV-101" })).toBeTruthy();
-    expect(screen.queryByRole("button", { name: "Ver seguimiento de DEMO-OV-103" })).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: "Ver seguimiento de DEMO-OV-101" }));
-    expect(screen.getByRole("heading", { name: "Orden de venta DEMO-OV-101" })).toBeTruthy();
-    expect(screen.getByRole("heading", { name: "Condición financiera" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Enviar contrato" }).hasAttribute("disabled")).toBe(true);
 });
 
 it.each([
@@ -112,70 +196,14 @@ it.each([
     ["Por gestionar", "Traspasos pendientes", 1],
     ["Firma registrada · Llaves pendientes", "Traspaso firmado", 3],
     ["Proceso finalizado", "Formalizaciones cerradas este año", 0],
-])("opens the %s banner as a filtered table", (label, title, count) => {
+])("opens the %s banner as an empty table", async (label, title) => {
     installBrowserApiDoubles();
     const Page = getAppRoute("/home/formalization")?.Page;
     if (!Page) throw new Error("Missing Formalization Home");
     render(<Page currentUser={{ publicId: "user", displayName: "Test", email: "test@example.invalid", profileImageUrl: null, status: "active", permissionVersion: 1 }} />);
-    fireEvent.click(screen.getByRole("button", { name: `Abrir ${label}` }));
+    fireEvent.click(await screen.findByRole("button", { name: `Abrir ${label}` }));
     expect(screen.getByRole("heading", { name: title, level: 1 })).toBeTruthy();
-    expect(screen.queryAllByRole("button", { name: /^Ver seguimiento de/ })).toHaveLength(count);
-    fireEvent.click(screen.getByRole("button", { name: "Volver a Inicio" }));
-    expect(screen.getByRole("heading", { name: "Formalización", level: 1 })).toBeTruthy();
-});
-
-it("opens a row as a full order and preserves the list search on return", () => {
-    installBrowserApiDoubles();
-    const Page = getAppRoute("/home/formalization")?.Page;
-    if (!Page) throw new Error("Missing Formalization Home");
-    render(<Page currentUser={{ publicId: "user", displayName: "Test", email: "test@example.invalid", profileImageUrl: null, status: "active", permissionVersion: 1 }} />);
-    fireEvent.click(screen.getByRole("button", { name: "Abrir Firma registrada · Llaves pendientes" }));
-    fireEvent.change(screen.getByRole("searchbox", { name: "Buscar operación" }), { target: { value: "DEMO-OV-103" } });
-    fireEvent.click(screen.getByRole("row", { name: "Abrir orden DEMO-OV-103" }));
-    expect(screen.getByRole("heading", { name: "Orden de venta DEMO-OV-103" })).toBeTruthy();
-    for (const title of ["Cliente y unidad", "Condiciones de la orden", "Contrato y documentos", "Gestión bancaria", "Condición financiera", "Traspaso y cierre", "Historial de la orden"]) expect(screen.getByRole("heading", { name: title })).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "Volver a la lista" }));
-    expect(screen.getByDisplayValue("DEMO-OV-103")).toBeTruthy();
-    expect(screen.queryAllByRole("button", { name: /^Ver seguimiento de/ })).toHaveLength(1);
-});
-
-it("retains a completed order when returning to the dashboard and closed queue", () => {
-    installBrowserApiDoubles();
-    const Page = getAppRoute("/home/formalization")?.Page;
-    if (!Page) throw new Error("Missing Formalization Home");
-    render(<Page currentUser={{ publicId: "user", displayName: "Test", email: "test@example.invalid", profileImageUrl: null, status: "active", permissionVersion: 1 }} />);
-    fireEvent.click(screen.getByRole("button", { name: "Abrir Por gestionar" }));
-    fireEvent.click(screen.getByRole("row", { name: "Abrir orden DEMO-OV-105" }));
-    fireEvent.click(screen.getByRole("button", { name: "Continuar: Traspaso realizado" }));
-    fireEvent.click(screen.getByRole("button", { name: "Usar documento de ejemplo" }));
-    const transferForm = screen.getByRole("dialog").querySelector("form");
-    if (!transferForm) throw new Error("Missing transfer form");
-    fireEvent.submit(transferForm);
-    fireEvent.click(screen.getByRole("button", { name: "Continuar: Cerrar Formalización" }));
-    fireEvent.change(screen.getByLabelText("Resultado de cierre *"), { target: { value: "closed" } });
-    fireEvent.change(screen.getByLabelText("Motivo y observaciones del cierre *"), { target: { value: "Cierre visual" } });
-    const closureForm = screen.getByRole("dialog").querySelector("form");
-    if (!closureForm) throw new Error("Missing closure form");
-    fireEvent.submit(closureForm);
-    fireEvent.click(screen.getByRole("button", { name: "Volver a la lista" }));
     expect(screen.queryAllByRole("button", { name: /^Ver seguimiento de/ })).toHaveLength(0);
     fireEvent.click(screen.getByRole("button", { name: "Volver a Inicio" }));
-    expect(screen.getByRole("button", { name: "Abrir Proceso finalizado" }).textContent).toContain("1");
-    fireEvent.click(screen.getByRole("button", { name: "Abrir Proceso finalizado" }));
-    fireEvent.click(screen.getByRole("row", { name: "Abrir orden DEMO-OV-105" }));
-    expect(screen.getByRole("status").textContent).toContain("Cerrado por Formalizaciones");
-    expect(screen.getByRole("button", { name: "Traspaso realizado" }).hasAttribute("disabled")).toBe(true);
-});
-
-it("uses the same order from project counts and recent movements", () => {
-    installBrowserApiDoubles();
-    const Page = getAppRoute("/home/formalization")?.Page;
-    if (!Page) throw new Error("Missing Formalization Home");
-    render(<Page currentUser={{ publicId: "user", displayName: "Test", email: "test@example.invalid", profileImageUrl: null, status: "active", permissionVersion: 1 }} />);
-    fireEvent.click(screen.getByRole("button", { name: "Ver Gestión bancaria de AVIVA" }));
-    expect(screen.getByRole("heading", { name: "Gestión bancaria · AVIVA", level: 1 })).toBeTruthy();
-    expect(screen.queryAllByRole("button", { name: /^Ver seguimiento de/ })).toHaveLength(1);
-    fireEvent.click(screen.getByRole("button", { name: "Volver a Inicio" }));
-    fireEvent.click(screen.getByRole("button", { name: "Ver movimiento de DEMO-OV-103" }));
-    expect(screen.getByRole("heading", { name: "Orden de venta DEMO-OV-103" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Formalización", level: 1 })).toBeTruthy();
 });

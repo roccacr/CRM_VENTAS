@@ -1,5 +1,63 @@
 # Formalizacion: recorrido visual y trazabilidad
 
+## Retiro de tiempos bancarios - 20/10/2026
+
+Se retira del Inicio la seccion Tiempos de gestion bancaria y su tabla.
+Se conserva la informacion de las ordenes. El menu Resumen ya no dirige
+a esta tabla ni al resumen por proyecto retirado anteriormente; indica
+los contadores y filtros disponibles y la cobertura parcial de indicadores.
+
+## Retiro del resumen por proyecto - 20/10/2026
+
+Se elimina la seccion Pendientes por proyecto y su tabla de ordenes por
+etapa. Movimientos recientes ocupa el ancho disponible. Se conserva el
+filtro de proyecto de Pendientes de seguimiento y el acceso a las ordenes.
+Las referencias anteriores a la tabla por proyecto son antecedentes.
+
+## Consistencia del seguimiento - 20/10/2026
+
+Encabezado con el mismo recuadro negro de 34px e ilustracion documental de
+los indicadores. Conserva titulo y cantidad. Filtros de Inicio en tres
+columnas proporcionadas: buscador, proyecto y bandeja; en tablet el buscador
+ocupa una fila y en movil se apilan. Informacion secundaria en gris neutro,
+sin alterar filtros, permisos, registros ni apertura de la orden. Los estilos
+estan limitados a seguimiento; el selector avanzado de las bandejas filtradas
+conserva su disposicion previa.
+
+## Selector compacto de seguimiento - 20/10/2026
+
+La barra de Inicio sustituye las pestanas por buscador, proyecto y selector
+de bandeja con Todas por defecto. Cada opcion muestra su cantidad calculada
+con el proyecto y busqueda actuales, conservando nombres, orden y permiso
+de aprobaciones. El selector nativo permite teclado y opciones crecientes
+sin ampliar horizontalmente la pagina. Los apartados sobre pestanas quedan
+como antecedente; se conserva la lista filtrada y el retorno a Todas al
+retirar el permiso de aprobaciones.
+
+## Bandejas de seguimiento alineadas - 20/10/2026
+
+Se elimina el subtitulo de antiguedad del encabezado. Las bandejas usan
+Todas, Pendientes de aprobacion (solo con el permiso efectivo del banner),
+Contratos pendientes, Gestion bancaria, Pendientes de saldo, Traspasos
+pendientes, Traspaso firmado y Formalizaciones cerradas este anio.
+Nombres, orden y filtros corresponden a los indicadores; se reutiliza
+matchesPreviewFilter para evitar diferencias en los conteos. La retirada
+del permiso con aprobaciones seleccionada muestra Todas. Navegacion por
+teclado y selector de etapa usan solo opciones visibles. No cambia la
+semantica de los datos de prueba, ni se agrega API o persistencia.
+
+## Visibilidad de aprobaciones - 20/10/2026
+
+El banner se monta exclusivamente con un allow efectivo para
+formalizacion.home.approvals.read recibido en profile.permissions.
+Permisos ausentes, en carga, vacios o ajenos no muestran el banner.
+No se habilita por el nombre del rol. El calculo existente del API combina
+permisos por rol y grants directos; un deny directo prevalece.
+La retirada del permiso oculta tambien la bandeja de aprobaciones abierta.
+Este permiso es solo de consulta: no concede aprobar ni devolver ordenes.
+Pruebas explicitas cubren hidratacion de permisos por rol y override,
+denegacion y retirada, sin modificar el diseno ni la politica existente.
+
 ## Ajuste de jerarquia visual - 20/10/2026
 
 Se reduce el peso de las esquinas decorativas (opacidad 0.1), sombras y
@@ -89,11 +147,29 @@ renderiza con allow de formalizacion.home.approvals.read y sin deny explicito;
 no depende del nombre del rol. Sin permiso no reserva espacio ni monta la
 bandeja; retirar el permiso con la bandeja abierta devuelve el contenido a Inicio.
 El clic abre la tabla local filtrada por approvalPending === true. Ninguna de
-las cinco ordenes existentes tiene ese indicador; el contador inicia en cero,
+las cinco ordenes existentes tiene ese indicador; originalmente el contador iniciaba en cero,
 sin duplicar ordenes aprobadas ni inventar pendientes. No hay botones de aprobar,
 escritura de checks, acceso NetSuite ni cambios API/BD en esta entrega.
 La aprobacion gestionable sigue pendiente: este avance solo cubre banner y
 bandeja visual con permiso. No sustituye las decisiones de negocio de reunion.
+
+Actualizacion del contador conectado: ApprovalStrip ya consulta
+GET /formalization/approvals/summary mediante apiRequest, solo al montarse
+con formalizacion.home.approvals.read permitido y sin deny. El endpoint
+une BD nueva y legado sin duplicar identidades migradas y devuelve total,
+observedAt y desglose sources. Se conserva la navegacion local del clic:
+solo el numero del banner es real; listas y otros indicadores siguen DEMO.
+La carga muestra un guion, no un cero inventado; un fallo muestra No disponible.
+No se escriben checks ni se modifica ninguna BD. La comprobacion MySQL
+actual devolvio timeout, por lo que la cantidad real aun no esta confirmada.
+Contrato y regla exacta: apps/api/Arquitectura/38-Ordenes-Venta-Estados-Auditoria.md.
+
+Limpieza de indicadores: los otros seis banners muestran cero fijo, sin derivar
+sus valores de ordenes DEMO. Sus consultas reales siguen pendientes.
+Aprobaciones muestra Spin de Ant Design, texto Consultando y aria-busy mientras
+consulta, conservando el espacio de la metrica para evitar saltos de layout.
+Al resolver aparece el numero; ante un error se conserva No disponible.
+No se simula carga ni se generan peticiones para indicadores sin conexion.
 
 Verificacion: prueba previa fallida y luego suite frontend completa con 417
 pruebas aprobadas en 29 archivos. Pruebas del banner cubren ausencia de permiso,

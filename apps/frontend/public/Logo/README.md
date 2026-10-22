@@ -1,5 +1,18 @@
 # Logo ROCCA
 
+## Icono de pestana
+
+`rocca-favicon.png` es un monograma R original generado para la pestana del
+nuevo sistema: blanco sobre fondo carbon, sin texto pequeno. Se referencia
+desde index.html y sustituye el JPG horizontal, que perdia legibilidad al
+reducirse. No reemplaza el logo del encabezado ni del login; no es una marca
+oficial aprobada. El PNG original generado se conserva en el proyecto.
+
+La version SVG es una adaptacion vectorial simplificada del concepto generado,
+sin imagenes incrustadas ni dependencias. El navegador compatible prioriza
+el SVG ligero; el PNG queda como alternativa. El SVG no es una vectorizacion
+automatica ni una reproduccion exacta de los pixeles generados.
+
 `rocca-official.svg` procede de https://www.roccacr.com/images/logoRoccaB.svg
 (consultado el 20/10/2026). Se conservan los trazados y el viewBox originales;
 solo se adapta el relleno blanco a #111318 para superficies claras.

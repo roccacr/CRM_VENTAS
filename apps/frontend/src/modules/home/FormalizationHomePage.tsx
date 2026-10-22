@@ -4,17 +4,17 @@ import ArrowLeftOutlined from "@ant-design/icons/ArrowLeftOutlined";
 import Button from "antd/es/button";
 import ConfigProvider from "antd/es/config-provider";
 import esES from "antd/es/locale/es_ES";
-import { useState } from "react";
+import Spin from "antd/es/spin";
+import { useEffect, useState } from "react";
 
 import type { IdentityUser } from "../../services/auth/identity-contracts";
+import { getApprovalCount } from "../../services/formalization/approval-summary-service";
 import { PROJECTS_THEME } from "../administration/catalogs/projects-theme";
-import { type FormalizationExample, formatOrderTotal, matchesPreviewFilter, PREVIEW_FILTER_TITLES, type PreviewQueue } from "./formalization-preview.model";
-import { useFormalizationPreview } from "./formalization-preview-session";
+import { type FormalizationExample, formatOrderTotal, PREVIEW_FILTER_TITLES, type PreviewQueue } from "./formalization-preview.model";
 import { FormalizationFollowUpPreview } from "./FormalizationFollowUpPreview";
 import { FormalizationHomeInsights } from "./FormalizationHomeInsights";
 import { FormalizationOrderPreview } from "./FormalizationOrderPreview";
 import { FormalizationPreviewBoundary } from "./FormalizationPreviewSession";
-import { FormalizationTimingPreview } from "./FormalizationTimingPreview";
 import type { EffectiveNavigationPermission } from "./GlobalHomeShell";
 
 interface FormalizationHomeProps {
@@ -47,9 +47,26 @@ function resolveApprovalVisibility(permissions: readonly EffectiveNavigationPerm
     return { canView, queue: selectedQueue?.filter === "approvals" && !canView ? null : selectedQueue };
 }
 
-function ApprovalStrip({ count, onOpen }: { readonly count: number; readonly onOpen: () => void }) {
+function ApprovalStrip({ onOpen }: { readonly onOpen: () => void }) {
+    const [count, setCount] = useState<number | null>(null);
+    const [failed, setFailed] = useState(false);
+    useEffect(() => {
+        let active = true;
+        void getApprovalCount()
+            .then((value) => {
+                if (active) setCount(value);
+            })
+            .catch(() => {
+                if (active) setFailed(true);
+            });
+        return () => {
+            active = false;
+        };
+    }, []);
+    const caption = failed ? "No disponible" : count === null ? "Consultando…" : "Por revisar";
+    const loading = count === null && !failed;
     return (
-        <button type="button" className="formalization-banner formalization-banner--pending formalization-approval-strip" aria-label="Ver pendientes de aprobación de Formalización" onClick={onOpen}>
+        <button type="button" className="formalization-banner formalization-banner--pending formalization-approval-strip" aria-label="Ver pendientes de aprobación de Formalización" aria-busy={loading} onClick={onOpen}>
             <span className="formalization-banner__icon" aria-hidden="true">
                 <img src={`${import.meta.env.BASE_URL}illustrations/formalization-icons/approvals.svg`} width={24} height={24} alt="" />
             </span>
@@ -57,10 +74,16 @@ function ApprovalStrip({ count, onOpen }: { readonly count: number; readonly onO
                 <span className="formalization-approval-strip__title">Pendientes de aprobación</span>
                 <span className="formalization-banner__metrics">
                     <span className="formalization-banner__metric">
-                        <span className="formalization-banner__value" aria-label={`Órdenes pendientes de aprobación: ${String(count)}`}>
-                            {count}
+                        <span className="formalization-banner__value" aria-live="polite" aria-label={`Órdenes pendientes de aprobación: ${count === null ? caption : String(count)}`}>
+                            {loading ? (
+                                <span className="formalization-banner__preload" role="status" aria-label="Cargando pendientes de aprobación">
+                                    <Spin size="small" />
+                                </span>
+                            ) : (
+                                (count ?? "—")
+                            )}
                         </span>
-                        <span className="formalization-banner__caption">Por revisar</span>
+                        <span className="formalization-banner__caption">{caption}</span>
                     </span>
                 </span>
             </span>
@@ -76,23 +99,21 @@ const banners = [
         icon: "contracts",
         tone: "pending",
         parts: [
-            { label: "Por enviar", value: 1, filter: "send" },
-            { label: "Pendientes de firma", value: 1, filter: "signature" },
+            { label: "Por enviar", value: 0, filter: "send" },
+            { label: "Pendientes de firma", value: 0, filter: "signature" },
         ],
     },
-    { code: "bank", label: "Gestión bancaria", icon: "bank", tone: "neutral", parts: [{ label: "Sin iniciar / En proceso", value: 1, filter: "bank" }] },
-    { code: "balance", label: "Pendientes de saldo", icon: "balance", tone: "neutral", parts: [{ label: "Consulta financiera", value: 1, filter: "balance" }] },
-    { code: "transfer", label: "Traspasos pendientes", icon: "transfer", tone: "pending", parts: [{ label: "Por gestionar", value: 1, filter: "transfer" }] },
-    { code: "signed", label: "Traspaso firmado", icon: "signed", tone: "success", parts: [{ label: "Firma registrada · Llaves pendientes", value: 3, filter: "signed" }] },
+    { code: "bank", label: "Gestión bancaria", icon: "bank", tone: "neutral", parts: [{ label: "Sin iniciar / En proceso", value: 0, filter: "bank" }] },
+    { code: "balance", label: "Pendientes de saldo", icon: "balance", tone: "neutral", parts: [{ label: "Consulta financiera", value: 0, filter: "balance" }] },
+    { code: "transfer", label: "Traspasos pendientes", icon: "transfer", tone: "pending", parts: [{ label: "Por gestionar", value: 0, filter: "transfer" }] },
+    { code: "signed", label: "Traspaso firmado", icon: "signed", tone: "success", parts: [{ label: "Firma registrada · Llaves pendientes", value: 0, filter: "signed" }] },
     { code: "closed", label: "Formalizaciones cerradas este año", icon: "closed", tone: "success", parts: [{ label: "Proceso finalizado", value: 0, filter: "closed" }] },
 ] as const;
 
 const getQueueTitle = (queue: PreviewQueue) => `${PREVIEW_FILTER_TITLES[queue.filter]}${queue.project ? ` · ${queue.project}` : ""}`;
-const countQueue = (queue: PreviewQueue, orders: readonly FormalizationExample[]) => orders.filter((item) => matchesPreviewFilter(item, queue.filter) && (!queue.project || item.project === queue.project)).length;
 
 /** Encabezado de la lista filtrada con la anatomía de Proyectos: ruta, título, total y acciones. */
 function QueueHeader({ queue, onHome, onAll }: { readonly queue: PreviewQueue; readonly onHome: () => void; readonly onAll: () => void }) {
-    const { orders } = useFormalizationPreview();
     const showAll = queue.filter !== "all" || queue.project !== undefined;
     return (
         <>
@@ -115,7 +136,7 @@ function QueueHeader({ queue, onHome, onAll }: { readonly queue: PreviewQueue; r
                         >
                             {getQueueTitle(queue)}
                         </h1>
-                        <span className="formalization-total">{formatOrderTotal(countQueue(queue, orders))}</span>
+                        <span className="formalization-total">{formatOrderTotal(0)}</span>
                     </div>
                 </div>
                 {showAll && (
@@ -130,9 +151,8 @@ function QueueHeader({ queue, onHome, onAll }: { readonly queue: PreviewQueue; r
     );
 }
 
-/** Propuesta visual del Inicio: no consulta datos ni habilita acciones operativas. */
+/** Real approval count; follow-up stays empty until its canonical source is available. */
 function FormalizationHomeContent({ currentUser, effectivePermissions, initialView = "home", onNavigate }: FormalizationHomeProps) {
-    const { orders } = useFormalizationPreview();
     const [selectedQueue, setQueue] = useState<PreviewQueue | null>(() => (initialView === "orders" ? { filter: "all" } : null));
     const { canView: canViewApprovals, queue } = resolveApprovalVisibility(effectivePermissions, selectedQueue);
     const [selected, setSelected] = useState<FormalizationExample | null>(null);
@@ -156,7 +176,6 @@ function FormalizationHomeContent({ currentUser, effectivePermissions, initialVi
                         <div className="formalization-home__intro" data-has-approvals={canViewApprovals}>
                             {canViewApprovals && (
                                 <ApprovalStrip
-                                    count={countQueue({ filter: "approvals" }, orders)}
                                     onOpen={() => {
                                         setQueue({ filter: "approvals" });
                                     }}
@@ -198,8 +217,8 @@ function FormalizationHomeContent({ currentUser, effectivePermissions, initialVi
                                                     setQueue({ filter: part.filter });
                                                 }}
                                             >
-                                                <span className="formalization-banner__value" aria-label={`Valor: ${part.label}, ${String(countQueue({ filter: part.filter }, orders))}`}>
-                                                    {countQueue({ filter: part.filter }, orders)}
+                                                <span className="formalization-banner__value" aria-label={`Valor: ${part.label}, ${String(part.value)}`}>
+                                                    {part.value}
                                                 </span>
                                                 <span className="formalization-banner__caption">{part.label}</span>
                                             </button>
@@ -211,9 +230,8 @@ function FormalizationHomeContent({ currentUser, effectivePermissions, initialVi
                         ))}
                     </section>
                     <div className="formalization-workspace">
-                        <FormalizationFollowUpPreview tableOnly={false} scope={{ filter: "all" }} onOpenOrder={setSelected} />
-                        <FormalizationHomeInsights onOpenOrder={setSelected} onOpenQueue={setQueue} />
-                        <FormalizationTimingPreview onOpenOrder={setSelected} />
+                        <FormalizationFollowUpPreview canViewApprovals={canViewApprovals} tableOnly={false} scope={{ filter: "all" }} onOpenOrder={setSelected} />
+                        <FormalizationHomeInsights />
                     </div>
                 </div>
                 <div className="formalization-workspace" hidden={selected !== null || queue === null}>
@@ -232,7 +250,7 @@ function FormalizationHomeContent({ currentUser, effectivePermissions, initialVi
                                     setQueue({ filter: "all" });
                                 }}
                             />
-                            <FormalizationFollowUpPreview key={`${queue.filter}-${queue.project ?? "all"}`} tableOnly scope={queue} onOpenOrder={setSelected} />
+                            <FormalizationFollowUpPreview canViewApprovals={canViewApprovals} key={`${queue.filter}-${queue.project ?? "all"}`} tableOnly scope={queue} onOpenOrder={setSelected} />
                         </>
                     )}
                 </div>
