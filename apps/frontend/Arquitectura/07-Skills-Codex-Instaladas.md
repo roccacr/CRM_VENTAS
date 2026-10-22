@@ -1,5 +1,9 @@
 # 07 - Skills Codex Instaladas Frontend
 
+## Vigencia documental - 2026-10-22, corte f2dc4f1
+
+Inventario local inspeccionado en esta revision; disponibilidad no equivale a activacion automatica. La lista conserva su fuente historica y se complementa con `improve-codebase-architecture`, presente en `.codex/skills/`. Consultar tambien las reglas de la raiz y [SKILLS.md](../../../SKILLS.md), sin interpretar esta autonomia documental como exclusion de AGENTS aplicables.
+
 ## Objetivo
 
 Este frontend debe ser autosuficiente: toda skill y documentacion necesaria para trabajar en React/Vite vive dentro de `apps/frontend`.
@@ -24,7 +28,7 @@ Cuando se trabaje en `apps/frontend`, Codex debe usar primero:
 Arquitectura/
 ```
 
-No debe depender de `.codex`, `.agents`, `AGENTS.md` ni `Arquitectura` en una raiz externa al frontend.
+Priorizar estas referencias frontend sin omitir AGENTS aplicables de la raiz ni el registro de skills compartidas. La autonomia del subproyecto no elimina la jerarquia de instrucciones.
 
 ## Skills activas frontend
 
@@ -39,6 +43,7 @@ No debe depender de `.codex`, `.agents`, `AGENTS.md` ni `Arquitectura` en una ra
 - `frontend-design`
 - `git-guardrails-claude-code`
 - `human-architect-mindset`
+- `improve-codebase-architecture`
 - `openapi-spec-generation`
 - `playwright-generate-test`
 - `qa-test-planner`

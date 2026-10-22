@@ -1,5 +1,7 @@
 # Project Skill Registry
 
+Documentation review 2026-10-22: dates, pins and file counts below are a historical installation snapshot, not a current integrity check or permission to reinstall packages. Inspect the applicable local SKILL.md before use; no skills were reinstalled during this review.
+
 This registry is versioned; the installed `.agents/skills/` packages remain local under the repository's existing ignore policy.
 
 Installed on 2026-10-09 from the requested upstream repositories using Codex's GitHub skill installer. Complete packages, including bundled references and scripts, live in `.agents/skills/<name>/`. Global copies live in the configured `C:/codex-data/skills/<name>/` root. Existing global packages were backed up under `C:/codex-data/skill-backups/20261009-095907/` before replacement. Application package dependencies were not changed.

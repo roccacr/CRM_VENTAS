@@ -1,5 +1,19 @@
 # Formalizacion: recorrido visual y trazabilidad
 
+## Estado actual - 2026-10-22, corte f2dc4f1
+
+Historial de recorrido y QA de una maqueta. Las entradas anteriores al retiro DEMO no describen filas actuales de Inicio/Gestion. Remediacion: [29 - Navegacion y seguimiento](29-Navegacion-Recuperacion-y-Seguimiento.md). Inicio y bandejas muestran Seguimiento no disponible; Movimientos recientes tambien declara indisponibilidad. No existe un API de seguimiento conectado. No se obtienen proyectos, responsables ni cantidades operativas de fixtures. Los ceros de tabla/selectores son estado sin fuente, no ausencia de ordenes reales. Calendario, Resumen y modelos de preview conservan DEMO y simulaciones locales; no certifican correo, archivos, banco, pagos, traspaso ni cierre reales.
+
+Entrada al modulo: membresia activa y exencion Owner existente. `formalizacion.home.read` esta inactivo. El permiso separado `formalizacion.home.approvals.read` solo habilita banner y GET del resumen, con allow sin deny. La consulta empieza al montar el banner autorizado; no concede aprobar/devolver. Carga con Spin/Consultando, error No disponible, sin convertir fallos a cero. Seis indicadores restantes: cero provisional sin API. La fuente nativa/legacy depende de configuracion backend; no se acredita un total combinado ni una lectura actual de BD por la existencia del endpoint.
+
+Filtros conservados: Inicio muestra buscador, Proyecto y Bandeja. Gestion muestra buscador, Etapa, Proyecto, Responsable y Limpiar cuando corresponde. Bandejas en orden: Todas, Pendientes de aprobacion (solo autorizado), Contratos pendientes, Gestion bancaria, Pendientes de saldo, Traspasos pendientes, Traspaso firmado, Formalizaciones cerradas este anio. Los banners conservan ese orden de etapas; Contratos distingue Por enviar/Pendientes de firma. Los selectores de proyecto y responsable conservan solo la opcion general mientras no exista fuente. Esta revision no cambia controles ni estilos solicitados por el propietario.
+
+Branding referenciado: `rocca-concept.png` en login/shell/estados de autenticacion; bienvenida `rocca-formalization-generated.png` y siete SVG de indicadores. Presencia/referencia no mide calidad generada ni exactitud visual. Ver [README de marca](../public/Logo/README.md).
+
+## Historial de presentacion y QA - 2026-10-14 a 2026-10-20
+
+Pruebas/capturas siguientes son historicas. Ultima evidencia previa: 428 pruebas FE y 84.77% de lineas, segun [reauditoria](../../api/Arquitectura/Reauditoria-54-Plan-y-Resultados.md). No se reejecutaron en esta auditoria documental.
+
 ## Retiro de tiempos bancarios - 20/10/2026
 
 Se retira del Inicio la seccion Tiempos de gestion bancaria y su tabla.
@@ -158,8 +172,8 @@ GET /formalization/approvals/summary mediante apiRequest, solo al montarse
 con formalizacion.home.approvals.read permitido y sin deny. El endpoint
 une BD nueva y legado sin duplicar identidades migradas y devuelve total,
 observedAt y desglose sources. Se conserva la navegacion local del clic:
-solo el numero del banner es real; listas y otros indicadores siguen DEMO.
-La carga muestra un guion, no un cero inventado; un fallo muestra No disponible.
+solo el numero del banner consulta API; las listas DEMO se retiraron despues y los otros indicadores quedaron en cero provisional.
+La carga vigente muestra Spin/Consultando; un fallo muestra No disponible.
 No se escriben checks ni se modifica ninguna BD. La comprobacion MySQL
 actual devolvio timeout, por lo que la cantidad real aun no esta confirmada.
 Contrato y regla exacta: apps/api/Arquitectura/38-Ordenes-Venta-Estados-Auditoria.md.
@@ -235,7 +249,7 @@ Revision del 2026-10-14. Solo frontend con datos DEMO; no implementa operaciones
 
 Fuentes releidas: CRM IDEA.pdf (15 paginas) y RESUMEN_EJECUTIVO_CRM_TINK AJUSTADO (1).pdf (3 paginas), en la raiz del proyecto. El resumen ajustado delimita esta primera fase: Formalizacion contractual, bancaria, condicion financiera de consulta, traspaso/excepcion y cierre. Las entregas fisicas/llaves, Cobros y Modificaciones del planteamiento general no se convierten en acciones de esta fase.
 
-## Recorrido operativo
+## Recorrido simulado historico, no disponible desde Inicio actual
 
 1. Inicio resume la carga de trabajo; cada contador abre las mismas ordenes filtradas.
 2. Gestion de formalizaciones abre la bandeja general: buscar, filtrar etapa/proyecto/responsable, limpiar, abrir fila.
@@ -286,6 +300,6 @@ Se revisaron escritorio 1440x1000 y movil 390x844. La guia movil dispone sus sei
 
 Evidencias: C:/codex-data/visualizations/2026/10/14/formalization/flujo-orden-escritorio.png, flujo-orden-movil.png y flujo-guia-movil.png. Los resultados de formato, analisis estatico, pruebas y build se registran por separado; una comprobacion visual no sustituye las pruebas.
 
-### Resultado automatizado final
+### Resultado automatizado del corte visual 2026-10-14
 
 `pnpm check` completo aprobado: formato, ESLint, TypeScript, 411 pruebas en 28 archivos y build Vite. La corrida final no tuvo pruebas fallidas. Permanecen los avisos no bloqueantes de jsdom sobre getComputedStyle/pseudo-elementos y de bundles mayores a 500 kB. `git diff --check` aprobado. No se ejecutaron pruebas API/BD porque esas capas no fueron modificadas. No se hizo commit, despliegue ni cambio de integraciones.

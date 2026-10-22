@@ -1,8 +1,10 @@
 # Guía Técnica Completa: Sistema de Autenticación CRM TINK
 
+Referencia vigente: [registro de entrega y limites](api/Arquitectura/36-Registro-Entrega-Administracion.md) y [reauditoria](api/Arquitectura/Reauditoria-54-Plan-y-Resultados.md). Los diagramas simplifican flujos; los resultados historicos no acreditan produccion.
+
 **Stack:** NestJS (Fastify) + React SPA + MySQL
 **Patrón arquitectónico:** BFF (Backend For Frontend)
-**Nota de seguridad auditada:** 9.5 / 10
+**Estado documental:** revisado contra el codigo en `f2dc4f1` al 2026-10-22. Sin nueva ejecucion de auditoria, pruebas, SQL ni validacion productiva. La antigua puntuacion 9.5/10 carece aqui de una metodologia trazable y no se presenta como garantia actual.
 
 ---
 
@@ -14,7 +16,7 @@
 4. [Login Local](#4-login-local-correo--contraseña)
 5. [Sistema de Sesiones BFF](#5-sistema-de-sesiones-bff)
 6. [Refresh Token Rotation](#6-refresh-token-rotation)
-7. [Protección CSRF](#7-protección-csrf)
+7. [Protección CSRF](#7-protección-csrf-cross-site-request-forgery)
 8. [Rate Limiting](#8-rate-limiting)
 9. [Criptografía](#9-criptografía-usada)
 10. [Cabeceras HTTP de Seguridad](#10-cabeceras-http-de-seguridad)
@@ -274,6 +276,10 @@ Esto evita que usar dos pestañas del CRM accidentalmente cierre todas tus sesio
 **Librería:** `@fastify/rate-limit`
 
 ### Estrategia dual
+
+GET/HEAD protegidos tambien tienen cuotas por proceso: defaults 120 por usuario verificado y 600 por IP cada 60 segundos, cache 5000 por store. Exceso: 429 con Retry-After. No hay store distribuido; multiplicar instancias no conserva una cuota global.
+
+La seguridad Nest aplica CsrfGuard antes del AuthGuard global default-deny. Cada handler declara RouteSecurity; solo la allowlist explicita es publica. El servicio conserva la comprobacion del permiso exacto. AsyncLocalStorage reutiliza perfil solo dentro del request, instancia de servicio y token exacto; no es cache global de permisos.
 
 Cada endpoint sensible tiene **dos contadores independientes**:
 
@@ -924,7 +930,9 @@ erDiagram
 
 ---
 
-## Vectores de Ataque Probados (Resultado de Auditoría)
+## Controles y resultados historicos de auditoria
+
+La tabla conserva resultados reportados anteriormente, sin nueva ejecucion en esta revision. "Bloqueado" describe ese escenario y no garantiza resistencia a todas sus variantes. La verificacion dummy mitiga diferencias de tiempo; no demuestra tiempo constante extremo a extremo. HttpOnly limita lectura de cookies por JavaScript, pero no elimina el riesgo de XSS.
 
 | # | Ataque | Resultado |
 |---|--------|-----------|

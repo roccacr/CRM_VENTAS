@@ -1,5 +1,9 @@
 # 13 - Flujo Comercial CRM
 
+## Vigencia documental - 2026-10-22, corte f2dc4f1
+
+Modelo funcional comercial futuro, no flujo completo conectado. Sus permisos y vistas son ilustrativos. Las simulaciones de Formalizacion no certifican aprobacion, firma, traspaso o cierre reales; ver [28](28-Formalizacion-Recorrido-Visual.md).
+
 ## Veredicto
 
 El flujo que debe entender la UI es:

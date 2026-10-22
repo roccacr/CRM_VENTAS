@@ -1,8 +1,12 @@
 # 08 - Revision del Blueprint y Siguiente Paso Frontend
 
-## Veredicto
+## Vigencia documental - 2026-10-22, corte f2dc4f1
 
-Este documento queda actualizado al estado real del proyecto.
+El veredicto inicial de identidad es historico. Ya existen Usuarios (directorio, alta/edicion y estado), Roles y seguridad, Auditoria y catalogos conectados al BFF. El alcance y pendientes actuales estan en [27](27-Entrega-Administracion-y-QA.md). Formalizacion combina contador autorizado real, indicadores provisionales y simulaciones separadas; Inicio/seguimiento/movimientos muestran indisponibilidad sin fuente. Ver [29 - Remediacion](29-Navegacion-Recuperacion-y-Seguimiento.md). Leads sigue siendo alcance futuro, no habilitado por este antecedente.
+
+## Veredicto historico de la compuerta inicial
+
+Este veredicto conserva el corte inicial; el estado revisado figura arriba.
 
 El frontend ya tiene runtime React/Vite creado dentro de `apps/frontend` y la compuerta de identidad conectada al BFF. Eso no autoriza construir pantallas comerciales todavia.
 
@@ -24,7 +28,7 @@ La primera experiencia permitida no es ventas. Es una pantalla/flujo minimo de c
 - Los permisos visibles en pantalla no reemplazan la autorizacion del backend.
 - Tablas, filtros, busqueda y seguimiento seran el centro comercial despues de cerrar identidad.
 
-## Estado actual
+## Inventario historico previo a Administracion
 
 Ya existe:
 
@@ -37,13 +41,13 @@ Ya existe:
 - Logout.
 - Shell `/home/global` con sesion, usuario, roles, areas, permisos y foto/avatar.
 
-No existe todavia en frontend:
+No existia en ese corte (Usuarios y Roles ya implementados; Leads sigue futuro):
 
 - CRUD real de usuarios;
 - pantallas reales de roles/permisos;
 - pantallas reales de leads.
 
-## Siguiente paso permitido
+## Siguiente paso propuesto en el corte inicial
 
 El siguiente corte frontend debe salir de identidad hacia el primer alcance comercial solo cuando producto lo apruebe. Mientras tanto, se permite endurecer la compuerta de identidad:
 
@@ -52,7 +56,7 @@ El siguiente corte frontend debe salir de identidad hacia el primer alcance come
 - consumir solo contratos aprobados por el API;
 - no mostrar tarjetas, listas ni formularios de lead.
 
-## Pantallas permitidas ahora
+## Pantallas del corte inicial, no inventario vigente
 
 - pantalla de login/estado de identidad;
 - layout base;

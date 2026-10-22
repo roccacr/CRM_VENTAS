@@ -1,5 +1,9 @@
 # 17 - UX Dashboard de Leads, SLA y Perdida
 
+## Vigencia documental - 2026-10-22, corte f2dc4f1
+
+Blueprint comercial futuro. Tarjetas, cifras, SLA, permisos y acciones aqui descritos no son resultados operativos ni pantallas entregadas. No extrapolar los ceros provisionales de Formalizacion a estas metricas.
+
 ## Veredicto ejecutivo
 
 El dashboard debe responder rapido, sin obligar a jefatura a leer reportes largos.

@@ -261,7 +261,7 @@ catalogo = vista compartida reutilizable, con permisos scoped por modulo consumi
 
 Los catalogos compartidos pueden mostrarse dentro de Ventas, Mercadeo, Formalizacion, Contabilidad o Administracion cuando la pantalla los necesite. Sus valores no se duplican por modulo, pero su autorizacion si queda scoped por contexto: `mercadeo.catalog_project.read` no autoriza `formalizacion.catalog_project.read`.
 
-Regla vigente: para ver u operar un catalogo dentro de un modulo, el usuario necesita el modulo activo en `sec_user_org_unit` y el permiso scoped correspondiente. El permiso global viejo `catalog_project.read` queda deprecado y no autoriza endpoints nuevos.
+Regla vigente: para ver u operar un catalogo dentro de un modulo, el usuario necesita el modulo activo en `sec_user_org_unit` y el permiso scoped correspondiente. Owner solo omite la membresia de area; exige el permiso efectivo exacto y un deny prevalece. Expedientes usa `{moduleCode}.catalog_file.read`; filtros de proyecto no implementan alcance real usuario/proyecto. El permiso global viejo `catalog_project.read` queda deprecado y no autoriza endpoints nuevos.
 
 ## Regla obligatoria de autorizacion dinamica
 
@@ -306,7 +306,7 @@ roles activos
 + condiciones del recurso
 ```
 
-El backend puede usar cache corta para rendimiento, pero la cache no puede convertir un permiso revocado en permiso valido.
+El runtime reutiliza el perfil mediante AsyncLocalStorage solo dentro de un request, por instancia de servicio y token opaco exacto. No tiene cache de autorizacion entre requests: la siguiente peticion consulta el perfil canonico. Cualquier cache futura requiere contrato y pruebas de revocacion.
 
 Cuando cambien roles, permisos directos, denegaciones, areas o estado de un usuario:
 

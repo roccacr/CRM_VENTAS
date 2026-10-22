@@ -1,5 +1,7 @@
 # 31 - Contrato de Identidad y Permisos P0-S1A
 
+Revision documental 2026-10-22: baseline de identidad y evidencia historica, no inventario exhaustivo del esquema actual ni autorizacion para repetir SQL/seeds. Las migraciones incrementales y el codigo vigente prevalecen para contratos implementados. Ver [36 - Estado vigente y registro](36-Registro-Entrega-Administracion.md); SQL/003 y SQL/004 no se ejecutaron en esta revision.
+
 ## Veredicto
 
 P0-S1 empieza por identidad, no por leads.

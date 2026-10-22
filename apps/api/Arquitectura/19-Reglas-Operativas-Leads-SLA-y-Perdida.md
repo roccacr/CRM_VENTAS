@@ -1,5 +1,7 @@
 # 19 - Reglas Operativas de Leads, SLA y Perdida
 
+Revision documental 2026-10-22: diseno comercial futuro y evidencia historica; tablas, rutas y reglas propuestas no acreditan runtime operativo. Ver [36 - Estado vigente y registro](36-Registro-Entrega-Administracion.md) para implementacion y limites actuales. Identidad/Administracion, consulta de expedientes y contador de aprobaciones tienen contratos propios; no habilitan Leads ni mutaciones HTTP de ordenes.
+
 ## Veredicto ejecutivo
 
 El jefe debe poder responder rapidamente:

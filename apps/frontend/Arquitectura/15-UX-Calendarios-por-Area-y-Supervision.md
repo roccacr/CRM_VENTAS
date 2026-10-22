@@ -1,5 +1,9 @@
 # 15 - UX Calendarios por Area y Supervision
 
+## Vigencia documental - 2026-10-22, corte f2dc4f1
+
+Blueprint futuro de calendarios operativos y sincronizacion. El Calendario de Formalizacion existente es una simulacion React con eventos DEMO; no prueba persistencia, invitados, recordatorios, Outlook ni estas capacidades por area. Ver [28](28-Formalizacion-Recorrido-Visual.md).
+
 ## Veredicto
 
 El calendario de vendedores no se mezcla con calendarios de otros departamentos.

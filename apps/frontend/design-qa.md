@@ -1,6 +1,10 @@
 # Design QA - Shell global visual
 
-## Resultado
+## Vigencia documental - 2026-10-22, corte f2dc4f1
+
+Bitacora historica del shell visual (2026-09-28 a 2026-09-30). El resultado passed y la lista siguiente pertenecen a esa entrega; no certifican el runtime actual ni constituyen QA ejecutado en esta revision documental. Login, logout, sesion, Usuarios, Roles, Auditoria y catalogos ya tienen cliente BFF; las frases sin API/roles/acciones describen solo la maqueta de aquel corte. El runtime filtra navegacion y rutas por permisos/membresias efectivos; los perfiles de demostracion no son autorizacion. Navegacion y recuperacion: [29](Arquitectura/29-Navegacion-Recuperacion-y-Seguimiento.md); inventario: [27](Arquitectura/27-Entrega-Administracion-y-QA.md). Se conserva la apariencia solicitada; no se acreditan nuevas mediciones de contraste, responsive o calidad de imagen.
+
+## Resultado historico del shell visual
 
 final result: passed
 
@@ -9,7 +13,7 @@ final result: passed
 - Captura entregada por el dueno del producto: barra superior blanca, menu horizontal oscuro, botones laterales redondos y fondo claro.
 - Ajuste solicitado: usar logo ROCCA del login, color de menu carbon `#0f172a`, letras mas visibles, command bar neutra y fondo `#eaedf7`.
 
-## Verificacion
+## Verificacion historica de la maqueta
 
 - Ruta revisada: `/home/global`.
 - La ruta `/auth/login` se conserva como login canonico.
@@ -97,7 +101,7 @@ final result: passed
 | 2026-09-29 | Se elimina el contorno visible del padre abierto en mobile y se ajusta el colchon inferior del scroll a 100px para separar subitems largos del dock. | Pulido visual aplicado; sin cambios funcionales. |
 | 2026-09-29 | Se agrega contrato de navegacion filtrable por permisos efectivos: `allow` muestra, `deny` prevalece, `Todos` se arma con perfiles permitidos y cada subopcion puede ocultarse aunque el modulo padre exista. | Listo para conectar a `/identity/me.permissions`; el backend sigue autorizando rutas y acciones reales. |
 
-## Alcance no incluido
+## Alcance no incluido en el corte visual original
 
 - Sin dashboard operativo ni KPIs visibles.
 - Sin roles.

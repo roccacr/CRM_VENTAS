@@ -1,5 +1,11 @@
 # 25 - Continuidad de Administracion frontend
 
+## Lectura vigente - 2026-10-22, corte f2dc4f1
+
+Bitacora historica: fechas, inventarios de BD, pruebas y capturas conservan su corte original. No equivalen a consultas ni verificaciones nuevas. Inventario consolidado: [27](27-Entrega-Administracion-y-QA.md); navegacion, carga diferida y seguimiento: [29](29-Navegacion-Recuperacion-y-Seguimiento.md).
+
+Runtime: React/Vite/TypeScript, Ant Design, DataTables y fetch centralizado; TanStack Query, Zustand, React Hook Form y Tailwind no estan instalados. Las etapas de acordeones de Roles, Select secundarios de Expedientes, catalogos genericos para Files y pagina inicial de 10 se conservan como historia. Hoy Roles usa cascada; Expedientes tiene pagina/contrato dedicados y SearchPanes; catalogos pequenos usan pagina inicial 100 y opciones 10/50/100/200. No confundir filtrado local de pagina con filtrado global del inventario.
+
 Consolidacion 2026-10-13: consultar [27 - Entrega y QA](27-Entrega-Administracion-y-QA.md) para comportamiento vigente y [36 - Registro API](../../api/Arquitectura/36-Registro-Entrega-Administracion.md) para trazabilidad, decisiones y pendientes. Esta bitacora conserva etapas historicas: los Select secundarios de Expedientes y la exposicion simultanea de modulos fueron sustituidos por SearchPanes y navegacion focalizada respectivamente.
 
 Fecha de corte: 2026-10-08. Guia de traspaso basada en archivos inspeccionados. Sustituye como entrada operativa los mapas iniciales 18/19; estos quedan como antecedentes de direccion. La ley de producto sigue siendo la autoridad de alcance.
@@ -43,7 +49,7 @@ Ejemplo: mercadeo.catalog_project.read permite leer Proyectos desde Mercadeo; no
 
 | Responsabilidad | Archivos relativos a apps/frontend |
 | --- | --- |
-| Rutas privadas y workspaces | src/routes/app-routes.ts, AppRouteContent.tsx, auth-state.ts |
+| Rutas privadas y workspaces | src/routes/app-routes.ts, src/routes/AppRouteContent.tsx, src/routes/auth-state.ts |
 | Menu y filtro por permisos/modulos | src/modules/home/GlobalHomeShell.tsx |
 | Sesion, auth y contratos | src/services/auth/auth-service.ts, identity-contracts.ts |
 | HTTP BFF | src/services/api/api-client.ts |

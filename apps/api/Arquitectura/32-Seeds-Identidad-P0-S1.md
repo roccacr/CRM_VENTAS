@@ -1,5 +1,7 @@
 # 32 - Seeds de Identidad P0-S1
 
+Revision documental 2026-10-22: baseline de identidad y evidencia historica, no inventario exhaustivo del esquema actual ni autorizacion para repetir SQL/seeds. Las migraciones incrementales y el codigo vigente prevalecen para contratos implementados. Ver [36 - Estado vigente y registro](36-Registro-Entrega-Administracion.md); SQL/003 y SQL/004 no se ejecutaron en esta revision.
+
 ## Superseding Owner-Only Policy - 2026-10-09
 
 The seed descriptions below are historical, not executable bootstrap instructions. Only Roberto (`rzuniga@roccacr.com`) may be bootstrapped as Owner; no other users, secondary roles or business catalog rows. Required active permissions/modules and Owner relations are security configuration. Use the guarded recovery procedure and migration audit in [03 - Migration Runbook](03-Base-Datos-y-Migracion.md). Do not run historical SQL/002 or a bulk administrator importer.

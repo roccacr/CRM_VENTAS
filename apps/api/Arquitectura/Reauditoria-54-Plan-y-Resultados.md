@@ -67,6 +67,11 @@ No se ejecutan fixtures, DDL, migraciones, grants ni cambios en datos reales.
 
 ## Evidencia de ejecucion
 
+Consolidacion posterior del mismo cierre: `.\check-all.cmd` tambien paso en el
+clon actualizado al commit documental `f2dc4f1`, con estado Git limpio. Los
+resultados de la tabla corresponden a esa serie verificada; no se reejecutaron
+durante la revision exclusivamente documental descrita al final.
+
 Comando oficial desde raiz: `.\check-all.cmd`, salida 0 en arbol de trabajo y
 clon limpio de `7572b97`. Tras el ultimo ajuste de metadatos de reset, `pnpm check`
 API paso de nuevo en el clon actualizado a `056f9d0`, con una prueba adicional.
@@ -191,3 +196,32 @@ CI remoto, proteccion de ramas, despliegue y MySQL aislado permanecen abiertos.
 
 El plan completo sigue abierto mientras existan estos prerequisitos. Ningun
 resultado unitario sustituye pruebas de persistencia, despliegue o pentest.
+
+## Revision documental integral - 2026-10-22
+
+Alcance: los 87 Markdown versionados del producto, incluyendo reglas locales,
+arquitectura API/frontend, contratos, diccionarios, planes, QA, marca y runbooks.
+No incluye reescribir skills instaladas, adjuntos externos ni certificar fuentes
+web. No hay PDF/DOCX/TXT versionados en este inventario Git.
+
+Se actualizaron 78 documentos y se conservaron nueve sin cambios. Los inventarios
+de [API/guia de autenticacion](36-Registro-Entrega-Administracion.md) y
+[frontend/QA/marca](../../frontend/Arquitectura/29-Navegacion-Recuperacion-y-Seguimiento.md)
+clasifican 39 y 30 documentos respectivamente. Los 18 restantes son README,
+CHANGELOG, SKILLS, los tres AGENTS, leyes/indices/resumenes/mapas de ambas apps
+y este informe, plan correctivo, CI MySQL y operacion. AGENTS raiz conserva su
+contrato; ocho documentos API mantienen principios o evidencia historica validos.
+
+Correcciones: scope posterior a identidad, permisos de Inicio/banner, lectura y
+escritura legacy independientes, reset 503, autorizacion Owner, salud, historial
+y carga diferida, metricas provisionales, limitaciones DEMO, stack instalado y
+estado real de CI/clon limpio. Las fechas, firmas y resultados anteriores se
+preservan como antecedentes; las propuestas futuras no se presentan como runtime.
+
+Verificacion de esta pasada: parser Markdown sobre los 87 archivos, resolucion
+de destinos locales, revision del diff y `git diff --check`. No se reejecutaron
+lint/typecheck/tests/build/cobertura porque solo cambio documentacion; sus
+resultados anteriores siguen atribuidos al corte verificado, no a esta pasada.
+No hubo conexiones DB, fixtures, SQL, cambios funcionales, commits, push ni deploy.
+Las verificaciones productivas, MySQL aislado, CI remoto y decisiones de negocio
+pendientes siguen abiertas; actualizar documentos no las cierra.

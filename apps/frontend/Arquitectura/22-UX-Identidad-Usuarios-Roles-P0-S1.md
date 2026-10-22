@@ -1,5 +1,9 @@
 # 22 - UX Identidad, Usuarios y Roles P0-S1
 
+## Vigencia documental - 2026-10-22, corte f2dc4f1
+
+La compuerta minima siguiente conserva el alcance historico previo al BFF y Administracion. Login real, Usuarios, Roles y Auditoria ya existen; las prohibiciones iniciales de CRUD/login de este antecedente no describen el runtime. Consultar [27](27-Entrega-Administracion-y-QA.md) y la ley de producto para alcance vigente. Leads sigue futuro.
+
 ## Veredicto
 
 La primera experiencia del frontend no debe ser ventas ni leads.
@@ -12,7 +16,7 @@ usuarios -> autenticacion -> areas operativas/modulos -> roles -> permisos -> lu
 
 Motivo: la UI no puede construir pantallas comerciales serias si antes no sabe quien entra, que rol tiene y que permisos efectivos devuelve el API.
 
-## Alcance actual
+## Alcance historico previo a la conexion BFF
 
 Esta fase solo prepara la experiencia minima para:
 
@@ -24,7 +28,7 @@ Esta fase solo prepara la experiencia minima para:
 - definir permisos visibles basicos;
 - evitar pantallas de leads antes de tiempo.
 
-No autoriza crear flujo real de login, pantallas de administracion completas ni CRUD de usuarios hasta que el API apruebe el modelo fisico.
+La restriccion original condicionaba login real y CRUD al modelo fisico API. Ese corte fue superado por BFF y Administracion documentados en 27; no describe funciones ausentes hoy.
 
 Fuente API obligatoria:
 

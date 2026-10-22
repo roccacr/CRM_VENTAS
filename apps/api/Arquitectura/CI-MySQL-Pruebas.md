@@ -8,11 +8,12 @@ con Node 22, pnpm 10.28.2 y lockfiles separados. No instala Docker, despliega,
 ejecuta migraciones, restaura Owner ni usa secretos de produccion.
 Las acciones estan fijadas por SHA; actualizarlas requiere revision.
 
-La configuracion esta preparada en el arbol local, no activada en GitHub:
-no se hizo commit/push ni se cambiaron settings del repositorio.
-El primer checkout remoto solo sera reproducible cuando todos los archivos
-necesarios, incluidas las funcionalidades anteriores, esten versionados.
-No mezclarlos en un commit unico de remediacion.
+La configuracion esta versionada en commits locales separados, sin activacion
+remota acreditada ni cambios de settings. El corte `f2dc4f1` se clono en carpeta
+nueva, se instalaron ambos lockfiles frozen y paso check-all con arbol limpio.
+Esto acredita reproducibilidad local de ese commit, no una corrida de GitHub.
+El workflow tambien genera cobertura y visibilidad de dependencias; sus resultados
+locales fechados estan en [la reauditoria](Reauditoria-54-Plan-y-Resultados.md).
 
 ## Habilitacion por el administrador del repositorio
 
@@ -94,7 +95,7 @@ Su fallo sigue siendo evidencia de persistencia NO verificada. Si falta UUID/mar
 TLS o credenciales, persistencia falla antes de ejecutar las suites.
 Los fallos de las pruebas no se convierten en omisiones ni en exito.
 
-## Verificacion local y pendientes
+## Verificacion local inicial y pendientes (historico)
 
 Las pruebas unitarias test/ci/mysql-ci.spec.ts cubren configuracion ausente,
 confirmacion incompleta, reporte vacio, suites faltantes y tests omitidos/fallidos.
@@ -168,16 +169,18 @@ separados y con dependencias explicitas. La prueba de aceptacion es:
 
 Si falta cualquier archivo versionado o falla un check, no se considera
 reproducible ni se activa CI remoto. Un check del arbol sucio no sustituye esta
-prueba. Sigue pendiente: no se hicieron commits, clon candidato ni push.
+prueba. El clon del corte `f2dc4f1` ya cumplio este criterio local; push y
+primera ejecucion remota siguen pendientes. Los parrafos de evidencia inicial
+de este documento no deben leerse como estado Git vigente.
 
 ## Decision de S01
 
 El proveedor de correo y su responsable se configuraran despues, segun el
 propietario. No habilitar envios ni simular confirmaciones de entrega.
-La salida de deshabilitar honestamente la recuperacion se aplicara en S01;
-en esta entrega no se modificaron endpoints de autenticacion.
+S01 ya deshabilita la solicitud de recuperacion con 503 uniforme, sin emitir
+tokens ni simular envio. Finalizacion con tokens existentes no se elimino.
 
-## Evidencia de esta revision
+## Evidencia de revision previa al cierre (historico)
 
 check-all.cmd aprobado: 4467 pruebas API y 426 frontend, formato, ESLint,
 TypeScript y ambos builds. Las 113 pruebas MySQL se deshabilitaron explicitamente

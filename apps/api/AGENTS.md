@@ -42,7 +42,7 @@ Arquitectura/23-Alcance-P0-Vertical-Leads.md
 
 If `Arquitectura/00-Producto-CRM-TINK-y-P0.md` conflicts with this file, a skill, a data model, a future module map, or any other document, `Arquitectura/00-Producto-CRM-TINK-y-P0.md` wins until the product owner approves a replacement.
 
-Current phase: approved minimal identity runtime. The only runtime authorized is identity P0-S1A: NestJS bootstrap, secure BFF session endpoints, Kysely access to `CRM_THINK_V2`, effective permissions, and security audit. Commercial CRM modules, lead endpoints, ERP operations, calendars, notes, jobs, and integrations remain prohibited until the product law authorizes them.
+Current scope (2026-10-22): identity/BFF, Administration/catalogs, read-only Unit Files, internal sales-order lifecycle persistence/audit and the permission-protected Formalization approval counter. Full lifecycle mutations, Leads, ERP synchronization, calendars, notes and jobs remain future scope unless specifically authorized by the product law. See `Arquitectura/36-Registro-Entrega-Administracion.md` and `Arquitectura/Reauditoria-54-Plan-y-Resultados.md` for implemented boundaries and dated evidence.
 
 Before designing lead tables, lead endpoints, lead DTOs, lead repositories, or lead screens, read and close:
 
@@ -91,7 +91,7 @@ Add database, security, OpenAPI, testing, review, or integration skills only whe
 - Kysely + mysql2 as the main data access layer.
 - Do not use Docker for the project runtime or database setup unless the user explicitly changes this decision.
 - Use pnpm from this API folder for dependency installation and local scripts.
-- Runtime scaffolding is approved only for the minimal identity slice described by `Arquitectura/00-Producto-CRM-TINK-y-P0.md`.
+- Runtime scope is limited to approved slices and dated addenda in `Arquitectura/00-Producto-CRM-TINK-y-P0.md`; future module trees do not authorize scaffolding.
 - Never run npm commands, never create `package-lock.json`, and never create a root Node workspace for this CRM.
 - If an installed skill or copied reference shows an npm command, translate it to the equivalent pnpm command before using it.
 - When runtime scaffolding is approved, the first `package.json` must include local script guards so `dev`, `build`, `typecheck`, and `test` reject non-pnpm execution.

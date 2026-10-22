@@ -4,6 +4,8 @@ Estado: remediacion parcial verificada al 2026-10-22. Ver el informe de esta
 entrega en [Reauditoria-54-Plan-y-Resultados.md](Reauditoria-54-Plan-y-Resultados.md).
 Una casilla pendiente no representa
 una correccion terminada; las casillas cerradas tienen evidencia al final.
+
+Revision documental 2026-10-22: el corte `f2dc4f1` ya cuenta con commits locales separados y clon limpio verificado; activacion CI remota y Q05 siguen pendientes. S01 esta cerrado solo por recuperacion deshabilitada, no por correo real. Las secciones de comprobacion inicial/corridas intermedias conservan sus resultados historicos y no sustituyen la [matriz de cierre actual](Reauditoria-54-Plan-y-Resultados.md).
 Fuente: auditoria entregada por el usuario. La nota 56/100 y sus mediciones son
 del auditor, no una nueva certificacion de este documento.
 

@@ -1,5 +1,7 @@
 # 35 - Catalog API and Schema
 
+Status 2026-10-22, checked against source at `f2dc4f1`: [36 - Current state](36-Registro-Entrega-Administracion.md) and [remediation evidence](Reauditoria-54-Plan-y-Resultados.md). Dated counts, enabled-fallback runs, migration executions and MySQL tests below are historical evidence, not current production verification. Fixture examples require a separately approved isolated instance; never run them on the shared development/production host. In this document, "enabled" mutations mean the full write gate, not read fallback alone. Unit Files has dedicated read persistence and requires exact effective grants, including for Owner.
+
 Current consolidation (2026-10-13): [36 - Delivery register](36-Registro-Entrega-Administracion.md), [37 - Audit and conflicts](37-Auditoria-Trazabilidad-y-Conflictos.md), and [frontend 27](../../frontend/Arquitectura/27-Entrega-Administracion-y-QA.md) distinguish implemented behavior, historical evidence and remaining gates. Unit Files owns a dedicated read aggregate; historical generic Files storage below is not its inventory persistence. Secondary standalone selectors were superseded by native SearchPanes.
 
 Implementation reference, 2026-10-09. Source of truth: catalog controller, DTOs, service, repository and migrations. Product scope and Administration acceptance gates remain unchanged.
@@ -171,7 +173,7 @@ Catalog codes: `projects`, `campaigns`, `classes`, `brokers`, `files`, `subsidia
 
 Session cookies and existing mutation CSRF protections apply. Operations resolve current identity and scoped permission `{moduleCode}.{catalogModuleCode}.{read|create|update|inactivate}`, for example `administration.catalog_project.read`. Catalog permission module codes are `catalog_project`, `catalog_campaign`, `catalog_class`, `catalog_broker`, `catalog_file`, `catalog_subsidiary`, `catalog_location`; these differ from plural route codes. Existing validation, unauthorized, forbidden and conflict responses remain (400/401/403/409).
 
-Current identity resolution treats an active Owner as having all active system permissions, ignoring direct overrides; non-Owners resolve active role mappings and overrides. Module memberships still affect navigation/scoping. Access replacement increments the permission version and explicitly revokes session/refresh credentials in the same audited transaction. Shared role-permission rows remain available to other role holders; revoked user assignments are retained as history, not orphaned grants.
+Identity resolution uses active role grants and direct overrides, with explicit deny winning for every user, including Owner. Owner skips catalog module membership only and still needs the exact effective permission. Unit Files requires `{moduleCode}.catalog_file.read`; project filters/existence checks do not enforce user/project authorization scope, which remains pending. Access replacement increments the permission version with audited assignment changes atomically; permission-only changes retain session/refresh and require renewal to current grants. Blocking/inactivation, logout and refresh replay retain hard revocation. Shared role-permission rows remain available to other role holders; revoked user assignments are retained as history, not orphaned grants.
 
 `moduleCode` is required: `ventas`, `mercadeo`, `formalizacion`, `contabilidad` or `administration`. GET accepts optional `search` (max 120), `status` (`active`/`inactive`; omit for all), `limit` (1-200, default 100) and `offset` (0-2147483647, default 0). Response includes `catalog`, `items`, `total`; total counts matching non-deleted items before pagination. Ordering is name then internal ID. Count/list queries and offset pagination do not guarantee a concurrent-write snapshot.
 
@@ -181,7 +183,7 @@ OpenAPI is generated from Nest decorators. `OPENAPI_ENABLED` controls exposure a
 
 ## Schema and Ownership
 
-### Live Testing Readiness Audit - 2026-10-12
+### Historical Testing Readiness Audit - 2026-10-12
 
 Direct inspection of the API-configured database confirmed `DATABASE() =
 CRM_THINK_V2`. Both `crm_campaign` and `crm_campaign_external_reference`
@@ -228,7 +230,7 @@ pagination and absence of delete endpoints remain unchanged.
 Native pages are read first, then unmigrated legacy rows fill remaining capacity.
 All native `id_old_produccion_campaign` values are excluded before legacy filters,
 counts and pagination; filtered/fully populated native pages do not disable merge.
-The single `legacy-crm-access.ts` gate controls every legacy read/write.
+The shared `legacy-crm-access.ts` policy gates reads by fallback and writes by the additional production/destination/write-flag requirements below.
 Disabled startup opens no reader pool; disabled access leaves native CRUD working.
 Environment changes require restart and do not cancel in-flight transactions.
 
@@ -255,13 +257,12 @@ Verification: `CAMPAIGN_MYSQL_TESTS=1` enables native rollback tests in
 two-schema rollback fixtures (requires existing InnoDB tables and approved access).
 Eight tests passed locally, including post-rollback absence of fixture rows in
 both schemas. The integrated preview returned 291 legacy campaigns and opened
-the populated edit form without saving production records. Other five unsplit
-domains remain in shared storage. Legacy deprecation requires removing its
+the populated edit form without saving production records. At that historical Campaigns cutover, the other five domains remained in shared storage; subsequent dedicated schemas below supersede that inventory. Legacy deprecation requires removing its
 AppModule registration before physically deleting the integration directory.
 
 ### Independent Projects Domain - 2026-10-09
 
-Projects now uses only `crm_project` and `crm_project_external_reference`, through its own `ProjectsModule`, controller, service and repository under `src/modules/crm/projects/`. Its explicit `/catalogs/projects/items` routes preserve the existing frontend contract; the generic repository rejects Projects instead of routing its queries. The other five catalog domains remain in shared storage after the Campaigns cutover; dropping their tables is outside this step.
+Projects now uses only `crm_project` and `crm_project_external_reference`, through its own `ProjectsModule`, controller, service and repository under `src/modules/crm/projects/`. Its explicit `/catalogs/projects/items` routes preserve the existing frontend contract; the generic repository rejects Projects instead of routing its queries. That shared-storage inventory is historical: Projects, Campaigns, Classes, Locations, Subsidiaries and Brokers now own dedicated tables; generic Files storage is separate from dedicated Unit Files read persistence.
 
 ### Mandatory Feature Folder Ownership
 
@@ -283,7 +284,7 @@ Real MySQL tests: `PROJECT_MYSQL_TESTS=1 pnpm exec vitest run test/catalogs/proj
 
 Owner-authorized change, 2026-10-09: Projects legacy identities are editable and can be activated/inactivated. Authentication, scoped permissions, validation and audit remain mandatory; no delete endpoint exists. Campaigns, Classes, Locations, Subsidiaries and Brokers have the same exception as of 2026-10-12; other legacy domains are not authorized for writes.
 
-Every legacy reader/writer uses the single gate in `integrations/legacy-crm/legacy-crm-access.ts`, backed by `ENABLE_LEGACY_FALLBACK`. Environment changes require an API restart. Disabled access performs no new legacy operations; it does not cancel an already-running transaction. Physical removal also requires removing the integration registration/import from AppModule.
+`integrations/legacy-crm/legacy-crm-access.ts` separates read and write gates. Readers require strict boolean `ENABLE_LEGACY_FALLBACK=true`. All six writers additionally require `NODE_ENV=production`, configured `LEGACY_CRM_DB_NAME=crmdatabase-api` and strict boolean `ENABLE_LEGACY_WRITES=true`. Both flags default to false; enabling reads never authorizes writes. Environment changes require an API restart. Disabled access performs no new legacy operations; it does not cancel an already-running transaction. Physical removal also requires removing the integration registration/import from AppModule.
 
 Projects core uses the optional `PROJECTS_LEGACY_ACCESS` port, never concrete legacy SQL imports. The isolated Projects writer executes parameterized SQL through the native transaction on the same MySQL server. Both project tables must use InnoDB: native fields, provider references, legacy changes and audit commit or roll back together. The independent legacy SELECT pool still enforces read-only transactions. Never change shared credentials or grants.
 
@@ -295,7 +296,7 @@ The following read-only activation notes describe the earlier baseline, supersed
 
 Verification for the Projects write change: four isolated writer tests compile/record parameterized SQL without executing legacy DML; seven native MySQL rollback tests cover persistence, promotion, synchronization orchestration, disabled access and failure rollback; three existing real legacy MySQL tests verify read-only access, merged listing and disabled fallback. This does not establish a live legacy DML smoke test. Both target project tables were confirmed InnoDB. The initially empty native provider registry was configured with active NetSuite/Odoo definitions only; no business records or additional users were seeded.
 
-`ENABLE_LEGACY_FALLBACK=false` is the distribution default; the approved local runtime enables it. Projects query native storage first, then append unmigrated legacy records, excluding all `id_old_produccion_project` values (including deleted projects) before legacy filtering/counting/pagination. Pages are native-first, then legacy name/ID order; total is the sum of native filtered rows and unmigrated legacy filtered rows. Campaigns now has the same merge, lazy-promotion and dual-write behavior through its own domain module; no data cleanup is performed.
+Both legacy flags default to false. The former local activation was historical; the current local fallback is disabled according to the remediation record and must not be inferred from that earlier run. Projects query native storage first, then append unmigrated legacy records, excluding all `id_old_produccion_project` values (including deleted projects) before legacy filtering/counting/pagination. Pages are native-first, then legacy name/ID order; total is the sum of native filtered rows and unmigrated legacy filtered rows. Campaigns now has the same merge, lazy-promotion and dual-write behavior through its own domain module; no data cleanup is performed.
 
 The core depends only on the optional `CATALOG_FALLBACK_READER` port. `integrations/legacy-crm` owns its independent pool, reader and pure mapper. Disabled startup creates no legacy pool. Per the owner's explicit instruction, legacy reuses `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_SSL` and `DB_SSL_CA`, changing only the database name. Obsolete `LEGACY_CRM_DB_USER/PASSWORD` values are ignored. The shared account is not privilege-level read-only: mandatory session read-only transactions and SELECT-only adapter functions enforce this boundary in application code. Never alter shared credentials or grants. Apply environment changes by restarting the API. To retire immediately, disable the flag and restart; to delete physically, remove the integration import/registration from `AppModule`, then delete its folder. The optional core port and native persistence remain valid without a legacy provider.
 
@@ -328,7 +329,7 @@ Migration `202610120011_classes_domain` targets only `CRM_THINK_V2`, creates `cr
 
 The verified legacy source is `crmdatabase-api.clases`: `id_clases`, nullable `idNetsuite_clase`, nullable `nombre_clase` (100 characters), and nullable `estado_calase` (the spelling is intentional). Status 1 is active, 0/null inactive; unsupported values fail mapping. Names are limited to 100 characters in native storage, mutations and forms; identifiers support signed INT or null. Description and non-NetSuite providers remain native-only.
 
-The same global `ENABLE_LEGACY_FALLBACK` gate controls every Classes legacy operation. Listings read native first, exclude all migrated legacy IDs, and append only unmigrated legacy rows with bounded pagination/counts. Editing a legacy identity promotes it to a native ULID and updates its linked legacy row atomically; creating mirrors to both when enabled. Native-only edits do not create legacy counterparts. With the gate disabled, native operations remain independent. The separate SELECT pool stays read-only; mirrored mutations use the existing same-server native transaction and require InnoDB tables.
+Classes reads require `ENABLE_LEGACY_FALLBACK`; writes additionally require production, the configured legacy destination and `ENABLE_LEGACY_WRITES=true`. Listings read native first, exclude all migrated legacy IDs, and append only unmigrated legacy rows with bounded pagination/counts. Editing a legacy identity promotes it to a native ULID and updates its linked legacy row atomically; creating mirrors to both when enabled. Native-only edits do not create legacy counterparts. With the gate disabled, native operations remain independent. The separate SELECT pool stays read-only; mirrored mutations use the existing same-server native transaction and require InnoDB tables.
 
 Classes rollback tests: `CLASS_MYSQL_TESTS=1 pnpm exec vitest run test/catalogs/classes.repository.mysql.spec.ts`. Do not enable `CLASS_LEGACY_MYSQL_TESTS` without explicit authorization for actual legacy writes. Writer unit tests record SQL without touching legacy data; this is not a live dual-write smoke test.
 
@@ -340,7 +341,7 @@ Migration `202610120012_locations_domain` creates only `CRM_THINK_V2.crm_locatio
 
 Verified legacy schema: `crmdatabase-api.ubicaciones` with auto-increment `id_ubicaciones`, nullable signed INT `idNetsuite_ubicaciones`, nullable `nombre_ubicaciones` VARCHAR(100), and nullable `estado_ubicaciones`. Status 1 is active and 0/null inactive. Native forms/mutations enforce the same 100-character name limit. Description and other providers remain native-only.
 
-`ENABLE_LEGACY_FALLBACK` is the single gate for all Locations legacy reads/writes. Native-first paginated lists append unmigrated legacy rows, excluding every migrated legacy ID before counting/filtering. Legacy edits promote to a native ULID and update the linked row; create mirrors to both while enabled. Native-only edits never create a legacy counterpart. Disabled mode leaves native operations independent. Legacy SELECT transactions remain read-only; mirrored writes use the existing same-server native transaction and require InnoDB.
+Locations reads require `ENABLE_LEGACY_FALLBACK`; writes additionally require production, the configured legacy destination and `ENABLE_LEGACY_WRITES=true`. Native-first paginated lists append unmigrated legacy rows, excluding every migrated legacy ID before counting/filtering. Legacy edits promote to a native ULID and update the linked row; create mirrors to both while enabled. Native-only edits never create a legacy counterpart. Disabled mode leaves native operations independent. Legacy SELECT transactions remain read-only; mirrored writes use the existing same-server native transaction and require InnoDB.
 
 Verification commands: `LOCATION_MYSQL_TESTS=1 pnpm exec vitest run test/catalogs/locations.repository.mysql.spec.ts` for rollback-only native persistence; `LEGACY_LOCATIONS_MYSQL_TESTS=1 pnpm exec vitest run test/integrations/legacy-locations.mysql.spec.ts` for real read-only legacy access, merge/exclusion and kill-switch checks. Keep `LOCATION_LEGACY_MYSQL_TESTS` disabled unless explicitly authorized to test actual legacy DML. Unit writer tests only compile/record SQL.
 
@@ -352,7 +353,7 @@ Migration `202610120013_subsidiaries_domain` targets only `CRM_THINK_V2`, creati
 
 Verified source: `crmdatabase-api.subsidiarias`, with auto-increment `id_subsidaria` (intentional spelling), nullable signed INT `id_NetsuiteSub`, nullable `Nombre_Subsidiaria` VARCHAR(250), and nullable `Estado_Subsidiaria`. Status 1 is active, 0/null inactive; unsupported values fail mapping. Native storage, domain-specific create/update DTOs and forms all support names up to 250 characters. Shared validations remain inherited. Detail and non-NetSuite providers remain native-only.
 
-The single `ENABLE_LEGACY_FALLBACK` gate controls every legacy operation. Native-first listings exclude migrated legacy IDs before legacy count/filter/pagination. Legacy edits promote into native storage and update the linked legacy row; creation mirrors to both while enabled. Native-only edits never invent a legacy counterpart. Disabled access leaves native operations independent. SELECT uses the separate read-only pool; mirrored writes share the native same-server transaction. Both native tables and legacy Subsidiaries were verified InnoDB.
+Subsidiaries reads require `ENABLE_LEGACY_FALLBACK`; writes additionally require production, the configured legacy destination and `ENABLE_LEGACY_WRITES=true`. Native-first listings exclude migrated legacy IDs before legacy count/filter/pagination. Legacy edits promote into native storage and update the linked legacy row; creation mirrors to both while enabled. Native-only edits never invent a legacy counterpart. Disabled access leaves native operations independent. SELECT uses the separate read-only pool; mirrored writes share the native same-server transaction. Historical verification recorded InnoDB for both native tables and legacy Subsidiaries; this revision did not query MySQL.
 
 Verification: `SUBSIDIARY_MYSQL_TESTS=1 pnpm exec vitest run test/catalogs/subsidiaries.repository.mysql.spec.ts` uses rollback-only native fixtures; `LEGACY_SUBSIDIARIES_MYSQL_TESTS=1 pnpm exec vitest run test/integrations/legacy-subsidiaries.mysql.spec.ts` checks real read-only access, merge/exclusion and disabled fallback. Keep `SUBSIDIARY_LEGACY_MYSQL_TESTS` disabled unless explicitly authorized for actual legacy DML. Writer unit tests compile/record SQL only, not live writes.
 
@@ -366,7 +367,7 @@ Applied migration `202610120014_brokers_domain` creates only `CRM_THINK_V2.crm_b
 
 The verified source is `crmdatabase-api.corredores`. Only `id_corredor`, `id_netsuiteCorredor`, `nombre_corredor` and `estado_corredor` are queried/mapped/written. Obsolete `valoridNetsuite`, category, company, phone and email columns are excluded from the canonical contract and native schema; legacy updates leave them untouched and inserts omit them. Native DTOs, storage and forms support 250-character names. Status 1 is active, 0/null inactive; invalid statuses are rejected. Signed or null NetSuite identifiers are retained exactly in the provider-reference table. Detail and other providers remain native-only.
 
-The single `ENABLE_LEGACY_FALLBACK` gate controls all Brokers legacy reads and mirrored writes. Native-first listing excludes migrated legacy IDs before legacy count/filter/page operations. Legacy edits promote into native storage and update the linked legacy row; enabled creation mirrors to both. Native-only edits do not invent a legacy counterpart. Disabled mode leaves native persistence independent. Separate-pool SELECT transactions are strictly read-only; mirrored writes use the existing same-server native transaction and require InnoDB.
+Brokers reads require `ENABLE_LEGACY_FALLBACK`; mirrored writes additionally require production, the configured legacy destination and `ENABLE_LEGACY_WRITES=true`. Native-first listing excludes migrated legacy IDs before legacy count/filter/page operations. Legacy edits promote into native storage and update the linked legacy row; enabled creation mirrors to both. Native-only edits do not invent a legacy counterpart. Disabled mode leaves native persistence independent. Separate-pool SELECT transactions are strictly read-only; mirrored writes use the existing same-server native transaction and require InnoDB.
 
 Verification: `BROKER_MYSQL_TESTS=1` enables rollback-only native tests and `LEGACY_BROKERS_MYSQL_TESTS=1` enables read-only legacy/merge/kill-switch tests. These passed alongside generic persistence tests (17 passed). Keep `BROKER_LEGACY_MYSQL_TESTS` disabled without explicit actual-legacy-DML test authorization; that test was skipped. Writer unit tests record SQL, not live writes.
 

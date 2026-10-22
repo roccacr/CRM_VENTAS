@@ -1,5 +1,26 @@
 # 26 - Enterprise UX Rules: Projects Reference and Replication Guide
 
+## Revision Status - 2026-10-22, f2dc4f1
+
+The Projects visual contract remains the existing owner-requested reference.
+This documentation audit does not authorize restyling. Dated ratings, browser
+measurements and test counts below are historical evidence, not newly measured
+quality or current acceptance. Current Administration inventory:
+[27](27-Entrega-Administracion-y-QA.md).
+
+Runtime uses React/Vite/TypeScript, Ant Design, DataTables and centralized fetch;
+TanStack Query, Zustand, React Hook Form and Tailwind are not installed.
+The Formalization adoption section records the 2026-10-14 demo layout:
+its segmented queues, demo notices, project summary, recent demo events and
+fixture rows are superseded. Current Home uses search, Project and Queue selects;
+Orders uses search, Stage, Project and Owner. Queue names/order match the current
+banners, with Approval visible only when authorized. No fixture project/owner
+options or operational rows are supplied: follow-up and recent activity explicitly
+report unavailable. Six banner values remain provisional zero, without an API.
+Calendar/Summary/order preview models still simulate DEMO, not real operations.
+See [28](28-Formalizacion-Recorrido-Visual.md) and
+[29](29-Navegacion-Recuperacion-y-Seguimiento.md).
+
 Effective: 2026-10-09. Last updated: 2026-10-12 (owner-approved final state, rated
 10/10). Owner-directed rule for Projects only.
 
@@ -810,7 +831,7 @@ DataTables cell slots mount separate React roots, so the row action menu opts in
 the scale through `catalog-items-dropdown--projects`. Remaining exception: the
 shared drawer/modal overlay shadows keep Administration rgba values.
 
-Latest runtime verification (2026-10-12, recorded in document 25): frontend
+Historical runtime verification (2026-10-12, recorded in document 25): frontend
 format/lint/typecheck, 168 tests and build passed (existing bundle-size warning);
 authenticated integrated browser check of page, expanded filters, filter focus,
 drawer and edit modal at 1440px, 929px and 390px with measured geometry. Drawer
@@ -849,7 +870,7 @@ tokens (`--color-primary*`, `--color-secondary`, `--color-control-border`,
 - Header as Users: `nav.roles-security-breadcrumb` (`aria-label="Ruta"`, last
   segment neutral-900, 12px/650), h1 22px/720 neutral-900, a `roles-security-total`
   pill (`N rol(es)`) shown only after the API catalog arrives (before that the roles
-  are the local fallback), description 13px/450 muted.
+  are unavailable, without editable fallback roles), description 13px/450 muted.
 - Selection: selected role, checked role (employee mode) and selected module card
   use the slate focus border on primary-light, exactly like the selected user card;
   no black border, no 3px left bar, no inset shadow. Hover is the quiet
@@ -964,7 +985,7 @@ Tests: `test/administration/RolesSecurityPage.spec.tsx` covers role label with a
 singular user, a section with levels, the master switch, Marcar todos and the
 dirty count, catalog tabs, the protected read-only role and the employee empty
 state. The `App.spec.tsx` roles test walks Sección and Módulo selects and checks
-that navigation does not revalidate the session.
+  that shell navigation does not bootstrap the session again; entering Users/Roles still revalidates page access.
 
 ### Users Adoption (2026-10-12)
 
@@ -1092,7 +1113,7 @@ Default page size is 100 (10/50/100/200 options). The existing bounded page cach
 avoids requests when returning to a loaded page; refresh and mutations invalidate
 cached data. Authentication, permissions and no-delete behavior are unchanged.
 
-### Formalization Home Adoption (2026-10-14)
+### Historical Formalization Home Adoption (2026-10-14, superseded data and filters)
 
 Owner-requested for `/home/formalization` demo views only. The page title and the
 six banners keep their own styles; everything below them opts in. Tokens live on

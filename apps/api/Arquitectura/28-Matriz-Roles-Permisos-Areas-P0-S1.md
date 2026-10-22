@@ -289,7 +289,7 @@ Regla de catalogos compartidos:
 - los permisos de catalogo son scoped por modulo consumidor;
 - formato vigente: `ventas.catalog_project.read`, `mercadeo.catalog_project.read`, `formalizacion.catalog_project.read`, `contabilidad.catalog_project.read`, `administration.catalog_project.read`;
 - la pantalla de roles muestra cada catalogo dentro del modulo real como "Catalogos compartidos";
-- la autorizacion real exige modulo activo en `sec_user_org_unit` y permiso scoped; `catalog_project.read` global queda deprecado y no autoriza endpoints nuevos.
+- la autorizacion real exige modulo activo en `sec_user_org_unit` y permiso scoped; Owner solo omite membresia de area, nunca el grant exacto ni un deny; los filtros de proyecto no son alcance usuario/proyecto; `catalog_project.read` global queda deprecado y no autoriza endpoints nuevos.
 
 Reglas fisicas obligatorias cuando se cree SQL:
 

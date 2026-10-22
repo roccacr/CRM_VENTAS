@@ -1,6 +1,12 @@
 # 00 - Indice de Arquitectura Frontend
 
-## Consolidacion vigente - 2026-10-13
+## Consolidacion vigente - 2026-10-22
+
+Entradas actuales: [resumen](01-Resumen-Frontend.md), [mapa](19-Mapa-de-Implementacion-Frontend.md), [25 - Continuidad](25-Continuidad-Administracion.md), [26 - Sistema visual Proyectos](26-Projects-Design-System.md), [27 - Entrega/QA](27-Entrega-Administracion-y-QA.md), [28 - Recorrido Formalizacion](28-Formalizacion-Recorrido-Visual.md), [29 - Reunion](29-Formalizacion-Reunion-Ajustes.md) y [29 - Navegacion/recuperacion/seguimiento](29-Navegacion-Recuperacion-y-Seguimiento.md).
+
+La [remediacion API/frontend](../../api/Arquitectura/Reauditoria-54-Plan-y-Resultados.md) conserva evidencia medida y pendientes. El contador de aprobaciones es real y protegido; los otros indicadores son provisionales y no hay seguimiento operacional. Las propuestas de herramientas/carpeta futuras no describen dependencias instaladas.
+
+### Base de continuidad - 2026-10-13
 
 [27 - Entrega de Administracion y QA](27-Entrega-Administracion-y-QA.md) describe filtros, paginacion, cache, comparacion, roles y auditoria vigentes. [36 - Registro API](../../api/Arquitectura/36-Registro-Entrega-Administracion.md) enlaza cada solicitud con implementacion, evidencia y pendientes; [37 - Auditoria y conflictos](../../api/Arquitectura/37-Auditoria-Trazabilidad-y-Conflictos.md) documenta antes/despues y errores. Las entradas anteriores son antecedentes fechados, no una certificacion actual de cierre.
 
@@ -124,7 +130,7 @@ Esa lectura define:
 - como se separan `auth`, homes, menus y contextos operativos;
 - por que leads sigue fuera.
 
-El slice aprobado actual es identidad P0-S1A conectada al BFF. El documento `20-Alcance-P0-Vertical-Leads-Frontend.md` se consulta despues de aprobar avanzar mas alla de identidad.
+El primer slice fue identidad P0-S1A; Administracion y Formalizacion parcial se incorporaron posteriormente. El documento `20-Alcance-P0-Vertical-Leads-Frontend.md` sigue siendo futuro, no entrega implementada.
 
 ## Formalizacion: reunion y ajustes pendientes
 

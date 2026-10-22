@@ -1,5 +1,68 @@
 # Navegacion, recuperacion y seguimiento - 2026-10-22
 
+## Corte documental f2dc4f1
+
+Implementacion contrastada con App, app-routes, AppRouteContent, LazyRoute,
+RouteErrorBoundary, GlobalHomeShell y componentes/servicio de Formalizacion.
+Las verificaciones automatizadas siguientes pertenecen a la remediacion previa;
+esta actualizacion solo revisa documentos, enlaces y diff.
+
+Entrada a Formalizacion: membresia activa del modulo en el perfil; la exencion
+Owner existente se resuelve en backend. El frontend no inventa acceso por nombre
+de rol. El permiso anterior formalizacion.home.read esta inactivo.
+formalizacion.home.approvals.read controla exclusivamente el banner y GET del
+resumen, no la entrada general ni aprobar/devolver. ApprovalStrip se monta solo
+con allow y sin deny, por lo que un perfil no autorizado no inicia esa consulta.
+Carga con Spin/Consultando, error No disponible; nunca un cero de respaldo.
+La disponibilidad nativa/legacy depende de configuracion backend, no del banner.
+
+Inicio conserva buscador, Proyecto y Bandeja. Gestion conserva buscador, Etapa,
+Proyecto, Responsable y Limpiar segun criterios. Orden de bandejas: Todas,
+Pendientes de aprobacion (solo autorizado), Contratos pendientes, Gestion bancaria,
+Pendientes de saldo, Traspasos pendientes, Traspaso firmado y Formalizaciones
+cerradas este anio. Los banners conservan el mismo orden de etapas; Contratos
+distingue Por enviar y Pendientes de firma. Sin fuente no hay opciones de
+proyecto/responsable DEMO. Tabla vacia y ceros de selectores no son datos reales.
+
+## Inventario documental revisado
+
+Rutas relativas a apps/frontend; se revisaron los 30 archivos propios siguientes.
+Clasificacion no equivale a una autorizacion nueva de producto.
+
+| Archivos | Clasificacion y uso |
+| --- | --- |
+| Arquitectura/02, 03, 04, 06 (nombres completos en el directorio) | Blueprint de estructura/estado/UX; dependencias propuestas separadas del runtime |
+| Arquitectura/05-Testing-Frontend.md | Estrategia y checklist; resultados previos atribuidos a reauditoria |
+| Arquitectura/07-Skills-Codex-Instaladas.md | Inventario local, uso condicionado y registro historico de fuentes |
+| Arquitectura/08, 18, 22, 24 | Compuerta inicial historica; Administracion actual remitida a 27 |
+| Arquitectura/09, 10, 11, 12, 13, 14, 15, 16, 17, 20 | Vision comercial futura y contratos conceptuales; reglas canonicas preservadas |
+| Arquitectura/21-Seguridad-Autenticacion-BFF-y-Sesion.md | BFF vigente y recomendaciones futuras de herramientas |
+| Arquitectura/23-Regla-IDs-Canonicos-y-Proveedores-Frontend.md | Identidad canonica vigente; referencias de proveedor solo soporte autorizado |
+| Arquitectura/25-Continuidad-Administracion.md | Bitacora fechada, no inventario actual de BD |
+| Arquitectura/26-Projects-Design-System.md | Contrato visual preservado; QA y adopcion DEMO fechados |
+| Arquitectura/27-Entrega-Administracion-y-QA.md | Inventario administrativo mas historial QA |
+| Arquitectura/28-Formalizacion-Recorrido-Visual.md | Estado vigente separado del recorrido DEMO historico |
+| Arquitectura/29-Formalizacion-Reunion-Ajustes.md | Necesidades/decisiones pendientes, no autoridad ni implementacion nueva |
+| Arquitectura/29-Navegacion-Recuperacion-y-Seguimiento.md | Remediacion vigente e inventario de esta auditoria |
+| design-qa.md | QA historico del shell, no certificacion actual |
+| public/Logo/README.md | Referencias locales actuales y procedencia historica; calidad no medida |
+
+La ley visual, el indice, el resumen y el mapa se revisaron junto con las
+entradas principales del repositorio; el [indice](00-Indice.md) enlaza 25/26/27/28
+y ambos documentos 29 por nombre completo. Los dos prefijos 29 se conservan
+para no romper referencias historicas. Inventario global y limites de esta
+revision: [reauditoria](../../api/Arquitectura/Reauditoria-54-Plan-y-Resultados.md).
+
+## Evidencia final previa, no reejecutada
+
+La [reauditoria](../../api/Arquitectura/Reauditoria-54-Plan-y-Resultados.md)
+registra FE 428 aprobadas en 31 archivos, 84.77% de lineas; API 4583 aprobadas,
+113 MySQL omitidas. Formato/lint/typecheck/build y cobertura finales constan
+aprobados en ese corte. Los fallos iniciales registrados mas abajo se conservan
+como historia y no sustituyen ese resultado posterior. CI esta preparado en el
+repositorio; no se acredita activacion remota. El clon limpio y los nueve commits
+son evidencia previa, no operaciones Git ejecutadas por esta auditoria.
+
 ## F01-F04
 
 - Las selecciones del usuario usan `pushState`; login, logout y correcciones de
@@ -41,6 +104,10 @@ con chunks separados para las paginas. La advertencia de Ant Design sigue.
 Durante el trabajo otro responsable actualizo Vite 8.3.1 a 8.3.3 y Vitest
 5.0.1 a 5.0.3; estas medidas describen esos builds, no un benchmark controlado
 ni una medicion de latencia de usuario.
+
+La reauditoria registra 84.74 kB (gzip 24.89) en clon limpio frente a 85.09 kB
+del workspace. No se controlaron todas las variables del entorno del SO;
+no afirmar equivalencia de benchmark ni resolucion del chunk Ant Design.
 
 ## Archivos de esta entrega
 

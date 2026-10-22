@@ -12,20 +12,18 @@ Estado de fase:
 vision completa del frontend != alcance autorizado actual
 ```
 
-El alcance autorizado actual es la compuerta visual de identidad: usuarios, autenticacion, areas/equipos, roles y permisos. Las vistas comerciales de leads, calendario, dashboard y reportes son posteriores a esa compuerta.
+Al corte 2026-10-22 existen identidad, Administracion/catalogos y Formalizacion parcial. Solo el contador de aprobaciones del Home tiene datos reales y permiso propio; no existen aun acciones persistidas de aprobacion ni seguimiento operacional. Calendario/resumen y previews conservan simulaciones. Ver [remediacion y evidencia](../../api/Arquitectura/Reauditoria-54-Plan-y-Resultados.md).
 
 ## Stack frontend
 
 - React.
 - Vite.
 - TypeScript estricto.
-- TanStack Query para server state.
-- Zustand para estado UI/global ligero.
-- React Hook Form para formularios.
-- Zod para validacion frontend cuando aplique.
-- Tailwind CSS.
-- Radix/shadcn para componentes accesibles cuando convenga.
-- Playwright/Vitest para pruebas.
+- Ant Design, DataTables/SearchPanes y CSS del proyecto.
+- Servicios tipados con fetch y estado/hooks React existentes.
+- Vitest y Testing Library para pruebas automatizadas.
+
+TanStack Query, Zustand, React Hook Form, Tailwind y Radix/shadcn son propuestas del blueprint, no el stack instalado. No incorporarlos solo para ajustar el codigo a documentos antiguos.
 
 ## Responsabilidades frontend
 
@@ -34,9 +32,11 @@ El alcance autorizado actual es la compuerta visual de identidad: usuarios, aute
 - Vistas de leads, actividades, oportunidades, calendario, dashboard y reportes cuando su fase este aprobada.
 - Formularios y validacion UX.
 - Manejo de estados de carga/error.
-- Cache e invalidacion de datos remotos con TanStack Query.
+- Ciclo de solicitudes y cache mediante los servicios/hooks implementados; autorizacion final siempre en API.
 - Componentes reutilizables.
-- Accesibilidad WCAG AA.
+- Accesibilidad WCAG AA como objetivo, no certificacion global obtenida.
+
+Navegacion mediante History API con popstate, rutas diferidas/Suspense y limite de errores recuperable por ruta. Las esperas artificiales de sesion se retiraron; los estados de carga representan solicitudes reales. Estos mecanismos no acreditan tiempos de respuesta productivos.
 
 ## No responsabilidades
 

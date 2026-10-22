@@ -1,5 +1,9 @@
 # 20 - Alcance Futuro Vertical Leads Frontend
 
+## Vigencia documental - 2026-10-22, corte f2dc4f1
+
+Plan futuro condicionado a producto y contrato API. Identidad ya evoluciono a Administracion conectada; este documento no describe el inventario actual ni autoriza ejecutar sus slices. Ver [27](27-Entrega-Administracion-y-QA.md).
+
 ## Veredicto
 
 Actualizacion de orden: este documento no autoriza pantallas de leads mientras identidad/usuarios/roles/permisos no este cerrado.

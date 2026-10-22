@@ -1,5 +1,9 @@
 # 10 - Contrato Canonico Frontend
 
+## Vigencia documental - 2026-10-22, corte f2dc4f1
+
+La regla de aislamiento de proveedores sigue vigente. Los ejemplos de crear/leer lead son conceptuales y futuros; no acreditan un endpoint, DTO o formulario instalado. El core backend conserva nombres CRM y resuelve referencias externas en su capa de integracion; ninguna referencia externa se convierte por ello en identidad canonica de navegacion.
+
 ## Regla principal
 
 El frontend trabaja solo con lenguaje del CRM.

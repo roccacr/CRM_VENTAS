@@ -1,10 +1,14 @@
 # 05 - Seguridad, Auditoria y Observabilidad
 
+Estado implementado 2026-10-22: `CsrfGuard` precede al `AuthGuard` global default-deny. Cada handler Nest registrado declara `RouteSecurity`; las rutas publicas forman una allowlist explicita. La clasificacion `permission` no sustituye el permiso exacto y las validaciones del servicio. Perfil reutilizado solo dentro del request por AsyncLocalStorage, instancia de servicio y token exacto; no cache global de autorizacion.
+
+GET/HEAD protegidos: defaults 120 consultas/usuario y 600/IP por 60 segundos, cache 5000 por store, por proceso; respuesta 429 con Retry-After. No es cuota distribuida. `/health/live` no hace IO; `/health/ready` prueba SELECT 1 nativo con plazo de respuesta de 1 segundo y una sonda pendiente compartida, sin cancelar el driver. Legacy no determina readiness. Errores 5xx usan respuestas publicas sanitizadas. Metricas ERP, jobs y atributos comerciales siguientes son direccion futura, no capacidades verificadas en produccion.
+
 ## Autenticacion
 
 Microsoft Entra ID como metodo corporativo principal.
 
-Tambien se contempla autenticacion por correo y clave para usuarios autorizados por negocio. Este metodo debe implementarse con politica fuerte de contrasenas, hash seguro, bloqueo por intentos, auditoria y recuperacion controlada.
+El login local esta implementado con Argon2id, bloqueo persistente, cuotas y auditoria. La solicitud de recuperacion sigue deshabilitada: con CSRF y DTO validos responde 503 uniforme, incluso al exceder cuota; no emite tokens ni envia correo. `complete-reset` conserva tokens existentes de un solo uso.
 
 La regla obligatoria de autenticacion, cookies, OIDC, login local, CORS, CSRF, headers y errores vive en:
 

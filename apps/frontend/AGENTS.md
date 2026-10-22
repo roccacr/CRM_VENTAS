@@ -1,5 +1,11 @@
 # AGENTS.md - CRM Enterprise Frontend
 
+## Current implementation precedence - 2026-10-22
+
+The installed runtime uses React/Vite/TypeScript, Ant Design, DataTables/SearchPanes, typed fetch services and project CSS. TanStack Query, Zustand, React Hook Form, Tailwind and Radix/shadcn guidance below is a future blueprint, not a requirement to add dependencies or replace working patterns. Reuse the installed services/hooks/forms unless a scoped decision authorizes migration.
+
+Approved extensions beyond the original identity gate include Administration/catalogs and partial Formalization. Only its approval counter has a real Home source; other counters are provisional, follow-up has no operational API, and calendar/summary previews remain simulations. Navigation history, lazy routes and recoverable route errors are implemented. See the product-law addendum and `Arquitectura/29-Navegacion-Recuperacion-y-Seguimiento.md`; Leads and full contract workflows remain future scope.
+
 ## Agent Role
 
 Act as a Staff Frontend Engineer specialized in React, TypeScript, enterprise UI, accessibility, performance, complex forms, high-volume tables, dashboards, Microsoft 365 authentication flows, and CRM workflows.

@@ -1,5 +1,9 @@
 # 16 - UX Notas Adhesivas y Anotaciones
 
+## Vigencia documental - 2026-10-22, corte f2dc4f1
+
+Vision futura, sin editor/notas operativas instalados. Tiptap, dnd kit, TanStack Query y Zustand son recomendaciones de blueprint, no dependencias actuales. Las fases descritas no abren alcance por si mismas.
+
 ## Veredicto
 
 El frontend debe permitir notas adhesivas y anotaciones contextuales en vistas clave del CRM, pero sin convertirlas en desorden visual.

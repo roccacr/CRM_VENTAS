@@ -1,5 +1,9 @@
 # 14 - Modularizacion Frontend por Areas y Roles
 
+## Vigencia documental - 2026-10-22, corte f2dc4f1
+
+Blueprint de dominios y hogares futuros; los nombres de carpetas/componentes no son inventario instalado. El runtime utiliza `modules/administration`, `modules/home` y `modules/auth`. En Formalizacion, entrada por membresia activa (exencion Owner existente), banner por permiso separado y seguimiento no disponible; ver [29 - Remediacion](29-Navegacion-Recuperacion-y-Seguimiento.md). Las listas de banners de este blueprint no sustituyen los nombres actuales.
+
 ## Veredicto
 
 El frontend debe organizarse por contextos operativos, areas de trabajo y flujos de usuario, no como una sola carpeta gigante de CRM.

@@ -1,5 +1,9 @@
 # 09 - Decisiones P0 UX, Permisos y Preguntas Pendientes
 
+## Vigencia documental - 2026-10-22, corte f2dc4f1
+
+Decisiones y preguntas del blueprint comercial. Las secuencias P0/P1 y permisos ilustrativos no son evidencia de pantallas comerciales actuales ni una nueva autorizacion. Login local y Microsoft ya tienen cliente BFF; Administracion se documenta en [27](27-Entrega-Administracion-y-QA.md).
+
 ## Decisiones confirmadas
 
 1. La UI sera en espanol.

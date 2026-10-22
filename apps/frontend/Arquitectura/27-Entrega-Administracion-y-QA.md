@@ -1,8 +1,20 @@
 # 27 - Entrega de Administracion y QA
 
-Estado vigente de Formalizacion: [28-Formalizacion-Recorrido-Visual.md](28-Formalizacion-Recorrido-Visual.md).
+## Estado revisado - 2026-10-22, corte f2dc4f1
+
+Inventario de Administracion y bitacora de entregas. Cada cifra y comprobacion fechada conserva su corte original. Ultima evidencia previa: 428 pruebas frontend, 84.77% de lineas; API 4583 aprobadas y 113 MySQL omitidas, no aprobadas. Fuente: [reauditoria](../../api/Arquitectura/Reauditoria-54-Plan-y-Resultados.md). No se reejecutaron checks, cobertura, build ni navegador por editar Markdown.
+
+Formalizacion vigente: [29 - Navegacion y seguimiento](29-Navegacion-Recuperacion-y-Seguimiento.md). [28 - Recorrido](28-Formalizacion-Recorrido-Visual.md) conserva el historial visual. Inicio/Gestion/seguimiento ya no muestran filas DEMO y Movimientos recientes declara indisponibilidad; no hay listado/detalle operativo conectado. Calendario, Resumen y modelos de preview conservan simulaciones, no operaciones reales.
+
+La entrada requiere membresia activa del modulo, con la exencion Owner existente. `formalizacion.home.read` esta inactivo; no controla la entrada. `formalizacion.home.approvals.read` controla solo banner y GET del resumen, con allow y sin deny; no concede aprobar/devolver ni acceso a todo el modulo. ApprovalStrip se monta y consulta solo despues de ese permiso. Muestra Spin y Consultando durante carga, valor al resolver y No disponible al fallar, nunca un cero de respaldo. Los otros seis banners mantienen ceros provisionales sin API. La fuente nativa/legacy depende de configuracion backend; esta revision no certifica un total combinado ni consulta actual de BD.
+
+## Antecedentes de entregas y QA - 2026-10-13 a 2026-10-20
+
+Las menciones siguientes a `formalizacion.home.read`, filas/contadores DEMO y limites de checks describen su corte original y fueron sustituidas por el estado anterior. No usar esos permisos historicos para implementar.
+
+Antecedente visual de Formalizacion: [28-Formalizacion-Recorrido-Visual.md](28-Formalizacion-Recorrido-Visual.md).
 Las entradas de validacion siguientes conservan el historial de entregas; los
-contadores navegables y la sesion visual compartida del documento 28 sustituyen
+contadores navegables y la sesion visual compartida del documento 28 sustituyeron en aquel corte
 las limitaciones iniciales de banners estaticos y descarte al salir de la orden.
 
 ## Clave inicial manual - 2026-10-13
@@ -101,7 +113,7 @@ Formalizacion con solo Inicio reutiliza la misma barra oscura, dimensiones,
 iconos y estado activo que Administracion. Se retiro la variante visual
 `global-home-menu--single`; el filtrado por permisos permanece intacto.
 
-### Perfil Formalizacion inicial - 2026-10-13
+### Perfil Formalizacion inicial historico - 2026-10-13, permiso sustituido
 
 Rol Formalizacion disponible en el catalogo API; solo `formalizacion.home.read`
 en Formalizacion / Inicio. El alta deriva el modulo desde permisos del rol y

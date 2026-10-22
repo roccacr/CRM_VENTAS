@@ -1,5 +1,9 @@
 # 05 - Testing Frontend
 
+## Vigencia documental - 2026-10-22, corte f2dc4f1
+
+Estrategia y checklist de aceptacion; las listas siguientes no son resultados ejecutados ni autorizan el alcance comercial. Ultima evidencia previa a `f2dc4f1`: 428 pruebas frontend y 84.77% de lineas; no reejecutadas en esta auditoria documental. Fuente y limites: [reauditoria](../../api/Arquitectura/Reauditoria-54-Plan-y-Resultados.md). Playwright, Lighthouse y pruebas de dispositivos aqui propuestos requieren su propia evidencia.
+
 ## Estrategia
 
 Usar pruebas por riesgo:

@@ -1,5 +1,9 @@
 # 12 - Diccionario Funcional y Acciones CRM
 
+## Vigencia documental - 2026-10-22, corte f2dc4f1
+
+Diccionario funcional y plantilla para alcance futuro. Los codigos, carpetas y acciones de leads no prueban implementacion ni autorizan funciones nuevas. Conservar la ley de producto y validar cada contrato antes de desarrollar.
+
 ## Veredicto
 
 El frontend debe tener documentacion funcional propia para que cualquier agente, disenador o desarrollador entienda que significa cada accion del CRM antes de construir pantallas.

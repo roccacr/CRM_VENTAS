@@ -2,8 +2,14 @@
 
 Actualizacion autorizada 20/10/2026: el usuario habilito el esquema de ordenes
 de venta y su persistencia interna de estados/aprobaciones. Ver documento 38.
-No se registran endpoints, reglas operativas completas ni integraciones de
-escritura; el resto del alcance futuro descrito aqui se conserva.
+Desde el corte 2026-10-22 existe tambien el endpoint de lectura del contador;
+no hay endpoints de mutacion del ciclo de vida ni reglas operativas completas.
+
+## Inventario vigente - 2026-10-22
+
+Fuentes ejecutables: `src/common/security` (autenticacion/cuotas), `src/common/health`, `src/common/filters`, `src/modules/crm/identity`, modulos de catalogos/expedientes y `src/modules/crm/sales/sales-orders` (persistencia y summary). Las migraciones incrementales viven en `migrations/schema-only`, no en la carpeta ilustrativa del blueprint. Swagger opcional se genera desde controladores registrados; no es contrato estatico exclusivo de identidad.
+
+Ver [registro de entrega](36-Registro-Entrega-Administracion.md) y [remediacion](Reauditoria-54-Plan-y-Resultados.md). Las estructuras futuras y el primer slice descritos debajo son planificacion historica; no prueban existencia de carpetas, usuarios dedicados ni migraciones aplicadas actualmente.
 
 ## Proposito
 
@@ -15,7 +21,7 @@ Si voy a construir algo en el API, en que carpeta va y que reglas debo leer?
 
 Debe usarse antes de crear modulos, endpoints, repositorios, migraciones, integraciones, jobs o reglas de negocio.
 
-Estado actual: este documento describe donde va el codigo aprobado. Desde la ley `0.3.19`, solo se autoriza construir el runtime minimo de identidad; no existe autorizacion para modulos comerciales ni integraciones operativas.
+Antecedente de la ley `0.3.19`: el primer runtime se limito a identidad. Para alcance vigente usar las ampliaciones fechadas de la ley y el inventario anterior; no inferir autorizacion para verticales futuras.
 
 Para el primer corte ejecutable, identidad manda. `23-Alcance-P0-Vertical-Leads.md` aplica despues de cerrar identidad, usuarios, roles, permisos, contrato canonico y modelo MySQL minimo.
 
@@ -89,7 +95,7 @@ src/database -> DB_NAME -> CRM_THINK_V2
 src/integrations/legacy-crm -> LEGACY_CRM_DB_NAME -> base vieja
 ```
 
-El adapter legacy puede reutilizar `DB_HOST`, `DB_PORT`, `DB_SSL` y `DB_SSL_CA` si ambas bases estan en el mismo servidor MySQL. Debe usar `LEGACY_CRM_DB_USER` y `LEGACY_CRM_DB_PASSWORD` de solo lectura. No se permite cambiar `DB_NAME` para apuntar al CRM viejo.
+El adapter actual reutiliza `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_SSL` y `DB_SSL_CA`, con nombre legacy separado. No existen variables implementadas `LEGACY_CRM_DB_USER`/`LEGACY_CRM_DB_PASSWORD`. Separar cuentas y privilegios es pendiente DBA; la transaccion de lectura no limita por si sola las credenciales. Escrituras requieren ambos flags, produccion y destino exacto. No cambiar `DB_NAME` al CRM viejo.
 
 Nunca:
 
@@ -100,7 +106,7 @@ Frontend -> proveedor externo
 CRM nuevo -> query directa al CRM viejo
 ```
 
-## Primer vertical slice aprobado ahora
+## Primer vertical slice historico
 
 El desarrollo real aprobado por la ley `0.3.19` debe ser identidad:
 
@@ -155,7 +161,7 @@ Antes de tocar codigo:
 10. Solo entonces recrear runtime e implementar con pnpm.
 11. Cuando exista runtime, ejecutar `pnpm run typecheck` y `pnpm run build`.
 
-## Estado actual
+## Estado del corte inicial de identidad (historico)
 
 | Elemento | Estado |
 | --- | --- |

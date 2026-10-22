@@ -1,6 +1,8 @@
 # 03 - Base de Datos y Migracion
 
-## Current Migration Runbook - 2026-10-09
+Estado documental 2026-10-22: los resets, recuperaciones y conteos fechados siguientes son evidencia historica, no estado vivo ni instrucciones para repetirlos. `CRM_THINK_V2` es desarrollo en host compartido con produccion `crmdatabase-api`: no ejecutar fixtures alli. No se abrio MySQL, inspecciono `.env` ni ejecuto SQL/003, SQL/004 o SQL/021 en esta revision. Ver [36 - Estado vigente y registro](36-Registro-Entrega-Administracion.md) y [operacion](Operacion-Despliegue-Rollback.md) para limites y compuertas.
+
+## Historical Migration Runbook - 2026-10-09
 
 This describes implemented operations, not permission to execute. See [catalog schema/API](35-Catalog-API-and-Schema.md) and [Administration closure/phased ETL](34-Cierre-Operativo-Administracion-P0-S1.md).
 
@@ -10,7 +12,7 @@ This describes implemented operations, not permission to execute. See [catalog s
 4. The retired project bulk importer and its tests were removed. Use only the optional read-only legacy fallback; no automatic import or legacy mutation is provided.
 5. Projects cutover: set `MIGRATION_CONFIRM_SCHEMA_ONLY=CRM_THINK_V2` securely, then run `pnpm migrate:identity:schema --only=202610090009_projects_domain`. This targets only the new project migration; it does not replay identity seeds or Owner repair. It refuses non-empty shared project records. It creates dedicated project/reference tables and blocks project records in shared tables. Preserve historical migrations while the other six domains still use them.
 6. The isolated read-only mapper preserves signed NetSuite IDs, including -5, -4, -6, -3 for Campaigns. No general seven-catalog importer exists. Subsidiary 63 naming, broker identifier columns and Files property/status/project mapping remain unresolved. Absent Odoo stays unassigned.
-7. Run `.\check-all.cmd`. Explicit MySQL flags `CATALOG_MYSQL_TESTS`, `IDENTITY_ACCESS_MYSQL_TESTS`, `ADMINISTRATION_MYSQL_TESTS` use direct `.env` rollback fixtures; catalog tests do not migrate schema. Suites are serial when enabled. Record actual coverage and audit/ownership reconciliation separately from pass counts.
+7. For documentation-only updates, review links and diff. Runtime validation uses `.\check-all.cmd`; MySQL suites require a separately verified isolated instance and explicit authorization. Never enable fixture flags on the shared development/production host, even for rollback-only tests. See [MySQL CI prerequisites](CI-MySQL-Pruebas.md). Historical runs below do not authorize repeating them.
 
 Architectural/future tables below are not an inventory of implemented commercial runtime.
 
@@ -113,7 +115,7 @@ LEGACY_CRM_DB_NAME = nombre de la base vieja, opcional
 ENABLE_LEGACY_FALLBACK = true para activar; false para retirar sin queries legacy
 ```
 
-No se cambia `DB_NAME` para leer legacy. Por instruccion explicita del propietario, el pool independiente reutiliza `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_SSL` y `DB_SSL_CA`; solo cambia el nombre de base a `crmdatabase-api`. Las variables anteriores `LEGACY_CRM_DB_USER` / `LEGACY_CRM_DB_PASSWORD` se ignoran. Todas las consultas del adapter se ejecutan en transacciones de solo lectura. La cuenta compartida no tiene privilegios exclusivamente de lectura: no cambiar sus grants ni credenciales. Ver contrato y retiro en documento 35.
+No se cambia `DB_NAME` para leer legacy. Por instruccion explicita del propietario, el pool independiente reutiliza `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_SSL` y `DB_SSL_CA`; solo cambia el nombre de base a `crmdatabase-api`. Las variables anteriores `LEGACY_CRM_DB_USER` / `LEGACY_CRM_DB_PASSWORD` se ignoran. Las consultas lectoras del adapter usan transacciones de solo lectura. Los seis writers de catalogos usan la transaccion nativa del mismo servidor y requieren `NODE_ENV=production`, `LEGACY_CRM_DB_NAME=crmdatabase-api` y ambos booleanos estrictos `ENABLE_LEGACY_FALLBACK=true` y `ENABLE_LEGACY_WRITES=true` (defaults `false`). El fallback lector no concede escrituras. La cuenta compartida no tiene privilegios exclusivamente de lectura: no cambiar sus grants ni credenciales. Ver contrato y retiro en documento 35.
 
 Fases:
 

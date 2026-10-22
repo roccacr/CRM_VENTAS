@@ -1,6 +1,12 @@
 # 00 - Indice de Arquitectura API
 
-## Consolidacion vigente - 2026-10-13
+## Consolidacion vigente - 2026-10-22
+
+Entradas actuales: [resumen API](01-Resumen-API.md), [mapa vigente y blueprint](22-Mapa-de-Implementacion-API.md), [remediacion/evidencia](Reauditoria-54-Plan-y-Resultados.md), [plan correctivo](Plan-Correctivo-Auditoria-CRM-TINK.md), [CI/MySQL](CI-MySQL-Pruebas.md) y [operacion/rollback](Operacion-Despliegue-Rollback.md). Distinguir codigo implementado, evidencia historica y validacion productiva pendiente.
+
+Ampliaciones de Administracion: [35 - Catalogos](35-Catalog-API-and-Schema.md), [36 - Registro e inventario documental](36-Registro-Entrega-Administracion.md), [37 - Auditoria](37-Auditoria-Trazabilidad-y-Conflictos.md), [38 - Ordenes/estados/auditoria](38-Ordenes-Venta-Estados-Auditoria.md) y [39 - Diccionario de ordenes](39-Diccionario-Ordenes-Venta.md). El contador de aprobaciones es real; el ciclo de vida HTTP completo no esta implementado. Los blueprints de Leads y otras verticales siguen siendo futuros.
+
+### Base de continuidad - 2026-10-13
 
 Leer [36 - Registro integral de entrega](36-Registro-Entrega-Administracion.md) para solicitudes, decisiones, codigo, pruebas y pendientes; [37 - Auditoria y conflictos](37-Auditoria-Trazabilidad-y-Conflictos.md) para snapshots, trazabilidad y manejo de 409; y [27 - Entrega visual y QA](../../frontend/Arquitectura/27-Entrega-Administracion-y-QA.md) para comportamiento de pantallas. Complementan documento 35 y sustituyen descripciones historicas obsoletas sin borrar evidencia previa.
 

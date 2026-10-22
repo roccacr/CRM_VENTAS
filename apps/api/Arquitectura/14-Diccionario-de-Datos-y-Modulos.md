@@ -1,5 +1,7 @@
 # 14 - Diccionario de Datos y Modulos
 
+Revision documental 2026-10-22: diseno comercial futuro y evidencia historica; tablas, rutas y reglas propuestas no acreditan runtime operativo. Ver [36 - Estado vigente y registro](36-Registro-Entrega-Administracion.md) para implementacion y limites actuales. Identidad/Administracion, consulta de expedientes y contador de aprobaciones tienen contratos propios; no habilitan Leads ni mutaciones HTTP de ordenes.
+
 Ampliacion autorizada de ordenes de venta (20/10/2026):
 [modelo y alcance](38-Ordenes-Venta-Estados-Auditoria.md) y
 [diccionario fisico aplicado](39-Diccionario-Ordenes-Venta.md).

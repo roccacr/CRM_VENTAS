@@ -1,5 +1,9 @@
 # Logo ROCCA
 
+## Referencias verificadas - 2026-10-22, corte f2dc4f1
+
+`index.html` declara los favicons PNG y SVG locales. LoginPage, GlobalHomeShell y AuthStateScreens referencian `/Logo/rocca-concept.png`; el SVG oficial esta conservado como alternativa. Se verificaron archivos y referencias, no calidad visual, nitidez, transparencia real ni optimizacion de peso mediante una medicion nueva. La procedencia y fecha de generacion siguientes conservan su registro historico; no son una certificacion de marca ni una aprobacion nueva.
+
 ## Icono de pestana
 
 `rocca-favicon.png` es un monograma R original generado para la pestana del

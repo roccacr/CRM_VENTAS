@@ -1,5 +1,9 @@
 # 11 - UX de Bitacora, Acciones y Timeline del Lead
 
+## Vigencia documental - 2026-10-22, corte f2dc4f1
+
+Blueprint futuro del timeline comercial. Componentes, eventos, permisos y campos enumerados son requisitos/conceptos, no inventario runtime ni contrato API implementado. La auditoria administrativa existente se describe en [27](27-Entrega-Administracion-y-QA.md).
+
 ## Veredicto
 
 La vista de lead debe tener una seccion de timeline/bitacora clara, filtrable y confiable.

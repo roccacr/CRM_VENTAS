@@ -1,5 +1,9 @@
 # 18 - P0 direccion frontend, identidad activa
 
+## Vigencia documental - 2026-10-22, corte f2dc4f1
+
+Direccion inicial historica y plan comercial futuro. El runtime ya incluye Administracion conectada y vistas acotadas de Formalizacion, documentadas en [27](27-Entrega-Administracion-y-QA.md). TanStack Query/Zustand de la tabla son destino no instalado. Esta revision no cambia la ley de producto ni habilita leads.
+
 ## Veredicto
 
 Actualizacion de orden: este documento queda subordinado a `00-Producto-CRM-TINK-y-P0-Frontend.md` y `22-UX-Identidad-Usuarios-Roles-P0-S1.md`.

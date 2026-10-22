@@ -1,5 +1,9 @@
 # 21 - Seguridad de Autenticacion BFF y Sesion Frontend
 
+## Vigencia documental - 2026-10-22, corte f2dc4f1
+
+Reglas BFF vigentes con recomendaciones futuras de librerias. Runtime HTTP: `fetch` centralizado, sin TanStack Query/Zustand instalados. Solo el `409` explicito de sesion obsoleta usa refresh; conflictos de negocio no se repiten. Navegacion por menu usa `pushState`; auth/correcciones/limpieza usan `replaceState`; `popstate` lee la URL. Recuperacion de render/chunk requiere Reintentar explicito sin autorecarga; no hay esperas artificiales de 900/550 ms y si se conserva el cooldown real. Ver [29](29-Navegacion-Recuperacion-y-Seguimiento.md).
+
 ## Regla superior frontend
 
 El frontend React no administra tokens. La sesion se consume mediante cookies seguras emitidas por el backend.
@@ -76,7 +80,7 @@ Comportamiento esperado:
 
 - `401`: enviar a login o iniciar flujo de refresh segun la regla BFF;
 - `403`: mostrar estado no autorizado y no renderizar la vista;
-- `409`: intentar un unico refresh igual que con `401`; si el refresh tambien falla o vuelve obsoleto, limpiar cache visual y exigir login nuevo;
+- `409` explicito de sesion con permisos obsoletos: un unico refresh; otros conflictos de negocio no renuevan ni repiten la mutacion. Un fallo de red/servidor del refresh no demuestra revocacion y conserva el estado de problema recuperable;
 - contexto no permitido: enviar al selector de contexto o mostrar estado sin permisos.
 
 Regla critica:
@@ -148,7 +152,7 @@ La pantalla real de identidad ya esta autorizada para el corte BFF. El cliente R
 4. Resolver contextos operativos visibles desde roles, areas y permisos devueltos por el API.
 5. Ejecutar login local o Microsoft siempre contra el API, nunca contra Microsoft Graph directo desde componentes.
 6. Ante `401`, ejecutar un unico refresh en vuelo contra `POST /identity/refresh`, encolar requests concurrentes y reintentar una sola vez.
-7. Ante `409` por `permissionVersion`, usar el mismo refresh single-flight; si no se obtiene sesion vigente, limpiar sesion visual/cache local y enviar al usuario a login nuevo.
+7. Ante el `409` explicito de sesion con permisos obsoletos, usar refresh single-flight. No extenderlo a conflictos de negocio; distinguir rechazo explicito de identidad de fallo de transporte/servidor recuperable.
 8. En logout, llamar `POST /identity/logout`, limpiar cache de server state y no borrar tokens manualmente porque React no los posee.
 
 En `vite dev`, si la aplicacion se abre desde una IP de red local, el cliente

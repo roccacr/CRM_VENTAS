@@ -1,5 +1,7 @@
 # 21 - P0 direccion tecnica, construccion controlada
 
+Revision documental 2026-10-22: antecedente de planificacion. Las pausas, prerequisitos y siguientes pasos de este corte no describen todo el runtime ya implementado. Ver [36 - Estado vigente y registro](36-Registro-Entrega-Administracion.md) para implementacion y limites actuales. Identidad/Administracion, consulta de expedientes y contador de aprobaciones tienen contratos propios; no habilitan Leads ni mutaciones HTTP de ordenes.
+
 ## Veredicto
 
 P0 queda aprobado como direccion tecnica del CRM nuevo. Desde la ley `0.3.19`, la unica construccion de runtime autorizada es el runtime minimo de identidad del API. El runtime comercial sigue prohibido hasta aprobacion explicita posterior.

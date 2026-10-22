@@ -1,5 +1,7 @@
 # 09 - Decisiones P0, Permisos y Preguntas Pendientes
 
+Revision documental 2026-10-22: antecedente de planificacion. Las pausas, prerequisitos y siguientes pasos de este corte no describen todo el runtime ya implementado. Ver [36 - Estado vigente y registro](36-Registro-Entrega-Administracion.md) para implementacion y limites actuales. Identidad/Administracion, consulta de expedientes y contador de aprobaciones tienen contratos propios; no habilitan Leads ni mutaciones HTTP de ordenes.
+
 ## Estado
 
 Este documento fija decisiones nuevas confirmadas por negocio antes de crear el runtime P0 del API.

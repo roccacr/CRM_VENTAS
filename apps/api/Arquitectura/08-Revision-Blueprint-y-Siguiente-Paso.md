@@ -1,5 +1,7 @@
 # 08 - Revision del Blueprint y Siguiente Paso API
 
+Revision documental 2026-10-22: snapshot historico de la pausa del blueprint, superado por el runtime existente. No instruye retirar ni recrear `src/`, dependencias o migraciones. Estado vigente: [36 - Estado vigente y registro](36-Registro-Entrega-Administracion.md).
+
 ## Veredicto actualizado
 
 El analisis externo entiende bien la intencion del proyecto: construir un CRM nuevo, no maquillar el CRM actual. Tambien detecta el riesgo principal: si se implementa demasiado pronto, el API empieza a parecer un CRM generico antes de que el producto este bien gobernado.

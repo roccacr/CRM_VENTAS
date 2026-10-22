@@ -1,5 +1,7 @@
 # 01 - Diccionario de Datos: Identidad y Permisos
 
+Revision documental 2026-10-22: diccionario del baseline de identidad, complementado por las migraciones incrementales y el contrato API. No acredita el estado vivo de MySQL. Ver [36 - Estado vigente](../36-Registro-Entrega-Administracion.md), [29 - Modelo](../29-Modelo-Fisico-MySQL-Identidad-P0-S1.md) y [33 - Contrato API](../33-Contrato-API-Identidad-P0-S1.md).
+
 ## Regla del dominio
 
 Identidad se define antes que leads.

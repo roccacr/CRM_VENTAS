@@ -2,12 +2,12 @@
 
 ## Estado de fase
 
-Esta arquitectura describe el destino del API cuando se apruebe construir runtime.
+Esta arquitectura combina runtime implementado y estructura futura. Estado contrastado documentalmente al 2026-10-22: ver [36 - Registro](36-Registro-Entrega-Administracion.md).
 
 Estado actual:
 
 ```txt
-apps/api tiene runtime minimo de identidad autorizado; modulos comerciales e integraciones operativas siguen prohibidos
+apps/api implementa identidad/Administracion, catalogos, consulta de expedientes y contador de aprobaciones; Leads y mutaciones HTTP de ordenes siguen pendientes
 ```
 
 El primer modulo real aprobado es identidad. Los modulos comerciales de leads, oportunidades, estimaciones, ordenes, calendarios, notas e integraciones operativas vienen despues.
@@ -104,7 +104,7 @@ Regla de conexion legacy:
 DB_NAME no cambia. CRM_THINK_V2 usa src/database. El CRM viejo usa src/integrations/legacy-crm con LEGACY_CRM_DB_NAME.
 ```
 
-Cuando el CRM viejo vive en el mismo servidor MySQL, el adapter legacy puede reutilizar `DB_HOST`, `DB_PORT`, `DB_SSL` y `DB_SSL_CA`; las credenciales deben ser `LEGACY_CRM_DB_USER` y `LEGACY_CRM_DB_PASSWORD`, separadas del usuario principal del CRM nuevo. Si `LEGACY_CRM_DB_NAME` queda vacio, la conexion legacy no abre pool. El pool legacy marca cada conexion con `SET SESSION TRANSACTION READ ONLY`, como guardrail adicional al usuario MySQL de solo lectura. Para retirarlo luego: borrar `src/integrations/legacy-crm`, quitar su import en `AppModule` y borrar `LEGACY_CRM_*`.
+El adapter reutiliza `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_SSL` y `DB_SSL_CA`; `LEGACY_CRM_DB_USER/PASSWORD` son variables obsoletas ignoradas. La base nativa sigue siendo `CRM_THINK_V2`; legacy solo admite `LEGACY_CRM_DB_NAME=crmdatabase-api`. El pool lector es independiente y usa transacciones de solo lectura; la cuenta compartida no es de privilegios exclusivamente lectores. Lecturas requieren `ENABLE_LEGACY_FALLBACK=true`. Los seis writers de catalogos requieren ademas `NODE_ENV=production`, destino legacy configurado y `ENABLE_LEGACY_WRITES=true`; ambas banderas son booleanos estrictos y predeterminadas `false`. Leer no habilita escribir. No cambiar credenciales ni grants compartidos. Para retirada fisica, quitar primero registro/import de integracion y despues su carpeta; desactivar la bandera no cancela operaciones en curso.
 
 ## Controllers
 

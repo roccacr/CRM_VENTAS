@@ -1,5 +1,9 @@
 # 02 - Arquitectura Frontend
 
+## Vigencia documental - 2026-10-22, corte f2dc4f1
+
+Blueprint de estructura y dependencias, no inventario de carpetas instaladas. Al corte `f2dc4f1`, el runtime usa React/Vite/TypeScript, Ant Design, DataTables y `fetch` centralizado. TanStack Query, Zustand, React Hook Form y Tailwind no estan instalados. Administracion y las vistas acotadas de Formalizacion se describen en [27](27-Entrega-Administracion-y-QA.md) y [29 - Remediacion](29-Navegacion-Recuperacion-y-Seguimiento.md); no crear carpetas para completar este arbol.
+
 ## Estado de fase
 
 Esta estructura describe el destino del frontend completo.
@@ -136,7 +140,7 @@ Regla de proveedores:
 
 Si un proveedor externo se agrega al producto, React no recibe adapter. React consume `services/api` y el backend decide que adapter usar.
 
-## Estado
+## Estado propuesto, pendiente de adopcion
 
 - TanStack Query: datos remotos.
 - Zustand: filtros, preferencias, layout y UI.

@@ -1,5 +1,7 @@
 # 20 - Pendientes, Decisiones y Preguntas P0
 
+Revision documental 2026-10-22: antecedente de planificacion. Las pausas, prerequisitos y siguientes pasos de este corte no describen todo el runtime ya implementado. Ver [36 - Estado vigente y registro](36-Registro-Entrega-Administracion.md) para implementacion y limites actuales. Identidad/Administracion, consulta de expedientes y contador de aprobaciones tienen contratos propios; no habilitan Leads ni mutaciones HTTP de ordenes.
+
 ## Veredicto ejecutivo
 
 La arquitectura base ya tiene direccion clara:

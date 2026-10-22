@@ -1,5 +1,9 @@
 # 04 - API Client y Estado
 
+## Vigencia documental - 2026-10-22, corte f2dc4f1
+
+Contrato mixto: BFF vigente y blueprint de estado remoto/comercial. `src/services/api/api-client.ts` usa `fetch` nativo centralizado; servicios por dominio lo reutilizan. TanStack Query y Zustand, sus query keys y ejemplos de leads/notas son propuestas sin dependencia instalada ni contrato comercial ejecutable. Un `409` solo renueva si identifica expresamente sesion con permisos obsoletos; los conflictos de negocio no repiten mutaciones. Ver [27](27-Entrega-Administracion-y-QA.md).
+
 ## Cliente API
 
 Todo acceso HTTP debe pasar por `services/api`.
@@ -25,9 +29,9 @@ La capa vigente de identidad vive en `services/api` y `services/auth`. Todo logi
 - obtener CSRF desde el campo `csrfToken` que devuelve `/identity/session`; la cookie `crm_csrf` es `HttpOnly` y solo sirve para que el BFF compare cookie/header;
 - enviar `X-CRM-CSRF-Token` automaticamente en requests mutables;
 - manejar `401` con refresh single-flight: una sola llamada a `/identity/refresh`, cola de requests concurrentes y un unico retry;
-- manejar `409` de `permissionVersion` igual que `401`: un solo refresh single-flight y, si tambien falla, limpiar cache/sesion visual y enviar a login nuevo;
+- manejar solo el `409` explicito de sesion con permisos obsoletos mediante refresh single-flight; otros conflictos no renuevan ni repiten la mutacion. Un fallo de transporte no demuestra revocacion de identidad; distinguirlo del rechazo explicito de sesion;
 - limpiar cache visual/server state al cerrar sesion;
-- exponer funciones canonicas como `getSession`, `getMe`, `loginLocal`, `requestLocalReset`, `completeLocalReset`, `refreshSession` y `logout`.
+- funciones runtime: `getIdentitySession`, `getIdentityProfile`, `loginWithLocalCredentials`, `startMicrosoftLogin`, `logoutIdentitySession` en auth-service y `refreshAuthenticatedSession` en api-client. No existe cliente de reset local operativo en auth-service; los nombres iniciales de reset eran propuesta, no una capacidad entregada.
 
 Regla:
 
@@ -35,7 +39,7 @@ Regla:
 Los componentes React nunca llaman `fetch` directo para identidad; consumen hooks/servicios aprobados encima de `services/api`.
 ```
 
-## TanStack Query
+## TanStack Query - blueprint no instalado
 
 Uso obligatorio para:
 
@@ -48,7 +52,7 @@ Uso obligatorio para:
 - reintentos;
 - optimistic UI cuando sea seguro.
 
-## Query keys
+## Query keys conceptuales futuras
 
 Definir query keys por modulo:
 
@@ -111,7 +115,7 @@ Reglas:
 - persistir posicion visual por API cuando aplique;
 - no llamar Kapso, correo ni Microsoft 365 desde componentes de notas.
 
-## Zustand
+## Zustand - blueprint no instalado
 
 Usar solo para:
 

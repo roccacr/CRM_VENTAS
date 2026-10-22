@@ -1,5 +1,7 @@
 # 10 - Analisis del CRM Actual: Roles, Leads y Reglas a No Copiar
 
+Revision documental 2026-10-22: analisis historico del CRM anterior; sus conteos y observaciones no son mediciones actuales. Ver [36 - Estado vigente y registro](36-Registro-Entrega-Administracion.md) para implementacion y limites actuales. Identidad/Administracion, consulta de expedientes y contador de aprobaciones tienen contratos propios; no habilitan Leads ni mutaciones HTTP de ordenes.
+
 ## Alcance revisado
 
 Revision de solo lectura sobre:

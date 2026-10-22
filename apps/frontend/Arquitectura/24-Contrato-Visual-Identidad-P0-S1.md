@@ -1,5 +1,9 @@
 # 24 - Contrato Visual de Identidad P0-S1
 
+## Vigencia documental - 2026-10-22, corte f2dc4f1
+
+Contrato visual inicial con modificaciones fechadas; las restricciones de maqueta sin CRUD y los campos conceptuales no son inventario vigente. Administracion conectada y permisos actuales: [27](27-Entrega-Administracion-y-QA.md). Navegacion/recuperacion y limites de Formalizacion: [29](29-Navegacion-Recuperacion-y-Seguimiento.md). Conservar decisiones visuales del propietario; esta auditoria no propone estilos ni funcionalidades.
+
 ## Veredicto
 
 La primera experiencia visual permitida no es leads.
@@ -24,7 +28,7 @@ apps/api/Arquitectura/33-Contrato-API-Identidad-P0-S1.md
 
 Si este documento contradice el contrato API, gana el contrato API.
 
-## Objetivo visual actual
+## Objetivo visual del corte inicial
 
 La UI debe dejar claro:
 
@@ -36,7 +40,7 @@ La UI debe dejar claro:
 - luego se muestran permisos efectivos;
 - leads viene despues.
 
-## Pantallas permitidas ahora
+## Pantallas y restricciones del contrato visual inicial
 
 ### 0. Pantalla de login BFF
 

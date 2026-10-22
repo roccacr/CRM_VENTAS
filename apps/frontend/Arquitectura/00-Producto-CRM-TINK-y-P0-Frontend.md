@@ -1,5 +1,13 @@
 # 00 - Ley de Producto CRM TINK y P0 Frontend
 
+## Consolidacion vigente - 2026-10-22
+
+Resumen de las ampliaciones posteriores al primer corte de identidad, sin modificar firmas/versiones historicas: existen Administracion/catalogos y Formalizacion parcial. Solo el contador de aprobaciones es operacional en el Home; requiere permiso efectivo antes de montar su consumidor. Los otros seis indicadores son cero provisional; seguimiento/movimientos no tienen fuente operacional. Calendario/resumen y previews conservan simulaciones. No hay flujo persistido de aprobaciones/contratos completo.
+
+El stack instalado usa React/Vite/TypeScript, Ant Design, DataTables y servicios fetch tipados con CSS del proyecto. TanStack Query, Zustand, React Hook Form y Tailwind son propuestas historicas, no requisitos para incorporar dependencias. Historial de navegador, carga diferida y errores recuperables por ruta estan implementados. La solicitud de recuperacion de clave del API responde 503 hasta configurar correo; no anunciar envio ni enlace funcional no implementado.
+
+Prevalece la [ley canonica y sus ampliaciones](../../api/Arquitectura/00-Producto-CRM-TINK-y-P0.md). Consultar [evidencia actual](../../api/Arquitectura/Reauditoria-54-Plan-y-Resultados.md); los cortes fechados siguientes no certifican por si solos el runtime actual ni autorizan ampliar alcance.
+
 ## Continuidad vigente 2026-10-08
 
 La cabecera siguiente conserva su corte historico. Administracion ya incluye usuarios, roles, auditoria y catalogos compartidos scoped por modulo. El inventario runtime, decisiones y pendientes estan en [25 - Continuidad](25-Continuidad-Administracion.md) y en el cierre API 34. Los planes posteriores del propietario sustituyen la propuesta inicial de permisos catalogo globales. La prioridad sigue siendo cerrar Administracion antes del contrato NetSuite -> API y de UI Leads.

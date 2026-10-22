@@ -1,5 +1,9 @@
 # 03 - UI UX CRM
 
+## Vigencia documental - 2026-10-22, corte f2dc4f1
+
+Criterios de UX y destino comercial, no lista de pantallas operativas entregadas. El runtime actual usa formularios Ant Design; React Hook Form es direccion futura no instalada. Las tablas de catalogos filtran/ordenan la pagina cargada; Expedientes tiene su contrato dedicado. Ver [27](27-Entrega-Administracion-y-QA.md).
+
 ## Principio
 
 El CRM es una herramienta operativa, no una landing page. La pantalla principal debe ser util desde el primer segundo.
@@ -16,7 +20,7 @@ El idioma base de la interfaz es espanol para Costa Rica.
 - Sin decoracion innecesaria.
 - Sin layouts tipo marketing.
 
-## Vistas principales
+## Vistas objetivo, no inventario entregado
 
 - Dashboard comercial.
 - Lista de leads.
@@ -69,7 +73,7 @@ Obligatorio:
 
 Obligatorio:
 
-- React Hook Form;
+- React Hook Form como direccion futura; runtime con formularios Ant Design;
 - validacion clara;
 - mensajes de error visibles;
 - prevencion de doble submit;

@@ -1,6 +1,78 @@
 # 36 - Registro de entrega de Administracion
 
-Actualizado: 2026-10-13. Consolidacion del trabajo de esta continuidad, contrastada con el codigo del checkout. No acredita despliegue, estado actual de produccion ni aceptacion final del Owner. Los resultados anteriores se identifican como evidencia historica, no como pruebas ejecutadas durante esta actualizacion documental.
+Actualizado documentalmente: 2026-10-22; cortes de entrega desde 2026-10-13. Consolidacion del trabajo de esta continuidad, contrastada con el codigo del checkout. No acredita despliegue, estado actual de produccion ni aceptacion final del Owner. Los resultados anteriores se identifican como evidencia historica, no como pruebas ejecutadas durante esta actualizacion documental.
+
+## Estado vigente tras remediacion - 2026-10-22
+
+Revision documental contra `HEAD f2dc4f1`, codigo, pruebas y migraciones del checkout; no es comprobacion de produccion. La [reauditoria y sus resultados](Reauditoria-54-Plan-y-Resultados.md) conserva hallazgos, pendientes y evidencia medida. Este estado sustituye descripciones antiguas de este registro cuando difieran; los cortes fechados siguientes siguen siendo historicos.
+
+- Seguridad: `CsrfGuard` primero, `AuthGuard` global default-deny y `RouteSecurity` explicito por handler Nest registrado. Allowlist publica comprobable en [app-module-security.spec.ts](../test/identity/app-module-security.spec.ts); `permission` no reemplaza validacion exacta en servicios.
+- Autorizacion: AsyncLocalStorage reutiliza perfil solo dentro del request por servicio/token exacto, sin cache global. Owner necesita grant exacto y deny prevalece; en catalogos solo omite membresia de area. Expedientes exige `{moduleCode}.catalog_file.read`; filtros/existencia de proyecto no implementan alcance usuario/proyecto, aun pendiente.
+- Recuperacion local: `request-reset` devuelve 503 uniforme con CSRF y DTO validos, incluso al superar cuota; metadata HTTP/OpenAPI tambien 503. Mensaje publico `Servicio no disponible.`, sin consultar existencia, emitir token ni enviar correo. `complete-reset` conserva tokens existentes de un solo uso.
+- Legacy: seis writers (Projects, Campaigns, Classes, Locations, Subsidiaries, Brokers) requieren produccion, destino configurado `crmdatabase-api` y ambos booleanos estrictos `ENABLE_LEGACY_FALLBACK=true` y `ENABLE_LEGACY_WRITES=true`; defaults false. Lectura no activa escritura. El fallback local fue deshabilitado en la remediacion; no se leyo ni cambio `.env` en esta revision.
+- Base nativa: `CRM_THINK_V2` es desarrollo, con host compartido con produccion `crmdatabase-api`. No ejecutar fixtures alli aunque hagan rollback. Credenciales compartidas no se alteran; separacion de cuentas sigue pendiente del DBA.
+- Ordenes: nueve tablas y persistencia de lifecycle, auditoria y referencias por proveedor; sin HTTP de mutacion, sin permiso de aprobar implicito. Desarrolladora = `aprobacion__rdr_ov`; Jefatura = `chekJefeVenta`; Formalizacion = `aprobacion_forma_ov`. Son aprobaciones independientes de la etapa lineal.
+- Contador real: `GET /formalization/approvals/summary`, permiso `formalizacion.home.approvals.read` para mostrar y solicitar. Nativo primero; toda identidad nativa migrada suprime legacy. Criterio legacy: `status_ov=1`, `caida_ov=0`, Jefatura/Desarrolladora=1 y Formalizacion=0; unknown no cuenta. Error de fuente habilitada da 503, sin total parcial. No habilita lista operativa ni aprobar. Ver [38](38-Ordenes-Venta-Estados-Auditoria.md).
+- Inicio Formalizacion: pertenencia activa al modulo; el antiguo `formalizacion.home.read` fue desactivado por migracion 020. Rol complementario Jefe de Formalizaciones no hereda grants. El permiso de banner es lectura independiente.
+- Salud: `/health/live` sin IO; `/health/ready` usa SELECT 1 nativo, plazo de respuesta 1 segundo y una sonda pendiente compartida. Timeout no cancela driver ni valida esquema; legacy no determina readiness. Errores 5xx sanitizados.
+- Cuotas GET/HEAD protegidos: defaults 120/usuario y 600/IP cada minuto, cache 5000 por store; 429 y Retry-After. Por proceso, sin store distribuido; no acredita benchmark de capacidad.
+- CI preparado en el repositorio, sin activacion remota acreditada. SQL/003, SQL/004 y SQL/021 son evidencia/instrucciones historicas sujetas a aprobacion y preflight; ninguno se ejecuto aqui.
+
+### Evidencia y limites
+
+Fuentes inspeccionadas: [AppModule](../src/app.module.ts), [AuthGuard](../src/common/security/auth.guard.ts), [contexto de identidad](../src/modules/crm/identity/identity-request-context.ts), [controller de identidad](../src/modules/crm/identity/identity.controller.ts), [cuotas](../src/common/security/authenticated-read-rate-limit.ts), [health](../src/common/health/health.service.ts), [compuertas legacy](../src/integrations/legacy-crm/legacy-crm-access.ts), [Unit Files](../src/modules/crm/unit-files/unit-files.service.ts), [contador](../src/modules/crm/sales/sales-orders/approval-summary.service.ts), [criterio nativo](../src/modules/crm/sales/sales-orders/approval-summary.repository.ts), [criterio legacy](../src/integrations/legacy-crm/legacy-approval.reader.ts) y [migracion 021](../migrations/schema-only/202610200021_sales_orders.ts).
+
+La reauditoria registra API 4583 aprobadas/113 MySQL omitidas y frontend 428 aprobadas; cobertura de lineas API 69.99% y frontend 84.77%. Son mediciones previas registradas, no pruebas reejecutadas en esta revision. Las omisiones no prueban persistencia real. Esta pasada solo verifica consistencia documental, enlaces locales y diff; no ejecuta lint/typecheck/build, fixtures, runtime, SQL ni servicios externos. No acredita despliegue, conteo vivo o aceptacion Owner.
+
+### Inventario completo de documentos revisados en este alcance
+
+Los 39 documentos siguientes se revisaron para vigencia, referencias y contradicciones con los contratos afectados. La clasificacion de baseline/futuro conserva su contenido de diseno y mediciones; no convierte ejemplos SQL/HTTP en instrucciones ejecutables. Los archivos excluidos del reparto permanecen a cargo de su responsable.
+
+| Documento | Clasificacion de lectura | Resultado |
+| --- | --- | --- |
+| [02-Arquitectura-Backend.md](02-Arquitectura-Backend.md) | Contrato/principio vigente; evidencia fechada separada | Actualizado |
+| [03-Base-Datos-y-Migracion.md](03-Base-Datos-y-Migracion.md) | Contrato/principio vigente; evidencia fechada separada | Actualizado |
+| [04-Integraciones-ERP.md](04-Integraciones-ERP.md) | Direccion futura / antecedente comercial | Sin cambios |
+| [05-Seguridad-Auditoria-Observabilidad.md](05-Seguridad-Auditoria-Observabilidad.md) | Contrato/principio vigente; evidencia fechada separada | Actualizado |
+| [06-ADRs-API.md](06-ADRs-API.md) | Contrato/principio vigente; evidencia fechada separada | Sin cambios |
+| [07-Skills-Codex-Instaladas.md](07-Skills-Codex-Instaladas.md) | Registro historico; autoridad actual en SKILLS.md | Actualizado |
+| [08-Revision-Blueprint-y-Siguiente-Paso.md](08-Revision-Blueprint-y-Siguiente-Paso.md) | Historico, sin repetir operaciones | Actualizado |
+| [09-Decisiones-P0-Permisos-y-Preguntas.md](09-Decisiones-P0-Permisos-y-Preguntas.md) | Direccion futura / antecedente comercial | Actualizado |
+| [10-Analisis-CRM-Actual-Roles-Leads.md](10-Analisis-CRM-Actual-Roles-Leads.md) | Historico, sin repetir operaciones | Actualizado |
+| [11-Contrato-Canonico-y-Normalizacion.md](11-Contrato-Canonico-y-Normalizacion.md) | Direccion futura / antecedente comercial | Sin cambios |
+| [12-Modelo-Datos-P0-MySQL-Kysely.md](12-Modelo-Datos-P0-MySQL-Kysely.md) | Direccion futura / antecedente comercial | Actualizado |
+| [13-Bitacora-Acciones-y-Timeline-Lead.md](13-Bitacora-Acciones-y-Timeline-Lead.md) | Direccion futura / antecedente comercial | Actualizado |
+| [14-Diccionario-de-Datos-y-Modulos.md](14-Diccionario-de-Datos-y-Modulos.md) | Direccion futura / antecedente comercial | Actualizado |
+| [15-Flujo-Comercial-Lead-a-Contrato.md](15-Flujo-Comercial-Lead-a-Contrato.md) | Direccion futura / antecedente comercial | Actualizado |
+| [16-Alcance-PDFs-y-Modularizacion-Dominios.md](16-Alcance-PDFs-y-Modularizacion-Dominios.md) | Direccion futura / antecedente comercial | Actualizado |
+| [17-Calendarios-por-Dominio-y-Supervision.md](17-Calendarios-por-Dominio-y-Supervision.md) | Direccion futura / antecedente comercial | Actualizado |
+| [18-Notas-Adhesivas-y-Anotaciones.md](18-Notas-Adhesivas-y-Anotaciones.md) | Direccion futura / antecedente comercial | Actualizado |
+| [19-Reglas-Operativas-Leads-SLA-y-Perdida.md](19-Reglas-Operativas-Leads-SLA-y-Perdida.md) | Direccion futura / antecedente comercial | Actualizado |
+| [20-Pendientes-Decisiones-y-Preguntas-P0.md](20-Pendientes-Decisiones-y-Preguntas-P0.md) | Direccion futura / antecedente comercial | Actualizado |
+| [21-P0-Direccion-Tecnica-Construccion-Pausada.md](21-P0-Direccion-Tecnica-Construccion-Pausada.md) | Direccion futura / antecedente comercial | Actualizado |
+| [23-Alcance-P0-Vertical-Leads.md](23-Alcance-P0-Vertical-Leads.md) | Direccion futura / antecedente comercial | Actualizado |
+| [24-Seguridad-Autenticacion-BFF-OIDC-Local.md](24-Seguridad-Autenticacion-BFF-OIDC-Local.md) | Contrato/principio vigente; evidencia fechada separada | Actualizado |
+| [25-Contrato-Canonico-Minimo-Lead-P0-S1.md](25-Contrato-Canonico-Minimo-Lead-P0-S1.md) | Direccion futura / antecedente comercial | Actualizado |
+| [26-Estandar-Nombres-Base-Datos.md](26-Estandar-Nombres-Base-Datos.md) | Contrato/principio vigente; evidencia fechada separada | Sin cambios |
+| [27-Identidad-Usuarios-Roles-P0-S1.md](27-Identidad-Usuarios-Roles-P0-S1.md) | Contrato/principio vigente; evidencia fechada separada | Actualizado |
+| [28-Matriz-Roles-Permisos-Areas-P0-S1.md](28-Matriz-Roles-Permisos-Areas-P0-S1.md) | Contrato/principio vigente; evidencia fechada separada | Actualizado |
+| [29-Modelo-Fisico-MySQL-Identidad-P0-S1.md](29-Modelo-Fisico-MySQL-Identidad-P0-S1.md) | Baseline historico / evolucion en migraciones | Actualizado |
+| [30-Identidad-Canonica-y-Referencias-Externas.md](30-Identidad-Canonica-y-Referencias-Externas.md) | Contrato/principio vigente; evidencia fechada separada | Sin cambios |
+| [31-Contrato-Identidad-y-Permisos-P0-S1.md](31-Contrato-Identidad-y-Permisos-P0-S1.md) | Baseline historico / evolucion en migraciones | Actualizado |
+| [32-Seeds-Identidad-P0-S1.md](32-Seeds-Identidad-P0-S1.md) | Historico, sin repetir operaciones | Actualizado |
+| [33-Contrato-API-Identidad-P0-S1.md](33-Contrato-API-Identidad-P0-S1.md) | Contrato/principio vigente; evidencia fechada separada | Actualizado |
+| [34-Cierre-Operativo-Administracion-P0-S1.md](34-Cierre-Operativo-Administracion-P0-S1.md) | Registro historico de entrega; apertura ya delimita vigencia | Sin cambios |
+| [35-Catalog-API-and-Schema.md](35-Catalog-API-and-Schema.md) | Contrato/principio vigente; evidencia fechada separada | Actualizado |
+| [36-Registro-Entrega-Administracion.md](36-Registro-Entrega-Administracion.md) | Contrato/principio vigente; evidencia fechada separada | Actualizado |
+| [37-Auditoria-Trazabilidad-y-Conflictos.md](37-Auditoria-Trazabilidad-y-Conflictos.md) | Contrato/principio vigente; evidencia fechada separada | Sin cambios |
+| [38-Ordenes-Venta-Estados-Auditoria.md](38-Ordenes-Venta-Estados-Auditoria.md) | Contrato/principio vigente; evidencia fechada separada | Actualizado |
+| [39-Diccionario-Ordenes-Venta.md](39-Diccionario-Ordenes-Venta.md) | Contrato/principio vigente; evidencia fechada separada | Sin cambios |
+| [01-Identidad-y-Permisos.md](Diccionario-Datos/01-Identidad-y-Permisos.md) | Baseline historico / evolucion en migraciones | Actualizado |
+| [GUIA-AUTH-CRM-TINK.md](../../GUIA-AUTH-CRM-TINK.md) | Contrato/principio vigente; evidencia fechada separada | Actualizado |
+
+### Referencias complementarias de la revision
+
+La ley de producto, indices, resumenes y mapas incorporan las ampliaciones posteriores a identidad. Plan correctivo, reauditoria, CI MySQL y operacion distinguen implementado, medido historicamente y pendiente: scopes reales, cuentas DBA, aislamiento MySQL, enforcement distribuido y despliegue. La actualizacion documental no concede autorizacion nueva de negocio u operacion. El inventario global esta en la [reauditoria](Reauditoria-54-Plan-y-Resultados.md).
 
 ## Lectura y autoridad
 

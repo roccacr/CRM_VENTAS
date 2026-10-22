@@ -1,5 +1,11 @@
 # 19 - Mapa de Implementacion Frontend
 
+## Inventario vigente - 2026-10-22
+
+El runtime contiene identidad, Administracion y Formalizacion parcial bajo `src/modules/home`; servicios tipados bajo `src/services`, rutas bajo `src/routes` y componentes de feedback recuperable. Usa React/Vite, Ant Design, DataTables, fetch y CSS. History API, rutas diferidas y limite de errores estan implementados. Ver [resumen](01-Resumen-Frontend.md) y [navegacion/seguimiento](29-Navegacion-Recuperacion-y-Seguimiento.md).
+
+El contador de aprobaciones es lectura real protegida; las otras metricas son provisionales. No hay seguimiento operacional ni API de mutaciones de etapas. Los arboles comerciales y herramientas de estado/formularios descritos debajo son direccion futura, no carpetas/dependencias existentes ni autorizacion de construccion. El primer corte de identidad se conserva como antecedente.
+
 ## Proposito
 
 Este documento responde una pregunta practica:
@@ -12,7 +18,7 @@ Debe usarse antes de crear pantallas, formularios, tablas, filtros, modales, est
 
 Actualizacion de orden: antes de implementar el vertical de leads, se debe cerrar `22-UX-Identidad-Usuarios-Roles-P0-S1.md`.
 
-El primer corte ejecutable actual es identidad. `20-Alcance-P0-Vertical-Leads-Frontend.md` aplica despues de cerrar la compuerta de identidad, no antes.
+El primer corte ejecutable fue identidad. El alcance vigente incorpora las ampliaciones indicadas arriba; `20-Alcance-P0-Vertical-Leads-Frontend.md` sigue siendo un vertical futuro.
 
 ## Regla principal
 

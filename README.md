@@ -1,6 +1,16 @@
 # CRM TINK: inicio y continuidad
 
-Actualizado: 2026-10-13. Este repositorio contiene el CRM nuevo NestJS/React. El checkout legacy llamado CRM VENTAS es otro proyecto; no usarlo para ejecutar estos comandos.
+Actualizado: 2026-10-22. Este repositorio contiene el CRM nuevo NestJS/React. El checkout legacy llamado CRM VENTAS es otro proyecto; no usarlo para ejecutar estos comandos.
+
+## Estado vigente y limites
+
+La [remediacion y evidencia de verificacion](apps/api/Arquitectura/Reauditoria-54-Plan-y-Resultados.md) es la referencia del corte actual. Incluye autenticacion global por defecto denegada (los permisos concretos siguen en servicios), limites de lectura por proceso, recuperacion de clave deshabilitada con 503, salud HTTP, navegacion con historial/carga diferida y errores recuperables. No acredita despliegue ni cierre completo de seguridad.
+
+Formalizacion tiene persistencia interna normalizada de ordenes e historial y un contador real de aprobaciones protegido por `formalizacion.home.approvals.read`; no existe todavia API de aprobacion/cambio de etapa. El banner no dispara consultas sin permiso. Los otros seis indicadores siguen en cero provisional; seguimiento y movimientos del Home no tienen fuente operacional. Calendario/resumen y recorridos de gestion conservan simulaciones, no operaciones reales.
+
+`CRM_THINK_V2` es desarrollo con datos que deben conservarse; `crmdatabase-api` es produccion. No usar la primera como dataset desechable. Lectura legacy y escritura tienen compuertas distintas: `ENABLE_LEGACY_FALLBACK` no habilita mutaciones. `ENABLE_LEGACY_WRITES` requiere ademas produccion y el destino legacy exacto. Ambos flags estan deshabilitados en el entorno local revisado. Con fallback apagado el contador consulta solo nativo; no afirmar una validacion real de ambas BD.
+
+El corte `f2dc4f1` tuvo clon limpio y `check-all.cmd` aprobados: API 4583 pruebas aprobadas y 113 MySQL omitidas; frontend 428 aprobadas. Es evidencia fechada de esa entrega, no una nueva corrida de esta revision documental. CI esta versionado/preparado, sin ejecucion remota acreditada. MySQL sigue informativo y bloqueado hasta disponer de dataset aislado autorizado.
 
 ## Leer en este orden
 
@@ -16,7 +26,7 @@ Entrada actual: [registro integral de entrega y pendientes](apps/api/Arquitectur
 
 CRM propio, independiente del ERP, para el expediente comercial Lead -> Oportunidad -> Estimacion -> Orden de Venta -> Contrato. Relaciones por identidad CRM; NetSuite/Odoo son referencias externas y adapters.
 
-Prioridad vigente: cerrar Administracion (usuarios, roles, permisos, auditoria y siete catalogos) con evidencia automatica y validacion Owner. Despues definir contrato NetSuite -> API para Leads. La UI comercial, sincronizacion ERP, jobs, calendarios y notas requieren su fase aprobada. Lecturas legacy usan transacciones de solo lectura; los seis catalogos dedicados tienen la excepcion autorizada de escritura sincronizada descrita en documento 35. Expedientes sigue siendo solo lectura. No se migra negocio real por defecto.
+Prioridad: proteger y cerrar Administracion con evidencia y validacion Owner, conservando las ampliaciones acotadas de Formalizacion indicadas arriba. Leads, sincronizacion ERP, jobs, calendarios operacionales y notas requieren su fase aprobada. Lecturas legacy usan transacciones de solo lectura; los seis catalogos dedicados tienen la excepcion de escritura bajo compuerta independiente descrita en documento 35. Expedientes sigue siendo solo lectura. No se migra negocio real por defecto.
 
 ## Ejecutar y verificar
 
@@ -50,13 +60,13 @@ Git history and remote branch status determine what is backed up. A commit/push 
 
 Las tablas de horas reconstruidas en el chat para 24/09, 25/09, 01/10 y 02/10 no prueban fechas de implementacion. Ver su registro resumido en el documento 34.
 
-## Implementacion vigente - 2026-10-13
+## Base administrativa - corte 2026-10-13
 
 - Administration includes users, roles/security, audit and seven catalog views: projects, campaigns, classes, brokers, files, subsidiaries and locations. Storage is domain-owned, not seven shared aggregates.
 - Six editable catalog screens reuse DataTables/SearchPanes with bounded offset pages (default 100; 10/50/100/200), authoritative totals and instance-local page cache. Unit Files is a separate criteria-first keyset read view (default 50/max 100), with full-scope facet counts and completeness-checked local filtering. Neither scheme guarantees a concurrent-write snapshot.
 - Detail Drawers follow the users pattern, with separate provider sections and explicit unassigned values. Empty Odoo identifiers require no configured Odoo provider; non-empty references require an active provider.
 - Updates retain unchanged reference row identity, archive removed references, restore references belonging to the same item and return HTTP 409 for conflicting ownership. Database uniqueness is catalog + provider + external ID, including archived ownership, not global across catalogs.
-- Access replacement revokes sessions/refresh credentials and increments permission versions atomically with role/membership changes and audit. Protected operations resolve the authoritative current profile.
+- Access replacement increments permission versions atomically with role/membership changes and audit; permission-only changes renew the active session to current grants. Blocking/inactivation and logout retain hard revocation. Protected operations resolve the authoritative current profile.
 - Incremental migrations add catalog persistence and repair Administration/Owner linkage. Applying migrations is a separately authorized operation, not part of startup or push.
 - Unit Files preflight defaults to report-only; its explicit project-identity preparation is not an inventory import. Complete inventory migration and ambiguous relationships remain pending. Valid signed provider IDs must be preserved exactly; no Odoo identifier is fabricated.
 - Audit writers record safe before/after snapshots, field differences, actor roles and record identity transactionally. Read APIs require module/section scope and fetch detail lazily; historical missing values remain unknown.
@@ -65,6 +75,6 @@ Las tablas de horas reconstruidas en el chat para 24/09, 25/09, 01/10 y 02/10 no
 
 See [CHANGELOG](CHANGELOG.md), [migration guide](apps/api/Arquitectura/03-Base-Datos-y-Migracion.md), [catalog API/schema](apps/api/Arquitectura/35-Catalog-API-and-Schema.md), and the closure/continuity documents above.
 
-API configuration uses `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME`, `DB_SSL` and `DB_SSL_CA`, validated by `env.validation.ts`. Legacy reuses approved DB connection credentials with its own database name and `ENABLE_LEGACY_FALLBACK` gate; the SELECT pool enforces read-only transactions, while authorized mirrored writes use the native same-server transaction. Use app `.env.example` templates; real `.env` files stay untracked. Never change shared credentials as a side effect of testing.
+API configuration uses `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME`, `DB_SSL` and `DB_SSL_CA`, validated by `env.validation.ts`. Legacy reuses DB connection credentials with its own database name. Its SELECT pool enforces read-only transactions; mirrored writes additionally require the separate write gate described above and domain authorization. Read-only transactions do not prove least-privilege credentials. Use app `.env.example` templates; real `.env` files stay untracked. Never change shared credentials as a side effect of testing.
 
-Historical baseline (2026-10-09): API 227 and frontend 120 tests, plus seven separately enabled MySQL tests. Latest recorded permission-fix evidence: frontend check passed 257 tests and build/lint/typecheck; 13 API access-guard tests passed. Global validation was blocked by pre-existing API test formatting; bundle-size warning remains. These results were not rerun by the documentation update and do not imply deployment, full coverage or Owner acceptance. See document 36 for remaining gates.
+Historical baseline (2026-10-09): API 227 and frontend 120 tests, plus seven separately enabled MySQL tests. An intermediate permission-fix cut recorded frontend 257 tests and 13 API access-guard tests, with API formatting blocking its global check. That blocker is historical, not the current result; use the dated verification above. Bundle-size warning and operational acceptance remain pending.

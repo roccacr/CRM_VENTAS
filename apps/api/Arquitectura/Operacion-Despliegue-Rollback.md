@@ -50,7 +50,7 @@ Pino/nestjs-pino emite logging estructurado con nombre `crm-tink-api`; [`app-log
 - Criterio de clon limpio: checkout nuevo del commit, sin `node_modules`, `dist` ni archivos locales heredados; instalacion `--frozen-lockfile` en cada app, `pnpm check` de ambas apps con salida 0 y sin modificar archivos versionados. En Windows, `.\check-all.cmd` delega a `scripts/check-all.ps1`; no acepta argumentos.
 - [`quality.yml`](../../../.github/workflows/quality.yml) ejecuta Node 22, pnpm 10.28.2, instalacion frozen y `pnpm check` por app. Sus jobs MySQL son informativos (`continue-on-error`), condicionados a infraestructura aislada: CI verde de calidad no equivale a persistencia MySQL validada.
 - `test:mysql:ci` y suites MySQL requieren autorizacion e infraestructura preparada; pueden escribir fixtures. No ejecutarlos contra una DB compartida como comprobacion de despliegue. Registrar por separado suite, destino aislado y resultado; omitido/bloqueado no significa aprobado.
-- El checkout compartido actual contiene cambios concurrentes y archivos sin seguimiento: no cumple por si mismo el criterio de release congelado. Este documento no certifica clon limpio, CI remoto ni smoke productivo.
+- El corte `f2dc4f1` tuvo clon limpio y checks aprobados, segun [reauditoria](Reauditoria-54-Plan-y-Resultados.md). Cambios documentales posteriores no estan incluidos en esa medicion. No certifica CI remoto, release desplegado ni smoke productivo; repetir el criterio sobre el commit candidato autorizado antes de entregar.
 
 ## Backup, recuperacion y rollback
 

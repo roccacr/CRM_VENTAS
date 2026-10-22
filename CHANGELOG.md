@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased - Consolidacion verificada - 2026-10-22
+
+- Compuertas independientes de lectura/escritura legacy; escritura bloqueada fuera de produccion o con destino distinto de `crmdatabase-api`.
+- Autenticacion global default-deny e inventario de rutas, perfil reutilizado solo dentro de la peticion y limites de lectura por usuario/IP. La clasificacion de permiso no sustituye controles concretos de servicio.
+- Recuperacion de clave deshabilitada con 503 uniforme hasta configurar correo; salud live/ready y errores 5xx sanitizados.
+- Historial de navegador, rutas diferidas y recuperacion de errores por ruta; retiradas las esperas artificiales y los ejemplos de seguimiento del Home.
+- Ordenes: persistencia normalizada, referencias multiproveedor e historial; contador de aprobaciones real sujeto a permiso. Sin API de aprobacion/cambio de etapa ni despliegue legacy acreditado.
+- CI, cobertura y auditoria de dependencias preparados; corte `f2dc4f1` verificado mediante clon limpio. MySQL completo y CI remoto pendientes.
+- Documentacion reconciliada con [resultados y limites](apps/api/Arquitectura/Reauditoria-54-Plan-y-Resultados.md). No anuncia despliegue ni nueva corrida de pruebas.
+
 ## Unreleased - Continuidad de sesion local y cambios de acceso - 2026-10-13
 
 - Los cambios de acceso invalidan la autorizacion anterior mediante la version

@@ -1,5 +1,7 @@
 # 16 - Alcance de PDFs y Modularizacion por Dominios
 
+Revision documental 2026-10-22: diseno comercial futuro y evidencia historica; tablas, rutas y reglas propuestas no acreditan runtime operativo. Ver [36 - Estado vigente y registro](36-Registro-Entrega-Administracion.md) para implementacion y limites actuales. Identidad/Administracion, consulta de expedientes y contador de aprobaciones tienen contratos propios; no habilitan Leads ni mutaciones HTTP de ordenes.
+
 ## Veredicto
 
 La arquitectura debe estar preparada para el Customer Journey completo descrito en `CRM IDEA.pdf`, pero la implementacion inicial debe respetar el alcance reducido del `RESUMEN_EJECUTIVO_CRM_TINK AJUSTADO (1).pdf`.

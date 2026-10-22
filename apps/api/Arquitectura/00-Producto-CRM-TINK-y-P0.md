@@ -1,18 +1,28 @@
 # 00 - Ley de Producto CRM TINK y P0
 
+## Consolidacion de alcance aprobado - 2026-10-22
+
+Este apartado reconcilia las ampliaciones solicitadas despues del corte inicial de identidad; no cambia retroactivamente versiones, firmas ni fechas anteriores. Las restricciones antiguas de runtime exclusivamente identidad se leen con estas excepciones: Administracion/catalogos, expedientes de unidades de lectura, persistencia interna de ordenes e historial y contador de aprobaciones de Formalizacion. No habilita Leads ni el flujo contractual completo.
+
+El banner y `GET /formalization/approvals/summary` estan implementados con `formalizacion.home.approvals.read`; no ejecutan consulta sin permiso ni autorizan aprobar/devolver. Las mutaciones de etapas/aprobaciones y reconciliacion automatica siguen pendientes. Los otros seis indicadores son provisionales, no mediciones reales.
+
+`CRM_THINK_V2` es desarrollo con datos preservables; `crmdatabase-api` es produccion. El lector legacy usa `ENABLE_LEGACY_FALLBACK`; los seis escritores de catalogos requieren ademas `ENABLE_LEGACY_WRITES`, `NODE_ENV=production` y destino legacy exacto. Las credenciales compartidas no estan certificadas como solo SELECT. No ejecutar fixtures, DDL ni scripts DBA para validar documentacion.
+
+La [remediacion](Reauditoria-54-Plan-y-Resultados.md), [operacion](Operacion-Despliegue-Rollback.md) y [CI/MySQL](CI-MySQL-Pruebas.md) registran evidencia y limites actuales. Los apartados fechados siguientes conservan decisiones/evidencia de su fecha, no certificacion del runtime actual.
+
 ## Inicio por modulo y permiso de banner - 2026-10-20
 
 El propietario sustituye el permiso de entrada formalizacion.home.read por
 acceso a Inicio mediante pertenencia activa al modulo Formalizacion. La migracion
 020 conserva el permiso anterior inactivo y sus relaciones historicas, sin borrar
 historial ni copiar grants. Registra formalizacion.home.approvals.read, visible
-en Pantalla de inicio como Ver pendientes de aprobacion de Formalizacion.
+en Pantalla de inicio como Banner pendiente de aprobación de Formalización.
 Solo representa lectura del banner, no aprobar, devolver ni modificar checks.
 No se conceden permisos automaticamente a Formalizacion ni a Jefe de
 Formalizaciones. Las maquetas existentes de gestion, calendario y resumen
 conservan su acceso local dentro del modulo; no autorizan API de negocio.
-Esta entrega registra el permiso: la nueva bandeja/banner y las acciones reales
-de aprobacion continuan pendientes de definicion e implementacion.
+El banner y su contador ya estan implementados; las acciones reales de
+aprobacion continuan pendientes de definicion e implementacion.
 
 ## Rol complementario Jefe de Formalizaciones - 2026-10-20
 

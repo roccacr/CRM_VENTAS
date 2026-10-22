@@ -1,5 +1,9 @@
 # 23 - Regla de IDs Canonicos y Proveedores Frontend
 
+## Vigencia documental - 2026-10-22, corte f2dc4f1
+
+Regla vigente de identidad canonica y privacidad de integraciones. Los nombres comerciales de ejemplo no acreditan rutas instaladas. Referencias externas autorizadas de Administracion son datos de soporte, no identidad principal ni seleccion del proveedor activo; el core backend conserva contratos neutrales.
+
 ## Veredicto
 
 El frontend nunca usa ids de NetSuite, Odoo, legacy CRM, Kapso u otro proveedor para relacionar datos, navegar pantallas o ejecutar acciones.

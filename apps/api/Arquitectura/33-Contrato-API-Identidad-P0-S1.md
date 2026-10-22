@@ -1,5 +1,7 @@
 # 33 - Contrato API de Identidad P0-S1
 
+Estado documental 2026-10-22: `CsrfGuard` primero y `AuthGuard` global default-deny; `RouteSecurity` explicito por handler Nest, allowlist publica y permisos exactos en servicios. AsyncLocalStorage reutiliza perfil solo en el request/servicio/token; no cache global. GET/HEAD protegidos tienen cuotas locales 120/usuario y 600/IP por minuto, cache 5000 por store (defaults); exceso 429 con Retry-After, sin coordinacion distribuida. El request-reset declara tambien 503 en metadata HTTP/OpenAPI. Ver [36 - Estado vigente y registro](36-Registro-Entrega-Administracion.md).
+
 ## Veredicto
 
 Este documento define el contrato conceptual minimo que el API debe exponer en el runtime minimo de identidad autorizado por la ley vigente.
@@ -458,7 +460,7 @@ El rol X no tiene permiso Y por tabla Z.
 - Correos locales normalizados con `trim` + lowercase y maximo 254 caracteres antes de validar, auditar, aplicar rate limit o autenticar.
 - Password local con minimo 12 y maximo 128 caracteres antes de hashear.
 - Token opaco de activacion/reset local con minimo 32 y maximo 256 caracteres.
-- `POST /identity/local/login` y `POST /identity/local/request-reset` deben tener rate limit local por proceso con dos contadores independientes por endpoint: IP efectiva y HMAC del correo. Si cualquiera se excede, el request no llega al caso de uso.
+- `POST /identity/local/login` y `POST /identity/local/request-reset` deben tener rate limit local por proceso con dos contadores independientes por endpoint: IP efectiva y HMAC del correo. Si cualquiera se excede, login responde 429 antes del caso de uso. En request-reset deshabilitado se conserva el 503 uniforme descrito abajo, incluida cuota excedida.
 - S01: con CSRF y DTO validos, `request-reset` responde `503` con `{ "statusCode": 503, "error": "Service Unavailable", "message": "Servicio no disponible." }`, incluso al exceder la cuota. Es un mensaje publico estatico; el filtro sanitiza la excepcion especifica del servicio. No consulta existencia de correo, no emite tokens y no afirma aceptacion ni entrega. El proveedor de correo esta pospuesto. CSRF/validacion conservan sus errores; `complete-reset` conserva la finalizacion con tokens existentes de un solo uso.
 - `POST /identity/local/complete-reset` debe tener rate limit por IP efectiva y HMAC del token opaco de reset, sin guardar el token crudo.
 - El rate limit actual es por memoria de proceso; si se opera mas de una instancia del API detras de un balanceador, se debe configurar un store compartido antes de considerar equivalentes las cuotas globales.

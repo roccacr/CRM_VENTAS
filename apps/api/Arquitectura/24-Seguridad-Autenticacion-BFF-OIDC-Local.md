@@ -1,5 +1,7 @@
 # 24 - Seguridad de Autenticacion BFF, OIDC y Login Local
 
+Estado documental 2026-10-22: seguridad global y cuotas implementadas en [05](05-Seguridad-Auditoria-Observabilidad.md); estado y limites en [36 - Estado vigente y registro](36-Registro-Entrega-Administracion.md). La revalidacion usa perfil por request, sin cache global. Las pruebas fechadas y SQL/003-004 siguientes son antecedentes, no verificacion productiva actual.
+
 ## Regla superior de autenticacion
 
 El CRM debe usar un patron BFF. El frontend no administra tokens. El backend NestJS es responsable de recibir, custodiar, rotar, validar y revocar tokens.
@@ -179,7 +181,7 @@ Final local verification reported on 2026-10-13: permission snapshots and row lo
 
 Three final stable browser reloads for a local Formalizacion login passed: both cookies remained present with unchanged values and expiry, without exposing their contents. DB inspection reported an active session at permission version 4/4 without revocation. A real manual permission edit was not performed; access-update behavior was verified through rollback HTTP/MySQL tests. See delivery 36 for frontend verification limits; these results do not claim production deployment.
 
-Authorization remains database-backed on every protected request through IdentityService.getCurrentUser and IdentityProfileRepository. The opaque cookie identifies a session; it does not carry authoritative role claims. This is a stateful BFF, not a stateless JWT design. No permission cache or additional parallel authorization guard is introduced. Requests already authorized before the transaction commits are in flight; this change does not cancel them retroactively.
+Authorization remains database-backed on every protected request through IdentityService.getCurrentUser and IdentityProfileRepository. The opaque cookie identifies a session; it does not carry authoritative role claims. This is a stateful BFF, not a stateless JWT design. No cross-request permission cache is used. The global default-deny AuthGuard authenticates classified handlers; exact permission checks remain in services. AsyncLocalStorage reuses the profile only within one request, service instance and exact opaque token. Requests already authorized before the transaction commits are in flight; this change does not cancel them retroactively.
 
 Removed user-role mappings, memberships, and overrides are retained as inactive, revoked history. Shared sec_role_permission rows remain valid for other users assigned to the role. They must not be deleted when one user loses Owner. An exclusively Sales replacement specifies roleCodes=[ventas], orgUnitCodes=[ventas], and permissionOverrides=[]; explicit unrelated overrides or memberships are separate access inputs, not implicitly inherited Owner grants. Existing self-demotion protection for Owner remains unchanged.
 
@@ -445,17 +447,17 @@ Reglas:
 | Tema | Estado |
 | --- | --- |
 | BFF con cookies opacas | Implementado en API. |
-| Token de sesion opaco con HMAC | Implementado en API; estructura `SQL/003` aplicada y validada contra MySQL. |
+| Token de sesion opaco con HMAC | Implementado en API; aplicacion de `SQL/003` registrada como evidencia historica, no reejecutada ni verificada contra MySQL en esta revision. |
 | Refresh token opaco con HMAC | Implementado en API. |
 | Rotacion de refresh | Implementada en API. |
 | Deteccion de reuso | Implementada; solo `rotated`/`reused` revocan todas las sesiones activas del usuario. |
 | CSRF firmado y ligado a sesion | Implementado en API. |
 | Login local Argon2id | Preparado en API contra identidades locales activas. |
 | Microsoft real | Adapter API implementado con MSAL Node, PKCE/state/nonce, callback, cache cifrada, Graph photo con timeout y `acquireTokenSilent`; activacion productiva depende de Entra ID real, variables `MICROSOFT_*`, `SQL/004` aplicado en el ambiente objetivo y validacion operacional aprobada. |
-| Reset/activacion local backend | Implementado con token opaco hasheado y Argon2id; falta canal aprobado de entrega del token. |
+| Reset/activacion local backend | `request-reset` deshabilitado: 503 uniforme con CSRF/DTO validos, incluida cuota excedida; mensaje publico `Servicio no disponible.`. Sin consulta de existencia, token nuevo ni correo. `complete-reset` conserva tokens existentes de un solo uso. |
 | Rate limit login/reset | Implementado por IP y HMAC de correo, en memoria del proceso actual. Multi-instancia requiere store compartido. |
 | Rate limit refresh | Implementado por IP y HMAC del refresh token, en memoria del proceso actual. Multi-instancia requiere store compartido. |
-| Account lockout persistente | Implementado en API y estructura `SQL/003` aplicada; pendiente validar con identidad local real aprobada. |
+| Account lockout persistente | Implementado en API; `SQL/003` tiene evidencia historica. Su presencia en el ambiente objetivo requiere comprobacion autorizada; sin SQL ejecutado en esta revision. |
 | Logger estructurado con redaccion | Implementado con Pino/nestjs-pino. |
 | Frontend login | Implementado para identidad: `/auth/login`, login local, Microsoft popup, verificacion de sesion, logout y shell `/home/global` consumen el BFF sin tokens en frontend. |
 

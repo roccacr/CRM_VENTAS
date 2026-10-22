@@ -1,6 +1,10 @@
 # 07 - Skills Codex Instaladas API
 
-## Objetivo
+## Registro vigente y snapshot historico - 2026-10-22
+
+El registro versionado actual es [SKILLS.md](../../../SKILLS.md): paquetes locales de raiz bajo `.agents/skills/` y copias globales en `C:/codex-data/skills/`. Las ubicaciones `.codex/skills/` y listas siguientes describen una instalacion historica del API; no acreditan disponibilidad actual ni anulan las reglas raiz/API. Verificar la existencia del entrypoint antes de usarlo. Esta revision no inspecciona ni modifica paquetes instalados.
+
+## Objetivo historico
 
 Este backend debe ser autosuficiente: toda skill y documentacion necesaria para trabajar en API vive dentro de `apps/api`.
 
@@ -24,7 +28,7 @@ Cuando se trabaje en `apps/api`, Codex debe usar primero:
 Arquitectura/
 ```
 
-No debe depender de `.codex`, `.agents`, `AGENTS.md` ni `Arquitectura` en una raiz externa al API.
+La antigua autonomia de instalacion no excluye las reglas de la raiz del repositorio ni su registro `SKILLS.md`. Mantener la documentacion de producto dentro de `apps/api/Arquitectura`.
 
 ## Skills activas backend
 
@@ -95,6 +99,6 @@ No debe depender de `.codex`, `.agents`, `AGENTS.md` ni `Arquitectura` en una ra
 
 ## Regla de lectura para Codex
 
-Antes de trabajar en API, Codex debe leer las skills relevantes de `.codex/skills/`.
+Antes de trabajar en API, Codex debe localizar y leer solo los entrypoints relevantes realmente disponibles, segun `AGENTS.md` y el registro vigente.
 
 Para cambios grandes de arquitectura, seguridad, base de datos, integraciones, scaffolding o convenciones globales, Codex debe revisar solo las skills relevantes de este subproyecto antes de modificar codigo.

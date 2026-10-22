@@ -1,6 +1,8 @@
 # Ordenes de venta: esquema y trayectoria - 20/10/2026
 
-## Alcance autorizado y resultado
+Estado documental 2026-10-22: nueve tablas de lifecycle/auditoria/referencias y persistencia interna, sin rutas HTTP de mutacion. Existe el contador real `GET /formalization/approvals/summary` descrito al final; sustituye el escenario local solo para ese indicador. Las aprobaciones son independientes de las etapas. Conteos, ejecuciones de migraciones, errores de conexion y pruebas fechadas son evidencia historica; SQL/021 no se ejecuto en esta revision. Ver [36 - Registro vigente](36-Registro-Entrega-Administracion.md) y [reauditoria](Reauditoria-54-Plan-y-Resultados.md).
+
+## Resultado historico de la entrega 2026-10-20
 
 - Nueva estructura aplicada en CRM_THINK_V2 mediante migraciones 202610200021 y 202610200022.
 - Nueve tablas nuevas, nueve estados de referencia y tres tipos de aprobacion.
@@ -234,7 +236,7 @@ La BD nueva se consulta con estados textuales; el adaptador legado exige
 status_ov=1, caida_ov=0, chekJefeVenta=1, aprobacion__rdr_ov=1 y
 aprobacion_forma_ov=0. No se usa la etapa del pipeline para inferir aprobaciones.
 
-El pool legado y ENABLE_LEGACY_FALLBACK son los mismos de catalogos.
+El pool legado y ENABLE_LEGACY_FALLBACK son los mismos de catalogos. El fallback local permanece deshabilitado segun el registro de remediacion; este contrato no acredita una lectura actual de produccion. La lectura del contador no requiere ni habilita ENABLE_LEGACY_WRITES.
 Las identidades candidatas legadas se leen en paginas de 500, sin datos personales.
 Una fila nativa con id_old_produccion_sales_order suprime la fila legada,
 incluso si la nativa esta inactiva, eliminada o ya aprobada. Al migrar siempre
@@ -263,8 +265,9 @@ Sin permiso no se monta el contador ni se solicita el endpoint.
 Al apagar el fallback se lee solo la BD nueva y legacyEnabled=false.
 Las lecturas no son una transaccion distribuida: observedAt marca la respuesta,
 no un snapshot atomico entre las dos BD. No se escribe, importa ni sincroniza.
-Solo se conecta el contador: la lista y los otros indicadores mantienen su
-vista previa. La persistencia de lifecycle continua sin rutas de escritura.
+Solo se conecta el contador: la lista y los otros indicadores no tienen API
+operativa; la remediacion retiro datos demostrativos y los ceros provisionales
+no son metricas conectadas. La persistencia de lifecycle continua sin rutas de escritura.
 
-La comprobacion real de esta conexion devolvio ETIMEDOUT; tampoco respondio
+La comprobacion historica de esta conexion devolvio ETIMEDOUT; tampoco respondio
 la conexion de lectura de produccion. No hay conteo actual confirmado.
