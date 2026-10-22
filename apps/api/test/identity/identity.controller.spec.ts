@@ -115,7 +115,7 @@ const createIdentityServiceMock = (): IdentityServiceMock => ({
 
 describe("IdentityController", () => {
     it("declares the disabled reset status in its HTTP/OpenAPI metadata", () => {
-        expect(Reflect.getMetadata(HTTP_CODE_METADATA, IdentityController.prototype.requestLocalReset)).toBe(503);
+        expect(Reflect.getMetadata(HTTP_CODE_METADATA, Reflect.get(IdentityController.prototype, "requestLocalReset") as object)).toBe(503);
     });
     let app: NestFastifyApplication;
     let identity: IdentityServiceMock;
