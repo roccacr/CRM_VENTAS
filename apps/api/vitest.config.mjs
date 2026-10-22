@@ -4,5 +4,13 @@ import { defineConfig } from "vitest/config";
 const realMysqlTests = [process.env.IDENTITY_ACCESS_MYSQL_TESTS, process.env.ADMINISTRATION_MYSQL_TESTS, process.env.CATALOG_MYSQL_TESTS].includes("1");
 
 export default defineConfig({
-    test: { fileParallelism: !realMysqlTests },
+    test: {
+        fileParallelism: !realMysqlTests,
+        coverage: {
+            provider: "v8",
+            include: ["src/**/*.ts"],
+            exclude: ["src/main.ts", "src/**/*.types.ts"],
+            reporter: ["text-summary", "json-summary", "lcov"],
+        },
+    },
 });

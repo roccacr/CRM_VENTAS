@@ -29,5 +29,11 @@ export default defineConfig({
     },
     test: {
         environment: "jsdom",
+        coverage: {
+            provider: "v8",
+            include: ["src/**/*.{ts,tsx}"],
+            exclude: ["src/main.tsx", "src/**/*.d.ts"],
+            reporter: ["text-summary", "json-summary", "lcov"],
+        },
     },
 });

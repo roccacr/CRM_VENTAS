@@ -19,6 +19,8 @@
         "recover:owner": "node ./scripts/ensure-pnpm.mjs && tsx ./scripts/restore-owner-from-backup.ts",
         "migrate:identity:schema": "node ./scripts/ensure-pnpm.mjs && tsx ./scripts/run-schema-migrations.ts",
         "test": "node ./scripts/ensure-pnpm.mjs && vitest run --dir test",
+        "test:coverage": "node ./scripts/ensure-pnpm.mjs && vitest run --dir test --coverage --maxWorkers=2",
+        "test:mysql:ci": "node ./scripts/ensure-pnpm.mjs && tsx ./scripts/run-mysql-ci.ts",
         "typecheck": "node ./scripts/ensure-pnpm.mjs && tsc --noEmit"
     },
     "dependencies": {
@@ -50,6 +52,7 @@
         "@eslint/js": "^10.0.1",
         "@nestjs/testing": "^12.1.0",
         "@types/node": "^22.18.8",
+        "@vitest/coverage-v8": "5.0.3",
         "eslint": "^10.11.0",
         "eslint-config-prettier": "^10.1.8",
         "eslint-plugin-jsdoc": "^64.5.4",
@@ -60,7 +63,8 @@
         "tsx": "^4.20.5",
         "typescript": "^5.9.2",
         "typescript-eslint": "^8.70.1",
-        "vitest": "^5.0.2"
+        "vite": "8.3.3",
+        "vitest": "^5.0.3"
     },
     "packageManager": "pnpm@10.28.2"
 }

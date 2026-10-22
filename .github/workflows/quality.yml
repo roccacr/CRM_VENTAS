@@ -1,0 +1,140 @@
+name: CRM quality
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: quality-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality:
+    name: Quality / ${{ matrix.app }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        app: [api, frontend]
+    defaults:
+      run:
+        working-directory: apps/${{ matrix.app }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@f520eceda224fe1a4aed5a2a27a194379a409996 # v6
+        with:
+          version: 10.28.2
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: "22"
+          cache: pnpm
+          cache-dependency-path: apps/${{ matrix.app }}/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm check
+      - run: pnpm test:coverage
+      - name: Upload measured source coverage
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        with:
+          name: coverage-${{ matrix.app }}
+          path: apps/${{ matrix.app }}/coverage
+          if-no-files-found: error
+          retention-days: 7
+
+  dependency-audit:
+    name: Dependencies / ${{ matrix.app }} (informational)
+    continue-on-error: true
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        app: [api, frontend]
+    defaults:
+      run:
+        working-directory: apps/${{ matrix.app }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@f520eceda224fe1a4aed5a2a27a194379a409996 # v6
+        with:
+          version: 10.28.2
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: "22"
+      - run: pnpm install --frozen-lockfile
+      - name: Audit production and development dependencies without modifying lockfiles
+        run: pnpm audit
+
+  mysql-availability:
+    name: MySQL / infrastructure (informational)
+    continue-on-error: true
+    runs-on: ubuntu-24.04
+    timeout-minutes: 2
+    steps:
+      - name: Require explicitly prepared test infrastructure
+        env:
+          READY: ${{ vars.CRM_MYSQL_TESTS_READY }}
+          TRUSTED: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
+        run: |
+          if [ "$READY" != "true" ] || [ "$TRUSTED" != "true" ]; then
+            echo "::error::BLOQUEADO POR INFRAESTRUCTURA: MySQL aislado no habilitado o PR externo sin acceso autorizado."
+            echo "MySQL no verificado; quality continua de forma independiente." >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+
+  mysql:
+    name: MySQL / persistence (informational)
+    continue-on-error: true
+    needs: mysql-availability
+    if: vars.CRM_MYSQL_TESTS_READY == 'true' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    environment: crm-mysql-tests
+    defaults:
+      run:
+        working-directory: apps/api
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@f520eceda224fe1a4aed5a2a27a194379a409996 # v6
+        with:
+          version: 10.28.2
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: "22"
+          cache: pnpm
+          cache-dependency-path: apps/api/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - name: Verify destination and execute authorized native suites
+        run: pnpm test:mysql:ci
+        env:
+          CRM_MYSQL_TESTS_READY: "true"
+          MYSQL_TEST_CONFIRM: ISOLATED_TEST_DATABASE
+          MYSQL_TEST_SERVER_UUID: ${{ secrets.MYSQL_TEST_SERVER_UUID }}
+          MYSQL_TEST_DATASET: ${{ vars.MYSQL_TEST_DATASET }}
+          DB_HOST: ${{ secrets.MYSQL_TEST_DB_HOST }}
+          DB_PORT: ${{ vars.MYSQL_TEST_DB_PORT }}
+          DB_USER: ${{ secrets.MYSQL_TEST_DB_USER }}
+          DB_PASSWORD: ${{ secrets.MYSQL_TEST_DB_PASSWORD }}
+          DB_NAME: CRM_THINK_V2
+          DB_SSL: "true"
+          ENABLE_LEGACY_FALLBACK: "false"
+          LEGACY_CRM_DB_NAME: ""
+      - name: Upload sanitized persistence summary
+        if: always() && hashFiles('apps/api/coverage/mysql-ci-summary.json') != ''
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        with:
+          name: mysql-ci-summary
+          path: apps/api/coverage/mysql-ci-summary.json
+          if-no-files-found: error
+          retention-days: 7
