@@ -4,7 +4,7 @@
 
 The installed runtime uses React/Vite/TypeScript, Ant Design, DataTables/SearchPanes, typed fetch services and project CSS. TanStack Query, Zustand, React Hook Form, Tailwind and Radix/shadcn guidance below is a future blueprint, not a requirement to add dependencies or replace working patterns. Reuse the installed services/hooks/forms unless a scoped decision authorizes migration.
 
-Approved extensions beyond the original identity gate include Administration/catalogs and partial Formalization. Only its approval counter has a real Home source; other counters are provisional, follow-up has no operational API, and calendar/summary previews remain simulations. Navigation history, lazy routes and recoverable route errors are implemented. See the product-law addendum and `Arquitectura/29-Navegacion-Recuperacion-y-Seguimiento.md`; Leads and full contract workflows remain future scope.
+Approved extensions beyond the original identity gate include Administration/catalogs and partial Formalization. Home has two real banners: approvals requires effective `formalizacion.home.approvals.read`; contracts requires the active `formalizacion` role, which Owner or the approval permission does not replace. Five counters remain provisional; queues stay empty, follow-up has no operational API, and calendar/summary previews remain simulations. Keep Home-only: do not activate list/send/revert. Navigation history, lazy routes and recoverable route errors are implemented. See the product-law addendum and `Arquitectura/29-Navegacion-Recuperacion-y-Seguimiento.md`; Leads and full contract workflows remain future scope.
 
 ## Agent Role
 

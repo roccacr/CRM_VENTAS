@@ -40,10 +40,23 @@ function fixture(publicId = "user", orgUnitCodes = ["ventas"]) {
     const captureActor = vi.fn<SecurityAuditService["captureActor"]>().mockImplementation(() => Promise.resolve({ publicId, name: mutated ? "Changed" : "Person", roles: [{ code: mutated ? "replacement" : "sales", name: mutated ? "Replacement" : "Sales" }] }));
     const audit = { record, captureActor } as unknown as SecurityAuditService;
     const database = { db } as DatabaseService;
-    return { db, queries, record, captureActor, directory: new IdentityUserDirectoryRepository(database, audit), access: new IdentityAccessManagementRepository(database, audit, { revokeAllActiveSessionsForUser: vi.fn() } as unknown as IdentitySessionRepository) };
+    const sessions = { revokeAllActiveSessionsForUser: vi.fn(), revokeActiveSessionsForAuthIdentity: vi.fn().mockResolvedValue(undefined) } as unknown as IdentitySessionRepository;
+    return { db, queries, record, captureActor, directory: new IdentityUserDirectoryRepository(database, audit, sessions), access: new IdentityAccessManagementRepository(database, audit, sessions) };
 }
 
 describe("identity transactional change history", () => {
+    it("omitted access methods preserves provider status and truthful audit metadata", async () => {
+        const f = fixture();
+        try {
+            await f.directory.update({ validateAccess: () => Promise.resolve(), actorPublicId: "actor", userPublicId: "user", preserveAssignments: true, displayName: "Changed", email: "changed@example.test", normalizedEmail: "changed@example.test", roleCode: "sales", roleCodes: ["sales"], orgUnitCodes: ["ventas"], accessMethods: undefined, externalReferences: [], reason: "Preserve identity regression" });
+            expect(f.queries.some((query) => query.parameters.includes("microsoft"))).toBe(false);
+            expect(f.queries.filter((query) => /^update `sec_auth_identity`/.test(query.sql)).every((query) => !query.sql.includes("`status_auth_identity` ="))).toBe(true);
+            expect(f.record.mock.calls[0]?.[0].metadata?.accessMethods).toBeUndefined();
+        } finally {
+            await f.db.destroy();
+        }
+    });
+
     it("returns every directory area while preserving the singular compatibility field", async () => {
         const f = fixture("user", ["ventas", "formalizacion"]);
         try {
@@ -56,7 +69,7 @@ describe("identity transactional change history", () => {
     it.each(["roles", "areas"] as const)("rejects stale preserved %s under the lock before any write", async (kind) => {
         const f = fixture();
         try {
-            await expect(f.directory.update({ actorPublicId: "actor", userPublicId: "user", preserveAssignments: true, displayName: "Changed", email: "changed@example.test", normalizedEmail: "changed@example.test", roleCode: "sales", roleCodes: kind === "roles" ? ["owner"] : ["sales"], orgUnitCodes: kind === "areas" ? ["formalizacion"] : ["ventas"], accessMethods: ["local"], externalReferences: [], reason: "Stale access regression" })).rejects.toThrow();
+            await expect(f.directory.update({ validateAccess: () => Promise.resolve(), actorPublicId: "actor", userPublicId: "user", preserveAssignments: true, displayName: "Changed", email: "changed@example.test", normalizedEmail: "changed@example.test", roleCode: "sales", roleCodes: kind === "roles" ? ["owner"] : ["sales"], orgUnitCodes: kind === "areas" ? ["formalizacion"] : ["ventas"], accessMethods: ["local"], externalReferences: [], reason: "Stale access regression" })).rejects.toThrow();
             expect(f.queries.filter((query) => /^(update|insert|delete)/.test(query.sql))).toEqual([]);
             expect(f.record).not.toHaveBeenCalled();
         } finally {
@@ -67,7 +80,7 @@ describe("identity transactional change history", () => {
     it("preserves role and area relationship rows during a data-only update", async () => {
         const f = fixture();
         try {
-            await f.directory.update({ actorPublicId: "actor", userPublicId: "user", preserveAssignments: true, displayName: "Changed", email: "changed@example.test", normalizedEmail: "changed@example.test", roleCode: "sales", roleCodes: ["SALES"], orgUnitCodes: ["VENTAS"], accessMethods: ["local"], externalReferences: [], reason: "Preserve assignments regression" });
+            await f.directory.update({ validateAccess: () => Promise.resolve(), actorPublicId: "actor", userPublicId: "user", preserveAssignments: true, displayName: "Changed", email: "changed@example.test", normalizedEmail: "changed@example.test", roleCode: "sales", roleCodes: ["SALES"], orgUnitCodes: ["VENTAS"], accessMethods: ["local"], externalReferences: [], reason: "Preserve assignments regression" });
             expect(f.queries.filter((query) => /^(update|insert|delete)/.test(query.sql) && /sec_user_(role|org_unit)/.test(query.sql))).toEqual([]);
             expect(f.record).toHaveBeenCalledOnce();
         } finally {
@@ -78,7 +91,26 @@ describe("identity transactional change history", () => {
     it.each(["create", "update", "updateStatus", "replaceUserAccess", "updateRole", "deleteRole", "replaceRolePermissions"] as const)("captures original actor roles and administration context before %s", async (method) => {
         const canonicalId = "01M4V30BJ9BKQF85AWVNHFJNS2";
         const f = fixture(canonicalId);
-        const input = { actorPublicId: canonicalId.toLowerCase(), userPublicId: canonicalId.toLowerCase(), displayName: "Changed", email: "changed@example.test", normalizedEmail: "changed@example.test", roleCode: "sales", roleCodes: ["sales"], orgUnitCodes: ["ventas"], accessMethods: ["local"] as const, externalReferences: [], initialStatus: "active" as const, status: "inactive" as const, permissionOverrides: [], code: "sales", name: "Changed", permissionCodes: [], reason: "Reason" };
+        const input = {
+            validateAccess: () => Promise.resolve(),
+            actorPublicId: canonicalId.toLowerCase(),
+            userPublicId: canonicalId.toLowerCase(),
+            displayName: "Changed",
+            email: "changed@example.test",
+            normalizedEmail: "changed@example.test",
+            roleCode: "sales",
+            roleCodes: ["sales"],
+            orgUnitCodes: ["ventas"],
+            accessMethods: ["local"] as const,
+            externalReferences: [],
+            initialStatus: "active" as const,
+            status: "inactive" as const,
+            permissionOverrides: [],
+            code: "sales",
+            name: "Changed",
+            permissionCodes: [],
+            reason: "Reason",
+        };
         const isUserDirectory = ["create", "update", "updateStatus"].includes(method);
         const isRole = ["updateRole", "deleteRole", "replaceRolePermissions"].includes(method);
         try {
@@ -101,7 +133,7 @@ describe("identity transactional change history", () => {
     it.each(["update", "updateStatus"] as const)("records the stored canonical public ID for case-insensitive %s input", async (method) => {
         const canonicalId = "01M4V30BJ9BKQF85AWVNHFJNS2";
         const f = fixture(canonicalId);
-        const input = { actorPublicId: "actor", userPublicId: canonicalId.toLowerCase(), displayName: "Changed", email: "changed@example.test", normalizedEmail: "changed@example.test", roleCode: "sales", roleCodes: ["sales"], orgUnitCodes: ["ventas"], accessMethods: ["local"] as const, externalReferences: [], status: "inactive" as const, reason: "Reason" };
+        const input = { validateAccess: () => Promise.resolve(), actorPublicId: "actor", userPublicId: canonicalId.toLowerCase(), displayName: "Changed", email: "changed@example.test", normalizedEmail: "changed@example.test", roleCode: "sales", roleCodes: ["sales"], orgUnitCodes: ["ventas"], accessMethods: ["local"] as const, externalReferences: [], status: "inactive" as const, reason: "Reason" };
         await f.directory[method]({ ...input, preserveAssignments: false });
         const changeSet = f.record.mock.calls[0]?.[0].metadata?.changeSet as AuditChangeSet;
         expect(changeSet.recordId).toBe(canonicalId);
@@ -142,7 +174,7 @@ describe("identity transactional change history", () => {
 
     it.each(["update", "replaceUserAccess"] as const)("locks parent before actor/catalog/snapshot reads for %s", async (method) => {
         const f = fixture();
-        const input = { actorPublicId: "actor", userPublicId: "user", displayName: "Changed", email: "changed@example.test", normalizedEmail: "changed@example.test", roleCode: "sales", roleCodes: ["sales"], orgUnitCodes: ["ventas"], accessMethods: ["local"] as const, externalReferences: [], permissionOverrides: [], reason: "Reason" };
+        const input = { validateAccess: () => Promise.resolve(), actorPublicId: "actor", userPublicId: "user", displayName: "Changed", email: "changed@example.test", normalizedEmail: "changed@example.test", roleCode: "sales", roleCodes: ["sales"], orgUnitCodes: ["ventas"], accessMethods: ["local"] as const, externalReferences: [], permissionOverrides: [], reason: "Reason" };
         if (method === "update") await f.directory.update({ ...input, preserveAssignments: false });
         else await f.access.replaceUserAccess(input);
         const first = f.queries.find((query) => /^select/.test(query.sql));

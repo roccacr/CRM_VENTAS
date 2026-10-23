@@ -359,7 +359,10 @@ Resolved hierarchy, in order:
    The bounded desktop table uses layout/paint containment so vendor row overflow
    cannot extend the document scroll area. Mobile cards remain unconstrained.
 
-Page content is centered with maximum width 1440px and shrinkable children.
+Page content fills the available width with shrinkable children and retains the
+shell's responsive side padding. The shared catalog style has no desktop
+max-width cap (approved for all seven catalog sections on 2026-10-23); Unit Files
+retains its existing full-width layout.
 Do not add another decorative card around the work surface. Individual drawer
 records/provider groups and form sections are legitimately framed.
 The search is the toolbar's first track (full row width below 1100px). Placeholder

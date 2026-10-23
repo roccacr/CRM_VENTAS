@@ -3,6 +3,8 @@
 Fuente: migracion 202610200021 y ajuste UTC 202610200022.
 Detalles y limites: [Documento 38](38-Ordenes-Venta-Estados-Auditoria.md).
 
+La bitacora comercial generica posterior, migracion `202610220023_record_audit`, no altera estas nueve tablas. El diccionario de sus dos tablas `audit_record` y `audit_record_event` esta en [38 - Bitacora central](38-Ordenes-Venta-Estados-Auditoria.md#bitacora-central-de-registros---2026-10-22); admite identidad legacy sin FK comercial. No reemplaza ni borra los historiales especializados descritos aqui.
+
 ## conf_sales_order_state
 
 | Columna | Tipo y restricciones | Significado |

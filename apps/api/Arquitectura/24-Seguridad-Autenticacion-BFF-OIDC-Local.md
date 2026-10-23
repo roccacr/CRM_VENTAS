@@ -2,6 +2,16 @@
 
 Estado documental 2026-10-22: seguridad global y cuotas implementadas en [05](05-Seguridad-Auditoria-Observabilidad.md); estado y limites en [36 - Estado vigente y registro](36-Registro-Entrega-Administracion.md). La revalidacion usa perfil por request, sin cache global. Las pruebas fechadas y SQL/003-004 siguientes son antecedentes, no verificacion productiva actual.
 
+## Remediacion de autenticacion - 2026-10-23
+
+- El logger HTTP conserva ruta, metodo e identificador, pero no valores de query/fragmento ni referencias raw del request. Conserva la redaccion de cookies, autorizacion y CSRF; no modificar el request que recibe el controlador.
+- El contador atomico de errores locales usa el valor ya incrementado por MySQL: el cuarto error no bloquea, el quinto activa el bloqueo y su evento dedicado. Las regresiones con SQL compilado no sustituyen una prueba de concurrencia MySQL aislada.
+- En edicion, omitir `accessMethods` conserva los proveedores y sus estados. Retirar Microsoft explicitamente lo inactiva y revoca sus sesiones/refresh dentro de la transaccion administrativa; conserva subject e historial. Seleccionarlo de nuevo solo reactiva `inactive`, no identidades bloqueadas o borradas. El primer enlace bloquea el usuario padre y no recupera una identidad retirada ni sustituye su subject. Un alta solo local guarda un marcador Microsoft inactivo con subject nulo; no hay backfill de usuarios historicos.
+- La revocacion administrativa registra al actor autenticado, no al usuario afectado. Los usos anteriores del helper conservan su actor por defecto; la evidencia no incluye contrasenas, hashes ni cache Microsoft.
+- El directorio devuelve `mfaStatus: unknown` para Microsoft/mixto sin evidencia autoritativa. La UI lo presenta como No verificado; usar Microsoft no acredita MFA habilitado.
+
+Plan, verificaciones locales y limites de este corte: [F01-F13](Reauditoria-54-Plan-y-Resultados.md#plan-central-f01-f13---2026-10-23). No acredita despliegue ni inspeccion del tenant.
+
 ## Regla superior de autenticacion
 
 El CRM debe usar un patron BFF. El frontend no administra tokens. El backend NestJS es responsable de recibir, custodiar, rotar, validar y revocar tokens.

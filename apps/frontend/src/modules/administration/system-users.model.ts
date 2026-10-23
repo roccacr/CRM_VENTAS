@@ -20,7 +20,7 @@ import type { SystemUserDirectoryItem, SystemUserExternalReference, SystemUsersS
 /** Estado operativo que el directorio puede mostrar. */
 export type SystemUserStatus = "active" | "blocked" | "inactive" | "pending";
 /** Estado de MFA informado por el API. La UI no lo configura. */
-export type SystemUserMfaStatus = "enabled" | "not_configured" | "pending";
+export type SystemUserMfaStatus = "enabled" | "not_configured" | "pending" | "unknown";
 /** Cómo entra el usuario. `mixed` significa Microsoft y contraseña local a la vez. */
 export type SystemUserProvider = "local" | "microsoft" | "mixed";
 /** Destinos que el cambio de estado puede pedir. `pending` no se asigna a mano. */
@@ -91,6 +91,7 @@ export const MFA_TAG_COLORS: Record<SystemUserMfaStatus, "default" | "success" |
     enabled: "success",
     not_configured: "default",
     pending: "warning",
+    unknown: "default",
 };
 
 /** Texto de ayuda. El color del badge no basta para explicar el estado. */
@@ -101,6 +102,7 @@ export const MFA_LABELS: Record<SystemUserMfaStatus, string> = {
     enabled: "Habilitado",
     not_configured: "No configurado",
     pending: "Pendiente",
+    unknown: "No verificado",
 };
 
 /** Cómo se nombra el método de acceso en la tabla y el detalle. */
@@ -160,8 +162,10 @@ export const getInitials = (name: string): string =>
  */
 export const getAvatarTone = (user: SystemUserListItem): number => Array.from(`${user.publicId}:${user.email}`).reduce((hash, character) => hash + character.charCodeAt(0), 0) % AVATAR_TONE_COUNT;
 
+/** Normaliza la búsqueda para comparar sin distinguir mayúsculas ni espacios laterales. */
 export const normalizeSearchText = (value: string): string => value.trim().toLowerCase();
 
+/** Cantidad mostrada en cada filtro; «todos» usa el total del resumen. */
 export const getFilterCount = (summary: SystemUsersSummary, filter: SystemUserFilter): number => (filter === "all" ? summary.all : summary[filter]);
 
 /** Un valor desconocido en la URL vuelve a "Todos" en vez de pedir un estado inexistente al API. */
@@ -170,8 +174,10 @@ export const parseSystemUserFilter = (value: string | null): SystemUserFilter =>
 /** Cuenta filtros reales. "Todos" y una búsqueda vacía no suman. */
 export const getActiveToolbarFilterCount = (activeFilter: SystemUserFilter, searchQuery: string): number => Number(activeFilter !== "all") + Number(Boolean(normalizeSearchText(searchQuery)));
 
+/** Etiqueta del botón de densidad de la tabla. */
 export const getDensityLabel = (density: SystemUserDensity): string => (density === "comfortable" ? "Cómoda" : "Compacta");
 
+/** Alterna entre densidad cómoda y compacta. */
 export const getNextDensity = (density: SystemUserDensity): SystemUserDensity => (density === "comfortable" ? "compact" : "comfortable");
 
 /** Rango visible del pie de tabla. El total viene del API, no de la página cargada. */
@@ -208,6 +214,7 @@ export const getPrimaryActionLabel = (user: SystemUserListItem): string => {
     return "Desactivar";
 };
 
+/** Texto de la acción principal del panel según el estado del usuario. */
 export const getDrawerPrimaryActionLabel = (user: SystemUserListItem): string => {
     if (user.status === "active") {
         return "Desactivar usuario";
@@ -224,6 +231,7 @@ export const getDrawerPrimaryActionLabel = (user: SystemUserListItem): string =>
     return "Desbloquear usuario";
 };
 
+/** Estado al que lleva la acción principal. */
 export const getPrimaryStatusUpdateTarget = (user: SystemUserListItem): SystemUserStatusUpdateTarget => {
     if (user.status === "active") {
         return "inactive";
@@ -232,6 +240,7 @@ export const getPrimaryStatusUpdateTarget = (user: SystemUserListItem): SystemUs
     return "active";
 };
 
+/** Acción de riesgo: bloquea, o desbloquea si el usuario ya estaba bloqueado. */
 export const getRiskStatusUpdateTarget = (user: SystemUserListItem): SystemUserStatusUpdateTarget => (user.status === "blocked" ? "active" : "blocked");
 
 /** Solo activo y bloqueado tienen una acción de riesgo. El resto no se ofrece. */
@@ -247,6 +256,7 @@ export const getDrawerRiskActionLabel = (user: SystemUserListItem): string => {
     return "Acción no disponible";
 };
 
+/** Icono de la acción principal según el estado del usuario. */
 export const getPrimaryActionIcon = (user: SystemUserListItem): ReactNode => {
     if (user.status === "pending") {
         return createElement(SendOutlined);
@@ -263,6 +273,7 @@ export const getPrimaryActionIcon = (user: SystemUserListItem): ReactNode => {
     return createElement(StopOutlined);
 };
 
+/** Usuario vecino en la lista para navegar con anterior/siguiente; null en los extremos. */
 export const getUserAtOffset = (users: readonly SystemUserListItem[], currentIndex: number, offset: -1 | 1): SystemUserListItem | null => {
     if (currentIndex < 0) {
         return null;
@@ -271,6 +282,7 @@ export const getUserAtOffset = (users: readonly SystemUserListItem[], currentInd
     return users[currentIndex + offset] ?? null;
 };
 
+/** Fecha y hora localizadas, o el texto de respaldo cuando no hay valor. */
 const formatDateTimeLabel = (value: string | null, fallback: string): string => (value ? dateTimeFormatter.format(new Date(value)).replace(".", "") : fallback);
 
 /**
@@ -297,6 +309,7 @@ const formatLastActivityLabel = (value: string | null, status: SystemUserStatus)
 
 const relativeTimeFormatter = new Intl.RelativeTimeFormat("es-CR", { numeric: "auto" });
 
+/** Primera letra en mayúscula. */
 const capitalize = (value: string): string => value.charAt(0).toUpperCase() + value.slice(1);
 
 /**

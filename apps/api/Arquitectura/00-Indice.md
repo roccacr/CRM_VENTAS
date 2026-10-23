@@ -1,6 +1,42 @@
 # 00 - Indice de Arquitectura API
 
+## Jefaturas por modulos - 2026-10-23
+
+[42 - Jefaturas](42-Jefaturas-Modulos-y-Permisos.md): politica persistida de
+Jefe General limitada a modulos operativos seleccionados, techos de roles de
+area y denies individuales. Migracion nativa 029 aplicada; evidencia y limites
+en 42. Owner conserva la politica global de 41, sin asignaciones masivas.
+
+## Owner efectivo y denegaciones - 2026-10-23
+
+[41 - Owner](41-Owner-Herencia-y-Denegaciones.md): migracion 027 aplicada en
+CRM_THINK_V2. Owner hereda roles activos; un deny individual prevalece. Banners
+de etapas requieren rol efectivo Formalizacion y `formalizacion.home.stages.read`.
+Esta regla prevalece sobre las descripciones historicas de rol exclusivamente directo.
+
+## Resumen de etapas de Home - 2026-10-23
+
+[40 - Plan, contrato y rendimiento](40-Formalizacion-Home-Resumen-y-Rendimiento.md):
+conectar los seis banners de etapas con un agregado por rol activo Formalizacion;
+aprobaciones mantiene su permiso independiente. Esta ampliacion es de lectura,
+sin listado ni cambios de estado. La evidencia de ejecucion y las definiciones
+pendientes se registran en 40; no convertir pruebas sinteticas en prueba MySQL.
+Las descripciones fechadas de cinco ceros provisionales corresponden al corte
+anterior, no al objetivo de esta ampliacion.
+
 ## Consolidacion vigente - 2026-10-22
+
+Remediacion posterior: [plan central F01-F13 del 2026-10-23](Reauditoria-54-Plan-y-Resultados.md#plan-central-f01-f13---2026-10-23), con resultados nuevos pendientes. [Runbook de auditoria central](Operacion-Despliegue-Rollback.md#auditoria-central-activacion-y-apagado): default false, preflight 023/024, activacion/apagado y limites. Home tiene dos banners reales (aprobaciones y contratos) y cinco provisionales; contratos exige rol activo formalizacion. Bandejas vacias y list/send/revert no registrados prevalecen sobre descripciones historicas posteriores en este indice.
+
+Precedencia final: [38 - Solo Home](38-Ordenes-Venta-Estados-Auditoria.md#alcance-final-corregido-solo-home---2026-10-22). Bandeja real y acciones retiradas por el propietario; solo resumen contractual registrado. Lectura/listado y comandos preparados no expuestos.
+
+Ultimo corte: [38 - Contratos por fuente](38-Ordenes-Venta-Estados-Auditoria.md#contratos-resumen-y-transiciones-por-fuente---2026-10-22). Banner real por rol, etapas aditivas legacy aplicadas y comandos HTTP protegidos; autoridad nativa si existe, legacy si no, evidencia central nativa. Lista/botones operativos y prueba comercial real posteriores.
+
+Estado posterior: [38 - Activacion local y 024 aplicada](38-Ordenes-Venta-Estados-Auditoria.md#activacion-local-y-migracion-024-aplicada---2026-10-22). Bitacora activa en .env local, API reiniciado y health aprobado. Cuenta compartida conserva privilegios amplios; inmutabilidad SQL no certificada. Conexion legacy READ ONLY; escritura productiva y prueba de cambio de estado siguen pendientes.
+
+Avance posterior: [38 - Escritores conectados y activacion pendiente](38-Ordenes-Venta-Estados-Auditoria.md#escritores-conectados-activacion-pendiente---2026-10-22). Codigo y unidades sin escrituras de validacion en BD; logging central desactivado por defecto hasta preparar 024/privilegios. Politica de lectura audit compartida entre guard y servicio.
+
+Bitacora comercial central: migracion nativa 023 y diccionario en [38 - Bitacora central](38-Ordenes-Venta-Estados-Auditoria.md#bitacora-central-de-registros---2026-10-22). Estructura aplicada, sin captura automatica de todos los escritores ni restauracion ejecutable; Contratos sigue pendiente de conexion.
 
 Entradas actuales: [resumen API](01-Resumen-API.md), [mapa vigente y blueprint](22-Mapa-de-Implementacion-API.md), [remediacion/evidencia](Reauditoria-54-Plan-y-Resultados.md), [plan correctivo](Plan-Correctivo-Auditoria-CRM-TINK.md), [CI/MySQL](CI-MySQL-Pruebas.md) y [operacion/rollback](Operacion-Despliegue-Rollback.md). Distinguir codigo implementado, evidencia historica y validacion productiva pendiente.
 

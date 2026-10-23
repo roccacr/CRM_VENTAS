@@ -7,13 +7,14 @@
  */
 import type { CreateSystemUserAccessMethod, CreateSystemUserPayload, UpdateSystemUserPayload } from "../../services/auth/identity-contracts";
 import type { SystemUserListItem } from "./system-users.model";
+import { canRoleGrantModule, getUserModuleScope, type RoleModuleScope } from "./user-module-scope";
 
 /** Código estable del rol con alcance de toda la empresa. */
 export const OWNER_ROLE_CODE = "owner";
 /** Unidad raíz que el API espera cuando el alcance es global (Owner). */
 export const GLOBAL_ORG_UNIT_CODE = "empresa";
 /** Módulos de administración y estructura que no son áreas operativas asignables. */
-export const NON_OPERATIVE_MODULE_CODES: ReadonlySet<string> = new Set(["role", "user", "org", GLOBAL_ORG_UNIT_CODE]);
+export const NON_OPERATIVE_MODULE_CODES: ReadonlySet<string> = new Set(["administration", "role", "user", "org", GLOBAL_ORG_UNIT_CODE]);
 /** Métodos que el alta ofrece marcados hasta que el usuario quite uno. */
 export const DEFAULT_ACCESS_METHODS: readonly CreateSystemUserAccessMethod[] = ["microsoft", "local"];
 
@@ -24,7 +25,7 @@ export const ACCESS_METHOD_OPTIONS: readonly { readonly label: string; readonly 
 ];
 
 /** Rol seleccionable en el alta, con el conteo de usuarios que ya lo tienen. */
-export interface CreateUserRoleOption {
+export interface CreateUserRoleOption extends RoleModuleScope {
     readonly code: string;
     readonly locked: boolean;
     readonly name: string;
@@ -57,6 +58,7 @@ export type CreateUserRolePermissions = Readonly<Record<string, readonly string[
 
 /** Valores del formulario. El motivo se pide de nuevo en cada guardado. */
 export interface CreateUserFormValues {
+    readonly orgUnitCodes?: readonly string[];
     readonly password?: string | undefined;
     readonly accessMethods: readonly CreateSystemUserAccessMethod[];
     readonly displayName: string;
@@ -130,6 +132,7 @@ export const createEditUserFormValues = (user: SystemUserListItem): CreateUserFo
         ...(odooId ? { odooId } : {}),
         reason: "",
         roleCodes: user.roleCodes,
+        orgUnitCodes: user.orgUnitCodes,
     };
 };
 
@@ -140,23 +143,29 @@ export const hasOwnerRole = (roleCodes: readonly string[] | undefined): boolean 
 export const normalizeEmail = (value: unknown): string => (typeof value === "string" ? value.trim() : "");
 
 /** Une los permisos que el API define para cada rol elegido. Es una vista previa, no el permiso efectivo final. */
-const collectRolePermissionCodes = (roleCodes: readonly string[], rolePermissions: CreateUserRolePermissions): ReadonlySet<string> => new Set(roleCodes.flatMap((roleCode) => rolePermissions[roleCode] ?? []));
+const collectRolePermissionCodes = (roleCodes: readonly string[], rolePermissions: CreateUserRolePermissions, selection: { readonly roles: readonly RoleModuleScope[]; readonly selectedModules: readonly string[] }, moduleCode: string): ReadonlySet<string> => new Set(roleCodes.filter((roleCode) => canRoleGrantModule(roleCode, selection.roles, moduleCode, selection.selectedModules)).flatMap((roleCode) => rolePermissions[roleCode] ?? []));
 
 /**
  * Modulos operativos donde los roles elegidos tienen acciones; Formalizacion
  * conserva su pertenencia inicial aunque aun no tenga banners autorizados.
  *
- * El alta no pide módulos: el usuario queda asignado a estas áreas. Owner no
- * lleva módulos porque su alcance es la empresa completa.
+ * Los metadatos opcionales limitan la selección por empleado. Sin metadatos
+ * se conserva la derivación anterior; Owner conserva el alcance de empresa.
  */
-export const getRoleModules = (roleCodes: readonly string[], rolePermissions: CreateUserRolePermissions, modules: readonly CreateUserModuleOption[]): readonly CreateUserModuleOption[] => {
+export const getRoleModules = (roleCodes: readonly string[], rolePermissions: CreateUserRolePermissions, modules: readonly CreateUserModuleOption[], selection: { readonly roles: readonly RoleModuleScope[]; readonly selectedModules?: readonly string[] | undefined } = { roles: [] }): readonly CreateUserModuleOption[] => {
     if (hasOwnerRole(roleCodes)) {
         return [];
     }
 
-    const rolePermissionCodes = collectRolePermissionCodes(roleCodes, rolePermissions);
+    const selectedModules = selection.selectedModules ?? modules.map((module) => module.code);
+    const scope = getUserModuleScope(roleCodes, selection.roles, selectedModules);
 
-    return modules.filter((module) => (module.code === "formalizacion" && roleCodes.includes("formalizacion")) || module.views.some((view) => view.permissions.some((permission) => rolePermissionCodes.has(permission.code))));
+    return modules
+        .filter((module) => !NON_OPERATIVE_MODULE_CODES.has(module.code) && (scope === null || scope.has(module.code)))
+        .filter((module) => {
+            const rolePermissionCodes = collectRolePermissionCodes(roleCodes, rolePermissions, { roles: selection.roles, selectedModules }, module.code);
+            return (module.code === "formalizacion" && roleCodes.includes("formalizacion")) || module.views.some((view) => view.permissions.some((permission) => rolePermissionCodes.has(permission.code)));
+        });
 };
 
 /** Owner viaja con la unidad raíz. El resto viaja con los módulos donde sus roles tienen acciones. */

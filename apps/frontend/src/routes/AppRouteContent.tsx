@@ -48,10 +48,11 @@ export interface AppRouteContentProps {
 }
 
 /** Página propia de la ruta o, si todavía no existe, el placeholder de sección. */
-function RoutePage({ currentUser, effectivePermissions, route, onNavigate }: { readonly currentUser: IdentityUser; readonly effectivePermissions: IdentityProfile["permissions"]; readonly route: AppRoute; readonly onNavigate: (path: string) => void }) {
-    return route.Page ? <route.Page currentUser={currentUser} effectivePermissions={effectivePermissions} onNavigate={onNavigate} /> : <AdministrationSectionPage title={route.title} />;
+function RoutePage({ currentUser, roles, effectivePermissions, route, onNavigate }: { readonly currentUser: IdentityUser; readonly roles: IdentityProfile["roles"]; readonly effectivePermissions: IdentityProfile["permissions"]; readonly route: AppRoute; readonly onNavigate: (path: string) => void }) {
+    return route.Page ? <route.Page currentUser={currentUser} roles={roles} effectivePermissions={effectivePermissions} onNavigate={onNavigate} /> : <AdministrationSectionPage title={route.title} />;
 }
 
+/** Traduce el estado de autenticación a la fase y el usuario que muestra la pantalla de sesión. */
 const getSessionStatusView = (authState: AuthState): { readonly phase: SessionStatusPhase; readonly user: IdentityUser | null } => (authState.status === "checking" ? { phase: authState.phase ?? "checking", user: authState.user ?? null } : { phase: "checking", user: null });
 
 /** Authenticated feedback stays inside the original shell; denied pages never mount. */
@@ -62,7 +63,7 @@ function AuthenticatedRouteContent({ profile, path, onLogout, onNavigate }: { re
     const defaultPath = getDefaultAuthenticatedPath(profile);
     const shellRoute = permittedRoute ?? getAppRoute(defaultPath ?? "");
     const workspaceCode = shellRoute?.workspaceCode ?? ALL_WORKSPACE_CODE;
-    const page = permittedRoute ? <RoutePage currentUser={profile.user} effectivePermissions={profile.permissions} route={permittedRoute} onNavigate={onNavigate} /> : <AuthenticatedRouteFeedback unknown={!isKnownPath(path)} defaultPath={defaultPath} onNavigate={onNavigate} />;
+    const page = permittedRoute ? <RoutePage currentUser={profile.user} roles={profile.roles} effectivePermissions={profile.permissions} route={permittedRoute} onNavigate={onNavigate} /> : <AuthenticatedRouteFeedback unknown={!isKnownPath(path)} defaultPath={defaultPath} onNavigate={onNavigate} />;
     return (
         <GlobalHomeShell
             activeMenuItemCode={shellRoute?.menuItemCode}
@@ -79,15 +80,16 @@ function AuthenticatedRouteContent({ profile, path, onLogout, onNavigate }: { re
                 if (destination) onNavigate(destination);
             }}
         >
-            <PreviewWorkspace workspaceCode={workspaceCode} userId={profile.user.publicId}>
+            <PreviewWorkspace workspaceCode={workspaceCode} userId={profile.user.publicId} sessionId={profile.session.publicId}>
                 {page}
             </PreviewWorkspace>
         </GlobalHomeShell>
     );
 }
 
-function PreviewWorkspace({ workspaceCode, userId, children }: { readonly workspaceCode: string; readonly userId: string; readonly children: ReactNode }) {
-    return workspaceCode === "formalization" ? <FormalizationPreviewBoundary key={userId}>{children}</FormalizationPreviewBoundary> : children;
+/** Solo Formalización usa un límite de error propio; la clave usuario:sesión reinicia su estado al cambiar de cuenta o sesión. */
+function PreviewWorkspace({ workspaceCode, userId, sessionId, children }: { readonly workspaceCode: string; readonly userId: string; readonly sessionId: string; readonly children: ReactNode }) {
+    return workspaceCode === "formalization" ? <FormalizationPreviewBoundary key={`${userId}:${sessionId}`}>{children}</FormalizationPreviewBoundary> : children;
 }
 
 /** A missing permitted landing page offers no invented navigation destination. */

@@ -2,7 +2,7 @@
  * Filtro y búsqueda del directorio reflejados en la URL.
  *
  * Usa `replaceState` para no llenar el historial con cada tecla. Escribe en
- * una microtarea porque la raíz limpia la query de la ruta en su propio efecto.
+ * una microtarea para agrupar la actualizacion despues del montaje.
  */
 import { useEffect, useState } from "react";
 
@@ -11,6 +11,7 @@ import { parseSystemUserFilter, type SystemUserFilter } from "../system-users.mo
 const STATUS_PARAM = "estado";
 const SEARCH_PARAM = "q";
 
+/** Filtro y búsqueda del directorio reflejados en la URL para poder compartir o recargar la vista. */
 interface SystemUsersUrlState {
     readonly activeFilter: SystemUserFilter;
     readonly searchQuery: string;
@@ -18,8 +19,10 @@ interface SystemUsersUrlState {
     readonly setSearchQuery: (query: string) => void;
 }
 
+/** Parámetros actuales de la URL. */
 const readSearchParams = (): URLSearchParams => new URLSearchParams(window.location.search);
 
+/** Escribe filtro y búsqueda en la URL sin recargar la página. */
 const writeSearchParams = (activeFilter: SystemUserFilter, searchQuery: string): void => {
     const params = readSearchParams();
 
@@ -47,8 +50,7 @@ const writeSearchParams = (activeFilter: SystemUserFilter, searchQuery: string):
  * Estado y búsqueda del directorio reflejados en la URL.
  *
  * Usa `replaceState` para no llenar el historial con cada tecla. Escribe en una
- * microtarea porque `App` limpia la query de la ruta en su propio efecto, que
- * corre después de los efectos de esta pantalla al montarla.
+ * microtarea para aplicar juntos los filtros resueltos al montar la pantalla.
  */
 export const useSystemUsersUrlState = (): SystemUsersUrlState => {
     const [activeFilter, setActiveFilter] = useState<SystemUserFilter>(() => parseSystemUserFilter(readSearchParams().get(STATUS_PARAM)));

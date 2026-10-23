@@ -93,6 +93,7 @@ export interface IdentityOrgUnit {
     readonly status: string;
 }
 
+/** Resumen de proveedores de autenticación de la sesión; solo Microsoft puede ser el proveedor principal. */
 export interface IdentityAuthSummary {
     /** El proveedor principal del CRM es Microsoft. Otro valor invalida el contrato. */
     readonly primaryProvider: "microsoft";
@@ -165,7 +166,7 @@ export type SystemUserDirectoryStatus = "active" | "blocked" | "inactive" | "pen
 /** Proveedor de acceso del directorio. Un texto nuevo no se acepta como Microsoft. */
 export type SystemUserDirectoryProvider = "local" | "microsoft" | "mixed";
 /** MFA informado por el API. El cliente no lo activa ni lo desactiva. */
-export type SystemUserDirectoryMfaStatus = "enabled" | "not_configured" | "pending";
+export type SystemUserDirectoryMfaStatus = "enabled" | "not_configured" | "pending" | "unknown";
 /** Columnas por las que `/identity/users` puede ordenar. */
 export type SystemUserDirectorySortKey = "lastActivity" | "name" | "status";
 /** Sentido del orden del directorio. */
@@ -300,10 +301,14 @@ export interface IdentityRoleCatalogItem {
     readonly description: string | null;
     readonly name: string;
     readonly status: string;
+    readonly moduleCodes?: readonly string[];
+    readonly moduleScoped?: boolean;
+    readonly permissionInheritance?: "assigned" | "selected_modules";
 }
 
 /** Nuevo nombre del rol y motivo. El código estable no viaja en el cuerpo. */
 export interface UpdateIdentityRolePayload {
+    readonly moduleCodes?: readonly string[];
     readonly description?: string;
     readonly name: string;
     readonly reason: string;
@@ -311,6 +316,7 @@ export interface UpdateIdentityRolePayload {
 
 /** Reemplazo completo de los permisos activos de un rol, con motivo de auditoría. */
 export interface ReplaceIdentityRolePermissionsPayload {
+    readonly moduleCodes?: readonly string[];
     readonly permissionCodes: readonly string[];
     readonly reason: string;
 }
@@ -414,6 +420,7 @@ export interface IdentitySecurityCatalog {
 /** Objeto plano. Un array también pasa aquí; falla después, cuando le faltan los campos. */
 const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === "object" && value !== null;
 
+/** Guarda de tipo para texto. */
 const isString = (value: unknown): value is string => typeof value === "string";
 
 /** Descarta `NaN` e `Infinity`. Una versión de permisos así no puede colarse como número. */
@@ -428,11 +435,14 @@ const isPermissionEffect = (value: unknown): value is PermissionEffect => value 
 /** Solo los tres orígenes del API. Un texto nuevo no se acepta como si ya estuviera resuelto. */
 const isPermissionSource = (value: unknown): value is PermissionSource => value === "role" || value === "override" || value === "system";
 
+/** Estados válidos de un usuario del directorio. */
 const isSystemUserStatus = (value: unknown): value is SystemUserDirectoryStatus => value === "active" || value === "blocked" || value === "inactive" || value === "pending";
 
+/** Proveedores de identidad válidos de un usuario del directorio. */
 const isSystemUserProvider = (value: unknown): value is SystemUserDirectoryProvider => value === "local" || value === "microsoft" || value === "mixed";
 
-const isSystemUserMfaStatus = (value: unknown): value is SystemUserDirectoryMfaStatus => value === "enabled" || value === "not_configured" || value === "pending";
+/** Estados válidos de MFA de un usuario del directorio. */
+const isSystemUserMfaStatus = (value: unknown): value is SystemUserDirectoryMfaStatus => value === "enabled" || value === "not_configured" || value === "pending" || value === "unknown";
 
 /**
  * Exige un objeto y nombra el contrato en el error.
@@ -550,6 +560,7 @@ const parseOrgUnit = (value: unknown): IdentityOrgUnit => {
     };
 };
 
+/** Rol de un usuario del directorio. Valida la forma que devuelve el API y falla ante cualquier campo inesperado; nunca rellena con valores por defecto. */
 const parseSystemUserDirectoryRole = (value: unknown): SystemUserDirectoryRole => {
     const record = assertRecord(value, "SystemUserDirectoryRole");
 
@@ -563,6 +574,7 @@ const parseSystemUserDirectoryRole = (value: unknown): SystemUserDirectoryRole =
     };
 };
 
+/** Unidad organizativa de un usuario, o null si no tiene. Valida la forma que devuelve el API y falla ante cualquier campo inesperado; nunca rellena con valores por defecto. */
 const parseSystemUserDirectoryOrgUnit = (value: unknown): SystemUserDirectoryOrgUnit | null => {
     if (value === null) {
         return null;
@@ -581,6 +593,7 @@ const parseSystemUserDirectoryOrgUnit = (value: unknown): SystemUserDirectoryOrg
     };
 };
 
+/** Referencia a un sistema externo. Valida la forma que devuelve el API y falla ante cualquier campo inesperado; nunca rellena con valores por defecto. */
 const parseSystemUserExternalReference = (value: unknown): SystemUserExternalReference => {
     const record = assertRecord(value, "SystemUserExternalReference");
 
@@ -597,6 +610,7 @@ const parseSystemUserExternalReference = (value: unknown): SystemUserExternalRef
     };
 };
 
+/** Campos de identidad que el directorio debe traer siempre. */
 type SystemUserIdentityRecord = Record<string, unknown> & {
     email: string;
     isCurrentUser: boolean;
@@ -604,6 +618,7 @@ type SystemUserIdentityRecord = Record<string, unknown> & {
     publicId: string;
 };
 
+/** Campos de directorio (roles, MFA y unidades) que deben acompañar a la identidad. */
 type SystemUserDirectoryRecord = Record<string, unknown> & {
     mfaStatus: SystemUserDirectoryMfaStatus;
     provider: SystemUserDirectoryProvider;
@@ -611,10 +626,13 @@ type SystemUserDirectoryRecord = Record<string, unknown> & {
     status: SystemUserDirectoryStatus;
 };
 
+/** Comprueba los campos de identidad antes de leerlos. */
 const hasSystemUserIdentityFields = (record: Record<string, unknown>): record is SystemUserIdentityRecord => isString(record.email) && typeof record.isCurrentUser === "boolean" && isString(record.name) && isString(record.publicId);
 
+/** Comprueba los campos de directorio antes de leerlos. */
 const hasSystemUserDirectoryFields = (record: Record<string, unknown>): record is SystemUserDirectoryRecord => Array.isArray(record.roles) && isSystemUserMfaStatus(record.mfaStatus) && isSystemUserProvider(record.provider) && isSystemUserStatus(record.status);
 
+/** Usuario del directorio. Valida la forma que devuelve el API y falla ante cualquier campo inesperado; nunca rellena con valores por defecto. */
 const parseSystemUserDirectoryItem = (value: unknown): SystemUserDirectoryItem => {
     const record = assertRecord(value, "SystemUserDirectoryItem");
 
@@ -649,6 +667,20 @@ const parseSystemUserDirectoryItem = (value: unknown): SystemUserDirectoryItem =
     };
 };
 
+/** Alcance de módulos de un rol y su herencia de permisos. Valida la forma que devuelve el API y falla ante cualquier campo inesperado; nunca rellena con valores por defecto. */
+const parseModuleScoped = (value: unknown): Pick<IdentityRoleCatalogItem, "moduleScoped"> => {
+    if (value === undefined) return {};
+    if (typeof value !== "boolean") throw new TypeError("Respuesta role.moduleScoped inválida.");
+    return { moduleScoped: value };
+};
+
+const parseRoleModuleScope = (record: Record<string, unknown>): Pick<IdentityRoleCatalogItem, "moduleCodes" | "moduleScoped" | "permissionInheritance"> => {
+    if (record.moduleCodes !== undefined && !isStringArray(record.moduleCodes)) throw new TypeError("Respuesta role.moduleCodes inválida.");
+    if (record.permissionInheritance !== undefined && record.permissionInheritance !== "assigned" && record.permissionInheritance !== "selected_modules") throw new TypeError("Respuesta role.permissionInheritance inválida.");
+    return { ...parseModuleScoped(record.moduleScoped), ...(record.moduleCodes !== undefined ? { moduleCodes: record.moduleCodes } : {}), ...(record.permissionInheritance !== undefined ? { permissionInheritance: record.permissionInheritance } : {}) };
+};
+
+/** Rol del catálogo. Valida la forma que devuelve el API y falla ante cualquier campo inesperado; nunca rellena con valores por defecto. */
 const parseIdentityRoleCatalogItem = (value: unknown): IdentityRoleCatalogItem => {
     const record = assertRecord(value, "IdentityRoleCatalogItem");
 
@@ -657,6 +689,7 @@ const parseIdentityRoleCatalogItem = (value: unknown): IdentityRoleCatalogItem =
     }
 
     return {
+        ...parseRoleModuleScope(record),
         code: record.code,
         description: parseNullableString(record.description),
         name: record.name,
@@ -664,6 +697,7 @@ const parseIdentityRoleCatalogItem = (value: unknown): IdentityRoleCatalogItem =
     };
 };
 
+/** Rol del catálogo de seguridad, con sus usuarios y estado de bloqueo. Valida la forma que devuelve el API y falla ante cualquier campo inesperado; nunca rellena con valores por defecto. */
 const parseIdentitySecurityRoleCatalogItem = (value: unknown): IdentitySecurityRoleCatalogItem => {
     const record = assertRecord(value, "IdentitySecurityRoleCatalogItem");
     const role = parseIdentityRoleCatalogItem(value);
@@ -679,6 +713,7 @@ const parseIdentitySecurityRoleCatalogItem = (value: unknown): IdentitySecurityR
     };
 };
 
+/** Permiso del catálogo. Valida la forma que devuelve el API y falla ante cualquier campo inesperado; nunca rellena con valores por defecto. */
 const parseIdentityPermissionCatalogItem = (value: unknown): IdentityPermissionCatalogItem => {
     const record = assertRecord(value, "IdentityPermissionCatalogItem");
 
@@ -694,6 +729,7 @@ const parseIdentityPermissionCatalogItem = (value: unknown): IdentityPermissionC
     };
 };
 
+/** Vista de módulo del catálogo. Valida la forma que devuelve el API y falla ante cualquier campo inesperado; nunca rellena con valores por defecto. */
 const parseIdentityModuleViewCatalogItem = (value: unknown): IdentityModuleViewCatalogItem => {
     const record = assertRecord(value, "IdentityModuleViewCatalogItem");
 
@@ -708,6 +744,7 @@ const parseIdentityModuleViewCatalogItem = (value: unknown): IdentityModuleViewC
     };
 };
 
+/** Módulo del catálogo. Valida la forma que devuelve el API y falla ante cualquier campo inesperado; nunca rellena con valores por defecto. */
 const parseIdentityModuleCatalogItem = (value: unknown): IdentityModuleCatalogItem => {
     const record = assertRecord(value, "IdentityModuleCatalogItem");
 
@@ -722,6 +759,7 @@ const parseIdentityModuleCatalogItem = (value: unknown): IdentityModuleCatalogIt
     };
 };
 
+/** Evento de auditoría de seguridad. Valida la forma que devuelve el API y falla ante cualquier campo inesperado; nunca rellena con valores por defecto. */
 const parseIdentitySecurityAuditItem = (value: unknown): IdentitySecurityAuditItem => {
     const record = assertRecord(value, "IdentitySecurityAuditItem");
 
@@ -742,6 +780,7 @@ const parseIdentitySecurityAuditItem = (value: unknown): IdentitySecurityAuditIt
     };
 };
 
+/** Catálogo completo de seguridad (roles, módulos y auditoría). Valida la forma que devuelve el API y falla ante cualquier campo inesperado; nunca rellena con valores por defecto. */
 const parseIdentitySecurityCatalogResponse = (value: unknown): IdentitySecurityCatalog => {
     const record = assertRecord(value, "IdentitySecurityCatalog");
 
@@ -765,6 +804,7 @@ const parseIdentitySecurityCatalogResponse = (value: unknown): IdentitySecurityC
     };
 };
 
+/** Respuesta de reemplazo de permisos de un rol. Valida la forma que devuelve el API y falla ante cualquier campo inesperado; nunca rellena con valores por defecto. */
 const parseIdentityRolePermissionsResponse = (value: unknown): ReplaceIdentityRolePermissionsResponse => {
     const record = assertRecord(value, "ReplaceIdentityRolePermissionsResponse");
 
@@ -778,6 +818,7 @@ const parseIdentityRolePermissionsResponse = (value: unknown): ReplaceIdentityRo
     };
 };
 
+/** Rol asignado a un empleado. Valida la forma que devuelve el API y falla ante cualquier campo inesperado; nunca rellena con valores por defecto. */
 const parseIdentityUserAccessRole = (value: unknown): IdentityUserAccessRole => {
     const record = assertRecord(value, "IdentityUserAccessRole");
 
@@ -792,6 +833,7 @@ const parseIdentityUserAccessRole = (value: unknown): IdentityUserAccessRole => 
     };
 };
 
+/** Unidad organizativa de un empleado. Valida la forma que devuelve el API y falla ante cualquier campo inesperado; nunca rellena con valores por defecto. */
 const parseIdentityUserAccessOrgUnit = (value: unknown): IdentityUserAccessOrgUnit => {
     const record = assertRecord(value, "IdentityUserAccessOrgUnit");
 
@@ -806,6 +848,7 @@ const parseIdentityUserAccessOrgUnit = (value: unknown): IdentityUserAccessOrgUn
     };
 };
 
+/** Excepción de permiso (permitir o denegar) de un empleado. Valida la forma que devuelve el API y falla ante cualquier campo inesperado; nunca rellena con valores por defecto. */
 const parseIdentityUserPermissionOverride = (value: unknown): IdentityUserPermissionOverride => {
     const record = assertRecord(value, "IdentityUserPermissionOverride");
 
@@ -819,6 +862,7 @@ const parseIdentityUserPermissionOverride = (value: unknown): IdentityUserPermis
     };
 };
 
+/** Resumen de acceso de un empleado. Valida la forma que devuelve el API y falla ante cualquier campo inesperado; nunca rellena con valores por defecto. */
 const parseIdentityUserAccessSummary = (value: unknown): IdentityUserAccessSummary => {
     const record = assertRecord(value, "IdentityUserAccessSummary");
     const user = assertRecord(record.user, "IdentityUserAccessSummary.user");
@@ -840,6 +884,7 @@ const parseIdentityUserAccessSummary = (value: unknown): IdentityUserAccessSumma
     };
 };
 
+/** Totales por estado del directorio. Valida la forma que devuelve el API y falla ante cualquier campo inesperado; nunca rellena con valores por defecto. */
 const parseSystemUsersSummary = (value: unknown): SystemUsersSummary => {
     const record = assertRecord(value, "SystemUsersSummary");
 
@@ -856,6 +901,7 @@ const parseSystemUsersSummary = (value: unknown): SystemUsersSummary => {
     };
 };
 
+/** Datos de paginación del directorio. Valida la forma que devuelve el API y falla ante cualquier campo inesperado; nunca rellena con valores por defecto. */
 const parseSystemUsersPageInfo = (value: unknown): SystemUsersPageInfo => {
     const record = assertRecord(value, "SystemUsersPageInfo");
 

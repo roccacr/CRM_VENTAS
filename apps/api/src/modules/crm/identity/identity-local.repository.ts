@@ -7,6 +7,7 @@ import { SecurityAuditService } from "../audit/security-audit.service.js";
 import type { CompleteLocalPasswordResetInput, CompleteLocalPasswordResetResult, CreateLocalPasswordResetTokenInput, FailedLocalLoginRecord, LocalLoginIdentity, ResettableLocalIdentity } from "./identity.repository.js";
 import { ACTIVE_STATUS, EXPIRED_STATUS, hasUpdatedRows, IDENTITY_RUNTIME_AUDIT_SOURCE, LOCAL_PROVIDER_AVAILABLE_STATUSES, LOCAL_PROVIDER_CODE, PENDING_LOCAL_STATUS, REVOKED_STATUS, USED_STATUS } from "./identity-repository.shared.js";
 
+/** Password-reset token with its user and expiry. */
 type LocalPasswordResetRow = {
     authIdentityId: number;
     identityStatus: string;
@@ -100,7 +101,8 @@ export class IdentityLocalRepository {
                 .set({
                     failed_login_count_auth_identity: sql<number>`failed_login_count_auth_identity + 1`,
                     last_failed_login_at_auth_identity: now,
-                    locked_until_auth_identity: sql<Date | null>`CASE WHEN failed_login_count_auth_identity + 1 >= ${lockoutMaxFailures} THEN ${lockUntil} ELSE locked_until_auth_identity END`,
+                    // MySQL evaluates SET left-to-right: the counter above is already incremented.
+                    locked_until_auth_identity: sql<Date | null>`CASE WHEN failed_login_count_auth_identity >= ${lockoutMaxFailures} THEN ${lockUntil} ELSE locked_until_auth_identity END`,
                     updated_at_auth_identity: now,
                 })
                 .where("id_auth_identity", "=", authIdentityId)

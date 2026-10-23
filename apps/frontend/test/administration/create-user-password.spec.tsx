@@ -30,9 +30,12 @@ describe("create-only assigned password", () => {
         const input = await screen.findByLabelText("Contraseña inicial");
         fireEvent.change(input, { target: { value: "            " } });
         expect(await screen.findByText("La contraseña no puede contener solo espacios.")).toBeInTheDocument();
+        expect(input).toHaveAttribute("aria-invalid", "true");
         const password = " Valid secret 123 ";
         fireEvent.change(input, { target: { value: password } });
-        await waitFor(() => expect(screen.queryByText("La contraseña no puede contener solo espacios.")).not.toBeInTheDocument());
+        // AntD can retain the previous error during its exit animation.
+        await waitFor(() => expect(input).not.toHaveAttribute("aria-invalid"));
+        expect(input).toHaveValue(password);
         expect(buildCreateUserPayload({ ...values, password }, [], true).password).toBe(password);
     });
     it("hides passwords without assignment permission and in edit mode", () => {

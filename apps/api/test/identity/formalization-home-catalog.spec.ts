@@ -21,6 +21,8 @@ describe("Formalization Home security catalog", () => {
                               { code: "formalizacion.home.approvals.read", moduleCode: "formalizacion", actionCode: "read", description: "Permite ver el banner de pendientes de aprobacion de Formalizacion; no permite aprobar ordenes." },
                               { code: "signature.manage", moduleCode: "formalizacion", actionCode: "manage", description: "Gestionar firmas" },
                               { code: "lead.read", moduleCode: "ventas", actionCode: "read", description: "Ver leads" },
+                              ...["appointments", "calendar", "home", "leads"].map((section) => ({ code: `mercadeo.${section}.read`, moduleCode: "mercadeo", actionCode: "read", description: "Seccion de Mercadeo" })),
+                              { code: "mercadeo.catalog_project.read", moduleCode: "mercadeo", actionCode: "read", description: "Ver proyectos" },
                           ]
                         : [];
                     return Promise.resolve({ rows: rows as R[] });
@@ -48,6 +50,15 @@ describe("Formalization Home security catalog", () => {
             ).toEqual(["contract.review", "file.read", "formalizacion.catalog_project.read", "formalizacion.home.approvals.read", "signature.manage"]);
             expect(views.find((view) => view.code === "home")).toMatchObject({ permissions: [expect.objectContaining({ name: "Banner pendiente de aprobaci\u00f3n de Formalizaci\u00f3n" })] });
             expect(catalog.modules.find((module) => module.code === "ventas")?.views.map((view) => view.code)).toEqual(["lead"]);
+            const marketingViews = catalog.modules.find((module) => module.code === "mercadeo")?.views ?? [];
+            expect(marketingViews.map(({ code, name }) => ({ code, name }))).toEqual([
+                { code: "home", name: "Inicio" },
+                { code: "leads", name: "Captación de leads" },
+                { code: "appointments", name: "Eventos y citas" },
+                { code: "calendar", name: "Calendario" },
+                { code: "catalog_project", name: "Proyectos" },
+            ]);
+            expect(marketingViews.slice(0, 4).flatMap((view) => view.permissions.map((permission) => permission.name))).toEqual(["Ver Inicio", "Ver Captación de leads", "Ver Eventos y citas", "Ver Calendario"]);
         } finally {
             await db.destroy();
         }

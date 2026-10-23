@@ -33,8 +33,8 @@ export class IdentityMicrosoftRepository {
      * El callback no crea usuarios automaticamente: Microsoft autentica, pero
      * CRM decide si esa persona existe y esta activa.
      */
-    async findActiveMicrosoftIdentity(input: { normalizedEmail: string; subject: string }): Promise<MicrosoftLoginIdentity | null> {
-        const row = await this.database.db
+    async findActiveMicrosoftIdentity(input: { normalizedEmail: string; subject: string }, executor: Pick<IdentityTransaction, "selectFrom"> = this.database.db): Promise<MicrosoftLoginIdentity | null> {
+        const row = await executor
             .selectFrom("sec_auth_identity as identity")
             .innerJoin("sec_user as user", "user.id_user", "identity.user_id_auth_identity")
             .select(["identity.id_auth_identity as authIdentityId", "user.id_user as userId", "user.permission_version_user as permissionVersion"])
@@ -63,42 +63,56 @@ export class IdentityMicrosoftRepository {
             return { identity: existingIdentity, status: "ready" };
         }
 
-        const user = await this.database.db.selectFrom("sec_user as user").select(["user.deleted_at_user as deletedAt", "user.id_user as userId", "user.permission_version_user as permissionVersion", "user.status_user as status"]).where("user.normalized_email_user", "=", input.normalizedEmail).executeTakeFirst();
+        return this.database.db.transaction().execute(async (transaction) => {
+            // Serialize first-link provisioning with administrative access-method edits on the same parent.
+            const user = await transaction.selectFrom("sec_user as user").select(["user.deleted_at_user as deletedAt", "user.id_user as userId", "user.permission_version_user as permissionVersion", "user.status_user as status"]).where("user.normalized_email_user", "=", input.normalizedEmail).forUpdate().executeTakeFirst();
 
-        if (!user) {
-            return { status: "not_found" };
-        }
+            if (!user) {
+                return { status: "not_found" };
+            }
 
-        if (user.status !== ACTIVE_STATUS || user.deletedAt !== null) {
-            return { status: "user_not_active" };
-        }
+            if (user.status !== ACTIVE_STATUS || user.deletedAt !== null) {
+                return { status: "user_not_active" };
+            }
 
-        const now = new Date();
-        await this.database.db
-            .insertInto("sec_auth_identity")
-            .values({
-                created_at_auth_identity: now,
-                email_auth_identity: input.email,
-                failed_login_count_auth_identity: 0,
-                last_failed_login_at_auth_identity: null,
-                last_used_at_auth_identity: null,
-                locked_until_auth_identity: null,
-                normalized_email_auth_identity: input.normalizedEmail,
-                password_hash_auth_identity: null,
-                provider_code_auth_identity: MICROSOFT_PROVIDER_CODE,
-                provider_subject_auth_identity: input.subject,
-                status_auth_identity: ACTIVE_STATUS,
-                updated_at_auth_identity: now,
-                user_id_auth_identity: user.userId,
-            })
-            .onDuplicateKeyUpdate({
-                updated_at_auth_identity: now,
-            })
-            .executeTakeFirstOrThrow();
+            const identities = await transaction.selectFrom("sec_auth_identity").select(["id_auth_identity as id", "provider_subject_auth_identity as subject", "status_auth_identity as status", "deleted_at_auth_identity as deletedAt"]).where("user_id_auth_identity", "=", user.userId).where("provider_code_auth_identity", "=", MICROSOFT_PROVIDER_CODE).execute();
+            // A verified email cannot recover disabled access or replace a previously bound subject.
+            if (identities.some((identity) => identity.status !== ACTIVE_STATUS || identity.deletedAt !== null || (identity.subject !== null && identity.subject !== input.subject))) {
+                return { status: "not_found" };
+            }
 
-        const identity = await this.findActiveMicrosoftIdentity(input);
+            const unboundIdentity = identities.find((identity) => identity.subject === null);
+            if (unboundIdentity) {
+                await transaction.updateTable("sec_auth_identity").set({ provider_subject_auth_identity: input.subject, updated_at_auth_identity: new Date() }).where("id_auth_identity", "=", unboundIdentity.id).where("status_auth_identity", "=", ACTIVE_STATUS).where("deleted_at_auth_identity", "is", null).where("provider_subject_auth_identity", "is", null).executeTakeFirst();
+            } else if (identities.length === 0) {
+                const now = new Date();
+                await transaction
+                    .insertInto("sec_auth_identity")
+                    .values({
+                        created_at_auth_identity: now,
+                        email_auth_identity: input.email,
+                        failed_login_count_auth_identity: 0,
+                        last_failed_login_at_auth_identity: null,
+                        last_used_at_auth_identity: null,
+                        locked_until_auth_identity: null,
+                        normalized_email_auth_identity: input.normalizedEmail,
+                        password_hash_auth_identity: null,
+                        provider_code_auth_identity: MICROSOFT_PROVIDER_CODE,
+                        provider_subject_auth_identity: input.subject,
+                        status_auth_identity: ACTIVE_STATUS,
+                        updated_at_auth_identity: now,
+                        user_id_auth_identity: user.userId,
+                    })
+                    .onDuplicateKeyUpdate({
+                        updated_at_auth_identity: now,
+                    })
+                    .executeTakeFirstOrThrow();
+            }
 
-        return identity ? { identity, status: "ready" } : { status: "not_found" };
+            const identity = await this.findActiveMicrosoftIdentity(input, transaction);
+
+            return identity ? { identity, status: "ready" } : { status: "not_found" };
+        });
     }
 
     /**
@@ -114,7 +128,6 @@ export class IdentityMicrosoftRepository {
                     email_auth_identity: input.email,
                     last_used_at_auth_identity: now,
                     normalized_email_auth_identity: normalizeCaseInsensitiveIdentifier(input.email),
-                    provider_subject_auth_identity: input.subject,
                     updated_at_auth_identity: now,
                 })
                 .where("id_auth_identity", "=", input.authIdentityId)

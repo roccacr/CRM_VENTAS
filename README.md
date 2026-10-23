@@ -1,14 +1,37 @@
 # CRM TINK: inicio y continuidad
 
-Actualizado: 2026-10-22. Este repositorio contiene el CRM nuevo NestJS/React. El checkout legacy llamado CRM VENTAS es otro proyecto; no usarlo para ejecutar estos comandos.
+Actualizado: 2026-10-23. Este repositorio contiene el CRM nuevo NestJS/React. El checkout legacy llamado CRM VENTAS es otro proyecto; no usarlo para ejecutar estos comandos.
 
 ## Estado vigente y limites
 
+Jerarquia modular: [42 - Jefaturas](apps/api/Arquitectura/42-Jefaturas-Modulos-y-Permisos.md).
+Migraciones nativas 029 y 030 aplicadas. Owner conserva herencia global y denies
+individuales; administra la plantilla de Jefe General en Roles y seguridad,
+Por rol. El empleado recibe la interseccion de los modulos habilitados en esa
+plantilla y sus modulos asignados. Los jefes de area conservan sus grants bajo su techo modular.
+La administracion del acceso reutiliza Usuarios y Roles y seguridad; no modifica
+ordenes ni identidad en la BD legacy. Evidencia final y limites en 42.
+
 La [remediacion y evidencia de verificacion](apps/api/Arquitectura/Reauditoria-54-Plan-y-Resultados.md) es la referencia del corte actual. Incluye autenticacion global por defecto denegada, permisos declarativos de ruta con comprobaciones adicionales en servicios/recursos, limites de lectura por proceso, recuperacion de clave deshabilitada con 503, salud HTTP, navegacion con historial/carga diferida y errores recuperables. No acredita despliegue ni cierre completo de seguridad.
 
-Formalizacion tiene persistencia interna normalizada de ordenes e historial y un contador real de aprobaciones protegido por `formalizacion.home.approvals.read`; no existe todavia API de aprobacion/cambio de etapa. El banner no dispara consultas sin permiso. Los otros seis indicadores siguen en cero provisional; seguimiento y movimientos del Home no tienen fuente operacional. Calendario/resumen y recorridos de gestion conservan simulaciones, no operaciones reales.
+Formalizacion tiene persistencia interna normalizada de ordenes e historial.
+Aprobaciones conserva `formalizacion.home.approvals.read`; contratos y las cinco
+etapas posteriores comparten `GET /formalization/home/summary`, exclusivo del rol
+efectivo `formalizacion` mas `formalizacion.home.stages.read`. Owner puede heredar
+ese rol, pero no omitir un deny individual. No consultan sin
+su autorizacion. El agregado lee ambas fuentes sin cache, con autoridad nativa
+y conteo por ultima secuencia de etapa; no son ceros demostrativos. Definiciones,
+acumulado anual de finalizaciones y evidencia: [Home y rendimiento](apps/api/Arquitectura/40-Formalizacion-Home-Resumen-y-Rendimiento.md).
+Bandejas vacias y seguimiento/movimientos sin fuente operacional. Solo Home:
+list/send/revert no registrados en runtime; las clases preparadas no autorizan
+acciones. Calendario/resumen y recorridos de gestion conservan simulaciones,
+no operaciones reales.
 
-`CRM_THINK_V2` es desarrollo con datos que deben conservarse; `crmdatabase-api` es produccion. No usar la primera como dataset desechable. Lectura legacy y escritura tienen compuertas distintas: `ENABLE_LEGACY_FALLBACK` no habilita mutaciones. `ENABLE_LEGACY_WRITES` requiere ademas produccion y el destino legacy exacto. Ambos flags estan deshabilitados en el entorno local revisado. Con fallback apagado el contador consulta solo nativo; no afirmar una validacion real de ambas BD.
+`CRM_THINK_V2` es desarrollo con datos que deben conservarse; `crmdatabase-api` es produccion. No usar la primera como dataset desechable. Lectura legacy y escritura tienen compuertas distintas: `ENABLE_LEGACY_FALLBACK` no habilita mutaciones. Los escritores legacy de catalogos requieren ademas produccion y destino exacto; comandos contractuales preparados no estan habilitados en runtime.
+
+Los defaults de [`.env.example`](apps/api/.env.example) y validacion son `ENABLE_LEGACY_FALLBACK=false`, `ENABLE_RECORD_AUDIT=false` y `ENABLE_LEGACY_WRITES=false`. El snapshot local autorizado del 2026-10-22, [posterior al retiro de acciones](apps/api/Arquitectura/38-Ordenes-Venta-Estados-Auditoria.md#alcance-final-corregido-solo-home---2026-10-22), documenta fallback/auditoria `true` y legacy writes `false`; no se relee ni modifica `.env` en esta remediacion. El estado de produccion es desconocido. Con fallback apagado los resumenes consultan solo nativo; una configuracion local no acredita operacion productiva.
+
+El [plan central F01-F13 y resultados nuevos](apps/api/Arquitectura/Reauditoria-54-Plan-y-Resultados.md#plan-central-f01-f13---2026-10-23) registra la remediacion local: check-all aprobado, API 5194 pruebas y 113 MySQL omitidas, frontend 507 pruebas en cinco corridas seriales y cobertura aprobada. No certifica despliegue, MySQL aislado, clon limpio ni CI remoto del arbol actual.
 
 El corte `f2dc4f1` tuvo clon limpio y `check-all.cmd` aprobados: API 4583 pruebas aprobadas y 113 MySQL omitidas; frontend 428 aprobadas. Es evidencia fechada de esa entrega, no una nueva corrida de esta revision documental. CI esta versionado/preparado, sin ejecucion remota acreditada. MySQL sigue informativo y bloqueado hasta disponer de dataset aislado autorizado.
 

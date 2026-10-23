@@ -117,7 +117,7 @@ describe.skipIf(process.env.IDENTITY_ACCESS_MYSQL_TESTS !== "1")("Access replace
                     const failure = new Error("audit unavailable");
                     if (failAudit) vi.spyOn(audit, "record").mockRejectedValue(failure);
                     const repository = new IdentityAccessManagementRepository(service, audit, sessions);
-                    const operation = repository.replaceUserAccess({ actorPublicId: owner.public_id_user, userPublicId: owner.public_id_user, roleCodes: [replacementRoleCode], orgUnitCodes: [], permissionOverrides: [], reason: "Owner downgrade regression" });
+                    const operation = repository.replaceUserAccess({ validateAccess: () => Promise.resolve(), actorPublicId: owner.public_id_user, userPublicId: owner.public_id_user, roleCodes: [replacementRoleCode], orgUnitCodes: [], permissionOverrides: [], reason: "Owner downgrade regression" });
                     if (failAudit) {
                         await expect(operation).rejects.toBe(failure);
                         expect(await profiles.findBySessionTokenHash(token)).toMatchObject({ roles: original.roles, orgUnits: original.orgUnits, permissions: original.permissions, user: original.user });

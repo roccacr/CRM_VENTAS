@@ -32,12 +32,12 @@ export class IdentityAccessManagementController {
     }
 
     /**
-     * Actualiza el nombre visible de un rol sin cambiar su codigo estable.
+     * Actualiza datos visibles y techo modular opcional sin cambiar el codigo estable.
      */
     @Patch(IDENTITY_ROLE_DETAIL_ROUTE)
     @RouteSecurity("permission")
     @RequirePermission({ kind: "all", codes: ["role.assign"] })
-    @ApiOperation({ summary: "Renombrar rol del sistema." })
+    @ApiOperation({ summary: "Actualizar datos y limite modular de un rol; la politica requiere Owner." })
     @ApiBody({ type: UpdateIdentityRoleDto })
     updateRole(@Param("roleCode") roleCode: string, @Body() body: UpdateIdentityRoleDto, @Req() request: CookieRequest, @Headers("user-agent") userAgent?: string) {
         return this.accessManagement.updateRole(request.cookies[SESSION_COOKIE_NAME], {
@@ -60,12 +60,12 @@ export class IdentityAccessManagementController {
     }
 
     /**
-     * Reemplaza los permisos activos de un rol.
+     * Reemplaza permisos y, opcionalmente, su techo de modulos en una sola transaccion.
      */
     @Put(IDENTITY_ROLE_PERMISSIONS_ROUTE)
     @RouteSecurity("permission")
     @RequirePermission({ kind: "all", codes: ["role.assign"] })
-    @ApiOperation({ summary: "Guardar permisos activos de un rol." })
+    @ApiOperation({ summary: "Guardar permisos activos y techo opcional de modulos de un rol." })
     @ApiBody({ type: ReplaceIdentityRolePermissionsDto })
     replaceRolePermissions(@Param("roleCode") roleCode: string, @Body() body: ReplaceIdentityRolePermissionsDto, @Req() request: CookieRequest, @Headers("user-agent") userAgent?: string) {
         return this.accessManagement.replaceRolePermissions(request.cookies[SESSION_COOKIE_NAME], {

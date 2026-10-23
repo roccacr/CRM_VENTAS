@@ -1,11 +1,15 @@
+import { createHash } from "node:crypto";
+
 import { BadRequestException, ConflictException, Inject, Injectable } from "@nestjs/common";
 import { sql, type Transaction } from "kysely";
 import { ulid } from "ulid";
 
 import { DatabaseService } from "../../../../database/database.service.js";
 import type { CrmDatabase } from "../../../../database/database.types.js";
-import type { AuditActorSnapshot } from "../../audit/security-audit.service.js";
+import type { AuditActorSnapshot } from "../../audit/audit-actor.js";
+import { RecordAuditService } from "../../audit/record-audit.service.js";
 
+/** Who, why and which operation: the reason and ids are stored in the audit trail. */
 export interface LifecycleContext {
     readonly orderId: string;
     readonly actor: AuditActorSnapshot;
@@ -14,6 +18,7 @@ export interface LifecycleContext {
     readonly correlationId: string;
 }
 
+/** Reason and ids must be non-empty and within column limits. */
 const assertContext = (context: LifecycleContext): void => {
     const fields = [
         [context.reason, 500],
@@ -23,6 +28,7 @@ const assertContext = (context: LifecycleContext): void => {
     if (!fields.every(([value, maximum]) => value.trim().length > 0 && value.length <= maximum)) throw new BadRequestException("Motivo e identificadores de operacion requeridos");
 };
 
+/** An operationId reused with different content is a conflict, not a replay. */
 const assertReplay = (actual: readonly unknown[], expected: readonly unknown[]): void => {
     if (JSON.stringify(actual) !== JSON.stringify(expected)) throw new ConflictException("Operacion reutilizada con otro contenido");
 };
@@ -31,15 +37,22 @@ const assertReplay = (actual: readonly unknown[], expected: readonly unknown[]):
 @Injectable()
 export class SalesOrderLifecycleRepository {
     /** Only uses the canonical database pool. */
-    constructor(@Inject(DatabaseService) private readonly database: DatabaseService) {}
+    constructor(
+        @Inject(DatabaseService) private readonly database: DatabaseService,
+        @Inject(RecordAuditService) private readonly recordAudit: RecordAuditService = new RecordAuditService(database),
+    ) {}
 
     /** Locks the parent before inspecting the ledger, serializing state and approval writes. */
     private async lockOrder(tx: Transaction<CrmDatabase>, context: LifecycleContext) {
         assertContext(context);
-        const order = await tx.selectFrom("crm_sales_order").select(["id_sales_order", "status_sales_order", "cancelled_sales_order"]).where("public_id_sales_order", "=", context.orderId).where("deleted_at_sales_order", "is", null).forUpdate().executeTakeFirstOrThrow();
+        const order = await tx.selectFrom("crm_sales_order").select(["id_sales_order", "native_code_sales_order", "id_old_produccion_sales_order", "status_sales_order", "cancelled_sales_order"]).where("public_id_sales_order", "=", context.orderId).where("deleted_at_sales_order", "is", null).forUpdate().executeTakeFirstOrThrow();
         if (order.status_sales_order !== "active" || order.cancelled_sales_order !== "no") throw new ConflictException("La orden no esta activa o esta caida");
         const actor = await tx.selectFrom("sec_user").select("id_user").where("public_id_user", "=", context.actor.publicId).where("status_user", "=", "active").where("deleted_at_user", "is", null).executeTakeFirstOrThrow();
-        return { id: order.id_sales_order, actorId: actor.id_user };
+        // Capture before any mutation; caller-provided names and roles are not trusted.
+        const actorSnapshot = this.recordAudit.enabled ? await this.recordAudit.captureActor(tx, actor.id_user) : context.actor;
+        const nativeSource = { schema: "CRM_THINK_V2", entity: "sales_order", table: "crm_sales_order", id: String(order.id_sales_order) } as const;
+        const auditSource = order.id_old_produccion_sales_order === null ? { source: nativeSource } : { source: { schema: "crmdatabase-api", entity: "sales_order", table: "ordenventa", id: String(order.id_old_produccion_sales_order) } as const, effectiveSource: { schema: nativeSource.schema, table: nativeSource.table, id: nativeSource.id } };
+        return { id: order.id_sales_order, actorId: actor.id_user, actorSnapshot, businessId: order.native_code_sales_order, auditSource };
     }
 
     /** Records each visit independently, rejects stale callers and never overwrites history. */
@@ -66,7 +79,7 @@ export class SalesOrderLifecycleRepository {
                     event_kind_sales_order_state_event: sequence === 0 ? "created" : "transition",
                     effective_at_sales_order_state_event: sql<Date>`UTC_TIMESTAMP(3)`,
                     actor_user_id_sales_order_state_event: order.actorId,
-                    actor_snapshot_sales_order_state_event: JSON.stringify(context.actor),
+                    actor_snapshot_sales_order_state_event: JSON.stringify(order.actorSnapshot),
                     origin_sales_order_state_event: "crm",
                     reason_sales_order_state_event: context.reason,
                     operation_id_sales_order_state_event: context.operationId,
@@ -78,6 +91,24 @@ export class SalesOrderLifecycleRepository {
                 .set({ updated_at_sales_order: sql<Date>`UTC_TIMESTAMP(3)`, updated_by_user_id_sales_order: order.actorId })
                 .where("id_sales_order", "=", order.id)
                 .execute();
+            if (this.recordAudit.enabled) {
+                await this.recordAudit.append(tx, {
+                    ...order.auditSource,
+                    actor: order.actorSnapshot,
+                    action: "state_change",
+                    module: "formalizacion",
+                    before: { businessId: order.businessId, state: last.to_state_code_sales_order_state_event, version: sequence },
+                    after: { businessId: order.businessId, state: context.state, version: sequence + 1 },
+                    allowedFields: ["businessId", "state", "version"],
+                    // Central uniqueness spans state and every independent approval type.
+                    operationId: createHash("sha256")
+                        .update(JSON.stringify(["sales_order", "state", context.operationId]))
+                        .digest("hex"),
+                    correlationId: context.correlationId,
+                    reason: context.reason,
+                    snapshotScope: "partial",
+                });
+            }
             return sequence + 1;
         });
     }
@@ -93,6 +124,7 @@ export class SalesOrderLifecycleRepository {
             }
             const previous = await tx.selectFrom("crm_sales_order_approval").select(["status_sales_order_approval", "version_sales_order_approval"]).where("sales_order_id_sales_order_approval", "=", order.id).where("type_code_sales_order_approval", "=", context.type).executeTakeFirst();
             const version = previous?.version_sales_order_approval ?? 0;
+            const previousStatus = previous?.status_sales_order_approval ?? null;
             if (version !== context.expectedVersion) throw new ConflictException("La aprobacion cambio; actualice antes de continuar");
             await tx
                 .insertInto("audit_sales_order_approval_event")
@@ -100,11 +132,11 @@ export class SalesOrderLifecycleRepository {
                     sales_order_id_sales_order_approval_event: order.id,
                     type_code_sales_order_approval_event: context.type,
                     version_sales_order_approval_event: version + 1,
-                    before_status_sales_order_approval_event: previous?.status_sales_order_approval ?? null,
+                    before_status_sales_order_approval_event: previousStatus,
                     after_status_sales_order_approval_event: context.status,
                     effective_at_sales_order_approval_event: sql<Date>`UTC_TIMESTAMP(3)`,
                     actor_user_id_sales_order_approval_event: order.actorId,
-                    actor_snapshot_sales_order_approval_event: JSON.stringify(context.actor),
+                    actor_snapshot_sales_order_approval_event: JSON.stringify(order.actorSnapshot),
                     origin_sales_order_approval_event: "crm",
                     reason_sales_order_approval_event: context.reason,
                     operation_id_sales_order_approval_event: context.operationId,
@@ -133,6 +165,23 @@ export class SalesOrderLifecycleRepository {
                 .set({ updated_at_sales_order: sql<Date>`UTC_TIMESTAMP(3)`, updated_by_user_id_sales_order: order.actorId })
                 .where("id_sales_order", "=", order.id)
                 .execute();
+            if (this.recordAudit.enabled) {
+                await this.recordAudit.append(tx, {
+                    ...order.auditSource,
+                    actor: order.actorSnapshot,
+                    action: "approval_change",
+                    module: "formalizacion",
+                    before: { businessId: order.businessId, type: context.type, status: previousStatus, version },
+                    after: { businessId: order.businessId, type: context.type, status: context.status, version: version + 1 },
+                    allowedFields: ["businessId", "type", "status", "version"],
+                    operationId: createHash("sha256")
+                        .update(JSON.stringify(["sales_order", "approval", context.type, context.operationId]))
+                        .digest("hex"),
+                    correlationId: context.correlationId,
+                    reason: context.reason,
+                    snapshotScope: "partial",
+                });
+            }
             return version + 1;
         });
     }

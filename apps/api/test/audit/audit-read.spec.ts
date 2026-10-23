@@ -1,14 +1,18 @@
+import { BadRequestException, ForbiddenException } from "@nestjs/common";
 import { plainToInstance } from "class-transformer";
 import { validate } from "class-validator";
 import { type CompiledQuery, DummyDriver, Kysely, MysqlAdapter, MysqlIntrospector, MysqlQueryCompiler, type QueryResult } from "kysely";
 import { describe, expect, it, vi } from "vitest";
 
+import type { CookieRequest } from "../../src/common/security/cookie-request.type.js";
+import { hasRoutePermission } from "../../src/common/security/route-permission.js";
 import type { DatabaseService } from "../../src/database/database.service.js";
 import type { CrmDatabase } from "../../src/database/database.types.js";
 import { AuditQueryDto, decodeAuditCursor, encodeAuditCursor } from "../../src/modules/crm/audit/audit-read.contract.js";
 import { AuditReadRepository } from "../../src/modules/crm/audit/audit-read.repository.js";
 import { AuditReadService } from "../../src/modules/crm/audit/audit-read.service.js";
 import type { IdentityService } from "../../src/modules/crm/identity/identity.service.js";
+import type { IdentityProfile } from "../../src/modules/crm/identity/identity.types.js";
 
 it("requires module and section, caps batch size and binds cursor to scope", async () => {
     expect(await validate(plainToInstance(AuditQueryDto, {}))).not.toHaveLength(0);
@@ -19,6 +23,61 @@ it("requires module and section, caps batch size and binds cursor to scope", asy
     expect(() => decodeAuditCursor({ ...query, sectionCode: "users", cursor })).toThrow();
 });
 describe("audit read authorization", () => {
+    // Independent expected decisions: an explicit deny wins in either entry order.
+    const decisions = [
+        ["active", [], true],
+        ["active", ["allow"], true],
+        ["active", ["deny"], false],
+        ["active", ["allow", "deny"], false],
+        ["active", ["deny", "allow"], false],
+        ["inactive", [], false],
+        ["inactive", ["allow"], true],
+        ["inactive", ["deny"], false],
+        ["inactive", ["allow", "deny"], false],
+        ["inactive", ["deny", "allow"], false],
+        [null, [], false],
+        [null, ["allow"], true],
+        [null, ["deny"], false],
+        [null, ["allow", "deny"], false],
+        [null, ["deny", "allow"], false],
+    ] as const;
+
+    it.each(decisions)("matches guard policy for direct service calls: owner=%s effects=%j allowed=%s", async (status, effects, allowed) => {
+        const profile = {
+            roles: status ? [{ code: "owner", name: "Owner", status }] : [],
+            permissions: effects.map((effect) => ({ code: "role.assign", effect, scope: effect === "allow" ? "all_areas" : null, source: "override" })),
+        } as IdentityProfile;
+        const identity = { getCurrentUser: vi.fn().mockResolvedValue(profile) };
+        const publicId = "01ARZ3NDEKTSV4RRFFQ69G5FAV";
+        const repository = { list: vi.fn().mockResolvedValue([]), detail: vi.fn().mockResolvedValue({ publicId, createdAt: "2026-10-13T12:00:00Z" }) };
+        const service = new AuditReadService(identity as unknown as IdentityService, repository as unknown as AuditReadRepository);
+        expect(hasRoutePermission(profile, { kind: "audit" }, {} as CookieRequest)).toBe(allowed);
+        const calls = [() => service.list("cookie", { moduleCode: "administration", sectionCode: "users", limit: 10 }), () => service.detail("cookie", publicId), () => service.options("cookie")];
+        for (const call of calls) {
+            if (allowed) await expect(call()).resolves.toBeDefined();
+            else await expect(call()).rejects.toBeInstanceOf(ForbiddenException);
+        }
+        expect(repository.list).toHaveBeenCalledTimes(allowed ? 1 : 0);
+        expect(repository.detail).toHaveBeenCalledTimes(allowed ? 1 : 0);
+        expect(identity.getCurrentUser.mock.calls).toEqual([["cookie"], ["cookie"], ["cookie"]]);
+    });
+
+    it("revalidates direct calls and denies before resource validation or repository reads", async () => {
+        const profile: Pick<IdentityProfile, "roles" | "permissions"> = { roles: [{ code: "owner", name: "Owner", status: "active" }], permissions: [] };
+        const identity = { getCurrentUser: vi.fn().mockResolvedValue(profile) };
+        const repository = { list: vi.fn(), detail: vi.fn() };
+        const service = new AuditReadService(identity as unknown as IdentityService, repository as unknown as AuditReadRepository);
+        await expect(service.options("cookie")).resolves.toBeDefined();
+        await expect(service.detail("cookie", "invalid")).rejects.toBeInstanceOf(BadRequestException);
+        await expect(service.list("cookie", { moduleCode: "administration", sectionCode: "invalid", limit: 10 })).rejects.toBeInstanceOf(BadRequestException);
+        await expect(service.list("cookie", { moduleCode: "administration", sectionCode: "users", catalogCode: "projects", limit: 10 })).rejects.toBeInstanceOf(BadRequestException);
+        identity.getCurrentUser.mockResolvedValue({ ...profile, permissions: [{ code: "role.assign", effect: "deny", scope: null, source: "override" }] });
+        await expect(service.detail("cookie", "invalid")).rejects.toBeInstanceOf(ForbiddenException);
+        await expect(service.list("cookie", { moduleCode: "administration", sectionCode: "invalid", limit: 10 })).rejects.toBeInstanceOf(ForbiddenException);
+        await expect(service.options("cookie")).rejects.toBeInstanceOf(ForbiddenException);
+        expect(repository.list).not.toHaveBeenCalled();
+        expect(repository.detail).not.toHaveBeenCalled();
+    });
     it("returns the same safe historical context on list/detail without snapshots on the list", async () => {
         const publicId = "01ARZ3NDEKTSV4RRFFQ69G5FAV";
         const row = { id: 3, publicId, eventType: "catalog_item_updated", summary: "Changed", reason: "Authorized", actorName: "Historic actor", actorRoles: JSON.stringify([{ code: "manager", name: "Gerencia anterior", token: "secret" }]), recordedModule: "administration", recordedSection: "catalogs", catalogCode: "projects", recordVersion: 1, recordId: "deleted-record", recordEntity: "catalog", recordName: "Nombre histórico", recordAction: "update", createdAt: "2026-10-13T12:00:00Z" };

@@ -179,7 +179,7 @@ export const getIdentitySecurityCatalog = async (): Promise<IdentitySecurityCata
 /** Lee los permisos activos persistidos de un rol. */
 export const getIdentityRolePermissions = async (roleCode: string): Promise<ReplaceIdentityRolePermissionsResponse> => parseReplacedIdentityRolePermissions(await apiRequest<unknown>(`${IDENTITY_ROLES_PATH}/${encodeURIComponent(roleCode)}/permissions`));
 
-/** Reemplaza los permisos activos de un rol. */
+/** Atomically replaces role grants and, when supplied, its enabled module ceiling. */
 export const replaceIdentityRolePermissions = async (roleCode: string, payload: ReplaceIdentityRolePermissionsPayload): Promise<ReplaceIdentityRolePermissionsResponse> =>
     parseReplacedIdentityRolePermissions(
         await apiRequest<unknown>(`${IDENTITY_ROLES_PATH}/${encodeURIComponent(roleCode)}/permissions`, {

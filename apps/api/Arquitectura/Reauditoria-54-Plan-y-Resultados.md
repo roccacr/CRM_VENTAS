@@ -1,5 +1,36 @@
 # Reauditoria: plan y resultados verificables
 
+## Plan central F01-F13 - 2026-10-23
+
+Fuente: auditoria independiente `C:/codex-data/audit-reports/CRM-TINK-Auditoria-2026-10-22.md`. Sus F01-F13 pertenecen a esa auditoria; no renumeran los identificadores de planes anteriores. Remediacion local ejecutada con seis agentes implementadores, cuatro revisores independientes y coordinador. El cierre de codigo/documentacion se apoya en las verificaciones nuevas siguientes; no equivale a certificacion productiva ni sustituye las pruebas MySQL pendientes.
+
+| Orden / responsable | Remediacion minima y regresion requerida | Estado de validacion nuevo |
+| --- | --- | --- |
+| 1 / security y data | F01 sanear URL/query OIDC conservando trazabilidad; F02 frontera de lockout 3->4->5 y evento; F03 rechazar tipos invalidos en detail conservando omitido/vacio/null. | Implementado; regresiones, contrarrevision y gate API aprobados. |
+| 2 / directory | F04 retirada Microsoft efectiva, primer enlace sin recuperar acceso retirado, actor administrativo real y omision que conserva estados; F05 MFA unknown/No verificado. | Implementado; regresiones, inyeccion, contrarrevision y gate aprobados. Sin tenant ni usuarios reales. |
+| 3 / session y mobile | F06 generaciones en login/logout/refresh/perfiles, sin respuestas/eventos/replays de otro contexto; F07 filtros/hash conservados; F08 ciclo de foco y cierre al pasar a escritorio. | Implementado; carreras, retry, logout y teclado probados. Revision cruzada sin bloqueantes; frontend integral aprobado. Sin ensayo real de cookies/lector de pantalla. |
+| 4 / data | F09 migracion 021 fail-closed ante tablas previas sin ledger, con dobles y SQL compilado. | Implementado y probado sin conexiones. No se ejecuta DDL ni se afirma drift real. |
+| 5 / coordinador | F10 adaptador de estilos idempotente, aserciones observables y maxWorkers=2. Sin subir timeouts, retries o exclusiones. | Cinco corridas completas de 507 pruebas y cobertura aprobadas, con carga registrada. |
+| 6 / docs | F11 runbook central; F12 dos banners reales/cinco provisionales; F13 defaults distintos del snapshot y produccion desconocida. | Corregido; contrarrevision documental, enlaces y diff aprobados. |
+
+Antes de editar: inspeccionar instrucciones, producto/indices, archivos y reutilizacion de cada area; cada propietario concreta sus archivos y el parche minimo. Conservar Home-only, bandejas vacias, reglas, permisos y autorizacion backend existentes. No activar list/send/revert. Workspace compartido y sucio: no revertir cambios ajenos ni editar fuera del ownership sin coordinacion.
+
+No commits/push/deploy, dependencias, `.env`, DB/conexiones, fixtures reales ni DDL. Cada agente ejecuta solo pruebas focalizadas de su area; el coordinador realiza revision cruzada y `.\check-all.cmd` serial, mas cobertura/carga integral. Registrar comandos exactos, salidas, omisiones y limites antes de declarar cierres. No se certifican produccion, persistencia MySQL ni 13 hallazgos resueltos por tener parches locales.
+
+### Evidencia final nueva
+
+Gate integral final del coordinador: `.\check-all.cmd` Exit 0 con 24 flags MySQL en 0 y fallback/auditoria/escrituras desactivados solo en el proceso de pruebas. Formato, lint, typecheck, tests y build de ambas apps aprobados: API 5194 aprobadas y 113 MySQL omitidas; frontend 507/507, 36 archivos. La corrida del gate mas cuatro repeticiones seriales dieron cinco aprobaciones completas con el mismo codigo. Vitest: 106.45, 106.96, 106.05, 105.58 y 106.07 s.
+
+Cobertura final: API 5194/113 omitidas, statements 72.04%, branches 60.37%, functions 78.03%, lines 74.28%; frontend 507/507, statements 83.95%, branches 75.76%, functions 83.57%, lines 85.75%. Ambos comandos test:coverage terminaron con Exit 0. pnpm audit completo de ambas apps: cero avisos en esta consulta; no equivale a pentest ni a ausencia de defectos.
+
+F10: el helper de `getComputedStyle` acumulaba wrappers; la regresion de 100 instalaciones fallo antes del fix. El adaptador estable y la asercion de `aria-invalid` evitan depender del DOM animado. MaxWorkers=2 acota concurrencia, no es un limite estricto de CPU/RAM. Las repeticiones finales muestrearon CPU maxima 25-34% y al menos 10017 MiB libres; son condiciones de esta maquina, no prueba causal ni benchmark productivo. La cobertura frontend tardo 152.79 s de Vitest. Manifiesto de 141 archivos de fuente/pruebas/configuracion sin cambios durante el gate y repeticiones.
+
+La revision cruzada tambien corrigio resize que dejaba inert, perfiles/login/refresh tardios, retry retenido, logout pendiente, replay cruzado y actor de revocacion incorrecto. Dos errores de tipos en nuevas pruebas se corrigieron antes del gate. Los lotes intermedios detenidos y sus fallos no se convierten en evidencia final; logs/metricas/manifiestos se conservan en `C:/codex-data/audit-reports/CRM-TINK-Remediacion-2026-10-23` y el informe hermano `.md`.
+
+Limites: 113 pruebas MySQL omitidas, sin DDL/fixtures/concurrencia real, restore ni inspeccion productiva. Sin cambios de .env, credenciales, grants, dependencias, commits, push o deploy. No se certifican clon limpio ni CI remoto del arbol con cambios previos. El warning existente de vendor-antd de 1050.81 kB minificados sigue visible; no se oculto subiendo el limite. Para F11-F13 consultar [operacion](Operacion-Despliegue-Rollback.md), [README](../../../README.md) y [resumen frontend](../../frontend/Arquitectura/01-Resumen-Frontend.md).
+
+## Antecedentes de remediacion - 2026-10-22
+
 Fecha: 2026-10-22. Fuente: auditoria adjunta de 54/100. Esa nota usa una escala
 distinta de la anterior; no demuestra una regresion. Este informe no asigna nota.
 

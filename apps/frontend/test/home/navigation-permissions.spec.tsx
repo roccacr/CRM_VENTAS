@@ -97,8 +97,10 @@ describe("navigation permissions", () => {
         const seedSql = readFileSync(seedPath, "utf8");
         const catalogsMigrationSource = readFileSync(catalogsMigrationPath, "utf8");
         const homeMigrationSource = readFileSync(resolve(process.cwd(), "../api/migrations/schema-only/202610130017_formalization_home_role.ts"), "utf8");
+        const marketingMigrationSource = readFileSync(resolve(process.cwd(), "../api/migrations/schema-only/202610230028_marketing_roles.ts"), "utf8");
         const seedPermissionCodes = new Set([...Array.from(seedSql.matchAll(/\('([a-z][a-z0-9_.]*)',\s*'[a-z][a-z0-9_]*'/giu), (match) => match[1]), ...Array.from(catalogsMigrationSource.matchAll(/"([a-z][a-z0-9_]*\.[a-z][a-z0-9_]*)"/giu), (match) => match[1]), ...Array.from(homeMigrationSource.matchAll(/"(formalizacion\.home\.read)"/gu), (match) => match[1]), ...CATALOG_CONTEXT_CODES.flatMap((contextCode) => CATALOG_MODULE_CODES.map((moduleCode) => `${contextCode}.${moduleCode}.read`))]);
         const visualPermissionCodes = DEMO_EFFECTIVE_NAVIGATION_PERMISSIONS.map((permission) => permission.code);
+        for (const match of marketingMigrationSource.matchAll(/"(mercadeo\.(?:home|leads|appointments|calendar)\.read)"/gu)) seedPermissionCodes.add(match[1]);
 
         expect(visualPermissionCodes.filter((permissionCode) => !seedPermissionCodes.has(permissionCode))).toEqual([]);
     });
@@ -146,13 +148,23 @@ describe("navigation permissions", () => {
     });
 
     it("muestra solo los modulos operativos con permisos accionables efectivos", () => {
-        const visibleWorkspaces = getVisibleNavigationWorkspaces([allow("lead.read"), allow("campaign.read")]);
+        const visibleWorkspaces = getVisibleNavigationWorkspaces([allow("lead.read"), ...["home", "leads", "appointments", "calendar"].map((section) => allow(`mercadeo.${section}.read`))]);
         const salesWorkspace = getWorkspace(visibleWorkspaces, "sales");
         const marketingWorkspace = getWorkspace(visibleWorkspaces, "marketing");
 
         expect(visibleWorkspaces.map((workspace) => workspace.code)).toEqual(["all", "sales", "marketing"]);
         expect(getMenuLabels(salesWorkspace.menuItems)).toEqual(["Resumen", "Leads"]);
-        expect(getMenuLabels(marketingWorkspace.menuItems)).toEqual(["Resumen", "Campañas"]);
+        expect(getMenuLabels(marketingWorkspace.menuItems)).toEqual(["Inicio", "Captación de leads", "Eventos y citas", "Calendario"]);
+        expect(marketingWorkspace.menuItems.slice(1).every((item) => item.routePath === undefined)).toBe(true);
+    });
+
+    it.each(["home", "leads", "appointments", "calendar"])("Mercadeo autoriza cada seccion y respeta su deny: %s", (section) => {
+        const code = `mercadeo.${section}.read`;
+        const visible = getWorkspace(getVisibleNavigationWorkspaces([allow(code)], orgUnits("mercadeo")), "marketing");
+        expect(visible.menuItems).toHaveLength(1);
+        expect(visible.menuItems[0]?.requiredPermission).toBe(code);
+        expect(getVisibleNavigationWorkspaces([allow(code), deny(code)], orgUnits("mercadeo"))).toEqual([]);
+        expect(getVisibleNavigationWorkspaces([allow("campaign.read")], orgUnits("mercadeo"))).toEqual([]);
     });
 
     it("aplica deny por encima de allow en permisos directos y de rol", () => {

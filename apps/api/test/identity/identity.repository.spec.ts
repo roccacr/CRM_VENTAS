@@ -1,5 +1,5 @@
 import { ConflictException } from "@nestjs/common";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import type { DatabaseService } from "../../src/database/database.service.js";
 import { SecurityAuditService } from "../../src/modules/crm/audit/security-audit.service.js";
@@ -8,7 +8,7 @@ import { IdentityLocalRepository } from "../../src/modules/crm/identity/identity
 import { IdentityMicrosoftRepository } from "../../src/modules/crm/identity/identity-microsoft.repository.js";
 import { IdentityProfileRepository } from "../../src/modules/crm/identity/identity-profile.repository.js";
 import { IdentitySessionRepository } from "../../src/modules/crm/identity/identity-session.repository.js";
-import type { UpdateSystemUserInput } from "../../src/modules/crm/identity/identity-user-directory.repository.js";
+import type { CreateSystemUserInput, UpdateSystemUserInput } from "../../src/modules/crm/identity/identity-user-directory.repository.js";
 import { IdentityUserDirectoryRepository } from "../../src/modules/crm/identity/identity-user-directory.repository.js";
 import { EffectivePermissionService } from "../../src/modules/crm/permissions/effective-permission.service.js";
 
@@ -48,6 +48,10 @@ type RepositoryPrivateApi = {
 type ProfileRepositoryPrivateApi = RepositoryPrivateApi;
 
 type UserDirectoryRepositoryPrivateApi = {
+    readUserCreationCatalog: () => Promise<unknown>;
+    readAuditSnapshot: (executor: QueryBuilderResult["builder"], userId: number) => Promise<Record<string, unknown>>;
+    syncMicrosoftAccessMethod: (executor: QueryBuilderResult["builder"], userId: number, input: Pick<CreateSystemUserInput, "accessMethods" | "email" | "normalizedEmail"> & { actorUserId?: number }, now: Date) => Promise<void>;
+    mapDirectoryItem: (input: unknown) => { mfaStatus: string };
     countMatchingUsers: (input: { readonly search?: string; readonly status?: string }) => Promise<number>;
     replaceExternalReferences: (executor: QueryBuilderResult["builder"], userId: number, input: UpdateSystemUserInput, now: Date) => Promise<void>;
     resolveScopeForRoleCodes: (roleCodes: readonly string[]) => string;
@@ -136,7 +140,7 @@ const createRepository = (builder: QueryBuilderResult["builder"]): IdentityRepos
     const sessions = new IdentitySessionRepository(database, audit);
     const local = new IdentityLocalRepository(database, audit);
     const microsoft = new IdentityMicrosoftRepository(database, sessions);
-    const userDirectory = new IdentityUserDirectoryRepository(database, audit);
+    const userDirectory = new IdentityUserDirectoryRepository(database, audit, sessions);
 
     const repository = new IdentityRepository(profiles, sessions, local, microsoft, userDirectory);
 
@@ -197,6 +201,114 @@ const readValuesAfterInsertInto = (calls: QueryCall[], table: string): Record<st
 };
 
 describe("IdentityRepository", () => {
+    it("crear usuario solo local activo conserva Microsoft inactivo y sin subject", async () => {
+        const { builder, calls } = createQueryBuilder([], [undefined, { insertId: 20 }]);
+        const database = { db: { transaction: () => ({ execute: async (callback: (transaction: unknown) => Promise<unknown>) => callback(builder) }) } } as unknown as DatabaseService;
+        const audit = new SecurityAuditService(database);
+        const record = vi.spyOn(audit, "record").mockResolvedValue(undefined);
+        vi.spyOn(audit, "captureActor").mockResolvedValue(undefined);
+        const repository = new IdentityUserDirectoryRepository(database, audit, new IdentitySessionRepository(database, audit));
+        vi.spyOn(getPrivateUserDirectoryRepositoryApi(repository), "readUserCreationCatalog").mockResolvedValue({ actorUserId: 1, roles: [{ id: 2, code: "ventas" }], orgUnits: [{ id: 3, code: "ventas" }] });
+        vi.spyOn(getPrivateUserDirectoryRepositoryApi(repository), "readAuditSnapshot").mockResolvedValue({ accessMethods: [{ code: "local", status: "active" }] });
+        vi.spyOn(repository, "findByPublicId").mockResolvedValue({ email: "target@example.test", externalReferences: [], invitedBy: null, isCurrentUser: false, lastActivityAt: null, mfaStatus: "not_configured", name: "Target", orgUnit: null, profileImageUrl: null, provider: "local", publicId: "created", roleChangedAt: null, roles: [], status: "active" });
+        await repository.create({ validateAccess: () => Promise.resolve(), accessMethods: ["local"], actorPublicId: "actor", displayName: "Target", email: "target@example.test", normalizedEmail: "target@example.test", externalReferences: [], initialStatus: "active", orgUnitCodes: ["ventas"], roleCode: "ventas", roleCodes: ["ventas"], reason: "Local only", passwordHash: "test-only-password-hash" });
+        expect(calls.filter((call) => call.method === "values").map((call) => call.args[0])).toContainEqual(expect.objectContaining({ provider_code_auth_identity: "microsoft", provider_subject_auth_identity: null, status_auth_identity: "inactive", user_id_auth_identity: 20 }));
+        expect(JSON.stringify(record.mock.calls)).not.toContain("test-only-password-hash");
+    });
+
+    it.each([
+        [false, "active", "inactive"],
+        [true, "inactive", "active"],
+    ] as const)("sincroniza Microsoft existente sin alterar subject ni desbloqueo: seleccionado %s", async (selected, previous, next) => {
+        const { builder, calls } = createQueryBuilder([{ id: 30, status: previous, deletedAt: null }]);
+        const database = { db: builder } as unknown as DatabaseService;
+        const audit = new SecurityAuditService(database);
+        const sessions = new IdentitySessionRepository(database, audit);
+        const revoke = vi.spyOn(sessions, "revokeActiveSessionsForAuthIdentity").mockResolvedValue(undefined);
+        const repository = new IdentityUserDirectoryRepository(database, audit, sessions);
+        await getPrivateUserDirectoryRepositoryApi(repository).syncMicrosoftAccessMethod(builder, 20, { accessMethods: selected ? ["local", "microsoft"] : ["local"], email: "target@example.test", normalizedEmail: "target@example.test" }, new Date());
+        const microsoftUpdate = calls.findIndex((call) => call.method === "set" && (call.args[0] as Record<string, unknown>).status_auth_identity === next);
+        expect(microsoftUpdate).toBeGreaterThanOrEqual(0);
+        const updateCalls = calls.slice(microsoftUpdate);
+        expect(hasWhere(updateCalls, "provider_code_auth_identity", "=", "microsoft")).toBe(true);
+        expect(hasWhere(updateCalls, "status_auth_identity", "=", previous)).toBe(true);
+        expect(hasWhere(updateCalls, "user_id_auth_identity", "=", 20)).toBe(true);
+        expect(hasWhere(updateCalls, "deleted_at_auth_identity", "is", null)).toBe(true);
+        expect(calls[microsoftUpdate]?.args[0]).not.toHaveProperty("provider_subject_auth_identity");
+        expect(calls[microsoftUpdate]?.args[0]).not.toHaveProperty("locked_until_auth_identity");
+        expect(calls.some((call) => call.method === "insertInto")).toBe(false);
+        if (selected) expect(revoke).not.toHaveBeenCalled();
+        else expect(revoke).toHaveBeenCalledWith(30, 20, "access_method_removed", builder, undefined);
+    });
+
+    it("retirar Microsoft antes del primer login conserva la denegacion sin inventar subject", async () => {
+        const { builder, calls } = createQueryBuilder();
+        const database = { db: builder } as unknown as DatabaseService;
+        const audit = new SecurityAuditService(database);
+        const repository = new IdentityUserDirectoryRepository(database, audit, new IdentitySessionRepository(database, audit));
+        await getPrivateUserDirectoryRepositoryApi(repository).syncMicrosoftAccessMethod(builder, 20, { accessMethods: ["local"], email: "target@example.test", normalizedEmail: "target@example.test" }, new Date());
+        expect(readValuesAfterInsertInto(calls, "sec_auth_identity")).toMatchObject({ provider_code_auth_identity: "microsoft", provider_subject_auth_identity: null, status_auth_identity: "inactive", user_id_auth_identity: 20 });
+    });
+
+    it("retirar Microsoft revoca sesiones y refresh existentes con el helper canonico", async () => {
+        const { builder, calls } = createQueryBuilder();
+        vi.spyOn(builder, "execute")
+            .mockResolvedValueOnce([{ id: 30, status: "active", deletedAt: null }])
+            .mockResolvedValueOnce([{ id_auth_session: 10 }]);
+        const database = { db: builder } as unknown as DatabaseService;
+        const audit = new SecurityAuditService(database);
+        const repository = new IdentityUserDirectoryRepository(database, audit, new IdentitySessionRepository(database, audit));
+        await getPrivateUserDirectoryRepositoryApi(repository).syncMicrosoftAccessMethod(builder, 20, { accessMethods: ["local"], email: "target@example.test", normalizedEmail: "target@example.test", actorUserId: 7 }, new Date());
+        expect(readSetAfterUpdateTable(calls, "sec_auth_session")).toMatchObject({ status_auth_session: "revoked", revoked_by_user_id_auth_session: 7 });
+        expect(readSetAfterUpdateTable(calls, "sec_refresh_token")).toMatchObject({ status_refresh_token: "revoked", revoked_reason_refresh_token: "access_method_removed" });
+        expect(hasWhere(calls, "auth_identity_id_auth_session", "=", 30)).toBe(true);
+    });
+
+    it.each([
+        { id: 30, status: "blocked", deletedAt: null },
+        { id: 30, status: "inactive", deletedAt: new Date("2026-10-01") },
+    ])("seleccionar Microsoft no recupera identidades bloqueadas o borradas: %s", async (identity) => {
+        const { builder, calls } = createQueryBuilder([identity]);
+        const database = { db: builder } as unknown as DatabaseService;
+        const audit = new SecurityAuditService(database);
+        const repository = new IdentityUserDirectoryRepository(database, audit, new IdentitySessionRepository(database, audit));
+        await getPrivateUserDirectoryRepositoryApi(repository).syncMicrosoftAccessMethod(builder, 20, { accessMethods: ["microsoft"], email: "target@example.test", normalizedEmail: "target@example.test" }, new Date());
+        expect(calls.some((call) => call.method === "updateTable" || call.method === "insertInto")).toBe(false);
+    });
+
+    it.each(["inactive", "blocked", "deleted"].flatMap((status) => ["previous-subject", "new-subject"].map((subject) => ({ status, subject }))))("rechaza primer enlace Microsoft por correo con identidad $status y subject $subject", async ({ status, subject }) => {
+        const { builder, calls } = createQueryBuilder([{ id: 30, status, deletedAt: status === "deleted" ? new Date() : null, subject: "previous-subject" }], [undefined, { deletedAt: null, permissionVersion: 7, status: "active", userId: 20 }, {}, { authIdentityId: 31, permissionVersion: 7, userId: 20 }]);
+        const result = await createRepository(builder).findOrCreateActiveMicrosoftIdentityForVerifiedEmail({ email: "target@example.test", normalizedEmail: "target@example.test", subject });
+        expect(result.status).not.toBe("ready");
+        expect(calls.some((call) => call.method === "insertInto" || call.method === "updateTable")).toBe(false);
+        expect(calls.some((call) => call.method === "forUpdate")).toBe(true);
+    });
+
+    it("primer enlace autorizado vincula solo un subject null con el subject verificado", async () => {
+        const { builder, calls } = createQueryBuilder([{ id: 30, status: "active", deletedAt: null, subject: null }], [undefined, { deletedAt: null, permissionVersion: 7, status: "active", userId: 20 }, {}, { authIdentityId: 30, permissionVersion: 7, userId: 20 }]);
+        const result = await createRepository(builder).findOrCreateActiveMicrosoftIdentityForVerifiedEmail({ email: "target@example.test", normalizedEmail: "target@example.test", subject: "verified-subject" });
+        expect(result.status).toBe("ready");
+        expect(readSetAfterUpdateTable(calls, "sec_auth_identity")).toMatchObject({ provider_subject_auth_identity: "verified-subject" });
+        expect(hasWhere(calls, "provider_subject_auth_identity", "is", null)).toBe(true);
+        expect(calls.some((call) => call.method === "insertInto")).toBe(false);
+    });
+
+    it("no reasigna por correo un subject Microsoft activo distinto", async () => {
+        const { builder, calls } = createQueryBuilder([{ id: 30, status: "active", deletedAt: null, subject: "previous-subject" }], [undefined, { deletedAt: null, permissionVersion: 7, status: "active", userId: 20 }, {}, { authIdentityId: 31, permissionVersion: 7, userId: 20 }]);
+        const result = await createRepository(builder).findOrCreateActiveMicrosoftIdentityForVerifiedEmail({ email: "target@example.test", normalizedEmail: "target@example.test", subject: "new-subject" });
+        expect(result.status).not.toBe("ready");
+        expect(calls.some((call) => call.method === "insertInto" || call.method === "updateTable")).toBe(false);
+    });
+
+    it.each(["microsoft", "mixed"])("no infiere MFA habilitado para %s", (provider) => {
+        const { builder } = createQueryBuilder();
+        const database = { db: builder } as unknown as DatabaseService;
+        const audit = new SecurityAuditService(database);
+        const repository = new IdentityUserDirectoryRepository(database, audit, new IdentitySessionRepository(database, audit));
+        const providers = (provider === "mixed" ? ["microsoft", "local"] : ["microsoft"]).map((code) => ({ provider: code, status: "active", userId: 20 }));
+        expect(getPrivateUserDirectoryRepositoryApi(repository).mapDirectoryItem({ currentUserPublicId: "actor", externalReferences: [], orgUnits: [], roles: [], providers, row: { email: "target@example.test", id: 20, lastActivityAt: null, name: "Target", profileImageUrl: null, publicId: "target", status: "active" } }).mfaStatus).toBe("unknown");
+    });
+
     it("reactiva la referencia externa existente al editar el mismo NetSuite del usuario", async () => {
         const { builder, calls } = createQueryBuilder([], [{}, { id: 8 }, { id: 55, userId: 20 }]);
         const database = {
@@ -206,12 +318,14 @@ describe("IdentityRepository", () => {
                 updateTable: builder.updateTable,
             },
         } as unknown as DatabaseService;
-        const userDirectory = new IdentityUserDirectoryRepository(database, new SecurityAuditService(database));
+        const audit = new SecurityAuditService(database);
+        const userDirectory = new IdentityUserDirectoryRepository(database, audit, new IdentitySessionRepository(database, audit));
 
         await getPrivateUserDirectoryRepositoryApi(userDirectory).replaceExternalReferences(
             builder,
             20,
             {
+                validateAccess: () => Promise.resolve(),
                 preserveAssignments: false,
                 accessMethods: ["local"],
                 actorPublicId: "actor-public-id",
@@ -245,13 +359,15 @@ describe("IdentityRepository", () => {
                 updateTable: builder.updateTable,
             },
         } as unknown as DatabaseService;
-        const userDirectory = new IdentityUserDirectoryRepository(database, new SecurityAuditService(database));
+        const audit = new SecurityAuditService(database);
+        const userDirectory = new IdentityUserDirectoryRepository(database, audit, new IdentitySessionRepository(database, audit));
 
         await expect(
             getPrivateUserDirectoryRepositoryApi(userDirectory).replaceExternalReferences(
                 builder,
                 20,
                 {
+                    validateAccess: () => Promise.resolve(),
                     preserveAssignments: false,
                     accessMethods: ["local"],
                     actorPublicId: "actor-public-id",
@@ -277,7 +393,8 @@ describe("IdentityRepository", () => {
                 selectFrom: builder.selectFrom,
             },
         } as unknown as DatabaseService;
-        const userDirectory = new IdentityUserDirectoryRepository(database, new SecurityAuditService(database));
+        const audit = new SecurityAuditService(database);
+        const userDirectory = new IdentityUserDirectoryRepository(database, audit, new IdentitySessionRepository(database, audit));
 
         expect(getPrivateUserDirectoryRepositoryApi(userDirectory).resolveScopeForRoleCodes(["owner"])).toBe("all_areas");
         expect(getPrivateUserDirectoryRepositoryApi(userDirectory).resolveScopeForRoleCodes(["jefe_general"])).toBe("own_area_and_children");
@@ -292,7 +409,8 @@ describe("IdentityRepository", () => {
                 selectFrom: builder.selectFrom,
             },
         } as unknown as DatabaseService;
-        const userDirectory = new IdentityUserDirectoryRepository(database, new SecurityAuditService(database));
+        const audit = new SecurityAuditService(database);
+        const userDirectory = new IdentityUserDirectoryRepository(database, audit, new IdentitySessionRepository(database, audit));
 
         await expect(getPrivateUserDirectoryRepositoryApi(userDirectory).countMatchingUsers({})).resolves.toBe(44);
     });
@@ -392,6 +510,7 @@ describe("IdentityRepository", () => {
         const identityUpdate = readSetAfterUpdateTable(calls, "sec_auth_identity");
 
         expect(identityUpdate.normalized_email_auth_identity).toBe("roberto@roccacr.com");
+        expect(identityUpdate).not.toHaveProperty("provider_subject_auth_identity");
     });
 
     it("revoca refresh por Microsoft con estado valido y razon separada", async () => {
@@ -404,6 +523,7 @@ describe("IdentityRepository", () => {
 
         expect(refreshUpdate.status_refresh_token).toBe("revoked");
         expect(refreshUpdate.revoked_reason_refresh_token).toBe("microsoft_interaction_required");
+        expect(readSetAfterUpdateTable(calls, "sec_auth_session").revoked_by_user_id_auth_session).toBe(20);
     });
 
     it("filtra permisos derivados por rol activo, rol no eliminado y permiso activo", async () => {

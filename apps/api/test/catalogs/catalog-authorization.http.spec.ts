@@ -29,6 +29,7 @@ import { ClassesService } from "../../src/modules/crm/classes/classes.service.js
 import { IdentityRepository } from "../../src/modules/crm/identity/identity.repository.js";
 import { IdentityService } from "../../src/modules/crm/identity/identity.service.js";
 import type { IdentityProfile } from "../../src/modules/crm/identity/identity.types.js";
+import { IdentityAccessManagementRepository } from "../../src/modules/crm/identity/identity-access-management.repository.js";
 import { IdentityAuditRecorder } from "../../src/modules/crm/identity/identity-audit-recorder.service.js";
 import { IdentityMicrosoftSessionService } from "../../src/modules/crm/identity/identity-microsoft-session.service.js";
 import { identityRequestContextMiddleware } from "../../src/modules/crm/identity/identity-request-context.js";
@@ -93,6 +94,7 @@ describe.each(["dedicated", "shared"] as const)("catalog exact HTTP authorizatio
                 CatalogsService,
                 ...domains.map((domain) => domain.service),
                 { provide: IdentityRepository, useValue: identityRepository },
+                { provide: IdentityAccessManagementRepository, useValue: {} },
                 { provide: IdentityAuditRecorder, useValue: {} },
                 { provide: IdentityMicrosoftSessionService, useValue: {} },
                 { provide: ConfigService, useValue: new ConfigService({ COOKIE_SECRET: secret, AUTH_TOKEN_HASH_SECRET: "catalog-test-hash-secret" }) },

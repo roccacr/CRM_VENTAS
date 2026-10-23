@@ -25,5 +25,5 @@ export class ApprovalSummaryController {
 }
 
 /** Minimal wiring for the authorized approval banner. */
-@Module({ imports: [IdentityModule], controllers: [ApprovalSummaryController], providers: [ApprovalSummaryService, ApprovalSummaryRepository] })
+@Module({ imports: [IdentityModule], controllers: [ApprovalSummaryController], providers: [ApprovalSummaryService, ApprovalSummaryRepository], exports: [ApprovalSummaryRepository] })
 export class ApprovalSummaryModule {}

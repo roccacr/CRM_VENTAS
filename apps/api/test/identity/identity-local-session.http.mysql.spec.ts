@@ -16,6 +16,7 @@ import { CSRF_COOKIE_NAME, CSRF_HEADER_NAME_LOWERCASE, REFRESH_COOKIE_NAME, SESS
 import { validateEnv } from "../../src/config/env.validation.js";
 import { DatabaseService } from "../../src/database/database.service.js";
 import type { CrmDatabase } from "../../src/database/database.types.js";
+import { RecordAuditService } from "../../src/modules/crm/audit/record-audit.service.js";
 import { SecurityAuditService } from "../../src/modules/crm/audit/security-audit.service.js";
 import { IdentityController } from "../../src/modules/crm/identity/identity.controller.js";
 import { IdentityRepository } from "../../src/modules/crm/identity/identity.repository.js";
@@ -108,6 +109,7 @@ async function createHttpApp(service: DatabaseService, settings: ConfigService):
             IdentityAccessManagementService,
             IdentityAccessManagementRepository,
             SecurityAuditService,
+            RecordAuditService,
             EffectivePermissionService,
             { provide: DatabaseService, useValue: service },
             { provide: ConfigService, useValue: settings },

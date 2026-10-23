@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 import type { IdentityRepository } from "../../src/modules/crm/identity/identity.repository.js";
 import { IdentityService, MICROSOFT_ACCOUNT_NOT_AUTHORIZED_MESSAGE } from "../../src/modules/crm/identity/identity.service.js";
 import type { IdentityProfile } from "../../src/modules/crm/identity/identity.types.js";
+import type { IdentityAccessManagementRepository } from "../../src/modules/crm/identity/identity-access-management.repository.js";
 import type { IdentityAuditRecorder } from "../../src/modules/crm/identity/identity-audit-recorder.service.js";
 import type { IdentityMicrosoftSessionService } from "../../src/modules/crm/identity/identity-microsoft-session.service.js";
 import { runIdentityRequestScope } from "../../src/modules/crm/identity/identity-request-context.js";
@@ -131,8 +132,10 @@ const createIdentityService = () => {
         }),
     } as unknown as IdentityMicrosoftSessionService;
 
-    const service = new IdentityService(repository, tokens, audit, microsoftSession);
+    const accessManagement = { assertDelegableAccess: vi.fn().mockResolvedValue(undefined), validateAssignmentInTransaction: vi.fn().mockResolvedValue(undefined), readUserAccess: vi.fn().mockResolvedValue({ permissionOverrides: [] }) };
+    const service = new IdentityService(repository, tokens, audit, microsoftSession, accessManagement as unknown as IdentityAccessManagementRepository);
     return {
+        accessManagement,
         audit: audit as unknown as {
             recordLocalIdentityLocked: ReturnType<typeof vi.fn>;
             recordLocalLoginFailure: ReturnType<typeof vi.fn>;
@@ -351,6 +354,32 @@ const createProfileWithUserDeactivatePermission = (): IdentityProfile => ({
 });
 
 describe("IdentityService", () => {
+    it.each(["create", "update"])("passes trusted transaction revalidation into the user %s writer", async (method) => {
+        const { accessManagement, repository, service } = createIdentityService();
+        const profile = createProfileWithUserCreatePermission();
+        profile.permissions.push({ code: "user.update", effect: "allow", scope: "all_areas", source: "role" });
+        repository.findBySessionTokenHash.mockResolvedValue(profile);
+        const payload = { displayName: "Target", email: "target@example.test", roleCode: "formalizacion", orgUnitCodes: ["formalizacion"], reason: "Writer transaction wiring" };
+        if (method === "create") await service.createSystemUser("token", { ...payload, initialStatus: "pending" });
+        else await service.updateSystemUser("token", "target-user-public-id", payload);
+        const input = (method === "create" ? repository.createSystemUser.mock.calls[0]?.[0] : repository.updateSystemUser.mock.calls[0]?.[0]) as Parameters<IdentityRepository["createSystemUser"]>[0];
+        const tx = {} as Parameters<typeof input.validateAccess>[0];
+        await input.validateAccess(tx);
+        expect(accessManagement.validateAssignmentInTransaction.mock.calls[0]?.[0]).toBe(tx);
+        expect(accessManagement.validateAssignmentInTransaction.mock.calls[0]?.[1]).toMatchObject({ profile: { user: { publicId: "user-public-id" } }, roleCodes: ["formalizacion"], moduleCodes: ["formalizacion"] });
+    });
+    it("blocks creation and assignment updates before writes when delegation is rejected", async () => {
+        const { accessManagement, repository, service } = createIdentityService();
+        const profile = createProfileWithUserCreatePermission();
+        profile.permissions.push({ code: "user.update", effect: "allow", scope: "all_areas", source: "role" });
+        repository.findBySessionTokenHash.mockResolvedValue(profile);
+        accessManagement.assertDelegableAccess.mockRejectedValue(new ForbiddenException("Outside authority"));
+        const payload = { displayName: "Target", email: "target@example.test", roleCode: "owner", orgUnitCodes: ["ventas"], reason: "Escalation regression" };
+        await expect(service.createSystemUser("token", { ...payload, initialStatus: "pending" })).rejects.toBeInstanceOf(ForbiddenException);
+        await expect(service.updateSystemUser("token", "target-user-public-id", payload)).rejects.toBeInstanceOf(ForbiddenException);
+        expect(repository.createSystemUser).not.toHaveBeenCalled();
+        expect(repository.updateSystemUser).not.toHaveBeenCalled();
+    });
     it("rechaza refresh sin cookie opaca", async () => {
         const { service } = createIdentityService();
 
@@ -859,11 +888,11 @@ describe("IdentityService", () => {
         expect(repository.createSystemUser).not.toHaveBeenCalled();
     });
 
-    it("asigna Formalizacion por defecto al crear su perfil sin areas explicitas", async () => {
+    it("does not select a module automatically when creating a Formalization profile", async () => {
         const { repository, service } = createIdentityService();
         repository.findBySessionTokenHash.mockResolvedValue(createProfileWithUserCreatePermission());
         await service.createSystemUser("session-token", { displayName: "Formalizacion Test", email: "formalization@example.test", initialStatus: "pending", roleCode: "formalizacion", reason: "Alta perfil formalizacion" });
-        expect(repository.createSystemUser).toHaveBeenCalledWith(expect.objectContaining({ roleCodes: ["formalizacion"], orgUnitCodes: ["formalizacion"] }));
+        expect(repository.createSystemUser).toHaveBeenCalledWith(expect.objectContaining({ roleCodes: ["formalizacion"], orgUnitCodes: [] }));
     });
 
     it("rejects an initial password without the dedicated privilege", async () => {
@@ -1029,6 +1058,13 @@ describe("IdentityService", () => {
                 userPublicId: "target-user-public-id",
             }),
         );
+    });
+
+    it("omitir accessMethods al editar no reactiva Microsoft retirado", async () => {
+        const { repository, service } = createIdentityService();
+        repository.findBySessionTokenHash.mockResolvedValue(createProfileWithUserUpdatePermission());
+        await service.updateSystemUser("token", "target-user-public-id", { displayName: "Changed", email: "changed@example.test", roleCode: "ventas", orgUnitCodes: ["ventas"], reason: "Preserve access methods" });
+        expect(repository.updateSystemUser).toHaveBeenCalledWith(expect.objectContaining({ accessMethods: undefined }));
     });
 
     it("rechaza editar usuario sin permiso o sobre la propia cuenta", async () => {

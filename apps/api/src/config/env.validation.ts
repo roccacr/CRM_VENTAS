@@ -28,6 +28,7 @@ const IPV4_MAPPED_SPACE = new BlockList();
 IPV4_MAPPED_SPACE.addSubnet("::ffff:0:0", IPV4_MAPPED_PREFIX_OFFSET, "ipv6");
 const REQUIRED_MICROSOFT_OIDC_KEYS = ["MICROSOFT_TENANT_ID", "MICROSOFT_CLIENT_ID", "MICROSOFT_CLIENT_SECRET", "MICROSOFT_REDIRECT_URI", "MICROSOFT_MSAL_CACHE_ENCRYPTION_KEY"] as const;
 
+/** Subset of settings that must all be present to enable Microsoft sign-in. */
 type MicrosoftOidcConfig = {
     AUDIT_HASH_SECRET: string;
     AUTH_TOKEN_HASH_SECRET: string;
@@ -301,6 +302,7 @@ const envSchema = z
         OPENAPI_ENABLED: booleanEnvSchema("false"),
         ENABLE_LEGACY_FALLBACK: booleanEnvSchema("false"),
         ENABLE_LEGACY_WRITES: booleanEnvSchema("false"),
+        ENABLE_RECORD_AUDIT: booleanEnvSchema("false"),
         LEGACY_CRM_DB_NAME: z.preprocess((value) => (value === "" ? undefined : value), z.literal("crmdatabase-api").optional()),
         TRUSTED_PROXY_IPS: z
             .string()
@@ -368,6 +370,7 @@ const envSchema = z
         addDatabaseTlsIssues(config, context);
     });
 
+/** Validated environment shape, inferred from the schema. */
 export type EnvConfig = z.infer<typeof envSchema>;
 
 /**

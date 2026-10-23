@@ -1,5 +1,120 @@
 # 00 - Ley de Producto CRM TINK y P0
 
+## Mercadeo: maqueta de Inicio autorizada - 2026-10-23
+
+El propietario solicita una propuesta visual con banners de leads/citas,
+filtros y agrupaciones por proyecto, campana, anuncio y vendedor, siguiendo
+Formalizacion. Se autoriza solo el frontend con muestra ficticia identificada
+y estado local. Sin consultas comerciales, endpoints, modelos operativos,
+permisos nuevos ni escrituras. No habilita Leads ni reportes reales. Detalle y
+verificacion en continuidad frontend 25; las compuertas de negocio se conservan.
+
+## Jerarquia modular autorizada - 2026-10-23
+
+Correccion posterior: Owner administra modulos y permisos de Jefe General en
+Roles y seguridad, Por rol. Plantilla persistida editable (migracion 030),
+intersectada con los modulos asignados de cada empleado; no regenerar permisos
+retirados. Owner sigue protegido/global y los denies prevalecen. No habilita
+Administracion a General ni modifica usuarios, legacy o datos comerciales.
+
+Jefe General obtiene permisos operativos solo en modulos seleccionados por el
+administrador. Jefes de area quedan bajo su modulo; Owner conserva herencia
+global y el deny individual prevalece. Reutilizar asignaciones existentes,
+bitacora y versionado; migracion nativa aditiva 029 autorizada, sin legacy ni
+datos comerciales. Esta regla sustituye las limitaciones anteriores de la
+jerarquia; especificacion y evidencia: [42 - Jefaturas](42-Jefaturas-Modulos-y-Permisos.md).
+
+## Mercadeo: roles y lectura por seccion - 2026-10-23
+
+El propietario solicita crear los roles `mercadeo` (Mercadeo) y `jefe_mercadeo`
+(Jefe de Mercadeo), como excepcion expresa a los ejemplos anteriores que evitaban
+roles por area. Ambos comienzan con el mismo acceso de lectura: Inicio, Captacion
+de leads, Eventos y citas, Calendario y los siete catalogos del contexto Mercadeo.
+La migracion nativa dirigida `202610230028_marketing_roles` crea cuatro permisos
+de seccion y reutiliza los siete permisos de lectura de catalogos existentes.
+No asigna usuarios ni modulos, no concede escritura/aprobacion y no toca legacy.
+Owner conserva su herencia efectiva y las denegaciones individuales prevalecen.
+Solo Inicio y Catalogos conservan sus rutas existentes; las otras opciones siguen
+visuales, sin vistas, consultas de leads/citas, exportaciones ni calendario operativo.
+Detalle y evidencia: [28 - Roles y permisos](28-Matriz-Roles-Permisos-Areas-P0-S1.md).
+
+## Owner: herencia por rol y deny individual - 2026-10-23
+
+El propietario autoriza persistir mediante migracion la herencia de todos los
+roles activos para Owner y confirma que los denies individuales prevalecen.
+Se resuelven roles efectivos, no asignaciones fisicas masivas a cada usuario.
+Los permisos activos Owner son base automatica; nunca un bypass de deny, recurso,
+sesion o reglas de negocio. El resto mantiene asignaciones y permisos normales.
+Lectura de banners de etapas: rol efectivo Formalizacion mas permiso efectivo
+`formalizacion.home.stages.read`, concedido por defecto a Formalizacion y Owner.
+Se autoriza solo esta migracion nativa, sin modificar legacy ni datos comerciales.
+Este apartado sustituye la exclusion anterior de Owner para la lectura, no
+habilita bandejas/acciones. Plan y evidencia: [41 - Owner](41-Owner-Herencia-y-Denegaciones.md).
+
+## Ampliacion autorizada: resumen agregado de etapas en Home - 2026-10-23
+
+El propietario solicita conectar los cinco indicadores restantes y contratos a
+un resumen real de ambas fuentes, sin ampliar el flujo operativo. Se implementa
+un lector agregado `GET /formalization/home/summary`, exclusivo del rol activo
+`formalizacion`; aprobaciones conserva su endpoint y permiso independiente.
+Nativo prevalece sobre legacy por identidad, sin duplicados ni fallback por
+inactividad de una fila nativa. Etapas posteriores se leen del ultimo evento
+persistido, no de flags ERP ni escenarios locales.
+
+No habilita listados, envio/reversion, transiciones posteriores, correos ni
+mutaciones. No autoriza fixtures, DDL, cambios de credenciales ni carga de pruebas
+en las BD compartidas. Conteos sin cache y pruebas sinteticas separadas de la
+validacion MySQL real. El cierre anual es acumulativo por orden: un evento final
+confirmado en ese anio cuenta una vez, aunque despues se reabra. No inventar
+fechas al importar ni cerrar automaticamente; el usuario registra la finalizacion.
+Plan y evidencia de este corte:
+[40 - Home y rendimiento](40-Formalizacion-Home-Resumen-y-Rendimiento.md).
+
+Este apartado prevalece para el nuevo alcance de lectura; las decisiones y
+mediciones historicas siguientes conservan la fecha y limites de su corte.
+
+## Correccion de alcance: solo Home habilitado - 2026-10-22
+
+Instruccion mas reciente del propietario: retirar la bandeja real y los botones que se adelantaron. Se conserva unicamente el banner contractual conectado en Home, con rol formalizacion activo. Las vistas de ordenes vuelven a su estado vacio, sin consultar listados ni ofrecer cambios de estado. GET contracts/orders y POST contracts/send/revert se desregistran del AppModule; sus clases/pruebas pueden conservarse como trabajo preparado, no funcionalidad habilitada. ENABLE_LEGACY_WRITES=false de nuevo en .env local. No se borran tablas, permisos ni evidencia de las preparaciones ya aplicadas; no se cambia ningun estado comercial para revertir UI. Este apartado prevalece sobre el plan de ejecucion ampliada que sigue.
+
+## Contratos: ejecucion progresiva autorizada - 2026-10-22
+
+El propietario confirma implementar ahora resumen, etapas y comandos de envio/reversion. Toda orden activa, no caida y con tres aprobaciones completas entra por defecto en contract_pending_send si no existe una etapa CRM posterior; los flags historicos de firma no se usan para inventar el envio nuevo. Registrar envio pasa a contract_pending_signature sin correo ni ERP. Reversion exige motivo y permiso separado. Lectura exige rol formalizacion activo, envio exige formalizacion.contracts.send heredado por ese rol con deny directo prevaleciente; reversion formalizacion.contracts.revert no se concede automaticamente.
+
+La etapa comercial se persiste solo en la fuente autoritativa: orden nativa si existe (incluso para decidir que una inactiva/borrada no puede recurrir a legacy), legacy si no. Crear las dos tablas aditivas legacy preparadas, sin alterar ordenventa. La evidencia central vive siempre en CRM_THINK_V2 y comparte transaccion/conexion con el cambio. Migradores futuros deben bloquear el padre legacy antes de promover una orden; no certificar concurrencia contra un migrador externo que ignore ese protocolo. No se mueven ordenes reales durante la entrega ni se ejecutan fixtures compartidos. Esta autorizacion sustituye el aplazamiento de implementacion anterior para este corte, no habilita otras etapas, Leads o automatizaciones.
+
+Solo para los nuevos comandos de etapas contractuales, el opt-in ENABLE_LEGACY_WRITES=true y esquema exacto permite escritura aditiva desde el API local en desarrollo, con rol/permiso vivo y bitacora central obligatorios. Las compuertas production de los seis escritores de catalogos no se cambian. El pool legacy separado sigue READ ONLY; las etapas usan la transaccion nativa cualificada. No se otorgan privilegios adicionales a la cuenta compartida.
+
+## Activacion local de bitacora y verificacion 024 - 2026-10-22
+
+El propietario autoriza aplicar 024, validar privilegios y activar la bitacora con las credenciales actuales, manteniendo las operaciones normales del API. Ante la propuesta de una cuenta dedicada pide conservar capacidad CRUD; no se crean usuarios, no se cambian grants y no se retira acceso a la cuenta compartida. Esto no certifica inmutabilidad SQL: la cuenta actual conserva privilegios administrativos, incluidos UPDATE/DELETE.
+
+024 aplicada exclusivamente en CRM_THINK_V2 y verificada por ledger, cinco columnas NO PAD e indices unicos completos. .env local (ignorado por Git) cambia ENABLE_RECORD_AUDIT=true y ENABLE_LEGACY_FALLBACK=true. Reiniciado exclusivamente el API local; health/live y health/ready aprobados. Conexion nativa y legacy comprobadas, esta ultima en READ ONLY. No se cambia NODE_ENV ni se eluden las compuertas productivas: escritura legacy sigue desactivada en desarrollo; no equivale a habilitar mutaciones de ordenes exclusivamente legacy.
+
+El propietario pospone la operacion controlada: elegira despues una orden para moverla de estado. No se modifica ningun dato comercial ni se inserta evidencia ficticia en este avance. Detalle y limites en [38 - Activacion local](38-Ordenes-Venta-Estados-Auditoria.md#activacion-local-y-migracion-024-aplicada---2026-10-22). Sustituye las restricciones anteriores de no aplicar 024/no editar .env solo para esta activacion expresamente autorizada.
+
+## Conexion de escritores autorizada, sin ejecutar BD - 2026-10-22
+
+El propietario confirma implementar los escritores y probarlos solo con unidades/dobles; no crear otra instancia MySQL ni ejecutar fixtures, concurrencia real, migraciones o escrituras de validacion en las BD compartidas. Se conserva `.env` sin cambios. Las pruebas MySQL reales quedan pendientes, no aprobadas ni sustituidas por mocks.
+
+Se conecta en codigo la bitacora central mediante `ENABLE_RECORD_AUDIT=false` por defecto: puente para los cambios administrativos existentes de siete catalogos, usuarios y roles; e historial interno de estados/aprobaciones de ordenes nativas. No se activa contra la BD actual. Habilitarla requiere esquema nativo 023/024 registrado; el servicio rechaza arranque/escritura sin ese prerequisito y no ejecuta DDL. Se mantienen las compuertas de escritura legacy y los permisos actuales; no se crean grants ni endpoints comerciales. El servicio de lectura de auditoria ahora comparte la politica del guard: deny de role.assign prevalece sobre Owner activo.
+
+Los snapshots conectados son parciales y seguros, no imagenes integrales restaurables. Se conserva auditoria anterior y transaccion del cambio, sin enviar correo/ERP ni crear una orden nativa para auditar legacy. Alcance y limites actuales: [38 - Escritores y activacion](38-Ordenes-Venta-Estados-Auditoria.md#escritores-conectados-activacion-pendiente---2026-10-22). No habilita Leads, banner Contratos, ordenes exclusivamente legacy ni restauracion generica.
+
+## Bitacora comercial central autorizada - 2026-10-22
+
+El propietario amplia el corte anterior documental: crear la base de auditoria generica para registros nativos y legacy, sin habilitar todavia Contratos pendientes. Migracion aditiva `202610220023_record_audit` aplicada solo en `CRM_THINK_V2`: `audit_record` y `audit_record_event`. No altera tablas comerciales, permisos ni produccion. Diccionario, evidencia y limites en [38 - Ordenes/estados/auditoria](38-Ordenes-Venta-Estados-Auditoria.md#bitacora-central-de-registros---2026-10-22).
+
+La autoridad de escritura comercial no cambia: nativo si existe, legacy si no. La nueva evidencia comercial se centralizara en nativo incluso para registros legacy, mediante referencia logica sin FK a la orden. Crear el expediente de auditoria no migra la orden ni modifica la seleccion de autoridad. Este corte crea estructura, no captura automatica, endpoints de restauracion ni integracion de todos los escritores. El historial existente se conserva.
+
+## Contratos pendientes: decision documental y siguiente corte - 2026-10-22
+
+El propietario confirma dos estados distintos: Por enviar (tres aprobaciones completas y envio no registrado) y Pendiente de firma (envio registrado, firma pendiente). Registrar envio solo cambia el estado CRM con confirmacion; no envia correos ni ejecuta operaciones ERP. Revertir a Por enviar exige motivo/nota y agrega un evento sin borrar historia. El rol Formalizacion heredara el permiso de registrar envio; una denegacion directa por persona prevalece. La reversion tendra permiso separado, sin inferir su asignacion por defecto.
+
+El siguiente corte sera conectar el banner Contratos pendientes con un resumen API canonico de `CRM_THINK_V2` y `crmdatabase-api`, nativo primero y sin duplicados. Su visibilidad exige al menos el rol activo `formalizacion`; pertenencia al modulo o rol Jefe sin el rol base no bastan. Autorizar antes de consultar en backend y antes de montar el consumidor frontend. Esto no cambia el permiso independiente del banner Pendientes de aprobacion.
+
+Instruccion de ese corte documental, anterior a la ampliacion de bitacora: guardar las reglas, no implementar todavia consultas, endpoints, mutaciones, grants, migraciones ni conexiones para Contratos. Detalle, JSON ilustrativo y criterios pendientes: [38 - Ordenes, estados y auditoria](38-Ordenes-Venta-Estados-Auditoria.md). Las aprobaciones completas no bastan para contar ordenes ya enviadas/firmadas en Por enviar; los dos subtotales deben ser excluyentes.
+
 ## Consolidacion de alcance aprobado - 2026-10-22
 
 Este apartado reconcilia las ampliaciones solicitadas despues del corte inicial de identidad; no cambia retroactivamente versiones, firmas ni fechas anteriores. Las restricciones antiguas de runtime exclusivamente identidad se leen con estas excepciones: Administracion/catalogos, expedientes de unidades de lectura, persistencia interna de ordenes e historial y contador de aprobaciones de Formalizacion. No habilita Leads ni el flujo contractual completo.

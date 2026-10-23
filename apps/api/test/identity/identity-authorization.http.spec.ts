@@ -93,7 +93,7 @@ const endpoints: Endpoint[] = [
     { name: "security catalog", method: "GET", url: "/identity/roles/security-catalog", permissions: ["role.assign"], status: 200 },
     { name: "role permissions read", method: "GET", url: "/identity/roles/ventas/permissions", permissions: ["role.assign"], status: 200 },
     { name: "role rename", method: "PATCH", url: "/identity/roles/ventas", permissions: ["role.assign"], payload: { name: "Sales renamed", reason: userPayload.reason }, status: 200 },
-    { name: "role permissions replace", method: "PUT", url: "/identity/roles/ventas/permissions", permissions: ["role.assign"], payload: { permissionCodes: ["lead.read"], reason: userPayload.reason }, status: 200 },
+    { name: "role permissions replace", method: "PUT", url: "/identity/roles/ventas/permissions", permissions: ["role.assign", "lead.read"], payload: { permissionCodes: ["lead.read"], reason: userPayload.reason }, status: 200 },
     { name: "role delete", method: "DELETE", url: "/identity/roles/ventas", permissions: ["role.assign"], status: 200 },
     { name: "user access read", method: "GET", url: "/identity/users/target/access", permissions: ["role.assign"], status: 200 },
     { name: "user access replace", method: "PUT", url: "/identity/users/target/access", permissions: ["role.assign"], payload: { roleCodes: ["ventas"], orgUnitCodes: ["ventas"], permissionOverrides: [], reason: userPayload.reason }, status: 200 },
@@ -125,6 +125,7 @@ describe("identity HTTP authorization with real services and CSRF, persistence o
     const role = { code: "ventas", description: null, name: "Sales", status: "active" };
     const access = { user: { email: target.email, name: target.name, publicId: target.publicId, status: target.status }, roles: [{ ...role }], orgUnits: [{ code: "ventas", name: "Sales", publicId: "area" }], permissionOverrides: [] };
     const accessRepository = {
+        assertDelegableAccess: vi.fn<IdentityAccessManagementRepository["assertDelegableAccess"]>().mockResolvedValue(undefined),
         readSecurityCatalog: vi.fn<IdentityAccessManagementRepository["readSecurityCatalog"]>().mockResolvedValue({ auditEvents: [], modules: [], rolePermissions: {}, roles: [] }),
         readRolePermissions: vi.fn<IdentityAccessManagementRepository["readRolePermissions"]>().mockResolvedValue({ role, permissionCodes: ["lead.read"] }),
         updateRole: vi.fn<IdentityAccessManagementRepository["updateRole"]>().mockResolvedValue(role),

@@ -6,10 +6,12 @@ import type { PermissionEffect, PermissionInput, PermissionOverrideInput } from 
 import { resolveHighestPermissionScope } from "../permissions/permission-scope.js";
 import type { IdentityAuthSummary, IdentityOrgUnit, IdentityProfile, IdentityRole } from "./identity.types.js";
 import { MICROSOFT_PROVIDER_CODE } from "./identity-microsoft.constants.js";
+import { type ModuleRoleAccess, normalizePermissionModule, resolveModuleRoleAccess } from "./identity-module-policy.js";
 import { ACTIVE_STATUS, LOCAL_PROVIDER_AVAILABLE_STATUSES, LOCAL_PROVIDER_CODE, PENDING_LOCAL_STATUS } from "./identity-repository.shared.js";
 
 const OWNER_ROLE_CODE = "owner";
 
+/** Active session joined with its user and identity. */
 type ActiveSessionRow = {
     authIdentityStatus: string;
     currentProvider: string;
@@ -30,16 +32,23 @@ type ActiveSessionRow = {
     microsoftTenantId: string | null;
 };
 
+/** Permission granted through a role. */
 type RolePermissionRow = {
     code: string;
+    moduleCode?: string;
+    roleCode?: string;
 };
 
+/** Active permission definition. */
 type ActivePermissionRow = {
     code: string;
+    moduleCode?: string;
 };
 
+/** Direct per-user permission exception. */
 type PermissionOverrideRow = {
     code: string;
+    moduleCode?: string;
     effect: string;
     expiresAt: Date | string | null;
 };
@@ -79,16 +88,18 @@ export class IdentityProfileRepository {
             return null;
         }
 
-        const [roles, orgUnits, localStatus] = await Promise.all([this.findRoles(session.userId), this.findOrgUnits(session.userId), this.findLocalAuthStatus(session.userId)]);
+        const [assignedOrgUnits, localStatus] = await Promise.all([this.findOrgUnits(session.userId), this.findLocalAuthStatus(session.userId)]);
+        const access = await this.findRoles(session.userId, assignedOrgUnits);
+        const orgUnits = await this.effectiveOrgUnits(access, assignedOrgUnits);
         const scope = orgUnits.length ? resolveHighestPermissionScope(orgUnits.map((unit) => unit.scope)) : DEFAULT_DIRECT_OVERRIDE_SCOPE;
-        const { rolePermissions, overrides } = await this.findEffectivePermissionInputs(session.userId, scope, roles);
+        const { rolePermissions, overrides } = await this.findEffectivePermissionInputs(session.userId, scope, access, orgUnits);
         const effectivePermissions = this.permissions.calculate({ rolePermissions, overrides });
 
         return this.buildIdentityProfile({
             localStatus,
             orgUnits,
             permissions: effectivePermissions.permissions,
-            roles,
+            roles: access.roles,
             session,
         });
     }
@@ -210,10 +221,38 @@ export class IdentityProfileRepository {
     }
 
     /**
-     * Retorna roles activos asignados directamente al usuario canonico CRM.
+     * Owner inherits active roles from its persisted policy; direct assignments stay unchanged.
      */
-    private async findRoles(userId: number): Promise<IdentityRole[]> {
-        return this.database.db.selectFrom("sec_user_role as userRole").innerJoin("sec_role as role", "role.id_role", "userRole.role_id_user_role").select(["role.code_role as code", "role.name_role as name", "role.status_role as status"]).where("userRole.user_id_user_role", "=", userId).where("userRole.status_user_role", "=", ACTIVE_STATUS).where("role.status_role", "=", ACTIVE_STATUS).where("role.deleted_at_role", "is", null).execute();
+    private async findRoles(userId: number, orgUnits: readonly IdentityOrgUnit[] = []): Promise<ModuleRoleAccess> {
+        const assigned = await this.database.db
+            .selectFrom("sec_user_role as userRole")
+            .innerJoin("sec_role as role", "role.id_role", "userRole.role_id_user_role")
+            .select(["role.code_role as code", "role.name_role as name", "role.status_role as status", "role.role_inheritance_mode_role as inheritanceMode", "role.permission_inheritance_mode_role as permissionInheritance"])
+            .where("userRole.user_id_user_role", "=", userId)
+            .where("userRole.status_user_role", "=", ACTIVE_STATUS)
+            .where("userRole.revoked_at_user_role", "is", null)
+            .where("role.status_role", "=", ACTIVE_STATUS)
+            .where("role.deleted_at_role", "is", null)
+            .execute();
+        const inherits = assigned.some((role) => role.code === OWNER_ROLE_CODE && role.status === ACTIVE_STATUS && role.inheritanceMode === "all_active_roles");
+        if (assigned.some((role) => role.code === OWNER_ROLE_CODE)) {
+            const roles = inherits ? await this.database.db.selectFrom("sec_role as role").select(["role.code_role as code", "role.name_role as name", "role.status_role as status"]).where("role.status_role", "=", ACTIVE_STATUS).where("role.deleted_at_role", "is", null).orderBy("role.id_role", "asc").execute() : assigned;
+            return { roles: roles.map(({ code, name, status }) => ({ code, name, status })), moduleCodes: null, permissionInheritance: "assigned" };
+        }
+        const mappings = await this.database.db
+            .selectFrom("sec_role_module as mapping")
+            .innerJoin("sec_role as role", "role.id_role", "mapping.role_id_role_module")
+            .innerJoin("sec_org_unit as orgUnit", "orgUnit.id_org_unit", "mapping.org_unit_id_role_module")
+            .select(["role.code_role as code", "role.name_role as name", "role.status_role as status", "orgUnit.code_org_unit as moduleCode", "mapping.status_role_module as mappingStatus", "orgUnit.status_org_unit as moduleStatus", "orgUnit.deleted_at_org_unit as moduleDeleted"])
+            .where("role.status_role", "=", ACTIVE_STATUS)
+            .where("role.deleted_at_role", "is", null)
+            .orderBy("role.id_role", "asc")
+            .execute();
+        return resolveModuleRoleAccess(
+            assigned,
+            mappings,
+            orgUnits.map((unit) => unit.code),
+        );
     }
 
     /**
@@ -226,23 +265,32 @@ export class IdentityProfileRepository {
             .select(["membership.membership_code_user_org_unit as membership", "membership.scope_code_user_org_unit as scope", "membership.status_user_org_unit as status", "orgUnit.code_org_unit as code", "orgUnit.name_org_unit as name", "orgUnit.public_id_org_unit as publicId"])
             .where("membership.user_id_user_org_unit", "=", userId)
             .where("membership.status_user_org_unit", "=", ACTIVE_STATUS)
+            .where("membership.revoked_at_user_org_unit", "is", null)
             .where("orgUnit.status_org_unit", "=", ACTIVE_STATUS)
             .where("orgUnit.deleted_at_org_unit", "is", null)
             .execute();
     }
 
+    /** Owner's global module access is virtual; root membership never hides all operational menus. */
+    private async effectiveOrgUnits(access: ModuleRoleAccess, assigned: readonly IdentityOrgUnit[]): Promise<IdentityOrgUnit[]> {
+        if (!access.roles.some((role) => role.code === OWNER_ROLE_CODE && role.status === ACTIVE_STATUS)) return assigned.filter((unit) => access.moduleCodes === null || access.moduleCodes.includes(unit.code));
+        const modules = await this.database.db.selectFrom("sec_org_unit").select(["code_org_unit as code", "name_org_unit as name", "public_id_org_unit as publicId", "status_org_unit as status"]).where("status_org_unit", "=", ACTIVE_STATUS).where("deleted_at_org_unit", "is", null).orderBy("sort_order_org_unit", "asc").execute();
+        return modules.map((module) => ({ ...module, membership: "leader", scope: "all_areas" }));
+    }
+
     /**
      * Lee permisos activos concedidos por roles activos.
      */
-    private async findRolePermissions(userId: number, scope: string): Promise<PermissionInput[]> {
+    private async findRolePermissions(userId: number, scope: string): Promise<Array<PermissionInput & { moduleCode?: string; roleCode?: string }>> {
         const rows: RolePermissionRow[] = await this.database.db
             .selectFrom("sec_user_role as userRole")
             .innerJoin("sec_role as role", "role.id_role", "userRole.role_id_user_role")
             .innerJoin("sec_role_permission as rolePermission", "rolePermission.role_id_role_permission", "role.id_role")
             .innerJoin("sec_permission as permission", "permission.id_permission", "rolePermission.permission_id_role_permission")
-            .select("permission.code_permission as code")
+            .select(["permission.code_permission as code", "permission.module_code_permission as moduleCode", "role.code_role as roleCode"])
             .where("userRole.user_id_user_role", "=", userId)
             .where("userRole.status_user_role", "=", ACTIVE_STATUS)
+            .where("userRole.revoked_at_user_role", "is", null)
             .where("role.status_role", "=", ACTIVE_STATUS)
             .where("role.deleted_at_role", "is", null)
             .where("rolePermission.status_role_permission", "=", ACTIVE_STATUS)
@@ -252,55 +300,85 @@ export class IdentityProfileRepository {
         return rows.map((row) => ({
             code: row.code,
             scope,
+            ...(row.moduleCode === undefined ? {} : { moduleCode: row.moduleCode }),
+            ...(row.roleCode === undefined ? {} : { roleCode: row.roleCode }),
         }));
     }
 
     /**
-     * Owner no admite degradaciones por overrides directos: sus permisos base
-     * son todos los permisos activos del sistema.
+     * Owner receives all active base grants, then the same live user overrides as everyone else.
      */
     private async findEffectivePermissionInputs(
         userId: number,
         scope: string,
-        roles: readonly IdentityRole[],
+        access: ModuleRoleAccess,
+        orgUnits: readonly IdentityOrgUnit[],
     ): Promise<{
         rolePermissions: PermissionInput[];
         overrides: PermissionOverrideInput[];
     }> {
-        if (roles.some((role) => role.code === OWNER_ROLE_CODE)) {
+        if (access.roles.some((role) => role.code === OWNER_ROLE_CODE && role.status === ACTIVE_STATUS)) {
+            const [rolePermissions, overrides] = await Promise.all([this.findAllActivePermissions(scope), this.findOverrides(userId)]);
             return {
-                overrides: [],
-                rolePermissions: await this.findAllActivePermissions(scope),
+                overrides,
+                rolePermissions,
             };
         }
 
         const [rolePermissions, overrides] = await Promise.all([this.findRolePermissions(userId, scope), this.findOverrides(userId)]);
 
-        return { overrides, rolePermissions };
+        return {
+            overrides: this.restrictToModules(overrides, access.moduleCodes, orgUnits),
+            rolePermissions: this.restrictToModules(this.restrictGrantingRoles(rolePermissions, access), access.moduleCodes, orgUnits),
+        };
+    }
+
+    /** A grant cannot borrow another role's ceiling or survive its own role revocation. */
+    private restrictGrantingRoles<T extends { roleCode?: string; moduleCode?: string }>(inputs: readonly T[], access: ModuleRoleAccess): T[] {
+        if (access.moduleCodes === null) return [...inputs];
+        const roles = new Set(access.roles.map((role) => role.code));
+        return inputs.filter((input) => {
+            if (input.roleCode === undefined || input.moduleCode === undefined || !roles.has(input.roleCode)) return false;
+            const ceiling = access.roleModuleCodes?.get(input.roleCode) ?? access.moduleCodes ?? [];
+            return ceiling.includes(normalizePermissionModule(input.moduleCode));
+        });
+    }
+
+    /** The profile is the common boundary for HTTP, services and internal callers. */
+    private restrictToModules<T extends { code: string; scope: string; moduleCode?: string }>(inputs: readonly T[], modules: readonly string[] | null, orgUnits: readonly IdentityOrgUnit[]): T[] {
+        if (modules === null) return [...inputs];
+        return inputs
+            .filter((input) => input.moduleCode !== undefined && modules.includes(normalizePermissionModule(input.moduleCode)))
+            .map((input) => {
+                const membership = orgUnits.find((unit) => unit.code === normalizePermissionModule(input.moduleCode ?? ""));
+                // A direct allow retains its narrow scope; it never widens the role grant.
+                return { ...input, scope: input.scope === DEFAULT_DIRECT_OVERRIDE_SCOPE ? input.scope : (membership?.scope ?? DEFAULT_DIRECT_OVERRIDE_SCOPE) };
+            });
     }
 
     /**
      * Owner conserva acceso administrativo global: cualquier permiso activo nuevo
      * queda disponible al perfil sin depender de una fila rol-permiso historica.
      */
-    private async findAllActivePermissions(scope: string): Promise<PermissionInput[]> {
-        const rows: ActivePermissionRow[] = await this.database.db.selectFrom("sec_permission as permission").select("permission.code_permission as code").where("permission.status_permission", "=", ACTIVE_STATUS).execute();
+    private async findAllActivePermissions(scope: string): Promise<Array<PermissionInput & { moduleCode?: string }>> {
+        const rows: ActivePermissionRow[] = await this.database.db.selectFrom("sec_permission as permission").select(["permission.code_permission as code", "permission.module_code_permission as moduleCode"]).where("permission.status_permission", "=", ACTIVE_STATUS).execute();
 
         return rows.map((row) => ({
             code: row.code,
             scope,
+            ...(row.moduleCode === undefined ? {} : { moduleCode: row.moduleCode }),
         }));
     }
 
     /**
      * Lee overrides directos vigentes y descarta permisos inactivos.
      */
-    private async findOverrides(userId: number): Promise<PermissionOverrideInput[]> {
+    private async findOverrides(userId: number): Promise<Array<PermissionOverrideInput & { moduleCode?: string }>> {
         const now = new Date();
         const rows: PermissionOverrideRow[] = await this.database.db
             .selectFrom("sec_user_permission_override as override")
             .innerJoin("sec_permission as permission", "permission.id_permission", "override.permission_id_user_permission_override")
-            .select(["override.effect_user_permission_override as effect", "override.ends_at_user_permission_override as expiresAt", "permission.code_permission as code"])
+            .select(["override.effect_user_permission_override as effect", "override.ends_at_user_permission_override as expiresAt", "permission.code_permission as code", "permission.module_code_permission as moduleCode"])
             .where("override.user_id_user_permission_override", "=", userId)
             .where("override.status_user_permission_override", "=", ACTIVE_STATUS)
             .where("override.starts_at_user_permission_override", "<=", now)
@@ -314,6 +392,7 @@ export class IdentityProfileRepository {
             effect: row.effect as PermissionEffect,
             expiresAt: row.expiresAt ? this.toDate(row.expiresAt) : null,
             scope: DEFAULT_DIRECT_OVERRIDE_SCOPE,
+            ...(row.moduleCode === undefined ? {} : { moduleCode: row.moduleCode }),
         }));
     }
 

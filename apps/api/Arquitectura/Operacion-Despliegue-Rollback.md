@@ -17,8 +17,9 @@ Contrato efectivo: [`env.validation.ts`](../src/config/env.validation.ts), [`dat
 | Variable/grupo | Politica operacional |
 | --- | --- |
 | `NODE_ENV` | `development` local; `production` solo en el destino autorizado. |
-| `ENABLE_LEGACY_FALLBACK=false` | Mantener localmente; deshabilita acceso legacy y su pool. Nativo `CRM_THINK_V2` sigue siendo primario. |
+| `ENABLE_LEGACY_FALLBACK=false` | Default del ejemplo/validador: deshabilita acceso legacy y su pool. El snapshot local autorizado posterior registra true, no es estado productivo confirmado. Nativo `CRM_THINK_V2` sigue siendo primario. |
 | `ENABLE_LEGACY_WRITES=false` | Default seguro local y produccion. Opt-in solo productivo: requiere ademas `NODE_ENV=production`, `ENABLE_LEGACY_FALLBACK=true` y `LEGACY_CRM_DB_NAME=crmdatabase-api`; destino vacio bloquea escrituras. Habilitar lectura no habilita escritura. Requiere autorizacion y compatibilidad revisada por dominio. |
+| `ENABLE_RECORD_AUDIT=false` | Default del ejemplo/validador. Activacion explicita y preflight 023/024 segun apartado siguiente; no habilita comandos ni escritura legacy. |
 | `DB_*` | Destino nativo validado `CRM_THINK_V2`, conectividad y permisos necesarios para runtime. Host remoto exige `DB_SSL=true`; CA solo con TLS activo. No usar permisos de migracion como requisito general del runtime. |
 | `COOKIE_SECRET`, `AUDIT_HASH_SECRET`, `AUTH_TOKEN_HASH_SECRET` | Obligatorios, minimo 32 caracteres. Conservar secretos compatibles durante rollback; no rotar credenciales compartidas como parte de un reinicio. |
 | `FRONTEND_ORIGIN`, `FRONTEND_ALLOWED_ORIGINS` | Origen canonico y allowlist exacta, compatibles con cookies BFF y HTTPS productivo. |
@@ -26,6 +27,20 @@ Contrato efectivo: [`env.validation.ts`](../src/config/env.validation.ts), [`dat
 | `OPENAPI_ENABLED`, `LOG_LEVEL` | Swagger deshabilitado por default; logging `info` por default. Exposicion y verbosidad segun destino aprobado. |
 
 La configuracion se valida al bootstrap. Crear el pool no acredita acceso real ni disponibilidad de tablas; `/health/ready` comprueba conectividad nativa, no esquema ni migraciones. No ejecutar automaticamente `migrate:identity:schema` ni `recover:owner` al arrancar.
+
+## Auditoria central: activacion y apagado
+
+`ENABLE_RECORD_AUDIT` vale false por defecto en [`.env.example`](../.env.example) y [`env.validation.ts`](../src/config/env.validation.ts). Es distinta de la auditoria de seguridad anterior `audit_security_event` y de los historiales especializados, que se conservan. Con false no se captura mediante los escritores centrales conectados; no implica ausencia de toda auditoria.
+
+Procedimiento para una activacion posterior autorizada, no ejecutado por esta remediacion:
+
+1. Revisar respaldo, ventana y esquema con el responsable. Verificar destino nativo `CRM_THINK_V2`, ledger `202610220023_record_audit` y `202610220024_record_audit_identifier_collation`, estructura compatible e InnoDB. Seguir el [procedimiento de migraciones](03-Base-Datos-y-Migracion.md) si falta preparacion; el runtime no aplica DDL automaticamente.
+2. Revisar transacciones y privilegios dedicados para la evidencia (SELECT/INSERT, sin UPDATE/DELETE). No revocar credenciales compartidas. Ledger presente no prueba ausencia de drift ni inmutabilidad con grants amplios.
+3. Configurar explicitamente `ENABLE_RECORD_AUDIT=true` en el destino autorizado y reiniciar el API por su procedimiento aprobado. [`RecordAuditService`](../src/modules/crm/audit/record-audit.service.ts) verifica DATABASE() y ambos registros 023/024 al iniciar y en cada append; falla cerrado si falta preparacion. No usar `/health/ready` como prueba del esquema.
+4. Comprobar arranque/preflight y, solo con autorizacion separada, una operacion de negocio permitida y su evidencia transaccional. Sin esa operacion no afirmar captura real, rollback ni concurrencia MySQL. No insertar fixtures en BD compartidas ni activar list/send/revert para comprobarlo.
+5. Para apagar la captura central, configurar `ENABLE_RECORD_AUDIT=false` y reiniciar. No elimina eventos, no deshace DDL ni mutaciones previas, no impide mutaciones nativas y no revierte las auditorias anteriores. Evaluar la perdida de captura futura con el responsable.
+
+El [snapshot local autorizado del 2026-10-22](38-Ordenes-Venta-Estados-Auditoria.md#alcance-final-corregido-solo-home---2026-10-22) registra fallback/auditoria true y legacy writes false; los tres defaults del ejemplo son false. Es evidencia documental fechada, sin releer `.env` ni comprobar produccion en este trabajo. Los snapshots parciales de auditoria no permiten prometer restore generico; restauracion integral y ensayo de backup permanecen pendientes.
 
 ## Salud y observabilidad
 
@@ -68,7 +83,7 @@ Implementado significa codigo inspeccionado; no prueba despliegue, datos reales 
 | --- | --- |
 | Identidad, sesiones BFF, permisos, administracion y auditoria | Implementado en modulos API y paginas administrativas; integraciones/configuracion real y QA del destino se validan aparte. |
 | Catalogos y expedientes de unidades | Implementado en modulos propios (`catalogs`, `projects`, `campaigns`, `classes`, `locations`, `subsidiaries`, `brokers`, `unit-files`); no equivale a expediente contractual completo de Formalizacion. |
-| Inicio Formalizacion / contador de aprobaciones | Lectura implementada en `sales/sales-orders/approval-summary.module.ts` y consumidor `approval-summary-service.ts`; requiere sesion y permiso efectivo. No autoriza aprobar ni editar ordenes. |
+| Inicio Formalizacion / dos banners reales | Aprobaciones requiere sesion y permiso `formalizacion.home.approvals.read`; contratos requiere rol activo `formalizacion`. Cinco indicadores provisionales, bandejas vacias; list/send/revert no registrados. No autoriza aprobar ni editar ordenes. |
 | Gestion/orden detallada, calendario y resumen de Formalizacion | DEMO local (`FormalizationFollowUpPreview`, `FormalizationOrderPreview`, `FormalizationCalendarPage`, `FormalizationSummaryPage`); escenarios y acciones simuladas no son operaciones persistidas ni correo enviado. |
 | Ciclo de vida de ordenes de venta | Persistencia interna y auditoria en `sales-order-lifecycle.repository.ts`; no confundir con API habilitada de mutaciones/aprobaciones. |
 | Solicitud de recuperacion de clave | Deshabilitada honestamente: 503 uniforme, proveedor de correo pospuesto. Finalizacion con tokens existentes conserva su contrato; no se acredita envio. |

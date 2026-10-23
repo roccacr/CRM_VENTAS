@@ -7,7 +7,7 @@ import { HealthModule } from "./common/health/health.module.js";
 import { AuthGuard } from "./common/security/auth.guard.js";
 import { AuthenticatedReadRateLimit } from "./common/security/authenticated-read-rate-limit.js";
 import { CsrfGuard } from "./common/security/csrf.guard.js";
-import { APP_LOG_REDACT_PATHS } from "./config/app-logging.constants.js";
+import { APP_LOG_REDACT_PATHS, APP_LOG_REQUEST_SERIALIZER } from "./config/app-logging.constants.js";
 import { validateEnv } from "./config/env.validation.js";
 import { DatabaseModule } from "./database/database.module.js";
 import { LegacyCrmModule } from "./integrations/legacy-crm/legacy-crm.module.js";
@@ -23,6 +23,8 @@ import { LocationsModule } from "./modules/crm/locations/locations.module.js";
 import { PermissionsModule } from "./modules/crm/permissions/permissions.module.js";
 import { ProjectsModule } from "./modules/crm/projects/projects.module.js";
 import { ApprovalSummaryModule } from "./modules/crm/sales/sales-orders/approval-summary.module.js";
+import { ContractSummaryModule } from "./modules/crm/sales/sales-orders/contract-summary.module.js";
+import { HomeSummaryModule } from "./modules/crm/sales/sales-orders/home-summary.module.js";
 import { SubsidiariesModule } from "./modules/crm/subsidiaries/subsidiaries.module.js";
 import { UnitFilesModule } from "./modules/crm/unit-files/unit-files.module.js";
 
@@ -44,6 +46,7 @@ import { UnitFilesModule } from "./modules/crm/unit-files/unit-files.module.js";
             pinoHttp: {
                 level: process.env.LOG_LEVEL ?? (process.env.NODE_ENV === "test" ? "silent" : "info"),
                 name: "crm-tink-api",
+                serializers: { req: APP_LOG_REQUEST_SERIALIZER },
                 redact: {
                     paths: APP_LOG_REDACT_PATHS,
                     censor: "[REDACTED]",
@@ -66,6 +69,8 @@ import { UnitFilesModule } from "./modules/crm/unit-files/unit-files.module.js";
         BrokersModule,
         UnitFilesModule,
         ApprovalSummaryModule,
+        ContractSummaryModule,
+        HomeSummaryModule,
     ],
     providers: [
         AuthenticatedReadRateLimit,

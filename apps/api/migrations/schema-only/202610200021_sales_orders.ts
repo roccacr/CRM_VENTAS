@@ -1,5 +1,7 @@
 import { type Kysely, sql } from "kysely";
 
+import { readTargetTableNames } from "./202609250001_identity_schema.js";
+
 export const salesOrderStatements = [
     `CREATE TABLE IF NOT EXISTS conf_sales_order_state (
   code_sales_order_state VARCHAR(48) NOT NULL COMMENT 'Codigo legible de la etapa; no depende de un proveedor',
@@ -212,6 +214,9 @@ export const salesOrdersMigration = {
     async up(db: Kysely<unknown>): Promise<void> {
         const destination = await sql<{ name: string }>`SELECT DATABASE() AS name`.execute(db);
         if (destination.rows[0]?.name !== "CRM_THINK_V2") throw new Error("Sales orders require CRM_THINK_V2");
+        // The runner skips ledgered migrations; existing targets here require reconciliation, not adoption.
+        const existing = await sql<{ table_name: string }>`SELECT TABLE_NAME AS table_name FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME IN (${sql.join(readTargetTableNames([...salesOrderStatements]))})`.execute(db);
+        if (existing.rows.length > 0) throw new Error("Existing sales order tables require DBA reconciliation before recording this migration");
         for (const statement of salesOrderStatements) await sql.raw(statement).execute(db);
         for (const [index, [code, name]] of salesOrderStates.entries()) {
             await sql`INSERT INTO conf_sales_order_state (code_sales_order_state,name_sales_order_state,display_order_sales_order_state) VALUES (${code},${name},${index}) ON DUPLICATE KEY UPDATE code_sales_order_state=VALUES(code_sales_order_state)`.execute(db);

@@ -12,7 +12,7 @@ Estado de fase:
 vision completa del frontend != alcance autorizado actual
 ```
 
-Al corte 2026-10-22 existen identidad, Administracion/catalogos y Formalizacion parcial. Solo el contador de aprobaciones del Home tiene datos reales y permiso propio; no existen aun acciones persistidas de aprobacion ni seguimiento operacional. Calendario/resumen y previews conservan simulaciones. Ver [remediacion y evidencia](../../api/Arquitectura/Reauditoria-54-Plan-y-Resultados.md).
+Al corte 2026-10-22 existen identidad, Administracion/catalogos y Formalizacion parcial. Home tiene dos banners reales: aprobaciones exige `formalizacion.home.approvals.read`; contratos exige rol activo `formalizacion`, sin sustitucion por Owner ni permiso de aprobaciones. Los cinco indicadores restantes son provisionales. Bandejas vacias, sin seguimiento operacional ni list/send/revert habilitados; solo Home. Calendario/resumen y previews conservan simulaciones. Ver [remediacion y evidencia](../../api/Arquitectura/Reauditoria-54-Plan-y-Resultados.md).
 
 ## Stack frontend
 

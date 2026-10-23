@@ -2,6 +2,7 @@ import { BadRequestException, ForbiddenException, Inject, Injectable, NotFoundEx
 import { isValid } from "ulid";
 import { z } from "zod";
 
+import { canReadAudit } from "../../../common/security/route-permission.js";
 import { CATALOG_DEFINITIONS } from "../catalogs/catalogs.constants.js";
 import { IdentityService } from "../identity/identity.service.js";
 import { buildAuditChangeSet } from "./audit-change-set.js";
@@ -32,8 +33,7 @@ export class AuditReadService {
     ) {}
     private async authorize(token: string | undefined): Promise<void> {
         const profile = await this.identity.getCurrentUser(token);
-        if (profile.roles.some((role) => role.code === "owner" && role.status === "active")) return;
-        if (!profile.permissions.some((permission) => permission.code === "role.assign" && permission.effect === "allow")) throw new ForbiddenException("Permiso insuficiente.");
+        if (!canReadAudit(profile)) throw new ForbiddenException("Permiso insuficiente.");
     }
     /** Authorization precedes lookup; explicit response fields exclude metadata and network identifiers. */
     async detail(token: string | undefined, publicId: string) {

@@ -5,7 +5,7 @@ import type { CatalogPermissionAction, CatalogRouteCode } from "../../modules/cr
 export const REQUIRE_PERMISSION_METADATA = "crm:require-permission";
 
 /** Descriptors select existing grants only. Resource and conditional assignment checks stay in services. */
-export type PermissionRequirement = { kind: "all"; codes: readonly string[] } | { kind: "catalog"; catalog?: CatalogRouteCode; action: CatalogPermissionAction | "status" } | { kind: "user-status" } | { kind: "unit-files" } | { kind: "audit" };
+export type PermissionRequirement = { kind: "all"; codes: readonly string[] } | { kind: "active-role"; code: "formalizacion"; permissionCodes?: readonly string[] } | { kind: "catalog"; catalog?: CatalogRouteCode; action: CatalogPermissionAction | "status" } | { kind: "user-status" } | { kind: "unit-files" } | { kind: "audit" };
 
 /** Method-local metadata: permission handlers without a supported descriptor fail closed. */
 export const RequirePermission = (requirement: PermissionRequirement): MethodDecorator => SetMetadata(REQUIRE_PERMISSION_METADATA, requirement);

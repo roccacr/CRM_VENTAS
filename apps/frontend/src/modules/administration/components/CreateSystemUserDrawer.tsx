@@ -2,7 +2,7 @@
  * Panel de alta y edición de un usuario.
  *
  * El mismo formulario crea o actualiza. Cerrar con cambios sin guardar pide
- * confirmación. Los módulos visibles salen de los roles elegidos; Owner no
+ * confirmación. El catálogo delimita los módulos seleccionables; Owner no
  * asigna áreas operativas porque su alcance es la empresa.
  */
 import "./CreateSystemUserDrawer.css";
@@ -26,11 +26,13 @@ import type { CreateSystemUserPayload, UpdateSystemUserPayload } from "../../../
 import { ADMINISTRATION_DRAWER_CLOSE_PLACEMENT, ADMINISTRATION_DRAWER_PROPS } from "../administration-theme";
 import { ACCESS_METHOD_OPTIONS, buildCreateUserPayload, buildUpdateUserPayload, canAssignInitialPassword, createEditUserFormValues, createInitialUserFormValues, type CreateUserFormValues, type CreateUserModuleOption, type CreateUserRoleOption, type CreateUserRolePermissions, getRoleModules, hasOwnerRole, normalizeEmail } from "../create-system-user.model";
 import type { SystemUserListItem } from "../system-users.model";
+import { getUserModuleScope, hasSelectedModuleInheritance } from "../user-module-scope";
 import { SystemUserStatusPill } from "./SystemUserBadges";
 
 const FORM_NAME = "createSystemUser";
 const DISCARD_CONFIRMATION = "Hay datos sin guardar. ¿Quieres cerrar el formulario y descartarlos?";
 
+/** Propiedades del panel de alta y edición de usuarios. */
 interface CreateSystemUserDrawerProps {
     readonly canAssignRoles?: boolean;
     readonly canAssignPassword?: boolean;
@@ -46,6 +48,7 @@ interface CreateSystemUserDrawerProps {
     readonly rolePermissions: CreateUserRolePermissions;
 }
 
+/** Sección numerada del formulario. */
 function FormSection({ children, step, title }: { readonly children: ReactNode; readonly step: number; readonly title: string }) {
     const headingId = `create-user-section-${String(step)}`;
 
@@ -62,6 +65,7 @@ function FormSection({ children, step, title }: { readonly children: ReactNode; 
     );
 }
 
+/** Muestra los módulos que habilitan los roles elegidos; Owner tiene acceso total. */
 function RoleScope({ isOwner, roleCount, roleModules }: { readonly isOwner: boolean; readonly roleCount: number; readonly roleModules: readonly CreateUserModuleOption[] }) {
     if (isOwner) {
         return <span className="create-user-drawer__scope">Alcance global: toda la empresa.</span>;
@@ -78,6 +82,7 @@ function RoleScope({ isOwner, roleCount, roleModules }: { readonly isOwner: bool
     );
 }
 
+/** Resumen del acceso que se concederá antes de guardar. */
 function AccessSummary({ hasAssignedPassword, isEditMode, isOwner, moduleCount, roleCount }: { readonly hasAssignedPassword: boolean; readonly isEditMode: boolean; readonly isOwner: boolean; readonly moduleCount: number; readonly roleCount: number }) {
     const initialStatus = (
         <span className="create-user-drawer__initial-status">
@@ -107,6 +112,7 @@ function AccessSummary({ hasAssignedPassword, isEditMode, isOwner, moduleCount, 
     );
 }
 
+/** Pie con errores, resumen y acciones de cancelar o guardar. */
 function CreateUserDrawerFooter({ error, hasAssignedPassword, isEditMode, isOwner, isSaving, moduleCount, onCancel, onSubmit, roleCount }: { readonly error: string | null; readonly hasAssignedPassword: boolean; readonly isEditMode: boolean; readonly isOwner: boolean; readonly isSaving: boolean; readonly moduleCount: number; readonly onCancel: () => void; readonly onSubmit: () => void; readonly roleCount: number }) {
     const savingLabel = isEditMode ? "Guardando cambios..." : "Creando usuario...";
     const actionLabel = isEditMode ? "Guardar cambios" : "Crear usuario";
@@ -129,6 +135,7 @@ function CreateUserDrawerFooter({ error, hasAssignedPassword, isEditMode, isOwne
 /** `Form.useWatch` devuelve `undefined` en el primer render, antes de conectar el formulario, aunque su tipo no lo diga. */
 const toWatchedList = (value: readonly string[] | undefined): readonly string[] => value ?? [];
 
+/** Contraseña inicial; solo se muestra cuando la cuenta local la requiere. */
 function InitialPasswordField({ visible }: { readonly visible: boolean }) {
     if (!visible) return null;
     return (
@@ -150,8 +157,8 @@ function InitialPasswordField({ visible }: { readonly visible: boolean }) {
  * Alta de usuario en panel lateral.
  *
  * Orden de llenado: identificación, acceso y auditoría; las integraciones van
- * plegadas al final porque son opcionales. Los módulos no se eligen: salen de
- * los roles asignados y el API calcula los permisos efectivos al guardar.
+ * plegadas al final porque son opcionales. La herencia selected_modules exige
+ * selección explícita de módulos; el API calcula los permisos efectivos al guardar.
  */
 // eslint-disable-next-line complexity -- Creation/edit lifecycle and independent role/password gates share the same form state.
 export function CreateSystemUserDrawer({ canAssignPassword, canAssignRoles, error, initialUser = null, isSaving, mode = "create", moduleOptions, onClose, onSubmit, open, roleOptions, rolePermissions }: CreateSystemUserDrawerProps) {
@@ -159,7 +166,10 @@ export function CreateSystemUserDrawer({ canAssignPassword, canAssignRoles, erro
     const isEditMode = mode === "edit";
     const roleCodes = toWatchedList(Form.useWatch("roleCodes", form));
     const isOwner = hasOwnerRole(roleCodes);
-    const roleModules = getRoleModules(roleCodes, rolePermissions, moduleOptions);
+    const selectModules = getUserModuleScope(roleCodes, roleOptions, []) !== null;
+    const selectedModules = toWatchedList(Form.useWatch("orgUnitCodes", form));
+    const availableModules = getRoleModules(roleCodes, rolePermissions, moduleOptions, { roles: roleOptions });
+    const roleModules = getRoleModules(roleCodes, rolePermissions, moduleOptions, { roles: roleOptions, selectedModules: selectModules ? selectedModules : undefined });
     const accessMethods = toWatchedList(Form.useWatch("accessMethods", form));
     const showPassword = canAssignInitialPassword(mode, open, canAssignPassword, accessMethods);
     const password = Form.useWatch("password", form);
@@ -173,20 +183,22 @@ export function CreateSystemUserDrawer({ canAssignPassword, canAssignRoles, erro
             return;
         }
 
-        form.setFieldsValue(isEditMode && initialUser ? createEditUserFormValues(initialUser) : createInitialUserFormValues());
+        form.setFieldsValue(isEditMode && initialUser ? createEditUserFormValues(initialUser) : { ...createInitialUserFormValues(), orgUnitCodes: [] });
     }, [form, initialUser, isEditMode, open]);
 
+    /** Rechaza roles que no otorgan acciones en ningún módulo, salvo Owner, herencia por módulos seleccionados o edición sin permiso de asignar roles. */
     const validateRoleScope = (_: unknown, value: readonly string[] | undefined): Promise<void> => {
         if (isEditMode && !canAssignRoles) return Promise.resolve();
         const selectedRoles = value ?? [];
 
-        if (selectedRoles.length === 0 || hasOwnerRole(selectedRoles) || getRoleModules(selectedRoles, rolePermissions, moduleOptions).length > 0) {
+        if (selectedRoles.length === 0 || hasOwnerRole(selectedRoles) || hasSelectedModuleInheritance(selectedRoles, roleOptions) || getRoleModules(selectedRoles, rolePermissions, moduleOptions, { roles: roleOptions }).length > 0) {
             return Promise.resolve();
         }
 
         return Promise.reject(new Error("Los roles elegidos no tienen acciones en ningún módulo. Agrega un rol operativo."));
     };
 
+    /** Pide confirmación si hay cambios sin guardar y limpia la contraseña antes de cerrar. */
     const requestClose = (): void => {
         if (isSaving) {
             return;
@@ -200,6 +212,7 @@ export function CreateSystemUserDrawer({ canAssignPassword, canAssignRoles, erro
         onClose();
     };
 
+    /** Al cerrarse el panel se reinicia el formulario para no arrastrar datos entre usuarios. */
     const handleAfterOpenChange = (isOpen: boolean): void => {
         if (isOpen) {
             return;
@@ -211,7 +224,14 @@ export function CreateSystemUserDrawer({ canAssignPassword, canAssignRoles, erro
     /** `getFieldsValue(true)` incluye las integraciones aunque su panel siga plegado. */
     const handleFinish = (): void => {
         const values = form.getFieldsValue(true) as CreateUserFormValues;
-        onSubmit(isEditMode ? buildUpdateUserPayload(values, roleModules) : buildCreateUserPayload(values, roleModules, showPassword));
+        const submittedModules = getRoleModules(values.roleCodes, rolePermissions, moduleOptions, { roles: roleOptions, selectedModules: selectModules ? toWatchedList(values.orgUnitCodes) : undefined });
+        const payload = isEditMode ? buildUpdateUserPayload(values, submittedModules) : buildCreateUserPayload(values, submittedModules, showPassword);
+        // Preserve saved memberships on unrelated edits; only deliberate scope edits replace them.
+        if (selectModules && isEditMode && !form.isFieldsTouched(["orgUnitCodes", "roleCodes"])) {
+            onSubmit({ ...payload, orgUnitCodes: toWatchedList(values.orgUnitCodes) });
+            return;
+        }
+        onSubmit(payload);
     };
 
     const footer = (
@@ -286,14 +306,18 @@ export function CreateSystemUserDrawer({ canAssignPassword, canAssignRoles, erro
                                 return (
                                     <span className="create-user-drawer__role-option">
                                         <span>{option.label}</span>
-                                        <small>{role?.locked ? "Propietario del sistema" : `${String(role?.users ?? 0)} usuarios`}</small>
+                                        <small>{role?.locked ? "Rol protegido" : `${String(role?.users ?? 0)} usuarios`}</small>
                                     </span>
                                 );
                             }}
                         />
                     </Form.Item>
+                    {selectModules && (
+                        <Form.Item<CreateUserFormValues> label="Módulos asignados" name="orgUnitCodes">
+                            <Select mode="multiple" allowClear virtual={false} disabled={isEditMode && !canAssignRoles} placeholder="Sin módulos asignados" options={availableModules.map((module) => ({ label: module.name, value: module.code }))} />
+                        </Form.Item>
+                    )}
                 </FormSection>
-
                 <FormSection step={3} title="Auditoría">
                     <Form.Item<CreateUserFormValues>
                         label={isEditMode ? "Motivo de la edición" : "Motivo del alta"}

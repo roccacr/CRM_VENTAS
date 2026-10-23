@@ -55,7 +55,7 @@ export interface IdentityActiveSession {
 }
 
 /**
- * Rol activo asignado al usuario canonico CRM.
+ * Rol efectivo activo; las asignaciones directas se administran por separado.
  */
 export interface IdentityRole {
     code: string;
@@ -114,21 +114,27 @@ export interface ActiveSessionsResponse {
     sessions: IdentityActiveSession[];
 }
 
+/** Account state shown in the directory. */
 export type SystemUserStatus = "active" | "blocked" | "inactive" | "pending";
+/** How the user signs in: local, Microsoft or both. */
 export type SystemUserProvider = "local" | "microsoft" | "mixed";
-export type SystemUserMfaStatus = "enabled" | "not_configured" | "pending";
+/** MFA state as far as the CRM knows it. */
+export type SystemUserMfaStatus = "enabled" | "not_configured" | "pending" | "unknown";
 
+/** Role of a directory user. */
 export interface SystemUserDirectoryRole {
     code: string;
     name: string;
 }
 
+/** Unit of a directory user. */
 export interface SystemUserDirectoryOrgUnit {
     code: string;
     name: string;
     publicId: string;
 }
 
+/** Link to the account of the user in an external system. */
 export interface SystemUserExternalReference {
     externalUserId: string;
     externalUsername: string | null;
@@ -185,6 +191,7 @@ export interface SystemUsersPageInfo {
     total: number;
 }
 
+/** Page of the directory with summary and cursor. */
 export interface SystemUsersListResponse {
     items: SystemUserDirectoryItem[];
     page: SystemUsersPageInfo;

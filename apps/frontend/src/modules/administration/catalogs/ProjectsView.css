@@ -45,7 +45,7 @@
 }
 
 .catalog-items-page--projects {
-    max-width: 1440px;
+    max-width: none;
     margin-inline: auto;
     color: var(--color-neutral-700);
 }

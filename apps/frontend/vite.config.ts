@@ -29,6 +29,8 @@ export default defineConfig({
     },
     test: {
         environment: "jsdom",
+        // Bound jsdom memory pressure consistently with the coverage command.
+        maxWorkers: 2,
         coverage: {
             provider: "v8",
             include: ["src/**/*.{ts,tsx}"],

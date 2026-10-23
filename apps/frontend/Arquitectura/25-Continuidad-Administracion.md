@@ -1,5 +1,116 @@
 # 25 - Continuidad de Administracion frontend
 
+## Mercadeo: dashboard de ejemplo, sin API - 2026-10-23
+
+Propuesta visual solicitada por el propietario para revisar el Inicio vacio.
+Conserva la bienvenida e ilustracion generada y adopta los banners de Formalizacion:
+tres columnas en escritorio, tarjeta de bienvenida ocupando dos, iconos sobre
+fondo oscuro, bordes neutros, acentos semanticos y esquina geometrica. Estilos
+propios de Mercadeo, sin modificar la vista de Formalizacion.
+
+Siete indicadores: leads captados, citas agendadas, realizadas y pendientes,
+leads sin cita, porcentaje de leads con cita y campanas con actividad. Todos se
+derivan de la misma muestra ficticia, tambien usada por el desglose inferior.
+Filtros locales de periodo, proyecto, campana, anuncio y vendedor; agrupacion por
+las cuatro dimensiones comerciales. Los enlaces Ver desglose y Explorar leads
+y citas solo llevan a la tabla de la misma pagina, sin navegar a vistas futuras.
+
+La muestra completa contiene 300 leads, 107 personas con cita, 120 citas, 75
+realizadas, 45 pendientes y 193 leads sin cita; el porcentaje es 35.7%. En este
+ejemplo una persona puede tener varias visitas: no se resta el total de citas
+del total de leads ni se cuenta cada cita como una persona diferente. Son
+supuestos de la maqueta, no reglas operativas aprobadas ni resultados reales.
+Proyectos, campanas, anuncios y asesores tienen nombres ficticios. Mes/Semana
+de ejemplo filtran dias simulados de esta muestra, no fechas reales del CRM.
+
+Avisos visibles Datos de demostracion / Sin conexion a API. Sin HTTP comercial,
+localStorage, exportaciones, escrituras, nuevos permisos o asignaciones. Recargar
+reinicia el estado React. Los filtros sin coincidencias muestran un estado vacio
+explicito y ceros del ejemplo, nunca un estado de produccion inventado. La tabla
+conserva desplazamiento propio en movil y los siete banners pasan a una columna.
+
+Pruebas de regresion comprueban reconciliacion de totales, ausencia de fetch,
+filtros, periodo, limpieza, agrupacion y estado vacio. Revision de navegador sobre
+el componente real montado en una previsualizacion aislada con saludo sintetico:
+siete banners; a 390px, documento de 390px y tabla con scroll local; filtro
+Proyecto Norte devuelve 112 leads. No acredita aceptacion con sesion real.
+
+Gate frontend final `pnpm check` aprobado: formato, lint, tipos, 633 pruebas en
+41 archivos y build, salida 0. Las tres regresiones nuevas fallaron contra la
+bienvenida anterior y aprobaron con la maqueta. Los errores iniciales de lint del
+codigo nuevo se corrigieron antes del gate; no se ampliaron timeouts ni se
+omitieron pruebas. Persiste el warning existente de vendor-antd. Log local:
+`C:/codex-data/audit-reports/CRM-TINK-Mercadeo-Dashboard-2026-10-23-check-final.log`.
+
+## Mercadeo: bienvenida ilustrada - 2026-10-23
+
+El propietario solicita una ilustracion propia para Inicio de Mercadeo, siguiendo
+la bienvenida de Formalizacion. `MarketingHomePage` reemplaza el titulo provisional
+en la ruta existente `/home/marketing`, con carga diferida y el permiso de Inicio
+existente. Saluda con el nombre/correo de la sesion y muestra Captacion y
+planificacion comercial, sin nuevas consultas, acciones, KPIs ni datos de ejemplo.
+Imagen original generada con imagegen: `public/illustrations/rocca-marketing-generated.png`,
+PNG transparente con vivienda, megafono, fichas de contacto y calendario.
+Estilos responsive propios, con la misma densidad y lenguaje visual de la tarjeta
+de bienvenida de Formalizacion; los otros modulos y permisos se conservan.
+
+Verificacion: PNG RGBA de 1774 x 887 con transparencia, copiado al proyecto;
+formato/lint focalizados, 102 pruebas de navegacion/App y build frontend aprobados.
+El primer build encontro dos errores de tipos en una prueba de otro flujo;
+el build final posterior aprobo. Persiste el warning existente de bundle.
+No se acredita una comprobacion nueva con sesion autenticada en navegador.
+
+## Mercadeo: secciones vigentes y entrada por rol - 2026-10-23
+
+En Roles y seguridad, los selectores Rol, Modulo y Seccion ordenan siempre sus
+opciones por nombre con colacion espanola (`localeCompare` con `es`). El orden
+visual no modifica las selecciones activas, permisos ni la entrada de cada rol.
+
+La consola muestra exclusivamente Inicio, Captacion de leads, Eventos y citas,
+Calendario y Catalogos para Mercadeo. Campanas aparece solo como pestaña dentro
+de Catalogos; Campanas y Fuentes historicos no son secciones de esta consola.
+El filtrado se aplica a la presentacion, conservando el catalogo tecnico y los
+grants originales en el estado/guardado; no retira silenciosamente permisos al
+editar otra seccion. No se ejecuta migracion ni cambia datos de seguridad.
+
+Seleccionar Mercadeo o Jefe de Mercadeo en el selector de roles abre directamente
+Mercadeo / Inicio y restablece la seleccion de seccion/catalogo. La seleccion
+manual posterior de otros modulos sigue disponible. Este cambio no modifica
+otros roles, autorizacion, asignaciones ni las vistas comerciales futuras.
+
+Verificacion final de este ajuste: formato y lint de los cuatro archivos de
+codigo/pruebas editados aprobados, 109 pruebas aprobadas en RolesSecurityPage y
+App, y build frontend aprobado (incluye comprobacion de tipos). Se actualizo el
+fixture comercial historico de App y se espera el montaje asincrono del editor;
+su importacion de pruebas se prepara fuera del tiempo de la asercion, sin subir
+timeouts ni omitir casos. Logs locales: `CRM-TINK-Mercadeo-Secciones-2026-10-23-focused.log`
+y `CRM-TINK-Mercadeo-Secciones-2026-10-23-build.log`, en `C:/codex-data/audit-reports`.
+La corrida global anterior registro fallos adicionales en CatalogItemsPage y
+selected-modules-user, ademas de la expectativa de App corregida en esta entrega;
+no se declara aprobada toda la suite por las verificaciones focalizadas.
+No se hizo una comprobacion nueva con sesion real en navegador.
+
+## Mercadeo: propuesta visual de menu - 2026-10-23
+
+Ampliacion posterior del propietario: crear Mercadeo y Jefe de Mercadeo mediante
+la migracion nativa 028, ambos con lectura de las cuatro secciones y los siete
+catalogos. El menu deja de reutilizar `campaign.read`: cada seccion usa
+`mercadeo.{home|leads|appointments|calendar}.read`. Catalogos conserva sus permisos
+scoped por entidad. Roles y seguridad presenta Inicio, Captacion de leads,
+Eventos y citas y Calendario, ademas de Catálogos con sus siete subsecciones.
+Las tres opciones nuevas siguen sin rutas, vistas ni operaciones. La descripcion
+del filtro `campaign.read` que sigue corresponde solo a la primera propuesta.
+
+Menu solicitado: Inicio, Captacion de leads, Eventos y citas, Calendario y
+Catalogos. Captacion de leads representa la futura consulta global y reportes de
+leads; Eventos y citas representa la futura consulta y reportes de citas;
+Calendario representa la agenda propia de Mercadeo. Solo se actualiza el menu
+compartido de escritorio/movil: las tres opciones nuevas no tienen ruta ni
+accion. Inicio conserva la ruta existente y Catalogos su desplegable funcional.
+Se conserva el filtro visual existente `campaign.read`, sin permisos nuevos ni
+cambios de autorizacion, API, datos o vistas. Esta propuesta no habilita los
+flujos futuros descritos aqui.
+
 ## Lectura vigente - 2026-10-22, corte f2dc4f1
 
 Bitacora historica: fechas, inventarios de BD, pruebas y capturas conservan su corte original. No equivalen a consultas ni verificaciones nuevas. Inventario consolidado: [27](27-Entrega-Administracion-y-QA.md); navegacion, carga diferida y seguimiento: [29](29-Navegacion-Recuperacion-y-Seguimiento.md).

@@ -107,6 +107,9 @@ function expectedCatalogCodes(route: (typeof routes)[number]): string[] {
 }
 
 function expectedCodes(route: (typeof routes)[number]): string[] {
+    if (["/formalization/home/summary", "/formalization/contracts/summary"].includes(route.path)) return ["formalizacion.home.stages.read"];
+    if (route.path === "/formalization/contracts/send") return ["formalizacion.contracts.send"];
+    if (route.path === "/formalization/contracts/revert") return ["formalizacion.contracts.revert"];
     if (route.path.startsWith("/catalogs/")) return expectedCatalogCodes(route);
     if (route.path.startsWith("/unit-files")) return ["ventas.catalog_file.read"];
     if (route.path.startsWith("/formalization/")) return ["formalizacion.home.approvals.read"];
@@ -172,9 +175,15 @@ describe("real module permission inventory and HTTP boundary (no environment or 
         await app.close();
     });
 
-    it("requires a descriptor on all 49 registered permission handlers", () => {
-        expect(new Set(routes.map((route) => route.handler)).size).toBe(49);
+    it("requires a descriptor on every registered permission handler", () => {
+        expect(new Set(routes.map((route) => route.handler)).size).toBe(51);
         requireDescriptors(routes);
+    });
+    it("exposes the Home contract count, not premature order lists or state commands", () => {
+        const paths = routes.map((route) => route.path);
+        expect(paths).toContain("/formalization/contracts/summary");
+        expect(paths).toContain("/formalization/home/summary");
+        for (const path of ["/formalization/contracts/orders", "/formalization/contracts/send", "/formalization/contracts/revert"]) expect(paths).not.toContain(path);
     });
     it("inventory rejects missing metadata on every controller and method alias", () => {
         const aliases = routesFrom([AliasProbeController]);
@@ -192,27 +201,38 @@ describe("real module permission inventory and HTTP boundary (no environment or 
         if (url === "/audit") query.set("sectionCode", "catalogs");
         if (route.method === "GET") url += "?" + query.toString();
         const csrf = createSignedCsrfToken(secret, session);
-        return app.inject({ method: route.method, url, ...(route.method === "GET" || route.method === "DELETE" ? {} : { payload: { moduleCode: "ventas", status: "inactive", reason: "Permission regression", name: "Value" } }), headers: { cookie: `${SESSION_COOKIE_NAME}=${session}; ${CSRF_COOKIE_NAME}=${csrf}`, [CSRF_HEADER_NAME_LOWERCASE]: csrf } });
+        const payload = route.path.startsWith("/formalization/contracts/") ? { source: "legacy", id: "1", expectedSequence: 0, operationId: "01ARZ3NDEKTSV4RRFFQ69G5FAV", reason: "Permission regression" } : { moduleCode: "ventas", status: "inactive", reason: "Permission regression", name: "Value" };
+        return app.inject({ method: route.method, url, ...(route.method === "GET" || route.method === "DELETE" ? {} : { payload }), headers: { cookie: `${SESSION_COOKIE_NAME}=${session}; ${CSRF_COOKIE_NAME}=${csrf}`, [CSRF_HEADER_NAME_LOWERCASE]: csrf } });
     }
     describe.each(routes)("$method $path", (route) => {
-        it.each(["missing", "unrelated", "deny", "owner-deny"])("blocks %s before handler/domain operations", async (mode) => {
-            profile = profileWith(mode === "unrelated" ? ["unrelated.read"] : mode === "missing" ? [] : expectedCodes(route));
+        it.each(["missing", "unrelated", "deny", "owner-deny"] as const)("blocks %s before handler/domain operations", async (mode) => {
+            const grants = { missing: [], unrelated: ["unrelated.read"], deny: expectedCodes(route), "owner-deny": expectedCodes(route) };
+            profile = profileWith(grants[mode]);
+            if (route.requirement?.kind === "active-role") profile.roles = [{ code: "formalizacion", name: "Formalizacion", status: "active" }];
             if (mode === "deny" || mode === "owner-deny") profile.permissions.push(...expectedCodes(route).map((code) => ({ code, effect: "deny" as const, scope: null, source: "override" as const })));
-            if (mode === "owner-deny") profile.roles = [{ code: "owner", name: "Owner", status: "active" }];
+            if (mode === "owner-deny") profile.roles.push({ code: "owner", name: "Owner", status: "active" });
             expect((await request(route)).statusCode).toBe(403);
             expect(handlers.get(route.handler)).not.toHaveBeenCalled();
             for (const call of domainCalls) expect(call).not.toHaveBeenCalled();
         });
         it("accepts the existing exact mapping and stops the next request after revocation", async () => {
             profile = profileWith(expectedCodes(route));
+            if (route.requirement?.kind === "active-role") profile.roles = [{ code: "formalizacion", name: "Formalizacion", status: "active" }];
             const first = await request(route);
-            expect(first.statusCode).toBe(route.method === "POST" ? 201 : 200);
+            expect(first.statusCode).toBe(route.method === "POST" && !route.path.startsWith("/formalization/contracts/") ? 201 : 200);
             const before = domainCalls.map((call) => call.mock.calls.length);
             profile = profileWith();
             expect((await request(route)).statusCode).toBe(403);
             expect(domainCalls.map((call) => call.mock.calls.length)).toEqual(before);
             expect(current).toHaveBeenCalledTimes(2);
         });
+    });
+
+    it.each(["owner", "formalizacion-inactive", "jefe_formalizacion"])("does not substitute %s for the active base role on contract summary", async (mode) => {
+        profile = profileWith(["formalizacion.home.approvals.read", "formalizacion.contracts.send"]);
+        profile.roles = [{ code: mode === "formalizacion-inactive" ? "formalizacion" : mode, name: mode, status: mode === "formalizacion-inactive" ? "inactive" : "active" }];
+        expect((await app.inject({ url: "/formalization/contracts/summary", headers: { cookie: `${SESSION_COOKIE_NAME}=${session}` } })).statusCode).toBe(403);
+        for (const call of domainCalls) expect(call).not.toHaveBeenCalled();
     });
     it.each(routesFrom([AliasProbeController]))("enforces $path alias before handler entry", async (route) => {
         const before = AliasProbeController.calls;

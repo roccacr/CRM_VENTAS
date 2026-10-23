@@ -1,16 +1,14 @@
 import { Module } from "@nestjs/common";
 
+import { RecordAuditService } from "./record-audit.service.js";
 import { SecurityAuditService } from "./security-audit.service.js";
 
 /**
- * Modulo de auditoria para eventos sensibles de identidad CRM.
- *
- * Auditoria queda aislada porque las acciones comerciales futuras deben
- * reutilizar el mismo patron append-only en vez de inventar bitacoras por
- * pantalla.
+ * Auditoria de seguridad y bitacora de registros compartida.
+ * La escritura central requiere activacion explicita y la transaccion del negocio.
  */
 @Module({
-    providers: [SecurityAuditService],
-    exports: [SecurityAuditService],
+    providers: [RecordAuditService, SecurityAuditService],
+    exports: [RecordAuditService, SecurityAuditService],
 })
 export class AuditModule {}

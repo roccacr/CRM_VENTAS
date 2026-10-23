@@ -1,5 +1,71 @@
 # 28 - Matriz de Roles, Permisos y Areas P0-S1
 
+## Mercadeo: roles aprobados - 2026-10-23
+
+Decision expresa del propietario: roles independientes `mercadeo` (Mercadeo) y
+`jefe_mercadeo` (Jefe de Mercadeo). Sustituye para estos dos roles la prohibicion
+general de ejemplos historicos por area. Ambos usan modo `assigned`, sin heredar
+otros roles, con el mismo acceso inicial de lectura:
+
+| Seccion | Permiso |
+| --- | --- |
+| Inicio | `mercadeo.home.read` |
+| Captacion de leads | `mercadeo.leads.read` |
+| Eventos y citas | `mercadeo.appointments.read` |
+| Calendario | `mercadeo.calendar.read` |
+| Catalogos | Los siete permisos existentes `mercadeo.catalog_{entidad}.read` |
+
+Once grants por rol: cuatro nuevos y siete reutilizados. Catalogos conserva sus
+subsecciones Proyectos, Campanas, Clases, Corredores, Expedientes, Subsidiarias y
+Ubicaciones; no se agrega un permiso padre redundante. Los permisos son editables
+mediante la administracion existente. No se conceden exportaciones, escritura,
+aprobaciones ni privilegios administrativos a Jefe de Mercadeo.
+
+Migracion dirigida `202610230028_marketing_roles`, exclusivamente en
+`CRM_THINK_V2`, con auditoria transaccional, idempotencia, validacion de destino,
+tablas InnoDB y Owner activo sin deny de `role.assign`. Rechaza permisos/roles
+inactivos o incompatibles y grants revocados; no los reactiva silenciosamente.
+Conserva denies, asignaciones, roles y grants ajenos. Actualiza versiones de
+permisos para titulares afectados, incluido Owner por su herencia efectiva.
+No crea tablas, no cambia datos comerciales y no asigna empleados al modulo.
+Para operar, el empleado debe tener modulo Mercadeo activo y permisos efectivos;
+asignarle un rol no sustituye su pertenencia al modulo.
+
+Estas secciones aparecen con nombres de menu en Roles y seguridad. Inicio y
+Catalogos usan rutas existentes; Leads, citas y Calendario siguen solo visuales.
+Los permisos de seccion no acreditan consultas, reportes o agenda implementados.
+
+Evidencia de entrega: `check-all.cmd` completo con salida 0; formato, lint, tipos
+y builds de ambas apps aprobados. API: 5252 pruebas aprobadas y 113 MySQL omitidas;
+frontend: 602 aprobadas. Log local:
+`C:/codex-data/audit-reports/CRM-TINK-Mercadeo-2026-10-23-check-all.log`.
+Revision independiente sin hallazgos accionables. El lint inicial senalo
+complejidad y una asercion no nula en el cambio nuevo; ambos se corrigieron antes
+del gate final. Los fixtures MySQL compartidos permanecieron desactivados.
+
+028 aplicada mediante el runner oficial con seleccion `--only` exclusivamente
+en `CRM_THINK_V2`. Verificacion real posterior mediante el repositorio de
+identidad y consultas de solo lectura: ambos roles activos, cero usuarios
+asignados, once grants de lectura exactos por rol, cuatro secciones nuevas con
+nombres visibles, siete vistas de catalogos, ledger 028 y dos eventos
+`role_permissions_replaced`. Los permisos historicos Campanas/Fuentes se
+conservan en el catalogo tecnico de seguridad, pero la consola de Mercadeo
+muestra solo las cinco secciones de menu aprobadas. Campanas se presenta dentro
+de Catalogos. No se concedieron permisos historicos a los roles nuevos ni se
+retiran grants ajenos al guardar otras secciones. Seleccionar cualquiera de los
+dos roles de Mercadeo abre Mercadeo / Inicio en el editor.
+
+No se modificaron datos comerciales, legacy, credenciales, .env, overrides ni
+asignaciones directas de usuarios. No hubo commit, push ni despliegue. La lectura
+real acredita persistencia del corte; no acredita concurrencia, fixtures reales
+ni una sesion HTTP/navegador autenticada. Las pruebas con dobles de idempotencia y
+rollback se identifican como tales. Persiste el warning existente de bundle.
+
+Reversion operativa, si se autoriza posteriormente: retirar grants o inactivar
+los roles mediante un cambio auditado y renovar versiones de acceso; conservar
+historial y ledger. No ejecutar borrados ni retirar permisos compartidos de
+catalogos usados por otros roles. No se ejecuto una reversion en esta entrega.
+
 ## Veredicto
 
 La forma correcta de manejar permisos en el CRM no es crear un rol distinto por cada area.

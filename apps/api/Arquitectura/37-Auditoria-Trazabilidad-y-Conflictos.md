@@ -1,5 +1,15 @@
 # 37 - Auditoria, trazabilidad y conflictos
 
+## Escritores y politica compartida - 2026-10-22
+
+Avance posterior al esquema: cambios administrativos e historial interno de ordenes conectados en codigo a RecordAuditService, bajo ENABLE_RECORD_AUDIT=false por defecto y Transaction compartida. No se activa la BD ni se ejecutan fixtures. La lectura de auditoria comparte canReadAudit con el guard y ahora rechaza deny explicito de role.assign tambien para Owner. Detalle vigente, snapshots partial y condiciones de activacion en [38 - Escritores](38-Ordenes-Venta-Estados-Auditoria.md#escritores-conectados-activacion-pendiente---2026-10-22); las notas anteriores de solo esquema son evidencia del corte anterior.
+
+## Base de bitacora comercial central - 2026-10-22
+
+La migracion aditiva 023 crea `audit_record` y `audit_record_event` solo en `CRM_THINK_V2`, sin FK a registros comerciales. Admite identificar registros legacy sin migrarlos, snapshots antes/despues y referencias a versiones anteriores. Diccionario, evidencia de aplicacion, contrato de futuros escritores y limites de restauracion en [38 - Bitacora central](38-Ordenes-Venta-Estados-Auditoria.md#bitacora-central-de-registros---2026-10-22).
+
+No reemplaza `audit_security_event` ni los historiales especializados existentes. Esta entrega no instrumenta automaticamente sus escritores, no captura cambios externos y no expone restauracion. El helper `audit-change-set.ts` conserva su allowlist/normalizacion actual para auditoria administrativa: no asumir que sus snapshots filtrados y arrays normalizados son copias integrales restaurables.
+
 ## Asignacion de clave inicial en alta - 2026-10-13
 
 `POST /identity/users` admite `password` opcional de solo escritura; OpenAPI

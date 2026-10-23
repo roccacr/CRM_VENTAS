@@ -48,6 +48,8 @@ const createService = (profile: IdentityProfile = createProfile({ roles: ["owner
         getCurrentUser: vi.fn().mockResolvedValue(profile),
     } as unknown as IdentityService;
     const repository = {
+        validateAssignmentInTransaction: vi.fn().mockResolvedValue(undefined),
+        assertDelegableAccess: vi.fn().mockResolvedValue(undefined),
         deleteRole: vi.fn().mockResolvedValue({
             role: {
                 code: "auditor",
@@ -107,6 +109,8 @@ const createService = (profile: IdentityProfile = createProfile({ roles: ["owner
             getCurrentUser: ReturnType<typeof vi.fn>;
         },
         repository: repository as unknown as {
+            validateAssignmentInTransaction: ReturnType<typeof vi.fn>;
+            assertDelegableAccess: ReturnType<typeof vi.fn>;
             deleteRole: ReturnType<typeof vi.fn>;
             replaceRolePermissions: ReturnType<typeof vi.fn>;
             readSecurityCatalog: ReturnType<typeof vi.fn>;
@@ -119,6 +123,55 @@ const createService = (profile: IdentityProfile = createProfile({ roles: ["owner
 };
 
 describe("IdentityAccessManagementService", () => {
+    it("passes a trusted normalized revalidation closure to the access writer", async () => {
+        const { repository, service } = createService();
+        await service.replaceUserAccess("token", { userPublicId: "target", payload: { roleCodes: [" VENTAS "], orgUnitCodes: [" Ventas "], permissionOverrides: [], reason: "Writer revalidation wiring" } });
+        const input = repository.replaceUserAccess.mock.calls[0]?.[0] as Parameters<IdentityAccessManagementRepository["replaceUserAccess"]>[0];
+        const tx = {} as Parameters<typeof input.validateAccess>[0];
+        await input.validateAccess(tx);
+        expect(repository.validateAssignmentInTransaction.mock.calls[0]?.[0]).toBe(tx);
+        expect(repository.validateAssignmentInTransaction.mock.calls[0]?.[1]).toMatchObject({ profile: { user: { publicId: "user-public-id" } }, roleCodes: ["ventas"], moduleCodes: ["ventas"], overrides: [] });
+    });
+    it.each(["owner", "jefe_general"])("rejects deleting protected template %s", async (roleCode) => {
+        const { repository, service } = createService();
+        await expect(service.deleteRole("token", roleCode)).rejects.toBeInstanceOf(ConflictException);
+        expect(repository.deleteRole).not.toHaveBeenCalled();
+    });
+    it("does not write user access when delegation is rejected", async () => {
+        const { repository, service } = createService(createProfile({ permissions: ["role.assign"] }));
+        repository.assertDelegableAccess.mockRejectedValue(new ForbiddenException("Outside authority"));
+        await expect(service.replaceUserAccess("token", { userPublicId: "target", payload: { roleCodes: ["owner"], orgUnitCodes: ["ventas"], permissionOverrides: [], reason: "Escalation regression" } })).rejects.toBeInstanceOf(ForbiddenException);
+        expect(repository.replaceUserAccess).not.toHaveBeenCalled();
+    });
+    it("allows individual administrative denies without granting administration", async () => {
+        const { repository, service } = createService();
+        await service.replaceUserAccess("token", { userPublicId: "target", payload: { roleCodes: ["ventas"], orgUnitCodes: ["ventas"], permissionOverrides: [{ code: "role.assign", effect: "deny" }], reason: "Explicit exception deny" } });
+        expect(repository.replaceUserAccess).toHaveBeenCalledOnce();
+    });
+    it("allows Owner to atomically edit General modules and stored grants", async () => {
+        const { repository, service } = createService();
+        await service.replaceRolePermissions("token", { roleCode: "jefe_general", payload: { permissionCodes: ["lead.read"], moduleCodes: ["ventas"], reason: "Edit General template" } });
+        expect(repository.replaceRolePermissions).toHaveBeenCalledWith(expect.objectContaining({ code: "jefe_general", moduleCodes: ["ventas"], permissionCodes: ["lead.read"] }));
+    });
+    it("rejects General template edits by a non-Owner even with role.assign and the requested grants", async () => {
+        const { repository, service } = createService(createProfile({ roles: ["jefe_general"], permissions: ["role.assign", "lead.read"] }));
+        await expect(service.replaceRolePermissions("token", { roleCode: "jefe_general", payload: { permissionCodes: ["lead.read"], reason: "Non Owner template edit" } })).rejects.toBeInstanceOf(ForbiddenException);
+        await expect(service.updateRole("token", { roleCode: "jefe_general", payload: { name: "General", reason: "Non Owner template edit" } })).rejects.toBeInstanceOf(ForbiddenException);
+        expect(repository.replaceRolePermissions).not.toHaveBeenCalled();
+        expect(repository.updateRole).not.toHaveBeenCalled();
+    });
+    it("preserves role.assign deny precedence when Owner edits General", async () => {
+        const profile = createProfile({ roles: ["owner"], permissions: ["role.assign"] });
+        profile.permissions.push({ code: "role.assign", effect: "deny", scope: null, source: "override" });
+        const { repository, service } = createService(profile);
+        await expect(service.replaceRolePermissions("token", { roleCode: "jefe_general", payload: { permissionCodes: [], moduleCodes: [], reason: "Denied template edit" } })).rejects.toBeInstanceOf(ForbiddenException);
+        expect(repository.replaceRolePermissions).not.toHaveBeenCalled();
+    });
+    it("forwards optional role module metadata without inventing absent values", async () => {
+        const { repository, service } = createService();
+        await service.updateRole("token", { roleCode: "auditor", payload: { name: "Auditor", reason: "Scope custom role", moduleCodes: ["ventas"], permissionInheritance: "assigned" } });
+        expect(repository.updateRole).toHaveBeenCalledWith(expect.objectContaining({ moduleCodes: ["ventas"], permissionInheritance: "assigned" }));
+    });
     it("does not authorize an Owner label without the exact effective grant", async () => {
         const { repository, service } = createService(createProfile({ roles: ["owner"] }));
         await expect(service.readSecurityCatalog("token")).rejects.toBeInstanceOf(ForbiddenException);
@@ -133,10 +186,10 @@ describe("IdentityAccessManagementService", () => {
         expect(repository.readSecurityCatalog).not.toHaveBeenCalled();
     });
 
-    it("keeps the initial-password privilege delegable to a non-Owner role", async () => {
+    it("does not delegate the initial-password privilege without the actor's own effective grant", async () => {
         const { repository, service } = createService(createProfile({ permissions: ["role.assign"] }));
-        await service.replaceRolePermissions("token", { roleCode: "ventas", payload: { permissionCodes: ["user.assign_password"], reason: "Delegated password privilege" } });
-        expect(repository.replaceRolePermissions).toHaveBeenCalledWith(expect.objectContaining({ permissionCodes: ["user.assign_password"] }));
+        await expect(service.replaceRolePermissions("token", { roleCode: "ventas", payload: { permissionCodes: ["user.assign_password"], reason: "Delegated password privilege" } })).rejects.toBeInstanceOf(ForbiddenException);
+        expect(repository.replaceRolePermissions).not.toHaveBeenCalled();
     });
 
     it("resolves authorization again on the next request after an Owner downgrade", async () => {
@@ -171,7 +224,7 @@ describe("IdentityAccessManagementService", () => {
     });
 
     it("guarda permisos de rol normalizados", async () => {
-        const { repository, service } = createService(createProfile({ permissions: ["role.assign"] }));
+        const { repository, service } = createService(createProfile({ roles: ["owner"], permissions: ["role.assign"] }));
 
         await service.replaceRolePermissions("session-token", {
             payload: {
@@ -192,7 +245,7 @@ describe("IdentityAccessManagementService", () => {
     });
 
     it("bloquea permisos administrativos en roles que no son Owner", async () => {
-        const { repository, service } = createService(createProfile({ permissions: ["role.assign"] }));
+        const { repository, service } = createService(createProfile({ roles: ["owner"], permissions: ["role.assign"] }));
 
         await expect(
             service.replaceRolePermissions("session-token", {

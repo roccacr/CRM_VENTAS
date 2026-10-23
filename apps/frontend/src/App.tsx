@@ -6,6 +6,7 @@ import type { LoginCredentials } from "./modules/auth/LoginPage";
 import { AUTH_LOGIN_PATH, DEFAULT_HOME_PATH, isKnownPath, pushBrowserPath, replaceBrowserPath } from "./routes/app-routes";
 import { AppRouteContent } from "./routes/AppRouteContent";
 import { assertAuthenticatedLoginSession, type AuthState, getDefaultAuthenticatedPath, getRedirectPath, resolveAuthState, resolveBootstrapFailureState, resolveLoginState, resolveRouteState } from "./routes/auth-state";
+import { subscribeToSessionRefresh } from "./services/api/api-client";
 import { getLoginErrorMessage, getMicrosoftLoginErrorMessage } from "./services/auth/auth-error-messages";
 import { getIdentityProfile, loginWithLocalCredentials, logoutIdentitySession, startMicrosoftLogin } from "./services/auth/auth-service";
 import { closePopupIfOpen, finishMicrosoftPopupReturn, getMicrosoftCallbackStatus, getMicrosoftStatusMessage, isMicrosoftLoginPopupWindow, openMicrosoftPopup, waitForMicrosoftPopupSession } from "./services/auth/microsoft-popup-login";
@@ -27,6 +28,7 @@ export function App() {
     const [path, setPath] = useState(() => window.location.pathname);
     const [authState, setAuthState] = useState<AuthState>({ status: "checking" });
     const [authCheckAttempt, setAuthCheckAttempt] = useState(0);
+    const [sessionRevision, setSessionRevision] = useState(0);
     const [authRetryFeedback, setAuthRetryFeedback] = useState<string | null>(null);
     // En el popup el error se muestra en la ventana principal, no aquí.
     const [loginError, setLoginError] = useState<string | null>(isMicrosoftPopupReturn ? null : microsoftCallbackFailureMessage);
@@ -39,10 +41,63 @@ export function App() {
     const keepMicrosoftCallbackErrorRef = useRef(microsoftCallbackFailureMessage !== null);
     /** Ruta que el login ya resolvió con sesión y perfil; el arranque no debe repetir la verificación. */
     const skipNextAuthBootstrapPathRef = useRef<string | null>(null);
+    const logoutPendingRef = useRef(false);
+    const sessionGenerationRef = useRef(0);
+    const checkingRefreshRestartsRef = useRef(0);
+    const loginGenerationRef = useRef<number | null>(null);
 
-    useEffect(() => {
-        authStateRef.current = authState;
-    }, [authState]);
+    /** Estado y referencia se publican juntos; una operacion invalidada nunca puede restaurarlos. */
+    const applyAuthState = useCallback((nextState: AuthState, generation: number): boolean => {
+        if (generation !== sessionGenerationRef.current) return false;
+        authStateRef.current = nextState;
+        setAuthState(nextState);
+        return true;
+    }, []);
+
+    useEffect(
+        () => () => {
+            sessionGenerationRef.current += 1;
+            loginGenerationRef.current = null;
+        },
+        [],
+    );
+
+    useEffect(
+        () =>
+            subscribeToSessionRefresh((outcome) => {
+                const currentState = authStateRef.current;
+                if (logoutPendingRef.current) return;
+                sessionGenerationRef.current += 1;
+                const wasLoggingIn = loginGenerationRef.current !== null;
+                loginGenerationRef.current = null;
+                setIsSubmittingLogin(false);
+                setIsMicrosoftLoginPending(false);
+                if (outcome === "rejected") {
+                    releaseAuthRetry();
+                    applyAuthState({ status: "anonymous" }, sessionGenerationRef.current);
+                    replaceBrowserPath(AUTH_LOGIN_PATH);
+                    setPath(AUTH_LOGIN_PATH);
+                    return;
+                }
+                // Reiniciar una vez es seguro; una segunda invalidacion cierra acceso sin ciclos.
+                if (currentState.status === "checking") {
+                    if (checkingRefreshRestartsRef.current >= 1) {
+                        applyAuthState({ status: "access-problem", problem: "expired" }, sessionGenerationRef.current);
+                        setAuthRetryFeedback(AUTH_RETRY_FAILURE_MESSAGE);
+                        startAuthRetryCooldown();
+                        return;
+                    }
+                    checkingRefreshRestartsRef.current += 1;
+                } else {
+                    if (!wasLoggingIn && currentState.status !== "authenticated" && currentState.status !== "forbidden") return;
+                    checkingRefreshRestartsRef.current = 0;
+                }
+                skipNextAuthBootstrapPathRef.current = null;
+                applyAuthState({ status: "checking" }, sessionGenerationRef.current);
+                setSessionRevision((revision) => revision + 1);
+            }),
+        [applyAuthState, releaseAuthRetry, startAuthRetryCooldown],
+    );
 
     /** Atrás y Adelante no pasan por React; este efecto vuelve a leer la URL. */
     useEffect(() => {
@@ -58,8 +113,11 @@ export function App() {
     }, []);
 
     useEffect(() => {
-        replaceBrowserPath(window.location.pathname);
-    }, []);
+        if (window.location.pathname !== AUTH_LOGIN_PATH || !microsoftCallbackStatus) return;
+        const url = new URL(window.location.href);
+        url.searchParams.delete("microsoftStatus");
+        window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}${url.hash}`);
+    }, [microsoftCallbackStatus]);
 
     useEffect(() => {
         if (isMicrosoftPopupReturn) {
@@ -88,6 +146,9 @@ export function App() {
      */
     useEffect(() => {
         let isCancelled = false;
+        const generation = sessionGenerationRef.current;
+        /** Evita aplicar el resultado de un arranque de sesión cancelado o reemplazado por otro más reciente. */
+        const isCurrentBootstrap = (): boolean => !isCancelled && generation === sessionGenerationRef.current;
         const currentAuthState = authStateRef.current;
 
         if (authCheckAttempt === 0 && (currentAuthState.status === "authenticated" || currentAuthState.status === "forbidden")) {
@@ -95,7 +156,7 @@ export function App() {
             const redirectPath = getRedirectPath(nextState, path);
 
             if (nextState.status !== currentAuthState.status) {
-                setAuthState(nextState);
+                applyAuthState(nextState, generation);
             }
 
             if (redirectPath) {
@@ -110,8 +171,9 @@ export function App() {
             return;
         }
 
+        /** Aplica el estado de autenticación solo si el arranque sigue vigente. */
         const applyResolvedAuthState = (nextState: AuthState, didRetryFail: boolean): void => {
-            if (isCancelled) {
+            if (!isCurrentBootstrap()) {
                 return;
             }
 
@@ -122,7 +184,8 @@ export function App() {
             }
 
             setAuthRetryFeedback(didRetryFail ? AUTH_RETRY_FAILURE_MESSAGE : null);
-            setAuthState(nextState);
+            checkingRefreshRestartsRef.current = 0;
+            applyAuthState(nextState, generation);
 
             if (didRetryFail) {
                 startAuthRetryCooldown();
@@ -137,14 +200,15 @@ export function App() {
             }
         };
 
+        /** Resuelve la sesión al cargar o al cambiar de ruta; se ignora mientras hay un cierre de sesión en curso. */
         const bootstrapSession = async (): Promise<void> => {
+            if (logoutPendingRef.current) return;
             try {
                 const nextState = await resolveAuthState(path, (user) => {
-                    if (!isCancelled) {
-                        setAuthState({ status: "checking", user });
+                    if (isCurrentBootstrap()) {
+                        applyAuthState({ status: "checking", user }, generation);
                     }
                 });
-
                 applyResolvedAuthState(nextState, false);
             } catch (error) {
                 const nextState = resolveBootstrapFailureState(error, path);
@@ -157,7 +221,7 @@ export function App() {
         return () => {
             isCancelled = true;
         };
-    }, [authCheckAttempt, redirect, path, releaseAuthRetry, startAuthRetryCooldown]);
+    }, [applyAuthState, authCheckAttempt, redirect, path, releaseAuthRetry, sessionRevision, startAuthRetryCooldown]);
 
     /**
      * Tras un login exitoso, el perfil decide la pantalla.
@@ -165,30 +229,37 @@ export function App() {
      * La respuesta de login no abre el shell por sí sola: sin ningún perfil
      * operativo visible, el usuario queda autenticado pero en acceso denegado.
      */
-    const completeAuthenticatedLogin = async (): Promise<void> => {
+    const completeAuthenticatedLogin = async (generation: number): Promise<void> => {
+        if (generation !== sessionGenerationRef.current) return;
         const profile = await getIdentityProfile();
+        if (generation !== sessionGenerationRef.current) return;
         const nextState = resolveLoginState(profile);
         const nextPath = getDefaultAuthenticatedPath(profile) ?? DEFAULT_HOME_PATH;
 
-        setAuthState(nextState);
+        applyAuthState(nextState, generation);
         skipNextAuthBootstrapPathRef.current = nextPath;
         redirect(nextPath);
     };
 
     /** Login local. El error se relanza para que el formulario no lo tome como éxito. */
     const handleLocalLogin = async (credentials: LoginCredentials): Promise<void> => {
+        const generation = ++sessionGenerationRef.current;
+        loginGenerationRef.current = generation;
         setIsSubmittingLogin(true);
         setLoginError(null);
 
         try {
             const session = await loginWithLocalCredentials(credentials);
             assertAuthenticatedLoginSession(session);
-            await completeAuthenticatedLogin();
+            await completeAuthenticatedLogin(generation);
         } catch (error) {
-            setLoginError(getLoginErrorMessage(error));
+            if (generation === sessionGenerationRef.current) setLoginError(getLoginErrorMessage(error));
             throw error;
         } finally {
-            setIsSubmittingLogin(false);
+            if (loginGenerationRef.current === generation) {
+                loginGenerationRef.current = null;
+                setIsSubmittingLogin(false);
+            }
         }
     };
 
@@ -200,6 +271,8 @@ export function App() {
      * navega.
      */
     const handleMicrosoftLogin = async (): Promise<void> => {
+        const generation = ++sessionGenerationRef.current;
+        loginGenerationRef.current = generation;
         setIsSubmittingLogin(true);
         setIsMicrosoftLoginPending(true);
         setLoginError(null);
@@ -207,6 +280,10 @@ export function App() {
 
         try {
             const authorizationUrl = await startMicrosoftLogin();
+            if (generation !== sessionGenerationRef.current) {
+                closePopupIfOpen(popupWindow);
+                return;
+            }
 
             if (!popupWindow) {
                 window.location.assign(authorizationUrl);
@@ -215,14 +292,17 @@ export function App() {
 
             popupWindow.location.href = authorizationUrl;
             await waitForMicrosoftPopupSession(popupWindow);
-            await completeAuthenticatedLogin();
+            await completeAuthenticatedLogin(generation);
         } catch (error) {
             closePopupIfOpen(popupWindow);
-            setLoginError(getMicrosoftLoginErrorMessage(error));
+            if (generation === sessionGenerationRef.current) setLoginError(getMicrosoftLoginErrorMessage(error));
         }
 
-        setIsMicrosoftLoginPending(false);
-        setIsSubmittingLogin(false);
+        if (loginGenerationRef.current === generation) {
+            loginGenerationRef.current = null;
+            setIsMicrosoftLoginPending(false);
+            setIsSubmittingLogin(false);
+        }
     };
 
     /**
@@ -231,8 +311,18 @@ export function App() {
      * Un error de red no debe mantener visible el shell. No hay tokens locales que borrar.
      */
     const handleLogout = (): void => {
+        const generation = ++sessionGenerationRef.current;
+        loginGenerationRef.current = null;
+        logoutPendingRef.current = true;
+        releaseAuthRetry();
+        applyAuthState({ status: "anonymous" }, generation);
+        setIsSubmittingLogin(true);
+        redirect(AUTH_LOGIN_PATH);
         void logoutIdentitySession().finally(() => {
-            setAuthState({ status: "anonymous" });
+            if (generation !== sessionGenerationRef.current) return;
+            logoutPendingRef.current = false;
+            setIsSubmittingLogin(false);
+            applyAuthState({ status: "anonymous" }, generation);
             redirect(AUTH_LOGIN_PATH);
         });
     };
@@ -244,8 +334,10 @@ export function App() {
         }
 
         holdAuthRetry();
+        const generation = ++sessionGenerationRef.current;
+        checkingRefreshRestartsRef.current = 0;
         setAuthRetryFeedback(null);
-        setAuthState({ status: "checking" });
+        applyAuthState({ status: "checking" }, generation);
         setAuthCheckAttempt((currentAttempt) => currentAttempt + 1);
     };
 

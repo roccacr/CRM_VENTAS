@@ -6,6 +6,7 @@
  * permisos) no aparece.
  */
 
+/** Permiso individual del catálogo; `sensitive` lo marca como acción de riesgo. */
 export interface PermissionCatalogItem {
     readonly code: string;
     readonly description: string;
@@ -13,20 +14,24 @@ export interface PermissionCatalogItem {
     readonly sensitive?: boolean;
 }
 
+/** Vista (pantalla) de un módulo con los permisos que la gobiernan. */
 export interface ModuleViewCatalogItem {
     readonly code: string;
     readonly name: string;
     readonly permissions: readonly PermissionCatalogItem[];
 }
 
+/** Módulo del catálogo de seguridad con sus vistas. */
 export interface ModuleCatalogItem {
     readonly code: string;
     readonly name: string;
     readonly views: readonly ModuleViewCatalogItem[];
 }
 
+/** Excepciones por empleado sobre el rol base: código de permiso -> permitir o denegar. */
 export type PermissionOverrideState = Record<string, "allow" | "deny">;
 
+/** Vista con clave única `módulo:vista` para usarla como identificador en la UI. */
 export interface PermissionSectionView extends ModuleViewCatalogItem {
     readonly key: string;
     readonly moduleCode: string;
@@ -40,12 +45,14 @@ export interface PermissionSection {
     readonly views: readonly PermissionSectionView[];
 }
 
+/** Módulo tal como se presenta en la pantalla de roles, ya agrupado en secciones. */
 export interface PermissionDisplayModule {
     readonly key: string;
     readonly name: string;
     readonly sections: readonly PermissionSection[];
 }
 
+/** Nivel visual: lectura, sensible (riesgo) o estándar. */
 export type PermissionLevel = "read" | "sensitive" | "standard";
 
 export const PERMISSION_LEVEL_LABELS: Readonly<Record<PermissionLevel, string>> = {
@@ -59,6 +66,8 @@ const ADMINISTRATION_GROUP_ORDER = ["user", "role", "administration"] as const;
 const ADMINISTRATION_DISPLAY_KEY = "administration";
 const ADMINISTRATION_DISPLAY_NAME = "Administración";
 const CATALOG_SECTION_NAME = "Catálogos";
+/** Mercadeo solo ofrece las secciones aprobadas; los permisos históricos se conservan al guardar. */
+const MARKETING_SECTION_CODES = new Set(["home", "leads", "appointments", "calendar"]);
 /** El API entrega estos nombres sin tilde; el código es estable y el texto visible se corrige aquí. */
 const MODULE_LABELS: Readonly<Record<string, string>> = {
     contabilidad: "Contabilidad",
@@ -71,8 +80,10 @@ const READ_ACTION_PATTERN = /\.(?:read|view_list|view_detail)$/u;
 /** Los catálogos se agrupan aparte porque se comparten entre perfiles. */
 export const isCatalogModuleCode = (code: string): boolean => code.startsWith("catalog_");
 
+/** Indica si el código pertenece a los módulos que se agrupan bajo Administración. */
 const isAdministrationGroupCode = (code: string): boolean => ADMINISTRATION_GROUP_ORDER.includes(code as (typeof ADMINISTRATION_GROUP_ORDER)[number]);
 
+/** Añade la clave compuesta `módulo:vista`, necesaria porque el código de vista solo es único dentro de su módulo. */
 const toSectionView = (module: ModuleCatalogItem, view: ModuleViewCatalogItem): PermissionSectionView => ({ ...view, key: `${module.code}:${view.code}`, moduleCode: module.code });
 
 /**
@@ -81,7 +92,7 @@ const toSectionView = (module: ModuleCatalogItem, view: ModuleViewCatalogItem): 
  * vista usa el nombre del módulo (Roles y seguridad, no Roles).
  */
 const buildModuleSections = (module: ModuleCatalogItem, useModuleNameForSingleView: boolean): readonly PermissionSection[] => {
-    const ownViews = module.views.filter((view) => !isCatalogModuleCode(view.code)).map((view) => toSectionView(module, view));
+    const ownViews = module.views.filter((view) => !isCatalogModuleCode(view.code) && (module.code !== "mercadeo" || MARKETING_SECTION_CODES.has(view.code))).map((view) => toSectionView(module, view));
     const catalogViews = module.views.filter((view) => isCatalogModuleCode(view.code)).map((view) => toSectionView(module, view));
     const singleViewName = useModuleNameForSingleView && ownViews.length === 1 ? module.name : null;
     const sections: PermissionSection[] = ownViews.map((view) => ({ isCatalog: false, key: view.key, moduleCode: module.code, name: singleViewName ?? view.name, views: [view] }));
@@ -105,6 +116,7 @@ export const buildDisplayModules = (modules: readonly ModuleCatalogItem[]): read
 /** Elemento elegido o, si ya no existe en el contexto actual, el primero disponible. */
 export const findByKeyOrFirst = <T extends { readonly key: string }>(items: readonly T[], key: string): T | undefined => items.find((item) => item.key === key) ?? items[0];
 
+/** Clasifica el permiso: `sensitive` del catálogo manda; el resto es lectura si el código es de lectura. */
 export const getPermissionLevel = (permission: PermissionCatalogItem): PermissionLevel => {
     if (permission.sensitive) {
         return "sensitive";
@@ -120,6 +132,7 @@ export const getAccessPermissionCodes = (view: ModuleViewCatalogItem): ReadonlyS
     return new Set(readCodes.length > 0 ? readCodes : view.permissions.map((permission) => permission.code));
 };
 
+/** Todos los códigos de permiso de una vista. */
 export const getAllPermissionCodes = (view: ModuleViewCatalogItem): ReadonlySet<string> => new Set(view.permissions.map((permission) => permission.code));
 
 /** Reemplaza solo los códigos de la vista dentro de la lista del módulo del rol. */

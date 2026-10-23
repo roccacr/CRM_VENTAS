@@ -1,16 +1,30 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { Transform, Type } from "class-transformer";
-import { ArrayMaxSize, ArrayMinSize, IsArray, IsIn, IsOptional, IsString, Matches, MaxLength, MinLength, ValidateNested } from "class-validator";
+import { ArrayMaxSize, ArrayMinSize, IsArray, IsIn, IsOptional, IsString, Matches, MaxLength, MinLength, ValidateIf, ValidateNested } from "class-validator";
 
 const PERMISSION_CODE_PATTERN = /^[a-z][a-z0-9_]*(?:\.[a-z][a-z0-9_]*)+$/u;
 const AUDIT_REASON_PATTERN = /\S+\s+\S+/u;
 
+/** Trims text before validation; other types pass through to be rejected by the validators. */
 const toTrimmedString = ({ value }: { readonly value: unknown }): unknown => (typeof value === "string" ? value.trim() : value);
 
 /**
- * Edicion del nombre visible de un rol. El codigo estable no se renombra.
+ * Edicion del nombre y del techo opcional de modulos. Omitir politica conserva la actual.
  */
 export class UpdateIdentityRoleDto {
+    @ApiPropertyOptional({ description: "Modulos que delimitan los permisos del rol; omitir conserva el mapeo.", type: [String], maxItems: 20 })
+    @ValidateIf((_object: unknown, value: unknown) => value !== undefined)
+    @IsArray()
+    @ArrayMaxSize(20)
+    @IsString({ each: true })
+    @Matches(/^[a-z][a-z0-9_]*$/u, { each: true })
+    moduleCodes?: string[];
+
+    @ApiPropertyOptional({ description: "Politica de permisos del rol.", enum: ["assigned", "selected_modules"] })
+    @ValidateIf((_object: unknown, value: unknown) => value !== undefined)
+    @IsIn(["assigned", "selected_modules"])
+    permissionInheritance?: "assigned" | "selected_modules";
+
     @ApiProperty({ description: "Nombre visible del rol.", maxLength: 120 })
     @Transform(toTrimmedString)
     @IsString()
@@ -38,6 +52,14 @@ export class UpdateIdentityRoleDto {
  * Reemplazo completo de permisos activos de un rol.
  */
 export class ReplaceIdentityRolePermissionsDto {
+    @ApiPropertyOptional({ description: "Techo de modulos guardado atomicamente con los permisos; omitir conserva el actual.", type: [String], maxItems: 20 })
+    @ValidateIf((_object: unknown, value: unknown) => value !== undefined)
+    @IsArray()
+    @ArrayMaxSize(20)
+    @IsString({ each: true })
+    @Matches(/^[a-z][a-z0-9_]*$/u, { each: true })
+    moduleCodes?: string[];
+
     @ApiProperty({ description: "Codigos de permisos que quedaran activos en el rol.", maxLength: 500, type: [String] })
     @IsArray()
     @ArrayMaxSize(500)

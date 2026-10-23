@@ -23,9 +23,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { getIdentityProfile, getIdentitySecurityCatalog, getIdentityUserAccess, getSystemUsers, replaceIdentityRolePermissions, replaceIdentityUserAccess, updateIdentityRole } from "../../../services/auth/auth-service";
 import type { IdentityProfile, IdentitySecurityCatalog, IdentityUserPermissionOverride, SystemUserDirectoryItem } from "../../../services/auth/identity-contracts";
 import { PROJECTS_THEME } from "../catalogs/projects-theme";
+import { canRoleGrantModule, getUserModuleScope, isOperationalAccessModule, normalizeAccessModuleCode, type RoleModuleScope } from "../user-module-scope";
 import { type PermissionCoverage, RolePermissionSection, RolesSecurityNavigator } from "./RolePermissionSection";
 import { applyUserViewPermissions, buildDisplayModules, findByKeyOrFirst, getUserPermissionOrigin, isCatalogModuleCode, type ModuleCatalogItem, type PermissionDisplayModule, type PermissionOverrideState, type PermissionSection, type PermissionSectionView, replaceViewPermissionCodes } from "./roles-security-sections";
 
+/** Rol listado con su cantidad de usuarios; `locked` marca un rol protegido que no se edita. */
 interface RoleCatalogItem {
     readonly code: string;
     readonly locked: boolean;
@@ -33,15 +35,20 @@ interface RoleCatalogItem {
     readonly users: number;
 }
 
+/** Código de permiso con formato `módulo.vista.acción`. */
 type PermissionCode = string;
+/** Permisos por rol y por módulo: rol -> módulo -> códigos concedidos. */
 type RolePermissionState = Record<string, Record<string, readonly PermissionCode[]>>;
+/** Modo de la pantalla: editar un rol base o los permisos de un empleado concreto. */
 type AccessMode = "role" | "user";
 
+/** Formulario de renombrado; el motivo queda en la auditoría. */
 interface RenameRoleFormState {
     readonly name: string;
     readonly reason: string;
 }
 
+/** Formulario de guardado; el motivo auditable es obligatorio. */
 interface SavePermissionsFormState {
     readonly reason: string;
 }
@@ -64,6 +71,7 @@ const ACCESS_MODE_OPTIONS = [
 const AUDIT_REASON_MIN_WORDS = 2;
 /** Rol con alcance de empresa. Sus módulos de administración no se ofrecen al resto. */
 const OWNER_ROLE_CODE = "owner";
+const GENERAL_ROLE_CODE = "jefe_general";
 const ADMINISTRATION_MODULE_CODES = ["administration", "role", "user"] as const;
 const MODULE_DISPLAY_ORDER = ["ventas", "mercadeo", "formalizacion", "contabilidad", "administration", "user", "role"] as const;
 
@@ -98,6 +106,7 @@ const groupPermissionCodesByModule = (modules: readonly ModuleCatalogItem[], per
     return Object.fromEntries(modules.map((module) => [module.code, getModulePermissionCodes(modules, module.code).filter((permissionCode) => grantedCodes.has(permissionCode))]));
 };
 
+/** Texto con singular o plural según la cantidad. */
 const formatCount = (count: number, singular: string, plural: string): string => `${String(count)} ${count === 1 ? singular : plural}`;
 
 /** Texto del fallo. Un valor que no sea `Error` no muestra el objeto crudo. */
@@ -108,14 +117,17 @@ const getErrorMessage = (error: unknown): string => {
 
 /** Only the effective API grant authorizes editing; an explicit deny always wins. */
 const hasEffectivePermission = (profile: IdentityProfile, code: string): boolean => profile.permissions.some((permission) => permission.code === code && permission.effect === "allow") && !profile.permissions.some((permission) => permission.code === code && permission.effect === "deny");
+const isActiveOwner = (profile: IdentityProfile): boolean => Array.isArray(profile.roles) && profile.roles.some((role: IdentityProfile["roles"][number]) => role.code === OWNER_ROLE_CODE && role.status === "active");
+const meetsEditorRequirements = (access: { readonly canListUsers: boolean; readonly canManageGeneral: boolean }, requirements: { readonly requireUserList: boolean; readonly requireOwner: boolean }): boolean => (!requirements.requireUserList || access.canListUsers) && (!requirements.requireOwner || access.canManageGeneral);
 
+/** Busca el rol por código o falla; evita trabajar con un rol que ya no existe. */
 const getRole = (roles: readonly RoleCatalogItem[], code: string): RoleCatalogItem => {
     const role = roles.find((item) => item.code === code) ?? roles[0];
     if (!role) throw new Error("No hay roles disponibles.");
     return role;
 };
 
-type RolesLoadState = { status: "loading" } | { status: "error"; message: string } | { status: "empty" } | { status: "ready"; catalog: IdentitySecurityCatalog; canListUsers: boolean };
+type RolesLoadState = { status: "loading" } | { status: "error"; message: string } | { status: "empty" } | { status: "ready"; catalog: IdentitySecurityCatalog; canListUsers: boolean; canManageGeneral: boolean };
 
 /** Fail closed before mounting the editor and after any failed permission revalidation. */
 export function RolesSecurityPage() {
@@ -137,7 +149,7 @@ export function RolesSecurityPage() {
                 }
                 const catalog = await getIdentitySecurityCatalog();
                 if (!isCurrent()) return;
-                setState(catalog.roles.length > 0 && catalog.modules.length > 0 ? { status: "ready", catalog, canListUsers: hasEffectivePermission(profile, "user.view_list") } : { status: "empty" });
+                setState(catalog.roles.length > 0 && catalog.modules.length > 0 ? { status: "ready", catalog, canListUsers: hasEffectivePermission(profile, "user.view_list"), canManageGeneral: isActiveOwner(profile) } : { status: "empty" });
             } catch (error) {
                 if (isCurrent()) setState({ status: "error", message: getErrorMessage(error) });
             }
@@ -148,7 +160,7 @@ export function RolesSecurityPage() {
             mounted.current = false;
         };
     }, []);
-    const revalidate = useCallback(async (requireUserList = false): Promise<boolean> => {
+    const revalidate = useCallback(async (requireUserList = false, requireOwner = false): Promise<boolean> => {
         const request = ++authorizationRequest.current;
         const isCurrent = () => mounted.current && request === authorizationRequest.current;
         setIsRevalidating(true);
@@ -157,8 +169,9 @@ export function RolesSecurityPage() {
             if (!isCurrent()) return false;
             if (!hasEffectivePermission(profile, "role.assign")) throw new Error("Permiso insuficiente para administrar roles.");
             const canListUsers = hasEffectivePermission(profile, "user.view_list");
-            setState((current) => (current.status === "ready" ? { ...current, canListUsers } : current));
-            return !requireUserList || canListUsers;
+            const canManageGeneral = isActiveOwner(profile);
+            setState((current) => (current.status === "ready" ? { ...current, canListUsers, canManageGeneral } : current));
+            return meetsEditorRequirements({ canListUsers, canManageGeneral }, { requireUserList, requireOwner });
         } catch (error) {
             if (isCurrent()) setState({ status: "error", message: getErrorMessage(error) });
         } finally {
@@ -176,7 +189,7 @@ export function RolesSecurityPage() {
             window.removeEventListener("focus", onFocus);
         };
     }, [revalidate, state.status]);
-    if (state.status === "ready") return <RolesSecurityEditor key={String(state.canListUsers)} catalog={state.catalog} canListUsers={state.canListUsers} isRevalidating={isRevalidating} revalidate={revalidate} />;
+    if (state.status === "ready") return <RolesSecurityEditor key={String(state.canListUsers)} catalog={state.catalog} canListUsers={state.canListUsers} canManageGeneral={state.canManageGeneral} isRevalidating={isRevalidating} revalidate={revalidate} />;
     return (
         <div className="roles-security-page">
             <h1>Roles y seguridad</h1>
@@ -209,7 +222,7 @@ const getRolePermissionCodesForModules = (state: RolePermissionState, roleCode: 
 };
 
 /** Unión de lo que aportan los roles del empleado, antes de aplicar excepciones. */
-const getUserBasePermissionCodes = (state: RolePermissionState, roleCodes: ReadonlySet<string>, moduleCode: string): readonly string[] => [...new Set([...roleCodes].flatMap((roleCode) => state[roleCode]?.[moduleCode] ?? []))];
+const getUserBasePermissionCodes = (state: RolePermissionState, roleCodes: ReadonlySet<string>, moduleCode: string, selection: { readonly roles: readonly RoleModuleScope[]; readonly selectedModules: readonly string[] }): readonly string[] => [...new Set([...roleCodes].filter((roleCode) => canRoleGrantModule(roleCode, selection.roles, moduleCode, selection.selectedModules)).flatMap((roleCode) => state[roleCode]?.[moduleCode] ?? []))];
 
 /**
  * Permisos del empleado en un módulo.
@@ -217,8 +230,8 @@ const getUserBasePermissionCodes = (state: RolePermissionState, roleCodes: Reado
  * `allow` suma y `deny` quita. Es una vista previa de la consola; el efecto
  * final lo vuelve a calcular el API al guardar.
  */
-const getEffectiveUserPermissionCodes = (state: RolePermissionState, roleCodes: ReadonlySet<string>, overrides: PermissionOverrideState, moduleCode: string): readonly string[] => {
-    const codes = new Set(getUserBasePermissionCodes(state, roleCodes, moduleCode));
+const getEffectiveUserPermissionCodes = (baseCodes: ReadonlySet<string>, overrides: PermissionOverrideState): readonly string[] => {
+    const codes = new Set(baseCodes);
 
     for (const [code, effect] of Object.entries(overrides)) {
         if (effect === "allow") {
@@ -366,7 +379,7 @@ interface RoleSecurityDialogsProps {
  * Consola visual para gestionar permisos desde el rol o el empleado hacia módulo, sección y acción.
  */
 // eslint-disable-next-line complexity, sonarjs/cognitive-complexity -- Pantalla operativa con modo rol y modo empleado; separar ahora seria un refactor mayor.
-function RolesSecurityEditor({ catalog, canListUsers, isRevalidating, revalidate }: { readonly catalog: IdentitySecurityCatalog; readonly canListUsers: boolean; readonly isRevalidating: boolean; readonly revalidate: (requireUserList?: boolean) => Promise<boolean> }) {
+function RolesSecurityEditor({ catalog, canListUsers, canManageGeneral, isRevalidating, revalidate }: { readonly catalog: IdentitySecurityCatalog; readonly canListUsers: boolean; readonly canManageGeneral: boolean; readonly isRevalidating: boolean; readonly revalidate: (requireUserList?: boolean, requireOwner?: boolean) => Promise<boolean> }) {
     const [roles, setRoles] = useState<readonly RoleCatalogItem[]>(() => catalog.roles.map((role) => ({ code: role.code, locked: role.locked, name: role.name, users: role.users })));
     const modules = useMemo(() => sortModulesForDisplay(catalog.modules), [catalog]);
     const initialPermissions = useMemo(() => Object.fromEntries(catalog.roles.map((role) => [role.code, groupPermissionCodesByModule(modules, catalog.rolePermissions[role.code] ?? [])])), [catalog, modules]);
@@ -377,6 +390,8 @@ function RolesSecurityEditor({ catalog, canListUsers, isRevalidating, revalidate
     const [selectedViewKey, setSelectedViewKey] = useState("");
     const [permissionState, setPermissionState] = useState<RolePermissionState>(initialPermissions);
     const [savedPermissionState, setSavedPermissionState] = useState<RolePermissionState>(initialPermissions);
+    const [generalModules, setGeneralModules] = useState<ReadonlySet<string>>(() => new Set(catalog.roles.find((role) => role.code === GENERAL_ROLE_CODE)?.moduleCodes?.filter(isOperationalAccessModule) ?? []));
+    const [savedGeneralModules, setSavedGeneralModules] = useState(generalModules);
     const [isRenameRoleDialogOpen, setIsRenameRoleDialogOpen] = useState(false);
     const [isSavePermissionsDialogOpen, setIsSavePermissionsDialogOpen] = useState(false);
     const [renameRoleForm, setRenameRoleForm] = useState<RenameRoleFormState>(EMPTY_RENAME_ROLE_FORM);
@@ -396,21 +411,26 @@ function RolesSecurityEditor({ catalog, canListUsers, isRevalidating, revalidate
     const [savedUserOrgUnitCodes, setSavedUserOrgUnitCodes] = useState<ReadonlySet<string>>(new Set());
     const [userPermissionOverrides, setUserPermissionOverrides] = useState<PermissionOverrideState>({});
     const [savedUserPermissionOverrides, setSavedUserPermissionOverrides] = useState<PermissionOverrideState>({});
+    const scopedRoles = useMemo(() => catalog.roles.map((role) => (role.code === GENERAL_ROLE_CODE ? { ...role, moduleCodes: [...savedGeneralModules] } : role)), [catalog.roles, savedGeneralModules]);
+    const userModuleScope = useMemo(() => getUserModuleScope([...userRoleCodes], scopedRoles, [...userOrgUnitCodes]), [scopedRoles, userRoleCodes, userOrgUnitCodes]);
+    const isUserModuleAssigned = (moduleCode: string): boolean => userModuleScope === null || userModuleScope.has(normalizeAccessModuleCode(moduleCode));
 
     const selectedUserPublicId = selectedUser?.publicId ?? "";
     const selectedRole = getRole(roles, selectedRoleCode);
     const isUserMode = Boolean(selectedUser);
     const isOwnerContext = isUserMode ? userRoleCodes.has(OWNER_ROLE_CODE) : selectedRoleCode === OWNER_ROLE_CODE;
-    const visibleModules = useMemo(() => getVisibleModulesForContext(modules, isOwnerContext), [isOwnerContext, modules]);
+    const isGeneralTemplate = !isUserMode && selectedRoleCode === GENERAL_ROLE_CODE;
+    const canEditGeneralTemplate = isGeneralTemplate && canManageGeneral;
+    const visibleModules = useMemo(() => getVisibleModulesForContext(modules, isOwnerContext).filter((module) => !isGeneralTemplate || isOperationalAccessModule(module.code)), [isOwnerContext, modules, isGeneralTemplate]);
     const displayModules = useMemo(() => buildDisplayModules(visibleModules), [visibleModules]);
     const activeModule = findByKeyOrFirst(displayModules, selectedModuleKey);
     const activeSection = activeModule ? findByKeyOrFirst(activeModule.sections, selectedSectionKey) : undefined;
     const activeView = activeSection ? findByKeyOrFirst(activeSection.views, selectedViewKey) : undefined;
-    const isSystemRole = !isUserMode && selectedRole.locked;
+    const isSystemRole = !isUserMode && (selectedRoleCode === GENERAL_ROLE_CODE ? !canManageGeneral : selectedRole.locked || selectedRoleCode === OWNER_ROLE_CODE);
     const hasProtectedRole = mode === "user" ? isUserMode && roles.some((role) => role.locked && userRoleCodes.has(role.code)) : selectedRole.locked;
     const isAccessEditorBusy = isLoadingUserAccess || isSubmitting || isRevalidating || Boolean(selectedUserPublicId && loadedUserPublicId !== selectedUserPublicId);
     const isRoleEditBlocked = isAccessEditorBusy || isSystemRole;
-    const roleDirtyCount = countRolePermissionChanges(permissionState, savedPermissionState, selectedRoleCode);
+    const roleDirtyCount = countRolePermissionChanges(permissionState, savedPermissionState, selectedRoleCode) + Number(isGeneralTemplate && !areStringSetsEqual(generalModules, savedGeneralModules));
     const userDirtyCount = countUserAccessChanges({
         currentOrgUnits: userOrgUnitCodes,
         currentOverrides: userPermissionOverrides,
@@ -426,8 +446,19 @@ function RolesSecurityEditor({ catalog, canListUsers, isRevalidating, revalidate
             return buildUserSaveSummary({ modules: visibleModules, roles, selectedUser, userOrgUnitCodes, userPermissionOverrides, userRoleCodes });
         }
 
-        return buildRoleSaveSummary({ modules: visibleModules, permissionState, selectedRole, selectedRoleCode });
-    }, [isUserMode, permissionState, roles, selectedRole, selectedRoleCode, selectedUser, userOrgUnitCodes, userPermissionOverrides, userRoleCodes, visibleModules]);
+        const summary = buildRoleSaveSummary({ modules: visibleModules.filter((module) => !isGeneralTemplate || generalModules.has(module.code)), permissionState, selectedRole, selectedRoleCode });
+        return isGeneralTemplate
+            ? [
+                  ...summary,
+                  `Módulos habilitados en plantilla: ${
+                      visibleModules
+                          .filter((module) => generalModules.has(module.code))
+                          .map((module) => module.name)
+                          .join(", ") || "Sin módulos"
+                  }`,
+              ]
+            : summary;
+    }, [isUserMode, permissionState, roles, selectedRole, selectedRoleCode, selectedUser, userOrgUnitCodes, userPermissionOverrides, userRoleCodes, visibleModules, isGeneralTemplate, generalModules]);
 
     const showSuccessNotification = useCallback(
         (message: string) => {
@@ -541,24 +572,24 @@ function RolesSecurityEditor({ catalog, canListUsers, isRevalidating, revalidate
         };
     }, [canListUsers, selectedUserPublicId]);
 
-    /** Permisos concedidos en el módulo de la vista. Un rol protegido se muestra con todo concedido. */
+    /** Catalog grants remain authoritative even when the role template is locked. */
     const getGrantedCodes = (view: PermissionSectionView): ReadonlySet<string> => {
-        if (isSystemRole) {
-            return new Set(view.permissions.map((permission) => permission.code));
-        }
-
-        return new Set(isUserMode ? getEffectiveUserPermissionCodes(permissionState, userRoleCodes, userPermissionOverrides, view.moduleCode) : (permissionState[selectedRoleCode]?.[view.moduleCode] ?? []));
+        if (isGeneralTemplate && !generalModules.has(view.moduleCode)) return new Set();
+        if (isUserMode && !isUserModuleAssigned(view.moduleCode)) return new Set();
+        return new Set(isUserMode ? getEffectiveUserPermissionCodes(getUserBaseCodes(view.moduleCode), userPermissionOverrides) : (permissionState[selectedRoleCode]?.[view.moduleCode] ?? []));
     };
 
-    const getUserBaseCodes = (moduleCode: string): ReadonlySet<string> => new Set(getUserBasePermissionCodes(permissionState, userRoleCodes, moduleCode));
+    const getUserBaseCodes = (moduleCode: string): ReadonlySet<string> => new Set(isUserModuleAssigned(moduleCode) ? getUserBasePermissionCodes(savedPermissionState, userRoleCodes, moduleCode, { roles: scopedRoles, selectedModules: [...userOrgUnitCodes] }) : []);
 
     /** Fija qué acciones de la vista quedan activas: matriz del rol o excepciones del empleado. */
     const setViewPermissions = (view: PermissionSectionView, enabledCodes: ReadonlySet<string>) => {
         if (isRoleEditBlocked) {
             return;
         }
+        if (isGeneralTemplate && !generalModules.has(view.moduleCode)) return;
 
         if (isUserMode) {
+            if (!isUserModuleAssigned(view.moduleCode)) return;
             const baseCodes = getUserBaseCodes(view.moduleCode);
             setUserPermissionOverrides((current) => applyUserViewPermissions(current, view, enabledCodes, baseCodes));
             return;
@@ -577,7 +608,7 @@ function RolesSecurityEditor({ catalog, canListUsers, isRevalidating, revalidate
         });
     };
 
-    /** Visibilidad del módulo en el menú del empleado. Ocultarlo niega lo que sus roles concedían. */
+    /** Scoped roles change membership only; legacy menu visibility keeps its existing overrides. */
     const toggleUserModuleVisibility = (moduleCode: string) => {
         if (isAccessEditorBusy) return;
         const enabled = userOrgUnitCodes.has(moduleCode);
@@ -595,6 +626,8 @@ function RolesSecurityEditor({ catalog, canListUsers, isRevalidating, revalidate
 
             return next;
         });
+        // A scope change is not an employee exception: preserve explicit allows and denies.
+        if (userModuleScope !== null) return;
         setUserPermissionOverrides((current) => {
             let next = current;
 
@@ -610,6 +643,7 @@ function RolesSecurityEditor({ catalog, canListUsers, isRevalidating, revalidate
         });
     };
 
+    /** Cambiar de empleado descarta el estado de acceso anterior para no mezclar permisos entre personas. */
     const selectUser = (user: SystemUserDirectoryItem | null) => {
         notificationApi.destroy();
         setIsLoadingUserAccess(Boolean(user));
@@ -619,6 +653,7 @@ function RolesSecurityEditor({ catalog, canListUsers, isRevalidating, revalidate
         setSelectedUser(user);
     };
 
+    /** Volver al modo rol quita al empleado seleccionado. */
     const changeMode = (nextMode: AccessMode) => {
         setMode(nextMode);
 
@@ -627,6 +662,7 @@ function RolesSecurityEditor({ catalog, canListUsers, isRevalidating, revalidate
         }
     };
 
+    /** No se cierra un diálogo mientras se envía, para no perder el resultado de la operación. */
     const closeDialog = () => {
         if (!isSubmitting) {
             setIsRenameRoleDialogOpen(false);
@@ -634,6 +670,7 @@ function RolesSecurityEditor({ catalog, canListUsers, isRevalidating, revalidate
         }
     };
 
+    /** Renombrar solo aplica a roles base; con un empleado seleccionado se avisa y no se abre. */
     const openRenameRoleDialog = () => {
         if (isRoleEditBlocked) return;
         if (isUserMode) {
@@ -646,6 +683,7 @@ function RolesSecurityEditor({ catalog, canListUsers, isRevalidating, revalidate
         setIsRenameRoleDialogOpen(true);
     };
 
+    /** Solo se abre si hay cambios pendientes. */
     const openSavePermissionsDialog = () => {
         if (isRoleEditBlocked) return;
         if (dirtyCount === 0) {
@@ -658,6 +696,7 @@ function RolesSecurityEditor({ catalog, canListUsers, isRevalidating, revalidate
         setIsSavePermissionsDialogOpen(true);
     };
 
+    /** Valida nombre y motivo, revalida permisos de sesión y actualiza el rol con auditoría. */
     const handleRenameRole = async () => {
         if (isRoleEditBlocked || isUserMode) return;
         const name = renameRoleForm.name.trim();
@@ -671,7 +710,7 @@ function RolesSecurityEditor({ catalog, canListUsers, isRevalidating, revalidate
         setIsSubmitting(true);
 
         try {
-            if (!(await revalidate())) return;
+            if (!(await revalidate(false, isGeneralTemplate))) return;
             const updatedRole = await updateIdentityRole(selectedRoleCode, { name, reason });
 
             setRoles((current) => current.map((role) => (role.code === updatedRole.code ? { ...role, name: updatedRole.name } : role)));
@@ -684,6 +723,31 @@ function RolesSecurityEditor({ catalog, canListUsers, isRevalidating, revalidate
         }
     };
 
+    /** Persists one atomic template and replaces drafts with the canonical response. */
+    const saveRolePermissions = async (reason: string) => {
+        const response = await replaceIdentityRolePermissions(selectedRoleCode, {
+            permissionCodes: getRolePermissionCodesForModules(
+                permissionState,
+                selectedRoleCode,
+                visibleModules.filter((module) => !isGeneralTemplate || generalModules.has(module.code)),
+            ),
+            reason,
+            ...(isGeneralTemplate ? { moduleCodes: [...generalModules].sort() } : {}),
+        });
+
+        const persistedRole = groupPermissionCodesByModule(modules, response.permissionCodes);
+        setPermissionState((current) => ({ ...current, [selectedRoleCode]: persistedRole }));
+        setSavedPermissionState((current) => ({ ...current, [selectedRoleCode]: persistedRole }));
+        if (isGeneralTemplate) {
+            const enabled = new Set((response.role.moduleCodes ?? [...generalModules]).filter(isOperationalAccessModule));
+            setGeneralModules(enabled);
+            setSavedGeneralModules(enabled);
+        }
+        showSuccessNotification(`Permisos de "${response.role.name}" guardados y auditados.`);
+        setIsSavePermissionsDialogOpen(false);
+    };
+
+    /** Exige motivo auditable y revalida la sesión antes de persistir los cambios. */
     const handleSavePermissions = async () => {
         if (isRoleEditBlocked) return;
         const reason = savePermissionsForm.reason.trim();
@@ -696,7 +760,7 @@ function RolesSecurityEditor({ catalog, canListUsers, isRevalidating, revalidate
         setIsSubmitting(true);
 
         try {
-            if (!(await revalidate(isUserMode))) return;
+            if (!(await revalidate(isUserMode, isGeneralTemplate))) return;
             if (isUserMode && selectedUser) {
                 if (userRoleCodes.size === 0) {
                     showWarningNotification("Selecciona al menos un rol para el empleado.");
@@ -723,14 +787,7 @@ function RolesSecurityEditor({ catalog, canListUsers, isRevalidating, revalidate
                 return;
             }
 
-            const response = await replaceIdentityRolePermissions(selectedRoleCode, {
-                permissionCodes: getRolePermissionCodesForModules(permissionState, selectedRoleCode, visibleModules),
-                reason,
-            });
-
-            setSavedPermissionState(permissionState);
-            showSuccessNotification(`Permisos de "${response.role.name}" guardados y auditados.`);
-            setIsSavePermissionsDialogOpen(false);
+            await saveRolePermissions(reason);
         } catch (error) {
             showErrorNotification(getErrorMessage(error));
         } finally {
@@ -738,7 +795,9 @@ function RolesSecurityEditor({ catalog, canListUsers, isRevalidating, revalidate
         }
     };
 
+    /** Permisos concedidos sobre el total de una sección. */
     const getSectionCoverage = (section: PermissionSection): PermissionCoverage => sumCoverage(section.views, getGrantedCodes);
+    /** Permisos concedidos sobre el total de un módulo. */
     const getModuleCoverage = (module: PermissionDisplayModule): PermissionCoverage =>
         sumCoverage(
             module.sections.flatMap((section) => section.views),
@@ -776,10 +835,15 @@ function RolesSecurityEditor({ catalog, canListUsers, isRevalidating, revalidate
                                     aria-label="Rol"
                                     disabled={isAccessEditorBusy}
                                     value={selectedRoleCode}
-                                    options={roles.map((role) => ({ label: `${role.name} (${formatCount(role.users, "usuario", "usuarios")})`, value: role.code }))}
+                                    options={[...roles].sort((first, second) => first.name.localeCompare(second.name, "es")).map((role) => ({ label: `${role.name} (${formatCount(role.users, "usuario", "usuarios")})`, value: role.code }))}
                                     onChange={(value) => {
                                         notificationApi.destroy();
                                         setSelectedRoleCode(value);
+                                        if (value === "mercadeo" || value === "jefe_mercadeo") {
+                                            setSelectedModuleKey("mercadeo");
+                                            setSelectedSectionKey("mercadeo:home");
+                                            setSelectedViewKey("mercadeo:home");
+                                        }
                                     }}
                                 />
                             ) : (
@@ -815,7 +879,7 @@ function RolesSecurityEditor({ catalog, canListUsers, isRevalidating, revalidate
                         <p className="roles-security-protected" role="note">
                             <SafetyCertificateOutlined aria-hidden="true" />
                             <strong>Rol protegido</strong>
-                            <span>Control máximo del CRM. Uso limitado a muy pocas personas.</span>
+                            <span>{isOwnerContext ? "Control máximo del CRM. Uso limitado a muy pocas personas." : "Plantilla de permisos administrada por el sistema."}</span>
                         </p>
                     ) : null}
                     {selectedUser ? (
@@ -841,7 +905,7 @@ function RolesSecurityEditor({ catalog, canListUsers, isRevalidating, revalidate
                                     <dd>{selectedUser.email}</dd>
                                 </div>
                                 <div>
-                                    <dt>Visible en el menú</dt>
+                                    <dt>{userModuleScope === null ? "Visible en el menú" : "Módulos asignados"}</dt>
                                     <dd>
                                         {visibleUserModuleCount} de {visibleModules.length} módulos
                                     </dd>
@@ -891,19 +955,36 @@ function RolesSecurityEditor({ catalog, canListUsers, isRevalidating, revalidate
                             <RolePermissionSection
                                 activeView={activeView}
                                 getGrantedCodes={getGrantedCodes}
-                                getOrigin={isUserMode ? (code) => getUserPermissionOrigin(code, userPermissionOverrides, getUserBaseCodes(activeView.moduleCode)) : undefined}
+                                getOrigin={isUserMode ? (code) => (isUserModuleAssigned(activeView.moduleCode) ? getUserPermissionOrigin(code, userPermissionOverrides, getUserBaseCodes(activeView.moduleCode)) : "Módulo no asignado") : undefined}
                                 isBusy={isAccessEditorBusy}
                                 isLocked={isSystemRole}
+                                isModuleAssigned={isGeneralTemplate ? generalModules.has(activeView.moduleCode) : !isUserMode || isUserModuleAssigned(activeView.moduleCode)}
                                 menuVisibility={
                                     isUserMode
                                         ? {
                                               checked: userOrgUnitCodes.has(activeSection.moduleCode),
+                                              isAccessScope: userModuleScope !== null,
                                               moduleName: sectionModuleName,
                                               onToggle: () => {
                                                   toggleUserModuleVisibility(activeSection.moduleCode);
                                               },
                                           }
-                                        : undefined
+                                        : canEditGeneralTemplate
+                                          ? {
+                                                checked: generalModules.has(activeSection.moduleCode),
+                                                isRoleTemplate: true,
+                                                moduleName: sectionModuleName,
+                                                onToggle: () => {
+                                                    if (isAccessEditorBusy) return;
+                                                    setGeneralModules((current) => {
+                                                        const next = new Set(current);
+                                                        if (next.has(activeSection.moduleCode)) next.delete(activeSection.moduleCode);
+                                                        else next.add(activeSection.moduleCode);
+                                                        return next;
+                                                    });
+                                                },
+                                            }
+                                          : undefined
                                 }
                                 moduleName={activeModule.name}
                                 section={activeSection}

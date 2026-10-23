@@ -22,6 +22,21 @@
     margin: 0;
 }
 
+.formalization-home__titlebar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    width: 100%;
+}
+
+.formalization-home .ant-btn.formalization-command.formalization-home__reload {
+    flex: 0 0 40px;
+    width: 40px;
+    height: 40px;
+    padding: 0;
+}
+
 .formalization-home__intro {
     display: grid;
     grid-template-columns: calc((100% - 32px) / 3) minmax(0, 1fr);
@@ -271,6 +286,12 @@
     align-items: center;
     width: 26px;
     height: 26px;
+}
+
+.formalization-contracts-status {
+    display: flex;
+    align-items: center;
+    gap: 4px;
 }
 
 /* Misma esquina, pegada arriba a la derecha, para que no baje cuando la tarjeta crece. */

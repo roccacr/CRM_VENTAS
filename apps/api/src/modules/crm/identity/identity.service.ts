@@ -6,6 +6,7 @@ import { type CompleteLocalResetDto, type LocalLoginDto, MAX_LOCAL_PASSWORD_LENG
 import type { CreateSystemUserAccessMethod, CreateSystemUserDto, ListSystemUsersQueryDto, UpdateSystemUserDto, UpdateSystemUserStatusDto } from "./dto/system-users.dto.js";
 import { type FailedLocalLoginRecord, IdentityRepository } from "./identity.repository.js";
 import type { ActiveSessionsResponse, IdentityProfile, SessionResponse, SystemUserDirectoryItem, SystemUsersListResponse } from "./identity.types.js";
+import { IdentityAccessManagementRepository } from "./identity-access-management.repository.js";
 import { IdentityAuditRecorder } from "./identity-audit-recorder.service.js";
 import { MICROSOFT_PROVIDER_CODE } from "./identity-microsoft.constants.js";
 import { IdentityMicrosoftSessionService, type MicrosoftLoginStartResult } from "./identity-microsoft-session.service.js";
@@ -38,6 +39,7 @@ const DEFAULT_SYSTEM_USER_ACCESS_METHODS: readonly CreateSystemUserAccessMethod[
 export const MICROSOFT_ACCOUNT_NOT_ASSIGNED_MESSAGE = "Cuenta Microsoft no asignada al CRM.";
 export const MICROSOFT_ACCOUNT_NOT_AUTHORIZED_MESSAGE = "Usuario CRM no autorizado para iniciar sesión.";
 
+/** Tokens and expiry produced by a login; the cookies are set by the caller. */
 export interface AuthenticatedSessionResult {
     refreshToken: string;
     refreshTokenExpiresAt: Date;
@@ -46,13 +48,16 @@ export interface AuthenticatedSessionResult {
     sessionTokenExpiresAt: Date;
 }
 
+/** Profile image bytes and MIME type. */
 export interface ProfileImageResult {
     bytes: Buffer;
     mimeType: string;
 }
 
+/** Access-related fields shared by user create and update. */
 type SystemUserAccessMutationPayload = Pick<CreateSystemUserDto | UpdateSystemUserDto, "accessMethods" | "orgUnitCode" | "orgUnitCodes" | "roleCode" | "roleCodes">;
 
+/** Turns legacy single-value fields into the list form used internally. */
 const normalizeSystemUserAccessMutation = (payload: SystemUserAccessMutationPayload): { accessMethods: readonly CreateSystemUserAccessMethod[]; orgUnitCodes: readonly string[]; roleCodes: readonly string[] } => {
     const orgUnitCodes = [...new Set((payload.orgUnitCodes ?? (payload.orgUnitCode ? [payload.orgUnitCode] : [])).map((orgUnitCode) => orgUnitCode.trim()).filter((orgUnitCode) => orgUnitCode.length > 0))];
     const roleCodes = [...new Set((payload.roleCodes ?? [payload.roleCode]).map((roleCode) => roleCode.trim()).filter((roleCode) => roleCode.length > 0))];
@@ -65,11 +70,13 @@ const normalizeSystemUserAccessMutation = (payload: SystemUserAccessMutationPayl
     };
 };
 
+/** Network metadata attached to audit events. */
 export interface IdentityRequestAuditContext {
     ipAddress?: string | undefined;
     userAgent?: string | undefined;
 }
 
+/** Data needed to record a failed local login and apply lockout. */
 interface LocalLoginFailureContext {
     ipAddress: string | undefined;
     normalizedEmail: string;
@@ -108,11 +115,14 @@ export class IdentityService {
      * El repository lee/escribe identidad; tokens emite secretos opacos; audit
      * registra eventos sin PII; Microsoft encapsula PKCE/MSAL.
      */
+    // Explicit providers keep delegation checks shared across both administrative write paths.
+    // eslint-disable-next-line max-params
     constructor(
         @Inject(IdentityRepository) private readonly repository: IdentityRepository,
         @Inject(IdentityTokenService) private readonly tokens: IdentityTokenService,
         @Inject(IdentityAuditRecorder) private readonly audit: IdentityAuditRecorder,
         @Inject(IdentityMicrosoftSessionService) private readonly microsoftSession: IdentityMicrosoftSessionService,
+        @Inject(IdentityAccessManagementRepository) private readonly accessManagement: IdentityAccessManagementRepository,
     ) {}
 
     /**
@@ -270,9 +280,11 @@ export class IdentityService {
         this.assertCan(profile, USER_CREATE_PERMISSION);
         this.assertCan(profile, ROLE_ASSIGN_PERMISSION);
         const { accessMethods, orgUnitCodes, roleCodes } = normalizeSystemUserAccessMutation(payload);
+        await this.accessManagement.assertDelegableAccess(profile, roleCodes, orgUnitCodes, []);
         const passwordHash = await this.hashAssignedInitialPassword(profile, payload.password, accessMethods);
 
         return this.repository.createSystemUser({
+            validateAccess: (transaction) => this.accessManagement.validateAssignmentInTransaction(transaction, { profile, roleCodes, moduleCodes: orgUnitCodes, overrides: [] }),
             accessMethods,
             actorPublicId: profile.user.publicId,
             displayName: payload.displayName.trim(),
@@ -282,8 +294,7 @@ export class IdentityService {
             ...(passwordHash ? { passwordHash } : {}),
             ipAddress,
             normalizedEmail: normalizeCaseInsensitiveIdentifier(payload.email),
-            // Only creation supplies the profile default; edits can explicitly remove module access.
-            orgUnitCodes: orgUnitCodes.length === 0 && roleCodes.includes("formalizacion") ? ["formalizacion"] : orgUnitCodes,
+            orgUnitCodes,
             reason: payload.reason.trim(),
             roleCode: roleCodes[0] ?? payload.roleCode.trim(),
             roleCodes,
@@ -296,6 +307,7 @@ export class IdentityService {
      *
      * No permite editar la cuenta propia: un cambio de roles/acceso puede dejar
      * al actor sin permisos o sin metodo de entrada antes de terminar la sesión.
+     * Omitir accessMethods conserva los metodos existentes, sin reactivar proveedores.
      */
     async updateSystemUser(sessionToken: string | undefined, userPublicId: string, payload: UpdateSystemUserDto, context: IdentityRequestAuditContext = {}): Promise<SystemUserDirectoryItem> {
         const profile = await this.getCurrentUser(sessionToken);
@@ -308,10 +320,11 @@ export class IdentityService {
         const { accessMethods, orgUnitCodes, roleCodes } = normalizeSystemUserAccessMutation(payload);
         const current = await this.repository.findSystemUserByPublicId(profile.user.publicId, userPublicId);
         if (!current) throw new NotFoundException("Usuario no encontrado.");
-        this.assertAssignmentChangeAllowed(profile, current, roleCodes, orgUnitCodes);
+        await this.assertAssignmentChangeAllowed(profile, current, roleCodes, orgUnitCodes);
         const user = await this.repository.updateSystemUser({
+            validateAccess: (transaction) => this.accessManagement.validateAssignmentInTransaction(transaction, { profile, roleCodes, moduleCodes: orgUnitCodes, userPublicId, validateAssignments: this.hasEffectivePermission(profile, ROLE_ASSIGN_PERMISSION) }),
             preserveAssignments: !this.hasEffectivePermission(profile, ROLE_ASSIGN_PERMISSION),
-            accessMethods,
+            accessMethods: payload.accessMethods === undefined ? undefined : accessMethods,
             actorPublicId: profile.user.publicId,
             displayName: payload.displayName.trim(),
             email: payload.email.trim(),
@@ -692,22 +705,29 @@ export class IdentityService {
         }
     }
 
+    /** A permission counts only if allowed and not denied. */
     private assertCan(profile: IdentityProfile, permissionCode: string): void {
         if (!this.hasEffectivePermission(profile, permissionCode)) {
             throw new ForbiddenException("Permiso insuficiente.");
         }
     }
 
+    /** Effective permission check where deny wins. */
     private hasEffectivePermission(profile: IdentityProfile, permissionCode: string): boolean {
         return profile.permissions.some((permission) => permission.code === permissionCode && permission.effect === "allow") && !profile.permissions.some((permission) => permission.code === permissionCode && permission.effect === "deny");
     }
 
     /** Data-only edits need no assignment grant; the writer rechecks the locked snapshot. */
-    private assertAssignmentChangeAllowed(profile: IdentityProfile, current: SystemUserDirectoryItem, roleCodes: readonly string[], orgUnitCodes: readonly string[]): void {
+    private async assertAssignmentChangeAllowed(profile: IdentityProfile, current: SystemUserDirectoryItem, roleCodes: readonly string[], orgUnitCodes: readonly string[]): Promise<void> {
         const currentOrgUnits = current.orgUnits ?? (current.orgUnit ? [current.orgUnit] : []);
+        /** Canonical form of a code list to compare assignments. */
         const codes = (values: readonly string[]): string => JSON.stringify([...new Set(values.map(normalizeCaseInsensitiveIdentifier))].sort());
         const changed = [codes(roleCodes) !== codes(current.roles.map((role) => role.code)), codes(orgUnitCodes) !== codes(currentOrgUnits.map((unit) => unit.code))].includes(true);
-        if (changed) this.assertCan(profile, ROLE_ASSIGN_PERMISSION);
+        if (changed) {
+            this.assertCan(profile, ROLE_ASSIGN_PERMISSION);
+            const currentAccess = await this.accessManagement.readUserAccess(current.publicId);
+            await this.accessManagement.assertDelegableAccess(profile, roleCodes, orgUnitCodes, currentAccess.permissionOverrides);
+        }
     }
 
     /**

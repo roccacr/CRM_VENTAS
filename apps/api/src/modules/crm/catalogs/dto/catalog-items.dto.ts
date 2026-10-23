@@ -11,10 +11,10 @@ import { ArrayMaxSize, IsArray, IsIn, IsInt, IsOptional, IsString, Max, MaxLengt
 
 import { CATALOG_CONTEXT_MODULES, CATALOG_STATUSES, type CatalogContextModuleCode, type CatalogStatus } from "../catalogs.constants.js";
 
-/** Un texto opcional vacío se vuelve ausente, para no guardar espacios como detalle o búsqueda. */
-const toOptionalTrimmedString = ({ value }: { readonly value: unknown }): string | undefined => {
+/** Un texto opcional vacio se vuelve ausente; los tipos invalidos se conservan para rechazarlos. */
+const toOptionalTrimmedString = ({ value }: { readonly value: unknown }): unknown => {
     if (typeof value !== "string") {
-        return undefined;
+        return value === null ? undefined : value;
     }
 
     const trimmed = value.trim();

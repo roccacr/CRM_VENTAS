@@ -1,5 +1,107 @@
 # Changelog
 
+## Jefe General administrable por Owner - 2026-10-23
+
+- Plantilla de General editable en Por rol: modulos y permisos en un unico
+  guardado auditado. Owner permanece protegido y los denies prevalecen.
+- Migracion nativa 030 aplicada: cuatro modulos y 140 permisos operativos
+  actuales persistidos, sin asignar empleados ni modificar legacy/ordenes.
+- Acceso por empleado limitado a la interseccion con la plantilla; los permisos
+  retirados dejan de regenerarse. Verificacion y limites en arquitectura 42.
+
+## Jefaturas por modulos seleccionados - 2026-10-23
+
+- Migracion nativa 029 aplicada: relacion rol-modulo y politica de Jefe General,
+  sin asignar empleados ni modificar datos comerciales o BD legacy.
+- Perfil y servicios limitan permisos al modulo efectivo; denies individuales
+  prevalecen y no se concede administracion por ser Jefe General.
+- Selectores de modulos por empleado, previsualizacion por rol de origen y
+  bitacora con politica y modulos anteriores/nuevos. Owner conserva herencia global.
+- Plan, evidencia de BD y limites de verificacion en
+  [42 - Jefaturas](apps/api/Arquitectura/42-Jefaturas-Modulos-y-Permisos.md).
+
+## Mercadeo: roles y permisos por seccion - 2026-10-23
+
+- Migracion nativa dirigida 028 para Mercadeo y Jefe de Mercadeo: cuatro permisos
+  nuevos de lectura de seccion y siete de catalogos reutilizados por rol.
+- Menu y catalogo de seguridad alineados con Inicio, Captacion de leads, Eventos
+  y citas, Calendario y Catalogos. Las tres vistas nuevas siguen sin implementar.
+- Auditoria atomica y versiones de permisos, incluidos titulares Owner; sin
+  asignaciones de empleados, escrituras comerciales, legacy ni permisos de edicion.
+- 028 aplicada solo en CRM_THINK_V2; lectura real del repositorio confirma ambos
+  roles activos, 11 grants por rol, cero empleados asignados, ledger y dos eventos.
+  Check-all aprobado: API 5252/113 MySQL omitidas y frontend 602. Evidencia y
+  limites en arquitectura API 28; no certifica navegador autenticado ni despliegue.
+
+## Owner: herencia efectiva y denies - 2026-10-23
+
+- Migracion nativa 027 aplicada: Owner hereda roles activos sin asignarlos
+  fisicamente a usuarios. Los permisos activos siguen concedidos por defecto.
+- Las denegaciones individuales ya no se descartan para Owner. El editor refleja
+  su base de permisos activos; el resto de roles conserva sus reglas habituales.
+- Banners de etapas requieren rol efectivo y permiso de lectura, en API y React.
+  Sin cambios a ordenes ni BD legacy. Evidencia y limites en
+  [41 - Owner](apps/api/Arquitectura/41-Owner-Herencia-y-Denegaciones.md).
+
+## Home: resumen agregado de etapas - 2026-10-23
+
+- Un endpoint para contratos y cinco etapas posteriores; rol activo Formalizacion
+  antes de consultar y de montar banners. Aprobaciones conserva su permiso.
+- Agregacion SQL acotada a dos SELECT, snapshot de lectura, autoridad nativa y
+  ultima secuencia de historial. Sin cache de contadores ni dependencias nuevas.
+- Preload por numero y relectura al entrar/recuperar foco, con aislamiento de
+  usuario/sesion y descarte de respuestas obsoletas. No habilita list/send/revert.
+- Cierre anual acumulativo por orden con evento final en el anio: cierres repetidos
+  no duplican y una reapertura no borra el hito. No cierra ordenes automaticamente.
+- Lectura real y EXPLAIN sin escrituras: 186 por enviar, firma y demas etapas 0
+  en esa observacion; indices existentes utilizados. Simulacion y evidencia
+  automatizada se detallan por separado en [40 - Home y rendimiento](apps/api/Arquitectura/40-Formalizacion-Home-Resumen-y-Rendimiento.md).
+
+## Remediacion de auditoria F01-F13 - 2026-10-23
+
+- Logging HTTP sin query/fragmentos OIDC; frontera del quinto fallo local y validacion estricta de detail.
+- Retirada Microsoft efectiva sin relink por correo, subject/historial preservados y revocacion con actor administrativo. MFA no verificado en vez de inferido por proveedor.
+- Perfil/consumidores revalidados por contexto; respuestas y operaciones antiguas no restauran ni usan una sesion nueva. Filtros/hash conservados y ciclo de foco movil, incluido resize.
+- Migracion 021 rechaza adopcion silenciosa de tablas previas; sin ejecutar DDL real. Infraestructura de pruebas sin wrappers acumulados ni dependencia de salida animada; concurrencia frontend acotada a dos workers.
+- Runbook e inventario actualizados. [Plan y evidencia](apps/api/Arquitectura/Reauditoria-54-Plan-y-Resultados.md#plan-central-f01-f13---2026-10-23): check-all aprobado, API 5194/113 omitidas y frontend 507 por cinco corridas mas cobertura. Persistencia MySQL real y despliegue siguen pendientes; Home-only conservado, sin cambios en BD, dependencias ni .env.
+
+## Dos contadores de Home - 2026-10-22
+
+- Contratos mantiene etiquetas y muestra un preload en lugar de cada numero durante carga/reintento; respuestas correctas conservan sus valores reales.
+- Evitadas peticiones duplicadas de efectos y lecturas de banners ocultos al entrar a una bandeja vacia. Permisos/rol y colas vacias se conservan.
+- Aprobaciones comparte instantanea de solo lectura entre ambas BD y la exclusion nativa. Paginas cortas evitan una consulta adicional en ambos resumenes.
+- Indice compuesto aditivo aplicado solo para elegibilidad de formalizacion legacy; DDL y EXPLAIN documentados en SQL/026 y arquitectura API 38. Sin cambios de datos, estados, correo o ERP.
+
+## Correccion de alcance: solo Home - 2026-10-22
+
+- Retirados bandeja contractual real y botones adelantados; se conserva el contador de Home por rol formalizacion.
+- Rutas orders/send/revert desregistradas; escritura legacy local apagada. Estructura y pruebas preparadas se conservan, sin borrar BD ni modificar estados comerciales.
+
+## Contratos por fuente - 2026-10-22
+
+- Resumen contractual real en ambas BD, snapshot de lectura compartido y exclusividad de subtotales; prioridad nativa por ID migrado y visibilidad estricta por rol formalizacion.
+- Tablas aditivas de etapas legacy aplicadas sin modificar ordenventa; permiso025 nativo asigna solo registrar envio al rol base. Comandos send/revert con permiso exacto, version, idempotencia y bitacora central en la transaccion del cambio.
+- Banner conectado con preload/error y log agregado DEV; sin lista/botones operativos, correos, ERP o movimientos reales de ordenes durante la entrega. Opt-in legacy contractual local no modifica las compuertas productivas de catalogos.
+
+## Activacion local de auditoria - 2026-10-22
+
+- Aplicada y verificada la migracion nativa 024: cinco columnas NO PAD e indices unicos conservados; reejecucion omitida por ledger.
+- Activados ENABLE_RECORD_AUDIT y fallback legacy solo en configuracion local ignorada por Git; API local reiniciado, liveness/readiness aprobados y conexiones verificadas.
+- Sin cambios de credenciales/grants ni datos comerciales. Escritura legacy sigue bloqueada en desarrollo; operacion controlada pospuesta por el propietario. No se certifica inmutabilidad SQL con la cuenta administrativa compartida.
+- 82 pruebas focalizadas aprobadas sin conexion. No despliegue remoto ni commits/push.
+
+## Unreleased - Escritores de auditoria preparados - 2026-10-22
+
+- RecordAuditService y puente para los cambios existentes de siete catalogos, usuarios y roles; lifecycle interno de ordenes agrega evidencia central en la misma transaccion, sin borrar sus historiales especializados. Snapshots partial, actores y contexto capturados del servidor, validacion JSON acotada e idempotencia por registro.
+- ENABLE_RECORD_AUDIT=false por defecto; arranque/escritura activa exigen ledger nativo 023/024. No se ejecutan migraciones, fixtures ni conexiones de validacion MySQL y no se edita .env. No hay endpoints nuevos de ordenes/restore ni captura automatica del API viejo/ERP.
+- Guard y AuditReadService comparten politica: un deny de role.assign prevalece incluso sobre Owner. Permisos existentes y compuertas legacy conservados.
+
+## Unreleased - Base de bitacora comercial - 2026-10-22
+
+- Revision independiente con tres subagentes: CLI de migraciones endurecido contra argumentos mal escritos; pruebas adversariales de preflight, ejecucion diferida y fallos parciales, sin BD. El fallo de cierre ya no oculta el error original de migracion. Correccion 024 de collation de identidad preparada, no aplicada. Aprobacion limitada a esquema inactivo, no a captura/restauracion operativas.
+- Migracion nativa aditiva 023: audit_record y audit_record_event para identificar registros de ambas fuentes sin FK comercial, conservar antes/despues, actor, versiones, motivo e idempotencia. Aplicada solo en CRM_THINK_V2, sin datos de prueba ni cambios productivos.
+- Contrato y diccionario en documento API 38. No hay captura automatica de todos los escritores, restauracion ejecutable ni conexion del banner Contratos por esta entrega.
+
 ## Unreleased - Continuidad de auditoria - 2026-10-22
 
 - Fastify fijado en 5.12.6 tanto directo como dentro del adapter Nest; override acotado de ip-address 10.7.4 en rate-limit. Sin actualizacion masiva de dependencias.

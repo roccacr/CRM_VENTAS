@@ -25,6 +25,13 @@ import { formalizationSupervisorRoleMigration } from "../migrations/schema-only/
 import { formalizationHomeBannerMigration } from "../migrations/schema-only/202610200020_formalization_home_banner.js";
 import { salesOrdersMigration } from "../migrations/schema-only/202610200021_sales_orders.js";
 import { salesOrderUtcDefaultsMigration } from "../migrations/schema-only/202610200022_sales_order_utc_defaults.js";
+import { recordAuditMigration } from "../migrations/schema-only/202610220023_record_audit.js";
+import { recordAuditIdentifierCollationMigration } from "../migrations/schema-only/202610220024_record_audit_identifier_collation.js";
+import { contractPermissionsMigration } from "../migrations/schema-only/202610220025_contract_permissions.js";
+import { ownerRoleInheritanceMigration } from "../migrations/schema-only/202610230027_owner_role_inheritance.js";
+import { marketingRolesMigration } from "../migrations/schema-only/202610230028_marketing_roles.js";
+import { generalManagerModulesMigration } from "../migrations/schema-only/202610230029_general_manager_modules.js";
+import { generalManagerTemplateMigration } from "../migrations/schema-only/202610230030_general_manager_template.js";
 import { addDatabaseTlsIssues, booleanEnvSchema, tcpPortSchema } from "../src/config/database-env.schema.js";
 import { APPROVED_DATABASE_NAME } from "../src/config/product.constants.js";
 import { buildMysqlPoolOptions } from "../src/database/mysql-pool-options.js";
@@ -33,6 +40,7 @@ const MYSQL_CONNECTION_LIMIT = 1;
 const SCHEMA_MIGRATION_LOCK_NAME = "crm_think_v2_schema_migration";
 const SCHEMA_MIGRATION_LOCK_TIMEOUT_SECONDS = 30;
 
+/** A schema migration: unique name and idempotent `up`. */
 type Migration = {
     name: string;
     up: (db: Kysely<unknown>) => Promise<void>;
@@ -60,6 +68,13 @@ export const schemaMigrations: Migration[] = [
     formalizationHomeBannerMigration,
     salesOrdersMigration,
     salesOrderUtcDefaultsMigration,
+    recordAuditMigration,
+    recordAuditIdentifierCollationMigration,
+    contractPermissionsMigration,
+    ownerRoleInheritanceMigration,
+    marketingRolesMigration,
+    generalManagerModulesMigration,
+    generalManagerTemplateMigration,
 ];
 
 /** Targeted cutovers avoid replaying unrelated security repairs after a deliberate ledger reset. */
@@ -69,6 +84,15 @@ export const selectSchemaMigrations = (name?: string): Migration[] => {
     if (!migration) throw new Error("Unknown migration selection");
     return [migration];
 };
+
+/** Fail before connecting: a misspelled targeted command must never run every migration. */
+export const selectSchemaMigrationsFromArgs = (args: readonly string[]): Migration[] => {
+    if (args.length === 0) return selectSchemaMigrations();
+    const [argument] = args;
+    if (args.length !== 1 || !argument?.startsWith("--only=") || argument.length === 7) throw new Error("Migration arguments must be empty or exactly --only=<approved-name>");
+    return selectSchemaMigrations(argument.slice(7));
+};
+/** True only when run as a script, not when imported by tests. */
 const isExecutedDirectly = (): boolean => (process.argv[1] ? pathToFileURL(process.argv[1]).href === import.meta.url : false);
 
 /**
@@ -104,6 +128,7 @@ const schemaMigrationEnvSchema = z
         addDatabaseTlsIssues(config, context);
     });
 
+/** Validated environment of the migration runner. */
 type SchemaMigrationEnv = z.infer<typeof schemaMigrationEnvSchema>;
 
 /**
@@ -216,10 +241,8 @@ const recordMigration = async (db: Kysely<unknown>, migrationName: string): Prom
  * Este script debe seguir siendo explicito y manual. El arranque NestJS nunca
  * debe ejecutar migraciones automaticamente.
  */
-const run = async (): Promise<void> => {
-    const selected = selectSchemaMigrations(process.argv.find((arg) => arg.startsWith("--only="))?.slice(7));
-    const db = createDatabase();
-
+export const runSelectedSchemaMigrations = async (db: Kysely<unknown>, selected: readonly Migration[]): Promise<void> => {
+    let failure: { error: unknown } | undefined;
     try {
         await acquireLock(db);
         await ensureMigrationTable(db);
@@ -235,10 +258,24 @@ const run = async (): Promise<void> => {
             await recordMigration(db, migration.name);
             console.log(`Migracion schema-only aplicada: ${migration.name}`);
         }
+    } catch (error) {
+        failure = { error };
     } finally {
         await releaseLock(db).catch(() => undefined);
-        await db.destroy();
+        try {
+            await db.destroy();
+        } catch (error) {
+            if (failure) console.error("Schema migration database cleanup failed; preserving the original error.");
+            else failure = { error };
+        }
     }
+    if (failure) throw failure.error;
+};
+
+/** Validate selection before constructing a pool; the orchestrator owns and closes it. */
+const run = async (): Promise<void> => {
+    const selected = selectSchemaMigrationsFromArgs(process.argv.slice(2));
+    await runSelectedSchemaMigrations(createDatabase(), selected);
 };
 
 if (isExecutedDirectly()) {

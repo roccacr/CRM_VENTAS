@@ -1,4 +1,4 @@
-import { BadRequestException, Inject, Injectable } from "@nestjs/common";
+import { BadRequestException, ConflictException, ForbiddenException, Inject, Injectable } from "@nestjs/common";
 import { type Kysely, sql } from "kysely";
 
 import { DatabaseService } from "../../../database/database.service.js";
@@ -6,30 +6,38 @@ import type { CrmDatabase } from "../../../database/database.types.js";
 import { buildAuditChangeSet } from "../audit/audit-change-set.js";
 import { SecurityAuditService } from "../audit/security-audit.service.js";
 import { CATALOG_CONTEXT_MODULES, CATALOG_PERMISSION_ACTIONS, type CatalogPermissionAction, findCatalogDefinitionByModuleCode, getCatalogPermissionName } from "../catalogs/catalogs.constants.js";
-import { ACTIVE_STATUS } from "./identity-repository.shared.js";
+import type { IdentityProfile } from "./identity.types.js";
+import { normalizePermissionModule, OPERATIONAL_MODULE_CODES, permissionModuleCodes } from "./identity-module-policy.js";
+import { ACTIVE_STATUS, type IdentityTransaction } from "./identity-repository.shared.js";
 import { IdentitySessionRepository } from "./identity-session.repository.js";
 
 const INACTIVE_STATUS = "inactive";
 const VISIBLE_SECURITY_MODULE_CODES = [...CATALOG_CONTEXT_MODULES, "role", "user"] as const;
 
+/** Database handle or transaction, so the same queries run inside or outside a unit of work. */
 type AccessManagementExecutor = Pick<Kysely<CrmDatabase>, "insertInto" | "selectFrom" | "updateTable">;
 
+/** Acting user as read from the database. */
 interface ActorRow {
     id: number;
 }
 
+/** Role row with its lifecycle status. */
 interface RoleRow {
     code: string;
     description: string | null;
     id: number;
     name: string;
     status: string;
+    permissionInheritance: "assigned" | "selected_modules";
 }
 
+/** Result of a COUNT query; mysql2 may return it as a string. */
 interface CountRow {
     total: string | number | bigint;
 }
 
+/** User row used by access management. */
 interface UserRow {
     email: string;
     id: number;
@@ -38,11 +46,13 @@ interface UserRow {
     status: string;
 }
 
+/** Direct per-user permission exception (allow or deny) over the role baseline. */
 interface PermissionOverrideRow {
     code: string;
     effect: "allow" | "deny";
 }
 
+/** Permission definition plus the module it belongs to. */
 interface PermissionCatalogRow {
     actionCode: string;
     code: string;
@@ -50,6 +60,7 @@ interface PermissionCatalogRow {
     moduleCode: string;
 }
 
+/** Security audit event as stored, with raw JSON metadata. */
 interface SecurityAuditRow {
     actorName: string | null;
     createdAt: Date | string;
@@ -61,6 +72,7 @@ interface SecurityAuditRow {
     targetName: string | null;
 }
 
+/** Inputs for replacing a user's roles inside one transaction. */
 interface UserRoleReplacementContext {
     actorUserId: number;
     executor: AccessManagementExecutor;
@@ -69,6 +81,7 @@ interface UserRoleReplacementContext {
     userId: number;
 }
 
+/** Inputs for replacing a user's organizational units (modules) inside one transaction. */
 interface UserOrgUnitReplacementContext {
     actorUserId: number;
     executor: AccessManagementExecutor;
@@ -78,6 +91,7 @@ interface UserOrgUnitReplacementContext {
     userId: number;
 }
 
+/** Inputs for replacing a user's permission exceptions inside one transaction. */
 interface UserPermissionOverrideReplacementContext {
     actorUserId: number;
     executor: AccessManagementExecutor;
@@ -88,6 +102,7 @@ interface UserPermissionOverrideReplacementContext {
     userId: number;
 }
 
+/** Role as exposed by the security catalog. */
 export interface IdentityRoleCatalogItem {
     code: string;
     description: string | null;
@@ -95,8 +110,12 @@ export interface IdentityRoleCatalogItem {
     name: string;
     status: string;
     users?: number;
+    moduleCodes?: string[];
+    moduleScoped?: boolean;
+    permissionInheritance?: "assigned" | "selected_modules";
 }
 
+/** Permission as exposed by the security catalog; `sensitive` flags risky actions. */
 export interface IdentityPermissionCatalogItem {
     code: string;
     description: string;
@@ -104,18 +123,21 @@ export interface IdentityPermissionCatalogItem {
     sensitive: boolean;
 }
 
+/** A screen of a module and the permissions that govern it. */
 export interface IdentityModuleViewCatalogItem {
     code: string;
     name: string;
     permissions: readonly IdentityPermissionCatalogItem[];
 }
 
+/** A module and its views in the security catalog. */
 export interface IdentityModuleCatalogItem {
     code: string;
     name: string;
     views: readonly IdentityModuleViewCatalogItem[];
 }
 
+/** Security audit entry reduced to what the UI may show. */
 export interface IdentitySecurityAuditItem {
     actorName: string | null;
     createdAt: string;
@@ -128,6 +150,7 @@ export interface IdentitySecurityAuditItem {
     targetName: string | null;
 }
 
+/** Everything the roles screen needs: roles, modules and recent audit. */
 export interface IdentitySecurityCatalog {
     auditEvents: readonly IdentitySecurityAuditItem[];
     modules: readonly IdentityModuleCatalogItem[];
@@ -135,18 +158,21 @@ export interface IdentitySecurityCatalog {
     roles: readonly IdentityRoleCatalogItem[];
 }
 
+/** Role assigned to a user. */
 export interface IdentityAccessRoleItem {
     code: string;
     name: string;
     status: string;
 }
 
+/** Organizational unit (module) assigned to a user. */
 export interface IdentityAccessOrgUnitItem {
     code: string;
     name: string;
     publicId: string;
 }
 
+/** A user's roles, modules and permission exceptions. */
 export interface IdentityUserAccessSummary {
     orgUnits: readonly IdentityAccessOrgUnitItem[];
     permissionOverrides: readonly PermissionOverrideRow[];
@@ -159,6 +185,7 @@ export interface IdentityUserAccessSummary {
     };
 }
 
+/** Input to delete a role; the reason is stored in the audit trail. */
 export interface DeleteIdentityRoleInput {
     actorPublicId: string;
     code: string;
@@ -167,7 +194,10 @@ export interface DeleteIdentityRoleInput {
     userAgent?: string | undefined;
 }
 
+/** Input to rename a role; the reason is stored in the audit trail. */
 export interface UpdateIdentityRoleInput {
+    /** General edits require a trusted service profile for transaction-local authorization. */
+    actorProfile?: IdentityProfile;
     actorPublicId: string;
     code: string;
     description?: string | undefined;
@@ -175,9 +205,15 @@ export interface UpdateIdentityRoleInput {
     name: string;
     reason: string;
     userAgent?: string | undefined;
+    moduleCodes?: readonly string[] | undefined;
+    permissionInheritance?: "assigned" | "selected_modules" | undefined;
 }
 
+/** Input to replace the full permission set of a role. */
 export interface ReplaceIdentityRolePermissionsInput {
+    /** General edits require a trusted service profile, never a client field. */
+    actorProfile?: IdentityProfile;
+    moduleCodes?: readonly string[];
     actorPublicId: string;
     code: string;
     ipAddress?: string | undefined;
@@ -186,7 +222,10 @@ export interface ReplaceIdentityRolePermissionsInput {
     userAgent?: string | undefined;
 }
 
+/** Input to replace a user's roles, modules and permission exceptions. */
 export interface ReplaceIdentityUserAccessInput {
+    /** Trusted service closure carrying the session profile; never accepted from HTTP. */
+    validateAccess: (transaction: IdentityTransaction) => Promise<void>;
     actorPublicId: string;
     ipAddress?: string | undefined;
     orgUnitCodes: readonly string[];
@@ -197,13 +236,16 @@ export interface ReplaceIdentityUserAccessInput {
     userPublicId: string;
 }
 
+/** Role permissions after a read or replacement. */
 export interface IdentityRolePermissionsUpdateResult {
     permissionCodes: readonly string[];
     role: IdentityRoleCatalogItem;
 }
 
+/** Read result shares the shape of the update result. */
 export type IdentityRolePermissionsReadResult = IdentityRolePermissionsUpdateResult;
 
+/** Outcome of a role deletion: deleted, blocked because it still has active assignments, or not found. */
 export type DeleteIdentityRoleResult =
     | {
           activeAssignments: number;
@@ -235,14 +277,14 @@ export class IdentityAccessManagementRepository {
     /**
      * Lee los roles, modulos y overrides activos de un usuario.
      */
-    async readUserAccess(userPublicId: string): Promise<IdentityUserAccessSummary> {
-        const user = await this.findUserRowByPublicId(this.database.db, userPublicId);
+    async readUserAccess(userPublicId: string, executor: AccessManagementExecutor = this.database.db): Promise<IdentityUserAccessSummary> {
+        const user = await this.findUserRowByPublicId(executor, userPublicId);
 
         if (!user) {
             throw new BadRequestException("Usuario no disponible.");
         }
 
-        return this.readUserAccessByRow(this.database.db, user);
+        return this.readUserAccessByRow(executor, user);
     }
 
     /**
@@ -257,6 +299,7 @@ export class IdentityAccessManagementRepository {
                 throw new BadRequestException("Usuario no disponible.");
             }
 
+            await input.validateAccess(transaction);
             const actor = await this.readActor(transaction, input.actorPublicId);
             const roleCodes = [...new Set(input.roleCodes)].sort();
             const orgUnitCodes = [...new Set(input.orgUnitCodes)].sort();
@@ -337,6 +380,7 @@ export class IdentityAccessManagementRepository {
             if (!role) {
                 return { status: "not_found" };
             }
+            if (["owner", "jefe_general"].includes(role.code) || role.permissionInheritance === "selected_modules") throw new ConflictException("La plantilla base de este rol esta protegida.");
 
             const activeAssignments = await this.countActiveRoleAssignments(transaction, role.id);
 
@@ -390,20 +434,22 @@ export class IdentityAccessManagementRepository {
     }
 
     /**
-     * Actualiza datos visibles del rol y audita el cambio.
+     * Actualiza datos visibles y techo opcional del rol en la misma transaccion auditada.
      */
     async updateRole(input: UpdateIdentityRoleInput): Promise<IdentityRoleCatalogItem> {
         return this.database.db.transaction().execute(async (transaction) => {
             const role = await this.findRoleRowByCode(transaction, input.code, true);
-            const actor = await this.readActor(transaction, input.actorPublicId);
 
             if (!role) {
                 throw new BadRequestException("Rol no disponible.");
             }
+            await this.assertGeneralTemplateOwner(transaction, role, input);
+            const actor = await this.readActor(transaction, input.actorPublicId);
 
             const before = await this.readRoleAuditSnapshot(transaction, role);
             const actorSnapshot = await this.audit.captureActor(actor.id, transaction);
             const now = new Date();
+            const policy = await this.applyRolePolicyUpdate(transaction, role, input, now);
 
             await transaction
                 .updateTable("sec_role")
@@ -411,6 +457,7 @@ export class IdentityAccessManagementRepository {
                     description_role: input.description ?? null,
                     name_role: input.name,
                     updated_at_role: now,
+                    permission_inheritance_mode_role: policy.permissionInheritance,
                 })
                 .where("id_role", "=", role.id)
                 .executeTakeFirstOrThrow();
@@ -425,7 +472,7 @@ export class IdentityAccessManagementRepository {
                     metadata: {
                         moduleCode: "administration",
                         sectionCode: "roles",
-                        changeSet: buildAuditChangeSet({ entity: "role", recordId: role.code, action: "update", before, after: { ...before, name: input.name, description: input.description ?? null } }),
+                        changeSet: buildAuditChangeSet({ entity: "role", recordId: role.code, action: "update", before, after: { ...before, ...policy, name: input.name, description: input.description ?? null } }),
                         nextName: input.name,
                         previousName: role.name,
                         roleCode: role.code,
@@ -437,11 +484,14 @@ export class IdentityAccessManagementRepository {
                 transaction,
             );
 
-            return this.mapRole({
-                ...role,
-                description: input.description ?? null,
-                name: input.name,
-            });
+            return {
+                ...this.mapRole({
+                    ...role,
+                    description: input.description ?? null,
+                    name: input.name,
+                }),
+                ...policy,
+            };
         });
     }
 
@@ -451,11 +501,12 @@ export class IdentityAccessManagementRepository {
     async replaceRolePermissions(input: ReplaceIdentityRolePermissionsInput): Promise<IdentityRolePermissionsUpdateResult> {
         return this.database.db.transaction().execute(async (transaction) => {
             const role = await this.findRoleRowByCode(transaction, input.code, true);
-            const actor = await this.readActor(transaction, input.actorPublicId);
 
             if (!role) {
                 throw new BadRequestException("Rol no disponible.");
             }
+            await this.assertGeneralTemplateOwner(transaction, role, input);
+            const actor = await this.readActor(transaction, input.actorPublicId);
 
             const permissionCodes = [...new Set(input.permissionCodes)].sort();
             const permissions = await this.findActivePermissionsByCode(transaction, permissionCodes);
@@ -463,19 +514,23 @@ export class IdentityAccessManagementRepository {
             if (permissions.length !== permissionCodes.length) {
                 throw new BadRequestException("Uno o más permisos no existen o no están activos.");
             }
-
+            const before = await this.readRoleAuditSnapshot(transaction, role);
+            const now = new Date();
+            const actorSnapshot = await this.audit.captureActor(actor.id, transaction);
+            if (input.moduleCodes !== undefined) {
+                this.assertOperationalTemplateModules(role, input.moduleCodes);
+                await this.replaceRoleModules(transaction, role.id, input.moduleCodes, now);
+            }
+            await this.assertRolePermissionReplacement(transaction, role, permissions);
             const currentPermissions = await this.findActiveRolePermissions(transaction, role.id);
             const nextPermissionIds = new Set(permissions.map((permission) => permission.id));
             const currentPermissionIds = new Set(currentPermissions.map((permission) => permission.id));
             const removedPermissionIds = currentPermissions.filter((permission) => !nextPermissionIds.has(permission.id)).map((permission) => permission.id);
             const permissionsToInsert = permissions.filter((permission) => !currentPermissionIds.has(permission.id));
-            const actorSnapshot = await this.audit.captureActor(actor.id, transaction);
 
             if (removedPermissionIds.length > 0) {
                 await transaction.updateTable("sec_role_permission").set({ status_role_permission: INACTIVE_STATUS }).where("role_id_role_permission", "=", role.id).where("permission_id_role_permission", "in", removedPermissionIds).where("status_role_permission", "=", ACTIVE_STATUS).executeTakeFirst();
             }
-
-            const now = new Date();
 
             if (permissionsToInsert.length > 0) {
                 await transaction
@@ -494,7 +549,7 @@ export class IdentityAccessManagementRepository {
                     metadata: {
                         moduleCode: "administration",
                         sectionCode: "roles",
-                        changeSet: buildAuditChangeSet({ entity: "role", recordId: role.code, action: "update", before: { ...this.mapRole(role), deleted: false, permissionCodes: currentPermissions.map((permission) => permission.code).sort() }, after: { ...this.mapRole(role), deleted: false, permissionCodes } }),
+                        changeSet: buildAuditChangeSet({ entity: "role", recordId: role.code, action: "update", before, after: { ...before, ...(await this.rolePolicy(transaction, role)), permissionCodes } }),
                         nextPermissionCodes: permissionCodes,
                         previousPermissionCodes: currentPermissions.map((permission) => permission.code).sort(),
                         roleCode: role.code,
@@ -508,7 +563,7 @@ export class IdentityAccessManagementRepository {
 
             return {
                 permissionCodes,
-                role: this.mapRole(role),
+                role: { ...this.mapRole(role), ...(await this.rolePolicy(transaction, role)), locked: role.code === "owner" },
             };
         });
     }
@@ -516,18 +571,19 @@ export class IdentityAccessManagementRepository {
     /**
      * Lee los permisos activos de un rol desde base de datos.
      */
-    async readRolePermissions(roleCode: string): Promise<IdentityRolePermissionsReadResult> {
-        const role = await this.findRoleRowByCode(this.database.db, roleCode);
+    async readRolePermissions(roleCode: string, executor: AccessManagementExecutor = this.database.db): Promise<IdentityRolePermissionsReadResult> {
+        const role = await this.findRoleRowByCode(executor, roleCode);
 
         if (!role) {
             throw new BadRequestException("Rol no disponible.");
         }
 
-        const permissions = await this.findActiveRolePermissions(this.database.db, role.id);
+        const policy = await this.rolePolicy(executor, role);
+        const permissions = await this.roleBasePermissions(executor, role, policy);
 
         return {
             permissionCodes: permissions.map((permission) => permission.code).sort(),
-            role: this.mapRole(role),
+            role: { ...this.mapRole(role), ...policy, locked: role.code === "owner" },
         };
     }
 
@@ -535,7 +591,8 @@ export class IdentityAccessManagementRepository {
      * Devuelve la matriz operativa persistida: roles, modulos, acciones y auditoria.
      */
     async readSecurityCatalog(): Promise<IdentitySecurityCatalog> {
-        const roles = await this.database.db.selectFrom("sec_role").select(["code_role as code", "description_role as description", "id_role as id", "name_role as name", "status_role as status"]).where("status_role", "=", ACTIVE_STATUS).where("deleted_at_role", "is", null).orderBy("id_role", "asc").execute();
+        const roles = await this.database.db.selectFrom("sec_role").select(["code_role as code", "description_role as description", "id_role as id", "name_role as name", "status_role as status", "permission_inheritance_mode_role as permissionInheritance"]).where("status_role", "=", ACTIVE_STATUS).where("deleted_at_role", "is", null).orderBy("id_role", "asc").execute();
+        const policies = new Map(await Promise.all(roles.map(async (role) => [role.id, await this.rolePolicy(this.database.db, role)] as const)));
         const permissions = (await this.database.db
             .selectFrom("sec_permission")
             .select(["action_code_permission as actionCode", "code_permission as code", "description_permission as description", "module_code_permission as moduleCode"])
@@ -546,7 +603,10 @@ export class IdentityAccessManagementRepository {
             .execute()) as PermissionCatalogRow[];
         const rolePermissionEntries = await Promise.all(
             roles.map(async (role) => {
-                const activePermissions = await this.findActiveRolePermissions(this.database.db, role.id);
+                if (role.code === "owner") return [role.code, permissions.map((permission) => permission.code).sort()] as const;
+                const policy = policies.get(role.id);
+                if (!policy) throw new BadRequestException("Politica del rol no disponible.");
+                const activePermissions = await this.roleBasePermissions(this.database.db, role, policy);
 
                 return [
                     role.code,
@@ -573,6 +633,7 @@ export class IdentityAccessManagementRepository {
             rolePermissions: Object.fromEntries(rolePermissionEntries),
             roles: roles.map((role) => ({
                 ...this.mapRole(role),
+                ...policies.get(role.id),
                 locked: role.code === "owner",
                 users: countByRole.get(role.code) ?? 0,
             })),
@@ -701,19 +762,20 @@ export class IdentityAccessManagementRepository {
             .execute();
     }
 
-    private async findActivePermissionsByCode(executor: AccessManagementExecutor, codes: readonly string[]): Promise<Array<{ code: string; id: number }>> {
+    private async findActivePermissionsByCode(executor: AccessManagementExecutor, codes: readonly string[]): Promise<Array<{ code: string; id: number; moduleCode: string }>> {
         if (codes.length === 0) {
             return [];
         }
 
         return executor
             .selectFrom("sec_permission")
-            .select(["code_permission as code", "id_permission as id"])
+            .select(["code_permission as code", "id_permission as id", "module_code_permission as moduleCode"])
             .where("code_permission", "in", [...codes])
             .where("status_permission", "=", ACTIVE_STATUS)
             .execute();
     }
 
+    /** Lower-cases codes and rejects duplicates so one permission cannot carry two exceptions. */
     private normalizePermissionOverrides(overrides: readonly PermissionOverrideRow[]): PermissionOverrideRow[] {
         const byCode = new Map<string, PermissionOverrideRow>();
 
@@ -803,6 +865,7 @@ export class IdentityAccessManagementRepository {
             .execute();
     }
 
+    /** Organizational membership implied by roles: general head leads, area sub-head assists, anyone else is a member. */
     private resolveMembershipForRoleCodes(roleCodes: readonly string[]): string {
         if (roleCodes.includes("jefe_general")) {
             return "leader";
@@ -815,6 +878,7 @@ export class IdentityAccessManagementRepository {
         return "member";
     }
 
+    /** Area scope implied by roles: owner sees all areas, heads see their area and its children. */
     private resolveScopeForRoleCodes(roleCodes: readonly string[]): string {
         if (roleCodes.includes("owner")) {
             return "all_areas";
@@ -841,7 +905,7 @@ export class IdentityAccessManagementRepository {
     private async findRoleRowByCode(executor: AccessManagementExecutor, code: string, lock = false): Promise<RoleRow | null> {
         const role = await executor
             .selectFrom("sec_role")
-            .select(["code_role as code", "description_role as description", "id_role as id", "name_role as name", "status_role as status"])
+            .select(["code_role as code", "description_role as description", "id_role as id", "name_role as name", "status_role as status", "permission_inheritance_mode_role as permissionInheritance"])
             .where("code_role", "=", code)
             .where("deleted_at_role", "is", null)
             .$if(lock, (query) => query.forUpdate())
@@ -852,7 +916,169 @@ export class IdentityAccessManagementRepository {
 
     private async readRoleAuditSnapshot(executor: AccessManagementExecutor, role: RoleRow): Promise<Record<string, unknown>> {
         const permissions = await this.findActiveRolePermissions(executor, role.id);
-        return { ...this.mapRole(role), deleted: false, permissionCodes: permissions.map((permission) => permission.code).sort() };
+        return { ...this.mapRole(role), ...(await this.rolePolicy(executor, role)), deleted: false, permissionCodes: permissions.map((permission) => permission.code).sort() };
+    }
+
+    /** Inactive mapping rows retain the ceiling when its last active module is removed. */
+    private async rolePolicy(executor: AccessManagementExecutor, role: RoleRow) {
+        const rows = await executor.selectFrom("sec_role_module as mapping").innerJoin("sec_org_unit as unit", "unit.id_org_unit", "mapping.org_unit_id_role_module").select(["unit.code_org_unit as code", "mapping.status_role_module as status", "unit.status_org_unit as unitStatus", "unit.deleted_at_org_unit as deletedAt"]).where("mapping.role_id_role_module", "=", role.id).execute();
+        return {
+            moduleCodes: rows
+                .filter((row) => row.status === ACTIVE_STATUS && row.unitStatus === ACTIVE_STATUS && row.deletedAt === null)
+                .map((row) => row.code)
+                .sort(),
+            moduleScoped: rows.length > 0,
+            permissionInheritance: role.permissionInheritance,
+        };
+    }
+
+    private async applyRolePolicyUpdate(executor: AccessManagementExecutor, role: RoleRow, input: UpdateIdentityRoleInput, now: Date) {
+        this.assertRolePolicyUpdate(role, input);
+        if (input.moduleCodes !== undefined) {
+            this.assertOperationalTemplateModules(role, input.moduleCodes);
+            await this.replaceRoleModules(executor, role.id, input.moduleCodes, now);
+        }
+        return this.rolePolicy(executor, { ...role, permissionInheritance: input.permissionInheritance ?? role.permissionInheritance });
+    }
+
+    private assertRolePolicyUpdate(role: RoleRow, input: UpdateIdentityRoleInput): void {
+        if (role.code === "owner" && (input.moduleCodes !== undefined || input.permissionInheritance !== undefined)) throw new ConflictException("La politica base de este rol esta protegida.");
+        if (role.code === "jefe_general" && ![undefined, role.permissionInheritance].includes(input.permissionInheritance)) throw new ConflictException("La politica selected_modules de Jefe General no se puede cambiar.");
+        if (input.permissionInheritance === "selected_modules" && role.code !== "jefe_general") throw new BadRequestException("La herencia dinamica corresponde a Jefe General.");
+    }
+
+    private async assertRolePermissionReplacement(executor: AccessManagementExecutor, role: RoleRow, permissions: readonly { moduleCode: string }[]): Promise<void> {
+        if (role.code === "owner") throw new ConflictException("La matriz base de este rol esta protegida.");
+        this.assertOperationalTemplateModules(
+            role,
+            permissions.map((permission) => normalizePermissionModule(permission.moduleCode)),
+        );
+        const policy = await this.rolePolicy(executor, role);
+        if (!policy.moduleScoped && policy.permissionInheritance !== "selected_modules") return;
+        const allowed = new Set(permissionModuleCodes(policy.moduleCodes));
+        if (permissions.some((permission) => !allowed.has(permission.moduleCode))) throw new BadRequestException("Permisos fuera de los modulos del rol.");
+    }
+
+    private async roleBasePermissions(executor: AccessManagementExecutor, role: RoleRow, policy: { moduleCodes: string[]; moduleScoped: boolean; permissionInheritance: string }) {
+        if (role.code === "owner") return executor.selectFrom("sec_permission").select(["code_permission as code", "module_code_permission as moduleCode"]).where("status_permission", "=", ACTIVE_STATUS).execute();
+        const permissions = await this.findActiveRolePermissions(executor, role.id);
+        const allowed = new Set(permissionModuleCodes(policy.moduleCodes));
+        const scoped = policy.moduleScoped || policy.permissionInheritance === "selected_modules";
+        const operational = new Set<string>(OPERATIONAL_MODULE_CODES);
+        return permissions.filter((permission) => (!scoped || allowed.has(permission.moduleCode)) && (policy.permissionInheritance !== "selected_modules" || operational.has(permission.moduleCode)));
+    }
+
+    private assertOperationalTemplateModules(role: RoleRow, codes: readonly string[]): void {
+        if (role.code !== "jefe_general") return;
+        const operational = new Set<string>(OPERATIONAL_MODULE_CODES);
+        if (codes.some((code) => !operational.has(code.trim().toLowerCase()))) throw new BadRequestException("La plantilla Jefe General solo admite modulos y permisos operativos.");
+    }
+
+    /** Lock actor authority before ordinary reads so revoked ownership/denies cannot be hidden by an older snapshot. */
+    private async assertGeneralTemplateOwner(executor: AccessManagementExecutor, role: RoleRow, input: { actorPublicId: string; actorProfile?: IdentityProfile }): Promise<void> {
+        if (role.code !== "jefe_general") return;
+        const profile = input.actorProfile;
+        if (!profile || profile.user.publicId.toLowerCase() !== input.actorPublicId.toLowerCase()) throw new ForbiddenException("Se requiere el perfil autenticado de Owner.");
+        const actor = await executor.selectFrom("sec_user").select(["id_user as id", "status_user as status", "permission_version_user as permissionVersion"]).where("public_id_user", "=", input.actorPublicId).where("deleted_at_user", "is", null).forUpdate().executeTakeFirst();
+        if (!actor || actor.status !== ACTIVE_STATUS || actor.permissionVersion !== profile.user.permissionVersion) throw new ForbiddenException("La autoridad del actor cambio.");
+        const owner = await executor
+            .selectFrom("sec_user_role as assignment")
+            .innerJoin("sec_role as actorRole", "actorRole.id_role", "assignment.role_id_user_role")
+            .select("actorRole.id_role")
+            .where("assignment.user_id_user_role", "=", actor.id)
+            .where("assignment.status_user_role", "=", ACTIVE_STATUS)
+            .where("assignment.revoked_at_user_role", "is", null)
+            .where("actorRole.code_role", "=", "owner")
+            .where("actorRole.status_role", "=", ACTIVE_STATUS)
+            .where("actorRole.deleted_at_role", "is", null)
+            .forUpdate()
+            .executeTakeFirst();
+        if (!owner) throw new ForbiddenException("Solo Owner puede editar la plantilla Jefe General.");
+        await this.assertLiveRoleAssignmentPermission(executor, actor.id);
+    }
+
+    private async assertLiveRoleAssignmentPermission(executor: AccessManagementExecutor, actorId: number): Promise<void> {
+        const permission = await executor.selectFrom("sec_permission").select("id_permission").where("code_permission", "=", "role.assign").where("status_permission", "=", ACTIVE_STATUS).executeTakeFirst();
+        if (!permission) throw new ForbiddenException("Permiso role.assign no disponible.");
+        const now = new Date();
+        const deny = await executor
+            .selectFrom("sec_user_permission_override as override")
+            .innerJoin("sec_permission as permission", "permission.id_permission", "override.permission_id_user_permission_override")
+            .select("permission.id_permission")
+            .where("override.user_id_user_permission_override", "=", actorId)
+            .where("permission.code_permission", "=", "role.assign")
+            .where("permission.status_permission", "=", ACTIVE_STATUS)
+            .where("override.effect_user_permission_override", "=", "deny")
+            .where("override.status_user_permission_override", "=", ACTIVE_STATUS)
+            .where("override.revoked_at_user_permission_override", "is", null)
+            .where("override.starts_at_user_permission_override", "<=", now)
+            .where((expression) => expression.or([expression("override.ends_at_user_permission_override", "is", null), expression("override.ends_at_user_permission_override", ">", now)]))
+            .executeTakeFirst();
+        if (deny) throw new ForbiddenException("role.assign esta denegado para el actor.");
+    }
+
+    private async replaceRoleModules(executor: AccessManagementExecutor, roleId: number, moduleCodes: readonly string[], now: Date): Promise<void> {
+        const codes = [...new Set(moduleCodes.map((code) => code.trim().toLowerCase()))].sort();
+        if (codes.length === 0) {
+            const existing = await executor.selectFrom("sec_role_module").select("role_id_role_module").where("role_id_role_module", "=", roleId).executeTakeFirst();
+            if (!existing) throw new BadRequestException("No se puede vaciar un techo de modulos que nunca fue definido.");
+        }
+        const units = await this.findActiveOrgUnitsByCode(executor, codes);
+        if (units.length !== codes.length) throw new BadRequestException("Modulo del rol no disponible.");
+        await executor.updateTable("sec_role_module").set({ status_role_module: INACTIVE_STATUS, updated_at_role_module: now }).where("role_id_role_module", "=", roleId).execute();
+        if (units.length)
+            await executor
+                .insertInto("sec_role_module")
+                .values(units.map((unit) => ({ role_id_role_module: roleId, org_unit_id_role_module: unit.id, status_role_module: ACTIVE_STATUS, created_at_role_module: now, updated_at_role_module: now })))
+                .onDuplicateKeyUpdate({ status_role_module: ACTIVE_STATUS, updated_at_role_module: now })
+                .execute();
+    }
+
+    /** Delegation is bounded by live effective authority; deny wins even over a role grant. */
+    // The executor keeps writer revalidation on the same locked transaction as assignment.
+    // eslint-disable-next-line max-params
+    async assertDelegableAccess(profile: IdentityProfile, roleCodes: readonly string[], moduleCodes: readonly string[], overrides: readonly PermissionOverrideRow[], executor: AccessManagementExecutor = this.database.db): Promise<void> {
+        await this.assertGeneralOperationalCeiling(roleCodes, moduleCodes, overrides, executor);
+        if (profile.roles.some((role) => role.code === "owner" && role.status === ACTIVE_STATUS)) return;
+        const ownRoles = new Set(profile.roles.filter((role) => role.status === ACTIVE_STATUS).map((role) => role.code));
+        const ownModules = new Set(profile.orgUnits.filter((unit) => unit.status === ACTIVE_STATUS).map((unit) => unit.code));
+        /** Effective permission check where any deny wins over allow. */
+        const can = (code: string) => profile.permissions.some((permission) => permission.code === code && permission.effect === "allow") && !profile.permissions.some((permission) => permission.code === code && permission.effect === "deny");
+        const outsideAuthority = [roleCodes.some((code) => code === "owner" || !ownRoles.has(code)), moduleCodes.some((code) => !ownModules.has(code)), overrides.some((override) => override.effect === "allow" && !can(override.code))].includes(true);
+        if (outsideAuthority) throw new ForbiddenException("No puedes delegar acceso fuera de tu autoridad efectiva.");
+        const selected = new Set(moduleCodes);
+        for (const code of roleCodes) {
+            const base = await this.readRolePermissions(code, executor);
+            const definitions = await this.findActivePermissionsByCode(executor, base.permissionCodes);
+            if (definitions.length !== base.permissionCodes.length) throw new ForbiddenException("La autoridad del rol no esta disponible.");
+            const permissions = definitions.filter((permission) => (!base.role.moduleScoped && base.role.permissionInheritance !== "selected_modules") || selected.has(normalizePermissionModule(permission.moduleCode))).map((permission) => permission.code);
+            if (permissions.some((permission) => !can(permission))) throw new ForbiddenException("El rol concede permisos fuera de tu autoridad efectiva.");
+        }
+    }
+
+    private async assertGeneralOperationalCeiling(roleCodes: readonly string[], moduleCodes: readonly string[], overrides: readonly PermissionOverrideRow[], executor: AccessManagementExecutor): Promise<void> {
+        const roles = roleCodes.map((code) => code.trim().toLowerCase());
+        if (roles.includes("owner") || !roles.includes("jefe_general")) return;
+        const operational = new Set<string>(OPERATIONAL_MODULE_CODES);
+        if (moduleCodes.some((code) => !operational.has(code.trim().toLowerCase()))) throw new ForbiddenException("Jefe General solo admite modulos operativos.");
+        const allows = overrides.filter((override) => override.effect === "allow");
+        const permissions = await this.findActivePermissionsByCode(
+            executor,
+            allows.map((override) => override.code),
+        );
+        if (permissions.length !== allows.length || permissions.some((permission) => !operational.has(normalizePermissionModule(permission.moduleCode)))) throw new ForbiddenException("Jefe General no admite permisos administrativos directos.");
+    }
+
+    /** Runs before snapshot reads; role policy/grant writers lock these same rows. */
+    async validateAssignmentInTransaction(executor: AccessManagementExecutor, input: { profile: IdentityProfile; roleCodes: readonly string[]; moduleCodes: readonly string[]; overrides?: readonly PermissionOverrideRow[]; userPublicId?: string; validateAssignments?: boolean }): Promise<void> {
+        const roles = [...new Set(input.roleCodes.map((code) => code.trim().toLowerCase()))].sort();
+        const locked = await executor.selectFrom("sec_role").select("id_role").where("code_role", "in", roles).where("status_role", "=", ACTIVE_STATUS).where("deleted_at_role", "is", null).orderBy("id_role", "asc").forUpdate().execute();
+        if (locked.length !== roles.length) throw new ForbiddenException("Los roles seleccionados ya no estan disponibles.");
+        const actor = await executor.selectFrom("sec_user").select(["permission_version_user as permissionVersion", "status_user as status"]).where("public_id_user", "=", input.profile.user.publicId).where("deleted_at_user", "is", null).forUpdate().executeTakeFirst();
+        if (!actor || actor.status !== ACTIVE_STATUS || actor.permissionVersion !== input.profile.user.permissionVersion) throw new ForbiddenException("La autoridad del actor cambio; vuelve a consultar tu sesion.");
+        if (input.validateAssignments === false) return;
+        const overrides = input.overrides ?? (input.userPublicId ? (await this.readUserAccess(input.userPublicId, executor)).permissionOverrides : []);
+        await this.assertDelegableAccess(input.profile, roles, input.moduleCodes, overrides, executor);
     }
 
     /** Keep provider credentials and external metadata outside the business audit projection. */
@@ -870,6 +1096,7 @@ export class IdentityAccessManagementRepository {
         return { name: access.user.name, email: access.user.email, status: access.user.status, roleCodes: access.roles.map(({ code }) => code).sort(), orgUnitCodes: access.orgUnits.map(({ code }) => code).sort(), permissionOverrides: [...access.permissionOverrides].sort((a, b) => a.code.localeCompare(b.code)), accessMethods, externalReferences };
     }
 
+    /** Reduces a role row to its public catalog shape. */
     private mapRole(role: Pick<RoleRow, "code" | "description" | "name" | "status">): IdentityRoleCatalogItem {
         return {
             code: role.code,
@@ -907,6 +1134,7 @@ export class IdentityAccessManagementRepository {
         });
     }
 
+    /** Groups flat permission rows into module -> view -> permission for the UI. */
     private mapPermissionCatalog(permissions: readonly PermissionCatalogRow[]): IdentityModuleCatalogItem[] {
         const modules = new Map<string, Map<string, IdentityModuleViewCatalogItem & { permissions: IdentityPermissionCatalogItem[] }>>();
 
@@ -929,14 +1157,16 @@ export class IdentityAccessManagementRepository {
             modules.set(permission.moduleCode, moduleViews);
         }
 
-        const formalizationOrder: Record<string, number> = { home: 0, sales_order: 1 };
-        return [...modules.entries()].map(([moduleCode, views]) => ({
-            code: moduleCode,
-            name: this.resolveModuleName(moduleCode),
-            views: moduleCode === "formalizacion" ? [...views.values()].sort((left, right) => (formalizationOrder[left.code] ?? 2) - (formalizationOrder[right.code] ?? 2)) : [...views.values()],
-        }));
+        const moduleViewOrder: Record<string, Readonly<Record<string, number>>> = { formalizacion: { home: 0, sales_order: 1 }, mercadeo: { home: 0, leads: 1, appointments: 2, calendar: 3 } };
+        return [...modules.entries()].map(([moduleCode, views]) => {
+            const orderedViews = [...views.values()];
+            const order = moduleViewOrder[moduleCode];
+            if (order) orderedViews.sort((left, right) => (order[left.code] ?? Object.keys(order).length) - (order[right.code] ?? Object.keys(order).length));
+            return { code: moduleCode, name: this.resolveModuleName(moduleCode), views: orderedViews };
+        });
     }
 
+    /** Display name of a module; unknown codes fall back to the code itself. */
     private resolveModuleName(moduleCode: string): string {
         const catalogDefinition = findCatalogDefinitionByModuleCode(moduleCode);
         if (catalogDefinition) {
@@ -957,15 +1187,17 @@ export class IdentityAccessManagementRepository {
         return names[moduleCode] ?? moduleCode;
     }
 
+    /** Decides which view a permission belongs to, keeping existing permission codes unchanged. */
     private resolvePermissionViewCode(permissionCode: string, moduleCode: string): string {
-        if (permissionCode.startsWith("formalizacion.home.")) return "home";
         const parts = permissionCode.split(".");
+        if (/^(?:formalizacion\.home\.|mercadeo\.(?:home|leads|appointments|calendar)\.read$)/u.test(permissionCode)) return parts[1] as string;
         // One order workspace, preserving the exact existing permission codes and grants.
-        if (moduleCode === "formalizacion" && /^(contract|file|signature)\./u.test(permissionCode)) return "sales_order";
+        if (moduleCode === "formalizacion" && /^(contract\.|file\.|signature\.|formalizacion\.contracts\.)/u.test(permissionCode)) return "sales_order";
 
         return parts.length >= 3 && findCatalogDefinitionByModuleCode(parts[1] ?? "") ? (parts[1] as string) : (parts[0] ?? permissionCode);
     }
 
+    /** Audit metadata is stored as JSON text; anything that is not a plain object is treated as empty. */
     private parseAuditMetadata(metadata: string | null): Record<string, unknown> {
         if (!metadata) {
             return {};
@@ -980,6 +1212,7 @@ export class IdentityAccessManagementRepository {
         }
     }
 
+    /** Role code(s) mentioned by an audit event. */
     private extractAuditRoleCode(metadata: Record<string, unknown>): string | null {
         if (typeof metadata.roleCode === "string") {
             return metadata.roleCode;
@@ -994,6 +1227,7 @@ export class IdentityAccessManagementRepository {
         return null;
     }
 
+    /** Modules touched by an audit event, from its unit and permission changes; hidden modules are dropped. */
     private extractAuditModuleCodes(metadata: Record<string, unknown>): readonly string[] {
         const moduleCodes = new Set<string>();
 
@@ -1019,10 +1253,12 @@ export class IdentityAccessManagementRepository {
         return [...moduleCodes].filter((code) => this.isVisibleSecurityModule(code)).sort();
     }
 
+    /** Only modules in the visible list are shown in security screens. */
     private isVisibleSecurityModule(moduleCode: string): boolean {
         return VISIBLE_SECURITY_MODULE_CODES.includes(moduleCode as (typeof VISIBLE_SECURITY_MODULE_CODES)[number]);
     }
 
+    /** Module a permission code belongs to, from its prefix. */
     private resolveModuleCodeForPermissionCode(permissionCode: string): string {
         const prefix = permissionCode.split(".")[0] ?? permissionCode;
         if (this.isVisibleSecurityModule(prefix)) {
@@ -1048,6 +1284,7 @@ export class IdentityAccessManagementRepository {
         return moduleByPrefix[prefix] ?? prefix;
     }
 
+    /** Display name of a view. */
     private resolvePermissionViewName(viewCode: string): string {
         const catalogDefinition = findCatalogDefinitionByModuleCode(viewCode);
         if (catalogDefinition) {
@@ -1056,6 +1293,9 @@ export class IdentityAccessManagementRepository {
 
         const names: Record<string, string> = {
             campaign: "Campanas",
+            leads: "Captación de leads",
+            appointments: "Eventos y citas",
+            calendar: "Calendario",
             home: "Inicio",
             contract: "Contratos",
             estimate: "Estimaciones",
@@ -1076,6 +1316,7 @@ export class IdentityAccessManagementRepository {
         return names[viewCode] ?? viewCode;
     }
 
+    /** Display name of a permission; catalog permissions use the standard action wording. */
     private resolvePermissionName(permissionCode: string, actionCode: string): string {
         const parts = permissionCode.split(".");
         const catalogModuleCode = parts.length >= 3 ? parts[1] : parts[0];
@@ -1086,7 +1327,14 @@ export class IdentityAccessManagementRepository {
 
         const names: Record<string, string> = {
             "campaign.create": "Crear campana",
+            "mercadeo.home.read": "Ver Inicio",
+            "mercadeo.leads.read": "Ver Captación de leads",
+            "mercadeo.appointments.read": "Ver Eventos y citas",
+            "mercadeo.calendar.read": "Ver Calendario",
             "formalizacion.home.approvals.read": "Banner pendiente de aprobaci\u00f3n de Formalizaci\u00f3n",
+            "formalizacion.home.stages.read": "Banners de etapas de Formalizaci\u00f3n",
+            "formalizacion.contracts.send": "Registrar envio de contrato",
+            "formalizacion.contracts.revert": "Revertir envio de contrato",
             "campaign.read": "Ver campanas",
             "contract.review": "Revisar contrato",
             "estimate.approve": "Aprobar estimacion",
@@ -1120,10 +1368,12 @@ export class IdentityAccessManagementRepository {
         return names[permissionCode] ?? actionCode.replace(/_/gu, " ");
     }
 
+    /** Narrows an action code to the standard catalog actions. */
     private isCatalogPermissionAction(actionCode: string): actionCode is CatalogPermissionAction {
         return CATALOG_PERMISSION_ACTIONS.includes(actionCode as CatalogPermissionAction);
     }
 
+    /** Flags approve, inactivate, reconcile and role administration permissions as sensitive in the UI. */
     private isSensitivePermission(permissionCode: string): boolean {
         return permissionCode.includes("approve") || permissionCode.includes("inactivate") || permissionCode.includes("reconcile") || permissionCode === "role.assign" || permissionCode === "user.assign_password";
     }

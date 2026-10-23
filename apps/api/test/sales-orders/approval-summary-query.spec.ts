@@ -11,6 +11,11 @@ describe("approval count query predicates", () => {
     function fixture() {
         const queries: { sql: string; parameters: readonly unknown[] }[] = [];
         const driver = new DummyDriver();
+        const settings: unknown[] = [];
+        driver.beginTransaction = (...args: unknown[]) => {
+            settings.push(args[1]);
+            return Promise.resolve();
+        };
         driver.acquireConnection = () =>
             Promise.resolve({
                 executeQuery: (query: { sql: string; parameters: readonly unknown[] }) => {
@@ -29,7 +34,7 @@ describe("approval count query predicates", () => {
                 createQueryCompiler: () => new MysqlQueryCompiler(),
             },
         });
-        return { db, queries };
+        return { db, queries, settings };
     }
     it("requires the three explicit approval statuses and valid native order", async () => {
         const { db, queries } = fixture();
@@ -54,5 +59,17 @@ describe("approval count query predicates", () => {
         expect(queries[0]?.parameters).toEqual([12, 13]);
         expect(queries[0]?.sql).not.toMatch(/status_sales_order|cancelled_sales_order|deleted_at_sales_order/);
         await db.destroy();
+    });
+    it("qualifies the approved legacy source inside a read-only repeatable snapshot", async () => {
+        const { db, queries, settings } = fixture();
+        try {
+            const reader = new LegacyApprovalReader({ isConfigured: () => true } as LegacyCrmDatabaseService);
+            const repository = new ApprovalSummaryRepository({ db } as DatabaseService);
+            await repository.readSnapshot((tx) => reader.pendingIds(0, tx));
+            expect(queries[0]?.sql).toContain("`crmdatabase-api`.`ordenventa`");
+            expect(settings).toEqual([{ isolationLevel: "repeatable read", accessMode: "read only" }]);
+        } finally {
+            await db.destroy();
+        }
     });
 });

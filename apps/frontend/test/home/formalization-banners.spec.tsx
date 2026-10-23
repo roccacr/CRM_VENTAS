@@ -1,11 +1,20 @@
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { StrictMode } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
 import { getApprovalCount } from "../../src/services/formalization/approval-summary-service";
+import { getHomeSummary } from "../../src/services/formalization/home-summary-service";
 
 vi.mock("../../src/services/formalization/approval-summary-service", () => ({ getApprovalCount: vi.fn() }));
+vi.mock("../../src/services/formalization/home-summary-service", () => ({ getHomeSummary: vi.fn() }));
+const role = { code: "formalizacion", name: "Formalización", status: "active" as const };
+const stagePermission = { code: "formalizacion.home.stages.read", effect: "allow" as const, scope: "self" as const, source: "role" as const };
+const counts = { contracts: { toSend: 0, pendingSignature: 0 }, banking: 0, balance: 0, transferPending: 0, transferSigned: 0, closedThisYear: 0 };
 beforeEach(() => {
     vi.mocked(getApprovalCount).mockReset().mockResolvedValue(0);
+    vi.mocked(getHomeSummary)
+        .mockReset()
+        .mockResolvedValue({ schemaVersion: 1, observedAt: "2026-10-23T12:00:00Z", period: { year: 2026, timeZone: "America/Costa_Rica", start: "2026-01-01T06:00:00Z", endExclusive: "2027-01-01T06:00:00Z" }, counts, sources: { native: counts, legacy: counts, legacyEnabled: true, duplicatesExcluded: 0 } });
 });
 
 import { FormalizationHomePage } from "../../src/modules/home/FormalizationHomePage";
@@ -13,6 +22,47 @@ import { getAppRoute } from "../../src/routes/app-routes";
 import { installBrowserApiDoubles } from "../support/browser";
 
 afterEach(cleanup);
+
+it("retries failed approvals before opening the empty queue", async () => {
+    installBrowserApiDoubles();
+    vi.mocked(getApprovalCount).mockRejectedValueOnce(new Error("offline")).mockResolvedValueOnce(2);
+    render(<FormalizationHomePage effectivePermissions={[{ code: "formalizacion.home.approvals.read", effect: "allow" }]} />);
+    fireEvent.click(await screen.findByRole("button", { name: "Reintentar pendientes de aprobación" }));
+    await screen.findByLabelText("Órdenes pendientes de aprobación: 2");
+    expect(getApprovalCount).toHaveBeenCalledTimes(2);
+});
+
+it("shares the approval request during StrictMode replay", async () => {
+    installBrowserApiDoubles();
+    vi.mocked(getApprovalCount).mockResolvedValue(17);
+    render(
+        <StrictMode>
+            <FormalizationHomePage effectivePermissions={[{ code: "formalizacion.home.approvals.read", effect: "allow" }]} />
+        </StrictMode>,
+    );
+    await screen.findByLabelText("Órdenes pendientes de aprobación: 17");
+    expect(getApprovalCount).toHaveBeenCalledTimes(1);
+});
+
+it("does not request a hidden approval banner on direct Orders entry", () => {
+    installBrowserApiDoubles();
+    render(<FormalizationHomePage initialView="orders" effectivePermissions={[{ code: "formalizacion.home.approvals.read", effect: "allow" }]} />);
+    expect(getApprovalCount).not.toHaveBeenCalled();
+});
+
+it.each([true, false])("does not log dummy contract data in development: %s", (development) => {
+    installBrowserApiDoubles();
+    vi.stubEnv("DEV", development);
+    const log = vi.spyOn(console, "log").mockImplementation(() => undefined);
+    try {
+        render(<FormalizationHomePage />);
+        expect(log).not.toHaveBeenCalled();
+        expect(getApprovalCount).not.toHaveBeenCalled();
+    } finally {
+        log.mockRestore();
+        vi.unstubAllEnvs();
+    }
+});
 
 it("shows an accessible preload until the approval response arrives", async () => {
     installBrowserApiDoubles();
@@ -114,9 +164,9 @@ it.each(["role", "override"] as const)("keeps approvals unmounted until an effec
     expect(screen.queryByRole("button", { name: bannerName })).toBeNull();
 });
 
-it("uses distinct decorative SVG artwork in the seven unchanged icon containers", () => {
+it("preserves decorative SVG artwork for permitted banner containers", () => {
     installBrowserApiDoubles();
-    const { container } = render(<FormalizationHomePage effectivePermissions={[{ code: "formalizacion.home.approvals.read", effect: "allow" }]} />);
+    const { container } = render(<FormalizationHomePage roles={[role]} effectivePermissions={[stagePermission, { code: "formalizacion.home.approvals.read", effect: "allow" }]} />);
     const icons = [...container.querySelectorAll(".formalization-banner__icon img")];
     expect(icons).toHaveLength(7);
     expect(icons.map((icon) => icon.getAttribute("src")?.split("/").pop())).toEqual(["approvals.svg", "contracts.svg", "bank.svg", "balance.svg", "transfer.svg", "signed.svg", "closed.svg"]);
@@ -140,19 +190,19 @@ it("uses the formalization artwork in the personalized welcome and keeps order n
     expect(screen.getByRole("heading", { name: "Todas las órdenes", level: 1 })).toBeTruthy();
 });
 
-it("shows a separate approval strip only with an effective grant and preserves the six-banner grid", () => {
+it("shows a separate approval strip only with an effective grant and preserves other banners", () => {
     installBrowserApiDoubles();
     const permission = { code: "formalizacion.home.approvals.read", effect: "allow" as const };
     const { container, rerender } = render(<FormalizationHomePage />);
     expect(screen.queryByRole("button", { name: "Ver pendientes de aprobación de Formalización" })).toBeNull();
     expect(screen.getByRole("region", { name: "Bienvenida a Formalización" })).toBeTruthy();
     expect(screen.getByText("Hola")).toBeTruthy();
-    expect(container.querySelectorAll(".formalization-home__banners > article")).toHaveLength(6);
+    expect(container.querySelectorAll(".formalization-home__banners > article")).toHaveLength(0);
     rerender(<FormalizationHomePage effectivePermissions={[permission, { ...permission, effect: "deny" }]} />);
     expect(screen.queryByRole("button", { name: "Ver pendientes de aprobación de Formalización" })).toBeNull();
     rerender(<FormalizationHomePage effectivePermissions={[permission]} />);
     expect(screen.getByRole("button", { name: "Ver pendientes de aprobación de Formalización" }).closest(".formalization-home__header")).toBeTruthy();
-    expect(container.querySelectorAll(".formalization-home__banners > article")).toHaveLength(6);
+    expect(container.querySelectorAll(".formalization-home__banners > article")).toHaveLength(0);
     expect(screen.getByLabelText("Órdenes pendientes de aprobación: Consultando…")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Ver pendientes de aprobación de Formalización" }));
     expect(screen.getByRole("heading", { name: "Pendientes de aprobación", level: 1 })).toBeTruthy();
@@ -175,22 +225,22 @@ it("opens management directly on all orders and returns Home through app navigat
     expect(navigate).toHaveBeenCalledWith("/home/formalization");
 });
 
-it("renders six banners with zero totals instead of demo counts", async () => {
+it("does not mount any unauthorized stage banners", async () => {
     const Page = getAppRoute("/home/formalization")?.Page;
     expect(Page).toBeDefined();
     if (!Page) return;
     render(<Page currentUser={{ publicId: "user", displayName: "Test", email: "test@example.invalid", profileImageUrl: null, status: "active", permissionVersion: 1 }} />);
-    expect(await screen.findAllByRole("article")).toHaveLength(6);
-    for (const label of ["Contratos pendientes", "Gestión bancaria", "Pendientes de saldo", "Traspasos pendientes", "Traspaso firmado", "Formalizaciones cerradas este año"]) expect(screen.getByRole("heading", { name: label })).toBeTruthy();
+    await screen.findByRole("heading", { name: "Formalización", level: 1 });
+    expect(screen.queryAllByRole("article")).toHaveLength(0);
+    for (const label of ["Gestión bancaria", "Pendientes de saldo", "Traspasos pendientes", "Traspaso firmado", "Formalizaciones cerradas este año"]) expect(screen.queryByRole("heading", { name: label })).toBeNull();
     expect(screen.queryByText(/aún cuenta contratos firmados/)).toBeNull();
-    expect(screen.getAllByLabelText(/^Valor:/).map((element) => element.textContent.trim())).toEqual(["0", "0", "0", "0", "0", "0", "0"]);
+    expect(screen.queryAllByLabelText(/^Valor:/)).toHaveLength(0);
+    expect(getHomeSummary).not.toHaveBeenCalled();
     expect(screen.queryByLabelText("Dato no disponible")).toBeNull();
     expect(screen.queryByRole("button", { name: "Enviar contrato" })).toBeNull();
 });
 
 it.each([
-    ["Por enviar", "Contratos por enviar", 1],
-    ["Pendientes de firma", "Contratos pendientes de firma", 1],
     ["Sin iniciar / En proceso", "Gestión bancaria", 1],
     ["Consulta financiera", "Pendientes de saldo", 1],
     ["Por gestionar", "Traspasos pendientes", 1],
@@ -200,7 +250,7 @@ it.each([
     installBrowserApiDoubles();
     const Page = getAppRoute("/home/formalization")?.Page;
     if (!Page) throw new Error("Missing Formalization Home");
-    render(<Page currentUser={{ publicId: "user", displayName: "Test", email: "test@example.invalid", profileImageUrl: null, status: "active", permissionVersion: 1 }} />);
+    render(<Page roles={[role]} effectivePermissions={[stagePermission]} currentUser={{ publicId: "user", displayName: "Test", email: "test@example.invalid", profileImageUrl: null, status: "active", permissionVersion: 1 }} />);
     fireEvent.click(await screen.findByRole("button", { name: `Abrir ${label}` }));
     expect(screen.getByRole("heading", { name: title, level: 1 })).toBeTruthy();
     expect(screen.queryAllByRole("button", { name: /^Ver seguimiento de/ })).toHaveLength(0);

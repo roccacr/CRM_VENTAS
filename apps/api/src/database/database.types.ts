@@ -1,5 +1,6 @@
 import type { ColumnType, Generated, Insertable, Selectable, Updateable } from "kysely";
 
+import type { AuditRecordEventTable, AuditRecordTable } from "../modules/crm/audit/record-audit.tables.js";
 import type { CrmBrokerExternalReferenceTable, CrmBrokerTable } from "../modules/crm/brokers/brokers.tables.js";
 import type { CrmCampaignExternalReferenceTable, CrmCampaignTable } from "../modules/crm/campaigns/campaigns.tables.js";
 import type { CrmClassExternalReferenceTable, CrmClassTable } from "../modules/crm/classes/classes.tables.js";
@@ -16,9 +17,12 @@ import type { CrmUnitFileExternalReferenceTable, CrmUnitFileTable } from "../mod
  * comentarios MySQL viven en `Arquitectura/SQL/001_identity_schema_p0_s1.sql`
  * y en el diccionario de datos.
  */
+/** Fecha de columna MySQL: se lee como Date y se acepta Date o texto al escribir. */
 type DateTime = ColumnType<Date, Date | string, Date | string>;
+/** Clave numérica generada por la base; no se envía al insertar. */
 type GeneratedNumber = Generated<number>;
 
+/** Mapeo Kysely de la tabla `sec_user`. */
 export interface SecUserTable {
     id_user: GeneratedNumber;
     public_id_user: string;
@@ -36,6 +40,7 @@ export interface SecUserTable {
     deleted_by_user_id_user: number | null;
 }
 
+/** Mapeo Kysely de la tabla `sec_auth_identity`. */
 export interface SecAuthIdentityTable {
     id_auth_identity: GeneratedNumber;
     user_id_auth_identity: number;
@@ -54,6 +59,7 @@ export interface SecAuthIdentityTable {
     deleted_at_auth_identity: DateTime | null;
 }
 
+/** Mapeo Kysely de la tabla `sec_auth_session`. */
 export interface SecAuthSessionTable {
     id_auth_session: GeneratedNumber;
     public_id_auth_session: string;
@@ -71,6 +77,7 @@ export interface SecAuthSessionTable {
     revoked_by_user_id_auth_session: number | null;
 }
 
+/** Mapeo Kysely de la tabla `sec_microsoft_account`. */
 export interface SecMicrosoftAccountTable {
     id_microsoft_account: GeneratedNumber;
     auth_identity_id_microsoft_account: number;
@@ -91,6 +98,7 @@ export interface SecMicrosoftAccountTable {
     updated_at_microsoft_account: DateTime;
 }
 
+/** Mapeo Kysely de la tabla `sec_user_profile_image`. */
 export interface SecUserProfileImageTable {
     id_user_profile_image: GeneratedNumber;
     user_id_user_profile_image: number;
@@ -108,6 +116,7 @@ export interface SecUserProfileImageTable {
     updated_at_user_profile_image: DateTime;
 }
 
+/** Mapeo Kysely de la tabla `sec_refresh_token`. */
 export interface SecRefreshTokenTable {
     id_refresh_token: GeneratedNumber;
     auth_session_id_refresh_token: number;
@@ -121,6 +130,7 @@ export interface SecRefreshTokenTable {
     revoked_reason_refresh_token: string | null;
 }
 
+/** Mapeo Kysely de la tabla `sec_local_password_reset_token`. */
 export interface SecLocalPasswordResetTokenTable {
     id_local_password_reset_token: GeneratedNumber;
     auth_identity_id_local_password_reset_token: number;
@@ -135,17 +145,21 @@ export interface SecLocalPasswordResetTokenTable {
     active_key_local_password_reset_token: number | null;
 }
 
+/** Mapeo Kysely de la tabla `sec_role`. */
 export interface SecRoleTable {
     id_role: GeneratedNumber;
     code_role: string;
     name_role: string;
     description_role: string | null;
     status_role: string;
+    role_inheritance_mode_role: Generated<"assigned" | "all_active_roles">;
+    permission_inheritance_mode_role: Generated<"assigned" | "selected_modules">;
     created_at_role: DateTime;
     updated_at_role: DateTime;
     deleted_at_role: DateTime | null;
 }
 
+/** Mapeo Kysely de la tabla `sec_permission`. */
 export interface SecPermissionTable {
     id_permission: GeneratedNumber;
     code_permission: string;
@@ -157,6 +171,16 @@ export interface SecPermissionTable {
     updated_at_permission: DateTime;
 }
 
+/** Mapeo Kysely de la tabla `sec_role_module`. */
+export interface SecRoleModuleTable {
+    role_id_role_module: number;
+    org_unit_id_role_module: number;
+    status_role_module: Generated<string>;
+    created_at_role_module: DateTime;
+    updated_at_role_module: DateTime;
+}
+
+/** Mapeo Kysely de la tabla `sec_user_role`. */
 export interface SecUserRoleTable {
     id_user_role: GeneratedNumber;
     user_id_user_role: number;
@@ -169,6 +193,7 @@ export interface SecUserRoleTable {
     revoked_by_user_id_user_role: number | null;
 }
 
+/** Mapeo Kysely de la tabla `sec_role_permission`. */
 export interface SecRolePermissionTable {
     id_role_permission: GeneratedNumber;
     role_id_role_permission: number;
@@ -178,6 +203,7 @@ export interface SecRolePermissionTable {
     created_at_role_permission: DateTime;
 }
 
+/** Mapeo Kysely de la tabla `sec_org_unit`. */
 export interface SecOrgUnitTable {
     id_org_unit: GeneratedNumber;
     public_id_org_unit: string;
@@ -191,6 +217,7 @@ export interface SecOrgUnitTable {
     deleted_at_org_unit: DateTime | null;
 }
 
+/** Mapeo Kysely de la tabla `sec_user_org_unit`. */
 export interface SecUserOrgUnitTable {
     id_user_org_unit: GeneratedNumber;
     user_id_user_org_unit: number;
@@ -205,6 +232,7 @@ export interface SecUserOrgUnitTable {
     revoked_by_user_id_user_org_unit: number | null;
 }
 
+/** Mapeo Kysely de la tabla `sec_user_permission_override`. */
 export interface SecUserPermissionOverrideTable {
     id_user_permission_override: GeneratedNumber;
     user_id_user_permission_override: number;
@@ -253,6 +281,7 @@ export interface IntUserExternalIdentityTable {
     deleted_at_user_external_identity: DateTime | null;
 }
 
+/** Mapeo Kysely de la tabla `crm_catalog_item`. */
 export interface CrmCatalogItemTable {
     id_catalog_item: GeneratedNumber;
     public_id_catalog_item: string;
@@ -271,6 +300,7 @@ export interface CrmCatalogItemTable {
     deleted_by_user_id_catalog_item: number | null;
 }
 
+/** Mapeo Kysely de la tabla `crm_project`. */
 export interface CrmProjectTable {
     id_project: GeneratedNumber;
     public_id_project: string;
@@ -289,6 +319,7 @@ export interface CrmProjectTable {
     deleted_by_user_id_project: number | null;
 }
 
+/** Mapeo Kysely de la tabla `crm_project_external_reference`. */
 export interface CrmProjectExternalReferenceTable {
     id_project_external_reference: GeneratedNumber;
     project_id_project_external_reference: number;
@@ -301,6 +332,7 @@ export interface CrmProjectExternalReferenceTable {
     deleted_at_project_external_reference: DateTime | null;
 }
 
+/** Mapeo Kysely de la tabla `crm_catalog_item_external_reference`. */
 export interface CrmCatalogItemExternalReferenceTable {
     id_catalog_item_external_reference: GeneratedNumber;
     catalog_item_id_catalog_item_external_reference: number;
@@ -314,6 +346,7 @@ export interface CrmCatalogItemExternalReferenceTable {
     deleted_at_catalog_item_external_reference: DateTime | null;
 }
 
+/** Mapeo Kysely de la tabla `audit_security_event`. */
 export interface AuditSecurityEventTable {
     id_security_event: GeneratedNumber;
     public_id_security_event: string;
@@ -329,6 +362,8 @@ export interface AuditSecurityEventTable {
 }
 
 export interface CrmDatabase {
+    audit_record: AuditRecordTable;
+    audit_record_event: AuditRecordEventTable;
     conf_sales_order_state: ConfSalesOrderStateTable;
     conf_sales_order_approval_type: ConfSalesOrderApprovalTypeTable;
     crm_sales_order: CrmSalesOrderTable;
@@ -346,6 +381,7 @@ export interface CrmDatabase {
     sec_user_profile_image: SecUserProfileImageTable;
     sec_local_password_reset_token: SecLocalPasswordResetTokenTable;
     sec_role: SecRoleTable;
+    sec_role_module: SecRoleModuleTable;
     sec_permission: SecPermissionTable;
     sec_user_role: SecUserRoleTable;
     sec_role_permission: SecRolePermissionTable;
@@ -373,6 +409,7 @@ export interface CrmDatabase {
     audit_security_event: AuditSecurityEventTable;
 }
 
+/** Tipos derivados de la tabla de eventos de seguridad: inserción, lectura y actualización. */
 export type SecurityEventInsert = Insertable<AuditSecurityEventTable>;
 export type SecurityEventRow = Selectable<AuditSecurityEventTable>;
 export type SecurityEventUpdate = Updateable<AuditSecurityEventTable>;

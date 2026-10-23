@@ -1,10 +1,36 @@
 # 00 - Indice de Arquitectura Frontend
 
+## Jefaturas por modulos - 2026-10-23
+
+[42 - Jefaturas](../../api/Arquitectura/42-Jefaturas-Modulos-y-Permisos.md):
+Jefe General con modulos seleccionados por empleado; jefes de area con techo
+modular, permisos heredados y excepciones individuales. La navegacion consume
+modulos/permisos efectivos del API; el editor conserva asignaciones directas.
+
+## Owner efectivo y denegaciones - 2026-10-23
+
+[41 - Owner](../../api/Arquitectura/41-Owner-Herencia-y-Denegaciones.md): perfil
+con roles heredados desde la politica persistida. Etapas requieren Formalizacion
+efectiva y `formalizacion.home.stages.read`; deny individual prevalece tambien
+para Owner. No hay bypass de Owner en el frontend ni asignaciones fisicas masivas.
+
+## Resumen de etapas de Home - 2026-10-23
+
+[40 - Home y rendimiento](../../api/Arquitectura/40-Formalizacion-Home-Resumen-y-Rendimiento.md):
+un consumidor agregado para contratos y los cinco indicadores posteriores,
+exclusivo de rol activo Formalizacion; aprobaciones conserva su permiso.
+Preload por numero, relectura al entrar/recuperar foco y ausencia de cache de
+contadores. No se habilitan bandejas reales ni acciones. Los resultados y
+limites de esta entrega se registran en 40; los cortes anteriores que describen
+ceros provisionales conservan su valor historico.
+
 ## Consolidacion vigente - 2026-10-22
+
+Actualizacion posterior: [Contratos conectado por rol](29-Formalizacion-Reunion-Ajustes.md#contratos-conectado-por-rol---2026-10-22). Segundo banner operacional con subtotales API, preload/error y log DEV; solo rol formalizacion activo. Listado y acciones de ordenes aun no conectados al frontend.
 
 Entradas actuales: [resumen](01-Resumen-Frontend.md), [mapa](19-Mapa-de-Implementacion-Frontend.md), [25 - Continuidad](25-Continuidad-Administracion.md), [26 - Sistema visual Proyectos](26-Projects-Design-System.md), [27 - Entrega/QA](27-Entrega-Administracion-y-QA.md), [28 - Recorrido Formalizacion](28-Formalizacion-Recorrido-Visual.md), [29 - Reunion](29-Formalizacion-Reunion-Ajustes.md) y [29 - Navegacion/recuperacion/seguimiento](29-Navegacion-Recuperacion-y-Seguimiento.md).
 
-La [remediacion API/frontend](../../api/Arquitectura/Reauditoria-54-Plan-y-Resultados.md) conserva evidencia medida y pendientes. El contador de aprobaciones es real y protegido; los otros indicadores son provisionales y no hay seguimiento operacional. Las propuestas de herramientas/carpeta futuras no describen dependencias instaladas.
+La [remediacion API/frontend](../../api/Arquitectura/Reauditoria-54-Plan-y-Resultados.md#plan-central-f01-f13---2026-10-23) conserva el plan F01-F13 con resultados nuevos pendientes y evidencia historica separada. Dos banners reales: aprobaciones protegido por `formalizacion.home.approvals.read` y contratos por rol activo `formalizacion`; cinco indicadores provisionales y ningun seguimiento operacional. Bandejas vacias: conservar Home-only sin activar list/send/revert. Las propuestas de herramientas/carpeta futuras no describen dependencias instaladas.
 
 ### Base de continuidad - 2026-10-13
 

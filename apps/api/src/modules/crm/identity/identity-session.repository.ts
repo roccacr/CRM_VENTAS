@@ -7,8 +7,10 @@ import type { CreateIdentitySessionInput, RefreshProviderValidation, RevokeOwnSe
 import type { IdentityActiveSession } from "./identity.types.js";
 import { ACTIVE_STATUS, earliestDate, EXPIRED_STATUS, hasUpdatedRows, IDENTITY_RUNTIME_AUDIT_SOURCE, type IdentityTransaction, REUSED_STATUS, REVOKED_STATUS, ROTATED_STATUS } from "./identity-repository.shared.js";
 
+/** Why a refresh token cannot be rotated. */
 type RefreshRotationFailureStatus = "expired" | "invalid" | "reused";
 
+/** Refresh token with its session, identity and user state, read under lock. */
 type RefreshRotationRow = {
     authIdentityId: number;
     providerCode: string;
@@ -34,6 +36,7 @@ type RefreshRotationRow = {
     identityDeletedAt: Date | string | null;
 };
 
+/** Refresh state without the profile fields needed only after a successful rotation. */
 type RefreshValidationRow = Omit<RefreshRotationRow, "userPublicId" | "userDisplayName" | "userEmail" | "profileImageUrl">;
 
 /**
@@ -331,8 +334,10 @@ export class IdentitySessionRepository {
 
     /**
      * Revoca sesiones de una identidad externa sin cerrar otras sesiones validas del usuario.
+     * Las acciones administrativas atribuyen la revocacion al actor verificado; otros usos conservan el usuario por defecto.
      */
-    async revokeActiveSessionsForAuthIdentity(authIdentityId: number, userId: number, reason: string, transaction: IdentityTransaction): Promise<void> {
+    // eslint-disable-next-line max-params -- Preserve existing callers while accepting explicit administrative attribution.
+    async revokeActiveSessionsForAuthIdentity(authIdentityId: number, userId: number, reason: string, transaction: IdentityTransaction, revokedByUserId = userId): Promise<void> {
         const sessions = await transaction.selectFrom("sec_auth_session").select("id_auth_session").where("auth_identity_id_auth_session", "=", authIdentityId).where("user_id_auth_session", "=", userId).where("status_auth_session", "=", ACTIVE_STATUS).execute();
         const sessionIds = sessions.map((session) => session.id_auth_session);
 
@@ -344,7 +349,7 @@ export class IdentitySessionRepository {
             .updateTable("sec_auth_session")
             .set({
                 revoked_at_auth_session: new Date(),
-                revoked_by_user_id_auth_session: userId,
+                revoked_by_user_id_auth_session: revokedByUserId,
                 status_auth_session: REVOKED_STATUS,
             })
             .where("id_auth_session", "in", sessionIds)
@@ -385,10 +390,12 @@ export class IdentitySessionRepository {
         return null;
     }
 
+    /** A token already rotated or flagged reused signals possible theft. */
     private isRefreshTokenReuse(refresh: RefreshValidationRow): boolean {
         return refresh.refreshStatus === ROTATED_STATUS || refresh.refreshStatus === REUSED_STATUS;
     }
 
+    /** Session, user or identity not active, or session expired. */
     private isRefreshSessionInvalid(refresh: RefreshValidationRow, now: Date): boolean {
         return refresh.sessionStatus !== ACTIVE_STATUS || new Date(refresh.sessionExpiresAt) <= now || refresh.userStatus !== ACTIVE_STATUS || refresh.identityStatus !== ACTIVE_STATUS || refresh.userDeletedAt != null || refresh.identityDeletedAt != null;
     }

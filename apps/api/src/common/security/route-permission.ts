@@ -3,12 +3,16 @@ import type { IdentityProfile } from "../../modules/crm/identity/identity.types.
 import type { CookieRequest } from "./cookie-request.type.js";
 import type { PermissionRequirement } from "./require-permission.decorator.js";
 
+/** Reads an own property from an untrusted body without touching the prototype chain. */
 const field = (input: unknown, key: string): unknown => (typeof input === "object" && input !== null && Object.hasOwn(input, key) ? Reflect.get(input, key) : undefined);
 
-const can = (profile: IdentityProfile, code: string): boolean => profile.permissions.some((entry) => entry.code === code && entry.effect === "allow") && !profile.permissions.some((entry) => entry.code === code && entry.effect === "deny");
+/** Effective permission: an allow exists and no deny overrides it. */
+const can = (profile: Pick<IdentityProfile, "permissions">, code: string): boolean => profile.permissions.some((entry) => entry.code === code && entry.effect === "allow") && !profile.permissions.some((entry) => entry.code === code && entry.effect === "deny");
 
+/** Same check for an optional code; a missing code never authorizes. */
 const canSelected = (profile: IdentityProfile, code: string | undefined): boolean => code !== undefined && can(profile, code);
 
+/** Permission implied by the requested status: activating needs activate, inactive or blocked need deactivate. */
 function userStatusPermission(body: unknown): string | undefined {
     const status = field(body, "status");
     if (status === "active") return "user.activate";
@@ -16,6 +20,7 @@ function userStatusPermission(body: unknown): string | undefined {
     return undefined;
 }
 
+/** Maps a catalog route action to a permission action; a status change decides update or inactivate from the body. */
 function catalogAction(action: CatalogPermissionAction | "status", body: unknown): CatalogPermissionAction | undefined {
     if (action !== "status") return ["read", "create", "update", "inactivate"].includes(action) ? action : undefined;
     const status = field(body, "status");
@@ -24,12 +29,14 @@ function catalogAction(action: CatalogPermissionAction | "status", body: unknown
     return undefined;
 }
 
+/** Permission code for a catalog in a context module; unknown module, catalog or action yields none. */
 function catalogGrant(moduleCode: unknown, catalog: unknown, action: CatalogPermissionAction | undefined): string | undefined {
     if (typeof moduleCode !== "string" || !isCatalogContextModuleCode(moduleCode) || !action) return undefined;
     const definition = typeof catalog === "string" ? findCatalogDefinition(catalog) : undefined;
     return definition ? getCatalogPermissionCode(moduleCode, definition, action) : undefined;
 }
 
+/** Permission required by a catalog route; reads take the module from the query, writes from the body. */
 function catalogPermission(requirement: Extract<PermissionRequirement, { kind: "catalog" }>, request: CookieRequest): string | undefined {
     const source = requirement.action === "read" ? request.query : request.body;
     const rawModule = field(source, "moduleCode");
@@ -38,16 +45,31 @@ function catalogPermission(requirement: Extract<PermissionRequirement, { kind: "
     return catalogGrant(moduleCode, requirement.catalog ?? field(request.params, "catalogCode"), catalogAction(requirement.action, request.body));
 }
 
-function canReadAudit(profile: IdentityProfile): boolean {
-    // Deliberate HTTP hardening: retain the existing Owner exception, unless role.assign is denied.
+/** Shared audit-read policy: an explicit deny overrides both grants and active Owner. */
+export function canReadAudit(profile: IdentityProfile): boolean {
     if (profile.permissions.some((entry) => entry.code === "role.assign" && entry.effect === "deny")) return false;
     return can(profile, "role.assign") || profile.roles.some((role) => role.code === "owner" && role.status === "active");
+}
+
+/** Requires the effective base role; the Owner label alone never substitutes for profile resolution. */
+export const hasFormalizationRole = (profile: Pick<IdentityProfile, "roles">): boolean => profile.roles.some((role) => role.code === "formalizacion" && role.status === "active");
+
+export const FORMALIZATION_STAGE_READ_PERMISSION = "formalizacion.home.stages.read";
+
+/** Inherited membership is not a permission bypass; individual stage denies still win. */
+export const canReadFormalizationStages = (profile: Pick<IdentityProfile, "roles" | "permissions">): boolean => hasFormalizationRole(profile) && can(profile, FORMALIZATION_STAGE_READ_PERMISSION);
+
+/** Role membership and any declared permissions are cumulative requirements. */
+function hasActiveRoleRequirement(profile: IdentityProfile, requirement: Extract<PermissionRequirement, { kind: "active-role" }>): boolean {
+    return hasFormalizationRole(profile) && (requirement.permissionCodes === undefined || hasAllPermissions(profile, requirement.permissionCodes));
 }
 
 /** Resolves only bounded server-declared mappings, before pipes or handler execution. */
 export function hasRoutePermission(profile: IdentityProfile, requirement: PermissionRequirement | undefined, request: CookieRequest): boolean {
     if (!requirement) return false;
     switch (requirement.kind) {
+        case "active-role":
+            return hasActiveRoleRequirement(profile, requirement);
         case "all":
             return hasAllPermissions(profile, requirement.codes);
         case "audit":
@@ -63,6 +85,7 @@ export function hasRoutePermission(profile: IdentityProfile, requirement: Permis
     }
 }
 
+/** True only for a non-empty list of well-formed codes that are all effectively allowed. */
 function hasAllPermissions(profile: IdentityProfile, codes: readonly string[]): boolean {
     return Array.isArray(codes) && codes.length > 0 && codes.every((code) => typeof code === "string" && code.length > 0 && can(profile, code));
 }

@@ -1,5 +1,57 @@
 # Formalizacion: registro de ajustes surgidos en reunion
 
+## Resumen agregado de Home - 2026-10-23
+
+El nuevo alcance conecta contratos y los cinco indicadores posteriores mediante
+una sola peticion agregada, exclusivamente con rol activo `formalizacion`.
+Aprobaciones conserva su permiso independiente. Mantener apariencia y preload
+por numero; no agregar acciones persistidas ni listas de ordenes.
+Plan, definiciones, resultados y limites:
+[40 - Home y rendimiento](../../api/Arquitectura/40-Formalizacion-Home-Resumen-y-Rendimiento.md).
+Los apartados historicos que describen ceros provisionales no son el contrato
+de esta ampliacion. Los ceros de error, cuando se muestren por convencion visual
+del propietario, se marcan Sin verificar y no acreditan ausencia de ordenes.
+
+## Dos banners de Home: carga y contadores - 2026-10-22
+
+Correccion visual posterior: durante la carga, cada contador de contratos se sustituye por el mismo preload de 26x26 usado en aprobaciones. No hay spinner separado arriba ni ceros provisionales visibles mientras consulta; las etiquetas permanecen debajo. El numero, incluido cero real, aparece al resolver la consulta. Esta regla sustituye la descripcion de 0/0 durante carga del apartado siguiente; error/reintento y permisos no cambian.
+
+- Contratos conserva ambos espacios de metricas y etiquetas; durante carga muestra un preload en lugar de cada numero. Se retira el reemplazo por "Contratos no disponibles". Error explicito con reintento y valores sin verificar, nunca convertir fallo de BD en cero confirmado.
+- Datos correctos reemplazan los provisionales sin alterarlos. Lectura puntual verificada: aprobaciones 2, contratos Por enviar 186 / Pendientes de firma 0; no se fijan esos valores en codigo.
+- Promesa compartida solo dentro del montaje para no repetir consultas por StrictMode. Sin cache global, sin dependencias nuevas ni peticiones en entrada directa a bandejas vacias. Al retirar permiso/rol se desmonta el consumidor y se ignoran resultados tardios; nuevo acceso consulta nuevamente.
+- Aprobaciones mantiene permiso exacto con deny prioritario. Contratos mantiene rol activo formalizacion, no Owner ni otro rol sustituto. Los demas banners siguen en cero.
+- Pruebas visuales aisladas con respuestas sustituidas en escritorio y viewport reducido, sin desbordamiento observado. No habia sesion autenticada en el navegador de QA: la medicion real de BD se documento separadamente en arquitectura API 38.
+- Se compacto el fallo de contratos a "Sin verificar" con reintento pequeno y explicacion en tooltip; etiquetas de ambas metricas sin cambios. QA visual del fallo confirma 0/0 y sin desbordamiento. Tras este pulido: 63 pruebas focalizadas, lint, tipos y formato correctos; previamente check-all.cmd completo paso con API 5138 y frontend 472 pruebas (113 MySQL omitidas para no usar fixtures compartidos).
+
+## Alcance corregido por el propietario: solo Home - 2026-10-22
+
+Se retira el adelanto de la bandeja real y botones de registrar/revertir envio. Las colas de ordenes vuelven a la vista vacia anterior sin consultas de listado; solo queda el banner de Home conectado y protegido por rol formalizacion. No se modifican datos ni estados para deshacer UI. Los servicios/componentes de la bandeja agregados en ese adelanto se retiran; no mostrar acciones persistentes hasta una nueva autorizacion.
+
+## Contratos conectado por rol - 2026-10-22
+
+Banner real GET /formalization/contracts/summary conectado. Solo el rol activo formalizacion monta el consumidor; Owner/Jefatura o un permiso del banner de aprobaciones no bastan. Denegaciones de permisos retirados o ajenos no sustituyen esta regla de lectura por rol; envio/reversion tienen sus permisos efectivos separados en backend.
+
+Se pasan roles reales del perfil por AppRouteContent/app-routes, se muestran preload/error sin convertir fallos en cero, y el log DEV [Formalization API: contracts/summary] Incoming aggregate muestra exclusivamente el contrato agregado validado. Se elimina el log local-placeholder anterior. Cuentas exclusivas Por enviar/Pendientes de firma, fuentes y deduplicacion resueltas en API; ningun cliente decide autoridad de BD. Regla vigente: tres checks completos sin etapa posterior arranca Por enviar, no se infiere envio por la firma historica.
+
+La consulta del banner no agrega operaciones sobre ordenes. Los endpoints de envio/reversion estan en API; lista operativa y botones reales siguen fuera de este corte. No modificar la preview vacia para simular cambios persistidos. Detalle y evidencia: [38 - Contratos por fuente](../../api/Arquitectura/38-Ordenes-Venta-Estados-Auditoria.md#contratos-resumen-y-transiciones-por-fuente---2026-10-22).
+
+## Diagnostico de consola de Contratos - 2026-10-22
+
+En desarrollo, al montar Inicio, se registra [Formalization: contracts/banner] Current data con source=local-placeholder, apiConnected=false y los dos valores locales mostrados (toSend/pendingSignature). No es un JSON recibido del API ni acredita lectura de BD: el contador contractual sigue sin conectar. No agrega peticiones, datos personales ni logs en produccion. El servicio de aprobaciones conserva su log Incoming JSON existente. Verificado con 21 pruebas de banners (incluye DEV/produccion), ESLint focalizado, Prettier, typecheck y build; advertencia previa del vendor mayor a 500 kB permanece.
+
+## Contratos pendientes: aclaracion confirmada, solo documentacion - 2026-10-22
+
+El propietario pide guardar la idea, sin implementar aun. El siguiente trabajo sera conectar el banner Contratos pendientes con un resumen API global de ambas BD, como antecedente de lectura del banner de aprobaciones. Los ceros actuales no se convierten en resultados reales por esta nota.
+
+- Por enviar: tres aprobaciones completas y envio no registrado. Pendientes de firma: envio registrado, firma pendiente. Son estados distintos y excluyentes; no contar enviadas/firmadas como Por enviar solo por conservar tres checks aprobados.
+- El banner exige al menos rol activo `formalizacion` y contexto del modulo, con comprobacion backend antes de leer y frontend antes de consultar. Modulo solo o Jefatura sin rol base no bastan. No concede acciones de envio/reversion ni cambia el permiso independiente del banner Pendientes de aprobacion.
+- Registrar envio: boton y confirmacion sin nota obligatoria; no manda correos. El rol Formalizacion heredara el permiso y una denegacion directa por empleado prevalecera. No aplicar asignaciones en esta pasada.
+- Revertir a Por enviar: permiso separado, motivo obligatorio y nota en la bitacora. Registrar actor, fecha, orden/fuente, valores anteriores/nuevos y transicion; agregar evento sin borrar historia. No se presume grant por defecto del permiso de reversion.
+- Envio y reenvio reales ocurren fuera del CRM; no agregar integracion de correo ni evento automatico de reenvio. El CRM registra solo los cambios de estado autorizados.
+- Lectura de ambas fuentes: nativo primero por identidad migrada, sin duplicados ni escrituras. Gestion futura solo en la fuente autoritativa: nativo si existe, legacy si no. Fuente fallida no significa ausencia ni cero.
+
+Detalle canonico, mapeo de las tres aprobaciones, ejemplo JSON y aceptacion pendiente: [38 - Ordenes e historial](../../api/Arquitectura/38-Ordenes-Venta-Estados-Auditoria.md). Falta verificar el mapeo de envio/firma/etapa en cada fuente antes de consultar; no inventar columnas ni fechas. No se conecto API ni BD en esta revision.
+
 ## Confirmacion posterior del propietario - 2026-10-22
 
 Se resuelve parte del punto 1: cuando Jefatura, Formalizacion y Desarrolladora estan aprobadas, inicia Contratos pendientes / Por enviar. Es una etapa CRM, no una instruccion para modificar el ERP. Desarrolladora corresponde a `aprobacion__rdr_ov`, Jefatura a `chekJefeVenta` y Formalizacion a `aprobacion_forma_ov`; la duda historica RDR/desarrolladora queda resuelta para este mapeo.

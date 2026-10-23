@@ -96,7 +96,9 @@ const CATALOG_CONTEXT_BY_WORKSPACE_CODE: Readonly<Record<string, string>> = {
     marketing: "mercadeo",
     sales: "ventas",
 };
+/** Ruta del catálogo: Administración tiene páginas propias; el resto usa la ruta de catálogos del módulo. */
 const getCatalogPath = (workspaceCode: string, code: string): string => (workspaceCode === "administration" ? (ADMINISTRATION_CATALOGS.find((catalog) => catalog.code === code)?.path ?? "/home/administration/catalogs") : `/home/${workspaceCode}/catalogs/${code}`);
+/** Icono por catálogo; los códigos nuevos caen en el icono genérico de base de datos. */
 const CATALOG_ICON_BY_CODE: Readonly<Record<string, ReactNode>> = {
     brokers: <SolutionOutlined />,
     campaigns: <FlagOutlined />,
@@ -106,6 +108,7 @@ const CATALOG_ICON_BY_CODE: Readonly<Record<string, ReactNode>> = {
     projects: <ProjectOutlined />,
     subsidiaries: <BankOutlined />,
 };
+/** Opciones de catálogos de un módulo. El permiso se deriva del módulo de contexto, no del código visible. */
 const buildCatalogMenuOptions = (workspaceCode: string): readonly GlobalMenuOption[] => {
     const contextModuleCode = CATALOG_CONTEXT_BY_WORKSPACE_CODE[workspaceCode] ?? workspaceCode;
 
@@ -179,6 +182,7 @@ export interface EffectiveNavigationPermission {
     readonly effect: "allow" | "deny";
 }
 
+/** Subconjunto de la unidad organizativa que basta para decidir qué ítems se muestran. */
 type NavigationOrgUnit = Pick<IdentityOrgUnit, "code" | "status">;
 
 /**
@@ -192,6 +196,7 @@ interface HeaderAction {
     readonly icon: ReactNode;
 }
 
+/** Datos mínimos del usuario para cabecera y avatar; la foto es opcional. */
 export interface GlobalHomeCurrentUser {
     readonly displayName: string;
     readonly email: string;
@@ -314,8 +319,11 @@ export const ASSIGNED_WORKSPACES: readonly [WorkspaceProfile, ...WorkspaceProfil
         label: "Mercadeo",
         icon: <NotificationOutlined />,
         menuItems: [
-            { code: "marketing-home", label: "Resumen", icon: <DashboardOutlined />, requiredPermission: "campaign.read", routePath: MARKETING_HOME_PATH },
-            { code: "marketing-campaigns", label: "Campañas", icon: <FlagOutlined />, requiredPermission: "campaign.read", routePath: MARKETING_HOME_PATH },
+            { code: "marketing-home", label: "Inicio", icon: <DashboardOutlined />, requiredPermission: "mercadeo.home.read", routePath: MARKETING_HOME_PATH },
+            // Section permissions control visibility; business views and actions remain future scope.
+            { code: "marketing-leads", label: "Captación de leads", icon: <FunnelPlotOutlined />, requiredPermission: "mercadeo.leads.read" },
+            { code: "marketing-appointments", label: "Eventos y citas", icon: <TeamOutlined />, requiredPermission: "mercadeo.appointments.read" },
+            { code: "marketing-calendar", label: "Calendario", icon: <CalendarOutlined />, requiredPermission: "mercadeo.calendar.read" },
             { code: "marketing-catalogs", label: "Catálogos", icon: <DatabaseOutlined />, children: buildCatalogMenuOptions("marketing") },
         ],
     },
@@ -443,12 +451,16 @@ const filterWorkspaceByPermissions = (workspace: WorkspaceProfile, allowedPermis
     };
 };
 
+/** Primer hijo ya filtrado por permisos; representa al padre cuando este no tiene permiso ni ruta propios. */
 const getMenuItemFirstVisibleChild = (item: GlobalMenuItem): GlobalMenuOption | undefined => item.children?.[0];
 
+/** Permiso que gobierna la opción en «Todos»: el propio o, si falta, el del primer hijo visible. */
 const getAllWorkspaceOptionPermission = (item: GlobalMenuItem): string | undefined => item.requiredPermission ?? getMenuItemFirstVisibleChild(item)?.requiredPermission;
 
+/** Ruta de la opción en «Todos»: la propia o la del primer hijo visible. */
 const getAllWorkspaceOptionRoutePath = (item: GlobalMenuItem): string | undefined => item.routePath ?? getMenuItemFirstVisibleChild(item)?.routePath;
 
+/** Aplana un ítem a una opción simple; omite `isActive` y `routePath` cuando no existen. */
 const buildAllWorkspaceMenuOption = (item: GlobalMenuItem, requiredPermission: string, routePath: string | undefined): GlobalMenuOption => {
     const option = {
         code: item.code,
@@ -461,6 +473,7 @@ const buildAllWorkspaceMenuOption = (item: GlobalMenuItem, requiredPermission: s
     return routePath === undefined ? option : { ...option, routePath };
 };
 
+/** Convierte un ítem en opción de «Todos»; devuelve null si los permisos efectivos no dejan nada visible. */
 const toAllWorkspaceMenuOption = (item: GlobalMenuItem, allowedPermissions: ReadonlySet<string>): GlobalMenuOption | null => {
     const visibleItem = filterMenuItemByPermissions(item, allowedPermissions);
 
@@ -623,6 +636,7 @@ const toOverflowOption = ({ code, label, icon, requiredPermission, routePath }: 
     requiredPermission: requiredPermission ?? "navigation.read",
 });
 
+/** Marca el ítem activo (y su grupo) sin mutar el perfil original. */
 const setActiveMenuItem = (workspace: WorkspaceProfile, activeMenuItemCode: string | undefined): WorkspaceProfile => ({
     ...workspace,
     menuItems: workspace.menuItems.map((item) => ({
@@ -719,8 +733,10 @@ const getMenuItemClassName = (isActive: boolean | undefined, isOpen: boolean): s
  */
 const getOptionalAriaCurrent = (isActive: boolean | undefined): "page" | undefined => (isActive ? "page" : undefined);
 
+/** Emite `aria-controls` solo cuando hay un panel que controlar. */
 const getOptionalAriaControls = (condition: boolean, value: string): string | undefined => (condition ? value : undefined);
 
+/** Emite `aria-expanded` solo en elementos desplegables; en hojas debe omitirse. */
 const getOptionalAriaExpanded = (condition: boolean, isOpen: boolean): boolean | undefined => (condition ? isOpen : undefined);
 
 /** Botón de cabecera sin acción todavía; el tooltip lo dice para no dejar al usuario adivinando. */
@@ -732,8 +748,10 @@ const renderHeaderAction = ({ label, hint, icon }: HeaderAction) => (
     </Tooltip>
 );
 
+/** Nombre visible con respaldo al correo y luego a un texto genérico. */
 const getUserDisplayName = (user?: GlobalHomeCurrentUser): string => user?.displayName.trim() || user?.email.trim() || "Usuario actual";
 
+/** Nombre corto para espacios reducidos: primer nombre y primer apellido (tercera palabra, convención «nombre nombre apellido»). */
 const getUserShortDisplayName = (user?: GlobalHomeCurrentUser): string => {
     const displayName = getUserDisplayName(user);
     const words = displayName.split(/\s+/u).filter(Boolean);
@@ -748,10 +766,13 @@ const getUserShortDisplayName = (user?: GlobalHomeCurrentUser): string => {
     return `${firstName} ${firstLastName}`.trim();
 };
 
+/** Segunda línea del perfil: el correo o la etiqueta genérica de cuenta. */
 const getUserSecondaryLabel = (user?: GlobalHomeCurrentUser): string => user?.email.trim() || "Cuenta corporativa";
 
+/** Clave del avatar: cambia con la URL de la foto para forzar su recarga. */
 const getUserAvatarKey = (user?: GlobalHomeCurrentUser): string => user?.profileImageUrl ?? "profile-fallback";
 
+/** Iniciales para el avatar cuando no hay foto. */
 const getUserInitials = (user?: GlobalHomeCurrentUser): string => {
     const source = getUserDisplayName(user);
     const words = source
@@ -770,6 +791,7 @@ const getUserInitials = (user?: GlobalHomeCurrentUser): string => {
         .join("");
 };
 
+/** URL absoluta de la foto; el nonce de refresco evita servir la imagen vieja desde caché tras cambiarla. */
 const buildProfilePhotoUrl = (profileImageUrl: string, refreshNonce: number | null): string => {
     const photoUrl = new URL(profileImageUrl.startsWith("http") ? profileImageUrl : buildApiUrl(profileImageUrl));
 
@@ -781,6 +803,7 @@ const buildProfilePhotoUrl = (profileImageUrl: string, refreshNonce: number | nu
     return photoUrl.toString();
 };
 
+/** Contenido del tooltip del usuario. */
 function UserTooltipContent({ user }: { readonly user: GlobalHomeCurrentUser | undefined }) {
     return (
         <span className="global-home-user-tooltip">
@@ -790,6 +813,7 @@ function UserTooltipContent({ user }: { readonly user: GlobalHomeCurrentUser | u
     );
 }
 
+/** Foto del usuario o iniciales de respaldo. */
 function UserAvatarContent({ user }: { readonly user: GlobalHomeCurrentUser | undefined }) {
     const [refreshNonce, setRefreshNonce] = useState<number | null>(null);
     const [isImageUnavailable, setIsImageUnavailable] = useState(false);
@@ -904,8 +928,10 @@ function MobileDrawerMenuGroup({ activeCode, isFocusable, item, onMenuItemSelect
     );
 }
 
+/** Renderiza un ítem del cajón móvil: grupo desplegable si tiene hijos, botón simple si no. */
 const renderDrawerMenuItem = (item: GlobalMenuItem, activeCode: string | undefined, isFocusable: boolean, onMenuItemSelect: (routePath: string) => void) => (item.children && item.children.length > 0 ? <MobileDrawerMenuGroup key={item.code} activeCode={activeCode} isFocusable={isFocusable} item={item} onMenuItemSelect={onMenuItemSelect} /> : renderDrawerChildItem(item, activeCode, isFocusable, onMenuItemSelect));
 
+/** Acceso al resumen global dentro del cajón móvil. */
 function MobileGlobalSummaryLink({ activeWorkspace, globalWorkspace, onSelect, onWorkspaceToggle }: { readonly activeWorkspace: WorkspaceProfile; readonly globalWorkspace: WorkspaceProfile | undefined; readonly onSelect: (code: string) => void; readonly onWorkspaceToggle: (code: string) => void }) {
     const globalSummaryItem = globalWorkspace?.menuItems[0];
 
@@ -935,6 +961,7 @@ function MobileGlobalSummaryLink({ activeWorkspace, globalWorkspace, onSelect, o
     );
 }
 
+/** Sección de un módulo en el cajón móvil, con sus ítems de menú. */
 function MobileWorkspaceSection({ activeMenuItemCode, activeWorkspace, onMenuItemSelect, onSelect, onWorkspaceToggle, openWorkspaceCode, workspace }: { readonly activeMenuItemCode: string | undefined; readonly activeWorkspace: WorkspaceProfile; readonly onMenuItemSelect: (routePath: string) => void; readonly onSelect: (code: string) => void; readonly onWorkspaceToggle: (code: string) => void; readonly openWorkspaceCode: string; readonly workspace: WorkspaceProfile }) {
     const isActiveWorkspace = workspace.code === activeWorkspace.code;
     const isExpanded = workspace.code === openWorkspaceCode;
@@ -976,11 +1003,71 @@ function MobileWorkspaceSection({ activeMenuItemCode, activeWorkspace, onMenuIte
  * Cerrado no se monta, para que el diálogo no quede en el árbol accesible.
  * Abrir un perfil que no es el activo también lo selecciona. Cerrarlo solo
  * colapsa el acordeón y deja el perfil actual.
+ * Mientras está abierto, aísla el fondo y contiene el foco; al cerrar lo
+ * devuelve al disparador si todavía está montado.
  */
 function MobileNavigationDrawer({ activeMenuItemCode, activeWorkspace, assignedWorkspaces, isOpen, openWorkspaceCode, onClose, onLogout, onMenuItemSelect, onSelect, onWorkspaceToggle, user }: MobileNavigationDrawerProps) {
+    const drawerRef = useRef<HTMLElement>(null);
     const firstWorkspace = assignedWorkspaces[0];
     const globalWorkspace = firstWorkspace?.code === ALL_WORKSPACE_CODE ? firstWorkspace : undefined;
     const moduleWorkspaces = globalWorkspace ? assignedWorkspaces.slice(1) : assignedWorkspaces;
+
+    useLayoutEffect(() => {
+        const drawer = drawerRef.current;
+        if (!drawer) return undefined;
+
+        const trigger = document.activeElement;
+        const initialFocus = drawer.querySelector<HTMLButtonElement>("button") ?? drawer;
+        const background = new Map<Element, string | null>();
+        // Isolate siblings up to body without making the drawer's ancestors inert.
+        let branch = drawer.parentElement;
+        while (branch && branch !== document.body) {
+            const parent = branch.parentElement;
+            for (const sibling of parent ? parent.children : []) {
+                if (sibling === branch) continue;
+                background.set(sibling, sibling.getAttribute("inert"));
+                sibling.setAttribute("inert", "");
+            }
+            branch = branch.parentElement;
+        }
+
+        /** Mantiene el foco dentro del cajón mientras está abierto (trampa de foco accesible). */
+        const containFocus = (event: globalThis.FocusEvent) => {
+            if (event.target instanceof Node && !drawer.contains(event.target)) initialFocus.focus({ preventScroll: true });
+        };
+        document.addEventListener("focusin", containFocus);
+        initialFocus.focus({ preventScroll: true });
+
+        return () => {
+            document.removeEventListener("focusin", containFocus);
+            for (const [element, previousInert] of background) {
+                if (previousInert === null) element.removeAttribute("inert");
+                else element.setAttribute("inert", previousInert);
+            }
+            if (trigger instanceof HTMLElement && trigger.isConnected) trigger.focus({ preventScroll: true });
+        };
+    }, [isOpen]);
+
+    /** Escape cierra el cajón sin propagar el evento. */
+    const handleKeyDown = (event: KeyboardEvent<HTMLElement>) => {
+        if (event.key === "Escape") {
+            event.preventDefault();
+            event.stopPropagation();
+            onClose();
+            return;
+        }
+        if (event.key !== "Tab") return;
+
+        // Recompute after accordion changes; collapsed and disabled options cannot receive Tab.
+        const focusable = Array.from(event.currentTarget.querySelectorAll<HTMLElement>("button, input, a[href], select, textarea, [tabindex]")).filter((element) => element.tabIndex >= 0 && !element.matches(":disabled") && !element.closest('[hidden], [aria-hidden="true"], [inert]'));
+        const first = focusable[0];
+        const last = focusable.at(-1);
+        const boundary = event.shiftKey ? first : last;
+        if (document.activeElement === boundary) {
+            event.preventDefault();
+            (event.shiftKey ? last : first)?.focus();
+        }
+    };
 
     if (!isOpen) {
         return null;
@@ -988,8 +1075,8 @@ function MobileNavigationDrawer({ activeMenuItemCode, activeWorkspace, assignedW
 
     return (
         <div className="global-home-mobile-drawer-shell">
-            <button className="global-home-mobile-drawer__backdrop" type="button" aria-label="Cerrar menú de navegación" onClick={onClose} />
-            <aside className="global-home-mobile-drawer" role="dialog" aria-modal="true" aria-label="Menú móvil de navegación">
+            <button className="global-home-mobile-drawer__backdrop" type="button" tabIndex={-1} aria-label="Cerrar menú de navegación" onClick={onClose} />
+            <aside ref={drawerRef} className="global-home-mobile-drawer" role="dialog" aria-modal="true" aria-label="Menú móvil de navegación" onKeyDown={handleKeyDown}>
                 <div className="global-home-mobile-drawer__account">
                     <div className="global-home-mobile-drawer__avatar" aria-hidden="true">
                         <UserAvatarContent key={getUserAvatarKey(user)} user={user} />
@@ -1046,6 +1133,7 @@ function MobileNavigationDrawer({ activeMenuItemCode, activeWorkspace, assignedW
  * `aria-pressed` marca el perfil elegido. Elegir uno no navega: solo cambia el contexto visual.
  */
 const renderWorkspaceOption = (activeCode: string, onSelect: (code: string) => void) => {
+    /** Renderiza una opción del selector de módulos. */
     const renderOption = ({ code, label, icon }: WorkspaceProfile) => (
         <button
             key={code}
@@ -1186,6 +1274,7 @@ function GlobalMenuNode({ item, isOpen, onBlur, onClose, onOpenChange, onSelectR
         [],
     );
 
+    /** Cierra sin esperar; se usa al salir de una hoja. */
     const closeImmediately = () => {
         clearPendingClose();
         onClose(code);
@@ -1200,6 +1289,7 @@ function GlobalMenuNode({ item, isOpen, onBlur, onClose, onOpenChange, onSelectR
         }, MENU_CLOSE_DELAY_MS);
     };
 
+    /** Abre el desplegable solo si el ítem tiene hijos. */
     const handlePointerEnter = () => {
         clearPendingClose();
 
@@ -1292,6 +1382,7 @@ function WorkspaceSelector({ activeWorkspace, assignedWorkspaces, isOpen, onOpen
             return undefined;
         }
 
+        /** Un clic fuera del selector lo cierra. */
         const closeOnOutsidePointerDown = (event: PointerEvent) => {
             if (selectorRef.current?.contains(event.target as Node)) {
                 return;
@@ -1300,6 +1391,7 @@ function WorkspaceSelector({ activeWorkspace, assignedWorkspaces, isOpen, onOpen
             onOpenChange(false);
         };
 
+        /** Escape cierra el selector. */
         const closeOnEscape = (event: globalThis.KeyboardEvent) => {
             if (event.key === "Escape") {
                 onOpenChange(false);
@@ -1362,6 +1454,7 @@ function WorkspaceSelector({ activeWorkspace, assignedWorkspaces, isOpen, onOpen
     );
 }
 
+/** Perfil inicial: el solicitado si está asignado; si no, el de respaldo. */
 const getInitialWorkspaceProfile = (assignedWorkspaces: readonly WorkspaceProfile[], fallbackWorkspace: WorkspaceProfile, initialWorkspaceCode?: string): WorkspaceProfile => {
     const requestedCode = initialWorkspaceCode ?? fallbackWorkspace.code;
 
@@ -1391,11 +1484,25 @@ export function GlobalHomeShell({ activeMenuItemCode, children, currentUser, eff
     const activeWorkspaceWithCurrentRoute = setActiveMenuItem(activeWorkspace, activeMenuItemCode);
     const safeOpenMobileWorkspaceCode = getWorkspaceProfile(openMobileWorkspaceCode, assignedWorkspaces)?.code ?? activeWorkspace.code;
     const menuItems = getResponsiveMenuItems(activeWorkspaceWithCurrentRoute, menuTrackWidth);
+    /** Navegar cierra menús y cajón para no dejar paneles abiertos sobre la nueva página. */
     const selectMenuItemRoute = (routePath: string) => {
         setOpenMenuCode(null);
         setIsMobileDrawerOpen(false);
         onMenuItemSelect?.(routePath);
     };
+
+    // CSS hides the drawer on desktop; close it too so its modal isolation is released.
+    useEffect(() => {
+        const desktop = window.matchMedia("(min-width: 768px)");
+        /** Cierra el cajón al pasar a escritorio. */
+        const closeMobileDrawerOnDesktop = () => {
+            if (desktop.matches) setIsMobileDrawerOpen(false);
+        };
+        desktop.addEventListener("change", closeMobileDrawerOnDesktop);
+        return () => {
+            desktop.removeEventListener("change", closeMobileDrawerOnDesktop);
+        };
+    }, []);
 
     /**
      * Mide la pista del menú, no la ventana.
@@ -1410,6 +1517,7 @@ export function GlobalHomeShell({ activeMenuItemCode, children, currentUser, eff
             return undefined;
         }
 
+        /** Recalcula el ancho disponible para decidir cuántos ítems caben en la barra. */
         const updateMenuTrackWidth = () => {
             setMenuTrackWidth(element.getBoundingClientRect().width);
         };

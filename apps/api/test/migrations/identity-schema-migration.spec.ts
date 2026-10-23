@@ -1,10 +1,11 @@
+import { spawnSync } from "node:child_process";
 import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 
 import { describe, expect, it } from "vitest";
 
 import { readTargetTableNames, splitSqlStatements, stripDatabaseSelection, stripLineComments } from "../../migrations/schema-only/202609250001_identity_schema.js";
-import { readSchemaMigrationEnv, schemaMigrations, selectSchemaMigrations } from "../../scripts/run-schema-migrations.js";
+import { readSchemaMigrationEnv, schemaMigrations, selectSchemaMigrations, selectSchemaMigrationsFromArgs } from "../../scripts/run-schema-migrations.js";
 import { APPROVED_DATABASE_NAME } from "../../src/config/product.constants.js";
 import { CATALOG_DEFINITIONS, CATALOG_PERMISSION_ACTIONS, getCatalogPermissionCodes } from "../../src/modules/crm/catalogs/catalogs.constants.js";
 
@@ -24,6 +25,34 @@ const createValidMigrationEnv = (): NodeJS.ProcessEnv => ({
 });
 
 describe("identity schema migration parser", () => {
+    it("preserves the explicit default and exact single-migration CLI selection", () => {
+        expect(selectSchemaMigrationsFromArgs([])).toEqual(schemaMigrations);
+        expect(selectSchemaMigrationsFromArgs(["--only=202610220023_record_audit"]).map((migration) => migration.name)).toEqual(["202610220023_record_audit"]);
+        expect(selectSchemaMigrationsFromArgs(["--only=202610220024_record_audit_identifier_collation"]).map((migration) => migration.name)).toEqual(["202610220024_record_audit_identifier_collation"]);
+    });
+
+    it.each([["--only", "202610220023_record_audit"], ["--only="], ["--onyl=202610220023_record_audit"], ["202610220023_record_audit"], ["--only=202610220023_record_audit", "--only=202610200021_sales_orders"], ["--only=202610220023_record_audit", "--unexpected"]])("rejects malformed migration CLI arguments instead of selecting all: %j", (...args) => {
+        expect(() => selectSchemaMigrationsFromArgs(args)).toThrow("Migration arguments");
+    });
+
+    it("rejects unknown migration names from CLI", () => {
+        expect(() => selectSchemaMigrationsFromArgs(["--only=unknown"])).toThrow("Unknown migration");
+    });
+
+    it("rejects malformed arguments in the real CLI before database configuration", () => {
+        const result = spawnSync(process.execPath, ["--import", "tsx", "scripts/run-schema-migrations.ts", "--only", "202610220023_record_audit"], {
+            cwd: fileURLToPath(new URL("../../", import.meta.url)),
+            encoding: "utf8",
+            timeout: 10_000,
+            // Even a parser regression cannot connect: dotenv is disabled and the schema is unapproved.
+            env: { ...process.env, DOTENV_CONFIG_PATH: fileURLToPath(new URL("./missing-migration-test.env", import.meta.url)), DB_NAME: "do_not_connect", DB_HOST: "127.0.0.1", DB_PORT: "1", DB_USER: "do_not_connect" },
+        });
+        expect(result.error).toBeUndefined();
+        expect(result.status).toBe(1);
+        expect(result.stderr).toContain("Migration arguments");
+        expect(result.stderr).not.toContain("ECONNREFUSED");
+    });
+
     it("selects only the requested migration and rejects unknown names", () => {
         expect(selectSchemaMigrations("202610090009_projects_domain").map((migration) => migration.name)).toEqual(["202610090009_projects_domain"]);
         expect(() => selectSchemaMigrations("unknown")).toThrow("Unknown migration");
@@ -82,6 +111,13 @@ describe("identity schema migration parser", () => {
             "202610200020_formalization_home_banner",
             "202610200021_sales_orders",
             "202610200022_sales_order_utc_defaults",
+            "202610220023_record_audit",
+            "202610220024_record_audit_identifier_collation",
+            "202610220025_contract_permissions",
+            "202610230027_owner_role_inheritance",
+            "202610230028_marketing_roles",
+            "202610230029_general_manager_modules",
+            "202610230030_general_manager_template",
         ]);
     });
 

@@ -18,6 +18,7 @@ import type { SubsidiariesPage as SubsidiariesPageComponent } from "../modules/a
 import type { UnitFilesPage as UnitFilesPageComponent } from "../modules/administration/unit-files/UnitFilesPage";
 import type { FormalizationHomePage as FormalizationHomePageComponent } from "../modules/home/FormalizationHomePage";
 import type { FormalizationSummaryPage as FormalizationSummaryPageComponent } from "../modules/home/FormalizationSummaryPage";
+import type { MarketingHomePage as MarketingHomePageComponent } from "../modules/home/MarketingHomePage";
 import type { IdentityProfile, IdentityUser } from "../services/auth/identity-contracts";
 import type { CatalogCode } from "../services/catalogs/catalog-service";
 import { createLazyRoute } from "./LazyRoute";
@@ -36,6 +37,7 @@ const UnitFilesPage = createLazyRoute<ComponentProps<typeof UnitFilesPageCompone
 const FormalizationCalendarPage = createLazyRoute<object>(() => import("../modules/home/FormalizationCalendarPage").then((module) => ({ default: module.FormalizationCalendarPage })));
 const FormalizationHomePage = createLazyRoute<ComponentProps<typeof FormalizationHomePageComponent>>(() => import("../modules/home/FormalizationHomePage").then((module) => ({ default: module.FormalizationHomePage })));
 const FormalizationSummaryPage = createLazyRoute<ComponentProps<typeof FormalizationSummaryPageComponent>>(() => import("../modules/home/FormalizationSummaryPage").then((module) => ({ default: module.FormalizationSummaryPage })));
+const MarketingHomePage = createLazyRoute<ComponentProps<typeof MarketingHomePageComponent>>(() => import("../modules/home/MarketingHomePage").then((module) => ({ default: module.MarketingHomePage })));
 
 /**
  * Mapa de rutas del CRM.
@@ -56,7 +58,7 @@ export interface AppRoute {
     readonly workspaceCode: string;
     /** Título de la sección; se usa como placeholder mientras la ruta no tenga `Page` propia. */
     readonly title: string;
-    readonly Page?: ComponentType<{ readonly currentUser: IdentityUser; readonly effectivePermissions?: IdentityProfile["permissions"]; readonly onNavigate?: (path: string) => void }>;
+    readonly Page?: ComponentType<{ readonly currentUser: IdentityUser; readonly roles?: IdentityProfile["roles"]; readonly effectivePermissions?: IdentityProfile["permissions"]; readonly onNavigate?: (path: string) => void }>;
 }
 
 const CATALOG_CONTEXT_ROUTES = [
@@ -92,7 +94,7 @@ const OPERATIONAL_CATALOG_ROUTES = CATALOG_CONTEXT_ROUTES.flatMap((context) =>
 
 const APP_ROUTES: ReadonlyMap<string, AppRoute> = new Map<string, AppRoute>([
     ["/home/sales", { menuItemCode: "sales-home", title: "Ventas", workspaceCode: "sales" }],
-    ["/home/marketing", { menuItemCode: "marketing-home", title: "Mercadeo", workspaceCode: "marketing" }],
+    ["/home/marketing", { menuItemCode: "marketing-home", Page: MarketingHomePage, title: "Mercadeo", workspaceCode: "marketing" }],
     ["/home/formalization", { menuItemCode: "formalization-home", Page: FormalizationHomePage, title: "Formalización", workspaceCode: "formalization" }],
     ["/home/formalization/calendar", { menuItemCode: "formalization-calendar", Page: FormalizationCalendarPage, title: "Calendario", workspaceCode: "formalization" }],
     ["/home/formalization/orders", { menuItemCode: "formalization-management", Page: (props) => createElement(FormalizationHomePage, { ...props, initialView: "orders" }), title: "Gestión de formalizaciones", workspaceCode: "formalization" }],

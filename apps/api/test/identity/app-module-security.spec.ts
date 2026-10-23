@@ -309,12 +309,12 @@ describe("Cableado de seguridad del AppModule", () => {
         expectExplicitConstructorInjections(ProjectsRepository, [0, 1, 2]);
         expectExplicitConstructorInjections(CsrfGuard, [0]);
         expectExplicitConstructorInjections(AuthGuard, [0, 1, 2]);
-        expectExplicitConstructorInjections(SecurityAuditService, [0]);
+        expectExplicitConstructorInjections(SecurityAuditService, [0, 1]);
         expectExplicitConstructorInjections(IdentityController, [0, 1]);
         expectExplicitConstructorInjections(IdentityAccessManagementController, [0]);
         expectExplicitConstructorInjections(IdentityAccessManagementService, [0, 1]);
         expectExplicitConstructorInjections(IdentityAccessManagementRepository, [0, 1, 2]);
-        expectExplicitConstructorInjections(IdentityService, [0, 1, 2, 3]);
+        expectExplicitConstructorInjections(IdentityService, [0, 1, 2, 3, 4]);
         expectExplicitConstructorInjections(IdentityAuditRecorder, [0, 1]);
         expectExplicitConstructorInjections(IdentityMicrosoftSessionService, [0, 1, 2]);
         expectExplicitConstructorInjections(IdentityRepository, [0, 1, 2, 3, 4]);
@@ -322,7 +322,7 @@ describe("Cableado de seguridad del AppModule", () => {
         expectExplicitConstructorInjections(IdentitySessionRepository, [0, 1]);
         expectExplicitConstructorInjections(IdentityLocalRepository, [0, 1]);
         expectExplicitConstructorInjections(IdentityMicrosoftRepository, [0, 1]);
-        expectExplicitConstructorInjections(IdentityUserDirectoryRepository, [0, 1]);
+        expectExplicitConstructorInjections(IdentityUserDirectoryRepository, [0, 1, 2]);
         expectExplicitConstructorInjections(IdentityTokenService, [0]);
         expectExplicitConstructorInjections(LegacyCrmDatabaseService, [0]);
         expectExplicitConstructorInjections(Microsoft365AuthService, [0]);

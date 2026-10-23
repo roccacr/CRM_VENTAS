@@ -74,13 +74,13 @@ describe.skipIf(process.env.AUDIT_MYSQL_TESTS !== "1")("identity changelog on CR
         async (kind) => {
             await withRollback(async ({ service, actorPublicId, roleCodes, orgUnitCodes }) => {
                 const audit = new SecurityAuditService(service);
-                const directory = new IdentityUserDirectoryRepository(service, audit);
+                const directory = new IdentityUserDirectoryRepository(service, audit, new IdentitySessionRepository(service, audit));
                 const access = new IdentityAccessManagementRepository(service, audit, new IdentitySessionRepository(service, audit));
                 const email = `${ulid()}@example.invalid`;
-                const initial = { actorPublicId, displayName: "Preserve fixture", email, normalizedEmail: email, accessMethods: ["local"] as const, externalReferences: [], initialStatus: "active" as const, roleCode: roleCodes[0] as string, roleCodes: [roleCodes[0] as string], orgUnitCodes, reason: "Rollback preserve assignments regression" };
+                const initial = { validateAccess: () => Promise.resolve(), actorPublicId, displayName: "Preserve fixture", email, normalizedEmail: email, accessMethods: ["local"] as const, externalReferences: [], initialStatus: "active" as const, roleCode: roleCodes[0] as string, roleCodes: [roleCodes[0] as string], orgUnitCodes, reason: "Rollback preserve assignments regression" };
                 const user = await directory.create(initial);
                 expect(user.orgUnits?.map((unit) => unit.code).sort()).toEqual([...orgUnitCodes].sort());
-                if (kind !== "unchanged") await access.replaceUserAccess({ actorPublicId, userPublicId: user.publicId, roleCodes: kind === "roles" ? [roleCodes[1] as string] : initial.roleCodes, orgUnitCodes: kind === "areas" ? [orgUnitCodes[1] as string] : orgUnitCodes, permissionOverrides: [], reason: initial.reason });
+                if (kind !== "unchanged") await access.replaceUserAccess({ validateAccess: () => Promise.resolve(), actorPublicId, userPublicId: user.publicId, roleCodes: kind === "roles" ? [roleCodes[1] as string] : initial.roleCodes, orgUnitCodes: kind === "areas" ? [orgUnitCodes[1] as string] : orgUnitCodes, permissionOverrides: [], reason: initial.reason });
                 const userId = (await service.db.selectFrom("sec_user").select("id_user").where("public_id_user", "=", user.publicId).executeTakeFirstOrThrow()).id_user;
                 const beforeUser = await service.db.selectFrom("sec_user").selectAll().where("id_user", "=", userId).executeTakeFirstOrThrow();
                 const beforeRoles = await service.db.selectFrom("sec_user_role").selectAll().where("user_id_user_role", "=", userId).execute();
@@ -113,15 +113,15 @@ describe.skipIf(process.env.AUDIT_MYSQL_TESTS !== "1")("identity changelog on CR
                 const password = "Rollback-only-initial-passphrase";
                 const passwordHash = await hash(password, { type: argon2id });
                 const email = `${ulid()}@example.invalid`;
-                const input = { actorPublicId, displayName: "Password rollback fixture", email, normalizedEmail: email, accessMethods: ["local"] as const, externalReferences: [], initialStatus: "active" as const, passwordHash, roleCode: roleCodes[0] as string, roleCodes: [roleCodes[0] as string], orgUnitCodes: [orgUnitCodes[0] as string], reason: "Authorized initial password rollback test" };
+                const input = { validateAccess: () => Promise.resolve(), actorPublicId, displayName: "Password rollback fixture", email, normalizedEmail: email, accessMethods: ["local"] as const, externalReferences: [], initialStatus: "active" as const, passwordHash, roleCode: roleCodes[0] as string, roleCodes: [roleCodes[0] as string], orgUnitCodes: [orgUnitCodes[0] as string], reason: "Authorized initial password rollback test" };
                 if (failAudit) {
                     vi.spyOn(audit, "record").mockRejectedValue(new Error("password audit unavailable"));
-                    await expect(new IdentityUserDirectoryRepository(service, audit).create(input)).rejects.toThrow("password audit unavailable");
+                    await expect(new IdentityUserDirectoryRepository(service, audit, new IdentitySessionRepository(service, audit)).create(input)).rejects.toThrow("password audit unavailable");
                     expect(await service.db.selectFrom("sec_user").select("id_user").where("normalized_email_user", "=", email).execute()).toEqual([]);
                     expect(await service.db.selectFrom("sec_auth_identity").select("id_auth_identity").where("normalized_email_auth_identity", "=", email).execute()).toEqual([]);
                     return;
                 }
-                const created = await new IdentityUserDirectoryRepository(service, audit).create(input);
+                const created = await new IdentityUserDirectoryRepository(service, audit, new IdentitySessionRepository(service, audit)).create(input);
                 expect(JSON.stringify(created)).not.toContain(passwordHash);
                 expect(JSON.stringify(created)).not.toContain(password);
                 const identity = await new IdentityLocalRepository(service, audit).findActiveLocalIdentity(email);
@@ -147,9 +147,9 @@ describe.skipIf(process.env.AUDIT_MYSQL_TESTS !== "1")("identity changelog on CR
                 const role = await service.db.selectFrom("sec_role").select("id_role").where("code_role", "=", roleCode).executeTakeFirstOrThrow();
                 await sql`INSERT INTO sec_user_role (user_id_user_role,role_id_user_role,status_user_role) VALUES (${actor.id_user},${role.id_role},'active')`.execute(service.db);
                 const audit = new SecurityAuditService(service);
-                const directory = new IdentityUserDirectoryRepository(service, audit);
+                const directory = new IdentityUserDirectoryRepository(service, audit, new IdentitySessionRepository(service, audit));
                 const access = new IdentityAccessManagementRepository(service, audit, new IdentitySessionRepository(service, audit));
-                const input = { actorPublicId: actorPublicId.toLowerCase(), userPublicId: actorPublicId.toLowerCase(), roleCodes: [replacementCode], orgUnitCodes: [orgUnitCodes[0] as string], permissionOverrides: [], reason: "Rollback self audit regression" };
+                const input = { validateAccess: () => Promise.resolve(), actorPublicId: actorPublicId.toLowerCase(), userPublicId: actorPublicId.toLowerCase(), roleCodes: [replacementCode], orgUnitCodes: [orgUnitCodes[0] as string], permissionOverrides: [], reason: "Rollback self audit regression" };
                 if (method === "update") await directory.update({ ...input, preserveAssignments: false, displayName: "Renamed self", email: actor.email_user, normalizedEmail: actor.email_user, roleCode: replacementCode, accessMethods: ["local"], externalReferences: [] });
                 else if (method === "replaceUserAccess") await access.replaceUserAccess(input);
                 else await access.updateRole({ actorPublicId: input.actorPublicId, code: roleCode.toUpperCase(), name: "Renamed own role", reason: input.reason });
@@ -173,9 +173,9 @@ describe.skipIf(process.env.AUDIT_MYSQL_TESTS !== "1")("identity changelog on CR
             const orgUnitCode = orgUnitCodes[0] as string;
             const nextOrgUnitCode = orgUnitCodes[1] as string;
             const audit = new SecurityAuditService(service);
-            const directory = new IdentityUserDirectoryRepository(service, audit);
+            const directory = new IdentityUserDirectoryRepository(service, audit, new IdentitySessionRepository(service, audit));
             const access = new IdentityAccessManagementRepository(service, audit, new IdentitySessionRepository(service, audit));
-            const input = { actorPublicId, displayName: "Original person", email: `${ulid()}@example.invalid`, normalizedEmail: "", accessMethods: ["local"] as const, externalReferences: [], initialStatus: "active" as const, roleCode, roleCodes: [roleCode], orgUnitCodes: [orgUnitCode], reason: "Rollback identity audit regression" };
+            const input = { validateAccess: () => Promise.resolve(), actorPublicId, displayName: "Original person", email: `${ulid()}@example.invalid`, normalizedEmail: "", accessMethods: ["local"] as const, externalReferences: [], initialStatus: "active" as const, roleCode, roleCodes: [roleCode], orgUnitCodes: [orgUnitCode], reason: "Rollback identity audit regression" };
             input.normalizedEmail = input.email;
             const user = await directory.create(input);
             const userId = (await service.db.selectFrom("sec_user").select("id_user").where("public_id_user", "=", user.publicId).executeTakeFirstOrThrow()).id_user;
@@ -186,7 +186,7 @@ describe.skipIf(process.env.AUDIT_MYSQL_TESTS !== "1")("identity changelog on CR
             await directory.update(update);
             await directory.updateStatus({ actorPublicId, userPublicId: user.publicId, status: "inactive", reason: input.reason });
             await directory.updateStatus({ actorPublicId, userPublicId: user.publicId, status: "active", reason: input.reason });
-            await access.replaceUserAccess({ actorPublicId, userPublicId: user.publicId, roleCodes: [roleCode], orgUnitCodes: [orgUnitCode], permissionOverrides: [{ code: permissionCode, effect: "deny" }], reason: input.reason });
+            await access.replaceUserAccess({ validateAccess: () => Promise.resolve(), actorPublicId, userPublicId: user.publicId, roleCodes: [roleCode], orgUnitCodes: [orgUnitCode], permissionOverrides: [{ code: permissionCode, effect: "deny" }], reason: input.reason });
             // An unrelated profile edit must retain the complete safe access snapshot.
             await directory.update({ ...update, roleCode, roleCodes: [roleCode], orgUnitCodes: [orgUnitCode] });
             await access.updateRole({ actorPublicId, code: nextRoleCode, name: "Updated role", description: "Updated description", reason: input.reason });
@@ -230,7 +230,7 @@ describe.skipIf(process.env.AUDIT_MYSQL_TESTS !== "1")("identity changelog on CR
             await expect(directory.create({ ...input, email: failedEmail, normalizedEmail: failedEmail })).rejects.toThrow("Audit unavailable");
             await expect(directory.update({ ...update, displayName: "Must roll back", roleCode, roleCodes: [roleCode], orgUnitCodes: [orgUnitCode] })).rejects.toThrow("Audit unavailable");
             await expect(directory.updateStatus({ actorPublicId, userPublicId: user.publicId, status: "inactive", reason: input.reason })).rejects.toThrow("Audit unavailable");
-            await expect(access.replaceUserAccess({ actorPublicId, userPublicId: user.publicId, roleCodes: [], orgUnitCodes: [], permissionOverrides: [], reason: input.reason })).rejects.toThrow("Audit unavailable");
+            await expect(access.replaceUserAccess({ validateAccess: () => Promise.resolve(), actorPublicId, userPublicId: user.publicId, roleCodes: [], orgUnitCodes: [], permissionOverrides: [], reason: input.reason })).rejects.toThrow("Audit unavailable");
             await expect(access.updateRole({ actorPublicId, code: roleCode, name: "Must roll back", reason: input.reason })).rejects.toThrow("Audit unavailable");
             await expect(access.replaceRolePermissions({ actorPublicId, code: roleCode, permissionCodes: [permissionCode], reason: input.reason })).rejects.toThrow("Audit unavailable");
             const unusedRoleCode = roleCodes[2] as string;

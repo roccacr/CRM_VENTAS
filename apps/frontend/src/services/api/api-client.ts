@@ -13,6 +13,8 @@ const STALE_PERMISSION_SESSION_MESSAGE = "La sesion requiere revalidacion de per
 const IDENTITY_SESSION_PATH = "/identity/session";
 const IDENTITY_REFRESH_PATH = "/identity/refresh";
 const IDENTITY_LOGOUT_PATH = "/identity/logout";
+const IDENTITY_CONTEXT_CHANGE_PATHS = new Set([IDENTITY_LOGOUT_PATH, "/identity/local/login", "/identity/microsoft/start"]);
+const IDENTITY_GENERATION_BOUND_PATHS = new Set(["/identity/me", IDENTITY_REFRESH_PATH]);
 /** Métodos que cambian estado. El BFF exige CSRF en todos ellos. */
 const MUTABLE_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 
@@ -33,6 +35,7 @@ export class ApiClientError extends Error {
     }
 }
 
+/** Opciones de una petición al API; las cookies de sesión y la protección CSRF las gestiona el cliente. */
 export interface ApiRequestOptions {
     readonly body?: unknown;
     readonly headers?: HeadersInit;
@@ -46,10 +49,20 @@ export interface ApiRequestOptions {
     readonly retryOnUnauthorized?: boolean;
 }
 
-/** Una sola renovación en vuelo. Las llamadas que reciben 401 esperan esta promesa. */
-let refreshPromise: Promise<void> | null = null;
+/** Una sola renovacion en vuelo por generacion; logout/login no heredan promesas antiguas. */
+let refreshFlight: { readonly generation: number; readonly promise: Promise<void> } | null = null;
 /** Token CSRF en memoria. No se persiste: se vuelve a leer de la sesión del BFF. */
 let csrfToken: string | null = null;
+let sessionGeneration = 0;
+const sessionRefreshListeners = new Set<(outcome: "refreshed" | "rejected") => void>();
+
+/** Invalida perfiles visibles tras una renovacion compartida, sin exponer datos de sesion. */
+export const subscribeToSessionRefresh = (listener: (outcome: "refreshed" | "rejected") => void): (() => void) => {
+    sessionRefreshListeners.add(listener);
+    return () => {
+        sessionRefreshListeners.delete(listener);
+    };
+};
 
 /** POST, PUT, PATCH y DELETE exigen CSRF. GET no cambia estado. */
 const isMutableMethod = (method: string): boolean => MUTABLE_METHODS.has(method.toUpperCase());
@@ -76,8 +89,18 @@ const readConflictMessage = (body: unknown): string | null => {
     return typeof body.message === "string" && body.message.trim().length > 0 ? body.message : null;
 };
 
-/** Only this confirmed API conflict denotes stale authorization, not a rejected business operation. */
-const isPermissionVersionConflict = (error: ApiClientError): boolean => error.status === 409 && readConflictMessage(error.responseBody) === STALE_PERMISSION_SESSION_MESSAGE;
+/** Business conflicts and explicit no-retry requests must never replay a mutation. */
+const shouldRenewSession = (error: unknown, path: string, options: ApiRequestOptions): boolean => {
+    if (!(error instanceof ApiClientError) || options.retryOnUnauthorized === false || path === IDENTITY_REFRESH_PATH) return false;
+    return error.status === 401 || (error.status === 409 && readConflictMessage(error.responseBody) === STALE_PERMISSION_SESSION_MESSAGE);
+};
+
+/** Perfiles y refresh obsoletos no pueden publicar autorizacion ni rotar el CSRF en memoria. */
+const assertCurrentIdentityResponse = (path: string, generation: number): void => {
+    if (IDENTITY_GENERATION_BOUND_PATHS.has(path) && generation !== sessionGeneration) {
+        throw new ApiClientError("La respuesta fue invalidada por un cambio de sesion.", 409, null);
+    }
+};
 
 /** Acepta solo un `csrfToken` string no vacío. Un cuerpo sin ese campo no inventa uno. */
 const readCsrfTokenFromBody = (body: unknown): string | null => {
@@ -162,6 +185,7 @@ const createRequestHeaders = (method: string, options: ApiRequestOptions): Heade
  * que una respuesta vieja parezca una sesión vigente.
  */
 const executeApiRequest = async <TResponse>(path: string, options: ApiRequestOptions): Promise<TResponse> => {
+    const generation = sessionGeneration;
     const method = options.method ?? "GET";
     await ensureCsrfTokenForMutableRequest(method, path);
 
@@ -178,6 +202,8 @@ const executeApiRequest = async <TResponse>(path: string, options: ApiRequestOpt
 
     const response = await fetch(buildApiUrl(path), requestInit);
     const responseBody = await parseResponseBody(response);
+
+    assertCurrentIdentityResponse(path, generation);
 
     if (!response.ok) {
         throw new ApiClientError((response.status === 409 ? readConflictMessage(responseBody) : null) ?? `Request BFF falló con estado ${String(response.status)}.`, response.status, responseBody);
@@ -199,18 +225,35 @@ const executeApiRequest = async <TResponse>(path: string, options: ApiRequestOpt
  * y cada llamada original sigue con su error.
  */
 export const refreshAuthenticatedSession = async (): Promise<void> => {
-    if (!refreshPromise) {
-        refreshPromise = executeApiRequest<unknown>(IDENTITY_REFRESH_PATH, {
+    if (!refreshFlight || refreshFlight.generation !== sessionGeneration) {
+        const generation = sessionGeneration;
+        const promise = executeApiRequest<unknown>(IDENTITY_REFRESH_PATH, {
             method: "POST",
             retryOnUnauthorized: false,
         })
-            .then(() => undefined)
+            .then(() => {
+                assertCurrentIdentityResponse(IDENTITY_REFRESH_PATH, generation);
+                sessionGeneration += 1;
+                sessionRefreshListeners.forEach((listener) => {
+                    listener("refreshed");
+                });
+            })
+            .catch((error: unknown) => {
+                if (generation === sessionGeneration && error instanceof ApiClientError && error.status === 401) {
+                    sessionGeneration += 1;
+                    sessionRefreshListeners.forEach((listener) => {
+                        listener("rejected");
+                    });
+                }
+                throw error;
+            })
             .finally(() => {
-                refreshPromise = null;
+                if (refreshFlight?.promise === promise) refreshFlight = null;
             });
+        refreshFlight = { generation, promise };
     }
 
-    return refreshPromise;
+    return refreshFlight.promise;
 };
 
 /**
@@ -221,15 +264,13 @@ export const refreshAuthenticatedSession = async (): Promise<void> => {
  * puede volver a disparar refresh.
  */
 export const apiRequest = async <TResponse>(path: string, options: ApiRequestOptions = {}): Promise<TResponse> => {
+    if (IDENTITY_CONTEXT_CHANGE_PATHS.has(path)) sessionGeneration += 1;
+    const generation = sessionGeneration;
     try {
         return await executeApiRequest<TResponse>(path, options);
     } catch (error) {
-        if (!(error instanceof ApiClientError) || options.retryOnUnauthorized === false || path === IDENTITY_REFRESH_PATH) {
-            throw error;
-        }
-
-        const needsSessionRenewal = error.status === 401 || isPermissionVersionConflict(error);
-        if (!needsSessionRenewal) throw error;
+        // Never renew or replay an operation from a previous authenticated context.
+        if (generation !== sessionGeneration || !shouldRenewSession(error, path, options)) throw error;
 
         await refreshAuthenticatedSession();
         return executeApiRequest<TResponse>(path, {

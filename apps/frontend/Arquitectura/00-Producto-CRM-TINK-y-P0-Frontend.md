@@ -1,5 +1,66 @@
 # 00 - Ley de Producto CRM TINK y P0 Frontend
 
+## Mercadeo: propuesta visual de captacion y citas - 2026-10-23
+
+El propietario amplia la bienvenida a una maqueta de Inicio: siete banners con
+la anatomia visual de Formalizacion, filtros por periodo/proyecto/campana/anuncio/
+vendedor y un desglose agrupable. Solo muestra datos ficticios identificados,
+sin API comercial, persistencia, exportaciones, cambios de permisos ni operaciones
+reales. Los filtros y agrupaciones actuan sobre la misma muestra local y se
+reinician al recargar. Amplia solo la presentacion; no habilita las vistas
+operativas de Leads, citas o Calendario. Detalle y limites en continuidad 25.
+
+## Inicio de Mercadeo: bienvenida ilustrada - 2026-10-23
+
+El propietario autoriza una bienvenida visual en la ruta existente de Mercadeo:
+saludo de sesion e ilustracion PNG original, con el lenguaje visual de
+Formalizacion. Conserva el permiso de Inicio y no incorpora consultas, metricas,
+reportes, acciones ni permisos nuevos. Detalle en continuidad frontend 25.
+
+## Jefaturas por modulos - 2026-10-23
+
+Correccion de gestion: Owner puede editar la plantilla Jefe General en Por rol:
+modulos habilitados y acciones, con un solo guardado auditado. El acceso por
+empleado queda dentro de ese techo. General no aparece como plantilla bloqueada;
+Owner si conserva proteccion y los denies individuales prevalecen.
+
+Implementacion autorizada: Jefe General obtiene acceso operativo solo a los
+modulos seleccionados del empleado; jefes de area quedan bajo su techo modular.
+Owner sigue global y denies individuales prevalecen. Reutilizar editores,
+catalogo de seguridad y perfil canonico; no conceder administracion por elegir
+un modulo ni inferir autoridad por nombre. Plan y evidencia en
+[42 - Jefaturas](../../api/Arquitectura/42-Jefaturas-Modulos-y-Permisos.md).
+
+## Owner y denies individuales - 2026-10-23
+
+Owner hereda roles activos desde la politica persistida en la BD nueva, sin
+insertar asignaciones directas masivas. Para etapas se requiere Formalizacion
+efectiva y `formalizacion.home.stages.read`; un deny individual prevalece tambien
+para Owner y evita montar el consumidor. No hay bypass por nombre del rol.
+Esta decision prevalece sobre cortes anteriores. Aprobaciones conserva su permiso.
+Referencia: [41 - Owner](../../api/Arquitectura/41-Owner-Herencia-y-Denegaciones.md).
+
+## Resumen de etapas de Home autorizado - 2026-10-23
+
+Los seis banners de etapas (contratos y los cinco indicadores posteriores) pasan
+a un unico consumidor de `GET /formalization/home/summary`, montado solamente con
+rol activo `formalizacion`. El indicador de aprobaciones conserva su permiso
+independiente y endpoint. Se mantienen etiquetas, diseno, preload por numero,
+previews vacias y ausencia de acciones persistentes. No habilitar bandejas reales
+ni envio/reversion por conectar contadores.
+
+No guardar contadores en cache persistida/compartida. Releer al entrar a Home,
+recuperar foco visible o reintentar; impedir respuestas obsoletas despues de
+revocacion o desmontaje. Esto no promete actualizacion instantanea entre usuarios
+sin sondeo/notificaciones. Plan, definiciones y limites de verificacion:
+[40 - Home y rendimiento](../../api/Arquitectura/40-Formalizacion-Home-Resumen-y-Rendimiento.md).
+
+## Contratos: contador conectado - 2026-10-22
+
+Correccion posterior del propietario: mantener solo Home, retirar el listado real y los botones que se adelantaron, devolver las colas a vacio. El banner y su consulta agregada se conservan. No hay ordenes reales ni acciones de envio/reversion montadas en esas vistas.
+
+Ampliacion autorizada: Contratos pendientes lee los dos subtotales reales del API y solo se monta/consulta con rol formalizacion activo del perfil. Estados de carga/error y log DEV agregado; los ceros locales y su log provisional se retiran. El API controla origen y permisos, no el frontend. La lista operativa y los botones de envio/reversion no se implementan en las previews en este corte. Detalle en [29 - Reunion](29-Formalizacion-Reunion-Ajustes.md#contratos-conectado-por-rol---2026-10-22). Los apartados anteriores que indican que solo Aprobaciones tiene datos reales son historicos y quedan sustituidos para este segundo banner.
+
 ## Consolidacion vigente - 2026-10-22
 
 Resumen de las ampliaciones posteriores al primer corte de identidad, sin modificar firmas/versiones historicas: existen Administracion/catalogos y Formalizacion parcial. Solo el contador de aprobaciones es operacional en el Home; requiere permiso efectivo antes de montar su consumidor. Los otros seis indicadores son cero provisional; seguimiento/movimientos no tienen fuente operacional. Calendario/resumen y previews conservan simulaciones. No hay flujo persistido de aprobaciones/contratos completo.

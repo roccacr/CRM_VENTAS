@@ -10,6 +10,7 @@ import { getIdentitySecurityCatalog } from "../../../services/auth/auth-service"
 import type { IdentitySecurityCatalog } from "../../../services/auth/identity-contracts";
 import { type CreateUserModuleOption, type CreateUserRoleOption, type CreateUserRolePermissions, NON_OPERATIVE_MODULE_CODES } from "../create-system-user.model";
 
+/** Opciones del formulario de alta derivadas del catálogo de seguridad. */
 interface CreateUserCatalogState {
     readonly moduleOptions: readonly CreateUserModuleOption[];
     readonly roleOptions: readonly CreateUserRoleOption[];
@@ -22,8 +23,9 @@ const EMPTY_CATALOG_STATE: CreateUserCatalogState = {
     rolePermissions: {},
 };
 
+/** Proyecta el catálogo al formulario excluyendo los módulos no operativos. */
 const mapCatalogToCreateUserState = (catalog: IdentitySecurityCatalog): CreateUserCatalogState => {
-    const roleOptions = catalog.roles.map((role) => ({ code: role.code, locked: role.locked, name: role.name, users: role.users }));
+    const roleOptions = catalog.roles;
     const moduleOptions = catalog.modules
         .filter((module) => !NON_OPERATIVE_MODULE_CODES.has(module.code))
         .map((module) => ({

@@ -10,7 +10,8 @@ import { SecurityAuditService } from "../audit/security-audit.service.js";
 import type { CreateSystemUserAccessMethod, CreateSystemUserExternalSystem, CreateSystemUserStatus, SystemUserSortDirection, SystemUserSortKey, SystemUserStatusFilter, UpdateSystemUserStatus } from "./dto/system-users.dto.js";
 import type { SystemUserDirectoryItem, SystemUserDirectoryOrgUnit, SystemUserExternalReference, SystemUserProvider, SystemUsersListResponse, SystemUsersSummary } from "./identity.types.js";
 import { MICROSOFT_PROVIDER_CODE } from "./identity-microsoft.constants.js";
-import { ACTIVE_STATUS, LOCAL_PROVIDER_CODE, PENDING_LOCAL_STATUS } from "./identity-repository.shared.js";
+import { ACTIVE_STATUS, type IdentityTransaction, LOCAL_PROVIDER_CODE, PENDING_LOCAL_STATUS } from "./identity-repository.shared.js";
+import { IdentitySessionRepository } from "./identity-session.repository.js";
 
 const BLOCKED_STATUS = "blocked";
 const INACTIVE_STATUS = "inactive";
@@ -23,8 +24,10 @@ const USER_CREATED_EVENT_TYPE = "user_created";
 const USER_UPDATED_EVENT_TYPE = "user_updated";
 const USER_STATUS_UPDATED_EVENT_TYPE = "user_status_updated";
 
+/** Database handle or transaction, so the same queries run inside or outside a unit of work. */
 type IdentityDirectoryExecutor = Pick<Kysely<CrmDatabase>, "insertInto" | "selectFrom" | "updateTable">;
 
+/** Opaque keyset cursor: sort key, direction and the last row's value and id. */
 type DirectoryCursor = {
     direction: SystemUserSortDirection;
     id: number;
@@ -32,6 +35,7 @@ type DirectoryCursor = {
     value: string | null;
 };
 
+/** User row as listed in the directory. */
 type UserDirectoryRow = {
     email: string;
     id: number;
@@ -42,6 +46,7 @@ type UserDirectoryRow = {
     status: string;
 };
 
+/** Role assignment of a listed user. */
 type UserRoleRow = {
     assignedAt: Date | string;
     code: string;
@@ -49,6 +54,7 @@ type UserRoleRow = {
     userId: number;
 };
 
+/** Organizational-unit assignment of a listed user. */
 type UserOrgUnitRow = {
     code: string;
     name: string;
@@ -56,12 +62,14 @@ type UserOrgUnitRow = {
     userId: number;
 };
 
+/** Authentication provider linked to a listed user. */
 type UserProviderRow = {
     provider: string;
     status: string;
     userId: number;
 };
 
+/** Link between a user and an external system. */
 type UserExternalReferenceRow = {
     externalUserId: string;
     externalUsername: string | null;
@@ -71,11 +79,13 @@ type UserExternalReferenceRow = {
     userId: number;
 };
 
+/** External reference already stored, used to decide insert versus update. */
 type ExistingExternalReferenceRow = {
     id: number;
     userId: number;
 };
 
+/** Data to insert or update an external reference. */
 type UpsertExternalReferenceInput = {
     executor: IdentityDirectoryExecutor;
     input: Pick<CreateSystemUserInput, "email" | "reason">;
@@ -84,11 +94,13 @@ type UpsertExternalReferenceInput = {
     userId: number;
 };
 
+/** Users per status, for the directory summary. */
 type StatusCountRow = {
     status: string;
     total: string | number | bigint;
 };
 
+/** Actor id plus the database ids of the requested roles and units, resolved before creating a user. */
 type UserCreationCatalog = {
     actorUserId: number;
     orgUnits: readonly {
@@ -101,11 +113,13 @@ type UserCreationCatalog = {
     }[];
 };
 
+/** External reference supplied with a user write. */
 type SystemUserExternalReferenceInput = {
     externalUserId: string;
     systemCode: CreateSystemUserExternalSystem;
 };
 
+/** Actor and the role and unit codes whose access is being granted. */
 type UserAccessCatalogInput = {
     actorPublicId: string;
     orgUnitCodes: readonly string[];
@@ -113,6 +127,7 @@ type UserAccessCatalogInput = {
     roleCodes: readonly string[];
 };
 
+/** Directory query: filter, search, sort and keyset cursor. */
 export interface ListSystemUsersInput {
     currentUserPublicId: string;
     cursor?: string | undefined;
@@ -123,7 +138,10 @@ export interface ListSystemUsersInput {
     status?: SystemUserStatusFilter | undefined;
 }
 
+/** Data to create a user: credentials or access methods, roles, units, external references and audit context. */
 export interface CreateSystemUserInput {
+    /** Internal-only hook, run inside the writer transaction before snapshot reads/writes. */
+    validateAccess: (transaction: IdentityTransaction) => Promise<void>;
     passwordHash?: string;
     accessMethods: readonly CreateSystemUserAccessMethod[];
     actorPublicId: string;
@@ -143,10 +161,14 @@ export interface CreateSystemUserInput {
     userAgent?: string | undefined;
 }
 
+/** Data to edit a user; `preserveAssignments` rejects the edit if roles or units changed meanwhile. */
 export interface UpdateSystemUserInput {
+    /** Trusted service callback; HTTP DTOs cannot supply executable callbacks. */
+    validateAccess: (transaction: IdentityTransaction) => Promise<void>;
     /** Trusted service decision; never accepted from the HTTP DTO. */
     preserveAssignments: boolean;
-    accessMethods: readonly CreateSystemUserAccessMethod[];
+    /** Undefined preserves provider status; only explicit selections change access. */
+    accessMethods: readonly CreateSystemUserAccessMethod[] | undefined;
     actorPublicId: string;
     displayName: string;
     email: string;
@@ -161,6 +183,7 @@ export interface UpdateSystemUserInput {
     userPublicId: string;
 }
 
+/** Data to change a user's status, with actor and audit reason. */
 export interface UpdateSystemUserStatusInput {
     actorPublicId: string;
     ipAddress?: string | undefined;
@@ -170,6 +193,7 @@ export interface UpdateSystemUserStatusInput {
     userPublicId: string;
 }
 
+/** Internal page query with the cursor already decoded. */
 interface FindUserPageInput {
     cursor: DirectoryCursor | null;
     direction: SystemUserSortDirection;
@@ -190,6 +214,7 @@ export class IdentityUserDirectoryRepository {
     constructor(
         @Inject(DatabaseService) private readonly database: DatabaseService,
         @Inject(SecurityAuditService) private readonly audit: SecurityAuditService,
+        @Inject(IdentitySessionRepository) private readonly sessions: IdentitySessionRepository,
     ) {}
 
     /**
@@ -199,6 +224,7 @@ export class IdentityUserDirectoryRepository {
         const createdPublicId = ulid();
 
         await this.database.db.transaction().execute(async (transaction) => {
+            await input.validateAccess(transaction);
             const now = new Date();
             const catalog = await this.readUserCreationCatalog(transaction, input);
             const actorSnapshot = await this.audit.captureActor(catalog.actorUserId, transaction);
@@ -225,6 +251,8 @@ export class IdentityUserDirectoryRepository {
                 })
                 .executeTakeFirstOrThrow();
             const userId = Number(userInsert.insertId);
+
+            await this.syncMicrosoftAccessMethod(transaction, userId, { ...input, actorUserId: catalog.actorUserId }, now);
 
             if (input.accessMethods.includes(LOCAL_PROVIDER_CODE)) {
                 await transaction
@@ -397,6 +425,7 @@ export class IdentityUserDirectoryRepository {
             const now = new Date();
             // Lock first: ordinary reads before this could freeze a stale REPEATABLE READ snapshot.
             const target = await transaction.selectFrom("sec_user").select(["public_id_user as publicId", "id_user as id", "display_name_user as name", "email_user as email"]).where("public_id_user", "=", input.userPublicId).where("deleted_at_user", "is", null).forUpdate().executeTakeFirst();
+            await input.validateAccess(transaction);
             const catalog = await this.readUserAccessCatalog(transaction, input);
 
             if (!target) {
@@ -405,6 +434,7 @@ export class IdentityUserDirectoryRepository {
 
             const before = await this.readAuditSnapshot(transaction, target.id);
             if (input.preserveAssignments) {
+                /** Canonical form of a code list (case-insensitive, unique, sorted) to compare assignments. */
                 const codes = (values: readonly string[]): string => JSON.stringify([...new Set(values.map(normalizeCaseInsensitiveIdentifier))].sort());
                 const changed = [codes(input.roleCodes.length ? input.roleCodes : [input.roleCode]) !== codes(before.roleCodes as string[]), codes(input.orgUnitCodes) !== codes(before.orgUnitCodes as string[])].includes(true);
                 if (changed) throw new ConflictException("Las asignaciones cambiaron; se requiere role.assign.");
@@ -426,7 +456,7 @@ export class IdentityUserDirectoryRepository {
                 .where("id_user", "=", target.id)
                 .executeTakeFirst();
 
-            await this.syncLocalAccessMethod(transaction, target.id, input, now);
+            await this.syncAccessMethods(transaction, target.id, { ...input, actorUserId: catalog.actorUserId }, now);
             if (!input.preserveAssignments) {
                 await this.revokeActiveRoles(transaction, target.id, catalog.actorUserId, now);
                 await this.insertActiveRoles(transaction, target.id, catalog, now);
@@ -652,10 +682,48 @@ export class IdentityUserDirectoryRepository {
         }
     }
 
-    private async syncLocalAccessMethod(executor: IdentityDirectoryExecutor, userId: number, input: UpdateSystemUserInput, now: Date): Promise<void> {
-        const localIdentity = await executor.selectFrom("sec_auth_identity").select("id_auth_identity as id").where("user_id_auth_identity", "=", userId).where("provider_code_auth_identity", "=", LOCAL_PROVIDER_CODE).where("deleted_at_auth_identity", "is", null).executeTakeFirst();
+    /** Preserve provider subjects and recovery states; only explicit selection re-enables inactive access. */
+    private async syncMicrosoftAccessMethod(executor: IdentityTransaction, userId: number, input: Pick<CreateSystemUserInput, "accessMethods" | "email" | "normalizedEmail"> & { actorUserId?: number }, now: Date): Promise<void> {
+        const identities = await executor.selectFrom("sec_auth_identity").select(["id_auth_identity as id", "status_auth_identity as status", "deleted_at_auth_identity as deletedAt"]).where("user_id_auth_identity", "=", userId).where("provider_code_auth_identity", "=", MICROSOFT_PROVIDER_CODE).execute();
+        const selected = input.accessMethods.includes(MICROSOFT_PROVIDER_CODE);
+        const nextStatus = selected ? ACTIVE_STATUS : INACTIVE_STATUS;
 
-        if (!input.accessMethods.includes(LOCAL_PROVIDER_CODE)) {
+        // An explicit denial must survive the first verified-email callback, even before a subject exists.
+        if (!selected && identities.length === 0) {
+            await executor
+                .insertInto("sec_auth_identity")
+                .values({
+                    created_at_auth_identity: now,
+                    email_auth_identity: input.email,
+                    normalized_email_auth_identity: input.normalizedEmail,
+                    provider_code_auth_identity: MICROSOFT_PROVIDER_CODE,
+                    provider_subject_auth_identity: null,
+                    password_hash_auth_identity: null,
+                    failed_login_count_auth_identity: 0,
+                    last_failed_login_at_auth_identity: null,
+                    last_used_at_auth_identity: null,
+                    locked_until_auth_identity: null,
+                    status_auth_identity: INACTIVE_STATUS,
+                    updated_at_auth_identity: now,
+                    user_id_auth_identity: userId,
+                })
+                .executeTakeFirstOrThrow();
+        }
+
+        const editableIdentities = identities.filter((identity) => identity.deletedAt === null && (!selected || identity.status === INACTIVE_STATUS));
+        for (const identity of editableIdentities) {
+            if ([ACTIVE_STATUS, PENDING_LOCAL_STATUS, INACTIVE_STATUS].includes(identity.status)) {
+                await executor.updateTable("sec_auth_identity").set({ status_auth_identity: nextStatus, updated_at_auth_identity: now }).where("id_auth_identity", "=", identity.id).where("user_id_auth_identity", "=", userId).where("provider_code_auth_identity", "=", MICROSOFT_PROVIDER_CODE).where("status_auth_identity", "=", identity.status).where("deleted_at_auth_identity", "is", null).executeTakeFirst();
+            }
+            if (!selected) await this.sessions.revokeActiveSessionsForAuthIdentity(identity.id, userId, "access_method_removed", executor, input.actorUserId);
+        }
+    }
+
+    private async syncAccessMethods(executor: IdentityTransaction, userId: number, input: UpdateSystemUserInput & { actorUserId: number }, now: Date): Promise<void> {
+        if (input.accessMethods !== undefined) await this.syncMicrosoftAccessMethod(executor, userId, { ...input, accessMethods: input.accessMethods }, now);
+        const localIdentity = await executor.selectFrom("sec_auth_identity").select("id_auth_identity as id").where("user_id_auth_identity", "=", userId).where("provider_code_auth_identity", "=", LOCAL_PROVIDER_CODE).where("deleted_at_auth_identity", "is", null).executeTakeFirst();
+        const hasLocal = input.accessMethods?.includes(LOCAL_PROVIDER_CODE) ?? Boolean(localIdentity);
+        if (!hasLocal) {
             if (localIdentity) {
                 await executor
                     .updateTable("sec_auth_identity")
@@ -782,6 +850,7 @@ export class IdentityUserDirectoryRepository {
         }
     }
 
+    /** Organizational membership implied by roles: general head leads, area sub-head assists, anyone else is a member. */
     private resolveMembershipForRoleCodes(roleCodes: readonly string[]): string {
         if (roleCodes.includes("jefe_general") || roleCodes.includes("jefe_area")) {
             return "leader";
@@ -798,6 +867,7 @@ export class IdentityUserDirectoryRepository {
         return "member";
     }
 
+    /** Area scope implied by roles: owner sees all areas, heads see their area and its children. */
     private resolveScopeForRoleCodes(roleCodes: readonly string[]): string {
         if (roleCodes.includes("owner")) {
             return "all_areas";
@@ -984,6 +1054,7 @@ export class IdentityUserDirectoryRepository {
         return this.groupByUser(rows);
     }
 
+    /** Groups rows by user id to attach child rows to each listed user. */
     private groupByUser<TRow extends { readonly userId: number }>(rows: readonly TRow[]): Map<number, TRow[]> {
         const map = new Map<number, TRow[]>();
 
@@ -998,9 +1069,8 @@ export class IdentityUserDirectoryRepository {
      * Arma la fila pública.
      *
      * El id interno no sale. `invitedBy` queda null porque esta lectura todavía
-     * no tiene ese dato. El MFA no se consulta: Microsoft o mixto se informan
-     * como habilitado y el resto como no configurado. Si hay varias áreas, se
-     * muestra la primera.
+     * no tiene ese dato. Sin evidencia autoritativa de MFA, Microsoft o mixto
+     * se informan como no verificados. Si hay varias áreas, se muestra la primera.
      */
     private mapDirectoryItem(input: { currentUserPublicId: string; externalReferences: readonly UserExternalReferenceRow[]; orgUnits: readonly UserOrgUnitRow[]; providers: readonly UserProviderRow[]; roles: readonly UserRoleRow[]; row: UserDirectoryRow }): SystemUserDirectoryItem {
         const provider = this.resolveProvider(input.providers);
@@ -1012,7 +1082,7 @@ export class IdentityUserDirectoryRepository {
             invitedBy: null,
             isCurrentUser: input.row.publicId === input.currentUserPublicId,
             lastActivityAt: this.toIsoString(input.row.lastActivityAt),
-            mfaStatus: provider === MICROSOFT_PROVIDER_CODE || provider === "mixed" ? "enabled" : "not_configured",
+            mfaStatus: provider === MICROSOFT_PROVIDER_CODE || provider === "mixed" ? "unknown" : "not_configured",
             name: input.row.name,
             orgUnit: input.orgUnits[0] ? this.mapOrgUnit(input.orgUnits[0]) : null,
             orgUnits: input.orgUnits.map((unit) => this.mapOrgUnit(unit)),
@@ -1025,6 +1095,7 @@ export class IdentityUserDirectoryRepository {
         };
     }
 
+    /** Reduces a unit row to its public shape. */
     private mapOrgUnit(orgUnit: UserOrgUnitRow): SystemUserDirectoryOrgUnit {
         return {
             code: orgUnit.code,
@@ -1033,6 +1104,7 @@ export class IdentityUserDirectoryRepository {
         };
     }
 
+    /** Reduces an external reference row to its public shape. */
     private mapExternalReference(reference: UserExternalReferenceRow): SystemUserExternalReference {
         return {
             externalUserId: reference.externalUserId,
@@ -1202,11 +1274,13 @@ export class IdentityUserDirectoryRepository {
         }
     }
 
+    /** A cursor is valid only for the same sort and direction it was issued for. */
     private isValidCursorPayload(payload: Partial<DirectoryCursor>, sort: SystemUserSortKey, direction: SystemUserSortDirection): payload is DirectoryCursor {
         const hasValidValue = payload.value === null || typeof payload.value === "string";
         return payload.sort === sort && payload.direction === direction && typeof payload.id === "number" && hasValidValue;
     }
 
+    /** Value of the sorted column for a row, used as the next cursor position. */
     private getCursorValue(row: UserDirectoryRow, sort: SystemUserSortKey): string | null {
         if (sort === "lastActivity") {
             return this.toIsoString(row.lastActivityAt);
@@ -1224,10 +1298,12 @@ export class IdentityUserDirectoryRepository {
         return value.replace(/[\\%_]/gu, "\\$&");
     }
 
+    /** mysql2 may return dates as text. */
     private toDate(value: Date | string): Date {
         return value instanceof Date ? value : new Date(value);
     }
 
+    /** ISO string of a nullable date. */
     private toIsoString(value: Date | string | null): string | null {
         return value ? this.toDate(value).toISOString() : null;
     }

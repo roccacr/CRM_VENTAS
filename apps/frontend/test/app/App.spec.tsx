@@ -9,11 +9,14 @@ import { App } from "../../src/App";
 import { buildApiUrl } from "../../src/config/frontend-env";
 import { DEMO_EFFECTIVE_NAVIGATION_PERMISSIONS } from "../../src/modules/home/GlobalHomeShell";
 import { AppRouteContent, type AppRouteContentProps } from "../../src/routes/AppRouteContent";
+import { apiRequest, refreshAuthenticatedSession } from "../../src/services/api/api-client";
 import type { IdentityProfile, SessionResponse } from "../../src/services/auth/identity-contracts";
 import { installBrowserApiDoubles } from "../support/browser";
 
-beforeAll(() => {
+beforeAll(async () => {
     installBrowserApiDoubles();
+    // Navigation/auth assertions should not include the cold transform cost of this lazy editor.
+    await import("../../src/modules/administration/pages/RolesSecurityPage");
 });
 afterEach(() => {
     cleanup();
@@ -166,6 +169,12 @@ const securityCatalogResponse = {
             code: "mercadeo",
             name: "Mercadeo",
             views: [
+                ...[
+                    { code: "home", name: "Inicio" },
+                    { code: "leads", name: "Captación de leads" },
+                    { code: "appointments", name: "Eventos y citas" },
+                    { code: "calendar", name: "Calendario" },
+                ].map(({ code, name }) => ({ code, name, permissions: [{ code: `mercadeo.${code}.read`, description: `Permite ver ${name}.`, name: `Ver ${name}`, sensitive: false }] })),
                 {
                     code: "campaigns",
                     name: "Campañas",
@@ -356,6 +365,402 @@ const installDesktopPointerDouble = (): void => {
 };
 
 describe("App", () => {
+    it("descarta credenciales locales tardias tras rechazo sin pedir otro perfil", async () => {
+        const user = userEvent.setup();
+        let releaseLogin!: (response: Response) => void;
+        const pendingLogin = new Promise<Response>((resolve) => {
+            releaseLogin = resolve;
+        });
+        const fetchMock = vi.fn((input: RequestInfo | URL) => {
+            const requestPath = getRequestPath(input);
+            if (requestPath === "/identity/local/login") return pendingLogin;
+            if (requestPath === "/identity/refresh") return createJsonResponse({}, 401);
+            return createJsonResponse(anonymousSession);
+        });
+        vi.stubGlobal("fetch", fetchMock);
+        window.history.replaceState(null, "", "/auth/login");
+        render(<App />);
+        await user.type(await screen.findByLabelText("Correo administrativo", { selector: "input" }), "roberto@roccacr.com");
+        await user.type(screen.getByLabelText("Contraseña", { selector: "input" }), "PasswordSeguro123!");
+        await user.click(screen.getByRole("button", { name: "Ingresar" }));
+        await act(async () => {
+            await expect(refreshAuthenticatedSession()).rejects.toMatchObject({ status: 401 });
+        });
+        await act(async () => {
+            releaseLogin(createJsonResponse(authenticatedSession));
+            await pendingLogin;
+        });
+        expect(fetchMock.mock.calls.some(([input]) => getRequestPath(input) === "/identity/me")).toBe(false);
+        expect(window.location.pathname).toBe("/auth/login");
+        expect(screen.queryByRole("banner", { name: "Barra superior global CRM TINK" })).not.toBeInTheDocument();
+    });
+
+    it("cancela el arranque Microsoft tardio tras rechazo antes de navegar el popup", async () => {
+        const user = userEvent.setup();
+        const popupWindow = { closed: false, close: vi.fn(), location: { href: "about:blank" } };
+        let releaseStart!: (response: Response) => void;
+        const pendingStart = new Promise<Response>((resolve) => {
+            releaseStart = resolve;
+        });
+        const fetchMock = vi.fn((input: RequestInfo | URL) => {
+            const requestPath = getRequestPath(input);
+            if (requestPath === "/identity/microsoft/start") return pendingStart;
+            if (requestPath === "/identity/refresh") return createJsonResponse({}, 401);
+            return createJsonResponse(anonymousSession);
+        });
+        vi.stubGlobal("fetch", fetchMock);
+        installDesktopPointerDouble();
+        const open = vi.spyOn(window, "open").mockReturnValue(popupWindow as unknown as Window);
+        window.history.replaceState(null, "", "/auth/login");
+        try {
+            render(<App />);
+            await user.click(await screen.findByRole("button", { name: "Continuar con Microsoft" }));
+            await act(async () => {
+                await expect(refreshAuthenticatedSession()).rejects.toMatchObject({ status: 401 });
+            });
+            await act(async () => {
+                releaseStart(createJsonResponse({ authorizationUrl: "https://login.microsoftonline.com/test/authorize" }));
+                await pendingStart;
+            });
+            expect(popupWindow.location.href).toBe("about:blank");
+            expect(popupWindow.close).toHaveBeenCalledTimes(1);
+            expect(fetchMock.mock.calls.some(([input]) => getRequestPath(input) === "/identity/me")).toBe(false);
+        } finally {
+            open.mockRestore();
+        }
+    });
+
+    it("mantiene anonimo durante logout pendiente aunque la cookie anterior siga activa", async () => {
+        const user = userEvent.setup();
+        let releaseLogout!: (response: Response) => void;
+        const pendingLogout = new Promise<Response>((resolve) => {
+            releaseLogout = resolve;
+        });
+        const fetchMock = vi.fn((input: RequestInfo | URL) => {
+            const requestPath = getRequestPath(input);
+            if (requestPath === "/identity/logout") return pendingLogout;
+            return getMockIdentityResponse(requestPath, { session: authenticatedSession, profile: authenticatedProfile }) ?? createJsonResponse({});
+        });
+        vi.stubGlobal("fetch", fetchMock);
+        window.history.replaceState(null, "", "/home/administration");
+        render(<App />);
+        await expectAdministrationHomeHeading();
+        const identityReads = fetchMock.mock.calls.filter(([input]) => ["/identity/session", "/identity/me"].includes(getRequestPath(input))).length;
+        await user.click(screen.getByRole("button", { name: "Cerrar sesión" }));
+        await screen.findByRole("heading", { name: "Bienvenido" });
+        expect(window.location.pathname).toBe("/auth/login");
+        expect(screen.queryByRole("banner", { name: "Barra superior global CRM TINK" })).not.toBeInTheDocument();
+        expect(fetchMock.mock.calls.filter(([input]) => ["/identity/session", "/identity/me"].includes(getRequestPath(input)))).toHaveLength(identityReads);
+        await act(async () => {
+            releaseLogout(createJsonResponse({ success: true }));
+            await pendingLogout;
+        });
+        await waitFor(() => {
+            expect(screen.getByRole("button", { name: /Ingresar$/u })).toBeEnabled();
+        });
+        expect(fetchMock.mock.calls.filter(([input]) => ["/identity/session", "/identity/me"].includes(getRequestPath(input)))).toHaveLength(identityReads);
+        expect(fetchMock.mock.calls.some(([input]) => getRequestPath(input) === "/identity/refresh")).toBe(false);
+    });
+
+    it("descarta el perfil tardio de login Microsoft tras rechazo de refresh", async () => {
+        const user = userEvent.setup();
+        const popupWindow = { closed: false, close: vi.fn(), location: { href: "about:blank" } };
+        let currentSession = anonymousSession;
+        let releaseProfile!: (response: Response) => void;
+        const pendingProfile = new Promise<Response>((resolve) => {
+            releaseProfile = resolve;
+        });
+        let profileRequested = false;
+        const routes = new Map<string, () => Response | Promise<Response>>([
+            ["/identity/session", () => createJsonResponse(currentSession)],
+            [
+                "/identity/microsoft/start",
+                () => {
+                    currentSession = authenticatedSession;
+                    return createJsonResponse({ authorizationUrl: "https://login.microsoftonline.com/test/authorize" });
+                },
+            ],
+            [
+                "/identity/me",
+                () => {
+                    profileRequested = true;
+                    return pendingProfile;
+                },
+            ],
+            [
+                "/identity/refresh",
+                () => {
+                    currentSession = anonymousSession;
+                    return createJsonResponse({}, 401);
+                },
+            ],
+        ]);
+        vi.stubGlobal(
+            "fetch",
+            vi.fn((input: RequestInfo | URL) => routes.get(getRequestPath(input))?.() ?? createJsonResponse({})),
+        );
+        installDesktopPointerDouble();
+        const open = vi.spyOn(window, "open").mockReturnValue(popupWindow as unknown as Window);
+        window.history.replaceState(null, "", "/auth/login");
+        try {
+            render(<App />);
+            await user.click(await screen.findByRole("button", { name: "Continuar con Microsoft" }));
+            await waitFor(() => {
+                expect(profileRequested).toBe(true);
+            });
+            await act(async () => {
+                await expect(refreshAuthenticatedSession()).rejects.toMatchObject({ status: 401 });
+            });
+            await act(async () => {
+                releaseProfile(createJsonResponse(authenticatedProfile));
+                await pendingProfile;
+            });
+            expect(window.location.pathname).toBe("/auth/login");
+            expect(screen.queryByRole("banner", { name: "Barra superior global CRM TINK" })).not.toBeInTheDocument();
+            expect(screen.getByRole("button", { name: "Continuar con Microsoft" })).toBeEnabled();
+        } finally {
+            open.mockRestore();
+        }
+    });
+
+    it("no restaura el shell con el perfil tardio de login despues de refresh rechazado", async () => {
+        const user = userEvent.setup();
+        let currentSession = anonymousSession;
+        let releaseProfile!: (response: Response) => void;
+        const pendingProfile = new Promise<Response>((resolve) => {
+            releaseProfile = resolve;
+        });
+        let profileRequested = false;
+        vi.stubGlobal(
+            "fetch",
+            vi.fn((input: RequestInfo | URL) => {
+                const requestPath = getRequestPath(input);
+                if (requestPath === "/identity/session") return createJsonResponse(currentSession);
+                if (requestPath === "/identity/local/login") {
+                    currentSession = authenticatedSession;
+                    return createJsonResponse(currentSession);
+                }
+                if (requestPath === "/identity/me") {
+                    profileRequested = true;
+                    return pendingProfile;
+                }
+                if (requestPath === "/identity/refresh") {
+                    currentSession = anonymousSession;
+                    return createJsonResponse({}, 401);
+                }
+                return createJsonResponse({});
+            }),
+        );
+        window.history.replaceState(null, "", "/auth/login");
+        render(<App />);
+        await user.type(await screen.findByLabelText("Correo administrativo", { selector: "input" }), "roberto@roccacr.com");
+        await user.type(screen.getByLabelText("Contraseña", { selector: "input" }), "PasswordSeguro123!");
+        await user.click(screen.getByRole("button", { name: "Ingresar" }));
+        await waitFor(() => {
+            expect(profileRequested).toBe(true);
+        });
+        await act(async () => {
+            await expect(refreshAuthenticatedSession()).rejects.toMatchObject({ status: 401 });
+        });
+        await act(async () => {
+            releaseProfile(createJsonResponse(authenticatedProfile));
+            await pendingProfile;
+        });
+        expect(window.location.pathname).toBe("/auth/login");
+        expect(screen.queryByRole("banner", { name: "Barra superior global CRM TINK" })).not.toBeInTheDocument();
+    });
+
+    it("libera el reintento explicito tras alcanzar el limite de refresh durante checking", async () => {
+        let offline = true;
+        const pendingProfiles: Array<(response: Response) => void> = [];
+        vi.stubGlobal(
+            "fetch",
+            vi.fn((input: RequestInfo | URL) => {
+                const requestPath = getRequestPath(input);
+                if (offline) return Promise.reject(new TypeError("network unavailable"));
+                if (requestPath === "/identity/me")
+                    return new Promise<Response>((resolve) => {
+                        pendingProfiles.push(resolve);
+                    });
+                return createJsonResponse(authenticatedSession);
+            }),
+        );
+        window.history.replaceState(null, "", "/home/administration");
+        render(<App />);
+        await screen.findByRole("heading", { name: "Sin conexión" });
+        offline = false;
+        fireEvent.click(screen.getByRole("button", { name: "Reintentar conexión" }));
+        await waitFor(() => {
+            expect(pendingProfiles).toHaveLength(1);
+        });
+        await act(async () => {
+            await refreshAuthenticatedSession();
+        });
+        await waitFor(() => {
+            expect(pendingProfiles).toHaveLength(2);
+        });
+        vi.useFakeTimers();
+        await act(async () => {
+            await refreshAuthenticatedSession();
+        });
+        expect(screen.getByRole("heading", { name: "Sesión expirada" })).toBeInTheDocument();
+        await act(async () => {
+            await vi.advanceTimersByTimeAsync(2500);
+        });
+        expect(screen.getByRole("button", { name: "Reintentar conexión" })).toBeEnabled();
+        await act(async () => {
+            pendingProfiles.forEach((resolve) => {
+                resolve(createJsonResponse(authenticatedProfile));
+            });
+            await Promise.resolve();
+        });
+        expect(screen.queryByRole("banner", { name: "Barra superior global CRM TINK" })).not.toBeInTheDocument();
+    });
+
+    it("limita la relectura si cada perfil pendiente dispara otra renovacion", async () => {
+        const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+            const requestPath = getRequestPath(input);
+            if (requestPath === "/identity/session" || requestPath === "/identity/refresh") return createJsonResponse(authenticatedSession);
+            if (requestPath === "/identity/me") {
+                await refreshAuthenticatedSession();
+                return createJsonResponse(authenticatedProfile);
+            }
+            return createJsonResponse({});
+        });
+        vi.stubGlobal("fetch", fetchMock);
+        window.history.replaceState(null, "", "/home/administration");
+        render(<App />);
+        await screen.findByRole("heading", { name: "Sesión expirada" });
+        expect(screen.queryByRole("banner", { name: "Barra superior global CRM TINK" })).not.toBeInTheDocument();
+        expect(fetchMock.mock.calls.filter(([input]) => getRequestPath(input) === "/identity/me")).toHaveLength(2);
+        expect(fetchMock.mock.calls.filter(([input]) => getRequestPath(input) === "/identity/refresh")).toHaveLength(2);
+    });
+
+    it.each(["refreshed", "rejected"] as const)("descarta un perfil pendiente anterior a una renovacion %s durante checking", async (outcome) => {
+        let releaseOldProfile!: (response: Response) => void;
+        const oldProfile = new Promise<Response>((resolve) => {
+            releaseOldProfile = resolve;
+        });
+        let profileCalls = 0;
+        let revoked = false;
+        const fetchMock = vi.fn((input: RequestInfo | URL) => {
+            const requestPath = getRequestPath(input);
+            if (requestPath === "/identity/session") return createJsonResponse(revoked ? anonymousSession : authenticatedSession);
+            if (requestPath === "/identity/me") {
+                profileCalls += 1;
+                if (profileCalls === 1) return oldProfile;
+                return createJsonResponse({ ...authenticatedProfile, permissions: [], roles: [], orgUnits: [] });
+            }
+            if (requestPath === "/identity/refresh") {
+                if (outcome === "rejected") {
+                    revoked = true;
+                    return createJsonResponse({}, 401);
+                }
+                return createJsonResponse(authenticatedSession);
+            }
+            return createJsonResponse({});
+        });
+        vi.stubGlobal("fetch", fetchMock);
+        window.history.replaceState(null, "", "/home/administration");
+        render(<App />);
+        await waitFor(() => {
+            expect(profileCalls).toBe(1);
+        });
+        await act(async () => {
+            await refreshAuthenticatedSession().catch((error: unknown) => {
+                if (outcome !== "rejected") throw error;
+            });
+            releaseOldProfile(createJsonResponse(authenticatedProfile));
+        });
+        if (outcome === "rejected") {
+            await screen.findByRole("button", { name: "Ingresar" });
+        } else {
+            await screen.findByRole("heading", { name: "Acceso no autorizado" });
+            expect(profileCalls).toBe(2);
+        }
+        expect(screen.queryByRole("heading", { name: "Hola Roberto Carlos al módulo Administración" })).not.toBeInTheDocument();
+        expect(fetchMock.mock.calls.filter(([input]) => getRequestPath(input) === "/identity/refresh")).toHaveLength(1);
+    });
+
+    it("retira el shell cuando el refresh rechaza una sesion revocada externamente", async () => {
+        let revoked = false;
+        const fetchMock = vi.fn((input: RequestInfo | URL) => {
+            const path = getRequestPath(input);
+            if (path === "/identity/session") return createJsonResponse(revoked ? anonymousSession : authenticatedSession);
+            if (path === "/identity/refresh") {
+                revoked = true;
+                return createJsonResponse({ message: "Revoked" }, 401);
+            }
+            if (path === "/revoked-context-probe") return createJsonResponse({ message: "Unauthorized" }, 401);
+            return getMockIdentityResponse(path, { profile: authenticatedProfile, session: authenticatedSession }) ?? createJsonResponse({});
+        });
+        vi.stubGlobal("fetch", fetchMock);
+        window.history.replaceState(null, "", "/home/administration");
+        render(<App />);
+        await expectAdministrationHomeHeading();
+        await act(async () => {
+            await expect(apiRequest("/revoked-context-probe")).rejects.toMatchObject({ status: 401 });
+        });
+        await screen.findByRole("button", { name: "Ingresar" });
+        expect(screen.queryByRole("banner", { name: "Barra superior global CRM TINK" })).not.toBeInTheDocument();
+        expect(window.location.pathname).toBe("/auth/login");
+        expect(fetchMock.mock.calls.filter(([input]) => getRequestPath(input) === "/identity/refresh")).toHaveLength(1);
+    });
+
+    it("preserva filtros de negocio y hash durante el arranque integrado del directorio", async () => {
+        await import("../../src/modules/administration/pages/SystemUsersPage");
+        const fetchMock = mockIdentityFetch({ session: authenticatedSession, profile: authenticatedProfile });
+        window.history.replaceState(null, "", "/home/administration/users?estado=blocked&q=soporte#directorio");
+        render(<App />);
+        await screen.findByRole("heading", { name: "Usuarios" });
+        expect(new URLSearchParams(window.location.search).get("estado")).toBe("blocked");
+        expect(new URLSearchParams(window.location.search).get("q")).toBe("soporte");
+        expect(window.location.hash).toBe("#directorio");
+        await waitFor(() => {
+            expect(fetchMock.mock.calls.some(([input]) => typeof input === "string" && input.includes("search=soporte"))).toBe(true);
+        });
+    });
+
+    it("limpia solo el retorno Microsoft reconocido conservando query y hash de login", async () => {
+        mockIdentityFetch({ session: anonymousSession });
+        window.history.replaceState(null, "", "/auth/login?microsoftStatus=failed&q=soporte#login");
+        render(<App />);
+        await screen.findByRole("button", { name: "Ingresar" });
+        expect(window.location.search).toBe("?q=soporte");
+        expect(window.location.hash).toBe("#login");
+    });
+
+    it.each([401, 409])("revalida el perfil raiz tras refresh HTTP %s y desmonta permisos revocados externamente", async (status) => {
+        await import("../../src/modules/administration/pages/SystemUsersPage");
+        let revoked = false;
+        let currentProfile = authenticatedProfile;
+        const fetchMock = vi.fn((input: RequestInfo | URL) => {
+            const path = getRequestPath(input);
+            if (path === "/identity/session") return createJsonResponse(authenticatedSession);
+            if (path === "/identity/me") return createJsonResponse(currentProfile);
+            if (path === "/identity/refresh") {
+                revoked = true;
+                currentProfile = { ...authenticatedProfile, permissions: [], roles: [], orgUnits: [] };
+                return createJsonResponse(authenticatedSession);
+            }
+            if (path === "/external-context-probe" && !revoked) return createJsonResponse({ message: "La sesion requiere revalidacion de permisos." }, status);
+            if (path === "/external-context-probe") return createJsonResponse({ ok: true });
+            return getMockIdentityResponse(path, { profile: authenticatedProfile, session: authenticatedSession }) ?? createJsonResponse({});
+        });
+        vi.stubGlobal("fetch", fetchMock);
+        window.history.replaceState(null, "", "/home/administration/users");
+        render(<App />);
+        await screen.findByRole("heading", { name: "Usuarios" });
+        const profileCallsBeforeRefresh = fetchMock.mock.calls.filter(([input]) => getRequestPath(input) === "/identity/me").length;
+        await act(async () => {
+            await apiRequest("/external-context-probe");
+        });
+        await screen.findByRole("heading", { name: "Acceso no autorizado" });
+        expect(screen.queryByRole("heading", { name: "Usuarios" })).not.toBeInTheDocument();
+        expect(fetchMock.mock.calls.filter(([input]) => getRequestPath(input) === "/identity/me")).toHaveLength(profileCallsBeforeRefresh + 1);
+        expect(fetchMock.mock.calls.filter(([input]) => getRequestPath(input) === "/identity/refresh")).toHaveLength(1);
+    });
+
     it("replaces the login entry when an existing session resolves its permitted home", async () => {
         mockIdentityFetch({ profile: authenticatedProfile, session: authenticatedSession });
         window.history.replaceState(null, "", "/auth/login");
@@ -856,7 +1261,7 @@ describe("App", () => {
         await act(async () => {
             await vi.dynamicImportSettled();
         });
-        expect(screen.getByRole("heading", { level: 1, name: "Roles y seguridad" })).toBeInTheDocument();
+        expect(await screen.findByRole("heading", { level: 1, name: "Roles y seguridad" })).toBeInTheDocument();
         expect(await screen.findByText("Ventas (31 usuarios)")).toBeInTheDocument();
         expect(screen.queryByRole("button", { name: "Nuevo módulo" })).not.toBeInTheDocument();
         expect(screen.queryByRole("button", { name: "Nuevo rol" })).not.toBeInTheDocument();
@@ -873,8 +1278,9 @@ describe("App", () => {
 
         fireEvent.mouseDown(screen.getByRole("combobox", { name: "Módulo" }));
         await user.click(await screen.findByText("Mercadeo", { selector: ".roles-security-option > span" }));
-        expect(screen.getByRole("heading", { level: 2 })).toHaveTextContent("Mercadeo/Campañas");
-        expect(screen.getByRole("switch", { name: "Ver campañas" })).not.toBeChecked();
+        expect(screen.getByRole("heading", { level: 2 })).toHaveTextContent("Mercadeo/Inicio");
+        expect(screen.getByRole("switch", { name: "Ver Inicio" })).not.toBeChecked();
+        expect(screen.queryByRole("switch", { name: "Ver campañas" })).not.toBeInTheDocument();
         expect(screen.getByText("Sin acceso")).toBeInTheDocument();
         expect(screen.getByRole("navigation", { name: "Ruta" })).toHaveTextContent("Administración/Roles y seguridad");
         expect(screen.getByRole("button", { name: "Auditoría" })).toBeInTheDocument();
@@ -966,7 +1372,8 @@ describe("App", () => {
         expect(screen.queryByRole("button", { name: "Catálogos" })).not.toBeInTheDocument();
         expect(screen.getByRole("button", { name: "Resumen" })).not.toHaveAttribute("data-permission");
         expect(fetchMock.mock.calls.filter(([input]) => getRequestPath(input) === "/identity/refresh")).toHaveLength(1);
-        expect(fetchMock.mock.calls.filter(([input]) => getRequestPath(input) === "/identity/session")).toHaveLength(2);
+        // El refresh propio invalida el primer bootstrap: se permite una relectura segura.
+        expect(fetchMock.mock.calls.filter(([input]) => getRequestPath(input) === "/identity/session")).toHaveLength(3);
         expect(fetchMock).toHaveBeenCalledWith(
             buildApiUrl("/identity/refresh"),
             expect.objectContaining({
@@ -1688,7 +2095,7 @@ describe("App", () => {
         expect(screen.getByRole("button", { name: "Reintentar conexión" })).toBeInTheDocument();
     });
 
-    it("muestra sesion expirada si el refresh ya no puede renovar el acceso", async () => {
+    it("vuelve a login si el refresh rechaza definitivamente el acceso durante bootstrap", async () => {
         const fetchMock = vi.fn((input: RequestInfo | URL) => {
             const path = getRequestPath(input);
 
@@ -1708,9 +2115,9 @@ describe("App", () => {
 
         render(<App />);
 
-        expect(await screen.findByRole("heading", { name: "Sesión expirada" })).toBeInTheDocument();
-        expect(screen.getByText("Por seguridad, tu sesión terminó. Inicia sesión nuevamente para continuar.")).toBeInTheDocument();
-        expect(screen.getByRole("button", { name: "Iniciar sesión" })).toBeInTheDocument();
+        expect(await screen.findByRole("button", { name: "Ingresar" })).toBeInTheDocument();
+        expect(window.location.pathname).toBe("/auth/login");
+        expect(screen.queryByRole("banner", { name: "Barra superior global CRM TINK" })).not.toBeInTheDocument();
         expect(fetchMock).toHaveBeenCalledWith(
             buildApiUrl("/identity/refresh"),
             expect.objectContaining({

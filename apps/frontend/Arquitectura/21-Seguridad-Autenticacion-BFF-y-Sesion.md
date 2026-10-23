@@ -1,5 +1,15 @@
 # 21 - Seguridad de Autenticacion BFF y Sesion Frontend
 
+## Remediacion de sesion - 2026-10-23
+
+El cliente HTTP publica la renovacion compartida al estado raiz: relee el perfil y desmonta los consumidores mientras comprueba autorizacion. Un refresh rechazado con 401 retira el shell y vuelve a login. Una generacion invalida respuestas de perfil anteriores, incluso durante checking; un limite de reinicio evita ciclos. El reintento explicito permite una comprobacion nueva. No se comparte un perfil global entre usuarios ni se persisten tokens.
+
+Login, logout y refresh delimitan generaciones del cliente. Un refresh anterior no publica eventos ni reemplaza el CSRF en memoria despues de cambiar de contexto; su cleanup tampoco borra una renovacion posterior. Una operacion antigua que recibe 401/409 no se renueva ni repite bajo la nueva sesion. Login y bootstrap descartan perfiles tardios, y logout pendiente mantiene la UI anonima. Estas barreras de UI no certifican orden de cookies/red en un navegador real.
+
+El arranque conserva query de negocio y hash. Solo elimina `microsoftStatus` reconocido en la ruta de login. El directorio acepta el estado MFA `unknown` y lo muestra como No verificado, sin inferir MFA por proveedor.
+
+Evidencia y limites de la remediacion: [plan F01-F13](../../api/Arquitectura/Reauditoria-54-Plan-y-Resultados.md#plan-central-f01-f13---2026-10-23). Los cortes anteriores permanecen historicos.
+
 ## Vigencia documental - 2026-10-22, corte f2dc4f1
 
 Reglas BFF vigentes con recomendaciones futuras de librerias. Runtime HTTP: `fetch` centralizado, sin TanStack Query/Zustand instalados. Solo el `409` explicito de sesion obsoleta usa refresh; conflictos de negocio no se repiten. Navegacion por menu usa `pushState`; auth/correcciones/limpieza usan `replaceState`; `popstate` lee la URL. Recuperacion de render/chunk requiere Reintentar explicito sin autorecarga; no hay esperas artificiales de 900/550 ms y si se conserva el cooldown real. Ver [29](29-Navegacion-Recuperacion-y-Seguimiento.md).

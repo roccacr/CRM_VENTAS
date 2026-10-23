@@ -108,6 +108,14 @@ it("shows creation snapshots including false and null values", async () => {
     expect(screen.getByText("No")).toBeInTheDocument();
     expect(screen.getAllByText("Sin valor").length).toBeGreaterThan(0);
 });
+
+it("labels role module scope audit snapshots", async () => {
+    vi.mocked(getAuditDetail).mockResolvedValue({ ...item, changeSet: { version: 1, entity: "role", recordId: "chief", action: "create", before: null, after: { moduleCodes: ["mercadeo"], moduleScoped: true, permissionInheritance: "selected_modules" }, changes: [] } });
+    render(<SecurityAuditDetailDrawer publicId="chief-event" onClose={vi.fn()} />);
+    expect(await screen.findByText("Módulos del rol")).toBeInTheDocument();
+    expect(screen.getByText("Límite por módulo")).toBeInTheDocument();
+    expect(screen.getByText("Herencia de permisos")).toBeInTheDocument();
+});
 it("retries failed detail reads and labels historical absence", async () => {
     vi.mocked(getAuditDetail)
         .mockRejectedValueOnce(new Error("failed"))
