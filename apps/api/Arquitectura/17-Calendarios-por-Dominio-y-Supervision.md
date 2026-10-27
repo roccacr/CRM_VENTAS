@@ -1,5 +1,14 @@
 # 17 - Calendarios por Dominio y Supervision
 
+Ampliacion 2026-10-23: [47 - Calendario compartido](47-Calendario-Compartido-Esquema.md)
+define la migracion 034 vacia autorizada. Eventos con origen por modulo y vista
+personal compartida por participacion; sin copia de datos, comandos de agenda o Graph.
+Los ejemplos SQL y nombres plurales de este antecedente no son el DDL vigente.
+La ampliacion posterior [48 - Metricas de citas](48-Mercadeo-Metricas-Citas.md)
+ya consulta eventos nativos y legacy para Inicio de Mercadeo. Clasifica Cita por
+tipo, atribuye vendedor/proyecto desde el lead vinculado y separa eventos
+completados de asistencia verificada; no implementa la agenda descrita abajo.
+
 Revision documental 2026-10-22: diseno comercial futuro y evidencia historica; tablas, rutas y reglas propuestas no acreditan runtime operativo. Ver [36 - Estado vigente y registro](36-Registro-Entrega-Administracion.md) para implementacion y limites actuales. Identidad/Administracion, consulta de expedientes y contador de aprobaciones tienen contratos propios; no habilitan Leads ni mutaciones HTTP de ordenes.
 
 ## Veredicto
@@ -14,7 +23,8 @@ Formalizaciones, Cobros, Modificaciones, Jefatura y otros departamentos deben te
 
 La tabla legacy `calendars` confirma que no debe copiarse como base del CRM nuevo.
 
-Evidencia verificada en la base actual:
+Evidencia historica de la revision original; no son conteos actuales ni se
+volvieron a consultar en esta revision documental:
 
 ```txt
 total de eventos: 4975

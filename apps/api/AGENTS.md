@@ -1,6 +1,48 @@
 # AGENTS.md - CRM Enterprise API
 
+Revision documental vigente 2026-10-27: [55](Arquitectura/55-Revision-Documental-Integral-20261027.md).
+Los bloques fechados siguientes son cronologia. El runtime actual registra
+seguimiento y comandos de Formalizacion (ContractTransitionModule), lectura
+NetSuite (NetsuiteModule) y Captacion federada. Cada accion conserva sus permisos
+y gates; esta revision no autoriza operarlas. Eventos y citas/permiso
+mercadeo.appointments.read fueron retirados por038. Calendario y metricas siguen.
+
+
+Ampliacion autorizada 2026-10-26: Captacion usa `GET /marketing/leads/report`
+con `mercadeo.leads.read`, scopes y deny, nativa primero y legacy opcional de solo
+lectura. Ningun importador, migracion ni comando queda autorizado. Contrato,
+cohortes y limites: [53](Arquitectura/53-Captacion-Leads-Reporte-Federado.md).
+
+Current documentation/implementation cut 2026-10-23:
+Arquitectura/49-Estado-Actual-y-Cierre-Documental.md. Supersedes stale present-tense
+summaries below, not explicit permissions or the product law. Marketing summary
+is read-only operational code; calendar 034 is empty schema, not calendar commands.
+
+Ampliacion expresa 2026-10-23: esquema vacio de calendario compartido por modulos,
+participantes, vinculos, campana individual y referencias externas; migracion 034
+solo en CRM_THINK_V2. Sin importar calendars, activar runtime, permisos o Graph.
+Ver Arquitectura/47-Calendario-Compartido-Esquema.md.
+
+Excepcion expresa del propietario 2026-10-23: crear un perfil en `sec_user`
+por correo unico de `crmdatabase-api.admins`, solo nombre/correo y estado seguro
+pending/inactive. Omitir existentes; sin credenciales, roles, modulos ni referencias
+ERP. Bitacora atomica nativa; legacy solo lectura. Ver Arquitectura/45-Usuarios-Por-Correo.md.
+Esta excepcion no permite importar Leads, historiales ni otros datos comerciales.
+
+Ampliacion posterior autorizada 2026-10-23: crear rol `ventas` asociado al modulo
+Ventas sin permisos y asignarlo solo a los 43 perfiles del lote documentado en 45.
+No habilitar acceso, cambiar estados ni asignar modulos individuales.
+
 ## Agent Role
+
+Correccion expresa del propietario 2026-10-23: NO importar datos viejos a la
+BD nueva. Consultar cada origen desde API y adaptar a un JSON comun. La copia
+de bitacoras iniciada por interpretacion incorrecta fue detenida y eliminada.
+Ver Arquitectura/44-Bitacora-Legacy-y-Timeline.md. No reintroducir importadores.
+
+Ampliacion autorizada 2026-10-23: migracion nativa 031 para el esquema de Leads,
+contactos, referencias, etapas, motivos e historial. Solo esquema y siete etapas,
+sin importacion ni runtime comercial. Ver `Arquitectura/43-Leads-Esquema-Nativo.md`.
 
 Act as a Staff Backend Engineer specialized in NestJS, TypeScript, hexagonal architecture, DDD, ERP integrations, MySQL, Microsoft Entra ID, auditability, and enterprise CRM systems. Treat Redis and RabbitMQ as future operational options, not first-cut requirements.
 
@@ -42,7 +84,7 @@ Arquitectura/23-Alcance-P0-Vertical-Leads.md
 
 If `Arquitectura/00-Producto-CRM-TINK-y-P0.md` conflicts with this file, a skill, a data model, a future module map, or any other document, `Arquitectura/00-Producto-CRM-TINK-y-P0.md` wins until the product owner approves a replacement.
 
-Current scope (2026-10-22): identity/BFF, Administration/catalogs, read-only Unit Files, internal sales-order lifecycle persistence/audit and the permission-protected Formalization approval counter. Full lifecycle mutations, Leads, ERP synchronization, calendars, notes and jobs remain future scope unless specifically authorized by the product law. See `Arquitectura/36-Registro-Entrega-Administracion.md` and `Arquitectura/Reauditoria-54-Plan-y-Resultados.md` for implemented boundaries and dated evidence.
+Current scope (2026-10-23): identity/BFF, Administration/catalogs, read-only Unit Files, internal sales-order lifecycle persistence/audit, Formalization approval/contract/Home summaries, Marketing Home lead/appointment aggregates and native lead timeline audit reads. General HTTP Lead CRUD, HTTP sales-order lifecycle mutations, federated legacy lead timeline, ERP synchronization, calendar commands, notes and jobs remain pending. Native Leads/calendar schemas and internal history commands do not expose those operations. See `Arquitectura/36-Registro-Entrega-Administracion.md` and `Arquitectura/49-Estado-Actual-y-Cierre-Documental.md` for current boundaries; historical checks remain dated evidence.
 
 Before designing lead tables, lead endpoints, lead DTOs, lead repositories, or lead screens, read and close:
 
@@ -370,3 +412,17 @@ Before saying the backend work is complete:
 2. Confirm unrelated files were not changed.
 3. Run the available lint, typecheck, tests, and build commands when a runtime exists.
 4. Report exactly what passed, failed, or could not be run.
+
+
+## Authorized Marketing Home read extension - 2026-10-23
+
+The owner authorized real lead aggregates for Marketing Home through
+`GET /marketing/home/summary?period=day|week|month|year`. Read native leads first,
+then the optional legacy adapter, and produce one JSON without copying records.
+Count all leads created in the interval regardless of current status. Preserve
+permission scopes, canonical seller/project identities and local public-ID photos.
+Appointment metrics are now authorized as read-only calendar queries: native events first, then legacy Cita events, attributed through the lead owner/project. No imports or calendar mutations. See `apps/api/Arquitectura/48-Mercadeo-Metricas-Citas.md` (repository-relative).
+This scoped authorization supersedes historical mock-only restrictions for this
+summary only; it authorizes no imports, business mutations, migrations or deployment.
+API contract and verification: `apps/api/Arquitectura/46-Mercadeo-Resumen-Leads.md`
+(relative to the repository root).

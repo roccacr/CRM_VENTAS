@@ -4,6 +4,14 @@ Revision documental 2026-10-22: baseline de identidad y evidencia historica, no 
 
 ## Superseding Owner-Only Policy - 2026-10-09
 
+Historical bootstrap restriction, superseded only within explicit later scope:
+[45 - Email profiles](45-Usuarios-Por-Correo.md) records 43 new profiles and their
+later `ventas` assignment without authentication or individual module membership.
+It does not authorize replaying seeds or copying commercial history. The initial
+role/permission matrices below are not the current catalog. See
+[41 - Owner](41-Owner-Herencia-y-Denegaciones.md), [42 - General template](42-Jefaturas-Modulos-y-Permisos.md)
+and [49 - Current state](49-Estado-Actual-y-Cierre-Documental.md).
+
 The seed descriptions below are historical, not executable bootstrap instructions. Only Roberto (`rzuniga@roccacr.com`) may be bootstrapped as Owner; no other users, secondary roles or business catalog rows. Required active permissions/modules and Owner relations are security configuration. Use the guarded recovery procedure and migration audit in [03 - Migration Runbook](03-Base-Datos-y-Migracion.md). Do not run historical SQL/002 or a bulk administrator importer.
 
 ## Veredicto
@@ -364,7 +372,11 @@ contabilidad
 administration
 ```
 
-Los valores de catalogo no se duplican por modulo operativo. Si la UI muestra Proyectos dentro de Ventas y Formalizacion, ambos leen `crm_catalog_item`, pero autorizan con permisos distintos: `ventas.catalog_project.*` y `formalizacion.catalog_project.*`.
+Los valores de catalogo no se duplican por modulo operativo. Proyectos usa hoy
+`crm_project` y sus referencias dedicadas (documento 35); Ventas y Formalizacion
+autorizan sobre ese mismo dominio con `ventas.catalog_project.*` y
+`formalizacion.catalog_project.*`. La tabla compartida del baseline no describe
+el almacenamiento vigente de los seis catalogos dedicados.
 
 ## Role permissions seed
 
@@ -372,7 +384,10 @@ Tabla destino: `sec_role_permission`.
 
 Esta tabla se inserta usando `code_role` y `code_permission` como referencia logica. La migracion SQL real debe resolver los IDs internos.
 
-Regla operativa: si se agrega un permiso al catalogo P0-S1A o un permiso scoped `<modulo>.catalog_*`, el seed de `owner` debe re-ejecutarse o actualizarse en el mismo cambio para que conserve el catalogo completo vigente. Los demas roles reciben solo permisos operativos o permisos explicitamente aprobados.
+Regla vigente: el perfil Owner toma todos los permisos activos como base y aplica
+overrides, incluido deny. No reejecutar el seed para regenerar esa matriz ni
+eliminar excepciones. Los demas roles usan grants persistidos; General no
+regenera automaticamente un permiso retirado de su plantilla (documento 42).
 
 Roles descartados del catalogo activo actual:
 
@@ -493,9 +508,14 @@ No existe tabla separada para membership en P0-S1. Estos codigos son valores per
 | `leader` | Responsable principal de un area. |
 | `assistant_leader` | Subjefe o apoyo de supervision del area. |
 
-## Sistemas externos seed
+## Sistemas externos previstos en el seed historico
 
 Tabla destino: `int_external_system`.
+
+La tabla siguiente es la propuesta original, no un SELECT actual ni una orden
+de insertar sus tres filas. La configuracion efectiva y referencias vigentes
+deben comprobarse aparte; Odoo previsto no equivale a Odoo instalado. No crear
+aliases sin ID real ni convertir el lote de perfiles de 45 en un seed ERP.
 
 | code_external_system | name_external_system | status_external_system | Proposito |
 | --- | --- | --- | --- |
@@ -506,7 +526,7 @@ Tabla destino: `int_external_system`.
 Reglas:
 
 - estos codigos son datos, no nombres de tablas core;
-- Odoo nunca se ignora: queda registrado desde el inicio como proveedor futuro preparado;
+- Odoo se contempla como proveedor futuro; registrarlo exige el alcance de configuracion aprobado;
 - `pending` en Odoo significa preparado en arquitectura, no activo para sincronizacion operativa;
 - ningun modelo interno usa IDs externos como FK;
 - usuarios externos viven en `int_user_external_identity`;

@@ -6,7 +6,7 @@ Revision documental 2026-10-22: diseno comercial futuro y evidencia historica; t
 
 Este documento no autoriza construir leads mientras identidad, usuarios, roles, permisos, contrato canonico y modelo MySQL minimo no esten cerrados.
 
-El primer desarrollo real actual del API es identidad.
+El primer desarrollo real fue identidad; el inventario actual incluye ampliaciones acotadas ([49](49-Estado-Actual-y-Cierre-Documental.md)).
 
 Este documento conserva el alcance comercial de leads para la fase posterior.
 
@@ -14,7 +14,7 @@ Cuando identidad este cerrada y se apruebe runtime, este documento manda sobre d
 
 ## Decision vigente despues de Administracion
 
-Leads no se construye todavia.
+El CRUD operativo de Leads no se construye todavia. La autorizacion posterior de [43](43-Leads-Esquema-Nativo.md) permite el esquema nativo; [44](44-Bitacora-Legacy-y-Timeline.md) delimita historia y [46](46-Mercadeo-Resumen-Leads.md)/[48](48-Mercadeo-Metricas-Citas.md) las lecturas del resumen de Mercadeo. [53](53-Captacion-Leads-Reporte-Federado.md) agrega el reporte federado de Captacion; los comandos acotados de Formalizacion en [52](52-Etapas-Responsables-y-Tiempos.md) no son CRUD general de Leads. No confundir esos cortes con `POST /leads`, listado o detalle general habilitados.
 
 Antes de crear pantalla, tabla runtime nueva o endpoint operativo de leads, Administracion debe quedar validada con evidencia: usuarios, roles, permisos scoped, catalogos y auditoria.
 
@@ -100,7 +100,7 @@ Esto evita que un error externo bloquee la venta.
 
 ## Base de datos comercial minima futura
 
-Para el slice comercial 1, las tablas realmente necesarias serian:
+El listado siguiente conserva nombres conceptuales antiguos, no DDL ejecutable. Para el modelo fisico vigente consultar la migracion `202610230031_leads_domain.ts` y [43](43-Leads-Esquema-Nativo.md); identidad/catalogos tienen sus tablas propias. No crear tablas plurales copiando este listado del slice futuro:
 
 ```txt
 sec_user
@@ -146,7 +146,7 @@ El corte comercial de leads requiere como minimo:
 | Ver timeline | usuario con visibilidad del lead |
 | Cambiar datos basicos del lead | usuario asignado o jefatura con permiso |
 
-Grants directos, denials y delegaciones quedan como modelo aprobado para P1.
+Grants directos y denials ya pertenecen a identidad implementada; deben respetarse tambien en cualquier futuro endpoint de Leads. Solo la delegacion temporal avanzada sigue aplazada.
 
 ## Contrato canonico
 

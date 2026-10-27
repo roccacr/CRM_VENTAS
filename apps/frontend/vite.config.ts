@@ -10,6 +10,13 @@ import { defineConfig } from "vitest/config";
  */
 export default defineConfig({
     plugins: [react()],
+    resolve: {
+        dedupe: ["react", "react-dom"],
+    },
+    optimizeDeps: {
+        // Keep the lazy report's loader in the initial React dependency graph.
+        include: ["antd/es/skeleton"],
+    },
     build: {
         rollupOptions: {
             output: {

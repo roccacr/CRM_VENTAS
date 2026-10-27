@@ -1,5 +1,17 @@
 # 33 - Contrato API de Identidad P0-S1
 
+## Catalogo de seguridad posterior - 2026-10-27
+
+El contrato de identidad se conserva, pero el catalogo activo ya no ofrece
+`mercadeo.appointments.read`: el mapeador lo omite y la migracion038 retira su
+definicion, grants y overrides. `mercadeo.calendar.read` permanece. La definicion
+`formalizacion.orders.stage.update` fue agregada por037 sin concesion automatica
+a roles de negocio. UI/consumidores deben volver a obtener permisos efectivos
+cuando cambia `permissionVersion`; no deducir permisos por el nombre del rol.
+Ver [28](28-Matriz-Roles-Permisos-Areas-P0-S1.md) y
+[53](53-Captacion-Leads-Reporte-Federado.md) para secuencia/evidencia historica.
+Esta revision no cambia endpoints de autenticacion ni devuelve credenciales.
+
 Estado documental 2026-10-22: `CsrfGuard` primero y `AuthGuard` global default-deny; `RouteSecurity` explicito por handler Nest y allowlist publica. Los handlers `permission` exigen `RequirePermission` verificable por el guard antes del handler; los servicios mantienen permisos condicionales y controles por recurso. AsyncLocalStorage reutiliza perfil solo en el request/servicio/token; no cache global. GET/HEAD protegidos tienen cuotas locales 120/usuario y 600/IP por minuto, cache 5000 por store (defaults); exceso 429 con Retry-After, sin coordinacion distribuida. El request-reset declara tambien 503 en metadata HTTP/OpenAPI. Ver [36 - Estado vigente y registro](36-Registro-Entrega-Administracion.md).
 
 ## Veredicto
@@ -257,9 +269,13 @@ No se permite:
 6. Un refresh `revoked`, `expired` o ya consumido por una carrera normal responde `401` sin revocar sesiones ajenas.
 7. Si el refresh activo esta vencido, se marca `expired`.
 8. Si la sesion, usuario o identidad ya no esta activa, se revoca la familia y la sesion asociada.
-9. Si `permissionVersion` no coincide, responde `409`; el cliente debe intentar un refresh single-flight y, si falla, cerrar sesion visual y pedir login nuevo.
+9. Un cambio solo de permisos no invalida el refresh activo: la rotacion adopta
+   `permission_version_user` actual bajo bloqueo. El perfil protegido rechaza
+   una version obsoleta y el cliente coordina renovacion single-flight; no se
+   promete `409` en todos los caminos ni logout por un cambio de acceso.
 10. Si todo es valido, marca el refresh anterior como `rotated`, actualiza hash de sesion e inserta un nuevo refresh activo sin extender el vencimiento absoluto de 8 horas.
-11. El service audita `refresh_rotated` con el usuario canonico asociado.
+11. `IdentitySessionRepository` audita `refresh_rotated` dentro de la transaccion;
+    un fallo revierte tambien la rotacion.
 12. El controller devuelve JSON de sesion/usuario/`csrfToken` y setea nuevas cookies.
 
 Decision vigente: el sistema permite varias sesiones abiertas por usuario, pero el reuso real de refresh token (`rotated` o `reused`) es senal de robo y revoca todas las sesiones activas del usuario.
@@ -278,6 +294,13 @@ Logout es idempotente: si no hay sesion valida, responde exito para permitir lim
 ## Contrato de usuario actual
 
 Respuesta conceptual de `/identity/me`:
+
+El ejemplo siguiente no enumera todos los roles/modulos actuales. El perfil
+resuelve roles efectivos y membresias virtuales de Owner, con permisos activos
+menos denies; General usa grants de plantilla persistidos dentro de su techo
+modular. El directorio/editor conserva asignaciones directas (41/42). Un perfil
+del lote 45 sin identidad de acceso no puede producir esta sesion autenticada.
+Inventario actual: [49](49-Estado-Actual-y-Cierre-Documental.md).
 
 ```json
 {
@@ -543,6 +566,31 @@ Este contrato queda listo para convertirse en OpenAPI minimo de identidad cuando
 
 ## Consulta paginada de auditoria
 
+### Timeline nativo de Leads
+
+`GET /audit/records/:recordId/timeline` es una lectura administrativa registrada,
+con `RouteSecurity("permission")` y descriptor `{ kind: "audit" }`.
+`canReadAudit` exige sesion vigente y `role.assign` u Owner activo, sin deny
+de `role.assign`; el servicio vuelve a comprobarlo antes de consultar.
+
+`recordId` debe ser ULID de un `audit_record` nativo de tipo `lead` o
+`lead_history_unresolved`. Query estricta: `limit` entero de 1 a 100
+(default 50), `cursor` opcional de hasta 256 caracteres. Cursor base64url con
+registro y secuencia anterior, ligado al mismo registro; campos adicionales,
+identificador, limite o cursor invalidos producen 400. Registro ausente produce
+404; autenticacion y autorizacion conservan sus errores globales.
+
+Respuesta: `record { publicId, entity }`, `items` y
+`pagination { limit, hasNext, nextCursor }`. Cada item contiene `publicId`,
+`sequence`, `recordedAt` UTC, `coverage`, `entry` (campos permitidos de
+historia o null), `actorName` y `actorNameCoverage`. Secuencia descendente,
+sin COUNT/OFFSET; no expone snapshots crudos, IDs legacy ni credenciales.
+
+Implementacion: `audit-read.controller.ts`, `audit-read.service.ts`,
+`audit-read.repository.ts` y `../leads/lead-history-reader.ts`. Solo lee evidencia
+nativa; la consulta federada legacy esta pendiente. No equivale a importacion,
+CRUD comercial o comprobacion actual de contenido en BD; ver [44](44-Bitacora-Legacy-y-Timeline.md).
+
 ### Escritura transaccional del historial
 
 Se reutiliza la columna JSON `audit_security_event.metadata_security_event`;
@@ -586,7 +634,8 @@ No ejecuta DDL, migraciones, adaptadores legacy ni deja registros de negocio.
   metadata cruda ni se modifica el historial existente.
 
 - GET /audit/:publicId carga un detalle bajo demanda, con sesion y role.assign
-  u Owner activo. Valida ULID antes del SELECT; devuelve 400 si es invalido y
+  u Owner activo, siempre sin deny de role.assign. Guard y servicio comparten
+  canReadAudit. Valida ULID antes del SELECT; devuelve 400 si es invalido y
   404 si no existe. /audit/options conserva su ruta estatica.
 - Detalle: publicId, eventType, summary, reason, actorName, targetName,
   createdAt ISO, contexto publico descrito abajo y changeSet. Extrae campos
@@ -598,7 +647,7 @@ No ejecuta DDL, migraciones, adaptadores legacy ni deja registros de negocio.
   [{field,before,after}]. Sin snapshots validos devuelve changeSet:null; no
   reconstruye historia desde datos actuales. La lista no descarga snapshots.
 
-- GET /audit/options requiere sesion y role.assign (o Owner activo). Devuelve
+- GET /audit/options requiere sesion y role.assign (o Owner activo), sin deny de role.assign. Devuelve
   modulos, secciones y catalogos, sin consultar filas de audit_security_event.
 - GET /audit exige moduleCode y sectionCode; catalogCode y search son opcionales.
   limit es 100 por defecto y como maximo 200. No hay consulta global sin alcance.

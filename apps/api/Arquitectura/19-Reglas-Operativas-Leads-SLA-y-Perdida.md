@@ -20,7 +20,13 @@ Para lograrlo, el CRM nuevo no debe depender de numeros ambiguos como `accion_le
 
 Debe usar reglas canonicas, estados legibles, fechas reales, bitacora completa y reportes por vendedor, supervisor, proyecto, motivo y fecha.
 
-## Evidencia del CRM actual
+## Limites de las metricas existentes - 2026-10-23
+
+Las reglas de SLA, pausa y perdida de este documento siguen siendo especificacion funcional; no hay job operativo acreditado por disponer de esquema de Leads. El resumen de Mercadeo cuenta leads creados en un intervalo, no "leads nuevos sin accion significativa" de este dashboard. Sus citas cuentan eventos distintos, no participantes; scheduled/completed no demuestran asistencia. Esa lectura no ejecuta pausa, reactivacion ni perdida automatica ([46](46-Mercadeo-Resumen-Leads.md), [48](48-Mercadeo-Metricas-Citas.md)). Los SQL siguientes son bocetos; el DDL nativo vigente se referencia en [43](43-Leads-Esquema-Nativo.md).
+
+La migracion 034 dejo vacio `conf_calendar_event_type`, sin sembrar Cita ni appointment. El lector de Mercadeo reconoce esos codigos/nombre cuando existen, sin crearlos. La asistencia necesita `progress_calendar_appointment` attended/missed; un evento programado o completado no basta. No hay importacion de calendarios ni accion de agenda habilitada por ese lector.
+
+## Evidencia historica del CRM anterior
 
 Revision read-only de produccion actual:
 

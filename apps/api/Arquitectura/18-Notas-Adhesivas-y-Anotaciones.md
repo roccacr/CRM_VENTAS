@@ -126,7 +126,9 @@ Reglas:
 - `shared_users`: visible para usuarios especificos en tabla de accesos.
 - `system`: nota generada por proceso interno, no editable por usuarios normales.
 
-## Modelo de datos propuesto
+## Modelo de datos propuesto (boceto no ejecutable)
+
+Los CREATE TABLE plurales y FK a `sec_user(id)` de abajo no son esquema aplicado. Antes de aprobar notas deben adaptarse a [26](26-Estandar-Nombres-Base-Datos.md), incluida la PK real `sec_user.id_user`, sufijos y comentarios por columna. No hay runtime de notas acreditado por este documento; no confundirlo con el esquema vacio de calendario [47](47-Calendario-Compartido-Esquema.md).
 
 ### crm_note_types
 

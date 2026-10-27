@@ -3,8 +3,14 @@ import { StrictMode } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
 import { getApprovalCount } from "../../src/services/formalization/approval-summary-service";
+import type * as FollowUpService from "../../src/services/formalization/follow-up-service";
 import { getHomeSummary } from "../../src/services/formalization/home-summary-service";
 
+// Banner tests isolate their source from the independently tested canonical follow-up read.
+vi.mock("../../src/services/formalization/follow-up-service", async (importOriginal) => {
+    const original = await importOriginal<typeof FollowUpService>();
+    return { ...original, getFollowUp: vi.fn().mockResolvedValue({ schemaVersion: 1, observedAt: "2026-10-26T12:00:00Z", filters: { search: "", projectId: "", queue: "all" }, page: { number: 1, size: 25, total: 0, totalPages: 0 }, counts: { all: 0, approvals: 0, contracts: 0, send: 0, signature: 0, bank: 0, balance: 0, transfer: 0, signed: 0, closed: 0 }, projects: [], items: [], sources: { native: { total: 0 }, legacy: { total: 0, enabled: true } } }) };
+});
 vi.mock("../../src/services/formalization/approval-summary-service", () => ({ getApprovalCount: vi.fn() }));
 vi.mock("../../src/services/formalization/home-summary-service", () => ({ getHomeSummary: vi.fn() }));
 const role = { code: "formalizacion", name: "Formalización", status: "active" as const };
@@ -104,7 +110,7 @@ it("shows unavailable rather than zero on source failure", async () => {
     expect(screen.queryByLabelText("Órdenes pendientes de aprobación: 0")).toBeNull();
 });
 
-it("keeps project filtering and an empty recent-activity surface", () => {
+it("keeps unauthorized follow-up disabled and an empty recent-activity surface", () => {
     installBrowserApiDoubles();
     render(<FormalizationHomePage />);
     expect(screen.queryByRole("heading", { name: "Pendientes por proyecto" })).toBeNull();
@@ -112,38 +118,21 @@ it("keeps project filtering and an empty recent-activity surface", () => {
     expect(screen.queryByRole("heading", { name: "Tiempos de gestión bancaria" })).toBeNull();
     expect(screen.queryByText("Duración por orden financiada")).toBeNull();
     expect(screen.getByRole("heading", { name: "Movimientos recientes" })).toBeTruthy();
-    expect(screen.getByRole("combobox", { name: "Filtrar por proyecto" })).toBeTruthy();
+    expect(screen.queryByRole("combobox", { name: "Filtrar por proyecto" })).toBeNull();
     expect(screen.queryAllByRole("button", { name: /^Ver movimiento de/ })).toHaveLength(0);
     expect(screen.getByText("Los movimientos recientes aún no están disponibles.")).toBeTruthy();
 });
 
-it("aligns follow-up select with banners and removes unauthorized approvals including after revocation", () => {
+it("keeps follow-up disabled without the effective stage role and permission even with approval access", () => {
     installBrowserApiDoubles();
     const { rerender } = render(<FormalizationHomePage />);
-    const select = () => screen.getByRole<HTMLSelectElement>("combobox", { name: "Bandeja de seguimiento" });
-    const labels = () => [...select().options].map((option) => option.value);
-    const expected = ["Todas", "Contratos pendientes", "Gestión bancaria", "Pendientes de saldo", "Traspasos pendientes", "Traspaso firmado", "Formalizaciones cerradas este año"];
-    expect(labels()).toEqual(expected);
-    expect(screen.queryByText("Mayor antigüedad primero · Días en la etapa actual")).toBeNull();
-    expect(select().value).toBe("Todas");
-    expect(screen.getByRole("option", { name: "Todas (0)" })).toBeTruthy();
-    fireEvent.change(select(), { target: { value: "Traspaso firmado" } });
-    expect(screen.queryAllByRole("button", { name: /^Ver seguimiento de/ })).toHaveLength(0);
+    expect(screen.queryByRole("combobox", { name: "Bandeja de seguimiento" })).toBeNull();
     const permission = { code: "formalizacion.home.approvals.read", effect: "allow" as const };
     rerender(<FormalizationHomePage effectivePermissions={[permission]} />);
-    expect(labels()).toEqual(["Todas", "Pendientes de aprobación", ...expected.slice(1)]);
-    fireEvent.change(select(), { target: { value: "Pendientes de aprobación" } });
-    expect(screen.getByText("Seguimiento no disponible")).toBeTruthy();
-    rerender(<FormalizationHomePage effectivePermissions={[]} />);
-    expect(labels()).toEqual(expected);
-    expect(select().value).toBe("Todas");
+    expect(screen.queryByRole("combobox", { name: "Bandeja de seguimiento" })).toBeNull();
+    expect(screen.getByText("El seguimiento de órdenes aún no está disponible.")).toBeTruthy();
     expect(screen.queryAllByRole("button", { name: /^Ver seguimiento de/ })).toHaveLength(0);
-    expect(screen.queryByRole("option", { name: "Amara" })).toBeNull();
-    expect(screen.getByRole("option", { name: "Todas (0)" })).toBeTruthy();
-    expect(screen.getByRole("option", { name: "Gestión bancaria (0)" })).toBeTruthy();
-    expect(screen.queryAllByRole("button", { name: /^Ver seguimiento de/ })).toHaveLength(0);
-    fireEvent.change(select(), { target: { value: "Contratos pendientes" } });
-    expect(screen.queryAllByRole("button", { name: /^Ver seguimiento de/ })).toHaveLength(0);
+    expect(screen.queryByRole("option", { name: "Todas (0)" })).toBeNull();
 });
 
 it.each(["role", "override"] as const)("keeps approvals unmounted until an effective %s permission arrives", (source) => {

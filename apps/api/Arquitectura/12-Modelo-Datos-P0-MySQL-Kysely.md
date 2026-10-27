@@ -12,6 +12,10 @@ Importante: este documento describe el modelo objetivo inicial y su vision por f
 
 Importante: los ejemplos SQL antiguos de este documento son conceptuales hasta que se ajusten al estandar oficial de nombres definido en `26-Estandar-Nombres-Base-Datos.md`. Antes de crear migraciones reales, todo nombre de tabla, columna, indice y constraint debe cumplir ese estandar, y toda columna debe incluir `COMMENT` explicando que registra y para que sirve.
 
+## Fuente fisica vigente - 2026-10-23
+
+El DDL aprobado de Leads esta en `migrations/schema-only/202610230031_leads_domain.ts` ([43](43-Leads-Esquema-Nativo.md)): `crm_contact`, `crm_lead`, `conf_lead_status`, `crm_lead_external_reference` y `audit_lead_status_event`, entre otras tablas. Las etapas usan codigos; active/inactive del registro es independiente. Calendario tiene ocho tablas singulares en [SQL/034](SQL/034_calendar_domain.sql), descritas en [47](47-Calendario-Compartido-Esquema.md). Los CREATE TABLE, plurales, columnas `id` sin sufijo y estados sugeridos de abajo son bocetos historicos no ejecutables, no sustitutos de esas fuentes. No implican CRUD comercial, importaciones o sync. Los lectores autorizados existentes se inventarian en [49](49-Estado-Actual-y-Cierre-Documental.md).
+
 ## Reglas no negociables
 
 - MySQL/InnoDB.
@@ -37,7 +41,7 @@ La regla transversal de identidad interna y referencias externas vive en `30-Ide
 - Todas las columnas con `COMMENT` obligatorio en MySQL.
 - Normalizacion obligatoria por defecto: no repetir datos, no mezclar responsabilidades y no usar `JSON` para datos que se filtran, relacionan o auditan.
 - PK internas: `BIGINT UNSIGNED AUTO_INCREMENT`.
-- Identificador publico: `public_id_<entidad> CHAR(26)` con ULID o equivalente.
+- Identificador publico nativo: `public_id_<entidad> CHAR(26)` con ULID; no reemplazarlo por ID externo ni inferir que una clave adaptada legacy sea una PK nativa.
 - Fechas: `created_at_<entidad>`, `updated_at_<entidad>`, `deleted_at_<entidad>`.
 - Borrado logico para entidades principales.
 - Estados y tipos en catalogos.
@@ -45,9 +49,13 @@ La regla transversal de identidad interna y referencias externas vive en `30-Ide
 - Indices compuestos por casos reales de consulta.
 - `JSON` solo para metadata no critica y no filtrada frecuentemente.
 
-## Inventario de datos por fases
+## Plan historico de datos por fases
 
-Para evitar sobreconstruccion, las tablas se clasifican asi:
+La clasificacion original siguiente evita sobreconstruccion, pero no es el
+inventario instalado: 031 ya preparo Leads y 034 calendario vacio por ampliaciones
+expresas. 032 conserva estructura de historia sin la copia retirada; 033 sigue
+sin aplicar segun el snapshot consolidado en 49. Estas excepciones no adelantan
+escritores, workers ni sincronizacion de las fases propuestas:
 
 | Fase | Tablas |
 | --- | --- |
@@ -509,7 +517,7 @@ src/modules/crm/audit/infrastructure/kysely-audit.repository.ts
 src/modules/crm/integration-events/infrastructure/kysely-outbox.repository.ts [Opcional P0-S1]
 ```
 
-## Regla para el siguiente paso
+## Regla para el siguiente slice comercial futuro
 
 Antes de escribir codigo NestJS se debe convertir el slice aprobado en:
 

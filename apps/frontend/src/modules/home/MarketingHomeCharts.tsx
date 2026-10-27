@@ -30,17 +30,25 @@ export function SparkArea({ values }: { readonly values: readonly number[] }) {
 
 interface AreaChartProps {
     readonly title: string;
-    readonly subtitle: string;
     readonly buckets: readonly MarketingBucket[];
     readonly comparisonLabel: string;
+    readonly currentLabel?: string;
     readonly unit: string;
 }
 
-/** Gridline values: four steps, or one per unit when the axis is tiny so labels stay whole numbers. */
-const axisTicks = (maximum: number): number[] => Array.from({ length: Math.min(maximum, 4) + 1 }, (_, index) => (maximum * index) / Math.min(maximum, 4));
+/** Gridline values: the first step count that splits the axis into whole numbers, or one per unit when the axis is tiny. */
+const axisTicks = (maximum: number): number[] => {
+    const steps = maximum < 4 ? maximum : ([4, 5, 2].find((count) => maximum % count === 0) ?? 4);
+    return Array.from({ length: steps + 1 }, (_, index) => (maximum * index) / steps);
+};
 
-/** Axis labels thin out on long series so they never overlap. */
+/** Axis labels thin out on long series so they never overlap, and the last one never crowds its neighbour. */
 const labelStep = (count: number): number => Math.ceil(count / 8);
+const showsLabel = (index: number, count: number): boolean => {
+    const step = labelStep(count);
+    const last = count - 1;
+    return index === last || (index % step === 0 && last - index >= Math.ceil(step / 2));
+};
 
 /** Which point is under the pointer or the keyboard cursor; null when none is. */
 function useChartCursor(count: number) {
@@ -84,7 +92,7 @@ function ChartReadout({ bucket, point }: { readonly bucket: MarketingBucket | nu
 }
 
 /** The main chart: leads over time against the comparison, with a hover or keyboard read-out for every point. */
-export function LeadsAreaChart({ title, subtitle, buckets, comparisonLabel, unit }: AreaChartProps) {
+export function LeadsAreaChart({ title, buckets, comparisonLabel, currentLabel = "Periodo seleccionado", unit }: AreaChartProps) {
     const headingId = useSvgId("area-title");
     const gradient = useSvgId("area-fill");
     const { active, clear, pick, move } = useChartCursor(buckets.length);
@@ -106,17 +114,28 @@ export function LeadsAreaChart({ title, subtitle, buckets, comparisonLabel, unit
     const focused = active === null ? null : (buckets[active] ?? null);
     const marker = active === null ? null : (current[active] ?? null);
 
+    if (buckets.length === 0)
+        return (
+            <section id="marketing-preview-movement" className="marketing-card marketing-area" aria-labelledby={headingId}>
+                <div className="marketing-card__heading">
+                    <div>
+                        <h2 id={headingId}>{title}</h2>
+                    </div>
+                </div>
+                <p className="marketing-preview-empty marketing-area__empty">Información pendiente para mostrar el gráfico.</p>
+            </section>
+        );
+
     return (
         <section id="marketing-preview-movement" className="marketing-card marketing-area" aria-labelledby={headingId}>
             <div className="marketing-card__heading">
                 <div>
                     <h2 id={headingId}>{title}</h2>
-                    <p>{subtitle}</p>
                 </div>
                 <ul className="marketing-legend" aria-label="Leyenda">
                     <li>
                         <i className="marketing-legend__leads" aria-hidden="true" />
-                        Periodo elegido
+                        {currentLabel}
                     </li>
                     <li>
                         <i className="marketing-legend__compared" aria-hidden="true" />
@@ -125,16 +144,7 @@ export function LeadsAreaChart({ title, subtitle, buckets, comparisonLabel, unit
                 </ul>
             </div>
             <div className="marketing-area__frame">
-                <div
-                    className="marketing-area__plot"
-                    role="group"
-                    tabIndex={0}
-                    aria-label={`Gráfico de leads por ${unit}. Usa las flechas para recorrer cada punto.`}
-                    onPointerMove={pick}
-                    onPointerLeave={clear}
-                    onKeyDown={move}
-                    onBlur={clear}
-                >
+                <div className="marketing-area__plot" role="group" tabIndex={0} aria-label={`Gráfico de leads por ${unit}. Usa las flechas para recorrer cada punto.`} onPointerMove={pick} onPointerLeave={clear} onKeyDown={move} onBlur={clear}>
                     {ticks.map((tick) => (
                         <div key={tick} className="marketing-area__grid" style={{ top: `${String((1 - tick / maximum) * 100)}%` }}>
                             <span>{countFormat.format(Math.round(tick))}</span>
@@ -154,7 +164,13 @@ export function LeadsAreaChart({ title, subtitle, buckets, comparisonLabel, unit
                     <ChartReadout bucket={focused} point={marker} />
                 </div>
                 <div className="marketing-area__axis" aria-hidden="true">
-                    {buckets.map((bucket, index) => (index % labelStep(buckets.length) === 0 || index === lastIndex ? <span key={bucket.label + String(index)} style={{ left: `${String(lastIndex ? (index / lastIndex) * 100 : 50)}%` }}>{bucket.label}</span> : null))}
+                    {buckets.map((bucket, index) =>
+                        showsLabel(index, buckets.length) ? (
+                            <span key={bucket.label + String(index)} style={{ left: `${String(lastIndex ? (index / lastIndex) * 100 : 50)}%` }}>
+                                {bucket.label}
+                            </span>
+                        ) : null,
+                    )}
                 </div>
             </div>
             <p className="marketing-sr-only" aria-live="polite">
@@ -165,8 +181,8 @@ export function LeadsAreaChart({ title, subtitle, buckets, comparisonLabel, unit
                 <thead>
                     <tr>
                         <th scope="col">{unit}</th>
-                        <th scope="col">Leads</th>
-                        <th scope="col">Comparación</th>
+                        <th scope="col">{currentLabel}</th>
+                        <th scope="col">{comparisonLabel}</th>
                     </tr>
                 </thead>
                 <tbody>

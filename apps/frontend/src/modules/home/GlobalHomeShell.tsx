@@ -321,8 +321,7 @@ export const ASSIGNED_WORKSPACES: readonly [WorkspaceProfile, ...WorkspaceProfil
         menuItems: [
             { code: "marketing-home", label: "Inicio", icon: <DashboardOutlined />, requiredPermission: "mercadeo.home.read", routePath: MARKETING_HOME_PATH },
             // Section permissions control visibility; business views and actions remain future scope.
-            { code: "marketing-leads", label: "Captación de leads", icon: <FunnelPlotOutlined />, requiredPermission: "mercadeo.leads.read" },
-            { code: "marketing-appointments", label: "Eventos y citas", icon: <TeamOutlined />, requiredPermission: "mercadeo.appointments.read" },
+            { code: "marketing-leads", label: "Captación de leads", icon: <FunnelPlotOutlined />, requiredPermission: "mercadeo.leads.read", routePath: "/home/marketing/leads" },
             { code: "marketing-calendar", label: "Calendario", icon: <CalendarOutlined />, requiredPermission: "mercadeo.calendar.read" },
             { code: "marketing-catalogs", label: "Catálogos", icon: <DatabaseOutlined />, children: buildCatalogMenuOptions("marketing") },
         ],

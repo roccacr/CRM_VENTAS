@@ -128,12 +128,16 @@ const clearCsrfToken = (): void => {
 
 /** Pide `/identity/session` solo para obtener el CSRF. No abre el shell ni guarda la sesión en estado de React. */
 const fetchIdentitySessionForCsrf = async (): Promise<void> => {
+    const generation = sessionGeneration;
     const response = await fetch(buildApiUrl(IDENTITY_SESSION_PATH), {
         cache: "no-store",
         credentials: "include",
         method: "GET",
     });
     const responseBody = await parseResponseBody(response);
+
+    // An older preflight must not replace the proof belonging to a newer login.
+    assertCurrentIdentityResponse(IDENTITY_REFRESH_PATH, generation);
 
     if (!response.ok) {
         throw new ApiClientError((response.status === 409 ? readConflictMessage(responseBody) : null) ?? `Request BFF falló con estado ${String(response.status)}.`, response.status, responseBody);
@@ -221,16 +225,24 @@ const executeApiRequest = async <TResponse>(path: string, options: ApiRequestOpt
 /**
  * Renueva la sesión una sola vez aunque varias llamadas reciban 401 juntas.
  *
- * El propio refresh no se reintenta: si falla, la promesa compartida se limpia
+ * Si CSRF rechaza el refresh, relee la prueba y lo intenta una sola vez.
+ * Las cookies pueden haber vencido o rotado en otra pestana. Si falla, la promesa compartida se limpia
  * y cada llamada original sigue con su error.
  */
 export const refreshAuthenticatedSession = async (): Promise<void> => {
     if (!refreshFlight || refreshFlight.generation !== sessionGeneration) {
         const generation = sessionGeneration;
-        const promise = executeApiRequest<unknown>(IDENTITY_REFRESH_PATH, {
-            method: "POST",
-            retryOnUnauthorized: false,
-        })
+        const promise = executeApiRequest<unknown>(IDENTITY_REFRESH_PATH, { method: "POST", retryOnUnauthorized: false })
+            .catch(async (error: unknown) => {
+                if (!(error instanceof ApiClientError) || error.status !== 403) throw error;
+                assertCurrentIdentityResponse(IDENTITY_REFRESH_PATH, generation);
+                await fetchIdentitySessionForCsrf();
+                assertCurrentIdentityResponse(IDENTITY_REFRESH_PATH, generation);
+                return executeApiRequest<unknown>(IDENTITY_REFRESH_PATH, {
+                    method: "POST",
+                    retryOnUnauthorized: false,
+                });
+            })
             .then(() => {
                 assertCurrentIdentityResponse(IDENTITY_REFRESH_PATH, generation);
                 sessionGeneration += 1;

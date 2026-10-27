@@ -1,5 +1,15 @@
 # Plan correctivo de auditoria CRM TINK
 
+## Continuidad documental - 2026-10-23
+
+El [corte consolidado 49](49-Estado-Actual-y-Cierre-Documental.md) actualiza el
+producto despues de estos planes: roles/modulos, 43 perfiles/Ventas, esquemas
+Leads/calendario y lecturas de Home Formalizacion/Mercadeo. Este trabajo solo
+documental no marca casillas tecnicas como resueltas, no genera nota nueva ni
+repite los checks historicos. Q05, CI remoto y validacion operacional siguen
+requiriendo evidencia propia. Los resultados posteriores F01-F13 conservan
+su fuente y fecha en la reauditoria; no mezclar sus IDs con los de este plan.
+
 Estado: remediacion parcial verificada al 2026-10-22. Ver el informe de esta
 entrega en [Reauditoria-54-Plan-y-Resultados.md](Reauditoria-54-Plan-y-Resultados.md).
 Una casilla pendiente no representa

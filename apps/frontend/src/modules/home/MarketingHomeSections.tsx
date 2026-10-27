@@ -1,14 +1,6 @@
 import { countFormat, describeChange, type MarketingDelta, percentFormat } from "./marketing-home-format";
-import {
-    type groupMarketingSample,
-    MARKETING_DIMENSIONS,
-    MARKETING_MIN_SAMPLE,
-    type MarketingAlert,
-    type MarketingDimension,
-    type matrixMarketingSample,
-    relativeChange,
-    type summarizeMarketingSample,
-} from "./marketing-home-preview.model";
+import { type groupMarketingSample, MARKETING_DIMENSIONS, MARKETING_MIN_SAMPLE, type MarketingAlert, type MarketingDimension, type matrixMarketingSample, relativeChange, type summarizeMarketingSample } from "./marketing-home-preview.model";
+import { InfoHint } from "./MarketingInfoHint";
 
 type Totals = ReturnType<typeof summarizeMarketingSample>;
 
@@ -18,7 +10,7 @@ export function DeltaText({ delta, context }: { readonly delta: MarketingDelta |
     return (
         <span className={`marketing-delta marketing-delta--${delta.direction}`}>
             {delta.text}
-            {context && <span className="marketing-delta__context"> vs. {context}</span>}
+            {context && <span className="marketing-delta__context"> {context}</span>}
         </span>
     );
 }
@@ -36,11 +28,14 @@ function Sparkline({ values }: { readonly values: readonly number[] }) {
 }
 
 /** Shown only when something needs a look; when everything is within range the block does not exist. */
-export function MarketingAlerts({ alerts }: { readonly alerts: readonly MarketingAlert[] }) {
+export function MarketingAlerts({ alerts, comparison }: { readonly alerts: readonly MarketingAlert[]; readonly comparison?: { current: string; previous: string } }) {
     if (alerts.length === 0) return null;
     return (
-        <section className="marketing-alerts" aria-label="Atención">
-            <h2>Atención</h2>
+        <section className="marketing-alerts" aria-label="Resultados para revisar">
+            <h2>
+                {alerts.every((alert) => alert.key.startsWith("project:")) ? "Proyectos con menos leads" : "Resultados para revisar"}
+                <InfoHint label="avisos">{`Hasta tres avisos, de mayor a menor caída.${comparison ? ` Compara ${comparison.current} con ${comparison.previous}.` : ""} Respeta los vendedores y proyectos elegidos.`}</InfoHint>
+            </h2>
             <ul>
                 {alerts.map((alert) => (
                     <li key={alert.key}>{alert.text}</li>

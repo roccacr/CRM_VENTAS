@@ -1,6 +1,6 @@
 import "@testing-library/jest-dom/vitest";
 
-import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { niceMaximum, smoothPath, toPoints } from "../../src/modules/home/marketing-chart-geometry";
@@ -10,22 +10,23 @@ import {
     canAdvanceMarketingSelection,
     emptyMarketingFilters,
     groupMarketingSample,
-    horizonLeads,
-    MARKETING_SAMPLE,
+    horizonLeads as horizonLeadsForRows,
     type MarketingSelection,
     matrixMarketingSample,
     parseISODate,
-    projectsForSeller,
-    recentWithoutAppointmentSeries,
+    projectsForSeller as projectsForSellerForRows,
+    recentWithoutAppointmentSeries as recentWithoutAppointmentSeriesForRows,
     resolveMarketingComparison,
     resolveMarketingPeriod,
-    resolveMarketingView,
+    resolveMarketingView as resolveMarketingViewForRows,
     shiftMarketingSelection,
     summarizeMarketingSample,
     toISODate,
 } from "../../src/modules/home/marketing-home-preview.model";
-import { MarketingHomePage } from "../../src/modules/home/MarketingHomePage";
+import { MarketingHomeDashboard as MarketingHomePage } from "../../src/modules/home/MarketingHomePage";
 import type { IdentityUser } from "../../src/services/auth/identity-contracts";
+import { MARKETING_SAMPLE } from "./fixtures/marketing-sample";
+import { marketingOptions, selectedMarketingValues, selectMarketing } from "./marketing-select.helpers";
 
 afterEach(() => {
     cleanup();
@@ -33,6 +34,10 @@ afterEach(() => {
     vi.unstubAllGlobals();
 });
 
+const resolveMarketingView = (filters: Parameters<typeof resolveMarketingViewForRows>[0], today?: Date) => resolveMarketingViewForRows(filters, today, MARKETING_SAMPLE);
+const horizonLeads = (filters: Parameters<typeof horizonLeadsForRows>[0], today?: Date) => horizonLeadsForRows(filters, today, MARKETING_SAMPLE);
+const recentWithoutAppointmentSeries = (filters: Parameters<typeof recentWithoutAppointmentSeriesForRows>[0], today?: Date) => recentWithoutAppointmentSeriesForRows(filters, today, MARKETING_SAMPLE);
+const projectsForSeller = (seller: string) => projectsForSellerForRows(seller, MARKETING_SAMPLE);
 const user = { displayName: "Vista previa", email: "preview@example.test" } as IdentityUser;
 /** Friday 23 October 2026, so weeks and months in progress are exercised. */
 const TODAY = new Date(2026, 9, 23);
@@ -59,8 +64,9 @@ describe("Marketing sample model", () => {
 
     it("assigns each seller to a subset of projects", () => {
         expect(projectsForSeller("")).toEqual(["Proyecto Centro", "Proyecto Norte", "Proyecto Parque"]);
-        expect(projectsForSeller("Asesor A")).toEqual(["Proyecto Norte", "Proyecto Parque"]);
-        expect(projectsForSeller("Asesor C")).toEqual(["Proyecto Centro", "Proyecto Parque"]);
+        expect(projectsForSeller("Dayan")).toEqual(["Proyecto Norte", "Proyecto Parque"]);
+        expect(projectsForSeller("Valeria")).toEqual(["Proyecto Centro", "Proyecto Norte"]);
+        expect(projectsForSeller("Marlon")).toEqual(["Proyecto Centro", "Proyecto Parque"]);
     });
 });
 
@@ -233,59 +239,105 @@ describe("Marketing chart geometry", () => {
 describe("Marketing Home summary", () => {
     const monthView = () => resolveMarketingView({ ...emptyMarketingFilters(), selection: { ...emptyMarketingFilters().selection, mode: "month" } });
 
-    it("opens on the current month, identifies fictional data and never fetches", () => {
+    it("opens on the current month with explicitly supplied test rows and never fetches", () => {
         const fetch = vi.fn();
         vi.stubGlobal("fetch", fetch);
-        render(<MarketingHomePage currentUser={user} />);
-        expect(screen.getByText(/Datos de demostración/)).toBeInTheDocument();
-        expect(screen.getByText(/Sin conexión a API/)).toBeInTheDocument();
+        render(<MarketingHomePage currentUser={user} rows={MARKETING_SAMPLE} />);
+        expect(screen.queryByText(/Datos de demostración/)).not.toBeInTheDocument();
+        expect(screen.queryByText(/Sin conexión a API/)).not.toBeInTheDocument();
         expect(screen.getByRole("button", { name: "Mes" })).toHaveAttribute("aria-pressed", "true");
         const totals = summarizeMarketingSample(monthView().rows);
-        expect(screen.getByLabelText(`Leads captados: ${number(totals.leads)}`)).toBeInTheDocument();
+        expect(screen.getByLabelText(`Leads: ${number(totals.leads)}`)).toBeInTheDocument();
         expect(fetch).not.toHaveBeenCalled();
     });
 
-    it("keeps only the period and the seller as controls", () => {
-        render(<MarketingHomePage currentUser={user} />);
+    it("keeps only the period, the seller and the project as controls", () => {
+        render(<MarketingHomePage currentUser={user} rows={MARKETING_SAMPLE} />);
         for (const label of ["Hoy", "Semana", "Mes", "Año"]) expect(screen.getByRole("button", { name: label })).toBeInTheDocument();
-        expect(screen.getByRole("combobox", { name: "Vendedor" })).toBeInTheDocument();
-        for (const label of ["Proyecto", "Campaña", "Anuncio", "Comparar con"]) expect(screen.queryByRole("combobox", { name: label })).not.toBeInTheDocument();
+        for (const label of ["Vendedor", "Proyecto"]) expect(screen.getByRole("combobox", { name: label })).toBeInTheDocument();
+        for (const label of ["Campaña", "Anuncio", "Comparar con"]) expect(screen.queryByRole("combobox", { name: label })).not.toBeInTheDocument();
+    });
+
+    it("offers every project by default and only the assigned ones once a seller is chosen", async () => {
+        render(<MarketingHomePage currentUser={user} rows={MARKETING_SAMPLE} />);
+        const options = () => marketingOptions("Proyecto");
+        expect(selectedMarketingValues("Proyecto")).toEqual([]);
+        expect(options()).toEqual(projectsForSeller(""));
+        await selectMarketing("Vendedor", "Valeria");
+        await waitFor(() => {
+            expect(options()).toEqual(projectsForSeller("Valeria"));
+        });
+        expect(options()).not.toContain("Proyecto Parque");
+    });
+
+    it("narrows the whole page to one project and puts it back with Todos", async () => {
+        render(<MarketingHomePage currentUser={user} rows={MARKETING_SAMPLE} />);
+        const filters = (project: string, seller = "") => ({ ...emptyMarketingFilters(), seller, project, selection: { ...emptyMarketingFilters().selection, mode: "month" as const } });
+        const all = summarizeMarketingSample(resolveMarketingView(filters("")).rows).leads;
+        const norte = summarizeMarketingSample(resolveMarketingView(filters("Proyecto Norte")).rows).leads;
+        expect(norte).toBeLessThan(all);
+        await selectMarketing("Proyecto", "Proyecto Norte");
+        expect(screen.getByLabelText(`Leads: ${number(norte)}`)).toBeInTheDocument();
+        expect(within(screen.getByRole("region", { name: "Leads por proyecto" })).getAllByRole("article")).toHaveLength(1);
+        expect(screen.getByText("Captación de leads y citas · Proyecto Norte")).toBeInTheDocument();
+        const ranking = screen.getByRole("region", { name: "Leads por vendedor" });
+        const sellers = within(ranking).getAllByRole("button");
+        expect(sellers.length).toBeLessThanOrEqual(4);
+        await selectMarketing("Proyecto", "");
+        expect(screen.getByLabelText(`Leads: ${number(all)}`)).toBeInTheDocument();
+        expect(within(screen.getByRole("region", { name: "Leads por proyecto" })).getAllByRole("article")).toHaveLength(3);
+    });
+
+    it("combines seller and project, and drops a project the new seller does not work on", async () => {
+        render(<MarketingHomePage currentUser={user} rows={MARKETING_SAMPLE} />);
+        await selectMarketing("Vendedor", "Marlon");
+        await selectMarketing("Proyecto", "Proyecto Parque");
+        const both = summarizeMarketingSample(resolveMarketingView({ ...emptyMarketingFilters(), seller: "Marlon", project: "Proyecto Parque", selection: { ...emptyMarketingFilters().selection, mode: "month" } }).rows).leads;
+        expect(screen.getByLabelText(`Leads: ${number(both)}`)).toBeInTheDocument();
+        expect(screen.getByText("Vendedor · Proyecto Parque")).toBeInTheDocument();
+        await selectMarketing("Vendedor", "Valeria");
+        expect(selectedMarketingValues("Proyecto")).toEqual([]);
+        await selectMarketing("Proyecto", "Proyecto Norte");
+        await selectMarketing("Vendedor", "Gabriel");
+        expect(selectedMarketingValues("Proyecto")).toEqual(["Proyecto Norte"]);
+        await selectMarketing("Vendedor", "");
+        expect(selectedMarketingValues("Proyecto")).toEqual(["Proyecto Norte"]);
     });
 
     it("draws a trend inside each of the four cards", () => {
-        render(<MarketingHomePage currentUser={user} />);
-        for (const title of ["Leads captados", "% de leads con cita", "Citas realizadas", "Leads sin cita (últimos 7 días)"]) {
+        render(<MarketingHomePage currentUser={user} rows={MARKETING_SAMPLE} />);
+        for (const title of ["Leads", "Leads con cita", "Citas completadas", "Leads sin cita · 7 días"]) {
             const card = screen.getByRole("heading", { name: title }).closest("article") as HTMLElement;
             expect(card.querySelector("svg.marketing-spark")).not.toBeNull();
         }
         for (const title of ["Citas agendadas", "Citas pendientes", "Asistencia a citas"]) expect(screen.queryByRole("heading", { name: title })).not.toBeInTheDocument();
-        const visits = screen.getByRole("heading", { name: "Citas realizadas" }).closest("article") as HTMLElement;
+        const visits = screen.getByRole("heading", { name: "Citas completadas" }).closest("article") as HTMLElement;
         expect(visits).not.toHaveTextContent(/▼|▲/);
     });
 
     it("puts the lead card on the left and the greeting on the right, as Formalization does", () => {
-        render(<MarketingHomePage currentUser={user} />);
-        const leads = screen.getByRole("heading", { name: "Leads captados" }).closest("article") as HTMLElement;
+        render(<MarketingHomePage currentUser={user} rows={MARKETING_SAMPLE} />);
+        const leads = screen.getByRole("heading", { name: "Leads" }).closest("article") as HTMLElement;
         const greeting = screen.getByRole("region", { name: "Bienvenida a Mercadeo" });
         expect(leads.compareDocumentPosition(greeting) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     });
 
     it("changes the whole page with the period", () => {
-        render(<MarketingHomePage currentUser={user} />);
+        render(<MarketingHomePage currentUser={user} rows={MARKETING_SAMPLE} />);
         expect(screen.getByRole("heading", { name: "Leads del mes" })).toBeInTheDocument();
         fireEvent.click(screen.getByRole("button", { name: "Hoy" }));
         expect(screen.getByRole("heading", { name: "Leads de los últimos 7 días" })).toBeInTheDocument();
         const today = summarizeMarketingSample(resolveMarketingView({ ...emptyMarketingFilters() }).rows);
-        expect(screen.getByLabelText(`Leads captados: ${number(today.leads)}`)).toBeInTheDocument();
+        expect(screen.getByLabelText(`Leads: ${number(today.leads)}`)).toBeInTheDocument();
         fireEvent.click(screen.getByRole("button", { name: "Semana" }));
         expect(screen.getByRole("heading", { name: "Leads de la semana" })).toBeInTheDocument();
         fireEvent.click(screen.getByRole("button", { name: "Año" }));
         expect(screen.getByRole("heading", { name: "Leads del año, mes a mes" })).toBeInTheDocument();
-        expect(screen.getAllByText(/vs\. el año pasado/).length).toBeGreaterThanOrEqual(1);
+        expect(screen.getAllByText(/vs\. año pasado/).length).toBeGreaterThanOrEqual(1);
     });
 
     it("reads each point of the chart with the keyboard", () => {
-        render(<MarketingHomePage currentUser={user} />);
+        render(<MarketingHomePage currentUser={user} rows={MARKETING_SAMPLE} />);
         const plot = screen.getByRole("group", { name: /Gráfico de leads por día/ });
         expect(plot.querySelector(".marketing-area__tooltip")).toBeNull();
         fireEvent.keyDown(plot, { key: "ArrowLeft" });
@@ -297,7 +349,7 @@ describe("Marketing Home summary", () => {
     });
 
     it("shows one card per project with today, week, month and year", () => {
-        render(<MarketingHomePage currentUser={user} />);
+        render(<MarketingHomePage currentUser={user} rows={MARKETING_SAMPLE} />);
         const section = screen.getByRole("region", { name: "Leads por proyecto" });
         const cards = within(section).getAllByRole("article");
         expect(cards).toHaveLength(3);
@@ -306,40 +358,67 @@ describe("Marketing Home summary", () => {
         expect(total).toBe(summarizeMarketingSample(monthView().rows).leads);
     });
 
-    it("shows only the projects and leads of the chosen seller, picked from the select or the ranking", () => {
-        render(<MarketingHomePage currentUser={user} />);
-        fireEvent.change(screen.getByRole("combobox", { name: "Vendedor" }), { target: { value: "Asesor C" } });
+    it("shows only the projects and leads of the chosen seller, picked from the select or the ranking", async () => {
+        render(<MarketingHomePage currentUser={user} rows={MARKETING_SAMPLE} />);
+        await selectMarketing("Vendedor", "Marlon");
         const section = screen.getByRole("region", { name: "Leads por proyecto" });
-        expect(within(section).getAllByRole("article")).toHaveLength(projectsForSeller("Asesor C").length);
-        expect(screen.getByText(/Proyectos asignados a Asesor C/)).toBeInTheDocument();
-        const seller = summarizeMarketingSample(resolveMarketingView({ ...emptyMarketingFilters(), seller: "Asesor C", selection: { ...emptyMarketingFilters().selection, mode: "month" } }).rows);
-        expect(screen.getByLabelText(`Leads captados: ${number(seller.leads)}`)).toBeInTheDocument();
+        expect(within(section).getAllByRole("article")).toHaveLength(projectsForSeller("Marlon").length);
+        fireEvent.mouseEnter(within(section).getByRole("button", { name: "Qué significa: leads por proyecto" }));
+        expect(await screen.findByText(/Leads de Marlon, agrupados por proyecto/)).toBeInTheDocument();
+        const seller = summarizeMarketingSample(resolveMarketingView({ ...emptyMarketingFilters(), seller: "Marlon", selection: { ...emptyMarketingFilters().selection, mode: "month" } }).rows);
+        expect(screen.getByLabelText(`Leads: ${number(seller.leads)}`)).toBeInTheDocument();
         const ranking = screen.getByRole("region", { name: "Leads por vendedor" });
-        expect(within(ranking).getByRole("button", { name: /Asesor C/ })).toHaveAttribute("aria-pressed", "true");
-        fireEvent.click(within(ranking).getByRole("button", { name: /Asesor C/ }));
-        expect(screen.getByRole("combobox", { name: "Vendedor" })).toHaveValue("");
-        fireEvent.click(within(ranking).getByRole("button", { name: /Asesor B/ }));
-        expect(screen.getByRole("combobox", { name: "Vendedor" })).toHaveValue("Asesor B");
+        expect(within(ranking).getByRole("button", { name: /Marlon/ })).toHaveAttribute("aria-pressed", "true");
+        fireEvent.click(within(ranking).getByRole("button", { name: /Marlon/ }));
+        expect(selectedMarketingValues("Vendedor")).toEqual([]);
+        fireEvent.click(within(ranking).getByRole("button", { name: /Gabriel/ }));
+        expect(selectedMarketingValues("Vendedor")).toEqual(["Gabriel"]);
     });
 
-    it("keeps the full ranking visible while a seller is chosen", () => {
-        render(<MarketingHomePage currentUser={user} />);
-        fireEvent.change(screen.getByRole("combobox", { name: "Vendedor" }), { target: { value: "Asesor A" } });
+    it("keeps the team illustration without hardcoded seller photos", async () => {
+        render(<MarketingHomePage currentUser={user} rows={MARKETING_SAMPLE} />);
+        const welcome = screen.getByRole("region", { name: "Bienvenida a Mercadeo" });
+        await selectMarketing("Vendedor", "Dayan");
+        expect(within(welcome).getByText("Dayan", { selector: ".marketing-welcome__title" })).toBeInTheDocument();
+        expect(welcome.querySelector("img.marketing-welcome__photo")).toBeNull();
+        expect(welcome.querySelector("img.marketing-welcome__art")).toHaveAttribute("src", expect.stringContaining("rocca-marketing-generated.png"));
+    });
+    it("keeps the full ranking visible while a seller is chosen", async () => {
+        render(<MarketingHomePage currentUser={user} rows={MARKETING_SAMPLE} />);
+        await selectMarketing("Vendedor", "Dayan");
         const ranking = screen.getByRole("region", { name: "Leads por vendedor" });
-        expect(within(ranking).getAllByRole("button")).toHaveLength(3);
+        expect(within(ranking).getAllByRole("button", { name: /^(?!Qué significa)/ })).toHaveLength(4);
     });
 
     it("shows no alerts on a single day", () => {
-        render(<MarketingHomePage currentUser={user} />);
+        render(<MarketingHomePage currentUser={user} rows={MARKETING_SAMPLE} />);
         fireEvent.click(screen.getByRole("button", { name: "Hoy" }));
-        expect(screen.queryByRole("region", { name: "Atención" })).not.toBeInTheDocument();
+        expect(screen.queryByRole("region", { name: "Resultados para revisar" })).not.toBeInTheDocument();
     });
 
-    it("never triggers React list-key warnings while the period and seller change", () => {
+    it("never triggers React list-key warnings while the period and seller change", async () => {
         const errors = vi.spyOn(console, "error").mockImplementation(() => undefined);
-        render(<MarketingHomePage currentUser={user} />);
+        render(<MarketingHomePage currentUser={user} rows={MARKETING_SAMPLE} />);
         for (const mode of ["Hoy", "Semana", "Año", "Mes"]) fireEvent.click(screen.getByRole("button", { name: mode }));
-        for (const seller of ["Asesor A", "Asesor B", "Asesor C", ""]) fireEvent.change(screen.getByRole("combobox", { name: "Vendedor" }), { target: { value: seller } });
+        for (const seller of ["Dayan", "Gabriel", "Marlon", ""]) await selectMarketing("Vendedor", seller);
         expect(errors.mock.calls.filter((call) => String(call[0]).includes('unique "key"'))).toEqual([]);
     });
+});
+
+it("prioritizes the largest absolute loss and includes both lead counts in alerts", () => {
+    const today = parseISODate("2026-10-26") as Date;
+    const initial = emptyMarketingFilters(today);
+    const filters = { ...initial, selection: { ...initial.selection, mode: "month" as const } };
+    const base = { seller: "Seller", campaign: "", ad: "", withAppointment: 0, appointments: 0, attended: 0, missed: 0 };
+    const current = [134, 109, 87, 49];
+    const previous = [344, 338, 218, 635];
+    const rows = current.flatMap((leads, index) => [
+        { ...base, project: `p${String(index)}`, projectName: `Proyecto ${String(index)}`, daysAgo: 0, leads },
+        { ...base, project: `p${String(index)}`, projectName: `Proyecto ${String(index)}`, daysAgo: 30, leads: previous[index] as number },
+    ]);
+    const alerts = alertMarketingSample(resolveMarketingViewForRows(filters, today, rows));
+    expect(alerts[0]?.key).toBe("project:p3");
+    expect(alerts[0]?.text).toContain("586 leads menos");
+    expect(alerts[0]?.text).toContain("49");
+    expect(alerts[0]?.text).toContain("635");
 });

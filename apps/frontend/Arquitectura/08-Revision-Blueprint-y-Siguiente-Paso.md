@@ -1,8 +1,10 @@
 # 08 - Revision del Blueprint y Siguiente Paso Frontend
 
+Estado implementado 2026-10-27: [30 - Estado frontend verificado](30-Estado-Frontend-Verificado.md). Los ejemplos de fases futuras siguientes no sustituyen los reportes conectados ni los comandos acotados ya presentes.
+
 ## Vigencia documental - 2026-10-22, corte f2dc4f1
 
-El veredicto inicial de identidad es historico. Ya existen Usuarios (directorio, alta/edicion y estado), Roles y seguridad, Auditoria y catalogos conectados al BFF. El alcance y pendientes actuales estan en [27](27-Entrega-Administracion-y-QA.md). Formalizacion combina contador autorizado real, indicadores provisionales y simulaciones separadas; Inicio/seguimiento/movimientos muestran indisponibilidad sin fuente. Ver [29 - Remediacion](29-Navegacion-Recuperacion-y-Seguimiento.md). Leads sigue siendo alcance futuro, no habilitado por este antecedente.
+El veredicto inicial de identidad es historico. Ya existen Usuarios, Roles y seguridad, Auditoria y catalogos BFF. Actualizacion 2026-10-23: Formalizacion tiene aprobaciones y seis banners de etapas conectados; seguimiento/movimientos siguen indisponibles y las simulaciones quedan separadas. Mercadeo / Inicio consume resumen canonico de leads/citas disponibles. Inventario y pendientes: [27](27-Entrega-Administracion-y-QA.md). CRUD visual de leads sigue futuro.
 
 ## Veredicto historico de la compuerta inicial
 

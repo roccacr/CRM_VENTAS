@@ -1,16 +1,31 @@
 # 11 - Contrato Canonico y Normalizacion
 
+## Contratos implementados que complementan el blueprint - 2026-10-27
+
+[22](22-Mapa-de-Implementacion-API.md) inventaria las rutas registradas y sus
+archivos de contrato. Captacion devuelve agregados diarios y catalogos canonicos
+con IDs estables, fuente y calidad; no serializa contactos de clientes.
+Seguimiento devuelve una proyeccion autorizada de orden, no una fila legacy.
+`clientEmail` se normaliza a correo valido o null para abrir Outlook web, no para
+enviar correo. Etapas aceptan `source`, `id`, version, `operationId` y destino
+segun DTO; no aceptan flags ERP de aprobacion/firma ni actor arbitrario.
+
+La inspeccion NetSuite es una excepcion de lectura de diagnostico a la regla
+siguiente: su `data` contiene JSON del proveedor y permanece fuera del contrato
+comercial canonico. Referencia resuelta por servidor, no relacion interna ni
+identidad aportada por el navegador. Limites y seguridad en [04](04-Integraciones-ERP.md).
+
 ## Regla principal
 
 El CRM nuevo debe hablar su propio lenguaje de negocio.
 
-No se permite que el frontend, el dominio, los DTOs publicos ni las tablas core de la base nueva usen nombres de NetSuite, Odoo o legacy.
+No se permite que el dominio, los DTOs comerciales publicos ni las tablas core de la base nueva usen nombres de NetSuite, Odoo o legacy. La inspeccion de diagnostico separada descrita arriba no cambia esa regla comercial.
 
 ## Contrato canonico
 
 El frontend envia un JSON estandar del CRM.
 
-Ejemplo conceptual:
+Ejemplo conceptual historico, no DTO HTTP vigente ni instruccion de crear Leads. Los nombres y numeros ilustrativos no sustituyen `projectPublicId`, `campaignPublicId` y demas campos del contrato futuro [25](25-Contrato-Canonico-Minimo-Lead-P0-S1.md). Las relaciones API usan identidad publica nativa; un ID ERP no se acepta como PK interna:
 
 ```json
 {
@@ -34,7 +49,7 @@ Regla:
 
 ```txt
 relaciones internas = public_id o id interno canonico del CRM
-ids externos = resolucion por adapters + tablas int_
+ids externos = resolucion por adapters + tabla de referencias propia de la entidad
 ```
 
 Ejemplo:
@@ -45,8 +60,12 @@ externalId -> solo vive en integracion/referencia externa, no en el contrato pub
 ```
 
 La regla completa vive en `30-Identidad-Canonica-y-Referencias-Externas.md`.
+Una referencia se resuelve por sistema configurado e ID externo, nunca por el
+numero solo. Identidad usa `int_user_external_identity`; Leads usa
+`crm_lead_external_reference`. El prefijo `int_` no es obligatorio para todas
+las referencias y `int_external_reference` es un concepto del blueprint.
 
-## Flujo de creacion de lead
+## Flujo futuro de creacion de lead (sin endpoint habilitado)
 
 El lead puede nacer de dos formas:
 

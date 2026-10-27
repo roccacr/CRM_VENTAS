@@ -45,7 +45,7 @@ export const ADMINISTRATION_DRAWER_PROPS = {
     placement: "right",
     size: 560,
     styles: {
-        mask: { backdropFilter: "blur(2px)", backgroundColor: "rgba(0, 0, 0, 0.25)" },
+        mask: { backgroundColor: "rgb(14 16 20 / 67%)" },
         wrapper: { borderLeft: "1px solid #c6cedd", boxShadow: "-16px 0 40px rgba(15, 23, 42, 0.24), -2px 0 6px rgba(15, 23, 42, 0.08)" },
     },
     zIndex: ADMINISTRATION_DRAWER_Z_INDEX,

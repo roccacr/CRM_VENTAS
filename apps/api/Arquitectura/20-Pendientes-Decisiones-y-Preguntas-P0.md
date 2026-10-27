@@ -20,13 +20,15 @@ Lo que falta no es elegir tecnologia principal. Varias reglas P0 ya quedaron cer
 
 La compuerta de identidad ya tiene contrato, modelo fisico y seeds propuestos.
 
-La decision de identidad queda cerrada a nivel de arquitectura. El unico bloqueo antes de crear usuarios reales es tener datos reales, no inventados:
+En este antecedente la decision de identidad quedo cerrada a nivel de arquitectura. Los datos reales solicitados para el bootstrap eran:
 
 - primer `owner`;
 - `jefe_general`;
 - procedimiento seguro para activar login local.
 
-## Pendientes criticos antes de codificar runtime
+Owner ya fue creado y posteriormente se autorizaron perfiles por correo sin acceso ([45](45-Usuarios-Por-Correo.md)); la lista historica no bloquea esas operaciones ni ordena repetirlas. Los pendientes funcionales de Leads conservan su necesidad de decision.
+
+## Pendientes del corte historico antes de codificar runtime
 
 | Area | Falta definir | Riesgo si no se define |
 | --- | --- | --- |
@@ -116,7 +118,7 @@ Si no existen esos datos reales, no se crea usuario seed.
 
 ### Migracion y convivencia
 
-1. Se migran historicos de bitacora o solo se consultan desde legacy?
+1. Cerrado el 2026-10-23: consultar bitacoras por origen y adaptar un JSON; no importar historia ([44](44-Bitacora-Legacy-y-Timeline.md)). La excepcion de perfiles sin acceso de [45](45-Usuarios-Por-Correo.md) no habilita migracion comercial.
 2. Desde que fecha se considera dato nuevo oficial en `CRM_THINK_V2`?
 3. Que pantallas necesitan dual-read contra legacy en P0?
 4. Que tabla legacy queda como referencia solo lectura?
@@ -134,7 +136,9 @@ flowchart TD
   F --> G[Construir primer vertical autorizado]
 ```
 
-## Proxima accion recomendada
+## Proxima accion del corte historico
+
+Las recomendaciones siguientes conservan la secuencia de arranque; no ordenan repetir bootstrap ni retirar el runtime. Owner ya existe; identidad, Administracion y las lecturas autorizadas tienen implementacion. La identidad real de Jefe General y los pendientes funcionales no se resuelven inventando usuarios. Usar [49](49-Estado-Actual-y-Cierre-Documental.md) para distinguir cierre actual de este antecedente.
 
 Responder las preguntas de `32-Seeds-Identidad-P0-S1.md` para poder crear la primera migracion SQL de identidad sin inventar datos.
 

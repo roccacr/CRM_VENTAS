@@ -101,7 +101,7 @@ Permitido:
 
 - ruta `/home/global` protegida por sesion para revision del shell;
 - barra superior blanca con logo, selector visual, command bar neutra y acciones globales minimas sin efecto;
-- la barra superior conserva una sola fila de 72px desde 768px en adelante (decision del owner 2026-10-12: el salto a dos filas de 126px en tablet "se deforma"); entre 768px y 1024px el logo baja a 112px, el selector conserva 196px para no cortar el nombre del modulo, solo la command bar se encoge y a 900px o menos el avatar oculta el nombre (la etiqueta accesible lo conserva); bajo 768px la reemplaza la barra movil;
+- actualizacion 2026-10-23: `GlobalHomeShell.css` define cabecera de 56px y menu de 44px, conservando la fila unica y sus reglas responsive. La medida de 72px del 2026-10-12 es historica; no restaurarla como requisito actual ni inferir una medicion nueva de navegador;
 - el selector superior debe representar perfiles/contextos asignados, no un filtro decorativo;
 - cambiar el perfil seleccionado debe cambiar el menu visible del shell;
 - puede existir un perfil visual `Todos` para revision de producto, agrupando las opciones mock de todos los perfiles asignados;
@@ -464,7 +464,7 @@ IdentityBlockedState
 IdentityPendingState
 ```
 
-## No construir todavia
+## Exclusiones del contrato inicial, sujetas a ampliaciones posteriores
 
 - `LeadList`;
 - `LeadCreate`;
@@ -497,9 +497,9 @@ Este contrato visual queda listo para implementacion cuando:
 - la UI pueda representar usuarios con uno, varios o ningun contexto operativo;
 - la UI tenga estados de sesion y permisos.
 
-## Pendientes reales
+## Datos pendientes del bootstrap historico, no inventario vigente
 
-No se necesitan para este documento, pero si para bootstrap real:
+El corte inicial solicito los datos siguientes; su presencia actual no se vuelve a verificar aqui. No interpretar esta lista como ausencia actual de Owner/Jefe General ni publicar credenciales:
 
 1. Correo oficial del primer `owner`.
 2. Nombre visible del primer `owner`.

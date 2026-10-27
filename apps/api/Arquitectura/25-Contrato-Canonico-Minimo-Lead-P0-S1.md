@@ -1,5 +1,14 @@
 # 25 - Contrato Canonico Minimo Lead P0-S1
 
+Actualizacion 2026-10-23: esquema nativo de Leads autorizado por el propietario
+en [43 - Leads](43-Leads-Esquema-Nativo.md), sin endpoints ni importacion. Separa
+actividad active/inactive de etapa comercial administrable; motivos por evento
+e identidad del responsable propia de `sec_user`. Los ejemplos y prohibiciones
+anteriores de este documento siguen historicos salvo este alcance de esquema.
+Las ampliaciones posteriores [46 - Resumen](46-Mercadeo-Resumen-Leads.md) y
+[48 - Citas](48-Mercadeo-Metricas-Citas.md) habilitan solo agregados de lectura
+por origen para Mercadeo; no son el contrato de alta o modificacion de Leads.
+
 Revision documental 2026-10-22: diseno comercial futuro y evidencia historica; tablas, rutas y reglas propuestas no acreditan runtime operativo. Ver [36 - Estado vigente y registro](36-Registro-Entrega-Administracion.md) para implementacion y limites actuales. Identidad/Administracion, consulta de expedientes y contador de aprobaciones tienen contratos propios; no habilitan Leads ni mutaciones HTTP de ordenes.
 
 ## Veredicto
@@ -40,9 +49,11 @@ Reglas vigentes:
 - el adapter de integracion traducira el payload externo a este contrato canonico;
 - el core del CRM no recibe nombres de proveedor, IDs numericos heredados ni estructuras legacy;
 - el CRM viejo solo se revisa en lectura para entender datos reales y decidir mapeos;
-- esta definicion no autoriza crear tablas, DTOs, endpoints, jobs ni migraciones de Leads todavia.
+- esta definicion no autoriza DTOs HTTP, endpoints CRUD, jobs ni sincronizacion de Leads; el esquema nativo es la excepcion aprobada en [43](43-Leads-Esquema-Nativo.md), y los lectores autorizados se inventarian en [49](49-Estado-Actual-y-Cierre-Documental.md).
 
-El contrato NetSuite -> API debe quedar respondido antes de implementar runtime:
+El contrato NetSuite -> API debe quedar respondido antes de implementar recepcion
+o escritura comercial de Leads; los agregados de lectura ya autorizados no
+dependen de habilitar esa integracion:
 
 1. evento que dispara el envio;
 2. payload exacto;
@@ -261,14 +272,13 @@ No entra en P0-S1:
 - cobros;
 - modificaciones;
 - delegaciones avanzadas;
-- denegaciones explicitas;
 - motor ABAC completo;
 - Redis;
 - RabbitMQ;
 - jobs reales;
 - reporteria ejecutiva avanzada.
 
-Esto puede existir como vision en otros documentos, pero no autoriza tablas, pantallas ni endpoints para P0-S1.
+La lista delimita el contrato futuro de creacion, no revoca las ampliaciones aprobadas de identidad, esquemas y lecturas. No autoriza nuevas pantallas ni endpoints CRUD de Leads. Los campos y valores de los ejemplos siguientes son conceptuales; prevalece el DDL de 031 para almacenamiento, con etapas en ingles, `status_lead` active/inactive y `country_code_contact` nullable. No inferir validaciones HTTP implementadas ni cambiar las reglas de negocio para ajustarlas al esquema.
 
 ## Ejemplo JSON canonico
 
@@ -376,7 +386,7 @@ Reglas:
 - el backend siempre calcula permiso efectivo;
 - P0-S1 puede usar permisos atomicos simples;
 - el vendedor asignado puede editar toda la informacion del lead bajo auditoria;
-- multiples roles, grants directos, denies y delegaciones quedan como modelo objetivo, pero no bloquean el primer slice.
+- multiples roles, grants directos y denies ya estan implementados en identidad y deben respetarse; la delegacion temporal avanzada sigue futura.
 
 ## Decisiones cerradas
 

@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 
-import { ConflictException, Inject, Injectable, NotFoundException, ServiceUnavailableException } from "@nestjs/common";
+import { ConflictException, ForbiddenException, Inject, Injectable, NotFoundException, ServiceUnavailableException } from "@nestjs/common";
 import { sql, type Transaction } from "kysely";
 import { ulid } from "ulid";
 
@@ -8,13 +8,15 @@ import { DatabaseService } from "../../../../database/database.service.js";
 import type { CrmDatabase } from "../../../../database/database.types.js";
 import type { AuditActorSnapshot } from "../../audit/audit-actor.js";
 import { RecordAuditService } from "../../audit/record-audit.service.js";
-import type { ContractAction, ContractTransitionDto } from "./contract-transition.dto.js";
+import { type ContractAction, contractTarget, type ContractTransitionDto, FORMALIZATION_STAGE_CODES } from "./contract-transition.dto.js";
 import { CONTRACT_TRANSITION_LEGACY, type ContractEvent, type ContractOrder, type ContractTransitionLegacy } from "./contract-transition.port.js";
 
 /** Validated command plus server-derived context (actor, correlation id, network metadata); none of it comes from the client. */
 export interface ContractTransitionCommand extends ContractTransitionDto {
     action: ContractAction;
     actorPublicId: string;
+    /** Server-derived only. Omission keeps internal callers owner-only, never unrestricted. */
+    ownOnly?: boolean;
     reason: string;
     correlationId: string;
     ipAddress?: string;
@@ -55,7 +57,7 @@ export class ContractTransitionRepository {
         const column = source === "native" ? "public_id_sales_order" : "id_old_produccion_sales_order";
         return tx
             .selectFrom("crm_sales_order")
-            .select(["id_sales_order", "public_id_sales_order", "native_code_sales_order", "id_old_produccion_sales_order", "status_sales_order", "cancelled_sales_order", "deleted_at_sales_order"])
+            .select(["id_sales_order", "public_id_sales_order", "native_code_sales_order", "id_old_produccion_sales_order", "lead_id_sales_order", "status_sales_order", "cancelled_sales_order", "deleted_at_sales_order", "contract_signed_sales_order"])
             .where(column, "=", source === "native" ? id : Number(id))
             .forUpdate()
             .executeTakeFirst();
@@ -79,7 +81,7 @@ export class ContractTransitionRepository {
         }
         const approvals = await tx.selectFrom("crm_sales_order_approval").select(["type_code_sales_order_approval", "status_sales_order_approval"]).where("sales_order_id_sales_order_approval", "=", native.id_sales_order).forUpdate().execute();
         const approved = ["sales_management", "developer", "formalization"].every((type) => approvals.some((entry) => entry.type_code_sales_order_approval === type && entry.status_sales_order_approval === "approved"));
-        const order: ContractOrder = { id: String(native.id_sales_order), businessId: native.native_code_sales_order, active: native.status_sales_order === "active" && native.cancelled_sales_order === "no" && native.deleted_at_sales_order === null, approved };
+        const order: ContractOrder = { contractSigned: native.contract_signed_sales_order === "yes", id: String(native.id_sales_order), businessId: native.native_code_sales_order, active: native.status_sales_order === "active" && native.cancelled_sales_order === "no" && native.deleted_at_sales_order === null, approved };
         return { native, order, source: "native" as const };
     }
 
@@ -104,7 +106,8 @@ export class ContractTransitionRepository {
         const resolved = await this.resolve(tx, command);
         if (!resolved.order.active) throw new ConflictException("Order is inactive, deleted or cancelled");
         const actor = await tx.selectFrom("sec_user").select("id_user").where("public_id_user", "=", command.actorPublicId).where("status_user", "=", "active").where("deleted_at_user", "is", null).executeTakeFirstOrThrow();
-        const target = command.action === "send" ? SIGNATURE : SEND;
+        await this.assertOwnerScope(tx, resolved, command);
+        const target = contractTarget(command);
         const replay = await this.readEvent(tx, resolved, command.operationId);
         if (replay) {
             this.assertReplay(replay, command, resolved.native ? String(actor.id_user) : command.actorPublicId);
@@ -115,11 +118,27 @@ export class ContractTransitionRepository {
         const sequence = previous.sequence;
         const current = this.assertTransition(command, resolved.order, last);
         const snapshot = await this.audit.captureActor(tx, actor.id_user);
-        const event = { sequence: sequence + 1, from: previous.state, state: target, actor: snapshot.publicId, reason: command.reason, operationId: command.operationId, correlationId: command.correlationId };
+        // The prior logical state is known, but its historical entry date may not be.
+        // The authenticated changer takes initial responsibility for the new visit; seller remains separate.
+        const event = { sequence: sequence + 1, from: current, state: target, actor: snapshot.publicId, actorSnapshot: snapshot, responsibleSnapshot: snapshot, reason: command.reason, operationId: command.operationId, correlationId: command.correlationId };
         if (resolved.native) await this.appendNative(tx, resolved.native.id_sales_order, { id: actor.id_user, snapshot }, event);
         else await this.legacy.append(tx, resolved.order.id, event);
         await this.appendCentral(tx, { command, resolved, actor: snapshot, before: current, after: target, sequence });
         return this.result(resolved, target, sequence + 1, false);
+    }
+
+    /** Lock the linked lead and canonical user; the order owner or stage responsible is not the seller. */
+    private async nativeOwner(tx: Transaction<CrmDatabase>, leadId: number | null): Promise<string | null> {
+        if (leadId === null) return null;
+        const owner = await tx.selectFrom("crm_lead").innerJoin("sec_user", "sec_user.id_user", "crm_lead.owner_user_id_lead").select("sec_user.public_id_user").where("crm_lead.id_lead", "=", leadId).where("crm_lead.deleted_at_lead", "is", null).where("sec_user.deleted_at_user", "is", null).forUpdate().executeTakeFirst();
+        return owner?.public_id_user ?? null;
+    }
+
+    /** Ownership is checked before replay, so retries cannot bypass a reassignment or scope reduction. */
+    private async assertOwnerScope(tx: Transaction<CrmDatabase>, resolved: ResolvedOrder, command: ContractTransitionCommand): Promise<void> {
+        if (command.ownOnly === false) return;
+        const owner = resolved.native ? await this.nativeOwner(tx, resolved.native.lead_id_sales_order) : await this.legacy.owner(tx, resolved.order.id);
+        if (owner !== command.actorPublicId) throw new ForbiddenException("No tiene alcance sobre el responsable del lead de esta orden");
     }
 
     /** Response shape; `replayed` tells the client an identical earlier operation was returned. */
@@ -129,7 +148,7 @@ export class ContractTransitionRepository {
 
     /** A repeated operationId is accepted only if it carries the same target state, actor and reason. */
     private assertReplay(replay: ContractEvent, command: ContractTransitionCommand, actor: string): void {
-        const target = command.action === "send" ? SIGNATURE : SEND;
+        const target = contractTarget(command);
         if (replay.state !== target || replay.actor !== actor || replay.reason !== command.reason) throw new ConflictException("Operation reused with different content");
     }
 
@@ -138,15 +157,37 @@ export class ContractTransitionRepository {
         const sequence = last?.sequence ?? 0;
         if (sequence !== command.expectedSequence || sequence >= 4294967295) throw new ConflictException("Order changed; reload before continuing");
         const current = this.currentStage(order, last?.state);
-        const required = command.action === "send" ? SEND : SIGNATURE;
+        if (command.action === "set") {
+            this.assertSelectedStage(command, current, order);
+            return current;
+        }
+        const required = { send: SEND, revert: SIGNATURE }[command.action];
         if (current !== required) throw new ConflictException("Contract stage does not permit this action");
         return current;
+    }
+
+    /** Jumps are explicitly allowed; reversals retain a required reason and every visit. */
+    private assertSelectedStage(command: ContractTransitionCommand, current: string, order: ContractOrder): void {
+        const target = contractTarget(command);
+        if (current === target) throw new ConflictException("Order is already in that stage");
+        const before = FORMALIZATION_STAGE_CODES.findIndex((code) => code === current);
+        const after = FORMALIZATION_STAGE_CODES.findIndex((code) => code === target);
+        if (before < 0) throw new ConflictException("Unknown current stage");
+        this.assertBankingPrerequisites(order, before, after);
+        if (after < before && !command.reason.trim()) throw new ConflictException("Reversal reason required");
+    }
+
+    /** Firma observada is a prerequisite, never an ERP mutation or a substitute for registering send. */
+    private assertBankingPrerequisites(order: ContractOrder, before: number, after: number): void {
+        if (after < 2) return;
+        if (!order.contractSigned) throw new ConflictException({ code: "CONTRACT_SIGNATURE_REQUIRED", message: "Se requiere el contrato firmado para pasar a Gestión bancaria o etapas posteriores." });
+        if (before < 1) throw new ConflictException({ code: "CONTRACT_SEND_REQUIRED", message: "Primero registra el envío del contrato y completa la etapa Pendiente de firma." });
     }
 
     /** Orders without a stored stage are treated as pending send; inactive or not fully approved orders cannot move. */
     private currentStage(order: ContractOrder, stored?: string): string {
         if (!order.active || !order.approved) throw new ConflictException("Order requires active noncancelled status and three approvals");
-        // Historical signed flags do not represent this explicit CRM contract workflow.
+        // A signed flag gates banking, but does not invent an earlier CRM send event.
         if (stored === undefined || stored === "unclassified" || stored === "pending_approval") return SEND;
         return stored;
     }
@@ -164,6 +205,8 @@ export class ContractTransitionRepository {
                 effective_at_sales_order_state_event: sql<Date>`UTC_TIMESTAMP(3)`,
                 actor_user_id_sales_order_state_event: actor.id,
                 actor_snapshot_sales_order_state_event: JSON.stringify(actor.snapshot),
+                responsible_user_id_sales_order_state_event: actor.id,
+                responsible_snapshot_sales_order_state_event: JSON.stringify(actor.snapshot),
                 origin_sales_order_state_event: "crm",
                 reason_sales_order_state_event: event.reason,
                 operation_id_sales_order_state_event: event.operationId,
@@ -193,7 +236,7 @@ export class ContractTransitionRepository {
         await this.audit.append(tx, {
             ...this.auditSource(resolved),
             actor,
-            action: command.action === "revert" ? "revert" : "state_change",
+            action: FORMALIZATION_STAGE_CODES.findIndex((code) => code === after) < FORMALIZATION_STAGE_CODES.findIndex((code) => code === before) ? "revert" : "state_change",
             module: "formalizacion",
             before: { businessId: resolved.order.businessId, state: before, version: sequence },
             after: { businessId: resolved.order.businessId, state: after, version: sequence + 1 },

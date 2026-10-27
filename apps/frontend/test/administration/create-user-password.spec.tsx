@@ -25,6 +25,17 @@ describe("create-only assigned password", () => {
         expect(buildUpdateUserPayload(values, [])).not.toHaveProperty("password");
     });
     const props = { open: true, error: null, isSaving: false, moduleOptions: [], roleOptions: [{ code: "owner", name: "Owner", locked: true, users: 0 }], rolePermissions: {}, onClose: vi.fn(), onSubmit: vi.fn() };
+    it.each(["create", "edit"] as const)("closes %s with modified fields without confirmation or submitting", (mode) => {
+        const onClose = vi.fn();
+        const onSubmit = vi.fn();
+        const confirmation = vi.spyOn(window, "confirm").mockReturnValue(false);
+        render(<CreateSystemUserDrawer {...props} mode={mode} onClose={onClose} onSubmit={onSubmit} />);
+        fireEvent.change(screen.getByLabelText("Nombre completo"), { target: { value: "Cambio sin guardar" } });
+        fireEvent.click(screen.getByRole("button", { name: mode === "edit" ? "Cerrar edición de usuario" : "Cerrar creación de usuario" }));
+        expect(confirmation).not.toHaveBeenCalled();
+        expect(onClose).toHaveBeenCalledOnce();
+        expect(onSubmit).not.toHaveBeenCalled();
+    });
     it("rejects whitespace-only passwords without trimming valid surrounding spaces", async () => {
         render(<CreateSystemUserDrawer {...props} canAssignPassword />);
         const input = await screen.findByLabelText("Contraseña inicial");

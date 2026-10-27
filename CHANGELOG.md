@@ -1,5 +1,61 @@
 # Changelog
 
+## Revision documental integral - 2026-10-27
+
+- Revision con tres agentes y coordinacion contra codigo del checkout compartido.
+- Reconciliados Captacion conectada, seguimiento/transiciones de Formalizacion,
+  consulta NetSuite, periodos y graficos actuales, y retiro de Eventos y citas/038.
+- Inventario y limites en [55](apps/api/Arquitectura/55-Revision-Documental-Integral-20261027.md).
+  Se conservan snapshots y pruebas historicos; no se presentan como ejecuciones nuevas.
+- Ambos typechecks aprobados; check-all detenido por formato previo en API.
+  Sin modificar runtime/configuracion/BD o ejecutar migraciones durante la revision.
+
+
+## Consolidacion documental integral - 2026-10-23
+
+- Revision paralela de frontend, arquitectura API, identidad/Formalizacion y
+  Mercadeo/calendario, contrastada con codigo y SELECT nativo de metadatos/conteos.
+- [49 - Estado actual](apps/api/Arquitectura/49-Estado-Actual-y-Cierre-Documental.md)
+  consolida alcance, fuentes, verificacion, cobertura y pendientes. Informes
+  historicos conservan sus fechas; no se ejecuta un nuevo gate de aplicacion.
+- Plan aplicado sobre 97 Markdown: contratos de timeline nativo, servicio interno
+  de historial sin caller comercial, multiseleccion/fotos/precarga de Mercadeo,
+  fechas de cohorte frente a eventos, asistencia y limites de calendario.
+- Snapshot nativo de solo lectura a las 17:56-17:57 Costa Rica: ledger 031/032/034,
+  033 ausente, ocho tablas calendario vacias y 106 columnas comentadas. No son
+  fixtures ni prueba de transiciones comerciales. Enlaces/anchors revisados.
+- Resultado documental: 32 archivos corregidos, 65 conservados tras revision y
+  564 enlaces locales/anclas comprobados sin referencias rotas. Revision cruzada
+  final del consolidado y README completada.
+- Solo documentacion: sin cambios de runtime, configuracion, datos, integraciones,
+  commits, push o despliegue durante este cierre.
+
+## Calendario compartido: esquema vacio - 2026-10-23
+
+- 034 aplicada exclusivamente en CRM_THINK_V2: ocho tablas vacias para tipos por
+  modulo, evento, participantes, vinculos, detalle de cita, campana y sync externo.
+- Origen de modulo inmutable, FK internas, ULID publicos, UTC y respuestas/lectura
+  individuales. Sin importacion de calendars, tipos ficticios, permisos ni Graph.
+- 55 pruebas focalizadas y verificaciones de esquema anteriores documentadas en
+  [47](apps/api/Arquitectura/47-Calendario-Compartido-Esquema.md), no reejecutadas por este cierre.
+
+## Usuarios por correo y rol base Ventas - 2026-10-23
+
+- 43 perfiles creados desde correo/nombre de admins, uno existente omitido.
+  Sin passwords/tokens/referencias ERP ni importacion de roles antiguos.
+- Posteriormente se creo rol Ventas sin permisos y se asigno a esos 43 perfiles;
+  estados pending/inactive y acceso sin habilitar conservados, con bitacora nativa.
+- [45 - Evidencia](apps/api/Arquitectura/45-Usuarios-Por-Correo.md).
+
+## Mercadeo: resumen real y agregados de citas - 2026-10-23
+
+- GET /marketing/home/summary registrado con permiso, alcance, precedencia nativa
+  y adapter legacy de lectura; no copia datos ni habilita CRUD comercial.
+- Tipos de citas, conteo unico por lead/evento, estados y asistencia se distinguen;
+  leer agregados no convierte la estructura 034 en calendario operativo.
+- Contratos y limites en [46](apps/api/Arquitectura/46-Mercadeo-Resumen-Leads.md)
+  y [48](apps/api/Arquitectura/48-Mercadeo-Metricas-Citas.md).
+
 ## Jefe General administrable por Owner - 2026-10-23
 
 - Plantilla de General editable en Por rol: modulos y permisos en un unico

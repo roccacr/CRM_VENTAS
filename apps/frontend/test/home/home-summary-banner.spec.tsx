@@ -6,9 +6,15 @@ import { FormalizationHomePage } from "../../src/modules/home/FormalizationHomeP
 import { AppRouteContent, type AppRouteContentProps } from "../../src/routes/AppRouteContent";
 import type { IdentityProfile } from "../../src/services/auth/identity-contracts";
 import { getApprovalCount } from "../../src/services/formalization/approval-summary-service";
+import type * as FollowUpService from "../../src/services/formalization/follow-up-service";
 import { getHomeSummary } from "../../src/services/formalization/home-summary-service";
 import { installBrowserApiDoubles } from "../support/browser";
 
+// Banner tests isolate their source from the independently tested canonical follow-up read.
+vi.mock("../../src/services/formalization/follow-up-service", async (importOriginal) => {
+    const original = await importOriginal<typeof FollowUpService>();
+    return { ...original, getFollowUp: vi.fn().mockResolvedValue({ schemaVersion: 1, observedAt: "2026-10-26T12:00:00Z", filters: { search: "", projectId: "", queue: "all" }, page: { number: 1, size: 25, total: 0, totalPages: 0 }, counts: { all: 0, approvals: 0, contracts: 0, send: 0, signature: 0, bank: 0, balance: 0, transfer: 0, signed: 0, closed: 0 }, projects: [], items: [], sources: { native: { total: 0 }, legacy: { total: 0, enabled: true } } }) };
+});
 vi.mock("../../src/services/formalization/home-summary-service", () => ({ getHomeSummary: vi.fn() }));
 vi.mock("../../src/services/formalization/approval-summary-service", () => ({ getApprovalCount: vi.fn() }));
 const role = { code: "formalizacion", name: "Formalización", status: "active" as const };

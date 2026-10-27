@@ -1,11 +1,52 @@
 # 22 - Mapa de Implementacion API
 
+## Inventario registrado y contratos - revision 2026-10-27
+
+Fuentes: `src/app.module.ts`, metadatos de controladores/modulos y contratos
+referenciados. Tabla de ampliaciones verificadas por lectura de codigo; no es
+una ejecucion HTTP ni prueba nueva de MySQL.
+
+| Ruta | Registro y contrato | Autorizacion/limite |
+| --- | --- | --- |
+| `GET /marketing/home/summary` | `MarketingHomeModule`, `marketing-home.contract.ts` | `mercadeo.home.read`; period day/week/month/year; lectura agregada |
+| `GET /marketing/leads/report` | mismo modulo, `MarketingLeadsReportController`, `marketing-leads-report.contract.ts` | `mercadeo.leads.read`; period day/week/month/all; fuentes y calidad, sin filas PII |
+| `GET /formalization/approvals/summary` | `ApprovalSummaryModule` | `formalizacion.home.approvals.read`; lector autoriza alcance |
+| `GET /formalization/contracts/summary` | `ContractSummaryModule` | rol efectivo Formalizacion + `formalizacion.home.stages.read` |
+| `GET /formalization/home/summary` | `HomeSummaryModule` | misma lectura de etapas; aprobaciones conservan permiso independiente |
+| `GET /formalization/home/follow-up` | `FollowUpController`, `follow-up.contract.ts` | permisos/alcance por recurso, busqueda/proyecto/bandeja, pageSize maximo 100 |
+| `GET /formalization/orders/:source/:id/timing` | `OrderTimingController`, `order-timing.contract.ts` | lectura de visitas/tiempos autorizada, no inserta historia al consultar |
+| `POST /formalization/contracts/send` | `ContractTransitionModule`, `ContractTransitionDto` | `formalizacion.contracts.send`; registra evidencia CRM, no envia correo |
+| `POST /formalization/contracts/revert` | mismo modulo/DTO | `formalizacion.contracts.revert`; motivo obligatorio |
+| `POST /formalization/orders/stage` | `FormalizationStageController`, mismo servicio/DTO | `formalizacion.orders.stage.update`; aprobaciones, firma y retrocesos validados |
+| `GET /formalization/orders/:source/:id/netsuite` | `NetsuiteModule` y adaptador dedicado | rol/permiso de etapas y alcance CRM; GET externo, sin persistencia |
+
+Los comandos comparten validacion estricta, CSRF, version e idempotencia; el API
+resuelve actor y autoridad de fuente. Las tablas nativas y referencias son
+independientes del proveedor. Inspeccion NetSuite devuelve payload externo solo
+en su endpoint dedicado; no modifica el contrato comercial.
+
+Identidad, auditoria, catalogos genericos y seis catalogos dedicados conservan
+sus controladores existentes. Expedientes registra consulta, no CRUD. No existe
+ruta operativa de agenda, CRUD HTTP general de Leads, oportunidades o estimaciones.
+`GET /formalization/contracts/orders` tampoco esta registrado. El detalle actual
+se construye desde el seguimiento, sin inventar un endpoint `GET orders/:id`.
+Las rutas publicas/privadas exactas y sus clasificadores se contrastan en
+`test/identity/app-module-security.spec.ts`; el codigo, no el conteo historico de
+handlers citado por cortes anteriores, gobierna nuevas ampliaciones.
+
+La migracion 038 retira Eventos y citas y su permiso; no afecta los lectores de
+metricas ni `mercadeo.calendar.read`. Ver [53](53-Captacion-Leads-Reporte-Federado.md).
+
 Actualizacion autorizada 20/10/2026: el usuario habilito el esquema de ordenes
 de venta y su persistencia interna de estados/aprobaciones. Ver documento 38.
 Desde el corte 2026-10-22 existe tambien el endpoint de lectura del contador;
-no hay endpoints de mutacion del ciclo de vida ni reglas operativas completas.
+ese corte inicial no incluia mutaciones; la ampliacion 2026-10-26 registra los comandos acotados descritos en el inventario siguiente.
 
-## Inventario vigente - 2026-10-22
+## Inventario contrastado - 2026-10-23
+
+`src/app.module.ts` registra `ApprovalSummaryModule`, `ContractSummaryModule`, `HomeSummaryModule` y `MarketingHomeModule`: resumenes de lectura. El corte posterior registra ContractTransitionModule para send/revert/set-stage y el seguimiento federado; no registra el listado contractual independiente. `src/modules/crm/marketing` contiene el resumen de leads/citas; `src/modules/crm/leads` contiene tablas e historia; `src/modules/crm/calendar` contiene tipos de tablas, sin modulo/controlador de agenda. `AuditReadController` registra el timeline nativo. El adapter legacy aporta lectores de Mercadeo, no importacion. Detalle de cobertura: [49](49-Estado-Actual-y-Cierre-Documental.md).
+
+### Inventario del corte 2026-10-22
 
 Fuentes ejecutables: `src/common/security` (autenticacion/cuotas), `src/common/health`, `src/common/filters`, `src/modules/crm/identity`, modulos de catalogos/expedientes y `src/modules/crm/sales/sales-orders` (persistencia y summary). Las migraciones incrementales viven en `migrations/schema-only`, no en la carpeta ilustrativa del blueprint. Swagger opcional se genera desde controladores registrados; no es contrato estatico exclusivo de identidad.
 
@@ -43,15 +84,15 @@ El frontend nunca decide permisos finales, estados finales, integraciones ni tra
 
 | Carpeta | Que va aqui | Que no va aqui | Leer antes |
 | --- | --- | --- | --- |
-| `src/modules/crm/sales/leads` | Casos de uso, dominio, DTOs HTTP y repositorios de leads de ventas. | Integraciones directas, payloads externos, reglas de frontend. | `11`, `12`, `13`, `19`, `21`. |
+| `src/modules/crm/leads` (actual); `sales/leads` (blueprint) | Tablas/historia actuales; CRUD de ventas futuro. | Integraciones directas, payloads externos, reglas de frontend. | `11`, `12`, `13`, `19`, `21`, `43`, `44`. |
 | `src/modules/crm/sales/opportunities` | Oportunidades creadas desde lead. | Estimaciones u ordenes de venta. | `15`. |
 | `src/modules/crm/sales/estimates` | Estimaciones despues de oportunidad. | Ordenes de venta o formalizaciones. | `15`. |
 | `src/modules/crm/sales/sales-orders` | Ordenes de venta, pre-reserva, reserva y avance a contrato. | Formalizacion operativa completa. | `15`, `16`. |
 | `src/modules/crm/formalizations` | Flujo posterior de formalizacion cuando el alcance lo apruebe. | Reglas de leads iniciales. | `16`. |
-| `src/modules/crm/calendar` | Eventos CRM, tipos de calendario, reglas de citas, participantes y sync status. | Llamadas directas a Microsoft Graph. | `17`. |
+| `src/modules/crm/calendar` | Tipos de tablas actuales del esquema 034; reglas de agenda, participantes y sincronizacion futuras. | Agenda HTTP o Graph operativo por la sola existencia del esquema. | `17`, `47`. |
 | `src/modules/crm/notes` | Notas persistidas, sticky notes, anotaciones y permisos de notas. | Envio directo por Kapso/correo/Microsoft. | `18`. |
 | `src/modules/crm/permissions` | Calculo de permisos efectivos, grants y denials. Delegacion temporal queda fuera de S1A. | Permisos calculados en frontend. | `05`, `09`, `21`. |
-| `src/modules/crm/audit` | Auditoria tecnica y eventos sensibles. | Timeline comercial de usuario si pertenece al modulo de lead. | `05`, `13`. |
+| `src/modules/crm/audit` | Auditoria tecnica, eventos sensibles y fachada HTTP actual del timeline nativo de Leads. El lector/contrato de historia vive en `crm/leads`. | Importar historia legacy o exponer comandos comerciales sin autorizacion. | `05`, `13`, `37`, `44`. |
 | `src/modules/crm/identity/ports` | Interfaces estables para proveedores externos usados por identidad. | Implementaciones concretas. | `04`, `11`. |
 | `src/integrations/netsuite` | Cliente, DTOs, mappers y errores especificos de NetSuite. | Reglas core del CRM. | `04`. |
 | `src/integrations/odoo` | Cliente, DTOs, mappers y errores especificos de Odoo. | Reglas core del CRM. | `04`. |
@@ -59,7 +100,7 @@ El frontend nunca decide permisos finales, estados finales, integraciones ni tra
 | `src/integrations/microsoft365` | Entra ID OIDC, MSAL Node, Graph photo con timeout y adapters tecnicos Microsoft. | Reglas CRM de calendario, permisos o negocio. | `04`, `17`, `24`, `33`. |
 | `src/integrations/legacy-crm` | Lectura temporal del CRM viejo y mapeo a contrato canonico. | Nuevas reglas de negocio. | `10`, `11`. |
 | `src/database` | Conexion Kysely, tipos DB y utilidades de persistencia para `CRM_THINK_V2`. | SQL de negocio en controllers, lectura del CRM viejo o payloads de proveedores. | `12`. |
-| `database/migrations` | Migraciones SQL versionadas y revisables. | Datos sensibles o credenciales. | `03`, `12`, `21`. |
+| `migrations/schema-only` | Migraciones versionadas reales; `SQL/034` es fuente estatica del calendario. | Datos sensibles o credenciales; no usar `database/migrations` del blueprint como ruta actual. | `03`, `12`, `21`. |
 | `openapi` | Contratos OpenAPI publicados. | Reglas no implementadas sin marcar como futuras. | `11`, `13`, `21`. |
 
 ## Flujo de dependencia permitido
@@ -95,7 +136,7 @@ src/database -> DB_NAME -> CRM_THINK_V2
 src/integrations/legacy-crm -> LEGACY_CRM_DB_NAME -> base vieja
 ```
 
-El adapter actual reutiliza `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_SSL` y `DB_SSL_CA`, con nombre legacy separado. No existen variables implementadas `LEGACY_CRM_DB_USER`/`LEGACY_CRM_DB_PASSWORD`. Separar cuentas y privilegios es pendiente DBA; la transaccion de lectura no limita por si sola las credenciales. Escrituras requieren ambos flags, produccion y destino exacto. No cambiar `DB_NAME` al CRM viejo.
+El adapter actual reutiliza `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_SSL` y `DB_SSL_CA`, con nombre legacy separado. No existen variables implementadas `LEGACY_CRM_DB_USER`/`LEGACY_CRM_DB_PASSWORD`. Separar cuentas y privilegios es pendiente DBA; la transaccion de lectura no limita por si sola las credenciales. Los seis escritores de catalogos requieren ambos flags, produccion y destino exacto. El escritor contractual preparado usa una compuerta distinta (ambos flags y destino exacto, sin exigir produccion), y sus comandos HTTP acotados ya estan registrados; no confundir ambas politicas ni activarlos desde esta guia. No cambiar `DB_NAME` al CRM viejo.
 
 Nunca:
 

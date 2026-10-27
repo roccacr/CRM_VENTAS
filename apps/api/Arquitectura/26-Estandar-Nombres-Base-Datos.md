@@ -12,7 +12,7 @@ El objetivo es que una persona pueda leer una consulta SQL y entender rapidament
 - si una tabla es de configuracion, operacion, seguridad, auditoria o integracion;
 - que no hay dependencia directa de NetSuite, Odoo, Kapso u otro proveedor.
 
-Este documento manda sobre los ejemplos SQL viejos cuando haya diferencia de nombres.
+Este documento manda sobre los ejemplos SQL viejos cuando haya diferencia de nombres. Los ejemplos siguientes ilustran convenciones, no reemplazan el DDL real: Leads en `migrations/schema-only/202610230031_leads_domain.ts`, identidad en sus migraciones y calendario en [SQL/034](SQL/034_calendar_domain.sql). Ver [43](43-Leads-Esquema-Nativo.md), [47](47-Calendario-Compartido-Esquema.md) y [49](49-Estado-Actual-y-Cierre-Documental.md).
 
 ## Reglas principales
 
@@ -232,7 +232,7 @@ campaign_id_lead
 source_code_lead
 status_code_lead
 operational_state_code_lead
-has_related_lead
+has_related_lead_lead
 created_at_lead
 updated_at_lead
 deleted_at_lead
@@ -314,7 +314,8 @@ Regla tecnica:
 
 - tipo recomendado: `BIGINT UNSIGNED AUTO_INCREMENT`;
 - no usar UUID como PK clustered;
-- si se necesita id publico, usar una columna adicional.
+- si se necesita id publico, usar una columna adicional;
+- los catalogos de codigos y tablas puente tienen excepciones fisicas: `conf_lead_status` usa `code_lead_status` y `conf_action_reason_status` una PK compuesta. No agregarles PK numerica para ajustarlos al ejemplo.
 
 ## Identificador publico
 
@@ -334,7 +335,7 @@ public_id_user
 
 Motivo:
 
-- el API/frontend usan identificadores publicos;
+- el API/frontend usan identificadores publicos nativos (ULID CHAR(26) en las entidades inspeccionadas); las respuestas adaptadas pueden identificar una fuente legacy sin convertirla en PK nativa;
 - la base conserva PK numerica eficiente;
 - no se exponen ids internos.
 
@@ -439,7 +440,7 @@ conf_operational_state
 Regla:
 
 - si negocio puede agregar, desactivar, ordenar o renombrar un valor, probablemente es `conf_`;
-- no usar `ENUM` para estados comerciales, motivos, tipos de accion o origenes;
+- no usar `ENUM` para estados comerciales, motivos, tipos de accion o origenes; el `ENUM('active','inactive')` de 031 representa actividad del registro, no etapa comercial;
 - usar tablas catalogo para permitir crecimiento sin cambiar estructura.
 
 ## Tablas core CRM

@@ -1,10 +1,15 @@
 # Formalizacion: recorrido visual y trazabilidad
 
-## Estado actual - 2026-10-22, corte f2dc4f1
+## Estado contrastado - 2026-10-27
+
+[30 - Estado frontend verificado](30-Estado-Frontend-Verificado.md) inventaría las rutas, contratos y límites actuales: Captación conectada, seguimiento y cambio protegido de etapa de Formalización. Los cortes fechados siguientes son antecedentes; sus cifras de QA no se reejecutaron en esta revisión documental.
+
+
+## Estado actual - 2026-10-23, lectura documental de codigo
 
 Historial de recorrido y QA de una maqueta. Las entradas anteriores al retiro DEMO no describen filas actuales de Inicio/Gestion. Remediacion: [29 - Navegacion y seguimiento](29-Navegacion-Recuperacion-y-Seguimiento.md). Inicio y bandejas muestran Seguimiento no disponible; Movimientos recientes tambien declara indisponibilidad. No existe un API de seguimiento conectado. No se obtienen proyectos, responsables ni cantidades operativas de fixtures. Los ceros de tabla/selectores son estado sin fuente, no ausencia de ordenes reales. Calendario, Resumen y modelos de preview conservan DEMO y simulaciones locales; no certifican correo, archivos, banco, pagos, traspaso ni cierre reales.
 
-Entrada al modulo: membresia activa y exencion Owner existente. `formalizacion.home.read` esta inactivo. El permiso separado `formalizacion.home.approvals.read` solo habilita banner y GET del resumen, con allow sin deny. La consulta empieza al montar el banner autorizado; no concede aprobar/devolver. Carga con Spin/Consultando, error No disponible, sin convertir fallos a cero. Seis indicadores restantes: cero provisional sin API. La fuente nativa/legacy depende de configuracion backend; no se acredita un total combinado ni una lectura actual de BD por la existencia del endpoint.
+Entrada al modulo: modulo activo del perfil efectivo (Owner recibe modulos virtuales backend). `formalizacion.home.read` esta inactivo. Aprobaciones mantiene permiso separado `formalizacion.home.approvals.read`, allow sin deny, Spin/Consultando y No disponible ante fallo; no concede aprobar/devolver. Los seis banners restantes ya usan `GET /formalization/home/summary` con rol efectivo activo `formalizacion` mas `formalizacion.home.stages.read` allow sin deny. Owner puede heredar ese rol; no se exige asignacion directa. Cero de error marcado Sin verificar no es dato confirmado. Se conserva desglose nativo/legacy, sin consulta actual de BD en esta revision. Ver [27 - Inventario](27-Entrega-Administracion-y-QA.md) y [49 - Cobertura](../../api/Arquitectura/49-Estado-Actual-y-Cierre-Documental.md).
 
 Filtros conservados: Inicio muestra buscador, Proyecto y Bandeja. Gestion muestra buscador, Etapa, Proyecto, Responsable y Limpiar cuando corresponde. Bandejas en orden: Todas, Pendientes de aprobacion (solo autorizado), Contratos pendientes, Gestion bancaria, Pendientes de saldo, Traspasos pendientes, Traspaso firmado, Formalizaciones cerradas este anio. Los banners conservan ese orden de etapas; Contratos distingue Por enviar/Pendientes de firma. Los selectores de proyecto y responsable conservan solo la opcion general mientras no exista fuente. Esta revision no cambia controles ni estilos solicitados por el propietario.
 

@@ -1,5 +1,10 @@
 # 01 - Resumen Frontend
 
+## Estado contrastado - 2026-10-27
+
+[30 - Estado frontend verificado](30-Estado-Frontend-Verificado.md) inventaría las rutas, contratos y límites actuales: Captación conectada, seguimiento y cambio protegido de etapa de Formalización. Los cortes fechados siguientes son antecedentes; sus cifras de QA no se reejecutaron en esta revisión documental.
+
+
 ## Veredicto
 
 El frontend del CRM debe ser una aplicacion React + Vite + TypeScript enfocada en productividad comercial: rapida, clara, densa, accesible y orientada a tablas, filtros, acciones y seguimiento.
@@ -12,7 +17,9 @@ Estado de fase:
 vision completa del frontend != alcance autorizado actual
 ```
 
-Al corte 2026-10-22 existen identidad, Administracion/catalogos y Formalizacion parcial. Home tiene dos banners reales: aprobaciones exige `formalizacion.home.approvals.read`; contratos exige rol activo `formalizacion`, sin sustitucion por Owner ni permiso de aprobaciones. Los cinco indicadores restantes son provisionales. Bandejas vacias, sin seguimiento operacional ni list/send/revert habilitados; solo Home. Calendario/resumen y previews conservan simulaciones. Ver [remediacion y evidencia](../../api/Arquitectura/Reauditoria-54-Plan-y-Resultados.md).
+En el antecedente documental 2026-10-23 existían identidad, Administracion/catalogos, Formalizacion parcial y Home de Mercadeo conectado. Aprobaciones exige `formalizacion.home.approvals.read`; seis banners de etapas comparten `GET /formalization/home/summary`, rol efectivo activo `formalizacion` y `formalizacion.home.stages.read` permitido sin deny. Owner puede heredar ese rol por politica backend; no necesita asignacion directa ni elude denies. Carga muestra preload; cero de error marcado Sin verificar no es ausencia confirmada de ordenes. Ese corte tenía bandejas vacías. El estado 2026-10-27 conecta seguimiento canónico y cambio de etapa con permiso independiente; envío/reversión de contratos y Calendario/Resumen/previews siguen fuera de esa conexión.
+
+Mercadeo lee agregados canonicos de leads y evidencia de citas disponible con `mercadeo.home.read`: periodos dia/semana/mes/anio, vendedor/proyecto multiseleccion y sin muestra ficticia de respaldo. El API resuelve origen nativo/legacy, deduplicacion y alcance. Programada no equivale a realizada o asistida; no hay editor de calendario persistido ni Outlook/campana conectados. Cobertura y limites: [49 - Estado actual](../../api/Arquitectura/49-Estado-Actual-y-Cierre-Documental.md).
 
 ## Stack frontend
 

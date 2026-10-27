@@ -1,12 +1,39 @@
 # 04 - Integraciones Externas
 
+## Excepciones implementadas y limites - 2026-10-27
+
+La regla de contratos canonicos permanece para el dominio comercial. Existe una
+excepcion explicita de inspeccion: `GET /formalization/orders/:source/:id/netsuite`
+resuelve identidad/permiso CRM y devuelve `{schemaVersion, order, data}`, donde
+`order` identifica la fuente/orden y referencia resuelta; `data` es la respuesta
+de lectura del proveedor. No debe usarse como DTO comercial ni poblar tablas o
+formularios del CRM. Solo la UI DEV presenta esa inspeccion en consola; la ruta
+servidor se protege por permisos y no queda restringida a DEV por ese hecho.
+
+Fuentes: `src/integrations/netsuite/netsuite.module.ts`,
+`netsuite-sales-order.service.ts`, `netsuite-order.repository.ts` y
+`netsuite-restlet.client.ts`. Se valida sesion, rol efectivo Formalizacion,
+`formalizacion.home.stages.read`, propiedad y permiso de aprobaciones cuando
+corresponde, antes del GET externo. Alias nativo prevalece incluso si impide
+usar la orden; no se permite escoger una referencia externa desde el navegador.
+URL/cuenta/script y metodo estan fijados en servidor; sin redirects, reintentos
+ni escritura. Credenciales opcionales al arranque; faltantes producen 503 y
+fallos externos 502 sanitizado. Plazo 15 s, cuerpo hasta 5 MiB. No se verificaron
+credenciales ni se llamo al ERP durante esta revision documental.
+
+Legacy tambien tiene escritores CRM acotados de Formalizacion registrados;
+requieren fallback, escritura y auditoria habilitados, destino exacto y controles
+transaccionales. Los seis escritores de catalogos conservan adicionalmente
+`NODE_ENV=production`. No confundir ambas compuertas. Ver [52](52-Etapas-Responsables-y-Tiempos.md).
+Odoo/Kapso, sincronizacion ERP, Graph Calendar y jobs siguen siendo blueprint.
+
 ## Objetivo
 
 NetSuite es el ERP inicial. Odoo debe poder entrar despues sin tocar el core CRM.
 
 Kapso, Microsoft 365, legacy CRM y cualquier otro proveedor externo tambien deben integrarse por adapters. El core CRM no debe depender directamente de SDKs, nombres de campos ni payloads de proveedores.
 
-El contrato publico del API y el JSON enviado por el frontend son siempre contratos estandar del CRM. No deben contener nombres, campos ni estructuras propias de NetSuite u Odoo.
+El contrato comercial publico y el JSON comercial enviado por el frontend son contratos estandar del CRM. La inspeccion de diagnostico descrita arriba es una excepcion separada; no autoriza nombres, campos ni estructuras ERP en DTOs/tablas de dominio.
 
 El core CRM conserva identidad interna propia. NetSuite, Odoo u otro proveedor solo agregan referencias externas.
 
@@ -28,7 +55,9 @@ CRM accion canonica -> mapper Kapso -> payload Kapso
 
 Si en el futuro cambia el ERP, no cambia el frontend ni el dominio. Cambia el adapter.
 
-## Puerto comun
+## Puerto comun propuesto (blueprint)
+
+Los puertos, adapters y modos ERP siguientes expresan direccion futura; no acreditan sincronizacion NetSuite/Odoo, mensajeria Kapso ni agenda Graph operativas. El codigo registrado hoy incluye identidad Microsoft/foto Graph y adapters legacy para lecturas autorizadas; el resumen de Mercadeo es lectura, sin copiar datos. Ver [49](49-Estado-Actual-y-Cierre-Documental.md).
 
 ```ts
 export interface ERPIntegrationPort {
@@ -86,7 +115,7 @@ src/integrations/
 └── legacy-crm/
 ```
 
-## Modos ERP
+## Modos ERP propuestos (no modos operativos acreditados)
 
 | Modo | Uso |
 |---|---|

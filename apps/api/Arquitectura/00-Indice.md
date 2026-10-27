@@ -1,5 +1,51 @@
 # 00 - Indice de Arquitectura API
 
+## Revision integral vigente - 2026-10-27
+
+[55 - Revision documental integral](55-Revision-Documental-Integral-20261027.md):
+inventario, matriz de cobertura, correcciones y validaciones de este checkout.
+[49](49-Estado-Actual-y-Cierre-Documental.md) conserva los snapshots y la cronologia.
+[52](52-Etapas-Responsables-y-Tiempos.md) describe transiciones y tiempos registrados;
+[53](53-Captacion-Leads-Reporte-Federado.md) el reporte conectado y retiro del menu
+Eventos y citas por038. Las entradas fechadas23/26 conservan su corte historico.
+
+
+Captacion de leads conectada (2026-10-26): consulta nativa primero y legacy opcional,
+sin importaciones, con permiso propio y un JSON agregado. Ver [53 - Reporte](53-Captacion-Leads-Reporte-Federado.md).
+
+## Lectura vigente - 2026-10-23
+
+[49 - Estado actual y cierre documental](49-Estado-Actual-y-Cierre-Documental.md):
+plan, matriz extremo a extremo, evidencia de solo lectura, precedencia documental,
+revision de 97 Markdown, plan aplicado, trazabilidad de punta a punta y pendientes
+reales. Usar antes de interpretar cortes antiguos.
+
+Ultimas ampliaciones: [43 - Leads](43-Leads-Esquema-Nativo.md),
+[44 - Timeline](44-Bitacora-Legacy-y-Timeline.md),
+[45 - Usuarios/Ventas](45-Usuarios-Por-Correo.md),
+[46 - Mercadeo](46-Mercadeo-Resumen-Leads.md),
+[47 - Esquema calendario](47-Calendario-Compartido-Esquema.md),
+[48 - Metricas de citas](48-Mercadeo-Metricas-Citas.md).
+
+[47 - Calendario compartido](47-Calendario-Compartido-Esquema.md): esquema nativo
+034 autorizado, sin datos ni runtime, con origen por modulo, participantes,
+campana individual y referencias externas. Prevalece sobre ejemplos antiguos de 17.
+
+[45 - Usuarios por correo](45-Usuarios-Por-Correo.md): excepcion limitada
+autorizada para crear perfiles sin accesos y sin modificar legacy.
+
+## Historia de Leads sin importacion - 2026-10-23
+
+[44 - Bitacora](44-Bitacora-Legacy-y-Timeline.md): correccion del alcance,
+eliminacion de la copia historica y consulta por origen para un JSON comun.
+Sin importaciones ni escrituras legacy. La integracion HTTP federada sigue pendiente.
+
+## Esquema nativo de Leads - 2026-10-23
+
+[43 - Leads](43-Leads-Esquema-Nativo.md): migracion 031 nativa autorizada,
+responsable por `sec_user`, referencias externas por sistema e ID, etapas y
+motivos con historial repetible. Sin importacion de leads ni runtime comercial.
+
 ## Jefaturas por modulos - 2026-10-23
 
 [42 - Jefaturas](42-Jefaturas-Modulos-y-Permisos.md): politica persistida de
@@ -24,9 +70,9 @@ pendientes se registran en 40; no convertir pruebas sinteticas en prueba MySQL.
 Las descripciones fechadas de cinco ceros provisionales corresponden al corte
 anterior, no al objetivo de esta ampliacion.
 
-## Consolidacion vigente - 2026-10-22
+## Consolidacion historica - 2026-10-22, sustituida por el corte vigente
 
-Remediacion posterior: [plan central F01-F13 del 2026-10-23](Reauditoria-54-Plan-y-Resultados.md#plan-central-f01-f13---2026-10-23), con resultados nuevos pendientes. [Runbook de auditoria central](Operacion-Despliegue-Rollback.md#auditoria-central-activacion-y-apagado): default false, preflight 023/024, activacion/apagado y limites. Home tiene dos banners reales (aprobaciones y contratos) y cinco provisionales; contratos exige rol activo formalizacion. Bandejas vacias y list/send/revert no registrados prevalecen sobre descripciones historicas posteriores en este indice.
+Remediacion posterior: [plan central F01-F13 del 2026-10-23](Reauditoria-54-Plan-y-Resultados.md#plan-central-f01-f13---2026-10-23), con resultados fechados en ese documento. [Runbook de auditoria central](Operacion-Despliegue-Rollback.md#auditoria-central-activacion-y-apagado): default false, preflight 023/024, activacion/apagado y limites. El corte del 22 tenia dos banners reales y cinco provisionales; el resumen del 23, documentado en 40/49, sustituye ese estado. Bandejas vacias y list/send/revert no registrados prevalecen sobre descripciones historicas posteriores en este indice.
 
 Precedencia final: [38 - Solo Home](38-Ordenes-Venta-Estados-Auditoria.md#alcance-final-corregido-solo-home---2026-10-22). Bandeja real y acciones retiradas por el propietario; solo resumen contractual registrado. Lectura/listado y comandos preparados no expuestos.
 
@@ -228,3 +274,22 @@ flowchart TD
   C --> F[Cuotas, vencimientos, fideicomisos, pagos]
   D --> G[Extras, visitas, revision fisica, entrega]
 ```
+
+
+## Authorized Marketing Home read extension - 2026-10-23
+
+The owner authorized real lead aggregates for Marketing Home through
+`GET /marketing/home/summary?period=day|week|month|year`. Read native leads first,
+then the optional legacy adapter, and produce one JSON without copying records.
+Count all leads created in the interval regardless of current status. Preserve
+permission scopes, canonical seller/project identities and local public-ID photos.
+Appointment metrics are now authorized as read-only calendar queries: native events first, then legacy Cita events, attributed through the lead owner/project. No imports or calendar mutations. See `apps/api/Arquitectura/48-Mercadeo-Metricas-Citas.md` (repository-relative).
+This scoped authorization supersedes historical mock-only restrictions for this
+summary only; it authorizes no imports, business mutations, migrations or deployment.
+API contract and verification: `apps/api/Arquitectura/46-Mercadeo-Resumen-Leads.md`
+(relative to the repository root).
+
+## Actualizacion operativa - 2026-10-26
+
+[52 - Etapas, responsables y tiempos](52-Etapas-Responsables-y-Tiempos.md):
+estructura aplicada a ambas bases, consulta paginada y limites operativos.

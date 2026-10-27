@@ -4,6 +4,10 @@
 
 Blueprint futuro de calendarios operativos y sincronizacion. El Calendario de Formalizacion existente es una simulacion React con eventos DEMO; no prueba persistencia, invitados, recordatorios, Outlook ni estas capacidades por area. Ver [28](28-Formalizacion-Recorrido-Visual.md).
 
+Actualizacion 2026-10-23: [034 / calendario compartido](../../api/Arquitectura/47-Calendario-Compartido-Esquema.md) prepara ocho tablas nativas; la aplicacion y vacio fueron verificados en la entrega de esquema, no reconsultados aqui. No conecta editor/API de calendario, Outlook, campana ni runtime de notificaciones. No importa datos legacy ni siembra un tipo Cita. El resumen de Mercadeo si lee evidencia nativa/legacy de citas cuando esta disponible ([48](../../api/Arquitectura/48-Mercadeo-Metricas-Citas.md)), sin activar operaciones de calendario.
+
+Evento y cita no son sinonimos: una cita requiere el tipo configurado. Contar eventos distintos, no participantes ni enlaces; una cita compartida no se multiplica por invitados. `scheduled` no demuestra realizacion ni asistencia; ausencia de tipo/datos/configuracion no autoriza inventarlos. Los DTO, secuencias, scopes y sincronizacion siguientes siguen como propuestas, no contratos de un editor entregado.
+
 ## Veredicto
 
 El calendario de vendedores no se mezcla con calendarios de otros departamentos.

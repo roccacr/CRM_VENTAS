@@ -1,10 +1,18 @@
 # 04 - API Client y Estado
 
+Estado implementado 2026-10-27: [30 - Estado frontend verificado](30-Estado-Frontend-Verificado.md). Los ejemplos de fases futuras siguientes no sustituyen los reportes conectados ni los comandos acotados ya presentes.
+
 ## Vigencia documental - 2026-10-22, corte f2dc4f1
 
 Contrato mixto: BFF vigente y blueprint de estado remoto/comercial. `src/services/api/api-client.ts` usa `fetch` nativo centralizado; servicios por dominio lo reutilizan. TanStack Query y Zustand, sus query keys y ejemplos de leads/notas son propuestas sin dependencia instalada ni contrato comercial ejecutable. Un `409` solo renueva si identifica expresamente sesion con permisos obsoletos; los conflictos de negocio no repiten mutaciones. Ver [27](27-Entrega-Administracion-y-QA.md).
 
 ## Cliente API
+
+Lecturas conectadas al 2026-10-23: `services/formalization/home-summary-service.ts` para seis etapas y `services/marketing/home-summary-service.ts` para leads/citas disponibles; usan `apiRequest`, validacion runtime y hooks React. No instalan TanStack Query ni activan acciones de contratos/calendario. Inventario: [27](27-Entrega-Administracion-y-QA.md).
+
+Mercadeo concentra tipos, `parseMarketingHomeSummary` y `getMarketingHomeSummary` en `src/services/marketing/home-summary-service.ts`; no existe un parser separado. El parser exige version 1, periodo solicitado, zona `America/Costa_Rica`, fechas/rangos validos, conteos enteros no negativos y referencias coherentes. Rechaza totales inconsistentes, eventos duplicados y conversiones duplicadas o superiores a los leads de su cohorte; un payload invalido llega al estado de error, sin publicar un reporte parcial.
+
+`src/modules/home/useMarketingHomeSummary.ts` identifica la lectura por usuario y periodo, comparte la promesa pendiente de esa clave y descarta resultados al desmontar o cambiarla. Al cambiar periodo oculta el valor anterior; Reintentar inicia otra lectura. No tiene polling ni recarga por foco. Vendedor/proyecto filtran localmente los agregados ya autorizados por API; solo el periodo forma parte de la URL HTTP. El directorio combina cohortes y enlaces de citas. La seleccion se reinicia al cambiar usuario y se reconcilia al recibir otro directorio, sin persistir filtros.
 
 Todo acceso HTTP debe pasar por `services/api`.
 
@@ -31,6 +39,8 @@ La capa vigente de identidad vive en `services/api` y `services/auth`. Todo logi
 - manejar `401` con refresh single-flight: una sola llamada a `/identity/refresh`, cola de requests concurrentes y un unico retry;
 - manejar solo el `409` explicito de sesion con permisos obsoletos mediante refresh single-flight; otros conflictos no renuevan ni repiten la mutacion. Un fallo de transporte no demuestra revocacion de identidad; distinguirlo del rechazo explicito de sesion;
 - limpiar cache visual/server state al cerrar sesion;
+- compartir refresh solo dentro de la generacion vigente; login local, inicio Microsoft y logout invalidan el contexto anterior. Un request antiguo que falla no se renueva ni repite bajo otra sesion. Respuestas tardias de `/identity/me` y `/identity/refresh` se rechazan antes de publicar perfil o CSRF; esto no garantiza el orden de cookies de red en un navegador;
+- notificar a `App` un refresh valido para releer el perfil y desmontar consumidores durante la comprobacion. Solo el rechazo 401 del refresh publica `rejected` y retira el shell; un fallo de transporte no equivale por si solo a revocacion;
 - funciones runtime: `getIdentitySession`, `getIdentityProfile`, `loginWithLocalCredentials`, `startMicrosoftLogin`, `logoutIdentitySession` en auth-service y `refreshAuthenticatedSession` en api-client. No existe cliente de reset local operativo en auth-service; los nombres iniciales de reset eran propuesta, no una capacidad entregada.
 
 Regla:
@@ -82,7 +92,7 @@ Reglas:
 
 El frontend debe enviar JSON estandar del CRM. No debe enviar campos con nombres de NetSuite, Odoo o legacy.
 
-Ejemplo conceptual para crear lead:
+Ejemplo historico conceptual para crear lead, no DTO ejecutable ni contrato estable:
 
 ```json
 {
@@ -99,6 +109,8 @@ Ejemplo conceptual para crear lead:
 ```
 
 El API decide si ese contrato se sincroniza con NetSuite, Odoo u otro sistema. El frontend no contiene mappers de ERP.
+
+Los enteros de proyecto/campana/subsidiaria del ejemplo no son identificadores autorizados de UI. El futuro formulario debe usar publicIds y el DTO aprobado entonces; no copiar este payload como contrato vigente.
 
 Si el API devuelve referencias externas por soporte o auditoria, el frontend no debe usarlas como identificadores principales de navegacion, cache o relacion entre entidades.
 

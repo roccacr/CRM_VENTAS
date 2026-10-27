@@ -1,10 +1,25 @@
 # Guía Técnica Completa: Sistema de Autenticación CRM TINK
 
-Referencia vigente: [registro de entrega y limites](api/Arquitectura/36-Registro-Entrega-Administracion.md) y [reauditoria](api/Arquitectura/Reauditoria-54-Plan-y-Resultados.md). Los diagramas simplifican flujos; los resultados historicos no acreditan produccion.
+Revision documental 2026-10-27: los consumidores actuales y los nuevos endpoints
+protegidos se inventarian en [22 API](api/Arquitectura/22-Mapa-de-Implementacion-API.md)
+y [30 frontend](frontend/Arquitectura/30-Estado-Frontend-Verificado.md).
+El retiro de `mercadeo.appointments.read` por038 incrementa permissionVersion;
+no cambia el protocolo BFF. Los resultados de login/sesiones/usuarios de este
+texto son fechados; no se repitieron accesos reales ni se consulto la BD para
+esta revision. Ver [55](api/Arquitectura/55-Revision-Documental-Integral-20261027.md).
+
+
+Referencia vigente: [49 - estado consolidado](api/Arquitectura/49-Estado-Actual-y-Cierre-Documental.md), [registro de entrega y limites](api/Arquitectura/36-Registro-Entrega-Administracion.md) y [reauditoria](api/Arquitectura/Reauditoria-54-Plan-y-Resultados.md). Los diagramas simplifican flujos; los resultados historicos no acreditan produccion.
 
 **Stack:** NestJS (Fastify) + React SPA + MySQL
 **Patrón arquitectónico:** BFF (Backend For Frontend)
-**Estado documental:** revisado contra el codigo en `f2dc4f1` al 2026-10-22. Sin nueva ejecucion de auditoria, pruebas, SQL ni validacion productiva. La antigua puntuacion 9.5/10 carece aqui de una metodologia trazable y no se presenta como garantia actual.
+**Estado documental:** el corte original corresponde a `f2dc4f1` al 2026-10-22.
+Revision de contratos HTTP/cliente al 2026-10-23: renovacion 409 especifica,
+CORS, controles globales y limites de evidencia ajustados contra el checkout.
+Sin nueva ejecucion de autenticacion, pruebas o validacion productiva. La antigua
+puntuacion 9.5/10 no se presenta como garantia actual. La verificacion SELECT del
+estado nativo de este cierre se registra aparte en 49; no prueba login de los
+43 perfiles importados, que siguen sin identidad de acceso habilitada.
 
 ---
 
@@ -28,7 +43,7 @@ Referencia vigente: [registro de entrega y limites](api/Arquitectura/36-Registro
 16. [Permission Version](#16-permission-version)
 17. [Flujo del Frontend](#17-flujo-completo-del-frontend)
 18. [Diagramas de Flujo](#18-diagramas-de-flujo)
-19. [Estándares Cumplidos](#19-estándares-cumplidos)
+19. [Controles implementados y límites](#19-controles-implementados-y-límites)
 20. [Secretos del Sistema](#20-secretos-del-sistema)
 21. [Arquitectura de Archivos](#21-arquitectura-de-archivos)
 
@@ -38,13 +53,19 @@ Referencia vigente: [registro de entrega y limites](api/Arquitectura/36-Registro
 
 **Qué es:** El backend actúa como proxy de seguridad entre el frontend y los proveedores de identidad. El navegador **nunca** toca tokens de acceso, refresh tokens ni secretos de Microsoft. Solo recibe cookies opacas que el backend emite y controla.
 
-**Por qué se usa:** Elimina la superficie de ataque más grande de las SPA: tener tokens en JavaScript accesible. Un XSS no puede robar lo que JavaScript no puede leer.
+**Por qué se usa:** evita exponer tokens de sesión/refresh y del proveedor al
+JavaScript de la SPA. No elimina XSS: un script comprometido puede actuar desde
+la página con la sesión del usuario aunque no pueda leer cookies HttpOnly.
 
 **Cómo funciona aquí:**
 
 - El frontend hace `fetch()` con `credentials: "include"` — el navegador manda las cookies automáticamente.
 - El backend lee las cookies, valida, y responde datos.
 - El frontend **nunca** almacena tokens en `localStorage`, `sessionStorage`, variables globales, Zustand, TanStack Query ni React state.
+
+La prohibición anterior se refiere a tokens de sesión, refresh y Microsoft.
+El valor CSRF sí se recibe en JSON y se conserva temporalmente en memoria; no
+se persiste y no representa una vulnerabilidad por existir en el cliente.
 
 ---
 
@@ -55,7 +76,7 @@ Referencia vigente: [registro de entrega y limites](api/Arquitectura/36-Registro
 | Tecnología | Para qué sirve |
 |---|---|
 | **NestJS** | Framework de Node.js con inyección de dependencias, guards, pipes, módulos. Organiza el código en capas limpias |
-| **Fastify** (adaptador) | Servidor HTTP de alto rendimiento que reemplaza Express. Más rápido y con soporte nativo de hooks, cookies y rate limit |
+| **Fastify** (adaptador) | Adaptador HTTP instalado, con hooks y plugins de cookies/rate limit; no se acredita un benchmark comparativo |
 | **Kysely** | Query builder tipado para TypeScript. Construye SQL seguro contra MySQL sin ORM pesado |
 | **MySQL** | Base de datos relacional. Guarda usuarios, identidades, sesiones, refresh tokens, auditoría y cache Microsoft |
 | **@azure/msal-node** | Librería oficial de Microsoft para OAuth 2.0 / OIDC. Maneja authorization codes, PKCE, token cache, silent renewal |
@@ -63,7 +84,7 @@ Referencia vigente: [registro de entrega y limites](api/Arquitectura/36-Registro
 | **@fastify/helmet** | Cabeceras HTTP de seguridad (HSTS, CSP, X-Frame-Options, etc.) |
 | **@fastify/rate-limit** | Rate limiting por IP y por actor a nivel de Fastify |
 | **argon2** (binding nativo) | Hashing de contraseñas con Argon2id — el ganador de la Password Hashing Competition |
-| **nestjs-pino** | Logger estructurado que no filtra PII en los logs |
+| **nestjs-pino** | Logging estructurado con redacción explícita de campos; no garantiza ausencia de toda PII en cualquier mensaje futuro |
 | **ulid** | IDs ordenables para `sessionPublicId` y `refreshFamilyId` |
 | **Zod** | Validación de variables de entorno al arrancar. Si falta una variable, el servidor no levanta |
 | **class-validator / class-transformer** | Validación y transformación de DTOs HTTP en NestJS |
@@ -339,10 +360,10 @@ Configuradas con **Helmet** (`@fastify/helmet`):
 
 ```typescript
 app.enableCors({
-    origin: FRONTEND_ORIGIN,   // Solo el frontend autorizado
+    origin: [...frontendOrigins], // Allowlist validada del bootstrap
     credentials: true,          // Obligatorio para cookies cross-origin
-    methods: ["GET", "POST", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "X-CRM-CSRF-Token"],
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "X-CRM-CSRF-Token", "x-crm-csrf-token"],
 });
 ```
 
@@ -360,7 +381,9 @@ app.useGlobalPipes(new ValidationPipe({
 }));
 ```
 
-**Protege contra:** Prototype pollution, mass assignment, inyección de campos inesperados. Si mandas `{ "email": "x", "isAdmin": true }`, el DTO rechaza `isAdmin` con un 400.
+**Alcance:** rechaza campos inesperados según el DTO. Por ejemplo,
+`isAdmin` devuelve 400 si no está permitido. Esto no reemplaza permisos de
+negocio, consultas parametrizadas ni toda defensa contra prototype pollution.
 
 ---
 
@@ -378,16 +401,22 @@ new FastifyAdapter({
 
 ## 14. Sistema de Auditoría
 
-Cada acción de seguridad se registra en MySQL con:
+Los flujos conectados registran eventos de seguridad en MySQL con:
 
 - Tipo de evento (`login_succeeded`, `login_failed`, `refresh_rotated`, `refresh_reused`, `logout_requested`, `session_revoked`, `identity_locked`, `microsoft_interaction_required`, etc.)
 - Actor (userId)
 - IP y User-Agent
 - Timestamp
-- Metadata sin PII (los correos se hashean con HMAC antes de loguearse)
+- Metadata permitida por contrato: algunos identificadores de búsqueda se
+  protegen con HMAC; snapshots administrativos pueden contener nombre/correo
+  autorizados. No afirmar que toda bitácora carece de datos personales.
 - Razón de revocación
 
-La auditoría corre **dentro de la misma transacción** que la acción. Si la transacción falla, la auditoría tampoco se guarda — no quedan registros fantasma.
+Los escritores de cambios administrativos conectados pasan la transacción a la
+auditoría; la evidencia central exige transacción y actor capturado cuando hay
+changeSet. Eventos independientes no demuestran atomicidad de cualquier operación.
+La auditoría central requiere ENABLE_RECORD_AUDIT y preparación 023/024; no
+captura automáticamente SQL externo ni eventos futuros de calendario. Ver 37/47/49.
 
 ---
 
@@ -437,7 +466,8 @@ Cuando un admin cambia permisos → incrementa permission_version_user.
 
 En cada request:
 - Si session.permissionVersion !== user.permissionVersion → 409 Conflict
-- Frontend recibe 409 → intenta refresh → si falla → login de nuevo
+- Solo el 409 con "La sesion requiere revalidacion de permisos." activa refresh
+- Otros 409 son conflictos de negocio: no renovar ni repetir la mutación
 ```
 
 **¿Por qué?** Sin esto, un usuario al que le quitaron permisos seguiría operando hasta que su sesión expire (hasta 8 horas). Con permission version, el cambio es efectivo en el siguiente request.
@@ -452,16 +482,22 @@ En cada request:
 3. En cada POST/PUT/PATCH/DELETE:
    - Si no hay csrfToken → hace GET /identity/session primero
    - Agrega X-CRM-CSRF-Token al header
-4. Si recibe 401 o 409:
+4. Si recibe 401 o el 409 específico de sesión obsoleta, y admite reintento:
    - Hace POST /identity/refresh (single-flight dentro de la misma pestaña)
    - Reintenta el request original con retryOnUnauthorized: false
-   - Si refresh también falla → envía al login
+   - Un rechazo 401 del refresh publica rejected → App retira el shell y vuelve al login
+   - Un fallo de transporte no demuestra revocacion; conserva el manejo de error/reintento correspondiente
+   - Un 409 de negocio se muestra sin refresh ni replay de la operación
 5. En logout:
    - POST /identity/logout
    - Limpia csrfToken de memoria
 ```
 
 **Single-flight refresh:** Si 5 llamadas de la misma pestaña reciben 401 al mismo tiempo, solo una hace refresh. Las otras 4 esperan la misma promesa. Entre pestañas, la protección principal vive en el backend: una carrera normal responde como inválida/expirada sin revocar todas las sesiones.
+
+La promesa compartida pertenece a una generacion del cliente. Login local, inicio Microsoft y logout cambian esa generacion; una operacion antigua que falla no dispara renovacion ni replay en la nueva sesion. Respuestas tardias de `/identity/me` y `/identity/refresh` se invalidan antes de publicar perfil o CSRF, y la limpieza de una promesa anterior no borra otra mas reciente. No es una cancelacion de la peticion HTTP ni una garantia del orden de cookies recibidas por el navegador.
+
+Tras refresh valido, `subscribeToSessionRefresh` informa a `App`, que desmonta consumidores y relee el perfil antes de volver a autorizar rutas. El reinicio de comprobacion esta acotado para evitar ciclos. Implementacion: `frontend/src/services/api/api-client.ts` y `frontend/src/App.tsx`; contrato visual y limites: [21 - Sesion frontend](frontend/Arquitectura/21-Seguridad-Autenticacion-BFF-y-Sesion.md). No se ejecuto autenticacion real para esta precision documental.
 
 ---
 
@@ -879,14 +915,18 @@ erDiagram
 
 ---
 
-## 19. Estándares Cumplidos
+## 19. Controles implementados y límites
+
+La tabla relaciona controles con guías de referencia; no certifica cumplimiento
+completo de OWASP, OAuth, OIDC ni normas de privacidad. Helmet protege respuestas
+del API: la CSP del servidor que entrega el frontend requiere revisión separada.
 
 | Estándar | Estado |
 |---|---|
 | **OWASP Session Management** | Sesión opaca, HttpOnly, Secure, SameSite, rotación, detección de robo, ventana absoluta 8h |
 | **OWASP CSRF Prevention** | Double-submit cookie firmada con binding a sesión |
 | **OWASP Password Storage** | Argon2id, lockout, rate limit, enumeración mitigada |
-| **OWASP HTTP Headers** | HSTS, CSP, frame-ancestors, no-cache |
+| **OWASP HTTP Headers** | Configuración de HSTS/CSP/frame-ancestors en API y no-store en identidad; servidor frontend no certificado |
 | **OAuth 2.1 / OIDC** | PKCE obligatorio, state, nonce, challenge firmado |
 | **RFC 6819** (OAuth Threat Model) | Authorization code con PKCE, redirect URI fija, confidential client |
 
@@ -928,7 +968,7 @@ erDiagram
 | `microsoft-msal-cache-crypto.service.ts` | Cifrado AES-256-GCM de la cache MSAL |
 | `configure-http-app.ts` | Bootstrap HTTP: cookies, Helmet, CORS, rate limit, validation, OpenAPI |
 | `main.ts` | Arranque: Fastify con trustProxy explícito |
-| `api-client.ts` (frontend) | Fetch wrapper: CSRF automático, single-flight refresh, retry on 401/409 |
+| `api-client.ts` (frontend) | CSRF en memoria, refresh single-flight por generación y retry 401/409 de sesión obsoleta; no replay de conflictos de negocio |
 
 ---
 

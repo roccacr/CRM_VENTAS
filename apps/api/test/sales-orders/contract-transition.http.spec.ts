@@ -10,7 +10,7 @@ import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { SESSION_COOKIE_NAME } from "../../src/common/security/http-security.constants.js";
 import { REQUIRE_PERMISSION_METADATA } from "../../src/common/security/require-permission.decorator.js";
 import { ROUTE_SECURITY_METADATA } from "../../src/common/security/route-security.decorator.js";
-import { ContractTransitionController } from "../../src/modules/crm/sales/sales-orders/contract-transition.controller.js";
+import { ContractTransitionController, FormalizationStageController } from "../../src/modules/crm/sales/sales-orders/contract-transition.controller.js";
 import { ContractTransitionService } from "../../src/modules/crm/sales/sales-orders/contract-transition.service.js";
 
 describe("contract transition HTTP boundary (no network or database)", () => {
@@ -18,7 +18,7 @@ describe("contract transition HTTP boundary (no network or database)", () => {
     const transition = vi.fn().mockResolvedValue({ sequence: 1 });
     const body = { source: "native", id: "01ARZ3NDEKTSV4RRFFQ69G5FAV", expectedSequence: 0, operationId: "550e8400-e29b-41d4-a716-446655440000" };
     beforeAll(async () => {
-        const module = await Test.createTestingModule({ controllers: [ContractTransitionController], providers: [{ provide: ContractTransitionService, useValue: { transition } }] }).compile();
+        const module = await Test.createTestingModule({ controllers: [ContractTransitionController, FormalizationStageController], providers: [{ provide: ContractTransitionService, useValue: { transition } }] }).compile();
         app = module.createNestApplication<NestFastifyApplication>(new FastifyAdapter());
         await app.register(cookie);
         app.useGlobalPipes(new ValidationPipe({ transform: true, whitelist: true, forbidNonWhitelisted: true }));
@@ -44,6 +44,20 @@ describe("contract transition HTTP boundary (no network or database)", () => {
     it("rejects body action overrides and unknown fields", async () => {
         transition.mockClear();
         const response = await app.inject({ method: "POST", url: "/formalization/contracts/send", payload: { ...body, action: "revert", actorPublicId: "forged" } });
+        expect(response.statusCode).toBe(400);
+        expect(transition).not.toHaveBeenCalled();
+    });
+    it("accepts a selected known stage and uses its independent permission", async () => {
+        transition.mockClear();
+        const handler = Reflect.get(FormalizationStageController.prototype, "setStage") as object;
+        expect(Reflect.getMetadata(REQUIRE_PERMISSION_METADATA, handler)).toEqual({ kind: "all", codes: ["formalizacion.orders.stage.update"] });
+        const response = await app.inject({ method: "POST", url: "/formalization/orders/stage", headers: { cookie: `${SESSION_COOKIE_NAME}=session` }, payload: { ...body, targetState: "closed" } });
+        expect(response.statusCode).toBe(200);
+        expect(transition).toHaveBeenCalledWith("session", "set", expect.objectContaining({ targetState: "closed" }), expect.anything());
+    });
+    it("rejects a forged stage or actor before delegation", async () => {
+        transition.mockClear();
+        const response = await app.inject({ method: "POST", url: "/formalization/orders/stage", payload: { ...body, targetState: "approved", actorPublicId: "forged" } });
         expect(response.statusCode).toBe(400);
         expect(transition).not.toHaveBeenCalled();
     });

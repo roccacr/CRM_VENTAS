@@ -23,8 +23,10 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import { ApiClientError } from "../../../services/api/api-client";
 import { createSystemUser, getIdentityProfile, updateSystemUser, updateSystemUserStatus } from "../../../services/auth/auth-service";
-import type { CreateSystemUserPayload, UpdateSystemUserPayload } from "../../../services/auth/identity-contracts";
+import type { CreateSystemUserPayload, SystemUsersSummary, UpdateSystemUserPayload } from "../../../services/auth/identity-contracts";
 import { ADMINISTRATION_MODAL_Z_INDEX } from "../administration-theme";
+import { buildUserCards } from "../catalogs/catalog-summary";
+import { CatalogBanners } from "../catalogs/CatalogSummary";
 import { PROJECTS_THEME } from "../catalogs/projects-theme";
 import { CreateSystemUserDrawer } from "../components/CreateSystemUserDrawer";
 import { SystemUsersDataTable } from "../components/SystemUsersDataTable";
@@ -206,6 +208,11 @@ const getNavigationUsers = (users: readonly SystemUserListItem[], visibleOrder: 
     return visibleOrder.flatMap((email) => byEmail.get(email) ?? []);
 };
 
+/** Directory-wide counts by status, shown only to people who may read the list. They are counters, not controls. */
+function UsersSummaryBanners({ enabled, summary, ready }: { readonly enabled: boolean; readonly summary: SystemUsersSummary; readonly ready: boolean }) {
+    return enabled ? <CatalogBanners label="Resumen de usuarios" cards={buildUserCards({ summary, ready })} /> : null;
+}
+
 /**
  * Directorio de usuarios del sistema.
  *
@@ -234,7 +241,7 @@ export function SystemUsersPage() {
     const [sortDirection, setSortDirection] = useState<SystemUserSortDirection>("asc");
     const [sortKey, setSortKey] = useState<SystemUserSortKey>("name");
     const createUserCatalog = useCreateUserCatalog(permissions.create || permissions.update);
-    const { hasMore, isLoadingMore, loadMore, loadState, pageTotal, selectedUser, setSelectedUser, users } = useSystemUsersDirectory({ enabled: permissions.list, activeFilter, reloadToken, searchQuery, sortDirection, sortKey });
+    const { hasMore, isLoadingMore, loadMore, loadState, pageTotal, selectedUser, setSelectedUser, summary, users } = useSystemUsersDirectory({ enabled: permissions.list, activeFilter, reloadToken, searchQuery, sortDirection, sortKey });
 
     const [visibleOrder, setVisibleOrder] = useState<readonly string[] | null>(null);
     const isRefreshing = loadState === "loading" && users.length > 0;
@@ -297,12 +304,30 @@ export function SystemUsersPage() {
         setActiveFilter("all");
     };
 
-    const openCreateUserDrawer = (): void => {
+    /**
+     * Ejecuta la acción al instante con los permisos ya conocidos y los reverifica en segundo plano.
+     *
+     * Esperar el perfil antes de abrir hacía que el clic tardara segundos. Si el permiso se revocó,
+     * `refreshPermissions` cierra el panel al llegar la respuesta y cada guardado lo verifica de nuevo
+     * junto con el BFF. Mientras los permisos aún no se conocen no hay nada que decidir, así que se espera.
+     */
+    const runWhenAllowed = (allowed: (state: UsersPermissions) => boolean, act: () => void): void => {
+        const known = !isCheckingPermissions;
+        if (known && !allowed(permissionsRef.current)) return;
+        if (known) act();
         void refreshPermissions().then((next) => {
-            if (!next.create || createUserCatalog.roleOptions.length === 0) return;
-            setCreateError(null);
-            setIsCreateUserOpen(true);
+            if (!known && allowed(next)) act();
         });
+    };
+
+    const openCreateUserDrawer = (): void => {
+        runWhenAllowed(
+            (next) => next.create && createUserCatalog.roleOptions.length > 0,
+            () => {
+                setCreateError(null);
+                setIsCreateUserOpen(true);
+            },
+        );
     };
 
     const closeCreateUserDrawer = (): void => {
@@ -312,17 +337,22 @@ export function SystemUsersPage() {
 
     const openEditUserDrawer = (user: SystemUserListItem): void => {
         if (user.isCurrentUser) return;
-        void refreshPermissions().then((next) => {
-            if (!next.update) return;
-            setEditError(null);
-            setEditingUser(user);
-        });
+        runWhenAllowed(
+            (next) => next.update,
+            () => {
+                setEditError(null);
+                setEditingUser(user);
+            },
+        );
     };
 
     const openUserDetail = (user: SystemUserListItem): void => {
-        void refreshPermissions().then((next) => {
-            if (next.detail) setSelectedUser(user);
-        });
+        runWhenAllowed(
+            (next) => next.detail,
+            () => {
+                setSelectedUser(user);
+            },
+        );
     };
 
     const closeEditUserDrawer = (): void => {
@@ -335,11 +365,13 @@ export function SystemUsersPage() {
     };
 
     const openStatusAction = (user: SystemUserListItem, status: SystemUserStatusUpdateTarget): void => {
-        void refreshPermissions().then((next) => {
-            if (!canChangeUserStatus(next, user, status)) return;
-            setStatusReason("");
-            setPendingStatusAction({ status, user });
-        });
+        runWhenAllowed(
+            (next) => canChangeUserStatus(next, user, status),
+            () => {
+                setStatusReason("");
+                setPendingStatusAction({ status, user });
+            },
+        );
     };
 
     const closeStatusAction = (): void => {
@@ -467,31 +499,41 @@ export function SystemUsersPage() {
                         />
                     </section>
 
+                    <UsersSummaryBanners enabled={permissions.list || isCheckingPermissions} summary={summary} ready={permissions.list && loadState === "ready"} />
+
                     <section className="administration-users-panel" aria-label="Listado de usuarios" aria-busy={loadState === "loading"}>
+                        <div className="catalog-section-heading">
+                            <h2>Listado de usuarios</h2>
+                            <p>Busca o filtra por estado y abre un usuario para ver su detalle, sus roles y sus accesos.</p>
+                        </div>
                         {isRefreshing ? <SystemUsersRefreshStatus /> : null}
 
                         {permissions.list ? (
                             <SystemUsersDataTable permissions={permissions} highlightedPublicId={highlightedPublicId} loadState={loadState} selectedUserEmail={selectedUserEmail} users={users} onClearFilters={clearFilters} onEditUser={openEditUserDrawer} onOpenUser={openUserDetail} onStatusAction={openStatusAction} onVisibleOrderChange={setVisibleOrder} />
                         ) : (
-                            <p role="status">{isCheckingPermissions ? "Cargando información de usuarios" : "No tienes permiso para consultar la lista de usuarios."}</p>
+                            <p className="catalog-status-message" role="status">
+                                {isCheckingPermissions ? "Cargando información de usuarios" : "No tienes permiso para consultar la lista de usuarios."}
+                            </p>
                         )}
 
-                        <footer className="administration-users-footer">
-                            <span>{permissions.list ? getUsersRangeLabel(loadState, users.length, pageTotal) : ""}</span>
-                            {permissions.list && hasMore ? (
-                                <Button
-                                    size="small"
-                                    loading={isLoadingMore}
-                                    onClick={() => {
-                                        void refreshPermissions().then((next) => {
-                                            if (next.list) loadMore();
-                                        });
-                                    }}
-                                >
-                                    {getLoadMoreLabel(users.length, pageTotal)}
-                                </Button>
-                            ) : null}
-                        </footer>
+                        {permissions.list ? (
+                            <footer className="administration-users-footer">
+                                <span>{getUsersRangeLabel(loadState, users.length, pageTotal)}</span>
+                                {hasMore ? (
+                                    <Button
+                                        size="small"
+                                        loading={isLoadingMore}
+                                        onClick={() => {
+                                            void refreshPermissions().then((next) => {
+                                                if (next.list) loadMore();
+                                            });
+                                        }}
+                                    >
+                                        {getLoadMoreLabel(users.length, pageTotal)}
+                                    </Button>
+                                ) : null}
+                            </footer>
+                        ) : null}
                     </section>
                 </div>
 

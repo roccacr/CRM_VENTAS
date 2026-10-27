@@ -1,5 +1,48 @@
 # 36 - Registro de entrega de Administracion
 
+## Continuidad vigente - 2026-10-27
+
+Las ampliaciones del 2026-10-26 sustituyen los limites de solo Home de los cortes
+siguientes: `ContractTransitionModule` esta registrado con send/revert/set-stage;
+Home incluye seguimiento y timing, y `NetsuiteModule` inspeccion GET autorizada.
+Captacion agrega su endpoint independiente de solo lectura. Eventos y citas se
+retira del menu y del catalogo de permisos mediante 038; Calendario y metricas
+permanecen. Estado/contratos en [22](22-Mapa-de-Implementacion-API.md),
+[52](52-Etapas-Responsables-y-Tiempos.md) y [53](53-Captacion-Leads-Reporte-Federado.md).
+Las afirmaciones de ausencia de comandos en los cortes 2026-10-22/23 son
+historicas. La configuracion local de escritura legacy documentada en52 es una
+ampliacion posterior, no un cambio aplicado por esta revision.
+No se han reejecutado los resultados antiguos de este registro.
+
+## Continuidad documental - 2026-10-23
+
+El estado consolidado y snapshot actual pertenecen a [49](49-Estado-Actual-y-Cierre-Documental.md).
+Las secciones de entrega siguientes conservan su fecha; no convierten tests,
+flags locales o conteos previos en verificacion actual de CI/despliegue.
+
+- Owner hereda virtualmente roles/modulos activos y base de permisos activos;
+  deny individual prevalece. General tiene plantilla editable limitada por sus
+  modulos y los seleccionados para la persona (41/42).
+- El lote por correo creo 43 perfiles; la ampliacion posterior asigno `ventas`
+  sin grants ni identidades de acceso ni membresias individuales (45).
+- Formalizacion registra aprobaciones, contratos y agregado Home; los seis
+  banners de etapas requieren rol efectivo Formalizacion y
+  `formalizacion.home.stages.read`. Solo el cierre acumulado tiene limite anual;
+  identidad nativa suprime legacy en todos los conteos (38/40).
+- `MarketingHomeModule` registra el resumen de Mercadeo con permiso efectivo
+  `mercadeo.home.read`, alcance validado y lectores de leads/citas (46/48).
+  No equivale a CRUD de Leads/calendario, Outlook ni campana operativa.
+- Listado contractual y send/revert siguen sin registrar en AppModule. Los
+  lectores de resumen no ejecutan los escritores internos preparados.
+- El preflight de expedientes ya no permite copiar identidades. La historia de
+  Leads debe consultarse por origen; la ruta actual solo lee evidencia nativa,
+  sin federacion HTTP ni reintroducir importador (35/44).
+
+Fuentes de esta reconciliacion: `src/app.module.ts`,
+`identity-profile.repository.ts`, `identity-module-policy.ts`, `route-permission.ts`,
+`home-summary.repository.ts`, `legacy-home-summary.reader.ts` y
+`marketing-home.repository.ts`. Revision estatica: sin pruebas ni operaciones BD.
+
 Actualizado documentalmente: 2026-10-22; cortes de entrega desde 2026-10-13. Consolidacion del trabajo de esta continuidad, contrastada con el codigo del checkout. No acredita despliegue, estado actual de produccion ni aceptacion final del Owner. Los resultados anteriores se identifican como evidencia historica, no como pruebas ejecutadas durante esta actualizacion documental.
 
 ## Estado vigente tras remediacion - 2026-10-22
@@ -222,7 +265,7 @@ Antes de implementarlo se debe acordar autoridad por campo, version/fecha de ori
 
 No reescribir migraciones historicas ni ejecutar toda la cadena como prueba. Los cutovers de catalogos rechazan registros compartidos existentes en lugar de borrarlos. Verificar destino CRM_THINK_V2, ledger, esquema, motor y respaldo antes de una ejecucion autorizada. La palabra schema-only del runner no garantiza ausencia de DML de seguridad.
 
-`scripts/prepare-unit-files.ts` es el preflight report-only. El modo `--apply-project-identities` modifica solo identidades nativas verificadas y requiere autorizacion explicita; no importa unidades. El origen confirmado es `crmdatabase-api.expedientes`, no el nombre inicialmente supuesto expediente_unidad.
+`scripts/prepare-unit-files.ts` es exclusivamente preflight de lectura. Por la instruccion expresa de no copiar datos del 2026-10-23, se retiro su escritor y `--apply-project-identities` falla antes de cargar configuracion o abrir conexiones. Los conteos de la preparacion anterior son evidencia historica, no permiso para repetirla. El origen confirmado de consulta es `crmdatabase-api.expedientes`, no el nombre inicialmente supuesto expediente_unidad.
 
 Snapshot historico del documento 35: 3.358 expedientes; 1.332 bloqueados en referencias 2, 21, 9, 7, 40 y 0; 21 proyectos preparados y dos preexistentes conservados. No son conteos actuales. El grupo 40 tiene correspondencia ambigua; no adivinar por nombre ni por PK legacy. La FK nativa de unidad referencia el PK interno `crm_project.id_project`; el JSON expone la identidad publica CRM del proyecto. La referencia plana de origen es procedencia y se traduce mediante el proveedor en el adaptador, sin alterar produccion.
 
@@ -392,7 +435,7 @@ Las pruebas MySQL son opt-in y usan configuracion local segura; consultar docume
 | ------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Aceptacion manual Owner y otro perfil | Guardados permitidos, rechazos protegidos, revocacion efectiva y auditoria exacta comprobados con fixtures autorizados                                                           |
 | Relaciones de expedientes bloqueadas  | Correspondencias aprobadas, sin duplicados de proveedor ni huerfanos; preflight limpio por alcance                                                                               |
-| Migracion del inventario              | Plan/importador idempotente aprobado, paridad de los 27 valores, referencias y conteos; rollback probado                                                                         |
+| Cobertura del inventario por origen   | Consultar cada origen y reconciliar referencias; el no-copy del 2026-10-23 sustituye el pendiente anterior de construir un importador. No retirar legacy sin cobertura comprobada. |
 | Deriva de datos externa               | Autoridad por campo y conflictos acordados; reconciliador implementado y probado antes de prometer consistencia automatica                                                       |
 | Rendimiento real                      | EXPLAIN y tiempos bajo volumen/concurrencia representativos; indices legacy solo con aprobacion, medicion y rollback                                                             |
 | Cobertura y navegacion de auditoria   | Instrumentar nuevos escritores; definir ingestacion de cambios de otras APIs/SQL, retencion y exportacion; el deep link al registro especifico aun no existe, solo Abrir seccion |

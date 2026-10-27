@@ -152,7 +152,7 @@ function UserAccessScopeCell({ user }: { readonly user: SystemUserListItem }) {
                 <Typography.Text type="secondary">Sin rol</Typography.Text>
             )}
             {isAreaRepeatedByRole(user) ? null : (
-                <Typography.Text className="administration-users-scope__area" type="secondary" ellipsis={{ tooltip: user.orgUnit }}>
+                <Typography.Text className="administration-users-scope__area" type="secondary" title={user.orgUnit}>
                     {user.orgUnit}
                 </Typography.Text>
             )}

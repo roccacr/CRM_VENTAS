@@ -5,8 +5,8 @@
  * porque es un diálogo de pantalla completa.
  */
 .global-home-shell {
-    --global-home-header-height: 72px;
-    --global-home-menu-height: 64px;
+    --global-home-header-height: 56px;
+    --global-home-menu-height: 44px;
     --page-max: 150rem;
     --page-pad: clamp(1.25rem, 2vw, 2.5rem);
     --section-gap: clamp(1rem, 1.4vw, 1.5rem);
@@ -42,9 +42,9 @@
 .global-home-mobile-bar,
 .global-home-mobile-drawer-shell {
     --shell-ink: #0e1116;
-    --shell-ink-hover: #2f3a4b;
-    --shell-ink-active: #354357;
-    --shell-on-ink: #ebeef3;
+    --shell-ink-hover: #232831;
+    --shell-ink-active: #0e1116;
+    --shell-on-ink: #bcc3cf;
     --shell-canvas: #f5f7fa;
     --shell-surface: #ffffff;
     --shell-border: #d2dae5;
@@ -73,7 +73,7 @@
     left: 0;
     z-index: 90;
     flex: 0 0 auto;
-    border-bottom: 1px solid var(--shell-border);
+    border-bottom: 1px solid #b4c0d0;
     background: var(--shell-surface);
 }
 
@@ -93,11 +93,11 @@
 
 .global-home-header__inner {
     display: grid;
-    height: 72px;
-    grid-template-columns: minmax(112px, clamp(116px, 11vw, 172px)) minmax(0, 1fr) max-content;
+    height: 56px;
+    grid-template-columns: minmax(108px, clamp(108px, 10vw, 140px)) minmax(0, 1fr) max-content;
     align-items: center;
     gap: clamp(10px, 1.6vw, 24px);
-    padding: clamp(0.5rem, 1vw, 0.875rem) var(--page-pad);
+    padding: 0 var(--page-pad);
 }
 
 .global-home-header__brand {
@@ -108,8 +108,8 @@
 
 .global-home-header__logo {
     display: block;
-    width: clamp(112px, 10vw, 154px);
-    max-height: 54px;
+    width: clamp(104px, 9vw, 120px);
+    max-height: 40px;
     height: auto;
     object-fit: contain;
 }
@@ -136,7 +136,7 @@
     display: inline-flex;
     align-items: center;
     gap: 10px;
-    height: 40px;
+    height: 36px;
     width: 196px;
     min-width: 0;
     border: 1px solid var(--shell-border-strong);
@@ -194,7 +194,7 @@
     max-width: min(100%, 420px);
     align-items: center;
     gap: 10px;
-    height: 40px;
+    height: 36px;
     border: 1px solid var(--shell-border);
     border-radius: 8px;
     padding: 0 8px 0 12px;
@@ -458,8 +458,9 @@
     flex: 0 0 auto;
     align-items: center;
     overflow: visible;
-    padding: 8px 0;
-    background: var(--shell-canvas);
+    height: var(--global-home-menu-height);
+    padding: 0;
+    background: var(--shell-ink);
     color: var(--shell-on-ink);
     scrollbar-width: thin;
     scrollbar-color: #4b5160 transparent;
@@ -474,13 +475,8 @@
     flex-wrap: nowrap;
     align-items: center;
     justify-content: flex-start;
-    gap: 0 4px;
-    border-radius: 8px;
-    padding: 0 8px;
-    background: var(--shell-ink);
-    box-shadow:
-        0 1px 2px rgba(15, 23, 42, 0.12),
-        0 6px 16px rgba(15, 23, 42, 0.1);
+    gap: 0;
+    padding: 0;
 }
 
 .global-home-menu__group {
@@ -505,10 +501,10 @@
     flex: 0 0 auto;
     align-items: center;
     gap: 8px;
-    height: 48px;
+    height: var(--global-home-menu-height);
     border: 0;
     border-radius: 0;
-    padding: 0 14px;
+    padding: 0 16px;
     background: transparent;
     color: var(--shell-on-ink);
     cursor: pointer;
@@ -533,20 +529,25 @@
     outline-offset: -4px;
 }
 
-/* Activo: texto blanco, peso mayor e indicador inferior blanco. Sin color de acento. */
+/* Activo: igual que Carbon, el fondo no cambia; lo marcan el texto blanco en negrita y la línea inferior. Sin color de acento ni tinte azul. */
 .global-home-menu__item--active {
     background: var(--shell-ink-active);
     color: #ffffff;
-    font-weight: 600;
+    font-weight: 700;
+}
+
+.global-home-menu__item--active:hover,
+.global-home-menu__item--active.global-home-menu__item--open {
+    background: var(--shell-ink-hover);
 }
 
 .global-home-menu__item--active::after {
     position: absolute;
-    right: 10px;
+    right: 0;
     bottom: 0;
-    left: 10px;
-    height: 2px;
-    border-radius: 2px 2px 0 0;
+    left: 0;
+    height: 3px;
+    border-radius: 0;
     background: #ffffff;
     content: "";
 }
@@ -583,12 +584,12 @@
     display: grid;
     width: min(300px, calc(100vw - 32px));
     gap: 2px;
-    border: 1px solid var(--shell-border);
-    border-radius: 8px;
-    padding: 8px;
+    border: 1px solid #b4c0d0;
+    border-radius: 6px;
+    padding: 6px;
     background: var(--shell-surface);
     color: var(--shell-text);
-    box-shadow: var(--shell-popover-shadow);
+    box-shadow: 0 4px 12px rgb(15 23 42 / 16%);
 }
 
 .global-home-menu__dropdown::before {
@@ -603,24 +604,29 @@
 .global-home-menu__dropdown-item {
     display: grid;
     grid-template-columns: 28px minmax(0, 1fr);
-    gap: 8px;
+    gap: 10px;
     align-items: center;
     border: 0;
-    border-radius: 6px;
-    padding: 8px 12px;
+    border-radius: 4px;
+    padding: 7px 10px;
     background: transparent;
-    color: var(--shell-text);
+    color: #18222f;
     cursor: pointer;
     font: inherit;
     text-align: left;
 }
 
 .global-home-menu__dropdown-item:hover {
-    background: var(--shell-hover);
+    background: #eaf1fb;
 }
 
 .global-home-menu__dropdown-item--active {
-    background: var(--shell-selected);
+    background: #e3e9f1;
+    box-shadow: inset 3px 0 0 #18222f;
+}
+
+.global-home-menu__dropdown-item--active:hover {
+    background: #d9e1ed;
 }
 
 .global-home-menu__dropdown-item:focus-visible {
@@ -632,22 +638,21 @@
     display: inline-grid;
     width: 28px;
     height: 28px;
-    border: 1px solid var(--shell-border);
-    border-radius: 6px;
+    border: 1px solid #b4c0d0;
+    border-radius: 4px;
     place-items: center;
     background: var(--shell-surface);
-    color: var(--shell-text-secondary);
+    color: #3b4a61;
     font-size: 14px;
 }
 
 .global-home-menu__dropdown-item--active .global-home-menu__dropdown-icon {
-    border-color: var(--shell-ink);
-    background: var(--shell-ink);
-    color: #ffffff;
+    border-color: #18222f;
+    color: #18222f;
 }
 
 .global-home-menu__dropdown-label {
-    color: var(--shell-text);
+    color: #18222f;
     font-size: 13px;
     font-weight: 600;
     line-height: 1.5;
@@ -1755,20 +1760,20 @@
     .global-home-header__inner {
         grid-template-columns: max-content minmax(0, 1fr) max-content;
         gap: 12px;
-        padding: 12px var(--page-pad);
+        padding: 0 var(--page-pad);
     }
 
     .global-home-header__logo {
-        width: 112px;
+        width: 108px;
     }
 
     .global-home-menu__track {
         flex-wrap: nowrap;
         justify-content: flex-start;
-        gap: 0 20px;
+        gap: 0;
         overflow-x: auto;
         overflow-y: hidden;
-        padding: 0 12px;
+        padding: 0;
         /* A mask would also clip viewport-positioned descendant dropdowns. */
     }
 

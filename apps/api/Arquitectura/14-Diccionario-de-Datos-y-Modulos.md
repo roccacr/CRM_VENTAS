@@ -102,6 +102,12 @@ Notas de rendimiento:
 Riesgos:
 ```
 
+## Nombres del diccionario y fuentes fisicas - 2026-10-23
+
+Las entradas plurales de este diccionario son conceptos del blueprint, no nombres de tablas desplegadas. Leads usa el DDL de `migrations/schema-only/202610230031_leads_domain.ts` ([43](43-Leads-Esquema-Nativo.md)); calendario usa las ocho tablas singulares de [SQL/034](SQL/034_calendar_domain.sql) ([47](47-Calendario-Compartido-Esquema.md)). Catalogos y ordenes tienen diccionarios propios en [35](35-Catalog-API-and-Schema.md) y [39](39-Diccionario-Ordenes-Venta.md). No crear tablas a partir de los nombres ilustrativos siguientes.
+
+`crm_user_permission_grants` y `crm_user_permission_denials` son conceptos historicos: el runtime representa ambos efectos en `sec_user_permission_override`. La delegacion temporal sigue futura. `crm_calendar_events` corresponde conceptualmente a `crm_calendar_event`, sin agenda operativa; las lecturas de citas del resumen de Mercadeo son una ampliacion separada ([48](48-Mercadeo-Metricas-Citas.md)). `int_external_reference` es vision generica: resolver cada entidad con su tabla de referencias real, como `crm_lead_external_reference`, sin suponer un registro universal. Inventario: [49](49-Estado-Actual-y-Cierre-Documental.md).
+
 ## Diccionario inicial P0
 
 El diccionario detallado de identidad ya vive en:

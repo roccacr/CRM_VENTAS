@@ -1,5 +1,47 @@
 # CI y gate MySQL
 
+## Inventario contrastado - 2026-10-27
+
+Revision estatica de `.github/workflows/quality.yml`, `scripts/run-mysql-ci.ts`
+y archivos `test/**/*.mysql.spec.ts`; sin conexion BD, fixtures ni ejecucion de CI.
+Hay **23 suites MySQL** descubiertas y **5** en `NATIVE_MYSQL_FILES`: lifecycle de
+ordenes, acceso de identidad, sesion HTTP local, changelog de identidad y
+changelog de catalogos. Las **18 restantes** no quedan verificadas por ese grupo.
+El runner informa `partial` y salida1 si existen suites fuera del grupo aun
+cuando las cinco pasen. Los conteos antiguos de tests abajo no son inventario actual.
+
+Dos verificaciones de lectura requieren distinguir dataset de estructura:
+
+- `test/migrations/leads-domain.mysql.spec.ts`, flag `LEAD_SCHEMA_MYSQL_TESTS=1`,
+  inspecciona tablas/comentarios/FK/indices/triggers y exige siete etapas exactas.
+  La limpieza51 vacio catalogos; no ejecutar seeds para satisfacer la prueba.
+- `test/marketing/marketing-leads-report.readonly.mysql.spec.ts`, flag
+  `CRM_CAPTURE_REPORT_LIVE=true`, lee `.env`, exige destino nativo y TLS, consulta
+  ambos origenes en un snapshot de solo lectura y escribe evidencia agregada en
+  filesystem. Asume cero leads nativos y compara total legado: valida ese corte,
+  no un futuro dataset mixto. No pertenece al grupo CI permitido ni sustituye
+  pruebas positivas nativas, concurrencia o aislamiento de infraestructura.
+
+Registrar siempre archivo/flag, fecha, dataset, operaciones y resultado; una
+suite omitida por defecto no es evidencia de persistencia. [53](53-Captacion-Leads-Reporte-Federado.md)
+contiene el registro historico del chequeo live del reporte. Esta revision no
+lo repitio ni habilito flags, READY, secretos o protecciones remotas.
+
+Revision documental 2026-10-23: [49 - Estado actual](49-Estado-Actual-y-Cierre-Documental.md).
+Workflow y runner inspeccionados; sin nueva ejecucion de CI/persistencia ni
+settings remotos. Existen nuevas suites MySQL, incluida Leads, fuera del grupo
+permitido de cinco archivos: no trasladar conteos antiguos a la suite actual.
+La aplicacion autorizada de esquema 034 y los SELECT de metadatos no cierran Q05.
+
+## Validacion documental local - 2026-10-27
+
+Se ejecutaron nueve archivos de pruebas con dobles, sin activar flags MySQL:
+`leads-domain`, `lead-history-schema`, `calendar-domain`, `sales-order-lead`,
+`sales-order-stage-tracking`, `remove-marketing-appointments`,
+`schema-migration-runner`, `mysql-ci` y `mysql-ci-runner`. Resultado: **108 pruebas
+aprobadas**. Acreditan SQL generado, guardas y politica del runner; no ejecutan
+restricciones contra un servidor ni cierran el gate de persistencia/CI remoto.
+
 ## Alcance
 
 .github/workflows/quality.yml configura GitHub Actions para push, pull_request y
@@ -140,6 +182,9 @@ construccion, con datos que no se pueden perder. crmdatabase-api es produccion
 y fuente de la migracion progresiva. Ambas configuraciones usan el mismo host
 RDS; la BD de desarrollo no se presenta como servidor fisicamente aislado.
 No ejecutar mas fixtures ni DDL por el mero hecho de llamarse desarrollo.
+Las migraciones dirigidas 031/032/034 y los perfiles/Ventas se ejecutaron con
+autorizaciones independientes, no mediante este runner de pruebas; no permiten
+repetir fixtures ni importaciones. Ver 43-49 para cada alcance y su evidencia.
 CI necesita un destino/dataset de pruebas explicitamente preparado, distinto
 de los datos de desarrollo que deben conservarse. La clasificacion es la
 declaracion del propietario, no una certificacion externa de infraestructura.

@@ -22,6 +22,12 @@ Project-local skills are installed under `.agents/skills/`. Source revisions, in
 
 ## Scope
 
+Current documentation reconciliation (2026-10-27): [55 - Revision integral](apps/api/Arquitectura/55-Revision-Documental-Integral-20261027.md). It records current wiring and dated evidence; this does not authorize business operations.
+
+Current implementation/documentation history: [49 - Estado actual](apps/api/Arquitectura/49-Estado-Actual-y-Cierre-Documental.md).
+Historical pauses and future blueprints do not override explicit scoped approvals.
+An applied schema or visible menu is not an operational feature; preserve evidence limits.
+
 - API rules live in `apps/api/AGENTS.md`.
 - Frontend rules live in `apps/frontend/AGENTS.md`.
 - Product scope law lives in `apps/api/Arquitectura/00-Producto-CRM-TINK-y-P0.md`.

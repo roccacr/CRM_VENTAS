@@ -12,6 +12,7 @@ import { validateEnv } from "./config/env.validation.js";
 import { DatabaseModule } from "./database/database.module.js";
 import { LegacyCrmModule } from "./integrations/legacy-crm/legacy-crm.module.js";
 import { Microsoft365Module } from "./integrations/microsoft365/microsoft365.module.js";
+import { NetsuiteModule } from "./integrations/netsuite/netsuite.module.js";
 import { AuditModule } from "./modules/crm/audit/audit.module.js";
 import { BrokersModule } from "./modules/crm/brokers/brokers.module.js";
 import { CampaignsModule } from "./modules/crm/campaigns/campaigns.module.js";
@@ -20,10 +21,12 @@ import { ClassesModule } from "./modules/crm/classes/classes.module.js";
 import { IdentityModule } from "./modules/crm/identity/identity.module.js";
 import { identityRequestContextMiddleware } from "./modules/crm/identity/identity-request-context.js";
 import { LocationsModule } from "./modules/crm/locations/locations.module.js";
+import { MarketingHomeModule } from "./modules/crm/marketing/marketing-home.module.js";
 import { PermissionsModule } from "./modules/crm/permissions/permissions.module.js";
 import { ProjectsModule } from "./modules/crm/projects/projects.module.js";
 import { ApprovalSummaryModule } from "./modules/crm/sales/sales-orders/approval-summary.module.js";
 import { ContractSummaryModule } from "./modules/crm/sales/sales-orders/contract-summary.module.js";
+import { ContractTransitionModule } from "./modules/crm/sales/sales-orders/contract-transition.module.js";
 import { HomeSummaryModule } from "./modules/crm/sales/sales-orders/home-summary.module.js";
 import { SubsidiariesModule } from "./modules/crm/subsidiaries/subsidiaries.module.js";
 import { UnitFilesModule } from "./modules/crm/unit-files/unit-files.module.js";
@@ -31,8 +34,8 @@ import { UnitFilesModule } from "./modules/crm/unit-files/unit-files.module.js";
 /**
  * Modulo raiz del runtime de identidad aprobado.
  *
- * Incluye identidad, catalogos y la lectura autorizada del contador de
- * aprobaciones. No expone las mutaciones del ciclo de vida de ordenes.
+ * Incluye identidad, catalogos, resumenes y seguimiento. Los comandos de
+ * Formalizacion registrados exigen permisos propios, aprobaciones y auditoria.
  */
 @Module({
     imports: [
@@ -57,6 +60,7 @@ import { UnitFilesModule } from "./modules/crm/unit-files/unit-files.module.js";
         HealthModule,
         LegacyCrmModule,
         Microsoft365Module,
+        NetsuiteModule,
         AuditModule,
         PermissionsModule,
         IdentityModule,
@@ -71,6 +75,8 @@ import { UnitFilesModule } from "./modules/crm/unit-files/unit-files.module.js";
         ApprovalSummaryModule,
         ContractSummaryModule,
         HomeSummaryModule,
+        ContractTransitionModule,
+        MarketingHomeModule,
     ],
     providers: [
         AuthenticatedReadRateLimit,

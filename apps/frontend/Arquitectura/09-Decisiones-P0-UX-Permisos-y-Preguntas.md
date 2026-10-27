@@ -11,9 +11,9 @@ Decisiones y preguntas del blueprint comercial. Las secuencias P0/P1 y permisos 
 3. Los usuarios entraran con cuenta Microsoft o con correo y contrasena, segun la politica que se confirme en el API.
 4. El frontend no decide permisos finales.
 5. El frontend consume permisos efectivos desde el API.
-6. El frontend no debe saber si un lead viene de la base nueva o del CRM legacy.
-7. En P0 el flujo principal trabajara leads nuevos de la base nueva.
-8. En P1 el API podra devolver registros normalizados desde la base nueva y desde legacy.
+6. El frontend no elige la fuente; puede recibir procedencia normalizada para soporte/trazabilidad sin convertirse en adapter.
+7. El CRUD visual de leads sigue futuro; el resumen Home de Mercadeo ya cuenta leads creados en el intervalo, independientemente de su estado actual.
+8. Al 2026-10-23 el resumen puede combinar nativo y lector legacy opcional, sin importar registros. El API resuelve precedencia, deduplicacion y alcance; esto no espera una UI P1 ni autoriza migraciones.
 9. El frontend nunca debe usar nombres de NetSuite/Odoo/legacy en formularios, stores o clientes API.
 10. El frontend envia JSON canonico del CRM; el API se encarga de mapearlo al proveedor externo activo.
 11. El frontend usa `publicId` canonico del CRM para rutas, cache, detalle y acciones; nunca ids externos como identificadores principales.
@@ -78,6 +78,8 @@ Reglas:
 7. Se debe mostrar el origen del dato: nuevo CRM vs legacy, o debe quedar oculto?
 
 ## Regla para implementacion
+
+La secuencia siguiente es el vertical futuro de Ventas. No reemplaza las ampliaciones Home de lectura ya documentadas en [27](27-Entrega-Administracion-y-QA.md).
 
 Construir primero una experiencia operativa minima:
 

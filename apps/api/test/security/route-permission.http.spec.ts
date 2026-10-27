@@ -107,9 +107,10 @@ function expectedCatalogCodes(route: (typeof routes)[number]): string[] {
 }
 
 function expectedCodes(route: (typeof routes)[number]): string[] {
-    if (["/formalization/home/summary", "/formalization/contracts/summary"].includes(route.path)) return ["formalizacion.home.stages.read"];
-    if (route.path === "/formalization/contracts/send") return ["formalizacion.contracts.send"];
-    if (route.path === "/formalization/contracts/revert") return ["formalizacion.contracts.revert"];
+    const explicit: Record<string, string[]> = { "/marketing/home/summary": ["mercadeo.home.read"], "/marketing/leads/report": ["mercadeo.leads.read"], "/formalization/contracts/send": ["formalizacion.contracts.send"], "/formalization/contracts/revert": ["formalizacion.contracts.revert"], "/formalization/orders/stage": ["formalizacion.orders.stage.update"] };
+    const codes = explicit[route.path];
+    if (codes) return codes;
+    if (["/formalization/home/summary", "/formalization/home/follow-up", "/formalization/contracts/summary", "/formalization/orders/:source/:id/timing", "/formalization/orders/:source/:id/netsuite", "/formalization/orders/:source/:id/database"].includes(route.path)) return ["formalizacion.home.stages.read"];
     if (route.path.startsWith("/catalogs/")) return expectedCatalogCodes(route);
     if (route.path.startsWith("/unit-files")) return ["ventas.catalog_file.read"];
     if (route.path.startsWith("/formalization/")) return ["formalizacion.home.approvals.read"];
@@ -176,14 +177,19 @@ describe("real module permission inventory and HTTP boundary (no environment or 
     });
 
     it("requires a descriptor on every registered permission handler", () => {
-        expect(new Set(routes.map((route) => route.handler)).size).toBe(51);
+        expect(new Set(routes.map((route) => route.handler)).size).toBe(61);
+        expect(routes.some((route) => route.path === "/marketing/home/summary")).toBe(true);
+        expect(routes.some((route) => route.path === "/marketing/leads/report")).toBe(true);
+        expect(routes.some((route) => route.path === "/audit/records/:recordId/timeline")).toBe(true);
         requireDescriptors(routes);
     });
     it("exposes the Home contract count, not premature order lists or state commands", () => {
         const paths = routes.map((route) => route.path);
         expect(paths).toContain("/formalization/contracts/summary");
         expect(paths).toContain("/formalization/home/summary");
-        for (const path of ["/formalization/contracts/orders", "/formalization/contracts/send", "/formalization/contracts/revert"]) expect(paths).not.toContain(path);
+        expect(paths).toContain("/formalization/home/follow-up");
+        expect(paths).not.toContain("/formalization/contracts/orders");
+        for (const path of ["/formalization/contracts/send", "/formalization/contracts/revert", "/formalization/orders/:source/:id/timing"]) expect(paths).toContain(path);
     });
     it("inventory rejects missing metadata on every controller and method alias", () => {
         const aliases = routesFrom([AliasProbeController]);
@@ -201,8 +207,8 @@ describe("real module permission inventory and HTTP boundary (no environment or 
         if (url === "/audit") query.set("sectionCode", "catalogs");
         if (route.method === "GET") url += "?" + query.toString();
         const csrf = createSignedCsrfToken(secret, session);
-        const payload = route.path.startsWith("/formalization/contracts/") ? { source: "legacy", id: "1", expectedSequence: 0, operationId: "01ARZ3NDEKTSV4RRFFQ69G5FAV", reason: "Permission regression" } : { moduleCode: "ventas", status: "inactive", reason: "Permission regression", name: "Value" };
-        return app.inject({ method: route.method, url, ...(route.method === "GET" || route.method === "DELETE" ? {} : { payload }), headers: { cookie: `${SESSION_COOKIE_NAME}=${session}; ${CSRF_COOKIE_NAME}=${csrf}`, [CSRF_HEADER_NAME_LOWERCASE]: csrf } });
+        const payload = route.path.startsWith("/formalization/") ? { source: "legacy", id: "1", expectedSequence: 0, operationId: "01ARZ3NDEKTSV4RRFFQ69G5FAV", reason: "Permission regression", ...(route.path === "/formalization/orders/stage" ? { targetState: "bank_management" } : {}) } : { moduleCode: "ventas", status: "inactive", reason: "Permission regression", name: "Value" };
+        return app.inject({ method: route.method, url, ...(["GET", "DELETE"].includes(route.method) ? {} : { payload }), headers: { cookie: `${SESSION_COOKIE_NAME}=${session}; ${CSRF_COOKIE_NAME}=${csrf}`, [CSRF_HEADER_NAME_LOWERCASE]: csrf } });
     }
     describe.each(routes)("$method $path", (route) => {
         it.each(["missing", "unrelated", "deny", "owner-deny"] as const)("blocks %s before handler/domain operations", async (mode) => {
@@ -219,7 +225,7 @@ describe("real module permission inventory and HTTP boundary (no environment or 
             profile = profileWith(expectedCodes(route));
             if (route.requirement?.kind === "active-role") profile.roles = [{ code: "formalizacion", name: "Formalizacion", status: "active" }];
             const first = await request(route);
-            expect(first.statusCode).toBe(route.method === "POST" && !route.path.startsWith("/formalization/contracts/") ? 201 : 200);
+            expect(first.statusCode).toBe(route.method === "POST" && !route.path.startsWith("/formalization/") ? 201 : 200);
             const before = domainCalls.map((call) => call.mock.calls.length);
             profile = profileWith();
             expect((await request(route)).statusCode).toBe(403);

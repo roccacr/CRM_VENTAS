@@ -160,7 +160,11 @@ Maria sigue siendo una sola persona interna. NetSuite y Odoo son referencias ext
 
 ## Reglas de roles, areas y jerarquia
 
-El CRM no crea roles como `jefe_mercadeo` o `jefe_formalizacion`.
+La regla generica inicial no invalida excepciones posteriores: `jefe_mercadeo`
+y `jefe_formalizaciones` fueron aprobados. Owner resuelve roles/modulos virtuales
+y permisos activos con denies prevalecientes; General usa la plantilla editable
+limitada a sus modulos seleccionados. Ver [41](41-Owner-Herencia-y-Denegaciones.md),
+[42](42-Jefaturas-Modulos-y-Permisos.md) y [49 - Estado actual](49-Estado-Actual-y-Cierre-Documental.md).
 
 `owner` y `jefe_general` no son el mismo concepto:
 
@@ -278,7 +282,7 @@ Reglas:
 - no guardar password plano;
 - hash local con Argon2id;
 - no incluir contrasenas reales en migraciones ni seeds;
-- activar login local por invitacion o reset seguro;
+- activar login local por flujo seguro; el alta con clave inicial fue autorizada despues, con `user.create`, `role.assign` y `user.assign_password` (documento 37);
 - si el flujo de invitacion/reset no existe todavia, la identidad local queda `pending`;
 - una credencial temporal, si llegara a existir por decision posterior, debe obligar cambio inmediato y quedar auditada;
 - crear flujo seguro de alta/reset antes de permitir uso real de clave local;
@@ -324,7 +328,9 @@ El sistema conserva historia aunque cambie la estructura organizacional.
 
 ## Pendientes reales antes de bootstrap de usuarios
 
-Estas preguntas no cambian la arquitectura, pero se deben responder antes de crear usuarios reales:
+Pendientes del bootstrap inicial, conservados como antecedentes. El lote por
+correo de 45 es una excepcion posterior de perfiles sin acceso; no acredita
+activacion local/Microsoft ni asignacion de una persona a Jefe General:
 
 1. Correo oficial del primer `owner`.
 2. Nombre visible del primer `owner`.

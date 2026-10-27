@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "receiptId": "316c9d5d-0233-42b7-a6e0-51f365544730",
+  "status": "current",
+  "command": "deliver",
+  "type": "architecture",
+  "input": "C:\\Users\\RobertoCarlosZuñigaA\\Documents\\ROCCA ARCHIVOS\\Desarrollo\\PROYECTOS DESAROLLOS\\CRM VERION NESTJS\\.archify\\architecture-crm-actual-20261026-084555\\candidate.json",
+  "output": "C:\\Users\\RobertoCarlosZuñigaA\\Documents\\ROCCA ARCHIVOS\\Desarrollo\\PROYECTOS DESAROLLOS\\CRM VERION NESTJS\\.archify\\architecture-crm-actual-20261026-084555\\crm-actual.html",
+  "specification": {
+    "sha256": "28c72cfd7250949ab53ab320861d79d61bce623113ad7e3cfed064ae163fb35c",
+    "bytes": 38661
+  },
+  "artifact": {
+    "sha256": "7ef498c0d188a59583f78e8d5e1058d5f95268c4f5b2bf561435546e60e86dc9",
+    "bytes": 775170
+  }
+}

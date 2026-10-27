@@ -5,7 +5,7 @@ import { DatabaseService } from "../../../../database/database.service.js";
 import type { CrmDatabase } from "../../../../database/database.types.js";
 import { type HomeSummaryPeriod, type StageAggregateRow, stageCountsFromRow } from "./home-summary.types.js";
 
-/** Reads stage truth, never cached counters or commercial signature flags. */
+/** Reads current stage truth and confirmed contract signature without cached counters. */
 @Injectable()
 export class HomeSummaryRepository {
     /** Uses the canonical pool for both schema reads. */
@@ -22,11 +22,11 @@ export class HomeSummaryRepository {
             SELECT /*+ MAX_EXECUTION_TIME(1500) */
                 SUM(approved AND COALESCE(stage,'contract_pending_send') IN ('unclassified','pending_approval','contract_pending_send')) AS toSend,
                 SUM(approved AND stage='contract_pending_signature') AS pendingSignature,
-                SUM(stage='bank_management') AS banking, SUM(stage='pending_balance') AS balance,
-                SUM(stage='pending_transfer') AS transferPending, SUM(stage='transfer_signed') AS transferSigned,
-                SUM(completed_this_year) AS closedThisYear
+                SUM(contract_signed AND stage='bank_management') AS banking, SUM(contract_signed AND stage='pending_balance') AS balance,
+                SUM(contract_signed AND stage='pending_transfer') AS transferPending, SUM(contract_signed AND stage='transfer_signed') AS transferSigned,
+                SUM(contract_signed AND completed_this_year) AS closedThisYear
             FROM (
-                SELECT e.to_state_code_sales_order_state_event AS stage,
+                SELECT e.to_state_code_sales_order_state_event AS stage, COALESCE(o.contract_signed_sales_order='yes',0) AS contract_signed,
                     EXISTS(SELECT 1 FROM audit_sales_order_state_event closed_event
                         WHERE closed_event.sales_order_id_sales_order_state_event=o.id_sales_order AND closed_event.to_state_code_sales_order_state_event='closed'
                         AND closed_event.effective_at_sales_order_state_event >= ${period.start.slice(0, 23).replace("T", " ")} AND closed_event.effective_at_sales_order_state_event < ${period.endExclusive.slice(0, 23).replace("T", " ")}) AS completed_this_year,

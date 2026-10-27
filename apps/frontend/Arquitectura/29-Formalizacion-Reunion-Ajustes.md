@@ -1,9 +1,14 @@
 # Formalizacion: registro de ajustes surgidos en reunion
 
+## Estado contrastado - 2026-10-27
+
+[30 - Estado frontend verificado](30-Estado-Frontend-Verificado.md) inventaría las rutas, contratos y límites actuales: Captación conectada, seguimiento y cambio protegido de etapa de Formalización. Los cortes fechados siguientes son antecedentes; sus cifras de QA no se reejecutaron en esta revisión documental.
+
+
 ## Resumen agregado de Home - 2026-10-23
 
 El nuevo alcance conecta contratos y los cinco indicadores posteriores mediante
-una sola peticion agregada, exclusivamente con rol activo `formalizacion`.
+una sola peticion agregada, con rol efectivo activo `formalizacion` y permiso `formalizacion.home.stages.read` allow sin deny. Owner puede heredar el rol desde politica persistida; no se exige asignacion directa.
 Aprobaciones conserva su permiso independiente. Mantener apariencia y preload
 por numero; no agregar acciones persistidas ni listas de ordenes.
 Plan, definiciones, resultados y limites:
@@ -12,7 +17,7 @@ Los apartados historicos que describen ceros provisionales no son el contrato
 de esta ampliacion. Los ceros de error, cuando se muestren por convencion visual
 del propietario, se marcan Sin verificar y no acreditan ausencia de ordenes.
 
-## Dos banners de Home: carga y contadores - 2026-10-22
+## Antecedente de dos banners de Home: carga y contadores - 2026-10-22
 
 Correccion visual posterior: durante la carga, cada contador de contratos se sustituye por el mismo preload de 26x26 usado en aprobaciones. No hay spinner separado arriba ni ceros provisionales visibles mientras consulta; las etiquetas permanecen debajo. El numero, incluido cero real, aparece al resolver la consulta. Esta regla sustituye la descripcion de 0/0 durante carga del apartado siguiente; error/reintento y permisos no cambian.
 
@@ -23,11 +28,13 @@ Correccion visual posterior: durante la carga, cada contador de contratos se sus
 - Pruebas visuales aisladas con respuestas sustituidas en escritorio y viewport reducido, sin desbordamiento observado. No habia sesion autenticada en el navegador de QA: la medicion real de BD se documento separadamente en arquitectura API 38.
 - Se compacto el fallo de contratos a "Sin verificar" con reintento pequeno y explicacion en tooltip; etiquetas de ambas metricas sin cambios. QA visual del fallo confirma 0/0 y sin desbordamiento. Tras este pulido: 63 pruebas focalizadas, lint, tipos y formato correctos; previamente check-all.cmd completo paso con API 5138 y frontend 472 pruebas (113 MySQL omitidas para no usar fixtures compartidos).
 
-## Alcance corregido por el propietario: solo Home - 2026-10-22
+## Antecedente de alcance corregido: solo Home - 2026-10-22
 
 Se retira el adelanto de la bandeja real y botones de registrar/revertir envio. Las colas de ordenes vuelven a la vista vacia anterior sin consultas de listado; solo queda el banner de Home conectado y protegido por rol formalizacion. No se modifican datos ni estados para deshacer UI. Los servicios/componentes de la bandeja agregados en ese adelanto se retiran; no mostrar acciones persistentes hasta una nueva autorizacion.
 
 ## Contratos conectado por rol - 2026-10-22
+
+Antecedente del segundo banner: el Home actual usa el resumen agregado y roles efectivos descritos al inicio; `contract-summary-service.ts` conservado no es el consumidor de etapas actual. Mantener este titulo como destino de enlaces historicos. Listado/envio/reversion no son handlers activos; existencia de clases/pruebas no acredita su registro en AppModule.
 
 Banner real GET /formalization/contracts/summary conectado. Solo el rol activo formalizacion monta el consumidor; Owner/Jefatura o un permiso del banner de aprobaciones no bastan. Denegaciones de permisos retirados o ajenos no sustituyen esta regla de lectura por rol; envio/reversion tienen sus permisos efectivos separados en backend.
 

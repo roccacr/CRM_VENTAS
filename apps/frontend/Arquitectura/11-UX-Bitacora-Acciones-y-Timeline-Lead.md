@@ -4,6 +4,8 @@
 
 Blueprint futuro del timeline comercial. Componentes, eventos, permisos y campos enumerados son requisitos/conceptos, no inventario runtime ni contrato API implementado. La auditoria administrativa existente se describe en [27](27-Entrega-Administracion-y-QA.md).
 
+Actualizacion 2026-10-23: la lectura backend de historia unificada de lead tiene su propio contrato en [44 - Bitacora legacy](../../api/Arquitectura/44-Bitacora-Legacy-y-Timeline.md). Eso no entrega el componente `LeadDetail`/timeline comercial descrito aqui ni convierte estos permisos ilustrativos en grants activos. No se verifica BD o cobertura de ese lector desde esta revision frontend.
+
 ## Veredicto
 
 La vista de lead debe tener una seccion de timeline/bitacora clara, filtrable y confiable.

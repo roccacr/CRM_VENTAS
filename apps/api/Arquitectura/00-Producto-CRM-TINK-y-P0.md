@@ -1,6 +1,118 @@
 # 00 - Ley de Producto CRM TINK y P0
 
-## Mercadeo: maqueta de Inicio autorizada - 2026-10-23
+## Lectura vigente y retiro autorizado - 2026-10-27
+
+La revision [55](55-Revision-Documental-Integral-20261027.md) y el corte49
+reconcilian implementacion y documentos sin ampliar por si mismos el producto.
+El retiro solicitado de Eventos y citas elimina menu y permiso
+`mercadeo.appointments.read` (038); mantiene Calendario y metricas.
+Captacion conectada y transiciones/seguimiento de Formalizacion son ampliaciones
+posteriores a los bloques historicos de maqueta o solo Home. Se aplican unicamente
+los contratos y limites descritos en [53](53-Captacion-Leads-Reporte-Federado.md)
+y [52](52-Etapas-Responsables-y-Tiempos.md). Nunca importar Leads legacy a nativo.
+Esta revision documental no autoriza ejecutar migraciones o acciones comerciales.
+
+
+## Ampliacion autorizada: Captacion conectada - 2026-10-26
+
+El propietario aprueba conectar la vista de Captacion a ambas BD mediante
+`GET /marketing/leads/report`. Esta ampliacion sustituye la restriccion de solo
+maqueta para esa lectura: nativa primero y adaptador legacy opcional, un JSON
+agregado protegido por `mercadeo.leads.read`, sin importar/copiar datos, crear
+catalogos o migraciones. Conserva el alcance/deny existente y no cambia Inicio.
+Las secciones UX anteriores son historicas. Contrato, fuentes y verificacion:
+[53 - Reporte de Captacion](53-Captacion-Leads-Reporte-Federado.md).
+
+## Ampliacion autorizada: trayectoria de Formalizacion - 2026-10-26
+
+Se autoriza el mismo historial de etapas, actor, responsable y tiempos en
+ambas fuentes, con autoridad nativa primero y auditoria central nativa.
+Se registra el modulo existente de envio/reversion y la consulta de tiempos.
+Ampliacion posterior confirmada: selector de cualquiera de las siete etapas
+operativas cuando existen tres aprobaciones; retrocesos con motivo, permiso
+independiente y auditoria. No habilitar escritores externos ni mover ordenes
+reales para pruebas. Detalle vigente y configuracion operativa:
+[52 - Etapas y tiempos](52-Etapas-Responsables-y-Tiempos.md).
+
+## Captacion de leads: excepcion exclusivamente UX - 2026-10-26
+
+Se autoriza una maqueta interactiva frontend en la ruta de Captacion de leads,
+con muestra ficticia explicita y filtros/desgloses locales. Sin consultas a API
+comercial o BD, migraciones, imports ni comandos. Mantener identidad y nombres
+canonicos CRM, sin dependencia estructural de la BD antigua. No cambia el
+alcance operativo de Leads ni el resumen real de Inicio. Detalle en la
+[ley frontend](../../frontend/Arquitectura/00-Producto-CRM-TINK-y-P0-Frontend.md).
+
+
+## Corte consolidado vigente - 2026-10-23
+
+[49 - Estado actual](49-Estado-Actual-y-Cierre-Documental.md) consolida las
+ampliaciones autorizadas y distingue codigo, esquema, datos, historicos y pendientes.
+Los bloques siguientes conservan cronologia: maqueta exclusiva de Mercadeo fue
+sustituida SOLO para su resumen de leads/citas por las autorizaciones 46/48.
+Esto no habilita calendario, campana, Outlook, CRUD general de Leads ni imports
+comerciales. Las excepciones acotadas de perfiles/Ventas y esquema 034 permanecen.
+
+## Mercadeo: Inicio real autorizado - 2026-10-23
+
+El resumen `GET /marketing/home/summary` consulta primero CRM_THINK_V2 y despues
+legacy opcional, en solo lectura, y publica un JSON canonico protegido por
+`mercadeo.home.read` y sus alcances. Incluye captacion por fechas de creacion,
+conversion de leads unicos con cita y volumen de citas por fecha de evento.
+Cita se determina por el tipo del evento enlazado al lead; responsable/proyecto
+se toman del lead, sin importar quien creo el evento. Completada no prueba
+asistencia. No importar datos, conceder permisos nuevos ni activar agenda/Graph.
+
+Esta ampliacion sustituye la maqueta y el corte sin citas SOLO para Inicio.
+El calendario 034 conserva tablas vacias sin gestor operativo; otras opciones de
+menu no implican vistas comerciales terminadas. Contratos: [46](46-Mercadeo-Resumen-Leads.md)
+y [48](48-Mercadeo-Metricas-Citas.md). Estado y matriz de cobertura: [49](49-Estado-Actual-y-Cierre-Documental.md).
+
+## Calendario: estructura nativa autorizada - 2026-10-23
+
+El propietario autoriza crear y aplicar 034_calendar_domain solo en CRM_THINK_V2:
+eventos por modulo original, participantes compartidos, referencias dinamicas,
+notificaciones por usuario y preparacion de sincronizacion externa. Solo tablas
+vacias e indices/FK/triggers, sin importar calendars, modificar legacy, crear
+tipos ficticios, otorgar permisos, activar API/Graph/campana o enviar mensajes.
+Los IDs publicos resuelven PK internas propias del CRM, nunca IDs ERP.
+Reglas y limites en [47 - Calendario](47-Calendario-Compartido-Esquema.md).
+
+## Usuarios por correo: excepcion autorizada - 2026-10-23
+
+Crear un usuario por correo unico de `crmdatabase-api.admins` en `sec_user`:
+nombre/correo, sin credenciales, roles, modulos o referencias ERP; existentes
+intactos, activos anteriores pendientes de habilitacion e inactivos inactivos.
+Auditoria nativa atomica y origen solo lectura. No autoriza importar Leads ni
+historiales. Detalle en [45 - Usuarios](45-Usuarios-Por-Correo.md).
+
+Ampliacion posterior: crear rol `ventas`, asociado al modulo Ventas sin permisos,
+y asignarlo exclusivamente a los 43 perfiles creados en ese lote. Mantener sus
+estados y metodos de acceso, sin asignar membresias individuales de modulo.
+
+## Bitacora de Leads: consulta entre origenes sin importacion - 2026-10-23
+
+El propietario aclara que la API debe consultar cada BD y adaptar las respuestas
+a un JSON comun, sin copiar datos viejos a CRM_THINK_V2. El inicio de una copia
+historica fue una interpretacion incorrecta del agente; fue detenido y sus datos
+eliminados. No constituye una autorizacion de migracion de datos. Se conserva
+la estructura nativa para sus operaciones propias. Estado y evidencia en
+[44 - Bitacora](44-Bitacora-Legacy-y-Timeline.md).
+
+## Leads: esquema nativo autorizado - 2026-10-23
+
+El propietario autoriza construir y ejecutar exclusivamente la migracion nativa
+`202610230031_leads_domain`: contacto, lead, referencias externas, catalogos de
+etapas/origen/interes/motivos e historial repetible de etapas y perdidas.
+Responsable por FK a `sec_user`; referencias externas mediante sistema e ID,
+nunca por numero ERP suelto. Comentarios por columna y creacion/modificacion UTC.
+Solo se inicializan las siete etapas aprobadas. No importar datos comerciales,
+motivos legacy ni usuarios; no cambiar legacy, permisos, API ni frontend.
+Detalle, limites y evidencia en [43 - Leads](43-Leads-Esquema-Nativo.md).
+Esta ampliacion sustituye la prohibicion anterior de esquema de Leads solo
+para este corte; no habilita comandos, lectores comerciales ni integraciones.
+
+## Antecedente Mercadeo: maqueta de Inicio autorizada - 2026-10-23
 
 El propietario solicita una propuesta visual con banners de leads/citas,
 filtros y agrupaciones por proyecto, campana, anuncio y vendedor, siguiendo
@@ -79,7 +191,7 @@ Instruccion mas reciente del propietario: retirar la bandeja real y los botones 
 
 ## Contratos: ejecucion progresiva autorizada - 2026-10-22
 
-El propietario confirma implementar ahora resumen, etapas y comandos de envio/reversion. Toda orden activa, no caida y con tres aprobaciones completas entra por defecto en contract_pending_send si no existe una etapa CRM posterior; los flags historicos de firma no se usan para inventar el envio nuevo. Registrar envio pasa a contract_pending_signature sin correo ni ERP. Reversion exige motivo y permiso separado. Lectura exige rol formalizacion activo, envio exige formalizacion.contracts.send heredado por ese rol con deny directo prevaleciente; reversion formalizacion.contracts.revert no se concede automaticamente.
+El propietario confirma implementar ahora resumen, etapas y comandos de envio/reversion. Toda orden activa, no caida y con tres aprobaciones completas entra por defecto en contract_pending_send si no existe una etapa CRM posterior; los flags historicos de firma no se usan para inventar el envio nuevo. Registrar envio pasa a contract_pending_signature sin correo ni ERP. Regla confirmada 2026-10-26: banco y etapas posteriores requieren firma observada (contrado_frima_ov=1 o contract_signed_sales_order='yes') y haber registrado el envio; no se puede saltar desde Por enviar. Esta entrega no modifica la firma ni NetSuite. Reversion exige motivo y permiso separado. Lectura exige rol formalizacion activo, envio exige formalizacion.contracts.send heredado por ese rol con deny directo prevaleciente; reversion formalizacion.contracts.revert no se concede automaticamente.
 
 La etapa comercial se persiste solo en la fuente autoritativa: orden nativa si existe (incluso para decidir que una inactiva/borrada no puede recurrir a legacy), legacy si no. Crear las dos tablas aditivas legacy preparadas, sin alterar ordenventa. La evidencia central vive siempre en CRM_THINK_V2 y comparte transaccion/conexion con el cambio. Migradores futuros deben bloquear el padre legacy antes de promover una orden; no certificar concurrencia contra un migrador externo que ignore ese protocolo. No se mueven ordenes reales durante la entrega ni se ejecutan fixtures compartidos. Esta autorizacion sustituye el aplazamiento de implementacion anterior para este corte, no habilita otras etapas, Leads o automatizaciones.
 
@@ -671,3 +783,17 @@ Se puede avanzar al modelo MySQL minimo solo cuando:
 - quede claro que `SQL/002` solo fue autorizado como seed de catalogos S1A, sin usuarios ni inserts de negocio;
 - quede claro que solo el runtime minimo de identidad queda autorizado en la version `0.3.28`;
 - quede claro que NestJS/API comercial sigue prohibido hasta aprobacion explicita posterior.
+
+
+## Authorized Marketing Home read extension - 2026-10-23
+
+The owner authorized real lead aggregates for Marketing Home through
+`GET /marketing/home/summary?period=day|week|month|year`. Read native leads first,
+then the optional legacy adapter, and produce one JSON without copying records.
+Count all leads created in the interval regardless of current status. Preserve
+permission scopes, canonical seller/project identities and local public-ID photos.
+Appointment metrics are now authorized as read-only calendar queries: native events first, then legacy Cita events, attributed through the lead owner/project. No imports or calendar mutations. See `apps/api/Arquitectura/48-Mercadeo-Metricas-Citas.md` (repository-relative).
+This scoped authorization supersedes historical mock-only restrictions for this
+summary only; it authorizes no imports, business mutations, migrations or deployment.
+API contract and verification: `apps/api/Arquitectura/46-Mercadeo-Resumen-Leads.md`
+(relative to the repository root).

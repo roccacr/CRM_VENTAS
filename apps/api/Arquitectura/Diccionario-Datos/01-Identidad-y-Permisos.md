@@ -1,6 +1,22 @@
 # 01 - Diccionario de Datos: Identidad y Permisos
 
-Revision documental 2026-10-22: diccionario del baseline de identidad, complementado por las migraciones incrementales y el contrato API. No acredita el estado vivo de MySQL. Ver [36 - Estado vigente](../36-Registro-Entrega-Administracion.md), [29 - Modelo](../29-Modelo-Fisico-MySQL-Identidad-P0-S1.md) y [33 - Contrato API](../33-Contrato-API-Identidad-P0-S1.md).
+## Cambios posteriores del catalogo - 2026-10-27
+
+Migracion037 define `formalizacion.orders.stage.update` sin asignacion automatica
+a roles de negocio. Migracion038 retira `mercadeo.appointments.read` y elimina
+sus filas dependientes en `sec_role_permission` y
+`sec_user_permission_override` antes de la definicion en `sec_permission`.
+Incrementa `sec_user.permission_version_user` para refrescar snapshots; conserva
+roles, usuarios, auditoria historica y permisos de Calendario. Las migraciones
+historicas se reproducen por orden, no se deben reeditar seeds aplicados.
+Este agregado documental no vuelve a consultar MySQL ni certifica aplicacion;
+evidencia fechada y limites en [53](../53-Captacion-Leads-Reporte-Federado.md).
+
+Revision documental 2026-10-23: diccionario del baseline de identidad, complementado por las migraciones incrementales y el contrato API. No acredita el estado vivo de MySQL. Ver [49 - Estado vigente](../49-Estado-Actual-y-Cierre-Documental.md), [29 - Modelo](../29-Modelo-Fisico-MySQL-Identidad-P0-S1.md) y [33 - Contrato API](../33-Contrato-API-Identidad-P0-S1.md).
+
+Las referencias de usuario se resuelven en
+`int_user_external_identity` por sistema e ID externo, sin inferir identidad por
+coincidencia numerica entre proveedores ni crear referencias durante una lectura.
 
 ## Regla del dominio
 
@@ -34,6 +50,11 @@ UI = Activo
 ## sec_user
 
 Proposito: persona interna del CRM.
+
+Un perfil no implica cuenta autenticable. El lote de [45](../45-Usuarios-Por-Correo.md)
+creo 43 perfiles (30 pending, 13 inactive); luego recibieron `ventas` sin
+permisos ni identidades de acceso ni membresias individuales. Los conteos son
+evidencia fechada, no una consulta viva de este diccionario.
 
 Modulo propietario: identidad y seguridad.
 
@@ -178,13 +199,20 @@ Proposito: catalogo de roles generales.
 
 Reglas:
 
-- el rol no debe incluir el nombre del area;
+- los roles por area requieren decision expresa; existen excepciones posteriores `jefe_mercadeo` y `jefe_formalizaciones`;
 - correcto: `jefe_general`, `subjefe_area`, `vendedor`;
-- incorrecto: `jefe_mercadeo`;
-- el rol define acciones base, no el modulo donde se pueden aplicar.
+- no generar una combinacion cargo/area nueva sin decision; `jefe_mercadeo` ya tiene aprobacion expresa;
+- el rol define acciones base; `sec_role_module` y sus politicas pueden limitar los modulos donde se aplican;
 - el area operativa asignada define en que modulos/contextos puede operar el usuario.
 
 Roles iniciales:
+
+La lista siguiente es el baseline, no el catalogo activo actual. La evolucion
+027/029/030 agrega politicas de herencia a `sec_role` y `sec_role_module`.
+Owner resuelve roles/modulos virtuales y base de permisos activos, sujeto a
+deny. General conserva grants editables y la interseccion plantilla/empleado;
+retirar una accion no la regenera desde el catalogo. Ver [41](../41-Owner-Herencia-y-Denegaciones.md),
+[42](../42-Jefaturas-Modulos-y-Permisos.md) y [49](../49-Estado-Actual-y-Cierre-Documental.md).
 
 ```txt
 owner
@@ -273,7 +301,7 @@ Reglas:
 - una persona puede estar en varias areas operativas;
 - una persona puede ser jefatura en un area y miembro normal en otra;
 - supervisar depende de rol + area operativa + alcance;
-- cada area operativa activa equivale a un modulo/contexto que el frontend puede ofrecer;
+- el perfil ofrece modulos efectivos: membresias activas y techo modular para empleados; todos los modulos activos virtuales para Owner;
 - no se usa `manager_user_id` dentro de `sec_user`.
 
 ## sec_user_permission_override

@@ -2,7 +2,7 @@
 
 ## Vigencia documental - 2026-10-22, corte f2dc4f1
 
-Blueprint comercial futuro. Tarjetas, cifras, SLA, permisos y acciones aqui descritos no son resultados operativos ni pantallas entregadas. No extrapolar los ceros provisionales de Formalizacion a estas metricas.
+Blueprint comercial futuro. Tarjetas, cifras, SLA, permisos y acciones aqui descritos no son resultados operativos ni pantallas entregadas. Actualizacion 2026-10-23: los resumenes conectados de Formalizacion y Mercadeo no entregan estas bandejas/SLA de Ventas; tampoco sus valores sin verificar son datos de este dashboard. Ver [27](27-Entrega-Administracion-y-QA.md).
 
 ## Veredicto ejecutivo
 

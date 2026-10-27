@@ -22,6 +22,15 @@ export class AuditReadController {
     options(@Req() request: CookieRequest) {
         return this.audit.options(request.cookies[SESSION_COOKIE_NAME]);
     }
+
+    /** Paginated lead timeline from native evidence; never queries the old database. */
+    @Get("records/:recordId/timeline")
+    @RouteSecurity("permission")
+    @RequirePermission({ kind: "audit" })
+    @ApiOperation({ summary: "Consultar historia unificada de un expediente de lead." })
+    leadTimeline(@Req() request: CookieRequest, @Param("recordId") recordId: string, @Query() query: Record<string, string>) {
+        return this.audit.leadTimeline(request.cookies[SESSION_COOKIE_NAME], recordId, query);
+    }
     /** Lazy immutable detail with the same session and permission checks as the list. */
     @Get(":publicId")
     @RouteSecurity("permission")

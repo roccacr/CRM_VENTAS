@@ -2,7 +2,7 @@
 
 ## Vigencia documental - 2026-10-22, corte f2dc4f1
 
-Blueprint de dominios y hogares futuros; los nombres de carpetas/componentes no son inventario instalado. El runtime utiliza `modules/administration`, `modules/home` y `modules/auth`. En Formalizacion, entrada por membresia activa (exencion Owner existente), banner por permiso separado y seguimiento no disponible; ver [29 - Remediacion](29-Navegacion-Recuperacion-y-Seguimiento.md). Las listas de banners de este blueprint no sustituyen los nombres actuales.
+Blueprint de dominios y hogares futuros; sus carpetas/componentes no son inventario instalado. Actualizacion 2026-10-23: el runtime usa `modules/administration`, `modules/home` y `modules/auth`; Home de Mercadeo y resumen de etapas de Formalizacion estan conectados. Formalizacion exige modulo activo del perfil efectivo; Owner recibe modulos virtuales backend. Etapas exige rol efectivo Formalizacion mas permiso sin deny; aprobaciones tiene permiso separado. Jefe General queda dentro de modulos seleccionados y techo de plantilla, sin Administracion por seleccion modular. Seguimiento no disponible; [27](27-Entrega-Administracion-y-QA.md) detalla el inventario. Las listas de banners siguientes son blueprint.
 
 ## Veredicto
 
@@ -134,7 +134,7 @@ Regla:
 - el menu se construye desde permisos efectivos y alcance recibidos del API;
 - el menu puede ocultar acciones por UX;
 - toda accion real vuelve al API y el API valida de nuevo;
-- si cambia `permissionVersion`, la UI limpia cache y obliga login nuevo segun la regla BFF;
+- si cambia `permissionVersion`, la UI revalida mediante refresh BFF y relee el perfil; un rechazo explicito de identidad retira el shell, mientras fallos recuperables permiten reintentar segun `21`;
 - si el usuario tiene varios contextos, el shell muestra selector de contexto;
 - si el usuario tiene un solo contexto, entra directo a su home;
 - si ningun contexto esta disponible, se muestra estado bloqueado/sin permisos.

@@ -1,0 +1,458 @@
+/*
+ * Enterprise surface for the administration lists (users and catalogs).
+ *
+ * Built for the whole range of company laptops, from old 1366x768 panels with weak contrast to new high-resolution ones:
+ * - Structure comes from borders and from clearly different tints, never from two near-white fills that wash out.
+ * - Text uses dark inks; measured contrast of the secondary ink is 7.35:1 or more on every tint used here (primary ink 13:1 or more).
+ * - No blur, no animated effects, one cheap 1px shadow per card.
+ * - Compact vertical rhythm so the table is the protagonist and a small screen still shows several rows.
+ * Scoped to the catalog page root, so nothing leaks to other modules.
+ */
+.catalog-items-page--projects,
+.catalog-item-detail-drawer--projects,
+.catalog-items-modal--projects,
+.create-user-drawer {
+    --ent-canvas: #e6ebf2;
+    --ent-border: #b4c0d0;
+    --ent-divider: #d0d8e4;
+    --ent-tint: #f0f3f8;
+    --ent-tint-strong: #e3e9f1;
+    --ent-hover: #eaf1fb;
+    --ent-ink: #18222f;
+    --ent-ink-2: #3b4a61;
+    --ent-shadow: 0 1px 2px rgb(15 23 42 / 10%);
+}
+
+/* Page header: the title is the anchor of the screen */
+.catalog-items-page--projects .global-home-page-header h1 {
+    color: var(--ent-ink);
+    font-size: 24px;
+    font-weight: 700;
+    line-height: 1.25;
+}
+
+.catalog-items-page--projects .global-home-page-header p {
+    color: var(--ent-ink-2);
+    font-size: 13px;
+}
+
+/* Summary cards: one compact row; a card can be a filter */
+.catalog-items-page--projects .catalog-banners {
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.catalog-items-page--projects .catalog-banner {
+    align-items: center;
+    min-height: 76px;
+    padding: 10px 14px;
+    border-color: var(--ent-border);
+    border-left-width: 4px;
+    box-shadow: var(--ent-shadow);
+    font: inherit;
+    text-align: left;
+}
+
+.catalog-items-page--projects .catalog-banner__icon {
+    flex-basis: 32px;
+    width: 32px;
+    height: 32px;
+    font-size: 17px;
+}
+
+.catalog-items-page--projects .catalog-banner__content {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: baseline;
+    justify-items: start;
+    column-gap: 10px;
+    row-gap: 0;
+    padding-right: 0;
+}
+
+.catalog-items-page--projects .catalog-banner .catalog-banner__title {
+    grid-column: 1 / -1;
+    margin: 0;
+    color: var(--ent-ink-2);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+    line-height: 1.4;
+}
+
+.catalog-items-page--projects .catalog-banner strong {
+    color: var(--ent-ink);
+    font-size: 26px;
+    font-weight: 700;
+    line-height: 1.15;
+}
+
+.catalog-items-page--projects .catalog-banner__caption {
+    color: var(--ent-ink-2);
+    font-size: 12px;
+}
+
+.catalog-items-page--projects .catalog-banner__pattern {
+    opacity: 0.7;
+}
+
+/* Section card: title, toolbar, table and footer each sit on their own layer */
+.users-view.catalog-items-page--projects .administration-users-panel {
+    border-color: var(--ent-border);
+    box-shadow: var(--ent-shadow);
+}
+
+
+.users-view.catalog-items-page--projects .administration-users-panel .catalog-section-heading {
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--ent-divider);
+}
+
+.catalog-items-page--projects .catalog-section-heading h2 {
+    color: var(--ent-ink);
+    font-size: 16px;
+    font-weight: 700;
+}
+
+.catalog-items-page--projects .catalog-section-heading p {
+    color: var(--ent-ink-2);
+    font-size: 12.5px;
+}
+
+/* Toolbar band, table head, rows and footer */
+.catalog-items-page--projects .administration-users-datatable-wrap .dt-container > .projects-view-toolbar {
+    padding: 12px 18px;
+    border-bottom: 1px solid var(--ent-divider);
+    background: var(--ent-tint);
+}
+
+.catalog-items-page--projects .administration-users-datatable-wrap table.administration-users-datatable > thead > tr > th {
+    background: var(--ent-tint-strong);
+    border-bottom: 1px solid var(--ent-border);
+    color: var(--ent-ink);
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.catalog-items-page--projects .administration-users-datatable-wrap table.dataTable.administration-users-datatable > tbody > tr > td {
+    padding-block: 10px;
+    border-color: var(--ent-divider);
+    color: var(--ent-ink);
+}
+
+.catalog-items-page--projects .administration-users-datatable-wrap table.dataTable.administration-users-datatable > tbody > tr:hover > td {
+    background: var(--ent-hover);
+}
+
+.catalog-items-page--projects .administration-users-footer {
+    border-top: 1px solid var(--ent-divider);
+    background: var(--ent-tint);
+    color: var(--ent-ink-2);
+}
+
+/* Balanced columns: the person, then what matters to decide */
+.users-view.catalog-items-page--projects table.administration-users-datatable > thead > tr > th:nth-child(1) {
+    width: 30%;
+}
+
+.users-view.catalog-items-page--projects table.administration-users-datatable > thead > tr > th:nth-child(2) {
+    width: 124px;
+}
+
+.users-view.catalog-items-page--projects table.administration-users-datatable > thead > tr > th:nth-child(3) {
+    width: 25%;
+}
+
+.users-view.catalog-items-page--projects table.administration-users-datatable > thead > tr > th:nth-child(4) {
+    width: 170px;
+}
+
+.users-view.catalog-items-page--projects table.administration-users-datatable > thead > tr > th:nth-child(5) {
+    width: 140px;
+}
+
+.users-view.catalog-items-page--projects table.administration-users-datatable > thead > tr > th:nth-child(6) {
+    width: 56px;
+}
+
+@media (max-width: 1100px) {
+    .catalog-items-page--projects .catalog-banner {
+        min-height: 72px;
+    }
+}
+
+/* The list card of a catalog gets the same firm border and single shadow as the users panel */
+.catalog-items-page--projects .catalog-items-panel .administration-users-datatable-wrap .dt-container:has(> .projects-view-toolbar) {
+    border-color: var(--ent-border);
+    box-shadow: var(--ent-shadow);
+}
+
+/* Detail drawer (users and catalogs): header band, tinted body with white cards, tinted footer */
+
+.catalog-item-detail-drawer--projects .ant-drawer-header {
+    border-bottom: 1px solid var(--ent-border);
+    background: #ffffff;
+}
+
+.catalog-item-detail-drawer--projects .user-detail-drawer__identity-copy h4.ant-typography {
+    color: var(--ent-ink);
+    font-size: 18px;
+    font-weight: 700;
+}
+
+.catalog-item-detail-drawer--projects .ant-drawer-body {
+    background: var(--ent-canvas);
+}
+
+.catalog-item-detail-drawer--projects .user-detail-drawer__sections .ant-card {
+    border: 1px solid var(--ent-border);
+    border-radius: 8px;
+    background: #ffffff;
+    box-shadow: var(--ent-shadow);
+}
+
+.catalog-item-detail-drawer--projects .user-detail-drawer__sections .ant-card-head {
+    min-height: 40px;
+    border-bottom: 1px solid var(--ent-border);
+    background: var(--ent-tint-strong);
+}
+
+.catalog-item-detail-drawer--projects.user-detail-drawer .user-detail-drawer__sections .ant-card-head-title {
+    color: var(--ent-ink);
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.catalog-item-detail-drawer--projects .user-detail-drawer__sections .ant-card-body {
+    padding: 4px 16px;
+}
+
+.catalog-item-detail-drawer--projects .user-detail-drawer__sections .ant-descriptions-item {
+    padding: 8px 0;
+}
+
+.catalog-item-detail-drawer--projects .user-detail-drawer__sections .ant-descriptions-item-container {
+    align-items: baseline;
+}
+
+.catalog-item-detail-drawer--projects .user-detail-drawer__sections .ant-descriptions-row + .ant-descriptions-row > .ant-descriptions-item {
+    border-top: 1px solid var(--ent-divider);
+}
+
+.catalog-item-detail-drawer--projects .user-detail-drawer__sections .ant-descriptions-item-label {
+    flex: 0 0 150px;
+    color: var(--ent-ink-2);
+    font-size: 12.5px;
+    font-weight: 600;
+}
+
+.catalog-item-detail-drawer--projects.user-detail-drawer .user-detail-drawer__sections .ant-descriptions-item-content {
+    color: var(--ent-ink);
+    font-weight: 600;
+}
+
+.catalog-item-detail-drawer--projects .ant-drawer-footer {
+    border-top: 1px solid var(--ent-border);
+    background: var(--ent-tint);
+}
+
+.catalog-item-detail-drawer--projects.user-detail-drawer .user-detail-drawer__position.ant-typography {
+    color: var(--ent-ink-2);
+    font-weight: 600;
+}
+
+/* Create / edit user drawer: same layers as the detail drawer (one component, two modes) */
+.ant-drawer.users-view-form.create-user-drawer .ant-drawer-header {
+    border-bottom: 1px solid var(--ent-border);
+    background: #ffffff;
+}
+
+.ant-drawer.users-view-form.create-user-drawer .ant-drawer-title {
+    color: var(--ent-ink);
+    font-weight: 700;
+}
+
+.ant-drawer.users-view-form.create-user-drawer .ant-drawer-body {
+    background: var(--ent-canvas);
+}
+
+.users-view-form.create-user-drawer .create-user-drawer__section {
+    border-color: var(--ent-border);
+    box-shadow: var(--ent-shadow);
+}
+
+.users-view-form.create-user-drawer .create-user-drawer__section-header {
+    border-bottom-color: var(--ent-border);
+    background: var(--ent-tint-strong);
+}
+
+.users-view-form.create-user-drawer .create-user-drawer__section-header h3 {
+    color: var(--ent-ink);
+    font-size: 13.5px;
+    font-weight: 700;
+}
+
+.users-view-form.create-user-drawer .create-user-drawer__step {
+    border-color: var(--ent-border);
+    color: var(--ent-ink);
+    font-weight: 700;
+}
+
+.users-view-form.create-user-drawer .ant-form-item-label > label {
+    color: var(--ent-ink);
+    font-size: 12.5px;
+    font-weight: 700;
+}
+
+.users-view-form.create-user-drawer .ant-input,
+.users-view-form.create-user-drawer .ant-select-selection-item,
+.users-view-form.create-user-drawer .ant-checkbox-label {
+    color: var(--ent-ink);
+}
+
+.users-view-form.create-user-drawer .create-user-drawer__scope,
+.users-view-form.create-user-drawer .create-user-drawer__summary,
+.users-view-form.create-user-drawer .create-user-drawer__initial-status {
+    color: var(--ent-ink-2);
+}
+
+.users-view-form.create-user-drawer .create-user-drawer__scope strong,
+.users-view-form.create-user-drawer .create-user-drawer__summary strong {
+    color: var(--ent-ink);
+    font-weight: 700;
+}
+
+.ant-drawer.users-view-form.create-user-drawer .ant-drawer-footer {
+    border-top: 1px solid var(--ent-border);
+    background: var(--ent-tint);
+}
+
+.users-view-form.create-user-drawer .create-user-drawer__advanced {
+    border-color: var(--ent-border);
+    box-shadow: var(--ent-shadow);
+}
+
+.users-view-form.create-user-drawer .create-user-drawer__advanced > .ant-collapse-item > .ant-collapse-header {
+    background: var(--ent-tint-strong);
+}
+
+.users-view-form.create-user-drawer .create-user-drawer__advanced-label {
+    color: var(--ent-ink);
+    font-size: 13.5px;
+    font-weight: 700;
+}
+
+.users-view-form.create-user-drawer .create-user-drawer__advanced-label small {
+    color: var(--ent-ink-2);
+}
+
+/* Create / edit / status dialogs of the catalogs: same layers as the drawers */
+.catalog-items-modal--projects .ant-modal-header {
+    border-bottom: 1px solid var(--ent-border);
+    background: #ffffff;
+}
+
+.catalog-items-modal--projects .catalog-items-modal__title h2,
+.catalog-items-modal--projects .catalog-items-modal__title strong,
+.catalog-items-modal--projects .ant-modal-title {
+    color: var(--ent-ink);
+    font-weight: 700;
+}
+
+.catalog-items-modal--projects .catalog-items-modal__title p,
+.catalog-items-modal--projects .catalog-items-modal__title span {
+    color: var(--ent-ink-2);
+}
+
+.catalog-items-modal--projects .ant-modal-body {
+    background: var(--ent-canvas);
+}
+
+.catalog-items-modal--projects .projects-view-form-section {
+    border-color: var(--ent-border);
+    box-shadow: var(--ent-shadow);
+}
+
+.catalog-items-modal--projects .projects-view-form-section legend {
+    border-bottom-color: var(--ent-border);
+    background: var(--ent-tint-strong);
+    color: var(--ent-ink);
+    font-size: 13.5px;
+    font-weight: 700;
+}
+
+.catalog-items-modal--projects .ant-form-item-label > label {
+    color: var(--ent-ink);
+    font-size: 12.5px;
+    font-weight: 700;
+}
+
+.catalog-items-modal--projects .ant-form-item-label > label .ant-form-item-optional,
+.catalog-items-modal--projects .ant-input-data-count {
+    color: var(--ent-ink-2);
+}
+
+.catalog-items-modal--projects .ant-modal-footer {
+    border-top: 1px solid var(--ent-border);
+    background: var(--ent-tint);
+}
+
+/*
+ * Catalog create / edit drawer. It reuses the user drawer's section anatomy, but the users page
+ * stylesheet is not loaded on catalog pages, so the structural rules are repeated here, scoped.
+ */
+.catalog-form-drawer .create-user-drawer__section,
+.catalog-form-drawer .create-user-drawer__section + .create-user-drawer__section {
+    min-width: 0;
+    overflow: hidden;
+    border: 1px solid var(--ent-border);
+    border-radius: 6px;
+    padding: 0 16px;
+    background: #ffffff;
+}
+
+.catalog-form-drawer .create-user-drawer__section-header {
+    min-height: 48px;
+    margin: 0 -16px 16px;
+    padding: 12px 16px;
+}
+
+.catalog-form-drawer .create-user-drawer__section .ant-form-item {
+    margin-bottom: 16px;
+}
+
+.catalog-form-drawer .create-user-drawer__section .ant-form-item:last-child {
+    margin-bottom: 16px;
+}
+
+.catalog-form-drawer .catalog-items-modal__grid {
+    gap: 0 12px;
+}
+
+.catalog-form-drawer .create-user-drawer__section + .create-user-drawer__section {
+    margin-top: 16px;
+}
+
+.catalog-form-drawer .create-user-drawer__summary {
+    color: var(--ent-ink-2);
+    font-size: 12.5px;
+}
+
+.ant-drawer.catalog-form-drawer .ant-drawer-header,
+.ant-drawer.catalog-form-drawer .ant-drawer-footer {
+    padding: 16px 24px;
+}
+
+.ant-drawer.catalog-form-drawer .ant-drawer-title {
+    font-size: 18px;
+    line-height: 1.4;
+}
+
+.ant-drawer.catalog-form-drawer .ant-drawer-body {
+    padding: 24px;
+}
+
+/* The character counter hangs below the field; without room it lands on the section border. */
+.catalog-form-drawer .create-user-drawer__section .ant-form-item:has(.ant-input-textarea-show-count) {
+    margin-bottom: 32px;
+}

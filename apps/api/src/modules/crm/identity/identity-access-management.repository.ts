@@ -1139,6 +1139,7 @@ export class IdentityAccessManagementRepository {
         const modules = new Map<string, Map<string, IdentityModuleViewCatalogItem & { permissions: IdentityPermissionCatalogItem[] }>>();
 
         for (const permission of permissions) {
+            if (permission.code === "mercadeo.appointments.read") continue;
             const viewCode = this.resolvePermissionViewCode(permission.code, permission.moduleCode);
             const moduleViews = modules.get(permission.moduleCode) ?? new Map<string, IdentityModuleViewCatalogItem & { permissions: IdentityPermissionCatalogItem[] }>();
             const view = moduleViews.get(viewCode) ?? {
@@ -1157,7 +1158,7 @@ export class IdentityAccessManagementRepository {
             modules.set(permission.moduleCode, moduleViews);
         }
 
-        const moduleViewOrder: Record<string, Readonly<Record<string, number>>> = { formalizacion: { home: 0, sales_order: 1 }, mercadeo: { home: 0, leads: 1, appointments: 2, calendar: 3 } };
+        const moduleViewOrder: Record<string, Readonly<Record<string, number>>> = { formalizacion: { home: 0, sales_order: 1 }, mercadeo: { home: 0, leads: 1, calendar: 2 } };
         return [...modules.entries()].map(([moduleCode, views]) => {
             const orderedViews = [...views.values()];
             const order = moduleViewOrder[moduleCode];
@@ -1190,9 +1191,9 @@ export class IdentityAccessManagementRepository {
     /** Decides which view a permission belongs to, keeping existing permission codes unchanged. */
     private resolvePermissionViewCode(permissionCode: string, moduleCode: string): string {
         const parts = permissionCode.split(".");
-        if (/^(?:formalizacion\.home\.|mercadeo\.(?:home|leads|appointments|calendar)\.read$)/u.test(permissionCode)) return parts[1] as string;
+        if (/^(?:formalizacion\.home\.|mercadeo\.(?:home|leads|calendar)\.read$)/u.test(permissionCode)) return parts[1] as string;
         // One order workspace, preserving the exact existing permission codes and grants.
-        if (moduleCode === "formalizacion" && /^(contract\.|file\.|signature\.|formalizacion\.contracts\.)/u.test(permissionCode)) return "sales_order";
+        if (moduleCode === "formalizacion" && /^(contract\.|file\.|signature\.|formalizacion\.(?:contracts|orders)\.)/u.test(permissionCode)) return "sales_order";
 
         return parts.length >= 3 && findCatalogDefinitionByModuleCode(parts[1] ?? "") ? (parts[1] as string) : (parts[0] ?? permissionCode);
     }
@@ -1294,7 +1295,6 @@ export class IdentityAccessManagementRepository {
         const names: Record<string, string> = {
             campaign: "Campanas",
             leads: "Captación de leads",
-            appointments: "Eventos y citas",
             calendar: "Calendario",
             home: "Inicio",
             contract: "Contratos",
@@ -1329,12 +1329,12 @@ export class IdentityAccessManagementRepository {
             "campaign.create": "Crear campana",
             "mercadeo.home.read": "Ver Inicio",
             "mercadeo.leads.read": "Ver Captación de leads",
-            "mercadeo.appointments.read": "Ver Eventos y citas",
             "mercadeo.calendar.read": "Ver Calendario",
             "formalizacion.home.approvals.read": "Banner pendiente de aprobaci\u00f3n de Formalizaci\u00f3n",
             "formalizacion.home.stages.read": "Banners de etapas de Formalizaci\u00f3n",
             "formalizacion.contracts.send": "Registrar envio de contrato",
             "formalizacion.contracts.revert": "Revertir envio de contrato",
+            "formalizacion.orders.stage.update": "Cambiar etapa de Formalizacion",
             "campaign.read": "Ver campanas",
             "contract.review": "Revisar contrato",
             "estimate.approve": "Aprobar estimacion",
@@ -1375,6 +1375,6 @@ export class IdentityAccessManagementRepository {
 
     /** Flags approve, inactivate, reconcile and role administration permissions as sensitive in the UI. */
     private isSensitivePermission(permissionCode: string): boolean {
-        return permissionCode.includes("approve") || permissionCode.includes("inactivate") || permissionCode.includes("reconcile") || permissionCode === "role.assign" || permissionCode === "user.assign_password";
+        return permissionCode.includes("approve") || permissionCode.includes("inactivate") || permissionCode.includes("reconcile") || permissionCode === "role.assign" || permissionCode === "user.assign_password" || permissionCode === "formalizacion.orders.stage.update";
     }
 }

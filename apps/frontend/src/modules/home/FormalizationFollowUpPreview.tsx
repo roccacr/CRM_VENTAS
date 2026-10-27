@@ -1,275 +1,373 @@
-import ArrowRightOutlined from "@ant-design/icons/ArrowRightOutlined";
-import ClockCircleOutlined from "@ant-design/icons/ClockCircleOutlined";
+import LeftOutlined from "@ant-design/icons/LeftOutlined";
+import RightOutlined from "@ant-design/icons/RightOutlined";
 import SearchOutlined from "@ant-design/icons/SearchOutlined";
 import Button from "antd/es/button";
-import { type KeyboardEvent, useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 
-import { type FormalizationExample, formatOrderTotal, isUnassigned, matchesPreviewFilter, type PreviewFilter, type PreviewQueue } from "./formalization-preview.model";
-import { FormalizationEmptyValue, FormalizationStatusPill } from "./FormalizationStatusPill";
+import { FOLLOW_UP_QUEUES, type FollowUp, type FollowUpItem, type FollowUpQueue, getFollowUp } from "../../services/formalization/follow-up-service";
+import { CatalogBanners } from "../administration/catalogs/CatalogSummary";
+import { buildOrderCards } from "./formalization-order-cards";
+import { type FormalizationExample, type PreviewQueue } from "./formalization-preview.model";
+import { FormalizationOrderDrawer } from "./FormalizationOrderDrawer";
+import { FormalizationOrderRecord } from "./FormalizationOrderPreview";
+import { StageChip } from "./FormalizationStageChip";
 
-const queues = ["Todas", "Pendientes de aprobación", "Contratos pendientes", "Gestión bancaria", "Pendientes de saldo", "Traspasos pendientes", "Traspaso firmado", "Formalizaciones cerradas este año"] as const;
-const columns = ["Orden / Cliente", "Proyecto / Unidad", "Etapa / Pendiente", "Responsable / Tiempo", "Siguiente paso"] as const;
-
-// Pending a canonical follow-up source. Preview session fixtures are not business results.
-const examples: readonly FormalizationExample[] = [];
-const projects = [...new Set(examples.map((item) => item.project))];
-const owners = [...new Set(examples.map((item) => item.owner))];
-
-type Example = FormalizationExample;
-type Queue = (typeof queues)[number];
-
-const queueFilters: Record<Queue, PreviewFilter> = { Todas: "all", "Pendientes de aprobación": "approvals", "Contratos pendientes": "contracts", "Gestión bancaria": "bank", "Pendientes de saldo": "balance", "Traspasos pendientes": "transfer", "Traspaso firmado": "signed", "Formalizaciones cerradas este año": "closed" };
-const matchesQueue = (item: Example, queue: Queue) => matchesPreviewFilter(item, queueFilters[queue]);
-const matchesQuery = (item: Example, query: string) => `${item.id} ${item.client} ${item.project} ${item.unit} ${item.owner}`.toLocaleLowerCase("es").includes(query.trim().toLocaleLowerCase("es"));
-const matchesFilter = (value: string, expected: string) => !expected || value === expected;
-
-function onRowKey(event: KeyboardEvent<HTMLTableRowElement>, open: () => void) {
-    if (event.target !== event.currentTarget || (event.key !== "Enter" && event.key !== " ")) return;
-    event.preventDefault();
-    open();
+const labels: Record<FollowUpQueue, string> = { all: "Todas", approvals: "Pendientes de aprobación", contracts: "Contratos pendientes", send: "Por enviar", signature: "Pendientes de firma", bank: "Gestión bancaria", balance: "Pendientes de saldo", transfer: "Traspasos pendientes", signed: "Traspaso firmado", closed: "Formalizaciones cerradas este año" };
+/** Spanish collation, so accents and "La Estefana : LE GAIA" vs "La Estefana: LE NOA" sort the way people read them. */
+const byName = (a: string, b: string) => a.localeCompare(b, "es", { numeric: true, sensitivity: "base" });
+/** "Todas" always opens the list; the rest follow alphabetically so a long list can be scanned. */
+const sortedQueues = (queues: readonly FollowUpQueue[]): readonly FollowUpQueue[] => [...queues.filter((entry) => entry === "all"), ...queues.filter((entry) => entry !== "all").sort((a, b) => byName(labels[a], labels[b]))];
+const columns = ["Orden / Cliente", "Proyecto / Unidad", "Etapa / Pendiente", "Responsable / Tiempo", "Siguiente paso"];
+interface Props {
+    readonly onOpenRecord?: (item: FollowUpItem) => void;
+    readonly onOpenOrder: (order: FormalizationExample) => void;
+    readonly tableOnly: boolean;
+    readonly scope: PreviewQueue;
+    readonly canViewApprovals?: boolean;
+    readonly enabled?: boolean;
+    readonly refreshVersion?: number;
+    readonly canUpdateStage?: boolean;
+    readonly onRefresh?: () => void;
 }
 
-function SearchBox({ value, onChange }: { readonly value: string; readonly onChange: (value: string) => void }) {
-    return (
-        <label className="formalization-search">
-            <SearchOutlined aria-hidden="true" />
-            <input
-                type="search"
-                aria-label="Buscar operación"
-                placeholder="Orden, cliente, unidad o responsable"
-                value={value}
-                onChange={(event) => {
-                    onChange(event.target.value);
-                }}
-            />
-        </label>
-    );
+/** Canonical rows never enter simulated order previews. Revocation unmounts the consumer. */
+export function FormalizationFollowUpPreview(props: Props) {
+    if (!props.enabled)
+        return (
+            <section className="formalization-surface formalization-followup">
+                <h2>Pendientes de seguimiento</h2>
+                <p>El seguimiento de órdenes aún no está disponible.</p>
+            </section>
+        );
+    return <LiveFollowUp key={String(props.canViewApprovals)} {...props} canViewApprovals={props.canViewApprovals ?? false} refreshVersion={props.refreshVersion ?? 0} />;
 }
 
-function QueueSelect({ queue, counts, onChange, options }: { readonly queue: Queue; readonly counts: (name: Queue) => number; readonly onChange: (queue: Queue) => void; readonly options: readonly Queue[] }) {
-    return (
-        <label className="formalization-field formalization-field--queue">
-            <span>Bandeja</span>
-            <select
-                aria-label="Bandeja de seguimiento"
-                value={queue}
-                onChange={(event) => {
-                    onChange(options.find((name) => name === event.target.value) ?? "Todas");
-                }}
-            >
-                {options.map((name) => (
-                    <option key={name} value={name}>
-                        {name} ({counts(name)})
-                    </option>
-                ))}
-            </select>
-        </label>
-    );
-}
-
-interface OrderFiltersProps {
-    readonly options: readonly Queue[];
-    readonly queue: Queue;
-    readonly onQueue: (queue: Queue) => void;
-    readonly project: string;
-    readonly owner: string;
-    readonly hasCriteria: boolean;
-    readonly onProject: (value: string) => void;
-    readonly onOwner: (value: string) => void;
-    readonly onClear: () => void;
-}
-
-function OrderFilters({ queue, onQueue, project, owner, hasCriteria, onProject, onOwner, onClear, options }: OrderFiltersProps) {
-    const active = [project, owner, queue !== "Todas"].filter(Boolean).length;
-    return (
-        <>
-            <label className="formalization-field">
-                <span>Etapa</span>
-                <select
-                    aria-label="Filtrar etapa de Formalización"
-                    value={queue}
-                    onChange={(event) => {
-                        onQueue(options.find((name) => name === event.target.value) ?? "Todas");
-                    }}
-                >
-                    {options.map((name) => (
-                        <option key={name}>{name}</option>
-                    ))}
-                </select>
-            </label>
-            <label className="formalization-field">
-                <span>Proyecto</span>
-                <select
-                    value={project}
-                    onChange={(event) => {
-                        onProject(event.target.value);
-                    }}
-                >
-                    <option value="">Todos</option>
-                    {projects.map((name) => (
-                        <option key={name}>{name}</option>
-                    ))}
-                </select>
-            </label>
-            <label className="formalization-field">
-                <span>Responsable</span>
-                <select
-                    value={owner}
-                    onChange={(event) => {
-                        onOwner(event.target.value);
-                    }}
-                >
-                    <option value="">Todos</option>
-                    {owners.map((name) => (
-                        <option key={name}>{name}</option>
-                    ))}
-                </select>
-            </label>
-            <div className="formalization-toolbar__commands" aria-live="polite">
-                {active > 0 && <span className="formalization-filter-counter">Filtros activos: {active}</span>}
-                {hasCriteria && (
-                    <Button className="formalization-command" onClick={onClear}>
-                        Limpiar
-                    </Button>
-                )}
-            </div>
-        </>
-    );
-}
-
-function FollowUpRow({ item, onOpenOrder }: { readonly item: Example; readonly onOpenOrder: (order: Example) => void }) {
-    const open = () => {
-        onOpenOrder(item);
+function useFollowUp({ scope, canViewApprovals, refreshVersion }: Props & { canViewApprovals: boolean; refreshVersion: number }) {
+    const [search, setSearch] = useState("");
+    const [debouncedSearch, setDebouncedSearch] = useState("");
+    const [projectId, setProject] = useState(scope.project ?? "");
+    const [selectedQueue, setQueue] = useState<FollowUpQueue>(scope.filter);
+    const queue = selectedQueue === "approvals" && !canViewApprovals ? "all" : selectedQueue;
+    const [page, setPage] = useState(1);
+    const [retry, setRetry] = useState(0);
+    const [response, setResponse] = useState<{ key: string; value: FollowUp } | null>(null);
+    const [failure, setFailure] = useState<string | null>(null);
+    const pending = useRef<{ key: string; promise: Promise<FollowUp> } | null>(null);
+    // Include raw search and permission changes in the fence, before the debounce finishes.
+    const key = JSON.stringify([search, debouncedSearch, projectId, queue, page, retry, refreshVersion, canViewApprovals]);
+    const value = response?.key === key ? response.value : null;
+    const failed = failure === key;
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setDebouncedSearch(search);
+        }, 300);
+        return () => {
+            clearTimeout(timer);
+        };
+    }, [search]);
+    useEffect(() => {
+        if (search !== debouncedSearch) return;
+        let active = true;
+        // StrictMode effect replay shares only this mounted consumer's current request.
+        if (pending.current?.key !== key) pending.current = { key, promise: getFollowUp({ search: debouncedSearch, projectId, queue, page, pageSize: 25 }) };
+        void pending.current.promise.then(
+            (data) => {
+                if (active) setResponse({ key, value: data });
+            },
+            () => {
+                if (active) setFailure(key);
+            },
+        );
+        return () => {
+            active = false;
+        };
+    }, [search, debouncedSearch, projectId, queue, page, key]);
+    const invalidate = () => {
+        setResponse(null);
+        setFailure(null);
     };
-    return (
-        <tr
-            className="formalization-grid__row"
-            tabIndex={0}
-            aria-label={`Abrir orden ${item.id}`}
-            onClick={open}
-            onKeyDown={(event) => {
-                onRowKey(event, open);
-            }}
-        >
-            <td>
-                <strong className="formalization-grid__primary">{item.id}</strong>
-                <span className="formalization-grid__meta">{item.client}</span>
-            </td>
-            <td data-label={columns[1]}>
-                <span className="formalization-grid__value">{item.project}</span>
-                <span className="formalization-grid__meta">{item.unit}</span>
-            </td>
-            <td data-label={columns[2]}>
-                <FormalizationStatusPill item={item} />
-                <span className="formalization-grid__meta">{item.blocker}</span>
-            </td>
-            <td data-label={columns[3]}>
-                {isUnassigned(item) ? <FormalizationEmptyValue /> : <span className="formalization-grid__value">{item.owner}</span>}
-                <span className="formalization-grid__meta formalization-grid__age">
-                    <ClockCircleOutlined aria-hidden="true" /> <strong>{item.days}</strong> días en etapa
-                </span>
-            </td>
-            <td data-label={columns[4]}>
-                <div className="formalization-grid__next">
-                    <span>{item.next}</span>
-                    <Button
-                        className="formalization-open"
-                        icon={<ArrowRightOutlined />}
-                        aria-label={`Ver seguimiento de ${item.id}`}
-                        title="Ver seguimiento"
-                        onClick={(event) => {
-                            event.stopPropagation();
-                            open();
-                        }}
-                    />
-                </div>
-            </td>
-        </tr>
-    );
+    return { search, setSearch, projectId, setProject, queue, setQueue, page, setPage, setRetry, invalidate, value, failed, projects: response?.value.projects ?? [], canViewApprovals };
 }
 
-function FollowUpHeader({ titleId, total }: { readonly titleId: string; readonly total: number }) {
+/** Which order is open in the side panel, and how to step to its neighbours on the current page. */
+function useOpenOrder(items: readonly FollowUpItem[]) {
+    const [openId, setOpenId] = useState<string | null>(null);
+    const index = items.findIndex((item) => `${item.source}:${item.id}` === openId);
+    const walk = (step: number) => {
+        const next = items[index + step];
+        if (next) setOpenId(`${next.source}:${next.id}`);
+    };
+    return { item: index >= 0 ? (items[index] ?? null) : null, position: index + 1, setOpenId, walk };
+}
+
+/** Loading, error or table: one place decides, so the section stays simple. */
+function FollowUpBody({ model, onOpen }: { readonly model: ReturnType<typeof useFollowUp>; readonly onOpen: (id: string) => void }) {
+    const { value, failed, setRetry } = model;
+    if (failed)
+        return (
+            <div role="alert" className="formalization-followup__message">
+                <span>No se pudo cargar el seguimiento.</span>
+                <Button
+                    onClick={() => {
+                        setRetry((version) => version + 1);
+                    }}
+                >
+                    Reintentar seguimiento
+                </Button>
+            </div>
+        );
+    return value ? <FollowUpTable value={value} model={model} onOpen={onOpen} /> : <FollowUpSkeleton />;
+}
+
+function FollowUpHeading({ id, tableOnly, total }: { readonly id: string; readonly tableOnly: boolean; readonly total: number | undefined }) {
     return (
         <div className="formalization-surface__header">
-            <span className="formalization-followup__icon" aria-hidden="true">
-                <img src={`${import.meta.env.BASE_URL}illustrations/formalization-icons/contracts.svg`} width={24} height={24} alt="" />
-            </span>
             <div className="formalization-followup__heading">
-                <div className="formalization-title-row">
-                    <h2 id={titleId}>Pendientes de seguimiento</h2>
-                    <span className="formalization-total">{formatOrderTotal(total)}</span>
-                </div>
+                <h2 id={id}>{tableOnly ? "Listado de órdenes" : "Pendientes de seguimiento"}</h2>
+                <p>{tableOnly ? "Busca o filtra por proyecto y bandeja, y abre una orden para ver su detalle." : "Consulta de órdenes por proyecto y bandeja."}</p>
             </div>
+            {total !== undefined && <span className="formalization-total">{total} órdenes</span>}
         </div>
     );
 }
 
-/** Keeps follow-up empty until a real source is connected; never falls back to preview fixtures. */
-export function FormalizationFollowUpPreview({ onOpenOrder, tableOnly, scope, canViewApprovals = false }: { readonly onOpenOrder: (order: Example) => void; readonly tableOnly: boolean; readonly scope: PreviewQueue; readonly canViewApprovals?: boolean }) {
-    const prefix = useId();
-    const [selectedQueue, setQueue] = useState<Queue>("Todas");
-    const options = queues.filter((name) => canViewApprovals || name !== "Pendientes de aprobación");
-    const queue = options.includes(selectedQueue) ? selectedQueue : "Todas";
-    const [query, setQuery] = useState("");
-    const [project, setProject] = useState(() => scope.project ?? "");
-    const [owner, setOwner] = useState("");
-    const scoped = examples.filter((item) => matchesPreviewFilter(item, scope.filter));
-    const searched = scoped.filter((item) => matchesQuery(item, query) && matchesFilter(item.project, project) && matchesFilter(item.owner, owner));
-    const filtered = searched.filter((item) => matchesQueue(item, queue));
-    const hasCriteria = [project, owner, query.trim(), queue !== "Todas"].some(Boolean);
-
+/** The table and its canonical side panel share which order is open; stage updates use a separate permission. */
+function FollowUpWorkspace({ model, canUpdateStage, onRefresh, onViewFull }: { readonly onViewFull: (item: FollowUpItem) => void; readonly model: ReturnType<typeof useFollowUp>; readonly canUpdateStage: boolean | undefined; readonly onRefresh: (() => void) | undefined }) {
+    const items = model.value?.items ?? [];
+    const open = useOpenOrder(items);
     return (
-        <section className="formalization-surface formalization-followup" aria-labelledby={`${prefix}-title`}>
-            {tableOnly ? (
-                <h2 id={`${prefix}-title`} className="formalization-sr">
-                    Órdenes de venta
-                </h2>
-            ) : (
-                <FollowUpHeader titleId={`${prefix}-title`} total={scoped.length} />
+        <>
+            <FollowUpBody model={model} onOpen={open.setOpenId} />
+            <FormalizationOrderDrawer
+                onViewFull={() => {
+                    if (open.item) onViewFull(open.item);
+                    open.setOpenId(null);
+                }}
+                canUpdateStage={canUpdateStage === true}
+                onStageSaved={() => {
+                    refreshFollowUp(model, onRefresh);
+                }}
+                onRefreshOrder={() => {
+                    refreshFollowUp(model, onRefresh);
+                }}
+                item={open.item}
+                position={open.position}
+                total={items.length}
+                onClose={() => {
+                    open.setOpenId(null);
+                }}
+                onSelectPrevious={() => {
+                    open.walk(-1);
+                }}
+                onSelectNext={() => {
+                    open.walk(1);
+                }}
+            />
+        </>
+    );
+}
+
+function LiveFollowUp({ canUpdateStage, canViewApprovals, refreshVersion, ...props }: Props & { canViewApprovals: boolean; refreshVersion: number }) {
+    const title = useId();
+    const [fullOrder, setFullOrder] = useState<FollowUpItem | null>(null);
+    const model = useFollowUp({ ...props, canViewApprovals, refreshVersion });
+    const { value, failed } = model;
+    const { tableOnly } = props;
+    if (fullOrder)
+        return (
+            <FormalizationOrderRecord
+                item={fullOrder}
+                onBack={() => {
+                    setFullOrder(null);
+                }}
+            />
+        );
+    return (
+        <>
+            {tableOnly && (
+                <div className="catalog-items-page--projects formalization-order-banners">
+                    <CatalogBanners label="Resumen de órdenes" cards={buildOrderCards(value?.counts ?? null)} />
+                </div>
             )}
-            <div className="formalization-toolbar" data-home={!tableOnly}>
-                <SearchBox value={query} onChange={setQuery} />
-                {tableOnly ? (
-                    <OrderFilters
-                        options={options}
-                        queue={queue}
-                        onQueue={setQueue}
-                        project={project}
-                        owner={owner}
-                        hasCriteria={hasCriteria}
-                        onProject={setProject}
-                        onOwner={setOwner}
-                        onClear={() => {
-                            setProject("");
-                            setOwner("");
-                            setQuery("");
-                            setQueue("Todas");
-                        }}
-                    />
-                ) : (
-                    <>
-                        <label className="formalization-field">
-                            <span>Proyecto</span>
-                            <select
-                                aria-label="Filtrar por proyecto"
-                                value={project}
-                                onChange={(event) => {
-                                    setProject(event.target.value);
-                                }}
-                            >
-                                <option value="">Todos los proyectos</option>
-                                {projects.map((name) => (
-                                    <option key={name} value={name}>
-                                        {name}
-                                    </option>
-                                ))}
-                            </select>
-                        </label>
-                        <QueueSelect options={options} queue={queue} counts={(name) => searched.filter((item) => matchesQueue(item, name)).length} onChange={setQueue} />
-                    </>
-                )}
-            </div>
-            <div id={`${prefix}-panel`} role="region" aria-label="Órdenes filtradas" className="formalization-grid-scroll" tabIndex={0}>
+            <section className="formalization-surface formalization-followup" aria-labelledby={title} aria-busy={!value && !failed}>
+                <FollowUpHeading id={title} tableOnly={tableOnly} total={value?.page.total} />
+                <FollowUpToolbar model={model} tableOnly={tableOnly} />
+                <FollowUpWorkspace onViewFull={props.onOpenRecord ?? setFullOrder} model={model} canUpdateStage={canUpdateStage} onRefresh={props.onRefresh} />
+            </section>
+        </>
+    );
+}
+
+function FollowUpToolbar({ model, tableOnly }: { readonly model: ReturnType<typeof useFollowUp>; readonly tableOnly: boolean }) {
+    const { search, setSearch, projectId, setProject, queue, setQueue, setPage, value, projects, canViewApprovals, invalidate } = model;
+    return (
+        <div className="formalization-toolbar" data-home={!tableOnly}>
+            <label className="formalization-search">
+                <SearchOutlined aria-hidden="true" />
+                <input
+                    type="search"
+                    aria-label="Buscar operación"
+                    placeholder="Orden, cliente, unidad o responsable"
+                    value={search}
+                    onChange={(event) => {
+                        invalidate();
+                        setSearch(event.target.value);
+                        setPage(1);
+                    }}
+                />
+            </label>
+            <label className="formalization-field">
+                <span>Proyecto</span>
+                <select
+                    aria-label="Filtrar por proyecto"
+                    value={projectId}
+                    onChange={(event) => {
+                        invalidate();
+                        setProject(event.target.value);
+                        setPage(1);
+                    }}
+                >
+                    <option value="">Todos los proyectos</option>
+                    {[...projects]
+                        .sort((a, b) => byName(a.name, b.name))
+                        .map((project) => (
+                            <option key={project.id} value={project.id}>
+                                {project.name}
+                            </option>
+                        ))}
+                </select>
+            </label>
+            <label className="formalization-field formalization-field--queue">
+                <span>Bandeja</span>
+                <select
+                    aria-label="Bandeja de seguimiento"
+                    value={queue}
+                    onChange={(event) => {
+                        invalidate();
+                        setQueue(FOLLOW_UP_QUEUES.find((entry) => entry === event.target.value) ?? "all");
+                        setPage(1);
+                    }}
+                >
+                    {sortedQueues(FOLLOW_UP_QUEUES.filter((entry) => canViewApprovals || entry !== "approvals")).map((entry) => (
+                        <option key={entry} value={entry}>
+                            {labels[entry]}
+                            {value ? ` (${String(value.counts[entry])})` : ""}
+                        </option>
+                    ))}
+                </select>
+            </label>
+        </div>
+    );
+}
+/** Missing time is a dash on screen and full words for assistive technology, so a column of identical "not available" lines does not shout. */
+function TimeInStage({ days }: { readonly days: number | null }) {
+    if (days !== null) return <span className="formalization-grid__meta">{`${String(days)} días en etapa`}</span>;
+    return (
+        <span className="formalization-grid__meta formalization-grid__meta--quiet">
+            <span aria-hidden="true">—</span>
+            <span className="formalization-sr">Tiempo no disponible</span>
+        </span>
+    );
+}
+
+const SKELETON_ROWS = 6;
+
+/**
+ * Loading state with the table's own header and row rhythm, so the page does not jump when the data arrives.
+ * Static bars on purpose: animated shimmer repaints continuously and is costly on old laptops.
+ */
+function FollowUpSkeleton() {
+    return (
+        <div role="status" className="formalization-grid-scroll">
+            <span className="formalization-sr">Cargando seguimiento…</span>
+            <table className="formalization-grid formalization-grid--orders" aria-hidden="true">
+                <thead>
+                    <tr>
+                        {columns.map((label) => (
+                            <th key={label}>{label}</th>
+                        ))}
+                    </tr>
+                </thead>
+                <tbody>
+                    {Array.from({ length: SKELETON_ROWS }, (_, row) => (
+                        <tr key={row} className="formalization-grid__row">
+                            {columns.map((label) => (
+                                <td key={label}>
+                                    <span className="formalization-skeleton formalization-skeleton--strong" />
+                                    <span className="formalization-skeleton" />
+                                </td>
+                            ))}
+                        </tr>
+                    ))}
+                </tbody>
+            </table>
+        </div>
+    );
+}
+
+function isStageAuthorResponsible(owner: FollowUpItem["responsible"], author: FollowUpItem["changedBy"]): boolean {
+    if (!owner || !author || owner.id !== author.id) return false;
+    // Null IDs cannot establish identity; compare their recorded names only when both IDs are null.
+    return owner.id !== null || owner.name === author.name;
+}
+
+/** Renders stage ownership independently from sales attribution and change authorship. */
+function StageResponsibility({ item }: { readonly item: FollowUpItem }) {
+    const owner = item.responsible;
+    const author = item.changedBy;
+    const samePerson = isStageAuthorResponsible(owner, author);
+    return (
+        <>
+            <span className="formalization-grid__value">{owner?.name ?? "Sin responsable registrado"}</span>
+            {item.seller && <span className="formalization-grid__meta">Vendedor: {item.seller.name}</span>}
+            {author && !samePerson && <span className="formalization-grid__meta">Autor del cambio: {author.name}</span>}
+        </>
+    );
+}
+
+function FollowUpRow({ item, onOpen }: { readonly item: FollowUpItem; readonly onOpen: (id: string) => void }) {
+    const id = `${item.source}:${item.id}`;
+    return (
+        <tr
+            className="formalization-grid__row formalization-grid__row--openable"
+            tabIndex={0}
+            aria-label={`Abrir detalle de la orden ${item.number}`}
+            onClick={() => {
+                onOpen(id);
+            }}
+            onKeyDown={(event) => {
+                if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    onOpen(id);
+                }
+            }}
+        >
+            <td>
+                <strong className="formalization-grid__primary">{item.number}</strong>
+                <span className="formalization-grid__meta">{item.client ?? "Sin cliente"}</span>
+            </td>
+            <td data-label={columns[1]}>
+                <span className="formalization-grid__value">{item.project?.name ?? "Sin proyecto"}</span>
+                <span className="formalization-grid__meta">{item.unit ?? "Sin unidad"}</span>
+            </td>
+            <td data-label={columns[2]}>
+                <StageChip label={item.state.label} />
+            </td>
+            <td data-label={columns[3]}>
+                <StageResponsibility item={item} />
+                <TimeInStage days={item.state.days} />
+            </td>
+            <td data-label={columns[4]}>
+                <span>{item.nextStep}</span>
+            </td>
+        </tr>
+    );
+}
+function FollowUpTable({ value, model, onOpen }: { readonly value: FollowUp; readonly model: ReturnType<typeof useFollowUp>; readonly onOpen: (id: string) => void }) {
+    const { page, setPage, invalidate } = model;
+    return (
+        <>
+            <div role="region" aria-label="Órdenes filtradas" className="formalization-grid-scroll" tabIndex={0}>
                 <table className="formalization-grid formalization-grid--orders">
                     <caption className="formalization-sr">Operaciones pendientes de seguimiento</caption>
                     <thead>
@@ -282,14 +380,13 @@ export function FormalizationFollowUpPreview({ onOpenOrder, tableOnly, scope, ca
                         </tr>
                     </thead>
                     <tbody>
-                        {filtered.map((item) => (
-                            <FollowUpRow key={item.id} item={item} onOpenOrder={onOpenOrder} />
+                        {value.items.map((item) => (
+                            <FollowUpRow key={`${item.source}:${item.id}`} item={item} onOpen={onOpen} />
                         ))}
-                        {filtered.length === 0 && (
+                        {value.items.length === 0 && (
                             <tr>
-                                <td colSpan={columns.length} className="formalization-grid__empty">
-                                    <strong>Seguimiento no disponible</strong>
-                                    <span>El seguimiento de órdenes aún no está disponible.</span>
+                                <td colSpan={5} className="formalization-grid__empty">
+                                    No hay órdenes para estos filtros.
                                 </td>
                             </tr>
                         )}
@@ -297,8 +394,36 @@ export function FormalizationFollowUpPreview({ onOpenOrder, tableOnly, scope, ca
                 </table>
             </div>
             <div className="formalization-surface__footer">
-                Mostrando {filtered.length} de {scoped.length} operaciones
+                <span>
+                    Mostrando {value.items.length} de {value.page.total} operaciones · Página {value.page.number} de {value.page.totalPages}
+                </span>
+                <span className="formalization-pager">
+                    <Button
+                        aria-label="Página anterior"
+                        icon={<LeftOutlined aria-hidden="true" />}
+                        disabled={page <= 1}
+                        onClick={() => {
+                            invalidate();
+                            setPage((number) => number - 1);
+                        }}
+                    />
+                    <Button
+                        aria-label="Página siguiente"
+                        icon={<RightOutlined aria-hidden="true" />}
+                        disabled={page >= value.page.totalPages}
+                        onClick={() => {
+                            invalidate();
+                            setPage((number) => number + 1);
+                        }}
+                    />
+                </span>
             </div>
-        </section>
+        </>
     );
+}
+
+function refreshFollowUp(model: ReturnType<typeof useFollowUp>, onRefresh: (() => void) | undefined) {
+    model.invalidate();
+    model.setRetry((version) => version + 1);
+    onRefresh?.();
 }

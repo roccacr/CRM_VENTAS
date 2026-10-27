@@ -16,11 +16,11 @@ La primera pantalla comercial del corte P0-S1, despues de identidad, debe ser la
 
 La fuente de verdad del primer corte ejecutable actual es `22-UX-Identidad-Usuarios-Roles-P0-S1.md`. El documento `20-Alcance-P0-Vertical-Leads-Frontend.md` aplica como corte comercial futuro despues de cerrar identidad.
 
-Estado del runtime frontend:
+Estado historico del runtime de identidad (no inventario actual):
 
 - existe un runtime React/Vite minimo;
 - la compuerta de identidad esta conectada al BFF;
-- login local, Microsoft, logout y shell `/home/global` son parte del corte de identidad;
+- login local, Microsoft, logout y shell `/home/global` fueron parte del corte inicial de identidad; las rutas actuales se registran en `src/routes/app-routes.ts` y se resumen en [19](19-Mapa-de-Implementacion-Frontend.md);
 - no prueba que el CRM comercial este construido;
 - no autoriza leads, dashboard ni administracion avanzada.
 

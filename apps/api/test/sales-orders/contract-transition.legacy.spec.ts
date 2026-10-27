@@ -26,6 +26,48 @@ function setup(config: Record<string, unknown> = {}, rows: Record<string, unknow
     return { writer: new LegacyContractTransitionWriter(new ConfigService({ ENABLE_LEGACY_FALLBACK: true, ENABLE_LEGACY_WRITES: true, LEGACY_CRM_DB_NAME: "crmdatabase-api", NODE_ENV: "development", ...config })), tx, queries, executeQuery };
 }
 describe("contract-only legacy gate and reviewed DDL", () => {
+    it("resolves canonical owner through unique locked lead, employee and email matches", async () => {
+        const f = setup();
+        for (const rows of [[{ employee: 31 }], [{ id: 9, email: " Seller@Example.test " }], [{ id: 9 }], [{ publicId: "seller-public" }]])
+            f.executeQuery.mockImplementationOnce((query: CompiledQuery) => {
+                f.queries.push(query);
+                return Promise.resolve({ rows });
+            });
+        await expect(f.writer.owner(f.tx, "901")).resolves.toBe("seller-public");
+        expect(f.queries).toHaveLength(4);
+        expect(f.queries.every((q) => q.sql.includes("FOR UPDATE"))).toBe(true);
+        expect(f.queries[0]?.sql).toContain("o.id_ov_lead=l.idinterno_lead");
+        expect(f.queries[2]?.parameters).toEqual(["seller@example.test"]);
+        expect(f.queries[3]?.sql).toContain("deleted_at_user IS NULL");
+        expect(f.queries.every((q) => q.sql.startsWith("SELECT"))).toBe(true);
+    });
+    it.each([
+        [[]],
+        [[{ employee: null }]],
+        [[{ employee: 31 }, { employee: 32 }]],
+        [[{ employee: 31 }], []],
+        [
+            [{ employee: 31 }],
+            [
+                { id: 9, email: "a@test" },
+                { id: 10, email: "b@test" },
+            ],
+        ],
+        [[{ employee: 31 }], [{ id: 9, email: "  " }]],
+        [[{ employee: 31 }], [{ id: 9, email: "a@test" }], [{ id: 9 }, { id: 10 }]],
+        [[{ employee: 31 }], [{ id: 9, email: "a@test" }], [{ id: 10 }]],
+        [[{ employee: 31 }], [{ id: 9, email: "a@test" }], [{ id: 9 }], []],
+        [[{ employee: 31 }], [{ id: 9, email: "a@test" }], [{ id: 9 }], [{ publicId: "one" }, { publicId: "two" }]],
+    ])("rejects absent or ambiguous owner evidence: %j", async (...responses) => {
+        const f = setup();
+        for (const rows of responses)
+            f.executeQuery.mockImplementationOnce((query: CompiledQuery) => {
+                f.queries.push(query);
+                return Promise.resolve({ rows });
+            });
+        await expect(f.writer.owner(f.tx, "901")).resolves.toBeNull();
+        expect(f.queries.every((q) => q.sql.startsWith("SELECT"))).toBe(true);
+    });
     it("declares its configuration injection explicitly", () => {
         expect(Reflect.getMetadata(SELF_DECLARED_DEPS_METADATA, LegacyContractTransitionWriter)).toContainEqual({ index: 0, param: ConfigService });
     });
@@ -44,7 +86,7 @@ describe("contract-only legacy gate and reviewed DDL", () => {
     });
     it("uses the existing canonical mapper for string flags and native business code", async () => {
         const f = setup({}, [{ id_ov: 901, status_ov: "1", caida_ov: "0", chekJefeVenta: "1", aprobacion__rdr_ov: "1", aprobacion_forma_ov: "1" }]);
-        await expect(f.writer.lock(f.tx, "901")).resolves.toEqual({ id: "901", businessId: "LEGACY-OV-901", active: true, approved: true });
+        await expect(f.writer.lock(f.tx, "901")).resolves.toEqual({ id: "901", businessId: "LEGACY-OV-901", active: true, approved: true, contractSigned: false });
     });
     it("writes only additive legacy history using the DDL actor reference and first transition null from", async () => {
         const f = setup();
@@ -62,4 +104,17 @@ describe("contract-only legacy gate and reviewed DDL", () => {
         expect(f.queries[0]?.sql).toContain("operation_id_sales_order_state_event");
         expect(f.queries[0]?.sql).toContain("FOR UPDATE");
     });
+});
+
+it.each([
+    [1, true],
+    [0, false],
+    [null, false],
+    [undefined, false],
+])("reads the locked legacy signature flag %s without updating it", async (flag, expected) => {
+    const f = setup({}, [{ id_ov: 901, status_ov: 1, caida_ov: 0, chekJefeVenta: 1, aprobacion__rdr_ov: 1, aprobacion_forma_ov: 1, contrado_frima_ov: flag }]);
+    await expect(f.writer.lock(f.tx, "901")).resolves.toMatchObject({ contractSigned: expected });
+    expect(f.queries[0]?.sql).toContain("contrado_frima_ov");
+    expect(f.queries[0]?.sql).toContain("FOR UPDATE");
+    expect(f.queries.some((q) => /UPDATE ordenventa|INSERT/.test(q.sql))).toBe(false);
 });

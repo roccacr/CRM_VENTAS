@@ -1,10 +1,21 @@
 # AGENTS.md - CRM Enterprise Frontend
 
-## Current implementation precedence - 2026-10-22
+## Current implementation precedence - 2026-10-27
+
+Read [30 - Verified frontend state](Arquitectura/30-Estado-Frontend-Verificado.md) before the older snapshots below. Marketing capture is a connected cohort report, with Hoy/Semana/Mes/Trimestre/Año, KPIs, stacked seller chart, project selection, modal breakdown and PNG/browser-print PDF export. Its loader is the local static CaptureLoading component. Eventos y citas and its permission have been retired; Calendario remains a menu-only Marketing item. Formalization Home/Gestion now read canonical follow-up and offer a separately permissioned stage command; calendar/summary previews and the explicitly labeled Primary information sample remain simulations. Existing claims below about empty queues or unavailable follow-up are historical and do not authorize removing the implemented consumers. No permission bypass by Owner, no legacy imports, no new integration scope.
+
+
+## Current implementation precedence - 2026-10-23
 
 The installed runtime uses React/Vite/TypeScript, Ant Design, DataTables/SearchPanes, typed fetch services and project CSS. TanStack Query, Zustand, React Hook Form, Tailwind and Radix/shadcn guidance below is a future blueprint, not a requirement to add dependencies or replace working patterns. Reuse the installed services/hooks/forms unless a scoped decision authorizes migration.
 
-Approved extensions beyond the original identity gate include Administration/catalogs and partial Formalization. Home has two real banners: approvals requires effective `formalizacion.home.approvals.read`; contracts requires the active `formalizacion` role, which Owner or the approval permission does not replace. Five counters remain provisional; queues stay empty, follow-up has no operational API, and calendar/summary previews remain simulations. Keep Home-only: do not activate list/send/revert. Navigation history, lazy routes and recoverable route errors are implemented. See the product-law addendum and `Arquitectura/29-Navegacion-Recuperacion-y-Seguimiento.md`; Leads and full contract workflows remain future scope.
+Approved extensions include Administration/catalogs, partial Formalization and connected Marketing Home reads. Formalization has a separately permitted approval banner and six stage banners from `GET /formalization/home/summary`. Stages require active effective `formalizacion` plus allow/no deny for `formalizacion.home.stages.read`. Owner can inherit that role through persisted backend policy; React never bypasses denies or demands direct assignment. Queues stay empty; list/send/revert are not active workflows. Calendar/Summary/order previews remain simulations.
+
+Marketing Home consumes `GET /marketing/home/summary?period=day|week|month|year`, including appointment evidence when available, without a sample-data fallback. This does not connect a calendar editor, Outlook or notifications. Jefe General uses selected employee modules within the editable role ceiling; module selection grants no Administration authority. User directory/detail show all returned modules. Coverage: [49 - Current State](../api/Arquitectura/49-Estado-Actual-y-Cierre-Documental.md).
+
+Marketing opens on Mes; its visible time controls are Hoy/Semana/Mes/Año. Generic range/custom-comparison helpers do not expose those controls in this Home. Seller/project multiselection filters the authorized aggregate locally; period changes request the API again. Local seller photos appear in the selected-seller welcome group, matched only by native publicId, with the existing illustration as fallback. Appointment completion uses unique event dates; lead conversion uses lead creation cohorts. See [27](Arquitectura/27-Entrega-Administracion-y-QA.md) for metric and loading semantics.
+
+Captacion de leads at `/home/marketing/leads` is authorized for a read-only live report through `GET /marketing/leads/report?period=day|week|month|all`. Menu, URL and server require `mercadeo.leads.read` and effective module/scope/deny checks. Native CRM_THINK_V2 is read before optional legacy; never copy records between schemas. Dynamic catalogs, dates and native publicId photos replace all production fixtures. The report counts captured-lead cohorts; completed > scheduled > no current appointment is mutually exclusive, not appointment event volume or attendance. Errors never fall back to demo or fabricated zeros. No commercial writes, migrations, Graph, notifications or real imports are authorized by this read. See API [53](../api/Arquitectura/53-Captacion-Leads-Reporte-Federado.md).
 
 ## Agent Role
 
@@ -33,7 +44,7 @@ Frontend architecture documentation lives inside this same project:
 Arquitectura/
 ```
 
-Do not rely on global documentation outside this subproject as the source of truth for frontend decisions.
+Use local frontend documentation together with root AGENTS and canonical API product law; subproject autonomy does not override that hierarchy.
 
 The source of truth for the current build scope is:
 
@@ -81,17 +92,13 @@ Use the smallest relevant set for the task. Default frontend work normally start
 
 Add design-system, testing, security, accessibility, or review skills only when the current task needs them.
 
-## Required Stack
+## Installed Stack and Future Direction
 
 - React.
 - Vite.
 - Strict TypeScript.
-- TanStack Query for server state.
-- Zustand for small UI/global state only.
-- React Hook Form for forms.
-- Zod or equivalent typed validation for form schemas.
-- Tailwind CSS.
-- Accessible components based on Radix/shadcn when useful.
+- Installed: Ant Design forms/components, DataTables/SearchPanes, centralized typed fetch, React state/hooks and project CSS.
+- TanStack Query, Zustand, React Hook Form, Tailwind and Radix/shadcn are future direction. Their prescriptions below apply only after scoped adoption.
 - Microsoft login is initiated through the BFF API; do not run MSAL directly in React unless a new architecture decision explicitly changes this.
 - Authentication follows the BFF/session-cookie rule from `Arquitectura/21-Seguridad-Autenticacion-BFF-y-Sesion.md`; storing tokens in frontend storage is forbidden.
 - Use pnpm from this frontend folder for dependency installation and local scripts.
@@ -131,8 +138,8 @@ Rules:
 4. Do not use `any`.
 5. Do not depend on legacy CRM structures directly.
 6. Every API response must pass through typed contracts.
-7. TanStack Query owns remote data, cache, invalidation, retries, and request lifecycle.
-8. Zustand only owns small UI state: layout, filters, preferences, selected operating context, or derived session display state.
+7. Existing typed services/hooks own remote requests and cache; TanStack Query is a future adoption decision.
+8. React state/hooks own current UI state; future Zustand adoption stays limited to UI state.
 9. Prefer complete vertical user flows over disconnected UI fragments.
 10. Permission-aware UI must use effective permissions returned by the API; the frontend never calculates final authorization.
 11. Frontend request/response types must use canonical CRM names only, never NetSuite/Odoo/legacy field names.
@@ -229,7 +236,7 @@ Meet WCAG AA expectations:
 
 ## State and Data
 
-Use TanStack Query for:
+After approved adoption, use TanStack Query for:
 
 - lists;
 - detail screens;
@@ -240,7 +247,7 @@ Use TanStack Query for:
 - controlled refetching;
 - optimistic UI when the risk is low.
 
-Use Zustand for:
+After approved adoption, use Zustand for:
 
 - sidebar state;
 - persisted filters;
@@ -252,7 +259,7 @@ Do not use Zustand as an API cache.
 
 ## Forms
 
-- Use React Hook Form.
+- Reuse installed Ant Design forms; React Hook Form remains future direction.
 - Use typed validation.
 - Show visible error messages.
 - Show loading and saving states.
@@ -349,3 +356,17 @@ Before saying the frontend work is complete:
 2. Confirm unrelated files were not changed.
 3. Run the available lint, typecheck, tests, and build commands.
 4. Report exactly what passed, failed, or could not be run.
+
+
+## Authorized Marketing Home read extension - 2026-10-23
+
+The owner authorized real lead aggregates for Marketing Home through
+`GET /marketing/home/summary?period=day|week|month|year`. Read native leads first,
+then the optional legacy adapter, and produce one JSON without copying records.
+Count all leads created in the interval regardless of current status. Preserve
+permission scopes, canonical seller/project identities and local public-ID photos.
+Appointment metrics are now authorized as read-only calendar queries: native events first, then legacy Cita events, attributed through the lead owner/project. No imports or calendar mutations. See `apps/api/Arquitectura/48-Mercadeo-Metricas-Citas.md` (repository-relative).
+This scoped authorization supersedes historical mock-only restrictions for this
+summary only; it authorizes no imports, business mutations, migrations or deployment.
+API contract and verification: `apps/api/Arquitectura/46-Mercadeo-Resumen-Leads.md`
+(relative to the repository root).

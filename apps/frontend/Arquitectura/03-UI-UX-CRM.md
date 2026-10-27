@@ -59,7 +59,7 @@ No usar tarjetas que muestren numeros sin permitir drill-down o explicacion.
 
 ## Tablas
 
-Obligatorio:
+Objetivo de tablas futuras (no describe capacidades de todas las tablas actuales):
 
 - paginacion server-side;
 - filtros server-side;

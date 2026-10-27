@@ -1,12 +1,14 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
-import { describe, expect, it } from "vitest";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { DEMO_EFFECTIVE_NAVIGATION_PERMISSIONS, type EffectiveNavigationPermission, getVisibleNavigationWorkspaces, type GlobalMenuItem, type WorkspaceProfile } from "../../src/modules/home/GlobalHomeShell";
-import { AUTH_LOGIN_PATH } from "../../src/routes/app-routes";
+import { DEMO_EFFECTIVE_NAVIGATION_PERMISSIONS, type EffectiveNavigationPermission, getVisibleNavigationWorkspaces, GlobalHomeShell, type GlobalMenuItem, type WorkspaceProfile } from "../../src/modules/home/GlobalHomeShell";
+import { AUTH_LOGIN_PATH, getAppRoute } from "../../src/routes/app-routes";
 import { getDefaultAuthenticatedPath, getRedirectPath, resolveRouteState } from "../../src/routes/auth-state";
 import type { IdentityProfile } from "../../src/services/auth/identity-contracts";
+import { installBrowserApiDoubles } from "../support/browser";
 
 const allow = (code: string): EffectiveNavigationPermission => ({ code, effect: "allow" });
 const deny = (code: string): EffectiveNavigationPermission => ({ code, effect: "deny" });
@@ -148,17 +150,18 @@ describe("navigation permissions", () => {
     });
 
     it("muestra solo los modulos operativos con permisos accionables efectivos", () => {
-        const visibleWorkspaces = getVisibleNavigationWorkspaces([allow("lead.read"), ...["home", "leads", "appointments", "calendar"].map((section) => allow(`mercadeo.${section}.read`))]);
+        const visibleWorkspaces = getVisibleNavigationWorkspaces([allow("lead.read"), ...["home", "leads", "calendar"].map((section) => allow(`mercadeo.${section}.read`))]);
         const salesWorkspace = getWorkspace(visibleWorkspaces, "sales");
         const marketingWorkspace = getWorkspace(visibleWorkspaces, "marketing");
 
         expect(visibleWorkspaces.map((workspace) => workspace.code)).toEqual(["all", "sales", "marketing"]);
         expect(getMenuLabels(salesWorkspace.menuItems)).toEqual(["Resumen", "Leads"]);
-        expect(getMenuLabels(marketingWorkspace.menuItems)).toEqual(["Inicio", "Captación de leads", "Eventos y citas", "Calendario"]);
-        expect(marketingWorkspace.menuItems.slice(1).every((item) => item.routePath === undefined)).toBe(true);
+        expect(getMenuLabels(marketingWorkspace.menuItems)).toEqual(["Inicio", "Captación de leads", "Calendario"]);
+        expect(marketingWorkspace.menuItems.find((item) => item.code === "marketing-leads")?.routePath).toBe("/home/marketing/leads");
+        expect(marketingWorkspace.menuItems.slice(2).every((item) => item.routePath === undefined)).toBe(true);
     });
 
-    it.each(["home", "leads", "appointments", "calendar"])("Mercadeo autoriza cada seccion y respeta su deny: %s", (section) => {
+    it.each(["home", "leads", "calendar"])("Mercadeo autoriza cada seccion y respeta su deny: %s", (section) => {
         const code = `mercadeo.${section}.read`;
         const visible = getWorkspace(getVisibleNavigationWorkspaces([allow(code)], orgUnits("mercadeo")), "marketing");
         expect(visible.menuItems).toHaveLength(1);
@@ -181,5 +184,32 @@ describe("navigation permissions", () => {
 
     it("no expone perfiles cuando no hay permisos efectivos", () => {
         expect(getVisibleNavigationWorkspaces([])).toEqual([]);
+    });
+});
+
+describe("Marketing lead capture landing", () => {
+    afterEach(() => {
+        cleanup();
+        vi.restoreAllMocks();
+    });
+    it("permits the section grant and rejects a missing or denied grant on direct navigation", () => {
+        expect(resolveRouteState(routeProfile([allow("mercadeo.leads.read")], "mercadeo"), "/home/marketing/leads").status).toBe("authenticated");
+        expect(resolveRouteState(routeProfile([allow("mercadeo.home.read")], "mercadeo"), "/home/marketing/leads").status).toBe("forbidden");
+        expect(resolveRouteState(routeProfile([allow("mercadeo.home.read"), allow("mercadeo.leads.read"), deny("mercadeo.leads.read")], "mercadeo"), "/home/marketing/leads").status).toBe("forbidden");
+    });
+    it("navigates on click and loads the authorized lead-capture page", async () => {
+        installBrowserApiDoubles();
+        const profile = routeProfile([allow("mercadeo.leads.read")], "mercadeo");
+        const navigate = vi.fn();
+        render(<GlobalHomeShell currentUser={profile.user} effectivePermissions={profile.permissions} orgUnits={profile.orgUnits} initialWorkspaceCode="marketing" onMenuItemSelect={navigate} children={null} />);
+        fireEvent.click(screen.getByRole("button", { name: "Captación de leads" }));
+        expect(navigate).toHaveBeenCalledWith("/home/marketing/leads");
+        cleanup();
+        const Page = getAppRoute("/home/marketing/leads")?.Page;
+        if (!Page) throw Error("Missing capture page");
+        const page = render(<Page currentUser={profile.user} />);
+        expect(await screen.findByRole("heading", { level: 1, name: "Captación de leads" }, { timeout: 15000 })).toBeTruthy();
+        expect(page.container.textContent).toContain("De dónde vienen los leads y en qué terminan.");
+        cleanup();
     });
 });

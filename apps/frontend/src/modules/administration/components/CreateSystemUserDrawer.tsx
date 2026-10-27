@@ -1,8 +1,8 @@
 /**
  * Panel de alta y edición de un usuario.
  *
- * El mismo formulario crea o actualiza. Cerrar con cambios sin guardar pide
- * confirmación. El catálogo delimita los módulos seleccionables; Owner no
+ * El mismo formulario crea o actualiza. Cerrar descarta los cambios pendientes
+ * sin confirmación. El catálogo delimita los módulos seleccionables; Owner no
  * asigna áreas operativas porque su alcance es la empresa.
  */
 import "./CreateSystemUserDrawer.css";
@@ -30,7 +30,6 @@ import { getUserModuleScope, hasSelectedModuleInheritance } from "../user-module
 import { SystemUserStatusPill } from "./SystemUserBadges";
 
 const FORM_NAME = "createSystemUser";
-const DISCARD_CONFIRMATION = "Hay datos sin guardar. ¿Quieres cerrar el formulario y descartarlos?";
 
 /** Propiedades del panel de alta y edición de usuarios. */
 interface CreateSystemUserDrawerProps {
@@ -198,13 +197,9 @@ export function CreateSystemUserDrawer({ canAssignPassword, canAssignRoles, erro
         return Promise.reject(new Error("Los roles elegidos no tienen acciones en ningún módulo. Agrega un rol operativo."));
     };
 
-    /** Pide confirmación si hay cambios sin guardar y limpia la contraseña antes de cerrar. */
+    /** Cierra sin aviso de descarte y limpia la contraseña; espera si hay un guardado en curso. */
     const requestClose = (): void => {
         if (isSaving) {
-            return;
-        }
-
-        if (form.isFieldsTouched() && !window.confirm(DISCARD_CONFIRMATION)) {
             return;
         }
 
@@ -297,6 +292,8 @@ export function CreateSystemUserDrawer({ canAssignPassword, canAssignRoles, erro
                             mode="multiple"
                             allowClear
                             virtual={false}
+                            // Escape clipped form sections while staying above the drawer mask.
+                            getPopupContainer={(trigger: HTMLElement) => trigger.closest<HTMLElement>(".ant-drawer-body") ?? trigger.parentElement ?? trigger}
                             placeholder="Selecciona uno o más roles"
                             showSearch={{ optionFilterProp: "label" }}
                             options={roleOptions.map((role) => ({ label: role.name, value: role.code }))}
@@ -314,7 +311,7 @@ export function CreateSystemUserDrawer({ canAssignPassword, canAssignRoles, erro
                     </Form.Item>
                     {selectModules && (
                         <Form.Item<CreateUserFormValues> label="Módulos asignados" name="orgUnitCodes">
-                            <Select mode="multiple" allowClear virtual={false} disabled={isEditMode && !canAssignRoles} placeholder="Sin módulos asignados" options={availableModules.map((module) => ({ label: module.name, value: module.code }))} />
+                            <Select mode="multiple" allowClear virtual={false} getPopupContainer={(trigger: HTMLElement) => trigger.closest<HTMLElement>(".ant-drawer-body") ?? trigger.parentElement ?? trigger} disabled={isEditMode && !canAssignRoles} placeholder="Sin módulos asignados" options={availableModules.map((module) => ({ label: module.name, value: module.code }))} />
                         </Form.Item>
                     )}
                 </FormSection>

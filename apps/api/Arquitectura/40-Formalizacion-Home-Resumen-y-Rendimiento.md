@@ -1,5 +1,15 @@
 # 40 - Formalizacion: resumen de Home y rendimiento
 
+## Ampliacion posterior - 2026-10-27
+
+Los limites siguientes corresponden al resumen Home del 2026-10-23. Desde la
+ampliacion de26 tambien estan registrados seguimiento, timing y comandos CRM
+send/revert/set-stage. El agregado conserva autoridad nativa, control de firma y
+bandejas comunes; no deriva de ello correo o sincronizacion ERP. Las condiciones
+actuales de etapas, firma y union Todas estan en [52](52-Etapas-Responsables-y-Tiempos.md).
+Los benchmarks y resultados siguientes son historicos; esta revision no los
+repite ni certifica rendimiento bajo carga.
+
 ## Actualizacion de autorizacion - 2026-10-23
 
 [41 - Owner](41-Owner-Herencia-y-Denegaciones.md) prevalece sobre el corte original:
@@ -13,8 +23,10 @@ su permiso independiente. Las consultas de negocio y contadores no cambian.
 Conectar contratos y los cinco indicadores restantes a lecturas reales de las dos
 fuentes. No habilitar listados, cambios de estado, correos, ERP ni restauraciones.
 El permiso independiente del banner de aprobaciones se conserva. Los otros seis
-banners requieren el rol activo exacto `formalizacion`, tanto antes de montar el
-consumidor React como antes de consultar negocio en el API.
+banners requieren el rol efectivo activo `formalizacion` y el permiso efectivo
+`formalizacion.home.stages.read`, tanto antes de montar el consumidor React
+como antes de consultar negocio en el API. Owner puede heredar ese rol (41);
+su nombre solo no sustituye resolver el perfil y sus denies.
 
 Este documento separa plan, reglas confirmadas, lecturas puntuales reales y
 pruebas sinteticas. No certifica rendimiento productivo bajo carga.

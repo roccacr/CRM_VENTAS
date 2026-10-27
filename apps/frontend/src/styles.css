@@ -352,3 +352,31 @@ input {
         animation: none;
     }
 }
+
+/*
+ * One overlay for every drawer and dialog.
+ * The dim is drawn once, by the page, whenever anything is open; the individual masks stay transparent
+ * (they still catch outside clicks). Stacking panels therefore can never add up to a darker background,
+ * and it does not depend on how the portals are nested in the DOM.
+ * Neutral dark (almost no blue tint), no blur: a blurred backdrop repaints the whole page and is slow on old laptops.
+ */
+:root {
+    --overlay-dim: rgb(14 16 20 / 67%);
+}
+
+.ant-drawer .ant-drawer-mask,
+.ant-modal-root .ant-modal-mask {
+    background: transparent !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+}
+
+/* The dim sits just under the panels (z-index 1300 drawers, 1400 dialogs), so they paint above it. */
+body:has(.ant-drawer.ant-drawer-open, .ant-modal-wrap:not([style*="display: none"]))::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: 1299;
+    background: var(--overlay-dim);
+    pointer-events: none;
+}

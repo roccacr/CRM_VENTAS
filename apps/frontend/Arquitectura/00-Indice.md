@@ -1,5 +1,24 @@
 # 00 - Indice de Arquitectura Frontend
 
+Cierre transversal y límites de verificación: [55 - Revisión documental integral](../../api/Arquitectura/55-Revision-Documental-Integral-20261027.md).
+
+## Estado contrastado - 2026-10-27
+
+[30 - Estado frontend verificado](30-Estado-Frontend-Verificado.md) inventaría las rutas, contratos y límites actuales: Captación conectada, seguimiento y cambio protegido de etapa de Formalización. Los cortes fechados siguientes son antecedentes; sus cifras de QA no se reejecutaron en esta revisión documental.
+
+
+Captacion conectada (2026-10-26): API, directorios y fotos reales; la demo anterior
+queda historica. Ver [53 - Reporte API](../../api/Arquitectura/53-Captacion-Leads-Reporte-Federado.md).
+
+Antecedente sustituido: Captacion de leads (2026-10-26), maqueta interactiva aislada, sin API/BD. Alcance
+y limites en [ley de producto](00-Producto-CRM-TINK-y-P0-Frontend.md) y
+[27 - QA](27-Entrega-Administracion-y-QA.md). No sustituye datos reales de Inicio.
+
+
+## Lectura vigente y cobertura - 2026-10-23
+
+[49 - Estado actual y cierre documental](../../api/Arquitectura/49-Estado-Actual-y-Cierre-Documental.md) centraliza el plan aplicado, la revision de 97 Markdown, el recorrido extremo a extremo y los pendientes reales. Inventario frontend: [19](19-Mapa-de-Implementacion-Frontend.md) y [27](27-Entrega-Administracion-y-QA.md). Mercadeo conectado: [46](../../api/Arquitectura/46-Mercadeo-Resumen-Leads.md) y [48](../../api/Arquitectura/48-Mercadeo-Metricas-Citas.md). Calendario nativo solo esquema: [47](../../api/Arquitectura/47-Calendario-Compartido-Esquema.md); distinto de la simulacion de Formalizacion.
+
 ## Jefaturas por modulos - 2026-10-23
 
 [42 - Jefaturas](../../api/Arquitectura/42-Jefaturas-Modulos-y-Permisos.md):
@@ -18,19 +37,19 @@ para Owner. No hay bypass de Owner en el frontend ni asignaciones fisicas masiva
 
 [40 - Home y rendimiento](../../api/Arquitectura/40-Formalizacion-Home-Resumen-y-Rendimiento.md):
 un consumidor agregado para contratos y los cinco indicadores posteriores,
-exclusivo de rol activo Formalizacion; aprobaciones conserva su permiso.
+requiere rol efectivo activo Formalizacion y permiso de etapas sin deny; Owner puede heredar ese rol desde el API. Aprobaciones conserva su permiso.
 Preload por numero, relectura al entrar/recuperar foco y ausencia de cache de
 contadores. No se habilitan bandejas reales ni acciones. Los resultados y
 limites de esta entrega se registran en 40; los cortes anteriores que describen
 ceros provisionales conservan su valor historico.
 
-## Consolidacion vigente - 2026-10-22
+## Consolidacion historica - 2026-10-22, sustituida por el resumen del 2026-10-23
 
 Actualizacion posterior: [Contratos conectado por rol](29-Formalizacion-Reunion-Ajustes.md#contratos-conectado-por-rol---2026-10-22). Segundo banner operacional con subtotales API, preload/error y log DEV; solo rol formalizacion activo. Listado y acciones de ordenes aun no conectados al frontend.
 
 Entradas actuales: [resumen](01-Resumen-Frontend.md), [mapa](19-Mapa-de-Implementacion-Frontend.md), [25 - Continuidad](25-Continuidad-Administracion.md), [26 - Sistema visual Proyectos](26-Projects-Design-System.md), [27 - Entrega/QA](27-Entrega-Administracion-y-QA.md), [28 - Recorrido Formalizacion](28-Formalizacion-Recorrido-Visual.md), [29 - Reunion](29-Formalizacion-Reunion-Ajustes.md) y [29 - Navegacion/recuperacion/seguimiento](29-Navegacion-Recuperacion-y-Seguimiento.md).
 
-La [remediacion API/frontend](../../api/Arquitectura/Reauditoria-54-Plan-y-Resultados.md#plan-central-f01-f13---2026-10-23) conserva el plan F01-F13 con resultados nuevos pendientes y evidencia historica separada. Dos banners reales: aprobaciones protegido por `formalizacion.home.approvals.read` y contratos por rol activo `formalizacion`; cinco indicadores provisionales y ningun seguimiento operacional. Bandejas vacias: conservar Home-only sin activar list/send/revert. Las propuestas de herramientas/carpeta futuras no describen dependencias instaladas.
+La [remediacion API/frontend](../../api/Arquitectura/Reauditoria-54-Plan-y-Resultados.md#plan-central-f01-f13---2026-10-23) conserva sus resultados y limites fechados. El corte anterior tenia dos banners conectados y cinco provisionales; el resumen agregado del 2026-10-23 lo sustituye. Bandejas vacias: conservar Home-only sin activar list/send/revert. Las propuestas de herramientas/carpetas futuras no describen dependencias instaladas.
 
 ### Base de continuidad - 2026-10-13
 
@@ -192,3 +211,17 @@ flowchart TD
   A --> F[Cobros futuro]
   A --> G[Modificaciones futuro]
 ```
+
+
+## Authorized Marketing Home read extension - 2026-10-23
+
+The owner authorized real lead aggregates for Marketing Home through
+`GET /marketing/home/summary?period=day|week|month|year`. Read native leads first,
+then the optional legacy adapter, and produce one JSON without copying records.
+Count all leads created in the interval regardless of current status. Preserve
+permission scopes, canonical seller/project identities and local public-ID photos.
+Appointment metrics are now authorized as read-only calendar queries: native events first, then legacy Cita events, attributed through the lead owner/project. No imports or calendar mutations. See `apps/api/Arquitectura/48-Mercadeo-Metricas-Citas.md` (repository-relative).
+This scoped authorization supersedes historical mock-only restrictions for this
+summary only; it authorizes no imports, business mutations, migrations or deployment.
+API contract and verification: `apps/api/Arquitectura/46-Mercadeo-Resumen-Leads.md`
+(relative to the repository root).

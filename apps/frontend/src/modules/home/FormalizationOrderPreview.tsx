@@ -1,16 +1,22 @@
 import ArrowLeftOutlined from "@ant-design/icons/ArrowLeftOutlined";
 import CalendarOutlined from "@ant-design/icons/CalendarOutlined";
 import InfoCircleOutlined from "@ant-design/icons/InfoCircleOutlined";
+import ReloadOutlined from "@ant-design/icons/ReloadOutlined";
 import UndoOutlined from "@ant-design/icons/UndoOutlined";
 import Button from "antd/es/button";
+import Tooltip from "antd/es/tooltip";
 import { useCallback } from "react";
 
+import type { FollowUpItem } from "../../services/formalization/follow-up-service";
 import { type FormalizationExample, isUnassigned } from "./formalization-preview.model";
 import { FORMALIZATION_EXAMPLES } from "./formalization-preview.model";
 import { useFormalizationPreview } from "./formalization-preview-session";
 import { applyScenarioAction, createScenario, type FormalizationScenario, getScenarioFlow, SCENARIO_ACTION_LABELS, type ScenarioAction, type ScenarioValues } from "./formalization-scenario.model";
 import { FormalizationOrderActions } from "./FormalizationOrderActions";
 import { FormalizationPreviewBoundary } from "./FormalizationPreviewSession";
+import { FormalizationRecordLoading } from "./FormalizationRecordLoading";
+import { FormalizationRecordProgress } from "./FormalizationRecordProgress";
+import { FormalizationRecordSummary } from "./FormalizationRecordSummary";
 import { FormalizationStatusPill } from "./FormalizationStatusPill";
 
 /** `muted` marca valores ausentes o fuera de la muestra; `code` muestra identificadores como chip. */
@@ -340,5 +346,61 @@ export function FormalizationOrderPreview(props: { readonly order: Formalization
         <FormalizationPreviewBoundary>
             <FormalizationOrderContent {...props} backLabel={props.backLabel ?? "Volver a la lista"} />
         </FormalizationPreviewBoundary>
+    );
+}
+
+/** Same action in the ready header and the full-page loading skeleton. */
+function RecordRefreshAction({ onRefresh, loading = false }: { readonly onRefresh: (() => void) | undefined; readonly loading?: boolean }) {
+    if (!onRefresh) return null;
+    return (
+        <Tooltip title="Recargar transacción">
+            <Button className="formalization-command formalization-home__reload" icon={<ReloadOutlined spin={loading} />} aria-label="Recargar transacción" disabled={loading} onClick={onRefresh} />
+        </Tooltip>
+    );
+}
+
+/** Real-order workspace with identity and current-stage progress only. */
+export function FormalizationOrderRecord({ item, onBack, onRefresh, netsuiteStatus = "success" }: { readonly item: FollowUpItem; readonly onBack: () => void; readonly onRefresh?: () => void; readonly netsuiteStatus?: "idle" | "loading" | "success" | "error" }) {
+    if (netsuiteStatus === "loading") return <FormalizationRecordLoading complete actions={<RecordRefreshAction onRefresh={onRefresh} loading />} />;
+    return (
+        <section className="formalization-order" aria-labelledby="formalization-record-title">
+            <header className="global-home-page-header formalization-page-header">
+                <div>
+                    <nav className="formalization-breadcrumb" aria-label="Ruta de la orden">
+                        <span>Formalización</span>
+                        <span aria-hidden="true">/</span>
+                        <a
+                            href="/home/formalization/orders"
+                            onClick={(event) => {
+                                event.preventDefault();
+                                onBack();
+                            }}
+                        >
+                            Órdenes de venta
+                        </a>
+                        <span aria-hidden="true">/</span>
+                        <span>{item.number}</span>
+                    </nav>
+                    <h1
+                        id="formalization-record-title"
+                        tabIndex={-1}
+                        ref={(node) => {
+                            node?.focus();
+                        }}
+                    >
+                        Orden de venta {item.number}
+                    </h1>
+                </div>
+                <RecordRefreshAction onRefresh={onRefresh} />
+            </header>
+            <FormalizationRecordProgress state={item.state.code} />
+            {netsuiteStatus === "success" ? (
+                <FormalizationRecordSummary item={item} />
+            ) : (
+                <section className="formalization-card formalization-record-loading" role="status">
+                    {netsuiteStatus === "error" ? "No fue posible cargar los datos de la orden. Pulsa recargar para reintentar." : "Los datos de la orden aún no están disponibles."}
+                </section>
+            )}
+        </section>
     );
 }

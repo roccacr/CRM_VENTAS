@@ -12,14 +12,15 @@ const period = { year: 2026, timeZone: "America/Costa_Rica" as const, start: "20
 function expectSourcePredicates(queries: CompiledQuery[]) {
     for (const [index, prefix] of ["", "NOT shadowed AND "].entries()) {
         const query = queries[index]?.sql ?? "";
+        expect(query).toContain(index === 0 ? "o.contract_signed_sales_order='yes'" : "o.contrado_frima_ov=1");
         for (const [stage, alias] of [
             ["bank_management", "banking"],
             ["pending_balance", "balance"],
             ["pending_transfer", "transferPending"],
             ["transfer_signed", "transferSigned"],
         ] as const)
-            expect(query).toContain(`SUM(${prefix}stage='${stage}') AS ${alias}`);
-        expect(query).toContain(`SUM(${prefix}completed_this_year) AS closedThisYear`);
+            expect(query).toContain(`SUM(${prefix}contract_signed AND stage='${stage}') AS ${alias}`);
+        expect(query).toContain(`SUM(${prefix}contract_signed AND completed_this_year) AS closedThisYear`);
         const orderColumn = index === 0 ? "sales_order_id_sales_order_state_event=o.id_sales_order" : "legacy_order_id_sales_order_state_event=o.id_ov";
         expect(query).toContain(`closed_event.${orderColumn}`);
         expect(query).toContain("closed_event.to_state_code_sales_order_state_event='closed'");
@@ -59,7 +60,7 @@ describe("Home aggregate SQL", () => {
                 expect(query.parameters).toEqual(["2026-01-01 06:00:00.000", "2027-01-01 06:00:00.000"]);
                 expect(query.sql).toContain("ORDER BY latest.sequence_sales_order_state_event DESC LIMIT 1");
                 expect(query.sql).toContain("stage='bank_management') AS banking");
-                expect(query.sql).not.toMatch(/UPDATE|INSERT|DELETE|FOR UPDATE|recorded_at|YEAR\(|contract_signed|commercial_closure/);
+                expect(query.sql).not.toMatch(/UPDATE|INSERT|DELETE|FOR UPDATE|recorded_at|YEAR\(|commercial_closure/);
                 expect(query.sql).toContain("MAX_EXECUTION_TIME(1500)");
             }
             expect(queries[0]?.sql).toContain("o.deleted_at_sales_order IS NULL");

@@ -3,6 +3,7 @@
 ## Revision Status - 2026-10-22, f2dc4f1
 
 The Projects visual contract remains the existing owner-requested reference.
+Current exceptions dated 2026-10-23: `GlobalHomeShell.css` defines a 56px header and 44px menu; shared overlay is neutral 67% without blur, and catalog create/edit uses a side drawer. Historical modal/header measurements below retain their original date and do not override these implemented changes. No new browser or contrast measurements were run.
 This documentation audit does not authorize restyling. Dated ratings, browser
 measurements and test counts below are historical evidence, not newly measured
 quality or current acceptance. Current Administration inventory:
@@ -16,7 +17,7 @@ fixture rows are superseded. Current Home uses search, Project and Queue selects
 Orders uses search, Stage, Project and Owner. Queue names/order match the current
 banners, with Approval visible only when authorized. No fixture project/owner
 options or operational rows are supplied: follow-up and recent activity explicitly
-report unavailable. Six banner values remain provisional zero, without an API.
+report unavailable. Since 2026-10-23 all six stage banners use one canonical Home summary; effective Formalization role plus stage permission allow/no deny are required, including inherited Owner roles. Failed reads show unverified values, not confirmed zeros. See [27](27-Entrega-Administracion-y-QA.md).
 Calendar/Summary/order preview models still simulate DEMO, not real operations.
 See [28](28-Formalizacion-Recorrido-Visual.md) and
 [29](29-Navegacion-Recuperacion-y-Seguimiento.md).
@@ -490,8 +491,7 @@ completed device validation.
 Reuse the Administration/Users drawer composition, not a new standalone panel:
 right placement, 560px configured size constrained by `max-width:100vw`,
 z-index 1300, close at the end of the header, refresh icon with tooltip.
-Existing shared mask: black at 25% with 2px backdrop blur; wrapper uses the shared
-border/shadow. Do not silently change shared chrome when replicating local tokens.
+Current shared mask (2026-10-23): `--overlay-dim: rgb(14 16 20 / 67%)`, without backdrop blur, from `src/styles.css` and `administration-theme.ts`. The earlier 25%/2px blur is historical. Preserve shared chrome when replicating local tokens.
 Body has `min-height:0`, independent vertical scrolling and contained overscroll.
 Header/footer remain separate from the scrolling record body; padding is 16px.
 
@@ -541,7 +541,9 @@ Loading uses the drawer skeleton defined below. Error/missing record uses an
 error Alert and `Reintentar`. Never show failure as an unassigned field or offer
 mutation actions against unavailable detail.
 
-## Create, Edit and Status Modals
+## Historical Create/Edit Modals and Current Status Dialog
+
+Update 2026-10-23: catalog create/edit now uses the shared side drawer (`catalog-form-drawer`) in `CatalogItemsPage.tsx` and `EnterpriseSurface.css`; status remains a short confirmation dialog. The centered create/edit modal geometry below records the prior design, not instructions to restore it. Current visual changes are dated in [25](25-Continuidad-Administracion.md); this revision performs no new pixel/contrast measurements.
 
 Reuse the connected Ant Design Form (`form={form}`), vertical labels and optional
 markers. Create/Edit modal uses `forceRender` to keep the useForm instance
@@ -968,8 +970,7 @@ Semantics:
   desired state differs from the roles and removes it when it matches again. The
   origin reads "Por rol", "Sin permiso del rol", "Excepción: permitido" or
   "Excepción: denegado".
-- A locked role (Owner) shows everything granted with every switch and Marcar
-  todos disabled. Hiding a module from the menu never revokes permissions.
+- Owner's base template stays protected; effective employee denies still apply. Jefe General's template is editable by Owner; employee modules cap operative grants and selecting modules never grants Administration. The former menu-only module rule is superseded by the backend policy in API 41/42.
 - With no employee selected, the editor shows "Selecciona un empleado"; Renombrar,
   the protected note and the role's pending count are hidden.
 

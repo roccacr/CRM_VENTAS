@@ -1,0 +1,140 @@
+/* Summary cards and section headings shared by all catalog views. Scoped to the catalog page root so nothing leaks to other modules. */
+.catalog-items-page--projects .catalog-banners {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 16px;
+    margin-bottom: 20px;
+}
+
+.catalog-items-page--projects .catalog-banner {
+    --catalog-accent: #496180;
+    position: relative;
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    min-width: 0;
+    min-height: 104px;
+    padding: 16px 18px;
+    overflow: hidden;
+    border: 1px solid #d2dae5;
+    border-left: 2px solid var(--catalog-accent);
+    border-radius: 8px;
+    background: #ffffff;
+    box-shadow: 0 1px 4px rgb(15 23 42 / 3%);
+}
+
+.catalog-items-page--projects .catalog-banner--success {
+    --catalog-accent: #147849;
+}
+
+.catalog-items-page--projects .catalog-banner--pending {
+    --catalog-accent: #a86308;
+}
+
+.catalog-items-page--projects .catalog-banner--danger {
+    --catalog-accent: #b42318;
+}
+
+.catalog-items-page--projects .catalog-banner__icon {
+    display: grid;
+    flex: 0 0 34px;
+    width: 34px;
+    height: 34px;
+    place-items: center;
+    border-radius: 5px;
+    background: #0e1116;
+    color: #dceee5;
+    font-size: 19px;
+}
+
+.catalog-items-page--projects .catalog-banner__content {
+    z-index: 1;
+    display: grid;
+    justify-items: start;
+    gap: 4px;
+    min-width: 0;
+    padding-right: 24px;
+}
+
+.catalog-items-page--projects .catalog-banner h2 {
+    margin: 0 0 2px;
+    color: #2f3a4b;
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 1.35;
+}
+
+.catalog-items-page--projects .catalog-banner strong {
+    color: var(--catalog-accent);
+    font-size: 26px;
+    font-weight: 600;
+    line-height: 1.2;
+    font-variant-numeric: tabular-nums;
+}
+
+.catalog-items-page--projects .catalog-banner__caption {
+    color: #596779;
+    font-size: 12px;
+    line-height: 1.5;
+}
+
+.catalog-items-page--projects .catalog-banner__pattern {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 64px;
+    height: 64px;
+    pointer-events: none;
+}
+
+.catalog-items-page--projects .catalog-banner__pattern i {
+    position: absolute;
+    top: 0;
+    right: 0;
+    border: 1px solid #e0f1f5;
+}
+
+/* Section title with its explanation, above the list or the search */
+.catalog-items-page--projects .catalog-section-heading {
+    padding: 4px 0 12px;
+}
+
+.catalog-items-page--projects .catalog-section-heading h2 {
+    margin: 0;
+    color: #2f3a4b;
+    font-size: 16px;
+    font-weight: 600;
+    line-height: 1.4;
+}
+
+.catalog-items-page--projects .catalog-section-heading p {
+    margin: 4px 0 0;
+    color: #596779;
+    font-size: 12px;
+    line-height: 1.5;
+}
+
+/* Loading and no-permission messages: the same quiet panel everywhere instead of bare text */
+.catalog-items-page--projects .catalog-status-message {
+    margin: 0;
+    padding: 36px 18px;
+    border-top: 1px solid #d2dae5;
+    background: #f7f9fc;
+    color: #596779;
+    font-size: 13px;
+    line-height: 1.5;
+    text-align: center;
+}
+
+@media (max-width: 640px) {
+    .catalog-items-page--projects .catalog-banners {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+
+/* In the catalog pages the list wrapper is transparent, so the message gets its own card */
+.catalog-items-page--projects .catalog-items-panel > .catalog-status-message {
+    border: 1px solid #d2dae5;
+    border-radius: 8px;
+    background: #ffffff;
+}

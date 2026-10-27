@@ -1,6 +1,20 @@
 # 15 - Flujo Comercial: Lead a Contrato
 
+## Limite actualizado - 2026-10-27
+
+El flujo completo Lead -> Oportunidad -> Estimacion -> Orden continua como
+especificacion; no hay CRUD HTTP general ni automatizacion end-to-end de esas
+entidades. Como ampliacion parcial ya estan registrados seguimiento y comandos
+CRM de Formalizacion (send/revert/set-stage), con validaciones de firma,
+aprobaciones y auditoria. Sustituyen solo la afirmacion historica de ausencia de
+mutaciones HTTP de ordenes, no habilitan crear Leads u oportunidades, enviar
+correo o actualizar ERP. Ver [52](52-Etapas-Responsables-y-Tiempos.md).
+
 Revision documental 2026-10-22: diseno comercial futuro y evidencia historica; tablas, rutas y reglas propuestas no acreditan runtime operativo. Ver [36 - Estado vigente y registro](36-Registro-Entrega-Administracion.md) para implementacion y limites actuales. Identidad/Administracion, consulta de expedientes y contador de aprobaciones tienen contratos propios; no habilitan Leads ni mutaciones HTTP de ordenes.
+
+## Limite de implementacion - 2026-10-23
+
+Este flujo conserva decisiones funcionales, no acredita automatizacion entre etapas. El esquema de Leads ya existe ([43](43-Leads-Esquema-Nativo.md)); los resumenes de Formalizacion y Mercadeo son lecturas autorizadas, sin crear oportunidad/estimacion/contrato, enviar correo ni cambiar estados. La persistencia interna de ordenes no prueba que este recorrido completo este habilitado. Los nombres de tablas/estados sugeridos son blueprint; usar el DDL especifico de cada dominio. Estado: [49](49-Estado-Actual-y-Cierre-Documental.md).
 
 ## Veredicto
 

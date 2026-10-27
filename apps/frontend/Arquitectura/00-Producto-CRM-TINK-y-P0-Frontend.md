@@ -1,6 +1,64 @@
 # 00 - Ley de Producto CRM TINK y P0 Frontend
 
-## Mercadeo: propuesta visual de captacion y citas - 2026-10-23
+## Estado contrastado - 2026-10-27
+
+[30 - Estado frontend verificado](30-Estado-Frontend-Verificado.md) inventaría las rutas, contratos y límites actuales: Captación conectada, seguimiento y cambio protegido de etapa de Formalización. Los cortes fechados siguientes son antecedentes; sus cifras de QA no se reejecutaron en esta revisión documental.
+
+
+## Ampliacion autorizada: reporte conectado - 2026-10-26
+
+Captacion consume `GET /marketing/leads/report` con datos reales agregados de
+ambas fuentes; sustituye el limite anterior de maqueta para esta consulta.
+Conserva las tres medidas y tres profundidades, filtros, tablas, graficos y
+exportaciones. Directorios y publicId provienen de API; ninguna demo se usa como
+fallback. Carga/error/reintento y respuestas obsoletas por periodo/identidad se
+controlan antes de mostrar o exportar datos. Sin escritura/importacion de BD.
+Contrato y pruebas en [53 API](../../api/Arquitectura/53-Captacion-Leads-Reporte-Federado.md).
+
+## Antecedente: Captacion de leads, maqueta interactiva autorizada - 2026-10-26
+
+El propietario sustituye la entrada con solo H1 por una propuesta UX de analisis
+dinamico: filtros combinables de proyecto/campana/anuncio/vendedor/etapa/cita,
+medicion seleccionable, comparacion por dimension y segundo desglose opcional.
+Solo muestra local ficticia identificada; sin API comercial, BD, importacion,
+exportacion ni persistencia. No mezclar esta muestra con Inicio de Mercadeo real.
+Conserva permiso `mercadeo.leads.read`, menu y ruta `/home/marketing/leads`.
+Los nombres/IDs son de dimensiones CRM, sin acoplamiento a ERP ni schema legacy.
+Detalle y verificacion en [27](27-Entrega-Administracion-y-QA.md).
+
+
+## Lectura vigente de ampliaciones - 2026-10-23
+
+Las restricciones del corte inicial de identidad se leen con las ampliaciones posteriores, sin cambiar firmas/versiones historicas. Cobertura transversal: [49 - Estado actual](../../api/Arquitectura/49-Estado-Actual-y-Cierre-Documental.md).
+
+Home de Formalizacion tiene aprobaciones con permiso independiente y seis banners conectados a `GET /formalization/home/summary`. Etapas exige rol efectivo activo `formalizacion` y allow sin deny de `formalizacion.home.stages.read`. Owner puede heredar ese rol por politica persistida, sin asignacion directa ni bypass. Cero de fallo marcado Sin verificar no acredita ausencia de ordenes. Listado/envio/reversion no son operaciones activas; Calendario/Resumen/previews siguen simulados.
+
+Mercadeo ya consume el resumen canonico de leads y citas disponibles de [46](../../api/Arquitectura/46-Mercadeo-Resumen-Leads.md) y [48](../../api/Arquitectura/48-Mercadeo-Metricas-Citas.md). Sustituye la maqueta y el corte sin API siguientes solo para Inicio; no habilita CRUD de leads, editor de calendario, importaciones o comunicaciones.
+
+## Contrato visible actual de Inicio de Mercadeo
+
+Hoy, Semana, Mes y Ano; Mes inicial. Multiseleccion de vendedores y proyectos
+con filtros locales dentro del JSON autorizado, fotos de los seleccionados en
+la bienvenida, reporte diferido y precarga. Los cuatro indicadores distinguen
+captacion, conversion de leads unicos, citas completadas por fecha del evento y
+seguimiento de ultimos siete dias. La asistencia solo se confirma con evidencia
+explicita; estados cancelados y registros sin vinculo no se ocultan como citas
+realizadas. No hay filtros de campana/anuncio o rango libre expuestos en esta pagina.
+Contrato y estados de error/carga en [27](27-Entrega-Administracion-y-QA.md) y
+[04](04-API-Client-y-Estado.md). Las propuestas de fases siguientes permanecen
+como antecedentes, no como funciones activas.
+
+## Antecedente Mercadeo: retiro de demostracion antes de conectar API - 2026-10-23
+
+El propietario solicita limpiar Inicio antes de conectar su API. Se conserva el
+diseno, saludo de sesion, ilustracion y periodos; sin datos suministrados, los
+indicadores muestran raya y los desgloses/grafico estados de informacion pendiente.
+No hay numeros, porcentajes, tendencias, proyectos, vendedores o fotos de muestra
+en runtime. La muestra generada queda exclusivamente en fixtures de pruebas.
+Sin consultas API, persistencia, migraciones, permisos nuevos ni importaciones.
+Este corte sustituye la muestra visible de la propuesta historica siguiente.
+
+## Antecedente Mercadeo: propuesta visual de captacion y citas - 2026-10-23
 
 El propietario amplia la bienvenida a una maqueta de Inicio: siete banners con
 la anatomia visual de Formalizacion, filtros por periodo/proyecto/campana/anuncio/
@@ -10,7 +68,7 @@ reales. Los filtros y agrupaciones actuan sobre la misma muestra local y se
 reinician al recargar. Amplia solo la presentacion; no habilita las vistas
 operativas de Leads, citas o Calendario. Detalle y limites en continuidad 25.
 
-## Inicio de Mercadeo: bienvenida ilustrada - 2026-10-23
+## Antecedente Inicio de Mercadeo: bienvenida ilustrada - 2026-10-23
 
 El propietario autoriza una bienvenida visual en la ruta existente de Mercadeo:
 saludo de sesion e ilustracion PNG original, con el lenguaje visual de
@@ -44,7 +102,7 @@ Referencia: [41 - Owner](../../api/Arquitectura/41-Owner-Herencia-y-Denegaciones
 
 Los seis banners de etapas (contratos y los cinco indicadores posteriores) pasan
 a un unico consumidor de `GET /formalization/home/summary`, montado solamente con
-rol activo `formalizacion`. El indicador de aprobaciones conserva su permiso
+rol efectivo activo `formalizacion` y `formalizacion.home.stages.read` allow sin deny. Owner puede heredar el rol por politica backend. El indicador de aprobaciones conserva su permiso
 independiente y endpoint. Se mantienen etiquetas, diseno, preload por numero,
 previews vacias y ausencia de acciones persistentes. No habilitar bandejas reales
 ni envio/reversion por conectar contadores.
@@ -55,13 +113,13 @@ revocacion o desmontaje. Esto no promete actualizacion instantanea entre usuario
 sin sondeo/notificaciones. Plan, definiciones y limites de verificacion:
 [40 - Home y rendimiento](../../api/Arquitectura/40-Formalizacion-Home-Resumen-y-Rendimiento.md).
 
-## Contratos: contador conectado - 2026-10-22
+## Antecedente Contratos: contador conectado - 2026-10-22
 
 Correccion posterior del propietario: mantener solo Home, retirar el listado real y los botones que se adelantaron, devolver las colas a vacio. El banner y su consulta agregada se conservan. No hay ordenes reales ni acciones de envio/reversion montadas en esas vistas.
 
 Ampliacion autorizada: Contratos pendientes lee los dos subtotales reales del API y solo se monta/consulta con rol formalizacion activo del perfil. Estados de carga/error y log DEV agregado; los ceros locales y su log provisional se retiran. El API controla origen y permisos, no el frontend. La lista operativa y los botones de envio/reversion no se implementan en las previews en este corte. Detalle en [29 - Reunion](29-Formalizacion-Reunion-Ajustes.md#contratos-conectado-por-rol---2026-10-22). Los apartados anteriores que indican que solo Aprobaciones tiene datos reales son historicos y quedan sustituidos para este segundo banner.
 
-## Consolidacion vigente - 2026-10-22
+## Consolidacion historica - 2026-10-22
 
 Resumen de las ampliaciones posteriores al primer corte de identidad, sin modificar firmas/versiones historicas: existen Administracion/catalogos y Formalizacion parcial. Solo el contador de aprobaciones es operacional en el Home; requiere permiso efectivo antes de montar su consumidor. Los otros seis indicadores son cero provisional; seguimiento/movimientos no tienen fuente operacional. Calendario/resumen y previews conservan simulaciones. No hay flujo persistido de aprobaciones/contratos completo.
 
@@ -301,7 +359,7 @@ P0-S1 existe para preparar la experiencia minima del CRM en orden. Nada mas.
 
 No se debe avanzar a pantallas de leads hasta cerrar primero identidad, usuarios, roles y permisos minimos.
 
-## Estado actual del runtime frontend
+## Alcance historico del runtime de identidad - 2026-09-30
 
 El frontend ya tiene `package.json`, `src/` y `pnpm-lock.yaml` porque existe un runtime React/Vite minimo para identidad.
 
@@ -357,7 +415,7 @@ Identidad P0-S1A visual queda cerrada en papel cuando la UI se limite a:
 - permisos efectivos recibidos del API;
 - mensaje claro de que leads sigue bloqueado.
 
-## Prohibido ahora
+## Prohibiciones iniciales sujetas a ampliaciones fechadas
 
 Hasta que P0-S1 quede cerrado por producto, queda prohibido:
 
@@ -419,3 +477,17 @@ Se puede avanzar a pantallas React solo cuando:
 - el contrato canonico minimo del API este listo para consumo visual.
 
 Mientras tanto, el runtime React/Vite de identidad no autoriza construir pantallas de lead ni administracion avanzada.
+
+
+## Authorized Marketing Home read extension - 2026-10-23
+
+The owner authorized real lead aggregates for Marketing Home through
+`GET /marketing/home/summary?period=day|week|month|year`. Read native leads first,
+then the optional legacy adapter, and produce one JSON without copying records.
+Count all leads created in the interval regardless of current status. Preserve
+permission scopes, canonical seller/project identities and local public-ID photos.
+Appointment metrics are now authorized as read-only calendar queries: native events first, then legacy Cita events, attributed through the lead owner/project. No imports or calendar mutations. See `apps/api/Arquitectura/48-Mercadeo-Metricas-Citas.md` (repository-relative).
+This scoped authorization supersedes historical mock-only restrictions for this
+summary only; it authorizes no imports, business mutations, migrations or deployment.
+API contract and verification: `apps/api/Arquitectura/46-Mercadeo-Resumen-Leads.md`
+(relative to the repository root).

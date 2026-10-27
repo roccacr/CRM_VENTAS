@@ -1,0 +1,1772 @@
+/* Lead-capture report: enterprise surface shared with Usuarios and Catálogos (ink, borders, tinted bands; no zebra, no blur). */
+.capture-preview {
+    --cap-border: #b4c0d0;
+    --cap-divider: #d0d8e4;
+    --cap-tint: #f0f3f8;
+    --cap-tint-strong: #e3e9f1;
+    --cap-ink: #18222f;
+    --cap-ink-2: #3b4a61;
+    display: grid;
+    gap: 18px;
+    align-content: start;
+}
+
+.capture-preview__header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.capture-preview__header h1 {
+    margin: 0;
+    color: var(--cap-ink);
+    font-size: 24px;
+    font-weight: 700;
+    line-height: 1.25;
+}
+
+.capture-preview__header p {
+    margin: 0;
+    color: var(--cap-ink-2);
+    font-size: 13px;
+}
+
+.capture-preview .capture-preview__eyebrow {
+    margin-bottom: 4px;
+    font-size: 12.5px;
+    font-weight: 600;
+}
+
+.capture-preview__updated {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border: 1px solid var(--cap-border);
+    border-radius: 8px;
+    background: #ffffff;
+    color: var(--cap-ink-2);
+    font-size: 12.5px;
+}
+
+.capture-preview__section-title {
+    margin: 6px 0 -6px;
+    color: var(--cap-ink);
+    font-size: 16px;
+    font-weight: 700;
+}
+
+/* Controls */
+.capture-preview .capture-controls {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 20px;
+    padding: 16px 20px;
+    border: 1px solid var(--cap-border);
+    box-shadow: 0 1px 2px rgb(15 23 42 / 10%);
+}
+
+.capture-controls__field {
+    display: grid;
+    gap: 6px;
+    min-width: 0;
+}
+
+.capture-controls__field > span {
+    color: var(--cap-ink-2);
+    font-size: 12.5px;
+    font-weight: 600;
+}
+
+.capture-preview .capture-controls__seller {
+    min-width: 280px;
+}
+
+.capture-preview .ant-select-placeholder {
+    color: var(--cap-ink-2);
+}
+
+/* Blocks (cards with a header band) */
+.capture-preview .capture-block,
+.capture-preview .capture-seller {
+    border: 1px solid var(--cap-border);
+    box-shadow: 0 1px 2px rgb(15 23 42 / 10%);
+}
+
+.capture-block .marketing-card__heading,
+.capture-seller .marketing-card__heading {
+    justify-content: space-between;
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--cap-divider);
+}
+
+.capture-block .marketing-card__heading h2,
+.capture-seller .marketing-card__heading h3 {
+    margin: 0;
+    color: var(--cap-ink);
+    font-size: 16px;
+    font-weight: 700;
+}
+
+.capture-block__aside,
+.capture-seller__total {
+    padding: 3px 10px;
+    border: 1px solid var(--cap-border);
+    border-radius: 12px;
+    background: var(--cap-tint-strong);
+    color: var(--cap-ink);
+    font-size: 12.5px;
+    font-weight: 600;
+}
+
+.capture-block__body {
+    padding: 0;
+}
+
+.capture-summary {
+    display: grid;
+    grid-template-columns: minmax(300px, 0.9fr) minmax(0, 1.4fr);
+}
+
+.capture-summary > .capture-columns-chart {
+    padding: 16px 20px;
+    border-left: 1px solid var(--cap-divider);
+}
+
+/* Tables */
+.capture-table-wrap {
+    overflow-x: auto;
+}
+
+.capture-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+}
+
+.capture-table th,
+.capture-table td {
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--cap-divider);
+    color: var(--cap-ink);
+    text-align: left;
+    vertical-align: middle;
+}
+
+.capture-table thead th {
+    height: 40px;
+    border-bottom: 1px solid var(--cap-border);
+    background: var(--cap-tint-strong);
+    font-size: 12.5px;
+    font-weight: 700;
+}
+
+.capture-table tbody th {
+    font-weight: 600;
+}
+
+.capture-table .capture-table__group {
+    border-right: 1px solid var(--cap-divider);
+    background: #fafbfd;
+    font-weight: 700;
+}
+
+.capture-table tbody tr:hover > td,
+.capture-table tbody tr:hover > th:not(.capture-table__group) {
+    background: #eaf1fb;
+}
+
+.capture-table .capture-table__number {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+
+.capture-table tfoot th,
+.capture-table tfoot td {
+    border-top: 1px solid var(--cap-border);
+    border-bottom: 0;
+    background: var(--cap-tint);
+    font-weight: 700;
+}
+
+.capture-empty {
+    margin: 0;
+    padding: 24px 20px;
+    color: var(--cap-ink-2);
+    font-size: 13px;
+    text-align: center;
+}
+
+/* Clustered columns */
+.capture-columns-chart {
+    display: grid;
+    gap: 12px;
+    margin: 0;
+}
+
+.capture-columns-chart__legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 16px;
+    margin: 0;
+    padding: 0;
+    color: var(--cap-ink-2);
+    font-size: 12.5px;
+    list-style: none;
+}
+
+.capture-columns-chart__legend li {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+}
+
+.capture-columns-chart__legend i {
+    width: 10px;
+    height: 10px;
+    border-radius: 2px;
+}
+
+.capture-columns-chart__plot {
+    display: flex;
+    align-items: stretch;
+    gap: 22px;
+    min-height: 280px;
+    overflow-x: auto;
+}
+
+.capture-columns-chart__group {
+    display: grid;
+    flex: 1 1 110px;
+    grid-template-rows: 1fr auto;
+    min-width: 110px;
+    gap: 8px;
+}
+
+.capture-columns-chart__bars {
+    display: flex;
+    align-items: stretch;
+    justify-content: center;
+    gap: 6px;
+    min-height: 220px;
+    border-bottom: 1px solid var(--cap-border);
+}
+
+.capture-columns-chart__bar {
+    display: flex;
+    flex: 0 1 34px;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 4px;
+}
+
+.capture-columns-chart__bar strong {
+    color: var(--cap-ink);
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+}
+
+.capture-columns-chart__bar i {
+    width: 100%;
+    border-radius: 3px 3px 0 0;
+}
+
+.capture-columns-chart__label {
+    color: var(--cap-ink);
+    font-size: 12px;
+    font-weight: 600;
+    text-align: center;
+    overflow-wrap: anywhere;
+}
+
+/* Seller sections and project banners */
+.capture-sellers-sections {
+    display: grid;
+    gap: 18px;
+}
+
+.capture-seller__banners {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 16px;
+    padding: 16px 20px 20px;
+    background: var(--cap-tint);
+}
+
+.capture-banner {
+    display: grid;
+    gap: 10px;
+    align-content: start;
+    padding: 14px 16px;
+    border: 1px solid var(--cap-border);
+    border-left: 3px solid #496180;
+    border-radius: 8px;
+    background: #ffffff;
+    box-shadow: 0 1px 2px rgb(15 23 42 / 10%);
+}
+
+.capture-banner > header {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 12px;
+}
+
+.capture-banner__icon {
+    display: grid;
+    width: 34px;
+    height: 34px;
+    place-items: center;
+    border-radius: 5px;
+    background: #0e1116;
+    color: #dceee5;
+    font-size: 18px;
+}
+
+.capture-banner h4 {
+    margin: 0;
+    color: var(--cap-ink);
+    font-size: 14px;
+    font-weight: 700;
+}
+
+.capture-banner > header > div > span {
+    color: var(--cap-ink-2);
+    font-size: 12px;
+}
+
+.capture-banner > header > strong {
+    color: var(--cap-ink);
+    font-size: 26px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+}
+
+.capture-banner__list {
+    display: grid;
+    gap: 0;
+    margin: 0;
+    padding: 0;
+    border-top: 1px solid var(--cap-divider);
+    list-style: none;
+}
+
+.capture-banner__list > li {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 2px 12px;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--cap-divider);
+    color: var(--cap-ink);
+    font-size: 13px;
+}
+
+.capture-banner__list > li:last-child {
+    border-bottom: 0;
+}
+
+.capture-banner__list strong {
+    font-variant-numeric: tabular-nums;
+}
+
+.capture-banner__nested {
+    grid-column: 1 / -1;
+    padding-left: 14px;
+    color: var(--cap-ink-2);
+}
+
+.capture-banner__nested .capture-banner__list {
+    border-top: 0;
+}
+
+@media (max-width: 1000px) {
+    .capture-summary {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .capture-summary > .capture-columns-chart {
+        border-top: 1px solid var(--cap-divider);
+        border-left: 0;
+    }
+}
+
+/* Seller thumbnails */
+.seller-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+}
+
+.seller-avatar {
+    flex: 0 0 auto;
+    border-radius: 10px;
+    object-fit: cover;
+    /* Portraits: anchor near the top so the face, not the torso, fills the frame. */
+    object-position: center 18%;
+    box-shadow:
+        0 0 0 2px #ffffff,
+        0 0 0 3px var(--cap-border, #b4c0d0);
+}
+
+.seller-avatar--initials {
+    display: inline-grid;
+    place-items: center;
+    background: #0e1116;
+    color: #ffffff;
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.capture-seller .marketing-card__heading h3 .seller-chip {
+    gap: 12px;
+}
+
+.capture-seller .marketing-card__heading h3 .seller-chip {
+    font-size: 17px;
+}
+
+.capture-table .seller-chip {
+    font-weight: 700;
+}
+
+.capture-columns-chart__legend {
+    gap: 8px 22px;
+}
+
+/* Separators: strong rule per project / seller, lighter per campaign, faint tints so each block reads on its own. */
+.capture-table tbody tr.capture-table__row--project > *,
+.capture-table tbody tr.capture-table__row--seller > * {
+    border-top: 2px solid #8fa1b8;
+}
+
+.capture-table tbody tr.capture-table__row--campaign > * {
+    border-top: 1px solid #b4c0d0;
+}
+
+.capture-table tbody tr.capture-table__tone-0 > * {
+    background: #ffffff;
+}
+
+.capture-table tbody tr.capture-table__tone-1 > * {
+    background: #f4f7fb;
+}
+
+.capture-table tbody tr.capture-table__seller > * {
+    background: var(--capture-seller-tint);
+}
+
+.capture-table tbody tr.capture-table__seller:hover > *,
+.capture-table tbody tr[class*="capture-table__tone-"]:hover > * {
+    background: #dde8f6;
+}
+
+.capture-table .capture-table__group {
+    background: transparent;
+}
+
+/* Chart: a reasonable width per group, one level per line, divider between projects */
+.capture-columns-chart__plot {
+    gap: 0;
+    min-height: 340px;
+}
+
+.capture-columns-chart__group {
+    flex: 0 0 168px;
+    min-width: 168px;
+    padding: 0 10px;
+}
+
+.capture-columns-chart__group--project {
+    margin-left: 12px;
+    padding-left: 22px;
+    border-left: 2px solid #b4c0d0;
+}
+
+.capture-columns-chart__bars {
+    gap: 8px;
+    min-height: 260px;
+}
+
+.capture-columns-chart__bar {
+    flex: 0 1 38px;
+}
+
+.capture-columns-chart__label {
+    display: grid;
+    gap: 2px;
+}
+
+.capture-columns-chart__line {
+    display: block;
+    font-size: 12px;
+}
+
+.capture-columns-chart__line--0 {
+    color: #18222f;
+    font-weight: 700;
+}
+
+.capture-columns-chart__line--1 {
+    color: #3b4a61;
+    font-weight: 600;
+}
+
+.capture-columns-chart__line--2 {
+    color: #3b4a61;
+    font-weight: 500;
+}
+
+/* Photos: more pixels on screen and a crisper downscale */
+.seller-avatar {
+    image-rendering: -webkit-optimize-contrast;
+}
+
+/* With campaign and ad columns the table needs room: a fixed comfortable width, the chart takes the rest. */
+.capture-summary--deep {
+    grid-template-columns: minmax(640px, 1fr) minmax(0, 1.1fr);
+}
+
+.capture-summary--deep .capture-table th,
+.capture-summary--deep .capture-table td {
+    white-space: nowrap;
+}
+
+@media (max-width: 1100px) {
+    .capture-summary--deep {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+
+/* Stronger rules so a project and a campaign are told apart at a glance. */
+.capture-table tbody tr.capture-table__row--project > *,
+.capture-table tbody tr.capture-table__row--seller > * {
+    border-top: 2px solid #5d799a;
+}
+
+.capture-table tbody tr.capture-table__row--campaign > * {
+    border-top: 1px solid #8fa1b8;
+}
+
+/* The icon tile: white glyph on the brand black, like the cards of the Home. */
+.capture-banner__icon {
+    flex: 0 0 auto;
+    background: #0e1116;
+    color: #ffffff;
+}
+
+.capture-banner__icon .anticon {
+    color: #ffffff;
+    font-size: 18px;
+}
+
+/* Appointments show four count columns: the table takes the full width and the chart goes below it. */
+.capture-summary.capture-summary--stack {
+    grid-template-columns: minmax(0, 1fr);
+}
+
+.capture-summary--stack > .capture-columns-chart {
+    border-top: 1px solid var(--cap-divider);
+    border-left: 0;
+}
+
+.capture-banner__detail {
+    grid-column: 1 / -1;
+    color: var(--cap-ink-2);
+    font-size: 12px;
+}
+
+.capture-table .capture-table__level-0 > * {
+    background: #f4f7fb;
+    font-weight: 700;
+}
+
+.capture-table .capture-table__level-1 > td,
+.capture-table .capture-table__level-2 > td {
+    font-weight: 500;
+}
+
+.capture-table tbody tr.capture-table__level-0[class*="capture-table__seller-"] > th:not(.capture-table__group),
+.capture-table tbody tr.capture-table__level-0[class*="capture-table__seller-"] > td {
+    background: rgb(255 255 255 / 55%);
+}
+
+/* Even rows for the flow, and a chart that keeps its own height instead of stretching with a long table. */
+.capture-table tbody tr[class*="capture-table__level-"] > th,
+.capture-table tbody tr[class*="capture-table__level-"] > td {
+    height: 38px;
+    padding-top: 0;
+    padding-bottom: 0;
+}
+
+.capture-summary > .capture-columns-chart {
+    align-self: start;
+}
+
+.capture-summary .capture-columns-chart__plot {
+    height: 340px;
+    min-height: 340px;
+}
+
+.capture-table tbody td {
+    line-height: 1.2;
+}
+
+/* Chart: stays in view while the long table scrolls beside it. */
+.capture-summary > .capture-columns-chart {
+    position: sticky;
+    top: 12px;
+    align-self: start;
+}
+
+/* Seller cards: each campaign and ad is a box joined to its parent by a branch line. */
+.capture-banner {
+    gap: 14px;
+    padding: 18px 20px 20px;
+}
+
+.capture-branch {
+    position: relative;
+    display: grid;
+    gap: 10px;
+    margin: 0 0 0 14px;
+    padding: 0 0 0 22px;
+    border-left: 2px solid #8fa1b8;
+    list-style: none;
+}
+
+.capture-branch .capture-branch {
+    margin: 10px 0 0 14px;
+}
+
+.capture-branch > li {
+    position: relative;
+}
+
+.capture-branch > li::before {
+    position: absolute;
+    top: 22px;
+    left: -22px;
+    width: 22px;
+    border-top: 2px solid #8fa1b8;
+    content: "";
+}
+
+.capture-branch > li:last-child::after {
+    position: absolute;
+    top: 22px;
+    bottom: -1px;
+    left: -24px;
+    width: 4px;
+    background: #ffffff;
+    content: "";
+}
+
+.capture-branch__node {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 6px 12px;
+    padding: 10px 14px;
+    border: 1px solid var(--cap-divider);
+    border-radius: 6px;
+    background: #f7f9fc;
+    color: var(--cap-ink);
+    font-size: 13px;
+}
+
+.capture-branch__name {
+    font-weight: 600;
+    overflow-wrap: anywhere;
+}
+
+.capture-branch__value {
+    font-size: 16px;
+    font-variant-numeric: tabular-nums;
+}
+
+.capture-branch .capture-branch .capture-branch__node {
+    background: #ffffff;
+}
+
+.capture-branch .capture-branch .capture-branch__name {
+    font-weight: 500;
+}
+
+.capture-branch__states {
+    display: flex;
+    flex-wrap: wrap;
+    grid-column: 1 / -1;
+    gap: 6px;
+}
+
+.capture-banner > .capture-branch__states {
+    padding-top: 2px;
+}
+
+.capture-branch__state {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 6px;
+    padding: 2px 9px;
+    border: 1px solid #c3ccd9;
+    border-radius: 12px;
+    background: #ffffff;
+    color: var(--cap-ink-2);
+    font-size: 12px;
+}
+
+.capture-branch__state strong {
+    color: var(--cap-ink);
+    font-size: 13px;
+    font-variant-numeric: tabular-nums;
+}
+
+.capture-branch__state--scheduled {
+    border-color: #9fb3cf;
+    background: #e3ecf8;
+}
+
+.capture-branch__state--completed {
+    border-color: #9cc9b3;
+    background: #e3f3ea;
+}
+
+/* Wider cards so the three appointment states fit on one line. */
+.capture-seller__banners {
+    grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+}
+
+/* Merged group cells: the name, and under it the total of everything inside. */
+.capture-table .capture-table__group,
+.capture-table .capture-table__leaf {
+    border-right: 1px solid var(--cap-divider);
+    vertical-align: middle;
+}
+
+.capture-table__group-name {
+    display: block;
+    color: var(--cap-ink);
+}
+
+.capture-table .capture-table__group .capture-table__group-name {
+    font-weight: 700;
+}
+
+.capture-table .capture-table__leaf .capture-table__group-name {
+    font-weight: 500;
+}
+
+.capture-table__subtotal {
+    display: block;
+    margin-top: 2px;
+    color: var(--cap-ink-2);
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.capture-table .capture-table__seller-cell {
+    border-right: 1px solid var(--cap-border);
+    background: transparent;
+    vertical-align: middle;
+}
+
+.capture-table tbody tr.capture-table__row--project-soft > * {
+    border-top: 1.5px solid #8fa1b8;
+}
+
+/* Compact seller cards: smaller type and tighter boxes, so more of the report fits without losing legibility. */
+.capture-seller__banners {
+    grid-template-columns: repeat(auto-fill, minmax(330px, 1fr));
+    gap: 12px;
+    padding: 12px 16px 16px;
+}
+
+.capture-banner {
+    gap: 8px;
+    padding: 12px 14px 14px;
+}
+
+.capture-banner > header {
+    gap: 10px;
+}
+
+.capture-banner__icon {
+    width: 28px;
+    height: 28px;
+    font-size: 15px;
+}
+
+.capture-banner__icon .anticon {
+    font-size: 15px;
+}
+
+.capture-banner h4 {
+    font-size: 13px;
+}
+
+.capture-banner > header span:not(.capture-banner__icon),
+.capture-banner > header > div > span {
+    font-size: 11.5px;
+}
+
+.capture-banner > header > strong {
+    font-size: 20px;
+}
+
+.capture-branch {
+    gap: 6px;
+    margin-left: 10px;
+    padding-left: 16px;
+}
+
+.capture-branch .capture-branch {
+    margin-top: 6px;
+}
+
+.capture-branch > li::before {
+    top: 16px;
+    left: -16px;
+    width: 16px;
+}
+
+.capture-branch > li:last-child::after {
+    top: 16px;
+    left: -18px;
+}
+
+.capture-branch__node {
+    gap: 4px 10px;
+    padding: 6px 10px;
+    font-size: 12.5px;
+}
+
+.capture-branch__value {
+    font-size: 14px;
+}
+
+.capture-branch__states {
+    gap: 4px;
+}
+
+.capture-branch__state {
+    padding: 0 7px;
+    font-size: 11px;
+}
+
+.capture-branch__state strong {
+    font-size: 11.5px;
+}
+
+.capture-seller .marketing-card__heading {
+    padding: 10px 16px;
+}
+
+/* Download */
+.capture-controls__download {
+    margin-left: auto;
+}
+
+.capture-report {
+    display: grid;
+    gap: 18px;
+}
+
+/* The identification block only exists in the files: on screen the page header already says all of it. */
+.capture-export-head {
+    display: none;
+    padding: 4px 2px 2px;
+}
+
+.capture-export-head h2 {
+    margin: 2px 0;
+    color: var(--cap-ink);
+    font-size: 22px;
+    font-weight: 700;
+}
+
+.capture-export-head p {
+    margin: 0;
+    color: var(--cap-ink-2);
+    font-size: 12.5px;
+}
+
+/* In the picture the parts that scroll on screen are opened, so nothing is cut. */
+.capture-exporting .capture-export-head {
+    display: block;
+}
+
+.capture-exporting .capture-columns-chart__plot,
+.capture-exporting .capture-table-wrap {
+    overflow: visible;
+}
+
+.capture-exporting .capture-columns-chart__plot {
+    flex-wrap: wrap;
+    row-gap: 18px;
+}
+
+.capture-exporting .capture-summary > .capture-columns-chart {
+    position: static;
+}
+
+/* Print / Save as PDF: only the report, on its own, with the colours kept. Scoped to the body class set while printing. */
+@media print {
+    body.capture-printing .global-home-header,
+    body.capture-printing .global-home-menu,
+    body.capture-printing .global-home-mobile-bar,
+    body.capture-printing .global-home-mobile-drawer-shell,
+    body.capture-printing .capture-controls,
+    body.capture-printing .capture-preview__header {
+        display: none !important;
+    }
+
+    body.capture-printing,
+    body.capture-printing .global-home-shell,
+    body.capture-printing .global-home-stage {
+        display: block;
+        height: auto;
+        min-height: 0;
+        margin: 0;
+        overflow: visible;
+        background: #ffffff;
+    }
+
+    body.capture-printing * {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+
+    body.capture-printing .capture-export-head {
+        display: block;
+    }
+
+    body.capture-printing .capture-columns-chart__plot,
+    body.capture-printing .capture-table-wrap {
+        overflow: visible;
+    }
+
+    body.capture-printing .capture-columns-chart__plot {
+        flex-wrap: wrap;
+        row-gap: 14px;
+    }
+
+    body.capture-printing .capture-summary > .capture-columns-chart {
+        position: static;
+    }
+
+    body.capture-printing .capture-block,
+    body.capture-printing .capture-seller,
+    body.capture-printing .capture-banner,
+    body.capture-printing .capture-table tr {
+        break-inside: avoid;
+    }
+}
+
+/* Wrapped chart in the files: no divider between projects, it would be left hanging at the end of a row. */
+.capture-exporting .capture-columns-chart__group--project,
+body.capture-printing .capture-columns-chart__group--project {
+    margin-left: 0;
+    padding-left: 10px;
+    border-left: 0;
+}
+
+.capture-quality {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin: 0;
+    padding: 6px 12px;
+    border: 1px solid #d7b96c;
+    border-radius: 6px;
+    background: #fffbeb;
+    color: #614d17;
+    font-size: 12.5px;
+    line-height: 1.4;
+}
+
+.capture-quality strong {
+    font-weight: 700;
+}
+
+.capture-exporting .capture-quality,
+body.capture-printing .capture-quality {
+    display: none;
+}
+
+/* Real volumes (many projects and sellers): the chart gets the larger share, groups share the width, columns are slim and zeros are not drawn. */
+.capture-summary:not(.capture-summary--deep):not(.capture-summary--stack) {
+    grid-template-columns: minmax(300px, 0.75fr) minmax(0, 1.65fr);
+}
+
+.capture-summary .capture-columns-chart__group {
+    flex: 1 0 78px;
+    min-width: 78px;
+    padding: 0 4px;
+}
+
+.capture-summary .capture-columns-chart__group--project {
+    margin-left: 0;
+    padding-left: 8px;
+    border-left: 1px solid #d3dbe6;
+}
+
+.capture-summary .capture-columns-chart__bars {
+    gap: 4px;
+}
+
+.capture-summary .capture-columns-chart__bar {
+    flex: 0 1 26px;
+    min-width: 12px;
+}
+
+.capture-summary .capture-columns-chart__label {
+    font-size: 11px;
+}
+
+.capture-summary .capture-columns-chart__line {
+    font-size: 11px;
+}
+
+.capture-summary .capture-columns-chart__legend {
+    gap: 6px 14px;
+}
+
+/* Loading state with the report's own shape */
+.capture-loading {
+    overflow: hidden;
+}
+
+.capture-loading__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--cap-divider);
+}
+
+.capture-loading__bar {
+    display: block;
+    height: 12px;
+    border-radius: 3px;
+    background: #e3e9f1;
+}
+
+.capture-loading__bar--title {
+    width: 180px;
+    height: 14px;
+}
+
+.capture-loading__bar--chip {
+    width: 80px;
+    height: 22px;
+    border-radius: 11px;
+}
+
+.capture-loading__body {
+    display: grid;
+    grid-template-columns: minmax(300px, 0.75fr) minmax(0, 1.65fr);
+}
+
+.capture-loading__table {
+    display: grid;
+    gap: 0;
+    align-content: start;
+}
+
+.capture-loading__bar--header {
+    width: 100%;
+    height: 38px;
+    border-radius: 0;
+    background: #dbe3ee;
+}
+
+.capture-loading__row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    height: 38px;
+    padding: 0 16px;
+    border-bottom: 1px solid #e3e9f1;
+}
+
+.capture-loading__bar--number {
+    width: 48px;
+}
+
+.capture-loading__chart {
+    display: flex;
+    align-items: flex-end;
+    gap: 22px;
+    height: 300px;
+    padding: 20px 24px;
+    border-left: 1px solid var(--cap-divider);
+}
+
+.capture-loading__group {
+    display: flex;
+    flex: 1;
+    align-items: flex-end;
+    justify-content: center;
+    gap: 5px;
+    height: 100%;
+    border-bottom: 1px solid #b4c0d0;
+}
+
+.capture-loading__group i {
+    width: 18px;
+    border-radius: 3px 3px 0 0;
+    background: #e3e9f1;
+}
+
+.capture-loading__text {
+    margin: 0;
+    padding: 10px 20px 14px;
+    color: var(--cap-ink-2);
+    font-size: 12.5px;
+}
+
+@media (max-width: 1000px) {
+    .capture-loading__body {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .capture-loading__chart {
+        border-top: 1px solid var(--cap-divider);
+        border-left: 0;
+    }
+}
+
+/* Project selection: the table drives the chart and the detail */
+.capture-table__pick {
+    padding: 0;
+    border: 0;
+    background: none;
+    color: inherit;
+    font: inherit;
+    font-weight: 700;
+    text-align: left;
+    cursor: pointer;
+}
+
+.capture-table__pick:hover {
+    text-decoration: underline;
+}
+
+.capture-table__pick:focus-visible {
+    outline: 2px solid #18222f;
+    outline-offset: 2px;
+}
+
+.capture-table tbody tr.capture-table__row--picked > * {
+    background: #dbe7f7;
+}
+
+.capture-table tbody tr.capture-table__row--picked > th:first-child {
+    box-shadow: inset 3px 0 0 #18222f;
+}
+
+.capture-selection {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 8px 20px;
+    border-bottom: 1px solid var(--cap-divider);
+    background: var(--cap-tint);
+    color: var(--cap-ink-2);
+    font-size: 12.5px;
+}
+
+.capture-selection[data-active="true"] {
+    background: #dbe7f7;
+    color: var(--cap-ink);
+}
+
+.capture-selection button {
+    padding: 3px 10px;
+    border: 1px solid #8fa1b8;
+    border-radius: 4px;
+    background: #fff;
+    color: var(--cap-ink);
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.capture-exporting .capture-selection,
+body.capture-printing .capture-selection {
+    display: none;
+}
+
+/* Wrapping chart: groups flow onto as many rows as they need (no side scroll, no squeezing), each row with its own baseline and the same scale. */
+.capture-summary .capture-columns-chart__plot {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    align-items: end;
+    gap: 22px 0;
+    height: auto;
+    min-height: 0;
+    overflow: visible;
+}
+
+.capture-summary .capture-columns-chart__group {
+    flex: none;
+    min-width: 0;
+    padding: 0 8px;
+    border-left: 1px solid #e3e9f1;
+}
+
+.capture-summary .capture-columns-chart__group--project {
+    margin-left: 0;
+    padding-left: 8px;
+    border-left: 1px solid #e3e9f1;
+}
+
+.capture-summary .capture-columns-chart__bars {
+    min-height: 210px;
+    gap: 5px;
+}
+
+.capture-summary .capture-columns-chart__bar {
+    flex: 0 1 28px;
+}
+
+.capture-summary .capture-columns-chart__label {
+    font-size: 11.5px;
+}
+
+.capture-summary .capture-columns-chart__line {
+    font-size: 11.5px;
+}
+
+.capture-columns-chart__empty {
+    margin: 0;
+    padding-top: 10px;
+    border-top: 1px solid #e3e9f1;
+    color: var(--cap-ink-2);
+    font-size: 12px;
+}
+
+/* Stacked columns (view by project): sellers piled in one column, the total above it */
+.capture-summary .capture-columns-chart__bars--stacked {
+    justify-content: center;
+}
+
+.capture-columns-chart__stack-wrap {
+    display: flex;
+    flex-direction: column;
+    align-self: flex-end;
+    width: 92px;
+}
+
+.capture-columns-chart__stack-wrap > strong {
+    height: 20px;
+    color: var(--cap-ink);
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+    text-align: center;
+}
+
+.capture-columns-chart__stack {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-height: 2px;
+    border-radius: 3px 3px 0 0;
+    overflow: hidden;
+}
+
+.capture-columns-chart__segment {
+    display: grid;
+    flex-basis: 0;
+    min-height: 30px;
+    line-height: 1;
+    place-items: center;
+    color: #ffffff;
+    font-size: 11.5px;
+    font-variant-numeric: tabular-nums;
+    font-weight: 700;
+}
+
+.capture-columns-chart__segment + .capture-columns-chart__segment {
+    border-top: 1px solid #ffffff;
+}
+
+.capture-columns-chart__segment {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 4px;
+    overflow: hidden;
+    font-size: 11px;
+    font-weight: 600;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.capture-columns-chart__segment b {
+    margin-left: 3px;
+    font-weight: 800;
+}
+
+.capture-columns-chart__segment {
+    font-size: 12px;
+}
+
+.capture-summary .capture-columns-chart__bars--stacked {
+    min-height: 240px;
+}
+
+/* Chart on its own at the full width; the breakdown table lives in a modal */
+.capture-block__tools {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.capture-block__breakdown {
+    height: 32px;
+    border-color: #8fa1b8;
+    background: #fff;
+    color: #18222f;
+    font-weight: 600;
+}
+
+.capture-columns-chart__top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+}
+
+.capture-columns-chart__mode {
+    display: inline-flex;
+    flex: 0 0 auto;
+    align-items: center;
+    gap: 8px;
+    color: var(--cap-ink-2);
+    font-size: 12.5px;
+    font-weight: 600;
+}
+
+.capture-columns-chart__mode .ant-select {
+    min-width: 150px;
+}
+
+.capture-summary.capture-summary--stack > .capture-columns-chart {
+    padding: 16px 24px 20px;
+    border: 0;
+}
+
+.capture-breakdown-modal .capture-selection {
+    margin: 0 0 12px;
+    padding: 8px 14px;
+    border: 1px solid var(--cap-divider);
+    border-radius: 4px;
+}
+
+.capture-breakdown-modal .capture-table-wrap {
+    max-height: 62vh;
+    overflow: auto;
+    border: 1px solid var(--cap-divider);
+    border-radius: 4px;
+}
+
+.capture-exporting .capture-columns-chart__mode,
+body.capture-printing .capture-columns-chart__mode,
+.capture-exporting .capture-block__breakdown,
+body.capture-printing .capture-block__breakdown {
+    display: none;
+}
+
+/* KPI banners */
+.capture-kpis {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+    margin: 0;
+    padding: 14px 20px 4px;
+    list-style: none;
+}
+
+.capture-kpis__tile {
+    display: grid;
+    gap: 2px;
+    padding: 10px 14px;
+    border: 1px solid #b4c0d0;
+    border-left: 4px solid #5d799a;
+    border-radius: 6px;
+    background: #f4f7fb;
+}
+
+.capture-kpis__label {
+    color: var(--cap-ink-2);
+    font-size: 12.5px;
+    font-weight: 600;
+}
+
+.capture-kpis__value {
+    color: var(--cap-ink);
+    font-size: 26px;
+    font-variant-numeric: tabular-nums;
+    line-height: 1.15;
+}
+
+.capture-kpis__caption {
+    color: var(--cap-ink-2);
+    font-size: 12px;
+}
+
+/* Stacked columns grow from a floor, so the order of heights is the order of the figures */
+.capture-summary .capture-columns-chart__bars--stacked {
+    min-height: 300px;
+}
+
+@media (max-width: 800px) {
+    .capture-kpis {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+
+/* Stacked view: one row (the ranking reads left to right, biggest first) */
+.capture-summary .capture-columns-chart__plot.capture-columns-chart__plot--row {
+    position: relative;
+    display: grid;
+    grid-auto-columns: minmax(104px, 1fr);
+    grid-auto-flow: column;
+    grid-template-columns: none;
+    align-items: stretch;
+    gap: 0;
+    overflow-x: auto;
+}
+
+/* Enterprise look of the ranking chart: quiet frame, clean baseline, focus on hover */
+.capture-summary.capture-summary--stack > .capture-columns-chart {
+    gap: 10px;
+    padding: 16px 24px 22px;
+}
+
+.capture-columns-chart__caption {
+    margin: 0;
+    color: var(--cap-ink-2);
+    font-size: 12px;
+}
+
+.capture-columns-chart__legend {
+    gap: 6px 10px;
+}
+
+.capture-columns-chart__legend li {
+    gap: 6px;
+    padding: 3px 12px 3px 6px;
+    border: 1px solid #d3dbe6;
+    border-radius: 999px;
+    background: #f7f9fc;
+    color: var(--cap-ink);
+    font-size: 12.5px;
+}
+
+.capture-columns-chart__legend i {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+}
+
+.capture-summary .capture-columns-chart__plot.capture-columns-chart__plot--row {
+    padding: 18px 4px 0;
+    overflow-x: auto;
+    overflow-y: hidden;
+    border-top: 1px solid #e3e9f1;
+}
+
+.capture-summary .capture-columns-chart__plot.capture-columns-chart__plot--row {
+    display: block;
+}
+
+/* The track is as wide as all the columns, scrolled or not */
+.capture-columns-chart__track {
+    position: relative;
+    display: grid;
+    grid-template-columns: repeat(var(--columns, 1), minmax(104px, 1fr));
+    min-width: calc(var(--columns, 1) * 104px);
+}
+
+.capture-columns-chart__track > .capture-columns-chart__controls {
+    display: flex;
+    flex: 0 0 auto;
+    align-items: center;
+    gap: 14px;
+}
+
+.capture-columns-chart__segment {
+    min-height: 0;
+}
+
+.capture-summary .capture-columns-chart__plot--row .capture-columns-chart__group,
+.capture-summary .capture-columns-chart__plot--row .capture-columns-chart__group--project {
+    padding: 0 10px;
+    border-left: 0;
+}
+
+.capture-summary .capture-columns-chart__plot--row .capture-columns-chart__bars {
+    border-bottom: 1px solid #8fa1b8;
+}
+
+.capture-columns-chart__stack {
+    border-radius: 4px 4px 0 0;
+    box-shadow: 0 1px 2px rgb(24 34 47 / 18%);
+}
+
+.capture-columns-chart__stack-wrap > strong {
+    color: var(--cap-ink);
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.capture-columns-chart__segment {
+    font-size: 11.5px;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+}
+
+.capture-columns-chart__segment + .capture-columns-chart__segment {
+    border-top: 1px solid rgb(255 255 255 / 85%);
+}
+
+.capture-summary .capture-columns-chart__plot--row .capture-columns-chart__label {
+    padding-top: 8px;
+}
+
+.capture-summary .capture-columns-chart__plot--row .capture-columns-chart__line--0 {
+    color: var(--cap-ink);
+    font-size: 12.5px;
+    font-weight: 700;
+}
+
+.capture-summary .capture-columns-chart__plot--row .capture-columns-chart__line--1,
+.capture-summary .capture-columns-chart__plot--row .capture-columns-chart__line--2 {
+    color: var(--cap-ink-2);
+    font-size: 11.5px;
+    font-weight: 500;
+}
+
+/* Hover: the column under the pointer stays, the rest recedes */
+.capture-columns-chart__plot--row:hover .capture-columns-chart__group {
+    transition: opacity 0.12s;
+}
+
+.capture-columns-chart__plot--row:hover .capture-columns-chart__group:not(:hover) {
+    opacity: 0.55;
+}
+
+.capture-columns-chart__plot--row .capture-columns-chart__group:hover .capture-columns-chart__stack {
+    box-shadow: 0 2px 6px rgb(24 34 47 / 30%);
+}
+
+.capture-exporting .capture-columns-chart__plot--row:hover .capture-columns-chart__group:not(:hover) {
+    opacity: 1;
+}
+
+/* Compact density: KPI banners, legend and chart header take a fraction of the room, so the chart and the numbers are what you see */
+.capture-kpis {
+    gap: 10px;
+    padding: 10px 16px 0;
+}
+
+.capture-kpis__tile {
+    gap: 0;
+    padding: 6px 12px;
+    border-left-width: 3px;
+}
+
+.capture-kpis__label {
+    font-size: 12px;
+}
+
+.capture-kpis__value {
+    font-size: 20px;
+    line-height: 1.2;
+}
+
+.capture-kpis__caption {
+    font-size: 11.5px;
+}
+
+.capture-summary.capture-summary--stack > .capture-columns-chart {
+    gap: 6px;
+    padding: 10px 16px 14px;
+}
+
+.capture-columns-chart__legend {
+    gap: 4px 6px;
+}
+
+.capture-columns-chart__legend li {
+    gap: 5px;
+    padding: 2px 10px 2px 5px;
+    font-size: 12px;
+}
+
+.capture-columns-chart__legend li > span {
+    font-weight: 600;
+}
+
+.capture-columns-chart__caption {
+    font-size: 11.5px;
+}
+
+.capture-columns-chart__stack-wrap {
+    width: 76px;
+}
+
+.capture-columns-chart__segment {
+    font-size: 11px;
+}
+
+.capture-columns-chart__track {
+    grid-template-columns: repeat(var(--columns, 1), minmax(96px, 1fr));
+    min-width: calc(var(--columns, 1) * 96px);
+}
+
+.capture-block .marketing-card__heading {
+    padding-block: 10px;
+}
+
+.capture-columns-chart__empty {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+.capture-columns-chart__empty button {
+    padding: 2px 10px;
+    border: 1px solid #8fa1b8;
+    border-radius: 4px;
+    background: #fff;
+    color: var(--cap-ink);
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.capture-exporting .capture-columns-chart__empty button,
+body.capture-printing .capture-columns-chart__empty button {
+    display: none;
+}
+
+
+/* Breakdown: one flat table per level, side by side, each scrolling on its own */
+.capture-breakdown-modal .ant-modal-content {
+    padding: 18px 20px 20px;
+}
+
+.capture-levels {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 14px;
+    align-items: start;
+}
+
+.capture-levels[data-depth="2"] {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr);
+}
+
+.capture-levels[data-depth="3"] {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr) minmax(0, 1.8fr);
+}
+
+.capture-level {
+    min-width: 0;
+    border: 1px solid #b4c0d0;
+    border-radius: 6px;
+    background: #ffffff;
+    overflow: hidden;
+}
+
+.capture-level > header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 14px;
+    border-bottom: 1px solid #b4c0d0;
+    background: #eef2f7;
+}
+
+.capture-level > header h3 {
+    margin: 0;
+    color: #18222f;
+    font-size: 13.5px;
+    font-weight: 700;
+}
+
+.capture-level > header span {
+    padding: 0 8px;
+    border: 1px solid #c3ccd9;
+    border-radius: 10px;
+    background: #ffffff;
+    color: #3b4a61;
+    font-size: 11.5px;
+    font-variant-numeric: tabular-nums;
+}
+
+.capture-level__scroll {
+    max-height: 64vh;
+    overflow: auto;
+}
+
+.capture-table--flat thead th {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+}
+
+.capture-table--flat tfoot th,
+.capture-table--flat tfoot td {
+    position: sticky;
+    bottom: 0;
+    background: #eef2f7;
+}
+
+.capture-table--flat th,
+.capture-table--flat td {
+    padding: 7px 12px;
+    font-size: 12.5px;
+}
+
+.capture-table--flat tbody tr {
+    border-top: 1px solid #e3e9f1;
+}
+
+.capture-table--flat tbody tr:nth-child(even) > * {
+    background: #f7f9fc;
+}
+
+.capture-table--flat tbody tr.capture-table__row--picked > * {
+    background: #dbe7f7;
+}
+
+.capture-table--flat .capture-table__name {
+    min-width: 150px;
+    text-align: left;
+}
+
+.capture-table--flat .capture-table__name small {
+    display: block;
+    margin-top: 1px;
+    color: #55657b;
+    font-size: 11px;
+    font-weight: 400;
+}
+
+@media (max-width: 1100px) {
+    .capture-levels[data-depth="2"],
+    .capture-levels[data-depth="3"] {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}

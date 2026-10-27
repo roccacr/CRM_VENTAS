@@ -9,6 +9,7 @@
  */
 import "./CatalogItemsPage.css";
 import "./ProjectsView.css";
+import "../components/CreateSystemUserDrawer.css";
 
 import DoubleLeftOutlined from "@ant-design/icons/DoubleLeftOutlined";
 import DoubleRightOutlined from "@ant-design/icons/DoubleRightOutlined";
@@ -19,18 +20,20 @@ import RightOutlined from "@ant-design/icons/RightOutlined";
 import SaveOutlined from "@ant-design/icons/SaveOutlined";
 import Button from "antd/es/button";
 import ConfigProvider from "antd/es/config-provider";
+import Drawer from "antd/es/drawer";
 import Form from "antd/es/form";
 import Input from "antd/es/input";
 import esES from "antd/es/locale/es_ES";
 import message from "antd/es/message";
 import Modal from "antd/es/modal";
+import Space from "antd/es/space";
 import Tooltip from "antd/es/tooltip";
 import { type ReactNode, useCallback, useEffect, useRef, useState } from "react";
 
 import { ApiClientError } from "../../../services/api/api-client";
 import { getIdentityProfile } from "../../../services/auth/auth-service";
 import { type CatalogContextModuleCode, type CatalogExternalReferencePayload, type CatalogItem, type CatalogItemPayload, type CatalogItemStatus, createCatalogItem, listCatalogItems, updateCatalogItem, updateCatalogItemStatus } from "../../../services/catalogs/catalog-service";
-import { ADMINISTRATION_MODAL_Z_INDEX, ADMINISTRATION_THEME } from "../administration-theme";
+import { ADMINISTRATION_DRAWER_CLOSE_PLACEMENT, ADMINISTRATION_DRAWER_PROPS, ADMINISTRATION_MODAL_Z_INDEX, ADMINISTRATION_THEME } from "../administration-theme";
 import { BROKERS_FORM_COPY, BROKERS_NAME_MAX_LENGTH } from "../brokers/brokers-definition";
 import { CAMPAIGNS_FORM_COPY } from "../campaigns/campaigns-definition";
 import { CLASSES_FORM_COPY, CLASSES_NAME_MAX_LENGTH } from "../classes/classes-definition";
@@ -38,8 +41,10 @@ import { LOCATIONS_FORM_COPY, LOCATIONS_NAME_MAX_LENGTH } from "../locations/loc
 import { SUBSIDIARIES_FORM_COPY, SUBSIDIARIES_NAME_MAX_LENGTH } from "../subsidiaries/subsidiaries-definition";
 import { type AdministrationCatalogDefinition, CATALOG_REFERENCE_PROVIDERS, getCatalogPresentation } from "./catalog-definitions";
 import { type CatalogPermissions, getCatalogPermissions, NO_CATALOG_PERMISSIONS } from "./catalog-permissions";
+import { buildCatalogItemCards } from "./catalog-summary";
 import { CatalogItemDetailDrawer } from "./CatalogItemDetailDrawer";
 import { CatalogItemsDataTable } from "./CatalogItemsDataTable";
+import { CatalogBanners } from "./CatalogSummary";
 import { PROJECTS_THEME } from "./projects-theme";
 
 /** Mínimo que el formulario exige antes de enviar un motivo auditable. */
@@ -128,20 +133,24 @@ const getModalCopy = (catalog: AdministrationCatalogDefinition, isEdit: boolean)
 /** Proyectos arranca con dos líneas y crece con el texto, para que el formulario quepa sin scroll en escritorio. */
 const getTextAreaSizes = (projectView: boolean) => (projectView ? { detail: { autoSize: { minRows: 2, maxRows: 6 } }, reason: { autoSize: { minRows: 2, maxRows: 4 } } } : { detail: { rows: 3 }, reason: { rows: 4 } });
 
-/** Approved catalog opt-ins share the drawer hierarchy without changing other forms. */
-function CatalogFormSection({ projectView, title, children }: { readonly projectView: boolean; readonly title: string; readonly children: ReactNode }) {
-    return projectView ? (
-        <fieldset className="projects-view-form-section">
-            <legend>{title}</legend>
-            <div>{children}</div>
-        </fieldset>
-    ) : (
-        <>{children}</>
+/** Same numbered section as the user drawer, so every create/edit form reads the same way. */
+function CatalogFormSection({ step, title, children }: { readonly step: number; readonly title: string; readonly children: ReactNode }) {
+    const headingId = `catalog-form-section-${String(step)}`;
+    return (
+        <section className="create-user-drawer__section" aria-labelledby={headingId}>
+            <header className="create-user-drawer__section-header">
+                <span className="create-user-drawer__step" aria-hidden="true">
+                    {step}
+                </span>
+                <h3 id={headingId}>{title}</h3>
+            </header>
+            <div className="catalog-form-section__body">{children}</div>
+        </section>
     );
 }
 
 /**
- * Alta o edición de un valor.
+ * Alta o edición de un valor, en panel lateral como usuarios: abrir un diálogo encima del detalle rompía el flujo.
  *
  * El motivo se vacía en cada apertura: un motivo anterior no debe reutilizarse
  * para auditar un cambio nuevo.
@@ -182,34 +191,33 @@ function CatalogItemModal({ catalog, initialItem, isSaving, open, error, onClose
     };
 
     return (
-        <Modal
-            centered
+        <Drawer
+            {...ADMINISTRATION_DRAWER_PROPS}
             forceRender
-            className={`catalog-items-modal${projectView ? " catalog-items-modal--projects" : ""}`}
-            footer={
-                <div className="catalog-items-modal__footer">
-                    <Button disabled={isSaving} onClick={onClose}>
-                        Cancelar
-                    </Button>
-                    <Button type="primary" loading={isSaving} onClick={submit}>
-                        <SaveOutlined />
-                        {isEdit ? "Guardar cambios" : copy.submit}
-                    </Button>
-                </div>
-            }
+            rootClassName="create-user-drawer catalog-items-modal--projects users-view-form catalog-form-drawer"
             open={open}
-            title={
-                <div className="catalog-items-modal__title">
-                    <h2>{copy.title}</h2>
-                    <p>Valor nativo CRM con referencias opcionales de NetSuite, Odoo u otros proveedores.</p>
+            title={copy.title}
+            closable={{ "aria-label": `Cerrar ${copy.title.toLocaleLowerCase("es-CR")}`, placement: ADMINISTRATION_DRAWER_CLOSE_PLACEMENT }}
+            keyboard={!isSaving}
+            mask={{ closable: !isSaving }}
+            footer={
+                <div className="create-user-drawer__footer">
+                    <div className="create-user-drawer__footer-status">{error ? <div className="catalog-items-error" role="alert">{error}</div> : <span className="create-user-drawer__summary">Todo cambio queda en auditoría.</span>}</div>
+                    <Space size={8}>
+                        <Button disabled={isSaving} onClick={onClose}>
+                            Cancelar
+                        </Button>
+                        <Button type="primary" loading={isSaving} onClick={submit}>
+                            {isEdit ? <SaveOutlined aria-hidden="true" /> : <PlusOutlined aria-hidden="true" />}
+                            {isEdit ? "Guardar cambios" : copy.submit}
+                        </Button>
+                    </Space>
                 </div>
             }
-            zIndex={ADMINISTRATION_MODAL_Z_INDEX}
-            onCancel={onClose}
+            onClose={onClose}
         >
-            <Form form={form} layout="vertical" requiredMark="optional">
-                {error ? <div className="catalog-items-error">{error}</div> : null}
-                <CatalogFormSection projectView={projectView} title="Información del registro">
+            <Form form={form} layout="vertical">
+                <CatalogFormSection step={1} title="Información del registro">
                     <Form.Item<CatalogItemFormValues> label="Nombre" name="name" rules={[{ min: 2, message: "Agrega un nombre válido." }, { required: true, message: "El nombre es obligatorio." }, ...(nameMaxLength ? [{ max: nameMaxLength, message: `El nombre admite hasta ${String(nameMaxLength)} caracteres.` }] : [])]}>
                         <Input placeholder={copy.placeholder} {...(nameMaxLength ? { maxLength: nameMaxLength } : {})} />
                     </Form.Item>
@@ -217,19 +225,17 @@ function CatalogItemModal({ catalog, initialItem, isSaving, open, error, onClose
                         <Input.TextArea {...textAreaSizes.detail} maxLength={500} showCount placeholder="Detalle operativo visible para administración." />
                     </Form.Item>
                 </CatalogFormSection>
-                <div className="catalog-items-modal__grid">
-                    <CatalogFormSection projectView={projectView} title="NetSuite">
+                <CatalogFormSection step={2} title="Referencias externas">
+                    <div className="catalog-items-modal__grid">
                         <Form.Item<CatalogItemFormValues> label="ID NetSuite" name="netsuiteId">
                             <Input />
                         </Form.Item>
-                    </CatalogFormSection>
-                    <CatalogFormSection projectView={projectView} title="Odoo">
                         <Form.Item<CatalogItemFormValues> label="ID Odoo" name="odooId">
                             <Input />
                         </Form.Item>
-                    </CatalogFormSection>
-                </div>
-                <CatalogFormSection projectView={projectView} title="Auditoría">
+                    </div>
+                </CatalogFormSection>
+                <CatalogFormSection step={3} title="Auditoría">
                     <Form.Item<CatalogItemFormValues>
                         label="Motivo de auditoría"
                         name="reason"
@@ -242,7 +248,7 @@ function CatalogItemModal({ catalog, initialItem, isSaving, open, error, onClose
                     </Form.Item>
                 </CatalogFormSection>
             </Form>
-        </Modal>
+        </Drawer>
     );
 }
 
@@ -430,6 +436,10 @@ function CatalogPageTitle({ catalog, isLoading, total }: { readonly catalog: Adm
 function CatalogListPanel({ catalog, isLoading, children }: { readonly catalog: AdministrationCatalogDefinition; readonly isLoading: boolean; readonly children: ReactNode }) {
     return (
         <section className="catalog-items-panel" aria-label={`Listado de ${catalog.label}`} aria-busy={getCatalogPresentation(catalog.code).enhanced ? isLoading : undefined}>
+            <div className="catalog-section-heading">
+                <h2>{`Listado de ${catalog.label.toLocaleLowerCase("es-CR")}`}</h2>
+                <p>Busca o filtra y abre un registro para ver su detalle y sus referencias.</p>
+            </div>
             {children}
         </section>
     );
@@ -585,24 +595,32 @@ export function CatalogItemsPage({ catalog, contextLabel = "Administración", co
         });
     };
 
-    const openCreate = (): void => {
+    /**
+     * Abre el formulario al instante con los permisos ya conocidos y los reverifica en segundo plano.
+     *
+     * Esperar la respuesta del perfil antes de abrir hacía que el clic tardara segundos en responder.
+     * No se pierde seguridad: si el permiso se revocó, el formulario se cierra al llegar la respuesta y
+     * el guardado vuelve a verificarlo, además del BFF.
+     */
+    const openForm = (item: CatalogItem | null, allowed: (state: CatalogPermissions) => boolean): void => {
+        if (!allowed(permissions)) return;
+        setFormError(null);
+        setEditingItem(item);
+        setDialogScope(scope);
+        setIsFormOpen(true);
         void refreshPermissions().then((next) => {
-            if (!next.create) return;
-            setFormError(null);
+            if (allowed(next)) return;
+            setIsFormOpen(false);
             setEditingItem(null);
-            setDialogScope(scope);
-            setIsFormOpen(true);
         });
     };
 
+    const openCreate = (): void => {
+        openForm(null, (state) => state.create);
+    };
+
     const openEdit = (item: CatalogItem): void => {
-        void refreshPermissions().then((next) => {
-            if (!next.read || !next.update) return;
-            setFormError(null);
-            setEditingItem(item);
-            setDialogScope(scope);
-            setIsFormOpen(true);
-        });
+        openForm(item, (state) => state.read && state.update);
     };
 
     const closeForm = (): void => {
@@ -712,11 +730,13 @@ export function CatalogItemsPage({ catalog, contextLabel = "Administración", co
                             <span aria-hidden="true">/</span>
                             <span>{catalog.label}</span>
                         </nav>
-                        <CatalogPageTitle catalog={catalog} isLoading={isLoading} total={permissions.read ? total : 0} />
+                        <CatalogPageTitle catalog={catalog} isLoading={isLoading || !permissions.read} total={permissions.read ? total : 0} />
                         <p>Gestión de valores nativos CRM y sus referencias externas.</p>
                     </div>
                     <CatalogHeaderActions canRead={permissions.read} canCreate={permissions.create} catalogCode={catalog.code} isLoading={isLoading} isSaving={isSaving} isSavingStatus={isSavingStatus} onRefresh={refreshItems} onCreate={openCreate} />
                 </section>
+
+                {permissions.read || permissionState.scope !== scope ? <CatalogBanners label={`Resumen de ${catalog.label}`} cards={buildCatalogItemCards({ label: catalog.label, items, total, ready: permissions.read && (!isLoading || items.length > 0) && !error })} /> : null}
 
                 {permissions.read ? (
                     <CatalogListPanel catalog={catalog} isLoading={isLoading}>
@@ -749,7 +769,11 @@ export function CatalogItemsPage({ catalog, contextLabel = "Administración", co
                         />
                     </CatalogListPanel>
                 ) : (
-                    <p role="status">{permissionState.scope === scope ? "No tienes permiso para consultar este catálogo." : "Verificando permisos del catálogo..."}</p>
+                    <CatalogListPanel catalog={catalog} isLoading={false}>
+                        <p className="catalog-status-message" role="status">
+                            {permissionState.scope === scope ? "No tienes permiso para consultar este catálogo." : "Verificando permisos del catálogo..."}
+                        </p>
+                    </CatalogListPanel>
                 )}
 
                 <CatalogItemDetailDrawer

@@ -1,5 +1,7 @@
 # 22 - UX Identidad, Usuarios y Roles P0-S1
 
+Estado implementado 2026-10-27: [30 - Estado frontend verificado](30-Estado-Frontend-Verificado.md). Los ejemplos de fases futuras siguientes no sustituyen los reportes conectados ni los comandos acotados ya presentes.
+
 ## Vigencia documental - 2026-10-22, corte f2dc4f1
 
 La compuerta minima siguiente conserva el alcance historico previo al BFF y Administracion. Login real, Usuarios, Roles y Auditoria ya existen; las prohibiciones iniciales de CRUD/login de este antecedente no describen el runtime. Consultar [27](27-Entrega-Administracion-y-QA.md) y la ley de producto para alcance vigente. Leads sigue futuro.

@@ -1,5 +1,12 @@
 # 27 - Identidad, Usuarios y Roles P0-S1
 
+Lectura de continuidad 2026-10-23: este documento conserva el baseline conceptual;
+las pausas iniciales no describen ausencia de identidad/Administracion implementadas.
+Prevalecen las ampliaciones de [41 - Owner](41-Owner-Herencia-y-Denegaciones.md),
+[42 - General](42-Jefaturas-Modulos-y-Permisos.md), [43 - Esquema de Leads](43-Leads-Esquema-Nativo.md)
+y [45 - Perfiles](45-Usuarios-Por-Correo.md). Estado consolidado y evidencia:
+[49 - Estado actual](49-Estado-Actual-y-Cierre-Documental.md).
+
 ## Veredicto
 
 Antes de modelar leads, contactos, oportunidades o bitacoras comerciales, se debe cerrar la base de identidad.
@@ -46,7 +53,9 @@ Primero se define identidad. Luego se vuelve al contrato del lead.
 
 ### Usuario
 
-Un usuario es una persona que puede entrar al CRM.
+Un usuario es una persona interna registrada; tener perfil no habilita el ingreso.
+El lote autorizado de 43 perfiles permanece pending/inactive, sin identidades de
+autenticacion ni membresias individuales, incluso tras asignarle el rol `ventas`.
 
 Ejemplos:
 
@@ -223,7 +232,9 @@ roles asignados
 
 Si una persona trabaja o supervisa dos areas, el API no debe duplicar usuarios ni inventar roles. Debe registrar dos vinculos activos en `sec_user_org_unit`.
 
-No se debe resolver esto creando un rol distinto para cada jefe de cada area.
+No se debe multiplicar roles por area sin decision de negocio. Las excepciones
+aprobadas incluyen `jefe_formalizaciones` y `jefe_mercadeo`; sus nombres no
+conceden permisos por si solos (documentos 28 y 42).
 
 Mal enfoque:
 
@@ -246,8 +257,9 @@ Asi el sistema escala sin crear roles infinitos.
 Regla de login/modulos:
 
 ```txt
-El usuario solo puede cambiarse a los modulos que existan como areas operativas activas en sec_user_org_unit.
-El rol no abre modulos por si solo; el rol define permisos, y el area operativa define donde aplican.
+El usuario ordinario usa membresias activas y el techo modular de sus roles.
+Owner resuelve virtualmente todos los modulos activos sin insertar membresias.
+General intersecta los modulos de su plantilla con los asignados al empleado.
 ```
 
 Modelo mental obligatorio para UI y API:

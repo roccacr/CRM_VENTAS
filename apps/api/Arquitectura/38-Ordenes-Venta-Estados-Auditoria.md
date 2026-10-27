@@ -1,5 +1,12 @@
 # Ordenes de venta: esquema y trayectoria - 20/10/2026
 
+Actualizacion 2026-10-26: ContractTransitionModule ya esta registrado, junto a
+la consulta paginada de tiempos. La autorizacion local posterior de escrituras
+legacy y sus gates se documenta en52; no extrapolar los flags del corte historico. Ver [52](52-Etapas-Responsables-y-Tiempos.md). El listado de
+contratos independiente sigue pausado. Los apartados de
+configuracion/ejecucion siguientes son cortes fechados, no lectura actual de
+`.env`, MySQL o produccion. Metadatos actuales: [49](49-Estado-Actual-y-Cierre-Documental.md).
+
 ## Ampliacion Home: seis banners de etapas - 2026-10-23
 
 Nuevo corte de lectura solicitado: [40 - Resumen y rendimiento](40-Formalizacion-Home-Resumen-y-Rendimiento.md).
@@ -28,11 +35,11 @@ conservan la evidencia fechada de los cortes anteriores.
 
 ## Alcance final corregido: solo Home - 2026-10-22
 
-El propietario detiene el adelanto de la bandeja y sus acciones: restaurar vacio, solo Home por ahora. Resultado vigente:
+El propietario detiene el adelanto de la bandeja y sus acciones: restaurar vacio, solo Home por ahora. Resultado vigente en ese corte historico (sustituido parcialmente por52):
 
-- GET /formalization/contracts/summary permanece activo y exige rol formalizacion; banner conectado y log agregado DEV.
+- GET /formalization/contracts/summary permanece registrado; desde 027 exige rol efectivo formalizacion y formalizacion.home.stages.read, sin deny; banner conectado.
 - Bandeja/listado real y botones envio/reversion retirados del frontend; volver a una cola no dispara consulta de ordenes ni muestra registros cargados.
-- GET /formalization/contracts/orders y POST /formalization/contracts/send/revert NO registrados en el grafo AppModule. Inventario de permiso actual: 50 handlers, incluida la nueva lectura del contador. Prueba explicita impide reintroducir esas tres rutas como si ya estuvieran aprobadas para runtime.
+- GET /formalization/contracts/orders y POST /formalization/contracts/send/revert NO registrados en el grafo AppModule. El inventario de 50 handlers corresponde al corte 2026-10-22, anterior a nuevos resumenes/timeline; no es el total vigente. Prueba explicita impide reintroducir esas tres rutas como si ya estuvieran aprobadas para runtime.
 - ENABLE_LEGACY_WRITES=false local; fallback y bitacora permanecen activos. Las clases internas/DTO/pruebas preparadas de comandos y listado no equivalen a endpoints habilitados.
 - Se conservan las tablas legacy y permiso025 ya aplicados; deshacer una pantalla no justifica borrar estructura ni historial. No se ejecutan nuevas mutaciones de BD durante esta correccion.
 
@@ -594,11 +601,12 @@ Si falla una fuente habilitada se devuelve 503, nunca un total parcial.
 El banner inicia sin numero y muestra No disponible si falla la lectura.
 Sin permiso no se monta el contador ni se solicita el endpoint.
 Al apagar el fallback se lee solo la BD nueva y legacyEnabled=false.
-Las lecturas no son una transaccion distribuida: observedAt marca la respuesta,
-no un snapshot atomico entre las dos BD. No se escribe, importa ni sincroniza.
-Solo se conecta el contador: la lista y los otros indicadores no tienen API
-operativa; la remediacion retiro datos demostrativos y los ceros provisionales
-no son metricas conectadas. La persistencia de lifecycle continua sin rutas de escritura.
+El lector actual comparte una transaccion READ ONLY / REPEATABLE READ entre
+fuentes del mismo servidor InnoDB; no es una transaccion distribuida.
+`observedAt` marca la observacion de la respuesta, no una prueba de concurrencia.
+No se escribe, importa ni sincroniza. La ampliacion 40 conecta los otros seis
+banners de etapas: ya no son ceros provisionales. Solo `closedThisYear` usa
+limite anual. La lista y los comandos siguen sin rutas registradas.
 
 La comprobacion historica de esta conexion devolvio ETIMEDOUT; tampoco respondio
 la conexion de lectura de produccion. No hay conteo actual confirmado.

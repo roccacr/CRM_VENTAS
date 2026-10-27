@@ -12,10 +12,13 @@ import Drawer from "antd/es/drawer";
 import Input from "antd/es/input";
 import Modal from "antd/es/modal";
 import Select from "antd/es/select";
+import Tooltip from "antd/es/tooltip";
 import { useEffect, useRef, useState } from "react";
 
 import type { CatalogContextModuleCode } from "../../../services/catalogs/catalog-service";
 import { ADMINISTRATION_DRAWER_CLOSE_PLACEMENT, ADMINISTRATION_DRAWER_PROPS, ADMINISTRATION_MODAL_Z_INDEX } from "../administration-theme";
+import { buildUnitFileCards } from "../catalogs/catalog-summary";
+import { CatalogBanners } from "../catalogs/CatalogSummary";
 import { PROJECTS_THEME } from "../catalogs/projects-theme";
 import { getUnitFile, listUnitFiles, listUnitProjects, type UnitDetail, type UnitFilter, type UnitPage, type UnitProject, type UnitSummary } from "./unit-files.api";
 import { loadUnitFilePaneChoices, localUnitPaneData, type UnitPaneChoices, type UnitPaneSelection } from "./unit-files-search-panes";
@@ -274,15 +277,28 @@ function UnitFilesContent({ contextModuleCode, contextLabel }: { readonly contex
         return result;
     }
     return (
-        <section className="unit-files-view catalog-items-page--projects">
-            <header className="unit-files-heading">
+        <div className="global-home-dashboard unit-files-view catalog-items-page catalog-items-page--projects">
+            <section className="global-home-page-header administration-users-page-header" aria-labelledby="unit-files-title">
                 <div>
-                    <div className="unit-files-breadcrumb">{contextLabel} / Catálogos / Expedientes de unidades</div>
-                    <h1>Expedientes de unidades</h1>
+                    <nav className="administration-users-breadcrumb" aria-label="Ruta">
+                        <span>{contextLabel}</span>
+                        <span aria-hidden="true">/</span>
+                        <span>Catálogos</span>
+                        <span aria-hidden="true">/</span>
+                        <span>Expedientes de unidades</span>
+                    </nav>
+                    <div className="projects-view-title-row">
+                        <h1 id="unit-files-title">Expedientes de unidades</h1>
+                    </div>
                     <p>Consulta de unidades y referencias externas.</p>
                 </div>
-                <Button aria-label="Actualizar expedientes" title="Actualizar expedientes" disabled={!active || busy} icon={<RefreshCw size={16} />} onClick={() => active && void load({ ...active, cursor: undefined }, 0, [undefined], { refresh: true, loadChoices: true })} />
-            </header>
+                <div className="global-home-page-header__actions">
+                    <Tooltip title="Actualizar expedientes">
+                        <Button className="projects-view-refresh" aria-label="Actualizar expedientes" disabled={!active || busy} icon={<RefreshCw size={16} />} onClick={() => active && void load({ ...active, cursor: undefined }, 0, [undefined], { refresh: true, loadChoices: true })} />
+                    </Tooltip>
+                </div>
+            </section>
+            <CatalogBanners label="Resumen de expedientes" cards={buildUnitFileCards({ projects: projects.length, loaded: page ? page.pagination.returned : 0, selected: selected.length, hasSearched: page !== undefined })} />
             <form
                 className="unit-files-filters"
                 onSubmit={(event) => {
@@ -532,6 +548,6 @@ function UnitFilesContent({ contextModuleCode, contextLabel }: { readonly contex
                 )}
                 {!compareBusy && comparison.length > 0 && <UnitFilesComparison items={comparison} labels={FIELD_LABELS} groups={DETAIL_GROUPS} />}
             </Modal>
-        </section>
+        </div>
     );
 }

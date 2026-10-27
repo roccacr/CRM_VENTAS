@@ -3,6 +3,7 @@ import { sql } from "kysely";
 
 import { DatabaseService } from "../../../database/database.service.js";
 import { CATALOG_DEFINITIONS } from "../catalogs/catalogs.constants.js";
+import { LeadHistoryReader } from "../leads/lead-history-reader.js";
 import type { AuditContextRow } from "./audit-read.context.js";
 import type { AuditQueryDto } from "./audit-read.contract.js";
 
@@ -48,6 +49,11 @@ const ROLE_EVENTS = ["role_updated", "role_deleted", "role_permissions_replaced"
 export class AuditReadRepository {
     /** Reuses the approved new-database pool; legacy is never queried. */
     constructor(@Inject(DatabaseService) private readonly database: DatabaseService) {}
+
+    /** Uses only native evidence; authorization stays in AuditReadService. */
+    async leadTimeline(recordId: string, query: unknown) {
+        return new LeadHistoryReader(this.database).timeline(recordId, query);
+    }
 
     /** Fetch only public event fields and the versioned snapshot, never raw metadata. */
     async detail(publicId: string) {

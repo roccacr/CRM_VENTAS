@@ -1,6 +1,86 @@
 # 25 - Continuidad de Administracion frontend
 
-## Mercadeo: dashboard de ejemplo, sin API - 2026-10-23
+## Estado contrastado - 2026-10-27
+
+[30 - Estado frontend verificado](30-Estado-Frontend-Verificado.md) inventaría las rutas, contratos y límites actuales: Captación conectada, seguimiento y cambio protegido de etapa de Formalización. Los cortes fechados siguientes son antecedentes; sus cifras de QA no se reejecutaron en esta revisión documental.
+
+
+## Lectura vigente de Inicio y fuentes - 2026-10-23
+
+Los cortes de bienvenida, siete indicadores de muestra y retiro sin API que siguen son etapas historicas del mismo dia. El codigo actual de `MarketingHomePage.tsx` monta `useMarketingHomeSummary` y consume `GET /marketing/home/summary?period=day|week|month|year`; cuatro indicadores, grafico y desgloses vendedor/proyecto ya usan respuesta canonica, sin muestra ficticia de respaldo. Multiseleccion de vendedor/proyecto actua sobre el alcance recibido; el API conserva autoridad de permisos y fuentes. Citas disponibles cuentan eventos unicos, no participantes; conversion por lead y asistencia verificada son medidas distintas. Tipo Cita nativo no sembrado no se sustituye por un tipo ficticio.
+
+Formalizacion ya conecta sus seis etapas mediante un resumen API, ademas de aprobaciones independiente. Owner puede heredar rol efectivo Formalizacion y sigue sujeto a deny; Jefe General solo obtiene grants dentro de sus modulos seleccionados y techo de plantilla. No estan activos listado/envio/reversion, editor de calendario, Outlook ni campana. Inventario con rutas/evidencia: [27](27-Entrega-Administracion-y-QA.md); cobertura transversal: [49](../../api/Arquitectura/49-Estado-Actual-y-Cierre-Documental.md). No se ejecutaron nuevas pruebas, navegador ni consultas BD en esta revision Markdown.
+
+## Crear y editar usuario: cierre directo - 2026-10-23
+
+Por solicitud del propietario se retira el confirm nativo de cambios sin guardar
+del panel compartido de crear/editar usuario. Cerrar, Cancelar, Escape y mascara
+usan el mismo cierre directo. Se conserva el bloqueo durante guardado, la limpieza
+de contrasena y el reinicio del formulario. Cerrar no guarda ni llama al API.
+
+## Antecedente Inicio de Mercadeo sin muestra, previo a API - 2026-10-23
+
+Se retira el generador ficticio del runtime y la asociacion fija de vendedores
+con fotos. Los datos de ejemplo se usan solo desde test/home/fixtures para
+verificar calculos y filtros. El modelo acepta filas explicitas y por defecto
+opera sobre una lista vacia. La pagina distingue filas no suministradas de una
+respuesta vacia: no suministradas muestran raya, nunca un cero que parezca real.
+Se mantienen banners, ilustracion, saludo autenticado, periodos, grafico y
+desgloses con mensajes vacios; filtros sin opciones quedan deshabilitados.
+No se conecta API, no se agregan fallbacks ni se cambian datos o permisos.
+
+## Directorio y detalle: todos los modulos asignados - 2026-10-23
+
+El API ya devuelve orgUnits completos, pero el modelo visual mostraba solo
+orgUnit.name (primera area). La lectura nativa de solo consulta confirma tres
+membresias activas para el nuevo Jefe General: Ventas, Formalizacion y Mercadeo.
+No hay perdida de asignaciones ni correccion de datos que ejecutar.
+
+El modelo visual conserva todos los nombres de orgUnits; una lista vacia es
+autoritaria y las respuestas antiguas sin ese campo conservan el area primaria.
+Ambas tablas muestran el texto completo con salto de linea, sin ellipsis;
+DataTable escapa tambien el title. El detalle usa Modulos asignados cuando hay
+varios, sin cambiar la presentacion de usuarios con una sola area.
+
+Regresion RED/GREEN integrada: fila y detalle presentan los tres modulos.
+52 pruebas relacionadas aprobadas, lint enfocado, formato y build con tipos
+aprobados. Un tipo de fixture potencialmente undefined se corrigio con una
+tupla antes de aprobar build. Revision independiente sin hallazgos en el corte.
+Playwright con pagina real y servicios dobles en 1440x1000 y 375x900 comprueba
+los tres nombres, salto de linea, encuadre del panel y ausencia de errores JS
+o desbordamiento. Evidencia: C:/codex-data/audit-reports/verify-user-modules-ui.cjs,
+user-modules-table-1440.png y user-modules-detail-375.png en ese directorio.
+Sin envios ni escrituras BD; solo consulta real de membresias. No acredita
+una sesion autenticada real ni una nueva auditoria completa del proyecto.
+
+## Alta/edicion de usuarios: desplegables visibles - 2026-10-23
+
+El catalogo contenia roles, pero con el tema real el popup de Select se montaba
+en body con z-index 1050, detras del Drawer de Administracion (1300). No era
+ausencia de roles ni un cambio de permisos. CreateSystemUserDrawer monta ahora
+los popups de roles y modulos en el cuerpo del panel, fuera de las secciones, mediante
+getPopupContainer. Conserva validaciones, asignaciones y contratos del API.
+
+Correccion de la primera iteracion: montar junto al selector no bastaba porque
+UsersView.css aplica overflow:hidden a las secciones. Ambos menus se montan
+ahora directamente en el contenedor .ant-drawer-body, fuera de esas secciones.
+La prueba exige tambien que ningun menu tenga una seccion como ancestro. El
+harness visual incluye ahora UsersView.css y los seis roles, no una lista de un
+solo elemento. Se confirma visualmente la ultima opcion Jefe General y su
+seleccion en ambos tamanos. Lectura real nativa de solo consulta confirma seis
+roles activos: Owner, Formalizacion, Jefe de Formalizaciones, Mercadeo, Jefe de
+Mercadeo y Jefe General. No hubo escrituras ni cambios en el catalogo de roles.
+
+Regresion RED/GREEN con PROJECTS_THEME: ambos menus permanecen dentro del
+Drawer. 48 pruebas relacionadas de usuarios aprobadas; tipos, lint focalizado,
+formato de los dos archivos cambiados y build aprobados. Aviso no bloqueante
+del chunk Ant Design grande. Verificacion Playwright con componentes reales y
+catalogo doble en 1440x1000 y 375x900: seleccion de General y sus modulos,
+sin desbordamientos ni errores JS. Ningun formulario enviado ni escritura BD.
+Evidencia local: C:/codex-data/audit-reports/user-roles-open-375.png y script
+verify-jefaturas-ui.cjs en ese directorio. No certifica un alta autenticada real.
+
+## Antecedente Mercadeo: dashboard de ejemplo, sin API - 2026-10-23
 
 Propuesta visual solicitada por el propietario para revisar el Inicio vacio.
 Conserva la bienvenida e ilustracion generada y adopta los banners de Formalizacion:
@@ -42,7 +122,7 @@ codigo nuevo se corrigieron antes del gate; no se ampliaron timeouts ni se
 omitieron pruebas. Persiste el warning existente de vendor-antd. Log local:
 `C:/codex-data/audit-reports/CRM-TINK-Mercadeo-Dashboard-2026-10-23-check-final.log`.
 
-## Mercadeo: bienvenida ilustrada - 2026-10-23
+## Antecedente Mercadeo: bienvenida ilustrada - 2026-10-23
 
 El propietario solicita una ilustracion propia para Inicio de Mercadeo, siguiendo
 la bienvenida de Formalizacion. `MarketingHomePage` reemplaza el titulo provisional
@@ -729,3 +809,99 @@ permission row cards, document width 390. Nothing was saved.
 
 Frontend `pnpm check` passed formatting, lint, typecheck, 230 tests and build
 (pre-existing large-chunk warning only). No commit.
+
+## Catalog pages share one header - 2026-10-23
+
+Owner request: the seven catalog views (Proyectos, Campañas, Clases, Corredores,
+Expedientes, Subsidiarias, Ubicaciones) must look the same. They are global: the
+same pages open under Administración, Ventas, Mercadeo, Formalización and
+Contabilidad, so nothing in the shared styling names one area.
+
+Six already reused the Projects presentation through `CatalogItemsPage`.
+Expedientes (`UnitFilesPage`) had its own header and a 16px side padding that did
+not line up with the navigation bar. It now uses the same header markup as the
+other catalogs (bold breadcrumb, title row, subtitle, `projects-view-refresh`
+action inside `global-home-page-header__actions`) inside `global-home-dashboard`,
+so margins match. Its filters, cursor pagination, drawer, comparison and API calls
+are unchanged. No total pill is shown because that listing has no total count.
+Projects colors and tokens were not changed.
+
+### Catalog summary cards and section headings - 2026-10-23
+
+Owner request: inside each catalog view, the same look as the Mercadeo and
+Formalización Home pages. Every catalog now opens with a row of summary cards
+(`CatalogSummary.tsx`, scoped under `.catalog-items-page--projects`) and its list
+has a section title with a one-line explanation.
+
+- Six catalogs (Proyectos, Campañas, Clases, Corredores, Subsidiarias, Ubicaciones):
+  Total (API `total`, covers every record), Activos, Inactivos and Con integración.
+  The last three are counted over the rows already loaded, so when the list is paged
+  the caption reads "En esta página (n de total)". While loading, or after a failed
+  load, the figures show a dash and never zero. No extra API request is made.
+- Expedientes: Proyectos disponibles, Expedientes cargados (a dash until a search
+  is run) and Seleccionados.
+- Cards take the catalog label, so the same page reads correctly under
+  Administración, Ventas, Mercadeo, Formalización and Contabilidad.
+- Projects tokens and colors are unchanged; the cards reuse the Home palette.
+
+Verification: `test/catalogs/CatalogSummary.spec.tsx`, the existing catalog and
+unit-file suites, and browser captures of Proyectos, Clases (under Ventas) and
+Expedientes. No commit.
+
+### Enterprise surface for administration lists - 2026-10-23
+
+Owner request: a serious, professional enterprise look for Usuarios and every
+catalog, usable on old low-contrast laptops and on new high-resolution ones.
+Implemented in `catalogs/EnterpriseSurface.css`, scoped to
+`.catalog-items-page--projects`, so it covers Usuarios and the seven catalogs
+without touching other modules.
+
+What is verified and what is judgment: Carbon's row sizes (24/32/40/48/64px), "header row matches the row size" and toolbar pairing were read on the Carbon page itself; Carbon gives no contrast ratios and no text/number alignment rule, and only names a zebra token. Alignment and "color only for status" come from secondary guides. This surface deliberately deviates from Carbon in one point: the head row is about 44px against 56-62px rows, to keep four rows visible on a 1366x768 screen. "Enterprise" here means these criteria were applied and measured, not a certification. Criteria, taken from the public guidance of IBM Carbon (row heights, header and
+toolbar matched to the row, zebra only as an option), data-table guides (text left,
+numbers right, no centered columns) and dashboard guides (color reserved for status):
+
+- Layers, not near-white fills: title band, tinted toolbar, darker table head,
+  white rows, tinted footer. Borders `#b4c0d0` / dividers `#d0d8e4`.
+- Dark inks only, with measured contrast (WCAG formula): primary `#18222f` 16.05:1 on white and 13.14:1 on the table head; secondary `#3b4a61` 8.98:1 on white, 8.08:1 on the toolbar tint and 7.35:1 on the table head. Card borders `#b4c0d0` are 1.57:1 against the page canvas: structure, not an interface-component boundary (WCAG 1.4.11 asks 3:1 for those; input borders are `#5d799a`, 4.50:1).
+- Color means status: the card figures are neutral ink; the left bar carries the
+  semantic color (green active, amber pending, red blocked).
+- Compact: 76px summary cards on one row, 56-62px two-line rows, so a 1366x768
+  screen shows four user rows. One 1px shadow per card, no blur or animation.
+- Summary cards are counters only. Filtering stays in the list's own filters.
+- Zebra striping is not used; rows highlight on hover.
+
+Verified in a browser at 1366x768 and 1920x1080 (Usuarios and Proyectos).
+
+Detail drawer (users and catalogs, same `catalog-item-detail-drawer--projects`
+scope): white header band with the name at 18px/700, body on a tinted canvas
+`#e6ebf2`, white cards with a firm border and a tinted, bold title, key/value rows
+separated by 1px dividers, tinted footer. The backdrop blur of the drawer mask was
+removed (a plain 45% dim layer) because it repaints the whole page and is slow on
+old laptops. Verified in a browser at 1366x900 on Usuarios.
+
+Create / edit user drawer (`create-user-drawer`, one component with `mode`): same
+layers as the detail drawer - white header band, tinted body canvas, white sections
+with a firm border and a tinted bold title, tinted footer, dark inks, no backdrop
+blur. Verified in a browser in both modes. Fields, validation, permissions and the
+payloads are unchanged.
+
+### One overlay for every drawer and dialog - 2026-10-23
+
+`--overlay-dim: rgb(14 16 20 / 67%)` in `src/styles.css` (and the same value in
+`ADMINISTRATION_DRAWER_PROPS`): a neutral dark dim with almost no blue tint, no
+backdrop blur. It matches what users saw when two panels stacked, now always. A
+drawer or dialog opened on top of an open drawer adds no extra dimming (measured on
+a white page: 1 panel and 2 panels both render RGB 93,95,97). The rule uses `:has()`;
+a browser without it simply stacks the layers as before.
+
+Catalog create / edit / status dialogs (`catalog-items-modal--projects`) now use the
+same layers as the drawers: white header band, tinted canvas body, white sections
+with a tinted bold title, tinted footer. Verified on Proyectos in a browser.
+
+## Crear y editar valores de catálogo en panel lateral
+
+Crear y editar un valor (Proyectos, Campañas, Clases, Corredores, Subsidiarias, Ubicaciones) abre un panel lateral con la misma anatomía que Nuevo/Editar usuario (secciones numeradas, pie con acciones), en lugar de un diálogo centrado encima del detalle. Motivo: un diálogo sobre un panel rompía la línea de UX de Administración. Inactivar/Reactivar sigue siendo un diálogo de confirmación corto, igual que en Usuarios. Las reglas estructurales viven en `EnterpriseSurface.css` bajo `.catalog-form-drawer` porque la hoja de Usuarios no se carga en catálogos. Verificado en Chrome headless a 1366×768 (crear y editar).
+
+## Shell global (cabecera y menú)
+
+Cabecera 72→56 px (selector y búsqueda 40→36 px, logo ≤40 px de alto) y menú convertido de píldora flotante con sombra a barra plana de ancho completo de 44 px, pegada a la cabecera. Cromo total 136→100 px: en 1366×768 devuelve 36 px al contenido, que importa en laptops viejas. Borde inferior de la cabecera y bordes/sombra del desplegable usan los tokens enterprise (`#b4c0d0`, hover `#eaf1fb`). Sin cambios de comportamiento: los menús siguen abriéndose por puntero y teclado como antes. Pendiente de decidir (no aplicado): abrir submenús solo con clic, como indica Carbon, para evitar aperturas accidentales. Verificado en Chrome headless a 1366 px (cerrado y con "Administración" abierto); móvil no tocado.

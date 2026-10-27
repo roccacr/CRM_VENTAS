@@ -294,7 +294,7 @@
     gap: 4px;
 }
 
-/* Misma esquina, pegada arriba a la derecha, para que no baje cuando la tarjeta crece. */
+/* Patrón original, con más contraste que la opacidad inicial de 0.1. */
 .formalization-banner__pattern {
     position: absolute;
     top: 0;
@@ -302,7 +302,7 @@
     width: 64px;
     height: 64px;
     overflow: hidden;
-    opacity: 0.1;
+    opacity: 0.35;
     pointer-events: none;
 }
 
@@ -2021,4 +2021,1718 @@
     .formalization-form textarea {
         transition: none;
     }
+}
+
+/* Home: same look as the Marketing summary (section titles with a description, calm spacing) */
+.formalization-home .formalization-home__subtitle {
+    margin: 4px 0 0;
+    color: var(--banner-muted);
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+.formalization-home .formalization-workspace {
+    gap: 20px;
+}
+
+.formalization-home .formalization-followup .formalization-surface__header,
+.formalization-home .formalization-activity__heading {
+    align-items: center;
+    padding: 18px;
+    border-bottom: 0;
+}
+
+.formalization-home .formalization-followup .formalization-surface__header h2,
+.formalization-home .formalization-activity__heading h2 {
+    margin: 0;
+    color: var(--banner-text);
+    font-size: 16px;
+    font-weight: 600;
+    line-height: 1.4;
+}
+
+.formalization-home .formalization-followup__heading p,
+.formalization-home .formalization-activity__heading p {
+    display: block;
+    margin: 4px 0 0;
+    color: var(--banner-muted);
+    font-size: 12px;
+    line-height: 1.5;
+}
+
+.formalization-home .formalization-followup .formalization-toolbar[data-home="true"] {
+    padding-top: 0;
+}
+
+.formalization-home .formalization-activity .formalization-grid__empty {
+    padding: 28px var(--space-4) 32px !important;
+    border-top: 1px solid var(--formalization-border);
+    background: var(--color-neutral-50);
+    color: var(--formalization-muted);
+    font-size: 12px;
+}
+
+.formalization-home .formalization-followup .formalization-surface__header {
+    flex-wrap: nowrap;
+    justify-content: space-between;
+}
+
+.formalization-home .formalization-followup__heading {
+    flex: 1 1 auto;
+}
+
+.formalization-home .formalization-followup .formalization-toolbar[data-home="true"] {
+    padding: 0 18px 16px;
+    border-bottom: 0;
+    background: var(--color-surface);
+}
+
+.formalization-home .formalization-activity .formalization-grid__empty {
+    margin: 0;
+}
+
+@media (max-width: 600px) {
+    .formalization-home .formalization-followup .formalization-surface__header {
+        flex-wrap: wrap;
+    }
+}
+
+/*
+ * Pendientes de seguimiento: enterprise surface shared with Usuarios and Catálogos.
+ * Structure comes from borders and distinct tints (header band, toolbar band, footer band), not from near-white fills.
+ * Secondary ink is #3b4a61 (7.35:1 or more on every tint used here). No zebra, no blur, no motion.
+ */
+.formalization-followup {
+    --ent-border: #b4c0d0;
+    --ent-divider: #d0d8e4;
+    --ent-tint: #f0f3f8;
+    --ent-tint-strong: #e3e9f1;
+    --ent-hover: #eaf1fb;
+    --ent-ink: #18222f;
+    --ent-ink-2: #3b4a61;
+    overflow: hidden;
+    border: 1px solid var(--ent-border);
+    border-radius: 8px;
+    background: #ffffff;
+    box-shadow: 0 1px 2px rgb(15 23 42 / 10%);
+}
+
+.formalization-followup .formalization-surface__header {
+    justify-content: space-between;
+    padding: 14px 20px 12px;
+    border-bottom: 1px solid var(--ent-divider);
+    background: #ffffff;
+}
+
+.formalization-followup .formalization-surface__header h2 {
+    color: var(--ent-ink);
+    font-size: 16px;
+    font-weight: 700;
+}
+
+.formalization-followup .formalization-surface__header p {
+    color: var(--ent-ink-2);
+    font-size: 12.5px;
+}
+
+.formalization-followup .formalization-total {
+    padding: 3px 10px;
+    border: 1px solid var(--ent-border);
+    background: var(--ent-tint-strong);
+    color: var(--ent-ink);
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.formalization-followup .formalization-toolbar[data-home="true"] {
+    padding: 12px 20px;
+    border-bottom: 1px solid var(--ent-border);
+    background: var(--ent-tint);
+}
+
+.formalization-followup .formalization-toolbar[data-home="true"] > label {
+    height: 36px;
+    border: 1px solid #7f8fa5;
+    border-radius: 6px;
+    background: #ffffff;
+    color: var(--ent-ink);
+}
+
+.formalization-followup .formalization-toolbar[data-home="true"] > label:focus-within {
+    border-color: #18222f;
+    outline: 2px solid #496180;
+    outline-offset: 1px;
+}
+
+.formalization-followup .formalization-field > span {
+    color: var(--ent-ink-2);
+    font-weight: 600;
+}
+
+.formalization-followup .formalization-field select,
+.formalization-followup .formalization-search input {
+    color: var(--ent-ink);
+}
+
+.formalization-followup .formalization-grid thead th {
+    height: 40px;
+    padding: 0 16px;
+    border-bottom: 1px solid var(--ent-border);
+    background: var(--ent-tint-strong);
+    color: var(--ent-ink);
+    font-size: 12.5px;
+    font-weight: 700;
+}
+
+.formalization-followup .formalization-grid tbody td {
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--ent-divider);
+    background: #ffffff;
+    vertical-align: middle;
+}
+
+.formalization-followup .formalization-grid__row:hover > td {
+    background: var(--ent-hover);
+}
+
+.formalization-followup .formalization-grid__primary {
+    color: var(--ent-ink);
+    font-size: 13.5px;
+    font-weight: 700;
+}
+
+.formalization-followup .formalization-grid__value,
+.formalization-followup .formalization-grid__next > span {
+    color: var(--ent-ink);
+}
+
+.formalization-followup .formalization-grid__meta,
+.formalization-followup .formalization-surface__footer {
+    color: var(--ent-ink-2);
+}
+
+.formalization-followup .formalization-grid__meta--quiet {
+    color: #596b83;
+}
+
+/* Stage as a status chip: one glance tells "has a stage" from "has none yet". */
+.formalization-state {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 2px 9px;
+    border: 1px solid #9fb3cf;
+    border-radius: 12px;
+    background: #e3ecf8;
+    color: #18222f;
+    font-size: 12.5px;
+    font-weight: 600;
+    line-height: 1.5;
+}
+
+.formalization-state::before {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #496180;
+    content: "";
+}
+
+.formalization-state--none {
+    border-color: #c3ccd9;
+    background: #e3e9f1;
+    color: #3b4a61;
+    font-weight: 500;
+}
+
+.formalization-state--none::before {
+    background: #8393a8;
+}
+
+.formalization-followup .formalization-surface__footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 8px 20px;
+    border-top: 1px solid var(--ent-border);
+    background: var(--ent-tint);
+    font-size: 12.5px;
+}
+
+.formalization-pager {
+    display: inline-flex;
+    gap: 6px;
+}
+
+.formalization-pager .ant-btn {
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    border-color: #7f8fa5;
+    border-radius: 6px;
+    color: #18222f;
+}
+
+.formalization-pager .ant-btn:disabled {
+    border-color: #d0d8e4;
+    color: #8393a8;
+}
+
+/* Loading and error states of the follow-up table. */
+.formalization-skeleton {
+    display: block;
+    width: 70%;
+    height: 10px;
+    border-radius: 4px;
+    background: #d0d8e4;
+}
+
+.formalization-skeleton--strong {
+    width: 45%;
+    height: 12px;
+    margin-bottom: 8px;
+    background: #b4c0d0;
+}
+
+.formalization-followup .formalization-grid__row:hover > td .formalization-skeleton {
+    background: #d0d8e4;
+}
+
+.formalization-followup__message {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: 36px 20px;
+    border-top: 1px solid #b4c0d0;
+    background: #f0f3f8;
+    color: #18222f;
+    font-size: 13px;
+}
+
+/* Order list: counters above the table and rows that open the read-only side panel. */
+/* The catalog root centres itself with auto margins, which would shrink it inside this grid. */
+.formalization-order-banners.catalog-items-page--projects {
+    width: 100%;
+    margin: 0 0 4px;
+}
+
+.formalization-grid__row--openable {
+    cursor: pointer;
+}
+
+.formalization-grid__row--openable:focus-visible {
+    outline: 2px solid #496180;
+    outline-offset: -2px;
+}
+
+.formalization-page-header__subtitle {
+    margin: 4px 0 0;
+    color: #3b4a61;
+    font-size: 13px;
+}
+
+/* Explicit display styles must not override the hidden workspace while a record is open. */
+.formalization-home > [hidden] {
+    display: none;
+}
+
+/* Order journey: enterprise stepper. Done = green check, current = filled ink with a ring, pending = dashed. Same ink/border tokens as Users and Catalogs. */
+.formalization-record-progress {
+    --stage-ink: #2f3a4b;
+    --stage-muted: #3c4f68;
+    --stage-line: #d2dae5;
+    --stage-done: #0a6b3d;
+    margin-top: 16px;
+    border: 1px solid #d2dae5;
+    border-radius: 8px;
+    overflow: hidden;
+}
+.formalization-record-progress .formalization-card__head {
+    align-items: center;
+    padding: 12px 20px;
+    border-bottom: 1px solid #d2dae5;
+    background: #ebeef3;
+}
+.formalization-record-progress .formalization-card__head h2 {
+    margin: 0;
+    color: var(--stage-ink);
+    font-size: 14px;
+    font-weight: 700;
+}
+.formalization-record-progress__summary {
+    margin: 2px 0 0;
+    color: var(--stage-muted);
+    font-size: 12px;
+}
+.formalization-record-progress__summary strong {
+    color: var(--stage-ink);
+    font-weight: 700;
+}
+.formalization-record-progress__percentage {
+    padding: 2px 10px;
+    border: 1px solid #d2dae5;
+    border-radius: 4px;
+    background: #fff;
+    color: var(--stage-ink);
+    font-size: 16px;
+    font-variant-numeric: tabular-nums;
+    font-weight: 700;
+    white-space: nowrap;
+}
+.formalization-record-progress__steps {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(120px, 1fr));
+    margin: 0;
+    padding: 20px 16px 16px;
+    background: #fff;
+    list-style: none;
+    overflow-x: auto;
+}
+.formalization-record-progress__steps li {
+    position: relative;
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 0 8px;
+    color: var(--stage-muted);
+    text-align: center;
+}
+.formalization-record-progress__steps li:not(:first-child)::before {
+    position: absolute;
+    top: 16px;
+    right: 50%;
+    left: -50%;
+    height: 3px;
+    border-radius: 2px;
+    background: var(--stage-line);
+    content: "";
+}
+.formalization-record-progress__marker {
+    z-index: 1;
+    display: grid;
+    width: 34px;
+    height: 34px;
+    margin-bottom: 6px;
+    place-items: center;
+    border: 2px solid #7d96b3;
+    border-radius: 50%;
+    background: #fff;
+    color: #496180;
+    font-size: 15px;
+}
+.formalization-record-progress__steps strong {
+    max-width: 160px;
+    min-height: 32px;
+    color: var(--stage-muted);
+    font-size: 12.5px;
+    font-weight: 600;
+    line-height: 1.3;
+}
+.formalization-record-progress__step-percent {
+    font-size: 11.5px;
+    font-variant-numeric: tabular-nums;
+}
+.formalization-record-progress__status {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    border: 1px solid #d2dae5;
+    border-radius: 4px;
+    background: #f5f7fa;
+    color: var(--stage-muted);
+    font-size: 10.5px;
+    font-weight: 600;
+}
+.formalization-record-progress__steps li[data-status="reached"] strong,
+.formalization-record-progress__steps li[data-status="reached"] .formalization-record-progress__step-percent {
+    color: var(--stage-done);
+}
+.formalization-record-progress__steps li[data-status="reached"]::before,
+.formalization-record-progress__steps li[data-status="current"]::before {
+    background: var(--stage-done);
+}
+.formalization-record-progress__steps li[data-status="reached"] .formalization-record-progress__marker {
+    border-color: var(--stage-done);
+    background: var(--stage-done);
+    color: #fff;
+}
+.formalization-record-progress__steps li[data-status="reached"] .formalization-record-progress__status {
+    border-color: #9cc9b3;
+    background: #e3f3ea;
+    color: var(--stage-done);
+}
+.formalization-record-progress__steps li[data-status="current"] strong,
+.formalization-record-progress__steps li[data-status="current"] .formalization-record-progress__step-percent {
+    color: var(--stage-ink);
+    font-weight: 700;
+}
+.formalization-record-progress__steps li[data-status="current"] .formalization-record-progress__marker {
+    border-color: var(--stage-ink);
+    background: var(--stage-ink);
+    color: #fff;
+    box-shadow: 0 0 0 4px #d2dae5;
+}
+.formalization-record-progress__steps li[data-status="current"] .formalization-record-progress__status {
+    border-color: var(--stage-ink);
+    background: var(--stage-ink);
+    color: #fff;
+}
+.formalization-record-progress__steps li[data-status="pending"] .formalization-record-progress__marker {
+    border-style: dashed;
+}
+@media (max-width: 640px) {
+    .formalization-record-progress .formalization-card__head {
+        padding: 10px 14px;
+    }
+    .formalization-record-progress__steps {
+        padding: 16px 10px 14px;
+    }
+}
+
+/* Same journey in the drawer: all seven stages fit without individual cards. */
+.formalization-record-progress--compact {
+    margin-top: 0;
+}
+.formalization-record-progress--compact .formalization-card__head {
+    padding: 10px 12px;
+}
+.formalization-record-progress--compact .formalization-card__head h2 {
+    font-size: 12.5px;
+}
+.formalization-record-progress--compact .formalization-record-progress__percentage {
+    font-size: 14px;
+}
+.formalization-record-progress--compact .formalization-record-progress__steps {
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    padding: 14px 6px 12px;
+}
+.formalization-record-progress--compact .formalization-record-progress__steps li {
+    gap: 4px;
+    padding: 0 2px;
+}
+.formalization-record-progress--compact .formalization-record-progress__steps li::before {
+    top: 12px;
+    height: 2px;
+}
+.formalization-record-progress--compact .formalization-record-progress__marker {
+    width: 26px;
+    height: 26px;
+    margin-bottom: 3px;
+    border-width: 1.5px;
+    font-size: 12px;
+}
+.formalization-record-progress--compact .formalization-record-progress__steps strong {
+    min-height: 39px;
+    font-size: 10px;
+    overflow-wrap: anywhere;
+}
+.formalization-record-progress--compact .formalization-record-progress__step-percent {
+    font-size: 10px;
+}
+.formalization-record-progress--compact .formalization-record-progress__status {
+    padding: 1px 3px;
+    font-size: 9px;
+}
+.formalization-record-progress--compact .formalization-record-progress__summary {
+    font-size: 11px;
+}
+
+/* Order page: the journey is a slim strip under the title (no per-step percent or status chips except the current one); the record data below. */
+.formalization-order > .formalization-record-progress:not(.formalization-record-progress--compact) .formalization-record-progress__steps {
+    padding: 14px 16px 12px;
+}
+.formalization-order > .formalization-record-progress:not(.formalization-record-progress--compact) .formalization-record-progress__marker {
+    width: 30px;
+    height: 30px;
+    margin-bottom: 2px;
+    font-size: 14px;
+}
+.formalization-order > .formalization-record-progress:not(.formalization-record-progress--compact) .formalization-record-progress__steps li:not(:first-child)::before {
+    top: 14px;
+}
+.formalization-order > .formalization-record-progress:not(.formalization-record-progress--compact) .formalization-record-progress__steps strong {
+    min-height: 0;
+}
+.formalization-order > .formalization-record-progress:not(.formalization-record-progress--compact) .formalization-record-progress__step-percent,
+.formalization-order > .formalization-record-progress:not(.formalization-record-progress--compact) li:not([aria-current]) .formalization-record-progress__status {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+}
+.formalization-record-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 2fr) minmax(280px, 1fr);
+    gap: 16px;
+    margin-top: 16px;
+    align-items: start;
+}
+.formalization-record-section {
+    border: 1px solid #d2dae5;
+    border-radius: 6px;
+    overflow: hidden;
+}
+.formalization-record-section > header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 16px;
+    border-bottom: 1px solid #d2dae5;
+    background: #ebeef3;
+}
+.formalization-record-section > header span {
+    display: grid;
+    width: 22px;
+    height: 22px;
+    place-items: center;
+    border-radius: 50%;
+    background: #2f3a4b;
+    color: #fff;
+    font-size: 12px;
+    font-weight: 700;
+}
+.formalization-record-section h2 {
+    margin: 0;
+    color: #2f3a4b;
+    font-size: 14px;
+    font-weight: 700;
+}
+.formalization-record-section dl {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    margin: 0;
+    padding: 4px 16px 8px;
+}
+.formalization-record-field {
+    padding: 10px 0;
+    border-bottom: 1px solid #d2dae5;
+}
+.formalization-record-field dt {
+    color: #3c4f68;
+    font-size: 12px;
+    font-weight: 600;
+}
+.formalization-record-field dd {
+    margin: 2px 0 0;
+    color: #2f3a4b;
+    font-size: 14px;
+    overflow-wrap: anywhere;
+}
+@media (max-width: 900px) {
+    .formalization-record-grid {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+
+/* Drawer: same slim strip as the order page. Labels stay legible; percent and non-current chips are announced to screen readers only. */
+.formalization-record-progress--compact .formalization-record-progress__step-percent,
+.formalization-record-progress--compact li:not([aria-current]) .formalization-record-progress__status {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+}
+.formalization-record-progress--compact .formalization-record-progress__steps {
+    padding: 14px 4px 12px;
+}
+.formalization-record-progress--compact .formalization-record-progress__steps strong {
+    min-height: 0;
+    font-size: 10.5px;
+    line-height: 1.25;
+}
+.formalization-record-progress--compact .formalization-record-progress__steps li[aria-current] .formalization-record-progress__status {
+    margin-top: 2px;
+    padding: 1px 5px;
+    font-size: 9.5px;
+    white-space: nowrap;
+}
+
+/*
+ * Sale file, measured with the Administration contract (Arquitectura/26): neutral scale 50-950, 16px padding and gaps, 8px radius,
+ * framed sections with a 40px header band, label 12/500 in 600, value 13/500 in 900, headings 14/600.
+ */
+.record-page {
+    --n50: #f5f7fa;
+    --n100: #ebeef3;
+    --n200: #d2dae5;
+    --n500: #5d799a;
+    --n600: #496180;
+    --n700: #3c4f68;
+    --n800: #354357;
+    --n900: #2f3a4b;
+    --n950: #0e1116;
+    display: grid;
+    gap: 16px;
+    margin-top: 16px;
+}
+
+.record-sr {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+}
+
+/* Key facts of the order: one framed band, five columns, read before any section. */
+.record-highlights {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    margin: 0;
+    border: 1px solid var(--n200);
+    border-radius: 8px;
+    background: #ffffff;
+}
+
+.record-highlights > div {
+    min-width: 0;
+    padding: 12px 16px;
+    border-right: 1px solid var(--n200);
+}
+
+.record-highlights > div:last-child {
+    border-right: 0;
+}
+
+.record-highlights dt {
+    color: var(--n600);
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 1.4;
+}
+
+.record-highlights dd {
+    margin: 2px 0 0;
+    color: var(--n900);
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 1.4;
+    overflow-wrap: anywhere;
+}
+
+.record-highlights dd[data-kind="money"] {
+    font-variant-numeric: tabular-nums;
+}
+
+/* Section bar: jump links under the page top, not a tab strip. Sticks while the facts scroll. */
+.record-notice {
+    margin: 0;
+    padding: 10px 16px;
+    border: 1px solid var(--n200);
+    border-left: 4px solid var(--n500);
+    border-radius: 8px;
+    background: #ffffff;
+    color: var(--n700);
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+.record-notice strong {
+    color: var(--n900);
+}
+
+.record-bar {
+    position: sticky;
+    top: 0;
+    z-index: 3;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-height: 40px;
+    padding: 4px 4px;
+    border-bottom: 1px solid var(--n200);
+    background: var(--n50);
+}
+
+.record-bar__label {
+    color: var(--n600);
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.record-bar ul {
+    display: flex;
+    flex: 1;
+    gap: 2px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    overflow-x: auto;
+    overflow-y: hidden;
+}
+
+.record-bar a {
+    display: block;
+    padding: 6px 12px;
+    border-radius: 6px;
+    color: var(--n700);
+    font-size: 13px;
+    font-weight: 500;
+    white-space: nowrap;
+    text-decoration: none;
+}
+
+.record-bar a:hover {
+    background: var(--n100);
+    color: var(--n950);
+}
+
+.record-bar a[aria-current="location"] {
+    background: var(--n100);
+    color: var(--n950);
+    font-weight: 700;
+}
+
+.record-bar a:focus-visible {
+    outline: 2px solid var(--n600);
+    outline-offset: -2px;
+}
+
+.record-bar > button {
+    flex: none;
+    height: 28px;
+    padding: 0 12px;
+    border: 1px solid var(--n500);
+    border-radius: 6px;
+    background: #ffffff;
+    color: var(--n700);
+    font: inherit;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.record-bar > button:hover {
+    background: var(--n100);
+    color: var(--n950);
+}
+
+/* Empty fields of a section: one closed line. */
+.record-empty-fields {
+    border-top: 1px solid var(--n200);
+    padding-top: 10px;
+    color: var(--n600);
+    font-size: 12px;
+}
+
+.record-empty-fields summary {
+    cursor: pointer;
+    font-weight: 600;
+}
+
+.record-empty-fields summary:hover {
+    color: var(--n950);
+}
+
+.record-empty-fields ul {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 4px 24px;
+    margin: 8px 0 0;
+    padding: 0;
+    list-style: none;
+}
+
+.record-empty-fields li span {
+    margin-right: 6px;
+    color: var(--n500);
+}
+
+.record-empty-fields li span::after {
+    content: " ›";
+}
+
+/* Read-only answers: the name on the left, Sí / No on the right, no boxes that look editable. */
+.record-rail__tag {
+    margin-left: 6px;
+    padding: 0 8px;
+    border: 1px solid var(--n200);
+    border-radius: 10px;
+    background: #ffffff;
+    color: var(--n600);
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 18px;
+    vertical-align: 1px;
+}
+
+.record-rail__checks h4 {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+}
+
+.record-rail__checks h4 span {
+    color: var(--n600);
+    font-weight: 500;
+    font-variant-numeric: tabular-nums;
+}
+
+.record-rail__checks li {
+    justify-content: space-between;
+}
+
+.record-yn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    color: var(--n600);
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.record-rail__checks li[data-checked="true"] .record-yn {
+    color: var(--n950);
+    font-weight: 700;
+}
+
+.record-highlights dd[data-empty="true"] {
+    color: var(--n600);
+    font-weight: 400;
+}
+
+.record-bar__tools {
+    display: flex;
+    flex: none;
+    align-items: center;
+    gap: 12px;
+}
+
+.record-bar__tools button {
+    height: 28px;
+    padding: 0 12px;
+    border: 1px solid var(--n500);
+    border-radius: 6px;
+    background: #ffffff;
+    color: var(--n700);
+    font: inherit;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.record-bar__tools button:hover {
+    background: var(--n100);
+    color: var(--n950);
+}
+
+.record-bar__sample {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 4px 2px 10px;
+    border: 1px solid var(--n200);
+    border-radius: 999px;
+    background: #ffffff;
+    color: var(--n600);
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.record-chapter {
+    scroll-margin-top: 56px;
+}
+
+@media (max-width: 1100px) {
+    .record-highlights {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .record-highlights > div {
+        border-bottom: 1px solid var(--n200);
+    }
+}
+
+.record-workspace {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 320px;
+    gap: 16px;
+    align-items: start;
+}
+
+.record-main {
+    display: grid;
+    gap: 16px;
+    min-width: 0;
+    container-name: record-facts;
+    container-type: inline-size;
+}
+
+/* A chapter is one framed section: 40px band with the title, then its groups. */
+.record-chapter {
+    border: 1px solid var(--n200);
+    border-radius: 8px;
+    background: #ffffff;
+    overflow: hidden;
+}
+
+.record-chapter > h2 {
+    margin: 0;
+}
+
+.record-chapter > h2 button {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    min-height: 40px;
+    padding: 0 16px;
+    border: 0;
+    background: var(--n100);
+    color: var(--n900);
+    font: inherit;
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 1.4;
+    text-align: left;
+    cursor: pointer;
+}
+
+.record-chapter[data-open="true"] > h2 button {
+    border-bottom: 1px solid var(--n200);
+}
+
+.record-chapter > h2 button:hover {
+    background: var(--n200);
+}
+
+.record-chapter > h2 button:focus-visible {
+    outline: 2px solid var(--n600);
+    outline-offset: -2px;
+}
+
+.record-chapter > h2 .anticon {
+    color: var(--n600);
+    font-size: 11px;
+    transition: transform 120ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.record-chapter[data-open="false"] > h2 .anticon {
+    transform: rotate(-90deg);
+}
+
+.record-chapter__body {
+    display: grid;
+    gap: 18px;
+    padding: 16px;
+}
+
+.record-empty {
+    margin: 0;
+    color: var(--n600);
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+.record-group h3 {
+    margin: 0 0 10px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--n200);
+    color: var(--n800);
+    font-size: 14px;
+    font-weight: 650;
+    line-height: 20px;
+}
+
+.record-group dl {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 14px 24px;
+    margin: 0;
+}
+
+.record-field {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+    min-width: 0;
+}
+
+.record-field--wide {
+    grid-column: 1 / -1;
+    max-width: 48rem;
+}
+
+.record-group__empty {
+    margin: 10px 0 0;
+    color: var(--n600);
+    font-size: 12px;
+    line-height: 1.5;
+}
+
+.record-group__empty span {
+    font-weight: 600;
+}
+
+.record-field dt {
+    color: var(--n600);
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 1.4;
+}
+
+.record-field dd {
+    margin: 0;
+    color: var(--n900);
+    font-size: 13px;
+    font-weight: 500;
+    line-height: 1.5;
+    text-wrap: pretty;
+    overflow-wrap: anywhere;
+}
+
+.record-field[data-empty="true"] dd {
+    color: var(--n600);
+    font-weight: 400;
+}
+
+.record-field dd[data-kind="money"] {
+    font-variant-numeric: tabular-nums;
+}
+
+/* Right margin: two framed cards with the same band, kept in view while the facts scroll. */
+.record-rail {
+    position: sticky;
+    top: 12px;
+    display: grid;
+    gap: 16px;
+    max-height: calc(100dvh - 96px);
+    overflow: auto;
+    scrollbar-color: var(--n200) transparent;
+}
+
+.record-rail__money,
+.record-rail__checks {
+    border: 1px solid var(--n200);
+    border-radius: 8px;
+    background: #ffffff;
+    overflow: hidden;
+}
+
+.record-rail h3 {
+    min-height: 40px;
+    margin: 0;
+    padding: 0 16px;
+    border-bottom: 1px solid var(--n200);
+    background: var(--n100);
+    color: var(--n900);
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 40px;
+}
+
+.record-rail__money dl {
+    margin: 0;
+    padding: 8px 16px 12px;
+}
+
+.record-rail__money dl > div {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 6px 0;
+}
+
+.record-rail__money dt {
+    color: var(--n600);
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.record-rail__money dd {
+    margin: 0;
+    color: var(--n900);
+    font-size: 13px;
+    font-variant-numeric: tabular-nums;
+    font-weight: 500;
+    text-align: right;
+}
+
+.record-rail__money .is-total {
+    margin-top: 4px;
+    padding-top: 10px;
+    border-top: 1px solid var(--n200);
+}
+
+.record-rail__money .is-total dt {
+    color: var(--n900);
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.record-rail__money .is-total dd {
+    font-size: 20px;
+    font-weight: 600;
+}
+
+.record-rail__checks > p {
+    margin: 0;
+    padding: 8px 16px 0;
+    color: var(--n600);
+    font-size: 12px;
+}
+
+.record-rail__checks > div {
+    padding: 8px 16px 4px;
+}
+
+.record-rail__checks > div:last-child {
+    padding-bottom: 12px;
+}
+
+.record-rail__checks h4 {
+    margin: 0 0 2px;
+    color: var(--n600);
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.record-rail__checks ul {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.record-rail__checks li {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 0;
+    border-bottom: 1px solid var(--n100);
+    color: var(--n900);
+    font-size: 13px;
+    line-height: 1.4;
+}
+
+.record-rail__checks li:last-child {
+    border-bottom: 0;
+}
+
+.record-rail__checks li[data-checked="false"] {
+    color: var(--n600);
+}
+
+.record-tick {
+    display: grid;
+    flex: none;
+    width: 16px;
+    height: 16px;
+    place-items: center;
+    border: 1.5px solid var(--n500);
+    border-radius: 4px;
+    color: transparent;
+    font-size: 10px;
+}
+
+.record-tick[data-checked="true"] {
+    border-color: var(--n950);
+    background: var(--n950);
+    color: #ffffff;
+}
+
+@media (max-width: 1100px) {
+    .record-workspace {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .record-rail {
+        position: static;
+        max-height: none;
+        order: -1;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .record-chapter > h2 .anticon {
+        transition: none;
+    }
+}
+
+/* The part you just went to is tinted a little greyer for a moment, then settles back. */
+.record-chapter {
+    transition:
+        background-color 500ms ease,
+        border-color 500ms ease,
+        box-shadow 500ms ease;
+}
+
+.record-chapter > h2 button {
+    transition: background-color 500ms ease;
+}
+
+.record-chapter[data-focus="true"] {
+    border-color: var(--n500);
+    background: var(--n50);
+    box-shadow: 0 0 0 3px rgb(93 121 154 / 18%);
+}
+
+.record-chapter[data-focus="true"] > h2 button {
+    background: var(--n200);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .record-chapter,
+    .record-chapter > h2 button {
+        transition: none;
+    }
+}
+
+/* Polish: aligned columns, a rail that clears the sticky bar, the part in view marked in the bar, quiet empty groups, links in the page's own ink. */
+@container record-facts (max-width: 860px) {
+    .record-group dl {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+}
+
+@container record-facts (max-width: 620px) {
+    .record-group dl {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@container record-facts (max-width: 400px) {
+    .record-group dl {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+
+.record-rail {
+    top: 56px;
+    max-height: calc(100dvh - 130px);
+}
+
+.record-bar a {
+    position: relative;
+}
+
+.record-bar a[aria-current="true"] {
+    color: var(--n950);
+}
+
+.record-bar a[aria-current="true"]::after {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    height: 3px;
+    background: var(--n950);
+    content: "";
+}
+
+.record-bar__sample button {
+    display: inline-grid;
+    width: 20px;
+    height: 20px;
+    padding: 0;
+    place-items: center;
+    border: 0;
+    border-radius: 50%;
+    background: none;
+    color: var(--n600);
+    font-size: 13px;
+    cursor: help;
+}
+
+.record-bar__sample button:hover {
+    background: var(--n100);
+    color: var(--n950);
+}
+
+.record-bar__sample button:focus-visible {
+    outline: 2px solid var(--n600);
+    outline-offset: 1px;
+}
+
+.record-group--bare {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 4px 16px;
+}
+
+.record-group--bare h3 {
+    margin: 0;
+    padding: 0;
+    border-bottom: 0;
+}
+
+.record-group--bare .record-group__empty {
+    margin: 0;
+}
+
+.formalization-breadcrumb a,
+.formalization-breadcrumb a:visited {
+    color: #3c4f68;
+}
+
+.formalization-breadcrumb a:hover {
+    color: #0e1116;
+}
+
+/* The rail's own scroll is a thin bar, not arrows. */
+.record-rail {
+    scrollbar-width: thin;
+    scrollbar-gutter: stable;
+}
+
+.record-rail::-webkit-scrollbar {
+    width: 8px;
+}
+
+.record-rail::-webkit-scrollbar-button {
+    display: none;
+}
+
+.record-rail::-webkit-scrollbar-thumb {
+    border-radius: 4px;
+    background: #d2dae5;
+}
+
+.record-bar a:focus:not(:focus-visible) {
+    outline: none;
+}
+
+/* A position in seven steps, not a percentage: no figure per step, and no chip repeating "Etapa actual" (the marker and the subtitle say it). */
+.formalization-record-progress__step-percent,
+.formalization-record-progress__status {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+}
+
+/* Status groups: each question in its own framed block with a header band, boxes for marked / not marked, nothing clickable. */
+.record-rail__checks > p,
+.record-rail__checks > div:not(.record-status) {
+    display: none;
+}
+
+.record-rail__readonly {
+    margin-left: auto;
+    color: var(--n600);
+    font-size: 11px;
+    font-weight: 500;
+}
+
+.record-rail__checks h3 {
+    display: flex;
+    align-items: center;
+}
+
+.record-status {
+    display: grid;
+    gap: 12px;
+    padding: 12px;
+}
+
+.record-status__group {
+    border: 1px solid var(--n200);
+    border-radius: 6px;
+    background: #ffffff;
+    overflow: hidden;
+}
+
+.record-status__group > h4 {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin: 0;
+    padding: 7px 12px;
+    border-bottom: 1px solid var(--n200);
+    background: var(--n50);
+    color: var(--n800);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+}
+
+.record-status__group > h4 span {
+    color: var(--n600);
+    font-weight: 500;
+    font-variant-numeric: tabular-nums;
+}
+
+.record-status__group ul {
+    margin: 0;
+    padding: 4px 12px;
+    list-style: none;
+}
+
+.record-status__group li {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    justify-content: flex-start;
+    padding: 6px 0;
+    border-bottom: 1px solid var(--n100);
+    color: var(--n600);
+    font-size: 13px;
+    line-height: 1.4;
+    cursor: default;
+}
+
+.record-status__group li:last-child {
+    border-bottom: 0;
+}
+
+.record-status__group li[data-checked="true"] {
+    color: var(--n900);
+    font-weight: 600;
+}
+
+/* The rail scrolls with the page (see useStickyRail): no inner scrollbar, and the top follows the column's own height. */
+.record-rail {
+    top: var(--rail-top, 56px);
+    max-height: none;
+    overflow: visible;
+}
+
+.formalization-record-loading {
+    margin-top: 16px;
+    padding: 24px;
+}
+.formalization-record-loading > p {
+    margin: 0 0 16px;
+    color: #53657b;
+    font-size: 13px;
+}
+
+/* Order record loading: the finished page's own frame in quiet bars, one soft sweep, no spinner. */
+.record-loading__caption {
+    margin: 0;
+    color: var(--n600);
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.record-skel {
+    display: block;
+    height: 10px;
+    border-radius: 4px;
+    background: linear-gradient(90deg, var(--n200) 25%, var(--n100) 50%, var(--n200) 75%);
+    background-size: 300% 100%;
+    animation: record-skel-sweep 1.6s ease-in-out infinite;
+}
+
+.record-skel--tall {
+    height: 14px;
+}
+
+.record-highlights .record-skel + .record-skel,
+.record-loading__grid .record-skel + .record-skel {
+    margin-top: 8px;
+}
+
+.record-loading .record-bar {
+    position: static;
+    min-height: 44px;
+}
+
+.record-loading__band {
+    display: flex;
+    align-items: center;
+    min-height: 40px;
+    margin: 0;
+    padding: 0 16px;
+    border-bottom: 1px solid var(--n200);
+    background: var(--n100);
+}
+
+.record-loading__band .record-skel {
+    background: #b9c5d6;
+    animation: none;
+}
+
+.record-loading__grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 14px 24px;
+    padding: 16px;
+}
+
+.record-loading .record-rail {
+    position: static;
+}
+
+.record-loading .record-rail section {
+    display: grid;
+    gap: 12px;
+    padding: 16px;
+    border: 1px solid var(--n200);
+    border-radius: 8px;
+    background: #ffffff;
+}
+
+.record-loading__line {
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+}
+
+@keyframes record-skel-sweep {
+    from {
+        background-position: 100% 0;
+    }
+    to {
+        background-position: 0 0;
+    }
+}
+
+@media (max-width: 1100px) {
+    .record-loading__grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .record-skel {
+        animation: none;
+    }
+}
+
+/* A single record loading boundary also replaces its identity and current-stage header. */
+.record-loading__header {
+    margin: 0;
+}
+.record-loading__identity {
+    display: grid;
+    gap: 12px;
+    width: min(320px, 75%);
+    padding: 8px 0;
+}
+.record-loading__identity .record-skel--tall {
+    height: 22px;
+}
+.record-loading__progress {
+    margin: 0;
+}
+.record-loading__stages {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    padding: 24px 16px;
+    gap: 16px;
+}
+.record-loading__stages > div {
+    display: flex;
+    align-items: center;
+    flex-direction: column;
+    gap: 12px;
+}
+.record-loading__circle {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+}
+@media (max-width: 640px) {
+    .record-loading__stages {
+        gap: 8px;
+        padding: 16px 8px;
+    }
+    .record-loading__circle {
+        width: 24px;
+        height: 24px;
+    }
+}
+
+/* Loading status: said first, with a moving line, so a slow load never looks like an empty page. */
+.record-loading__status {
+    position: relative;
+    overflow: hidden;
+    border: 1px solid var(--n200);
+    border-radius: 8px;
+    background: #ffffff;
+}
+.record-loading__status p {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 4px 10px;
+    margin: 0;
+    padding: 12px 16px 14px;
+    color: var(--n600);
+    font-size: 12px;
+}
+.record-loading__status strong {
+    color: var(--n900);
+    font-size: 13px;
+    font-weight: 600;
+}
+.record-loading__status .anticon {
+    color: var(--n700);
+    font-size: 14px;
+    align-self: center;
+}
+.record-loading__track {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    height: 3px;
+    background: var(--n100);
+}
+.record-loading__track::after {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 30%;
+    border-radius: 2px;
+    background: var(--n700);
+    content: "";
+    animation: record-track-run 1.4s ease-in-out infinite;
+}
+@keyframes record-track-run {
+    from {
+        left: -30%;
+    }
+    to {
+        left: 100%;
+    }
+}
+@media (prefers-reduced-motion: reduce) {
+    .record-loading__track::after {
+        left: 0;
+        width: 100%;
+        opacity: 0.35;
+        animation: none;
+    }
+}
+
+.record-client-link {
+    appearance: none;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: #264f80;
+    font: inherit;
+    cursor: pointer;
+    text-align: start;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+}
+.record-client-link:hover {
+    color: #142b45;
+}
+.record-client-link:focus-visible {
+    outline: 2px solid #426994;
+    outline-offset: 4px;
+    border-radius: 2px;
 }

@@ -2,8 +2,11 @@ import type { ColumnType, Generated, Insertable, Selectable, Updateable } from "
 
 import type { AuditRecordEventTable, AuditRecordTable } from "../modules/crm/audit/record-audit.tables.js";
 import type { CrmBrokerExternalReferenceTable, CrmBrokerTable } from "../modules/crm/brokers/brokers.tables.js";
+import type { ConfCalendarEventTypeTable, CrmCalendarAppointmentTable, CrmCalendarEventLinkTable, CrmCalendarEventTable, CrmCalendarNotificationTable, CrmCalendarParticipantTable, IntCalendarConnectionTable, IntCalendarEventSyncTable } from "../modules/crm/calendar/calendar.tables.js";
 import type { CrmCampaignExternalReferenceTable, CrmCampaignTable } from "../modules/crm/campaigns/campaigns.tables.js";
 import type { CrmClassExternalReferenceTable, CrmClassTable } from "../modules/crm/classes/classes.tables.js";
+import type { ConfActionReasonActionTable, ConfLeadActionTypeTable, CrmLeadActivityTable, IntLeadHistoryEntryTable, IntLeadHistoryLinkTable } from "../modules/crm/leads/lead-history.tables.js";
+import type { AuditLeadStatusEventTable, ConfActionReasonStatusTable, ConfActionReasonTable, ConfLeadInterestTable, ConfLeadSourceTable, ConfLeadStatusTable, CrmContactTable, CrmLeadExternalReferenceTable, CrmLeadTable } from "../modules/crm/leads/leads.tables.js";
 import type { CrmLocationExternalReferenceTable, CrmLocationTable } from "../modules/crm/locations/locations.tables.js";
 import type { AuditSalesOrderApprovalEventTable, AuditSalesOrderChangeTable, AuditSalesOrderStateEventTable, ConfSalesOrderApprovalTypeTable, ConfSalesOrderStateTable, CrmSalesOrderApprovalTable, CrmSalesOrderExternalReferenceTable, CrmSalesOrderTable, IntSalesOrderSourceSnapshotTable } from "../modules/crm/sales/sales-orders/sales-orders.tables.js";
 import type { CrmSubsidiaryExternalReferenceTable, CrmSubsidiaryTable } from "../modules/crm/subsidiaries/subsidiaries.tables.js";
@@ -362,6 +365,28 @@ export interface AuditSecurityEventTable {
 }
 
 export interface CrmDatabase {
+    conf_calendar_event_type: ConfCalendarEventTypeTable;
+    crm_calendar_event: CrmCalendarEventTable;
+    crm_calendar_participant: CrmCalendarParticipantTable;
+    crm_calendar_event_link: CrmCalendarEventLinkTable;
+    crm_calendar_appointment: CrmCalendarAppointmentTable;
+    crm_calendar_notification: CrmCalendarNotificationTable;
+    int_calendar_connection: IntCalendarConnectionTable;
+    int_calendar_event_sync: IntCalendarEventSyncTable;
+    conf_lead_action_type: ConfLeadActionTypeTable;
+    conf_action_reason_action: ConfActionReasonActionTable;
+    int_lead_history_entry: IntLeadHistoryEntryTable;
+    int_lead_history_link: IntLeadHistoryLinkTable;
+    crm_lead_activity: CrmLeadActivityTable;
+    conf_lead_status: ConfLeadStatusTable;
+    conf_action_reason: ConfActionReasonTable;
+    conf_action_reason_status: ConfActionReasonStatusTable;
+    conf_lead_source: ConfLeadSourceTable;
+    conf_lead_interest: ConfLeadInterestTable;
+    crm_contact: CrmContactTable;
+    crm_lead: CrmLeadTable;
+    crm_lead_external_reference: CrmLeadExternalReferenceTable;
+    audit_lead_status_event: AuditLeadStatusEventTable;
     audit_record: AuditRecordTable;
     audit_record_event: AuditRecordEventTable;
     conf_sales_order_state: ConfSalesOrderStateTable;

@@ -47,3 +47,23 @@ export class ContractTransitionController {
         return { ipAddress: request.ip, ...(typeof userAgent === "string" ? { userAgent: userAgent.slice(0, 500) } : {}) };
     }
 }
+
+/** Selected CRM stage changes share the existing transactional writer and global guards. */
+@ApiTags("Formalization orders")
+@Controller("formalization/orders")
+export class FormalizationStageController {
+    /** Reuses authenticated stage commands without a second persistence path. */
+    constructor(@Inject(ContractTransitionService) private readonly service: ContractTransitionService) {}
+
+    /** Never sends communications or changes ERP approval flags. */
+    @Post("stage")
+    @HttpCode(200)
+    @Header("Cache-Control", "no-store")
+    @RouteSecurity("permission")
+    @RequirePermission({ kind: "all", codes: ["formalizacion.orders.stage.update"] })
+    @ApiOperation({ summary: "Change the selected Formalization stage" })
+    setStage(@Req() request: CookieRequest, @Body(bodyValidation) body: ContractTransitionDto) {
+        const userAgent = request.headers["user-agent"];
+        return this.service.transition(request.cookies[SESSION_COOKIE_NAME], "set", body, { ipAddress: request.ip, ...(typeof userAgent === "string" ? { userAgent: userAgent.slice(0, 500) } : {}) });
+    }
+}

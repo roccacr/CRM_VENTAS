@@ -809,11 +809,10 @@
 }
 
 .administration-users-datatable-wrap .administration-users-scope__area {
-    overflow: hidden;
+    overflow-wrap: anywhere;
     color: #667085;
     font-size: 12.5px;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    white-space: normal;
 }
 
 /* Acciones de fila: icono neutro, más visible al pasar por la fila. */

@@ -375,6 +375,12 @@
     border-top: 1px solid #d2dae5;
 }
 
+.marketing-area__empty {
+    display: grid;
+    min-height: 300px;
+    place-items: center;
+}
+
 .marketing-preview-empty {
     padding: 32px 18px !important;
     text-align: center !important;
@@ -507,12 +513,12 @@
     border-radius: 2px;
 }
 
-.marketing-legend__leads,
-.marketing-legend__compared,
-.marketing-chart__bars i {
-    flex: 1 1 0;
-    min-height: 2px;
-    border-radius: 3px 3px 0 0;
+.marketing-legend__leads {
+    background: #496180;
+}
+
+.marketing-legend__compared {
+    background: #98a4b3;
 }
 
 .marketing-low-sample {
@@ -877,10 +883,10 @@
 
 .marketing-banner__trend {
     position: absolute;
-    right: 14px;
-    bottom: 12px;
-    width: 42%;
-    height: 38px;
+    right: 16px;
+    top: 40px;
+    width: 40%;
+    height: 36px;
     color: var(--marketing-accent);
     pointer-events: none;
 }
@@ -1059,6 +1065,22 @@
     font-variant-numeric: tabular-nums;
 }
 
+.marketing-project__comparison {
+    display: grid;
+    gap: 4px;
+    font-size: 11px;
+    line-height: 1.5;
+    color: #596b83;
+}
+
+.marketing-project__comparison p {
+    margin: 0;
+}
+
+.marketing-project__comparison .marketing-delta {
+    white-space: normal;
+}
+
 .marketing-project__spark {
     height: 56px;
     color: #496180;
@@ -1189,4 +1211,152 @@
     .marketing-sellers button .marketing-delta {
         grid-column: 1 / -1;
     }
+}
+
+/* User-owned local photos are matched by native public identity, never by display name. */
+.marketing-welcome__photo {
+    width: auto;
+    height: 112px;
+    justify-self: end;
+    object-fit: contain;
+}
+@media (max-width: 767px) {
+    .marketing-welcome__photo {
+        height: 88px;
+    }
+}
+
+/* Remains visible even when a seller is selected from the bottom of the page. */
+.marketing-home__preload {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    z-index: 1000;
+    transform: translate(-50%, -50%);
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    max-width: calc(100vw - 32px);
+    padding: 20px 28px;
+    border: 1px solid var(--shell-border);
+    border-radius: 10px;
+    background: #fff;
+    box-shadow: 0 8px 32px rgb(22 35 55 / 18%);
+    color: var(--shell-text);
+    font-size: 14px;
+    pointer-events: none;
+}
+
+.marketing-bar__seller .ant-select {
+    width: 100%;
+    min-width: 0;
+}
+
+.marketing-bar__seller .ant-select-selection-overflow {
+    flex-wrap: wrap;
+}
+
+/* Keep selected sellers together; excess photos scroll instead of increasing the banner height. */
+.marketing-preview-banners .marketing-welcome--multiple {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 50%);
+}
+
+.marketing-welcome__people {
+    display: flex;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    justify-self: end;
+    gap: 12px;
+    width: max-content;
+    min-width: 0;
+    max-width: 100%;
+    overflow-x: auto;
+}
+
+.marketing-welcome__person {
+    flex: 0 0 104px;
+    display: grid;
+    justify-items: center;
+    align-content: start;
+    gap: 6px;
+    width: 104px;
+    max-width: 100%;
+    margin: 0;
+}
+
+.marketing-welcome__person .marketing-welcome__art {
+    width: 104px;
+    height: 104px;
+    object-fit: contain;
+}
+
+.marketing-welcome__person figcaption {
+    color: var(--shell-text-secondary);
+    font-size: 11px;
+    line-height: 1.4;
+    text-align: center;
+    overflow-wrap: anywhere;
+}
+
+@media (max-width: 767px) {
+    .marketing-preview-banners .marketing-welcome--multiple {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .marketing-welcome--multiple .marketing-welcome__people {
+        justify-self: start;
+    }
+
+    .marketing-welcome__person {
+        flex-basis: 80px;
+        width: 80px;
+    }
+
+    .marketing-welcome__person .marketing-welcome__art {
+        width: 80px;
+        height: 80px;
+    }
+}
+
+/* Definition on demand: the information icon sits beside a title and opens its explanation. */
+.marketing-banner h2,
+.marketing-card__heading h2,
+.marketing-alerts h2 {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.marketing-info {
+    display: inline-grid;
+    width: 20px;
+    height: 20px;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    place-items: center;
+    background: transparent;
+    color: #496180;
+    cursor: help;
+    font-size: 14px;
+}
+
+.marketing-info:hover {
+    background: #e3e9f1;
+    color: #18222f;
+}
+
+.marketing-info:focus-visible {
+    outline: 2px solid #496180;
+    outline-offset: 1px;
+}
+
+.marketing-project__before {
+    color: #496180;
+    font-size: 11px;
+}
+
+.marketing-delta__context {
+    margin-left: 4px;
+    color: #3b4a61;
 }

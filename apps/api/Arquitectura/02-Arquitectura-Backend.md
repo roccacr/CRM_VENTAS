@@ -1,16 +1,29 @@
 # 02 - Arquitectura Backend
 
+## Composicion vigente - 2026-10-27
+
+Ademas de identidad/catalogos/auditoria, `AppModule` registra los resumenes y
+seguimiento real de Formalizacion, `ContractTransitionModule` para comandos
+send/revert/set-stage, `MarketingHomeModule` con dos controladores de lectura e
+`NetsuiteModule` para inspeccion GET. El selector de etapas reutiliza
+`ContractTransitionService` y su escritor transaccional, no un segundo motor.
+Los lectores de timing y NetSuite comparten resolucion de autoridad nativa y
+alcance; la conexion externa se realiza despues de cerrar el snapshot SQL.
+El arbol siguiente sigue siendo blueprint donde incluye CRUD de Leads,
+oportunidades, agenda HTTP, notas, comunicaciones o sincronizaciones futuras.
+Inventario verificable en [22](22-Mapa-de-Implementacion-API.md).
+
 ## Estado de fase
 
-Esta arquitectura combina runtime implementado y estructura futura. Estado contrastado documentalmente al 2026-10-22: ver [36 - Registro](36-Registro-Entrega-Administracion.md).
+Esta arquitectura combina runtime implementado y estructura futura. Inventario base contrastado al 2026-10-23, actualizado con ampliaciones al 2026-10-27: ver [49 - Estado actual](49-Estado-Actual-y-Cierre-Documental.md); [36 - Registro](36-Registro-Entrega-Administracion.md) conserva la evidencia de entrega fechada.
 
 Estado actual:
 
 ```txt
-apps/api implementa identidad/Administracion, catalogos, consulta de expedientes y contador de aprobaciones; Leads y mutaciones HTTP de ordenes siguen pendientes
+apps/api implementa identidad/Administracion, catalogos, expedientes, resumenes de Formalizacion y Mercadeo, y timeline nativo de auditoria; CRUD HTTP de Leads sigue pendiente; seguimiento y comandos HTTP acotados de Formalizacion ya estan registrados
 ```
 
-El primer modulo real aprobado es identidad. Los modulos comerciales de leads, oportunidades, estimaciones, ordenes, calendarios, notas e integraciones operativas vienen despues.
+Identidad fue el primer modulo real aprobado. Oportunidades, estimaciones, CRUD de Leads, agenda, notas y sincronizaciones operativas siguen futuros. Los esquemas de Leads/calendario, persistencia interna de ordenes y lectores agregados son ampliaciones limitadas, no el flujo completo.
 
 Las carpetas de integracion pueden existir como frontera fisica, pero no autorizan clientes, adapters, jobs, DTOs operativos ni sincronizaciones hasta que la ley `00-Producto-CRM-TINK-y-P0.md` apruebe ese corte.
 
@@ -89,7 +102,7 @@ Separacion obligatoria:
 | `src/integrations/netsuite` | Enviar/recibir payloads NetSuite y mapear errores/respuestas. | Si cambia el ERP, se desconecta aqui. |
 | `src/integrations/odoo` | Preparar convivencia/migracion futura hacia Odoo. | Puede activarse sin renombrar core ni frontend. |
 | `src/integrations/kapso` | Mensajeria, WhatsApp, templates y webhooks Kapso. | No puede ser llamado directo por React. |
-| `src/integrations/microsoft365` | Entra ID, Graph y calendario externo. | No decide reglas CRM; solo adapta proveedor. |
+| `src/integrations/microsoft365` | Entra ID y foto Graph; calendario externo futuro. | No decide reglas CRM ni acredita sincronizacion Outlook. |
 | `src/modules/crm/identity/ports` | Interfaces de proveedor que identidad conoce. | No contiene implementaciones concretas. |
 
 Nueva regla para cualquier proveedor futuro:
@@ -127,7 +140,7 @@ Contienen flujo de aplicacion:
 
 Regla de carpeta:
 
-- leads vive en `src/modules/crm/sales/leads`;
+- el blueprint ubica el futuro CRUD de leads en `src/modules/crm/sales/leads`; el codigo actual de tablas e historia vive en `src/modules/crm/leads`, sin ese CRUD;
 - oportunidades vive en `src/modules/crm/sales/opportunities`;
 - estimaciones vive en `src/modules/crm/sales/estimates`;
 - ordenes de venta vive en `src/modules/crm/sales/sales-orders`;

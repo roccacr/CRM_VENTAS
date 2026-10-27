@@ -80,6 +80,8 @@ export class SalesOrderLifecycleRepository {
                     effective_at_sales_order_state_event: sql<Date>`UTC_TIMESTAMP(3)`,
                     actor_user_id_sales_order_state_event: order.actorId,
                     actor_snapshot_sales_order_state_event: JSON.stringify(order.actorSnapshot),
+                    responsible_user_id_sales_order_state_event: order.actorId,
+                    responsible_snapshot_sales_order_state_event: JSON.stringify(order.actorSnapshot),
                     origin_sales_order_state_event: "crm",
                     reason_sales_order_state_event: context.reason,
                     operation_id_sales_order_state_event: context.operationId,

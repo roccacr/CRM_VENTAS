@@ -1,5 +1,8 @@
-/** Fictional aggregate sample for design review only. Never a fallback for operational data. */
+/** Aggregate row consumed by the view. Runtime has no demonstration data or synthetic fallback. */
 export interface MarketingSampleRow {
+    readonly sellerName?: string;
+    readonly sellerPublicId?: string | null;
+    readonly projectName?: string;
     readonly project: string;
     readonly campaign: string;
     readonly ad: string;
@@ -14,6 +17,8 @@ export interface MarketingSampleRow {
     /** Due appointments the lead did not attend. */
     readonly missed: number;
 }
+
+export type MarketingDirectoryRow = Pick<MarketingSampleRow, "seller" | "project" | "sellerName" | "sellerPublicId" | "projectName">;
 
 export const MARKETING_DIMENSIONS = [
     { key: "project", label: "Proyecto" },
@@ -50,13 +55,13 @@ export interface MarketingSelection {
     readonly compareStart: string;
     readonly compareEnd: string;
 }
-export type MarketingPreviewFilters = Record<MarketingDimension, string> & { selection: MarketingSelection };
+export type MarketingPreviewFilters = Record<MarketingDimension, string> & { selection: MarketingSelection; sellers?: readonly string[]; projects?: readonly string[] };
 
 /** Below this many leads a rate is noise, so the UI flags it and alerts ignore it. */
 export const MARKETING_MIN_SAMPLE = 25;
 
 const DAY_MS = 86_400_000;
-const SAMPLE_DAYS = 800;
+export const EMPTY_MARKETING_ROWS: readonly MarketingSampleRow[] = [];
 
 export const startOfDay = (date: Date): Date => new Date(date.getFullYear(), date.getMonth(), date.getDate());
 export const addDays = (date: Date, days: number): Date => new Date(date.getFullYear(), date.getMonth(), date.getDate() + days);
@@ -85,66 +90,6 @@ export function emptyMarketingFilters(today: Date = startOfDay(new Date())): Mar
     const selection: MarketingSelection = { mode: "day", anchor: iso, rangeStart: toISODate(addDays(today, -6)), rangeEnd: iso, comparison: "previous", compareStart: toISODate(addDays(today, -13)), compareEnd: toISODate(addDays(today, -7)) };
     return { project: "", campaign: "", ad: "", seller: "", selection };
 }
-
-const COMBINATIONS: readonly { project: string; campaign: string; ad: string; seller: string; rate: number; since?: number }[] = [
-    { project: "Proyecto Norte", campaign: "Lanzamiento", ad: "Recorrido en video", seller: "Asesor A", rate: 0.34 },
-    { project: "Proyecto Norte", campaign: "Lanzamiento", ad: "Carrusel de espacios", seller: "Asesor B", rate: 0.3 },
-    { project: "Proyecto Norte", campaign: "Visita guiada", ad: "Recorrido en video", seller: "Asesor A", rate: 0.36 },
-    { project: "Proyecto Parque", campaign: "Lanzamiento", ad: "Recorrido en video", seller: "Asesor C", rate: 0.38 },
-    { project: "Proyecto Parque", campaign: "Visita guiada", ad: "Carrusel de espacios", seller: "Asesor B", rate: 0.42 },
-    { project: "Proyecto Parque", campaign: "Visita guiada", ad: "Imagen del proyecto", seller: "Asesor A", rate: 0.33 },
-    { project: "Proyecto Centro", campaign: "Fin de semana", ad: "Imagen del proyecto", seller: "Asesor C", rate: 0.35 },
-    { project: "Proyecto Centro", campaign: "Fin de semana", ad: "Recorrido en video", seller: "Asesor B", rate: 0.37 },
-    // A recent ad, so "since it started" has something real to show.
-    { project: "Proyecto Parque", campaign: "Lanzamiento", ad: "Reel nuevo", seller: "Asesor C", rate: 0.44, since: 18 },
-];
-
-/** Deterministic pseudo-random value in [0, 1) so the demo never changes between renders or tests. */
-function noise(day: number, slot: number, salt: number): number {
-    const hash = Math.imul(day * 31 + slot * 17 + salt * 7 + 12345, 2654435761) >>> 0;
-    return ((hash >>> 8) % 1000) / 1000;
-}
-
-/** Only recent appointments can still be pending; older ones are either done or missed. */
-function pendingAppointments(daysAgo: number, appointments: number): number {
-    if (daysAgo <= 2) return appointments;
-    if (daysAgo <= 7) return Math.round(appointments * 0.5);
-    return daysAgo <= 14 ? Math.round(appointments * 0.15) : 0;
-}
-
-type Combination = (typeof COMBINATIONS)[number];
-
-/** Combinations that exist on that day: a recent ad only appears after its launch. */
-function activeCombination(daysAgo: number, slot: number): Combination {
-    const pool = COMBINATIONS.filter((combination) => combination.since === undefined || daysAgo < combination.since);
-    return pool[(daysAgo * 3 + slot + (daysAgo % 5)) % pool.length] ?? COMBINATIONS[0] ?? { project: "", campaign: "", ad: "", seller: "", rate: 0.35 };
-}
-
-/** Appointment outcomes for the leads of one row. */
-function appointmentOutcome(daysAgo: number, slot: number, withAppointment: number) {
-    const appointments = withAppointment + (withAppointment > 0 && noise(daysAgo, slot, 3) < 0.25 ? 1 : 0);
-    const pending = pendingAppointments(daysAgo, appointments);
-    // Rounding a 14% rate over one or two appointments always yields zero, so roll the dice per row instead.
-    const settled = appointments - pending;
-    const missed = settled > 0 && noise(daysAgo, slot, 4) < settled * 0.16 ? 1 : 0;
-    return { appointments, attended: settled - missed, missed };
-}
-
-/** One combination on one day, with recent growth and a mild seasonal swing so periods differ. */
-function buildRow(daysAgo: number, slot: number): MarketingSampleRow {
-    const { project, campaign, ad, seller, rate } = activeCombination(daysAgo, slot);
-    const growth = (1 + Math.max(0, (360 - daysAgo) / 360) * 0.2) * (1 + 0.15 * Math.sin(daysAgo / 9));
-    const leads = Math.max(1, Math.round((3 + noise(daysAgo, slot, 1) * 7) * growth));
-    const withAppointment = Math.min(leads, Math.round(leads * (rate + (noise(daysAgo, slot, 2) - 0.5) * 0.1)));
-    return { project, campaign, ad, seller, daysAgo, leads, withAppointment, ...appointmentOutcome(daysAgo, slot, withAppointment) };
-}
-
-/** Three active combinations per day over more than two years: any period and its year-ago twin have data. */
-function buildSample(): MarketingSampleRow[] {
-    return Array.from({ length: SAMPLE_DAYS * 3 }, (_, index) => buildRow(Math.floor(index / 3), index % 3));
-}
-
-export const MARKETING_SAMPLE: readonly MarketingSampleRow[] = buildSample();
 
 /** Inclusive date range. */
 export interface MarketingRange {
@@ -196,6 +141,7 @@ function shiftedStart(mode: MarketingPeriodMode, start: Date): Date {
 
 /** "Periodo anterior" keeps the same elapsed length so a week in progress is not judged against a full week. */
 function previousRange(mode: MarketingPeriodMode, period: MarketingRange): MarketingRange {
+    if (mode === "year") return { start: addMonths(period.start, -12), end: addMonths(period.end, -12) };
     const length = rangeLength(period);
     if (mode === "range") {
         const end = addDays(period.start, -1);
@@ -203,10 +149,10 @@ function previousRange(mode: MarketingPeriodMode, period: MarketingRange): Marke
     }
     const start = shiftedStart(mode, period.start);
     const end = addDays(start, length - 1);
-    if (mode !== "month" && mode !== "year") return { start, end };
-    const limit = mode === "year" ? new Date(start.getFullYear(), 11, 31) : new Date(start.getFullYear(), start.getMonth() + 1, 0);
+    if (mode !== "month") return { start, end };
+    const limit = new Date(start.getFullYear(), start.getMonth() + 1, 0);
     // A closed month or year is compared with the whole previous one, whatever its length; one in progress keeps its elapsed days.
-    const closed = period.end.getTime() === (mode === "year" ? new Date(period.start.getFullYear(), 11, 31) : new Date(period.start.getFullYear(), period.start.getMonth() + 1, 0)).getTime();
+    const closed = period.end.getTime() === new Date(period.start.getFullYear(), period.start.getMonth() + 1, 0).getTime();
     return { start, end: closed || end > limit ? limit : end };
 }
 
@@ -248,13 +194,17 @@ export function canAdvanceMarketingSelection(selection: MarketingSelection, toda
 }
 
 function matchesDimensions(row: MarketingSampleRow, filters: MarketingPreviewFilters): boolean {
-    return MARKETING_DIMENSIONS.every(({ key }) => !filters[key] || row[key] === filters[key]);
+    const multi = { seller: filters.sellers, project: filters.projects };
+    return MARKETING_DIMENSIONS.every(({ key }) => {
+        const selected = key === "seller" || key === "project" ? multi[key] : undefined;
+        return selected ? selected.length === 0 || selected.includes(row[key]) : !filters[key] || row[key] === filters[key];
+    });
 }
 
-function rowsIn(range: MarketingRange, filters: MarketingPreviewFilters, today: Date): readonly MarketingSampleRow[] {
+function rowsIn(range: MarketingRange, filters: MarketingPreviewFilters, today: Date, source: readonly MarketingSampleRow[]): readonly MarketingSampleRow[] {
     const newest = daysBetween(range.end, today);
     const oldest = daysBetween(range.start, today);
-    return MARKETING_SAMPLE.filter((row) => row.daysAgo >= newest && row.daysAgo <= oldest && matchesDimensions(row, filters));
+    return source.filter((row) => row.daysAgo >= newest && row.daysAgo <= oldest && matchesDimensions(row, filters));
 }
 
 /** Granularity of a chart: one point per day up to a month, per week up to a quarter, per calendar month beyond. */
@@ -271,7 +221,7 @@ function comparedChartRows(shifted: readonly MarketingSampleRow[], period: Marke
 }
 
 /** Everything the page needs, resolved once from the selection so every block reads the same dates. */
-export function resolveMarketingView(filters: MarketingPreviewFilters, today: Date = startOfDay(new Date())) {
+export function resolveMarketingView(filters: MarketingPreviewFilters, today: Date = startOfDay(new Date()), source: readonly MarketingSampleRow[] = EMPTY_MARKETING_ROWS) {
     const period = resolveMarketingPeriod(filters.selection, today);
     const comparison = resolveMarketingComparison(filters.selection, period, today);
     // A single day has no shape, so the chart shows the week that ends on it.
@@ -280,36 +230,34 @@ export function resolveMarketingView(filters: MarketingPreviewFilters, today: Da
     const compareWindow: MarketingRange = { start: addDays(window.start, -offset), end: addDays(window.end, -offset) };
     return {
         today,
+        source,
         period,
         comparison,
         window,
         compareWindow,
         grain: grainFor(rangeLength(window)),
-        rows: rowsIn(period, filters, today),
-        previousRows: rowsIn(comparison, filters, today),
-        windowRows: rowsIn(window, filters, today),
-        comparedRows: comparedChartRows(rowsIn(compareWindow, filters, today), period, comparison, today),
+        rows: rowsIn(period, filters, today, source),
+        previousRows: rowsIn(comparison, filters, today, source),
+        windowRows: rowsIn(window, filters, today, source),
+        comparedRows: comparedChartRows(rowsIn(compareWindow, filters, today, source), period, comparison, today),
     };
 }
 export type MarketingView = ReturnType<typeof resolveMarketingView>;
 
 /** Leads captured in the last 7 days with no appointment: what still needs follow-up, whatever period is chosen. */
-export function recentWithoutAppointment(filters: MarketingPreviewFilters, today: Date = startOfDay(new Date())): number {
-    return summarizeMarketingSample(rowsIn({ start: addDays(today, -6), end: today }, filters, today)).withoutAppointment;
+export function recentWithoutAppointment(filters: MarketingPreviewFilters, today: Date = startOfDay(new Date()), source: readonly MarketingSampleRow[] = EMPTY_MARKETING_ROWS): number {
+    return summarizeMarketingSample(rowsIn({ start: addDays(today, -6), end: today }, filters, today, source)).withoutAppointment;
 }
 
 /** First day with leads under the other filters, so an ad can be followed "since it started". */
-export function firstMarketingActivity(filters: MarketingPreviewFilters, today: Date = startOfDay(new Date())): Date | null {
-    const active = MARKETING_SAMPLE.filter((row) => matchesDimensions(row, filters) && row.leads > 0);
+export function firstMarketingActivity(filters: MarketingPreviewFilters, today: Date = startOfDay(new Date()), source: readonly MarketingSampleRow[] = EMPTY_MARKETING_ROWS): Date | null {
+    const active = source.filter((row) => matchesDimensions(row, filters) && row.leads > 0);
     return active.length ? addDays(today, -Math.max(...active.map((row) => row.daysAgo))) : null;
 }
 
 /** All banners and tables use the same filtered sample; repeated appointments are not unique leads. */
 export function summarizeMarketingSample(rows: readonly MarketingSampleRow[]) {
-    const totals = rows.reduce(
-        (sum, row) => ({ leads: sum.leads + row.leads, withAppointment: sum.withAppointment + row.withAppointment, appointments: sum.appointments + row.appointments, attended: sum.attended + row.attended, missed: sum.missed + row.missed }),
-        { leads: 0, withAppointment: 0, appointments: 0, attended: 0, missed: 0 },
-    );
+    const totals = rows.reduce((sum, row) => ({ leads: sum.leads + row.leads, withAppointment: sum.withAppointment + row.withAppointment, appointments: sum.appointments + row.appointments, attended: sum.attended + row.attended, missed: sum.missed + row.missed }), { leads: 0, withAppointment: 0, appointments: 0, attended: 0, missed: 0 });
     const due = totals.attended + totals.missed;
     return {
         ...totals,
@@ -376,20 +324,21 @@ export function bucketMarketingSample(view: Pick<MarketingView, "window" | "comp
 }
 
 /** Leads without appointment per day over the last week, for the follow-up card. */
-export function recentWithoutAppointmentSeries(filters: MarketingPreviewFilters, today: Date = startOfDay(new Date())): number[] {
+export function recentWithoutAppointmentSeries(filters: MarketingPreviewFilters, today: Date = startOfDay(new Date()), source: readonly MarketingSampleRow[] = EMPTY_MARKETING_ROWS): number[] {
     const window = { start: addDays(today, -6), end: today };
-    return bucketMarketingSample({ window, compareWindow: window, grain: 1, today }, rowsIn(window, filters, today)).map((bucket) => bucket.leads - bucket.withAppointment);
+    return bucketMarketingSample({ window, compareWindow: window, grain: 1, today }, rowsIn(window, filters, today, source)).map((bucket) => bucket.leads - bucket.withAppointment);
 }
 
 /** Leads captured today, this week, this month and this year (each up to today), whatever period is displayed. */
-export function horizonLeads(filters: MarketingPreviewFilters, today: Date = startOfDay(new Date())) {
-    const leadsIn = (mode: MarketingPeriodMode) => summarizeMarketingSample(rowsIn(resolveMarketingPeriod({ ...filters.selection, mode, anchor: toISODate(today) }, today), filters, today)).leads;
+export function horizonLeads(filters: MarketingPreviewFilters, today: Date = startOfDay(new Date()), source: readonly MarketingSampleRow[] = EMPTY_MARKETING_ROWS) {
+    const leadsIn = (mode: MarketingPeriodMode) => summarizeMarketingSample(rowsIn(resolveMarketingPeriod({ ...filters.selection, mode, anchor: toISODate(today) }, today), filters, today, source)).leads;
     return { day: leadsIn("day"), week: leadsIn("week"), month: leadsIn("month"), year: leadsIn("year") };
 }
 
 /** Projects a seller works on, or every project when no seller is chosen. */
-export function projectsForSeller(seller: string): string[] {
-    return [...new Set(COMBINATIONS.filter((combination) => !seller || combination.seller === seller).map((combination) => combination.project))].sort((first, second) => first.localeCompare(second, "es"));
+export function projectsForSeller(seller: string | readonly string[], source: readonly MarketingDirectoryRow[] = EMPTY_MARKETING_ROWS): string[] {
+    const selected = typeof seller === "string" ? [seller].filter(Boolean) : seller;
+    return [...new Set(source.filter((combination) => selected.length === 0 || selected.includes(combination.seller)).map((combination) => combination.project))].sort((first, second) => first.localeCompare(second, "es"));
 }
 
 /** Reconcile each dimension against the same totals used by the banners, with its movement and change. */
@@ -409,9 +358,17 @@ export function groupMarketingSample(view: MarketingView, dimension: MarketingDi
             const summary = summarizeMarketingSample(items);
             const before = summarizeMarketingSample(previous.get(name) ?? []);
             const movement = bucketMarketingSample(view, inWindow.get(name) ?? []).map((bucket) => bucket.leads);
-            return { name, ...summary, previousLeads: before.leads, change: relativeChange(summary.leads, before.leads), movement };
+            const label = marketingGroupLabel(dimension, name, items.concat(previous.get(name) ?? []));
+            return { name, label, ...summary, previousLeads: before.leads, change: relativeChange(summary.leads, before.leads), movement };
         })
         .sort((first, second) => second.leads - first.leads || first.name.localeCompare(second.name, "es"));
+}
+
+function marketingGroupLabel(dimension: MarketingDimension, name: string, rows: readonly MarketingSampleRow[]): string {
+    const first = rows[0];
+    if (dimension === "seller") return first?.sellerName ?? name;
+    if (dimension === "project") return first?.projectName ?? name;
+    return name;
 }
 
 /** Sellers against campaigns: how many leads each seller holds per campaign, and how many have an appointment. */
@@ -442,10 +399,11 @@ function dropAlerts(view: MarketingView): MarketingAlert[] {
     return (["project", "campaign", "ad"] as const).flatMap((dimension) => {
         const label = MARKETING_DIMENSIONS.find((item) => item.key === dimension)?.label ?? "";
         return groupMarketingSample(view, dimension)
-            .filter((group) => group.previousLeads >= MARKETING_MIN_SAMPLE && group.change !== null && group.change <= DROP_THRESHOLD)
+            .sort((a, b) => b.previousLeads - b.leads - (a.previousLeads - a.leads) || a.label.localeCompare(b.label, "es"))
+            .filter((group) => group.name.trim().length > 0 && group.previousLeads >= MARKETING_MIN_SAMPLE && group.change !== null && group.change <= DROP_THRESHOLD)
             .map((group) => {
-                const name = `${group.name.toLowerCase().startsWith(label.toLowerCase()) ? "" : `${label} `}${group.name}`;
-                return { key: `${dimension}:${group.name}`, text: group.leads === 0 ? `${name}: sin leads en este periodo (antes ${String(group.previousLeads)}).` : `${name}: ${String(Math.round(Math.abs(group.change ?? 0)))} % menos leads que en la comparación.` };
+                const name = `${group.label.toLowerCase().startsWith(label.toLowerCase()) ? "" : `${label} `}${group.label}`;
+                return { key: `${dimension}:${group.name}`, text: `${name}: ${(group.previousLeads - group.leads).toLocaleString("es-CR")} leads menos (${String(Math.round(Math.abs(group.change ?? 0)))} %) · ${group.leads.toLocaleString("es-CR")} vs. ${group.previousLeads.toLocaleString("es-CR")}` };
             });
     });
 }
@@ -456,7 +414,7 @@ function sellerAlerts(view: MarketingView): MarketingAlert[] {
     const average = total.leads ? (total.withoutAppointment / total.leads) * 100 : 0;
     return groupMarketingSample(view, "seller")
         .filter((group) => group.leads >= MARKETING_MIN_SAMPLE && (group.withoutAppointment / group.leads) * 100 >= average + SELLER_GAP_POINTS)
-        .map((group) => ({ key: `seller:${group.name}`, text: `${group.name}: ${String(Math.round((group.withoutAppointment / group.leads) * 100))} % de sus leads sin cita (el equipo promedia ${String(Math.round(average))} %).` }));
+        .map((group) => ({ key: `seller:${group.name}`, text: `${group.label}: ${String(Math.round((group.withoutAppointment / group.leads) * 100))} % de sus leads sin cita (el equipo promedia ${String(Math.round(average))} %).` }));
 }
 
 /** At most three alerts, empty when everything is within range. */

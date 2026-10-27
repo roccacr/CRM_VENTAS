@@ -197,13 +197,13 @@ describe("CatalogItemsPage", () => {
         fireEvent.click(screen.getByRole("button", { name: /Nuevo proyecto/ }));
         const create = await screen.findByRole("dialog");
         expect(create.closest(".catalog-items-modal--projects")).not.toBeNull();
-        expect(within(create).getByRole("heading", { name: "Nuevo proyecto" })).toBeInTheDocument();
+        expect(within(create).getByText("Nuevo proyecto")).toBeInTheDocument();
         expect(within(create).getByRole("button", { name: /Crear proyecto/ })).toBeInTheDocument();
         expect(within(create).getByPlaceholderText("Ej. Proyecto principal")).toBeInTheDocument();
-        expect(within(create).getByRole("group", { name: "Información del registro" })).toContainElement(within(create).getByLabelText("Nombre"));
-        expect(within(create).getByRole("group", { name: "NetSuite" })).toContainElement(within(create).getByRole("textbox", { name: /ID NetSuite/ }));
-        expect(within(create).getByRole("group", { name: "Odoo" })).toContainElement(within(create).getByRole("textbox", { name: /ID Odoo/ }));
-        expect(within(create).getByRole("group", { name: "Auditoría" })).toContainElement(within(create).getByLabelText("Motivo de auditoría"));
+        expect(within(create).getByRole("region", { name: "Información del registro" })).toContainElement(within(create).getByLabelText("Nombre"));
+        expect(within(create).getByRole("region", { name: "Referencias externas" })).toContainElement(within(create).getByRole("textbox", { name: /ID NetSuite/ }));
+        expect(within(create).getByRole("region", { name: "Referencias externas" })).toContainElement(within(create).getByRole("textbox", { name: /ID Odoo/ }));
+        expect(within(create).getByRole("region", { name: "Auditoría" })).toContainElement(within(create).getByLabelText("Motivo de auditoría"));
         expect(within(create).getByRole("textbox", { name: /ID Odoo/ })).not.toHaveAttribute("aria-required", "true");
         cleanup();
         render(<CatalogItemsPage catalog={catalog} />);
@@ -213,7 +213,7 @@ describe("CatalogItemsPage", () => {
         fireEvent.click(within(drawer).getByRole("button", { name: "Editar" }));
         const edit = (await screen.findByRole("button", { name: /Guardar cambios/ })).closest('[role="dialog"]');
         if (!(edit instanceof HTMLElement)) throw new Error("Edit dialog missing");
-        expect(within(edit).getByRole("group", { name: "NetSuite" })).toContainElement(within(edit).getByRole("textbox", { name: /ID NetSuite/ }));
+        expect(within(edit).getByRole("region", { name: "Referencias externas" })).toContainElement(within(edit).getByRole("textbox", { name: /ID NetSuite/ }));
         expect(within(edit).getByRole("textbox", { name: /ID NetSuite/ })).toHaveValue("1");
     });
 
@@ -292,8 +292,8 @@ describe("CatalogItemsPage", () => {
         fireEvent.click(screen.getByRole("button", { name: /Nueva campaña/ }));
         const dialog = await screen.findByRole("dialog");
         expect(dialog.closest(".catalog-items-modal--projects")).not.toBeNull();
-        expect(within(dialog).getByRole("group", { name: "NetSuite" })).toBeInTheDocument();
-        expect(within(dialog).getByRole("group", { name: "Odoo" })).toBeInTheDocument();
+        expect(within(dialog).getByRole("region", { name: "Referencias externas" })).toBeInTheDocument();
+        expect(within(dialog).getByRole("region", { name: "Referencias externas" })).toBeInTheDocument();
     });
 
     it.each([
@@ -311,8 +311,8 @@ describe("CatalogItemsPage", () => {
         const dialog = await screen.findByRole("dialog");
         expect(dialog.closest(".catalog-items-modal--projects")).not.toBeNull();
         expect(within(dialog).getByRole("textbox", { name: "Nombre" })).toHaveAttribute("maxlength", maxLength);
-        expect(within(dialog).getByRole("group", { name: "NetSuite" })).toBeInTheDocument();
-        expect(within(dialog).getByRole("group", { name: "Odoo" })).toBeInTheDocument();
+        expect(within(dialog).getByRole("region", { name: "Referencias externas" })).toBeInTheDocument();
+        expect(within(dialog).getByRole("region", { name: "Referencias externas" })).toBeInTheDocument();
         expect(within(dialog).getByRole("button", { name: submit })).toBeInTheDocument();
     });
 
@@ -334,7 +334,7 @@ describe("CatalogItemsPage", () => {
         fireEvent.click(within(drawer).getByRole("button", { name: "Editar" }));
         const edit = (await screen.findByRole("button", { name: /Guardar cambios/ })).closest('[role="dialog"]');
         if (!(edit instanceof HTMLElement)) throw new Error("Edit dialog missing");
-        expect(within(edit).getByRole("heading", { name: "Editar campaña" })).toBeInTheDocument();
+        expect(within(edit).getByText("Editar campaña")).toBeInTheDocument();
         expect(within(edit).getByRole("textbox", { name: /ID NetSuite/ })).toHaveValue("-5");
     });
 
@@ -642,7 +642,7 @@ describe("CatalogItemsPage", () => {
         expect(within(drawer).getByText("Odoo")).toBeInTheDocument();
         expect(within(drawer).getAllByText("Sin asignar")).toHaveLength(4);
         fireEvent.click(within(drawer).getByRole("button", { name: "Editar" }));
-        expect(await screen.findByRole("heading", { name: "Editar proyecto" })).toBeInTheDocument();
+        expect(await screen.findByText("Editar proyecto")).toBeInTheDocument();
         expect(screen.getByRole("textbox", { name: "Nombre" })).toHaveValue(item.name);
         fireEvent.keyDown(screen.getByRole("textbox", { name: "Nombre" }), { key: "ArrowDown" });
         expect(within(drawer).getByRole("heading", { name: item.name })).toBeInTheDocument();
@@ -722,7 +722,7 @@ describe("CatalogItemsPage", () => {
         fireEvent.keyDown(drawer, { key: "ArrowUp" });
         expect(await within(drawer).findByRole("heading", { name: item.name })).toBeInTheDocument();
         fireEvent.click(within(drawer).getByRole("button", { name: "Editar" }));
-        expect(await screen.findByRole("heading", { name: "Editar proyecto" })).toBeInTheDocument();
+        expect(await screen.findByText("Editar proyecto")).toBeInTheDocument();
         fireEvent.keyDown(screen.getByRole("button", { name: "Cancelar" }), { key: "ArrowDown" });
         expect(within(drawer).getByRole("heading", { name: item.name })).toBeInTheDocument();
     });

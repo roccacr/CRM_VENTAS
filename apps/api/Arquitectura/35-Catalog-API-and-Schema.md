@@ -1,5 +1,13 @@
 # 35 - Catalog API and Schema
 
+Documentation boundary, 2026-10-23: [49 - Current state](49-Estado-Actual-y-Cierre-Documental.md)
+owns the current metadata snapshot. Applied ledger entries and the dated empty
+tables/counts below do not guarantee current rows, privileges, flags or schema
+parity. This review reads source only, without reading `.env` or querying MySQL.
+The no-copy decision in [44](44-Bitacora-Legacy-y-Timeline.md) supersedes historical
+inventory ETL proposals; existing gated catalog writers remain code, not evidence
+of an authorized operation or current production write readiness.
+
 Status 2026-10-22, checked against source at `f2dc4f1`: [36 - Current state](36-Registro-Entrega-Administracion.md) and [remediation evidence](Reauditoria-54-Plan-y-Resultados.md). Dated counts, enabled-fallback runs, migration executions and MySQL tests below are historical evidence, not current production verification. Fixture examples require a separately approved isolated instance; never run them on the shared development/production host. In this document, "enabled" mutations mean the full write gate, not read fallback alone. Unit Files has dedicated read persistence and requires exact effective grants, including for Owner.
 
 Current consolidation (2026-10-13): [36 - Delivery register](36-Registro-Entrega-Administracion.md), [37 - Audit and conflicts](37-Auditoria-Trazabilidad-y-Conflictos.md), and [frontend 27](../../frontend/Arquitectura/27-Entrega-Administracion-y-QA.md) distinguish implemented behavior, historical evidence and remaining gates. Unit Files owns a dedicated read aggregate; historical generic Files storage below is not its inventory persistence. Secondary standalone selectors were superseded by native SearchPanes.
@@ -62,10 +70,11 @@ remain empty after rollback-only integration tests. Legacy writes: zero.
 Run `pnpm exec tsx scripts/prepare-unit-files.ts` from `apps/api` for report-only
 schema and relationship validation. It checks source column names/types/
 capacities/nullability and native provider ownership, including missing or
-deleted mappings. `--apply-project-identities` is an explicit native-only,
-transactional, idempotent preparation step, not an inventory importer. It fails
-on ownership conflicts and never overwrites native records. Recheck the report
-before any future import or deprecation. Do not guess unresolved links by name.
+deleted mappings. Following the owner's 2026-10-23 no-copy instruction,
+`--apply-project-identities` is rejected before configuration or connection;
+its writer was removed. This script only reports. Do not copy legacy records
+into the native database or guess unresolved links by name. Historical counts
+above document an earlier execution, not permission to repeat it.
 
 Native ownership: `crm_unit_file.project_id_unit_file` references
 `crm_project.id_project`; external identifiers belong in

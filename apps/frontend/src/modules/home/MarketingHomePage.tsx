@@ -4,28 +4,22 @@ import CheckCircleOutlined from "@ant-design/icons/CheckCircleOutlined";
 import RiseOutlined from "@ant-design/icons/RiseOutlined";
 import UserAddOutlined from "@ant-design/icons/UserAddOutlined";
 import UserOutlined from "@ant-design/icons/UserOutlined";
-import { type ReactNode, useState } from "react";
+import Select from "antd/es/select";
+import Spin from "antd/es/spin";
+import { type ReactNode, useDeferredValue, useMemo, useState, useTransition } from "react";
 
 import type { IdentityUser } from "../../services/auth/identity-contracts";
-import { countFormat, describeChange, describeRange, type MarketingDelta, percentFormat } from "./marketing-home-format";
-import {
-    alertMarketingSample,
-    bucketMarketingSample,
-    emptyMarketingFilters,
-    groupMarketingSample,
-    MARKETING_SAMPLE,
-    type MarketingPeriodMode,
-    type MarketingPreviewFilters,
-    recentWithoutAppointment,
-    recentWithoutAppointmentSeries,
-    relativeChange,
-    resolveMarketingView,
-    summarizeMarketingSample,
-} from "./marketing-home-preview.model";
+import type { MarketingApiSummary, MarketingAppointmentEvent } from "../../services/marketing/home-summary-service";
+import { appointmentCaption, summarizeAppointmentEvents } from "./marketing-appointments.model";
+import { countFormat, describeChange, describeChartComparison, describeLeadChange, describeRange, type MarketingDelta, percentFormat } from "./marketing-home-format";
+import { addDays, alertMarketingSample, bucketMarketingSample, daysBetween, EMPTY_MARKETING_ROWS, emptyMarketingFilters, groupMarketingSample, type MarketingDirectoryRow, type MarketingPeriodMode, type MarketingPreviewFilters, type MarketingSampleRow, parseISODate, projectsForSeller, recentWithoutAppointment, recentWithoutAppointmentSeries, relativeChange, resolveMarketingView, summarizeMarketingSample } from "./marketing-home-preview.model";
 import { buildProjectCards } from "./marketing-home-projects";
 import { LeadsAreaChart, SparkArea } from "./MarketingHomeCharts";
 import { MarketingProjects, MarketingSellers } from "./MarketingHomePanels";
 import { DeltaText, MarketingAlerts } from "./MarketingHomeSections";
+import { InfoHint } from "./MarketingInfoHint";
+import { MarketingWelcomeArt } from "./MarketingWelcomeArt";
+import { useMarketingHomeSummary } from "./useMarketingHomeSummary";
 
 type Totals = ReturnType<typeof summarizeMarketingSample>;
 type BannerTone = "neutral" | "success" | "pending";
@@ -53,6 +47,7 @@ interface MarketingBannerProps {
     readonly title: string;
     readonly value: string;
     readonly caption: string;
+    readonly hint?: string;
     readonly icon: ReactNode;
     readonly tone: BannerTone;
     readonly delta: MarketingDelta | null;
@@ -61,24 +56,39 @@ interface MarketingBannerProps {
 }
 
 /** Compares a rate with the previous one, only when the comparison had something to compare. */
-const rateChange = (current: number, previous: number, hasPrevious: boolean) => (hasPrevious ? describeChange(current - previous, "puntos") : null);
+const rateChange = (current: number, previous: number, hasPrevious: boolean) => {
+    if (!hasPrevious) return null;
+    const delta = describeChange(current - previous, "puntos");
+    return delta && { ...delta, text: delta.text.replace("puntos", "puntos porcentuales") };
+};
 
 interface BannerInput {
+    readonly available: boolean;
+    readonly appointmentsAvailable: boolean;
     readonly totals: Totals;
     readonly before: Totals;
     readonly context: string;
     readonly buckets: ReturnType<typeof bucketMarketingSample>;
-    readonly followUp: { readonly value: number; readonly series: readonly number[] };
+    readonly eventTotals?: ReturnType<typeof summarizeAppointmentEvents> | undefined;
+    readonly followUp: { readonly value: number; readonly series: readonly number[]; readonly range: string };
 }
 
 /** Four cards, each with its own trend: how many leads, how many reach an appointment, how many visits happened and what still needs follow-up. */
-function buildBanners({ totals, before, context, buckets, followUp }: BannerInput): readonly MarketingBannerProps[] {
-    return [
-        { title: "Leads captados", value: countFormat.format(totals.leads), caption: "Personas que mostraron interés", icon: <UserAddOutlined />, tone: "neutral", delta: describeChange(relativeChange(totals.leads, before.leads), "%"), series: buckets.map((bucket) => bucket.leads), context },
+function buildBanners({ available, appointmentsAvailable, totals, before, context, buckets, followUp, eventTotals }: BannerInput): readonly MarketingBannerProps[] {
+    const pending: readonly MarketingBannerProps[] = [
+        { title: "Leads", value: "—", caption: "Registrados en el periodo", icon: <UserAddOutlined />, tone: "neutral", delta: null, series: [] },
+        { title: "Leads con cita", value: "—", caption: "Con cita programada o completada", icon: <RiseOutlined />, tone: "neutral", delta: null, series: [] },
+        { title: "Citas completadas", value: "—", caption: "Según el estado de cada cita", icon: <CheckCircleOutlined />, tone: "neutral", delta: null, series: [] },
+        { title: "Leads sin cita · 7 días", value: "—", caption: "Sin cita programada o completada", icon: <UserOutlined />, tone: "neutral", delta: null, series: [] },
+    ];
+    if (!available) return pending;
+    const banners: readonly MarketingBannerProps[] = [
+        { title: "Leads", value: countFormat.format(totals.leads), caption: "Registrados en el periodo", hint: "Lead: registro de interés de un posible cliente. Una persona puede tener varios registros.", icon: <UserAddOutlined />, tone: "neutral", delta: describeLeadChange(relativeChange(totals.leads, before.leads)), series: buckets.map((bucket) => bucket.leads), context },
         {
-            title: "% de leads con cita",
+            title: "Leads con cita",
             value: `${percentFormat.format(totals.rate)} %`,
             caption: `${countFormat.format(totals.withAppointment)} de ${countFormat.format(totals.leads)} leads`,
+            hint: "Porcentaje de los leads registrados en el periodo que tienen una cita programada o completada. Una cita futura cuenta; las canceladas no.",
             icon: <RiseOutlined />,
             tone: "success",
             delta: rateChange(totals.rate, before.rate, before.leads > 0),
@@ -86,143 +96,359 @@ function buildBanners({ totals, before, context, buckets, followUp }: BannerInpu
             context,
         },
         {
-            title: "Citas realizadas",
-            value: countFormat.format(totals.attended),
-            caption: totals.attended + totals.missed > 0 ? `Asistencia ${percentFormat.format(totals.attendance)} % · ${countFormat.format(totals.pending)} pendientes` : `${countFormat.format(totals.pending)} pendientes, aún no vencen`,
+            title: "Citas completadas",
+            value: countFormat.format(eventTotals?.completed ?? totals.attended),
+            caption: eventTotals ? appointmentCaption(eventTotals) : totals.attended + totals.missed > 0 ? `Asistencia ${percentFormat.format(totals.attendance)} % · ${countFormat.format(totals.pending)} pendientes` : `${countFormat.format(totals.pending)} pendientes, aún no vencen`,
             icon: <CheckCircleOutlined />,
             tone: "success",
+            hint: "Se cuentan por la fecha de la cita, aunque el lead se haya registrado antes. Completada no confirma que el cliente asistió.",
             // Recent appointments are still pending, so comparing completed visits would read as a false drop.
             delta: null,
-            series: buckets.map((bucket) => bucket.attended),
+            series: eventTotals ? [] : buckets.map((bucket) => bucket.attended),
         },
-        { title: "Leads sin cita (últimos 7 días)", value: countFormat.format(followUp.value), caption: "Captados sin visita agendada", icon: <UserOutlined />, tone: "pending", delta: null, series: followUp.series },
+        { title: "Leads sin cita · 7 días", value: countFormat.format(followUp.value), caption: followUp.range, hint: "Leads registrados en los últimos siete días que no tienen cita programada ni completada. No cambia con el periodo elegido.", icon: <UserOutlined />, tone: "pending", delta: null, series: followUp.series },
     ];
+    return banners.map((banner, index) => (index > 0 && !appointmentsAvailable ? (pending[index] as MarketingBannerProps) : banner));
+}
+
+interface MarketingScope {
+    readonly sellers: readonly string[];
+    readonly projects: readonly string[];
 }
 
 interface ControlsProps {
+    readonly notice: string;
+    readonly onRetry?: (() => void) | undefined;
+    readonly available: boolean;
+    readonly rows: readonly MarketingDirectoryRow[];
     readonly period: HomePeriod;
-    readonly seller: string;
+    readonly scope: MarketingScope;
     readonly summary: string;
     readonly onPeriod: (period: HomePeriod) => void;
-    readonly onSeller: (seller: string) => void;
+    readonly onSeller: (sellers: readonly string[]) => void;
+    readonly onProject: (projects: readonly string[]) => void;
 }
 
-/** Period and seller are the only controls; everything else is a global view, with the detail in "Captación de leads". */
-function MarketingControls({ period, seller, summary, onPeriod, onSeller }: ControlsProps) {
+/** What the person is looking at: a seller, a project, both or neither. */
+function describeScope({ sellers, projects }: MarketingScope, source: readonly MarketingDirectoryRow[]): string {
+    const projectLabel = projects.map((project) => source.find((row) => row.project === project)?.projectName ?? project).join(", ");
+    if (sellers.length && projects.length) return `${sellers.length === 1 ? "Vendedor" : "Vendedores"} · ${projectLabel}`;
+    if (sellers.length) return sellers.length === 1 ? "Vendedor · solo se muestran sus leads y proyectos" : `Comparando ${String(sellers.length)} vendedores · sus leads y proyectos`;
+    return projects.length ? `Captación de leads y citas · ${projectLabel}` : "Captación de leads y citas";
+}
+
+/** Stable IDs in values; readable names sorted independently of source/provider identities. */
+function marketingOptions(rows: readonly MarketingDirectoryRow[], dimension: "seller" | "project", ids?: readonly string[]) {
+    const names = new Map(rows.map((row) => [row[dimension], dimension === "seller" ? (row.sellerName ?? row.seller) : (row.projectName ?? row.project)]));
+    return [...names]
+        .filter(([id]) => ids === undefined || ids.includes(id))
+        .map(([value, label]) => ({ value, label }))
+        .sort((a, b) => a.label.localeCompare(b.label, "es"));
+}
+
+/** Period, seller and project are the only controls; the detail by campaign and ad lives in "Captación de leads". */
+function MarketingControls({ available, notice, onRetry, rows, period, scope, summary, onPeriod, onSeller, onProject }: ControlsProps) {
     return (
-        <section className="marketing-bar" aria-label="Periodo y vendedor">
-            <div className="marketing-preview-grouping" role="group" aria-label="Periodo">
-                {HOME_PERIODS.map(({ key, label }) => (
-                    <button
-                        key={key}
-                        type="button"
-                        aria-pressed={period === key}
-                        onClick={() => {
-                            onPeriod(key);
-                        }}
-                    >
-                        {label}
-                    </button>
-                ))}
-            </div>
-            <label className="marketing-bar__seller">
-                <span>Vendedor</span>
-                <select
-                    aria-label="Vendedor"
-                    value={seller}
-                    onChange={(event) => {
-                        onSeller(event.target.value);
-                    }}
-                >
-                    <option value="">Todos los vendedores</option>
-                    {[...new Set(MARKETING_SAMPLE.map((row) => row.seller))].sort().map((name) => (
-                        <option key={name} value={name}>
-                            {name}
-                        </option>
+        <>
+            {!available && (
+                <p className="marketing-demo-notice" role="status">
+                    {notice}
+                    {onRetry && (
+                        <button type="button" onClick={onRetry}>
+                            Reintentar
+                        </button>
+                    )}
+                </p>
+            )}
+            <section className="marketing-bar" aria-label="Periodo y vendedor">
+                <div className="marketing-preview-grouping" role="group" aria-label="Periodo">
+                    {HOME_PERIODS.map(({ key, label }) => (
+                        <button
+                            key={key}
+                            type="button"
+                            aria-pressed={period === key}
+                            onClick={() => {
+                                onPeriod(key);
+                            }}
+                        >
+                            {label}
+                        </button>
                     ))}
-                </select>
-            </label>
-            <p className="marketing-bar__summary">{summary}</p>
-        </section>
+                </div>
+                <label className="marketing-bar__seller">
+                    <span>Vendedor</span>
+                    <Select<string[]> aria-label="Vendedor" mode="multiple" allowClear virtual={false} disabled={rows.length === 0} value={[...scope.sellers]} placeholder="Todos los vendedores" showSearch={{ optionFilterProp: "label" }} options={marketingOptions(rows, "seller")} onChange={onSeller} />
+                </label>
+                <label className="marketing-bar__seller">
+                    <span>Proyecto</span>
+                    <Select<string[]> aria-label="Proyecto" mode="multiple" allowClear virtual={false} disabled={rows.length === 0} value={[...scope.projects]} placeholder="Todos los proyectos" showSearch={{ optionFilterProp: "label" }} options={marketingOptions(rows, "project", projectsForSeller(scope.sellers, rows))} onChange={onProject} />
+                </label>
+                <p className="marketing-bar__summary">{summary}</p>
+            </section>
+        </>
     );
 }
 
-/** Local, explicitly fictional design proposal. No API, persistent state or business actions. */
+/** Lead cohorts retain their creation dates; appointment events use a separate event-date counter. */
+function marketingRows(summary: MarketingApiSummary): readonly MarketingSampleRow[] {
+    const today = parseISODate(summary.today) as Date;
+    const sellers = new Map(summary.sellers.map((seller) => [seller.id, seller]));
+    const projects = new Map(summary.projects.map((project) => [project.id, project]));
+    const appointments = new Map(summary.appointments.available ? summary.appointments.leadsWithAppointment.map((row) => [JSON.stringify([row.date, row.sellerId, row.projectId]), row.withAppointment]) : []);
+    return summary.rows.map((row) => ({
+        seller: row.sellerId,
+        project: row.projectId,
+        sellerName: sellers.get(row.sellerId)?.name ?? "Sin vendedor",
+        sellerPublicId: sellers.get(row.sellerId)?.publicId ?? null,
+        projectName: projects.get(row.projectId)?.name ?? "Sin proyecto",
+        campaign: "",
+        ad: "",
+        daysAgo: daysBetween(parseISODate(row.date) as Date, today),
+        leads: row.leads,
+        withAppointment: appointments.get(JSON.stringify([row.date, row.sellerId, row.projectId])) ?? 0,
+        appointments: 0,
+        attended: 0,
+        missed: 0,
+    }));
+}
+
+/** Connected entry; the API owns both source precedence and real lead counts. */
 export function MarketingHomePage({ currentUser }: { readonly currentUser: IdentityUser }) {
-    const name = currentUser.displayName.trim() || currentUser.email.trim();
     const [period, setPeriod] = useState<HomePeriod>("month");
-    const [seller, setSeller] = useState("");
-    const base = emptyMarketingFilters();
-    const filters: MarketingPreviewFilters = { ...base, seller, selection: { ...base.selection, mode: period } };
+    const { value, failed, retry } = useMarketingHomeSummary(period, currentUser.publicId);
+    const presentation = connectedPresentation(value);
+    return <MarketingHomeDashboard currentUser={currentUser} {...presentation} periodControl={{ period, setPeriod }} loading={!value && !failed} notice={failed ? "No fue posible consultar los leads. Vuelve a intentarlo." : "Consultando los leads…"} onRetry={failed ? retry : undefined} />;
+}
+
+interface MarketingHomeDashboardProps {
+    readonly currentUser: IdentityUser;
+    readonly rows?: readonly MarketingSampleRow[] | undefined;
+    readonly today?: Date | undefined;
+    readonly dataQuality?: MarketingApiSummary["appointments"] | undefined;
+    readonly directory?: readonly MarketingDirectoryRow[] | undefined;
+    readonly appointmentEvents?: readonly MarketingAppointmentEvent[] | undefined;
+    readonly appointmentsAvailable?: boolean;
+    readonly loading?: boolean;
+    readonly periodControl?: { readonly period: HomePeriod; readonly setPeriod: (period: HomePeriod) => void };
+    readonly notice?: string;
+    readonly onRetry?: (() => void) | undefined;
+}
+
+/** Pure dashboard: placeholders when unavailable; explicit rows are the only data source. */
+export function MarketingHomeDashboard({ currentUser, rows, today, periodControl, appointmentsAvailable, appointmentEvents, directory, dataQuality, loading, notice = "La información de leads y citas estará disponible al conectar los datos.", onRetry }: MarketingHomeDashboardProps) {
+    const [transitionPending, startTransition] = useTransition();
+    const showAppointments = appointmentsAvailable !== false;
+    const available = rows !== undefined;
+    const { source, dimensions } = marketingSources(rows, directory);
+    const [localPeriod, setLocalPeriod] = useState<HomePeriod>("month");
+    const { period, setPeriod } = periodControl ?? { period: localPeriod, setPeriod: setLocalPeriod };
+    const { scope, selection, setScope, pending } = useMarketingScope(currentUser.publicId, available ? dimensions : undefined, loading);
+    const busy = transitionPending || pending;
+    const { sellers, projects } = scope;
+    const changeSeller = (next: readonly string[]) => {
+        setScope((current) => reconcileScope({ sellers: next, projects: current.projects }, dimensions));
+    };
+    const filters = useMemo<MarketingPreviewFilters>(() => {
+        const base = emptyMarketingFilters(today);
+        return { ...base, sellers, projects, selection: { ...base.selection, mode: period } };
+    }, [sellers, projects, period, today]);
     const copy = HOME_PERIODS.find((item) => item.key === period) ?? DEFAULT_PERIOD;
-    const view = resolveMarketingView(filters);
-    const totals = summarizeMarketingSample(view.rows);
-    const buckets = bucketMarketingSample(view, view.windowRows, view.comparedRows);
-    const summary = `${describeRange(view.period)} · comparado con ${copy.against}`;
+    const view = useMemo(() => resolveMarketingView(filters, today, source), [filters, today, source]);
+    const projectCards = useMemo(() => buildProjectCards(filters, view), [filters, view]);
+    const sellerGroups = useMemo(() => groupMarketingSample(resolveMarketingView({ ...filters, seller: "", sellers: [] }, view.today, source), "seller"), [filters, view.today, source]);
+    const totals = useMemo(() => summarizeMarketingSample(view.rows), [view.rows]);
+    const buckets = useMemo(() => visibleBuckets(available, view), [available, view]);
+    const summary = `${describeRange(view.period)} · vs. ${describeRange(view.comparison)}`;
     const [first, ...others] = buildBanners({
+        available,
+        eventTotals: summarizeOptionalAppointments(appointmentEvents, view.period, scope),
+        appointmentsAvailable: showAppointments,
         totals,
         before: summarizeMarketingSample(view.previousRows),
-        context: copy.against,
+        context: `vs. ${copy.against.replace(/^(el|la) /, "")}`,
         buckets,
-        followUp: { value: recentWithoutAppointment(filters, view.today), series: recentWithoutAppointmentSeries(filters, view.today) },
+        followUp: { range: describeRange({ start: addDays(view.today, -6), end: view.today }), value: recentWithoutAppointment(filters, view.today, source), series: recentWithoutAppointmentSeries(filters, view.today, source) },
     });
 
     return (
-        <div className="global-home-dashboard marketing-home">
+        <div className="global-home-dashboard marketing-home" aria-busy={busy}>
+            <MarketingPreload busy={busy} />
             <section className="global-home-page-header" aria-labelledby="marketing-home-title">
                 <div>
                     <h1 id="marketing-home-title">Mercadeo</h1>
-                    <p>Cómo van los leads: cuántos llegan, cuántos avanzan a una cita y quién los atiende.</p>
+                    <p>Leads registrados, citas y desempeño por vendedor.</p>
                 </div>
-                <span className="marketing-demo-badge">Datos de demostración</span>
             </section>
-            <p className="marketing-demo-notice">Sin conexión a API. Proyectos, vendedores y cifras ficticios para revisar el diseño.</p>
-            <MarketingControls period={period} seller={seller} summary={summary} onPeriod={setPeriod} onSeller={setSeller} />
+            <MarketingControls
+                notice={notice}
+                onRetry={onRetry}
+                available={available}
+                rows={dimensions}
+                period={period}
+                scope={selection}
+                summary={summary}
+                onPeriod={(next) => {
+                    startTransition(() => {
+                        setPeriod(next);
+                    });
+                }}
+                onSeller={changeSeller}
+                onProject={(next) => {
+                    setScope((current) => ({ ...current, projects: next }));
+                }}
+            />
+            <MarketingDataQuality value={dataQuality} />
             <div className="marketing-preview-banners">
                 {first && <MarketingBanner key={first.title} {...first} />}
-                <section className="marketing-welcome" aria-label="Bienvenida a Mercadeo">
-                    <div className="marketing-welcome__copy">
-                        <p className="marketing-welcome__title">{name ? `Hola, ${name}` : "Hola"}</p>
-                        <p className="marketing-welcome__text">{seller ? `Viendo lo de ${seller}` : "Captación de leads y citas"}</p>
-                        <a className="marketing-welcome__link" href="#marketing-preview-movement">
-                            Ver cómo se mueven los leads
-                        </a>
-                    </div>
-                    <img className="marketing-welcome__art" src={`${import.meta.env.BASE_URL}illustrations/rocca-marketing-generated.png`} alt="" width={1774} height={887} decoding="async" />
-                </section>
+                <MarketingWelcome currentUser={currentUser} scope={scope} source={dimensions} />
                 {others.map((banner) => (
                     <MarketingBanner key={banner.title} {...banner} />
                 ))}
             </div>
-            <MarketingAlerts alerts={alertMarketingSample(view)} />
-            <LeadsAreaChart title={copy.chart} subtitle={summary} buckets={buckets} comparisonLabel={`Comparación (${copy.against})`} unit={copy.unit} />
-            <MarketingProjects cards={buildProjectCards(filters, view)} periodWord={copy.word} seller={seller} />
-            <MarketingSellers groups={groupMarketingSample(resolveMarketingView({ ...filters, seller: "" }), "seller")} selected={seller} onSelect={setSeller} />
+            <MarketingAlerts alerts={showAppointments ? alertMarketingSample(view) : []} comparison={{ current: describeRange(view.period), previous: describeRange(view.comparison) }} />
+            <LeadsAreaChart title={copy.chart} buckets={buckets} currentLabel={describeRange(view.window)} comparisonLabel={describeChartComparison(view)} unit={copy.unit} />
+            <MarketingProjects cards={projectCards} periodWord={copy.word} seller={sellers.map((seller) => sellerLabel(seller, dimensions)).join(", ")} comparison={{ label: copy.against, current: describeRange(view.period), previous: describeRange(view.comparison) }} />
+            <MarketingSellers groups={sellerGroups} selected={selection.sellers} onSelect={changeSeller} appointmentsAvailable={showAppointments} comparisonLabel={describeRange(view.comparison)} />
         </div>
     );
 }
 
+/** Shared busy signal for network reads and local filter transitions; does not block newer selections. */
+function MarketingPreload({ busy }: { readonly busy: boolean }) {
+    if (!busy) return null;
+    return (
+        <div className="marketing-home__preload" role="status" aria-label="Cargando Mercadeo" aria-live="polite">
+            <Spin />
+            <span>Actualizando Mercadeo…</span>
+        </div>
+    );
+}
+
+/** Keep an active filter visible: loading retains it, a new directory reconciles it, a new user resets it. */
+function useMarketingScope(userId: string, rows: readonly MarketingDirectoryRow[] | undefined, loading?: boolean) {
+    const [stored, setStored] = useState({ userId, scope: { sellers: [] as readonly string[], projects: [] as readonly string[] } });
+    const own = stored.userId === userId ? stored.scope : { sellers: [], projects: [] };
+    const scope = rows === undefined ? own : reconcileScope(own, rows);
+    if (stored.userId !== userId || scope.sellers.join("|") !== stored.scope.sellers.join("|") || scope.projects.join("|") !== stored.scope.projects.join("|")) setStored({ userId, scope });
+    const setScope = (update: (current: MarketingScope) => MarketingScope) => {
+        setStored((current) => ({ userId, scope: update(current.scope) }));
+    };
+    // Select values must commit immediately; defer only the expensive report, otherwise rapid selections can be lost.
+    const deferredScope = useDeferredValue(scope);
+    return { scope: deferredScope, selection: scope, setScope, pending: loading || scope !== deferredScope };
+}
+
+function reconcileScope(scope: MarketingScope, rows: readonly MarketingDirectoryRow[]): MarketingScope {
+    const sellers = scope.sellers.filter((id) => rows.some((row) => row.seller === id));
+    const allowedProjects = projectsForSeller(sellers, rows);
+    const projects = scope.projects.filter((id) => allowedProjects.includes(id));
+    if (sellers.length === scope.sellers.length && projects.length === scope.projects.length) return scope;
+    return { sellers, projects };
+}
+
+function visibleBuckets(available: boolean, view: ReturnType<typeof resolveMarketingView>) {
+    return available ? bucketMarketingSample(view, view.windowRows, view.comparedRows) : [];
+}
+
+function sellerLabel(seller: string, source: readonly MarketingDirectoryRow[]): string {
+    return source.find((row) => row.seller === seller)?.sellerName ?? seller;
+}
+
+/** Session greeting or the selected seller, retaining the existing welcome illustration fallback. */
+function MarketingWelcome({ currentUser, scope, source }: { readonly currentUser: IdentityUser; readonly scope: MarketingScope; readonly source: readonly MarketingDirectoryRow[] }) {
+    const name = currentUser.displayName.trim() || currentUser.email.trim();
+    const people = scope.sellers.map((seller) => ({ id: seller, publicId: source.find((row) => row.seller === seller)?.sellerPublicId ?? null, name: sellerLabel(seller, source) }));
+    const sellerName = scope.sellers.map((seller) => sellerLabel(seller, source)).join(", ");
+    const firstName = name.split(/\s+/)[0] ?? "";
+    const greeting = firstName ? `Hola, ${firstName}` : "Hola";
+    return (
+        <section className={`marketing-welcome${people.length > 1 ? " marketing-welcome--multiple" : ""}`} aria-label="Bienvenida a Mercadeo">
+            <div className="marketing-welcome__copy">
+                <p className="marketing-welcome__title">{scope.sellers.length ? sellerName : greeting}</p>
+                <p className="marketing-welcome__text">{describeScope(scope, source)}</p>
+                <a className="marketing-welcome__link" href="#marketing-preview-movement">
+                    Ver cómo se mueven los leads
+                </a>
+            </div>
+            <div className="marketing-welcome__people">
+                {people.length === 0 ? (
+                    <MarketingWelcomeArt publicId={null} name="" />
+                ) : (
+                    people.map((person) => (
+                        <figure key={person.id} className="marketing-welcome__person">
+                            <MarketingWelcomeArt publicId={person.publicId} name={person.name} />
+                            <figcaption>{person.name}</figcaption>
+                        </figure>
+                    ))
+                )}
+            </div>
+        </section>
+    );
+}
+
 /** Same banner anatomy as Formalization, with the trend drawn inside the card. */
-function MarketingBanner({ title, value, caption, icon, tone, delta, series, context }: MarketingBannerProps) {
+function MarketingBanner({ title, value, caption, hint, icon, tone, delta, series, context }: MarketingBannerProps) {
     return (
         <article className={`marketing-banner marketing-banner--${tone}`}>
             <span className="marketing-banner__icon" aria-hidden="true">
                 {icon}
             </span>
             <div className="marketing-banner__content">
-                <h2>{title}</h2>
+                <h2>
+                    {title}
+                    {hint && <InfoHint label={title}>{hint}</InfoHint>}
+                </h2>
                 <strong aria-label={`${title}: ${value}`}>{value}</strong>
                 <span className="marketing-banner__caption">{caption}</span>
                 {delta && <DeltaText delta={delta} {...(context ? { context } : {})} />}
             </div>
-            <span className="marketing-banner__trend">
-                <SparkArea values={series} />
-            </span>
+            {series.length > 0 && (
+                <span className="marketing-banner__trend">
+                    <SparkArea values={series} />
+                </span>
+            )}
             <span className="marketing-banner__pattern" aria-hidden="true">
                 {Array.from({ length: 6 }, (_, index) => (
                     <i key={index} style={{ width: 64 - index * 8, height: 64 - index * 8 }} />
                 ))}
             </span>
         </article>
+    );
+}
+
+/** Directory associations come from real cohort rows and event lead links, without manufacturing zero-lead rows. */
+function marketingDirectory(summary: MarketingApiSummary): MarketingDirectoryRow[] {
+    const sellers = new Map(summary.sellers.map((seller) => [seller.id, seller]));
+    const projects = new Map(summary.projects.map((project) => [project.id, project]));
+    const links = [...summary.rows, ...appointmentDirectoryLinks(summary.appointments)];
+    const directory = new Map<string, MarketingDirectoryRow>();
+    for (const link of links) directory.set(JSON.stringify([link.sellerId, link.projectId]), { seller: link.sellerId, project: link.projectId, sellerName: sellers.get(link.sellerId)?.name ?? "Sin vendedor", sellerPublicId: sellers.get(link.sellerId)?.publicId ?? null, projectName: projects.get(link.projectId)?.name ?? "Sin proyecto" });
+    return [...directory.values()];
+}
+
+function connectedPresentation(value: MarketingApiSummary | null | undefined) {
+    if (!value) return { appointmentsAvailable: false };
+    return { rows: marketingRows(value), today: parseISODate(value.today) ?? undefined, appointmentsAvailable: value.appointments.available, appointmentEvents: value.appointments.available ? value.appointments.events : undefined, directory: marketingDirectory(value), dataQuality: value.appointments };
+}
+function summarizeOptionalAppointments(events: readonly MarketingAppointmentEvent[] | undefined, period: Parameters<typeof summarizeAppointmentEvents>[1], scope: MarketingScope) {
+    return events ? summarizeAppointmentEvents(events, period, scope) : undefined;
+}
+function appointmentDirectoryLinks(appointments: MarketingApiSummary["appointments"]) {
+    return appointments.available ? appointments.events.flatMap((event) => event.links) : [];
+}
+
+function marketingSources(rows: readonly MarketingSampleRow[] | undefined, directory: readonly MarketingDirectoryRow[] | undefined) {
+    const source = rows ?? EMPTY_MARKETING_ROWS;
+    return { source, dimensions: directory ?? source };
+}
+function MarketingDataQuality({ value }: { readonly value: MarketingApiSummary["appointments"] | undefined }) {
+    if (!value?.available) return null;
+    const { unresolvedLinks, invalidDates, unknownStatuses } = value.quality;
+    if (unresolvedLinks + invalidDates + unknownStatuses === 0) return null;
+    const issues = [unresolvedLinks > 0 ? `${String(unresolvedLinks)} citas sin lead asociado no se cuentan.` : "", invalidDates > 0 ? `${String(invalidDates)} citas con fecha inválida no se cuentan.` : "", unknownStatuses > 0 ? `${String(unknownStatuses)} citas con estado desconocido no se cuentan.` : ""].filter(Boolean);
+    return (
+        <p className="marketing-demo-notice" role="status">
+            {issues.join(" ")}
+        </p>
     );
 }

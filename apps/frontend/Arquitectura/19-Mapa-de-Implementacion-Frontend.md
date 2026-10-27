@@ -1,10 +1,43 @@
 # 19 - Mapa de Implementacion Frontend
 
-## Inventario vigente - 2026-10-22
+## Estado contrastado - 2026-10-27
 
-El runtime contiene identidad, Administracion y Formalizacion parcial bajo `src/modules/home`; servicios tipados bajo `src/services`, rutas bajo `src/routes` y componentes de feedback recuperable. Usa React/Vite, Ant Design, DataTables, fetch y CSS. History API, rutas diferidas y limite de errores estan implementados. Ver [resumen](01-Resumen-Frontend.md) y [navegacion/seguimiento](29-Navegacion-Recuperacion-y-Seguimiento.md).
+[30 - Estado frontend verificado](30-Estado-Frontend-Verificado.md) inventaría las rutas, contratos y límites actuales: Captación conectada, seguimiento y cambio protegido de etapa de Formalización. Los cortes fechados siguientes son antecedentes; sus cifras de QA no se reejecutaron en esta revisión documental.
 
-El contador de aprobaciones es lectura real protegida; las otras metricas son provisionales. No hay seguimiento operacional ni API de mutaciones de etapas. Los arboles comerciales y herramientas de estado/formularios descritos debajo son direccion futura, no carpetas/dependencias existentes ni autorizacion de construccion. El primer corte de identidad se conserva como antecedente.
+
+## Captacion conectada - 2026-10-26
+
+La pagina usa API/reportes y directorios reales, sin constantes de demo en
+produccion. Servicio validado y hook por periodo/identidad, carga/error/reintento,
+filtros multiples sin ampliar seleccion silenciosamente y fotos por publicId.
+Se conservan tablas/graficos/descarga con medidas de cohortes; no volumen de eventos.
+Ver [53 API](../../api/Arquitectura/53-Captacion-Leads-Reporte-Federado.md).
+
+## Antecedente: Captacion de leads, maqueta UX - 2026-10-26
+
+Ampliacion visual: KPIs personalizables, paneles de embudo, vendedores, citas,
+ordenes/contratos, perdidas e inversion/tiempos. Constructor con metricas y
+columnas dinamicas. Solo muestra local; no acredita integracion comercial.
+Definiciones y limites: [27 - Entrega y QA](27-Entrega-Administracion-y-QA.md).
+
+`/home/marketing/leads` monta de forma diferida MarketingLeadCapturePage desde
+`src/modules/marketing`. Analisis interactivo con datos ficticios locales,
+filtros dependientes, medidas y desgloses; permiso existente sin cambios.
+Sustituye el H1 inicial. Sin API/BD, importaciones, exportacion o CRUD comercial.
+
+
+## Antecedente entrada Captacion de leads - 2026-10-26
+
+Ruta registrada `/home/marketing/leads`, menu `marketing-leads`, permiso
+`mercadeo.leads.read`. Solo renderiza H1; no es CRUD, listado, reporte ni consulta
+comercial. Menu/URL aplican el control existente por permisos efectivos y denies.
+
+
+## Inventario vigente - 2026-10-23
+
+El runtime contiene identidad bajo `src/modules/auth`, Administracion bajo `src/modules/administration` y Formalizacion parcial/Home de Mercadeo bajo `src/modules/home`; servicios tipados bajo `src/services`, rutas bajo `src/routes` y componentes de feedback recuperable. Usa React/Vite, Ant Design, DataTables, fetch y CSS. History API, rutas diferidas y limite de errores estan implementados. Ver [resumen](01-Resumen-Frontend.md) y [navegacion/seguimiento](29-Navegacion-Recuperacion-y-Seguimiento.md).
+
+Aprobaciones es lectura protegida independiente; seis banners de etapas usan un solo `GET /formalization/home/summary` con rol efectivo activo Formalizacion y permiso de etapas sin deny. Owner puede heredar ese rol desde backend. Mercadeo / Inicio lee resumen de leads y citas disponibles mediante `src/services/marketing/home-summary-service.ts` y `useMarketingHomeSummary.ts`; no usa muestra ficticia de respaldo. No hay seguimiento de ordenes operacional ni list/send/revert activos. Los arboles comerciales y herramientas descritos debajo son direccion futura, no carpetas/dependencias existentes ni nueva autorizacion. Ver [27](27-Entrega-Administracion-y-QA.md) y [49](../../api/Arquitectura/49-Estado-Actual-y-Cierre-Documental.md).
 
 ## Proposito
 
@@ -35,18 +68,22 @@ El frontend:
 - nunca usa ids de proveedor externo como identidad principal de UI;
 - nunca usa estructuras legacy como contrato visual.
 
-## Mapa de carpetas
+## Mapa de carpetas vigentes y direccion futura
+
+`app-routes.ts` registra `/home/marketing` y las cuatro vistas propias de Formalizacion (Inicio, Gestion, Calendario y Resumen). Ventas, Contabilidad, Expedientes y Contratos de Formalizacion, integraciones y la portada de catalogos tienen rutas con placeholder; registrar una ruta no entrega su flujo operativo. `/home/global` pertenece al corte inicial historico y ya no esta registrado. El destino inicial se resuelve por perfil efectivo; `DEFAULT_HOME_PATH` es `/home/administration`, sin conceder acceso a esa ruta.
+
+Los catalogos reutilizan las mismas paginas en Administracion, Ventas, Mercadeo, Formalizacion y Contabilidad mediante contexto modular; no son copias de registros por area. Las carpetas comerciales de la tabla siguiente son futuras salvo `auth`, `home`, servicios y componentes realmente existentes. No crear ni trasladar carpetas para igualar este blueprint.
 
 | Carpeta | Que va aqui | Que no va aqui | Leer antes |
 | --- | --- | --- | --- |
 | `src/modules/auth` | Compuerta visual de identidad, sesion, usuario actual y permisos visibles. | Reglas finales de autorizacion del backend. | `21`, `22`. |
-| `src/modules/home` | Shell global autenticado aprobado para `/home/global`, selector visual de perfiles/contextos, menu dinamico y vista tecnica de sesion/permisos devueltos por API. | Mostrar dashboards comerciales reales, decidir autorizacion final o crear acciones de negocio. | `00`, `14`, `24`. |
+| `src/modules/home` | Shell autenticado, menu por perfil efectivo, Home de Formalizacion/Mercadeo conectados a resumen; calendario/Resumen de Formalizacion simulados. | Decidir autorizacion final, importar datos o activar acciones contractuales. | `00`, `14`, `24`, `27`. |
 | `src/modules/sales/dashboard` | Dashboard de ventas, tarjetas, filtros y drill-down. | Reglas de conteo calculadas en UI. | `03`, `17`, `18`. |
 | `src/modules/sales/leads` | Lista, detalle, formularios y acciones de leads. | Oportunidades, estimaciones u ordenes completas. | `10`, `11`, `12`, `17`, `18`, `23`. |
 | `src/modules/sales/opportunities` | Pipeline y vistas de oportunidad. | Formularios de lead puro. | `13`. |
 | `src/modules/sales/estimates` | Pantallas de estimaciones. | Ordenes de venta. | `13`. |
 | `src/modules/sales/sales-orders` | Pantallas de ordenes de venta, pre-reserva y reserva. | Formalizacion operativa completa. | `13`, `14`. |
-| `src/modules/marketing` | Home y flujos de mercadeo cuando se aprueben. | Seguimiento operativo de ventas o llamadas directas a proveedores. | `14`, `23`. |
+| `src/modules/marketing` | Reporte conectado de Captación, controles, KPIs, gráfico, tablas, carga y exportaciones; Home permanece en `src/modules/home/MarketingHomePage.tsx`. | Seguimiento operativo de ventas o llamadas directas a proveedores. | `14`, `23`. |
 | `src/modules/formalizations` | Flujo de formalizacion cuando se apruebe alcance. | Leads iniciales o dashboard de ventas. | `14`. |
 | `src/modules/collections` | Home y flujos financieros/cobros cuando se aprueben. | Cobros directos contra ERP o NetSuite desde React. | `14`, `23`. |
 | `src/modules/management` | Home de jefatura, supervision y acceso consolidado por permisos. | Duplicar pantallas operativas de cada area. | `14`, `21`, `24`. |
@@ -63,7 +100,7 @@ El frontend:
 
 ## Shell, home y sidebar por contexto
 
-La aplicacion vigente tiene un shell comun despues de `auth` para identidad. Las pantallas comerciales por contexto siguen bloqueadas hasta una fase posterior.
+La aplicacion tiene un shell comun despues de `auth`, con Administracion y los homes acotados anteriores. El CRUD comercial de leads sigue futuro.
 
 Ese shell debe resolver:
 
@@ -143,7 +180,7 @@ Si una vista necesita una accion relacionada con NetSuite, Odoo, Kapso, Microsof
 
 Pantallas visuales futuras de integraciones, si se aprueban, deben vivir bajo `management` o `support` como vistas CRM canonicas. No son adapters frontend.
 
-## Primer vertical slice aprobado ahora
+## Primer vertical slice historico - identidad 2026-09-30
 
 El desarrollo real aprobado de frontend acompana la compuerta de identidad:
 
@@ -194,12 +231,12 @@ Antes de tocar codigo:
 9. Implementar con pnpm.
 10. Ejecutar `pnpm run typecheck` y `pnpm run build`.
 
-## Estado actual
+## Estado del corte inicial de identidad, salvo ampliaciones del inventario superior
 
 | Elemento | Estado |
 | --- | --- |
 | Esqueleto React/Vite | Creado. |
-| Pantalla comercial real | No aprobada todavia. |
+| Pantalla comercial real | Home de Formalizacion/Mercadeo con resumen de lectura; CRUD de leads pendiente. |
 | Cliente API identidad | Implementado para BFF, CSRF, refresh, login local, Microsoft y logout. |
 | Contrato visual identidad | Creado; manda antes de cualquier pantalla comercial. |
 | Compuerta de identidad | Implementada y conectada al BFF. |

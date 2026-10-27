@@ -36,7 +36,7 @@ El formulario de lead debe construir un JSON canonico:
 }
 ```
 
-Ese contrato es estable aunque el backend sincronice con NetSuite hoy y Odoo despues.
+Este JSON es un ejemplo historico, no un DTO estable instalado. Sus enteros ilustrativos no autorizan relaciones UI por PK interna; el formulario futuro requiere publicIds y contrato API aprobado.
 
 La UI no envia ids de proveedor para relacionar vendedor, lead, oportunidad, estimacion, orden o contrato.
 
@@ -69,6 +69,8 @@ Lead
 ```
 
 El frontend no necesita saber si el dato nacio en CRM, ERP o legacy.
+
+Limite de esa regla al 2026-10-23: el frontend no selecciona fuente, pero los contratos actuales pueden incluir procedencia normalizada, `sources` y referencias externas de soporte. El resumen de Mercadeo usa claves opacas `id` para agrupar/filtrar; `publicId` puede ser null en entidades no resueltas a identidad nativa. No convertir esas claves en rutas de entidad, escrituras ni fotos inventadas. Ver [46](../../api/Arquitectura/46-Mercadeo-Resumen-Leads.md).
 
 El `id` visible para rutas, stores y query keys debe ser un identificador canonico del CRM, no un id externo.
 

@@ -1,16 +1,36 @@
 # 01 - Resumen API
 
+## Runtime inspeccionado - 2026-10-27
+
+`src/app.module.ts` registra tambien `ContractTransitionModule` y `NetsuiteModule`.
+Existen seguimiento (`GET /formalization/home/follow-up`), trayectoria paginada
+(`GET /formalization/orders/:source/:id/timing`), registro/reversion de envio y
+selector de etapa (`POST /formalization/contracts/send`, `/revert` y
+`POST /formalization/orders/stage`). Son comandos CRM autorizados, no envio de
+correo ni escritura ERP. Conservan sesion, CSRF, permisos, alcance, aprobaciones,
+version e idempotencia; firma confirmada condiciona etapas posteriores.
+La consulta NetSuite es una inspeccion GET autorizada por identidad CRM; no es
+sincronizacion. [52](52-Etapas-Responsables-y-Tiempos.md) detalla esos limites.
+
+Mercadeo registra Inicio y Captacion como contratos independientes de solo lectura:
+`GET /marketing/home/summary` y `GET /marketing/leads/report`. Ambos consultan
+nativo primero y legacy opcional sin copiar registros. El menu Eventos y citas y
+su permiso fueron retirados por migracion 038; Calendario y las metricas de citas
+se conservan. Ver [53](53-Captacion-Leads-Reporte-Federado.md).
+Esta revision acredita codigo y documentacion, no una nueva operacion de BD,
+prueba funcional, despliegue o verificacion de credenciales.
+
 ## Veredicto
 
 El backend del CRM debe construirse como monolito modular NestJS con arquitectura hexagonal. Su responsabilidad es proteger el dominio comercial, persistir datos propios, validar permisos, generar auditoria y desacoplar NetSuite, Odoo, Microsoft 365 y legacy CRM mediante adapters.
 
-Estado de fase:
+Estado de fase (con ampliaciones posteriores detalladas en este documento):
 
 ```txt
 vision completa del API != alcance autorizado actual
 ```
 
-`apps/api` tiene identidad BFF, Administracion, auditoria, seis catalogos editables y expedientes de unidades de solo lectura. Formalizacion incorpora persistencia interna de ordenes/historial y `GET /formalization/approvals/summary`, protegido por permiso efectivo. No hay API de mutaciones del ciclo de vida ni implementacion comercial completa de Leads/contratos. Corte documental: 2026-10-22; ver [registro de remediacion](Reauditoria-54-Plan-y-Resultados.md).
+`apps/api` tiene identidad BFF, Administracion, auditoria, catalogos y expedientes de unidades de solo lectura. Al 2026-10-23, `src/app.module.ts` registra los resumenes de aprobaciones, contratos y etapas de Formalizacion, ademas de `GET /marketing/home/summary` para agregados de leads y citas con permiso `mercadeo.home.read`. Existe lectura de timeline nativo por auditoria; no CRUD HTTP general de Leads. Ese corte historico fue ampliado el 2026-10-26 para seguimiento y comandos acotados de Formalizacion descritos abajo. Esquemas nativos de Leads y calendario no equivalen a esas operaciones. Inventario y limites: [49 - Estado actual](49-Estado-Actual-y-Cierre-Documental.md).
 
 No significa login productivo listo. `SQL/003` ya fue aplicado y validado contra `CRM_THINK_V2`, `SQL/004` existe para Microsoft/cache/foto, y el primer owner Roberto ya fue creado por bootstrap controlado. El flujo local fue verificado con frontend y API levantados; para produccion siguen pendientes la aprobacion operacional de Entra ID/redirect URI oficial, el `jefe_general` real de negocio, el canal aprobado para entregar tokens de activacion/reset y la politica final de despliegue. Rate limit de refresh, lockout persistente, logger estructurado, decision de reuso y selector de cuenta Microsoft ya estan definidos.
 

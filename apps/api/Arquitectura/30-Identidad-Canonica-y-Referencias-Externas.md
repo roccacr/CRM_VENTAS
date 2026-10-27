@@ -51,6 +51,14 @@ Problemas:
 
 ## Modelo correcto
 
+Alcance de los ejemplos, 2026-10-23: las cadenas oportunidad/estimacion/contrato
+y el `int_external_reference` generico siguientes son blueprint, no inventario
+fisico implementado. Los agregados actuales usan referencias propias por dominio
+(`crm_project_external_reference`, `crm_lead_external_reference`,
+`crm_sales_order_external_reference`, entre otras) y `int_external_system`.
+Identidad usa `int_user_external_identity`. Ver [43 - Leads](43-Leads-Esquema-Nativo.md)
+y [49 - Estado actual](49-Estado-Actual-y-Cierre-Documental.md).
+
 El CRM manda internamente.
 
 Ejemplo:
@@ -88,7 +96,8 @@ crm_lead.id_lead = 500
 
 ## Tablas de referencias externas
 
-Las referencias externas genericas viven en:
+El blueprint propuso las referencias externas genericas siguientes; el inventario
+fisico vigente usa las tablas especificas por entidad citadas arriba:
 
 ```txt
 int_external_system
@@ -113,13 +122,14 @@ Regla:
 No se inventan ids externos. Si un proveedor aun no tiene id real, no se crea la referencia de usuario para ese proveedor.
 ```
 
-Caso aprobado del owner Roberto:
+Caso historicamente aprobado del owner Roberto (no es una nueva consulta de
+filas actuales ni una instruccion para sembrar proveedores):
 
 | Proveedor | Estado | Regla |
 | --- | --- | --- |
 | `legacy_crm` | activo | Referencia `14` tomada de `crmdatabase-api.admins.id_admin`, solo como crosswalk historico. |
 | `netsuite` | activo | Referencia `653055` tomada de `idnetsuite_admin`, solo como alias externo de Roberto. |
-| `odoo` | pendiente | No existe id de Odoo todavia; queda el sistema `odoo` en `int_external_system` como `pending`, pero no se crea fila falsa en `int_user_external_identity`. |
+| `odoo` | previsto | Sin ID real no se crea fila en `int_user_external_identity`; el estado de configuracion previsto `pending` no demuestra que el proveedor este instalado actualmente. |
 
 Si despues aparece Odoo u otro tercer proveedor, se agrega el proveedor en `int_external_system` y se vincula el id real contra el mismo `sec_user.id_user`. No se cambia la persona interna ni las relaciones del CRM.
 
@@ -200,7 +210,9 @@ idodoo_user
 external_user_id
 ```
 
-Si llega un lead desde NetSuite con vendedor externo:
+Flujo futuro de escritura, no implementado por el esquema 031 ni autorizado
+como importacion de datos viejos: si llega un lead nuevo desde un proveedor
+con vendedor externo:
 
 1. El API busca el vendedor en `int_user_external_identity`.
 2. Resuelve el `sec_user.id_user`.
@@ -224,7 +236,7 @@ Posibles senales para reconciliar:
 - public id interno enviado por el CRM al proveedor;
 - correo/telefono/documento con regla aprobada;
 - match revisado por usuario autorizado;
-- proceso de migracion controlado.
+- reconciliacion autorizada de identidades; no copiar datos viejos por esta propuesta.
 
 Regla:
 

@@ -1,0 +1,114 @@
+{
+  "capturedAt": "2026-10-26T08:48:44.1142860-06:00",
+  "scope": "Inspeccion estatica del checkout local; no validacion de fuentes contra HEAD",
+  "head": "049b59ce4a5a5efe255b8837f612952071f02fb9",
+  "repository": "https://github.com/roccacr/CRM_VENTAS.git",
+  "containsUncommittedChanges": true,
+  "files": [
+    {
+      "path": "apps/api/src/app.module.ts",
+      "sha256": "b70986ff1c4eb846f870e97ce05c14bf34a64006500f7c483a3c2575b87c2944",
+      "lines": 96
+    },
+    {
+      "path": "apps/frontend/src/routes/app-routes.ts",
+      "sha256": "d58a7eb7d5f35b82074b9327693753b2a77a9cda6365d237003211b427219855",
+      "lines": 152
+    },
+    {
+      "path": "apps/frontend/src/services/api/api-client.ts",
+      "sha256": "ca7251013ae4b00d527569e6b506a184f60d47f2d582ee7740627aef1b790f22",
+      "lines": 293
+    },
+    {
+      "path": "apps/api/src/common/security/route-permission.ts",
+      "sha256": "3035338e057ff56404f33a49cf2afa438e4572bcd2b03180c58568b467a8b13a",
+      "lines": 91
+    },
+    {
+      "path": "apps/api/src/modules/crm/identity/identity-profile.repository.ts",
+      "sha256": "a6f55b4f6263185ff038c01586cbd3d4db3cd081c218f21a1a5fc3447cb787ed",
+      "lines": 407
+    },
+    {
+      "path": "apps/api/src/integrations/microsoft365/microsoft365.module.ts",
+      "sha256": "1478d502af739898c96b5df1ebee4b85c525fa52681e2efbbdb9406fb1df132e",
+      "lines": 25
+    },
+    {
+      "path": "apps/api/src/modules/crm/projects/projects.service.ts",
+      "sha256": "b41bfdebc8ac08c31ad35df34d3d77b1462ce7b59629eea3aa537b9128f14e6c",
+      "lines": 48
+    },
+    {
+      "path": "apps/api/src/integrations/legacy-crm/legacy-crm.module.ts",
+      "sha256": "9efb44c953db8db35eb0764ea2359c1197d3fbf28a0fd57f01b26caf5de05c0c",
+      "lines": 76
+    },
+    {
+      "path": "apps/api/src/integrations/legacy-crm/legacy-crm-access.ts",
+      "sha256": "4c4fbd444a12b68a50acdf5d9bb9c976d2f0f464ed092b0187c64999e189421b",
+      "lines": 11
+    },
+    {
+      "path": "apps/api/src/modules/crm/sales/sales-orders/follow-up.service.ts",
+      "sha256": "bcf94864a4fb562b128ab10168e9f3c6bde1decd7a90482cf69d9e294fb1d7ca",
+      "lines": 60
+    },
+    {
+      "path": "apps/api/src/modules/crm/sales/sales-orders/follow-up.repository.ts",
+      "sha256": "0d1022a0971111dd724457638209b2dbcc4e80ca3424f21b5f725b56378ed7f2",
+      "lines": 46
+    },
+    {
+      "path": "apps/api/src/modules/crm/sales/sales-orders/contract-transition.controller.ts",
+      "sha256": "a55937b2d703dae96157210543c1b70bf0b998041c5d0a6aa3e71bcd80c5fdb1",
+      "lines": 49
+    },
+    {
+      "path": "apps/api/src/modules/crm/sales/sales-orders/contract-transition.repository.ts",
+      "sha256": "9964000fb57f057096b400018e0c3dec706246489f7aa273b737e15303dcb2b8",
+      "lines": 232
+    },
+    {
+      "path": "apps/api/src/integrations/legacy-crm/legacy-contract-transition.writer.ts",
+      "sha256": "89d442fdf3e126a9b8ff258bbe35efbead08be68ab7be06cf5a013233b6b11a5",
+      "lines": 82
+    },
+    {
+      "path": "apps/api/src/modules/crm/audit/record-audit.service.ts",
+      "sha256": "1108bc3f6d44a2d6ee18354d971a7ee41016a06bb3339594ee8b3be9ad708442",
+      "lines": 196
+    },
+    {
+      "path": "apps/api/src/modules/crm/marketing/marketing-home.service.ts",
+      "sha256": "ce7c7b030fb83bfbd4ee155cbe22b47bc3d6302115f3fd576ebb961078cbaf3d",
+      "lines": 52
+    },
+    {
+      "path": "apps/api/src/modules/crm/marketing/marketing-home.repository.ts",
+      "sha256": "11b206bd4d16db814ab98f9b0266f7fa1bdb4354912f38829b13371ea0e580eb",
+      "lines": 78
+    },
+    {
+      "path": "apps/frontend/src/modules/marketing/MarketingLeadCapturePage.tsx",
+      "sha256": "2f32d926ee6441c0e1fc0a9a92a91b992dbba633f1188684e5819f52648c0642",
+      "lines": 323
+    },
+    {
+      "path": "apps/api/migrations/schema-only/202610230034_calendar_domain.ts",
+      "sha256": "b4994a9f830ba39b23a2a4d2b4620b649fa0787229127f4bbf818391e38ca0ec",
+      "lines": 37
+    },
+    {
+      "path": "apps/api/migrations/schema-only/202610260036_sales_order_stage_tracking.ts",
+      "sha256": "147d7d92cfac5286169e611b5abfa283e331134328006a2d758e2d1f759178e1",
+      "lines": 94
+    }
+  ],
+  "exclusions": [
+    "Sin .env, claves, datos de usuarios u ordenes",
+    "No prueba despliegue productivo ni escrituras reales",
+    "No certifica fuentes locales como bytes de HEAD"
+  ]
+}

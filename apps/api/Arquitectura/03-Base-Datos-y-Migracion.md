@@ -1,5 +1,52 @@
 # 03 - Base de Datos y Migracion
 
+## Corte de codigo y documentacion - 2026-10-27
+
+Revision de los archivos actuales, sin conexion MySQL ni ejecucion de migraciones.
+Los resultados fechados de reset, recuperacion, limpieza y esquema conservan su
+fecha: no describen los conteos de hoy. Autoridad vigente: [49](49-Estado-Actual-y-Cierre-Documental.md).
+
+El runner `scripts/run-schema-migrations.ts` registra **36 migraciones**, con
+sufijos 001, 003-025 y 027-038; los saltos de numeracion no son pendientes por
+completar. Estar en `schemaMigrations` no acredita aplicacion en un servidor.
+El ledger `conf_schema_migration` es evidencia de ejecucion, no un validador de
+compatibilidad ni una restauracion de catalogos vaciados despues de migrar.
+
+| Tramo registrado | Responsabilidad real |
+| --- | --- |
+| 001, 003-006 | Identidad, acceso local/Microsoft, directorio y politica de roles |
+| 007-016 | Catalogos, reparacion Owner, tablas dedicadas de siete dominios y nombre de expedientes |
+| 017-020 | Formalizacion, contrasena inicial, jefatura y banner de aprobaciones |
+| 021-025 | Ordenes, fechas UTC, auditoria central y permisos de contratos |
+| 027-030 | Herencia Owner, roles Mercadeo, modulos y plantilla de Jefe General |
+| 031-034 | Leads, contactos, etapas/motivos, historia y calendario nativo |
+| 035 | `crm_sales_order.lead_id_sales_order` nullable, indice y FK a `crm_lead.id_lead`; no rellena relaciones |
+| 036 | Responsable por visita, snapshot, vista de duraciones y restauracion solo de catalogos tecnicos vacios |
+| 037 | Definicion `formalizacion.orders.stage.update`, sin grants automaticos a roles de negocio |
+| 038 | Retira `mercadeo.appointments.read`, asociaciones y overrides; refresca versiones de permisos |
+
+038 no elimina eventos ni Calendario; 028 se conserva como migracion historica.
+La confirmacion de aplicacion de 038 y conteos posteriores esta registrada en
+[53](53-Captacion-Leads-Reporte-Federado.md), no se repitio en esta revision.
+El detalle de 035-037 y del runner separado de trayectoria legacy esta en
+[52](52-Etapas-Responsables-y-Tiempos.md).
+
+Operacion segura: desde `apps/api`, con autorizacion especifica y destino revisado,
+`pnpm migrate:identity:schema --only=<nombre-exacto-registrado>`; requiere
+`DB_NAME=CRM_THINK_V2` y `MIGRATION_CONFIRM_SCHEMA_ONLY=CRM_THINK_V2`.
+Sin `--only`, el runner selecciona todas las registradas: no usarlo como reparacion
+ni para rellenar numeracion. El mutex es `crm_think_v2_schema_migration`.
+El control SQL bloquea acceso legacy dentro del runner nativo; no cambia grants
+ni protege conexiones independientes. DDL MySQL puede autocommit y requiere
+conciliacion ante drift, no borrado o adopcion silenciosa.
+
+La politica vigente separa fuentes y adapta JSON sin importar registros.
+[Inicio](46-Mercadeo-Resumen-Leads.md), [citas](48-Mercadeo-Metricas-Citas.md)
+y [Captacion](53-Captacion-Leads-Reporte-Federado.md) leen datos federados.
+Esto no autoriza los antiguos pasos de promocion/backfill listados como propuesta.
+Las escrituras de contratos/etapas son otro alcance, parametrizado y auditado:
+no confundirlas con un importador ni con una sincronizacion ERP.
+
 Estado documental 2026-10-22: los resets, recuperaciones y conteos fechados siguientes son evidencia historica, no estado vivo ni instrucciones para repetirlos. `CRM_THINK_V2` es desarrollo en host compartido con produccion `crmdatabase-api`: no ejecutar fixtures alli. No se abrio MySQL, inspecciono `.env` ni ejecuto SQL/003, SQL/004 o SQL/021 en esta revision. Ver [36 - Estado vigente y registro](36-Registro-Entrega-Administracion.md) y [operacion](Operacion-Despliegue-Rollback.md) para limites y compuertas.
 
 ## Historical Migration Runbook - 2026-10-09
@@ -30,11 +77,19 @@ The approved identity bootstrap contains only `rzuniga@roccacr.com` with the act
 
 The unrestricted legacy administrator importer was removed. Historical `SQL/002_identity_seed_p0_s1.sql` is not an approved bootstrap and must not be executed: it inserts multiple roles and obsolete permission definitions. Historical migrations remain immutable for existing installations. Migrations 001/003/004/005 are structural, 006 changes security policy, 007 creates shared catalog storage and scoped permissions, 008 repairs Administration/Owner configuration, and 009 creates dedicated Projects storage without business seeds. Do not replay all migrations merely because the ledger was emptied. Use the targeted 009 command above after reviewing actual schema.
 
-The shared `crm_catalog_item` and `crm_catalog_item_external_reference` tables remain required by six non-Projects catalog routes. They are empty but not deprecated until those domains are individually migrated. Projects are excluded by database CHECK constraints and use only `crm_project` / `crm_project_external_reference`. Removing the shared tables now would break those routes.
+Historical state at the 009 cut: six catalog domains still used shared storage. Migrations 010-015 subsequently introduced their dedicated tables/references. Current repositories must be inspected before claiming a runtime dependency on `crm_catalog_item`; the old paragraph is not a current table inventory or authorization to drop shared tables. The historical schema remains preserved.
 
 For a fresh production installation, use a separately approved secure owner bootstrap; do not distribute the backup, create a default password, or bulk-import administrators. Future permissions must be granted to Owner in their reviewed migration. A repository push does not prove deployment or authentication acceptance.
 
 Execution evidence: owner-only recovery committed on 2026-10-09. An independent connection verified one active Roberto user, two active authentication methods (local with the original hash and Microsoft), one Owner role, 195 active permissions with zero missing Owner grants, seven active module memberships, and zero rows in both project tables and both shared catalog tables. The targeted 009 runner confirmed the migration was already applied. No legacy connection was opened. This proves selective identity restoration, not full-backup recovery or a successful interactive login.
+
+## Ampliaciones documentadas - 2026-10-23
+
+El esquema nativo de Leads se documenta en [43](43-Leads-Esquema-Nativo.md): SQL fisico en `migrations/schema-only/202610230031_leads_domain.ts`, no en los plurales del blueprint. Calendario usa [SQL/034](SQL/034_calendar_domain.sql) y su runner `202610230034_calendar_domain.ts`; [47](47-Calendario-Compartido-Esquema.md) registra ocho tablas vacias, 106 columnas comentadas, 27 CHECK, 40 indices y ocho triggers. Son evidencias fechadas, sin nueva consulta MySQL en esta revision. No hay importacion de leads, bitacoras ni calendarios.
+
+La prohibicion de importar administradores sin autorizacion no elimina la excepcion [45](45-Usuarios-Por-Correo.md): 43 perfiles nuevos, 30 pending y 13 inactive, un existente omitido y total nativo 46, segun verificacion del 2026-10-23. La asignacion posterior del rol `ventas` ID 317 a esos 43 no agrega permisos, identidades de acceso ni membresias individuales. No es una autorizacion general de importacion.
+
+Las fases bajo demanda/backfill siguientes son propuestas historicas pendientes de nueva aprobacion; la regla vigente consulta cada origen y adapta un JSON, sin copiar historia. El resumen de Mercadeo ya lee ambas fuentes bajo su permiso y flag, incluyendo citas por tipo y responsable/proyecto del lead ([48](48-Mercadeo-Metricas-Citas.md)); no es migracion. En el snapshot del 2026-10-23 el runner registraba 031-034 y solo se acreditaban 031/032/034 aplicadas: no ejecutar todas las pendientes para completar la numeracion. Ver [49 - Estado actual](49-Estado-Actual-y-Cierre-Documental.md).
 
 ## Motor recomendado
 
@@ -66,7 +121,7 @@ Prisma no sera la capa principal porque el CRM requiere joins, filtros dinamicos
 - Repositories deben usar Kysely para SQL tipado.
 - SQL raw solo cuando sea necesario y siempre parametrizado.
 
-## Tablas base
+## Tablas base conceptuales (no inventario fisico)
 
 ```txt
 sec_user
@@ -117,7 +172,7 @@ ENABLE_LEGACY_FALLBACK = true para activar; false para retirar sin queries legac
 
 No se cambia `DB_NAME` para leer legacy. Por instruccion explicita del propietario, el pool independiente reutiliza `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_SSL` y `DB_SSL_CA`; solo cambia el nombre de base a `crmdatabase-api`. Las variables anteriores `LEGACY_CRM_DB_USER` / `LEGACY_CRM_DB_PASSWORD` se ignoran. Las consultas lectoras del adapter usan transacciones de solo lectura. Los seis writers de catalogos usan la transaccion nativa del mismo servidor y requieren `NODE_ENV=production`, `LEGACY_CRM_DB_NAME=crmdatabase-api` y ambos booleanos estrictos `ENABLE_LEGACY_FALLBACK=true` y `ENABLE_LEGACY_WRITES=true` (defaults `false`). El fallback lector no concede escrituras. La cuenta compartida no tiene privilegios exclusivamente de lectura: no cambiar sus grants ni credenciales. Ver contrato y retiro en documento 35.
 
-Fases:
+Fases del blueprint historico (5-6 requieren nueva autorizacion y contradicen la regla actual de no copiar si se ejecutan sin ella):
 
 1. P0: leads nuevos nacen solo en la base MySQL nueva.
 2. P0: el CRM legacy no se consulta en el flujo principal.

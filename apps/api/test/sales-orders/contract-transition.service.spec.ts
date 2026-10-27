@@ -6,13 +6,54 @@ import { ContractTransitionRepository } from "../../src/modules/crm/sales/sales-
 import { ContractTransitionService } from "../../src/modules/crm/sales/sales-orders/contract-transition.service.js";
 
 const input = { source: "native" as const, id: "01ARZ3NDEKTSV4RRFFQ69G5FAV", expectedSequence: 0, operationId: "550e8400-e29b-41d4-a716-446655440000" };
-function setup(roles = [{ code: "formalizacion", status: "active" }], permissions = [{ code: "formalizacion.contracts.send", effect: "allow" }]) {
+function setup(roles = [{ code: "formalizacion", status: "active" }], permissions: { code: string; effect: string; scope?: string }[] = [{ code: "formalizacion.contracts.send", effect: "allow", scope: "all_areas" }]) {
     const getCurrentUser = vi.fn().mockResolvedValue({ user: { publicId: "actor" }, roles, permissions });
     const transition = vi.fn().mockResolvedValue({ sequence: 1 });
     return { service: new ContractTransitionService({ getCurrentUser } as unknown as IdentityService, { transition } as unknown as ContractTransitionRepository), transition };
 }
 
 describe("contract transition authorization and internal input", () => {
+    it.each([
+        ["contract_pending_signature", "formalizacion.contracts.send"],
+        ["contract_pending_send", "formalizacion.contracts.revert"],
+    ])("preserves an individual deny for selected destination %s", async (targetState, code) => {
+        const f = setup(undefined, [
+            { code: "formalizacion.orders.stage.update", effect: "allow", scope: "all_areas" },
+            { code, effect: "deny", scope: "all_areas" },
+        ]);
+        await expect(f.service.transition("session", "set", { ...input, targetState } as never)).rejects.toMatchObject({ status: 403 });
+        expect(f.transition).not.toHaveBeenCalled();
+    });
+    it.each(["contract_pending_signature", "contract_pending_send"])("does not require a legacy allow for the independent selected target %s", async (targetState) => {
+        const f = setup(undefined, [{ code: "formalizacion.orders.stage.update", effect: "allow", scope: "all_areas" }]);
+        await expect(f.service.transition("session", "set", { ...input, targetState } as never)).resolves.toEqual({ sequence: 1 });
+    });
+    it("keeps unrelated destinations available despite old contract denies", async () => {
+        const f = setup(undefined, [
+            { code: "formalizacion.orders.stage.update", effect: "allow", scope: "all_areas" },
+            { code: "formalizacion.contracts.send", effect: "deny", scope: "all_areas" },
+            { code: "formalizacion.contracts.revert", effect: "deny", scope: "all_areas" },
+        ]);
+        await expect(f.service.transition("session", "set", { ...input, targetState: "closed" } as never)).resolves.toEqual({ sequence: 1 });
+    });
+    it("requires the independent stage permission for a selected stage", async () => {
+        const f = setup(undefined, [{ code: "formalizacion.orders.stage.update", effect: "allow", scope: "all_areas" }]);
+        await expect(f.service.transition("session", "set", { ...input, targetState: "bank_management" } as never)).resolves.toEqual({ sequence: 1 });
+        expect(f.transition).toHaveBeenCalledWith(expect.objectContaining({ action: "set", targetState: "bank_management", actorPublicId: "actor" }));
+    });
+    it.each([undefined, "pending_approval", "unclassified", "made_up"])("rejects a missing or nonoperational selected target %s", async (targetState) => {
+        const f = setup(undefined, [{ code: "formalizacion.orders.stage.update", effect: "allow", scope: "all_areas" }]);
+        await expect(f.service.transition("session", "set", { ...input, targetState } as never)).rejects.toThrow();
+        expect(f.transition).not.toHaveBeenCalled();
+    });
+    it("denies selected changes even when send is granted", async () => {
+        const f = setup(undefined, [
+            { code: "formalizacion.contracts.send", effect: "allow", scope: "all_areas" },
+            { code: "formalizacion.orders.stage.update", effect: "deny", scope: "all_areas" },
+        ]);
+        await expect(f.service.transition("session", "set", { ...input, targetState: "closed" } as never)).rejects.toThrow();
+        expect(f.transition).not.toHaveBeenCalled();
+    });
     it("declares explicit injection tokens for internal use without reflected parameter metadata", () => {
         expect(Reflect.getMetadata(SELF_DECLARED_DEPS_METADATA, ContractTransitionService)).toEqual(
             expect.arrayContaining([
@@ -20,6 +61,22 @@ describe("contract transition authorization and internal input", () => {
                 { index: 1, param: ContractTransitionRepository },
             ]),
         );
+    });
+    it.each([
+        ["self", true],
+        ["assigned", true],
+        ["own_area", false],
+        ["own_area_and_children", false],
+        ["all_areas", false],
+    ] as const)("derives %s scope from live permission", async (scope, ownOnly) => {
+        const f = setup(undefined, [{ code: "formalizacion.contracts.send", effect: "allow", scope }]);
+        await f.service.transition("session", "send", input, { ownOnly: false } as { ipAddress?: string });
+        expect(f.transition).toHaveBeenCalledWith(expect.objectContaining({ ownOnly }));
+    });
+    it.each([undefined, "unknown"])("rejects unrecognized or missing grant scope %s", async (scope) => {
+        const f = setup(undefined, [{ code: "formalizacion.contracts.send", effect: "allow", ...(scope ? { scope } : {}) }]);
+        await expect(f.service.transition("session", "send", input)).rejects.toThrow();
+        expect(f.transition).not.toHaveBeenCalled();
     });
     it("uses the authenticated actor and delegates a valid send", async () => {
         const f = setup();
@@ -56,7 +113,7 @@ describe("contract transition authorization and internal input", () => {
         expect(f.transition).not.toHaveBeenCalled();
     });
     it.each([undefined, "", "  ", "x".repeat(501)])("requires a bounded revert reason", async (reason) => {
-        const f = setup(undefined, [{ code: "formalizacion.contracts.revert", effect: "allow" }]);
+        const f = setup(undefined, [{ code: "formalizacion.contracts.revert", effect: "allow", scope: "all_areas" }]);
         await expect(f.service.transition("session", "revert", { ...input, ...(reason === undefined ? {} : { reason }) })).rejects.toThrow();
         expect(f.transition).not.toHaveBeenCalled();
     });

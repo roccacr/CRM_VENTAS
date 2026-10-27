@@ -69,7 +69,10 @@ Verificacion real de solo lectura: ledger registrado; Owner en `all_active_roles
 Formalizacion en `assigned`; ambos grants nuevos activos y un evento
 `owner_role_inheritance_enabled`. El resolver real devuelve roles efectivos
 `owner`, `formalizacion`, `jefe_formalizaciones`, 200 permisos y lectura de banners
-autorizada. No existe actualmente un rol activo Jefe de Ventas que heredar.
+autorizada. No existia un rol activo Jefe de Ventas en esa lectura. El rol
+`ventas` creado despues (45) no es Jefe de Ventas ni concede acciones a sus
+43 titulares. Owner puede resolverlo virtualmente sin duplicar asignaciones;
+conteos actuales: [49](49-Estado-Actual-y-Cierre-Documental.md).
 
 No se modificaron asignaciones directas, overrides, ordenes ni la BD legacy.
 La denegacion individual se verifica con dobles, sin editar un usuario real.

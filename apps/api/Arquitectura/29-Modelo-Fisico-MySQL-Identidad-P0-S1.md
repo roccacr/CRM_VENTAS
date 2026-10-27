@@ -17,6 +17,12 @@ sec_user no depende de NetSuite, Odoo ni del CRM viejo.
 ```
 
 `sec_user` representa a la persona real dentro del CRM. Los ids externos viven en tablas `int_`.
+En este dominio la tabla es `int_user_external_identity`: sistema externo e ID
+forman la referencia; un numero de NetSuite no identifica por si solo a una
+persona de otro proveedor. Los perfiles del lote [45](45-Usuarios-Por-Correo.md)
+se crearon sin referencias externas ni acceso. Su rol `ventas` posterior no
+crea credenciales, permisos de acciones o membresias individuales de modulo.
+No sustituir ese resultado por las matrices iniciales de este baseline.
 
 ## Idioma de nombres
 
@@ -316,7 +322,13 @@ Reglas:
 
 ## sec_role
 
-Proposito: catalogo de roles generales, sin nombre de area.
+Proposito: catalogo de roles. Los ejemplos genericos pertenecen al baseline;
+roles por area expresamente aprobados se documentan en 28, 41 y 42.
+La evolucion agrega `role_inheritance_mode_role`, `permission_inheritance_mode_role`
+y `sec_role_module` (migraciones 027, 029 y 030), ausentes de la tabla inicial
+siguiente. Owner usa herencia virtual; General conserva grants editables y techo
+modular. Este diccionario inicial no es un diff vivo del esquema; ver
+[49 - Estado actual](49-Estado-Actual-y-Cierre-Documental.md).
 
 Columnas clave:
 
@@ -337,7 +349,8 @@ Indices:
 - `uq_sec_role_code_role` (`code_role`);
 - `ix_sec_role_status_role` (`status_role`).
 
-Regla: no crear roles como `jefe_mercadeo` o `jefe_formalizacion`.
+Regla: no crear roles por area sin aprobacion. `jefe_mercadeo` y
+`jefe_formalizaciones` tienen decisiones posteriores; no confundir codigos.
 
 ## sec_permission
 

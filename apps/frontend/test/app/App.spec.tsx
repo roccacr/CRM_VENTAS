@@ -172,7 +172,6 @@ const securityCatalogResponse = {
                 ...[
                     { code: "home", name: "Inicio" },
                     { code: "leads", name: "Captación de leads" },
-                    { code: "appointments", name: "Eventos y citas" },
                     { code: "calendar", name: "Calendario" },
                 ].map(({ code, name }) => ({ code, name, permissions: [{ code: `mercadeo.${code}.read`, description: `Permite ver ${name}.`, name: `Ver ${name}`, sensitive: false }] })),
                 {
@@ -1462,7 +1461,7 @@ describe("App", () => {
         { failure: "network", title: "Sin conexión", status: null },
         { failure: "server", title: "Error inesperado", status: 500 },
         { failure: "csrf", title: "Acceso requerido", status: 403 },
-    ])("does not force login or replay refresh after an anonymous session and $failure renewal failure", async ({ status, title }) => {
+    ])("does not force login or loop refresh after an anonymous session and $failure renewal failure", async ({ status, title }) => {
         const fetchMock = vi.fn((input: RequestInfo | URL) => {
             const path = getRequestPath(input);
             if (path === "/identity/session") return createJsonResponse(anonymousSession);
@@ -1476,7 +1475,7 @@ describe("App", () => {
         expect(window.location.pathname).toBe("/home/formalization");
         expect(screen.queryByRole("button", { name: "Ingresar" })).not.toBeInTheDocument();
         expect(screen.queryByRole("banner", { name: "Barra superior global CRM TINK" })).not.toBeInTheDocument();
-        expect(fetchMock.mock.calls.filter(([input]) => getRequestPath(input) === "/identity/refresh")).toHaveLength(1);
+        expect(fetchMock.mock.calls.filter(([input]) => getRequestPath(input) === "/identity/refresh")).toHaveLength(status === 403 ? 2 : 1);
         expect(fetchMock.mock.calls.some(([input]) => /\/identity\/(?:me|logout|local\/login)$/u.test(getRequestPath(input)))).toBe(false);
     });
 

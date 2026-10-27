@@ -11,14 +11,18 @@ import { useEffect, useRef, useState } from "react";
 
 import type { IdentityRole, IdentityUser } from "../../services/auth/identity-contracts";
 import { getApprovalCount } from "../../services/formalization/approval-summary-service";
+import type { FollowUpItem } from "../../services/formalization/follow-up-service";
 import { PROJECTS_THEME } from "../administration/catalogs/projects-theme";
-import { type FormalizationExample, formatOrderTotal, PREVIEW_FILTER_TITLES, type PreviewQueue } from "./formalization-preview.model";
+import { type FormalizationExample, PREVIEW_FILTER_TITLES, type PreviewQueue } from "./formalization-preview.model";
 import { FormalizationFollowUpPreview } from "./FormalizationFollowUpPreview";
 import { FormalizationHomeInsights } from "./FormalizationHomeInsights";
-import { FormalizationOrderPreview } from "./FormalizationOrderPreview";
+import { FormalizationOrderPreview, FormalizationOrderRecord } from "./FormalizationOrderPreview";
 import { FormalizationPreviewBoundary } from "./FormalizationPreviewSession";
+import { FormalizationRecordLoading } from "./FormalizationRecordLoading";
 import type { EffectiveNavigationPermission } from "./GlobalHomeShell";
 import { useHomeSummary } from "./useHomeSummary";
+import { useNetsuiteOrderConsole } from "./useNetsuiteOrderConsole";
+import { useRestoredFormalizationOrder } from "./useRestoredFormalizationOrder";
 
 /** Propiedades de la página; los permisos efectivos deciden qué banners y accesos aparecen. */
 interface FormalizationHomeProps {
@@ -35,7 +39,7 @@ const greetingFor = (user: FormalizationHomeProps["currentUser"]) => {
     return name ? `Hola, ${name}` : "Hola";
 };
 
-/** Misma esquina, mismo recorte, en la aprobación y en las seis etapas. */
+/** Patrón original de cuadrados; decorativo y fuera del árbol accesible. */
 function BannerCorner() {
     return (
         <span className="formalization-banner__pattern" aria-hidden="true">
@@ -227,8 +231,8 @@ function QueueHeader({ queue, onHome, onAll }: { readonly queue: PreviewQueue; r
                         >
                             {getQueueTitle(queue)}
                         </h1>
-                        <span className="formalization-total">{formatOrderTotal(0)}</span>
                     </div>
+                    <p className="formalization-page-header__subtitle">Seguimiento de cada orden de venta por etapa, proyecto y bandeja.</p>
                 </div>
                 {showAll && (
                     <div className="global-home-page-header__actions">
@@ -248,6 +252,11 @@ function canReadFormalizationStages(roles: FormalizationHomeProps["roles"], perm
     return roles?.some((role) => role.code === "formalizacion" && role.status === "active") === true && entries.some((permission) => permission.effect === "allow") && !entries.some((permission) => permission.effect === "deny");
 }
 
+function canUpdateOrderStage(roles: FormalizationHomeProps["roles"], permissions: FormalizationHomeProps["effectivePermissions"]): boolean {
+    const entries = (permissions ?? []).filter((entry) => entry.code === "formalizacion.orders.stage.update");
+    return roles?.some((role) => role.code === "formalizacion" && role.status === "active") === true && entries.some((entry) => entry.effect === "allow") && !entries.some((entry) => entry.effect === "deny");
+}
+
 /** Gate the consumer itself so revoked access cannot retain data or start a request. */
 function FormalizationStageBanners({ canView, onOpen, enabled, refreshVersion }: { readonly canView: boolean; readonly onOpen: (filter: PreviewQueue["filter"]) => void; readonly enabled: boolean; readonly refreshVersion: number }) {
     return canView ? <StageBanners onOpen={onOpen} enabled={enabled} refreshVersion={refreshVersion} /> : null;
@@ -261,7 +270,10 @@ function FormalizationHomeTitle({ canViewStages, canViewApprovals, onRefresh }: 
     const canRefresh = canViewApprovals || canViewStages;
     return (
         <div className="formalization-home__titlebar">
-            <h1 id="formalization-home-title">Formalización</h1>
+            <div>
+                <h1 id="formalization-home-title">Formalización</h1>
+                <p className="formalization-home__subtitle">En qué etapa está cada orden de venta y qué necesita seguimiento.</p>
+            </div>
             {canRefresh && (
                 <Tooltip title="Recargar banners">
                     <Button className="formalization-command formalization-home__reload" icon={<ReloadOutlined />} aria-label="Recargar banners" onClick={onRefresh} />
@@ -271,16 +283,42 @@ function FormalizationHomeTitle({ canViewStages, canViewApprovals, onRefresh }: 
     );
 }
 
-/** Real Home aggregates; follow-up awaits its canonical source. */
+function VisibleHomeFollowUp({ visible, ...props }: React.ComponentProps<typeof FormalizationFollowUpPreview> & { readonly visible: boolean }) {
+    return visible ? <FormalizationFollowUpPreview {...props} /> : null;
+}
+
+/** Gated canonical Home aggregates and follow-up; stage updates require their own effective permission. */
 function FormalizationHomeContent({ currentUser, roles, effectivePermissions, initialView = "home", onNavigate }: FormalizationHomeProps) {
     const [refreshVersion, setRefreshVersion] = useState(0);
     const [selectedQueue, setQueue] = useState<PreviewQueue | null>(() => (initialView === "orders" ? { filter: "all" } : null));
     const { canView: canViewApprovals, queue } = resolveApprovalVisibility(effectivePermissions, selectedQueue);
     const canViewStages = canReadFormalizationStages(roles, effectivePermissions);
+    const canUpdateStage = canUpdateOrderStage(roles, effectivePermissions);
+    const refreshOrders = () => {
+        setRefreshVersion((value) => value + 1);
+    };
     const [selected, setSelected] = useState<FormalizationExample | null>(null);
+    const [record, setRecord] = useState<FollowUpItem | null>(null);
+    const [recordRefreshVersion, setRecordRefreshVersion] = useState(0);
+    const restoredStatus = useRestoredFormalizationOrder(canViewStages, setRecord, { record, refreshVersion: recordRefreshVersion });
+    const netsuiteStatus = useNetsuiteOrderConsole(record, [canViewStages, record !== null].every(Boolean), recordRefreshVersion);
+    const restoring = [!record, !["idle", "ready"].includes(restoredStatus)].every(Boolean);
+    const detailOpen = [record, selected, restoring].some(Boolean);
     return (
         <ConfigProvider locale={esES} theme={PROJECTS_THEME}>
             <div className="global-home-dashboard formalization-home">
+                <RestoringOrder visible={restoring} status={restoredStatus} />
+                <CurrentFormalizationRecord
+                    item={record}
+                    netsuiteStatus={recordReadStatus(restoredStatus, netsuiteStatus)}
+                    onRefresh={() => {
+                        setRecordRefreshVersion((version) => version + 1);
+                    }}
+                    canView={canViewStages}
+                    onBack={() => {
+                        setRecord(null);
+                    }}
+                />
                 {selected && (
                     <FormalizationOrderPreview
                         order={selected}
@@ -290,7 +328,7 @@ function FormalizationHomeContent({ currentUser, roles, effectivePermissions, in
                         }}
                     />
                 )}
-                <div hidden={selected !== null || queue !== null}>
+                <div hidden={detailOpen || queue !== null}>
                     <section className="global-home-page-header formalization-home__header" aria-labelledby="formalization-home-title">
                         <FormalizationHomeTitle
                             canViewStages={canViewStages}
@@ -302,7 +340,7 @@ function FormalizationHomeContent({ currentUser, roles, effectivePermissions, in
                         <div className="formalization-home__intro" data-has-approvals={canViewApprovals}>
                             {canViewApprovals && (
                                 <ApprovalStrip
-                                    enabled={initialView === "home"}
+                                    enabled={isHomeSummaryEnabled(initialView, queue, selected)}
                                     refreshVersion={refreshVersion}
                                     onOpen={() => {
                                         setQueue({ filter: "approvals" });
@@ -337,11 +375,11 @@ function FormalizationHomeContent({ currentUser, roles, effectivePermissions, in
                         />
                     </section>
                     <div className="formalization-workspace">
-                        <FormalizationFollowUpPreview canViewApprovals={canViewApprovals} tableOnly={false} scope={{ filter: "all" }} onOpenOrder={setSelected} />
+                        <VisibleHomeFollowUp onOpenRecord={setRecord} canUpdateStage={canUpdateStage} onRefresh={refreshOrders} visible={isHomeSummaryEnabled(initialView, queue, selected)} enabled={canViewStages} refreshVersion={refreshVersion} canViewApprovals={canViewApprovals} tableOnly={false} scope={{ filter: "all" }} onOpenOrder={setSelected} />
                         <FormalizationHomeInsights />
                     </div>
                 </div>
-                <div className="formalization-workspace" hidden={selected !== null || queue === null}>
+                <div className="formalization-workspace" hidden={detailOpen || queue === null}>
                     {queue && (
                         <>
                             <QueueHeader
@@ -357,7 +395,7 @@ function FormalizationHomeContent({ currentUser, roles, effectivePermissions, in
                                     setQueue({ filter: "all" });
                                 }}
                             />
-                            <FormalizationFollowUpPreview canViewApprovals={canViewApprovals} key={`${queue.filter}-${queue.project ?? "all"}`} tableOnly scope={queue} onOpenOrder={setSelected} />
+                            <FormalizationFollowUpPreview onOpenRecord={setRecord} canUpdateStage={canUpdateStage} onRefresh={refreshOrders} enabled={canViewStages} refreshVersion={refreshVersion} canViewApprovals={canViewApprovals} key={`${queue.filter}-${queue.project ?? "all"}`} tableOnly scope={queue} onOpenOrder={setSelected} />
                         </>
                     )}
                 </div>
@@ -366,11 +404,35 @@ function FormalizationHomeContent({ currentUser, roles, effectivePermissions, in
     );
 }
 
-/** Only Home summaries use canonical APIs; queues retain their existing empty previews. */
+/** Home and visible queues consume canonical APIs only with their effective permissions. */
 export function FormalizationHomePage(props: FormalizationHomeProps) {
     return (
         <FormalizationPreviewBoundary>
             <FormalizationHomeContent {...props} />
         </FormalizationPreviewBoundary>
     );
+}
+
+/** Reading the real record stays inside the same effective module/permission gate as its list. */
+function CurrentFormalizationRecord({ item, canView, ...props }: Omit<React.ComponentProps<typeof FormalizationOrderRecord>, "item"> & { readonly item: FollowUpItem | null; readonly canView: boolean }) {
+    if (!canView || !item) return null;
+    return <FormalizationOrderRecord item={item} {...props} />;
+}
+
+function RestoringOrder({ visible, status }: { readonly visible: boolean; readonly status: string }) {
+    if (!visible) return null;
+    if (status === "loading") return <FormalizationRecordLoading complete />;
+    const messages: Record<string, string> = { loading: "Validando acceso y cargando la orden…", denied: "No tienes acceso a esta orden de venta.", missing: "Orden no disponible.", error: "No fue posible cargar la orden. Actualiza para reintentar." };
+    return (
+        <section className="formalization-card formalization-record-loading" role="status">
+            {messages[status]}
+        </section>
+    );
+}
+
+/** Stale highlights must stay hidden if their own database refresh fails or is pending. */
+function recordReadStatus(databaseStatus: string, providerStatus: "idle" | "loading" | "success" | "error"): "idle" | "loading" | "success" | "error" {
+    if (databaseStatus === "loading") return "loading";
+    if (["denied", "missing", "error"].includes(databaseStatus)) return "error";
+    return providerStatus;
 }

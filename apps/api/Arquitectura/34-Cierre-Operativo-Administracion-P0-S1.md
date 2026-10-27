@@ -129,7 +129,11 @@ Esta seccion conserva decisiones y evidencia para continuar sin el chat. El chec
 | Leads empieza como contrato NetSuite -> API | Resolver payload, duplicados y reintentos antes de UI. |
 | Sin commit/push/deploy/migracion implicitos | Cada accion requiere autorizacion especifica. |
 
-Regla ordinaria: modulo activo + permiso scoped allow sin deny. Excepcion actual: CatalogsService.assertCan retorna inmediatamente si existe rol owner activo. Owner no requiere modulo ni evalua deny en ese metodo. El test lo acepta; falta confirmar si esta politica irrestricta es la deseada antes de decir que deny siempre gana.
+Descripcion del bypass observada en el corte 2026-10-08, sustituida desde
+2026-10-13: `CatalogItemOperations.assertCan` exige allow exacto sin deny,
+incluido Owner; solo exime a Owner de membresia de area. El perfil posterior
+resuelve su base de permisos activos y aplica denies (41/42). No queda pendiente
+aprobar aquel bypass. Ver [49 - Estado actual](49-Estado-Actual-y-Cierre-Documental.md).
 
 ### Mapa del API
 
@@ -225,7 +229,7 @@ Los cambios anteriores siguen en working tree; no asumir commit o despliegue. La
 | --- | --- | --- |
 | Resuelto local | replaceExternalReferences hacia soft-delete + INSERT; unique no incluye deleted_at | Reproducido y corregido con reconciliacion; cinco pruebas MySQL aprobadas. Ver seccion de regresion arriba; aceptacion en navegador pendiente. |
 | Alta | Runner omite nombres ya registrados | Comparar historial/esquema reales en lectura; nueva migracion si corresponde. |
-| Alta | Owner bypass precede modulo/deny | Confirmar politica; alinear pruebas API/frontend. |
+| Resuelto en corte posterior | Bypass Owner observado el 2026-10-08 | Desde 2026-10-13 exige permiso exacto sin deny; herencia virtual posterior en 41/42. |
 | Media | Migracion catalogos no tiene COMMENT en columnas | Evolucion aprobada para cumplir estandar MySQL; preservar historia aplicada. |
 | Media | Metadata API/frontend duplicada | Endpoint/contrato derivado y test de consistencia. |
 | Media | UI carga 100 y pagina local | Paginacion servidor y total para volumen superior. |
@@ -256,7 +260,7 @@ Cada tarea debe tener requisito, archivos, prueba, resultado y pendiente. No sal
 - Vendedor desconocido/faltante: rechazo, pendiente o asignacion?
 - Catalogo externo desconocido: rechazo, cuarentena o creacion autorizada?
 - Auditoria de integracion: actor sistema y responsable vendedor?
-- Owner irrestricto o sujeto a deny? Retencion/alcance de auditoria?
+- Owner sujeto a deny: decision cerrada; retencion/alcance de auditoria sigue pendiente.
 - Proveedores adicionales, cantidad e importacion masiva requerida?
 
 No inventar respuestas. Contrato futuro requiere mapeo canonico, errores, reconciliacion e idempotencia; no implica instalar broker ahora.
@@ -454,7 +458,7 @@ Casos obligatorios:
 
 | Caso | Resultado esperado |
 | --- | --- |
-| Owner sin permisos explicitos | Puede administrar catalogos y seguridad por regla de Owner. |
+| Owner sin filas explicitas para cada grant | El perfil resuelve permisos activos como base; exige allow efectivo exacto y ningun deny. |
 | Usuario con `administration.catalog_project.read` pero sin modulo `administration` | No ve ni opera catalogos administrativos. |
 | Usuario con `mercadeo.catalog_project.read` | Puede operar solo contexto Mercadeo si tiene modulo activo. |
 | Mismo usuario intentando `formalizacion.catalog_project.read` | Falla si no tiene permiso y modulo de Formalizacion. |
@@ -506,7 +510,13 @@ Decision:
 
 ## Criterio de salida
 
-### Catalog UI and migration execution gates - 2026-10-09
+### Historical Catalog UI and migration execution gates - 2026-10-09
+
+The extraction/import phases below preserve a dated proposal, not an executable
+current backlog. The owner's 2026-10-23 instruction prohibits copying old business
+data; query each source and adapt its JSON instead. `prepare-unit-files.ts` is
+report-only and rejects its former apply flag. See documents 35 and 44. The narrow
+profile exception in 45 does not reopen catalog or commercial ETL.
 
 Scope: seven Administration catalogs only. Legacy production remains read-only. No Leads, property-domain expansion, source updates, credential changes, historical migration edits or deployment are authorized by this process.
 

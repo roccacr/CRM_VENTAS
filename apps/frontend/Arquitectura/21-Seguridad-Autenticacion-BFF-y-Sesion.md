@@ -84,7 +84,7 @@ Antes de renderizar una ruta protegida, el frontend debe validar contra el estad
 4. permiso efectivo requerido por la vista;
 5. alcance organizacional suficiente.
 
-Si el usuario no tiene `owner`, `jefe_general`, jefe global equivalente o el permiso efectivo requerido, la vista no se renderiza aunque la URL sea valida.
+La ruta se contrasta con el modulo y el item de menu permitidos por el perfil efectivo. El nombre Owner/Jefe General por si solo no concede la vista. Al 2026-10-23 Owner puede recibir roles/modulos virtuales por politica backend; deny individual prevalece. Las etapas de Formalizacion exigen ademas rol efectivo activo Formalizacion y permiso de etapas allow sin deny.
 
 Comportamiento esperado:
 
@@ -219,6 +219,15 @@ Zustand, React state y TanStack Query pueden guardar:
 No pueden guardar tokens ni secretos.
 
 ## Regla de implementacion
+
+### Recuperacion de CSRF desincronizado (2026-10-26)
+
+- El perfil visible no demuestra que las cookies de sesion sigan vigentes.
+- Si el POST de renovacion recibe 403, el cliente consulta `/identity/session` para resincronizar CSRF y repite exclusivamente el refresh una vez, compartiendo la renovacion entre peticiones concurrentes. No reintenta mutaciones de negocio por un 403.
+- Un 401 definitivo de renovacion invalida el acceso visible. Un segundo 403 o un fallo de red/servidor no se convierte en logout ni provoca un bucle automatico.
+- Las respuestas CSRF anteriores a un logout/login no pueden sobrescribir la prueba del nuevo contexto. Se conserva la renovacion por el 409 especifico de permisos obsoletos.
+- No se debilita el guard CSRF ni se amplian las ocho horas absolutas de sesion; al agotarlas se requiere iniciar sesion nuevamente.
+- Regresiones: `test/app/api-client-expired-csrf.spec.ts`, `test/app/api-client-conflicts.spec.ts` y `test/app/App.spec.tsx`. Estas pruebas usan HTTP simulado; no acreditan una sesion real del navegador ni persistencia MySQL.
 
 Ninguna pantalla, hook, store, cliente API o integracion puede contradecir este documento.
 

@@ -3,6 +3,17 @@
 Fuente: migracion 202610200021 y ajuste UTC 202610200022.
 Detalles y limites: [Documento 38](38-Ordenes-Venta-Estados-Auditoria.md).
 
+Lectura documental 2026-10-23: los valores `legacy_import`, `import_snapshot`
+y el payload de origen describen capacidad fisica, no un importador activo ni
+autorizacion para copiar ordenes antiguas. El estado actual se consulta por
+fuente; resumenes no escriben. Snapshot metadata: [49](49-Estado-Actual-y-Cierre-Documental.md).
+El ledger acredita una ejecucion fechada, no ausencia de drift ni poblacion
+actual; este diccionario no vuelve a verificar MySQL. Send/revert/set-stage y
+seguimiento/timing estan registrados desde la ampliacion de52; el listado
+contractual independiente permanece fuera del runtime HTTP. Las migraciones
+035/036 complementan este baseline con lead y responsabilidad/tiempos; consultar
+[52](52-Etapas-Responsables-y-Tiempos.md) para columnas y autoridad actuales.
+
 La bitacora comercial generica posterior, migracion `202610220023_record_audit`, no altera estas nueve tablas. El diccionario de sus dos tablas `audit_record` y `audit_record_event` esta en [38 - Bitacora central](38-Ordenes-Venta-Estados-Auditoria.md#bitacora-central-de-registros---2026-10-22); admite identidad legacy sin FK comercial. No reemplaza ni borra los historiales especializados descritos aqui.
 
 ## conf_sales_order_state

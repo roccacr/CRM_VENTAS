@@ -6,7 +6,7 @@ Revision documental 2026-10-22: snapshot historico de la pausa del blueprint, su
 
 El analisis externo entiende bien la intencion del proyecto: construir un CRM nuevo, no maquillar el CRM actual. Tambien detecta el riesgo principal: si se implementa demasiado pronto, el API empieza a parecer un CRM generico antes de que el producto este bien gobernado.
 
-La decision actual es detener el scaffolding del API y volver a fase de diseno. El runtime NestJS, `src/`, migraciones, OpenAPI ejecutable y dependencias locales fueron retirados hasta aprobar primero:
+La decision historica de la pausa fue detener el scaffolding y volver a diseno. En ese corte se retiraron runtime, `src/`, migraciones, OpenAPI ejecutable y dependencias hasta aprobar primero:
 
 1. cara de producto;
 2. jerarquia de documentacion;
@@ -22,7 +22,7 @@ La decision actual es detener el scaffolding del API y volver a fase de diseno. 
 - El frontend no debe decidir permisos finales.
 - La bitacora comercial y la auditoria tecnica son conceptos distintos.
 
-## Lo que falta antes de implementar
+## Prerequisitos registrados durante la pausa historica
 
 Antes de recrear `package.json`, NestJS, OpenAPI, migraciones o endpoints, falta cerrar:
 
@@ -46,14 +46,14 @@ El siguiente agente no debe comenzar creando codigo. Debe leer:
 5. `Arquitectura/23-Alcance-P0-Vertical-Leads.md`
 6. Este documento.
 
-Luego debe proponer o ajustar documentacion de producto antes de construir runtime.
+Luego debe contrastar el alcance vigente de la ley y del codigo antes de proponer cambios; esta pausa historica no requiere recrear el runtime existente.
 
-## Decision
+## Decision del corte historico (superada)
 
-El API queda temporalmente como carpeta de arquitectura, reglas y skills locales:
+En ese corte el API quedo temporalmente como carpeta de arquitectura, reglas y skills locales:
 
 ```txt
 apps/api
 ```
 
-No se debe crear codigo en la raiz del proyecto. No se debe recrear runtime dentro de `apps/api` hasta aprobar el diseno de producto y el contrato P0.
+No se debe crear codigo en la raiz. La prohibicion historica de recrear runtime fue superada por las ampliaciones de la ley de producto; no ordena eliminar el API existente. Consultar [49 - Estado actual](49-Estado-Actual-y-Cierre-Documental.md) antes de proponer trabajo nuevo.

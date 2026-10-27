@@ -1,5 +1,15 @@
 # 06 - ADRs API
 
+## Aclaracion posterior de ADR-API-008 - 2026-10-27
+
+La independencia del contrato comercial se conserva. La inspeccion GET NetSuite
+introduce una excepcion explicita de diagnostico: payload externo en `data`,
+separado de los DTOs/tablas de dominio y con identidad/permiso CRM resueltos por
+servidor. No autoriza propagacion del payload al core ni sincronizacion ERP.
+La composicion vigente y sus limites estan en [04](04-Integraciones-ERP.md) y
+[22](22-Mapa-de-Implementacion-API.md); las decisiones de arbol futuro conservan
+su caracter de blueprint.
+
 ## Decision de continuidad: catalogos por contexto (2026-10-08)
 
 Decision aprobada por el propietario en los planes posteriores: un dato nativo compartido y permisos {modulo}.catalog_{entidad}.{accion}. Sustituye permisos globales de catalogos; no duplica tablas por modulo. Mantener crm_catalog_item y referencias externas. Modulo activo y permiso scoped son requisitos ordinarios. Actualizacion 2026-10-13: Owner solo esta exento de membresia de area, nunca del permiso efectivo; un deny prevalece. Acciones denegadas se ocultan en UI y se rechazan en API. Ver [36 - Registro](36-Registro-Entrega-Administracion.md) para reglas actuales y [34 - Traspaso](34-Cierre-Operativo-Administracion-P0-S1.md) para evidencia historica; Leads comienza despues del cierre administrativo como contrato NetSuite -> API.
@@ -84,7 +94,7 @@ Decision: en P0 los leads nuevos nacen solo en la base nueva `CRM_THINK_V2` y el
 
 Motivo: reducir riesgo y evitar mezclar deuda legacy antes de tener el flujo nuevo estable.
 
-P1 podra agregar lectura del CRM viejo mediante adapter, devolviendo siempre un JSON estandar al frontend.
+La restriccion corresponde al flujo futuro de creacion de Leads. Las ampliaciones autorizadas ya permiten lecturas por adapters en catalogos, expedientes, Formalizacion y el resumen de Mercadeo; no son importacion ni habilitan CRUD de Leads. La historia legacy se consulta por origen segun [44](44-Bitacora-Legacy-y-Timeline.md), sin copiarla. Estado al 2026-10-23: [49](49-Estado-Actual-y-Cierre-Documental.md).
 
 ## ADR-API-008 - Contrato canonico CRM sin nombres de ERP
 

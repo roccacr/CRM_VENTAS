@@ -1,0 +1,168 @@
+.formalization-stage-editor {
+    display: grid;
+    gap: 12px;
+    min-width: 0;
+    padding: 16px;
+    border: 1px solid var(--ent-border, #b4c0d0);
+    border-radius: 8px;
+    background: var(--color-surface, #fff);
+    color: var(--ent-ink, #18222f);
+}
+
+.formalization-stage-editor > label {
+    display: grid;
+    gap: 6px;
+    min-width: 0;
+    color: var(--ent-ink-2, #3b4a61);
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.formalization-stage-editor select,
+.formalization-stage-editor textarea {
+    box-sizing: border-box;
+    width: 100%;
+    min-height: 40px;
+    padding: 9px 12px;
+    border: 1px solid var(--color-control-border, #5d799a);
+    border-radius: 6px;
+    background: var(--color-surface, #fff);
+    color: var(--ent-ink, #18222f);
+    font: inherit;
+    font-weight: 400;
+}
+
+.formalization-stage-editor textarea {
+    min-height: 88px;
+    resize: vertical;
+}
+
+.formalization-stage-editor select:focus-visible,
+.formalization-stage-editor textarea:focus-visible {
+    outline: 2px solid var(--color-control-border, #5d799a);
+    outline-offset: 2px;
+}
+
+.formalization-stage-editor select:disabled,
+.formalization-stage-editor textarea:disabled {
+    cursor: not-allowed;
+    background: var(--ent-tint, #f0f3f8);
+    color: var(--ent-ink-2, #3b4a61);
+}
+
+.formalization-stage-editor > p {
+    margin: 0;
+}
+
+.formalization-stage-editor > .ant-btn {
+    justify-self: start;
+}
+
+.formalization-stage-editor__advance {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 12px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--ent-border, #b4c0d0);
+}
+
+.formalization-stage-editor__advance > span {
+    color: var(--ent-ink-2, #3b4a61);
+    font-size: 12.5px;
+}
+
+/* One primary action per block: the green advance button. Saving a correction is secondary. */
+.formalization-stage-editor {
+    gap: 14px;
+    padding: 0 0 16px;
+    border-radius: 6px;
+    overflow: hidden;
+}
+
+.formalization-stage-editor > :not(.formalization-stage-editor__head) {
+    margin-inline: 16px;
+}
+
+.formalization-stage-editor__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--ent-border, #b4c0d0);
+    background: #eef2f7;
+}
+
+.formalization-stage-editor__head h3 {
+    margin: 0;
+    color: var(--ent-ink, #18222f);
+    font-size: 14px;
+    font-weight: 700;
+}
+
+.formalization-stage-editor__head span {
+    color: var(--ent-ink-2, #3b4a61);
+    font-size: 12px;
+}
+
+.formalization-stage-editor__advance {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 12px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid #dde3ec;
+}
+
+/* Soft, not solid: a tinted button reads as "the action here" without outweighing the rest of the drawer. */
+.catalog-item-detail-drawer--projects .formalization-stage-editor__advance .ant-btn.formalization-advance-btn:not(.ant-btn-dangerous):not(:disabled),
+.formalization-stage-editor__advance .ant-btn.formalization-advance-btn {
+    height: 34px;
+    border: 1px solid #9cc9b3;
+    background: #e3f3ea;
+    color: #0a6b3d;
+    font-weight: 600;
+    box-shadow: none;
+}
+
+.catalog-item-detail-drawer--projects .formalization-stage-editor__advance .ant-btn.formalization-advance-btn:not(.ant-btn-dangerous):not(:disabled):hover {
+    border-color: #0a6b3d;
+    background: #d3ecdf;
+    color: #08552f;
+}
+
+.formalization-stage-editor__advance .ant-btn.formalization-advance-btn:disabled {
+    border-color: #c3ccd9;
+    background: #eef1f5;
+    color: #6b7a90;
+}
+
+.formalization-stage-editor__advance > span {
+    color: var(--ent-ink-2, #3b4a61);
+    font-size: 12.5px;
+}
+
+.formalization-stage-editor__advance > span strong {
+    color: var(--ent-ink, #18222f);
+}
+
+.formalization-stage-editor > label {
+    font-size: 12.5px;
+    font-weight: 600;
+}
+
+.formalization-view-full {
+    width: 100%;
+    height: 38px;
+    border-color: #8fa1b8;
+    background: #fff;
+    color: #18222f;
+    font-weight: 600;
+}
+
+.formalization-view-full:not(:disabled):hover {
+    border-color: #18222f;
+    background: #eef2f7;
+    color: #18222f;
+}

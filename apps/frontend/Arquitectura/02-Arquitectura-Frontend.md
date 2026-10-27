@@ -1,10 +1,14 @@
 # 02 - Arquitectura Frontend
 
+Estado implementado 2026-10-27: [30 - Estado frontend verificado](30-Estado-Frontend-Verificado.md). Los ejemplos de fases futuras siguientes no sustituyen los reportes conectados ni los comandos acotados ya presentes.
+
 ## Vigencia documental - 2026-10-22, corte f2dc4f1
 
 Blueprint de estructura y dependencias, no inventario de carpetas instaladas. Al corte `f2dc4f1`, el runtime usa React/Vite/TypeScript, Ant Design, DataTables y `fetch` centralizado. TanStack Query, Zustand, React Hook Form y Tailwind no estan instalados. Administracion y las vistas acotadas de Formalizacion se describen en [27](27-Entrega-Administracion-y-QA.md) y [29 - Remediacion](29-Navegacion-Recuperacion-y-Seguimiento.md); no crear carpetas para completar este arbol.
 
-## Estado de fase
+## Estado de fase del blueprint, sujeto a ampliaciones
+
+Actualizacion 2026-10-23: Administracion y los resumenes Home de Formalizacion/Mercadeo ya existen bajo `modules/administration` y `modules/home`; la separacion futura de carpetas no exige moverlos. Inventario: [19](19-Mapa-de-Implementacion-Frontend.md). CRUD de leads, notas y calendario operativo siguen futuros.
 
 Esta estructura describe el destino del frontend completo.
 

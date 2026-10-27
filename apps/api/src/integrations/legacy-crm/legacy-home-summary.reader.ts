@@ -26,12 +26,12 @@ export class LegacyHomeSummaryReader implements HomeSummaryLegacyReader {
             SELECT /*+ MAX_EXECUTION_TIME(1500) */
                 SUM(NOT shadowed AND approved AND COALESCE(stage,'contract_pending_send') IN ('unclassified','pending_approval','contract_pending_send')) AS toSend,
                 SUM(NOT shadowed AND approved AND stage='contract_pending_signature') AS pendingSignature,
-                SUM(NOT shadowed AND stage='bank_management') AS banking, SUM(NOT shadowed AND stage='pending_balance') AS balance,
-                SUM(NOT shadowed AND stage='pending_transfer') AS transferPending, SUM(NOT shadowed AND stage='transfer_signed') AS transferSigned,
-                SUM(NOT shadowed AND completed_this_year) AS closedThisYear,
+                SUM(NOT shadowed AND contract_signed AND stage='bank_management') AS banking, SUM(NOT shadowed AND contract_signed AND stage='pending_balance') AS balance,
+                SUM(NOT shadowed AND contract_signed AND stage='pending_transfer') AS transferPending, SUM(NOT shadowed AND contract_signed AND stage='transfer_signed') AS transferSigned,
+                SUM(NOT shadowed AND contract_signed AND completed_this_year) AS closedThisYear,
                 SUM(shadowed) AS duplicatesExcluded
             FROM (
-                SELECT e.to_state_code_sales_order_state_event AS stage,
+                SELECT e.to_state_code_sales_order_state_event AS stage, COALESCE(o.contrado_frima_ov=1,0) AS contract_signed,
                     EXISTS(SELECT 1 FROM ${sql.table("crmdatabase-api.audit_sales_order_state_event")} closed_event
                         WHERE closed_event.legacy_order_id_sales_order_state_event=o.id_ov AND closed_event.to_state_code_sales_order_state_event='closed'
                         AND closed_event.effective_at_sales_order_state_event >= ${period.start.slice(0, 23).replace("T", " ")} AND closed_event.effective_at_sales_order_state_event < ${period.endExclusive.slice(0, 23).replace("T", " ")}) AS completed_this_year,

@@ -35,6 +35,12 @@ export class AuditReadService {
         const profile = await this.identity.getCurrentUser(token);
         if (!canReadAudit(profile)) throw new ForbiddenException("Permiso insuficiente.");
     }
+
+    /** Central evidence uses the existing live audit permission, including explicit denies. */
+    async leadTimeline(token: string | undefined, recordId: string, query: unknown) {
+        await this.authorize(token);
+        return this.repository.leadTimeline(recordId, query);
+    }
     /** Authorization precedes lookup; explicit response fields exclude metadata and network identifiers. */
     async detail(token: string | undefined, publicId: string) {
         await this.authorize(token);

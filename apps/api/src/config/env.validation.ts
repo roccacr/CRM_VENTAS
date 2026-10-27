@@ -342,6 +342,13 @@ const envSchema = z
         DB_NAME: z.literal(APPROVED_DATABASE_NAME),
         DB_SSL: booleanEnvSchema("false"),
         DB_SSL_CA: z.string().min(1).optional(),
+        // Optional adapter settings stay server-side; the GET client rejects incomplete credentials.
+        NETSUITE_CONSUMER_KEY: z.string().optional(),
+        NETSUITE_CONSUMER_SECRET: z.string().optional(),
+        NETSUITE_TOKEN_ID: z.string().optional(),
+        NETSUITE_TOKEN_SECRET: z.string().optional(),
+        NETSUITE_REALM: z.string().optional(),
+        OAUTH_NETSUITE_SIGNATURE: z.string().optional(),
         MICROSOFT_TENANT_ID: z.string().optional(),
         MICROSOFT_CLIENT_ID: z.string().optional(),
         MICROSOFT_CLIENT_SECRET: z.string().optional(),

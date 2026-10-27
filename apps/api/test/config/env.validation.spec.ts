@@ -202,3 +202,8 @@ describe("validateEnv", () => {
         expect(validateEnv(env).MICROSOFT_MSAL_CACHE_ENCRYPTION_KEY).toBe(Buffer.alloc(32, 1).toString("base64"));
     });
 });
+
+it("preserves optional NetSuite server credentials for ConfigModule without enabling an unsigned client", () => {
+    const settings = { NETSUITE_CONSUMER_KEY: "test-consumer", NETSUITE_CONSUMER_SECRET: "test-secret", NETSUITE_TOKEN_ID: "test-token", NETSUITE_TOKEN_SECRET: "test-token-secret", NETSUITE_REALM: "4552704", OAUTH_NETSUITE_SIGNATURE: "HMAC-SHA256" };
+    expect(validateEnv({ ...createValidEnv(), ...settings })).toMatchObject(settings);
+});

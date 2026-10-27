@@ -1,8 +1,10 @@
 import "@testing-library/jest-dom/vitest";
 
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import ConfigProvider from "antd/es/config-provider";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
+import { PROJECTS_THEME } from "../../src/modules/administration/catalogs/projects-theme";
 import { CreateSystemUserDrawer } from "../../src/modules/administration/components/CreateSystemUserDrawer";
 import type { SystemUserListItem } from "../../src/modules/administration/system-users.model";
 import { installBrowserApiDoubles } from "../support/browser";
@@ -13,6 +15,25 @@ beforeEach(() => {
 afterEach(cleanup);
 const role = { code: "jefe_general", name: "Jefe General", locked: true, users: 0, moduleCodes: ["ventas", "mercadeo"], permissionInheritance: "selected_modules" as const };
 const moduleOptions = ["ventas", "mercadeo", "formalizacion", "administration"].map((code) => ({ code, name: code, views: [{ code: "home", name: "Inicio", permissions: [{ code: `${code}.home.read`, name: "Leer", sensitive: false }] }] }));
+
+it("keeps role and module popups inside the elevated user drawer", async () => {
+    const onSubmit = vi.fn();
+    render(
+        <ConfigProvider theme={PROJECTS_THEME}>
+            <CreateSystemUserDrawer open error={null} isSaving={false} roleOptions={[role]} rolePermissions={{ jefe_general: ["ventas.home.read"] }} moduleOptions={moduleOptions} onClose={vi.fn()} onSubmit={onSubmit} />
+        </ConfigProvider>,
+    );
+    fireEvent.mouseDown(screen.getByRole("combobox", { name: "Roles asignados" }));
+    const roleOption = await screen.findByText("Jefe General", { selector: ".create-user-drawer__role-option > span" });
+    expect(roleOption.closest(".ant-select-dropdown")?.closest(".ant-drawer-body")).not.toBeNull();
+    expect(roleOption.closest(".create-user-drawer__section")).toBeNull();
+    fireEvent.click(roleOption);
+    fireEvent.mouseDown(await screen.findByRole("combobox", { name: "Módulos asignados" }));
+    const moduleOption = await screen.findByText("ventas", { selector: ".ant-select-item-option-content" });
+    expect(moduleOption.closest(".ant-select-dropdown")?.closest(".ant-drawer-body")).not.toBeNull();
+    expect(moduleOption.closest(".create-user-drawer__section")).toBeNull();
+    expect(onSubmit).not.toHaveBeenCalled();
+});
 
 it("creates a general chief with only explicitly selected modules and direct role codes", async () => {
     const onSubmit = vi.fn();

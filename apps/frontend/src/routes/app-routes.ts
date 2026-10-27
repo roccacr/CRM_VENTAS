@@ -37,6 +37,7 @@ const UnitFilesPage = createLazyRoute<ComponentProps<typeof UnitFilesPageCompone
 const FormalizationCalendarPage = createLazyRoute<object>(() => import("../modules/home/FormalizationCalendarPage").then((module) => ({ default: module.FormalizationCalendarPage })));
 const FormalizationHomePage = createLazyRoute<ComponentProps<typeof FormalizationHomePageComponent>>(() => import("../modules/home/FormalizationHomePage").then((module) => ({ default: module.FormalizationHomePage })));
 const FormalizationSummaryPage = createLazyRoute<ComponentProps<typeof FormalizationSummaryPageComponent>>(() => import("../modules/home/FormalizationSummaryPage").then((module) => ({ default: module.FormalizationSummaryPage })));
+const MarketingLeadCapturePage = createLazyRoute<{ readonly currentUser: IdentityUser }>(() => import("../modules/marketing/MarketingLeadCapturePage").then((module) => ({ default: module.MarketingLeadCapturePage })));
 const MarketingHomePage = createLazyRoute<ComponentProps<typeof MarketingHomePageComponent>>(() => import("../modules/home/MarketingHomePage").then((module) => ({ default: module.MarketingHomePage })));
 
 /**
@@ -95,6 +96,7 @@ const OPERATIONAL_CATALOG_ROUTES = CATALOG_CONTEXT_ROUTES.flatMap((context) =>
 const APP_ROUTES: ReadonlyMap<string, AppRoute> = new Map<string, AppRoute>([
     ["/home/sales", { menuItemCode: "sales-home", title: "Ventas", workspaceCode: "sales" }],
     ["/home/marketing", { menuItemCode: "marketing-home", Page: MarketingHomePage, title: "Mercadeo", workspaceCode: "marketing" }],
+    ["/home/marketing/leads", { menuItemCode: "marketing-leads", Page: MarketingLeadCapturePage, title: "Captación de leads", workspaceCode: "marketing" }],
     ["/home/formalization", { menuItemCode: "formalization-home", Page: FormalizationHomePage, title: "Formalización", workspaceCode: "formalization" }],
     ["/home/formalization/calendar", { menuItemCode: "formalization-calendar", Page: FormalizationCalendarPage, title: "Calendario", workspaceCode: "formalization" }],
     ["/home/formalization/orders", { menuItemCode: "formalization-management", Page: (props) => createElement(FormalizationHomePage, { ...props, initialView: "orders" }), title: "Gestión de formalizaciones", workspaceCode: "formalization" }],

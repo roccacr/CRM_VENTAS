@@ -491,6 +491,22 @@ describe("SystemUsersPage", () => {
         expect(await screen.findByRole("heading", { name: "Andrea Valverde" })).toBeInTheDocument();
     });
 
+    it("shows every assigned module in the directory row and detail, not only the primary area", async () => {
+        const orgUnits = [
+            { code: "ventas", name: "Ventas", publicId: "ORG-V" },
+            { code: "formalizacion", name: "Formalización", publicId: "ORG-F" },
+            { code: "mercadeo", name: "Mercadeo", publicId: "ORG-M" },
+        ] as const;
+        mockGetSystemUsers.mockResolvedValueOnce({ ...mockUsersResponse, items: mockUsersResponse.items.map((user) => (user.publicId === "USR-ROCCA-0004" ? { ...user, roles: [{ code: "jefe_general", name: "Jefe General" }], orgUnit: orgUnits[0], orgUnits } : user)) });
+        render(<SystemUsersPage />);
+        await screen.findByRole("button", { name: "Abrir detalle de Andrea Valverde" });
+        expect(getUserRow("Andrea Valverde")).toHaveTextContent("Ventas, Formalización, Mercadeo");
+        await openUserDetail("Andrea Valverde");
+        const panel = within(getDetailPanel("Andrea Valverde"));
+        expect(panel.getByText("Módulos asignados")).toBeInTheDocument();
+        expect(panel.getByText("Ventas, Formalización, Mercadeo")).toBeInTheDocument();
+    });
+
     it("muestra ayuda de estados y datos de detalle coherentes", async () => {
         mockGetSystemUsers.mockResolvedValueOnce({
             ...mockUsersResponse,
@@ -922,7 +938,7 @@ describe("SystemUsersPage", () => {
         expect(await screen.findByText("Ingresa un correo válido.")).toBeInTheDocument();
     });
 
-    it("protege el formulario con datos contra cierre accidental", async () => {
+    it("cierra el formulario con datos sin confirmación de descarte", async () => {
         const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(false);
         render(<SystemUsersPage />);
         await openCreateUserDrawer();
@@ -930,8 +946,10 @@ describe("SystemUsersPage", () => {
         fireEvent.change(screen.getByLabelText("Motivo del alta"), { target: { value: "Alta pendiente de validar" } });
         fireEvent.click(screen.getByRole("button", { name: "Cerrar creación de usuario" }));
 
-        expect(confirmSpy).toHaveBeenCalledWith("Hay datos sin guardar. ¿Quieres cerrar el formulario y descartarlos?");
-        expect(document.querySelector(".create-user-drawer.ant-drawer-open")).toBeInTheDocument();
+        expect(confirmSpy).not.toHaveBeenCalled();
+        await waitFor(() => {
+            expect(document.querySelector(".create-user-drawer.ant-drawer-open")).not.toBeInTheDocument();
+        });
 
         confirmSpy.mockRestore();
     });

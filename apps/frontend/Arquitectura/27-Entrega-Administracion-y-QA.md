@@ -1,12 +1,332 @@
 # 27 - Entrega de Administracion y QA
 
-## Estado revisado - 2026-10-22, corte f2dc4f1
+## Estado contrastado - 2026-10-27
 
-Inventario de Administracion y bitacora de entregas. Cada cifra y comprobacion fechada conserva su corte original. Ultima evidencia previa: 428 pruebas frontend, 84.77% de lineas; API 4583 aprobadas y 113 MySQL omitidas, no aprobadas. Fuente: [reauditoria](../../api/Arquitectura/Reauditoria-54-Plan-y-Resultados.md). No se reejecutaron checks, cobertura, build ni navegador por editar Markdown.
+[30 - Estado frontend verificado](30-Estado-Frontend-Verificado.md) inventaría las rutas, contratos y límites actuales: Captación conectada, seguimiento y cambio protegido de etapa de Formalización. Los cortes fechados siguientes son antecedentes; sus cifras de QA no se reejecutaron en esta revisión documental.
+
+
+## Captacion: conexion federada autorizada - 2026-10-26
+
+La vista `/home/marketing/leads` ya usa `GET /marketing/leads/report`. El modelo
+acepta directorios y filas de API, sin mutacion de catalogos globales ni fallback
+de demo. Las muestras anteriores se conservan solo como evidencia historica y
+fixtures de prueba. Semana empieza lunes; Hoy/Mes/Todo dependen de fechas reales
+devueltas por el servidor. Vendedores por publicId nativo o identidad legacy
+separada, con foto solo cuando coincide el publicId. La seleccion se conserva
+cuando un vendedor no tiene resultados en otro periodo, mostrando cero.
+Se conservan tres profundidades y las exportaciones PNG/PDF; solo se exporta
+el reporte vigente, no datos anteriores durante cargas o errores. Citas son
+leads con cita (completada tiene prioridad sobre programada), no eventos.
+[Contrato y cierre de verificacion](../../api/Arquitectura/53-Captacion-Leads-Reporte-Federado.md).
+
+## Captacion: comparar en el tablero, sin explorador - 2026-10-26
+
+Se retiro de la pagina la seccion «Explorar a fondo» y su estado de pregunta/panel.
+Las comparaciones se concentran en «De donde vienen los leads», reutilizando las
+barras que filtran el tablero. Un selector multiple permite mostrar vendedores,
+proyectos, campanas y anuncios; vacio muestra todos, vendedores primero. Otro
+selector cambia la medida (sin dinero). Cada tarjeta alterna entre horizontal y
+vertical sin alterar datos. Las verticales comparten escala dentro de su tarjeta
+y colocan categorias una al lado de otra; en movil tienen scroll propio.
+
+Seleccionar barras ahora agrega/quita ids individualmente, sin reemplazar las
+selecciones anteriores. Cambiar proyectos limpia campanas/anuncios dependientes;
+cambiar campanas limpia anuncios. Cada tarjeta ignora su propio filtro y los
+niveles dependientes para mantener opciones disponibles; banners y embudo usan
+el filtro completo. Este contexto permanece explicado junto a los controles.
+Se muestran todas las categorias disponibles (scroll interno), sin limitar a seis.
+Cada tarjeta tiene «Ver tabla» con los mismos valores del grafico y nombres/fotos
+por publicId para vendedores. Tasas sin denominador siguen mostrando raya.
+
+La pagina mantiene filtros multiples, banners, embudo, tendencia, motivos de
+perdida y permiso original. No se cambiaron API, BD ni datos reales. Las pruebas
+UI de navegacion del explorador retirado se sustituyen por comparaciones del
+tablero; las pruebas puras del modelo/arbol y charts reutilizables permanecen.
+La revision independiente detecto y se corrigio el fallo al borrar una fecha y
+la perdida de contexto en nombres de campanas/anuncios repetidos en las tablas.
+La tendencia no convierte fechas invalidas; la tabla conserva etiquetas completas.
+Verificacion focalizada: 30 pruebas aprobadas. Auditoria Lighthouse snapshot movil:
+100 en accesibilidad, sin certificacion WCAG completa. Viewport 390px sin overflow
+del documento y scroll interno para columnas; el HTML temporal se retira al cerrar.
+La comprobacion global de tipos/build encuentra errores ajenos en
+`test/home/formalization-follow-up.spec.tsx` (Object.assign sobre posible undefined,
+lineas 223/242). No se modifico ese archivo. Lint del codigo tocado aprobado.
+Reejecucion final: 492 pruebas Home/App aprobadas con dos workers. Formato
+focalizado y diff sin errores de whitespace. El bloqueo global de tipos/build
+descrito arriba sigue separado de estas pruebas de ejecucion.
+
+
+
+## Captacion: identidad visual por vendedor - 2026-10-26
+
+Los graficos y tablas identifican a cada vendedor con imagen y nombre mediante
+`CaptureSellerIdentity`, reutilizando `MarketingWelcomeArt`. El archivo local
+solo se selecciona por publicId nativo exacto; no por nombre, posicion, id legacy
+ni referencia de proveedor. Foto ausente/rota mantiene la ilustracion anterior.
+Cambiar de identidad reinicia el estado de error de imagen. Las personas ficticias
+siguen con publicId null: no se asignan fotos reales a nombres de demostracion.
+El arbol de analisis transporta sellerId explicito para barras, columnas,
+porcentajes, Pareto, filas del mapa de calor y detalle; grupos no vendedores no
+reciben retratos. La resolucion usa el directorio CRM con su publicId, no el texto
+del grafico. No se consulta API/BD ni se conecta un directorio real en esta maqueta.
+
+Revision de accesibilidad en pagina temporal aislada: Lighthouse snapshot paso
+96 a 100 tras mejorar contraste del placeholder y fechas/eje del grafico. Esto
+no certifica conformidad WCAG completa. Prueba manual con Enter selecciona el
+vendedor; viewport 390px sin desbordamiento. Nombres permanecen visibles, las
+imagenes por defecto son decorativas y las fotos tienen texto alternativo.
+Verificacion: 391 pruebas Home aprobadas y 53 focalizadas de captacion/conexion
+aprobadas. Pruebas nuevas cubren dos publicId distintos, fallback de imagen,
+recuperacion al cambiar de identidad y retratos en barras/columnas de dos
+vendedores sin agregarlos a proyectos. Tipos y build frontend aprobados; el build
+conserva aviso de chunk AntD grande. Se retiro el HTML temporal de revision.
+
+
+## Captacion: lectura grafica de resultados - 2026-10-26
+
+La vista usa banners con icono, cifra y tendencia, grafico diario reutilizado del
+Inicio, barras agrupadas de leads/cita/contrato por vendedor y distribucion por
+etapa actual con cantidades y porcentajes. El detalle conserva tabla y columnas
+seleccionables. Los colores tienen leyendas y cifras: no son el unico indicador.
+Los vendedores comparten una escala de conteos; las series se superponen en el
+negocio (un lead puede tener cita y contrato) y no se suman. Las etapas actuales
+si particionan la muestra. La tendencia mantiene filtros en ambos periodos.
+Cuando el periodo anterior queda fuera de la cobertura ficticia septiembre/octubre,
+la comparacion se desactiva y se muestran solo barras del periodo seleccionado.
+No presentar ausencia de muestra como cero leads del periodo anterior.
+
+Se reutilizan MarketingHomeCharts, banners y tokens del CRM sin dependencias
+nuevas. Las explicaciones extensas pasan a InfoHint, manteniendo visible que son
+datos de demostracion sin API/BD y que los valores contractuales no son cobros.
+Todos los graficos responden a los mismos filtros locales; no hay importacion,
+persistencia ni llamadas comerciales. Implementacion grafica adicional en
+`src/modules/marketing/CaptureOverviewCharts.tsx`.
+
+Verificacion grafica: 15 pruebas focalizadas aprobadas, 47 de navegacion/captacion
+aprobadas y 455 Home/App aprobadas con dos workers. Una ejecucion amplia previa
+agotaba la espera de la ruta lazy; la repeticion focal y la amplia con dos workers
+pasaron. Tipos y build aprobados; lint sin errores, con aviso Fast Refresh en
+CaptureAnalysisBuilder. Build conserva el aviso AntD de chunk grande. Revision
+visual desktop y comprobacion de viewport 390px sin desbordamiento; captura movil
+adicional agoto tiempo del navegador. HTML temporal retirado. La revision estatica
+independiente detecto y se corrigio la comparacion sin cobertura ficticia.
+
+
+## Captacion: filtros multiples desde vendedor - 2026-10-26
+
+Vendedor es el primer filtro y la dimension de comparacion inicial. Sin seleccion
+incluye todos los vendedores. Proyecto, campana, anuncio, etapa, canal, citas,
+resultado comercial y registro de anuncio permiten varias opciones; vacio
+significa todas. Se conserva OR dentro del filtro y AND entre filtros; seleccionar
+con y sin cita incluye ambos, sin duplicar leads. Las fechas delimitan un solo
+intervalo. Aplicar conserva la separacion borrador/reporte; Restablecer vuelve a
+todos y comparacion por vendedor. Los ejemplos cargan sus dimensiones especificas.
+Solo maqueta local, sin cambiar API, BD, permisos ni Inicio real.
+
+Verificacion de este ajuste: lint general, tipos, formato focalizado y build
+frontend aprobados; 453 pruebas Home/App aprobadas, incluidas 13 del constructor.
+Cubren orden inicial, controles multiples, combinacion OR/AND, ausencia de
+duplicados y restablecimiento a todos. El build conserva el aviso de chunk AntD
+grande. No se repitio revision visual de navegador en este ajuste.
+
+## Ampliacion UX de resultados comerciales - 2026-10-26
+
+La propuesta local de Captacion incorpora siete paneles: Panorama, Embudo y
+etapas, Vendedores, Citas, Ventas y contratos, Perdidas, Inversion y tiempos.
+Reutiliza Select, Tabs, InfoHint y los tokens del CRM. No agrega dependencias,
+servicios, permisos, migraciones ni consultas a ninguna BD.
+
+- Los filtros seleccionan leads por fecha de registro; los resultados asociados
+  se observan hasta el corte ficticio del 26 de octubre de 2026. No es un reporte
+  de ventas ocurridas exclusivamente dentro del periodo seleccionado.
+- Filtros multiples de proyecto/campana/anuncio/vendedor/etapa/canal; condiciones
+  de cita, atribucion de anuncio y resultado comercial. Se conserva OR dentro
+  de un filtro y AND entre filtros, con borrador y aplicacion explicita.
+- Hasta seis KPIs personalizables; constructor de barras por metrica, dimension
+  y segundo desglose; columnas seleccionables y total recalculado sobre la muestra.
+- Leads con orden o contrato se cuentan una vez; documentos se cuentan aparte.
+  Contratos pendientes y cancelados no acreditan cierre. El valor contractual
+  no equivale a cobro, ni se suma al valor de ordenes para calcular ingresos.
+- Citas completadas y asistencia confirmada son medidas distintas; asistencia
+  sin verificar se excluye de la tasa. Las personas copiadas no forman parte
+  del modelo local. La integracion futura debera deduplicar eventos reales.
+- Perdidas actuales se distinguen de eventos historicos y leads recuperados.
+  La distribucion por vendedor expresa propietario actual, no reasignaciones.
+- Costos y tiempos son ilustrativos; no acreditan gasto de plataformas,
+  rentabilidad, ROI ni cobros. Tasas sin denominador muestran raya.
+
+Implementacion en `src/modules/marketing/MarketingLeadCapturePage.tsx`,
+`CaptureAnalyticsPanels.tsx`, `lead-capture-preview.model.ts` y
+`lead-capture-journey.model.ts`. La muestra no depende de nombres legacy ni ERP.
+La futura federacion debe seguir siendo un contrato CRM independiente del origen.
+
+Verificacion de la ampliacion: tipos y build frontend aprobados; 450 pruebas de
+Home/App aprobadas y 10 pruebas focalizadas del constructor aprobadas. Lint y
+Prettier del modulo aprobados. El lint general detecto ademas complejidad 12/8
+en `FormalizationFollowUpPreview.tsx`, ajeno a esta entrega; no se modifico.
+Build conserva el aviso de chunk AntD mayor de 500 kB. Revision independiente:
+corregidas tasas sin denominador y aclaracion persistente del periodo. Revision
+visual aislada en 1440px y 390px, sin desbordamiento del documento; panel comercial
+verificado, sin peticiones de API observadas. HTML temporal retirado. No acredita
+pruebas end-to-end con sesion comercial ni integracion con datos reales.
+
+La verificacion inicial descrita debajo corresponde a la version anterior.
+
+## Captacion de leads: propuesta UX dinamica - 2026-10-26
+
+Reemplaza la pagina de solo H1, conservando ruta y permiso. Implementacion aislada
+`src/modules/marketing/MarketingLeadCapturePage.tsx`, su CSS y
+`lead-capture-preview.model.ts`. Ant Design Select y tokens del CRM existentes,
+sin dependencias nuevas. No importa servicios de datos ni consulta las BD.
+
+- Muestra ficticia determinista de septiembre/octubre de 2026, identificada en
+  cabecera y pie; no representa resultados actuales ni datos migrados.
+- Proyecto, campana, anuncio, vendedor y etapa admiten seleccion multiple.
+  Citas y presencia de anuncio permiten incluir/excluir. Fechas por creacion.
+- OR dentro de una dimension, AND entre dimensiones; campanas se limitan a los
+  proyectos elegidos y anuncios a campanas/proyectos, depurando selecciones incompatibles.
+- Borrador de filtros separado del reporte aplicado. Aplicar actualiza localmente;
+  Restablecer y los cuatro ejemplos cargan configuraciones locales conocidas.
+- Medida: cantidad de leads, con cita, perdidos o sin anuncio. Comparar por
+  proyecto/campana/anuncio/vendedor; segundo desglose opcional en tabla.
+- Las barras comparan categorias, no periodos distintos. El estado Perdido es
+  actual; no cuenta repeticiones historicas. Varias citas no multiplican leads.
+- Sin coincidencias no se inventan resultados. Sin campana/anuncio permanece
+  visible como falta de atribucion. No se guardan filtros ni se exporta nada.
+
+La futura integracion debera alimentar un contrato CRM independiente del origen;
+esta maqueta no implementa federacion, SQL ni reglas de precedencia entre BD.
+El adaptador legacy podra retirarse sin que esta UI dependa de nombres/campos ERP.
+
+Verificacion de esta maqueta: lint y tipos frontend aprobados; 446 pruebas de
+Home/App aprobadas, incluidas seis focalizadas del constructor local; build
+completado (con advertencia preexistente de chunk AntD grande). Las pruebas
+cubren filtros combinados, depuracion de dependencias, borrador/aplicacion/reset,
+agrupacion sin doble conteo, fechas invertidas y ausencia de llamadas fetch.
+Navegador: revision visual desktop y viewport movil de 390px sin desbordamiento
+del documento; tabla con scroll propio. Ejemplo Perdidos comprobado en una
+pagina de prueba aislada con los mismos componentes; no sesion comercial real.
+Se retiro el HTML temporal de revision. Revision independiente sin hallazgos
+importantes. No se consultaron BD, ni se cambiaron permisos, migraciones o APIs.
+
+
+
+## Antecedente Captacion de leads: entrada minima autorizada - 2026-10-26
+
+La opcion de Mercadeo navega a `/home/marketing/leads`. La pagina contiene
+exclusivamente el H1 Captacion de leads dentro del contenedor habitual. Reutiliza
+`mercadeo.leads.read`, ya existente; el filtro de menu y la autorizacion de ruta
+exigen el permiso efectivo y respetan denies. No se requiere el nombre de un rol:
+una persona con el permiso efectivo y contexto modular permitido puede entrar.
+No incorpora tabla, consultas de leads, exportaciones ni acciones comerciales.
+SELECT de solo lectura confirma permiso activo y grants activos en mercadeo y
+jefe_mercadeo; no se crearon grants duplicados ni se ejecutaron migraciones.
+Verificacion de la entrada: 32 pruebas de navegacion/permisos aprobadas, lint y
+tipos frontend aprobados y build completado. Sesion real autenticada de navegador
+no verificada en esta entrega; no se modificaron credenciales.
+
+
+## Mercadeo: textos y comparaciones explicitos - 2026-10-26
+
+El propietario aprobo aclarar Inicio sin cambiar calculos, API, permisos o BD.
+Los titulos visibles pasan a Leads registrados, Leads registrados que tienen cita
+y Citas marcadas como completadas. Se explica que lead es registro de interes,
+no persona unica; conversion admite citas futuras no canceladas y completada
+no equivale a asistencia confirmada. Ultimos siete dias muestra fechas propias.
+
+Mostrando/Comparando con y la leyenda del grafico exponen fechas exactas;
+el grafico de Hoy conserva su contexto de siete dias. Vendedores muestran
+mas/menos leads y Sin leads en el periodo anterior, sin sugerir alta de empleado.
+Los proyectos del filtro son agrupaciones de los leads, no prueba de asignacion.
+
+Los avisos muestran la diferencia absoluta, porcentaje y ambos conteos, con
+fechas comunes del bloque. Proyectos se priorizan por mayor perdida absoluta,
+con desempate alfabetico; se conserva el umbral existente de caida (20%), base
+minima (25 leads anteriores), periodo minimo (7 dias) y limite de tres avisos.
+La advertencia de citas sin lead solo muestra problemas con conteo positivo.
+Los snapshots y verificaciones del 23 conservan su fecha y alcance.
+
+
+## Estado revisado - 2026-10-23, lectura de codigo sin ejecutar runtime
+
+Inventario de Administracion y bitacora de entregas. Cada cifra y comprobacion fechada conserva su corte original. Un antecedente registrado: 428 pruebas frontend, 84.77% de lineas; API 4583 aprobadas y 113 MySQL omitidas, no aprobadas. No es la corrida mas reciente del historial. Fuente: [reauditoria](../../api/Arquitectura/Reauditoria-54-Plan-y-Resultados.md). No se reejecutaron checks, cobertura, build ni navegador por editar Markdown.
 
 Formalizacion vigente: [29 - Navegacion y seguimiento](29-Navegacion-Recuperacion-y-Seguimiento.md). [28 - Recorrido](28-Formalizacion-Recorrido-Visual.md) conserva el historial visual. Inicio/Gestion/seguimiento ya no muestran filas DEMO y Movimientos recientes declara indisponibilidad; no hay listado/detalle operativo conectado. Calendario, Resumen y modelos de preview conservan simulaciones, no operaciones reales.
 
-La entrada requiere membresia activa del modulo, con la exencion Owner existente. `formalizacion.home.read` esta inactivo; no controla la entrada. `formalizacion.home.approvals.read` controla solo banner y GET del resumen, con allow y sin deny; no concede aprobar/devolver ni acceso a todo el modulo. ApprovalStrip se monta y consulta solo despues de ese permiso. Muestra Spin y Consultando durante carga, valor al resolver y No disponible al fallar, nunca un cero de respaldo. Los otros seis banners mantienen ceros provisionales sin API. La fuente nativa/legacy depende de configuracion backend; esta revision no certifica un total combinado ni consulta actual de BD.
+La entrada exige modulo activo en el perfil efectivo; Owner recibe modulos virtuales desde backend, no un bypass en React. `formalizacion.home.read` esta inactivo. Aprobaciones conserva `formalizacion.home.approvals.read` allow sin deny: Spin/Consultando, valor al resolver, No disponible al fallar; no concede aprobar/devolver.
+
+Los seis banners de etapas consumen un unico `GET /formalization/home/summary` con rol efectivo activo `formalizacion` y `formalizacion.home.stages.read` allow sin deny. Owner puede heredar ese rol desde politica persistida, sin asignacion fisica directa. Preload por numero; fallo muestra Sin verificar/reintento y ceros visuales no confirmados. `useHomeSummary` relee al entrar, recuperar foco/visibilidad y refrescar; no es tiempo real. El servicio conserva desglose nativo/legacy y deduplicacion; no se consulto BD en esta revision.
+
+Mercadeo / Inicio ya usa `GET /marketing/home/summary?period=day|week|month|year` con `mercadeo.home.read` y alcance backend. Cuatro indicadores, grafico y desgloses vendedor/proyecto usan datos canonicos y multiseleccion; las fotos locales aparecen en la bienvenida de vendedores seleccionados, no en las filas del listado. Se buscan por publicId nativo en `public/vendedores`; identidad nula, archivo ausente o imagen fallida conserva la ilustracion. No hay fallback de cifras de ejemplo. Error/carga no se muestran como cero confirmado. Citas disponibles distinguen eventos unicos por fecha del evento frente a conversion por cohortes de leads; varios participantes/enlaces no multiplican eventos, programada no implica realizada/asistida. No hay editor de citas, Outlook ni notificaciones conectadas. Contratos: listado/envio/reversion siguen fuera de runtime activo aunque existan clases/servicios preparados.
+
+### Contrato visible de Mercadeo contrastado con codigo - 2026-10-23
+
+| Elemento | Comportamiento actual |
+| --- | --- |
+| Periodo | Inicio en Mes. Hoy compara con ayer; Semana comienza lunes y termina hoy; Mes comienza el primer dia y termina hoy; Año comienza el 1 de enero y termina hoy. La comparacion conserva el tramo transcurrido del periodo anterior, con ajuste de mes/anio. El grafico de Hoy muestra los ultimos siete dias; Año agrupa por mes. Rango y comparacion personalizada existen en helpers genericos, sin controles visibles en este Home. |
+| Seleccion | Vendedor y Proyecto permiten varios valores. Un cambio de vendedor conserva solo proyectos compatibles con el nuevo alcance. La lista de vendedores permite alternar seleccion y se calcula sin aplicar el filtro de vendedor, conservando los demas criterios. Filtros locales no amplian el alcance devuelto por API. |
+| Carga | Preload compartido Actualizando Mercadeo durante lectura y transiciones locales; seleccion del control inmediata y reporte diferido con React. Cambiar periodo oculta cifras anteriores hasta resolver la nueva lectura. Error ofrece Reintentar, sin inventar ceros. El hook no consulta por foco ni hace polling. |
+| Leads captados | Suma de cohortes por fecha de creacion en el periodo y filtros seleccionados, independiente del estado comercial actual. |
+| % de leads con cita | Leads de esas cohortes con cita dividido por leads captados; utiliza `leadsWithAppointment`, no numero de eventos. La comparacion de tasa requiere leads en el periodo anterior. |
+| Citas realizadas | Eventos unicos `completed` por fecha del evento; filtros vendedor/proyecto deben coincidir en un mismo enlace. El subtitulo distingue pendientes, canceladas, asistidas, ausencias y asistencia sin verificar. No muestra una variacion porcentual inventada. |
+| Leads sin cita | Cohortes captadas durante los ultimos siete dias sin cita, con filtros aplicados; esta ventana permanece fija al cambiar el periodo principal. |
+| Citas no disponibles | Los tres indicadores dependientes de citas muestran — y se omiten alertas dependientes; Leads captados conserva su lectura disponible. |
+
+Tipos, GET y parser residen juntos en `src/services/marketing/home-summary-service.ts`; `src/modules/home/useMarketingHomeSummary.ts` controla usuario/periodo y resultados tardios. El parser valida coherencia de referencias, totales y cohortes, y rechaza eventos duplicados antes de mostrarlos. Detalle del estado remoto: [04](04-API-Client-y-Estado.md). Esta tabla describe codigo inspeccionado; no agrega evidencia de ejecucion ni de calidad del origen.
+
+Usuarios muestra todos los `orgUnits` devueltos en ambas tablas y detalle, con salto de linea; `[]` significa Sin area, no recupera la primera area. Respuestas antiguas sin `orgUnits` usan `orgUnit`. Jefe General opera solo los modulos seleccionados dentro del techo editable de su plantilla; seleccion modular no concede Administracion. Se conservan asignaciones directas para editar y roles efectivos para consumir, con deny prioritario.
+
+Fuentes inspeccionadas: `src/modules/home/FormalizationHomePage.tsx`, `useHomeSummary.ts`, `MarketingHomePage.tsx`, `useMarketingHomeSummary.ts`, `marketing-appointments.model.ts`, `src/services/formalization/home-summary-service.ts`, `src/services/marketing/home-summary-service.ts`, `src/routes/app-routes.ts`, `src/routes/auth-state.ts`, `src/modules/administration/system-users.model.ts` y componentes de tablas/detalle. Backend: `identity-profile.repository.ts`, `identity-module-policy.ts` y `common/security/route-permission.ts`. Consolidacion, importacion de usuarios y esquema calendario: [49](../../api/Arquitectura/49-Estado-Actual-y-Cierre-Documental.md).
+
+Relectura final tras cambios concurrentes de Mercadeo, 2026-10-23: `MarketingHomePage.tsx`, `marketing-appointments.model.ts`, `marketing-home-preview.model.ts`, `marketing-home-projects.ts` y pruebas `test/home/marketing-connected.spec.tsx` / `marketing-appointments.spec.ts` inspeccionadas, no ejecutadas. Citas realizadas usa eventos completed por fecha del evento; asistencia null sigue Sin verificar. Vendedor y proyecto deben coincidir en el mismo enlace de lead, sin cruzar enlaces de personas distintas. El directorio combina cohortes y enlaces de citas, conservando vendedores/proyectos con citas aunque su lead se capto fuera del periodo. Calidad de datos informa enlaces no resueltos, fechas invalidas y estados desconocidos; alertas usan nombres legibles y no inventan campanas/anuncios ausentes. La existencia de esas pruebas no acredita su resultado actual.
+
+### Cobertura documental de esta revision - 2026-10-23
+
+35/35 Markdown propios revisados: 25 con correcciones locales y 10 sin cambios. No incluye dependencias, salidas generadas ni paquetes de skills instalados/ignorados; se consultaron `code-documenter` y `crm-documentation-standards` locales como instrucciones. No es cobertura de tests ni certificacion de produccion. Se preservan cambios concurrentes, cifras y pruebas de cada entrega historica.
+
+| Archivo relativo a apps/frontend | Resultado |
+| --- | --- |
+| `AGENTS.md` | Corregido |
+| `Arquitectura/00-Indice.md` | Corregido |
+| `Arquitectura/00-Producto-CRM-TINK-y-P0-Frontend.md` | Corregido |
+| `Arquitectura/01-Resumen-Frontend.md` | Corregido |
+| `Arquitectura/02-Arquitectura-Frontend.md` | Corregido |
+| `Arquitectura/03-UI-UX-CRM.md` | Corregido |
+| `Arquitectura/04-API-Client-y-Estado.md` | Corregido |
+| `Arquitectura/05-Testing-Frontend.md` | Revisado sin cambios: estrategia y evidencia historica |
+| `Arquitectura/06-ADRs-Frontend.md` | Revisado sin cambios: adopciones futuras calificadas |
+| `Arquitectura/07-Skills-Codex-Instaladas.md` | Revisado sin cambios: inventario fechado, no nuevo censo |
+| `Arquitectura/08-Revision-Blueprint-y-Siguiente-Paso.md` | Corregido |
+| `Arquitectura/09-Decisiones-P0-UX-Permisos-y-Preguntas.md` | Corregido |
+| `Arquitectura/10-Contrato-Canonico-Frontend.md` | Corregido |
+| `Arquitectura/11-UX-Bitacora-Acciones-y-Timeline-Lead.md` | Corregido |
+| `Arquitectura/12-Diccionario-Funcional-y-Acciones-CRM.md` | Revisado sin cambios: diccionario futuro |
+| `Arquitectura/13-Flujo-Comercial-CRM.md` | Revisado sin cambios: flujo futuro calificado |
+| `Arquitectura/14-Modularizacion-Frontend-por-Areas-y-Roles.md` | Corregido |
+| `Arquitectura/15-UX-Calendarios-por-Area-y-Supervision.md` | Corregido |
+| `Arquitectura/16-UX-Notas-Adhesivas-y-Anotaciones.md` | Revisado sin cambios: notas futuras |
+| `Arquitectura/17-UX-Dashboard-Leads-SLA-y-Perdida.md` | Corregido |
+| `Arquitectura/18-P0-Direccion-Frontend-Construccion-Pausada.md` | Corregido |
+| `Arquitectura/19-Mapa-de-Implementacion-Frontend.md` | Corregido |
+| `Arquitectura/20-Alcance-P0-Vertical-Leads-Frontend.md` | Revisado sin cambios: vertical futuro |
+| `Arquitectura/21-Seguridad-Autenticacion-BFF-y-Sesion.md` | Corregido |
+| `Arquitectura/22-UX-Identidad-Usuarios-Roles-P0-S1.md` | Revisado sin cambios: compuerta historica calificada |
+| `Arquitectura/23-Regla-IDs-Canonicos-y-Proveedores-Frontend.md` | Corregido |
+| `Arquitectura/24-Contrato-Visual-Identidad-P0-S1.md` | Corregido |
+| `Arquitectura/25-Continuidad-Administracion.md` | Corregido |
+| `Arquitectura/26-Projects-Design-System.md` | Corregido |
+| `Arquitectura/27-Entrega-Administracion-y-QA.md` | Corregido |
+| `Arquitectura/28-Formalizacion-Recorrido-Visual.md` | Corregido |
+| `Arquitectura/29-Formalizacion-Reunion-Ajustes.md` | Corregido |
+| `Arquitectura/29-Navegacion-Recuperacion-y-Seguimiento.md` | Corregido |
+| `design-qa.md` | Revisado sin cambios: QA de shell fechado |
+| `public/Logo/README.md` | Revisado sin cambios: referencias locales contrastadas |
+
+Discrepancias resueltas: dos banners/cinco o seis ceros provisionales frente al resumen de seis etapas; asignacion directa frente a rol efectivo heredado; exencion Owner frente a perfil/deny; modulos como mera visibilidad frente a limite de grants de General; primera area frente a todos los modulos; Mercadeo mock/sin API frente a resumen conectado; calendario simulado frente a esquema nativo sin operaciones; origen/API canonico frente a claves opacas de resumen; clases contractuales preparadas frente a handlers activos; herramientas propuestas frente a dependencias instaladas; header/modal/overlay historicos frente a CSS/drawer actual.
+
+Limites restantes: aceptacion manual autenticada, persistencia/concurrencia y calidad real de datos de las nuevas lecturas requieren evidencia propia. El corte comunicado por el responsable de importacion es 43 usuarios nuevos (30 pendientes, 13 inactivos), uno omitido y total 46; rol ventas ID interno 317 asignado a 43 sin permisos, auth ni membresias. Es evidencia fechada del 2026-10-23 ([45](../../api/Arquitectura/45-Usuarios-Por-Correo.md)), no consulta realizada aqui ni garantia de acceso. El esquema 034 consta como ocho tablas vacias, 106 columnas comentadas, 27 checks, 40 indices y ocho triggers en la entrega de [47](../../api/Arquitectura/47-Calendario-Compartido-Esquema.md); no implica carga legacy, tipo Cita sembrado, endpoints operativos de calendario, Outlook o campana. La lectura agregada de citas de Mercadeo es una ampliacion distinta.
+
+Verificacion de esta revision: inspeccion de codigo/documentos y diff completo de los Markdown modificados; 123 destinos de enlaces locales comprobados, ninguno ausente, incluido el documento 49 del responsable principal. Sin tests, lint, typecheck, build, DB, commits o despliegues nuevos. Los cambios de otras tareas que aparecen en el diff global conservan su autoria y no son evidencia de esta revision.
 
 ## Antecedentes de entregas y QA - 2026-10-13 a 2026-10-20
 
@@ -372,3 +692,55 @@ Ajuste visual 2026-10-14: se preservan titulo y seis banners sin cambios. Solo l
 La propuesta responde a responsable, bloqueo, documentos y trazabilidad solicitados en `CRM IDEA.pdf` (paginas 3 a 5) y `RESUMEN_EJECUTIVO_CRM_TINK AJUSTADO (1).pdf` (paginas 1 y 3). Ordenar por dias en etapa y agrupar pendientes por proyecto son decisiones de presentacion, no reglas de SLA aprobadas. El resumen ajustado delimita la fase: sin cobros, pagos ni entrega de llaves. El saldo no consultado se muestra como pendiente de consulta, nunca como cero.
 
 Se inspeccionaron solo metadatos del esquema legacy `crmdatabase-api`: `ordenventa` contiene referencias de cliente/unidad, aprobaciones y flags contractuales; `expedientes` corresponde a unidades; `bitacoras` contiene actor, detalle y fecha. No se interpretaron valores numericos ni se extrajeron registros personales. Los tipos actuales de la nueva API cubren identidad, catalogos y auditoria, pero no un agregado operativo completo de Formalizacion. Quedan pendientes el modelo nuevo, el mapeo validado de estados legacy, las reglas de ingreso/cierre/excepciones, el contrato financiero, los permisos y la integracion de datos. Esta maqueta no acredita esos pendientes como implementados.
+# Ilustraciones de banners Formalizacion - 2026-10-26
+
+Decision final del propietario: restaurar el patron original de seis cuadrados
+en la esquina superior derecha, a 64x64, aumentando opacidad de 0.1 a 0.35.
+Se retiran los siete SVG de las propuestas descartadas y se recupera el
+espaciado original. Decoracion aria-hidden, sin animacion ni dependencias.
+Se conservan iconos negros, permisos, consultas, contadores y precargas.
+
+
+## Información primaria de la orden: maqueta autorizada (2026-10-26)
+
+La vista completa conserva identidad y avance real. Los bloques Datos de la orden y Situación actual se sustituyen por Información primaria con etiqueta Datos de ejemplo: pedido/cliente, contrato/entrega, organización/ubicación, indicadores de solo lectura y resumen económico. `primaryInformationExample` en `FormalizationRecordSummary.tsx` centraliza los valores ficticios para sustituirlos posteriormente por un DTO canónico. No consume el JSON de NetSuite, no sirve de fallback ante errores y no modifica etapas, permisos, API ni bases de datos. No se implementa aún Estado de cuenta.
+
+
+## Carga del detalle NetSuite (2026-10-27)
+
+El estado de la petición existente controla el detalle: skeleton animado y aria-busy mientras carga, sin montar campos, importes ni checks de muestra. Un fallo muestra indisponibilidad sin fallback ficticio. La respuesta correcta conserva por ahora la maqueta identificada; el mapeo de sus campos al JSON sigue pendiente. Se mantiene la consulta DEV autorizada y el console.log, sin persistir el payload. Las respuestas de una orden anterior no actualizan la abierta.
+
+
+## Restauración por URL y retiro de datos de muestra (2026-10-27)
+
+El detalle restaura orderSource/orderId usando seguimiento con filtro exacto recordId validado y parametrizado; no depende de la primera página ni usa netsuiteId como autorización. Conserva sesión, rol efectivo, stages.read, deny y alcance por recurso. Una URL sin acceso no consulta; un rechazo deja estado explícito sin volver al Home. El BFF conserva renovación y salida a login ante sesión inválida. Los valores, importes e indicadores de muestra quedan vacíos hasta el mapeo explícito. Comprobación de solo lectura en CRM_THINK_V2: rol Formalización, permiso stages.read y su asignación activos. No se modificó la BD.
+
+
+## Recargar transacción (2026-10-27)
+
+El encabezado del detalle incorpora Recargar transacción con el patrón del Home. Repite la consulta existente de NetSuite bajo los mismos permisos, sin recargar la página, conserva la identidad de URL, oculta los campos con el preload y deshabilita el botón mientras carga. Un contador de solicitud distingue respuestas anteriores; no se persiste ni cachea el payload. No modifica estados ni registros.
+
+
+## Inspección de orden, lead y expediente federados (2026-10-27)
+
+La apertura y Recargar transacción consultan en paralelo /formalization/orders/:source/:id/database y /netsuite, bajo el gate existente. Consola DEV: [Base de datos: orden de venta] y [NetSuite: orden de venta]. Se esperan ambas consultas para cerrar el preload, sus logs son independientes y los errores no imprimen payloads ni secretos. No se guarda el JSON ni se mapea aún a campos visibles. El snapshot de BD tiene un envelope común, referencias e incidencias, y sourceFields separados para inspeccionar los nombres originales sin adivinar equivalencias.
+
+
+## Cinco datos clave de orden desde BD (2026-10-27)
+
+Se conectan exclusivamente Cliente, Proyecto · Unidad, Vendedor, Etapa y Siguiente paso usando FollowUpItem del API de seguimiento federado, no campos NetSuite ni interpretación de legacy en React. El vendedor es el del lead; no se confunde con responsable de etapa. Estado y siguiente paso usan la clasificación actual del servidor. Al abrir/recargar se vuelve a consultar la identidad exacta y se ocultan valores pendientes u obsoletos ante carga/error. Sin dato se muestra guion. Los demás campos, importes e indicadores permanecen sin mapear. No hay escrituras de BD.
+
+
+## Preload único de ficha completa (2026-10-27)
+
+La apertura directa y Recargar transacción usan el mismo skeleton completo, incluyendo breadcrumb/título, avance, datos clave y secciones. No se renderiza el número ni la etapa anterior mientras la consulta está pendiente. La ficha se revela cuando están listas la proyección de seguimiento de BD y las consultas existentes del detalle. Identidad y avance continúan leyendo FollowUpItem del API; no se infieren de NetSuite. Los campos aún sin mapear permanecen vacíos.
+
+
+## Regresión de pruebas del resumen de orden (2026-10-27)
+
+Se reprodujeron tres fallos en formalization-record-summary.spec.tsx: esperaba el aviso y valores de muestra, días concatenados a etapa, conteos/checks de ejemplo y el antiguo listado de campos vacíos. Se actualiza el contrato de pruebas al alcance aprobado: cinco datos reales, sin aviso de muestra, resto de campos visibles sin dato, importes y estados no confirmados vacíos. Se conservan las pruebas de panel lateral, acordeones y navegación. Esta corrección no restaura datos ficticios ni amplía el mapeo de pantalla.
+
+
+## Consulta lateral del cliente desde la orden (2026-10-27)
+
+Cliente en Datos clave es un botón accesible cuando existe nombre. Abre el Drawer derecho con el tema compartido de Usuarios/Catálogos, de solo lectura. Al abrir solicita /formalization/orders/:source/:id/database; el servidor revalida sesión, permisos, alcance y fuente nativa prioritaria. Presenta los campos disponibles de contacto y lead (comercial, captación/seguimiento, registro); referencias de origen no confirmadas no se interpretan como estados nuevos. Sin dato permanece explícito. No consulta ni mezcla clientes por nombre o email. Incluye carga, error genérico, reintento y relación ausente/ambigua sin cliente alternativo. Cambio de orden/cierre descarta respuestas antiguas; cada apertura consulta de nuevo y no persiste datos. No hay edición ni nuevos permisos ni escrituras de BD.

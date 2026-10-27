@@ -1,6 +1,34 @@
 # Operacion, despliegue y rollback
 
+## Revision de operacion - 2026-10-27
+
+Codigo registrado: seguimiento/timing y send/revert/set-stage de Formalizacion,
+Captacion de leads e inspeccion GET NetSuite. Los flags false de la tabla inferior
+son defaults del validador/ejemplo, no una lectura de `.env` ni de produccion.
+La autorizacion local de escrituras legacy del2026-10-26 esta fechada en
+[52](52-Etapas-Responsables-y-Tiempos.md); no autoriza encenderlas en otro destino.
+Credenciales NetSuite son opcionales al bootstrap y obligatorias solo para su
+consulta: ver [04](04-Integraciones-ERP.md). No imprimirlas en logs/preflight.
+
+Migracion038 retira exclusivamente el permiso Eventos y citas, con borrado de
+relaciones dependientes e invalidacion de versiones. Un rollback de frontend no
+lo debe recrear automaticamente ni ejecutar otra vez028: la secuencia de
+migraciones conserva el retiro. No ejecutar scripts de importacion o fixtures
+para verificar esta documentacion. El reporte y los resumenes no requieren DML.
+
+La revision actual no ensaya despliegue, restauracion, migraciones ni llamadas
+externas. Las evidencias de checks anteriores no son un gate nuevo. En la
+revision documental actual, `check-all.cmd` se detuvo en `format:check` de API
+antes de lint/typecheck/tests/build por tres archivos TypeScript con formato
+pendiente (038 y dos tests de identidad/etapas). Ver cierre central49/55 para
+el resultado de esta corrida; no corregir codigo o declarar CI verde desde este
+runbook.
+
 Corte documental O03/P01: 2026-10-22. Describe el checkout compartido inspeccionado, no una instalacion productiva verificada. Este documento no autoriza despliegues, arranques, migraciones ni escrituras. No requiere Docker.
+
+Revision vigente 2026-10-23: [49 - Estado consolidado](49-Estado-Actual-y-Cierre-Documental.md).
+Se actualiza la matriz de producto con ampliaciones acotadas de Home, perfiles,
+esquemas y Mercadeo; no se ha ensayado despliegue/restore de este checkout.
 
 ## Prerrequisitos y arranque
 
@@ -18,7 +46,7 @@ Contrato efectivo: [`env.validation.ts`](../src/config/env.validation.ts), [`dat
 | --- | --- |
 | `NODE_ENV` | `development` local; `production` solo en el destino autorizado. |
 | `ENABLE_LEGACY_FALLBACK=false` | Default del ejemplo/validador: deshabilita acceso legacy y su pool. El snapshot local autorizado posterior registra true, no es estado productivo confirmado. Nativo `CRM_THINK_V2` sigue siendo primario. |
-| `ENABLE_LEGACY_WRITES=false` | Default seguro local y produccion. Opt-in solo productivo: requiere ademas `NODE_ENV=production`, `ENABLE_LEGACY_FALLBACK=true` y `LEGACY_CRM_DB_NAME=crmdatabase-api`; destino vacio bloquea escrituras. Habilitar lectura no habilita escritura. Requiere autorizacion y compatibilidad revisada por dominio. |
+| `ENABLE_LEGACY_WRITES=false` | Default seguro local y produccion. Para los seis writers de catalogos, el opt-in exige `NODE_ENV=production`, `ENABLE_LEGACY_FALLBACK=true` y `LEGACY_CRM_DB_NAME=crmdatabase-api`. El escritor contractual preparado exige flags y destino exacto sin exigir produccion, y sus comandos HTTP acotados ya estan registrados. Habilitar lectura no habilita escritura. No activar ninguna de estas compuertas desde este runbook sin autorizacion del dominio. |
 | `ENABLE_RECORD_AUDIT=false` | Default del ejemplo/validador. Activacion explicita y preflight 023/024 segun apartado siguiente; no habilita comandos ni escritura legacy. |
 | `DB_*` | Destino nativo validado `CRM_THINK_V2`, conectividad y permisos necesarios para runtime. Host remoto exige `DB_SSL=true`; CA solo con TLS activo. No usar permisos de migracion como requisito general del runtime. |
 | `COOKIE_SECRET`, `AUDIT_HASH_SECRET`, `AUTH_TOKEN_HASH_SECRET` | Obligatorios, minimo 32 caracteres. Conservar secretos compatibles durante rollback; no rotar credenciales compartidas como parte de un reinicio. |
@@ -83,10 +111,14 @@ Implementado significa codigo inspeccionado; no prueba despliegue, datos reales 
 | --- | --- |
 | Identidad, sesiones BFF, permisos, administracion y auditoria | Implementado en modulos API y paginas administrativas; integraciones/configuracion real y QA del destino se validan aparte. |
 | Catalogos y expedientes de unidades | Implementado en modulos propios (`catalogs`, `projects`, `campaigns`, `classes`, `locations`, `subsidiaries`, `brokers`, `unit-files`); no equivale a expediente contractual completo de Formalizacion. |
-| Inicio Formalizacion / dos banners reales | Aprobaciones requiere sesion y permiso `formalizacion.home.approvals.read`; contratos requiere rol activo `formalizacion`. Cinco indicadores provisionales, bandejas vacias; list/send/revert no registrados. No autoriza aprobar ni editar ordenes. |
+| Inicio Formalizacion / resumenes reales | Aprobaciones requiere `formalizacion.home.approvals.read`; contratos y cinco etapas posteriores requieren rol efectivo `formalizacion` y `formalizacion.home.stages.read`. Owner hereda rol pero respeta denies. Un agregado de etapas, sin cache de contadores; bandejas vacias y list/send/revert no registrados. Solo cierres limita al ano. |
 | Gestion/orden detallada, calendario y resumen de Formalizacion | DEMO local (`FormalizationFollowUpPreview`, `FormalizationOrderPreview`, `FormalizationCalendarPage`, `FormalizationSummaryPage`); escenarios y acciones simuladas no son operaciones persistidas ni correo enviado. |
 | Ciclo de vida de ordenes de venta | Persistencia interna y auditoria en `sales-order-lifecycle.repository.ts`; no confundir con API habilitada de mutaciones/aprobaciones. |
 | Solicitud de recuperacion de clave | Deshabilitada honestamente: 503 uniforme, proveedor de correo pospuesto. Finalizacion con tokens existentes conserva su contrato; no se acredita envio. |
-| Leads, contratos/firmas, supervision/cartera y automatizaciones comerciales | Alcance pendiente de definicion/autorizacion e implementacion por vertical; una ruta placeholder no prueba entrega. La ausencia de Leads no es automaticamente un defecto de Formalizacion: reportar contra requisito aprobado de esa superficie. |
+| Leads y bitacora | Esquemas 031/032, lectura de timeline y comandos internos; no CRUD HTTP general ni copia historica. 033 no aplicada en el snapshot 49. |
+| Inicio de Mercadeo | GET /marketing/home/summary registrado; lecturas protegidas de agregados leads/citas nativo y legacy bajo fallback. No calendario de gestion ni importaciones. Ver 46/48. |
+| Usuarios creados por correo / Ventas | 43 perfiles nuevos, rol Ventas sin permisos, sin credenciales; 30 pending y 13 inactive. Operaciones autorizadas y auditadas anteriores, no repetir para validar un release. Ver 45. |
+| Calendario compartido | 034 aplicada: ocho tablas vacias. Sin tipos configurados, comandos HTTP, workers de notificaciones o integracion Outlook. Su instalacion no habilita calendario operativo. Ver 47. |
+| Contratos/firmas, supervision/cartera y automatizaciones comerciales | Flujos completos pendientes de implementacion autorizada y evidencia; una clase preparada o placeholder no demuestra operacion disponible. |
 
 Fuentes adicionales: [`main.ts`](../src/main.ts), [`AppModule`](../src/app.module.ts), [`package.json`](../package.json), [`identity-rate-limit.ts`](../src/modules/crm/identity/identity-rate-limit.ts), [rutas frontend](../../frontend/src/routes/app-routes.ts) y [CI MySQL](CI-MySQL-Pruebas.md).

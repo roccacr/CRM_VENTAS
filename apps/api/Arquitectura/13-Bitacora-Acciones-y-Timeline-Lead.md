@@ -2,6 +2,19 @@
 
 Revision documental 2026-10-22: diseno comercial futuro y evidencia historica; tablas, rutas y reglas propuestas no acreditan runtime operativo. Ver [36 - Estado vigente y registro](36-Registro-Entrega-Administracion.md) para implementacion y limites actuales. Identidad/Administracion, consulta de expedientes y contador de aprobaciones tienen contratos propios; no habilitan Leads ni mutaciones HTTP de ordenes.
 
+## Alcance contrastado - 2026-10-23
+
+`AuditReadController` expone `GET /audit/records/:recordId/timeline`, con permiso de auditoria, a traves de `LeadHistoryReader`; consulta evidencia nativa. No es un CRUD de Leads ni acredita una ruta HTTP federada legacy. El adaptador historico conserva evidencia por origen sin copiarla a la BD nueva; la integracion federada pendiente se describe en [44](44-Bitacora-Legacy-y-Timeline.md).
+
+Los SQL plurales siguientes son bocetos historicos, no DDL aplicable. La fuente fisica de etapas/motivos es `migrations/schema-only/202610230031_leads_domain.ts`; historia nativa se prepara en `202610230032_lead_history.ts`, y motivos adicionales en `202610230033_lead_stage_reasons.ts`. La existencia de un archivo no prueba su aplicacion. Ver [43](43-Leads-Esquema-Nativo.md), [44](44-Bitacora-Legacy-y-Timeline.md) y [49](49-Estado-Actual-y-Cierre-Documental.md); la cuenta administrativa no permite prometer inmutabilidad SQL.
+
+`LeadHistoryCommands` existe como servicio interno registrado/exportado por
+`AuditModule`; valida actividad/etapa, bloqueo/version, motivos e idempotencia y
+escribe auditoria central/especializada en transaccion. No se localizo llamador
+comercial ni ruta HTTP que lo ejecute. Su presencia no demuestra autorizacion
+de una operacion ni pruebas reales de persistencia/concurrencia; el llamador debe
+autorizar actor y recurso antes de invocarlo. No es un importador.
+
 ## Veredicto
 
 Todo lead debe tener una bitacora completa desde su creacion hasta su cierre, perdida, conversion o eliminacion logica.
@@ -21,7 +34,8 @@ La bitacora no es opcional y no es solo para errores. Es la historia operacional
 
 ## Evidencia del CRM actual
 
-Revision read-only en base actual `crmdatabase-api`, MySQL 8.0.45.
+Resultados historicos de la revision read-only original en `crmdatabase-api`,
+MySQL 8.0.45. Los conteos siguientes no se refrescaron en esta revision documental.
 
 Tablas relevantes encontradas:
 

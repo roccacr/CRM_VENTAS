@@ -192,12 +192,12 @@ function UserDetailSections({ user }: { readonly user: SystemUserListItem }) {
 
     return (
         <div className="user-detail-drawer__sections">
-            <Card size="small" title="Rol y área">
+            <Card size="small" title={user.orgUnitCodes.length > 1 ? "Rol y módulos" : "Rol y área"}>
                 <Descriptions
                     {...DESCRIPTIONS_PROPS}
                     items={[
                         { children: <UserRoleTags roles={user.roles} />, key: "roles", label: user.roles.length === 1 ? "Rol" : "Roles" },
-                        { children: user.orgUnit, key: "orgUnit", label: "Área" },
+                        { children: user.orgUnit, key: "orgUnit", label: user.orgUnitCodes.length > 1 ? "Módulos asignados" : "Área" },
                     ]}
                 />
             </Card>

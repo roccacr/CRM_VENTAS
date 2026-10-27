@@ -348,8 +348,8 @@ export const copyTextToClipboard = (value: string): void => {
 /**
  * Adapta el contrato del API a la fila visible.
  *
- * Conserva nombres de rol, no códigos. Un usuario sin área no queda con un
- * campo vacío.
+ * Conserva los nombres de todos los roles y módulos, no solo el área primaria.
+ * Respuestas anteriores sin orgUnits mantienen su compatibilidad; sin área se muestra un texto explícito.
  */
 export const mapApiUserToListItem = (user: SystemUserDirectoryItem): SystemUserListItem => ({
     email: user.email,
@@ -360,7 +360,7 @@ export const mapApiUserToListItem = (user: SystemUserDirectoryItem): SystemUserL
     lastActivityLabel: formatLastActivityLabel(user.lastActivityAt, user.status),
     mfaStatus: user.mfaStatus,
     name: user.name,
-    orgUnit: user.orgUnit?.name ?? "Sin área",
+    orgUnit: user.orgUnits ? user.orgUnits.map(({ name }) => name).join(", ") || "Sin área" : (user.orgUnit?.name ?? "Sin área"),
     orgUnitCodes: user.orgUnits ? user.orgUnits.map(({ code }) => code) : user.orgUnit ? [user.orgUnit.code] : [],
     profileImageUrl: user.profileImageUrl,
     provider: user.provider,

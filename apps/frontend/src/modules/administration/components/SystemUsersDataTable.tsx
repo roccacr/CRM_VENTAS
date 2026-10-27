@@ -130,7 +130,7 @@ const renderStatusCell = (user: SystemUserDataTableRow): string => `<span class=
 
 const renderScopeCell = (user: SystemUserDataTableRow): string => {
     const extraRoles = user.roles.length > 1 ? `<span class="administration-users-role-count" title="${escapeHtml(user.roles.join(", "))}" aria-label="Roles: ${escapeHtml(user.roles.join(", "))}">+${String(user.roles.length - 1)}</span>` : "";
-    const area = isAreaRepeatedByRole(user) ? "" : `<span class="administration-users-scope__area">${escapeHtml(user.orgUnit)}</span>`;
+    const area = isAreaRepeatedByRole(user) ? "" : `<span class="administration-users-scope__area" title="${escapeHtml(user.orgUnit)}">${escapeHtml(user.orgUnit)}</span>`;
 
     return `
         <div class="administration-users-scope">

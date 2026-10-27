@@ -4,7 +4,7 @@ Revision documental 2026-10-22: antecedente de planificacion. Las pausas, prereq
 
 ## Veredicto
 
-P0 queda aprobado como direccion tecnica del CRM nuevo. Desde la ley `0.3.19`, la unica construccion de runtime autorizada es el runtime minimo de identidad del API. El runtime comercial sigue prohibido hasta aprobacion explicita posterior.
+P0 queda aprobado como direccion tecnica. En el corte de la ley `0.3.19`, el runtime autorizado se limito a identidad. Las ampliaciones posteriores de la ley habilitaron Administracion, catalogos, expedientes, resumenes de Formalizacion/Mercadeo y esquemas nativos de Leads/calendario; no autorizan el flujo comercial completo. El inventario vigente esta en [49](49-Estado-Actual-y-Cierre-Documental.md).
 
 Este P0 no intenta copiar el CRM viejo tabla por tabla. La regla es construir el CRM nuevo con modelo canonico, base MySQL normalizada, API estable, frontend en espanol y adaptadores externos separados.
 
@@ -44,7 +44,7 @@ La regla P0 para proteger ventas es esta:
 4. La perdida automatica queda apagada hasta tener reportes confiables y aprobacion de negocio.
 5. Si un permiso puntual se agrega o se quita a una persona, debe quedar motivo, quien lo cambio y auditoria.
 
-## Alcance P0
+## Alcance P0 del corte inicial (historico)
 
 P0 se construye por slices. El slice vigente antes de leads es identidad.
 
@@ -79,7 +79,7 @@ No entra todavia:
 - Perdida automatica en produccion.
 - Reporteria ejecutiva avanzada.
 - Automatizaciones masivas sin reglas finales de jefatura.
-- Calendarios por dominio.
+- Agenda operativa por dominio; la excepcion posterior de [47](47-Calendario-Compartido-Esquema.md) permite esquema vacio y [48](48-Mercadeo-Metricas-Citas.md) lectura de metricas, sin agenda/Outlook/campana.
 - Notas adhesivas.
 - Delegaciones avanzadas de permisos.
 - Exigir cache externo o broker de mensajes para operar el primer corte.

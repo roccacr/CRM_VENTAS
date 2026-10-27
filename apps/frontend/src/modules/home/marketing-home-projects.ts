@@ -2,7 +2,8 @@ import { bucketMarketingSample, horizonLeads, type MarketingPreviewFilters, type
 
 /** One card per project: leads in the displayed period with their trend, plus the four time horizons. */
 export function buildProjectCards(filters: MarketingPreviewFilters, view: MarketingView) {
-    return projectsForSeller(filters.seller)
+    return projectsForSeller(filters.sellers ?? filters.seller, view.source)
+        .filter((name) => (filters.projects ? filters.projects.length === 0 || filters.projects.includes(name) : !filters.project || name === filters.project))
         .map((name) => {
             const leads = summarizeMarketingSample(view.rows.filter((row) => row.project === name)).leads;
             const before = summarizeMarketingSample(view.previousRows.filter((row) => row.project === name)).leads;
@@ -10,7 +11,7 @@ export function buildProjectCards(filters: MarketingPreviewFilters, view: Market
                 view,
                 view.windowRows.filter((row) => row.project === name),
             ).map((bucket) => bucket.leads);
-            return { name, leads, change: relativeChange(leads, before), isNew: before === 0 && leads > 0, series, horizons: horizonLeads({ ...filters, project: name }, view.today) };
+            return { name, label: view.source.find((row) => row.project === name)?.projectName ?? name, leads, previousLeads: before, change: relativeChange(leads, before), isNew: before === 0 && leads > 0, series, horizons: horizonLeads({ ...filters, project: name, projects: [name] }, view.today, view.source) };
         })
         .sort((first, second) => second.leads - first.leads || first.name.localeCompare(second.name, "es"));
 }

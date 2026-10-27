@@ -1,6 +1,15 @@
 # Navegacion, recuperacion y seguimiento - 2026-10-22
 
-## Corte documental f2dc4f1
+## Estado contrastado - 2026-10-27
+
+[30 - Estado frontend verificado](30-Estado-Frontend-Verificado.md) inventaría las rutas, contratos y límites actuales: Captación conectada, seguimiento y cambio protegido de etapa de Formalización. Los cortes fechados siguientes son antecedentes; sus cifras de QA no se reejecutaron en esta revisión documental.
+
+
+## Actualizacion de lectura - 2026-10-23
+
+Las cifras de pruebas, bundles e inventario de la entrega siguiente conservan el corte 2026-10-22; no se ejecutaron nuevamente. Ahora los seis banners de etapas consumen `GET /formalization/home/summary`, con rol efectivo activo Formalizacion y `formalizacion.home.stages.read` permitido sin deny. Owner puede heredar el rol por politica backend; no exige asignacion directa. Aprobaciones conserva su permiso independiente. Colas/seguimiento siguen sin fuente; list/send/revert no estan activos. Inventario actualizado: [27](27-Entrega-Administracion-y-QA.md); cobertura transversal: [49](../../api/Arquitectura/49-Estado-Actual-y-Cierre-Documental.md).
+
+## Antecedente del corte documental f2dc4f1 - 2026-10-22
 
 Implementacion contrastada con App, app-routes, AppRouteContent, LazyRoute,
 RouteErrorBoundary, GlobalHomeShell y componentes/servicio de Formalizacion.
@@ -24,7 +33,7 @@ cerradas este anio. Los banners conservan el mismo orden de etapas; Contratos
 distingue Por enviar y Pendientes de firma. Sin fuente no hay opciones de
 proyecto/responsable DEMO. Tabla vacia y ceros de selectores no son datos reales.
 
-## Inventario documental revisado
+## Inventario documental de la revision historica - 2026-10-22
 
 Rutas relativas a apps/frontend; se revisaron los 30 archivos propios siguientes.
 Clasificacion no equivale a una autorizacion nueva de producto.
@@ -80,7 +89,7 @@ son evidencia previa, no operaciones Git ejecutadas por esta auditoria.
   visible mientras se resuelven sesion/perfil; se conserva cancelacion de
   respuestas obsoletas y el cooldown real de reintento de identidad.
 
-## F05: fuente real pendiente
+## F05 historico: seguimiento pendiente y contadores provisionales - 2026-10-22
 
 Inicio, seguimiento y bandejas de gestion no muestran filas, movimientos,
 opciones de proyecto/responsable ni totales tomados de `FORMALIZATION_EXAMPLES`.
@@ -151,3 +160,9 @@ Resultado final focalizado: 7 archivos, 103 pruebas correctas. UnitFiles aislado
 10 pruebas correctas sin modificar ese modulo. Typecheck, lint y build correctos;
 el build conserva la advertencia de tamano de Ant Design. No se ejecuto un nuevo
 check-all ni cobertura completa por este responsable.
+
+## Cambio manual de etapa desde la orden - 2026-10-26
+
+El detalle de la orden real permite seleccionar cualquiera de las siete etapas posteriores a aprobaciones y Guardar con confirmacion. Requiere rol efectivo activo `formalizacion`, allow sin deny de `formalizacion.orders.stage.update`, `approvalsComplete=true` y `stateVersion` valido en la fila. Sin esos datos el editor queda deshabilitado. El API sigue siendo autoridad sobre permisos, alcance, aprobaciones y concurrencia.
+
+Consume `POST /formalization/orders/stage` con source/id canonicos, expectedSequence, operationId UUID y targetState; un retroceso exige motivo. No envia correo. Una falla conserva el editor y la clave de la misma operacion para reintento explicito; cambiar la entrada genera otra clave. Un 409 bloquea guardar hasta actualizar. Un exito cierra el detalle y recarga listado y banners mediante el contador de Home. Pruebas usan dobles de API; no acreditan una mutacion real ni despliegue.

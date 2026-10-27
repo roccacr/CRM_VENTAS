@@ -1,5 +1,17 @@
 # 37 - Auditoria, trazabilidad y conflictos
 
+## Continuidad de escritores - 2026-10-27
+
+Los comandos CRM send/revert/set-stage ya estan registrados y reutilizan el
+escritor transaccional con auditoria central nativa, incluso si la orden sigue
+en legacy. El snapshot de actor/responsable y las visitas historicas no se
+reconstruyen copiando bitacoras antiguas; detalle y autoridad en
+[52](52-Etapas-Responsables-y-Tiempos.md). Consultar seguimiento/timing no agrega
+eventos. La inspeccion GET NetSuite tampoco registra un envio/firma ni guarda
+su payload. Se mantienen el flag y preflight de `RecordAuditService`, y no se
+capturan escrituras SQL externas automaticamente.
+Los defaults y resultados del2026-10-22 siguientes no son estado vivo del destino.
+
 ## Escritores y politica compartida - 2026-10-22
 
 Avance posterior al esquema: cambios administrativos e historial interno de ordenes conectados en codigo a RecordAuditService, bajo ENABLE_RECORD_AUDIT=false por defecto y Transaction compartida. No se activa la BD ni se ejecutan fixtures. La lectura de auditoria comparte canReadAudit con el guard y ahora rechaza deny explicito de role.assign tambien para Owner. Detalle vigente, snapshots partial y condiciones de activacion en [38 - Escritores](38-Ordenes-Venta-Estados-Auditoria.md#escritores-conectados-activacion-pendiente---2026-10-22); las notas anteriores de solo esquema son evidencia del corte anterior.
@@ -111,7 +123,25 @@ Escritores cubiertos: creacion/edicion/estado de usuarios, reemplazo de acceso d
 | `GET /audit?moduleCode=administration&sectionCode=users&limit=100` | Pagina obligatoriamente scoped; search, catalogCode y cursor opcionales |
 | `GET /audit/:publicId`                                             | Detalle bajo demanda y changeSet seguro, o null cuando no existe        |
 
-Autorizacion: Owner activo o permiso efectivo `role.assign`. Modulo/seccion se validan juntos; catalogCode solo aplica a catalogs. Limite default 100, maximo 200. El cursor vincula modulo, seccion, catalogo y busqueda; cambiar el alcance invalida el cursor. El lector ordena por PK descendente, obtiene limit+1, devuelve `items` y `pagination: {limit, returned, hasNext, nextCursor}`. No ejecuta COUNT global ni trae todo el historial.
+Autorizacion: Owner activo o permiso efectivo `role.assign`, siempre sin deny
+explicito de `role.assign`. Guard y servicio comparten `canReadAudit`; Owner no
+omite la denegacion. Modulo/seccion se validan juntos; catalogCode solo aplica
+a catalogs. Limite default 100, maximo 200. El cursor vincula modulo, seccion,
+catalogo y busqueda; cambiar el alcance invalida el cursor. El lector ordena por
+PK descendente, obtiene limit+1 y devuelve `items` y
+`pagination: {limit, returned, hasNext, nextCursor}`. No ejecuta COUNT global.
+
+Ampliacion inspeccionada 2026-10-23: `GET /audit/records/:recordId/timeline`
+esta registrado con la misma politica y delega a `LeadHistoryReader`. Lee
+evidencia nativa, no federa HTTP con legacy ni crea un expediente al consultar.
+No confundir esta lectura con captura automatica de escritores externos. Ver
+[44](44-Bitacora-Legacy-y-Timeline.md) y [49](49-Estado-Actual-y-Cierre-Documental.md).
+Su limite es 50 por defecto y 100 maximo, con cursor ligado al registro y
+secuencia descendente; es distinto de la paginacion de eventos administrativos
+descrita arriba. Proyecta campos permitidos de historia/actor sin snapshots
+crudos ni IDs del origen. Contrato y errores:
+[33 - Timeline nativo](33-Contrato-API-Identidad-P0-S1.md#timeline-nativo-de-leads).
+Esta revision estatica no acredita datos presentes ni ejecucion de la ruta.
 
 La lista incluye publicId, eventType, summary, reason, actorName, targetName, createdAt, actorPublicId, actorRoles, recordedModule, recordedSection, nombres visibles de contexto, catalogCode, contextKnown, record `{id, entity, name}`, action y actionLabel. El detalle agrega changeSet; no trae snapshots completos en cada fila. Consultas parametrizadas; hint MAX_EXECUTION_TIME(1500). Esto limita exposicion y tiempo solicitado, pero no demuestra un indice eficiente para filtros JSON o busqueda substring: medir EXPLAIN antes de optimizar produccion.
 

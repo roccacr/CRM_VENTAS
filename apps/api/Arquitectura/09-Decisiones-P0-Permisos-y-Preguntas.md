@@ -32,6 +32,10 @@ Este documento fija decisiones nuevas confirmadas por negocio antes de crear el 
 22. La delegacion temporal o revocable de permisos queda prevista para fase posterior, fuera de P0-S1A.
 23. Normalizar la base de datos es regla obligatoria.
 
+## Lectura vigente de este antecedente - 2026-10-23
+
+Las preguntas de arranque y el siguiente schema son planificacion historica, no tareas pendientes universales. Identidad ya implementa multiples roles y `sec_user_permission_override` para allow/deny; los nombres plurales siguientes son conceptos, no tablas fisicas. Owner conserva herencia global; Jefe General queda limitado a modulos asignados y los denies prevalecen ([41](41-Owner-Herencia-y-Denegaciones.md), [42](42-Jefaturas-Modulos-y-Permisos.md)). Las lecturas autorizadas de Mercadeo/Formalizacion superan la exclusion historica de legacy sin autorizar creacion de Leads ni importacion comercial. Inventario: [49](49-Estado-Actual-y-Cierre-Documental.md).
+
 ## Modelo de permisos aprobado
 
 El sistema no usara RBAC simple. Usara permisos efectivos.

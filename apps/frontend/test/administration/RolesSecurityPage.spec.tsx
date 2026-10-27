@@ -101,7 +101,6 @@ const marketingModule = {
         ...[
             { code: "home", name: "Inicio" },
             { code: "leads", name: "Captación de leads" },
-            { code: "appointments", name: "Eventos y citas" },
             { code: "calendar", name: "Calendario" },
         ].map(({ code, name }) => ({ code, name, permissions: [{ code: `mercadeo.${code}.read`, name: `Ver ${name}`, description: name, sensitive: false }] })),
         { code: "campaign", name: "Campanas", permissions: [{ code: "campaign.read", name: "Ver campanas", description: "Historico", sensitive: false }] },
@@ -289,10 +288,10 @@ describe("RolesSecurityPage", () => {
         expect(getPermissionSwitch("Crear lead")).toBeDisabled();
         expect(getPermissionSwitch("Ver leads")).not.toBeChecked();
     });
-    it("muestra solo las cinco secciones aprobadas de Mercadeo y conserva el catalogo original", () => {
+    it("muestra solo las cuatro secciones aprobadas de Mercadeo y conserva el catalogo original", () => {
         const sections = buildDisplayModules([marketingModule])[0]?.sections ?? [];
-        expect(sections.map(({ name }) => name)).toEqual(["Inicio", "Captación de leads", "Eventos y citas", "Calendario", "Catálogos"]);
-        expect(sections[4]?.views.map(({ name }) => name)).toEqual(["Proyectos", "Campañas", "Clases", "Corredores", "Expedientes", "Subsidiarias", "Ubicaciones"]);
+        expect(sections.map(({ name }) => name)).toEqual(["Inicio", "Captación de leads", "Calendario", "Catálogos"]);
+        expect(sections[3]?.views.map(({ name }) => name)).toEqual(["Proyectos", "Campañas", "Clases", "Corredores", "Expedientes", "Subsidiarias", "Ubicaciones"]);
         expect(marketingModule.views.some(({ code }) => code === "campaign")).toBe(true);
         expect(marketingModule.views.some(({ code }) => code === "source")).toBe(true);
     });

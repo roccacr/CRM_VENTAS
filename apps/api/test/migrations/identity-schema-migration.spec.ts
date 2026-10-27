@@ -25,6 +25,12 @@ const createValidMigrationEnv = (): NodeJS.ProcessEnv => ({
 });
 
 describe("identity schema migration parser", () => {
+    it("keeps registered migrations on the guarded executor without independent connections or plugin bypasses", async () => {
+        for (const migration of schemaMigrations) {
+            const source = await readFile(new URL(`../../migrations/schema-only/${migration.name}.ts`, import.meta.url), "utf8");
+            expect(source, migration.name).not.toMatch(/\b(?:mysql2|LegacyCrmDatabaseService|createLegacyCrmDatabase|withoutPlugins|executeQuery|fetch)\b/);
+        }
+    });
     it("preserves the explicit default and exact single-migration CLI selection", () => {
         expect(selectSchemaMigrationsFromArgs([])).toEqual(schemaMigrations);
         expect(selectSchemaMigrationsFromArgs(["--only=202610220023_record_audit"]).map((migration) => migration.name)).toEqual(["202610220023_record_audit"]);
@@ -118,6 +124,13 @@ describe("identity schema migration parser", () => {
             "202610230028_marketing_roles",
             "202610230029_general_manager_modules",
             "202610230030_general_manager_template",
+            "202610230031_leads_domain",
+            "202610230032_lead_history",
+            "202610230033_lead_stage_reasons",
+            "202610230034_calendar_domain",
+            "202610260035_sales_order_lead",
+            "202610260036_sales_order_stage_tracking",
+            "202610260037_formalization_stage_permission",
         ]);
     });
 

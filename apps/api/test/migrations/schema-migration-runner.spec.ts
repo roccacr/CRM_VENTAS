@@ -1,6 +1,9 @@
-import { type CompiledQuery, DummyDriver, Kysely, MysqlAdapter, MysqlIntrospector, MysqlQueryCompiler, type QueryResult } from "kysely";
+import { type CompiledQuery, DummyDriver, Kysely, MysqlAdapter, MysqlIntrospector, MysqlQueryCompiler, type QueryResult, sql } from "kysely";
 import { describe, expect, it, vi } from "vitest";
 
+import { leadsDomainMigration } from "../../migrations/schema-only/202610230031_leads_domain.js";
+import { leadHistoryMigration } from "../../migrations/schema-only/202610230032_lead_history.js";
+import { leadStageReasonsMigration } from "../../migrations/schema-only/202610230033_lead_stage_reasons.js";
 import { runSelectedSchemaMigrations } from "../../scripts/run-schema-migrations.js";
 
 /** Exercises the orchestration against a compiling in-memory driver, never mysql2. */
@@ -12,6 +15,7 @@ const createDatabase = (options: { applied?: boolean; lock?: number | null; fail
             connection.executeQuery = <R>(query: CompiledQuery): Promise<QueryResult<R>> => {
                 queries.push(query);
                 if (options.fail && query.sql.includes(options.fail)) return Promise.reject(new Error("Injected runner query failure"));
+                if (query.sql.includes("DATABASE() AS name")) return Promise.resolve({ rows: [{ name: "CRM_THINK_V2" }] as R[] });
                 const rows = query.sql.includes("GET_LOCK") ? [{ lock_acquired: options.lock === undefined ? 1 : options.lock }] : query.sql.includes("COUNT(*)") ? [{ found_migration: options.applied ? 1 : 0 }] : [];
                 return Promise.resolve({ rows: rows as R[] });
             };
@@ -24,6 +28,71 @@ const createDatabase = (options: { applied?: boolean; lock?: number | null; fail
 };
 
 describe("schema migration runner orchestration without a database", () => {
+    it("rejects ambiguous backslash quoting regardless of the server SQL mode", async () => {
+        const { db, queries } = createDatabase();
+        const statement = "INSERT INTO crm_lead (initial_comment_lead) SELECT CONCAT('\\', nombre_lead) FROM `crmdatabase-api`.`leads` -- '";
+        await expect(
+            runSelectedSchemaMigrations(db, [
+                {
+                    name: "ambiguous-quoting",
+                    up: async (executor) => {
+                        await sql.raw(statement).execute(executor);
+                    },
+                },
+            ]),
+        ).rejects.toThrow("Native-only migration");
+        expect(queries.some((query) => query.sql === statement)).toBe(false);
+    });
+    it("compiles all three lead migrations with the guard and never inserts commercial records", async () => {
+        const { db, queries } = createDatabase();
+        await runSelectedSchemaMigrations(db, [leadsDomainMigration, leadHistoryMigration, leadStageReasonsMigration]);
+        expect(queries.filter((query) => /INSERT INTO conf_schema_migration/.test(query.sql))).toHaveLength(3);
+        expect(queries.some((query) => /INSERT\s+INTO\s+`?(?:crm_lead|crm_contact|audit_record_event|int_lead_history_entry)`?\s/i.test(query.sql))).toBe(false);
+    });
+    it("retains the legacy-read block inside migration transactions", async () => {
+        const { db, queries } = createDatabase();
+        await expect(
+            runSelectedSchemaMigrations(db, [
+                {
+                    name: "unsafe-transaction",
+                    up: async (executor) => {
+                        await executor.transaction().execute(async (tx) => {
+                            await sql`SELECT * FROM ${sql.table("crmdatabase-api.bitacoras")}`.execute(tx);
+                        });
+                    },
+                },
+            ]),
+        ).rejects.toThrow("Native-only migration");
+        expect(queries.some((query) => query.sql.includes("`bitacoras`"))).toBe(false);
+    });
+    it.each(["INSERT INTO crm_lead SELECT * FROM `crmdatabase-api`.leads", "SELECT * FROM `CRMDatabase-API` /* separator */ . `bitacoras`", "SELECT * FROM caidas", "USE `crmdatabase-api`", "PREPARE copy FROM @statement", "CALL copy_old_leads()", "/*!80000 INSERT INTO crm_lead SELECT * FROM leads */"])("blocks legacy access or indirect execution before reaching the driver: %s", async (statement) => {
+        const { db, queries } = createDatabase();
+        await expect(
+            runSelectedSchemaMigrations(db, [
+                {
+                    name: "unsafe",
+                    up: async (executor) => {
+                        await sql.raw(statement).execute(executor);
+                    },
+                },
+            ]),
+        ).rejects.toThrow("Native-only migration");
+        expect(queries.some((query) => query.sql === statement)).toBe(false);
+        expect(queries.some((query) => /INSERT INTO conf_schema_migration/.test(query.sql))).toBe(false);
+    });
+    it("allows native configuration and source names inside descriptive comments, not source reads", async () => {
+        const { db, queries } = createDatabase();
+        const statement = "INSERT INTO conf_action_reason (code_action_reason,name_action_reason) VALUES ('stage_update','No copiar crmdatabase-api ni bitacoras')";
+        await runSelectedSchemaMigrations(db, [
+            {
+                name: "native",
+                up: async (executor) => {
+                    await sql.raw(statement).execute(executor);
+                },
+            },
+        ]);
+        expect(queries.some((query) => query.sql === statement)).toBe(true);
+    });
     it("waits for an asynchronously completing up before recording success or closing", async () => {
         const { db, queries, destroy } = createDatabase();
         let notifyStarted = (): void => undefined;
@@ -87,7 +156,7 @@ describe("schema migration runner orchestration without a database", () => {
             return Promise.resolve();
         });
         await runSelectedSchemaMigrations(db, [{ name: "selected", up }]);
-        expect(up).toHaveBeenCalledWith(db);
+        expect(up).toHaveBeenCalledOnce();
         expect(observedLedgerBeforeUp).toBe(false);
         expect(queries.filter((query) => /INSERT INTO conf_schema_migration/.test(query.sql)).map((query) => query.parameters)).toEqual([["selected"]]);
         expect(queries.at(-1)?.sql).toContain("RELEASE_LOCK");

@@ -1,4 +1,4 @@
-import { daysBetween, type MarketingRange } from "./marketing-home-preview.model";
+import { daysBetween, type MarketingRange, type MarketingView } from "./marketing-home-preview.model";
 
 export const countFormat = new Intl.NumberFormat("es-CR");
 export const percentFormat = new Intl.NumberFormat("es-CR", { maximumFractionDigits: 1 });
@@ -40,4 +40,16 @@ export function nameRange(range: MarketingRange, today: Date): string {
 /** First and last day of the bars in a chart window, for the caption. */
 export function describeWindow(range: MarketingRange): string {
     return `${shortDay.format(range.start)} – ${shortDay.format(range.end)}`;
+}
+
+/** Spell out what changed instead of relying on arrows or color. */
+export function describeLeadChange(change: number | null): MarketingDelta | null {
+    const delta = describeChange(change, "%");
+    if (!delta || delta.direction === "flat") return delta;
+    return { ...delta, text: `${delta.text} ${delta.direction === "up" ? "más" : "menos"} leads` };
+}
+
+/** A one-day selection plots a seven-day context; other charts use the actual comparison bounds. */
+export function describeChartComparison(view: MarketingView): string {
+    return describeRange(daysBetween(view.period.start, view.period.end) === 0 ? view.compareWindow : view.comparison);
 }

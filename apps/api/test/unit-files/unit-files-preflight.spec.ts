@@ -1,3 +1,6 @@
+import { spawnSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
+
 import { describe, expect, it } from "vitest";
 
 import { mappingConflicts, selectVerifiedProjects, validateSourceColumns } from "../../scripts/prepare-unit-files.js";
@@ -5,6 +8,16 @@ import { UNIT_FIELDS } from "../../src/modules/crm/unit-files/unit-files.contrac
 import { mapUnitDetail } from "../../src/modules/crm/unit-files/unit-files.mapper.js";
 
 describe("Unit Files migration safety", () => {
+    it("rejects the retired legacy-copy flag before environment configuration or database access", () => {
+        const result = spawnSync(process.execPath, ["--import", "tsx", "scripts/prepare-unit-files.ts", "--apply-project-identities"], {
+            cwd: fileURLToPath(new URL("../../", import.meta.url)),
+            encoding: "utf8",
+            timeout: 10000,
+            env: { PATH: process.env.PATH, SystemRoot: process.env.SystemRoot, DOTENV_CONFIG_PATH: "missing-unit-files-test.env" },
+        });
+        expect(result.status).toBe(1);
+        expect(result.stderr).toContain("Legacy data import is disabled");
+    });
     it("blocks incomplete mappings and provider ownership conflicts instead of overwriting", () => {
         const project = { legacyId: 1, externalId: 43, name: "Amara", status: 1 };
         expect(mappingConflicts([project], [{ legacyId: 1, deleted: null, externalId: "43" }])).toEqual([]);

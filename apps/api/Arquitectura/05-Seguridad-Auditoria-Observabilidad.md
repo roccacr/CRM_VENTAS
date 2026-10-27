@@ -1,5 +1,24 @@
 # 05 - Seguridad, Auditoria y Observabilidad
 
+## Permisos y rutas actuales - 2026-10-27
+
+Captacion exige `mercadeo.leads.read`; no exige `mercadeo.home.read` para acceder.
+Ambos lectores de Mercadeo resuelven deny/alcance antes de leer las fuentes.
+Formalizacion tiene lectura de seguimiento/timing y comandos HTTP registrados:
+`formalizacion.contracts.send`, `formalizacion.contracts.revert` y
+`formalizacion.orders.stage.update` son permisos diferentes. El selector no crea
+grants de negocio automaticamente; una denegacion de send/revert tambien bloquea
+el destino equivalente. Las validaciones transaccionales de version, alcance,
+aprobaciones, firma e idempotencia siguen siendo necesarias tras AuthGuard.
+
+La migracion 038 retira `mercadeo.appointments.read`, sus relaciones de rol y
+excepciones por usuario, e incrementa versiones de permisos. El catalogo del API
+omite tambien ese codigo retirado; la auditoria historica no se borra. No se
+eliminan eventos, Calendario ni calculos de citas. Definicion/migracion no prueba
+por si sola estado vivo; evidencia fechada de ejecucion en [53](53-Captacion-Leads-Reporte-Federado.md).
+Fuente: `route-permission.ts`, `contract-transition.service.ts`,
+`identity-access-management.repository.ts` y migraciones 037/038.
+
 Estado implementado 2026-10-22: `CsrfGuard` precede al `AuthGuard` global default-deny. Cada handler Nest registrado declara `RouteSecurity`; las rutas publicas forman una allowlist explicita. Los handlers `permission` requieren ademas `RequirePermission`: el guard resuelve el descriptor y rechaza ausencia de grant o deny antes del handler. No sustituye membresia, controles condicionales, de fila o transaccion del servicio. Perfil reutilizado solo dentro del request por AsyncLocalStorage, instancia de servicio y token exacto; no cache global de autorizacion.
 
 GET/HEAD protegidos: defaults 120 consultas/usuario y 600/IP por 60 segundos, cache 5000 por store, por proceso; respuesta 429 con Retry-After. No es cuota distribuida. `/health/live` no hace IO; `/health/ready` prueba SELECT 1 nativo con plazo de respuesta de 1 segundo y una sonda pendiente compartida, sin cancelar el driver. Legacy no determina readiness. Errores 5xx usan respuestas publicas sanitizadas. Metricas ERP, jobs y atributos comerciales siguientes son direccion futura, no capacidades verificadas en produccion.
@@ -41,11 +60,19 @@ Un usuario puede tener:
 - permisos directos asignados a nivel de usuario;
 - permisos explicitamente denegados a nivel de usuario.
 
-Orden recomendado para calcular permisos:
+Orden base para calcular permisos, sujeto a la politica modular vigente:
 
 1. permisos base de todos los roles activos;
 2. permisos directos otorgados al usuario;
 3. denegaciones explicitas del usuario, que siempre ganan.
+
+El perfil implementado incorpora las politicas de [41 - Owner](41-Owner-Herencia-y-Denegaciones.md)
+y [42 - Jefaturas](42-Jefaturas-Modulos-y-Permisos.md): Owner resuelve roles/modulos
+activos virtuales y permisos activos base; General aplica la interseccion de su
+plantilla editable y los modulos seleccionados para la persona. Los roles de area
+conservan su techo modular. Un allow personal no abre modulos fuera de ese techo;
+un deny individual prevalece tambien para Owner. Estas politicas no sustituyen
+controles de recurso ni habilitan operaciones comerciales pendientes.
 
 Delegacion temporal avanzada queda prevista para fase posterior y fuera de P0-S1A.
 
@@ -78,7 +105,12 @@ Toda accion sensible debe registrar:
 
 ## Bitacora comercial
 
-Separada de auditoria tecnica. Debe ser visible para usuarios autorizados y explicar el historial comercial del lead/oportunidad.
+Separada conceptualmente de auditoria tecnica. La ruta registrada
+`GET /audit/records/:recordId/timeline` usa la politica administrativa
+`canReadAudit` y lee evidencia nativa de Leads, con paginacion acotada; no otorga
+acceso por un permiso comercial de lead ni consulta legacy. La lectura federada
+por origen y el flujo comercial siguen pendientes; ver [44](44-Bitacora-Legacy-y-Timeline.md).
+No inferir que todo historial legacy esta disponible por existir esta ruta.
 
 ## Observabilidad
 

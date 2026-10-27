@@ -1,5 +1,17 @@
 # 28 - Matriz de Roles, Permisos y Areas P0-S1
 
+## Retiro posterior de seccion - 2026-10-27
+
+La decision del propietario del2026-10-26 retira Eventos y citas. La migracion
+`202610260038_remove_marketing_appointments` elimina exclusivamente
+`mercadeo.appointments.read`, sus relaciones de roles y excepciones por usuario;
+actualiza versiones de permisos y conserva auditoria historica. El catalogo API
+omite el codigo retirado y el menu ya no lo muestra. Calendario conserva
+`mercadeo.calendar.read`. Los once grants y cinco secciones siguientes describen
+la creacion historica de028; no son la matriz actual tras038 ni un conteo vivo.
+La definicion de roles Mercadeo/Jefe permanece; sus grants editables actuales
+se obtienen del API, no de una cifra fija de este antecedente. Ver [53](53-Captacion-Leads-Reporte-Federado.md).
+
 ## Mercadeo: roles aprobados - 2026-10-23
 
 Decision expresa del propietario: roles independientes `mercadeo` (Mercadeo) y
@@ -31,9 +43,12 @@ No crea tablas, no cambia datos comerciales y no asigna empleados al modulo.
 Para operar, el empleado debe tener modulo Mercadeo activo y permisos efectivos;
 asignarle un rol no sustituye su pertenencia al modulo.
 
-Estas secciones aparecen con nombres de menu en Roles y seguridad. Inicio y
-Catalogos usan rutas existentes; Leads, citas y Calendario siguen solo visuales.
-Los permisos de seccion no acreditan consultas, reportes o agenda implementados.
+Estas secciones aparecen con nombres de menu en Roles y seguridad. La ampliacion
+posterior registra `GET /marketing/home/summary` en `MarketingHomeModule`, con
+`mercadeo.home.read` efectivo y alcance de vendedores validado en servicio.
+Su repositorio incluye evidencia de citas de solo lectura; esto no habilita CRUD
+de leads, agenda, participantes, campana ni Outlook. Ver [46 - Resumen](46-Mercadeo-Resumen-Leads.md),
+[48 - Citas](48-Mercadeo-Metricas-Citas.md) y [49 - Estado actual](49-Estado-Actual-y-Cierre-Documental.md).
 
 Evidencia de entrega: `check-all.cmd` completo con salida 0; formato, lint, tipos
 y builds de ambas apps aprobados. API: 5252 pruebas aprobadas y 113 MySQL omitidas;
@@ -111,7 +126,8 @@ rol: jefe_general
 areas: mercadeo, formalizacion
 ```
 
-Maria es una sola usuaria. No se duplica. No se crean roles `jefe_mercadeo` y `jefe_formalizacion`.
+Maria es una sola usuaria. No se duplica por supervisar dos areas. Esto no
+prohibe los roles por area expresamente aprobados en cortes posteriores.
 
 Se crean dos vinculos de area para la misma persona.
 
@@ -193,11 +209,11 @@ Reglas:
 
 - un usuario puede tener varios roles;
 - un usuario puede tener varias areas operativas;
-- un rol no debe tener nombre de area;
+- los roles por area requieren aprobacion expresa; no se derivan automaticamente del arbol;
 - un area no debe definir por si sola que acciones puede hacer la persona;
 - `soporte_sistemas` no ve datos comerciales solo por ser sistemas;
 - `owner` no debe usarse como rol operativo diario;
-- al iniciar sesion, el selector de modulos solo debe ofrecer las areas operativas activas asignadas al usuario;
+- el perfil ordinario limita modulos por membresias y politica; Owner recibe modulos activos virtuales y General aplica la interseccion editable del documento 42;
 - las acciones finales siempre se autorizan por permiso efectivo.
 
 ## Areas iniciales P0-S1

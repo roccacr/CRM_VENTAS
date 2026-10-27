@@ -20,6 +20,7 @@ export interface CrmSalesOrderTable {
     native_code_sales_order: string;
     id_old_produccion_sales_order: number | null;
     unit_file_id_sales_order: number | null;
+    lead_id_sales_order: number | null;
     subsidiary_id_sales_order: number | null;
     owner_user_id_sales_order: number | null;
     status_sales_order: Generated<"active" | "inactive" | "unknown">;
@@ -74,6 +75,8 @@ export interface AuditSalesOrderStateEventTable {
     recorded_at_sales_order_state_event: GeneratedDateTime;
     actor_user_id_sales_order_state_event: number | null;
     actor_snapshot_sales_order_state_event: ColumnType<unknown, string, string> | null;
+    responsible_user_id_sales_order_state_event: ColumnType<number | null, number | null | undefined, number | null>;
+    responsible_snapshot_sales_order_state_event: ColumnType<unknown, string | null | undefined, string | null>;
     origin_sales_order_state_event: "crm" | "integration" | "legacy_import";
     reason_sales_order_state_event: string;
     operation_id_sales_order_state_event: string;

@@ -1,5 +1,12 @@
 # Project Skill Registry
 
+Revision documental 2026-10-27: se comprobo la existencia de los siete entrypoints
+locales de la tabla en `.agents/skills/`. No se repitieron hashes, instalaciones,
+versiones de herramientas ni validaciones de servicios externos. Los pins y
+recibos siguientes conservan fecha de instalacion. Cobertura general:
+[55](apps/api/Arquitectura/55-Revision-Documental-Integral-20261027.md).
+
+
 Documentation review 2026-10-22: dates, pins and file counts below are a historical installation snapshot, not a current integrity check or permission to reinstall packages. Inspect the applicable local SKILL.md before use; no skills were reinstalled during this review.
 
 This registry is versioned; the installed `.agents/skills/` packages remain local under the repository's existing ignore policy.

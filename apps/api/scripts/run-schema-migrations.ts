@@ -1,6 +1,6 @@
 import { pathToFileURL } from "node:url";
 
-import { Kysely, MysqlDialect, sql } from "kysely";
+import { Kysely, type KyselyPlugin, MysqlDialect, MysqlQueryCompiler, sql } from "kysely";
 import { createPool } from "mysql2";
 import { z } from "zod";
 
@@ -32,6 +32,14 @@ import { ownerRoleInheritanceMigration } from "../migrations/schema-only/2026102
 import { marketingRolesMigration } from "../migrations/schema-only/202610230028_marketing_roles.js";
 import { generalManagerModulesMigration } from "../migrations/schema-only/202610230029_general_manager_modules.js";
 import { generalManagerTemplateMigration } from "../migrations/schema-only/202610230030_general_manager_template.js";
+import { leadsDomainMigration } from "../migrations/schema-only/202610230031_leads_domain.js";
+import { leadHistoryMigration } from "../migrations/schema-only/202610230032_lead_history.js";
+import { leadStageReasonsMigration } from "../migrations/schema-only/202610230033_lead_stage_reasons.js";
+import { calendarDomainMigration } from "../migrations/schema-only/202610230034_calendar_domain.js";
+import { salesOrderLeadMigration } from "../migrations/schema-only/202610260035_sales_order_lead.js";
+import { salesOrderStageTrackingMigration } from "../migrations/schema-only/202610260036_sales_order_stage_tracking.js";
+import { formalizationStagePermissionMigration } from "../migrations/schema-only/202610260037_formalization_stage_permission.js";
+import { removeMarketingAppointmentsMigration } from "../migrations/schema-only/202610260038_remove_marketing_appointments.js";
 import { addDatabaseTlsIssues, booleanEnvSchema, tcpPortSchema } from "../src/config/database-env.schema.js";
 import { APPROVED_DATABASE_NAME } from "../src/config/product.constants.js";
 import { buildMysqlPoolOptions } from "../src/database/mysql-pool-options.js";
@@ -39,6 +47,24 @@ import { buildMysqlPoolOptions } from "../src/database/mysql-pool-options.js";
 const MYSQL_CONNECTION_LIMIT = 1;
 const SCHEMA_MIGRATION_LOCK_NAME = "crm_think_v2_schema_migration";
 const SCHEMA_MIGRATION_LOCK_TIMEOUT_SECONDS = 30;
+
+// Inspect SQL identifiers, not bound values or descriptive strings. This is a runner guard,
+// not a replacement for a dedicated MySQL account without privileges on the old database.
+const nativeOnlyMigrationPlugin: KyselyPlugin = {
+    transformQuery(args) {
+        const query = new MysqlQueryCompiler().compileQuery(args.node, args.queryId);
+        const tokens = query.sql.matchAll(/'(?:''|\\[\s\S]|[^'\\])*'|"(?:""|\\[\s\S]|[^"\\])*"|`(?:``|[^`])*`|\/\*[\s\S]*?\*\/|--[\t\r\n ][^\r\n]*|#[^\r\n]*|[a-z_][a-z0-9_$-]*/gi);
+        for (const [token] of tokens) {
+            // Backslash quoting changes meaning under NO_BACKSLASH_ESCAPES: fail closed.
+            if (/^["']/.test(token) && token.includes("\\")) throw new Error("Native-only migration: ambiguous SQL quoting is forbidden; use bound values.");
+            if (token.startsWith("'") || /^(?:\/\*(?![!+]|M!)|--|#)/i.test(token)) continue;
+            const identifier = token.replace(/^["`]|["`]$/g, "").toLowerCase();
+            if (/^\/\*/.test(token) || ["crmdatabase-api", "leads", "admins", "bitacoras", "caidas", "use", "call", "prepare", "execute", "load", "outfile", "dumpfile", "federated"].includes(identifier)) throw new Error("Native-only migration: legacy access and indirect SQL execution are forbidden.");
+        }
+        return args.node;
+    },
+    transformResult: (args) => Promise.resolve(args.result),
+};
 
 /** A schema migration: unique name and idempotent `up`. */
 type Migration = {
@@ -75,6 +101,14 @@ export const schemaMigrations: Migration[] = [
     marketingRolesMigration,
     generalManagerModulesMigration,
     generalManagerTemplateMigration,
+    leadsDomainMigration,
+    leadHistoryMigration,
+    leadStageReasonsMigration,
+    calendarDomainMigration,
+    salesOrderLeadMigration,
+    salesOrderStageTrackingMigration,
+    formalizationStagePermissionMigration,
+    removeMarketingAppointmentsMigration,
 ];
 
 /** Targeted cutovers avoid replaying unrelated security repairs after a deliberate ledger reset. */
@@ -254,7 +288,7 @@ export const runSelectedSchemaMigrations = async (db: Kysely<unknown>, selected:
             }
 
             console.log(`Aplicando migracion schema-only: ${migration.name}`);
-            await migration.up(db);
+            await migration.up(db.withPlugin(nativeOnlyMigrationPlugin));
             await recordMigration(db, migration.name);
             console.log(`Migracion schema-only aplicada: ${migration.name}`);
         }

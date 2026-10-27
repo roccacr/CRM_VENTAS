@@ -207,7 +207,7 @@ Responsabilidad:
 
 Regla:
 
-No mezclar fisica ni funcionalmente el calendario de vendedores con calendarios de otros departamentos. Jefatura ve una vista agregada filtrada por permisos, no un calendario unico mezclado.
+Conservar el modulo de origen y las reglas de cada dominio. El esquema compartido autorizado en [47](47-Calendario-Compartido-Esquema.md) usa un evento unico y participantes, no tablas duplicadas por departamento. Una vista personal o de jefatura compone eventos solo por acceso efectivo; participar no concede permiso de editar ni leer registros vinculados. No hay agenda operativa, Outlook ni campana real habilitados por el esquema.
 
 ### communications
 
@@ -261,7 +261,9 @@ Responsabilidad:
 - reglas configurables;
 - parametros por proyecto.
 
-## Regla de carpetas
+## Regla de carpetas del blueprint futuro
+
+El arbol siguiente es una direccion de diseno, no la estructura fisica obligatoria del runtime actual. No mover modulos existentes para ajustarlos al ejemplo. El alcance implementado y sus lecturas se contrasta en [49](49-Estado-Actual-y-Cierre-Documental.md); el flujo completo de los PDFs sigue siendo objetivo funcional.
 
 Cada modulo debe tener su propia estructura interna:
 
