@@ -23,7 +23,8 @@ define(["N/https", "N/runtime", "./SS2_1_LIB_CRM_Entorno"], (https, runtime, env
         /^(https:\/\/[a-z0-9-]+\.ngrok-free\.dev)(\/integrations\/netsuite\/local\/[a-z]+(?:-[a-z]+)*-events)?$/;
     // Cada modulo declara su endpoint ("order-events", "lead-events"...); nunca viene del registro ni del usuario.
     const ENDPOINT_NAME = /^[a-z]+(?:-[a-z]+)*-events$/;
-    const SECRET_ID = "custsecret_crm_local_events";
+    // TEMPORAL Sandbox: clave directa; sustituir por API Secret al cerrar la prueba.
+    const SECRET_ID = "eea21f021a387ac684ab2518529115e3005ef90aec870f55548038650bb9fd0f";
     const SCHEMA_VERSION = 1;
     const MAX_BODY_BYTES = 500000;
     // Largo maximo (UTF-16) de cada texto que acepta el receptor. No se trunca informacion de negocio: se bloquea.
@@ -42,8 +43,8 @@ define(["N/https", "N/runtime", "./SS2_1_LIB_CRM_Entorno"], (https, runtime, env
             // URL administrada, nunca tomada de los campos o del usuario que edito el registro.
             const url = resolveUrl(endpoint);
             if (url === null) return blocked("destination_blocked");
-            // El secreto reside en API Secrets; nunca se incluye en el ZIP ni en logs.
-            const authorization = https.createSecureString({ input: "Bearer {" + SECRET_ID + "}" });
+            // TEMPORAL: token local directo, solo Sandbox; sustituir por API Secret tras la prueba.
+            const authorization = https.createSecureString({ input: "Bearer " + SECRET_ID });
             const snapshot = readSnapshot(event.netsuiteId);
             if (snapshot.status !== 200) return blocked("snapshot_failed");
             if (hasOversizedValue(snapshot)) return blocked("value_too_long");

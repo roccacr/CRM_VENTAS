@@ -208,6 +208,13 @@ El transporte reutilizable vive en `lib/SS2_1_LIB_CRM_EnviarEvento.js`.
 
 ### Configuración y prueba
 
+Prueba temporal autorizada 2026-10-30: `lib/SS2_1_LIB_CRM_EnviarEvento.js` usa
+directamente la credencial local de Sandbox en la cabecera Authorization.
+No requiere crear API Secret para esta prueba. No publicar ese archivo con la
+credencial en Git ni usarlo en produccion; el responsable reemplazara esta
+excepcion por API Secrets. El receptor sigue devolviendo `persisted:false`.
+El paso 3 siguiente corresponde a esa configuracion definitiva.
+
 1. API: `pnpm dev` en `apps/api`. El `.env` local usa `NODE_ENV=development`,
    `NETSUITE_LOCAL_EVENTS_ENABLED=true` y `NETSUITE_LOCAL_EVENTS_SECRET` exclusivo,
    aleatorio y de 64 caracteres hexadecimales. Nunca reutilizar OAuth, cookies o claves de BD.

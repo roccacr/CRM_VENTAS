@@ -352,7 +352,12 @@ describe("EnviarEvento.sendRecordEvent", () => {
         expect(first.send(EVENT, snapshot)).toEqual({ status: "received_local", delivered: true });
         const [{ url, headers, body }] = first.https.post.mock.calls[0];
         expect(url).toContain("ngrok-free.dev/integrations/netsuite/local/order-events");
-        expect(headers.Authorization).toBe("SECURE(Bearer {custsecret_crm_local_events})");
+        // Credencial temporal directa de Sandbox; comprobar formato sin imprimir su valor.
+        expect(typeof headers.Authorization).toBe("string");
+        expect(/^SECURE\(Bearer [a-f0-9]{64}\)$/.test(headers.Authorization)).toBe(true);
+        expect(first.https.createSecureString).toHaveBeenCalledOnce();
+        const [credential] = first.https.createSecureString.mock.calls[0];
+        expect(/^Bearer [a-f0-9]{64}$/.test(credential.input)).toBe(true);
         expect(first.https.post).toHaveBeenCalledOnce();
         expect(JSON.parse(body)).toMatchObject({
             schemaVersion: 1,
@@ -434,11 +439,9 @@ describe("EnviarEvento.sendRecordEvent", () => {
     ])("fails closed on %s without throwing", (_name, post) => {
         expect(setup({ post }).send(EVENT, snapshot)).toEqual({ status: "delivery_failed", delivered: false });
     });
-    it("fails closed when the snapshot reader or the secret store throws", () => {
+    it("fails closed when the snapshot reader throws, without sending a request", () => {
         const { send, https } = setup();
         expect(statusOf(send(EVENT, throwing(nsError("RCRD_DSNT_EXIST"))))).toBe("delivery_failed");
-        https.createSecureString.mockImplementation(throwing(new Error("no secret")));
-        expect(statusOf(send(EVENT, snapshot))).toBe("delivery_failed");
         expect(https.post).not.toHaveBeenCalled();
     });
 });
