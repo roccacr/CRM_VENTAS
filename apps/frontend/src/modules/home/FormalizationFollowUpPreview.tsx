@@ -4,7 +4,7 @@ import SearchOutlined from "@ant-design/icons/SearchOutlined";
 import Button from "antd/es/button";
 import { useEffect, useId, useRef, useState } from "react";
 
-import { FOLLOW_UP_QUEUES, type FollowUp, type FollowUpItem, type FollowUpQueue, getFollowUp } from "../../services/formalization/follow-up-service";
+import { FOLLOW_UP_QUEUES, type FollowUp, type FollowUpItem, type FollowUpQueue, getFollowUp, getFormalizationOrderRecord } from "../../services/formalization/follow-up-service";
 import { CatalogBanners } from "../administration/catalogs/CatalogSummary";
 import { buildOrderCards } from "./formalization-order-cards";
 import { type FormalizationExample, type PreviewQueue } from "./formalization-preview.model";
@@ -19,6 +19,8 @@ const byName = (a: string, b: string) => a.localeCompare(b, "es", { numeric: tru
 const sortedQueues = (queues: readonly FollowUpQueue[]): readonly FollowUpQueue[] => [...queues.filter((entry) => entry === "all"), ...queues.filter((entry) => entry !== "all").sort((a, b) => byName(labels[a], labels[b]))];
 const columns = ["Orden / Cliente", "Proyecto / Unidad", "Etapa / Pendiente", "Responsable / Tiempo", "Siguiente paso"];
 interface Props {
+    readonly canReadOrder?: boolean;
+    readonly allowedQueues?: readonly FollowUpQueue[];
     readonly onOpenRecord?: (item: FollowUpItem) => void;
     readonly onOpenOrder: (order: FormalizationExample) => void;
     readonly tableOnly: boolean;
@@ -26,6 +28,7 @@ interface Props {
     readonly canViewApprovals?: boolean;
     readonly enabled?: boolean;
     readonly refreshVersion?: number;
+    readonly stagePermissions?: readonly { code: string; effect: string }[] | undefined;
     readonly canUpdateStage?: boolean;
     readonly onRefresh?: () => void;
 }
@@ -39,15 +42,16 @@ export function FormalizationFollowUpPreview(props: Props) {
                 <p>El seguimiento de órdenes aún no está disponible.</p>
             </section>
         );
-    return <LiveFollowUp key={String(props.canViewApprovals)} {...props} canViewApprovals={props.canViewApprovals ?? false} refreshVersion={props.refreshVersion ?? 0} />;
+    return <LiveFollowUp key={JSON.stringify([props.canViewApprovals, props.allowedQueues, props.canReadOrder])} {...props} canViewApprovals={props.canViewApprovals ?? false} refreshVersion={props.refreshVersion ?? 0} />;
 }
 
-function useFollowUp({ scope, canViewApprovals, refreshVersion }: Props & { canViewApprovals: boolean; refreshVersion: number }) {
+function useFollowUp({ scope, canViewApprovals, refreshVersion, allowedQueues }: Props & { canViewApprovals: boolean; refreshVersion: number }) {
     const [search, setSearch] = useState("");
     const [debouncedSearch, setDebouncedSearch] = useState("");
     const [projectId, setProject] = useState(scope.project ?? "");
     const [selectedQueue, setQueue] = useState<FollowUpQueue>(scope.filter);
-    const queue = selectedQueue === "approvals" && !canViewApprovals ? "all" : selectedQueue;
+    const queues = allowedQueues ?? FOLLOW_UP_QUEUES.filter((entry) => canViewApprovals || entry !== "approvals");
+    const queue = queues.includes(selectedQueue) ? selectedQueue : "all";
     const [page, setPage] = useState(1);
     const [retry, setRetry] = useState(0);
     const [response, setResponse] = useState<{ key: string; value: FollowUp } | null>(null);
@@ -86,22 +90,31 @@ function useFollowUp({ scope, canViewApprovals, refreshVersion }: Props & { canV
         setResponse(null);
         setFailure(null);
     };
-    return { search, setSearch, projectId, setProject, queue, setQueue, page, setPage, setRetry, invalidate, value, failed, projects: response?.value.projects ?? [], canViewApprovals };
+    return { search, setSearch, projectId, setProject, queue, setQueue, page, setPage, setRetry, invalidate, value, failed, projects: value?.projects ?? [], queues, canViewApprovals };
 }
 
 /** Which order is open in the side panel, and how to step to its neighbours on the current page. */
 function useOpenOrder(items: readonly FollowUpItem[]) {
-    const [openId, setOpenId] = useState<string | null>(null);
-    const index = items.findIndex((item) => `${item.source}:${item.id}` === openId);
+    const [opened, setOpened] = useState<FollowUpItem | null>(null);
+    const index = items.findIndex((item) => item.source === opened?.source && item.id === opened.id);
+    const setOpenId = (id: string | null) => {
+        setOpened(items.find((item) => `${item.source}:${item.id}` === id) ?? null);
+    };
     const walk = (step: number) => {
         const next = items[index + step];
-        if (next) setOpenId(`${next.source}:${next.id}`);
+        if (next) setOpened(next);
     };
-    return { item: index >= 0 ? (items[index] ?? null) : null, position: index + 1, setOpenId, walk };
+    // The selected record survives removal from a filtered queue; only this authorized read refreshes it.
+    const refresh = async () => {
+        if (!opened) return;
+        const updated = await getFormalizationOrderRecord(opened.source, opened.id.replace(/^legacy:/, ""));
+        setOpened((current) => (current?.source === opened.source && current.id === opened.id ? updated : current));
+    };
+    return { item: opened, position: index + 1, setOpenId, walk, refresh };
 }
 
 /** Loading, error or table: one place decides, so the section stays simple. */
-function FollowUpBody({ model, onOpen }: { readonly model: ReturnType<typeof useFollowUp>; readonly onOpen: (id: string) => void }) {
+function FollowUpBody({ model, onOpen }: { readonly model: ReturnType<typeof useFollowUp>; readonly onOpen: ((id: string) => void) | undefined }) {
     const { value, failed, setRetry } = model;
     if (failed)
         return (
@@ -132,25 +145,27 @@ function FollowUpHeading({ id, tableOnly, total }: { readonly id: string; readon
 }
 
 /** The table and its canonical side panel share which order is open; stage updates use a separate permission. */
-function FollowUpWorkspace({ model, canUpdateStage, onRefresh, onViewFull }: { readonly onViewFull: (item: FollowUpItem) => void; readonly model: ReturnType<typeof useFollowUp>; readonly canUpdateStage: boolean | undefined; readonly onRefresh: (() => void) | undefined }) {
+function FollowUpWorkspace({ canReadOrder, model, stagePermissions = [], canUpdateStage, onRefresh, onViewFull }: { readonly canReadOrder: boolean; readonly onViewFull: (item: FollowUpItem) => void; readonly model: ReturnType<typeof useFollowUp>; readonly stagePermissions?: readonly { code: string; effect: string }[] | undefined; readonly canUpdateStage: boolean | undefined; readonly onRefresh: (() => void) | undefined }) {
     const items = model.value?.items ?? [];
     const open = useOpenOrder(items);
     return (
         <>
-            <FollowUpBody model={model} onOpen={open.setOpenId} />
+            <FollowUpBody model={model} onOpen={canReadOrder ? open.setOpenId : undefined} />
             <FormalizationOrderDrawer
                 onViewFull={() => {
                     if (open.item) onViewFull(open.item);
                     open.setOpenId(null);
                 }}
+                stagePermissions={stagePermissions}
                 canUpdateStage={canUpdateStage === true}
-                onStageSaved={() => {
+                onStageSaved={async () => {
+                    await open.refresh();
                     refreshFollowUp(model, onRefresh);
                 }}
                 onRefreshOrder={() => {
                     refreshFollowUp(model, onRefresh);
                 }}
-                item={open.item}
+                item={canReadOrder ? open.item : null}
                 position={open.position}
                 total={items.length}
                 onClose={() => {
@@ -172,7 +187,7 @@ function LiveFollowUp({ canUpdateStage, canViewApprovals, refreshVersion, ...pro
     const [fullOrder, setFullOrder] = useState<FollowUpItem | null>(null);
     const model = useFollowUp({ ...props, canViewApprovals, refreshVersion });
     const { value, failed } = model;
-    const { tableOnly } = props;
+    const { tableOnly, stagePermissions } = props;
     if (fullOrder)
         return (
             <FormalizationOrderRecord
@@ -186,20 +201,20 @@ function LiveFollowUp({ canUpdateStage, canViewApprovals, refreshVersion, ...pro
         <>
             {tableOnly && (
                 <div className="catalog-items-page--projects formalization-order-banners">
-                    <CatalogBanners label="Resumen de órdenes" cards={buildOrderCards(value?.counts ?? null)} />
+                    <CatalogBanners label="Resumen de órdenes" cards={buildOrderCards(value?.counts ?? null, model.queues)} />
                 </div>
             )}
             <section className="formalization-surface formalization-followup" aria-labelledby={title} aria-busy={!value && !failed}>
                 <FollowUpHeading id={title} tableOnly={tableOnly} total={value?.page.total} />
                 <FollowUpToolbar model={model} tableOnly={tableOnly} />
-                <FollowUpWorkspace onViewFull={props.onOpenRecord ?? setFullOrder} model={model} canUpdateStage={canUpdateStage} onRefresh={props.onRefresh} />
+                <FollowUpWorkspace canReadOrder={props.canReadOrder === true} stagePermissions={stagePermissions} onViewFull={props.onOpenRecord ?? setFullOrder} model={model} canUpdateStage={canUpdateStage} onRefresh={props.onRefresh} />
             </section>
         </>
     );
 }
 
 function FollowUpToolbar({ model, tableOnly }: { readonly model: ReturnType<typeof useFollowUp>; readonly tableOnly: boolean }) {
-    const { search, setSearch, projectId, setProject, queue, setQueue, setPage, value, projects, canViewApprovals, invalidate } = model;
+    const { search, setSearch, projectId, setProject, queue, setQueue, setPage, value, projects, queues, invalidate } = model;
     return (
         <div className="formalization-toolbar" data-home={!tableOnly}>
             <label className="formalization-search">
@@ -248,7 +263,7 @@ function FollowUpToolbar({ model, tableOnly }: { readonly model: ReturnType<type
                         setPage(1);
                     }}
                 >
-                    {sortedQueues(FOLLOW_UP_QUEUES.filter((entry) => canViewApprovals || entry !== "approvals")).map((entry) => (
+                    {sortedQueues(queues).map((entry) => (
                         <option key={entry} value={entry}>
                             {labels[entry]}
                             {value ? ` (${String(value.counts[entry])})` : ""}
@@ -325,20 +340,20 @@ function StageResponsibility({ item }: { readonly item: FollowUpItem }) {
     );
 }
 
-function FollowUpRow({ item, onOpen }: { readonly item: FollowUpItem; readonly onOpen: (id: string) => void }) {
+function FollowUpRow({ item, onOpen }: { readonly item: FollowUpItem; readonly onOpen: ((id: string) => void) | undefined }) {
     const id = `${item.source}:${item.id}`;
     return (
         <tr
-            className="formalization-grid__row formalization-grid__row--openable"
-            tabIndex={0}
-            aria-label={`Abrir detalle de la orden ${item.number}`}
+            className={`formalization-grid__row${onOpen ? " formalization-grid__row--openable" : ""}`}
+            tabIndex={onOpen ? 0 : undefined}
+            aria-label={onOpen ? `Abrir detalle de la orden ${item.number}` : undefined}
             onClick={() => {
-                onOpen(id);
+                onOpen?.(id);
             }}
             onKeyDown={(event) => {
                 if (event.key === "Enter" || event.key === " ") {
                     event.preventDefault();
-                    onOpen(id);
+                    onOpen?.(id);
                 }
             }}
         >
@@ -363,11 +378,11 @@ function FollowUpRow({ item, onOpen }: { readonly item: FollowUpItem; readonly o
         </tr>
     );
 }
-function FollowUpTable({ value, model, onOpen }: { readonly value: FollowUp; readonly model: ReturnType<typeof useFollowUp>; readonly onOpen: (id: string) => void }) {
+function FollowUpTable({ value, model, onOpen }: { readonly value: FollowUp; readonly model: ReturnType<typeof useFollowUp>; readonly onOpen: ((id: string) => void) | undefined }) {
     const { page, setPage, invalidate } = model;
     return (
         <>
-            <div role="region" aria-label="Órdenes filtradas" className="formalization-grid-scroll" tabIndex={0}>
+            <div role="region" aria-label="Órdenes filtradas" className="formalization-grid-scroll" tabIndex={onOpen ? 0 : undefined}>
                 <table className="formalization-grid formalization-grid--orders">
                     <caption className="formalization-sr">Operaciones pendientes de seguimiento</caption>
                     <thead>

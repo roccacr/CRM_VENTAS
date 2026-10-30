@@ -22,7 +22,7 @@ Project-local skills are installed under `.agents/skills/`. Source revisions, in
 
 ## Scope
 
-Current documentation reconciliation (2026-10-27): [55 - Revision integral](apps/api/Arquitectura/55-Revision-Documental-Integral-20261027.md). It records current wiring and dated evidence; this does not authorize business operations.
+Current documentation reconciliation (2026-10-29): [66 - Notes delivery](apps/api/Arquitectura/66-Notas-Enterprise-Seguimiento.md) and [67 - QA plan and results](apps/api/Arquitectura/67-Plan-QA-Regresiones-20261029.md), together with the dated implementation history below. [55 - Revision integral](apps/api/Arquitectura/55-Revision-Documental-Integral-20261027.md) remains the historical October 27 audit. Documentation records wiring and evidence; it does not authorize business operations.
 
 Current implementation/documentation history: [49 - Estado actual](apps/api/Arquitectura/49-Estado-Actual-y-Cierre-Documental.md).
 Historical pauses and future blueprints do not override explicit scoped approvals.

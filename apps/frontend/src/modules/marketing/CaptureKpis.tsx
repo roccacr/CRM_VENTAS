@@ -19,11 +19,7 @@ function tilesFor(figures: CaptureKpiFigures, measure: CaptureMeasure, depth: Ca
     const unit = UNITS[depth];
     const info = MEASURES.find((item) => item.measure === measure) ?? { label: "Leads", noun: "leads" };
     const second: Tile = measure === "leads" ? { key: "projects", label: "Proyectos con leads", value: countFormat.format(figures.projects), caption: "con al menos un lead en el periodo" } : { key: "share", label: `${info.label} · % general`, value: figures.share === null ? "—" : `${percentFormat.format(figures.share)} %`, caption: "de todos los leads del periodo" };
-    return [
-        { key: "total", label: info.label, value: countFormat.format(figures.total), caption: "en el periodo, con el filtro actual" },
-        second,
-        { key: "average", label: `Promedio de ${info.noun} por ${unit.one}`, value: percentFormat.format(figures.average), caption: `${countFormat.format(figures.total)} ${info.noun} ÷ ${countFormat.format(figures.units)} ${figures.units === 1 ? unit.one : unit.many} con leads` },
-    ];
+    return [{ key: "total", label: info.label, value: countFormat.format(figures.total), caption: "en el periodo, con el filtro actual" }, second, { key: "average", label: `Promedio de ${info.noun} por ${unit.one}`, value: percentFormat.format(figures.average), caption: `${countFormat.format(figures.total)} ${info.noun} ÷ ${countFormat.format(figures.units)} ${figures.units === 1 ? unit.one : unit.many} con leads` }];
 }
 
 /** KPI banners over the chart. They follow the same filters and the project selection as the chart. */

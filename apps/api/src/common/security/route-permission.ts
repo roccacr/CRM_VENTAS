@@ -1,5 +1,7 @@
+import { calendarRouteAccess } from "../../modules/crm/calendar/calendar-access.js";
 import { type CatalogPermissionAction, findCatalogDefinition, getCatalogPermissionCode, isCatalogContextModuleCode } from "../../modules/crm/catalogs/catalogs.constants.js";
 import type { IdentityProfile } from "../../modules/crm/identity/identity.types.js";
+import { canUseCollaboration, canUseNotes } from "../../modules/crm/notes/notes.permissions.js";
 import type { CookieRequest } from "./cookie-request.type.js";
 import type { PermissionRequirement } from "./require-permission.decorator.js";
 
@@ -51,13 +53,38 @@ export function canReadAudit(profile: IdentityProfile): boolean {
     return can(profile, "role.assign") || profile.roles.some((role) => role.code === "owner" && role.status === "active");
 }
 
-/** Requires the effective base role; the Owner label alone never substitutes for profile resolution. */
-export const hasFormalizationRole = (profile: Pick<IdentityProfile, "roles">): boolean => profile.roles.some((role) => role.code === "formalizacion" && role.status === "active");
+/** Requires either effective operational role; Owner alone never substitutes for profile resolution. */
+export const hasFormalizationRole = (profile: Pick<IdentityProfile, "roles">): boolean => profile.roles.some((role) => ["formalizacion", "jefe_formalizaciones"].includes(role.code) && role.status === "active");
+
+/** Detail permission is independent of banner membership; effective role and explicit denies remain mandatory. */
+export const canReadFormalizationOrder = (profile: Pick<IdentityProfile, "roles" | "permissions">): boolean => hasFormalizationRole(profile) && can(profile, "formalizacion.orders.read");
 
 export const FORMALIZATION_STAGE_READ_PERMISSION = "formalizacion.home.stages.read";
 
 /** Inherited membership is not a permission bypass; individual stage denies still win. */
-export const canReadFormalizationStages = (profile: Pick<IdentityProfile, "roles" | "permissions">): boolean => hasFormalizationRole(profile) && can(profile, FORMALIZATION_STAGE_READ_PERMISSION);
+export const FORMALIZATION_READ_PERMISSIONS = {
+    approvals: "formalizacion.home.approvals.read",
+    contracts: "formalizacion.home.contracts.read",
+    bank: "formalizacion.home.banking.read",
+    balance: "formalizacion.home.balance.read",
+    transfer: "formalizacion.home.transfer_pending.read",
+    signed: "formalizacion.home.transfer_signed.read",
+    closed: "formalizacion.home.closed.read",
+} as const;
+/** Read scopes cover every seller; the legacy fallback is disabled by any granular entry. */
+export function formalizationReadAccess(profile: Pick<IdentityProfile, "roles" | "permissions">) {
+    const granular = Object.values(FORMALIZATION_READ_PERMISSIONS).filter((code) => code !== FORMALIZATION_READ_PERMISSIONS.approvals);
+    const fallback = !profile.permissions.some((entry) => granular.includes(entry.code as never)) && can(profile, FORMALIZATION_STAGE_READ_PERMISSION);
+    const allowed = (code: string) => hasFormalizationRole(profile) && (can(profile, code) || (code !== FORMALIZATION_READ_PERMISSIONS.approvals && fallback));
+    return Object.fromEntries(Object.entries(FORMALIZATION_READ_PERMISSIONS).map(([queue, code]) => [queue, allowed(code)])) as Record<keyof typeof FORMALIZATION_READ_PERMISSIONS, boolean>;
+}
+/** All is the union of granted banner memberships. */
+export function canReadFormalizationQueue(profile: Pick<IdentityProfile, "roles" | "permissions">, queue: string): boolean {
+    const access = formalizationReadAccess(profile);
+    if (queue === "all") return Object.values(access).some(Boolean);
+    return Object.entries(access).some(([key, allowed]) => key === (["send", "signature"].includes(queue) ? "contracts" : queue) && allowed);
+}
+export const canReadFormalizationStages = (profile: Pick<IdentityProfile, "roles" | "permissions">): boolean => canReadFormalizationQueue(profile, "all");
 
 /** Role membership and any declared permissions are cumulative requirements. */
 function hasActiveRoleRequirement(profile: IdentityProfile, requirement: Extract<PermissionRequirement, { kind: "active-role" }>): boolean {
@@ -67,11 +94,27 @@ function hasActiveRoleRequirement(profile: IdentityProfile, requirement: Extract
 /** Resolves only bounded server-declared mappings, before pipes or handler execution. */
 export function hasRoutePermission(profile: IdentityProfile, requirement: PermissionRequirement | undefined, request: CookieRequest): boolean {
     if (!requirement) return false;
+    if (requirement.kind === "formalization-order-read") return canReadFormalizationOrder(profile);
+    if (requirement.kind === "formalization-read") return canReadFormalizationStages(profile);
+    if (requirement.kind === "calendar") return calendarRouteAccess(profile, requirement.action);
+    return hasDeclaredRoutePermission(profile, requirement, request);
+}
+
+function notesRoutePermission(profile: IdentityProfile, requirement: Extract<PermissionRequirement, { kind: "notes" }>, request: CookieRequest): boolean {
+    const source = requirement.source ?? (requirement.action === "read" ? "query" : "body");
+    const moduleCode = field(request[source], "moduleCode");
+    if (requirement.action === "read" && requirement.allowCrossModuleRead === true && typeof moduleCode === "string" && isCatalogContextModuleCode(moduleCode)) return canUseCollaboration(profile, moduleCode, "read", true);
+    return canUseNotes(profile, moduleCode, "read") && canUseNotes(profile, moduleCode, requirement.action);
+}
+
+function hasDeclaredRoutePermission(profile: IdentityProfile, requirement: PermissionRequirement, request: CookieRequest): boolean {
     switch (requirement.kind) {
         case "active-role":
             return hasActiveRoleRequirement(profile, requirement);
         case "all":
             return hasAllPermissions(profile, requirement.codes);
+        case "notes":
+            return notesRoutePermission(profile, requirement, request);
         case "audit":
             return canReadAudit(profile);
         case "user-status":

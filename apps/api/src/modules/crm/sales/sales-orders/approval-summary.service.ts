@@ -1,6 +1,7 @@
 import { ForbiddenException, Inject, Injectable, ServiceUnavailableException } from "@nestjs/common";
 import type { Transaction } from "kysely";
 
+import { canReadFormalizationQueue } from "../../../../common/security/route-permission.js";
 import type { CrmDatabase } from "../../../../database/database.types.js";
 import { IdentityService } from "../../identity/identity.service.js";
 import { APPROVAL_LEGACY_READER, type ApprovalLegacyReader, SALES_ORDER_SUMMARY_PAGE_SIZE } from "./approval-summary.port.js";
@@ -19,10 +20,7 @@ export class ApprovalSummaryService {
     /** Returns no personal data and never treats source failure as zero. */
     async summary(session?: string) {
         const profile = await this.identity.getCurrentUser(session);
-        const entries = profile.permissions.filter((p) => p.code === "formalizacion.home.approvals.read");
-        if (!entries.some((p) => p.effect === "allow") || entries.some((p) => p.effect === "deny")) {
-            throw new ForbiddenException("No tiene permiso para ver pendientes de aprobacion.");
-        }
+        if (!canReadFormalizationQueue(profile, "approvals")) throw new ForbiddenException("No tiene permiso para ver pendientes de aprobacion.");
         try {
             return await this.repository.readSnapshot(async (tx) => {
                 const native = await this.repository.countPending(tx);

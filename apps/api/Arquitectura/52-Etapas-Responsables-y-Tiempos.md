@@ -1,5 +1,21 @@
 # 52 - Seguimiento de etapas y tiempos en ambas bases
 
+## Gestión vigente por ambos roles - 2026-10-28
+
+La confirmación posterior del propietario en [65](65-Formalizacion-Correcciones-Roles-y-Recuperacion.md)
+sustituye las restricciones por vendedor de los alcances de escritura descritos
+en cortes anteriores: ambos roles efectivos activos gestionan todas las órdenes
+con el permiso de la acción. Se conservan denegaciones, requisitos, versiones y auditoría.
+
+## Regla de lectura vigente - 2026-10-28
+
+[63 - Lectura por banner](63-Formalizacion-Lectura-Por-Banner.md) sustituye el
+alcance de lectura por vendedor y el permiso agregado de etapas: cada banner
+autoriza su contador y lista para todos los vendedores. “Todas” reúne
+solo categorías autorizadas. El detalle requiere el permiso independiente
+[«Ver orden de venta»](64-Formalizacion-Permiso-Ver-Orden.md), sin exigir banners.
+Las reglas de escritura de este documento no se amplían.
+
 ## Reconciliacion documental - 2026-10-27
 
 Se revisaron las migraciones 035-037, `sales-order-stage-duration.sql.ts`,
@@ -167,3 +183,93 @@ No hay escritura sobre custbody90/contrado_frima_ov/contract_signed_sales_order 
 
 ## Inspeccion NetSuite por URL
 Implementacion de lectura en src/integrations/netsuite (ver su README). GET /formalization/orders/:source/:id/netsuite valida permisos y propiedad, resuelve native-first y llama al RESTlet salesordersExtraer con la referencia NetSuite autorizada. El cliente de desarrollo conserva orderSource/orderId y el netsuiteId resuelto en URL y muestra el JSON solo en consola. No popula campos, no altera flags/etapas ni persiste el resultado. La consulta externa ocurre despues de cerrar el snapshot de BD.
+
+
+Lectura autorizada 2026-10-27: [56 - Bitácora de orden y expediente](56-Orden-Bitacora-y-Expediente-Lectura.md), paneles laterales, fuentes auditadas y límites de evidencia.
+
+### 2026-10-27 — Permisos por destino de Formalización (042)
+Aplicada únicamente en CRM_THINK_V2: permisos `formalizacion.orders.stage.<destino>` para pending_approval, contract_pending_send, contract_pending_signature, bank_management, pending_balance, pending_transfer, transfer_signed y closed. Asignados al rol activo formalizacion junto con stage.update, envío y reversión existentes. La vista de seguridad los agrupa en Formalización / Orden de venta y muestra nombres legibles. Denegaciones individuales intactas; versiones de permisos actualizadas y cambio registrado en audit_security_event. No cambia órdenes ni ERP ni legacy.
+El comando set exige permiso general y permiso específico del destino; combina el alcance más restrictivo y conserva las denegaciones send/revert. Las reglas de aprobaciones, firma, motivo, versiones y auditoría siguen en el escritor existente. pending_approval queda catalogado sin habilitar transición: no se modifica el contrato de aprobaciones. No se agregan botones en este corte.
+
+### 2026-10-27 — Avance secuencial y excepciones (043)
+Plan ejecutado: reutilizar el editor transaccional, mostrar una sola acción siguiente debajo del avance en la orden completa y en su panel lateral, propagar permisos efectivos, restringir saltos en el escritor y probar ambos orígenes sin modificar órdenes reales.
+
+Aplicada 043 únicamente en CRM_THINK_V2: `formalizacion.orders.stage.skip`, nombre visible «Saltar etapas de Formalización», sin concesión automática a Formalización. Owner lo obtiene por su política vigente, sujeto a deny. Se administra en Formalización / Orden de venta.
+
+Flujo normal: un botón hacia el destino inmediato, condicionado al permiso general, permiso del destino, aprobaciones completas, versión y firma cuando corresponde. Confirmación antes de guardar. Tras guardar se recargan detalle y contadores; el nuevo estado muestra la acción siguiente. No se envían correos ni se escriben checks ERP.
+
+Excepción: selector únicamente con permiso skip; salto o retroceso requiere motivo y permiso específico de destino. El servidor deriva skip del perfil vivo (no del body); el escritor compara secuencia bajo bloqueo y exige permiso excepcional y motivo para cualquier destino distinto del siguiente. Una firma confirmada permite omitir el requisito de haber registrado envío para un salto autorizado, pero nunca se omite la firma para banco y posteriores. Se conservan actividad, tres aprobaciones, concurrencia, idempotencia y auditoría atómica anterior/nuevo/actor/fecha/motivo en el origen correcto. No se inventan visitas intermedias. Regresar a pendientes de aprobación sigue fuera del comando: no se alteran aprobaciones.
+
+Verificación focalizada: 110 pruebas API (servicio, repositorio con dobles nativo/legacy y HTTP), sin fixtures de MySQL ni cambios a órdenes reales. No representa una prueba de escritura en producción.
+
+### 2026-10-27 — Primer cambio de etapa y restricción SQL
+El intento real sobre la orden legacy 208/RDR673 devolvió HTTP 500 y la revisión de solo lectura encontró cero visitas en el historial legacy y cero eventos centrales de esa orden. La tabla existente exige `sequence=1 => from_state IS NULL`; el escritor enviaba el estado lógico previo incluso en la primera visita, violando esa condición. Corrección localizada: la primera visita usa predecessor NULL; desde la segunda conserva el estado anterior real. La auditoría central mantiene siempre el before/after lógico, actor y fecha. No se agregan visitas históricas ni se alteran CHECK, tablas de producción o datos de la orden para corregirlo. Las pruebas nuevas fallaron antes del cambio en nativo y legacy y luego verifican el primer predecessor, auditoría central y segunda visita. La confirmación final del guardado real requiere un nuevo intento del usuario.
+Verificación del arreglo: 136 pruebas focalizadas aprobadas y lint de los archivos modificados correcto. Typecheck global reportó TS6133 en test/notes/note-notifications-service.spec.ts (variable user sin uso), ajeno a esta corrección; no se modificó esa prueba concurrente. No se ejecutaron escrituras de comprobación sobre la orden 208.
+
+Actualización UX 2026-10-27: «Mover a otro estado» aparece al extremo derecho de la fila de acción únicamente con permiso skip. Abre el panel lateral estándar derecho; selector, motivo, guardado y errores se gestionan allí. Ya no se muestra el formulario excepcional desplegado en la página. La confirmación permanece centrada en la capa de diálogos; no cambia el API ni las reglas de negocio.
+
+### 2026-10-27 — Revalidación parcial tras cambiar etapa
+El éxito del editor ya no invoca la recarga completa de la transacción. Espera el POST validado y consulta el seguimiento autorizado con `recordId` exacto y `pageSize=1`; actualiza la orden en pantalla y los contadores desde el API. El contador de recarga completa/NetSuite no cambia, por lo que se conserva la proyección de datos del proveedor y no aparece el preload global. El botón manual Recargar transacción mantiene su recarga completa explícita. Si el POST confirmó guardado y falla la lectura posterior, el aviso distingue «guardado, sin poder verificar» de un fallo de escritura; no realiza otra mutación automática. Respuestas de órdenes cerradas o cambiadas de pantalla no reabren el registro anterior.
+
+La revisión de solo lectura de legacy 208 confirmó dos visitas (`contract_pending_signature`, `bank_management`) y dos eventos centrales con before/after y versiones 0→1→2. «CRM nuevo» describe el origen de la acción registrada; el source_schema del evento continúa siendo crmdatabase-api. No implica migración de la orden. No se hicieron nuevas escrituras de estado para esta verificación.
+
+Prueba de integración: guardar, revalidar, habilitar acción siguiente y conservar datos del proveedor sin incrementar lecturas /netsuite o /database. 63 pruebas focalizadas frontend aprobadas.
+
+## Aprobación de Formalización: preparación autorizada — 2026-10-28
+
+El propietario autoriza un permiso independiente `formalizacion.orders.approve`,
+visible en Formalización / Orden de venta y concedido inicialmente solo a
+`jefe_formalizaciones`. Otros roles o empleados pueden recibirlo mediante la
+administración existente. La lectura `formalizacion.home.approvals.read` nunca
+concede aprobación; las denegaciones individuales conservan prioridad, incluido Owner.
+
+Migración específica: `202610280045_formalization_approval_permission`, solo en
+CRM_THINK_V2. No concede el permiso al rol operativo formalizacion ni modifica
+las órdenes, checks o permisos individuales. La política de Owner existente aplica.
+
+Se registra `POST /formalization/orders/approve`, protegido por sesión, CSRF y
+permiso declarativo; el servicio repite autorización e identidad/entrada estricta.
+Esta fase está **bloqueada por diseño**: no tiene escritor de órdenes ni invoca ERP.
+Para una solicitud válida autorizada responde 503; internamente usa el código
+FORMALIZATION_APPROVAL_INTEGRATION_PENDING. El filtro HTTP global conserva la
+respuesta pública genérica de 503 (no se cambió para exponer mensajes internos).
+No consulta fuentes comerciales, no crea eventos de aprobación y no simula éxito.
+
+En detalle completo y panel lateral aparece Aprobar Formalización únicamente
+con allow sin deny y estando en pending_approval. Está deshabilitado con explicación
+hasta conectar la función de NetSuite. No se implementa Devolver ni una cuarta aprobación.
+
+### Continuación pendiente de la función NetSuite
+
+La siguiente fase requiere validar orden activa/no caída, Jefatura y Desarrolladora
+aprobadas, alcance de recurso y referencia ERP del lado servidor. Resolver nativo
+primero (incluso alias legacy); ausencia real permite legacy, un error nunca permite
+fallback de escritura. La integración confirmará aprobado o ya aprobado, sin
+interpretar por ahora el número 2 como éxito por sí solo.
+
+Solo después se escribirá formalization=approved en crm_sales_order_approval nativa
+o aprobacion_forma_ov=1 en legacy, jamás ambas. Cambio local y bitácora central se
+confirmarán en una transacción con actor y antes/después. La aprobación nativa ya
+tiene escritor interno de historial; no queda expuesto por este endpoint bloqueado.
+Faltan escritor equivalente legacy, bloqueo/versionado/concurrencia, reconciliación
+ERP exitoso/commit local fallido y revalidación parcial de la UI después del éxito.
+No hay atomicidad distribuida entre NetSuite y MySQL: esos resultados deben ser
+reconciliables. No implementar ni probar mutaciones comerciales hasta esa fase.
+
+Verificación de esta entrega (2026-10-28):045 aplicada con selección exacta en
+CRM_THINK_V2; lectura posterior confirma permiso active, un único grant activo
+para jefe_formalizaciones, ledger de045 y un evento de auditoría de migración.
+No se ejecutaron cambios de órdenes ni llamadas NetSuite. Pruebas de API con
+repositorios/identidad sustituidos, no fixtures en las BD compartidas.
+
+Comprobaciones focalizadas finales:159 pruebas de aprobación/migración/transiciones
+API y403 de seguridad/inventario HTTP aprobadas;86 de frontend aprobadas.
+API: lint de archivos cambiados, formato, typecheck y build aprobados.
+Revisión independiente del alcance no encontró incidencias concretas. Estos son
+resultados locales con dobles, no una aprobación real en NetSuite ni una prueba
+de concurrencia sobre las BD compartidas. La lectura de configuración de045 sí
+se comprobó en la BD nativa después de aplicar la migración.
+
+## Continuacion implementada: aprobacion confirmada en NetSuite (2026-10-28)
+
+El bloqueo503 de preparacion descrito en el corte anterior queda sustituido por el flujo de [63 - Aprobacion Formalizacion](63-Aprobacion-Formalizacion-NetSuite.md): permiso independiente ya verificado en BD para jefe_formalizaciones; PUT Sandbox custbodyid_firma_rc; confirmacion exacta antes de guardar la aprobacion en la fuente autoritativa y su bitacora. El detalle local revalida estado sin recargar toda la proyeccion NetSuite. Despliegue del RESTlet y primera aprobacion real siguen pendientes; no confundir implementacion/pruebas con una operacion de proveedor ejecutada. Las demas reglas de secuencia, firma y permisos no cambian.

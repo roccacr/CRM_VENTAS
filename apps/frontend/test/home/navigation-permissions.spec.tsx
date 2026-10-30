@@ -103,6 +103,10 @@ describe("navigation permissions", () => {
         const seedPermissionCodes = new Set([...Array.from(seedSql.matchAll(/\('([a-z][a-z0-9_.]*)',\s*'[a-z][a-z0-9_]*'/giu), (match) => match[1]), ...Array.from(catalogsMigrationSource.matchAll(/"([a-z][a-z0-9_]*\.[a-z][a-z0-9_]*)"/giu), (match) => match[1]), ...Array.from(homeMigrationSource.matchAll(/"(formalizacion\.home\.read)"/gu), (match) => match[1]), ...CATALOG_CONTEXT_CODES.flatMap((contextCode) => CATALOG_MODULE_CODES.map((moduleCode) => `${contextCode}.${moduleCode}.read`))]);
         const visualPermissionCodes = DEMO_EFFECTIVE_NAVIGATION_PERMISSIONS.map((permission) => permission.code);
         for (const match of marketingMigrationSource.matchAll(/"(mercadeo\.(?:home|leads|appointments|calendar)\.read)"/gu)) seedPermissionCodes.add(match[1]);
+        const calendarMigration = readFileSync(resolve(process.cwd(), "../api/migrations/schema-only/202610280051_global_calendar.ts"), "utf8");
+        expect(calendarMigration).toContain("`${module}.calendar.${action}`");
+        const calendarModules = calendarMigration.match(/const modules = \[([^\]]+)\]/u)?.[1] ?? "";
+        for (const match of calendarModules.matchAll(/"([a-z]+)"/gu)) seedPermissionCodes.add(`${String(match[1])}.calendar.read`);
 
         expect(visualPermissionCodes.filter((permissionCode) => !seedPermissionCodes.has(permissionCode))).toEqual([]);
     });
@@ -158,7 +162,7 @@ describe("navigation permissions", () => {
         expect(getMenuLabels(salesWorkspace.menuItems)).toEqual(["Resumen", "Leads"]);
         expect(getMenuLabels(marketingWorkspace.menuItems)).toEqual(["Inicio", "Captación de leads", "Calendario"]);
         expect(marketingWorkspace.menuItems.find((item) => item.code === "marketing-leads")?.routePath).toBe("/home/marketing/leads");
-        expect(marketingWorkspace.menuItems.slice(2).every((item) => item.routePath === undefined)).toBe(true);
+        expect(marketingWorkspace.menuItems.find((item) => item.code === "marketing-calendar")?.routePath).toBe("/home/marketing/calendar");
     });
 
     it.each(["home", "leads", "calendar"])("Mercadeo autoriza cada seccion y respeta su deny: %s", (section) => {

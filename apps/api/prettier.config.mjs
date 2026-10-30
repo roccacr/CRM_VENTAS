@@ -20,6 +20,13 @@ export default {
     proseWrap: "preserve",
     insertPragma: false,
     printWidth: 500,
+    // El RESTlet tambien se lee en el editor de NetSuite: evitar lineas extensas.
+    overrides: [
+        {
+            files: "src/integrations/netsuite/suitescript/**/*.js",
+            options: { printWidth: 120 },
+        },
+    ],
     requirePragma: false,
     tabWidth: 4,
     useTabs: false,

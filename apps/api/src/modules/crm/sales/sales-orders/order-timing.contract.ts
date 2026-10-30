@@ -21,6 +21,10 @@ export interface TimingOrder {
     active: boolean;
     pendingApproval: boolean;
     ownerId: string | null;
+    rawStage?: string | null;
+    approved?: number;
+    contractSigned?: number;
+    completedThisYear?: number;
 }
 export interface TimingPerson {
     id: string | null;

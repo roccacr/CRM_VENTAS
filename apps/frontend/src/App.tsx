@@ -26,6 +26,7 @@ export function App() {
     const [microsoftCallbackStatus] = useState(() => getMicrosoftCallbackStatus(window.location.search));
     const microsoftCallbackFailureMessage = microsoftCallbackStatus ? getMicrosoftStatusMessage(microsoftCallbackStatus) : null;
     const [path, setPath] = useState(() => window.location.pathname);
+    const [navigationRevision, setNavigationRevision] = useState(0);
     const [authState, setAuthState] = useState<AuthState>({ status: "checking" });
     const [authCheckAttempt, setAuthCheckAttempt] = useState(0);
     const [sessionRevision, setSessionRevision] = useState(0);
@@ -127,6 +128,7 @@ export function App() {
 
     const navigate = useCallback((nextPath: string): void => {
         pushBrowserPath(nextPath);
+        setNavigationRevision((revision) => revision + 1);
         setPath(nextPath);
     }, []);
 
@@ -343,7 +345,7 @@ export function App() {
 
     return (
         <RouteErrorBoundary resetKey={path}>
-            <AppRouteContent authRetryFeedback={authRetryFeedback} authState={authState} isAuthRetryDisabled={isAuthRetryDisabled} isMicrosoftSessionPending={isMicrosoftPopupReturn || isMicrosoftLoginPending} isSubmittingLogin={isSubmittingLogin} loginError={loginError} onLocalLogin={handleLocalLogin} onLogout={handleLogout} onMicrosoftLogin={handleMicrosoftLogin} onNavigate={navigate} onRetryAuthCheck={handleRetryAuthCheck} path={path} />
+            <AppRouteContent navigationRevision={navigationRevision} authRetryFeedback={authRetryFeedback} authState={authState} isAuthRetryDisabled={isAuthRetryDisabled} isMicrosoftSessionPending={isMicrosoftPopupReturn || isMicrosoftLoginPending} isSubmittingLogin={isSubmittingLogin} loginError={loginError} onLocalLogin={handleLocalLogin} onLogout={handleLogout} onMicrosoftLogin={handleMicrosoftLogin} onNavigate={navigate} onRetryAuthCheck={handleRetryAuthCheck} path={path} />
         </RouteErrorBoundary>
     );
 }

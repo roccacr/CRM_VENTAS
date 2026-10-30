@@ -23,7 +23,7 @@ it("shows only the five approved database highlights and no sample notice", () =
 
 it("keeps facts in the page and money plus read-only answers in the margin, grouped by the question they answer", () => {
     render(<FormalizationRecordSummary item={order} />);
-    for (const name of ["Información primaria", "Información de ventas", "Autorización de venta", "Información del sistema", "Resumen"]) expect(screen.getByRole("heading", { name: new RegExp(name) })).toBeInTheDocument();
+    for (const name of ["Información primaria", "Información de ventas", "Autorización de venta", "Resumen"]) expect(screen.getByRole("heading", { name: new RegExp(name) })).toBeInTheDocument();
     const margin = screen.getByRole("complementary");
     expect(within(margin).getByText("Total")).toBeInTheDocument();
     for (const group of ["Hitos de la orden", "Aprobaciones", "Cálculos de comisión", "Condiciones comerciales", "Excepciones"]) expect(within(margin).getByRole("list", { name: group })).toBeInTheDocument();
@@ -61,7 +61,7 @@ it("folds one part of the file and leaves the margin and the other parts visible
 
 it("offers jump links, not tabs, and opens or closes every part", () => {
     render(<FormalizationRecordSummary item={order} />);
-    expect(screen.queryByRole("tablist")).not.toBeInTheDocument();
+    expect(screen.getByRole("tablist", { name: "Detalles de la orden" })).toBeInTheDocument();
     const bar = screen.getByRole("navigation", { name: "Secciones de la orden" });
     expect(within(bar).getByRole("link", { name: "Autorización de venta" })).toHaveAttribute("href", "#record-chapter-authorization");
     fireEvent.click(within(bar).getByRole("button", { name: "Contraer todo" }));
@@ -70,4 +70,19 @@ it("offers jump links, not tabs, and opens or closes every part", () => {
     expect(screen.getByText("N.º de pedido")).toBeInTheDocument();
     fireEvent.click(within(bar).getByRole("button", { name: "Expandir todo" }));
     expect(screen.getByRole("heading", { name: "Origen" })).toBeInTheDocument();
+});
+
+it("switches the four additional sections independently, including keyboard navigation", () => {
+    render(<FormalizationRecordSummary item={order} />);
+    expect(screen.getByRole("tabpanel", { name: "Artículos" })).toBeVisible();
+    expect(screen.queryByRole("tabpanel", { name: "Reserva" })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("tab", { name: "Reserva" }));
+    expect(screen.getByRole("tabpanel", { name: "Reserva" })).toBeVisible();
+    expect(screen.queryByRole("tabpanel", { name: "Artículos" })).not.toBeInTheDocument();
+    fireEvent.keyDown(screen.getByRole("tab", { name: "Reserva" }), { key: "ArrowRight" });
+    expect(screen.getByRole("tab", { name: "Detalle de pago" })).toHaveFocus();
+    expect(screen.getByRole("tabpanel", { name: "Detalle de pago" })).toBeVisible();
+    fireEvent.keyDown(screen.getByRole("tab", { name: "Detalle de pago" }), { key: "End" });
+    expect(screen.getByRole("heading", { level: 1, name: "AQUI VA EL ONEDRIVE" })).toBeVisible();
+    expect(screen.getByRole("region", { name: "Información primaria" })).toBeVisible();
 });

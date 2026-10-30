@@ -5,9 +5,10 @@ import ReloadOutlined from "@ant-design/icons/ReloadOutlined";
 import UndoOutlined from "@ant-design/icons/UndoOutlined";
 import Button from "antd/es/button";
 import Tooltip from "antd/es/tooltip";
-import { useCallback } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
-import type { FollowUpItem } from "../../services/formalization/follow-up-service";
+import { type FollowUpItem, getFormalizationOrderRecord } from "../../services/formalization/follow-up-service";
+import type { NetsuitePrimary } from "../../services/formalization/netsuite-primary";
 import { type FormalizationExample, isUnassigned } from "./formalization-preview.model";
 import { FORMALIZATION_EXAMPLES } from "./formalization-preview.model";
 import { useFormalizationPreview } from "./formalization-preview-session";
@@ -17,6 +18,7 @@ import { FormalizationPreviewBoundary } from "./FormalizationPreviewSession";
 import { FormalizationRecordLoading } from "./FormalizationRecordLoading";
 import { FormalizationRecordProgress } from "./FormalizationRecordProgress";
 import { FormalizationRecordSummary } from "./FormalizationRecordSummary";
+import { FormalizationStageEditor } from "./FormalizationStageEditor";
 import { FormalizationStatusPill } from "./FormalizationStatusPill";
 
 /** `muted` marca valores ausentes o fuera de la muestra; `code` muestra identificadores como chip. */
@@ -359,8 +361,32 @@ function RecordRefreshAction({ onRefresh, loading = false }: { readonly onRefres
     );
 }
 
-/** Real-order workspace with identity and current-stage progress only. */
-export function FormalizationOrderRecord({ item, onBack, onRefresh, netsuiteStatus = "success" }: { readonly item: FollowUpItem; readonly onBack: () => void; readonly onRefresh?: () => void; readonly netsuiteStatus?: "idle" | "loading" | "success" | "error" }) {
+/** Database identity/progress plus the explicitly approved NetSuite primary projection. */
+export function FormalizationOrderRecord({
+    item,
+    onBack,
+    onRefresh,
+    onStageSaved,
+    primary = null,
+    netsuiteStatus = "success",
+    netsuiteErrorMessage,
+    stagePermissions = [],
+    canUpdateStage = false,
+}: {
+    readonly item: FollowUpItem;
+    readonly onBack: () => void;
+    readonly onRefresh?: () => void;
+    readonly onStageSaved?: (item: FollowUpItem) => void;
+    readonly primary?: NetsuitePrimary | null;
+    readonly netsuiteStatus?: "idle" | "loading" | "success" | "error";
+    readonly netsuiteErrorMessage?: string | undefined;
+    readonly stagePermissions?: readonly { code: string; effect: string }[] | undefined;
+    readonly canUpdateStage?: boolean;
+}) {
+    // A confirmed POST updates only this flag in the exact projection that was visible for this order.
+    const [confirmedPrimary, setConfirmedPrimary] = useState<{ primary: NetsuitePrimary | null; order: string } | null>(null);
+    const orderIdentity = item.source + ":" + item.id;
+    const displayedPrimary = confirmedApprovalPrimary(primary, confirmedPrimary, orderIdentity);
     if (netsuiteStatus === "loading") return <FormalizationRecordLoading complete actions={<RecordRefreshAction onRefresh={onRefresh} loading />} />;
     return (
         <section className="formalization-order" aria-labelledby="formalization-record-title">
@@ -394,13 +420,82 @@ export function FormalizationOrderRecord({ item, onBack, onRefresh, netsuiteStat
                 <RecordRefreshAction onRefresh={onRefresh} />
             </header>
             <FormalizationRecordProgress state={item.state.code} />
+            <RecordStageActions
+                key={item.source + ":" + item.id}
+                item={item}
+                allowed={canUpdateStage}
+                status={netsuiteStatus}
+                permissions={stagePermissions}
+                onRefresh={onRefresh}
+                onStageSaved={onStageSaved}
+                onApproved={() => {
+                    setConfirmedPrimary({ primary, order: orderIdentity });
+                }}
+            />
             {netsuiteStatus === "success" ? (
-                <FormalizationRecordSummary item={item} />
+                <FormalizationRecordSummary item={item} primary={displayedPrimary} />
             ) : (
                 <section className="formalization-card formalization-record-loading" role="status">
-                    {netsuiteStatus === "error" ? "No fue posible cargar los datos de la orden. Pulsa recargar para reintentar." : "Los datos de la orden aún no están disponibles."}
+                    {recordLoadMessage(netsuiteStatus, netsuiteErrorMessage)}
                 </section>
             )}
         </section>
     );
+}
+
+function RecordStageActions({ item, allowed, status, permissions, onRefresh, onStageSaved, onApproved }: { readonly item: FollowUpItem; readonly allowed: boolean; readonly status: string; readonly permissions: readonly { code: string; effect: string }[]; readonly onRefresh: (() => void) | undefined; readonly onStageSaved: ((item: FollowUpItem) => void) | undefined; readonly onApproved: () => void }) {
+    const revalidation = useStageRevalidation(item, onStageSaved);
+    if ((!allowed && item.state.code !== "pending_approval") || status !== "success") return null;
+    return (
+        <>
+            <FormalizationStageEditor
+                key={`${item.id}:${String(item.stateVersion)}:${item.state.code}`}
+                item={item}
+                allowed={allowed}
+                permissions={permissions}
+                onApproved={onApproved}
+                onSaved={revalidation.saved}
+                onRefresh={() => {
+                    onRefresh?.();
+                }}
+            />
+            {revalidation.notice && <p role="status">{revalidation.notice}</p>}
+        </>
+    );
+}
+
+/** Revalidate one CRM record after a committed write without invalidating the provider projection. */
+function useStageRevalidation(item: FollowUpItem, onUpdate: ((item: FollowUpItem) => void) | undefined) {
+    const [notice, setNotice] = useState<string | null>(null);
+    const identity = item.source + ":" + item.id;
+    const active = useRef<string | null>(identity);
+    useEffect(() => {
+        active.current = identity;
+        return () => {
+            active.current = null;
+        };
+    }, [identity]);
+    const saved = async () => {
+        setNotice("Cambio guardado. Verificando estado…");
+        try {
+            const updated = await getFormalizationOrderRecord(item.source, item.source === "legacy" ? item.id.replace(/^legacy:/, "") : item.id);
+            if (active.current !== identity) return;
+            onUpdate?.(updated);
+            setNotice("Estado guardado y verificado correctamente.");
+        } catch {
+            if (active.current === identity) setNotice("El cambio se guardó, pero no se pudo verificar el estado actualizado. Recarga la transacción antes de repetir la operación.");
+        }
+    };
+    return { saved, notice };
+}
+
+function confirmedApprovalPrimary(primary: NetsuitePrimary | null, confirmed: { primary: NetsuitePrimary | null; order: string } | null, order: string): NetsuitePrimary | null {
+    if (!primary || confirmed?.primary !== primary || confirmed.order !== order) return primary;
+    return { ...primary, checks: { ...primary.checks, "Aprobación formalización": true } };
+}
+
+/** A confirmed missing record has its own safe message; other failures keep the retry guidance. */
+function recordLoadMessage(status: string, message: string | undefined): string {
+    if (status === "error") return message ?? "No fue posible cargar los datos de la orden. Pulsa recargar para reintentar.";
+    return "Los datos de la orden aún no están disponibles.";
 }

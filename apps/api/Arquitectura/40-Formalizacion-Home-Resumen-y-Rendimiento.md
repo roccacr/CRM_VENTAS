@@ -1,5 +1,12 @@
 # 40 - Formalizacion: resumen de Home y rendimiento
 
+Regla vigente de lectura desde el 2026-10-28:
+[63 - Lectura por banner](63-Formalizacion-Lectura-Por-Banner.md) sustituye el
+permiso agregado y las restricciones por vendedor de los cortes anteriores.
+Cada categoría concedida autoriza su contador y lista. El detalle requiere
+[«Ver orden de venta»](64-Formalizacion-Permiso-Ver-Orden.md), independiente de
+banners y de los permisos de escritura.
+
 ## Ampliacion posterior - 2026-10-27
 
 Los limites siguientes corresponden al resumen Home del 2026-10-23. Desde la
@@ -307,3 +314,28 @@ viewports medidos 1800 y 375 px, boton 40x40 sin solapar titulo ni desbordamient
 horizontal. Recarga observada sin navegacion, siete preloads de etapas con demora
 simulada y dos llamadas totales de etapas tras carga inicial mas recarga doble.
 El caso conjunto con aprobaciones se verifica en las pruebas de componente.
+
+### Movimientos recientes personales — 2026-10-28
+
+`GET /formalization/home/recent-activity` devuelve como máximo las últimas seis
+acciones registradas por el usuario autenticado sobre órdenes de Formalización.
+Requiere el permiso efectivo `formalizacion.orders.read`; una denegación prevalece.
+El actor se obtiene de la sesión, nunca de un parámetro del navegador. La respuesta
+usa `Cache-Control: no-store` y no incluye snapshots ni identificadores físicos de BD.
+
+La fuente es `CRM_THINK_V2.audit_record_event`, que conserva también las acciones
+realizadas desde nuestro API sobre órdenes legacy. Se filtra por actor, módulo y
+entidad; orden estable por fecha de registro e ID descendentes, con `LIMIT 6`.
+Reutiliza `ix_audit_record_event_actor` (actor, fecha); resuelve los números de orden
+en lotes de hasta seis IDs en su BD correspondiente, sin consultar NetSuite.
+Las acciones externas que no generaron bitácora no se reconstruyen.
+
+El Home muestra carga, vacío o error con reintento. Consulta al entrar o regresar
+al Home y al recargar; no mantiene una caché de resultados entre peticiones.
+Las fechas se presentan en la zona America/Costa_Rica.
+
+Verificación del corte: 30 pruebas enfocadas de API y 32 de frontend correctas.
+Lectura real sin escrituras: seis eventos del actor autorizado (BC552 y RDR673),
+cero para un actor distinto sin eventos e índice existente confirmado. Petición
+HTTP anónima rechazada con 401. No acredita una prueba visual autenticada completa,
+ni requiere migración o actualización de SuiteScript.

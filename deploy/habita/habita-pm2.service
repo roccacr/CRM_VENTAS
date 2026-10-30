@@ -1,0 +1,26 @@
+[Unit]
+Description=Habita CRM - PM2 aislado
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=forking
+User=ubuntu
+Group=ubuntu
+Environment=PATH=/home/ubuntu/.nvm/versions/node/v22.23.2/bin:/usr/local/bin:/usr/bin:/bin
+Environment=PM2_HOME=/var/www/habita-crm/shared/pm2
+PIDFile=/var/www/habita-crm/shared/pm2/pm2.pid
+ExecStart=/home/ubuntu/.nvm/versions/node/v22.23.2/bin/node /var/www/habita-crm/shared/process-manager/node_modules/pm2/bin/pm2 start /var/www/habita-crm/shared/ecosystem.config.cjs --only habita-api
+ExecReload=/home/ubuntu/.nvm/versions/node/v22.23.2/bin/node /var/www/habita-crm/shared/process-manager/node_modules/pm2/bin/pm2 startOrRestart /var/www/habita-crm/shared/ecosystem.config.cjs --only habita-api --update-env
+ExecStop=/home/ubuntu/.nvm/versions/node/v22.23.2/bin/node /var/www/habita-crm/shared/process-manager/node_modules/pm2/bin/pm2 kill
+Restart=on-failure
+RestartSec=10
+TimeoutStopSec=40
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+MemoryHigh=448M
+MemoryMax=512M
+
+[Install]
+WantedBy=multi-user.target

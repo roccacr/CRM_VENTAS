@@ -25,6 +25,7 @@ export type FollowUpQuery = z.infer<typeof followUpQuery>;
 export type FollowUpRead = FollowUpQuery & { offset: number; limit: number };
 export type FollowUpCounts = Record<FollowUpQueue, number>;
 export interface FollowUpAccess {
+    queues?: Partial<Record<FollowUpQueue, boolean>>;
     approvals: boolean;
     actorId: string;
     ownOnly: boolean;

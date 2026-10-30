@@ -1,0 +1,303 @@
+/* Client detail: the user-detail drawer, with the person's initials in place of a photo. */
+.client-detail__avatar {
+    display: inline-grid;
+    flex: 0 0 auto;
+    width: 48px;
+    height: 48px;
+    border: 2px solid #ffffff;
+    border-radius: 999px;
+    place-items: center;
+    background: linear-gradient(135deg, rgba(102, 114, 173, 0.24), rgba(79, 93, 159, 0.08)), #eef2ff;
+    box-shadow: 0 0 0 1px #cfd7e6;
+    color: #374151;
+    font-size: 15px;
+    font-weight: 800;
+    line-height: 1;
+}
+
+.client-detail__empty {
+    color: #7b8798;
+    font-weight: 400;
+}
+
+.client-detail-drawer .ant-drawer-title {
+    min-width: 0;
+}
+
+.client-detail-drawer .ant-descriptions-item-label {
+    flex-basis: 150px;
+}
+
+.client-loading {
+    margin-top: 0;
+    gap: 12px;
+}
+
+.client-loading__card {
+    display: grid;
+    gap: 0;
+    border: 1px solid #dde3ee;
+    border-radius: 8px;
+    background: #ffffff;
+}
+
+.client-loading__title {
+    width: 90px;
+    height: 12px;
+    margin: 14px 16px;
+    background: #b9c5d6;
+    animation: none;
+}
+
+.client-loading__row {
+    display: grid;
+    grid-template-columns: 150px minmax(0, 1fr);
+    gap: 16px;
+    padding: 12px 16px;
+    border-top: 1px solid #e4e9f2;
+}
+
+.client-loading__row .record-skel:first-child {
+    width: 70%;
+}
+
+.client-loading__row .record-skel:last-child {
+    width: 55%;
+}
+
+.client-detail__profile {
+    justify-self: start;
+    margin-top: 8px;
+}
+
+.client-detail__profile .ant-btn {
+    border-color: #8fa1b8;
+    color: #3c4f68;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.client-detail__profile .ant-btn:not(:disabled):hover {
+    border-color: #3c4f68;
+    background: #ebeef3;
+    color: #0e1116;
+}
+
+/* Client log: a quiet timeline, date on the right of each entry, status changes as chips, who and where from in one muted line. */
+.client-history {
+    margin: 12px 0 0;
+    padding: 0 0 0 7px;
+    list-style: none;
+    border-left: 2px solid #dde3ee;
+}
+
+.client-history li {
+    position: relative;
+    padding: 0 0 16px 18px;
+}
+
+.client-history li:last-child {
+    padding-bottom: 0;
+}
+
+.client-history li::before {
+    position: absolute;
+    top: 5px;
+    left: -6px;
+    width: 8px;
+    height: 8px;
+    border: 2px solid #ffffff;
+    border-radius: 50%;
+    background: #496180;
+    box-shadow: 0 0 0 1px #8fa1b8;
+    content: "";
+}
+
+.client-history li[data-source="legacy"]::before {
+    background: #b9c5d6;
+}
+
+.client-history__head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 2px 12px;
+}
+
+.client-history__head strong {
+    color: #0f172a;
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.client-history__head time {
+    color: #5d6b82;
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+}
+
+.client-history p {
+    margin: 4px 0 0;
+    overflow-wrap: anywhere;
+    white-space: pre-wrap;
+}
+
+.client-history__detail {
+    color: #1f2a3c;
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+.client-history [data-empty="true"] {
+    color: #7b8798;
+}
+
+.client-history__change {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+}
+
+.client-history__change span:not([aria-hidden]) {
+    padding: 0 8px;
+    border: 1px solid #d2dae5;
+    border-radius: 10px;
+    background: #f5f7fa;
+    color: #3c4f68;
+    line-height: 18px;
+}
+
+.client-history__change .client-history__to {
+    border-color: #8fa1b8;
+    background: #ebeef3;
+    color: #0e1116;
+    font-weight: 600;
+}
+
+.client-history__meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 2px 8px;
+    color: #5d6b82;
+    font-size: 12px;
+}
+
+.client-history__meta small {
+    color: #7b8798;
+}
+
+.client-history__source {
+    padding: 0 6px;
+    border-radius: 4px;
+    background: #ebeef3;
+    color: #496180;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.client-history__note {
+    margin: 0;
+    color: #5d6b82;
+    font-size: 12px;
+    line-height: 1.5;
+}
+
+.client-history__note--warn {
+    margin-top: 8px;
+    padding: 6px 10px;
+    border-left: 3px solid #8fa1b8;
+    background: #f5f7fa;
+}
+
+.client-history__empty {
+    margin: 12px 0 0;
+    color: #7b8798;
+    font-size: 13px;
+}
+
+.client-detail-drawer .ant-card-body > .ant-btn {
+    margin-top: 14px;
+}
+
+/* Unit file: one caution per group, empty fields folded into one line. */
+.client-detail__note {
+    margin: 0 0 8px;
+    color: #5d6b82;
+    font-size: 12px;
+    line-height: 1.5;
+}
+
+.client-detail__empties {
+    margin-top: 12px;
+    padding-top: 10px;
+    border-top: 1px solid #e4e9f2;
+    color: #5d6b82;
+    font-size: 12px;
+}
+
+.client-detail__empties[data-alone="true"] {
+    margin-top: 0;
+    padding-top: 0;
+    border-top: 0;
+}
+
+.client-detail__empties summary {
+    cursor: pointer;
+    font-weight: 600;
+}
+
+.client-detail__empties summary:hover {
+    color: #0e1116;
+}
+
+.client-detail__empties ul {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+    gap: 4px 16px;
+    margin: 8px 0 0;
+    padding: 0;
+    list-style: none;
+    color: #7b8798;
+}
+
+/* Order log: the same timeline as the client's, with its changes as aligned rows. */
+.client-history__note,
+.client-history__empty {
+    display: block;
+}
+
+.order-history-card .ant-card-body > * + * {
+    margin-top: 10px;
+}
+
+.order-history-card dl {
+    margin: 8px 0 0;
+}
+
+.order-history-change {
+    display: grid;
+    grid-template-columns: 140px minmax(0, 1fr);
+    align-items: baseline;
+    gap: 12px;
+    padding: 6px 0;
+    border-bottom: 1px solid #eef1f6;
+}
+
+.order-history-change:last-child {
+    border-bottom: 0;
+}
+
+.order-history-change dt {
+    margin: 0;
+    color: #5d6b82;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.order-history-change dd > span:first-child {
+    color: #7b8798;
+}

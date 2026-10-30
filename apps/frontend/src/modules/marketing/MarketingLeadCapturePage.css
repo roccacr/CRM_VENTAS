@@ -1660,7 +1660,6 @@ body.capture-printing .capture-columns-chart__empty button {
     display: none;
 }
 
-
 /* Breakdown: one flat table per level, side by side, each scrolling on its own */
 .capture-breakdown-modal .ant-modal-content {
     padding: 18px 20px 20px;

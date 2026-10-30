@@ -1,5 +1,37 @@
 # 18 - Notas Adhesivas y Anotaciones
 
+## Implementación vigente - 2026-10-29
+
+El diseño de librerías, DDL y permisos propuestos más abajo es un blueprint
+histórico: no describe decisiones ejecutadas. El runtime usa texto plano,
+componentes React existentes y movimiento/redimensión propios; no se incorporó
+Tiptap ni dnd kit por este trabajo. La API nativa implementa notas personales,
+colaboración por invitación, respuestas, menciones, campana y Socket.IO.
+
+Los vínculos comerciales aceptan `lead|sales_order + source + id`; búsqueda,
+persistencia y presentación autorizada se documentan en [68](68-Plan-Notas-Vinculos-Clientes-y-Ordenes.md).
+El contexto principal conserva sus tipos anteriores y un único vínculo principal.
+La identidad del registro es independiente de URL
+y módulo. Invitación, permiso del registro y ubicación de la nota son controles
+diferentes. Las ubicaciones adicionales soportadas son Homes registrados, sin
+copiar la nota ni otorgar acceso. Responsable, vencimiento, recordatorio privado,
+búsqueda/filtros e historial se documentan en [66](66-Notas-Enterprise-Seguimiento.md).
+DDL real en [diccionario12](Diccionario-Datos/12-Notas-Colaborativas.md), contratos
+[57](57-Notas-Etapa2-API.md), [60](60-Notas-Etapa4-Colaboracion-y-Notificaciones.md)
+y [62](62-Notas-Tiempo-Real-Implementacion.md). La copia compatible legacy y los
+adjuntos no están activados. Estado de pruebas y pendientes en [67](67-Plan-QA-Regresiones-20261029.md).
+
+Etapas1/2 aplicadas2026-10-27: esquema039/040 y API nativa protegida. El DDL real
+no son los CREATE propuestos mas abajo. Ver [diccionario12](Diccionario-Datos/12-Notas-Colaborativas.md)
+y [contrato57](57-Notas-Etapa2-API.md). UI y campana interna implementadas en etapas3/4; copia legacy pendiente (contrato60).
+
+Propuesta posterior solicitada el2026-10-27: [56 - notas colaborativas](56-Plan-Notas-Colaborativas-y-Convivencia-Legacy.md).
+Investiga la tabla legacy real, autoria exclusiva, respuestas, inbox, posiciones
+personales y convivencia de fuentes. El corte inicial de implementación fue039/040 y contrato57;
+las tablas, librerias y permisos de este blueprint anterior no son decisiones
+ejecutadas. En particular, edit_any/delete_any no forman parte de la propuesta56.
+
+
 Revision documental 2026-10-22: diseno comercial futuro y evidencia historica; tablas, rutas y reglas propuestas no acreditan runtime operativo. Ver [36 - Estado vigente y registro](36-Registro-Entrega-Administracion.md) para implementacion y limites actuales. Identidad/Administracion, consulta de expedientes y contador de aprobaciones tienen contratos propios; no habilitan Leads ni mutaciones HTTP de ordenes.
 
 ## Veredicto
@@ -411,3 +443,5 @@ Respuesta esperada:
 Las notas son datos del CRM, no decoracion de pantalla.
 
 Si una nota ayuda a entender una decision, una accion, un seguimiento o una excepcion, debe quedar persistida, autorizada y auditable.
+
+Estado vigente etapa4 (27 octubre2026): participantes, respuestas, menciones y campana interna implementados; [contrato60](60-Notas-Etapa4-Colaboracion-y-Notificaciones.md) amplía etapas1–3. Los apartados históricos de propuesta no acreditan copia legacy ni correo.

@@ -1,16 +1,14 @@
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
 
-import { getAppRoute } from "../../src/routes/app-routes";
+import { FormalizationSummaryPage as Page } from "../../src/modules/home/FormalizationSummaryPage";
 import { installBrowserApiDoubles } from "../support/browser";
 
 afterEach(cleanup);
 
 async function openSummary(onNavigate = vi.fn()) {
     installBrowserApiDoubles();
-    const Page = getAppRoute("/home/formalization/summary")?.Page;
-    if (!Page) throw new Error("Missing summary checklist");
-    render(<Page currentUser={{ publicId: "user", displayName: "Test", email: "test@example.invalid", profileImageUrl: null, status: "active", permissionVersion: 1 }} onNavigate={onNavigate} />);
+    render(<Page onNavigate={onNavigate} />);
     await act(async () => {
         await vi.dynamicImportSettled();
     });

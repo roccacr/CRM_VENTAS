@@ -1,21 +1,22 @@
-import { BadRequestException, ForbiddenException, Inject, Injectable, ServiceUnavailableException } from "@nestjs/common";
+import { BadRequestException, ForbiddenException, HttpException, Inject, Injectable, NotFoundException, ServiceUnavailableException } from "@nestjs/common";
 
-import { canReadFormalizationStages } from "../../../../common/security/route-permission.js";
+import { canReadFormalizationOrder, canReadFormalizationQueue, canReadFormalizationStages, formalizationReadAccess } from "../../../../common/security/route-permission.js";
 import { IdentityService } from "../../identity/identity.service.js";
 import type { IdentityProfile } from "../../identity/identity.types.js";
-import { emptyFollowUpSource, type FollowUpAccess, followUpQuery, followUpQueues, type FollowUpResponse, presentFollowUpRow } from "./follow-up.contract.js";
+import { emptyFollowUpSource, type FollowUpAccess, type FollowUpDatabaseRow, followUpQuery, followUpQueues, type FollowUpResponse, presentFollowUpRow } from "./follow-up.contract.js";
 import { FOLLOW_UP_LEGACY_READER, type FollowUpLegacyReader } from "./follow-up.port.js";
 import { FollowUpRepository } from "./follow-up.repository.js";
 import { HomeSummaryRepository } from "./home-summary.repository.js";
 import { aggregateNumber } from "./home-summary.types.js";
+import { orderTimingIdentity } from "./order-timing.contract.js";
 
-/** Area scopes are module-wide here, matching Home banners; self/assigned grants stay owner-only. */
-export function formalizationPermissionScope(profile: IdentityProfile, code: string): { allowed: boolean; ownOnly: boolean } {
+/** Formalization action grants cover the module regardless of supported scope metadata; denies still win. */
+export function formalizationPermissionScope(profile: Pick<IdentityProfile, "permissions">, code: string): { allowed: boolean; ownOnly: boolean } {
     const grants = profile.permissions.filter((permission) => permission.code === code);
     const allows = grants.filter((grant) => grant.effect === "allow");
     if (!allows.length || grants.some((grant) => grant.effect === "deny")) return { allowed: false, ownOnly: true };
     if (allows.some((grant) => !["self", "assigned", "own_area", "own_area_and_children", "all_areas"].includes(grant.scope))) throw new ForbiddenException("Alcance de Formalizacion no reconocido.");
-    return { allowed: true, ownOnly: allows.every((grant) => grant.scope === "self" || grant.scope === "assigned") };
+    return { allowed: true, ownOnly: false };
 }
 
 /** A single global JSON, never copied orders or cached counts. */
@@ -28,6 +29,35 @@ export class FollowUpService {
         @Inject(FOLLOW_UP_LEGACY_READER) private readonly legacy: FollowUpLegacyReader,
         @Inject(HomeSummaryRepository) private readonly snapshot: HomeSummaryRepository,
     ) {}
+    /** Restores only one authoritative active record; banner lists and summaries retain separate grants. */
+    async record(session: string | undefined, input: unknown) {
+        const profile = await this.identity.getCurrentUser(session);
+        if (!canReadFormalizationOrder(profile)) throw new ForbiddenException("No tiene permiso para consultar esta orden.");
+        const target = orderTimingIdentity.safeParse(input);
+        if (!target.success) throw new BadRequestException("Identidad de orden invalida.");
+        const now = new Date();
+        const year = Number(new Intl.DateTimeFormat("en", { timeZone: "America/Costa_Rica", year: "numeric" }).format(now));
+        const period = { start: `${String(year)}-01-01 06:00:00.000`, endExclusive: `${String(year + 1)}-01-01 06:00:00.000` };
+        try {
+            return await this.snapshot.readSnapshot(async (tx) => {
+                const native = await this.repository.findRecordAuthority(tx, target.data.source, target.data.id);
+                let row: FollowUpDatabaseRow | undefined;
+                if (native) {
+                    if (!native.active) throw new NotFoundException("Orden disponible no encontrada.");
+                    row = await this.repository.readRecord(tx, native.publicId, period);
+                } else {
+                    if (target.data.source === "native") throw new NotFoundException("Orden disponible no encontrada.");
+                    if (!this.legacy.enabled()) throw new ServiceUnavailableException("Fuente antigua no disponible.");
+                    row = await this.legacy.readRecord(tx, target.data.id, period);
+                }
+                if (!row) throw new NotFoundException("Orden disponible no encontrada.");
+                return presentFollowUpRow(row, now);
+            });
+        } catch (error) {
+            if (error instanceof HttpException) throw error;
+            throw new ServiceUnavailableException("No fue posible consultar la orden de Formalizacion.");
+        }
+    }
     /** Validates both role and live permissions before consulting either source. */
     async list(session: string | undefined, input: unknown): Promise<FollowUpResponse> {
         const profile = await this.identity.getCurrentUser(session);
@@ -35,10 +65,9 @@ export class FollowUpService {
         const parsed = followUpQuery.safeParse(input);
         if (!parsed.success) throw new BadRequestException("Filtros de seguimiento invalidos.");
         const query = parsed.data;
-        const stages = formalizationPermissionScope(profile, "formalizacion.home.stages.read");
-        const approvals = formalizationPermissionScope(profile, "formalizacion.home.approvals.read");
-        if (query.queue === "approvals" && !approvals.allowed) throw new ForbiddenException("No tiene permiso para consultar aprobaciones.");
-        const access: FollowUpAccess = { approvals: approvals.allowed, actorId: profile.user.publicId, ownOnly: stages.ownOnly, approvalOwnOnly: approvals.ownOnly };
+        const queues = formalizationReadAccess(profile);
+        if (!canReadFormalizationQueue(profile, query.queue)) throw new ForbiddenException("No tiene permiso para consultar esta categoria.");
+        const access: FollowUpAccess = { queues, approvals: queues.approvals, actorId: profile.user.publicId, ownOnly: false, approvalOwnOnly: false };
         const now = new Date();
         const year = Number(new Intl.DateTimeFormat("en", { timeZone: "America/Costa_Rica", year: "numeric" }).format(now));
         const period = { start: new Date(Date.UTC(year, 0, 1, 6)).toISOString().slice(0, 23).replace("T", " "), endExclusive: new Date(Date.UTC(year + 1, 0, 1, 6)).toISOString().slice(0, 23).replace("T", " ") };

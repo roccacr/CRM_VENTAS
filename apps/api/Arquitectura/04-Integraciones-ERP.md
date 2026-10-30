@@ -13,8 +13,9 @@ servidor se protege por permisos y no queda restringida a DEV por ese hecho.
 Fuentes: `src/integrations/netsuite/netsuite.module.ts`,
 `netsuite-sales-order.service.ts`, `netsuite-order.repository.ts` y
 `netsuite-restlet.client.ts`. Se valida sesion, rol efectivo Formalizacion,
-`formalizacion.home.stages.read`, propiedad y permiso de aprobaciones cuando
-corresponde, antes del GET externo. Alias nativo prevalece incluso si impide
+el permiso independiente «Ver orden de venta» antes del GET externo, según
+[64 - Lectura de una orden](64-Formalizacion-Permiso-Ver-Orden.md). La lectura
+no se restringe al vendedor propietario. Alias nativo prevalece incluso si impide
 usar la orden; no se permite escoger una referencia externa desde el navegador.
 URL/cuenta/script y metodo estan fijados en servidor; sin redirects, reintentos
 ni escritura. Credenciales opcionales al arranque; faltantes producen 503 y

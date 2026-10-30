@@ -1,10 +1,12 @@
 import { Inject, Injectable } from "@nestjs/common";
 
 import { DatabaseService } from "../../../database/database.service.js";
+import { CATALOG_CONTEXT_MODULES } from "../catalogs/catalogs.constants.js";
+import { NOTE_ACTIONS } from "../notes/notes.permissions.js";
 import { DEFAULT_DIRECT_OVERRIDE_SCOPE, EffectivePermissionService } from "../permissions/effective-permission.service.js";
 import type { PermissionEffect, PermissionInput, PermissionOverrideInput } from "../permissions/permission.types.js";
 import { resolveHighestPermissionScope } from "../permissions/permission-scope.js";
-import type { IdentityAuthSummary, IdentityOrgUnit, IdentityProfile, IdentityRole } from "./identity.types.js";
+import type { IdentityAuthorizationProfile, IdentityAuthSummary, IdentityOrgUnit, IdentityProfile, IdentityRole } from "./identity.types.js";
 import { MICROSOFT_PROVIDER_CODE } from "./identity-microsoft.constants.js";
 import { type ModuleRoleAccess, normalizePermissionModule, resolveModuleRoleAccess } from "./identity-module-policy.js";
 import { ACTIVE_STATUS, LOCAL_PROVIDER_AVAILABLE_STATUSES, LOCAL_PROVIDER_CODE, PENDING_LOCAL_STATUS } from "./identity-repository.shared.js";
@@ -68,6 +70,19 @@ export class IdentityProfileRepository {
         @Inject(DatabaseService) private readonly database: DatabaseService,
         @Inject(EffectivePermissionService) private readonly permissions: EffectivePermissionService,
     ) {}
+
+    /** Resolves current persisted user policy for internal resource checks, without impersonating a session. */
+    async findAuthorizationByUserPublicId(publicId: string): Promise<IdentityAuthorizationProfile | null> {
+        const user = await this.database.db.selectFrom("sec_user").select(["id_user as id", "public_id_user as publicId", "display_name_user as displayName", "email_user as email", "status_user as status", "permission_version_user as permissionVersion"]).where("public_id_user", "=", publicId).where("status_user", "=", ACTIVE_STATUS).where("deleted_at_user", "is", null).executeTakeFirst();
+        if (!user) return null;
+        const assigned = await this.findOrgUnits(user.id);
+        const access = await this.findRoles(user.id, assigned);
+        const orgUnits = await this.effectiveOrgUnits(access, assigned);
+        const scope = orgUnits.length ? resolveHighestPermissionScope(orgUnits.map((unit) => unit.scope)) : DEFAULT_DIRECT_OVERRIDE_SCOPE;
+        const inputs = await this.findEffectivePermissionInputs(user.id, scope, access, orgUnits);
+        const { id: _internal, ...identityUser } = user;
+        return { user: { ...identityUser, profileImageUrl: null }, roles: access.roles, orgUnits, permissions: this.permissions.calculate(inputs).permissions };
+    }
 
     /**
      * Carga identidad desde hash de token opaco de sesion.
@@ -325,12 +340,22 @@ export class IdentityProfileRepository {
             };
         }
 
-        const [rolePermissions, overrides] = await Promise.all([this.findRolePermissions(userId, scope), this.findOverrides(userId)]);
+        const [rolePermissions, overrides, personalNotes] = await Promise.all([this.findRolePermissions(userId, scope), this.findOverrides(userId), this.findPersonalNotesPermissions(orgUnits)]);
 
         return {
-            overrides: this.restrictToModules(overrides, access.moduleCodes, orgUnits),
-            rolePermissions: this.restrictToModules(this.restrictGrantingRoles(rolePermissions, access), access.moduleCodes, orgUnits),
+            overrides: [...this.restrictToModules(overrides, access.moduleCodes, orgUnits), ...overrides.filter((entry) => entry.effect === "deny" && CATALOG_CONTEXT_MODULES.some((module) => NOTE_ACTIONS.some((action) => entry.code === `${module}.notes.${action}`)) && !this.restrictToModules([entry], access.moduleCodes, orgUnits).length)],
+            rolePermissions: [...personalNotes, ...this.restrictToModules(this.restrictGrantingRoles(rolePermissions, access), access.moduleCodes, orgUnits)],
         };
+    }
+
+    /** Personal notes are self-only within existing effective modules; live overrides still win. */
+    private async findPersonalNotesPermissions(orgUnits: readonly IdentityOrgUnit[]): Promise<PermissionInput[]> {
+        const modules = orgUnits.map((unit) => unit.code).filter((code) => CATALOG_CONTEXT_MODULES.some((module) => module === code));
+        if (modules.length === 0) return [];
+        const codes = modules.flatMap((module) => NOTE_ACTIONS.map((action) => `${module}.notes.${action}`));
+        const rows = await this.database.db.selectFrom("sec_permission").select(["code_permission as code", "module_code_permission as moduleCode"]).where("status_permission", "=", ACTIVE_STATUS).where("code_permission", "in", codes).where("module_code_permission", "in", modules).execute();
+        // Exact matching also prevents a misconfigured definition from borrowing another module.
+        return rows.filter((row) => modules.includes(row.moduleCode) && NOTE_ACTIONS.some((action) => row.code === `${row.moduleCode}.notes.${action}`)).map((row) => ({ code: row.code, scope: DEFAULT_DIRECT_OVERRIDE_SCOPE }));
     }
 
     /** A grant cannot borrow another role's ceiling or survive its own role revocation. */

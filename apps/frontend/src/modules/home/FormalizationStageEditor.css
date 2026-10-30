@@ -18,8 +18,8 @@
     font-weight: 600;
 }
 
-.formalization-stage-editor select,
-.formalization-stage-editor textarea {
+:is(.formalization-stage-editor, .formalization-stage-editor__exception) select,
+:is(.formalization-stage-editor, .formalization-stage-editor__exception) textarea {
     box-sizing: border-box;
     width: 100%;
     min-height: 40px;
@@ -32,19 +32,19 @@
     font-weight: 400;
 }
 
-.formalization-stage-editor textarea {
+:is(.formalization-stage-editor, .formalization-stage-editor__exception) textarea {
     min-height: 88px;
     resize: vertical;
 }
 
-.formalization-stage-editor select:focus-visible,
-.formalization-stage-editor textarea:focus-visible {
+:is(.formalization-stage-editor, .formalization-stage-editor__exception) select:focus-visible,
+:is(.formalization-stage-editor, .formalization-stage-editor__exception) textarea:focus-visible {
     outline: 2px solid var(--color-control-border, #5d799a);
     outline-offset: 2px;
 }
 
-.formalization-stage-editor select:disabled,
-.formalization-stage-editor textarea:disabled {
+:is(.formalization-stage-editor, .formalization-stage-editor__exception) select:disabled,
+:is(.formalization-stage-editor, .formalization-stage-editor__exception) textarea:disabled {
     cursor: not-allowed;
     background: var(--ent-tint, #f0f3f8);
     color: var(--ent-ink-2, #3b4a61);
@@ -165,4 +165,118 @@
     border-color: #18222f;
     background: #eef2f7;
     color: #18222f;
+}
+
+/* Compact action: sized like a toolbar button, so it does not outweigh the stage selector below it. */
+.catalog-item-detail-drawer--projects .formalization-stage-editor__advance .ant-btn.formalization-advance-btn:not(.ant-btn-dangerous):not(:disabled),
+.formalization-stage-editor__advance .ant-btn.formalization-advance-btn {
+    gap: 6px;
+    height: 28px;
+    padding: 0 12px;
+    border-color: #b7d9c6;
+    border-radius: 6px;
+    background: #f1f8f4;
+    font-size: 12.5px;
+    line-height: 26px;
+}
+
+.formalization-stage-editor__advance .ant-btn.formalization-advance-btn .anticon {
+    font-size: 12px;
+}
+
+.formalization-stage-editor__advance {
+    gap: 8px 12px;
+    padding-bottom: 12px;
+}
+
+.formalization-stage-editor__exception {
+    display: grid;
+    gap: 12px;
+}
+.formalization-stage-editor__exception > label {
+    display: grid;
+    gap: 6px;
+    font-size: 13px;
+}
+.formalization-stage-editor__exception > .ant-btn {
+    justify-self: start;
+}
+
+/* Main action first, with its destination beside it; the exceptional move sits below under a rule, small and quiet, so it never competes with the green action. */
+.formalization-stage-editor__actions {
+    display: grid;
+    gap: 12px;
+}
+.formalization-stage-editor__actions .formalization-stage-editor__advance {
+    padding-bottom: 0;
+    border-bottom: 0;
+}
+.formalization-stage-editor__actions .formalization-stage-editor__move {
+    justify-self: start;
+    height: 28px;
+    padding: 0 12px;
+    border-color: #c3ccd9;
+    color: #3c4f68;
+    font-size: 12.5px;
+}
+.formalization-stage-editor__actions .formalization-stage-editor__advance + .formalization-stage-editor__move {
+    margin-top: 0;
+    padding-top: 0;
+}
+
+/* "Envío del contrato": same frame, band and label/value rhythm as "Acciones de la etapa". */
+.formalization-contract-send {
+    border-color: var(--ent-border, #b4c0d0);
+    border-radius: 6px;
+    overflow: hidden;
+}
+.formalization-contract-send .ant-card-head {
+    min-height: 40px;
+    padding: 0 16px;
+    border-bottom: 1px solid var(--ent-border, #b4c0d0);
+    background: #eef2f7;
+}
+.formalization-contract-send .ant-card-head-title {
+    padding: 10px 0;
+    font-size: 14px;
+    font-weight: 700;
+}
+.formalization-contract-send .ant-card-body {
+    padding: 14px 16px 16px;
+}
+.formalization-contract-send__label {
+    color: #496180;
+    font-size: 12px;
+    font-weight: 500;
+}
+.formalization-contract-send__email {
+    color: #2f3a4b;
+    font-size: 13px;
+    font-weight: 600;
+    overflow-wrap: anywhere;
+}
+.formalization-contract-send .ant-space {
+    gap: 4px;
+}
+.formalization-contract-send .ant-btn {
+    height: 28px;
+    margin-top: 8px;
+    padding: 0 12px;
+    font-size: 12.5px;
+}
+
+/* Exception dialog: a centered dialog above the order panel, never a second panel stacked on it. */
+.formalization-exception-modal .ant-modal-title {
+    font-size: 15px;
+    font-weight: 600;
+}
+
+.formalization-exception-modal__context {
+    margin: 0 0 12px;
+    color: #496180;
+    font-size: 12.5px;
+}
+
+.formalization-exception-modal .formalization-stage-editor__exception {
+    margin: 0;
 }

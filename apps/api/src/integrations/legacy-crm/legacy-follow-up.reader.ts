@@ -4,7 +4,7 @@ import { sql, type Transaction } from "kysely";
 import type { CrmDatabase } from "../../database/database.types.js";
 import type { FollowUpAccess, FollowUpPeriod, FollowUpRead } from "../../modules/crm/sales/sales-orders/follow-up.contract.js";
 import type { FollowUpLegacyReader } from "../../modules/crm/sales/sales-orders/follow-up.port.js";
-import { followUpSourceQuery, readFollowUpSource } from "../../modules/crm/sales/sales-orders/follow-up.query.js";
+import { followUpSourceQuery, readFollowUpRecord, readFollowUpSource } from "../../modules/crm/sales/sales-orders/follow-up.query.js";
 import { LegacyCrmDatabaseService } from "./legacy-crm-database.service.js";
 
 /** Read-only legacy projection. Ambiguous provider relationships remain null instead of duplicating orders. */
@@ -18,7 +18,14 @@ export class LegacyFollowUpReader implements FollowUpLegacyReader {
     }
     /** Alias shadowing includes inactive/deleted native orders: authority never falls back implicitly. */
     read(tx: Transaction<CrmDatabase>, query: FollowUpRead, period: FollowUpPeriod, access: FollowUpAccess) {
-        const base = sql`
+        return readFollowUpSource(tx, followUpSourceQuery(this.base(period), query, access));
+    }
+    /** Bounds the source projection to the requested identity before classification. */
+    readRecord(tx: Transaction<CrmDatabase>, id: string, period: FollowUpPeriod) {
+        return readFollowUpRecord(tx, this.base(period, id));
+    }
+    private base(period: FollowUpPeriod, id?: string) {
+        return sql`
             SELECT o.id_ov AS sortId,CONCAT('legacy:',o.id_ov) AS id,'legacy' AS source,
                 COALESCE(NULLIF(TRIM(o.id_ov_tranid),''),CONCAT('OV-',o.id_ov)) AS number,NULL AS nativeCode,
                 NULLIF(TRIM(l.nombre_lead),'') AS client,NULLIF(TRIM(l.email_lead),'') AS clientEmail,
@@ -50,7 +57,6 @@ export class LegacyFollowUpReader implements FollowUpLegacyReader {
                 AND NOT EXISTS(SELECT 1 FROM ${sql.table("crmdatabase-api.expedientes")} sibling WHERE sibling.ID_interno_expediente=f.ID_interno_expediente AND sibling.id_expediente<>f.id_expediente)
             LEFT JOIN ${sql.table("crmdatabase-api.audit_sales_order_state_event")} e ON e.id_sales_order_state_event=(SELECT latest.id_sales_order_state_event
                 FROM ${sql.table("crmdatabase-api.audit_sales_order_state_event")} latest WHERE latest.legacy_order_id_sales_order_state_event=o.id_ov ORDER BY latest.sequence_sales_order_state_event DESC LIMIT 1)
-            WHERE o.status_ov=1 AND o.caida_ov=0 AND NOT EXISTS(SELECT 1 FROM crm_sales_order n WHERE n.id_old_produccion_sales_order=o.id_ov)`;
-        return readFollowUpSource(tx, followUpSourceQuery(base, query, access));
+            WHERE ${id === undefined ? sql`TRUE` : sql`o.id_ov=${Number(id)}`} AND o.status_ov=1 AND o.caida_ov=0 AND NOT EXISTS(SELECT 1 FROM crm_sales_order n WHERE n.id_old_produccion_sales_order=o.id_ov)`;
     }
 }

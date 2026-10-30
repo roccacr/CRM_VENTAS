@@ -1,6 +1,6 @@
 import { ConfigService } from "@nestjs/config";
 import { type CompiledQuery, DummyDriver, Kysely, MysqlAdapter, MysqlIntrospector, MysqlQueryCompiler, type QueryResult } from "kysely";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import type { DatabaseService } from "../../src/database/database.service.js";
 import type { CrmDatabase } from "../../src/database/database.types.js";
@@ -21,8 +21,9 @@ const input = {
 };
 
 /** Compiles SQL and observes transaction lifecycle without a connection or environment file. */
-const setup = (options: { ready?: boolean; replay?: Record<string, unknown>; sequence?: number; failInsert?: boolean; schema?: string; anchor?: boolean } = {}) => {
+const setup = (options: { ready?: boolean; replay?: Record<string, unknown>; sequence?: number; failInsert?: boolean; schema?: string; anchor?: boolean; startupFailures?: number; startupCode?: string } = {}) => {
     const queries: CompiledQuery[] = [];
+    let startupFailures = options.startupFailures ?? 0;
     const lifecycle: string[] = [];
     const responses: [string, (query: CompiledQuery) => unknown[]][] = [
         ["DATABASE()", () => [{ name: options.schema ?? "CRM_THINK_V2" }]],
@@ -49,6 +50,7 @@ const setup = (options: { ready?: boolean; replay?: Record<string, unknown>; seq
             const connection = await super.acquireConnection();
             connection.executeQuery = <R>(query: CompiledQuery): Promise<QueryResult<R>> => {
                 queries.push(query);
+                if (query.sql.includes("DATABASE()") && startupFailures-- > 0) return Promise.reject(Object.assign(new Error("synthetic connection failure"), { code: options.startupCode ?? "ETIMEDOUT" }));
                 if (options.failInsert && /^insert into `audit_record_event`/i.test(query.sql)) return Promise.reject(new Error("Injected central audit failure"));
                 const rows = responses.find(([fragment]) => query.sql.includes(fragment))?.[1](query) ?? [];
                 return Promise.resolve({ rows: rows as R[] });
@@ -62,6 +64,25 @@ const setup = (options: { ready?: boolean; replay?: Record<string, unknown>; seq
 };
 
 describe("central transactional record writer", () => {
+    it.each([
+        { failures: 1, code: "ETIMEDOUT", succeeds: true, queries: 3 },
+        { failures: 5, code: "ETIMEDOUT", succeeds: false, queries: 3 },
+        { failures: 1, code: "ER_ACCESS_DENIED_ERROR", succeeds: false, queries: 1 },
+    ])("bounds startup connection retries without retrying writes or configuration errors: %j", async ({ failures, code, succeeds, queries: expected }) => {
+        vi.useFakeTimers();
+        const f = setup({ startupFailures: failures, startupCode: code });
+        try {
+            const operation = f.service.onModuleInit();
+            const assertion = succeeds ? expect(operation).resolves.toBeUndefined() : expect(operation).rejects.toMatchObject({ code });
+            await vi.runAllTimersAsync();
+            await assertion;
+            expect(f.queries).toHaveLength(expected);
+            expect(f.queries.every((query) => /^SELECT\b/.test(query.sql))).toBe(true);
+        } finally {
+            vi.useRealTimers();
+            await f.db.destroy();
+        }
+    });
     it("does not query on disabled startup and fails enabled startup without the migration ledger", async () => {
         const { db, database, queries } = setup({ ready: false });
         try {

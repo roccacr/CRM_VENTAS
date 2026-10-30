@@ -86,3 +86,31 @@ describe("Home aggregate SQL", () => {
         expect(aggregateNumber("9007199254740991")).toBe(Number.MAX_SAFE_INTEGER);
     });
 });
+
+it("bounds personal activity to six actor-filtered events using deterministic newest-first order", async () => {
+    const queries: CompiledQuery[] = [];
+    const driver = new DummyDriver();
+    driver.acquireConnection = async () => {
+        const connection = await DummyDriver.prototype.acquireConnection.call(driver);
+        connection.executeQuery = (query) => {
+            queries.push(query);
+            return Promise.resolve({ rows: [] });
+        };
+        return connection;
+    };
+    const db = new Kysely<CrmDatabase>({ dialect: { createDriver: () => driver, createAdapter: () => new MysqlAdapter(), createIntrospector: (database) => new MysqlIntrospector(database), createQueryCompiler: () => new MysqlQueryCompiler() } });
+    try {
+        const repository = new HomeSummaryRepository({ db } as DatabaseService);
+        await repository.readSnapshot((tx) => repository.recentActivity(tx, "authenticated-actor"));
+        expect(queries).toHaveLength(1);
+        const query = queries[0];
+        expect(query?.parameters).toEqual(["authenticated-actor"]);
+        expect(query?.sql).toContain("e.actor_reference_record_event=?");
+        expect(query?.sql).toContain("e.module_record_event='formalizacion'");
+        expect(query?.sql).toContain("r.entity_type_record='sales_order'");
+        expect(query?.sql).toContain("ORDER BY e.recorded_at_record_event DESC,e.id_record_event DESC LIMIT 6");
+        expect(query?.sql).not.toMatch(/INSERT|UPDATE|DELETE|SELECT \*/);
+    } finally {
+        await db.destroy();
+    }
+});

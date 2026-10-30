@@ -102,7 +102,6 @@
     box-shadow: var(--ent-shadow);
 }
 
-
 .users-view.catalog-items-page--projects .administration-users-panel .catalog-section-heading {
     padding: 14px 18px;
     border-bottom: 1px solid var(--ent-divider);

@@ -25,6 +25,33 @@ function fixture(deny = false, enabled = true) {
     return { identity, repository, legacy, order, service: new MarketingHomeService(identity as never, repository as never, legacy) };
 }
 describe("marketing home read authorization and order", () => {
+    it.each(["allow", "deny"])("uses explicit global read without widening other permissions: %s", async (effect) => {
+        const f = fixture();
+        f.identity.getCurrentUser.mockResolvedValue({
+            user: { publicId: "me" },
+            permissions: [
+                { code: "mercadeo.home.read", effect: "allow", scope: "self" },
+                { code: "mercadeo.reports.read_all", effect, scope: "self" },
+            ],
+        });
+        const visibleSellers = vi.fn().mockResolvedValue(new Set(["me"]));
+        Object.assign(f.repository, { visibleSellers });
+        await f.service.summary("session", {});
+        expect(visibleSellers).toHaveBeenCalledTimes(effect === "allow" ? 0 : 1);
+    });
+
+    it("does not let global read replace the denied Home permission", async () => {
+        const f = fixture();
+        f.identity.getCurrentUser.mockResolvedValue({
+            user: { publicId: "me" },
+            permissions: [
+                { code: "mercadeo.home.read", effect: "deny", scope: "self" },
+                { code: "mercadeo.reports.read_all", effect: "allow", scope: "self" },
+            ],
+        });
+        await expect(f.service.summary("session", {})).rejects.toMatchObject({ status: 403 });
+        expect(f.repository.readSnapshot).not.toHaveBeenCalled();
+    });
     it("reads native before legacy and produces one JSON", async () => {
         const f = fixture();
         const result = await f.service.summary("session", { period: "month" });

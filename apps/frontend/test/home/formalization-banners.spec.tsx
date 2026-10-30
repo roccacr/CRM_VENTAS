@@ -32,7 +32,7 @@ afterEach(cleanup);
 it("retries failed approvals before opening the empty queue", async () => {
     installBrowserApiDoubles();
     vi.mocked(getApprovalCount).mockRejectedValueOnce(new Error("offline")).mockResolvedValueOnce(2);
-    render(<FormalizationHomePage effectivePermissions={[{ code: "formalizacion.home.approvals.read", effect: "allow" }]} />);
+    render(<FormalizationHomePage roles={[role]} effectivePermissions={[{ code: "formalizacion.home.approvals.read", effect: "allow" }]} />);
     fireEvent.click(await screen.findByRole("button", { name: "Reintentar pendientes de aprobación" }));
     await screen.findByLabelText("Órdenes pendientes de aprobación: 2");
     expect(getApprovalCount).toHaveBeenCalledTimes(2);
@@ -43,7 +43,7 @@ it("shares the approval request during StrictMode replay", async () => {
     vi.mocked(getApprovalCount).mockResolvedValue(17);
     render(
         <StrictMode>
-            <FormalizationHomePage effectivePermissions={[{ code: "formalizacion.home.approvals.read", effect: "allow" }]} />
+            <FormalizationHomePage roles={[role]} effectivePermissions={[{ code: "formalizacion.home.approvals.read", effect: "allow" }]} />
         </StrictMode>,
     );
     await screen.findByLabelText("Órdenes pendientes de aprobación: 17");
@@ -52,7 +52,7 @@ it("shares the approval request during StrictMode replay", async () => {
 
 it("does not request a hidden approval banner on direct Orders entry", () => {
     installBrowserApiDoubles();
-    render(<FormalizationHomePage initialView="orders" effectivePermissions={[{ code: "formalizacion.home.approvals.read", effect: "allow" }]} />);
+    render(<FormalizationHomePage roles={[role]} initialView="orders" effectivePermissions={[{ code: "formalizacion.home.approvals.read", effect: "allow" }]} />);
     expect(getApprovalCount).not.toHaveBeenCalled();
 });
 
@@ -79,7 +79,7 @@ it("shows an accessible preload until the approval response arrives", async () =
                 resolveCount = resolve;
             }),
     );
-    render(<FormalizationHomePage effectivePermissions={[{ code: "formalizacion.home.approvals.read", effect: "allow" }]} />);
+    render(<FormalizationHomePage roles={[role]} effectivePermissions={[{ code: "formalizacion.home.approvals.read", effect: "allow" }]} />);
     expect(screen.getByRole("status", { name: "Cargando pendientes de aprobación" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Ver pendientes de aprobación de Formalización" }).getAttribute("aria-busy")).toBe("true");
     resolveCount(2);
@@ -94,7 +94,7 @@ it("loads the real count only with permission", async () => {
     vi.mocked(getApprovalCount).mockResolvedValue(17);
     const { rerender } = render(<FormalizationHomePage />);
     expect(getApprovalCount).not.toHaveBeenCalled();
-    rerender(<FormalizationHomePage effectivePermissions={[{ code: "formalizacion.home.approvals.read", effect: "allow" }]} />);
+    rerender(<FormalizationHomePage roles={[role]} effectivePermissions={[{ code: "formalizacion.home.approvals.read", effect: "allow" }]} />);
     await waitFor(() => {
         expect(screen.getByLabelText("Órdenes pendientes de aprobación: 17")).toBeTruthy();
     });
@@ -103,7 +103,7 @@ it("loads the real count only with permission", async () => {
 it("shows unavailable rather than zero on source failure", async () => {
     installBrowserApiDoubles();
     vi.mocked(getApprovalCount).mockRejectedValue(new Error("offline"));
-    render(<FormalizationHomePage effectivePermissions={[{ code: "formalizacion.home.approvals.read", effect: "allow" }]} />);
+    render(<FormalizationHomePage roles={[role]} effectivePermissions={[{ code: "formalizacion.home.approvals.read", effect: "allow" }]} />);
     await waitFor(() => {
         expect(screen.getByText("No disponible")).toBeTruthy();
     });
@@ -123,7 +123,7 @@ it("keeps unauthorized follow-up disabled and an empty recent-activity surface",
     expect(screen.getByText("Los movimientos recientes aún no están disponibles.")).toBeTruthy();
 });
 
-it("keeps follow-up disabled without the effective stage role and permission even with approval access", () => {
+it("keeps follow-up disabled without the effective role even with approval permission", () => {
     installBrowserApiDoubles();
     const { rerender } = render(<FormalizationHomePage />);
     expect(screen.queryByRole("combobox", { name: "Bandeja de seguimiento" })).toBeNull();
@@ -140,14 +140,14 @@ it.each(["role", "override"] as const)("keeps approvals unmounted until an effec
     const { rerender } = render(<FormalizationHomePage />);
     const bannerName = "Ver pendientes de aprobación de Formalización";
     expect(screen.queryByRole("button", { name: bannerName })).toBeNull();
-    rerender(<FormalizationHomePage effectivePermissions={[]} />);
+    rerender(<FormalizationHomePage roles={[role]} effectivePermissions={[]} />);
     expect(screen.queryByRole("button", { name: bannerName })).toBeNull();
-    rerender(<FormalizationHomePage effectivePermissions={[{ code: "contract.review", effect: "allow" }]} />);
+    rerender(<FormalizationHomePage roles={[role]} effectivePermissions={[{ code: "contract.review", effect: "allow" }]} />);
     expect(screen.queryByRole("button", { name: bannerName })).toBeNull();
     const grant = { code: "formalizacion.home.approvals.read", effect: "allow" as const, source };
-    rerender(<FormalizationHomePage effectivePermissions={[grant]} />);
+    rerender(<FormalizationHomePage roles={[role]} effectivePermissions={[grant]} />);
     expect(screen.getByRole("button", { name: bannerName })).toBeTruthy();
-    rerender(<FormalizationHomePage effectivePermissions={[grant, { ...grant, effect: "deny" }]} />);
+    rerender(<FormalizationHomePage roles={[role]} effectivePermissions={[grant, { ...grant, effect: "deny" }]} />);
     expect(screen.queryByRole("button", { name: bannerName })).toBeNull();
     rerender(<FormalizationHomePage />);
     expect(screen.queryByRole("button", { name: bannerName })).toBeNull();
@@ -187,16 +187,16 @@ it("shows a separate approval strip only with an effective grant and preserves o
     expect(screen.getByRole("region", { name: "Bienvenida a Formalización" })).toBeTruthy();
     expect(screen.getByText("Hola")).toBeTruthy();
     expect(container.querySelectorAll(".formalization-home__banners > article")).toHaveLength(0);
-    rerender(<FormalizationHomePage effectivePermissions={[permission, { ...permission, effect: "deny" }]} />);
+    rerender(<FormalizationHomePage roles={[role]} effectivePermissions={[permission, { ...permission, effect: "deny" }]} />);
     expect(screen.queryByRole("button", { name: "Ver pendientes de aprobación de Formalización" })).toBeNull();
-    rerender(<FormalizationHomePage effectivePermissions={[permission]} />);
+    rerender(<FormalizationHomePage roles={[role]} effectivePermissions={[permission]} />);
     expect(screen.getByRole("button", { name: "Ver pendientes de aprobación de Formalización" }).closest(".formalization-home__header")).toBeTruthy();
     expect(container.querySelectorAll(".formalization-home__banners > article")).toHaveLength(0);
     expect(screen.getByLabelText("Órdenes pendientes de aprobación: Consultando…")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Ver pendientes de aprobación de Formalización" }));
     expect(screen.getByRole("heading", { name: "Pendientes de aprobación", level: 1 })).toBeTruthy();
     expect(screen.queryAllByRole("button", { name: /^Ver seguimiento de/ })).toHaveLength(0);
-    rerender(<FormalizationHomePage effectivePermissions={[]} />);
+    rerender(<FormalizationHomePage roles={[role]} effectivePermissions={[]} />);
     expect(screen.queryByRole("heading", { name: "Pendientes de aprobación", level: 1 })).toBeNull();
     expect(screen.getByRole("heading", { name: "Formalización", level: 1 })).toBeTruthy();
 });
@@ -245,4 +245,32 @@ it.each([
     expect(screen.queryAllByRole("button", { name: /^Ver seguimiento de/ })).toHaveLength(0);
     fireEvent.click(screen.getByRole("button", { name: "Volver a Inicio" }));
     expect(screen.getByRole("heading", { name: "Formalización", level: 1 })).toBeTruthy();
+});
+
+it("contracts-only hides other stage banners and queue options", async () => {
+    installBrowserApiDoubles();
+    render(<FormalizationHomePage roles={[role]} effectivePermissions={[{ ...stagePermission, code: "formalizacion.home.contracts.read" }]} />);
+    expect(await screen.findByRole("heading", { name: "Contratos pendientes" })).toBeTruthy();
+    expect(screen.queryByRole("heading", { name: "Gestión bancaria" })).toBeNull();
+    expect(screen.queryByRole("option", { name: /Gestión bancaria/ })).toBeNull();
+    expect(screen.getByRole("option", { name: /Por enviar/ })).toBeTruthy();
+});
+
+it("revoking one category discards its mounted queue and pending data", async () => {
+    installBrowserApiDoubles();
+    const contracts = { ...stagePermission, code: "formalizacion.home.contracts.read" };
+    const bank = { ...stagePermission, code: "formalizacion.home.banking.read" };
+    const { rerender } = render(<FormalizationHomePage roles={[role]} effectivePermissions={[contracts, bank]} />);
+    fireEvent.click(await screen.findByRole("button", { name: "Abrir Sin iniciar / En proceso" }));
+    expect(await screen.findByRole("heading", { name: "Listado de órdenes" })).toBeTruthy();
+    rerender(<FormalizationHomePage roles={[role]} effectivePermissions={[contracts]} />);
+    expect(screen.queryByRole("heading", { name: "Gestión bancaria" })).toBeNull();
+    expect(screen.queryByRole("option", { name: /Gestión bancaria/ })).toBeNull();
+});
+
+it("does not request approvals without the active effective role", () => {
+    installBrowserApiDoubles();
+    render(<FormalizationHomePage effectivePermissions={[{ code: "formalizacion.home.approvals.read", effect: "allow" }]} />);
+    expect(screen.queryByRole("button", { name: "Ver pendientes de aprobación de Formalización" })).toBeNull();
+    expect(getApprovalCount).not.toHaveBeenCalled();
 });

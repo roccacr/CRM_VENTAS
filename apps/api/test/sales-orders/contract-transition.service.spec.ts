@@ -25,11 +25,15 @@ describe("contract transition authorization and internal input", () => {
         expect(f.transition).not.toHaveBeenCalled();
     });
     it.each(["contract_pending_signature", "contract_pending_send"])("does not require a legacy allow for the independent selected target %s", async (targetState) => {
-        const f = setup(undefined, [{ code: "formalizacion.orders.stage.update", effect: "allow", scope: "all_areas" }]);
+        const f = setup(undefined, [
+            { code: "formalizacion.orders.stage.update", effect: "allow", scope: "all_areas" },
+            { code: `formalizacion.orders.stage.${targetState}`, effect: "allow", scope: "all_areas" },
+        ]);
         await expect(f.service.transition("session", "set", { ...input, targetState } as never)).resolves.toEqual({ sequence: 1 });
     });
     it("keeps unrelated destinations available despite old contract denies", async () => {
         const f = setup(undefined, [
+            { code: "formalizacion.orders.stage.closed", effect: "allow", scope: "all_areas" },
             { code: "formalizacion.orders.stage.update", effect: "allow", scope: "all_areas" },
             { code: "formalizacion.contracts.send", effect: "deny", scope: "all_areas" },
             { code: "formalizacion.contracts.revert", effect: "deny", scope: "all_areas" },
@@ -37,7 +41,10 @@ describe("contract transition authorization and internal input", () => {
         await expect(f.service.transition("session", "set", { ...input, targetState: "closed" } as never)).resolves.toEqual({ sequence: 1 });
     });
     it("requires the independent stage permission for a selected stage", async () => {
-        const f = setup(undefined, [{ code: "formalizacion.orders.stage.update", effect: "allow", scope: "all_areas" }]);
+        const f = setup(undefined, [
+            { code: "formalizacion.orders.stage.update", effect: "allow", scope: "all_areas" },
+            { code: "formalizacion.orders.stage.bank_management", effect: "allow", scope: "all_areas" },
+        ]);
         await expect(f.service.transition("session", "set", { ...input, targetState: "bank_management" } as never)).resolves.toEqual({ sequence: 1 });
         expect(f.transition).toHaveBeenCalledWith(expect.objectContaining({ action: "set", targetState: "bank_management", actorPublicId: "actor" }));
     });
@@ -63,8 +70,8 @@ describe("contract transition authorization and internal input", () => {
         );
     });
     it.each([
-        ["self", true],
-        ["assigned", true],
+        ["self", false],
+        ["assigned", false],
         ["own_area", false],
         ["own_area_and_children", false],
         ["all_areas", false],
@@ -89,7 +96,7 @@ describe("contract transition authorization and internal input", () => {
         await f.service.transition("session", "send", input, context);
         expect(f.transition).toHaveBeenCalledWith(expect.objectContaining({ actorPublicId: "actor", action: "send", source: "native", id: input.id, ipAddress: "127.0.0.1" }));
     });
-    it.each([{ roles: [] }, { roles: [{ code: "formalizacion", status: "inactive" }] }, { roles: [{ code: "owner", status: "active" }] }])("requires active base role before any order lookup (%j)", async ({ roles }) => {
+    it.each([{ roles: [] }, { roles: [{ code: "formalizacion", status: "inactive" }] }, { roles: [{ code: "jefe_formalizaciones", status: "inactive" }] }, { roles: [{ code: "owner", status: "active" }] }])("requires active base role before any order lookup (%j)", async ({ roles }) => {
         const f = setup(roles);
         await expect(f.service.transition("session", "send", input)).rejects.toThrow("Formalizacion");
         expect(f.transition).not.toHaveBeenCalled();
@@ -116,5 +123,62 @@ describe("contract transition authorization and internal input", () => {
         const f = setup(undefined, [{ code: "formalizacion.contracts.revert", effect: "allow", scope: "all_areas" }]);
         await expect(f.service.transition("session", "revert", { ...input, ...(reason === undefined ? {} : { reason }) })).rejects.toThrow();
         expect(f.transition).not.toHaveBeenCalled();
+    });
+});
+
+it.each(["contract_pending_send", "contract_pending_signature", "bank_management", "pending_balance", "pending_transfer", "transfer_signed", "closed"] as const)("requires the destination permission for %s, preserving individual denies", async (targetState) => {
+    const general = { code: "formalizacion.orders.stage.update", effect: "allow", scope: "all_areas" };
+    const target = { code: `formalizacion.orders.stage.${targetState}`, effect: "allow", scope: "all_areas" };
+    const dto = { ...input, targetState, reason: "Corrección autorizada" };
+    const missing = setup(undefined, [general]);
+    await expect(missing.service.transition("session", "set", dto)).rejects.toThrow();
+    expect(missing.transition).not.toHaveBeenCalled();
+    const allowed = setup(undefined, [general, target]);
+    await expect(allowed.service.transition("session", "set", dto)).resolves.toEqual({ sequence: 1 });
+    const denied = setup(undefined, [general, target, { ...target, effect: "deny" }]);
+    await expect(denied.service.transition("session", "set", dto)).rejects.toThrow();
+    expect(denied.transition).not.toHaveBeenCalled();
+});
+
+it("derives skip capability from the live profile and never accepts a request capability", async () => {
+    const base = [
+        { code: "formalizacion.orders.stage.update", effect: "allow", scope: "all_areas" },
+        { code: "formalizacion.orders.stage.transfer_signed", effect: "allow", scope: "all_areas" },
+    ];
+    const cmd = { ...input, targetState: "transfer_signed" as const, reason: "Excepción autorizada" };
+    const granted = setup(undefined, [...base, { code: "formalizacion.orders.stage.skip", effect: "allow", scope: "all_areas" }]);
+    await granted.service.transition("session", "set", cmd);
+    expect(granted.transition).toHaveBeenCalledWith(expect.objectContaining({ canSkipStages: true }));
+    const denied = setup(undefined, [...base, { code: "formalizacion.orders.stage.skip", effect: "allow", scope: "all_areas" }, { code: "formalizacion.orders.stage.skip", effect: "deny", scope: "all_areas" }]);
+    await denied.service.transition("session", "set", cmd);
+    expect(denied.transition).toHaveBeenCalledWith(expect.objectContaining({ canSkipStages: false }));
+    const forged = setup(undefined, base);
+    await expect(forged.service.transition("session", "set", { ...cmd, canSkipStages: true } as never)).rejects.toThrow();
+    expect(forged.transition).not.toHaveBeenCalled();
+});
+
+describe.each(["formalizacion", "jefe_formalizaciones"])("module-wide writes for %s", (role) => {
+    it.each(["self", "assigned"])("sends another seller order with %s and optional self skip", async (scope) => {
+        const f = setup(
+            [{ code: role, status: "active" }],
+            [
+                { code: "formalizacion.contracts.send", effect: "allow", scope },
+                { code: "formalizacion.orders.stage.skip", effect: "allow", scope: "self" },
+            ],
+        );
+        await f.service.transition("session", "send", input);
+        expect(f.transition).toHaveBeenCalledWith(expect.objectContaining({ ownOnly: false, canSkipStages: true }));
+    });
+    it.each(["self", "assigned"])("selects another seller destination with %s while preserving denies", async (scope) => {
+        const grants = [
+            { code: "formalizacion.orders.stage.update", effect: "allow", scope },
+            { code: "formalizacion.orders.stage.bank_management", effect: "allow", scope },
+        ];
+        const f = setup([{ code: role, status: "active" }], grants);
+        await f.service.transition("session", "set", { ...input, targetState: "bank_management" });
+        expect(f.transition).toHaveBeenCalledWith(expect.objectContaining({ ownOnly: false }));
+        const denied = setup([{ code: role, status: "active" }], [...grants, { code: "formalizacion.orders.stage.bank_management", effect: "deny", scope }]);
+        await expect(denied.service.transition("session", "set", { ...input, targetState: "bank_management" })).rejects.toMatchObject({ status: 403 });
+        expect(denied.transition).not.toHaveBeenCalled();
     });
 });

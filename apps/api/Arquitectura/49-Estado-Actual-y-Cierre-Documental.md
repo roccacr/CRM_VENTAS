@@ -1,5 +1,35 @@
 # 49 - Estado actual y cierre documental de CRM TINK
 
+## Corte vigente de notas y QA - 2026-10-29
+
+La implementación de notas comprende API/UI personal, compartir con usuarios de
+otros módulos, respuestas y menciones, campana, publicación Socket.IO duradera,
+seguimiento/silencio, posiciones/PIN/tamaño personales y acciones de metadatos
+en segundo plano. Crear/editar contenido conserva confirmación de guardado.
+Se pueden invitar cuentas activas, inactivas y pendientes sin activarlas; la
+lectura/entrega vuelve a comprobar la autorización y revocación.
+
+La nota usa identidad canónica de registro, no URL ni referencia ERP. Un invitado
+sin permiso de orden conserva la nota en campana/Mis notas, con `context: null`.
+La ficha/autorizador operativo disponible sigue siendo Formalización; no se
+inventan fichas de otros módulos. Las migraciones052/053 y [66](66-Notas-Enterprise-Seguimiento.md)
+añaden ubicaciones Home, responsable, vencimiento, recordatorios privados,
+filtros/búsqueda e historial con cola durable. Copia legacy, adjuntos y correo
+externo permanecen fuera de esta entrega; no se importaron notas antiguas.
+
+QA ejecutado el29 y consolidado en [67](67-Plan-QA-Regresiones-20261029.md):
+API6524 aprobadas/151 omitidas, frontend1233 aprobadas y32 SQL/socket aprobadas
+en esquemas temporales eliminados. Se corrigieron expectativas/fixtures obsoletas
+del inventario HTTP y navegación; no se relajaron permisos de producción.
+El primer check raíz terminó con error de tipado en pruebas; tras corregirlo el
+check frontend completo aprobó. No presentar aquel log raíz como exit0.
+Redis entre procesos, benchmark de latencia/carga y aceptación visual con dos
+cuentas reales siguen sin verificarse. Este cierre documental no ejecuta pruebas,
+consultas, migraciones, comandos comerciales ni despliegue. Los cortes anteriores
+conservan su fecha y no describen por sí solos el estado actual.
+
+Notas etapas1–4 implementadas2026-10-27: esquema nativo, API, interfaz, participantes, conversación y campana interna. [Contrato60](60-Notas-Etapa4-Colaboracion-y-Notificaciones.md) distingue evidencia y límites. Sin imports ni escritura legacy. [Plan56](56-Plan-Notas-Colaborativas-y-Convivencia-Legacy.md) y [diccionario](Diccionario-Datos/12-Notas-Colaborativas.md).
+
 ## Corte vigente de revision integral - 2026-10-27
 
 [55 - Revision documental integral](55-Revision-Documental-Integral-20261027.md)
@@ -164,9 +194,10 @@ Referencias: [35](35-Catalog-API-and-Schema.md),
 
 ## Formalizacion y contadores
 
-Aprobaciones exige formalizacion.home.approvals.read. Contratos y etapas
-posteriores exigen rol efectivo formalizacion y formalizacion.home.stages.read,
-validando antes de consultar. Owner hereda el rol, pero no evita un deny.
+Todas las categorías exigen rol efectivo Formalización y su permiso específico
+de banner, según [63 - Lectura por banner](63-Formalizacion-Lectura-Por-Banner.md).
+La migración047 sustituye el agregado y permite lectura de todos los vendedores
+dentro de las categorías concedidas. Owner hereda el rol, pero no evita un deny.
 Los contratos y cinco etapas posteriores comparten GET /formalization/home/summary.
 No son cinco ceros demostrativos: cero puede ser resultado real de la consulta.
 
@@ -357,3 +388,19 @@ No se reejecutaron lint, typecheck, pruebas ni builds: el cambio de este trabajo
 es exclusivamente documental; esos resultados siguen fechados en su ejecucion previa.
 No quedaron documentos pendientes de revision de consistencia dentro del
 inventario. Los pendientes de producto de la tabla anterior siguen abiertos.
+
+### Notas, etapa2 (27 octubre2026)
+
+API nativa protegida implementada. Contrato, limites y siguiente etapa en [57](57-Notas-Etapa2-API.md). No se activa interfaz, campanita ni copia legacy; no se importan notas.
+
+### Notas etapa3,27 octubre2026
+
+[58](58-Notas-Etapa3-Interfaz-Personal.md) conecta la interfaz personal a la API: Home y orden nativa, icono junto a campana, panel derecho, posiciones propias. Perfil con base self en modulos existentes; deny y autoria intactos. Compartir/campanita implementados en etapa4; copia legacy pendiente.
+
+### Correccion de notas, contexto opcional
+
+[59](59-Notas-Contexto-Opcional-y-Vistas.md) amplia etapa3: crear desde cualquier pantalla, checkbox para relacionar vista/orden, lectura autorizada native/legacy.041 registra solo metadatos del origen, sin importar registros ni activar copias.
+
+Notas etapa4 implementada27octubre2026: [contrato60](60-Notas-Etapa4-Colaboracion-y-Notificaciones.md),044 aplicada, colaboración y entrega interna. La proyección legacy/aceptación integral son etapas5/6 pendientes.
+
+Actualización vigente 2026-10-28: [62 - Notas en tiempo real](62-Notas-Tiempo-Real-Implementacion.md). Socket.IO, migración046 aditiva aplicada, campana/hilo/bandejas, recuperación REST y acceso a notas independiente del registro vinculado. Esta actualización sustituye las limitaciones históricas de transporte y acceso de las etapas anteriores. Copia legacy inactiva; Redis multiinstancia y aceptación visual real pendientes.

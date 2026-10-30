@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 
+import { ApiClientError } from "../../services/api/api-client";
 import { getDatabaseOrder } from "../../services/formalization/database-order-service";
 import { getNetsuiteOrder, type NetsuiteOrderIdentity } from "../../services/formalization/netsuite-order-service";
+import { type NetsuitePrimary, readNetsuitePrimary } from "../../services/formalization/netsuite-primary";
 
 function locationIdentity(): NetsuiteOrderIdentity | null {
     const query = new URLSearchParams(window.location.search);
@@ -21,18 +23,23 @@ function writeLocation(identity: NetsuiteOrderIdentity | null, netsuiteId?: stri
     window.history.replaceState(window.history.state, "", url);
 }
 export type NetsuiteOrderLoadStatus = "idle" | "loading" | "success" | "error";
+interface OrderRead {
+    status: NetsuiteOrderLoadStatus;
+    primary: NetsuitePrimary | null;
+    errorMessage?: string | undefined;
+}
 
-/** One bounded request per open identity; status belongs only to that identity. No persisted payload. */
-export function useNetsuiteOrderConsole(record: NetsuiteOrderIdentity | null, enabled: boolean, refreshVersion = 0): NetsuiteOrderLoadStatus {
+/** Reuses the authorized reads for console diagnostics and primary fields; stale/refreshing payloads never render. */
+export function useNetsuiteOrderConsole(record: NetsuiteOrderIdentity | null, enabled: boolean, refreshVersion = 0): OrderRead {
     const [initial] = useState(locationIdentity);
     const target = record ?? initial;
     const source = target?.source;
     const id = target?.id;
-    const [settled, setSettled] = useState<{ key: string; status: "success" | "error" } | null>(null);
-    const available = [import.meta.env.DEV, enabled, source, id].every(Boolean);
+    const [settled, setSettled] = useState<(OrderRead & { key: string }) | null>(null);
+    const available = [enabled, source, id].every(Boolean);
     const pending = useRef<{ key: string; netsuite: ReturnType<typeof getNetsuiteOrder>; database: ReturnType<typeof getDatabaseOrder> } | null>(null);
     useEffect(() => {
-        if (!import.meta.env.DEV || !enabled || !source || !id) return;
+        if (!enabled || !source || !id) return;
         const identity = { source, id };
         const key = source + ":" + id + ":" + String(refreshVersion);
         let active = true;
@@ -45,18 +52,20 @@ export function useNetsuiteOrderConsole(record: NetsuiteOrderIdentity | null, en
             flight.netsuite.then((result) => {
                 if (!active) return;
                 writeLocation(identity, result.order.netsuiteId);
-                console.log("[NetSuite: orden de venta]", result);
+                if (import.meta.env.DEV) console.log("[NetSuite: orden de venta]", result);
+                return readNetsuitePrimary(result);
             }),
             flight.database.then((result) => {
-                if (active) console.log("[Base de datos: orden de venta]", result);
+                if (active && import.meta.env.DEV) console.log("[Base de datos: orden de venta]", result);
             }),
         ]).then((results) => {
             if (pending.current === flight) pending.current = null;
             if (!active) return;
             const failed = results.some((result) => result.status === "rejected");
-            setSettled({ key, status: failed ? "error" : "success" });
+            const provider = results[0];
+            setSettled({ key, status: failed ? "error" : "success", primary: provider.status === "fulfilled" ? (provider.value ?? null) : null, errorMessage: provider.status === "rejected" ? missingOrderMessage(provider.reason) : undefined });
             results.forEach((result, index) => {
-                if (result.status === "rejected") console.error(index === 0 ? "[NetSuite: orden de venta] No fue posible consultar la orden; no se modificaron datos." : "[Base de datos: orden de venta] No fue posible consultar la orden; no se modificaron datos.");
+                if (import.meta.env.DEV && result.status === "rejected") console.error(index === 0 ? "[NetSuite: orden de venta] No fue posible consultar la orden; no se modificaron datos." : "[Base de datos: orden de venta] No fue posible consultar la orden; no se modificaron datos.");
             });
         });
         return () => {
@@ -65,6 +74,18 @@ export function useNetsuiteOrderConsole(record: NetsuiteOrderIdentity | null, en
             writeLocation(null);
         };
     }, [source, id, enabled, initial, refreshVersion]);
-    if (!available) return "idle";
-    return settled?.key === String(source) + ":" + String(id) + ":" + String(refreshVersion) ? settled.status : "loading";
+    return currentRead(available, String(source) + ":" + String(id) + ":" + String(refreshVersion), settled);
+}
+function currentRead(available: boolean, key: string, settled: (OrderRead & { key: string }) | null): OrderRead {
+    if (!available) return { status: "idle", primary: null };
+    if (settled?.key !== key) return { status: "loading", primary: null };
+    return { status: settled.status, primary: settled.status === "success" ? settled.primary : null, errorMessage: settled.errorMessage };
+}
+
+/** A timeout or generic 404 does not prove that the provider record is absent. */
+function missingOrderMessage(failure: unknown): string | undefined {
+    if (!(failure instanceof ApiClientError) || failure.status !== 404) return undefined;
+    const body = failure.responseBody;
+    if (body !== null && typeof body === "object" && Reflect.get(body, "code") === "NETSUITE_SALES_ORDER_NOT_FOUND") return "La orden de venta no existe en NetSuite en el entorno configurado.";
+    return undefined;
 }

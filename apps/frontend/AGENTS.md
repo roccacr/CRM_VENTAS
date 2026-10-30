@@ -1,9 +1,47 @@
 # AGENTS.md - CRM Enterprise Frontend
 
+## Estado vigente de notas y QA - 2026-10-29
+
+Las notas personales y colaborativas están conectadas: creación desde el shell,
+Drawer, invitaciones, conversación, menciones, campana interna y actualización
+por Socket.IO con reconciliación REST. Responsables, vencimiento, recordatorios
+personales, ubicaciones Home adicionales, búsqueda global e historial están
+implementados. Contratos actuales: [66 API](../api/Arquitectura/66-Notas-Enterprise-Seguimiento.md)
+y [16 UX](Arquitectura/16-UX-Notas-Adhesivas-y-Anotaciones.md).
+
+Vincular una nota a una orden no la comparte ni concede acceso al registro.
+La identidad es tipo/origen/ID, independiente del módulo y URL; el API revalida
+el recurso. La integración de órdenes existente sigue usando el autorizador de
+Formalización: no inventar rutas ni permisos de órdenes de otros módulos.
+Sin acceso al recurso, el invitado autorizado conserva la conversación en sus
+notas/campana con vínculo restringido. Un usuario ajeno no ve la nota.
+
+El directorio de invitación admite cuentas activas, inactivas y pendientes sin
+exigir el mismo módulo; las últimas reciben acceso efectivo al activarse y
+validarse su autorización. Owner no evita deny ni autoría. Solo el autor puede
+modificar la nota y gestionar sus participantes cuando tiene las capacidades
+correspondientes; cada participante administra su layout y recordatorio.
+
+QA del 29 documentado en [67 API](../api/Arquitectura/67-Plan-QA-Regresiones-20261029.md):
+API 6524 aprobadas/151 omitidas condicionales, frontend 1233 aprobadas y 32 SQL/socket
+aprobadas aparte en esquemas temporales eliminados. Ambos checks de proyecto
+aprobaron; el primer check-all conserva exit1 histórico por un error de tipado de
+las pruebas corregido antes del check frontend final. No afirmar exit0 de ese
+primer comando, aceptación Redis multinodo ni cobertura al 100 %.
+Esta actualización documental no vuelve a ejecutar las pruebas ni toca datos.
+Adjuntos, copia compatible legacy, Redis multinodo, benchmark y aceptación visual
+con dos cuentas reales siguen fuera de la confirmación actual.
+
+## Antecedente de implementación - 2026-10-27
+
+El corte siguiente es histórico y está sustituido por el estado vigente del 29,
+[30 - Estado frontend](Arquitectura/30-Estado-Frontend-Verificado.md) y el contrato66.
+En particular, compartir/campana ya no están pendientes y Calendario global tiene
+ruta y consumidores propios; los límites históricos no eliminan esas funciones.
+
 ## Current implementation precedence - 2026-10-27
 
 Read [30 - Verified frontend state](Arquitectura/30-Estado-Frontend-Verificado.md) before the older snapshots below. Marketing capture is a connected cohort report, with Hoy/Semana/Mes/Trimestre/Año, KPIs, stacked seller chart, project selection, modal breakdown and PNG/browser-print PDF export. Its loader is the local static CaptureLoading component. Eventos y citas and its permission have been retired; Calendario remains a menu-only Marketing item. Formalization Home/Gestion now read canonical follow-up and offer a separately permissioned stage command; calendar/summary previews and the explicitly labeled Primary information sample remain simulations. Existing claims below about empty queues or unavailable follow-up are historical and do not authorize removing the implemented consumers. No permission bypass by Owner, no legacy imports, no new integration scope.
-
 
 ## Current implementation precedence - 2026-10-23
 
@@ -357,7 +395,6 @@ Before saying the frontend work is complete:
 3. Run the available lint, typecheck, tests, and build commands.
 4. Report exactly what passed, failed, or could not be run.
 
-
 ## Authorized Marketing Home read extension - 2026-10-23
 
 The owner authorized real lead aggregates for Marketing Home through
@@ -370,3 +407,9 @@ This scoped authorization supersedes historical mock-only restrictions for this
 summary only; it authorizes no imports, business mutations, migrations or deployment.
 API contract and verification: `apps/api/Arquitectura/46-Mercadeo-Resumen-Leads.md`
 (relative to the repository root).
+
+Correccion vigente de notas: [59 API](../api/Arquitectura/59-Notas-Contexto-Opcional-y-Vistas.md). Creacion desde cualquier pantalla, personal por defecto, checkbox opcional para vista registrada/orden native o legacy; vincular no comparte. Contexto incluye source+id y siempre revalida acceso; sin URLs arbitrarias/imports.
+
+Etapa4 autorizada2026-10-27: compartir por invitación, conversación/menciones, bandejas y campana interna implementadas (API contrato60). Vincular no comparte; solo autor modifica nota y cada persona sus comentarios. No activar correo ni copia legacy. Conservar recibos/reintentos y el ID de nota creada si falla compartir.
+
+Notas realtime: contrato vigente en ../api/Arquitectura/62-Notas-Tiempo-Real-Implementacion.md. Mantener provider por sesión, borradores/versiones iniciales y contexto null sin enlaces al registro. Socket solo invalida; escrituras REST.

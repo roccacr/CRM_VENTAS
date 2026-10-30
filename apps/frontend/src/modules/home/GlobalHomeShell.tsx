@@ -11,7 +11,6 @@ import AccountBookOutlined from "@ant-design/icons/AccountBookOutlined";
 import AppstoreOutlined from "@ant-design/icons/AppstoreOutlined";
 import AuditOutlined from "@ant-design/icons/AuditOutlined";
 import BankOutlined from "@ant-design/icons/BankOutlined";
-import BellOutlined from "@ant-design/icons/BellOutlined";
 import CalculatorOutlined from "@ant-design/icons/CalculatorOutlined";
 import CalendarOutlined from "@ant-design/icons/CalendarOutlined";
 import CheckOutlined from "@ant-design/icons/CheckOutlined";
@@ -48,6 +47,8 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { buildApiUrl } from "../../config/frontend-env";
 import type { IdentityOrgUnit } from "../../services/auth/identity-contracts";
 import { ADMINISTRATION_CATALOGS } from "../administration/catalogs/catalog-definitions";
+import { NotesRealtimeProvider } from "../notes/NotesRealtimeProvider";
+import { NotesButton, NotesNotificationsButton, PersonalNotesProvider } from "../notes/PersonalNotes";
 
 /** Ruta pública del logo. El shell no la resuelve por entorno. */
 const ROCCA_LOGO_SRC = "/Logo/rocca-concept.png";
@@ -190,12 +191,6 @@ type NavigationOrgUnit = Pick<IdentityOrgUnit, "code" | "status">;
  *
  * Describen props, filas y paneles. No salen del módulo y no autorizan acciones.
  */
-interface HeaderAction {
-    readonly label: string;
-    readonly hint: string;
-    readonly icon: ReactNode;
-}
-
 /** Datos mínimos del usuario para cabecera y avatar; la foto es opcional. */
 export interface GlobalHomeCurrentUser {
     readonly displayName: string;
@@ -265,6 +260,7 @@ export interface GlobalHomeShellProps {
     readonly currentUser?: GlobalHomeCurrentUser;
     readonly effectivePermissions?: readonly EffectiveNavigationPermission[];
     readonly initialWorkspaceCode?: string;
+    readonly currentViewLabel?: string | undefined;
     readonly onMenuItemSelect?: (routePath: string) => void;
     readonly onLogout?: () => void;
     readonly onWorkspaceChange?: (code: string) => void;
@@ -311,6 +307,7 @@ export const ASSIGNED_WORKSPACES: readonly [WorkspaceProfile, ...WorkspaceProfil
             { code: "sales-leads", label: "Leads", icon: <UserAddOutlined />, requiredPermission: "lead.read", routePath: SALES_HOME_PATH },
             { code: "sales-opportunities", label: "Oportunidades", icon: <FunnelPlotOutlined />, requiredPermission: "opportunity.read", routePath: SALES_HOME_PATH },
             { code: "sales-estimates", label: "Estimaciones", icon: <CalculatorOutlined />, requiredPermission: "estimate.read", routePath: SALES_HOME_PATH },
+            { code: "sales-calendar", label: "Calendario", icon: <CalendarOutlined />, requiredPermission: "ventas.calendar.read", routePath: "/home/sales/calendar" },
             { code: "sales-catalogs", label: "Catálogos", icon: <DatabaseOutlined />, children: buildCatalogMenuOptions("sales") },
         ],
     },
@@ -322,7 +319,7 @@ export const ASSIGNED_WORKSPACES: readonly [WorkspaceProfile, ...WorkspaceProfil
             { code: "marketing-home", label: "Inicio", icon: <DashboardOutlined />, requiredPermission: "mercadeo.home.read", routePath: MARKETING_HOME_PATH },
             // Section permissions control visibility; business views and actions remain future scope.
             { code: "marketing-leads", label: "Captación de leads", icon: <FunnelPlotOutlined />, requiredPermission: "mercadeo.leads.read", routePath: "/home/marketing/leads" },
-            { code: "marketing-calendar", label: "Calendario", icon: <CalendarOutlined />, requiredPermission: "mercadeo.calendar.read" },
+            { code: "marketing-calendar", label: "Calendario", icon: <CalendarOutlined />, requiredPermission: "mercadeo.calendar.read", routePath: "/home/marketing/calendar" },
             { code: "marketing-catalogs", label: "Catálogos", icon: <DatabaseOutlined />, children: buildCatalogMenuOptions("marketing") },
         ],
     },
@@ -335,8 +332,7 @@ export const ASSIGNED_WORKSPACES: readonly [WorkspaceProfile, ...WorkspaceProfil
             { code: "formalization-home", label: "Inicio", icon: <DashboardOutlined />, routePath: FORMALIZATION_HOME_PATH },
             // Existing local previews remain accessible; this does not authorize business API operations.
             { code: "formalization-management", label: "Gestión de formalizaciones", icon: <FileDoneOutlined />, routePath: `${FORMALIZATION_HOME_PATH}/orders` },
-            { code: "formalization-calendar", label: "Calendario", icon: <CalendarOutlined />, routePath: `${FORMALIZATION_HOME_PATH}/calendar` },
-            { code: "formalization-summary", label: "Resumen", icon: <AuditOutlined />, routePath: `${FORMALIZATION_HOME_PATH}/summary` },
+            { code: "formalization-calendar", label: "Calendario", icon: <CalendarOutlined />, requiredPermission: "formalizacion.calendar.read", routePath: `${FORMALIZATION_HOME_PATH}/calendar` },
             { code: "formalization-catalogs", label: "Catálogos", icon: <DatabaseOutlined />, children: buildCatalogMenuOptions("formalization") },
         ],
     },
@@ -348,6 +344,7 @@ export const ASSIGNED_WORKSPACES: readonly [WorkspaceProfile, ...WorkspaceProfil
             { code: "accounting-home", label: "Resumen", icon: <DashboardOutlined />, requiredPermission: "wallet.read", routePath: ACCOUNTING_HOME_PATH },
             { code: "accounting-wallet", label: "Cartera", icon: <WalletOutlined />, requiredPermission: "wallet.read", routePath: ACCOUNTING_HOME_PATH },
             { code: "accounting-invoices", label: "Facturas", icon: <FileTextOutlined />, requiredPermission: "invoice.read", routePath: ACCOUNTING_HOME_PATH },
+            { code: "accounting-calendar", label: "Calendario", icon: <CalendarOutlined />, requiredPermission: "contabilidad.calendar.read", routePath: "/home/accounting/calendar" },
             { code: "accounting-catalogs", label: "Catálogos", icon: <DatabaseOutlined />, children: buildCatalogMenuOptions("accounting") },
         ],
     },
@@ -556,14 +553,6 @@ export const getVisibleNavigationWorkspaces = (permissions: readonly EffectiveNa
     return visibleAllWorkspace && visibleModuleWorkspaces.length > 1 ? [visibleAllWorkspace, ...visibleModuleWorkspaces] : visibleModuleWorkspaces;
 };
 
-/**
- * Acciones de cabecera todavía visuales.
- *
- * Sin conteos inventados: un número en la campana solo debe aparecer cuando
- * venga del API. El cambio de módulo vive en el selector, no aquí.
- */
-const HEADER_ACTIONS: readonly HeaderAction[] = [{ label: "Notificaciones", hint: "Notificaciones", icon: <BellOutlined /> }];
-
 /** Lista estable para ítems sin hijos. Evita crear un arreglo nuevo en cada render del nodo. */
 const EMPTY_MENU_OPTIONS: readonly GlobalMenuOption[] = [];
 
@@ -738,15 +727,6 @@ const getOptionalAriaControls = (condition: boolean, value: string): string | un
 /** Emite `aria-expanded` solo en elementos desplegables; en hojas debe omitirse. */
 const getOptionalAriaExpanded = (condition: boolean, isOpen: boolean): boolean | undefined => (condition ? isOpen : undefined);
 
-/** Botón de cabecera sin acción todavía; el tooltip lo dice para no dejar al usuario adivinando. */
-const renderHeaderAction = ({ label, hint, icon }: HeaderAction) => (
-    <Tooltip key={label} title={hint} placement="bottom">
-        <button className="global-home-header__icon-button" type="button" aria-label={label}>
-            {icon}
-        </button>
-    </Tooltip>
-);
-
 /** Nombre visible con respaldo al correo y luego a un texto genérico. */
 const getUserDisplayName = (user?: GlobalHomeCurrentUser): string => user?.displayName.trim() || user?.email.trim() || "Usuario actual";
 
@@ -854,9 +834,8 @@ function MobileAppBar({ onMenuOpen, user }: MobileAppBarProps) {
             <img className="global-home-mobile-bar__logo" src={ROCCA_LOGO_SRC} width="2170" height="725" alt="ROCCA Development Group" />
 
             <div className="global-home-mobile-bar__actions" aria-label="Acciones rápidas móviles">
-                <button className="global-home-mobile-bar__icon-button" type="button" aria-label="Notificaciones">
-                    <BellOutlined aria-hidden="true" />
-                </button>
+                <NotesNotificationsButton mobile />
+                <NotesButton mobile />
                 <div className="global-home-mobile-bar__avatar" role="img" aria-label={`Perfil actual: ${getUserDisplayName(user)}`}>
                     <UserAvatarContent key={getUserAvatarKey(user)} user={user} />
                 </div>
@@ -1468,7 +1447,7 @@ const getInitialWorkspaceProfile = (assignedWorkspaces: readonly WorkspaceProfil
  * sigue autorizando cada ruta. Si el filtro no deja perfiles, la cabecera usa
  * el primero del catálogo sin ítems de menú para no mostrar accesos inexistentes.
  */
-export function GlobalHomeShell({ activeMenuItemCode, children, currentUser, effectivePermissions = DEMO_EFFECTIVE_NAVIGATION_PERMISSIONS, initialWorkspaceCode, onLogout, onMenuItemSelect, onWorkspaceChange, orgUnits }: GlobalHomeShellProps) {
+export function GlobalHomeShell({ activeMenuItemCode, children, currentUser, effectivePermissions = DEMO_EFFECTIVE_NAVIGATION_PERMISSIONS, initialWorkspaceCode, currentViewLabel, onLogout, onMenuItemSelect, onWorkspaceChange, orgUnits }: GlobalHomeShellProps) {
     const assignedWorkspaces = getVisibleNavigationWorkspaces(effectivePermissions, orgUnits);
     const fallbackWorkspace = assignedWorkspaces[0] ?? { ...ASSIGNED_WORKSPACES[0], menuItems: [] };
     const initialWorkspace = getInitialWorkspaceProfile(assignedWorkspaces, fallbackWorkspace, initialWorkspaceCode);
@@ -1564,85 +1543,90 @@ export function GlobalHomeShell({ activeMenuItemCode, children, currentUser, eff
     };
 
     return (
-        <div className="global-home-shell">
-            <MobileAppBar
-                user={currentUser}
-                onMenuOpen={() => {
-                    setIsMobileDrawerOpen(true);
-                }}
-            />
-            <MobileNavigationDrawer
-                activeMenuItemCode={activeMenuItemCode}
-                activeWorkspace={activeWorkspaceWithCurrentRoute}
-                assignedWorkspaces={assignedWorkspaces}
-                isOpen={isMobileDrawerOpen}
-                openWorkspaceCode={safeOpenMobileWorkspaceCode}
-                onClose={() => {
-                    setIsMobileDrawerOpen(false);
-                }}
-                onLogout={onLogout}
-                onMenuItemSelect={selectMenuItemRoute}
-                onSelect={selectWorkspace}
-                onWorkspaceToggle={setOpenMobileWorkspaceCode}
-                user={currentUser}
-            />
+        <NotesRealtimeProvider key={getUserSecondaryLabel(currentUser)}>
+            <PersonalNotesProvider moduleCode={WORKSPACE_MODULE_CODE_BY_WORKSPACE_CODE[activeWorkspace.code]} permissions={effectivePermissions} homeEnabled={Boolean(activeMenuItemCode?.endsWith("-home"))} viewCode={activeMenuItemCode} viewLabel={currentViewLabel}>
+                <div className="global-home-shell">
+                    <MobileAppBar
+                        user={currentUser}
+                        onMenuOpen={() => {
+                            setIsMobileDrawerOpen(true);
+                        }}
+                    />
+                    <MobileNavigationDrawer
+                        activeMenuItemCode={activeMenuItemCode}
+                        activeWorkspace={activeWorkspaceWithCurrentRoute}
+                        assignedWorkspaces={assignedWorkspaces}
+                        isOpen={isMobileDrawerOpen}
+                        openWorkspaceCode={safeOpenMobileWorkspaceCode}
+                        onClose={() => {
+                            setIsMobileDrawerOpen(false);
+                        }}
+                        onLogout={onLogout}
+                        onMenuItemSelect={selectMenuItemRoute}
+                        onSelect={selectWorkspace}
+                        onWorkspaceToggle={setOpenMobileWorkspaceCode}
+                        user={currentUser}
+                    />
 
-            <header className="global-home-header" role="banner" aria-label="Barra superior global CRM TINK">
-                <div className="global-home-header__inner">
-                    <div className="global-home-header__brand">
-                        <img className="global-home-header__logo" src={ROCCA_LOGO_SRC} width="2170" height="725" alt="ROCCA Development Group" />
-                    </div>
+                    <header className="global-home-header" role="banner" aria-label="Barra superior global CRM TINK">
+                        <div className="global-home-header__inner">
+                            <div className="global-home-header__brand">
+                                <img className="global-home-header__logo" src={ROCCA_LOGO_SRC} width="2170" height="725" alt="ROCCA Development Group" />
+                            </div>
 
-                    <div className="global-home-header__workspace" role="group" aria-label="Módulo y búsqueda">
-                        <WorkspaceSelector activeWorkspace={activeWorkspace} assignedWorkspaces={assignedWorkspaces} isOpen={isWorkspaceSelectorOpen} onOpenChange={setIsWorkspaceSelectorOpen} onSelect={selectWorkspace} />
-                        <button className="global-home-header__command" type="button" aria-label="Abrir búsqueda global">
-                            <SearchOutlined aria-hidden="true" />
-                            <span className="global-home-header__command-copy">Buscar</span>
-                            <kbd>{getCommandShortcutLabel()}</kbd>
-                        </button>
-                    </div>
-
-                    <div className="global-home-header__actions" role="group" aria-label="Cuenta y notificaciones">
-                        {HEADER_ACTIONS.map(renderHeaderAction)}
-                        <Tooltip title={<UserTooltipContent user={currentUser} />} placement="bottomRight">
-                            <button className="global-home-header__avatar" type="button" aria-label={`Perfil actual: ${getUserDisplayName(currentUser)}`}>
-                                <UserAvatarContent key={getUserAvatarKey(currentUser)} user={currentUser} />
-                                <span className="global-home-header__avatar-name">{getUserShortDisplayName(currentUser)}</span>
-                            </button>
-                        </Tooltip>
-                        {onLogout ? (
-                            <Tooltip title="Cerrar sesión" placement="bottomRight">
-                                <button className="global-home-header__logout-button" type="button" aria-label="Cerrar sesión" onClick={onLogout}>
-                                    <LogoutOutlined aria-hidden="true" />
+                            <div className="global-home-header__workspace" role="group" aria-label="Módulo y búsqueda">
+                                <WorkspaceSelector activeWorkspace={activeWorkspace} assignedWorkspaces={assignedWorkspaces} isOpen={isWorkspaceSelectorOpen} onOpenChange={setIsWorkspaceSelectorOpen} onSelect={selectWorkspace} />
+                                <button className="global-home-header__command" type="button" aria-label="Abrir búsqueda global">
+                                    <SearchOutlined aria-hidden="true" />
+                                    <span className="global-home-header__command-copy">Buscar</span>
+                                    <kbd>{getCommandShortcutLabel()}</kbd>
                                 </button>
-                            </Tooltip>
-                        ) : null}
-                    </div>
-                </div>
-            </header>
+                            </div>
 
-            <nav className="global-home-menu" aria-label="Navegación principal">
-                <div ref={menuTrackRef} className="global-home-menu__track">
-                    {menuItems.map((item) => (
-                        <GlobalMenuNode
-                            key={item.code}
-                            item={item}
-                            isOpen={openMenuCode === item.code}
-                            onBlur={closeMenuOnBlur}
-                            onClose={(codeToClose) => {
-                                setOpenMenuCode((currentCode) => (currentCode === codeToClose ? null : currentCode));
-                            }}
-                            onOpenChange={setOpenMenuCode}
-                            onSelectRoute={selectMenuItemRoute}
-                        />
-                    ))}
-                </div>
-            </nav>
+                            <div className="global-home-header__actions" role="group" aria-label="Cuenta y notificaciones">
+                                <NotesNotificationsButton />
+                                <NotesButton />
+                                <Tooltip title={<UserTooltipContent user={currentUser} />} placement="bottomRight">
+                                    <button className="global-home-header__avatar" type="button" aria-label={`Perfil actual: ${getUserDisplayName(currentUser)}`}>
+                                        <UserAvatarContent key={getUserAvatarKey(currentUser)} user={currentUser} />
+                                        <span className="global-home-header__avatar-name">{getUserShortDisplayName(currentUser)}</span>
+                                    </button>
+                                </Tooltip>
+                                {onLogout ? (
+                                    <Tooltip title="Cerrar sesión" placement="bottomRight">
+                                        <button className="global-home-header__logout-button" type="button" aria-label="Cerrar sesión" onClick={onLogout}>
+                                            <LogoutOutlined aria-hidden="true" />
+                                        </button>
+                                    </Tooltip>
+                                ) : null}
+                            </div>
+                        </div>
+                    </header>
 
-            <main className="global-home-stage" aria-label="Contenido principal">
-                <img className="global-home-stage__watermark" src={ROCCA_LOGO_SRC} width="2170" height="725" alt="" aria-hidden="true" />
-                {children}
-            </main>
-        </div>
+                    <nav className="global-home-menu" aria-label="Navegación principal">
+                        <div ref={menuTrackRef} className="global-home-menu__track">
+                            {menuItems.map((item) => (
+                                <GlobalMenuNode
+                                    key={item.code}
+                                    item={item}
+                                    isOpen={openMenuCode === item.code}
+                                    onBlur={closeMenuOnBlur}
+                                    onClose={(codeToClose) => {
+                                        setOpenMenuCode((currentCode) => (currentCode === codeToClose ? null : currentCode));
+                                    }}
+                                    onOpenChange={setOpenMenuCode}
+                                    onSelectRoute={selectMenuItemRoute}
+                                />
+                            ))}
+                        </div>
+                    </nav>
+
+                    <main className="global-home-stage" aria-label="Contenido principal">
+                        <img className="global-home-stage__watermark" src={ROCCA_LOGO_SRC} width="2170" height="725" alt="" aria-hidden="true" />
+                        {children}
+                    </main>
+                </div>
+            </PersonalNotesProvider>
+        </NotesRealtimeProvider>
     );
 }

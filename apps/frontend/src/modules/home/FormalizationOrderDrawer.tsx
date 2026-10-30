@@ -45,9 +45,10 @@ function timeInStage(days: number | null): string | null {
 }
 
 interface Props {
+    readonly stagePermissions?: readonly { code: string; effect: string }[] | undefined;
     readonly canUpdateStage?: boolean;
     readonly onViewFull?: () => void;
-    readonly onStageSaved?: () => void;
+    readonly onStageSaved?: () => void | Promise<void>;
     readonly onRefreshOrder?: () => void;
     readonly item: FollowUpItem | null;
     readonly position: number;
@@ -61,7 +62,7 @@ function OrderFooter({ position, total, onSelectPrevious, onSelectNext }: Omit<P
     return (
         <div className="user-detail-drawer__footer">
             <Typography.Text type="secondary" className="user-detail-drawer__position">
-                Orden {position} de {total}
+                {position > 0 ? `Orden ${String(position)} de ${String(total)}` : "Orden abierta fuera de la bandeja actual"}
             </Typography.Text>
             <Space.Compact>
                 <Tooltip title="Orden anterior (↑)">
@@ -102,10 +103,11 @@ function OrderTitle({ item }: { readonly item: FollowUpItem | null }) {
 export function OutlookCompose({ item }: { readonly item: FollowUpItem }) {
     if (item.state.code !== "contract_pending_send") return null;
     return (
-        <Card size="small" title="Envío del contrato">
+        <Card size="small" title="Envío del contrato" className="formalization-contract-send">
             {item.clientEmail ? (
                 <Space orientation="vertical">
-                    <Typography.Text>{item.clientEmail}</Typography.Text>
+                    <span className="formalization-contract-send__label">Correo del cliente</span>
+                    <Typography.Text className="formalization-contract-send__email">{item.clientEmail}</Typography.Text>
                     <Button icon={<MailOutlined aria-hidden="true" />} href={`https://outlook.office.com/mail/deeplink/compose?to=${encodeURIComponent(item.clientEmail)}`} target="_blank" rel="noopener noreferrer">
                         Abrir Outlook
                     </Button>
@@ -133,7 +135,7 @@ function walkWithArrows(event: React.KeyboardEvent, previous: () => void, next: 
 /**
  *
  */
-export function FormalizationOrderDrawer({ item, position, total, onClose, onSelectPrevious, onSelectNext, canUpdateStage = false, onStageSaved, onRefreshOrder, onViewFull }: Props) {
+export function FormalizationOrderDrawer({ item, position, total, onClose, onSelectPrevious, onSelectNext, canUpdateStage = false, stagePermissions = [], onStageSaved, onRefreshOrder, onViewFull }: Props) {
     return (
         <Drawer
             {...ADMINISTRATION_DRAWER_PROPS}
@@ -159,10 +161,8 @@ export function FormalizationOrderDrawer({ item, position, total, onClose, onSel
                         key={`${item.source}:${item.id}:${String(item.stateVersion)}:${item.state.code}`}
                         item={item}
                         allowed={canUpdateStage}
-                        onSaved={() => {
-                            onClose();
-                            onStageSaved?.();
-                        }}
+                        permissions={stagePermissions}
+                        onSaved={() => onStageSaved?.()}
                         onRefresh={() => {
                             onClose();
                             onRefreshOrder?.();

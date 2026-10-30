@@ -3,18 +3,20 @@ import { StrictMode } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
 import { useNetsuiteOrderConsole } from "../../src/modules/home/useNetsuiteOrderConsole";
-import { apiRequest } from "../../src/services/api/api-client";
+import { ApiClientError, apiRequest } from "../../src/services/api/api-client";
 import { getDatabaseOrder } from "../../src/services/formalization/database-order-service";
 import { getNetsuiteOrder, type NetsuiteOrderIdentity } from "../../src/services/formalization/netsuite-order-service";
 
 vi.mock("../../src/services/formalization/database-order-service", () => ({ getDatabaseOrder: vi.fn().mockResolvedValue({ schemaVersion: 1, source: "legacy", order: { id: "legacy:208" } }) }));
-vi.mock("../../src/services/api/api-client", () => ({ apiRequest: vi.fn() }));
-const result = { schemaVersion: 1, order: { source: "legacy", id: "legacy:208", netsuiteId: "123" }, data: { fields: { tranid: "RDR673" } } };
+vi.mock("../../src/services/api/api-client", async (importOriginal) => ({ ...(await importOriginal<Record<string, unknown>>()), apiRequest: vi.fn() }));
+const result = { schemaVersion: 1, order: { source: "legacy", id: "legacy:208", netsuiteId: "123" }, data: { status: 200, data: { id: "123", type: "salesorder", fields: { initialtranid: "RDR673" } } } };
 function Harness({ record = null, enabled = true, refreshVersion = 0 }: { record?: NetsuiteOrderIdentity | null; enabled?: boolean; refreshVersion?: number }) {
-    const status = useNetsuiteOrderConsole(record, enabled, refreshVersion);
+    const read = useNetsuiteOrderConsole(record, enabled, refreshVersion);
     return (
         <div>
-            Sin campos nuevos<output>{status}</output>
+            Sin campos nuevos<output>{read.status}</output>
+            <span data-testid="provider-order">{read.primary?.fields["N.º de pedido"]}</span>
+            <span data-testid="load-error">{read.errorMessage}</span>
         </div>
     );
 }
@@ -29,6 +31,15 @@ afterEach(() => {
     cleanup();
     vi.restoreAllMocks();
     vi.unstubAllEnvs();
+});
+it("distinguishes a confirmed missing provider order from a temporary connection failure", async () => {
+    vi.mocked(apiRequest).mockRejectedValue(new ApiClientError("missing", 404, { code: "NETSUITE_SALES_ORDER_NOT_FOUND", message: "private" }));
+    render(<Harness record={{ source: "legacy", id: "208" }} />);
+    await waitFor(() => {
+        expect(screen.getByRole("status").textContent).toBe("error");
+    });
+    expect(screen.getByTestId("load-error").textContent).toBe("La orden de venta no existe en NetSuite en el entorno configurado.");
+    expect(screen.getByTestId("provider-order").textContent).toBe("");
 });
 it("logs once under StrictMode and adds CRM identity and resolved NetSuite reference to URL only", async () => {
     render(
@@ -55,10 +66,19 @@ it("loads from CRM identity on refresh and ignores an untrusted provider ID in U
     expect(apiRequest).toHaveBeenCalledWith("/formalization/orders/legacy/208/netsuite");
     expect(new URLSearchParams(window.location.search).get("netsuiteId")).toBe("123");
 });
-it.each([false, true])("does not request without the gate or outside DEV (%s)", (production) => {
-    if (production) vi.stubEnv("DEV", false);
-    render(<Harness record={{ source: "legacy", id: "208" }} enabled={production} />);
+it("does not request without permission", () => {
+    render(<Harness record={{ source: "legacy", id: "208" }} enabled={false} />);
     expect(apiRequest).not.toHaveBeenCalled();
+});
+it("loads authorized production data but keeps diagnostic logs DEV only", async () => {
+    vi.stubEnv("DEV", false);
+    render(<Harness record={{ source: "legacy", id: "208" }} />);
+    await waitFor(() => {
+        expect(screen.getByRole("status").textContent).toBe("success");
+    });
+    expect(screen.getByTestId("provider-order").textContent).toBe("RDR673");
+    expect(apiRequest).toHaveBeenCalledOnce();
+    expect(console.log).not.toHaveBeenCalled();
 });
 it("rejects invalid identities before invoking the API", async () => {
     await expect(getNetsuiteOrder({ source: "legacy", id: "../1" })).rejects.toThrow();
@@ -104,6 +124,7 @@ it("reloads the same transaction and returns to loading without navigating", asy
     view.rerender(<Harness record={record} refreshVersion={1} />);
     expect(screen.getByRole("status").textContent).toBe("loading");
     expect(window.location.pathname).toBe("/home/formalization");
+    expect(screen.getByTestId("provider-order").textContent).toBe("");
     expect(apiRequest).toHaveBeenCalledTimes(2);
     resolve(result);
     await waitFor(() => {

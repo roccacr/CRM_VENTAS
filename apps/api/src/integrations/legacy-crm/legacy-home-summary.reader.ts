@@ -20,6 +20,14 @@ export class LegacyHomeSummaryReader implements HomeSummaryLegacyReader {
         return this.database.isConfigured();
     }
 
+    /** Personal activity already selected its identities; resolve only those labels in one bounded SELECT. */
+    async orderLabels(tx: Transaction<CrmDatabase>, ids: readonly string[]) {
+        if (!this.enabled() || !ids.length) return [];
+        if (ids.length > 6 || !ids.every((id) => /^[1-9][0-9]{0,9}$/.test(id))) throw new Error("Invalid activity order IDs");
+        const result = await sql<{ id: string; number: string | null }>`SELECT CAST(id_ov AS CHAR) AS id,id_ov_tranid AS number FROM ${sql.table("crmdatabase-api.ordenventa")} WHERE id_ov IN (${sql.join(ids.map(Number))})`.execute(tx);
+        return result.rows;
+    }
+
     /** Every native alias shadows legacy. Any effective closure this year credits an eligible order once, even after reopening. */
     async aggregate(tx: Transaction<CrmDatabase>, period: HomeSummaryPeriod) {
         const result = await sql<StageAggregateRow>`

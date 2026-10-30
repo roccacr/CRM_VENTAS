@@ -59,7 +59,7 @@ describe("global error sanitation through HTTP bootstrap", () => {
         expect(response.json()).toEqual(status === 503 ? { statusCode: 503, error: "Service Unavailable", message: "Servicio no disponible." } : { statusCode: status, message: "Internal server error" });
         const correlation = response.headers["x-correlation-id"];
         expect(correlation).toMatch(/^[0-9a-f-]{36}$/);
-        expect(log.mock.calls).toEqual([[{ correlation_id: correlation, statusCode: status }]]);
+        expect(log.mock.calls).toEqual([[{ correlation_id: correlation, statusCode: status, error_code: "unclassified", error_class: "http_error" }]]);
         expect(JSON.stringify({ body: response.body, logs: log.mock.calls })).not.toContain(secret);
     });
 
@@ -69,7 +69,7 @@ describe("global error sanitation through HTTP bootstrap", () => {
         const response = await app.inject({ method: "GET", url: "/synthetic-errors" });
         expect(response.statusCode).toBe(500);
         expect(response.json()).toEqual({ statusCode: 500, message: "Internal server error" });
-        expect(log.mock.calls).toEqual([[{ correlation_id: response.headers["x-correlation-id"], statusCode: 500 }]]);
+        expect(log.mock.calls).toEqual([[{ correlation_id: response.headers["x-correlation-id"], statusCode: 500, error_code: "unclassified", error_class: "server_error" }]]);
     });
 
     it("preserves string and http-error-shaped 4xx bodies without logging raw exceptions", async () => {
@@ -88,6 +88,23 @@ describe("global error sanitation through HTTP bootstrap", () => {
         const statusCode = typeof value === "object" && value !== null ? 503 : 500;
         expect(response.statusCode).toBe(statusCode);
         expect(response.json()).toEqual(statusCode === 503 ? { statusCode: 503, error: "Service Unavailable", message: "Servicio no disponible." } : { statusCode, message: "Internal server error" });
-        expect(log.mock.calls).toEqual([[{ correlation_id: response.headers["x-correlation-id"], statusCode }]]);
+        expect(log.mock.calls).toEqual([[{ correlation_id: response.headers["x-correlation-id"], statusCode, error_code: "unclassified", error_class: "server_error" }]]);
+    });
+
+    it.each(["ECONNRESET", "ER_LOCK_DEADLOCK", secret])("logs only allowlisted diagnostic codes: %s", async (code) => {
+        log.mockClear();
+        failure = Object.assign(new Error(secret), { code, sql: secret });
+        const response = await app.inject({ method: "GET", url: "/synthetic-errors" });
+        const statusCode = code === "ECONNRESET" ? 503 : 500;
+        expect(response.statusCode).toBe(statusCode);
+        expect(log.mock.calls).toEqual([[{ correlation_id: response.headers["x-correlation-id"], statusCode, error_code: code === secret ? "unclassified" : code, error_class: "server_error" }]]);
+        expect(JSON.stringify({ body: response.body, logs: log.mock.calls })).not.toContain(secret);
+    });
+    it("preserves only the fixed reconciliation code, never exception details", async () => {
+        failure = new HttpException({ code: "FORMALIZATION_APPROVAL_RECONCILIATION_REQUIRED", message: secret, sql: secret }, 503);
+        const response = await app.inject({ method: "GET", url: "/synthetic-errors" });
+        expect(response.statusCode).toBe(503);
+        expect(response.json()).toMatchObject({ code: "FORMALIZATION_APPROVAL_RECONCILIATION_REQUIRED" });
+        expect(response.body).not.toContain(secret);
     });
 });

@@ -1,0 +1,17 @@
+import type { CalendarModule } from "../../services/calendar/calendar-service";
+
+export const CALENDAR_CONTEXT: Record<CalendarModule, { label: string; path: string; referenceLabel: string }> = {
+    formalizacion: { label: "Formalización", path: "/home/formalization/calendar", referenceLabel: "Referencia de formalización" },
+    mercadeo: { label: "Mercadeo", path: "/home/marketing/calendar", referenceLabel: "Referencia de campaña" },
+    ventas: { label: "Ventas", path: "/home/sales/calendar", referenceLabel: "Referencia comercial" },
+    contabilidad: { label: "Contabilidad", path: "/home/accounting/calendar", referenceLabel: "Referencia contable" },
+};
+export interface CalendarPermission {
+    readonly code: string;
+    readonly effect: string;
+}
+/** Deny always wins; Owner names never grant calendar visibility. */
+export function canReadCalendar(permissions: readonly CalendarPermission[], module: CalendarModule): boolean {
+    const matches = permissions.filter((permission) => permission.code === `${module}.calendar.read`);
+    return matches.some((entry) => entry.effect === "allow") && !matches.some((entry) => entry.effect === "deny");
+}

@@ -7,9 +7,9 @@ import { OrderTimingService } from "../../src/modules/crm/sales/sales-orders/ord
 
 const publicId = "01ARZ3NDEKTSV4RRFFQ69G5FAV";
 function setup() {
-    const profile = { roles: [{ code: "formalizacion", name: "Formalizacion", status: "active" }], permissions: [{ code: "formalizacion.home.stages.read", effect: "allow", scope: "all_areas", source: "role" }], user: { publicId: "actor" } } as IdentityProfile;
+    const profile = { roles: [{ code: "formalizacion", name: "Formalizacion", status: "active" }], permissions: [{ code: "formalizacion.orders.read", effect: "allow", scope: "all_areas", source: "role" }], user: { publicId: "actor" } } as IdentityProfile;
     const repository = { find: vi.fn().mockResolvedValue(undefined), read: vi.fn().mockResolvedValue({ total: 0, summary: { startedAt: null, finishedAt: null, totalSeconds: null, knownSeconds: 0, complete: false }, items: [] }) };
-    const legacy = { enabled: () => true, find: vi.fn().mockResolvedValue({ id: "901", publicId: "legacy:901", active: true, pendingApproval: false, ownerId: "actor" }), read: vi.fn().mockResolvedValue({ total: 0, summary: { startedAt: null, finishedAt: null, totalSeconds: null, knownSeconds: 0, complete: false }, items: [] }) };
+    const legacy = { enabled: () => true, find: vi.fn().mockResolvedValue({ id: "901", publicId: "legacy:901", active: true, pendingApproval: false, approved: 1, rawStage: "contract_pending_send", contractSigned: 0, completedThisYear: 0, ownerId: "actor" }), read: vi.fn().mockResolvedValue({ total: 0, summary: { startedAt: null, finishedAt: null, totalSeconds: null, knownSeconds: 0, complete: false }, items: [] }) };
     const snapshot = { readSnapshot: async (read: (tx: object) => Promise<unknown>) => read({}) };
     const service = new OrderTimingService({ getCurrentUser: () => Promise.resolve(profile) } as IdentityService, repository, legacy, snapshot as never);
     return { profile, repository, legacy, service };
@@ -24,14 +24,14 @@ describe("per-visit order timing", () => {
     });
     it("blocks a direct deny before either database reader", async () => {
         const f = setup();
-        f.profile.permissions.push({ code: "formalizacion.home.stages.read", effect: "deny", scope: null, source: "override" });
+        f.profile.permissions.push({ code: "formalizacion.orders.read", effect: "deny", scope: null, source: "override" });
         await expect(f.service.read("session", { source: "legacy", id: "901" }, {})).rejects.toMatchObject({ status: 403 });
         expect(f.repository.find).not.toHaveBeenCalled();
         expect(f.legacy.find).not.toHaveBeenCalled();
     });
     it("keeps native authority for a legacy pointer without touching old history", async () => {
         const f = setup();
-        f.repository.find.mockResolvedValue({ id: "42", publicId, active: true, pendingApproval: false, ownerId: "actor" });
+        f.repository.find.mockResolvedValue({ id: "42", publicId, active: true, pendingApproval: false, approved: 1, rawStage: "contract_pending_send", contractSigned: 0, completedThisYear: 0, ownerId: "actor" });
         const response = await f.service.read("session", { source: "legacy", id: "901" }, {});
         expect(response.order).toEqual({ source: "native", id: publicId });
         expect(f.legacy.find).not.toHaveBeenCalled();
@@ -39,7 +39,7 @@ describe("per-visit order timing", () => {
     });
     it("does not fall back when an existing native alias is inactive", async () => {
         const f = setup();
-        f.repository.find.mockResolvedValue({ id: "42", publicId, active: false, pendingApproval: false, ownerId: "actor" });
+        f.repository.find.mockResolvedValue({ id: "42", publicId, active: false, pendingApproval: false, approved: 1, rawStage: "contract_pending_send", contractSigned: 0, completedThisYear: 0, ownerId: "actor" });
         await expect(f.service.read("session", { source: "legacy", id: "901" }, {})).rejects.toMatchObject({ status: 404 });
         expect(f.legacy.find).not.toHaveBeenCalled();
     });
@@ -49,17 +49,17 @@ describe("per-visit order timing", () => {
         expect(f.legacy.read).toHaveBeenCalledWith(expect.anything(), "901", { offset: 10, limit: 10 });
         expect(response.summary).toEqual({ startedAt: null, finishedAt: null, totalSeconds: null, knownSeconds: 0, complete: false });
     });
-    it("does not leak approval history without its independent grant", async () => {
+    it("reads an active pending-approval order with detail permission alone", async () => {
         const f = setup();
         f.legacy.find.mockResolvedValue({ id: "901", publicId: "legacy:901", active: true, pendingApproval: true, ownerId: "actor" });
-        await expect(f.service.read("session", { source: "legacy", id: "901" }, {})).rejects.toMatchObject({ status: 403 });
-        expect(f.legacy.read).not.toHaveBeenCalled();
+        await expect(f.service.read("session", { source: "legacy", id: "901" }, {})).resolves.toMatchObject({ order: { id: "legacy:901" } });
+        expect(f.legacy.read).toHaveBeenCalled();
     });
-    it("restricts self/assigned reads to the same resource visibility as follow-up", async () => {
+    it("reads other sellers with a self read grant", async () => {
         const f = setup();
-        f.profile.permissions = [{ code: "formalizacion.home.stages.read", effect: "allow", scope: "self", source: "override" }];
-        f.legacy.find.mockResolvedValue({ id: "901", publicId: "legacy:901", active: true, pendingApproval: false, ownerId: "another" });
-        await expect(f.service.read("session", { source: "legacy", id: "901" }, {})).rejects.toMatchObject({ status: 403 });
-        expect(f.legacy.read).not.toHaveBeenCalled();
+        f.profile.permissions = [{ code: "formalizacion.orders.read", effect: "allow", scope: "self", source: "override" }];
+        f.legacy.find.mockResolvedValue({ id: "901", publicId: "legacy:901", active: true, pendingApproval: false, approved: 1, rawStage: "contract_pending_send", contractSigned: 0, completedThisYear: 0, ownerId: "another" });
+        await expect(f.service.read("session", { source: "legacy", id: "901" }, {})).resolves.toMatchObject({ order: { id: "legacy:901" } });
+        expect(f.legacy.read).toHaveBeenCalled();
     });
 });

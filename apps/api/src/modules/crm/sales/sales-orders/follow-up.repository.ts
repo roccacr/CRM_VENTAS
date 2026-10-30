@@ -3,14 +3,31 @@ import { sql, type Transaction } from "kysely";
 
 import type { CrmDatabase } from "../../../../database/database.types.js";
 import type { FollowUpAccess, FollowUpPeriod, FollowUpRead } from "./follow-up.contract.js";
-import { followUpSourceQuery, readFollowUpSource } from "./follow-up.query.js";
+import { followUpSourceQuery, readFollowUpRecord, readFollowUpSource } from "./follow-up.query.js";
 
 /** Native relationships use native PKs. Provider transaction numbers are labels, never identity. */
 @Injectable()
 export class FollowUpRepository {
+    /** Includes inactive/deleted aliases so authoritative native records can never fall back to legacy. */
+    async findRecordAuthority(tx: Transaction<CrmDatabase>, source: "native" | "legacy", id: string) {
+        const where = source === "native" ? sql`o.public_id_sales_order=${id}` : sql`o.id_old_produccion_sales_order=${Number(id)}`;
+        const result = await sql<{ publicId: string; active: number }>`
+            SELECT o.public_id_sales_order AS publicId,
+                (o.status_sales_order='active' AND o.cancelled_sales_order='no' AND o.deleted_at_sales_order IS NULL) AS active
+            FROM crm_sales_order o WHERE ${where} LIMIT 1`.execute(tx);
+        const row = result.rows[0];
+        return row ? { publicId: row.publicId, active: row.active === 1 } : undefined;
+    }
     /** One bounded SELECT: joins project/contact/seller through the order's explicit lead FK. */
     read(tx: Transaction<CrmDatabase>, query: FollowUpRead, period: FollowUpPeriod, access: FollowUpAccess) {
-        const base = sql`
+        return readFollowUpSource(tx, followUpSourceQuery(this.base(period), query, access));
+    }
+    /** Bounds the source projection to the requested identity before classification. */
+    readRecord(tx: Transaction<CrmDatabase>, id: string, period: FollowUpPeriod) {
+        return readFollowUpRecord(tx, this.base(period, id));
+    }
+    private base(period: FollowUpPeriod, id?: string) {
+        return sql`
             SELECT o.id_sales_order AS sortId,o.public_id_sales_order AS id,'native' AS source,
                 COALESCE((SELECT NULLIF(TRIM(x.transaction_number_sales_order_external_reference),'') FROM crm_sales_order_external_reference x
                     WHERE x.sales_order_id_sales_order_external_reference=o.id_sales_order AND x.status_sales_order_external_reference='active'
@@ -42,7 +59,6 @@ export class FollowUpRepository {
                 WHERE latest.sales_order_id_sales_order_state_event=o.id_sales_order ORDER BY latest.sequence_sales_order_state_event DESC LIMIT 1)
             LEFT JOIN sec_user responsible ON responsible.id_user=e.responsible_user_id_sales_order_state_event
             LEFT JOIN sec_user actor ON actor.id_user=e.actor_user_id_sales_order_state_event
-            WHERE o.status_sales_order='active' AND o.cancelled_sales_order='no' AND o.deleted_at_sales_order IS NULL`;
-        return readFollowUpSource(tx, followUpSourceQuery(base, query, access));
+            WHERE ${id === undefined ? sql`TRUE` : sql`o.public_id_sales_order=${id}`} AND o.status_sales_order='active' AND o.cancelled_sales_order='no' AND o.deleted_at_sales_order IS NULL`;
     }
 }

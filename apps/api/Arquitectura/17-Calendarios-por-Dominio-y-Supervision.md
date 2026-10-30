@@ -1,5 +1,10 @@
 # 17 - Calendarios por Dominio y Supervision
 
+Corte vigente posterior: [64 - Calendario global](64-Calendario-Global-API-y-Contexto.md)
+documenta la lectura, superposicion y creacion/edicion nativa implementadas el
+28 de octubre. Este documento conserva el diseno y los limites de cortes
+anteriores; no sustituye ese contrato ni acredita Outlook, RSVP o campana de eventos.
+
 Ampliacion 2026-10-23: [47 - Calendario compartido](47-Calendario-Compartido-Esquema.md)
 define la migracion 034 vacia autorizada. Eventos con origen por modulo y vista
 personal compartida por participacion; sin copia de datos, comandos de agenda o Graph.

@@ -1,0 +1,10 @@
+import { ForbiddenException, NotFoundException } from "@nestjs/common";
+
+import { canReadFormalizationOrder } from "../../../../common/security/route-permission.js";
+import type { IdentityAuthorizationProfile } from "../../identity/identity.types.js";
+import type { TimingOrder } from "./order-timing.contract.js";
+/** Detail access never depends on a banner or stage classification. */
+export function assertFormalizationOrderReadable(profile: IdentityAuthorizationProfile, order: TimingOrder): void {
+    if (!canReadFormalizationOrder(profile)) throw new ForbiddenException("No tiene permiso para consultar esta orden.");
+    if (!order.active) throw new NotFoundException("Orden disponible no encontrada.");
+}

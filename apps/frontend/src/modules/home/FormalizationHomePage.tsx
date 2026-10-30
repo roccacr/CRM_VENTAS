@@ -14,6 +14,7 @@ import { getApprovalCount } from "../../services/formalization/approval-summary-
 import type { FollowUpItem } from "../../services/formalization/follow-up-service";
 import { PROJECTS_THEME } from "../administration/catalogs/projects-theme";
 import { type FormalizationExample, PREVIEW_FILTER_TITLES, type PreviewQueue } from "./formalization-preview.model";
+import { canReadFormalizationOrder, formalizationReadQueues } from "./formalization-read-policy";
 import { FormalizationFollowUpPreview } from "./FormalizationFollowUpPreview";
 import { FormalizationHomeInsights } from "./FormalizationHomeInsights";
 import { FormalizationOrderPreview, FormalizationOrderRecord } from "./FormalizationOrderPreview";
@@ -33,6 +34,9 @@ interface FormalizationHomeProps {
     readonly onNavigate?: ((path: string) => void) | undefined;
 }
 
+/** Nombre de quien actúa, para los movimientos recientes. */
+const actorNameOf = (user: FormalizationHomeProps["currentUser"]) => user?.displayName ?? "";
+
 /** Saludo con nombre o correo; sin datos, un saludo genérico. */
 const greetingFor = (user: FormalizationHomeProps["currentUser"]) => {
     const name = user?.displayName.trim() || user?.email.trim() || "";
@@ -50,11 +54,10 @@ function BannerCorner() {
     );
 }
 
-/** Deny wins; revocation also removes an already opened approval queue. */
-function resolveApprovalVisibility(permissions: readonly EffectiveNavigationPermission[] | undefined, selectedQueue: PreviewQueue | null) {
-    const entries = (permissions ?? []).filter((permission) => permission.code === "formalizacion.home.approvals.read");
-    const canView = entries.some((permission) => permission.effect === "allow") && !entries.some((permission) => permission.effect === "deny");
-    return { canView, queue: selectedQueue?.filter === "approvals" && !canView ? null : selectedQueue };
+/** Preserve the empty list shell while refusing a revoked category queue. */
+function visibleQueue(selected: PreviewQueue | null, allowedQueues: readonly string[]): PreviewQueue | null {
+    if (!selected || selected.filter === "all" || allowedQueues.includes(selected.filter)) return selected;
+    return null;
 }
 
 /** Share effect replays within a gated mount; retries and new grants read fresh data. */
@@ -134,7 +137,7 @@ function ApprovalStrip({ onOpen, enabled, refreshVersion }: { readonly onOpen: (
 }
 
 /** One gated owner supplies every stage banner without sharing data between mounts. */
-function StageBanners({ onOpen, enabled, refreshVersion }: { readonly onOpen: (filter: PreviewQueue["filter"]) => void; readonly enabled: boolean; readonly refreshVersion: number }) {
+function StageBanners({ onOpen, enabled, refreshVersion, allowedQueues }: { readonly allowedQueues: readonly string[]; readonly onOpen: (filter: PreviewQueue["filter"]) => void; readonly enabled: boolean; readonly refreshVersion: number }) {
     const { value: summary, failed, retry } = useHomeSummary(enabled, refreshVersion);
     const counts = summary?.counts ?? { contracts: { toSend: 0, pendingSignature: 0 }, banking: 0, balance: 0, transferPending: 0, transferSigned: 0, closedThisYear: 0 };
     const loading = !summary && !failed;
@@ -157,49 +160,51 @@ function StageBanners({ onOpen, enabled, refreshVersion }: { readonly onOpen: (f
     ] as const;
     return (
         <>
-            {stages.map((banner) => (
-                <article key={banner.code} className={`formalization-banner formalization-banner--${banner.tone}`} aria-labelledby={`formalization-${banner.code}`} aria-busy={loading}>
-                    <span className="formalization-banner__icon" aria-hidden="true">
-                        <img src={`${import.meta.env.BASE_URL}illustrations/formalization-icons/${banner.icon}.svg`} width={24} height={24} alt="" />
-                    </span>
-                    <div className="formalization-banner__content">
-                        <h2 id={`formalization-${banner.code}`}>{banner.label}</h2>
-                        {failed && (
-                            <div className="formalization-contracts-status formalization-banner__caption">
-                                <span role="alert">Sin verificar</span>
-                                <Tooltip title={banner.code === "contracts" ? "No se pudieron verificar los conteos de contratos. Reintentar consulta." : `No se pudo verificar ${banner.label}. Reintentar consulta.`}>
-                                    <Button type="text" size="small" icon={<ReloadOutlined />} aria-label={banner.code === "contracts" ? "Reintentar conteos de contratos" : `Reintentar ${banner.label}`} onClick={retry} />
-                                </Tooltip>
+            {stages
+                .filter((banner) => allowedQueues.includes(banner.parts[0].filter))
+                .map((banner) => (
+                    <article key={banner.code} className={`formalization-banner formalization-banner--${banner.tone}`} aria-labelledby={`formalization-${banner.code}`} aria-busy={loading}>
+                        <span className="formalization-banner__icon" aria-hidden="true">
+                            <img src={`${import.meta.env.BASE_URL}illustrations/formalization-icons/${banner.icon}.svg`} width={24} height={24} alt="" />
+                        </span>
+                        <div className="formalization-banner__content">
+                            <h2 id={`formalization-${banner.code}`}>{banner.label}</h2>
+                            {failed && (
+                                <div className="formalization-contracts-status formalization-banner__caption">
+                                    <span role="alert">Sin verificar</span>
+                                    <Tooltip title={banner.code === "contracts" ? "No se pudieron verificar los conteos de contratos. Reintentar consulta." : `No se pudo verificar ${banner.label}. Reintentar consulta.`}>
+                                        <Button type="text" size="small" icon={<ReloadOutlined />} aria-label={banner.code === "contracts" ? "Reintentar conteos de contratos" : `Reintentar ${banner.label}`} onClick={retry} />
+                                    </Tooltip>
+                                </div>
+                            )}
+                            <div className="formalization-banner__metrics">
+                                {banner.parts.map((part) => (
+                                    <button
+                                        key={part.filter}
+                                        type="button"
+                                        className="formalization-banner__metric formalization-banner__metric-button"
+                                        aria-label={`Abrir ${part.label}`}
+                                        onClick={() => {
+                                            onOpen(part.filter);
+                                        }}
+                                    >
+                                        <span className="formalization-banner__value" aria-live="polite" aria-label={summary ? `Valor: ${part.label}, ${String(part.value)}` : failed ? `${part.label}: sin verificar` : undefined}>
+                                            {loading ? (
+                                                <span className="formalization-banner__preload" role="status" aria-label={`Cargando ${part.label}`}>
+                                                    <Spin size="small" />
+                                                </span>
+                                            ) : (
+                                                part.value
+                                            )}
+                                        </span>
+                                        <span className="formalization-banner__caption">{part.label}</span>
+                                    </button>
+                                ))}
                             </div>
-                        )}
-                        <div className="formalization-banner__metrics">
-                            {banner.parts.map((part) => (
-                                <button
-                                    key={part.filter}
-                                    type="button"
-                                    className="formalization-banner__metric formalization-banner__metric-button"
-                                    aria-label={`Abrir ${part.label}`}
-                                    onClick={() => {
-                                        onOpen(part.filter);
-                                    }}
-                                >
-                                    <span className="formalization-banner__value" aria-live="polite" aria-label={summary ? `Valor: ${part.label}, ${String(part.value)}` : failed ? `${part.label}: sin verificar` : undefined}>
-                                        {loading ? (
-                                            <span className="formalization-banner__preload" role="status" aria-label={`Cargando ${part.label}`}>
-                                                <Spin size="small" />
-                                            </span>
-                                        ) : (
-                                            part.value
-                                        )}
-                                    </span>
-                                    <span className="formalization-banner__caption">{part.label}</span>
-                                </button>
-                            ))}
                         </div>
-                    </div>
-                    <BannerCorner />
-                </article>
-            ))}
+                        <BannerCorner />
+                    </article>
+                ))}
         </>
     );
 }
@@ -246,20 +251,14 @@ function QueueHeader({ queue, onHome, onAll }: { readonly queue: PreviewQueue; r
     );
 }
 
-/** Use only effective API roles and grants; Owner never bypasses a direct deny. */
-function canReadFormalizationStages(roles: FormalizationHomeProps["roles"], permissions: FormalizationHomeProps["effectivePermissions"]) {
-    const entries = (permissions ?? []).filter((permission) => permission.code === "formalizacion.home.stages.read");
-    return roles?.some((role) => role.code === "formalizacion" && role.status === "active") === true && entries.some((permission) => permission.effect === "allow") && !entries.some((permission) => permission.effect === "deny");
-}
-
 function canUpdateOrderStage(roles: FormalizationHomeProps["roles"], permissions: FormalizationHomeProps["effectivePermissions"]): boolean {
     const entries = (permissions ?? []).filter((entry) => entry.code === "formalizacion.orders.stage.update");
-    return roles?.some((role) => role.code === "formalizacion" && role.status === "active") === true && entries.some((entry) => entry.effect === "allow") && !entries.some((entry) => entry.effect === "deny");
+    return roles?.some((role) => ["formalizacion", "jefe_formalizaciones"].includes(role.code) && role.status === "active") === true && entries.some((entry) => entry.effect === "allow") && !entries.some((entry) => entry.effect === "deny");
 }
 
 /** Gate the consumer itself so revoked access cannot retain data or start a request. */
-function FormalizationStageBanners({ canView, onOpen, enabled, refreshVersion }: { readonly canView: boolean; readonly onOpen: (filter: PreviewQueue["filter"]) => void; readonly enabled: boolean; readonly refreshVersion: number }) {
-    return canView ? <StageBanners onOpen={onOpen} enabled={enabled} refreshVersion={refreshVersion} /> : null;
+function FormalizationStageBanners({ canView, onOpen, enabled, refreshVersion, allowedQueues }: { readonly allowedQueues: readonly string[]; readonly canView: boolean; readonly onOpen: (filter: PreviewQueue["filter"]) => void; readonly enabled: boolean; readonly refreshVersion: number }) {
+    return canView ? <StageBanners allowedQueues={allowedQueues} onOpen={onOpen} enabled={enabled} refreshVersion={refreshVersion} /> : null;
 }
 
 /** Hidden previews never initiate stage-summary reads. */
@@ -287,12 +286,20 @@ function VisibleHomeFollowUp({ visible, ...props }: React.ComponentProps<typeof 
     return visible ? <FormalizationFollowUpPreview {...props} /> : null;
 }
 
+function activitySessionKey(user: FormalizationHomeProps["currentUser"]) {
+    return user?.email ?? "session";
+}
+
 /** Gated canonical Home aggregates and follow-up; stage updates require their own effective permission. */
 function FormalizationHomeContent({ currentUser, roles, effectivePermissions, initialView = "home", onNavigate }: FormalizationHomeProps) {
     const [refreshVersion, setRefreshVersion] = useState(0);
     const [selectedQueue, setQueue] = useState<PreviewQueue | null>(() => (initialView === "orders" ? { filter: "all" } : null));
-    const { canView: canViewApprovals, queue } = resolveApprovalVisibility(effectivePermissions, selectedQueue);
-    const canViewStages = canReadFormalizationStages(roles, effectivePermissions);
+    const allowedQueues = formalizationReadQueues(roles, effectivePermissions);
+    const canViewApprovals = allowedQueues.includes("approvals");
+    const queue = visibleQueue(selectedQueue, allowedQueues);
+    const canViewStages = allowedQueues.some((queue) => queue !== "all" && queue !== "approvals");
+    const canReadList = allowedQueues.length > 0;
+    const canReadOrders = canReadFormalizationOrder(roles, effectivePermissions);
     const canUpdateStage = canUpdateOrderStage(roles, effectivePermissions);
     const refreshOrders = () => {
         setRefreshVersion((value) => value + 1);
@@ -300,21 +307,45 @@ function FormalizationHomeContent({ currentUser, roles, effectivePermissions, in
     const [selected, setSelected] = useState<FormalizationExample | null>(null);
     const [record, setRecord] = useState<FollowUpItem | null>(null);
     const [recordRefreshVersion, setRecordRefreshVersion] = useState(0);
-    const restoredStatus = useRestoredFormalizationOrder(canViewStages, setRecord, { record, refreshVersion: recordRefreshVersion });
-    const netsuiteStatus = useNetsuiteOrderConsole(record, [canViewStages, record !== null].every(Boolean), recordRefreshVersion);
+    const [restoreDismissed, setRestoreDismissed] = useState(false);
+    const restoreStatus = useRestoredFormalizationOrder([canReadOrders, [!restoreDismissed, record !== null].some(Boolean)].every(Boolean), setRecord, { record, refreshVersion: recordRefreshVersion });
+    const restoredStatus = dismissedRestoreStatus(restoreDismissed, record, restoreStatus);
+    const netsuiteRead = useNetsuiteOrderConsole(record, [canReadOrders, record !== null].every(Boolean), recordRefreshVersion);
     const restoring = [!record, !["idle", "ready"].includes(restoredStatus)].every(Boolean);
     const detailOpen = [record, selected, restoring].some(Boolean);
     return (
         <ConfigProvider locale={esES} theme={PROJECTS_THEME}>
             <div className="global-home-dashboard formalization-home">
-                <RestoringOrder visible={restoring} status={restoredStatus} />
-                <CurrentFormalizationRecord
-                    item={record}
-                    netsuiteStatus={recordReadStatus(restoredStatus, netsuiteStatus)}
-                    onRefresh={() => {
+                <RestoringOrder
+                    visible={restoring}
+                    status={restoredStatus}
+                    onRetry={() => {
                         setRecordRefreshVersion((version) => version + 1);
                     }}
-                    canView={canViewStages}
+                    onBack={() => {
+                        setRestoreDismissed(true);
+                        const url = new URL(window.location.href);
+                        url.searchParams.delete("orderSource");
+                        url.searchParams.delete("orderId");
+                        window.history.replaceState(null, "", url);
+                    }}
+                />
+                <CurrentFormalizationRecord
+                    stagePermissions={effectivePermissions}
+                    canUpdateStage={canUpdateStage}
+                    onStageSaved={(updated) => {
+                        setRecord(updated);
+                        refreshOrders();
+                    }}
+                    item={record}
+                    netsuiteStatus={recordReadStatus(restoredStatus, netsuiteRead.status)}
+                    netsuiteErrorMessage={netsuiteRead.errorMessage}
+                    primary={netsuiteRead.primary}
+                    onRefresh={() => {
+                        setRecordRefreshVersion((version) => version + 1);
+                        refreshOrders();
+                    }}
+                    canView={canReadOrders}
                     onBack={() => {
                         setRecord(null);
                     }}
@@ -366,6 +397,7 @@ function FormalizationHomeContent({ currentUser, roles, effectivePermissions, in
                     </section>
                     <section className="formalization-home__banners" aria-label="Resumen de formalización">
                         <FormalizationStageBanners
+                            allowedQueues={allowedQueues}
                             refreshVersion={refreshVersion}
                             enabled={isHomeSummaryEnabled(initialView, queue, selected)}
                             canView={canViewStages}
@@ -375,8 +407,8 @@ function FormalizationHomeContent({ currentUser, roles, effectivePermissions, in
                         />
                     </section>
                     <div className="formalization-workspace">
-                        <VisibleHomeFollowUp onOpenRecord={setRecord} canUpdateStage={canUpdateStage} onRefresh={refreshOrders} visible={isHomeSummaryEnabled(initialView, queue, selected)} enabled={canViewStages} refreshVersion={refreshVersion} canViewApprovals={canViewApprovals} tableOnly={false} scope={{ filter: "all" }} onOpenOrder={setSelected} />
-                        <FormalizationHomeInsights />
+                        <VisibleHomeFollowUp allowedQueues={allowedQueues} stagePermissions={effectivePermissions} onOpenRecord={setRecord} canUpdateStage={canUpdateStage} onRefresh={refreshOrders} visible={isHomeSummaryEnabled(initialView, queue, selected)} enabled={canReadList} canReadOrder={canReadOrders} refreshVersion={refreshVersion} canViewApprovals={canViewApprovals} tableOnly={false} scope={{ filter: "all" }} onOpenOrder={setSelected} />
+                        <FormalizationHomeInsights key={activitySessionKey(currentUser)} enabled={canReadOrders} visible={[initialView === "home", !detailOpen, queue === null].every(Boolean)} refreshVersion={refreshVersion} actorName={actorNameOf(currentUser)} />
                     </div>
                 </div>
                 <div className="formalization-workspace" hidden={detailOpen || queue === null}>
@@ -395,7 +427,7 @@ function FormalizationHomeContent({ currentUser, roles, effectivePermissions, in
                                     setQueue({ filter: "all" });
                                 }}
                             />
-                            <FormalizationFollowUpPreview onOpenRecord={setRecord} canUpdateStage={canUpdateStage} onRefresh={refreshOrders} enabled={canViewStages} refreshVersion={refreshVersion} canViewApprovals={canViewApprovals} key={`${queue.filter}-${queue.project ?? "all"}`} tableOnly scope={queue} onOpenOrder={setSelected} />
+                            <FormalizationFollowUpPreview allowedQueues={allowedQueues} stagePermissions={effectivePermissions} onOpenRecord={setRecord} canUpdateStage={canUpdateStage} onRefresh={refreshOrders} enabled={canReadList} canReadOrder={canReadOrders} refreshVersion={refreshVersion} canViewApprovals={canViewApprovals} key={`${queue.filter}-${queue.project ?? "all"}`} tableOnly scope={queue} onOpenOrder={setSelected} />
                         </>
                     )}
                 </div>
@@ -404,11 +436,11 @@ function FormalizationHomeContent({ currentUser, roles, effectivePermissions, in
     );
 }
 
-/** Home and visible queues consume canonical APIs only with their effective permissions. */
+/** Permission-set changes unmount every read consumer, clearing open records and pending results before paint. */
 export function FormalizationHomePage(props: FormalizationHomeProps) {
     return (
         <FormalizationPreviewBoundary>
-            <FormalizationHomeContent {...props} />
+            <FormalizationHomeContent key={JSON.stringify([formalizationReadQueues(props.roles, props.effectivePermissions), canReadFormalizationOrder(props.roles, props.effectivePermissions), props.effectivePermissions?.filter((permission) => permission.code === "formalizacion.orders.read")])} {...props} />
         </FormalizationPreviewBoundary>
     );
 }
@@ -419,13 +451,15 @@ function CurrentFormalizationRecord({ item, canView, ...props }: Omit<React.Comp
     return <FormalizationOrderRecord item={item} {...props} />;
 }
 
-function RestoringOrder({ visible, status }: { readonly visible: boolean; readonly status: string }) {
+function RestoringOrder({ visible, status, onRetry, onBack }: { readonly visible: boolean; readonly status: string; readonly onRetry: () => void; readonly onBack: () => void }) {
     if (!visible) return null;
     if (status === "loading") return <FormalizationRecordLoading complete />;
     const messages: Record<string, string> = { loading: "Validando acceso y cargando la orden…", denied: "No tienes acceso a esta orden de venta.", missing: "Orden no disponible.", error: "No fue posible cargar la orden. Actualiza para reintentar." };
     return (
         <section className="formalization-card formalization-record-loading" role="status">
             {messages[status]}
+            <Button onClick={onRetry}>Reintentar carga de orden</Button>
+            <Button onClick={onBack}>Volver a Formalización</Button>
         </section>
     );
 }
@@ -435,4 +469,8 @@ function recordReadStatus(databaseStatus: string, providerStatus: "idle" | "load
     if (databaseStatus === "loading") return "loading";
     if (["denied", "missing", "error"].includes(databaseStatus)) return "error";
     return providerStatus;
+}
+
+function dismissedRestoreStatus(dismissed: boolean, record: FollowUpItem | null, status: string): string {
+    return dismissed && !record ? "idle" : status;
 }

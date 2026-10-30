@@ -56,7 +56,7 @@ it.each([true, false])("uses only API effective roles for Owner; formalizacion p
     }
 });
 
-it("discards stages on direct deny while keeping approvals and its refresh independent", async () => {
+it("discards the read subtree on direct deny and refreshes remaining approvals", async () => {
     let resolve!: (value: typeof summary) => void;
     vi.mocked(getHomeSummary).mockReturnValueOnce(
         new Promise((done) => {
@@ -75,7 +75,7 @@ it("discards stages on direct deny while keeping approvals and its refresh indep
     fireEvent.click(screen.getByRole("button", { name: "Recargar banners" }));
     expect(getHomeSummary).toHaveBeenCalledTimes(1);
     await screen.findByLabelText("Órdenes pendientes de aprobación: 2");
-    expect(getApprovalCount).toHaveBeenCalledTimes(2);
+    expect(getApprovalCount).toHaveBeenCalledTimes(3);
     rerender(<FormalizationHomePage roles={[role]} effectivePermissions={[stagePermission]} />);
     await screen.findByLabelText("Valor: Por enviar, 6");
     expect(getHomeSummary).toHaveBeenCalledTimes(2);
@@ -116,7 +116,7 @@ it("refreshes all authorized banners without navigation or duplicate requests", 
 });
 
 it.each(["stages", "approvals"])("refreshes only the authorized %s source", async (source) => {
-    render(<FormalizationHomePage roles={source === "stages" ? [role] : []} effectivePermissions={source === "approvals" ? [{ code: "formalizacion.home.approvals.read", effect: "allow" }] : [stagePermission]} />);
+    render(<FormalizationHomePage roles={[role]} effectivePermissions={source === "approvals" ? [{ code: "formalizacion.home.approvals.read", effect: "allow" }] : [stagePermission]} />);
     if (source === "stages") await screen.findByLabelText("Valor: Por enviar, 6");
     else await screen.findByLabelText("Órdenes pendientes de aprobación: 2");
     fireEvent.click(screen.getByRole("button", { name: "Recargar banners" }));

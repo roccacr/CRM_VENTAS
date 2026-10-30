@@ -751,7 +751,7 @@ describe("IdentityController", () => {
 
         const response = await app.inject({
             method: "GET",
-            url: "/identity/microsoft/callback?code=codigo&state=estado&session_state=sesion-entra&client_info=cliente",
+            url: "/identity/microsoft/callback?code=codigo&state=estado&session_state=sesion-entra&client_info=cliente&clientdata=metadatos-entra",
             headers: {
                 cookie: `${MICROSOFT_OIDC_CHALLENGE_COOKIE_NAME}=challenge.cookie`,
             },
@@ -769,6 +769,13 @@ describe("IdentityController", () => {
                 state: "estado",
             }),
         );
+    });
+
+    it.each(["clientdata=" + "x".repeat(4097), "clientdata=uno&clientdata=dos", "unknown=valor"])("rechaza parametros de callback invalidos sin completar la autenticacion: %s", async (query) => {
+        const response = await app.inject({ method: "GET", url: `/identity/microsoft/callback?code=codigo&state=estado&${query}` });
+
+        expect(response.statusCode).toBe(400);
+        expect(identity.completeMicrosoftCallback).not.toHaveBeenCalled();
     });
 
     it("redirige al frontend con fallo controlado si Microsoft callback no puede crear sesion", async () => {

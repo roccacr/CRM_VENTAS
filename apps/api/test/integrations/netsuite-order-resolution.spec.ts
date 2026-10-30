@@ -20,8 +20,8 @@ function fixture(native = true, externalIds = ["123"]) {
         return connection;
     };
     const db = new Kysely<CrmDatabase>({ dialect: { createDriver: () => driver, createAdapter: () => new MysqlAdapter(), createIntrospector: (instance) => new MysqlIntrospector(instance), createQueryCompiler: () => new MysqlQueryCompiler() } });
-    const profile = { user: { publicId: "actor" }, roles: [{ code: "formalizacion", status: "active" }], permissions: [{ code: "formalizacion.home.stages.read", effect: "allow", scope: "all_areas", source: "role" }] } as IdentityProfile;
-    const order: TimingOrder = { id: "42", publicId, active: true, pendingApproval: false, ownerId: "actor" };
+    const profile = { user: { publicId: "actor" }, roles: [{ code: "formalizacion", status: "active" }], permissions: [{ code: "formalizacion.orders.read", effect: "allow", scope: "all_areas", source: "role" }] } as IdentityProfile;
+    const order: TimingOrder = { id: "42", publicId, active: true, pendingApproval: false, approved: 1, rawStage: "contract_pending_send", contractSigned: 0, completedThisYear: 0, ownerId: "actor" };
     const identity = { getCurrentUser: vi.fn().mockResolvedValue(profile) };
     const repository = { find: vi.fn().mockImplementation(() => Promise.resolve(native ? order : undefined)) };
     const legacy = { enabled: () => true, find: vi.fn().mockImplementation(() => Promise.resolve({ ...order, id: "208", publicId: "legacy:208" })) };
@@ -63,17 +63,13 @@ it.each([true, false])("resolves authorized source native=%s before one provider
         await f.db.destroy();
     }
 });
-it.each(["no-permission", "direct-deny", "foreign-owner", "inactive", "approvals"])("blocks %s before provider access", async (mode) => {
+it.each(["no-permission", "direct-deny", "inactive", "banner-only"])("blocks %s before provider access", async (mode) => {
     const f = fixture();
     try {
         if (mode === "no-permission") f.profile.permissions = [];
-        if (mode === "direct-deny") f.profile.permissions.push({ code: "formalizacion.home.stages.read", effect: "deny", scope: null, source: "override" });
-        if (mode === "foreign-owner") {
-            for (const permission of f.profile.permissions) permission.scope = "self";
-            f.order.ownerId = "other";
-        }
+        if (mode === "direct-deny") f.profile.permissions.push({ code: "formalizacion.orders.read", effect: "deny", scope: null, source: "override" });
         if (mode === "inactive") f.order.active = false;
-        if (mode === "approvals") f.order.pendingApproval = true;
+        if (mode === "banner-only") f.profile.permissions = [{ code: "formalizacion.home.stages.read", effect: "allow", scope: "self", source: "role" }];
         await expect(f.service.read("session", { source: "native", id: publicId })).rejects.toThrow();
         expect(f.client.readSalesOrder).not.toHaveBeenCalled();
         expect(f.legacy.find).not.toHaveBeenCalled();
@@ -116,18 +112,34 @@ it("does not treat a native database failure as native absence", async () => {
     }
 });
 
-it.each(["deny", "inactive", "scope"])("blocks the database read for %s without data projection or fallback", async (mode) => {
+it.each(["deny", "inactive", "category"])("blocks the database read for %s without data projection or fallback", async (mode) => {
     const f = fixture();
     try {
-        if (mode === "deny") f.profile.permissions.push({ code: "formalizacion.home.stages.read", effect: "deny", scope: null, source: "override" });
+        if (mode === "deny") f.profile.permissions.push({ code: "formalizacion.orders.read", effect: "deny", scope: null, source: "override" });
         if (mode === "inactive") f.order.active = false;
-        if (mode === "scope") {
-            f.order.ownerId = "other";
-            for (const permission of f.profile.permissions) permission.scope = "self";
+        if (mode === "category") {
+            f.profile.permissions = [{ code: "formalizacion.home.banking.read", effect: "allow", scope: "self", source: "role" }];
         }
         await expect(f.service.readDatabase("session", { source: "legacy", id: "208" })).rejects.toThrow();
         expect(f.queries).toHaveLength(0);
         expect(f.legacy.find).not.toHaveBeenCalled();
+        expect(f.client.readSalesOrder).not.toHaveBeenCalled();
+    } finally {
+        await f.db.destroy();
+    }
+});
+
+it.each(["deny", "category", "banner-only", "inactive"])("history blocks %s before reading audit rows", async (mode) => {
+    const f = fixture();
+    try {
+        if (mode === "deny") f.profile.permissions.push({ code: "formalizacion.orders.read", effect: "deny", scope: null, source: "override" });
+        if (mode === "category") {
+            f.profile.permissions = [{ code: "formalizacion.home.banking.read", effect: "allow", scope: "self", source: "role" }];
+        }
+        if (mode === "banner-only") f.profile.permissions = [{ code: "formalizacion.home.approvals.read", effect: "allow", scope: "self", source: "role" }];
+        if (mode === "inactive") f.order.active = false;
+        await expect(f.service.readHistory("session", { source: "native", id: publicId })).rejects.toThrow();
+        expect(f.queries).toHaveLength(0);
         expect(f.client.readSalesOrder).not.toHaveBeenCalled();
     } finally {
         await f.db.destroy();

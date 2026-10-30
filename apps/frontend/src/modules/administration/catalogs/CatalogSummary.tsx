@@ -35,7 +35,7 @@ const ICONS: Readonly<Record<CatalogBannerIcon, ReactNode>> = {
 };
 
 /** Same card anatomy as the Home pages. A card only reports a figure: filtering is done with the list's own filters. */
-function CatalogBanner({ title, value, caption, icon, tone }: Omit<CatalogBannerData, "id">) {
+function CatalogBanner({ title, value, caption, icon, tone, metrics }: Omit<CatalogBannerData, "id">) {
     return (
         <article className={`catalog-banner catalog-banner--${tone}`}>
             <span className="catalog-banner__icon" aria-hidden="true">
@@ -43,8 +43,21 @@ function CatalogBanner({ title, value, caption, icon, tone }: Omit<CatalogBanner
             </span>
             <div className="catalog-banner__content">
                 <h2 className="catalog-banner__title">{title}</h2>
-                <strong aria-label={`${title}: ${value}`}>{value}</strong>
-                <span className="catalog-banner__caption">{caption}</span>
+                {metrics ? (
+                    <div className="catalog-banner__metrics">
+                        {metrics.map((metric) => (
+                            <div key={metric.label}>
+                                <strong aria-label={`${metric.label}: ${metric.value}`}>{metric.value}</strong>
+                                <span className="catalog-banner__caption">{metric.label}</span>
+                            </div>
+                        ))}
+                    </div>
+                ) : (
+                    <>
+                        <strong aria-label={`${title}: ${value}`}>{value}</strong>
+                        <span className="catalog-banner__caption">{caption}</span>
+                    </>
+                )}
             </div>
             <span className="catalog-banner__pattern" aria-hidden="true">
                 {Array.from({ length: 6 }, (_, index) => (

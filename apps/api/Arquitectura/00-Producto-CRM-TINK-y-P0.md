@@ -1,5 +1,44 @@
 # 00 - Ley de Producto CRM TINK y P0
 
+## Corte documental vigente - 2026-10-29
+
+Las ampliaciones de notas solicitadas por el propietario estan implementadas en
+el alcance de [66](66-Notas-Enterprise-Seguimiento.md): colaboracion privada por
+invitacion, tiempo real, responsable opcional, vencimiento, recordatorios
+personales, busqueda, historial y ubicaciones adicionales. Autor, participantes,
+acceso al registro vinculado y ubicaciones visibles son controles independientes.
+La identidad de una orden incluye origen e ID; el modulo o URL no crea otra nota.
+La navegacion a una ficha conserva su autorizacion propia.
+
+La copia compatible legacy sigue pendiente; no importar datos comerciales ni
+activar adjuntos, correo externo o integraciones por inferencia documental.
+El QA del 29 esta en [67](67-Plan-QA-Regresiones-20261029.md): distingue checks
+aprobados, casos omitidos y aceptacion pendiente de Redis multinodo, latencia y
+dos cuentas reales. Esta actualizacion no ejecuta migraciones ni operaciones.
+Los cortes anteriores conservan su fecha y alcance historico.
+
+## Gestión de Formalización por ambos roles - 2026-10-28
+
+El propietario confirma que Formalización y Jefe de Formalizaciones gestionan
+todas las órdenes del módulo con el permiso de la acción. Se elimina la
+restricción por vendedor para esas operaciones y se mantienen denegaciones,
+versiones, requisitos de negocio y auditoría. Aprobación y movimientos
+excepcionales conservan permisos separados de supervisión. Contrato y límites:
+[65](65-Formalizacion-Correcciones-Roles-y-Recuperacion.md).
+
+## Aclaración autorizada: detalle de orden - 2026-10-28
+
+El permiso independiente «Ver orden de venta» basta para abrir una ficha,
+incluida la URL directa, sin permisos de banners. Los banners conservan el
+control de listas y contadores; las escrituras mantienen sus permisos y alcances.
+Contrato: [64](64-Formalizacion-Permiso-Ver-Orden.md).
+
+Notas etapas1–4 implementadas2026-10-27: esquema039/040/044, API, interfaz personal y colaboración por invitación, respuestas/menciones y campana interna. Autorización vigente, autoría exclusiva, recibos y auditoría transaccional. Sin imports, correo ni escritura legacy. [Contrato60](60-Notas-Etapa4-Colaboracion-y-Notificaciones.md); [secuencia56](56-Plan-Notas-Colaborativas-y-Convivencia-Legacy.md). La copia compatible y aceptación integral siguen en etapas5/6.
+
+## Ampliacion autorizada: aprobacion de Formalizacion - 2026-10-28
+
+El propietario autoriza conectar Aprobar Formalizacion con NetSuite, marcando solo custbodyid_firma_rc antes de guardar la aprobacion local en la fuente autoritativa (nativa primero, legacy si no existe). Permiso independiente, denegaciones, version y bitacora transaccional obligatorios. Autorizo tambien que la confirmacion del Sandbox actualmente configurado actualice la orden legacy productiva; la bitacora identifica ese entorno. No se ejecutan aprobaciones reales como pruebas ni se habilita un escritor NetSuite productivo por inferencia. Contrato y limites: [63](63-Aprobacion-Formalizacion-NetSuite.md).
+
 ## Lectura vigente y retiro autorizado - 2026-10-27
 
 La revision [55](55-Revision-Documental-Integral-20261027.md) y el corte49
@@ -158,7 +197,10 @@ Se resuelven roles efectivos, no asignaciones fisicas masivas a cada usuario.
 Los permisos activos Owner son base automatica; nunca un bypass de deny, recurso,
 sesion o reglas de negocio. El resto mantiene asignaciones y permisos normales.
 Lectura de banners de etapas: rol efectivo Formalizacion mas permiso efectivo
-`formalizacion.home.stages.read`, concedido por defecto a Formalizacion y Owner.
+de cada categoría, según [63 - Lectura por banner](63-Formalizacion-Lectura-Por-Banner.md).
+Desde el 2026-10-28 el permiso agregado `formalizacion.home.stages.read` queda
+sustituido por seis permisos; la lectura incluye todos los vendedores dentro de
+las categorías autorizadas. Los permisos de escritura conservan su alcance.
 Se autoriza solo esta migracion nativa, sin modificar legacy ni datos comerciales.
 Este apartado sustituye la exclusion anterior de Owner para la lectura, no
 habilita bandejas/acciones. Plan y evidencia: [41 - Owner](41-Owner-Herencia-y-Denegaciones.md).
@@ -797,3 +839,18 @@ This scoped authorization supersedes historical mock-only restrictions for this
 summary only; it authorizes no imports, business mutations, migrations or deployment.
 API contract and verification: `apps/api/Arquitectura/46-Mercadeo-Resumen-Leads.md`
 (relative to the repository root).
+
+
+## Ampliación de lectura autorizada - 2026-10-27
+
+El propietario autoriza el panel lateral de bitácora de la orden (etapas y auditoría de cambios disponible) y el expediente relacionado desde Proyecto · Unidad, bajo la lectura autorizada de esa orden. Sin importar, reconstruir historia ausente, restaurar registros ni modificar datos. Contrato y límites: [56](56-Orden-Bitacora-y-Expediente-Lectura.md).
+
+### Notas personales, etapa3 autorizada27 octubre2026
+
+[58](58-Notas-Etapa3-Interfaz-Personal.md) implementa icono junto a campana, editor lateral y layout personal en Home y orden nativa. Perfil con base self en modulos efectivos, sin revocar denies ni autoria. UI conectada; compartir/campanita implementados en etapa4 (contrato60), copia legacy pendiente. No se importan registros.
+
+### Notas: relacion opcional
+
+[59](59-Notas-Contexto-Opcional-y-Vistas.md) reemplaza la restriccion Home/native-only: crear personal desde cualquier pantalla y vincular opcionalmente vista u orden legacy/native, con acceso vigente y sin importacion. Compartir permanece separado.
+
+Actualización vigente 2026-10-28: [62 - Notas en tiempo real](62-Notas-Tiempo-Real-Implementacion.md). Socket.IO, migración046 aditiva aplicada, campana/hilo/bandejas, recuperación REST y acceso a notas independiente del registro vinculado. Esta actualización sustituye las limitaciones históricas de transporte y acceso de las etapas anteriores. Copia legacy inactiva; Redis multiinstancia y aceptación visual real pendientes.

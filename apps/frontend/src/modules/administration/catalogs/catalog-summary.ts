@@ -6,6 +6,7 @@ export type CatalogBannerTone = "neutral" | "success" | "pending" | "danger";
 
 /** One summary card at the top of a catalog page. Values are text so a missing figure can show as a dash, never as zero. */
 export interface CatalogBannerData {
+    readonly metrics?: readonly { readonly label: string; readonly value: string }[];
     readonly id: string;
     readonly title: string;
     readonly value: string;

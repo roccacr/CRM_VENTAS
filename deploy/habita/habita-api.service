@@ -1,0 +1,28 @@
+[Unit]
+Description=Habita CRM NestJS API
+After=network-online.target
+Wants=network-online.target
+StartLimitIntervalSec=60
+StartLimitBurst=5
+
+[Service]
+Type=simple
+User=ubuntu
+Group=ubuntu
+WorkingDirectory=/var/www/habita-crm/current/apps/api
+EnvironmentFile=/var/www/habita-crm/shared/api.env
+ExecStart=/home/ubuntu/.nvm/versions/node/v22.23.2/bin/node --max-old-space-size=256 --enable-source-maps dist/main.js
+Restart=on-failure
+RestartSec=10
+KillSignal=SIGTERM
+TimeoutStopSec=30
+NoNewPrivileges=true
+PrivateTmp=true
+MemoryHigh=384M
+MemoryMax=512M
+UMask=0077
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

@@ -2,17 +2,21 @@ import "../administration/components/UserDetailDrawer.css";
 import "../administration/catalogs/CatalogItemsPage.css";
 import "../administration/catalogs/ProjectsView.css";
 import "../administration/catalogs/EnterpriseSurface.css";
+import "./FormalizationClientDrawer.css";
 
+import UserOutlined from "@ant-design/icons/UserOutlined";
 import Button from "antd/es/button";
 import Card from "antd/es/card";
 import Descriptions from "antd/es/descriptions";
 import Drawer from "antd/es/drawer";
-import Skeleton from "antd/es/skeleton";
-import { useEffect, useState } from "react";
+import Typography from "antd/es/typography";
+import { Fragment, useEffect, useState } from "react";
 
 import type { FollowUpItem } from "../../services/formalization/follow-up-service";
 import { getOrderClientDetail, type OrderClientDetail } from "../../services/formalization/order-client-service";
 import { ADMINISTRATION_DRAWER_CLOSE_PLACEMENT, ADMINISTRATION_DRAWER_PROPS } from "../administration/administration-theme";
+import { FormalizationClientHistory } from "./FormalizationClientHistory";
+import { FormalizationDrawerLoading } from "./FormalizationDrawerLoading";
 
 function ClientContent({ item, onRetry }: { readonly item: FollowUpItem; readonly onRetry: () => void }) {
     const [data, setData] = useState<OrderClientDetail | null>(null);
@@ -38,33 +42,67 @@ function ClientContent({ item, onRetry }: { readonly item: FollowUpItem; readonl
                 <Button onClick={onRetry}>Reintentar</Button>
             </div>
         );
-    if (!data)
-        return (
-            <div role="status" aria-busy="true">
-                <p>Cargando información del cliente…</p>
-                <Skeleton active paragraph={{ rows: 8 }} />
-            </div>
-        );
+    if (!data) return <FormalizationDrawerLoading label="Información del cliente" title="Cargando información del cliente…" cards={[3, 4, 3]} />;
     if (data.warnings.length > 0) return <p role="status">La relación con el cliente no está disponible o es ambigua. No se seleccionó otro cliente.</p>;
     return (
         <div className="user-detail-drawer__sections">
             {data.groups.map((group) => (
-                <Card key={group.title} size="small" title={group.title}>
-                    <Descriptions column={1} colon={false} size="small" items={group.fields.map((field) => ({ key: field.label, label: field.label, children: field.value }))} />
-                </Card>
+                <Fragment key={group.title}>
+                    <Card size="small" title={group.title}>
+                        <Descriptions column={1} colon={false} size="small" items={group.fields.map((field) => ({ key: field.label, label: field.label, children: field.value === "Sin dato" ? <span className="client-detail__empty">Sin dato</span> : field.value }))} />
+                    </Card>
+                    {group.title === "Captación y seguimiento" && <FormalizationClientHistory initial={data.history ?? null} identity={{ source: item.source, id: item.id }} />}
+                </Fragment>
             ))}
         </div>
     );
 }
 
+const initialsOf = (name: string): string =>
+    name
+        .split(/\s+/)
+        .filter(Boolean)
+        .slice(0, 2)
+        .map((part) => part.charAt(0).toUpperCase())
+        .join("");
+
+/** Opens the client's full profile. Until that screen exists the button says so instead of leading nowhere. */
+function ProfileButton({ onOpen }: { readonly onOpen?: (() => void) | undefined }) {
+    return (
+        <span className="client-detail__profile" title={onOpen ? undefined : "El perfil completo del cliente aún no está disponible"}>
+            <Button size="small" icon={<UserOutlined aria-hidden="true" />} disabled={!onOpen} onClick={onOpen}>
+                Ver perfil del cliente
+            </Button>
+        </span>
+    );
+}
+
+/** Who the drawer is about, in the same identity block the user detail uses. */
+function ClientIdentity({ item, onOpenProfile }: { readonly item: FollowUpItem; readonly onOpenProfile?: (() => void) | undefined }) {
+    const name = item.client ?? "Cliente";
+    return (
+        <div className="user-detail-drawer__identity">
+            <span className="client-detail__avatar" aria-hidden="true">
+                {initialsOf(name)}
+            </span>
+            <div className="user-detail-drawer__identity-copy">
+                <Typography.Title level={4}>{name}</Typography.Title>
+                <Typography.Text type="secondary">Cliente de la orden {item.number}</Typography.Text>
+                <ProfileButton onOpen={onOpenProfile} />
+            </div>
+        </div>
+    );
+}
+
 /** Shared right-hand drawer appearance, with a fresh authorized read on every opening. */
-export function FormalizationClientDrawer({ item, open, onClose }: { readonly item: FollowUpItem; readonly open: boolean; readonly onClose: () => void }) {
+export function FormalizationClientDrawer({ item, open, onClose, onOpenProfile }: { readonly item: FollowUpItem; readonly open: boolean; readonly onClose: () => void; readonly onOpenProfile?: (() => void) | undefined }) {
     const [attempt, setAttempt] = useState(0);
     return (
         <Drawer
             {...ADMINISTRATION_DRAWER_PROPS}
-            rootClassName="user-detail-drawer catalog-item-detail-drawer catalog-item-detail-drawer--projects"
-            title="Detalle del cliente"
+            rootClassName="user-detail-drawer client-detail-drawer catalog-item-detail-drawer catalog-item-detail-drawer--projects"
+            title={<ClientIdentity item={item} onOpenProfile={onOpenProfile} />}
+            aria-label="Detalle del cliente"
             open={open}
             onClose={onClose}
             destroyOnHidden

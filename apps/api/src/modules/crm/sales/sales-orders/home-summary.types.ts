@@ -54,3 +54,15 @@ export function stageCountsFromRow(row: StageAggregateRow | undefined): StageCou
     if (!row) throw new Error("Missing Home aggregate row");
     return { contracts: { toSend: aggregateNumber(row.toSend), pendingSignature: aggregateNumber(row.pendingSignature) }, banking: aggregateNumber(row.banking), balance: aggregateNumber(row.balance), transferPending: aggregateNumber(row.transferPending), transferSigned: aggregateNumber(row.transferSigned), closedThisYear: aggregateNumber(row.closedThisYear) };
 }
+
+/** Bounded personal audit projection; never contains arbitrary snapshots, notes or another actor. */
+export interface RecentOrderActivity {
+    id: string;
+    source: "native" | "legacy";
+    orderId: string;
+    action: string;
+    at: string;
+    fromState: string | null;
+    toState: string | null;
+    approval: string | null;
+}

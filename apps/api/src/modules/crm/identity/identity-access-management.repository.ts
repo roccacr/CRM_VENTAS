@@ -1191,7 +1191,7 @@ export class IdentityAccessManagementRepository {
     /** Decides which view a permission belongs to, keeping existing permission codes unchanged. */
     private resolvePermissionViewCode(permissionCode: string, moduleCode: string): string {
         const parts = permissionCode.split(".");
-        if (/^(?:formalizacion\.home\.|mercadeo\.(?:home|leads|calendar)\.read$)/u.test(permissionCode)) return parts[1] as string;
+        if (/^(?:[^.]+\.notes\.|formalizacion\.home\.|mercadeo\.(?:home|leads|calendar)\.read$)/u.test(permissionCode)) return parts[1] as string;
         // One order workspace, preserving the exact existing permission codes and grants.
         if (moduleCode === "formalizacion" && /^(contract\.|file\.|signature\.|formalizacion\.(?:contracts|orders)\.)/u.test(permissionCode)) return "sales_order";
 
@@ -1294,7 +1294,9 @@ export class IdentityAccessManagementRepository {
 
         const names: Record<string, string> = {
             campaign: "Campanas",
+            notes: "Notas",
             leads: "Captación de leads",
+            reports: "Informes",
             calendar: "Calendario",
             home: "Inicio",
             contract: "Contratos",
@@ -1318,6 +1320,7 @@ export class IdentityAccessManagementRepository {
 
     /** Display name of a permission; catalog permissions use the standard action wording. */
     private resolvePermissionName(permissionCode: string, actionCode: string): string {
+        if (permissionCode.split(".")[1] === "notes") return ({ read: "Ver notas", create: "Crear notas", edit_own: "Editar notas propias", resolve_own: "Completar y reabrir notas propias", archive_own: "Archivar notas propias" } as Record<string, string>)[actionCode] ?? permissionCode;
         const parts = permissionCode.split(".");
         const catalogModuleCode = parts.length >= 3 ? parts[1] : parts[0];
         const catalogDefinition = catalogModuleCode ? findCatalogDefinitionByModuleCode(catalogModuleCode) : undefined;
@@ -1328,12 +1331,30 @@ export class IdentityAccessManagementRepository {
         const names: Record<string, string> = {
             "campaign.create": "Crear campana",
             "mercadeo.home.read": "Ver Inicio",
+            "mercadeo.reports.read_all": "Consultar todos los vendedores de Mercadeo",
             "mercadeo.leads.read": "Ver Captación de leads",
             "mercadeo.calendar.read": "Ver Calendario",
             "formalizacion.home.approvals.read": "Banner pendiente de aprobaci\u00f3n de Formalizaci\u00f3n",
             "formalizacion.home.stages.read": "Banners de etapas de Formalizaci\u00f3n",
+            "formalizacion.home.contracts.read": "Ver contratos de Formalización",
+            "formalizacion.home.banking.read": "Ver gestión bancaria de Formalización",
+            "formalizacion.home.balance.read": "Ver pendientes de saldo de Formalización",
+            "formalizacion.home.transfer_pending.read": "Ver traspasos pendientes de Formalización",
+            "formalizacion.home.transfer_signed.read": "Ver traspasos firmados de Formalización",
+            "formalizacion.home.closed.read": "Ver cierres anuales de Formalización",
+            "formalizacion.orders.approve": "Aprobar Formalización",
+            "formalizacion.orders.read": "Ver orden de venta",
             "formalizacion.contracts.send": "Registrar envio de contrato",
             "formalizacion.contracts.revert": "Revertir envio de contrato",
+            "formalizacion.orders.stage.pending_approval": "Devolver a pendientes de aprobación",
+            "formalizacion.orders.stage.contract_pending_send": "Pasar a Por enviar",
+            "formalizacion.orders.stage.contract_pending_signature": "Pasar a Pendiente de firma",
+            "formalizacion.orders.stage.bank_management": "Pasar a Gestión bancaria",
+            "formalizacion.orders.stage.pending_balance": "Pasar a Pendiente de saldo",
+            "formalizacion.orders.stage.pending_transfer": "Pasar a Traspaso pendiente",
+            "formalizacion.orders.stage.transfer_signed": "Pasar a Traspaso firmado",
+            "formalizacion.orders.stage.closed": "Cerrar Formalización",
+            "formalizacion.orders.stage.skip": "Saltar etapas de Formalización",
             "formalizacion.orders.stage.update": "Cambiar etapa de Formalizacion",
             "campaign.read": "Ver campanas",
             "contract.review": "Revisar contrato",

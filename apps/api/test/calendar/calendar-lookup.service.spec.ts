@@ -1,0 +1,251 @@
+import { ForbiddenException } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
+import { Test } from "@nestjs/testing";
+import { type CompiledQuery, DummyDriver, Kysely, MysqlAdapter, MysqlIntrospector, MysqlQueryCompiler, type QueryResult, type Transaction } from "kysely";
+import { describe, expect, it } from "vitest";
+
+import type { CrmDatabase } from "../../src/database/database.types.js";
+import { CalendarRepository } from "../../src/modules/crm/calendar/calendar.repository.js";
+import { CalendarLookupService } from "../../src/modules/crm/calendar/calendar-lookup.service.js";
+import type { IdentityProfile } from "../../src/modules/crm/identity/identity.types.js";
+
+const actor = "01M4VECV87Y3Q3TGBBK8X2MHYX";
+const target = "01M4VECV87Y3Q3TGBBK8X2MHYY";
+function profile(codes = ["ventas.calendar.read", "lead.read", "ventas.notes.read"]): IdentityProfile {
+    return { user: { publicId: actor, status: "active" }, roles: [], orgUnits: [{ code: "ventas", status: "active" }], permissions: codes.map((code) => ({ code, scope: "all_areas", effect: "allow", source: "role" })) } as unknown as IdentityProfile;
+}
+function fixture(rows: (q: CompiledQuery) => object[] = () => [], legacy = false) {
+    const queries: CompiledQuery[] = [];
+    class Driver extends DummyDriver {
+        override async acquireConnection() {
+            const connection = await super.acquireConnection();
+            connection.executeQuery = <R>(query: CompiledQuery): Promise<QueryResult<R>> => {
+                queries.push(query);
+                return Promise.resolve({ rows: rows(query) as R[] });
+            };
+            return connection;
+        }
+    }
+    const db = new Kysely<CrmDatabase>({ dialect: { createAdapter: () => new MysqlAdapter(), createDriver: () => new Driver(), createIntrospector: (database) => new MysqlIntrospector(database), createQueryCompiler: () => new MysqlQueryCompiler() } });
+    const snapshot = { read: <T>(callback: (tx: Transaction<CrmDatabase>) => Promise<T>) => db.transaction().execute(callback) } as CalendarRepository;
+    const service = new CalendarLookupService(new ConfigService({ ENABLE_LEGACY_FALLBACK: legacy }), snapshot);
+    return { service, queries, db, snapshot };
+}
+describe("CalendarLookupService", () => {
+    it("hydrates 100 selected users with one bounded IN query", async () => {
+        const ids = Array.from({ length: 100 }, (_, index) => actor.slice(0, 24) + String(Math.floor(index / 10)) + String(index % 10));
+        const f = fixture(() => ids.map((id) => ({ id, source: "native", label: "Selected" })));
+        const options = await f.db.transaction().execute((tx) => f.service.selectionOptions(tx, profile(), { links: [], participants: ids.map((userId) => ({ userId })) }));
+        expect(options.users).toHaveLength(100);
+        expect(f.queries).toHaveLength(1);
+        expect(f.queries[0]?.parameters).toEqual([...ids, 100]);
+    });
+    it("discards earlier linked labels if a later relation is forbidden", async () => {
+        const f = fixture(() => [{ id: target, source: "native", label: "Selected" }]);
+        const options = await f.db.transaction().execute((tx) =>
+            f.service.selectionOptions(tx, profile(), {
+                links: [
+                    { entityType: "note", source: "native", id: target },
+                    { entityType: "sales_order", source: "native", id: target },
+                ],
+                participants: [{ userId: target }],
+            }),
+        );
+        expect(options).toEqual({ users: [{ id: target, source: "native", label: "Selected" }] });
+    });
+    it("does not hide infrastructure failures during selection hydration", async () => {
+        const f = fixture(() => {
+            throw new Error("database unavailable");
+        });
+        await f.db.transaction().execute(async (tx) => {
+            await expect(f.service.selectionOptions(tx, profile(), { links: [{ entityType: "lead", source: "native", id: target }], participants: [] })).rejects.toThrow("database unavailable");
+        });
+    });
+    it("hydrates only selected public user IDs without enumerating the directory", async () => {
+        const f = fixture(() => [{ id: target, source: "native", label: "Ana", secret: "hidden" }]);
+        const options = await f.db.transaction().execute((tx) => f.service.selectionOptions(tx, profile(), { links: [], participants: [{ userId: target }, { email: "external@example.test" }, { userId: target }] }));
+        expect(options).toEqual({ users: [{ id: target, source: "native", label: "Ana" }] });
+        expect(f.queries).toHaveLength(1);
+        const query = f.queries[0];
+        if (!query) throw new Error("Missing exact user query");
+        expect(query.sql).toContain("public_id_user IN (?)");
+        expect(query.sql).not.toContain("LOCATE");
+        expect(query.parameters).toContain(target);
+        expect(query.parameters).not.toContain("external@example.test");
+    });
+    it("hydrates selected note, lead and order labels through exact resource queries", async () => {
+        const f = fixture(() => [{ id: target, source: "native", label: "Selected", secondary: "Context" }]);
+        const p = profile(["ventas.calendar.read", "lead.read", "ventas.notes.read", "formalizacion.orders.read"]);
+        p.roles = [{ code: "formalizacion", name: "Formalizacion", status: "active" }];
+        const options = await f.db.transaction().execute((tx) =>
+            f.service.selectionOptions(tx, p, {
+                links: [
+                    { entityType: "note", source: "native", id: target },
+                    { entityType: "lead", source: "native", id: target },
+                    { entityType: "sales_order", source: "native", id: target },
+                ],
+                participants: [],
+            }),
+        );
+        const selected = [{ id: target, source: "native", label: "Selected", secondary: "Context" }];
+        expect(options).toEqual({ notes: selected, leads: selected, orders: selected });
+        expect(f.queries).toHaveLength(3);
+        expect(f.queries.every((query) => query.parameters.includes(target) && !query.sql.includes("LOCATE"))).toBe(true);
+    });
+    it("returns only participant descriptors when linked resources are restricted", async () => {
+        const f = fixture(() => [{ id: target, source: "native", label: "Ana" }]);
+        const options = await f.db.transaction().execute((tx) => f.service.selectionOptions(tx, profile(["ventas.calendar.read"]), { links: [{ entityType: "lead", source: "native", id: target }], participants: [{ userId: target }] }));
+        expect(options).toEqual({ users: [{ id: target, source: "native", label: "Ana" }] });
+        expect(f.queries).toHaveLength(1);
+    });
+    it("never hydrates participants without calendar access or by empty search", async () => {
+        const f = fixture();
+        await f.db.transaction().execute(async (tx) => {
+            await expect(f.service.selectionOptions(tx, profile([]), { links: [], participants: [{ userId: target }] })).rejects.toBeInstanceOf(ForbiddenException);
+            expect(await f.service.selectionOptions(tx, profile(), { links: [], participants: [{ email: "external@example.test" }] })).toEqual({});
+        });
+        expect(f.queries).toHaveLength(0);
+    });
+    it("hides unavailable relations but propagates database failures", async () => {
+        const f = fixture();
+        await f.db.transaction().execute(async (tx) => {
+            expect(await f.service.canManageLinks(tx, profile(), [{ entityType: "lead", source: "native", id: target }])).toBe(false);
+            expect(await f.service.canManageLinks(tx, profile(), [])).toBe(true);
+            expect(await f.service.canManageLinks(tx, profile([]), [])).toBe(false);
+        });
+        const failed = fixture(() => {
+            throw new Error("database unavailable");
+        });
+        await failed.db.transaction().execute(async (tx) => {
+            await expect(failed.service.canManageLinks(tx, profile(), [{ entityType: "lead", source: "native", id: target }])).rejects.toThrow("database unavailable");
+        });
+    });
+    it("accepts the parent limit of 100", async () => {
+        const f = fixture();
+        await f.service.lookup(profile(), { moduleCode: "ventas", kind: "users", search: "Ana", limit: 100 });
+        expect(f.queries[0]?.parameters).toContain(100);
+    });
+    it("resolves explicit Nest DI using only the calendar repository and config", async () => {
+        const f = fixture();
+        const module = await Test.createTestingModule({ providers: [CalendarLookupService, { provide: ConfigService, useValue: new ConfigService({}) }, { provide: CalendarRepository, useValue: f.snapshot }] }).compile();
+        expect(module.get(CalendarLookupService)).toBeInstanceOf(CalendarLookupService);
+        await module.close();
+    });
+    it("restricts Formalizacion-only lead access to readable active orders", async () => {
+        const f = fixture(() => [], true);
+        const p = profile(["ventas.calendar.read", "formalizacion.orders.read"]);
+        p.roles = [{ code: "formalizacion", name: "Formalizacion", status: "active" }];
+        await f.service.lookup(p, { moduleCode: "ventas", kind: "leads", search: "Ana" });
+        expect(f.queries[0]?.sql).toContain("o.lead_id_sales_order=l.id_lead");
+        expect(f.queries[0]?.sql).toContain("cancelled_sales_order='no'");
+        expect(f.queries[1]?.sql).toContain("o.id_ov_lead=l.idinterno_lead");
+        expect(f.queries[1]?.sql).toContain("o.caida_ov=0");
+    });
+    it("rejects retired legacy aliases without changing caller identities or reading legacy", async () => {
+        const f = fixture(() => [{ id: target }], true);
+        const links = [{ entityType: "lead", source: "legacy", id: "214" }] as const;
+        await f.db.transaction().execute(async (tx) => {
+            await expect(f.service.validateLinks(tx, profile(), links)).rejects.toThrow("Seleccione el vínculo nativo");
+        });
+        expect(links).toEqual([{ entityType: "lead", source: "legacy", id: "214" }]);
+        expect(f.queries).toHaveLength(1);
+        expect(f.queries[0]?.sql).not.toContain("crmdatabase-api");
+    });
+    it("fails closed for an unknown resource scope", async () => {
+        const f = fixture();
+        const p = profile();
+        p.permissions = p.permissions.map((entry) => (entry.code === "lead.read" && entry.effect === "allow" ? { ...entry, scope: "future_scope" } : entry));
+        await expect(f.service.lookup(p, { moduleCode: "ventas", kind: "leads", search: "Ana" })).rejects.toBeInstanceOf(ForbiddenException);
+        expect(f.queries).toHaveLength(0);
+    });
+    it("requires the selected calendar read permission before accessing data", async () => {
+        const f = fixture();
+        await expect(f.service.lookup(profile(), { moduleCode: "mercadeo", kind: "leads", search: "Ana" })).rejects.toBeInstanceOf(ForbiddenException);
+        expect(f.queries).toHaveLength(0);
+    });
+    it("rejects a resource deny even with calendar access", async () => {
+        const p = profile();
+        p.permissions.push({ code: "lead.read", scope: null, effect: "deny", source: "override" });
+        const f = fixture();
+        await expect(f.service.lookup(p, { moduleCode: "ventas", kind: "leads", search: "Ana" })).rejects.toBeInstanceOf(ForbiddenException);
+        expect(f.queries).toHaveLength(0);
+    });
+    it("bounds search and limits, rejects forged access and does not enumerate leads without search", async () => {
+        const f = fixture();
+        for (const input of [{ search: "a".repeat(101) }, { limit: 101 }, { access: "all" }]) await expect(f.service.lookup(profile(), { moduleCode: "ventas", kind: "leads", ...input })).rejects.toThrow();
+        expect(await f.service.lookup(profile(), { moduleCode: "ventas", kind: "leads", search: "" })).toEqual({ items: [] });
+        expect(f.queries).toHaveLength(0);
+    });
+    it("returns only public user identity fields and parameterizes name/email search", async () => {
+        const f = fixture(() => [{ id: target, source: "native", label: "Ana", secondary: "ana@example.test", secret: "hidden" }]);
+        const result = await f.service.lookup(profile(), { moduleCode: "ventas", kind: "users", search: "a%'_" });
+        expect(result).toEqual({ items: [{ id: target, source: "native", label: "Ana", secondary: "ana@example.test" }] });
+        expect(f.queries[0]?.sql).toContain("normalized_email_user");
+        expect(f.queries[0]?.sql).toContain("'inactive','pending'");
+        expect(f.queries[0]?.sql).not.toContain("a%'_");
+    });
+    it("lists open notes created or assigned to actor with independent live ACL and module denies", async () => {
+        const f = fixture(() => [{ id: target, source: "native", label: "Pendiente" }]);
+        expect(await f.service.lookup(profile(), { moduleCode: "ventas", kind: "notes", search: "" })).toEqual({ items: [{ id: target, source: "native", label: "Pendiente" }] });
+        const query = f.queries[0];
+        if (!query) throw new Error("Missing query");
+        expect(query.sql).toContain("n.status_note='open'");
+        expect(query.sql).toContain("assignee_user_id_note_task");
+        expect(query.sql).toContain("revoked_at_note_participant IS NULL");
+        expect(query.parameters).toContain(actor);
+    });
+    it("uses bounded native and legacy searches with native-first results", async () => {
+        const f = fixture((q) => (q.sql.includes("crmdatabase-api") ? [{ id: "214", source: "legacy", label: "Ana legacy" }] : [{ id: target, source: "native", label: "Ana native" }]), true);
+        const result = await f.service.lookup(profile(), { moduleCode: "ventas", kind: "leads", search: "Ana", limit: 2 });
+        expect(result.items.map((i) => i.source)).toEqual(["native", "legacy"]);
+        expect(f.queries[0]?.sql).toContain("full_name_contact");
+        expect(f.queries[1]?.sql).toContain("nombre_lead");
+        expect(f.queries.every((q) => q.sql.includes("LIMIT") && q.sql.includes("MAX_EXECUTION_TIME"))).toBe(true);
+    });
+    it("applies the existing seller scope before searching native or legacy leads", async () => {
+        const f = fixture(() => [], true);
+
+        const p = profile();
+        p.permissions = p.permissions.map((p) => (p.code === "lead.read" && p.effect === "allow" ? { ...p, scope: "assigned" } : p));
+        await f.service.lookup(p, { moduleCode: "ventas", kind: "leads", search: "Ana" });
+
+        expect(f.queries[0]?.sql).toContain("owner_user_id_lead");
+        expect(f.queries[0]?.parameters).toContain(actor);
+        expect(f.queries[1]?.sql).toContain("idnetsuite_admin");
+        expect(f.queries[1]?.parameters).toContain(actor);
+    });
+    it("requires formalization order access, searches tranid and suppresses only explicit mappings", async () => {
+        const f = fixture(() => [], true);
+        const p = profile(["ventas.calendar.read", "formalizacion.orders.read"]);
+        p.roles = [{ code: "formalizacion", name: "Formalizacion", status: "active" }];
+        await f.service.lookup(p, { moduleCode: "ventas", kind: "orders", search: "BC532" });
+        const [native, legacy] = f.queries;
+        if (!native || !legacy) throw new Error("Expected both sources");
+        expect(native.sql).toContain("transaction_number_sales_order_external_reference");
+        expect(native.sql).toContain("c.full_name_contact");
+        expect(native.sql).toContain("p.name_project");
+        expect(legacy.sql).toContain("id_ov_tranid");
+        expect(legacy.sql).toContain("COUNT(*)=1");
+        expect(legacy.sql).toContain("l.nombre_lead");
+        expect(legacy.sql).toContain("id_old_produccion_sales_order");
+        expect(legacy.sql).toContain("NOT EXISTS");
+    });
+    it("validates exact identities on the supplied transaction and returns no labels", async () => {
+        const f = fixture(() => [{ id: target, source: "native", label: "Private" }]);
+        const result = await f.db.transaction().execute((tx) => f.service.validateLinks(tx, profile(), [{ entityType: "lead", source: "native", id: target }]));
+        expect(result).toEqual([{ entityType: "lead", source: "native", id: target }]);
+        expect(f.queries[0]?.parameters).toContain(target);
+        expect(f.queries.every((q) => q.sql.startsWith("SELECT"))).toBe(true);
+    });
+    it("fails closed for unavailable, malformed and unsupported legacy note links", async () => {
+        const f = fixture();
+        await f.db.transaction().execute(async (tx: Transaction<CrmDatabase>) => {
+            for (const link of [
+                { entityType: "lead", source: "native", id: target },
+                { entityType: "note", source: "legacy", id: "1" },
+                { entityType: "lead", source: "native", id: "bad" },
+            ] as const)
+                await expect(f.service.validateLinks(tx, profile(), [link])).rejects.toThrow();
+        });
+    });
+});

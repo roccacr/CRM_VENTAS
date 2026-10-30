@@ -1,5 +1,11 @@
 # 03 - Base de Datos y Migracion
 
+Ampliacion posterior del27:039 de notas aplicada y conciliada; el runner contiene
+ahora37 migraciones. Siete tablas nuevas vacias; sin triggers privilegiados,
+imports, grants, runtime o cambios legacy. Ver [diccionario de notas](Diccionario-Datos/12-Notas-Colaborativas.md).
+El inventario de36 siguiente conserva el corte anterior a esta entrega.
+
+
 ## Corte de codigo y documentacion - 2026-10-27
 
 Revision de los archivos actuales, sin conexion MySQL ni ejecucion de migraciones.
@@ -267,3 +273,7 @@ Proveedor externo solo agrega referencia en int_external_reference.
 ```
 
 Ver `30-Identidad-Canonica-y-Referencias-Externas.md`.
+
+Notas044 aplicada27octubre2026: columnas collaboration_version_note/collaboration_updated_at_note y sec_notification con COMMENT/FK/índices;20 definiciones sin grants. Sin copiar datos legacy. [Contrato60](60-Notas-Etapa4-Colaboracion-y-Notificaciones.md).
+
+Actualización vigente 2026-10-28: [62 - Notas en tiempo real](62-Notas-Tiempo-Real-Implementacion.md). Socket.IO, migración046 aditiva aplicada, campana/hilo/bandejas, recuperación REST y acceso a notas independiente del registro vinculado. Esta actualización sustituye las limitaciones históricas de transporte y acceso de las etapas anteriores. Copia legacy inactiva; Redis multiinstancia y aceptación visual real pendientes.

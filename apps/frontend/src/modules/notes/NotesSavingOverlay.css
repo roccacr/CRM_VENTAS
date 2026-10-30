@@ -1,0 +1,30 @@
+/*
+ * Sticks to the top of the panel that holds it and takes no space (height 0), so nothing shifts and the panel is never dimmed or blocked.
+ * The pill floats over the panel content, centred horizontally.
+ */
+.notes-saving-overlay {
+    position: sticky;
+    top: 8px;
+    z-index: 5;
+    height: 0;
+    overflow: visible;
+    pointer-events: none;
+}
+
+.notes-saving-overlay__card {
+    position: absolute;
+    left: 50%;
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 16px;
+    transform: translateX(-50%);
+    border: 1px solid #d2dae5;
+    border-radius: 999px;
+    background: #ffffff;
+    box-shadow: 0 4px 14px rgb(14 17 22 / 16%);
+    color: #2f3a4b;
+    font-size: 13px;
+    font-weight: 600;
+    white-space: nowrap;
+}

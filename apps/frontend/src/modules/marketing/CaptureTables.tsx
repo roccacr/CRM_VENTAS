@@ -95,7 +95,20 @@ function LevelTable({ level, rows, measure, selected, onToggle }: LevelProps) {
                             const picked = level.depth === 1 && Boolean(selected?.has(projectId));
                             return (
                                 <tr key={row.key} className={picked ? "capture-table__row capture-table__row--picked" : "capture-table__row"}>
-                                    <NameCell row={row} level={level} pick={level.depth === 1 && onToggle ? { picked, toggle: () => { onToggle(projectId); } } : undefined} />
+                                    <NameCell
+                                        row={row}
+                                        level={level}
+                                        pick={
+                                            level.depth === 1 && onToggle
+                                                ? {
+                                                      picked,
+                                                      toggle: () => {
+                                                          onToggle(projectId);
+                                                      },
+                                                  }
+                                                : undefined
+                                        }
+                                    />
                                     <ValueCells columns={columns} detail={row.detail} />
                                     {withShare && <td className="capture-table__number">{total ? `${percentFormat.format((row.value / total) * 100)} %` : "—"}</td>}
                                 </tr>

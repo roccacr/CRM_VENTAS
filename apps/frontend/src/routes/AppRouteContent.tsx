@@ -21,6 +21,8 @@ import { type AuthState, getDefaultAuthenticatedPath, resolveRouteState, type Se
 
 /** Datos que la raíz ya resolvió. Este componente solo elige qué pantalla pintar. */
 export interface AppRouteContentProps {
+    /** Explicit menu navigation resets page-local detail, even on the same pathname. */
+    readonly navigationRevision?: number;
     /** Aviso del reintento de sesión. `null` cuando no hay un intento en curso. */
     readonly authRetryFeedback: string | null;
     /** Estado de autenticación ya clasificado. */
@@ -56,17 +58,18 @@ function RoutePage({ currentUser, roles, effectivePermissions, route, onNavigate
 const getSessionStatusView = (authState: AuthState): { readonly phase: SessionStatusPhase; readonly user: IdentityUser | null } => (authState.status === "checking" ? { phase: authState.phase ?? "checking", user: authState.user ?? null } : { phase: "checking", user: null });
 
 /** Authenticated feedback stays inside the original shell; denied pages never mount. */
-function AuthenticatedRouteContent({ profile, path, onLogout, onNavigate }: { readonly profile: IdentityProfile; readonly path: string; readonly onLogout: () => void; readonly onNavigate: (path: string) => void }) {
+function AuthenticatedRouteContent({ profile, path, onLogout, onNavigate, navigationRevision }: { readonly navigationRevision: number; readonly profile: IdentityProfile; readonly path: string; readonly onLogout: () => void; readonly onNavigate: (path: string) => void }) {
     const route = getAppRoute(path);
     // Navigation props can precede App's effect: authorize the current URL now.
     const permittedRoute = resolveRouteState(profile, path).status === "authenticated" ? route : undefined;
     const defaultPath = getDefaultAuthenticatedPath(profile);
     const shellRoute = permittedRoute ?? getAppRoute(defaultPath ?? "");
-    const workspaceCode = shellRoute?.workspaceCode ?? ALL_WORKSPACE_CODE;
-    const page = permittedRoute ? <RoutePage currentUser={profile.user} roles={profile.roles} effectivePermissions={profile.permissions} route={permittedRoute} onNavigate={onNavigate} /> : <AuthenticatedRouteFeedback unknown={!isKnownPath(path)} defaultPath={defaultPath} onNavigate={onNavigate} />;
+    const { workspaceCode = ALL_WORKSPACE_CODE, menuItemCode, title } = shellRoute ?? {};
+    const page = permittedRoute ? <RoutePage key={`${path}:${String(navigationRevision)}`} currentUser={profile.user} roles={profile.roles} effectivePermissions={profile.permissions} route={permittedRoute} onNavigate={onNavigate} /> : <AuthenticatedRouteFeedback unknown={!isKnownPath(path)} defaultPath={defaultPath} onNavigate={onNavigate} />;
     return (
         <GlobalHomeShell
-            activeMenuItemCode={shellRoute?.menuItemCode}
+            activeMenuItemCode={menuItemCode}
+            currentViewLabel={title}
             key={workspaceCode}
             currentUser={profile.user}
             effectivePermissions={profile.permissions}
@@ -129,7 +132,7 @@ function AuthenticatedRouteFeedback({ unknown, defaultPath, onNavigate }: { read
  * dudoso. Una sesión válida conserva el shell incluso ante una URL denegada
  * o desconocida; la página privada nunca se monta antes de comprobar la ruta.
  */
-export function AppRouteContent({ authRetryFeedback, authState, isAuthRetryDisabled, isMicrosoftSessionPending, isSubmittingLogin, loginError, onLocalLogin, onLogout, onMicrosoftLogin, onNavigate, onRetryAuthCheck, path }: AppRouteContentProps) {
+export function AppRouteContent({ navigationRevision = 0, authRetryFeedback, authState, isAuthRetryDisabled, isMicrosoftSessionPending, isSubmittingLogin, loginError, onLocalLogin, onLogout, onMicrosoftLogin, onNavigate, onRetryAuthCheck, path }: AppRouteContentProps) {
     if (authState.status === "checking" || isMicrosoftSessionPending) {
         const { phase, user } = getSessionStatusView(authState);
         return <SessionStatusScreen phase={phase} user={user} />;
@@ -150,7 +153,7 @@ export function AppRouteContent({ authRetryFeedback, authState, isAuthRetryDisab
     }
 
     if (authState.status === "authenticated" || authState.status === "forbidden") {
-        return <AuthenticatedRouteContent profile={authState.profile} path={path} onLogout={onLogout} onNavigate={onNavigate} />;
+        return <AuthenticatedRouteContent navigationRevision={navigationRevision} profile={authState.profile} path={path} onLogout={onLogout} onNavigate={onNavigate} />;
     }
 
     if (!isKnownPath(path)) {

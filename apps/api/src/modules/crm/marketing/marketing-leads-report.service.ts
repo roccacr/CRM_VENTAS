@@ -6,6 +6,7 @@ import { type MarketingLeadsReport, marketingLeadsReportQuery, type ReportSource
 import { buildMarketingLeadsReport } from "./marketing-leads-report.model.js";
 import { MARKETING_LEADS_REPORT_LEGACY_READER, type MarketingLeadsReportLegacyReader } from "./marketing-leads-report.port.js";
 import { MarketingLeadsReportRepository } from "./marketing-leads-report.repository.js";
+import { hasGlobalMarketingRead } from "./marketing-read.policy.js";
 
 /** Enforces the report's independent permission before either source is touched. */
 @Injectable()
@@ -29,7 +30,7 @@ export class MarketingLeadsReportService {
         const now = new Date();
         try {
             return await this.snapshot.readSnapshot(async (tx) => {
-                const sellerScope = scopes.includes("all_areas") ? undefined : await this.snapshot.visibleSellers(tx, profile, scopes);
+                const sellerScope = hasGlobalMarketingRead(profile) || scopes.includes("all_areas") ? undefined : await this.snapshot.visibleSellers(tx, profile, scopes);
                 const native = await this.repository.readNative(tx);
                 const enabled = this.legacy.enabled();
                 const legacy: ReportSource = enabled ? await this.legacy.read(tx) : { leads: [], events: [], users: [], projects: [], campaigns: [], userAliases: [], projectAliases: [], campaignAliases: [], leadAliases: [] };

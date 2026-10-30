@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsOptional, IsString } from "class-validator";
+import { IsNotEmpty, IsOptional, IsString, MaxLength } from "class-validator";
 
 /**
  * Query del callback OIDC autorizado por Microsoft.
@@ -31,4 +31,10 @@ export class MicrosoftCallbackDto {
     @IsString()
     @IsOptional()
     client_info?: string;
+
+    /** Metadatos opcionales de Entra; no intervienen en la identidad ni sustituyen state/PKCE. */
+    @IsString()
+    @MaxLength(4096)
+    @IsOptional()
+    clientdata?: string;
 }

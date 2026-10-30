@@ -54,7 +54,7 @@ describe("bounded federated follow-up SQL", () => {
                 expect(compiled.sql).toContain("MAX_EXECUTION_TIME(5000)");
                 expect(compiled.sql).not.toContain(query.search);
                 expect(compiled.parameters).toContain(query.search.toLocaleLowerCase("es"));
-                expect(compiled.sql).toContain("approvalPending=0 OR");
+                expect(compiled.sql).not.toContain("approvalPending=0 OR");
                 expect(compiled.sql).toContain("ownerId=?");
                 expect(compiled.sql).not.toMatch(/INSERT|UPDATE|DELETE|FOR UPDATE|YEAR\(/);
                 expect(compiled.sql).not.toMatch(/password_admin|telefono_lead|token_admin/);
@@ -112,6 +112,59 @@ it("binds an exact record identity and preserves native authority for a legacy a
         expect(queries[0]?.sql).not.toContain("legacy:208");
         expect(queries[0]?.parameters).toContain("legacy:208");
         expect(queries[0]?.parameters).toContain("208");
+    } finally {
+        await db.destroy();
+    }
+});
+it.each(["bank", "closed"] as const)("keeps signed %s membership independent of pending approvals before projects and pagination", (queue) => {
+    const { db } = database();
+    const compiled = followUpSourceQuery(sql`SELECT 1`, { ...query, queue }, { ...access, ownOnly: false, approvalOwnOnly: false, queues: { [queue]: true } }).compile(db);
+    const visible = compiled.sql.split("visible AS (")[1]?.split("), searched AS")[0];
+    expect(visible).not.toContain("approvalPending=0");
+    expect(visible).toContain("contractSigned=1 AND stateCode='bank_management'");
+    expect(visible).toContain("contractSigned=1 AND completedThisYear=1");
+    expect(compiled.sql).toContain("approved=1 AND stateCode IN ('contract_pending_send','contract_pending_signature')");
+    expect(compiled.sql).toContain("AND approvalPending=1");
+    expect(compiled.sql).toContain("FROM visible WHERE projectId IS NOT NULL");
+    void db.destroy();
+});
+
+it("bounds exact source projections before classification without portfolio counts or project catalogs", async () => {
+    const { db, queries } = database([]);
+    try {
+        await db.transaction().execute(async (tx) => {
+            await new FollowUpRepository().readRecord(tx, "01ARZ3NDEKTSV4RRFFQ69G5FAV", period);
+            await new LegacyFollowUpReader({ isConfigured: () => true } as never).readRecord(tx, "208", period);
+        });
+        expect(queries).toHaveLength(2);
+        expect(queries[0]?.sql).toContain("o.public_id_sales_order=?");
+        expect(queries[0]?.parameters).toContain("01ARZ3NDEKTSV4RRFFQ69G5FAV");
+        expect(queries[1]?.sql).toContain("o.id_ov=?");
+        expect(queries[1]?.parameters).toContain(208);
+        expect(queries[1]?.sql).toContain("n.id_old_produccion_sales_order=o.id_ov");
+        for (const query of queries) {
+            expect(query.sql).toContain("FROM classified LIMIT 1");
+            expect(query.sql).toContain("ELSE 'unclassified'");
+            expect(query.sql).toContain("'stateVersion',stateVersion");
+            expect(query.sql).not.toMatch(/visible AS|searched AS|projects AS|JSON_ARRAYAGG|AS total|SUM\(/);
+            expect(query.sql).not.toMatch(/INSERT|UPDATE|DELETE|FOR UPDATE/);
+        }
+    } finally {
+        await db.destroy();
+    }
+});
+
+it("resolves exact native authority without filtering inactive aliases or reading banner metadata", async () => {
+    const { db, queries } = database([{ publicId: "01ARZ3NDEKTSV4RRFFQ69G5FAV", active: 0 }]);
+    try {
+        await db.transaction().execute(async (tx) => {
+            expect(await new FollowUpRepository().findRecordAuthority(tx, "legacy", "208")).toEqual({ publicId: "01ARZ3NDEKTSV4RRFFQ69G5FAV", active: false });
+            await new FollowUpRepository().findRecordAuthority(tx, "native", "01ARZ3NDEKTSV4RRFFQ69G5FAV");
+        });
+        expect(queries[0]?.sql).toContain("WHERE o.id_old_produccion_sales_order=? LIMIT 1");
+        expect(queries[0]?.parameters).toContain(208);
+        expect(queries[1]?.sql).toContain("WHERE o.public_id_sales_order=? LIMIT 1");
+        for (const q of queries) expect(q.sql).not.toMatch(/COUNT\(|JOIN|rawStage|approved|completedThisYear|crmdatabase-api/);
     } finally {
         await db.destroy();
     }

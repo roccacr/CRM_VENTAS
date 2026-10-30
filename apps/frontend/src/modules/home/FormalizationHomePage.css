@@ -2449,20 +2449,40 @@
     font-size: 10.5px;
     font-weight: 600;
 }
-.formalization-record-progress__steps li[data-status="reached"] strong,
-.formalization-record-progress__steps li[data-status="reached"] .formalization-record-progress__step-percent {
+.formalization-record-progress__steps li[data-status="completed"] strong,
+.formalization-record-progress__steps li[data-status="previous"] strong,
+.formalization-record-progress__steps li[data-status="completed"] .formalization-record-progress__step-percent {
     color: var(--stage-done);
 }
-.formalization-record-progress__steps li[data-status="reached"]::before,
+.formalization-record-progress__steps li[data-status="completed"]::before,
+.formalization-record-progress__steps li[data-status="previous"]::before,
 .formalization-record-progress__steps li[data-status="current"]::before {
     background: var(--stage-done);
 }
-.formalization-record-progress__steps li[data-status="reached"] .formalization-record-progress__marker {
+.formalization-record-progress__steps li[data-status="completed"] .formalization-record-progress__marker,
+.formalization-record-progress__steps li[data-status="previous"] .formalization-record-progress__marker {
+    position: relative;
     border-color: var(--stage-done);
     background: var(--stage-done);
     color: #fff;
 }
-.formalization-record-progress__steps li[data-status="reached"] .formalization-record-progress__status {
+/* Icon stays; a small check badge on the corner confirms the stage is done. */
+.formalization-record-progress__check {
+    position: absolute;
+    right: -6px;
+    bottom: -6px;
+    display: grid;
+    width: 16px;
+    height: 16px;
+    place-items: center;
+    border: 2px solid #fff;
+    border-radius: 50%;
+    background: var(--stage-done);
+    color: #fff;
+    font-size: 8px;
+}
+.formalization-record-progress__steps li[data-status="previous"] .formalization-record-progress__status,
+.formalization-record-progress__steps li[data-status="completed"] .formalization-record-progress__status {
     border-color: #9cc9b3;
     background: #e3f3ea;
     color: var(--stage-done);
@@ -2691,7 +2711,7 @@
 /* Key facts of the order: one framed band, five columns, read before any section. */
 .record-highlights {
     display: grid;
-    grid-template-columns: repeat(5, minmax(0, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     margin: 0;
     border: 1px solid var(--n200);
     border-radius: 8px;
@@ -3735,4 +3755,452 @@
     outline: 2px solid #426994;
     outline-offset: 4px;
     border-radius: 2px;
+}
+
+/* A field with no data is quieter than one with a value, so filled facts stand out. */
+.record-group dd[data-empty="true"] {
+    color: var(--n500);
+    font-weight: 400;
+}
+
+/* The record-level action sits in the section toolbar, not alone on a row of its own. */
+.record-bar > button.record-bar__history {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    border-color: var(--n200);
+    color: var(--n700);
+}
+
+.record-bar > button.record-bar__history:hover {
+    border-color: var(--n500);
+}
+
+/* Field layout: the value decides the room it takes, and the grid backfills so no row is left with a lonely fact and a blank beside it. */
+.record-group dl {
+    grid-auto-flow: row dense;
+}
+
+.record-field[data-span="2"] {
+    grid-column: span 2;
+}
+
+.record-field[data-span="full"] {
+    grid-column: 1 / -1;
+    max-width: 52rem;
+}
+
+@container record-facts (max-width: 400px) {
+    .record-field[data-span="2"] {
+        grid-column: auto;
+    }
+}
+
+/* Groups read as separate blocks: a clearer gap between them than between the facts inside one. */
+.record-chapter__body {
+    display: grid;
+    gap: 24px;
+}
+
+/* The additional NetSuite details share one panel; the preceding chapters remain independent. */
+.record-details {
+    border: 1px solid var(--border-color, #cbd5e1);
+    border-radius: 6px;
+    background: #fff;
+    overflow: hidden;
+}
+.record-details__tabs {
+    display: flex;
+    gap: 4px;
+    padding: 0 12px;
+    overflow-x: auto;
+    background: #f4f7fa;
+    border-bottom: 1px solid #cbd5e1;
+}
+.record-details__tabs button {
+    flex: 0 0 auto;
+    border: 0;
+    border-bottom: 3px solid transparent;
+    padding: 13px 16px 10px;
+    background: transparent;
+    color: #465d78;
+    font: inherit;
+    cursor: pointer;
+}
+.record-details__tabs button[aria-selected="true"] {
+    color: #172b43;
+    border-bottom-color: #172b43;
+    background: #fff;
+    font-weight: 600;
+}
+.record-details__tabs button:hover {
+    background: #e9eef4;
+}
+.record-details__tabs button:focus-visible,
+.record-details__panel:focus-visible {
+    outline: 2px solid #496b95;
+    outline-offset: -3px;
+}
+.record-details__panel {
+    padding: 20px;
+}
+.record-details__panel[hidden] {
+    display: none;
+}
+
+/* Icons in titles: quiet, one size, in the neutral ink, so they help find a part without competing with the words. */
+.record-icon {
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    color: var(--n600);
+    font-size: 15px;
+}
+
+.record-group h3,
+.record-rail__money h3,
+.record-status__group h4,
+.record-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.record-rail__checks h3 {
+    justify-content: space-between;
+}
+
+.record-chapter > h2 button .record-icon {
+    color: var(--n700);
+}
+
+.record-status__group h4 .record-icon {
+    font-size: 13px;
+}
+
+/* Extra details (articles, reservation, payment, OneDrive): the same frame as the sections, tabs on the 40px band. */
+.record-details {
+    border: 1px solid var(--n200);
+    border-radius: 8px;
+    background: #ffffff;
+}
+
+.record-details__tabs {
+    gap: 2px;
+    padding: 0 8px;
+    border-bottom: 1px solid var(--n200);
+    background: var(--n100);
+}
+
+.record-details__tabs button {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 40px;
+    padding: 0 14px;
+    border-bottom: 2px solid transparent;
+    color: var(--n700);
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.record-details__tabs button .record-icon {
+    color: var(--n600);
+}
+
+.record-details__tabs button:hover {
+    background: var(--n200);
+    color: var(--n950);
+}
+
+.record-details__tabs button[aria-selected="true"] {
+    border-bottom-color: var(--n950);
+    background: #ffffff;
+    color: var(--n950);
+}
+
+.record-details__tabs button[aria-selected="true"] .record-icon {
+    color: var(--n950);
+}
+
+.record-details__panel {
+    display: grid;
+    gap: 24px;
+    padding: 16px;
+}
+
+.record-rail__checks .record-status__group h4 {
+    justify-content: flex-start;
+}
+
+/* Each field name carries its own small icon, in every section and tab. */
+.record-field dt {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.record-field__icon {
+    display: inline-flex;
+    flex: none;
+    color: var(--n500);
+    font-size: 13px;
+}
+
+/* Separators: a group starts under a rule, so blocks inside a section (and each tab panel) read as distinct units, not as one run of facts. */
+.record-chapter__body > .record-group + .record-group,
+.record-details__panel > .record-group + .record-group {
+    padding-top: 20px;
+    border-top: 1px solid var(--n200);
+}
+
+/* Between facts of one group: a faint row rule keeps long label/value lists scannable. */
+.record-group dl {
+    row-gap: 0;
+}
+
+.record-group .record-field {
+    padding: 8px 0;
+    border-bottom: 1px solid var(--n100);
+}
+
+.record-items > h2 {
+    padding: 14px 18px;
+    font-size: 14px;
+}
+.record-items__scroll {
+    overflow-x: auto;
+}
+.record-items table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+}
+.record-items th {
+    background: #f4f7fa;
+    text-align: left;
+    font-weight: 600;
+    white-space: nowrap;
+}
+.record-items th,
+.record-items td {
+    padding: 12px 14px;
+    border-top: 1px solid #d3dce7;
+    vertical-align: top;
+}
+.record-items td {
+    min-width: 110px;
+}
+.record-items td:nth-child(4) {
+    min-width: 230px;
+    white-space: pre-line;
+}
+.record-items td[data-numeric="true"] {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+.record-items tbody tr:hover {
+    background: #f7f9fc;
+}
+.record-items__scroll:focus-visible {
+    outline: 2px solid #496b95;
+    outline-offset: -2px;
+}
+
+/* Article lines: the same frame as the sections (40px band, icon, neutral scale), headers aligned with their numbers. */
+.record-items {
+    overflow: hidden;
+}
+
+.record-items > h2 {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    min-height: 40px;
+    margin: 0;
+    padding: 0 16px;
+    border-bottom: 1px solid var(--n200);
+    background: var(--n100);
+    color: var(--n900);
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.record-items__title {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.record-items__count {
+    padding: 0 8px;
+    border: 1px solid var(--n200);
+    border-radius: 10px;
+    background: #ffffff;
+    color: var(--n600);
+    font-size: 11.5px;
+    font-weight: 500;
+    line-height: 18px;
+    font-variant-numeric: tabular-nums;
+}
+
+.record-items th {
+    padding: 10px 16px;
+    border-top: 0;
+    border-bottom: 1px solid var(--n200);
+    background: var(--n50);
+    color: var(--n600);
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.record-items td {
+    padding: 10px 16px;
+    border-top: 1px solid var(--n100);
+    color: var(--n900);
+}
+
+.record-items tbody tr:first-child td {
+    border-top: 0;
+}
+
+.record-items th[data-numeric="true"] {
+    text-align: right;
+}
+
+.record-items td:nth-child(1) {
+    min-width: 220px;
+    font-weight: 500;
+}
+
+.record-items td:nth-child(3) {
+    min-width: 0;
+}
+
+.record-items tbody tr:hover {
+    background: var(--n50);
+}
+
+.record-items td[colspan] {
+    padding: 20px 16px;
+    color: var(--n600);
+    text-align: center;
+}
+
+/* Personal feed: six compact rows, no nested scrolling or decorative state badges. */
+.formalization-activity__list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+.formalization-activity__list li {
+    grid-template-columns: 90px minmax(0, 1fr);
+}
+
+/* Group contract subcounts once; the eight summary cards form two balanced rows. */
+.formalization-order-banners.catalog-items-page--projects .catalog-banners {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+@media (max-width: 1200px) {
+    .formalization-order-banners.catalog-items-page--projects .catalog-banners {
+        grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr));
+    }
+}
+
+/* Recent movements: icon, what happened, and when. Two columns on wide screens so the card is not a few words floating in a long row. */
+.formalization-activity__list {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: 16px;
+    padding: 4px 16px 8px;
+}
+.formalization-activity__list li {
+    grid-template-columns: 32px minmax(0, 1fr) auto;
+    gap: 12px;
+    padding: 12px 4px;
+    border-bottom: 1px solid #eef1f6;
+}
+.formalization-activity__list li:nth-last-child(-n + 2) {
+    border-bottom: 0;
+}
+.formalization-activity__icon {
+    display: grid;
+    width: 32px;
+    height: 32px;
+    margin: 0;
+    place-items: center;
+    border: 1px solid #d2dae5;
+    border-radius: 50%;
+    background: #f5f7fa;
+    color: #496180;
+    font-size: 14px;
+}
+.formalization-activity__list li[data-action="approval_change"] .formalization-activity__icon {
+    border-color: #9cc9b3;
+    background: #e3f3ea;
+    color: #0a6b3d;
+}
+.formalization-activity__list li[data-action="revert"] .formalization-activity__icon {
+    border-color: #e6c9a0;
+    background: #fbf1e1;
+    color: #8a5a12;
+}
+.formalization-activity__body strong {
+    font-size: 13px;
+    font-weight: 600;
+}
+.formalization-activity__body code {
+    padding: 1px 6px;
+    border-radius: 4px;
+    background: #ebeef3;
+    color: #2f3a4b;
+    font-size: 12px;
+    font-weight: 600;
+}
+.formalization-activity__body > span {
+    margin-top: 3px;
+    color: #496180;
+    font-size: 12.5px;
+    overflow-wrap: anywhere;
+}
+.formalization-activity__list time {
+    text-align: right;
+    white-space: nowrap;
+}
+.formalization-activity__list time > span {
+    display: block;
+    margin: 0;
+    color: #5d6b82;
+    font-size: 12px;
+    font-weight: 400;
+}
+.formalization-activity__list time > span:first-child {
+    color: #2f3a4b;
+    font-weight: 600;
+}
+@media (max-width: 1000px) {
+    .formalization-activity__list {
+        grid-template-columns: minmax(0, 1fr);
+    }
+    .formalization-activity__list li:nth-last-child(2) {
+        border-bottom: 1px solid #eef1f6;
+    }
+}
+.formalization-activity__body .formalization-activity__actor {
+    display: block;
+    margin-top: 4px;
+    color: #5d6b82;
+    font-size: 11.5px;
+}
+
+.formalization-order-banners .catalog-banner__metrics {
+    display: flex;
+    grid-column: 1 / -1;
+    gap: 20px;
+}
+.formalization-order-banners .catalog-banner__metrics > div {
+    display: grid;
+    gap: 2px;
 }

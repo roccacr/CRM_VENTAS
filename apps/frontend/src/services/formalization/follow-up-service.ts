@@ -148,3 +148,10 @@ export async function getFollowUp(filters: FollowUpFilters): Promise<FollowUp> {
     if (import.meta.env.DEV) console.log("[Formalization API: home/follow-up]", JSON.stringify({ ...result, items: result.items.map(({ clientEmail: _clientEmail, ...entry }) => entry) }));
     return result;
 }
+
+/** Exact record projection, without banner counts, project catalogs or provider reads. */
+export async function getFormalizationOrderRecord(source: FollowUpItem["source"], id: string): Promise<FollowUpItem> {
+    const valid = source === "legacy" ? /^[1-9][0-9]{0,9}$/.test(id) : /^[0-7][0-9A-HJKMNP-TV-Z]{25}$/.test(id);
+    if (!valid) throw invalid();
+    return item(await apiRequest<unknown>(`/formalization/orders/${source}/${encodeURIComponent(id)}/record`));
+}

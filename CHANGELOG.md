@@ -1,5 +1,91 @@
 # Changelog
 
+## Notas, calendario y QA consolidado - 2026-10-29
+
+- Notas: responsables opcionales, vencimientos y recordatorios personales con
+  fecha/hora y posposición; bandeja de asignadas, búsqueda/filtros en servidor,
+  historial y ubicaciones adicionales a Homes. Migraciones052/053 documentadas
+  en [66](apps/api/Arquitectura/66-Notas-Enterprise-Seguimiento.md), sin importación
+  de registros. Esta actualización documental no ejecuta migraciones.
+- Colaboración: invitaciones múltiples independientes del módulo del invitado,
+  respuestas y menciones, seguimiento/silencio y avisos agrupados. El autor
+  administra la nota; responder no concede edición de contenido ajeno.
+- Notas y avisos persisten antes del socket; colas con reintentos, deduplicación
+  y revocación. Posición/lectura usan guardado en segundo plano; crear/editar
+  esperan confirmación. Vínculo por registro y origen, no por URL; invitar no
+  concede permisos sobre la orden. Copia legacy, adjuntos y correo no activados.
+- Calendario compartido registrado: lectura autorizada y creación/edición nativa
+  con versión y bitácora; reemplaza el estado histórico de solo esquema.
+  [Contrato](apps/api/Arquitectura/64-Calendario-Global-API-y-Contexto.md).
+- QA: corregidas expectativas de inventario/rutas y permisos de Calendario y
+  actividad reciente; agregados23 negativos HTTP. Pruebas de sesión/menú ahora
+  comprueban la navegación vigente sin Resumen y separan precarga de acciones.
+  No se cambiaron permisos de producción para satisfacer pruebas obsoletas.
+- Evidencia fechada: API6524 aprobadas/151 omitidas; frontend1233 aprobadas;
+  SQL/sockets32 aprobadas aparte en esquemas temporales eliminados. Formato,
+  lint, tipos y builds aprobados. Primer check raíz terminó exit1 por tipado de
+  aserciones; corrección y check frontend completo posterior terminaron exit0.
+  [67 - Plan, logs y límites](apps/api/Arquitectura/67-Plan-QA-Regresiones-20261029.md).
+- Pendientes de aceptación: Redis entre procesos, medición de carga/latencia y
+  dos cuentas reales en navegador. Las cifras no acreditan CI remoto ni despliegue.
+
+Los cortes inferiores conservan la historia de cada etapa; sus pendientes y
+conteos no sustituyen el estado vigente anterior.
+
+## Formalización: roles, recuperación y recorrido - 2026-10-28
+
+- Formalización y Jefe de Formalizaciones gestionan todas las órdenes con el
+  permiso correspondiente; se conservan denegaciones, requisitos y auditoría.
+- Migración049 nativa provisiona permisos faltantes de los roles, sin reactivar
+  configuraciones deshabilitadas ni tocar excepciones individuales o datos legacy.
+- La ficha se revalida por identidad después de guardar, sin depender de banners.
+  401/403 bloquean comandos; las respuestas inciertas conservan operación y contenido.
+- Cierre explícito, etapas anteriores neutrales y textos de movimiento precisos;
+  recuperación de errores de URL con reintento y regreso. Contrato y límites en65.
+
+## Notas colaborativas: etapa4 - 2026-10-27
+
+- API protegida de participantes, respuestas propias, menciones y seguimiento.
+- Campana interna y bandejas; revocación suprime acceso y avisos históricos.
+- 044 aplicada sin imports ni grants comerciales; outbox de colaboración con reintentos y deduplicación.
+- UI de invitación al crear/después y conversación; creación confirmada no se duplica si compartir falla.
+- Copia legacy y aceptación integral siguen en etapas5/6. Contrato60.
+
+## Notas: corregir ID de presentacion legacy - 2026-10-27
+
+- Consulta y creacion convierten legacy:208 a source=legacy,id=208; los IDs publicos nativos se mantienen intactos.
+- URL y detalle usan la misma identidad para conservar el borrador. Sin modificar IDs de BD, permisos o relaciones.
+
+## Notas: contexto opcional - 2026-10-27
+
+- Creacion desde cualquier pantalla: nota personal por defecto, checkbox para vincular la vista actual y mostrar tipo/destino.
+- Ordenes nativas y legacy con origen/ID separados; vistas registradas con permiso vigente y Home compatible con hash previo.
+- Migracion041 solo registra legacy_crm como sistema de referencia; sin importar ordenes ni activar copia legacy.
+- Selector personal/vista, reintentos conservan destino; autoria/ACL y compartir en etapa4 siguen vigentes. Documento59.
+
+## Notas colaborativas: etapa3 - 2026-10-27
+
+- Icono Mis notas junto a la campana, escritorio/movil; editor lateral conectado al API nativo.
+- Home y orden nativa de Formalizacion: crear/editar/completar/reabrir/archivar; posicion, tamano y PIN personales con teclado/puntero y layouts por dispositivo.
+- Acceso personal self en modulos efectivos existentes; permisos activos, deny y autoria conservados. Sin grants masivos ni migraciones.
+- Reintento manual de guardados inciertos conserva operationId/payload; contexto aislado,409 explicito y contenido como texto plano.
+- Campanita de notas, compartir y copia legacy siguen pendientes. Contrato: documento58.
+
+## Notas colaborativas: etapa2 - 2026-10-27
+
+- API de notas propias: crear, leer, editar, completar/reabrir/archivar y posicion personal.
+- Permisos por modulo, autoria exclusiva, contexto autorizado, CSRF y versiones.
+- Migracion040 aplicada:25 permisos sin grants comerciales, recibos y outbox transaccional inerte; todos los campos comentados.
+- Sin importar registros, interfaz, campanita ni copia legacy. Contrato: apps/api/Arquitectura/57-Notas-Etapa2-API.md.
+
+## Notas colaborativas: etapa1 - 2026-10-27
+
+- Migracion039: siete tablas nativas vacias,91 columnas comentadas,24 FK y15 CHECK.
+- Recuperacion explicita tras rechazo de triggers SUPER/binlog: cotejo completo
+  y registro en ledger sin borrar tablas, bajar seguridad o copiar datos.
+- Sin API/UI, permisos, notificaciones o escrituras legacy; avance en plan56.
+- API5734 pruebas aprobadas/119 omitidas; build/typecheck y formato tocado aprobados.
+
 ## Revision documental integral - 2026-10-27
 
 - Revision con tres agentes y coordinacion contra codigo del checkout compartido.
@@ -9,7 +95,6 @@
   Se conservan snapshots y pruebas historicos; no se presentan como ejecuciones nuevas.
 - Ambos typechecks aprobados; check-all detenido por formato previo en API.
   Sin modificar runtime/configuracion/BD o ejecutar migraciones durante la revision.
-
 
 ## Consolidacion documental integral - 2026-10-23
 
@@ -300,3 +385,5 @@
 - Filters apply to loaded rows; offset pagination is not a concurrent-write snapshot. Uniqueness is per catalog/provider/identifier, including archived ownership, not global across catalogs.
 - Full ETL is pending subsidiary 63 naming, broker identifier selection and Files domain mapping. Negative campaign identifiers must be preserved; the project mapper is not a universal importer.
 - No deployment, automatic production migration or complete Owner acceptance is implied.
+
+Notas realtime, 2026-10-28: [contrato, configuración y evidencia](apps/api/Arquitectura/62-Notas-Tiempo-Real-Implementacion.md). Transporte Socket.IO protegido, persistencia nativa046 y actualización de campana/conversación; sin copia legacy ni despliegue. Redis multiinstancia y aceptación visual real pendientes.

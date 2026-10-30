@@ -202,7 +202,15 @@ function CatalogItemModal({ catalog, initialItem, isSaving, open, error, onClose
             mask={{ closable: !isSaving }}
             footer={
                 <div className="create-user-drawer__footer">
-                    <div className="create-user-drawer__footer-status">{error ? <div className="catalog-items-error" role="alert">{error}</div> : <span className="create-user-drawer__summary">Todo cambio queda en auditoría.</span>}</div>
+                    <div className="create-user-drawer__footer-status">
+                        {error ? (
+                            <div className="catalog-items-error" role="alert">
+                                {error}
+                            </div>
+                        ) : (
+                            <span className="create-user-drawer__summary">Todo cambio queda en auditoría.</span>
+                        )}
+                    </div>
                     <Space size={8}>
                         <Button disabled={isSaving} onClick={onClose}>
                             Cancelar

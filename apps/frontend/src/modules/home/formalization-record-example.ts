@@ -93,14 +93,7 @@ export const RECORD_EXAMPLE = {
             groups: [
                 {
                     title: "Origen",
-                    fields: [
-                        text("Unidad expediente ligado VTA", "Unidad de ejemplo 101"),
-                        text("Oportunidad", "Oportunidad de ejemplo"),
-                        text("Creado desde", "Estimación de ejemplo"),
-                        text("Campaña de marketing", "Campaña de ejemplo"),
-                        text("Representante de ventas", "Vendedor de ejemplo"),
-                        text("Socio", null),
-                    ],
+                    fields: [text("Unidad expediente ligado VTA", "Unidad de ejemplo 101"), text("Oportunidad", "Oportunidad de ejemplo"), text("Creado desde", "Estimación de ejemplo"), text("Campaña de marketing", "Campaña de ejemplo"), text("Representante de ventas", "Vendedor de ejemplo"), text("Socio", null)],
                 },
                 {
                     title: "Compra",
@@ -108,13 +101,7 @@ export const RECORD_EXAMPLE = {
                 },
                 {
                     title: "Fechas",
-                    fields: [
-                        text("Fecha de vigencia de la venta", "26/11/2026"),
-                        text("Entrega estimada", "30/03/2028"),
-                        text("Fecha de entrega contractual", "30/06/2027"),
-                        text("Vigencia de garantía", null),
-                        text("Fecha adenda", null),
-                    ],
+                    fields: [text("Fecha de vigencia de la venta", "26/11/2026"), text("Entrega estimada", "30/03/2028"), text("Fecha de entrega contractual", "30/06/2027"), text("Vigencia de garantía", null), text("Fecha adenda", null)],
                 },
                 {
                     title: "Cancelación",
@@ -128,32 +115,11 @@ export const RECORD_EXAMPLE = {
             groups: [
                 {
                     title: "Precios",
-                    fields: [
-                        money("Precio de lista", 229000),
-                        money("Monto extras sobre el precio de lista", 0),
-                        text("Descripción de extras sobre el precio de lista", null, true),
-                        money("Precio de venta neto", 229000),
-                        money("Precio de venta mínimo", 217550),
-                        money("Diferencia entre PVN y PVM", 11450),
-                        text("Tipo de cambio", "457,85"),
-                        money("Cashback", 0),
-                        text("Cargos adicionales", null, true),
-                        text("Unidad expediente ligado", "Unidad de ejemplo 101"),
-                    ],
+                    fields: [money("Precio de lista", 229000), money("Monto extras sobre el precio de lista", 0), text("Descripción de extras sobre el precio de lista", null, true), money("Precio de venta neto", 229000), money("Precio de venta mínimo", 217550), money("Diferencia entre PVN y PVM", 11450), text("Tipo de cambio", "457,85"), money("Cashback", 0), text("Cargos adicionales", null, true), text("Unidad expediente ligado", "Unidad de ejemplo 101")],
                 },
                 {
                     title: "Comisiones",
-                    fields: [
-                        money("Precio cálculo comisión corredor", 229000),
-                        text("% comisión del corredor", "0,0 %"),
-                        money("Monto de comisión de corredor", 0),
-                        money("IVA corredor (13 %)", 0),
-                        text("Comisión del asesor %", "0,38 %"),
-                        money("Monto de comisión del asesor", 870.2),
-                        money("Monto de comisión segundo asesor", 0),
-                        money("Monto total de cortesías", 0),
-                        text("Descripción de cortesías", null, true),
-                    ],
+                    fields: [money("Precio cálculo comisión corredor", 229000), text("% comisión del corredor", "0,0 %"), money("Monto de comisión de corredor", 0), money("IVA corredor (13 %)", 0), text("Comisión del asesor %", "0,38 %"), money("Monto de comisión del asesor", 870.2), money("Monto de comisión segundo asesor", 0), money("Monto total de cortesías", 0), text("Descripción de cortesías", null, true)],
                 },
                 {
                     title: "Notas",
@@ -161,6 +127,40 @@ export const RECORD_EXAMPLE = {
                 },
             ],
         },
-        { id: "system", label: "Información del sistema", empty: "Aún no hay notas ni historial del sistema para esta orden." },
+        { id: "articles", label: "Artículos", groups: [{ title: "", fields: [money("Monto descuento directo", null), money("Monto reserva", null), money("Prima total", null), money("Diferencia de extras sobre el precio de lista", null)] }] },
+        { id: "reservation", label: "Reserva", groups: [{ title: "", fields: [text("Medio de pago", null), text("Número de transacción", null), money("Monto reserva aplicada", null), text("Fecha de reserva aplicada", null), money("Monto pre reserva", null), text("Fecha de pre reserva", null), text("Observaciones confirma reserva", null, true)] }] },
+        {
+            id: "payment",
+            label: "Detalle de pago",
+            groups: [
+                { title: "Tractos de prima", fields: [text("Cantidad de tractos", null), money("Monto prima", null), text("Observaciones prima", null, true), text("Fechas prima", null), text("Observaciones reserva", null, true), text("Fecha reserva", null), text("Cashbacknotes", null, true), text("Fecha cashback", null)] },
+                {
+                    title: "Forma de pago por avance de obra",
+                    fields: [
+                        money("Hito 1", null),
+                        money("Hito 2", null),
+                        money("Hito 3", null),
+                        money("Hito 4", null),
+                        money("Hito 5", null),
+                        money("Hito 6", null),
+                        money("Monto total hitos", null),
+                        text("Fecha inicial", null),
+                        text("Fecha proyectada hito #1", null),
+                        text("Observaciones hito 1", null, true),
+                        text("Prima %", null),
+                        text("Monto hitos %", null),
+                        text("H1 %", null),
+                        text("H2 %", null),
+                        text("H3 %", null),
+                        text("H4 %", null),
+                        text("H5 %", null),
+                        text("H6 %", null),
+                        money("Monto prima neta (no editable)", null),
+                        money("Monto hitos total", null),
+                    ],
+                },
+            ],
+        },
+        { id: "onedrive", label: "OneDrive" },
     ] as readonly RecordChapterData[],
 } as const;

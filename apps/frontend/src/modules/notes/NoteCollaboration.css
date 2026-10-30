@@ -1,0 +1,1853 @@
+.note-collaboration,
+.note-notifications,
+.note-inbox {
+    color: var(--crm-text-primary, #12304d);
+    display: grid;
+    gap: 18px;
+}
+.note-collaboration h2,
+.note-collaboration h3 {
+    margin: 0 0 12px;
+}
+.note-collaboration h2 {
+    font-size: 20px;
+}
+.note-collaboration h3 {
+    font-size: 15px;
+}
+.note-collaboration h3 > span {
+    margin-left: 6px;
+    color: #63768c;
+    font-weight: 400;
+}
+.note-collaboration button,
+.note-notifications button,
+.note-inbox button,
+.note-people-picker button {
+    border: 1px solid #b9cbe0;
+    border-radius: 6px;
+    background: #fff;
+    color: #244c75;
+    padding: 7px 11px;
+    cursor: pointer;
+    font: inherit;
+}
+.note-collaboration button:disabled,
+.note-notifications button:disabled,
+.note-inbox button:disabled,
+.note-people-picker button:disabled {
+    opacity: 0.55;
+    cursor: default;
+}
+.note-collaboration button:focus-visible,
+.note-notifications button:focus-visible,
+.note-inbox button:focus-visible,
+.note-people-picker button:focus-visible {
+    outline: 2px solid #2563eb;
+    outline-offset: 3px;
+}
+.note-collaboration .note-primary {
+    background: #102e49;
+    color: white;
+    border-color: #102e49;
+}
+.note-collaboration label,
+.note-people-picker label {
+    display: grid;
+    gap: 7px;
+}
+.note-collaboration input,
+.note-collaboration textarea,
+.note-collaboration select,
+.note-people-picker input,
+.note-people-picker select,
+.note-notifications select,
+.note-inbox select {
+    width: 100%;
+    border: 1px solid #a9bfd8;
+    border-radius: 6px;
+    padding: 9px 11px;
+    font: inherit;
+    color: #12304d;
+    background: white;
+}
+.note-collaboration textarea {
+    min-height: 110px;
+    resize: vertical;
+}
+.note-thread-original,
+.note-thread-people,
+.note-thread-mentions,
+.note-thread {
+    background: white;
+    border: 1px solid #d0dcea;
+    border-radius: 8px;
+    padding: 18px;
+    min-width: 0;
+}
+.note-thread-original {
+    border-top: 3px solid #afc1d3;
+}
+.note-thread-original__author {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 14px;
+}
+.note-thread-original__author > div {
+    display: grid;
+    gap: 3px;
+}
+.note-thread-original__author > div > span,
+.note-context-caption,
+.note-collaboration-muted,
+.note-thread-mentions > p {
+    color: #61758c;
+    font-size: 12px;
+}
+.note-thread-original__text,
+.note-thread-replies p {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    line-height: 1.6;
+}
+.note-person-initial {
+    display: inline-grid;
+    place-items: center;
+    width: 32px;
+    height: 32px;
+    flex: 0 0 32px;
+    border-radius: 50%;
+    color: #2b506e;
+    background: #e6edf4;
+    font-size: 13px;
+    font-weight: 600;
+}
+.note-thread-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-top: 12px;
+}
+.note-thread-members,
+.note-people-picker__results,
+.note-people-picker__selected {
+    list-style: none;
+    padding: 0;
+    display: grid;
+    gap: 10px;
+}
+.note-thread-members li,
+.note-people-picker__results li {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+.note-thread-members small {
+    display: block;
+    color: #61758c;
+    margin-top: 3px;
+}
+.note-people-picker {
+    display: grid;
+    gap: 10px;
+    margin: 12px 0;
+}
+.note-people-picker__results {
+    max-height: 220px;
+    overflow: auto;
+}
+.note-people-picker__results li {
+    justify-content: space-between;
+    border-bottom: 1px solid #e4ebf2;
+    padding: 8px 0;
+}
+.note-people-picker__selected li {
+    display: grid;
+    grid-template-columns: 32px minmax(0, 1fr);
+    align-items: center;
+    gap: 8px;
+    background: #f4f7fa;
+    padding: 10px;
+    border-radius: 6px;
+}
+.note-people-picker__selected select {
+    grid-column: 2;
+}
+.note-people-picker__selected button {
+    grid-column: 2;
+    justify-self: start;
+}
+.note-people-picker small {
+    line-height: 1.5;
+    color: #61758c;
+}
+.note-thread-mentions label,
+.note-reply-composer {
+    margin-top: 12px;
+}
+.note-reply-composer,
+.note-edit-original {
+    display: grid;
+    gap: 12px;
+}
+.note-thread-replies {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+.note-thread-replies > li {
+    border-bottom: 1px solid #e0e8f0;
+    padding: 16px 0;
+}
+.note-thread-replies > li > div:first-child {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+.note-thread-replies time {
+    color: #61758c;
+    font-size: 11px;
+    margin-left: auto;
+}
+.note-pagination {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 10px;
+    font-size: 12px;
+    margin-top: 18px;
+}
+.note-collaboration-error {
+    padding: 12px;
+    border: 1px solid #f0bd83;
+    border-radius: 6px;
+    background: #fff8ed;
+}
+.note-command-status {
+    margin: 0;
+    min-height: 1em;
+    color: #356a57;
+    font-size: 12px;
+}
+.note-bell {
+    position: relative;
+}
+.note-bell__count {
+    position: absolute;
+    top: -4px;
+    right: -6px;
+    border: 2px solid white;
+    border-radius: 12px;
+    background: #b22c35;
+    color: white;
+    min-width: 18px;
+    padding: 1px 4px;
+    line-height: 14px;
+    font-size: 10px;
+}
+.note-notifications__tools {
+    display: flex;
+    align-items: end;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+.note-notifications__tools label {
+    display: grid;
+    gap: 6px;
+    flex: 1;
+}
+.note-notification-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+.note-notification-list > li {
+    padding: 14px 10px;
+    border-bottom: 1px solid #d6e1eb;
+    border-radius: 6px;
+}
+.note-notification-list > li[data-unread="true"] {
+    background: #edf3fa;
+    border-left: 3px solid #3f6386;
+}
+.note-notification-list .note-notification-list__open {
+    display: flex;
+    align-items: start;
+    gap: 10px;
+    width: 100%;
+    text-align: left;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    margin-bottom: 10px;
+    line-height: 1.5;
+}
+.note-notification-list time {
+    display: block;
+    color: #61758c;
+    font-size: 11px;
+    margin-top: 6px;
+}
+.note-notification-list > li > button:last-child {
+    font-size: 12px;
+}
+@media (max-width: 480px) {
+    .note-thread-original,
+    .note-thread-people,
+    .note-thread-mentions,
+    .note-thread {
+        padding: 12px;
+    }
+    .note-pagination button {
+        padding: 6px;
+    }
+}
+
+/* ---- Conversation, people, notifications: the same panel look, with the conversation first and the composer always in reach. ---- */
+.note-collaboration,
+.note-notifications {
+    gap: 12px;
+    color: #0e1116;
+    font-size: 13px;
+}
+
+.note-collaboration button,
+.note-notifications button,
+.note-people-picker button {
+    min-height: 28px;
+    padding: 0 10px;
+    border: 1px solid #b9c5d6;
+    border-radius: 6px;
+    background: #ffffff;
+    color: #3c4f68;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.note-collaboration button:not(:disabled):hover,
+.note-notifications button:not(:disabled):hover,
+.note-people-picker button:not(:disabled):hover {
+    border-color: #496180;
+    background: #ebeef3;
+    color: #0e1116;
+}
+
+.note-collaboration button.note-primary,
+.note-collaboration .note-reply-composer button[type="submit"],
+.note-notifications .note-primary {
+    border-color: #0e1116;
+    background: #0e1116;
+    color: #ffffff;
+}
+
+.note-collaboration button.note-primary:not(:disabled):hover,
+.note-collaboration .note-reply-composer button[type="submit"]:not(:disabled):hover {
+    background: #2f3a4b;
+    color: #ffffff;
+}
+
+.note-collaboration button:disabled,
+.note-notifications button:disabled {
+    border-color: #d2dae5;
+    background: #f5f7fa;
+    color: #8497b1;
+    opacity: 1;
+}
+
+.note-collaboration label,
+.note-people-picker label,
+.note-notifications__tools label {
+    gap: 6px;
+    color: #496180;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.note-collaboration input,
+.note-collaboration textarea,
+.note-collaboration select,
+.note-people-picker select,
+.note-notifications select {
+    padding: 0 10px;
+    border-color: #b9c5d6;
+    font-size: 13px;
+}
+
+.note-collaboration input,
+.note-collaboration select,
+.note-people-picker select,
+.note-notifications select {
+    height: 36px;
+}
+
+.note-collaboration textarea {
+    min-height: 0;
+    padding: 8px 10px;
+    line-height: 1.5;
+}
+
+/* Cards: framed blocks of the shared scale. */
+.note-thread-original,
+.note-thread-people,
+.note-thread-mentions,
+.note-thread {
+    padding: 14px 16px;
+    border: 1px solid #d2dae5;
+    border-radius: 8px;
+    background: #ffffff;
+}
+
+.note-thread-original {
+    border-top: 1px solid #d2dae5;
+    border-left: 4px solid #8497b1;
+}
+
+.note-thread-original__author {
+    gap: 10px;
+    margin-bottom: 8px;
+}
+
+.note-thread-original__author strong {
+    font-size: 13px;
+}
+
+.note-thread-original h2 {
+    margin: 0 0 4px;
+    color: #0e1116;
+    font-size: 16px;
+    font-weight: 700;
+    line-height: 1.3;
+}
+
+.note-context-caption {
+    display: inline;
+    margin: 0 10px 0 0;
+    color: #496180;
+    font-size: 12px;
+}
+
+.note-thread-original a {
+    color: #3c4f68;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.note-thread-original__text {
+    margin: 10px 0 0;
+    color: #1f2a3c;
+    font-size: 13px;
+    line-height: 1.55;
+}
+
+.note-person-initial {
+    width: 28px;
+    height: 28px;
+    flex-basis: 28px;
+    background: #ebeef3;
+    color: #3c4f68;
+    font-size: 12px;
+}
+
+.note-thread-actions {
+    gap: 6px;
+    margin-top: 10px;
+}
+
+/* People: one row (title, count, action), members below only when there are any. */
+.note-thread-people {
+    padding: 10px 16px;
+}
+
+.note-thread-people__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.note-collaboration h3 {
+    margin: 0;
+    color: #2f3a4b;
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.note-collaboration h3 > span {
+    margin-left: 4px;
+    padding: 0 7px;
+    border: 1px solid #d2dae5;
+    border-radius: 10px;
+    background: #f5f7fa;
+    color: #496180;
+    font-size: 11.5px;
+    font-weight: 600;
+}
+
+.note-thread-members {
+    margin: 10px 0 0;
+    gap: 8px;
+}
+
+.note-thread-members small {
+    display: inline;
+    margin: 0 0 0 6px;
+    color: #5d799a;
+}
+
+.note-thread-people > p {
+    margin: 10px 0 0;
+    color: #496180;
+    font-size: 12px;
+}
+
+/* Mentions: folded until needed. */
+.note-thread-mentions {
+    padding: 10px 16px;
+}
+
+.note-thread-mentions summary {
+    color: #2f3a4b;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.note-thread-mentions[open] summary {
+    margin-bottom: 8px;
+}
+
+.note-thread-mentions > p {
+    margin: 6px 0 8px;
+    color: #496180;
+    font-size: 12px;
+}
+
+/* Conversation. */
+.note-thread {
+    padding-bottom: 0;
+}
+
+.note-thread > h3 {
+    margin-bottom: 8px;
+}
+
+.note-collaboration-muted {
+    margin: 4px 0 12px;
+    padding: 12px;
+    border: 1px dashed #b9c5d6;
+    border-radius: 8px;
+    color: #496180;
+    font-size: 12.5px;
+    text-align: center;
+}
+
+.note-thread-replies > li {
+    padding: 10px 0;
+    border-bottom: 1px solid #ebeef3;
+}
+
+.note-thread-replies > li > div:first-child {
+    gap: 8px;
+}
+
+.note-thread-replies p {
+    margin: 6px 0 0 36px;
+    color: #1f2a3c;
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+.note-thread-replies small {
+    margin-left: 36px;
+    color: #5d799a;
+}
+
+.note-thread-replies .note-thread-actions {
+    margin: 6px 0 0 36px;
+}
+
+.note-pagination {
+    margin: 8px 0 0;
+    padding-top: 10px;
+    border-top: 1px solid #ebeef3;
+    color: #496180;
+    font-size: 12px;
+}
+
+/* The composer stays at the bottom of the panel while the conversation scrolls above it. */
+.note-reply-dock {
+    position: sticky;
+    bottom: -20px;
+    z-index: 2;
+    margin: 10px -16px 0;
+    padding: 12px 16px 14px;
+    border-top: 1px solid #d2dae5;
+    border-radius: 0 0 8px 8px;
+    background: #f5f7fa;
+    box-shadow: 0 -6px 12px -8px rgb(14 17 22 / 18%);
+}
+
+.note-reply-composer {
+    margin-top: 0;
+    gap: 8px;
+}
+
+.note-reply-composer__row {
+    display: flex;
+    align-items: flex-end;
+    gap: 8px;
+}
+
+.note-reply-composer__row > label {
+    flex: 1;
+    min-width: 0;
+}
+
+.note-reply-composer__row .note-thread-actions {
+    margin: 0;
+    flex: none;
+}
+
+.note-reply-composer__row .note-thread-actions button {
+    min-height: 32px;
+    padding: 0 14px;
+}
+
+/* Errors, empties, progress. */
+.note-collaboration-error {
+    padding: 10px 14px;
+    border: 1px solid #e3c3b0;
+    border-left: 4px solid #c0653a;
+    border-radius: 8px;
+    background: #fff7f2;
+}
+
+.note-collaboration-error p {
+    margin: 0 0 8px;
+}
+
+.note-command-status:empty {
+    display: none;
+}
+
+/* People picker. */
+.note-people-picker {
+    gap: 8px;
+    margin: 10px 0;
+}
+
+.note-people-picker small {
+    color: #5d799a;
+    font-size: 11.5px;
+}
+
+.note-people-picker__selected {
+    margin: 0;
+    gap: 6px;
+}
+
+.note-people-picker__selected li {
+    padding: 8px 10px;
+    border: 1px solid #ebeef3;
+    border-radius: 6px;
+    background: #f5f7fa;
+}
+
+/* Notifications. */
+.note-notifications__hint {
+    margin: 0;
+    color: #496180;
+    font-size: 12px;
+}
+
+.note-notifications__tools {
+    align-items: flex-end;
+}
+
+.note-notifications__tools label {
+    flex: 0 1 220px;
+}
+
+.note-notifications__tools button {
+    margin-left: auto;
+    min-height: 36px;
+}
+
+.note-notification-list {
+    display: grid;
+    gap: 8px;
+}
+
+.note-notification-list > li {
+    display: grid;
+    gap: 6px;
+    padding: 12px 14px;
+    border: 1px solid #d2dae5;
+    border-left: 4px solid #d2dae5;
+    border-radius: 8px;
+    background: #ffffff;
+}
+
+.note-notification-list > li[data-unread="true"] {
+    border-left-color: #0e1116;
+    background: #ffffff;
+    box-shadow: 0 1px 2px rgb(14 17 22 / 6%);
+}
+
+.note-notification-list .note-notification-list__open {
+    min-height: 0;
+    margin: 0;
+    border: 0;
+    background: transparent;
+    color: #0e1116;
+    font-size: 13px;
+    font-weight: 400;
+}
+
+.note-notification-list time {
+    margin-top: 2px;
+    color: #5d799a;
+}
+
+.note-notification-list > li > button:last-child {
+    justify-self: start;
+}
+
+.note-notification-list > li > small {
+    color: #5d799a;
+}
+
+.note-notifications-empty {
+    margin: 8px 0 0;
+}
+
+/* Mentions live in the comment: "@" suggests the people already in the note. */
+.note-thread__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 8px;
+}
+
+.note-thread__head h3 {
+    margin: 0;
+}
+
+.note-collaboration .note-follow {
+    border-color: transparent;
+    background: transparent;
+    color: #496180;
+}
+
+.note-collaboration .note-follow:not(:disabled):hover {
+    border-color: #b9c5d6;
+    background: #ebeef3;
+}
+
+.note-thread-people__hint {
+    margin: 6px 0 0;
+    color: #496180;
+    font-size: 12px;
+    line-height: 1.5;
+}
+
+.note-mention-field {
+    position: relative;
+}
+
+.note-mention-field textarea {
+    width: 100%;
+}
+
+.note-mention-list {
+    position: absolute;
+    right: 0;
+    bottom: calc(100% + 4px);
+    left: 0;
+    z-index: 5;
+    display: grid;
+    margin: 0;
+    padding: 4px;
+    border: 1px solid #b9c5d6;
+    border-radius: 8px;
+    background: #ffffff;
+    box-shadow: 0 8px 20px rgb(14 17 22 / 16%);
+    list-style: none;
+}
+
+.note-mention-list li {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 8px;
+    border-radius: 6px;
+    color: #0e1116;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+}
+
+.note-mention-list li[aria-selected="true"],
+.note-mention-list li:hover {
+    background: #ebeef3;
+}
+
+.note-reply-composer__row {
+    align-items: center;
+    justify-content: space-between;
+}
+
+.note-reply-composer__row > small {
+    color: #5d799a;
+    font-size: 11.5px;
+    line-height: 1.4;
+}
+
+.note-command-status:not(:empty) {
+    justify-self: start;
+    padding: 2px 10px;
+    border: 1px solid #b7d9c6;
+    border-radius: 10px;
+    background: #f1f8f4;
+    color: #0a6b3d;
+    font-weight: 600;
+}
+
+/* People picker: a counted, scrollable list of one-line rows, so six or sixty people stay manageable. */
+.note-people-picker {
+    gap: 6px;
+}
+
+.note-people-picker__count {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    color: #496180;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.note-people-picker__count button {
+    border-color: transparent;
+    background: transparent;
+    color: #496180;
+}
+
+.note-people-picker__selected {
+    max-height: 232px;
+    margin: 0;
+    padding: 0;
+    overflow-y: auto;
+    border: 1px solid #d2dae5;
+    border-radius: 8px;
+    background: #ffffff;
+    gap: 0;
+}
+
+.note-people-picker .note-people-picker__selected li {
+    display: grid;
+    grid-template-columns: 28px minmax(0, 1fr) 132px auto;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 10px;
+    border: 0;
+    border-bottom: 1px solid #ebeef3;
+    border-radius: 0;
+    background: transparent;
+}
+
+.note-people-picker__selected li:last-child {
+    border-bottom: 0;
+}
+
+.note-people-picker__selected li strong {
+    overflow: hidden;
+    color: #0e1116;
+    font-size: 13px;
+    font-weight: 600;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.note-people-picker .note-people-picker__selected select {
+    grid-column: auto;
+    height: 28px;
+    padding: 0 6px;
+    font-size: 12px;
+}
+
+.note-people-picker .note-people-picker__selected button {
+    grid-column: auto;
+    justify-self: auto;
+    border-color: transparent;
+    background: transparent;
+    color: #496180;
+}
+
+@media (max-width: 520px) {
+    .note-people-picker .note-people-picker__selected li {
+        grid-template-columns: 28px minmax(0, 1fr) auto;
+    }
+
+    .note-people-picker .note-people-picker__selected select {
+        grid-column: 2 / 3;
+        grid-row: 2;
+    }
+}
+
+/* ---- One thread: the note is the first post, every comment follows on a rail, the composer stays at the bottom. ---- */
+.note-thread-bar {
+    padding: 10px 14px;
+    border: 1px solid #d2dae5;
+    border-radius: 8px;
+    background: #ffffff;
+}
+
+.note-thread-bar__row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px 12px;
+}
+
+.note-thread-bar__people {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+}
+
+.note-avatars {
+    display: inline-flex;
+}
+
+.note-avatars .note-person-initial {
+    width: 26px;
+    height: 26px;
+    flex-basis: 26px;
+    margin-left: -6px;
+    border: 2px solid #ffffff;
+    font-size: 11px;
+}
+
+.note-avatars .note-person-initial:first-child {
+    margin-left: 0;
+}
+
+.note-thread-bar__text {
+    color: #2f3a4b;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.note-thread-bar__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.note-thread-bar__panel {
+    display: grid;
+    gap: 8px;
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid #ebeef3;
+}
+
+.note-thread-bar__panel > p {
+    margin: 0;
+    color: #496180;
+    font-size: 12px;
+}
+
+.note-thread-bar__panel > button {
+    justify-self: end;
+}
+
+.note-sr {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+    list-style: none;
+}
+
+.note-feed {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.note-post {
+    position: relative;
+    display: grid;
+    grid-template-columns: 28px minmax(0, 1fr);
+    gap: 10px;
+    padding-bottom: 14px;
+}
+
+.note-post::before {
+    position: absolute;
+    top: 32px;
+    bottom: 0;
+    left: 13px;
+    width: 2px;
+    background: #d2dae5;
+    content: "";
+}
+
+.note-feed > .note-post:last-child::before {
+    display: none;
+}
+
+.note-post > .note-person-initial {
+    z-index: 1;
+}
+
+.note-post__body {
+    min-width: 0;
+}
+
+.note-post__head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 2px 8px;
+}
+
+.note-post__head strong {
+    color: #0e1116;
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.note-post__head time {
+    margin-left: auto;
+    color: #5d799a;
+    font-size: 11.5px;
+}
+
+.note-role {
+    padding: 0 7px;
+    border: 1px solid #d2dae5;
+    border-radius: 10px;
+    background: #f5f7fa;
+    color: #496180;
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 18px;
+}
+
+.note-post > .note-post__body > p {
+    margin: 4px 0 0;
+    color: #1f2a3c;
+    font-size: 13px;
+    line-height: 1.55;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+
+.note-post > .note-post__body > small {
+    color: #5d799a;
+}
+
+.note-post .note-thread-actions {
+    margin: 8px 0 0;
+}
+
+/* The note itself, as the first post: a sticky note in its own colour. */
+.note-post--origin > .note-post__body {
+    padding: 10px 14px 12px;
+    border: 1px solid color-mix(in srgb, var(--note) 70%, #8497b1);
+    border-left: 4px solid var(--note);
+    border-radius: 8px;
+    background: color-mix(in srgb, var(--note) 30%, #ffffff);
+}
+
+.note-post--origin h2 {
+    margin: 6px 0 2px;
+    font-size: 15px;
+    font-weight: 700;
+}
+
+.note-post--origin .note-post__body > .note-thread-original__text {
+    margin: 8px 0 0;
+}
+
+.note-post--origin .note-thread-actions button {
+    background: rgb(255 255 255 / 75%);
+}
+
+.note-feed__empty {
+    margin: 0 0 10px 38px;
+    padding: 10px 12px;
+    border: 1px dashed #b9c5d6;
+    border-radius: 8px;
+    color: #496180;
+    font-size: 12.5px;
+}
+
+/* The thread is one block: its own card holds the posts and the docked composer. */
+.note-thread {
+    padding: 14px 16px 0;
+}
+
+.note-reply-dock {
+    margin-top: 4px;
+}
+
+/* Activity remains visible above an open conversation without stealing keyboard focus. */
+.note-realtime-notice:not(:empty) {
+    position: fixed;
+    inset-block-start: 76px;
+    inset-inline-end: 20px;
+    z-index: 1400;
+    max-width: min(360px, calc(100vw - 40px));
+    padding: 12px 16px;
+    border: 1px solid #a9bdd3;
+    border-radius: 8px;
+    background: #ffffff;
+    color: #17334f;
+    box-shadow: 0 4px 16px #17334f24;
+    pointer-events: none;
+}
+
+.note-new-replies {
+    position: sticky;
+    inset-block-start: 0;
+    z-index: 1;
+    display: block;
+    margin: 0 auto 8px;
+    padding: 8px 16px;
+    border: 1px solid #a9bdd3;
+    border-radius: 8px;
+    background: #ffffff;
+    color: #17334f;
+    cursor: pointer;
+}
+.note-new-replies:focus-visible {
+    outline: 2px solid #2563eb;
+    outline-offset: 2px;
+}
+
+/* Notifications: one compact row each, like the other panels. Who and what on the first line, what they wrote under it. */
+.note-notification-list {
+    gap: 6px;
+}
+
+.note-notification-list > li {
+    display: flex;
+    align-items: flex-start;
+    gap: 4px;
+    padding: 0;
+    overflow: hidden;
+    border-left-width: 3px;
+    border-left-color: transparent;
+}
+
+.note-notification-list > li[data-unread="true"] {
+    border-left-color: #1f6feb;
+    background: #f4f8ff;
+}
+
+.note-notification-list > li[data-unread="false"] .note-notification-list__open {
+    opacity: 0.72;
+}
+
+.note-notification-list .note-notification-list__open {
+    display: flex;
+    flex: 1;
+    gap: 10px;
+    align-items: flex-start;
+    min-width: 0;
+    padding: 8px 4px 8px 10px;
+    text-align: left;
+}
+
+.note-notification-list .note-person-initial {
+    width: 24px;
+    height: 24px;
+    flex-basis: 24px;
+    font-size: 11px;
+}
+
+.note-notification-list__body {
+    display: grid;
+    flex: 1;
+    min-width: 0;
+    gap: 2px;
+}
+
+.note-notification-list__line {
+    overflow: hidden;
+    font-size: 12.5px;
+    line-height: 1.4;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.note-notification-list__line strong {
+    font-weight: 600;
+}
+
+.note-notification-list__line em {
+    font-style: normal;
+    font-weight: 600;
+}
+
+.note-notification-list__quote {
+    display: -webkit-box;
+    overflow: hidden;
+    margin: 0;
+    color: #3c4f68;
+    font-size: 12px;
+    line-height: 1.4;
+    quotes: none;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+}
+
+.note-notification-list .note-notification-list__body time {
+    margin: 0;
+    color: #5d799a;
+    font-size: 11px;
+}
+
+.note-notification-list > li > button.note-notification-list__read {
+    flex: none;
+    width: 28px;
+    min-height: 28px;
+    height: 28px;
+    margin: 6px 6px 0 0;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: #3c4f68;
+}
+
+.note-workflow {
+    margin: 0 0 16px;
+    border: 1px solid #dce3ec;
+    border-radius: 8px;
+    padding: 12px;
+    background: #fff;
+}
+.note-workflow summary,
+.note-notification-groups summary {
+    cursor: pointer;
+    font-weight: 600;
+}
+.note-workflow fieldset {
+    display: grid;
+    gap: 10px;
+    margin: 14px 0;
+    padding: 12px;
+    border: 1px solid #dce3ec;
+    border-radius: 6px;
+}
+.note-workflow label,
+.note-inbox-filters label {
+    display: grid;
+    gap: 4px;
+    font-size: 12px;
+}
+.note-workflow label:has(input[type="checkbox"]) {
+    display: flex;
+    align-items: center;
+}
+.note-workflow input,
+.note-workflow select,
+.note-inbox-filters select,
+.note-inbox-filters input {
+    max-width: 100%;
+    min-height: 32px;
+    border: 1px solid #b7c4d5;
+    border-radius: 4px;
+    padding: 4px 8px;
+    background: #fff;
+    color: #243b55;
+}
+.note-workflow p {
+    margin: 0;
+    color: #52667e;
+    font-size: 12px;
+}
+.note-workflow button,
+.note-notification-groups > li > details > button {
+    min-height: 32px;
+    padding: 5px 10px;
+    border: 1px solid #b7c4d5;
+    border-radius: 4px;
+    background: #f4f7fb;
+    color: #243b55;
+    cursor: pointer;
+}
+.note-workflow button:disabled {
+    opacity: 0.6;
+    cursor: default;
+}
+.note-inbox-filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    padding: 0 0 12px;
+}
+.note-inbox-filters label {
+    flex: 1 1 110px;
+}
+.note-notification-groups {
+    display: grid;
+    gap: 10px;
+    margin: 10px 0;
+    padding: 0;
+    list-style: none;
+}
+.note-notification-groups > li {
+    padding: 10px;
+    border: 1px solid #dce3ec;
+    border-radius: 6px;
+}
+.note-notification-groups > li > details > button {
+    margin: 8px 0;
+}
+
+.note-inbox-advanced {
+    margin-bottom: 12px;
+}
+.note-inbox-advanced summary {
+    margin-bottom: 8px;
+    cursor: pointer;
+}
+.note-inbox-advanced button {
+    min-height: 32px;
+    margin: 0 8px 8px 0;
+}
+
+.note-workflow__quick-times {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.note-workflow legend {
+    padding: 0 4px;
+    font-size: 13px;
+    font-weight: 600;
+}
+.note-workflow input[type="checkbox"] {
+    flex: 0 0 16px;
+    width: 16px;
+    height: 16px;
+    min-height: 16px;
+    margin: 0;
+}
+.note-workflow label:has(input[type="checkbox"]) {
+    justify-content: flex-start;
+    gap: 8px;
+}
+
+/* Follow-up panel (responsable, recordatorio, ubicaciones) on the project contract: neutral scale, 8px cards, dark primary action. */
+.note-workflow {
+    overflow: hidden;
+    padding: 0;
+    border-color: #d2dae5;
+    background: #f5f7fa;
+}
+.note-workflow > summary {
+    display: flex;
+    align-items: center;
+    min-height: 40px;
+    padding: 0 14px;
+    background: #eef2f7;
+    color: #2f3a4b;
+    font-size: 13px;
+}
+.note-workflow[open] > summary {
+    border-bottom: 1px solid #d2dae5;
+}
+.note-workflow > :not(summary) {
+    margin-left: 12px;
+    margin-right: 12px;
+}
+.note-workflow > summary + * {
+    margin-top: 12px;
+}
+.note-workflow > :last-child {
+    margin-bottom: 12px;
+}
+.note-workflow > [role="status"],
+.note-workflow > [role="alert"],
+.note-workflow__access-alert {
+    padding: 8px 12px;
+    border: 1px solid #d2dae5;
+    border-radius: 8px;
+    background: #ffffff;
+    color: #3b4a61;
+}
+.note-workflow > [role="alert"] {
+    border-color: #e3b4b0;
+    background: #fbefee;
+    color: #8a2f27;
+}
+.note-workflow > [role="status"] p,
+.note-workflow > [role="alert"] p {
+    margin: 0 0 8px;
+    color: inherit;
+}
+.note-workflow fieldset {
+    gap: 12px;
+    margin-top: 12px;
+    margin-bottom: 0;
+    padding: 14px;
+    border: 1px solid #d2dae5;
+    border-radius: 8px;
+    background: #ffffff;
+}
+.note-workflow legend {
+    padding: 0 6px;
+    color: #2f3a4b;
+    font-size: 13px;
+    font-weight: 600;
+}
+.note-workflow label {
+    color: #3b4a61;
+    font-size: 12.5px;
+    font-weight: 600;
+}
+.note-workflow input,
+.note-workflow select {
+    min-height: 34px;
+    border-color: #c3ccd9;
+    border-radius: 6px;
+    color: #2f3a4b;
+    font-size: 13px;
+    font-weight: 400;
+}
+.note-workflow input:focus,
+.note-workflow select:focus {
+    border-color: #303c4e;
+    outline: 2px solid rgba(48, 60, 78, 0.18);
+    outline-offset: 0;
+}
+.note-workflow input:disabled,
+.note-workflow select:disabled {
+    background: #eef2f7;
+    color: #8393a8;
+}
+.note-workflow p {
+    color: #5d6b82;
+    font-size: 12px;
+    line-height: 1.45;
+}
+.note-workflow button {
+    min-height: 34px;
+    padding: 0 14px;
+    border: 1px solid #c3ccd9;
+    border-radius: 6px;
+    background: #ffffff;
+    color: #2f3a4b;
+    font-size: 13px;
+    font-weight: 600;
+}
+.note-workflow button:hover:not(:disabled) {
+    border-color: #8fa1b8;
+    background: #f5f7fa;
+}
+.note-workflow button[type="submit"] {
+    justify-self: end;
+    border-color: #303c4e;
+    background: #303c4e;
+    color: #ffffff;
+}
+.note-workflow button[type="submit"]:hover:not(:disabled) {
+    border-color: #42516a;
+    background: #42516a;
+}
+.note-workflow button:disabled {
+    border-color: #d2dae5;
+    background: #eef2f7;
+    color: #8393a8;
+    opacity: 1;
+}
+.note-workflow__quick-times button {
+    min-height: 30px;
+    padding: 0 12px;
+    border-radius: 999px;
+    font-size: 12.5px;
+}
+.note-workflow input[type="checkbox"] {
+    accent-color: #303c4e;
+}
+.note-workflow label:has(input[type="checkbox"]) {
+    padding: 6px 8px;
+    border-radius: 6px;
+    font-weight: 500;
+}
+.note-workflow label:has(input[type="checkbox"]):hover {
+    background: #f5f7fa;
+}
+.note-workflow :focus-visible {
+    outline: 2px solid #303c4e;
+    outline-offset: 2px;
+}
+
+/* Compact pass: each block is a card with its own header band, fields share rows, the home list is a two-column grid. */
+.note-workflow > :not(summary) {
+    margin-left: 10px;
+    margin-right: 10px;
+}
+.note-workflow fieldset {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 10px;
+    margin-top: 10px;
+    padding: 0 0 12px;
+    overflow: hidden;
+}
+.note-workflow fieldset > :not(legend) {
+    margin: 0 14px;
+}
+.note-workflow legend {
+    float: left;
+    width: 100%;
+    box-sizing: border-box;
+    padding: 0 14px;
+    border-bottom: 1px solid #e1e7ef;
+    background: #ffffff;
+    font-size: 13px;
+    line-height: 38px;
+}
+.note-workflow legend + * {
+    clear: both;
+    margin-top: 12px;
+}
+.note-workflow fieldset:has(select) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.note-workflow fieldset:has(select) > :not(label) {
+    grid-column: 1 / -1;
+}
+.note-workflow fieldset:has(input[type="checkbox"]) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px 8px;
+}
+.note-workflow fieldset:has(input[type="checkbox"]) > :not(label) {
+    grid-column: 1 / -1;
+}
+.note-workflow fieldset:has(input[type="checkbox"]) > p {
+    margin-bottom: 4px;
+}
+.note-workflow label:has(input[type="checkbox"]) {
+    padding: 7px 10px;
+    border: 1px solid #e1e7ef;
+    background: #f9fafc;
+}
+.note-workflow label:has(input[type="checkbox"]):has(:checked) {
+    border-color: #8fa1b8;
+    background: #eef2f7;
+}
+.note-workflow label:has(input[type="checkbox"]):hover {
+    border-color: #c3ccd9;
+    background: #f5f7fa;
+}
+.note-workflow__quick-times {
+    gap: 6px;
+}
+.note-workflow fieldset p {
+    line-height: 1.4;
+}
+.note-workflow fieldset p + p:not(.note-workflow__status) {
+    margin-top: -6px;
+}
+.note-workflow .note-workflow__status {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    width: fit-content;
+    padding: 2px 10px;
+    border: 1px solid #c3ccd9;
+    border-radius: 999px;
+    background: #eef2f7;
+    color: #3b4a61;
+    font-weight: 600;
+}
+.note-workflow .note-workflow__status::before {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #8393a8;
+    content: "";
+}
+.note-workflow fieldset > button[type="submit"] {
+    justify-self: end;
+    margin-top: 2px;
+}
+
+.note-workflow__access-alert {
+    margin-bottom: 12px;
+    background: #eff6ff;
+    border-color: #b6cbea;
+    color: #25456a;
+}
+
+/* Conversation view: same UX contract as the event editor (gray canvas, white cards with 40px bands, icon captions, switches, help icons). */
+.note-collaboration-drawer .ant-drawer-body {
+    background: #f5f7fa;
+}
+.note-collaboration {
+    display: grid;
+    gap: 16px;
+    align-content: start;
+}
+.note-collaboration .note-thread-bar,
+.note-collaboration section.note-related-records,
+.note-collaboration .note-workflow,
+.note-collaboration .note-thread {
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    border: 1px solid #d2dae5;
+    border-radius: 8px;
+    background: #ffffff;
+    box-shadow: 0 1px 2px rgba(47, 58, 75, 0.04);
+}
+.note-collaboration .note-thread-bar__row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 12px 16px;
+}
+.note-collaboration .note-thread-bar__panel {
+    display: grid;
+    gap: 12px;
+    padding: 16px;
+    border-top: 1px solid #e1e7ef;
+    background: #f8fafc;
+}
+.note-collaboration .note-thread-bar__panel > p {
+    margin: 0;
+}
+
+/* Related records: a card with a band; the empty state is quiet. */
+.note-collaboration section.note-related-records > h3 {
+    display: flex;
+    align-items: center;
+    height: 40px;
+    margin: 0;
+    padding: 0 16px;
+    border-bottom: 1px solid #d2dae5;
+    background: #eef2f7;
+    color: #2f3a4b;
+    font-size: 13px;
+    font-weight: 600;
+}
+.note-collaboration section.note-related-records > :not(h3) {
+    margin-right: 16px;
+    margin-left: 16px;
+}
+.note-collaboration section.note-related-records > h3 + * {
+    margin-top: 14px;
+}
+.note-collaboration section.note-related-records > :last-child {
+    margin-bottom: 16px;
+}
+.note-collaboration section.note-related-records > p {
+    margin-top: 14px;
+    color: #5d6b82;
+    font-size: 12.5px;
+}
+.note-collaboration section.note-related-records > button {
+    justify-self: start;
+}
+
+/* Responsable y recordatorio: collapsible card; fields in a grid, quick times as chips, actions aligned. */
+.note-collaboration .note-workflow > summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 40px;
+    margin: 0;
+    padding: 0 16px;
+    background: #eef2f7;
+    color: #2f3a4b;
+    font-size: 13px;
+    font-weight: 600;
+    list-style: none;
+    cursor: pointer;
+}
+.note-collaboration .note-workflow > summary::-webkit-details-marker {
+    display: none;
+}
+.note-collaboration .note-workflow > summary:hover {
+    background: #e6ecf4;
+}
+.note-collaboration .note-workflow > summary::after {
+    width: 7px;
+    height: 7px;
+    border-right: 2px solid #496180;
+    border-bottom: 2px solid #496180;
+    transform: rotate(45deg) translate(-2px, -2px);
+    transition: transform 0.15s;
+    content: "";
+}
+.note-collaboration .note-workflow[open] > summary {
+    border-bottom: 1px solid #d2dae5;
+}
+.note-collaboration .note-workflow[open] > summary::after {
+    transform: rotate(-135deg) translate(-2px, -2px);
+}
+.note-collaboration .note-workflow fieldset {
+    position: relative;
+    display: grid;
+    gap: 14px;
+    margin: 0;
+    padding: 16px;
+    border: 0;
+    border-bottom: 1px solid #e1e7ef;
+}
+.note-collaboration .note-workflow form:last-of-type fieldset {
+    border-bottom: 0;
+}
+.note-collaboration .note-workflow legend {
+    float: left;
+    width: 100%;
+    margin: 0 0 14px;
+    padding: 0;
+    color: #2f3a4b;
+    font-size: 13px;
+    font-weight: 600;
+}
+.note-collaboration .note-workflow legend + * {
+    clear: both;
+}
+.note-collaboration .note-workflow__grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+}
+.note-collaboration .note-field {
+    position: relative;
+    min-width: 0;
+}
+.note-collaboration .note-field > label {
+    display: grid;
+    gap: 6px;
+}
+.note-collaboration .note-field__help {
+    position: absolute;
+    top: 0;
+    right: 0;
+}
+.note-collaboration .note-workflow fieldset > .note-field__help {
+    top: 16px;
+    right: 16px;
+}
+.note-collaboration .note-workflow select,
+.note-collaboration .note-workflow input[type="datetime-local"] {
+    height: 38px;
+    padding: 0 10px;
+    font-size: 13px;
+    font-weight: 400;
+}
+.note-collaboration .note-workflow select {
+    padding-right: 34px;
+    appearance: none;
+    background-color: #ffffff;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8' fill='none' stroke='%23496180' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'><path d='M1 1.5l5 5 5-5'/></svg>");
+    background-position: right 12px center;
+    background-repeat: no-repeat;
+    cursor: pointer;
+}
+.note-collaboration .note-workflow__quick-times {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+.note-collaboration .note-workflow__quick-times button {
+    min-height: 28px;
+    padding: 0 12px;
+    border-radius: 999px;
+    background: #eef2f7;
+    font-size: 12px;
+}
+.note-collaboration .note-workflow fieldset > button[type="submit"] {
+    justify-self: end;
+    min-height: 36px;
+    border-color: #303c4e;
+    background: #303c4e;
+    color: #ffffff;
+}
+.note-collaboration .note-workflow fieldset > button[type="submit"]:not(:disabled):hover {
+    border-color: #42516a;
+    background: #42516a;
+    color: #ffffff;
+}
+@media (max-width: 520px) {
+    .note-collaboration .note-workflow__grid {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+
+/* Conversation card and composer. */
+.note-collaboration .note-thread {
+    display: grid;
+}
+.note-collaboration .note-reply-dock {
+    padding: 16px;
+    border-top: 1px solid #e1e7ef;
+    background: #f8fafc;
+}
+.note-collaboration .note-reply-composer label {
+    display: grid;
+    gap: 6px;
+}
+.note-collaboration .note-reply-composer textarea {
+    border-color: #c3ccd9;
+    border-radius: 6px;
+    font-size: 13px;
+}
+.note-collaboration .note-reply-composer textarea:focus {
+    border-color: #303c4e;
+    outline: 0;
+    box-shadow: 0 0 0 2px rgba(48, 60, 78, 0.18);
+}
+.note-collaboration .note-reply-composer button[type="submit"] {
+    min-height: 38px;
+    padding: 0 18px;
+    border-color: #303c4e;
+    background: #303c4e;
+    color: #ffffff;
+}
+.note-collaboration .note-caption {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: #496180;
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 18px;
+}
+.note-collaboration .note-caption i {
+    display: inline-flex;
+    color: #5d6b82;
+}
+.note-collaboration .note-section-intro {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin: 0;
+    color: #5d6b82;
+    font-size: 12.5px;
+}

@@ -7,7 +7,7 @@ function fixture(roles = [{ code: "formalizacion", status: "active" }]) {
     const tx = {};
     const identity = { getCurrentUser: vi.fn().mockResolvedValue({ roles, permissions: [{ code: "formalizacion.home.stages.read", effect: "allow" }] }) };
     const repository = { readSnapshot: vi.fn(async (read: (transaction: object) => Promise<unknown>) => read(tx)), aggregate: vi.fn().mockResolvedValue(counts) };
-    const legacy = { enabled: vi.fn(() => true), aggregate: vi.fn().mockResolvedValue({ counts, duplicatesExcluded: 9 }) };
+    const legacy = { enabled: vi.fn(() => true), aggregate: vi.fn().mockResolvedValue({ counts, duplicatesExcluded: 9 }), orderLabels: vi.fn().mockResolvedValue([]) };
     return { tx, identity, repository, legacy, service: new HomeSummaryService(identity as never, repository as never, legacy) };
 }
 afterEach(() => vi.useRealTimers());
@@ -45,4 +45,30 @@ describe("Home aggregate", () => {
         f[source].aggregate.mockRejectedValue(new Error("private database error"));
         await expect(f.service.summary()).rejects.toMatchObject({ status: 503 });
     });
+});
+
+it("masks forbidden banner counts in both sources for contracts-only reads", async () => {
+    const f = fixture();
+    f.identity.getCurrentUser.mockResolvedValue({ roles: [{ code: "formalizacion", status: "active" }], permissions: [{ code: "formalizacion.home.contracts.read", effect: "allow" }] });
+    const result = await f.service.summary();
+    expect(result.counts).toEqual({ contracts: { toSend: 4, pendingSignature: 6 }, banking: 0, balance: 0, transferPending: 0, transferSigned: 0, closedThisYear: 0 });
+    for (const source of [result.sources.native, result.sources.legacy]) expect(source).toEqual({ contracts: { toSend: 2, pendingSignature: 3 }, banking: 0, balance: 0, transferPending: 0, transferSigned: 0, closedThisYear: 0 });
+    expect(result.sources.duplicatesExcluded).toBe(0);
+});
+
+it("recent activity uses only the authenticated actor and resolves legacy order labels in one batch", async () => {
+    const f = fixture();
+    f.identity.getCurrentUser.mockResolvedValue({ user: { publicId: "actor" }, roles: [{ code: "formalizacion", status: "active" }], permissions: [{ code: "formalizacion.orders.read", effect: "allow" }] });
+    const row = { id: "event", source: "legacy", orderId: "271", action: "approval_change", at: "2026-10-28T20:00:00Z", fromState: "pending_approval", toState: "contract_pending_send", approval: "approved" };
+    Object.assign(f.repository, { recentActivity: vi.fn().mockResolvedValue([row]), nativeOrderLabels: vi.fn().mockResolvedValue([]) });
+    f.legacy.orderLabels.mockResolvedValue([{ id: "271", number: "BC552" }] as never);
+    const result = await f.service.recentActivity("session");
+    expect(result.items).toEqual([{ id: row.id, action: row.action, at: row.at, fromState: row.fromState, toState: row.toState, approval: row.approval, orderNumber: "BC552" }]);
+    expect(Reflect.get(f.repository, "recentActivity")).toHaveBeenCalledExactlyOnceWith(f.tx, "actor");
+    expect(f.legacy.orderLabels).toHaveBeenCalledExactlyOnceWith(f.tx, ["271"]);
+});
+it("denies recent activity before SQL when the independent order permission is absent", async () => {
+    const f = fixture();
+    await expect(f.service.recentActivity()).rejects.toMatchObject({ status: 403 });
+    expect(f.repository.readSnapshot).not.toHaveBeenCalled();
 });

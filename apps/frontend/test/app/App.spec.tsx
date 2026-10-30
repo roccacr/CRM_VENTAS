@@ -13,11 +13,17 @@ import { apiRequest, refreshAuthenticatedSession } from "../../src/services/api/
 import type { IdentityProfile, SessionResponse } from "../../src/services/auth/identity-contracts";
 import { installBrowserApiDoubles } from "../support/browser";
 
+// Navigation tests isolate transport; real handshake/cleanup has its own realtime integration suite.
+vi.mock("socket.io-client", () => ({
+    io: () => ({ connected: false, on: vi.fn(), off: vi.fn(), emit: vi.fn(), connect: vi.fn(), disconnect: vi.fn() }),
+}));
+
 beforeAll(async () => {
     installBrowserApiDoubles();
-    // Navigation/auth assertions should not include the cold transform cost of this lazy editor.
-    await import("../../src/modules/administration/pages/RolesSecurityPage");
-});
+    // Navigation/auth assertions test permission decisions, not cold transformation of lazy modules.
+    await Promise.all([import("../../src/modules/administration/pages/RolesSecurityPage"), import("../../src/modules/administration/pages/SystemUsersPage"), import("../../src/modules/home/FormalizationHomePage")]);
+    // Cold lazy-module transforms exceeded 10 seconds in QA; UI assertion timeouts stay unchanged.
+}, 60_000);
 afterEach(() => {
     cleanup();
     vi.useRealTimers();
@@ -1369,7 +1375,9 @@ describe("App", () => {
 
         expect(await screen.findByRole("heading", { name: "Formalización" })).toBeInTheDocument();
         expect(screen.queryByRole("button", { name: "Catálogos" })).not.toBeInTheDocument();
-        expect(screen.getByRole("button", { name: "Resumen" })).not.toHaveAttribute("data-permission");
+        expect(screen.getByRole("button", { name: "Inicio" })).not.toHaveAttribute("data-permission");
+        expect(screen.getByRole("button", { name: "Gestión de formalizaciones" })).not.toHaveAttribute("data-permission");
+        expect(screen.queryByRole("button", { name: "Resumen" })).not.toBeInTheDocument();
         expect(fetchMock.mock.calls.filter(([input]) => getRequestPath(input) === "/identity/refresh")).toHaveLength(1);
         // El refresh propio invalida el primer bootstrap: se permite una relectura segura.
         expect(fetchMock.mock.calls.filter(([input]) => getRequestPath(input) === "/identity/session")).toHaveLength(3);
@@ -1433,7 +1441,9 @@ describe("App", () => {
         expect(await screen.findByRole("heading", { name: "Formalización" })).toBeInTheDocument();
         expect(window.location.pathname).toBe("/home/formalization");
         expect(screen.getByRole("banner", { name: "Barra superior global CRM TINK" })).toBeInTheDocument();
-        expect(screen.getByRole("button", { name: "Resumen" })).not.toHaveAttribute("data-permission");
+        expect(screen.getByRole("button", { name: "Inicio" })).not.toHaveAttribute("data-permission");
+        expect(screen.getByRole("button", { name: "Gestión de formalizaciones" })).not.toHaveAttribute("data-permission");
+        expect(screen.queryByRole("button", { name: "Resumen" })).not.toBeInTheDocument();
         expect(fetchMock.mock.calls.filter(([input]) => getRequestPath(input) === "/identity/session")).toHaveLength(previousSessionReads + 2);
         expect(fetchMock.mock.calls.some(([input]) => getRequestPath(input) === "/identity/refresh")).toBe(false);
         expect(fetchMock).toHaveBeenCalledWith(buildApiUrl("/identity/session"), expect.objectContaining({ credentials: "include", cache: "no-store", method: "GET" }));
@@ -1511,7 +1521,9 @@ describe("App", () => {
         expect(await screen.findByRole("heading", { name: "Formalización" })).toBeInTheDocument();
         expect(screen.queryByRole("button", { name: "Ingresar" })).not.toBeInTheDocument();
         expect(screen.queryByRole("button", { name: "Catálogos" })).not.toBeInTheDocument();
-        expect(screen.getByRole("button", { name: "Resumen" })).not.toHaveAttribute("data-permission");
+        expect(screen.getByRole("button", { name: "Inicio" })).not.toHaveAttribute("data-permission");
+        expect(screen.getByRole("button", { name: "Gestión de formalizaciones" })).not.toHaveAttribute("data-permission");
+        expect(screen.queryByRole("button", { name: "Resumen" })).not.toBeInTheDocument();
         expect(fetchMock.mock.calls.filter(([input]) => getRequestPath(input) === "/identity/refresh")).toHaveLength(1);
         expect(fetchMock.mock.calls.some(([input]) => getRequestPath(input).includes("/catalogs/"))).toBe(false);
     });
@@ -2191,4 +2203,31 @@ describe("App", () => {
         expect(screen.getByRole("banner", { name: "Barra superior global CRM TINK" })).toBe(header);
         expect(fetchMock.mock.calls.some(([input]) => getRequestPath(input).includes("/catalogs/"))).toBe(false);
     });
+});
+
+it("Inicio leaves an order on the same pathname and clears its identity without signing out", async () => {
+    vi.stubGlobal(
+        "fetch",
+        mockIdentityFetch({
+            profile: {
+                ...authenticatedProfile,
+                orgUnits: [{ publicId: "formalization", code: "formalizacion", name: "Formalización", membership: "member", scope: "self", status: "active" }],
+                roles: [{ code: "formalizacion", name: "Formalización", status: "active" }],
+                permissions: [
+                    { code: "formalizacion.home.read", effect: "allow", scope: "self", source: "role" },
+                    { code: "formalizacion.orders.read", effect: "allow", scope: "self", source: "role" },
+                ],
+            },
+            session: authenticatedSession,
+        }),
+    );
+    window.history.replaceState(null, "", "/home/formalization?orderSource=legacy&orderId=invalid&netsuiteId=11998725");
+    render(<App />);
+    expect(await screen.findByText("Orden no disponible.")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Inicio" }));
+    expect(await screen.findByRole("heading", { name: "Formalización" })).toBeVisible();
+    expect(screen.queryByText("Orden no disponible.")).not.toBeInTheDocument();
+    expect(window.location.pathname).toBe("/home/formalization");
+    expect(window.location.search).toBe("");
+    expect(screen.getByRole("banner", { name: "Barra superior global CRM TINK" })).toBeInTheDocument();
 });

@@ -5,10 +5,24 @@ import type { CrmDatabase } from "../../../../database/database.types.js";
 import { type FollowUpAccess, type FollowUpCounts, type FollowUpQueue, followUpQueues, type FollowUpRead, followUpRow, type FollowUpSourcePage } from "./follow-up.contract.js";
 import { aggregateNumber } from "./home-summary.types.js";
 
+/** Shared field and state projections keep exact records identical to list items. */
+const followUpClassification = sql`CASE
+                WHEN approved=1 AND COALESCE(rawStage,'contract_pending_send') IN ('unclassified','pending_approval','contract_pending_send') THEN 'contract_pending_send'
+                WHEN rawStage IN ('contract_pending_signature','bank_management','pending_balance','pending_transfer','transfer_signed','closed') THEN rawStage
+                WHEN approvalPending=1 THEN 'pending_approval' ELSE 'unclassified' END`;
+const followUpRowProjection = sql`JSON_OBJECT('sortId',CAST(sortId AS CHAR),'id',id,'source',source,'number',number,'nativeCode',nativeCode,
+                'client',client,'clientEmail',clientEmail,'project',IF(projectId IS NULL,NULL,JSON_OBJECT('id',projectId,'name',projectName)),
+                'unit',unit,'seller',IF(ownerName IS NULL,NULL,JSON_OBJECT('id',ownerId,'name',ownerName)),
+                'responsible',IF(stageResponsibleName IS NULL,NULL,JSON_OBJECT('id',stageResponsibleId,'name',stageResponsibleName)),
+                'changedBy',IF(changedByName IS NULL,NULL,JSON_OBJECT('id',changedById,'name',changedByName)),
+                'stateCode',stateCode,'stateSince',IF(rawStage=stateCode,DATE_FORMAT(effectiveAt,'%Y-%m-%dT%H:%i:%s.000Z'),NULL),
+                'stateVersion',stateVersion,'approvalsComplete',approved,'contractSigned',contractSigned,
+                'completedThisYear',completedThisYear)`;
+
 /** Both sources project the same aliases before filtering; all search values remain bound. */
 export function followUpSourceQuery(base: RawBuilder<unknown>, query: FollowUpRead, access: FollowUpAccess) {
     const stages: Record<Exclude<FollowUpQueue, "all">, RawBuilder<unknown>> = {
-        approvals: sql`approvalPending=1`,
+        approvals: sql`(${access.approvals} AND approvalPending=1)`,
         contracts: sql`approved=1 AND stateCode IN ('contract_pending_send','contract_pending_signature')`,
         send: sql`approved=1 AND stateCode='contract_pending_send'`,
         signature: sql`approved=1 AND stateCode='contract_pending_signature'`,
@@ -18,6 +32,10 @@ export function followUpSourceQuery(base: RawBuilder<unknown>, query: FollowUpRe
         signed: sql`contractSigned=1 AND stateCode='transfer_signed'`,
         closed: sql`contractSigned=1 AND completedThisYear=1`,
     };
+    for (const queue of Object.keys(stages) as Exclude<FollowUpQueue, "all">[]) {
+        const key = queue === "send" || queue === "signature" ? "contracts" : queue;
+        if (access.queues) stages[queue] = sql`(${access.queues[key] === true} AND (${stages[queue]}))`;
+    }
     // "Todas" is the union of banner memberships, not every active sales order.
     // OR counts a reopened order once even when its annual closure also qualifies.
     const matches: Record<FollowUpQueue, RawBuilder<unknown>> = { ...stages, all: sql`(${sql.join(Object.values(stages), sql` OR `)})` };
@@ -26,14 +44,10 @@ export function followUpSourceQuery(base: RawBuilder<unknown>, query: FollowUpRe
     const search = query.search.toLocaleLowerCase("es");
     return sql<Record<string, unknown>>`
         WITH base AS (${base}), classified AS (
-            SELECT base.*,CASE
-                WHEN approved=1 AND COALESCE(rawStage,'contract_pending_send') IN ('unclassified','pending_approval','contract_pending_send') THEN 'contract_pending_send'
-                WHEN rawStage IN ('contract_pending_signature','bank_management','pending_balance','pending_transfer','transfer_signed','closed') THEN rawStage
-                WHEN approvalPending=1 THEN 'pending_approval' ELSE 'unclassified' END AS stateCode
+            SELECT base.*,${followUpClassification} AS stateCode
             FROM base
         ), visible AS (
             SELECT * FROM classified WHERE (${!access.ownOnly} OR ownerId=${access.actorId})
-                AND (approvalPending=0 OR (${access.approvals} AND (${!access.approvalOwnOnly} OR ownerId=${access.actorId})))
                 AND ${matches.all}
         ), searched AS (
             SELECT * FROM visible WHERE (${recordId}='' OR id=${recordId}
@@ -47,14 +61,7 @@ export function followUpSourceQuery(base: RawBuilder<unknown>, query: FollowUpRe
             (SELECT COUNT(*) FROM filtered) AS total,
             ${sql.join(followUpQueues.map((queue) => sql`COALESCE(SUM(${matches[queue]}),0) AS ${sql.ref(queue)}`))},
             (SELECT COALESCE(JSON_ARRAYAGG(JSON_OBJECT('id',id,'name',name)),JSON_ARRAY()) FROM projects) AS projects,
-            (SELECT COALESCE(JSON_ARRAYAGG(JSON_OBJECT('sortId',CAST(sortId AS CHAR),'id',id,'source',source,'number',number,'nativeCode',nativeCode,
-                'client',client,'clientEmail',clientEmail,'project',IF(projectId IS NULL,NULL,JSON_OBJECT('id',projectId,'name',projectName)),
-                'unit',unit,'seller',IF(ownerName IS NULL,NULL,JSON_OBJECT('id',ownerId,'name',ownerName)),
-                'responsible',IF(stageResponsibleName IS NULL,NULL,JSON_OBJECT('id',stageResponsibleId,'name',stageResponsibleName)),
-                'changedBy',IF(changedByName IS NULL,NULL,JSON_OBJECT('id',changedById,'name',changedByName)),
-                'stateCode',stateCode,'stateSince',IF(rawStage=stateCode,DATE_FORMAT(effectiveAt,'%Y-%m-%dT%H:%i:%s.000Z'),NULL),
-                'stateVersion',stateVersion,'approvalsComplete',approved,'contractSigned',contractSigned,
-                'completedThisYear',completedThisYear)),JSON_ARRAY()) FROM paged) AS items
+            (SELECT COALESCE(JSON_ARRAYAGG(${followUpRowProjection}),JSON_ARRAY()) FROM paged) AS items
         FROM searched`;
 }
 
@@ -78,4 +85,15 @@ export async function readFollowUpSource(tx: Transaction<CrmDatabase>, statement
         .max(5000)
         .parse(jsonValue(row.projects));
     return { total: aggregateNumber(row.total as string | number | null), counts, projects, items };
+}
+
+/** Exact-record rehydration reuses source aliases, without list counts, project options or banner filtering. */
+export async function readFollowUpRecord(tx: Transaction<CrmDatabase>, base: RawBuilder<unknown>) {
+    const result = await sql<{ item: unknown }>`
+        WITH base AS (${base}), classified AS (
+            SELECT base.*,${followUpClassification} AS stateCode
+            FROM base
+        ) SELECT /*+ MAX_EXECUTION_TIME(5000) */ ${followUpRowProjection} AS item FROM classified LIMIT 1`.execute(tx);
+    const row = result.rows[0];
+    return row ? followUpRow.parse(jsonValue(row.item)) : undefined;
 }

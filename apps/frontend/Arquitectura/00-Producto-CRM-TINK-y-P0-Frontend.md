@@ -1,5 +1,42 @@
 # 00 - Ley de Producto CRM TINK y P0 Frontend
 
+## Corte documental vigente - 2026-10-29
+
+Mis notas y la campana interna incluyen colaboracion por invitacion, respuestas,
+menciones y actualizaciones por socket, junto con responsables, vencimientos,
+recordatorios personales, historial, busqueda y Homes adicionales. La nota sigue
+siendo privada para autor e invitados; compartir no concede acceso a su orden.
+Una identidad de registro es tipo/origen/ID, independiente de la URL. No se
+inventan rutas de detalle para modulos cuya ficha aun no esta implementada.
+
+Las acciones con respuesta visual optimista conservan recuperacion en segundo
+plano; crear y editar esperan confirmacion. Contrato y limites en
+[66 API](../../api/Arquitectura/66-Notas-Enterprise-Seguimiento.md); resultados
+fechados en [67 API](../../api/Arquitectura/67-Plan-QA-Regresiones-20261029.md).
+Copia legacy, Redis multinodo, medicion de latencia y aceptacion visual con dos
+cuentas no se dan por terminados por el solo hecho de tener interfaz o tests.
+Los apartados anteriores se leen como cortes fechados, no restricciones que
+retiren estas ampliaciones ya solicitadas.
+
+## Roles, comandos y recuperación - 2026-10-28
+
+Formalización y Jefe de Formalizaciones gestionan todas las órdenes con permiso
+de la acción. El detalle y su actualización posterior son independientes de los
+banners; una revocación bloquea comandos. El recorrido representa posición y
+cierre, sin inventar visitas históricas. [Contrato65](../../api/Arquitectura/65-Formalizacion-Correcciones-Roles-y-Recuperacion.md).
+
+## Detalle de orden: permiso independiente - 2026-10-28
+
+«Ver orden de venta» permite abrir la ficha por selección o URL sin permisos
+de banners. Los banners controlan solo sus contadores y listas. La restauración
+consulta una sola identidad mediante `/formalization/orders/:source/:id/record`;
+sin el permiso de detalle no abre ficha ni consulta datos del proveedor.
+Contrato: [64](../../api/Arquitectura/64-Formalizacion-Permiso-Ver-Orden.md).
+
+## Notas: ampliación autorizada etapa4 - 2026-10-27
+
+Invitaciones, conversación, menciones y campana interna conectadas. [Contrato60 API](../../api/Arquitectura/60-Notas-Etapa4-Colaboracion-y-Notificaciones.md). Vincular no comparte; copia legacy pendiente.
+
 ## Estado contrastado - 2026-10-27
 
 [30 - Estado frontend verificado](30-Estado-Frontend-Verificado.md) inventaría las rutas, contratos y límites actuales: Captación conectada, seguimiento y cambio protegido de etapa de Formalización. Los cortes fechados siguientes son antecedentes; sus cifras de QA no se reejecutaron en esta revisión documental.
@@ -491,3 +528,11 @@ This scoped authorization supersedes historical mock-only restrictions for this
 summary only; it authorizes no imports, business mutations, migrations or deployment.
 API contract and verification: `apps/api/Arquitectura/46-Mercadeo-Resumen-Leads.md`
 (relative to the repository root).
+
+### Notas personales, etapa3 (27 octubre2026)
+
+[58 API](../../api/Arquitectura/58-Notas-Etapa3-Interfaz-Personal.md): icono junto a campana, Drawer derecho, Home y orden nativa de Formalizacion; contenido propio y layout/PIN por dispositivo. Clientes tipados, reintentos con mismo identificador, conflictos explicitos y sin datos ficticios de fallback. Compartir/respuestas/campanita/copia legacy pendientes.
+
+Correccion vigente de notas: [59 API](../../api/Arquitectura/59-Notas-Contexto-Opcional-y-Vistas.md). Creacion desde cualquier pantalla, personal por defecto, checkbox opcional para vista registrada/orden native o legacy; vincular no comparte. Contexto incluye source+id y siempre revalida acceso; sin URLs arbitrarias/imports.
+
+Estado vigente de notas 2026-10-28: [implementación realtime y límites](../../api/Arquitectura/62-Notas-Tiempo-Real-Implementacion.md). Provider único por sesión, campana y conversación actualizadas, preservación de borradores, lectura explícita y revocación. La invitación no concede acceso al registro: contexto restringido se recibe como null. Reconciliación REST al reconectar; copia legacy inactiva.

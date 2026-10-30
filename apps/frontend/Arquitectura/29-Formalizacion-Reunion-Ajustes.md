@@ -1,5 +1,24 @@
 # Formalizacion: registro de ajustes surgidos en reunion
 
+## Correcciones de roles y recuperación - 2026-10-28
+
+El propietario confirmó que ambos roles gestionan todas las órdenes con los
+permisos correspondientes. La actualización posterior al guardado usa lectura
+exacta; 401/403 bloquean comandos y se conserva la operación incierta. Cierre y
+etapas anteriores se muestran sin inventar historia. Migración049 y límites:
+[65](../../api/Arquitectura/65-Formalizacion-Correcciones-Roles-y-Recuperacion.md).
+
+## Lectura por categoría - 2026-10-28
+
+El rol efectivo Formalización consulta todos los vendedores dentro de cada
+banner autorizado. El permiso del banner habilita contador y lista;
+“Todas” reúne solamente categorías permitidas. La interfaz oculta filtros y
+banners sin acceso. El detalle requiere únicamente «Ver orden de venta»,
+independiente de banners, según [64](../../api/Arquitectura/64-Formalizacion-Permiso-Ver-Orden.md);
+se limpia al revocar ese permiso. Los controles de
+escritura mantienen permisos independientes. Contrato vigente y migración047:
+[63 - Lectura por banner](../../api/Arquitectura/63-Formalizacion-Lectura-Por-Banner.md).
+
 ## Estado contrastado - 2026-10-27
 
 [30 - Estado frontend verificado](30-Estado-Frontend-Verificado.md) inventaría las rutas, contratos y límites actuales: Captación conectada, seguimiento y cambio protegido de etapa de Formalización. Los cortes fechados siguientes son antecedentes; sus cifras de QA no se reejecutaron en esta revisión documental.
@@ -461,3 +480,17 @@ lo adicional, con minutos de referencia. Las dudas derivadas del contraste
 no se presentan como acuerdos confirmados.
 
 Este documento sirve de entrada para una futura validacion de requisitos. No autoriza desarrollo ni reemplaza las decisiones pendientes. La matriz y el checklist de la aplicacion permanecen como referencia de la entrega visual anterior; no se actualizaron en esta tarea.
+
+## Aprobación de Formalización preparada — 2026-10-28
+
+Ampliación posterior autorizada: permiso independiente formalizacion.orders.approve
+solo para jefe_formalizaciones inicialmente, gestionable también por otros roles o
+empleados. Banner de lectura separado; deny individual prioritario. Migración045
+solo nativa y botón protegido en detalle. La operación permanece deshabilitada;
+POST /formalization/orders/approve rechaza sin escribir hasta recibir el contrato de
+confirmación NetSuite. No se ha conectado aprobar/devolver, no se modifican checks.
+El diseño y límites vigentes están en API [52](../../api/Arquitectura/52-Etapas-Responsables-y-Tiempos.md).
+
+## Actualizacion: boton Aprobar Formalizacion conectado (2026-10-28)
+
+La preparacion de aprobacion ahora dispone de confirmacion y POST /formalization/orders/approve. Solo aparece con permiso formalizacion.orders.approve sin deny; conserva UUID en reintentos y bloquea doble envio. El API verifica el ERP antes de escribir en la BD autoritativa y centraliza bitacora. La vista usa la revalidacion existente de seguimiento, sin recargar todos los datos NetSuite. La confirmacion externa y local requieren subir la revision del RESTlet y comprobar una orden elegida; ninguna aprobacion real se ejecuto como prueba. Contrato y limites vigentes: [API63](../../api/Arquitectura/63-Aprobacion-Formalizacion-NetSuite.md).

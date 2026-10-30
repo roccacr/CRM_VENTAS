@@ -1,8 +1,9 @@
 import { BadRequestException, ForbiddenException, Inject, Injectable } from "@nestjs/common";
+import { z } from "zod";
 
-import { canReadFormalizationStages } from "../../common/security/route-permission.js";
+import { canReadFormalizationOrder } from "../../common/security/route-permission.js";
 import { IdentityService } from "../../modules/crm/identity/identity.service.js";
-import { formalizationPermissionScope } from "../../modules/crm/sales/sales-orders/follow-up.service.js";
+import { assertFormalizationOrderReadable } from "../../modules/crm/sales/sales-orders/formalization-read.policy.js";
 import { orderTimingIdentity, type TimingOrder } from "../../modules/crm/sales/sales-orders/order-timing.contract.js";
 import { NetsuiteOrderRepository } from "./netsuite-order.repository.js";
 import { NetsuiteRestletClient } from "./netsuite-restlet.client.js";
@@ -28,22 +29,34 @@ export class NetsuiteSalesOrderService {
         return { schemaVersion: 1 as const, order: resolved, data };
     }
     /** Same role, deny and resource checks as the provider read, with no external request. */
-    async readDatabase(session: string | undefined, input: unknown) {
-        return this.authorized(session, input, (target, check) => this.repository.readDatabase(target, check));
+    async readDatabase(session: string | undefined, input: unknown, query: unknown = {}) {
+        return this.authorized(session, input, (target, check) => {
+            const parsed = z
+                .object({ historyCursor: z.string().max(2048).optional() })
+                .strict()
+                .safeParse(query);
+            if (!parsed.success) throw new BadRequestException("Filtros de historial invalidos.");
+            return this.repository.readDatabase(target, check, parsed.data.historyCursor);
+        });
+    }
+    /** Read-only audit timeline shares the independent order permission and active-record gate. */
+    async readHistory(session: string | undefined, input: unknown, query: unknown = {}) {
+        return this.authorized(session, input, (target, check) => {
+            const parsed = z
+                .object({ cursor: z.string().min(1).max(2048).optional() })
+                .strict()
+                .safeParse(query);
+            if (!parsed.success) throw new BadRequestException("Filtros de bitácora inválidos.");
+            return this.repository.readHistory(target, check, parsed.data.cursor);
+        });
     }
     private async authorized<T>(session: string | undefined, input: unknown, read: (target: { source: "native" | "legacy"; id: string }, check: (order: TimingOrder) => void) => Promise<T>): Promise<T> {
         const profile = await this.identity.getCurrentUser(session);
-        if (!canReadFormalizationStages(profile)) throw new ForbiddenException("Permiso insuficiente para consultar la orden.");
+        if (!canReadFormalizationOrder(profile)) throw new ForbiddenException("Permiso insuficiente para consultar la orden.");
         const target = orderTimingIdentity.safeParse(input);
         if (!target.success) throw new BadRequestException("Identidad de orden invalida.");
-        const access = formalizationPermissionScope(profile, "formalizacion.home.stages.read");
-        const approvals = formalizationPermissionScope(profile, "formalizacion.home.approvals.read");
         return read(target.data, (order) => {
-            this.assertVisible(order, profile.user.publicId, access.ownOnly, approvals);
+            assertFormalizationOrderReadable(profile, order);
         });
-    }
-    private assertVisible(order: TimingOrder, actor: string, ownOnly: boolean, approvals: { allowed: boolean; ownOnly: boolean }): void {
-        if (ownOnly && order.ownerId !== actor) throw new ForbiddenException("La orden esta fuera de su alcance.");
-        if (order.pendingApproval && (!approvals.allowed || (approvals.ownOnly && order.ownerId !== actor))) throw new ForbiddenException("Permiso de aprobaciones insuficiente.");
     }
 }

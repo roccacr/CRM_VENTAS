@@ -2,7 +2,7 @@ import Select from "antd/es/select";
 import { useState } from "react";
 
 import { percentFormat } from "../home/marketing-home-format";
-import { type CaptureMeasure, type CaptureSeller, type ChartGroup, sellerTone,SERIES } from "./lead-capture-report";
+import { type CaptureMeasure, type CaptureSeller, type ChartGroup, sellerTone, SERIES } from "./lead-capture-report";
 import { SellerChip } from "./SellerAvatar";
 
 type ChartMode = "count" | "percent";
@@ -270,7 +270,13 @@ function ColumnsChart({ sellers: allSellers, groups: allGroups, label, measure, 
         <figure className={compact ? "capture-columns-chart capture-columns-chart--compact" : "capture-columns-chart"} aria-label={label}>
             {!compact && <ChartHeader sellers={sellers} tones={tones} controls={{ mode, measure, onMode: setMode, limit, onLimit: setLimit, showLimit: source.length > LIMITS[0] }} />}
             <Plot stacked={stacked} sellers={sellers} tones={tones} view={view} />
-            <OmittedNote empty={groups.length > 0 ? empty : []} hidden={hidden} onShowAll={() => { setLimit(0); }} />
+            <OmittedNote
+                empty={groups.length > 0 ? empty : []}
+                hidden={hidden}
+                onShowAll={() => {
+                    setLimit(0);
+                }}
+            />
         </figure>
     );
 }

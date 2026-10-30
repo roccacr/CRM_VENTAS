@@ -15,6 +15,7 @@ import { Microsoft365Module } from "./integrations/microsoft365/microsoft365.mod
 import { NetsuiteModule } from "./integrations/netsuite/netsuite.module.js";
 import { AuditModule } from "./modules/crm/audit/audit.module.js";
 import { BrokersModule } from "./modules/crm/brokers/brokers.module.js";
+import { CalendarModule } from "./modules/crm/calendar/calendar.module.js";
 import { CampaignsModule } from "./modules/crm/campaigns/campaigns.module.js";
 import { CatalogsModule } from "./modules/crm/catalogs/catalogs.module.js";
 import { ClassesModule } from "./modules/crm/classes/classes.module.js";
@@ -22,6 +23,7 @@ import { IdentityModule } from "./modules/crm/identity/identity.module.js";
 import { identityRequestContextMiddleware } from "./modules/crm/identity/identity-request-context.js";
 import { LocationsModule } from "./modules/crm/locations/locations.module.js";
 import { MarketingHomeModule } from "./modules/crm/marketing/marketing-home.module.js";
+import { NotesModule } from "./modules/crm/notes/notes.module.js";
 import { PermissionsModule } from "./modules/crm/permissions/permissions.module.js";
 import { ProjectsModule } from "./modules/crm/projects/projects.module.js";
 import { ApprovalSummaryModule } from "./modules/crm/sales/sales-orders/approval-summary.module.js";
@@ -63,6 +65,8 @@ import { UnitFilesModule } from "./modules/crm/unit-files/unit-files.module.js";
         NetsuiteModule,
         AuditModule,
         PermissionsModule,
+        NotesModule,
+        CalendarModule,
         IdentityModule,
         CatalogsModule,
         ProjectsModule,

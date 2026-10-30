@@ -1,7 +1,7 @@
 import { ForbiddenException, Inject, Injectable, ServiceUnavailableException } from "@nestjs/common";
 import type { Transaction } from "kysely";
 
-import { canReadFormalizationStages } from "../../../../common/security/route-permission.js";
+import { canReadFormalizationQueue } from "../../../../common/security/route-permission.js";
 import type { CrmDatabase } from "../../../../database/database.types.js";
 import { IdentityService } from "../../identity/identity.service.js";
 import { SALES_ORDER_SUMMARY_PAGE_SIZE } from "./approval-summary.port.js";
@@ -32,7 +32,7 @@ export class ContractSummaryService {
     /** Authorize before either source and return aggregate counts only. */
     async summary(session?: string) {
         const profile = await this.identity.getCurrentUser(session);
-        if (!canReadFormalizationStages(profile)) throw new ForbiddenException("Se requiere el rol activo Formalizacion y el permiso de lectura de sus banners.");
+        if (!canReadFormalizationQueue(profile, "contracts")) throw new ForbiddenException("Se requiere el rol activo Formalizacion y el permiso de lectura de sus banners.");
         try {
             return await this.repository.readSnapshot(async (tx) => {
                 const native = await this.repository.countNative(tx);

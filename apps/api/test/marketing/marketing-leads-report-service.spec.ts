@@ -27,6 +27,25 @@ function fixture(scopes = ["all_areas"], deny = false, enabled = true) {
     return { identity, snapshot, repository, legacy, order, service: new MarketingLeadsReportService(identity as never, snapshot as never, repository as never, legacy) };
 }
 describe("capture report authorization and source behavior", () => {
+    it.each(["allow", "deny"])("honors an explicit global read and its deny: %s", async (effect) => {
+        const f = fixture(["self"]);
+        f.identity.getCurrentUser.mockResolvedValue({
+            user: { publicId: "me" },
+            permissions: [
+                { code: "mercadeo.leads.read", effect: "allow", scope: "self" },
+                { code: "mercadeo.reports.read_all", effect, scope: "self" },
+            ],
+        });
+        await f.service.report("session", {});
+        expect(f.snapshot.visibleSellers).toHaveBeenCalledTimes(effect === "allow" ? 0 : 1);
+    });
+
+    it("requires ordinary report access even with global read", async () => {
+        const f = fixture();
+        f.identity.getCurrentUser.mockResolvedValue({ user: { publicId: "me" }, permissions: [{ code: "mercadeo.reports.read_all", effect: "allow", scope: "self" }] });
+        await expect(f.service.report("session", {})).rejects.toMatchObject({ status: 403 });
+        expect(f.snapshot.readSnapshot).not.toHaveBeenCalled();
+    });
     it("checks permission and deny before database access", async () => {
         const f = fixture(["all_areas"], true);
         await expect(f.service.report("session", {})).rejects.toThrow("Permiso insuficiente");

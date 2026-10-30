@@ -4,14 +4,19 @@ import { ApprovalSummaryService } from "../../src/modules/crm/sales/sales-orders
 
 describe("approval summary", () => {
     const permission = { code: "formalizacion.home.approvals.read", effect: "allow", scope: "all_areas", source: "role" };
-    function setup(permissions = [permission]) {
+    function setup(permissions = [permission], roles = [{ code: "formalizacion", status: "active" }]) {
         const transaction = { isTransaction: true };
-        const identity = { getCurrentUser: vi.fn().mockResolvedValue({ permissions }) };
+        const identity = { getCurrentUser: vi.fn().mockResolvedValue({ permissions, roles }) };
         const repository = { readSnapshot: vi.fn().mockImplementation((read: (tx: object) => Promise<unknown>) => read(transaction)), countPending: vi.fn().mockResolvedValue(2), migratedIds: vi.fn().mockResolvedValue([4]) };
         const legacy = { enabled: () => true, pendingIds: vi.fn().mockResolvedValueOnce([3, 4]).mockResolvedValue([]) };
         const service = new ApprovalSummaryService(identity as never, repository as never, legacy);
         return { service, repository, legacy, transaction };
     }
+    it("rejects an approvals grant without the active Formalizacion role", async () => {
+        const f = setup([permission], []);
+        await expect(f.service.summary()).rejects.toMatchObject({ status: 403 });
+        expect(f.repository.countPending).not.toHaveBeenCalled();
+    });
     it("counts native orders and only non-migrated legacy orders", async () => {
         const { service } = setup();
         expect(await service.summary("session")).toMatchObject({ total: 3, sources: { native: 2, legacy: 1, duplicatesExcluded: 1 } });

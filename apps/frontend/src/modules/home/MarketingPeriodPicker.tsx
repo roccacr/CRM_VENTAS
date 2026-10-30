@@ -1,18 +1,5 @@
 import { describeRange, nameRange } from "./marketing-home-format";
-import {
-    canAdvanceMarketingSelection,
-    firstMarketingActivity,
-    MARKETING_COMPARISONS,
-    MARKETING_PERIOD_MODES,
-    type MarketingComparison,
-    type MarketingPeriodMode,
-    type MarketingPreviewFilters,
-    type MarketingRange,
-    type MarketingSelection,
-    parseISODate,
-    shiftMarketingSelection,
-    toISODate,
-} from "./marketing-home-preview.model";
+import { canAdvanceMarketingSelection, firstMarketingActivity, MARKETING_COMPARISONS, MARKETING_PERIOD_MODES, type MarketingComparison, type MarketingPeriodMode, type MarketingPreviewFilters, type MarketingRange, type MarketingSelection, parseISODate, shiftMarketingSelection, toISODate } from "./marketing-home-preview.model";
 
 const monthNames = Array.from({ length: 12 }, (_, month) => new Intl.DateTimeFormat("es-CR", { month: "long" }).format(new Date(2026, month, 1)));
 

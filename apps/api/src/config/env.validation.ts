@@ -13,6 +13,14 @@ import { APPROVED_DATABASE_NAME } from "./product.constants.js";
 // silenciosos para secretos, origenes CORS ni nombre de base de datos.
 // ============================================================================
 
+/** Exact server deployment URL: reject normalization, credentials and extra query parameters. */
+export function isNetsuiteSandboxRestletUrl(value: unknown): value is string {
+    if (typeof value !== "string" || /\s/.test(value)) return false;
+    const script = "(?:[1-9][0-9]*|customscript_[A-Za-z0-9_]+)";
+    const deploy = "(?:[1-9][0-9]*|customdeploy_[A-Za-z0-9_]+)";
+    return new RegExp("^https://4552704-sb1\\.restlets\\.api\\.netsuite\\.com/app/site/hosting/restlet\\.nl\\?(?:script=" + script + "&deploy=" + deploy + "|deploy=" + deploy + "&script=" + script + ")$").test(value);
+}
+
 /** Longitud minima para evitar secretos triviales. */
 const MIN_RUNTIME_SECRET_LENGTH = 32;
 const MICROSOFT_CACHE_KEY_BYTES = 32;
@@ -288,6 +296,33 @@ const validateTrustedProxyEntries = (value: string, context: z.RefinementCtx): v
  * Zod es la frontera unica para validar variables de entorno. Los valores
  * criticos de seguridad fallan durante arranque, no en el primer request.
  */
+const addNotesRealtimeIssues = (config: { NOTES_REALTIME_TOPOLOGY: string; NOTES_REALTIME_REDIS_URL?: string | undefined }, context: z.RefinementCtx): void => {
+    if (config.NOTES_REALTIME_TOPOLOGY === "redis-streams") {
+        let safeRedis = false;
+        try {
+            const redis = new URL(config.NOTES_REALTIME_REDIS_URL ?? "");
+            safeRedis = [redis.protocol === "rediss:", Boolean(redis.hostname), Boolean(redis.username), Boolean(redis.password), !redis.search, !redis.hash].every(Boolean);
+        } catch {
+            /* Invalid or absent Redis URL fails closed below. */
+        }
+        if (!safeRedis) context.addIssue({ code: "custom", path: ["NOTES_REALTIME_REDIS_URL"], message: "Redis Streams requires an authenticated private TLS endpoint." });
+    }
+};
+/** Sandbox is opt-in and must be complete; production settings cannot fill gaps. */
+const addNetsuiteSandboxIssues = (config: { NETSUITE_ENVIRONMENT: string; NETSUITE_SANDBOX_CONSUMER_KEY?: string | undefined; NETSUITE_SANDBOX_CONSUMER_SECRET?: string | undefined; NETSUITE_SANDBOX_TOKEN_ID?: string | undefined; NETSUITE_SANDBOX_TOKEN_SECRET?: string | undefined; NETSUITE_SANDBOX_REALM?: string | undefined; NETSUITE_SANDBOX_RESTLET_URL?: string | undefined }, context: z.RefinementCtx): void => {
+    if (config.NETSUITE_ENVIRONMENT === "sandbox") {
+        for (const key of ["NETSUITE_SANDBOX_CONSUMER_KEY", "NETSUITE_SANDBOX_CONSUMER_SECRET", "NETSUITE_SANDBOX_TOKEN_ID", "NETSUITE_SANDBOX_TOKEN_SECRET"] as const) {
+            if (!config[key]?.trim()) context.addIssue({ code: "custom", path: [key], message: "Configuracion NetSuite sandbox incompleta." });
+        }
+        if (config.NETSUITE_SANDBOX_REALM?.trim() !== "4552704_SB1") context.addIssue({ code: "custom", path: ["NETSUITE_SANDBOX_REALM"], message: "Realm NetSuite sandbox incompatible." });
+        if (!isNetsuiteSandboxRestletUrl(config.NETSUITE_SANDBOX_RESTLET_URL)) context.addIssue({ code: "custom", path: ["NETSUITE_SANDBOX_RESTLET_URL"], message: "URL NetSuite sandbox incompatible." });
+    }
+};
+/** Local webhook configuration must be explicit, development-only and isolated from BFF secrets. */
+const addNetsuiteLocalEventsIssues = (config: { NETSUITE_LOCAL_EVENTS_ENABLED: boolean; NODE_ENV: string; NETSUITE_LOCAL_EVENTS_SECRET?: string | undefined; COOKIE_SECRET: string; AUTH_TOKEN_HASH_SECRET: string; AUDIT_HASH_SECRET: string }, context: z.RefinementCtx): void => {
+    if (config.NETSUITE_LOCAL_EVENTS_ENABLED && (config.NODE_ENV !== "development" || !config.NETSUITE_LOCAL_EVENTS_SECRET)) context.addIssue({ code: "custom", path: ["NETSUITE_LOCAL_EVENTS_ENABLED"], message: "El receptor local requiere development y un secreto exclusivo de 64 caracteres hexadecimales." });
+    if (config.NETSUITE_LOCAL_EVENTS_SECRET && [config.COOKIE_SECRET, config.AUTH_TOKEN_HASH_SECRET, config.AUDIT_HASH_SECRET].includes(config.NETSUITE_LOCAL_EVENTS_SECRET)) context.addIssue({ code: "custom", path: ["NETSUITE_LOCAL_EVENTS_SECRET"], message: "El secreto local debe ser exclusivo de la integracion." });
+};
 const envSchema = z
     .object({
         NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
@@ -296,6 +331,9 @@ const envSchema = z
         LOG_LEVEL: z.enum(["fatal", "error", "warn", "info", "debug", "trace", "silent"]).default("info"),
         FRONTEND_ORIGIN: frontendOriginSchema,
         FRONTEND_ALLOWED_ORIGINS: frontendAllowedOriginsSchema.optional(),
+        NOTES_REALTIME_ENABLED: booleanEnvSchema("true"),
+        NOTES_REALTIME_TOPOLOGY: z.enum(["single", "redis-streams"]).default("single"),
+        NOTES_REALTIME_REDIS_URL: z.string().optional(),
         COOKIE_SECRET: z.string().min(MIN_RUNTIME_SECRET_LENGTH),
         AUDIT_HASH_SECRET: z.string().min(MIN_RUNTIME_SECRET_LENGTH),
         AUTH_TOKEN_HASH_SECRET: z.string().min(MIN_RUNTIME_SECRET_LENGTH),
@@ -343,6 +381,18 @@ const envSchema = z
         DB_SSL: booleanEnvSchema("false"),
         DB_SSL_CA: z.string().min(1).optional(),
         // Optional adapter settings stay server-side; the GET client rejects incomplete credentials.
+        NETSUITE_LOCAL_EVENTS_ENABLED: booleanEnvSchema("false"),
+        NETSUITE_LOCAL_EVENTS_SECRET: z
+            .string()
+            .regex(/^[a-f0-9]{64}$/)
+            .optional(),
+        NETSUITE_ENVIRONMENT: z.enum(["production", "sandbox"]).default("production"),
+        NETSUITE_SANDBOX_CONSUMER_KEY: z.string().optional(),
+        NETSUITE_SANDBOX_CONSUMER_SECRET: z.string().optional(),
+        NETSUITE_SANDBOX_TOKEN_ID: z.string().optional(),
+        NETSUITE_SANDBOX_TOKEN_SECRET: z.string().optional(),
+        NETSUITE_SANDBOX_REALM: z.string().optional(),
+        NETSUITE_SANDBOX_RESTLET_URL: z.string().optional(),
         NETSUITE_CONSUMER_KEY: z.string().optional(),
         NETSUITE_CONSUMER_SECRET: z.string().optional(),
         NETSUITE_TOKEN_ID: z.string().optional(),
@@ -357,6 +407,9 @@ const envSchema = z
         MICROSOFT_SCOPES: z.string().default("openid profile email offline_access User.Read"),
     })
     .superRefine((config, context) => {
+        addNetsuiteLocalEventsIssues(config, context);
+        addNetsuiteSandboxIssues(config, context);
+        addNotesRealtimeIssues(config, context);
         if (config.AUDIT_HASH_SECRET === config.COOKIE_SECRET) {
             context.addIssue({
                 code: "custom",

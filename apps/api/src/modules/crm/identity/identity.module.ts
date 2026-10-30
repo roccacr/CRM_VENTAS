@@ -30,6 +30,6 @@ import { IdentityUserDirectoryRepository } from "./identity-user-directory.repos
     imports: [AuditModule, PermissionsModule],
     controllers: [IdentityController, IdentityAccessManagementController, AuditReadController],
     providers: [IdentityService, IdentityRepository, IdentityProfileRepository, IdentitySessionRepository, IdentityLocalRepository, IdentityMicrosoftRepository, IdentityUserDirectoryRepository, IdentityAccessManagementService, IdentityAccessManagementRepository, IdentityTokenService, IdentityAuditRecorder, IdentityMicrosoftSessionService, AuditReadRepository, AuditReadService],
-    exports: [IdentityService],
+    exports: [IdentityService, IdentityProfileRepository],
 })
 export class IdentityModule {}

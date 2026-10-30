@@ -10,6 +10,7 @@ import { Global, Module } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 
 import { BROKERS_LEGACY_ACCESS } from "../../modules/crm/brokers/brokers-legacy.port.js";
+import { CALENDAR_LEGACY_READER } from "../../modules/crm/calendar/calendar.contract.js";
 import { CAMPAIGNS_LEGACY_ACCESS } from "../../modules/crm/campaigns/campaigns-legacy.port.js";
 import { CATALOG_FALLBACK_READER } from "../../modules/crm/catalogs/catalog-fallback.js";
 import { CLASSES_LEGACY_ACCESS } from "../../modules/crm/classes/classes-legacy.port.js";
@@ -21,6 +22,7 @@ import { APPROVAL_LEGACY_READER } from "../../modules/crm/sales/sales-orders/app
 import { CONTRACT_SUMMARY_LEGACY_READER } from "../../modules/crm/sales/sales-orders/contract-summary.port.js";
 import { CONTRACT_TRANSITION_LEGACY } from "../../modules/crm/sales/sales-orders/contract-transition.port.js";
 import { FOLLOW_UP_LEGACY_READER } from "../../modules/crm/sales/sales-orders/follow-up.port.js";
+import { FORMALIZATION_APPROVAL_LEGACY } from "../../modules/crm/sales/sales-orders/formalization-approval.port.js";
 import { HOME_SUMMARY_LEGACY_READER } from "../../modules/crm/sales/sales-orders/home-summary.port.js";
 import { ORDER_TIMING_LEGACY_READER } from "../../modules/crm/sales/sales-orders/order-timing.port.js";
 import { SUBSIDIARIES_LEGACY_ACCESS } from "../../modules/crm/subsidiaries/subsidiaries-legacy.port.js";
@@ -29,6 +31,7 @@ import { LegacyBrokersWriter } from "./brokers/legacy-brokers.writer.js";
 import { LegacyCampaignsWriter } from "./campaigns/legacy-campaigns.writer.js";
 import { LegacyClassesWriter } from "./classes/legacy-classes.writer.js";
 import { LegacyApprovalReader } from "./legacy-approval.reader.js";
+import { LegacyCalendarReader } from "./legacy-calendar.reader.js";
 import { LegacyCatalogReader } from "./legacy-catalog.reader.js";
 import { LegacyContractSummaryReader } from "./legacy-contract-summary.reader.js";
 import { LegacyContractTransitionWriter } from "./legacy-contract-transition.writer.js";
@@ -51,6 +54,7 @@ import { LegacyUnitFilesReader } from "./unit-files/legacy-unit-files.reader.js"
 @Global()
 @Module({
     providers: [
+        { provide: CALENDAR_LEGACY_READER, useClass: LegacyCalendarReader },
         {
             provide: LEGACY_CRM_DATABASE,
             inject: [ConfigService],
@@ -63,6 +67,7 @@ import { LegacyUnitFilesReader } from "./unit-files/legacy-unit-files.reader.js"
         { provide: FOLLOW_UP_LEGACY_READER, useClass: LegacyFollowUpReader },
         { provide: ORDER_TIMING_LEGACY_READER, useClass: LegacyOrderTimingReader },
         { provide: CONTRACT_TRANSITION_LEGACY, useClass: LegacyContractTransitionWriter },
+        { provide: FORMALIZATION_APPROVAL_LEGACY, useExisting: CONTRACT_TRANSITION_LEGACY },
         { provide: MARKETING_HOME_LEGACY_READER, useClass: LegacyMarketingHomeReader },
         { provide: MARKETING_LEADS_REPORT_LEGACY_READER, useClass: LegacyMarketingLeadsReportReader },
         { provide: CATALOG_FALLBACK_READER, useClass: LegacyCatalogReader },
@@ -74,6 +79,26 @@ import { LegacyUnitFilesReader } from "./unit-files/legacy-unit-files.reader.js"
         { provide: BROKERS_LEGACY_ACCESS, useClass: LegacyBrokersWriter },
         { provide: UNIT_FILES_LEGACY, useClass: LegacyUnitFilesReader },
     ],
-    exports: [APPROVAL_LEGACY_READER, CONTRACT_SUMMARY_LEGACY_READER, HOME_SUMMARY_LEGACY_READER, FOLLOW_UP_LEGACY_READER, ORDER_TIMING_LEGACY_READER, CONTRACT_TRANSITION_LEGACY, MARKETING_HOME_LEGACY_READER, MARKETING_LEADS_REPORT_LEGACY_READER, LegacyCrmDatabaseService, CATALOG_FALLBACK_READER, PROJECTS_LEGACY_ACCESS, CAMPAIGNS_LEGACY_ACCESS, CLASSES_LEGACY_ACCESS, LOCATIONS_LEGACY_ACCESS, SUBSIDIARIES_LEGACY_ACCESS, BROKERS_LEGACY_ACCESS, UNIT_FILES_LEGACY],
+    exports: [
+        CALENDAR_LEGACY_READER,
+        FORMALIZATION_APPROVAL_LEGACY,
+        APPROVAL_LEGACY_READER,
+        CONTRACT_SUMMARY_LEGACY_READER,
+        HOME_SUMMARY_LEGACY_READER,
+        FOLLOW_UP_LEGACY_READER,
+        ORDER_TIMING_LEGACY_READER,
+        CONTRACT_TRANSITION_LEGACY,
+        MARKETING_HOME_LEGACY_READER,
+        MARKETING_LEADS_REPORT_LEGACY_READER,
+        LegacyCrmDatabaseService,
+        CATALOG_FALLBACK_READER,
+        PROJECTS_LEGACY_ACCESS,
+        CAMPAIGNS_LEGACY_ACCESS,
+        CLASSES_LEGACY_ACCESS,
+        LOCATIONS_LEGACY_ACCESS,
+        SUBSIDIARIES_LEGACY_ACCESS,
+        BROKERS_LEGACY_ACCESS,
+        UNIT_FILES_LEGACY,
+    ],
 })
 export class LegacyCrmModule {}

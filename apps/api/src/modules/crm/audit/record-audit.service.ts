@@ -1,4 +1,4 @@
-import { BadRequestException, ConflictException, ForbiddenException, Inject, Injectable, type OnModuleInit, ServiceUnavailableException } from "@nestjs/common";
+import { BadRequestException, ConflictException, ForbiddenException, Inject, Injectable, Logger, type OnModuleInit, ServiceUnavailableException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { type Selectable, sql, type Transaction } from "kysely";
 import { ulid } from "ulid";
@@ -121,7 +121,19 @@ export class RecordAuditService implements OnModuleInit {
 
     /** Enabling against an unprepared schema fails before requests are accepted. No automatic DDL. */
     async onModuleInit(): Promise<void> {
-        if (this.enabled) await this.assertReady(this.database.db);
+        if (!this.enabled) return;
+        // Retry this read-only startup gate only; commands and audit writes must never be replayed here.
+        for (let attempt = 0; attempt < 3; attempt++) {
+            try {
+                await this.assertReady(this.database.db);
+                return;
+            } catch (error) {
+                const code: unknown = error instanceof Error ? Reflect.get(error, "code") : undefined;
+                if (attempt === 2 || !["ETIMEDOUT", "ECONNRESET", "ECONNREFUSED", "PROTOCOL_CONNECTION_LOST"].includes(String(code))) throw error;
+                Logger.warn({ event: "record_audit_startup_connection_retry", attempt: attempt + 2 }, RecordAuditService.name);
+                await new Promise<void>((resolve) => setTimeout(resolve, (attempt + 1) * 1000));
+            }
+        }
     }
 
     private async assertReady(executor: DatabaseService["db"]): Promise<void> {

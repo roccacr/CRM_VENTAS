@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 
 import { ApiClientError } from "../../services/api/api-client";
-import { type FollowUpItem, getFollowUp } from "../../services/formalization/follow-up-service";
+import { type FollowUpItem, getFormalizationOrderRecord } from "../../services/formalization/follow-up-service";
 
 type RestoreOptions = { readonly record?: FollowUpItem | null; readonly refreshVersion?: number };
 function restoreRequest(initialTarget: string | null, options: RestoreOptions) {
@@ -25,18 +25,15 @@ export function useRestoredFormalizationOrder(enabled: boolean, onRestore: (item
     useEffect(() => {
         if (!enabled || !target || target === "invalid") return;
         let active = true;
-        void getFollowUp({ recordId: target, search: "", projectId: "", queue: "all", page: 1, pageSize: 1 }).then(
-            (result) => {
+        void getFormalizationOrderRecord(target.startsWith("legacy:") ? "legacy" : "native", target.replace(/^legacy:/, "")).then(
+            (item) => {
                 if (!active) return;
-                const item = result.items[0];
-                if (item) {
-                    if (managedRecord) setInitialTarget(null);
-                    onRestore(item);
-                }
-                setSettled({ key, status: item ? "ready" : "missing" });
+                if (managedRecord) setInitialTarget(null);
+                onRestore(item);
+                setSettled({ key, status: "ready" });
             },
             (error: unknown) => {
-                if (active) setSettled({ key, status: error instanceof ApiClientError && [401, 403].includes(error.status) ? "denied" : "error" });
+                if (active) setSettled({ key, status: error instanceof ApiClientError && [401, 403].includes(error.status) ? "denied" : error instanceof ApiClientError && error.status === 404 ? "missing" : "error" });
             },
         );
         return () => {

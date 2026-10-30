@@ -13,7 +13,7 @@ function setup(codes = ["formalizacion.home.stages.read", "formalizacion.home.ap
     const identity = { getCurrentUser: vi.fn().mockResolvedValue(profile) } as unknown as IdentityService;
     const native = { readSnapshot: vi.fn(async (read: (tx: object) => Promise<unknown>) => read({})), read: vi.fn().mockResolvedValue(empty()) };
     const legacy = { enabled: () => true, read: vi.fn().mockResolvedValue(empty()) };
-    const service = new FollowUpService(identity, native, legacy, native as unknown as HomeSummaryRepository);
+    const service = new FollowUpService(identity, native as never, legacy as never, native as unknown as HomeSummaryRepository);
     return { profile, native, legacy, service };
 }
 
@@ -29,7 +29,7 @@ describe("Formalization follow-up", () => {
         expect(legacy.read).not.toHaveBeenCalled();
     });
     it("rejects a direct stage deny before SQL", async () => {
-        const { service, profile, native } = setup();
+        const { service, profile, native } = setup(["formalizacion.home.stages.read"]);
         profile.permissions.push({ code: "formalizacion.home.stages.read", effect: "deny", scope: null, source: "override" });
         await expect(service.list("session", {})).rejects.toMatchObject({ status: 403 });
         expect(native.read).not.toHaveBeenCalled();
@@ -71,4 +71,14 @@ describe("Formalization follow-up", () => {
         expect(presented.nextStep).toBe("Registrar el envío del contrato");
         expect(presented).not.toHaveProperty("stateCode");
     });
+});
+
+it("passes module-wide contracts-only union access to both sources and rejects forged banking queue", async () => {
+    const f = setup(["formalizacion.home.contracts.read"]);
+    for (const grant of f.profile.permissions) grant.scope = "self";
+    await f.service.list("session", {});
+    for (const source of [f.native, f.legacy]) expect(source.read).toHaveBeenCalledWith(expect.anything(), expect.anything(), expect.anything(), expect.objectContaining({ ownOnly: false, approvalOwnOnly: false, queues: { approvals: false, contracts: true, bank: false, balance: false, transfer: false, signed: false, closed: false } }));
+    f.native.read.mockClear();
+    await expect(f.service.list("session", { queue: "bank" })).rejects.toMatchObject({ status: 403 });
+    expect(f.native.read).not.toHaveBeenCalled();
 });

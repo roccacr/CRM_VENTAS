@@ -197,3 +197,6 @@ export interface SystemUsersListResponse {
     page: SystemUsersPageInfo;
     summary: SystemUsersSummary;
 }
+
+/** Server-derived authorization without a fabricated login/session. */
+export type IdentityAuthorizationProfile = Pick<IdentityProfile, "user" | "roles" | "orgUnits" | "permissions">;

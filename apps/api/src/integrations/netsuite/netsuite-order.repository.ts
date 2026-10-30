@@ -3,6 +3,8 @@ import { sql, type Transaction } from "kysely";
 
 import type { CrmDatabase } from "../../database/database.types.js";
 import { HomeSummaryRepository } from "../../modules/crm/sales/sales-orders/home-summary.repository.js";
+import { readOrderClientContext } from "../../modules/crm/sales/sales-orders/order-client-context.query.js";
+import { readOrderHistory } from "../../modules/crm/sales/sales-orders/order-history.query.js";
 import { readOrderRecord } from "../../modules/crm/sales/sales-orders/order-record.query.js";
 import type { TimingOrder } from "../../modules/crm/sales/sales-orders/order-timing.contract.js";
 import { ORDER_TIMING_LEGACY_READER, type OrderTimingLegacyReader } from "../../modules/crm/sales/sales-orders/order-timing.port.js";
@@ -32,10 +34,19 @@ export class NetsuiteOrderRepository {
         });
     }
     /** Database read is independent of provider configuration and never creates a native record. */
-    async readDatabase(target: { source: "native" | "legacy"; id: string }, checkAccess: (order: TimingOrder) => void) {
+    async readDatabase(target: { source: "native" | "legacy"; id: string }, checkAccess: (order: TimingOrder) => void, cursor?: string) {
         return this.resolveSafely(async (tx) => {
             const { source, order } = await this.authoritative(tx, target, checkAccess);
-            return readOrderRecord(tx, source, order.id, order.publicId);
+            const data = await readOrderRecord(tx, source, order.id, order.publicId);
+            const client = await readOrderClientContext(tx, data, { legacyEnabled: this.legacy.enabled(), ...(cursor ? { cursor } : {}) });
+            return { ...data, lead: data.lead ? { ...data.lead, status: client.status, followUpReason: client.followUpReason } : null, clientHistory: client.history };
+        });
+    }
+    /** History resolves authority and resource scope before querying either source. */
+    async readHistory(target: { source: "native" | "legacy"; id: string }, checkAccess: (order: TimingOrder) => void, cursor?: string) {
+        return this.resolveSafely(async (tx) => {
+            const { source, order } = await this.authoritative(tx, target, checkAccess);
+            return readOrderHistory(tx, source, order.id, { legacyEnabled: this.legacy.enabled(), ...(cursor ? { cursor } : {}) });
         });
     }
     private async authoritative(tx: Transaction<CrmDatabase>, target: { source: "native" | "legacy"; id: string }, checkAccess: (order: TimingOrder) => void) {

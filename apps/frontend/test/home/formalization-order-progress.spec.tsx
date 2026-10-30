@@ -1,8 +1,10 @@
-import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
-import { afterEach, expect, it } from "vitest";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { afterEach, expect, it, vi } from "vitest";
 
 import { FormalizationOrderRecord } from "../../src/modules/home/FormalizationOrderPreview";
-import type { FollowUpItem } from "../../src/services/formalization/follow-up-service";
+import { apiRequest } from "../../src/services/api/api-client";
+import { type FollowUpItem, getFollowUp } from "../../src/services/formalization/follow-up-service";
+import type { NetsuitePrimary } from "../../src/services/formalization/netsuite-primary";
 import { installBrowserApiDoubles } from "../support/browser";
 
 afterEach(cleanup);
@@ -23,13 +25,31 @@ it.each([
     expect(within(screen.getByRole("region", { name: "Etapas de Formalización" })).queryByText(/\d+ ?%/)).toBeNull();
     expect(within(screen.getByRole("list", { name: "Recorrido de etapas" })).getAllByRole("listitem")).toHaveLength(7);
 });
-it("marks the current step separately from the reached and future steps", () => {
+it("marks earlier positions neutrally without inventing visits after a stage skip", () => {
     installBrowserApiDoubles();
     render(<FormalizationOrderRecord item={{ ...order, state: { ...order.state, code: "bank_management" } }} onBack={() => {}} />);
     const steps = within(screen.getByRole("list", { name: "Recorrido de etapas" })).getAllByRole("listitem");
-    expect(steps.filter((step) => step.dataset.status === "reached")).toHaveLength(3);
+    expect(steps.filter((step) => step.dataset.status === "previous")).toHaveLength(3);
     expect(steps.filter((step) => step.dataset.status === "pending")).toHaveLength(3);
+    expect(within(screen.getByRole("list", { name: "Recorrido de etapas" })).getAllByText("Etapa anterior")).toHaveLength(3);
+    expect(screen.queryByText("Alcanzada")).toBeNull();
+    expect(steps.slice(0, 3).every((step) => step.querySelector('[aria-label="check"]'))).toBe(true);
+    expect(steps.slice(3).every((step) => !step.querySelector('[aria-label="check"]'))).toBe(true);
     expect(steps.find((step) => step.getAttribute("aria-current") === "step")?.textContent).toContain("Gestión bancaria");
+});
+it("shows closure as a finished process with the final step completed and no current stage", () => {
+    installBrowserApiDoubles();
+    render(<FormalizationOrderRecord item={{ ...order, state: { ...order.state, code: "closed" } }} onBack={() => {}} />);
+    const progress = screen.getByRole("region", { name: "Etapas de Formalización" });
+    expect(within(progress).getByText("Formalización cerrada")).toBeTruthy();
+    expect(progress.textContent).toContain("Proceso finalizado");
+    expect(within(progress).getByRole("progressbar").getAttribute("aria-valuetext")).toBe("Formalización cerrada: Proceso finalizado");
+    const steps = within(progress).getAllByRole("listitem");
+    expect(steps).toHaveLength(7);
+    expect(steps.some((step) => step.hasAttribute("aria-current"))).toBe(false);
+    expect(steps[6]?.dataset.status).toBe("completed");
+    expect(steps[6]?.textContent).toContain("Completada");
+    expect(within(progress).queryByText("Etapa actual")).toBeNull();
 });
 it("does not invent a percentage for an unknown stage", () => {
     installBrowserApiDoubles();
@@ -52,6 +72,14 @@ it("does not restore example fields on provider failure", () => {
     expect(screen.getByRole("status").textContent).toContain("No fue posible cargar");
     expect(screen.queryByText("Vista de muestra.")).toBeNull();
 });
+it("shows the confirmed provider absence message instead of a generic load failure", () => {
+    installBrowserApiDoubles();
+    const message = "La orden de venta no existe en NetSuite en el entorno configurado.";
+    render(<FormalizationOrderRecord item={order} netsuiteStatus="error" netsuiteErrorMessage={message} onBack={() => {}} />);
+    expect(screen.getByRole("status").textContent).toBe(message);
+    expect(screen.queryByText(/No fue posible cargar los datos/)).toBeNull();
+    expect(screen.queryByRole("button", { name: "Aprobar Formalización" })).toBeNull();
+});
 
 it("offers a transaction reload action and disables it while loading", () => {
     installBrowserApiDoubles();
@@ -70,7 +98,7 @@ it.each(["native", "legacy"] as const)("fills only the five highlights from the 
     installBrowserApiDoubles();
     const item: FollowUpItem = { ...order, source, client: "Cliente BD", project: { id: "project", name: "Proyecto BD" }, unit: "Unidad BD", seller: { id: "seller", name: "Vendedor BD" }, state: { code: "contract_pending_signature", label: "Pendiente de firma", since: null, days: null }, nextStep: "Dar seguimiento a la firma del contrato" };
     render(<FormalizationOrderRecord item={item} onBack={() => {}} />);
-    const highlights = within(document.querySelector<HTMLElement>('[aria-label="Datos clave de la orden"]')!);
+    const highlights = within(screen.getByLabelText("Datos clave de la orden"));
     for (const value of ["Cliente BD", "Proyecto BD · Unidad BD", "Vendedor BD", "Pendiente de firma", "Dar seguimiento a la firma del contrato"]) expect(highlights.getByText(value)).toBeTruthy();
     const primary = screen.getByRole("region", { name: "Información primaria" });
     expect(primary.textContent).not.toContain("Cliente BD");
@@ -79,7 +107,7 @@ it.each(["native", "legacy"] as const)("fills only the five highlights from the 
 it("does not fabricate a seller or project when the database has no relationship", () => {
     installBrowserApiDoubles();
     render(<FormalizationOrderRecord item={order} onBack={() => {}} />);
-    const highlights = document.querySelector<HTMLElement>('[aria-label="Datos clave de la orden"]')!;
+    const highlights = screen.getByLabelText("Datos clave de la orden");
     expect(within(highlights).getAllByText("—")).toHaveLength(4);
 });
 
@@ -96,4 +124,47 @@ it("uses one loading boundary for identity, timeline and record data, then revea
     expect(screen.getByRole("heading", { name: "Orden de venta BD-ACTUAL" })).toBeTruthy();
     expect(screen.getByRole("navigation", { name: "Ruta de la orden" }).textContent).toContain("BD-ACTUAL");
     expect(screen.getByRole("region", { name: "Etapas de Formalización" }).textContent).toContain("Pendiente de firma");
+});
+it("offers approval in the full order independently of stage update permission", async () => {
+    installBrowserApiDoubles();
+    render(<FormalizationOrderRecord item={{ ...order, stateVersion: 0, state: { ...order.state, code: "pending_approval" } }} onBack={() => {}} canUpdateStage={false} stagePermissions={[{ code: "formalizacion.orders.approve", effect: "allow" }]} />);
+    expect(screen.getByRole("button", { name: "Aprobar Formalización" }).hasAttribute("disabled")).toBe(false);
+    fireEvent.click(screen.getByRole("button", { name: "Aprobar Formalización" }));
+    expect(await screen.findByRole("dialog", { name: "Confirmar aprobación de Formalización" })).toBeTruthy();
+});
+
+vi.mock("../../src/services/api/api-client", async (original) => ({ ...(await original<object>()), apiRequest: vi.fn() }));
+vi.mock("../../src/services/formalization/follow-up-service", async (original) => ({ ...(await original<object>()), getFollowUp: vi.fn() }));
+
+it("bounds the confirmed approval flag to the same order and exact provider projection", async () => {
+    installBrowserApiDoubles();
+    const primary: NetsuitePrimary = { items: [], fields: {}, sales: {}, authorization: {}, articles: {}, reservation: {}, payment: {}, summary: {}, checks: { "Aprobación formalización": false, "Aprobación jefe de ventas": false } };
+    const approved = { ...order, stateVersion: 0 };
+    const permissions = [{ code: "formalizacion.orders.approve", effect: "allow" }];
+    vi.mocked(apiRequest).mockImplementation((path) => {
+        if (path === "/formalization/orders/approve") return Promise.resolve({ source: "legacy", id: "208", approved: true, state: "contract_pending_send", sequence: 1, replayed: false });
+        if (path === "/formalization/orders/legacy/208/record") return Promise.resolve({ ...approved, stateVersion: 1, state: { ...order.state, code: "contract_pending_send" } });
+        return Promise.reject(new Error("Unexpected request: " + path));
+    });
+    const view = render(<FormalizationOrderRecord item={approved} primary={primary} stagePermissions={permissions} onBack={() => {}} />);
+    const flag = () => screen.getByText("Aprobación formalización").closest("li")?.getAttribute("data-checked");
+    expect(flag()).toBe("false");
+    fireEvent.click(screen.getByRole("button", { name: "Aprobar Formalización" }));
+    fireEvent.click(await screen.findByRole("button", { name: /Confirmar aprobación/ }));
+    await waitFor(() => {
+        expect(flag()).toBe("true");
+    });
+    expect(screen.getByText("Aprobación jefe de ventas").closest("li")?.getAttribute("data-checked")).toBe("false");
+    expect(primary.checks["Aprobación formalización"]).toBe(false);
+    view.rerender(<FormalizationOrderRecord item={{ ...approved, stateVersion: 1, state: { ...order.state, code: "contract_pending_send" } }} primary={primary} stagePermissions={permissions} onBack={() => {}} />);
+    expect(flag()).toBe("true");
+    view.rerender(<FormalizationOrderRecord item={{ ...approved, id: "legacy:209" }} primary={primary} stagePermissions={permissions} onBack={() => {}} />);
+    expect(flag()).toBe("false");
+    view.rerender(<FormalizationOrderRecord item={approved} primary={{ ...primary }} stagePermissions={permissions} onBack={() => {}} />);
+    expect(flag()).toBe("false");
+    expect(vi.mocked(apiRequest).mock.calls.map(([path, options]) => [path, options?.method ?? "GET"])).toEqual([
+        ["/formalization/orders/approve", "POST"],
+        ["/formalization/orders/legacy/208/record", "GET"],
+    ]);
+    expect(getFollowUp).not.toHaveBeenCalled();
 });

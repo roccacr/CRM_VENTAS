@@ -1,0 +1,37 @@
+# Calendario: participantes y vínculos — 2026-10-29
+
+## Alcance autorizado
+
+El propietario aprobó completar crear/editar eventos con tipo obligatorio sin selección inicial, nombre, fechas, ubicación, descripción, participantes internos/correos externos y preferencia de Teams. Se agregan vínculos opcionales a notas pendientes propias o asignadas, leads por nombre/correo y órdenes por número de transacción. Outlook, correo y creación de enlaces Teams quedan fuera de este corte.
+
+Los eventos nuevos se guardan únicamente en CRM_THINK_V2. Vincular una entidad legacy no la copia ni la modifica. Los vínculos conservan entidad, origen e identidad: ID público nativo o ID local legacy; un correo, tranid o ID de NetSuite no sustituye esa identidad. Una correspondencia explícita prioriza el registro nativo sin deducir equivalencias por texto.
+
+## Implementación y aceptación
+
+1. Ampliar el contrato estricto de calendario con participantes, vínculos y preferencia Teams. Mantener origen de módulo, versión y operación idempotente.
+2. Reutilizar autorización de notas y políticas de lectura de leads/órdenes para búsquedas acotadas y validación al guardar. El selector no concede acceso.
+3. Migración nativa aditiva para calificar vínculos por fuente; conservar datos anteriores. Guardar evento, participantes, vínculos y antes/después auditados en una transacción.
+4. Invitaciones internas visibles sin conceder acceso global al módulo de origen; denegación explícita prevalece. Los vínculos privados no se divulgan por invitación.
+5. Formulario común ordenado en evento, participantes y relaciones, con búsqueda diferida y descarte de respuestas obsoletas, sin enviar invitaciones externas.
+
+Verificación: typecheck, lint, pruebas de calendario/autorización/migración y build en cada app. No ejecutar fixtures en bases compartidas. La aplicación de esquema y la lectura real se reportan por separado de pruebas con dobles; este documento no certifica por sí mismo aceptación visual ni invitaciones Outlook.
+
+## Contrato de selección
+
+`GET /calendar/lookup?moduleCode=formalizacion&kind=notes|users|leads|orders&search=...` devuelve `{items:[{id,source,label,secondary?}]}`. Las búsquedas de personas comerciales requieren texto mínimo y límite de resultados. La selección se valida otra vez al guardar; un resultado antiguo no autoriza un vínculo.
+
+`participants` contiene identidades de usuario o correo externo, nunca ambos en una entrada. `links` contiene `{entityType: note|lead|sales_order, source: native|legacy, id}`. Las notas pertenecen al CRM nuevo. `details.teamsRequested` registra una preferencia, no una reunión creada.
+
+Una nota vinculada conserva su estado y sus participantes. Completar un evento no completa automáticamente una nota ni acredita asistencia a una cita.
+
+## Evidencia de este corte
+
+- Migración `202610290055_calendar_relations` aplicada y registrada en `CRM_THINK_V2`. Verificados el origen, identidad única y CHECK de los vínculos. La comprobación de solo lectura `pnpm exec tsx scripts/verify-calendar-relations.ts` encontró cero eventos, participantes y vínculos; no se crearon fixtures ni se escribieron entidades legacy.
+- Navegador con sesión existente: las cuatro búsquedas devolvieron HTTP 200. Se encontraron un usuario y una nota nativos, un lead legacy por nombre y cuatro órdenes legacy por prefijo del número. Se seleccionaron nota, lead y orden sin guardar el formulario. Esto prueba lectura y selección reales; no certifica todavía un alta/edición real confirmada en MySQL.
+- API: 581 pruebas aprobadas en calendario, migraciones e inventario de autorización; ESLint y formato del alcance aprobados. La corrida global anterior tuvo 6664 aprobadas, 160 omitidas y un fallo de inventario por faltar las migraciones 054/055 en su expectativa; se actualizó y pasó en la corrida enfocada posterior.
+- Frontend: 38 pruebas de calendario aprobadas, ESLint y formato del alcance aprobados. Enter en los buscadores o correos no envía el formulario; los resultados tienen altura acotada y las selecciones conservan sus etiquetas.
+- Revisión independiente estática sin hallazgos en autorización de vínculos, presentación de etiquetas, transacción, replay y separación de fuentes. No sustituye la prueba de persistencia real.
+
+En la última verificación pasaron `pnpm typecheck`, `pnpm build` y `pnpm lint` del API, además de `pnpm build` del frontend, que incluye TypeScript. Vite conserva una advertencia de tamaño del chunk compartido de Ant Design. Las primeras compilaciones habían fallado por errores de Notas en archivos concurrentes; tras modificarse esos archivos se repitieron las compilaciones y quedaron aprobadas, sin editar Notas desde este corte. La corrida global frontend previa había detectado una regresión de Enter en su buscador de Notas; no se repitió esa corrida global ni se declara resuelta desde las 38 pruebas enfocadas de calendario.
+
+Outlook, envíos de correo y creación de reuniones Teams siguen pendientes deliberadamente. La preferencia y los correos se registran solamente en el CRM.

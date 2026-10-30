@@ -25,7 +25,7 @@ it("preserves the standard navigation styling for a Home-only Formalization prof
 
 it("connects the approved management menu to the preview orders route", () => {
     const workspace = ASSIGNED_WORKSPACES.find((item) => item.code === "formalization");
-    expect(workspace?.menuItems.map((item) => item.label)).toEqual(["Inicio", "Gestión de formalizaciones", "Calendario", "Resumen", "Catálogos"]);
+    expect(workspace?.menuItems.map((item) => item.label)).toEqual(["Inicio", "Gestión de formalizaciones", "Calendario", "Catálogos"]);
     expect(workspace?.menuItems.find((item) => item.code === "formalization-management")?.routePath).toBe("/home/formalization/orders");
 });
 

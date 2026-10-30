@@ -1,5 +1,38 @@
 # 00 - Indice de Arquitectura API
 
+Mercadeo: [69 - Lectura global](69-Mercadeo-Lectura-Global.md) distingue el permiso
+de consulta global de los alcances personales y de los permisos de edición.
+
+Calendario: [68 - Participantes y vínculos](68-Calendario-Participantes-y-Vinculos.md) documenta el formulario ampliado, búsquedas autorizadas en ambas fuentes, migración055 y persistencia auditada sin correo/Graph.
+
+Implementación y verificación local: [68 - Notas vinculadas a clientes/leads y órdenes](68-Plan-Notas-Vinculos-Clientes-y-Ordenes.md)
+documenta búsqueda nativa/legacy, relaciones múltiples, permisos y presentación.
+Reutiliza el esquema de vínculos existente, sin importar registros comerciales.
+
+QA de regresiones: [67 - Plan y resultados del 29 de octubre](67-Plan-QA-Regresiones-20261029.md)
+separa pruebas desactualizadas, resultados ejecutados y aceptacion Redis pendiente.
+
+Notas: [66 - Seguimiento colaborativo](66-Notas-Enterprise-Seguimiento.md) documenta responsables,
+vencimientos, recordatorios personales, ubicaciones e historial con migraciones052/053.
+
+Formalización: [65 - Roles y recuperación](65-Formalizacion-Correcciones-Roles-y-Recuperacion.md)
+registra la autorización de gestión de todas las órdenes con permiso para ambos
+roles, la migración049 y las correcciones de recuperación posteriores a la auditoría.
+
+Formalización, regla de detalle vigente 2026-10-28:
+[64 - Ver orden de venta](64-Formalizacion-Permiso-Ver-Orden.md) separa el
+permiso de ficha de los permisos de banners/listas. No amplía escrituras.
+
+Etapa1 de notas autorizada/aplicada2026-10-27:039 crea siete tablas vacias en
+CRM_THINK_V2;91 columnas comentadas,24 FK,15 CHECK. Sin imports, permisos,
+API/UI, notificaciones o escritura legacy. Fechas de modificacion explicitas
+UTC y autoria/ACL pendientes de los comandos de etapa2. Ver [56](56-Plan-Notas-Colaborativas-y-Convivencia-Legacy.md)
+y [diccionario](Diccionario-Datos/12-Notas-Colaborativas.md).
+
+
+Plan en ejecucion, etapa1 aplicada: [56 - Notas colaborativas y convivencia legacy](56-Plan-Notas-Colaborativas-y-Convivencia-Legacy.md), investigacion SELECT del27; decision confirmada: BD nueva principal y copia compatible legacy, solo esquema nativo implementado por ahora.
+
+
 ## Revision integral vigente - 2026-10-27
 
 [55 - Revision documental integral](55-Revision-Documental-Integral-20261027.md):
@@ -57,7 +90,8 @@ en 42. Owner conserva la politica global de 41, sin asignaciones masivas.
 
 [41 - Owner](41-Owner-Herencia-y-Denegaciones.md): migracion 027 aplicada en
 CRM_THINK_V2. Owner hereda roles activos; un deny individual prevalece. Banners
-de etapas requieren rol efectivo Formalizacion y `formalizacion.home.stages.read`.
+de etapas requieren rol efectivo Formalizacion y, desde la regla del 2026-10-28,
+el permiso específico de cada banner: [63 - Lectura por banner](63-Formalizacion-Lectura-Por-Banner.md).
 Esta regla prevalece sobre las descripciones historicas de rol exclusivamente directo.
 
 ## Resumen de etapas de Home - 2026-10-23
@@ -293,3 +327,21 @@ API contract and verification: `apps/api/Arquitectura/46-Mercadeo-Resumen-Leads.
 
 [52 - Etapas, responsables y tiempos](52-Etapas-Responsables-y-Tiempos.md):
 estructura aplicada a ambas bases, consulta paginada y limites operativos.
+
+
+Lectura autorizada 2026-10-27: [56 - Bitácora de orden y expediente](56-Orden-Bitacora-y-Expediente-Lectura.md), paneles laterales, fuentes auditadas y límites de evidencia.
+
+- [57 - Notas: API protegida, etapa2](57-Notas-Etapa2-API.md): permisos por modulo, autoria, versionado, idempotencia y outbox inerte. UI/campanita/copia pendientes.
+
+- [58 - Notas personales: interfaz etapa3](58-Notas-Etapa3-Interfaz-Personal.md): icono junto a campana, panel lateral, movimiento/tamano/PIN y guardado.
+
+- [59 - Notas desde cualquier vista y relacion opcional](59-Notas-Contexto-Opcional-y-Vistas.md): checkbox, personal, vistas registradas y ordenes legacy sin importacion.
+
+- [60 - Notas etapa4: colaboración y notificaciones](60-Notas-Etapa4-Colaboracion-y-Notificaciones.md): participantes, conversación, API protegida, esquema044 y campana interna; copia legacy pendiente.
+- [61 - Plan de notas y avisos en tiempo real](61-Plan-Notas-Tiempo-Real.md): plan ejecutado; implementación, autorización entre módulos y evidencia vigentes en documento62.
+
+Actualización vigente 2026-10-28: [62 - Notas en tiempo real](62-Notas-Tiempo-Real-Implementacion.md). Socket.IO, migración046 aditiva aplicada, campana/hilo/bandejas, recuperación REST y acceso a notas independiente del registro vinculado. Esta actualización sustituye las limitaciones históricas de transporte y acceso de las etapas anteriores. Copia legacy inactiva; Redis multiinstancia y aceptación visual real pendientes.
+
+- [63 - Aprobacion de Formalizacion confirmada en NetSuite](63-Aprobacion-Formalizacion-NetSuite.md): contrato de aprobacion, autoridad nativa/legacy, auditoria, reintentos y limites de verificacion.
+
+- [64 - Calendario global por módulo](64-Calendario-Global-API-y-Contexto.md): vista compartida, superposición autorizada, comandos nativos auditados y contexto legacy aditivo; Outlook e invitados pendientes.

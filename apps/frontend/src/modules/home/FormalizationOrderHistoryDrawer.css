@@ -1,0 +1,89 @@
+.record-history-actions {
+    display: flex;
+    justify-content: flex-end;
+    margin: 0 0 12px;
+}
+.order-history-change {
+    padding: 8px 0;
+    border-bottom: 1px solid #e2e8f0;
+}
+.order-history-change dt {
+    color: #526477;
+    font-size: 12px;
+    margin-bottom: 4px;
+}
+.order-history-change dd {
+    margin: 0;
+    line-height: 1.5;
+    overflow-wrap: anywhere;
+}
+.order-history-change dd > span:first-child {
+    color: #64748b;
+}
+.order-history-change dd > strong {
+    color: #172b42;
+    font-weight: 600;
+}
+
+/* Order log as stacked cards, newest on top: title and date, the change as one line, who and where from last. */
+.order-history-card .order-history {
+    display: grid;
+    gap: 10px;
+    margin: 12px 0 0;
+    padding: 0;
+    border-left: 0;
+}
+.order-history-card .order-history > li {
+    padding: 12px 14px;
+    border: 1px solid #dde3ee;
+    border-radius: 8px;
+    background: #ffffff;
+}
+.order-history-card .order-history > li::before {
+    display: none;
+}
+.order-history-card .order-history > li[data-latest="true"] {
+    border-color: #8fa1b8;
+    background: #f5f7fa;
+}
+.order-history__latest {
+    margin-left: 8px;
+    padding: 1px 6px;
+    border-radius: 4px;
+    background: #0e1116;
+    color: #ffffff;
+    font-size: 10.5px;
+    font-weight: 600;
+    vertical-align: 1px;
+}
+.order-history__reason {
+    padding: 6px 10px;
+    border-left: 3px solid #8fa1b8;
+    background: #f5f7fa;
+    color: #2f3a4b;
+    font-size: 12.5px;
+}
+.order-history-card .order-history dl {
+    margin: 8px 0 0;
+}
+.order-history-card .order-history .order-history-change {
+    grid-template-columns: 72px minmax(0, 1fr);
+    padding: 4px 0;
+    border-bottom: 0;
+}
+.order-history-card .order-history .client-history__meta {
+    margin-top: 10px;
+    padding-top: 8px;
+    border-top: 1px solid #eef1f6;
+}
+.order-history__version {
+    color: #7b8798;
+    font-size: 11px;
+    font-variant-numeric: tabular-nums;
+}
+.order-history__reason small {
+    display: block;
+    color: #5d6b82;
+    font-size: 11px;
+    font-weight: 600;
+}

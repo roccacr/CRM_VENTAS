@@ -268,8 +268,11 @@ export const refreshAuthenticatedSession = async (): Promise<void> => {
     return refreshFlight.promise;
 };
 
+/** Only idempotent reads may recover a temporary dependency failure. */
+const canRetryUnavailableRead = (error: unknown, options: ApiRequestOptions): boolean => (options.method ?? "GET") === "GET" && error instanceof ApiClientError && error.status === 503;
+
 /**
- * Llamada al BFF con un solo reintento tras sesion vencida u obsoleta.
+ * Llamada al BFF con un reintento acotado de lectura 503 o tras sesion vencida u obsoleta.
  *
  * No renueva si el error vino del propio refresh, si el caller lo apagó, o si
  * el estado no corresponde a autenticacion/sesion. El segundo intento ya no
@@ -282,7 +285,14 @@ export const apiRequest = async <TResponse>(path: string, options: ApiRequestOpt
         return await executeApiRequest<TResponse>(path, options);
     } catch (error) {
         // Never renew or replay an operation from a previous authenticated context.
-        if (generation !== sessionGeneration || !shouldRenewSession(error, path, options)) throw error;
+        if (generation !== sessionGeneration) throw error;
+        // Only safe reads recover one temporary dependency failure; uncertain writes keep their operation key.
+        if (canRetryUnavailableRead(error, options)) {
+            await new Promise<void>((resolve) => setTimeout(resolve, 500));
+            if (generation !== sessionGeneration) throw error;
+            return executeApiRequest<TResponse>(path, options);
+        }
+        if (!shouldRenewSession(error, path, options)) throw error;
 
         await refreshAuthenticatedSession();
         return executeApiRequest<TResponse>(path, {
@@ -290,4 +300,15 @@ export const apiRequest = async <TResponse>(path: string, options: ApiRequestOpt
             retryOnUnauthorized: false,
         });
     }
+};
+
+/** Supplies only the existing in-memory CSRF proof; stale account responses cannot authorize sockets. */
+export const getAuthenticatedCsrfToken = async (): Promise<string> => {
+    const generation = sessionGeneration;
+    if (refreshFlight?.generation === generation) await refreshFlight.promise;
+    const currentGeneration = sessionGeneration;
+    await fetchIdentitySessionForCsrf();
+    assertCurrentIdentityResponse(IDENTITY_REFRESH_PATH, currentGeneration);
+    if (!csrfToken) throw new ApiClientError("No se pudo comprobar la sesion.", 403, null);
+    return csrfToken;
 };

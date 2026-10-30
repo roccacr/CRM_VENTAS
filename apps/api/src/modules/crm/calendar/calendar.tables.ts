@@ -3,8 +3,9 @@ import type { ColumnType, Generated } from "kysely";
 type DateTime = ColumnType<Date, Date | string, Date | string>;
 type Digest = ColumnType<Buffer, never, never>;
 
-/** Empty per-module configuration; no event types or permissions are seeded. */
+/** Per-module event configuration; migration 051 adds the initial general form. */
 export interface ConfCalendarEventTypeTable {
+    form_key_calendar_event_type: string;
     id_calendar_event_type: Generated<number>;
     public_id_calendar_event_type: string;
     module_id_calendar_event_type: number;
@@ -18,6 +19,8 @@ export interface ConfCalendarEventTypeTable {
 
 /** One native event; switching the visible module never changes its origin. */
 export interface CrmCalendarEventTable {
+    details_calendar_event: ColumnType<unknown, string | null, string | null>;
+    legacy_calendar_id_calendar_event: number | null;
     id_calendar_event: Generated<number>;
     public_id_calendar_event: string;
     origin_module_id_calendar_event: number;
@@ -67,6 +70,7 @@ export interface CrmCalendarEventLinkTable {
     id_calendar_event_link: Generated<number>;
     event_id_calendar_event_link: number;
     entity_type_calendar_event_link: string;
+    source_calendar_event_link: Generated<"native" | "legacy">;
     entity_public_id_calendar_event_link: string;
     created_by_user_id_calendar_event_link: number;
     created_at_calendar_event_link: Generated<DateTime>;

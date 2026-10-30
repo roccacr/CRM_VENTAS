@@ -72,7 +72,7 @@ describe("contract transitions on one transaction with doubles only", () => {
         const initial = targetState === "contract_pending_signature";
         const f = setup(initial ? {} : { state: "contract_pending_signature" });
         try {
-            await expect(f.repo.transition({ ...request, expectedSequence: initial ? 0 : 1, action: "set", targetState } as never)).resolves.toMatchObject({ state: targetState, sequence: initial ? 1 : 2 });
+            await expect(f.repo.transition({ ...request, expectedSequence: initial ? 0 : 1, action: "set", targetState, canSkipStages: true, reason: "Excepción autorizada" } as never)).resolves.toMatchObject({ state: targetState, sequence: initial ? 1 : 2 });
         } finally {
             await f.db.destroy();
         }
@@ -100,7 +100,7 @@ describe("contract transitions on one transaction with doubles only", () => {
     it("requires a reason when selecting an earlier stage", async () => {
         const f = setup({ state: "bank_management" });
         try {
-            await expect(f.repo.transition({ ...request, expectedSequence: 1, action: "set", targetState: "contract_pending_send" } as never)).rejects.toThrow("reason");
+            await expect(f.repo.transition({ ...request, expectedSequence: 1, action: "set", targetState: "contract_pending_send", canSkipStages: true } as never)).rejects.toThrow("motivo");
             expect(f.audit.append).not.toHaveBeenCalled();
         } finally {
             await f.db.destroy();
@@ -109,7 +109,7 @@ describe("contract transitions on one transaction with doubles only", () => {
     it("records a reasoned selected reversal without deleting history", async () => {
         const f = setup({ state: "closed", sequence: 3 });
         try {
-            await expect(f.repo.transition({ ...request, expectedSequence: 3, action: "set", targetState: "pending_balance", reason: "Correccion autorizada" } as never)).resolves.toMatchObject({ sequence: 4, state: "pending_balance" });
+            await expect(f.repo.transition({ ...request, expectedSequence: 3, action: "set", targetState: "pending_balance", canSkipStages: true, reason: "Correccion autorizada" } as never)).resolves.toMatchObject({ sequence: 4, state: "pending_balance" });
             expect(f.audit.append.mock.calls[0]?.[1]).toMatchObject({ action: "revert", before: { state: "closed" }, after: { state: "pending_balance" }, reason: "Correccion autorizada" });
         } finally {
             await f.db.destroy();
@@ -190,7 +190,7 @@ describe("contract transitions on one transaction with doubles only", () => {
         const f = setup();
         await expect(f.repo.transition(request)).resolves.toMatchObject({ sequence: 1, state: "contract_pending_signature", source: "native", replayed: false });
         const event = f.queries.find((q) => q.sql.startsWith("insert into `audit_sales_order_state_event`"));
-        expect(event?.parameters).toContain("contract_pending_send");
+        expect(event?.parameters[3]).toBeNull();
         expect(event?.sql).toContain("responsible_user_id_sales_order_state_event");
         expect(event?.sql).toContain("responsible_snapshot_sales_order_state_event");
         expect(f.audit.append).toHaveBeenCalledWith(f.audit.captureActor.mock.calls[0]?.[0], expect.objectContaining({ before: { businessId: "SO-42", state: "contract_pending_send", version: 0 }, after: { businessId: "SO-42", state: "contract_pending_signature", version: 1 } }));
@@ -273,7 +273,7 @@ describe("contract transitions on one transaction with doubles only", () => {
     it("writes legacy specialized history and native central audit using the identical transaction", async () => {
         const f = setup({ native: false });
         await f.repo.transition({ ...request, source: "legacy", id: "901" });
-        expect(f.legacy.append).toHaveBeenCalledWith(f.audit.append.mock.calls[0]?.[0], "901", expect.objectContaining({ from: "contract_pending_send", state: "contract_pending_signature", actor: "actor", actorSnapshot: { publicId: "actor", name: "Actor", roles: [] }, responsibleSnapshot: { publicId: "actor", name: "Actor", roles: [] } }));
+        expect(f.legacy.append).toHaveBeenCalledWith(f.audit.append.mock.calls[0]?.[0], "901", expect.objectContaining({ from: null, state: "contract_pending_signature", actor: "actor", actorSnapshot: { publicId: "actor", name: "Actor", roles: [] }, responsibleSnapshot: { publicId: "actor", name: "Actor", roles: [] } }));
         expect(f.audit.append.mock.calls[0]?.[1]).toMatchObject({ source: { schema: "crmdatabase-api", table: "ordenventa", id: "901" } });
         expect(f.queries.some((q) => q.sql.startsWith("insert into `crm_sales_order`"))).toBe(false);
         await f.db.destroy();
@@ -300,7 +300,7 @@ describe("confirmed contract signature gates banking and all later stages", () =
             for (const targetState of ["bank_management", "pending_balance", "pending_transfer", "transfer_signed", "closed"]) {
                 const f = setup({ native, signed, state: "contract_pending_signature" });
                 try {
-                    await expect(f.repo.transition({ ...request, source: native ? "native" : "legacy", id: native ? request.id : "901", expectedSequence: 1, action: "set", targetState } as never)).rejects.toMatchObject({ response: { code: "CONTRACT_SIGNATURE_REQUIRED" } });
+                    await expect(f.repo.transition({ ...request, source: native ? "native" : "legacy", id: native ? request.id : "901", expectedSequence: 1, action: "set", targetState, canSkipStages: true, reason: "Excepción autorizada" } as never)).rejects.toMatchObject({ response: { code: "CONTRACT_SIGNATURE_REQUIRED" } });
                     expect(f.audit.append).not.toHaveBeenCalled();
                     expect(f.legacy.append).not.toHaveBeenCalled();
                     expect(f.queries.some((q) => /^(insert|update)/i.test(q.sql))).toBe(false);
@@ -319,4 +319,43 @@ describe("confirmed contract signature gates banking and all later stages", () =
             await f.db.destroy();
         }
     });
+});
+
+it.each([true, false])("protects exceptional jumps under the locked native/legacy order (native %s)", async (native) => {
+    const f = setup({ native, signed: "yes" });
+    const cmd = { ...request, source: native ? "native" : "legacy", id: native ? request.id : "901", action: "set", targetState: "transfer_signed", reason: "Excepción autorizada" };
+    try {
+        await expect(f.repo.transition(cmd as never)).rejects.toThrow();
+        expect(f.audit.append).not.toHaveBeenCalled();
+        await expect(f.repo.transition({ ...cmd, canSkipStages: true, reason: "" } as never)).rejects.toThrow("motivo");
+        await expect(f.repo.transition({ ...cmd, canSkipStages: true } as never)).resolves.toMatchObject({ state: "transfer_signed" });
+    } finally {
+        await f.db.destroy();
+    }
+});
+
+it.each([true, false])("keeps the first visit compatible with SQL constraints while central audit preserves the prior logical state (native %s)", async (native) => {
+    const f = setup({ native });
+    try {
+        await f.repo.transition({ ...request, source: native ? "native" : "legacy", id: native ? request.id : "901" });
+        if (native) {
+            const insert = f.queries.find((q) => q.sql.startsWith("insert into `audit_sales_order_state_event`"));
+            expect(insert?.parameters[3]).toBeNull();
+        } else expect(f.legacy.append).toHaveBeenCalledWith(expect.anything(), "901", expect.objectContaining({ sequence: 1, from: null }));
+        expect(f.audit.append.mock.calls[0]?.[1]).toMatchObject({ before: { state: "contract_pending_send" }, after: { state: "contract_pending_signature" } });
+    } finally {
+        await f.db.destroy();
+    }
+});
+
+it("retains the actual previous visit for subsequent stage changes", async () => {
+    const f = setup({ state: "bank_management", sequence: 2 });
+    try {
+        await f.repo.transition({ ...request, action: "set", targetState: "pending_balance", expectedSequence: 2 });
+        const insert = f.queries.find((q) => q.sql.startsWith("insert into `audit_sales_order_state_event`"));
+        expect(insert?.parameters[2]).toBe(3);
+        expect(insert?.parameters[3]).toBe("bank_management");
+    } finally {
+        await f.db.destroy();
+    }
 });

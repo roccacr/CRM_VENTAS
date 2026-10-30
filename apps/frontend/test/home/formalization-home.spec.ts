@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { buildCreateUserPayload, createInitialUserFormValues, getRoleModules } from "../../src/modules/administration/create-system-user.model";
 import { getVisibleNavigationWorkspaces } from "../../src/modules/home/GlobalHomeShell";
+import { getAppRoute, isKnownPath } from "../../src/routes/app-routes";
 import { getDefaultAuthenticatedPath, resolveRouteState } from "../../src/routes/auth-state";
 import type { IdentityProfile } from "../../src/services/auth/identity-contracts";
 
@@ -19,24 +20,23 @@ describe("Formalization Home-only access", () => {
     it("shows Inicio and the visual management option and selects a valid login destination", () => {
         const workspaces = getVisibleNavigationWorkspaces(homeOnly.permissions, homeOnly.orgUnits);
         expect(workspaces.map(({ code }) => code)).toEqual(["formalization"]);
-        expect(workspaces[0]?.menuItems.map(({ label }) => label)).toEqual(["Inicio", "Gestión de formalizaciones", "Calendario", "Resumen"]);
+        expect(workspaces[0]?.menuItems.map(({ label }) => label)).toEqual(["Inicio", "Gestión de formalizaciones"]);
         expect(getDefaultAuthenticatedPath(homeOnly)).toBe("/home/formalization");
         expect(resolveRouteState(homeOnly, "/home/formalization").status).toBe("authenticated");
         expect(resolveRouteState(homeOnly, "/home/formalization/orders").status).toBe("authenticated");
-        expect(resolveRouteState(homeOnly, "/home/formalization/calendar").status).toBe("authenticated");
-        expect(resolveRouteState(profile([]), "/home/formalization/calendar").status).toBe("authenticated");
+        expect(resolveRouteState(homeOnly, "/home/formalization/calendar").status).toBe("forbidden");
+        expect(resolveRouteState(profile([]), "/home/formalization/calendar").status).toBe("forbidden");
         expect(resolveRouteState(profile([]), "/home/formalization/orders").status).toBe("authenticated");
     });
     it.each(["projects", "campaigns", "classes", "locations", "subsidiaries", "brokers", "files"])("denies the %s catalog URL", (catalog) => {
         expect(resolveRouteState(homeOnly, `/home/formalization/catalogs/${catalog}`).status).toBe("forbidden");
     });
-    it("opens the existing preview through module membership without a Home permission", () => {
+    it("keeps Home accessible but retires the summary URL", () => {
+        expect(getAppRoute("/home/formalization/summary")).toBeUndefined();
+        expect(isKnownPath("/home/formalization/summary")).toBe(false);
         const legacy = profile(["file.read"]);
         expect(getDefaultAuthenticatedPath(legacy)).toBe("/home/formalization");
         expect(getDefaultAuthenticatedPath(legacy, "formalization")).toBe("/home/formalization");
-        expect(resolveRouteState(legacy, "/home/formalization/summary").status).toBe("authenticated");
-        expect(resolveRouteState(homeOnly, "/home/formalization/summary").status).toBe("authenticated");
-        expect(resolveRouteState(profile([]), "/home/formalization/summary").status).toBe("authenticated");
     });
     it("does not admit users without active module membership even with the banner permission", () => {
         const outsider = { ...profile(["formalizacion.home.approvals.read"]), orgUnits: [] };
@@ -61,4 +61,9 @@ describe("Formalization Home-only access", () => {
         expect(selected.map(({ code }) => code)).toEqual(["formalizacion"]);
         expect(buildCreateUserPayload({ ...createInitialUserFormValues(), roleCodes: ["formalizacion"] }, selected)).toMatchObject({ roleCode: "formalizacion", roleCodes: ["formalizacion"], orgUnitCodes: ["formalizacion"] });
     });
+});
+it("keeps query-based calendar origin navigation permission-bound", () => {
+    const path = "/home/formalization/calendar?date=2026-10-28&event=event-1";
+    expect(resolveRouteState(profile(["formalizacion.calendar.read"]), path).status).toBe("authenticated");
+    expect(resolveRouteState(profile([]), path).status).toBe("forbidden");
 });

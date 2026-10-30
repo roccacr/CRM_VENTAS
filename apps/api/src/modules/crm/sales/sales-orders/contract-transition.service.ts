@@ -26,7 +26,21 @@ export class ContractTransitionService {
         if (!scope.allowed) throw new ForbiddenException("No tiene permiso para esta transicion");
         const dto = validateContractTransition(input, action);
         this.assertTargetDenials(profile, action, dto);
-        return this.repository.transition({ source: dto.source, id: dto.id, expectedSequence: dto.expectedSequence, operationId: dto.operationId, targetState: dto.targetState, action, actorPublicId: profile.user.publicId, ownOnly: scope.ownOnly, reason: (dto.reason ?? "").trim(), correlationId: ulid(), ...(context.ipAddress ? { ipAddress: context.ipAddress } : {}), ...(context.userAgent ? { userAgent: context.userAgent } : {}) });
+        const targetScope = this.targetScope(profile, action, dto, scope);
+        const skipScope = formalizationPermissionScope(profile, "formalizacion.orders.stage.skip");
+        return this.repository.transition({ source: dto.source, id: dto.id, expectedSequence: dto.expectedSequence, operationId: dto.operationId, targetState: dto.targetState, action, actorPublicId: profile.user.publicId, ownOnly: this.combinedOwnOnly(targetScope, skipScope), canSkipStages: skipScope.allowed, reason: (dto.reason ?? "").trim(), correlationId: ulid(), ...(context.ipAddress ? { ipAddress: context.ipAddress } : {}), ...(context.userAgent ? { userAgent: context.userAgent } : {}) });
+    }
+
+    private combinedOwnOnly(target: { ownOnly: boolean }, skip: { allowed: boolean; ownOnly: boolean }): boolean {
+        return target.ownOnly || (skip.allowed && skip.ownOnly);
+    }
+
+    /** Destination authorization is independent of the selector grant. */
+    private targetScope(profile: IdentityProfile, action: ContractAction, dto: ContractTransitionDto, original: { ownOnly: boolean }) {
+        if (action !== "set") return original;
+        const scope = formalizationPermissionScope(profile, `formalizacion.orders.stage.${dto.targetState ?? ""}`);
+        if (!scope.allowed) throw new ForbiddenException("No tiene permiso para pasar a esta etapa");
+        return { ownOnly: original.ownOnly || scope.ownOnly };
     }
 
     /** The broader selector grant never overrides an explicit denial of the matching contract action. */

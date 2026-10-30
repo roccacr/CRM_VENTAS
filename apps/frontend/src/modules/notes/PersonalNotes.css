@@ -1,0 +1,1720 @@
+.personal-notes-panel {
+    color: #15263b;
+    display: grid;
+    gap: 14px;
+    font-size: 14px;
+}
+.personal-notes-panel button,
+.personal-note button {
+    cursor: pointer;
+    font: inherit;
+    border: 1px solid #bac8db;
+    border-radius: 6px;
+    background: #fff;
+    color: #183653;
+    padding: 7px 10px;
+}
+.personal-notes-panel button:disabled,
+.personal-note button:disabled {
+    opacity: 0.5;
+    cursor: default;
+}
+.personal-notes-panel button:focus-visible,
+.personal-note button:focus-visible {
+    outline: 3px solid #2469ac;
+    outline-offset: 2px;
+}
+.personal-notes-panel__context {
+    display: grid;
+    gap: 6px;
+    background: #f3f6fa;
+    padding: 14px;
+    border: 1px solid #d0d9e5;
+    border-radius: 7px;
+}
+.personal-notes-panel__context span,
+.personal-notes-editor p {
+    color: #52657c;
+    font-size: 12px;
+}
+.personal-notes-panel__tools,
+.personal-notes-editor__options,
+.personal-notes-panel__pages {
+    display: flex;
+    gap: 12px;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+}
+.personal-notes-panel label {
+    display: grid;
+    gap: 7px;
+    flex: 1;
+}
+.personal-notes-panel input,
+.personal-notes-panel textarea,
+.personal-notes-panel select {
+    font: inherit;
+    line-height: 1.5;
+    border: 1px solid #889db8;
+    border-radius: 6px;
+    color: #183653;
+    background: #fff;
+    padding: 9px;
+    min-width: 0;
+    max-width: 100%;
+}
+.personal-notes-panel textarea {
+    min-height: 210px;
+    resize: vertical;
+}
+.personal-notes-panel button.personal-notes-primary {
+    background: #101820;
+    color: #fff;
+    border-color: #101820;
+}
+.personal-notes-editor {
+    display: grid;
+    gap: 15px;
+}
+.personal-notes-editor__count {
+    text-align: right;
+    color: #52657c;
+    font-size: 12px;
+    margin-top: -10px;
+}
+.personal-notes-panel__save {
+    min-height: 18px;
+    font-size: 12px;
+    color: #286349;
+    margin: 0;
+}
+.personal-notes-panel__error {
+    border: 1px solid #c88a6c;
+    background: #fff4ed;
+    padding: 12px;
+    border-radius: 6px;
+}
+.personal-notes-panel__empty {
+    text-align: center;
+    color: #52657c;
+    padding: 32px 16px;
+}
+.personal-notes-panel__empty .anticon {
+    font-size: 36px;
+    color: #496380;
+}
+.personal-notes-panel__empty h3 {
+    color: #183653;
+    font-size: 17px;
+}
+.personal-notes-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: grid;
+    gap: 14px;
+}
+.personal-notes-list li {
+    border: 1px solid #d0d9e5;
+    border-left: 6px solid;
+    border-radius: 6px;
+    padding: 12px;
+    display: grid;
+    gap: 9px;
+}
+.personal-notes-panel button.personal-notes-list__open {
+    border: 0;
+    padding: 0;
+    text-align: left;
+    display: grid;
+    gap: 7px;
+}
+.personal-notes-list__open span {
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+.personal-notes-list small {
+    color: #52657c;
+}
+.personal-notes-list__actions {
+    display: flex;
+    gap: 7px;
+    flex-wrap: wrap;
+    font-size: 12px;
+}
+.personal-notes-panel__pages {
+    font-size: 12px;
+}
+.personal-note {
+    z-index: 1210;
+    border: 1px solid rgb(110 92 42 / 25%);
+    border-radius: 3px 3px 18px 3px;
+    box-shadow: 0 6px 20px rgb(24 38 55 / 15%);
+    display: flex;
+    flex-direction: column;
+    color: #172e46;
+    overflow: hidden;
+}
+.personal-note__bar {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    padding: 7px;
+    border-bottom: 1px solid rgb(27 42 59 / 10%);
+}
+.personal-note .personal-note__bar button {
+    background: transparent;
+    border: 0;
+    padding: 5px;
+    min-height: 30px;
+}
+.personal-note button.personal-note__move {
+    display: flex;
+    gap: 6px;
+    flex: 1;
+    min-width: 0;
+    cursor: grab;
+    touch-action: none;
+    text-align: left;
+    font-weight: 600;
+}
+.personal-note__move span {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: 13px;
+}
+.personal-note__text {
+    white-space: pre-wrap;
+    overflow: auto;
+    overflow-wrap: anywhere;
+    flex: 1;
+    margin: 0;
+    padding: 14px;
+    font-size: 14px;
+    line-height: 1.6;
+}
+.personal-note footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 5px 8px;
+    font-size: 11px;
+}
+.personal-note footer button {
+    background: transparent;
+    border: 0;
+    font-size: 12px;
+}
+.personal-note .personal-note__resize {
+    touch-action: none;
+    cursor: nwse-resize;
+}
+@media (max-width: 767px) {
+    .personal-note__bar button {
+        min-width: 30px;
+    }
+    .personal-notes-panel {
+        font-size: 14px;
+    }
+}
+.personal-notes-link {
+    display: grid;
+    gap: 8px;
+    border: 1px solid #c6d3e4;
+    background: #f3f6fa;
+    padding: 14px;
+    border-radius: 7px;
+}
+.personal-notes-panel .personal-notes-link label {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 600;
+}
+.personal-notes-link input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    accent-color: #254b73;
+    flex: none;
+}
+.personal-notes-link span,
+.personal-notes-link small {
+    color: #52657c;
+    font-size: 12px;
+}
+
+.personal-notes-controls .personal-notes-panel__tools > button {
+    order: 2;
+}
+
+/* Side panel: the shared detail-panel look (grey canvas, white framed blocks, 40px bands, label 12 / value 13). */
+.personal-notes-drawer__avatar {
+    display: inline-grid;
+    flex: none;
+    width: 44px;
+    height: 44px;
+    border: 2px solid #ffffff;
+    border-radius: 999px;
+    place-items: center;
+    background: linear-gradient(135deg, rgba(102, 114, 173, 0.24), rgba(79, 93, 159, 0.08)), #eef2ff;
+    box-shadow: 0 0 0 1px #cfd7e6;
+    color: #3c4f68;
+    font-size: 18px;
+}
+
+.personal-notes-drawer .ant-drawer-body {
+    background: #f6f8fc;
+}
+
+.personal-notes-panel {
+    gap: 12px;
+    font-size: 13px;
+}
+
+.personal-notes-controls {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 12px 12px;
+    align-items: end;
+    padding: 14px 16px;
+    border: 1px solid #d2dae5;
+    border-radius: 8px;
+    background: #ffffff;
+}
+
+.personal-notes-controls > label:first-child {
+    grid-column: 1 / -1;
+}
+
+.personal-notes-controls .personal-notes-panel__tools {
+    display: contents;
+}
+
+.personal-notes-controls .personal-notes-panel__tools > label {
+    min-width: 0;
+}
+
+.personal-notes-panel label {
+    gap: 6px;
+    color: #496180;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.personal-notes-panel input,
+.personal-notes-panel select {
+    height: 36px;
+    padding: 0 10px;
+    border-color: #b9c5d6;
+    color: #0e1116;
+    font-size: 13px;
+    font-weight: 500;
+}
+
+.personal-notes-panel textarea {
+    padding: 10px;
+    border-color: #b9c5d6;
+    color: #0e1116;
+    font-size: 13px;
+}
+
+.personal-notes-panel input:focus-visible,
+.personal-notes-panel textarea:focus-visible,
+.personal-notes-panel select:focus-visible {
+    outline: 2px solid #496180;
+    outline-offset: 1px;
+}
+
+.personal-notes-panel button {
+    min-height: 32px;
+    padding: 0 12px;
+    border-color: #b9c5d6;
+    border-radius: 6px;
+    color: #3c4f68;
+    font-size: 12.5px;
+    font-weight: 600;
+}
+
+.personal-notes-panel button:not(:disabled):hover {
+    border-color: #496180;
+    background: #ebeef3;
+    color: #0e1116;
+}
+
+.personal-notes-panel button.personal-notes-primary {
+    border-color: #0e1116;
+    background: #0e1116;
+    color: #ffffff;
+}
+
+.personal-notes-panel button.personal-notes-primary:not(:disabled):hover {
+    background: #2f3a4b;
+    color: #ffffff;
+}
+
+.personal-notes-panel button.personal-notes-primary:disabled {
+    border-color: #b9c5d6;
+    background: #d2dae5;
+    color: #5d799a;
+    opacity: 1;
+}
+
+/* Notes: white framed cards with the note's own colour as a stripe. */
+.personal-notes-list {
+    gap: 10px;
+}
+
+.personal-notes-list li {
+    gap: 8px;
+    padding: 12px 14px;
+    border: 1px solid #d2dae5;
+    border-left: 4px solid;
+    border-radius: 8px;
+    background: #ffffff;
+}
+
+.personal-notes-panel button.personal-notes-list__open {
+    min-height: 0;
+    gap: 4px;
+    color: #0e1116;
+}
+
+.personal-notes-list__open strong {
+    font-size: 13.5px;
+    font-weight: 700;
+}
+
+.personal-notes-list__open span {
+    color: #3c4f68;
+    font-size: 13px;
+    font-weight: 400;
+    line-height: 1.5;
+}
+
+.personal-notes-list small {
+    color: #5d799a;
+    font-size: 12px;
+}
+
+.personal-notes-list__actions {
+    padding-top: 10px;
+    border-top: 1px solid #ebeef3;
+}
+
+.personal-notes-list__actions button {
+    min-height: 28px;
+    padding: 0 10px;
+    font-size: 12px;
+}
+
+.personal-notes-panel__pages {
+    padding: 0 2px;
+    color: #496180;
+    font-size: 12px;
+}
+
+.personal-notes-panel__pages button {
+    min-height: 28px;
+}
+
+.personal-notes-panel__empty {
+    border: 1px dashed #b9c5d6;
+    border-radius: 8px;
+    background: #ffffff;
+}
+
+.personal-notes-panel__error {
+    padding: 10px 14px;
+    border: 1px solid #e3c3b0;
+    border-left: 4px solid #c0653a;
+    border-radius: 8px;
+    background: #fff7f2;
+    font-size: 13px;
+}
+
+.personal-notes-panel__error p {
+    margin: 0 0 8px;
+}
+
+.personal-notes-panel__save:empty {
+    display: none;
+}
+
+/* Editor: one framed card with its own 40px band. */
+.personal-notes-editor {
+    gap: 14px;
+    padding: 0 0 16px;
+    border: 1px solid #d2dae5;
+    border-radius: 8px;
+    background: #ffffff;
+    overflow: hidden;
+}
+
+.personal-notes-editor > :not(.personal-notes-editor__band) {
+    margin-inline: 16px;
+}
+
+.personal-notes-editor__band {
+    display: flex;
+    align-items: center;
+    min-height: 40px;
+    margin: 0;
+    padding: 0 16px;
+    border-bottom: 1px solid #d2dae5;
+    background: #ebeef3;
+    color: #2f3a4b;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.personal-notes-editor__count {
+    margin-top: -8px;
+    color: #5d799a;
+    font-size: 12px;
+}
+
+.personal-notes-editor__color {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.personal-notes-editor__color i {
+    width: 12px;
+    height: 12px;
+    border: 1px solid rgb(14 17 22 / 25%);
+    border-radius: 50%;
+}
+
+.personal-notes-editor > p {
+    margin-bottom: 0;
+    color: #5d799a;
+    font-size: 12px;
+}
+
+.personal-notes-editor .personal-notes-panel__tools {
+    justify-content: space-between;
+}
+
+.personal-notes-link {
+    gap: 6px;
+    padding: 12px 14px;
+    border-color: #d2dae5;
+    border-radius: 8px;
+    background: #f5f7fa;
+}
+
+.personal-notes-link strong {
+    color: #0e1116;
+    font-size: 13px;
+}
+
+.personal-notes-link span,
+.personal-notes-link small {
+    color: #496180;
+}
+
+/* Sticky-note feel: each note carries its own colour, in the list and in the editor, so what you pick is what you see. */
+.personal-notes-list li {
+    border-left-color: var(--note);
+    border-left-width: 5px;
+    background: color-mix(in srgb, var(--note) 28%, #ffffff);
+    box-shadow: 0 1px 2px rgb(14 17 22 / 6%);
+}
+
+.personal-notes-panel .personal-notes-editor textarea {
+    background: color-mix(in srgb, var(--note) 30%, #ffffff);
+    line-height: 1.6;
+}
+
+.personal-notes-field {
+    display: grid;
+    gap: 6px;
+    flex: 1;
+    color: #496180;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.personal-notes-colors {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    height: 36px;
+}
+
+.personal-notes-panel .personal-notes-colors button {
+    width: 28px;
+    min-height: 28px;
+    height: 28px;
+    padding: 0;
+    border: 1px solid rgb(14 17 22 / 25%);
+    border-radius: 50%;
+}
+
+.personal-notes-panel .personal-notes-colors button[aria-checked="true"] {
+    border-color: #0e1116;
+    box-shadow:
+        0 0 0 2px #ffffff,
+        0 0 0 4px #0e1116;
+}
+
+.personal-notes-panel .personal-notes-colors button:not(:disabled):hover {
+    border-color: #0e1116;
+    background-color: inherit;
+}
+
+.personal-notes-panel button.personal-notes-list__open,
+.personal-notes-panel button.personal-notes-list__open:not(:disabled):hover {
+    background: transparent;
+}
+
+.personal-notes-list__actions button {
+    background: rgb(255 255 255 / 75%);
+}
+
+.personal-notes-inboxes {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 0 0 14px;
+    border-bottom: 1px solid #d3deeb;
+}
+.personal-notes-inboxes button {
+    border: 1px solid #c3d2e2;
+    border-radius: 6px;
+    background: white;
+    padding: 8px 12px;
+    color: #244c75;
+    font: inherit;
+    cursor: pointer;
+}
+.personal-notes-inboxes button[aria-current="page"] {
+    background: #12304d;
+    color: white;
+    border-color: #12304d;
+}
+.personal-notes-inboxes button:focus-visible {
+    outline: 2px solid #2563eb;
+    outline-offset: 3px;
+}
+.personal-notes-inboxes button:disabled {
+    opacity: 0.55;
+    cursor: default;
+}
+
+/* Inboxes: one quiet tab strip on a single line (underline on the one you are in), then a slim toolbar, then the notes. */
+.personal-notes-inboxes {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 2px;
+    overflow-x: auto;
+    padding: 0;
+    border: 1px solid #d2dae5;
+    border-radius: 8px;
+    background: #ffffff;
+    scrollbar-width: none;
+}
+
+.personal-notes-panel .personal-notes-inboxes button {
+    flex: 0 0 auto;
+    min-height: 40px;
+    padding: 0 12px;
+    border: 0;
+    border-bottom: 2px solid transparent;
+    border-radius: 0;
+    background: transparent;
+    color: #496180;
+    font-size: 12.5px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.personal-notes-panel .personal-notes-inboxes button:not(:disabled):hover {
+    background: #f5f7fa;
+    color: #0e1116;
+}
+
+.personal-notes-panel .personal-notes-inboxes button[aria-current="page"] {
+    border-bottom-color: #0e1116;
+    background: transparent;
+    color: #0e1116;
+}
+
+.personal-notes-panel .personal-notes-inboxes button:disabled {
+    opacity: 0.55;
+}
+
+.personal-notes-controls {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 10px 12px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+}
+
+.personal-notes-controls > label:first-child {
+    flex: 1 1 100%;
+}
+
+.personal-notes-controls .personal-notes-panel__tools {
+    display: contents;
+}
+
+.personal-notes-controls .personal-notes-panel__tools > label {
+    flex: 0 1 220px;
+}
+
+.personal-notes-controls .personal-notes-panel__tools > button {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 36px;
+    margin-left: auto;
+    padding: 0 14px;
+    order: 2;
+}
+
+/* Inbox notes: same cards as the list; its alerts, empties and pager follow the panel's own style. */
+.personal-notes-panel .note-inbox {
+    gap: 10px;
+}
+
+.personal-notes-panel .note-inbox button {
+    min-height: 28px;
+    padding: 0 10px;
+    border: 1px solid #b9c5d6;
+    border-radius: 6px;
+    background: #ffffff;
+    color: #3c4f68;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.personal-notes-panel .note-inbox button:not(:disabled):hover {
+    border-color: #496180;
+    background: #ebeef3;
+    color: #0e1116;
+}
+
+.personal-notes-panel .note-inbox button.personal-notes-list__open,
+.personal-notes-panel .note-inbox button.personal-notes-list__open:not(:disabled):hover {
+    min-height: 0;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: #0e1116;
+    font-size: 13px;
+}
+
+.personal-notes-panel .note-inbox .personal-notes-list__actions button {
+    background: rgb(255 255 255 / 75%);
+}
+
+.personal-notes-panel .note-inbox .personal-notes-panel__error button {
+    min-height: 28px;
+}
+
+.note-inbox .personal-notes-panel__empty p {
+    margin: 8px 0 0;
+}
+
+/* Loading: the cards the notes will have, in quiet bars. */
+.notes-loading {
+    display: grid;
+    gap: 10px;
+}
+
+.notes-loading > p {
+    margin: 0;
+    color: #496180;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.notes-loading__card {
+    display: grid;
+    gap: 8px;
+    padding: 14px;
+    border: 1px solid #d2dae5;
+    border-left: 4px solid #d2dae5;
+    border-radius: 8px;
+    background: #ffffff;
+}
+
+.notes-loading__card span {
+    height: 10px;
+    border-radius: 4px;
+    background: linear-gradient(90deg, #d2dae5 25%, #ebeef3 50%, #d2dae5 75%);
+    background-size: 300% 100%;
+    animation: notes-skel-sweep 1.6s ease-in-out infinite;
+}
+
+.notes-loading__card span:nth-child(1) {
+    width: 40%;
+    height: 12px;
+}
+
+.notes-loading__card span:nth-child(2) {
+    width: 85%;
+}
+
+.notes-loading__card span:nth-child(3) {
+    width: 60%;
+}
+
+@keyframes notes-skel-sweep {
+    from {
+        background-position: 100% 0;
+    }
+    to {
+        background-position: 0 0;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .notes-loading__card span {
+        animation: none;
+    }
+}
+
+/* Editor: the invite block and the text area take less height. */
+.personal-notes-panel .personal-notes-editor textarea {
+    min-height: 150px;
+}
+
+.personal-notes-editor details {
+    padding: 10px 12px;
+    border: 1px solid #d2dae5;
+    border-radius: 8px;
+    background: #f5f7fa;
+}
+
+.personal-notes-editor details > summary {
+    color: #2f3a4b;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.personal-notes-editor details > p {
+    margin: 6px 0 0;
+    color: #496180;
+    font-size: 12px;
+}
+
+.personal-notes-editor details .note-people-picker {
+    margin: 8px 0 0;
+}
+
+/* Editor: title and text first, short helpers, the link as one line, invitations as a compact list. */
+.personal-notes-editor {
+    gap: 12px;
+}
+
+.personal-notes-panel .personal-notes-editor textarea {
+    min-height: 96px;
+}
+
+.personal-notes-editor__count {
+    margin-top: -6px;
+}
+
+.personal-notes-editor__foot {
+    margin: 0;
+    color: #5d799a;
+    font-size: 11.5px;
+}
+
+.personal-notes-link {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 4px 10px;
+    padding: 10px 12px;
+}
+
+.personal-notes-panel .personal-notes-link label {
+    gap: 8px;
+    color: #0e1116;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.personal-notes-link input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    padding: 0;
+}
+
+.personal-notes-link__target {
+    max-width: 160px;
+    padding: 0 8px;
+    overflow: hidden;
+    border: 1px solid #d2dae5;
+    border-radius: 10px;
+    background: #ffffff;
+    color: #3c4f68 !important;
+    font-size: 11.5px !important;
+    font-weight: 600;
+    line-height: 20px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.personal-notes-link > small {
+    grid-column: 1 / -1;
+    color: #496180;
+    font-size: 12px;
+}
+
+.personal-notes-editor details {
+    padding: 8px 12px;
+}
+
+.personal-notes-editor details > p {
+    margin: 4px 0 0;
+}
+
+/* Notes as small sticky cards, two by two; they fall back to one column when the panel is narrow. */
+.personal-notes-panel {
+    container-name: notes-panel;
+    container-type: inline-size;
+}
+
+.personal-notes-list,
+.note-inbox .personal-notes-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    align-items: stretch;
+}
+
+@container notes-panel (max-width: 400px) {
+    .personal-notes-list,
+    .note-inbox .personal-notes-list {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+
+.personal-notes-list > li.note-card {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-width: 0;
+    padding: 10px 12px 8px;
+    border: 1px solid color-mix(in srgb, var(--note) 60%, #8497b1);
+    border-top: 4px solid var(--note);
+    border-left: 1px solid color-mix(in srgb, var(--note) 60%, #8497b1);
+    border-radius: 8px;
+    background: color-mix(in srgb, var(--note) 26%, #ffffff);
+    box-shadow: 0 1px 2px rgb(14 17 22 / 6%);
+}
+
+.personal-notes-list > li.note-card:hover {
+    box-shadow: 0 3px 8px rgb(14 17 22 / 12%);
+}
+
+.personal-notes-panel button.note-card__open {
+    flex: 1;
+    align-content: start;
+    width: 100%;
+    min-height: 64px;
+}
+
+.note-card__open strong {
+    display: block;
+    overflow: hidden;
+    font-size: 13px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.note-card__open span {
+    font-size: 12.5px;
+    line-height: 1.45;
+}
+
+.note-card__meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+
+.note-chip {
+    padding: 0 7px;
+    border: 1px solid rgb(14 17 22 / 14%);
+    border-radius: 10px;
+    background: rgb(255 255 255 / 70%);
+    color: #3c4f68;
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 18px;
+}
+
+.note-chip--high {
+    border-color: #e3c3b0;
+    background: #fff7f2;
+    color: #9a4a22;
+}
+
+.note-card__foot {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+    padding-top: 6px;
+    border-top: 1px solid rgb(14 17 22 / 10%);
+}
+
+.note-card__foot small {
+    min-width: 0;
+    overflow: hidden;
+    color: #496180;
+    font-size: 11.5px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.note-card__actions {
+    display: flex;
+    flex: none;
+    gap: 2px;
+}
+
+.personal-notes-panel button.note-card__action {
+    display: inline-grid;
+    width: 26px;
+    min-height: 26px;
+    height: 26px;
+    padding: 0;
+    border: 0;
+    border-radius: 6px;
+    background: transparent;
+    color: #3c4f68;
+    font-size: 13px;
+    place-items: center;
+}
+
+.personal-notes-panel button.note-card__action:not(:disabled):hover {
+    background: rgb(255 255 255 / 85%);
+    color: #0e1116;
+}
+
+/* Search. */
+.notes-search {
+    position: relative;
+    display: block;
+    flex: 1 1 180px;
+    min-width: 0;
+}
+
+.notes-search .anticon {
+    position: absolute;
+    top: 50%;
+    left: 10px;
+    color: #5d799a;
+    transform: translateY(-50%);
+}
+
+.personal-notes-panel .notes-search input {
+    width: 100%;
+    padding-left: 30px;
+}
+
+.personal-notes-panel__nomatch {
+    margin: 4px 0;
+    padding: 14px;
+    border: 1px dashed #b9c5d6;
+    border-radius: 8px;
+    color: #496180;
+    text-align: center;
+}
+
+.personal-notes-controls .personal-notes-panel__tools > label {
+    flex: 0 1 150px;
+}
+
+/* Final pass, same contract as the rest of the CRM: #2f3a4b ink, #303c4e primary, 8px cards with a band, 34-36px fields. */
+.personal-notes-panel {
+    color: #2f3a4b;
+}
+.personal-notes-panel button.personal-notes-primary {
+    border-color: #303c4e;
+    background: #303c4e;
+}
+.personal-notes-panel button.personal-notes-primary:not(:disabled):hover {
+    border-color: #42516a;
+    background: #42516a;
+}
+.personal-notes-panel button.personal-notes-primary:disabled {
+    border-color: #d2dae5;
+    background: #eef2f7;
+    color: #8393a8;
+}
+.personal-notes-panel .personal-notes-inboxes {
+    background: #eef2f7;
+}
+.personal-notes-panel .personal-notes-inboxes button {
+    color: #496180;
+}
+.personal-notes-panel .personal-notes-inboxes button:not(:disabled):hover {
+    background: #e3e9f1;
+    color: #2f3a4b;
+}
+.personal-notes-panel .personal-notes-inboxes button[aria-current="page"] {
+    border-bottom-color: #303c4e;
+    background: #ffffff;
+    color: #2f3a4b;
+}
+.personal-notes-panel input,
+.personal-notes-panel select,
+.personal-notes-panel textarea {
+    border-color: #c3ccd9;
+    border-radius: 6px;
+    color: #2f3a4b;
+    accent-color: #303c4e;
+}
+.personal-notes-panel input:focus,
+.personal-notes-panel select:focus,
+.personal-notes-panel textarea:focus {
+    border-color: #303c4e;
+}
+.personal-notes-panel input:focus-visible,
+.personal-notes-panel select:focus-visible,
+.personal-notes-panel textarea:focus-visible {
+    outline: 2px solid rgba(48, 60, 78, 0.22);
+    outline-offset: 0;
+}
+
+/* Toolbar as one card: search on top, state and the primary action under it. */
+.personal-notes-panel .personal-notes-controls {
+    padding: 12px;
+    border: 1px solid #d2dae5;
+    border-radius: 8px;
+    background: #ffffff;
+}
+.personal-notes-panel .personal-notes-controls .personal-notes-panel__tools > label {
+    flex: 1 1 160px;
+    max-width: 220px;
+}
+
+/* Bandeja: the assignment summary as three chips, then one filters card. */
+.personal-notes-panel .note-workflow-overview {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin: 0;
+}
+.personal-notes-panel .note-workflow-overview span {
+    padding: 3px 10px;
+    border: 1px solid #c3ccd9;
+    border-radius: 999px;
+    background: #eef2f7;
+    color: #3b4a61;
+    font-size: 12px;
+    font-weight: 600;
+}
+.personal-notes-panel .note-workflow-overview span[data-alert="true"] {
+    border-color: #e3b4b0;
+    background: #fbefee;
+    color: #8a2f27;
+}
+.personal-notes-panel .note-inbox > .note-inbox-filters,
+.personal-notes-panel .note-inbox-advanced {
+    margin: 0;
+    padding: 12px;
+    border: 1px solid #d2dae5;
+    border-radius: 8px;
+    background: #ffffff;
+}
+.personal-notes-panel .note-inbox > .note-inbox-filters {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px 12px;
+}
+.personal-notes-panel .note-inbox-filters label {
+    min-width: 0;
+    color: #496180;
+}
+.personal-notes-panel .note-inbox-advanced {
+    padding: 0;
+    overflow: hidden;
+}
+.personal-notes-panel .note-inbox-advanced > summary {
+    display: flex;
+    align-items: center;
+    min-height: 38px;
+    margin: 0;
+    padding: 0 14px;
+    background: #eef2f7;
+    color: #2f3a4b;
+    font-size: 13px;
+    font-weight: 600;
+}
+.personal-notes-panel .note-inbox-advanced[open] > summary {
+    border-bottom: 1px solid #d2dae5;
+}
+.personal-notes-panel .note-inbox-advanced > form {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px 8px;
+    padding: 12px 14px;
+}
+.personal-notes-panel .note-inbox-advanced > form .note-inbox-filters {
+    display: grid;
+    flex: 1 1 100%;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px 12px;
+    padding: 0;
+}
+.personal-notes-panel .note-inbox-advanced button {
+    min-height: 32px;
+    margin: 0;
+}
+.personal-notes-panel .note-inbox-advanced button[type="submit"] {
+    border-color: #303c4e;
+    background: #303c4e;
+    color: #ffffff;
+}
+.personal-notes-panel .note-inbox-advanced button[type="submit"]:hover {
+    border-color: #42516a;
+    background: #42516a;
+    color: #ffffff;
+}
+.personal-notes-panel .note-inbox-advanced input[type="datetime-local"] {
+    width: 100%;
+    min-width: 0;
+}
+@media (max-width: 520px) {
+    .personal-notes-panel .note-inbox > .note-inbox-filters,
+    .personal-notes-panel .note-inbox-advanced > form .note-inbox-filters {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+
+/* Details band with a chevron instead of the black focus frame; cards, chips and pager on the same ink and borders. */
+.personal-notes-panel .note-inbox-advanced > summary {
+    justify-content: space-between;
+    list-style: none;
+    cursor: pointer;
+}
+.personal-notes-panel .note-inbox-advanced > summary::-webkit-details-marker {
+    display: none;
+}
+.personal-notes-panel .note-inbox-advanced > summary::after {
+    width: 7px;
+    height: 7px;
+    border-right: 2px solid #496180;
+    border-bottom: 2px solid #496180;
+    transform: rotate(45deg) translate(-2px, -2px);
+    transition: transform 0.15s;
+    content: "";
+}
+.personal-notes-panel .note-inbox-advanced[open] > summary::after {
+    transform: rotate(-135deg) translate(-2px, -2px);
+}
+.personal-notes-panel .note-inbox-advanced > summary:focus-visible {
+    outline: 2px solid rgba(48, 60, 78, 0.35);
+    outline-offset: -2px;
+}
+.personal-notes-panel .note-card__open strong {
+    color: #2f3a4b;
+}
+.personal-notes-panel .note-card__open span {
+    color: #496180;
+}
+.personal-notes-list > li.note-card {
+    box-shadow: 0 1px 2px rgba(47, 58, 75, 0.08);
+}
+.personal-notes-list > li.note-card:hover {
+    box-shadow: 0 3px 8px rgba(47, 58, 75, 0.14);
+}
+.personal-notes-panel .personal-notes-panel__pages {
+    padding: 10px 0 0;
+    border-top: 1px solid #d2dae5;
+    color: #496180;
+    font-size: 12.5px;
+}
+.personal-notes-panel .personal-notes-panel__pages button {
+    min-height: 30px;
+    border-color: #c3ccd9;
+    background: #ffffff;
+    color: #2f3a4b;
+}
+.personal-notes-panel .personal-notes-panel__pages button:disabled {
+    border-color: #d2dae5;
+    background: #eef2f7;
+    color: #8393a8;
+    opacity: 1;
+}
+.personal-notes-panel__empty,
+.personal-notes-panel__nomatch {
+    border-color: #c3ccd9;
+    color: #496180;
+}
+.note-related-records {
+    margin: 14px 0;
+    padding: 12px;
+    border: 1px solid #cbd6e5;
+    border-radius: 8px;
+    background: #f7f9fc;
+}
+.note-related-records > summary {
+    cursor: pointer;
+    font-weight: 600;
+}
+.note-related-records h3,
+.note-related-records h4 {
+    margin: 0 0 10px;
+    font-size: 14px;
+}
+.note-related-records__chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    margin: 8px 0;
+}
+.note-related-records__chip {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.note-related-records__picker {
+    display: grid;
+    gap: 10px;
+    margin-top: 10px;
+}
+.note-related-records__picker > p,
+.note-related-records__search p {
+    margin: 0;
+    font-size: 12px;
+}
+.note-related-records__search {
+    display: grid;
+    gap: 8px;
+    min-width: 0;
+    margin: 0;
+    padding: 10px;
+    border: 1px solid #d2dce9;
+    border-radius: 6px;
+    background: #fff;
+}
+.note-related-records__search label {
+    display: grid;
+    gap: 5px;
+    font-size: 12px;
+}
+.note-related-records__search .ant-select {
+    width: 100%;
+}
+.note-related-records__selected {
+    display: grid;
+    gap: 6px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+.note-related-records__selected li {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 12px;
+}
+.note-related-records__editor > button {
+    margin-top: 12px;
+}
+
+/* Same UX contract as the calendar event editor: one control language, cards with a band, collapsible secondary sections, switches for yes/no. */
+.personal-notes-panel select {
+    height: 38px;
+    padding: 0 34px 0 10px;
+    appearance: none;
+    overflow: hidden;
+    background-color: #ffffff;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8' fill='none' stroke='%23496180' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'><path d='M1 1.5l5 5 5-5'/></svg>");
+    background-position: right 12px center;
+    background-repeat: no-repeat;
+    font-size: 13px;
+    font-weight: 400;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    cursor: pointer;
+}
+.personal-notes-panel select:disabled {
+    background-color: #eef2f7;
+    cursor: not-allowed;
+}
+.personal-notes-panel input:not([type="checkbox"]):not([type="radio"]):not([type="search"]),
+.personal-notes-panel .notes-search input {
+    height: 38px;
+    font-size: 13px;
+    font-weight: 400;
+}
+.personal-notes-panel input:hover:not(:disabled),
+.personal-notes-panel select:hover:not(:disabled),
+.personal-notes-panel textarea:hover:not(:disabled) {
+    border-color: #8393a8;
+}
+.personal-notes-panel label {
+    color: #496180;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+/* Toolbar: search on its own row, then state and the primary action on one aligned row. */
+.personal-notes-panel .personal-notes-controls {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 12px;
+    padding: 14px;
+    box-shadow: 0 1px 2px rgba(47, 58, 75, 0.04);
+}
+.personal-notes-panel .personal-notes-controls > label {
+    flex: 1 1 100%;
+}
+.personal-notes-panel .personal-notes-controls .personal-notes-panel__tools {
+    display: contents;
+}
+.personal-notes-panel .personal-notes-controls .personal-notes-panel__tools > label {
+    order: 1;
+    flex: 1 1 180px;
+    max-width: none;
+}
+.personal-notes-panel .personal-notes-controls .personal-notes-panel__tools > button {
+    order: 2;
+    flex: 0 0 auto;
+    height: 38px;
+    padding: 0 16px;
+    font-weight: 600;
+}
+
+/* Filters collapse into one card, like Participantes / Relaciones. */
+.personal-notes-panel .note-inbox-filtercard {
+    overflow: hidden;
+    border: 1px solid #d2dae5;
+    border-radius: 8px;
+    background: #ffffff;
+    box-shadow: 0 1px 2px rgba(47, 58, 75, 0.04);
+}
+.personal-notes-panel .note-inbox-filtercard > summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 40px;
+    padding: 0 16px;
+    background: #eef2f7;
+    color: #2f3a4b;
+    font-size: 13px;
+    font-weight: 600;
+    list-style: none;
+    cursor: pointer;
+}
+.personal-notes-panel .note-inbox-filtercard > summary::-webkit-details-marker {
+    display: none;
+}
+.personal-notes-panel .note-inbox-filtercard > summary:hover {
+    background: #e6ecf4;
+}
+.personal-notes-panel .note-inbox-filtercard > summary em {
+    min-width: 22px;
+    margin: 0 10px 0 auto;
+    padding: 1px 7px;
+    border-radius: 10px;
+    background: #ffffff;
+    color: #496180;
+    font-size: 11.5px;
+    font-style: normal;
+    text-align: center;
+}
+.personal-notes-panel .note-inbox-filtercard > summary::after {
+    width: 7px;
+    height: 7px;
+    border-right: 2px solid #496180;
+    border-bottom: 2px solid #496180;
+    transform: rotate(45deg) translate(-2px, -2px);
+    transition: transform 0.15s;
+    content: "";
+}
+.personal-notes-panel .note-inbox-filtercard[open] > summary {
+    border-bottom: 1px solid #d2dae5;
+}
+.personal-notes-panel .note-inbox-filtercard[open] > summary::after {
+    transform: rotate(-135deg) translate(-2px, -2px);
+}
+.personal-notes-panel .note-inbox-filtercard > .note-inbox-filters {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+    padding: 16px;
+}
+.personal-notes-panel .note-inbox-filtercard .note-inbox-advanced {
+    border: 0;
+    border-top: 1px solid #e1e7ef;
+    border-radius: 0;
+    box-shadow: none;
+}
+.personal-notes-panel .note-inbox-filtercard .note-inbox-advanced > summary {
+    background: #f8fafc;
+}
+@media (max-width: 520px) {
+    .personal-notes-panel .note-inbox-filtercard > .note-inbox-filters {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+
+/* Editor: optional sections are collapsible cards. */
+.personal-notes-editor details,
+.personal-notes-editor details.note-related-records {
+    overflow: hidden;
+    margin-block: 0;
+    padding: 0;
+    border: 1px solid #d2dae5;
+    border-radius: 8px;
+    background: #ffffff;
+    box-shadow: 0 1px 2px rgba(47, 58, 75, 0.04);
+}
+.personal-notes-editor details > summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 40px;
+    padding: 0 16px;
+    background: #eef2f7;
+    color: #2f3a4b;
+    font-size: 13px;
+    font-weight: 600;
+    list-style: none;
+    cursor: pointer;
+}
+.personal-notes-editor details > summary::-webkit-details-marker {
+    display: none;
+}
+.personal-notes-editor details > summary:hover {
+    background: #e6ecf4;
+}
+.personal-notes-editor details > summary::after {
+    width: 7px;
+    height: 7px;
+    border-right: 2px solid #496180;
+    border-bottom: 2px solid #496180;
+    transform: rotate(45deg) translate(-2px, -2px);
+    transition: transform 0.15s;
+    content: "";
+}
+.personal-notes-editor details[open] > summary {
+    border-bottom: 1px solid #d2dae5;
+}
+.personal-notes-editor details[open] > summary::after {
+    transform: rotate(-135deg) translate(-2px, -2px);
+}
+.personal-notes-editor details > :not(summary) {
+    margin-right: 16px;
+    margin-left: 16px;
+}
+.personal-notes-editor details > summary + * {
+    margin-top: 14px;
+}
+.personal-notes-editor details > :last-child:not(summary) {
+    margin-bottom: 16px;
+}
+.personal-notes-panel .personal-notes-link {
+    display: grid;
+    gap: 6px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+}
+.personal-notes-panel .personal-notes-link__target {
+    padding-left: 44px;
+    color: #496180;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+/* The link switch replaces the old boxed checkbox: neutralize the legacy pill and label rules. */
+.personal-notes-panel .personal-notes-link .personal-notes-link__target {
+    max-width: none;
+    padding: 0 0 0 44px;
+    overflow: visible;
+    border: 0;
+    background: transparent;
+    line-height: 1.4;
+    white-space: normal;
+}
+.personal-notes-panel .personal-notes-editor textarea:focus {
+    border-color: #303c4e;
+    outline: 0;
+    box-shadow: 0 0 0 2px rgba(48, 60, 78, 0.18);
+}
+
+/* Editor fields: icon captions over 38px controls, like the calendar event form. */
+.note-caption {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: #496180;
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 18px;
+}
+.note-caption i {
+    display: inline-flex;
+    color: #5d6b82;
+    font-size: 13px;
+}
+.personal-notes-panel .personal-notes-editor > label,
+.personal-notes-panel .personal-notes-editor__options > label {
+    display: grid;
+    gap: 6px;
+}
+.personal-notes-editor__options {
+    align-items: start;
+    gap: 16px;
+}
+.personal-notes-editor__options .personal-notes-field {
+    display: grid;
+    gap: 8px;
+}
+.note-sr {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+}
+.note-section-intro,
+.note-related-records__head,
+.note-people-picker__head {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin: 0;
+    color: #5d6b82;
+    font-size: 12.5px;
+}
+.note-related-records__head {
+    justify-content: space-between;
+}
+.note-people-picker__head label {
+    margin: 0;
+}
+
+/* Record and people pickers: same field language, no boxed fieldsets or oversized legends. */
+.personal-notes-panel .note-related-records__picker {
+    gap: 16px;
+}
+.personal-notes-panel .note-related-records__search {
+    display: grid;
+    gap: 8px;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: transparent;
+}
+.personal-notes-panel .note-related-records__search legend {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    float: left;
+    width: 100%;
+    margin: 0 0 8px;
+    padding: 0;
+    color: #496180;
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 18px;
+}
+.personal-notes-panel .note-related-records__search legend + * {
+    clear: both;
+}
+.personal-notes-panel .note-related-records__search legend i {
+    display: inline-flex;
+    color: #5d6b82;
+}
+.personal-notes-panel .note-related-records__selected {
+    gap: 8px;
+}
+.personal-notes-panel .note-related-records__selected li {
+    padding: 8px 10px;
+    border: 1px solid #d2dae5;
+    border-radius: 8px;
+    background: #f8fafc;
+    color: #2f3a4b;
+    font-size: 12.5px;
+}
+.personal-notes-panel .ant-select .ant-select-selector {
+    min-height: 38px;
+    border-color: #c3ccd9;
+    border-radius: 6px;
+    box-shadow: none;
+    font-size: 13px;
+}
+.personal-notes-panel .ant-select:not(.ant-select-disabled):hover .ant-select-selector {
+    border-color: #8393a8;
+}
+.personal-notes-panel .ant-select.ant-select-focused .ant-select-selector {
+    border-color: #303c4e;
+    box-shadow: 0 0 0 2px rgba(48, 60, 78, 0.18);
+}
+.personal-notes-panel .ant-select-disabled .ant-select-selector {
+    background: #eef2f7;
+}
+
+/* Search dropdown: calm list with two-line records and a clear "load more" footer. */
+.personal-notes-drawer .ant-select-dropdown {
+    padding: 4px;
+    border: 1px solid #c3ccd9;
+    border-radius: 8px;
+    box-shadow: 0 8px 24px rgba(47, 58, 75, 0.18);
+}
+.personal-notes-drawer .ant-select-dropdown .ant-select-item {
+    padding: 8px 12px;
+    border-radius: 6px;
+    color: #2f3a4b;
+    font-size: 13px;
+    line-height: 1.35;
+}
+.personal-notes-drawer .ant-select-dropdown .ant-select-item small {
+    margin-top: 2px;
+    color: #5d6b82;
+    font-size: 12px;
+}
+.personal-notes-drawer .ant-select-dropdown .ant-select-item-option-active:not(.ant-select-item-option-disabled) {
+    background: #eef2f7;
+}
+.personal-notes-drawer .ant-select-dropdown .ant-select-item-option-selected:not(.ant-select-item-option-disabled) {
+    background: #e3e9f1;
+    font-weight: 600;
+}
+.personal-notes-drawer .ant-select-dropdown > button {
+    display: block;
+    width: calc(100% - 8px);
+    min-height: 34px;
+    margin: 4px;
+    border: 1px solid #c3ccd9;
+    border-radius: 6px;
+    background: #f8fafc;
+    color: #2f3a4b;
+    font-size: 12.5px;
+    font-weight: 600;
+    cursor: pointer;
+}
+.personal-notes-drawer .ant-select-dropdown > button:not(:disabled):hover {
+    border-color: #8393a8;
+    background: #eef2f7;
+}
+.personal-notes-drawer .ant-select-dropdown > button:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+}

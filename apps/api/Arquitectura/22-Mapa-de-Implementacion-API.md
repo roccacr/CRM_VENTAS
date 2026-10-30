@@ -1,38 +1,67 @@
 # 22 - Mapa de Implementacion API
 
-## Inventario registrado y contratos - revision 2026-10-27
+## Inventario registrado y contratos - revisión 2026-10-29
 
 Fuentes: `src/app.module.ts`, metadatos de controladores/modulos y contratos
-referenciados. Tabla de ampliaciones verificadas por lectura de codigo; no es
-una ejecucion HTTP ni prueba nueva de MySQL.
+referenciados. La tabla describe wiring contrastado por lectura de código. La
+verificación ejecutada del 29 se conserva por separado en
+[67 - QA y resultados](67-Plan-QA-Regresiones-20261029.md); esta actualización
+solo modifica documentación, no ejecuta nuevas operaciones de negocio.
+
+`AppModule` registra `NotesModule` y `CalendarModule`, además de Identidad,
+catálogos, Mercadeo, seguimiento y comandos acotados de Formalización. Los cortes
+que los describen como pendientes o solo esquema son históricos. Notas y
+calendario no activan por inferencia correo, Outlook o copia de notas legacy.
 
 | Ruta | Registro y contrato | Autorizacion/limite |
 | --- | --- | --- |
 | `GET /marketing/home/summary` | `MarketingHomeModule`, `marketing-home.contract.ts` | `mercadeo.home.read`; period day/week/month/year; lectura agregada |
 | `GET /marketing/leads/report` | mismo modulo, `MarketingLeadsReportController`, `marketing-leads-report.contract.ts` | `mercadeo.leads.read`; period day/week/month/all; fuentes y calidad, sin filas PII |
-| `GET /formalization/approvals/summary` | `ApprovalSummaryModule` | `formalizacion.home.approvals.read`; lector autoriza alcance |
-| `GET /formalization/contracts/summary` | `ContractSummaryModule` | rol efectivo Formalizacion + `formalizacion.home.stages.read` |
-| `GET /formalization/home/summary` | `HomeSummaryModule` | misma lectura de etapas; aprobaciones conservan permiso independiente |
-| `GET /formalization/home/follow-up` | `FollowUpController`, `follow-up.contract.ts` | permisos/alcance por recurso, busqueda/proyecto/bandeja, pageSize maximo 100 |
-| `GET /formalization/orders/:source/:id/timing` | `OrderTimingController`, `order-timing.contract.ts` | lectura de visitas/tiempos autorizada, no inserta historia al consultar |
+| `GET /formalization/approvals/summary` | `ApprovalSummaryModule` | rol efectivo Formalizacion + `formalizacion.home.approvals.read` |
+| `GET /formalization/contracts/summary` | `ContractSummaryModule` | rol efectivo Formalizacion + `formalizacion.home.contracts.read` |
+| `GET /formalization/home/summary` | `HomeSummaryModule` | permisos por banner; contadores no autorizados en cero; ver [63](63-Formalizacion-Lectura-Por-Banner.md) |
+| `GET /formalization/home/follow-up` | `FollowUpController`, `follow-up.contract.ts` | permisos por banner y rol efectivo; búsqueda/proyecto/bandeja, pageSize máximo100 |
+| `GET /formalization/home/recent-activity` | `HomeSummaryController`, `HomeSummaryService` | `formalizacion.orders.read`; actividad acotada del actor, no sustituible por permiso de banner |
+| `GET /formalization/orders/:source/:id/record` | `FormalizationOrderRecordController`, proyección `FollowUpItem` | `formalizacion.orders.read` independiente de banners; un solo registro, sin contadores ni catálogo de proyectos |
+| `GET /formalization/orders/:source/:id/timing` | `OrderTimingController`, `order-timing.contract.ts` | `formalizacion.orders.read`; no inserta historia al consultar |
 | `POST /formalization/contracts/send` | `ContractTransitionModule`, `ContractTransitionDto` | `formalizacion.contracts.send`; registra evidencia CRM, no envia correo |
 | `POST /formalization/contracts/revert` | mismo modulo/DTO | `formalizacion.contracts.revert`; motivo obligatorio |
 | `POST /formalization/orders/stage` | `FormalizationStageController`, mismo servicio/DTO | `formalizacion.orders.stage.update`; aprobaciones, firma y retrocesos validados |
-| `GET /formalization/orders/:source/:id/netsuite` | `NetsuiteModule` y adaptador dedicado | rol/permiso de etapas y alcance CRM; GET externo, sin persistencia |
+| `GET /formalization/orders/:source/:id/database` | `NetsuiteSalesOrderController`, proyección de fuente | `formalizacion.orders.read`; datos de la orden autorizada, sin crear registros |
+| `GET /formalization/orders/:source/:id/history` | mismo controlador, lector de historia | `formalizacion.orders.read`; historial de la orden autorizada |
+| `GET /formalization/orders/:source/:id/netsuite` | `NetsuiteModule` y adaptador dedicado | `formalizacion.orders.read` y autorización de orden; GET externo, sin persistencia |
+| `POST /formalization/orders/approve` | `FormalizationApprovalController`, `ContractTransitionModule` | permiso independiente `formalizacion.orders.approve`, versión y auditoría; integración acotada de [63](63-Aprobacion-Formalizacion-NetSuite.md) |
+| `GET /calendar/calendars` | `CalendarModule`, `CalendarController` | módulos activos con `*.calendar.read`; tipos y capacidades permitidas |
+| `GET /calendar/events` | mismo módulo, `CalendarService` | contexto y módulos autorizados, intervalo máximo93 días y límite500; fuente nativa y legacy con contexto explícito |
+| `POST /calendar/events` | mismo módulo/repositorio | módulo activo, lectura y `*.calendar.create`; evento nativo, CSRF, operación y bitácora atómica; HTTP200 |
+| `PATCH /calendar/events/:id` | mismo módulo/repositorio | lectura y `*.calendar.update`, versión y alcance efectivo; no editar evento de otro origen desde la superposición |
+| `/notes` y `/notes/:id/*` | `NotesController`, `NotesService` | lectura/crear/editar propias/completar/reabrir/archivar y posición personal; permisos, ACL, versiones e idempotencia |
+| `/note-collaboration/*` | `NoteCollaborationController` | bandejas/autores, invitados, respuestas propias, menciones, seguimiento, ubicaciones e historial; sesión y ACL vigentes en servicio |
+| `/notifications` y `/notifications/*` | `NoteNotificationsController` | avisos del lector, contador y marcar lectura; no concede acceso al registro |
+| `GET /note-workflow/notes/:id` y `GET /note-workflow/overview` | `NoteWorkflowController` | responsable/vencimiento, recordatorio propio y resumen autorizado de asignadas |
+| `PUT /note-workflow/notes/:id/task` y `PUT /note-workflow/notes/:id/reminder` | mismo controlador/servicio | tarea solo por autor con permiso; cada lector administra su recordatorio, UTC/versiones/operationId |
 
 Los comandos comparten validacion estricta, CSRF, version e idempotencia; el API
 resuelve actor y autoridad de fuente. Las tablas nativas y referencias son
 independientes del proveedor. Inspeccion NetSuite devuelve payload externo solo
 en su endpoint dedicado; no modifica el contrato comercial.
 
-Identidad, auditoria, catalogos genericos y seis catalogos dedicados conservan
-sus controladores existentes. Expedientes registra consulta, no CRUD. No existe
-ruta operativa de agenda, CRUD HTTP general de Leads, oportunidades o estimaciones.
+Identidad, auditoría, catálogos genéricos y seis catálogos dedicados conservan
+sus controladores existentes. Expedientes registra consulta, no CRUD. Calendario
+sí dispone de las cuatro rutas registradas arriba; no existe CRUD HTTP comercial
+general de Leads, oportunidades o estimaciones.
 `GET /formalization/contracts/orders` tampoco esta registrado. El detalle actual
 se construye desde el seguimiento, sin inventar un endpoint `GET orders/:id`.
 Las rutas publicas/privadas exactas y sus clasificadores se contrastan en
 `test/identity/app-module-security.spec.ts`; el codigo, no el conteo historico de
 handlers citado por cortes anteriores, gobierna nuevas ampliaciones.
+
+Notas reutiliza auditoría central, recibos, colas duraderas y gateway Socket.IO;
+la entrega no depende de temporizadores del navegador. El modo single está
+probado localmente; Redis entre procesos no queda certificado sin su aceptación.
+Responsable/vencimiento compartidos, recordatorio privado, ubicaciones y
+búsqueda/historial: [66](66-Notas-Enterprise-Seguimiento.md). Una invitación no
+concede acceso al registro; el vínculo por tipo/origen/ID no depende de URL.
 
 La migracion 038 retira Eventos y citas y su permiso; no afecta los lectores de
 metricas ni `mercadeo.calendar.read`. Ver [53](53-Captacion-Leads-Reporte-Federado.md).
@@ -42,7 +71,7 @@ de venta y su persistencia interna de estados/aprobaciones. Ver documento 38.
 Desde el corte 2026-10-22 existe tambien el endpoint de lectura del contador;
 ese corte inicial no incluia mutaciones; la ampliacion 2026-10-26 registra los comandos acotados descritos en el inventario siguiente.
 
-## Inventario contrastado - 2026-10-23
+## Snapshot histórico del inventario - 2026-10-23
 
 `src/app.module.ts` registra `ApprovalSummaryModule`, `ContractSummaryModule`, `HomeSummaryModule` y `MarketingHomeModule`: resumenes de lectura. El corte posterior registra ContractTransitionModule para send/revert/set-stage y el seguimiento federado; no registra el listado contractual independiente. `src/modules/crm/marketing` contiene el resumen de leads/citas; `src/modules/crm/leads` contiene tablas e historia; `src/modules/crm/calendar` contiene tipos de tablas, sin modulo/controlador de agenda. `AuditReadController` registra el timeline nativo. El adapter legacy aporta lectores de Mercadeo, no importacion. Detalle de cobertura: [49](49-Estado-Actual-y-Cierre-Documental.md).
 
@@ -89,8 +118,8 @@ El frontend nunca decide permisos finales, estados finales, integraciones ni tra
 | `src/modules/crm/sales/estimates` | Estimaciones despues de oportunidad. | Ordenes de venta o formalizaciones. | `15`. |
 | `src/modules/crm/sales/sales-orders` | Ordenes de venta, pre-reserva, reserva y avance a contrato. | Formalizacion operativa completa. | `15`, `16`. |
 | `src/modules/crm/formalizations` | Flujo posterior de formalizacion cuando el alcance lo apruebe. | Reglas de leads iniciales. | `16`. |
-| `src/modules/crm/calendar` | Tipos de tablas actuales del esquema 034; reglas de agenda, participantes y sincronizacion futuras. | Agenda HTTP o Graph operativo por la sola existencia del esquema. | `17`, `47`. |
-| `src/modules/crm/notes` | Notas persistidas, sticky notes, anotaciones y permisos de notas. | Envio directo por Kapso/correo/Microsoft. | `18`. |
+| `src/modules/crm/calendar` | Calendario compartido registrado: contratos, permisos, controlador, servicio y repositorio de eventos nativos; lectura legacy por adaptador. | Graph/Outlook, RSVP o importar eventos por la sola existencia del esquema. | `17`, `47`, `64-Calendario-Global-API-y-Contexto`. |
+| `src/modules/crm/notes` | Notas, colaboración, avisos, sockets, workflow/recordatorios, ubicaciones e historial; autoría y ACL. | Copia legacy, adjuntos o envío directo por Kapso/correo/Microsoft. | `18`, `56`, `57`, `60`, `66`, `67`. |
 | `src/modules/crm/permissions` | Calculo de permisos efectivos, grants y denials. Delegacion temporal queda fuera de S1A. | Permisos calculados en frontend. | `05`, `09`, `21`. |
 | `src/modules/crm/audit` | Auditoria tecnica, eventos sensibles y fachada HTTP actual del timeline nativo de Leads. El lector/contrato de historia vive en `crm/leads`. | Importar historia legacy o exponer comandos comerciales sin autorizacion. | `05`, `13`, `37`, `44`. |
 | `src/modules/crm/identity/ports` | Interfaces estables para proveedores externos usados por identidad. | Implementaciones concretas. | `04`, `11`. |

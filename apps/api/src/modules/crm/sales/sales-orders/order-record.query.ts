@@ -17,6 +17,9 @@ const legacyLead =
     "id_lead id_admin_lead id_empleado_lead id_rol_lead idnetsuite_lead idinterno_lead nombre_lead email_lead telefono_lead codigo_lead proyecto_lead idproyecto_lead subsidiaria_lead idsubsidaria_lead idestadointeresado_lead estadointeresado_lead comentario_lead campana_lead idcampana_lead empresa_lead referencia_lead idreferencia_lead moneda_lead contribucion_lead estado_lead creado_lead actualizado_lead accion_lead actualizadaaccion_lead segimineto_lead id_Caida valor_segimineto_lead id_corredor seguimiento_calendar whatsapp_template_contact_sent custentityaccion_campana";
 const legacyUnit =
     "id_expediente ID_interno_expediente codigo_exp proyectoPrincipal_exp idProyectoPrincipal_exp tipoDeVivienda_exp loteM2_exp estado_exp precioVentaUncio_exp m2Habitables_exp areaTotalM2_exp cuotaMantenimientoAprox_exp planosDeUnidad_exp entregaEstimada areaDeBodegaM2_exp areaDeMezzanieM2_exp areaDeBalconM2_exp areaDePlantaBaja_exp areaDePlantaAlta_exp areaDeAmpliacion_exp areaDeTerraza_exp precioPorM2_exp tercerNivelSotano_exp areaDeParqueoAprox areaExternaJardin_exp jardinConTalud_exp areacomunLibe_exp precioDeVentaMinimo fecha_mod cron_value";
+/** Public business fields shared with the read-only audit projection; new DB columns remain private. */
+export const ORDER_RECORD_FIELDS = [...nativeOrder.split(" "), ...legacyOrder.split(" ")];
+
 type Row = Record<string, unknown>;
 
 interface TableRead {

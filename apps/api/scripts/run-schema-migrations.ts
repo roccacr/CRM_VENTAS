@@ -40,6 +40,24 @@ import { salesOrderLeadMigration } from "../migrations/schema-only/202610260035_
 import { salesOrderStageTrackingMigration } from "../migrations/schema-only/202610260036_sales_order_stage_tracking.js";
 import { formalizationStagePermissionMigration } from "../migrations/schema-only/202610260037_formalization_stage_permission.js";
 import { removeMarketingAppointmentsMigration } from "../migrations/schema-only/202610260038_remove_marketing_appointments.js";
+import { notesDomainMigration } from "../migrations/schema-only/202610270039_notes_domain.js";
+import { notesCommandsMigration } from "../migrations/schema-only/202610270040_notes_commands.js";
+import { legacyNoteContextSourceMigration } from "../migrations/schema-only/202610270041_legacy_note_context_source.js";
+import { formalizationTargetPermissionsMigration } from "../migrations/schema-only/202610270042_formalization_target_permissions.js";
+import { formalizationStageSkipPermissionMigration } from "../migrations/schema-only/202610270043_formalization_stage_skip_permission.js";
+import { notesCollaborationMigration } from "../migrations/schema-only/202610270044_notes_collaboration.js";
+import { formalizationApprovalPermissionMigration } from "../migrations/schema-only/202610280045_formalization_approval_permission.js";
+import { notesRealtimeMigration } from "../migrations/schema-only/202610280046_notes_realtime.js";
+import { formalizationBannerPermissionsMigration } from "../migrations/schema-only/202610280047_formalization_banner_permissions.js";
+import { formalizationOrderReadPermissionMigration } from "../migrations/schema-only/202610280048_formalization_order_read_permission.js";
+import { formalizationRoleWorkflowsMigration } from "../migrations/schema-only/202610280049_formalization_role_workflows.js";
+import { formalizationCatalogAccessMigration } from "../migrations/schema-only/202610280050_formalization_catalog_access.js";
+import { globalCalendarMigration } from "../migrations/schema-only/202610280051_global_calendar.js";
+import { notesLocationsMigration } from "../migrations/schema-only/202610280052_notes_locations.js";
+import { notesWorkflowMigration } from "../migrations/schema-only/202610280053_notes_workflow.js";
+import { calendarEventTypesMigration } from "../migrations/schema-only/202610290054_calendar_event_types.js";
+import { calendarRelationsMigration } from "../migrations/schema-only/202610290055_calendar_relations.js";
+import { marketingGlobalReadMigration } from "../migrations/schema-only/202610290056_marketing_global_read.js";
 import { addDatabaseTlsIssues, booleanEnvSchema, tcpPortSchema } from "../src/config/database-env.schema.js";
 import { APPROVED_DATABASE_NAME } from "../src/config/product.constants.js";
 import { buildMysqlPoolOptions } from "../src/database/mysql-pool-options.js";
@@ -109,6 +127,24 @@ export const schemaMigrations: Migration[] = [
     salesOrderStageTrackingMigration,
     formalizationStagePermissionMigration,
     removeMarketingAppointmentsMigration,
+    notesDomainMigration,
+    notesCommandsMigration,
+    legacyNoteContextSourceMigration,
+    formalizationTargetPermissionsMigration,
+    formalizationStageSkipPermissionMigration,
+    notesCollaborationMigration,
+    formalizationApprovalPermissionMigration,
+    notesRealtimeMigration,
+    formalizationBannerPermissionsMigration,
+    formalizationOrderReadPermissionMigration,
+    formalizationRoleWorkflowsMigration,
+    formalizationCatalogAccessMigration,
+    globalCalendarMigration,
+    notesLocationsMigration,
+    notesWorkflowMigration,
+    calendarEventTypesMigration,
+    calendarRelationsMigration,
+    marketingGlobalReadMigration,
 ];
 
 /** Targeted cutovers avoid replaying unrelated security repairs after a deliberate ledger reset. */

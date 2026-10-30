@@ -22,7 +22,7 @@ it("opens the shared side drawer only on a client click and requests the selecte
     render(<FormalizationRecordSummary item={order} />);
     expect(getOrderClientDetail).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole("button", { name: "Ver cliente Cliente seleccionado" }));
-    expect(screen.getByRole("dialog", { name: "Detalle del cliente" })).toBeInTheDocument();
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
     await screen.findByText("cliente@example.com");
     expect(getOrderClientDetail).toHaveBeenCalledExactlyOnceWith({ source: "legacy", id: "legacy:208" });
     fireEvent.click(screen.getByRole("button", { name: "Cerrar detalle del cliente" }));
@@ -70,4 +70,29 @@ it("does not offer an opening action if the client is missing", () => {
     render(<FormalizationRecordSummary item={{ ...order, client: null }} />);
     expect(screen.queryByRole("button", { name: /^Ver cliente/ })).not.toBeInTheDocument();
     expect(getOrderClientDetail).not.toHaveBeenCalled();
+});
+it("offers the profile button, disabled until the profile screen exists, and active once it is given", () => {
+    const open = vi.fn();
+    const view = render(<FormalizationClientDrawer item={order} open onClose={() => {}} />);
+    expect(screen.getByRole("button", { name: /Ver perfil del cliente/ })).toBeDisabled();
+    view.rerender(<FormalizationClientDrawer item={order} open onClose={() => {}} onOpenProfile={open} />);
+    fireEvent.click(screen.getByRole("button", { name: /Ver perfil del cliente/ }));
+    expect(open).toHaveBeenCalledOnce();
+});
+
+it("shows the linked history below capture and loads the next page without duplicates", async () => {
+    const entry = { id: "legacy:1", source: "legacy", action: "Seguimiento", detail: "Nota histórica", reason: { code: "legacy:58", name: "Cierre Firmado" }, actorName: null, actorCoverage: "current_directory", occurredAt: null, sourceDate: "2026-10-01 10:00:00", recordedAt: null, evidence: "legacy_observation", fromStatus: null, toStatus: null };
+    const groups = [...detail.groups, { title: "Captación y seguimiento", fields: [] }];
+    vi.mocked(getOrderClientDetail)
+        .mockResolvedValueOnce({ ...detail, groups, history: { items: [entry], hasMore: true, nextCursor: "cursor" } })
+        .mockResolvedValueOnce({ ...detail, groups, history: { items: [entry, { ...entry, id: "native:2", source: "native", detail: "Cambio nuevo", actorName: "Ana", actorCoverage: "at_event" }], hasMore: false, nextCursor: null } });
+    render(<FormalizationClientDrawer item={order} open onClose={() => {}} />);
+    await screen.findByText("Nota histórica");
+    expect(screen.getByText("Cierre Firmado")).toBeInTheDocument();
+    expect(screen.getByText("Responsable no registrado")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Cargar más registros" }));
+    await screen.findByText("Cambio nuevo");
+    expect(screen.getAllByText("Nota histórica")).toHaveLength(1);
+    expect(getOrderClientDetail).toHaveBeenLastCalledWith({ source: "legacy", id: "legacy:208" }, "cursor");
+    expect(screen.queryByRole("button", { name: "Cargar más registros" })).not.toBeInTheDocument();
 });

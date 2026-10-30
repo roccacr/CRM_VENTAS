@@ -118,3 +118,22 @@ it.each([
     expect(f.queries[0]?.sql).toContain("FOR UPDATE");
     expect(f.queries.some((q) => /UPDATE ordenventa|INSERT/.test(q.sql))).toBe(false);
 });
+
+it("locks and maps legacy approvals without exposing raw flags", async () => {
+    const f = setup({}, [{ id: "901", netsuiteId: "123", active: 1, prerequisitesApproved: 1, formalization: 0 }]);
+    await expect(f.writer.lockApproval(f.tx, "901")).resolves.toEqual({ id: "901", netsuiteId: "123", active: true, prerequisitesApproved: true, formalization: "not_approved" });
+    expect(f.queries[0]?.sql).toContain("FOR UPDATE");
+});
+it("updates only the legacy Formalization flag on the caller transaction", async () => {
+    const f = setup();
+    await f.writer.approveFormalization(f.tx, "901");
+    expect(f.queries).toHaveLength(1);
+    expect(f.queries[0]?.sql).toBe("UPDATE `crmdatabase-api`.ordenventa SET aprobacion_forma_ov=1 WHERE id_ov=?");
+    expect(f.queries[0]?.parameters).toEqual([901]);
+});
+it("blocks both approval operations before SQL when legacy writes are disabled", async () => {
+    const f = setup({ ENABLE_LEGACY_WRITES: false });
+    await expect(f.writer.lockApproval(f.tx, "901")).rejects.toMatchObject({ status: 503 });
+    await expect(f.writer.approveFormalization(f.tx, "901")).rejects.toMatchObject({ status: 503 });
+    expect(f.executeQuery).not.toHaveBeenCalled();
+});

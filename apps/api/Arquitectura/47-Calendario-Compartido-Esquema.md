@@ -1,5 +1,11 @@
 # 47 - Calendario compartido: esquema nativo
 
+Actualización29/10: migración055 aplicada y verificada, añade fuente native/legacy al vínculo sin reemplazar sus filas. Participantes y relaciones se gestionan desde el formulario común y se auditan con el evento. Identidades, permisos y límites: [68](68-Calendario-Participantes-y-Vinculos.md).
+
+## Actualización vigente — 28/10/2026
+
+El corte de calendario global añade lectura por intervalos, superposición de módulos autorizados y creación/edición nativa auditada. La migración051 configura tipos y permisos; el contexto legacy se amplía de forma aditiva sin clasificar eventos históricos. Contrato y límites actuales: [64 - Calendario global](64-Calendario-Global-API-y-Contexto.md). Las restricciones de editor HTTP que siguen abajo describen el corte histórico del 27/10; Outlook, RSVP y campana de eventos siguen pendientes.
+
 ## Corte de lectura operativa - 2026-10-27
 
 El calendario sigue teniendo esquema nativo sin editor/commands HTTP, RSVP,

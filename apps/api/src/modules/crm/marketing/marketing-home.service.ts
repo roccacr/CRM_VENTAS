@@ -5,6 +5,7 @@ import { createMarketingWindow, marketingHomeQuery, type MarketingHomeSummary } 
 import { buildMarketingHome } from "./marketing-home.model.js";
 import { MARKETING_HOME_LEGACY_READER, type MarketingHomeLegacyReader } from "./marketing-home.port.js";
 import { MarketingHomeRepository } from "./marketing-home.repository.js";
+import { hasGlobalMarketingRead } from "./marketing-read.policy.js";
 
 /** Authorizes before either source; reads native first and never falls back to fictitious or partial counters. */
 @Injectable()
@@ -36,13 +37,14 @@ export class MarketingHomeService {
                 const native = await this.repository.readNative(tx, window);
                 const enabled = this.legacy.enabled();
                 const legacy = enabled ? await this.legacy.read(tx, window) : { provider: "netsuite", rows: [], owners: [] };
-                const sellerScope = allowed.some((permission) => permission.scope === "all_areas")
-                    ? undefined
-                    : await this.repository.visibleSellers(
-                          tx,
-                          profile,
-                          allowed.map((permission) => permission.scope),
-                      );
+                const sellerScope =
+                    hasGlobalMarketingRead(profile) || allowed.some((permission) => permission.scope === "all_areas")
+                        ? undefined
+                        : await this.repository.visibleSellers(
+                              tx,
+                              profile,
+                              allowed.map((permission) => permission.scope),
+                          );
                 return buildMarketingHome(native, legacy, window, { observedAt: now, legacyEnabled: enabled, ...(sellerScope ? { sellerScope } : {}) });
             });
         } catch {

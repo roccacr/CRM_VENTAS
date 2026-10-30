@@ -9,6 +9,7 @@ import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { configureHttpApp } from "../../src/bootstrap/configure-http-app.js";
 import { AuthGuard } from "../../src/common/security/auth.guard.js";
 import { CsrfGuard } from "../../src/common/security/csrf.guard.js";
+import { createSignedCsrfToken } from "../../src/common/security/csrf-token.js";
 import { SESSION_COOKIE_NAME } from "../../src/common/security/http-security.constants.js";
 import { MicrosoftMsalCacheCryptoService } from "../../src/common/security/microsoft-msal-cache-crypto.service.js";
 import { ROUTE_SECURITY_METADATA } from "../../src/common/security/route-security.decorator.js";
@@ -33,6 +34,8 @@ import { IdentityProfileRepository } from "../../src/modules/crm/identity/identi
 import { IdentitySessionRepository } from "../../src/modules/crm/identity/identity-session.repository.js";
 import { IdentityTokenService } from "../../src/modules/crm/identity/identity-token.service.js";
 import { IdentityUserDirectoryRepository } from "../../src/modules/crm/identity/identity-user-directory.repository.js";
+import { NotesRepository } from "../../src/modules/crm/notes/notes.repository.js";
+import { NotesService } from "../../src/modules/crm/notes/notes.service.js";
 import { EffectivePermissionService } from "../../src/modules/crm/permissions/effective-permission.service.js";
 import { ProjectsController } from "../../src/modules/crm/projects/projects.controller.js";
 import { ProjectsRepository } from "../../src/modules/crm/projects/projects.repository.js";
@@ -242,7 +245,7 @@ describe("Cableado de seguridad del AppModule", () => {
                 .filter(({ classification }) => classification === "public")
                 .map(({ route }) => route)
                 .sort(),
-        ).toEqual(["GET /health/live", "GET /health/ready", "GET /identity/microsoft/callback", "GET /identity/session", "POST /identity/local/complete-reset", "POST /identity/local/login", "POST /identity/local/request-reset", "POST /identity/logout", "POST /identity/microsoft/start", "POST /identity/refresh"].sort());
+        ).toEqual(["POST /integrations/netsuite/local/order-events", "GET /health/live", "GET /health/ready", "GET /identity/microsoft/callback", "GET /identity/session", "POST /identity/local/complete-reset", "POST /identity/local/login", "POST /identity/local/request-reset", "POST /identity/logout", "POST /identity/microsoft/start", "POST /identity/refresh"].sort());
     });
 
     it("authenticates before reaching the dedicated Projects controller", async () => {
@@ -254,6 +257,49 @@ describe("Cableado de seguridad del AppModule", () => {
             expect(handler).not.toHaveBeenCalled();
         } finally {
             handler.mockRestore();
+        }
+    });
+
+    it.each(["/notes?moduleCode=mercadeo", "/notes/01K00000000000000000000000?moduleCode=mercadeo", "/notes/01K00000000000000000000000/history?moduleCode=mercadeo"])("authenticates Notes before resource queries: %s", async (url) => {
+        const find = vi.spyOn(getApp().get(NotesRepository), "find");
+        try {
+            expect((await getApp().inject({ method: "GET", url })).statusCode).toBe(401);
+            expect(find).not.toHaveBeenCalled();
+        } finally {
+            find.mockRestore();
+        }
+    });
+
+    it("enforces Notes permission and CSRF before mutation and rejects caller-supplied authors", async () => {
+        const profile: IdentityProfile = {
+            auth: { availableProviders: ["local"], currentProvider: "local", localStatus: "active", microsoft: null, primaryProvider: "microsoft" },
+            orgUnits: [],
+            roles: [],
+            permissions: ["read", "create"].map((action) => ({ code: `mercadeo.notes.${action}`, effect: "allow", scope: "assigned", source: "role" })),
+            session: { expiresAt: new Date(Date.now() + 60000).toISOString(), expiresInSeconds: 60, permissionVersion: 1, publicId: "notes-session", status: "active" },
+            user: { displayName: "Actor", email: "actor@example.test", permissionVersion: 1, profileImageUrl: null, publicId: "notes-actor", status: "active" },
+        };
+        const profileRead = vi.spyOn(getApp().get(IdentityRepository), "findBySessionTokenHash").mockResolvedValue(profile);
+        const create = vi.spyOn(getApp().get(NotesRepository), "create").mockResolvedValue({ noteId: "01K00000000000000000000000", version: 1, replayed: false });
+        const service = vi.spyOn(getApp().get(NotesService), "create");
+        const session = "notes-request-token";
+        const csrf = createSignedCsrfToken("test-cookie-secret-for-crm-think-v2", session);
+        const payload = { moduleCode: "mercadeo", operationId: "notes_operation_0001", text: "Prueba solo con dobles", context: { kind: "personal" } };
+        try {
+            expect((await getApp().inject({ method: "POST", url: "/notes", headers: { cookie: `crm_session=${session}` }, payload })).statusCode).toBe(403);
+            expect(service).not.toHaveBeenCalled();
+            const headers = { cookie: `crm_session=${session}; crm_csrf=${csrf}`, "x-crm-csrf-token": csrf, origin: "http://localhost:5173" };
+            expect((await getApp().inject({ method: "POST", url: "/notes", headers, payload: { ...payload, authorUserId: "someone-else" } })).statusCode).toBe(400);
+            expect(create).not.toHaveBeenCalled();
+            expect((await getApp().inject({ method: "POST", url: "/notes", headers, payload })).statusCode).toBe(201);
+            expect(create).toHaveBeenCalledOnce();
+            profileRead.mockResolvedValue({ ...profile, permissions: [...profile.permissions, { code: "mercadeo.notes.create", effect: "deny", scope: null, source: "override" }] });
+            expect((await getApp().inject({ method: "POST", url: "/notes", headers, payload })).statusCode).toBe(403);
+            expect(create).toHaveBeenCalledOnce();
+        } finally {
+            profileRead.mockRestore();
+            create.mockRestore();
+            service.mockRestore();
         }
     });
 

@@ -25,7 +25,7 @@ import { useCaptureReport } from "./useCaptureReport";
 /** The breakdown modal is as wide as its tables: one table is not stretched over the whole screen, three use it. */
 const BREAKDOWN_WIDTH: Record<CaptureDepth, number> = { 1: 760, 2: 1200, 3: 1700 };
 
-const MEASURE_HINTS:Record<CaptureMeasure, string> = {
+const MEASURE_HINTS: Record<CaptureMeasure, string> = {
     leads: "Leads registrados en el periodo, todos los vendedores elegidos juntos. A la derecha, cada columna es un vendedor, en la misma escala.",
     appointments: "Con cita = Programada + Realizada. Cada lead cuenta una sola vez: realizada tiene prioridad sobre programada. Con cita + Sin cita = Total de leads captados; no se cuentan eventos.",
     lost: "Leads que hoy están en etapa Perdido, y qué porcentaje son de los leads del mismo grupo. El gráfico compara los perdidos de cada vendedor.",

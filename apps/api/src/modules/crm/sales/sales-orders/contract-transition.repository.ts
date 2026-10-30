@@ -14,6 +14,8 @@ import { CONTRACT_TRANSITION_LEGACY, type ContractEvent, type ContractOrder, typ
 /** Validated command plus server-derived context (actor, correlation id, network metadata); none of it comes from the client. */
 export interface ContractTransitionCommand extends ContractTransitionDto {
     action: ContractAction;
+    /** Trusted capability derived from the live profile, never from the request body. */
+    canSkipStages?: boolean;
     actorPublicId: string;
     /** Server-derived only. Omission keeps internal callers owner-only, never unrestricted. */
     ownOnly?: boolean;
@@ -118,9 +120,10 @@ export class ContractTransitionRepository {
         const sequence = previous.sequence;
         const current = this.assertTransition(command, resolved.order, last);
         const snapshot = await this.audit.captureActor(tx, actor.id_user);
-        // The prior logical state is known, but its historical entry date may not be.
+        // The first stored visit has no previous stored visit (both schemas require a NULL predecessor).
+        // Central audit below retains the known logical before/after; no historical visit/date is invented.
         // The authenticated changer takes initial responsibility for the new visit; seller remains separate.
-        const event = { sequence: sequence + 1, from: current, state: target, actor: snapshot.publicId, actorSnapshot: snapshot, responsibleSnapshot: snapshot, reason: command.reason, operationId: command.operationId, correlationId: command.correlationId };
+        const event = { sequence: sequence + 1, from: sequence === 0 ? null : current, state: target, actor: snapshot.publicId, actorSnapshot: snapshot, responsibleSnapshot: snapshot, reason: command.reason, operationId: command.operationId, correlationId: command.correlationId };
         if (resolved.native) await this.appendNative(tx, resolved.native.id_sales_order, { id: actor.id_user, snapshot }, event);
         else await this.legacy.append(tx, resolved.order.id, event);
         await this.appendCentral(tx, { command, resolved, actor: snapshot, before: current, after: target, sequence });
@@ -166,15 +169,21 @@ export class ContractTransitionRepository {
         return current;
     }
 
-    /** Jumps are explicitly allowed; reversals retain a required reason and every visit. */
+    /** Sequential by default; exceptional jumps require a server-derived capability and reason. */
     private assertSelectedStage(command: ContractTransitionCommand, current: string, order: ContractOrder): void {
         const target = contractTarget(command);
         if (current === target) throw new ConflictException("Order is already in that stage");
         const before = FORMALIZATION_STAGE_CODES.findIndex((code) => code === current);
         const after = FORMALIZATION_STAGE_CODES.findIndex((code) => code === target);
         if (before < 0) throw new ConflictException("Unknown current stage");
-        this.assertBankingPrerequisites(order, before, after);
+        this.assertBankingPrerequisites(order, command.canSkipStages === true ? 1 : before, after);
+        if (after !== before + 1) this.assertExceptionalStage(command);
         if (after < before && !command.reason.trim()) throw new ConflictException("Reversal reason required");
+    }
+
+    private assertExceptionalStage(command: ContractTransitionCommand): void {
+        if (command.canSkipStages !== true) throw new ForbiddenException("Se requiere permiso para saltar etapas de Formalización");
+        if (!command.reason.trim()) throw new ConflictException("Se requiere un motivo para el cambio excepcional");
     }
 
     /** Firma observada is a prerequisite, never an ERP mutation or a substitute for registering send. */

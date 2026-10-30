@@ -1,12 +1,34 @@
 # AGENTS.md - CRM Enterprise API
 
-Revision documental vigente 2026-10-27: [55](Arquitectura/55-Revision-Documental-Integral-20261027.md).
+## Corte vigente de notas y QA - 2026-10-29
+
+Notas personales, colaboración por invitación, campana interna y Socket.IO están
+registrados en NotesModule; sus trabajadores duraderos están implementados.
+Las extensiones052/053 agregan Homes adicionales, responsable, vencimiento y
+recordatorios personales. Contrato de seguimiento: [66](Arquitectura/66-Notas-Enterprise-Seguimiento.md).
+La autorización de la nota y la del registro comercial son independientes:
+compartir no concede acceso a la orden; sin ese acceso no se expone su contexto.
+Se admiten invitaciones a cuentas active/inactive/pending, sin activar cuentas ni
+conceder roles. La entrega y lectura revalidan ACL/capacidades y denies.
+
+[67 - QA del 29](Arquitectura/67-Plan-QA-Regresiones-20261029.md) registra API6524
+aprobadas/151 omitidas, frontend1233 y32 casos SQL/socket separados; son evidencia
+del corte, no resultados nuevos por editar Markdown. Redis multinodo, carga/latencia
+y aceptación visual con dos cuentas reales siguen pendientes. No importar datos,
+activar copia legacy, adjuntos, correo externo ni despliegues por esta documentación.
+Los apartados fechados siguientes conservan la cronología de autorizaciones.
+
+Corte histórico de etapas1/2, sustituido en notas por el corte29:039/040, API protegida por modulo,
+autoria exclusiva, UTC explicito, versiones/idempotencia y auditoria atomica.
+Plan56/contrato57/diccionario12. No importar datos legacy. La interfaz personal esta autorizada en etapa3; no activar
+campanita, trabajadores de outbox ni copia legacy. Sin triggers.
+
+Revision documental histórica 2026-10-27: [55](Arquitectura/55-Revision-Documental-Integral-20261027.md).
 Los bloques fechados siguientes son cronologia. El runtime actual registra
 seguimiento y comandos de Formalizacion (ContractTransitionModule), lectura
 NetSuite (NetsuiteModule) y Captacion federada. Cada accion conserva sus permisos
 y gates; esta revision no autoriza operarlas. Eventos y citas/permiso
 mercadeo.appointments.read fueron retirados por038. Calendario y metricas siguen.
-
 
 Ampliacion autorizada 2026-10-26: Captacion usa `GET /marketing/leads/report`
 con `mercadeo.leads.read`, scopes y deny, nativa primero y legacy opcional de solo
@@ -231,14 +253,14 @@ If a class has zero constructor dependencies, `@Inject(...)` is not required. An
 Forbidden inside `src/modules/crm/`:
 
 ```ts
-import { NetSuiteClient } from '../../integrations/netsuite';
-import { OdooClient } from '../../integrations/odoo';
+import { NetSuiteClient } from "../../integrations/netsuite";
+import { OdooClient } from "../../integrations/odoo";
 ```
 
 Allowed inside CRM core modules when an approved ERP slice exists:
 
 ```ts
-import { ERPIntegrationPort } from '../ports/erp-integration.port';
+import { ERPIntegrationPort } from "../ports/erp-integration.port";
 ```
 
 The CRM core only speaks to external systems through stable domain ports. Do not import adapter clients from `src/integrations/**` into CRM modules.
@@ -413,7 +435,6 @@ Before saying the backend work is complete:
 3. Run the available lint, typecheck, tests, and build commands when a runtime exists.
 4. Report exactly what passed, failed, or could not be run.
 
-
 ## Authorized Marketing Home read extension - 2026-10-23
 
 The owner authorized real lead aggregates for Marketing Home through
@@ -426,3 +447,11 @@ This scoped authorization supersedes historical mock-only restrictions for this
 summary only; it authorizes no imports, business mutations, migrations or deployment.
 API contract and verification: `apps/api/Arquitectura/46-Mercadeo-Resumen-Leads.md`
 (relative to the repository root).
+
+Etapa3 autorizada2026-10-27: interfaz personal implementada en frontend; IdentityProfileRepository agrega base self para notas activas dentro de modulos efectivos existentes, conservando deny. Sin migracion/grants masivos; contrato58. Compartir y avisos internos implementados en etapa4 (contrato60); entregas externas y copia legacy pendientes.
+
+Correccion de notas vigente: contrato59 amplia creacion personal a cualquier pantalla y relacion opcional con vistas registradas/ordenes native o legacy.041 solo registra origen externo; sin importar registros. Revalidar acceso incluso Home omitido; vincular no cambia ACL ni activa notificaciones/copia.
+
+Etapa4 autorizada2026-10-27: colaboración y campana interna implementadas, contrato60.044 agrega versiones de colaboración, sec_notification y20 definiciones sin grants comerciales. NotesModule activa solo worker note_collaboration/notification con autorización vigente; no consumir histórico etapa2 ni legacy_projection. No correo ni copia legacy.
+
+Notas: estado vigente y precedencia en Arquitectura/62-Notas-Tiempo-Real-Implementacion.md. No volver a exigir acceso al registro para leer una nota explícitamente compartida; redactar context=null cuando corresponda. El transporte nunca reemplaza REST ni ACL.

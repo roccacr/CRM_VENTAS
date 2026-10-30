@@ -1,358 +1,135 @@
-/* Calendario con el patrón de Proyectos: un marco 200, barra 50 con controles de 40px, mes y agenda en la misma superficie. */
-.formalization-calendar {
-    color: var(--color-neutral-700);
-    font-family: var(--font-body);
-    font-size: 13px;
-    line-height: 1.5;
-}
-
+/* Scope the installed calendar theme to the existing CRM surface; no global widget overrides. */
 .formalization-calendar__surface {
-    margin-top: var(--space-4);
+    --fc-monarch-primary: #303c4e;
+    --fc-monarch-primary-over: #42516a;
+    --fc-monarch-primary-down: #202b3b;
+    --fc-monarch-secondary: #edf1f6;
+    --fc-monarch-secondary-foreground: #303c4e;
+    --fc-monarch-border: #d2dae5;
+    --fc-monarch-highlight: #edf3f9;
+    min-width: 0;
+    padding: 18px;
+    overflow-x: auto;
+    border: 1px solid #d2dae5;
+    border-radius: 8px;
+    background: #fff;
+}
+.formalization-calendar__surface > div {
+    min-width: 620px;
+    font-family: inherit;
+    font-size: 13px;
+}
+@media (max-width: 700px) {
+    .formalization-calendar__surface {
+        padding: 10px;
+    }
 }
 
-.formalization-calendar__toolbar .ant-segmented {
-    flex: none;
-    padding: 2px;
-    border: 1px solid var(--formalization-border);
-    border-radius: var(--radius);
-    background: var(--color-neutral-100);
+/*
+ * Enterprise skin for the shared calendar, on the same contract as the record pages: neutral scale, 8px frame, 40px band with the controls,
+ * 13px text, compact 30px buttons, a dark selected state. The calendar widget keeps its behaviour; only its look is set here.
+ */
+.formalization-calendar__surface {
+    --fc-monarch-now: #303c4e;
+    --fc-monarch-border: #d2dae5;
+    --fc-monarch-highlight: #f5f7fa;
+    padding: 0;
+    overflow: hidden;
+    border-color: #d2dae5;
 }
-
-.formalization-calendar__toolbar .ant-segmented-item {
-    border-radius: 6px;
-    color: var(--formalization-muted);
+.formalization-calendar__surface .cal-toolbar {
+    gap: 12px;
+    padding: 8px 12px;
+    border-bottom: 1px solid #d2dae5;
+    background: #eef2f7;
+}
+.formalization-calendar__surface .cal-title {
+    margin: 0 0 0 4px;
+    color: #2f3a4b;
+    font-size: 15px;
     font-weight: 600;
+    line-height: 1.3;
 }
-
-.formalization-calendar__toolbar .ant-segmented-item-label {
-    min-height: 34px;
-    padding: 0 var(--space-3);
-    line-height: 34px;
+.formalization-calendar__surface .cal-title::first-letter {
+    text-transform: uppercase;
 }
-
-.formalization-calendar__toolbar .ant-segmented-item-selected {
-    box-shadow: 0 0 0 1px var(--formalization-border);
-    color: var(--color-neutral-900);
-}
-
-.formalization-calendar__toolbar .ant-segmented-item:focus-visible {
-    outline: 2px solid var(--formalization-focus);
-    outline-offset: 2px;
-}
-
-.formalization-calendar__order-field {
-    flex-basis: 300px;
-}
-
-/* Confirmación de guardado: par de éxito; vacía no ocupa espacio. */
-.formalization-calendar__notice {
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
-    width: fit-content;
-    margin: var(--space-4) 0 0;
-    padding: var(--space-2) var(--space-3);
-    border: 1px solid var(--formalization-border);
-    border-radius: var(--radius);
-    background: var(--color-success-light);
-    color: var(--color-success);
+.formalization-calendar__surface .cal-btn {
+    height: 30px;
+    padding: 0 12px;
+    border: 1px solid #c3ccd9;
+    border-radius: 6px;
+    background: #ffffff;
+    color: #2f3a4b;
     font-size: 13px;
     font-weight: 600;
+    box-shadow: none;
 }
-
-.formalization-calendar__notice:empty {
-    display: none;
+.formalization-calendar__surface .cal-btn:hover {
+    border-color: #8fa1b8;
+    background: #f5f7fa;
 }
-
-.formalization-calendar__workspace {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) 320px;
-    align-items: stretch;
-    min-width: 0;
+.formalization-calendar__surface .cal-btn[aria-pressed="true"],
+.formalization-calendar__surface .cal-btn[aria-current="true"],
+.formalization-calendar__surface .cal-btn[data-selected="true"] {
+    border-color: #303c4e;
+    background: #303c4e;
+    color: #ffffff;
 }
-
-.formalization-calendar__workspace--agenda {
-    grid-template-columns: minmax(0, 1fr);
-}
-
-.formalization-calendar__month {
-    min-width: 0;
-}
-
-.formalization-calendar__month-scroll {
-    overflow-x: auto;
-}
-
-.formalization-calendar__month .ant-picker-calendar {
-    min-width: 630px;
-    padding: 0 var(--space-4) var(--space-4);
+.formalization-calendar__surface .cal-btngroup {
+    gap: 4px;
+    border: 0;
+    border-radius: 6px;
     background: transparent;
 }
-
-.formalization-calendar__month-head {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--space-3);
-    margin: 0 calc(var(--space-4) * -1) var(--space-2);
-    padding: var(--space-3) var(--space-4);
-    border-bottom: 1px solid var(--formalization-border);
-}
-
-.formalization-calendar__month-head h2 {
-    margin: 0;
-    color: var(--color-neutral-900);
-    font-size: 14px;
+.formalization-calendar__surface .cal-dayhead {
+    padding: 8px 0;
+    background: #f5f7fa;
+    color: #496180;
+    font-size: 11.5px;
     font-weight: 600;
-    text-transform: capitalize;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
 }
-
-.formalization-calendar__month-head > div {
-    display: flex;
-    gap: var(--space-2);
-}
-
-.formalization-calendar__month .ant-picker-content th {
-    color: var(--color-neutral-700);
+.formalization-calendar__surface .cal-day {
     font-size: 12px;
-    font-weight: 650;
 }
-
-.formalization-calendar__month .ant-picker-calendar-date {
-    border-top-color: var(--formalization-border);
-}
-
-.formalization-calendar__month .ant-picker-calendar-date-value {
-    color: var(--color-neutral-900);
-    font-variant-numeric: tabular-nums;
-}
-
-.formalization-calendar__month .ant-picker-calendar-date-content {
-    height: 82px;
-}
-
-.formalization-calendar__cell-events {
-    display: grid;
-    gap: var(--space-1);
-}
-
-/* Eventos en celda: neutros, con la reunión marcada por 950 y la tarea por 500; nunca solo por color. */
-.formalization-calendar__cell-event {
-    width: 100%;
-    padding: 2px 6px;
-    overflow: hidden;
-    border: 1px solid var(--formalization-border);
-    border-left: 3px solid var(--color-neutral-950);
+.formalization-calendar__surface .cal-event {
     border-radius: 4px;
-    background: var(--color-neutral-100);
-    color: var(--color-neutral-900);
-    font: inherit;
     font-size: 12px;
     font-weight: 500;
-    text-align: left;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    cursor: pointer;
 }
 
-.formalization-calendar__cell-event--task {
-    border-left-color: var(--color-neutral-500);
-    background: var(--color-surface);
+/* Grid detail: weekend shading, a legible today cell, bordered event chips and week numbers. */
+.formalization-calendar__surface .cal-day {
+    min-height: 110px;
+    padding: 4px;
+}
+.formalization-calendar__surface .cal-day:nth-child(7n),
+.formalization-calendar__surface .cal-day:nth-child(7n - 1) {
+    background: #fafbfd;
+}
+.formalization-calendar__surface .cal-event {
+    border-left: 3px solid rgba(0, 0, 0, 0.28);
+    padding: 1px 6px;
+    box-shadow: 0 1px 1px rgba(47, 58, 75, 0.12);
+}
+.formalization-calendar__surface .cal-title {
+    letter-spacing: -0.005em;
 }
 
-.formalization-calendar__cell-event--completed {
-    border-color: var(--formalization-border);
-    border-left-color: var(--color-success);
-    background: var(--color-success-light);
-    color: var(--color-success);
+/* Fit the viewport instead of scrolling the page, one neutral accent for "today", day numbers at the top right like Outlook. */
+.formalization-calendar__surface {
+    --fc-monarch-tertiary: #303c4e;
+    --fc-monarch-tertiary-over: #42516a;
+    --fc-monarch-tertiary-down: #202b3b;
+    height: clamp(560px, calc(100vh - 330px), 860px);
+    overflow: hidden;
 }
-
-.formalization-calendar__cell-event--cancelled,
-.formalization-calendar__event--cancelled strong {
-    color: var(--formalization-muted);
-    text-decoration: line-through;
-}
-
-.formalization-calendar__cell-event:hover {
-    border-color: var(--color-neutral-950);
-}
-
-/* Agenda: columna lateral dentro del mismo marco, con franja 50 de 40px. */
-.formalization-calendar__agenda {
+.formalization-calendar__surface > div {
     min-width: 0;
-    border-left: 1px solid var(--formalization-border);
-    background: var(--color-surface);
+    height: 100%;
 }
-
-.formalization-calendar__workspace--agenda .formalization-calendar__agenda {
-    border-left: 0;
-}
-
-.formalization-calendar__agenda-head {
-    box-sizing: border-box;
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--space-1) var(--space-3);
-    min-height: 40px;
-    padding: var(--space-2) var(--space-4);
-    border-bottom: 1px solid var(--formalization-border);
-    background: var(--color-neutral-50);
-}
-
-.formalization-calendar__agenda-head h2 {
-    margin: 0;
-    color: var(--color-neutral-900);
-    font-size: 14px;
-    font-weight: 600;
-}
-
-.formalization-calendar__agenda-head > span {
-    color: var(--formalization-muted);
-    font-size: 12px;
-    text-transform: capitalize;
-}
-
-.formalization-calendar__events {
-    margin: 0;
-    padding: 0;
-    list-style: none;
-}
-
-.formalization-calendar__events li + li {
-    border-top: 1px solid var(--formalization-border);
-}
-
-.formalization-calendar__event {
-    display: grid;
-    gap: var(--space-1);
-    width: 100%;
-    padding: var(--space-3) var(--space-4);
-    border: 0;
-    background: var(--color-surface);
-    color: var(--color-neutral-700);
-    font: inherit;
-    font-size: 13px;
-    text-align: left;
-    overflow-wrap: anywhere;
-    cursor: pointer;
-    transition: background-color 140ms ease;
-}
-
-.formalization-calendar__event:hover {
-    background: var(--color-neutral-100);
-}
-
-.formalization-calendar__event strong {
-    color: var(--color-neutral-900);
-    font-size: 14px;
-    font-weight: 650;
-}
-
-.formalization-calendar__event-time,
-.formalization-calendar__event-order {
-    color: var(--formalization-muted);
-    font-size: 12px;
-    font-variant-numeric: tabular-nums;
-}
-
-.formalization-calendar__event-time {
-    font-weight: 600;
-}
-
-.formalization-calendar__event-order {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: var(--space-2);
-}
-
-.formalization-calendar__event-meta {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--space-2);
-    margin-top: var(--space-1);
-}
-
-.formalization-calendar__kind {
-    color: var(--color-neutral-700);
-    font-size: 12px;
-    font-weight: 600;
-}
-
-.formalization-calendar .formalization-calendar__status--completed {
-    background: var(--color-success-light);
-    color: var(--color-success);
-}
-
-.formalization-calendar .formalization-calendar__status--completed::before {
-    background: var(--color-success);
-}
-
-.formalization-calendar__empty {
-    padding: var(--space-6) var(--space-4);
-    color: var(--formalization-muted);
-    text-align: center;
-}
-
-.formalization-calendar__empty > .anticon {
-    color: var(--color-neutral-500);
-    font-size: 24px;
-}
-
-.formalization-calendar__empty h3 {
-    margin: var(--space-2) 0 var(--space-1);
-    color: var(--color-neutral-900);
-    font-size: 14px;
-    font-weight: 600;
-}
-
-.formalization-calendar__empty p {
-    margin: 0;
-    font-size: 12px;
-}
-
-.formalization-calendar__event:focus-visible,
-.formalization-calendar__cell-event:focus-visible {
-    outline: 2px solid var(--formalization-focus);
-    outline-offset: -2px;
-}
-
-@media (max-width: 1100px) {
-    .formalization-calendar__workspace {
-        grid-template-columns: minmax(0, 1fr);
-    }
-    .formalization-calendar__agenda {
-        border-top: 1px solid var(--formalization-border);
-        border-left: 0;
-    }
-}
-
-@media (max-width: 767px) {
-    .formalization-calendar__toolbar .ant-segmented {
-        width: 100%;
-    }
-    .formalization-calendar__toolbar .ant-segmented-item {
-        flex: 1;
-    }
-    .formalization-calendar__toolbar .ant-segmented-item-label {
-        min-height: 38px;
-        line-height: 38px;
-    }
-    .formalization-calendar__event {
-        padding: var(--space-4);
-    }
-    .formalization-calendar__month-head .ant-btn {
-        min-width: 44px;
-        min-height: 44px;
-    }
-}
-
-@media (prefers-reduced-motion: reduce) {
-    .formalization-calendar__event {
-        transition: none;
-    }
+.formalization-calendar__surface .cal-daytop {
+    justify-content: flex-end;
+    padding: 2px 4px 0;
 }

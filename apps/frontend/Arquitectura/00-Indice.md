@@ -1,5 +1,27 @@
 # 00 - Indice de Arquitectura Frontend
 
+Implementación y verificación local: [68 API - Vincular notas a clientes/leads y órdenes](../../api/Arquitectura/68-Plan-Notas-Vinculos-Clientes-y-Ordenes.md).
+Incluye selectores sin elegir BD y resumen en tarjetas, hojas y conversación.
+
+Estado vigente del 29/10: [30 - Inventario frontend](30-Estado-Frontend-Verificado.md)
+y [16 - Notas personales y colaborativas](16-UX-Notas-Adhesivas-y-Anotaciones.md).
+El [QA67](../../api/Arquitectura/67-Plan-QA-Regresiones-20261029.md) registra
+correcciones de expectativas de permisos/navegación, checks de proyecto aprobados
+y límites pendientes de Redis, carga y aceptación con dos cuentas reales.
+Los cortes fechados inferiores conservan valor histórico; no describen el
+calendario ni las notas actuales como simples maquetas o etapas pendientes.
+
+Notas: [66 - Seguimiento colaborativo](../../api/Arquitectura/66-Notas-Enterprise-Seguimiento.md) documenta responsables,
+vencimientos, recordatorios personales, ubicaciones e historial con migraciones052/053.
+
+Correcciones vigentes de Formalización: [65 - Roles y recuperación](../../api/Arquitectura/65-Formalizacion-Correcciones-Roles-y-Recuperacion.md).
+Ambos roles gestionan todas las órdenes con permiso; se corrige actualización
+posterior, revocación, operación incierta y recorrido visual.
+
+Detalle de Formalización 2026-10-28: [Ver orden de venta](../../api/Arquitectura/64-Formalizacion-Permiso-Ver-Orden.md)
+es independiente de los permisos de banners/listas. Una URL directa usa lectura
+exacta del registro, sin solicitar el listado general.
+
 Cierre transversal y límites de verificación: [55 - Revisión documental integral](../../api/Arquitectura/55-Revision-Documental-Integral-20261027.md).
 
 ## Estado contrastado - 2026-10-27
@@ -225,3 +247,22 @@ This scoped authorization supersedes historical mock-only restrictions for this
 summary only; it authorizes no imports, business mutations, migrations or deployment.
 API contract and verification: `apps/api/Arquitectura/46-Mercadeo-Resumen-Leads.md`
 (relative to the repository root).
+
+
+Lectura de orden ampliada 2026-10-27: [56 API - Bitácora de orden y expediente](../../api/Arquitectura/56-Orden-Bitacora-y-Expediente-Lectura.md). Dos paneles laterales relacionados con la orden autorizada, sin nuevas escrituras.
+
+### Notas personales, etapa3 (27 octubre2026)
+
+[58 API](../../api/Arquitectura/58-Notas-Etapa3-Interfaz-Personal.md): icono junto a campana, Drawer derecho, Home y orden nativa de Formalizacion; contenido propio y layout/PIN por dispositivo. Clientes tipados, reintentos con mismo identificador, conflictos explicitos y sin datos ficticios de fallback. Compartir/respuestas/campanita implementados en etapa4 (contrato60); copia legacy pendiente.
+
+Correccion vigente de notas: [59 API](../../api/Arquitectura/59-Notas-Contexto-Opcional-y-Vistas.md). Creacion desde cualquier pantalla, personal por defecto, checkbox opcional para vista registrada/orden native o legacy; vincular no comparte. Contexto incluye source+id y siempre revalida acceso; sin URLs arbitrarias/imports.
+
+Actualización 2026-10-27: la orden completa incorpora Acciones de la etapa debajo del avance; el panel lateral reutiliza el mismo editor. Solo muestra la acción siguiente si existe permiso del destino; el selector excepcional requiere `formalizacion.orders.stage.skip` y un motivo para saltos o retrocesos. El éxito recarga orden y contadores desde el API. No envía correo ni modifica NetSuite. Contrato y verificación: API Arquitectura/52-Etapas-Responsables-y-Tiempos.md, migración 043. Verificación focalizada: 77 pruebas frontend y 110 API; sin ejecutar cambios de estado sobre órdenes reales.
+
+### Notas colaborativas, etapa4 (27 octubre2026)
+
+[60 API](../../api/Arquitectura/60-Notas-Etapa4-Colaboracion-y-Notificaciones.md): invitación al crear/después, conversación, menciones, bandejas, campana y lectura individual. Vincular no comparte. La copia legacy sigue pendiente.
+
+Estado vigente de notas 2026-10-28: [implementación realtime y límites](../../api/Arquitectura/62-Notas-Tiempo-Real-Implementacion.md). Provider único por sesión, campana y conversación actualizadas, preservación de borradores, lectura explícita y revocación. La invitación no concede acceso al registro: contexto restringido se recibe como null. Reconciliación REST al reconectar; copia legacy inactiva.
+
+Calendario vigente 28/10/2026: [calendario global por módulo](Calendario-Global-Frontend.md), superposición autorizada, formularios nativos, UTC y reintentos. Aplicación de esquema y pendiente DBA: [64 API](../../api/Arquitectura/64-Calendario-Global-API-y-Contexto.md).

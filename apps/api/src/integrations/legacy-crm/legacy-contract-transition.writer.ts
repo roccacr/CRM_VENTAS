@@ -4,6 +4,7 @@ import { sql, type Transaction } from "kysely";
 
 import type { CrmDatabase } from "../../database/database.types.js";
 import type { ContractEvent, ContractEventWrite, ContractOrder, ContractTransitionLegacy } from "../../modules/crm/sales/sales-orders/contract-transition.port.js";
+import type { FormalizationApprovalLegacy, LegacyApprovalOrder } from "../../modules/crm/sales/sales-orders/formalization-approval.port.js";
 import { mapLegacySalesOrder } from "./sales-order.mapper.js";
 
 /** Owner reconciliation must reject both absent and duplicate evidence at every hop. */
@@ -13,7 +14,7 @@ function uniqueOwnerEvidence<T>(rows: readonly T[]): T | undefined {
 
 /** Contract-only opt-in permits development as explicitly approved; catalog guards are unchanged. */
 @Injectable()
-export class LegacyContractTransitionWriter implements ContractTransitionLegacy {
+export class LegacyContractTransitionWriter implements ContractTransitionLegacy, FormalizationApprovalLegacy {
     /** Uses validated shared configuration without creating another connection. */
     constructor(@Inject(ConfigService) private readonly config: ConfigService) {}
 
@@ -34,6 +35,25 @@ export class LegacyContractTransitionWriter implements ContractTransitionLegacy 
         if (!row) return undefined;
         const mapped = mapLegacySalesOrder(row, new Date().toISOString());
         return { contractSigned: mapped.commercial.contractSigned === "yes", id: String(mapped.identity.legacyId), businessId: mapped.identity.nativeCode, active: mapped.commercial.status === "active" && mapped.commercial.cancelled === "no", approved: Object.values(mapped.approvals).every((approval) => approval === "approved") };
+    }
+
+    /** Locks the authoritative legacy order before ERP confirmation or any local approval write. */
+    async lockApproval(tx: Transaction<CrmDatabase>, id: string): Promise<LegacyApprovalOrder | undefined> {
+        this.assertEnabled(tx);
+        const { rows } = await sql<{ id: string; netsuiteId: string; active: number; prerequisitesApproved: number; formalization: number | null }>`
+            SELECT CAST(id_ov AS CHAR) AS id,CAST(id_ov_netsuite AS CHAR) AS netsuiteId,
+                (status_ov=1 AND caida_ov=0) AS active,
+                (chekJefeVenta=1 AND aprobacion__rdr_ov=1) AS prerequisitesApproved,
+                aprobacion_forma_ov AS formalization
+            FROM \`crmdatabase-api\`.ordenventa WHERE id_ov=${Number(id)} FOR UPDATE`.execute(tx);
+        const row = rows[0];
+        return row ? { ...row, active: row.active === 1, prerequisitesApproved: row.prerequisitesApproved === 1, formalization: row.formalization === 1 ? "approved" : row.formalization === 0 ? "not_approved" : "unknown" } : undefined;
+    }
+
+    /** Only the Formalization check changes; the caller has already confirmed the ERP result. */
+    async approveFormalization(tx: Transaction<CrmDatabase>, id: string): Promise<void> {
+        this.assertEnabled(tx);
+        await sql`UPDATE \`crmdatabase-api\`.ordenventa SET aprobacion_forma_ov=1 WHERE id_ov=${Number(id)}`.execute(tx);
     }
 
     /** Lock current lead and employee matches before attempting canonical identity reconciliation. */

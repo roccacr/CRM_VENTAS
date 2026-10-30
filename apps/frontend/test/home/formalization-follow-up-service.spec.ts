@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
 import { apiRequest } from "../../src/services/api/api-client";
-import { getFollowUp } from "../../src/services/formalization/follow-up-service";
+import { getFollowUp, getFormalizationOrderRecord } from "../../src/services/formalization/follow-up-service";
 vi.mock("../../src/services/api/api-client", () => ({ apiRequest: vi.fn() }));
 const filters = { search: "", projectId: "", queue: "all" as const, page: 1, pageSize: 25 };
 const payload = () => ({
@@ -131,4 +131,18 @@ it("rejects a nonboolean contract signature instead of enabling banking", async 
     const data = payload();
     vi.mocked(apiRequest).mockResolvedValue({ ...data, items: data.items.map((item) => ({ ...item, contractSigned: "yes" })) });
     await expect(getFollowUp(filters)).rejects.toThrow();
+});
+
+it.each([["legacy", "208"], ["native", "01ARZ3NDEKTSV4RRFFQ69G5FAV"]] as const)("reads a direct validated %s projection without list metadata", async (source, id) => {
+    const data = { ...payload().items[0], source, id: source === "legacy" ? "legacy:" + id : id, secret: "excluded" };
+    vi.mocked(apiRequest).mockResolvedValue(data);
+    const result = await getFormalizationOrderRecord(source, id);
+    expect(apiRequest).toHaveBeenCalledWith(`/formalization/orders/${source}/${id}/record`);
+    expect(result).not.toHaveProperty("secret");
+});
+it("rejects malformed record identity and projection", async () => {
+    await expect(getFormalizationOrderRecord("legacy", "legacy:208")).rejects.toThrow();
+    expect(apiRequest).not.toHaveBeenCalled();
+    vi.mocked(apiRequest).mockResolvedValue({ id: "208" });
+    await expect(getFormalizationOrderRecord("legacy", "208")).rejects.toThrow();
 });

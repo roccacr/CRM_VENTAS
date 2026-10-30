@@ -207,3 +207,65 @@ it("preserves optional NetSuite server credentials for ConfigModule without enab
     const settings = { NETSUITE_CONSUMER_KEY: "test-consumer", NETSUITE_CONSUMER_SECRET: "test-secret", NETSUITE_TOKEN_ID: "test-token", NETSUITE_TOKEN_SECRET: "test-token-secret", NETSUITE_REALM: "4552704", OAUTH_NETSUITE_SIGNATURE: "HMAC-SHA256" };
     expect(validateEnv({ ...createValidEnv(), ...settings })).toMatchObject(settings);
 });
+
+describe("notes realtime configuration", () => {
+    it("defaults to authorized single-process transport and supports rollback", () => {
+        expect(validateEnv(createValidEnv())).toMatchObject({ NOTES_REALTIME_ENABLED: true, NOTES_REALTIME_TOPOLOGY: "single" });
+        expect(validateEnv({ ...createValidEnv(), NOTES_REALTIME_ENABLED: "false" }).NOTES_REALTIME_ENABLED).toBe(false);
+    });
+    it("fails closed for multi-instance topology without private authenticated TLS Redis", () => {
+        for (const url of [undefined, "redis://127.0.0.1:6379", "rediss://redis.example:6379", "https://user:pass@redis.example"]) {
+            expect(() => validateEnv({ ...createValidEnv(), NOTES_REALTIME_TOPOLOGY: "redis-streams", NOTES_REALTIME_REDIS_URL: url })).toThrow("NOTES_REALTIME_REDIS_URL");
+        }
+        expect(validateEnv({ ...createValidEnv(), NOTES_REALTIME_TOPOLOGY: "redis-streams", NOTES_REALTIME_REDIS_URL: "rediss://notes:synthetic@redis.internal:6379" }).NOTES_REALTIME_TOPOLOGY).toBe("redis-streams");
+    });
+});
+
+it("defaults NetSuite to production and rejects unknown environments", () => {
+    expect(validateEnv(createValidEnv()).NETSUITE_ENVIRONMENT).toBe("production");
+    expect(() => validateEnv({ ...createValidEnv(), NETSUITE_ENVIRONMENT: "invalid" })).toThrow();
+});
+it("requires complete sandbox configuration at bootstrap without production fallback", () => {
+    expect(() => validateEnv({ ...createValidEnv(), NETSUITE_ENVIRONMENT: "sandbox", NETSUITE_REALM: "4552704", NETSUITE_CONSUMER_KEY: "production" })).toThrow();
+});
+
+const sandboxEnv = {
+    NETSUITE_ENVIRONMENT: "sandbox",
+    NETSUITE_SANDBOX_CONSUMER_KEY: "sandbox-consumer",
+    NETSUITE_SANDBOX_CONSUMER_SECRET: "sandbox-secret",
+    NETSUITE_SANDBOX_TOKEN_ID: "sandbox-token",
+    NETSUITE_SANDBOX_TOKEN_SECRET: "sandbox-token-secret",
+    NETSUITE_SANDBOX_REALM: "4552704_SB1",
+    NETSUITE_SANDBOX_RESTLET_URL: "https://4552704-sb1.restlets.api.netsuite.com/app/site/hosting/restlet.nl?script=9999&deploy=1",
+};
+it("accepts explicit sandbox deployment and retains its server configuration", () => {
+    expect(validateEnv({ ...createValidEnv(), ...sandboxEnv })).toMatchObject(sandboxEnv);
+});
+it.each(Object.keys(sandboxEnv).filter((key) => key !== "NETSUITE_ENVIRONMENT"))("rejects missing or blank sandbox %s at bootstrap", (key) => {
+    for (const value of [undefined, "", "   "]) expect(() => validateEnv({ ...createValidEnv(), ...sandboxEnv, [key]: value })).toThrow(key);
+});
+it.each(["https://4552704.restlets.api.netsuite.com/app/site/hosting/restlet.nl?script=9999&deploy=1", sandboxEnv.NETSUITE_SANDBOX_RESTLET_URL + "&deploy=2", sandboxEnv.NETSUITE_SANDBOX_RESTLET_URL + "&redirect=https://example.com", sandboxEnv.NETSUITE_SANDBOX_RESTLET_URL + "#", sandboxEnv.NETSUITE_SANDBOX_RESTLET_URL + "\n", sandboxEnv.NETSUITE_SANDBOX_RESTLET_URL.replace("&deploy=1", ""), sandboxEnv.NETSUITE_SANDBOX_RESTLET_URL.replace("9999", "0")])(
+    "rejects incompatible sandbox deployment at bootstrap: %j",
+    (url) => {
+        expect(() => validateEnv({ ...createValidEnv(), ...sandboxEnv, NETSUITE_SANDBOX_RESTLET_URL: url })).toThrow("NETSUITE_SANDBOX_RESTLET_URL");
+    },
+);
+it("rejects a production realm in sandbox without exposing configured secrets", () => {
+    try {
+        validateEnv({ ...createValidEnv(), ...sandboxEnv, NETSUITE_SANDBOX_REALM: "4552704" });
+        expect.fail("expected invalid realm");
+    } catch (error) {
+        expect(String(error)).toContain("NETSUITE_SANDBOX_REALM");
+        expect(String(error)).not.toContain("sandbox-secret");
+    }
+});
+
+it("keeps local NetSuite reception off by default", () => {
+    expect(validateEnv(createValidEnv()).NETSUITE_LOCAL_EVENTS_ENABLED).toBe(false);
+});
+it.each([{ NODE_ENV: "production", NETSUITE_LOCAL_EVENTS_SECRET: "a".repeat(64) }, {}, { NETSUITE_LOCAL_EVENTS_SECRET: "short" }, { COOKIE_SECRET: "a".repeat(64), NETSUITE_LOCAL_EVENTS_SECRET: "a".repeat(64) }])("rejects unsafe enabled local reception", (config) => {
+    expect(() => validateEnv({ ...createValidEnv(), ...config, NETSUITE_LOCAL_EVENTS_ENABLED: "true" })).toThrow();
+});
+it("accepts an exclusive local secret in development", () => {
+    expect(validateEnv({ ...createValidEnv(), NODE_ENV: "development", NETSUITE_LOCAL_EVENTS_ENABLED: "true", NETSUITE_LOCAL_EVENTS_SECRET: "a".repeat(64) }).NETSUITE_LOCAL_EVENTS_ENABLED).toBe(true);
+});
