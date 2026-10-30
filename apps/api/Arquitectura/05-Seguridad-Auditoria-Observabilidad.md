@@ -1,5 +1,16 @@
 # 05 - Seguridad, Auditoria y Observabilidad
 
+## Consola local - 2026-10-30
+
+Con `NODE_ENV=development`, Pino imprime JSON indentado y resume cada solicitud
+con ID, metodo, ruta sin query, codigo HTTP y duracion, sin cabeceras HTTP.
+La redaccion de secretos sigue activa. Fuera de desarrollo conserva JSON de una
+linea y los serializadores anteriores. No se agregaron dependencias.
+El evento `netsuite_local_order_received` indica recepcion validada y muestra
+solo metadatos (ID, tipo, fecha, cantidades y `persisted:false`): no escribe en
+ninguna BD ni acredita sincronizacion durable. Este cambio no requiere subir
+archivos a NetSuite.
+
 ## Permisos y rutas actuales - 2026-10-27
 
 Captacion exige `mercadeo.leads.read`; no exige `mercadeo.home.read` para acceder.

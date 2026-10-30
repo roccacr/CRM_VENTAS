@@ -1,16 +1,34 @@
 /**
- * Esquema de LECTURA de ordenes de venta (que campos se exponen y con que nombre).
- * No autoriza escrituras. Mantener sincronizado con el mapper netsuite-primary del CRM.
+ * Unico lugar con los IDs de campos custom de NetSuite de ordenes de venta: esquema de LECTURA (que campos se
+ * exponen y con que nombre) y campos de la aprobacion de Formalizacion.
+ * No hace: no lee ni escribe records; el esquema no concede permisos de escritura.
+ * Mantener sincronizado con el mapper netsuite-primary del CRM.
  * Las claves son las del JSON del CRM; los valores son IDs de campos de NetSuite.
  *
  * @NApiVersion 2.1
+ * @NModuleScope SameAccount
  */
 define(["../../lib/SS2_1_LIB_CRM_Campos"], (fields) => {
     "use strict";
 
     const { fieldMap } = fields;
 
-    return Object.freeze({
+    /** Congela el esquema completo: nadie debe poder alterar la allowlist en tiempo de ejecucion. */
+    function deepFreeze(value) {
+        Object.values(value).forEach((child) => {
+            if (child !== null && typeof child === "object") deepFreeze(child);
+        });
+        return Object.freeze(value);
+    }
+
+    return deepFreeze({
+        // Aprobacion de Formalizacion: unica casilla que se escribe y las que se consultan antes de escribir.
+        approval: {
+            approvalField: "custbodyid_firma_rc", // Aprobacion de Formalizacion.
+            cancelledField: "custbody43", // Orden caida.
+            prerequisiteFields: ["custbody_aprueba_jefe_ventas", "custbodyid_firma_rocca"], // Jefatura de Ventas y Desarrollador.
+        },
+
         // Montos, IDs y banderas: valor crudo.
         bodyValues: {
             ...fieldMap(`

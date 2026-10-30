@@ -119,5 +119,29 @@ export default defineConfig([
             },
         },
     },
+    {
+        // Scripts AMD de SuiteScript: sin modulos ES, `define` lo aporta NetSuite.
+        files: ["src/integrations/netsuite/suitescript/**/*.js"],
+        extends: [js.configs.recommended],
+        languageOptions: {
+            ecmaVersion: 2022,
+            sourceType: "script",
+            globals: { define: "readonly" },
+        },
+        rules: {
+            eqeqeq: "error",
+            "no-var": "error",
+            "prefer-const": "error",
+        },
+    },
+    {
+        files: ["test/integrations/netsuite-suitescript/**/*.mjs", "test/integrations/netsuite-suitescript-audit.spec.mjs"],
+        extends: [js.configs.recommended],
+        languageOptions: {
+            globals: {
+                ...globals.node,
+            },
+        },
+    },
     eslintConfigPrettier,
 ]);

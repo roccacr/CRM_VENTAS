@@ -13,7 +13,13 @@ function fixture(accountId = "4552704_SB1", envType = "SANDBOX", options: { url?
         return options.response ?? { code: 200, body: JSON.stringify({ schemaVersion: 1, received: true, persisted: false, netsuiteId: "123" }) };
     });
     const loadRecord = vi.fn(() => ({ getValue: ({ fieldId }: { fieldId: string }) => (fieldId === "tranid" ? "OV-123" : null), getText: () => null, getLineCount: () => 0 }));
-    const providers: Record<string, unknown> = { "N/runtime": { accountId, envType, EnvType: { SANDBOX: "SANDBOX" }, getCurrentScript: () => ({ getParameter: () => options.url ?? "https://nontransgressively-sequential-leif.ngrok-free.dev/integrations/netsuite/local/order-events" }) }, "N/log": logger, "N/record": { load: loadRecord }, "N/search": {}, "N/https": { post, createSecureString: vi.fn(() => ({ secret: "opaque" })) } };
+    const providers: Record<string, unknown> = {
+        "N/runtime": { accountId, envType, EnvType: { SANDBOX: "SANDBOX" }, getCurrentScript: () => ({ getParameter: () => options.url ?? "https://nontransgressively-sequential-leif.ngrok-free.dev/integrations/netsuite/local/order-events" }) },
+        "N/log": logger,
+        "N/record": { load: loadRecord },
+        "N/search": {},
+        "N/https": { post, createSecureString: vi.fn(() => ({ secret: "opaque" })) },
+    };
     const cache = new Map<string, unknown>();
     function load(url: URL): unknown {
         if (cache.has(url.href)) return cache.get(url.href);

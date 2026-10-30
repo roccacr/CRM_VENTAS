@@ -7,7 +7,7 @@ import { HealthModule } from "./common/health/health.module.js";
 import { AuthGuard } from "./common/security/auth.guard.js";
 import { AuthenticatedReadRateLimit } from "./common/security/authenticated-read-rate-limit.js";
 import { CsrfGuard } from "./common/security/csrf.guard.js";
-import { APP_LOG_REDACT_PATHS, APP_LOG_REQUEST_SERIALIZER } from "./config/app-logging.constants.js";
+import { APP_LOG_REDACT_PATHS, appLogPresentation } from "./config/app-logging.constants.js";
 import { validateEnv } from "./config/env.validation.js";
 import { DatabaseModule } from "./database/database.module.js";
 import { LegacyCrmModule } from "./integrations/legacy-crm/legacy-crm.module.js";
@@ -51,7 +51,7 @@ import { UnitFilesModule } from "./modules/crm/unit-files/unit-files.module.js";
             pinoHttp: {
                 level: process.env.LOG_LEVEL ?? (process.env.NODE_ENV === "test" ? "silent" : "info"),
                 name: "crm-tink-api",
-                serializers: { req: APP_LOG_REQUEST_SERIALIZER },
+                ...appLogPresentation(process.env.NODE_ENV),
                 redact: {
                     paths: APP_LOG_REDACT_PATHS,
                     censor: "[REDACTED]",

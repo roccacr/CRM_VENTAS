@@ -4,7 +4,7 @@
 
 Todos los archivos JavaScript usan `SS2_1_`: `RL` identifica el punto de entrada RESTlet y `LIB` los modulos de apoyo, que no tienen despliegue independiente. El tipo ejecutable sigue definido por `@NScriptType Restlet`, no por el nombre. Se conservan las carpetas existentes.
 
-Esta entrega renombra los 16 archivos y actualiza sus dependencias AMD. Antes de cargar el ZIP, detener las peticiones de la integracion durante la actualizacion. En el Archivador, renombrar el archivo principal existente de `CRM_v2_Global.js` a `SS2_1_RL_CRM_Integracion.js`, conservando su registro. Luego importar el ZIP desde la raiz y sobrescribir los archivos. Verificar en el registro de script que **Archivo de script** apunta a `SuiteScripts/SS2_1_RL_CRM_Integracion.js`; si se cargo como archivo nuevo, seleccionarlo explicitamente en ese mismo registro. Conservar el script 3353 y su despliegue 1 para mantener la URL actual. Comprobar GET antes de reanudar operaciones.
+Esta entrega (historica) renombro los 16 archivos de entonces; hoy hay 18 desplegables y actualiza sus dependencias AMD. Antes de cargar el ZIP, detener las peticiones de la integracion durante la actualizacion. En el Archivador, renombrar el archivo principal existente de `CRM_v2_Global.js` a `SS2_1_RL_CRM_Integracion.js`, conservando su registro. Luego importar el ZIP desde la raiz y sobrescribir los archivos. Verificar en el registro de script que **Archivo de script** apunta a `SuiteScripts/SS2_1_RL_CRM_Integracion.js`; si se cargo como archivo nuevo, seleccionarlo explicitamente en ese mismo registro. Conservar el script 3353 y su despliegue 1 para mantener la URL actual. Comprobar GET antes de reanudar operaciones.
 
 Los archivos auxiliares anteriores pueden quedar sin referencias tras el cambio; retirarlos solamente despues de comprobar que ningun otro script los utiliza. Esta entrega local no cambia archivos ni registros remotos en NetSuite.
 
@@ -44,7 +44,7 @@ Los estados anteriores pertenecen al JSON de aplicacion; no representan el codig
 
 ## Aprobacion de Formalizacion en Sandbox
 
-`approveFormalization(id)` acredita primero la existencia con `record.load` de tipo salesorder; una ausencia real se devuelve como SALES_ORDER_NOT_FOUND, antes de interpretar casillas. Luego lee las banderas del mismo registro mediante `bodyValue` y rechaza una orden caida (`custbody43 === true`, 409 SALES_ORDER_CANCELLED). Si Formalizacion aun no esta marcada, exige `custbody_aprueba_jefe_ventas === true` y `custbodyid_firma_rocca === true`; otros valores, incluidos numeros, no acreditan las aprobaciones (409 APPROVAL_PREREQUISITES_REQUIRED).
+`approveFormalization(id)` lee las cuatro casillas con una sola `search.lookupFields` (no `record.load`); una ausencia real (`RCRD_DSNT_EXIST`) se devuelve como SALES_ORDER_NOT_FOUND, antes de interpretar casillas. Luego rechaza una orden caida (`custbody43 === true`, 409 SALES_ORDER_CANCELLED). Si Formalizacion aun no esta marcada, exige `custbody_aprueba_jefe_ventas === true` y `custbodyid_firma_rocca === true`; otros valores, incluidos numeros, no acreditan las aprobaciones (409 APPROVAL_PREREQUISITES_REQUIRED).
 
 Si la orden existe, no esta caida y `custbodyid_firma_rc` ya es true, devuelve alreadyApproved:true sin escribir, antes de exigir las aprobaciones previas. El CRM puede sincronizar su aprobacion local con esa confirmacion manteniendo sus validaciones de actividad, aprobaciones previas, permiso y version. En otro caso llama exclusivamente a `record.submitFields` con `values: { custbodyid_firma_rc: true }`, `enableSourcing: false` e `ignoreMandatoryFields: false`. No modifica explicitamente otros campos ni usa N/email; esta limitacion del codigo no garantiza ausencia de efectos de workflows o scripts configurados en la cuenta.
 
@@ -80,7 +80,7 @@ Pruebas locales ejecutan el AMD real con mocks de N/runtime y N/record. No susti
 - `getSalesOrderById` carga la orden, lee los campos de `SCHEMA` y arma el JSON que consume el CRM.
 - GET/PUT se exportan al final. PUT sigue `execute -> dispatch -> salesOrders.put -> approveFormalization -> JSON`, conservando el unico log final centralizado.
 
-Para agregar una accion de orden de venta, crear su archivo `SS2_1_LIB_CRM_OrdenesVenta_*.js` dentro de `modules/01_sales-orders/` y registrarla en `SS2_1_LIB_CRM_OrdenesVenta.js`; leads y estimaciones siguen el mismo patron en sus carpetas. Los lectores compartidos no deben contener reglas exclusivas de una entidad. El esquema de lectura no concede permisos de escritura.
+Para agregar una accion de orden de venta, escribir su funcion en `SS2_1_LIB_CRM_OrdenesVenta.js` y registrarla en `put`; leads y estimaciones seguiran el mismo patron en su propio archivo. Los lectores compartidos no deben contener reglas exclusivas de una entidad. El esquema de lectura no concede permisos de escritura.
 
 La reorganizacion local posterior a la prueba de Sandbox requiere volver a subir el archivo para verificarla alli; la evidencia historica de lectura no equivale a un despliegue de esta revision.
 
@@ -114,11 +114,50 @@ Verificacion local: `pnpm exec vitest run test/integrations/netsuite-restlet.spe
 
 Actualizar en NetSuite `modules/01_sales-orders/SS2_1_LIB_CRM_OrdenesVenta_AprobarFormalizacion.js` y `lib/SS2_1_LIB_CRM_Logs.js`. La entrada no cambia. Esta entrega incorpora comprobacion explicita de existencia antes de las casillas y reconoce el check ya marcado antes de exigir requisitos para una nueva escritura. El API conserva 404 y rechazos seguros; la vista usa alertas Ant Design con icono y notificacion de exito. `alreadyApproved` es metadato opcional de la respuesta CRM confirmada, no reemplaza la bitacora ni acredita por si solo una escritura local. No se ejecutan aprobaciones reales para verificar esta entrega.
 
-## Entrega 2026.10.28.5 - reutilizacion de lectura
+## Entrega 2026.10.28.5 - reutilizacion de lectura (reemplazada por la refactorizacion 2026-10-30)
 
-GET y aprobacion usan la misma funcion compartida `loadRecord` de SS2_1_LIB_CRM_Registros.js y el lector `bodyValue` de SS2_1_LIB_CRM_Campos.js. La aprobacion lee sus cuatro casillas directamente del record ya cargado: elimina el lookup inicial redundante. No llama al GET comercial completo porque construiria lineas, importes y aliases que el comando no necesita. Si escribe el check, usa lookupFlags solo para confirmar el valor persistido; si ya estaba aprobado, no hay lookup ni escritura.
+Historico: esta entrega leia las casillas con `loadRecord`. Desde la refactorizacion las lee con `lookupFlags` (`search.lookupFields`), que cuesta una fraccion de `record.load`. No llama al GET comercial completo porque construiria lineas, importes y aliases que el comando no necesita. Si escribe el check, usa lookupFlags solo para confirmar el valor persistido; la aprobacion hace un lookup inicial de las cuatro casillas; si ya estaba aprobada responde sin escribir ni releer, y si escribe, relee solo la casilla de Formalizacion.
 
 Las validaciones comerciales no dependen de Sandbox ni produccion. La cuenta/destino se controla por separado en el enrutador y el cliente; esta refactorizacion conserva el gate Sandbox vigente, no habilita escrituras productivas. Los mensajes publicos mencionan el entorno configurado. Para desplegar esta entrega actualizar el archivo de aprobacion y el logger, sin cambiar la entrada ni la URL.
+
+## Refactorizacion 2026-10-30 (orden, estructura y legibilidad; sin logica nueva salvo B1 y el arreglo de item)
+
+Estructura final (18 archivos desplegables; las pruebas viven en `test/integrations/netsuite-suitescript/`, como exige AGENTS.md):
+
+- Entradas: `SS2_1_RL_CRM_Integracion.js` (RESTlet) y `SS2_1_UE_CRM_CambiosRegistros.js` (User Event).
+- `lib/`: Respuestas, Validacion, Campos, Registros, ErroresProveedor, ConsultarPorId, EjecutarAccion, Logs, Eventos, EnviarEvento y **Entorno** (nuevo: candado de Sandbox compartido por RL, Eventos y EnviarEvento).
+- `modules/01_sales-orders/`: `OrdenesVenta.js` (GET, PUT approveFormalization y errores de la entidad, antes en 4 archivos), `OrdenesVenta_Campos.js` (esquema) y `OrdenesVenta_NotificarCambio.js` (separado a proposito: depende de N/https y el RESTlet no debe cargarlo).
+- `modules/02_leads` y `modules/03_estimates`: reservados (501).
+
+Eventos dinamicos: `EnviarEvento.sendRecordEvent(event, readSnapshot, endpoint)` es generico. El host es administrado (parametro o valor por defecto) y cada modulo declara su endpoint (`order-events` para ordenes; `lead-events`, `estimate-events`... cuando existan), validado con `^[a-z]+(-[a-z]+)*-events$`. Para sincronizar una entidad nueva: (1) lector de snapshot en su modulo, (2) su `NotificarCambio` con su endpoint, (3) registrar `afterSubmit` en el UE, (4) crear la ruta y el esquema en el receptor NestJS (fuera de esta carpeta; hoy solo existe `order-events`).
+
+Contrato emisor-receptor (corregido): el GET entrega `sublists.item` como `{ "line 1": {...} }` (contrato del CRM), pero el receptor `order-events` exige un arreglo. `OrdenesVenta_NotificarCambio` adapta solo el snapshot del evento (`Object.values`, mismo orden); el GET no cambia. `tests/contract.spec.mjs` ejecuta el User Event real y valida el JSON con el controlador REAL de NestJS (solo lectura), y el recibo real vuelve al emisor.
+
+Cambios de comportamiento aprobados:
+
+- **B1 (BREAKING):** una excepcion inesperada en el RESTlet ya no se relanza; responde `{ status: 500, error: { code: "UNEXPECTED_ERROR", message } }` y registra `CRM_v2_bad_flow`. NestJS debe tratar `status: 500` como error de aplicacion en vez de esperar un HTTP 500 de NetSuite.
+- La aprobacion usa `search.lookupFields` en lugar de `record.load` para leer las casillas. Pendiente de validar con una orden real de Sandbox.
+- `SCRIPT_VERSION` = 2026.10.30.4.
+- Se elimina `userEventVersion` de los logs del User Event; `scriptVersion` (Logs) es la unica version. Incrementarla en cada entrega.
+- El limite de 500000 de `EnviarEvento` ahora cuenta bytes UTF-8, y un recibo `null` se reporta como `receipt_invalid`.
+
+Pruebas (corren con `pnpm test`): `pnpm exec vitest run test/integrations/netsuite-suitescript test/integrations/netsuite-suitescript-audit.spec.mjs`. Cargan el AMD real con N/* simulados y verifican el numero de llamadas a la API de NetSuite; `contract.spec.mjs` valida el JSON con el controlador real de NestJS. Cobertura: anadir `--coverage --coverage.include="src/integrations/netsuite/suitescript/**/*.js"`. Lint: `eslint.config.mjs` tiene reglas propias para estos JS (AMD, `define` global).
+
+Contratos emisor-receptor alineados (con prueba que ejecuta el receptor real):
+- ID: maximo 15 digitos decimales canonicos. Es el contrato de este proyecto (el mismo limite del receptor), no un maximo de NetSuite; un ID mayor se rechaza (400 INVALID_ID) o, en eventos, no se emite.
+- Texto: el receptor acepta hasta 16000 caracteres por valor. `EnviarEvento` no trunca informacion de negocio: si algun texto del snapshot lo supera, no envia y reporta `value_too_long` (nivel error en el log del User Event).
+- Cuerpo: maximo 500000 bytes UTF-8 (`payload_too_large`).
+
+Aprobacion y concurrencia: NetSuite no ofrece una escritura condicional, asi que leer los requisitos y escribir no puede ser atomico. Tras escribir, `approveFormalization` relee las cuatro casillas (1 unidad) y, si otro escritor marco la orden como caida o retiro un requisito en ese intervalo, responde `409 APPROVAL_STATE_CHANGED` en lugar de confirmar. Esto detecta el conflicto, no lo impide: la casilla ya quedo escrita y hay que revisar la orden en NetSuite. El cliente NestJS trata ese 409 como resultado desconocido. Una garantia estricta requeriria una validacion del lado de NetSuite (workflow o script del registro) fuera de este conjunto de archivos.
+
+## Validacion pendiente en Sandbox (no se puede hacer desde el repositorio)
+
+Antes de usar esta entrega, con el rol de integracion y datos acreditados:
+1. GET de una orden existente: 200 con los campos esperados (el GET usa `record.load`; no prueba `lookupFields`).
+2. `lookupFields` con un ID inexistente acreditado, sin escritura: PUT `approveFormalization` con ese ID. La lectura de casillas usa `lookupFields` y ocurre antes de cualquier escritura, asi que no puede modificar nada. Debe responder `404 SALES_ORDER_NOT_FOUND` (confirma que `lookupFields` lanza `RCRD_DSNT_EXIST`). Si responde `409 APPROVAL_PREREQUISITES_REQUIRED`, `lookupFields` devolvio campos vacios en vez de lanzar: hay que tratarlo en `OrdenesVenta.js`. Si responde 502, ajustar `ErroresProveedor`. Alternativa sin pasar por el RESTlet: Script Debugger con el rol de integracion ejecutando solo `search.lookupFields({ type: 'salesorder', id: '<ID inexistente>', columns: ['custbody43'] })`.
+3. PUT de aprobacion sobre una orden elegida expresamente y revertible: 200; repetirlo debe responder `alreadyApproved: true` sin escribir.
+4. PUT sobre una orden caida y otra sin aprobaciones previas: 409 en ambos casos.
+5. Guardar una orden y revisar el registro de ejecucion del User Event: `received_local`, `scriptVersion` esperado.
 
 # User Event global: entrega inicial histórica del 30/10/2026
 
@@ -136,8 +175,8 @@ Se reutilizan las librerías existentes de validación y logs. El RESTlet no cam
 
 Esta entrega es **estructura y diagnóstico, no sincronización operativa**:
 no tiene HTTP, cola, reintentos, endpoint receptor ni escrituras de negocio.
-Una orden reconocida registra `status: pending_api`, `delivered: false` y
-`userEventVersion: 2026.10.30.1`. Leads y estimaciones están reservados con
+Una orden reconocida registraba `status: pending_api`, `delivered: false` y
+`userEventVersion: 2026.10.30.1` (historico; el campo ya no existe, ver refactorizacion). Leads y estimaciones están reservados con
 `module_pending`; no se los presenta como implementados. La asociación de
 `partner` al catálogo real de corredores debe confirmarse antes de implementar
 su acción; clientes/prospectos también requieren confirmar su clasificación.
@@ -184,8 +223,8 @@ El transporte reutilizable vive en `lib/SS2_1_LIB_CRM_EnviarEvento.js`.
    orden de Sandbox para verificar el flujo real, sin cambiar órdenes productivas.
 
 La URL puede sustituirse con un parámetro de script de texto `custscript_crm_event_url`.
-Es opcional; si no existe se usa la URL anterior. Solo admite HTTPS en `*.ngrok-free.dev`
-y la ruta exacta del receptor local. Cuando cambie el túnel, actualizar el parámetro y
+Es opcional; si no existe se usa la URL anterior. Solo admite HTTPS en `*.ngrok-free.dev`;
+de ella solo se usa el host (una URL completa antigua sigue siendo valida). La ruta la declara cada modulo. Cuando cambie el túnel, actualizar el parámetro y
 la restricción del API Secret. No usar este destino en producción.
 
 ### Contrato y autenticación

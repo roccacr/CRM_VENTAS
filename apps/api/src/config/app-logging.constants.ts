@@ -1,3 +1,5 @@
+import type { LoggerOptions } from "pino";
+
 /**
  * Campos sensibles que Pino debe censurar antes de escribir logs.
  *
@@ -18,5 +20,30 @@ export function APP_LOG_REQUEST_SERIALIZER(request: Record<string, unknown>): Re
         remoteAddress: request.remoteAddress,
         remotePort: request.remotePort,
         query: request.query === undefined ? undefined : "[REDACTED]",
+    };
+}
+
+/** Development console only; production retains compact JSON and existing serializers/redaction. */
+export function appLogPresentation(environment: string | undefined): Pick<LoggerOptions, "serializers" | "hooks"> {
+    if (environment !== "development") return { serializers: { req: APP_LOG_REQUEST_SERIALIZER } };
+    return {
+        serializers: {
+            req: (request: Record<string, unknown>) => {
+                const { id, method, url } = APP_LOG_REQUEST_SERIALIZER(request);
+                return { id, method, url };
+            },
+            res: (response: Record<string, unknown>) => ({ statusCode: response.statusCode }),
+        },
+        hooks: {
+            // Pino runs this after serialization/redaction; never format raw requests or snapshots.
+            streamWrite: (line: string) => {
+                try {
+                    const entry: unknown = JSON.parse(line);
+                    return `${JSON.stringify(entry, null, 2)}\n`;
+                } catch {
+                    return line;
+                }
+            },
+        },
     };
 }

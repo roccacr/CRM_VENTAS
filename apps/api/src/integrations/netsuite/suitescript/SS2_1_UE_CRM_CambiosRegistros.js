@@ -1,8 +1,8 @@
 /**
  * Entrada global de eventos guardados del CRM. Solo enruta; la logica vive en lib y en cada modulo.
+ * No hace: no modifica registros ni crea una cola. El API confirma recepcion sin persistencia; no hay reintentos.
  * Archivador: /SuiteScripts/SS2_1_UE_CRM_CambiosRegistros.js
  * Crear un despliegue por tipo de registro. Las ordenes envian su snapshot a desarrollo local solo en Sandbox.
- * No modifica registros ni crea una cola. El API confirma recepcion sin persistencia; no hay reintentos.
  *
  * @NApiVersion 2.1
  * @NScriptType UserEventScript
@@ -17,7 +17,7 @@ define([
     "use strict";
 
     // Registro cerrado. Los modulos reservados no se presentan como sincronizados.
-    const modules = Object.freeze({
+    const MODULES = Object.freeze({
         salesorder: { code: "salesOrders", afterSubmit: salesOrders.afterSubmit },
         lead: { code: "leads", afterSubmit: leads.afterSubmit },
         estimate: { code: "estimates", afterSubmit: estimates.afterSubmit },
@@ -25,5 +25,14 @@ define([
         partner: { code: "brokers" },
     });
 
-    return { afterSubmit: (context) => events.afterSubmit(context, modules) };
+    /**
+     * Se ejecuta despues de guardar el registro. Nunca lanza: un fallo de observacion no debe romper el guardado.
+     * @param {{type: string, newRecord: {type: string, id: *}}} context Contexto de NetSuite.
+     * @returns {void}
+     */
+    function afterSubmit(context) {
+        events.afterSubmit(context, MODULES);
+    }
+
+    return { afterSubmit };
 });
