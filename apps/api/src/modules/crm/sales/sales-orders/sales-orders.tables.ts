@@ -33,6 +33,11 @@ export interface CrmSalesOrderTable {
     sale_price_sales_order: string | null;
     advisor_commission_sales_order: string | null;
     contract_signed_sales_order: Generated<"yes" | "no" | "unknown">;
+    purchase_funds_origin_sales_order: Generated<"own_funds" | "bank_financing" | null>;
+    addendum_status_sales_order: Generated<"pending" | "completed" | "cancelled" | "sent" | null>;
+    addendum_version_sales_order: Generated<number>;
+    addendum_note_sales_order: Generated<string | null>;
+    addendum_changed_at_sales_order: ColumnType<Date | null, Date | string | null | undefined, Date | string | null>;
     commercial_closure_signed_sales_order: Generated<"yes" | "no" | "unknown">;
     advisor_commission_calculated_sales_order: Generated<"yes" | "no" | "unknown">;
     advisor_commission_paid_sales_order: Generated<"yes" | "no" | "unknown">;

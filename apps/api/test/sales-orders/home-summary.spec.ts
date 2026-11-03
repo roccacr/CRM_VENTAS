@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { HomeSummaryService } from "../../src/modules/crm/sales/sales-orders/home-summary.service.js";
 
-const counts = { contracts: { toSend: 2, pendingSignature: 3 }, banking: 4, balance: 5, transferPending: 6, transferSigned: 7, closedThisYear: 8 };
+const counts = { contracts: { toSend: 2, pendingSignature: 3 }, banking: 4, bankingInProgress: 0, balance: 5, transferPending: 6, transferSigned: 7, closedThisYear: 8 };
 function fixture(roles = [{ code: "formalizacion", status: "active" }]) {
     const tx = {};
     const identity = { getCurrentUser: vi.fn().mockResolvedValue({ roles, permissions: [{ code: "formalizacion.home.stages.read", effect: "allow" }] }) };
@@ -16,7 +16,7 @@ describe("Home aggregate", () => {
         vi.useFakeTimers().setSystemTime(new Date("2027-01-01T05:59:59.999Z"));
         const f = fixture();
         const result = await f.service.summary("session");
-        expect(result).toEqual({ schemaVersion: 1, observedAt: "2027-01-01T05:59:59.999Z", period: { year: 2026, timeZone: "America/Costa_Rica", start: "2026-01-01T06:00:00.000Z", endExclusive: "2027-01-01T06:00:00.000Z" }, counts: { contracts: { toSend: 4, pendingSignature: 6 }, banking: 8, balance: 10, transferPending: 12, transferSigned: 14, closedThisYear: 16 }, sources: { native: counts, legacy: counts, legacyEnabled: true, duplicatesExcluded: 9 } });
+        expect(result).toEqual({ schemaVersion: 1, observedAt: "2027-01-01T05:59:59.999Z", period: { year: 2026, timeZone: "America/Costa_Rica", start: "2026-01-01T06:00:00.000Z", endExclusive: "2027-01-01T06:00:00.000Z" }, counts: { contracts: { toSend: 4, pendingSignature: 6 }, banking: 8, bankingInProgress: 0, balance: 10, transferPending: 12, transferSigned: 14, closedThisYear: 16 }, sources: { native: counts, legacy: counts, legacyEnabled: true, duplicatesExcluded: 9 } });
         expect(f.repository.aggregate).toHaveBeenCalledExactlyOnceWith(f.tx, result.period);
         expect(f.legacy.aggregate).toHaveBeenCalledExactlyOnceWith(f.tx, result.period);
         expect(f.repository.readSnapshot).toHaveBeenCalledOnce();
@@ -51,8 +51,8 @@ it("masks forbidden banner counts in both sources for contracts-only reads", asy
     const f = fixture();
     f.identity.getCurrentUser.mockResolvedValue({ roles: [{ code: "formalizacion", status: "active" }], permissions: [{ code: "formalizacion.home.contracts.read", effect: "allow" }] });
     const result = await f.service.summary();
-    expect(result.counts).toEqual({ contracts: { toSend: 4, pendingSignature: 6 }, banking: 0, balance: 0, transferPending: 0, transferSigned: 0, closedThisYear: 0 });
-    for (const source of [result.sources.native, result.sources.legacy]) expect(source).toEqual({ contracts: { toSend: 2, pendingSignature: 3 }, banking: 0, balance: 0, transferPending: 0, transferSigned: 0, closedThisYear: 0 });
+    expect(result.counts).toEqual({ contracts: { toSend: 4, pendingSignature: 6 }, banking: 0, bankingInProgress: 0, balance: 0, transferPending: 0, transferSigned: 0, closedThisYear: 0 });
+    for (const source of [result.sources.native, result.sources.legacy]) expect(source).toEqual({ contracts: { toSend: 2, pendingSignature: 3 }, banking: 0, bankingInProgress: 0, balance: 0, transferPending: 0, transferSigned: 0, closedThisYear: 0 });
     expect(result.sources.duplicatesExcluded).toBe(0);
 });
 

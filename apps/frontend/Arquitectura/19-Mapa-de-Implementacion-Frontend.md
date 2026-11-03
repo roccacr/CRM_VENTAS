@@ -1,5 +1,13 @@
 # 19 - Mapa de Implementacion Frontend
 
+## Mapa vigente — 03/11/2026
+
+Añadir al inventario inferior `src/modules/leads` y `src/services/leads`: perfil completo de consulta, hero/pestañas/historia/órdenes y servicio `/leads/profile`. La ruta canónica es `/home/formalization/perfil`, con alias `/perfil`; ambas conservan workspace Formalización y permiso `lead.profile.read`. No es un CRUD comercial general.
+
+`modules/home` conserva las ocho etapas, marcador Adéndum, contacto y enlaces Outlook/WhatsApp, alta contextual de eventos y alta vacía desde el encabezado. `modules/calendar` contiene filtros/atajos, disponibilidad y salas vía BFF, publicación automática solicitada, detalle Outlook de consulta, control de adéndum futuro y reintentos con versión/operación. No describir esos consumidores como mock ni negar integración Graph backend; React sigue sin acceso directo a Graph.
+
+Mapa de contratos y evidencia: [30](30-Estado-Frontend-Verificado.md), [32](32-Detalle-Orden-y-Cliente-Basico.md) y [Calendario global](Calendario-Global-Frontend.md). Los árboles y snapshots fechados inferiores conservan su alcance histórico; no implican que el código local esté desplegado.
+
 ## Estado contrastado - 2026-11-02
 
 El árbol real contiene `modules/auth`, `administration`, `home`, `marketing`,
@@ -109,7 +117,7 @@ Los catalogos reutilizan las mismas paginas en Administracion, Ventas, Mercadeo,
 | `src/modules/collections` | Home y flujos financieros/cobros cuando se aprueben. | Cobros directos contra ERP o NetSuite desde React. | `14`, `23`. |
 | `src/modules/management` | Home de jefatura, supervision y acceso consolidado por permisos. | Duplicar pantallas operativas de cada area. | `14`, `21`, `24`. |
 | `src/modules/support` | Home de TI/soporte y herramientas aprobadas. | Acceso total por nombre de rol o secretos de infraestructura. | `14`, `21`, `24`. |
-| `src/modules/calendar` | Calendario API compartido, overlays, formularios, participantes/relaciones CRM, panel diario y agenda. | Graph, envío de invitaciones, escritura legacy o certificación de sincronización. | `15`, `Calendario-Global-Frontend`. |
+| `src/modules/calendar` | Calendario API compartido, overlays, formularios, participantes/relaciones CRM, panel diario y agenda. | Graph directo desde React, escritura legacy o certificación de sincronización externa real. | `15`, `Calendario-Global-Frontend`. |
 | `src/modules/notes` | Canvas/Drawer, bandejas, conversación, avisos, workflow, realtime y Select de vínculos comerciales. | Conceder acceso comercial al invitar, adjuntos no activados o envío por proveedores. | `16`. |
 | `src/modules/permissions` | Componentes para mostrar/ocultar acciones segun permisos efectivos. | Reglas finales de autorizacion. | `09`. |
 | `src/components/ui` | Botones, inputs, badges, dialogs, tooltips genericos. | Logica de negocio. | `03`. |

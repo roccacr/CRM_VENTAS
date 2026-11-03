@@ -14,7 +14,7 @@ const allow = (code: string): EffectiveNavigationPermission => ({ code, effect: 
 const deny = (code: string): EffectiveNavigationPermission => ({ code, effect: "deny" });
 const orgUnits = (...codes: string[]) => codes.map((code) => ({ code, membership: "member", name: code, publicId: `${code}-public-id`, scope: "self", status: "active" }));
 const CATALOG_CONTEXT_CODES = ["ventas", "mercadeo", "formalizacion", "contabilidad", "administration"] as const;
-const CATALOG_MODULE_CODES = ["catalog_project", "catalog_campaign", "catalog_class", "catalog_broker", "catalog_file", "catalog_subsidiary", "catalog_location"] as const;
+const CATALOG_MODULE_CODES = ["catalog_project", "catalog_campaign", "catalog_class", "catalog_broker", "catalog_file", "catalog_subsidiary", "catalog_location", "catalog_bank"] as const;
 
 const getWorkspace = (workspaces: readonly WorkspaceProfile[], code: string): WorkspaceProfile => {
     const workspace = workspaces.find((item) => item.code === code);

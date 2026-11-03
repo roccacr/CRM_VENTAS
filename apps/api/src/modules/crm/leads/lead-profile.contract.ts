@@ -68,6 +68,38 @@ export interface LeadProfileOrderPage {
     page: number;
 }
 
+/** Evento del calendario vinculado al cliente; las dos fuentes comparten la misma forma. */
+export interface LeadProfileEvent {
+    id: string;
+    source: LeadProfileOrigin;
+    title: string | null;
+    type: string | null;
+    status: string | null;
+    /** Día en hora de Costa Rica, YYYY-MM-DD. */
+    date: string | null;
+    startTime: string | null;
+    endTime: string | null;
+}
+export interface LeadProfileEventPage {
+    items: LeadProfileEvent[];
+    hasMore: boolean;
+    page: number;
+}
+
+/** Registros comerciales reales; la bitácora no se utiliza para inferir su existencia. */
+export interface LeadProfileCommercialRecord {
+    id: string;
+    source: LeadProfileOrigin;
+    fields: { code: string; label: string; value: string | null }[];
+}
+export interface LeadProfileCommercialPage {
+    items: LeadProfileCommercialRecord[];
+    total: number;
+    hasMore: boolean;
+    page: number;
+    available: boolean;
+}
+
 /** Contrato único de salida, independiente de las columnas y tablas de cada origen. */
 export interface LeadProfileResponseDto {
     schemaVersion: 1;
@@ -78,6 +110,9 @@ export interface LeadProfileResponseDto {
     sections: { title: string; fields: LeadProfileField[] }[];
     history: { items: ClientHistoryItem[]; hasMore: boolean; nextCursor: string | null; legacyAvailable?: boolean };
     orders: Record<LeadProfileOrigin, LeadProfileOrderPage>;
+    events: Record<LeadProfileOrigin, LeadProfileEventPage>;
+    opportunities: LeadProfileCommercialPage;
+    estimates: LeadProfileCommercialPage;
 }
 
 const nullableText: SchemaObject = { type: "string", nullable: true };
@@ -102,6 +137,26 @@ const historyItemSchema: SchemaObject = {
         toStatus: nullableText,
     },
 };
+const commercialPageSchema: SchemaObject = {
+    type: "object",
+    required: ["items", "total", "hasMore", "page", "available"],
+    properties: {
+        items: { type: "array", maxItems: 50, items: { type: "object", required: ["id", "source", "fields"], properties: { id: { type: "string" }, source: originSchema, fields: { type: "array", items: { type: "object", required: ["code", "label", "value"], properties: { code: { type: "string" }, label: { type: "string" }, value: nullableText } } } } } },
+        total: { type: "integer", minimum: 0 },
+        hasMore: { type: "boolean" },
+        page: { type: "integer", minimum: 1 },
+        available: { type: "boolean" },
+    },
+};
+const eventPageSchema: SchemaObject = {
+    type: "object",
+    required: ["items", "hasMore", "page"],
+    properties: {
+        items: { type: "array", maxItems: 50, items: { type: "object", required: ["id", "source", "title", "type", "status", "date", "startTime", "endTime"], properties: { id: { type: "string" }, source: originSchema, title: nullableText, type: nullableText, status: nullableText, date: nullableText, startTime: nullableText, endTime: nullableText } } },
+        hasMore: { type: "boolean" },
+        page: { type: "integer", minimum: 1 },
+    },
+};
 const orderPageSchema: SchemaObject = {
     type: "object",
     required: ["items", "hasMore", "page"],
@@ -111,7 +166,7 @@ const orderPageSchema: SchemaObject = {
 /** Esquema explícito porque las interfaces desaparecen al compilar y Swagger también debe funcionar en tsx. */
 export const LEAD_PROFILE_RESPONSE_SCHEMA: SchemaObject = {
     type: "object",
-    required: ["schemaVersion", "observedAt", "id", "source", "sources", "sections", "history", "orders"],
+    required: ["schemaVersion", "observedAt", "id", "source", "sources", "sections", "history", "orders", "events", "opportunities", "estimates"],
     properties: {
         schemaVersion: { type: "integer", enum: [1] },
         observedAt: { type: "string", format: "date-time" },
@@ -120,7 +175,10 @@ export const LEAD_PROFILE_RESPONSE_SCHEMA: SchemaObject = {
         sources: { type: "array", items: originSchema, minItems: 1, maxItems: 2, uniqueItems: true },
         sections: { type: "array", items: { type: "object", required: ["title", "fields"], properties: { title: { type: "string" }, fields: { type: "array", items: profileFieldSchema } } } },
         history: { type: "object", required: ["items", "hasMore", "nextCursor"], properties: { items: { type: "array", maxItems: 50, items: historyItemSchema }, hasMore: { type: "boolean" }, nextCursor: nullableText, legacyAvailable: { type: "boolean" } } },
+        opportunities: commercialPageSchema,
+        estimates: commercialPageSchema,
         orders: { type: "object", required: ["native", "legacy"], properties: { native: orderPageSchema, legacy: orderPageSchema } },
+        events: { type: "object", required: ["native", "legacy"], properties: { native: eventPageSchema, legacy: eventPageSchema } },
     },
 };
 

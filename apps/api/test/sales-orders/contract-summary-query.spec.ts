@@ -56,13 +56,13 @@ describe("contract stage read predicates", () => {
             await f.db.destroy();
         }
     });
-    it("uses a shared read-only repeatable snapshot and three distinct approved types", async () => {
+    it("uses a shared read-only repeatable snapshot and the explicit Formalization approval", async () => {
         const f = fixture();
         try {
             expect(await f.repository.readSnapshot((tx) => f.repository.countNative(tx))).toEqual({ toSend: 0, pendingSignature: 0 });
             expect(f.settings).toContainEqual({ isolationLevel: "repeatable read", accessMode: "read only" });
             const query = f.queries[0]?.sql ?? "";
-            for (const predicate of ["status_sales_order='active'", "cancelled_sales_order='no'", "deleted_at_sales_order IS NULL", "'sales_management','developer','formalization'", "status_sales_order_approval='approved'", ")=3", "ORDER BY e.sequence_sales_order_state_event DESC LIMIT 1", "'contract_pending_signature'", "'contract_pending_send'"]) expect(query).toContain(predicate);
+            for (const predicate of ["status_sales_order='active'", "cancelled_sales_order='no'", "deleted_at_sales_order IS NULL", "a.type_code_sales_order_approval='formalization'", "status_sales_order_approval='approved'", ")=1", "ORDER BY e.sequence_sales_order_state_event DESC LIMIT 1", "'contract_pending_signature'", "'contract_pending_send'"]) expect(query).toContain(predicate);
             expect(query).not.toMatch(/contract_signed_sales_order|UPDATE|INSERT|FOR UPDATE/);
         } finally {
             await f.db.destroy();
@@ -75,8 +75,8 @@ describe("contract stage read predicates", () => {
             await f.repository.readSnapshot((tx) => reader.pending(123, tx));
             const query = f.queries[0];
             expect(query?.parameters).toEqual([123]);
-            for (const predicate of ["`crmdatabase-api`.`ordenventa`", "`crmdatabase-api`.`audit_sales_order_state_event`", "status_ov=1", "caida_ov=0", "chekJefeVenta=1", "aprobacion__rdr_ov=1", "aprobacion_forma_ov=1", "ORDER BY id_ov LIMIT 500"]) expect(query?.sql).toContain(predicate);
-            expect(query?.sql).not.toMatch(/contrado_frima_ov|UPDATE|INSERT/);
+            for (const predicate of ["`crmdatabase-api`.`ordenventa`", "`crmdatabase-api`.`audit_sales_order_state_event`", "status_ov=1", "caida_ov=0", "aprobacion_forma_ov=1", "ORDER BY id_ov LIMIT 500"]) expect(query?.sql).toContain(predicate);
+            expect(query?.sql).not.toMatch(/contrado_frima_ov|chekJefeVenta|aprobacion__rdr_ov|UPDATE|INSERT/);
         } finally {
             await f.db.destroy();
         }

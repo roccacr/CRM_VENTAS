@@ -1,4 +1,14 @@
 /* Summary cards and section headings shared by all catalog views. Scoped to the catalog page root so nothing leaks to other modules. */
+.catalog-items-page--projects .catalog-banner__heading {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.catalog-items-page--projects .catalog-banner__heading .event-help {
+    flex: 0 0 auto;
+}
+
 .catalog-items-page--projects .catalog-banners {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));

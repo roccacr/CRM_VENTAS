@@ -1,5 +1,11 @@
 # 26 - Estandar de Nombres de Base de Datos
 
+## Contraste con entregas 058/062/065/066 — 2026-11-03
+
+Este estándar se conserva como norma. El checkout contiene diferencias que no deben ocultarse: 058 define `int_netsuite_order_cursor` y `audit_netsuite_order_event` con nombres del proveedor y sin COMMENT individual en sus columnas; 065 define el marcador con ENUM y agrega columnas sin COMMENT; 066 agrega la nota TEXT sin COMMENT. 062 usa ENUM de origen de fondos con COMMENT. Los contratos [83](83-Adendum-Migracion-065-y-Rollback.md)/[84](84-Adendum-Manual-Migracion-066-y-Permisos.md) documentan las definiciones implementadas, sin afirmar que satisfacen toda esta norma.
+
+Registrar estas diferencias no autoriza cambiar reglas, reescribir migraciones aplicadas ni corregir DDL existente. Cualquier conciliación física necesita inspección y aprobación propia, conservando valores y evidencia. El inventario completo por destino está en [03](03-Base-Datos-y-Migracion.md).
+
 ## Veredicto
 
 La base `CRM_THINK_V2` debe tener nombres fisicos claros, genericos y neutrales.

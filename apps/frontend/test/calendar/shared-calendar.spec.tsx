@@ -16,6 +16,27 @@ const permissions = [
     { code: "mercadeo.calendar.read", effect: "deny" },
 ];
 const event = { id: "event-1", source: "native", originModule: "ventas", typeId: "type-ventas", typeCode: "general", title: "Visita comercial", description: null, location: null, start: "2026-10-28T15:00:00Z", end: "2026-10-28T16:00:00Z", allDay: false, status: "scheduled", version: 3, canEdit: true, formKey: "ventas.general.v1", details: { reference: "Cliente interno" } };
+it("renders independent module and type colors on the real calendar event element", async () => {
+    const calendars = descriptors.map((calendar) => ({ ...calendar, color: "#b4325a", types: calendar.types.map((type) => ({ ...type, color: "#475569" })) }));
+    const colored = { ...event, title: "Evento dos colores", originModule: "formalizacion", typeId: "type-formalizacion" };
+    vi.mocked(apiRequest).mockImplementation((path) => Promise.resolve(path === "/calendar/calendars" ? { schemaVersion: 1, calendars } : { schemaVersion: 1, events: [colored] }));
+    render(<SharedCalendarPage moduleCode="formalizacion" effectivePermissions={permissions} />);
+    const labels = await screen.findAllByText("Evento dos colores");
+    const element = labels.map((label) => label.closest<HTMLElement>(".cal-event")).find(Boolean);
+    expect(element).toBeDefined();
+    expect(element?.style.getPropertyValue("--calendar-module-color")).toBe("#b4325a");
+    expect(element?.style.getPropertyValue("--fc-event-color")).toBe("#475569");
+    expect(element).toHaveAttribute("title", "Evento dos colores · Formalización · General");
+});
+it("displays an Outlook-only event without inventing CRM ownership or exposing an editor", async () => {
+    const remote = { ...event, id: "outlook-only", source: "outlook", originModule: null, typeId: "", typeCode: "", formKey: "outlook.readonly", canEdit: false, details: {}, title: "Cita personal" };
+    vi.mocked(apiRequest).mockImplementation((path) => Promise.resolve(path === "/calendar/calendars" ? { schemaVersion: 1, calendars: descriptors } : { schemaVersion: 1, events: [remote], outlookStatus: "connected" }));
+    render(<SharedCalendarPage moduleCode="formalizacion" effectivePermissions={permissions} />);
+    fireEvent.click(await screen.findByText("Cita personal"));
+    expect(screen.getByRole("dialog")).toHaveTextContent("Evento de Outlook");
+    expect(screen.getByRole("dialog")).toHaveTextContent("Este evento está disponible para consulta.");
+    expect(screen.queryByRole("button", { name: "Guardar evento" })).toBeNull();
+});
 beforeEach(() => {
     installBrowserApiDoubles();
     window.history.replaceState(null, "", "/home/formalization/calendar?date=2026-10-28");
@@ -24,6 +45,30 @@ beforeEach(() => {
         .mockImplementation((path) => Promise.resolve(path === "/calendar/calendars" ? { schemaVersion: 1, calendars: descriptors } : { schemaVersion: 1, events: [] }));
 });
 afterEach(cleanup);
+it("keeps the preloader visible until the delayed calendar feed finishes", async () => {
+    let finish: (value: unknown) => void = () => {};
+    vi.mocked(apiRequest).mockImplementation((path) =>
+        path === "/calendar/calendars"
+            ? Promise.resolve({ schemaVersion: 1, calendars: descriptors })
+            : new Promise((resolve) => {
+                  finish = resolve;
+              }),
+    );
+    render(<SharedCalendarPage moduleCode="formalizacion" effectivePermissions={permissions} />);
+    await waitFor(() => {
+        expect(apiRequest).toHaveBeenCalledWith(expect.stringContaining("/calendar/events?"));
+    });
+    expect(screen.getByRole("status", { name: "Cargando eventos" })).toBeVisible();
+    expect(screen.getByRole("region", { name: "Calendario de Formalización" })).toHaveAttribute("aria-busy", "true");
+    await act(async () => {
+        finish({ schemaVersion: 1, events: [event], outlookStatus: "connected" });
+        await Promise.resolve();
+    });
+    expect(await screen.findByText("Visita comercial")).toBeInTheDocument();
+    expect(screen.queryByRole("status", { name: "Cargando eventos" })).toBeNull();
+    expect(screen.getByRole("region", { name: "Calendario de Formalización" })).toHaveAttribute("aria-busy", "false");
+    expect(screen.getByRole("region", { name: "Calendario de Formalización" }).querySelector(".calendar-surface__body")).toHaveAttribute("aria-hidden", "false");
+});
 it("renders real calendar views and defaults to the current authorized module only", async () => {
     render(<SharedCalendarPage moduleCode="formalizacion" effectivePermissions={permissions} />);
     expect(await screen.findByRole("checkbox", { name: "Formalización" })).toBeChecked();
@@ -79,7 +124,7 @@ it("does not let a stale overlay response restore deselected events", async () =
 });
 it("creates with server types, immutable current origin and Costa Rica UTC conversion", async () => {
     vi.mocked(apiRequest).mockImplementation((path, options) => {
-        if (options?.method === "POST") return Promise.resolve({ schemaVersion: 1, event: { ...event, ...(options.body as object), originModule: "formalizacion", typeId: "type-formalizacion", formKey: "formalizacion.general.v1" } });
+        if (options?.method === "POST") return Promise.resolve({ schemaVersion: 1, delivery: { status: "synced" }, event: { ...event, ...(options.body as object), originModule: "formalizacion", typeId: "type-formalizacion", formKey: "formalizacion.general.v1" } });
         return Promise.resolve(path === "/calendar/calendars" ? { schemaVersion: 1, calendars: descriptors } : { schemaVersion: 1, events: [] });
     });
     render(<SharedCalendarPage moduleCode="formalizacion" effectivePermissions={permissions} />);
@@ -88,11 +133,15 @@ it("creates with server types, immutable current origin and Costa Rica UTC conve
     fireEvent.change(screen.getByLabelText("Nombre del evento"), { target: { value: "Revisar expediente" } });
     fireEvent.change(screen.getByLabelText("Inicio"), { target: { value: "2026-10-28T09:30" } });
     fireEvent.change(screen.getByLabelText("Fin"), { target: { value: "2026-10-28T10:30" } });
-    fireEvent.change(screen.getByLabelText("Referencia de formalización"), { target: { value: "OV-208" } });
+    fireEvent.change(screen.getByLabelText("Referencia interna (opcional)"), { target: { value: "OV-208" } });
     fireEvent.click(await screen.findByRole("button", { name: "Guardar evento" }));
     await waitFor(() => {
         expect(apiRequest).toHaveBeenCalledWith("/calendar/events", expect.objectContaining({ method: "POST", body: expect.objectContaining<Record<string, unknown>>({ moduleCode: "formalizacion", typeId: "type-formalizacion", title: "Revisar expediente", start: "2026-10-28T15:30:00Z", end: "2026-10-28T16:30:00Z", details: { reference: "OV-208", teamsRequested: false }, operationId: expect.any(String) as string }) as unknown }));
     });
+    expect(await screen.findByRole("heading", { name: "Evento guardado" })).toBeVisible();
+    expect(screen.getByLabelText("Nombre del evento")).not.toBeVisible();
+    expect(screen.getByRole("region", { name: "Resultado de sincronización" })).toHaveTextContent("Revisar expediente");
+    fireEvent.click(await screen.findByRole("button", { name: "Volver al calendario" }));
     await waitFor(() => {
         expect(screen.queryByRole("dialog")).toBeNull();
     });
@@ -102,7 +151,7 @@ it("edits a native event only in its origin, preserving version and retry operat
     vi.mocked(apiRequest).mockImplementation((path, options) => {
         if (options?.method === "PATCH") {
             attempt++;
-            return attempt === 1 ? Promise.reject(new TypeError("network")) : Promise.resolve({ schemaVersion: 1, event: { ...event, version: 4 } });
+            return attempt === 1 ? Promise.reject(new TypeError("network")) : Promise.resolve({ schemaVersion: 1, delivery: { status: "synced" }, event: { ...event, version: 4 } });
         }
         return Promise.resolve(path === "/calendar/calendars" ? { schemaVersion: 1, calendars: descriptors } : { schemaVersion: 1, events: [event] });
     });
@@ -113,6 +162,7 @@ it("edits a native event only in its origin, preserving version and retry operat
     expect(await screen.findByRole("alert")).toHaveTextContent("No se confirmó el guardado");
     expect(screen.getByLabelText("Nombre del evento")).toBeDisabled();
     fireEvent.click(await screen.findByRole("button", { name: "Guardar evento" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Volver al calendario" }));
     await waitFor(() => {
         expect(screen.queryByRole("dialog")).toBeNull();
     });

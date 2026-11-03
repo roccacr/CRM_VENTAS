@@ -1,5 +1,47 @@
 # 50 - Plan de seguimiento de Formalizacion
 
+## Inicio unificado y orden global — 2026-11-03
+
+- Inicio oculta temporalmente «Ver todas las órdenes» y el menú «Gestión de formalizaciones»; se conserva la ruta directa `/home/formalization/orders` y su autorización.
+- Los banners agregan su selección al filtro «Bandejas y subestados» de Inicio; conservan proyectos, búsqueda y selecciones previas, sin duplicados ni navegación. Página vuelve a1. Las selecciones son OR entre bandejas y AND respecto de proyectos/búsqueda. «Sin iniciar» usa bank_management y «En proceso» bank_management_in_progress.
+- La lista une proyecciones nativa y legacy mediante UNION ALL en la misma instantánea de solo lectura. Conserva exclusión de aliases bajo autoridad nativa, permisos, conteos y switch legacy; después filtra, ordena y pagina globalmente. Ya no concatena una página nativa seguida de otra legacy.
+- Orden ascendente: nombre del proyecto, código de expediente, fuente, ID interno e identidad; NULL al final. Código origen: crm_unit_file.code_unit_file / expedientes.codigo_exp (alias unit). ROW_NUMBER conserva ese orden al reconstruir JSON sin exponer ordinales internos. No ordena solo las25 filas visibles ni usa el número de orden como clave principal.
+- SQL compartido verificado exclusivamente con lectura:2 páginas de25, total331, sin duplicados y orden correcto entre páginas. En ese conjunto native0/legacy331; la mezcla de fuentes está cubierta por pruebas focales, no por filas nativas reales. Sin migraciones ni cambios de datos.
+- API56 pruebas focales, lint/typecheck/build aprobados; suite global7930 aprobadas,229 fallidas ajenas (NetSuite/rutas),266 omitidas. No se declara todo el repositorio verde.
+
+## Reglas vigentes de fondos y finalización — 2026-11-03
+
+Las reglas actuales de [78](78-Formalizacion-Origen-Fondos-y-Gestion-Bancaria.md)
+prevalecen sobre los predicados históricos de este documento:
+
+- Contratos exige la aprobación explícita de Formalización, actividad y ausencia
+  de caída/borrado; no exige nuevamente las otras dos aprobaciones. Aprobar una
+  orden mantiene sus prerrequisitos propios de Jefatura y Desarrolladora.
+- Las ocho etapas incluyen `bank_management_in_progress`. Al salir de Contratos,
+  con firma confirmada, `own_funds` conduce a `pending_balance` y `bank_financing`
+  a `bank_management_in_progress`; sin origen no hay avance. Origen y etapa se
+  guardan con la misma transacción y auditoría; el replay compara su elección histórica.
+- Traspasos pendientes exige cuotas sí, unidad traspasada no y unidad entregada no.
+  Traspaso firmado exige cuotas sí, traspasada sí, llaves no y entregada no.
+  Unidad entregada sí habilita cierre aunque los otros tres sean desconocidos.
+  NULL nunca sustituye un no confirmado. Se conservan firma, permisos y versión.
+- El cierre anual exige evidencia `closed` en el año de Costa Rica y unidad
+  entregada sí. Una combinación fuera de tabla mantiene la etapa guardada y
+  visibilidad autorizada en **Todas**; no se inventa un cambio durante GET.
+- `counts.bankingInProgress` distingue banca en proceso del agregado Home
+  `banking`; el seguimiento devuelve `counts.bankInProgress` y `bank` reúne
+  los dos estados bancarios. Los cuatro indicadores son booleanos/NULL.
+- Los eventos NetSuite `edit`/`xedit` pueden avanzar desde saldo/traspaso/firmado
+  a un destino posterior confirmado, conservando responsable y actor integración.
+  Flags, visita, auditorías y cursor comparten transacción. No revierten etapas
+  ni permiten regresar a saldo una vez iniciado el traspaso.
+
+Adéndum es una capacidad independiente: [83](83-Adendum-Migracion-065-y-Rollback.md)
+y [84](84-Adendum-Manual-Migracion-066-y-Permisos.md). El permiso de banner solo da
+conteo; `formalizacion.orders.addendum.read` controla bandeja, marca y evidencia.
+La marca no cambia etapa/aprobaciones. Esta revisión no repite pruebas históricas,
+no escribe en BD ni acredita edición real de NetSuite o despliegue.
+
 Actualizacion posterior 2026-10-26: seguimiento ya conectado; la bandeja Todas
 incluye unicamente la union de condiciones de los banners. Totales, proyectos
 y paginacion excluyen ordenes sin etapa elegible. Ver [52](52-Etapas-Responsables-y-Tiempos.md).

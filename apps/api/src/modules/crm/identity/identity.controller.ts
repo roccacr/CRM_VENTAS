@@ -246,8 +246,8 @@ export class IdentityController {
     @RouteSecurity("public")
     @HttpCode(200)
     @ApiOperation({ summary: "Iniciar login Microsoft con PKCE/state cuando este configurado." })
-    async startMicrosoftLogin(@Res({ passthrough: true }) reply: FastifyReply) {
-        const result = await this.identity.startMicrosoftLogin();
+    async startMicrosoftLogin(@Res({ passthrough: true }) reply: FastifyReply, @Req() request: CookieRequest, @Query("calendar") calendar?: string) {
+        const result = calendar === "true" ? await this.identity.startMicrosoftLogin(request.cookies[SESSION_COOKIE_NAME], true) : await this.identity.startMicrosoftLogin();
         reply.setCookie(MICROSOFT_OIDC_CHALLENGE_COOKIE_NAME, result.challengeCookie, {
             expires: result.challengeExpiresAt,
             httpOnly: true,

@@ -44,6 +44,15 @@ export class FollowUpController {
     /** The use case owns authorization, filtering and data access. */
     constructor(@Inject(FollowUpService) private readonly service: FollowUpService) {}
 
+    /** Fresh global project aggregates; query filters are deliberately unsupported. */
+    @Get("project-distribution")
+    @RouteSecurity("permission")
+    @RequirePermission({ kind: "formalization-read" })
+    @Header("Cache-Control", "no-store")
+    projectDistribution(@Req() request: CookieRequest, @Query() query: unknown) {
+        return this.service.projectDistribution(request.cookies[SESSION_COOKIE_NAME], query);
+    }
+
     /** Filters and pagination are validated by the use case before SQL. */
     @Get("follow-up")
     @RouteSecurity("permission")

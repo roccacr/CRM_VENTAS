@@ -1,5 +1,9 @@
 # 15 - UX Calendarios por Area y Supervision
 
+## Actualización contrastada — 03/11/2026
+
+El contrato implementado actual es [Calendario global](Calendario-Global-Frontend.md): feed CRM/Outlook, publicación solicitada desde el editor, Teams/salas, disponibilidad y sugerencias por BFF, sin tokens ni Graph directo en React. Los exclusivos Outlook permanecen de consulta y el enlace externo permite responder. Las afirmaciones inferiores de participantes solo CRM y ausencia de disponibilidad externa corresponden a cortes anteriores. El blueprint de supervisión no concede permisos ni acredita sincronización externa real.
+
 ## Implementación y alcance actual - 2026-11-02
 
 El calendario global ya está conectado a API en Formalización, Mercadeo, Ventas

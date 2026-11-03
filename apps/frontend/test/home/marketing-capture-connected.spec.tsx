@@ -6,7 +6,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { MarketingLeadCapturePage } from "../../src/modules/marketing/MarketingLeadCapturePage";
 import { installBrowserApiDoubles } from "../support/browser";
 import { captureResponse, captureUser } from "./fixtures/capture-report";
-import { selectMarketing } from "./marketing-select.helpers";
 
 const api = vi.hoisted(() => ({ request: vi.fn() }));
 vi.mock("../../src/services/api/api-client", () => ({ apiRequest: api.request }));
@@ -27,40 +26,44 @@ const deferred = () => {
 const open = () => render(<MarketingLeadCapturePage currentUser={captureUser} />);
 
 describe("connected capture report", () => {
-    it("requests week and hides the previous month when returning to it before the new response", async () => {
+    it("applies week and keeps it visible while editing a return to month", async () => {
         const week = deferred(),
             month = deferred();
         api.request.mockResolvedValueOnce(captureResponse()).mockReturnValueOnce(week.promise).mockReturnValueOnce(month.promise);
         open();
         await screen.findByRole("button", { name: "Ver desglose en tabla" });
-        fireEvent.click(screen.getByRole("button", { name: "Semana" }));
+        fireEvent.change(screen.getByRole("combobox", { name: "Periodo" }), { target: { value: "week" } });
+        fireEvent.click(screen.getByRole("button", { name: "Aplicar filtro" }));
         expect(api.request).toHaveBeenLastCalledWith("/marketing/leads/report?period=week");
-        fireEvent.click(screen.getByRole("button", { name: "Mes" }));
-        expect(screen.queryByRole("table")).not.toBeInTheDocument();
         await act(async () => {
-            week.reject(new Error("old failure"));
-            await week.promise.catch(() => undefined);
+            week.resolve({ ...captureResponse(), period: "week" });
+            await week.promise;
         });
-        expect(screen.queryByRole("alert")).not.toBeInTheDocument();
-        expect(screen.getByRole("status")).toBeInTheDocument();
+        await screen.findByRole("button", { name: "Ver desglose en tabla" });
+        fireEvent.change(screen.getByRole("combobox", { name: "Periodo" }), { target: { value: "month" } });
+        expect(screen.getByRole("figure", { name: "Leads por proyecto · por semana" })).toBeInTheDocument();
+        fireEvent.click(screen.getByRole("button", { name: "Aplicar filtro" }));
+        expect(screen.queryByRole("figure")).not.toBeInTheDocument();
         await act(async () => {
             month.resolve(captureResponse());
             await month.promise;
         });
-        expect(await screen.findByRole("button", { name: "Ver desglose en tabla" })).toBeInTheDocument();
+        expect(await screen.findByRole("figure", { name: "Leads por proyecto · por mes" })).toBeInTheDocument();
     });
-    it("keeps a selected seller scope empty when that seller has no rows in the next period", async () => {
+    it("shows the authorized sellers returned for the next period without a seller filter", async () => {
         const response = captureResponse();
         const rows = response.rows.filter((row) => row.date === response.today && row.sellerId === "carlos");
         api.request.mockResolvedValueOnce(response).mockResolvedValueOnce({ ...response, period: "day", range: { start: response.today, end: response.today }, sellers: response.sellers.filter((seller) => seller.id === "carlos"), rows, sources: { ...response.sources, legacy: rows.reduce((sum, row) => sum + row.leads, 0) } });
         open();
         await screen.findByRole("button", { name: "Ver desglose en tabla" });
-        await selectMarketing("Vendedor", "Ana Solís");
-        fireEvent.click(screen.getByRole("button", { name: "Hoy" }));
+        expect(screen.queryByRole("combobox", { name: "Vendedor" })).not.toBeInTheDocument();
+        fireEvent.change(screen.getByRole("combobox", { name: "Periodo" }), { target: { value: "day" } });
+        fireEvent.click(screen.getByRole("button", { name: "Aplicar filtro" }));
         await screen.findByRole("button", { name: "Ver desglose en tabla" });
-        expect(screen.getByText("Ana Solís")).toBeInTheDocument();
+        expect(screen.queryByRole("combobox", { name: "Vendedor" })).not.toBeInTheDocument();
         const legend = document.querySelector(".capture-columns-chart__legend") as HTMLElement;
-        expect(within(legend).queryByText("Carlos Vega")).not.toBeInTheDocument();
+        expect(legend).not.toHaveTextContent("Carlos Vega");
+        expect(legend.querySelector("img")).toBeNull();
     });
     it("starts on month and keeps counters and downloads hidden while loading", () => {
         api.request.mockReturnValue(new Promise(() => {}));
@@ -84,7 +87,13 @@ describe("connected capture report", () => {
             all = deferred();
         api.request.mockReturnValueOnce(month.promise).mockReturnValueOnce(all.promise);
         open();
-        fireEvent.click(screen.getByRole("button", { name: "Año" }));
+        await act(async () => {
+            month.resolve(captureResponse());
+            await month.promise;
+        });
+        await screen.findByRole("button", { name: "Ver desglose en tabla" });
+        fireEvent.change(screen.getByRole("combobox", { name: "Periodo" }), { target: { value: "year" } });
+        fireEvent.click(screen.getByRole("button", { name: "Aplicar filtro" }));
         expect(api.request).toHaveBeenLastCalledWith("/marketing/leads/report?period=all");
         const response = { ...captureResponse(), period: "all", today: "2027-01-05", range: { start: "2020-02-03", end: "2027-01-05" }, coverage: { start: "2020-02-03", end: "2027-01-05" } };
         await act(async () => {
@@ -98,14 +107,15 @@ describe("connected capture report", () => {
             await month.promise;
         });
         expect(screen.getByText(/1 ene/)).toBeInTheDocument();
-        expect(screen.getByRole("button", { name: "Año" })).toHaveAttribute("aria-pressed", "true");
+        expect(screen.getByRole("combobox", { name: "Periodo" })).toHaveValue("year");
     });
     it("clears previous counters on a failed switch and never restores them", async () => {
         const day = deferred();
         api.request.mockResolvedValueOnce(captureResponse()).mockReturnValueOnce(day.promise);
         open();
         await screen.findByRole("button", { name: "Ver desglose en tabla" });
-        fireEvent.click(screen.getByRole("button", { name: "Hoy" }));
+        fireEvent.change(screen.getByRole("combobox", { name: "Periodo" }), { target: { value: "day" } });
+        fireEvent.click(screen.getByRole("button", { name: "Aplicar filtro" }));
         expect(screen.queryByRole("table")).not.toBeInTheDocument();
         await act(async () => {
             day.reject(new Error("failed"));
@@ -122,9 +132,9 @@ describe("connected capture report", () => {
         const table = await screen.findByRole("table", { name: "Leads por proyecto" });
         expect(within(table).getAllByText("Real horizonte")[0]).toBeInTheDocument();
         const legend = document.querySelector(".capture-columns-chart__legend") as HTMLElement;
-        expect(within(legend).getByText("Real ana")).toBeInTheDocument();
+        expect(within(legend).getByText("Real horizonte")).toBeInTheDocument();
         expect(legend.querySelector('img[src*="/vendedores/"]')).toBeNull();
-        expect(legend.querySelector('img[src*="rocca-marketing-generated.png"]')).not.toBeNull();
+        expect(legend.querySelector("img")).toBeNull();
         expect(screen.getByRole("note")).toHaveTextContent("3");
         expect(screen.queryByText("Ana Solís")).not.toBeInTheDocument();
     });
@@ -145,4 +155,71 @@ describe("connected capture report", () => {
         expect(screen.queryByRole("table")).not.toBeInTheDocument();
         expect(screen.getByRole("status")).toBeInTheDocument();
     });
+});
+
+it("keeps a period change in draft until Apply is pressed", async () => {
+    api.request.mockResolvedValue(captureResponse());
+    open();
+    await screen.findByRole("button", { name: "Ver desglose en tabla" });
+    fireEvent.change(screen.getByRole("combobox", { name: "Periodo" }), { target: { value: "week" } });
+    expect(api.request).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole("figure", { name: "Leads por proyecto · por mes" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Aplicar filtro" }));
+    expect(api.request).toHaveBeenLastCalledWith("/marketing/leads/report?period=week");
+});
+it('keeps the newest qualification response and preserves measure and depth', async () => {
+    const qualified = deferred(), unqualified = deferred();
+    api.request.mockResolvedValueOnce(captureResponse()).mockReturnValueOnce(qualified.promise).mockReturnValueOnce(unqualified.promise);
+    open();
+    await screen.findByRole('button', { name: 'Ver desglose en tabla' });
+    fireEvent.click(screen.getByRole('button', { name: 'Leads con cita' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Proyecto › Campaña' }));
+    const choose = async (name: string) => {
+        fireEvent.mouseDown(screen.getByRole('combobox', { name: 'Filtrar por calificación' }));
+        fireEvent.click(await screen.findByRole('option', { name }));
+    };
+    await choose('Calificado');
+    expect(screen.queryByRole('figure')).not.toBeInTheDocument();
+    await choose('No calificado');
+    await act(async () => { unqualified.resolve({ ...captureResponse(), qualification: 'unqualified' }); await unqualified.promise; });
+    expect(await screen.findByRole('figure', { name: 'Leads con cita por proyecto y campaña · por mes' })).toBeInTheDocument();
+    await act(async () => { qualified.resolve({ ...captureResponse(), qualification: 'qualified' }); await qualified.promise; });
+    expect(screen.getByRole('combobox', { name: 'Filtrar por calificación' })).toBeInTheDocument();
+    expect(screen.getByRole('figure', { name: 'Leads con cita por proyecto y campaña · por mes' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Leads con cita' })).toHaveAttribute('aria-pressed', 'true');
+});
+
+
+
+it.each(['Leads con cita', 'Leads perdidos', 'Motivos de p\u00e9rdida'])('preserves projects and period when filtering %s', async (measure) => {
+    api.request.mockResolvedValueOnce(captureResponse()).mockResolvedValueOnce({ ...captureResponse(), qualification: 'qualified' });
+    open();
+    fireEvent.click(await screen.findByRole('button', { name: 'Ver desglose en tabla' }));
+    const table = await screen.findByRole('table', { name: 'Leads por proyecto' });
+    fireEvent.click(within(table).getByRole('button', { name: 'Proyecto Roble' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+    fireEvent.click(within(screen.getByRole('group', { name: 'Qu\u00e9 medir' })).getByRole('button', { name: measure }));
+    fireEvent.mouseDown(screen.getByRole('combobox', { name: 'Filtrar por calificaci\u00f3n' }));
+    fireEvent.click(await screen.findByRole('option', { name: 'Calificado' }));
+    await screen.findByRole('button', { name: 'Ver desglose en tabla' });
+    expect(screen.getByRole('combobox', { name: 'Periodo' })).toHaveValue('month');
+    expect(within(screen.getByRole('group', { name: 'Qu\u00e9 medir' })).getByRole('button', { name: measure })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByText('1 proyecto')).toBeInTheDocument();
+    expect(api.request).toHaveBeenLastCalledWith('/marketing/leads/report?period=month&qualification=qualified');
+});
+it('keeps an empty project intersection instead of widening to other projects', async () => {
+    const response = captureResponse();
+    const rows = response.rows.filter((row) => row.projectId !== 'roble');
+    api.request.mockResolvedValueOnce(response).mockResolvedValueOnce({ ...response, qualification: 'qualified', rows, sources: { ...response.sources, legacy: rows.reduce((sum, row) => sum + row.leads, 0) } });
+    open();
+    fireEvent.click(await screen.findByRole('button', { name: 'Ver desglose en tabla' }));
+    fireEvent.click(within(await screen.findByRole('table', { name: 'Leads por proyecto' })).getByRole('button', { name: 'Proyecto Roble' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+    fireEvent.mouseDown(screen.getByRole('combobox', { name: 'Filtrar por calificaci\u00f3n' }));
+    fireEvent.click(await screen.findByRole('option', { name: 'Calificado' }));
+    await screen.findByRole('button', { name: 'Ver desglose en tabla' });
+    expect(screen.getByText('1 proyecto')).toBeInTheDocument();
+    expect(document.querySelector('.capture-block__aside')).toHaveTextContent('0 leads');
+    fireEvent.click(screen.getByRole('button', { name: 'Quitar selecci\u00f3n' }));
+    expect(document.querySelector('.capture-block__aside')).not.toHaveTextContent(/^0 leads$/);
 });

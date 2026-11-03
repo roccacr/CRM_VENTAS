@@ -1,6 +1,6 @@
 import "@testing-library/jest-dom/vitest";
 
-import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { niceMaximum, smoothPath, toPoints } from "../../src/modules/home/marketing-chart-geometry";
@@ -251,23 +251,17 @@ describe("Marketing Home summary", () => {
         expect(fetch).not.toHaveBeenCalled();
     });
 
-    it("keeps only the period, the seller and the project as controls", () => {
+    it("keeps only the period and project as controls", () => {
         render(<MarketingHomePage currentUser={user} rows={MARKETING_SAMPLE} />);
         for (const label of ["Hoy", "Semana", "Mes", "Año"]) expect(screen.getByRole("button", { name: label })).toBeInTheDocument();
-        for (const label of ["Vendedor", "Proyecto"]) expect(screen.getByRole("combobox", { name: label })).toBeInTheDocument();
-        for (const label of ["Campaña", "Anuncio", "Comparar con"]) expect(screen.queryByRole("combobox", { name: label })).not.toBeInTheDocument();
+        for (const label of ["Proyecto"]) expect(screen.getByRole("combobox", { name: label })).toBeInTheDocument();
+        for (const label of ["Vendedor", "Campaña", "Anuncio", "Comparar con"]) expect(screen.queryByRole("combobox", { name: label })).not.toBeInTheDocument();
     });
 
-    it("offers every project by default and only the assigned ones once a seller is chosen", async () => {
+    it("offers every authorized project without a seller restriction", () => {
         render(<MarketingHomePage currentUser={user} rows={MARKETING_SAMPLE} />);
-        const options = () => marketingOptions("Proyecto");
         expect(selectedMarketingValues("Proyecto")).toEqual([]);
-        expect(options()).toEqual(projectsForSeller(""));
-        await selectMarketing("Vendedor", "Valeria");
-        await waitFor(() => {
-            expect(options()).toEqual(projectsForSeller("Valeria"));
-        });
-        expect(options()).not.toContain("Proyecto Parque");
+        expect(marketingOptions("Proyecto")).toEqual(projectsForSeller(""));
     });
 
     it("narrows the whole page to one project and puts it back with Todos", async () => {
@@ -281,27 +275,20 @@ describe("Marketing Home summary", () => {
         expect(within(screen.getByRole("region", { name: "Leads por proyecto" })).getAllByRole("article")).toHaveLength(1);
         expect(screen.getByText("Captación de leads y citas · Proyecto Norte")).toBeInTheDocument();
         const ranking = screen.getByRole("region", { name: "Leads por vendedor" });
-        const sellers = within(ranking).getAllByRole("button");
+        const sellers = within(ranking).getAllByRole("listitem");
         expect(sellers.length).toBeLessThanOrEqual(4);
         await selectMarketing("Proyecto", "");
         expect(screen.getByLabelText(`Leads: ${number(all)}`)).toBeInTheDocument();
         expect(within(screen.getByRole("region", { name: "Leads por proyecto" })).getAllByRole("article")).toHaveLength(3);
     });
 
-    it("combines seller and project, and drops a project the new seller does not work on", async () => {
+    it("combines projects without restricting their sellers", async () => {
         render(<MarketingHomePage currentUser={user} rows={MARKETING_SAMPLE} />);
-        await selectMarketing("Vendedor", "Marlon");
         await selectMarketing("Proyecto", "Proyecto Parque");
-        const both = summarizeMarketingSample(resolveMarketingView({ ...emptyMarketingFilters(), seller: "Marlon", project: "Proyecto Parque", selection: { ...emptyMarketingFilters().selection, mode: "month" } }).rows).leads;
-        expect(screen.getByLabelText(`Leads: ${number(both)}`)).toBeInTheDocument();
-        expect(screen.getByText("Vendedor · Proyecto Parque")).toBeInTheDocument();
-        await selectMarketing("Vendedor", "Valeria");
-        expect(selectedMarketingValues("Proyecto")).toEqual([]);
-        await selectMarketing("Proyecto", "Proyecto Norte");
-        await selectMarketing("Vendedor", "Gabriel");
-        expect(selectedMarketingValues("Proyecto")).toEqual(["Proyecto Norte"]);
-        await selectMarketing("Vendedor", "");
-        expect(selectedMarketingValues("Proyecto")).toEqual(["Proyecto Norte"]);
+        await selectMarketing("Proyecto", "Proyecto Norte", true);
+        expect(selectedMarketingValues("Proyecto")).toEqual(["Proyecto Parque", "Proyecto Norte"]);
+        const expected = summarizeMarketingSample(resolveMarketingView({ ...emptyMarketingFilters(), projects: ["Proyecto Parque", "Proyecto Norte"], selection: { ...emptyMarketingFilters().selection, mode: "month" } }).rows);
+        expect(screen.getByLabelText(`Leads: ${number(expected.leads)}`)).toBeInTheDocument();
     });
 
     it("draws a trend inside each of the four cards", () => {
@@ -358,36 +345,25 @@ describe("Marketing Home summary", () => {
         expect(total).toBe(summarizeMarketingSample(monthView().rows).leads);
     });
 
-    it("shows only the projects and leads of the chosen seller, picked from the select or the ranking", async () => {
+    it("keeps the ranking informative when a seller name is clicked", () => {
         render(<MarketingHomePage currentUser={user} rows={MARKETING_SAMPLE} />);
-        await selectMarketing("Vendedor", "Marlon");
-        const section = screen.getByRole("region", { name: "Leads por proyecto" });
-        expect(within(section).getAllByRole("article")).toHaveLength(projectsForSeller("Marlon").length);
-        fireEvent.mouseEnter(within(section).getByRole("button", { name: "Qué significa: leads por proyecto" }));
-        expect(await screen.findByText(/Leads de Marlon, agrupados por proyecto/)).toBeInTheDocument();
-        const seller = summarizeMarketingSample(resolveMarketingView({ ...emptyMarketingFilters(), seller: "Marlon", selection: { ...emptyMarketingFilters().selection, mode: "month" } }).rows);
-        expect(screen.getByLabelText(`Leads: ${number(seller.leads)}`)).toBeInTheDocument();
         const ranking = screen.getByRole("region", { name: "Leads por vendedor" });
-        expect(within(ranking).getByRole("button", { name: /Marlon/ })).toHaveAttribute("aria-pressed", "true");
-        fireEvent.click(within(ranking).getByRole("button", { name: /Marlon/ }));
-        expect(selectedMarketingValues("Vendedor")).toEqual([]);
-        fireEvent.click(within(ranking).getByRole("button", { name: /Gabriel/ }));
-        expect(selectedMarketingValues("Vendedor")).toEqual(["Gabriel"]);
+        const total = summarizeMarketingSample(monthView().rows).leads;
+        fireEvent.click(within(ranking).getByText("Marlon"));
+        expect(screen.getByLabelText(`Leads: ${number(total)}`)).toBeInTheDocument();
+        expect(within(ranking).queryByRole("button", { name: /Marlon/ })).not.toBeInTheDocument();
     });
 
-    it("keeps the team illustration without hardcoded seller photos", async () => {
+    it("keeps the team illustration without hardcoded seller photos", () => {
         render(<MarketingHomePage currentUser={user} rows={MARKETING_SAMPLE} />);
         const welcome = screen.getByRole("region", { name: "Bienvenida a Mercadeo" });
-        await selectMarketing("Vendedor", "Dayan");
-        expect(within(welcome).getByText("Dayan", { selector: ".marketing-welcome__title" })).toBeInTheDocument();
         expect(welcome.querySelector("img.marketing-welcome__photo")).toBeNull();
         expect(welcome.querySelector("img.marketing-welcome__art")).toHaveAttribute("src", expect.stringContaining("rocca-marketing-generated.png"));
     });
-    it("keeps the full ranking visible while a seller is chosen", async () => {
+    it("keeps the full seller ranking visible", () => {
         render(<MarketingHomePage currentUser={user} rows={MARKETING_SAMPLE} />);
-        await selectMarketing("Vendedor", "Dayan");
         const ranking = screen.getByRole("region", { name: "Leads por vendedor" });
-        expect(within(ranking).getAllByRole("button", { name: /^(?!Qué significa)/ })).toHaveLength(4);
+        expect(within(ranking).getAllByRole("listitem")).toHaveLength(4);
     });
 
     it("shows no alerts on a single day", () => {
@@ -396,11 +372,11 @@ describe("Marketing Home summary", () => {
         expect(screen.queryByRole("region", { name: "Resultados para revisar" })).not.toBeInTheDocument();
     });
 
-    it("never triggers React list-key warnings while the period and seller change", async () => {
+    it("never triggers React list-key warnings while the period and project change", async () => {
         const errors = vi.spyOn(console, "error").mockImplementation(() => undefined);
         render(<MarketingHomePage currentUser={user} rows={MARKETING_SAMPLE} />);
         for (const mode of ["Hoy", "Semana", "Año", "Mes"]) fireEvent.click(screen.getByRole("button", { name: mode }));
-        for (const seller of ["Dayan", "Gabriel", "Marlon", ""]) await selectMarketing("Vendedor", seller);
+        for (const project of ["Proyecto Norte", "Proyecto Parque", ""]) await selectMarketing("Proyecto", project);
         expect(errors.mock.calls.filter((call) => String(call[0]).includes('unique "key"'))).toEqual([]);
     });
 });

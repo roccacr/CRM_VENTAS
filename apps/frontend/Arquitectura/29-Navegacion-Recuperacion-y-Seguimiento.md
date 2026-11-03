@@ -1,5 +1,9 @@
 # Navegacion, recuperacion y seguimiento - 2026-10-22
 
+## Actualización contrastada — 03/11/2026
+
+Perfil canónico `/home/formalization/perfil` y alias `/perfil` conservan workspace Formalización y permiso `lead.profile.read`. El acceso global de calendario abre un alta vacía sin tomar vínculos de la URL ni cambiar la ficha; la acción contextual resuelve orden y cliente autorizados y bloquea esas relaciones. Ocho etapas y Adéndum se documentan en [32](32-Detalle-Orden-y-Cliente-Basico.md). Los snapshots inferiores de siete etapas o seguimiento vacío se conservan como historia; recuperación de sesión y autorización no se amplían.
+
 ## Navegación vigente contrastada - 2026-11-02
 
 `app-routes.ts` registra los consumidores resumidos en [30](30-Estado-Frontend-Verificado.md).

@@ -10,7 +10,7 @@ import { resolveHighestPermissionScope } from "../permissions/permission-scope.j
 import type { IdentityAuthorizationProfile, IdentityAuthSummary, IdentityOrgUnit, IdentityProfile, IdentityRole } from "./identity.types.js";
 import { MICROSOFT_PROVIDER_CODE } from "./identity-microsoft.constants.js";
 import { type ModuleRoleAccess, normalizePermissionModule, resolveModuleRoleAccess } from "./identity-module-policy.js";
-import { ACTIVE_STATUS, LOCAL_PROVIDER_AVAILABLE_STATUSES, LOCAL_PROVIDER_CODE, PENDING_LOCAL_STATUS } from "./identity-repository.shared.js";
+import { ACTIVE_STATUS, ADDENDUM_MARK_PENDING_PERMISSION, LOCAL_PROVIDER_AVAILABLE_STATUSES, LOCAL_PROVIDER_CODE, PENDING_LOCAL_STATUS } from "./identity-repository.shared.js";
 
 const OWNER_ROLE_CODE = "owner";
 
@@ -322,7 +322,7 @@ export class IdentityProfileRepository {
     }
 
     /**
-     * Owner receives all active base grants, then the same live user overrides as everyone else.
+     * Owner conserva su base global salvo el marcado manual de adéndum, que exige asignación real.
      */
     private async findEffectivePermissionInputs(
         userId: number,
@@ -334,10 +334,10 @@ export class IdentityProfileRepository {
         overrides: PermissionOverrideInput[];
     }> {
         if (access.roles.some((role) => role.code === OWNER_ROLE_CODE && role.status === ACTIVE_STATUS)) {
-            const [rolePermissions, overrides] = await Promise.all([this.findAllActivePermissions(scope), this.findOverrides(userId)]);
+            const [rolePermissions, overrides, assigned] = await Promise.all([this.findAllActivePermissions(scope), this.findOverrides(userId), this.findRolePermissions(userId, scope)]);
             return {
                 overrides,
-                rolePermissions,
+                rolePermissions: [...rolePermissions, ...assigned.filter((permission) => permission.code === ADDENDUM_MARK_PENDING_PERMISSION)],
             };
         }
 
@@ -384,17 +384,18 @@ export class IdentityProfileRepository {
     }
 
     /**
-     * Owner conserva acceso administrativo global: cualquier permiso activo nuevo
-     * queda disponible al perfil sin depender de una fila rol-permiso historica.
+     * Owner conserva acceso administrativo global; únicamente marcar adéndum pendiente queda fuera del comodín.
      */
     private async findAllActivePermissions(scope: string): Promise<Array<PermissionInput & { moduleCode?: string }>> {
         const rows: ActivePermissionRow[] = await this.database.db.selectFrom("sec_permission as permission").select(["permission.code_permission as code", "permission.module_code_permission as moduleCode"]).where("permission.status_permission", "=", ACTIVE_STATUS).execute();
 
-        return rows.map((row) => ({
-            code: row.code,
-            scope,
-            ...(row.moduleCode === undefined ? {} : { moduleCode: row.moduleCode }),
-        }));
+        return rows
+            .filter((row) => row.code !== ADDENDUM_MARK_PENDING_PERMISSION)
+            .map((row) => ({
+                code: row.code,
+                scope,
+                ...(row.moduleCode === undefined ? {} : { moduleCode: row.moduleCode }),
+            }));
     }
 
     /**

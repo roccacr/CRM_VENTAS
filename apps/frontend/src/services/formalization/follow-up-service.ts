@@ -1,9 +1,12 @@
 import { apiRequest } from "../api/api-client";
 
-export const FOLLOW_UP_QUEUES = ["all", "approvals", "contracts", "send", "signature", "bank", "balance", "transfer", "signed", "closed"] as const;
+export const FOLLOW_UP_QUEUES = ["all", "approvals", "addendum", "contracts", "send", "signature", "bank", "balance", "transfer", "signed", "closed"] as const;
 export type FollowUpQueue = (typeof FOLLOW_UP_QUEUES)[number];
 export interface FollowUpFilters {
     readonly recordId?: string;
+    readonly projectIds?: readonly string[];
+    readonly queues?: readonly FollowUpQueue[];
+    readonly bankStages?: readonly ("bank_management" | "bank_management_in_progress")[];
     readonly search: string;
     readonly projectId: string;
     readonly queue: FollowUpQueue;
@@ -17,6 +20,7 @@ export interface FollowUpItem {
     readonly nativeCode: string | null;
     readonly client: string | null;
     readonly clientEmail?: string | null;
+    readonly addendumStatus?: "pending" | "completed" | "cancelled" | "sent" | null;
     readonly project: { id: string; name: string } | null;
     readonly unit: string | null;
     readonly responsible: { id: string | null; name: string } | null;
@@ -25,17 +29,23 @@ export interface FollowUpItem {
     readonly changedBy?: { id: string | null; name: string } | null;
     readonly state: { code: string; label: string; since: string | null; days: number | null };
     readonly approvalsComplete?: boolean;
+    readonly saleLost?: boolean;
     readonly contractSigned?: boolean | undefined;
+    readonly installmentsFullyPaid?: boolean | null | undefined;
+    readonly unitTransferred?: boolean | null | undefined;
+    readonly keysDelivered?: boolean | null | undefined;
+    readonly unitDelivered?: boolean | null | undefined;
     readonly stateVersion?: number;
+    readonly purchaseFundsOrigin?: "own_funds" | "bank_financing" | null;
     readonly nextStep: string;
     readonly completedThisYear: boolean;
 }
 export interface FollowUp {
     readonly schemaVersion: 1;
     readonly observedAt: string;
-    readonly filters: Pick<FollowUpFilters, "search" | "projectId" | "queue">;
+    readonly filters: Pick<FollowUpFilters, "search" | "projectId" | "queue" | "projectIds" | "queues" | "bankStages">;
     readonly page: { number: number; size: number; total: number; totalPages: number };
-    readonly counts: Record<FollowUpQueue, number>;
+    readonly counts: Record<Exclude<FollowUpQueue, "addendum">, number> & { readonly addendum?: number; readonly bankInProgress?: number };
     readonly projects: { id: string; name: string }[];
     readonly items: FollowUpItem[];
     readonly sources: { native: { total: number }; legacy: { total: number; enabled: boolean } };
@@ -99,18 +109,48 @@ function item(value: unknown): FollowUpItem {
         nativeCode: nullable(data.nativeCode, text),
         client: nullable(data.client, text),
         clientEmail: clientEmail(data.clientEmail),
+        ...optionalAddendum(data.addendumStatus),
         project: nullable(data.project, project),
         unit: nullable(data.unit, text),
         responsible: nullable(data.responsible, responsible),
         ...(data.seller === undefined ? {} : { seller: nullable(data.seller, responsible) }),
         ...(data.changedBy === undefined ? {} : { changedBy: nullable(data.changedBy, responsible) }),
+        ...optionalFunds(data.purchaseFundsOrigin),
         state: { code: text(state.code), label: text(state.label), since: nullable(state.since, date), days: nullable(state.days, count) },
+        ...optionalSaleLost(data.saleLost),
         ...(data.contractSigned === undefined ? {} : { contractSigned: bool(data.contractSigned) }),
+        ...optionalCompletionFlag("installmentsFullyPaid", data.installmentsFullyPaid),
+        ...optionalCompletionFlag("unitTransferred", data.unitTransferred),
+        ...optionalCompletionFlag("keysDelivered", data.keysDelivered),
+        ...optionalCompletionFlag("unitDelivered", data.unitDelivered),
         ...(data.approvalsComplete === undefined ? {} : { approvalsComplete: bool(data.approvalsComplete) }),
         ...(data.stateVersion === undefined ? {} : { stateVersion: count(data.stateVersion) }),
         nextStep: text(data.nextStep),
         completedThisYear: bool(data.completedThisYear),
     };
+}
+function optionalCompletionFlag(field: "installmentsFullyPaid" | "unitTransferred" | "keysDelivered" | "unitDelivered", value: unknown) {
+    return value === undefined ? {} : { [field]: nullable(value, bool) };
+}
+function optionalFunds(value: unknown) {
+    return value === undefined ? {} : { purchaseFundsOrigin: fundsOrigin(value) };
+}
+function optionalAddendum(value: unknown): Pick<FollowUpItem, "addendumStatus"> {
+    if (value === undefined) return {};
+    if (![null, "pending", "completed", "cancelled", "sent"].includes(value as string | null)) throw invalid();
+    return { addendumStatus: value as Exclude<FollowUpItem["addendumStatus"], undefined> };
+}
+function readCounts(counts: Record<string, unknown>, appliedQueue: unknown): FollowUp["counts"] {
+    const parsed = {} as Record<Exclude<FollowUpQueue, "addendum">, number> & { addendum?: number };
+    for (const key of FOLLOW_UP_QUEUES) {
+        if (key === "addendum" && counts[key] === undefined && appliedQueue !== "addendum") continue;
+        parsed[key] = count(counts[key]);
+    }
+    return { ...parsed, ...(counts.bankInProgress === undefined ? {} : { bankInProgress: count(counts.bankInProgress) }) };
+}
+function fundsOrigin(value: unknown): "own_funds" | "bank_financing" | null {
+    if (value !== null && value !== "own_funds" && value !== "bank_financing") throw invalid();
+    return value;
 }
 function positive(value: unknown, maximum = Number.MAX_SAFE_INTEGER): number {
     const result = count(value);
@@ -122,6 +162,7 @@ export async function getFollowUp(filters: FollowUpFilters): Promise<FollowUp> {
     positive(filters.page);
     positive(filters.pageSize, 100);
     const params = new URLSearchParams({ search: text(filters.search), projectId: text(filters.projectId), queue: queue(filters.queue), page: String(filters.page), pageSize: String(filters.pageSize) });
+    appendMultipleFilters(params, filters);
     if (filters.recordId) params.set("recordId", filters.recordId);
     const data = record(await apiRequest<unknown>(`/formalization/home/follow-up?${params.toString()}`));
     const applied = record(data.filters);
@@ -131,14 +172,12 @@ export async function getFollowUp(filters: FollowUpFilters): Promise<FollowUp> {
     const native = record(sources.native);
     const legacy = record(sources.legacy);
     if (data.schemaVersion !== 1) throw invalid();
-    const parsedCounts = {} as Record<FollowUpQueue, number>;
-    for (const key of FOLLOW_UP_QUEUES) parsedCounts[key] = count(counts[key]);
     const result: FollowUp = {
         schemaVersion: 1,
         observedAt: date(data.observedAt),
-        filters: { search: text(applied.search), projectId: text(applied.projectId), queue: queue(applied.queue) },
+        filters: readAppliedFollowUpFilters(applied),
         page: { number: positive(page.number), size: positive(page.size, 100), total: count(page.total), totalPages: count(page.totalPages) },
-        counts: parsedCounts,
+        counts: readCounts(counts, applied.queue),
         projects: array(data.projects, project),
         items: array(data.items, item),
         sources: { native: { total: count(native.total) }, legacy: { total: count(legacy.total), enabled: bool(legacy.enabled) } },
@@ -154,4 +193,32 @@ export async function getFormalizationOrderRecord(source: FollowUpItem["source"]
     const valid = source === "legacy" ? /^[1-9][0-9]{0,9}$/.test(id) : /^[0-7][0-9A-HJKMNP-TV-Z]{25}$/.test(id);
     if (!valid) throw invalid();
     return item(await apiRequest<unknown>(`/formalization/orders/${source}/${encodeURIComponent(id)}/record`));
+}
+
+function appendMultipleFilters(params: URLSearchParams, filters: FollowUpFilters): void {
+    if (filters.projectIds?.length) params.set("projectIds", filters.projectIds.join(","));
+    if (filters.queues?.length) params.set("queues", filters.queues.map(queue).join(","));
+    if (filters.bankStages?.length) params.set("bankStages", filters.bankStages.join(","));
+}
+
+function readAppliedFollowUpFilters(value: Record<string, unknown>): FollowUp["filters"] {
+    return {
+        search: text(value.search),
+        projectId: text(value.projectId),
+        queue: queue(value.queue),
+        ...(value.projectIds === undefined ? {} : { projectIds: array(value.projectIds, text) }),
+        ...(value.queues === undefined ? {} : { queues: array(value.queues, queue) }),
+        ...(value.bankStages === undefined
+            ? {}
+            : {
+                  bankStages: array(value.bankStages, (entry) => {
+                      if (entry !== "bank_management" && entry !== "bank_management_in_progress") throw invalid();
+                      return entry;
+                  }),
+              }),
+    };
+}
+
+function optionalSaleLost(value: unknown) {
+    return value === undefined ? {} : { saleLost: bool(value) };
 }

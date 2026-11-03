@@ -1,6 +1,6 @@
 import "reflect-metadata";
 
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 
 import { ConfigService } from "@nestjs/config";
 import { FastifyAdapter, type NestFastifyApplication } from "@nestjs/platform-fastify";
@@ -58,9 +58,23 @@ describe.skipIf(process.env.NETSUITE_EVENTS_LOCAL_SQL_TESTS !== "1")("NetSuite d
             await sql`CREATE TABLE IF NOT EXISTS ${sql.id("crm_" + suffix)} (${sql.id(domain + "_id_" + suffix)} INT,${sql.id("external_system_id_" + suffix)} INT,${sql.id("external_id_" + suffix)} VARCHAR(180),${sql.id("status_" + suffix)} VARCHAR(20),${sql.id("deleted_at_" + suffix)} DATETIME NULL) ENGINE=InnoDB`.execute(db);
         }
         await sql`CREATE TABLE IF NOT EXISTS int_user_external_identity (user_id_user_external_identity INT,external_system_id_user_external_identity INT,external_user_id_user_external_identity VARCHAR(180),status_user_external_identity VARCHAR(20),deleted_at_user_external_identity DATETIME NULL) ENGINE=InnoDB`.execute(db);
+        await extendStageFixture();
         await sql`CREATE TABLE IF NOT EXISTS audit_sales_order_approval_event (sales_order_id_sales_order_approval_event INT NOT NULL,type_code_sales_order_approval_event VARCHAR(32) NOT NULL,version_sales_order_approval_event INT NOT NULL,before_status_sales_order_approval_event VARCHAR(20) NULL,after_status_sales_order_approval_event VARCHAR(20) NOT NULL,effective_at_sales_order_approval_event DATETIME(3) NULL,actor_user_id_sales_order_approval_event INT NULL,actor_snapshot_sales_order_approval_event JSON NULL,origin_sales_order_approval_event VARCHAR(20),reason_sales_order_approval_event VARCHAR(500),operation_id_sales_order_approval_event VARCHAR(100),correlation_id_sales_order_approval_event VARCHAR(100),UNIQUE KEY uq_event(sales_order_id_sales_order_approval_event,type_code_sales_order_approval_event,version_sales_order_approval_event)) ENGINE=InnoDB`.execute(
             db,
         );
+    }
+
+    async function extendStageFixture(): Promise<void> {
+        for (const destination of ["native", "legacy"] as const) {
+            const native = destination === "native";
+            const table = native ? "audit_sales_order_state_event" : "crmdatabase-api.audit_sales_order_state_event";
+            const key = native ? "sales_order_id_sales_order_state_event" : "legacy_order_id_sales_order_state_event";
+            const actor = native ? "actor_user_id_sales_order_state_event BIGINT NULL" : "actor_reference_sales_order_state_event VARCHAR(180) NULL";
+            const responsible = native ? "responsible_user_id_sales_order_state_event BIGINT NULL" : "responsible_reference_sales_order_state_event VARCHAR(180) NULL";
+            await sql`CREATE TABLE IF NOT EXISTS ${sql.table(table)} (id_sales_order_state_event BIGINT AUTO_INCREMENT PRIMARY KEY,public_id_sales_order_state_event CHAR(26) NULL,${sql.id(key)} BIGINT NOT NULL,sequence_sales_order_state_event INT NOT NULL,from_state_code_sales_order_state_event VARCHAR(48) NULL,to_state_code_sales_order_state_event VARCHAR(48) NOT NULL,event_kind_sales_order_state_event VARCHAR(32),effective_at_sales_order_state_event DATETIME(3),${sql.raw(actor)},actor_snapshot_sales_order_state_event JSON NULL,${sql.raw(responsible)},responsible_snapshot_sales_order_state_event JSON NULL,origin_sales_order_state_event VARCHAR(64),reason_sales_order_state_event VARCHAR(500),operation_id_sales_order_state_event VARCHAR(100),correlation_id_sales_order_state_event VARCHAR(100),UNIQUE KEY uq_stage_sequence(${sql.id(key)},sequence_sales_order_state_event),UNIQUE KEY uq_stage_operation(${sql.id(key)},operation_id_sales_order_state_event)) ENGINE=InnoDB`.execute(
+                db,
+            );
+        }
     }
 
     beforeAll(async () => {
@@ -97,7 +111,7 @@ describe.skipIf(process.env.NETSUITE_EVENTS_LOCAL_SQL_TESTS !== "1")("NetSuite d
         config.set("NETSUITE_ORDER_CANCELLATION_EFFECTS_ENABLED", false);
         await sql`DROP TRIGGER IF EXISTS fail_order_update`.execute(db);
         await sql`DROP TRIGGER IF EXISTS fail_success_audit`.execute(db);
-        for (const table of ["audit_sales_order_approval_event", "crm_sales_order_approval", "audit_record_event", "audit_record", "crm_sales_order_external_reference", "crm_sales_order", "int_external_system", "audit_netsuite_order_event", "int_netsuite_order_cursor", "crmdatabase-api.ordenventa"]) await sql`DELETE FROM ${sql.table(table)}`.execute(db);
+        for (const table of ["audit_sales_order_state_event", "crmdatabase-api.audit_sales_order_state_event", "audit_sales_order_approval_event", "crm_sales_order_approval", "audit_record_event", "audit_record", "crm_sales_order_external_reference", "crm_sales_order", "int_external_system", "audit_netsuite_order_event", "int_netsuite_order_cursor", "crmdatabase-api.ordenventa"]) await sql`DELETE FROM ${sql.table(table)}`.execute(db);
         await sql`INSERT INTO int_external_system VALUES (1,'netsuite','active')`.execute(db);
         for (const table of ["crm_lead_external_reference", "crm_unit_file_external_reference", "crm_subsidiary_external_reference", "int_user_external_identity"]) await sql`DELETE FROM ${sql.id(table)}`.execute(db);
     });
@@ -195,6 +209,97 @@ describe.skipIf(process.env.NETSUITE_EVENTS_LOCAL_SQL_TESTS !== "1")("NetSuite d
         await expect(service.receive(observedEvent(true, 10))).rejects.toThrow("anterior");
         await expect(service.receive(observedEvent(false, 20))).rejects.toThrow("anterior");
         expect((await flags("native"))?.contract_signed_sales_order).toBe("yes");
+    });
+    async function paidBalanceFixture(destination: "native" | "legacy", initiallyPaid = false) {
+        if (destination === "native") {
+            await native();
+            await sql`INSERT INTO crm_sales_order_approval (sales_order_id_sales_order_approval,type_code_sales_order_approval,status_sales_order_approval) VALUES (1,'formalization','approved')`.execute(db);
+        } else await legacy();
+        await seedPaidFlags(destination, initiallyPaid);
+        return seedBalanceVisit(destination);
+    }
+    async function seedPaidFlags(destination: "native" | "legacy", initiallyPaid: boolean) {
+        const target = destination === "native" ? "crm_sales_order" : "crmdatabase-api.ordenventa";
+        for (const mapping of orderFlagMappings) {
+            const checked = mapping.netsuite === "custbody90" || (initiallyPaid && mapping.netsuite === "custbody_cuotas_pagadas");
+            await sql`UPDATE ${sql.table(target)} SET ${sql.id(mapping[destination])}=${destination === "native" ? ["no", "yes"][Number(checked)] : Number(checked)}`.execute(db);
+        }
+        if (destination === "legacy") await sql`UPDATE ${sql.table(target)} SET aprobacion_forma_ov=1`.execute(db);
+    }
+    async function seedBalanceVisit(destination: "native" | "legacy") {
+        const table = destination === "native" ? "audit_sales_order_state_event" : "crmdatabase-api.audit_sales_order_state_event";
+        const key = destination === "native" ? "sales_order_id_sales_order_state_event" : "legacy_order_id_sales_order_state_event";
+        await sql`INSERT INTO ${sql.table(table)} (${sql.id(key)},sequence_sales_order_state_event,to_state_code_sales_order_state_event,event_kind_sales_order_state_event,origin_sales_order_state_event,reason_sales_order_state_event,correlation_id_sales_order_state_event,operation_id_sales_order_state_event,responsible_snapshot_sales_order_state_event${destination === "native" ? sql`,public_id_sales_order_state_event` : sql``}) VALUES (${destination === "native" ? 1 : 2},1,'pending_balance','import_snapshot','integration','Fixture','fixture','fixture',${JSON.stringify({ publicId: "responsible", name: "Original", roles: [] })}${destination === "native" ? sql`,${"01K00000000000000000000000"}` : sql``})`.execute(
+            db,
+        );
+        return table;
+    }
+    function paidEvent(paid = true, second = 1) {
+        const payload = observedEvent(false, second);
+        payload.snapshot.data.fields.custbody90 = true;
+        payload.snapshot.data.fields.custbody_cuotas_pagadas = paid;
+        return payload;
+    }
+    it.each(["native", "legacy"] as const)("advances paid balance atomically, replays once, and never reverses in %s", async (destination) => {
+        const table = await paidBalanceFixture(destination);
+        const payload = paidEvent();
+        expect(await service.receive(payload)).toMatchObject({ result: "applied" });
+        expect(await service.receive(payload)).toMatchObject({ duplicate: true });
+        await service.receive(paidEvent(false, 2));
+        await expect(service.receive(paidEvent(true, 1))).rejects.toThrow("anterior");
+        await service.receive(paidEvent(true, 3));
+        const visits = (await sql<{ state: string }>`SELECT to_state_code_sales_order_state_event AS state FROM ${sql.table(table)} ORDER BY sequence_sales_order_state_event`.execute(db)).rows;
+        expect(visits.map((visit) => visit.state)).toEqual(["pending_balance", "pending_transfer"]);
+        const central = (await sql<{ action: string }>`SELECT action_record_event AS action FROM audit_record_event WHERE action_record_event='state_change'`.execute(db)).rows;
+        expect(central).toHaveLength(1);
+        const stageOperation = (await sql<{ operation: string }>`SELECT operation_id_sales_order_state_event AS operation FROM ${sql.table(table)} WHERE to_state_code_sales_order_state_event='pending_transfer'`.execute(db)).rows[0]?.operation;
+        const expectedCentralOperation = createHash("sha256")
+            .update(JSON.stringify(["sales_order", "state", stageOperation]))
+            .digest("hex");
+        const deduplicated = (await sql`SELECT * FROM audit_record_event WHERE operation_id_record_event=${expectedCentralOperation}`.execute(db)).rows;
+        expect(deduplicated).toHaveLength(1);
+        expect((await audit())[0]?.changes).toEqual(expect.arrayContaining([expect.objectContaining({ field: "formalization_state", before: "pending_balance", after: "pending_transfer" })]));
+    });
+    it.each(["native", "legacy"] as const)("advances completion directly, deduplicates, and never reopens in %s", async (destination) => {
+        const table = await paidBalanceFixture(destination);
+        const signed = paidEvent();
+        signed.snapshot.data.fields.custbody105 = true;
+        expect(await service.receive(signed)).toMatchObject({ result: "applied" });
+        expect(await service.receive(signed)).toMatchObject({ duplicate: true });
+        const invalid = paidEvent(true, 2);
+        invalid.snapshot.data.fields.custbody105 = true;
+        invalid.snapshot.data.fields.custbody_entrega_de_llaves = true;
+        await service.receive(invalid);
+        const closed = paidEvent(false, 3);
+        closed.snapshot.data.fields.custbody91 = true;
+        await service.receive(closed);
+        await service.receive(paidEvent(true, 4));
+        await expect(service.receive(paidEvent(true, 2))).rejects.toThrow("anterior");
+        const visits = (await sql<{ state: string; previous: string | null }>`SELECT to_state_code_sales_order_state_event AS state,from_state_code_sales_order_state_event AS previous FROM ${sql.table(table)} ORDER BY sequence_sales_order_state_event`.execute(db)).rows;
+        expect(visits).toEqual([
+            { state: "pending_balance", previous: null },
+            { state: "transfer_signed", previous: "pending_balance" },
+            { state: "closed", previous: "transfer_signed" },
+        ]);
+        expect((await sql`SELECT * FROM audit_record_event WHERE action_record_event='state_change'`.execute(db)).rows).toHaveLength(2);
+    });
+    it.each(["native", "legacy"] as const)("advances an already paid balance on accepted edit in %s", async (destination) => {
+        await paidBalanceFixture(destination, true);
+        expect(await service.receive(paidEvent())).toMatchObject({ result: "applied" });
+        expect((await audit())[0]?.changes).toHaveLength(1);
+    });
+    it.each(["native", "legacy"] as const)("rolls back payment, visit and cursor when stage central audit fails in %s", async (destination) => {
+        const table = await paidBalanceFixture(destination);
+        await sql`CREATE TRIGGER fail_paid_state_audit BEFORE INSERT ON audit_record_event FOR EACH ROW BEGIN IF NEW.action_record_event='state_change' THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='synthetic state audit failure'; END IF; END`.execute(db);
+        try {
+            await expect(service.receive(paidEvent())).rejects.toThrow();
+            expect((await flags(destination))?.[destination === "native" ? "installments_fully_paid_sales_order" : "cuotas_pagadas_completo_ov"]).toBe(destination === "native" ? "no" : 0);
+            expect((await sql`SELECT * FROM ${sql.table(table)}`.execute(db)).rows).toHaveLength(1);
+            expect((await sql`SELECT * FROM int_netsuite_order_cursor`.execute(db)).rows).toHaveLength(0);
+            expect((await sql`SELECT * FROM audit_record_event`.execute(db)).rows).toHaveLength(0);
+        } finally {
+            await sql`DROP TRIGGER fail_paid_state_audit`.execute(db);
+        }
     });
     async function native(legacyId: number | null = null) {
         await sql`INSERT INTO crm_sales_order (id_sales_order,id_old_produccion_sales_order) VALUES (1,${legacyId})`.execute(db);

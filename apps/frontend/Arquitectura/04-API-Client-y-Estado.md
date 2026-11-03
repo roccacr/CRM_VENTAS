@@ -1,5 +1,9 @@
 # 04 - API Client y Estado
 
+## Actualización contrastada — 03/11/2026
+
+Servicios actuales adicionales: `services/leads/lead-profile-service.ts` consume `/leads/profile` por identidad source/id validada; `order-addendum-service.ts` valida lectura, conteo y comandos del marcador y consulta de futuro. Los POST de marcador usan `retryOnUnauthorized:false`, versión y operationId conservados por el formulario. Calendario consume feed combinado, disponibilidad y salas mediante BFF; publica con `publishToCalendar=true` y versión Outlook observada, distinguiendo `crm_only`, `synced` y fallos parciales. No hay Graph ni tokens directamente en React. Ver [30](30-Estado-Frontend-Verificado.md), [32](32-Detalle-Orden-y-Cliente-Basico.md) y [Calendario global](Calendario-Global-Frontend.md).
+
 ## Contrato implementado contrastado - 2026-11-02
 
 `api-client.ts` conserva BFF, cookie/CSRF y generación de sesión. Solo una lectura

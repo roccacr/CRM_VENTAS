@@ -1,5 +1,28 @@
 # Ampliación de sincronización de OV — plan de ejecución
 
+## Estado vigente y precedencia — 2026-11-03
+
+El escritor v2, su auditoría, cursor y resolución de autoridad ya están
+implementados; v1 mantiene `persisted:false`. El marcador `crm_sync_projection=1`
+habilita los campos ampliados confirmados en [75](75-Matriz-Campos-Ordenes-NetSuite.md):
+montos, fecha canónica, número de transacción, cálculo de asesor, aprobaciones y
+relaciones existentes. Moneda, cálculo corredor y `createdfrom` quedan preservados,
+sin inferir nuevos mapeos. Líneas y aliases permanecen en el snapshot protegido.
+
+El control temporal actual usa doble lectura completa y ventanas UTC no solapadas;
+el hash compara contenido y no funciona como reloj. El reintento de transporte
+mantiene UUID/cuerpo; el conflicto de observación409 requiere una nueva lectura/UUID.
+[73](73-Sincronizacion-Estados-Ordenes-NetSuite.md) conserva la prueba real acotada
+de diez indicadores; no acredita E2E de todos los campos ampliados ni despliegue.
+059 fue aplicada con autorización según74/75; esta revisión no cambia su flag.
+
+Existe una excepción posterior a la regla histórica «los indicadores no mueven
+etapas»: `netsuite-paid-installments.handler.ts` puede avanzar visitas finales
+existentes tras `edit`/`xedit`, con actividad/firma/aprobación de Formalización,
+responsable conservado y auditoría atómica, según [78](78-Formalizacion-Origen-Fondos-y-Gestion-Bancaria.md).
+No retrocede ni crea órdenes/visitas históricas. Origen de fondos y campos de
+adéndum pertenecen al CRM y no son sobrescritos por estos snapshots.
+
 Alcance autorizado: ampliar los campos confirmados existentes en ambas BD sin sobrescribir identidades ni estados internos. El plan de cierre posterior exige las fases en orden: matriz/mapeo, aprobación y prueba de059, control de orden temporal, pruebas de caída y E2E real. La paridad de VENTA CAÍDA es solo a nivel OV; se excluyen pérdida del lead y cambios en calendarios, oportunidades o estimaciones.
 
 Decisión explícita del propietario: envioReservaCaida indica cuándo se marcó la venta caída; registrar fecha en transición a marcada. No renovar mientras continúa marcada; conservar histórica al desmarcar. La versión anterior solo sincronizaba el checkbox y NO incluía esa fecha.

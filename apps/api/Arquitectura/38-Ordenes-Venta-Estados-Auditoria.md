@@ -1,5 +1,32 @@
 # Ordenes de venta: esquema y trayectoria - 20/10/2026
 
+## Corte vigente contrastado — 2026-11-03
+
+Revisión documental del árbol de trabajo de `temp/crm-tink-api-frontend-inicial`,
+con base en HEAD `4d446ed`. Incluye cambios locales; no acredita publicación.
+
+- NetSuite v2 dispone de escritor transaccional nativo primero y legacy solo en
+  ausencia de autoridad nativa, recibos/cursor, snapshot y auditoría. v1 mantiene
+  `persisted:false`. La ampliación de campos está en [75](75-Matriz-Campos-Ordenes-NetSuite.md)
+  y la evidencia real acotada de diez indicadores en [73](73-Sincronizacion-Estados-Ordenes-NetSuite.md).
+- Contratos usa aprobación de Formalización; la acción que otorga esa aprobación
+  conserva sus prerrequisitos independientes. Origen de fondos, ocho etapas y
+  combinaciones confirmadas de cierre están en [78](78-Formalizacion-Origen-Fondos-y-Gestion-Bancaria.md).
+  Eventos NetSuite `edit`/`xedit` pueden avanzar visitas finales existentes según
+  esos indicadores; no hay retroceso automático ni etapas inventadas al consultar.
+- Microsoft 365 tiene adaptador y endpoints conectados para agenda propia,
+  disponibilidad, salas, invitaciones y Teams, condicionados a sesión Microsoft,
+  permisos CRM y consentimiento: [64](64-Calendario-Global-API-y-Contexto.md).
+  Implementación no equivale a aceptación externa con cuenta real.
+- El adéndum es un marcador independiente de la etapa, con versión y nota manual;
+  calendario conserva orden/cliente fijos y bloquea otro adéndum futuro.
+  Contratos funcionales/esquema: [83](83-Adendum-Migracion-065-y-Rollback.md) y
+  [84](84-Adendum-Manual-Migracion-066-y-Permisos.md), incluida la corrección067.
+
+Los cortes inferiores conservan cronología y resultados de su fecha. Este corte
+prevalece para inventario actual; no autoriza migraciones, escrituras, cambios de
+credenciales, publicación ni despliegue. No se vuelven a ejecutar suites por editar documentación.
+
 ## Alcance contrastado - 2026-11-02
 
 Los contratos de lectura por banner, ficha independiente y gestión para ambos

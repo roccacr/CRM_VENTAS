@@ -101,3 +101,14 @@ it("does not expose nested arbitrary changes under a public scalar field", () =>
     expect(item.hiddenChanges).toBe(1);
     expect(JSON.stringify(item)).not.toContain("secret");
 });
+it.each([false, true])("filters addendum-only audit evidence according to the independent marker permission=%s", async (canReadAddendum) => {
+    const f = fixture([[], []]);
+    try {
+        await readOrderHistory(f.tx, "legacy", "208", { legacyEnabled: false, canReadAddendum });
+        const query = f.queries.at(-1);
+        expect(query?.sql).toContain("e.operation_id_record_event NOT LIKE 'addendum:%'");
+        expect(query?.parameters).toContain(canReadAddendum);
+    } finally {
+        await f.db.destroy();
+    }
+});

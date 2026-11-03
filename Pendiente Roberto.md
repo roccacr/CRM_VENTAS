@@ -3,7 +3,7 @@
 Checklist central de avances y pendientes del CRM.
 
 **Responsable del seguimiento:** Roberto.
-**Última actualización documental:** 2 de noviembre de 2026, Costa Rica.
+**Última actualización documental:** 3 de noviembre de 2026, Costa Rica.
 **Origen:** pendientes anteriores del proyecto, avances registrados en esta conversación y reunión del 29 de octubre de 2026.
 
 ## Cómo mantener este documento
@@ -23,7 +23,7 @@ Checklist central de avances y pendientes del CRM.
 - [x] Mantener la bitácora central de los cambios realizados desde nuestro API.
 - [x] Registrar actor, fecha y valores anteriores/nuevos en las operaciones implementadas.
 - [x] Permisos por rol y por empleado, con denegaciones individuales prioritarias.
-- [x] Owner con acceso global, respetando denegaciones individuales.
+- [x] Owner con permisos efectivos, respetando denies y capacidades que requieren grant explícito;067 concede marcar Adéndum a Owner/General/Jefe Formalización.
 - [x] Jefe General con acceso a los módulos seleccionados.
 - [x] Inicio de sesión con Microsoft.
 - [x] Publicar API y frontend con HTTPS.
@@ -41,13 +41,14 @@ Checklist central de avances y pendientes del CRM.
 - [x] Permisos independientes para consultar banners y órdenes.
 - [x] Listado de seguimiento con datos de orden, cliente, proyecto, unidad y vendedor.
 - [x] Búsqueda y filtros por proyecto y bandeja.
-- [x] Mostrar únicamente órdenes que cumplen las condiciones de las bandejas autorizadas.
+- [x] Aplicar las condiciones de cada bandeja autorizada; «Todas» puede conservar órdenes con flags incompatibles para revisión, sin inventar un avance.
 - [x] Precarga de contadores y botón para recargarlos.
 - [x] Movimientos recientes de las órdenes.
 - [x] Contador anual de formalizaciones cerradas.
 - [ ] Permitir seleccionar varias bandejas simultáneamente.
 - [ ] Guardar la selección de filtros.
-- [ ] Identificar claramente seguimientos paralelos, como adéndum y finiquito.
+- [x] Identificar Adéndum como marca paralela, con banner, distintivo y bandeja bajo permisos independientes.
+- [ ] Definir e implementar el seguimiento paralelo de finiquito.
 - [ ] Completar la priorización por antigüedad y comprobar su ordenación entre páginas.
 - [ ] Incorporar el banner de eventos del día solicitado anteriormente.
 
@@ -65,10 +66,12 @@ Checklist central de avances y pendientes del CRM.
 - [x] Panel del cliente desde la orden.
 - [x] Panel del expediente de unidad desde la orden.
 - [x] Bitácora de la orden en formato de historial.
-- [ ] **Nuevo:** accesos rápidos de Formalización desde el lead.
-- [ ] **Nuevo:** habilitar la vista completa del perfil del lead como acceso operativo.
-- [ ] **Nuevo:** enlace directo al expediente de unidad.
-- [ ] **Nuevo:** mostrar **Fondos de compra** en el resumen superior.
+- [x] Acceso del perfil a órdenes relacionadas y agenda contextual disponible bajo sus permisos.
+- [ ] Definir otros accesos comerciales desde el lead fuera de esos recorridos.
+- [x] Perfil federado operativo bajo `lead.profile.read`, en `/home/formalization/perfil`; no concede CRUD general de Leads. Ver77.
+- [x] Enlaces al expediente y planos seguros en presentación compartida; sin reescribir URL original. Verfrontend31.
+- [x] Tarjeta independiente de Origen de fondos de compra en ficha y drawer, después de Adéndum; edición sin cambiar etapa.
+- [ ] **Validar:** ubicación solicitada en el resumen superior y aceptación del guardado independiente, distinto de la tarjeta ya implementada.
 - [ ] **Nuevo:** distinguir mejor navegación entre registros y cambio de etapa.
 - [ ] **Nuevo:** revisar y revertir **RDR678**, confirmando el estado de destino y dejando auditoría.
 
@@ -88,8 +91,8 @@ Checklist central de avances y pendientes del CRM.
 - [ ] **Validar:** integración de aprobación contra el entorno productivo de NetSuite; las pruebas realizadas han usado Sandbox.
 - [ ] Implementar la devolución/rechazo de aprobación cuando se confirme su regla y efecto en NetSuite.
 - [ ] Completar la acción para registrar la firma del contrato y su actualización en NetSuite.
-- [ ] **Nuevo:** separar **Gestión bancaria** de **Gestión bancaria en proceso**.
-- [ ] Actualizar botones, línea de avance, contadores, filtros y tiempos con esa nueva etapa.
+- [x] Separar Gestión bancaria de Gestión bancaria en proceso; ocho etapas. Ver78.
+- [x] Actualizar botones, avance, contadores, filtros y tiempos con la etapa bancaria en proceso.
 
 ## 5. Correos y plantillas
 
@@ -111,15 +114,17 @@ Checklist central de avances y pendientes del CRM.
 - [ ] Permitir agregar un asesor cuando todavía no exista.
 - [ ] Relacionar el banco con la orden.
 - [ ] **Definir con Claudio:** opciones y datos obligatorios.
-- [ ] Confirmar el recorrido de órdenes financiadas y de recursos propios.
-- [ ] Confirmar cuándo se puede omitir la etapa bancaria.
-- [ ] **Definir con Kenneth:** campo de NetSuite que indica cuotas pendientes en cero.
-- [ ] Consultar y validar la condición financiera antes del avance correspondiente.
+- [x] Origen de fondos obligatorio: propios → Pendiente de saldo; bancario → Gestión bancaria en proceso, auditado en ambas fuentes.
+- [x] Omitir etapa bancaria al salir de contratos con Fondos propios; sin valor por defecto.
+- [x] Campo confirmado `custbody_cuotas_pagadas`: cuotas completamente pagadas, distinto de otros importes/flags financieros.
+- [x] Traspaso pendiente exige cuotas Sí, unidad traspasada No y entregada No; llaves no restringe ese destino.
+- [x] Traspaso firmado exige cuotas Sí, traspasada Sí, llaves No y entregada No; NULL no equivale a No.
+- [x] Desmarcar cuotas conserva la etapa alcanzada y bloquea avances inválidos; no retorna a saldo.
 - [ ] Distinguir consulta financiera realizada de condición financiera aprobada.
 - [ ] Definir el tratamiento de saldos a favor.
 - [ ] Agregar alertas por proximidad de entrega —incluido el umbral de tres meses— y entrega vencida.
-- [ ] Confirmar los tres requisitos de cierre y sus campos de NetSuite.
-- [ ] Conectar las validaciones de cobros, entrega de unidad y traspaso.
+- [x] Cierre prioriza unidad entregada Sí en la política final; contrato/aprobación conservan sus validaciones generales. Ver52/78.
+- [x] Aplicar la política central de cuotas, entrega, traspaso y llaves a movimientos/listas/resúmenes/eventos NetSuite. No equivale a escribir esos checks desde CRM.
 - [ ] Verificar un cierre completo con sus evidencias y su contador anual.
 - [ ] Completar la consulta del recorrido: duración de cada tramo y duración total.
 - [ ] Incorporar asignación de responsable por orden o etapa, separada del vendedor y del actor que registra el cambio.
@@ -128,20 +133,24 @@ Checklist central de avances y pendientes del CRM.
 
 ## 7. Adéndum
 
-- [ ] Registrar **Necesita adéndum** como seguimiento paralelo, fuera de las etapas principales.
-- [ ] Exigir motivo y fecha límite.
-- [ ] Definir permisos para solicitar, modificar y registrar el envío.
-- [ ] Registrar **Adéndum enviado**, responsable y fecha.
-- [ ] Mostrar su condición en la lista y sus filtros.
-- [ ] Recuperar el banner y listado de adendas pendientes solicitados anteriormente.
-- [ ] Seleccionar varias órdenes para una misma gestión.
-- [ ] Crear un evento vinculado a esas órdenes, conservando motivo y vencimiento de cada solicitud.
-- [ ] **Definir:** cuándo corresponde, qué ocurre al cancelar y si el seguimiento termina al enviar o requiere firma.
+- [x] Una marca por orden en ambas BD: pendiente, completada o cancelada; seguimiento independiente de la etapa y del lead.
+- [x] Marcar manualmente sin evento, con nota opcional de hasta2000 caracteres; vacío se conserva NULL.
+- [x] Botón debajo de Ver orden completa y junto a Agendar evento en ficha; gestión debajo de Acciones de la etapa.
+- [x] Registrar actor, fecha, versión, nota y diff en auditoría de BD nueva, incluso cuando la orden vive en legacy.
+- [x] Banner junto a pendientes de aprobación, bandeja y distintivo con permisos independientes; ocultar marca/bandeja no oculta la orden.
+- [x] Marca manual por defecto para Owner, Jefe General y Jefe de Formalizaciones mediante067; permitir concesión individual, prevaleciendo deny.
+- [x] Evento Adéndum exige exactamente una orden y su lead; relaciones quedan fijas tras guardarlo, incluso al editar tipo.
+- [x] Bloquear un segundo Adéndum futuro activo de la misma orden y mostrar fecha del existente según autorización; comprobación atómica en servidor.
+- [x] Completar/cancelar desde la orden; no modifica automáticamente el evento de calendario. Reintentos usan versión e idempotencia.
+- [ ] **Validar:** aceptación de marca/evento/gestión con cuentas reales de cada rol y registros de ambas fuentes; tests SQL locales no equivalen a esa aceptación.
+
+El motivo obligatorio, vencimiento propio, envío/firma y selección de varias órdenes de la propuesta anterior no forman parte del contrato autorizado de una sola marca por orden. No son requisitos vigentes para marcar pendiente. Contratos83/84.
 
 ## 8. Venta caída y finiquito
 
-- [ ] Registrar la caída con motivo y etapa en la que ocurrió.
-- [ ] Conservar el historial previo.
+- [x] Sincronizar Venta caída a nivel de orden y asignar fecha al marcar según regla confirmada; sin modificar lead. Ver74/76.
+- [ ] Definir captura adicional de motivo y etapa de caída; no inferirla del checkbox.
+- [x] Conservar historial de orden y auditoría al sincronizar Venta caída.
 - [ ] Registrar si corresponde devolución y su monto, sin confundirlo con ejecutar un pago.
 - [ ] **Nuevo:** detectar **venta caída + contrato firmado**.
 - [ ] Crear el seguimiento paralelo de finiquito.
@@ -161,14 +170,18 @@ Checklist central de avances y pendientes del CRM.
 - [x] Preferencia de reunión Teams registrada en el CRM.
 - [x] Vincular notas pendientes, leads y órdenes de ambas fuentes.
 - [ ] **Validar:** creación y edición reales de un evento completo, con participantes y vínculos persistidos.
-- [ ] **Nuevo:** tipos de Ventas: **Cita, Reunión, Tarea y Seguimiento**.
-- [ ] **Nuevo:** tipos de Formalización: **Formalización bancaria, Reunión, Tarea, Seguimiento y Adéndum**.
-- [ ] Al seleccionar un lead, filtrar sus órdenes.
-- [ ] Al seleccionar una orden, completar automáticamente el lead.
+- [x] Tipos de Ventas registrados: Cita, Reunión, Tarea y Seguimiento;061.
+- [x] Tipos de Formalización registrados: Formalización bancaria, Reunión, Tarea, Seguimiento y Adéndum;061.
+- [x] En Adéndum y flujo contextual, seleccionar lead filtra sus órdenes, sin cruzar identidades ni ampliar alcance.
+- [x] En Adéndum/contexto de orden, completar su lead canónico y conservar relaciones bloqueadas cuando corresponde.
 - [ ] Incorporar el enlace directo a la orden desde el evento.
-- [ ] Integrar Outlook para invitaciones reales y sincronización.
-- [ ] Crear reuniones y enlaces de Teams.
-- [ ] Completar las notificaciones de eventos de hoy y su lectura individual.
+- [x] Implementar integración Graph de calendario: feed, disponibilidad, salas, propuestas y publicación/edición con recibos/versiones.
+- [ ] **Validar:** invitaciones y edición reales en Microsoft con la conexión, consentimientos y aceptación correspondientes.
+- [x] Implementar solicitud de reunión Teams en publicación Graph.
+- [ ] **Validar:** creación externa y recepción real del enlace Teams; no acreditada por guardar preferencia CRM.
+- [x] Backend de avisos de calendario: persistencia transaccional, consulta y lectura individual con autorización del destinatario.
+- [x] Consumidor de avisos conectado a la campana mediante CalendarNotifications y NoteNotifications en el corte16:02.
+- [ ] Validar avisos con cuentas reales, pruebas dedicadas y banner de eventos de hoy; wiring no equivale a aceptación.
 
 ## 10. Notas, colaboración y tickets
 
@@ -213,11 +226,11 @@ Checklist central de avances y pendientes del CRM.
 
 ## Orden de ejecución recomendado
 
-1. Cerrar definiciones de correos, bancos, campos financieros y cierre.
-2. Resolver navegación, accesos del lead y revisión de RDR678.
-3. Agregar Gestión bancaria en proceso y sus validaciones.
-4. Implementar correos, adéndum y finiquitos.
-5. Completar calendario y relaciones automáticas.
+1. Validar aceptación real del flujo implementado y sus permisos, sin reutilizar tests históricos como nueva evidencia.
+2. Cerrar correos, bancos, finiquitos y aceptación de RDR678 cuando exista autorización operativa.
+3. Completar aceptación NetSuite/Graph/Teams y tratamiento de fallos externos.
+4. Mantener matriz de campos y estados, Adéndum y documentación al cambiar sus contratos.
+5. Completar pendientes de calendario/notificaciones y relaciones fuera del alcance implementado.
 6. Continuar con Ventas, Mercadeo, tickets y OneDrive.
 7. Ejecutar la aceptación integral.
 
@@ -239,7 +252,7 @@ Se mantienen retirados el menú Resumen, la sección «Pendientes por proyecto»
 - [Notas colaborativas y seguimiento](apps/api/Arquitectura/66-Notas-Enterprise-Seguimiento.md).
 - [QA y límites de aceptación](apps/api/Arquitectura/67-Plan-QA-Regresiones-20261029.md).
 - [Reconciliación completa por commits y comprobaciones nuevas](apps/api/Arquitectura/72-Reconciliacion-Documental-20261102.md).
-- [Plan y traspaso de sincronización NetSuite, todavía sin escritor durable](apps/api/Arquitectura/70-Plan-Sincronizacion-Ordenes-NetSuite.md#traspaso-para-retomar-2026-11-02). Cierre de chat del 2026-11-02: recepción sin escrituras, autorización Sandbox a órdenes existentes en legacy, prioridad nativa, bitácora atómica pendiente y secuencia de continuación.
+- [Antecedente y traspaso de sincronización NetSuite](apps/api/Arquitectura/70-Plan-Sincronizacion-Ordenes-NetSuite.md#traspaso-para-retomar-2026-11-02). Corte histórico02/11; escritor v2 y matriz actuales en73/74/75, que sustituyen ese estado.
 - [Publicación Habita: evidencia del29, no del HEAD actual](deploy/habita/DEPLOYMENT-20261029.md).
 - [Lectura global de Mercadeo](apps/api/Arquitectura/69-Mercadeo-Lectura-Global.md).
 
@@ -248,10 +261,11 @@ Se mantienen retirados el menú Resumen, la sección «Pendientes por proyecto»
 ### NetSuite → CRM: cambios posteriores al guardado (30/10/2026)
 
 - [x] Crear y probar localmente la entrada global User Event `afterSubmit`, con validación compartida en `lib/` y acción de órdenes en su módulo. El corte inicial solo diagnosticaba; el corte posterior del30 envía al receptor local, sin persistencia CRM.
-- [ ] Registrar el nuevo script en NetSuite y verificar sus dependencias en el Archivador.
-- [ ] Completar entrega duradera, reintentos y reconciliación; impedir duplicados, eventos atrasados y bucles. El receptor autenticado de recepción local ya está implementado; no confundirlo con el escritor pendiente.
-- [ ] Confirmar el ID de «Cuotas pagadas por completo» y el mapeo de condiciones de cobro, traspaso y entrega.
-- [ ] Actualizar campos autorizados de la orden en su BD autoritativa y guardar auditoría, sin sobrescribir etapas propias del CRM.
+- [x] El usuario informó que actualizó los archivos SuiteScript en NetSuite.
+- [ ] **Validar:** versiones/deployment activos y dependencias en NetSuite; la confirmación del usuario no equivale a una nueva inspección del proveedor en esta revisión.
+- [x] Escritor v2, recibos/idempotencia y control de orden de eventos implementados. Cola/reintento durable del emisor y reconciliación externa siguen limitaciones explícitas de73/74.
+- [x] IDs y matriz confirmados de cuotas/traspaso/entrega en75; los campos sin origen confirmado se excluyen.
+- [x] Actualizar la matriz autorizada en la BD autoritativa con auditoría nativa; avance automático de etapas solo bajo política explícita, sin crear órdenes no encontradas.
 - [ ] Incorporar acciones de leads, estimaciones y corredores con tipos de registro y campos confirmados.
 - [ ] Probar una edición real autorizada en Sandbox; habilitar producción solo con su configuración y aceptación correspondientes.
 
@@ -260,10 +274,11 @@ Al recibir otro pendiente, agregarlo en su sección o registrarlo aquí hasta pr
 ### NetSuite → API local por ngrok (30/10/2026)
 
 - [x] Implementar envío de órdenes Sandbox desde afterSubmit, reutilizando lectura de orden y transporte en lib.
-- [x] Implementar receptor local autenticado, desactivado por defecto y bloqueado en producción; confirma recepción sin guardar en BD.
-- [ ] Configurar API Secret `custsecret_crm_local_events` en Sandbox con la clave exclusiva del `.env` local y subir el paquete actualizado.
+- [x] Receptor local autenticado, desactivado por defecto y bloqueado en producción; v1 solo recepción, v2 persistencia gated.
+- [ ] Resolver la configuración segura de API Secret `custsecret_crm_local_events` frente a la excepción temporal documentada; la subida de archivos fue informada por el usuario, no se repite aquí.
 - [ ] Validar recepción de una edición real de Sandbox y su log `received_local`. Las pruebas con dobles no acreditan ese recorrido.
-- [ ] Implementar entrega duradera/reintentos/idempotencia y actualización auditada de la fuente autoritativa antes de llamarlo sincronización productiva.
+- [x] Implementar idempotencia y actualización auditada durable v2.
+- [ ] Completar aceptación de entrega/reintentos/reconciliación desde NetSuite antes de certificar sincronización productiva.
 
 ### Revisión documental y calidad (02/11/2026)
 
@@ -276,3 +291,13 @@ Al recibir otro pendiente, agregarlo en su sección o registrarlo aquí hasta pr
 - [ ] Investigar el fallo de movimiento rápido en `personal-notes.spec.tsx:161` del02/11: se esperaba70px y se observó60px. La suite dio1270 aprobadas/1 fallida; el QA aprobado del29 no cierra esa incidencia nueva.
 - [ ] Sustituir la credencial temporal directa del emisor Sandbox por API Secrets con el responsable, sin divulgar el valor ni invalidar credenciales compartidas por esta revisión.
 - [ ] Repetir checks completos después de las correcciones técnicas; no sustituir sus fallos por cifras aprobadas de octubre.
+
+## Reconciliación del 03/11/2026
+
+- [x] Reconciliar documentación y checklist contra los cambios de la rama y archivos nuevos; cobertura detallada en [85](apps/api/Arquitectura/85-Reconciliacion-Documental-20261103.md).
+- [x] Registrar navegación contextual, contacto, Outlook y WhatsApp con permisos específicos, sin enviar mensajes automáticamente.
+- [x] Diferenciar la capacidad implementada de las migraciones aplicadas anteriormente y la aceptación real pendiente.
+
+Los fallos de calidad registrados el02/11 conservan su fecha: no se cierran ni se declaran todavía reproducibles por esta revisión documental. Antes de corregirlos o certificar el árbol actual, ejecutar el check correspondiente sobre el estado vigente. La copia legacy de notas, correo automatizado, bancos, finiquitos, tickets, OneDrive, Redis multinodo y aceptación externa no se completan por reconciliar documentación.
+
+- [ ] **Brecha al corte03/11 16:02 UTC:** parser `calendar-service.ts:231` exige `canEdit=false` para Outlook, mientras el API/editor ya admiten edición propia. Validar y reconciliar ese contrato en su tarea de implementación; sin corrección de código en esta revisión.

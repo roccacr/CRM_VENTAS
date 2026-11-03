@@ -1,5 +1,28 @@
 # 03 - Base de Datos y Migracion
 
+## Inventario vigente del checkout — 2026-11-03
+
+El runner registra **66 migraciones**: 001,003–025 y 027–068. Los inventarios 55/37/36 inferiores son cortes históricos. 057–061 ya están versionadas en HEAD `4d446ed`; 060 tiene además una ampliación local y 062–068 son archivos locales del checkout. Registro en código, aplicación en ledger, conformidad del esquema y despliegue son verificaciones diferentes. Las aplicaciones 058,059,060,065,066 y 067 tienen evidencia fechada en sus contratos; esta reconciliación no abrió conexiones ni volvió a ejecutarlas. 065/066 constan aplicadas tanto en nativa como en legacy mediante herramientas separadas; 067 es solo nativa.
+
+| Tramo posterior a 057 | Cambio y destino |
+| --- | --- |
+| 058 | `int_netsuite_order_cursor` y `audit_netsuite_order_event`, exclusivamente nativas; escritor v2 sujeto a gates ([73](73-Sincronizacion-Estados-Ordenes-NetSuite.md)) |
+| 059 | `crm_sales_order.cancellation_marked_on_sales_order DATE NULL DEFAULT NULL`, sin backfill ni DDL legacy ([76](76-Migracion-059-Revision-y-Rollback.md)) |
+| 060 | `lead.profile.read`, lectura global; grants por defecto a Owner/Formalización/Jefe de Formalizaciones/Jefe General ([77](77-Perfil-Completo-Lead.md)) |
+| 061 | Tipos `formalizacion_bancaria` y `adendum`; retira `cita` activa sin borrar eventos; requiere 054 y módulo activo |
+| 062 | Origen de fondos nullable y etapa `bank_management_in_progress`; nativa en runner y legacy con CLI separado. Copia del permiso bancario anterior sus grants/overrides, incluidas revocaciones y ventanas |
+| 063 | `formalizacion.calendar.assign_lead`, grants a Owner/Formalización/Jefe de Formalizaciones; sin grant explícito default a Jefe General |
+| 064 | `formalizacion.orders.whatsapp`, grants a los cuatro roles de 060; sin enviar mensajes desde la migración |
+| 065 | Estado/versión/fecha de adéndum en ambas BDs por herramientas separadas; permiso update solo nativo ([83](83-Adendum-Migracion-065-y-Rollback.md)) |
+| 066 | Nota nullable en ambas BDs y tres permisos nativos independientes; su default manual inicial queda corregido por 067 ([84](84-Adendum-Manual-Migracion-066-y-Permisos.md)) |
+| 067 | Solo DML de grants reales del marcado manual a Owner/Jefe General/Jefe de Formalizaciones; conserva overrides y grants inactivos, no concede default a Formalización |
+| 068 | Bancos/ejecutivos en ambas BD;20 permisos y40 grants Owner/Jefe General. Aplicaciones compartidas nativa/legacy exit0; tablas InnoDB y0 filas comerciales ([86](86-Bancos-Ejecutivos-Plan-y-Migracion-068.md)) |
+Los CLI `migrate-legacy-purchase-funds.ts`, `migrate-legacy-addendum.ts`, `migrate-legacy-addendum-note.ts` y `migrate-legacy-banks.ts` aceptan exactamente `--plan` o `--apply=crmdatabase-api`. No son parte del runner nativo. El modo plan conecta y consulta metadatos/locks, pero no aplica DDL ni DML comercial. La confirmación nativa no autoriza una aplicación legacy.
+
+DDL MySQL confirma implícitamente: 065/066 hacen preflight antes del ALTER y de nuevo antes del DML de seguridad, con conexión fijada y espera de metadata locks 10 s restaurada al terminar. Si falla auditoría, se revierte DML, pero una columna compatible puede haber quedado creada sin ledger; verificar antes del reintento. 067 no hace DDL. No generalizar estos controles a 058: su comprobación final revisa tablas/engine/comentario, no valida cada columna/índice; ni a 062, cuyo DML posterior al ALTER tiene límites propios.
+
+Diferencias normativas verificadas en código: 058 utiliza nombres del proveedor en tablas de integración/auditoría y columnas sin COMMENT individual; 065/066 también omiten COMMENT en sus columnas y 065 usa ENUM para el marcador. No se presenta conformidad total con [26](26-Estandar-Nombres-Base-Datos.md). Su revisión técnica requiere una tarea separada; no se reescriben migraciones aplicadas ni se ejecuta DDL para resolverlo desde documentación.
+
 ## Inventario del checkout - 2026-11-02
 
 `scripts/run-schema-migrations.ts` contiene **55 migraciones registradas**:

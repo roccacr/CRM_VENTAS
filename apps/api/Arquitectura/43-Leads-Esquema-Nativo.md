@@ -1,5 +1,14 @@
 # 43 - Esquema nativo de Leads
 
+## Lectura de perfil autorizada — 2026-11-03
+
+La lectura federada `GET /leads/profile` ya está registrada y exige
+`lead.profile.read` efectivo con deny prevaleciente; su contrato está en
+[77](77-Perfil-Completo-Lead.md). No importa registros ni habilita el CRUD de
+Leads futuro descrito aquí. Resuelve relaciones explícitas, conserva diferencias
+por campo y pagina historia/órdenes; un reporte agregado no concede este permiso.
+Los cortes anteriores sin endpoints corresponden al alcance de su fecha.
+
 ## Revision del modelo instalado en codigo - 2026-10-27
 
 Se contrastaron `202610230031_leads_domain.ts`, tipos Kysely, comandos/lectores
@@ -140,3 +149,7 @@ con escrituras deben usar una BD aislada, no registros comerciales compartidos.
   consulta evidencia nativa (44). La lectura metadata comunicada por el coordinador
   el 2026-10-23 confirma 031/032/034 presentes y 033 NO aplicada; no inferir su
   ejecucion del archivo de migracion. Estado consolidado: [49](49-Estado-Actual-y-Cierre-Documental.md).
+
+### Perfil: ampliación comercial y dependencia condicional (03/11/2026)
+
+El perfil nativo sin vínculos explícitos puede leerse con legacy deshabilitado. Si se solicita legacy o una referencia explícita exige resolverlo, su indisponibilidad produce `503`; no se presenta un vínculo requerido como ausencia de datos. `opportunities` y `estimates` consultan registros comerciales reales por `idinterno_lead`, con `items`, `total`, `hasMore`, `page` y `available`, en páginas de 50 compartiendo `orderPage`. Sin identidad legacy resuelta, `available:false` distingue falta de consulta de ausencia de registros. La bitácora no determina su existencia. Contrato y límites de QA: [perfil completo](77-Perfil-Completo-Lead.md).

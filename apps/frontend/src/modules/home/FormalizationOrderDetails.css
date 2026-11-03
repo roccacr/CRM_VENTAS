@@ -68,3 +68,29 @@
         grid-template-columns: repeat(3, minmax(0, 1fr));
     }
 }
+
+.formalization-order-header-actions {
+    display: flex;
+    align-items: flex-start;
+    justify-content: flex-end;
+    gap: 8px;
+    flex-wrap: wrap;
+    min-width: 0;
+}
+.formalization-netsuite-sync {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+    flex-wrap: wrap;
+    min-width: 0;
+    max-width: 460px;
+}
+.formalization-netsuite-sync > [role] {
+    flex-basis: 100%;
+    font-size: 12px;
+    overflow-wrap: anywhere;
+}
+.formalization-netsuite-sync > [role="alert"] {
+    color: var(--ant-color-error, #a61d24);
+}

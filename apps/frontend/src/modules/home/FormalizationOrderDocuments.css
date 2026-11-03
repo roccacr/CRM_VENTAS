@@ -1,0 +1,166 @@
+/* OneDrive-like layout: folder and actions on the left, the file list on the right. */
+.order-documents {
+    display: grid;
+    grid-template-columns: 300px minmax(0, 1fr);
+    gap: 20px;
+    align-items: start;
+    padding: 8px 0;
+}
+.order-documents h3 {
+    margin: 0 0 4px;
+    font-size: 15px;
+}
+.order-documents__header p {
+    margin: 0 0 12px;
+    color: #475467;
+    font-size: 13px;
+}
+.order-documents__main {
+    display: grid;
+    gap: 12px;
+    min-width: 0;
+}
+.order-documents__side {
+    display: grid;
+    gap: 14px;
+    padding: 16px;
+    border: 1px solid #d2dae5;
+    border-radius: 10px;
+    background: #f7f9fc;
+}
+.order-documents__folder {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 0;
+}
+.order-documents__folder > div {
+    display: grid;
+    min-width: 0;
+}
+.order-documents__folder strong {
+    overflow: hidden;
+    color: #18222f;
+    font-size: 14px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.order-documents__folder span {
+    color: #475467;
+    font-size: 12px;
+}
+.order-documents__folder-icon {
+    display: grid;
+    flex: 0 0 auto;
+    width: 44px;
+    height: 44px;
+    place-items: center;
+    border-radius: 10px;
+    background: #fff;
+    border: 1px solid #d2dae5;
+    color: #0f6cbd;
+    font-size: 24px;
+}
+.order-documents__stats {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    margin: 0;
+}
+.order-documents__stats > div {
+    padding: 8px 10px;
+    border: 1px solid #d2dae5;
+    border-radius: 8px;
+    background: #fff;
+}
+.order-documents__stats dt {
+    color: #475467;
+    font-size: 11px;
+}
+.order-documents__stats dd {
+    margin: 0;
+    color: #18222f;
+    font-size: 15px;
+    font-weight: 600;
+}
+.order-documents__side-actions {
+    display: grid;
+    gap: 8px;
+}
+.order-documents__side-actions .ant-btn {
+    width: 100%;
+    justify-content: flex-start;
+}
+.order-documents__upload {
+    padding: 16px 12px;
+    text-align: center;
+    border: 1px dashed #9aabc4;
+    border-radius: 8px;
+    background: #fff;
+}
+.order-documents__upload p {
+    margin: 6px 0 10px;
+    color: #475467;
+    font-size: 12px;
+}
+.order-documents__upload > .anticon {
+    font-size: 26px;
+    color: #0f6cbd;
+}
+.order-documents__name {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+    font-weight: 500;
+}
+.order-documents__name > span:last-child {
+    overflow-wrap: anywhere;
+}
+.order-documents__glyph {
+    display: inline-grid;
+    flex: 0 0 auto;
+    width: 28px;
+    height: 28px;
+    place-items: center;
+    border-radius: 6px;
+    background: #eef2f7;
+    color: #475467;
+    font-size: 16px;
+}
+.order-documents__glyph--pdf {
+    background: #fdecec;
+    color: #c4314b;
+}
+.order-documents__glyph--doc {
+    background: #e8f0fb;
+    color: #185abd;
+}
+.order-documents__glyph--xls {
+    background: #e6f4ea;
+    color: #107c41;
+}
+.order-documents__glyph--img {
+    background: #f1e9fb;
+    color: #7a3fc0;
+}
+.order-documents__glyph--zip {
+    background: #fdf3e1;
+    color: #b7791f;
+}
+.order-documents__table .ant-table-tbody > tr > td {
+    padding-block: 10px;
+}
+.order-documents__row-actions {
+    opacity: 0.55;
+    transition: opacity 0.15s;
+}
+.order-documents__table .ant-table-row:hover .order-documents__row-actions,
+.order-documents__row-actions:focus-within {
+    opacity: 1;
+}
+@media (max-width: 900px) {
+    .order-documents {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}

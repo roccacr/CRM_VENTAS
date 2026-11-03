@@ -3,8 +3,9 @@
 ## Arquitectura ejecutable contrastada - 2026-11-02
 
 El árbol efectivo se inventaría en [30](30-Estado-Frontend-Verificado.md): auth,
-administration, home, marketing, calendar y notes, con servicios tipados por
-dominio. El calendario usa FullCalendar/temporal-polyfill; notas usan Socket.IO
+administration, home, marketing, calendar, notes y leads, con servicios tipados por
+dominio. El perfil de consulta de leads conserva el workspace Formalización;
+el código local del 03/11 y sus contratos actuales se precisan en30/32. El calendario usa FullCalendar/temporal-polyfill; notas usan Socket.IO
 y hooks/estado existentes. No se añadieron Zustand/TanStack/Tailwind para hacer
 coincidir la implementación con el árbol conceptual conservado a continuación.
 Las rutas son un registro History API con carga diferida, Suspense y boundary de

@@ -26,6 +26,15 @@ function setup(config: Record<string, unknown> = {}, rows: Record<string, unknow
     return { writer: new LegacyContractTransitionWriter(new ConfigService({ ENABLE_LEGACY_FALLBACK: true, ENABLE_LEGACY_WRITES: true, LEGACY_CRM_DB_NAME: "crmdatabase-api", NODE_ENV: "development", ...config })), tx, queries, executeQuery };
 }
 describe("contract-only legacy gate and reviewed DDL", () => {
+    it("locks Formalization-only eligibility and persists origin on the same supplied transaction", async () => {
+        const f = setup({}, [{ id_ov: 901, status_ov: 1, caida_ov: 0, chekJefeVenta: 0, aprobacion__rdr_ov: 0, aprobacion_forma_ov: 1, origen_fondos_compra_ov: "own_funds" }]);
+        await expect(f.writer.lock(f.tx, "901")).resolves.toMatchObject({ approved: true, purchaseFundsOrigin: "own_funds" });
+        await f.writer.append(f.tx, "901", { ...event, purchaseFundsOrigin: "bank_financing" });
+        expect(f.queries[1]?.sql).toContain("UPDATE `crmdatabase-api`.ordenventa SET origen_fondos_compra_ov=? WHERE id_ov=?");
+        expect(f.queries[1]?.parameters).toEqual(["bank_financing", 901]);
+        expect(f.queries[2]?.sql).toContain("INSERT INTO `crmdatabase-api`.audit_sales_order_state_event");
+        expect(f.queries[1]?.sql).not.toMatch(/netsuite|contrado_frima/);
+    });
     it("resolves canonical owner through unique locked lead, employee and email matches", async () => {
         const f = setup();
         for (const rows of [[{ employee: 31 }], [{ id: 9, email: " Seller@Example.test " }], [{ id: 9 }], [{ publicId: "seller-public" }]])
@@ -86,7 +95,17 @@ describe("contract-only legacy gate and reviewed DDL", () => {
     });
     it("uses the existing canonical mapper for string flags and native business code", async () => {
         const f = setup({}, [{ id_ov: 901, status_ov: "1", caida_ov: "0", chekJefeVenta: "1", aprobacion__rdr_ov: "1", aprobacion_forma_ov: "1" }]);
-        await expect(f.writer.lock(f.tx, "901")).resolves.toEqual({ id: "901", businessId: "LEGACY-OV-901", active: true, approved: true, contractSigned: false });
+        await expect(f.writer.lock(f.tx, "901")).resolves.toEqual({ id: "901", businessId: "LEGACY-OV-901", active: true, approved: true, contractSigned: false, purchaseFundsOrigin: null, available: true, saleLost: false, installmentsFullyPaid: null, unitTransferred: null, keysDelivered: null, unitDelivered: null });
+    });
+    it.each([
+        [1, true],
+        [0, false],
+        [null, null],
+        [undefined, null],
+    ])("maps legacy paid installments %s as %s without guessing", async (marker, expected) => {
+        const f = setup({}, [{ id_ov: 901, cuotas_pagadas_completo_ov: marker }]);
+        await expect(f.writer.lock(f.tx, "901")).resolves.toMatchObject({ installmentsFullyPaid: expected });
+        expect(f.queries[0]?.sql).toContain("cuotas_pagadas_completo_ov");
     });
     it("writes only additive legacy history using the DDL actor reference and first transition null from", async () => {
         const f = setup();
@@ -136,4 +155,25 @@ it("blocks both approval operations before SQL when legacy writes are disabled",
     await expect(f.writer.lockApproval(f.tx, "901")).rejects.toMatchObject({ status: 503 });
     await expect(f.writer.approveFormalization(f.tx, "901")).rejects.toMatchObject({ status: 503 });
     expect(f.executeQuery).not.toHaveBeenCalled();
+});
+
+it("updates only the legacy funds column without recording a stage", async () => {
+    const f = setup();
+    await f.writer.updatePurchaseFunds(f.tx, "901", "bank_financing");
+    expect(f.queries).toHaveLength(1);
+    expect(f.queries[0]?.sql).toBe("UPDATE `crmdatabase-api`.ordenventa SET origen_fondos_compra_ov=? WHERE id_ov=?");
+    expect(f.queries[0]?.parameters).toEqual(["bank_financing", 901]);
+});
+it.each([{ ENABLE_LEGACY_FALLBACK: false }, { ENABLE_LEGACY_WRITES: false }, { LEGACY_CRM_DB_NAME: "other" }])("blocks funds updates before SQL when a legacy gate is off %j", async (config) => {
+    const f = setup(config);
+    await expect(f.writer.updatePurchaseFunds(f.tx, "901", "own_funds")).rejects.toMatchObject({ status: 503 });
+    expect(f.executeQuery).not.toHaveBeenCalled();
+});
+
+it("permite leer checks legacy con escrituras deshabilitadas, sin autorizar transiciones", async () => {
+    const f = setup({ ENABLE_LEGACY_WRITES: false }, [{ id_ov: 901, status_ov: 1, caida_ov: 1, contrado_frima_ov: 1 }]);
+    await expect(f.writer.lock(f.tx, "901", true)).resolves.toMatchObject({ available: true, saleLost: true, contractSigned: true, active: false });
+    await expect(f.writer.lock(f.tx, "901")).rejects.toMatchObject({ status: 503 });
+    expect(f.queries).toHaveLength(1);
+    expect(f.queries[0]?.sql).toMatch(/^SELECT/);
 });

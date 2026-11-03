@@ -4,7 +4,7 @@ import { ConfigService } from "@nestjs/config";
 import type { CookieRequest } from "./cookie-request.type.js";
 import { isValidSignedCsrfToken } from "./csrf-token.js";
 import { CSRF_COOKIE_NAME, CSRF_HEADER_NAME_LOWERCASE, SESSION_COOKIE_NAME } from "./http-security.constants.js";
-import { assertLocalServiceToken, hasLocalServiceToken } from "./local-service-token.guard.js";
+import { assertLocalServiceToken, getServiceTokenEnvironment, hasLocalServiceToken } from "./local-service-token.guard.js";
 
 // ============================================================================
 // Guard CSRF para el patron BFF.
@@ -84,7 +84,7 @@ export class CsrfGuard implements CanActivate {
         const request = context.switchToHttp().getRequest<CookieRequest>();
 
         if (hasLocalServiceToken(context.getHandler())) {
-            assertLocalServiceToken(this.config, request);
+            assertLocalServiceToken(this.config, request, getServiceTokenEnvironment(context.getHandler()));
             return true;
         }
 

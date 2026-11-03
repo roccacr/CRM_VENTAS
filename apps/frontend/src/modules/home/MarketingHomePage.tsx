@@ -12,7 +12,7 @@ import type { IdentityUser } from "../../services/auth/identity-contracts";
 import type { MarketingApiSummary, MarketingAppointmentEvent } from "../../services/marketing/home-summary-service";
 import { appointmentCaption, summarizeAppointmentEvents } from "./marketing-appointments.model";
 import { countFormat, describeChange, describeChartComparison, describeLeadChange, describeRange, type MarketingDelta, percentFormat } from "./marketing-home-format";
-import { addDays, alertMarketingSample, bucketMarketingSample, daysBetween, EMPTY_MARKETING_ROWS, emptyMarketingFilters, groupMarketingSample, type MarketingDirectoryRow, type MarketingPeriodMode, type MarketingPreviewFilters, type MarketingSampleRow, parseISODate, projectsForSeller, recentWithoutAppointment, recentWithoutAppointmentSeries, relativeChange, resolveMarketingView, summarizeMarketingSample } from "./marketing-home-preview.model";
+import { addDays, alertMarketingSample, bucketMarketingSample, daysBetween, EMPTY_MARKETING_ROWS, emptyMarketingFilters, groupMarketingSample, type MarketingDirectoryRow, type MarketingPeriodMode, type MarketingPreviewFilters, type MarketingSampleRow, parseISODate, recentWithoutAppointment, recentWithoutAppointmentSeries, relativeChange, resolveMarketingView, summarizeMarketingSample } from "./marketing-home-preview.model";
 import { buildProjectCards } from "./marketing-home-projects";
 import { LeadsAreaChart, SparkArea } from "./MarketingHomeCharts";
 import { MarketingProjects, MarketingSellers } from "./MarketingHomePanels";
@@ -125,29 +125,23 @@ interface ControlsProps {
     readonly scope: MarketingScope;
     readonly summary: string;
     readonly onPeriod: (period: HomePeriod) => void;
-    readonly onSeller: (sellers: readonly string[]) => void;
     readonly onProject: (projects: readonly string[]) => void;
 }
 
-/** What the person is looking at: a seller, a project, both or neither. */
-function describeScope({ sellers, projects }: MarketingScope, source: readonly MarketingDirectoryRow[]): string {
+/** Describe los proyectos elegidos sin introducir un filtro por vendedor. */
+function describeScope({ projects }: MarketingScope, source: readonly MarketingDirectoryRow[]): string {
     const projectLabel = projects.map((project) => source.find((row) => row.project === project)?.projectName ?? project).join(", ");
-    if (sellers.length && projects.length) return `${sellers.length === 1 ? "Vendedor" : "Vendedores"} · ${projectLabel}`;
-    if (sellers.length) return sellers.length === 1 ? "Vendedor · solo se muestran sus leads y proyectos" : `Comparando ${String(sellers.length)} vendedores · sus leads y proyectos`;
     return projects.length ? `Captación de leads y citas · ${projectLabel}` : "Captación de leads y citas";
 }
 
 /** Stable IDs in values; readable names sorted independently of source/provider identities. */
-function marketingOptions(rows: readonly MarketingDirectoryRow[], dimension: "seller" | "project", ids?: readonly string[]) {
-    const names = new Map(rows.map((row) => [row[dimension], dimension === "seller" ? (row.sellerName ?? row.seller) : (row.projectName ?? row.project)]));
-    return [...names]
-        .filter(([id]) => ids === undefined || ids.includes(id))
-        .map(([value, label]) => ({ value, label }))
-        .sort((a, b) => a.label.localeCompare(b.label, "es"));
+function marketingOptions(rows: readonly MarketingDirectoryRow[]) {
+    const names = new Map(rows.map((row) => [row.project, row.projectName ?? row.project]));
+    return [...names].map(([value, label]) => ({ value, label })).sort((a, b) => a.label.localeCompare(b.label, "es"));
 }
 
-/** Period, seller and project are the only controls; the detail by campaign and ad lives in "Captación de leads". */
-function MarketingControls({ available, notice, onRetry, rows, period, scope, summary, onPeriod, onSeller, onProject }: ControlsProps) {
+/** Period and project are the only controls; the detail by campaign and ad lives in "Captación de leads". */
+function MarketingControls({ available, notice, onRetry, rows, period, scope, summary, onPeriod, onProject }: ControlsProps) {
     return (
         <>
             {!available && (
@@ -160,7 +154,7 @@ function MarketingControls({ available, notice, onRetry, rows, period, scope, su
                     )}
                 </p>
             )}
-            <section className="marketing-bar" aria-label="Periodo y vendedor">
+            <section className="marketing-bar" aria-label="Periodo y proyecto">
                 <div className="marketing-preview-grouping" role="group" aria-label="Periodo">
                     {HOME_PERIODS.map(({ key, label }) => (
                         <button
@@ -176,12 +170,8 @@ function MarketingControls({ available, notice, onRetry, rows, period, scope, su
                     ))}
                 </div>
                 <label className="marketing-bar__seller">
-                    <span>Vendedor</span>
-                    <Select<string[]> aria-label="Vendedor" mode="multiple" allowClear virtual={false} disabled={rows.length === 0} value={[...scope.sellers]} placeholder="Todos los vendedores" showSearch={{ optionFilterProp: "label" }} options={marketingOptions(rows, "seller")} onChange={onSeller} />
-                </label>
-                <label className="marketing-bar__seller">
                     <span>Proyecto</span>
-                    <Select<string[]> aria-label="Proyecto" mode="multiple" allowClear virtual={false} disabled={rows.length === 0} value={[...scope.projects]} placeholder="Todos los proyectos" showSearch={{ optionFilterProp: "label" }} options={marketingOptions(rows, "project", projectsForSeller(scope.sellers, rows))} onChange={onProject} />
+                    <Select<string[]> aria-label="Proyecto" mode="multiple" allowClear virtual={false} disabled={rows.length === 0} value={[...scope.projects]} placeholder="Todos los proyectos" showSearch={{ optionFilterProp: "label" }} options={marketingOptions(rows)} onChange={onProject} />
                 </label>
                 <p className="marketing-bar__summary">{summary}</p>
             </section>
@@ -245,9 +235,6 @@ export function MarketingHomeDashboard({ currentUser, rows, today, periodControl
     const { scope, selection, setScope, pending } = useMarketingScope(currentUser.publicId, available ? dimensions : undefined, loading);
     const busy = transitionPending || pending;
     const { sellers, projects } = scope;
-    const changeSeller = (next: readonly string[]) => {
-        setScope((current) => reconcileScope({ sellers: next, projects: current.projects }, dimensions));
-    };
     const filters = useMemo<MarketingPreviewFilters>(() => {
         const base = emptyMarketingFilters(today);
         return { ...base, sellers, projects, selection: { ...base.selection, mode: period } };
@@ -292,7 +279,6 @@ export function MarketingHomeDashboard({ currentUser, rows, today, periodControl
                         setPeriod(next);
                     });
                 }}
-                onSeller={changeSeller}
                 onProject={(next) => {
                     setScope((current) => ({ ...current, projects: next }));
                 }}
@@ -307,8 +293,8 @@ export function MarketingHomeDashboard({ currentUser, rows, today, periodControl
             </div>
             <MarketingAlerts alerts={showAppointments ? alertMarketingSample(view) : []} comparison={{ current: describeRange(view.period), previous: describeRange(view.comparison) }} />
             <LeadsAreaChart title={copy.chart} buckets={buckets} currentLabel={describeRange(view.window)} comparisonLabel={describeChartComparison(view)} unit={copy.unit} />
-            <MarketingProjects cards={projectCards} periodWord={copy.word} seller={sellers.map((seller) => sellerLabel(seller, dimensions)).join(", ")} comparison={{ label: copy.against, current: describeRange(view.period), previous: describeRange(view.comparison) }} />
-            <MarketingSellers groups={sellerGroups} selected={selection.sellers} onSelect={changeSeller} appointmentsAvailable={showAppointments} comparisonLabel={describeRange(view.comparison)} />
+            <MarketingProjects cards={projectCards} periodWord={copy.word} seller="" comparison={{ label: copy.against, current: describeRange(view.period), previous: describeRange(view.comparison) }} />
+            <MarketingSellers groups={sellerGroups} appointmentsAvailable={showAppointments} comparisonLabel={describeRange(view.comparison)} />
         </div>
     );
 }
@@ -324,7 +310,7 @@ function MarketingPreload({ busy }: { readonly busy: boolean }) {
     );
 }
 
-/** Keep an active filter visible: loading retains it, a new directory reconciles it, a new user resets it. */
+/** Conserva el proyecto al cargar y lo reconcilia con el directorio autorizado del usuario. */
 function useMarketingScope(userId: string, rows: readonly MarketingDirectoryRow[] | undefined, loading?: boolean) {
     const [stored, setStored] = useState({ userId, scope: { sellers: [] as readonly string[], projects: [] as readonly string[] } });
     const own = stored.userId === userId ? stored.scope : { sellers: [], projects: [] };
@@ -339,9 +325,8 @@ function useMarketingScope(userId: string, rows: readonly MarketingDirectoryRow[
 }
 
 function reconcileScope(scope: MarketingScope, rows: readonly MarketingDirectoryRow[]): MarketingScope {
-    const sellers = scope.sellers.filter((id) => rows.some((row) => row.seller === id));
-    const allowedProjects = projectsForSeller(sellers, rows);
-    const projects = scope.projects.filter((id) => allowedProjects.includes(id));
+    const sellers: readonly string[] = [];
+    const projects = scope.projects.filter((id) => rows.some((row) => row.project === id));
     if (sellers.length === scope.sellers.length && projects.length === scope.projects.length) return scope;
     return { sellers, projects };
 }
@@ -350,37 +335,21 @@ function visibleBuckets(available: boolean, view: ReturnType<typeof resolveMarke
     return available ? bucketMarketingSample(view, view.windowRows, view.comparedRows) : [];
 }
 
-function sellerLabel(seller: string, source: readonly MarketingDirectoryRow[]): string {
-    return source.find((row) => row.seller === seller)?.sellerName ?? seller;
-}
-
-/** Session greeting or the selected seller, retaining the existing welcome illustration fallback. */
+/** La bienvenida conserva la identidad de la sesión al filtrar por proyecto. */
 function MarketingWelcome({ currentUser, scope, source }: { readonly currentUser: IdentityUser; readonly scope: MarketingScope; readonly source: readonly MarketingDirectoryRow[] }) {
     const name = currentUser.displayName.trim() || currentUser.email.trim();
-    const people = scope.sellers.map((seller) => ({ id: seller, publicId: source.find((row) => row.seller === seller)?.sellerPublicId ?? null, name: sellerLabel(seller, source) }));
-    const sellerName = scope.sellers.map((seller) => sellerLabel(seller, source)).join(", ");
     const firstName = name.split(/\s+/)[0] ?? "";
-    const greeting = firstName ? `Hola, ${firstName}` : "Hola";
     return (
-        <section className={`marketing-welcome${people.length > 1 ? " marketing-welcome--multiple" : ""}`} aria-label="Bienvenida a Mercadeo">
+        <section className="marketing-welcome" aria-label="Bienvenida a Mercadeo">
             <div className="marketing-welcome__copy">
-                <p className="marketing-welcome__title">{scope.sellers.length ? sellerName : greeting}</p>
+                <p className="marketing-welcome__title">{firstName ? `Hola, ${firstName}` : "Hola"}</p>
                 <p className="marketing-welcome__text">{describeScope(scope, source)}</p>
                 <a className="marketing-welcome__link" href="#marketing-preview-movement">
                     Ver cómo se mueven los leads
                 </a>
             </div>
             <div className="marketing-welcome__people">
-                {people.length === 0 ? (
-                    <MarketingWelcomeArt publicId={null} name="" />
-                ) : (
-                    people.map((person) => (
-                        <figure key={person.id} className="marketing-welcome__person">
-                            <MarketingWelcomeArt publicId={person.publicId} name={person.name} />
-                            <figcaption>{person.name}</figcaption>
-                        </figure>
-                    ))
-                )}
+                <MarketingWelcomeArt publicId={null} name="" />
             </div>
         </section>
     );

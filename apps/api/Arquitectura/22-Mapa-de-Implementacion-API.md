@@ -1,5 +1,40 @@
 # 22 - Mapa de Implementacion API
 
+[87 — Asignación bancaria](87-Orden-Asignacion-Bancaria.md): `OrderBankAssignmentModule` ofrece GET/POST `/formalization/orders/:source/:id/bank-assignment`, revalida catálogo y orden, resuelve autoridad nativa primero y persiste vínculo/bitácora en una transacción central.069 aplicada; no altera `ordenventa`, estados ni grants.
+
+## Bancos - 2026-11-03
+
+[86 - Bancos y ejecutivos](86-Bancos-Ejecutivos-Plan-y-Migracion-068.md): catalogo/API/UI implementados, esquema068/legacy aplicado y verificado por SELECT;20 grants Owner y20 Jefe General,0 filas comerciales. Visual real Owner confirmada; sin deploy ni mutaciones UI sobre RDS. QA y bloqueos globales en86.
+
+[86 — Bancos y ejecutivos](86-Bancos-Ejecutivos-Plan-y-Migracion-068.md) incorpora BanksModule, nueve endpoints contextuales, auditoría transaccional y mirror legacy aislado. Catálogo limitado a Owner/Jefe General con permiso efectivo y módulo permitido. Esquema068/legacy aplicado y verificado; no hay datos de ejemplo ni despliegue. QA y limitación visual figuran en86.
+
+## Corte vigente contrastado — 2026-11-03
+
+Revisión documental del árbol de trabajo de `temp/crm-tink-api-frontend-inicial`,
+con base en HEAD `4d446ed`. Incluye cambios locales; no acredita publicación.
+
+- NetSuite v2 dispone de escritor transaccional nativo primero y legacy solo en
+  ausencia de autoridad nativa, recibos/cursor, snapshot y auditoría. v1 mantiene
+  `persisted:false`. La ampliación de campos está en [75](75-Matriz-Campos-Ordenes-NetSuite.md)
+  y la evidencia real acotada de diez indicadores en [73](73-Sincronizacion-Estados-Ordenes-NetSuite.md).
+- Contratos usa aprobación de Formalización; la acción que otorga esa aprobación
+  conserva sus prerrequisitos independientes. Origen de fondos, ocho etapas y
+  combinaciones confirmadas de cierre están en [78](78-Formalizacion-Origen-Fondos-y-Gestion-Bancaria.md).
+  Eventos NetSuite `edit`/`xedit` pueden avanzar visitas finales existentes según
+  esos indicadores; no hay retroceso automático ni etapas inventadas al consultar.
+- Microsoft 365 tiene adaptador y endpoints conectados para agenda propia,
+  disponibilidad, salas, invitaciones y Teams, condicionados a sesión Microsoft,
+  permisos CRM y consentimiento: [64](64-Calendario-Global-API-y-Contexto.md).
+  Implementación no equivale a aceptación externa con cuenta real.
+- El adéndum es un marcador independiente de la etapa, con versión y nota manual;
+  calendario conserva orden/cliente fijos y bloquea otro adéndum futuro.
+  Contratos funcionales/esquema: [83](83-Adendum-Migracion-065-y-Rollback.md) y
+  [84](84-Adendum-Manual-Migracion-066-y-Permisos.md), incluida la corrección067.
+
+Los cortes inferiores conservan cronología y resultados de su fecha. Este corte
+prevalece para inventario actual; no autoriza migraciones, escrituras, cambios de
+credenciales, publicación ni despliegue. No se vuelven a ejecutar suites por editar documentación.
+
 ## Inventario vigente - 2026-11-02
 
 La lectura de `AppModule`, módulos/controladores y contratos confirma los
@@ -13,13 +48,12 @@ informe consolidado; no se convierten logs históricos en pruebas actuales.
 | `GET /notes/related-record-options` | `NoteRelatedRecordsController` y resolvedor federado | sesión, lectura y crear/editar propias; recursos reautorizados, páginas de25 y `partial` explícito |
 | `GET /note-collaboration/notes/:id/related-records` | mismo controlador/servicio | ACL de conversación independiente del recurso; etiquetas/IDs restringidos se ocultan |
 | `PUT /note-collaboration/notes/:id/related-records` | mismo controlador/servicio | autor con permiso y nota pendiente, CSRF/operationId/versión; principal inmutable, auditoría e invalidación realtime |
-| `POST /integrations/netsuite/local/order-events` | `NetsuiteLocalEventsController` en `NetsuiteModule` | prueba de máquina DEV, cuenta Sandbox fija, esquema estricto; `received:true,persisted:false`, ninguna escritura comercial |
+| `POST /integrations/netsuite/local/order-events` | `NetsuiteLocalEventsController` en `NetsuiteModule` | prueba de máquina DEV, cuenta Sandbox fija, esquema estricto; v1 `persisted:false`; v2 con persistencia habilitada y auditoría73/75 |
 
-Calendario tiene **cinco rutas** registradas, no las cuatro del inventario28/29:
-lookup complementa calendarios/listado/crear/editar. Participantes internos,
-correos externos, preferencia Teams y vínculos source-qualified se documentan
-en [68 calendario](68-Calendario-Participantes-y-Vinculos.md); no implican Graph,
-envíos ni RSVP. Notas mantiene sus contratos antiguos y agrega `relatedRecords`
+Calendario registra **siete declaraciones HTTP**: calendarios/listado/lookup,
+crear/editar, disponibilidad y salas. Participantes y vínculos source-qualified
+están en [68 calendario](68-Calendario-Participantes-y-Vinculos.md); Graph,
+publicación condicionada y límites vigentes están en64. Notas mantiene sus contratos antiguos y agrega `relatedRecords`
 opcional al crear y resúmenes autorizados a lecturas ([68 notas](68-Plan-Notas-Vinculos-Clientes-y-Ordenes.md)).
 
 Mercadeo conserva exactamente los periodos API del inventario inferior; la
@@ -29,7 +63,7 @@ No concede acceso individual a un lead por consultar agregados.
 
 ### Inventario completo de controladores HTTP
 
-Conteo estático del checkout: **31 controladores y 119 declaraciones HTTP**. No incluye Swagger opcional, handshake Socket.IO ni middleware como si fueran handlers Nest. Un prefijo `/` significa que el método ya contiene su ruta completa. Las rutas relativas se concatenan al prefijo; DTO, `RouteSecurity`, `RequirePermission` y servicio conservan su autoridad, no esta tabla. Las constantes de Identidad se resolvieron contra `identity-route.constants.ts`.
+Conteo estático del checkout al 2026-11-03: **35 controladores y 132 declaraciones HTTP**. No incluye Swagger opcional, handshake Socket.IO ni middleware como si fueran handlers Nest. Un prefijo `/` significa que el método ya contiene su ruta completa. Las rutas relativas se concatenan al prefijo; DTO, `RouteSecurity`, `RequirePermission` y servicio conservan su autoridad, no esta tabla. Las constantes de Identidad se resolvieron contra `identity-route.constants.ts`.
 
 | Controlador/fuente | Prefijo | N.º | Métodos relativos |
 | --- | --- | --- | --- |
@@ -38,12 +72,14 @@ Conteo estático del checkout: **31 controladores y 119 declaraciones HTTP**. No
 | [NetsuiteSalesOrderController](../src/integrations/netsuite/netsuite.module.ts) | `/formalization/orders` | 3 | `GET /:source/:id/database`; `GET /:source/:id/history`; `GET /:source/:id/netsuite` |
 | [AuditReadController](../src/modules/crm/audit/audit-read.controller.ts) | `/audit` | 4 | `GET /options`; `GET /records/:recordId/timeline`; `GET /:publicId`; `GET /` |
 | [BrokersController](../src/modules/crm/brokers/brokers.controller.ts) | `/catalogs/brokers` | 4 | `GET /items`; `POST /items`; `PATCH /items/:itemPublicId`; `PATCH /items/:itemPublicId/status` |
-| [CalendarController](../src/modules/crm/calendar/calendar.module.ts) | `/calendar` | 5 | `GET /calendars`; `GET /events`; `GET /lookup`; `POST /events`; `PATCH /events/:id` |
+| [CalendarNotificationsController](../src/modules/crm/calendar/calendar-notifications.ts) | `/calendar/notifications` | 2 | `GET /`; `PUT /:id/read` |
+| [CalendarController](../src/modules/crm/calendar/calendar.module.ts) | `/calendar` | 8 | `GET /calendars`; `GET /events`; `GET /lookup`; `POST /availability`; `GET /rooms`; `POST /events`; `PATCH /events/:id`; `PATCH /outlook-events/:id` |
 | [CampaignsController](../src/modules/crm/campaigns/campaigns.controller.ts) | `/catalogs/campaigns` | 4 | `GET /items`; `POST /items`; `PATCH /items/:itemPublicId`; `PATCH /items/:itemPublicId/status` |
 | [CatalogsController](../src/modules/crm/catalogs/catalogs.controller.ts) | `/catalogs` | 4 | `GET /:catalogCode/items`; `POST /:catalogCode/items`; `PATCH /:catalogCode/items/:itemPublicId`; `PATCH /:catalogCode/items/:itemPublicId/status` |
 | [ClassesController](../src/modules/crm/classes/classes.controller.ts) | `/catalogs/classes` | 4 | `GET /items`; `POST /items`; `PATCH /items/:itemPublicId`; `PATCH /items/:itemPublicId/status` |
 | [IdentityAccessManagementController](../src/modules/crm/identity/identity-access-management.controller.ts) | `/identity` | 7 | `GET /roles/security-catalog`; `PATCH /roles/:roleCode`; `GET /roles/:roleCode/permissions`; `PUT /roles/:roleCode/permissions`; `GET /users/:userPublicId/access`; `PUT /users/:userPublicId/access`; `DELETE /roles/:roleCode` |
 | [IdentityController](../src/modules/crm/identity/identity.controller.ts) | `/identity` | 17 | `GET /session`; `GET /me`; `GET /users`; `POST /users`; `PATCH /users/:userPublicId`; `PATCH /users/:userPublicId/status`; `GET /users/:userPublicId`; `GET /me/photo`; `GET /sessions`; `POST /sessions/:sessionPublicId/revoke`; `POST /logout`; `POST /refresh`; `POST /microsoft/start`; `GET /microsoft/callback`; `POST /local/login`; `POST /local/request-reset`; `POST /local/complete-reset` |
+| [LeadProfileController](../src/modules/crm/leads/lead-profile.controller.ts) | `/leads` | 1 | `GET /profile` |
 | [LocationsController](../src/modules/crm/locations/locations.controller.ts) | `/catalogs/locations` | 4 | `GET /items`; `POST /items`; `PATCH /items/:itemPublicId`; `PATCH /items/:itemPublicId/status` |
 | [MarketingHomeController](../src/modules/crm/marketing/marketing-home.module.ts) | `/marketing/home` | 1 | `GET /summary` |
 | [MarketingLeadsReportController](../src/modules/crm/marketing/marketing-leads-report.controller.ts) | `/marketing/leads` | 1 | `GET /report` |
@@ -56,12 +92,16 @@ Conteo estático del checkout: **31 controladores y 119 declaraciones HTTP**. No
 | [ApprovalSummaryController](../src/modules/crm/sales/sales-orders/approval-summary.module.ts) | `/formalization/approvals` | 1 | `GET /summary` |
 | [ContractSummaryController](../src/modules/crm/sales/sales-orders/contract-summary.module.ts) | `/formalization/contracts` | 1 | `GET /summary` |
 | [ContractTransitionController](../src/modules/crm/sales/sales-orders/contract-transition.controller.ts) | `/formalization/contracts` | 2 | `POST /send`; `POST /revert` |
-| [FormalizationStageController](../src/modules/crm/sales/sales-orders/contract-transition.controller.ts) | `/formalization/orders` | 1 | `POST /stage` |
+| [FormalizationStageController](../src/modules/crm/sales/sales-orders/contract-transition.controller.ts) | `/formalization/orders` | 3 | `GET /:source/:id/purchase-funds`; `POST /purchase-funds`; `POST /stage` |
 | [FormalizationApprovalController](../src/modules/crm/sales/sales-orders/formalization-approval.ts) | `/formalization/orders` | 1 | `POST /approve` |
 | [HomeSummaryController](../src/modules/crm/sales/sales-orders/home-summary.module.ts) | `/formalization/home` | 2 | `GET /recent-activity`; `GET /summary` |
 | [FollowUpController](../src/modules/crm/sales/sales-orders/home-summary.module.ts) | `/formalization/home` | 1 | `GET /follow-up` |
 | [FormalizationOrderRecordController](../src/modules/crm/sales/sales-orders/home-summary.module.ts) | `/formalization/orders` | 1 | `GET /:source/:id/record` |
 | [OrderTimingController](../src/modules/crm/sales/sales-orders/order-timing.controller.ts) | `/formalization/orders` | 1 | `GET /:source/:id/timing` |
+| [SalesOrderAddendumController](../src/modules/crm/sales/sales-orders/sales-order-addendum.ts) | `/formalization/orders/addendum` | 4 | `GET /`; `GET /future`; `POST /`; `POST /pending` |
+| [SalesOrderAddendumSummaryController](../src/modules/crm/sales/sales-orders/sales-order-addendum.ts) | `/formalization/addendum` | 1 | `GET /summary` |
+| [SalesOrderAddendumController](../src/modules/crm/sales/sales-orders/sales-order-addendum.ts) | `/formalization/orders/addendum` | 4 | `GET /`; `GET /future`; `POST /`; `POST /pending` |
+| [SalesOrderAddendumSummaryController](../src/modules/crm/sales/sales-orders/sales-order-addendum.ts) | `/formalization/addendum` | 1 | `GET /summary` |
 | [SubsidiariesController](../src/modules/crm/subsidiaries/subsidiaries.controller.ts) | `/catalogs/subsidiaries` | 4 | `GET /items`; `POST /items`; `PATCH /items/:itemPublicId`; `PATCH /items/:itemPublicId/status` |
 | [UnitFilesController](../src/modules/crm/unit-files/unit-files.controller.ts) | `/unit-files` | 5 | `GET /projects`; `GET /options`; `GET /facets`; `GET /`; `GET /:id` |
 
@@ -79,13 +119,13 @@ Conteo estático del checkout: **31 controladores y 119 declaraciones HTTP**. No
 | `crm/calendar` | eventos, superposición, lookup y participantes/vínculos nativos;17/47/64/68 calendario |
 | `crm/notes` | personales, colaboración, workflow, avisos y sockets;18/57/60/62/66/68 notas |
 | `integrations/legacy-crm` | lecturas y escritores acotados autorizados, no importador comercial general;03/04/44/52 |
-| `integrations/microsoft365` | identidad corporativa/perfil; no calendario Outlook/Teams operativo;24/33 |
-| `integrations/netsuite` | inspección, aprobación limitada y receptor DEV no durable;04/63 y plan70 pendiente |
-| `scripts`, `migrations/schema-only` | 55 migraciones registradas y herramientas clasificadas de esquema, datos, QA y empaquetado; inventario completo en03 |
+| `integrations/microsoft365` | identidad/perfil y puerto Graph de agenda, disponibilidad, salas y publicación condicionada;24/33/64 |
+| `integrations/netsuite` | inspección, aprobación limitada y receptor DEV v1/v2 transaccional;04/63/73/75/78 |
+| `scripts`, `migrations/schema-only` | 65 migraciones registradas y herramientas clasificadas de esquema, datos, QA y empaquetado; inventario completo en03 |
 
 La ampliación057, el CLI de indicadores y los tipos de tabla de órdenes son
 cambios locales sin commit en esta revisión. No se modifica ningún grafo de
-runtime ni esquema al documentarlos; el plan70 no registra un nuevo writer.
+runtime ni esquema al documentarlos; el plan70 es antecedente del escritor73/75.
 
 ## Inventario registrado y contratos - revisión 2026-10-29
 

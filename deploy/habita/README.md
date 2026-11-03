@@ -1,5 +1,7 @@
 # Habita: despliegue en Ubuntu / Apache
 
+Revisión documental03/11/2026: el inventario vigente está en [85](../../apps/api/Arquitectura/85-Reconciliacion-Documental-20261103.md). Los recibos, hashes, instalación o despliegue inferiores conservan su fecha; no se reejecutaron ni acreditan el árbol actual.
+
 ## Vigencia y límites — revisión 2026-11-02
 
 Este es el runbook del despliegue registrado en
@@ -39,10 +41,15 @@ No se requiere commit/push para aplicar un overlay verificado sobre el clon.
   `https://habita.roccacr.com/identity/microsoft/callback`.
 - Release: `/var/www/habita-crm/releases/<identificador>`; symlink `current`.
 - Secretos fuera de Git y del DocumentRoot: `shared/api.env`, modo 0600.
+- Calendario Microsoft en producción: `ENABLE_CALENDAR_EXTERNAL=true` en ese entorno compartido. El valor por defecto del código es `false`; iniciar sesión con Microsoft no activa la integración. Los releases reutilizan este archivo, sin sustituirlo por el `.env.example` ni por el entorno local. Al cambiar calendario, verificar también salas, disponibilidad y lectura de agenda con una sesión real en Habita; `health/ready` por sí solo no acredita estas funciones.
 - API: `NODE_ENV=production`, `API_BIND_HOST=127.0.0.1`, `PORT=3100`,
   `FRONTEND_ORIGIN=https://habita.roccacr.com`, `TRUSTED_PROXY_IPS=127.0.0.1`.
-- Mantener destinos BD, claves criptográficas e integración NetSuite configurada
-  durante la transferencia; no cambiar Sandbox a producción automáticamente.
+- Mantener destinos BD y claves criptográficas durante la transferencia.
+- NetSuite: FRONTEND_ORIGIN de Habita fija Producción; configurar previamente
+  NETSUITE_PRODUCTION_RESTLET_URL con script/deploy confirmados y NETSUITE_* de
+  cuenta 4552704. NETSUITE_PRODUCTION_READ_MODE elige legacy o modules según el
+  contrato del script. No publicar esta revisión con URL pendiente.
+  Sandbox usa NETSUITE_SANDBOX_* únicamente en el backend local.
 - CA RDS: ruta absoluta del certificado público dentro del release remoto.
 
 ## Secuencia
@@ -100,7 +107,7 @@ El archivo de producción ya está en `shared/api.env` (0600), con `NODE_ENV=pro
 y los dominios públicos. Cada release enlaza `apps/api/.env` a ese archivo y Node
 lo carga mediante `--env-file`; no se sustituye con el `.env` de desarrollo en cada
 publicación. Cambiar secretos requiere actualizar ese archivo privado y reiniciar
-el API. La integración NetSuite conserva su destino Sandbox actual.
+el API. Ese corte histórico conservó Sandbox; la revisión local del 03/11 fija Producción para Habita y requiere completar su URL antes de publicar.
 
 `ecosystem.config.cjs` define el proceso y `habita-pm2.service` inicia su PM2
 aislado al arrancar Ubuntu. PM2 7.1.1 está instalado solo en
@@ -125,3 +132,47 @@ Entra puede enviar `clientdata` además de `code`, `state`, `session_state` y
 no se usa como identidad, no sustituye state/PKCE y se siguen rechazando campos
 desconocidos, arrays y tamaños inválidos. Nunca publicar la URL completa del
 callback ni sus códigos en capturas o logs.
+
+
+## NetSuite Produccion — IDs confirmados 03/11/2026
+
+Valores del perfil del API para la version unificada confirmada:
+
+```dotenv
+NETSUITE_PRODUCTION_RESTLET_URL=https://4552704.restlets.api.netsuite.com/app/site/hosting/restlet.nl?script=3739&deploy=1
+NETSUITE_PRODUCTION_READ_MODE=modules
+NETSUITE_ENVIRONMENT=production
+```
+
+Con FRONTEND_ORIGIN de Habita se selecciona Produccion aun si queda un selector
+antiguo sandbox. Conservar NETSUITE_* de cuenta4552704 y mantener separados
+NETSUITE_SANDBOX_*; no rotar ni copiar secretos entre ambientes. La configuracion
+local de estos valores no acredita actualizacion de shared/api.env ni despliegue.
+Referencias: libreria9625078 en SuiteScripts/, RESTlet3739/1 y User Event3740.
+La lectura real de diagnostico encontro ENVIRONMENT_NOT_AUTHORIZED: configurar
+custscript_crm_account_id=4552704 en el deployment RESTlet y verificar GET.
+El receptor de Produccion esta en /integrations/netsuite/production/order-events
+del API publico, con secreto dedicado y flags explicitos. Publicar el UE no
+configura automaticamente sus parametros ni demuestra la entrega real.
+
+
+## Activacion acotada verificada — 2026-11-03
+
+Release activo `20261103171020-netsuite`, basado en `20261103154247-4d446ed-local`.
+Overlay de 12 fuentes de integracion, con 637 artefactos API compilados. Se
+verificaron las 1286 fuentes y719 artefactos finales; frontend conservado.
+SHA256 del overlay: `a77f9bbcb6a4ecea59f4548cfb1130886126bd95765b2ade895d46a6acdd308d`.
+Compilacion aislada aprobada y267 pruebas de11 suites aprobadas sobre la copia.
+La activacion conserva backup privado de api.env y rollback conjunto de entorno
+mas current; sin migraciones ni instalaciones de dependencias nuevas.
+
+En vivo: ready200, identidad sin sesion401, receptor production sin secreto401,
+cuerpo invalido autenticado400 antes de persistencia. Perfil efectivo production,
+URL3739/deploy1, module=salesOrders y OAuth realm4552704. El proveedor devuelve
+HTTP200/status403 ENVIRONMENT_NOT_AUTHORIZED: falta completar la correccion/config
+remota de NetSuite. Sandbox3353/1 devuelve200, pero aun sin fields.custbody37.
+No se probaron escrituras de negocio ni se acredita sincronizacion E2E.
+
+El local compartia la misma BD y PERSIST=true; se cambio a false para evitar que
+Sandbox sobrescriba datos reales. Worker local recargado despues de ese cambio.
+Las instrucciones y archivos concretos estan en [ACTIVAR-NETSUITE.md](ACTIVAR-NETSUITE.md).

@@ -1,8 +1,26 @@
 # 00 - Indice de Arquitectura API
 
+## Bancos - 2026-11-03
 
-Ampliación solicitada el 2026-11-02: [perfil completo del lead](77-Perfil-Completo-Lead.md), lectura federada y permiso global; migración060 preparada, sin aplicación ni despliegue.
-## Entrada vigente — 2026-11-02
+[86 - Bancos y ejecutivos](86-Bancos-Ejecutivos-Plan-y-Migracion-068.md): catalogo/API/UI implementados, esquema068/legacy aplicado y verificado por SELECT;20 grants Owner y20 Jefe General,0 filas comerciales. Visual real Owner confirmada; sin deploy ni mutaciones UI sobre RDS. QA y bloqueos globales en86.
+
+[87 — Asignación bancaria de la orden](87-Orden-Asignacion-Bancaria.md): vínculo central para órdenes nativas/legacy, banco/ejecutivo activos, panel contextual y alta de ejecutivo.069 aplicada con aprobación explícita; permisos de catálogo y lectura de orden, CAS y bitácora transaccional.
+
+## Precedencia vigente — 2026-11-03
+
+[85 — Reconciliación del árbol actual](85-Reconciliacion-Documental-20261103.md) sustituye72 como inventario. Las ampliaciones solicitadas posteriormente ya están implementadas dentro de sus contratos: [73–75, eventos y mapeo NetSuite](73-Sincronizacion-Estados-Ordenes-NetSuite.md), [77, perfil federado](77-Perfil-Completo-Lead.md), [78, fondos y banco](78-Formalizacion-Origen-Fondos-y-Gestion-Bancaria.md), [52, cuotas](52-Etapas-Responsables-y-Tiempos.md), [78, cierre y ayudas](78-Formalizacion-Origen-Fondos-y-Gestion-Bancaria.md), [83, agenda contextual](83-Adendum-Migracion-065-y-Rollback.md), [Detalle32, WhatsApp](../../frontend/Arquitectura/32-Detalle-Orden-y-Cliente-Basico.md), [83–84, Adéndum](84-Adendum-Manual-Migracion-066-y-Permisos.md) y [64, calendario/Graph](64-Calendario-Global-API-y-Contexto.md).
+
+V2 persiste la matriz confirmada de campos, con prioridad nativa y fallback legacy solo si no existe; v1 sigue recepción. La aprobación de Formalización sustituye el requisito histórico de tres aprobaciones para Contratos pendientes. Ocho etapas y origen obligatorio de fondos; cierre y traspasos aplican flags triestado, sin retroceso automático a saldo. Venta caída afecta únicamente la orden y registra la fecha al marcar. Adéndum es una marca independiente de etapas/lead; marca manual exige motivo de3..2000 caracteres; «Enviado» es distinto de «Completado» según [88](88-Adendum-Motivo-y-Envio.md) y tiene grants reales por defecto para Owner, Jefe General y Jefe de Formalizaciones mediante067. Los denies prevalecen y Formalización base no recibe esa marca manual por defecto.
+
+Sin permiso de lectura Adéndum se oculta su marca/nota/bandeja, conservando la orden. La agenda contextual fija relaciones; el acceso de cabecera abre un formulario limpio y guardar no navega al calendario. Graph ya tiene lectura/escritura y disponibilidad implementadas; conexión, publicación externa, despliegue y aceptación real requieren evidencia específica. Las migraciones aprobadas y sus rollbacks están en sus contratos; leer esta ley no autoriza ejecutarlas.
+
+Los apartados inferiores fechados son antecedentes de su corte. Se conservan firmas/versiones históricas; esta sección registra las instrucciones posteriores del propietario, sin fabricar una firma nueva ni ampliar el producto por documentación.
+
+[78 — Formalización: origen de fondos y gestión bancaria](78-Formalizacion-Origen-Fondos-y-Gestion-Bancaria.md): ampliación R1–R3 aprobada, migración062 y rollback.
+
+
+Perfil completo del lead: [77](77-Perfil-Completo-Lead.md), lectura federada y permiso independiente; aplicación060 y límites en su evidencia fechada.
+## Antecedente de entrada — 2026-11-02
 
 [72 — Reconciliación completa por commits y código](72-Reconciliacion-Documental-20261102.md)
 inventaría los35 commits de HEAD, cambios locales,130 documentos iniciales,
@@ -364,3 +382,7 @@ Actualización vigente 2026-10-28: [62 - Notas en tiempo real](62-Notas-Tiempo-R
 - [63 - Aprobacion de Formalizacion confirmada en NetSuite](63-Aprobacion-Formalizacion-NetSuite.md): contrato de aprobacion, autoridad nativa/legacy, auditoria, reintentos y limites de verificacion.
 
 - [64 - Calendario global por módulo](64-Calendario-Global-API-y-Contexto.md): vista compartida, superposición autorizada, comandos nativos auditados y contexto legacy aditivo; Outlook e invitados pendientes.
+
+- [88 — Adéndum: motivo obligatorio y registro de envío](88-Adendum-Motivo-y-Envio.md): marca independiente de etapa, permisos por acción, migración072 y límites de aplicación.
+
+- [89 — Distribución de Formalización por proyecto](89-Formalizacion-Distribucion-Por-Proyecto.md): gráfico agregado completo, permisos por serie y total único.

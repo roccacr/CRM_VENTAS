@@ -4,9 +4,8 @@ import { BadGatewayException, BadRequestException, ConflictException, Inject, In
 import { ConfigService } from "@nestjs/config";
 import { z } from "zod";
 
-import { isNetsuiteSandboxRestletUrl } from "../../config/env.validation.js";
+import { isNetsuiteRestletUrl, resolveNetsuiteEnvironment } from "../../config/netsuite-environment.js";
 
-const RESTLET = "https://4552704.restlets.api.netsuite.com/app/site/hosting/restlet.nl";
 const MAX_BYTES = 5 * 1024 * 1024;
 const approvalConfirmation = z.object({ status: z.literal(200), data: z.object({ type: z.literal("salesorder"), id: z.string(), approval: z.literal("formalization"), approved: z.literal(true), alreadyApproved: z.boolean() }) });
 // Only known pre-write business rejections leave the adapter; provider messages remain private.
@@ -48,7 +47,7 @@ export class NetsuiteRestletClient {
     /** Confirm only the exact requested order and approval; lost responses leave the outcome unknown. */
     async approveFormalization(id: string): Promise<{ id: string; approved: true; alreadyApproved: boolean; environment: "sandbox" | "production" }> {
         if (!/^[1-9][0-9]*$/.test(id) || !Number.isSafeInteger(Number(id))) throw new BadRequestException("Identificador NetSuite invalido.");
-        if (this.config.get<unknown>("NETSUITE_ENVIRONMENT") !== "sandbox") throw new ServiceUnavailableException("Aprobacion NetSuite disponible solamente en sandbox.");
+        if (this.environment() !== "sandbox") throw new ServiceUnavailableException("Aprobacion NetSuite disponible solamente en sandbox.");
         const { credentials, url } = this.connection();
         const authorization = netsuiteAuthorization("PUT", url, credentials, { nonce: randomBytes(16).toString("hex"), timestamp: String(Math.floor(Date.now() / 1000)) });
         try {
@@ -67,10 +66,22 @@ export class NetsuiteRestletClient {
     /**
      *
      */
-    async readSalesOrder(id: string): Promise<unknown> {
+    /** Environment is server-selected; request headers never choose credentials. */
+    integrationContext() {
+        const environment = this.environment();
+        return { environment, accountId: environment === "production" ? "4552704" : "4552704_SB1" };
+    }
+    /** A verified projection is required for persistence; ordinary GET remains read-only. */
+    readSalesOrderSnapshot(id: string): Promise<unknown> {
+        return this.readSalesOrder(id, true);
+    }
+    /**
+     *
+     */
+    async readSalesOrder(id: string, verifiedSnapshot = false): Promise<unknown> {
         if (!/^[1-9][0-9]{0,19}$/.test(id)) throw new BadRequestException("Identificador NetSuite invalido.");
-        const { credentials, url } = this.connection();
-        const operation = this.config.get<string>("NETSUITE_ENVIRONMENT") === "sandbox" ? { module: "salesOrders", id } : { rType: "salesordersExtraer", id };
+        const { credentials, url, environment } = this.connection();
+        const operation = this.salesOrderOperation(id, environment, verifiedSnapshot);
         for (const [key, value] of Object.entries(operation)) url.searchParams.set(key, value);
         const authorization = netsuiteGetAuthorization(url, credentials, randomBytes(16).toString("hex"), String(Math.floor(Date.now() / 1000)));
         try {
@@ -85,16 +96,32 @@ export class NetsuiteRestletClient {
             throw new BadGatewayException("No fue posible consultar NetSuite. La orden no fue modificada.");
         }
     }
+    /** Match the confirmed deployment contract, separately from account/credential selection. */
+    private salesOrderOperation(id: string, environment: "production" | "sandbox", verifiedSnapshot = false) {
+        if (verifiedSnapshot) return { module: "salesOrders", id, action: "syncSnapshot" };
+        if (environment === "sandbox") return { module: "salesOrders", id };
+        const mode = this.config.get<unknown>("NETSUITE_PRODUCTION_READ_MODE") ?? "legacy";
+        if (mode === "modules") return { module: "salesOrders", id };
+        if (mode === "legacy") return { rType: "salesordersExtraer", id };
+        throw new ServiceUnavailableException("Contrato NetSuite incompatible.");
+    }
     /** Resolve and validate the selected server configuration before any request. */
-    private connection(): { credentials: Credentials; url: URL } {
-        const environment = this.config.get<unknown>("NETSUITE_ENVIRONMENT") ?? "production";
-        if (environment !== "production" && environment !== "sandbox") throw new ServiceUnavailableException("Configuracion NetSuite incompatible.");
+    private connection(): { credentials: Credentials; url: URL; environment: "production" | "sandbox" } {
+        const environment = this.environment();
         const sandbox = environment === "sandbox";
         const credentials = this.credentials(sandbox);
-        const deploymentUrl = sandbox ? this.config.get<unknown>("NETSUITE_SANDBOX_RESTLET_URL") : RESTLET + "?script=1764&deploy=1";
-        if (sandbox && !isNetsuiteSandboxRestletUrl(deploymentUrl)) throw new ServiceUnavailableException("Configuracion NetSuite incompatible.");
-        const url = new URL(deploymentUrl as string);
-        return { credentials, url };
+        const deploymentUrl = sandbox ? this.config.get<unknown>("NETSUITE_SANDBOX_RESTLET_URL") : this.config.get<unknown>("NETSUITE_PRODUCTION_RESTLET_URL");
+        if (!isNetsuiteRestletUrl(deploymentUrl, environment)) throw new ServiceUnavailableException("Configuracion NetSuite incompatible.");
+        const url = new URL(deploymentUrl);
+        return { credentials, url, environment };
+    }
+    /** Pin each server to its configured frontend, irrespective of Origin/Host request headers. */
+    private environment(): "production" | "sandbox" {
+        try {
+            return resolveNetsuiteEnvironment(this.config.get<unknown>("FRONTEND_ORIGIN"), this.config.get<unknown>("NETSUITE_ENVIRONMENT"));
+        } catch {
+            throw new ServiceUnavailableException("Configuracion NetSuite incompatible.");
+        }
     }
     private credentials(sandbox: boolean): Credentials {
         const read = (key: string) => {

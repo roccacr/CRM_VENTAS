@@ -74,12 +74,80 @@ it("renders canonical rows read-only, returned counts and nullable values", asyn
     expect(props.onOpenOrder).not.toHaveBeenCalled();
     expect(screen.queryByRole("button", { name: /Ver seguimiento/ })).toBeNull();
     // The row opens a read-only side panel that repeats these values, so the table is queried on its own.
-    const table = within(screen.getByRole("region", { name: "Órdenes filtradas" }));
+    const table = within(await screen.findByRole("region", { name: "Órdenes filtradas" }));
     expect(table.getByText("Etiqueta del servidor")).toBeTruthy();
     expect(table.getByText("Acción del servidor")).toBeTruthy();
     expect(screen.getByText("Tiempo no disponible")).toBeTruthy();
-    expect(screen.getByRole("option", { name: "Todas (26)" })).toBeTruthy();
+    expect(screen.getByText("26 órdenes")).toBeTruthy();
+    fireEvent.mouseDown(screen.getByRole("combobox", { name: "Bandeja de seguimiento" }));
     expect(screen.queryByRole("option", { name: /Pendientes de aprobación/ })).toBeNull();
+});
+it.each([true, false])("shows only the pending badge/queue with effective adendum read without hiding ordinary orders: %s", async (readable) => {
+    const data = payload("OV-ADENDUM");
+    vi.mocked(apiRequest).mockResolvedValue({ ...data, counts: { ...data.counts, addendum: 1 }, items: data.items.map((item) => ({ ...item, addendumStatus: "pending" })) });
+    const permissions = [{ code: "formalizacion.orders.read", effect: "allow" }, { code: "formalizacion.orders.addendum.read", effect: "allow" }, ...(readable ? [] : [{ code: "formalizacion.orders.addendum.read", effect: "deny" }])];
+    render(<FormalizationFollowUpPreview {...props} stagePermissions={permissions} />);
+    await screen.findByText("OV-ADENDUM");
+    expect(Boolean(screen.queryByText("Adéndum pendiente"))).toBe(readable);
+    fireEvent.mouseDown(screen.getByRole("combobox", { name: "Bandeja de seguimiento" }));
+    expect(Boolean(screen.queryByRole("option", { name: "Pendientes de adéndum (1)" }))).toBe(readable);
+    expect(screen.getByText("26 órdenes")).toBeTruthy();
+    fireEvent.mouseDown(screen.getByRole("combobox", { name: "Bandeja de seguimiento" }));
+});
+it("does not present a missing legacy-compatible addendum count as zero or undefined", async () => {
+    render(
+        <FormalizationFollowUpPreview
+            {...props}
+            stagePermissions={[
+                { code: "formalizacion.orders.read", effect: "allow" },
+                { code: "formalizacion.orders.addendum.read", effect: "allow" },
+            ]}
+        />,
+    );
+    await screen.findByText("OV-REAL");
+    fireEvent.mouseDown(screen.getByRole("combobox", { name: "Bandeja de seguimiento" }));
+    expect(screen.getByRole("option", { name: "Pendientes de adéndum (—)" })).toBeTruthy();
+    expect(screen.queryByRole("option", { name: "Pendientes de adéndum (0)" })).toBeNull();
+});
+it.each(["completed", "cancelled"] as const)("refreshes the pending queue, badge and count after confirming an addendum as %s", async (target) => {
+    let committed = false;
+    const data = payload("OV-ADENDUM-QUEUE");
+    const selected = { ...data.items[0], id: "78", source: "legacy", number: "OV-ADENDUM-QUEUE", addendumStatus: "pending", state: { code: "contract_pending_send", label: "Por enviar", since: null, days: 0 } };
+    const marker = () => ({ schemaVersion: 1, source: "legacy", id: "78", status: committed ? target : "pending", version: committed ? 2 : 1, changedAt: "2026-11-03T12:00:00Z", canUpdate: true });
+    vi.mocked(apiRequest).mockImplementation((path, options) => {
+        if (path === "/formalization/orders/addendum" && options?.method === "POST") {
+            committed = true;
+            return Promise.resolve({ ...marker(), replayed: false });
+        }
+        if (path.startsWith("/formalization/orders/addendum?")) return Promise.resolve(marker());
+        if (path.endsWith("/record")) return Promise.resolve({ ...selected, addendumStatus: target });
+        if (path.endsWith("/database")) return Promise.resolve({ schemaVersion: 1, source: "legacy", observedAt: data.observedAt, order: {}, contact: null, lead: null, unitFile: null, references: [], warnings: [] });
+        const projection = committed ? { items: [], total: 0 } : { items: [selected], total: 1 };
+        return Promise.resolve({ ...data, filters: { ...data.filters, queue: "addendum" }, items: projection.items, counts: { ...data.counts, addendum: projection.total }, page: { ...data.page, total: projection.total } });
+    });
+    const onRefresh = vi.fn();
+    render(
+        <FormalizationFollowUpPreview
+            {...props}
+            scope={{ filter: "addendum" }}
+            allowedQueues={["all", "addendum"]}
+            stagePermissions={[
+                { code: "formalizacion.orders.read", effect: "allow" },
+                { code: "formalizacion.orders.addendum.read", effect: "allow" },
+                { code: "formalizacion.orders.addendum.update", effect: "allow" },
+            ]}
+            onRefresh={onRefresh}
+        />,
+    );
+    fireEvent.click(await screen.findByText("OV-ADENDUM-QUEUE"));
+    fireEvent.click(await screen.findByRole("button", { name: target === "completed" ? "Marcar adéndum como completado" : "Cancelar adéndum" }));
+    await waitFor(() => {
+        expect(vi.mocked(apiRequest).mock.calls.some(([path, opts]) => path === "/formalization/orders/addendum" && opts?.method === "POST")).toBe(true);
+    });
+    expect(within(await screen.findByRole("region", { name: "Órdenes filtradas" })).queryByText("OV-ADENDUM-QUEUE")).toBeNull();
+    expect(within(await screen.findByRole("region", { name: "Órdenes filtradas" })).queryByText("Adéndum pendiente")).toBeNull();
+    expect(onRefresh).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(apiRequest).mock.calls.filter(([path, options]) => path === "/formalization/orders/addendum" && options?.method === "POST")).toHaveLength(1);
 });
 it("shares StrictMode replay and refreshes the visible consumer", async () => {
     const { rerender } = render(
@@ -105,13 +173,13 @@ it("sends queue, project and page changes to the server", async () => {
     await waitFor(() => {
         expect(reads().at(-1)?.[0]).toContain("page=2");
     });
-    fireEvent.change(screen.getByLabelText("Filtrar por proyecto"), { target: { value: "legacy-project:7" } });
+    await chooseFollowUpFilter("Filtrar por proyecto", "Proyecto real");
     await waitFor(() => {
-        expect(reads().at(-1)?.[0]).toContain("projectId=legacy-project%3A7&queue=all&page=1");
+        expect(reads().at(-1)?.[0]).toContain("projectIds=legacy-project%3A7");
     });
-    fireEvent.change(screen.getByLabelText("Bandeja de seguimiento"), { target: { value: "approvals" } });
+    await chooseFollowUpFilter("Bandeja de seguimiento", /^Pendientes de aprobación/);
     await waitFor(() => {
-        expect(reads().at(-1)?.[0]).toContain("queue=approvals");
+        expect(reads().at(-1)?.[0]).toContain("queues=approvals");
     });
 });
 it("debounces search for 300ms and hides previous results immediately", async () => {
@@ -139,7 +207,7 @@ it("ignores stale results after a new load and after revocation", async () => {
             }),
     );
     const { rerender } = render(<FormalizationFollowUpPreview {...props} />);
-    fireEvent.change(screen.getByLabelText("Bandeja de seguimiento"), { target: { value: "bank" } });
+    await chooseFollowUpFilter("Bandeja de seguimiento", /^Gestión bancaria \(/);
     await screen.findByText("OV-REAL");
     await act(async () => {
         finish(payload("STALE"));
@@ -170,14 +238,14 @@ it("gates Home reads by active role and allow without deny, and removes revoked 
     rerender(<FormalizationHomePage roles={[role]} effectivePermissions={[]} />);
     expect(screen.queryByText("OV-REAL")).toBeNull();
 });
-it("mounts only the visible Home or queue consumer and refreshes the list with banners", async () => {
+it("keeps a single Home consumer and filters its list with banners", async () => {
     render(<FormalizationHomePage roles={[role]} effectivePermissions={[detail, allow]} />);
     await screen.findByText("OV-REAL");
     fireEvent.click(screen.getByRole("button", { name: "Recargar banners" }));
     await waitFor(() => {
         expect(reads()).toHaveLength(2);
     });
-    fireEvent.click(screen.getByRole("button", { name: "Ver todas las órdenes" }));
+    fireEvent.click(screen.getByRole("button", { name: "Abrir Por enviar" }));
     await waitFor(() => {
         expect(reads()).toHaveLength(3);
     });
@@ -192,8 +260,8 @@ it("fences a new load when returning to a previously completed filter", async ()
     render(<FormalizationFollowUpPreview {...props} />);
     await screen.findByText("OV-REAL");
     vi.mocked(apiRequest).mockImplementation(() => new Promise(() => {}));
-    fireEvent.change(screen.getByLabelText("Bandeja de seguimiento"), { target: { value: "bank" } });
-    fireEvent.change(screen.getByLabelText("Bandeja de seguimiento"), { target: { value: "all" } });
+    await chooseFollowUpFilter("Bandeja de seguimiento", /^Gestión bancaria \(/);
+    fireEvent.keyDown(screen.getByRole("combobox", { name: "Bandeja de seguimiento" }), { key: "Backspace" });
     expect(screen.queryByText("OV-REAL")).toBeNull();
     expect(screen.getByRole("status")).toBeTruthy();
 });
@@ -291,19 +359,20 @@ it("opens the real order in the complete page and returns with the current filte
     Object.assign(data.items[0] ?? {}, { clientEmail: "real@example.com", approvalsComplete: true, stateVersion: 0, state: { code: "contract_pending_send", label: "Por enviar", since: null, days: null } });
     vi.mocked(apiRequest).mockResolvedValue(data);
     render(<FormalizationFollowUpPreview {...props} canUpdateStage />);
-    fireEvent.change(screen.getByLabelText("Bandeja de seguimiento"), { target: { value: "send" } });
+    await chooseFollowUpFilter("Bandeja de seguimiento", /^Por enviar/);
     await waitFor(() => {
-        expect(reads().at(-1)?.[0]).toContain("queue=send");
+        expect(reads().at(-1)?.[0]).toContain("queues=send");
     });
     fireEvent.click(await screen.findByText("OV-COMPLETA"));
     fireEvent.click(await screen.findByRole("button", { name: "Ver orden completa" }));
     expect(await screen.findByRole("heading", { name: "Orden de venta OV-COMPLETA" })).toBeTruthy();
-    expect(screen.queryByText("real@example.com")).toBeNull();
+    expect(screen.getByText("real@example.com")).toBeTruthy();
+    expect(new URL(screen.getByRole("link", { name: "Abrir Outlook" }).getAttribute("href") ?? "").searchParams.get("to")).toBe("real@example.com");
     expect(screen.queryByRole("combobox", { name: "Etapa de Formalización" })).toBeNull();
     expect(screen.queryByText("Restablecer ejemplo")).toBeNull();
     expect(screen.queryByText(/Ficticio|Asesor de ejemplo|example.invalid/)).toBeNull();
     fireEvent.click(screen.getByRole("link", { name: "Órdenes de venta" }));
-    expect(screen.getByLabelText("Bandeja de seguimiento").querySelector("option:checked")?.textContent).toBe("Por enviar (3)");
+    expect(reads().at(-1)?.[0]).toContain("queues=send");
     expect(screen.queryByRole("heading", { name: "Orden de venta OV-COMPLETA" })).toBeNull();
 });
 
@@ -320,7 +389,7 @@ it("opens the full record above the workspace in the CRM and preserves the list 
     expect(screen.queryByRole("heading", { name: "Listado de órdenes" })).toBeNull();
     const record = screen.getByRole("region", { name: "Orden de venta OV-PAGINA" });
     expect(record.querySelector("h1")?.textContent).toBe("Orden de venta OV-PAGINA");
-    expect(record.querySelectorAll(".formalization-record-progress__steps > li")).toHaveLength(7);
+    expect(record.querySelectorAll(".formalization-record-progress__steps > li")).toHaveLength(8);
     expect(record.textContent).not.toContain("Cliente y unidad");
     expect(screen.queryByRole("button", { name: "Restablecer ejemplo" })).toBeNull();
     fireEvent.click(screen.getByRole("link", { name: "Órdenes de venta" }));
@@ -335,10 +404,10 @@ it("shows the shared compact timeline inside the side panel", async () => {
     fireEvent.click(await screen.findByText("OV-REAL"));
     const progress = await screen.findByRole("progressbar", { name: "Avance de Formalización" });
     expect(progress.getAttribute("aria-valuenow")).toBe("2");
-    expect(progress.getAttribute("aria-valuetext")).toBe("Etapa 2 de 7: Por enviar");
+    expect(progress.getAttribute("aria-valuetext")).toBe("Etapa 2 de 8: Por enviar");
     const timeline = screen.getByRole("region", { name: "Etapas de Formalización" });
     expect(timeline.classList.contains("formalization-record-progress--compact")).toBe(true);
-    expect(within(timeline).getAllByRole("listitem")).toHaveLength(7);
+    expect(within(timeline).getAllByRole("listitem")).toHaveLength(8);
     expect(screen.getByRole("button", { name: "Ver orden completa" })).toBeTruthy();
 });
 
@@ -368,13 +437,12 @@ it("revalidates only the committed CRM order and preserves provider details afte
     fireEvent.click(advance);
     fireEvent.click(await screen.findByRole("button", { name: "Confirmar cambio" }));
     await screen.findByText("Estado guardado y verificado correctamente.");
-    await screen.findByText("BD guardada: true");
     expect(providerReads()).toBe(before);
-    expect(databaseReads()).toBe(beforeDatabase + 1);
+    expect(databaseReads()).toBe(beforeDatabase);
     expect(recordReads()).toBe(beforeRecord + 1);
     expect(reads().some(([path]) => path.includes("recordId="))).toBe(false);
     expect(screen.queryByText("Cargando datos de la orden…")).toBeNull();
-    expect(screen.getByRole("button", { name: "Registrar paso a Gestión bancaria" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Registrar siguiente etapa" })).toBeTruthy();
     expect(screen.getByText("US Dollar")).toBeTruthy();
     window.history.replaceState({}, "", "/home/formalization");
 });
@@ -382,6 +450,7 @@ it("revalidates only the committed CRM order and preserves provider details afte
 it("approvals-only reads the list without an umbrella grant", async () => {
     render(<FormalizationHomePage initialView="orders" roles={[role]} effectivePermissions={[{ code: "formalizacion.home.approvals.read", effect: "allow" }]} />);
     await screen.findByText("OV-REAL");
+    fireEvent.mouseDown(screen.getByRole("combobox", { name: "Bandeja de seguimiento" }));
     expect(screen.getByRole("option", { name: /Pendientes de aprobación/ })).toBeTruthy();
     expect(screen.queryByRole("option", { name: /Gestión bancaria/ })).toBeNull();
     expect(reads()).toHaveLength(1);
@@ -439,4 +508,35 @@ it("an explicit detail deny clears an open drawer while preserving category list
     await screen.findByText("OV-REAL");
     fireEvent.click(screen.getByText("OV-REAL"));
     expect(screen.queryByRole("button", { name: "Ver orden completa" })).toBeNull();
+});
+
+it.each([false, true])("restores multi-project and multi-queue preferences after remount tableOnly=%s", async (tableOnly) => {
+    const key = `multi-user:${tableOnly ? "orders" : "home"}:all:`;
+    localStorage.setItem("crm:follow-up:v1:" + key, JSON.stringify({ projectIds: ["legacy-project:7", "legacy-project:8"], selections: ["send", "bank_in_progress"] }));
+    const view = render(<FormalizationFollowUpPreview {...props} tableOnly={tableOnly} filterStorageKey="multi-user" />);
+    await screen.findByText("OV-REAL");
+    let params = new URL(reads().at(-1)?.[0] ?? "", "http://localhost").searchParams;
+    expect(params.get("projectIds")).toBe("legacy-project:7,legacy-project:8");
+    expect(params.get("queues")).toBe("send,bank");
+    expect(params.get("bankStages")).toBe("bank_management_in_progress");
+    view.unmount();
+    render(<FormalizationFollowUpPreview {...props} tableOnly={tableOnly} filterStorageKey="multi-user" />);
+    await screen.findByText("OV-REAL");
+    params = new URL(reads().at(-1)?.[0] ?? "", "http://localhost").searchParams;
+    expect(params.get("projectIds")).toBe("legacy-project:7,legacy-project:8");
+    localStorage.clear();
+});
+
+async function chooseFollowUpFilter(label: string, name: string | RegExp) {
+    const input = screen.getByRole("combobox", { name: label });
+    fireEvent.mouseDown(input);
+    fireEvent.click(await screen.findByRole("option", { name }));
+    fireEvent.keyDown(input, { key: "Escape" });
+}
+
+it("applies a pending banner request when the Home list mounts again", async () => {
+    render(<FormalizationFollowUpPreview {...props} filterRequest={{ selection: "balance", version: 1 }} />);
+    await waitFor(() => {
+        expect(reads().at(-1)?.[0]).toContain("queues=balance");
+    });
 });

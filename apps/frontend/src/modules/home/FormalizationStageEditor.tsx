@@ -22,6 +22,8 @@ interface Props {
 /** The parent keys this editor by order/version; retry keys survive network errors within that edit. */
 function useStageEdit({ item, allowed, permissions = [], onSaved }: Props) {
     const [target, setTarget] = useState(item.state.code);
+    const [purchaseFundsOrigin, setPurchaseFundsOrigin] = useState<"own_funds" | "bank_financing" | "">(item.purchaseFundsOrigin ?? "");
+    const nextCode = nextOrderStage(item, purchaseFundsOrigin);
     const [reason, setReason] = useState("");
     const [confirming, setConfirming] = useState(false);
     const [busy, setBusy] = useState(false);
@@ -30,16 +32,15 @@ function useStageEdit({ item, allowed, permissions = [], onSaved }: Props) {
     const [uncertain, setUncertain] = useState(false);
     const operation = useRef<string | null>(null);
     const pending = useRef(false);
-    const currentIndex = ORDER_STAGES.findIndex((stage) => stage.code === item.state.code);
     const selected = ORDER_STAGES.find((stage) => stage.code === target);
     const canSkip = effectiveStagePermission(permissions, "formalizacion.orders.stage.skip");
     const destinationAllowed = (code: string) => effectiveStagePermission(permissions, `formalizacion.orders.stage.${code}`);
-    const exceptional = ORDER_STAGES.findIndex((stage) => stage.code === target) !== currentIndex + 1;
+    const exceptional = target !== nextCode;
     const restriction = stageEditingRestriction(item, allowed);
     const eligible = restriction === null;
     const refreshRequired = [uncertain, stale, restriction?.startsWith("Actualiza") === true].some(Boolean);
     const disabled = [!eligible, busy, stale].some(Boolean);
-    const canSave = stageSaveAllowed({ disabled: disabled || !destinationAllowed(target) || (exceptional && !canSkip) || stageTargetRestriction(item, target, canSkip) !== null, selected, different: target !== item.state.code, requiresReason: exceptional, reason });
+    const canSave = stageSaveAllowed({ disabled: [disabled, [item.state.code === "contract_pending_signature", ORDER_STAGES.findIndex((stage) => stage.code === target) >= 2, !purchaseFundsOrigin].every(Boolean), !destinationAllowed(target), [exceptional, !canSkip].every(Boolean), stageTargetRestriction(item, target, canSkip) !== null].some(Boolean), selected, different: target !== item.state.code, requiresReason: exceptional, reason });
     const changed = () => {
         if (uncertain) return;
         operation.current = null;
@@ -52,7 +53,7 @@ function useStageEdit({ item, allowed, permissions = [], onSaved }: Props) {
         setError(null);
         try {
             operation.current ??= crypto.randomUUID();
-            await updateOrderStage({ source: item.source, id: item.id, expectedSequence: item.stateVersion ?? 0, operationId: operation.current, targetState: target as OrderStage, ...stageReason(exceptional, reason) });
+            await updateOrderStage({ source: item.source, id: item.id, expectedSequence: item.stateVersion ?? 0, operationId: operation.current, targetState: target as OrderStage, ...stageReason(exceptional, reason), ...stageFunds(item.state.code, target, purchaseFundsOrigin) });
             setStale(true);
             await Promise.resolve()
                 .then(onSaved)
@@ -70,9 +71,27 @@ function useStageEdit({ item, allowed, permissions = [], onSaved }: Props) {
             setConfirming(false);
         }
     };
-    return { uncertain, canSkip, destinationAllowed, exceptional, target, setTarget, reason, setReason, confirming, setConfirming, busy, error, stale, selected, eligible, restriction, refreshRequired, disabled, canSave, changed, save, pending };
+    return { purchaseFundsOrigin, setPurchaseFundsOrigin, nextCode, uncertain, canSkip, destinationAllowed, exceptional, target, setTarget, reason, setReason, confirming, setConfirming, busy, error, stale, selected, eligible, restriction, refreshRequired, disabled, canSave, changed, save, pending };
 }
 
+/** Contracts branch only after an explicit funding choice; existing banking advances through in-progress. */
+function nextOrderStage(item: FollowUpItem, origin: string): string | null {
+    const current = item.state.code;
+    const currentIndex = ORDER_STAGES.findIndex((stage) => stage.code === current);
+    if (currentIndex >= ORDER_STAGES.findIndex((stage) => stage.code === "pending_balance")) {
+        const destination = ORDER_STAGES.find((stage, index) => index > currentIndex && installmentsTargetRestriction(item, stage.code) === null);
+        if (destination) return destination.code;
+    }
+    if (current === "contract_pending_signature") {
+        if (origin === "own_funds") return "pending_balance";
+        if (origin === "bank_financing") return "bank_management_in_progress";
+        return null;
+    }
+    return ORDER_STAGES[ORDER_STAGES.findIndex((stage) => stage.code === current) + 1]?.code ?? null;
+}
+function stageFunds(current: string, target: string, origin: "own_funds" | "bank_financing" | "") {
+    return current === "contract_pending_signature" && ORDER_STAGES.findIndex((stage) => stage.code === target) >= 2 && origin ? { purchaseFundsOrigin: origin } : {};
+}
 function stageReason(requiresReason: boolean, reason: string): { reason?: string } {
     return requiresReason ? { reason: reason.trim() } : {};
 }
@@ -92,35 +111,90 @@ function stageSaveAllowed({ disabled, selected, different, requiresReason, reaso
 /** Commands register stage movement; they do not record signatures or payments. */
 const ADVANCE_LABELS: Partial<Record<OrderStage, string>> = {
     contract_pending_send: "Marcar como enviado",
-    contract_pending_signature: "Registrar paso a Gestión bancaria",
-    bank_management: "Marcar gestión bancaria lista",
+    bank_management: "Iniciar gestión bancaria",
+    bank_management_in_progress: "Marcar gestión bancaria lista",
     pending_balance: "Registrar paso a Pendiente de traspaso",
     pending_transfer: "Registrar etapa Traspaso firmado",
     transfer_signed: "Cerrar formalización",
 };
 
+/** Labels follow the actual eligible destination, including direct completion. */
+function advanceLabel(item: FollowUpItem, next: { readonly code: string; readonly label: string }): string | undefined {
+    let label = ADVANCE_LABELS[item.state.code as OrderStage];
+    if (["pending_balance", "pending_transfer", "transfer_signed"].includes(item.state.code))
+        label = new Map([
+            ["pending_transfer", "Registrar paso a Pendiente de traspaso"],
+            ["transfer_signed", "Registrar etapa Traspaso firmado"],
+            ["closed", "Cerrar formalización"],
+        ]).get(next.code);
+    if (item.state.code === "contract_pending_signature") label = next.code ? `Registrar paso a ${next.label}` : "Registrar siguiente etapa";
+    return label;
+}
+
 /** Moves to the following stage; the confirmation dialog still asks before anything is saved. */
 function AdvanceAction({ item, model }: { readonly item: FollowUpItem; readonly model: ReturnType<typeof useStageEdit> }) {
     const index = ORDER_STAGES.findIndex((stage) => stage.code === item.state.code);
-    const next = ORDER_STAGES[index + 1];
-    const label = ADVANCE_LABELS[item.state.code as OrderStage];
-    if (index < 0 || !next || !label || !model.destinationAllowed(next.code)) return null;
+    const next = ORDER_STAGES.find((stage) => stage.code === model.nextCode) ?? { code: "", label: "Selecciona el origen de fondos" };
+    const label = advanceLabel(item, next);
+    if (index < 0 || !label || (next.code && !model.destinationAllowed(next.code))) return null;
     return (
         <div className="formalization-stage-editor__advance">
             <Button
+                aria-label={label}
                 className="formalization-advance-btn"
                 icon={<ArrowRightOutlined aria-hidden="true" />}
-                disabled={[model.disabled, model.confirming, [model.uncertain, model.target !== next.code].every(Boolean), !model.destinationAllowed(next.code), stageTargetRestriction(item, next.code) !== null].some(Boolean)}
+                disabled={[!next.code, model.disabled, model.confirming, [model.uncertain, model.target !== next.code].every(Boolean), !model.destinationAllowed(next.code), stageTargetRestriction(item, next.code) !== null].some(Boolean)}
                 onClick={() => {
+                    if (!next.code) return;
                     if (model.target !== next.code) model.changed();
                     model.setTarget(next.code);
                     model.setConfirming(true);
                 }}
             >
-                {label}
+                Paso siguiente
+            </Button>
+            <AdvanceDestination item={item} next={next} />
+        </div>
+    );
+}
+
+/** Explain the blocked destination beside the disabled next-step button. */
+function AdvanceDestination({ item, next }: { readonly item: FollowUpItem; readonly next: { code: string; label: string } }) {
+    const restriction = stageTargetRestriction(item, next.code);
+    return (
+        <span>
+            {restriction ?? (
+                <>
+                    {"Pasar\u00e1 a "}
+                    <strong>{next.label}</strong>
+                </>
+            )}
+        </span>
+    );
+}
+
+/** Reversals use the existing exceptional command, destination permission and mandatory reason. */
+function PreviousAction({ item, model, onChoose }: { readonly item: FollowUpItem; readonly model: ReturnType<typeof useStageEdit>; readonly onChoose: (code: string) => void }) {
+    if (!model.canSkip) return null;
+    let code = ORDER_STAGES[ORDER_STAGES.findIndex((stage) => stage.code === item.state.code) - 1]?.code;
+    if (item.state.code === "pending_balance" && item.purchaseFundsOrigin === "own_funds") code = "contract_pending_signature";
+    if (item.state.code === "bank_management_in_progress" && item.purchaseFundsOrigin === "bank_financing") code = "contract_pending_signature";
+    const previous = ORDER_STAGES.find((stage) => stage.code === code);
+    if (!previous) return null;
+    const disabled = [model.disabled, model.confirming, model.uncertain, !model.destinationAllowed(previous.code), stageTargetRestriction(item, previous.code, true) !== null].some(Boolean);
+    return (
+        <div className="formalization-stage-editor__advance">
+            <Button
+                aria-label={`Paso anterior: ${previous.label}`}
+                disabled={disabled}
+                onClick={() => {
+                    onChoose(previous.code);
+                }}
+            >
+                Paso anterior
             </Button>
             <span>
-                Pasará a <strong>{next.label}</strong>
+                Volverá a <strong>{previous.label}</strong>
             </span>
         </div>
     );
@@ -129,7 +203,7 @@ function AdvanceAction({ item, model }: { readonly item: FollowUpItem; readonly 
 /** Confirmation is explicit and failed mutations keep the editor and its operation key. */
 export function FormalizationStageEditor(props: Props) {
     const model = useStageEdit(props);
-    return <StageEditorView {...props} model={model} />;
+    return props.item.saleLost === true ? null : <StageEditorView {...props} model={model} />;
 }
 
 function StageEditorView({ item, permissions = [], onRefresh, onSaved, onApproved, model }: Props & { readonly model: ReturnType<typeof useStageEdit> }) {
@@ -144,8 +218,18 @@ function StageEditorView({ item, permissions = [], onRefresh, onSaved, onApprove
                 <h3>Acciones de la etapa</h3>
                 <span>Actual: {item.state.label}</span>
             </header>
+            <PurchaseFundsSelector item={item} model={model} />
             <div className="formalization-stage-editor__actions">
                 <AdvanceAction item={item} model={model} />
+                <PreviousAction
+                    item={item}
+                    model={model}
+                    onChoose={(code) => {
+                        model.changed();
+                        model.setTarget(code);
+                        setExceptionOpen(true);
+                    }}
+                />
                 {model.canSkip && (
                     <Button
                         className="formalization-stage-editor__move"
@@ -186,6 +270,28 @@ function StageEditorView({ item, permissions = [], onRefresh, onSaved, onApprove
         </section>
     );
 }
+function PurchaseFundsSelector({ item, model }: { readonly item: FollowUpItem; readonly model: ReturnType<typeof useStageEdit> }) {
+    if (item.state.code !== "contract_pending_signature") return null;
+    return (
+        <label>
+            Origen de fondos de compra
+            <select
+                aria-label="Origen de fondos de compra"
+                required
+                value={model.purchaseFundsOrigin}
+                disabled={[model.disabled, model.confirming, model.uncertain].some(Boolean)}
+                onChange={(event) => {
+                    model.changed();
+                    model.setPurchaseFundsOrigin(event.target.value as "own_funds" | "bank_financing" | "");
+                }}
+            >
+                <option value="">Selecciona el origen de fondos</option>
+                <option value="own_funds">Fondos propios</option>
+                <option value="bank_financing">Financiamiento bancario</option>
+            </select>
+        </label>
+    );
+}
 function StageFeedback({ model, onRefresh }: { readonly model: ReturnType<typeof useStageEdit>; readonly onRefresh: () => void }) {
     return (
         <>
@@ -220,6 +326,7 @@ function ExceptionalStageEditor({ item, model }: { readonly item: FollowUpItem; 
                     ))}
                 </select>
             </label>
+            <DestinationRequirement item={item} target={target} />
             {model.exceptional && (
                 <label>
                     Motivo del cambio excepcional
@@ -249,6 +356,11 @@ function ExceptionalStageEditor({ item, model }: { readonly item: FollowUpItem; 
             </Button>
         </div>
     );
+}
+
+function DestinationRequirement({ item, target }: { readonly item: FollowUpItem; readonly target: string }) {
+    const restriction = stageTargetRestriction(item, target, true);
+    return restriction ? <p>{restriction}</p> : null;
 }
 
 function StageConfirmation({ item, model }: { readonly item: FollowUpItem; readonly model: ReturnType<typeof useStageEdit> }) {
@@ -285,12 +397,29 @@ function StageConfirmation({ item, model }: { readonly item: FollowUpItem; reado
 }
 
 const SIGNATURE_REQUIRED = "Se requiere el contrato firmado para pasar a Gestión bancaria o etapas posteriores.";
+const INSTALLMENTS_REQUIRED = "Se requiere confirmar Cuotas canceladas en NetSuite para pasar a Pendiente de traspaso o etapas posteriores.";
+const PENDING_TRANSFER_REQUIRED = "Se requiere confirmar Cuotas canceladas: Sí, Unidad traspasada: No y Unidad entregada: No en NetSuite para pasar a Traspaso pendiente. Llaves entregadas no condiciona esta etapa.";
+const TRANSFER_SIGNED_REQUIRED = "Se requiere confirmar Cuotas canceladas: Sí, Unidad traspasada: Sí, Llaves entregadas: No y Unidad entregada: No en NetSuite para pasar a Traspaso firmado.";
+const CLOSED_REQUIRED = "Se requiere confirmar Unidad entregada: Sí en NetSuite para cerrar. Cuotas canceladas, Unidad traspasada y Llaves entregadas no condicionan el cierre.";
+const BALANCE_RETURN_FORBIDDEN = "No se permite volver a Pendiente de saldo desde traspaso o etapas posteriores.";
 const SEND_REQUIRED = "Primero registra el envío del contrato y completa la etapa Pendiente de firma.";
 /** Unknown/missing signature never enables a later destination; the API repeats this under the order lock. */
 function stageTargetRestriction(item: FollowUpItem, target: string, skip = false): string | null {
+    const paidRestriction = installmentsTargetRestriction(item, target);
+    if (paidRestriction) return paidRestriction;
     if (ORDER_STAGES.findIndex((stage) => stage.code === target) < 2) return null;
     if (item.contractSigned !== true) return SIGNATURE_REQUIRED;
     return !skip && ORDER_STAGES.findIndex((stage) => stage.code === item.state.code) < 1 ? SEND_REQUIRED : null;
+}
+/** Destination flags apply even to exceptions and reversals; unknown never satisfies an explicit No. */
+function installmentsTargetRestriction(item: FollowUpItem, target: string): string | null {
+    const transferIndex = ORDER_STAGES.findIndex((stage) => stage.code === "pending_transfer");
+    const currentIndex = ORDER_STAGES.findIndex((stage) => stage.code === item.state.code);
+    if ([target === "pending_balance", currentIndex >= transferIndex].every(Boolean)) return BALANCE_RETURN_FORBIDDEN;
+    if (target === "closed") return item.unitDelivered === true ? null : CLOSED_REQUIRED;
+    if (target === "pending_transfer") return [item.installmentsFullyPaid === true, item.unitTransferred === false, item.unitDelivered === false].every(Boolean) ? null : PENDING_TRANSFER_REQUIRED;
+    if (target === "transfer_signed") return [item.installmentsFullyPaid === true, item.unitTransferred === true, item.keysDelivered === false, item.unitDelivered === false].every(Boolean) ? null : TRANSFER_SIGNED_REQUIRED;
+    return null;
 }
 function SignatureRequirement({ item }: { readonly item: FollowUpItem }) {
     return item.contractSigned === true ? null : <p>{SIGNATURE_REQUIRED}</p>;
@@ -303,8 +432,15 @@ function stageFailure(failure: unknown): { stale: boolean; message: string } {
     if (!(failure instanceof ApiClientError) || failure.status !== 409) return { stale: false, message: "No se pudo guardar la etapa. Puedes reintentar el mismo cambio." };
     const body = failure.responseBody;
     const code = body && typeof body === "object" ? (Reflect.get(body, "code") as unknown) : null;
-    if (code === "CONTRACT_SIGNATURE_REQUIRED") return { stale: false, message: SIGNATURE_REQUIRED };
-    if (code === "CONTRACT_SEND_REQUIRED") return { stale: false, message: SEND_REQUIRED };
+    const message = new Map<unknown, string>([
+        ["PURCHASE_FUNDS_ORIGIN_REQUIRED", "Selecciona el origen de fondos de compra para salir de Contratos."],
+        ["CONTRACT_SIGNATURE_REQUIRED", SIGNATURE_REQUIRED],
+        ["INSTALLMENTS_FULLY_PAID_REQUIRED", INSTALLMENTS_REQUIRED],
+        ["FORMALIZATION_COMPLETION_FLAGS_REQUIRED", "Avance bloqueado: revisa Cuotas canceladas, Unidad traspasada, Llaves entregadas y Unidad entregada en NetSuite para la etapa seleccionada."],
+        ["PENDING_BALANCE_RETURN_FORBIDDEN", BALANCE_RETURN_FORBIDDEN],
+        ["CONTRACT_SEND_REQUIRED", SEND_REQUIRED],
+    ]).get(code);
+    if (message) return { stale: false, message };
     return { stale: true, message: "La orden cambió. Actualiza la orden antes de guardar." };
 }
 

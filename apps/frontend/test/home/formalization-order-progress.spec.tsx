@@ -14,23 +14,24 @@ it.each([
     ["contract_pending_send", 2],
     ["contract_pending_signature", 3],
     ["bank_management", 4],
-    ["pending_balance", 5],
-    ["pending_transfer", 6],
-    ["transfer_signed", 7],
-    ["closed", 7],
-])("shows the position of %s as step %i of 7, never as a percentage", (code, step) => {
+    ["bank_management_in_progress", 5],
+    ["pending_balance", 6],
+    ["pending_transfer", 7],
+    ["transfer_signed", 8],
+    ["closed", 8],
+])("shows the position of %s as step %i of 8, never as a percentage", (code, step) => {
     installBrowserApiDoubles();
     render(<FormalizationOrderRecord item={{ ...order, state: { ...order.state, code } }} onBack={() => {}} />);
     expect(screen.getByRole("progressbar", { name: "Avance de Formalización" }).getAttribute("aria-valuenow")).toBe(String(step));
     expect(within(screen.getByRole("region", { name: "Etapas de Formalización" })).queryByText(/\d+ ?%/)).toBeNull();
-    expect(within(screen.getByRole("list", { name: "Recorrido de etapas" })).getAllByRole("listitem")).toHaveLength(7);
+    expect(within(screen.getByRole("list", { name: "Recorrido de etapas" })).getAllByRole("listitem")).toHaveLength(8);
 });
 it("marks earlier positions neutrally without inventing visits after a stage skip", () => {
     installBrowserApiDoubles();
     render(<FormalizationOrderRecord item={{ ...order, state: { ...order.state, code: "bank_management" } }} onBack={() => {}} />);
     const steps = within(screen.getByRole("list", { name: "Recorrido de etapas" })).getAllByRole("listitem");
     expect(steps.filter((step) => step.dataset.status === "previous")).toHaveLength(3);
-    expect(steps.filter((step) => step.dataset.status === "pending")).toHaveLength(3);
+    expect(steps.filter((step) => step.dataset.status === "pending")).toHaveLength(4);
     expect(within(screen.getByRole("list", { name: "Recorrido de etapas" })).getAllByText("Etapa anterior")).toHaveLength(3);
     expect(screen.queryByText("Alcanzada")).toBeNull();
     expect(steps.slice(0, 3).every((step) => step.querySelector('[aria-label="check"]'))).toBe(true);
@@ -45,10 +46,10 @@ it("shows closure as a finished process with the final step completed and no cur
     expect(progress.textContent).toContain("Proceso finalizado");
     expect(within(progress).getByRole("progressbar").getAttribute("aria-valuetext")).toBe("Formalización cerrada: Proceso finalizado");
     const steps = within(progress).getAllByRole("listitem");
-    expect(steps).toHaveLength(7);
+    expect(steps).toHaveLength(8);
     expect(steps.some((step) => step.hasAttribute("aria-current"))).toBe(false);
-    expect(steps[6]?.dataset.status).toBe("completed");
-    expect(steps[6]?.textContent).toContain("Completada");
+    expect(steps[7]?.dataset.status).toBe("completed");
+    expect(steps[7]?.textContent).toContain("Completada");
     expect(within(progress).queryByText("Etapa actual")).toBeNull();
 });
 it("does not invent a percentage for an unknown stage", () => {
@@ -165,7 +166,7 @@ it("bounds the confirmed approval flag to the same order and exact provider proj
     expect(
         vi
             .mocked(apiRequest)
-            .mock.calls.filter(([path]) => !path.endsWith("/database"))
+            .mock.calls.filter(([path]) => !path.endsWith("/database") && path !== "/identity/me")
             .map(([path, options]) => [path, options?.method ?? "GET"]),
     ).toEqual([
         ["/formalization/orders/approve", "POST"],

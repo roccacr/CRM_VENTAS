@@ -1,5 +1,13 @@
 # 05 - Seguridad, Auditoria y Observabilidad
 
+## Precedencia de seguridad del checkout — 2026-11-03
+
+El receptor v2 NetSuite dispone de escritor durable sujeto a sus gates; v1 conserva `persisted:false`. La descripción del receptor de noviembre 02 inferior es anterior a esa entrega: prevalece [73](73-Sincronizacion-Estados-Ordenes-NetSuite.md), sin habilitar integración ni certificar despliegue desde esta revisión.
+
+`formalizacion.orders.addendum.mark_pending` queda fuera del comodín Owner: exige grant real o allow personal y respeta deny. 067 concede por defecto a Owner, Jefe General y Jefe de Formalizaciones, no al rol operativo Formalización. `formalizacion.orders.addendum.read` controla marca/nota/bandeja y no la visibilidad ordinaria de la orden; `formalizacion.home.addendum.read` permite solo el contador si faltan los permisos de detalle. Completar/cancelar exige además `formalizacion.orders.addendum.update`. Contrato: [84](84-Adendum-Manual-Migracion-066-y-Permisos.md).
+
+El consentimiento incremental de calendario exige sesión CRM vigente, lectura de calendario y la misma cuenta corporativa normalizada. El challenge firmado conserva el hash del correo esperado; `withMicrosoftAccess` usa caché MSAL cifrada y el token solo dentro del callback servidor. La falta de consentimiento devuelve indisponibilidad de ese acceso, sin revocar por sí misma la sesión CRM; los tokens no forman parte del DTO público. Contrato BFF: [24](24-Seguridad-Autenticacion-BFF-OIDC-Local.md).
+
 ## Controles contrastados - 2026-11-02
 
 La ampliación de lectura global `mercadeo.reports.read_all` ([69](69-Mercadeo-Lectura-Global.md))

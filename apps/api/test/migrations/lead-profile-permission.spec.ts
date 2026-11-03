@@ -18,7 +18,7 @@ function fixture(options: Options = {}) {
     const grants = [...(options.grants ?? [])];
     const database = options.database ?? "CRM_THINK_V2";
     const tables = options.tables ?? tableNames.map((table_name) => ({ table_name, table_type: "BASE TABLE", engine: "InnoDB" }));
-    const roles = options.roles ?? [{ id: 19, code: "formalizacion", status: "active", deleted: null }];
+    const roles = options.roles ?? ["owner", "formalizacion", "jefe_formalizaciones", "jefe_general"].map((code, index) => ({ id: 19 + index, code, status: "active", deleted: null }));
     const actors = options.actors ?? [{ id: 1, publicId: "owner-id", name: "Owner" }];
     const driver = new DummyDriver();
     driver.beginTransaction = () => {
@@ -77,18 +77,18 @@ describe("permiso global del perfil completo", () => {
         const f = fixture();
         try {
             await migration.up(f.db);
-            expect(writes(f.queries)).toHaveLength(4);
+            expect(writes(f.queries)).toHaveLength(7);
             expect(writes(f.queries)[0]?.parameters).toEqual([code, "lead", "read", description, "active"]);
-            expect(f.queries.filter((query) => query.sql.startsWith("INSERT INTO sec_role_permission")).map((query) => query.parameters[0])).toEqual([19]);
+            expect(f.queries.filter((query) => query.sql.startsWith("INSERT INTO sec_role_permission")).map((query) => query.parameters[0])).toEqual([19, 20, 21, 22]);
             await migration.up(f.db);
-            expect(writes(f.queries)).toHaveLength(4);
+            expect(writes(f.queries)).toHaveLength(7);
             expect(f.queries.map((query) => query.sql).join(" ")).not.toMatch(/crmdatabase-api|sec_user_permission_override|DELETE/);
         } finally {
             await f.db.destroy();
         }
     });
     it("preserva una asignación inactiva sin reactivarla", async () => {
-        const f = fixture({ permissions: [definition], grants: [{ role: 19, code, status: "inactive" }] });
+        const f = fixture({ permissions: [definition], grants: [19, 20, 21, 22].map((role) => ({ role, code, status: "inactive" })) });
         try {
             await migration.up(f.db);
             expect(writes(f.queries)).toEqual([]);

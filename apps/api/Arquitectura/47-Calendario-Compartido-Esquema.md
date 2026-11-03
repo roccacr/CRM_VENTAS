@@ -1,5 +1,16 @@
 # 47 - Calendario compartido: esquema nativo
 
+## Uso vigente del esquema — 2026-11-03
+
+El esquema034 es el antecedente físico, no el límite del runtime actual.
+[64](64-Calendario-Global-API-y-Contexto.md) documenta comandos nativos, lookup,
+relaciones y Graph conectado. `int_calendar_connection` e `int_calendar_event_sync`
+se reutilizan para publicar después del commit CRM, con ID remoto/UID/ETag y
+versión confirmada; no se importan eventos exclusivos de Outlook.
+Adéndum congela orden/cliente en metadatos del servidor; su marca vive en la orden
+según [83](83-Adendum-Migracion-065-y-Rollback.md) y
+[84](84-Adendum-Manual-Migracion-066-y-Permisos.md), sin duplicar eventos por BD.
+
 ## Diccionario de extensiones contrastado - 2026-11-02
 
 El esquema034 base que sigue permanece histórico. Las ampliaciones físicas

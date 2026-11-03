@@ -1,5 +1,11 @@
 # 24 - Seguridad de Autenticacion BFF, OIDC y Login Local
 
+## Consentimiento incremental de calendario — 2026-11-03
+
+`POST /identity/microsoft/start?calendar=true` exige sesión CRM vigente y acceso efectivo de lectura a calendario, aunque el inicio ordinario siga siendo público. El challenge firmado incluye `calendar` y un hash SHA-256 del correo corporativo normalizado esperado; el callback exige la misma cuenta normalizada además de las validaciones OIDC existentes. El hash limita el enlace de consentimiento; no sustituye subject/tenant como identidad estable.
+
+`IdentityService.withMicrosoftAccess` obtiene exclusivamente el caché de la sesión Microsoft actual, solicita scopes al puerto del proveedor y usa el access token dentro de un callback servidor. Renueva el caché cifrado; no devuelve el token al navegador. Si ese acceso incremental requiere interacción, devuelve null sin revocar por sí mismo la sesión CRM. Es un camino distinto de la renovación de sesión Microsoft de 8 horas descrita abajo, que conserva sus reglas de revocación. Tener permisos CRM o caché no acredita consentimiento Graph ni publicación Outlook real.
+
 Estado documental 2026-10-22: seguridad global y cuotas implementadas en [05](05-Seguridad-Auditoria-Observabilidad.md); estado y limites en [36 - Estado vigente y registro](36-Registro-Entrega-Administracion.md). La revalidacion usa perfil por request, sin cache global. Las pruebas fechadas y SQL/003-004 siguientes son antecedentes, no verificacion productiva actual.
 
 ## Remediacion de autenticacion - 2026-10-23

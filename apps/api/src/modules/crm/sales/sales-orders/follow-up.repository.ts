@@ -1,9 +1,9 @@
 import { Injectable } from "@nestjs/common";
-import { sql, type Transaction } from "kysely";
+import { type RawBuilder, sql, type Transaction } from "kysely";
 
 import type { CrmDatabase } from "../../../../database/database.types.js";
 import type { FollowUpAccess, FollowUpPeriod, FollowUpRead } from "./follow-up.contract.js";
-import { followUpSourceQuery, readFollowUpRecord, readFollowUpSource } from "./follow-up.query.js";
+import { followUpSourceQuery, readFollowUpRecord, readFollowUpSource, readProjectDistribution } from "./follow-up.query.js";
 
 /** Native relationships use native PKs. Provider transaction numbers are labels, never identity. */
 @Injectable()
@@ -13,7 +13,7 @@ export class FollowUpRepository {
         const where = source === "native" ? sql`o.public_id_sales_order=${id}` : sql`o.id_old_produccion_sales_order=${Number(id)}`;
         const result = await sql<{ publicId: string; active: number }>`
             SELECT o.public_id_sales_order AS publicId,
-                (o.status_sales_order='active' AND o.cancelled_sales_order='no' AND o.deleted_at_sales_order IS NULL) AS active
+                (o.status_sales_order='active' AND (o.cancelled_sales_order='no' OR (o.cancelled_sales_order='yes' AND o.contract_signed_sales_order='yes')) AND o.deleted_at_sales_order IS NULL) AS active
             FROM crm_sales_order o WHERE ${where} LIMIT 1`.execute(tx);
         const row = result.rows[0];
         return row ? { publicId: row.publicId, active: row.active === 1 } : undefined;
@@ -21,6 +21,17 @@ export class FollowUpRepository {
     /** One bounded SELECT: joins project/contact/seller through the order's explicit lead FK. */
     read(tx: Transaction<CrmDatabase>, query: FollowUpRead, period: FollowUpPeriod, access: FollowUpAccess) {
         return readFollowUpSource(tx, followUpSourceQuery(this.base(period), query, access));
+    }
+    /** Federates source rows before permissions, filters and the bounded global page. */
+    readCombined(tx: Transaction<CrmDatabase>, query: FollowUpRead, period: FollowUpPeriod, options: { access: FollowUpAccess; legacy?: RawBuilder<unknown> }) {
+        const { access, legacy } = options;
+        const base = legacy ? sql`${this.base(period)} UNION ALL ${legacy}` : this.base(period);
+        return readFollowUpSource(tx, followUpSourceQuery(base, query, access));
+    }
+    /** Uses the same native authority and optional legacy projection inside one snapshot. */
+    projectDistribution(tx: Transaction<CrmDatabase>, period: FollowUpPeriod, options: { access: FollowUpAccess; legacy?: RawBuilder<unknown> }) {
+        const base = options.legacy ? sql`${this.base(period)} UNION ALL ${options.legacy}` : this.base(period);
+        return readProjectDistribution(tx, base, options.access);
     }
     /** Bounds the source projection to the requested identity before classification. */
     readRecord(tx: Transaction<CrmDatabase>, id: string, period: FollowUpPeriod) {
@@ -41,9 +52,16 @@ export class FollowUpRepository {
                 COALESCE(JSON_UNQUOTE(JSON_EXTRACT(e.actor_snapshot_sales_order_state_event,'$.name')),actor.display_name_user) AS changedByName,
                 e.to_state_code_sales_order_state_event AS rawStage,e.effective_at_sales_order_state_event AS effectiveAt,
                 COALESCE(e.sequence_sales_order_state_event,0) AS stateVersion,
+                o.purchase_funds_origin_sales_order AS purchaseFundsOrigin,
+                o.addendum_status_sales_order AS addendumStatus,
+                CASE o.installments_fully_paid_sales_order WHEN 'yes' THEN 1 WHEN 'no' THEN 0 ELSE NULL END AS installmentsFullyPaid,
+                CASE o.unit_transferred_sales_order WHEN 'yes' THEN 1 WHEN 'no' THEN 0 ELSE NULL END AS unitTransferred,
+                CASE o.keys_delivered_sales_order WHEN 'yes' THEN 1 WHEN 'no' THEN 0 ELSE NULL END AS keysDelivered,
+                CASE o.unit_delivered_sales_order WHEN 'yes' THEN 1 WHEN 'no' THEN 0 ELSE NULL END AS unitDelivered,
+                COALESCE(o.cancelled_sales_order='yes',0) AS saleLost,
                 COALESCE(o.contract_signed_sales_order='yes',0) AS contractSigned,
                 (SELECT COUNT(*) FROM crm_sales_order_approval a WHERE a.sales_order_id_sales_order_approval=o.id_sales_order
-                    AND a.type_code_sales_order_approval IN ('sales_management','developer','formalization') AND a.status_sales_order_approval='approved')=3 AS approved,
+                    AND a.type_code_sales_order_approval='formalization' AND a.status_sales_order_approval='approved')=1 AS approved,
                 (EXISTS(SELECT 1 FROM crm_sales_order_approval a WHERE a.sales_order_id_sales_order_approval=o.id_sales_order AND a.type_code_sales_order_approval='sales_management' AND a.status_sales_order_approval='approved')
                     AND EXISTS(SELECT 1 FROM crm_sales_order_approval a WHERE a.sales_order_id_sales_order_approval=o.id_sales_order AND a.type_code_sales_order_approval='developer' AND a.status_sales_order_approval='approved')
                     AND EXISTS(SELECT 1 FROM crm_sales_order_approval a WHERE a.sales_order_id_sales_order_approval=o.id_sales_order AND a.type_code_sales_order_approval='formalization' AND a.status_sales_order_approval='not_approved')) AS approvalPending,
@@ -59,6 +77,6 @@ export class FollowUpRepository {
                 WHERE latest.sales_order_id_sales_order_state_event=o.id_sales_order ORDER BY latest.sequence_sales_order_state_event DESC LIMIT 1)
             LEFT JOIN sec_user responsible ON responsible.id_user=e.responsible_user_id_sales_order_state_event
             LEFT JOIN sec_user actor ON actor.id_user=e.actor_user_id_sales_order_state_event
-            WHERE ${id === undefined ? sql`TRUE` : sql`o.public_id_sales_order=${id}`} AND o.status_sales_order='active' AND o.cancelled_sales_order='no' AND o.deleted_at_sales_order IS NULL`;
+            WHERE ${id === undefined ? sql`TRUE` : sql`o.public_id_sales_order=${id}`} AND o.status_sales_order='active' AND (o.cancelled_sales_order='no' OR (o.cancelled_sales_order='yes' AND o.contract_signed_sales_order='yes')) AND o.deleted_at_sales_order IS NULL`;
     }
 }

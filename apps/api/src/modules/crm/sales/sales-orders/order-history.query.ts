@@ -32,6 +32,9 @@ const safeFields = new Set([
     "type",
     "status",
     "contractSigned",
+    "finiquitoStatus",
+    "finiquitoVersion",
+    "finiquitoOriginStage",
     "commercialClosureSigned",
     "cancelled",
     "salePrice",
@@ -73,7 +76,7 @@ export function displayOrderHistory(row: Row) {
         id: String(row.eventKey),
         source: row.source === "legacy" ? ("legacy" as const) : ("native" as const),
         action,
-        label: labels[action] ?? "Acción registrada",
+        label: text(after.finiquitoStatus) ? "Finiquito actualizado" : (labels[action] ?? "Acción registrada"),
         reason: text(row.reason),
         occurredAt: text(row.occurredAt),
         recordedAt: text(row.recordedAt),
@@ -109,7 +112,7 @@ async function records(tx: Transaction<CrmDatabase>, order: Identity) {
     if (rows.length > 2) throw new BadRequestException("Identidad de bitácora ambigua.");
     return rows.map((row) => row.id);
 }
-function central(recordIds: string[]) {
+function central(recordIds: string[], canReadAddendum: boolean) {
     const scoped = recordIds.length ? sql`e.record_id_record_event IN (${sql.join(recordIds)})` : sql`FALSE`;
     return sql<Row>`SELECT CONCAT('audit:',e.id_record_event) AS eventKey,'native' AS source,
         DATE_FORMAT(COALESCE(e.occurred_at_record_event,e.recorded_at_record_event),'%Y-%m-%d %H:%i:%s.%f') AS sortAt,
@@ -118,7 +121,8 @@ function central(recordIds: string[]) {
         e.before_record_event AS beforeSnapshot,e.after_record_event AS afterSnapshot,e.changes_record_event AS changes,e.snapshot_scope_record_event AS coverage,
         fs.name_sales_order_state AS fromLabel,ts.name_sales_order_state AS toLabel
         FROM audit_record_event e LEFT JOIN conf_sales_order_state fs ON fs.code_sales_order_state=JSON_UNQUOTE(JSON_EXTRACT(e.before_record_event,'$.state'))
-        LEFT JOIN conf_sales_order_state ts ON ts.code_sales_order_state=JSON_UNQUOTE(JSON_EXTRACT(e.after_record_event,'$.state')) WHERE ${scoped}`;
+        LEFT JOIN conf_sales_order_state ts ON ts.code_sales_order_state=JSON_UNQUOTE(JSON_EXTRACT(e.after_record_event,'$.state')) WHERE ${scoped}
+        AND (${canReadAddendum} OR e.operation_id_record_event IS NULL OR e.operation_id_record_event NOT LIKE 'addendum:%')`;
 }
 function notPreserved(recordIds: string[], operation: RawBuilder<unknown>) {
     if (!recordIds.length) return sql`TRUE`;
@@ -153,12 +157,12 @@ function approvals(order: Identity, recordIds: string[]) {
         FROM audit_sales_order_approval_event e WHERE e.sales_order_id_sales_order_approval_event=${order.id} AND ${notPreserved(recordIds, operation)}`;
 }
 /** One authorized snapshot, with deterministic keyset pagination over all available sources and deduplication by writer operation identity. */
-export async function readOrderHistory(tx: Transaction<CrmDatabase>, source: "native" | "legacy", id: string, options: { legacyEnabled: boolean; cursor?: string }) {
+export async function readOrderHistory(tx: Transaction<CrmDatabase>, source: "native" | "legacy", id: string, options: { legacyEnabled: boolean; cursor?: string; canReadAddendum?: boolean }) {
     const order = await identity(tx, source, id);
     const identityKey = source + ":" + id;
     const cursor = readCursor(options.cursor, identityKey);
     const recordIds = await records(tx, order);
-    const parts = [central(recordIds)];
+    const parts = [central(recordIds, options.canReadAddendum === true)];
     if (source === "native") parts.push(stage(order, "native", recordIds), approvals(order, recordIds));
     let legacyAvailable = false;
     if (options.legacyEnabled && order.legacyId) {

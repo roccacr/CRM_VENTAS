@@ -24,22 +24,33 @@ export class LegacyFollowUpReader implements FollowUpLegacyReader {
     readRecord(tx: Transaction<CrmDatabase>, id: string, period: FollowUpPeriod) {
         return readFollowUpRecord(tx, this.base(period, id));
     }
+    /** Exposes the read-only source projection for global portfolio pagination. */
+    projection(period: FollowUpPeriod) {
+        return this.base(period);
+    }
     private base(period: FollowUpPeriod, id?: string) {
         return sql`
-            SELECT o.id_ov AS sortId,CONCAT('legacy:',o.id_ov) AS id,'legacy' AS source,
-                COALESCE(NULLIF(TRIM(o.id_ov_tranid),''),CONCAT('OV-',o.id_ov)) AS number,NULL AS nativeCode,
-                NULLIF(TRIM(l.nombre_lead),'') AS client,NULLIF(TRIM(l.email_lead),'') AS clientEmail,
-                IF(p.id_proyecto IS NULL,NULL,COALESCE(np.public_id_project,CONCAT('legacy-project:',p.id_proyecto))) AS projectId,
-                NULLIF(TRIM(p.Nombre_proyecto),'') AS projectName,NULLIF(TRIM(f.codigo_exp),'') AS unit,
-                COALESCE(nu.public_id_user,IF(a.id_admin IS NULL,NULL,CONCAT('legacy-user:',a.id_admin))) AS ownerId,NULLIF(TRIM(a.name_admin),'') AS ownerName,
+            SELECT o.id_ov AS sortId,CONCAT('legacy:',o.id_ov) COLLATE utf8mb4_unicode_ci AS id,'legacy' AS source,
+                COALESCE(NULLIF(TRIM(o.id_ov_tranid),''),CONCAT('OV-',o.id_ov)) COLLATE utf8mb4_unicode_ci AS number,NULL AS nativeCode,
+                CONVERT(NULLIF(TRIM(l.nombre_lead),'') USING utf8mb4) COLLATE utf8mb4_unicode_ci AS client,CONVERT(NULLIF(TRIM(l.email_lead),'') USING utf8mb4) COLLATE utf8mb4_unicode_ci AS clientEmail,
+                IF(p.id_proyecto IS NULL,NULL,COALESCE(np.public_id_project,CONCAT('legacy-project:',p.id_proyecto))) COLLATE utf8mb4_unicode_ci AS projectId,
+                CONVERT(NULLIF(TRIM(p.Nombre_proyecto),'') USING utf8mb4) COLLATE utf8mb4_unicode_ci AS projectName,CONVERT(NULLIF(TRIM(f.codigo_exp),'') USING utf8mb4) COLLATE utf8mb4_unicode_ci AS unit,
+                COALESCE(nu.public_id_user,IF(a.id_admin IS NULL,NULL,CONCAT('legacy-user:',a.id_admin))) COLLATE utf8mb4_unicode_ci AS ownerId,CONVERT(NULLIF(TRIM(a.name_admin),'') USING utf8mb4) COLLATE utf8mb4_unicode_ci AS ownerName,
                 JSON_UNQUOTE(JSON_EXTRACT(e.responsible_snapshot_sales_order_state_event,'$.publicId')) AS stageResponsibleId,
                 JSON_UNQUOTE(JSON_EXTRACT(e.responsible_snapshot_sales_order_state_event,'$.name')) AS stageResponsibleName,
                 JSON_UNQUOTE(JSON_EXTRACT(e.actor_snapshot_sales_order_state_event,'$.publicId')) AS changedById,
                 JSON_UNQUOTE(JSON_EXTRACT(e.actor_snapshot_sales_order_state_event,'$.name')) AS changedByName,
                 e.to_state_code_sales_order_state_event AS rawStage,e.effective_at_sales_order_state_event AS effectiveAt,
                 COALESCE(e.sequence_sales_order_state_event,0) AS stateVersion,
+                CONVERT(o.origen_fondos_compra_ov USING utf8mb4) COLLATE utf8mb4_unicode_ci AS purchaseFundsOrigin,
+                CONVERT(o.estado_adendum_ov USING utf8mb4) COLLATE utf8mb4_unicode_ci AS addendumStatus,
+                CASE o.cuotas_pagadas_completo_ov WHEN 1 THEN 1 WHEN 0 THEN 0 ELSE NULL END AS installmentsFullyPaid,
+                CASE o.unidad_traspasada_ov WHEN 1 THEN 1 WHEN 0 THEN 0 ELSE NULL END AS unitTransferred,
+                CASE o.entrega_llaves_ov WHEN 1 THEN 1 WHEN 0 THEN 0 ELSE NULL END AS keysDelivered,
+                CASE o.unidad_entregada_ov WHEN 1 THEN 1 WHEN 0 THEN 0 ELSE NULL END AS unitDelivered,
+                COALESCE(o.caida_ov=1,0) AS saleLost,
                 COALESCE(o.contrado_frima_ov=1,0) AS contractSigned,
-                COALESCE(o.chekJefeVenta=1 AND o.aprobacion__rdr_ov=1 AND o.aprobacion_forma_ov=1,0) AS approved,
+                COALESCE(o.aprobacion_forma_ov=1,0) AS approved,
                 COALESCE(o.chekJefeVenta=1 AND o.aprobacion__rdr_ov=1 AND o.aprobacion_forma_ov=0,0) AS approvalPending,
                 EXISTS(SELECT 1 FROM ${sql.table("crmdatabase-api.audit_sales_order_state_event")} ce WHERE ce.legacy_order_id_sales_order_state_event=o.id_ov
                     AND ce.to_state_code_sales_order_state_event='closed' AND ce.effective_at_sales_order_state_event>=${period.start} AND ce.effective_at_sales_order_state_event<${period.endExclusive}) AS completedThisYear
@@ -57,6 +68,6 @@ export class LegacyFollowUpReader implements FollowUpLegacyReader {
                 AND NOT EXISTS(SELECT 1 FROM ${sql.table("crmdatabase-api.expedientes")} sibling WHERE sibling.ID_interno_expediente=f.ID_interno_expediente AND sibling.id_expediente<>f.id_expediente)
             LEFT JOIN ${sql.table("crmdatabase-api.audit_sales_order_state_event")} e ON e.id_sales_order_state_event=(SELECT latest.id_sales_order_state_event
                 FROM ${sql.table("crmdatabase-api.audit_sales_order_state_event")} latest WHERE latest.legacy_order_id_sales_order_state_event=o.id_ov ORDER BY latest.sequence_sales_order_state_event DESC LIMIT 1)
-            WHERE ${id === undefined ? sql`TRUE` : sql`o.id_ov=${Number(id)}`} AND o.status_ov=1 AND o.caida_ov=0 AND NOT EXISTS(SELECT 1 FROM crm_sales_order n WHERE n.id_old_produccion_sales_order=o.id_ov)`;
+            WHERE ${id === undefined ? sql`TRUE` : sql`o.id_ov=${Number(id)}`} AND o.status_ov=1 AND (o.caida_ov=0 OR (o.caida_ov=1 AND o.contrado_frima_ov=1)) AND NOT EXISTS(SELECT 1 FROM crm_sales_order n WHERE n.id_old_produccion_sales_order=o.id_ov)`;
     }
 }

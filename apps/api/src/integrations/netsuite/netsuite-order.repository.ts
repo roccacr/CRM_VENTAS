@@ -1,7 +1,9 @@
-import { ConflictException, HttpException, Inject, Injectable, NotFoundException, ServiceUnavailableException } from "@nestjs/common";
+import { ConflictException, ForbiddenException, HttpException, Inject, Injectable, NotFoundException, ServiceUnavailableException } from "@nestjs/common";
 import { sql, type Transaction } from "kysely";
 
 import type { CrmDatabase } from "../../database/database.types.js";
+import { readAuditActor } from "../../modules/crm/audit/audit-actor.js";
+import type { IdentityProfile } from "../../modules/crm/identity/identity.types.js";
 import { HomeSummaryRepository } from "../../modules/crm/sales/sales-orders/home-summary.repository.js";
 import { readOrderClientContext } from "../../modules/crm/sales/sales-orders/order-client-context.query.js";
 import { readOrderHistory } from "../../modules/crm/sales/sales-orders/order-history.query.js";
@@ -43,11 +45,28 @@ export class NetsuiteOrderRepository {
         });
     }
     /** History resolves authority and resource scope before querying either source. */
-    async readHistory(target: { source: "native" | "legacy"; id: string }, checkAccess: (order: TimingOrder) => void, cursor?: string) {
+    async readHistory(target: { source: "native" | "legacy"; id: string }, checkAccess: (order: TimingOrder) => void, cursor?: string, canReadAddendum = false) {
         return this.resolveSafely(async (tx) => {
             const { source, order } = await this.authoritative(tx, target, checkAccess);
-            return readOrderHistory(tx, source, order.id, { legacyEnabled: this.legacy.enabled(), ...(cursor ? { cursor } : {}) });
+            return readOrderHistory(tx, source, order.id, { legacyEnabled: this.legacy.enabled(), canReadAddendum, ...(cursor ? { cursor } : {}) });
         });
+    }
+    /** Revalidate authority/reference while the writer holds the destination row lock. */
+    async authorizeSynchronization(tx: Transaction<CrmDatabase>, command: { target: { source: "native" | "legacy"; id: string }; netsuiteId: string; destination: { destination: "native" | "legacy"; id: string }; check: (order: TimingOrder) => void; profile: IdentityProfile }) {
+        const { target, netsuiteId, destination, check, profile } = command;
+        const current = await this.authoritative(tx, target, check);
+        if (current.source !== destination.destination || current.order.id !== destination.id || (await this.reference(tx, current.source, current.order.id)) !== netsuiteId) throw new ConflictException("La identidad de la orden cambio; recarga antes de sincronizar.");
+        return this.captureSynchronizationActor(tx, profile);
+    }
+    /** Locks the live user/session version until the commercial transaction commits. */
+    private async captureSynchronizationActor(tx: Transaction<CrmDatabase>, profile: IdentityProfile) {
+        const user = await tx.selectFrom("sec_user").select(["id_user", "permission_version_user"]).where("public_id_user", "=", profile.user.publicId).where("status_user", "=", "active").where("deleted_at_user", "is", null).forUpdate().executeTakeFirst();
+        if (!user || user.permission_version_user !== profile.user.permissionVersion) throw new ForbiddenException("Los permisos del usuario cambiaron durante la sincronizacion.");
+        const session = await tx.selectFrom("sec_auth_session").select("id_auth_session").where("public_id_auth_session", "=", profile.session.publicId).where("user_id_auth_session", "=", user.id_user).where("status_auth_session", "=", "active").where("expires_at_auth_session", ">", new Date()).where("permission_version_auth_session", "=", user.permission_version_user).forUpdate().executeTakeFirst();
+        if (!session) throw new ForbiddenException("La sesion ya no esta vigente.");
+        const actor = await readAuditActor(tx, user.id_user, true);
+        if (!actor) throw new ForbiddenException("El usuario solicitante ya no esta activo.");
+        return actor;
     }
     private async authoritative(tx: Transaction<CrmDatabase>, target: { source: "native" | "legacy"; id: string }, checkAccess: (order: TimingOrder) => void) {
         let source: "native" | "legacy" = "native";

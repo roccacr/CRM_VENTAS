@@ -133,7 +133,10 @@ it("rejects a nonboolean contract signature instead of enabling banking", async 
     await expect(getFollowUp(filters)).rejects.toThrow();
 });
 
-it.each([["legacy", "208"], ["native", "01ARZ3NDEKTSV4RRFFQ69G5FAV"]] as const)("reads a direct validated %s projection without list metadata", async (source, id) => {
+it.each([
+    ["legacy", "208"],
+    ["native", "01ARZ3NDEKTSV4RRFFQ69G5FAV"],
+] as const)("reads a direct validated %s projection without list metadata", async (source, id) => {
     const data = { ...payload().items[0], source, id: source === "legacy" ? "legacy:" + id : id, secret: "excluded" };
     vi.mocked(apiRequest).mockResolvedValue(data);
     const result = await getFormalizationOrderRecord(source, id);
@@ -145,4 +148,43 @@ it("rejects malformed record identity and projection", async () => {
     expect(apiRequest).not.toHaveBeenCalled();
     vi.mocked(apiRequest).mockResolvedValue({ id: "208" });
     await expect(getFormalizationOrderRecord("legacy", "208")).rejects.toThrow();
+});
+
+it.each(["own_funds", "bank_financing", null])("retains the canonical purchase funds origin %s", async (purchaseFundsOrigin) => {
+    const data = payload();
+    vi.mocked(apiRequest).mockResolvedValue({ ...data, counts: { ...data.counts, bankInProgress: 2 }, items: data.items.map((item) => ({ ...item, purchaseFundsOrigin })) });
+    const result = await getFollowUp(filters);
+    expect(result.items[0]?.purchaseFundsOrigin).toBe(purchaseFundsOrigin);
+    expect(result.counts.bankInProgress).toBe(2);
+});
+it("rejects an unknown funds origin instead of choosing a route", async () => {
+    const data = payload();
+    vi.mocked(apiRequest).mockResolvedValue({ ...data, items: data.items.map((item) => ({ ...item, purchaseFundsOrigin: "unknown" })) });
+    await expect(getFollowUp(filters)).rejects.toThrow("Invalid formalization follow-up");
+});
+
+it.each([true, false, null, undefined])("preserves paid installments evidence %s in canonical follow-up", async (installmentsFullyPaid) => {
+    const data = payload();
+    vi.mocked(apiRequest).mockResolvedValue({ ...data, items: data.items.map((item) => ({ ...item, installmentsFullyPaid })) });
+    expect((await getFollowUp(filters)).items[0]?.installmentsFullyPaid).toBe(installmentsFullyPaid);
+});
+it.each(["true", 1, {}])("rejects malformed paid installments evidence %s", async (installmentsFullyPaid) => {
+    const data = payload();
+    vi.mocked(apiRequest).mockResolvedValue({ ...data, items: data.items.map((item) => ({ ...item, installmentsFullyPaid })) });
+    await expect(getFollowUp(filters)).rejects.toThrow("Invalid formalization follow-up");
+});
+
+it.each(["unitTransferred", "keysDelivered", "unitDelivered"] as const)("strictly preserves optional nullable %s", async (field) => {
+    for (const value of [true, false, null, undefined]) {
+        const data = payload();
+        vi.mocked(apiRequest).mockResolvedValue({ ...data, items: data.items.map((item) => ({ ...item, [field]: value })) });
+        expect((await getFollowUp(filters)).items[0]?.[field]).toBe(value);
+    }
+});
+it.each(["unitTransferred", "keysDelivered", "unitDelivered"])("rejects malformed %s", async (field) => {
+    for (const value of ["true", 1, {}, "false"]) {
+        const data = payload();
+        vi.mocked(apiRequest).mockResolvedValue({ ...data, items: data.items.map((item) => ({ ...item, [field]: value })) });
+        await expect(getFollowUp(filters)).rejects.toThrow("Invalid formalization follow-up");
+    }
 });

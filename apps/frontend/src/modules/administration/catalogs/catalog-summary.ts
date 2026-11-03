@@ -6,6 +6,7 @@ export type CatalogBannerTone = "neutral" | "success" | "pending" | "danger";
 
 /** One summary card at the top of a catalog page. Values are text so a missing figure can show as a dash, never as zero. */
 export interface CatalogBannerData {
+    readonly helpText?: string;
     readonly metrics?: readonly { readonly label: string; readonly value: string }[];
     readonly id: string;
     readonly title: string;
@@ -34,6 +35,18 @@ export function buildCatalogItemCards({ label, items, total, ready }: { readonly
         { id: "active", title: "Activos", value: figure(items.filter((item) => item.status === "active").length), caption: scope("Disponibles para usar"), icon: "active", tone: "success" },
         { id: "inactive", title: "Inactivos", value: figure(items.filter((item) => item.status === "inactive").length), caption: scope("Fuera de uso"), icon: "inactive", tone: "pending" },
         { id: "linked", title: "Con integración", value: figure(items.filter(hasExternalReference).length), caption: scope("Con referencia en un sistema externo"), icon: "linked", tone: "neutral" },
+    ];
+}
+
+/** Cards for the banks list; `total` covers every bank, the rest is counted over the loaded rows and says so when paged. */
+export function buildBankCards({ items, total, ready }: { readonly items: readonly { readonly status: string; readonly advisorCount: number }[]; readonly total: number; readonly ready: boolean }): CatalogBannerData[] {
+    const figure = (value: number): string => (ready ? count.format(value) : "—");
+    const scope = (whole: string): string => (items.length >= total ? whole : `En esta página (${count.format(items.length)} de ${count.format(total)})`);
+    return [
+        { id: "total", title: "Total de bancos", value: figure(total), caption: "Registrados en el CRM", icon: "bank", tone: "neutral" },
+        { id: "active", title: "Activos", value: figure(items.filter((item) => item.status === "active").length), caption: scope("Disponibles para usar"), icon: "active", tone: "success" },
+        { id: "inactive", title: "Inactivos", value: figure(items.filter((item) => item.status === "inactive").length), caption: scope("Fuera de uso"), icon: "inactive", tone: "pending" },
+        { id: "advisors", title: "Ejecutivos", value: figure(items.reduce((sum, item) => sum + item.advisorCount, 0)), caption: scope("Contactos vinculados a los bancos"), icon: "people", tone: "neutral" },
     ];
 }
 

@@ -63,6 +63,18 @@ import { netsuiteOrderEventsMigration } from "../migrations/schema-only/20261102
 import { salesOrderCancellationDateMigration } from "../migrations/schema-only/202611020059_sales_order_cancellation_date.js";
 import { leadProfilePermissionMigration } from "../migrations/schema-only/202611020060_lead_profile_permission.js";
 import { formalizationCalendarTypesMigration } from "../migrations/schema-only/202611020061_formalization_calendar_types.js";
+import { formalizationPurchaseFundsMigration } from "../migrations/schema-only/202611020062_formalization_purchase_funds.js";
+import { formalizationCalendarAssignLeadMigration } from "../migrations/schema-only/202611030063_formalization_calendar_assign_lead.js";
+import { formalizationOrderWhatsappMigration } from "../migrations/schema-only/202611030064_formalization_order_whatsapp.js";
+import { formalizationOrderAddendumMigration } from "../migrations/schema-only/202611030065_formalization_order_addendum.js";
+import { formalizationManualAddendumMigration } from "../migrations/schema-only/202611030066_formalization_manual_addendum.js";
+import { formalizationManualAddendumDefaultsMigration } from "../migrations/schema-only/202611030067_formalization_manual_addendum_defaults.js";
+import { banksAndAdvisorsMigration } from "../migrations/schema-only/202611030068_banks_and_advisors.js";
+import { salesOrderBankAssignmentMigration } from "../migrations/schema-only/202611030069_sales_order_bank_assignment.js";
+import { orderDocumentsPermissionsMigration } from "../migrations/schema-only/202611030070_order_documents_permissions.js";
+import { salesOrderBankAssignmentUnlinkMigration } from "../migrations/schema-only/202611030071_sales_order_bank_assignment_unlink.js";
+import { formalizationAddendumSentMigration } from "../migrations/schema-only/202611030072_formalization_addendum_sent.js";
+import { leadQualificationMigration } from "../migrations/schema-only/202611030073_lead_qualification.js";
 import { addDatabaseTlsIssues, booleanEnvSchema, tcpPortSchema } from "../src/config/database-env.schema.js";
 import { APPROVED_DATABASE_NAME } from "../src/config/product.constants.js";
 import { buildMysqlPoolOptions } from "../src/database/mysql-pool-options.js";
@@ -155,6 +167,18 @@ export const schemaMigrations: Migration[] = [
     salesOrderCancellationDateMigration,
     leadProfilePermissionMigration,
     formalizationCalendarTypesMigration,
+    formalizationPurchaseFundsMigration,
+    formalizationCalendarAssignLeadMigration,
+    formalizationOrderWhatsappMigration,
+    formalizationOrderAddendumMigration,
+    formalizationManualAddendumMigration,
+    formalizationManualAddendumDefaultsMigration,
+    banksAndAdvisorsMigration,
+    salesOrderBankAssignmentMigration,
+    orderDocumentsPermissionsMigration,
+    salesOrderBankAssignmentUnlinkMigration,
+    formalizationAddendumSentMigration,
+    leadQualificationMigration,
 ];
 
 /** Targeted cutovers avoid replaying unrelated security repairs after a deliberate ledger reset. */

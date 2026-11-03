@@ -11,7 +11,7 @@ export const CATALOG_STATUSES = ["active", "inactive"] as const;
 export type CatalogStatus = (typeof CATALOG_STATUSES)[number];
 
 /** Segmento de ruta. Proyectos está en la lista, pero su persistencia es propia. */
-export type CatalogRouteCode = "brokers" | "campaigns" | "classes" | "files" | "locations" | "projects" | "subsidiaries";
+export type CatalogRouteCode = "banks" | "brokers" | "campaigns" | "classes" | "files" | "locations" | "projects" | "subsidiaries";
 
 /**
  * Definición estable de un catálogo.
@@ -32,6 +32,7 @@ export type CatalogContextModuleCode = (typeof CATALOG_CONTEXT_MODULES)[number];
 
 /** Orden del menú. Agregar un catálogo aquí también genera sus permisos. */
 export const CATALOG_DEFINITIONS: readonly CatalogDefinition[] = [
+    { itemLabel: "banco", label: "Bancos", moduleCode: "catalog_bank", routeCode: "banks" },
     { itemLabel: "proyecto", label: "Proyectos", moduleCode: "catalog_project", routeCode: "projects" },
     { itemLabel: "campaña", label: "Campañas", moduleCode: "catalog_campaign", routeCode: "campaigns" },
     { itemLabel: "clase", label: "Clases", moduleCode: "catalog_class", routeCode: "classes" },

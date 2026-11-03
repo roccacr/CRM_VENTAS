@@ -39,3 +39,26 @@ describe("capture report service", () => {
         expect(parsed.sellers.every((seller) => seller.publicId === null)).toBe(true);
     });
 });
+
+
+it("rejects loss reasons that do not reconcile with lost leads or repeat a reason", () => {
+    const report = captureResponse();
+    const rows = report.rows.map(row => ({ ...row, lossReasons: [{ code: "budget", name: "Presupuesto", count: row.lost + 1 }] }));
+    expect(() => parseCaptureReport({ ...report, rows }, "month")).toThrow();
+    const repeated = report.rows.map(row => ({ ...row, lossReasons: [{ code: "budget", name: "Presupuesto", count: row.lost },{ code: "budget", name: "Presupuesto", count: 1 }] }));
+    expect(() => parseCaptureReport({ ...report, rows: repeated }, "month")).toThrow();
+    const valid = parseCaptureReport(report, "month");
+    expect(valid.rows.flatMap(row => row.lossReasons ?? []).reduce((sum,item) => sum + item.count,0)).toBe(report.rows.reduce((sum,row) => sum + row.lost,0));
+});
+
+it.each(['qualified', 'unqualified'] as const)('sends and validates qualification %s', async (qualification) => {
+    api.request.mockResolvedValueOnce({ ...captureResponse(), qualification });
+    expect((await getCaptureReport('month', qualification)).qualification).toBe(qualification);
+    expect(api.request).toHaveBeenLastCalledWith(`/marketing/leads/report?period=month&qualification=${qualification}`);
+    expect(() => parseCaptureReport(captureResponse(), 'month', qualification)).toThrow();
+    expect(() => parseCaptureReport({ ...captureResponse(), qualification: 'all' }, 'month', qualification)).toThrow();
+});
+it('normalizes old all responses and rejects unknown qualification', () => {
+    expect(parseCaptureReport(captureResponse(), 'month').qualification).toBe('all');
+    expect(() => parseCaptureReport({ ...captureResponse(), qualification: 'other' }, 'month')).toThrow();
+});

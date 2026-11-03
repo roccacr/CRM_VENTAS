@@ -68,7 +68,7 @@ it.each([true, false])("gates client profile by effective permission and deny: %
     render(<FormalizationOrderDetails item={item} permissions={[{ code: "lead.profile.read", effect: "allow" }, ...(allowed ? [] : [{ code: "lead.profile.read", effect: "deny" }])]} />);
     await screen.findByText("Cliente real");
     const link = screen.queryByRole("link", { name: "Ver perfil del cliente" });
-    if (allowed) expect(link).toHaveAttribute("href", "/perfil?source=legacy&id=99");
+    if (allowed) expect(link).toHaveAttribute("href", "/home/formalization/perfil?source=legacy&id=99");
     else expect(link).toBeNull();
 });
 it("does not fabricate a profile link without identity", async () => {
@@ -119,15 +119,20 @@ it("distinguishes informative linked sources from unavailable data", async () =>
     expect(screen.queryByText(/Algunas relaciones o datos/)).toBeNull();
 });
 
-it("uses the shared complete detail in the order drawer without removing navigation or follow-up", async () => {
-    render(<FormalizationOrderDrawer item={item} position={1} total={2} onClose={() => {}} onSelectPrevious={() => {}} onSelectNext={() => {}} />);
+it("preserves drawer navigation and follow-up with one authorized client read and opens the full order explicitly", async () => {
+    const onViewFull = vi.fn();
+    render(<FormalizationOrderDrawer item={item} position={1} total={2} onClose={() => {}} onSelectPrevious={() => {}} onSelectNext={() => {}} onViewFull={onViewFull} />);
     const drawer = screen.getByRole("dialog");
-    await within(drawer).findByText("Cliente real");
-    expect(within(drawer).getByText("9 007 199 254 740 993,2500")).toBeInTheDocument();
+    expect(getDatabaseOrder).toHaveBeenCalledExactlyOnceWith({ source: "legacy", id: "legacy:208" }, undefined);
     expect(within(drawer).getByText("Seguimiento")).toBeInTheDocument();
     expect(within(drawer).getByRole("button", { name: "Orden anterior" })).toBeDisabled();
     expect(within(drawer).getByRole("button", { name: "Orden siguiente" })).toBeEnabled();
     expect(within(drawer).queryByText("Cliente y unidad")).toBeNull();
+    expect(within(drawer).queryByLabelText("Detalle completo de la orden")).toBeNull();
+    fireEvent.click(within(drawer).getByRole("button", { name: "Ver orden completa" }));
+    expect(onViewFull).toHaveBeenCalledTimes(1);
+    await screen.findByText("Contacto");
+    expect(getDatabaseOrder).toHaveBeenCalledTimes(1);
 });
 
 it("labels the authoritative returned source and suppresses an obsolete actor from the requested source", async () => {

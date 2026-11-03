@@ -1,5 +1,11 @@
 # 28 - Matriz de Roles, Permisos y Areas P0-S1
 
+## Matriz incremental de Formalización — 2026-11-03
+
+Las matrices iniciales inferiores son antecedentes. 060 concede `lead.profile.read` por defecto a Owner/Formalización/Jefe de Formalizaciones/Jefe General, con lectura global y deny vigente. 063 concede `formalizacion.calendar.assign_lead` a Owner/Formalización/Jefe de Formalizaciones; 064 concede WhatsApp a los cuatro roles. 065 concede update de adéndum a los cuatro; 066 separa read/Home de marcado manual y 067 fija este último en Owner/Jefe General/Jefe de Formalizaciones, sin default para Formalización. Esos defaults no sustituyen el perfil efectivo ni el techo modular/overrides.
+
+Owner requiere un grant real o allow personal para marcado manual, sin herencia virtual de esa acción. Sin read de adéndum se ocultan marca/nota/bandeja y permanece la orden con su autorización habitual; el Home tiene permiso de contador independiente. Detalle y evidencia histórica: [77](77-Perfil-Completo-Lead.md), [83](83-Adendum-Migracion-065-y-Rollback.md), [84](84-Adendum-Manual-Migracion-066-y-Permisos.md). No se alteraron asignaciones en esta revisión.
+
 ## Retiro posterior de seccion - 2026-10-27
 
 La decision del propietario del2026-10-26 retira Eventos y citas. La migracion

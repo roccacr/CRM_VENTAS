@@ -67,6 +67,7 @@ export interface AdministrationCatalogDefinition {
  */
 export const ADMINISTRATION_CATALOGS: readonly AdministrationCatalogDefinition[] = [
     { code: "projects", createPermission: "administration.catalog_project.create", label: "Proyectos", menuItemCode: "catalog-projects", moduleCode: "catalog_project", path: "/home/administration/catalogs/projects", readPermission: "administration.catalog_project.read" },
+    { code: "banks", createPermission: "administration.catalog_bank.create", label: "Bancos", menuItemCode: "catalog-banks", moduleCode: "catalog_bank", path: "/home/administration/catalogs/banks", readPermission: "administration.catalog_bank.read" },
     CAMPAIGNS_CATALOG,
     CLASSES_CATALOG,
     BROKERS_CATALOG,

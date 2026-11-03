@@ -16,6 +16,7 @@ export interface MicrosoftLoginChallenge {
 
 export interface MicrosoftCallbackInput {
     code: string;
+    calendar?: boolean;
     codeVerifier: string;
     nonce: string;
     state: string;
@@ -49,8 +50,8 @@ export type MicrosoftSilentTokenResult =
       };
 
 export interface MicrosoftAuthProvider {
-    acquireTokenSilent(input: { homeAccountId: string; msalCacheSerialized: string }): Promise<MicrosoftSilentTokenResult>;
+    acquireTokenSilent(input: { homeAccountId: string; msalCacheSerialized: string; scopes?: string[] }): Promise<MicrosoftSilentTokenResult>;
     completeCallback(input: MicrosoftCallbackInput): Promise<MicrosoftAuthenticatedAccount>;
     readProfilePhoto(accessToken: string): Promise<MicrosoftProfilePhoto | null>;
-    startLogin(): Promise<MicrosoftLoginChallenge>;
+    startLogin(input?: { calendar?: boolean }): Promise<MicrosoftLoginChallenge>;
 }

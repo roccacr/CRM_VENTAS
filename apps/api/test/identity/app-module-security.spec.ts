@@ -245,7 +245,7 @@ describe("Cableado de seguridad del AppModule", () => {
                 .filter(({ classification }) => classification === "public")
                 .map(({ route }) => route)
                 .sort(),
-        ).toEqual(["POST /integrations/netsuite/local/order-events", "GET /health/live", "GET /health/ready", "GET /identity/microsoft/callback", "GET /identity/session", "POST /identity/local/complete-reset", "POST /identity/local/login", "POST /identity/local/request-reset", "POST /identity/logout", "POST /identity/microsoft/start", "POST /identity/refresh"].sort());
+        ).toEqual(["POST /integrations/netsuite/local/order-events", "POST /integrations/netsuite/production/order-events", "GET /health/live", "GET /health/ready", "GET /identity/microsoft/callback", "GET /identity/session", "POST /identity/local/complete-reset", "POST /identity/local/login", "POST /identity/local/request-reset", "POST /identity/logout", "POST /identity/microsoft/start", "POST /identity/refresh"].sort());
     });
 
     it("authenticates before reaching the dedicated Projects controller", async () => {

@@ -40,7 +40,14 @@ export class HomeSummaryService {
         const profile = await this.identity.getCurrentUser(session);
         if (!canReadFormalizationStages(profile)) throw new ForbiddenException("Se requiere el rol activo Formalizacion y el permiso de lectura de sus banners.");
         const access = formalizationReadAccess(profile);
-        const mask = (counts: StageCounts): StageCounts => ({ contracts: access.contracts ? counts.contracts : { toSend: 0, pendingSignature: 0 }, banking: access.bank ? counts.banking : 0, balance: access.balance ? counts.balance : 0, transferPending: access.transfer ? counts.transferPending : 0, transferSigned: access.signed ? counts.transferSigned : 0, closedThisYear: access.closed ? counts.closedThisYear : 0 });
+        const mask = (counts: StageCounts): StageCounts => ({
+            contracts: access.contracts ? counts.contracts : { toSend: 0, pendingSignature: 0 },
+            ...(access.bank ? { banking: counts.banking, bankingInProgress: counts.bankingInProgress ?? 0 } : { banking: 0, bankingInProgress: 0 }),
+            balance: access.balance ? counts.balance : 0,
+            transferPending: access.transfer ? counts.transferPending : 0,
+            transferSigned: access.signed ? counts.transferSigned : 0,
+            closedThisYear: access.closed ? counts.closedThisYear : 0,
+        });
         const now = new Date();
         const year = Number(new Intl.DateTimeFormat("en", { timeZone: "America/Costa_Rica", year: "numeric" }).format(now));
         const period: HomeSummaryPeriod = { year, timeZone: "America/Costa_Rica", start: new Date(Date.UTC(year, 0, 1, 6)).toISOString(), endExclusive: new Date(Date.UTC(year + 1, 0, 1, 6)).toISOString() };
@@ -52,7 +59,7 @@ export class HomeSummaryService {
                 legacy.counts = mask(legacy.counts);
                 if (
                     !Object.entries(access)
-                        .filter(([key]) => key !== "approvals")
+                        .filter(([key]) => key !== "approvals" && key !== "addendum")
                         .every(([, value]) => value)
                 )
                     legacy.duplicatesExcluded = 0;
@@ -61,6 +68,7 @@ export class HomeSummaryService {
                 const counts: StageCounts = {
                     contracts: { toSend: add(native.contracts.toSend, legacy.counts.contracts.toSend), pendingSignature: add(native.contracts.pendingSignature, legacy.counts.contracts.pendingSignature) },
                     banking: add(native.banking, legacy.counts.banking),
+                    bankingInProgress: add(native.bankingInProgress ?? 0, legacy.counts.bankingInProgress ?? 0),
                     balance: add(native.balance, legacy.counts.balance),
                     transferPending: add(native.transferPending, legacy.counts.transferPending),
                     transferSigned: add(native.transferSigned, legacy.counts.transferSigned),

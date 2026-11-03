@@ -1,5 +1,13 @@
 # Operacion, despliegue y rollback
 
+## Preflight y rollback incrementales — 2026-11-03
+
+El runner local llega a 067 (65 entradas, con saltos 002/026); usar únicamente la selección exacta aprobada, revisar ledger/esquema y `MIGRATION_CONFIRM_SCHEMA_ONLY=CRM_THINK_V2`. Arrancar la app o actualizar Markdown no ejecuta migraciones. Las herramientas legacy 062/065/066 son independientes y requieren aprobación específica para `crmdatabase-api`. El plan consulta metadatos; no es un ensayo de rollback. Inventario, límites y diferencias normativas: [03](03-Base-Datos-y-Migracion.md).
+
+065/066 en ambas BDs y 067 en nativa constan aplicadas antes de esta revisión; no volver a aplicarlas por leer este runbook. DDL no comparte transacción con permisos/auditoría/ledger. Preservar las columnas compatibles y la evidencia es la reversión operativa preferida. Si se autoriza retirar esquema, revisar las dependencias 065→066→067, detener antes los escritores, exportar el delta y restaurar solo lo agregado por la operación, sin borrar overrides ni ledger. 067 revierte solo sus grants realmente añadidos, no el permiso ni el grant anterior de Jefe de Formalizaciones. Procedimientos separados: [83](83-Adendum-Migracion-065-y-Rollback.md)/[84](84-Adendum-Manual-Migracion-066-y-Permisos.md).
+
+El receptor v 2 dispone de persistencia sujeta a gates ([73](73-Sincronizacion-Estados-Ordenes-NetSuite.md)); v1 conserva `persisted:false`. La matriz de producto inferior y sus límites de calendario/DEMO pertenecen al corte octubre indicado: para el runtime actual prevalecen [22](22-Mapa-de-Implementacion-API.md), [77](77-Perfil-Completo-Lead.md) y [84](84-Adendum-Manual-Migracion-066-y-Permisos.md). Esta reconciliación no verificó el servidor desplegado, salud, sesiones, SQL ni pruebas comerciales. Los resultados anteriores siguen siendo evidencia histórica.
+
 ## Artefactos actuales y límite de aceptación - 2026-11-02
 
 El repositorio sí contiene configuración de despliegue: el runbook de

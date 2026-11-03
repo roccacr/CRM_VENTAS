@@ -2,6 +2,7 @@
 export interface StageCounts {
     contracts: { toSend: number; pendingSignature: number };
     banking: number;
+    bankingInProgress?: number;
     balance: number;
     transferPending: number;
     transferSigned: number;
@@ -26,7 +27,7 @@ export interface HomeSummary {
 }
 
 /** Starting point for accumulating counts per source. */
-export const emptyStageCounts = (): StageCounts => ({ contracts: { toSend: 0, pendingSignature: 0 }, banking: 0, balance: 0, transferPending: 0, transferSigned: 0, closedThisYear: 0 });
+export const emptyStageCounts = (): StageCounts => ({ contracts: { toSend: 0, pendingSignature: 0 }, banking: 0, bankingInProgress: 0, balance: 0, transferPending: 0, transferSigned: 0, closedThisYear: 0 });
 
 /** Aggregate values arrive as DECIMAL/count strings from mysql2; reject precision loss. */
 export function aggregateNumber(value: string | number | null): number {
@@ -42,6 +43,7 @@ export interface StageAggregateRow {
     toSend: string | number | null;
     pendingSignature: string | number | null;
     banking: string | number | null;
+    bankingInProgress?: string | number | null;
     balance: string | number | null;
     transferPending: string | number | null;
     transferSigned: string | number | null;
@@ -52,7 +54,7 @@ export interface StageAggregateRow {
 /** Missing rows/fields are source failures; only explicit SQL NULL denotes an empty SUM. */
 export function stageCountsFromRow(row: StageAggregateRow | undefined): StageCounts {
     if (!row) throw new Error("Missing Home aggregate row");
-    return { contracts: { toSend: aggregateNumber(row.toSend), pendingSignature: aggregateNumber(row.pendingSignature) }, banking: aggregateNumber(row.banking), balance: aggregateNumber(row.balance), transferPending: aggregateNumber(row.transferPending), transferSigned: aggregateNumber(row.transferSigned), closedThisYear: aggregateNumber(row.closedThisYear) };
+    return { contracts: { toSend: aggregateNumber(row.toSend), pendingSignature: aggregateNumber(row.pendingSignature) }, banking: aggregateNumber(row.banking), bankingInProgress: aggregateNumber(row.bankingInProgress ?? null), balance: aggregateNumber(row.balance), transferPending: aggregateNumber(row.transferPending), transferSigned: aggregateNumber(row.transferSigned), closedThisYear: aggregateNumber(row.closedThisYear) };
 }
 
 /** Bounded personal audit projection; never contains arbitrary snapshots, notes or another actor. */

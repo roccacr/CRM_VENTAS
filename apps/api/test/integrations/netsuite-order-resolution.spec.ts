@@ -8,13 +8,15 @@ import type { IdentityProfile } from "../../src/modules/crm/identity/identity.ty
 import type { TimingOrder } from "../../src/modules/crm/sales/sales-orders/order-timing.contract.js";
 
 const publicId = "01ARZ3NDEKTSV4RRFFQ69G5FAV";
-function fixture(native = true, externalIds = ["123"]) {
+function fixture(native = true, externalIds = ["123"], live?: { version: number; session: boolean }) {
     const queries: CompiledQuery[] = [];
     const driver = new DummyDriver();
     driver.acquireConnection = async () => {
         const connection = await DummyDriver.prototype.acquireConnection.call(driver);
         connection.executeQuery = (q) => {
             queries.push(q);
+            if (live && q.sql.includes("from `sec_user`")) return Promise.resolve({ rows: [{ id_user: 5, permission_version_user: live.version }] as never[] });
+            if (live && q.sql.includes("from `sec_auth_session`")) return Promise.resolve({ rows: (live.session ? [{ id_auth_session: 6 }] : []) as never[] });
             return Promise.resolve({ rows: externalIds.map((externalId) => ({ externalId })) as never[] });
         };
         return connection;
@@ -43,7 +45,7 @@ function fixture(native = true, externalIds = ["123"]) {
             return Promise.resolve({ fields: { tranid: "RDR673" } });
         }),
     };
-    return { db, queries, profile, order, repository, legacy, client, service: new NetsuiteSalesOrderService(identity as never, new NetsuiteOrderRepository(repository as never, legacy as never, { readSnapshot } as never), client as never) };
+    return { db, queries, profile, order, repository, legacy, client, service: new NetsuiteSalesOrderService(identity as never, new NetsuiteOrderRepository(repository as never, legacy as never, { readSnapshot } as never), client as never, {} as never) };
 }
 it.each([true, false])("resolves authorized source native=%s before one provider GET outside DB transaction", async (native) => {
     const f = fixture(native);
@@ -141,6 +143,37 @@ it.each(["deny", "category", "banner-only", "inactive"])("history blocks %s befo
         await expect(f.service.readHistory("session", { source: "native", id: publicId })).rejects.toThrow();
         expect(f.queries).toHaveLength(0);
         expect(f.client.readSalesOrder).not.toHaveBeenCalled();
+    } finally {
+        await f.db.destroy();
+    }
+});
+
+it.each(["authority", "reference"])("manual synchronization rejects changed %s before writes", async (mode) => {
+    const f = fixture(true, mode === "reference" ? ["999"] : ["123"]);
+    const repo = new NetsuiteOrderRepository(f.repository as never, f.legacy as never, {} as never);
+    try {
+        await expect(f.db.transaction().execute((tx) => repo.authorizeSynchronization(tx, { target: { source: "legacy", id: "208" }, netsuiteId: "123", destination: { destination: "native", id: mode === "authority" ? "43" : "42" }, check: () => undefined, profile: f.profile }))).rejects.toThrow("identidad");
+        expect(f.queries.every((q) => !/^\s*(INSERT|UPDATE|DELETE)/.test(q.sql))).toBe(true);
+    } finally {
+        await f.db.destroy();
+    }
+});
+
+it.each(["version", "revoked", "expired"])("manual synchronization locks live authorization and rejects %s", async (mode) => {
+    const f = fixture(true, ["123"], { version: mode === "version" ? 2 : 1, session: false });
+    f.profile.user.permissionVersion = 1;
+    f.profile.session = { publicId: "session", status: "active", permissionVersion: 1, expiresAt: "2099-01-01T00:00:00Z", expiresInSeconds: 3600 };
+    const repo = new NetsuiteOrderRepository(f.repository as never, f.legacy as never, {} as never);
+    try {
+        await expect(f.db.transaction().execute((tx) => repo.authorizeSynchronization(tx, { target: { source: "legacy", id: "208" }, netsuiteId: "123", destination: { destination: "native", id: "42" }, check: () => undefined, profile: f.profile }))).rejects.toThrow();
+        expect(f.queries.some((q) => q.sql.includes("from `sec_user`") && q.sql.includes("for update"))).toBe(true);
+        if (mode !== "version") {
+            const query = f.queries.find((q) => q.sql.includes("from `sec_auth_session`"));
+            expect(query?.sql).toContain("expires_at_auth_session");
+            expect(query?.sql).toContain("status_auth_session");
+            expect(query?.sql).toContain("for update");
+        }
+        expect(f.queries.every((q) => !/^\s*(INSERT|UPDATE|DELETE)/.test(q.sql))).toBe(true);
     } finally {
         await f.db.destroy();
     }

@@ -1,5 +1,7 @@
 # Mapa actual CRM TINK
 
+Revisión documental03/11/2026: el inventario vigente está en [85](../../apps/api/Arquitectura/85-Reconciliacion-Documental-20261103.md). Los recibos, hashes, instalación o despliegue inferiores conservan su fecha; no se reejecutaron ni acreditan el árbol actual.
+
 Revisión documental 2026-11-02: «actual» corresponde al corte del26 de este
 artefacto. No se regeneraron HTML, capturas, manifiesto ni recibos. El inventario
 vigente de módulos/contratos está en

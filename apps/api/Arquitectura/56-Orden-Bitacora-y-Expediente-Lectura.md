@@ -1,5 +1,17 @@
 # 56 - Bitácora de orden y expediente relacionado
 
+## Evidencia de adéndum y transiciones automáticas — 2026-11-03
+
+La bitácora incorpora las visitas de finalización confirmadas por NetSuite según
+[78](78-Formalizacion-Origen-Fondos-y-Gestion-Bancaria.md), con actor de integración
+y responsable conservado, sin duplicar la evidencia central/especializada.
+La autorización de lectura de la orden no basta para exponer eventos de adéndum:
+`NetsuiteSalesOrderService.readHistory` deriva `formalizacion.orders.addendum.read`
+del perfil vigente y `readOrderHistory` excluye operaciones `addendum:%` sin esa
+capacidad. No se devuelve nota/marcador privado por el acceso al historial general.
+Contrato completo: [84](84-Adendum-Manual-Migracion-066-y-Permisos.md).
+Esta revisión verifica código, no crea ni modifica evidencias comerciales.
+
 Entrega autorizada: 2026-10-27. Solo lectura; no migraciones, importaciones, cambios de estado, escrituras ni llamadas ERP para estos paneles.
 
 ## Accesos
@@ -8,7 +20,7 @@ Desde la orden completa, `Ver bitácora de la orden` abre un panel lateral con l
 
 ## Autorización y autoridad
 
-`GET /formalization/orders/:source/:id/history?cursor=...` requiere sesión, rol efectivo Formalización y permiso `formalizacion.home.stages.read`, respetando denies y alcance de propietario. Las órdenes pendientes de aprobación conservan el requisito adicional de lectura de aprobaciones. Reutiliza la resolución y comprobación de recurso de la consulta `/database`; no expone IDs arbitrarios de registros de auditoría.
+`GET /formalization/orders/:source/:id/history?cursor=...` requiere sesión, un rol efectivo Formalización o Jefe de Formalizaciones y `formalizacion.orders.read`, con deny prevaleciente según64/65. No exige permiso del banner ni restringe por vendedor. La evidencia de adéndum requiere además su lectura propia, según la ampliación vigente anterior. Reutiliza la resolución y comprobación de recurso de la consulta `/database`; no expone IDs arbitrarios de registros de auditoría.
 
 Se busca primero el registro nativo por publicId o alias legacy. Un registro nativo inactivo/eliminado no permite retroceder a legacy. Solo una ausencia nativa permite resolver una identidad legacy en la BD antigua. Una orden nativa puede conservar historia antigua únicamente por su alias explícito `id_old_produccion_sales_order`; no se unen órdenes por número comercial, correo o cliente.
 

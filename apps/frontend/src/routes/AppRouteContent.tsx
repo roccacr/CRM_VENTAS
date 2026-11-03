@@ -75,6 +75,7 @@ function AuthenticatedRouteContent({ profile, path, onLogout, onNavigate, naviga
             effectivePermissions={profile.permissions}
             initialWorkspaceCode={workspaceCode}
             orgUnits={profile.orgUnits}
+            roles={profile.roles}
             onLogout={onLogout}
             onMenuItemSelect={onNavigate}
             onWorkspaceChange={(code) => {

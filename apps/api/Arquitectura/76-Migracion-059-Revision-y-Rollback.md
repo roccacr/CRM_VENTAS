@@ -1,6 +1,6 @@
 # 059 — revisión, aplicación autorizada y rollback
 
-Estado actual: aprobada expresamente para QA y, si pasaba, RDS. Aplicada primero en QA aislado y luego exclusivamente en CRM_THINK_V2 del RDS MySQL8.4.8 el 2026-11-03T03:35:55Z. Ledger y columna verificados. Sin cambios de esquema legacy. La activación del handler y las pruebas comerciales siguen pendientes. No ejecutar el runner general: podría incluir otras migraciones pendientes. Tras aprobación se debe seleccionar exclusivamente 059 y verificar previamente esquema, ledger y entorno de desarrollo/QA.
+Estado actual: aprobada expresamente para QA y, si pasaba, RDS. Aplicada primero en QA aislado y luego exclusivamente en CRM_THINK_V 2 del RDS MySQL 8.4.8 el 2026-11-03 T 03:35:55 Z. Ledger y columna verificados. Sin cambios de esquema legacy. La activación del handler y las pruebas comerciales siguen pendientes. No ejecutar el runner general: podría incluir otras migraciones pendientes. Tras aprobación se debe seleccionar exclusivamente 059 y verificar previamente esquema, ledger y entorno de desarrollo/QA.
 
 ## Cambio exacto
 
@@ -39,16 +39,15 @@ WHERE cancellation_marked_on_sales_order IS NOT NULL;
 ALTER TABLE CRM_THINK_V2.crm_sales_order
   DROP COLUMN cancellation_marked_on_sales_order;
 
--- Solo después de verificar el DROP y retirar el escritor:
-DELETE FROM CRM_THINK_V2.conf_schema_migration
-WHERE migration_name_schema_migration = '202611020059_sales_order_cancellation_date';
+-- Conservar el ledger histórico y registrar la reversión auditada por separado.
+-- No borrar la entrada059 para forzar una reaplicación.
 ```
 
 El rollback no modifica `ordenventa.envioReservaCaida` ni revierte automáticamente fechas ya escritas allí: son historia comercial y requieren una operación separada con evidencia previa. No hay migración destructiva automática.
 
-## Verificación pendiente tras aprobación
+## Aceptación comercial pendiente y corte de QA
 
-Aplicación y segunda ejecución controlada en desarrollo/QA; confirmar columna y ledger; comprobar marcado/desmarcado/ya marcada/rollback y bitácoras en ambos destinos. La existencia del handler y sus pruebas puras no certifica estos escenarios SQL ni NetSuite real.
+La aplicación QA/RDS y el ledger se registran abajo como evidencia histórica, sin revalidación en esta reconciliación. La aceptación comercial debe comprobar marcado/desmarcado/ya marcada/rollback y bitácoras en ambos destinos. La existencia del handler y sus pruebas puras no certifica estos escenarios SQL ni NetSuite real.
 
 ## Evidencia de aplicación
 

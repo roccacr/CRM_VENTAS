@@ -131,3 +131,39 @@ describe("Personal notes baseline in the effective profile", () => {
         }
     });
 });
+
+describe("effective personal grants across modules and catalogs", () => {
+    it.each(["formalizacion", "mercadeo"])("preserves direct capabilities in %s without matching role grants", async (moduleCode) => {
+        const f = fixture();
+        try {
+            f.state.roles = [role(moduleCode)];
+            f.state.modules = [moduleCode];
+            const codes = ["catalog_bank.read", "catalog_project.read", "calendar.read", "notes.create", "home.stages.read", "orders.read"].map((action) => `${moduleCode}.${action}`);
+            f.state.overrides = codes.map((code) => ({ code, moduleCode, effect: "allow", expiresAt: null }));
+            const profile = await f.repository.findBySessionTokenHash("hash");
+            const internal = await f.repository.findAuthorizationByUserPublicId("user");
+            for (const target of [profile, internal]) {
+                for (const code of codes) expect(target?.permissions).toContainEqual(expect.objectContaining({ code, effect: "allow", source: "override" }));
+            }
+        } finally {
+            await f.db.destroy();
+        }
+    });
+    it("keeps a direct deny and excludes a grant outside the assigned modules", async () => {
+        const f = fixture();
+        try {
+            f.state.roles = [role("formalizacion")];
+            f.state.modules = ["formalizacion"];
+            f.state.rolePermissions = [{ code: "formalizacion.catalog_bank.read", moduleCode: "formalizacion", roleCode: "formalizacion" }];
+            f.state.overrides = [
+                { code: "formalizacion.catalog_bank.read", moduleCode: "formalizacion", effect: "deny", expiresAt: null },
+                { code: "ventas.catalog_bank.read", moduleCode: "ventas", effect: "allow", expiresAt: null },
+            ];
+            const profile = await f.repository.findBySessionTokenHash("hash");
+            expect(profile?.permissions).toContainEqual(expect.objectContaining({ code: "formalizacion.catalog_bank.read", effect: "deny" }));
+            expect(profile?.permissions.some((permission) => permission.code === "ventas.catalog_bank.read")).toBe(false);
+        } finally {
+            await f.db.destroy();
+        }
+    });
+});

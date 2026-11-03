@@ -2,7 +2,7 @@ import { apiRequest } from "../api/api-client";
 import type { ClientHistoryPage } from "../formalization/database-order-service";
 
 export const LEAD_PROFILE_PERMISSION = "lead.profile.read";
-export const LEAD_PROFILE_PATH = "/perfil";
+export const LEAD_PROFILE_PATH = "/home/formalization/perfil";
 export interface LeadIdentity {
     readonly source: "native" | "legacy";
     readonly id: string;
@@ -27,7 +27,32 @@ export interface LeadProfileOrder {
     readonly currency: string | null;
     readonly amount: string | null;
 }
+export interface LeadProfileEvent {
+    readonly id: string;
+    readonly source: "native" | "legacy";
+    readonly title: string | null;
+    readonly type: string | null;
+    readonly status: string | null;
+    readonly date: string | null;
+    readonly startTime: string | null;
+    readonly endTime: string | null;
+}
+export interface LeadProfileEventPage {
+    readonly items: readonly LeadProfileEvent[];
+    readonly hasMore: boolean;
+    readonly page: number;
+}
+export interface LeadProfileCommercialPage {
+    readonly items: readonly { readonly id: string; readonly source: "native" | "legacy"; readonly fields: readonly { readonly code: string; readonly label: string; readonly value: string | null }[] }[];
+    readonly total: number;
+    readonly page: number;
+    readonly hasMore: boolean;
+    readonly available: boolean;
+}
 export interface LeadProfileResult extends LeadIdentity {
+    readonly events?: Readonly<Record<"native" | "legacy", LeadProfileEventPage>>;
+    readonly opportunities?: LeadProfileCommercialPage;
+    readonly estimates?: LeadProfileCommercialPage;
     readonly schemaVersion: 1;
     readonly observedAt: string;
     readonly sources: readonly ("native" | "legacy")[];

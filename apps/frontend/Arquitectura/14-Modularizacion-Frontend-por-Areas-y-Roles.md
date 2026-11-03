@@ -1,5 +1,9 @@
 # 14 - Modularizacion Frontend por Areas y Roles
 
+## Inventario vigente — 03/11/2026
+
+`modules/leads` y `services/leads` contienen el perfil de consulta registrado dentro del workspace Formalización, con alias `/perfil` y permiso global `lead.profile.read`. No exige membresía de un módulo Lead; Roles y seguridad gestiona esa capacidad sin switch de menú y conserva la efectividad del rol concedente. La ubicación visual no entrega un CRUD comercial completo. Calendario Outlook, ocho etapas y marcador Adéndum se precisan en [30](30-Estado-Frontend-Verificado.md), [32](32-Detalle-Orden-y-Cliente-Basico.md) y [Calendario global](Calendario-Global-Frontend.md); los árboles inferiores son direcciones históricas, sin obligación de mover componentes.
+
 ## Árbol y módulos efectivos - 2026-11-02
 
 La separación por rol sigue siendo una regla de contexto y permisos, no carpetas

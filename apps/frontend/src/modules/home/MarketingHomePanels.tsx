@@ -76,8 +76,8 @@ export function MarketingProjects({ cards, periodWord, seller, comparison }: { r
     );
 }
 
-/** Everyone, always: the list is how a seller gets picked, so it ignores the seller filter. */
-export function MarketingSellers({ groups, selected, onSelect, appointmentsAvailable = true, comparisonLabel }: { readonly groups: ReturnType<typeof groupMarketingSample>; readonly selected: readonly string[]; readonly onSelect: (sellers: readonly string[]) => void; readonly appointmentsAvailable?: boolean; readonly comparisonLabel?: string }) {
+/** Desglose informativo: conserva las cifras por vendedor sin filtrar el resumen al pulsarlas. */
+export function MarketingSellers({ groups, appointmentsAvailable = true, comparisonLabel }: { readonly groups: ReturnType<typeof groupMarketingSample>; readonly appointmentsAvailable?: boolean; readonly comparisonLabel?: string }) {
     const maximum = Math.max(1, ...groups.map((group) => group.leads));
     return (
         <section className="marketing-card" aria-labelledby="marketing-sellers-title">
@@ -85,7 +85,7 @@ export function MarketingSellers({ groups, selected, onSelect, appointmentsAvail
                 <div>
                     <h2 id="marketing-sellers-title">
                         Leads por vendedor
-                        <InfoHint label="leads por vendedor">{`Pulsa un vendedor para filtrar el resumen y otra vez para quitarlo.${comparisonLabel ? ` La variación se compara con ${comparisonLabel}.` : ""} El porcentaje con cita usa los leads registrados en el periodo.`}</InfoHint>
+                        <InfoHint label="leads por vendedor">{`Desglose de leads por vendedor para el periodo y los proyectos seleccionados.${comparisonLabel ? ` La variación se compara con ${comparisonLabel}.` : ""} El porcentaje con cita usa los leads registrados en el periodo.`}</InfoHint>
                     </h2>
                 </div>
             </div>
@@ -93,13 +93,7 @@ export function MarketingSellers({ groups, selected, onSelect, appointmentsAvail
             <ul className="marketing-sellers">
                 {groups.map((group) => (
                     <li key={group.name}>
-                        <button
-                            type="button"
-                            aria-pressed={selected.includes(group.name)}
-                            onClick={() => {
-                                onSelect(selected.includes(group.name) ? selected.filter((id) => id !== group.name) : [...selected, group.name]);
-                            }}
-                        >
+                        <div className="marketing-sellers__row">
                             <span className="marketing-sellers__name">{group.label}</span>
                             <span className="marketing-sellers__bar" aria-hidden="true">
                                 <i style={{ width: `${String((group.leads / maximum) * 100)}%` }} />
@@ -107,7 +101,7 @@ export function MarketingSellers({ groups, selected, onSelect, appointmentsAvail
                             <strong>{countFormat.format(group.leads)}</strong>
                             <span className="marketing-sellers__rate">{appointmentsAvailable && group.leads > 0 ? `${percentFormat.format(group.rate)} % con cita` : "—"}</span>
                             <DeltaText delta={group.previousLeads === 0 && group.leads > 0 ? { direction: "flat", text: "Sin leads antes" } : describeChange(group.change, "%")} />
-                        </button>
+                        </div>
                     </li>
                 ))}
             </ul>

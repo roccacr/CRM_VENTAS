@@ -9,7 +9,7 @@ import { CATALOG_CONTEXT_MODULES, CATALOG_PERMISSION_ACTIONS, type CatalogPermis
 import { LEAD_PROFILE_PERMISSION } from "../leads/lead-profile.contract.js";
 import type { IdentityProfile } from "./identity.types.js";
 import { normalizePermissionModule, OPERATIONAL_MODULE_CODES, permissionModuleCodes } from "./identity-module-policy.js";
-import { ACTIVE_STATUS, type IdentityTransaction } from "./identity-repository.shared.js";
+import { ACTIVE_STATUS, ADDENDUM_MARK_PENDING_PERMISSION, type IdentityTransaction } from "./identity-repository.shared.js";
 import { IdentitySessionRepository } from "./identity-session.repository.js";
 
 const INACTIVE_STATUS = "inactive";
@@ -961,7 +961,11 @@ export class IdentityAccessManagementRepository {
     }
 
     private async roleBasePermissions(executor: AccessManagementExecutor, role: RoleRow, policy: { moduleCodes: string[]; moduleScoped: boolean; permissionInheritance: string }) {
-        if (role.code === "owner") return executor.selectFrom("sec_permission").select(["code_permission as code", "module_code_permission as moduleCode"]).where("status_permission", "=", ACTIVE_STATUS).execute();
+        if (role.code === "owner") {
+            const [active, assigned] = await Promise.all([executor.selectFrom("sec_permission").select(["code_permission as code", "module_code_permission as moduleCode"]).where("status_permission", "=", ACTIVE_STATUS).execute(), this.findActiveRolePermissions(executor, role.id)]);
+            // El editor refleja el mismo límite que /identity/me, sin quitar a Owner su administración global.
+            return active.filter((permission) => permission.code !== ADDENDUM_MARK_PENDING_PERMISSION || assigned.some((grant) => grant.code === permission.code));
+        }
         const permissions = await this.findActiveRolePermissions(executor, role.id);
         const allowed = new Set(permissionModuleCodes(policy.moduleCodes));
         const scoped = policy.moduleScoped || policy.permissionInheritance === "selected_modules";
@@ -1045,7 +1049,9 @@ export class IdentityAccessManagementRepository {
         const ownModules = new Set(profile.orgUnits.filter((unit) => unit.status === ACTIVE_STATUS).map((unit) => unit.code));
         /** Effective permission check where any deny wins over allow. */
         const can = (code: string) => profile.permissions.some((permission) => permission.code === code && permission.effect === "allow") && !profile.permissions.some((permission) => permission.code === code && permission.effect === "deny");
-        const outsideAuthority = [roleCodes.some((code) => code === "owner" || !ownRoles.has(code)), moduleCodes.some((code) => !ownModules.has(code)), overrides.some((override) => override.effect === "allow" && !can(override.code))].includes(true);
+        // Administrar asignaciones no exige ejecutar esta acción sensible: la excepción no se extiende a otros permisos.
+        const canDelegate = (code: string) => can(code) || (code === ADDENDUM_MARK_PENDING_PERMISSION && can("role.assign"));
+        const outsideAuthority = [roleCodes.some((code) => code === "owner" || !ownRoles.has(code)), moduleCodes.some((code) => !ownModules.has(code)), overrides.some((override) => override.effect === "allow" && !canDelegate(override.code))].includes(true);
         if (outsideAuthority) throw new ForbiddenException("No puedes delegar acceso fuera de tu autoridad efectiva.");
         const selected = new Set(moduleCodes);
         for (const code of roleCodes) {
@@ -1193,6 +1199,7 @@ export class IdentityAccessManagementRepository {
     /** Decides which view a permission belongs to, keeping existing permission codes unchanged. */
     private resolvePermissionViewCode(permissionCode: string, moduleCode: string): string {
         if (permissionCode === LEAD_PROFILE_PERMISSION) return "profile";
+        if (permissionCode === "formalizacion.calendar.assign_lead") return "calendar";
         const parts = permissionCode.split(".");
         if (/^(?:[^.]+\.notes\.|formalizacion\.home\.|mercadeo\.(?:home|leads|calendar)\.read$)/u.test(permissionCode)) return parts[1] as string;
         // One order workspace, preserving the exact existing permission codes and grants.
@@ -1342,6 +1349,7 @@ export class IdentityAccessManagementRepository {
             "mercadeo.reports.read_all": "Consultar todos los vendedores de Mercadeo",
             "mercadeo.leads.read": "Ver Captación de leads",
             "mercadeo.calendar.read": "Ver Calendario",
+            "formalizacion.calendar.assign_lead": "Asignar evento a un lead",
             "formalizacion.home.approvals.read": "Banner pendiente de aprobaci\u00f3n de Formalizaci\u00f3n",
             "formalizacion.home.stages.read": "Banners de etapas de Formalizaci\u00f3n",
             "formalizacion.home.contracts.read": "Ver contratos de Formalización",
@@ -1352,6 +1360,11 @@ export class IdentityAccessManagementRepository {
             "formalizacion.home.closed.read": "Ver cierres anuales de Formalización",
             "formalizacion.orders.approve": "Aprobar Formalización",
             "formalizacion.orders.read": "Ver orden de venta",
+            "formalizacion.orders.whatsapp": "Ir a WhatsApp",
+            "formalizacion.orders.addendum.update": "Gestionar estado de adéndum",
+            "formalizacion.orders.addendum.mark_pending": "Marcar adéndum pendiente",
+            "formalizacion.orders.addendum.read": "Ver adéndum en la orden",
+            "formalizacion.home.addendum.read": "Ver banner de adéndum",
             "formalizacion.contracts.send": "Registrar envio de contrato",
             "formalizacion.contracts.revert": "Revertir envio de contrato",
             "formalizacion.orders.stage.pending_approval": "Devolver a pendientes de aprobación",
@@ -1371,6 +1384,8 @@ export class IdentityAccessManagementRepository {
             "estimate.read": "Ver estimaciones",
             "file.read": "Ver expedientes",
             "invoice.read": "Ver facturas",
+            "formalizacion.orders.documents.read": "Consultar documentos de la orden",
+            "formalizacion.orders.documents.write": "Subir archivos y crear carpetas de la orden",
             "lead.profile.read": "Ver perfil completo del lead",
             "lead.assign": "Asignar responsable",
             "lead.create": "Crear lead",

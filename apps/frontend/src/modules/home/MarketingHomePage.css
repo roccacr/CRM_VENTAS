@@ -1116,7 +1116,7 @@
     list-style: none;
 }
 
-.marketing-sellers button {
+.marketing-sellers__row {
     display: grid;
     grid-template-columns: 110px minmax(80px, 1fr) 60px 130px 90px;
     align-items: center;
@@ -1132,19 +1132,10 @@
     font: inherit;
     font-size: 13px;
     text-align: left;
-    cursor: pointer;
+    cursor: default;
 }
 
-.marketing-sellers button:hover {
-    background: #f5f7fa;
-}
-
-.marketing-sellers button[aria-pressed="true"] {
-    border-color: #496180;
-    background: #f7f9fc;
-}
-
-.marketing-sellers button strong {
+.marketing-sellers__row strong {
     font-variant-numeric: tabular-nums;
     text-align: right;
 }
@@ -1166,11 +1157,6 @@
 .marketing-sellers__rate {
     color: #596779;
     font-size: 12px;
-}
-
-.marketing-sellers button:focus-visible {
-    outline: 2px solid #496180;
-    outline-offset: 2px;
 }
 
 @media (max-width: 767px) {
@@ -1197,7 +1183,7 @@
         height: 220px;
     }
 
-    .marketing-sellers button {
+    .marketing-sellers__row {
         grid-template-columns: 1fr 50px;
         row-gap: 6px;
     }
@@ -1208,7 +1194,7 @@
     }
 
     .marketing-sellers__rate,
-    .marketing-sellers button .marketing-delta {
+    .marketing-sellers__row .marketing-delta {
         grid-column: 1 / -1;
     }
 }

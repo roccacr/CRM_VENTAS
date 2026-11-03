@@ -88,6 +88,8 @@ export interface CrmLeadTable {
     initial_comment_lead: string | null;
     initial_contact_template_sent_lead: Generated<0 | 1>;
     has_related_lead_lead: Generated<0 | 1>;
+    /** Explicit qualification flag; independent from commercial status or interest. */
+    is_qualified_lead: Generated<0 | 1>;
     version_lead: Generated<number>;
     source_created_at_lead: DateTime | null;
     source_updated_at_lead: DateTime | null;

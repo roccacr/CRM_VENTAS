@@ -1,5 +1,11 @@
 # 41 - Owner: herencia efectiva y denegaciones
 
+## Excepción vigente del comodín — 2026-11-03
+
+La regla global de Owner conserva una excepción: `formalizacion.orders.addendum.mark_pending` exige un grant activo de un rol realmente asignado o un `allow` personal vigente. Heredar virtualmente Jefe de Formalizaciones no basta. La migración 067 agrega grants reales por defecto a `owner`, `jefe_general` y `jefe_formalizaciones`; no a `formalizacion`. Un `deny` personal prevalece también sobre esos grants. El perfil y el editor reflejan esta excepción; `role.assign` permite administrar su asignación personal sin conceder por ello la acción. Contrato y evidencia histórica: [84](84-Adendum-Manual-Migracion-066-y-Permisos.md).
+
+Esta regla sustituye las afirmaciones universales de «todos los permisos» del corte 027 inferior. No cambia la herencia de los demás permisos ni convierte la revisión documental en aplicación de 067 o despliegue.
+
 Actualizacion posterior: [42 - Jefaturas](42-Jefaturas-Modulos-y-Permisos.md)
 agrega la resolucion virtual de modulos activos Owner, manteniendo denies y
 asignaciones fisicas. Los resultados de 027 de este documento son su corte

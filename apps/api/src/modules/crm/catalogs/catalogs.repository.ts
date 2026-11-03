@@ -92,6 +92,7 @@ export class CatalogsRepository {
      * Proyectos se rechaza para no devolverlos como si vivieran en `crm_catalog_item`.
      */
     async listCatalogItems(input: { catalogCode: CatalogRouteCode; limit?: number; offset?: number; search?: string; status?: CatalogStatus }): Promise<CatalogItemsResponse> {
+        if (input.catalogCode === "banks") throw new BadRequestException("Use the Banks module.");
         if (input.catalogCode === "brokers") throw new BadRequestException("Use the Brokers module.");
         if (input.catalogCode === "projects") throw new BadRequestException("Use the Projects module.");
         if (input.catalogCode === "campaigns") throw new BadRequestException("Use the Campaigns module.");
@@ -152,6 +153,7 @@ export class CatalogsRepository {
      * El ULID es la identidad pública. El código nativo solo la repite con el prefijo del catálogo.
      */
     async createCatalogItem(input: CatalogMutationInput): Promise<CatalogItem> {
+        if (input.catalogCode === "banks") throw new BadRequestException("Use the Banks module.");
         if (input.catalogCode === "brokers") throw new BadRequestException("Use the Brokers module.");
         if (input.catalogCode === "projects") throw new BadRequestException("Use the Projects module.");
         if (input.catalogCode === "campaigns") throw new BadRequestException("Use the Campaigns module.");
@@ -209,6 +211,7 @@ export class CatalogsRepository {
      * Las que salen del cuerpo se archivan. No se borran, porque la clave única incluye filas archivadas.
      */
     async updateCatalogItem(itemPublicId: string, input: CatalogMutationInput): Promise<CatalogItem | null> {
+        if (input.catalogCode === "banks") throw new BadRequestException("Use the Banks module.");
         if (input.catalogCode === "brokers") throw new BadRequestException("Use the Brokers module.");
         if (input.catalogCode === "projects") throw new BadRequestException("Use the Projects module.");
         if (input.catalogCode === "campaigns") throw new BadRequestException("Use the Campaigns module.");
@@ -264,6 +267,7 @@ export class CatalogsRepository {
      * Inactivar guarda actor y fecha. Reactivar los limpia para no dejar un cierre vigente.
      */
     async updateCatalogItemStatus(input: CatalogStatusMutationInput): Promise<CatalogItem | null> {
+        if (input.catalogCode === "banks") throw new BadRequestException("Use the Banks module.");
         if (input.catalogCode === "brokers") throw new BadRequestException("Use the Brokers module.");
         if (input.catalogCode === "projects") throw new BadRequestException("Use the Projects module.");
         if (input.catalogCode === "campaigns") throw new BadRequestException("Use the Campaigns module.");

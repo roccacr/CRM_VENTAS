@@ -1,7 +1,7 @@
 import { type Kysely, sql } from "kysely";
 import { ulid } from "ulid";
 
-const roleCodes = ["formalizacion"] as const;
+const roleCodes = ["owner", "formalizacion", "jefe_formalizaciones", "jefe_general"] as const;
 const permission = {
     code: "lead.profile.read",
     module: "lead",
@@ -19,10 +19,10 @@ async function assertNativeTables(tx: Kysely<unknown>): Promise<void> {
     if (tables.rows.length !== requiredTables.length || !requiredTables.every((name) => tables.rows.some((table) => table.table_name === name && table.table_type === "BASE TABLE" && table.engine === "InnoDB"))) throw new Error("Lead profile permission requires native InnoDB security tables");
 }
 
-/** Exige el rol base activo sin cambiar su política de herencia. */
+/** Exige los cuatro roles autorizados activos sin cambiar su política de herencia. */
 async function readActiveRoles(tx: Kysely<unknown>): Promise<{ id: number; code: string }[]> {
     const roles = (await sql<{ id: number; code: string; status: string; deleted: Date | null }>`SELECT id_role AS id,code_role AS code,status_role AS status,deleted_at_role AS deleted FROM sec_role WHERE code_role IN (${sql.join(roleCodes)}) FOR UPDATE`.execute(tx)).rows;
-    if (roles.length !== roleCodes.length || !roleCodes.every((code) => roles.filter((role) => role.code === code && role.status === "active" && !role.deleted).length === 1)) throw new Error("Lead profile permission requires active Formalización base role");
+    if (roles.length !== roleCodes.length || !roleCodes.every((code) => roles.filter((role) => role.code === code && role.status === "active" && !role.deleted).length === 1)) throw new Error("Lead profile permission requires all authorized active roles");
     return roles;
 }
 
@@ -55,7 +55,7 @@ export const leadProfilePermissionMigration = {
             if (!permissionExists) await sql`INSERT INTO sec_permission (code_permission,module_code_permission,action_code_permission,description_permission,status_permission) VALUES (${permission.code},${permission.module},${permission.action},${permission.description},${permission.status})`.execute(tx);
             for (const role of missing) await sql`INSERT INTO sec_role_permission (role_id_role_permission,permission_id_role_permission,status_role_permission) SELECT ${role.id},id_permission,'active' FROM sec_permission WHERE code_permission=${permission.code}`.execute(tx);
             if (missing.length) await sql`UPDATE sec_user u SET permission_version_user=permission_version_user+1 WHERE EXISTS (SELECT 1 FROM sec_user_role ur WHERE ur.user_id_user_role=u.id_user AND ur.role_id_user_role IN (${sql.join(missing.map((role) => role.id))}) AND ur.status_user_role='active' AND ur.revoked_at_user_role IS NULL)`.execute(tx);
-            await sql`INSERT INTO audit_security_event (public_id_security_event,event_type_security_event,actor_user_id_security_event,summary_security_event,reason_security_event,metadata_security_event) VALUES (${ulid()},'role_permissions_replaced',${actor.id},'Permiso Ver perfil completo del lead habilitado como lectura global.','Asignación al rol Formalización; configuración independiente y excepciones individuales intactas.',${JSON.stringify({ migration: leadProfilePermissionMigration.name, moduleCode: "administration", sectionCode: "roles", actor: { publicId: actor.publicId, name: actor.name }, changeSet: { version: 1, entity: "permission", recordId: permission.code, action: permissionExists ? "update" : "create", before: { roleCodes: roles.filter((role) => grants.some((grant) => grant.role === role.id && grant.status === "active")).map((role) => role.code) }, after: { roleCodes: roles.filter((role) => missing.some((candidate) => candidate.id === role.id) || grants.some((grant) => grant.role === role.id && grant.status === "active")).map((role) => role.code) } } })})`.execute(
+            await sql`INSERT INTO audit_security_event (public_id_security_event,event_type_security_event,actor_user_id_security_event,summary_security_event,reason_security_event,metadata_security_event) VALUES (${ulid()},'role_permissions_replaced',${actor.id},'Permiso Ver perfil completo del lead habilitado como lectura global.','Asignación a Owner, Formalización, Jefe de Formalizaciones y Jefe General; excepciones individuales intactas.',${JSON.stringify({ migration: leadProfilePermissionMigration.name, moduleCode: "administration", sectionCode: "roles", actor: { publicId: actor.publicId, name: actor.name }, changeSet: { version: 1, entity: "permission", recordId: permission.code, action: permissionExists ? "update" : "create", before: { roleCodes: roles.filter((role) => grants.some((grant) => grant.role === role.id && grant.status === "active")).map((role) => role.code) }, after: { roleCodes: roles.filter((role) => missing.some((candidate) => candidate.id === role.id) || grants.some((grant) => grant.role === role.id && grant.status === "active")).map((role) => role.code) } } })})`.execute(
                 tx,
             );
         });

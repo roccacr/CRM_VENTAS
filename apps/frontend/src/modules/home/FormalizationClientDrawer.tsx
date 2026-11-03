@@ -5,21 +5,44 @@ import "../administration/catalogs/EnterpriseSurface.css";
 import "./FormalizationClientDrawer.css";
 
 import UserOutlined from "@ant-design/icons/UserOutlined";
+import WhatsAppOutlined from "@ant-design/icons/WhatsAppOutlined";
 import Button from "antd/es/button";
 import Card from "antd/es/card";
 import Descriptions from "antd/es/descriptions";
 import Drawer from "antd/es/drawer";
 import Typography from "antd/es/typography";
-import { Fragment, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 
 import type { FollowUpItem } from "../../services/formalization/follow-up-service";
 import { getOrderClientDetail, type OrderClientDetail } from "../../services/formalization/order-client-service";
+import { normalizeWhatsAppPhone } from "../../services/formalization/whatsapp-phone";
 import { canReadLeadProfile, leadProfilePath } from "../../services/leads/lead-profile-service";
 import { ADMINISTRATION_DRAWER_CLOSE_PLACEMENT, ADMINISTRATION_DRAWER_PROPS } from "../administration/administration-theme";
-import { FormalizationClientHistory } from "./FormalizationClientHistory";
 import { FormalizationDrawerLoading } from "./FormalizationDrawerLoading";
+import { FormalizationScheduleEvent } from "./FormalizationScheduleEvent";
 
-function ClientContent({ item, onRetry, effectivePermissions }: { readonly item: FollowUpItem; readonly onRetry: () => void; readonly effectivePermissions: readonly { readonly code: string; readonly effect: string }[] }) {
+interface ClientContentProps {
+    readonly onCalendarClosed?: (() => void) | undefined;
+    readonly item: FollowUpItem;
+    readonly contactOnly?: boolean;
+    readonly onNavigate?: ((path: string) => void) | undefined;
+    readonly effectivePermissions: readonly { readonly code: string; readonly effect: string }[];
+}
+/** Cada orden y reintento monta una lectura nueva; una respuesta anterior nunca cambia el cliente visible. */
+export function FormalizationClientContent(props: ClientContentProps) {
+    const [attempt, setAttempt] = useState(0);
+    return (
+        <ClientContent
+            key={`${props.item.source}:${props.item.id}:${String(attempt)}`}
+            {...props}
+            onRetry={() => {
+                setAttempt((value) => value + 1);
+            }}
+        />
+    );
+}
+
+function ClientContent({ item, onRetry, effectivePermissions, onNavigate, onCalendarClosed, contactOnly = false }: ClientContentProps & { readonly onRetry: () => void }) {
     const [data, setData] = useState<OrderClientDetail | null>(null);
     const [failed, setFailed] = useState(false);
     useEffect(() => {
@@ -43,23 +66,50 @@ function ClientContent({ item, onRetry, effectivePermissions }: { readonly item:
                 <Button onClick={onRetry}>Reintentar</Button>
             </div>
         );
-    if (!data) return <FormalizationDrawerLoading label="Información del cliente" title="Cargando información del cliente…" cards={[3, 4, 3]} />;
+    if (!data) return <FormalizationDrawerLoading label="Información del cliente" title="Cargando información del cliente…" cards={[3]} />;
     if (data.warnings.length > 0) return <p role="status">La relación con el cliente no está disponible o es ambigua. No se seleccionó otro cliente.</p>;
     return (
         <div className="user-detail-drawer__sections">
-            {canReadLeadProfile(effectivePermissions) && data.leadIdentity && (
-                <Button href={leadProfilePath(data.leadIdentity)} icon={<UserOutlined aria-hidden="true" />}>
-                    Ver perfil del cliente
-                </Button>
-            )}
-            {data.groups.map((group) => (
-                <Fragment key={group.title}>
-                    <Card size="small" title={group.title}>
+            <div className="record-actions">
+                <WhatsAppAction data={data} permissions={effectivePermissions} />
+                <FormalizationScheduleEvent key={`${item.source}:${item.id}`} item={item} effectivePermissions={effectivePermissions} onClosed={onCalendarClosed} />
+                {canReadLeadProfile(effectivePermissions) && data.leadIdentity && (
+                    <Button
+                        href={leadProfilePath(data.leadIdentity)}
+                        onClick={(event) => {
+                            if (!onNavigate || !data.leadIdentity || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey || event.button !== 0) return;
+                            // La navegación interna conserva la sesión; los accesos directos siguen protegidos por la ruta.
+                            event.preventDefault();
+                            onNavigate(leadProfilePath(data.leadIdentity));
+                        }}
+                        icon={<UserOutlined aria-hidden="true" />}
+                    >
+                        Ver perfil del cliente
+                    </Button>
+                )}
+            </div>
+            {/* El resumen presenta únicamente grupos del cliente; los datos de la orden y el expediente pertenecen a sus propias vistas. */}
+            {data.groups
+                .filter((group) => !contactOnly || group.title === "Contacto")
+                .map((group) => (
+                    <Card key={group.title} size="small" title={group.title}>
                         <Descriptions column={1} colon={false} size="small" items={group.fields.map((field) => ({ key: field.label, label: field.label, children: field.value === "Sin dato" ? <span className="client-detail__empty">Sin dato</span> : field.value }))} />
                     </Card>
-                    {group.title === "Captación y seguimiento" && <FormalizationClientHistory initial={data.history ?? null} identity={{ source: item.source, id: item.id }} />}
-                </Fragment>
-            ))}
+                ))}
+        </div>
+    );
+}
+
+function WhatsAppAction({ data, permissions }: { readonly data: OrderClientDetail; readonly permissions: ClientContentProps["effectivePermissions"] }) {
+    const matches = permissions.filter((permission) => permission.code === "formalizacion.orders.whatsapp");
+    if (!matches.some((permission) => permission.effect === "allow") || matches.some((permission) => permission.effect === "deny")) return null;
+    const phone = normalizeWhatsAppPhone(data.phone, data.countryCode);
+    return (
+        <div>
+            <Button icon={<WhatsAppOutlined aria-hidden="true" />} {...(phone ? { href: `https://web.whatsapp.com/send?phone=${phone}` } : {})} target="_blank" rel="noopener noreferrer" disabled={!phone}>
+                Ir a WhatsApp
+            </Button>
+            {!phone && <p role="status">El cliente no tiene un teléfono válido para WhatsApp. Usa un solo número con prefijo internacional; para Costa Rica se aceptan 8 dígitos.</p>}
         </div>
     );
 }
@@ -89,8 +139,7 @@ function ClientIdentity({ item }: { readonly item: FollowUpItem }) {
 }
 
 /** Shared right-hand drawer appearance, with a fresh authorized read on every opening. */
-export function FormalizationClientDrawer({ item, open, onClose, effectivePermissions = [] }: { readonly item: FollowUpItem; readonly open: boolean; readonly onClose: () => void; readonly effectivePermissions?: readonly { readonly code: string; readonly effect: string }[] }) {
-    const [attempt, setAttempt] = useState(0);
+export function FormalizationClientDrawer({ item, open, onClose, effectivePermissions = [], onNavigate, onCalendarClosed }: { readonly item: FollowUpItem; readonly open: boolean; readonly onClose: () => void; readonly onNavigate?: ((path: string) => void) | undefined; readonly onCalendarClosed?: (() => void) | undefined; readonly effectivePermissions?: readonly { readonly code: string; readonly effect: string }[] }) {
     return (
         <Drawer
             {...ADMINISTRATION_DRAWER_PROPS}
@@ -103,14 +152,7 @@ export function FormalizationClientDrawer({ item, open, onClose, effectivePermis
             closable={{ "aria-label": "Cerrar detalle del cliente", placement: ADMINISTRATION_DRAWER_CLOSE_PLACEMENT }}
             styles={{ ...ADMINISTRATION_DRAWER_PROPS.styles, wrapper: { ...ADMINISTRATION_DRAWER_PROPS.styles.wrapper, maxWidth: "100vw" }, body: { minHeight: 0, overflowY: "auto", overscrollBehavior: "contain" } }}
         >
-            <ClientContent
-                key={item.source + ":" + item.id + ":" + String(attempt)}
-                item={item}
-                effectivePermissions={effectivePermissions}
-                onRetry={() => {
-                    setAttempt((value) => value + 1);
-                }}
-            />
+            <FormalizationClientContent item={item} onNavigate={onNavigate} effectivePermissions={effectivePermissions} onCalendarClosed={onCalendarClosed} />
         </Drawer>
     );
 }

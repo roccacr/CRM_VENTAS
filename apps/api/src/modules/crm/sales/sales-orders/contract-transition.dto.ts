@@ -8,8 +8,11 @@ const publicIdPattern = /^[0-7][0-9A-HJKMNP-TV-Z]{25}$/;
 const operationPattern = /^(?:[0-7][0-9A-HJKMNP-TV-Z]{25}|[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/i;
 /** Transitions available from the contract queues. */
 export type ContractAction = "send" | "revert" | "set";
-/** Ordered CRM stages after all approvals; this order also determines reversals. */
-export const FORMALIZATION_STAGE_CODES = ["contract_pending_send", "contract_pending_signature", "bank_management", "pending_balance", "pending_transfer", "transfer_signed", "closed"] as const;
+/** Ordered CRM stages after Formalization approval; this order also determines reversals. */
+export const FORMALIZATION_STAGE_CODES = ["contract_pending_send", "contract_pending_signature", "bank_management", "bank_management_in_progress", "pending_balance", "pending_transfer", "transfer_signed", "closed"] as const;
+
+export const PURCHASE_FUNDS_ORIGINS = ["own_funds", "bank_financing"] as const;
+export type PurchaseFundsOrigin = (typeof PURCHASE_FUNDS_ORIGINS)[number];
 
 /** The route fixes the action; source IDs never permit arbitrary SQL identifiers. */
 export class ContractTransitionDto {
@@ -36,6 +39,10 @@ export class ContractTransitionDto {
     reason?: string;
 
     @IsOptional()
+    @IsIn(PURCHASE_FUNDS_ORIGINS)
+    purchaseFundsOrigin?: PurchaseFundsOrigin | undefined;
+
+    @IsOptional()
     @IsIn(FORMALIZATION_STAGE_CODES)
     targetState?: (typeof FORMALIZATION_STAGE_CODES)[number] | undefined;
 }
@@ -60,6 +67,7 @@ export function validateContractTransition(input: unknown, action: ContractActio
     if (input === null || typeof input !== "object" || Array.isArray(input)) throw new BadRequestException("Invalid contract transition");
     const dto = plainToInstance(ContractTransitionDto, input);
     if (validateSync(dto, { whitelist: true, forbidNonWhitelisted: true }).length) throw new BadRequestException("Invalid contract transition");
+    if (Reflect.get(input, "purchaseFundsOrigin") === null) throw new BadRequestException("Invalid purchase funds origin");
     contractTarget({ action, targetState: dto.targetState });
     if (action !== "set" && dto.targetState !== undefined) throw new BadRequestException("Target stage only applies to selection");
     assertContractIdentity(dto, action);

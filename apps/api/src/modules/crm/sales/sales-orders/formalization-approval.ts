@@ -6,7 +6,6 @@ import { z } from "zod";
 import type { CookieRequest } from "../../../../common/security/cookie-request.type.js";
 import { SESSION_COOKIE_NAME } from "../../../../common/security/http-security.constants.js";
 import { RequirePermission } from "../../../../common/security/require-permission.decorator.js";
-import { hasFormalizationRole } from "../../../../common/security/route-permission.js";
 import { RouteSecurity } from "../../../../common/security/route-security.decorator.js";
 import { IdentityService } from "../../identity/identity.service.js";
 import { formalizationPermissionScope } from "./follow-up.service.js";
@@ -27,7 +26,7 @@ export class FormalizationApprovalService {
     /** The banner read grant never authorizes this mutation; individual denies still prevail. */
     async approve(session: string | undefined, input: unknown) {
         const profile = await this.identity.getCurrentUser(session);
-        if (!hasFormalizationRole(profile) || !formalizationPermissionScope(profile, "formalizacion.orders.approve").allowed) throw new ForbiddenException("No tiene permiso para aprobar Formalización.");
+        if (!formalizationPermissionScope(profile, "formalizacion.orders.approve").allowed) throw new ForbiddenException("No tiene permiso para aprobar Formalización.");
         const request = approvalRequest.safeParse(input);
         if (!request.success || !orderTimingIdentity.safeParse(request.data).success) throw new BadRequestException("Solicitud de aprobación inválida.");
         const target = orderTimingIdentity.parse(request.data);

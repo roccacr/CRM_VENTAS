@@ -1,5 +1,21 @@
 # Calendario: participantes y vínculos — 2026-10-29
 
+## Ampliación vigente — 2026-11-03
+
+El corte29 inferior conserva su evidencia; el contrato actual de
+[64](64-Calendario-Global-API-y-Contexto.md) incorpora Graph conectado, publicación
+condicionada de invitaciones/Teams y entrega independiente del guardado CRM.
+No implica aceptación externa nueva. Notas admite propias/compartidas accesibles,
+abiertas o completadas, sin exigir asignación de tarea. El lookup admite filtro
+`leads` con hasta20 identidades autorizadas; orden solo expone su cliente si es
+único y legible. Guardar revalida las relaciones y pertenencia orden/cliente.
+Adéndum exige exactamente una orden y su cliente y congela sus identidades;
+[83](83-Adendum-Migracion-065-y-Rollback.md) documenta el marcador y bloqueo de otro
+evento futuro. El permiso `formalizacion.calendar.assign_lead` protege nuevas
+asignaciones incluso por API directa; notas y otros módulos conservan su regla.
+
+El selector carga una lista inicial acotada de leads autorizados. Tras elegir un lead, consulta sus órdenes autorizadas sin exigir texto adicional. Solo una orden en la consulta sin filtro permite selección automática; con varias, la elección es manual, incluso si una búsqueda posterior devuelve una única coincidencia. Las respuestas tardías no cambian el lead actual ni sustituyen una orden ya seleccionada. Una búsqueda escrita de un carácter pide al menos dos; buscar órdenes sin lead también requiere dos caracteres. Se mantienen límites, ACL y validación al guardar.
+
 ## Contraste del código - 2026-11-02
 
 `CalendarController` registra `GET /calendar/lookup` y `CalendarLookupService`
@@ -51,3 +67,12 @@ Una nota vinculada conserva su estado y sus participantes. Completar un evento n
 En la última verificación pasaron `pnpm typecheck`, `pnpm build` y `pnpm lint` del API, además de `pnpm build` del frontend, que incluye TypeScript. Vite conserva una advertencia de tamaño del chunk compartido de Ant Design. Las primeras compilaciones habían fallado por errores de Notas en archivos concurrentes; tras modificarse esos archivos se repitieron las compilaciones y quedaron aprobadas, sin editar Notas desde este corte. La corrida global frontend previa había detectado una regresión de Enter en su buscador de Notas; no se repitió esa corrida global ni se declara resuelta desde las 38 pruebas enfocadas de calendario.
 
 Outlook, envíos de correo y creación de reuniones Teams siguen pendientes deliberadamente. La preferencia y los correos se registran solamente en el CRM.
+
+### Avisos y autoria vigentes (03/11/2026)
+
+Los avisos internos de invitacion/actualizacion ya se escriben junto al evento y se consultan/marcan leidos por destinatario de sesion; no equivalen a envio o respuesta de Exchange. La participacion vigente y los denies se revalidan en cada lectura. Solo el organizador edita el evento, incluso con alcance amplio. Correos de clientes vinculados se resuelven bajo ACL al guardar, sin confiar en datos de contacto del navegador. Contrato y limites de validacion: [avisos nativos](64-Calendario-Global-API-y-Contexto.md). Este corte es revision estatica del desarrollo concurrente, sin pruebas de notificaciones ejecutadas.
+
+### Cruce frontend del corte 2026-11-03 16:02:13.527338 UTC
+
+Los avisos tienen consumidor en `NoteNotifications.tsx`: hook, contador y lista de calendario funcionan independientemente de `enabled` de notas. No se certificó entrega real. La edición propia de Outlook tiene API/editor implementados, pero el parser `calendar-service.ts:231` aún rechaza `source=outlook` con `canEdit:true`; el servidor puede emitir esa combinación autorizada. Esa incompatibilidad bloquea el recorrido afectado al corte y evita afirmar aceptación E2E. Véase [contrato y brecha](64-Calendario-Global-API-y-Contexto.md). Cambios posteriores quedan excluidos.
+

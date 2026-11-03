@@ -27,7 +27,7 @@ export function agendaStats(events: readonly CalendarEvent[], today: string, cal
 /** The next events from today on, soonest first, for the side agenda. */
 export function upcomingEvents(events: readonly CalendarEvent[], today: string, limit: number): readonly CalendarEvent[] {
     return events
-        .filter((event) => active(event) && localDay(event) >= today)
+        .filter((event) => event.status === "scheduled" && localDay(event) >= today)
         .sort((a, b) => a.start.localeCompare(b.start))
         .slice(0, limit);
 }

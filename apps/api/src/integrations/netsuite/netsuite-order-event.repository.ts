@@ -4,18 +4,22 @@ import { sql, type Transaction } from "kysely";
 
 import { DatabaseService } from "../../database/database.service.js";
 import type { CrmDatabase } from "../../database/database.types.js";
-import { captureIntegrationAuditActor } from "../../modules/crm/audit/audit-actor.js";
+import { type AuditActorSnapshot, captureIntegrationAuditActor } from "../../modules/crm/audit/audit-actor.js";
 import { RecordAuditService } from "../../modules/crm/audit/record-audit.service.js";
 import type { PersistedOrderEvent } from "./netsuite-order-event.contract.js";
 import { mapOrderFields, mapOrderFlags, nativeRelationReferences, orderApprovalMappings, type OrderEventChange, type OrderEventDestination, orderFieldMappings, orderFlagMappings, orderNumberMapping, orderRelationMappings, readOrderRelationValues } from "./netsuite-order-event.mapper.js";
 import { isStaleOrderObservation, type PreviousOrderObservation } from "./netsuite-order-event.ordering.js";
+import { advancePaidInstallments, PAID_INSTALLMENTS_STAGE_FIELD } from "./netsuite-paid-installments.handler.js";
 import { CANCELLATION_DATE_FIELD, CANCELLATION_DATE_NATIVE, planSalesOrderCancellation } from "./netsuite-sales-order-cancellation.handler.js";
 
 export type OrderEventResult = { result: "applied" | "unchanged" | "not_found" | "stale"; destination: OrderEventDestination | null; orderId: string | null; changes: OrderEventChange[]; duplicate: boolean };
-export type OrderEventIdentity = { payloadHash: string; snapshotHash: string };
+export type OrderEventIdentity = { payloadHash: string; snapshotHash: string; actor?: AuditActorSnapshot | undefined };
 type Target = { destination: OrderEventDestination; id: string; row: Record<string, unknown> };
 type EventAudit = { destination: OrderEventDestination | null; orderId: string | null; changes: OrderEventChange[]; result: OrderEventResult["result"] | "error"; error?: string };
 type EventTransaction = Transaction<CrmDatabase>;
+export interface ManualOrderSynchronization {
+    authorize(tx: EventTransaction, target: { destination: OrderEventDestination; id: string }): Promise<AuditActorSnapshot>;
+}
 /** Conserva el destino y diff intentado aunque la transaccion comercial termine en rollback. */
 export class OrderEventPersistenceError extends Error {
     /**
@@ -40,7 +44,7 @@ export class NetsuiteOrderEventRepository {
     ) {}
 
     /** Bloquea por orden antes de comprobar reenvios, resolver autoridad y calcular diferencias. */
-    async apply(event: PersistedOrderEvent, identity: OrderEventIdentity): Promise<OrderEventResult> {
+    async apply(event: PersistedOrderEvent, identity: OrderEventIdentity, manual?: ManualOrderSynchronization): Promise<OrderEventResult> {
         let context: EventAudit = { result: "error", destination: null, orderId: null, changes: [] };
         return this.database.db
             .transaction()
@@ -53,6 +57,7 @@ export class NetsuiteOrderEventRepository {
                 const stale = isStaleOrderObservation({ event, cursor, hash: identity.snapshotHash, previous });
                 if (stale) return this.complete(tx, event, identity, { result: "stale", destination: null, orderId: null, changes: [], duplicate: false });
                 const target = await this.resolve(tx, event.event.netsuiteId);
+                const actor = await this.authorizeManual(tx, target, manual);
                 context = { result: "error", destination: target?.destination ?? null, orderId: target?.id ?? null, changes: [] };
                 if (target) {
                     context.changes = await this.planChanges(tx, event, target);
@@ -60,7 +65,8 @@ export class NetsuiteOrderEventRepository {
                     context.changes.push(...(await this.planRelations(tx, event, target)));
                 }
                 const result = await this.update(tx, target, context.changes, event);
-                await this.complete(tx, event, identity, result);
+                await this.advanceInstallments(tx, event, target, result);
+                await this.complete(tx, event, { ...identity, actor }, result);
                 await sql`UPDATE int_netsuite_order_cursor SET source_modified_ms=${observed}, snapshot_hash=${identity.snapshotHash} WHERE account_id=${event.source.accountId} AND netsuite_id=${event.event.netsuiteId}`.execute(tx);
                 return result;
             })
@@ -69,10 +75,25 @@ export class NetsuiteOrderEventRepository {
             });
     }
 
+    /** Manual requests must still resolve a destination before any field update. */
+    private async authorizeManual(tx: EventTransaction, target: Target | null, manual?: ManualOrderSynchronization) {
+        if (!manual) return undefined;
+        if (!target) throw new ConflictException("La orden ya no esta disponible para sincronizar.");
+        return manual.authorize(tx, target);
+    }
+    /** Los flags y la etapa opcional comparten transaccion, cursor y recibo tecnico. */
+    private async advanceInstallments(tx: EventTransaction, event: PersistedOrderEvent, target: Target | null, result: OrderEventResult): Promise<void> {
+        if (!target) return;
+        const stageChange = await advancePaidInstallments(tx, this.audit, { event, target, changes: result.changes });
+        if (!stageChange) return;
+        result.changes.push(stageChange);
+        result.result = "applied";
+    }
+
     /** El rollback comercial no debe borrar la evidencia del error. No incluye SQL ni credenciales. */
     async recordError(event: PersistedOrderEvent, identity: OrderEventIdentity, message: string, context?: EventAudit): Promise<void> {
         await this.database.db.transaction().execute(async (tx) => {
-            await this.writeAudit(tx, event, identity.payloadHash, { result: "error", destination: context?.destination ?? null, orderId: context?.orderId ?? null, changes: context?.changes ?? [], error: message });
+            await this.writeAudit(tx, event, identity, { result: "error", destination: context?.destination ?? null, orderId: context?.orderId ?? null, changes: context?.changes ?? [], error: message });
         });
     }
 
@@ -196,7 +217,7 @@ export class NetsuiteOrderEventRepository {
         return { result: "applied", destination: target.destination, orderId: target.id, changes, duplicate: false };
     }
 
-    /** Las aprobaciones conservan su version e historial; observar el ERP no mueve la etapa del CRM. */
+    /** Las aprobaciones conservan su version e historial; el avance por cuotas pagadas se audita por separado. */
     private async updateRelated(tx: EventTransaction, target: Target, changes: OrderEventChange[], event: PersistedOrderEvent): Promise<void> {
         for (const change of changes) {
             if (change.field === orderNumberMapping.netsuite) {
@@ -230,7 +251,7 @@ export class NetsuiteOrderEventRepository {
                 after_status_sales_order_approval_event: change.after,
                 effective_at_sales_order_approval_event: sql<Date>`UTC_TIMESTAMP(3)`,
                 actor_user_id_sales_order_approval_event: null,
-                actor_snapshot_sales_order_approval_event: JSON.stringify({ publicId: "integration:netsuite:4552704_SB1", name: "NetSuite Sandbox UE" }),
+                actor_snapshot_sales_order_approval_event: JSON.stringify({ publicId: "integration:netsuite:" + event.source.accountId, name: { production: "NetSuite Production UE", sandbox: "NetSuite Sandbox UE" }[event.source.environment] }),
                 origin_sales_order_approval_event: "integration",
                 reason_sales_order_approval_event: "Estado recibido desde NetSuite; no cambia etapa CRM.",
                 operation_id_sales_order_approval_event: event.event.eventId,
@@ -240,21 +261,23 @@ export class NetsuiteOrderEventRepository {
     }
 
     private async complete(tx: EventTransaction, event: PersistedOrderEvent, identity: OrderEventIdentity, result: OrderEventResult): Promise<OrderEventResult> {
-        await this.appendCentralAudit(tx, event, result);
-        await this.writeAudit(tx, event, identity.payloadHash, result);
+        await this.appendCentralAudit(tx, event, result, identity.actor);
+        await this.writeAudit(tx, event, identity, result);
         return result;
     }
 
-    private async appendCentralAudit(tx: EventTransaction, event: PersistedOrderEvent, result: OrderEventResult): Promise<void> {
+    private async appendCentralAudit(tx: EventTransaction, event: PersistedOrderEvent, result: OrderEventResult, manualActor?: AuditActorSnapshot): Promise<void> {
         if (!result.destination || !result.orderId) return;
         const native = result.destination === "native";
-        const canonicalChanges = result.changes.map((change) => {
-            if (change.field === CANCELLATION_DATE_FIELD) return { ...change, field: CANCELLATION_DATE_NATIVE };
-            const mapping = [...orderFlagMappings, ...orderFieldMappings, ...orderApprovalMappings, orderNumberMapping, ...orderRelationMappings].find((candidate) => candidate.netsuite === change.field);
-            if (!mapping) throw new Error("Campo sin contrato de auditoria central.");
-            return { ...change, field: mapping.native ?? mapping.legacy };
-        });
-        const actor = captureIntegrationAuditActor({ publicId: "integration:netsuite:4552704_SB1", name: "NetSuite Sandbox UE" });
+        const canonicalChanges = result.changes
+            .filter((change) => change.field !== PAID_INSTALLMENTS_STAGE_FIELD)
+            .map((change) => {
+                if (change.field === CANCELLATION_DATE_FIELD) return { ...change, field: CANCELLATION_DATE_NATIVE };
+                const mapping = [...orderFlagMappings, ...orderFieldMappings, ...orderApprovalMappings, orderNumberMapping, ...orderRelationMappings].find((candidate) => candidate.netsuite === change.field);
+                if (!mapping) throw new Error("Campo sin contrato de auditoria central.");
+                return { ...change, field: mapping.native ?? mapping.legacy };
+            });
+        const actor = manualActor ?? captureIntegrationAuditActor({ publicId: "integration:netsuite:" + event.source.accountId, name: { production: "NetSuite Production UE", sandbox: "NetSuite Sandbox UE" }[event.source.environment] });
         await this.audit.append(tx, {
             source: { schema: native ? "CRM_THINK_V2" : "crmdatabase-api", table: native ? "crm_sales_order" : "ordenventa", entity: "sales_order", id: result.orderId },
             actor,
@@ -265,12 +288,14 @@ export class NetsuiteOrderEventRepository {
             allowedFields: [...[...orderFlagMappings, ...orderFieldMappings, ...orderApprovalMappings, orderNumberMapping, ...orderRelationMappings].map((mapping) => mapping.native ?? mapping.legacy), CANCELLATION_DATE_NATIVE],
             operationId: "netsuite:" + event.source.accountId + ":" + event.event.eventId,
             correlationId: event.event.eventId,
-            reason: "NetSuite UE " + event.event.eventType + "; Sandbox; ID " + event.event.netsuiteId,
+            reason: (manualActor ? "Sincronizacion manual NetSuite " : "NetSuite UE ") + event.event.eventType + "; " + event.source.environment + "; ID " + event.event.netsuiteId,
             snapshotScope: "partial",
         });
     }
 
-    private async writeAudit(tx: EventTransaction, event: PersistedOrderEvent, hash: string, audit: EventAudit): Promise<void> {
-        await sql`INSERT INTO audit_netsuite_order_event (account_id,netsuite_id,event_id,payload_hash,destination,order_id,result,error_message,origin,changes,payload) VALUES (${event.source.accountId},${event.event.netsuiteId},${event.event.eventId},${hash},${audit.destination},${audit.orderId},${audit.result},${audit.error ?? null},${"NetSuite UE " + event.event.eventType},${JSON.stringify(audit.changes)},${JSON.stringify(event)})`.execute(tx);
+    private async writeAudit(tx: EventTransaction, event: PersistedOrderEvent, identity: OrderEventIdentity, audit: EventAudit): Promise<void> {
+        await sql`INSERT INTO audit_netsuite_order_event (account_id,netsuite_id,event_id,payload_hash,destination,order_id,result,error_message,origin,changes,payload) VALUES (${event.source.accountId},${event.event.netsuiteId},${event.event.eventId},${identity.payloadHash},${audit.destination},${audit.orderId},${audit.result},${audit.error ?? null},${identity.actor ? "NetSuite manual " + identity.actor.publicId : "NetSuite UE " + event.event.eventType},${JSON.stringify(audit.changes)},${JSON.stringify(event)})`.execute(
+            tx,
+        );
     }
 }

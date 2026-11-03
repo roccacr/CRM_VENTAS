@@ -2,11 +2,14 @@ import { ConflictException, Inject, Injectable } from "@nestjs/common";
 import { sql, type Transaction } from "kysely";
 
 import type { CrmDatabase } from "../../database/database.types.js";
-import type { LeadProfileOrder, LeadProfileSource } from "../../modules/crm/leads/lead-profile.contract.js";
+import type { LeadProfileEvent, LeadProfileOrder, LeadProfileSource } from "../../modules/crm/leads/lead-profile.contract.js";
 import type { LeadProfileLegacyReader } from "../../modules/crm/leads/lead-profile.port.js";
 import { LegacyCrmDatabaseService } from "./legacy-crm-database.service.js";
+import { readLegacyLeadCommercial } from "./legacy-lead-commercial.query.js";
 
 const extras = {
+    extraId: "id_Info_lead",
+    extraLeadReference: "id_lead_fk",
     identification: "cedula_lead",
     nationality: "Nacionalidad_lead",
     maritalStatus: "Estado_ciLead",
@@ -15,7 +18,6 @@ const extras = {
     children: "Hijos_lead",
     alternatePhone: "TelefonoAlternatovo_lead",
     address: "Direccion",
-    broker: "Corredor_lead",
     relatedName: "nombre_extra_lead",
     relatedIdentification: "cedula_extra_lead",
     relatedProfession: "profesion_extra_lead",
@@ -47,13 +49,17 @@ export class LegacyLeadProfileReader implements LeadProfileLegacyReader {
     /** La FK del perfil extra usa la referencia externa, por eso se exige unicidad antes de leerlo. */
     async find(tx: Transaction<CrmDatabase>, key: "id" | "reference", value: string): Promise<LeadProfileSource | null> {
         const { rows } = await sql<Record<string, string | null>>`SELECT /*+ MAX_EXECUTION_TIME(3000) */ CAST(l.id_lead AS CHAR) AS id,CAST(l.idinterno_lead AS CHAR) AS reference,
-            l.nombre_lead AS fullName,l.email_lead AS email,l.telefono_lead AS phone,l.codigo_lead AS countryCode,l.empresa_lead AS company,l.proyecto_lead AS project,l.subsidiaria_lead AS subsidiary,l.moneda_lead AS currency,
+            CAST(l.id_lead AS CHAR) AS localId,CAST(l.idinterno_lead AS CHAR) AS externalReference,l.idnetsuite_lead AS netsuiteId,
+            CAST(l.id_admin_lead AS CHAR) AS adminReference,CAST(l.id_empleado_lead AS CHAR) AS employeeReference,CAST(l.id_rol_lead AS CHAR) AS roleReference,
+            CAST(l.idproyecto_lead AS CHAR) AS projectReference,CAST(l.idsubsidaria_lead AS CHAR) AS subsidiaryReference,CAST(l.idestadointeresado_lead AS CHAR) AS interestReference,
+            l.idcampana_lead AS campaignReference,l.idreferencia_lead AS acquisitionReference,CAST(l.id_Caida AS CHAR) AS followUpReasonReference,CAST(l.id_corredor AS CHAR) AS brokerReference,
+            bk.nombre_corredor AS broker,l.nombre_lead AS fullName,l.email_lead AS email,l.telefono_lead AS phone,l.codigo_lead AS countryCode,l.empresa_lead AS company,l.proyecto_lead AS project,l.subsidiaria_lead AS subsidiary,l.moneda_lead AS currency,
             CASE l.estado_lead WHEN 1 THEN 'Activo' WHEN 0 THEN 'Inactivo' ELSE 'Sin dato' END AS status,l.segimineto_lead AS stage,l.campana_lead AS campaign,l.custentityaccion_campana AS ad,l.referencia_lead AS acquisitionSource,l.estadointeresado_lead AS interest,l.comentario_lead AS comment,
             l.valor_segimineto_lead AS followUpValue,c.nombre_caida AS followUpReason,l.contribucion_lead AS contribution,l.accion_lead AS action,
             CAST(l.actualizadaaccion_lead AS CHAR) AS actionAt,CAST(l.seguimiento_calendar AS CHAR) AS calendarFollowUp,CAST(l.whatsapp_template_contact_sent AS CHAR) AS templateSent,
             CAST(l.creado_lead AS CHAR) AS createdAt,CAST(l.actualizado_lead AS CHAR) AS updatedAt,
             (SELECT MIN(a.name_admin) FROM ${sql.table("crmdatabase-api.admins")} a WHERE a.idnetsuite_admin=l.id_empleado_lead HAVING COUNT(*)=1) AS owner
-            FROM ${sql.table("crmdatabase-api.leads")} l LEFT JOIN ${sql.table("crmdatabase-api.caidas")} c ON c.id_caida=l.id_Caida
+            FROM ${sql.table("crmdatabase-api.leads")} l LEFT JOIN ${sql.table("crmdatabase-api.caidas")} c ON c.id_caida=l.id_Caida LEFT JOIN ${sql.table("crmdatabase-api.corredores")} bk ON bk.id_corredor=l.id_corredor
             WHERE ${sql.ref(key === "id" ? "l.id_lead" : "l.idinterno_lead")}=${value} LIMIT 2`.execute(tx);
         if (rows.length > 1) throw new ConflictException("La relación del lead antiguo es ambigua.");
         const row = rows[0];
@@ -68,7 +74,24 @@ export class LegacyLeadProfileReader implements LeadProfileLegacyReader {
         if (matches.rows.length !== 1) throw new ConflictException("La referencia del lead antiguo no es única.");
         const extra = await sql<Record<string, string | null>>`SELECT ${sql.join(Object.entries(extras).map(([alias, column]) => sql`${sql.ref(column)} AS ${sql.ref(alias)}`))} FROM ${sql.table("crmdatabase-api.info_extra_lead")} WHERE id_lead_fk=${reference} LIMIT 2`.execute(tx);
         if (extra.rows.length > 1) throw new ConflictException("El perfil ampliado del lead es ambiguo.");
-        return Object.fromEntries(Object.entries(extra.rows[0] ?? {}).filter(([, value]) => value?.trim()));
+        return Object.fromEntries(Object.entries(extra.rows[0] ?? {}).filter(([, value]) => profileText(value)?.trim()));
+    }
+
+    /** Eventos del calendario antiguo del cliente; los ya migrados al calendario nuevo se leen allí y no se duplican. */
+    async events(tx: Transaction<CrmDatabase>, lead: LeadProfileSource, page: number) {
+        if (!lead.reference) return { items: [], hasMore: false, page };
+        const { rows } = await sql<LeadProfileEvent>`SELECT /*+ MAX_EXECUTION_TIME(3000) */ CAST(c.id_calendar AS CHAR) AS id,'legacy' AS source,c.nombre_calendar AS title,c.tipo_calendar AS type,c.accion_calendar AS status,
+            c.fechaIni_calendar AS date,c.horaInicio_calendar AS startTime,c.horaFinal_calendar AS endTime
+            FROM ${sql.table("crmdatabase-api.calendars")} c
+            WHERE c.id_lead=${lead.reference}
+            AND NOT EXISTS (SELECT 1 FROM crm_calendar_event n WHERE n.legacy_calendar_id_calendar_event=c.id_calendar AND n.deleted_at_calendar_event IS NULL)
+            ORDER BY c.id_calendar DESC LIMIT 51 OFFSET ${(page - 1) * 50}`.execute(tx);
+        return { items: rows.slice(0, 50), hasMore: rows.length > 50, page };
+    }
+
+    /** Registros comerciales reales, separados de las observaciones de bitácora. */
+    commercial(tx: Transaction<CrmDatabase>, lead: LeadProfileSource, kind: "opportunities" | "estimates", page: number) {
+        return readLegacyLeadCommercial(tx, lead, kind, page);
     }
 
     /** Órdenes relacionadas por referencia única; una orden ya nativa no se duplica como legacy. */

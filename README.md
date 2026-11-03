@@ -1,9 +1,25 @@
 # CRM TINK: inicio y continuidad
 
+Asignación bancaria de órdenes: [contrato87](apps/api/Arquitectura/87-Orden-Asignacion-Bancaria.md). Botón `Asignar banco` en el detalle de Formalización, ejecutivo existente o nuevo y bitácora central para órdenes nativas/legacy; migración069 aplicada con aprobación. Acceso Owner/Jefe General con permisos efectivos, sin cambiar etapas ni importar órdenes.
+
+## Estado documental vigente — 2026-11-03
+
+El [informe85](apps/api/Arquitectura/85-Reconciliacion-Documental-20261103.md) reemplaza al72 como inventario vigente. Contrasta la rama `temp/crm-tink-api-frontend-inicial`, HEAD `4d446ed`, y sus cambios locales, incluidos archivos nuevos y la eliminación preparada. No acredita publicación de esos cambios.
+
+- **NetSuite:** v1 conserva recepción sin persistencia; v2 tiene escritor durable autorizado y protegido, resolución BD nueva → vieja → no encontrada, mapeo declarativo, control de duplicados/orden de eventos y bitácora nativa. Solo se sincronizan campos confirmados; los internos del CRM se conservan. [73](apps/api/Arquitectura/73-Sincronizacion-Estados-Ordenes-NetSuite.md), [Matriz75](apps/api/Arquitectura/75-Matriz-Campos-Ordenes-NetSuite.md) y [Ampliación74](apps/api/Arquitectura/74-Ampliacion-Sincronizacion-Ordenes-NetSuite.md) fijan alcance y evidencia; no se certifica aceptación completa de Sandbox/producción.
+- **Formalización:** aprobación de Formalización para entrar en contratos, ocho etapas, origen de fondos obligatorio al salir de contratos y reglas de cuotas/traspaso/entrega triestado. Fondos propios → saldo; financiamiento → gestión bancaria en proceso. No regresar automáticamente de traspaso a saldo. [78](apps/api/Arquitectura/78-Formalizacion-Origen-Fondos-y-Gestion-Bancaria.md), [Etapas52](apps/api/Arquitectura/52-Etapas-Responsables-y-Tiempos.md) y [Reglas78](apps/api/Arquitectura/78-Formalizacion-Origen-Fondos-y-Gestion-Bancaria.md).
+- **Origen de fondos independiente:** el árbol concurrente incorpora consulta/edición en tarjeta de ficha y drawer sin generar visita de etapa; exige token de estado/auditoría/valor previo y autorización. Este corte registra implementación inspeccionada, sin acreditar pruebas nuevas. Ver [78](apps/api/Arquitectura/78-Formalizacion-Origen-Fondos-y-Gestion-Bancaria.md).
+- **Cliente y agenda:** perfil federado dentro del contexto de Formalización; contacto, Outlook y WhatsApp con permisos propios. Agendar desde una orden fija cliente/orden y referencia; el acceso de cabecera abre un evento limpio. Guardar conserva la pantalla de origen. [77](apps/api/Arquitectura/77-Perfil-Completo-Lead.md), [Agenda83](apps/api/Arquitectura/83-Adendum-Migracion-065-y-Rollback.md) y [Detalle32](apps/frontend/Arquitectura/32-Detalle-Orden-y-Cliente-Basico.md).
+- **Adéndum:** una marca por orden en ambas BD, pendiente/completada/cancelada; agenda vinculada y marca manual con nota opcional, bandeja/banner y auditoría nativa. No ver la marca no oculta la orden. Marcar manualmente tiene grants por defecto para **Owner, Jefe General y Jefe de Formalizaciones** mediante067; Formalización base no lo recibe. Denegaciones individuales prevalecen. [83](apps/api/Arquitectura/83-Adendum-Migracion-065-y-Rollback.md) y [84](apps/api/Arquitectura/84-Adendum-Manual-Migracion-066-y-Permisos.md).
+- **Calendario/Graph:** avisos nativos transaccionales, API por destinatario y consumidor en la campana están conectados en el corte inspeccionado; su QA no se infiere de ese wiring. Lectura externa, disponibilidad, salas, propuestas, creación/edición Outlook y Teams tienen implementación. Su ejecución exige conexión y permisos Microsoft; una prueba local no acredita entrega externa. El corte16:02 detecta incompatibilidad del parser frontend con Outlook editable; ver85 antes de asumir operativo ese recorrido. [Contrato calendario](apps/api/Arquitectura/64-Calendario-Global-API-y-Contexto.md).
+- **Notas, Mercadeo y catálogos:** continúan los contratos vigentes; no importar registros legacy. Copia de notas, tickets, finiquitos, correo automático, aceptación Redis y operaciones externas conservan sus pendientes.
+
+Esta actualización cambia documentación. Las migraciones y pruebas registradas en entregas anteriores mantienen su fecha; no se ejecutan de nuevo ni se presentan como una nueva aceptación.
+
 Checklist central de seguimiento: [Pendiente Roberto](<Pendiente Roberto.md>).
 Aquí se mantienen los avances, las validaciones abiertas y los nuevos pendientes del sistema.
 
-## Estado documental vigente — 2026-11-02
+## Antecedente documental — 2026-11-02
 
 La revisión integral está en [72 — Reconciliación por commits y código](apps/api/Arquitectura/72-Reconciliacion-Documental-20261102.md).
 Contrasta los 35 commits alcanzables de este checkout, hasta `fcbf0c2`, con el
@@ -191,7 +207,7 @@ El corte `f2dc4f1` tuvo clon limpio y `check-all.cmd` aprobados: API 4583 prueba
 
 ## Leer en este orden
 
-Entrada actual: [QA y resultados del 29 de octubre](apps/api/Arquitectura/67-Plan-QA-Regresiones-20261029.md), [seguimiento de notas](apps/api/Arquitectura/66-Notas-Enterprise-Seguimiento.md), [estado consolidado y plan aplicado](apps/api/Arquitectura/49-Estado-Actual-y-Cierre-Documental.md), [registro integral de entrega y pendientes](apps/api/Arquitectura/36-Registro-Entrega-Administracion.md), [auditoria y conflictos](apps/api/Arquitectura/37-Auditoria-Trazabilidad-y-Conflictos.md) y [comportamiento visual / QA](apps/frontend/Arquitectura/27-Entrega-Administracion-y-QA.md). Incluyen matriz solicitud -> codigo -> pruebas -> estado. Los documentos fechados anteriores conservan evidencia historica, no necesariamente estado operativo actual.
+Entrada actual: [Reconciliación del 3 de noviembre](apps/api/Arquitectura/85-Reconciliacion-Documental-20261103.md). Antecedentes: [QA y resultados del 29 de octubre](apps/api/Arquitectura/67-Plan-QA-Regresiones-20261029.md), [seguimiento de notas](apps/api/Arquitectura/66-Notas-Enterprise-Seguimiento.md), [estado consolidado y plan aplicado](apps/api/Arquitectura/49-Estado-Actual-y-Cierre-Documental.md), [registro integral de entrega y pendientes](apps/api/Arquitectura/36-Registro-Entrega-Administracion.md), [auditoria y conflictos](apps/api/Arquitectura/37-Auditoria-Trazabilidad-y-Conflictos.md) y [comportamiento visual / QA](apps/frontend/Arquitectura/27-Entrega-Administracion-y-QA.md). Incluyen matriz solicitud -> codigo -> pruebas -> estado. Los documentos fechados anteriores conservan evidencia historica, no necesariamente estado operativo actual.
 
 1. [Ley de producto](apps/api/Arquitectura/00-Producto-CRM-TINK-y-P0.md): alcance y restricciones.
 2. [Traspaso y estado del API](apps/api/Arquitectura/34-Cierre-Operativo-Administracion-P0-S1.md): implementacion, decisiones, riesgos y cierre.

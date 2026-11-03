@@ -1,5 +1,11 @@
 # 37 - Auditoria, trazabilidad y conflictos
 
+## Nuevos escritores y evidencia incremental — 2026-11-03
+
+060/063–067 registran configuración de permisos/versiones en `audit_security_event`; 067 agrega únicamente grants faltantes de marcado manual de adéndum sin sobrescribir overrides ni reactivar grants inactivos. 065/066 separan DDL de DML auditado; un fallo de auditoría revierte permisos/versiones pero puede dejar columnas compatibles ya creadas. La ejecución de acciones de adéndum conserva bitácora nativa aun cuando la orden esté en legacy; no implica importar esa orden. Contratos y rollback: [83](83-Adendum-Migracion-065-y-Rollback.md)/[84](84-Adendum-Manual-Migracion-066-y-Permisos.md).
+
+Las pruebas HTTP de finalización y adéndum inspeccionadas usan guards/servicios reales con identidad o persistencia sustituidas: prueban límites de permiso/deny/CSRF y actor, no concurrencia MySQL ni operación real. La lectura completa del perfil puede incluir historia federada bajo `lead.profile.read` ([77](77-Perfil-Completo-Lead.md)); no convierte el endpoint administrativo de timeline nativo descrito abajo en un lector legacy. Esta reconciliación no ejecutó esos tests ni BD.
+
 ## Continuidad de escritores - 2026-10-27
 
 Los comandos CRM send/revert/set-stage ya estan registrados y reutilizan el

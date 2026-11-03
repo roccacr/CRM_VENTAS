@@ -1,5 +1,9 @@
 # 42 - Jefaturas, modulos seleccionados y permisos
 
+## Default vigente de Adéndum — 2026-11-03
+
+La migración 067 configura `formalizacion.orders.addendum.mark_pending` mediante grants reales a Owner, Jefe General y Jefe de Formalizaciones. El rol operativo Formalización no lo recibe por defecto. Se conserva la excepción al comodín de Owner, la plantilla/techo modular de General y los overrides personales; un `deny` sigue prevaleciendo. No confundir asignación administrativa con autorización de la acción. Lectura de orden, lectura de adéndum y contador Home son capacidades independientes. Sin lectura de adéndum se ocultan marca, nota y bandeja; la orden conserva su visibilidad habitual. [84](84-Adendum-Manual-Migracion-066-y-Permisos.md) prevalece sobre las generalizaciones históricas siguientes.
+
 ## Capacidad adicional de reportes - revisión 2026-11-02
 
 `mercadeo.reports.read_all` amplía únicamente la población de vendedores de los

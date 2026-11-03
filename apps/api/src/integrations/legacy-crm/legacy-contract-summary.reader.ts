@@ -9,7 +9,7 @@ import type { ContractSummaryLegacyReader, LegacyContractRow } from "../../modul
 import { LegacyCrmDatabaseService } from "./legacy-crm-database.service.js";
 
 /**
- * Eligible = approved by all three legacy flags. `pending` feeds the banner totals and `orders` the paged
+ * Eligible = approved by the Formalization flag. `pending` feeds the banner totals and `orders` the paged
  * queues; the latter skips orders that already have a native alias. Both journal and order are read from legacy; the source order itself is never updated. */
 @Injectable()
 export class LegacyContractSummaryReader implements ContractSummaryLegacyReader, ContractOrdersLegacyReader {
@@ -28,7 +28,7 @@ export class LegacyContractSummaryReader implements ContractSummaryLegacyReader,
                 WHERE e.legacy_order_id_sales_order_state_event=o.id_ov ORDER BY e.sequence_sales_order_state_event DESC LIMIT 1), 'contract_pending_send') AS stage
             FROM ${sql.table("crmdatabase-api.ordenventa")} o
             WHERE id_ov > ${after} AND status_ov=1 AND caida_ov=0
-              AND chekJefeVenta=1 AND aprobacion__rdr_ov=1 AND aprobacion_forma_ov=1
+              AND aprobacion_forma_ov=1
             ORDER BY id_ov LIMIT ${sql.lit(SALES_ORDER_SUMMARY_PAGE_SIZE)}
         `.execute(transaction);
         // Return all eligible IDs for keyset progress and native-shadow exclusion; later stages are ignored by the service.
@@ -44,7 +44,7 @@ export class LegacyContractSummaryReader implements ContractSummaryLegacyReader,
                        COALESCE((SELECT e.to_state_code_sales_order_state_event FROM ${sql.table("crmdatabase-api.audit_sales_order_state_event")} e WHERE e.legacy_order_id_sales_order_state_event=o.id_ov ORDER BY e.sequence_sales_order_state_event DESC LIMIT 1),'contract_pending_send') AS stage,
                        COALESCE((SELECT e.sequence_sales_order_state_event FROM ${sql.table("crmdatabase-api.audit_sales_order_state_event")} e WHERE e.legacy_order_id_sales_order_state_event=o.id_ov ORDER BY e.sequence_sales_order_state_event DESC LIMIT 1),0) AS sequence
                 FROM ${sql.table("crmdatabase-api.ordenventa")} o
-                WHERE o.id_ov>${after} AND o.status_ov=1 AND o.caida_ov=0 AND o.chekJefeVenta=1 AND o.aprobacion__rdr_ov=1 AND o.aprobacion_forma_ov=1
+                WHERE o.id_ov>${after} AND o.status_ov=1 AND o.caida_ov=0 AND o.aprobacion_forma_ov=1
                   AND NOT EXISTS (SELECT 1 FROM crm_sales_order n WHERE n.id_old_produccion_sales_order=o.id_ov)
             ) eligible WHERE ${stage} ORDER BY sortKey LIMIT ${limit}
         `.execute(tx);

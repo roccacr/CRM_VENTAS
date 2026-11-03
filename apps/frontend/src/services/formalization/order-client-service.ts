@@ -1,4 +1,4 @@
-import { type ClientHistoryPage, getDatabaseOrder } from "./database-order-service";
+import { type ClientHistoryPage, type DatabaseOrderResult, getDatabaseOrder } from "./database-order-service";
 import type { NetsuiteOrderIdentity } from "./netsuite-order-service";
 
 export interface ClientField {
@@ -6,6 +6,8 @@ export interface ClientField {
     readonly value: string;
 }
 export interface OrderClientDetail {
+    readonly phone?: string | null;
+    readonly countryCode?: string | null;
     readonly leadIdentity?: { readonly source: "native" | "legacy"; readonly id: string } | null;
     readonly history?: ClientHistoryPage | null;
     readonly name: string;
@@ -61,7 +63,19 @@ export async function getOrderClientDetail(identity: NetsuiteOrderIdentity, hist
     ];
     addLeadContext(groups, data.lead);
 
-    return { leadIdentity: clientLeadIdentity(data.lead, data.source), name, groups, history: data.clientHistory ?? null, warnings: data.warnings.filter((warning) => /^(lead|contact):/.test(warning)) };
+    return { ...phoneFields(data), leadIdentity: clientLeadIdentity(data.lead, data.source), name, groups, history: data.clientHistory ?? null, warnings: data.warnings.filter((warning) => /^(lead|contact):/.test(warning)) };
+}
+
+/** Mantiene los valores de origen separados del texto presentado y no mezcla metadatos entre BDs. */
+function phoneFields(data: DatabaseOrderResult): Pick<OrderClientDetail, "phone" | "countryCode"> {
+    const country = data.source === "native" ? fields(data.contact?.sourceFields).country_code_contact : fields(data.lead?.sourceFields).codigo_lead;
+    return { phone: typeof data.contact?.phone === "string" ? data.contact.phone : null, countryCode: contactCountry(country) };
+}
+
+function contactCountry(value: unknown): string | null {
+    if (!["string", "number"].includes(typeof value)) return null;
+    const country = String(value).trim();
+    return ["", "0"].includes(country) ? null : country;
 }
 
 function addLeadContext(groups: { title: string; fields: ClientField[] }[], lead: Record<string, unknown> | null) {

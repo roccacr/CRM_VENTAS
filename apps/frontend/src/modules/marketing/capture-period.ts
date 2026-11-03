@@ -1,9 +1,9 @@
 import type { CaptureApiPeriod } from "../../services/marketing/lead-report-service";
 
-/** What the person picks. The API serves today, week, month and everything; quarter and year are cut from "everything" on this side. */
-export type CapturePeriod = "day" | "week" | "month" | "quarter" | "year";
+/** Historical selections reuse the full authorized report. What the person picks. The API serves today, week, month and everything; quarter and year are cut from "everything" on this side. */
+export type CapturePeriod = "day" | "week" | "month" | "quarter" | "year" | "custom";
 
-export const apiPeriodOf = (period: CapturePeriod): CaptureApiPeriod => (period === "quarter" || period === "year" ? "all" : period);
+export const apiPeriodOf = (period: CapturePeriod, historical = false): CaptureApiPeriod => (historical || period === "quarter" || period === "year" || period === "custom" ? "all" : period);
 
 /** First day (yyyy-mm-dd) of the calendar quarter or year that contains `today`; null for the periods the API already cuts. */
 function periodStart(period: CapturePeriod, today: string): string | null {

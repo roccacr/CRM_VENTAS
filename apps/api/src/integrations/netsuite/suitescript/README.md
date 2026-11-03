@@ -1,4 +1,100 @@
+# Version unificada vigente de Produccion y Sandbox — 2026-11-03
+
+Por indicacion del propietario, esta carpeta contiene la nueva version unificada
+para ambos entornos de NetSuite:
+
+- `SS2_1_LIB_CRM_habita.js`: libreria compartida.
+- `SS2_1_RL_CRM_Habita.js`: entrada RESTlet.
+- `SS2_1_UE_CRM_Habita.js`: entrada User Event.
+
+Ambas entradas importan `/SuiteScripts/SS2_1_LIB_CRM_habita`, sin extension.
+Se conserva la capitalizacion exacta de los nombres. La libreria incluye el valor
+crudo de `custbody37` y su validacion antes de normalizarlo.
+
+Actualizacion posterior del propietario: Sandbox tambien utiliza ahora los tres
+archivos unificados de Habita, conservando cuenta, URL y credenciales propias.
+La lectura real en Sandbox script3353/deploy1 se verifico con HTTP200 y status200;
+la respuesta observada aun no incluia el ID crudo custbody37, solo FONDOS. Las instrucciones inferiores sobre esa estructura son historicas y
+no describen el paquete unificado actual. El empaquetador valida ahora exactamente
+estos tres JS, sus dependencias AMD, sintaxis, version y hashes SHA-256.
+
+## Instalacion del paquete unificado en ambos entornos
+
+1. Desde `apps/api`, ejecutar `pnpm netsuite:package:test` y `pnpm netsuite:package`.
+   El ZIP queda en `dist/netsuite/`, con `manifest.json` y los tres JS dentro de
+   `SuiteScripts/`. Importarlo desde la raiz del Archivador; no usar `CRM TINK/lib`
+   ni `modules`. Conservar la capitalizacion exacta. Reemplazar tambien la libreria
+   en ambos entornos: actualizar solo RL/UE no incorpora `custbody37` ni el guard.
+2. Conservar registros/deployments existentes y comprobar que sus archivos son
+   `SS2_1_RL_CRM_Habita.js` y `SS2_1_UE_CRM_Habita.js`. Produccion: RESTlet3739/1,
+   UE3740 y libreria9625078. Sandbox: RESTlet3353/1; conservar su User Event.
+3. Configurar `custscript_crm_account_id` en **ambos RL y UE** de cada entorno:
+   Produccion `4552704`; Sandbox `4552704_SB1` (texto). El valor debe coincidir
+   exactamente con la cuenta; el guard admite tambien un entero seguro.
+4. En el UE de Produccion, configurar `custscript_crm_event_url` como
+   `https://habita.roccacr.com/integrations/netsuite/production` y
+   `custscript_crm_event_secret_id` como `custsecret_crm_habita_production`.
+   El emisor anade `/order-events`; no incluirlo en la URL base. El valor privado
+   del API Secret debe coincidir con el receptor y se entrega por canal privado;
+   no incluirlo en JS, ZIP o documentacion. Restringir el API Secret al script UE
+   autorizado y al dominio `habita.roccacr.com`. Sandbox conserva su propia URL
+   base y referencia de API Secret; no copiar los de Produccion.
+5. Verificar primero GET con `module=salesOrders&id=<orden acreditada>` en cada
+   RESTlet: comprobar tanto HTTP200 como `status:200`, y `data.fields.custbody37`
+   crudo (`1`, `2` o vacio explicito). `FONDOS` es una etiqueta y no sustituye el ID.
+   Produccion devolvia `ENVIRONMENT_NOT_AUTHORIZED` y Sandbox omitia ese campo antes
+   de esta carga; no se certifica su correccion remota mediante el ZIP local.
+6. Una prueba posterior de eventos requiere un guardado expresamente autorizado
+   por entorno y revisar recibo, `scriptVersion` y auditoria del receptor. La carga
+   del paquete y el estado Liberado no acreditan entrega ni persistencia.
+
+Este procedimiento prepara la instalacion; no ejecuta despliegues ni escrituras.
+
+## Identificadores de Produccion confirmados por el propietario
+
+| Recurso | ID | Archivo / destino |
+|---|---|---|
+| Libreria del Archivador | 9625078 | SuiteScripts/SS2_1_LIB_CRM_habita.js |
+| RESTlet | 3739, deploy1 | SS2_1_RL_CRM_Habita.js |
+| User Event | 3740 | SS2_1_UE_CRM_Habita.js; Orden de venta liberado, segun propietario |
+
+RESTlet: `https://4552704.restlets.api.netsuite.com/app/site/hosting/restlet.nl?script=3739&deploy=1`.
+El cliente API usa `NETSUITE_PRODUCTION_READ_MODE=modules` y `module=salesOrders`.
+El ID del archivo de libreria y el ID del User Event no son parametros de esa URL.
+Sandbox conserva su despliegue anterior; no sustituir su URL con el script3739.
+
+Para configuracion explicita, ambos scripts ejecutables usan `custscript_crm_account_id=4552704`
+en sus deployments de Produccion. La consulta real de lectura del03/11 alcanzo el
+RESTlet y recibio HTTP200 con `status:403`, `ENVIRONMENT_NOT_AUTHORIZED`; no se
+confirmo lectura de orden. Revisar ese parametro antes de atribuir el problema
+a la autenticacion o cambiar credenciales. No se ejecutaron PUT ni escrituras BD.
+El User Event requiere ademas su destino y API Secret configurados; su estado
+Liberado por si solo no acredita recepcion/persistencia en la API de Produccion.
+
 ## Implementación local posterior — 2026-11-02
+
+## Estado vigente contrastado — 2026-11-03
+
+El escritor v2, su auditoría, cursor y resolución de autoridad ya están
+implementados; v1 mantiene `persisted:false`. El marcador `crm_sync_projection=1`
+habilita los campos ampliados confirmados en [75](../../../../Arquitectura/75-Matriz-Campos-Ordenes-NetSuite.md):
+montos, fecha canónica, número de transacción, cálculo de asesor, aprobaciones y
+relaciones existentes. Moneda, cálculo corredor y `createdfrom` quedan preservados,
+sin inferir nuevos mapeos. Líneas y aliases permanecen en el snapshot protegido.
+
+El control temporal actual usa doble lectura completa y ventanas UTC no solapadas;
+el hash compara contenido y no funciona como reloj. El reintento de transporte
+mantiene UUID/cuerpo; el conflicto de observación409 requiere una nueva lectura/UUID.
+[73](../../../../Arquitectura/73-Sincronizacion-Estados-Ordenes-NetSuite.md) conserva la prueba real acotada
+de diez indicadores; no acredita E2E de todos los campos ampliados ni despliegue.
+059 fue aplicada con autorización según74/75; esta revisión no cambia su flag.
+
+Existe una excepción posterior a la regla histórica «los indicadores no mueven
+etapas»: `netsuite-paid-installments.handler.ts` puede avanzar visitas finales
+existentes tras `edit`/`xedit`, con actividad/firma/aprobación de Formalización,
+responsable conservado y auditoría atómica, según [78](../../../../Arquitectura/78-Formalizacion-Origen-Fondos-y-Gestion-Bancaria.md).
+No retrocede ni crea órdenes/visitas históricas. Origen de fondos y campos de
+adéndum pertenecen al CRM y no son sobrescritos por estos snapshots.
 
 El contrato v2 ya implementa los diez checkbox, resolución nativa → legacy, transacción y bitácora central/nativa. v1 conserva persisted:false. 058 se aplicó con aprobación explícita y el túnel fue verificado; la activación y prueba real están pendientes; este bloque sustituye las descripciones de ausencia de escritor de los cortes históricos inferiores. Contrato, archivos, pruebas y límites: [73](../../../../Arquitectura/73-Sincronizacion-Estados-Ordenes-NetSuite.md).
 
@@ -35,9 +131,9 @@ El directorio local mantiene la entrada junto a lib y modules para desarrollo y 
 
 `lib/SS2_1_LIB_CRM_Registros.js` declara el identificador `salesorder` sin consultar `record.Type` durante `define`; las APIs de NetSuite solo se usan al ejecutar las acciones. Esto evita `SUITESCRIPT_API_UNAVAILABLE_IN_DEFINE` durante la validacion del archivo.
 
-## Vigencia del paquete — revisión 2026-11-02
+## Corte histórico del paquete — revisión 2026-11-02
 
-La versión declarada por `lib/SS2_1_LIB_CRM_Logs.js` es `2026.10.30.4`.
+La versión declarada por `lib/SS2_1_LIB_CRM_Logs.js` al corte03/11 es `2026.11.02.1`.
 La revisión estática del grafo AMD aprobó18 archivos sin ejecutar callbacks,
 crear ZIP, subir archivos ni contactar NetSuite. Los ejemplos de versiones
 anteriores y las pruebas de Sandbox fechadas más abajo conservan su fecha.
@@ -292,3 +388,27 @@ una edición real de Sandbox. La futura entrega duradera/productiva necesita su 
 
 Referencias: [cabeceras con API Secrets](https://docs.oracle.com/en/cloud/saas/netsuite/ns-online-help/article_0111025229.html),
 [ngrok](https://ngrok.com/docs/start).
+
+
+### Comprobacion de los enlaces actualizados
+
+Produccion: RESTlet3739/1 responde HTTP200/status403 ENVIRONMENT_NOT_AUTHORIZED.
+El propietario confirma custscript_crm_account_id=4552704. La libreria local ahora
+acepta ese parametro como texto o entero seguro, sin convertir objetos, booleanos
+ni cuentas diferentes. Esto corrige una incompatibilidad reproducida con parametro
+numerico; no demuestra el tipo real remoto ni la causa definitiva del403.
+Sandbox: RESTlet3353/1 responde HTTP200/status200 y devuelve la orden pedida.
+Se deben subir las correcciones de la libreria, incluido custbody37 crudo, a ambos
+ambientes antes de declarar sincronizacion completa. No se verifico el User Event
+mediante escrituras reales. La cuenta autorizada de Sandbox es4552704_SB1.
+
+## Respaldo temporal de Produccion - 2026.11.03.4
+
+Si custscript_crm_account_id falta (null, undefined o texto vacio), se usa la cuenta fija segun runtime.envType: PRODUCTION = 4552704, SANDBOX = 4552704_SB1. Un parametro configurado tiene prioridad y debe coincidir exactamente con runtime.accountId. Otras cuentas y entornos permanecen bloqueados. Las constantes temporales estan centralizadas en DEFAULT_ACCOUNTS y podra retirarse cuando se configure el deployment.
+
+
+## Sincronizacion manual — version2026.11.03.4
+
+GET `?module=salesOrders&id=<id>&action=syncSnapshot` devuelve la proyeccion completa de eventos, lineas como arreglo y sourceModifiedAt/snapshotReadStartedAt/snapshotReadCompletedAt. Reutiliza doble lectura y validacion de cambios del productor de eventos. GET normal mantiene su contrato de presentacion. Solo cambio la libreria unificada; conservar los mismos RESTlet/UserEvent y deployments.
+
+La API exige la proyeccion verificada antes de escribir. Una libreria anterior devuelve la lectura comun sin metadatos y la API rechaza la sincronizacion sin actualizar la orden. Actualizar SuiteScripts/SS2_1_LIB_CRM_habita.js en el ambiente a probar. No basta desplegar el CRM para instalar esta capacidad en NetSuite.

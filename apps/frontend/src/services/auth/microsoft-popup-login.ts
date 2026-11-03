@@ -171,7 +171,8 @@ const didMicrosoftPopupClosedGraceExpire = (closedAt: number | null): boolean =>
  * informa un error, si vence el timeout o si el usuario lo cierra y la sesión
  * no aparece dentro del margen de gracia.
  */
-export const waitForMicrosoftPopupSession = (popupWindow: Window): Promise<void> =>
+/** Al ampliar consentimiento, una sesión anterior no demuestra que el callback nuevo terminó. */
+export const waitForMicrosoftPopupSession = (popupWindow: Window, previousSessionPublicId?: string): Promise<void> =>
     new Promise((resolve, reject) => {
         const startedAt = Date.now();
         let popupClosedAt: number | null = null;
@@ -222,7 +223,7 @@ export const waitForMicrosoftPopupSession = (popupWindow: Window): Promise<void>
             try {
                 const session = await getIdentitySession();
 
-                if (isAuthenticatedSession(session)) {
+                if (isAuthenticatedSession(session) && session.session.publicId !== previousSessionPublicId) {
                     settle(() => {
                         popupWindow.close();
                         resolve();

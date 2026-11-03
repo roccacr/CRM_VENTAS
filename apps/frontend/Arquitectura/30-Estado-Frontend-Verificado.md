@@ -1,5 +1,36 @@
 # 30 - Estado frontend contrastado con el código - 2026-10-27
 
+## Permisos personales — corrección vigente 2026-11-03
+
+Un grant operativo efectivo se acepta por rol o por excepción personal, sin exigir además un nombre fijo de rol. Esta corrección sustituye las restricciones históricas de rol de Bancos y Formalización, manteniendo módulos, deny, alcance, recurso y controles de delegación/plantillas protegidas. [Alcance y verificación](../../api/Arquitectura/Permisos-Excepciones-Personales-20261103.md). Implementación local, sin modificación de asignaciones ni despliegue.
+
+
+Captación ofrece «Filtrar por calificación» debajo de Qué medir: Todos (por defecto), Calificado y No calificado. El API aplica la calificación efectiva antes de agregar; React no deriva ni escribe esa condición. La selección conserva medida, profundidad, período/rango y proyectos; al consultar oculta cifras anteriores y rechaza respuestas de otra calificación. Gráfico, indicadores, tabla, calidad y exportación consumen el mismo reporte filtrado. La cobertura de períodos permanece anterior al filtro.
+
+## Corte local vigente — 03/11/2026
+
+Captación permite «Personalizado» con Desde/Hasta y «Aplicar filtro»: editar no cambia cifras ni consulta. Al aplicar un rango personalizado o elegir meses/semanas/años históricos se solicita `period=all` y se recorta la cohorte autorizada en fechas inclusivas. Un único desplegable «Período» determina rango y agrupación: día, semana, mes, trimestre o año. Se retiró «Agrupar gráfico». Personalizado elige automáticamente día hasta31días, semana hasta93, mes hasta730 y año para rangos mayores. Desde/Hasta y Aplicar filtro solo aparecen en Personalizado; al elegir Mes, Semana, Trimestre o Año aparece un selector múltiple con sus períodos concretos, incluyendo año y fechas de la semana. Las opciones salen de la cobertura autorizada, incluyen intervalos sin registros y excluyen futuros. La selección admite períodos no consecutivos: los huecos no se cuentan en indicadores, gráfico, tabla ni exportación. Por defecto se conserva el período actual. Semanas lunes–domingo, meses/años calendario, etiquetas con año, orden cronológico, color estable por dimensión e intervalos vacíos en cero. Fechas inválidas/invertidas/futuras se rechazan. Una comparación mayor a2500columnas pide acortar/agrupar o seleccionar proyectos sin truncar silenciosamente. Tabla temporal y exportación conservan el rango y agrupación; los controles de comparación no cambian permisos ni esquema del API. Implementación local, sin despliegue.
+
+Captación incorpora «Qué medir → Motivos de pérdida»: consulta el detalle canónico del mismo reporte nativo/legacy, gráfico por motivo en cantidad o porcentaje de perdidos y tabla reconciliada, respetando la selección de proyectos. Sin evidencia fiable muestra «Sin motivo registrado». Cohorte, extracción y límites: [53 API](../../api/Arquitectura/53-Captacion-Leads-Reporte-Federado.md). Implementado y verificado localmente; no acredita despliegue.
+
+Inicio de Mercadeo (`/home/marketing`) permite filtrar por período y proyecto. «Leads por vendedor» conserva el desglose y sus indicadores como información, sin selección ni filtrado al pulsar sus filas. El API `GET /marketing/home/summary?period=...` mantiene las dimensiones autorizadas por vendedor/proyecto para calcular ambos desgloses; el proyecto se filtra localmente y no se envía vendedor como parámetro. Los alcances y denegaciones del backend no cambian. Captación de leads (`/home/marketing/leads`) también omite el filtro por vendedor: el gráfico, las leyendas, los tooltips y las exportaciones agregan por proyecto, campaña o anuncio según la profundidad elegida, sin nombres ni fotos de responsables. Se conservan los períodos, las medidas y la selección de proyectos del desglose; los totales y porcentajes se calculan desde la misma agregación que las tablas.
+
+Rama `temp/crm-tink-api-frontend-inicial`, HEAD `4d446ed`; el inventario incluye cambios locales tracked, staged y untracked. Los cortes del 2/11 y anteriores que siguen son historia: sus cifras de archivos, pruebas y límites no representan automáticamente este árbol ni un despliegue.
+
+La ficha `/home/formalization/perfil` y alias `/perfil` pertenecen al workspace Formalización y exigen `lead.profile.read`, incluso al montar la página fuera del router. Identidad nativa ULID o legacy decimal se valida antes del GET `/leads/profile`; parámetros duplicados se rechazan. Perfil, historia y órdenes por fuente se muestran mediante hero, pestañas y panel lateral; `tab` se conserva con replaceState. Oportunidades/estimaciones usan páginas comerciales reales opcionales del DTO y `LeadProfileCommercial`; total o «—» depende de `available`, sin deducir registros desde la historia. En bitácora, `+` indica otra página y su contador no es total global. Eventos/archivos son paneles preparados, sin escritura implícita.
+
+Fondos de compra tiene una tarjeta independiente en ficha y drawer: lectura explícita de origen o Sin definir y edición autorizada con snapshot/versiones, sin enviar destino de etapa. Un resultado incierto conserva la misma operación; éxito y fallo posterior de recarga se distinguen. Ver [32](32-Detalle-Orden-y-Cliente-Basico.md).
+
+Formalización incorpora ocho etapas, origen de fondos explícito, banco Sin iniciar/En proceso, condiciones confirmadas de entrega/traspaso y retorno prohibido a saldo desde traspaso. Las ayudas de banners/colas explican sus criterios; los conteos ausentes muestran «—». El detalle y ambos drawers reutilizan contacto, perfil autorizado, borrador Outlook y WhatsApp Web con teléfono/país validados. «Agendar evento» conserva orden y cliente exactos, mientras el acceso del encabezado abre un formulario vacío sin alterar la URL de la ficha.
+
+El marcador Adéndum es transversal e independiente de etapa/evento: nota opcional, lectura, marcación manual y completar/cancelar tienen permisos separados. La falta de lectura del marcador oculta únicamente sus datos, badge y cola; no retira lectura ordinaria de la orden. El banner Home tiene permiso propio y no concede abrir la bandeja. Los comandos conservan versión y operación incierta; éxito confirmado seguido de recarga fallida no se convierte en reintento de escritura. Contrato detallado y condiciones: [32 — Orden y cliente](32-Detalle-Orden-y-Cliente-Basico.md).
+
+La campana integra avisos de calendario con contador, lectura individual y enlace contextual. La edición propia exclusiva de Outlook tiene componente/PATCH preparado, pero el parser del snapshot aún exige canEdit=false: recorrido no certificado. Detalle de esta brecha en [Calendario global](Calendario-Global-Frontend.md).
+
+Calendario combina eventos CRM/Outlook, correlaciona copias y presenta eventos exclusivos de Outlook en consulta con organizador/respuestas y enlace externo para responder. Su editor sí solicita publicación, Teams y salas por BFF; React no llama Graph ni custodia tokens. Disponibilidad y sugerencias se aíslan por intervalo/selección; una agenda desconocida no es libre. Guardado `crm_only`, recibo `synced`, fallo parcial y conflicto remoto se distinguen; la versión Outlook observada viaja en el comando. Adéndum exige orden/cliente y preflight de otro evento futuro; el API revalida. Ver [Calendario global](Calendario-Global-Frontend.md) para filtros, atajos, salas, overlays, consentimiento y reintentos.
+
+Los tests de `test/leads`, `test/calendar` y `test/home` documentan regresiones mediante dobles HTTP; no se atribuye a esta conciliación una ejecución nueva ni aceptación Graph/BD/producción. El cierre raíz registra cualquier comando ejecutado y su resultado. Los recuentos inferiores de seis módulos y siete grupos de servicios corresponden al corte anterior: existe además `modules/leads` y `services/leads`; no trasladar esos componentes para hacer coincidir el blueprint.
+
 ## Corte vigente - 2026-11-02
 
 Inventario contrastado con `app-routes.ts`, los seis directorios reales de
@@ -117,7 +148,8 @@ sesión/perfil y autorización visual; el API decide autorización definitiva.
 | `/home/marketing` | Home conectado, sin cifras demo de respaldo | `GET /marketing/home/summary?period=day|week|month|year` |
 | `/home/marketing/leads` | Reporte de cohortes conectado | `GET /marketing/leads/report?period=day|week|month|all` |
 | `/home/formalization` y `/home/formalization/orders` | Inicio/Gestión con seguimiento canónico y cambio protegido de etapa | Resúmenes, follow-up y stage descritos abajo |
-| `/home/{formalization,marketing,sales,accounting}/calendar` | Calendario global conectado, overlay por módulo y formularios nativos | `SharedCalendarPage`, API `/calendar/calendars` y `/calendar/events`; legacy solo lectura |
+| `/home/{formalization,marketing,sales,accounting}/calendar` | Calendario combinado CRM/Outlook; edición nativa y publicación solicitada por BFF | `SharedCalendarPage`, `/calendar/calendars`, `/calendar/events`, `/calendar/availability` y `/calendar/rooms`; legacy y exclusivos Outlook de consulta |
+| `/home/formalization/perfil` y `/perfil` | Perfil consolidado de consulta con permiso global, workspace Formalización | `LeadProfilePage`, `lead-profile-service.ts`, GET `/leads/profile` |
 | `/home/formalization/summary` | Ruta y menú retirados | La maqueta conservada no se expone como ruta operativa |
 | `/home/sales`, `/home/accounting`, portadas de catálogos, integraciones y rutas Formalización files/contracts | Rutas registradas con placeholder o sin flujo propio | Una ruta no acredita CRUD o integración operativa |
 
@@ -212,8 +244,8 @@ auditoría; Owner usa el perfil efectivo del API sin bypass local.
 | `GET /formalization/orders/:source/:id/history` | `order-history-service.ts`, `FormalizationOrderHistoryDrawer` | Bitácora paginada con cobertura y avisos explícitos; no importa historia legacy |
 | `POST /formalization/orders/approve` | `order-approval-service.ts`, `FormalizationApprovalAction` | Comando independiente, versión/operación estable y confirmación; exige reconciliación si NetSuite confirma sin cierre CRM |
 
-Bandejas reconocidas: all, approvals, contracts, send, signature, bank, balance,
-transfer, signed y closed. Todas aparece primero; otras opciones y proyectos se
+Bandejas reconocidas: all, approvals, addendum, contracts, send, signature, bank, balance,
+transfer, signed y closed. Adéndum exige lectura específica del marcador y de la orden; su banner Home usa otro permiso. Todas aparece primero; otras opciones y proyectos se
 ordenan con colación española. La bandeja approvals no se solicita con su permiso
 revocado. Permisos y búsqueda participan en la clave de la respuesta; la
 revocación desmonta el consumidor. Abrir una fila canónica usa la identidad
@@ -255,7 +287,7 @@ NetSuite→CRM por el hecho de mostrarlo. El plan70 no es un escritor implementa
 - Los permisos visibles no reemplazan validaciones del servidor. Una opción o
   placeholder tampoco demuestra disponibilidad de operación backend.
 
-## Cobertura por área y grupo de servicios - 2026-11-02
+## Cobertura histórica por área y grupo de servicios - 2026-11-02
 
 Los seis directorios de módulos existentes se contrastaron contra sus servicios
 y registro de rutas. Los recuentos son inventario de archivos de este checkout,
@@ -297,7 +329,7 @@ son CRM: no envían mensajes ni agregan permiso a recursos relacionados.
 posición del borrador; no comprueba disponibilidad de Outlook ni escribe eventos.
 Contrato: [Calendario global](Calendario-Global-Frontend.md).
 
-### Matriz de los 34 documentos de Arquitectura
+### Matriz histórica de los 34 documentos de Arquitectura — corte del 2/11
 
 | Documentos (prefijos y nombres completos en el índice) | Uso vigente y qué no deben acreditar |
 | --- | --- |
@@ -438,3 +470,9 @@ Referencias oficiales consultadas:
 La prueba usa la librería real (sin sustituir su componente): cambia las cuatro
 vistas, confirma agenda vacía y ausencia de solicitudes de red o controles de
 creación/edición. Verificación visual del calendario vacío en navegador local.
+
+La selección múltiple de meses, semanas, trimestres y años permanece en edición hasta pulsar **Aplicar filtro**. Cambiar o retirar opciones no ejecuta consultas ni modifica las cifras aplicadas. El botón exige al menos un período. Cambiar el tipo de período reinicia la selección en edición; el rango personalizado conserva su propio envío explícito.
+
+El tipo de Período también queda en edición: Hoy/Semana/Mes/Trimestre/Año/Personalizado no consulta ni cambia el rango, agrupación o gráfico aplicados al cambiar el desplegable. Solo Aplicar filtro confirma el tipo junto con sus intervalos.
+
+La comparación temporal se presenta primero por proyecto (o dimensión elegida) y luego por período. El gráfico reúne sus barras en un bloque compacto con escala común; el desglose usa una matriz con una fila por dimensión, períodos como columnas, total por fila y totales por período. Se conserva la cohorte, los ceros y los porcentajes originales.

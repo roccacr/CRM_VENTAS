@@ -1,5 +1,17 @@
 # Formalizacion: recorrido visual y trazabilidad
 
+## Distribución por proyecto — 2026-11-03
+
+La bienvenida incorpora **Ver distribución por proyecto**: modal con barras por estado/proyecto y tabla de cantidades, usando toda la cartera autorizada sin cambiar filtros ni URL. Sustituye la acción histórica Ver todas las órdenes; Gestión de formalizaciones permanece oculta. Contrato y evidencia en [89 API](../../api/Arquitectura/89-Formalizacion-Distribucion-Por-Proyecto.md).
+
+## Inicio unificado — 2026-11-03
+
+«Ver todas las órdenes» y el menú «Gestión de formalizaciones» se ocultan temporalmente; la ruta directa y sus permisos se conservan. Cada acción de banner agrega su bandeja o subestado al Select de Inicio, conservando proyectos, texto buscado y selecciones; no navega, no duplica selecciones y vuelve a página1. Ambos subestados bancarios son distintos. El usuario puede retirar selecciones desde el filtro. Se conservan preferencias del usuario y búsqueda al agregar banners; una solicitud pendiente se aplica también al remontar la lista. La tabla recibe orden global por proyecto y código de expediente desde el API, previo a paginación y mezclando ambas fuentes; [contrato50](../../api/Arquitectura/50-Plan-Seguimiento-Formalizacion.md).
+
+## Actualización contrastada — 03/11/2026
+
+El recorrido vigente añade perfil de consulta dentro del workspace Formalización, contacto y enlaces externos, avance de ocho etapas, fondos propios/bancarios y condiciones de cierre, marcador Adéndum con permisos separados, alta contextual y alta vacía del encabezado. Contrato operativo: [32](32-Detalle-Orden-y-Cliente-Basico.md); calendario Outlook/BFF: [Calendario global](Calendario-Global-Frontend.md). Los recorridos DEMO y capturas fechadas inferiores se conservan como historia y no prueban estado actual, nueva ejecución o despliegue.
+
 ## Alcance operativo contrastado - 2026-11-02
 
 Este documento conserva el recorrido de las previews, no el inventario actual.
@@ -323,3 +335,9 @@ Evidencias: C:/codex-data/visualizations/2026/10/14/formalization/flujo-orden-es
 ### Resultado automatizado del corte visual 2026-10-14
 
 `pnpm check` completo aprobado: formato, ESLint, TypeScript, 411 pruebas en 28 archivos y build Vite. La corrida final no tuvo pruebas fallidas. Permanecen los avisos no bloqueantes de jsdom sobre getComputedStyle/pseudo-elementos y de bundles mayores a 500 kB. `git diff --check` aprobado. No se ejecutaron pruebas API/BD porque esas capas no fueron modificadas. No se hizo commit, despliegue ni cambio de integraciones.
+
+## Verificación del Inicio unificado
+
+Frontend74 pruebas aprobadas de banners/seguimiento más1 regresión de remontaje; ESLint focal aprobado. Comprobación visual en Inicio: sin atajos ocultados, banner «En proceso» añade su subestado conservando Amara y URL; se retiró la selección de prueba al terminar. Orden visible AM-FF002, AM-FF014, AM-FF017. No se escribieron órdenes ni se modificaron BDs.
+
+El último typecheck/build de frontend no aprobó por cambio concurrente ajeno `src/modules/marketing/MarketingLeadCapturePage.tsx:173` (`periods` opcional incompatible con exactOptionalPropertyTypes). API sí pasó lint/typecheck/build. Suite global API y sus fallos ajenos se detallan en50. No declarar verde el repositorio completo.

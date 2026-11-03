@@ -3,9 +3,13 @@ import { z } from "zod";
 import type { AppointmentState } from "./marketing-appointments.contract.js";
 import type { LegacyMarketingOwner, MarketingDateRange, MarketingExternalIdentity, NativeMarketingProject, NativeMarketingUser } from "./marketing-home.contract.js";
 
-export const marketingLeadsReportQuery = z.object({ period: z.enum(["day", "week", "month", "all"]).default("month") }).strict();
+export const marketingLeadsReportQuery = z.object({ period: z.enum(["day", "week", "month", "all"]).default("month"), qualification: z.enum(["all", "qualified", "unqualified"]).default("all") }).strict();
 export type ReportPeriod = z.infer<typeof marketingLeadsReportQuery>["period"];
+export type ReportQualification = z.infer<typeof marketingLeadsReportQuery>["qualification"];
 export interface ReportLead {
+    qualified?: boolean;
+    hasEstimate?: boolean;
+    hasSalesOrder?: boolean;
     id: string;
     date: string | null;
     sellerId: string;
@@ -15,6 +19,8 @@ export interface ReportLead {
     campaignName?: string | null;
     ad: string | null;
     lost: boolean;
+    /** Motivo documentado; null cuando la fuente no aporta evidencia fiable. */
+    lossReason?: { code: string; name: string } | null;
     providerId?: string;
 }
 export interface ReportEvent {
@@ -47,6 +53,7 @@ export interface ReportRow {
     scheduled: number;
     completed: number;
     lost: number;
+    lossReasons: { code: string; name: string; count: number }[];
 }
 export interface ReportCatalogItem {
     id: string;
@@ -58,6 +65,7 @@ export interface MarketingLeadsReport {
     today: string;
     timeZone: "America/Costa_Rica";
     period: ReportPeriod;
+    qualification: ReportQualification;
     range: MarketingDateRange;
     coverage: MarketingDateRange;
     rows: ReportRow[];

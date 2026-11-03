@@ -1,4 +1,4 @@
-import { Controller, Get, Global, Header, Inject, Module, Param, Query, Req } from "@nestjs/common";
+import { BadRequestException, Body, Controller, Get, Global, Header, Inject, Module, Param, Post, Query, Req } from "@nestjs/common";
 
 import type { CookieRequest } from "../../common/security/cookie-request.type.js";
 import { SESSION_COOKIE_NAME } from "../../common/security/http-security.constants.js";
@@ -14,6 +14,7 @@ import { NetsuiteLocalEventsController } from "./netsuite-local-events.controlle
 import { NetsuiteOrderRepository } from "./netsuite-order.repository.js";
 import { NetsuiteOrderEventRepository } from "./netsuite-order-event.repository.js";
 import { NetsuiteOrderEventService } from "./netsuite-order-event.service.js";
+import { NetsuiteProductionEventsController } from "./netsuite-production-events.controller.js";
 import { NetsuiteRestletClient } from "./netsuite-restlet.client.js";
 import { NetsuiteSalesOrderService } from "./netsuite-sales-order.service.js";
 
@@ -44,6 +45,23 @@ export class NetsuiteSalesOrderController {
     readHistory(@Req() request: CookieRequest, @Param("source") source: string, @Param("id") id: string, @Query() query: unknown) {
         return this.service.readHistory(request.cookies[SESSION_COOKIE_NAME], { source, id }, query);
     }
+    /** Returns the configured ERP environment and manual-write availability. */
+    @Get(":source/:id/netsuite/context")
+    @RouteSecurity("permission")
+    @RequirePermission({ kind: "formalization-order-read" })
+    @Header("Cache-Control", "no-store")
+    synchronizationContext(@Req() request: CookieRequest, @Param("source") source: string, @Param("id") id: string) {
+        return this.service.synchronizationContext(request.cookies[SESSION_COOKIE_NAME], { source, id });
+    }
+    /** Session, CSRF and independent mutation permission are enforced before any provider call. */
+    @Post(":source/:id/netsuite/sync")
+    @RouteSecurity("permission")
+    @RequirePermission({ kind: "all", codes: ["formalizacion.orders.read", "formalizacion.orders.stage.update"] })
+    @Header("Cache-Control", "no-store")
+    synchronize(@Req() request: CookieRequest, @Param("source") source: string, @Param("id") id: string, @Body() body: unknown) {
+        if (body !== undefined && (body === null || typeof body !== "object" || Array.isArray(body) || Object.keys(body).length)) throw new BadRequestException("La sincronizacion no acepta datos del proveedor desde el navegador.");
+        return this.service.synchronize(request.cookies[SESSION_COOKIE_NAME], { source, id });
+    }
     /** Provider read stays separate from the canonical database snapshot. */
     @Get(":source/:id/netsuite")
     @RouteSecurity("permission")
@@ -57,5 +75,10 @@ export class NetsuiteSalesOrderController {
  *
  */
 @Global()
-@Module({ exports: [FORMALIZATION_APPROVAL_ERP], imports: [IdentityModule, AuditModule], controllers: [NetsuiteSalesOrderController, NetsuiteLocalEventsController], providers: [NetsuiteOrderEventService, NetsuiteOrderEventRepository, LocalServiceTokenGuard, NetsuiteOrderRepository, NetsuiteRestletClient, { provide: FORMALIZATION_APPROVAL_ERP, useExisting: NetsuiteRestletClient }, NetsuiteSalesOrderService, OrderTimingRepository, HomeSummaryRepository] })
+@Module({
+    exports: [FORMALIZATION_APPROVAL_ERP, NetsuiteOrderRepository],
+    imports: [IdentityModule, AuditModule],
+    controllers: [NetsuiteSalesOrderController, NetsuiteLocalEventsController, NetsuiteProductionEventsController],
+    providers: [NetsuiteOrderEventService, NetsuiteOrderEventRepository, LocalServiceTokenGuard, NetsuiteOrderRepository, NetsuiteRestletClient, { provide: FORMALIZATION_APPROVAL_ERP, useExisting: NetsuiteRestletClient }, NetsuiteSalesOrderService, OrderTimingRepository, HomeSummaryRepository],
+})
 export class NetsuiteModule {}

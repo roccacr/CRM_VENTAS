@@ -6,7 +6,7 @@ import { leadProfilePermissionMigration } from "../../migrations/schema-only/202
 import type { CrmDatabase } from "../../src/database/database.types.js";
 
 export const PROFILE_NATIVE_ID = "01ARZ3NDEKTSV4RRFFQ69G5FAV";
-const legacyLeadText = "nombre_lead email_lead telefono_lead codigo_lead empresa_lead proyecto_lead subsidiaria_lead moneda_lead segimineto_lead campana_lead custentityaccion_campana referencia_lead estadointeresado_lead comentario_lead accion_lead".split(" ");
+const legacyLeadText = "idnetsuite_lead id_admin_lead id_rol_lead idproyecto_lead idsubsidaria_lead idestadointeresado_lead idcampana_lead idreferencia_lead id_corredor nombre_lead email_lead telefono_lead codigo_lead empresa_lead proyecto_lead subsidiaria_lead moneda_lead segimineto_lead campana_lead custentityaccion_campana referencia_lead estadointeresado_lead comentario_lead accion_lead".split(" ");
 const legacyExtraText =
     "cedula_lead Nacionalidad_lead Estado_ciLead Edad_lead Profesion_lead Hijos_lead TelefonoAlternatovo_lead Direccion Corredor_lead nombre_extra_lead cedula_extra_lead profesion_extra_lead estado_civil_extra_lead telefono_extra_lead nacionalidad_extra_lead email_extra_lead lugar_residencia_extra_lead info_extra_ingresos info_extra_MotivoCompra info_extra_MomentodeCompra info_extra_Trabajo info_extra_leadcol info_extra_OrigenFondo info_extra_ZonaRecidencia info_extra_PerfilClienteComprador".split(
         " ",
@@ -23,6 +23,10 @@ const securityStatements = [
     "CREATE TABLE IF NOT EXISTS audit_security_event (id_security_event BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,public_id_security_event VARCHAR(26),event_type_security_event VARCHAR(100),actor_user_id_security_event BIGINT UNSIGNED,summary_security_event TEXT,reason_security_event TEXT,metadata_security_event JSON) ENGINE=InnoDB",
 ];
 const contextStatements = [
+    `CREATE TABLE IF NOT EXISTS \`crmdatabase-api\`.estimaciones (id_estimacion BIGINT PRIMARY KEY,idLead_est BIGINT,${textColumns("idEstimacion_est tranid_est idOportunidad_est idExpediente_est nombreLead_est idAdmin_est idsubsidiaria namesubsi_est caduca chek_est status creado_est pre_reserva pre_caida montoTotal_est envioPreReserva envioPreReservaCaida fechaClienteComprobante_est".split(" "))}) ENGINE=InnoDB`,
+
+    `CREATE TABLE IF NOT EXISTS \`crmdatabase-api\`.oportunidades (id_oport BIGINT PRIMARY KEY,entity_oport BIGINT,${textColumns("id_oportunidad_oport tranid_oport entityname_oport employee_oport salesrep_oport companyid_oport credholdentity_oport exp_custbody38_oport entitystatus_oport forecasttype_oport probability_oport expectedclosedate_oport custbody76_oport custbody75_oport rangelow_oport rangehigh_oport projectedtotal_oport subsidiary_oport subsidiaria_oport memo_oport fecha_creada_oport update_fecha_oport fecha_menos_probable_oport motivo_inactivacion_oport fecha_inactivacion_oport id_usuario_inactivo_oport tipo_actor_inactivacion_oport fuente_inactivacion_oport detalle_inactivacion_oport fecha_reactivacion_oport id_usuario_reactivo_oport tipo_actor_reactivacion_oport fuente_reactivacion_oport detalle_reactivacion_oport duracion_ultima_inactividad_seg_oport estatus_oport chek_oport fecha_Condicion Motico_Condicion id_valor_opt nota_opt custbody13 chek2_oport".split(" "))}) ENGINE=InnoDB`,
+
     "CREATE TABLE IF NOT EXISTS audit_record (id_record VARCHAR(26) PRIMARY KEY,entity_type_record VARCHAR(30),source_schema_record VARCHAR(100),source_table_record VARCHAR(100),source_id_record VARCHAR(100)) ENGINE=InnoDB",
     "CREATE TABLE IF NOT EXISTS audit_record_event (id_record_event VARCHAR(26) PRIMARY KEY,record_id_record_event VARCHAR(26),action_record_event VARCHAR(100),after_record_event JSON NULL,actor_snapshot_record_event JSON NULL,snapshot_scope_record_event VARCHAR(30),occurred_at_record_event DATETIME,recorded_at_record_event DATETIME,reason_record_event TEXT NULL) ENGINE=InnoDB",
     "CREATE TABLE IF NOT EXISTS int_lead_history_link (lead_id_lead_history_link BIGINT UNSIGNED,record_id_lead_history_link VARCHAR(26)) ENGINE=InnoDB",
@@ -32,7 +36,7 @@ const contextStatements = [
     "CREATE TABLE IF NOT EXISTS `crmdatabase-api`.admins (idnetsuite_admin BIGINT PRIMARY KEY,name_admin VARCHAR(100)) ENGINE=InnoDB",
     "CREATE TABLE IF NOT EXISTS `crmdatabase-api`.caidas (id_caida INT PRIMARY KEY,nombre_caida VARCHAR(100)) ENGINE=InnoDB",
     `CREATE TABLE IF NOT EXISTS \`crmdatabase-api\`.leads (id_lead BIGINT UNSIGNED PRIMARY KEY,idinterno_lead BIGINT UNSIGNED UNIQUE,id_empleado_lead BIGINT,id_Caida INT,estado_lead INT,valor_segimineto_lead INT,contribucion_lead INT,actualizadaaccion_lead DATETIME,seguimiento_calendar INT,whatsapp_template_contact_sent INT,creado_lead DATETIME,actualizado_lead DATETIME,${textColumns(legacyLeadText)}) ENGINE=InnoDB`,
-    `CREATE TABLE IF NOT EXISTS \`crmdatabase-api\`.info_extra_lead (id_lead_fk BIGINT UNSIGNED PRIMARY KEY,${textColumns(legacyExtraText)}) ENGINE=InnoDB`,
+    `CREATE TABLE IF NOT EXISTS \`crmdatabase-api\`.info_extra_lead (id_Info_lead BIGINT NULL,id_lead_fk BIGINT UNSIGNED PRIMARY KEY,${textColumns(legacyExtraText)}) ENGINE=InnoDB`,
     "CREATE TABLE IF NOT EXISTS `crmdatabase-api`.bitacoras (id_bitacora_bit BIGINT PRIMARY KEY,id_lead_bit BIGINT,id_admin_bit BIGINT,id_caida_bit INT,detalle_bit TEXT,tipo_documento_bit VARCHAR(100),estado_bit VARCHAR(100),fecha_creado_bit DATETIME) ENGINE=InnoDB",
     "CREATE TABLE IF NOT EXISTS `crmdatabase-api`.ordenventa (id_ov BIGINT PRIMARY KEY,id_ov_lead BIGINT,id_ov_tranid VARCHAR(50),status_ov INT,trandate_ov DATE,prec_venta_ov DECIMAL(19,4)) ENGINE=InnoDB",
 ];
@@ -70,7 +74,7 @@ async function createTables(db: Kysely<CrmDatabase>) {
 
 async function seedRecords(db: Kysely<CrmDatabase>) {
     await sql`INSERT IGNORE INTO sec_user (id_user,public_id_user,display_name_user,status_user) VALUES (1,'owner-test','Owner de prueba','active'),(2,'role-test','Rol de prueba','active'),(3,'direct-test','Persona de prueba','active'),(4,'without-test','Sin permiso','active'),(5,'deny-test','Deny de prueba','active')`.execute(db);
-    await sql`INSERT IGNORE INTO sec_role VALUES (1,'owner','active',NULL),(2,'formalizacion','active',NULL)`.execute(db);
+    await sql`INSERT IGNORE INTO sec_role VALUES (1,'owner','active',NULL),(2,'formalizacion','active',NULL),(3,'jefe_formalizaciones','active',NULL),(4,'jefe_general','active',NULL)`.execute(db);
     await sql`INSERT IGNORE INTO sec_user_role VALUES (1,1,'active',NULL),(2,2,'active',NULL),(5,2,'active',NULL)`.execute(db);
     await leadProfilePermissionMigration.up(db as unknown as Kysely<unknown>);
     await sql`INSERT IGNORE INTO sec_user_permission_override SELECT 3,id_permission,'allow' FROM sec_permission WHERE code_permission='lead.profile.read'`.execute(db);

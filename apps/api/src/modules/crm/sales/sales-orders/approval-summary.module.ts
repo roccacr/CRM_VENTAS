@@ -17,7 +17,7 @@ export class ApprovalSummaryController {
     /** Aggregate response shared by all configured sources. */
     @Get("summary")
     @RouteSecurity("permission")
-    @RequirePermission({ kind: "active-role", code: "formalizacion", permissionCodes: ["formalizacion.home.approvals.read"] })
+    @RequirePermission({ kind: "all", codes: ["formalizacion.home.approvals.read"] })
     @Header("Cache-Control", "no-store")
     summary(@Req() request: CookieRequest) {
         return this.service.summary(request.cookies[SESSION_COOKIE_NAME]);

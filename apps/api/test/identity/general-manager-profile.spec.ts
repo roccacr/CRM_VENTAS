@@ -51,6 +51,16 @@ function fixture() {
 }
 
 describe("Jefe General selected-module profile", () => {
+    it("acepta el marcado manual por grant real de Jefe General sin heredar virtualmente a la jefatura", async () => {
+        const f = fixture();
+        try {
+            f.state.rolePermissions.push({ code: "formalizacion.orders.addendum.mark_pending", moduleCode: "formalizacion", roleCode: "jefe_general" });
+            const profile = await f.repository.findBySessionTokenHash("hash");
+            expect(profile?.permissions).toContainEqual(expect.objectContaining({ code: "formalizacion.orders.addendum.mark_pending", effect: "allow", source: "role" }));
+        } finally {
+            await f.db.destroy();
+        }
+    });
     it("conserva el permiso global del lead y su deny sin exigir un módulo Lead", async () => {
         const f = fixture();
         try {

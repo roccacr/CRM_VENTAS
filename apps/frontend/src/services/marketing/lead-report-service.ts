@@ -1,13 +1,15 @@
-import type { CaptureCatalogs, CaptureNamed, CaptureRow, CaptureSeller } from "../../modules/marketing/lead-capture-report";
+import type { CaptureCatalogs, CaptureLossReason, CaptureNamed, CaptureRow, CaptureSeller } from "../../modules/marketing/lead-capture-report";
 import { apiRequest } from "../api/api-client";
 
 export type CaptureApiPeriod = "day" | "week" | "month" | "all";
+export type CaptureQualification = "all" | "qualified" | "unqualified";
 export interface CaptureApiReport extends CaptureCatalogs {
     readonly schemaVersion: 1;
     readonly observedAt: string;
     readonly today: string;
     readonly timeZone: "America/Costa_Rica";
     readonly period: CaptureApiPeriod;
+    readonly qualification?: CaptureQualification;
     readonly range: { readonly start: string; readonly end: string };
     readonly coverage: { readonly start: string; readonly end: string };
     readonly rows: readonly CaptureRow[];
@@ -60,21 +62,35 @@ function rows(value: unknown): CaptureRow[] {
         const data = record(item);
         const row = { date: day(data.date), sellerId: text(data.sellerId), projectId: text(data.projectId), campaignId: text(data.campaignId), adId: text(data.adId), leads: count(data.leads), noAppointment: count(data.noAppointment), scheduled: count(data.scheduled), completed: count(data.completed), lost: count(data.lost) };
         if (row.noAppointment + row.scheduled + row.completed !== row.leads || row.lost > row.leads) throw invalid();
-        return row;
+        return { ...row, lossReasons: lossReasons(data.lossReasons, row.lost) };
     });
 }
+/** El detalle debe reconciliar exactamente con Perdidos; una versión anterior conserva el total como no documentado. */
+function lossReasons(value: unknown, lost: number): CaptureLossReason[] {
+    if (value === undefined) return lost > 0 ? [{ code: "unrecorded", name: "Sin motivo registrado", count: lost }] : [];
+    if (!Array.isArray(value)) throw invalid();
+    const result = value.map((item) => {
+        const data = record(item);
+        return { code: text(data.code), name: text(data.name), count: count(data.count) };
+    });
+    if (result.some((item) => item.count === 0) || new Set(result.map((item) => item.code)).size !== result.length || result.reduce((sum, item) => sum + item.count, 0) !== lost) throw invalid();
+    return result;
+}
+
 /** Validate the entire aggregate before any counter or catalog can become visible. */
-export function parseCaptureReport(value: unknown, period: CaptureApiPeriod): CaptureApiReport {
+export function parseCaptureReport(value: unknown, period: CaptureApiPeriod, qualification: CaptureQualification = "all"): CaptureApiReport {
     const data = record(value),
         source = record(data.sources),
         quality = record(data.quality);
     if (data.schemaVersion !== 1 || data.period !== period || data.timeZone !== "America/Costa_Rica" || typeof source.legacyEnabled !== "boolean") throw invalid();
+    if ((data.qualification === undefined ? "all" : data.qualification) !== qualification) throw invalid();
     const report: CaptureApiReport = {
         schemaVersion: 1,
         observedAt: text(data.observedAt),
         today: day(data.today),
         timeZone: "America/Costa_Rica",
         period,
+        qualification,
         range: range(data.range),
         coverage: range(data.coverage),
         rows: rows(data.rows),
@@ -101,6 +117,6 @@ function validateSources(report: CaptureApiReport): void {
     if (!report.sources.legacyEnabled && report.sources.legacy > 0) throw invalid();
 }
 /** The existing BFF owns session cookies and permissions; this endpoint is read only. */
-export async function getCaptureReport(period: CaptureApiPeriod): Promise<CaptureApiReport> {
-    return parseCaptureReport(await apiRequest<unknown>(`/marketing/leads/report?period=${period}`), period);
+export async function getCaptureReport(period: CaptureApiPeriod, qualification: CaptureQualification = "all"): Promise<CaptureApiReport> {
+    return parseCaptureReport(await apiRequest<unknown>(`/marketing/leads/report?period=${period}${qualification === "all" ? "" : `&qualification=${qualification}`}`), period, qualification);
 }

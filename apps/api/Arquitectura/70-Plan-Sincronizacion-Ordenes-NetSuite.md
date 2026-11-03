@@ -1,5 +1,28 @@
 ## Implementación local posterior — 2026-11-02
 
+## Estado vigente y precedencia — 2026-11-03
+
+El escritor v2, su auditoría, cursor y resolución de autoridad ya están
+implementados; v1 mantiene `persisted:false`. El marcador `crm_sync_projection=1`
+habilita los campos ampliados confirmados en [75](75-Matriz-Campos-Ordenes-NetSuite.md):
+montos, fecha canónica, número de transacción, cálculo de asesor, aprobaciones y
+relaciones existentes. Moneda, cálculo corredor y `createdfrom` quedan preservados,
+sin inferir nuevos mapeos. Líneas y aliases permanecen en el snapshot protegido.
+
+El control temporal actual usa doble lectura completa y ventanas UTC no solapadas;
+el hash compara contenido y no funciona como reloj. El reintento de transporte
+mantiene UUID/cuerpo; el conflicto de observación409 requiere una nueva lectura/UUID.
+[73](73-Sincronizacion-Estados-Ordenes-NetSuite.md) conserva la prueba real acotada
+de diez indicadores; no acredita E2E de todos los campos ampliados ni despliegue.
+059 fue aplicada con autorización según74/75; esta revisión no cambia su flag.
+
+Existe una excepción posterior a la regla histórica «los indicadores no mueven
+etapas»: `netsuite-paid-installments.handler.ts` puede avanzar visitas finales
+existentes tras `edit`/`xedit`, con actividad/firma/aprobación de Formalización,
+responsable conservado y auditoría atómica, según [78](78-Formalizacion-Origen-Fondos-y-Gestion-Bancaria.md).
+No retrocede ni crea órdenes/visitas históricas. Origen de fondos y campos de
+adéndum pertenecen al CRM y no son sobrescritos por estos snapshots.
+
 El contrato v2 ya implementa los diez checkbox, resolución nativa → legacy, transacción y bitácora central/nativa. v1 conserva persisted:false. 058 se aplicó con aprobación explícita y el túnel fue verificado; la activación y prueba real están pendientes; este bloque sustituye las descripciones de ausencia de escritor de los cortes históricos inferiores. Contrato, archivos, pruebas y límites: [73](73-Sincronizacion-Estados-Ordenes-NetSuite.md).
 
 # 70 - Plan de sincronización de órdenes desde NetSuite

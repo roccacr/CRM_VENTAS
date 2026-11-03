@@ -6,6 +6,7 @@
  */
 import { type ComponentProps, type ComponentType, createElement } from "react";
 
+import type { BanksPage as BanksPageComponent } from "../modules/administration/banks/BanksPage";
 import type { BrokersPage as BrokersPageComponent } from "../modules/administration/brokers/BrokersPage";
 import type { CampaignsPage as CampaignsPageComponent } from "../modules/administration/campaigns/CampaignsPage";
 import { ADMINISTRATION_CATALOGS } from "../modules/administration/catalogs/catalog-definitions";
@@ -24,6 +25,7 @@ import { createLazyRoute } from "./LazyRoute";
 
 const LeadProfilePage = createLazyRoute<object>(() => import("../modules/leads/LeadProfilePage").then((module) => ({ default: module.LeadProfilePage })));
 
+const BanksPage = createLazyRoute<ComponentProps<typeof BanksPageComponent>>(() => import("../modules/administration/banks/BanksPage").then((module) => ({ default: module.BanksPage })));
 const BrokersPage = createLazyRoute<ComponentProps<typeof BrokersPageComponent>>(() => import("../modules/administration/brokers/BrokersPage").then((module) => ({ default: module.BrokersPage })));
 const CampaignsPage = createLazyRoute<ComponentProps<typeof CampaignsPageComponent>>(() => import("../modules/administration/campaigns/CampaignsPage").then((module) => ({ default: module.CampaignsPage })));
 const CatalogItemsPage = createLazyRoute<ComponentProps<typeof CatalogItemsPageComponent>>(() => import("../modules/administration/catalogs/CatalogItemsPage").then((module) => ({ default: module.CatalogItemsPage })));
@@ -75,6 +77,7 @@ const CATALOG_CONTEXT_ROUTES = [
 ] as const;
 
 const CATALOG_PAGES: Partial<Record<CatalogCode, typeof BrokersPage>> = {
+    banks: BanksPage,
     brokers: BrokersPage,
     campaigns: CampaignsPage,
     classes: ClassesPage,
@@ -99,7 +102,8 @@ const OPERATIONAL_CATALOG_ROUTES = CATALOG_CONTEXT_ROUTES.flatMap((context) =>
 );
 
 const APP_ROUTES: ReadonlyMap<string, AppRoute> = new Map<string, AppRoute>([
-    ["/perfil", { menuItemCode: "lead-profile", permissionCode: "lead.profile.read", Page: LeadProfilePage, title: "Perfil completo del lead", workspaceCode: "all" }],
+    ["/home/formalization/perfil", { menuItemCode: "lead-profile", permissionCode: "lead.profile.read", Page: LeadProfilePage, title: "Perfil del cliente", workspaceCode: "formalization" }],
+    ["/perfil", { menuItemCode: "lead-profile", permissionCode: "lead.profile.read", Page: LeadProfilePage, title: "Perfil del cliente", workspaceCode: "formalization" }],
     ["/home/sales", { menuItemCode: "sales-home", title: "Ventas", workspaceCode: "sales" }],
     ["/home/marketing", { menuItemCode: "marketing-home", Page: MarketingHomePage, title: "Mercadeo", workspaceCode: "marketing" }],
     ["/home/marketing/leads", { menuItemCode: "marketing-leads", Page: MarketingLeadCapturePage, title: "Captación de leads", workspaceCode: "marketing" }],

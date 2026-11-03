@@ -273,3 +273,19 @@ it("accepts an exclusive local secret in development", () => {
 it("rejects persistence without explicitly enabling the Sandbox receiver", () => {
     expect(() => validateEnv({ ...createValidEnv(), NETSUITE_LOCAL_EVENTS_PERSIST: "true" })).toThrow("Persistencia requiere");
 });
+
+it("allows Habita to start while its production script is pending without requiring unused sandbox credentials", () => {
+    expect(validateEnv({ ...createValidEnv(), FRONTEND_ORIGIN: "https://habita.roccacr.com", NETSUITE_ENVIRONMENT: "sandbox" }).NETSUITE_PRODUCTION_RESTLET_URL).toBeUndefined();
+});
+it.each(["https://4552704-sb1.restlets.api.netsuite.com/app/site/hosting/restlet.nl?script=1&deploy=1", "https://evil.test/app/site/hosting/restlet.nl?script=1&deploy=1", "https://4552704.restlets.api.netsuite.com/app/site/hosting/restlet.nl?script=1&deploy=1&id=2"])("rejects incompatible production URL %s", (url) => {
+    expect(() => validateEnv({ ...createValidEnv(), NETSUITE_PRODUCTION_RESTLET_URL: url })).toThrow("NETSUITE_PRODUCTION_RESTLET_URL");
+});
+
+it("validates partial sandbox settings for local even with an old production selector", () => {
+    expect(() => validateEnv({ ...createValidEnv(), NETSUITE_ENVIRONMENT: "production", NETSUITE_SANDBOX_CONSUMER_KEY: "partial" })).toThrow("NETSUITE_SANDBOX");
+});
+
+it("documents are disabled by default and enabling them requires Microsoft configuration", () => {
+    expect(validateEnv(createValidEnv()).ENABLE_ORDER_DOCUMENTS).toBe(false);
+    expect(() => validateEnv({ ...createValidEnv(), ENABLE_ORDER_DOCUMENTS: "true" })).toThrow("MICROSOFT_CLIENT_ID");
+});

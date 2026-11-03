@@ -12,8 +12,10 @@ import { validateEnv } from "./config/env.validation.js";
 import { DatabaseModule } from "./database/database.module.js";
 import { LegacyCrmModule } from "./integrations/legacy-crm/legacy-crm.module.js";
 import { Microsoft365Module } from "./integrations/microsoft365/microsoft365.module.js";
+import { OrderDocumentsModule } from "./integrations/microsoft365/order-documents.module.js";
 import { NetsuiteModule } from "./integrations/netsuite/netsuite.module.js";
 import { AuditModule } from "./modules/crm/audit/audit.module.js";
+import { BanksModule } from "./modules/crm/banks/banks.module.js";
 import { BrokersModule } from "./modules/crm/brokers/brokers.module.js";
 import { CalendarModule } from "./modules/crm/calendar/calendar.module.js";
 import { CampaignsModule } from "./modules/crm/campaigns/campaigns.module.js";
@@ -31,6 +33,7 @@ import { ApprovalSummaryModule } from "./modules/crm/sales/sales-orders/approval
 import { ContractSummaryModule } from "./modules/crm/sales/sales-orders/contract-summary.module.js";
 import { ContractTransitionModule } from "./modules/crm/sales/sales-orders/contract-transition.module.js";
 import { HomeSummaryModule } from "./modules/crm/sales/sales-orders/home-summary.module.js";
+import { OrderBankAssignmentModule } from "./modules/crm/sales/sales-orders/order-bank-assignment.js";
 import { SubsidiariesModule } from "./modules/crm/subsidiaries/subsidiaries.module.js";
 import { UnitFilesModule } from "./modules/crm/unit-files/unit-files.module.js";
 
@@ -75,6 +78,9 @@ import { UnitFilesModule } from "./modules/crm/unit-files/unit-files.module.js";
         ClassesModule,
         LocationsModule,
         SubsidiariesModule,
+        BanksModule,
+        OrderBankAssignmentModule,
+        OrderDocumentsModule,
         BrokersModule,
         UnitFilesModule,
         ApprovalSummaryModule,

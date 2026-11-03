@@ -22,8 +22,9 @@ import { HomeSummaryRepository } from "../../src/modules/crm/sales/sales-orders/
 describe("Formalization follow-up HTTP (persistence mocked)", () => {
     let app: NestFastifyApplication;
     let profile: IdentityProfile;
-    const native = vi.fn().mockResolvedValue(emptyFollowUpSource());
-    const legacy = vi.fn().mockResolvedValue(emptyFollowUpSource());
+    const native = vi.fn().mockResolvedValue({ ...emptyFollowUpSource(), sourceTotals: { native: 0, legacy: 0 } });
+    const distribution = vi.fn().mockResolvedValue({ totalOrders: 1, series: ["closed", "addendum"], projects: [{ id: null, name: "Sin proyecto", total: 1, counts: { closed: 1, addendum: 1 } }] });
+    const legacy = vi.fn().mockReturnValue("legacy-projection");
     const identity = {
         getCurrentUser: vi.fn((session?: string) => {
             if (!session) throw new UnauthorizedException();
@@ -36,9 +37,9 @@ describe("Formalization follow-up HTTP (persistence mocked)", () => {
             providers: [
                 FollowUpService,
                 { provide: IdentityService, useValue: identity },
-                { provide: FollowUpRepository, useValue: { read: native } },
+                { provide: FollowUpRepository, useValue: { readCombined: native, projectDistribution: distribution } },
                 { provide: HomeSummaryRepository, useValue: { readSnapshot: async (read: (tx: object) => Promise<unknown>) => read({}) } },
-                { provide: FOLLOW_UP_LEGACY_READER, useValue: { enabled: () => true, read: legacy } },
+                { provide: FOLLOW_UP_LEGACY_READER, useValue: { enabled: () => true, projection: legacy } },
                 { provide: AuthenticatedReadRateLimit, useValue: { enforceAuthenticatedReadLimit: () => true } },
                 { provide: APP_GUARD, useClass: AuthGuard },
             ],
@@ -56,6 +57,28 @@ describe("Formalization follow-up HTTP (persistence mocked)", () => {
         await app.close();
     });
     const request = (query = "") => app.inject({ url: "/formalization/home/follow-up" + query, headers: { cookie: `${SESSION_COOKIE_NAME}=session` } });
+    it("returns unfiltered aggregates without fetching order lists", async () => {
+        const response = await app.inject({ url: "/formalization/home/project-distribution", headers: { cookie: `${SESSION_COOKIE_NAME}=session` } });
+        expect(response.statusCode).toBe(200);
+        expect(response.headers["cache-control"]).toBe("no-store");
+        expect(response.json()).toMatchObject({ schemaVersion: 1, totalOrders: 1, projects: [{ id: null, total: 1, counts: { closed: 1, addendum: 1 } }] });
+        expect(distribution).toHaveBeenCalledOnce();
+        expect(native).not.toHaveBeenCalled();
+    });
+    it("rejects distribution filters and explicit deny before SQL", async () => {
+        const requestDistribution = (suffix = "") => app.inject({ url: "/formalization/home/project-distribution" + suffix, headers: { cookie: `${SESSION_COOKIE_NAME}=session` } });
+        expect((await requestDistribution("?page=2")).statusCode).toBe(400);
+        profile.permissions.push({ code: "formalizacion.home.stages.read", effect: "deny", scope: null, source: "override" });
+        expect((await requestDistribution()).statusCode).toBe(403);
+        expect(distribution).not.toHaveBeenCalled();
+        expect(legacy).not.toHaveBeenCalled();
+    });
+    it("rejects distribution without membership before SQL", async () => {
+        profile.roles = [];
+        expect((await app.inject({ url: "/formalization/home/project-distribution", headers: { cookie: `${SESSION_COOKIE_NAME}=session` } })).statusCode).toBe(403);
+        expect(native).not.toHaveBeenCalled();
+        expect(legacy).not.toHaveBeenCalled();
+    });
     it("requires authentication before reading either source", async () => {
         expect((await app.inject({ url: "/formalization/home/follow-up" })).statusCode).toBe(401);
         expect(native).not.toHaveBeenCalled();
@@ -87,7 +110,9 @@ describe("Formalization follow-up HTTP (persistence mocked)", () => {
         expect(legacy).toHaveBeenCalledOnce();
     });
     it("does not hide a failed source behind an empty successful table", async () => {
-        legacy.mockRejectedValueOnce(new Error("unavailable"));
+        legacy.mockImplementationOnce(() => {
+            throw new Error("unavailable");
+        });
         const response = await request();
         expect(response.statusCode).toBe(503);
         expect(response.json()).not.toHaveProperty("items");

@@ -1,6 +1,16 @@
 # 00 - Ley de Producto CRM TINK y P0 Frontend
 
-## Corte documental vigente - 2026-11-02
+## Contrato visual vigente — 2026-11-03
+
+La [reconciliación85](../../api/Arquitectura/85-Reconciliacion-Documental-20261103.md), el [mapa30](30-Estado-Frontend-Verificado.md) y el [detalle32](32-Detalle-Orden-y-Cliente-Basico.md) registran el árbol actual. Sustituyen las restricciones históricas de maqueta/recepción/Graph pendiente para las funciones expresamente ampliadas.
+
+Formalización presenta ocho etapas, selector obligatorio de fondos, validaciones de cuotas/traspaso/entrega y ayudas en títulos. Perfil del cliente en `/home/formalization/perfil`, contacto, Outlook y WhatsApp conservan contexto y permisos propios. Agendar desde orden fija cliente/orden y referencia; la cabecera abre un evento limpio. Guardar conserva la pantalla actual. Calendario integra las capacidades Graph descritas en [Calendario global](Calendario-Global-Frontend.md); no afirma invitación entregada solo por guardar CRM.
+
+Adéndum es un seguimiento paralelo en ambas BD: marca manual con nota opcional, banner, bandeja, distintivo y acciones debajo de Acciones de la etapa. Sin permiso se oculta solo el contenido Adéndum; la orden permanece visible. Defaults067 de marcar pendiente: Owner, Jefe General y Jefe de Formalizaciones; Formalización base no lo recibe, y un deny personal prevalece. [Contrato83/84](../../api/Arquitectura/84-Adendum-Manual-Migracion-066-y-Permisos.md).
+
+Los snapshots siguientes conservan sus fechas, sin ampliar el alcance ni autorizar operaciones externas. El inventario local y los tests no acreditan despliegue o aceptación completa del negocio.
+
+## Antecedente documental - 2026-11-02
 
 Esta revisión refleja las ampliaciones ya presentes en código y conserva las
 decisiones anteriores con su fecha; no autoriza funciones nuevas por documento.

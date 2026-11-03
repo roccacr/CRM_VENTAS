@@ -51,8 +51,8 @@ describe("Formalization approval command authorization", () => {
         await expect(f.service.approve(undefined, input)).rejects.toMatchObject({ status: 403 });
         expect(f.getCurrentUser).toHaveBeenCalledWith(undefined);
     });
-    it("requires effective module membership", async () => {
-        await expect(setup(undefined, []).service.approve("session", input)).rejects.toMatchObject({ status: 403 });
+    it("honors a personal approval grant without a named role", async () => {
+        await expect(setup(undefined, []).service.approve("session", input)).resolves.toMatchObject({ approved: true });
     });
     it.each([
         { ...input, actorId: "forged" },
@@ -159,8 +159,8 @@ it.each(["formalizacion", "jefe_formalizaciones"].flatMap((role) => ["self", "as
     expect(denied.repository.approve).not.toHaveBeenCalled();
 });
 
-it.each(["formalizacion", "jefe_formalizaciones"])("rejects inactive %s even with an approval grant", async (role) => {
-    const f = setup(undefined, [{ code: role, status: "inactive" }]);
+it.each(["formalizacion", "jefe_formalizaciones"])("rejects inactive %s without an effective approval grant", async (role) => {
+    const f = setup([], [{ code: role, status: "inactive" }]);
     await expect(f.service.approve("session", input)).rejects.toMatchObject({ status: 403 });
     expect(f.repository.approve).not.toHaveBeenCalled();
 });

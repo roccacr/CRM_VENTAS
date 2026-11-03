@@ -14,6 +14,7 @@ const PROGRESS_ICONS: Record<string, typeof SendOutlined> = {
     contract_pending_send: SendOutlined,
     contract_pending_signature: FileDoneOutlined,
     bank_management: BankOutlined,
+    bank_management_in_progress: BankOutlined,
     pending_balance: WalletOutlined,
     pending_transfer: SwapOutlined,
     transfer_signed: KeyOutlined,

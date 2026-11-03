@@ -215,6 +215,8 @@ export class CatalogItemOperations {
     protected resolveCatalog(catalogCode: string): CatalogDefinition {
         const definition = findCatalogDefinition(catalogCode);
 
+        if (catalogCode === "banks") throw new BadRequestException("Use the Banks module.");
+
         if (!definition) {
             throw new BadRequestException("Catálogo no soportado.");
         }

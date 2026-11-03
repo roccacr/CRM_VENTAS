@@ -126,70 +126,6 @@
     border-radius: 8px;
     background: #ffffff;
 }
-.mini-month header {
-    display: flex;
-    align-items: center;
-    gap: 2px;
-    margin-bottom: 8px;
-}
-.mini-month h2 {
-    flex: 1;
-    margin: 0;
-    color: #2f3a4b;
-    font-size: 13px;
-    font-weight: 600;
-}
-.mini-month header button {
-    display: grid;
-    width: 24px;
-    height: 24px;
-    place-items: center;
-    border: 0;
-    border-radius: 4px;
-    background: transparent;
-    color: #496180;
-    font-size: 11px;
-    cursor: pointer;
-}
-.mini-month header button:hover {
-    background: #ebeef3;
-}
-.mini-month__grid {
-    display: grid;
-    grid-template-columns: repeat(7, 1fr);
-    gap: 2px;
-    text-align: center;
-}
-.mini-month__weekday {
-    color: #5d6b82;
-    font-size: 11px;
-    font-weight: 600;
-    line-height: 22px;
-}
-.mini-month__day {
-    height: 28px;
-    border: 0;
-    border-radius: 50%;
-    background: transparent;
-    color: #2f3a4b;
-    font-size: 12px;
-    cursor: pointer;
-}
-.mini-month__day[data-outside="true"] {
-    color: #9aa7ba;
-}
-.mini-month__day:hover {
-    background: #ebeef3;
-}
-.mini-month__day[data-selected="true"] {
-    background: #d2dae5;
-    font-weight: 600;
-}
-.mini-month__day[data-today="true"] {
-    background: #303c4e;
-    color: #ffffff;
-    font-weight: 600;
-}
 .calendar-sidebar__list {
     display: grid;
     gap: 2px;
@@ -250,15 +186,6 @@
 }
 
 /* Mini month: neutral ink, no browser-blue buttons. */
-.calendar-sidebar .mini-month__day {
-    color: #2f3a4b;
-}
-.calendar-sidebar .mini-month__day[data-outside="true"] {
-    color: #9aa7ba;
-}
-.calendar-sidebar .mini-month__day[data-today="true"] {
-    color: #ffffff;
-}
 
 /* Enterprise layout: summary strip, then the side cards (each with the 40px band of the record pages) and the calendar. */
 .calendar-summary {
@@ -326,12 +253,6 @@
     color: #2f3a4b;
     font-size: 13px;
     font-weight: 600;
-}
-.calendar-card .mini-month {
-    padding: 10px 12px 12px;
-}
-.calendar-card .mini-month h2 {
-    font-size: 13px;
 }
 .calendar-card .calendar-sidebar__list {
     padding: 8px 8px 10px;
@@ -419,6 +340,38 @@
 }
 
 /* Page chrome on the project contract: status notices, dark primary action, neutral form ink, one focus colour. */
+.shared-calendar .formalization-calendar__surface {
+    position: relative;
+}
+.calendar-surface__body {
+    height: 100%;
+}
+.calendar-surface__body[aria-hidden="true"] {
+    visibility: hidden;
+}
+.shared-calendar .calendar-preload {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    min-height: 240px;
+    min-width: 0;
+    border-radius: inherit;
+    background: #fff;
+    color: #3b4a61;
+    font-size: 14px;
+}
+.event-required {
+    color: #a12b3a;
+    font-weight: 700;
+}
+.calendar-location-select {
+    width: 100%;
+}
 .calendar-notice {
     display: flex;
     align-items: center;
@@ -1373,4 +1326,1131 @@
 }
 .event-externals .event-switch {
     margin-top: 4px;
+}
+
+.calendar-outlook {
+    padding: 16px;
+}
+.calendar-outlook h2,
+.calendar-availability h2 {
+    font-size: 14px;
+    margin: 0 0 10px;
+}
+.calendar-outlook p,
+.calendar-availability p {
+    font-size: 12px;
+    line-height: 1.5;
+}
+.calendar-outlook select {
+    display: block;
+    width: 100%;
+    margin-top: 6px;
+    padding: 8px;
+}
+.calendar-availability {
+    padding: 12px 16px;
+    border-bottom: 1px solid #d2dae5;
+    max-height: 260px;
+    overflow: auto;
+}
+.calendar-availability button {
+    display: block;
+    width: 100%;
+    padding: 8px;
+    margin: 6px 0;
+    background: #fff;
+    color: #24364b;
+    border: 1px solid #b5bfcc;
+    border-radius: 4px;
+    text-align: left;
+    cursor: pointer;
+}
+.calendar-availability [role="alert"] {
+    color: #813a13;
+}
+.calendar-outlook button:focus-visible,
+.calendar-availability button:focus-visible {
+    outline: 2px solid #0369a1;
+    outline-offset: 2px;
+}
+
+/* Enterprise calendar skin, modelled on the Outlook month view: quiet grid, tinted event bars with a colour rail, dark text, numbers at the left. */
+.shared-calendar .calendar-summary {
+    gap: 0;
+    overflow: hidden;
+    border: 1px solid #d2dae5;
+    border-radius: 8px;
+    background: #ffffff;
+}
+.shared-calendar .calendar-summary__tile {
+    padding: 10px 18px;
+    border: 0;
+    border-right: 1px solid #e1e7ef;
+    border-radius: 0;
+}
+.shared-calendar .calendar-summary__tile:last-child {
+    border-right: 0;
+}
+.shared-calendar .calendar-summary__tile span {
+    font-size: 11.5px;
+}
+.shared-calendar .calendar-summary__tile strong {
+    font-size: 22px;
+}
+@media (max-width: 1100px) {
+    .shared-calendar .calendar-summary__tile:nth-child(2n) {
+        border-right: 0;
+    }
+    .shared-calendar .calendar-summary__tile:nth-child(n + 3) {
+        border-top: 1px solid #e1e7ef;
+    }
+}
+.shared-calendar .formalization-calendar__surface {
+    --fc-monarch-border: #e1e7ef;
+    border-radius: 8px;
+    box-shadow: 0 1px 2px rgba(47, 58, 75, 0.04);
+}
+.shared-calendar .formalization-calendar__surface .cal-toolbar {
+    padding: 10px 14px;
+    background: #ffffff;
+}
+.shared-calendar .formalization-calendar__surface .cal-title {
+    font-size: 16px;
+}
+.shared-calendar .formalization-calendar__surface .cal-btn {
+    height: 32px;
+    border-color: #c3ccd9;
+    font-size: 12.5px;
+}
+.shared-calendar .formalization-calendar__surface .cal-dayhead {
+    padding: 9px 10px;
+    border-bottom: 1px solid #d2dae5;
+    background: #f8fafc;
+    color: #496180;
+    font-size: 12px;
+    letter-spacing: 0;
+    text-align: left;
+    text-transform: capitalize;
+}
+.shared-calendar .formalization-calendar__surface .cal-day {
+    padding: 2px 4px 4px;
+    border-color: #e1e7ef;
+    font-size: 12px;
+}
+.shared-calendar .formalization-calendar__surface .cal-daytop {
+    justify-content: flex-start;
+    padding: 4px 6px 2px;
+    color: #2f3a4b;
+    font-size: 12.5px;
+    font-variant-numeric: tabular-nums;
+}
+.shared-calendar .formalization-calendar__surface .cal-day:nth-child(7n),
+.shared-calendar .formalization-calendar__surface .cal-day:nth-child(7n - 1) {
+    background: #fafbfd;
+}
+
+/* Events: tinted bar, colour rail, dark text; the time is a muted prefix and the dot is gone. */
+.shared-calendar .formalization-calendar__surface .cal-event {
+    margin-bottom: 2px;
+    padding: 1px 6px;
+    border: 1px solid color-mix(in srgb, var(--fc-event-color, #303c4e) 26%, #ffffff);
+    border-left: 3px solid var(--fc-event-color, #303c4e);
+    border-radius: 4px;
+    background: color-mix(in srgb, var(--fc-event-color, #303c4e) 11%, #ffffff);
+    box-shadow: none;
+    color: #2f3a4b;
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 1.5;
+    cursor: pointer;
+    transition:
+        background 0.12s,
+        border-color 0.12s;
+}
+.shared-calendar .formalization-calendar__surface .cal-event:hover {
+    background: color-mix(in srgb, var(--fc-event-color, #303c4e) 20%, #ffffff);
+}
+.shared-calendar .formalization-calendar__surface .cal-event-dot {
+    display: none;
+}
+.shared-calendar .formalization-calendar__surface .cal-event-time {
+    color: #496180;
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+}
+.shared-calendar .formalization-calendar__surface .cal-event-title {
+    min-width: 0;
+    overflow: hidden;
+    color: #2f3a4b;
+    text-overflow: ellipsis;
+}
+.shared-calendar .formalization-calendar__surface .cal-event--outlook {
+    border-style: dashed;
+    border-left-style: solid;
+    background: color-mix(in srgb, var(--fc-event-color, #303c4e) 6%, #ffffff);
+}
+.shared-calendar .formalization-calendar__surface .cal-event:focus-visible {
+    outline: 2px solid #2563eb;
+    outline-offset: 1px;
+}
+.shared-calendar .formalization-calendar__surface .cal-more {
+    padding: 0 6px;
+    color: #496180;
+    font-size: 11.5px;
+    font-weight: 600;
+}
+.shared-calendar .formalization-calendar__surface .cal-more:hover {
+    color: #2f3a4b;
+    text-decoration: underline;
+}
+.cal-popover {
+    border: 1px solid #c3ccd9;
+    border-radius: 8px;
+    box-shadow: 0 8px 24px rgba(47, 58, 75, 0.18);
+}
+
+/* A taller calendar: it takes the viewport height instead of leaving empty space under the month. */
+.shared-calendar .formalization-calendar__surface {
+    height: clamp(680px, calc(100vh - 250px), 1200px);
+}
+
+/* Second pass after seeing it rendered: quiet headers, lighter chips, and an honest Outlook row. */
+.shared-calendar .formalization-calendar__surface .cal-dayhead .cal-dayhead-text,
+.shared-calendar .formalization-calendar__surface .cal-dayhead-text {
+    display: block;
+    width: 100%;
+    color: #496180;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0;
+    text-align: left;
+    text-transform: capitalize;
+}
+.shared-calendar .formalization-calendar__surface .cal-event {
+    background: color-mix(in srgb, var(--fc-event-color, #303c4e) 8%, #ffffff);
+    border-color: color-mix(in srgb, var(--fc-event-color, #303c4e) 18%, #ffffff);
+}
+.shared-calendar .formalization-calendar__surface .cal-event-time {
+    font-weight: 400;
+}
+.shared-calendar .formalization-calendar__surface .cal-event-title {
+    font-weight: 500;
+}
+.calendar-sidebar__outlook {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 8px;
+    color: #2f3a4b;
+    font-size: 13px;
+}
+.calendar-sidebar__outlook span {
+    flex: 1;
+    min-width: 0;
+    padding-left: 10px;
+    border-left: 4px solid var(--calendar-color, #0369a1);
+    border-radius: 1px;
+}
+.calendar-sidebar__outlook em {
+    min-width: 22px;
+    padding: 1px 7px;
+    border-radius: 10px;
+    background: #eef2f7;
+    color: #496180;
+    font-size: 11.5px;
+    font-style: normal;
+    font-weight: 600;
+    text-align: center;
+}
+
+/* Outlook quick view: a small card beside the clicked event, same quiet frame as the other cards. */
+.outlook-popover {
+    position: fixed;
+    z-index: 1100;
+    overflow: hidden;
+    border: 1px solid #c3ccd9;
+    border-top: 3px solid #0369a1;
+    border-radius: 8px;
+    background: #ffffff;
+    box-shadow: 0 8px 28px rgba(47, 58, 75, 0.22);
+    color: #2f3a4b;
+    font-size: 13px;
+}
+.outlook-popover:focus {
+    outline: 0;
+}
+.outlook-popover__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 8px 0 14px;
+    color: #5d6b82;
+    font-size: 12px;
+}
+.outlook-popover__head button {
+    display: grid;
+    width: 26px;
+    height: 26px;
+    place-items: center;
+    border: 0;
+    border-radius: 6px;
+    background: transparent;
+    color: #496180;
+    cursor: pointer;
+}
+.outlook-popover__head button:hover {
+    background: #eef2f7;
+    color: #2f3a4b;
+}
+.outlook-popover__head button:focus-visible {
+    outline: 2px solid #2563eb;
+    outline-offset: 1px;
+}
+.outlook-popover__body {
+    display: grid;
+    gap: 8px;
+    padding: 4px 14px 12px;
+}
+.outlook-popover__body h2 {
+    margin: 0;
+    color: #2f3a4b;
+    font-size: 16px;
+    font-weight: 600;
+    line-height: 1.3;
+    overflow-wrap: anywhere;
+}
+.outlook-popover__row {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    margin: 0;
+    color: #2f3a4b;
+    line-height: 1.4;
+}
+.outlook-popover__row .anticon {
+    margin-top: 3px;
+    color: #5d6b82;
+}
+.outlook-popover__summary {
+    display: -webkit-box;
+    margin: 0;
+    overflow: hidden;
+    color: #5d6b82;
+    font-size: 12.5px;
+    line-height: 1.45;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 4;
+    overflow-wrap: anywhere;
+}
+.outlook-popover__foot {
+    padding: 8px 14px;
+    border-top: 1px solid #e1e7ef;
+    background: #f8fafc;
+    color: #5d6b82;
+    font-size: 11.5px;
+    line-height: 1.4;
+}
+
+/* The event whose card or editor is open stays marked, so several events in one day never look alike. */
+.shared-calendar .formalization-calendar__surface .cal-event.cal-event--selected,
+.cal-popover .cal-event.cal-event--selected {
+    z-index: 2;
+    border-color: var(--fc-event-color, #303c4e);
+    background: color-mix(in srgb, var(--fc-event-color, #303c4e) 24%, #ffffff);
+    box-shadow:
+        0 0 0 2px color-mix(in srgb, var(--fc-event-color, #303c4e) 45%, #ffffff),
+        0 2px 6px rgba(47, 58, 75, 0.18);
+}
+.shared-calendar .formalization-calendar__surface .cal-event.cal-event--selected .cal-event-title,
+.cal-popover .cal-event.cal-event--selected .cal-event-title {
+    font-weight: 600;
+}
+
+/* Outlook card actions, spacing between its sections, and the right-side detail panel. */
+.outlook-popover__tools {
+    display: inline-flex;
+    gap: 2px;
+}
+.outlook-popover__body {
+    gap: 12px;
+    padding: 6px 16px 16px;
+}
+.outlook-popover__summary {
+    margin-top: 4px;
+    padding-top: 12px;
+    border-top: 1px solid #e1e7ef;
+}
+.outlook-popover__join {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 34px;
+    margin-top: 6px;
+    border: 1px solid #303c4e;
+    border-radius: 6px;
+    background: #303c4e;
+    color: #ffffff;
+    font-size: 13px;
+    font-weight: 600;
+    text-decoration: none;
+}
+.outlook-popover__join:hover {
+    border-color: #42516a;
+    background: #42516a;
+    color: #ffffff;
+}
+.outlook-popover__join:focus-visible {
+    outline: 2px solid #2563eb;
+    outline-offset: 2px;
+}
+.shared-calendar-drawer .outlook-detail {
+    display: grid;
+    gap: 16px;
+    align-content: start;
+}
+.outlook-detail__card {
+    display: grid;
+    gap: 12px;
+    padding: 16px;
+}
+.outlook-detail__card h2 {
+    margin: 0;
+    color: #2f3a4b;
+    font-size: 18px;
+    font-weight: 600;
+    line-height: 1.3;
+    overflow-wrap: anywhere;
+}
+.outlook-detail__card .outlook-popover__row span {
+    overflow-wrap: anywhere;
+    white-space: pre-line;
+}
+.outlook-detail__teams {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 12px;
+    border: 1px solid #e1e7ef;
+    border-radius: 8px;
+    background: #f8fafc;
+}
+.outlook-detail__teams > .anticon {
+    color: #496180;
+    font-size: 18px;
+}
+.outlook-detail__teams strong {
+    display: block;
+    color: #2f3a4b;
+    font-size: 13px;
+    font-weight: 600;
+}
+.outlook-detail__teams small {
+    color: #5d6b82;
+    font-size: 12px;
+}
+
+/* "+N más" list: one row per event, a rule between rows, and the open event marked in grey. */
+.cal-popover .cal-event {
+    margin: 0;
+    padding: 7px 10px;
+    border: 0;
+    border-bottom: 1px solid #e1e7ef;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+    cursor: pointer;
+}
+.cal-popover .cal-event:last-child {
+    border-bottom: 0;
+}
+.cal-popover .cal-event:hover {
+    background: #f5f7fa;
+}
+.cal-popover .cal-event.cal-event--selected {
+    background: #e3e8ef;
+    box-shadow: none;
+}
+
+/* Outlook detail panel: the event on the left, "Seguimiento" (organizer and replies) on the right, like Outlook's own window. */
+.shared-calendar-drawer .outlook-detail[data-with-people="true"] {
+    grid-template-columns: minmax(0, 1fr) 300px;
+    align-items: start;
+}
+.outlook-detail__main {
+    display: grid;
+    gap: 16px;
+    align-content: start;
+    min-width: 0;
+}
+.outlook-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+.outlook-tags li {
+    padding: 2px 10px;
+    border: 1px solid #c3ccd9;
+    border-radius: 999px;
+    background: #eef2f7;
+    color: #3b4a61;
+    font-size: 12px;
+    font-weight: 600;
+}
+.outlook-attendees .event-card__head {
+    margin: 0;
+}
+.outlook-attendees__body {
+    display: grid;
+    gap: 6px;
+    padding: 12px 14px 16px;
+}
+.outlook-attendees__body h3 {
+    margin: 8px 0 0;
+    color: #496180;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+}
+.outlook-attendees__body h3:first-child {
+    margin-top: 0;
+}
+.outlook-attendees__body details > summary {
+    padding: 6px 0;
+    color: #2f3a4b;
+    font-size: 12.5px;
+    font-weight: 600;
+    cursor: pointer;
+}
+.outlook-attendees__empty {
+    margin: 0;
+    color: #5d6b82;
+    font-size: 12.5px;
+}
+.outlook-people {
+    display: grid;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+.outlook-person {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 0;
+    border-bottom: 1px solid #eef2f7;
+}
+.outlook-person:last-child {
+    border-bottom: 0;
+}
+.outlook-person__avatar {
+    display: grid;
+    flex: none;
+    width: 30px;
+    height: 30px;
+    place-items: center;
+    border-radius: 50%;
+    background: #e3e9f1;
+    color: #496180;
+    font-size: 11.5px;
+    font-weight: 600;
+}
+.outlook-person__text {
+    display: grid;
+    min-width: 0;
+}
+.outlook-person__text strong {
+    overflow: hidden;
+    color: #2f3a4b;
+    font-size: 13px;
+    font-weight: 600;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.outlook-person__text small {
+    overflow: hidden;
+    color: #5d6b82;
+    font-size: 12px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.outlook-popover__open {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0 14px 12px;
+    color: #2f3a4b;
+    font-size: 12.5px;
+    font-weight: 600;
+    text-decoration: none;
+}
+.outlook-popover__open:hover {
+    text-decoration: underline;
+}
+@media (max-width: 900px) {
+    .shared-calendar-drawer .outlook-detail[data-with-people="true"] {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+
+/* Highlighted quick card: a soft veil dims the calendar behind it without hiding it, and the card lifts above. */
+.outlook-scrim {
+    position: fixed;
+    z-index: 1090;
+    inset: 0;
+    background: rgba(30, 41, 59, 0.16);
+    backdrop-filter: blur(1.5px);
+    pointer-events: none;
+    animation: outlook-scrim-in 0.15s ease-out;
+}
+.outlook-popover {
+    border-top-width: 4px;
+    box-shadow:
+        0 0 0 1px rgba(3, 105, 161, 0.18),
+        0 16px 40px rgba(30, 41, 59, 0.32);
+    animation: outlook-card-in 0.15s ease-out;
+}
+@keyframes outlook-scrim-in {
+    from {
+        opacity: 0;
+    }
+}
+@keyframes outlook-card-in {
+    from {
+        opacity: 0;
+        transform: translateY(4px);
+    }
+}
+@media (prefers-reduced-motion: reduce) {
+    .outlook-scrim,
+    .outlook-popover {
+        animation: none;
+    }
+}
+
+/* Detail panel: the human note inside the main card, and the side panel pinned while the page scrolls. */
+.outlook-detail__summary {
+    margin: 0;
+    padding-top: 12px;
+    border-top: 1px solid #e1e7ef;
+    color: #5d6b82;
+    font-size: 13px;
+    line-height: 1.5;
+    overflow-wrap: anywhere;
+}
+.outlook-attendees {
+    position: sticky;
+    top: 0;
+}
+
+/* Outlook-style cues on events: series, tentative, private and cancelled. */
+.shared-calendar .formalization-calendar__surface .cal-event--recurring .cal-event-title::after,
+.cal-popover .cal-event--recurring .cal-event-title::after {
+    margin-left: 4px;
+    color: #5d6b82;
+    content: "\21BB";
+    font-size: 11px;
+}
+.shared-calendar .formalization-calendar__surface .cal-event--tentative {
+    background-image: repeating-linear-gradient(135deg, rgba(255, 255, 255, 0.7) 0 4px, transparent 4px 8px);
+    border-left-style: dashed;
+}
+.shared-calendar .formalization-calendar__surface .cal-event--private .cal-event-title::before {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    margin-right: 4px;
+    background: currentcolor;
+    content: "";
+    mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><path d='M4 7V5a4 4 0 1 1 8 0v2h1v7H3V7h1zm2 0h4V5a2 2 0 1 0-4 0v2z'/></svg>") center / contain no-repeat;
+}
+.shared-calendar .formalization-calendar__surface .cal-event--cancelled {
+    opacity: 0.6;
+    text-decoration: line-through;
+}
+
+/* Search and shortcuts in the page header. */
+.shared-calendar__actions .calendar-search {
+    width: 220px;
+}
+.shared-calendar__actions .calendar-search .anticon {
+    color: #5d6b82;
+}
+@media (max-width: 700px) {
+    .shared-calendar__actions .calendar-search {
+        width: 100%;
+    }
+}
+.calendar-sidebar__list label:has(input:not(:checked)) span {
+    opacity: 0.55;
+}
+
+/* Grid selection while creating by dragging on the week or day view. */
+.shared-calendar .formalization-calendar__surface {
+    --fc-monarch-highlight: #e3e9f1;
+}
+
+/* Day panel: overlapping events share the width and the clash is red on both sides, so the new event and the one it lands on are easy to tell apart. */
+.calendar-day__event,
+.calendar-day__draft {
+    box-sizing: border-box;
+}
+.calendar-day__event[data-conflict="true"] {
+    z-index: 1;
+    border: 1px solid #e3b4b0;
+    border-left: 4px solid #b42318;
+    background: #fdeceb;
+    color: #8a2f27;
+    font-weight: 600;
+}
+.calendar-day__draft {
+    background: #303c4e;
+}
+.calendar-day__draft[data-conflict="true"] {
+    z-index: 2;
+    border: 1px solid #8a1c12;
+    background: #b42318;
+    box-shadow: 0 2px 8px rgba(180, 35, 24, 0.4);
+}
+.calendar-conflict {
+    display: grid;
+    gap: 8px;
+    margin: 12px 14px 0;
+    padding: 10px 12px;
+    border: 1px solid #e3b4b0;
+    border-left: 4px solid #b42318;
+    border-radius: 8px;
+    background: #fdf3f2;
+    color: #8a2f27;
+}
+.calendar-conflict p,
+.calendar-conflict ul {
+    margin: 0;
+}
+.calendar-conflict__title {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    font-weight: 600;
+}
+.calendar-conflict ul {
+    display: grid;
+    gap: 4px;
+    padding: 0;
+    list-style: none;
+}
+.calendar-conflict li {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 2px 10px;
+    padding: 6px 8px;
+    border-radius: 6px;
+    background: #ffffff;
+    font-size: 12.5px;
+}
+.calendar-conflict li strong {
+    min-width: 0;
+    overflow-wrap: anywhere;
+    color: #2f3a4b;
+    font-weight: 600;
+}
+.calendar-conflict li span {
+    color: #8a2f27;
+    font-variant-numeric: tabular-nums;
+}
+.calendar-conflict small {
+    color: #8a2f27;
+    font-size: 11.5px;
+    line-height: 1.4;
+}
+
+/* Suggested free times: soft green chips, two per row, with the overflow behind one button. */
+.calendar-availability {
+    max-height: none;
+    overflow: visible;
+}
+.calendar-suggestions {
+    display: grid;
+    gap: 8px;
+}
+.calendar-suggestions h2 {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin: 0;
+    color: #1d6b45;
+    font-size: 12.5px;
+    font-weight: 600;
+}
+.calendar-suggestions h2 em {
+    min-width: 20px;
+    padding: 0 6px;
+    border-radius: 10px;
+    background: #e8f4ee;
+    color: #1d6b45;
+    font-size: 11.5px;
+    font-style: normal;
+    text-align: center;
+}
+.calendar-suggestions__list {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+}
+.calendar-suggestions__list[data-expanded="true"] {
+    max-height: 168px;
+    padding-right: 2px;
+    overflow-y: auto;
+}
+.calendar-availability .calendar-suggestion {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    width: 100%;
+    margin: 0;
+    padding: 7px 8px;
+    border: 1px solid #bcdcc9;
+    border-radius: 6px;
+    background: #e8f4ee;
+    color: #1d6b45;
+    font-size: 12.5px;
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+    text-align: center;
+    transition:
+        background 0.12s,
+        border-color 0.12s;
+}
+.calendar-availability .calendar-suggestion:hover:not(:disabled) {
+    border-color: #1d6b45;
+    background: #d6ecdf;
+}
+.calendar-availability .calendar-suggestion:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+}
+.calendar-availability .calendar-suggestions__more {
+    width: auto;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: #1d6b45;
+    font-size: 12.5px;
+    font-weight: 600;
+    justify-self: start;
+}
+.calendar-availability .calendar-suggestions__more:hover {
+    text-decoration: underline;
+}
+.calendar-room-option {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.calendar-room-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #64748b;
+    flex-shrink: 0;
+}
+.calendar-room-dot[data-availability="available"] {
+    background: #15803d;
+}
+.calendar-room-dot[data-availability="busy"] {
+    background: #b91c1c;
+}
+.calendar-room-status {
+    margin-left: auto;
+    font-size: 12px;
+}
+.calendar-crm-detail {
+    padding: 20px;
+    margin-top: 16px;
+}
+.calendar-crm-detail h2 {
+    margin: 0 0 12px;
+    font-size: 16px;
+}
+.calendar-crm-detail h3 {
+    margin: 18px 0 8px;
+    font-size: 13px;
+}
+.calendar-crm-detail__type {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.calendar-crm-detail__type > span,
+.calendar-crm-detail__color {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+}
+.calendar-crm-detail__type small {
+    color: #64748b;
+}
+.calendar-crm-detail dl {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 14px;
+}
+.calendar-crm-detail dt {
+    color: #64748b;
+    font-size: 12px;
+}
+.calendar-crm-detail dd {
+    margin: 4px 0 0;
+    overflow-wrap: anywhere;
+}
+.calendar-crm-detail__description {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+.calendar-crm-detail ul {
+    padding-left: 20px;
+}
+.calendar-crm-detail li {
+    margin: 6px 0;
+    overflow-wrap: anywhere;
+}
+
+/* Confirmación de guardado: sustituye el formulario bloqueado por un resultado claro. */
+.calendar-save-result {
+    box-sizing: border-box;
+    width: min(100%, 640px);
+    margin: clamp(24px, 7vh, 72px) auto;
+    padding: clamp(24px, 4vw, 48px);
+    border: 1px solid #dce3ec;
+    border-radius: 16px;
+    background: #fff;
+    color: #24364b;
+    box-shadow: 0 8px 32px #23364b0a;
+}
+.calendar-save-result__icon {
+    display: grid;
+    place-items: center;
+    width: 64px;
+    height: 64px;
+    margin-bottom: 24px;
+    border-radius: 50%;
+    background: #edf7f1;
+    color: #238253;
+    font-size: 32px;
+}
+.calendar-save-result__eyebrow {
+    margin: 0 0 8px;
+    color: #52677b;
+    font-size: 12px;
+    font-weight: 600;
+}
+.calendar-save-result h2 {
+    margin: 0;
+    color: #172b43;
+    font-size: 28px;
+    line-height: 1.2;
+    font-weight: 600;
+}
+.calendar-save-result__intro {
+    margin: 12px 0 24px;
+    color: #52677b;
+    font-size: 14px;
+    line-height: 1.6;
+}
+.calendar-save-result__summary {
+    padding: 20px;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    background: #f8fafc;
+    overflow-wrap: anywhere;
+}
+.calendar-save-result__summary h3 {
+    margin: 0 0 12px;
+    font-size: 16px;
+    line-height: 1.5;
+    font-weight: 600;
+}
+.calendar-save-result__summary p {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    margin: 8px 0 0;
+    color: #52677b;
+    font-size: 13px;
+    line-height: 1.6;
+}
+.calendar-save-result__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 24px;
+}
+.calendar-save-result__actions .ant-btn {
+    min-height: 44px;
+}
+@media (max-width: 560px) {
+    .calendar-save-result__actions .ant-btn {
+        width: 100%;
+    }
+}
+
+/* Outlook detail: grouped sections with a hairline between them instead of one long run of fields. */
+.outlook-detail__meta {
+    display: grid;
+    gap: 8px;
+}
+.outlook-detail__meta .outlook-popover__row {
+    margin: 0;
+}
+.outlook-detail__rule,
+.calendar-crm-detail__rule {
+    width: 100%;
+    height: 0;
+    margin: 0;
+    border: 0;
+    border-top: 1px solid #e1e7ef;
+}
+.outlook-detail__section h3 {
+    margin: 0 0 6px;
+    color: #5d6b82;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+.outlook-detail__summary {
+    margin: 0;
+    color: #2f3a4b;
+    line-height: 1.55;
+    overflow-wrap: anywhere;
+}
+.outlook-detail__reference {
+    margin: 8px 0 0;
+    color: #5d6b82;
+    font-size: 12px;
+}
+.outlook-detail__reference code {
+    padding: 1px 6px;
+    border-radius: 4px;
+    background: #eef2f7;
+    color: #2f3a4b;
+}
+.calendar-crm-detail__rule {
+    margin-block: 16px;
+}
+.calendar-crm-detail__group h3 {
+    margin: 0 0 10px;
+    color: #5d6b82;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+.calendar-crm-detail__group dl {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px 20px;
+    margin: 0;
+}
+.calendar-crm-detail__group dd {
+    font-size: 13px;
+}
+@media (max-width: 720px) {
+    .calendar-crm-detail__group dl {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+.shared-calendar-editor[hidden] {
+    display: none;
+}
+
+/* Save confirmation: a compact card in a narrow panel instead of a large centred card. */
+.calendar-save-result {
+    width: 100%;
+    margin: 0;
+    padding: 20px;
+    border-radius: 12px;
+    box-shadow: none;
+}
+.calendar-save-result__head {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 14px;
+}
+.calendar-save-result__icon {
+    flex: 0 0 auto;
+    width: 44px;
+    height: 44px;
+    margin: 0;
+    font-size: 22px;
+}
+.calendar-save-result__eyebrow {
+    margin: 0 0 2px;
+}
+.calendar-save-result h2 {
+    font-size: 20px;
+}
+.calendar-save-result__intro {
+    margin: 0 0 14px;
+    font-size: 13px;
+}
+.calendar-save-result__summary {
+    padding: 12px 14px;
+}
+.calendar-save-result__summary h3 {
+    margin: 0 0 6px;
+    font-size: 14px;
+}
+.calendar-save-result__summary p {
+    margin: 4px 0 0;
+    font-size: 12.5px;
+}
+.calendar-save-result__actions {
+    gap: 8px;
+    margin-top: 16px;
+}
+.calendar-save-result__actions .ant-btn {
+    min-height: 36px;
+}
+
+/* Dos identidades simultáneas: origen a la izquierda, tipo a la derecha y en el fondo. */
+.shared-calendar .formalization-calendar__surface .cal-event,
+.shared-calendar .formalization-calendar__surface .cal-event.cal-event--selected,
+.cal-popover .cal-event,
+.cal-popover .cal-event.cal-event--selected {
+    border-left: 4px solid var(--calendar-module-color, var(--fc-event-color, #64748b));
+    border-right: 4px solid var(--fc-event-color, #64748b);
+}
+.calendar-color-key {
+    margin: 0;
+    padding: 12px 16px 0;
+    color: #52677b;
+    font-size: 11px;
+    line-height: 1.6;
+}
+.calendar-event-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 12px 0;
+}
+.calendar-crm-detail a {
+    color: #1858a3;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+}
+.calendar-crm-detail a:focus-visible {
+    outline: 2px solid #1858a3;
+    outline-offset: 3px;
 }

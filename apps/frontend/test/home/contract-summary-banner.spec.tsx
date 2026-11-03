@@ -52,29 +52,29 @@ it.each([
     }
 });
 
-it.each([undefined, [], [{ ...role, code: "owner" }], [{ ...role, code: "jefe" }], [{ ...role, status: "inactive" }]])("does not mount or request contracts for roles %j", (roles) => {
-    render(<FormalizationHomePage roles={roles} effectivePermissions={[stagePermission]} />);
+it.each([undefined, [], [{ ...role, code: "owner" }], [{ ...role, code: "jefe" }], [{ ...role, status: "inactive" }]])("does not mount contracts without an effective grant for roles %j", (roles) => {
+    render(<FormalizationHomePage roles={roles} effectivePermissions={[]} />);
     expect(screen.queryByRole("heading", { name: "Contratos pendientes" })).toBeNull();
     expect(getHomeSummary).not.toHaveBeenCalled();
 });
 
-it("loads real counts only after role grant, then unmounts on revocation", async () => {
+it("loads real counts only with an effective grant, then unmounts on revocation", async () => {
     const { rerender } = render(<FormalizationHomePage />);
     rerender(<FormalizationHomePage roles={[role]} effectivePermissions={[stagePermission]} />);
     expect(screen.getByRole("status", { name: "Cargando Por enviar" })).toBeTruthy();
     await screen.findByLabelText("Valor: Por enviar, 6");
     expect(screen.getByLabelText("Valor: Pendientes de firma, 3")).toBeTruthy();
-    rerender(<FormalizationHomePage roles={[{ ...role, status: "inactive" }]} effectivePermissions={[stagePermission]} />);
+    rerender(<FormalizationHomePage roles={[{ ...role, status: "inactive" }]} effectivePermissions={[]} />);
     expect(screen.queryByRole("heading", { name: "Contratos pendientes" })).toBeNull();
     expect(getHomeSummary).toHaveBeenCalledTimes(1);
 });
 
-it("retains provisional numeric slots with an explicit error", async () => {
+it("shows unknown slots with an explicit error", async () => {
     vi.mocked(getHomeSummary).mockRejectedValue(new Error("offline"));
     render(<FormalizationHomePage roles={[role]} effectivePermissions={[stagePermission]} />);
     expect((await screen.findAllByRole("alert")).map((node) => node.textContent)).toEqual(Array(6).fill("Sin verificar"));
-    expect(screen.getByLabelText("Por enviar: sin verificar").textContent).toBe("0");
-    expect(screen.getByLabelText("Pendientes de firma: sin verificar").textContent).toBe("0");
+    expect(screen.getByLabelText("Por enviar: sin verificar").textContent).toBe("—");
+    expect(screen.getByLabelText("Pendientes de firma: sin verificar").textContent).toBe("—");
     expect(screen.queryByText("Contratos no disponibles")).toBeNull();
     expect(screen.queryByLabelText("Valor: Por enviar, 0")).toBeNull();
     expect(screen.getByText("Por enviar", { selector: ".formalization-banner__caption" })).toBeTruthy();
@@ -144,7 +144,7 @@ it("ignores late results after revocation and fetches anew on grant", async () =
         }),
     );
     const { rerender } = render(<FormalizationHomePage roles={[role]} effectivePermissions={[stagePermission]} />);
-    rerender(<FormalizationHomePage roles={[]} effectivePermissions={[stagePermission]} />);
+    rerender(<FormalizationHomePage roles={[]} effectivePermissions={[]} />);
     resolve(summary);
     await waitFor(() => {
         expect(screen.queryByLabelText("Valor: Por enviar, 6")).toBeNull();
@@ -181,7 +181,7 @@ it.each(["formalizacion.home.read", "formalizacion.contracts.read", "unrelated.r
     );
     await screen.findByRole("heading", { name: "Formalización", level: 1 });
     await screen.findByLabelText("Valor: Por enviar, 6");
-    rerender(<AppRouteContent {...props} authState={{ status: "authenticated", profile: { ...profile, roles: [] } }} />);
+    rerender(<AppRouteContent {...props} authState={{ status: "authenticated", profile: { ...profile, roles: [], permissions: [] } }} />);
     expect(screen.queryByRole("heading", { name: "Contratos pendientes" })).toBeNull();
     expect(getHomeSummary).toHaveBeenCalledTimes(1);
 });

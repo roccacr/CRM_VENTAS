@@ -1,3 +1,4 @@
+import { canUseBanks } from "../../modules/crm/banks/banks.permissions.js";
 import { calendarRouteAccess } from "../../modules/crm/calendar/calendar-access.js";
 import { type CatalogPermissionAction, findCatalogDefinition, getCatalogPermissionCode, isCatalogContextModuleCode } from "../../modules/crm/catalogs/catalogs.constants.js";
 import type { IdentityProfile } from "../../modules/crm/identity/identity.types.js";
@@ -53,11 +54,11 @@ export function canReadAudit(profile: IdentityProfile): boolean {
     return can(profile, "role.assign") || profile.roles.some((role) => role.code === "owner" && role.status === "active");
 }
 
-/** Requires either effective operational role; Owner alone never substitutes for profile resolution. */
-export const hasFormalizationRole = (profile: Pick<IdentityProfile, "roles">): boolean => profile.roles.some((role) => ["formalizacion", "jefe_formalizaciones"].includes(role.code) && role.status === "active");
+/** El perfil ya limita los permisos a módulos vigentes; una excepción personal no exige un rol con nombre fijo. */
+export const hasFormalizationAccess = (profile: Pick<IdentityProfile, "permissions">): boolean => profile.permissions.some((entry) => entry.code.startsWith("formalizacion.") && can(profile, entry.code));
 
-/** Detail permission is independent of banner membership; effective role and explicit denies remain mandatory. */
-export const canReadFormalizationOrder = (profile: Pick<IdentityProfile, "roles" | "permissions">): boolean => hasFormalizationRole(profile) && can(profile, "formalizacion.orders.read");
+/** La lectura de órdenes exige su permiso específico, por rol o por persona; deny prevalece. */
+export const canReadFormalizationOrder = (profile: Pick<IdentityProfile, "roles" | "permissions">): boolean => can(profile, "formalizacion.orders.read");
 
 export const FORMALIZATION_STAGE_READ_PERMISSION = "formalizacion.home.stages.read";
 
@@ -75,8 +76,10 @@ export const FORMALIZATION_READ_PERMISSIONS = {
 export function formalizationReadAccess(profile: Pick<IdentityProfile, "roles" | "permissions">) {
     const granular = Object.values(FORMALIZATION_READ_PERMISSIONS).filter((code) => code !== FORMALIZATION_READ_PERMISSIONS.approvals);
     const fallback = !profile.permissions.some((entry) => granular.includes(entry.code as never)) && can(profile, FORMALIZATION_STAGE_READ_PERMISSION);
-    const allowed = (code: string) => hasFormalizationRole(profile) && (can(profile, code) || (code !== FORMALIZATION_READ_PERMISSIONS.approvals && fallback));
-    return Object.fromEntries(Object.entries(FORMALIZATION_READ_PERMISSIONS).map(([queue, code]) => [queue, allowed(code)])) as Record<keyof typeof FORMALIZATION_READ_PERMISSIONS, boolean>;
+    const allowed = (code: string) => can(profile, code) || (code !== FORMALIZATION_READ_PERMISSIONS.approvals && fallback);
+    const stages = Object.fromEntries(Object.entries(FORMALIZATION_READ_PERMISSIONS).map(([queue, code]) => [queue, allowed(code)])) as Record<keyof typeof FORMALIZATION_READ_PERMISSIONS, boolean>;
+    // La bandeja nueva tiene permiso propio: el fallback histórico de etapas no lo concede.
+    return { ...stages, addendum: canReadFormalizationOrder(profile) && can(profile, "formalizacion.orders.addendum.read") };
 }
 /** All is the union of granted banner memberships. */
 export function canReadFormalizationQueue(profile: Pick<IdentityProfile, "roles" | "permissions">, queue: string): boolean {
@@ -86,9 +89,9 @@ export function canReadFormalizationQueue(profile: Pick<IdentityProfile, "roles"
 }
 export const canReadFormalizationStages = (profile: Pick<IdentityProfile, "roles" | "permissions">): boolean => canReadFormalizationQueue(profile, "all");
 
-/** Role membership and any declared permissions are cumulative requirements. */
+/** Compatibilidad del decorador histórico: exige permisos explícitos, sin añadir un requisito oculto de rol. */
 function hasActiveRoleRequirement(profile: IdentityProfile, requirement: Extract<PermissionRequirement, { kind: "active-role" }>): boolean {
-    return hasFormalizationRole(profile) && (requirement.permissionCodes === undefined || hasAllPermissions(profile, requirement.permissionCodes));
+    return requirement.permissionCodes !== undefined && requirement.permissionCodes.length > 0 && hasAllPermissions(profile, requirement.permissionCodes);
 }
 
 /** Resolves only bounded server-declared mappings, before pipes or handler execution. */
@@ -107,6 +110,16 @@ function notesRoutePermission(profile: IdentityProfile, requirement: Extract<Per
     return canUseNotes(profile, moduleCode, "read") && canUseNotes(profile, moduleCode, requirement.action);
 }
 
+/** Bancos exige lectura y módulo además de la acción; los grants efectivos incluyen excepciones personales. */
+function catalogRoutePermission(profile: IdentityProfile, requirement: Extract<PermissionRequirement, { kind: "catalog" }>, request: CookieRequest): boolean {
+    const catalog = requirement.catalog ?? field(request.params, "catalogCode");
+    if (catalog !== "banks") return canSelected(profile, catalogPermission(requirement, request));
+    const source = requirement.action === "read" ? request.query : request.body;
+    const moduleCode = field(source, "moduleCode");
+    const action = catalogAction(requirement.action, request.body);
+    return action !== undefined && canUseBanks(profile, typeof moduleCode === "string" ? moduleCode.trim() : moduleCode, action);
+}
+
 function hasDeclaredRoutePermission(profile: IdentityProfile, requirement: PermissionRequirement, request: CookieRequest): boolean {
     switch (requirement.kind) {
         case "active-role":
@@ -122,7 +135,7 @@ function hasDeclaredRoutePermission(profile: IdentityProfile, requirement: Permi
         case "unit-files":
             return canSelected(profile, catalogGrant(field(request.query, "moduleCode"), "files", "read"));
         case "catalog":
-            return canSelected(profile, catalogPermission(requirement, request));
+            return catalogRoutePermission(profile, requirement, request);
         default:
             return false;
     }

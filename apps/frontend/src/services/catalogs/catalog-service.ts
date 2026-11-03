@@ -9,7 +9,7 @@
 import { apiRequest } from "../api/api-client";
 
 /** Código de catálogo que el API acepta en `/catalogs/:code`. */
-export type CatalogCode = "brokers" | "campaigns" | "classes" | "files" | "locations" | "projects" | "subsidiaries";
+export type CatalogCode = "banks" | "brokers" | "campaigns" | "classes" | "files" | "locations" | "projects" | "subsidiaries";
 /** Estado operativo de un valor. El API no acepta otros textos. */
 export type CatalogItemStatus = "active" | "inactive";
 /**
@@ -92,7 +92,7 @@ const isString = (value: unknown): value is string => typeof value === "string";
 const isNumber = (value: unknown): value is number => typeof value === "number" && Number.isFinite(value);
 const parseNullableString = (value: unknown): string | null => (value === null ? null : isString(value) ? value : null);
 const isCatalogStatus = (value: unknown): value is CatalogItemStatus => value === "active" || value === "inactive";
-const isCatalogCode = (value: unknown): value is CatalogCode => value === "projects" || value === "campaigns" || value === "classes" || value === "brokers" || value === "files" || value === "subsidiaries" || value === "locations";
+const isCatalogCode = (value: unknown): value is CatalogCode => value === "banks" || value === "projects" || value === "campaigns" || value === "classes" || value === "brokers" || value === "files" || value === "subsidiaries" || value === "locations";
 
 /** Rechaza una referencia a la que le falte id, estado o sistema. No rellena textos vacíos. */
 const parseExternalReference = (value: unknown): CatalogExternalReference => {

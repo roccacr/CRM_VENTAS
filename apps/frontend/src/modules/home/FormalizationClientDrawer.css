@@ -301,3 +301,86 @@
 .order-history-change dd > span:first-child {
     color: #7b8798;
 }
+
+/* Quick actions (schedule, profile, WhatsApp): two per row, so adding one never lengthens the drawer by a full-width button. */
+.record-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+}
+.record-actions:empty {
+    display: none;
+}
+.record-actions > div {
+    display: contents;
+}
+.record-actions > p,
+.record-actions p[role] {
+    grid-column: 1 / -1;
+    margin: 0;
+    color: #8a2f27;
+    font-size: 12px;
+    line-height: 1.4;
+}
+.record-actions .ant-btn {
+    width: 100%;
+    min-width: 0;
+    height: 36px;
+    overflow: hidden;
+    border-color: #8fa1b8;
+    color: #3c4f68;
+    font-size: 12.5px;
+    font-weight: 600;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.record-actions .ant-btn:not(:disabled):hover {
+    border-color: #3c4f68;
+    background: #ebeef3;
+    color: #0e1116;
+}
+@media (max-width: 420px) {
+    .record-actions {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+
+/* Same anatomy in every button of the row: icon in a fixed box, label starting at the same x, so "Ir a WhatsApp", "Agendar evento" and "Ver perfil del cliente" line up. */
+.record-actions .ant-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 10px;
+    padding-inline: 14px;
+    text-align: left;
+}
+.record-actions .ant-btn > .ant-btn-icon,
+.record-actions .ant-btn > .anticon {
+    display: inline-flex;
+    flex: 0 0 18px;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    margin: 0;
+    font-size: 15px;
+}
+.record-actions .ant-btn > span:not(.ant-btn-icon):not(.anticon) {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+/* Long labels (for example the addendum actions) wrap to a second line instead of being cut. */
+.record-actions .ant-btn {
+    height: auto;
+    min-height: 36px;
+    padding-block: 5px;
+    line-height: 1.3;
+    white-space: normal;
+}
+.record-actions .ant-btn > span:not(.ant-btn-icon):not(.anticon) {
+    overflow: visible;
+    overflow-wrap: anywhere;
+    text-overflow: clip;
+    white-space: normal;
+}

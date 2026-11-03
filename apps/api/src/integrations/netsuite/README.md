@@ -1,5 +1,28 @@
 ## Implementación local posterior — 2026-11-02
 
+## Estado vigente contrastado — 2026-11-03
+
+El escritor v2, su auditoría, cursor y resolución de autoridad ya están
+implementados; v1 mantiene `persisted:false`. El marcador `crm_sync_projection=1`
+habilita los campos ampliados confirmados en [75](../../../Arquitectura/75-Matriz-Campos-Ordenes-NetSuite.md):
+montos, fecha canónica, número de transacción, cálculo de asesor, aprobaciones y
+relaciones existentes. Moneda, cálculo corredor y `createdfrom` quedan preservados,
+sin inferir nuevos mapeos. Líneas y aliases permanecen en el snapshot protegido.
+
+El control temporal actual usa doble lectura completa y ventanas UTC no solapadas;
+el hash compara contenido y no funciona como reloj. El reintento de transporte
+mantiene UUID/cuerpo; el conflicto de observación409 requiere una nueva lectura/UUID.
+[73](../../../Arquitectura/73-Sincronizacion-Estados-Ordenes-NetSuite.md) conserva la prueba real acotada
+de diez indicadores; no acredita E2E de todos los campos ampliados ni despliegue.
+059 fue aplicada con autorización según74/75; esta revisión no cambia su flag.
+
+Existe una excepción posterior a la regla histórica «los indicadores no mueven
+etapas»: `netsuite-paid-installments.handler.ts` puede avanzar visitas finales
+existentes tras `edit`/`xedit`, con actividad/firma/aprobación de Formalización,
+responsable conservado y auditoría atómica, según [78](../../../Arquitectura/78-Formalizacion-Origen-Fondos-y-Gestion-Bancaria.md).
+No retrocede ni crea órdenes/visitas históricas. Origen de fondos y campos de
+adéndum pertenecen al CRM y no son sobrescritos por estos snapshots.
+
 El contrato v2 ya implementa los diez checkbox, resolución nativa → legacy, transacción y bitácora central/nativa. v1 conserva persisted:false. 058 se aplicó con aprobación explícita y el túnel fue verificado; la activación y prueba real están pendientes; este bloque sustituye las descripciones de ausencia de escritor de los cortes históricos inferiores. Contrato, archivos, pruebas y límites: [73](../../../Arquitectura/73-Sincronizacion-Estados-Ordenes-NetSuite.md).
 
 ## Estado revisado — 2026-11-02
@@ -11,7 +34,7 @@ otros. Los apartados fechados inferiores conservan su evidencia histórica.
 | --- | --- |
 | Lectura de ficha | `GET /formalization/orders/:source/:id/netsuite`, autorización de orden y resolución nativa primero; producción conserva contrato GET anterior y Sandbox el RESTlet modular |
 | Aprobación de Formalización | Cliente PUT acotado a Sandbox, confirmación estricta y resultado desconocido ante fallos inciertos; no es una sincronización general |
-| Evento entrante de orden | `POST /integrations/netsuite/local/order-events`, solo development y cuenta Sandbox, token de servicio; devuelve `received:true,persisted:false`, sin escribir ninguna BD |
+| Evento entrante de orden | `POST /integrations/netsuite/local/order-events`, solo development y cuenta Sandbox, token de servicio; devuelve v1 `received:true,persisted:false`; v2 confirma persistencia explícita después del commit |
 
 La ficha React mapea capítulos comerciales de la respuesta mediante
 `netsuite-primary.ts`; los diagnósticos de consola DEV son adicionales y no
@@ -20,10 +43,10 @@ y no requieren credenciales ERP.
 
 El [plan70](../../../Arquitectura/70-Plan-Sincronizacion-Ordenes-NetSuite.md)
 describe el futuro escritor durable, deduplicación, autoridad única y auditoría;
-esos componentes no están implementados por haber recibido un HTTP200.
+esos componentes ya están implementados en73/75; su plan histórico no es el inventario vigente. Un HTTP200 genérico no acredita su efecto comercial.
 Los flags057 locales no están todavía expuestos por todos los lectores/mappers.
 
-El código SuiteScript declara versión `2026.10.30.4`. Una inspección estática
+El código SuiteScript declara versión `2026.11.02.1` al corte03/11. Una inspección estática
 del grafo AMD validó18 archivos; no acredita su carga o ejecución en NetSuite.
 La prueba GET del28 y el despliegue Habita del29 son evidencias fechadas, no
 verificación actual de esta revisión ni aprobación PUT real.
@@ -40,13 +63,13 @@ Inventario general y resultados nuevos: [72](../../../Arquitectura/72-Reconcilia
 
 Ausencia confirmada: el GET del RESTlet con `status:404` y `error.code:SALES_ORDER_NOT_FOUND` se traduce a HTTP404 y codigo publico `NETSUITE_SALES_ORDER_NOT_FOUND`. La ficha muestra «La orden de venta no existe en NetSuite en el entorno configurado». El mensaje original del proveedor no se expone. Un fallo de transporte, HTTP404 sin confirmacion de registro o error de lectura no prueba ausencia: conserva el error generico de carga. La orden puede existir en el CRM y no existir en el Sandbox; no se eliminan ni modifican registros por este resultado.
 
-El cliente selecciona entorno con `NETSUITE_ENVIRONMENT`. Produccion conserva el contrato anterior `rType=salesordersExtraer`; Sandbox usa el nuevo contrato `module=salesOrders&id=<ID interno NetSuite>`. Los endpoints del CRM, permisos y resolucion nativa primero no cambian. La URL del navegador contiene la identidad CRM, nunca autoriza un ID externo arbitrario.
+El cliente fija el entorno usando `FRONTEND_ORIGIN` configurado en el servidor: `https://habita.roccacr.com` siempre Produccion; localhost (incluido punto final y subdominios .localhost), direcciones IPv4 127/8 e IPv6 ::1 siempre Sandbox. No usa cabeceras Origin/Host ni parametros del navegador para elegir credenciales. Para otros sitios conserva `NETSUITE_ENVIRONMENT`. Produccion requiere URL explicita `NETSUITE_PRODUCTION_RESTLET_URL`, cuenta 4552704 y claves `NETSUITE_*`; ya no tiene script/deploy por defecto. `NETSUITE_PRODUCTION_READ_MODE=legacy` conserva `rType=salesordersExtraer`; `modules` habilita `module=salesOrders` cuando el script de produccion confirmado use ese contrato. Sandbox usa `module=salesOrders&id=<ID interno NetSuite>`. Los endpoints del CRM, permisos y resolucion nativa primero no cambian. La URL del navegador contiene la identidad CRM, nunca autoriza un ID externo arbitrario.
 
 Sandbox requiere claves `NETSUITE_SANDBOX_*`, realm `4552704_SB1` y URL explicita `NETSUITE_SANDBOX_RESTLET_URL`. La lectura historica se verifico en script 3353, deploy 1; esto no acredita la carga de la revision PUT actual. Sin fallback a produccion ni redirects. El archivo SuiteScript se conserva en `suitescript/SS2_1_RL_CRM_Integracion.js`; Leads y Estimates siguen sin implementar. GET conserva su comportamiento de lectura; PUT implementa exclusivamente la aprobacion de Formalizacion en Sandbox.
 
 ## Aprobacion de Formalizacion: implementacion local (2026-10-28)
 
-`NetsuiteRestletClient.approveFormalization(id)` devuelve `Promise<{ id: string; approved: true; alreadyApproved: boolean; environment: 'sandbox' | 'production' }>`. Actualmente solo permite Sandbox y devuelve `environment: 'sandbox'`; produccion, entorno ausente o incompatible fallan antes de enviar la solicitud. No utiliza el script 1764 como escritor. La lectura GET de produccion conserva el contrato legacy existente.
+`NetsuiteRestletClient.approveFormalization(id)` devuelve `Promise<{ id: string; approved: true; alreadyApproved: boolean; environment: 'sandbox' | 'production' }>`. Actualmente solo permite Sandbox y devuelve `environment: 'sandbox'`; produccion o entorno incompatible fallan antes de enviar la solicitud; un FRONTEND_ORIGIN local selecciona Sandbox aun si NETSUITE_ENVIRONMENT indica production. No utiliza el script 1764 como escritor. La lectura GET de produccion usa el modo de lectura explicitado arriba.
 
 El ID debe ser una cadena decimal canonica positiva representable como entero seguro. El cliente envia PUT al URL Sandbox configurado con cuerpo JSON exacto `{ module: 'salesOrders', action: 'approveFormalization', id }`. OAuth TBA HMAC-SHA256 firma el metodo PUT, URL y parametros OAuth; el JSON no se incluye como parametros de formulario OAuth. Se conserva la funcion exportada `netsuiteGetAuthorization` y su vector GET. Plazo de 15 segundos, respuesta hasta 5 MiB, sin redirects ni reintentos automaticos.
 
@@ -95,3 +118,22 @@ Envelope: schemaVersion, observedAt, source, order, lead, contact, unitFile, ref
 El consumidor DEV imprime `[Base de datos: orden de venta]` independientemente de `[NetSuite: orden de venta]`; apertura y recarga repiten ambas consultas sin persistir resultados. Fuera de DEV no hay logs ni llamadas desde este consumidor. Los endpoints conservan sus permisos en servidor en todos los entornos. La inspección real de solo lectura de legacy:208 devolvió 33 campos de orden, 36 de lead, 30 de expediente y contacto, sin incidencias; no prueba datos nativos reales ni una migración.
 
 Validacion posterior a la actualizacion (2026-10-28): GET nuevo devolvio status 200, BC532 / 12014949, 79 campos y 5 lineas. Prueba en navegador de legacy:214 completada con console log [NetSuite: orden de venta]. Sin mutaciones en ambas BD ni ERP. MOTIVO_COMPRA permanece null por falta de ID confirmado; no se inventa su relacion.
+
+
+## Preparacion de entornos — 2026-11-03
+
+Las URLs aceptan solo HTTPS, host de la cuenta exacta, ruta RESTlet y un script/deploy
+cada uno. No admiten credenciales embebidas, redirects ni parametros adicionales.
+Falta de URL/credenciales seleccionadas devuelve 503 antes de contactar al proveedor;
+no sustituye valores con los del otro ambiente. Las URLs pueden quedar vacias mientras
+se confirman los IDs; no habilitar esta revision en Habita hasta configurar la URL de
+produccion. El PUT de aprobacion y el receptor local Sandbox conservan sus limites:
+este cambio prepara seleccion/lecturas, no habilita escrituras en NetSuite Produccion.
+No se actualizaron secretos ni se publico esta revision por documentar la configuracion.
+
+
+Verificacion local de esta preparacion: 142 pruebas focalizadas de cliente/configuracion
+aprobadas con fetch simulado, sin llamadas reales ni escrituras externas. La revision
+independiente resolvio cobertura loopback y validacion de configuracion parcial. El
+chequeo general se detuvo en format:check por tres pruebas de Calendario ajenas a esta
+tarea; estos resultados no acreditan conexion efectiva a los scripts pendientes.

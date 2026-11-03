@@ -1,5 +1,9 @@
 # 72 — Reconciliación documental integral del 2 de noviembre de 2026
 
+## Corte histórico sustituido
+
+El inventario vigente y la revisión archivo por archivo del 2026-11-03 están en [85](85-Reconciliacion-Documental-20261103.md). Este informe conserva exactamente el corte del02/11: sus afirmaciones de receptor sin escritor, Graph pendiente, adéndum pendiente,55 migraciones y resultados de checks corresponden a esa fecha. No describen los cambios posteriores ni deben sumarse a las pruebas actuales.
+
 Fecha de corte: **2026-11-02, America/Costa_Rica**.
 Checkout: `CRM VERION NESTJS`; HEAD inspeccionado:
 `fcbf0c20ff172c8542f7d20785b75ee0a18cb845`.

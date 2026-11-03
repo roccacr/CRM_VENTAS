@@ -37,14 +37,16 @@ beforeEach(() => {
 });
 afterEach(cleanup);
 
-it("uses the actual global JSON's four labels, colors and module memberships", () => {
+it("uses the actual global JSON's current labels, colors and module memberships", () => {
     expect(definitions.map(({ codigo, tipo, color }) => ({ codigo, tipo, color }))).toEqual([
         { codigo: "tarea", tipo: "Tarea", color: "#475569" },
         { codigo: "reunion", tipo: "Reunión", color: "#4F46E5" },
         { codigo: "cita", tipo: "Cita", color: "#0F766E" },
         { codigo: "seguimiento", tipo: "Seguimiento", color: "#B45309" },
+        { codigo: "formalizacion_bancaria", tipo: "Formalización bancaria", color: "#0369A1" },
+        { codigo: "adendum", tipo: "Adéndum", color: "#7C3AED" },
     ]);
-    for (const type of definitions) expect(type.modulos).toEqual([...CALENDAR_MODULES]);
+    for (const type of definitions) expect(type.modulos).toEqual(type.codigo === "cita" ? ["mercadeo", "ventas", "contabilidad"] : ["formalizacion_bancaria", "adendum"].includes(type.codigo) ? ["formalizacion"] : [...CALENDAR_MODULES]);
 });
 
 it.each(calendars)("selects and persists the server's reunion public ID in $moduleCode", async (calendar) => {
@@ -52,10 +54,10 @@ it.each(calendars)("selects and persists the server's reunion public ID in $modu
     if (!reunion) throw new Error("Missing reunion in the real catalog");
     let persisted: CalendarEvent | null = null;
     vi.mocked(apiRequest).mockImplementation((path, options) => {
-        if (options?.method === "POST") {
+        if (options?.method === "POST" && path === "/calendar/events") {
             const command = options.body as CalendarEventCommand;
             persisted = { ...command, id: "01ARZ3NDEKTSV4RRFFQ69G5FZZ", source: "native", originModule: command.moduleCode, typeCode: "reunion", description: command.description ?? null, location: command.location ?? null, status: "scheduled", version: 1, canEdit: true, formKey: `${command.moduleCode}.general.v1` };
-            return Promise.resolve({ schemaVersion: 1, event: persisted });
+            return Promise.resolve({ schemaVersion: 1, event: persisted, delivery: { status: "synced" } });
         }
         return Promise.resolve(path === "/calendar/calendars" ? { schemaVersion: 1, calendars } : { schemaVersion: 1, events: persisted ? [persisted] : [] });
     });
@@ -68,16 +70,19 @@ it.each(calendars)("selects and persists the server's reunion public ID in $modu
         within(selector)
             .getAllByRole("option")
             .map((option) => option.textContent),
-    ).toEqual(["Selecciona un tipo", "Tarea", "Reunión", "Cita", "Seguimiento"]);
+    ).toEqual(["Selecciona un tipo", ...calendar.types.map((type) => type.label)]);
     fireEvent.change(selector, { target: { value: reunion.id } });
     fireEvent.change(screen.getByLabelText("Nombre del evento"), { target: { value: "Reunión de coordinación" } });
     fireEvent.change(screen.getByLabelText("Inicio"), { target: { value: "2026-10-28T09:00" } });
     fireEvent.change(screen.getByLabelText("Fin"), { target: { value: "2026-10-28T10:00" } });
     fireEvent.click(screen.getByRole("button", { name: "Guardar evento" }));
     await waitFor(() => {
-        const write = vi.mocked(apiRequest).mock.calls.find(([, options]) => options?.method === "POST");
-        expect(write?.[1]?.body).toMatchObject({ moduleCode: calendar.moduleCode, typeId: reunion.id });
+        const write = vi.mocked(apiRequest).mock.calls.find(([path, options]) => path === "/calendar/events" && options?.method === "POST");
+        expect(write?.[1]?.body).toMatchObject({ moduleCode: calendar.moduleCode, typeId: reunion.id, publishToCalendar: true });
         expect(write?.[1]?.body).not.toHaveProperty("typeCode");
+    });
+    fireEvent.click(await screen.findByRole("button", { name: "Volver al calendario" }));
+    await waitFor(() => {
         expect(screen.queryByRole("dialog")).toBeNull();
     });
     const surface = screen.getByRole("region", { name: `Calendario de ${calendar.label}` });
@@ -87,7 +92,24 @@ it.each(calendars)("selects and persists the server's reunion public ID in $modu
 });
 
 it.each(calendars)("renders each real type color in FullCalendar for $moduleCode", async (calendar) => {
-    const events: CalendarEvent[] = calendar.types.map((type, index) => ({ id: `01ARZ3NDEKTSV4RRFFQ69G5FZ${String(index)}`, source: "native", originModule: calendar.moduleCode, typeId: type.id, typeCode: type.code, title: `Evento ${type.label}`, description: null, location: null, start: `2026-10-${String(28 + index)}T15:00:00Z`, end: `2026-10-${String(28 + index)}T16:00:00Z`, allDay: false, status: "scheduled", version: 1, canEdit: true, formKey: type.formKey, details: {} }));
+    const events: CalendarEvent[] = calendar.types.map((type, index) => ({
+        id: `01ARZ3NDEKTSV4RRFFQ69G5FZ${String(index)}`,
+        source: "native",
+        originModule: calendar.moduleCode,
+        typeId: type.id,
+        typeCode: type.code,
+        title: `Evento ${type.label}`,
+        description: null,
+        location: null,
+        start: new Date(Date.UTC(2026, 9, 28 + index, 15)).toISOString(),
+        end: new Date(Date.UTC(2026, 9, 28 + index, 16)).toISOString(),
+        allDay: false,
+        status: "scheduled",
+        version: 1,
+        canEdit: true,
+        formKey: type.formKey,
+        details: {},
+    }));
     vi.mocked(apiRequest).mockImplementation((path) => Promise.resolve(path === "/calendar/calendars" ? { schemaVersion: 1, calendars } : { schemaVersion: 1, events }));
     render(<SharedCalendarPage moduleCode={calendar.moduleCode} effectivePermissions={permissions} />);
     const surface = screen.getByRole("region", { name: `Calendario de ${calendar.label}` });

@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import type { CrmDatabase } from "../../src/database/database.types.js";
 import { LegacyFollowUpReader } from "../../src/integrations/legacy-crm/legacy-follow-up.reader.js";
 import { emptyFollowUpSource } from "../../src/modules/crm/sales/sales-orders/follow-up.contract.js";
-import { followUpSourceQuery, readFollowUpSource } from "../../src/modules/crm/sales/sales-orders/follow-up.query.js";
+import { followUpSourceQuery, projectDistributionQuery, projectDistributionSeries, readFollowUpSource, readProjectDistribution } from "../../src/modules/crm/sales/sales-orders/follow-up.query.js";
 import { FollowUpRepository } from "../../src/modules/crm/sales/sales-orders/follow-up.repository.js";
 import { HomeSummaryRepository } from "../../src/modules/crm/sales/sales-orders/home-summary.repository.js";
 
@@ -33,9 +33,13 @@ describe("bounded federated follow-up SQL", () => {
             const visible = compiled.sql.split("visible AS (")[1]?.split("), searched AS")[0];
             expect(visible).toContain("approvalPending=1");
             expect(visible).toContain("approved=1 AND stateCode IN ('contract_pending_send','contract_pending_signature')");
-            for (const stage of ["bank_management", "pending_balance", "pending_transfer", "transfer_signed"]) expect(visible).toContain(`stateCode='${stage}'`);
+            for (const stage of ["pending_balance", "pending_transfer", "transfer_signed"]) expect(visible).toContain(`stateCode='${stage}'`);
             expect(visible).toContain("completedThisYear=1");
             expect(compiled.sql).not.toContain("SUM(TRUE)");
+            expect(visible).not.toContain("unitDelivered=");
+            expect(compiled.sql).toContain("SUM((saleLost=0 AND contractSigned=1 AND stateCode='pending_transfer' AND installmentsFullyPaid=1 AND unitTransferred=0 AND unitDelivered=0))");
+            expect(compiled.sql).toContain("SUM((saleLost=0 AND contractSigned=1 AND stateCode='transfer_signed' AND installmentsFullyPaid=1 AND unitTransferred=1 AND keysDelivered=0 AND unitDelivered=0))");
+            expect(compiled.sql).toContain("SUM((saleLost=0 AND contractSigned=1 AND completedThisYear=1 AND unitDelivered=1))");
             expect(compiled.sql).toContain("FROM visible WHERE projectId IS NOT NULL");
         } finally {
             void db.destroy();
@@ -62,11 +66,14 @@ describe("bounded federated follow-up SQL", () => {
             const [native, legacy] = queries.map((entry) => entry.sql);
             expect(native).toContain("l.id_lead=o.lead_id_sales_order");
             expect(native).toContain("c.email_contact");
+            expect(native).toContain("CASE o.installments_fully_paid_sales_order WHEN 'yes' THEN 1 WHEN 'no' THEN 0 ELSE NULL END AS installmentsFullyPaid");
+            expect(legacy).toContain("CASE o.cuotas_pagadas_completo_ov WHEN 1 THEN 1 WHEN 0 THEN 0 ELSE NULL END AS installmentsFullyPaid");
+            for (const statement of [native, legacy]) expect(statement).toContain("'installmentsFullyPaid',installmentsFullyPaid");
             expect(native).toContain("o.contract_signed_sales_order='yes'");
             expect(legacy).toContain("o.contrado_frima_ov=1");
             for (const statement of [native, legacy]) {
                 expect(statement).toContain("'contractSigned',contractSigned");
-                for (const stage of ["bank_management", "pending_balance", "pending_transfer", "transfer_signed"]) expect(statement).toContain(`contractSigned=1 AND stateCode='${stage}'`);
+                for (const stage of ["pending_balance", "pending_transfer", "transfer_signed"]) expect(statement).toContain(`contractSigned=1 AND stateCode='${stage}'`);
             }
             expect(legacy).toContain("l.email_lead");
             for (const statement of [native, legacy]) expect(statement).toContain("'clientEmail',clientEmail");
@@ -84,12 +91,25 @@ describe("bounded federated follow-up SQL", () => {
         const { db } = database();
         try {
             const compiled = followUpSourceQuery(sql`SELECT 1`, { ...query, queue: "closed" }, access).compile(db);
-            expect(compiled.sql).toContain("WHERE contractSigned=1 AND completedThisYear=1");
+            expect(compiled.sql).toContain("WHERE (saleLost=0 AND contractSigned=1 AND completedThisYear=1");
             expect(compiled.sql).not.toContain("WHERE stateCode='closed'");
-            expect(compiled.sql).toContain("SUM(contractSigned=1 AND stateCode='bank_management')");
-            expect(compiled.sql).toContain("SUM(approved=1 AND stateCode='contract_pending_signature')");
+            expect(compiled.sql).toContain("SUM((saleLost=0 AND contractSigned=1 AND stateCode IN ('bank_management','bank_management_in_progress'))");
+            expect(compiled.sql).toContain("SUM((saleLost=0 AND approved=1 AND stateCode='contract_pending_signature'))");
         } finally {
             void db.destroy();
+        }
+    });
+    it("projects the banking subset counter without adding another queue or permission", async () => {
+        const { db } = database([{ ...emptyFollowUpSource().counts, bank: 5, bankInProgress: 2, total: 0, items: [], projects: [] }]);
+        try {
+            const statement = followUpSourceQuery(sql`SELECT 1`, query, { ...access, queues: { bank: false } });
+            const compiled = statement.compile(db);
+            expect(compiled.sql).toContain("AND contractSigned=1 AND stateCode='bank_management_in_progress'),0) AS bankInProgress");
+            expect(compiled.parameters).toContain(false);
+            const result = await readFollowUpSource(db as never, statement);
+            expect(result.counts).toMatchObject({ bank: 5, bankInProgress: 2 });
+        } finally {
+            await db.destroy();
         }
     });
     it("rejects a missing source row instead of producing false zeros", async () => {
@@ -121,7 +141,7 @@ it.each(["bank", "closed"] as const)("keeps signed %s membership independent of 
     const compiled = followUpSourceQuery(sql`SELECT 1`, { ...query, queue }, { ...access, ownOnly: false, approvalOwnOnly: false, queues: { [queue]: true } }).compile(db);
     const visible = compiled.sql.split("visible AS (")[1]?.split("), searched AS")[0];
     expect(visible).not.toContain("approvalPending=0");
-    expect(visible).toContain("contractSigned=1 AND stateCode='bank_management'");
+    expect(visible).toContain("contractSigned=1 AND stateCode IN ('bank_management','bank_management_in_progress')");
     expect(visible).toContain("contractSigned=1 AND completedThisYear=1");
     expect(compiled.sql).toContain("approved=1 AND stateCode IN ('contract_pending_send','contract_pending_signature')");
     expect(compiled.sql).toContain("AND approvalPending=1");
@@ -168,4 +188,128 @@ it("resolves exact native authority without filtering inactive aliases or readin
     } finally {
         await db.destroy();
     }
+});
+
+it("filters several projects and queues with bound OR predicates in both source projections", async () => {
+    const f = database();
+    try {
+        const statement = followUpSourceQuery(sql`SELECT 1`, { ...query, projectIds: ["legacy-project:7", "legacy-project:8"], queues: ["send", "bank"], bankStages: ["bank_management_in_progress"] }, access);
+        const compiled = statement.compile(f.db);
+        expect(compiled.parameters).toContain("legacy-project:7");
+        expect(compiled.parameters).toContain("legacy-project:8");
+        expect(compiled.parameters).toContain("bank_management_in_progress");
+        expect(compiled.sql).toContain("projectId IN");
+        expect(compiled.sql).not.toContain("legacy-project:7");
+    } finally {
+        await f.db.destroy();
+    }
+});
+
+it.each([true, false])("la visibilidad de finiquito usa permiso de orden explícito=%s", async (finiquito) => {
+    const f = database();
+    try {
+        const compiled = followUpSourceQuery(sql`SELECT 1`, query, { ...access, queues: { approvals: true }, finiquito }).compile(f.db);
+        const sqlText = compiled.sql;
+        expect(sqlText).toContain("AND saleLost=1 AND contractSigned=1");
+        expect(sqlText).toContain("saleLost=0 AND");
+        const predicate = sqlText.split("AND saleLost=1 AND contractSigned=1")[0];
+        const position = (predicate?.match(/\?/g)?.length ?? 0) - 1;
+        expect(compiled.parameters[position]).toBe(finiquito);
+    } finally {
+        await f.db.destroy();
+    }
+});
+it("orders the complete filtered portfolio by project and unit before selecting a page", () => {
+    const { db } = database();
+    try {
+        const compiled = followUpSourceQuery(sql`SELECT 1`, query, access).compile(db);
+        expect(compiled.sql).toContain("ROW_NUMBER() OVER (ORDER BY projectName IS NULL,projectName,unit IS NULL,unit,source,sortId,id)");
+        expect(compiled.sql).toContain("FROM ranked ORDER BY pageOrdinal LIMIT ? OFFSET ?");
+        expect(compiled.sql).toContain("COUNT(*) FROM filtered WHERE source='native'");
+        expect(compiled.sql).toContain("COUNT(*) FROM filtered WHERE source='legacy'");
+    } finally {
+        void db.destroy();
+    }
+});
+it("unions native and legacy projections before one filtered and bounded global page", async () => {
+    const { db, queries } = database();
+    try {
+        const legacy = new LegacyFollowUpReader({ isConfigured: () => true } as never);
+        await db.transaction().execute((tx) => new FollowUpRepository().readCombined(tx, { ...query, offset: 25 }, period, { access, legacy: legacy.projection(period) }));
+        expect(queries).toHaveLength(1);
+        const statement = queries[0];
+        if (!statement) throw new Error("Missing compiled statement");
+        expect(statement.sql).toContain("UNION ALL");
+        expect(statement.sql).toContain("n.id_old_produccion_sales_order=o.id_ov");
+        expect(statement.sql.indexOf("UNION ALL")).toBeLessThan(statement.sql.indexOf("classified AS"));
+        expect(statement.sql.indexOf("WHERE source='native'")).toBeGreaterThan(statement.sql.indexOf("filtered AS"));
+        expect(statement.parameters).toContain(25);
+    } finally {
+        await db.destroy();
+    }
+});
+
+it("restores the SQL page ordinal across sources without reordering by source IDs or leaking sort metadata", async () => {
+    const row = { number: "OV", nativeCode: null, client: null, project: { id: "p", name: "AM" }, unit: "FF001", responsible: null, stateCode: "contract_pending_send", stateSince: null, completedThisYear: false };
+    const { db } = database([
+        {
+            ...emptyFollowUpSource().counts,
+            total: 3,
+            nativeTotal: 1,
+            legacyTotal: 2,
+            projects: [],
+            items: [
+                { ...row, id: "native-id", source: "native", sortId: "1", pageOrdinal: "27", unit: "FF003" },
+                { ...row, id: "legacy:500", source: "legacy", sortId: "500", pageOrdinal: "25" },
+                { ...row, id: "legacy:3", source: "legacy", sortId: "3", pageOrdinal: "26", unit: "FF002" },
+            ],
+        },
+    ]);
+    try {
+        const result = await readFollowUpSource(db as never, sql`SELECT 1`);
+        expect(result.items.map((item) => item.id)).toEqual(["legacy:500", "legacy:3", "native-id"]);
+        expect(result.sourceTotals).toEqual({ native: 1, legacy: 2 });
+        expect(result.items[0]).not.toHaveProperty("sortId");
+        expect(result.items[0]).not.toHaveProperty("pageOrdinal");
+    } finally {
+        await db.destroy();
+    }
+});
+
+describe("project distribution aggregates", () => {
+    const distributionAccess = { ...access, ownOnly: false, approvals: true, queues: { approvals: true, contracts: true, bank: true, closed: true, addendum: true } };
+    it("uses exact authorized banners globally with overlapping annual closure and pending addendum", () => {
+        const { db } = database();
+        const statement = projectDistributionQuery(sql`SELECT 1`, distributionAccess).compile(db);
+        expect(projectDistributionSeries(distributionAccess)).toEqual(["approvals", "send", "signature", "bank_not_started", "bank_in_progress", "closed", "addendum"]);
+        expect(statement.sql).toContain("GROUP BY projectId ORDER BY total DESC,name,projectId");
+        expect(statement.sql).toContain("completedThisYear=1 AND unitDelivered=1");
+        expect(statement.sql).toContain("addendumStatus='pending'");
+        expect(statement.sql).toContain("saleLost=0");
+        expect(statement.sql).not.toContain("LIMIT");
+        expect(statement.sql).not.toContain("JSON_ARRAYAGG");
+        expect(statement.sql).not.toContain("AS `balance`");
+        const visible = statement.sql.split("visible AS")[1]?.split("SELECT /*+")[0];
+        expect(visible).not.toContain("stateCode IN ('contract_pending_send','contract_pending_signature')");
+        void db.destroy();
+    });
+    it("strips source/contact and unauthorized counts while preserving null project and unique totals", async () => {
+        const { db } = database([{ id: null, name: "Sin proyecto", total: "1", closed: "1", addendum: "1", clientEmail: "private@example.com", balance: 99 }]);
+        await db.transaction().execute(async (tx) => {
+            const result = await readProjectDistribution(tx, sql`SELECT 1`, { ...access, queues: { closed: true, addendum: true } });
+            expect(result).toEqual({ totalOrders: 1, series: ["closed", "addendum"], projects: [{ id: null, name: "Sin proyecto", total: 1, counts: { closed: 1, addendum: 1 } }] });
+        });
+        await db.destroy();
+    });
+    it("federates with native alias authority before global aggregation", async () => {
+        const { db, queries } = database([]);
+        await db.transaction().execute(async (tx) => {
+            await new FollowUpRepository().projectDistribution(tx, period, { access: distributionAccess, legacy: new LegacyFollowUpReader({ get: () => true } as never).projection(period) });
+        });
+        const statement = queries.find((entry) => entry.sql.includes("GROUP BY projectId"))?.sql ?? "";
+        expect(statement).toContain("UNION ALL");
+        expect(statement).toContain("n.id_old_produccion_sales_order=o.id_ov");
+        expect(statement).toContain("COLLATE utf8mb4_unicode_ci");
+        await db.destroy();
+    });
 });

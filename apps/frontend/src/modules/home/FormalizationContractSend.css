@@ -1,0 +1,24 @@
+.formalization-contract-send__content {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 12px;
+}
+
+.formalization-contract-send__content .formalization-order-fields {
+    grid-template-columns: minmax(0, 1fr);
+}
+
+.formalization-contract-send__content .ant-btn {
+    margin-top: 0;
+}
+
+@media (max-width: 420px) {
+    .formalization-contract-send__content {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .formalization-contract-send__content .ant-btn {
+        justify-self: start;
+    }
+}

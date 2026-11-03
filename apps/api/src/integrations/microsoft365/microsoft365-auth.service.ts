@@ -40,7 +40,7 @@ export class Microsoft365AuthService implements MicrosoftAuthProvider {
     /**
      * Construye la URL de autorizacion Microsoft con PKCE, state y nonce.
      */
-    async startLogin(): Promise<MicrosoftLoginChallenge> {
+    async startLogin(input?: { calendar?: boolean }): Promise<MicrosoftLoginChallenge> {
         const microsoftConfig = this.readConfig();
         const client = this.createClient(microsoftConfig);
         const pkce = await this.crypto.generatePkceCodes();
@@ -52,7 +52,7 @@ export class Microsoft365AuthService implements MicrosoftAuthProvider {
             nonce,
             prompt: MICROSOFT_LOGIN_PROMPT,
             redirectUri: microsoftConfig.redirectUri,
-            scopes: microsoftConfig.scopes,
+            scopes: input?.calendar ? this.loginScopes(microsoftConfig.scopes) : microsoftConfig.scopes,
             state,
         });
 
@@ -75,7 +75,7 @@ export class Microsoft365AuthService implements MicrosoftAuthProvider {
             codeVerifier: input.codeVerifier,
             nonce: input.nonce,
             redirectUri: microsoftConfig.redirectUri,
-            scopes: microsoftConfig.scopes,
+            scopes: input.calendar ? this.loginScopes(microsoftConfig.scopes) : microsoftConfig.scopes,
         });
 
         const account = this.assertAccount(result, microsoftConfig.tenantId);
@@ -96,7 +96,7 @@ export class Microsoft365AuthService implements MicrosoftAuthProvider {
     /**
      * Rehidrata cache MSAL cifrada fuera del adapter y renueva token en silencio.
      */
-    async acquireTokenSilent(input: { homeAccountId: string; msalCacheSerialized: string }): Promise<MicrosoftSilentTokenResult> {
+    async acquireTokenSilent(input: { homeAccountId: string; msalCacheSerialized: string; scopes?: string[] }): Promise<MicrosoftSilentTokenResult> {
         const microsoftConfig = this.readConfig();
         const client = this.createClient(microsoftConfig);
         client.getTokenCache().deserialize(input.msalCacheSerialized);
@@ -110,7 +110,7 @@ export class Microsoft365AuthService implements MicrosoftAuthProvider {
         try {
             const result = await client.acquireTokenSilent({
                 account,
-                scopes: microsoftConfig.scopes,
+                scopes: input.scopes ?? microsoftConfig.scopes,
             });
 
             if (!result.accessToken) {
@@ -219,6 +219,11 @@ export class Microsoft365AuthService implements MicrosoftAuthProvider {
      * Lee configuracion Microsoft. Es fail-fast por request: si el operador no
      * configuro Microsoft completo, el endpoint no inicia un flujo inseguro.
      */
+    /** El consentimiento de calendario se pide al iniciar sesión; nunca durante la renovación básica. */
+    private loginScopes(base: string[]): string[] {
+        return this.config.get<boolean>("ENABLE_CALENDAR_EXTERNAL") === true ? [...new Set([...base, "Calendars.ReadWrite", "Calendars.Read.Shared", "Place.Read.All"])] : base;
+    }
+
     private readConfig(): Microsoft365Config {
         const tenantId = this.config.getOrThrow<string>("MICROSOFT_TENANT_ID");
         const clientId = this.config.getOrThrow<string>("MICROSOFT_CLIENT_ID");
@@ -235,7 +240,7 @@ export class Microsoft365AuthService implements MicrosoftAuthProvider {
             clientId,
             clientSecret,
             redirectUri,
-            scopes,
+            scopes: this.config.get<boolean>("ENABLE_ORDER_DOCUMENTS") === true ? [...new Set([...scopes, "Files.ReadWrite.All"])] : scopes,
             tenantId,
         };
     }

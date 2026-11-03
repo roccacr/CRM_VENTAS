@@ -1,5 +1,9 @@
 # 05 - Testing Frontend
 
+## Actualización contrastada — 03/11/2026
+
+El árbol local incorpora regresiones de Adéndum manual/lectura/bandeja/futuro, calendario contextual y vacío global, disponibilidad/consentimiento Microsoft, detalle Outlook/participantes/posición, perfil por secciones, teléfono/país y las combinaciones de flags de cierre. Las pruebas usan servicios HTTP sustituidos; leer sus aserciones no acredita que se ejecutaron. Los resultados y fallos fechados inferiores se conservan. Esta conciliación documental no ejecuta la suite completa ni atribuye a HEAD los conteos antiguos; cualquier verificación nueva se registra en el cierre raíz.
+
 ## Inventario y evidencia - 2026-11-02
 
 El proyecto usa Vitest/jsdom y Testing Library. `vite.config.ts` limita a dos

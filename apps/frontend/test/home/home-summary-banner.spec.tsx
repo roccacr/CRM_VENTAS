@@ -19,9 +19,9 @@ vi.mock("../../src/services/formalization/home-summary-service", () => ({ getHom
 vi.mock("../../src/services/formalization/approval-summary-service", () => ({ getApprovalCount: vi.fn() }));
 const role = { code: "formalizacion", name: "Formalización", status: "active" as const };
 const stagePermission = { code: "formalizacion.home.stages.read", effect: "allow" as const, scope: "self" as const, source: "role" as const };
-const counts = { contracts: { toSend: 6, pendingSignature: 3 }, banking: 4, balance: 5, transferPending: 6, transferSigned: 7, closedThisYear: 8 };
+const counts = { contracts: { toSend: 6, pendingSignature: 3 }, banking: 4, bankingInProgress: 2, balance: 5, transferPending: 6, transferSigned: 7, closedThisYear: 8 };
 const summary = { schemaVersion: 1 as const, observedAt: "2026-10-23T12:00:00.000Z", period: { year: 2026, timeZone: "America/Costa_Rica", start: "2026-01-01T06:00:00.000Z", endExclusive: "2027-01-01T06:00:00.000Z" }, counts, sources: { native: counts, legacy: counts, legacyEnabled: true, duplicatesExcluded: 2 } };
-const labels = ["Por enviar", "Pendientes de firma", "Sin iniciar / En proceso", "Consulta financiera", "Por gestionar", "Firma registrada · Llaves pendientes", "Proceso finalizado"];
+const labels = ["Por enviar", "Pendientes de firma", "Sin iniciar", "En proceso", "Consulta financiera", "Por gestionar", "Firma registrada · Llaves pendientes", "Proceso finalizado"];
 beforeEach(() => {
     installBrowserApiDoubles();
     vi.mocked(getHomeSummary).mockReset().mockResolvedValue(summary);
@@ -30,6 +30,22 @@ beforeEach(() => {
 afterEach(() => {
     cleanup();
     vi.restoreAllMocks();
+});
+
+it("shows keyboard-accessible condition help beside every banner without opening the approvals queue", async () => {
+    const approvals = { code: "formalizacion.home.approvals.read", effect: "allow" as const };
+    render(<FormalizationHomePage roles={[role]} effectivePermissions={[stagePermission, approvals]} />);
+    await screen.findByLabelText("Valor: Por enviar, 6");
+    for (const title of ["Pendientes de aprobación", "Contratos pendientes", "Gestión bancaria", "Pendientes de saldo", "Traspasos pendientes", "Traspaso firmado", "Formalizaciones cerradas este año"]) {
+        const help = screen.getByRole("button", { name: `Condiciones de ${title}` });
+        expect(help.parentElement?.closest("button")).toBeNull();
+    }
+    fireEvent.mouseEnter(screen.getByRole("button", { name: "Condiciones de Contratos pendientes" }));
+    const tooltip = await screen.findByRole("tooltip");
+    expect(tooltip.textContent).toContain("Aprobación Formalización marcada");
+    expect(tooltip.textContent).toContain("Por enviar o Pendiente de firma");
+    fireEvent.click(screen.getByRole("button", { name: "Condiciones de Pendientes de aprobación" }));
+    expect(screen.getByRole("heading", { name: "Formalización", level: 1 })).toBeTruthy();
 });
 
 it.each([undefined, [], [{ code: "formalizacion.home.approvals.read", effect: "deny" as const }], [{ ...stagePermission, effect: "deny" as const }], [stagePermission, { ...stagePermission, effect: "deny" as const }]])("requires the stages effective allow and honors deny before mount, query or refresh: %j", (permissions) => {
@@ -42,18 +58,12 @@ it.each([undefined, [], [{ code: "formalizacion.home.approvals.read", effect: "d
     expect(getHomeSummary).not.toHaveBeenCalled();
 });
 
-it.each([true, false])("uses only API effective roles for Owner; formalizacion present=%s", async (hasFormalization) => {
+it.each([true, false])("uses effective grants regardless of Owner inherited role; formalizacion present=%s", async (hasFormalization) => {
     const owner = { ...role, code: "owner", name: "Owner" };
     render(<FormalizationHomePage roles={hasFormalization ? [owner, role] : [owner]} effectivePermissions={[stagePermission]} />);
-    if (hasFormalization) {
-        await screen.findByLabelText("Valor: Por enviar, 6");
-        expect(screen.getByRole("button", { name: "Recargar banners" })).toBeTruthy();
-        expect(getHomeSummary).toHaveBeenCalledTimes(1);
-    } else {
-        expect(screen.queryByRole("heading", { name: "Contratos pendientes" })).toBeNull();
-        expect(screen.queryByRole("button", { name: "Recargar banners" })).toBeNull();
-        expect(getHomeSummary).not.toHaveBeenCalled();
-    }
+    await screen.findByLabelText("Valor: Por enviar, 6");
+    expect(screen.getByRole("button", { name: "Recargar banners" })).toBeTruthy();
+    expect(getHomeSummary).toHaveBeenCalledTimes(1);
 });
 
 it("discards the read subtree on direct deny and refreshes remaining approvals", async () => {
@@ -138,13 +148,13 @@ it("hides refresh when no banner is authorized", () => {
     expect(getApprovalCount).not.toHaveBeenCalled();
 });
 
-it.each([undefined, [], [{ ...role, code: "owner" }], [{ ...role, status: "inactive" as const }]])("gates all six stage banners before query for %j", (roles) => {
-    render(<FormalizationHomePage roles={roles} effectivePermissions={[stagePermission]} />);
+it.each([undefined, [], [{ ...role, code: "owner" }], [{ ...role, status: "inactive" as const }]])("requires a grant before querying regardless of roles %j", (roles) => {
+    render(<FormalizationHomePage roles={roles} effectivePermissions={[]} />);
     expect(screen.queryByRole("heading", { name: "Gestión bancaria" })).toBeNull();
     expect(getHomeSummary).not.toHaveBeenCalled();
 });
 
-it("shares one StrictMode request and preloads all seven numbers", async () => {
+it("shares one StrictMode request and preloads all eight numbers", async () => {
     let resolve!: (value: typeof summary) => void;
     vi.mocked(getHomeSummary).mockReturnValue(
         new Promise((done) => {
@@ -162,7 +172,7 @@ it("shares one StrictMode request and preloads all seven numbers", async () => {
         resolve(summary);
         await Promise.resolve();
     });
-    expect(screen.getAllByLabelText(/^Valor:/).map((node) => node.textContent)).toEqual(["6", "3", "4", "5", "6", "7", "8"]);
+    expect(screen.getAllByLabelText(/^Valor:/).map((node) => node.textContent)).toEqual(["6", "3", "4", "2", "5", "6", "7", "8"]);
 });
 
 it("refreshes on visible focus, deduplicates, clears in queues and refetches on Home return", async () => {
@@ -195,7 +205,7 @@ it("refreshes on visible focus, deduplicates, clears in queues and refetches on 
     expect(getHomeSummary).toHaveBeenCalledTimes(3);
 });
 
-it("invalidates pending results on disable and role revocation", async () => {
+it("invalidates pending results on disable and effective permission revocation", async () => {
     let resolve!: (value: typeof summary) => void;
     vi.mocked(getHomeSummary).mockReturnValueOnce(
         new Promise((done) => {
@@ -203,7 +213,7 @@ it("invalidates pending results on disable and role revocation", async () => {
         }),
     );
     const { rerender } = render(<FormalizationHomePage roles={[role]} effectivePermissions={[stagePermission]} />);
-    rerender(<FormalizationHomePage roles={[]} effectivePermissions={[stagePermission]} />);
+    rerender(<FormalizationHomePage roles={[]} effectivePermissions={[]} />);
     await act(async () => {
         resolve(summary);
         await Promise.resolve();
@@ -221,7 +231,7 @@ it("marks every rejected source metric unverified and retries the common aggrega
     render(<FormalizationHomePage roles={[role]} effectivePermissions={[stagePermission]} />);
     expect(await screen.findAllByRole("alert")).toHaveLength(6);
     for (const label of labels) {
-        expect(screen.getByLabelText(`${label}: sin verificar`).textContent).toBe("0");
+        expect(screen.getByLabelText(`${label}: sin verificar`).textContent).toBe("—");
         expect(screen.queryByLabelText(`Valor: ${label}, 0`)).toBeNull();
     }
     expect(screen.queryByText("Contratos no disponibles")).toBeNull();
@@ -240,7 +250,7 @@ it("marks every rejected source metric unverified and retries the common aggrega
         await Promise.resolve();
     });
     expect(screen.queryAllByRole("alert")).toHaveLength(0);
-    expect(screen.getAllByLabelText(/^Valor:/).map((node) => node.textContent)).toEqual(["6", "3", "4", "5", "6", "7", "8"]);
+    expect(screen.getAllByLabelText(/^Valor:/).map((node) => node.textContent)).toEqual(["6", "3", "4", "2", "5", "6", "7", "8"]);
 });
 
 it.each(["session", "user"])("discards a pending result when the authenticated %s changes", async (context) => {

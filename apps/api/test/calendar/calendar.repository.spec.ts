@@ -185,6 +185,19 @@ it("binds date/module/actor inputs, excludes native aliases and unknown legacy o
         await f.db.destroy();
     }
 });
+it("loads a moved Outlook match outside the stored date while retaining the native ACL", async () => {
+    const f = setup();
+    try {
+        await f.repo.read((tx) => f.repo.list(tx, { actorPublicId: "actor", modules: ["formalizacion"], broadModules: [], start: input.start, end: input.end, externalEventIds: [id], excludedInviteModules: ["ventas"] }));
+        const query = f.queries.find((entry) => entry.sql.includes("FROM crm_calendar_event e JOIN"));
+        expect(query?.sql).toContain("OR e.public_id_calendar_event IN (?)");
+        expect(query?.sql).toContain("u.public_id_user=?");
+        expect(query?.sql).toContain("o.code_org_unit NOT IN (?)");
+        expect(query?.parameters).toEqual(expect.arrayContaining([id, "actor", "formalizacion", "ventas"]));
+    } finally {
+        await f.db.destroy();
+    }
+});
 
 it("validates ACL inside transaction before new writes", async () => {
     const f = setup();
@@ -210,7 +223,8 @@ it("keeps invited origin deny separate from selected module scope", async () => 
         expect(query.sql).toContain("o.code_org_unit NOT IN (?)");
         expect(query.sql).toContain("OR (");
         expect(query.parameters).toContain("ventas");
-        expect(query.sql).not.toContain("display_name_user");
+        expect(query.sql).toContain("u.display_name_user");
+        expect(query.sql).not.toContain("pu.display_name_user");
     } finally {
         await f.db.destroy();
     }
@@ -280,6 +294,41 @@ it("deduplicates normalized external emails", async () => {
     try {
         await f.repo.save("actor", { ...input, participants: [{ email: " GUEST@EXAMPLE.COM " }, { email: "guest@example.com" }] }, false);
         expect(f.queries.filter((q) => q.sql.includes("insert into `crm_calendar_participant`"))).toHaveLength(1);
+    } finally {
+        await f.db.destroy();
+    }
+});
+it("rejects another organizer even with a broad update scope", async () => {
+    const f = setup({ before: { ownerPublicId: "other" } });
+    try {
+        await expect(f.repo.save("actor", { ...input, expectedVersion: 2 }, false, id)).rejects.toMatchObject({ status: 403 });
+        expect(f.steps).not.toContain("write");
+    } finally {
+        await f.db.destroy();
+    }
+});
+
+it("updates only lifecycle fields and sync intent when cancelling, retaining all business relations", async () => {
+    const f = setup();
+    try {
+        await f.repo.save("actor", { ...input, expectedVersion: 2 }, true, id, undefined, { status: "cancelled", expectedStatus: "scheduled", reason: "Cambio de agenda" });
+        const update = f.queries.find((q) => q.sql.startsWith("update `crm_calendar_event`"));
+        expect(update?.sql).toContain("`status_calendar_event`");
+        expect(update?.sql).not.toContain("`title_calendar_event`");
+        expect(update?.parameters).toContain("Cambio de agenda");
+        expect(update?.parameters).toContain(3);
+        expect(f.queries.find((q) => q.sql.startsWith("update `int_calendar_event_sync`"))?.parameters).toContain("absent");
+        expect(f.steps.at(-1)).toBe("commit");
+        expect(f.audit.append).toHaveBeenCalledTimes(1);
+    } finally {
+        await f.db.destroy();
+    }
+});
+it("rejects a mismatched lifecycle state before writes", async () => {
+    const f = setup();
+    try {
+        await expect(f.repo.save("actor", { ...input, expectedVersion: 2 }, true, id, undefined, { status: "scheduled", expectedStatus: "cancelled" })).rejects.toThrow("estado");
+        expect(f.steps).toEqual(["begin", "rollback"]);
     } finally {
         await f.db.destroy();
     }

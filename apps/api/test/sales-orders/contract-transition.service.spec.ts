@@ -8,11 +8,57 @@ import { ContractTransitionService } from "../../src/modules/crm/sales/sales-ord
 const input = { source: "native" as const, id: "01ARZ3NDEKTSV4RRFFQ69G5FAV", expectedSequence: 0, operationId: "550e8400-e29b-41d4-a716-446655440000" };
 function setup(roles = [{ code: "formalizacion", status: "active" }], permissions: { code: string; effect: string; scope?: string }[] = [{ code: "formalizacion.contracts.send", effect: "allow", scope: "all_areas" }]) {
     const getCurrentUser = vi.fn().mockResolvedValue({ user: { publicId: "actor" }, roles, permissions });
+    const updatePurchaseFunds = vi.fn().mockResolvedValue({ purchaseFundsOrigin: "own_funds" });
     const transition = vi.fn().mockResolvedValue({ sequence: 1 });
-    return { service: new ContractTransitionService({ getCurrentUser } as unknown as IdentityService, { transition } as unknown as ContractTransitionRepository), transition };
+    return { service: new ContractTransitionService({ getCurrentUser } as unknown as IdentityService, { transition, updatePurchaseFunds } as unknown as ContractTransitionRepository), transition, updatePurchaseFunds };
 }
 
 describe("contract transition authorization and internal input", () => {
+    it("authorizes funds edits with the independent edit grant and existing module scope", async () => {
+        const f = setup(undefined, [{ code: "formalizacion.orders.stage.update", effect: "allow", scope: "self" }]);
+        await f.service.updatePurchaseFunds("session", { ...input, expectedAuditSequence: 0, expectedPurchaseFundsOrigin: null, purchaseFundsOrigin: "own_funds" });
+        expect(f.updatePurchaseFunds).toHaveBeenCalledWith(expect.objectContaining({ actorPublicId: "actor", ownOnly: false, purchaseFundsOrigin: "own_funds" }));
+        expect(f.transition).not.toHaveBeenCalled();
+    });
+    it.each([{}, { purchaseFundsOrigin: null }, { purchaseFundsOrigin: "other" }, { targetState: "closed" }, { actorPublicId: "forged" }, { expectedPurchaseFundsOrigin: undefined }, { expectedAuditSequence: -1 }])("rejects invalid independent funds command %j", async (change) => {
+        const f = setup(undefined, [{ code: "formalizacion.orders.stage.update", effect: "allow", scope: "all_areas" }]);
+        const command = Object.keys(change).length ? { ...input, expectedAuditSequence: 0, expectedPurchaseFundsOrigin: null, purchaseFundsOrigin: "own_funds", ...change } : input;
+        await expect(f.service.updatePurchaseFunds("session", command)).rejects.toMatchObject({ status: 400 });
+        expect(f.updatePurchaseFunds).not.toHaveBeenCalled();
+    });
+    it("does not allow funds edits through send permission or an explicit deny", async () => {
+        const f = setup();
+        const g = setup(undefined, [
+            { code: "formalizacion.orders.stage.update", effect: "allow" },
+            { code: "formalizacion.orders.stage.update", effect: "deny" },
+        ]);
+        for (const value of [f, g]) {
+            await expect(value.service.updatePurchaseFunds("session", { ...input, expectedAuditSequence: 0, expectedPurchaseFundsOrigin: null, purchaseFundsOrigin: "own_funds" })).rejects.toMatchObject({ status: 403 });
+            expect(value.updatePurchaseFunds).not.toHaveBeenCalled();
+        }
+    });
+    it.each(["own_funds", "bank_financing"] as const)("forwards validated funds %s under the destination grant", async (purchaseFundsOrigin) => {
+        const f = setup(undefined, [
+            { code: "formalizacion.orders.stage.update", effect: "allow", scope: "all_areas" },
+            { code: "formalizacion.orders.stage.bank_management_in_progress", effect: "allow", scope: "all_areas" },
+        ]);
+        await f.service.transition("session", "set", { ...input, targetState: "bank_management_in_progress", purchaseFundsOrigin });
+        expect(f.transition).toHaveBeenCalledWith(expect.objectContaining({ purchaseFundsOrigin, targetState: "bank_management_in_progress" }));
+    });
+    it.each([null, "unknown", "", 1, true])("rejects invalid purchase origin %s before persistence", async (purchaseFundsOrigin) => {
+        const f = setup(undefined, [{ code: "formalizacion.orders.stage.update", effect: "allow", scope: "all_areas" }]);
+        await expect(f.service.transition("session", "set", { ...input, targetState: "pending_balance", purchaseFundsOrigin } as never)).rejects.toMatchObject({ status: 400 });
+        expect(f.transition).not.toHaveBeenCalled();
+    });
+    it("respects an explicit deny for the new banking destination", async () => {
+        const f = setup(undefined, [
+            { code: "formalizacion.orders.stage.update", effect: "allow", scope: "all_areas" },
+            { code: "formalizacion.orders.stage.bank_management_in_progress", effect: "allow", scope: "all_areas" },
+            { code: "formalizacion.orders.stage.bank_management_in_progress", effect: "deny", scope: "all_areas" },
+        ]);
+        await expect(f.service.transition("session", "set", { ...input, targetState: "bank_management_in_progress", purchaseFundsOrigin: "bank_financing" })).rejects.toMatchObject({ status: 403 });
+        expect(f.transition).not.toHaveBeenCalled();
+    });
     it.each([
         ["contract_pending_signature", "formalizacion.contracts.send"],
         ["contract_pending_send", "formalizacion.contracts.revert"],
@@ -96,10 +142,10 @@ describe("contract transition authorization and internal input", () => {
         await f.service.transition("session", "send", input, context);
         expect(f.transition).toHaveBeenCalledWith(expect.objectContaining({ actorPublicId: "actor", action: "send", source: "native", id: input.id, ipAddress: "127.0.0.1" }));
     });
-    it.each([{ roles: [] }, { roles: [{ code: "formalizacion", status: "inactive" }] }, { roles: [{ code: "jefe_formalizaciones", status: "inactive" }] }, { roles: [{ code: "owner", status: "active" }] }])("requires active base role before any order lookup (%j)", async ({ roles }) => {
+    it.each([{ roles: [] }, { roles: [{ code: "formalizacion", status: "inactive" }] }, { roles: [{ code: "jefe_formalizaciones", status: "inactive" }] }, { roles: [{ code: "owner", status: "active" }] }])("honors the exact grant without a named base role (%j)", async ({ roles }) => {
         const f = setup(roles);
-        await expect(f.service.transition("session", "send", input)).rejects.toThrow("Formalizacion");
-        expect(f.transition).not.toHaveBeenCalled();
+        await f.service.transition("session", "send", input);
+        expect(f.transition).toHaveBeenCalled();
     });
     it("deny wins over allow", async () => {
         const f = setup(undefined, [

@@ -19,7 +19,6 @@ import DashboardOutlined from "@ant-design/icons/DashboardOutlined";
 import DatabaseOutlined from "@ant-design/icons/DatabaseOutlined";
 import DownOutlined from "@ant-design/icons/DownOutlined";
 import EnvironmentOutlined from "@ant-design/icons/EnvironmentOutlined";
-import FileDoneOutlined from "@ant-design/icons/FileDoneOutlined";
 import FileProtectOutlined from "@ant-design/icons/FileProtectOutlined";
 import FileTextOutlined from "@ant-design/icons/FileTextOutlined";
 import FlagOutlined from "@ant-design/icons/FlagOutlined";
@@ -45,10 +44,11 @@ import type { FocusEvent, KeyboardEvent, MouseEvent as ReactMouseEvent, ReactNod
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 
 import { buildApiUrl } from "../../config/frontend-env";
-import type { IdentityOrgUnit } from "../../services/auth/identity-contracts";
+import type { IdentityOrgUnit, IdentityProfile } from "../../services/auth/identity-contracts";
 import { ADMINISTRATION_CATALOGS } from "../administration/catalogs/catalog-definitions";
 import { NotesRealtimeProvider } from "../notes/NotesRealtimeProvider";
 import { NotesButton, NotesNotificationsButton, PersonalNotesProvider } from "../notes/PersonalNotes";
+import { FormalizationCalendarQuickCreate } from "./FormalizationCalendarQuickCreate";
 
 /** Ruta pública del logo. El shell no la resuelve por entorno. */
 const ROCCA_LOGO_SRC = "/Logo/rocca-concept.png";
@@ -101,6 +101,7 @@ const CATALOG_CONTEXT_BY_WORKSPACE_CODE: Readonly<Record<string, string>> = {
 const getCatalogPath = (workspaceCode: string, code: string): string => (workspaceCode === "administration" ? (ADMINISTRATION_CATALOGS.find((catalog) => catalog.code === code)?.path ?? "/home/administration/catalogs") : `/home/${workspaceCode}/catalogs/${code}`);
 /** Icono por catálogo; los códigos nuevos caen en el icono genérico de base de datos. */
 const CATALOG_ICON_BY_CODE: Readonly<Record<string, ReactNode>> = {
+    banks: <BankOutlined />,
     brokers: <SolutionOutlined />,
     campaigns: <FlagOutlined />,
     classes: <TagsOutlined />,
@@ -265,6 +266,7 @@ export interface GlobalHomeShellProps {
     readonly onLogout?: () => void;
     readonly onWorkspaceChange?: (code: string) => void;
     readonly orgUnits?: readonly NavigationOrgUnit[];
+    readonly roles?: IdentityProfile["roles"];
 }
 
 /**
@@ -330,8 +332,7 @@ export const ASSIGNED_WORKSPACES: readonly [WorkspaceProfile, ...WorkspaceProfil
         menuItems: [
             // Active module membership opens Home; individual banners have their own permissions.
             { code: "formalization-home", label: "Inicio", icon: <DashboardOutlined />, routePath: FORMALIZATION_HOME_PATH },
-            // Existing local previews remain accessible; this does not authorize business API operations.
-            { code: "formalization-management", label: "Gestión de formalizaciones", icon: <FileDoneOutlined />, routePath: `${FORMALIZATION_HOME_PATH}/orders` },
+            // Acceso de gestión oculto temporalmente: el seguimiento se concentra en Inicio. La ruta directa se conserva.
             { code: "formalization-calendar", label: "Calendario", icon: <CalendarOutlined />, requiredPermission: "formalizacion.calendar.read", routePath: `${FORMALIZATION_HOME_PATH}/calendar` },
             { code: "formalization-catalogs", label: "Catálogos", icon: <DatabaseOutlined />, children: buildCatalogMenuOptions("formalization") },
         ],
@@ -1584,6 +1585,7 @@ export function GlobalHomeShell({ activeMenuItemCode, children, currentUser, eff
                             </div>
 
                             <div className="global-home-header__actions" role="group" aria-label="Cuenta y notificaciones">
+                                <FormalizationCalendarQuickCreate workspaceCode={activeWorkspace.code} permissions={effectivePermissions} />
                                 <NotesNotificationsButton />
                                 <NotesButton />
                                 <Tooltip title={<UserTooltipContent user={currentUser} />} placement="bottomRight">

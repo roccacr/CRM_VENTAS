@@ -1,5 +1,19 @@
 # 53 - Captacion de leads: reporte federado de solo lectura
 
+## Motivos de pérdida — 03/11/2026
+
+La opción **Qué medir → Motivos de pérdida** reutiliza el mismo GET y las cohortes autorizadas. Cada fila agrega `lossReasons: [{code,name,count}]`; su suma es exactamente `lost`. No se crea otro reporte ni se importan datos. La cohorte sigue siendo leads captados en el período y actualmente perdidos, no transiciones ocurridas durante ese período.
+
+- Nativo: último evento de `audit_lead_status_event` hacia `lost`, ordenado por secuencia e ID, para un lead actualmente perdido. Etiqueta histórica del evento y, si falta, catálogo `conf_action_reason`. Si no hay código/etiqueta fiable, queda sin motivo.
+- Legacy: `leads.id_Caida → caidas.id_caida`. El flujo antiguo solicita opciones de pérdida con parámetro3; la pérdida automática guarda el motivo66. Se aceptan motivos manuales `estado_caida=3/segui=0` y referencias históricas/automáticas confirmadas10,19,20,60,61,65,66,68. No se interpreta un evento/nota genérico como causa. Si la referencia fue reemplazada por una actividad o no resuelve, se conserva el conteo en **Sin motivo registrado**, sin inferirlo desde texto libre de bitácoras.
+- Las equivalencias ya revisadas en `HISTORY_REASONS` (por ejemplo19/25→`no_answer`,21→`budget`) reutilizan códigos canónicos; los demás motivos legacy conservan identidad `legacy:<id>`. No se unen motivos por semejanza del nombre.
+- Nativo prevalece en coincidencias inequívocas; pérdida/motivo se cuentan una sola vez. Se mantienen permisos, alcances y deny antes de leer fuentes.
+- Gráfico, tabla y exportación usan los proyectos seleccionados. El gráfico muestra cantidad o porcentaje del total de perdidos; el KPI general sigue indicando perdidos sobre todos los leads captados. «Contexto del desglose» conserva tablas por proyecto/campaña/anuncio para seleccionar proyectos.
+- Compatibilidad: el parser permite un API anterior sin `lossReasons` y presenta sus pérdidas como no documentadas; un detalle presente debe tener códigos únicos, conteos positivos y reconciliar exactamente con `lost` o se rechaza el reporte.
+
+Verificación local:56 pruebas API y54 frontend focalizadas; lectura conjunta readonly ejecutada con0 leads nativos y57.904 legacy (52.476 perdidos,50.480 con clasificación válida en ese corte). La BD nativa sí tiene las tablas, pero no registra leads/motivos todavía: comportamiento de datos nativos cubierto por pruebas, sin afirmar aceptación con registros nativos reales. Sin migraciones, actualizaciones de datos ni despliegue por esta tarea.
+
+
 ## Alcance de vendedores vigente - revisión 2026-11-02
 
 El contrato API y las cohortes no cambian. La capacidad opcional
@@ -192,3 +206,14 @@ Los resultados de pruebas/BD/navegador anteriores conservan fecha de entrega y n
 se reejecutan durante esta revision documental. El typecheck bloqueado de aquel
 corte no implica que continue bloqueado hoy. El gate nuevo se registra en49/55;
 no sustituir sus resultados por los snapshots anteriores.
+
+
+## Rango personalizado y comparación temporal — 03/11/2026
+
+El API conserva `period=day|week|month|all`, con las mismas fuentes, autoridad y permisos. El frontend usa `all` al aplicar Desde/Hasta o seleccionar períodos históricos concretos, y filtra días de creación inclusivos; no manda parámetros arbitrarios al servidor. Las fechas en edición no sustituyen las aplicadas. La barra usa un único selector Período para rango y agrupación (día/semana/mes/trimestre/año); se eliminó el selector independiente de agrupación. Personalizado decide automáticamente la escala según la amplitud y mantiene Aplicar filtro. Mes, Semana, Trimestre y Año muestran un selector múltiple de períodos calendario basado en coverage; no se incluyen los huecos entre períodos seleccionados. Los filtros de cohorte, el gráfico por proyecto y las exportaciones usan esa misma selección. Esto no altera las métricas de citas o pérdida. Semanas de lunes a domingo, extremos parciales recortados al rango, color estable por dimensión e intervalos vacíos en cero; motivos de pérdida se distribuyen por intervalo con el mismo criterio de cohorte existente. Sin DDL, mutaciones ni cambios del contrato de consulta. Verificación y estado productivo deben distinguirse del corte local.
+
+La selección múltiple de meses, semanas, trimestres y años permanece en edición hasta pulsar **Aplicar filtro**. Cambiar o retirar opciones no ejecuta consultas ni modifica las cifras aplicadas. El botón exige al menos un período. Cambiar el tipo de período reinicia la selección en edición; el rango personalizado conserva su propio envío explícito.
+
+El tipo de Período también queda en edición: Hoy/Semana/Mes/Trimestre/Año/Personalizado no consulta ni cambia el rango, agrupación o gráfico aplicados al cambiar el desplegable. Solo Aplicar filtro confirma el tipo junto con sus intervalos.
+
+La comparación temporal se presenta primero por proyecto (o dimensión elegida) y luego por período. El gráfico reúne sus barras en un bloque compacto con escala común; el desglose usa una matriz con una fila por dimensión, períodos como columnas, total por fila y totales por período. Se conserva la cohorte, los ceros y los porcentajes originales.

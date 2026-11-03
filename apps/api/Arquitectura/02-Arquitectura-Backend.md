@@ -1,5 +1,32 @@
 # 02 - Arquitectura Backend
 
+## Corte vigente contrastado — 2026-11-03
+
+Revisión documental del árbol de trabajo de `temp/crm-tink-api-frontend-inicial`,
+con base en HEAD `4d446ed`. Incluye cambios locales; no acredita publicación.
+
+- NetSuite v2 dispone de escritor transaccional nativo primero y legacy solo en
+  ausencia de autoridad nativa, recibos/cursor, snapshot y auditoría. v1 mantiene
+  `persisted:false`. La ampliación de campos está en [75](75-Matriz-Campos-Ordenes-NetSuite.md)
+  y la evidencia real acotada de diez indicadores en [73](73-Sincronizacion-Estados-Ordenes-NetSuite.md).
+- Contratos usa aprobación de Formalización; la acción que otorga esa aprobación
+  conserva sus prerrequisitos independientes. Origen de fondos, ocho etapas y
+  combinaciones confirmadas de cierre están en [78](78-Formalizacion-Origen-Fondos-y-Gestion-Bancaria.md).
+  Eventos NetSuite `edit`/`xedit` pueden avanzar visitas finales existentes según
+  esos indicadores; no hay retroceso automático ni etapas inventadas al consultar.
+- Microsoft 365 tiene adaptador y endpoints conectados para agenda propia,
+  disponibilidad, salas, invitaciones y Teams, condicionados a sesión Microsoft,
+  permisos CRM y consentimiento: [64](64-Calendario-Global-API-y-Contexto.md).
+  Implementación no equivale a aceptación externa con cuenta real.
+- El adéndum es un marcador independiente de la etapa, con versión y nota manual;
+  calendario conserva orden/cliente fijos y bloquea otro adéndum futuro.
+  Contratos funcionales/esquema: [83](83-Adendum-Migracion-065-y-Rollback.md) y
+  [84](84-Adendum-Manual-Migracion-066-y-Permisos.md), incluida la corrección067.
+
+Los cortes inferiores conservan cronología y resultados de su fecha. Este corte
+prevalece para inventario actual; no autoriza migraciones, escrituras, cambios de
+credenciales, publicación ni despliegue. No se vuelven a ejecutar suites por editar documentación.
+
 ## Composición contrastada - 2026-11-02
 
 El grafo real de `src/app.module.ts` incluye `NotesModule` y `CalendarModule`;
@@ -12,8 +39,8 @@ la misma identidad comercial para lookup y guarda eventos nativos con sus
 participantes/vínculos ([68 calendario](68-Calendario-Participantes-y-Vinculos.md)).
 
 `NetsuiteModule` contiene lectura CRM/ERP, aprobación acotada y recepción local
-de snapshots. El receptor actual no persiste ni actúa como escritor durable;
-el plan70 sigue siendo diseño. Oportunidades, estimaciones y CRUD general de
+de snapshots. v2 persiste mediante `NetsuiteOrderEventRepository`; v1 sigue sin
+persistir. El plan70 conserva el diseño anterior a la implementación73/75. Oportunidades, estimaciones y CRUD general de
 Leads continúan fuera del grafo operativo. Ver [22](22-Mapa-de-Implementacion-API.md)
 para todas las fronteras actuales; existencia de carpetas o tablas no acredita
 una operación, despliegue ni credenciales vigentes.
@@ -120,7 +147,7 @@ Separacion obligatoria:
 | `src/integrations/netsuite` | Enviar/recibir payloads NetSuite y mapear errores/respuestas. | Si cambia el ERP, se desconecta aqui. |
 | `src/integrations/odoo` | Preparar convivencia/migracion futura hacia Odoo. | Puede activarse sin renombrar core ni frontend. |
 | `src/integrations/kapso` | Mensajeria, WhatsApp, templates y webhooks Kapso. | No puede ser llamado directo por React. |
-| `src/integrations/microsoft365` | Entra ID y foto Graph; calendario externo futuro. | No decide reglas CRM ni acredita sincronizacion Outlook. |
+| `src/integrations/microsoft365` | Entra ID, foto y adaptador Graph de calendario mediante `ExternalCalendarPort`. | No decide permisos/reglas CRM; aceptación externa se verifica separadamente. |
 | `src/modules/crm/identity/ports` | Interfaces de proveedor que identidad conoce. | No contiene implementaciones concretas. |
 
 Nueva regla para cualquier proveedor futuro:

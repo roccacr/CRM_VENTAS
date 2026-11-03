@@ -4,6 +4,7 @@ import { apiRequest } from "../api/api-client";
 export interface StageCounts {
     readonly contracts: { readonly toSend: number; readonly pendingSignature: number };
     readonly banking: number;
+    readonly bankingInProgress?: number;
     readonly balance: number;
     readonly transferPending: number;
     readonly transferSigned: number;
@@ -40,7 +41,7 @@ function date(value: unknown): string {
 function stages(value: unknown): StageCounts {
     const data = record(value);
     const contracts = record(data.contracts);
-    return { contracts: { toSend: count(contracts.toSend), pendingSignature: count(contracts.pendingSignature) }, banking: count(data.banking), balance: count(data.balance), transferPending: count(data.transferPending), transferSigned: count(data.transferSigned), closedThisYear: count(data.closedThisYear) };
+    return { contracts: { toSend: count(contracts.toSend), pendingSignature: count(contracts.pendingSignature) }, banking: count(data.banking), ...(data.bankingInProgress === undefined ? {} : { bankingInProgress: count(data.bankingInProgress) }), balance: count(data.balance), transferPending: count(data.transferPending), transferSigned: count(data.transferSigned), closedThisYear: count(data.closedThisYear) };
 }
 
 /** Reads fresh aggregate data; rejects unavailable or malformed data without a zero fallback. */

@@ -3,13 +3,23 @@ import { expect, it } from "vitest";
 import { canReadFormalizationOrder, formalizationReadQueues } from "../../src/modules/home/formalization-read-policy";
 const roles = [{ code: "formalizacion", name: "Formalización", status: "active" as const }];
 const allow = (category: string) => ({ code: `formalizacion.home.${category}.read`, effect: "allow" });
+it("requires independent addendum order access; the Home grant and stage umbrella do not grant that queue", () => {
+    const grants = [
+        { code: "formalizacion.orders.read", effect: "allow" },
+        { code: "formalizacion.orders.addendum.read", effect: "allow" },
+    ];
+    expect(formalizationReadQueues(roles, grants)).toEqual(["all", "addendum"]);
+    expect(formalizationReadQueues(roles, [allow("addendum")])).toEqual([]);
+    expect(formalizationReadQueues(roles, [allow("stages")])).not.toContain("addendum");
+    expect(formalizationReadQueues(roles, [...grants, { code: "formalizacion.orders.addendum.read", effect: "deny" }])).toEqual([]);
+});
 it("contracts maps to both contract queues, deny wins and legacy cannot expand granular grants", () => {
     expect(formalizationReadQueues(roles, [allow("contracts"), allow("stages")])).toEqual(["all", "contracts", "send", "signature"]);
     expect(formalizationReadQueues(roles, [allow("contracts"), { ...allow("contracts"), effect: "deny" }, allow("stages")])).toEqual([]);
 });
 it("requires active effective role and rejects unknown category grants", () => {
-    expect(formalizationReadQueues(undefined, [allow("contracts")])).toEqual([]);
-    expect(formalizationReadQueues([{ code: "formalizacion", name: "Formalización", status: "inactive" }], [allow("contracts")])).toEqual([]);
+    expect(formalizationReadQueues(undefined, [allow("contracts")])).toEqual(["all", "contracts", "send", "signature"]);
+    expect(formalizationReadQueues([{ code: "formalizacion", name: "Formalización", status: "inactive" }], [])).toEqual([]);
     expect(formalizationReadQueues(roles, [allow("unknown")])).toEqual([]);
 });
 it("approvals is independently readable and each stage maps to its own queue", () => {
@@ -33,7 +43,7 @@ it("requires an independent order grant with active role and deny precedence", (
     const grant = { code: "formalizacion.orders.read", effect: "allow" };
     expect(canReadFormalizationOrder(roles, [grant])).toBe(true);
     expect(canReadFormalizationOrder(roles, [allow("contracts")])).toBe(false);
-    expect(canReadFormalizationOrder(undefined, [grant])).toBe(false);
+    expect(canReadFormalizationOrder(undefined, [grant])).toBe(true);
     expect(canReadFormalizationOrder(roles, [grant, { ...grant, effect: "deny" }])).toBe(false);
     expect(formalizationReadQueues(roles, [grant])).toEqual([]);
 });
@@ -44,5 +54,17 @@ it("accepts an active chief alone with independent grants and preserves denies",
     expect(canReadFormalizationOrder(chief, [grant])).toBe(true);
     expect(formalizationReadQueues(chief, [allow("contracts")])).toEqual(["all", "contracts", "send", "signature"]);
     expect(canReadFormalizationOrder(chief, [grant, { ...grant, effect: "deny" }])).toBe(false);
-    expect(canReadFormalizationOrder([{ code: "jefe_formalizaciones", name: "Jefe", status: "inactive" }], [grant])).toBe(false);
+    expect(canReadFormalizationOrder([{ code: "jefe_formalizaciones", name: "Jefe", status: "inactive" }], [])).toBe(false);
+});
+
+it("honors personal grants without requiring a particular role", () => {
+    const other = [{ code: "ventas", name: "Ventas", status: "active" as const }];
+    expect(formalizationReadQueues(other, [allow("contracts")])).toEqual(["all", "contracts", "send", "signature"]);
+    expect(canReadFormalizationOrder(other, [{ code: "formalizacion.orders.read", effect: "allow" }])).toBe(true);
+    expect(
+        canReadFormalizationOrder(other, [
+            { code: "formalizacion.orders.read", effect: "allow" },
+            { code: "formalizacion.orders.read", effect: "deny" },
+        ]),
+    ).toBe(false);
 });

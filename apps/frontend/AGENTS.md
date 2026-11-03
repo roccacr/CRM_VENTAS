@@ -1,5 +1,11 @@
 # AGENTS.md - CRM Enterprise Frontend
 
+## Corte local vigente — 2026-11-03
+
+Consultar [30 — Estado](Arquitectura/30-Estado-Frontend-Verificado.md), [32 — Orden y cliente](Arquitectura/32-Detalle-Orden-y-Cliente-Basico.md) y [Calendario global](Arquitectura/Calendario-Global-Frontend.md) antes de los snapshots inferiores. HEAD `4d446ed` más cambios locales no acredita despliegue. Ya existen `modules/leads`/`services/leads` para el perfil de consulta en `/home/formalization/perfil` (alias `/perfil`), con workspace Formalización y `lead.profile.read`; eso no habilita CRUD general de Leads.
+
+Calendario sí consume integración Outlook por BFF, disponibilidad, salas y publicación solicitada automática; sus eventos exclusivos de Outlook siguen en consulta y la respuesta se abre en Outlook. No llamar Graph directamente ni almacenar tokens en React. Formalización usa ocho etapas, fondos propios/bancarios y condiciones de entrega confirmadas, más marcador Adéndum independiente del evento. Read del marcador oculta solo sus datos/badge/cola, nunca una orden autorizada. Marcación manual, completar/cancelar y banner Home tienen permisos propios; usar grants efectivos y deny, sin inferir por nombre Owner. El acceso global de calendario crea vacío y conserva URL; el contextual fija orden/cliente exactos. Las afirmaciones inferiores sobre ausencia de Graph, siete etapas o únicamente fixtures no prevalecen sobre estos contratos.
+
 ## Corte vigente contrastado - 2026-11-02
 
 Consultar primero [30 - Inventario frontend](Arquitectura/30-Estado-Frontend-Verificado.md)

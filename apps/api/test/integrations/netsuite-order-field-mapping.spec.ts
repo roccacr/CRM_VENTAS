@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { mapOrderFields, orderApprovalMappings, orderFieldMappings, readOrderRelationValues } from "../../src/integrations/netsuite/netsuite-order-event.mapper.js";
 
-const fields = () => ({ crm_currency_iso: "USD", crm_sync_projection: 1, initialtranid: "RDR123", custbody_aprueba_jefe_ventas: true, custbodyid_firma_rocca: false, custbodyid_firma_rc: "T", custbody74: true, custbody73: "F", custbody13: "125000.1500", custbody17: "120000", custbody_ix_total_amount: 130000, custbody21: "3500.25", crm_transaction_date: "2026-11-02" });
+const fields = () => ({ crm_currency_iso: "USD", crm_sync_projection: 1, initialtranid: "RDR123", custbody_aprueba_jefe_ventas: true, custbodyid_firma_rocca: false, custbodyid_firma_rc: "T", custbody37: "1", custbody74: true, custbody73: "F", custbody13: "125000.1500", custbody17: "120000", custbody_ix_total_amount: 130000, custbody21: "3500.25", crm_transaction_date: "2026-11-02" });
 
 describe("NetSuite extended order projection", () => {
     it("uses only the confirmed legacy relation sources and preserves the estimate from CRM creation", () => {
@@ -21,6 +21,7 @@ describe("NetSuite extended order projection", () => {
     });
     it("compares decimals semantically without losing precision or recording false diffs", () => {
         const before = {
+            purchase_funds_origin_sales_order: "own_funds",
             currency_code_sales_order: "USD",
             transaction_number_sales_order_external_reference: "RDR123",
             approval_sales_management: "approved",
@@ -59,5 +60,28 @@ describe("NetSuite extended order projection", () => {
     });
     it("rejects text which would be truncated by the legacy column", () => {
         expect(() => mapOrderFields({ ...fields(), initialtranid: "x".repeat(51) }, "legacy", {})).toThrow();
+    });
+});
+
+describe("custbody37 purchase funds confirmed by NetSuite", () => {
+    it.each(["native", "legacy"] as const)("maps raw list ids to the existing %s column", (destination) => {
+        const column = destination === "native" ? "purchase_funds_origin_sales_order" : "origen_fondos_compra_ov";
+        for (const [value, after] of [
+            [1, "own_funds"],
+            ["1", "own_funds"],
+            [2, "bank_financing"],
+            ["2", "bank_financing"],
+            [null, null],
+            ["", null],
+        ] as const) {
+            expect(mapOrderFields({ ...fields(), custbody37: value }, destination, { [column]: "previous" }).find((change) => change.field === "custbody37")).toEqual({ field: "custbody37", column, before: "previous", after });
+        }
+        const oldFields: Record<string, unknown> = fields();
+        delete oldFields.custbody37;
+        expect(mapOrderFields(oldFields, destination, { [column]: "own_funds" }).some((change) => change.field === "custbody37")).toBe(false);
+        expect(mapOrderFields({ ...fields(), custbody37: "1" }, destination, { [column]: "own_funds" }).some((change) => change.field === "custbody37")).toBe(false);
+    });
+    it.each([0, 3, "Propios", "Financiado", true, undefined, " 1", "01", {}, []])("rejects unknown ids rather than guessing from labels %j", (value) => {
+        expect(() => mapOrderFields({ ...fields(), custbody37: value }, "native", {})).toThrow();
     });
 });

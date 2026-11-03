@@ -31,7 +31,9 @@
 /* A single connected track uses the drawer width instead of a tall, mostly empty list. */
 .formalization-order-drawer .formalization-record-progress .formalization-record-progress__steps {
     display: grid;
-    grid-template-columns: repeat(7, minmax(0, 1fr));
+    grid-template-columns: none;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(0, 1fr);
     gap: 0;
     margin: 0;
     padding: 16px 12px 12px;
@@ -125,28 +127,35 @@
     overflow-wrap: anywhere;
 }
 
-.formalization-order-drawer .formalization-contract-send__content {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    align-items: center;
-    gap: 12px;
-}
-
-.formalization-order-drawer .formalization-contract-send__content .formalization-order-fields {
-    grid-template-columns: minmax(0, 1fr);
-}
-
-.formalization-order-drawer .formalization-contract-send__content .ant-btn {
-    margin-top: 0;
-}
-
 @media (max-width: 420px) {
-    .formalization-order-drawer .formalization-stage-editor__advance,
-    .formalization-order-drawer .formalization-contract-send__content {
+    .formalization-order-drawer .formalization-stage-editor__advance {
         grid-template-columns: minmax(0, 1fr);
     }
+}
 
-    .formalization-order-drawer .formalization-contract-send__content .ant-btn {
-        justify-self: start;
-    }
+/* Drawer timeline: eight stages in two rows of four, so labels breathe. Same markers and connector style as the full page; only the drawer uses the compact variant. */
+.formalization-order-drawer .formalization-record-progress--compact ol.formalization-record-progress__steps {
+    grid-auto-flow: row;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    row-gap: 18px;
+    padding: 16px 12px 16px;
+}
+.formalization-order-drawer .formalization-record-progress--compact ol.formalization-record-progress__steps li {
+    padding: 0 6px;
+}
+/* A row starts clean: no connector reaching back to the previous row's last stage. */
+.formalization-order-drawer .formalization-record-progress--compact ol.formalization-record-progress__steps li:nth-child(4n + 1)::before {
+    display: none;
+}
+.formalization-order-drawer .formalization-record-progress--compact .formalization-record-progress__marker {
+    width: 30px;
+    height: 30px;
+    font-size: 13px;
+}
+.formalization-order-drawer .formalization-record-progress--compact ol.formalization-record-progress__steps li::before {
+    top: 14px;
+}
+.formalization-order-drawer .formalization-record-progress--compact ol.formalization-record-progress__steps strong {
+    font-size: 11px;
+    line-height: 1.3;
 }

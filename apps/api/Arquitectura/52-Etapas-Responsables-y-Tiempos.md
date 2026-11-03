@@ -1,5 +1,38 @@
 # 52 - Seguimiento de etapas y tiempos en ambas bases
 
+## Reglas vigentes de fondos y finalización — 2026-11-03
+
+Las reglas actuales de [78](78-Formalizacion-Origen-Fondos-y-Gestion-Bancaria.md)
+prevalecen sobre los predicados históricos de este documento:
+
+- Contratos exige la aprobación explícita de Formalización, actividad y ausencia
+  de caída/borrado; no exige nuevamente las otras dos aprobaciones. Aprobar una
+  orden mantiene sus prerrequisitos propios de Jefatura y Desarrolladora.
+- Las ocho etapas incluyen `bank_management_in_progress`. Al salir de Contratos,
+  con firma confirmada, `own_funds` conduce a `pending_balance` y `bank_financing`
+  a `bank_management_in_progress`; sin origen no hay avance. Origen y etapa se
+  guardan con la misma transacción y auditoría; el replay compara su elección histórica.
+- Traspasos pendientes exige cuotas sí, unidad traspasada no y unidad entregada no.
+  Traspaso firmado exige cuotas sí, traspasada sí, llaves no y entregada no.
+  Unidad entregada sí habilita cierre aunque los otros tres sean desconocidos.
+  NULL nunca sustituye un no confirmado. Se conservan firma, permisos y versión.
+- El cierre anual exige evidencia `closed` en el año de Costa Rica y unidad
+  entregada sí. Una combinación fuera de tabla mantiene la etapa guardada y
+  visibilidad autorizada en **Todas**; no se inventa un cambio durante GET.
+- `counts.bankingInProgress` distingue banca en proceso del agregado Home
+  `banking`; el seguimiento devuelve `counts.bankInProgress` y `bank` reúne
+  los dos estados bancarios. Los cuatro indicadores son booleanos/NULL.
+- Los eventos NetSuite `edit`/`xedit` pueden avanzar desde saldo/traspaso/firmado
+  a un destino posterior confirmado, conservando responsable y actor integración.
+  Flags, visita, auditorías y cursor comparten transacción. No revierten etapas
+  ni permiten regresar a saldo una vez iniciado el traspaso.
+
+Adéndum es una capacidad independiente: [83](83-Adendum-Migracion-065-y-Rollback.md)
+y [84](84-Adendum-Manual-Migracion-066-y-Permisos.md). El permiso de banner solo da
+conteo; `formalizacion.orders.addendum.read` controla bandeja, marca y evidencia.
+La marca no cambia etapa/aprobaciones. Esta revisión no repite pruebas históricas,
+no escribe en BD ni acredita edición real de NetSuite o despliegue.
+
 ## Gestión vigente por ambos roles - 2026-10-28
 
 La confirmación posterior del propietario en [65](65-Formalizacion-Correcciones-Roles-y-Recuperacion.md)

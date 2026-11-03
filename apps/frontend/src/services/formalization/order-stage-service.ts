@@ -4,6 +4,7 @@ export const ORDER_STAGES = [
     { code: "contract_pending_send", label: "Por enviar" },
     { code: "contract_pending_signature", label: "Pendiente de firma" },
     { code: "bank_management", label: "Gestión bancaria" },
+    { code: "bank_management_in_progress", label: "Gestión bancaria en proceso" },
     { code: "pending_balance", label: "Pendiente de saldo" },
     { code: "pending_transfer", label: "Traspaso pendiente" },
     { code: "transfer_signed", label: "Traspaso firmado" },
@@ -17,6 +18,7 @@ export interface StageCommand {
     readonly operationId: string;
     readonly targetState: OrderStage;
     readonly reason?: string;
+    readonly purchaseFundsOrigin?: "own_funds" | "bank_financing" | null;
 }
 /** Uses the BFF's existing cookie/CSRF client; business conflicts never trigger automatic replay. */
 export async function updateOrderStage(command: StageCommand) {

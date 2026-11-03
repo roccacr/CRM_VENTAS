@@ -1,5 +1,11 @@
 # 34 - Cierre Operativo Administracion P0-S1
 
+## Carácter histórico y precedencia — revisión 2026-11-03
+
+Este documento conserva decisiones, pendientes y resultados de sus cortes fechados; no es una nueva medición ni un inventario exhaustivo del checkout actual. Para migraciones hasta 067 prevalece [03](03-Base-Datos-y-Migracion.md); para el perfil federado [77](77-Perfil-Completo-Lead.md), y para permisos/nota/marcado manual de adéndum [84](84-Adendum-Manual-Migracion-066-y-Permisos.md). 067 concede el default manual a Owner/Jefe General/Jefe de Formalizaciones mediante grants reales, manteniendo deny y la excepción al comodín Owner; no al rol operativo Formalización.
+
+Las pausas, bypass antiguos, conteos de pruebas/rutas/migraciones y propuestas de importación inferiores no sustituyen los contratos posteriores. No se reejecutaron aquí suites, BD, fixtures, restauraciones, integraciones ni despliegues; la documentación no cierra Q 05, CI remoto o aceptación productiva.
+
 Regla vigente 2026-10-13: las referencias historicas siguientes a bypass Owner
 de catalogos/seguridad no describen la autorizacion actual. Cada operacion
 requiere permiso efectivo exacto; Owner solo conserva la exencion de membresia

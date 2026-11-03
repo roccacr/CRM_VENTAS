@@ -1769,3 +1769,131 @@ body.capture-printing .capture-columns-chart__empty button {
         grid-template-columns: minmax(0, 1fr);
     }
 }
+
+/* Rango editable independiente del aplicado; controles nativos accesibles también en móvil. */
+.capture-controls__dates {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 12px;
+}
+.capture-controls__dates input,
+.capture-controls__field select {
+    min-height: 34px;
+    padding: 6px 10px;
+    border: 1px solid var(--cap-border);
+    border-radius: 6px;
+    background: #fff;
+    color: var(--cap-ink);
+    font: inherit;
+}
+.capture-controls__dates [role="alert"] {
+    flex-basis: 100%;
+    color: #a61d24;
+}
+.capture-controls__range {
+    flex-basis: 100%;
+    order: 2;
+    margin: 0;
+    color: var(--cap-ink-2);
+    font-size: 12px;
+}
+
+.capture-controls__period {
+    min-width: 160px;
+}
+.capture-controls__dates input {
+    width: 145px;
+}
+.capture-preview .capture-controls {
+    gap: 12px 20px;
+}
+.capture-controls__range {
+    font-size: 11.5px;
+}
+@media (max-width: 767px) {
+    .capture-controls__dates {
+        width: 100%;
+    }
+    .capture-controls__dates .capture-controls__field {
+        flex: 1 1 130px;
+    }
+    .capture-controls__dates input {
+        width: 100%;
+        box-sizing: border-box;
+    }
+}
+
+.capture-controls__calendar {
+    width: 260px;
+    max-width: 100%;
+}
+.capture-controls__calendar .ant-select {
+    width: 100%;
+    min-height: 34px;
+}
+
+/* Cada proyecto ocupa un bloque compacto; los períodos se comparan juntos con escala común. */
+.capture-period-projects {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 210px), 1fr));
+    gap: 16px;
+}
+.capture-period-project {
+    min-width: 0;
+    padding: 12px;
+    border: 1px solid var(--cap-border);
+    border-radius: 6px;
+}
+.capture-period-project h3 {
+    margin: 0 0 12px;
+    min-height: 32px;
+    font-size: 12px;
+    color: var(--cap-ink);
+}
+.capture-period-project__bars {
+    display: flex;
+    align-items: flex-end;
+    gap: 8px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding-bottom: 2px;
+}
+.capture-period-project__bars .capture-columns-chart__group {
+    flex: 1 0 40px;
+    min-width: 0;
+    text-align: center;
+}
+.capture-period-project__bars .capture-columns-chart__stack-wrap {
+    width: min(100%, 44px);
+    margin: 0 auto;
+}
+.capture-period-project__bars .capture-columns-chart__label {
+    display: block;
+    font-size: 10px;
+    padding-top: 8px;
+}
+
+.capture-period-project__bars .capture-columns-chart__bars {
+    min-height: 0;
+    border-bottom: 1px solid var(--cap-border);
+}
+.capture-period-project__bars .capture-columns-chart__group {
+    padding-inline: 2px;
+}
+
+/* Keep the other controls aligned with Qu� medir while its filter occupies the second row. */
+.capture-preview .capture-controls {
+    align-items: flex-start;
+}
+.capture-controls__measure {
+    display: grid;
+    gap: 14px;
+    min-width: 0;
+}
+.capture-controls__qualification {
+    width: min(100%, 260px);
+}
+.capture-controls__qualification .ant-select {
+    width: 100%;
+}

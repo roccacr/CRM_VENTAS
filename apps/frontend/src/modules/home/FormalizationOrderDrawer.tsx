@@ -7,7 +7,6 @@ import "./FormalizationOrderDrawer.css";
 
 import FileTextOutlined from "@ant-design/icons/FileTextOutlined";
 import LeftOutlined from "@ant-design/icons/LeftOutlined";
-import MailOutlined from "@ant-design/icons/MailOutlined";
 import RightOutlined from "@ant-design/icons/RightOutlined";
 import Button from "antd/es/button";
 import Card from "antd/es/card";
@@ -15,10 +14,17 @@ import Drawer from "antd/es/drawer";
 import Space from "antd/es/space";
 import Tooltip from "antd/es/tooltip";
 import Typography from "antd/es/typography";
+import { useState } from "react";
 
 import type { FollowUpItem } from "../../services/formalization/follow-up-service";
 import { ADMINISTRATION_DRAWER_CLOSE_PLACEMENT, ADMINISTRATION_DRAWER_PROPS } from "../administration/administration-theme";
-import { FormalizationOrderDetails, OrderSectionFields } from "./FormalizationOrderDetails";
+import { FormalizationClientContent } from "./FormalizationClientDrawer";
+import { OutlookCompose } from "./FormalizationContractSend";
+import { FormalizationFiniquito } from "./FormalizationFiniquito";
+import { FormalizationMarkAddendum } from "./FormalizationMarkAddendum";
+import { FormalizationOrderAddendum } from "./FormalizationOrderAddendum";
+import { OrderSectionFields } from "./FormalizationOrderDetails";
+import { FormalizationPurchaseFunds } from "./FormalizationPurchaseFunds";
 import { FormalizationRecordProgress } from "./FormalizationRecordProgress";
 import { StageChip } from "./FormalizationStageChip";
 import { FormalizationStageEditor } from "./FormalizationStageEditor";
@@ -43,6 +49,7 @@ function timeInStage(days: number | null): string | null {
 }
 
 interface Props {
+    readonly onNavigate?: ((path: string) => void) | undefined;
     readonly stagePermissions?: readonly { code: string; effect: string }[] | undefined;
     readonly canUpdateStage?: boolean;
     readonly onViewFull?: () => void;
@@ -97,27 +104,10 @@ function OrderTitle({ item }: { readonly item: FollowUpItem | null }) {
     );
 }
 
-/** Opens a draft without sending mail or registering a contract transition. */
-export function OutlookCompose({ item }: { readonly item: FollowUpItem }) {
-    if (item.state.code !== "contract_pending_send") return null;
-    return (
-        <Card size="small" title="Envío del contrato" className="formalization-contract-send">
-            {item.clientEmail ? (
-                <div className="formalization-contract-send__content">
-                    <OrderSectionFields items={[{ key: "email", label: "Correo del cliente", value: item.clientEmail }]} />
-                    <Button icon={<MailOutlined aria-hidden="true" />} href={`https://outlook.office.com/mail/deeplink/compose?to=${encodeURIComponent(item.clientEmail)}`} target="_blank" rel="noopener noreferrer">
-                        Abrir Outlook
-                    </Button>
-                </div>
-            ) : (
-                <Typography.Text type="secondary">Correo del cliente no disponible</Typography.Text>
-            )}
-        </Card>
-    );
-}
-
 /** Up/Down walk the page unless the focus is in a field or menu, so typing never jumps rows. */
 function walkWithArrows(event: React.KeyboardEvent, previous: () => void, next: () => void) {
+    // Un evento lateral usa un portal: sus flechas no deben cambiar la orden detrás del formulario.
+    if (!event.currentTarget.contains(event.target as Node)) return;
     if ((event.target as HTMLElement).closest("input, textarea, select, [role='menu'], [role='listbox'], .ant-dropdown")) return;
     if (event.key === "ArrowUp") {
         event.preventDefault();
@@ -132,7 +122,8 @@ function walkWithArrows(event: React.KeyboardEvent, previous: () => void, next: 
 /**
  *
  */
-export function FormalizationOrderDrawer({ item, position, total, onClose, onSelectPrevious, onSelectNext, canUpdateStage = false, stagePermissions = [], onStageSaved, onRefreshOrder, onViewFull }: Props) {
+export function FormalizationOrderDrawer({ item, position, total, onClose, onSelectPrevious, onSelectNext, canUpdateStage = false, stagePermissions = [], onStageSaved, onRefreshOrder, onViewFull, onNavigate }: Props) {
+    const [calendarRevision, setCalendarRevision] = useState(0);
     return (
         <Drawer
             {...ADMINISTRATION_DRAWER_PROPS}
@@ -150,12 +141,23 @@ export function FormalizationOrderDrawer({ item, position, total, onClose, onSel
         >
             {item && (
                 <div className="user-detail-drawer__sections">
-                    <Button className="formalization-view-full" icon={<FileTextOutlined aria-hidden="true" />} onClick={onViewFull}>
-                        Ver orden completa
-                    </Button>
+                    <div className="formalization-drawer-actions">
+                        <Button className="formalization-view-full" icon={<FileTextOutlined aria-hidden="true" />} onClick={onViewFull}>
+                            Ver orden completa
+                        </Button>
+                        <FormalizationMarkAddendum
+                            item={item}
+                            permissions={stagePermissions}
+                            onSaved={() => {
+                                setCalendarRevision((value) => value + 1);
+                                return onStageSaved?.();
+                            }}
+                        />
+                    </div>
+                    <FormalizationFiniquito item={item} allowed={canUpdateStage} />
                     <FormalizationRecordProgress state={item.state.code} compact />
                     <FormalizationStageEditor
-                        key={`${item.source}:${item.id}:${String(item.stateVersion)}:${item.state.code}`}
+                        key={`${item.source}:${item.id}:${String(item.stateVersion)}:${item.state.code}:${String(item.purchaseFundsOrigin)}`}
                         item={item}
                         allowed={canUpdateStage}
                         permissions={stagePermissions}
@@ -165,7 +167,36 @@ export function FormalizationOrderDrawer({ item, position, total, onClose, onSel
                             onRefreshOrder?.();
                         }}
                     />
+                    <FormalizationOrderAddendum
+                        item={item}
+                        permissions={stagePermissions}
+                        refreshVersion={calendarRevision}
+                        onChanged={() => {
+                            setCalendarRevision((value) => value + 1);
+                            return onStageSaved?.();
+                        }}
+                    />
+                    <FormalizationPurchaseFunds
+                        key={`funds:${item.source}:${item.id}:${String(item.stateVersion)}:${String(item.purchaseFundsOrigin)}`}
+                        item={item}
+                        allowed={canUpdateStage}
+                        onSaved={() => onStageSaved?.()}
+                        onRefresh={() => {
+                            onClose();
+                            onRefreshOrder?.();
+                        }}
+                    />
                     <OutlookCompose item={item} />
+                    <FormalizationClientContent
+                        key={`${item.source}:${item.id}`}
+                        item={item}
+                        contactOnly
+                        effectivePermissions={stagePermissions}
+                        onNavigate={onNavigate}
+                        onCalendarClosed={() => {
+                            setCalendarRevision((value) => value + 1);
+                        }}
+                    />
                     <Section
                         title="Seguimiento"
                         items={[
@@ -176,7 +207,6 @@ export function FormalizationOrderDrawer({ item, position, total, onClose, onSel
                             { key: "next", label: "Siguiente paso", value: <Value>{item.nextStep}</Value> },
                         ]}
                     />
-                    <FormalizationOrderDetails item={item} permissions={stagePermissions} />
                 </div>
             )}
         </Drawer>

@@ -1,5 +1,15 @@
 # 17 - Calendarios por Dominio y Supervision
 
+## Implementación actual y alcance del blueprint — 2026-11-03
+
+El DDL y permisos propuestos abajo son antecedentes, no el esquema actual.
+[64](64-Calendario-Global-API-y-Contexto.md) describe agenda nativa/legacy,
+participantes, Graph conectado mediante puerto, disponibilidad y publicación
+condicionada. Su aceptación externa requiere cuenta/consentimiento real.
+[83](83-Adendum-Migracion-065-y-Rollback.md) agrega regla CRM de Adéndum sin copiar
+calendarios ni dar acceso a la orden por invitación. Los cortes anteriores sin
+Graph conservan su fecha; ya no describen la implementación local completa.
+
 Corte vigente posterior: [64 - Calendario global](64-Calendario-Global-API-y-Contexto.md)
 documenta la lectura, superposicion y creacion/edicion nativa implementadas el
 28 de octubre. Este documento conserva el diseno y los limites de cortes

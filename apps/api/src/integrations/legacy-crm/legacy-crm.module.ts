@@ -9,6 +9,7 @@
 import { Global, Module } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 
+import { BANKS_LEGACY_ACCESS } from "../../modules/crm/banks/banks-legacy.port.js";
 import { BROKERS_LEGACY_ACCESS } from "../../modules/crm/brokers/brokers-legacy.port.js";
 import { CALENDAR_LEGACY_READER } from "../../modules/crm/calendar/calendar.contract.js";
 import { CAMPAIGNS_LEGACY_ACCESS } from "../../modules/crm/campaigns/campaigns-legacy.port.js";
@@ -25,13 +26,16 @@ import { CONTRACT_TRANSITION_LEGACY } from "../../modules/crm/sales/sales-orders
 import { FOLLOW_UP_LEGACY_READER } from "../../modules/crm/sales/sales-orders/follow-up.port.js";
 import { FORMALIZATION_APPROVAL_LEGACY } from "../../modules/crm/sales/sales-orders/formalization-approval.port.js";
 import { HOME_SUMMARY_LEGACY_READER } from "../../modules/crm/sales/sales-orders/home-summary.port.js";
+import { BANK_ASSIGNMENT_LEGACY } from "../../modules/crm/sales/sales-orders/order-bank-assignment.port.js";
 import { ORDER_TIMING_LEGACY_READER } from "../../modules/crm/sales/sales-orders/order-timing.port.js";
+import { SALES_ORDER_ADDENDUM_LEGACY } from "../../modules/crm/sales/sales-orders/sales-order-addendum.port.js";
 import { SUBSIDIARIES_LEGACY_ACCESS } from "../../modules/crm/subsidiaries/subsidiaries-legacy.port.js";
 import { UNIT_FILES_LEGACY } from "../../modules/crm/unit-files/unit-files-legacy.port.js";
 import { LegacyBrokersWriter } from "./brokers/legacy-brokers.writer.js";
 import { LegacyCampaignsWriter } from "./campaigns/legacy-campaigns.writer.js";
 import { LegacyClassesWriter } from "./classes/legacy-classes.writer.js";
 import { LegacyApprovalReader } from "./legacy-approval.reader.js";
+import { LegacyBanksWriter } from "./legacy-banks.writer.js";
 import { LegacyCalendarReader } from "./legacy-calendar.reader.js";
 import { LegacyCatalogReader } from "./legacy-catalog.reader.js";
 import { LegacyContractSummaryReader } from "./legacy-contract-summary.reader.js";
@@ -44,7 +48,9 @@ import { LegacyHomeSummaryReader } from "./legacy-home-summary.reader.js";
 import { LegacyLeadProfileReader } from "./legacy-lead-profile.reader.js";
 import { LegacyMarketingHomeReader } from "./legacy-marketing-home.reader.js";
 import { LegacyMarketingLeadsReportReader } from "./legacy-marketing-leads-report.reader.js";
+import { LegacyOrderBankAssignmentReader } from "./legacy-order-bank-assignment.reader.js";
 import { LegacyOrderTimingReader } from "./legacy-order-timing.reader.js";
+import { LegacySalesOrderAddendumWriter } from "./legacy-sales-order-addendum.writer.js";
 import { LegacyLocationsWriter } from "./locations/legacy-locations.writer.js";
 import { LegacyProjectsWriter } from "./projects/legacy-projects.writer.js";
 import { LegacySubsidiariesWriter } from "./subsidiaries/legacy-subsidiaries.writer.js";
@@ -56,6 +62,8 @@ import { LegacyUnitFilesReader } from "./unit-files/legacy-unit-files.reader.js"
 @Global()
 @Module({
     providers: [
+        { provide: BANK_ASSIGNMENT_LEGACY, useClass: LegacyOrderBankAssignmentReader },
+        { provide: BANKS_LEGACY_ACCESS, useClass: LegacyBanksWriter },
         { provide: LEAD_PROFILE_LEGACY_READER, useClass: LegacyLeadProfileReader },
         { provide: CALENDAR_LEGACY_READER, useClass: LegacyCalendarReader },
         {
@@ -70,6 +78,7 @@ import { LegacyUnitFilesReader } from "./unit-files/legacy-unit-files.reader.js"
         { provide: FOLLOW_UP_LEGACY_READER, useClass: LegacyFollowUpReader },
         { provide: ORDER_TIMING_LEGACY_READER, useClass: LegacyOrderTimingReader },
         { provide: CONTRACT_TRANSITION_LEGACY, useClass: LegacyContractTransitionWriter },
+        { provide: SALES_ORDER_ADDENDUM_LEGACY, useClass: LegacySalesOrderAddendumWriter },
         { provide: FORMALIZATION_APPROVAL_LEGACY, useExisting: CONTRACT_TRANSITION_LEGACY },
         { provide: MARKETING_HOME_LEGACY_READER, useClass: LegacyMarketingHomeReader },
         { provide: MARKETING_LEADS_REPORT_LEGACY_READER, useClass: LegacyMarketingLeadsReportReader },
@@ -83,6 +92,8 @@ import { LegacyUnitFilesReader } from "./unit-files/legacy-unit-files.reader.js"
         { provide: UNIT_FILES_LEGACY, useClass: LegacyUnitFilesReader },
     ],
     exports: [
+        BANK_ASSIGNMENT_LEGACY,
+        BANKS_LEGACY_ACCESS,
         LEAD_PROFILE_LEGACY_READER,
         CALENDAR_LEGACY_READER,
         FORMALIZATION_APPROVAL_LEGACY,
@@ -92,6 +103,7 @@ import { LegacyUnitFilesReader } from "./unit-files/legacy-unit-files.reader.js"
         FOLLOW_UP_LEGACY_READER,
         ORDER_TIMING_LEGACY_READER,
         CONTRACT_TRANSITION_LEGACY,
+        SALES_ORDER_ADDENDUM_LEGACY,
         MARKETING_HOME_LEGACY_READER,
         MARKETING_LEADS_REPORT_LEGACY_READER,
         LegacyCrmDatabaseService,

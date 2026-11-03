@@ -1,11 +1,12 @@
 import { z } from "zod";
 
 import { createMarketingWindow } from "./marketing-home.contract.js";
-import type { MarketingLeadsReport, ReportCatalogItem, ReportEvent, ReportLead, ReportPeriod, ReportRow, ReportSource } from "./marketing-leads-report.contract.js";
+import type { MarketingLeadsReport, ReportCatalogItem, ReportEvent, ReportLead, ReportPeriod, ReportQualification, ReportRow, ReportSource } from "./marketing-leads-report.contract.js";
 import { reportIdentityResolvers, uniqueReportIdentities } from "./marketing-leads-report.identities.js";
 
 interface ReportContext {
     period: ReportPeriod;
+    qualification?: ReportQualification;
     now: Date;
     legacyEnabled: boolean;
     sellerScope?: ReadonlySet<string>;
@@ -48,13 +49,26 @@ function reportCohorts(native: ReportSource, legacy: ReportSource) {
         const id = unique ? aliases.get(providerKey(reference)) : null;
         const authoritative = cohorts.get(id ?? "");
         if (authoritative) {
-            authoritative.events.push(...referencedEvents(reference, true, oldEvents));
+            mergeCommercialEvidence(authoritative.row, row);
+            authoritative.events.push(...leadEvents(row, true, oldEvents));
             duplicates.push({ original: row, authoritative });
         } else {
-            oldCohorts.push({ row, native: false, events: referencedEvents(reference, unique, oldEvents), ambiguous: providerCounts.get(reference) !== 1 || aliases.get(providerKey(reference)) === null });
+            oldCohorts.push(legacyCohort(row, unique, aliases.get(providerKey(reference)) === null, oldEvents));
         }
     }
     return { cohorts: [...cohorts.values(), ...oldCohorts], duplicates };
+}
+function mergeCommercialEvidence(target: ReportLead, evidence: ReportLead): void {
+    target.hasEstimate = target.hasEstimate === true || evidence.hasEstimate === true;
+    target.hasSalesOrder = target.hasSalesOrder === true || evidence.hasSalesOrder === true;
+}
+function legacyCohort(row: ReportLead, unique: boolean, ambiguousAlias: boolean, events: Map<string, ReportEvent[]>): Cohort {
+    const eligible = unique && !ambiguousAlias;
+    return { row: { ...row, hasEstimate: eligible && row.hasEstimate === true, hasSalesOrder: eligible && row.hasSalesOrder === true }, native: false, events: leadEvents(row, eligible, events), ambiguous: !unique || ambiguousAlias };
+}
+/** Exact legacy PK links are independent of ambiguous provider references. */
+function leadEvents(row: ReportLead, unique: boolean, events: Map<string, ReportEvent[]>): ReportEvent[] {
+    return [...referencedEvents(row.providerId ?? "", unique, events), ...(events.get(`legacy-pk:${row.id}`) ?? [])];
 }
 function referencedEvents(reference: string, unique: boolean, events: Map<string, ReportEvent[]>): ReportEvent[] {
     return unique ? (events.get(reference) ?? []) : [];
@@ -72,14 +86,22 @@ function cohortStatus(events: ReportEvent[]): "completed" | "scheduled" | "noApp
     return events.some((event) => event.status === "scheduled") ? "scheduled" : "noAppointment";
 }
 
+/** Manual native authority is retained; only uniquely linked commercial evidence is merged. */
+function effectiveQualified(cohort: Cohort): boolean {
+    return cohort.row.qualified === true || cohortStatus(cohort.events.filter((event) => !event.invalidDate)) !== "noAppointment" || cohort.row.hasEstimate === true || cohort.row.hasSalesOrder === true;
+}
+
 /** Per-created-lead cohorts: completed > scheduled > none; attribution always comes from the authoritative lead. */
 export function buildMarketingLeadsReport(native: ReportSource, legacy: ReportSource, context: ReportContext): MarketingLeadsReport {
     const window = createMarketingWindow(context.period === "all" ? "month" : context.period, context.now);
     const identities = reportIdentityResolvers(native, legacy);
     const evidence = reportCohorts(native, legacy);
     const visible = (cohort: Cohort) => context.sellerScope === undefined || context.sellerScope.has(identities.seller(cohort.row, cohort.native).id);
-    const cohorts = evidence.cohorts.filter(visible);
-    const dates = cohorts
+    const visibleCohorts = evidence.cohorts.filter(visible);
+    const qualification = context.qualification ?? "all";
+    const matches = (cohort: Cohort) => qualification === "all" || effectiveQualified(cohort) === (qualification === "qualified");
+    const cohorts = visibleCohorts.filter(matches);
+    const dates = visibleCohorts
         .map(({ row }) => row.date)
         .filter((date): date is string => date !== null && date <= window.today)
         .sort();
@@ -91,6 +113,7 @@ export function buildMarketingLeadsReport(native: ReportSource, legacy: ReportSo
         today: window.today,
         timeZone: "America/Costa_Rica",
         period: context.period,
+        qualification,
         range,
         coverage,
         rows: [],
@@ -98,7 +121,7 @@ export function buildMarketingLeadsReport(native: ReportSource, legacy: ReportSo
         projects: [],
         campaigns: [],
         ads: [],
-        sources: { native: 0, legacy: 0, duplicatesExcluded: evidence.duplicates.filter(({ original, authoritative }) => visible(authoritative) && original.date !== null && original.date <= window.today && (context.period === "all" || selected(original.date, range))).length, legacyEnabled: context.legacyEnabled },
+        sources: { native: 0, legacy: 0, duplicatesExcluded: evidence.duplicates.filter(({ original, authoritative }) => visible(authoritative) && matches(authoritative) && original.date !== null && original.date <= window.today && (context.period === "all" || selected(original.date, range))).length, legacyEnabled: context.legacyEnabled },
         quality: { unresolvedSellers: 0, unresolvedCampaigns: 0, ambiguousLeadReferences: 0, unclassifiedAppointments: 0, invalidDates: cohorts.filter(({ row }) => row.date === null).length },
     };
     const catalogs = { sellers: new Map<string, MarketingLeadsReport["sellers"][number]>(), projects: new Map<string, ReportCatalogItem>(), campaigns: new Map<string, ReportCatalogItem>(), ads: new Map<string, ReportCatalogItem>() };
@@ -127,12 +150,19 @@ function appendCohort(cohort: Cohort, identities: ReturnType<typeof reportIdenti
     catalogs.campaigns.set(campaign.item.id, campaign.item);
     catalogs.ads.set(ad.id, ad);
     const key = JSON.stringify([row.date, seller.id, project.id, campaign.item.id, ad.id]);
-    const aggregate = grouped.get(key) ?? { date: row.date as string, sellerId: seller.id, projectId: project.id, campaignId: campaign.item.id, adId: ad.id, leads: 0, noAppointment: 0, scheduled: 0, completed: 0, lost: 0 };
+    const aggregate = grouped.get(key) ?? { date: row.date as string, sellerId: seller.id, projectId: project.id, campaignId: campaign.item.id, adId: ad.id, leads: 0, noAppointment: 0, scheduled: 0, completed: 0, lost: 0, lossReasons: [] };
     const valid = events.filter((event) => !event.invalidDate);
     const status = cohortStatus(valid);
     aggregate.leads++;
     aggregate[status]++;
     aggregate.lost += Number(row.lost);
+    // La misma autoridad y deduplicación del lead gobierna sus motivos; nunca se suma otra vez por existir en ambas BDs.
+    if (row.lost) {
+        const reason = row.lossReason ?? { code: "unrecorded", name: "Sin motivo registrado" };
+        const existing = aggregate.lossReasons.find((item) => item.code === reason.code);
+        if (existing) existing.count++;
+        else aggregate.lossReasons.push({ ...reason, count: 1 });
+    }
     grouped.set(key, aggregate);
     result.sources[native ? "native" : "legacy"]++;
     result.quality.unresolvedSellers += Number(seller.publicId === null);

@@ -1,10 +1,44 @@
 # Diccionario fisico de ordenes de venta
 
+## Reglas vigentes de fondos y finalización — 2026-11-03
+
+Las reglas actuales de [78](78-Formalizacion-Origen-Fondos-y-Gestion-Bancaria.md)
+prevalecen sobre los predicados históricos de este documento:
+
+- Contratos exige la aprobación explícita de Formalización, actividad y ausencia
+  de caída/borrado; no exige nuevamente las otras dos aprobaciones. Aprobar una
+  orden mantiene sus prerrequisitos propios de Jefatura y Desarrolladora.
+- Las ocho etapas incluyen `bank_management_in_progress`. Al salir de Contratos,
+  con firma confirmada, `own_funds` conduce a `pending_balance` y `bank_financing`
+  a `bank_management_in_progress`; sin origen no hay avance. Origen y etapa se
+  guardan con la misma transacción y auditoría; el replay compara su elección histórica.
+- Traspasos pendientes exige cuotas sí, unidad traspasada no y unidad entregada no.
+  Traspaso firmado exige cuotas sí, traspasada sí, llaves no y entregada no.
+  Unidad entregada sí habilita cierre aunque los otros tres sean desconocidos.
+  NULL nunca sustituye un no confirmado. Se conservan firma, permisos y versión.
+- El cierre anual exige evidencia `closed` en el año de Costa Rica y unidad
+  entregada sí. Una combinación fuera de tabla mantiene la etapa guardada y
+  visibilidad autorizada en **Todas**; no se inventa un cambio durante GET.
+- `counts.bankingInProgress` distingue banca en proceso del agregado Home
+  `banking`; el seguimiento devuelve `counts.bankInProgress` y `bank` reúne
+  los dos estados bancarios. Los cuatro indicadores son booleanos/NULL.
+- Los eventos NetSuite `edit`/`xedit` pueden avanzar desde saldo/traspaso/firmado
+  a un destino posterior confirmado, conservando responsable y actor integración.
+  Flags, visita, auditorías y cursor comparten transacción. No revierten etapas
+  ni permiten regresar a saldo una vez iniciado el traspaso.
+
+Adéndum es una capacidad independiente: [83](83-Adendum-Migracion-065-y-Rollback.md)
+y [84](84-Adendum-Manual-Migracion-066-y-Permisos.md). El permiso de banner solo da
+conteo; `formalizacion.orders.addendum.read` controla bandeja, marca y evidencia.
+La marca no cambia etapa/aprobaciones. Esta revisión no repite pruebas históricas,
+no escribe en BD ni acredita edición real de NetSuite o despliegue.
+
 Revisión documental del 2026-11-02: 057, su registro/CLI y los tipos de tabla
 son cambios locales aún sin commit respecto a `fcbf0c2`. La aplicación del30
 descrita debajo es evidencia histórica, no una nueva comprobación live ni prueba
 de que una release incluya estos archivos. El mapeo de lectura y el escritor de
-sincronización general siguen pendientes en [70](70-Plan-Sincronizacion-Ordenes-NetSuite.md).
+sincronización de ese corte quedaron ampliados por [73](73-Sincronizacion-Estados-Ordenes-NetSuite.md),
+[75](75-Matriz-Campos-Ordenes-NetSuite.md) y las reglas78; el plan70 es antecedente.
 
 Fuente: migración021, ajuste UTC022, relación con lead035, trayectoria036 y
 ampliación aditiva057. Los nombres completos están en el runner y sus archivos.
@@ -109,6 +143,12 @@ La bitacora comercial generica posterior, migracion `202610220023_record_audit`,
 | commission_approved_sales_order | ENUM('yes','no','unknown') NOT NULL DEFAULT 'unknown' | 057: aprobación de comisión, no prueba de pago |
 | broker_commission_calculated_sales_order | ENUM('yes','no','unknown') NOT NULL DEFAULT 'unknown' | 057: cálculo de comisión del corredor |
 | installments_fully_paid_sales_order | ENUM('yes','no','unknown') NOT NULL DEFAULT 'unknown' | 057: cuotas completas; no reinterpretar pagadas_ov |
+| purchase_funds_origin_sales_order | ENUM('own_funds','bank_financing') NULL DEFAULT NULL | 062: custbody37 confirmado; ID1 own_funds / ID2 bank_financing; vacio NULL |
+| cancellation_marked_on_sales_order | DATE NULL DEFAULT NULL | 059: fecha Costa Rica de la transición ERP a venta caída, bajo flag propio |
+| addendum_status_sales_order | ENUM('pending','completed','cancelled') NULL DEFAULT NULL | 065: marcador de adéndum independiente de etapa |
+| addendum_version_sales_order | INT UNSIGNED NOT NULL DEFAULT 0 | 065: versión optimista del marcador |
+| addendum_changed_at_sales_order | DATETIME(3) NULL DEFAULT NULL | 065: fecha UTC del último cambio del marcador |
+| addendum_note_sales_order | TEXT NULL DEFAULT NULL | 066: nota opcional del marcado manual, hasta2000 caracteres en API |
 | source_created_at_sales_order | DATETIME(3) NULL | creado_ov observado; puede no ser la creacion real en el ERP |
 | created_at_sales_order | DATETIME(3) NOT NULL DEFAULT (UTC_TIMESTAMP(3)) | Instante de creacion del registro en CRM nuevo; UTC |
 | created_by_user_id_sales_order | BIGINT UNSIGNED NULL | Usuario CRM creador si es conocido |
@@ -155,6 +195,8 @@ La bitacora comercial generica posterior, migracion `202610220023_record_audit`,
 | recorded_at_sales_order_state_event | DATETIME(3) NOT NULL DEFAULT (UTC_TIMESTAMP(3)) | Cuando CRM registro la evidencia; UTC |
 | actor_user_id_sales_order_state_event | BIGINT UNSIGNED NULL | Usuario autenticado si es conocido |
 | actor_snapshot_sales_order_state_event | JSON NULL | Nombre y roles del actor en ese momento; sin secretos |
+| responsible_user_id_sales_order_state_event | BIGINT UNSIGNED NULL | 036: responsable nativo de la visita; independiente del autor/vendedor |
+| responsible_snapshot_sales_order_state_event | JSON NULL | 036: identidad histórica del responsable, conservada en avances de integración |
 | origin_sales_order_state_event | ENUM('crm','integration','legacy_import') NOT NULL | Origen real del cambio o de la observacion |
 | reason_sales_order_state_event | VARCHAR(500) NOT NULL | Motivo obligatorio del cambio u observacion |
 | operation_id_sales_order_state_event | VARCHAR(100) NOT NULL | Idempotencia por orden; reintentar no agrega otra transicion |

@@ -1,5 +1,9 @@
 # 21 - Seguridad de Autenticacion BFF y Sesion Frontend
 
+## Actualización contrastada — 03/11/2026
+
+`startMicrosoftLogin(true)` solicita consentimiento de calendario por el BFF. `waitForMicrosoftPopupSession` exige sesión distinta de la anterior para no confundir una sesión existente con callback nuevo; después se relee el usuario y se recarga la aplicación si cambió. Popup bloqueado requiere confirmación de navegación con pérdida del borrador. El flujo de calendario conserva cookies/CSRF y sus capacidades CRM; consentimiento Microsoft no autoriza el recurso CRM ni entrega tokens al navegador. Detalle de disponibilidad, publicación, errores y versión remota: [Calendario global](Calendario-Global-Frontend.md).
+
 ## Remediacion de sesion - 2026-10-23
 
 El cliente HTTP publica la renovacion compartida al estado raiz: relee el perfil y desmonta los consumidores mientras comprueba autorizacion. Un refresh rechazado con 401 retira el shell y vuelve a login. Una generacion invalida respuestas de perfil anteriores, incluso durante checking; un limite de reinicio evita ciclos. El reintento explicito permite una comprobacion nueva. No se comparte un perfil global entre usuarios ni se persisten tokens.

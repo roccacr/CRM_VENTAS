@@ -5,6 +5,9 @@ import type { CrmDatabase } from "../../../database/database.types.js";
 /** Estado canonico activo usado por las tablas de identidad. */
 export const ACTIVE_STATUS = "active";
 
+/** Capacidad sensible: exige asignación real por rol o excepción personal; Owner no la hereda implícitamente. */
+export const ADDENDUM_MARK_PENDING_PERMISSION = "formalizacion.orders.addendum.mark_pending";
+
 /** Estado canonico expirado para tokens de vida corta. */
 export const EXPIRED_STATUS = "expired";
 

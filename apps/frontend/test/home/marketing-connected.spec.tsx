@@ -48,16 +48,14 @@ describe("connected marketing summary", () => {
         expect(() => parseMarketingHomeSummary({ ...fixture(), counts: { leads: 4, previousLeads: 1 } }, "month")).toThrow();
         expect(() => parseMarketingHomeSummary(fixture(), "day")).toThrow();
     });
-    it("shows real leads, filters stable seller IDs, and leaves all appointment counters pending", async () => {
+    it("shows real leads by project and leaves unavailable appointment counters pending", async () => {
         request.mockResolvedValue(fixture());
         render(<MarketingHomePage currentUser={user} />);
         expect(await screen.findByLabelText("Leads: 5")).toBeInTheDocument();
         for (const title of ["Leads con cita", "Citas completadas", "Leads sin cita · 7 días"]) expect(screen.getByLabelText(`${title}: —`)).toBeInTheDocument();
-        await selectMarketing("Vendedor", "Vendedor Uno");
-        expect(screen.getByLabelText("Leads: 3")).toBeInTheDocument();
-        expect(screen.getByRole("img", { name: "Foto de Vendedor Uno" })).toHaveAttribute("src", expect.stringContaining(photoId));
-        fireEvent.mouseEnter(screen.getByRole("button", { name: "Qué significa: leads por proyecto" }));
-        expect(await screen.findByText(/Leads de Vendedor Uno/)).toBeInTheDocument();
+        await selectMarketing("Proyecto", "Proyecto Real");
+        expect(screen.getByLabelText("Leads: 5")).toBeInTheDocument();
+        expect(screen.queryByRole("combobox", { name: "Vendedor" })).not.toBeInTheDocument();
     });
     it("hides old counters while changing period and ignores a superseded response", async () => {
         let resolveOld: (value: MarketingApiSummary) => void = () => undefined;
@@ -104,25 +102,25 @@ it.each([
     expect({ start: toISODate(view.comparison.start), end: toISODate(view.comparison.end) }).toEqual({ start, end });
 });
 
-it("clears a seller absent from the new period instead of silently showing a false zero", async () => {
+it("preserves project totals when the sellers change in a new period", async () => {
     request.mockResolvedValueOnce(fixture()).mockResolvedValueOnce({ ...fixture(), period: "day", rows: [{ date: "2026-10-23", sellerId: "other", projectId: "p", leads: 7 }] });
     render(<MarketingHomePage currentUser={user} />);
     await screen.findByLabelText("Leads: 5");
-    await selectMarketing("Vendedor", "Vendedor Uno");
-    expect(screen.getByLabelText("Leads: 3")).toBeInTheDocument();
+    await selectMarketing("Proyecto", "Proyecto Real");
+    expect(screen.getByLabelText("Leads: 5")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Hoy" }));
     expect(await screen.findByLabelText("Leads: 7")).toBeInTheDocument();
-    expect(selectedMarketingValues("Vendedor")).toEqual([]);
+    expect(selectedMarketingValues("Proyecto")).toEqual(["Proyecto Real"]);
 });
 
 it("resets scope when the signed-in user changes", async () => {
     request.mockResolvedValue(fixture());
     const view = render(<MarketingHomePage currentUser={user} />);
     await screen.findByLabelText("Leads: 5");
-    await selectMarketing("Vendedor", "Vendedor Uno");
+    await selectMarketing("Proyecto", "Proyecto Real");
     view.rerender(<MarketingHomePage currentUser={{ ...user, publicId: "second-user" }} />);
     expect(await screen.findByLabelText("Leads: 5")).toBeInTheDocument();
-    expect(selectedMarketingValues("Vendedor")).toEqual([]);
+    expect(selectedMarketingValues("Proyecto")).toEqual([]);
 });
 
 it("explains a project increase with its comparison dates and previous count", async () => {
@@ -193,7 +191,7 @@ it("ends the preload on failure so retry remains available", async () => {
     expect(screen.queryByRole("status", { name: "Cargando Mercadeo" })).not.toBeInTheDocument();
 });
 
-it("shows the preload during local seller and project transitions without refetching", async () => {
+it("shows the preload during local project transitions without refetching", async () => {
     request.mockResolvedValue(fixture());
     const view = render(<MarketingHomePage currentUser={user} />);
     await screen.findByLabelText("Leads: 5");
@@ -203,38 +201,25 @@ it("shows the preload during local seller and project transitions without refetc
     });
     observer.observe(view.container, { childList: true, subtree: true });
     try {
-        await selectMarketing("Vendedor", "Vendedor Uno");
-        await screen.findByLabelText("Leads: 3");
+        await selectMarketing("Proyecto", "Proyecto Real");
         await waitFor(() => {
             expect(preloads.length).toBeGreaterThan(0);
         });
-        const beforeProject = preloads.length;
-        await selectMarketing("Proyecto", "Proyecto Real");
-        await waitFor(() => {
-            expect(preloads.length).toBeGreaterThan(beforeProject);
-        });
-        expect(screen.getByLabelText("Leads: 3")).toBeInTheDocument();
+        expect(screen.getByLabelText("Leads: 5")).toBeInTheDocument();
         expect(request).toHaveBeenCalledTimes(1);
     } finally {
         observer.disconnect();
     }
 });
 
-it("shows a photo for every selected seller and removes only the deselected seller's photo", async () => {
-    const secondPhotoId = "01M5NC1DC90QQK5GG5ETJYC3YT";
-    const summary = fixture();
-    request.mockResolvedValue({ ...summary, sellers: summary.sellers.map((seller) => (seller.id === "other" ? { ...seller, publicId: secondPhotoId } : seller)) });
+it("keeps the session greeting when filtering by project", async () => {
+    request.mockResolvedValue(fixture());
     render(<MarketingHomePage currentUser={user} />);
     await screen.findByLabelText("Leads: 5");
-    await selectMarketing("Vendedor", "Vendedor Uno");
-    await selectMarketing("Vendedor", "Vendedor Dos", true);
-    expect(await screen.findByRole("img", { name: "Foto de Vendedor Uno" })).toBeInTheDocument();
-    expect(screen.getByRole("img", { name: "Foto de Vendedor Dos" })).toHaveAttribute("src", expect.stringContaining(secondPhotoId));
-    fireEvent.error(screen.getByRole("img", { name: "Foto de Vendedor Uno" }));
-    expect(screen.getByRole("img", { name: "Foto de Vendedor Dos" })).toBeInTheDocument();
-    await selectMarketing("Vendedor", "Vendedor Dos");
-    expect(screen.queryByRole("img", { name: "Foto de Vendedor Uno" })).not.toBeInTheDocument();
-    expect(screen.getByRole("img", { name: "Foto de Vendedor Dos" })).toBeInTheDocument();
+    await selectMarketing("Proyecto", "Proyecto Real");
+    const welcome = screen.getByRole("region", { name: "Bienvenida a Mercadeo" });
+    expect(within(welcome).getByText("Hola, Usuario")).toBeInTheDocument();
+    expect(welcome.querySelector("img.marketing-welcome__photo")).toBeNull();
 });
 
 function appointmentsFixture(): MarketingApiSummary {
@@ -261,16 +246,16 @@ it("validates appointment evidence and rejects impossible conversion and disconn
     expect(() => parseMarketingHomeSummary({ ...data, appointments: { ...appointments, leadsWithAppointment: [{ date: "2026-10-23", sellerId: photoId, projectId: "p", withAppointment: 4 }] } }, "month")).toThrow();
     expect(() => parseMarketingHomeSummary({ ...data, appointments: { ...data.appointments, events: [{ ...appointments.events[0], links: [{ sellerId: "missing", projectId: "p" }] }] } }, "month")).toThrow();
 });
-it("shows unique completed events by event date, conversion by captured cohort and filters by lead owner", async () => {
+it("shows unique completed events by event date, conversion by captured cohort and filters by project", async () => {
     request.mockResolvedValue(appointmentsFixture());
     render(<MarketingHomePage currentUser={user} />);
     expect(await screen.findByLabelText("Leads con cita: 20 %")).toBeInTheDocument();
     expect(screen.getByLabelText("Citas completadas: 2")).toBeInTheDocument();
     expect(screen.getByLabelText("Leads sin cita · 7 días: 4")).toBeInTheDocument();
-    await selectMarketing("Vendedor", "Vendedor Uno");
-    expect(screen.getByLabelText("Citas completadas: 1")).toBeInTheDocument();
-    expect(screen.getByText(/No hay información suficiente para confirmar quién asistió/)).toBeInTheDocument();
-    expect(screen.getByLabelText("Leads con cita: 33,3 %")).toBeInTheDocument();
+    await selectMarketing("Proyecto", "Proyecto Real");
+    expect(screen.getByLabelText("Citas completadas: 2")).toBeInTheDocument();
+    expect(screen.getByText(/1 asistidas/)).toBeInTheDocument();
+    expect(screen.getByLabelText("Leads con cita: 20 %")).toBeInTheDocument();
 });
 
 it("retains sellers whose appointments belong to leads captured outside coverage", async () => {
@@ -280,10 +265,8 @@ it("retains sellers whose appointments belong to leads captured outside coverage
     request.mockResolvedValue({ ...data, sellers: [...data.sellers, { id: "event-only", publicId: null, name: "Vendedor Histórico" }], projects: [...data.projects, { id: "old-project", publicId: null, name: "Proyecto Histórico" }], appointments: { ...appointments, quality: { ...appointments.quality, unresolvedLinks: 2 }, events: [...appointments.events, { id: "old", date: "2026-10-21", status: "completed", attendance: null, links: [{ sellerId: "event-only", projectId: "old-project" }] }] } });
     render(<MarketingHomePage currentUser={user} />);
     expect(await screen.findByText(/2 citas sin lead asociado no se cuentan/)).toBeInTheDocument();
-    await selectMarketing("Vendedor", "Vendedor Histórico");
-    expect(screen.getByLabelText("Leads: 0")).toBeInTheDocument();
-    expect(screen.getByLabelText("Citas completadas: 1")).toBeInTheDocument();
     await selectMarketing("Proyecto", "Proyecto Histórico");
+    expect(screen.getByLabelText("Leads: 0")).toBeInTheDocument();
     expect(screen.getByLabelText("Citas completadas: 1")).toBeInTheDocument();
 });
 
@@ -310,11 +293,26 @@ it("explains comparisons, completed status, cohort counts and only nonzero quali
     render(<MarketingHomePage currentUser={user} />);
     expect(await screen.findByLabelText("Leads: 5")).toBeInTheDocument();
     expect(screen.getByLabelText("Citas completadas: 2")).toBeInTheDocument();
-    expect(within(screen.getByRole("region", { name: "Periodo y vendedor" })).getByText(/ · vs\. /)).toBeInTheDocument();
+    expect(within(screen.getByRole("region", { name: "Periodo y proyecto" })).getByText(/ · vs\. /)).toBeInTheDocument();
     expect(screen.getByText(/2 citas sin lead asociado no se cuentan/)).toBeInTheDocument();
     expect(screen.queryByText(/0 con fecha inválida/)).not.toBeInTheDocument();
     fireEvent.mouseEnter(screen.getByRole("button", { name: "Qué significa: Leads" }));
     expect(await screen.findByText(/Una persona puede tener varios registros/)).toBeInTheDocument();
     fireEvent.mouseEnter(screen.getByRole("button", { name: "Qué significa: Leads con cita" }));
     expect(await screen.findByText(/Una cita futura cuenta/)).toBeInTheDocument();
+});
+
+
+it("offers only project filtering while retaining the seller breakdown", async () => {
+    request.mockResolvedValue(fixture());
+    render(<MarketingHomePage currentUser={user} />);
+    await screen.findByLabelText("Leads: 5");
+    expect(screen.queryByRole("combobox", { name: "Vendedor" })).not.toBeInTheDocument();
+    const ranking = screen.getByRole("region", { name: "Leads por vendedor" });
+    expect(within(ranking).getByText("Vendedor Uno")).toBeInTheDocument();
+    expect(within(ranking).getByText("Vendedor Dos")).toBeInTheDocument();
+    expect(within(ranking).queryByRole("button", { name: /Vendedor Uno/ })).not.toBeInTheDocument();
+    await selectMarketing("Proyecto", "Proyecto Real");
+    expect(screen.getByLabelText("Leads: 5")).toBeInTheDocument();
+    expect(request).toHaveBeenCalledTimes(1);
 });

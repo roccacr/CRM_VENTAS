@@ -1,5 +1,9 @@
 # 32 - Seeds de Identidad P0-S1
 
+## Precedencia del catálogo incremental — 2026-11-03
+
+Los seeds históricos no son instrucciones para regenerar permisos ni defaults actuales. 060/063–067 tienen configuración incremental propia ([03](03-Base-Datos-y-Migracion.md)). 067 otorga marcado manual de adéndum mediante grants reales a Owner/Jefe General/Jefe de Formalizaciones; el rol Formalización no lo recibe por defecto. Esa capacidad queda fuera del comodín Owner y respeta overrides/deny. Las reglas inferiores de permisos activos universales se leen con esta excepción ([84](84-Adendum-Manual-Migracion-066-y-Permisos.md)). No reejecutar seeds ni modificar 060/066 aplicadas para simular la corrección 067.
+
 Revision documental 2026-10-22: baseline de identidad y evidencia historica, no inventario exhaustivo del esquema actual ni autorizacion para repetir SQL/seeds. Las migraciones incrementales y el codigo vigente prevalecen para contratos implementados. Ver [36 - Estado vigente y registro](36-Registro-Entrega-Administracion.md); SQL/003 y SQL/004 no se ejecutaron en esta revision.
 
 ## Superseding Owner-Only Policy - 2026-10-09

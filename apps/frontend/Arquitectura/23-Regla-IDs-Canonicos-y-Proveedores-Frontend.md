@@ -1,5 +1,9 @@
 # 23 - Regla de IDs Canonicos y Proveedores Frontend
 
+## Actualización contrastada — 03/11/2026
+
+El perfil y calendario contextual usan identidad compuesta source/id autorizada. `/home/formalization/perfil` valida native ULID o legacy decimal; no crea relaciones por nombre/correo. La orden contextual obtiene su cliente de lookup y conserva ambas identidades bloqueadas. El feed Outlook puede entregar IDs y versiones remotas como metadatos BFF para correlación/concurrencia; no convierten Graph en autorización CRM. La proyección NetSuite actual sí alimenta capítulos confirmados de la ficha: el párrafo DEV inferior es un antecedente. Ver [30](30-Estado-Frontend-Verificado.md).
+
 ## Identidades compuestas vigentes - 2026-11-02
 
 Las referencias de registros relacionados en notas/calendario contienen

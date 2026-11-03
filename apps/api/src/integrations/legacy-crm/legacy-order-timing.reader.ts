@@ -23,10 +23,10 @@ export class LegacyOrderTimingReader implements OrderTimingLegacyReader {
         const end = `${String(year + 1)}-01-01 06:00:00.000`;
         const result = await sql<{ id: string; publicId: string; active: number; pendingApproval: number; ownerId: string | null; rawStage: string | null; approved: number; contractSigned: number; completedThisYear: number }>`
             SELECT (SELECT e.to_state_code_sales_order_state_event FROM ${sql.table("crmdatabase-api.audit_sales_order_state_event")} e WHERE e.legacy_order_id_sales_order_state_event=o.id_ov ORDER BY e.sequence_sales_order_state_event DESC LIMIT 1) AS rawStage,
-                COALESCE(o.chekJefeVenta=1 AND o.aprobacion__rdr_ov=1 AND o.aprobacion_forma_ov=1,0) AS approved,
+                COALESCE(o.aprobacion_forma_ov=1,0) AS approved,
                 COALESCE(o.contrado_frima_ov=1,0) AS contractSigned,
                 EXISTS(SELECT 1 FROM ${sql.table("crmdatabase-api.audit_sales_order_state_event")} ce WHERE ce.legacy_order_id_sales_order_state_event=o.id_ov AND ce.to_state_code_sales_order_state_event='closed' AND ce.effective_at_sales_order_state_event>=${start} AND ce.effective_at_sales_order_state_event<${end}) AS completedThisYear,
-                CAST(o.id_ov AS CHAR) AS id,CONCAT('legacy:',o.id_ov) AS publicId,(o.status_ov=1 AND o.caida_ov=0) AS active,
+                CAST(o.id_ov AS CHAR) AS id,CONCAT('legacy:',o.id_ov) AS publicId,(o.status_ov=1 AND (o.caida_ov=0 OR (o.caida_ov=1 AND o.contrado_frima_ov=1))) AS active,
                 COALESCE(o.chekJefeVenta=1 AND o.aprobacion__rdr_ov=1 AND o.aprobacion_forma_ov=0,0) AS pendingApproval,nu.public_id_user AS ownerId
             FROM ${sql.table("crmdatabase-api.ordenventa")} o
             LEFT JOIN ${sql.table("crmdatabase-api.leads")} l ON l.idinterno_lead=o.id_ov_lead

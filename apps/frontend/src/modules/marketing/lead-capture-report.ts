@@ -1,8 +1,8 @@
 /** How deep the report goes: 1 = by project, 2 = project › campaign, 3 = project › campaign › ad. */
 export type CaptureDepth = 1 | 2 | 3;
 
-/** What is counted. The depth and the measure are independent, so three measures × three depths cover every report. */
-export type CaptureMeasure = "leads" | "appointments" | "lost";
+/** Medida del reporte; los motivos de pérdida añaden una distribución sin cambiar la cohorte captada. */
+export type CaptureMeasure = "leads" | "appointments" | "lost" | "lossReasons";
 
 /**
  * Counts for one group of leads.
@@ -19,7 +19,14 @@ export interface CaptureValues {
     readonly lost: number;
 }
 
+export interface CaptureLossReason {
+    readonly code: string;
+    readonly name: string;
+    readonly count: number;
+}
+
 export interface CaptureRow extends CaptureValues {
+    readonly lossReasons?: readonly CaptureLossReason[];
     readonly date: string;
     readonly sellerId: string;
     readonly projectId: string;
@@ -32,6 +39,8 @@ export interface CaptureFilters {
     readonly to: string;
     /** Empty means every seller. */
     readonly sellers: readonly string[];
+    /** Intervalos elegidos; los huecos entre meses o semanas no forman parte de la cohorte. */
+    readonly periods?: readonly { readonly from: string; readonly to: string }[];
 }
 
 export interface CaptureNamed {
@@ -54,7 +63,7 @@ export interface CaptureCatalogs {
 
 /** Rows inside the period and, when sellers are chosen, belonging to them. */
 export function filterCaptureRows(rows: readonly CaptureRow[], filters: CaptureFilters): CaptureRow[] {
-    return rows.filter((row) => row.date >= filters.from && row.date <= filters.to && (filters.sellers.length === 0 || filters.sellers.includes(row.sellerId)));
+    return rows.filter((row) => row.date >= filters.from && row.date <= filters.to && (!filters.periods?.length || filters.periods.some((period) => row.date >= period.from && row.date <= period.to)) && (filters.sellers.length === 0 || filters.sellers.includes(row.sellerId)));
 }
 
 export const EMPTY_VALUES: CaptureValues = { leads: 0, noAppointment: 0, scheduled: 0, completed: 0, lost: 0 };
@@ -65,12 +74,13 @@ export const MEASURES: readonly { readonly measure: CaptureMeasure; readonly lab
     { measure: "leads", label: "Leads", noun: "leads" },
     { measure: "appointments", label: "Leads con cita", noun: "leads con cita" },
     { measure: "lost", label: "Leads perdidos", noun: "leads perdidos" },
+    { measure: "lossReasons", label: "Motivos de pérdida", noun: "leads perdidos" },
 ];
 
 /** The number a bar, a banner or a ranking shows: one figure per measure. Each lead counts once: scheduled or completed. */
 export function primaryValue(values: CaptureValues, measure: CaptureMeasure): number {
     if (measure === "appointments") return values.scheduled + values.completed;
-    return measure === "lost" ? values.lost : values.leads;
+    return measure === "lost" || measure === "lossReasons" ? values.lost : values.leads;
 }
 
 export interface CaptureKpiFigures {
@@ -87,7 +97,7 @@ export interface CaptureKpiFigures {
 /** Banner figures for the rows on screen. A group counts once, however many sellers or days it spans. */
 export function captureKpis(rows: readonly CaptureRow[], measure: CaptureMeasure, depth: CaptureDepth): CaptureKpiFigures {
     const withLeads = rows.filter((row) => row.leads > 0);
-    const units = new Set(withLeads.map((row) => JSON.stringify(pathIds(row, depth)))).size;
+    const units = measure === "lossReasons" ? lossReasonRows(rows).length : new Set(withLeads.map((row) => JSON.stringify(pathIds(row, depth)))).size;
     const projects = new Set(withLeads.map((row) => row.projectId)).size;
     const total = rows.reduce((sum, row) => sum + primaryValue(row, measure), 0);
     const leads = rows.reduce((sum, row) => sum + row.leads, 0);
@@ -115,7 +125,7 @@ export function columnsFor(measure: CaptureMeasure): readonly ValueColumn[] {
             { key: "none", label: "Sin cita", cell: (v) => v.noAppointment },
             { key: "total", label: "Total de leads", cell: (v) => v.leads },
         ];
-    if (measure === "lost")
+    if (measure === "lost" || measure === "lossReasons")
         return [
             { key: "lost", label: "Perdidos", cell: (v) => v.lost },
             { key: "share", label: "% de los leads", cell: (v) => share(v.lost, v.leads), isShare: true },
@@ -188,6 +198,8 @@ export function sellerSections(rows: readonly CaptureRow[], depth: CaptureDepth,
 }
 
 export interface PathRow {
+    /** Conserva el color de la dimensión al compararla entre intervalos. */
+    readonly colorKey?: string;
     readonly key: string;
     /** Names from the outermost level down: ["Proyecto Vista", "Lanzamiento"]. */
     readonly path: readonly string[];
@@ -305,4 +317,20 @@ export function sellerTone(id: string): { readonly color: string; readonly ink: 
     for (const character of id) hash = Math.imul(hash ^ character.charCodeAt(0), 16_777_619) >>> 0;
     const { color, ink } = SERIES[hash % SERIES.length] ?? SERIES[0];
     return { color, ink, tint: `color-mix(in srgb, ${color} 9%, #ffffff)` };
+}
+
+/** Una sola distribución de pérdidas para las filas autorizadas y los proyectos seleccionados. */
+export function lossReasonRows(rows: readonly CaptureRow[]): PathRow[] {
+    const reasons = new Map<string, { name: string; count: number }>();
+    for (const row of rows) {
+        const entries = row.lossReasons ?? [{ code: "unrecorded", name: "Sin motivo registrado", count: row.lost }];
+        for (const reason of entries) {
+            const previous = reasons.get(reason.code);
+            reasons.set(reason.code, { name: previous?.name ?? reason.name, count: (previous?.count ?? 0) + reason.count });
+        }
+    }
+    return [...reasons]
+        .filter(([, reason]) => reason.count > 0)
+        .map(([code, reason]) => ({ key: code, path: [reason.name], value: reason.count, detail: { ...EMPTY_VALUES, leads: reason.count, lost: reason.count, noAppointment: reason.count } }))
+        .sort((a, b) => b.value - a.value || a.path.join().localeCompare(b.path.join(), "es"));
 }

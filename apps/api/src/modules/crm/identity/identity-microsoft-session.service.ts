@@ -1,4 +1,4 @@
-import { createHmac, timingSafeEqual } from "node:crypto";
+import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 
 import { Inject, Injectable, UnauthorizedException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
@@ -22,6 +22,7 @@ export interface MicrosoftProfilePhotoRefreshResult {
 
 interface MicrosoftChallengePayload extends Omit<MicrosoftCallbackInput, "code"> {
     expiresAt: string;
+    expectedEmailHash?: string;
 }
 
 /**
@@ -41,13 +42,14 @@ export class IdentityMicrosoftSessionService {
     /**
      * Inicia Microsoft OIDC con PKCE/state/nonce y challenge server-side.
      */
-    async startLogin(): Promise<MicrosoftLoginStartResult> {
-        const challenge = await this.microsoft.startLogin();
+    async startLogin(calendarEmail?: string): Promise<MicrosoftLoginStartResult> {
+        const challenge = calendarEmail ? await this.microsoft.startLogin({ calendar: true }) : await this.microsoft.startLogin();
         const expiresAt = new Date(Date.now() + MICROSOFT_OIDC_CHALLENGE_TTL_MS);
 
         return {
             authorizationUrl: challenge.authorizationUrl,
             challengeCookie: this.signMicrosoftChallenge({
+                ...(calendarEmail ? { calendar: true, expectedEmailHash: emailHash(calendarEmail) } : {}),
                 codeVerifier: challenge.codeVerifier,
                 expiresAt: expiresAt.toISOString(),
                 nonce: challenge.nonce,
@@ -63,12 +65,14 @@ export class IdentityMicrosoftSessionService {
     async completeCallback(input: { challengeCookie: string | undefined; code: string; state: string }): Promise<{ account: MicrosoftAuthenticatedAccount; encryptedCache: EncryptedMicrosoftCache }> {
         const challenge = this.verifyMicrosoftChallenge(input.challengeCookie, input.state);
         const account = await this.microsoft.completeCallback({
+            ...(challenge.calendar ? { calendar: true } : {}),
             code: input.code,
             codeVerifier: challenge.codeVerifier,
             nonce: challenge.nonce,
             state: input.state,
         });
 
+        if (challenge.calendar && challenge.expectedEmailHash !== emailHash(account.email)) throw new UnauthorizedException("Conecta la misma cuenta corporativa de tu sesión CRM.");
         return {
             account,
             encryptedCache: this.microsoftCacheCrypto.encrypt(account.msalCacheSerialized),
@@ -108,6 +112,14 @@ export class IdentityMicrosoftSessionService {
             encryptedCache: this.microsoftCacheCrypto.encrypt(silentResult.msalCacheSerialized),
             profilePhoto: await this.microsoft.readProfilePhoto(silentResult.accessToken),
         };
+    }
+
+    /** El token se usa solo dentro del servidor; un consentimiento faltante no revoca la sesión CRM. */
+    async withAccess<T>(input: { cache: EncryptedMicrosoftCache; homeAccountId: string; scopes: string[] }, callback: (token: string) => Promise<T>): Promise<{ value: T; cache: EncryptedMicrosoftCache } | null> {
+        const result = await this.microsoft.acquireTokenSilent({ homeAccountId: input.homeAccountId, msalCacheSerialized: this.microsoftCacheCrypto.decrypt(input.cache), scopes: input.scopes });
+        if (result.interactionRequired) return null;
+        const value = await callback(result.accessToken);
+        return { value, cache: this.microsoftCacheCrypto.encrypt(result.msalCacheSerialized) };
     }
 
     /**
@@ -173,4 +185,8 @@ export class IdentityMicrosoftSessionService {
             throw new UnauthorizedException("Challenge Microsoft invalido.");
         }
     }
+}
+
+function emailHash(email: string): string {
+    return createHash("sha256").update(email.trim().toLowerCase()).digest("hex");
 }

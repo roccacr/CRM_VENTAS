@@ -1,6 +1,6 @@
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+import { copyFileSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, isAbsolute, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -9,7 +9,7 @@ import ts from "typescript";
 
 const SOURCE = fileURLToPath(new URL("../src/integrations/netsuite/suitescript/", import.meta.url));
 const NATIVE = new Set(["N/runtime", "N/record", "N/search", "N/log", "N/https", "N/crypto/random", "N/format"]);
-const CABINET_ROOT = "/SuiteScripts/CRM TINK/";
+const CABINET_ROOT = "/SuiteScripts/";
 
 /** Valida sintaxis y grafo AMD real sin ejecutar acciones ni conectar con NetSuite. */
 export function inspectSuiteScripts(source = SOURCE) {
@@ -18,6 +18,7 @@ export function inspectSuiteScripts(source = SOURCE) {
     const visiting = new Set();
 
     function visit(candidate) {
+        if (lstatSync(candidate).isSymbolicLink()) throw new Error("No se permiten enlaces simbolicos en el paquete");
         const file = realpathSync(candidate);
         const local = relative(root, file);
         if (local.startsWith("..") || isAbsolute(local)) throw new Error("Dependencia fuera de suitescript");
@@ -43,26 +44,18 @@ export function inspectSuiteScripts(source = SOURCE) {
         const path = local.replaceAll("\\", "/");
         files.set(file, {
             source: file,
-            path: ["SS2_1_RL_CRM_Integracion.js", "SS2_1_UE_CRM_CambiosRegistros.js"].includes(path) ? `SuiteScripts/${path}` : `SuiteScripts/CRM TINK/${path}`,
+            path: `SuiteScripts/${path}`,
             sha256: createHash("sha256").update(content).digest("hex"),
         });
     }
 
-    visit(join(root, "SS2_1_RL_CRM_Integracion.js"));
-    visit(join(root, "SS2_1_UE_CRM_CambiosRegistros.js"));
-    // Validar tambien modulos presentes aunque todavia no esten conectados a una accion.
-    function walk(folder) {
-        for (const item of readdirSync(folder, { withFileTypes: true })) {
-            if (item.isSymbolicLink()) throw new Error("No se permiten enlaces simbolicos en el paquete");
-            if (item.isDirectory()) walk(join(folder, item.name));
-            else if (item.name.endsWith(".js")) visit(join(folder, item.name));
-        }
-    }
-    walk(join(root, "lib"));
-    walk(join(root, "modules"));
-    const logging = readFileSync(join(root, "lib/SS2_1_LIB_CRM_Logs.js"), "utf8");
+    visit(join(root, "SS2_1_RL_CRM_Habita.js"));
+    visit(join(root, "SS2_1_UE_CRM_Habita.js"));
+    visit(join(root, "SS2_1_LIB_CRM_habita.js"));
+    if (files.size !== 3) throw new Error("El paquete unificado requiere exactamente tres scripts");
+    const logging = readFileSync(join(root, "SS2_1_LIB_CRM_habita.js"), "utf8");
     const version = /const SCRIPT_VERSION = "([0-9.]+)";/.exec(logging)?.[1];
-    if (!version) throw new Error("Falta SCRIPT_VERSION en el logger");
+    if (!version) throw new Error("Falta SCRIPT_VERSION en la libreria unificada");
     return { version, files: [...files.values()].sort((a, b) => a.path.localeCompare(b.path)) };
 }
 
@@ -90,7 +83,7 @@ function packageSuiteScripts() {
         });
         if (zipped.error) throw zipped.error;
         if (zipped.status !== 0) throw new Error(zipped.stderr || "No se pudo crear el ZIP");
-        process.stdout.write(`Paquete validado: ${archive}\nVersion: ${manifest.version}; archivos JS: ${manifest.files.length}\nImportar desde la RAIZ del Archivador, no dentro de CRM TINK.\n`);
+        process.stdout.write(`Paquete validado: ${archive}\nVersion: ${manifest.version}; archivos JS: ${manifest.files.length}\nImportar desde la RAIZ del Archivador, los tres scripts van en SuiteScripts/.\n`);
     } finally {
         rmSync(stage, { recursive: true, force: true });
     }

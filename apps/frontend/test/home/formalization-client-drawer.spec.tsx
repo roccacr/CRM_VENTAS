@@ -9,6 +9,7 @@ import type { FollowUpItem } from "../../src/services/formalization/follow-up-se
 import { getOrderClientDetail } from "../../src/services/formalization/order-client-service";
 import { installBrowserApiDoubles } from "../support/browser";
 
+vi.mock("../../src/modules/home/FormalizationOrderDetails", () => ({ FormalizationOrderDetails: () => <div>Detalle BD dentro del cliente</div> }));
 vi.mock("../../src/services/formalization/order-client-service", () => ({ getOrderClientDetail: vi.fn() }));
 const order: FollowUpItem = { id: "legacy:208", source: "legacy", number: "RDR673", nativeCode: null, client: "Cliente seleccionado", project: null, unit: null, responsible: null, state: { code: "contract_pending_send", label: "Por enviar", since: null, days: null }, nextStep: "Registrar envío", completedThisYear: false };
 const detail = { name: "Cliente seleccionado", groups: [{ title: "Contacto", fields: [{ label: "Correo", value: "cliente@example.com" }] }], warnings: [] };
@@ -21,9 +22,11 @@ afterEach(cleanup);
 it("opens the shared side drawer only on a client click and requests the selected order identity", async () => {
     render(<FormalizationRecordSummary item={order} />);
     expect(getOrderClientDetail).not.toHaveBeenCalled();
+    expect(screen.queryByText("Detalle BD dentro del cliente")).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Ver cliente Cliente seleccionado" }));
     expect(screen.getByRole("dialog")).toBeInTheDocument();
     await screen.findByText("cliente@example.com");
+    expect(screen.queryByText("Detalle BD dentro del cliente")).not.toBeInTheDocument();
     expect(getOrderClientDetail).toHaveBeenCalledExactlyOnceWith({ source: "legacy", id: "legacy:208" });
     fireEvent.click(screen.getByRole("button", { name: "Cerrar detalle del cliente" }));
     await waitFor(() => {
@@ -77,7 +80,7 @@ it("oculta el perfil sin permiso y enlaza por la identidad del lead cuando está
     await screen.findByText("cliente@example.com");
     expect(screen.queryByRole("link", { name: "Ver perfil del cliente" })).not.toBeInTheDocument();
     view.rerender(<FormalizationClientDrawer item={order} open onClose={() => {}} effectivePermissions={[{ code: "lead.profile.read", effect: "allow" }]} />);
-    expect(screen.getByRole("link", { name: "Ver perfil del cliente" })).toHaveAttribute("href", "/perfil?source=legacy&id=12");
+    expect(screen.getByRole("link", { name: "Ver perfil del cliente" })).toHaveAttribute("href", "/home/formalization/perfil?source=legacy&id=12");
     view.rerender(
         <FormalizationClientDrawer
             item={order}
@@ -101,22 +104,34 @@ it.each([
     vi.mocked(getOrderClientDetail).mockResolvedValue({ ...detail, leadIdentity: { source, id } });
     const permissions = [{ code: "lead.profile.read", effect: "allow", source: permissionSource }];
     render(<FormalizationClientDrawer item={order} open onClose={() => {}} effectivePermissions={permissions} />);
-    expect(await screen.findByRole("link", { name: "Ver perfil del cliente" })).toHaveAttribute("href", `/perfil?source=${source}&id=${id}`);
+    expect(await screen.findByRole("link", { name: "Ver perfil del cliente" })).toHaveAttribute("href", `/home/formalization/perfil?source=${source}&id=${id}`);
 });
 
-it("reserva el historial y los datos comerciales para la página de perfil, fuera de la orden", async () => {
+it("muestra los grupos del cliente sin montar datos de la orden ni expediente", async () => {
     const entry = { id: "legacy:1", source: "legacy", action: "Seguimiento", detail: "Nota histórica", reason: { code: "legacy:58", name: "Cierre Firmado" }, actorName: null, actorCoverage: "current_directory", occurredAt: null, sourceDate: "2026-10-01 10:00:00", recordedAt: null, evidence: "legacy_observation", fromStatus: null, toStatus: null };
     const groups = [...detail.groups, { title: "Información comercial", fields: [{ label: "Proyecto", value: "Proyecto exclusivo del perfil" }] }, { title: "Captación y seguimiento", fields: [{ label: "Campaña", value: "Campaña exclusiva del perfil" }] }];
-    vi.mocked(getOrderClientDetail)
-        .mockResolvedValueOnce({ ...detail, groups, history: { items: [entry], hasMore: true, nextCursor: "cursor" } })
-        .mockResolvedValueOnce({ ...detail, groups, history: { items: [entry, { ...entry, id: "native:2", source: "native", detail: "Cambio nuevo", actorName: "Ana", actorCoverage: "at_event" }], hasMore: false, nextCursor: null } });
-    render(<FormalizationClientDrawer item={order} open onClose={() => {}} />);
-    await screen.findByText("Nota histórica");
-    expect(screen.getByText("Cierre Firmado")).toBeInTheDocument();
-    expect(screen.getByText("Responsable no registrado")).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Cargar más registros" }));
-    await screen.findByText("Cambio nuevo");
-    expect(screen.getAllByText("Nota histórica")).toHaveLength(1);
-    expect(getOrderClientDetail).toHaveBeenLastCalledWith({ source: "legacy", id: "legacy:208" }, "cursor");
+    vi.mocked(getOrderClientDetail).mockResolvedValue({ ...detail, groups, leadIdentity: { source: "legacy", id: "12" }, history: { items: [entry], hasMore: true, nextCursor: "cursor" } });
+    render(<FormalizationClientDrawer item={order} open onClose={() => {}} effectivePermissions={[{ code: "lead.profile.read", effect: "allow" }]} />);
+    await screen.findByText("cliente@example.com");
+    expect(screen.getByRole("link", { name: "Ver perfil del cliente" })).toHaveAttribute("href", "/home/formalization/perfil?source=legacy&id=12");
+    expect(screen.getByText("Información comercial")).toBeInTheDocument();
+    expect(screen.getByText("Proyecto exclusivo del perfil")).toBeInTheDocument();
+    expect(screen.getByText("Captación y seguimiento")).toBeInTheDocument();
+    expect(screen.getByText("Campaña exclusiva del perfil")).toBeInTheDocument();
+    expect(screen.queryByText("Nota histórica")).not.toBeInTheDocument();
+    expect(screen.queryByText("Bitácora del cliente")).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Cargar más registros" })).not.toBeInTheDocument();
+    expect(screen.queryByText("Detalle BD dentro del cliente")).not.toBeInTheDocument();
+    expect(screen.queryByText(/Datos de la orden/)).not.toBeInTheDocument();
+    expect(screen.queryByText("Ver expediente")).not.toBeInTheDocument();
+    expect(getOrderClientDetail).toHaveBeenCalledOnce();
+});
+
+it("navega al perfil dentro de la aplicación sin recargar el documento", async () => {
+    vi.mocked(getOrderClientDetail).mockResolvedValue({ ...detail, leadIdentity: { source: "legacy", id: "20519" } });
+    const onNavigate = vi.fn();
+    render(<FormalizationClientDrawer item={order} open onClose={() => {}} onNavigate={onNavigate} effectivePermissions={[{ code: "lead.profile.read", effect: "allow" }]} />);
+    const link = await screen.findByRole("link", { name: "Ver perfil del cliente" });
+    expect(fireEvent.click(link, { button: 0 })).toBe(false);
+    expect(onNavigate).toHaveBeenCalledExactlyOnceWith("/home/formalization/perfil?source=legacy&id=20519");
 });

@@ -5,7 +5,7 @@ import { ContractOrdersService } from "../../src/modules/crm/sales/sales-orders/
 const row = (source: "native" | "legacy", sortId: string) => ({ source, sortId, id: source === "native" ? "01ARZ3NDEKTSV4RRFFQ69G5FAV" : sortId, businessId: "ORDER", state: "contract_pending_send" as const, sequence: 0 });
 function setup() {
     const tx = { isTransaction: true };
-    const identity = { getCurrentUser: vi.fn().mockResolvedValue({ roles: [{ code: "formalizacion", status: "active" }] }) };
+    const identity = { getCurrentUser: vi.fn().mockResolvedValue({ roles: [{ code: "formalizacion", status: "active" }], permissions: [{ code: "formalizacion.home.contracts.read", effect: "allow" }] }) };
     const snapshot = { readSnapshot: vi.fn().mockImplementation((read: (transaction: object) => Promise<unknown>) => read(tx)) };
     const repository = { page: vi.fn().mockResolvedValue([row("native", "42")]) };
     const legacy = { enabled: () => true, orders: vi.fn().mockResolvedValue([row("legacy", "901"), row("legacy", "902")]) };
@@ -33,9 +33,9 @@ describe("contract orders bounded native-first pages", () => {
         expect(await f.service.list(undefined, { queue: "send", limit: 1 })).toMatchObject({ nextCursor: "native:42" });
         expect(f.legacy.orders).not.toHaveBeenCalled();
     });
-    it("rejects no-role users before any page lookup", async () => {
+    it("rejects users without the queue grant before any page lookup", async () => {
         const f = setup();
-        f.identity.getCurrentUser.mockResolvedValue({ roles: [] });
+        f.identity.getCurrentUser.mockResolvedValue({ roles: [], permissions: [] });
         await expect(f.service.list(undefined, { queue: "send", limit: 2 })).rejects.toMatchObject({ status: 403 });
         expect(f.repository.page).not.toHaveBeenCalled();
         expect(f.legacy.orders).not.toHaveBeenCalled();

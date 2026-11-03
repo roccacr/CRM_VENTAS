@@ -1,5 +1,14 @@
 # 23 - Alcance Futuro Vertical Leads
 
+## Lectura de perfil autorizada — 2026-11-03
+
+La lectura federada `GET /leads/profile` ya está registrada y exige
+`lead.profile.read` efectivo con deny prevaleciente; su contrato está en
+[77](77-Perfil-Completo-Lead.md). No importa registros ni habilita el CRUD de
+Leads futuro descrito aquí. Resuelve relaciones explícitas, conserva diferencias
+por campo y pagina historia/órdenes; un reporte agregado no concede este permiso.
+Los cortes anteriores sin endpoints corresponden al alcance de su fecha.
+
 Revision documental 2026-10-22: diseno comercial futuro y evidencia historica; tablas, rutas y reglas propuestas no acreditan runtime operativo. Ver [36 - Estado vigente y registro](36-Registro-Entrega-Administracion.md) para implementacion y limites actuales. Identidad/Administracion, consulta de expedientes y contador de aprobaciones tienen contratos propios; no habilitan Leads ni mutaciones HTTP de ordenes.
 
 ## Veredicto

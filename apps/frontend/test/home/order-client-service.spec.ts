@@ -13,6 +13,8 @@ it.each(["native", "legacy"] as const)("projects contact and lead fields from th
     const data = await getOrderClientDetail({ source, id: "order" });
     expect(data.groups.flatMap((group) => group.fields)).toContainEqual({ label: "Clasificación de seguimiento", value: "Cierre Firmado" });
     expect(data.name).toBe("Cliente real");
+    expect(data.phone).toBe("88888888");
+    expect(data.countryCode).toBeNull();
     const fields = data.groups.flatMap((group) => group.fields);
     expect(fields).toContainEqual({ label: "Estado del lead", value: "Activo" });
     expect(data.groups.map((group) => group.title)).toEqual(["Contacto", "Información comercial", "Captación y seguimiento"]);
@@ -20,6 +22,16 @@ it.each(["native", "legacy"] as const)("projects contact and lead fields from th
     expect(data.groups[0]?.fields.map((field) => field.label)).toEqual(["Nombre completo", "Correo", "Teléfono"]);
     expect(fields).toContainEqual({ label: "Correo", value: "real@example.com" });
     expect(fields).not.toContainEqual(expect.objectContaining({ value: "Cliente de ejemplo" }));
+});
+it.each([
+    { source: "native" as const, contactFields: { country_code_contact: "US" }, leadFields: { codigo_lead: "506" }, expected: "US" },
+    { source: "legacy" as const, contactFields: { country_code_contact: "US" }, leadFields: { codigo_lead: "506" }, expected: "506" },
+    { source: "legacy" as const, contactFields: null, leadFields: { codigo_lead: 0 }, expected: null },
+])("keeps the raw contact phone and authoritative country from $source", async ({ source, contactFields, leadFields, expected }) => {
+    vi.mocked(getDatabaseOrder).mockResolvedValue({ schemaVersion: 1, observedAt: "2026-11-03T00:00:00Z", source, order: {}, contact: { name: "Cliente", phone: "+1 (212) 555-0123", sourceFields: contactFields }, lead: { sourceFields: leadFields }, unitFile: null, references: [], warnings: [] });
+    const data = await getOrderClientDetail({ source, id: "order" });
+    expect(data.phone).toBe("+1 (212) 555-0123");
+    expect(data.countryCode).toBe(expected);
 });
 it("propagates failures instead of using an invented client", async () => {
     vi.mocked(getDatabaseOrder).mockRejectedValue(new Error("Denied"));

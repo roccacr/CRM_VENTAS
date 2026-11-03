@@ -13,14 +13,15 @@ function expectSourcePredicates(queries: CompiledQuery[]) {
     for (const [index, prefix] of ["", "NOT shadowed AND "].entries()) {
         const query = queries[index]?.sql ?? "";
         expect(query).toContain(index === 0 ? "o.contract_signed_sales_order='yes'" : "o.contrado_frima_ov=1");
+        const completionPredicates: Record<string, string> = { pending_transfer: " AND installments_paid=1 AND unit_transferred=0 AND unit_delivered=0", transfer_signed: " AND installments_paid=1 AND unit_transferred=1 AND keys_delivered=0 AND unit_delivered=0" };
         for (const [stage, alias] of [
             ["bank_management", "banking"],
             ["pending_balance", "balance"],
             ["pending_transfer", "transferPending"],
             ["transfer_signed", "transferSigned"],
         ] as const)
-            expect(query).toContain(`SUM(${prefix}contract_signed AND stage='${stage}') AS ${alias}`);
-        expect(query).toContain(`SUM(${prefix}contract_signed AND completed_this_year) AS closedThisYear`);
+            expect(query).toContain(`SUM(${prefix}contract_signed AND stage='${stage}'${completionPredicates[stage] ?? ""}) AS ${alias}`);
+        expect(query).toContain(`SUM(${prefix}contract_signed AND completed_this_year AND unit_delivered=1) AS closedThisYear`);
         const orderColumn = index === 0 ? "sales_order_id_sales_order_state_event=o.id_sales_order" : "legacy_order_id_sales_order_state_event=o.id_ov";
         expect(query).toContain(`closed_event.${orderColumn}`);
         expect(query).toContain("closed_event.to_state_code_sales_order_state_event='closed'");
@@ -42,7 +43,7 @@ describe("Home aggregate SQL", () => {
             const connection = await DummyDriver.prototype.acquireConnection.call(driver);
             connection.executeQuery = (query) => {
                 queries.push(query);
-                return Promise.resolve({ rows: [{ toSend: null, pendingSignature: null, banking: null, balance: null, transferPending: null, transferSigned: null, closedThisYear: null, duplicatesExcluded: null }] as never[] });
+                return Promise.resolve({ rows: [{ toSend: null, pendingSignature: null, banking: null, bankingInProgress: 0, balance: null, transferPending: null, transferSigned: null, closedThisYear: null, duplicatesExcluded: null }] as never[] });
             };
             return connection;
         };
@@ -64,7 +65,7 @@ describe("Home aggregate SQL", () => {
                 expect(query.sql).toContain("MAX_EXECUTION_TIME(1500)");
             }
             expect(queries[0]?.sql).toContain("o.deleted_at_sales_order IS NULL");
-            expect(queries[0]?.sql).toContain("'sales_management','developer','formalization'");
+            expect(queries[0]?.sql).toContain("a.type_code_sales_order_approval='formalization'");
             expectSourcePredicates(queries);
             expect(queries[1]?.sql).toContain("`crmdatabase-api`.`ordenventa`");
             expect(queries[1]?.sql).toContain("EXISTS(SELECT 1 FROM crm_sales_order n WHERE n.id_old_produccion_sales_order=o.id_ov)");
@@ -75,7 +76,7 @@ describe("Home aggregate SQL", () => {
         }
     });
     it("normalizes empty aggregates and rejects unsafe numeric results", () => {
-        expect(stageCountsFromRow({ toSend: null, pendingSignature: null, banking: null, balance: null, transferPending: null, transferSigned: null, closedThisYear: null })).toEqual({ contracts: { toSend: 0, pendingSignature: 0 }, banking: 0, balance: 0, transferPending: 0, transferSigned: 0, closedThisYear: 0 });
+        expect(stageCountsFromRow({ toSend: null, pendingSignature: null, banking: null, bankingInProgress: 0, balance: null, transferPending: null, transferSigned: null, closedThisYear: null })).toEqual({ contracts: { toSend: 0, pendingSignature: 0 }, banking: 0, bankingInProgress: 0, balance: 0, transferPending: 0, transferSigned: 0, closedThisYear: 0 });
         expect(() => stageCountsFromRow(undefined)).toThrow();
         expect(() => stageCountsFromRow({} as never)).toThrow();
         expect(() => aggregateNumber(undefined as never)).toThrow();

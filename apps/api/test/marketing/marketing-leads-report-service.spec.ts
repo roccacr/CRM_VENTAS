@@ -64,7 +64,7 @@ describe("capture report authorization and source behavior", () => {
         expect(f.order).toEqual(["native", "legacy"]);
         expect(f.snapshot.readSnapshot).toHaveBeenCalledOnce();
         expect(response.period).toBe("month");
-        expect(Object.keys(response)).toEqual(["schemaVersion", "observedAt", "today", "timeZone", "period", "range", "coverage", "rows", "sellers", "projects", "campaigns", "ads", "sources", "quality"]);
+        expect(Object.keys(response)).toEqual(["schemaVersion", "observedAt", "today", "timeZone", "period", "qualification", "range", "coverage", "rows", "sellers", "projects", "campaigns", "ads", "sources", "quality"]);
     });
     it("resolves area scope and never reads disabled legacy", async () => {
         const f = fixture(["own_area_and_children"], false, false);

@@ -23,4 +23,10 @@ export const persistedOrderEvent = persistedEnvelope
     .refine((value) => value.snapshot.data.id === value.event.netsuiteId)
     .refine((value) => validWindow(value.event), { message: "Ventana de lectura invalida." })
     .refine((value) => value.snapshot.data.fields.crm_sync_projection !== 1 || value.event.snapshotReadStartedAt !== undefined, { message: "La proyeccion ampliada requiere ventana de lectura verificada." });
-export type PersistedOrderEvent = z.infer<typeof persistedOrderEvent>;
+/** Production keeps all v2 ordering/window checks and binds its own account. */
+export const productionOrderEvent = persistedEnvelope
+    .extend({ source: z.strictObject({ system: z.literal("netsuite"), accountId: z.literal("4552704"), environment: z.literal("production") }) })
+    .refine((value) => value.snapshot.data.id === value.event.netsuiteId)
+    .refine((value) => validWindow(value.event), { message: "Ventana de lectura invalida." })
+    .refine((value) => value.snapshot.data.fields.crm_sync_projection !== 1 || value.event.snapshotReadStartedAt !== undefined, { message: "La proyeccion ampliada requiere ventana de lectura verificada." });
+export type PersistedOrderEvent = z.infer<typeof persistedOrderEvent> | z.infer<typeof productionOrderEvent>;

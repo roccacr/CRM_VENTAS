@@ -6,7 +6,7 @@ const row = { id: publicId, source: "native", number: "OV-1", nativeCode: "OV-1"
 function setup(code = "formalizacion.orders.read") {
     const profile = { roles: [{ code: "formalizacion", status: "active" }], permissions: [{ code, effect: "allow", scope: "self" }] };
     const native = { findRecordAuthority: vi.fn(), readRecord: vi.fn().mockResolvedValue(row), read: vi.fn() };
-    const legacy = { enabled: () => true, readRecord: vi.fn().mockResolvedValue({ ...row, id: "legacy:208", source: "legacy" }), read: vi.fn() };
+    const legacy = { enabled: () => true, projection: vi.fn(), readRecord: vi.fn().mockResolvedValue({ ...row, id: "legacy:208", source: "legacy" }), read: vi.fn() };
     const authority = { find: vi.fn().mockResolvedValue({ id: "1", publicId, active: true }) };
     const snapshot = { readSnapshot: vi.fn(async (run: (tx: object) => Promise<unknown>) => run({})) };
     native.findRecordAuthority = authority.find;

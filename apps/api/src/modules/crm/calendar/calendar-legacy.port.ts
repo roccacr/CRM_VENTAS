@@ -11,6 +11,8 @@ export interface CalendarReadScope {
     excludedInviteModules?: readonly string[];
     start: string;
     end: string;
+    /** Native IDs matched to the current user's Outlook interval; the usual ACL still applies. */
+    externalEventIds?: readonly string[];
 }
 export interface CalendarLegacyReader {
     enabled(): boolean;

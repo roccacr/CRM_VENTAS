@@ -13,9 +13,12 @@ import { type FormalizationExample, isUnassigned } from "./formalization-preview
 import { FORMALIZATION_EXAMPLES } from "./formalization-preview.model";
 import { useFormalizationPreview } from "./formalization-preview-session";
 import { applyScenarioAction, createScenario, type FormalizationScenario, getScenarioFlow, SCENARIO_ACTION_LABELS, type ScenarioAction, type ScenarioValues } from "./formalization-scenario.model";
+import { FormalizationFiniquito } from "./FormalizationFiniquito";
+import { NetsuiteSynchronizationActions } from "./FormalizationNetsuiteSync";
 import { FormalizationOrderActions } from "./FormalizationOrderActions";
-import { FormalizationOrderDetails } from "./FormalizationOrderDetails";
+import { FormalizationOrderAddendum } from "./FormalizationOrderAddendum";
 import { FormalizationPreviewBoundary } from "./FormalizationPreviewSession";
+import { FormalizationPurchaseFunds } from "./FormalizationPurchaseFunds";
 import { FormalizationRecordLoading } from "./FormalizationRecordLoading";
 import { FormalizationRecordProgress } from "./FormalizationRecordProgress";
 import { FormalizationRecordSummary } from "./FormalizationRecordSummary";
@@ -368,9 +371,11 @@ export function FormalizationOrderRecord({
     onBack,
     onRefresh,
     onStageSaved,
+    onAddendumChanged,
     primary = null,
     netsuiteStatus = "success",
     netsuiteErrorMessage,
+    onNavigate,
     stagePermissions = [],
     canUpdateStage = false,
 }: {
@@ -378,17 +383,47 @@ export function FormalizationOrderRecord({
     readonly onBack: () => void;
     readonly onRefresh?: () => void;
     readonly onStageSaved?: (item: FollowUpItem) => void;
+    readonly onAddendumChanged?: (() => void | Promise<void>) | undefined;
     readonly primary?: NetsuitePrimary | null;
     readonly netsuiteStatus?: "idle" | "loading" | "success" | "error";
     readonly netsuiteErrorMessage?: string | undefined;
+    readonly onNavigate?: ((path: string) => void) | undefined;
     readonly stagePermissions?: readonly { code: string; effect: string }[] | undefined;
     readonly canUpdateStage?: boolean;
 }) {
     // A confirmed POST updates only this flag in the exact projection that was visible for this order.
     const [confirmedPrimary, setConfirmedPrimary] = useState<{ primary: NetsuitePrimary | null; order: string } | null>(null);
+    const [addendumRevision, setAddendumRevision] = useState(0);
+    const fundsRevalidation = useStageRevalidation(item, onStageSaved);
+    const handleAddendumChanged = () => {
+        setAddendumRevision((value) => value + 1);
+        return onAddendumChanged?.();
+    };
     const orderIdentity = item.source + ":" + item.id;
     const displayedPrimary = confirmedApprovalPrimary(primary, confirmedPrimary, orderIdentity);
+    const [integrationEnvironment, setIntegrationEnvironment] = useState<{ identity: string; environment: "production" | "sandbox" } | null>(null);
+    const handleEnvironment = useCallback(
+        (environment: "production" | "sandbox") => {
+            setIntegrationEnvironment({ identity: orderIdentity, environment });
+        },
+        [orderIdentity],
+    );
     if (netsuiteStatus === "loading") return <FormalizationRecordLoading complete actions={<RecordRefreshAction onRefresh={onRefresh} loading />} />;
+    // Adendum and purchase funds sit with the contract and the key facts in one compact grid instead of stacking full-width cards.
+    const overview = (
+        <>
+            <FormalizationOrderAddendum item={item} permissions={stagePermissions} refreshVersion={addendumRevision} onChanged={handleAddendumChanged} />
+            <FormalizationPurchaseFunds
+                key={`funds:${item.source}:${item.id}:${String(item.stateVersion)}:${String(item.purchaseFundsOrigin)}`}
+                item={item}
+                allowed={canUpdateStage}
+                onSaved={fundsRevalidation.saved}
+                onRefresh={() => {
+                    onRefresh?.();
+                }}
+            />
+        </>
+    );
     return (
         <section className="formalization-order" aria-labelledby="formalization-record-title">
             <header className="global-home-page-header formalization-page-header">
@@ -407,6 +442,8 @@ export function FormalizationOrderRecord({
                         </a>
                         <span aria-hidden="true">/</span>
                         <span>{item.number}</span>
+                        <span aria-hidden="true">/</span>
+                        <NetsuiteEnvironmentLabel value={integrationEnvironment} identity={orderIdentity} />
                     </nav>
                     <h1
                         id="formalization-record-title"
@@ -418,8 +455,12 @@ export function FormalizationOrderRecord({
                         Orden de venta {item.number}
                     </h1>
                 </div>
-                <RecordRefreshAction onRefresh={onRefresh} />
+                <div className="formalization-order-header-actions">
+                    <NetsuiteSynchronizationActions key={orderIdentity} identity={{ source: item.source, id: item.id }} allowed={canUpdateStage} onEnvironment={handleEnvironment} onSynchronized={onRefresh} />
+                    <RecordRefreshAction onRefresh={onRefresh} />
+                </div>
             </header>
+            <FormalizationFiniquito item={item} allowed={canUpdateStage} />
             <FormalizationRecordProgress state={item.state.code} />
             <RecordStageActions
                 key={item.source + ":" + item.id}
@@ -433,13 +474,15 @@ export function FormalizationOrderRecord({
                     setConfirmedPrimary({ primary, order: orderIdentity });
                 }}
             />
-            <FormalizationOrderDetails item={item} permissions={stagePermissions} />
             {netsuiteStatus === "success" ? (
-                <FormalizationRecordSummary item={item} primary={displayedPrimary} effectivePermissions={stagePermissions} />
+                <FormalizationRecordSummary item={item} primary={displayedPrimary} effectivePermissions={stagePermissions} onNavigate={onNavigate} onAddendumChanged={handleAddendumChanged} overview={overview} />
             ) : (
-                <section className="formalization-card formalization-record-loading" role="status">
-                    {recordLoadMessage(netsuiteStatus, netsuiteErrorMessage)}
-                </section>
+                <>
+                    <div className="record-overview__cards">{overview}</div>
+                    <section className="formalization-card formalization-record-loading" role="status">
+                        {recordLoadMessage(netsuiteStatus, netsuiteErrorMessage)}
+                    </section>
+                </>
             )}
         </section>
     );
@@ -451,7 +494,7 @@ function RecordStageActions({ item, allowed, status, permissions, onRefresh, onS
     return (
         <>
             <FormalizationStageEditor
-                key={`${item.id}:${String(item.stateVersion)}:${item.state.code}`}
+                key={`${item.id}:${String(item.stateVersion)}:${item.state.code}:${String(item.purchaseFundsOrigin)}`}
                 item={item}
                 allowed={allowed}
                 permissions={permissions}
@@ -500,4 +543,9 @@ function confirmedApprovalPrimary(primary: NetsuitePrimary | null, confirmed: { 
 function recordLoadMessage(status: string, message: string | undefined): string {
     if (status === "error") return message ?? "No fue posible cargar los datos de la orden. Pulsa recargar para reintentar.";
     return "Los datos de la orden aún no están disponibles.";
+}
+
+function NetsuiteEnvironmentLabel({ value, identity }: { readonly value: { identity: string; environment: "production" | "sandbox" } | null; readonly identity: string }) {
+    if (value?.identity !== identity) return <span>NetSuite: verificando ambiente…</span>;
+    return <span>{value.environment === "production" ? "NetSuite Producción" : "NetSuite Sandbox"}</span>;
 }

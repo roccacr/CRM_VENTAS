@@ -1,0 +1,50 @@
+.formalization-finiquito {
+    border-color: #d6a1a1;
+}
+.formalization-finiquito .ant-card-head {
+    background: #fff4f2;
+}
+.formalization-finiquito__steps {
+    display: flex;
+    list-style: none;
+    padding: 8px 0 12px;
+    margin: 0;
+}
+.formalization-finiquito__steps li {
+    position: relative;
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    text-align: center;
+    font-size: 12px;
+    padding: 0 4px;
+}
+.formalization-finiquito__steps li:not(:last-child)::after {
+    content: "";
+    position: absolute;
+    top: 14px;
+    left: calc(50% + 14px);
+    width: calc(100% - 28px);
+    height: 2px;
+    background: #d5dce6;
+}
+.formalization-finiquito__steps li > span {
+    width: 28px;
+    height: 28px;
+    border: 1px solid #a6b6cb;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    background: #fff;
+}
+.formalization-finiquito__steps li[data-status="reached"] > span {
+    color: #fff;
+    background: #a93e38;
+    border-color: #a93e38;
+}
+.formalization-finiquito__steps li[aria-current="step"] > span {
+    outline: 3px solid #f5d8d3;
+}

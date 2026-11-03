@@ -124,3 +124,26 @@ describe("IdentityMicrosoftSessionService", () => {
         });
     });
 });
+
+it("keeps calendar access tokens inside the server callback and handles missing consent independently", async () => {
+    const f = createMicrosoftSessionService();
+    f.microsoft.acquireTokenSilent.mockResolvedValueOnce({ interactionRequired: false, accessToken: "private-token", msalCacheSerialized: "renewed" });
+    const result = await f.service.withAccess({ cache: ENCRYPTED_CACHE, homeAccountId: "home", scopes: ["Calendars.ReadWrite"] }, (token) => Promise.resolve({ allowed: token === "private-token" }));
+    expect(result).toEqual({ value: { allowed: true }, cache: ENCRYPTED_CACHE });
+    expect(f.microsoft.acquireTokenSilent).toHaveBeenCalledWith(expect.objectContaining({ scopes: ["Calendars.ReadWrite"] }));
+    f.microsoft.acquireTokenSilent.mockResolvedValueOnce({ interactionRequired: true, reason: "consent" });
+    const callback = vi.fn();
+    await expect(f.service.withAccess({ cache: ENCRYPTED_CACHE, homeAccountId: "home", scopes: ["Calendars.ReadWrite"] }, callback)).resolves.toBeNull();
+    expect(callback).not.toHaveBeenCalled();
+});
+
+it("binds incremental calendar consent to the same corporate account", async () => {
+    const f = createMicrosoftSessionService();
+    const challenge = await f.service.startLogin("owner@example.test");
+    expect(f.microsoft.startLogin).toHaveBeenCalledWith({ calendar: true });
+    f.microsoft.completeCallback.mockResolvedValue({ email: "different@example.test", msalCacheSerialized: "cache" });
+    await expect(f.service.completeCallback({ challengeCookie: challenge.challengeCookie, code: "code", state: "estado" })).rejects.toThrow("misma cuenta");
+    f.microsoft.completeCallback.mockResolvedValue({ email: "OWNER@example.test", msalCacheSerialized: "cache" });
+    await expect(f.service.completeCallback({ challengeCookie: challenge.challengeCookie, code: "code", state: "estado" })).resolves.toMatchObject({ account: { email: "OWNER@example.test" } });
+    expect(f.microsoft.completeCallback).toHaveBeenCalledWith(expect.objectContaining({ calendar: true }));
+});

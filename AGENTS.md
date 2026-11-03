@@ -22,15 +22,17 @@ Project-local skills are installed under `.agents/skills/`. Source revisions, in
 
 ## Scope
 
-Current documentation reconciliation (2026-11-02): [72 — Commit and implementation coverage](apps/api/Arquitectura/72-Reconciliacion-Documental-20261102.md)
-is the current inventory and evidence boundary. It covers reachable CRM commits
+Current documentation reconciliation (2026-11-03): [85 — Working-tree coverage](apps/api/Arquitectura/85-Reconciliacion-Documental-20261103.md) supersedes72 as the current inventory. Read native/legacy mapping, eight-stage Formalization, Graph/calendar and Adendum contracts before historical snapshots. Migration067 provisions real manual-marker grants for Owner, General and Formalization chief; individual denies still win. This documentation task authorizes no runtime, database or deployment actions.
+
+Historical documentation reconciliation (2026-11-02): [72 — Commit and implementation coverage](apps/api/Arquitectura/72-Reconciliacion-Documental-20261102.md)
+is the historical inventory and evidence boundary of that cut. It covers reachable CRM commits
 through `fcbf0c2` plus explicitly identified local changes. Read the canonical
 API/frontend maps and current contracts before older dated snapshots. A commit
 named `docs` may contain implementation; inspect its files rather than its title.
-NetSuite v2 local events now have an explicitly gated durable writer for the ten audited flags; v1 remains receipt-only. Migration058 was applied with explicit approval. See [73](apps/api/Arquitectura/73-Sincronizacion-Estados-Ordenes-NetSuite.md) for verification and pending Sandbox acceptance. Deployment29 is historical evidence, not proof that HEAD/local
+NetSuite v2 has a gated durable writer for the confirmed field matrix, beyond the ten flags; v1 remains receipt-only. Migration058 was applied with explicit approval. See [73](apps/api/Arquitectura/73-Sincronizacion-Estados-Ordenes-NetSuite.md) for verification and pending Sandbox acceptance. Deployment29 is historical evidence, not proof that HEAD/local
 changes are deployed. Documentation never authorizes migrations or external writes.
 
-Current documentation reconciliation (2026-10-29): [66 - Notes delivery](apps/api/Arquitectura/66-Notas-Enterprise-Seguimiento.md) and [67 - QA plan and results](apps/api/Arquitectura/67-Plan-QA-Regresiones-20261029.md), together with the dated implementation history below. [55 - Revision integral](apps/api/Arquitectura/55-Revision-Documental-Integral-20261027.md) remains the historical October 27 audit. Documentation records wiring and evidence; it does not authorize business operations.
+Historical documentation reconciliation (2026-10-29): [66 - Notes delivery](apps/api/Arquitectura/66-Notas-Enterprise-Seguimiento.md) and [67 - QA plan and results](apps/api/Arquitectura/67-Plan-QA-Regresiones-20261029.md), together with the dated implementation history below. [55 - Revision integral](apps/api/Arquitectura/55-Revision-Documental-Integral-20261027.md) remains the historical October 27 audit. Documentation records wiring and evidence; it does not authorize business operations.
 
 Current implementation/documentation history: [49 - Estado actual](apps/api/Arquitectura/49-Estado-Actual-y-Cierre-Documental.md).
 Historical pauses and future blueprints do not override explicit scoped approvals.

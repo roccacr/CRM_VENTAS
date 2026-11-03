@@ -1,5 +1,14 @@
 # 31 - Contrato de Identidad y Permisos P0-S1A
 
+## Permisos personales — corrección vigente 2026-11-03
+
+Un grant operativo efectivo se acepta por rol o por excepción personal, sin exigir además un nombre fijo de rol. Esta corrección sustituye las restricciones históricas de rol de Bancos y Formalización, manteniendo módulos, deny, alcance, recurso y controles de delegación/plantillas protegidas. [Alcance y verificación](Permisos-Excepciones-Personales-20261103.md). Implementación local, sin modificación de asignaciones ni despliegue.
+
+
+## Contrato incremental vigente — 2026-11-03
+
+El baseline inferior se complementa con [41](41-Owner-Herencia-y-Denegaciones.md), [42](42-Jefaturas-Modulos-y-Permisos.md), [77](77-Perfil-Completo-Lead.md) y [84](84-Adendum-Manual-Migracion-066-y-Permisos.md). `lead.profile.read` es global e independiente del módulo operativo; conserva denies. Owner mantiene su base global salvo `formalizacion.orders.addendum.mark_pending`, que requiere grant real de un rol asignado o excepción personal vigente. 067 configura por defecto Owner, Jefe General y Jefe de Formalizaciones; no Formalización. No modifica overrides ni permite que un allow venza un deny. Las afirmaciones históricas de herencia total se interpretan con esta excepción; las pausas de diseño no niegan runtime autorizado posteriormente.
+
 Revision documental 2026-10-22: baseline de identidad y evidencia historica, no inventario exhaustivo del esquema actual ni autorizacion para repetir SQL/seeds. Las migraciones incrementales y el codigo vigente prevalecen para contratos implementados. Ver [36 - Estado vigente y registro](36-Registro-Entrega-Administracion.md); SQL/003 y SQL/004 no se ejecutaron en esta revision.
 
 ## Veredicto

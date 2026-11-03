@@ -16,6 +16,7 @@ import SwapOutlined from "@ant-design/icons/SwapOutlined";
 import TeamOutlined from "@ant-design/icons/TeamOutlined";
 import type { ReactNode } from "react";
 
+import { FormHelp } from "../../../components/forms/FormHelp";
 import type { CatalogBannerData, CatalogBannerIcon } from "./catalog-summary";
 
 const ICONS: Readonly<Record<CatalogBannerIcon, ReactNode>> = {
@@ -35,14 +36,21 @@ const ICONS: Readonly<Record<CatalogBannerIcon, ReactNode>> = {
 };
 
 /** Same card anatomy as the Home pages. A card only reports a figure: filtering is done with the list's own filters. */
-function CatalogBanner({ title, value, caption, icon, tone, metrics }: Omit<CatalogBannerData, "id">) {
+function CatalogBanner({ title, value, caption, icon, tone, metrics, helpText }: Omit<CatalogBannerData, "id">) {
     return (
         <article className={`catalog-banner catalog-banner--${tone}`}>
             <span className="catalog-banner__icon" aria-hidden="true">
                 {ICONS[icon]}
             </span>
             <div className="catalog-banner__content">
-                <h2 className="catalog-banner__title">{title}</h2>
+                {helpText ? (
+                    <div className="catalog-banner__heading">
+                        <h2 className="catalog-banner__title">{title}</h2>
+                        <FormHelp label={`Condiciones de ${title}`} text={helpText} />
+                    </div>
+                ) : (
+                    <h2 className="catalog-banner__title">{title}</h2>
+                )}
                 {metrics ? (
                     <div className="catalog-banner__metrics">
                         {metrics.map((metric) => (

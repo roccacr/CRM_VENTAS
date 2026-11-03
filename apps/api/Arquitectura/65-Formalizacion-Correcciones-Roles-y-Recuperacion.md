@@ -1,5 +1,16 @@
 # Formalización: correcciones de roles y recuperación
 
+## Ampliaciones posteriores de capacidades — 2026-11-03
+
+La tabla049 inferior conserva su alcance original. Fondos y finalización
+ya tienen reglas implementadas según [78](78-Formalizacion-Origen-Fondos-y-Gestion-Bancaria.md);
+calendario tiene contrato operativo condicionado en
+[64](64-Calendario-Global-API-y-Contexto.md). Adéndum agrega lectura y gestión
+independientes según [84](84-Adendum-Manual-Migracion-066-y-Permisos.md): después067,
+el marcado manual se concede por defecto a Owner, Jefe General y Jefe de
+Formalizaciones mediante grants reales; no al rol operativo Formalización.
+El deny conserva prioridad y ver un banner no concede lectura del marcador.
+
 Regla confirmada por el propietario el 2026-10-28: **Formalización y Jefe de Formalizaciones gestionan todas las órdenes del módulo cuando tienen el permiso de la acción**, independientemente del vendedor del lead. Esta autorización sustituye las restricciones de escritura por vendedor de los cortes anteriores. No concede permisos por el nombre del rol ni omite denegaciones individuales, sesión, disponibilidad del registro, aprobaciones previas, firma, versiones o auditoría.
 
 ## Lectura, gestión y supervisión

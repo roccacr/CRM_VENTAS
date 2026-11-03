@@ -9,7 +9,6 @@ import { captureKpis, chartGroups, filterCaptureRows, generalRows, sellerSection
 import { MarketingLeadCapturePage } from "../../src/modules/marketing/MarketingLeadCapturePage";
 import { installBrowserApiDoubles } from "../support/browser";
 import { CAPTURE_DEMO_ROWS, captureCatalogs, captureResponse, captureUser, defaultCaptureFilters } from "./fixtures/capture-report";
-import { selectMarketing } from "./marketing-select.helpers";
 
 const exportDoubles = vi.hoisted(() => ({ downloadBlob: vi.fn(), printReport: vi.fn(), renderNodeToPng: vi.fn() }));
 vi.mock("../../src/modules/marketing/capture-export", async (original) => ({ ...(await original<Record<string, unknown>>()), ...exportDoubles }));
@@ -111,12 +110,12 @@ describe("lead-capture report screen", () => {
         render(<MarketingLeadCapturePage currentUser={captureUser} />);
         await screen.findByRole("button", { name: "Ver desglose en tabla" });
         expect(screen.getByRole("heading", { level: 1, name: "Captación de leads" })).toBeInTheDocument();
-        expect(screen.getByText("Todos los vendedores")).toBeInTheDocument();
+        expect(screen.queryByRole("combobox", { name: "Vendedor" })).not.toBeInTheDocument();
         expect(screen.getByRole("heading", { name: /Leads por proyecto/ })).toBeInTheDocument();
         expect(screen.queryByRole("table", { name: "Leads por proyecto" })).not.toBeInTheDocument();
         fireEvent.click(screen.getByRole("button", { name: "Ver desglose en tabla" }));
         expect(await screen.findByRole("table", { name: "Leads por proyecto" })).toBeInTheDocument();
-        expect(screen.getByRole("figure", { name: /Leads por proyecto y vendedor/ })).toBeInTheDocument();
+        expect(screen.getByRole("figure", { name: /Leads por proyecto/ })).toBeInTheDocument();
     });
 
     it("narrows the chart to the projects clicked in the table, and clears them", async () => {
@@ -124,7 +123,7 @@ describe("lead-capture report screen", () => {
         render(<MarketingLeadCapturePage currentUser={captureUser} />);
         fireEvent.click(await screen.findByRole("button", { name: "Ver desglose en tabla" }));
         const summary = await screen.findByRole("table", { name: "Leads por proyecto" });
-        const chart = screen.getByRole("figure", { name: /Leads por proyecto y vendedor/ });
+        const chart = screen.getByRole("figure", { name: /Leads por proyecto/ });
         const groups = () => chart.querySelectorAll(".capture-columns-chart__group").length;
         const all = groups();
         expect(all).toBeGreaterThan(1);
@@ -153,16 +152,15 @@ describe("lead-capture report screen", () => {
         expect(screen.getByRole("table", { name: "Leads por proyecto" })).toBeInTheDocument();
     });
 
-    it("narrows to chosen sellers and to a shorter period", async () => {
+    it("retains all sellers when changing to a shorter period", async () => {
         installBrowserApiDoubles();
         render(<MarketingLeadCapturePage currentUser={captureUser} />);
         await screen.findByRole("button", { name: "Ver desglose en tabla" });
-        await selectMarketing("Vendedor", "Ana Solís");
-        const legend = document.querySelector(".capture-columns-chart__legend") as HTMLElement;
-        expect(within(legend).getAllByRole("img", { name: "Foto de Ana Solís", hidden: true }).length).toBeGreaterThan(0);
-        expect(within(legend).queryByRole("img", { name: "Foto de Carlos Vega", hidden: true })).not.toBeInTheDocument();
-        fireEvent.click(screen.getByRole("button", { name: "Hoy" }));
-        expect(screen.getByRole("button", { name: "Hoy" })).toHaveAttribute("aria-pressed", "true");
+        expect(screen.queryByRole("combobox", { name: "Vendedor" })).not.toBeInTheDocument();
+        expect(document.querySelector('img[src*="/vendedores/"]')).toBeNull();
+        fireEvent.change(screen.getByRole("combobox", { name: "Periodo" }), { target: { value: "day" } });
+        fireEvent.click(screen.getByRole("button", { name: "Aplicar filtro" }));
+        expect(screen.getByRole("combobox", { name: "Periodo" })).toHaveValue("day");
     });
 
     it("shows no money anywhere", async () => {
@@ -172,15 +170,13 @@ describe("lead-capture report screen", () => {
         expect(document.body.textContent).not.toMatch(/USD|\$|Valor|Inversión|Costo/);
     });
 
-    it("shows each seller in the chart legend with their photo, looked up by public id", async () => {
+    it("shows project names in the legend without seller photos", async () => {
         installBrowserApiDoubles();
         render(<MarketingLeadCapturePage currentUser={captureUser} />);
         await screen.findByRole("button", { name: "Ver desglose en tabla" });
         const legend = document.querySelector(".capture-columns-chart__legend") as HTMLElement;
-        for (const name of ["Ana Solís", "Carlos Vega", "Diana Mora"]) {
-            const photos = within(legend).getAllByRole("img", { name: `Foto de ${name}`, hidden: true });
-            expect(photos.every((photo) => (photo.getAttribute("src") ?? "").includes("/vendedores/"))).toBe(true);
-        }
+        expect(within(legend).getByText("Proyecto Horizonte")).toBeInTheDocument();
+        expect(legend.querySelector("img")).toBeNull();
     });
 
     it("switches what is counted without touching the depth, and shows the appointment columns", async () => {
@@ -212,7 +208,6 @@ describe("lead-capture report screen", () => {
         fireEvent.click(within(tables[0] as HTMLElement).getAllByRole("button", { pressed: false })[0] as HTMLElement);
         expect(within(screen.getByRole("table", { name: "Leads por campaña" })).getAllByRole("row").length).toBeLessThan(before);
     });
-
 
     it("offers the report as an image or a PDF from one Descargar menu", async () => {
         installBrowserApiDoubles();
@@ -265,4 +260,132 @@ describe("quarter and year periods", () => {
         expect(periodRange("month", report)).toEqual({ from: "2020-02-03", to: "2026-11-14" });
         expect(periodRange("year", { today: "2026-11-14", range: { start: "2026-03-10", end: "2026-11-14" } }).from).toBe("2026-03-10");
     });
+});
+
+it("groups the report by the selected dimension without exposing seller names or photos", async () => {
+    installBrowserApiDoubles();
+    render(<MarketingLeadCapturePage currentUser={captureUser} />);
+    await screen.findByRole("button", { name: "Ver desglose en tabla" });
+    for (const name of ["Ana Solís", "Carlos Vega", "Diana Mora"]) expect(screen.queryByText(name)).not.toBeInTheDocument();
+    expect(document.querySelector('img[src*="/vendedores/"]')).toBeNull();
+    expect(screen.getByRole("figure", { name: "Leads por proyecto · por mes" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Proyecto › Campaña" }));
+    expect(screen.getByRole("figure", { name: "Leads por proyecto y campaña · por mes" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Proyecto › Campaña › Anuncio" }));
+    expect(screen.getByRole("figure", { name: "Leads por proyecto, campaña y anuncio · por mes" })).toBeInTheDocument();
+});
+
+it("offers loss reasons under Qué medir with chart, table and project-scoped totals", async () => {
+    installBrowserApiDoubles();
+    const report = captureResponse();
+    const rows = report.rows.map((row) => ({ ...row, lossReasons: row.lost > 0 ? [{ code: "budget", name: "Presupuesto", count: row.lost }] : [] }));
+    api.request.mockResolvedValue({ ...report, rows });
+    render(<MarketingLeadCapturePage currentUser={captureUser} />);
+    await screen.findByRole("button", { name: "Ver desglose en tabla" });
+    fireEvent.click(within(screen.getByRole("group", { name: "Qué medir" })).getByRole("button", { name: "Motivos de pérdida" }));
+    const chart = screen.getByRole("figure", { name: "Motivos de pérdida · por mes" });
+    expect(within(chart).getAllByText("Presupuesto").length).toBeGreaterThan(0);
+    expect(chart.querySelectorAll(".capture-columns-chart__group")).toHaveLength(1);
+    expect(chart.querySelector(".capture-columns-chart__stack-wrap > strong")).toHaveTextContent(String(rows.reduce((sum, row) => sum + row.lost, 0)));
+    fireEvent.click(screen.getByRole("button", { name: "Ver desglose en tabla" }));
+    expect(await screen.findByRole("table", { name: "Leads por motivo de pérdida" })).toBeInTheDocument();
+    const projects = screen.getByRole("table", { name: "Motivos de pérdida por proyecto" });
+    const project = rows.find((row) => row.lost > 0)?.projectId;
+    const name = report.projects.find((p) => p.id === project)?.name ?? "";
+    fireEvent.click(within(projects).getByRole("button", { name }));
+    expect(chart.querySelector(".capture-columns-chart__stack-wrap > strong")).toHaveTextContent(String(rows.filter((row) => row.projectId === project).reduce((sum, row) => sum + row.lost, 0)));
+});
+
+it("applies custom dates only on submit and compares the same projects by month", async () => {
+    installBrowserApiDoubles();
+    const fixture = captureResponse();
+    api.request.mockImplementation((url: string) => Promise.resolve(url.includes("period=all") ? { ...fixture, period: "all", range: { start: "2026-09-01", end: fixture.today }, rows: CAPTURE_DEMO_ROWS, sources: { ...fixture.sources, legacy: CAPTURE_DEMO_ROWS.reduce((sum, row) => sum + row.leads, 0) } } : fixture));
+    render(<MarketingLeadCapturePage currentUser={captureUser} />);
+    await screen.findByRole("button", { name: "Ver desglose en tabla" });
+    const initial = document.querySelector(".capture-kpis__value")?.textContent;
+    fireEvent.change(screen.getByRole("combobox", { name: "Periodo" }), { target: { value: "custom" } });
+    fireEvent.change(screen.getByLabelText("Desde"), { target: { value: "2026-01-01" } });
+    fireEvent.change(screen.getByLabelText("Hasta"), { target: { value: "2026-10-26" } });
+    expect(document.querySelector(".capture-kpis__value")?.textContent).toBe(initial);
+    expect(api.request).toHaveBeenCalledTimes(1);
+    fireEvent.click(screen.getByRole("button", { name: "Aplicar filtro" }));
+    await screen.findByRole("button", { name: "Ver desglose en tabla" });
+    expect(api.request).toHaveBeenCalledWith("/marketing/leads/report?period=all");
+    const chart = screen.getByRole("figure", { name: "Leads por proyecto · por mes" });
+    expect(chart.querySelectorAll(".capture-columns-chart__group")).toHaveLength(30);
+    expect(chart).toHaveTextContent("sept");
+    expect(chart).toHaveTextContent("oct");
+    fireEvent.click(screen.getByRole("button", { name: "Ver desglose en tabla" }));
+    expect(await screen.findByRole("table", { name: "Comparación por mes" })).toBeInTheDocument();
+});
+
+it("rejects reversed custom dates without changing the applied results", async () => {
+    installBrowserApiDoubles();
+    render(<MarketingLeadCapturePage currentUser={captureUser} />);
+    await screen.findByRole("button", { name: "Ver desglose en tabla" });
+    fireEvent.change(screen.getByRole("combobox", { name: "Periodo" }), { target: { value: "custom" } });
+    fireEvent.change(screen.getByLabelText("Desde"), { target: { value: "2026-10-20" } });
+    fireEvent.change(screen.getByLabelText("Hasta"), { target: { value: "2026-10-01" } });
+    fireEvent.click(screen.getByRole("button", { name: "Aplicar filtro" }));
+    expect(screen.getByRole("alert")).toHaveTextContent("Desde debe ser anterior");
+    expect(api.request).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole("figure", { name: "Leads por proyecto · por mes" })).toBeInTheDocument();
+});
+
+it("uses one compact period selector without an independent chart grouping", async () => {
+    installBrowserApiDoubles();
+    render(<MarketingLeadCapturePage currentUser={captureUser} />);
+    await screen.findByRole("button", { name: "Ver desglose en tabla" });
+    expect(screen.getByRole("combobox", { name: "Periodo" })).toHaveValue("month");
+    expect(screen.getByRole("combobox", { name: "Meses" })).toBeInTheDocument();
+    expect(screen.queryByRole("combobox", { name: "Agrupar gráfico" })).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Desde")).not.toBeInTheDocument();
+    fireEvent.change(screen.getByRole("combobox", { name: "Periodo" }), { target: { value: "custom" } });
+    expect(screen.getByLabelText("Desde")).toBeInTheDocument();
+    expect(screen.getByLabelText("Hasta")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Aplicar filtro" })).toBeInTheDocument();
+});
+
+it("selects named months and compares every project using the historical report", async () => {
+    installBrowserApiDoubles();
+    const fixture = captureResponse();
+    api.request.mockImplementation((url: string) => Promise.resolve(url.includes("period=all") ? { ...fixture, period: "all", range: fixture.coverage, rows: CAPTURE_DEMO_ROWS, sources: { ...fixture.sources, legacy: sum(CAPTURE_DEMO_ROWS) } } : { ...fixture, period: url.split("period=")[1] }));
+    render(<MarketingLeadCapturePage currentUser={captureUser} />);
+    await screen.findByRole("button", { name: "Ver desglose en tabla" });
+    fireEvent.mouseDown(screen.getByRole("combobox", { name: "Meses" }));
+    const initialTotal = document.querySelector(".capture-kpis__value")?.textContent;
+    fireEvent.click(await screen.findByText("septiembre de 2026", { selector: ".ant-select-item-option-content" }));
+    expect(api.request).toHaveBeenCalledTimes(1);
+    expect(document.querySelector(".capture-kpis__value")?.textContent).toBe(initialTotal);
+    expect(screen.getByRole("combobox", { name: "Meses" })).toBeEnabled();
+    fireEvent.click(screen.getByRole("button", { name: "Aplicar filtro" }));
+    await screen.findByRole("button", { name: "Ver desglose en tabla" });
+    expect(api.request).toHaveBeenLastCalledWith("/marketing/leads/report?period=all");
+    const chart = screen.getByRole("figure", { name: "Leads por proyecto · por mes" });
+    expect(chart.querySelectorAll(".capture-columns-chart__group")).toHaveLength(6);
+    fireEvent.click(screen.getByRole("button", { name: "Ver desglose en tabla" }));
+    const matrix = await screen.findByRole("table", { name: "Comparación por mes" });
+    expect(within(matrix).queryByRole("columnheader", { name: "Período" })).not.toBeInTheDocument();
+    expect(within(matrix).getAllByRole("columnheader")).toHaveLength(4);
+    expect(within(matrix).getAllByRole("row")).toHaveLength(5);
+    fireEvent.click(screen.getByRole("button", { name: "Close" }));
+    expect(chart).toHaveTextContent("sept");
+    expect(chart).toHaveTextContent("oct");
+    expect(document.querySelector(".capture-kpis__value")?.textContent.replace(/\s/g, "")).toBe(String(sum(CAPTURE_DEMO_ROWS)));
+    expect(screen.getByText(/2 períodos seleccionados/)).toBeInTheDocument();
+    fireEvent.mouseDown(screen.getByRole("combobox", { name: "Meses" }));
+    fireEvent.click(await screen.findByText("octubre de 2026", { selector: ".ant-select-item-option-content" }));
+    expect(screen.getByRole("figure", { name: "Leads por proyecto · por mes" }).querySelectorAll(".capture-columns-chart__group")).toHaveLength(6);
+    expect(api.request).toHaveBeenCalledTimes(2);
+    fireEvent.click(screen.getByRole("button", { name: "Aplicar filtro" }));
+    expect(screen.getByRole("figure", { name: "Leads por proyecto · por mes" }).querySelectorAll(".capture-columns-chart__group")).toHaveLength(3);
+    expect(api.request).toHaveBeenCalledTimes(2);
+    fireEvent.change(screen.getByRole("combobox", { name: "Periodo" }), { target: { value: "week" } });
+    fireEvent.click(screen.getByRole("button", { name: "Aplicar filtro" }));
+    expect(screen.getByRole("combobox", { name: "Semanas" })).toBeInTheDocument();
+    expect(screen.queryByRole("combobox", { name: "Meses" })).not.toBeInTheDocument();
+    await screen.findByRole("button", { name: "Ver desglose en tabla" });
+    fireEvent.change(screen.getByRole("combobox", { name: "Periodo" }), { target: { value: "year" } });
+    fireEvent.click(screen.getByRole("button", { name: "Aplicar filtro" }));
+    expect(screen.getByRole("combobox", { name: "Años" })).toBeInTheDocument();
 });

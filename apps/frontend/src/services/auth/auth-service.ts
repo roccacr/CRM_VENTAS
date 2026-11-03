@@ -77,9 +77,9 @@ export const loginWithLocalCredentials = async (credentials: LocalLoginCredentia
  * El caller debe navegar a esa URL. Este módulo no arma el enlace ni conserva
  * el resultado.
  */
-export const startMicrosoftLogin = async (): Promise<string> => {
+export const startMicrosoftLogin = async (calendar = false): Promise<string> => {
     const response = parseMicrosoftStartResponse(
-        await apiRequest<unknown>(IDENTITY_MICROSOFT_START_PATH, {
+        await apiRequest<unknown>(calendar ? `${IDENTITY_MICROSOFT_START_PATH}?calendar=true` : IDENTITY_MICROSOFT_START_PATH, {
             method: "POST",
         }),
     );

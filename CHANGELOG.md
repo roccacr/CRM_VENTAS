@@ -1,5 +1,17 @@
 # Changelog
 
+## Asignación bancaria en Formalización — 2026-11-03
+
+- Panel contextual para banco y ejecutivo activos, alta de ejecutivo desde la orden y guardado explícito versionado con bitácora transaccional.
+- Migración069 central aplicada con autorización; sin alterar esquema legacy ni permisos existentes. Contrato, rollback, pruebas y límites de verificación en [87](apps/api/Arquitectura/87-Orden-Asignacion-Bancaria.md).
+
+## Reconciliación documental completa — 2026-11-03
+
+- Revisados en paralelo backend/integraciones, frontend y seguridad/BD contra el inventario Git y toda la documentación propia, sin paquetes de skills ni dependencias.
+- Actualizados contratos de sincronización completa de órdenes, caída y fecha, etapas/fondos/cierre, perfil/contacto/Outlook/WhatsApp, agenda contextual y cabecera, Adéndum en ambas fuentes y permisos065–067.
+- Documentadas las capacidades Graph implementadas, separadas de su aceptación externa; corregidos pendientes obsoletos y precedencia de snapshots.
+- [85 — Inventario y cobertura](apps/api/Arquitectura/85-Reconciliacion-Documental-20261103.md) sustituye72 como cierre vigente y conserva su evidencia histórica. Solo documentación; sin aplicar DDL, publicar ni modificar código.
+
 ## Reconciliación documental integral — 2026-11-02
 
 - Contrastados los35 commits alcanzables hasta `fcbf0c2` y los cambios locales,

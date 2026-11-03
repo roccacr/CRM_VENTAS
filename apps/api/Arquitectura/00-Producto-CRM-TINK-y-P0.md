@@ -1,8 +1,18 @@
 # 00 - Ley de Producto CRM TINK y P0
 
+## Precedencia vigente — 2026-11-03
 
-Ampliación solicitada el 2026-11-02: [perfil completo del lead](77-Perfil-Completo-Lead.md), lectura federada y permiso global; migración060 preparada, sin aplicación ni despliegue.
-## Reconciliación de alcance — 2026-11-02
+[85 — Reconciliación del árbol actual](85-Reconciliacion-Documental-20261103.md) sustituye72 como inventario. Las ampliaciones solicitadas posteriormente ya están implementadas dentro de sus contratos: [73–75, eventos y mapeo NetSuite](73-Sincronizacion-Estados-Ordenes-NetSuite.md), [77, perfil federado](77-Perfil-Completo-Lead.md), [78, fondos y banco](78-Formalizacion-Origen-Fondos-y-Gestion-Bancaria.md), [52, cuotas](52-Etapas-Responsables-y-Tiempos.md), [78, cierre y ayudas](78-Formalizacion-Origen-Fondos-y-Gestion-Bancaria.md), [83, agenda contextual](83-Adendum-Migracion-065-y-Rollback.md), [Detalle32, WhatsApp](../../frontend/Arquitectura/32-Detalle-Orden-y-Cliente-Basico.md), [83–84, Adéndum](84-Adendum-Manual-Migracion-066-y-Permisos.md) y [64, calendario/Graph](64-Calendario-Global-API-y-Contexto.md).
+
+V2 persiste la matriz confirmada de campos, con prioridad nativa y fallback legacy solo si no existe; v1 sigue recepción. La aprobación de Formalización sustituye el requisito histórico de tres aprobaciones para Contratos pendientes. Ocho etapas y origen obligatorio de fondos; cierre y traspasos aplican flags triestado, sin retroceso automático a saldo. Venta caída afecta únicamente la orden y registra la fecha al marcar. Adéndum es una marca independiente de etapas/lead; marca manual admite nota vacía y tiene grants reales por defecto para Owner, Jefe General y Jefe de Formalizaciones mediante067. Los denies prevalecen y Formalización base no recibe esa marca manual por defecto.
+
+Sin permiso de lectura Adéndum se oculta su marca/nota/bandeja, conservando la orden. La agenda contextual fija relaciones; el acceso de cabecera abre un formulario limpio y guardar no navega al calendario. Graph ya tiene lectura/escritura y disponibilidad implementadas; conexión, publicación externa, despliegue y aceptación real requieren evidencia específica. Las migraciones aprobadas y sus rollbacks están en sus contratos; leer esta ley no autoriza ejecutarlas.
+
+Los apartados inferiores fechados son antecedentes de su corte. Se conservan firmas/versiones históricas; esta sección registra las instrucciones posteriores del propietario, sin fabricar una firma nueva ni ampliar el producto por documentación.
+
+
+Perfil completo del lead: [77](77-Perfil-Completo-Lead.md), lectura federada y permiso independiente; aplicación060 y límites en su evidencia fechada.
+## Antecedente de alcance — 2026-11-02
 
 El inventario de implementación y evidencia vigente está en
 [72](72-Reconciliacion-Documental-20261102.md) y el mapa[22](22-Mapa-de-Implementacion-API.md).

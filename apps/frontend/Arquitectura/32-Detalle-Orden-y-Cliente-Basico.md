@@ -1,5 +1,69 @@
 # Detalle de orden y cliente básico
 
+## Adéndum: motivo y envío independientes de la etapa
+
+La marca manual exige motivo de3..2000 caracteres. «Marcar adéndum como enviado» requiere lectura efectiva de la orden y del adéndum; no necesita permiso de completar/cancelar. La ficha muestra Condición y Motivo; enviado sigue distinto de completado y no mueve etapas. Un evento nuevo/conversión de tipo Adéndum usa su descripción como motivo obligatorio. Contrato, esquema072 y evidencia en [88 API](../../api/Arquitectura/88-Adendum-Motivo-y-Envio.md).
+
+## Asignación bancaria — 2026-11-03
+
+Con asignación vigente y permiso de edición, la sección incorpora «Cambiar banco» (reutiliza el panel con selección previa) y «Desvincular banco» (confirmación lateral y motivo obligatorio). Ambas revalidan perfil/usuario/sesión antes del POST y refrescan la sección al confirmar. Solo desvincula la relación con la orden; conserva catálogo, fila/versión e historial.071 nativa aplicada con aprobación; [contrato y evidencia87](../../api/Arquitectura/87-Orden-Asignacion-Bancaria.md).
+
+«Ir a» incorpora «Banco y ejecutivo», con capítulo desplegable «Banco y ejecutivo asignado». Consulta banco, nombre/contacto/área del ejecutivo real; sin vínculo muestra estado vacío y sin permiso no muestra capítulo ni consulta. Reutiliza el GET central y se recarga al guardar la asignación, sin cambiar URL. Error/reintento y respuestas tardías entre órdenes están cubiertos por pruebas; detalle y evidencia en [87](../../api/Arquitectura/87-Orden-Asignacion-Bancaria.md).
+
+`FormalizationRecordSummary` incorpora `FormAssignBank` junto a las acciones de adéndum/evento. Abre panel derecho en la misma URL; muestra bancos activos y ejecutivos del banco con búsqueda/paginación. Cambiar banco limpia ejecutivo; `Nuevo ejecutivo` reutiliza `BankFormDrawer` y selecciona el creado, sin asignarlo hasta `Guardar asignación`. Revalida sesión, roles, permisos de catálogo y lectura de orden. Sin bancos activos informa dónde crearlos. [Contrato87 y evidencia](../../api/Arquitectura/87-Orden-Asignacion-Bancaria.md).
+
+## Presentación vigente — 03/11/2026
+
+La ficha completa y el drawer reutilizan avance, acciones y lectura de cliente. El drawer apila «Ver orden completa», marcación manual, avance, editor de etapa, tarjeta Adéndum, Fondos de compra, borrador Outlook, contacto y seguimiento; conserva su pie anterior/siguiente. Las flechas del formulario en portal no cambian la orden de fondo. La ficha deriva el recorrido de ocho etapas; el drawer compacto las distribuye en dos filas de cuatro, sin conector entre final e inicio de fila. No se fija el recorrido en siete etapas.
+
+`FormalizationClientContent` hace una lectura nueva por identidad/reintento, presenta esqueleto y error recuperable y no selecciona otro cliente ante relación ambigua. En el drawer de orden muestra solo Contacto; el de cliente conserva sus grupos. «Ver perfil del cliente» usa `lead.profile.read` y la identidad devuelta, con destino `/home/formalization/perfil?source=…&id=…`. `/perfil` permanece como alias dentro del workspace Formalización. La consulta completa combina secciones, historia paginada y órdenes por fuente mediante `/leads/profile`; no importa registros ni une por nombre/correo. Los paneles preparados no equivalen a nuevas escrituras.
+
+«Ir a WhatsApp» requiere `formalizacion.orders.whatsapp` efectivo sin deny. Abre WhatsApp Web con un solo teléfono validado y no envía mensaje automáticamente. El número original y país permanecen separados del texto presentado: un número local costarricense válido se normaliza a 506; otro país conocido exige prefijo internacional. Extensiones, listas o texto no se limpian para fabricar destinatarios. Sin número válido la acción permanece deshabilitada con explicación. «Abrir Outlook», visible en Por enviar y con correo disponible, prepara únicamente un borrador; no registra envío ni cambia etapa.
+
+### Perfil consolidado
+
+Las pestañas son Bitácora, Lista de eventos, Oportunidades, Estimaciones, Información completa, Órdenes y OneDrive; flechas/Home/End cambian la selección y foco. Las cifras se presentan en el resumen del expediente, sin repetir contadores en las pestañas; cambiar de sección reinicia la página comercial/de órdenes a1. Eventos y OneDrive declaran En preparación sin filas ficticias. Información completa reorganiza todos los campos recibidos en base, contexto comercial y trazabilidad; los desconocidos se conservan en el último bloque. Ocultar vacíos mantiene visible cualquier diferencia legacy. La procedencia y un valor legacy distinto se muestran sin modificar el dato guardado.
+
+La bitácora filtra/busca solo la página cargada; sus categorías textuales describen entradas de historia. Oportunidades y Estimaciones usan ahora `LeadProfileCommercial` y las páginas opcionales `opportunities`/`estimates` del DTO: registros reales con cabecera de número/estado/origen/fecha y hechos principales, motivo/fecha de inactivación cuando existen, campos desplegables y vacíos ocultos inicialmente con control para mostrarlos, total, página, `hasMore` y `available`. Una fuente no disponible se explica, sin inferir entidades desde la bitácora ni inventar cero; sus indicadores usan total o «—». El indicador de bitácora mantiene cantidad de la página y `+` cuando hay más historia. Fechas legacy conservan hora de origen. Órdenes reúne ambas fuentes, permite filtro local por origen y paginación con `hasMore`; muestra moneda solo si existe alguna, no la inventa y conserva códigos de estado desconocidos. Sus enlaces vuelven a Gestión con identidad exacta. La acción Agendar del perfil usa la orden vinculada más reciente por fecha recibida; sin orden no se ofrece. Correo abre borrador externo y Actualizar relee el perfil. La paginación mantiene estructura visible con estado de recarga; los fallos 400/403/404/409 se distinguen de indisponibilidad recuperable.
+
+### Etapas y condiciones
+
+Orden: Por enviar → Pendiente de firma → Gestión bancaria → Gestión bancaria en proceso → Pendiente de saldo → Traspaso pendiente → Traspaso firmado → Cerrado. La salida de Contratos requiere elección explícita del origen de fondos: propios conduce a saldo y financiamiento bancario a gestión bancaria en proceso. El siguiente destino elegible puede omitir etapas de traspaso según indicadores confirmados. Paso anterior y selección excepcional requieren permiso `formalizacion.orders.stage.skip`, permiso del destino y motivo; no eluden las condiciones del destino.
+
+| Destino | Condición adicional confirmada en el DTO |
+| --- | --- |
+| Gestión bancaria o posterior | Contrato firmado `true`; las reglas del editor conservan además el envío previo en el avance normal |
+| Traspaso pendiente | Cuotas canceladas `true`, unidad traspasada `false`, unidad entregada `false`; llaves no condiciona |
+| Traspaso firmado | Cuotas canceladas `true`, unidad traspasada `true`, llaves entregadas `false`, unidad entregada `false` |
+| Cerrado | Unidad entregada `true`; cuotas, traspaso y llaves no agregan condición de cierre |
+| Volver a saldo desde traspaso o posterior | Prohibido |
+
+`null`/ausente nunca satisface un No explícito. La API revalida; las restricciones visuales no sustituyen autorización. Los comandos mantienen versión/operación; resultado incierto conserva la edición y conflicto exige actualizar. La confirmación del cambio se distingue de un fallo posterior de recarga.
+
+### Fondos de compra: tarjeta independiente
+
+`FormalizationPurchaseFunds` se monta en ficha y drawer después de Adéndum; no se confunde con un campo ya colocado en el resumen superior. Presenta Fondos propios, Financiamiento bancario o Sin definir, sin asumir financiamiento cuando falta el dato. La edición recibe `canUpdateStage` del contenedor; sin autorización no ofrece editar ni consulta el token de edición. El control ocupa el ancho disponible y las acciones permiten salto de línea.
+
+Editar consulta `GET /formalization/orders/:source/:id/purchase-funds` y valida origen nullable y secuencias enteras seguras no negativas. Guardar usa `POST /formalization/orders/purchase-funds` con origen elegido, `operationId`, `expectedSequence`, `expectedAuditSequence` y `expectedPurchaseFundsOrigin`; elimina únicamente el prefijo técnico `legacy:` del ID. No envía destino de etapa ni solicita un avance. La API conserva su autorización y validación independientes.
+
+El guardado bloquea envíos simultáneos. Ante error de red/5xx conserva comando y selección para reintento idéntico, sin reintento automático ni cancelación alternativa; conflicto409 o401/403/404 exige actualizar. Confirmar éxito impide repetir la escritura, incluso si falla la recarga posterior. El componente se identifica por orden, versión y origen para aislar respuestas asíncronas entre órdenes. En ficha, el callback posterior relee el registro autorizado antes de actualizar su proyección y descarta respuesta si cambió la orden; el editor de etapa también se remonta al cambiar el origen de fondos. Las pruebas nuevas inspeccionadas cubren lectura sin edición, comando con token sin etapa, reintento idéntico incierto, conflicto y fallo de recarga tras éxito; esta revisión no las ejecutó. `funds-preview.temp.html` es un arnés temporal que sustituye fetch con una respuesta sintética y monta la tarjeta; no es ruta funcional ni evidencia de integración real.
+
+### Marcador Adéndum
+
+Hay un marcador por identidad de orden, independiente de la etapa y de los eventos. La tarjeta muestra Sin adéndum/Pendiente/Completado/Cancelado, nota y fecha local autorizadas. Requiere lectura de orden y `formalizacion.orders.addendum.read`; carecer de este último oculta únicamente información, badge y bandeja del marcador, sin ocultar una orden que el usuario sí puede leer.
+
+«Marcar adéndum pendiente» requiere además `formalizacion.orders.addendum.mark_pending`, consulta versión y `canMarkPending` antes de guardar, no crea evento y acepta nota opcional de hasta 2000 caracteres. Completar/cancelar requiere `formalizacion.orders.addendum.update`, `canUpdate` del API y estado pendiente. Ninguna de estas acciones completa/cancela eventos del calendario.
+
+Los grants predeterminados vigentes de marcación manual se definen en migración067 para Owner, Jefe General y Jefe de Formalizaciones; no para Formalización ordinaria. React consume grants efectivos y deny: no deduce autoridad del nombre del rol. El antecedente de marcación solo por jefatura no prevalece sobre esa ampliación; la excepción backend existente de Owner no se convierte en un bypass nuevo en UI. Un permiso configurado no acredita que una migración se haya aplicado.
+
+Ambos comandos conservan `operationId`/versión al fallar de forma incierta, bloquean una edición alternativa y permiten el mismo reintento. Rechazos definidos 400/401/403/404/409 exigen releer. Tras éxito se actualiza marcador/orden/tablero; fallo de esa recarga no ofrece repetir una escritura confirmada. El banner de Home usa `formalizacion.home.addendum.read` separado; su contador no concede acceso a la bandeja ni a las órdenes. Gestión explica con ayudas los conteos, banco Sin iniciar/En proceso y el criterio de cada cola; «—» significa no recibido, no cero.
+
+Fuentes: `FormalizationOrderDrawer.tsx`, `FormalizationRecordSummary.tsx`, `FormalizationStageEditor.tsx`, `FormalizationMarkAddendum.tsx`, `FormalizationOrderAddendum.tsx`, `order-addendum-permissions.ts`, `formalization-read-policy.ts` bajo `src/modules/home`; servicios `order-stage-service.ts`, `order-addendum-service.ts`, `order-client-service.ts`, `whatsapp-phone.ts` y `lead-profile-service.ts`. El contrato de calendario contextual y adéndum futuro se detalla en [Calendario global](Calendario-Global-Frontend.md).
+
+## Antecedente del detalle y contrato DTO — 02/11/2026
+
+El contrato y verificaciones siguientes conservan el corte inicial. El árbol actual ya no monta `FormalizationOrderDetails` en la ficha: ese lugar presenta la tarjeta Adéndum y conserva los capítulos NetSuite autorizados. El drawer muestra contacto/seguimiento y acciones descritos arriba. Mantener el DTO de consulta no prueba que todas sus secciones se rendericen hoy en esas dos superficies.
+
 Cambio local solicitado y aprobado el 2026-11-02. Conserva tarjetas, filas, acciones, navegación y permisos actuales; no modifica esquemas ni datos.
 
 ## Causa y alcance
@@ -75,3 +139,30 @@ El detalle se vuelve a consultar al cambiar la versión de la orden para actuali
 - Suite API completa: 7054 aprobadas, 196 omitidas condicionales y 1 fallida ajena en netsuite-suitescript/contract.spec.mjs: el payload agrega snapshotReadStartedAt/snapshotReadCompletedAt y la expectativa de claves no los incluye. Suite frontend completa: 1323 aprobadas y 4 fallidas ajenas (tres en calendar-global-types.spec.tsx por expectativas anteriores de tipos/eventos y una en personal-notes.spec.tsx por posición esperada 70px/observada 60px). La ejecución cubrió 96 archivos y duró 375.91s.
 
 No se realizaron escrituras BD, migraciones, commit, push o despliegue. No se acredita navegación autenticada extremo a extremo con una orden nativa real: no existen órdenes nativas en la base consultada.
+
+
+## Fondos de compra debajo de Adéndum — 03/11/2026
+
+El panel compacto y la orden completa comparten `FormalizationPurchaseFunds`.
+Muestra «Fondos propios», «Financiamiento bancario» o «Sin definir»; no interpreta
+un nulo como financiamiento. Conserva el ancho del panel y las tarjetas existentes.
+Editar requiere el permiso efectivo de actualización de etapa; guardar fondos no
+cambia etapa, responsable, visitas ni sus tiempos. El editor obtiene una instantánea
+actual y utiliza un comando independiente con versión de etapa, valor previo y
+versión central de auditoría. El formulario bloquea la selección ante un resultado
+incierto y reintenta la misma operación. Un conflicto requiere actualizar la orden.
+
+Columnas existentes, sin migración: `CRM_THINK_V2.crm_sales_order.purchase_funds_origin_sales_order`
+y `crmdatabase-api.ordenventa.origen_fondos_compra_ov`, ambas enum nullable
+`own_funds`/`bank_financing`. No se rellenan registros existentes automáticamente.
+Las rutas GET `formalization/orders/:source/:id/purchase-funds` y POST
+`formalization/orders/purchase-funds` usan sesión, rol y permiso del servicio;
+la mutación usa además CSRF global, auditoría transaccional y fuente autoritativa.
+Ver el contrato API en [78](../../api/Arquitectura/78-Formalizacion-Origen-Fondos-y-Gestion-Bancaria.md).
+
+
+Correccion posterior del mismo dia: el origen de fondos ahora tambien se actualiza
+por sincronizacion NetSuite v2 desde custbody37 (1 Propios / 2 Financiado). La tarjeta
+lee la columna de la fuente de la orden, ya incluida en FollowUpItem; no interpreta
+etiquetas NetSuite como IDs. Conserva rojo para Sin definir y verde para un valor
+definido. Publicacion/entrega real pendientes de los scripts configurados.

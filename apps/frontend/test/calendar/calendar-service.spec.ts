@@ -2,7 +2,7 @@ import { expect, it, vi } from "vitest";
 
 import { localToUtc, utcToLocal } from "../../src/modules/calendar/calendar-time";
 import { apiRequest } from "../../src/services/api/api-client";
-import { getCalendarEvents, getCalendars, saveCalendarEvent } from "../../src/services/calendar/calendar-service";
+import { getCalendarAvailability, getCalendarEvents, getCalendars, saveCalendarEvent } from "../../src/services/calendar/calendar-service";
 
 vi.mock("../../src/services/api/api-client", () => ({ apiRequest: vi.fn() }));
 it("converts Costa Rica wall time independently of the machine timezone", () => {
@@ -35,4 +35,24 @@ it("round-trips exact seconds and milliseconds through Costa Rica wall time", ()
     const instant = "2026-10-29T02:30:47.123Z";
     expect(utcToLocal(instant)).toBe("2026-10-28T20:30:47.123");
     expect(localToUtc(utcToLocal(instant))).toBe(instant);
+});
+
+it.each([{}, { users: [{ id: "user-1", source: "native", label: "Colaborador" }] }])("accepts sparse authorized selection metadata after a confirmed save (%j)", async (selectionOptions) => {
+    const body = { moduleCode: "formalizacion" as const, typeId: "type-1", title: "Tarea", start: "2026-11-04T14:00:00Z", end: "2026-11-04T15:00:00Z", allDay: false, details: {}, operationId: "550e8400-e29b-41d4-a716-446655440000" };
+    const event = { ...body, id: "event-1", source: "native", originModule: "formalizacion", typeCode: "tarea", description: "Descripción", location: null, status: "scheduled", version: 1, canEdit: true, formKey: "formalizacion.general.v1", selectionOptions };
+    vi.mocked(apiRequest).mockResolvedValueOnce({ schemaVersion: 1, event, delivery: { status: "synced", joinUrl: null, roomStatus: null } });
+    await expect(saveCalendarEvent(body)).resolves.toMatchObject({ id: "event-1", delivery: { status: "synced" }, selectionOptions: { users: "users" in selectionOptions ? selectionOptions.users : [], notes: [], leads: [], orders: [] } });
+    vi.mocked(apiRequest).mockResolvedValueOnce({ schemaVersion: 1, events: [event], outlookStatus: "connected" });
+    await expect(getCalendarEvents(["formalizacion"], { start: body.start, end: body.end }, "formalizacion")).resolves.toHaveLength(1);
+});
+it.each([null, "invalid", [{ id: "bad", source: "legacy", label: "invalid user" }]])("rejects malformed supplied selections (%j)", async (users) => {
+    const body = { moduleCode: "formalizacion" as const, typeId: "type-1", title: "Tarea", start: "2026-11-04T14:00:00Z", end: "2026-11-04T15:00:00Z", allDay: false, details: {}, operationId: "550e8400-e29b-41d4-a716-446655440000" };
+    vi.mocked(apiRequest).mockResolvedValueOnce({ schemaVersion: 1, event: { ...body, id: "event-1", source: "native", originModule: "formalizacion", typeCode: "tarea", description: null, location: null, status: "scheduled", version: 1, canEdit: true, formKey: "formalizacion.general.v1", selectionOptions: { users } } });
+    await expect(saveCalendarEvent(body)).rejects.toThrow("Respuesta de calendario inválida.");
+});
+
+it("preserves connected agenda with an independent missing suggestions consent", async () => {
+    vi.mocked(apiRequest).mockResolvedValueOnce({ status: "connected", data: { events: [], conflicts: [], suggestions: [], incomplete: true, suggestionsStatus: "consent_required" } });
+    const value = await getCalendarAvailability({ moduleCode: "formalizacion", start: "2026-11-04T15:00:00Z", end: "2026-11-04T16:00:00Z", userIds: [] });
+    expect(value).toEqual({ status: "connected", data: { events: [], conflicts: [], suggestions: [], incomplete: true, suggestionsStatus: "consent_required" } });
 });

@@ -34,7 +34,7 @@ export class MarketingLeadsReportService {
                 const native = await this.repository.readNative(tx);
                 const enabled = this.legacy.enabled();
                 const legacy: ReportSource = enabled ? await this.legacy.read(tx) : { leads: [], events: [], users: [], projects: [], campaigns: [], userAliases: [], projectAliases: [], campaignAliases: [], leadAliases: [] };
-                return buildMarketingLeadsReport(native, legacy, { period: parsed.data.period, now, legacyEnabled: enabled, ...(sellerScope ? { sellerScope } : {}) });
+                return buildMarketingLeadsReport(native, legacy, { period: parsed.data.period, qualification: parsed.data.qualification, now, legacyEnabled: enabled, ...(sellerScope ? { sellerScope } : {}) });
             });
         } catch {
             throw new ServiceUnavailableException("No fue posible consultar la captacion de leads.");

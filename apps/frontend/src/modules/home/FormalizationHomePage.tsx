@@ -1,6 +1,7 @@
 import "./FormalizationHomePage.css";
 
 import ArrowLeftOutlined from "@ant-design/icons/ArrowLeftOutlined";
+import FileAddOutlined from "@ant-design/icons/FileAddOutlined";
 import ReloadOutlined from "@ant-design/icons/ReloadOutlined";
 import Button from "antd/es/button";
 import ConfigProvider from "antd/es/config-provider";
@@ -9,18 +10,24 @@ import Spin from "antd/es/spin";
 import Tooltip from "antd/es/tooltip";
 import { useEffect, useRef, useState } from "react";
 
+import { FormHelp } from "../../components/forms/FormHelp";
 import type { IdentityRole, IdentityUser } from "../../services/auth/identity-contracts";
 import { getApprovalCount } from "../../services/formalization/approval-summary-service";
 import type { FollowUpItem } from "../../services/formalization/follow-up-service";
+import { getPendingAddendumCount } from "../../services/formalization/order-addendum-service";
 import { PROJECTS_THEME } from "../administration/catalogs/projects-theme";
+import type { FollowUpFilterRequest, FollowUpSelection } from "./formalization-filter-preferences";
 import { type FormalizationExample, PREVIEW_FILTER_TITLES, type PreviewQueue } from "./formalization-preview.model";
-import { canReadFormalizationOrder, formalizationReadQueues } from "./formalization-read-policy";
+import { FORMALIZATION_QUEUE_HELP } from "./formalization-queue-help";
+import { canReadAddendumBanner, canReadFormalizationOrder, formalizationReadQueues } from "./formalization-read-policy";
 import { FormalizationFollowUpPreview } from "./FormalizationFollowUpPreview";
 import { FormalizationHomeInsights } from "./FormalizationHomeInsights";
 import { FormalizationOrderPreview, FormalizationOrderRecord } from "./FormalizationOrderPreview";
 import { FormalizationPreviewBoundary } from "./FormalizationPreviewSession";
+import { FormalizationProjectDistribution } from "./FormalizationProjectDistribution";
 import { FormalizationRecordLoading } from "./FormalizationRecordLoading";
 import type { EffectiveNavigationPermission } from "./GlobalHomeShell";
+import { canReadOrderAddendum } from "./order-addendum-permissions";
 import { useHomeSummary } from "./useHomeSummary";
 import { useNetsuiteOrderConsole } from "./useNetsuiteOrderConsole";
 import { useRestoredFormalizationOrder } from "./useRestoredFormalizationOrder";
@@ -65,15 +72,16 @@ function useBannerSummary<T>(load: () => Promise<T>, enabled: boolean, refreshVe
     const [value, setValue] = useState<T | null>(null);
     const [failed, setFailed] = useState(false);
     const [attempt, setAttempt] = useState(0);
-    const request = useRef<Promise<T> | null>(null);
+    const request = useRef<{ key: string; promise: Promise<T> } | null>(null);
     useEffect(() => {
         if (!enabled) return;
         let active = true;
         const read = () => {
             setValue(null);
             setFailed(false);
-            request.current ??= load();
-            return request.current;
+            const key = `${String(attempt)}:${String(refreshVersion)}`;
+            if (request.current?.key !== key) request.current = { key, promise: load() };
+            return request.current.promise;
         };
         const pending = read();
         void pending
@@ -84,7 +92,7 @@ function useBannerSummary<T>(load: () => Promise<T>, enabled: boolean, refreshVe
                 if (active) setFailed(true);
             })
             .finally(() => {
-                if (request.current === pending) request.current = null;
+                if (request.current?.promise === pending) request.current = null;
             });
         return () => {
             active = false;
@@ -100,24 +108,34 @@ function useBannerSummary<T>(load: () => Promise<T>, enabled: boolean, refreshVe
     return { value, failed, retry };
 }
 
-/** Banner de aprobaciones pendientes. Si la consulta falla muestra «No disponible», nunca cero. */
-function ApprovalStrip({ onOpen, enabled, refreshVersion }: { readonly onOpen: () => void; readonly enabled: boolean; readonly refreshVersion: number }) {
-    const { value: count, failed, retry } = useBannerSummary(getApprovalCount, enabled, refreshVersion);
+const pendingBanners = {
+    approvals: { title: "Pendientes de aprobación", subject: "aprobación", load: getApprovalCount, icon: <img src={`${import.meta.env.BASE_URL}illustrations/formalization-icons/approvals.svg`} width={24} height={24} alt="" /> },
+    addendum: { title: "Pendientes de adéndum", subject: "adéndum", load: getPendingAddendumCount, icon: <FileAddOutlined /> },
+};
+
+/** Los pendientes comparten presentación; cada fuente y permiso conserva su consulta independiente. */
+function PendingStrip({ kind, canOpen = true, onOpen, enabled, refreshVersion }: { readonly kind: "approvals" | "addendum"; readonly canOpen?: boolean; readonly onOpen: () => void; readonly enabled: boolean; readonly refreshVersion: number }) {
+    const { title, subject, load, icon } = pendingBanners[kind];
+    const { value: count, failed, retry } = useBannerSummary(load, enabled, refreshVersion);
     const caption = failed ? "No disponible" : count === null ? "Consultando…" : "Por revisar";
-    const loading = count === null && !failed;
-    const action = failed ? { label: "Reintentar pendientes de aprobación", onClick: retry, suffix: " · Reintentar" } : { label: "Ver pendientes de aprobación de Formalización", onClick: onOpen, suffix: "" };
+    const loading = [count === null, !failed].every(Boolean);
+    const action = failed ? { label: `Reintentar pendientes de ${subject}`, onClick: retry, suffix: " · Reintentar" } : { label: `Ver pendientes de ${subject} de Formalización`, onClick: onOpen, suffix: "" };
     return (
-        <button type="button" className="formalization-banner formalization-banner--pending formalization-approval-strip" aria-label={action.label} aria-busy={loading} onClick={action.onClick}>
+        <div className="formalization-banner formalization-banner--pending formalization-approval-strip" data-kind={kind} aria-busy={loading}>
+            <button type="button" className="formalization-approval-strip__action" aria-label={action.label} aria-busy={loading} disabled={[!failed, !canOpen].every(Boolean)} onClick={action.onClick} />
             <span className="formalization-banner__icon" aria-hidden="true">
-                <img src={`${import.meta.env.BASE_URL}illustrations/formalization-icons/approvals.svg`} width={24} height={24} alt="" />
+                {icon}
             </span>
             <span className="formalization-banner__content">
-                <span className="formalization-approval-strip__title">Pendientes de aprobación</span>
+                <span className="formalization-title-help">
+                    <span className="formalization-approval-strip__title">{title}</span>
+                    <FormHelp label={`Condiciones de ${title}`} text={FORMALIZATION_QUEUE_HELP[kind]} />
+                </span>
                 <span className="formalization-banner__metrics">
                     <span className="formalization-banner__metric">
-                        <span className="formalization-banner__value" aria-live="polite" aria-label={`Órdenes pendientes de aprobación: ${count === null ? caption : String(count)}`}>
+                        <span className="formalization-banner__value" aria-live="polite" aria-label={`Órdenes pendientes de ${subject}: ${count === null ? caption : String(count)}`}>
                             {loading ? (
-                                <span className="formalization-banner__preload" role="status" aria-label="Cargando pendientes de aprobación">
+                                <span className="formalization-banner__preload" role="status" aria-label={`Cargando pendientes de ${subject}`}>
                                     <Spin size="small" />
                                 </span>
                             ) : (
@@ -132,14 +150,14 @@ function ApprovalStrip({ onOpen, enabled, refreshVersion }: { readonly onOpen: (
                 </span>
             </span>
             <BannerCorner />
-        </button>
+        </div>
     );
 }
 
 /** One gated owner supplies every stage banner without sharing data between mounts. */
-function StageBanners({ onOpen, enabled, refreshVersion, allowedQueues }: { readonly allowedQueues: readonly string[]; readonly onOpen: (filter: PreviewQueue["filter"]) => void; readonly enabled: boolean; readonly refreshVersion: number }) {
+function StageBanners({ onOpen, enabled, refreshVersion, allowedQueues }: { readonly allowedQueues: readonly string[]; readonly onOpen: (filter: FollowUpSelection) => void; readonly enabled: boolean; readonly refreshVersion: number }) {
     const { value: summary, failed, retry } = useHomeSummary(enabled, refreshVersion);
-    const counts = summary?.counts ?? { contracts: { toSend: 0, pendingSignature: 0 }, banking: 0, balance: 0, transferPending: 0, transferSigned: 0, closedThisYear: 0 };
+    const counts = summary?.counts ?? { contracts: { toSend: undefined, pendingSignature: undefined }, banking: undefined, bankingInProgress: undefined, balance: undefined, transferPending: undefined, transferSigned: undefined, closedThisYear: undefined };
     const loading = !summary && !failed;
     const stages = [
         {
@@ -152,7 +170,16 @@ function StageBanners({ onOpen, enabled, refreshVersion, allowedQueues }: { read
                 { label: "Pendientes de firma", value: counts.contracts.pendingSignature, filter: "signature" },
             ],
         },
-        { code: "bank", label: "Gestión bancaria", icon: "bank", tone: "neutral", parts: [{ label: "Sin iniciar / En proceso", value: counts.banking, filter: "bank" }] },
+        {
+            code: "bank",
+            label: "Gestión bancaria",
+            icon: "bank",
+            tone: "neutral",
+            parts: [
+                { label: "Sin iniciar", value: counts.banking, filter: "bank_not_started" },
+                { label: "En proceso", value: counts.bankingInProgress, filter: "bank_in_progress" },
+            ],
+        },
         { code: "balance", label: "Pendientes de saldo", icon: "balance", tone: "neutral", parts: [{ label: "Consulta financiera", value: counts.balance, filter: "balance" }] },
         { code: "transfer", label: "Traspasos pendientes", icon: "transfer", tone: "pending", parts: [{ label: "Por gestionar", value: counts.transferPending, filter: "transfer" }] },
         { code: "signed", label: "Traspaso firmado", icon: "signed", tone: "success", parts: [{ label: "Firma registrada · Llaves pendientes", value: counts.transferSigned, filter: "signed" }] },
@@ -161,14 +188,17 @@ function StageBanners({ onOpen, enabled, refreshVersion, allowedQueues }: { read
     return (
         <>
             {stages
-                .filter((banner) => allowedQueues.includes(banner.parts[0].filter))
+                .filter((banner) => allowedQueues.includes(banner.code === "bank" ? "bank" : banner.parts[0].filter))
                 .map((banner) => (
                     <article key={banner.code} className={`formalization-banner formalization-banner--${banner.tone}`} aria-labelledby={`formalization-${banner.code}`} aria-busy={loading}>
                         <span className="formalization-banner__icon" aria-hidden="true">
                             <img src={`${import.meta.env.BASE_URL}illustrations/formalization-icons/${banner.icon}.svg`} width={24} height={24} alt="" />
                         </span>
                         <div className="formalization-banner__content">
-                            <h2 id={`formalization-${banner.code}`}>{banner.label}</h2>
+                            <div className="formalization-title-help">
+                                <h2 id={`formalization-${banner.code}`}>{banner.label}</h2>
+                                <FormHelp label={`Condiciones de ${banner.label}`} text={FORMALIZATION_QUEUE_HELP[banner.code]} />
+                            </div>
                             {failed && (
                                 <div className="formalization-contracts-status formalization-banner__caption">
                                     <span role="alert">Sin verificar</span>
@@ -180,7 +210,7 @@ function StageBanners({ onOpen, enabled, refreshVersion, allowedQueues }: { read
                             <div className="formalization-banner__metrics">
                                 {banner.parts.map((part) => (
                                     <button
-                                        key={part.filter}
+                                        key={part.label}
                                         type="button"
                                         className="formalization-banner__metric formalization-banner__metric-button"
                                         aria-label={`Abrir ${part.label}`}
@@ -188,13 +218,13 @@ function StageBanners({ onOpen, enabled, refreshVersion, allowedQueues }: { read
                                             onOpen(part.filter);
                                         }}
                                     >
-                                        <span className="formalization-banner__value" aria-live="polite" aria-label={summary ? `Valor: ${part.label}, ${String(part.value)}` : failed ? `${part.label}: sin verificar` : undefined}>
+                                        <span className="formalization-banner__value" aria-live="polite" aria-label={summary && part.value !== undefined ? `Valor: ${part.label}, ${String(part.value)}` : failed ? `${part.label}: sin verificar` : undefined}>
                                             {loading ? (
                                                 <span className="formalization-banner__preload" role="status" aria-label={`Cargando ${part.label}`}>
                                                     <Spin size="small" />
                                                 </span>
                                             ) : (
-                                                part.value
+                                                (part.value ?? "—")
                                             )}
                                         </span>
                                         <span className="formalization-banner__caption">{part.label}</span>
@@ -251,13 +281,13 @@ function QueueHeader({ queue, onHome, onAll }: { readonly queue: PreviewQueue; r
     );
 }
 
-function canUpdateOrderStage(roles: FormalizationHomeProps["roles"], permissions: FormalizationHomeProps["effectivePermissions"]): boolean {
+function canUpdateOrderStage(_roles: FormalizationHomeProps["roles"], permissions: FormalizationHomeProps["effectivePermissions"]): boolean {
     const entries = (permissions ?? []).filter((entry) => entry.code === "formalizacion.orders.stage.update");
-    return roles?.some((role) => ["formalizacion", "jefe_formalizaciones"].includes(role.code) && role.status === "active") === true && entries.some((entry) => entry.effect === "allow") && !entries.some((entry) => entry.effect === "deny");
+    return entries.some((entry) => entry.effect === "allow") && !entries.some((entry) => entry.effect === "deny");
 }
 
 /** Gate the consumer itself so revoked access cannot retain data or start a request. */
-function FormalizationStageBanners({ canView, onOpen, enabled, refreshVersion, allowedQueues }: { readonly allowedQueues: readonly string[]; readonly canView: boolean; readonly onOpen: (filter: PreviewQueue["filter"]) => void; readonly enabled: boolean; readonly refreshVersion: number }) {
+function FormalizationStageBanners({ canView, onOpen, enabled, refreshVersion, allowedQueues }: { readonly allowedQueues: readonly string[]; readonly canView: boolean; readonly onOpen: (filter: FollowUpSelection) => void; readonly enabled: boolean; readonly refreshVersion: number }) {
     return canView ? <StageBanners allowedQueues={allowedQueues} onOpen={onOpen} enabled={enabled} refreshVersion={refreshVersion} /> : null;
 }
 
@@ -291,13 +321,19 @@ function activitySessionKey(user: FormalizationHomeProps["currentUser"]) {
 }
 
 /** Gated canonical Home aggregates and follow-up; stage updates require their own effective permission. */
-function FormalizationHomeContent({ currentUser, roles, effectivePermissions, initialView = "home", onNavigate }: FormalizationHomeProps) {
+function FormalizationHomeContent({ currentUser, roles, effectivePermissions = [], initialView = "home", onNavigate }: FormalizationHomeProps) {
+    const filterStorageKey = filterPreferenceKey(currentUser);
     const [refreshVersion, setRefreshVersion] = useState(0);
+    const [filterRequest, setFilterRequest] = useState<FollowUpFilterRequest>();
+    const selectBanner = (selection: FollowUpSelection) => {
+        setFilterRequest((previous) => ({ selection, version: (previous?.version ?? 0) + 1 }));
+    };
     const [selectedQueue, setQueue] = useState<PreviewQueue | null>(() => (initialView === "orders" ? { filter: "all" } : null));
     const allowedQueues = formalizationReadQueues(roles, effectivePermissions);
     const canViewApprovals = allowedQueues.includes("approvals");
+    const canViewAddendumBanner = canReadAddendumBanner(roles, effectivePermissions);
     const queue = visibleQueue(selectedQueue, allowedQueues);
-    const canViewStages = allowedQueues.some((queue) => queue !== "all" && queue !== "approvals");
+    const canViewStages = allowedQueues.some((queue) => !["all", "approvals", "addendum"].includes(queue));
     const canReadList = allowedQueues.length > 0;
     const canReadOrders = canReadFormalizationOrder(roles, effectivePermissions);
     const canUpdateStage = canUpdateOrderStage(roles, effectivePermissions);
@@ -331,6 +367,8 @@ function FormalizationHomeContent({ currentUser, roles, effectivePermissions, in
                     }}
                 />
                 <CurrentFormalizationRecord
+                    onAddendumChanged={refreshOrders}
+                    onNavigate={onNavigate}
                     stagePermissions={effectivePermissions}
                     canUpdateStage={canUpdateStage}
                     onStageSaved={(updated) => {
@@ -363,51 +401,61 @@ function FormalizationHomeContent({ currentUser, roles, effectivePermissions, in
                     <section className="global-home-page-header formalization-home__header" aria-labelledby="formalization-home-title">
                         <FormalizationHomeTitle
                             canViewStages={canViewStages}
-                            canViewApprovals={canViewApprovals}
+                            canViewApprovals={[canViewApprovals, canViewAddendumBanner].some(Boolean)}
                             onRefresh={() => {
                                 setRefreshVersion((value) => value + 1);
                             }}
                         />
-                        <div className="formalization-home__intro" data-has-approvals={canViewApprovals}>
-                            {canViewApprovals && (
-                                <ApprovalStrip
-                                    enabled={isHomeSummaryEnabled(initialView, queue, selected)}
-                                    refreshVersion={refreshVersion}
-                                    onOpen={() => {
-                                        setQueue({ filter: "approvals" });
-                                    }}
-                                />
-                            )}
+                        <div className="formalization-home__intro" data-has-approvals={canViewApprovals} data-pending-count={Number(canViewApprovals) + Number(canViewAddendumBanner)}>
+                            {[
+                                { kind: "approvals" as const, visible: canViewApprovals, canOpen: true },
+                                { kind: "addendum" as const, visible: canViewAddendumBanner, canOpen: canReadOrderAddendum(effectivePermissions) },
+                            ]
+                                .filter((banner) => banner.visible)
+                                .map((banner) => (
+                                    <PendingStrip
+                                        key={banner.kind}
+                                        kind={banner.kind}
+                                        canOpen={banner.canOpen}
+                                        enabled={isHomeSummaryEnabled(initialView, queue, selected)}
+                                        refreshVersion={refreshVersion}
+                                        onOpen={() => {
+                                            selectBanner(banner.kind);
+                                        }}
+                                    />
+                                ))}
                             <section className="formalization-welcome" aria-label="Bienvenida a Formalización">
                                 <div className="formalization-welcome__copy">
                                     <p className="formalization-welcome__title">{greetingFor(currentUser)}</p>
                                     <p className="formalization-welcome__text">Gestión contractual</p>
-                                    <Button
-                                        className="formalization-command"
-                                        onClick={() => {
-                                            setQueue({ filter: "all" });
-                                        }}
-                                    >
-                                        Ver todas las órdenes
-                                    </Button>
+                                    <FormalizationProjectDistribution enabled={canReadList} />
                                 </div>
                                 <img className="formalization-welcome__art" src={`${import.meta.env.BASE_URL}illustrations/rocca-formalization-generated.png`} alt="" width={1754} height={897} decoding="async" />
                             </section>
                         </div>
                     </section>
                     <section className="formalization-home__banners" aria-label="Resumen de formalización">
-                        <FormalizationStageBanners
-                            allowedQueues={allowedQueues}
-                            refreshVersion={refreshVersion}
-                            enabled={isHomeSummaryEnabled(initialView, queue, selected)}
-                            canView={canViewStages}
-                            onOpen={(filter) => {
-                                setQueue({ filter });
-                            }}
-                        />
+                        <FormalizationStageBanners allowedQueues={allowedQueues} refreshVersion={refreshVersion} enabled={isHomeSummaryEnabled(initialView, queue, selected)} canView={canViewStages} onOpen={selectBanner} />
                     </section>
                     <div className="formalization-workspace">
-                        <VisibleHomeFollowUp allowedQueues={allowedQueues} stagePermissions={effectivePermissions} onOpenRecord={setRecord} canUpdateStage={canUpdateStage} onRefresh={refreshOrders} visible={isHomeSummaryEnabled(initialView, queue, selected)} enabled={canReadList} canReadOrder={canReadOrders} refreshVersion={refreshVersion} canViewApprovals={canViewApprovals} tableOnly={false} scope={{ filter: "all" }} onOpenOrder={setSelected} />
+                        <VisibleHomeFollowUp
+                            filterRequest={filterRequest}
+                            filterStorageKey={filterStorageKey}
+                            onNavigate={onNavigate}
+                            allowedQueues={allowedQueues}
+                            stagePermissions={effectivePermissions}
+                            onOpenRecord={setRecord}
+                            canUpdateStage={canUpdateStage}
+                            onRefresh={refreshOrders}
+                            visible={isHomeSummaryEnabled(initialView, queue, selected)}
+                            enabled={canReadList}
+                            canReadOrder={canReadOrders}
+                            refreshVersion={refreshVersion}
+                            canViewApprovals={canViewApprovals}
+                            tableOnly={false}
+                            scope={{ filter: "all" }}
+                            onOpenOrder={setSelected}
+                        />
                         <FormalizationHomeInsights key={activitySessionKey(currentUser)} enabled={canReadOrders} visible={[initialView === "home", !detailOpen, queue === null].every(Boolean)} refreshVersion={refreshVersion} actorName={actorNameOf(currentUser)} />
                     </div>
                 </div>
@@ -427,7 +475,7 @@ function FormalizationHomeContent({ currentUser, roles, effectivePermissions, in
                                     setQueue({ filter: "all" });
                                 }}
                             />
-                            <FormalizationFollowUpPreview allowedQueues={allowedQueues} stagePermissions={effectivePermissions} onOpenRecord={setRecord} canUpdateStage={canUpdateStage} onRefresh={refreshOrders} enabled={canReadList} canReadOrder={canReadOrders} refreshVersion={refreshVersion} canViewApprovals={canViewApprovals} key={`${queue.filter}-${queue.project ?? "all"}`} tableOnly scope={queue} onOpenOrder={setSelected} />
+                            <FormalizationFollowUpPreview filterStorageKey={filterStorageKey} onNavigate={onNavigate} allowedQueues={allowedQueues} stagePermissions={effectivePermissions} onOpenRecord={setRecord} canUpdateStage={canUpdateStage} onRefresh={refreshOrders} enabled={canReadList} canReadOrder={canReadOrders} refreshVersion={refreshVersion} canViewApprovals={canViewApprovals} key={`${queue.filter}-${queue.project ?? "all"}`} tableOnly scope={queue} onOpenOrder={setSelected} />
                         </>
                     )}
                 </div>
@@ -473,4 +521,8 @@ function recordReadStatus(databaseStatus: string, providerStatus: "idle" | "load
 
 function dismissedRestoreStatus(dismissed: boolean, record: FollowUpItem | null, status: string): string {
     return dismissed && !record ? "idle" : status;
+}
+
+function filterPreferenceKey(user: FormalizationHomeProps["currentUser"]) {
+    return user?.email;
 }

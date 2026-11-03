@@ -19,7 +19,7 @@ describe("real Home read path with fake SQL results (not SQL execution)", () => 
         const f = createSummaryDouble(expected);
         try {
             const summary = await f.service.summary("synthetic");
-            expect(summary.counts).toEqual(expected.counts);
+            expect(summary.counts).toEqual({ ...expected.counts, bankingInProgress: 0 });
             expect(summary.sources.duplicatesExcluded).toBe(expected.duplicatesExcluded);
             expect(f.metrics).toEqual({ native: 1, legacy: 1, transactions: 1 });
             expect(f.settings).toEqual([{ isolationLevel: "repeatable read", accessMode: "read only" }]);

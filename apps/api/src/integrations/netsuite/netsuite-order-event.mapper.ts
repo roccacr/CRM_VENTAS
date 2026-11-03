@@ -74,6 +74,7 @@ export type OrderEventChange = { field: string; column: string; before: unknown;
 
 /** Proyeccion declarativa de campos directos confirmados; las identidades/FK se concilian aparte. */
 export const orderFieldMappings = [
+    { netsuite: "custbody37", native: "purchase_funds_origin_sales_order", legacy: "origen_fondos_compra_ov", type: "funds" },
     { netsuite: "custbody74", native: "advisor_commission_calculated_sales_order", legacy: "calculo_comision_asesor_ov", type: "checkbox" },
     { netsuite: "custbody13", native: "list_price_sales_order", legacy: "pre_lista_ov", type: "decimal" },
     { netsuite: "custbody17", native: "net_sale_price_sales_order", legacy: "prec_ventaneto_ov", type: "decimal" },
@@ -135,9 +136,18 @@ function calendarDate(value: unknown): string | null {
     return value;
 }
 
+/** Confirmed NetSuite list IDs; labels are display-only and never guessed as identifiers. */
+function purchaseFunds(value: unknown): "own_funds" | "bank_financing" | null {
+    if (value === null || value === "") return null;
+    if (value === 1 || value === "1") return "own_funds";
+    if (value === 2 || value === "2") return "bank_financing";
+    throw new BadRequestException("custbody37 requiere 1 (Propios), 2 (Financiado) o vacio.");
+}
+
 function fieldValue(mapping: (typeof orderFieldMappings)[number], value: unknown, destination: OrderEventDestination): string | number | null {
     if (mapping.type === "decimal") return money(value);
     if (mapping.type === "date") return calendarDate(value);
+    if (mapping.type === "funds") return purchaseFunds(value);
     const flag = checked(value, mapping.netsuite);
     if (destination === "native") return flag ? "yes" : "no";
     return flag ? 1 : 0;
@@ -177,6 +187,8 @@ export function mapOrderFields(fields: Record<string, unknown>, destination: Ord
     if (fields.crm_sync_projection === undefined) return [];
     if (fields.crm_sync_projection !== 1) throw new BadRequestException("Proyeccion NetSuite no soportada.");
     const direct = orderFieldMappings.flatMap((mapping) => {
+        // Earlier producers did not send the raw list ID; absence must not erase stored funds.
+        if (mapping.type === "funds" && !Object.hasOwn(fields, mapping.netsuite)) return [];
         const after = fieldValue(mapping, fields[mapping.netsuite], destination);
         const column = mapping[destination];
         const previous = before[column] ?? null;

@@ -4,67 +4,95 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
 
 import { CaptureColumnsChart } from "../../src/modules/marketing/CaptureColumnsChart";
-import { captureCatalogs } from "./fixtures/capture-report";
+import { EMPTY_VALUES, type PathRow } from "../../src/modules/marketing/lead-capture-report";
 afterEach(cleanup);
+const row = (key: string, value: number, leads = value): PathRow => ({ key, path: [key], value, detail: { ...EMPTY_VALUES, leads } });
 
-it("keeps each seller's color when filters or catalog order change", () => {
-    const all = captureCatalogs.sellers;
-    const group = { key: "p", label: "Proyecto", path: ["Proyecto"], values: [2, 3, 4] };
-    const groups = [group];
-    const view = render(<CaptureColumnsChart sellers={all} groups={groups} label="Comparación" />);
-    const bar = screen.getByTitle("Ana Solís: 2").querySelector("i");
-    const color = bar?.style.backgroundColor;
-    expect(color).toBeTruthy();
-    const second = screen.getByTitle("Carlos Vega: 3").querySelector("i")?.style.backgroundColor;
-    expect(second).not.toBe(color);
-    view.rerender(<CaptureColumnsChart sellers={[...all].reverse()} groups={[{ ...group, values: [4, 3, 2] }]} label="Comparación" />);
-    expect(screen.getByTitle("Ana Solís: 2").querySelector("i")?.style.backgroundColor).toBe(color);
-    view.rerender(<CaptureColumnsChart sellers={all.filter((seller) => seller.id === "carlos")} groups={[{ ...group, values: [3] }]} label="Comparación" />);
-    expect(screen.getByTitle("Carlos Vega: 3").querySelector("i")?.style.backgroundColor).toBe(second);
+it("keeps each dimension's color when catalog order changes", () => {
+    const groups = [row("Proyecto Uno", 2), row("Proyecto Dos", 4)];
+    const view = render(<CaptureColumnsChart groups={groups} label="Leads por proyecto" />);
+    const color = screen.getByTitle("Proyecto Uno: 2").style.backgroundColor;
+    view.rerender(<CaptureColumnsChart groups={[...groups].reverse()} label="Leads por proyecto" />);
+    expect(screen.getByTitle("Proyecto Uno: 2").style.backgroundColor).toBe(color);
 });
-
-it("stacks the sellers of a project into one column with the total above, and keeps them side by side otherwise", () => {
-    const groups = [{ key: "p", label: "Proyecto", path: ["Proyecto"], values: [2, 0, 4] }];
-    const view = render(<CaptureColumnsChart sellers={captureCatalogs.sellers} groups={groups} label="Comparación" stacked />);
-    expect(view.container.querySelectorAll(".capture-columns-chart__stack")).toHaveLength(1);
-    expect(view.container.querySelectorAll(".capture-columns-chart__segment")).toHaveLength(2);
-    expect(screen.getByText("6")).toBeInTheDocument();
-    view.rerender(<CaptureColumnsChart sellers={captureCatalogs.sellers} groups={groups} label="Comparación" />);
-    expect(view.container.querySelectorAll(".capture-columns-chart__stack")).toHaveLength(0);
-    expect(view.container.querySelectorAll(".capture-columns-chart__bar")).toHaveLength(2);
+it("draws one total column per dimension with no seller segments or avatars", () => {
+    const view = render(<CaptureColumnsChart groups={[row("Proyecto", 6)]} label="Leads por proyecto" />);
+    expect(view.container.querySelectorAll(".capture-columns-chart__segment")).toHaveLength(1);
+    expect(view.container.querySelector(".capture-columns-chart__stack-wrap > strong")).toHaveTextContent("6");
+    expect(view.container.querySelector("img")).toBeNull();
 });
-
-it("switches the chart between counts and the share of each group's leads", async () => {
-    vi.stubGlobal("ResizeObserver", class { observe() {} unobserve() {} disconnect() {} });
-    const groups = [{ key: "p", label: "Proyecto", path: ["Proyecto"], values: [2, 0, 3], leads: [10, 0, 10] }];
-    const view = render(<CaptureColumnsChart sellers={captureCatalogs.sellers} groups={groups} label="Comparación" measure="lost" stacked />);
-    expect(view.container.querySelector(".capture-columns-chart__stack-wrap > strong")).toHaveTextContent("5");
+it("uses the group's captured leads as the denominator for lost leads", async () => {
+    vi.stubGlobal(
+        "ResizeObserver",
+        class {
+            observe() {}
+            unobserve() {}
+            disconnect() {}
+        },
+    );
+    const view = render(<CaptureColumnsChart groups={[row("Campaña", 5, 20)]} label="Perdidos por campaña" measure="lost" />);
     fireEvent.mouseDown(screen.getByRole("combobox", { name: "Mostrar en el gráfico" }));
     fireEvent.click(await screen.findByTitle("% de los leads"));
     expect(view.container.querySelector(".capture-columns-chart__stack-wrap > strong")).toHaveTextContent("25 %");
-    const parts = [...view.container.querySelectorAll(".capture-columns-chart__segment")].map((node) => node.textContent);
-    expect(parts).toEqual(["10 %", "15 %"]);
+});
+it("orders totals from biggest to smallest and preserves relative heights", () => {
+    const view = render(<CaptureColumnsChart groups={[row("Pequeño", 6), row("Grande", 16)]} label="Leads por proyecto" />);
+    expect([...view.container.querySelectorAll(".capture-columns-chart__label")].map((x) => x.textContent)).toEqual(["Grande", "Pequeño"]);
+    const [big, small] = [...view.container.querySelectorAll<HTMLElement>(".capture-columns-chart__stack-wrap")];
+    expect(Number.parseFloat(big?.style.height ?? "0")).toBeGreaterThan(Number.parseFloat(small?.style.height ?? "0"));
+});
+it("calculates total percentages before applying the top limit and can reveal all groups", async () => {
+    vi.stubGlobal(
+        "ResizeObserver",
+        class {
+            observe() {}
+            unobserve() {}
+            disconnect() {}
+        },
+    );
+    const view = render(<CaptureColumnsChart groups={[row("A", 3), row("B", 1)]} label="Leads por proyecto" defaultLimit={1} />);
+    fireEvent.mouseDown(screen.getByRole("combobox", { name: "Mostrar en el gráfico" }));
+    fireEvent.click(await screen.findByTitle("% del total"));
+    expect(view.container.querySelector(".capture-columns-chart__stack-wrap > strong")).toHaveTextContent("75 %");
+    fireEvent.click(screen.getByRole("button", { name: "Ver las 1 columnas restantes" }));
+    expect(view.container.querySelectorAll(".capture-columns-chart__group")).toHaveLength(2);
 });
 
-it("orders the columns from biggest to smallest and never draws a bigger figure shorter than a smaller one", () => {
-    const sellers = captureCatalogs.sellers;
+it("shows each loss reason's percentage of all lost leads", async () => {
+    vi.stubGlobal(
+        "ResizeObserver",
+        class {
+            observe() {}
+            unobserve() {}
+            disconnect() {}
+        },
+    );
+    const view = render(<CaptureColumnsChart groups={[row("Presupuesto", 3), row("Sin motivo registrado", 1)]} label="Motivos de pérdida" measure="lossReasons" />);
+    fireEvent.mouseDown(screen.getByRole("combobox", { name: "Mostrar en el gráfico" }));
+    fireEvent.click(await screen.findByTitle("% de los perdidos"));
+    expect([...view.container.querySelectorAll(".capture-columns-chart__stack-wrap > strong")].map((x) => x.textContent)).toEqual(["75 %", "25 %"]);
+});
+
+it("keeps calendar order and zero intervals while using one project color", () => {
+    const first = { ...row("jan", 2), path: ["ene 2026", "Proyecto"], colorKey: "project" };
+    const empty = { ...row("feb", 0), path: ["feb 2026", "Proyecto"], colorKey: "project" };
+    const last = { ...row("mar", 8), path: ["mar 2026", "Proyecto"], colorKey: "project" };
+    const view = render(<CaptureColumnsChart groups={[first, empty, last]} label="Leads por mes" chronological />);
+    expect([...view.container.querySelectorAll(".capture-columns-chart__stack-wrap > strong")].map((x) => x.textContent)).toEqual(["2", "0", "8"]);
+    expect(view.container.querySelectorAll(".capture-columns-chart__segment")).toHaveLength(2);
+    expect(view.container.querySelectorAll(".capture-columns-chart__legend li")).toHaveLength(1);
+});
+
+it("keeps all periods together under one project heading", () => {
     const groups = [
-        { key: "small", label: "Pequeño", path: ["Pequeño"], values: [2, 1, 3] },
-        { key: "big", label: "Grande", path: ["Grande"], values: [9, 7, 0] },
+        { ...row("jan-a", 2), path: ["ene 2026", "Proyecto A"], colorKey: "a" },
+        { ...row("jan-b", 4), path: ["ene 2026", "Proyecto B"], colorKey: "b" },
+        { ...row("feb-a", 3), path: ["feb 2026", "Proyecto A"], colorKey: "a" },
+        { ...row("feb-b", 0), path: ["feb 2026", "Proyecto B"], colorKey: "b" },
     ];
-    const view = render(<CaptureColumnsChart sellers={sellers} groups={groups} label="Comparación" stacked />);
-    const names = [...view.container.querySelectorAll(".capture-columns-chart__label")].map((node) => node.textContent);
-    expect(names).toEqual(["Grande", "Pequeño"]);
-    const ratio = (node: Element) => Number.parseFloat((node as HTMLElement).style.height);
-    const [big, small] = [...view.container.querySelectorAll(".capture-columns-chart__stack-wrap")];
-    expect(ratio(big as Element)).toBeGreaterThan(ratio(small as Element));
-});
-
-it("keeps the biggest sellers apart and sums the rest into one 'Otros' series when there are too many to tell apart", () => {
-    const many = Array.from({ length: 12 }, (_, index) => ({ id: `s${String(index)}`, name: `Vendedor ${String(index)}`, publicId: null }));
-    const groups = [{ key: "p", label: "P", path: ["P"], values: many.map((_, index) => index + 1) }];
-    const view = render(<CaptureColumnsChart sellers={many} groups={groups} label="Comparación" stacked />);
-    expect(view.container.querySelectorAll(".capture-columns-chart__legend li")).toHaveLength(8);
-    expect(screen.getByText("Otros (5)")).toBeInTheDocument();
-    expect(view.container.querySelector(".capture-columns-chart__stack-wrap > strong")).toHaveTextContent("78");
+    render(<CaptureColumnsChart groups={groups} label="Comparación" chronological />);
+    const project = screen.getByRole("group", { name: "Proyecto A" });
+    expect(project.querySelectorAll(".capture-columns-chart__group")).toHaveLength(2);
+    expect(project).toHaveTextContent("ene 2026");
+    expect(project).toHaveTextContent("feb 2026");
 });

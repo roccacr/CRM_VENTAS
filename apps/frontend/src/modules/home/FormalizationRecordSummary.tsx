@@ -1,4 +1,5 @@
 import AuditOutlined from "@ant-design/icons/AuditOutlined";
+import BankOutlined from "@ant-design/icons/BankOutlined";
 import BranchesOutlined from "@ant-design/icons/BranchesOutlined";
 import BuildOutlined from "@ant-design/icons/BuildOutlined";
 import CalculatorOutlined from "@ant-design/icons/CalculatorOutlined";
@@ -29,16 +30,30 @@ import type { FollowUpItem } from "../../services/formalization/follow-up-servic
 import { type NetsuitePrimary, ORDER_ITEM_COLUMNS } from "../../services/formalization/netsuite-primary";
 import { NotesTarget } from "../notes/PersonalNotes";
 import { type CheckGroup, RECORD_EXAMPLE, type RecordChapterData, type RecordGroup } from "./formalization-record-example";
+import { FormalizationBankAssignmentDetails } from "./FormalizationBankAssignmentDetails";
 import { FormalizationClientDrawer } from "./FormalizationClientDrawer";
+import { OutlookCompose } from "./FormalizationContractSend";
+import { FormalizationMarkAddendum } from "./FormalizationMarkAddendum";
+import { FormalizationOrderDocuments } from "./FormalizationOrderDocuments";
 import { FormalizationOrderHistoryDrawer } from "./FormalizationOrderHistoryDrawer";
+import { FormalizationScheduleEvent } from "./FormalizationScheduleEvent";
 import { FormalizationUnitDrawer } from "./FormalizationUnitDrawer";
+import { FormAssignBank } from "./FormAssignBank";
 import { RecordFieldIcon } from "./RecordFieldIcon";
 import { smoothScrollTo } from "./smooth-scroll";
 
 const additionalIds = new Set(["articles", "reservation", "payment", "onedrive"]);
+const BANK_ASSIGNMENT_CHAPTER = { id: "bank-assignment", label: "Banco y ejecutivo asignado" };
+
+/** El perfil combina rol y excepciones personales; la API revalida módulo y lectura de orden. */
+function canReadBankAssignment(permissions: readonly { readonly code: string; readonly effect: string }[]): boolean {
+    const entries = permissions.filter((permission) => permission.code === "formalizacion.catalog_bank.read");
+    return entries.some((permission) => permission.effect === "allow") && !entries.some((permission) => permission.effect === "deny");
+}
 
 /** One small icon per title, so a part is recognised before it is read. Decorative: the words stay the accessible name. */
 const TITLE_ICONS: Readonly<Record<string, ReactNode>> = {
+    "bank-assignment": <BankOutlined />,
     primary: <FileTextOutlined />,
     sales: <ShoppingOutlined />,
     authorization: <SafetyCertificateOutlined />,
@@ -110,7 +125,7 @@ function Highlights({ item, onOpenClient, onOpenUnit }: { readonly item: FollowU
     return (
         <dl className="record-highlights" aria-label="Datos clave de la orden">
             {facts.map(([label, value]) => (
-                <div key={label}>
+                <div key={label} data-wide={label === "Siguiente paso"}>
                     <dt>{label}</dt>
                     <dd>
                         {label === "Cliente" && value ? (
@@ -172,7 +187,7 @@ function FieldGroup({ group }: { readonly group: RecordGroup }) {
     );
 }
 
-function RecordChapter({ chapter, open, focused, onToggle }: { readonly chapter: RecordChapterData; readonly open: boolean; readonly focused: boolean; readonly onToggle: () => void }) {
+function RecordChapter({ chapter, open, focused, onToggle, children }: { readonly chapter: RecordChapterData; readonly open: boolean; readonly focused: boolean; readonly onToggle: () => void; readonly children?: ReactNode }) {
     return (
         <section className="record-chapter" data-open={open} data-focus={focused} data-chapter={chapter.id} aria-labelledby={`record-chapter-${chapter.id}`}>
             <h2 id={`record-chapter-${chapter.id}`}>
@@ -184,7 +199,7 @@ function RecordChapter({ chapter, open, focused, onToggle }: { readonly chapter:
             </h2>
             {open && (
                 <div className="record-chapter__body" id={`record-body-${chapter.id}`}>
-                    {chapter.id === "onedrive" ? <h1>AQUI VA EL ONEDRIVE</h1> : chapter.empty ? <p className="record-empty">Sin datos cargados.</p> : chapter.groups?.map((group) => <FieldGroup key={group.title || chapter.id} group={group} />)}
+                    {children ?? (chapter.empty ? <p className="record-empty">Sin datos cargados.</p> : chapter.groups?.map((group) => <FieldGroup key={group.title || chapter.id} group={group} />))}
                 </div>
             )}
         </section>
@@ -280,7 +295,7 @@ function useStickyRail(ref: RefObject<HTMLElement | null>): void {
 }
 
 /** The chapter being read: the first one under the sticky bar. Without observer support (tests) the first one stays. */
-function useActiveChapter(): string {
+function useActiveChapter(chapterKey: string): string {
     const [active, setActive] = useState(RECORD_EXAMPLE.chapters[0]?.id ?? "");
     useEffect(() => {
         if (typeof IntersectionObserver === "undefined") return undefined;
@@ -297,14 +312,14 @@ function useActiveChapter(): string {
             },
             { rootMargin: "-110px 0px -55% 0px" },
         );
-        for (const chapter of RECORD_EXAMPLE.chapters) {
-            const node = document.getElementById(`record-chapter-${chapter.id}`)?.parentElement;
+        for (const id of chapterKey.split("|")) {
+            const node = document.getElementById(`record-chapter-${id}`)?.parentElement;
             if (node) observer.observe(node);
         }
         return () => {
             observer.disconnect();
         };
-    }, []);
+    }, [chapterKey]);
     return active;
 }
 
@@ -312,12 +327,12 @@ function useActiveChapter(): string {
  * Jump links, not tabs: every part stays on the page and the link only takes you there (opening it if it was folded). The look says so:
  * a small "Ir a" label and plain links, the one in view in bold; no underline bar like a tab strip.
  */
-function SectionBar({ closed, active, onGo, onAll, onHistory }: { readonly closed: ReadonlySet<string>; readonly active: string; readonly onGo: (id: string) => void; readonly onAll: (open: boolean) => void; readonly onHistory: () => void }) {
+function SectionBar({ chapters, closed, active, onGo, onAll, onHistory }: { readonly chapters: readonly RecordChapterData[]; readonly closed: ReadonlySet<string>; readonly active: string; readonly onGo: (id: string) => void; readonly onAll: (open: boolean) => void; readonly onHistory: () => void }) {
     return (
         <nav className="record-bar" aria-label="Secciones de la orden">
             <span className="record-bar__label">Ir a</span>
             <ul>
-                {RECORD_EXAMPLE.chapters
+                {chapters
                     .filter((chapter) => !additionalIds.has(chapter.id))
                     .map((chapter) => (
                         <li key={chapter.id}>
@@ -329,7 +344,7 @@ function SectionBar({ closed, active, onGo, onAll, onHistory }: { readonly close
                                     onGo(chapter.id);
                                 }}
                             >
-                                {chapter.label}
+                                {chapter.id === BANK_ASSIGNMENT_CHAPTER.id ? "Banco y ejecutivo" : chapter.label}
                             </a>
                         </li>
                     ))}
@@ -399,13 +414,20 @@ function OrderItems({ primary }: { readonly primary: Partial<NetsuitePrimary> | 
  * One reading of the sale file. Facts stay in the main column, in named groups; money and answers stay in the right margin.
  * Field values await explicit mapping; this scaffold contains no example values.
  */
-export function FormalizationRecordSummary({ item, primary = null, effectivePermissions = [] }: { readonly item: FollowUpItem; readonly primary?: Partial<NetsuitePrimary> | null; readonly effectivePermissions?: readonly { readonly code: string; readonly effect: string }[] }) {
+export function FormalizationRecordSummary({ item, primary = null, effectivePermissions = [], onNavigate, onAddendumChanged, overview }: { readonly overview?: ReactNode; readonly item: FollowUpItem; readonly primary?: Partial<NetsuitePrimary> | null; readonly onNavigate?: ((path: string) => void) | undefined; readonly onAddendumChanged?: (() => void | Promise<void>) | undefined; readonly effectivePermissions?: readonly { readonly code: string; readonly effect: string }[] }) {
     const [panel, setPanel] = useState<"client" | "unit" | "history" | null>(null);
     const [selectedDetail, setSelectedDetail] = useState("articles");
     const [closed, setClosed] = useState<ReadonlySet<string>>(new Set());
     const [focused, setFocused] = useState<string | null>(null);
-    const active = useActiveChapter();
-    const chapters = withOrder(RECORD_EXAMPLE.chapters, primary);
+    const [bankRevision, setBankRevision] = useState(0);
+    const chapters: readonly RecordChapterData[] = [...withOrder(RECORD_EXAMPLE.chapters, primary), ...(canReadBankAssignment(effectivePermissions) ? [BANK_ASSIGNMENT_CHAPTER] : [])];
+    const active = useActiveChapter(chapters.map((chapter) => chapter.id).join("|"));
+    const refreshAfterCalendar = () => {
+        // El formulario ya cerró; las consultas del marcador y tablero presentan sus propios fallos de recarga.
+        void Promise.resolve()
+            .then(onAddendumChanged)
+            .catch(() => undefined);
+    };
     const timer = useRef<number | undefined>(undefined);
     const rail = useRef<HTMLElement>(null);
     useStickyRail(rail);
@@ -444,16 +466,35 @@ export function FormalizationRecordSummary({ item, primary = null, effectivePerm
     return (
         <div className="record-page" data-order-id={item.id}>
             <NotesTarget source={item.source} id={item.id} label={`Orden de venta ${item.number}`} />
-            <Highlights
-                item={item}
-                onOpenUnit={() => {
-                    setPanel("unit");
-                }}
-                onOpenClient={() => {
-                    setPanel("client");
-                }}
-            />
+            <div className="record-overview">
+                <div className="record-overview__cards">
+                    {overview}
+                    <OutlookCompose item={item} />
+                </div>
+                <Highlights
+                    item={item}
+                    onOpenUnit={() => {
+                        setPanel("unit");
+                    }}
+                    onOpenClient={() => {
+                        setPanel("client");
+                    }}
+                />
+            </div>
+            <div className="record-actions">
+                <FormAssignBank
+                    key={`bank:${item.source}:${item.id}`}
+                    item={item}
+                    onAssigned={() => {
+                        setBankRevision((value) => value + 1);
+                    }}
+                />
+                <FormalizationMarkAddendum item={item} permissions={effectivePermissions} onSaved={onAddendumChanged} />
+                <FormalizationScheduleEvent key={`${item.source}:${item.id}`} item={item} effectivePermissions={effectivePermissions} onClosed={refreshAfterCalendar} />
+            </div>
             <FormalizationClientDrawer
+                onCalendarClosed={refreshAfterCalendar}
+                onNavigate={onNavigate}
                 effectivePermissions={effectivePermissions}
                 item={item}
                 open={panel === "client"}
@@ -478,6 +519,7 @@ export function FormalizationRecordSummary({ item, primary = null, effectivePerm
             />
 
             <SectionBar
+                chapters={chapters}
                 closed={closed}
                 active={active}
                 onGo={go}
@@ -501,7 +543,17 @@ export function FormalizationRecordSummary({ item, primary = null, effectivePerm
                                 onToggle={() => {
                                     toggle(chapter.id);
                                 }}
-                            />
+                            >
+                                {chapter.id === BANK_ASSIGNMENT_CHAPTER.id ? (
+                                    <FormalizationBankAssignmentDetails
+                                        item={item}
+                                        revision={bankRevision}
+                                        onChanged={() => {
+                                            setBankRevision((value) => value + 1);
+                                        }}
+                                    />
+                                ) : undefined}
+                            </RecordChapter>
                         ))}
                     <section className="record-details" aria-label="Detalles adicionales de la orden">
                         <div className="record-details__tabs" role="tablist" aria-label="Detalles de la orden">
@@ -539,7 +591,7 @@ export function FormalizationRecordSummary({ item, primary = null, effectivePerm
                             .filter((chapter) => additionalIds.has(chapter.id))
                             .map((chapter) => (
                                 <div key={chapter.id} role="tabpanel" id={`record-panel-${chapter.id}`} aria-labelledby={`record-tab-${chapter.id}`} hidden={selectedDetail !== chapter.id} tabIndex={0} className="record-details__panel">
-                                    {chapter.id === "onedrive" ? <h1>AQUI VA EL ONEDRIVE</h1> : chapter.groups?.map((group) => <FieldGroup key={group.title || chapter.id} group={group} />)}
+                                    {chapter.id === "onedrive" ? selectedDetail === "onedrive" ? <FormalizationOrderDocuments key={`${item.source}:${item.id}`} item={item} permissions={effectivePermissions} /> : null : chapter.groups?.map((group) => <FieldGroup key={group.title || chapter.id} group={group} />)}
                                 </div>
                             ))}
                     </section>

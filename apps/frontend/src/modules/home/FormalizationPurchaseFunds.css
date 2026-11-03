@@ -1,0 +1,26 @@
+.formalization-purchase-funds {
+    display: grid;
+    gap: 12px;
+    min-width: 0;
+    justify-items: start;
+}
+.formalization-purchase-funds label {
+    display: grid;
+    gap: 6px;
+    width: 100%;
+}
+.formalization-purchase-funds select {
+    width: 100%;
+    min-width: 0;
+    padding: 6px 10px;
+    color: inherit;
+    font: inherit;
+    background: var(--color-surface, #fff);
+    border: 1px solid var(--ent-border, #b4c0d0);
+    border-radius: 6px;
+}
+.formalization-purchase-funds__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}

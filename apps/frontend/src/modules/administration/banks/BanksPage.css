@@ -1,0 +1,125 @@
+.banks-toolbar {
+    display: flex;
+    gap: 12px;
+    margin: 16px 0;
+}
+.banks-toolbar .ant-input-search {
+    flex: 1;
+    min-width: 160px;
+}
+.banks-toolbar .ant-select {
+    min-width: 180px;
+}
+.banks-name {
+    font-weight: 600;
+    padding-left: 0;
+    white-space: normal;
+    text-align: left;
+    height: auto;
+}
+.banks-page .ant-pagination,
+.banks-detail .ant-pagination {
+    margin-top: 16px;
+}
+.banks-detail__summary {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    align-items: center;
+    padding: 12px;
+    background: #f0f3f8;
+    border: 1px solid #b4c0d0;
+    border-radius: 8px;
+}
+.banks-detail h2 {
+    margin: 24px 0 8px;
+    font-size: 19px;
+}
+.banks-detail__actions {
+    margin: 16px 0 0;
+}
+.banks-contacts {
+    display: grid;
+    gap: 12px;
+}
+.banks-contact {
+    border: 1px solid #b4c0d0;
+    border-radius: 8px;
+    padding: 16px;
+    background: #fff;
+}
+.banks-contact header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+.banks-contact h3 {
+    margin: 0;
+    font-size: 15px;
+}
+.banks-contact dl {
+    display: grid;
+    grid-template-columns: 72px minmax(0, 1fr);
+    gap: 8px;
+    font-size: 13px;
+}
+.banks-contact dt {
+    color: #475467;
+}
+.banks-contact dd {
+    margin: 0;
+    overflow-wrap: anywhere;
+}
+.banks-form .ant-alert {
+    margin-bottom: 16px;
+}
+.banks-form__footer {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+.banks-form__footer > span {
+    font-size: 12px;
+    color: #475467;
+}
+.banks-detail__lead {
+    margin: 0 0 12px;
+    color: #475467;
+}
+.banks-detail__section {
+    margin-top: 16px;
+}
+@media (max-width: 767px) {
+    .banks-toolbar {
+        flex-direction: column;
+    }
+    .banks-detail .ant-drawer-content-wrapper,
+    .banks-form .ant-drawer-content-wrapper {
+        max-width: 100vw;
+    }
+}
+
+/* Assign-bank panel: search fields sit tight under their selector and the contact reads as a card. */
+.banks-form .ant-form-item + .ant-input-search,
+.banks-form .ant-select + .ant-input-search {
+    margin-top: 0;
+}
+.banks-form .ant-form-item + .ant-input-search {
+    margin: -8px 0 16px;
+}
+.banks-form .ant-pagination {
+    margin: -8px 0 16px;
+}
+.banks-assign__contact {
+    margin: 0;
+    padding: 10px 12px;
+    border: 1px solid #d2dae5;
+    border-radius: 8px;
+    background: #f6f8fb;
+    color: #344054;
+    font-size: 13px;
+    overflow-wrap: anywhere;
+}

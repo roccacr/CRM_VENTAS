@@ -155,6 +155,18 @@ describe("identity schema migration parser", () => {
             "202611020059_sales_order_cancellation_date",
             "202611020060_lead_profile_permission",
             "202611020061_formalization_calendar_types",
+            "202611020062_formalization_purchase_funds",
+            "202611030063_formalization_calendar_assign_lead",
+            "202611030064_formalization_order_whatsapp",
+            "202611030065_formalization_order_addendum",
+            "202611030066_formalization_manual_addendum",
+            "202611030067_formalization_manual_addendum_defaults",
+            "202611030068_banks_and_advisors",
+            "202611030069_sales_order_bank_assignment",
+            "202611030070_order_documents_permissions",
+            "202611030071_sales_order_bank_assignment_unlink",
+            "202611030072_formalization_addendum_sent",
+            "202611030073_lead_qualification",
         ]);
     });
 
@@ -166,7 +178,8 @@ describe("identity schema migration parser", () => {
         expect(catalogPermissionCodes).toContain("administration.catalog_project.read");
         expect(catalogPermissionCodes).toContain("mercadeo.catalog_project.read");
         expect(catalogPermissionCodes).toContain("formalizacion.catalog_project.read");
-        expect(catalogPermissionCodes.slice(0, 24)).toEqual([
+        expect(catalogPermissionCodes.filter((code) => code.includes(".catalog_bank."))).toEqual(["ventas", "mercadeo", "formalizacion", "contabilidad", "administration"].flatMap((context) => CATALOG_PERMISSION_ACTIONS.map((action) => `${context}.catalog_bank.${action}`)));
+        expect(catalogPermissionCodes.filter((code) => !code.includes(".catalog_bank.")).slice(0, 24)).toEqual([
             "ventas.catalog_project.read",
             "ventas.catalog_project.create",
             "ventas.catalog_project.update",

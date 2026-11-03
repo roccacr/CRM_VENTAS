@@ -280,3 +280,69 @@
 .formalization-exception-modal .formalization-stage-editor__exception {
     margin: 0;
 }
+
+/* Stage actions: the current stage is an orange tag, the next step is a green button, and "Pasará a …" is plain explanatory text, never styled like a button. */
+.formalization-stage-editor .formalization-stage-editor__head > span {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 10px;
+    border: 1px solid #f0c98a;
+    border-radius: 999px;
+    background: #fdf1de;
+    color: #8a5200;
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+.formalization-stage-editor .formalization-stage-editor__head > span::before {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #e08a00;
+    content: "";
+}
+.formalization-stage-editor .formalization-stage-editor__actions .formalization-stage-editor__advance {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 14px;
+}
+.formalization-stage-editor .formalization-stage-editor__actions .formalization-stage-editor__advance > .ant-btn {
+    flex: 0 0 auto;
+    width: auto;
+    min-width: 150px;
+}
+.formalization-stage-editor .formalization-stage-editor__actions .formalization-stage-editor__advance > span {
+    min-width: 0;
+    padding-left: 12px;
+    border-left: 2px solid #c3ccd9;
+    color: #5d6b82;
+    font-size: 12.5px;
+    line-height: 1.35;
+}
+.formalization-stage-editor .formalization-stage-editor__actions .formalization-stage-editor__advance > span strong {
+    color: #2f3a4b;
+}
+
+/* Top actions of the order drawer sit two per row, like the client drawer. */
+.formalization-drawer-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+}
+.formalization-drawer-actions > .ant-btn {
+    width: 100%;
+    min-width: 0;
+    height: 38px;
+    padding-inline: 10px;
+    white-space: normal;
+}
+.formalization-drawer-actions > .ant-btn:only-child {
+    grid-column: 1 / -1;
+}
+@media (max-width: 420px) {
+    .formalization-drawer-actions {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}

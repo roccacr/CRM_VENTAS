@@ -5,7 +5,7 @@ import { DatabaseService } from "../../../../database/database.service.js";
 import type { CrmDatabase } from "../../../../database/database.types.js";
 import type { ContractCounts } from "./contract-summary.port.js";
 
-/** Three explicit approvals start the NEW CRM workflow; latest later stages never reset to send. */
+/** Explicit Formalization approval starts the NEW CRM workflow; latest later stages never reset to send. */
 @Injectable()
 export class ContractSummaryRepository {
     /** Uses the canonical application connection. */
@@ -27,7 +27,7 @@ export class ContractSummaryRepository {
                 FROM crm_sales_order o
                 WHERE o.status_sales_order='active' AND o.cancelled_sales_order='no' AND o.deleted_at_sales_order IS NULL
                   AND (SELECT COUNT(*) FROM crm_sales_order_approval a WHERE a.sales_order_id_sales_order_approval=o.id_sales_order
-                       AND a.type_code_sales_order_approval IN ('sales_management','developer','formalization') AND a.status_sales_order_approval='approved')=3
+                       AND a.type_code_sales_order_approval='formalization' AND a.status_sales_order_approval='approved')=1
             ) eligible
         `.execute(transaction);
         return { toSend: Number(result.rows[0]?.toSend ?? 0), pendingSignature: Number(result.rows[0]?.pendingSignature ?? 0) };

@@ -1,10 +1,13 @@
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { StrictMode } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
 import { getApprovalCount } from "../../src/services/formalization/approval-summary-service";
 import type * as FollowUpService from "../../src/services/formalization/follow-up-service";
+import { getFollowUp } from "../../src/services/formalization/follow-up-service";
 import { getHomeSummary } from "../../src/services/formalization/home-summary-service";
+import type * as OrderAddendumService from "../../src/services/formalization/order-addendum-service";
+import { getPendingAddendumCount } from "../../src/services/formalization/order-addendum-service";
 
 // Banner tests isolate their source from the independently tested canonical follow-up read.
 vi.mock("../../src/services/formalization/follow-up-service", async (importOriginal) => {
@@ -13,10 +16,12 @@ vi.mock("../../src/services/formalization/follow-up-service", async (importOrigi
 });
 vi.mock("../../src/services/formalization/approval-summary-service", () => ({ getApprovalCount: vi.fn() }));
 vi.mock("../../src/services/formalization/home-summary-service", () => ({ getHomeSummary: vi.fn() }));
+vi.mock("../../src/services/formalization/order-addendum-service", async (importOriginal) => ({ ...(await importOriginal<typeof OrderAddendumService>()), getPendingAddendumCount: vi.fn() }));
 const role = { code: "formalizacion", name: "Formalización", status: "active" as const };
 const stagePermission = { code: "formalizacion.home.stages.read", effect: "allow" as const, scope: "self" as const, source: "role" as const };
 const counts = { contracts: { toSend: 0, pendingSignature: 0 }, banking: 0, balance: 0, transferPending: 0, transferSigned: 0, closedThisYear: 0 };
 beforeEach(() => {
+    vi.mocked(getPendingAddendumCount).mockReset().mockResolvedValue(0);
     vi.mocked(getApprovalCount).mockReset().mockResolvedValue(0);
     vi.mocked(getHomeSummary)
         .mockReset()
@@ -28,6 +33,65 @@ import { getAppRoute } from "../../src/routes/app-routes";
 import { installBrowserApiDoubles } from "../support/browser";
 
 afterEach(cleanup);
+
+const addendumRead = [
+    { code: "formalizacion.orders.read", effect: "allow" },
+    { code: "formalizacion.orders.addendum.read", effect: "allow" },
+] as const;
+const addendumBanner = { code: "formalizacion.home.addendum.read", effect: "allow" } as const;
+it("shows the independent addendum banner beside approvals and opens its authorized queue", async () => {
+    installBrowserApiDoubles();
+    vi.mocked(getPendingAddendumCount).mockResolvedValue(3);
+    render(<FormalizationHomePage roles={[role]} effectivePermissions={[addendumBanner, ...addendumRead, { code: "formalizacion.home.approvals.read", effect: "allow" }]} />);
+    await screen.findByLabelText("Órdenes pendientes de adéndum: 3");
+    expect(screen.getByRole("button", { name: "Ver pendientes de aprobación de Formalización" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Ver pendientes de adéndum de Formalización" }));
+    await waitFor(() => {
+        expect(vi.mocked(getFollowUp).mock.calls.at(-1)?.[0]).toMatchObject({ queues: ["addendum"] });
+    });
+});
+it.each([{ permissions: [] }, { permissions: [addendumBanner, { ...addendumBanner, effect: "deny" as const }] }])("does not request an unauthorized addendum banner: %j", ({ permissions }) => {
+    installBrowserApiDoubles();
+    render(<FormalizationHomePage roles={[role]} effectivePermissions={[...permissions, ...addendumRead]} />);
+    expect(getPendingAddendumCount).not.toHaveBeenCalled();
+    expect(screen.queryByLabelText(/^Órdenes pendientes de adéndum:/)).toBeNull();
+});
+it("permits the Home count without granting the addendum queue", async () => {
+    installBrowserApiDoubles();
+    render(<FormalizationHomePage roles={[role]} effectivePermissions={[addendumBanner]} />);
+    await screen.findByLabelText("Órdenes pendientes de adéndum: 0");
+    expect(screen.getByRole("button", { name: "Ver pendientes de adéndum de Formalización" }).hasAttribute("disabled")).toBe(true);
+});
+it("retries an unavailable addendum count instead of showing a false zero", async () => {
+    installBrowserApiDoubles();
+    vi.mocked(getPendingAddendumCount).mockRejectedValueOnce(new Error("offline")).mockResolvedValueOnce(4);
+    render(<FormalizationHomePage roles={[role]} effectivePermissions={[addendumBanner, ...addendumRead]} />);
+    fireEvent.click(await screen.findByRole("button", { name: "Reintentar pendientes de adéndum" }));
+    await screen.findByLabelText("Órdenes pendientes de adéndum: 4");
+});
+it("starts a fresh pending count when refreshed during an older request", async () => {
+    installBrowserApiDoubles();
+    const pending: ((count: number) => void)[] = [];
+    vi.mocked(getPendingAddendumCount).mockImplementation(
+        () =>
+            new Promise<number>((resolve) => {
+                pending.push(resolve);
+            }),
+    );
+    render(<FormalizationHomePage roles={[role]} effectivePermissions={[addendumBanner, ...addendumRead]} />);
+    fireEvent.click(screen.getByRole("button", { name: "Recargar banners" }));
+    await waitFor(() => {
+        expect(pending).toHaveLength(2);
+    });
+    pending[1]?.(2);
+    await screen.findByLabelText("Órdenes pendientes de adéndum: 2");
+    await act(async () => {
+        pending[0]?.(9);
+        await Promise.resolve();
+    });
+    expect(screen.getByLabelText("Órdenes pendientes de adéndum: 2")).toBeTruthy();
+    expect(screen.queryByLabelText("Órdenes pendientes de adéndum: 9")).toBeNull();
+});
 
 it("retries failed approvals before opening the empty queue", async () => {
     installBrowserApiDoubles();
@@ -167,7 +231,7 @@ it("preserves decorative SVG artwork for permitted banner containers", () => {
     }
 });
 
-it("uses the formalization artwork in the personalized welcome and keeps order navigation", () => {
+it("uses the formalization artwork and hides the temporary all-orders shortcut", () => {
     installBrowserApiDoubles();
     render(<FormalizationHomePage currentUser={{ displayName: "Roberto", email: "roberto@example.test" }} />);
     const welcome = screen.getByRole("region", { name: "Bienvenida a Formalización" });
@@ -175,8 +239,7 @@ it("uses the formalization artwork in the personalized welcome and keeps order n
     expect(welcome.querySelector("img")?.getAttribute("alt")).toBe("");
     expect(screen.getByText("Hola, Roberto")).toBeTruthy();
     expect(screen.queryByText("Las colas de abajo muestran cuántas órdenes hay en cada etapa.")).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: "Ver todas las órdenes" }));
-    expect(screen.getByRole("heading", { name: "Todas las órdenes", level: 1 })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Ver todas las órdenes" })).toBeNull();
 });
 
 it("shows a separate approval strip only with an effective grant and preserves other banners", () => {
@@ -194,7 +257,7 @@ it("shows a separate approval strip only with an effective grant and preserves o
     expect(container.querySelectorAll(".formalization-home__banners > article")).toHaveLength(0);
     expect(screen.getByLabelText("Órdenes pendientes de aprobación: Consultando…")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Ver pendientes de aprobación de Formalización" }));
-    expect(screen.getByRole("heading", { name: "Pendientes de aprobación", level: 1 })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Formalización", level: 1 })).toBeTruthy();
     expect(screen.queryAllByRole("button", { name: /^Ver seguimiento de/ })).toHaveLength(0);
     rerender(<FormalizationHomePage roles={[role]} effectivePermissions={[]} />);
     expect(screen.queryByRole("heading", { name: "Pendientes de aprobación", level: 1 })).toBeNull();
@@ -230,21 +293,23 @@ it("does not mount any unauthorized stage banners", async () => {
 });
 
 it.each([
-    ["Sin iniciar / En proceso", "Gestión bancaria", 1],
+    ["Sin iniciar", "Gestión bancaria", 1],
     ["Consulta financiera", "Pendientes de saldo", 1],
     ["Por gestionar", "Traspasos pendientes", 1],
     ["Firma registrada · Llaves pendientes", "Traspaso firmado", 3],
     ["Proceso finalizado", "Formalizaciones cerradas este año", 0],
-])("opens the %s banner as an empty table", async (label, title) => {
+])("adds the %s banner to the Home filter", async (label) => {
     installBrowserApiDoubles();
     const Page = getAppRoute("/home/formalization")?.Page;
     if (!Page) throw new Error("Missing Formalization Home");
     render(<Page roles={[role]} effectivePermissions={[stagePermission]} currentUser={{ publicId: "user", displayName: "Test", email: "test@example.invalid", profileImageUrl: null, status: "active", permissionVersion: 1 }} />);
     fireEvent.click(await screen.findByRole("button", { name: `Abrir ${label}` }));
-    expect(screen.getByRole("heading", { name: title, level: 1 })).toBeTruthy();
-    expect(screen.queryAllByRole("button", { name: /^Ver seguimiento de/ })).toHaveLength(0);
-    fireEvent.click(screen.getByRole("button", { name: "Volver a Inicio" }));
     expect(screen.getByRole("heading", { name: "Formalización", level: 1 })).toBeTruthy();
+    await waitFor(() => {
+        expect(vi.mocked(getFollowUp).mock.calls.at(-1)?.[0]?.queues).not.toEqual([]);
+    });
+    expect(screen.queryAllByRole("button", { name: /^Ver seguimiento de/ })).toHaveLength(0);
+    expect(screen.getByRole("combobox", { name: "Bandeja de seguimiento" })).toBeTruthy();
 });
 
 it("contracts-only hides other stage banners and queue options", async () => {
@@ -253,7 +318,8 @@ it("contracts-only hides other stage banners and queue options", async () => {
     expect(await screen.findByRole("heading", { name: "Contratos pendientes" })).toBeTruthy();
     expect(screen.queryByRole("heading", { name: "Gestión bancaria" })).toBeNull();
     expect(screen.queryByRole("option", { name: /Gestión bancaria/ })).toBeNull();
-    expect(screen.getByRole("option", { name: /Por enviar/ })).toBeTruthy();
+    fireEvent.mouseDown(screen.getByRole("combobox", { name: "Bandeja de seguimiento" }));
+    expect(await screen.findByRole("option", { name: /Por enviar/ })).toBeTruthy();
 });
 
 it("revoking one category discards its mounted queue and pending data", async () => {
@@ -261,8 +327,8 @@ it("revoking one category discards its mounted queue and pending data", async ()
     const contracts = { ...stagePermission, code: "formalizacion.home.contracts.read" };
     const bank = { ...stagePermission, code: "formalizacion.home.banking.read" };
     const { rerender } = render(<FormalizationHomePage roles={[role]} effectivePermissions={[contracts, bank]} />);
-    fireEvent.click(await screen.findByRole("button", { name: "Abrir Sin iniciar / En proceso" }));
-    expect(await screen.findByRole("heading", { name: "Listado de órdenes" })).toBeTruthy();
+    fireEvent.click(await screen.findByRole("button", { name: "Abrir Sin iniciar" }));
+    expect(await screen.findByRole("heading", { name: "Pendientes de seguimiento" })).toBeTruthy();
     rerender(<FormalizationHomePage roles={[role]} effectivePermissions={[contracts]} />);
     expect(screen.queryByRole("heading", { name: "Gestión bancaria" })).toBeNull();
     expect(screen.queryByRole("option", { name: /Gestión bancaria/ })).toBeNull();
@@ -273,4 +339,61 @@ it("does not request approvals without the active effective role", () => {
     render(<FormalizationHomePage effectivePermissions={[{ code: "formalizacion.home.approvals.read", effect: "allow" }]} />);
     expect(screen.queryByRole("button", { name: "Ver pendientes de aprobación de Formalización" })).toBeNull();
     expect(getApprovalCount).not.toHaveBeenCalled();
+});
+
+it("shows independently verified banking counts and no invented zero after summary failure", async () => {
+    installBrowserApiDoubles();
+    vi.mocked(getHomeSummary).mockResolvedValueOnce({ schemaVersion: 1, observedAt: "2026-11-02T12:00:00Z", period: { year: 2026, timeZone: "America/Costa_Rica", start: "2026-01-01T06:00:00Z", endExclusive: "2027-01-01T06:00:00Z" }, counts: { ...counts, banking: 8, bankingInProgress: 3 }, sources: { native: counts, legacy: counts, legacyEnabled: true, duplicatesExcluded: 0 } });
+    const view = render(<FormalizationHomePage roles={[role]} effectivePermissions={[stagePermission]} />);
+    expect(await screen.findByLabelText("Valor: Sin iniciar, 8")).toBeTruthy();
+    expect(screen.getByLabelText("Valor: En proceso, 3")).toBeTruthy();
+    view.unmount();
+    vi.mocked(getHomeSummary).mockRejectedValue(new Error("offline"));
+    const failedView = render(<FormalizationHomePage roles={[role]} effectivePermissions={[stagePermission]} />);
+    await screen.findByRole("button", { name: "Reintentar conteos de contratos" });
+    for (const value of failedView.container.querySelectorAll(".formalization-banner__value")) expect(value.textContent).toBe("\u2014");
+    expect(screen.queryByLabelText(/^Valor:/)).toBeNull();
+});
+
+it("adds banner queues and banking substates to the Home filter without replacing the screen", async () => {
+    installBrowserApiDoubles();
+    const navigate = vi.fn();
+    render(<FormalizationHomePage roles={[role]} effectivePermissions={[stagePermission, { code: "formalizacion.home.approvals.read", effect: "allow" }]} onNavigate={navigate} />);
+    expect(screen.queryByRole("button", { name: "Ver todas las órdenes" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Ver pendientes de aprobación de Formalización" }));
+    await waitFor(() => {
+        expect(vi.mocked(getFollowUp).mock.calls.at(-1)?.[0]).toMatchObject({ queues: ["approvals"], page: 1 });
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Abrir Por enviar" }));
+    await waitFor(() => {
+        expect(vi.mocked(getFollowUp).mock.calls.at(-1)?.[0]).toMatchObject({ queues: ["approvals", "send"] });
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Abrir En proceso" }));
+    await waitFor(() => {
+        expect(vi.mocked(getFollowUp).mock.calls.at(-1)?.[0]).toMatchObject({ queues: ["approvals", "send", "bank"], bankStages: ["bank_management_in_progress"] });
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Abrir En proceso" }));
+    await waitFor(() => {
+        expect(vi.mocked(getFollowUp).mock.calls.at(-1)?.[0]?.queues).toEqual(["approvals", "send", "bank"]);
+    });
+    expect(screen.getByRole("heading", { name: "Formalización", level: 1 })).toBeTruthy();
+    expect(screen.getByRole("combobox", { name: "Bandeja de seguimiento" })).toBeTruthy();
+    expect(navigate).not.toHaveBeenCalled();
+});
+
+it("preserves the project and search when a banner adds another queue", async () => {
+    installBrowserApiDoubles();
+    const email = "banner-preserve@example.invalid";
+    const key = `crm:follow-up:v1:${email}:home:all:`;
+    localStorage.setItem(key, JSON.stringify({ projectIds: ["legacy-project:1"], selections: ["balance"] }));
+    render(<FormalizationHomePage currentUser={{ displayName: "Test", email }} roles={[role]} effectivePermissions={[stagePermission]} />);
+    fireEvent.change(screen.getByRole("searchbox", { name: "Buscar operación" }), { target: { value: "expediente" } });
+    await waitFor(() => {
+        expect(vi.mocked(getFollowUp).mock.calls.at(-1)?.[0]?.search).toBe("expediente");
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Abrir Por enviar" }));
+    await waitFor(() => {
+        expect(vi.mocked(getFollowUp).mock.calls.at(-1)?.[0]).toMatchObject({ projectIds: ["legacy-project:1"], search: "expediente", queues: ["balance", "send"], page: 1 });
+    });
+    localStorage.removeItem(key);
 });

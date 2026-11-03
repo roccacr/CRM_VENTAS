@@ -33,6 +33,10 @@ function catalogDefinition(code: unknown): Definition {
 /** Resolves which table backs an audited entity (catalog item, user or role). */
 function businessDefinition(change: SourceChange, catalogCode: unknown): Definition {
     switch (change.entity) {
+        case "bank":
+            return ["crm_bank", "id_bank", "public_id_bank"];
+        case "bank_advisor":
+            return ["crm_bank_advisor", "id_bank_advisor", "public_id_bank_advisor"];
         case "catalog":
             return catalogDefinition(catalogCode);
         case "user":

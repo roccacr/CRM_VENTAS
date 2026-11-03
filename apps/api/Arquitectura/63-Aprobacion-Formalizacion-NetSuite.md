@@ -1,5 +1,13 @@
 # Aprobacion de Formalizacion confirmada por NetSuite
 
+## Separación entre aprobar y entrar a Contratos — 2026-11-03
+
+La elegibilidad de Contratos pasó a usar exclusivamente la aprobación de
+Formalización en ambas fuentes ([78](78-Formalizacion-Origen-Fondos-y-Gestion-Bancaria.md)).
+Esto no relaja los prerrequisitos del comando de aprobación descrito aquí:
+las aprobaciones previas de Jefatura y Desarrolladora siguen comprobándose
+antes del PUT y de la persistencia local. No confundir ambos controles.
+
 Actualización de autorización: [65 - Roles y recuperación](65-Formalizacion-Correcciones-Roles-y-Recuperacion.md)
 reconoce ambos roles efectivos activos y elimina la restricción por vendedor
 cuando existe el permiso de aprobar. El valor por defecto continúa en Jefatura;

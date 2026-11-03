@@ -15,6 +15,7 @@ export function getCatalogPermissions(profile: IdentityProfile, catalog: Adminis
     const owner = profile.roles.some(({ code, status }) => code === "owner" && status === "active");
     if (!owner && !profile.orgUnits.some(({ code, status }) => code === context && status === "active")) return NO_CATALOG_PERMISSIONS;
     const allowed = new Set(profile.permissions.filter(({ effect }) => effect === "allow").map(({ code }) => code));
-    for (const { code, effect } of profile.permissions) if (effect === "deny") allowed.delete(code);
+    for (const { code } of profile.permissions.filter((permission) => permission.effect === "deny")) allowed.delete(code);
+    if (catalog.code === "banks" && !allowed.has(`${context}.${catalog.moduleCode}.read`)) return NO_CATALOG_PERMISSIONS;
     return { read: allowed.has(`${context}.${catalog.moduleCode}.read`), create: allowed.has(`${context}.${catalog.moduleCode}.create`), update: allowed.has(`${context}.${catalog.moduleCode}.update`), inactivate: allowed.has(`${context}.${catalog.moduleCode}.inactivate`) };
 }

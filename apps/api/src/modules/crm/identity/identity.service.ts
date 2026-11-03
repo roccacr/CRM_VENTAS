@@ -2,6 +2,7 @@ import { BadRequestException, ConflictException, ForbiddenException, Inject, Inj
 import { argon2id, hash as hashArgon2Password, verify as verifyArgon2Hash } from "argon2";
 
 import { normalizeCaseInsensitiveIdentifier } from "../../../common/security/identifier-normalization.js";
+import { calendarRouteAccess } from "../calendar/calendar-access.js";
 import { type CompleteLocalResetDto, type LocalLoginDto, MAX_LOCAL_PASSWORD_LENGTH, MIN_LOCAL_PASSWORD_LENGTH, type RequestLocalResetDto } from "./dto/local-auth.dto.js";
 import type { CreateSystemUserAccessMethod, CreateSystemUserDto, ListSystemUsersQueryDto, UpdateSystemUserDto, UpdateSystemUserStatusDto } from "./dto/system-users.dto.js";
 import { type FailedLocalLoginRecord, IdentityRepository } from "./identity.repository.js";
@@ -432,11 +433,26 @@ export class IdentityService {
         return this.buildAuthenticatedSessionResult(rotation.snapshot, { ...nextSession, sessionExpiresAt: rotation.sessionExpiresAt }, { ...nextRefresh, refreshExpiresAt: rotation.refreshExpiresAt });
     }
 
+    /** Acceso delegado acotado a la sesión Microsoft actual, sin tokens en DTOs o navegador. */
+    async withMicrosoftAccess<T>(sessionToken: string | undefined, scopes: string[], callback: (token: string) => Promise<T>): Promise<T | null> {
+        const profile = await this.getCurrentUser(sessionToken);
+        if (!sessionToken || profile.auth.currentProvider !== "microsoft") return null;
+        const account = await this.repository.findMicrosoftAccountCacheBySessionTokenHash(this.tokens.hashToken(sessionToken));
+        if (!account) return null;
+        const result = await this.microsoftSession.withAccess({ cache: account.cache, homeAccountId: account.homeAccountId, scopes }, callback);
+        if (!result) return null;
+        await this.repository.updateMicrosoftCache(account.authIdentityId, result.cache);
+        return result.value;
+    }
+
     /**
      * Inicia Microsoft OIDC con PKCE/state/nonce y challenge server-side.
      */
-    async startMicrosoftLogin(): Promise<MicrosoftLoginStartResult> {
-        return this.microsoftSession.startLogin();
+    async startMicrosoftLogin(sessionToken?: string, calendar = false): Promise<MicrosoftLoginStartResult> {
+        if (!calendar) return this.microsoftSession.startLogin();
+        const profile = await this.getCurrentUser(sessionToken);
+        if (!calendarRouteAccess(profile, "read")) throw new ForbiddenException("Calendario no autorizado.");
+        return this.microsoftSession.startLogin(profile.user.email);
     }
 
     /**

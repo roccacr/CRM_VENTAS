@@ -1,8 +1,24 @@
 # 00 - Indice de Arquitectura Frontend
 
+## Bancos - 2026-11-03
 
-Perfil completo: [contrato y verificación](../../api/Arquitectura/77-Perfil-Completo-Lead.md). Ruta `/perfil`, botón condicionado por `lead.profile.read`.
-## Entrada vigente - 2026-11-02
+[86 - Bancos y ejecutivos](../../api/Arquitectura/86-Bancos-Ejecutivos-Plan-y-Migracion-068.md): catalogo/API/UI implementados, esquema068/legacy aplicado y verificado por SELECT;20 grants Owner y20 Jefe General,0 filas comerciales. Visual real Owner confirmada; sin deploy ni mutaciones UI sobre RDS. QA y bloqueos globales en86.
+
+[87 — Asignar banco a la orden](../../api/Arquitectura/87-Orden-Asignacion-Bancaria.md): panel derecho junto a adéndum/evento, bancos y ejecutivos activos, alta de ejecutivo y guardado explícito sin cambiar URL. Permisos Owner/Jefe General y lectura de orden;069 central aplicada y revisión visual en LV208.
+
+## Contrato visual vigente — 2026-11-03
+
+La [reconciliación85](../../api/Arquitectura/85-Reconciliacion-Documental-20261103.md), el [mapa30](30-Estado-Frontend-Verificado.md) y el [detalle32](32-Detalle-Orden-y-Cliente-Basico.md) registran el árbol actual. Sustituyen las restricciones históricas de maqueta/recepción/Graph pendiente para las funciones expresamente ampliadas.
+
+Formalización presenta ocho etapas, selector obligatorio de fondos, validaciones de cuotas/traspaso/entrega y ayudas en títulos. Perfil del cliente en `/home/formalization/perfil`, contacto, Outlook y WhatsApp conservan contexto y permisos propios. Agendar desde orden fija cliente/orden y referencia; la cabecera abre un evento limpio. Guardar conserva la pantalla actual. Calendario integra las capacidades Graph descritas en [Calendario global](Calendario-Global-Frontend.md); no afirma invitación entregada solo por guardar CRM.
+
+Adéndum es un seguimiento paralelo en ambas BD: marca manual con motivo obligatorio y registro independiente de enviado ([88 API](../../api/Arquitectura/88-Adendum-Motivo-y-Envio.md)), banner, bandeja, distintivo y acciones debajo de Acciones de la etapa. Sin permiso se oculta solo el contenido Adéndum; la orden permanece visible. Defaults067 de marcar pendiente: Owner, Jefe General y Jefe de Formalizaciones; Formalización base no lo recibe, y un deny personal prevalece. [Contrato83/84](../../api/Arquitectura/84-Adendum-Manual-Migracion-066-y-Permisos.md).
+
+Los snapshots siguientes conservan sus fechas, sin ampliar el alcance ni autorizar operaciones externas. El inventario local y los tests no acreditan despliegue o aceptación completa del negocio.
+
+
+Perfil completo: [contrato y verificación](../../api/Arquitectura/77-Perfil-Completo-Lead.md). Ruta `/home/formalization/perfil`, botón condicionado por `lead.profile.read`.
+## Antecedente de entrada - 2026-11-02
 
 [30 - Inventario contrastado](30-Estado-Frontend-Verificado.md) reúne las rutas,
 seis áreas de módulos, siete grupos de servicios y clasificación de los 34
@@ -292,3 +308,7 @@ Actualización 2026-10-27: la orden completa incorpora Acciones de la etapa deba
 Estado vigente de notas 2026-10-28: [implementación realtime y límites](../../api/Arquitectura/62-Notas-Tiempo-Real-Implementacion.md). Provider único por sesión, campana y conversación actualizadas, preservación de borradores, lectura explícita y revocación. La invitación no concede acceso al registro: contexto restringido se recibe como null. Reconciliación REST al reconectar; copia legacy inactiva.
 
 Calendario vigente 28/10/2026: [calendario global por módulo](Calendario-Global-Frontend.md), superposición autorizada, formularios nativos, UTC y reintentos. Aplicación de esquema y pendiente DBA: [64 API](../../api/Arquitectura/64-Calendario-Global-API-y-Contexto.md).
+
+- [Adéndum: motivo obligatorio y registro de envío (88 API)](../../api/Arquitectura/88-Adendum-Motivo-y-Envio.md): contratos y permisos de las acciones en la orden y calendario.
+
+- [Distribución por proyecto (89 API)](../../api/Arquitectura/89-Formalizacion-Distribucion-Por-Proyecto.md): botón de bienvenida, modal gráfico y tabla de cantidades.

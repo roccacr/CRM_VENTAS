@@ -1,5 +1,11 @@
 # 33 - Contrato API de Identidad P0-S1
 
+## Contrato incremental vigente — 2026-11-03
+
+`POST /identity/microsoft/start` admite `?calendar=true`: esta variante exige sesión y lectura de calendario, vincula el consentimiento a la misma cuenta corporativa mediante challenge firmado y conserva tokens/caché exclusivamente en servidor. La falta de consentimiento para el acceso incremental no revoca por sí sola la sesión CRM; no modifica el contrato ordinario de refresh. Detalle: [24](24-Seguridad-Autenticacion-BFF-OIDC-Local.md).
+
+`/identity/me` y el catálogo administrativo comparten la excepción a la base global Owner para `formalizacion.orders.addendum.mark_pending`: requiere grant de rol realmente asignado o allow personal vigente. 067 agrega grants reales a Owner/Jefe General/Jefe de Formalizaciones, no a Formalización. Deny sigue prevaleciendo; `role.assign` puede administrar esa excepción sin otorgar por ello la acción al administrador. `lead.profile.read` es global independiente del módulo operativo. [77](77-Perfil-Completo-Lead.md)/[84](84-Adendum-Manual-Migracion-066-y-Permisos.md) sustituyen las generalizaciones del baseline inferior; no cambia el JSON de permisos.
+
 ## Catalogo de seguridad posterior - 2026-10-27
 
 El contrato de identidad se conserva, pero el catalogo activo ya no ofrece

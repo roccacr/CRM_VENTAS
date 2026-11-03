@@ -38,6 +38,8 @@ export class ApiClientError extends Error {
 /** Opciones de una petición al API; las cookies de sesión y la protección CSRF las gestiona el cliente. */
 export interface ApiRequestOptions {
     readonly body?: unknown;
+    /** Cancela la espera y evita despachar una mutación después de cerrar su formulario. No revierte cambios ya recibidos por el servidor. */
+    readonly signal?: AbortSignal;
     readonly headers?: HeadersInit;
     readonly method?: "DELETE" | "GET" | "PATCH" | "POST" | "PUT";
     /**
@@ -182,6 +184,11 @@ const createRequestHeaders = (method: string, options: ApiRequestOptions): Heade
     return headers;
 };
 
+/** Una cancelación durante esperas previas impide despachar o reintentar la operación. */
+const assertRequestNotAborted = (signal: AbortSignal | undefined): void => {
+    signal?.throwIfAborted();
+};
+
 /**
  * Ejecuta una llamada sin reintentar.
  *
@@ -189,13 +196,17 @@ const createRequestHeaders = (method: string, options: ApiRequestOptions): Heade
  * que una respuesta vieja parezca una sesión vigente.
  */
 const executeApiRequest = async <TResponse>(path: string, options: ApiRequestOptions): Promise<TResponse> => {
+    assertRequestNotAborted(options.signal);
     const generation = sessionGeneration;
     const method = options.method ?? "GET";
     await ensureCsrfTokenForMutableRequest(method, path);
+    // El preflight CSRF puede resolver después de que se cierre la edición.
+    assertRequestNotAborted(options.signal);
 
     const requestInit: RequestInit = {
         cache: "no-store",
         credentials: "include",
+        ...(options.signal ? { signal: options.signal } : {}),
         headers: createRequestHeaders(method, options),
         method,
     };
@@ -279,11 +290,13 @@ const canRetryUnavailableRead = (error: unknown, options: ApiRequestOptions): bo
  * puede volver a disparar refresh.
  */
 export const apiRequest = async <TResponse>(path: string, options: ApiRequestOptions = {}): Promise<TResponse> => {
+    assertRequestNotAborted(options.signal);
     if (IDENTITY_CONTEXT_CHANGE_PATHS.has(path)) sessionGeneration += 1;
     const generation = sessionGeneration;
     try {
         return await executeApiRequest<TResponse>(path, options);
     } catch (error) {
+        assertRequestNotAborted(options.signal);
         // Never renew or replay an operation from a previous authenticated context.
         if (generation !== sessionGeneration) throw error;
         // Only safe reads recover one temporary dependency failure; uncertain writes keep their operation key.

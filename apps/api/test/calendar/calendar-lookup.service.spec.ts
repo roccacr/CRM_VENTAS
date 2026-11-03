@@ -170,10 +170,10 @@ describe("CalendarLookupService", () => {
         await expect(f.service.lookup(p, { moduleCode: "ventas", kind: "leads", search: "Ana" })).rejects.toBeInstanceOf(ForbiddenException);
         expect(f.queries).toHaveLength(0);
     });
-    it("bounds search and limits, rejects forged access and does not enumerate leads without search", async () => {
+    it("bounds search and limits, rejects forged access and requires two characters for a typed lead search", async () => {
         const f = fixture();
         for (const input of [{ search: "a".repeat(101) }, { limit: 101 }, { access: "all" }]) await expect(f.service.lookup(profile(), { moduleCode: "ventas", kind: "leads", ...input })).rejects.toThrow();
-        expect(await f.service.lookup(profile(), { moduleCode: "ventas", kind: "leads", search: "" })).toEqual({ items: [] });
+        expect(await f.service.lookup(profile(), { moduleCode: "ventas", kind: "leads", search: "a" })).toEqual({ items: [] });
         expect(f.queries).toHaveLength(0);
     });
     it("returns only public user identity fields and parameterizes name/email search", async () => {
@@ -184,13 +184,13 @@ describe("CalendarLookupService", () => {
         expect(f.queries[0]?.sql).toContain("'inactive','pending'");
         expect(f.queries[0]?.sql).not.toContain("a%'_");
     });
-    it("lists open notes created or assigned to actor with independent live ACL and module denies", async () => {
+    it("lists own and shared notes without requiring task assignment, preserving live ACL and denies", async () => {
         const f = fixture(() => [{ id: target, source: "native", label: "Pendiente" }]);
         expect(await f.service.lookup(profile(), { moduleCode: "ventas", kind: "notes", search: "" })).toEqual({ items: [{ id: target, source: "native", label: "Pendiente" }] });
         const query = f.queries[0];
         if (!query) throw new Error("Missing query");
-        expect(query.sql).toContain("n.status_note='open'");
-        expect(query.sql).toContain("assignee_user_id_note_task");
+        expect(query.sql).toContain("n.status_note IN ('open','completed')");
+        expect(query.sql).not.toContain("assignee_user_id_note_task");
         expect(query.sql).toContain("revoked_at_note_participant IS NULL");
         expect(query.parameters).toContain(actor);
     });
@@ -248,4 +248,92 @@ describe("CalendarLookupService", () => {
                 await expect(f.service.validateLinks(tx, profile(), [link])).rejects.toThrow();
         });
     });
+});
+
+it("filters orders by source-qualified leads and returns the authorized owner lead", async () => {
+    const f = fixture((q) => (q.sql.includes("FROM crm_sales_order o") ? [{ id: actor, source: "native", label: "OV-1", leadId: target }] : [{ id: target, source: "native", label: "Cliente" }]));
+    const p = profile(["ventas.calendar.read", "formalizacion.orders.read", "lead.read"]);
+    p.roles = [{ code: "formalizacion", name: "Formalización", status: "active" }];
+    const result = await f.service.lookup(p, { moduleCode: "ventas", kind: "orders", search: "OV", leads: JSON.stringify([{ entityType: "lead", source: "native", id: target }]) });
+    expect(result.items).toEqual([{ id: actor, source: "native", label: "OV-1", lead: { id: target, source: "native", label: "Cliente" } }]);
+    const order = f.queries.find((q) => q.sql.includes("FROM crm_sales_order o"));
+    expect(order?.sql).toContain("selected.public_id_lead IN");
+    expect(order?.parameters).toContain(target);
+    await f.db.destroy();
+});
+it("resolves comma separated colleagues through bounded exact email or name matches", async () => {
+    const f = fixture();
+    try {
+        await f.service.lookup(profile(), { moduleCode: "ventas", kind: "users", search: "ana@example.test, Luis Pérez" });
+        const query = f.queries.find((q) => q.sql.includes("FROM sec_user"));
+        expect(query?.sql).toContain(" OR ");
+        expect(query?.parameters).toContain("ana@example.test");
+        expect(query?.parameters).toContain("Luis Pérez");
+        expect(query?.sql).not.toContain("ana@example.test");
+    } finally {
+        await f.db.destroy();
+    }
+});
+it("loads a bounded authorized lead list before typing", async () => {
+    const f = fixture((q) => (q.sql.includes("FROM crm_lead l JOIN crm_contact") ? [{ id: target, source: "native", label: "Cliente" }] : []));
+    try {
+        const result = await f.service.lookup(profile(), { moduleCode: "ventas", kind: "leads", search: "" });
+        expect(result.items).toHaveLength(1);
+        expect(f.queries.some((q) => q.sql.includes("LIMIT"))).toBe(true);
+    } finally {
+        await f.db.destroy();
+    }
+});
+it("lists all authorized orders of a chosen lead without requiring a second search", async () => {
+    const f = fixture((q) =>
+        q.sql.includes("FROM crm_sales_order o")
+            ? [
+                  { id: actor, source: "native", label: "OV-1", leadId: target },
+                  { id: target, source: "native", label: "OV-2", leadId: target },
+              ]
+            : [{ id: target, source: "native", label: "Cliente" }],
+    );
+    const p = profile(["ventas.calendar.read", "formalizacion.orders.read", "lead.read"]);
+    p.roles = [{ code: "formalizacion", name: "Formalización", status: "active" }];
+    try {
+        expect((await f.service.lookup(p, { moduleCode: "ventas", kind: "orders", search: "", leads: JSON.stringify([{ entityType: "lead", source: "native", id: target }]) })).items).toHaveLength(2);
+    } finally {
+        await f.db.destroy();
+    }
+});
+it.each(["self", "all_areas"] as const)("keeps seller restrictions only where needed for the initial legacy list (%s)", async (scope) => {
+    const f = fixture(() => [], true);
+    const actorProfile = profile();
+    actorProfile.permissions = actorProfile.permissions.map((permission) => (permission.code === "lead.read" && permission.effect === "allow" ? { ...permission, scope } : permission));
+    try {
+        await f.service.lookup(actorProfile, { moduleCode: "ventas", kind: "leads", search: "" });
+        const query = f.queries.find((query) => query.sql.includes("FROM `crmdatabase-api`.`leads` l"));
+        expect(query?.sql).toContain("ORDER BY l.id_lead DESC");
+        if (scope === "self") {
+            expect(query?.sql).toContain("normalized_email_user");
+            expect(query?.parameters).toContain(actor);
+        } else expect(query?.sql).not.toContain("normalized_email_user");
+    } finally {
+        await f.db.destroy();
+    }
+});
+it("exposes each readable CRM link independently and redacts an inaccessible note", async () => {
+    const f = fixture((query) => (query.sql.includes("FROM crm_lead l JOIN crm_contact") ? [{ id: target, source: "native", label: "Cliente autorizado" }] : []));
+    try {
+        const result = await f.db.transaction().execute((tx) =>
+            f.service.detailSelections(
+                tx,
+                profile(),
+                [
+                    { entityType: "note", source: "native", id: actor },
+                    { entityType: "lead", source: "native", id: target },
+                ],
+                [{ email: "guest@example.test" }],
+            ),
+        );
+        expect(result).toEqual({ links: [{ entityType: "lead", source: "native", id: target, label: "Cliente autorizado", canOpen: false }], participants: [{ label: "guest@example.test", email: "guest@example.test" }], restrictedLinks: true });
+        expect(JSON.stringify(result)).not.toContain(actor);
+    } finally {
+        await f.db.destroy();
+    }
 });

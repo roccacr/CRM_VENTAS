@@ -15,19 +15,22 @@ function fixture(options: { native?: boolean; legacy?: boolean; linked?: boolean
     const driver = new DummyDriver();
     driver.acquireConnection = async () => {
         const connection = await DummyDriver.prototype.acquireConnection.call(driver);
+        // El doble de consultas simuladas por fuente concentra aquí la rama por SQL; separarlas ocultaría qué consulta responde cada caso.
+        // eslint-disable-next-line complexity
         connection.executeQuery = <R>(query: CompiledQuery): Promise<QueryResult<R>> => {
             queries.push(query);
             if (options.failed) return Promise.reject(new Error("private database failure"));
             let rows: object[] = [];
             if (query.sql.includes("SELECT DISTINCT l.public_id_lead")) rows = options.linked ? nativeCandidates : [];
             else if (query.sql.includes("SELECT 'reference' AS kind")) rows = options.linked ? [{ kind: "reference", value: "400" }] : [];
+            else if (query.sql.includes("FROM crm_calendar_event e")) rows = [{ id: "evt-1", source: "native", title: "Visita al proyecto", type: "Cita", status: "Programado", date: "2026-11-05", startTime: "09:00", endTime: "10:00" }];
             else if (query.sql.includes("l.public_id_lead AS id")) rows = options.native ? [{ id: nativeId, internalId: "1", fullName: "Nombre actual", email: null }] : [];
             return Promise.resolve({ rows: rows as R[] });
         };
         return connection;
     };
     const db = new Kysely<CrmDatabase>({ dialect: { createDriver: () => driver, createAdapter: () => new MysqlAdapter(), createIntrospector: (database) => new MysqlIntrospector(database), createQueryCompiler: () => new MysqlQueryCompiler() } });
-    const legacy = { enabled: () => options.enabled !== false, find: vi.fn().mockResolvedValue(options.legacy ? old : null), orders: vi.fn().mockResolvedValue({ items: [], hasMore: false, page: 1 }) };
+    const legacy = { enabled: () => options.enabled !== false, find: vi.fn().mockResolvedValue(options.legacy ? old : null), events: vi.fn().mockResolvedValue({ items: [], hasMore: false, page: 1 }), commercial: vi.fn().mockResolvedValue({ items: [], total: 0, hasMore: false, page: 1, available: true }), orders: vi.fn().mockResolvedValue({ items: [], hasMore: false, page: 1 }) };
     return { db, queries, legacy, repository: new LeadProfileRepository({ db } as DatabaseService, legacy) };
 }
 
@@ -65,6 +68,29 @@ describe("resolución federada del perfil", () => {
             await f.db.destroy();
         }
     });
+    it("consulta registros comerciales reales y no los deduce de la bitácora", async () => {
+        const f = fixture({ legacy: true });
+        try {
+            f.legacy.commercial.mockResolvedValue({ items: [], total: 1, hasMore: false, page: 1, available: true });
+            const result = await f.repository.read({ source: "legacy", id: "12" });
+            expect(f.legacy.commercial).toHaveBeenCalledWith(expect.anything(), old, "opportunities", 1);
+            expect(f.legacy.commercial).toHaveBeenCalledWith(expect.anything(), old, "estimates", 1);
+            expect(result.opportunities.total).toBe(1);
+        } finally {
+            await f.db.destroy();
+        }
+    });
+    it("lee un lead nuevo sin depender de una conexión legacy sin vínculos", async () => {
+        const f = fixture({ native: true, enabled: false });
+        try {
+            const result = await f.repository.read({ source: "native", id: nativeId });
+            expect(result.source).toBe("native");
+            expect(result.opportunities.available).toBe(false);
+            expect(f.legacy.commercial).not.toHaveBeenCalled();
+        } finally {
+            await f.db.destroy();
+        }
+    });
     it("no une una referencia con más de un lead nativo", async () => {
         const f = fixture({ native: true, legacy: true, linked: true, ambiguous: true });
         try {
@@ -74,10 +100,50 @@ describe("resolución federada del perfil", () => {
             await f.db.destroy();
         }
     });
-    it.each([{ enabled: false }, { failed: true }])("no presenta una fuente caída como perfil completo: %j", async (options) => {
+    it.each([{ failed: true }])("no presenta una fuente caída como perfil completo: %j", async (options) => {
         const f = fixture(options);
         try {
             await expect(f.repository.read({ source: "native", id: nativeId })).rejects.toMatchObject({ status: 503 });
+        } finally {
+            await f.db.destroy();
+        }
+    });
+    it("lee los eventos nativos del cliente por vínculo o cita y los del sistema anterior por separado", async () => {
+        const f = fixture({ native: true, legacy: true, linked: true });
+        try {
+            f.legacy.events.mockResolvedValue({ items: [{ id: "9", source: "legacy", title: "Llamada", type: "Seguimiento", status: "Pendiente", date: "2024-02-20", startTime: "10:00", endTime: "10:30" }], hasMore: false, page: 1 });
+            const result = await f.repository.read({ source: "native", id: nativeId });
+            expect(result.events.native.items[0]).toMatchObject({ id: "evt-1", title: "Visita al proyecto", date: "2026-11-05" });
+            expect(result.events.legacy.items[0]).toMatchObject({ id: "9", source: "legacy" });
+            const native = f.queries.find((query) => query.sql.includes("FROM crm_calendar_event e"));
+            expect(native?.sql).toContain("crm_calendar_event_link");
+            expect(native?.sql).toContain("crm_calendar_appointment");
+            expect(native?.parameters).toContain(nativeId);
+            expect(f.queries.every((query) => query.sql.startsWith("SELECT"))).toBe(true);
+        } finally {
+            await f.db.destroy();
+        }
+    });
+    it("un lead solo nativo responde igual: eventos nativos y ninguna lectura del sistema anterior", async () => {
+        const f = fixture({ native: true, enabled: false });
+        try {
+            const result = await f.repository.read({ source: "native", id: nativeId });
+            expect(result.events.native.items).toHaveLength(1);
+            expect(result.events.legacy).toEqual({ items: [], hasMore: false, page: 1 });
+            expect(f.legacy.events).not.toHaveBeenCalled();
+        } finally {
+            await f.db.destroy();
+        }
+    });
+    it("muestra el nombre de la etapa, del interés y del origen nativos, no sus códigos", async () => {
+        const f = fixture({ native: true, enabled: false });
+        try {
+            await f.repository.read({ source: "native", id: nativeId });
+            const native = f.queries.find((query) => query.sql.includes("l.public_id_lead AS id"));
+            expect(native?.sql).toContain("conf_lead_status");
+            expect(native?.sql).toContain("COALESCE(st.name_lead_status,l.status_code_lead) AS stage");
+            expect(native?.sql).toContain("conf_lead_source");
+            expect(native?.sql).toContain("conf_lead_interest");
         } finally {
             await f.db.destroy();
         }

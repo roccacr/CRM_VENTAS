@@ -96,7 +96,7 @@ describe.skipIf(process.env.LEAD_PROFILE_LOCAL_SQL_TESTS !== "1")("matriz de ace
         const document = SwaggerModule.createDocument(app, new DocumentBuilder().setTitle("Perfil local").setVersion("1").build());
         const operation = document.paths["/leads/profile"]?.get;
         expect(operation?.parameters).toEqual(expect.arrayContaining([expect.objectContaining({ name: "source", required: true }), expect.objectContaining({ name: "id", required: true }), expect.objectContaining({ name: "cursor", required: false }), expect.objectContaining({ name: "orderPage", required: false })]));
-        expect(operation?.responses["200"]).toMatchObject({ content: { "application/json": { schema: { required: ["schemaVersion", "observedAt", "id", "source", "sources", "sections", "history", "orders"], properties: { sections: { type: "array" }, history: { type: "object" }, orders: { required: ["native", "legacy"] } } } } } });
+        expect(operation?.responses["200"]).toMatchObject({ content: { "application/json": { schema: { required: ["schemaVersion", "observedAt", "id", "source", "sources", "sections", "history", "orders", "opportunities", "estimates"], properties: { sections: { type: "array" }, history: { type: "object" }, orders: { required: ["native", "legacy"] } } } } } });
     });
 
     it.each(["role", "direct"])("con permiso %s: lead legacy completo, perfil ampliado, historial y órdenes", async (session) => {

@@ -10,6 +10,7 @@ export interface AuditChangeSet {
 }
 
 const SAFE_FIELDS = new Set(["name", "displayName", "email", "detail", "description", "status", "deleted", "roleCodes", "orgUnitCodes", "moduleCodes", "moduleScoped", "permissionInheritance", "accessMethods", "permissionCodes", "permissionOverrides", "externalReferences"]);
+const BANK_FIELDS = new Set(["phone", "area", "version", "bankPublicId"]);
 const RELATION_FIELDS = new Set(["systemCode", "externalId", "externalUserId", "externalUsername", "status", "permissionCode", "code", "effect"]);
 /** The part of a changeset the record-audit bridge reads. */
 type RecordAuditSourceChange = Readonly<Pick<AuditChangeSet, "entity" | "recordId" | "action" | "before" | "after">>;
@@ -36,12 +37,12 @@ const normalizeValue = (value: unknown, sortArrays = true): unknown => {
 };
 
 /** Keeps only allow-listed fields so secrets and unknown data never reach the audit. */
-const snapshot = (value: Record<string, unknown> | null, sortArrays = true): Record<string, unknown> | null =>
+const snapshot = (value: Record<string, unknown> | null, sortArrays = true, entity?: string): Record<string, unknown> | null =>
     value === null
         ? null
         : Object.fromEntries(
               Object.entries(value)
-                  .filter(([key]) => SAFE_FIELDS.has(key))
+                  .filter(([key]) => SAFE_FIELDS.has(key) || ((entity === "bank" || entity === "bank_advisor") && BANK_FIELDS.has(key)))
                   .map(([key, item]) => [key, normalizeValue(item, sortArrays)]),
           );
 
@@ -49,13 +50,13 @@ const snapshot = (value: Record<string, unknown> | null, sortArrays = true): Rec
 export const getRecordAuditSourceChange = (value: unknown): RecordAuditSourceChange | undefined => {
     if (value === null || typeof value !== "object") return undefined;
     const source = sourceChanges.get(value as AuditChangeSet);
-    return source ? Object.freeze({ entity: source.entity, recordId: source.recordId, action: source.action, before: snapshot(source.before, false), after: snapshot(source.after, false) }) : undefined;
+    return source ? Object.freeze({ entity: source.entity, recordId: source.recordId, action: source.action, before: snapshot(source.before, false, source.entity), after: snapshot(source.after, false, source.entity) }) : undefined;
 };
 
 /** Compare detached safe snapshots while ignoring collection ordering. Call inside the mutation transaction. */
 export const buildAuditChangeSet = (input: Omit<AuditChangeSet, "version" | "changes">): AuditChangeSet => {
-    const before = snapshot(input.before);
-    const after = snapshot(input.after);
+    const before = snapshot(input.before, true, input.entity);
+    const after = snapshot(input.after, true, input.entity);
     const fields = [...new Set([...Object.keys(before ?? {}), ...Object.keys(after ?? {})])].sort();
     const changes = fields.flatMap((field) => {
         const previous = before?.[field] ?? null;
@@ -63,6 +64,6 @@ export const buildAuditChangeSet = (input: Omit<AuditChangeSet, "version" | "cha
         return JSON.stringify(previous) === JSON.stringify(current) ? [] : [{ field, before: previous, after: current }];
     });
     const changeSet: AuditChangeSet = { version: 1, entity: input.entity, recordId: input.recordId, action: input.action, before, after, changes };
-    sourceChanges.set(changeSet, Object.freeze({ entity: changeSet.entity, recordId: changeSet.recordId, action: changeSet.action, before: snapshot(input.before, false), after: snapshot(input.after, false) }));
+    sourceChanges.set(changeSet, Object.freeze({ entity: changeSet.entity, recordId: changeSet.recordId, action: changeSet.action, before: snapshot(input.before, false, input.entity), after: snapshot(input.after, false, input.entity) }));
     return changeSet;
 };

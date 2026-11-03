@@ -14,6 +14,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { ApiClientError } from "../../services/api/api-client";
 import { getNoteNotifications, getNoteUnreadCount, markAllNoteNotificationsRead, markNoteNotificationRead, type NoteNotification, type NoteNotifications } from "../../services/notes/note-notifications-service";
 import { ADMINISTRATION_DRAWER_CLOSE_PLACEMENT, ADMINISTRATION_DRAWER_PROPS } from "../administration/administration-theme";
+import { CalendarNotificationList } from "../calendar/CalendarNotifications";
+import { useCalendarNotifications } from "../calendar/useCalendarNotifications";
 import { NotesLoading } from "./NotesLoading";
 import { useNotesRealtime } from "./useNotesRealtime";
 interface Props {
@@ -45,6 +47,8 @@ export function NoteNotificationsButton({ onOpenNote, mobile = false, enabled = 
             window.removeEventListener("resize", change);
         };
     }, [mobile]);
+    const calendarNotices = useCalendarNotifications(viewport);
+    const bellCount = Number(count) + calendarNotices.unreadCount;
     const refresh = useCallback(async () => {
         if (reading.current.size) return;
         const key = ++refreshSequence.current;
@@ -99,13 +103,14 @@ export function NoteNotificationsButton({ onOpenNote, mobile = false, enabled = 
                 className={`${mobile ? "global-home-mobile-bar__icon-button" : "global-home-header__icon-button"} note-bell`}
                 type="button"
                 aria-label="Notificaciones"
-                title={count === null ? "Notificaciones" : `Notificaciones · ${String(count)} sin leer`}
+                title={count === null ? "Notificaciones" : `Notificaciones · ${String(bellCount)} sin leer`}
                 onClick={() => {
                     setOpen(true);
+                    void calendarNotices.refresh();
                 }}
             >
                 <BellOutlined aria-hidden="true" />
-                <BellCount count={count} lower={lower} />
+                <BellCount count={bellCount} lower={lower} />
             </button>
             <Drawer
                 {...ADMINISTRATION_DRAWER_PROPS}
@@ -117,7 +122,7 @@ export function NoteNotificationsButton({ onOpenNote, mobile = false, enabled = 
                         </span>
                         <div className="user-detail-drawer__identity-copy">
                             <Typography.Title level={4}>Notificaciones</Typography.Title>
-                            <Typography.Text type="secondary">Avisos de notas: invitaciones, respuestas y menciones</Typography.Text>
+                            <Typography.Text type="secondary">Invitaciones de calendario y avisos de notas</Typography.Text>
                         </div>
                     </div>
                 }
@@ -127,6 +132,12 @@ export function NoteNotificationsButton({ onOpenNote, mobile = false, enabled = 
                     setOpen(false);
                 }}
             >
+                <CalendarNotificationList
+                    model={calendarNotices}
+                    onOpen={() => {
+                        setOpen(false);
+                    }}
+                />
                 {enabled ? (
                     <NotificationsContent
                         open={open}

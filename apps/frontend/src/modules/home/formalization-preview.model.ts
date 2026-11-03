@@ -29,7 +29,7 @@ export const PREVIEW_PROJECTS = ["Amara", "Andira", "AVIVA"] as const;
 export const PREVIEW_OWNERS = ["Gestor de ejemplo 1", "Gestor de ejemplo 2", "Sin asignar"] as const;
 export const isUnassigned = (item: FormalizationExample): boolean => item.owner === "Sin asignar";
 export const formatOrderTotal = (total: number): string => `${String(total)} ${total === 1 ? "orden" : "órdenes"}`;
-export const PREVIEW_FILTER_TITLES = { approvals: "Pendientes de aprobación", all: "Todas las órdenes", contracts: "Contratos pendientes", send: "Contratos por enviar", signature: "Contratos pendientes de firma", bank: "Gestión bancaria", balance: "Pendientes de saldo", transfer: "Traspasos pendientes", signed: "Traspaso firmado", closed: "Formalizaciones cerradas este año" } as const;
+export const PREVIEW_FILTER_TITLES = { approvals: "Pendientes de aprobación", addendum: "Pendientes de adéndum", all: "Todas las órdenes", contracts: "Contratos pendientes", send: "Contratos por enviar", signature: "Contratos pendientes de firma", bank: "Gestión bancaria", balance: "Pendientes de saldo", transfer: "Traspasos pendientes", signed: "Traspaso firmado", closed: "Formalizaciones cerradas este año" } as const;
 export type PreviewFilter = keyof typeof PREVIEW_FILTER_TITLES;
 export interface PreviewQueue {
     readonly filter: PreviewFilter;
@@ -38,6 +38,18 @@ export interface PreviewQueue {
 
 /** Firmados es transversal; las bandejas se recalculan desde el escenario local. */
 export function matchesPreviewFilter(item: FormalizationExample, filter: PreviewFilter): boolean {
-    const matches: Record<PreviewFilter, boolean> = { approvals: item.approvalPending === true, all: true, contracts: item.stage === "Contratos", send: item.stage === "Contratos" && item.contract !== "Enviado · Pendiente de firma", signature: item.contract === "Enviado · Pendiente de firma", bank: item.stage === "Gestión bancaria", balance: item.stage === "Pendientes de saldo", transfer: item.stage === "Traspasos", signed: item.contract === "Firmado", closed: item.stage === "Cerradas" };
+    if (filter === "addendum") return false;
+    const matches: Record<Exclude<PreviewFilter, "addendum">, boolean> = {
+        approvals: item.approvalPending === true,
+        all: true,
+        contracts: item.stage === "Contratos",
+        send: item.stage === "Contratos" && item.contract !== "Enviado · Pendiente de firma",
+        signature: item.contract === "Enviado · Pendiente de firma",
+        bank: item.stage === "Gestión bancaria",
+        balance: item.stage === "Pendientes de saldo",
+        transfer: item.stage === "Traspasos",
+        signed: item.contract === "Firmado",
+        closed: item.stage === "Cerradas",
+    };
     return matches[filter];
 }

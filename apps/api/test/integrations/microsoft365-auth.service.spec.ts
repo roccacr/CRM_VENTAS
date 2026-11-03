@@ -47,8 +47,9 @@ const TEST_CONFIG = {
 /**
  * Crea ConfigService minimo para el adapter Microsoft sin leer `.env`.
  */
-const createConfigService = (): Pick<ConfigService, "getOrThrow"> => ({
+const createConfigService = (): Pick<ConfigService, "getOrThrow" | "get"> => ({
     getOrThrow: (key: string) => TEST_CONFIG[key as keyof typeof TEST_CONFIG],
+    get: () => false,
 });
 
 describe("Microsoft365AuthService", () => {
@@ -254,4 +255,26 @@ describe("Microsoft365AuthService", () => {
             }),
         ).rejects.toThrow("Microsoft no devolvio una cuenta valida.");
     });
+});
+
+it("requests calendar consent only for an explicit calendar connection", async () => {
+    const config = { ...createConfigService(), get: (key: string) => key === "ENABLE_CALENDAR_EXTERNAL" } as unknown as ConfigService;
+    const service = new Microsoft365AuthService(config);
+    getAuthCodeUrl.mockResolvedValue("https://login.microsoftonline.com/test");
+    await service.startLogin();
+    expect(getAuthCodeUrl).toHaveBeenLastCalledWith(expect.objectContaining({ scopes: ["openid", "profile", "email", "offline_access", "User.Read"] }));
+    await service.startLogin({ calendar: true });
+    const last = getAuthCodeUrl.mock.calls.at(-1)?.[0] as { scopes: string[] };
+    expect(last.scopes).toContain("Calendars.ReadWrite");
+    expect(last.scopes).toContain("Calendars.Read.Shared");
+    expect(last.scopes).toContain("Place.Read.All");
+});
+
+it("requests document consent only when the document integration is enabled", async () => {
+    const config = { ...createConfigService(), get: (key: string) => key === "ENABLE_ORDER_DOCUMENTS" } as unknown as ConfigService;
+    const service = new Microsoft365AuthService(config);
+    getAuthCodeUrl.mockResolvedValue("https://login.microsoftonline.com/test");
+    await service.startLogin();
+    const request = getAuthCodeUrl.mock.calls.at(-1)?.[0] as { scopes: string[] };
+    expect(request.scopes).toContain("Files.ReadWrite.All");
 });

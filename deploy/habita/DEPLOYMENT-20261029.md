@@ -1,5 +1,7 @@
 # Publicación verificada — 29/10/2026
 
+Revisión documental03/11/2026: el inventario vigente está en [85](../../apps/api/Arquitectura/85-Reconciliacion-Documental-20261103.md). Los recibos, hashes, instalación o despliegue inferiores conservan su fecha; no se reejecutaron ni acreditan el árbol actual.
+
 Revisión documental 2026-11-02: este recibo conserva la evidencia del29 sin
 revalidarla remotamente. No identifica el release activo actual ni certifica
 los commits `bf8caa5`, `fd3cc1d`, `fcbf0c2` o los cambios locales posteriores.

@@ -1,5 +1,9 @@
 # 01 - Diccionario de Datos: Identidad y Permisos
 
+## Catálogo y política incrementales — 2026-11-03
+
+El baseline siguiente no es el catálogo exhaustivo. 060 registra `lead.profile.read` como lectura global independiente del módulo operativo; 063 define `formalizacion.calendar.assign_lead`; 064 define `formalizacion.orders.whatsapp`; 065/066 separan gestión, marcado manual, lectura y contador de adéndum. 067 agrega grants reales de marcado manual a `owner`, `jefe_general` y `jefe_formalizaciones`, sin default para `formalizacion`. Esta capacidad queda fuera del comodín Owner y sigue aceptando overrides vigentes con deny prevaleciente. No se agrega una tabla de permisos nueva. Contratos y evidencia fechada: [77](../77-Perfil-Completo-Lead.md), [83](../83-Adendum-Migracion-065-y-Rollback.md), [84](../84-Adendum-Manual-Migracion-066-y-Permisos.md). No confundir registro en código, ledger y despliegue; no se consultó BD en esta revisión.
+
 ## Cambios posteriores del catalogo - 2026-10-27
 
 Migracion037 define `formalizacion.orders.stage.update` sin asignacion automatica

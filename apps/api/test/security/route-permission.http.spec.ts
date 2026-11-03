@@ -90,7 +90,7 @@ function profileWith(codes: string[] = [], calendarMembership = false): Identity
     return {
         auth: { availableProviders: ["local"], currentProvider: "local", localStatus: "active", microsoft: null, primaryProvider: "microsoft" },
         orgUnits: calendarMembership ? [{ publicId: "sales-module", code: "ventas", name: "Ventas", membership: "member", scope: "all_areas", status: "active" }] : [],
-        roles: [],
+        roles: codes.some((code) => code.includes(".catalog_bank.")) ? [{ code: "owner", name: "Owner", status: "active" }] : [],
         permissions: codes.map((code) => ({ code, effect: "allow", scope: "all_areas", source: "role" })),
         session: { expiresAt: new Date(Date.now() + 60_000).toISOString(), expiresInSeconds: 60, permissionVersion: 1, publicId: "session", status: "active" },
         user: { displayName: "Actor", email: "actor@example.test", permissionVersion: 1, profileImageUrl: null, publicId: "actor", status: "active" },
@@ -103,7 +103,8 @@ function expectedCatalogCodes(route: (typeof routes)[number]): string[] {
     const definition = CATALOG_DEFINITIONS.find((item) => item.routeCode === (code === ":catalogCode" ? "files" : code));
     if (!definition) throw new Error("Unknown catalog route " + route.path);
     const action = route.method === "GET" ? "read" : route.method === "POST" ? "create" : route.path.endsWith("/status") ? "inactivate" : "update";
-    return ["ventas." + definition.moduleCode + "." + action];
+    const actionCode = "ventas." + definition.moduleCode + "." + action;
+    return definition.routeCode === "banks" ? [...new Set(["ventas.catalog_bank.read", actionCode])] : [actionCode];
 }
 
 function expectedCodes(route: (typeof routes)[number]): string[] {
@@ -113,19 +114,35 @@ function expectedCodes(route: (typeof routes)[number]): string[] {
         "GET /marketing/leads/report": ["mercadeo.leads.read"],
         "POST /formalization/contracts/send": ["formalizacion.contracts.send"],
         "POST /formalization/contracts/revert": ["formalizacion.contracts.revert"],
+        "POST /formalization/orders/:source/:id/netsuite/sync": ["formalizacion.orders.read", "formalizacion.orders.stage.update"],
         "POST /formalization/orders/stage": ["formalizacion.orders.stage.update"],
         "POST /formalization/orders/approve": ["formalizacion.orders.approve"],
+        "GET /formalization/orders/addendum": ["formalizacion.orders.read", "formalizacion.orders.addendum.read"],
+        "GET /formalization/orders/addendum/future": ["formalizacion.orders.read"],
+        "POST /formalization/orders/addendum": ["formalizacion.orders.read", "formalizacion.orders.addendum.read", "formalizacion.orders.addendum.update"],
+        "POST /formalization/orders/addendum/sent": ["formalizacion.orders.read", "formalizacion.orders.addendum.read"],
+        "POST /formalization/orders/addendum/pending": ["formalizacion.orders.read", "formalizacion.orders.addendum.read", "formalizacion.orders.addendum.mark_pending"],
+        "GET /formalization/addendum/summary": ["formalizacion.home.addendum.read"],
         "GET /formalization/home/recent-activity": ["formalizacion.orders.read"],
         "GET /calendar/calendars": ["ventas.calendar.read"],
         "GET /calendar/events": ["ventas.calendar.read"],
+        "GET /calendar/events/:id/detail": ["ventas.calendar.read"],
+        "PATCH /calendar/outlook-events/:id": ["ventas.calendar.read", "ventas.calendar.update"],
+        "PATCH /calendar/events/:id/status": ["ventas.calendar.read", "ventas.calendar.update"],
+        "GET /formalization/orders/finiquito": ["formalizacion.orders.read"],
+        "POST /formalization/orders/finiquito": ["formalizacion.orders.stage.update"],
+        "GET /formalization/orders/:source/:id/purchase-funds": ["formalizacion.orders.stage.update"],
+        "POST /formalization/orders/purchase-funds": ["formalizacion.orders.stage.update"],
         "GET /calendar/lookup": ["ventas.calendar.read"],
+        "GET /calendar/rooms": ["ventas.calendar.read"],
+        "POST /calendar/availability": ["ventas.calendar.read"],
         "POST /calendar/events": ["ventas.calendar.read", "ventas.calendar.create"],
         "PATCH /calendar/events/:id": ["ventas.calendar.read", "ventas.calendar.update"],
     };
     const codes = explicit[`${route.method} ${route.path}`];
     if (codes) return codes;
     if (route.path.startsWith("/formalization/orders/:source/:id/")) return ["formalizacion.orders.read"];
-    if (["/formalization/home/summary", "/formalization/home/follow-up", "/formalization/contracts/summary"].includes(route.path)) return ["formalizacion.home.stages.read"];
+    if (["/formalization/home/summary", "/formalization/home/project-distribution", "/formalization/home/follow-up", "/formalization/contracts/summary"].includes(route.path)) return ["formalizacion.home.stages.read"];
     if (route.path.startsWith("/catalogs/")) return expectedCatalogCodes(route);
     if (route.path.startsWith("/unit-files")) return ["ventas.catalog_file.read"];
     if (route.path.startsWith("/formalization/")) return ["formalizacion.home.approvals.read"];
@@ -147,6 +164,12 @@ function expectedIdentityCodes(route: (typeof routes)[number]): string[] {
     const codes = identity[route.name];
     if (route.controller.name === "IdentityController" && codes) return codes;
     throw new Error("No expected permission mapping for " + route.method + " " + route.path);
+}
+
+function expectedStatus(route: (typeof routes)[number]): number {
+    if (route.name === "synchronize") return 201;
+    const command = route.method === "POST" && !["complete", "reopen", "archive"].includes(route.name);
+    return command && !route.path.startsWith("/formalization/") && !route.path.startsWith("/calendar/") ? 201 : 200;
 }
 
 describe("real module permission inventory and HTTP boundary (no environment or database)", () => {
@@ -199,15 +222,21 @@ describe("real module permission inventory and HTTP boundary (no environment or 
     });
 
     it("requires a descriptor on every registered permission handler", () => {
-        expect(new Set(routes.map((route) => route.handler)).size).toBe(80);
+        expect(new Set(routes.map((route) => route.handler)).size).toBe(115);
+        expect(routes.some((route) => route.path === "/formalization/orders/:source/:id/documents")).toBe(true);
         expect(routes.some((route) => route.path === "/marketing/home/summary")).toBe(true);
         expect(routes.some((route) => route.path === "/marketing/leads/report")).toBe(true);
         expect(routes.some((route) => route.path === "/audit/records/:recordId/timeline")).toBe(true);
         expect(routes.some((route) => route.path === "/formalization/orders/:source/:id/history")).toBe(true);
         for (const [method, path] of [
+            ["GET", "/formalization/orders/:source/:id/bank-assignment"],
+            ["POST", "/formalization/orders/:source/:id/bank-assignment"],
+            ["POST", "/formalization/orders/:source/:id/bank-assignment/unlink"],
             ["GET", "/calendar/calendars"],
             ["GET", "/calendar/events"],
             ["GET", "/calendar/lookup"],
+            ["GET", "/calendar/rooms"],
+            ["POST", "/calendar/availability"],
             ["POST", "/calendar/events"],
             ["PATCH", "/calendar/events/:id"],
             ["GET", "/formalization/home/recent-activity"],
@@ -231,15 +260,31 @@ describe("real module permission inventory and HTTP boundary (no environment or 
         }).toThrow("GET /descriptor-alias/other");
     });
 
+    function requestPayload(route: (typeof routes)[number]) {
+        if (route.name === "synchronize") return {};
+        if (route.path.startsWith("/catalogs/banks/")) return banksPayload(route);
+        return route.path.startsWith("/formalization/") ? { source: "legacy", id: "1", expectedSequence: 0, operationId: "01ARZ3NDEKTSV4RRFFQ69G5FAV", reason: "Permission regression", ...(route.path === "/formalization/orders/stage" ? { targetState: "bank_management" } : {}) } : { moduleCode: "ventas", status: "inactive", reason: "Permission regression", name: "Value" };
+    }
+    function banksPayload(route: (typeof routes)[number]) {
+        const context = { moduleCode: "ventas", reason: "Permission regression" };
+        if (route.path.endsWith("/status")) return { ...context, status: "inactive", expectedVersion: 1 };
+        const contact = route.path.includes("/advisors") ? { email: "advisor@example.test", phone: "123", area: "Crédito" } : {};
+        return { ...context, name: "Value", ...contact, ...(route.method === "PATCH" ? { expectedVersion: 1 } : {}) };
+    }
+
     function request(route: (typeof routes)[number]) {
-        let url = route.path.replace(":catalogCode", "files").replace(/:[A-Za-z]+/g, "target");
+        let url = route.path
+            .replace(":bankId", "01ARZ3NDEKTSV4RRFFQ69G5FAV")
+            .replace(":advisorId", "01ARZ3NDEKTSV4RRFFQ69G5FAW")
+            .replace(":catalogCode", "files")
+            .replace(/:[A-Za-z]+/g, "target");
         const query = new URLSearchParams({ moduleCode: "ventas" });
         if (["/unit-files", "/unit-files/options", "/unit-files/facets"].includes(url)) query.set("projectIds", "01ARZ3NDEKTSV4RRFFQ69G5FAV");
         if (["/unit-files/options", "/unit-files/facets"].includes(url)) query.set("kind", "code");
         if (url === "/audit") query.set("sectionCode", "catalogs");
         if (route.method === "GET") url += "?" + query.toString();
         const csrf = createSignedCsrfToken(secret, session);
-        const payload = route.path.startsWith("/formalization/") ? { source: "legacy", id: "1", expectedSequence: 0, operationId: "01ARZ3NDEKTSV4RRFFQ69G5FAV", reason: "Permission regression", ...(route.path === "/formalization/orders/stage" ? { targetState: "bank_management" } : {}) } : { moduleCode: "ventas", status: "inactive", reason: "Permission regression", name: "Value" };
+        const payload = requestPayload(route);
         return app.inject({ method: route.method, url, ...(["GET", "DELETE"].includes(route.method) ? {} : { payload }), headers: { cookie: `${SESSION_COOKIE_NAME}=${session}; ${CSRF_COOKIE_NAME}=${csrf}`, [CSRF_HEADER_NAME_LOWERCASE]: csrf } });
     }
     describe.each(routes)("$method $path", (route) => {
@@ -253,11 +298,21 @@ describe("real module permission inventory and HTTP boundary (no environment or 
             expect(handlers.get(route.handler)).not.toHaveBeenCalled();
             for (const call of domainCalls) expect(call).not.toHaveBeenCalled();
         });
+        it("accepts exact personal grants without a named role and rejects their explicit deny", async () => {
+            const codes = expectedCodes(route);
+            profile = profileWith(codes, true);
+            profile.roles = [];
+            profile.permissions = profile.permissions.map((permission) => ({ ...permission, source: "override" }));
+            const first = await request(route);
+            expect(first.statusCode).toBe(expectedStatus(route));
+            profile.permissions.push(...codes.map((code) => ({ code, effect: "deny" as const, scope: null, source: "override" as const })));
+            expect((await request(route)).statusCode).toBe(403);
+        });
         it("accepts the existing exact mapping and stops the next request after revocation", async () => {
             profile = profileWith(expectedCodes(route), route.path.startsWith("/calendar/"));
             if (["active-role", "formalization-read", "formalization-order-read"].includes(route.requirement?.kind ?? "")) profile.roles = [{ code: "formalizacion", name: "Formalizacion", status: "active" }];
             const first = await request(route);
-            expect(first.statusCode).toBe(route.method === "POST" && !["complete", "reopen", "archive"].includes(route.name) && !route.path.startsWith("/formalization/") && !route.path.startsWith("/calendar/") ? 201 : 200);
+            expect(first.statusCode).toBe(expectedStatus(route));
             const before = domainCalls.map((call) => call.mock.calls.length);
             profile = profileWith([], route.path.startsWith("/calendar/"));
             expect((await request(route)).statusCode).toBe(403);
@@ -313,11 +368,10 @@ describe("real module permission inventory and HTTP boundary (no environment or 
         }
     });
 
-    it.each(["owner", "formalizacion-inactive", "jefe_formalizacion"])("does not substitute %s for the active base role on contract summary", async (mode) => {
+    it.each(["owner", "formalizacion-inactive", "jefe_formalizacion"])("honors direct summary grants independently of role %s", async (mode) => {
         profile = profileWith(["formalizacion.home.approvals.read", "formalizacion.contracts.send"]);
         profile.roles = [{ code: mode === "formalizacion-inactive" ? "formalizacion" : mode, name: mode, status: mode === "formalizacion-inactive" ? "inactive" : "active" }];
-        expect((await app.inject({ url: "/formalization/contracts/summary", headers: { cookie: `${SESSION_COOKIE_NAME}=${session}` } })).statusCode).toBe(403);
-        for (const call of domainCalls) expect(call).not.toHaveBeenCalled();
+        expect((await app.inject({ url: "/formalization/contracts/summary", headers: { cookie: `${SESSION_COOKIE_NAME}=${session}` } })).statusCode).toBe(200);
     });
     it.each(routesFrom([AliasProbeController]))("enforces $path alias before handler entry", async (route) => {
         const before = AliasProbeController.calls;

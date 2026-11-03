@@ -1,5 +1,9 @@
 # 26 - Enterprise UX Rules: Projects Reference and Replication Guide
 
+## Alcance documental vigente — 03/11/2026
+
+La paleta y reglas propias de Proyectos se conservan. `CatalogSummary` acepta ayuda opcional `helpText` y `FormHelp` permite nombre accesible separado del contenido, activado por hover/foco; las tarjetas sin ayuda mantienen su anatomía anterior. La extensión se reutiliza en Formalización sin convertir Proyectos en un dashboard nuevo ni cambiar sus consultas/filtros. El inventario actual y las diferencias del recorrido de Formalización respecto a la adopción DEMO inferior están en [30](30-Estado-Frontend-Verificado.md), [32](32-Detalle-Orden-y-Cliente-Basico.md) y [Calendario global](Calendario-Global-Frontend.md). No se ejecutan nuevas mediciones visuales o de contraste en esta conciliación.
+
 ## Revision Status - 2026-10-22, f2dc4f1
 
 The Projects visual contract remains the existing owner-requested reference.

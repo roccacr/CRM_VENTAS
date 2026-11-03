@@ -1,5 +1,15 @@
 # 27 - Entrega de Administracion y QA
 
+## Conciliación del código local — 03/11/2026
+
+El inventario vigente es [30](30-Estado-Frontend-Verificado.md); [32](32-Detalle-Orden-y-Cliente-Basico.md) precisa ocho etapas, perfil, contacto y Adéndum. [Calendario global](Calendario-Global-Frontend.md) sustituye la ausencia histórica de Graph por integración BFF de feed, disponibilidad/salas y publicación solicitada. Los resultados inferiores son cortes fechados y no se vuelven a ejecutar al editar documentación.
+
+Cambios comprometidos desde `fcbf0c2` hasta HEAD `4d446ed`: Roles y seguridad permite administrar la capacidad global del módulo técnico `lead` sin exigir membresía Lead ni ofrecerle un switch de menú. En plantilla Jefe General esa capacidad se conserva al preparar el guardado aunque no forme parte de los módulos operativos seleccionados. `canRoleGrantModule` mantiene la efectividad del rol que concede el permiso y los techos de los demás módulos. `auth-state.ts` comprueba `lead.profile.read` directamente para la ruta del perfil; workspace Formalización conserva navegación/contexto visual, sin convertir membresía en requisito adicional de ese permiso global. Deny sigue prevaleciendo.
+
+`ExpedienteLink` centraliza la presentación del vínculo HTTP(S) en detalle y comparación de unidades y drawer de unidad; mantiene texto inválido escapado y valores originales sin reescribirlos. El DTO opcional `detail` de orden conserva compatibilidad y tipos/precisión. El árbol local dejó de montar ese detalle completo en ficha/drawer de orden: ver la distinción contractual/histórica de [32](32-Detalle-Orden-y-Cliente-Basico.md). Pruebas de estos cambios existen en `test/administration/user-module-scope.spec.ts`, `test/components/ExpedienteLink.spec.tsx`, `test/unit-files` y `test/home`; su lectura no acredita una nueva ejecución.
+
+Las ayudas de `CatalogSummary` son opcionales (`helpText`), reutilizan `FormHelp` con nombre accesible independiente y hover/foco, y conservan las tarjetas sin ayuda. En Formalización el acceso a bandeja y su ayuda son botones hermanos, de modo que consultar las condiciones no abre la cola. La extensión no modifica filtros de catálogos ni agrega consultas.
+
 ## Conciliación de alcance y evidencia - 2026-11-02
 
 Las entregas siguientes son bitácora fechada; el inventario actual de rutas,

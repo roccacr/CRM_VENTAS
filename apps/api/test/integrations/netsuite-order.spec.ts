@@ -5,7 +5,7 @@ import { afterEach, expect, it, vi } from "vitest";
 
 import { netsuiteGetAuthorization, NetsuiteRestletClient } from "../../src/integrations/netsuite/netsuite-restlet.client.js";
 
-const config = () => new ConfigService({ NETSUITE_CONSUMER_KEY: "consumer", NETSUITE_CONSUMER_SECRET: "consumer-secret", NETSUITE_TOKEN_ID: "token", NETSUITE_TOKEN_SECRET: "token-secret", NETSUITE_REALM: "4552704", OAUTH_NETSUITE_SIGNATURE: "HMAC-SHA256" });
+const config = () => new ConfigService({ NETSUITE_PRODUCTION_RESTLET_URL: "https://4552704.restlets.api.netsuite.com/app/site/hosting/restlet.nl?script=1764&deploy=1", NETSUITE_CONSUMER_KEY: "consumer", NETSUITE_CONSUMER_SECRET: "consumer-secret", NETSUITE_TOKEN_ID: "token", NETSUITE_TOKEN_SECRET: "token-secret", NETSUITE_REALM: "4552704", OAUTH_NETSUITE_SIGNATURE: "HMAC-SHA256" });
 afterEach(() => vi.unstubAllGlobals());
 it("reports a confirmed missing NetSuite order as 404 without exposing provider details", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify({ status: 404, error: { code: "SALES_ORDER_NOT_FOUND", message: "private provider detail" } }))));
@@ -23,7 +23,7 @@ it.each([
     const failure: unknown = await new NetsuiteRestletClient(config()).readSalesOrder("123").catch((error: unknown) => error);
     expect((failure as { getStatus(): number }).getStatus()).toBe(502);
 });
-it("uses only GET, signs the fixed extraction RESTlet and returns its JSON", async () => {
+it("uses only GET, signs the explicitly configured extraction RESTlet and returns its JSON", async () => {
     const fetcher = vi.fn().mockResolvedValue(new Response(JSON.stringify({ id: "123", fields: { tranid: "RDR673" } })));
     vi.stubGlobal("fetch", fetcher);
     expect(await new NetsuiteRestletClient(config()).readSalesOrder("123")).toEqual({ id: "123", fields: { tranid: "RDR673" } });
@@ -157,7 +157,7 @@ it.each([302, 500])("reports unknown PUT outcome on upstream HTTP %s without fol
 it("selects sandbox credentials and the explicitly configured deployment only", async () => {
     const fetcher = vi.fn().mockResolvedValue(new Response("{}"));
     vi.stubGlobal("fetch", fetcher);
-    await new NetsuiteRestletClient(new ConfigService({ NETSUITE_CONSUMER_KEY: "production-consumer", NETSUITE_CONSUMER_SECRET: "production-secret", NETSUITE_TOKEN_ID: "production-token", NETSUITE_TOKEN_SECRET: "production-token-secret", NETSUITE_REALM: "4552704", ...sandbox })).readSalesOrder("123");
+    await new NetsuiteRestletClient(new ConfigService({ NETSUITE_PRODUCTION_RESTLET_URL: "https://4552704.restlets.api.netsuite.com/app/site/hosting/restlet.nl?script=1764&deploy=1", NETSUITE_CONSUMER_KEY: "production-consumer", NETSUITE_CONSUMER_SECRET: "production-secret", NETSUITE_TOKEN_ID: "production-token", NETSUITE_TOKEN_SECRET: "production-token-secret", NETSUITE_REALM: "4552704", ...sandbox })).readSalesOrder("123");
     const [url, options] = fetcher.mock.calls[0] as [URL, RequestInit];
     expect(url.origin).toBe("https://4552704-sb1.restlets.api.netsuite.com");
     expect(Object.fromEntries(url.searchParams)).toEqual({ script: "customscript_read_order", deploy: "customdeploy_read_order", module: "salesOrders", id: "123" });
@@ -196,7 +196,7 @@ it.each([
 it("keeps production default despite populated sandbox settings", async () => {
     const fetcher = vi.fn().mockResolvedValue(new Response("{}"));
     vi.stubGlobal("fetch", fetcher);
-    const settings = { ...sandbox, NETSUITE_ENVIRONMENT: undefined, NETSUITE_CONSUMER_KEY: "consumer", NETSUITE_CONSUMER_SECRET: "consumer-secret", NETSUITE_TOKEN_ID: "token", NETSUITE_TOKEN_SECRET: "token-secret", NETSUITE_REALM: "4552704" };
+    const settings = { ...sandbox, NETSUITE_PRODUCTION_RESTLET_URL: "https://4552704.restlets.api.netsuite.com/app/site/hosting/restlet.nl?script=1764&deploy=1", NETSUITE_ENVIRONMENT: undefined, NETSUITE_CONSUMER_KEY: "consumer", NETSUITE_CONSUMER_SECRET: "consumer-secret", NETSUITE_TOKEN_ID: "token", NETSUITE_TOKEN_SECRET: "token-secret", NETSUITE_REALM: "4552704" };
     await new NetsuiteRestletClient(new ConfigService(settings)).readSalesOrder("123");
     const [url, options] = fetcher.mock.calls[0] as [URL, RequestInit];
     expect(url.origin).toBe("https://4552704.restlets.api.netsuite.com");
@@ -208,4 +208,80 @@ it("sanitizes sandbox upstream failure without retrying production", async () =>
     vi.stubGlobal("fetch", fetcher);
     await expect(new NetsuiteRestletClient(new ConfigService(sandbox)).readSalesOrder("123")).rejects.toThrow("No fue posible consultar NetSuite. La orden no fue modificada.");
     expect(fetcher).toHaveBeenCalledTimes(1);
+});
+
+it.each(["http://localhost:5173", "http://localhost.:5173", "https://app.localhost:5173", "http://127.0.0.1:5173", "http://127.0.0.2:5173", "http://[::1]:5173"])("forces sandbox for configured local frontend %s despite production setting", async (origin) => {
+    const fetcher = vi.fn().mockResolvedValue(new Response(JSON.stringify({ id: "123" })));
+    vi.stubGlobal("fetch", fetcher);
+    await new NetsuiteRestletClient(new ConfigService({ ...sandbox, FRONTEND_ORIGIN: origin, NETSUITE_ENVIRONMENT: "production" })).readSalesOrder("123");
+    const [url] = fetcher.mock.calls[0] as [URL];
+    expect(url.hostname).toBe("4552704-sb1.restlets.api.netsuite.com");
+    expect(url.searchParams.get("module")).toBe("salesOrders");
+});
+it("forces production for Habita even if an old sandbox setting remains", async () => {
+    const fetcher = vi.fn().mockResolvedValue(new Response(JSON.stringify({ id: "123" })));
+    vi.stubGlobal("fetch", fetcher);
+    await new NetsuiteRestletClient(new ConfigService({ ...sandbox, FRONTEND_ORIGIN: "https://habita.roccacr.com", NETSUITE_CONSUMER_KEY: "production", NETSUITE_CONSUMER_SECRET: "production-secret", NETSUITE_TOKEN_ID: "production-token", NETSUITE_TOKEN_SECRET: "production-token-secret", NETSUITE_REALM: "4552704", NETSUITE_PRODUCTION_RESTLET_URL: "https://4552704.restlets.api.netsuite.com/app/site/hosting/restlet.nl?script=customscript_production&deploy=customdeploy_prod" })).readSalesOrder(
+        "123",
+    );
+    const [url, options] = fetcher.mock.calls[0] as [URL, RequestInit];
+    expect(url.hostname).toBe("4552704.restlets.api.netsuite.com");
+    expect(url.searchParams.get("script")).toBe("customscript_production");
+    expect(new Headers(options.headers).get("Authorization")).toContain('realm="4552704"');
+    expect(new Headers(options.headers).get("Authorization")).not.toContain("sandbox-consumer");
+});
+it.each([undefined, "", "https://4552704-sb1.restlets.api.netsuite.com/app/site/hosting/restlet.nl?script=1&deploy=1", "https://evil.test/app/site/hosting/restlet.nl?script=1&deploy=1"])("never uses a fallback production URL when its deployment is %s", async (url) => {
+    const fetcher = vi.fn();
+    vi.stubGlobal("fetch", fetcher);
+    const settings = config();
+    settings.set("FRONTEND_ORIGIN", "https://habita.roccacr.com");
+    settings.set("NETSUITE_PRODUCTION_RESTLET_URL", url);
+    await expect(new NetsuiteRestletClient(settings).readSalesOrder("123")).rejects.toThrow();
+    expect(fetcher).not.toHaveBeenCalled();
+});
+
+it("supports the production modular read contract without changing the endpoint", async () => {
+    const fetcher = vi.fn().mockResolvedValue(new Response(JSON.stringify({ id: "123" })));
+    vi.stubGlobal("fetch", fetcher);
+    const settings = config();
+    settings.set("FRONTEND_ORIGIN", "https://habita.roccacr.com");
+    settings.set("NETSUITE_PRODUCTION_READ_MODE", "modules");
+    await new NetsuiteRestletClient(settings).readSalesOrder("123");
+    const [url] = fetcher.mock.calls[0] as [URL];
+    expect(url.searchParams.get("module")).toBe("salesOrders");
+    expect(url.searchParams.has("rType")).toBe(false);
+});
+it.each(["NETSUITE_SANDBOX_RESTLET_URL", "NETSUITE_SANDBOX_TOKEN_ID"])("local never uses available production settings when missing %s", async (key) => {
+    const settings = config();
+    for (const [name, value] of Object.entries(sandbox)) settings.set(name, value);
+    settings.set("FRONTEND_ORIGIN", "http://localhost:5173");
+    settings.set(key, "");
+    const fetcher = vi.fn();
+    vi.stubGlobal("fetch", fetcher);
+    await expect(new NetsuiteRestletClient(settings).readSalesOrder("123")).rejects.toThrow();
+    expect(fetcher).not.toHaveBeenCalled();
+});
+it("Habita never substitutes complete sandbox credentials for missing production keys", async () => {
+    const fetcher = vi.fn();
+    vi.stubGlobal("fetch", fetcher);
+    await expect(new NetsuiteRestletClient(new ConfigService({ ...sandbox, FRONTEND_ORIGIN: "https://habita.roccacr.com", NETSUITE_PRODUCTION_RESTLET_URL: "https://4552704.restlets.api.netsuite.com/app/site/hosting/restlet.nl?script=1&deploy=1" })).readSalesOrder("123")).rejects.toThrow();
+    expect(fetcher).not.toHaveBeenCalled();
+});
+
+it.each(["https://habita.roccacr.com", "http://localhost:5173"])("keeps the confirmed production3739 deployment separate from sandbox for %s", async (origin) => {
+    const fetcher = vi.fn().mockResolvedValue(new Response(JSON.stringify({ id: "123" })));
+    vi.stubGlobal("fetch", fetcher);
+    const settings = config();
+    for (const [name, value] of Object.entries(sandbox)) settings.set(name, value);
+    settings.set("FRONTEND_ORIGIN", origin);
+    settings.set("NETSUITE_PRODUCTION_RESTLET_URL", "https://4552704.restlets.api.netsuite.com/app/site/hosting/restlet.nl?script=3739&deploy=1");
+    settings.set("NETSUITE_PRODUCTION_READ_MODE", "modules");
+    await new NetsuiteRestletClient(settings).readSalesOrder("123");
+    const [url, options] = fetcher.mock.calls[0] as [URL, RequestInit];
+    expect(url.searchParams.get("module")).toBe("salesOrders");
+    expect(url.searchParams.has("rType")).toBe(false);
+    const production = origin === "https://habita.roccacr.com";
+    expect(url.hostname).toBe(production ? "4552704.restlets.api.netsuite.com" : "4552704-sb1.restlets.api.netsuite.com");
+    expect(url.searchParams.get("script")).toBe(production ? "3739" : "customscript_read_order");
+    expect(new Headers(options.headers).get("Authorization")).toContain(production ? 'realm="4552704"' : 'realm="4552704_SB1"');
 });

@@ -1,5 +1,11 @@
 # 14 - Diccionario de Datos y Modulos
 
+## Ampliaciones físicas posteriores — 2026-11-03
+
+El inventario vigente llega a 067 ([03](03-Base-Datos-y-Migracion.md)). Órdenes nativas agregan `cancellation_marked_on_sales_order` (059), `purchase_funds_origin_sales_order` (062), estado/versión/fecha de adéndum (065) y nota (066). Legacy 062/065/066 usa columnas propias mediante CLI separado; 067 no agrega columnas. Diccionario de órdenes: [39](39-Diccionario-Ordenes-Venta.md); tipos y defaults: [83](83-Adendum-Migracion-065-y-Rollback.md)/[84](84-Adendum-Manual-Migracion-066-y-Permisos.md).
+
+058 prepara cursor/auditoría nativos para persistencia v2 NetSuite bajo gates; la afirmación inferior de que no existe escritor corresponde al corte anterior ([73](73-Sincronizacion-Estados-Ordenes-NetSuite.md)). El perfil federado ([77](77-Perfil-Completo-Lead.md)) lee información ampliada legacy con identidad inequívoca: no crea las tablas de perfil extendido del blueprint ni copia registros. No se consultaron metadatos vivos en esta reconciliación.
+
 ## Catálogo físico vigente - 2026-11-02
 
 El inventario físico se contrasta con las migraciones registradas y los tipos de

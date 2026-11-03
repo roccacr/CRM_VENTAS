@@ -1,5 +1,9 @@
 # Formalizacion: registro de ajustes surgidos en reunion
 
+## Actualización contrastada — 03/11/2026
+
+Los requisitos deben contrastarse ahora con [32 — Orden y cliente](32-Detalle-Orden-y-Cliente-Basico.md) y [Calendario global](Calendario-Global-Frontend.md): ocho etapas, elección de fondos, restricciones explícitas de entrega/traspaso, marcador Adéndum manual separado del evento, perfil y contacto, calendario con integración Outlook por BFF. El texto del 2/11 que niega esa integración o comprobaciones de flags es histórico. No se entrega edición general por incorporar estas capacidades; las verificaciones anteriores conservan fecha.
+
 ## Conciliación de requisitos con código - 2026-11-02
 
 Este registro conserva necesidades y decisiones con su fecha, sin convertir

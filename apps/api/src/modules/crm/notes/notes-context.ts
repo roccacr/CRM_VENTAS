@@ -1,6 +1,6 @@
 import { BadRequestException, ForbiddenException } from "@nestjs/common";
 
-import { hasFormalizationRole } from "../../../common/security/route-permission.js";
+import { hasFormalizationAccess } from "../../../common/security/route-permission.js";
 import { CATALOG_DEFINITIONS, getCatalogPermissionCode } from "../catalogs/catalogs.constants.js";
 import type { IdentityProfile } from "../identity/identity.types.js";
 import { legacyNoteOrderIdSchema, type NoteContext, noteIdSchema } from "./notes.contract.js";
@@ -40,7 +40,7 @@ export function normalizeNoteContext(module: NoteModule, context: NoteContext): 
 export function authorizeNoteView(profile: Pick<IdentityProfile, "roles" | "permissions">, module: NoteModule, code: string): void {
     const permissions = noteViewPermissions(module, code);
     if (!permissions) throw new BadRequestException("Vista de notas no registrada en el modulo.");
-    if (module === "formalizacion" && !hasFormalizationRole(profile)) throw new ForbiddenException("Vista fuera del modulo activo.");
+    if (module === "formalizacion" && !hasFormalizationAccess(profile)) throw new ForbiddenException("Vista fuera del modulo activo.");
     if (permissions.length && !permissions.some((permission) => profile.permissions.some((p) => p.code === permission && p.effect === "allow") && !profile.permissions.some((p) => p.code === permission && p.effect === "deny"))) throw new ForbiddenException("Permiso de vista insuficiente.");
 }
 

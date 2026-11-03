@@ -1,5 +1,15 @@
 # 30 - Identidad Canonica y Referencias Externas
 
+## Aplicaciones actuales de la identidad canónica — 2026-11-03
+
+El perfil [77](77-Perfil-Completo-Lead.md), los selectores de
+[Calendario64](64-Calendario-Global-API-y-Contexto.md) y el marcador de
+[Adéndum83](83-Adendum-Migracion-065-y-Rollback.md) usan identidades
+`tipo + source + id`, referencias explícitas y prioridad nativa. No unen por
+nombre/correo de clientes ni copian datos legacy. Los eventos NetSuite resuelven
+FK nativas mediante crosswalks existentes según
+[75](75-Matriz-Campos-Ordenes-NetSuite.md), sin crear maestros ni importar órdenes.
+
 ## Veredicto
 
 El CRM nuevo debe tener identidad propia para todas sus entidades.

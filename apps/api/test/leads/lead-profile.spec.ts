@@ -41,4 +41,13 @@ describe("perfil completo del lead", () => {
         await service.read("session", { source: "legacy", id: "12" });
         expect(repository.read).toHaveBeenCalledWith(expect.objectContaining({ source: "legacy", id: "12" }));
     });
+    it("muestra el estado civil con su nombre sin importar la base de origen", () => {
+        const fields = (result: ReturnType<typeof buildLeadProfile>) => result.sections.flatMap((section) => section.fields);
+        const legacyOnly = fields(buildLeadProfile(null, source("legacy", { maritalStatus: "1", relatedMaritalStatus: "3" })));
+        expect(legacyOnly).toContainEqual(expect.objectContaining({ code: "maritalStatus", value: "Casado/a" }));
+        expect(legacyOnly).toContainEqual(expect.objectContaining({ code: "relatedMaritalStatus", value: "Unión libre" }));
+        const both = fields(buildLeadProfile(source("native", { maritalStatus: "Soltero/a" }), source("legacy", { maritalStatus: "2" })));
+        expect(both).toContainEqual(expect.objectContaining({ code: "maritalStatus", value: "Soltero/a", legacyValue: null }));
+        expect(fields(buildLeadProfile(null, source("legacy", { maritalStatus: "9" })))).toContainEqual(expect.objectContaining({ code: "maritalStatus", value: "9" }));
+    });
 });

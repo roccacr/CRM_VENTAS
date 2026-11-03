@@ -1,7 +1,7 @@
 import type { IdentityProfile } from "../identity/identity.types.js";
 import { CALENDAR_MODULES, type CalendarModuleCode } from "./calendar.contract.js";
 
-export type CalendarAction = "read" | "create" | "update";
+export type CalendarAction = "read" | "create" | "update" | "assign_lead";
 /** Effective module membership plus exact allow/no-deny; Owner is resolved by the existing profile policy. */
 export function calendarAccess(profile: IdentityProfile, moduleCode: CalendarModuleCode, action: CalendarAction): { allowed: boolean; ownOnly: boolean } {
     const membership = profile.orgUnits.some((unit) => unit.code === moduleCode && unit.status === "active");

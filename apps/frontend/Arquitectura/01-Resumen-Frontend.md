@@ -1,5 +1,9 @@
 # 01 - Resumen Frontend
 
+## Actualización contrastada — 03/11/2026
+
+El corte local del 03/11 añade perfil de cliente en Formalización, ocho etapas, fondos propios/bancarios, marcador Adéndum y calendario Outlook por BFF con disponibilidad, salas y publicación solicitada. Las descripciones inferiores del 2/11 sobre ausencia de Outlook son antecedentes. Contratos actuales: [30](30-Estado-Frontend-Verificado.md), [32](32-Detalle-Orden-y-Cliente-Basico.md) y [Calendario global](Calendario-Global-Frontend.md). No se acredita despliegue ni una ejecución nueva de QA.
+
 ## Estado contrastado - 2026-11-02
 
 [30 - Estado frontend verificado](30-Estado-Frontend-Verificado.md) inventaría los

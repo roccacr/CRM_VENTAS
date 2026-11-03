@@ -1,5 +1,11 @@
 # Guía Técnica Completa: Sistema de Autenticación CRM TINK
 
+## Continuidad de autorización — 2026-11-03
+
+El [inventario85](api/Arquitectura/85-Reconciliacion-Documental-20261103.md) y los contratos actuales sustituyen los límites históricos inferiores: evento NetSuite v1 acusa recepción; v2 usa escritor durable bajo prueba de máquina y compuertas locales, no sesión de navegador. Calendario/Graph utiliza identidad Microsoft y permisos de calendario independientes de los del CRM. Adéndum separa leer banner, leer marca, completar/cancelar y marcar manualmente.067 concede esta última capacidad por defecto a Owner, Jefe General y Jefe de Formalizaciones mediante grants reales, conservando denies individuales y excepción a wildcard implícito. No se amplía acceso comercial por renovar sesión.
+
+Esta revisión no repite login, conexión externa, migraciones ni ensayos de seguridad. Las cifras y diagramas siguientes conservan su alcance; el diagrama18.8 es conceptual, no el orden de ejecución Nest/Fastify (guards y pipes tienen su ciclo propio).
+
 ## Contrato vigente revisado — 2026-11-02
 
 La guía sigue describiendo el BFF instalado; el inventario completo se actualiza
@@ -17,7 +23,7 @@ actual de las cuentas ni una nueva aceptación de autenticación real.
 - `POST /integrations/netsuite/local/order-events` no usa sesión de navegador:
   exige prueba de máquina propia, configuración explícita y `development`.
   Solo ese método sustituye CSRF por esa prueba; no es un webhook anónimo ni
-  habilitable en producción. Su acuse `persisted:false` no acredita sincronización.
+  habilitable en producción. El acuse v1 `persisted:false` no acredita sincronización; v2 se documenta en73.
 - Pino elimina query/fragment del URL y censura credenciales antes del formato
   legible de desarrollo; producción conserva JSON compacto. No registrar códigos
   OAuth, cookies, tokens ni snapshots de clientes para diagnosticar autenticación.
@@ -324,7 +330,7 @@ GET/HEAD protegidos tambien tienen cuotas por proceso: defaults 120 por usuario 
 
 La seguridad Nest aplica CsrfGuard antes del AuthGuard global default-deny. Cada handler declara RouteSecurity; solo la allowlist explicita es publica. El servicio conserva la comprobacion del permiso exacto. AsyncLocalStorage reutiliza perfil solo dentro del request, instancia de servicio y token exacto; no es cache global de permisos.
 
-Continuidad posterior al corte `f2dc4f1`: los 49 handlers `permission` declaran tambien `RequirePermission`. El guard verifica el descriptor antes de entrar al handler; faltante, grant incorrecto o deny rechazan con 403. Se mantienen comprobaciones condicionales y por recurso en servicios. Auditoria conserva la excepcion de Owner activo, pero un deny explicito de `role.assign` bloquea el acceso HTTP. Los contextos de seguridad no resolubles rechazan con 403; DTOs conservan validacion cuando el contexto se puede autorizar.
+Continuidad posterior al corte `f2dc4f1`: en ese corte,49 handlers `permission` declaraban tambien `RequirePermission`. El guard verifica el descriptor antes de entrar al handler; faltante, grant incorrecto o deny rechazan con 403. Se mantienen comprobaciones condicionales y por recurso en servicios. Auditoria conserva la excepcion de Owner activo, pero un deny explicito de `role.assign` bloquea el acceso HTTP. Los contextos de seguridad no resolubles rechazan con 403; DTOs conservan validacion cuando el contexto se puede autorizar.
 
 Cada endpoint sensible tiene **dos contadores independientes**:
 
@@ -438,7 +444,7 @@ Los escritores de cambios administrativos conectados pasan la transacción a la
 auditoría; la evidencia central exige transacción y actor capturado cuando hay
 changeSet. Eventos independientes no demuestran atomicidad de cualquier operación.
 La auditoría central requiere ENABLE_RECORD_AUDIT y preparación 023/024; no
-captura automáticamente SQL externo ni eventos futuros de calendario. Ver 37/47/49.
+captura automáticamente SQL externo. Calendario ya registra sus comandos autorizados; ver64/68 para persistencia y publicación externa.
 
 ---
 

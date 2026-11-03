@@ -1,7 +1,7 @@
 import { ForbiddenException, Inject, Injectable, ServiceUnavailableException } from "@nestjs/common";
 import type { Transaction } from "kysely";
 
-import { hasFormalizationRole } from "../../../../common/security/route-permission.js";
+import { canReadFormalizationQueue } from "../../../../common/security/route-permission.js";
 import type { CrmDatabase } from "../../../../database/database.types.js";
 import { IdentityService } from "../../identity/identity.service.js";
 import { type ContractOrderPageRow, type ContractOrdersQuery, parseContractCursor, validateContractOrdersQuery } from "./contract-orders.dto.js";
@@ -29,8 +29,8 @@ export class ContractOrdersService {
     /** Membership is revalidated before lookup; unavailable sources do not become empty pages. */
     async list(session: string | undefined, input: ContractOrdersQuery) {
         const profile = await this.identity.getCurrentUser(session);
-        if (!hasFormalizationRole(profile)) throw new ForbiddenException("Se requiere el rol activo Formalizacion.");
         const query = validateContractOrdersQuery(input);
+        if (!canReadFormalizationQueue(profile, query.queue)) throw new ForbiddenException("No tiene permiso para consultar esta bandeja.");
         try {
             return await this.snapshot.readSnapshot((tx) => this.readPage(tx, query));
         } catch {

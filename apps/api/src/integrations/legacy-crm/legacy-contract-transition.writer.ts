@@ -7,6 +7,13 @@ import type { ContractEvent, ContractEventWrite, ContractOrder, ContractTransiti
 import type { FormalizationApprovalLegacy, LegacyApprovalOrder } from "../../modules/crm/sales/sales-orders/formalization-approval.port.js";
 import { mapLegacySalesOrder } from "./sales-order.mapper.js";
 
+/** Only explicit numeric ERP checks authorize completion; unknown remains distinct from unchecked. */
+const completionFlag = (value: unknown): boolean | null => {
+    if (value === 1) return true;
+    if (value === 0) return false;
+    return null;
+};
+
 /** Owner reconciliation must reject both absent and duplicate evidence at every hop. */
 function uniqueOwnerEvidence<T>(rows: readonly T[]): T | undefined {
     return rows.length === 1 ? rows[0] : undefined;
@@ -15,26 +22,44 @@ function uniqueOwnerEvidence<T>(rows: readonly T[]): T | undefined {
 /** Contract-only opt-in permits development as explicitly approved; catalog guards are unchanged. */
 @Injectable()
 export class LegacyContractTransitionWriter implements ContractTransitionLegacy, FormalizationApprovalLegacy {
+    /** The caller already holds the parent lock; only this classification is changed. */
+    async updatePurchaseFunds(tx: Transaction<CrmDatabase>, id: string, origin: "own_funds" | "bank_financing"): Promise<void> {
+        this.assertEnabled(tx);
+        await sql`UPDATE \`crmdatabase-api\`.ordenventa SET origen_fondos_compra_ov=${origin} WHERE id_ov=${Number(id)}`.execute(tx);
+    }
     /** Uses validated shared configuration without creating another connection. */
     constructor(@Inject(ConfigService) private readonly config: ConfigService) {}
 
     /**
-     * Triple gate: fallback flag, explicit write flag and the exact legacy schema name must all hold,
+     * Fallback and exact schema are always required; mutations also require the explicit write flag,
      * and the call must run inside the native business transaction so legacy and native writes commit together.
      */
-    private assertEnabled(tx: unknown): void {
-        if (this.config.get<unknown>("ENABLE_LEGACY_FALLBACK") !== true || this.config.get<unknown>("ENABLE_LEGACY_WRITES") !== true || this.config.get<unknown>("LEGACY_CRM_DB_NAME") !== "crmdatabase-api") throw new ServiceUnavailableException("Legacy contract writes are disabled; explicit ENABLE_LEGACY_WRITES and exact legacy schema are required");
+    private assertEnabled(tx: unknown, readOnly = false): void {
+        if ([this.config.get<unknown>("ENABLE_LEGACY_FALLBACK") !== true, !readOnly && this.config.get<unknown>("ENABLE_LEGACY_WRITES") !== true, this.config.get<unknown>("LEGACY_CRM_DB_NAME") !== "crmdatabase-api"].some(Boolean)) throw new ServiceUnavailableException("Legacy contract writes are disabled; explicit ENABLE_LEGACY_WRITES and exact legacy schema are required");
         if (tx === null || typeof tx !== "object" || Reflect.get(tx, "isTransaction") !== true) throw new ServiceUnavailableException("Legacy contract writes require the native business transaction");
     }
 
     /** Promotion/import must take this parent lock before creating a native alias. */
-    async lock(tx: Transaction<CrmDatabase>, id: string): Promise<ContractOrder | undefined> {
-        this.assertEnabled(tx);
-        const result = await sql<Record<string, unknown>>`SELECT id_ov, contrado_frima_ov, status_ov, caida_ov, chekJefeVenta, aprobacion__rdr_ov, aprobacion_forma_ov FROM \`crmdatabase-api\`.ordenventa WHERE id_ov = ${Number(id)} FOR UPDATE`.execute(tx);
+    async lock(tx: Transaction<CrmDatabase>, id: string, readOnly = false): Promise<ContractOrder | undefined> {
+        this.assertEnabled(tx, readOnly);
+        const result = await sql<Record<string, unknown>>`SELECT id_ov, contrado_frima_ov, status_ov, caida_ov, chekJefeVenta, aprobacion__rdr_ov, aprobacion_forma_ov, origen_fondos_compra_ov, cuotas_pagadas_completo_ov, unidad_traspasada_ov, entrega_llaves_ov, unidad_entregada_ov FROM \`crmdatabase-api\`.ordenventa WHERE id_ov = ${Number(id)} FOR UPDATE`.execute(tx);
         const row = result.rows[0];
         if (!row) return undefined;
         const mapped = mapLegacySalesOrder(row, new Date().toISOString());
-        return { contractSigned: mapped.commercial.contractSigned === "yes", id: String(mapped.identity.legacyId), businessId: mapped.identity.nativeCode, active: mapped.commercial.status === "active" && mapped.commercial.cancelled === "no", approved: Object.values(mapped.approvals).every((approval) => approval === "approved") };
+        return {
+            installmentsFullyPaid: completionFlag(row.cuotas_pagadas_completo_ov),
+            unitTransferred: completionFlag(row.unidad_traspasada_ov),
+            keysDelivered: completionFlag(row.entrega_llaves_ov),
+            unitDelivered: completionFlag(row.unidad_entregada_ov),
+            purchaseFundsOrigin: row.origen_fondos_compra_ov === "own_funds" || row.origen_fondos_compra_ov === "bank_financing" ? row.origen_fondos_compra_ov : null,
+            available: mapped.commercial.status === "active",
+            saleLost: mapped.commercial.cancelled === "yes",
+            contractSigned: mapped.commercial.contractSigned === "yes",
+            id: String(mapped.identity.legacyId),
+            businessId: mapped.identity.nativeCode,
+            active: mapped.commercial.status === "active" && mapped.commercial.cancelled === "no",
+            approved: mapped.approvals.formalization === "approved",
+        };
     }
 
     /** Locks the authoritative legacy order before ERP confirmation or any local approval write. */
@@ -95,6 +120,7 @@ export class LegacyContractTransitionWriter implements ContractTransitionLegacy,
     /** SQL 021 has no public event ID or native actor FK; first explicit send is a transition. */
     async append(tx: Transaction<CrmDatabase>, id: string, event: ContractEventWrite): Promise<void> {
         this.assertEnabled(tx);
+        if (event.purchaseFundsOrigin) await sql`UPDATE \`crmdatabase-api\`.ordenventa SET origen_fondos_compra_ov=${event.purchaseFundsOrigin} WHERE id_ov=${Number(id)}`.execute(tx);
         await sql`INSERT INTO \`crmdatabase-api\`.audit_sales_order_state_event
             (legacy_order_id_sales_order_state_event, sequence_sales_order_state_event, from_state_code_sales_order_state_event, to_state_code_sales_order_state_event, event_kind_sales_order_state_event, effective_at_sales_order_state_event, actor_reference_sales_order_state_event, actor_snapshot_sales_order_state_event,responsible_reference_sales_order_state_event,responsible_snapshot_sales_order_state_event,origin_sales_order_state_event, reason_sales_order_state_event, operation_id_sales_order_state_event, correlation_id_sales_order_state_event)
             VALUES (${Number(id)}, ${event.sequence}, ${event.from}, ${event.state}, 'transition', UTC_TIMESTAMP(3), ${`CRM_THINK_V2:${event.actor}`}, ${event.actorSnapshot ? JSON.stringify(event.actorSnapshot) : null},${event.responsibleSnapshot ? `CRM_THINK_V2:${event.responsibleSnapshot.publicId}` : null},${event.responsibleSnapshot ? JSON.stringify(event.responsibleSnapshot) : null},'crm', ${event.reason}, ${event.operationId}, ${event.correlationId})`.execute(tx);
